@@ -1,41 +1,51 @@
-import { useMemo, useState } from 'react'
-import Chessboard from './Chessboard'
+import { useMemo, useState } from "react";
+import Chessboard from "./Chessboard";
 
 const sampleFens = {
-  start: 'start',
-  italian: 'r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4',
-  puzzle: 'r2q2k1/1p6/p2p4/2pN1rp1/N1Pb2Q1/8/PP1B4/R6K b - - 2 25',
-}
+  start: "rn1qkbnr/pppb1ppp/8/3pp3/8/3P1N2/PPPBPPPP/RN1QKB1R w KQkq - 0 1",
+  standardStart: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+  tactic: "r2q2k1/1p6/p2p4/2pN1rp1/N1Pb2Q1/8/PP1B4/R6K b - - 2 25",
+};
 
 export default function App() {
-  const [fenKey, setFenKey] = useState('start')
-  const [orientation, setOrientation] = useState('white')
-  const [coordinates, setCoordinates] = useState(true)
+  const [fenKey, setFenKey] = useState("standardStart");
+  const [orientation, setOrientation] = useState("white");
+  const [coordinates, setCoordinates] = useState(true);
+  const [boardState, setBoardState] = useState({
+    fen: sampleFens.standardStart,
+    turn: "white",
+    status: "white to move",
+    winner: undefined,
+    error: "",
+  });
 
-  const fen = useMemo(() => sampleFens[fenKey], [fenKey])
+  const fen = useMemo(() => sampleFens[fenKey], [fenKey]);
 
   return (
     <div className="page">
       <div className="panel">
-        <h1>Chessground Starter</h1>
+        <h1>Chessground + Atomic Chess</h1>
         <p>
-          This starter keeps Chessground as the board UI only. You can swap FENs,
-          flip orientation, and use this as the base for chess.js or your own move logic.
+          This starter uses Chessground for the board UI and chessops for Atomic
+          rules. Moves are legal only when they are valid in Atomic chess.
         </p>
 
         <div className="controls">
           <label>
             Position
-            <select value={fenKey} onChange={e => setFenKey(e.target.value)}>
-              <option value="start">Start</option>
-              <option value="italian">Italian</option>
-              <option value="puzzle">Puzzle</option>
+            <select value={fenKey} onChange={(e) => setFenKey(e.target.value)}>
+              <option value="standardStart">Standard Start</option>
+              <option value="start">Open Position</option>
+              <option value="tactic">Atomic Tactic</option>
             </select>
           </label>
 
           <label>
             Orientation
-            <select value={orientation} onChange={e => setOrientation(e.target.value)}>
+            <select
+              value={orientation}
+              onChange={(e) => setOrientation(e.target.value)}
+            >
               <option value="white">White</option>
               <option value="black">Black</option>
             </select>
@@ -45,15 +55,25 @@ export default function App() {
             <input
               type="checkbox"
               checked={coordinates}
-              onChange={e => setCoordinates(e.target.checked)}
+              onChange={(e) => setCoordinates(e.target.checked)}
             />
             Coordinates
           </label>
         </div>
 
+        <div className="statusBox">
+          <div>
+            <span className="statusLabel">Status</span>
+            <strong>{boardState.status}</strong>
+          </div>
+          {boardState.error ? (
+            <div className="errorText">{boardState.error}</div>
+          ) : null}
+        </div>
+
         <div className="fenBox">
           <div className="fenLabel">Current FEN</div>
-          <code>{fen}</code>
+          <code>{boardState.fen}</code>
         </div>
       </div>
 
@@ -62,8 +82,9 @@ export default function App() {
           fen={fen}
           orientation={orientation}
           coordinates={coordinates}
+          onStateChange={setBoardState}
         />
       </div>
     </div>
-  )
+  );
 }
