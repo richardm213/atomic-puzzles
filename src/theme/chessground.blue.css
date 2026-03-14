@@ -1,52 +1,72 @@
 cg-board {
-	background-color: #d4e4ff;
-	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Crect width='8' height='8' fill='%23d4e4ff'/%3E%3Cg fill='%236291d8'%3E%3Crect width='1' height='1'/%3E%3Crect x='2' width='1' height='1'/%3E%3Crect x='4' width='1' height='1'/%3E%3Crect x='6' width='1' height='1'/%3E%3Crect x='1' y='1' width='1' height='1'/%3E%3Crect x='3' y='1' width='1' height='1'/%3E%3Crect x='5' y='1' width='1' height='1'/%3E%3Crect x='7' y='1' width='1' height='1'/%3E%3Crect y='2' width='1' height='1'/%3E%3Crect x='2' y='2' width='1' height='1'/%3E%3Crect x='4' y='2' width='1' height='1'/%3E%3Crect x='6' y='2' width='1' height='1'/%3E%3Crect x='1' y='3' width='1' height='1'/%3E%3Crect x='3' y='3' width='1' height='1'/%3E%3Crect x='5' y='3' width='1' height='1'/%3E%3Crect x='7' y='3' width='1' height='1'/%3E%3Crect y='4' width='1' height='1'/%3E%3Crect x='2' y='4' width='1' height='1'/%3E%3Crect x='4' y='4' width='1' height='1'/%3E%3Crect x='6' y='4' width='1' height='1'/%3E%3Crect x='1' y='5' width='1' height='1'/%3E%3Crect x='3' y='5' width='1' height='1'/%3E%3Crect x='5' y='5' width='1' height='1'/%3E%3Crect x='7' y='5' width='1' height='1'/%3E%3Crect y='6' width='1' height='1'/%3E%3Crect x='2' y='6' width='1' height='1'/%3E%3Crect x='4' y='6' width='1' height='1'/%3E%3Crect x='6' y='6' width='1' height='1'/%3E%3Crect x='1' y='7' width='1' height='1'/%3E%3Crect x='3' y='7' width='1' height='1'/%3E%3Crect x='5' y='7' width='1' height='1'/%3E%3Crect x='7' y='7' width='1' height='1'/%3E%3C/g%3E%3C/svg%3E");
+  background-color: #d4e4ff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Crect width='8' height='8' fill='%23d4e4ff'/%3E%3Cg fill='%236291d8'%3E%3Crect width='1' height='1'/%3E%3Crect x='2' width='1' height='1'/%3E%3Crect x='4' width='1' height='1'/%3E%3Crect x='6' width='1' height='1'/%3E%3Crect x='1' y='1' width='1' height='1'/%3E%3Crect x='3' y='1' width='1' height='1'/%3E%3Crect x='5' y='1' width='1' height='1'/%3E%3Crect x='7' y='1' width='1' height='1'/%3E%3Crect y='2' width='1' height='1'/%3E%3Crect x='2' y='2' width='1' height='1'/%3E%3Crect x='4' y='2' width='1' height='1'/%3E%3Crect x='6' y='2' width='1' height='1'/%3E%3Crect x='1' y='3' width='1' height='1'/%3E%3Crect x='3' y='3' width='1' height='1'/%3E%3Crect x='5' y='3' width='1' height='1'/%3E%3Crect x='7' y='3' width='1' height='1'/%3E%3Crect y='4' width='1' height='1'/%3E%3Crect x='2' y='4' width='1' height='1'/%3E%3Crect x='4' y='4' width='1' height='1'/%3E%3Crect x='6' y='4' width='1' height='1'/%3E%3Crect x='1' y='5' width='1' height='1'/%3E%3Crect x='3' y='5' width='1' height='1'/%3E%3Crect x='5' y='5' width='1' height='1'/%3E%3Crect x='7' y='5' width='1' height='1'/%3E%3Crect y='6' width='1' height='1'/%3E%3Crect x='2' y='6' width='1' height='1'/%3E%3Crect x='4' y='6' width='1' height='1'/%3E%3Crect x='6' y='6' width='1' height='1'/%3E%3Crect x='1' y='7' width='1' height='1'/%3E%3Crect x='3' y='7' width='1' height='1'/%3E%3Crect x='5' y='7' width='1' height='1'/%3E%3Crect x='7' y='7' width='1' height='1'/%3E%3C/g%3E%3C/svg%3E");
 }
 
 cg-board square.move-dest {
-	background: radial-gradient(rgba(18, 92, 173, 0.5) 22%, #125cad 0, rgba(0, 0, 0, 0.3) 0, rgba(0, 0, 0, 0) 0);
+  background: radial-gradient(
+    rgba(18, 92, 173, 0.5) 22%,
+    #125cad 0,
+    rgba(0, 0, 0, 0.3) 0,
+    rgba(0, 0, 0, 0) 0
+  );
 }
 
 cg-board square.premove-dest {
-	background: radial-gradient(rgba(45, 82, 167, 0.45) 22%, #2d52a7 0, rgba(0, 0, 0, 0.3) 0, rgba(0, 0, 0, 0) 0);
+  background: radial-gradient(
+    rgba(45, 82, 167, 0.45) 22%,
+    #2d52a7 0,
+    rgba(0, 0, 0, 0.3) 0,
+    rgba(0, 0, 0, 0) 0
+  );
 }
 
 cg-board square.oc.move-dest {
-	background: radial-gradient(transparent 0%, transparent 80%, rgba(18, 92, 173, 0.35) 80%);
+  background: radial-gradient(
+    transparent 0%,
+    transparent 80%,
+    rgba(18, 92, 173, 0.35) 80%
+  );
 }
 
 cg-board square.oc.premove-dest {
-	background: radial-gradient(transparent 0%, transparent 80%, rgba(45, 82, 167, 0.25) 80%);
+  background: radial-gradient(
+    transparent 0%,
+    transparent 80%,
+    rgba(45, 82, 167, 0.25) 80%
+  );
 }
 
 cg-board square.move-dest:hover,
 cg-board square.move-dest.hover {
-	background: rgba(18, 92, 173, 0.3);
+  background: rgba(18, 92, 173, 0.3);
 }
 
 cg-board square.premove-dest:hover,
 cg-board square.premove-dest.hover {
-	background: rgba(45, 82, 167, 0.2);
+  background: rgba(45, 82, 167, 0.2);
 }
 
 cg-board square.last-move {
-	background-color: rgba(79, 150, 255, 0.4);
+  background-color: rgba(79, 150, 255, 0.4);
 }
 
 cg-board square.selected {
-	background-color: rgba(18, 92, 173, 0.45);
+  background-color: rgba(18, 92, 173, 0.45);
 }
 
 cg-board square.check {
-	background: radial-gradient(ellipse at center,
-			rgba(255, 56, 56, 0.95) 0%,
-			rgba(208, 38, 38, 0.9) 25%,
-			rgba(145, 18, 18, 0) 89%,
-			rgba(145, 18, 18, 0) 100%);
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 56, 56, 0.95) 0%,
+    rgba(208, 38, 38, 0.9) 25%,
+    rgba(145, 18, 18, 0) 89%,
+    rgba(145, 18, 18, 0) 100%
+  );
 }
 
 cg-board square.current-premove {
-	background-color: rgba(45, 82, 167, 0.45);
+  background-color: rgba(45, 82, 167, 0.45);
 }
 
 .orientation-white .ranks :nth-child(odd),
@@ -55,7 +75,7 @@ cg-board square.current-premove {
 .orientation-black .files :nth-child(odd),
 coords.squares:nth-of-type(odd) :nth-child(even),
 coords.squares:nth-of-type(even) :nth-child(odd) {
-	color: rgba(62, 88, 130, 0.85);
+  color: rgba(62, 88, 130, 0.85);
 }
 
 .orientation-white .ranks :nth-child(even),
@@ -64,5 +84,5 @@ coords.squares:nth-of-type(even) :nth-child(odd) {
 .orientation-black .files :nth-child(even),
 coords.squares:nth-of-type(odd) :nth-child(odd),
 coords.squares:nth-of-type(even) :nth-child(even) {
-	color: rgba(240, 246, 255, 0.85);
+  color: rgba(240, 246, 255, 0.85);
 }

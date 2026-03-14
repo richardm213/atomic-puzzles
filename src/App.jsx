@@ -1,17 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import Chessboard from "./Chessboard";
+import { Chessboard } from "./Chessboard";
 
-function lichessAnalysisUrl(fen) {
+const lichessAnalysisUrl = (fen) => {
   if (!fen) return "https://lichess.org/analysis";
   return `https://lichess.org/analysis/${fen.replaceAll(" ", "_")}`;
-}
+};
 
-function orientationFromFen(fen) {
+const orientationFromFen = (fen) => {
   const turn = fen?.split(" ")?.[1];
   return turn === "b" ? "black" : "white";
-}
+};
 
-export default function App() {
+export const App = () => {
   const [orientation, setOrientation] = useState(null);
   const [puzzles, setPuzzles] = useState([]);
   const [history, setHistory] = useState([]);
@@ -30,7 +30,7 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
 
-    async function loadPuzzles() {
+    const loadPuzzles = async () => {
       try {
         setLoadingError("");
         const response = await fetch("/private/puzzles.json");
@@ -75,7 +75,7 @@ export default function App() {
           }));
         }
       }
-    }
+    };
 
     loadPuzzles();
 
@@ -200,4 +200,4 @@ export default function App() {
       </div>
     </div>
   );
-}
+};
