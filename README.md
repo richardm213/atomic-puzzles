@@ -7,7 +7,7 @@ This project loads atomic chess positions from a JSON file, renders an interacti
 ## Features
 
 - Load random atomic puzzles from `/private/puzzles.json`.
-- Filter puzzle data to entries with `source: "game"` and valid FENs.
+- Filter puzzle data to entries with valid FENs.
 - Interactive board powered by `@lichess-org/chessground`.
 - Atomic chess rules and legality handling via `chessops`.
 - Auto board orientation based on side to move in the FEN.
@@ -71,7 +71,6 @@ Expected structure:
 [
   {
     "id": "puzzle-001",
-    "source": "game",
     "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
   }
 ]
@@ -80,7 +79,6 @@ Expected structure:
 Notes:
 
 - The root value must be an array.
-- Only entries with `source: "game"` are used.
 - Each puzzle must include a valid atomic-compatible `fen` string.
 
 ## Controls

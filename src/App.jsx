@@ -65,25 +65,24 @@ export const App = () => {
           );
         }
 
-        const gamePuzzles = data.filter(
-          (item) =>
-            item?.source === "game" &&
-            typeof item?.fen === "string" &&
-            item.fen.length > 0,
+        const availablePuzzles = data.filter(
+          (item) => typeof item?.fen === "string" && item.fen.length > 0,
         );
 
-        if (gamePuzzles.length === 0) {
-          throw new Error("No puzzles found with source: 'game'");
+        if (availablePuzzles.length === 0) {
+          throw new Error("No puzzles found with a valid fen");
         }
 
         if (!cancelled) {
-          const firstIndexFromPath = puzzleIndexFromPath(gamePuzzles.length);
+          const firstIndexFromPath = puzzleIndexFromPath(
+            availablePuzzles.length,
+          );
           const firstIndex =
             firstIndexFromPath >= 0
               ? firstIndexFromPath
-              : Math.floor(Math.random() * gamePuzzles.length);
+              : Math.floor(Math.random() * availablePuzzles.length);
 
-          setPuzzles(gamePuzzles);
+          setPuzzles(availablePuzzles);
           setHistory([firstIndex]);
           setHistoryIndex(0);
           replaceUrlWithPuzzle(firstIndex);
