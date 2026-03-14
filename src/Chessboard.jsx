@@ -246,6 +246,29 @@ export const Chessboard = ({
     syncBoard(created.position, history.lastMoves[targetIndex]);
   };
 
+  const playOpponentMove = (position, moveText) => {
+    const fromText = moveText.slice(0, 2);
+    const toText = moveText.slice(2, 4);
+
+    const from = parseSquare(fromText);
+    const to = parseSquare(toText);
+
+    if (from === undefined || to === undefined) return false;
+
+    const piece = position.board.get(from);
+    const move = {
+      from,
+      to,
+      promotion: piece?.role === "pawn" ? toPromotion(toText) : undefined,
+    };
+
+    if (!position.isLegal(move)) return false;
+
+    position.play(move);
+    saveMove(position, [fromText, toText], moveText);
+    return true;
+  };
+
   useEffect(() => {
     if (!elementRef.current) return;
 
