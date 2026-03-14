@@ -13,7 +13,6 @@ function orientationFromFen(fen) {
 
 export default function App() {
   const [orientation, setOrientation] = useState(null);
-  const [coordinates, setCoordinates] = useState(true);
   const [puzzles, setPuzzles] = useState([]);
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -90,46 +89,37 @@ export default function App() {
     const truncated = history.slice(0, historyIndex + 1);
     setHistory([...truncated, nextIndex]);
     setHistoryIndex(truncated.length);
+    setOrientation(orientationFromFen(puzzles[nextIndex]?.fen));
   };
 
   const handlePreviousPuzzle = () => {
     if (historyIndex <= 0) return;
-    setHistoryIndex((current) => current - 1);
+    const previousHistoryIndex = historyIndex - 1;
+    setHistoryIndex(previousHistoryIndex);
+    const previousPuzzleIndex = history[previousHistoryIndex];
+    setOrientation(orientationFromFen(puzzles[previousPuzzleIndex]?.fen));
   };
 
   return (
     <div className="page">
       <div className="panel">
         <h1>Atomic Puzzle Trainer</h1>
-        <p>
-          Loads local puzzles from <code>private/puzzles.json</code>, starts random, and keeps a
-          fixed board orientation based on the first puzzle&apos;s side to move.
-        </p>
 
         <div className="controls">
-          <label className="checkbox">
-            <input
-              type="checkbox"
-              checked={coordinates}
-              onChange={(e) => setCoordinates(e.target.checked)}
-            />
-            Coordinates
-          </label>
-
           <div className="buttonRow">
             <button
               type="button"
               onClick={handlePreviousPuzzle}
               disabled={historyIndex <= 0}
             >
-              Previous puzzle
+              Prev
             </button>
             <button
               type="button"
               onClick={handleNextPuzzle}
               disabled={puzzles.length === 0}
             >
-              Next puzzle
+              Next
             </button>
             <a
               className={`analyzeButton ${!fen ? "disabled" : ""}`}
@@ -141,7 +131,7 @@ export default function App() {
                 if (!fen) event.preventDefault();
               }}
             >
-              Analyze on Lichess
+              Analyze
             </a>
           </div>
         </div>
@@ -158,7 +148,7 @@ export default function App() {
         </div>
 
         <div className="fenBox">
-          <div className="fenLabel">Fixed Orientation</div>
+          <div className="fenLabel">Orientation</div>
           <code>{orientation ?? "Not loaded"}</code>
         </div>
 
@@ -183,7 +173,7 @@ export default function App() {
           <Chessboard
             fen={fen}
             orientation={orientation ?? "white"}
-            coordinates={coordinates}
+            coordinates
             onStateChange={setBoardState}
           />
         ) : (
