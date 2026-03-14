@@ -35,16 +35,23 @@ export default function App() {
         setLoadingError("");
         const response = await fetch("/private/puzzles.json");
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status} while loading /private/puzzles.json`);
+          throw new Error(
+            `HTTP ${response.status} while loading /private/puzzles.json`,
+          );
         }
 
         const data = await response.json();
         if (!Array.isArray(data)) {
-          throw new Error("Expected /private/puzzles.json to contain an array of puzzles");
+          throw new Error(
+            "Expected /private/puzzles.json to contain an array of puzzles",
+          );
         }
 
         const gamePuzzles = data.filter(
-          (item) => item?.source === "game" && typeof item?.fen === "string" && item.fen.length > 0,
+          (item) =>
+            item?.source === "game" &&
+            typeof item?.fen === "string" &&
+            item.fen.length > 0,
         );
 
         if (gamePuzzles.length === 0) {
@@ -78,12 +85,21 @@ export default function App() {
   }, []);
 
   const activePuzzleIndex = historyIndex >= 0 ? history[historyIndex] : -1;
-  const activePuzzle = activePuzzleIndex >= 0 ? puzzles[activePuzzleIndex] : null;
+  const activePuzzle =
+    activePuzzleIndex >= 0 ? puzzles[activePuzzleIndex] : null;
   const fen = activePuzzle?.fen ?? "";
   const analysisUrl = useMemo(() => lichessAnalysisUrl(fen), [fen]);
 
   const handleNextPuzzle = () => {
     if (puzzles.length === 0) return;
+
+    if (historyIndex < history.length - 1) {
+      const nextHistoryIndex = historyIndex + 1;
+      setHistoryIndex(nextHistoryIndex);
+      const nextPuzzleIndex = history[nextHistoryIndex];
+      setOrientation(orientationFromFen(puzzles[nextPuzzleIndex]?.fen));
+      return;
+    }
 
     const nextIndex = Math.floor(Math.random() * puzzles.length);
     const truncated = history.slice(0, historyIndex + 1);
@@ -144,7 +160,9 @@ export default function App() {
           {boardState.error ? (
             <div className="errorText">{boardState.error}</div>
           ) : null}
-          {loadingError ? <div className="errorText">{loadingError}</div> : null}
+          {loadingError ? (
+            <div className="errorText">{loadingError}</div>
+          ) : null}
         </div>
 
         <div className="fenBox">
