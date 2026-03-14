@@ -81,6 +81,7 @@ export const Chessboard = ({
     index: 0,
   });
   const moveLockRef = useRef(false);
+  const puzzleSolvedRef = useRef(false);
 
   const solutionMoves = useMemo(() => normalizeSolution(solution), [solution]);
   const solutionMovesRef = useRef([]);
@@ -102,7 +103,7 @@ export const Chessboard = ({
       line: history.moveTexts.join(" "),
       lineIndex: history.index,
       showWrongMove: false,
-      solved: false,
+      solved: puzzleSolvedRef.current,
       ...(next || {}),
     };
 
@@ -158,6 +159,13 @@ export const Chessboard = ({
 
     history.index = targetIndex;
     moveLockRef.current = false;
+
+    const activeSolutionMoves = solutionMovesRef.current;
+    const trainingEnabled = trainingEnabledRef.current;
+    const requiredMoveCount = activeSolutionMoves[1] ? 2 : 1;
+    puzzleSolvedRef.current =
+      trainingEnabled && targetIndex >= requiredMoveCount;
+
     syncBoard(created.position, history.lastMoves[targetIndex]);
   };
 
@@ -222,10 +230,13 @@ export const Chessboard = ({
             const activeSolutionMoves = solutionMovesRef.current;
             const trainingEnabled = trainingEnabledRef.current;
 
-            if (!trainingEnabled) {
+            if (!trainingEnabled || puzzleSolvedRef.current) {
               position.play(move);
               saveMove(position, [orig, dest], userMoveText);
-              syncBoard(position, [orig, dest]);
+              syncBoard(position, [orig, dest], {
+                showWrongMove: false,
+                solved: puzzleSolvedRef.current,
+              });
               return;
             }
 
@@ -257,6 +268,8 @@ export const Chessboard = ({
                 const played = playOpponentMove(activePosition, opponentMove);
                 moveLockRef.current = false;
 
+                puzzleSolvedRef.current = true;
+
                 if (played) {
                   syncBoard(
                     activePosition,
@@ -280,6 +293,7 @@ export const Chessboard = ({
               return;
             }
 
+            puzzleSolvedRef.current = true;
             syncBoard(position, [orig, dest], {
               showWrongMove: false,
               solved: true,
@@ -353,10 +367,11 @@ export const Chessboard = ({
       index: 0,
     };
     moveLockRef.current = false;
+    puzzleSolvedRef.current = false;
 
     syncBoard(created.position, undefined, {
       showWrongMove: false,
-      solved: false,
+      solved: puzzleSolvedRef.current,
     });
   }, [fen, orientation, coordinates]);
 
