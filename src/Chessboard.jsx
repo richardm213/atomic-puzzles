@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Chessground } from "@lichess-org/chessground";
 import { chessgroundDests } from "chessops/compat";
 import { makeFen, parseFen } from "chessops/fen";
@@ -45,10 +45,30 @@ const toPromotion = (square) => {
   return rank === "1" || rank === "8" ? "queen" : undefined;
 };
 
+const normalizeSolution = (solution) => {
+  if (Array.isArray(solution)) {
+    return solution
+      .map((move) =>
+        typeof move === "string" ? move.trim().toLowerCase() : "",
+      )
+      .filter(Boolean);
+  }
+
+  if (typeof solution === "string") {
+    return solution
+      .split(/[\s,]+/)
+      .map((move) => move.trim().toLowerCase())
+      .filter(Boolean);
+  }
+
+  return [];
+};
+
 export const Chessboard = ({
   fen,
   orientation,
   coordinates,
+  solution,
   onStateChange,
 }) => {
   const elementRef = useRef(null);
@@ -60,6 +80,35 @@ export const Chessboard = ({
     moveTexts: [],
     index: 0,
   });
+  const moveLockRef = useRef(false);
+
+  const solutionMoves = useMemo(() => normalizeSolution(solution), [solution]);
+  const solutionMovesRef = useRef([]);
+  const trainingEnabledRef = useRef(false);
+
+  useEffect(() => {
+    solutionMovesRef.current = solutionMoves;
+    trainingEnabledRef.current = solutionMoves.length > 0;
+  }, [solutionMoves]);
+
+  const emitState = (position, next) => {
+    const history = historyRef.current;
+    const state = {
+      fen: makeFen(position.toSetup()),
+      turn: position.turn,
+      status: getStatus(position),
+      winner: position.outcome()?.winner,
+      error: "",
+      line: history.moveTexts.join(" "),
+      lineIndex: history.index,
+      showWrongMove: false,
+      solved: false,
+      ...(next || {}),
+    };
+
+    onStateChange?.(state);
+    return state;
+  };
 
   const saveMove = (position, lastMove, moveText) => {
     const history = historyRef.current;
@@ -77,11 +126,12 @@ export const Chessboard = ({
     history.index += 1;
   };
 
-  const syncBoard = (position, lastMove) => {
+  const syncBoard = (position, lastMove, nextState) => {
     positionRef.current = position;
 
     const outcome = position.outcome();
-    const movableColor = outcome ? undefined : position.turn;
+    const movableColor =
+      outcome || moveLockRef.current ? undefined : position.turn;
 
     cgRef.current?.set({
       fen: makeFen(position.toSetup()),
@@ -96,15 +146,7 @@ export const Chessboard = ({
       },
     });
 
-    onStateChange?.({
-      fen: makeFen(position.toSetup()),
-      turn: position.turn,
-      status: getStatus(position),
-      winner: outcome?.winner,
-      error: "",
-      line: historyRef.current.moveTexts.join(" "),
-      lineIndex: historyRef.current.index,
-    });
+    emitState(position, nextState);
   };
 
   const navigateTo = (targetIndex) => {
@@ -115,7 +157,31 @@ export const Chessboard = ({
     if (!created.ok) return;
 
     history.index = targetIndex;
+    moveLockRef.current = false;
     syncBoard(created.position, history.lastMoves[targetIndex]);
+  };
+
+  const playOpponentMove = (position, moveText) => {
+    const fromText = moveText.slice(0, 2);
+    const toText = moveText.slice(2, 4);
+
+    const from = parseSquare(fromText);
+    const to = parseSquare(toText);
+
+    if (from === undefined || to === undefined) return false;
+
+    const piece = position.board.get(from);
+    const move = {
+      from,
+      to,
+      promotion: piece?.role === "pawn" ? toPromotion(toText) : undefined,
+    };
+
+    if (!position.isLegal(move)) return false;
+
+    position.play(move);
+    saveMove(position, [fromText, toText], moveText);
+    return true;
   };
 
   useEffect(() => {
@@ -133,7 +199,7 @@ export const Chessboard = ({
         events: {
           after: (orig, dest) => {
             const position = positionRef.current;
-            if (!position) return;
+            if (!position || moveLockRef.current) return;
 
             const from = parseSquare(orig);
             const to = parseSquare(dest);
@@ -151,9 +217,74 @@ export const Chessboard = ({
               return;
             }
 
+            const userMoveText = `${orig}${dest}`.toLowerCase();
+
+            const activeSolutionMoves = solutionMovesRef.current;
+            const trainingEnabled = trainingEnabledRef.current;
+
+            if (!trainingEnabled) {
+              position.play(move);
+              saveMove(position, [orig, dest], userMoveText);
+              syncBoard(position, [orig, dest]);
+              return;
+            }
+
+            const expectedUserMove = activeSolutionMoves[0];
+            if (expectedUserMove !== userMoveText) {
+              syncBoard(position, undefined, {
+                showWrongMove: true,
+                solved: false,
+                status: "Try again",
+              });
+              return;
+            }
+
             position.play(move);
-            saveMove(position, [orig, dest], `${orig}${dest}`);
-            syncBoard(position, [orig, dest]);
+            saveMove(position, [orig, dest], userMoveText);
+
+            const opponentMove = activeSolutionMoves[1];
+            if (opponentMove) {
+              moveLockRef.current = true;
+              syncBoard(position, [orig, dest], {
+                showWrongMove: false,
+                solved: false,
+              });
+
+              window.setTimeout(() => {
+                const activePosition = positionRef.current;
+                if (!activePosition) return;
+
+                const played = playOpponentMove(activePosition, opponentMove);
+                moveLockRef.current = false;
+
+                if (played) {
+                  syncBoard(
+                    activePosition,
+                    [opponentMove.slice(0, 2), opponentMove.slice(2, 4)],
+                    {
+                      showWrongMove: false,
+                      solved: true,
+                      status: "Correct",
+                    },
+                  );
+                  return;
+                }
+
+                syncBoard(activePosition, undefined, {
+                  showWrongMove: false,
+                  solved: true,
+                  status: "Correct",
+                });
+              }, 250);
+
+              return;
+            }
+
+            syncBoard(position, [orig, dest], {
+              showWrongMove: false,
+              solved: true,
+              status: "Correct",
+            });
           },
         },
       },
@@ -209,6 +340,8 @@ export const Chessboard = ({
         status: "Invalid position",
         winner: undefined,
         error: created.error,
+        showWrongMove: false,
+        solved: false,
       });
       return;
     }
@@ -219,8 +352,12 @@ export const Chessboard = ({
       moveTexts: [],
       index: 0,
     };
+    moveLockRef.current = false;
 
-    syncBoard(created.position);
+    syncBoard(created.position, undefined, {
+      showWrongMove: false,
+      solved: false,
+    });
   }, [fen, orientation, coordinates]);
 
   return <div ref={elementRef} className="cg-board" />;
