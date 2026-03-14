@@ -54,6 +54,12 @@ export default function Chessboard({
   const elementRef = useRef(null);
   const cgRef = useRef(null);
   const positionRef = useRef(null);
+  const historyRef = useRef({
+    fens: [],
+    lastMoves: [],
+    moveTexts: [],
+    index: 0,
+  });
 
   useEffect(() => {
     if (!elementRef.current) return;
@@ -89,6 +95,7 @@ export default function Chessboard({
             }
 
             position.play(move);
+            saveMove(position, [orig, dest], `${orig}${dest}`);
             syncBoard(position, [orig, dest]);
           },
         },
@@ -106,6 +113,50 @@ export default function Chessboard({
       positionRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    function onKeyDown(event) {
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        navigateTo(historyRef.current.index - 1);
+      }
+
+      if (event.key === "ArrowRight") {
+        event.preventDefault();
+        navigateTo(historyRef.current.index + 1);
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  function saveMove(position, lastMove, moveText) {
+    const history = historyRef.current;
+    const nextFen = makeFen(position.toSetup());
+
+    if (history.index < history.moveTexts.length) {
+      history.fens = history.fens.slice(0, history.index + 1);
+      history.lastMoves = history.lastMoves.slice(0, history.index + 1);
+      history.moveTexts = history.moveTexts.slice(0, history.index);
+    }
+
+    history.fens.push(nextFen);
+    history.lastMoves.push(lastMove);
+    history.moveTexts.push(moveText);
+    history.index += 1;
+  }
+
+  function navigateTo(targetIndex) {
+    const history = historyRef.current;
+    if (targetIndex < 0 || targetIndex >= history.fens.length) return;
+
+    const created = createAtomicPosition(history.fens[targetIndex]);
+    if (!created.ok) return;
+
+    history.index = targetIndex;
+    syncBoard(created.position, history.lastMoves[targetIndex]);
+  }
 
   function syncBoard(position, lastMove) {
     positionRef.current = position;
@@ -132,6 +183,8 @@ export default function Chessboard({
       status: getStatus(position),
       winner: outcome?.winner,
       error: "",
+      line: historyRef.current.moveTexts.join(" "),
+      lineIndex: historyRef.current.index,
     });
   }
 
@@ -159,6 +212,13 @@ export default function Chessboard({
       });
       return;
     }
+
+    historyRef.current = {
+      fens: [fen],
+      lastMoves: [undefined],
+      moveTexts: [],
+      index: 0,
+    };
 
     syncBoard(created.position);
   }, [fen, orientation, coordinates]);
