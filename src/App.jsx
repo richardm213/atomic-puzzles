@@ -17,6 +17,8 @@ export default function App() {
     status: "white to move",
     winner: undefined,
     error: "",
+    line: "",
+    lineIndex: 0,
   });
 
   const fen = useMemo(() => sampleFens[fenKey], [fenKey]);
@@ -74,6 +76,11 @@ export default function App() {
         <div className="fenBox">
           <div className="fenLabel">Current FEN</div>
           <code>{boardState.fen}</code>
+        </div>
+
+        <div className="lineBox">
+          <div className="fenLabel">Move line (← / → to navigate)</div>
+          <code>{boardState.line || "No moves yet"}</code>
         </div>
       </div>
 
