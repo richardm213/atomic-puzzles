@@ -75,8 +75,54 @@ input {
   gap: 10px;
 }
 
-.fenBox {
+.buttonRow {
+  display: flex;
+  gap: 10px;
+}
+
+.buttonRow button,
+.analyzeButton {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: #0f172a;
+  color: #e8ecf3;
+  border-radius: 12px;
+  padding: 10px 12px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.buttonRow button:disabled,
+.analyzeButton.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.statusBox {
   margin-top: 20px;
+  padding: 14px;
+  border-radius: 14px;
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: grid;
+  gap: 8px;
+}
+
+.statusLabel {
+  display: block;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #94a3b8;
+  margin-bottom: 6px;
+}
+
+.errorText {
+  color: #fca5a5;
+  font-size: 14px;
+}
+
+.fenBox {
+  margin-top: 12px;
   padding: 14px;
   border-radius: 14px;
   background: #0f172a;
@@ -121,12 +167,21 @@ input {
   align-items: flex-start;
 }
 
-.cg-board {
+.cg-board,
+.emptyBoard {
   width: min(80vw, 560px);
   height: min(80vw, 560px);
   border-radius: 18px;
   overflow: hidden;
   box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
+}
+
+.emptyBoard {
+  display: grid;
+  place-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #c9d3e3;
+  background: #0f172a;
 }
 
 @media (max-width: 900px) {

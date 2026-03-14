@@ -1,47 +1,97 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Chessboard from "./Chessboard";
 
-const sampleFens = {
-  start: "rn1qkbnr/pppb1ppp/8/3pp3/8/3P1N2/PPPBPPPP/RN1QKB1R w KQkq - 0 1",
-  standardStart: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-  tactic: "r2q2k1/1p6/p2p4/2pN1rp1/N1Pb2Q1/8/PP1B4/R6K b - - 2 25",
-};
+function lichessAnalysisUrl(fen) {
+  if (!fen) return "https://lichess.org/analysis";
+  return `https://lichess.org/analysis/${fen.replaceAll(" ", "_")}`;
+}
 
 export default function App() {
-  const [fenKey, setFenKey] = useState("standardStart");
   const [orientation, setOrientation] = useState("white");
   const [coordinates, setCoordinates] = useState(true);
+  const [puzzles, setPuzzles] = useState([]);
+  const [puzzleIndex, setPuzzleIndex] = useState(-1);
+  const [loadingError, setLoadingError] = useState("");
   const [boardState, setBoardState] = useState({
-    fen: sampleFens.standardStart,
-    turn: "white",
-    status: "white to move",
+    fen: "",
+    turn: "",
+    status: "Loading puzzles...",
     winner: undefined,
     error: "",
     line: "",
     lineIndex: 0,
   });
 
-  const fen = useMemo(() => sampleFens[fenKey], [fenKey]);
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPuzzles() {
+      try {
+        setLoadingError("");
+        const response = await fetch("/private/puzzles.json");
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status} while loading /private/puzzles.json`);
+        }
+
+        const data = await response.json();
+        if (!Array.isArray(data)) {
+          throw new Error("Expected /private/puzzles.json to contain an array of puzzles");
+        }
+
+        const gamePuzzles = data.filter(
+          (item) => item?.source === "game" && typeof item?.fen === "string" && item.fen.length > 0,
+        );
+
+        if (gamePuzzles.length === 0) {
+          throw new Error("No puzzles found with source: 'game'");
+        }
+
+        if (!cancelled) {
+          setPuzzles(gamePuzzles);
+          setPuzzleIndex(Math.floor(Math.random() * gamePuzzles.length));
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setLoadingError(error.message || "Failed to load puzzles");
+          setBoardState((prev) => ({
+            ...prev,
+            status: "Puzzle load error",
+            error: error.message || "Failed to load puzzles",
+          }));
+        }
+      }
+    }
+
+    loadPuzzles();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const activePuzzle = puzzleIndex >= 0 ? puzzles[puzzleIndex] : null;
+  const fen = activePuzzle?.fen ?? "";
+
+  const analysisUrl = useMemo(() => lichessAnalysisUrl(fen), [fen]);
+
+  const handleNextPuzzle = () => {
+    if (puzzles.length <= 1) return;
+    setPuzzleIndex((current) => {
+      const base = current < 0 ? 0 : current;
+      return (base + 1) % puzzles.length;
+    });
+  };
 
   return (
     <div className="page">
       <div className="panel">
-        <h1>Chessground + Atomic Chess</h1>
+        <h1>Atomic Puzzle Trainer</h1>
         <p>
-          This starter uses Chessground for the board UI and chessops for Atomic
-          rules. Moves are legal only when they are valid in Atomic chess.
+          Loads local puzzles from <code>private/puzzles.json</code>, picks a random game puzzle,
+          and lets you step to the next one.
         </p>
 
         <div className="controls">
-          <label>
-            Position
-            <select value={fenKey} onChange={(e) => setFenKey(e.target.value)}>
-              <option value="standardStart">Standard Start</option>
-              <option value="start">Open Position</option>
-              <option value="tactic">Atomic Tactic</option>
-            </select>
-          </label>
-
           <label>
             Orientation
             <select
@@ -61,6 +111,28 @@ export default function App() {
             />
             Coordinates
           </label>
+
+          <div className="buttonRow">
+            <button
+              type="button"
+              onClick={handleNextPuzzle}
+              disabled={puzzles.length <= 1}
+            >
+              Next puzzle
+            </button>
+            <a
+              className={`analyzeButton ${!fen ? "disabled" : ""}`}
+              href={analysisUrl}
+              target="_blank"
+              rel="noreferrer"
+              aria-disabled={!fen}
+              onClick={(event) => {
+                if (!fen) event.preventDefault();
+              }}
+            >
+              Analyze on Lichess
+            </a>
+          </div>
         </div>
 
         <div className="statusBox">
@@ -71,11 +143,17 @@ export default function App() {
           {boardState.error ? (
             <div className="errorText">{boardState.error}</div>
           ) : null}
+          {loadingError ? <div className="errorText">{loadingError}</div> : null}
+        </div>
+
+        <div className="fenBox">
+          <div className="fenLabel">Active Puzzle</div>
+          <code>{activePuzzle?.id ?? "Not loaded"}</code>
         </div>
 
         <div className="fenBox">
           <div className="fenLabel">Current FEN</div>
-          <code>{boardState.fen}</code>
+          <code>{boardState.fen || fen || "No puzzle loaded"}</code>
         </div>
 
         <div className="lineBox">
@@ -85,12 +163,16 @@ export default function App() {
       </div>
 
       <div className="boardWrap">
-        <Chessboard
-          fen={fen}
-          orientation={orientation}
-          coordinates={coordinates}
-          onStateChange={setBoardState}
-        />
+        {fen ? (
+          <Chessboard
+            fen={fen}
+            orientation={orientation}
+            coordinates={coordinates}
+            onStateChange={setBoardState}
+          />
+        ) : (
+          <div className="emptyBoard">Waiting for puzzle data...</div>
+        )}
       </div>
     </div>
   );
