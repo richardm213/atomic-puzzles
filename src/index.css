@@ -167,6 +167,61 @@ input {
   align-items: flex-start;
 }
 
+.boardFrame {
+  position: relative;
+}
+
+.moveIndicator {
+  position: absolute;
+  top: 10px;
+  right: -66px;
+  width: 52px;
+  height: 52px;
+  z-index: 20;
+}
+
+.moveIndicator::before,
+.moveIndicator::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 16px;
+  height: 50px;
+  border-radius: 999px;
+  transform-origin: center;
+}
+
+.moveIndicator::before {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.moveIndicator::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+.moveIndicator.wrong::before,
+.moveIndicator.wrong::after {
+  background: #ef4444;
+}
+
+.moveIndicator.correct::before,
+.moveIndicator.correct::after {
+  background: #86efac;
+}
+
+.moveIndicator.correct::after {
+  height: 16px;
+  width: 30px;
+  transform: translate(-28%, -6%) rotate(-35deg);
+}
+
+.moveIndicator.correct::before {
+  height: 16px;
+  width: 16px;
+  transform: translate(-74%, 60%) rotate(45deg);
+}
+
 .cg-board,
 .emptyBoard {
   width: min(80vw, 560px);

@@ -30,6 +30,13 @@ const replaceUrlWithPuzzle = (puzzleIndex) => {
   }
 };
 
+const hasSolution = (puzzle) => {
+  if (!puzzle) return false;
+  if (typeof puzzle.solution === "string")
+    return puzzle.solution.trim().length > 0;
+  return Array.isArray(puzzle.solution) && puzzle.solution.length > 0;
+};
+
 export const App = () => {
   const [puzzles, setPuzzles] = useState([]);
   const [history, setHistory] = useState([]);
@@ -43,6 +50,8 @@ export const App = () => {
     error: "",
     line: "",
     lineIndex: 0,
+    showWrongMove: false,
+    solved: false,
   });
 
   useEffect(() => {
@@ -73,16 +82,33 @@ export const App = () => {
           throw new Error("No puzzles found with a valid fen");
         }
 
+        const solutionPuzzles = availablePuzzles.filter((puzzle) =>
+          hasSolution(puzzle),
+        );
+        const firstThreeFromSolutionGroup = solutionPuzzles.slice(0, 3);
+        const prioritizedPuzzles = [
+          ...firstThreeFromSolutionGroup,
+          ...availablePuzzles.filter(
+            (puzzle) => !firstThreeFromSolutionGroup.includes(puzzle),
+          ),
+        ];
+
         if (!cancelled) {
           const firstIndexFromPath = puzzleIndexFromPath(
-            availablePuzzles.length,
+            prioritizedPuzzles.length,
           );
+          const preferredInitialIndex =
+            firstThreeFromSolutionGroup.length > 0
+              ? Math.floor(
+                  Math.random() * Math.min(3, prioritizedPuzzles.length),
+                )
+              : Math.floor(Math.random() * prioritizedPuzzles.length);
           const firstIndex =
             firstIndexFromPath >= 0
               ? firstIndexFromPath
-              : Math.floor(Math.random() * availablePuzzles.length);
+              : preferredInitialIndex;
 
-          setPuzzles(availablePuzzles);
+          setPuzzles(prioritizedPuzzles);
           setHistory([firstIndex]);
           setHistoryIndex(0);
           replaceUrlWithPuzzle(firstIndex);
@@ -207,16 +233,25 @@ export const App = () => {
       </div>
 
       <div className="boardWrap">
-        {fen ? (
-          <Chessboard
-            fen={fen}
-            orientation={orientation}
-            coordinates
-            onStateChange={setBoardState}
-          />
-        ) : (
-          <div className="emptyBoard">Waiting for puzzle data...</div>
-        )}
+        <div className="boardFrame">
+          {boardState.showWrongMove ? (
+            <div className="moveIndicator wrong" aria-label="Wrong move" />
+          ) : null}
+          {boardState.solved ? (
+            <div className="moveIndicator correct" aria-label="Puzzle solved" />
+          ) : null}
+          {fen ? (
+            <Chessboard
+              fen={fen}
+              orientation={orientation}
+              coordinates
+              solution={activePuzzle?.solution}
+              onStateChange={setBoardState}
+            />
+          ) : (
+            <div className="emptyBoard">Waiting for puzzle data...</div>
+          )}
+        </div>
       </div>
     </div>
   );
