@@ -5,7 +5,7 @@ import { makeFen, parseFen } from "chessops/fen";
 import { parseSquare } from "chessops/util";
 import { Atomic } from "chessops/variant";
 
-function createAtomicPosition(fen) {
+const createAtomicPosition = (fen) => {
   const parsed = parseFen(fen);
   if (parsed.isErr) {
     return {
@@ -26,9 +26,9 @@ function createAtomicPosition(fen) {
     ok: true,
     position: created.value,
   };
-}
+};
 
-function getStatus(position) {
+const getStatus = (position) => {
   const outcome = position.outcome();
   if (outcome) {
     if (outcome.winner === "white") return "White wins";
@@ -38,19 +38,14 @@ function getStatus(position) {
 
   if (position.isCheck()) return `${position.turn} to move — check`;
   return `${position.turn} to move`;
-}
+};
 
-function toPromotion(square) {
+const toPromotion = (square) => {
   const rank = square[1];
   return rank === "1" || rank === "8" ? "queen" : undefined;
-}
+};
 
-export default function Chessboard({
-  fen,
-  orientation,
-  coordinates,
-  onStateChange,
-}) {
+const Chessboard = ({ fen, orientation, coordinates, onStateChange }) => {
   const elementRef = useRef(null);
   const cgRef = useRef(null);
   const positionRef = useRef(null);
@@ -60,6 +55,63 @@ export default function Chessboard({
     moveTexts: [],
     index: 0,
   });
+
+  const saveMove = (position, lastMove, moveText) => {
+    const history = historyRef.current;
+    const nextFen = makeFen(position.toSetup());
+
+    if (history.index < history.moveTexts.length) {
+      history.fens = history.fens.slice(0, history.index + 1);
+      history.lastMoves = history.lastMoves.slice(0, history.index + 1);
+      history.moveTexts = history.moveTexts.slice(0, history.index);
+    }
+
+    history.fens.push(nextFen);
+    history.lastMoves.push(lastMove);
+    history.moveTexts.push(moveText);
+    history.index += 1;
+  };
+
+  const syncBoard = (position, lastMove) => {
+    positionRef.current = position;
+
+    const outcome = position.outcome();
+    const movableColor = outcome ? undefined : position.turn;
+
+    cgRef.current?.set({
+      fen: makeFen(position.toSetup()),
+      orientation,
+      coordinates,
+      turnColor: position.turn,
+      lastMove,
+      check: position.isCheck() ? position.turn : false,
+      movable: {
+        color: movableColor,
+        dests: chessgroundDests(position),
+      },
+    });
+
+    onStateChange?.({
+      fen: makeFen(position.toSetup()),
+      turn: position.turn,
+      status: getStatus(position),
+      winner: outcome?.winner,
+      error: "",
+      line: historyRef.current.moveTexts.join(" "),
+      lineIndex: historyRef.current.index,
+    });
+  };
+
+  const navigateTo = (targetIndex) => {
+    const history = historyRef.current;
+    if (targetIndex < 0 || targetIndex >= history.fens.length) return;
+
+    const created = createAtomicPosition(history.fens[targetIndex]);
+    if (!created.ok) return;
+
+    history.index = targetIndex;
+    syncBoard(created.position, history.lastMoves[targetIndex]);
+  };
 
   useEffect(() => {
     if (!elementRef.current) return;
@@ -115,7 +167,7 @@ export default function Chessboard({
   }, []);
 
   useEffect(() => {
-    function onKeyDown(event) {
+    const onKeyDown = (event) => {
       if (event.key === "ArrowLeft") {
         event.preventDefault();
         navigateTo(historyRef.current.index - 1);
@@ -125,68 +177,11 @@ export default function Chessboard({
         event.preventDefault();
         navigateTo(historyRef.current.index + 1);
       }
-    }
+    };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
-
-  function saveMove(position, lastMove, moveText) {
-    const history = historyRef.current;
-    const nextFen = makeFen(position.toSetup());
-
-    if (history.index < history.moveTexts.length) {
-      history.fens = history.fens.slice(0, history.index + 1);
-      history.lastMoves = history.lastMoves.slice(0, history.index + 1);
-      history.moveTexts = history.moveTexts.slice(0, history.index);
-    }
-
-    history.fens.push(nextFen);
-    history.lastMoves.push(lastMove);
-    history.moveTexts.push(moveText);
-    history.index += 1;
-  }
-
-  function navigateTo(targetIndex) {
-    const history = historyRef.current;
-    if (targetIndex < 0 || targetIndex >= history.fens.length) return;
-
-    const created = createAtomicPosition(history.fens[targetIndex]);
-    if (!created.ok) return;
-
-    history.index = targetIndex;
-    syncBoard(created.position, history.lastMoves[targetIndex]);
-  }
-
-  function syncBoard(position, lastMove) {
-    positionRef.current = position;
-
-    const outcome = position.outcome();
-    const movableColor = outcome ? undefined : position.turn;
-
-    cgRef.current?.set({
-      fen: makeFen(position.toSetup()),
-      orientation,
-      coordinates,
-      turnColor: position.turn,
-      lastMove,
-      check: position.isCheck() ? position.turn : false,
-      movable: {
-        color: movableColor,
-        dests: chessgroundDests(position),
-      },
-    });
-
-    onStateChange?.({
-      fen: makeFen(position.toSetup()),
-      turn: position.turn,
-      status: getStatus(position),
-      winner: outcome?.winner,
-      error: "",
-      line: historyRef.current.moveTexts.join(" "),
-      lineIndex: historyRef.current.index,
-    });
-  }
 
   useEffect(() => {
     const created = createAtomicPosition(fen);
@@ -224,4 +219,6 @@ export default function Chessboard({
   }, [fen, orientation, coordinates]);
 
   return <div ref={elementRef} className="cg-board" />;
-}
+};
+
+export default Chessboard;
