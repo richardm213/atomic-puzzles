@@ -11,8 +11,26 @@ const orientationFromFen = (fen) => {
   return turn === "b" ? "black" : "white";
 };
 
+const puzzleIndexFromPath = (count) => {
+  const match = window.location.pathname.match(/^\/(\d+)\/?$/);
+  if (!match) return -1;
+
+  const puzzleNumber = Number.parseInt(match[1], 10);
+  if (Number.isNaN(puzzleNumber)) return -1;
+
+  const puzzleIndex = puzzleNumber - 1;
+  if (puzzleIndex < 0 || puzzleIndex >= count) return -1;
+  return puzzleIndex;
+};
+
+const replaceUrlWithPuzzle = (puzzleIndex) => {
+  const nextPath = `/${puzzleIndex + 1}`;
+  if (window.location.pathname !== nextPath) {
+    window.history.replaceState(null, "", nextPath);
+  }
+};
+
 export const App = () => {
-  const [orientation, setOrientation] = useState(null);
   const [puzzles, setPuzzles] = useState([]);
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -59,11 +77,16 @@ export const App = () => {
         }
 
         if (!cancelled) {
-          const firstIndex = Math.floor(Math.random() * gamePuzzles.length);
+          const firstIndexFromPath = puzzleIndexFromPath(gamePuzzles.length);
+          const firstIndex =
+            firstIndexFromPath >= 0
+              ? firstIndexFromPath
+              : Math.floor(Math.random() * gamePuzzles.length);
+
           setPuzzles(gamePuzzles);
           setHistory([firstIndex]);
           setHistoryIndex(0);
-          setOrientation(orientationFromFen(gamePuzzles[firstIndex].fen));
+          replaceUrlWithPuzzle(firstIndex);
         }
       } catch (error) {
         if (!cancelled) {
@@ -84,10 +107,26 @@ export const App = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (puzzles.length === 0) return;
+
+    const onPopState = () => {
+      const selectedIndex = puzzleIndexFromPath(puzzles.length);
+      if (selectedIndex < 0) return;
+
+      setHistory([selectedIndex]);
+      setHistoryIndex(0);
+    };
+
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [puzzles]);
+
   const activePuzzleIndex = historyIndex >= 0 ? history[historyIndex] : -1;
   const activePuzzle =
     activePuzzleIndex >= 0 ? puzzles[activePuzzleIndex] : null;
   const fen = activePuzzle?.fen ?? "";
+  const orientation = orientationFromFen(fen);
   const analysisUrl = useMemo(() => lichessAnalysisUrl(fen), [fen]);
 
   const handleNextPuzzle = () => {
@@ -97,7 +136,7 @@ export const App = () => {
       const nextHistoryIndex = historyIndex + 1;
       setHistoryIndex(nextHistoryIndex);
       const nextPuzzleIndex = history[nextHistoryIndex];
-      setOrientation(orientationFromFen(puzzles[nextPuzzleIndex]?.fen));
+      replaceUrlWithPuzzle(nextPuzzleIndex);
       return;
     }
 
@@ -105,7 +144,7 @@ export const App = () => {
     const truncated = history.slice(0, historyIndex + 1);
     setHistory([...truncated, nextIndex]);
     setHistoryIndex(truncated.length);
-    setOrientation(orientationFromFen(puzzles[nextIndex]?.fen));
+    replaceUrlWithPuzzle(nextIndex);
   };
 
   const handlePreviousPuzzle = () => {
@@ -113,7 +152,7 @@ export const App = () => {
     const previousHistoryIndex = historyIndex - 1;
     setHistoryIndex(previousHistoryIndex);
     const previousPuzzleIndex = history[previousHistoryIndex];
-    setOrientation(orientationFromFen(puzzles[previousPuzzleIndex]?.fen));
+    replaceUrlWithPuzzle(previousPuzzleIndex);
   };
 
   return (
@@ -152,28 +191,10 @@ export const App = () => {
           </div>
         </div>
 
-        <div className="statusBox">
-          <div>
-            <span className="statusLabel">Status</span>
-            <strong>{boardState.status}</strong>
-          </div>
-          {boardState.error ? (
-            <div className="errorText">{boardState.error}</div>
-          ) : null}
-          {loadingError ? (
-            <div className="errorText">{loadingError}</div>
-          ) : null}
-        </div>
-
-        <div className="fenBox">
-          <div className="fenLabel">Orientation</div>
-          <code>{orientation ?? "Not loaded"}</code>
-        </div>
-
-        <div className="fenBox">
-          <div className="fenLabel">Active Puzzle</div>
-          <code>{activePuzzle?.id ?? "Not loaded"}</code>
-        </div>
+        {boardState.error ? (
+          <div className="errorText">{boardState.error}</div>
+        ) : null}
+        {loadingError ? <div className="errorText">{loadingError}</div> : null}
 
         <div className="fenBox">
           <div className="fenLabel">Current FEN</div>
@@ -190,7 +211,7 @@ export const App = () => {
         {fen ? (
           <Chessboard
             fen={fen}
-            orientation={orientation ?? "white"}
+            orientation={orientation}
             coordinates
             onStateChange={setBoardState}
           />
