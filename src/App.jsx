@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Chessboard } from "./Chessboard";
 
+const OPENING_SOLUTION_COUNT = 5;
+
 const lichessAnalysisUrl = (fen) => {
   if (!fen) return "https://lichess.org/analysis";
   return `https://lichess.org/analysis/${fen.replaceAll(" ", "_")}`;
@@ -30,11 +32,27 @@ const replaceUrlWithPuzzle = (puzzleIndex) => {
   }
 };
 
+const hasSolution = (puzzle) => {
+  if (!puzzle) return false;
+  if (typeof puzzle.solution === "string") return puzzle.solution.trim().length > 0;
+  return Array.isArray(puzzle.solution) && puzzle.solution.length > 0;
+};
+
+const shuffle = (items) => {
+  const copy = [...items];
+  for (let index = copy.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [copy[index], copy[swapIndex]] = [copy[swapIndex], copy[index]];
+  }
+  return copy;
+};
+
 export const App = () => {
   const [puzzles, setPuzzles] = useState([]);
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [loadingError, setLoadingError] = useState("");
+  const [remainingOpeningPuzzleIndexes, setRemainingOpeningPuzzleIndexes] = useState([]);
   const [boardState, setBoardState] = useState({
     fen: "",
     turn: "",
@@ -43,6 +61,8 @@ export const App = () => {
     error: "",
     line: "",
     lineIndex: 0,
+    showWrongMove: false,
+    solved: false,
   });
 
   useEffect(() => {
@@ -53,16 +73,12 @@ export const App = () => {
         setLoadingError("");
         const response = await fetch("/private/puzzles.json");
         if (!response.ok) {
-          throw new Error(
-            `HTTP ${response.status} while loading /private/puzzles.json`,
-          );
+          throw new Error(`HTTP ${response.status} while loading /private/puzzles.json`);
         }
 
         const data = await response.json();
         if (!Array.isArray(data)) {
-          throw new Error(
-            "Expected /private/puzzles.json to contain an array of puzzles",
-          );
+          throw new Error("Expected /private/puzzles.json to contain an array of puzzles");
         }
 
         const availablePuzzles = data.filter(
@@ -73,18 +89,30 @@ export const App = () => {
           throw new Error("No puzzles found with a valid fen");
         }
 
-        if (!cancelled) {
-          const firstIndexFromPath = puzzleIndexFromPath(
-            availablePuzzles.length,
-          );
-          const firstIndex =
-            firstIndexFromPath >= 0
-              ? firstIndexFromPath
-              : Math.floor(Math.random() * availablePuzzles.length);
+        const solutionPuzzles = availablePuzzles.filter((puzzle) => hasSolution(puzzle));
+        const shuffledSolutions = shuffle(solutionPuzzles);
+        const openingSolutionPuzzles = shuffledSolutions.slice(0, OPENING_SOLUTION_COUNT);
 
-          setPuzzles(availablePuzzles);
+        const prioritizedPuzzles = [
+          ...openingSolutionPuzzles,
+          ...availablePuzzles.filter((puzzle) => !openingSolutionPuzzles.includes(puzzle)),
+        ];
+
+        if (!cancelled) {
+          const firstIndexFromPath = puzzleIndexFromPath(prioritizedPuzzles.length);
+          const openingIndexes = openingSolutionPuzzles.map((_, index) => index);
+          const preferredInitialIndex =
+            openingIndexes.length > 0
+              ? openingIndexes[Math.floor(Math.random() * openingIndexes.length)]
+              : Math.floor(Math.random() * prioritizedPuzzles.length);
+          const firstIndex = firstIndexFromPath >= 0 ? firstIndexFromPath : preferredInitialIndex;
+
+          const remainingOpening = openingIndexes.filter((index) => index !== firstIndex);
+
+          setPuzzles(prioritizedPuzzles);
           setHistory([firstIndex]);
           setHistoryIndex(0);
+          setRemainingOpeningPuzzleIndexes(remainingOpening);
           replaceUrlWithPuzzle(firstIndex);
         }
       } catch (error) {
@@ -122,8 +150,7 @@ export const App = () => {
   }, [puzzles]);
 
   const activePuzzleIndex = historyIndex >= 0 ? history[historyIndex] : -1;
-  const activePuzzle =
-    activePuzzleIndex >= 0 ? puzzles[activePuzzleIndex] : null;
+  const activePuzzle = activePuzzleIndex >= 0 ? puzzles[activePuzzleIndex] : null;
   const fen = activePuzzle?.fen ?? "";
   const orientation = orientationFromFen(fen);
   const analysisUrl = useMemo(() => lichessAnalysisUrl(fen), [fen]);
@@ -139,7 +166,21 @@ export const App = () => {
       return;
     }
 
-    const nextIndex = Math.floor(Math.random() * puzzles.length);
+    const nextOpeningIndex =
+      remainingOpeningPuzzleIndexes.length > 0
+        ? remainingOpeningPuzzleIndexes[
+            Math.floor(Math.random() * remainingOpeningPuzzleIndexes.length)
+          ]
+        : null;
+
+    const nextIndex = nextOpeningIndex ?? Math.floor(Math.random() * puzzles.length);
+
+    if (nextOpeningIndex !== null) {
+      setRemainingOpeningPuzzleIndexes((previous) =>
+        previous.filter((index) => index !== nextOpeningIndex),
+      );
+    }
+
     const truncated = history.slice(0, historyIndex + 1);
     setHistory([...truncated, nextIndex]);
     setHistoryIndex(truncated.length);
@@ -190,9 +231,7 @@ export const App = () => {
           </div>
         </div>
 
-        {boardState.error ? (
-          <div className="errorText">{boardState.error}</div>
-        ) : null}
+        {boardState.error ? <div className="errorText">{boardState.error}</div> : null}
         {loadingError ? <div className="errorText">{loadingError}</div> : null}
 
         <div className="fenBox">
@@ -207,16 +246,25 @@ export const App = () => {
       </div>
 
       <div className="boardWrap">
-        {fen ? (
-          <Chessboard
-            fen={fen}
-            orientation={orientation}
-            coordinates
-            onStateChange={setBoardState}
-          />
-        ) : (
-          <div className="emptyBoard">Waiting for puzzle data...</div>
-        )}
+        <div className="boardFrame">
+          {boardState.showWrongMove ? (
+            <div className="moveIndicator wrong" aria-label="Wrong move" />
+          ) : null}
+          {boardState.solved ? (
+            <div className="moveIndicator correct" aria-label="Puzzle solved" />
+          ) : null}
+          {fen ? (
+            <Chessboard
+              fen={fen}
+              orientation={orientation}
+              coordinates
+              solution={activePuzzle?.solution}
+              onStateChange={setBoardState}
+            />
+          ) : (
+            <div className="emptyBoard">Waiting for puzzle data...</div>
+          )}
+        </div>
       </div>
     </div>
   );
