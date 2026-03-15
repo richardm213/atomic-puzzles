@@ -139,6 +139,8 @@ export const App = () => {
   const activePuzzle =
     activePuzzleIndex >= 0 ? puzzles[activePuzzleIndex] : null;
   const fen = activePuzzle?.fen ?? "";
+  const author = activePuzzle?.author?.trim() || "Unknown";
+  const event = activePuzzle?.event?.trim() || "";
   const orientation = orientationFromFen(fen);
   const analysisUrl = useMemo(() => lichessAnalysisUrl(fen), [fen]);
 
@@ -215,6 +217,18 @@ export const App = () => {
           <div className="fenLabel">Current FEN</div>
           <code>{boardState.fen || fen || "No puzzle loaded"}</code>
         </div>
+
+        <div className="fenBox">
+          <div className="fenLabel">Puzzle author</div>
+          <code>{author}</code>
+        </div>
+
+        {event ? (
+          <div className="fenBox">
+            <div className="fenLabel">Event</div>
+            <code>{event}</code>
+          </div>
+        ) : null}
 
         <div className="lineBox">
           <div className="fenLabel">Move line (← / → to navigate)</div>
