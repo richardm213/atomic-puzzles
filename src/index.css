@@ -209,7 +209,7 @@ input {
   background: #86efac;
   width: 16px;
   height: 56px;
-  transform: translate(-50%, -50%) rotate(-45deg);
+  transform: translate(-50%, -50%) rotate(45deg);
 }
 
 .moveIndicator.correct::after {
