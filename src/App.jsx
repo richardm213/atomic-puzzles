@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Chessboard } from "./Chessboard";
 
 const lichessAnalysisUrl = (fen) => {
-  if (!fen) return "https://lichess.org/analysis";
-  return `https://lichess.org/analysis/${fen.replaceAll(" ", "_")}`;
+  if (!fen) return "https://lichess.org/analysis/atomic";
+  return `https://lichess.org/analysis/atomic/${fen.replaceAll(" ", "_")}`;
 };
 
 const orientationFromFen = (fen) => {
@@ -32,7 +32,8 @@ const replaceUrlWithPuzzle = (puzzleIndex) => {
 
 const hasSolution = (puzzle) => {
   if (!puzzle) return false;
-  if (typeof puzzle.solution === "string") return puzzle.solution.trim().length > 0;
+  if (typeof puzzle.solution === "string")
+    return puzzle.solution.trim().length > 0;
   return Array.isArray(puzzle.solution) && puzzle.solution.length > 0;
 };
 
@@ -61,24 +62,35 @@ export const App = () => {
         setLoadingError("");
         const response = await fetch("/private/puzzles.json");
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status} while loading /private/puzzles.json`);
+          throw new Error(
+            `HTTP ${response.status} while loading /private/puzzles.json`,
+          );
         }
 
         const data = await response.json();
         if (!Array.isArray(data)) {
-          throw new Error("Expected /private/puzzles.json to contain an array of puzzles");
+          throw new Error(
+            "Expected /private/puzzles.json to contain an array of puzzles",
+          );
         }
 
         const availablePuzzles = data.filter(
-          (item) => typeof item?.fen === "string" && item.fen.length > 0 && hasSolution(item),
+          (item) =>
+            typeof item?.fen === "string" &&
+            item.fen.length > 0 &&
+            hasSolution(item),
         );
 
         if (availablePuzzles.length === 0) {
-          throw new Error("No puzzles found with both a valid fen and a solution");
+          throw new Error(
+            "No puzzles found with both a valid fen and a solution",
+          );
         }
 
         if (!cancelled) {
-          const firstIndexFromPath = puzzleIndexFromPath(availablePuzzles.length);
+          const firstIndexFromPath = puzzleIndexFromPath(
+            availablePuzzles.length,
+          );
           const firstIndex =
             firstIndexFromPath >= 0
               ? firstIndexFromPath
@@ -124,7 +136,8 @@ export const App = () => {
   }, [puzzles]);
 
   const activePuzzleIndex = historyIndex >= 0 ? history[historyIndex] : -1;
-  const activePuzzle = activePuzzleIndex >= 0 ? puzzles[activePuzzleIndex] : null;
+  const activePuzzle =
+    activePuzzleIndex >= 0 ? puzzles[activePuzzleIndex] : null;
   const fen = activePuzzle?.fen ?? "";
   const orientation = orientationFromFen(fen);
   const analysisUrl = useMemo(() => lichessAnalysisUrl(fen), [fen]);
@@ -193,7 +206,9 @@ export const App = () => {
           </div>
         </div>
 
-        {boardState.error ? <div className="errorText">{boardState.error}</div> : null}
+        {boardState.error ? (
+          <div className="errorText">{boardState.error}</div>
+        ) : null}
         {loadingError ? <div className="errorText">{loadingError}</div> : null}
 
         <div className="fenBox">
