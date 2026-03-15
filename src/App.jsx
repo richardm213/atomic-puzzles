@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Chessboard } from "./Chessboard";
 
-const OPENING_SOLUTION_COUNT = 5;
-
 const lichessAnalysisUrl = (fen) => {
   if (!fen) return "https://lichess.org/analysis";
   return `https://lichess.org/analysis/${fen.replaceAll(" ", "_")}`;
@@ -38,21 +36,11 @@ const hasSolution = (puzzle) => {
   return Array.isArray(puzzle.solution) && puzzle.solution.length > 0;
 };
 
-const shuffle = (items) => {
-  const copy = [...items];
-  for (let index = copy.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(Math.random() * (index + 1));
-    [copy[index], copy[swapIndex]] = [copy[swapIndex], copy[index]];
-  }
-  return copy;
-};
-
 export const App = () => {
   const [puzzles, setPuzzles] = useState([]);
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [loadingError, setLoadingError] = useState("");
-  const [remainingOpeningPuzzleIndexes, setRemainingOpeningPuzzleIndexes] = useState([]);
   const [boardState, setBoardState] = useState({
     fen: "",
     turn: "",
@@ -82,32 +70,23 @@ export const App = () => {
         }
 
         const availablePuzzles = data.filter(
-          (item) => typeof item?.fen === "string" && item.fen.length > 0,
+          (item) => typeof item?.fen === "string" && item.fen.length > 0 && hasSolution(item),
         );
 
         if (availablePuzzles.length === 0) {
-          throw new Error("No puzzles found with a valid fen");
+          throw new Error("No puzzles found with both a valid fen and a solution");
         }
-
-        const solutionPuzzleIndexes = availablePuzzles
-          .map((puzzle, index) => (hasSolution(puzzle) ? index : -1))
-          .filter((index) => index >= 0);
-        const openingIndexes = shuffle(solutionPuzzleIndexes).slice(0, OPENING_SOLUTION_COUNT);
 
         if (!cancelled) {
           const firstIndexFromPath = puzzleIndexFromPath(availablePuzzles.length);
-          const preferredInitialIndex =
-            openingIndexes.length > 0
-              ? openingIndexes[Math.floor(Math.random() * openingIndexes.length)]
+          const firstIndex =
+            firstIndexFromPath >= 0
+              ? firstIndexFromPath
               : Math.floor(Math.random() * availablePuzzles.length);
-          const firstIndex = firstIndexFromPath >= 0 ? firstIndexFromPath : preferredInitialIndex;
-
-          const remainingOpening = openingIndexes.filter((index) => index !== firstIndex);
 
           setPuzzles(availablePuzzles);
           setHistory([firstIndex]);
           setHistoryIndex(0);
-          setRemainingOpeningPuzzleIndexes(remainingOpening);
           replaceUrlWithPuzzle(firstIndex);
         }
       } catch (error) {
@@ -161,20 +140,7 @@ export const App = () => {
       return;
     }
 
-    const nextOpeningIndex =
-      remainingOpeningPuzzleIndexes.length > 0
-        ? remainingOpeningPuzzleIndexes[
-            Math.floor(Math.random() * remainingOpeningPuzzleIndexes.length)
-          ]
-        : null;
-
-    const nextIndex = nextOpeningIndex ?? Math.floor(Math.random() * puzzles.length);
-
-    if (nextOpeningIndex !== null) {
-      setRemainingOpeningPuzzleIndexes((previous) =>
-        previous.filter((index) => index !== nextOpeningIndex),
-      );
-    }
+    const nextIndex = Math.floor(Math.random() * puzzles.length);
 
     const truncated = history.slice(0, historyIndex + 1);
     setHistory([...truncated, nextIndex]);
@@ -194,6 +160,7 @@ export const App = () => {
     <div className="page">
       <div className="panel">
         <h1>Atomic Puzzle Trainer</h1>
+        <p>Available puzzles: {puzzles.length}</p>
 
         <div className="controls">
           <div className="buttonRow">
