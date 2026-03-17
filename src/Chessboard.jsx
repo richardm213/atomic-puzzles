@@ -171,6 +171,9 @@ export const Chessboard = ({
   orientation,
   coordinates,
   solution,
+  showSolution,
+  navigateToPly,
+  onNavigateHandled,
   onStateChange,
 }) => {
   const elementRef = useRef(null);
@@ -188,21 +191,31 @@ export const Chessboard = ({
   const progressRef = useRef(0);
   const orientationRef = useRef(orientation);
   const coordinatesRef = useRef(coordinates);
+  const showSolutionRef = useRef(showSolution);
 
   const solutionUciLines = useMemo(() => parseSolutionUciLines(fen, solution), [fen, solution]);
 
   const solutionLinesRef = useRef([]);
   const trainingEnabledRef = useRef(false);
+  const displaySolutionRef = useRef([]);
 
   useEffect(() => {
     solutionLinesRef.current = solutionUciLines;
     trainingEnabledRef.current = solutionUciLines.length > 0;
+    displaySolutionRef.current =
+      solutionUciLines[0]
+        ?.filter((entry) => !entry.questionable)
+        .map((entry) => entry.uci) || [];
   }, [solutionUciLines]);
 
   useEffect(() => {
     orientationRef.current = orientation;
     coordinatesRef.current = coordinates;
   }, [orientation, coordinates]);
+
+  useEffect(() => {
+    showSolutionRef.current = showSolution;
+  }, [showSolution]);
 
   const emitState = (position, next) => {
     const history = historyRef.current;
@@ -213,7 +226,9 @@ export const Chessboard = ({
       winner: position.outcome()?.winner,
       error: "",
       line: history.moveTexts.join(" "),
+      lineMoves: history.moveTexts,
       lineIndex: history.index,
+      viewingSolution: showSolutionRef.current,
       showWrongMove: false,
       showRetryMove: false,
       solved: puzzleSolvedRef.current,
@@ -305,6 +320,28 @@ export const Chessboard = ({
     syncBoard(created.position, history.lastMoves[targetIndex]);
   };
 
+  const buildSolutionHistory = (initialFen, line) => {
+    const created = createAtomicPosition(initialFen);
+    if (!created.ok) return null;
+
+    const position = created.position;
+    const fens = [initialFen];
+    const lastMoves = [undefined];
+    const moveTexts = [];
+
+    for (const uci of line) {
+      const move = moveFromUci(position, uci);
+      if (!move) break;
+
+      position.play(move);
+      fens.push(makeFen(position.toSetup()));
+      lastMoves.push([uci.slice(0, 2), uci.slice(2, 4)]);
+      moveTexts.push(uci);
+    }
+
+    return { fens, lastMoves, moveTexts };
+  };
+
   const autoplayOpponentMove = (position) => {
     const candidates = candidateLinesRef.current;
     const progress = progressRef.current;
@@ -355,7 +392,7 @@ export const Chessboard = ({
         events: {
           after: (orig, dest) => {
             const position = positionRef.current;
-            if (!position || moveLockRef.current) return;
+            if (!position || moveLockRef.current || showSolutionRef.current) return;
 
             const from = parseSquare(orig);
             const to = parseSquare(dest);
@@ -484,6 +521,41 @@ export const Chessboard = ({
   }, []);
 
   useEffect(() => {
+    if (!showSolution) return;
+
+    const solutionLine = displaySolutionRef.current;
+    if (!solutionLine.length) return;
+
+    const solutionHistory = buildSolutionHistory(fen, solutionLine);
+    if (!solutionHistory) return;
+
+    historyRef.current = {
+      ...solutionHistory,
+      index: 0,
+    };
+    moveLockRef.current = true;
+    candidateLinesRef.current = [];
+    progressRef.current = 0;
+    puzzleSolvedRef.current = false;
+
+    const created = createAtomicPosition(solutionHistory.fens[0]);
+    if (!created.ok) return;
+
+    syncBoard(created.position, undefined, {
+      showWrongMove: false,
+      showRetryMove: false,
+      solved: false,
+      viewingSolution: true,
+    });
+  }, [fen, showSolution]);
+
+  useEffect(() => {
+    if (navigateToPly === null || navigateToPly === undefined) return;
+    navigateTo(navigateToPly);
+    onNavigateHandled?.();
+  }, [navigateToPly, onNavigateHandled]);
+
+  useEffect(() => {
     const onKeyDown = (event) => {
       if (event.key === "ArrowLeft") {
         event.preventDefault();
@@ -534,7 +606,7 @@ export const Chessboard = ({
       moveTexts: [],
       index: 0,
     };
-    moveLockRef.current = false;
+    moveLockRef.current = showSolution;
     candidateLinesRef.current = solutionUciLines;
     progressRef.current = 0;
     puzzleSolvedRef.current =
@@ -544,8 +616,9 @@ export const Chessboard = ({
       showWrongMove: false,
       showRetryMove: false,
       solved: false,
+      viewingSolution: showSolution,
     });
-  }, [fen, solutionUciLines]);
+  }, [fen, showSolution, solutionUciLines]);
 
   useEffect(() => {
     const position = positionRef.current;
