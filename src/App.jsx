@@ -42,6 +42,8 @@ export const App = () => {
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [loadingError, setLoadingError] = useState("");
+  const [showSolution, setShowSolution] = useState(false);
+  const [navigateToPly, setNavigateToPly] = useState(null);
   const [boardState, setBoardState] = useState({
     fen: "",
     turn: "",
@@ -49,7 +51,9 @@ export const App = () => {
     winner: undefined,
     error: "",
     line: "",
+    lineMoves: [],
     lineIndex: 0,
+    viewingSolution: false,
     showWrongMove: false,
     showRetryMove: false,
     solved: false,
@@ -147,6 +151,8 @@ export const App = () => {
 
   const handleNextPuzzle = () => {
     if (puzzles.length === 0) return;
+    setShowSolution(false);
+    setNavigateToPly(null);
 
     if (historyIndex < history.length - 1) {
       const nextHistoryIndex = historyIndex + 1;
@@ -166,10 +172,21 @@ export const App = () => {
 
   const handlePreviousPuzzle = () => {
     if (historyIndex <= 0) return;
+    setShowSolution(false);
+    setNavigateToPly(null);
     const previousHistoryIndex = historyIndex - 1;
     setHistoryIndex(previousHistoryIndex);
     const previousPuzzleIndex = history[previousHistoryIndex];
     replaceUrlWithPuzzle(previousPuzzleIndex);
+  };
+
+  const handleToggleSolution = () => {
+    setShowSolution((prev) => !prev);
+    setNavigateToPly(null);
+  };
+
+  const handleMoveClick = (moveIndex) => {
+    setNavigateToPly(moveIndex + 1);
   };
 
   return (
@@ -206,6 +223,9 @@ export const App = () => {
             >
               Analyze
             </a>
+            <button type="button" onClick={handleToggleSolution} disabled={!fen}>
+              {showSolution ? "Hide solution" : "Show solution"}
+            </button>
           </div>
         </div>
 
@@ -233,7 +253,26 @@ export const App = () => {
 
         <div className="lineBox">
           <div className="fenLabel">Move line (← / → to navigate)</div>
-          <code>{boardState.line || "No moves yet"}</code>
+          {boardState.lineMoves?.length ? (
+            <div className="moveList" role="list" aria-label="Move line">
+              {boardState.lineMoves.map((move, index) => {
+                const isActive =
+                  boardState.viewingSolution && boardState.lineIndex === index + 1;
+                return (
+                  <button
+                    key={`${move}-${index}`}
+                    type="button"
+                    className={`moveChip ${isActive ? "active" : ""}`}
+                    onClick={() => handleMoveClick(index)}
+                  >
+                    {index % 2 === 0 ? `${Math.floor(index / 2) + 1}.` : ""} {move}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <code>{boardState.line || "No moves yet"}</code>
+          )}
         </div>
       </div>
 
@@ -254,6 +293,9 @@ export const App = () => {
               orientation={orientation}
               coordinates
               solution={activePuzzle?.solution}
+              showSolution={showSolution}
+              navigateToPly={navigateToPly}
+              onNavigateHandled={() => setNavigateToPly(null)}
               onStateChange={setBoardState}
             />
           ) : (
