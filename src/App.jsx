@@ -51,6 +51,7 @@ export const App = () => {
     line: "",
     lineIndex: 0,
     showWrongMove: false,
+    showRetryMove: false,
     solved: false,
   });
 
@@ -240,6 +241,9 @@ export const App = () => {
         <div className="boardFrame">
           {boardState.showWrongMove ? (
             <div className="moveIndicator wrong" aria-label="Wrong move" />
+          ) : null}
+          {boardState.showRetryMove ? (
+            <div className="moveIndicator retry" aria-label="Try again" />
           ) : null}
           {boardState.solved ? (
             <div className="moveIndicator correct" aria-label="Puzzle solved" />

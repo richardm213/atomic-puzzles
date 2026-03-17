@@ -48,12 +48,16 @@ const toPromotion = (square) => {
 
 const tokenFromSolution = (token) => {
   const strippedMoveNumber = token.replace(/^\d+\.(\.\.)?/, "");
+  const questionable = /[!?]*\?[!?]*$/.test(strippedMoveNumber);
   const strippedAnnotation = strippedMoveNumber.replace(/[!?]+$/g, "");
-  if (!strippedAnnotation) return "";
+  if (!strippedAnnotation) return null;
   if (["*", "1-0", "0-1", "1/2-1/2"].includes(strippedAnnotation)) {
-    return "";
+    return null;
   }
-  return strippedAnnotation;
+  return {
+    san: strippedAnnotation,
+    questionable,
+  };
 };
 
 const parseSolutionUciLines = (fen, solution) => {
@@ -91,8 +95,8 @@ const parseSolutionUciLines = (fen, solution) => {
         continue;
       }
 
-      const san = tokenFromSolution(token);
-      if (!san) {
+      const parsedToken = tokenFromSolution(token);
+      if (!parsedToken) {
         index += 1;
         continue;
       }
@@ -100,14 +104,17 @@ const parseSolutionUciLines = (fen, solution) => {
       lastBranchPosition = currentPosition.clone();
       lastBranchLine = [...currentLine];
 
-      const move = parseSan(currentPosition, san);
+      const move = parseSan(currentPosition, parsedToken.san);
       if (!move || !currentPosition.isLegal(move)) {
         index += 1;
         continue;
       }
 
       const uci = makeUci(move).toLowerCase();
-      currentLine.push(uci);
+      currentLine.push({
+        uci,
+        questionable: parsedToken.questionable,
+      });
       currentPosition.play(move);
       sawMove = true;
       index += 1;
@@ -123,7 +130,7 @@ const parseSolutionUciLines = (fen, solution) => {
   const seen = new Set();
   for (const line of uciLines) {
     if (line.length === 0) continue;
-    const key = line.join(" ");
+    const key = line.map((entry) => `${entry.uci}:${entry.questionable ? "q" : "s"}`).join(" ");
     if (seen.has(key)) continue;
     seen.add(key);
     unique.push(line);
@@ -157,7 +164,7 @@ const moveFromUci = (position, uci) => {
 };
 
 const hasExpectedMoveAt = (lines, progress) =>
-  lines.some((line) => progress < line.length);
+  lines.some((line) => line[progress] && !line[progress].questionable);
 
 export const Chessboard = ({
   fen,
@@ -208,6 +215,7 @@ export const Chessboard = ({
       line: history.moveTexts.join(" "),
       lineIndex: history.index,
       showWrongMove: false,
+      showRetryMove: false,
       solved: puzzleSolvedRef.current,
       ...(next || {}),
     };
@@ -270,7 +278,7 @@ export const Chessboard = ({
     for (const moveText of playedMoves) {
       if (solved) continue;
 
-      const matching = candidates.filter((line) => line[progress] === moveText);
+      const matching = candidates.filter((line) => line[progress]?.uci === moveText);
       if (matching.length === 0) break;
 
       candidates = matching;
@@ -300,14 +308,18 @@ export const Chessboard = ({
   const autoplayOpponentMove = (position) => {
     const candidates = candidateLinesRef.current;
     const progress = progressRef.current;
-    const nextOpponentMove = candidates.find((line) => line[progress])?.[progress];
+    const nextOpponentMove = candidates.find(
+      (line) => line[progress] && !line[progress].questionable,
+    )?.[progress]?.uci;
 
     if (!nextOpponentMove) {
       puzzleSolvedRef.current = true;
       return false;
     }
 
-    const nextCandidates = candidates.filter((line) => line[progress] === nextOpponentMove);
+    const nextCandidates = candidates.filter(
+      (line) => line[progress]?.uci === nextOpponentMove,
+    );
     const move = moveFromUci(position, nextOpponentMove);
     if (!move) {
       puzzleSolvedRef.current = true;
@@ -369,6 +381,7 @@ export const Chessboard = ({
               saveMove(position, [orig, dest], userMoveText);
               syncBoard(position, [orig, dest], {
                 showWrongMove: false,
+                showRetryMove: false,
                 solved: puzzleSolvedRef.current,
               });
               return;
@@ -378,13 +391,23 @@ export const Chessboard = ({
             const candidates = candidateLinesRef.current;
             const accepted = new Set(
               candidates
+                  .map((line) => line[progress])
+                .filter((entry) => entry && !entry.questionable)
+                .map((entry) => entry.uci),
+            );
+
+            const retryMoves = new Set(
+              candidates
                 .map((line) => line[progress])
-                .filter((uci) => typeof uci === "string"),
+                .filter((entry) => entry && entry.questionable)
+                .map((entry) => entry.uci),
             );
 
             if (!accepted.has(userMoveText)) {
+              const isRetryMove = retryMoves.has(userMoveText);
               syncBoard(position, undefined, {
-                showWrongMove: true,
+                showWrongMove: !isRetryMove,
+                showRetryMove: isRetryMove,
                 solved: false,
                 status: "Try again",
               });
@@ -394,7 +417,9 @@ export const Chessboard = ({
             position.play(move);
             saveMove(position, [orig, dest], userMoveText);
 
-            const nextCandidates = candidates.filter((line) => line[progress] === userMoveText);
+            const nextCandidates = candidates.filter(
+              (line) => line[progress]?.uci === userMoveText,
+            );
             candidateLinesRef.current = nextCandidates;
             progressRef.current = progress + 1;
 
@@ -402,6 +427,7 @@ export const Chessboard = ({
               puzzleSolvedRef.current = true;
               syncBoard(position, [orig, dest], {
                 showWrongMove: false,
+                showRetryMove: false,
                 solved: true,
                 status: "Correct",
               });
@@ -411,6 +437,7 @@ export const Chessboard = ({
             moveLockRef.current = true;
             syncBoard(position, [orig, dest], {
               showWrongMove: false,
+              showRetryMove: false,
               solved: false,
             });
 
@@ -431,6 +458,7 @@ export const Chessboard = ({
                   : undefined,
                 {
                   showWrongMove: false,
+                  showRetryMove: false,
                   solved: puzzleSolvedRef.current,
                   status: puzzleSolvedRef.current
                     ? "Correct"
@@ -494,6 +522,7 @@ export const Chessboard = ({
         winner: undefined,
         error: created.error,
         showWrongMove: false,
+        showRetryMove: false,
         solved: false,
       });
       return;
@@ -513,6 +542,7 @@ export const Chessboard = ({
 
     syncBoard(created.position, undefined, {
       showWrongMove: false,
+      showRetryMove: false,
       solved: false,
     });
   }, [fen, solutionUciLines]);
