@@ -11,20 +11,25 @@ const orientationFromFen = (fen) => {
   return turn === "b" ? "black" : "white";
 };
 
-const puzzleIndexFromPath = (count) => {
+const parsePuzzleIdFromPath = () => {
   const match = window.location.pathname.match(/^\/(\d+)\/?$/);
-  if (!match) return -1;
+  if (!match) return null;
 
-  const puzzleNumber = Number.parseInt(match[1], 10);
-  if (Number.isNaN(puzzleNumber)) return -1;
+  const puzzleId = Number.parseInt(match[1], 10);
+  if (Number.isNaN(puzzleId)) return null;
+  return puzzleId;
+};
 
-  const puzzleIndex = puzzleNumber - 1;
-  if (puzzleIndex < 0 || puzzleIndex >= count) return -1;
+const puzzleIndexFromPath = (puzzles) => {
+  const puzzleId = parsePuzzleIdFromPath();
+  if (puzzleId === null) return -1;
+
+  const puzzleIndex = puzzles.findIndex((puzzle) => puzzle.puzzleId === puzzleId);
   return puzzleIndex;
 };
 
-const replaceUrlWithPuzzle = (puzzleIndex) => {
-  const nextPath = `/${puzzleIndex + 1}`;
+const replaceUrlWithPuzzle = (puzzleId) => {
+  const nextPath = `/${puzzleId}`;
   if (window.location.pathname !== nextPath) {
     window.history.replaceState(null, "", nextPath);
   }
@@ -42,6 +47,8 @@ export const App = () => {
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [loadingError, setLoadingError] = useState("");
+  const [showSolution, setShowSolution] = useState(false);
+  const [navigateToPly, setNavigateToPly] = useState(null);
   const [boardState, setBoardState] = useState({
     fen: "",
     turn: "",
@@ -49,7 +56,9 @@ export const App = () => {
     winner: undefined,
     error: "",
     line: "",
+    lineMoves: [],
     lineIndex: 0,
+    viewingSolution: false,
     showWrongMove: false,
     showRetryMove: false,
     solved: false,
@@ -75,12 +84,23 @@ export const App = () => {
           );
         }
 
-        const availablePuzzles = data.filter(
-          (item) =>
+        const availablePuzzles = data
+          .map((item, index) => {
+            const rawId = item?.id;
+            const parsedId = Number.parseInt(rawId, 10);
+            const puzzleId = Number.isFinite(parsedId) ? parsedId : index + 1;
+
+            return {
+              ...item,
+              puzzleId,
+            };
+          })
+          .filter(
+            (item) =>
             typeof item?.fen === "string" &&
             item.fen.length > 0 &&
             hasSolution(item),
-        );
+          );
 
         if (availablePuzzles.length === 0) {
           throw new Error(
@@ -89,9 +109,7 @@ export const App = () => {
         }
 
         if (!cancelled) {
-          const firstIndexFromPath = puzzleIndexFromPath(
-            availablePuzzles.length,
-          );
+          const firstIndexFromPath = puzzleIndexFromPath(availablePuzzles);
           const firstIndex =
             firstIndexFromPath >= 0
               ? firstIndexFromPath
@@ -100,7 +118,7 @@ export const App = () => {
           setPuzzles(availablePuzzles);
           setHistory([firstIndex]);
           setHistoryIndex(0);
-          replaceUrlWithPuzzle(firstIndex);
+          replaceUrlWithPuzzle(availablePuzzles[firstIndex].puzzleId);
         }
       } catch (error) {
         if (!cancelled) {
@@ -125,7 +143,7 @@ export const App = () => {
     if (puzzles.length === 0) return;
 
     const onPopState = () => {
-      const selectedIndex = puzzleIndexFromPath(puzzles.length);
+      const selectedIndex = puzzleIndexFromPath(puzzles);
       if (selectedIndex < 0) return;
 
       setHistory([selectedIndex]);
@@ -147,12 +165,15 @@ export const App = () => {
 
   const handleNextPuzzle = () => {
     if (puzzles.length === 0) return;
+    setShowSolution(false);
+    setNavigateToPly(null);
 
     if (historyIndex < history.length - 1) {
       const nextHistoryIndex = historyIndex + 1;
       setHistoryIndex(nextHistoryIndex);
       const nextPuzzleIndex = history[nextHistoryIndex];
-      replaceUrlWithPuzzle(nextPuzzleIndex);
+      const nextPuzzle = puzzles[nextPuzzleIndex];
+      if (nextPuzzle) replaceUrlWithPuzzle(nextPuzzle.puzzleId);
       return;
     }
 
@@ -161,15 +182,27 @@ export const App = () => {
     const truncated = history.slice(0, historyIndex + 1);
     setHistory([...truncated, nextIndex]);
     setHistoryIndex(truncated.length);
-    replaceUrlWithPuzzle(nextIndex);
+    replaceUrlWithPuzzle(puzzles[nextIndex].puzzleId);
   };
 
   const handlePreviousPuzzle = () => {
     if (historyIndex <= 0) return;
+    setShowSolution(false);
+    setNavigateToPly(null);
     const previousHistoryIndex = historyIndex - 1;
     setHistoryIndex(previousHistoryIndex);
     const previousPuzzleIndex = history[previousHistoryIndex];
-    replaceUrlWithPuzzle(previousPuzzleIndex);
+    const previousPuzzle = puzzles[previousPuzzleIndex];
+    if (previousPuzzle) replaceUrlWithPuzzle(previousPuzzle.puzzleId);
+  };
+
+  const handleToggleSolution = () => {
+    setShowSolution((prev) => !prev);
+    setNavigateToPly(null);
+  };
+
+  const handleMoveClick = (moveIndex) => {
+    setNavigateToPly(moveIndex + 1);
   };
 
   return (
@@ -206,6 +239,9 @@ export const App = () => {
             >
               Analyze
             </a>
+            <button type="button" onClick={handleToggleSolution} disabled={!fen}>
+              {showSolution ? "Hide solution" : "Show solution"}
+            </button>
           </div>
         </div>
 
@@ -233,7 +269,26 @@ export const App = () => {
 
         <div className="lineBox">
           <div className="fenLabel">Move line (← / → to navigate)</div>
-          <code>{boardState.line || "No moves yet"}</code>
+          {boardState.lineMoves?.length ? (
+            <div className="moveList" role="list" aria-label="Move line">
+              {boardState.lineMoves.map((move, index) => {
+                const isActive =
+                  boardState.viewingSolution && boardState.lineIndex === index + 1;
+                return (
+                  <button
+                    key={`${move}-${index}`}
+                    type="button"
+                    className={`moveChip ${isActive ? "active" : ""}`}
+                    onClick={() => handleMoveClick(index)}
+                  >
+                    {index % 2 === 0 ? `${Math.floor(index / 2) + 1}.` : ""} {move}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <code>{boardState.line || "No moves yet"}</code>
+          )}
         </div>
       </div>
 
@@ -254,6 +309,9 @@ export const App = () => {
               orientation={orientation}
               coordinates
               solution={activePuzzle?.solution}
+              showSolution={showSolution}
+              navigateToPly={navigateToPly}
+              onNavigateHandled={() => setNavigateToPly(null)}
               onStateChange={setBoardState}
             />
           ) : (
