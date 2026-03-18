@@ -44,6 +44,55 @@ const hasSolution = (puzzle) => {
   return Array.isArray(puzzle.solution) && puzzle.solution.length > 0;
 };
 
+const createMoveTree = (lines) => {
+  const root = {
+    children: new Map(),
+    lineIndexes: new Set(),
+    firstOccurrence: null,
+  };
+
+  for (const [lineIndex, line] of lines.entries()) {
+    let node = root;
+    node.lineIndexes.add(lineIndex);
+
+    for (const [moveIndex, move] of line.entries()) {
+      if (!node.children.has(move)) {
+        node.children.set(move, {
+          move,
+          children: new Map(),
+          lineIndexes: new Set(),
+          firstOccurrence: { lineIndex, moveIndex },
+        });
+      }
+
+      node = node.children.get(move);
+      node.lineIndexes.add(lineIndex);
+    }
+  }
+
+  return root;
+};
+
+const movePrefix = (plyIndex, force = false) => {
+  if (plyIndex % 2 === 0) return `${Math.floor(plyIndex / 2) + 1}. `;
+  if (force) return `${Math.floor(plyIndex / 2) + 1}... `;
+  return "";
+};
+
+const orderedChildren = (node) =>
+  [...node.children.values()].sort((a, b) => {
+    const firstLineDiff =
+      (a.firstOccurrence?.lineIndex ?? 0) - (b.firstOccurrence?.lineIndex ?? 0);
+    if (firstLineDiff !== 0) return firstLineDiff;
+    return (
+      (a.firstOccurrence?.moveIndex ?? 0) - (b.firstOccurrence?.moveIndex ?? 0)
+    );
+  });
+
+const findMainChild = (children, activeLineIndex) =>
+  children.find((child) => child.lineIndexes.has(activeLineIndex)) ||
+  children[0];
+
 export const App = () => {
   const [puzzles, setPuzzles] = useState([]);
   const [history, setHistory] = useState([]);
@@ -212,6 +261,98 @@ export const App = () => {
     });
   };
 
+  const inlineSolutionMoves = useMemo(() => {
+    if (!boardState.solutionLines?.length) return null;
+
+    const tree = createMoveTree(boardState.solutionLines);
+
+    const renderNode = (node, plyIndex, keyPrefix, forceMoveNumber = false) => {
+      const availableLineIndexes = [...node.lineIndexes.values()].sort(
+        (a, b) => a - b,
+      );
+      const targetLineIndex = node.lineIndexes.has(boardState.solutionLineIndex)
+        ? boardState.solutionLineIndex
+        : (availableLineIndexes[0] ?? 0);
+
+      const isActiveMove =
+        node.lineIndexes.has(boardState.solutionLineIndex) &&
+        boardState.lineIndex === plyIndex + 1;
+
+      const content = [
+        <button
+          key={`${keyPrefix}-move-${plyIndex}-${node.move}`}
+          type="button"
+          className={`moveChip ${isActiveMove ? "active" : ""}`}
+          onClick={() => handleMoveClick(targetLineIndex, plyIndex)}
+        >
+          {movePrefix(plyIndex, forceMoveNumber)}
+          {node.move}
+        </button>,
+      ];
+
+      const children = orderedChildren(node);
+      if (children.length === 0) return content;
+
+      const main = findMainChild(children, boardState.solutionLineIndex);
+      const variations = children.filter((child) => child !== main);
+
+      variations.forEach((variation, variationIndex) => {
+        const variationKey = `${keyPrefix}-variation-${plyIndex}-${variationIndex}`;
+        content.push(
+          <span key={`${variationKey}-open`} className="variationParen">
+            (
+          </span>,
+        );
+        content.push(
+          ...renderNode(
+            variation,
+            plyIndex + 1,
+            variationKey,
+            (plyIndex + 1) % 2 === 1,
+          ),
+        );
+        content.push(
+          <span key={`${variationKey}-close`} className="variationParen">
+            )
+          </span>,
+        );
+      });
+
+      content.push(...renderNode(main, plyIndex + 1, `${keyPrefix}-main`));
+      return content;
+    };
+
+    const rootChildren = orderedChildren(tree);
+    if (rootChildren.length === 0) return null;
+
+    const rootMain = findMainChild(rootChildren, boardState.solutionLineIndex);
+    const rootVariations = rootChildren.filter((child) => child !== rootMain);
+
+    const content = [...renderNode(rootMain, 0, "root-main")];
+
+    rootVariations.forEach((variation, index) => {
+      const variationKey = `root-variation-${index}`;
+      content.push(
+        <span key={`${variationKey}-open`} className="variationParen">
+          (
+        </span>,
+      );
+      content.push(...renderNode(variation, 0, variationKey));
+      content.push(
+        <span key={`${variationKey}-close`} className="variationParen">
+          )
+        </span>,
+      );
+    });
+
+    return content;
+  }, [
+    boardState.lineIndex,
+    boardState.solutionLineIndex,
+    boardState.solutionLines,
+    handleMoveClick,
+  ]);
+
   return (
     <div className="page">
       <div className="panel">
@@ -282,52 +423,11 @@ export const App = () => {
           <div className="fenLabel">Move line (← / → to navigate)</div>
           {boardState.viewingSolution && boardState.solutionLines?.length ? (
             <div
-              className="solutionTree"
+              className="moveList inlineSolutionTree"
               role="list"
-              aria-label="Solution lines"
+              aria-label="Solution variations"
             >
-              {boardState.solutionLines.map((line, lineIndex) => {
-                const isActiveLine = boardState.solutionLineIndex === lineIndex;
-                return (
-                  <div
-                    key={`line-${lineIndex}`}
-                    className="solutionLine"
-                    role="listitem"
-                  >
-                    {lineIndex > 0 ? (
-                      <span className="variationParen">(</span>
-                    ) : null}
-                    <div
-                      className="moveList"
-                      aria-label={`Solution line ${lineIndex + 1}`}
-                    >
-                      {line.map((move, moveIndex) => {
-                        const isActiveMove =
-                          isActiveLine &&
-                          boardState.lineIndex === moveIndex + 1;
-                        return (
-                          <button
-                            key={`${lineIndex}-${move}-${moveIndex}`}
-                            type="button"
-                            className={`moveChip ${isActiveMove ? "active" : ""}`}
-                            onClick={() =>
-                              handleMoveClick(lineIndex, moveIndex)
-                            }
-                          >
-                            {moveIndex % 2 === 0
-                              ? `${Math.floor(moveIndex / 2) + 1}.`
-                              : ""}
-                            {move}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {lineIndex > 0 ? (
-                      <span className="variationParen">)</span>
-                    ) : null}
-                  </div>
-                );
-              })}
+              {inlineSolutionMoves}
             </div>
           ) : boardState.lineMoves?.length ? (
             <div className="moveList" role="list" aria-label="Move line">
