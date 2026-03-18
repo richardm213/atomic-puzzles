@@ -161,6 +161,43 @@ input {
   color: #dbe4f0;
 }
 
+.moveList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.solutionTree {
+  display: grid;
+  gap: 8px;
+}
+
+.solutionLine {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.variationParen {
+  color: #94a3b8;
+  line-height: 30px;
+}
+
+.moveChip {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: #111a2f;
+  color: #dbe4f0;
+  border-radius: 10px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.moveChip.active {
+  border-color: #60a5fa;
+  background: rgba(96, 165, 250, 0.25);
+  color: #eff6ff;
+}
+
 .boardWrap {
   display: flex;
   justify-content: center;
