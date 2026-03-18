@@ -220,20 +220,26 @@ export const Chessboard = ({
 
   const solutionLinesRef = useRef([]);
   const trainingEnabledRef = useRef(false);
+  const displaySolutionEntriesRef = useRef([]);
   const displaySolutionLinesRef = useRef([]);
   const activeSolutionLineRef = useRef(0);
 
   useEffect(() => {
     solutionLinesRef.current = solutionUciLines;
     trainingEnabledRef.current = solutionUciLines.length > 0;
-    displaySolutionLinesRef.current = solutionUciLines
-      .map((line) =>
-        convertUciLineToSan(
-          fen,
-          line.filter((entry) => !entry.questionable).map((entry) => entry.uci),
-        ),
-      )
-      .filter((line) => line.length > 0);
+    displaySolutionEntriesRef.current = solutionUciLines
+      .map((line) => {
+        const uciLine = line
+          .filter((entry) => !entry.questionable)
+          .map((entry) => entry.uci);
+        const sanLine = convertUciLineToSan(fen, uciLine);
+        if (sanLine.length === 0) return null;
+        return { uciLine, sanLine };
+      })
+      .filter(Boolean);
+    displaySolutionLinesRef.current = displaySolutionEntriesRef.current.map(
+      (entry) => entry.sanLine,
+    );
     activeSolutionLineRef.current = 0;
   }, [fen, solutionUciLines]);
 
@@ -382,10 +388,10 @@ export const Chessboard = ({
   };
 
   const showSolutionLine = (lineIndex, targetPly) => {
-    const solutionLine = displaySolutionLinesRef.current[lineIndex] || [];
-    if (!solutionLine.length) return;
+    const solutionEntry = displaySolutionEntriesRef.current[lineIndex];
+    if (!solutionEntry?.uciLine?.length) return;
 
-    const solutionHistory = buildSolutionHistory(fen, solutionLine);
+    const solutionHistory = buildSolutionHistory(fen, solutionEntry.uciLine);
     if (!solutionHistory) return;
 
     const clampedIndex = Math.max(
