@@ -89,9 +89,7 @@ const orderedChildren = (node) =>
     );
   });
 
-const findMainChild = (children, activeLineIndex) =>
-  children.find((child) => child.lineIndexes.has(activeLineIndex)) ||
-  children[0];
+const findMainChild = (children) => children[0];
 
 export const App = () => {
   const [puzzles, setPuzzles] = useState([]);
@@ -293,7 +291,7 @@ export const App = () => {
       const children = orderedChildren(node);
       if (children.length === 0) return content;
 
-      const main = findMainChild(children, boardState.solutionLineIndex);
+      const main = findMainChild(children);
       const variations = children.filter((child) => child !== main);
 
       variations.forEach((variation, variationIndex) => {
