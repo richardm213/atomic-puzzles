@@ -212,6 +212,7 @@ export const Chessboard = ({
   const orientationRef = useRef(orientation);
   const coordinatesRef = useRef(coordinates);
   const showSolutionRef = useRef(showSolution);
+  const fenRef = useRef(fen);
 
   const solutionUciLines = useMemo(
     () => parseSolutionUciLines(fen, solution),
@@ -251,6 +252,10 @@ export const Chessboard = ({
   useEffect(() => {
     showSolutionRef.current = showSolution;
   }, [showSolution]);
+
+  useEffect(() => {
+    fenRef.current = fen;
+  }, [fen]);
 
   const emitState = (position, next) => {
     const history = historyRef.current;
@@ -391,7 +396,10 @@ export const Chessboard = ({
     const solutionEntry = displaySolutionEntriesRef.current[lineIndex];
     if (!solutionEntry?.uciLine?.length) return;
 
-    const solutionHistory = buildSolutionHistory(fen, solutionEntry.uciLine);
+    const solutionHistory = buildSolutionHistory(
+      fenRef.current,
+      solutionEntry.uciLine,
+    );
     if (!solutionHistory) return;
 
     const clampedIndex = Math.max(
@@ -636,6 +644,13 @@ export const Chessboard = ({
 
   useEffect(() => {
     const onKeyDown = (event) => {
+      const isInputTarget =
+        event.target instanceof HTMLElement &&
+        (event.target.tagName === "INPUT" ||
+          event.target.tagName === "TEXTAREA" ||
+          event.target.isContentEditable);
+      if (isInputTarget) return;
+
       if (event.key === "ArrowLeft") {
         event.preventDefault();
         navigateTo(historyRef.current.index - 1);
@@ -645,6 +660,51 @@ export const Chessboard = ({
         event.preventDefault();
         navigateTo(historyRef.current.index + 1);
       }
+
+      if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+      if (!showSolutionRef.current) return;
+
+      const currentPly = historyRef.current.index;
+      if (currentPly <= 0) return;
+
+      const entries = displaySolutionEntriesRef.current;
+      const currentLineIndex = activeSolutionLineRef.current;
+      const currentLine = entries[currentLineIndex]?.uciLine;
+      if (!currentLine || !currentLine[currentPly - 1]) return;
+
+      const moveAtPly = currentPly - 1;
+      const sharedPrefix = currentLine.slice(0, moveAtPly).join(" ");
+      const groupedByMove = new Map();
+
+      entries.forEach((entry, index) => {
+        const line = entry?.uciLine;
+        if (!line || !line[moveAtPly]) return;
+
+        const linePrefix = line.slice(0, moveAtPly).join(" ");
+        if (linePrefix !== sharedPrefix) return;
+
+        const move = line[moveAtPly];
+        if (!groupedByMove.has(move)) {
+          groupedByMove.set(move, index);
+        }
+      });
+
+      const breadthOptions = [...groupedByMove.values()];
+      if (breadthOptions.length <= 1) return;
+
+      const currentOptionIndex = breadthOptions.findIndex(
+        (optionIndex) =>
+          entries[optionIndex]?.uciLine?.[moveAtPly] === currentLine[moveAtPly],
+      );
+      if (currentOptionIndex === -1) return;
+
+      const delta = event.key === "ArrowDown" ? 1 : -1;
+      const nextOptionIndex =
+        (currentOptionIndex + delta + breadthOptions.length) %
+        breadthOptions.length;
+
+      event.preventDefault();
+      showSolutionLine(breadthOptions[nextOptionIndex], currentPly);
     };
 
     window.addEventListener("keydown", onKeyDown);
