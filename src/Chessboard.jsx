@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { Chessground } from "@lichess-org/chessground";
 import { chessgroundDests } from "chessops/compat";
 import { makeFen, parseFen } from "chessops/fen";
-import { parseSan } from "chessops/san";
+import { makeSan, parseSan } from "chessops/san";
 import { makeUci, parseSquare } from "chessops/util";
 import { Atomic } from "chessops/variant";
 
@@ -168,6 +168,23 @@ const moveFromUci = (position, uci) => {
 const hasExpectedMoveAt = (lines, progress) =>
   lines.some((line) => line[progress] && !line[progress].questionable);
 
+const convertUciLineToSan = (initialFen, uciLine) => {
+  const created = createAtomicPosition(initialFen);
+  if (!created.ok) return [];
+
+  const position = created.position;
+  const sanLine = [];
+
+  for (const uci of uciLine) {
+    const move = moveFromUci(position, uci);
+    if (!move) break;
+    sanLine.push(makeSan(position, move));
+    position.play(move);
+  }
+
+  return sanLine;
+};
+
 export const Chessboard = ({
   fen,
   orientation,
@@ -184,7 +201,8 @@ export const Chessboard = ({
   const historyRef = useRef({
     fens: [],
     lastMoves: [],
-    moveTexts: [],
+    moveUcis: [],
+    moveSans: [],
     index: 0,
   });
   const moveLockRef = useRef(false);
@@ -210,11 +228,14 @@ export const Chessboard = ({
     trainingEnabledRef.current = solutionUciLines.length > 0;
     displaySolutionLinesRef.current = solutionUciLines
       .map((line) =>
-        line.filter((entry) => !entry.questionable).map((entry) => entry.uci),
+        convertUciLineToSan(
+          fen,
+          line.filter((entry) => !entry.questionable).map((entry) => entry.uci),
+        ),
       )
       .filter((line) => line.length > 0);
     activeSolutionLineRef.current = 0;
-  }, [solutionUciLines]);
+  }, [fen, solutionUciLines]);
 
   useEffect(() => {
     orientationRef.current = orientation;
@@ -233,8 +254,8 @@ export const Chessboard = ({
       status: getStatus(position),
       winner: position.outcome()?.winner,
       error: "",
-      line: history.moveTexts.join(" "),
-      lineMoves: history.moveTexts,
+      line: history.moveSans.join(" "),
+      lineMoves: history.moveSans,
       solutionLines: displaySolutionLinesRef.current,
       solutionLineIndex: activeSolutionLineRef.current,
       lineIndex: history.index,
@@ -249,19 +270,21 @@ export const Chessboard = ({
     return state;
   };
 
-  const saveMove = (position, lastMove, moveText) => {
+  const saveMove = (position, lastMove, moveUci, moveSan) => {
     const history = historyRef.current;
     const nextFen = makeFen(position.toSetup());
 
-    if (history.index < history.moveTexts.length) {
+    if (history.index < history.moveUcis.length) {
       history.fens = history.fens.slice(0, history.index + 1);
       history.lastMoves = history.lastMoves.slice(0, history.index + 1);
-      history.moveTexts = history.moveTexts.slice(0, history.index);
+      history.moveUcis = history.moveUcis.slice(0, history.index);
+      history.moveSans = history.moveSans.slice(0, history.index);
     }
 
     history.fens.push(nextFen);
     history.lastMoves.push(lastMove);
-    history.moveTexts.push(moveText);
+    history.moveUcis.push(moveUci);
+    history.moveSans.push(moveSan);
     history.index += 1;
   };
 
@@ -296,7 +319,7 @@ export const Chessboard = ({
       return;
     }
 
-    const playedMoves = historyRef.current.moveTexts.slice(0, targetIndex);
+    const playedMoves = historyRef.current.moveUcis.slice(0, targetIndex);
     let candidates = solutionLinesRef.current;
     let progress = 0;
     let solved = !hasExpectedMoveAt(candidates, progress);
@@ -340,19 +363,22 @@ export const Chessboard = ({
     const position = created.position;
     const fens = [initialFen];
     const lastMoves = [undefined];
-    const moveTexts = [];
+    const moveUcis = [];
+    const moveSans = [];
 
     for (const uci of line) {
       const move = moveFromUci(position, uci);
       if (!move) break;
 
+      const san = makeSan(position, move);
       position.play(move);
       fens.push(makeFen(position.toSetup()));
       lastMoves.push([uci.slice(0, 2), uci.slice(2, 4)]);
-      moveTexts.push(uci);
+      moveUcis.push(uci);
+      moveSans.push(san);
     }
 
-    return { fens, lastMoves, moveTexts };
+    return { fens, lastMoves, moveUcis, moveSans };
   };
 
   const showSolutionLine = (lineIndex, targetPly) => {
@@ -365,8 +391,8 @@ export const Chessboard = ({
     const clampedIndex = Math.max(
       0,
       Math.min(
-        targetPly ?? solutionHistory.moveTexts.length,
-        solutionHistory.moveTexts.length,
+        targetPly ?? solutionHistory.moveUcis.length,
+        solutionHistory.moveUcis.length,
       ),
     );
 
@@ -414,11 +440,13 @@ export const Chessboard = ({
       return false;
     }
 
+    const opponentMoveSan = makeSan(position, move);
     position.play(move);
     saveMove(
       position,
       [nextOpponentMove.slice(0, 2), nextOpponentMove.slice(2, 4)],
       nextOpponentMove,
+      opponentMoveSan,
     );
 
     candidateLinesRef.current = nextCandidates;
@@ -466,11 +494,12 @@ export const Chessboard = ({
             }
 
             const userMoveText = `${orig}${dest}`.toLowerCase();
+            const userMoveSan = makeSan(position, move);
             const trainingEnabled = trainingEnabledRef.current;
 
             if (!trainingEnabled || puzzleSolvedRef.current) {
               position.play(move);
-              saveMove(position, [orig, dest], userMoveText);
+              saveMove(position, [orig, dest], userMoveText, userMoveSan);
               syncBoard(position, [orig, dest], {
                 showWrongMove: false,
                 showRetryMove: false,
@@ -507,7 +536,7 @@ export const Chessboard = ({
             }
 
             position.play(move);
-            saveMove(position, [orig, dest], userMoveText);
+            saveMove(position, [orig, dest], userMoveText, userMoveSan);
 
             const nextCandidates = candidates.filter(
               (line) => line[progress]?.uci === userMoveText,
@@ -544,10 +573,10 @@ export const Chessboard = ({
                 activePosition,
                 playedOpponent
                   ? [
-                      historyRef.current.moveTexts[
+                      historyRef.current.moveUcis[
                         historyRef.current.index - 1
                       ].slice(0, 2),
-                      historyRef.current.moveTexts[
+                      historyRef.current.moveUcis[
                         historyRef.current.index - 1
                       ].slice(2, 4),
                     ]
@@ -649,7 +678,8 @@ export const Chessboard = ({
     historyRef.current = {
       fens: [fen],
       lastMoves: [undefined],
-      moveTexts: [],
+      moveUcis: [],
+      moveSans: [],
       index: 0,
     };
     activeSolutionLineRef.current = 0;
