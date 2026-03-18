@@ -167,6 +167,10 @@ input {
   gap: 6px;
 }
 
+.inlineSolutionTree {
+  align-items: center;
+}
+
 .solutionTree {
   display: grid;
   gap: 8px;
