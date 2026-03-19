@@ -61,6 +61,19 @@ npm run preview
 
 This repository includes a GitHub Actions workflow at `.github/workflows/deploy.yml` that automatically deploys to GitHub Pages when `main` is updated.
 
+### Keeping puzzle data out of Git history
+
+`private/` is gitignored, so `/private/puzzles.json` is not committed. For production deploys, the workflow reads puzzle JSON from a repository secret named `PUZZLES_JSON` and writes it to `public/private/puzzles.json` at build time.
+
+Configure it once:
+
+1. Open **Settings → Secrets and variables → Actions** in your repository.
+2. Add a new repository secret:
+   - **Name:** `PUZZLES_JSON`
+   - **Value:** full JSON array payload for your puzzles.
+
+Important: this keeps puzzle data out of your public GitHub repository, but because GitHub Pages is a static host, the final deployed file is still publicly downloadable by anyone who knows the URL.
+
 ### One-time repository settings
 
 1. Open **Settings → Pages** in your GitHub repository.
@@ -89,6 +102,8 @@ The app expects puzzle data at:
 ```text
 /public/private/puzzles.json
 ```
+
+In local development, create this file manually. In GitHub Pages production, it is generated from the `PUZZLES_JSON` Actions secret during the deploy workflow.
 
 Expected structure:
 

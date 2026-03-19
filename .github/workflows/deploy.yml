@@ -33,6 +33,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Inject puzzle data from repository secret
+        env:
+          PUZZLES_JSON: ${{ secrets.PUZZLES_JSON }}
+        run: |
+          if [ -z "$PUZZLES_JSON" ]; then
+            echo "PUZZLES_JSON secret is not configured. Add it in Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+
+          mkdir -p public/private
+          printf '%s' "$PUZZLES_JSON" > public/private/puzzles.json
+
       - name: Build
         run: npm run build
 
