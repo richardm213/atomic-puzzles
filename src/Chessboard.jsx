@@ -175,10 +175,12 @@ const convertUciLineToSan = (initialFen, uciLine) => {
   const position = created.position;
   const sanLine = [];
 
-  for (const uci of uciLine) {
-    const move = moveFromUci(position, uci);
+  for (const entry of uciLine) {
+    const move = moveFromUci(position, entry.uci);
     if (!move) break;
-    sanLine.push(makeSan(position, move));
+
+    const san = makeSan(position, move);
+    sanLine.push(entry.questionable ? `${san}?` : san);
     position.play(move);
   }
 
@@ -230,12 +232,12 @@ export const Chessboard = ({
     trainingEnabledRef.current = solutionUciLines.length > 0;
     displaySolutionEntriesRef.current = solutionUciLines
       .map((line) => {
-        const uciLine = line
-          .filter((entry) => !entry.questionable)
-          .map((entry) => entry.uci);
-        const sanLine = convertUciLineToSan(fen, uciLine);
+        const sanLine = convertUciLineToSan(fen, line);
         if (sanLine.length === 0) return null;
-        return { uciLine, sanLine };
+        return {
+          uciLine: line.map((entry) => entry.uci),
+          sanLine,
+        };
       })
       .filter(Boolean);
     displaySolutionLinesRef.current = displaySolutionEntriesRef.current.map(
