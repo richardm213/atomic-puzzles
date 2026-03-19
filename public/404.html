@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Redirecting…</title>
+    <script>
+      const basePath = "/atomic-puzzles";
+      const { pathname, search, hash } = window.location;
+      const puzzlePath = `${pathname}${search}${hash}`;
+      const redirectTarget = `${basePath}/?puzzlePath=${encodeURIComponent(
+        puzzlePath,
+      )}`;
+      window.location.replace(redirectTarget);
+    </script>
+  </head>
+  <body>
+    Redirecting…
+  </body>
+</html>
