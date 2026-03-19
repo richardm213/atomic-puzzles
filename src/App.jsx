@@ -1,6 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { Chessboard } from "./Chessboard";
 
+const appBasePath = (() => {
+  const baseUrl = import.meta.env.BASE_URL || "/";
+  return baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
+})();
+
+const toAppRelativePath = (pathname) => {
+  if (!pathname) return "/";
+  if (!appBasePath) return pathname;
+  if (pathname.startsWith(appBasePath)) {
+    const trimmed = pathname.slice(appBasePath.length);
+    return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  }
+  return pathname;
+};
+
 const lichessAnalysisUrl = (fen) => {
   if (!fen) return "https://lichess.org/analysis/atomic";
   return `https://lichess.org/analysis/atomic/${fen.replaceAll(" ", "_")}`;
@@ -11,8 +26,16 @@ const orientationFromFen = (fen) => {
   return turn === "b" ? "black" : "white";
 };
 
+const getCurrentPuzzlePath = () => {
+  const redirectedPath =
+    new window.URLSearchParams(window.location.search).get("puzzlePath") || "";
+  const rawPath = redirectedPath || window.location.pathname;
+  return toAppRelativePath(rawPath);
+};
+
 const parsePuzzleIdFromPath = () => {
-  const match = window.location.pathname.match(/^\/(\d+)\/?$/);
+  const currentPath = getCurrentPuzzlePath();
+  const match = currentPath.match(/^\/(\d+)\/?$/);
   if (!match) return null;
 
   const puzzleId = Number.parseInt(match[1], 10);
@@ -31,7 +54,7 @@ const puzzleIndexFromPath = (puzzles) => {
 };
 
 const replaceUrlWithPuzzle = (puzzleId) => {
-  const nextPath = `/${puzzleId}`;
+  const nextPath = `${appBasePath}/${puzzleId}`;
   if (window.location.pathname !== nextPath) {
     window.history.replaceState(null, "", nextPath);
   }
@@ -121,7 +144,7 @@ export const App = () => {
     const loadPuzzles = async () => {
       try {
         setLoadingError("");
-        const response = await fetch("/private/puzzles.json");
+        const response = await fetch(`${import.meta.env.BASE_URL}private/puzzles.json`);
         if (!response.ok) {
           throw new Error(
             `HTTP ${response.status} while loading /private/puzzles.json`,

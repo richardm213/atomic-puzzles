@@ -57,6 +57,31 @@ npm run build
 npm run preview
 ```
 
+## GitHub Pages Deployment
+
+This repository includes a GitHub Actions workflow at `.github/workflows/deploy.yml` that automatically deploys to GitHub Pages when `main` is updated.
+
+### One-time repository settings
+
+1. Open **Settings → Pages** in your GitHub repository.
+2. Set **Source** to **GitHub Actions**.
+
+### Routing for `/id` puzzle URLs
+
+GitHub Pages serves static files and does not natively support SPA-style deep links like `/123`.
+
+To avoid broken direct links:
+
+- The app uses a production base path of `/atomic-puzzles/`.
+- A `public/404.html` redirect page captures unknown routes and forwards them back to `index.html`.
+- The React app reads a `puzzlePath` query parameter after redirect and restores the intended puzzle id.
+
+This keeps direct navigation and refresh working for URLs like:
+
+```text
+https://<your-user>.github.io/atomic-puzzles/123
+```
+
 ## Puzzle Data Format
 
 The app expects puzzle data at:

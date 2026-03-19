@@ -1,6 +1,10 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-export default defineConfig({
+const repoName = "atomic-puzzles";
+const productionBase = `/${repoName}/`;
+
+export default defineConfig(({ command }) => ({
+  base: command === "build" ? productionBase : "/",
   plugins: [react()],
-});
+}));
