@@ -68,18 +68,21 @@ This repository includes a GitHub Actions workflow at `.github/workflows/deploy.
 
 ### Routing for `/id` puzzle URLs
 
-GitHub Pages serves static files and does not natively support SPA-style deep links like `/123`.
+The app is configured for the custom domain root (`https://atomicpuzzles.org`) so puzzle URLs can be shared directly, e.g. `/12`.
 
-To avoid broken direct links:
+GitHub Pages still serves static files, so SPA-style deep links can hit `404.html` first on refresh/direct navigation.
 
-- The app uses a production base path of `/atomic-puzzles/`.
-- A `public/404.html` redirect page captures unknown routes and forwards them back to `index.html`.
-- The React app reads a `puzzlePath` query parameter after redirect and restores the intended puzzle id.
+To keep links working:
 
-This keeps direct navigation and refresh working for URLs like:
+- The Vite production base path is `/` (site root).
+- `public/404.html` stores the original path in `sessionStorage` and redirects to `/`.
+- If browser storage is unavailable, it falls back to `/?puzzlePath=<original-path>`.
+- The React app restores the intended puzzle id from `sessionStorage` (or the fallback query parameter).
+
+Example:
 
 ```text
-https://<your-user>.github.io/atomic-puzzles/123
+https://atomicpuzzles.org/12
 ```
 
 ## Supabase Setup

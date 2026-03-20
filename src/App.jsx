@@ -27,9 +27,22 @@ const orientationFromFen = (fen) => {
 };
 
 const getCurrentPuzzlePath = () => {
-  const redirectedPath =
+  const redirectedPathFromQuery =
     new window.URLSearchParams(window.location.search).get("puzzlePath") || "";
-  const rawPath = redirectedPath || window.location.pathname;
+
+  let redirectedPathFromSession = "";
+  try {
+    redirectedPathFromSession =
+      window.sessionStorage.getItem("redirectedPuzzlePath") || "";
+    if (redirectedPathFromSession) {
+      window.sessionStorage.removeItem("redirectedPuzzlePath");
+    }
+  } catch {
+    // Ignore storage failures and rely on the current path or query parameter.
+  }
+
+  const rawPath =
+    redirectedPathFromQuery || redirectedPathFromSession || window.location.pathname;
   return toAppRelativePath(rawPath);
 };
 
