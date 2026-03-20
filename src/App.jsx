@@ -114,6 +114,42 @@ const orderedChildren = (node) =>
 
 const findMainChild = (children) => children[0];
 
+const supabaseConfig = {
+  url: import.meta.env.VITE_SUPABASE_URL?.trim() || "",
+  anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() || "",
+  table: import.meta.env.VITE_SUPABASE_PUZZLES_TABLE?.trim() || "puzzles",
+};
+
+const loadPuzzlesFromSupabase = async () => {
+  const { url, anonKey, table } = supabaseConfig;
+  if (!url || !anonKey) {
+    throw new Error(
+      "Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in .env.local",
+    );
+  }
+
+  const endpoint = `${url.replace(/\/$/, "")}/rest/v1/${encodeURIComponent(table)}?select=*`;
+  const response = await fetch(endpoint, {
+    headers: {
+      apikey: anonKey,
+      Authorization: `Bearer ${anonKey}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `HTTP ${response.status} while loading Supabase table "${table}"`,
+    );
+  }
+
+  const data = await response.json();
+  if (!Array.isArray(data)) {
+    throw new Error(`Expected Supabase table "${table}" to return an array`);
+  }
+
+  return data;
+};
+
 export const App = () => {
   const [puzzles, setPuzzles] = useState([]);
   const [history, setHistory] = useState([]);
@@ -144,19 +180,7 @@ export const App = () => {
     const loadPuzzles = async () => {
       try {
         setLoadingError("");
-        const response = await fetch(`${import.meta.env.BASE_URL}private/puzzles.json`);
-        if (!response.ok) {
-          throw new Error(
-            `HTTP ${response.status} while loading /private/puzzles.json`,
-          );
-        }
-
-        const data = await response.json();
-        if (!Array.isArray(data)) {
-          throw new Error(
-            "Expected /private/puzzles.json to contain an array of puzzles",
-          );
-        }
+        const data = await loadPuzzlesFromSupabase();
 
         const availablePuzzles = data
           .map((item, index) => {
@@ -178,7 +202,7 @@ export const App = () => {
 
         if (availablePuzzles.length === 0) {
           throw new Error(
-            "No puzzles found with both a valid fen and a solution",
+            `No puzzles found in "${supabaseConfig.table}" with both a valid fen and a solution`,
           );
         }
 
