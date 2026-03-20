@@ -46,6 +46,34 @@ const toPromotion = (square) => {
   return rank === "1" || rank === "8" ? "queen" : undefined;
 };
 
+const squareName = (file, rank) =>
+  `${String.fromCharCode("a".charCodeAt(0) + file)}${rank + 1}`;
+
+const toComparableUci = (position, uci, move) => {
+  const normalized = uci.toLowerCase();
+  const activeMove = move ?? moveFromUci(position, normalized);
+  if (!activeMove) return normalized;
+
+  const piece = position.board.get(activeMove.from);
+  if (piece?.role !== "king") return normalized;
+
+  const fromFile = activeMove.from % 8;
+  const fromRank = Math.floor(activeMove.from / 8);
+  const toFile = activeMove.to % 8;
+  const toRank = Math.floor(activeMove.to / 8);
+  const fileDelta = toFile - fromFile;
+
+  if (fromRank !== toRank || Math.abs(fileDelta) < 2) return normalized;
+
+  const castledKingFile = fromFile + 2 * Math.sign(fileDelta);
+  if (castledKingFile < 0 || castledKingFile > 7) return normalized;
+
+  return `${squareName(fromFile, fromRank)}${squareName(
+    castledKingFile,
+    fromRank,
+  )}`;
+};
+
 const tokenFromSolution = (token) => {
   const strippedMoveNumber = token.replace(/^\d+\.(\.\.)?/, "");
   const questionable = /[!?]*\?[!?]*$/.test(strippedMoveNumber);
@@ -113,6 +141,7 @@ const parseSolutionUciLines = (fen, solution) => {
       const uci = makeUci(move).toLowerCase();
       currentLine.push({
         uci,
+        key: toComparableUci(currentPosition, uci, move),
         questionable: parsedToken.questionable,
       });
       currentPosition.play(move);
@@ -204,6 +233,7 @@ export const Chessboard = ({
     fens: [],
     lastMoves: [],
     moveUcis: [],
+    moveKeys: [],
     moveSans: [],
     index: 0,
   });
@@ -235,6 +265,7 @@ export const Chessboard = ({
         const sanLine = convertUciLineToSan(fen, line);
         if (sanLine.length === 0) return null;
         return {
+          moveEntries: line,
           uciLine: line.map((entry) => entry.uci),
           sanLine,
         };
@@ -283,7 +314,7 @@ export const Chessboard = ({
     return state;
   };
 
-  const saveMove = (position, lastMove, moveUci, moveSan) => {
+  const saveMove = (position, lastMove, moveUci, moveKey, moveSan) => {
     const history = historyRef.current;
     const nextFen = makeFen(position.toSetup());
 
@@ -291,12 +322,14 @@ export const Chessboard = ({
       history.fens = history.fens.slice(0, history.index + 1);
       history.lastMoves = history.lastMoves.slice(0, history.index + 1);
       history.moveUcis = history.moveUcis.slice(0, history.index);
+      history.moveKeys = history.moveKeys.slice(0, history.index);
       history.moveSans = history.moveSans.slice(0, history.index);
     }
 
     history.fens.push(nextFen);
     history.lastMoves.push(lastMove);
     history.moveUcis.push(moveUci);
+    history.moveKeys.push(moveKey);
     history.moveSans.push(moveSan);
     history.index += 1;
   };
@@ -332,7 +365,7 @@ export const Chessboard = ({
       return;
     }
 
-    const playedMoves = historyRef.current.moveUcis.slice(0, targetIndex);
+    const playedMoves = historyRef.current.moveKeys.slice(0, targetIndex);
     let candidates = solutionLinesRef.current;
     let progress = 0;
     let solved = !hasExpectedMoveAt(candidates, progress);
@@ -341,7 +374,7 @@ export const Chessboard = ({
       if (solved) continue;
 
       const matching = candidates.filter(
-        (line) => line[progress]?.uci === moveText,
+        (line) => line[progress]?.key === moveText,
       );
       if (matching.length === 0) break;
 
@@ -378,8 +411,10 @@ export const Chessboard = ({
     const lastMoves = [undefined];
     const moveUcis = [];
     const moveSans = [];
+    const moveKeys = [];
 
-    for (const uci of line) {
+    for (const entry of line) {
+      const uci = entry.uci;
       const move = moveFromUci(position, uci);
       if (!move) break;
 
@@ -388,19 +423,20 @@ export const Chessboard = ({
       fens.push(makeFen(position.toSetup()));
       lastMoves.push([uci.slice(0, 2), uci.slice(2, 4)]);
       moveUcis.push(uci);
+      moveKeys.push(entry.key);
       moveSans.push(san);
     }
 
-    return { fens, lastMoves, moveUcis, moveSans };
+    return { fens, lastMoves, moveUcis, moveKeys, moveSans };
   };
 
   const showSolutionLine = (lineIndex, targetPly) => {
     const solutionEntry = displaySolutionEntriesRef.current[lineIndex];
-    if (!solutionEntry?.uciLine?.length) return;
+    if (!solutionEntry?.moveEntries?.length) return;
 
     const solutionHistory = buildSolutionHistory(
       fenRef.current,
-      solutionEntry.uciLine,
+      solutionEntry.moveEntries,
     );
     if (!solutionHistory) return;
 
@@ -462,6 +498,9 @@ export const Chessboard = ({
       position,
       [nextOpponentMove.slice(0, 2), nextOpponentMove.slice(2, 4)],
       nextOpponentMove,
+      candidates.find((line) => line[progress]?.uci === nextOpponentMove)?.[
+        progress
+      ]?.key ?? nextOpponentMove,
       opponentMoveSan,
     );
 
@@ -511,11 +550,18 @@ export const Chessboard = ({
 
             const userMoveText = `${orig}${dest}`.toLowerCase();
             const userMoveSan = makeSan(position, move);
+            const userMoveKey = toComparableUci(position, userMoveText, move);
             const trainingEnabled = trainingEnabledRef.current;
 
             if (!trainingEnabled || puzzleSolvedRef.current) {
               position.play(move);
-              saveMove(position, [orig, dest], userMoveText, userMoveSan);
+              saveMove(
+                position,
+                [orig, dest],
+                userMoveText,
+                userMoveKey,
+                userMoveSan,
+              );
               syncBoard(position, [orig, dest], {
                 showWrongMove: false,
                 showRetryMove: false,
@@ -530,18 +576,18 @@ export const Chessboard = ({
               candidates
                 .map((line) => line[progress])
                 .filter((entry) => entry && !entry.questionable)
-                .map((entry) => entry.uci),
+                .map((entry) => entry.key),
             );
 
             const retryMoves = new Set(
               candidates
                 .map((line) => line[progress])
                 .filter((entry) => entry && entry.questionable)
-                .map((entry) => entry.uci),
+                .map((entry) => entry.key),
             );
 
-            if (!accepted.has(userMoveText)) {
-              const isRetryMove = retryMoves.has(userMoveText);
+            if (!accepted.has(userMoveKey)) {
+              const isRetryMove = retryMoves.has(userMoveKey);
               syncBoard(position, undefined, {
                 showWrongMove: !isRetryMove,
                 showRetryMove: isRetryMove,
@@ -552,10 +598,16 @@ export const Chessboard = ({
             }
 
             position.play(move);
-            saveMove(position, [orig, dest], userMoveText, userMoveSan);
+            saveMove(
+              position,
+              [orig, dest],
+              userMoveText,
+              userMoveKey,
+              userMoveSan,
+            );
 
             const nextCandidates = candidates.filter(
-              (line) => line[progress]?.uci === userMoveText,
+              (line) => line[progress]?.key === userMoveKey,
             );
             candidateLinesRef.current = nextCandidates;
             progressRef.current = progress + 1;
@@ -747,6 +799,7 @@ export const Chessboard = ({
       fens: [fen],
       lastMoves: [undefined],
       moveUcis: [],
+      moveKeys: [],
       moveSans: [],
       index: 0,
     };

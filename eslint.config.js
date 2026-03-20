@@ -160,6 +160,7 @@ export default [
         window: "readonly",
         document: "readonly",
         fetch: "readonly",
+        HTMLElement: "readonly",
       },
     },
     plugins: {
