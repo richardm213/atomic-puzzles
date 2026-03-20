@@ -75,8 +75,9 @@ GitHub Pages still serves static files, so SPA-style deep links can hit `404.htm
 To keep links working:
 
 - The Vite production base path is `/` (site root).
-- `public/404.html` redirects unknown routes to `/?puzzlePath=<original-path>`.
-- The React app reads the `puzzlePath` query parameter and restores the intended puzzle id.
+- `public/404.html` stores the original path in `sessionStorage` and redirects to `/`.
+- If browser storage is unavailable, it falls back to `/?puzzlePath=<original-path>`.
+- The React app restores the intended puzzle id from `sessionStorage` (or the fallback query parameter).
 
 Example:
 
