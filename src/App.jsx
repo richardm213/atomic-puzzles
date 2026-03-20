@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Chessboard } from "./Chessboard";
 
 const appBasePath = (() => {
@@ -67,6 +67,48 @@ const hasSolution = (puzzle) => {
   return Array.isArray(puzzle.solution) && puzzle.solution.length > 0;
 };
 
+const solutionFieldCandidates = [
+  "solution",
+  "moves",
+  "line",
+  "pgn",
+  "variation",
+];
+
+const normalizeSolution = (rawValue) => {
+  if (typeof rawValue === "string") {
+    const trimmed = rawValue.trim();
+    return trimmed.length > 0 ? trimmed : "";
+  }
+
+  if (Array.isArray(rawValue)) {
+    const joined = rawValue
+      .map((entry) => String(entry ?? "").trim())
+      .filter(Boolean)
+      .join(" ");
+    return joined;
+  }
+
+  return "";
+};
+
+const extractSolutionFromRow = (row) => {
+  for (const fieldName of solutionFieldCandidates) {
+    const normalized = normalizeSolution(row?.[fieldName]);
+    if (normalized) {
+      return {
+        solution: normalized,
+        sourceField: fieldName,
+      };
+    }
+  }
+
+  return {
+    solution: "",
+    sourceField: null,
+  };
+};
+
 const createMoveTree = (lines) => {
   const root = {
     children: new Map(),
@@ -114,6 +156,48 @@ const orderedChildren = (node) =>
 
 const findMainChild = (children) => children[0];
 
+const supabaseConfig = {
+  url: import.meta.env.VITE_SUPABASE_URL?.trim() || "",
+  anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() || "",
+  table: import.meta.env.VITE_SUPABASE_PUZZLES_TABLE?.trim() || "puzzles",
+};
+
+const loadPuzzlesFromSupabase = async () => {
+  const { url, anonKey, table } = supabaseConfig;
+  if (!url || !anonKey) {
+    throw new Error(
+      "Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in .env.local",
+    );
+  }
+
+  const endpoint = `${url.replace(/\/$/, "")}/rest/v1/${encodeURIComponent(table)}?select=*`;
+  const response = await fetch(endpoint, {
+    headers: {
+      apikey: anonKey,
+      Authorization: `Bearer ${anonKey}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `HTTP ${response.status} while loading Supabase table "${table}"`,
+    );
+  }
+
+  const data = await response.json();
+  if (!Array.isArray(data)) {
+    throw new Error(`Expected Supabase table "${table}" to return an array`);
+  }
+
+  return data;
+};
+
+const getSupabaseEndpoint = () => {
+  const { url, table } = supabaseConfig;
+  if (!url) return "";
+  return `${url.replace(/\/$/, "")}/rest/v1/${encodeURIComponent(table)}?select=*`;
+};
+
 export const App = () => {
   const [puzzles, setPuzzles] = useState([]);
   const [history, setHistory] = useState([]);
@@ -121,6 +205,23 @@ export const App = () => {
   const [loadingError, setLoadingError] = useState("");
   const [showSolution, setShowSolution] = useState(false);
   const [solutionNavigation, setSolutionNavigation] = useState(null);
+  const [loadDebug, setLoadDebug] = useState({
+    phase: "idle",
+    endpoint: getSupabaseEndpoint(),
+    hasUrl: Boolean(supabaseConfig.url),
+    hasAnonKey: Boolean(supabaseConfig.anonKey),
+    totalRows: 0,
+    usableRows: 0,
+    missingFenRows: 0,
+    missingSolutionRows: 0,
+    solutionFieldsSeen: "",
+    firstRowKeys: "",
+    firstRowPreview: "",
+    samplePuzzleId: "",
+    startedAt: "",
+    finishedAt: "",
+    error: "",
+  });
   const [boardState, setBoardState] = useState({
     fen: "",
     turn: "",
@@ -138,80 +239,154 @@ export const App = () => {
     solved: false,
   });
 
-  useEffect(() => {
-    let cancelled = false;
+  const isCancelledRef = useRef(false);
 
-    const loadPuzzles = async () => {
-      try {
-        setLoadingError("");
-        const response = await fetch(`${import.meta.env.BASE_URL}private/puzzles.json`);
-        if (!response.ok) {
-          throw new Error(
-            `HTTP ${response.status} while loading /private/puzzles.json`,
+  const loadPuzzles = useCallback(async () => {
+    try {
+      const startedAt = new Date().toISOString();
+      setLoadingError("");
+      setBoardState((prev) => ({
+        ...prev,
+        status: "Loading puzzles...",
+        error: "",
+      }));
+      setLoadDebug((prev) => ({
+        ...prev,
+        phase: "loading",
+        endpoint: getSupabaseEndpoint(),
+        hasUrl: Boolean(supabaseConfig.url),
+        hasAnonKey: Boolean(supabaseConfig.anonKey),
+        totalRows: 0,
+        usableRows: 0,
+        missingFenRows: 0,
+        missingSolutionRows: 0,
+        solutionFieldsSeen: "",
+        firstRowKeys: "",
+        firstRowPreview: "",
+        samplePuzzleId: "",
+        startedAt,
+        finishedAt: "",
+        error: "",
+      }));
+      const data = await loadPuzzlesFromSupabase();
+      let missingFenRows = 0;
+      let missingSolutionRows = 0;
+      const solutionFieldHits = new Map();
+      const firstRow =
+        data.length > 0 && data[0] && typeof data[0] === "object" ? data[0] : null;
+      const firstRowKeys = firstRow ? Object.keys(firstRow).join(", ") : "none";
+      const firstRowPreview = firstRow
+        ? JSON.stringify(firstRow).slice(0, 300)
+        : "none";
+
+      const normalizedPuzzles = data.map((item, index) => {
+        const rawId = item?.id;
+        const parsedId = Number.parseInt(rawId, 10);
+        const puzzleId = Number.isFinite(parsedId) ? parsedId : index + 1;
+        const fen = typeof item?.fen === "string" ? item.fen.trim() : "";
+        const { solution, sourceField } = extractSolutionFromRow(item);
+
+        if (!fen) missingFenRows += 1;
+        if (!solution) missingSolutionRows += 1;
+        if (sourceField) {
+          solutionFieldHits.set(
+            sourceField,
+            (solutionFieldHits.get(sourceField) ?? 0) + 1,
           );
         }
 
-        const data = await response.json();
-        if (!Array.isArray(data)) {
-          throw new Error(
-            "Expected /private/puzzles.json to contain an array of puzzles",
-          );
-        }
+        return {
+          ...item,
+          fen,
+          solution,
+          puzzleId,
+        };
+      });
 
-        const availablePuzzles = data
-          .map((item, index) => {
-            const rawId = item?.id;
-            const parsedId = Number.parseInt(rawId, 10);
-            const puzzleId = Number.isFinite(parsedId) ? parsedId : index + 1;
+      const availablePuzzles = normalizedPuzzles.filter(
+        (item) => typeof item?.fen === "string" && item.fen.length > 0 && hasSolution(item),
+      );
 
-            return {
-              ...item,
-              puzzleId,
-            };
-          })
-          .filter(
-            (item) =>
-              typeof item?.fen === "string" &&
-              item.fen.length > 0 &&
-              hasSolution(item),
-          );
+      const diagnostics = {
+        totalRows: data.length,
+        usableRows: availablePuzzles.length,
+        missingFenRows,
+        missingSolutionRows,
+        solutionFieldsSeen:
+          [...solutionFieldHits.entries()]
+            .sort((a, b) => b[1] - a[1])
+            .map(([fieldName, count]) => `${fieldName}:${count}`)
+            .join(", ") || "none",
+        firstRowKeys,
+        firstRowPreview,
+      };
 
-        if (availablePuzzles.length === 0) {
-          throw new Error(
-            "No puzzles found with both a valid fen and a solution",
-          );
-        }
-
-        if (!cancelled) {
-          const firstIndexFromPath = puzzleIndexFromPath(availablePuzzles);
-          const firstIndex =
-            firstIndexFromPath >= 0
-              ? firstIndexFromPath
-              : Math.floor(Math.random() * availablePuzzles.length);
-
-          setPuzzles(availablePuzzles);
-          setHistory([firstIndex]);
-          setHistoryIndex(0);
-          replaceUrlWithPuzzle(availablePuzzles[firstIndex].puzzleId);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setLoadingError(error.message || "Failed to load puzzles");
+      if (availablePuzzles.length === 0) {
+        const message = `No puzzles found in "${supabaseConfig.table}" with both a valid fen and a solution`;
+        if (!isCancelledRef.current) {
+          setLoadingError(message);
+          setLoadDebug((prev) => ({
+            ...prev,
+            phase: "error",
+            ...diagnostics,
+            finishedAt: new Date().toISOString(),
+            error: message,
+          }));
           setBoardState((prev) => ({
             ...prev,
             status: "Puzzle load error",
-            error: error.message || "Failed to load puzzles",
+            error: message,
           }));
         }
+        return;
       }
-    };
 
+      if (!isCancelledRef.current) {
+        const firstIndexFromPath = puzzleIndexFromPath(availablePuzzles);
+        const firstIndex =
+          firstIndexFromPath >= 0
+            ? firstIndexFromPath
+            : Math.floor(Math.random() * availablePuzzles.length);
+
+        setPuzzles(availablePuzzles);
+        setHistory([firstIndex]);
+        setHistoryIndex(0);
+        replaceUrlWithPuzzle(availablePuzzles[firstIndex].puzzleId);
+        setLoadDebug((prev) => ({
+          ...prev,
+          phase: "success",
+          ...diagnostics,
+          samplePuzzleId: String(availablePuzzles[0]?.puzzleId ?? ""),
+          finishedAt: new Date().toISOString(),
+        }));
+      }
+    } catch (error) {
+      if (!isCancelledRef.current) {
+        const message = error.message || "Failed to load puzzles";
+        setLoadingError(message);
+        setLoadDebug((prev) => ({
+          ...prev,
+          phase: "error",
+          finishedAt: new Date().toISOString(),
+          error: message,
+        }));
+        setBoardState((prev) => ({
+          ...prev,
+          status: "Puzzle load error",
+          error: message,
+        }));
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    isCancelledRef.current = false;
     loadPuzzles();
 
     return () => {
-      cancelled = true;
+      isCancelledRef.current = true;
     };
-  }, []);
+  }, [loadPuzzles]);
 
   useEffect(() => {
     if (puzzles.length === 0) return;
@@ -422,6 +597,35 @@ export const App = () => {
           <div className="errorText">{boardState.error}</div>
         ) : null}
         {loadingError ? <div className="errorText">{loadingError}</div> : null}
+
+        <div className="fenBox">
+          <div className="fenLabel">Supabase debug</div>
+          <code>
+            phase={loadDebug.phase} | hasUrl={String(loadDebug.hasUrl)} |
+            hasAnonKey={String(loadDebug.hasAnonKey)}
+          </code>
+          <code>endpoint={loadDebug.endpoint || "missing"}</code>
+          <code>
+            rows={loadDebug.usableRows}/{loadDebug.totalRows} | samplePuzzleId=
+            {loadDebug.samplePuzzleId || "n/a"}
+          </code>
+          <code>
+            missingFenRows={loadDebug.missingFenRows} | missingSolutionRows=
+            {loadDebug.missingSolutionRows}
+          </code>
+          <code>solutionFieldsSeen={loadDebug.solutionFieldsSeen || "none"}</code>
+          <code>firstRowKeys={loadDebug.firstRowKeys || "none"}</code>
+          <code>firstRowPreview={loadDebug.firstRowPreview || "none"}</code>
+          <code>startedAt={loadDebug.startedAt || "n/a"}</code>
+          <code>finishedAt={loadDebug.finishedAt || "n/a"}</code>
+          <code>error={loadDebug.error || "none"}</code>
+          <button
+            type="button"
+            onClick={loadPuzzles}
+          >
+            Retry Supabase Load
+          </button>
+        </div>
 
         <div className="fenBox">
           <div className="fenLabel">Current FEN</div>
