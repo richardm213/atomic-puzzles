@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Chessboard } from "./Chessboard";
 
 const appBasePath = (() => {
@@ -67,6 +67,48 @@ const hasSolution = (puzzle) => {
   return Array.isArray(puzzle.solution) && puzzle.solution.length > 0;
 };
 
+const solutionFieldCandidates = [
+  "solution",
+  "moves",
+  "line",
+  "pgn",
+  "variation",
+];
+
+const normalizeSolution = (rawValue) => {
+  if (typeof rawValue === "string") {
+    const trimmed = rawValue.trim();
+    return trimmed.length > 0 ? trimmed : "";
+  }
+
+  if (Array.isArray(rawValue)) {
+    const joined = rawValue
+      .map((entry) => String(entry ?? "").trim())
+      .filter(Boolean)
+      .join(" ");
+    return joined;
+  }
+
+  return "";
+};
+
+const extractSolutionFromRow = (row) => {
+  for (const fieldName of solutionFieldCandidates) {
+    const normalized = normalizeSolution(row?.[fieldName]);
+    if (normalized) {
+      return {
+        solution: normalized,
+        sourceField: fieldName,
+      };
+    }
+  }
+
+  return {
+    solution: "",
+    sourceField: null,
+  };
+};
+
 const createMoveTree = (lines) => {
   const root = {
     children: new Map(),
@@ -114,6 +156,53 @@ const orderedChildren = (node) =>
 
 const findMainChild = (children) => children[0];
 
+const supabaseConfig = {
+  url: import.meta.env.VITE_SUPABASE_URL?.trim() || "",
+  anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() || "",
+  table: import.meta.env.VITE_SUPABASE_PUZZLES_TABLE?.trim() || "puzzles",
+};
+
+const loadPuzzlesFromSupabase = async () => {
+  const { url, anonKey, table } = supabaseConfig;
+  if (!url || !anonKey) {
+    throw new Error(
+      "Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in .env.local",
+    );
+  }
+
+  const baseUrl = url.replace(/\/$/, "");
+  const pageSize = 1000;
+  let offset = 0;
+  const allRows = [];
+
+  while (true) {
+    const endpoint = `${baseUrl}/rest/v1/${encodeURIComponent(table)}?select=*&limit=${pageSize}&offset=${offset}`;
+    const response = await fetch(endpoint, {
+      headers: {
+        apikey: anonKey,
+        Authorization: `Bearer ${anonKey}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `HTTP ${response.status} while loading Supabase table "${table}"`,
+      );
+    }
+
+    const pageRows = await response.json();
+    if (!Array.isArray(pageRows)) {
+      throw new Error(`Expected Supabase table "${table}" to return an array`);
+    }
+
+    allRows.push(...pageRows);
+    if (pageRows.length < pageSize) break;
+    offset += pageSize;
+  }
+
+  return allRows;
+};
+
 export const App = () => {
   const [puzzles, setPuzzles] = useState([]);
   const [history, setHistory] = useState([]);
@@ -138,80 +227,96 @@ export const App = () => {
     solved: false,
   });
 
-  useEffect(() => {
-    let cancelled = false;
+  const isCancelledRef = useRef(false);
 
-    const loadPuzzles = async () => {
-      try {
-        setLoadingError("");
-        const response = await fetch(`${import.meta.env.BASE_URL}private/puzzles.json`);
-        if (!response.ok) {
-          throw new Error(
-            `HTTP ${response.status} while loading /private/puzzles.json`,
-          );
-        }
+  const loadPuzzles = useCallback(async () => {
+    try {
+      setLoadingError("");
+      setBoardState((prev) => ({
+        ...prev,
+        status: "Loading puzzles...",
+        error: "",
+      }));
+      const data = await loadPuzzlesFromSupabase();
 
-        const data = await response.json();
-        if (!Array.isArray(data)) {
-          throw new Error(
-            "Expected /private/puzzles.json to contain an array of puzzles",
-          );
-        }
+      const normalizedPuzzles = data.map((item, index) => {
+        const rawId = item?.id;
+        const parsedId = Number.parseInt(rawId, 10);
+        const puzzleId = Number.isFinite(parsedId) ? parsedId : index + 1;
+        const fen = typeof item?.fen === "string" ? item.fen.trim() : "";
+        const { solution } = extractSolutionFromRow(item);
 
-        const availablePuzzles = data
-          .map((item, index) => {
-            const rawId = item?.id;
-            const parsedId = Number.parseInt(rawId, 10);
-            const puzzleId = Number.isFinite(parsedId) ? parsedId : index + 1;
+        return {
+          ...item,
+          fen,
+          solution,
+          puzzleId,
+        };
+      });
 
-            return {
-              ...item,
-              puzzleId,
-            };
-          })
-          .filter(
-            (item) =>
-              typeof item?.fen === "string" &&
-              item.fen.length > 0 &&
-              hasSolution(item),
-          );
+      const availablePuzzles = normalizedPuzzles.filter(
+        (item) => typeof item?.fen === "string" && item.fen.length > 0 && hasSolution(item),
+      );
 
-        if (availablePuzzles.length === 0) {
-          throw new Error(
-            "No puzzles found with both a valid fen and a solution",
-          );
-        }
-
-        if (!cancelled) {
-          const firstIndexFromPath = puzzleIndexFromPath(availablePuzzles);
-          const firstIndex =
-            firstIndexFromPath >= 0
-              ? firstIndexFromPath
-              : Math.floor(Math.random() * availablePuzzles.length);
-
-          setPuzzles(availablePuzzles);
-          setHistory([firstIndex]);
-          setHistoryIndex(0);
-          replaceUrlWithPuzzle(availablePuzzles[firstIndex].puzzleId);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setLoadingError(error.message || "Failed to load puzzles");
+      if (data.length === 0) {
+        const message = `Supabase returned 0 rows from table "${supabaseConfig.table}". Check table name and RLS SELECT policy for the anon role.`;
+        if (!isCancelledRef.current) {
+          setLoadingError(message);
           setBoardState((prev) => ({
             ...prev,
             status: "Puzzle load error",
-            error: error.message || "Failed to load puzzles",
+            error: message,
           }));
         }
+        return;
       }
-    };
 
+      if (availablePuzzles.length === 0) {
+        const message = `No puzzles found in "${supabaseConfig.table}" with both a valid fen and a solution`;
+        if (!isCancelledRef.current) {
+          setLoadingError(message);
+          setBoardState((prev) => ({
+            ...prev,
+            status: "Puzzle load error",
+            error: message,
+          }));
+        }
+        return;
+      }
+
+      if (!isCancelledRef.current) {
+        const firstIndexFromPath = puzzleIndexFromPath(availablePuzzles);
+        const firstIndex =
+          firstIndexFromPath >= 0
+            ? firstIndexFromPath
+            : Math.floor(Math.random() * availablePuzzles.length);
+
+        setPuzzles(availablePuzzles);
+        setHistory([firstIndex]);
+        setHistoryIndex(0);
+        replaceUrlWithPuzzle(availablePuzzles[firstIndex].puzzleId);
+      }
+    } catch (error) {
+      if (!isCancelledRef.current) {
+        const message = error.message || "Failed to load puzzles";
+        setLoadingError(message);
+        setBoardState((prev) => ({
+          ...prev,
+          status: "Puzzle load error",
+          error: message,
+        }));
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    isCancelledRef.current = false;
     loadPuzzles();
 
     return () => {
-      cancelled = true;
+      isCancelledRef.current = true;
     };
-  }, []);
+  }, [loadPuzzles]);
 
   useEffect(() => {
     if (puzzles.length === 0) return;
