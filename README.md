@@ -1,12 +1,12 @@
 # Atomic Puzzle Trainer
 
-A React + Vite application for training **atomic chess** tactics from a local puzzle dataset.
+A React + Vite application for training **atomic chess** tactics from a Supabase puzzle dataset.
 
-This project loads atomic chess positions from a JSON file, renders an interactive board, and lets you play through candidate lines with move history navigation.
+This project loads atomic chess positions from Supabase, renders an interactive board, and lets you play through candidate lines with move history navigation.
 
 ## Features
 
-- Load random atomic puzzles from `/private/puzzles.json`.
+- Load random atomic puzzles from a Supabase table.
 - Filter puzzle data to entries with valid FENs.
 - Interactive board powered by `@lichess-org/chessground`.
 - Atomic chess rules and legality handling via `chessops`.
@@ -82,34 +82,37 @@ This keeps direct navigation and refresh working for URLs like:
 https://<your-user>.github.io/atomic-puzzles/123
 ```
 
-## Puzzle Data Format
+## Supabase Setup
 
-The app expects puzzle data at:
+Create a `.env.local` file with:
 
-```text
-/public/private/puzzles.json
+```bash
+VITE_SUPABASE_URL=https://<your-project-ref>.supabase.co
+VITE_SUPABASE_ANON_KEY=<your-anon-key>
+# Optional (defaults to "puzzles")
+VITE_SUPABASE_PUZZLES_TABLE=puzzles
 ```
 
-Expected structure:
+The app fetches rows from `VITE_SUPABASE_PUZZLES_TABLE` via Supabase REST API and expects each row to include:
 
 ```json
-[
-  {
-    "id": "puzzle-001",
-    "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-  }
-]
+{
+  "id": "123",
+  "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+  "solution": "e4 e5 Qh5"
+}
 ```
 
 Notes:
 
-- The root value must be an array.
-- Each puzzle must include a valid atomic-compatible `fen` string.
+- `id` can be numeric or string; the app derives a numeric puzzle URL id from it (or falls back to row order).
+- Each puzzle must include a valid `fen` and non-empty `solution`.
 
 ## Controls
 
 - **Prev / Next**: Navigate puzzle history.
 - **Analyze**: Open the current FEN in Lichess analysis.
+- **Supabase debug**: Shows connection/env status, endpoint, row counts, timestamps, and has a retry button.
 - **Drag pieces**: Play legal atomic moves.
 - **Keyboard**:
   - `ArrowLeft` = previous move
@@ -135,8 +138,6 @@ Notes:
 │   ├── main.jsx           # React entry point
 │   ├── index.css          # App styles
 │   └── theme/             # Chessground theme CSS
-├── public/
-│   └── private/puzzles.json  # Local puzzle dataset (expected)
 └── vite.config.js
 ```
 
