@@ -43,6 +43,10 @@ input {
   width: min(920px, 100%);
 }
 
+.recentMatchesPanel {
+  width: min(760px, 100%);
+}
+
 .rankingsControls {
   grid-template-columns: repeat(3, max-content);
   justify-content: center;
@@ -190,6 +194,19 @@ input {
 }
 
 .rankingLink:hover {
+  text-decoration: underline;
+}
+
+.rankingLinkButton {
+  border: 0;
+  background: transparent;
+  color: #93c5fd;
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+.rankingLinkButton:hover {
   text-decoration: underline;
 }
 
@@ -557,4 +574,67 @@ input {
 
 .scoreDash {
   padding: 0 2px;
+}
+
+.matchCards {
+  margin-top: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.matchCard {
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 12px;
+  cursor: pointer;
+}
+
+.matchCard.expanded {
+  border-color: rgba(96, 165, 250, 0.5);
+  background: rgba(15, 23, 42, 0.95);
+}
+
+.matchCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.matchCardPlayers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.matchCardMeta {
+  margin-top: 8px;
+  color: #c9d3e3;
+  font-size: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.matchCardDetails {
+  margin-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 8px;
+}
+
+.matchCardResultSummary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 6px;
+  color: #c9d3e3;
+}
+
+.matchCardDetails ul {
+  margin: 8px 0 0 18px;
+  padding: 0;
+  display: grid;
+  gap: 4px;
 }
