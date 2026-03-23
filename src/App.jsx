@@ -19,6 +19,11 @@ const toAppRelativePath = (pathname) => {
   return pathname;
 };
 
+const appPath = (pathname = "/") => {
+  const normalized = pathname.startsWith("/") ? pathname : `/${pathname}`;
+  return `${appBasePath}${normalized}`;
+};
+
 const lichessAnalysisUrl = (fen) => {
   if (!fen) return "https://lichess.org/analysis/atomic";
   return `https://lichess.org/analysis/atomic/${fen.replaceAll(" ", "_")}`;
@@ -49,7 +54,7 @@ const getCurrentPuzzlePath = () => {
 
 const parsePuzzleIdFromPath = () => {
   const currentPath = getCurrentPuzzlePath();
-  const match = currentPath.match(/^\/(\d+)\/?$/);
+  const match = currentPath.match(/^\/(?:solve\/)?(\d+)\/?$/);
   if (!match) return null;
 
   const puzzleId = Number.parseInt(match[1], 10);
@@ -81,7 +86,12 @@ const profileUsernameFromPath = () => {
 
 const isMatchesPath = () => {
   const currentPath = toAppRelativePath(window.location.pathname);
-  return currentPath === "/recent" || currentPath === "/matches";
+  return currentPath === "/recent" || currentPath === "/matches" || currentPath === "/recent/";
+};
+
+const isSolvePath = () => {
+  const currentPath = toAppRelativePath(window.location.pathname);
+  return /^\/solve(?:\/\d+)?\/?$/.test(currentPath) || /^\/\d+\/?$/.test(currentPath);
 };
 
 const puzzleIndexFromPath = (puzzles) => {
@@ -93,7 +103,7 @@ const puzzleIndexFromPath = (puzzles) => {
 };
 
 const replaceUrlWithPuzzle = (puzzleId) => {
-  const nextPath = `${appBasePath}/${puzzleId}`;
+  const nextPath = appPath(`/solve/${puzzleId}`);
   if (window.location.pathname !== nextPath) {
     window.history.replaceState(null, "", nextPath);
   }
@@ -228,10 +238,139 @@ const loadPuzzlesFromSupabase = async () => {
   return allRows;
 };
 
+const TopNav = () => {
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const handleSearchSubmit = (event) => {
+    event.preventDefault();
+    const target = searchQuery.trim();
+    if (!target) return;
+    window.location.href = appPath(`/@/${encodeURIComponent(target)}`);
+  };
+
+  return (
+    <header className="topNav">
+      <a className="homeBrand" href={appPath("/")} aria-label="Go to home page">
+        <img src={appPath("/favicon.ico")} alt="Atomic Puzzles" width="24" height="24" />
+      </a>
+      <nav className="topNavLinks" aria-label="Main navigation">
+        <a href={appPath("/rankings")}>Rankings</a>
+        <a href={appPath("/solve")}>Puzzles</a>
+        <a href={appPath("/recent")}>Recent</a>
+      </nav>
+      <form className={`navSearch ${searchOpen ? "open" : ""}`} onSubmit={handleSearchSubmit}>
+        {searchOpen ? (
+          <>
+            <input
+              type="text"
+              value={searchQuery}
+              placeholder="Search player"
+              aria-label="Search player username"
+              onChange={(event) => setSearchQuery(event.target.value)}
+              autoFocus
+            />
+            <button type="submit">Go</button>
+          </>
+        ) : (
+          <button type="button" onClick={() => setSearchOpen(true)}>
+            Search
+          </button>
+        )}
+      </form>
+    </header>
+  );
+};
+
+const HomePage = () => {
+  const [homeError, setHomeError] = useState("");
+
+  useEffect(() => {
+    const loadHomeData = async () => {
+      try {
+        setHomeError("");
+        const leaderboardResponse = await fetch("/private/lb.json", {
+          headers: { Accept: "application/json" },
+        });
+
+        if (!leaderboardResponse.ok) {
+          throw new Error(`Could not load /private/lb.json (HTTP ${leaderboardResponse.status})`);
+        }
+        await leaderboardResponse.json();
+      } catch (error) {
+        setHomeError(String(error?.message || error));
+      }
+    };
+
+    loadHomeData();
+  }, []);
+
+  return (
+    <div className="homePage">
+      <div className="panel homePanel">
+        <h1>Atomic Puzzles</h1>
+        <p className="homeIntro">
+          Welcome! This site helps you solve atomic puzzles, sharpen tactical ability, and keep up
+          with the current player rankings and stats.
+        </p>
+
+        <section className="homeButtonRow">
+          <a className="primaryCta" href={appPath("/solve")}>
+            Solve Puzzles
+          </a>
+          <a className="primaryCta" href={appPath("/rankings")}>
+            View Rankings
+          </a>
+          <a className="primaryCta" href={appPath("/recent")}>
+            View Recent Matches
+          </a>
+        </section>
+
+        {homeError ? <div className="errorText">{homeError}</div> : null}
+
+        <section className="homeDescriptions">
+          <article className="homeDescriptionCard">
+            <h2>Puzzles and Improvement</h2>
+            <p>
+              Train with tactical puzzle positions to build pattern recognition, improve calculation
+              speed, and perform better in practical atomic games.
+            </p>
+          </article>
+          <article className="homeDescriptionCard">
+            <h2>Rankings</h2>
+            <p>
+              View the top atomic blitz and bullet rankings for the current month. Explore
+              historical rankings going back to 2023. Blitz and bullet ratings are tracked
+              separately because skill transfer is not one-to-one: hyperbullet farmers and stronger
+              blitz players often excel in very different ways.
+            </p>
+          </article>
+          <article className="homeDescriptionCard">
+            <h2>Player Stats and Fairness</h2>
+            <p>
+              Stats are tracked for each player account individually so you can review account-level
+              progress over time. Cheaters and alt abusers are excluded from rankings and rating
+              calculations to keep the system as fair and meaningful as possible.
+            </p>
+          </article>
+          <article className="homeDescriptionCard">
+            <h2>Recent Matches</h2>
+            <p>
+              Open recent matches for the latest competitive results and momentum checks across the
+              strongest active players.
+            </p>
+          </article>
+        </section>
+      </div>
+    </div>
+  );
+};
+
 export const App = () => {
   const [isRankingsRoute, setIsRankingsRoute] = useState(() => isRankingsPath());
   const [isProfileRoute, setIsProfileRoute] = useState(() => isProfilePath());
   const [isMatchesRoute, setIsMatchesRoute] = useState(() => isMatchesPath());
+  const [isSolveRoute, setIsSolveRoute] = useState(() => isSolvePath());
   const [profileUsername, setProfileUsername] = useState(() => profileUsernameFromPath());
 
   useEffect(() => {
@@ -239,6 +378,7 @@ export const App = () => {
       setIsRankingsRoute(isRankingsPath());
       setIsProfileRoute(isProfilePath());
       setIsMatchesRoute(isMatchesPath());
+      setIsSolveRoute(isSolvePath());
       setProfileUsername(profileUsernameFromPath());
     };
 
@@ -246,19 +386,23 @@ export const App = () => {
     return () => window.removeEventListener("popstate", onRouteChange);
   }, []);
 
+  let content = <HomePage />;
   if (isProfileRoute) {
-    return <PlayerProfilePage username={profileUsername} />;
+    content = <PlayerProfilePage username={profileUsername} />;
+  } else if (isRankingsRoute) {
+    content = <RankingsPage />;
+  } else if (isMatchesRoute) {
+    content = <RecentMatchesPage />;
+  } else if (isSolveRoute) {
+    content = <AtomicTrainerPage />;
   }
 
-  if (isRankingsRoute) {
-    return <RankingsPage />;
-  }
-
-  if (isMatchesRoute) {
-    return <RecentMatchesPage />;
-  }
-
-  return <AtomicTrainerPage />;
+  return (
+    <div className="appShell">
+      <TopNav />
+      {content}
+    </div>
+  );
 };
 
 const AtomicTrainerPage = () => {
