@@ -600,7 +600,9 @@ input {
 }
 
 .profileMetric {
-  flex: 1 1 180px;
+  flex: 1 1 calc((100% - 36px) / 4);
+  max-width: calc((100% - 36px) / 4);
+  min-width: 0;
   padding: 12px;
   border-radius: 12px;
   background: #0f172a;
@@ -609,6 +611,20 @@ input {
 
 .profileMetric strong {
   font-size: 20px;
+}
+
+@media (max-width: 900px) {
+  .profileMetric {
+    flex: 1 1 calc((100% - 12px) / 2);
+    max-width: calc((100% - 12px) / 2);
+  }
+}
+
+@media (max-width: 640px) {
+  .profileMetric {
+    flex: 1 1 100%;
+    max-width: 100%;
+  }
 }
 
 .profileControls {
