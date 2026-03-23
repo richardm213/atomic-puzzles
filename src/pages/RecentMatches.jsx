@@ -12,8 +12,8 @@ const matchLengthBoundsByMode = {
 };
 const recentModeOptions = ["blitz", "bullet"];
 const ratingFilterTypeOptions = ["both", "average"];
-const initialVisibleMatchCount = 100;
-const visibleMatchStep = 100;
+const pageSizeOptions = [25, 50, 100, 200];
+const defaultPageSize = 50;
 
 const formatLocalDateTime = (timestamp) => {
   if (!Number.isFinite(timestamp)) return "—";
@@ -45,6 +45,16 @@ const formatSigned = (value) => {
   if (!Number.isFinite(numeric)) return "—";
   if (numeric > 0) return `+${numeric.toFixed(1)}`;
   return numeric.toFixed(1);
+};
+
+const parseDateInputBoundary = (value, boundary) => {
+  if (!value) return null;
+  const parsed = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return null;
+  if (boundary === "end") {
+    parsed.setHours(23, 59, 59, 999);
+  }
+  return parsed.getTime();
 };
 
 const loadRawRecentMatchesByMode = async (mode) => {
@@ -192,7 +202,8 @@ const normalizeRecentMatches = (matches, mode) =>
 export const RecentMatchesPage = () => {
   const [selectedMode, setSelectedMode] = useState("blitz");
   const [matches, setMatches] = useState([]);
-  const [visibleMatchCount, setVisibleMatchCount] = useState(initialVisibleMatchCount);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(defaultPageSize);
   const [error, setError] = useState("");
   const [expandedMatchKeys, setExpandedMatchKeys] = useState([]);
   const [ratingFilterType, setRatingFilterType] = useState("both");
@@ -205,6 +216,8 @@ export const RecentMatchesPage = () => {
     friend: true,
     lobby: true,
   });
+  const [startDateFilter, setStartDateFilter] = useState("");
+  const [endDateFilter, setEndDateFilter] = useState("");
   const initialMatchBounds = matchLengthBoundsByMode.blitz;
   const [matchLengthMin, setMatchLengthMin] = useState(
     Math.max(defaultMatchLengthMin, initialMatchBounds.min),
@@ -222,10 +235,10 @@ export const RecentMatchesPage = () => {
         const loaded = await loadRawRecentMatchesByMode(selectedMode);
         const normalized = normalizeRecentMatches(loaded, selectedMode);
         setMatches(normalized);
-        setVisibleMatchCount(initialVisibleMatchCount);
+        setCurrentPage(1);
       } catch (loadError) {
         setMatches([]);
-        setVisibleMatchCount(initialVisibleMatchCount);
+        setCurrentPage(1);
         setError(String(loadError));
       }
     };
@@ -245,6 +258,8 @@ export const RecentMatchesPage = () => {
     sourceFilters,
     player1Filter,
     player2Filter,
+    startDateFilter,
+    endDateFilter,
   ]);
 
   useEffect(() => {
@@ -252,9 +267,18 @@ export const RecentMatchesPage = () => {
     setMatchLengthMax(Math.min(defaultMatchLengthMax, appliedMatchBounds.max));
   }, [selectedMode, appliedMatchBounds.max, appliedMatchBounds.min]);
 
+  const startDateTs = useMemo(
+    () => parseDateInputBoundary(startDateFilter, "start"),
+    [startDateFilter],
+  );
+  const endDateTs = useMemo(() => parseDateInputBoundary(endDateFilter, "end"), [endDateFilter]);
+
   const filteredMatches = useMemo(
     () =>
       matches.filter((match) => {
+        if (startDateTs !== null && match.startTs < startDateTs) return false;
+        if (endDateTs !== null && match.startTs > endDateTs) return false;
+
         if (match.gameCount < matchLengthMin || match.gameCount > matchLengthMax) {
           return false;
         }
@@ -312,13 +336,38 @@ export const RecentMatchesPage = () => {
       ratingFilterType,
       ratingMax,
       ratingMin,
+      startDateTs,
+      endDateTs,
       sourceFilters,
     ],
   );
-  const visibleMatches = useMemo(
-    () => filteredMatches.slice(0, visibleMatchCount),
-    [filteredMatches, visibleMatchCount],
-  );
+  const totalPages = Math.max(1, Math.ceil(filteredMatches.length / pageSize));
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    selectedMode,
+    matchLengthMin,
+    matchLengthMax,
+    ratingFilterType,
+    ratingMin,
+    ratingMax,
+    player1Filter,
+    player2Filter,
+    sourceFilters,
+    startDateFilter,
+    endDateFilter,
+    pageSize,
+  ]);
+
+  useEffect(() => {
+    setCurrentPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
+
+  const paginatedMatches = useMemo(() => {
+    const offset = (currentPage - 1) * pageSize;
+    return filteredMatches.slice(offset, offset + pageSize);
+  }, [currentPage, filteredMatches, pageSize]);
 
   return (
     <div className="rankingsPage">
@@ -372,6 +421,42 @@ export const RecentMatchesPage = () => {
               value={player2Filter}
               onChange={(event) => setPlayer2Filter(event.target.value)}
               placeholder="username"
+            />
+          </label>
+          <label htmlFor="recent-page-size">
+            Page size
+            <select
+              id="recent-page-size"
+              value={pageSize}
+              onChange={(event) => setPageSize(Number(event.target.value))}
+            >
+              {pageSizeOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className="controls profileControls">
+          <label htmlFor="recent-start-date-filter">
+            From
+            <input
+              id="recent-start-date-filter"
+              type="date"
+              value={startDateFilter}
+              onChange={(event) => setStartDateFilter(event.target.value)}
+            />
+          </label>
+          <label htmlFor="recent-end-date-filter">
+            To
+            <input
+              id="recent-end-date-filter"
+              type="date"
+              value={endDateFilter}
+              min={startDateFilter || undefined}
+              onChange={(event) => setEndDateFilter(event.target.value)}
             />
           </label>
         </div>
@@ -487,12 +572,15 @@ export const RecentMatchesPage = () => {
         <div className="rankingsMeta">
           <span>Showing recent matches</span>
           <span>
-            {filteredMatches.length} filtered / {matches.length} total
+            {filteredMatches.length === 0
+              ? "0 shown"
+              : `${(currentPage - 1) * pageSize + 1}-${Math.min(currentPage * pageSize, filteredMatches.length)} shown`} 
+            · {filteredMatches.length} filtered / {matches.length} total
           </span>
         </div>
 
         <div className="matchCards">
-          {visibleMatches.map((match) => {
+          {paginatedMatches.map((match) => {
             const matchKey = `${match.startTs}-${match.firstGameId}-${match.playerA}-${match.playerB}`;
             const isExpanded = expandedMatchKeys.includes(matchKey);
 
@@ -616,14 +704,24 @@ export const RecentMatchesPage = () => {
             <div className="emptyRankings">No matches found with current filters.</div>
           ) : null}
         </div>
-        {filteredMatches.length > visibleMatches.length ? (
-          <div className="profileBackLinkWrap">
+        {filteredMatches.length > 0 ? (
+          <div className="paginationRow">
             <button
               type="button"
-              className="rankingLinkButton"
-              onClick={() => setVisibleMatchCount((count) => count + visibleMatchStep)}
+              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+              disabled={currentPage <= 1}
             >
-              Load more matches
+              Previous
+            </button>
+            <span>
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+              disabled={currentPage >= totalPages}
+            >
+              Next
             </button>
           </div>
         ) : null}
