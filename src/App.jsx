@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Chessboard } from "./Chessboard";
+import { RankingsPage } from "./Rankings";
 
 const appBasePath = (() => {
   const baseUrl = import.meta.env.BASE_URL || "/";
@@ -54,6 +55,11 @@ const parsePuzzleIdFromPath = () => {
   const puzzleId = Number.parseInt(match[1], 10);
   if (Number.isNaN(puzzleId)) return null;
   return puzzleId;
+};
+
+const isRankingsPath = () => {
+  const currentPath = toAppRelativePath(window.location.pathname);
+  return currentPath === "/rankings" || currentPath.startsWith("/rankings/");
 };
 
 const puzzleIndexFromPath = (puzzles) => {
@@ -217,6 +223,25 @@ const loadPuzzlesFromSupabase = async () => {
 };
 
 export const App = () => {
+  const [isRankingsRoute, setIsRankingsRoute] = useState(() => isRankingsPath());
+
+  useEffect(() => {
+    const onRouteChange = () => {
+      setIsRankingsRoute(isRankingsPath());
+    };
+
+    window.addEventListener("popstate", onRouteChange);
+    return () => window.removeEventListener("popstate", onRouteChange);
+  }, []);
+
+  if (isRankingsRoute) {
+    return <RankingsPage />;
+  }
+
+  return <AtomicTrainerPage />;
+};
+
+const AtomicTrainerPage = () => {
   const [puzzles, setPuzzles] = useState([]);
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
