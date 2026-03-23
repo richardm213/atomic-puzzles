@@ -238,101 +238,65 @@ const loadPuzzlesFromSupabase = async () => {
   return allRows;
 };
 
-const formatPreviewDateTime = (timestamp) => {
-  if (!Number.isFinite(timestamp)) return "—";
-  const date = new Date(timestamp);
-  return date.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
+const TopNav = () => {
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const handleSearchSubmit = (event) => {
+    event.preventDefault();
+    const target = searchQuery.trim();
+    if (!target) return;
+    window.location.href = appPath(`/@/${encodeURIComponent(target)}`);
+  };
+
+  return (
+    <header className="topNav">
+      <a className="homeBrand" href={appPath("/")} aria-label="Go to home page">
+        <img src={appPath("/favicon.ico")} alt="Atomic Puzzles" width="24" height="24" />
+      </a>
+      <nav className="topNavLinks" aria-label="Main navigation">
+        <a href={appPath("/rankings")}>Rankings</a>
+        <a href={appPath("/solve")}>Puzzles</a>
+        <a href={appPath("/recent")}>Recent</a>
+      </nav>
+      <form className={`navSearch ${searchOpen ? "open" : ""}`} onSubmit={handleSearchSubmit}>
+        {searchOpen ? (
+          <>
+            <input
+              type="text"
+              value={searchQuery}
+              placeholder="Search player"
+              aria-label="Search player username"
+              onChange={(event) => setSearchQuery(event.target.value)}
+              autoFocus
+            />
+            <button type="submit">Go</button>
+          </>
+        ) : (
+          <button type="button" onClick={() => setSearchOpen(true)}>
+            Search
+          </button>
+        )}
+      </form>
+    </header>
+  );
 };
 
-const TopNav = () => (
-  <header className="topNav">
-    <a className="homeBrand" href={appPath("/")} aria-label="Go to home page">
-      <img src={appPath("/favicon.ico")} alt="Atomic Puzzles" width="24" height="24" />
-    </a>
-    <nav className="topNavLinks" aria-label="Main navigation">
-      <a href={appPath("/rankings")}>Rankings</a>
-      <a href={appPath("/solve")}>Puzzles</a>
-      <a href={appPath("/recent")}>Recent</a>
-    </nav>
-  </header>
-);
-
 const HomePage = () => {
-  const [usernameQuery, setUsernameQuery] = useState("");
-  const [allUsernames, setAllUsernames] = useState([]);
-  const [rankingsPreview, setRankingsPreview] = useState([]);
-  const [recentPreview, setRecentPreview] = useState([]);
   const [homeError, setHomeError] = useState("");
 
   useEffect(() => {
     const loadHomeData = async () => {
       try {
         setHomeError("");
-        const [leaderboardResponse, matchesResponse] = await Promise.all([
-          fetch("/private/lb.json", { headers: { Accept: "application/json" } }),
-          fetch("/private/blitz_matches.json", { headers: { Accept: "application/json" } }),
-        ]);
+        const leaderboardResponse = await fetch("/private/lb.json", {
+          headers: { Accept: "application/json" },
+        });
 
         if (!leaderboardResponse.ok) {
           throw new Error(`Could not load /private/lb.json (HTTP ${leaderboardResponse.status})`);
         }
-        if (!matchesResponse.ok) {
-          throw new Error(
-            `Could not load /private/blitz_matches.json (HTTP ${matchesResponse.status})`,
-          );
-        }
-
-        const leaderboardData = await leaderboardResponse.json();
-        const rawMatches = await matchesResponse.json();
-
-        const latestMonthKey = Object.keys(leaderboardData || {})
-          .filter((value) => /^[A-Za-z]{3} \d{4}$/.test(value))
-          .sort((a, b) => new Date(`${b} 01 UTC`) - new Date(`${a} 01 UTC`))[0];
-
-        const latestBlitzRankings =
-          leaderboardData?.[latestMonthKey]?.blitz?.rankings ||
-          leaderboardData?.[latestMonthKey]?.bullet?.rankings ||
-          [];
-        const normalizedRankings = (Array.isArray(latestBlitzRankings) ? latestBlitzRankings : [])
-          .map((entry, index) => ({
-            rank: Number(entry?.rank) || index + 1,
-            username: String(entry?.username || entry?.user || entry?.player || "Unknown"),
-            score: Number(entry?.score),
-          }))
-          .slice(0, 5);
-        setRankingsPreview(normalizedRankings);
-
-        const usernameSet = new Set();
-        Object.values(leaderboardData || {}).forEach((monthData) => {
-          ["blitz", "bullet"].forEach((mode) => {
-            const rankings = monthData?.[mode]?.rankings;
-            if (!Array.isArray(rankings)) return;
-            rankings.forEach((row) => {
-              const username = String(row?.username || row?.user || row?.player || "").trim();
-              if (username) usernameSet.add(username);
-            });
-          });
-        });
-        setAllUsernames([...usernameSet].sort((a, b) => a.localeCompare(b)));
-
-        const normalizedRecent = (Array.isArray(rawMatches) ? rawMatches : [])
-          .map((match) => ({
-            startTs: Number(match?.start_ts),
-            players: Array.isArray(match?.players)
-              ? match.players.slice(0, 2).map((player) => String(player || "Unknown"))
-              : ["Unknown", "Unknown"],
-            gameCount: Array.isArray(match?.games) ? match.games.length : 0,
-          }))
-          .filter((match) => Number.isFinite(match.startTs))
-          .sort((a, b) => b.startTs - a.startTs)
-          .slice(0, 5);
-        setRecentPreview(normalizedRecent);
+        await leaderboardResponse.json();
       } catch (error) {
         setHomeError(String(error?.message || error));
       }
@@ -341,79 +305,60 @@ const HomePage = () => {
     loadHomeData();
   }, []);
 
-  const usernameSuggestions = useMemo(() => {
-    if (usernameQuery.trim().length < 3) return [];
-    const lower = usernameQuery.trim().toLowerCase();
-    return allUsernames
-      .filter((username) => username.toLowerCase().includes(lower))
-      .slice(0, 10);
-  }, [allUsernames, usernameQuery]);
-
-  const handleSearch = (event) => {
-    event.preventDefault();
-    const target = usernameQuery.trim();
-    if (!target) return;
-    window.location.href = appPath(`/@/${encodeURIComponent(target)}`);
-  };
-
   return (
     <div className="homePage">
       <div className="panel homePanel">
         <h1>Atomic Puzzles</h1>
-        <p>Solve tactics, track top rankings, and follow fresh match history.</p>
-        <a className="primaryCta" href={appPath("/solve")}>
-          Go solve puzzles
-        </a>
+        <p className="homeIntro">
+          Welcome! This site helps you solve atomic puzzles, sharpen tactical ability, and keep up
+          with the current player rankings and stats.
+        </p>
 
-        <form className="homeSearch" onSubmit={handleSearch}>
-          <label htmlFor="username-search">Search username</label>
-          <input
-            id="username-search"
-            type="text"
-            list="username-suggestions"
-            value={usernameQuery}
-            onChange={(event) => setUsernameQuery(event.target.value)}
-            placeholder="Type at least 3 characters"
-          />
-          <datalist id="username-suggestions">
-            {usernameSuggestions.map((username) => (
-              <option key={username} value={username} />
-            ))}
-          </datalist>
-          <button type="submit">Open profile</button>
-        </form>
+        <section className="homeButtonRow">
+          <a className="primaryCta" href={appPath("/solve")}>
+            Solve Puzzles
+          </a>
+          <a className="primaryCta" href={appPath("/rankings")}>
+            View Rankings
+          </a>
+          <a className="primaryCta" href={appPath("/recent")}>
+            View Recent Matches
+          </a>
+        </section>
 
         {homeError ? <div className="errorText">{homeError}</div> : null}
 
-        <section className="homePreview">
-          <a className="previewHeader" href={appPath("/rankings")}>
-            Mar Rankings Preview →
-          </a>
-          <ul>
-            {rankingsPreview.map((player) => (
-              <li key={`${player.rank}-${player.username}`}>
-                #{player.rank}{" "}
-                <a className="rankingLink" href={appPath(`/@/${encodeURIComponent(player.username)}`)}>
-                  {player.username}
-                </a>{" "}
-                {Number.isFinite(player.score) ? `(${player.score.toFixed(1)})` : ""}
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="homePreview">
-          <a className="previewHeader" href={appPath("/recent")}>
-            Recent Matches Preview →
-          </a>
-          <ul>
-            {recentPreview.map((match, index) => (
-              <li key={`${match.startTs}-${index}`}>
-                {match.players[0]} vs {match.players[1]} • {match.gameCount} games •{" "}
-                {formatPreviewDateTime(match.startTs)}
-              </li>
-            ))}
-          </ul>
+        <section className="homeDescriptions">
+          <article className="homeDescriptionCard">
+            <h2>Puzzles and Improvement</h2>
+            <p>
+              Train with tactical puzzle positions to build pattern recognition, improve calculation
+              speed, and perform better in practical atomic games.
+            </p>
+          </article>
+          <article className="homeDescriptionCard">
+            <h2>Rankings</h2>
+            <p>
+              View the top atomic blitz and bullet rankings for the current month. Blitz and bullet
+              ratings are tracked separately because skill transfer is not one-to-one: hyperbullet
+              farmers and stronger blitz players often excel in very different ways.
+            </p>
+          </article>
+          <article className="homeDescriptionCard">
+            <h2>Player Stats and Fairness</h2>
+            <p>
+              Stats are tracked for each player account individually so you can review account-level
+              progress over time. Cheaters and alt abusers are excluded from rankings and rating
+              calculations to keep the system as fair and meaningful as possible.
+            </p>
+          </article>
+          <article className="homeDescriptionCard">
+            <h2>Recent Matches</h2>
+            <p>
+              Open recent matches for the latest competitive results and momentum checks across the
+              strongest active players.
+            </p>
+          </article>
         </section>
       </div>
     </div>
