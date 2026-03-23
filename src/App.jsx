@@ -62,6 +62,11 @@ const isRankingsPath = () => {
   return currentPath === "/rankings" || currentPath.startsWith("/rankings/");
 };
 
+const isMatchesPath = () => {
+  const currentPath = toAppRelativePath(window.location.pathname);
+  return currentPath === "/matches";
+};
+
 const rankingsUsernameFromPath = () => {
   const currentPath = toAppRelativePath(window.location.pathname);
   const match = currentPath.match(/^\/rankings\/([^/]+)\/?$/);
@@ -236,11 +241,13 @@ const loadPuzzlesFromSupabase = async () => {
 
 export const App = () => {
   const [isRankingsRoute, setIsRankingsRoute] = useState(() => isRankingsPath());
+  const [isMatchesRoute, setIsMatchesRoute] = useState(() => isMatchesPath());
   const [rankingsUsername, setRankingsUsername] = useState(() => rankingsUsernameFromPath());
 
   useEffect(() => {
     const onRouteChange = () => {
       setIsRankingsRoute(isRankingsPath());
+      setIsMatchesRoute(isMatchesPath());
       setRankingsUsername(rankingsUsernameFromPath());
     };
 
@@ -249,7 +256,11 @@ export const App = () => {
   }, []);
 
   if (isRankingsRoute) {
-    return <RankingsPage username={rankingsUsername} />;
+    return <RankingsPage username={rankingsUsername} isMatchesRoute={isMatchesRoute} />;
+  }
+
+  if (isMatchesRoute) {
+    return <RankingsPage isMatchesRoute />;
   }
 
   return <AtomicTrainerPage />;
