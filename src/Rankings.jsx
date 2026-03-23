@@ -1,15 +1,15 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-const modeOptions = ["blitz", "bullet"];
+export const modeOptions = ["blitz", "bullet"];
 const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const pageSizeOptions = [10, 25, 50, 100];
-const opponentRatingSliderMin = 1500;
-const opponentRatingSliderMax = 2500;
-const defaultRatingMin = 2000;
-const defaultRatingMax = 2500;
-const defaultMatchLengthMin = 2;
-const defaultMatchLengthMax = 50;
-const matchLengthBoundsByMode = {
+export const pageSizeOptions = [10, 25, 50, 100];
+export const opponentRatingSliderMin = 1500;
+export const opponentRatingSliderMax = 2500;
+export const defaultRatingMin = 2000;
+export const defaultRatingMax = 2500;
+export const defaultMatchLengthMin = 2;
+export const defaultMatchLengthMax = 50;
+export const matchLengthBoundsByMode = {
   blitz: { min: 1, max: 50 },
   bullet: { min: 1, max: 200 },
 };
@@ -150,14 +150,14 @@ const parseWinnerFromPerspective = (game, usernameLower) => {
   return "draw";
 };
 
-const formatSignedDecimal = (value) => {
+export const formatSignedDecimal = (value) => {
   if (!Number.isFinite(value)) return "—";
   const rounded = Math.round(value * 10) / 10;
   if (rounded > 0) return `+${rounded.toFixed(1)}`;
   return rounded.toFixed(1);
 };
 
-const formatLocalDateTime = (timestamp) => {
+export const formatLocalDateTime = (timestamp) => {
   if (!Number.isFinite(timestamp)) return "—";
   const date = new Date(timestamp);
   const now = new Date();
@@ -178,18 +178,18 @@ const formatLocalDateTime = (timestamp) => {
   return includeYear ? `${month} ${day}, ${year} ${time}` : `${month} ${day} ${time}`;
 };
 
-const formatScore = (value) => {
+export const formatScore = (value) => {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return "0.0";
   return numeric.toFixed(1);
 };
 
-const formatOpponentWithRating = (opponent, opponentRating) => {
+export const formatOpponentWithRating = (opponent, opponentRating) => {
   if (!Number.isFinite(opponentRating)) return opponent;
   return `${opponent} (${opponentRating.toFixed(1)})`;
 };
 
-const parseTimeControlParts = (timeControl) => {
+export const parseTimeControlParts = (timeControl) => {
   const [initialRaw, incrementRaw] = String(timeControl || "").split("+");
   const initialSeconds = Number(initialRaw);
   const incrementSeconds = Number(incrementRaw);
@@ -206,7 +206,7 @@ const matchJsonUrlCandidates = (mode) => [
   `https://raw.githubusercontent.com/atomaire/atomic-rankings/main/data/${mode}_matches.json`,
 ];
 
-const loadRawMatchesByMode = async (mode) => {
+export const loadRawMatchesByMode = async (mode) => {
   if (mode === "all") {
     const [blitzMatches, bulletMatches] = await Promise.all([
       loadRawMatchesByMode("blitz"),
@@ -242,7 +242,7 @@ const loadRawMatchesByMode = async (mode) => {
   return Array.isArray(loaded) ? loaded : [];
 };
 
-const normalizeMatches = (matches, username) => {
+export const normalizeMatches = (matches, username) => {
   const usernameLower = username.toLowerCase();
 
   return (Array.isArray(matches) ? matches : [])
@@ -559,7 +559,7 @@ const LeaderboardView = () => {
                     <td>
                       <a
                         className="rankingLink"
-                        href={`/rankings/${encodeURIComponent(player.username)}`}
+                        href={`/@/${encodeURIComponent(player.username)}`}
                       >
                         {player.username}
                       </a>
@@ -578,495 +578,4 @@ const LeaderboardView = () => {
   );
 };
 
-const PlayerProfileView = ({ username }) => {
-  const [selectedMode, setSelectedMode] = useState("blitz");
-  const [matches, setMatches] = useState([]);
-  const [error, setError] = useState("");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
-  const initialMatchBounds = matchLengthBoundsByMode.blitz;
-  const [matchLengthMin, setMatchLengthMin] = useState(
-    Math.max(defaultMatchLengthMin, initialMatchBounds.min),
-  );
-  const [matchLengthMax, setMatchLengthMax] = useState(
-    Math.min(defaultMatchLengthMax, initialMatchBounds.max),
-  );
-  const [opponentRatingMin, setOpponentRatingMin] = useState(defaultRatingMin);
-  const [opponentRatingMax, setOpponentRatingMax] = useState(defaultRatingMax);
-  const [timeControlInitialFilter, setTimeControlInitialFilter] = useState("all");
-  const [timeControlIncrementFilter, setTimeControlIncrementFilter] = useState("all");
-  const [expandedMatchKeys, setExpandedMatchKeys] = useState([]);
-  const matchLengthBounds = matchLengthBoundsByMode[selectedMode] ?? matchLengthBoundsByMode.blitz;
-
-  useEffect(() => {
-    const loadMatches = async () => {
-      setError("");
-      try {
-        const loaded = await loadRawMatchesByMode(selectedMode);
-        setMatches(normalizeMatches(loaded, username));
-        setPage(1);
-      } catch (loadError) {
-        setMatches([]);
-        setError(String(loadError));
-      }
-    };
-
-    loadMatches();
-  }, [selectedMode, username]);
-
-  useEffect(() => {
-    const bounds = matchLengthBoundsByMode[selectedMode] ?? matchLengthBoundsByMode.blitz;
-    setMatchLengthMin(Math.max(defaultMatchLengthMin, bounds.min));
-    setMatchLengthMax(Math.min(defaultMatchLengthMax, bounds.max));
-    setTimeControlInitialFilter("all");
-    setTimeControlIncrementFilter("all");
-  }, [selectedMode]);
-
-  const { initialOptions, incrementOptions } = useMemo(() => {
-    const initialSet = new Set();
-    const incrementSet = new Set();
-    matches.forEach((match) => {
-      const parts = parseTimeControlParts(match.timeControl);
-      if (parts.initial) initialSet.add(parts.initial);
-      if (parts.increment) incrementSet.add(parts.increment);
-    });
-
-    const numericSort = (a, b) => Number(a) - Number(b);
-    return {
-      initialOptions: [...initialSet].sort(numericSort),
-      incrementOptions: [...incrementSet].sort(numericSort),
-    };
-  }, [matches]);
-
-  const filteredMatches = useMemo(() => {
-    return matches.filter((match) => {
-      if (match.gameCount < matchLengthMin || match.gameCount > matchLengthMax) {
-        return false;
-      }
-
-      if (Number.isFinite(match.opponentAfterRating)) {
-        const inRatingRange =
-          match.opponentAfterRating >= opponentRatingMin &&
-          match.opponentAfterRating <= opponentRatingMax;
-        if (!inRatingRange) return false;
-      }
-
-      const { initial, increment } = parseTimeControlParts(match.timeControl);
-      if (timeControlInitialFilter !== "all" && initial !== timeControlInitialFilter) {
-        return false;
-      }
-      if (timeControlIncrementFilter !== "all" && increment !== timeControlIncrementFilter) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [
-    matchLengthMax,
-    matchLengthMin,
-    matches,
-    opponentRatingMax,
-    opponentRatingMin,
-    timeControlIncrementFilter,
-    timeControlInitialFilter,
-  ]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [
-    matchLengthMax,
-    matchLengthMin,
-    opponentRatingMax,
-    opponentRatingMin,
-    timeControlIncrementFilter,
-    timeControlInitialFilter,
-  ]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredMatches.length / pageSize));
-  const currentPage = Math.min(page, totalPages);
-
-  useEffect(() => {
-    setExpandedMatchKeys([]);
-  }, [
-    currentPage,
-    matchLengthMax,
-    matchLengthMin,
-    opponentRatingMax,
-    opponentRatingMin,
-    selectedMode,
-    timeControlIncrementFilter,
-    timeControlInitialFilter,
-    username,
-  ]);
-
-  const pageRows = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return filteredMatches.slice(start, start + pageSize);
-  }, [currentPage, filteredMatches, pageSize]);
-
-  const latestWithRating = matches.find(
-    (match) => Number.isFinite(match.afterRating) || Number.isFinite(match.afterRd),
-  );
-  const peakRating = useMemo(() => {
-    const ratings = matches.flatMap((match) => {
-      const candidates = [];
-      if (Number.isFinite(match.beforeRating) && Number.isFinite(match.beforeRd) && match.beforeRd <= 55) {
-        candidates.push(match.beforeRating);
-      }
-      if (Number.isFinite(match.afterRating) && Number.isFinite(match.afterRd) && match.afterRd <= 55) {
-        candidates.push(match.afterRating);
-      }
-      return candidates;
-    });
-    if (ratings.length === 0) return null;
-    return Math.max(...ratings);
-  }, [matches]);
-
-  const bestWins = useMemo(() => {
-    return filteredMatches
-      .filter((match) => match.playerScore > match.opponentScore)
-      .sort((a, b) => {
-        const ratingDiff = (b.opponentAfterRating ?? -Infinity) - (a.opponentAfterRating ?? -Infinity);
-        if (ratingDiff !== 0) return ratingDiff;
-        return b.startTs - a.startTs;
-      })
-      .slice(0, 5);
-  }, [filteredMatches]);
-
-  return (
-    <div className="rankingsPage">
-      <div className="panel rankingsPanel">
-        <h1>{username}</h1>
-
-        <div className="profileTopBar">
-          <div className="profileMetric">
-            <span className="statusLabel">Current Rating</span>
-            <strong>{Number.isFinite(latestWithRating?.afterRating) ? latestWithRating.afterRating.toFixed(1) : "—"}</strong>
-          </div>
-          <div className="profileMetric">
-            <span className="statusLabel">Current RD</span>
-            <strong>{Number.isFinite(latestWithRating?.afterRd) ? latestWithRating.afterRd.toFixed(1) : "—"}</strong>
-          </div>
-          <div className="profileMetric">
-            <span className="statusLabel">Peak Rating</span>
-            <strong>{Number.isFinite(peakRating) ? peakRating.toFixed(1) : "—"}</strong>
-          </div>
-        </div>
-
-        <div className="profileBestWins">
-          <h2>Best 5 Wins</h2>
-          {bestWins.length === 0 ? (
-            <div className="emptyRankings">No wins available in {selectedMode}.</div>
-          ) : (
-            <ol>
-              {bestWins.map((match) => (
-                <li key={`best-${match.startTs}-${match.firstGameId}`}>
-                  <a
-                    className="rankingLink"
-                    href={`/rankings/${encodeURIComponent(match.opponent)}`}
-                  >
-                    {formatOpponentWithRating(match.opponent, match.opponentAfterRating)}
-                  </a>
-                  <span> • </span>
-                  {formatLocalDateTime(match.startTs)}
-                </li>
-              ))}
-            </ol>
-          )}
-        </div>
-
-        <div className="controls rankingsControls profileControls">
-          <label htmlFor="profile-mode-select">
-            Mode
-            <select
-              id="profile-mode-select"
-              value={selectedMode}
-              onChange={(event) => setSelectedMode(event.target.value)}
-            >
-              {modeOptions.map((mode) => (
-                <option key={mode} value={mode}>
-                  {mode}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label htmlFor="profile-page-size-select">
-            Page size
-            <select
-              id="profile-page-size-select"
-              value={pageSize}
-              onChange={(event) => {
-                setPageSize(Number(event.target.value));
-                setPage(1);
-              }}
-            >
-              {pageSizeOptions.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label htmlFor="profile-time-initial-select">
-            Initial (sec)
-            <select
-              id="profile-time-initial-select"
-              value={timeControlInitialFilter}
-              onChange={(event) => setTimeControlInitialFilter(event.target.value)}
-            >
-              <option value="all">All</option>
-              {initialOptions.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label htmlFor="profile-time-increment-select">
-            Increment (sec)
-            <select
-              id="profile-time-increment-select"
-              value={timeControlIncrementFilter}
-              onChange={(event) => setTimeControlIncrementFilter(event.target.value)}
-            >
-              <option value="all">All</option>
-              {incrementOptions.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        <div className="opponentRatingFilter">
-          <label htmlFor="match-length-min">
-            Match length range: {matchLengthMin} - {matchLengthMax}
-          </label>
-          <div className="dualRangeSlider">
-            <div className="dualRangeTrack" />
-            <div
-              className="dualRangeSelected"
-              style={{
-                left: `${((matchLengthMin - matchLengthBounds.min) / (matchLengthBounds.max - matchLengthBounds.min)) * 100}%`,
-                right: `${100 - ((matchLengthMax - matchLengthBounds.min) / (matchLengthBounds.max - matchLengthBounds.min)) * 100}%`,
-              }}
-            />
-            <input
-              id="match-length-min"
-              className="dualRangeInput"
-              type="range"
-              min={matchLengthBounds.min}
-              max={matchLengthBounds.max}
-              step={1}
-              value={matchLengthMin}
-              onChange={(event) => {
-                const nextMin = Number(event.target.value);
-                setMatchLengthMin(Math.min(nextMin, matchLengthMax));
-              }}
-            />
-            <input
-              className="dualRangeInput"
-              type="range"
-              min={matchLengthBounds.min}
-              max={matchLengthBounds.max}
-              step={1}
-              value={matchLengthMax}
-              onChange={(event) => {
-                const nextMax = Number(event.target.value);
-                setMatchLengthMax(Math.max(nextMax, matchLengthMin));
-              }}
-            />
-          </div>
-        </div>
-
-        <div className="opponentRatingFilter">
-          <label htmlFor="opponent-rating-min">
-            Opponent rating range: {opponentRatingMin} - {opponentRatingMax}
-          </label>
-          <div className="dualRangeSlider">
-            <div className="dualRangeTrack" />
-            <div
-              className="dualRangeSelected"
-              style={{
-                left: `${((opponentRatingMin - opponentRatingSliderMin) / (opponentRatingSliderMax - opponentRatingSliderMin)) * 100}%`,
-                right: `${100 - ((opponentRatingMax - opponentRatingSliderMin) / (opponentRatingSliderMax - opponentRatingSliderMin)) * 100}%`,
-              }}
-            />
-            <input
-              id="opponent-rating-min"
-              className="dualRangeInput"
-              type="range"
-              min={opponentRatingSliderMin}
-              max={opponentRatingSliderMax}
-              step={10}
-              value={opponentRatingMin}
-              onChange={(event) => {
-                const nextMin = Number(event.target.value);
-                setOpponentRatingMin(Math.min(nextMin, opponentRatingMax));
-              }}
-            />
-            <input
-              className="dualRangeInput"
-              type="range"
-              min={opponentRatingSliderMin}
-              max={opponentRatingSliderMax}
-              step={10}
-              value={opponentRatingMax}
-              onChange={(event) => {
-                const nextMax = Number(event.target.value);
-                setOpponentRatingMax(Math.max(nextMax, opponentRatingMin));
-              }}
-            />
-          </div>
-        </div>
-
-        <div className="profileBackLinkWrap">
-          <a className="rankingLink" href="/rankings">
-            ← Back to rankings
-          </a>
-          <span> • </span>
-          <a className="rankingLink" href="/recent">
-            View recent matches →
-          </a>
-        </div>
-
-        {error ? <div className="errorText">{error}</div> : null}
-
-        <div className="rankingsMeta">
-          <span>
-            Match History ({selectedMode})
-          </span>
-          <span>
-            {filteredMatches.length} filtered / {matches.length} total
-          </span>
-        </div>
-
-        <div className="rankingsTableWrap">
-          <table className="rankingsTable">
-            <thead>
-              <tr>
-                <th>Date / Time (Local)</th>
-                <th>Opponent</th>
-                <th>Time Control</th>
-                <th>Score</th>
-                <th>Rating (Δ)</th>
-                <th>RD (Δ)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageRows.map((match) => {
-                const matchKey = `${match.startTs}-${match.firstGameId}`;
-                const isExpanded = expandedMatchKeys.includes(matchKey);
-                return (
-                  <Fragment key={matchKey}>
-                    <tr
-                      className={`expandableMatchRow${isExpanded ? " expanded" : ""}`}
-                      onClick={() =>
-                        setExpandedMatchKeys((current) =>
-                          current.includes(matchKey)
-                            ? current.filter((key) => key !== matchKey)
-                            : [...current, matchKey],
-                        )}
-                    >
-                      <td>{formatLocalDateTime(match.startTs)}</td>
-                      <td>
-                        <a
-                          className="rankingLink"
-                          href={`/rankings/${encodeURIComponent(match.opponent)}`}
-                          onClick={(event) => event.stopPropagation()}
-                        >
-                          {formatOpponentWithRating(match.opponent, match.opponentAfterRating)}
-                        </a>
-                      </td>
-                      <td>{match.timeControl}</td>
-                      <td className="scoreCell">
-                        <span>{formatScore(match.playerScore)}</span>
-                        <span className="scoreDash"> - </span>
-                        <span>{formatScore(match.opponentScore)}</span>
-                      </td>
-                      <td>
-                        {Number.isFinite(match.afterRating)
-                          ? `${match.afterRating.toFixed(1)}(${formatSignedDecimal(match.ratingChange)})`
-                          : "—"}
-                      </td>
-                      <td>
-                        {Number.isFinite(match.afterRd)
-                          ? `${match.afterRd.toFixed(1)}(${formatSignedDecimal(match.rdChange)})`
-                          : "—"}
-                      </td>
-                    </tr>
-                    {isExpanded ? (
-                      <tr className="matchDetailsRow">
-                        <td colSpan={6}>
-                          <div className="matchDetailsInner">
-                            <strong>Games</strong>
-                            <ul>
-                              {match.games.map((game, index) => (
-                                <li key={`${matchKey}-${game.id}-${index}`}>
-                                  Game {index + 1}: winner {game.winner}, score {formatScore(game.playerScoreAfter)} - {formatScore(game.opponentScoreAfter)}
-                                  <span> • </span>
-                                  {game.id === "—" ? (
-                                    "—"
-                                  ) : (
-                                    <a
-                                      className="rankingLink"
-                                      href={`https://lichess.org/${encodeURIComponent(game.id)}`}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                    >
-                                      {game.id}
-                                    </a>
-                                  )}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : null}
-                  </Fragment>
-                );
-              })}
-              {pageRows.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="emptyRankings">
-                    No matches found for this player with current filters in {selectedMode}.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="paginationRow">
-          <button
-            type="button"
-            onClick={() => setPage((current) => Math.max(1, current - 1))}
-            disabled={currentPage <= 1}
-          >
-            Previous
-          </button>
-          <span>
-            Page {currentPage} / {totalPages}
-          </span>
-          <button
-            type="button"
-            onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-            disabled={currentPage >= totalPages}
-          >
-            Next
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export const RankingsPage = ({ username = "" }) => {
-  if (username) {
-    return <PlayerProfileView username={username} />;
-  }
-
-  return <LeaderboardView />;
-};
+export const RankingsPage = () => <LeaderboardView />;

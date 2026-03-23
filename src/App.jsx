@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Chessboard } from "./Chessboard";
 import { RankingsPage } from "./Rankings";
 import { RecentMatchesPage } from "./RecentMatches";
+import { PlayerProfilePage } from "./PlayerProfile";
 
 const appBasePath = (() => {
   const baseUrl = import.meta.env.BASE_URL || "/";
@@ -60,17 +61,18 @@ const parsePuzzleIdFromPath = () => {
 
 const isRankingsPath = () => {
   const currentPath = toAppRelativePath(window.location.pathname);
-  return currentPath === "/rankings" || currentPath.startsWith("/rankings/");
+  return currentPath === "/rankings" || currentPath === "/rankings/";
 };
 
-const isMatchesPath = () => {
+
+const isProfilePath = () => {
   const currentPath = toAppRelativePath(window.location.pathname);
-  return currentPath === "/recent" || currentPath === "/matches";
+  return /^\/@\/[^/]+\/?$/.test(currentPath);
 };
 
-const rankingsUsernameFromPath = () => {
+const profileUsernameFromPath = () => {
   const currentPath = toAppRelativePath(window.location.pathname);
-  const match = currentPath.match(/^\/rankings\/([^/]+)\/?$/);
+  const match = currentPath.match(/^\/@\/([^/]+)\/?$/);
   if (!match) return "";
 
   try {
@@ -78,6 +80,11 @@ const rankingsUsernameFromPath = () => {
   } catch {
     return match[1];
   }
+};
+
+const isMatchesPath = () => {
+  const currentPath = toAppRelativePath(window.location.pathname);
+  return currentPath === "/recent" || currentPath === "/matches";
 };
 
 const puzzleIndexFromPath = (puzzles) => {
@@ -242,22 +249,28 @@ const loadPuzzlesFromSupabase = async () => {
 
 export const App = () => {
   const [isRankingsRoute, setIsRankingsRoute] = useState(() => isRankingsPath());
+  const [isProfileRoute, setIsProfileRoute] = useState(() => isProfilePath());
   const [isMatchesRoute, setIsMatchesRoute] = useState(() => isMatchesPath());
-  const [rankingsUsername, setRankingsUsername] = useState(() => rankingsUsernameFromPath());
+  const [profileUsername, setProfileUsername] = useState(() => profileUsernameFromPath());
 
   useEffect(() => {
     const onRouteChange = () => {
       setIsRankingsRoute(isRankingsPath());
+      setIsProfileRoute(isProfilePath());
       setIsMatchesRoute(isMatchesPath());
-      setRankingsUsername(rankingsUsernameFromPath());
+      setProfileUsername(profileUsernameFromPath());
     };
 
     window.addEventListener("popstate", onRouteChange);
     return () => window.removeEventListener("popstate", onRouteChange);
   }, []);
 
+  if (isProfileRoute) {
+    return <PlayerProfilePage username={profileUsername} />;
+  }
+
   if (isRankingsRoute) {
-    return <RankingsPage username={rankingsUsername} />;
+    return <RankingsPage />;
   }
 
   if (isMatchesRoute) {
