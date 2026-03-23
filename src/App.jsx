@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Chessboard } from "./Chessboard";
 import { RankingsPage } from "./Rankings";
+import { RecentMatchesPage } from "./RecentMatches";
 
 const appBasePath = (() => {
   const baseUrl = import.meta.env.BASE_URL || "/";
@@ -60,6 +61,11 @@ const parsePuzzleIdFromPath = () => {
 const isRankingsPath = () => {
   const currentPath = toAppRelativePath(window.location.pathname);
   return currentPath === "/rankings" || currentPath.startsWith("/rankings/");
+};
+
+const isMatchesPath = () => {
+  const currentPath = toAppRelativePath(window.location.pathname);
+  return currentPath === "/recent" || currentPath === "/matches";
 };
 
 const rankingsUsernameFromPath = () => {
@@ -236,11 +242,13 @@ const loadPuzzlesFromSupabase = async () => {
 
 export const App = () => {
   const [isRankingsRoute, setIsRankingsRoute] = useState(() => isRankingsPath());
+  const [isMatchesRoute, setIsMatchesRoute] = useState(() => isMatchesPath());
   const [rankingsUsername, setRankingsUsername] = useState(() => rankingsUsernameFromPath());
 
   useEffect(() => {
     const onRouteChange = () => {
       setIsRankingsRoute(isRankingsPath());
+      setIsMatchesRoute(isMatchesPath());
       setRankingsUsername(rankingsUsernameFromPath());
     };
 
@@ -250,6 +258,10 @@ export const App = () => {
 
   if (isRankingsRoute) {
     return <RankingsPage username={rankingsUsername} />;
+  }
+
+  if (isMatchesRoute) {
+    return <RecentMatchesPage />;
   }
 
   return <AtomicTrainerPage />;
