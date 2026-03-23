@@ -202,6 +202,42 @@ const matchJsonUrlCandidates = (mode) => [
   `https://raw.githubusercontent.com/atomaire/atomic-rankings/main/data/${mode}_matches.json`,
 ];
 
+const loadRawMatchesByMode = async (mode) => {
+  if (mode === "all") {
+    const [blitzMatches, bulletMatches] = await Promise.all([
+      loadRawMatchesByMode("blitz"),
+      loadRawMatchesByMode("bullet"),
+    ]);
+    return [...blitzMatches, ...bulletMatches];
+  }
+
+  const candidates = matchJsonUrlCandidates(mode);
+  let loaded = null;
+  let lastError = null;
+
+  for (const url of candidates) {
+    try {
+      const response = await fetch(url, { headers: { Accept: "application/json" } });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      loaded = await response.json();
+      break;
+    } catch (fetchError) {
+      lastError = fetchError;
+    }
+  }
+
+  if (!loaded) {
+    throw new Error(
+      `Could not load ${mode} match history from atomic-rankings sources (${String(lastError)})`,
+    );
+  }
+
+  return Array.isArray(loaded) ? loaded : [];
+};
+
 const normalizeMatches = (matches, username) => {
   const usernameLower = username.toLowerCase();
 
@@ -402,6 +438,11 @@ const LeaderboardView = () => {
       <div className="panel rankingsPanel">
         <h1>Atomic Monthly Leaderboards</h1>
         <p>Best atomic players for each month since January 2023.</p>
+        <div className="profileBackLinkWrap">
+          <a className="rankingLink" href="/recent">
+            View recent matches →
+          </a>
+        </div>
 
         <div className="controls rankingsControls">
           <label htmlFor="year-select">
@@ -551,36 +592,15 @@ const PlayerProfileView = ({ username }) => {
 
   useEffect(() => {
     const loadMatches = async () => {
-      const candidates = matchJsonUrlCandidates(selectedMode);
-      let loaded = null;
-      let lastError = null;
-
       setError("");
-
-      for (const url of candidates) {
-        try {
-          const response = await fetch(url, { headers: { Accept: "application/json" } });
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-          }
-
-          loaded = await response.json();
-          break;
-        } catch (fetchError) {
-          lastError = fetchError;
-        }
-      }
-
-      if (!loaded) {
+      try {
+        const loaded = await loadRawMatchesByMode(selectedMode);
+        setMatches(normalizeMatches(loaded, username));
+        setPage(1);
+      } catch (loadError) {
         setMatches([]);
-        setError(
-          `Could not load ${selectedMode} match history from atomic-rankings sources (${String(lastError)})`,
-        );
-        return;
+        setError(String(loadError));
       }
-
-      setMatches(normalizeMatches(loaded, username));
-      setPage(1);
     };
 
     loadMatches();
@@ -896,6 +916,10 @@ const PlayerProfileView = ({ username }) => {
         <div className="profileBackLinkWrap">
           <a className="rankingLink" href="/rankings">
             ← Back to rankings
+          </a>
+          <span> • </span>
+          <a className="rankingLink" href="/recent">
+            View recent matches →
           </a>
         </div>
 
