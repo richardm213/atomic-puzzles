@@ -35,9 +35,18 @@ body {
   justify-content: center;
 }
 
+.topNavCenter {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 18px;
+}
+
 .topNavLinks {
   display: inline-flex;
   gap: 18px;
+  position: relative;
+  z-index: 2;
 }
 
 .topNavLinks a {
@@ -50,22 +59,86 @@ body {
   text-decoration: underline;
 }
 
-.navSearch {
+.navSearchSlot {
+  width: 34px;
+  height: 34px;
+  position: relative;
   display: inline-flex;
-  gap: 8px;
+  justify-content: flex-end;
 }
 
-.navSearch button,
-.navSearch input {
-  border: 1px solid rgba(255, 255, 255, 0.14);
+.navSearch {
+  width: 34px;
+  height: 34px;
+  position: absolute;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  transition: width 180ms ease;
+  z-index: 3;
+}
+
+.navSearch.open {
+  width: 260px;
+}
+
+.navSearch input,
+.navSearch button {
+  border: 1px solid transparent;
   background: #0f172a;
   color: #e8ecf3;
   border-radius: 10px;
-  padding: 8px 10px;
+  height: 34px;
+}
+
+.navSearch input {
+  position: absolute;
+  right: 0;
+  width: 0;
+  padding: 8px 0;
+  opacity: 0;
+  pointer-events: none;
+  cursor: text;
+  transition:
+    width 180ms ease,
+    opacity 150ms ease,
+    padding 180ms ease,
+    border-color 180ms ease;
 }
 
 .navSearch.open input {
-  min-width: 180px;
+  width: 260px;
+  opacity: 1;
+  pointer-events: auto;
+  border-color: rgba(255, 255, 255, 0.14);
+  padding: 8px 74px 8px 38px;
+}
+
+.navSearchIcon {
+  width: 34px;
+  min-width: 34px;
+  padding: 0;
+  position: absolute;
+  left: 0;
+  z-index: 2;
+  cursor: pointer;
+}
+
+.navSearchGo {
+  position: absolute;
+  right: 4px;
+  width: 58px;
+  opacity: 0;
+  pointer-events: none;
+  border-color: rgba(255, 255, 255, 0.14);
+  cursor: pointer;
+  transition: opacity 120ms ease;
+}
+
+.navSearch.open .navSearchGo {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .homePage {
