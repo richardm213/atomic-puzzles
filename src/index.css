@@ -31,6 +31,18 @@ input {
   padding: 32px;
 }
 
+.rankingsPage {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 32px;
+}
+
+.rankingsPanel {
+  width: min(920px, 100%);
+}
+
 .panel {
   background: rgba(17, 24, 39, 0.82);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -119,6 +131,47 @@ input {
 .errorText {
   color: #fca5a5;
   font-size: 14px;
+}
+
+.rankingsMeta {
+  margin-top: 18px;
+  display: flex;
+  justify-content: space-between;
+  color: #c9d3e3;
+  font-size: 14px;
+}
+
+.rankingsTableWrap {
+  margin-top: 12px;
+  overflow-x: auto;
+}
+
+.rankingsTable {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #0f172a;
+}
+
+.rankingsTable th,
+.rankingsTable td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.rankingsTable tbody tr:hover {
+  background: rgba(148, 163, 184, 0.15);
+}
+
+.emptyRankings {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #0f172a;
+  color: #c9d3e3;
 }
 
 .fenBox {
