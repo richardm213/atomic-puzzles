@@ -63,9 +63,7 @@ const findRatingDataForPlayer = (ratings, playerName) => {
   if (ratings[playerName]) return ratings[playerName];
 
   const playerLower = String(playerName).toLowerCase();
-  const matchKey = Object.keys(ratings).find(
-    (key) => String(key).toLowerCase() === playerLower,
-  );
+  const matchKey = Object.keys(ratings).find((key) => String(key).toLowerCase() === playerLower);
   if (!matchKey) return null;
   return ratings[matchKey];
 };
@@ -181,7 +179,9 @@ const normalizeRecentMatches = (matches, mode) =>
         firstGameId: String(games[0]?.id || "—"),
         games: mappedGames,
         sourceValue:
-          sourceValue === undefined || sourceValue === null || String(sourceValue).trim().length === 0
+          sourceValue === undefined ||
+          sourceValue === null ||
+          String(sourceValue).trim().length === 0
             ? "—"
             : String(sourceValue),
       };
@@ -290,14 +290,13 @@ export const RecentMatchesPage = () => {
         }
 
         const normalizedSource = String(match.sourceValue || "").toLowerCase();
-        const sourceKey =
-          normalizedSource.includes("arena")
-            ? "arena"
-            : normalizedSource.includes("friend")
-              ? "friend"
-              : normalizedSource.includes("lobby")
-                ? "lobby"
-                : "";
+        const sourceKey = normalizedSource.includes("arena")
+          ? "arena"
+          : normalizedSource.includes("friend")
+            ? "friend"
+            : normalizedSource.includes("lobby")
+              ? "lobby"
+              : "";
         if (!sourceKey || !sourceFilters[sourceKey]) {
           return false;
         }
@@ -544,27 +543,39 @@ export const RecentMatchesPage = () => {
                       <div>
                         <strong>{match.playerA}</strong>
                         <span>
-                          {`Rating ${Number.isFinite(match.playerABeforeRating) ? match.playerABeforeRating.toFixed(1) : "—"} (${Number.isFinite(match.playerAAfterRating) && Number.isFinite(match.playerABeforeRating)
-                            ? formatSigned(match.playerAAfterRating - match.playerABeforeRating)
-                            : "—"})`}
+                          {`Rating ${Number.isFinite(match.playerABeforeRating) ? match.playerABeforeRating.toFixed(1) : "—"} (${
+                            Number.isFinite(match.playerAAfterRating) &&
+                            Number.isFinite(match.playerABeforeRating)
+                              ? formatSigned(match.playerAAfterRating - match.playerABeforeRating)
+                              : "—"
+                          })`}
                         </span>
                         <span>
-                          {`RD ${Number.isFinite(match.playerABeforeRd) ? match.playerABeforeRd.toFixed(1) : "—"} (${Number.isFinite(match.playerAAfterRd) && Number.isFinite(match.playerABeforeRd)
-                            ? formatSigned(match.playerAAfterRd - match.playerABeforeRd)
-                            : "—"})`}
+                          {`RD ${Number.isFinite(match.playerABeforeRd) ? match.playerABeforeRd.toFixed(1) : "—"} (${
+                            Number.isFinite(match.playerAAfterRd) &&
+                            Number.isFinite(match.playerABeforeRd)
+                              ? formatSigned(match.playerAAfterRd - match.playerABeforeRd)
+                              : "—"
+                          })`}
                         </span>
                       </div>
                       <div>
                         <strong>{match.playerB}</strong>
                         <span>
-                          {`Rating ${Number.isFinite(match.playerBBeforeRating) ? match.playerBBeforeRating.toFixed(1) : "—"} (${Number.isFinite(match.playerBAfterRating) && Number.isFinite(match.playerBBeforeRating)
-                            ? formatSigned(match.playerBAfterRating - match.playerBBeforeRating)
-                            : "—"})`}
+                          {`Rating ${Number.isFinite(match.playerBBeforeRating) ? match.playerBBeforeRating.toFixed(1) : "—"} (${
+                            Number.isFinite(match.playerBAfterRating) &&
+                            Number.isFinite(match.playerBBeforeRating)
+                              ? formatSigned(match.playerBAfterRating - match.playerBBeforeRating)
+                              : "—"
+                          })`}
                         </span>
                         <span>
-                          {`RD ${Number.isFinite(match.playerBBeforeRd) ? match.playerBBeforeRd.toFixed(1) : "—"} (${Number.isFinite(match.playerBAfterRd) && Number.isFinite(match.playerBBeforeRd)
-                            ? formatSigned(match.playerBAfterRd - match.playerBBeforeRd)
-                            : "—"})`}
+                          {`RD ${Number.isFinite(match.playerBBeforeRd) ? match.playerBBeforeRd.toFixed(1) : "—"} (${
+                            Number.isFinite(match.playerBAfterRd) &&
+                            Number.isFinite(match.playerBBeforeRd)
+                              ? formatSigned(match.playerBAfterRd - match.playerBBeforeRd)
+                              : "—"
+                          })`}
                         </span>
                       </div>
                     </div>
@@ -582,16 +593,15 @@ export const RecentMatchesPage = () => {
                             {game.id === "—" ? (
                               "—"
                             ) : (
-                            <a
-                              className="rankingLink"
-                              href={`https://lichess.org/${encodeURIComponent(game.id)}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              onClick={(event) => event.stopPropagation()}
-                            >
-                              
-                              {game.id}
-                            </a>
+                              <a
+                                className="rankingLink"
+                                href={`https://lichess.org/${encodeURIComponent(game.id)}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={(event) => event.stopPropagation()}
+                              >
+                                {game.id}
+                              </a>
                             )}
                           </span>
                         </li>

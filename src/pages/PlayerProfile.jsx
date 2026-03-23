@@ -36,8 +36,7 @@ export const PlayerProfilePage = ({ username }) => {
   const [timeControlInitialFilter, setTimeControlInitialFilter] = useState("all");
   const [timeControlIncrementFilter, setTimeControlIncrementFilter] = useState("all");
   const [expandedMatchKeys, setExpandedMatchKeys] = useState([]);
-  const matchLengthBounds =
-    matchLengthBoundsByMode[selectedMode] ?? matchLengthBoundsByMode.blitz;
+  const matchLengthBounds = matchLengthBoundsByMode[selectedMode] ?? matchLengthBoundsByMode.blitz;
 
   useEffect(() => {
     const loadMatches = async () => {
@@ -430,10 +429,7 @@ export const PlayerProfilePage = ({ username }) => {
                           href={`/@/${encodeURIComponent(match.opponent)}`}
                           onClick={(event) => event.stopPropagation()}
                         >
-                          {formatOpponentWithRating(
-                            match.opponent,
-                            match.opponentAfterRating,
-                          )}
+                          {formatOpponentWithRating(match.opponent, match.opponentAfterRating)}
                         </a>
                       </td>
                       <td>{match.timeControl}</td>
@@ -461,9 +457,9 @@ export const PlayerProfilePage = ({ username }) => {
                             <ul>
                               {match.games.map((game, index) => (
                                 <li key={`${matchKey}-${game.id}-${index}`}>
-                                  Game {index + 1}: winner {game.winner}, score{" "}
-                                  {formatScore(game.playerScoreAfter)} -{" "}
-                                  {formatScore(game.opponentScoreAfter)}
+                                  {`Game ${index + 1}: winner ${game.winner}, score ${formatScore(
+                                    game.playerScoreAfter,
+                                  )} - ${formatScore(game.opponentScoreAfter)}`}
                                   <span> • </span>
                                   {game.id === "—" ? (
                                     "—"

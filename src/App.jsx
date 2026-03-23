@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Chessboard } from "./Chessboard";
-import { RankingsPage } from "./Rankings";
-import { RecentMatchesPage } from "./RecentMatches";
-import { PlayerProfilePage } from "./PlayerProfile";
+import { Chessboard } from "./components/Chessboard";
+import { RankingsPage } from "./pages/Rankings";
+import { RecentMatchesPage } from "./pages/RecentMatches";
+import { PlayerProfilePage } from "./pages/PlayerProfile";
 
 const appBasePath = (() => {
   const baseUrl = import.meta.env.BASE_URL || "/";
@@ -35,8 +35,7 @@ const getCurrentPuzzlePath = () => {
 
   let redirectedPathFromSession = "";
   try {
-    redirectedPathFromSession =
-      window.sessionStorage.getItem("redirectedPuzzlePath") || "";
+    redirectedPathFromSession = window.sessionStorage.getItem("redirectedPuzzlePath") || "";
     if (redirectedPathFromSession) {
       window.sessionStorage.removeItem("redirectedPuzzlePath");
     }
@@ -44,8 +43,7 @@ const getCurrentPuzzlePath = () => {
     // Ignore storage failures and rely on the current path or query parameter.
   }
 
-  const rawPath =
-    redirectedPathFromQuery || redirectedPathFromSession || window.location.pathname;
+  const rawPath = redirectedPathFromQuery || redirectedPathFromSession || window.location.pathname;
   return toAppRelativePath(rawPath);
 };
 
@@ -63,7 +61,6 @@ const isRankingsPath = () => {
   const currentPath = toAppRelativePath(window.location.pathname);
   return currentPath === "/rankings" || currentPath === "/rankings/";
 };
-
 
 const isProfilePath = () => {
   const currentPath = toAppRelativePath(window.location.pathname);
@@ -91,9 +88,7 @@ const puzzleIndexFromPath = (puzzles) => {
   const puzzleId = parsePuzzleIdFromPath();
   if (puzzleId === null) return -1;
 
-  const puzzleIndex = puzzles.findIndex(
-    (puzzle) => puzzle.puzzleId === puzzleId,
-  );
+  const puzzleIndex = puzzles.findIndex((puzzle) => puzzle.puzzleId === puzzleId);
   return puzzleIndex;
 };
 
@@ -106,18 +101,11 @@ const replaceUrlWithPuzzle = (puzzleId) => {
 
 const hasSolution = (puzzle) => {
   if (!puzzle) return false;
-  if (typeof puzzle.solution === "string")
-    return puzzle.solution.trim().length > 0;
+  if (typeof puzzle.solution === "string") return puzzle.solution.trim().length > 0;
   return Array.isArray(puzzle.solution) && puzzle.solution.length > 0;
 };
 
-const solutionFieldCandidates = [
-  "solution",
-  "moves",
-  "line",
-  "pgn",
-  "variation",
-];
+const solutionFieldCandidates = ["solution", "moves", "line", "pgn", "variation"];
 
 const normalizeSolution = (rawValue) => {
   if (typeof rawValue === "string") {
@@ -190,12 +178,9 @@ const movePrefix = (plyIndex, force = false) => {
 
 const orderedChildren = (node) =>
   [...node.children.values()].sort((a, b) => {
-    const firstLineDiff =
-      (a.firstOccurrence?.lineIndex ?? 0) - (b.firstOccurrence?.lineIndex ?? 0);
+    const firstLineDiff = (a.firstOccurrence?.lineIndex ?? 0) - (b.firstOccurrence?.lineIndex ?? 0);
     if (firstLineDiff !== 0) return firstLineDiff;
-    return (
-      (a.firstOccurrence?.moveIndex ?? 0) - (b.firstOccurrence?.moveIndex ?? 0)
-    );
+    return (a.firstOccurrence?.moveIndex ?? 0) - (b.firstOccurrence?.moveIndex ?? 0);
   });
 
 const findMainChild = (children) => children[0];
@@ -209,9 +194,7 @@ const supabaseConfig = {
 const loadPuzzlesFromSupabase = async () => {
   const { url, anonKey, table } = supabaseConfig;
   if (!url || !anonKey) {
-    throw new Error(
-      "Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in .env.local",
-    );
+    throw new Error("Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in .env.local");
   }
 
   const baseUrl = url.replace(/\/$/, "");
@@ -229,9 +212,7 @@ const loadPuzzlesFromSupabase = async () => {
     });
 
     if (!response.ok) {
-      throw new Error(
-        `HTTP ${response.status} while loading Supabase table "${table}"`,
-      );
+      throw new Error(`HTTP ${response.status} while loading Supabase table "${table}"`);
     }
 
     const pageRows = await response.json();
@@ -411,8 +392,7 @@ const AtomicTrainerPage = () => {
   }, [puzzles]);
 
   const activePuzzleIndex = historyIndex >= 0 ? history[historyIndex] : -1;
-  const activePuzzle =
-    activePuzzleIndex >= 0 ? puzzles[activePuzzleIndex] : null;
+  const activePuzzle = activePuzzleIndex >= 0 ? puzzles[activePuzzleIndex] : null;
   const fen = activePuzzle?.fen ?? "";
   const author = activePuzzle?.author?.trim() || "Unknown";
   const event = activePuzzle?.event?.trim() || "";
@@ -470,16 +450,13 @@ const AtomicTrainerPage = () => {
     const tree = createMoveTree(boardState.solutionLines);
 
     const renderNode = (node, plyIndex, keyPrefix, forceMoveNumber = false) => {
-      const availableLineIndexes = [...node.lineIndexes.values()].sort(
-        (a, b) => a - b,
-      );
+      const availableLineIndexes = [...node.lineIndexes.values()].sort((a, b) => a - b);
       const targetLineIndex = node.lineIndexes.has(boardState.solutionLineIndex)
         ? boardState.solutionLineIndex
         : (availableLineIndexes[0] ?? 0);
 
       const isActiveMove =
-        node.lineIndexes.has(boardState.solutionLineIndex) &&
-        boardState.lineIndex === plyIndex + 1;
+        node.lineIndexes.has(boardState.solutionLineIndex) && boardState.lineIndex === plyIndex + 1;
 
       const content = [
         <button
@@ -507,12 +484,7 @@ const AtomicTrainerPage = () => {
           </span>,
         );
         content.push(
-          ...renderNode(
-            variation,
-            plyIndex + 1,
-            variationKey,
-            (plyIndex + 1) % 2 === 1,
-          ),
+          ...renderNode(variation, plyIndex + 1, variationKey, (plyIndex + 1) % 2 === 1),
         );
         content.push(
           <span key={`${variationKey}-close`} className="variationParen">
@@ -564,18 +536,10 @@ const AtomicTrainerPage = () => {
 
         <div className="controls">
           <div className="buttonRow">
-            <button
-              type="button"
-              onClick={handlePreviousPuzzle}
-              disabled={historyIndex <= 0}
-            >
+            <button type="button" onClick={handlePreviousPuzzle} disabled={historyIndex <= 0}>
               Prev
             </button>
-            <button
-              type="button"
-              onClick={handleNextPuzzle}
-              disabled={puzzles.length === 0}
-            >
+            <button type="button" onClick={handleNextPuzzle} disabled={puzzles.length === 0}>
               Next
             </button>
             <a
@@ -590,19 +554,13 @@ const AtomicTrainerPage = () => {
             >
               Analyze
             </a>
-            <button
-              type="button"
-              onClick={handleToggleSolution}
-              disabled={!fen}
-            >
+            <button type="button" onClick={handleToggleSolution} disabled={!fen}>
               {showSolution ? "Hide solution" : "Show solution"}
             </button>
           </div>
         </div>
 
-        {boardState.error ? (
-          <div className="errorText">{boardState.error}</div>
-        ) : null}
+        {boardState.error ? <div className="errorText">{boardState.error}</div> : null}
         {loadingError ? <div className="errorText">{loadingError}</div> : null}
 
         <div className="fenBox">
@@ -635,9 +593,7 @@ const AtomicTrainerPage = () => {
           ) : boardState.lineMoves?.length ? (
             <div className="moveList" role="list" aria-label="Move line">
               {boardState.lineMoves.map((move, index) => {
-                const isActive =
-                  boardState.viewingSolution &&
-                  boardState.lineIndex === index + 1;
+                const isActive = boardState.viewingSolution && boardState.lineIndex === index + 1;
                 return (
                   <button
                     key={`${move}-${index}`}

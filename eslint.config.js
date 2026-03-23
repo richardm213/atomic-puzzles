@@ -4,8 +4,7 @@ const react = {
       meta: {
         type: "suggestion",
         docs: {
-          description:
-            "Disallow unnecessary JSX curly braces for string literals",
+          description: "Disallow unnecessary JSX curly braces for string literals",
         },
         fixable: "code",
         schema: [
@@ -19,10 +18,8 @@ const react = {
           },
         ],
         messages: {
-          unnecessaryCurlyProps:
-            "Curly braces are unnecessary for a plain string prop value.",
-          unnecessaryCurlyChildren:
-            "Curly braces are unnecessary for plain string children.",
+          unnecessaryCurlyProps: "Curly braces are unnecessary for a plain string prop value.",
+          unnecessaryCurlyChildren: "Curly braces are unnecessary for plain string children.",
         },
       },
       create(context) {
@@ -49,10 +46,7 @@ const react = {
               fix(fixer) {
                 const rawText = context.sourceCode.getText(value.expression);
                 const quote = rawText.startsWith("'") ? "'" : '"';
-                const escaped = String(value.expression.value).replaceAll(
-                  quote,
-                  `\\${quote}`,
-                );
+                const escaped = String(value.expression.value).replaceAll(quote, `\\${quote}`);
                 return fixer.replaceText(value, `${quote}${escaped}${quote}`);
               },
             });
@@ -70,11 +64,7 @@ const react = {
               messageId: "unnecessaryCurlyChildren",
               fix(fixer) {
                 const rawText = context.sourceCode.getText(node.expression);
-                if (
-                  rawText.startsWith('"') ||
-                  rawText.startsWith("'") ||
-                  rawText.startsWith("`")
-                ) {
+                if (rawText.startsWith('"') || rawText.startsWith("'") || rawText.startsWith("`")) {
                   return fixer.replaceText(node, node.expression.value);
                 }
                 return null;
@@ -191,8 +181,7 @@ export default [
         "error",
         {
           selector: "ExportDefaultDeclaration",
-          message:
-            "Default exports are not allowed. Use named exports instead.",
+          message: "Default exports are not allowed. Use named exports instead.",
         },
       ],
     },
