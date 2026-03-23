@@ -18,6 +18,62 @@ import {
   parseTimeControlParts,
 } from "./Rankings";
 
+const aliasFileUrlCandidates = ["/private/users.txt", "/data/users.txt"];
+
+const parseAliasLookup = (rawText) => {
+  const lookup = new Map();
+  const lines = String(rawText || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  lines.forEach((line) => {
+    const members = line
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+    if (members.length === 0) return;
+
+    const uniqueMembers = [...new Set(members)];
+    const [primary, ...aliases] = uniqueMembers;
+    const entry = {
+      primary,
+      aliases,
+      members: uniqueMembers,
+    };
+
+    uniqueMembers.forEach((member) => {
+      lookup.set(member.toLowerCase(), entry);
+    });
+  });
+
+  return lookup;
+};
+
+const loadAliasesLookup = async () => {
+  let lastError = null;
+
+  for (const url of aliasFileUrlCandidates) {
+    try {
+      const response = await fetch(url, { headers: { Accept: "text/plain" } });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const text = await response.text();
+      return parseAliasLookup(text);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  if (lastError) {
+    throw new Error(`Could not load aliases from configured sources (${String(lastError)})`);
+  }
+
+  return new Map();
+};
+
 export const PlayerProfilePage = ({ username }) => {
   const [selectedMode, setSelectedMode] = useState("blitz");
   const [matchesByMode, setMatchesByMode] = useState({
@@ -39,7 +95,21 @@ export const PlayerProfilePage = ({ username }) => {
   const [timeControlInitialFilter, setTimeControlInitialFilter] = useState("all");
   const [timeControlIncrementFilter, setTimeControlIncrementFilter] = useState("all");
   const [expandedMatchKeys, setExpandedMatchKeys] = useState([]);
+  const [aliasesLookup, setAliasesLookup] = useState(() => new Map());
   const matchLengthBounds = matchLengthBoundsByMode[selectedMode] ?? matchLengthBoundsByMode.blitz;
+
+  useEffect(() => {
+    const loadAliases = async () => {
+      try {
+        const loadedLookup = await loadAliasesLookup();
+        setAliasesLookup(loadedLookup);
+      } catch {
+        setAliasesLookup(new Map());
+      }
+    };
+
+    loadAliases();
+  }, []);
 
   useEffect(() => {
     const loadMatches = async () => {
@@ -210,6 +280,12 @@ export const PlayerProfilePage = ({ username }) => {
       .slice(0, 5);
   }, [filteredMatches]);
 
+  const aliasesForUser = useMemo(() => {
+    const entry = aliasesLookup.get(username.toLowerCase());
+    if (!entry) return [];
+    return entry.members.filter((member) => member.toLowerCase() !== username.toLowerCase());
+  }, [aliasesLookup, username]);
+
   return (
     <div className="rankingsPage">
       <div className="panel rankingsPanel">
@@ -260,23 +336,42 @@ export const PlayerProfilePage = ({ username }) => {
           </div>
         </div>
 
-        <div className="profileBestWins">
-          <h2>Best 5 Wins</h2>
-          {bestWins.length === 0 ? (
-            <div className="emptyRankings">No wins available in {selectedMode}.</div>
-          ) : (
-            <ol>
-              {bestWins.map((match) => (
-                <li key={`best-${match.startTs}-${match.firstGameId}`}>
-                  <a className="rankingLink" href={`/@/${encodeURIComponent(match.opponent)}`}>
-                    {formatOpponentWithRating(match.opponent, match.opponentAfterRating)}
-                  </a>
-                  <span> • </span>
-                  {formatLocalDateTime(match.startTs)}
-                </li>
-              ))}
-            </ol>
-          )}
+        <div className="profileHighlights">
+          <div className="profileBestWins">
+            <h2>Best 5 Wins</h2>
+            {bestWins.length === 0 ? (
+              <div className="emptyRankings">No wins available in {selectedMode}.</div>
+            ) : (
+              <ol>
+                {bestWins.map((match) => (
+                  <li key={`best-${match.startTs}-${match.firstGameId}`}>
+                    <a className="rankingLink" href={`/@/${encodeURIComponent(match.opponent)}`}>
+                      {formatOpponentWithRating(match.opponent, match.opponentAfterRating)}
+                    </a>
+                    <span> • </span>
+                    {formatLocalDateTime(match.startTs)}
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+
+          <div className="profileAliases">
+            <h2>Aliases</h2>
+            {aliasesForUser.length === 0 ? (
+              <div className="emptyRankings">No aliases listed.</div>
+            ) : (
+              <ul>
+                {aliasesForUser.map((alias) => (
+                  <li key={`alias-${alias}`}>
+                    <a className="rankingLink" href={`/@/${encodeURIComponent(alias)}`}>
+                      {alias}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
 
         <div className="controls rankingsControls profileControls">
