@@ -1,7 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 
 export const modeOptions = ["blitz", "bullet"];
-const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const monthNames = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
 export const pageSizeOptions = [10, 25, 50, 100];
 export const opponentRatingSliderMin = 1500;
 export const opponentRatingSliderMax = 2500;
@@ -80,16 +93,10 @@ const toPlayers = (value) => {
 
   return value
     .map((entry, index) => {
-      const username =
-        entry?.username ?? entry?.user ?? entry?.player ?? entry?.name ?? "";
+      const username = entry?.username ?? entry?.user ?? entry?.player ?? entry?.name ?? "";
       const scoreRaw =
-        entry?.score ??
-        entry?.rating ??
-        entry?.points ??
-        entry?.elo ??
-        entry?.performance;
-      const gamesRaw =
-        entry?.games ?? entry?.game_count ?? entry?.played ?? entry?.num_games;
+        entry?.score ?? entry?.rating ?? entry?.points ?? entry?.elo ?? entry?.performance;
+      const gamesRaw = entry?.games ?? entry?.game_count ?? entry?.played ?? entry?.num_games;
       const rankRaw = entry?.rank ?? entry?.position;
       const rdRaw = entry?.rd;
 
@@ -162,9 +169,7 @@ export const formatLocalDateTime = (timestamp) => {
   const date = new Date(timestamp);
   const now = new Date();
   const includeYear = date.getFullYear() !== now.getFullYear();
-  const month = date
-    .toLocaleString("en-US", { month: "short" })
-    .toLowerCase();
+  const month = date.toLocaleString("en-US", { month: "short" }).toLowerCase();
   const day = date.getDate();
   const year = date.getFullYear();
   const time = date
@@ -254,8 +259,7 @@ export const normalizeMatches = (matches, username) => {
     .map((match) => {
       const players = Array.isArray(match.players) ? match.players : [];
       const opponent =
-        players.find((player) => String(player).toLowerCase() !== usernameLower) ||
-        "Unknown";
+        players.find((player) => String(player).toLowerCase() !== usernameLower) || "Unknown";
       const games = Array.isArray(match.games) ? match.games : [];
       const score = games.reduce(
         (accumulator, game) => {
@@ -285,8 +289,7 @@ export const normalizeMatches = (matches, username) => {
           runningOpponentScore += 1;
         }
 
-        const winnerLabel =
-          result === "win" ? username : result === "loss" ? opponent : "draw";
+        const winnerLabel = result === "win" ? username : result === "loss" ? opponent : "draw";
 
         return {
           id: String(game?.id || "—"),
@@ -317,10 +320,7 @@ export const normalizeMatches = (matches, username) => {
           Number.isFinite(beforeRating) && Number.isFinite(afterRating)
             ? afterRating - beforeRating
             : null,
-        rdChange:
-          Number.isFinite(beforeRd) && Number.isFinite(afterRd)
-            ? afterRd - beforeRd
-            : null,
+        rdChange: Number.isFinite(beforeRd) && Number.isFinite(afterRd) ? afterRd - beforeRd : null,
         beforeRating: Number.isFinite(beforeRating) ? beforeRating : null,
         beforeRd: Number.isFinite(beforeRd) ? beforeRd : null,
         afterRating: Number.isFinite(afterRating) ? afterRating : null,
@@ -405,8 +405,10 @@ const LeaderboardView = () => {
   }, [availableMonthsForYear, selectedMonthName, selectedYear]);
 
   const selectedMonthData = rankingsByMonth.get(selectedMonth);
-  const selectedModeData =
-    selectedMonthData?.[selectedMode] || { players: [], qualifiedPlayers: [] };
+  const selectedModeData = selectedMonthData?.[selectedMode] || {
+    players: [],
+    qualifiedPlayers: [],
+  };
   const players = selectedModeData.players;
   const qualifiedCount = selectedModeData.qualifiedPlayers.length;
 
@@ -505,9 +507,7 @@ const LeaderboardView = () => {
         </div>
 
         {players.length === 0 ? (
-          <div className="emptyRankings">
-            No leaderboard entries available for this month.
-          </div>
+          <div className="emptyRankings">No leaderboard entries available for this month.</div>
         ) : (
           <div className="rankingsTableWrap">
             <table className="rankingsTable">
@@ -557,10 +557,7 @@ const LeaderboardView = () => {
                   <tr key={`${selectedMonth}-${player.rank}-${player.username}`}>
                     <td>{player.rank}</td>
                     <td>
-                      <a
-                        className="rankingLink"
-                        href={`/@/${encodeURIComponent(player.username)}`}
-                      >
+                      <a className="rankingLink" href={`/@/${encodeURIComponent(player.username)}`}>
                         {player.username}
                       </a>
                     </td>

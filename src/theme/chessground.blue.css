@@ -22,19 +22,11 @@ cg-board square.premove-dest {
 }
 
 cg-board square.oc.move-dest {
-  background: radial-gradient(
-    transparent 0%,
-    transparent 80%,
-    rgba(18, 92, 173, 0.35) 80%
-  );
+  background: radial-gradient(transparent 0%, transparent 80%, rgba(18, 92, 173, 0.35) 80%);
 }
 
 cg-board square.oc.premove-dest {
-  background: radial-gradient(
-    transparent 0%,
-    transparent 80%,
-    rgba(45, 82, 167, 0.25) 80%
-  );
+  background: radial-gradient(transparent 0%, transparent 80%, rgba(45, 82, 167, 0.25) 80%);
 }
 
 cg-board square.move-dest:hover,
