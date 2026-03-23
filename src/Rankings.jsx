@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 
 const modeOptions = ["blitz", "bullet"];
 const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const pageSizeOptions = [10, 25, 50, 100];
 
 const monthLabelFromDate = (date) =>
   date.toLocaleString("en-US", {
@@ -128,7 +129,130 @@ const normalizeLeaderboardData = (rawData) => {
   return monthMap;
 };
 
-export const RankingsPage = () => {
+const parseWinnerFromPerspective = (game, usernameLower) => {
+  const white = String(game?.white || "").toLowerCase();
+  const black = String(game?.black || "").toLowerCase();
+  const winner = game?.winner;
+
+  if (winner === "draw") return "draw";
+  if (winner === "white") return white === usernameLower ? "win" : "loss";
+  if (winner === "black") return black === usernameLower ? "win" : "loss";
+  return "draw";
+};
+
+const formatSignedDecimal = (value) => {
+  if (!Number.isFinite(value)) return "—";
+  const rounded = Math.round(value * 10) / 10;
+  if (rounded > 0) return `+${rounded.toFixed(1)}`;
+  return rounded.toFixed(1);
+};
+
+const formatLocalDateTime = (timestamp) => {
+  if (!Number.isFinite(timestamp)) return "—";
+  const date = new Date(timestamp);
+  const now = new Date();
+  const includeYear = date.getFullYear() !== now.getFullYear();
+  const month = date
+    .toLocaleString("en-US", { month: "short" })
+    .toLowerCase();
+  const day = date.getDate();
+  const year = date.getFullYear();
+  const time = date
+    .toLocaleString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    })
+    .toLowerCase();
+
+  return includeYear ? `${month} ${day}, ${year} ${time}` : `${month} ${day} ${time}`;
+};
+
+const formatScore = (value) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return "0.0";
+  return numeric.toFixed(1);
+};
+
+const formatOpponentWithRating = (opponent, opponentRating) => {
+  if (!Number.isFinite(opponentRating)) return opponent;
+  return `${opponent} (${opponentRating.toFixed(1)})`;
+};
+
+const matchJsonUrlCandidates = (mode) => [
+  `/private/${mode}_matches.json`,
+  `/data/${mode}_matches.json`,
+  `https://raw.githubusercontent.com/atomicchess/atomic-rankings/main/data/${mode}_matches.json`,
+  `https://raw.githubusercontent.com/atomaire/atomic-rankings/main/data/${mode}_matches.json`,
+];
+
+const normalizeMatches = (matches, username) => {
+  const usernameLower = username.toLowerCase();
+
+  return (Array.isArray(matches) ? matches : [])
+    .filter((match) =>
+      (Array.isArray(match?.players) ? match.players : []).some(
+        (player) => String(player).toLowerCase() === usernameLower,
+      ),
+    )
+    .map((match) => {
+      const players = Array.isArray(match.players) ? match.players : [];
+      const opponent =
+        players.find((player) => String(player).toLowerCase() !== usernameLower) ||
+        "Unknown";
+      const games = Array.isArray(match.games) ? match.games : [];
+      const score = games.reduce(
+        (accumulator, game) => {
+          const result = parseWinnerFromPerspective(game, usernameLower);
+          if (result === "win") {
+            accumulator.player += 1;
+          } else if (result === "draw") {
+            accumulator.player += 0.5;
+            accumulator.opponent += 0.5;
+          } else {
+            accumulator.opponent += 1;
+          }
+          return accumulator;
+        },
+        { player: 0, opponent: 0 },
+      );
+
+      const ratingData = match?.ratings?.[username] || match?.ratings?.[usernameLower] || null;
+      const opponentLower = String(opponent).toLowerCase();
+      const opponentRatingData =
+        match?.ratings?.[opponent] || match?.ratings?.[opponentLower] || null;
+      const beforeRating = Number(ratingData?.before_rating);
+      const afterRating = Number(ratingData?.after_rating);
+      const beforeRd = Number(ratingData?.before_rd);
+      const afterRd = Number(ratingData?.after_rd);
+      const opponentAfterRating = Number(opponentRatingData?.after_rating);
+
+      return {
+        startTs: Number(match?.start_ts),
+        timeControl: String(match?.time_control || "—"),
+        opponent: String(opponent),
+        score: `${score.player}-${score.opponent}`,
+        playerScore: score.player,
+        opponentScore: score.opponent,
+        ratingChange:
+          Number.isFinite(beforeRating) && Number.isFinite(afterRating)
+            ? afterRating - beforeRating
+            : null,
+        rdChange:
+          Number.isFinite(beforeRd) && Number.isFinite(afterRd)
+            ? afterRd - beforeRd
+            : null,
+        beforeRating: Number.isFinite(beforeRating) ? beforeRating : null,
+        afterRating: Number.isFinite(afterRating) ? afterRating : null,
+        afterRd: Number.isFinite(afterRd) ? afterRd : null,
+        opponentAfterRating: Number.isFinite(opponentAfterRating) ? opponentAfterRating : null,
+        firstGameId: String(games[0]?.id || "—"),
+      };
+    })
+    .sort((a, b) => b.startTs - a.startTs);
+};
+
+const LeaderboardView = () => {
   const [rankingsByMonth, setRankingsByMonth] = useState(new Map());
   const [selectedYear, setSelectedYear] = useState("");
   const [selectedMonthName, setSelectedMonthName] = useState("");
@@ -185,8 +309,8 @@ export const RankingsPage = () => {
     if (!selectedYear) return monthNames;
     const availableSet = new Set(
       monthOptions
-      .filter((monthKey) => monthKey.endsWith(` ${selectedYear}`))
-      .map((monthKey) => monthKey.split(" ")[0]),
+        .filter((monthKey) => monthKey.endsWith(` ${selectedYear}`))
+        .map((monthKey) => monthKey.split(" ")[0]),
     );
     const monthsForYear = monthNames.filter((monthName) => availableSet.has(monthName));
     return monthsForYear.length > 0 ? monthsForYear : monthNames;
@@ -365,4 +489,273 @@ export const RankingsPage = () => {
       </div>
     </div>
   );
+};
+
+const PlayerProfileView = ({ username }) => {
+  const [selectedMode, setSelectedMode] = useState("blitz");
+  const [matches, setMatches] = useState([]);
+  const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+
+  useEffect(() => {
+    const loadMatches = async () => {
+      const candidates = matchJsonUrlCandidates(selectedMode);
+      let loaded = null;
+      let lastError = null;
+
+      setError("");
+
+      for (const url of candidates) {
+        try {
+          const response = await fetch(url, { headers: { Accept: "application/json" } });
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+
+          loaded = await response.json();
+          break;
+        } catch (fetchError) {
+          lastError = fetchError;
+        }
+      }
+
+      if (!loaded) {
+        setMatches([]);
+        setError(
+          `Could not load ${selectedMode} match history from atomic-rankings sources (${String(lastError)})`,
+        );
+        return;
+      }
+
+      setMatches(normalizeMatches(loaded, username));
+      setPage(1);
+    };
+
+    loadMatches();
+  }, [selectedMode, username]);
+
+  const totalPages = Math.max(1, Math.ceil(matches.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+
+  const pageRows = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return matches.slice(start, start + pageSize);
+  }, [currentPage, matches, pageSize]);
+
+  const latestWithRating = matches.find(
+    (match) => Number.isFinite(match.afterRating) || Number.isFinite(match.afterRd),
+  );
+  const peakRating = useMemo(() => {
+    const ratings = matches.flatMap((match) =>
+      [match.beforeRating, match.afterRating].filter((value) => Number.isFinite(value)),
+    );
+    if (ratings.length === 0) return null;
+    return Math.max(...ratings);
+  }, [matches]);
+
+  const bestWins = useMemo(() => {
+    return matches
+      .filter((match) => match.playerScore > match.opponentScore)
+      .sort((a, b) => {
+        const ratingDiff = (b.opponentAfterRating ?? -Infinity) - (a.opponentAfterRating ?? -Infinity);
+        if (ratingDiff !== 0) return ratingDiff;
+        return b.startTs - a.startTs;
+      })
+      .slice(0, 5);
+  }, [matches]);
+
+  return (
+    <div className="rankingsPage">
+      <div className="panel rankingsPanel">
+        <h1>{username}</h1>
+
+        <div className="profileTopBar">
+          <div className="profileMetric">
+            <span className="statusLabel">Current Rating</span>
+            <strong>{Number.isFinite(latestWithRating?.afterRating) ? latestWithRating.afterRating.toFixed(1) : "—"}</strong>
+          </div>
+          <div className="profileMetric">
+            <span className="statusLabel">Current RD</span>
+            <strong>{Number.isFinite(latestWithRating?.afterRd) ? latestWithRating.afterRd.toFixed(1) : "—"}</strong>
+          </div>
+          <div className="profileMetric">
+            <span className="statusLabel">Peak Rating</span>
+            <strong>{Number.isFinite(peakRating) ? peakRating.toFixed(1) : "—"}</strong>
+          </div>
+        </div>
+
+        <div className="profileBestWins">
+          <h2>Best 5 Wins</h2>
+          {bestWins.length === 0 ? (
+            <div className="emptyRankings">No wins available in {selectedMode}.</div>
+          ) : (
+            <ol>
+              {bestWins.map((match) => (
+                <li key={`best-${match.startTs}-${match.firstGameId}`}>
+                  <a
+                    className="rankingLink"
+                    href={`/rankings/${encodeURIComponent(match.opponent)}`}
+                  >
+                    {formatOpponentWithRating(match.opponent, match.opponentAfterRating)}
+                  </a>
+                  <span> • </span>
+                  {formatScore(match.playerScore)} - {formatScore(match.opponentScore)}
+                  <span> • </span>
+                  {formatLocalDateTime(match.startTs)}
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+
+        <div className="controls rankingsControls profileControls">
+          <label htmlFor="profile-mode-select">
+            Mode
+            <select
+              id="profile-mode-select"
+              value={selectedMode}
+              onChange={(event) => setSelectedMode(event.target.value)}
+            >
+              {modeOptions.map((mode) => (
+                <option key={mode} value={mode}>
+                  {mode}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label htmlFor="profile-page-size-select">
+            Page size
+            <select
+              id="profile-page-size-select"
+              value={pageSize}
+              onChange={(event) => {
+                setPageSize(Number(event.target.value));
+                setPage(1);
+              }}
+            >
+              {pageSizeOptions.map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className="profileBackLinkWrap">
+          <a className="rankingLink" href="/rankings">
+            ← Back to rankings
+          </a>
+        </div>
+
+        {error ? <div className="errorText">{error}</div> : null}
+
+        <div className="rankingsMeta">
+          <span>
+            Match History ({selectedMode})
+          </span>
+          <span>
+            {matches.length} matches total
+          </span>
+        </div>
+
+        <div className="rankingsTableWrap">
+          <table className="rankingsTable">
+            <thead>
+              <tr>
+                <th>Date / Time (Local)</th>
+                <th>Opponent</th>
+                <th>Time Control</th>
+                <th>Score</th>
+                <th>Rating (Δ)</th>
+                <th>RD (Δ)</th>
+                <th>Game ID</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pageRows.map((match) => (
+                <tr key={`${match.startTs}-${match.firstGameId}`}>
+                  <td>{formatLocalDateTime(match.startTs)}</td>
+                  <td>
+                    <a
+                      className="rankingLink"
+                      href={`/rankings/${encodeURIComponent(match.opponent)}`}
+                    >
+                      {formatOpponentWithRating(match.opponent, match.opponentAfterRating)}
+                    </a>
+                  </td>
+                  <td>{match.timeControl}</td>
+                  <td className="scoreCell">
+                    <span>{formatScore(match.playerScore)}</span>
+                    <span className="scoreDash"> - </span>
+                    <span>{formatScore(match.opponentScore)}</span>
+                  </td>
+                  <td>
+                    {Number.isFinite(match.afterRating)
+                      ? `${match.afterRating.toFixed(1)}(${formatSignedDecimal(match.ratingChange)})`
+                      : "—"}
+                  </td>
+                  <td>
+                    {Number.isFinite(match.afterRd)
+                      ? `${match.afterRd.toFixed(1)}(${formatSignedDecimal(match.rdChange)})`
+                      : "—"}
+                  </td>
+                  <td>
+                    {match.firstGameId === "—" ? (
+                      "—"
+                    ) : (
+                      <a
+                        className="rankingLink"
+                        href={`https://lichess.org/${encodeURIComponent(match.firstGameId)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {match.firstGameId}
+                      </a>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {pageRows.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="emptyRankings">
+                    No matches found for this player in {selectedMode}.
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="paginationRow">
+          <button
+            type="button"
+            onClick={() => setPage((current) => Math.max(1, current - 1))}
+            disabled={currentPage <= 1}
+          >
+            Previous
+          </button>
+          <span>
+            Page {currentPage} / {totalPages}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+            disabled={currentPage >= totalPages}
+          >
+            Next
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const RankingsPage = ({ username = "" }) => {
+  if (username) {
+    return <PlayerProfileView username={username} />;
+  }
+
+  return <LeaderboardView />;
 };

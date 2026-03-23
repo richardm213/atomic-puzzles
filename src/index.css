@@ -380,3 +380,83 @@ input {
     justify-content: flex-start;
   }
 }
+
+.profileTopBar {
+  margin-top: 8px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.profileMetric {
+  flex: 1 1 180px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.profileMetric strong {
+  font-size: 20px;
+}
+
+.profileControls {
+  margin-top: 18px;
+}
+
+.profileBestWins {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.profileBestWins h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.profileBestWins ol {
+  margin: 10px 0 0 18px;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.profileBackLinkWrap {
+  margin-top: 10px;
+}
+
+.paginationRow {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.paginationRow button {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: #0f172a;
+  color: #e8ecf3;
+  border-radius: 12px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.paginationRow button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.scoreCell {
+  white-space: nowrap;
+  text-align: center !important;
+  font-variant-numeric: tabular-nums;
+  min-width: 108px;
+}
+
+.scoreDash {
+  padding: 0 2px;
+}
