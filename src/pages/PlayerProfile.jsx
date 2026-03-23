@@ -20,7 +20,10 @@ import {
 
 export const PlayerProfilePage = ({ username }) => {
   const [selectedMode, setSelectedMode] = useState("blitz");
-  const [matches, setMatches] = useState([]);
+  const [matchesByMode, setMatchesByMode] = useState({
+    blitz: [],
+    bullet: [],
+  });
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -42,17 +45,28 @@ export const PlayerProfilePage = ({ username }) => {
     const loadMatches = async () => {
       setError("");
       try {
-        const loaded = await loadRawMatchesByMode(selectedMode);
-        setMatches(normalizeMatches(loaded, username));
+        const [blitzLoaded, bulletLoaded] = await Promise.all([
+          loadRawMatchesByMode("blitz"),
+          loadRawMatchesByMode("bullet"),
+        ]);
+        setMatchesByMode({
+          blitz: normalizeMatches(blitzLoaded, username),
+          bullet: normalizeMatches(bulletLoaded, username),
+        });
         setPage(1);
       } catch (loadError) {
-        setMatches([]);
+        setMatchesByMode({
+          blitz: [],
+          bullet: [],
+        });
         setError(String(loadError));
       }
     };
 
     loadMatches();
-  }, [selectedMode, username]);
+  }, [username]);
+
+  const matches = matchesByMode[selectedMode] ?? [];
 
   useEffect(() => {
     const bounds = matchLengthBoundsByMode[selectedMode] ?? matchLengthBoundsByMode.blitz;
@@ -144,11 +158,11 @@ export const PlayerProfilePage = ({ username }) => {
     return filteredMatches.slice(start, start + pageSize);
   }, [currentPage, filteredMatches, pageSize]);
 
-  const latestWithRating = matches.find(
-    (match) => Number.isFinite(match.afterRating) || Number.isFinite(match.afterRd),
-  );
-  const peakRating = useMemo(() => {
-    const ratings = matches.flatMap((match) => {
+  const getModeRatingSummary = (modeMatches) => {
+    const latestWithRating = modeMatches.find(
+      (match) => Number.isFinite(match.afterRating) || Number.isFinite(match.afterRd),
+    );
+    const ratings = modeMatches.flatMap((match) => {
       const candidates = [];
       if (
         Number.isFinite(match.beforeRating) &&
@@ -166,9 +180,19 @@ export const PlayerProfilePage = ({ username }) => {
       }
       return candidates;
     });
-    if (ratings.length === 0) return null;
-    return Math.max(...ratings);
-  }, [matches]);
+
+    return {
+      currentRating: latestWithRating?.afterRating ?? null,
+      currentRd: latestWithRating?.afterRd ?? null,
+      peakRating: ratings.length > 0 ? Math.max(...ratings) : null,
+    };
+  };
+
+  const blitzSummary = useMemo(() => getModeRatingSummary(matchesByMode.blitz ?? []), [matchesByMode]);
+  const bulletSummary = useMemo(
+    () => getModeRatingSummary(matchesByMode.bullet ?? []),
+    [matchesByMode],
+  );
 
   const bestWins = useMemo(() => {
     return filteredMatches
@@ -189,24 +213,38 @@ export const PlayerProfilePage = ({ username }) => {
 
         <div className="profileTopBar">
           <div className="profileMetric">
-            <span className="statusLabel">Current Rating</span>
+            <span className="statusLabel">Blitz Current Rating</span>
             <strong>
-              {Number.isFinite(latestWithRating?.afterRating)
-                ? latestWithRating.afterRating.toFixed(1)
+              {Number.isFinite(blitzSummary.currentRating) ? blitzSummary.currentRating.toFixed(1) : "—"}
+            </strong>
+          </div>
+          <div className="profileMetric">
+            <span className="statusLabel">Blitz Current RD</span>
+            <strong>
+              {Number.isFinite(blitzSummary.currentRd) ? blitzSummary.currentRd.toFixed(1) : "—"}
+            </strong>
+          </div>
+          <div className="profileMetric">
+            <span className="statusLabel">Blitz Peak Rating</span>
+            <strong>{Number.isFinite(blitzSummary.peakRating) ? blitzSummary.peakRating.toFixed(1) : "—"}</strong>
+          </div>
+          <div className="profileMetric">
+            <span className="statusLabel">Bullet Current Rating</span>
+            <strong>
+              {Number.isFinite(bulletSummary.currentRating)
+                ? bulletSummary.currentRating.toFixed(1)
                 : "—"}
             </strong>
           </div>
           <div className="profileMetric">
-            <span className="statusLabel">Current RD</span>
+            <span className="statusLabel">Bullet Current RD</span>
             <strong>
-              {Number.isFinite(latestWithRating?.afterRd)
-                ? latestWithRating.afterRd.toFixed(1)
-                : "—"}
+              {Number.isFinite(bulletSummary.currentRd) ? bulletSummary.currentRd.toFixed(1) : "—"}
             </strong>
           </div>
           <div className="profileMetric">
-            <span className="statusLabel">Peak Rating</span>
-            <strong>{Number.isFinite(peakRating) ? peakRating.toFixed(1) : "—"}</strong>
+            <span className="statusLabel">Bullet Peak Rating</span>
+            <strong>{Number.isFinite(bulletSummary.peakRating) ? bulletSummary.peakRating.toFixed(1) : "—"}</strong>
           </div>
         </div>
 
