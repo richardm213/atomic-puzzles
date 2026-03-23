@@ -62,6 +62,18 @@ const isRankingsPath = () => {
   return currentPath === "/rankings" || currentPath.startsWith("/rankings/");
 };
 
+const rankingsUsernameFromPath = () => {
+  const currentPath = toAppRelativePath(window.location.pathname);
+  const match = currentPath.match(/^\/rankings\/([^/]+)\/?$/);
+  if (!match) return "";
+
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return match[1];
+  }
+};
+
 const puzzleIndexFromPath = (puzzles) => {
   const puzzleId = parsePuzzleIdFromPath();
   if (puzzleId === null) return -1;
@@ -224,10 +236,12 @@ const loadPuzzlesFromSupabase = async () => {
 
 export const App = () => {
   const [isRankingsRoute, setIsRankingsRoute] = useState(() => isRankingsPath());
+  const [rankingsUsername, setRankingsUsername] = useState(() => rankingsUsernameFromPath());
 
   useEffect(() => {
     const onRouteChange = () => {
       setIsRankingsRoute(isRankingsPath());
+      setRankingsUsername(rankingsUsernameFromPath());
     };
 
     window.addEventListener("popstate", onRouteChange);
@@ -235,7 +249,7 @@ export const App = () => {
   }, []);
 
   if (isRankingsRoute) {
-    return <RankingsPage />;
+    return <RankingsPage username={rankingsUsername} />;
   }
 
   return <AtomicTrainerPage />;
