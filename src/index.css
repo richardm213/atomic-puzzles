@@ -380,3 +380,178 @@ input {
     justify-content: flex-start;
   }
 }
+
+.profileTopBar {
+  margin-top: 8px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.profileMetric {
+  flex: 1 1 180px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.profileMetric strong {
+  font-size: 20px;
+}
+
+.profileControls {
+  margin-top: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(120px, max-content));
+  justify-content: flex-start;
+}
+
+.profileControls label {
+  justify-items: start;
+}
+
+.opponentRatingFilter {
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dualRangeSlider {
+  position: relative;
+  height: 24px;
+  margin-top: 8px;
+}
+
+.dualRangeTrack,
+.dualRangeSelected {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 6px;
+  border-radius: 999px;
+}
+
+.dualRangeTrack {
+  left: 0;
+  right: 0;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.dualRangeSelected {
+  background: #60a5fa;
+}
+
+.dualRangeInput {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 24px;
+  margin: 0;
+  appearance: none;
+  background: transparent;
+  pointer-events: none;
+}
+
+.dualRangeInput::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #dbeafe;
+  border: 1px solid #60a5fa;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.dualRangeInput::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #dbeafe;
+  border: 1px solid #60a5fa;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.expandableMatchRow {
+  cursor: pointer;
+}
+
+.expandableMatchRow.expanded {
+  background: rgba(96, 165, 250, 0.14);
+}
+
+.matchDetailsRow td {
+  background: rgba(15, 23, 42, 0.9);
+}
+
+.matchDetailsInner {
+  padding: 6px 0;
+}
+
+.matchDetailsInner ul {
+  margin: 8px 0 0 18px;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.profileBestWins {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.profileBestWins h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.profileBestWins ol {
+  margin: 10px 0 0 18px;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.profileBackLinkWrap {
+  margin-top: 10px;
+}
+
+.paginationRow {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.paginationRow button {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: #0f172a;
+  color: #e8ecf3;
+  border-radius: 12px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.paginationRow button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.scoreCell {
+  white-space: nowrap;
+  text-align: center !important;
+  font-variant-numeric: tabular-nums;
+  min-width: 108px;
+}
+
+.scoreDash {
+  padding: 0 2px;
+}
