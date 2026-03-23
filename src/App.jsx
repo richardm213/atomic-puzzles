@@ -19,6 +19,11 @@ const toAppRelativePath = (pathname) => {
   return pathname;
 };
 
+const appPath = (pathname = "/") => {
+  const normalized = pathname.startsWith("/") ? pathname : `/${pathname}`;
+  return `${appBasePath}${normalized}`;
+};
+
 const lichessAnalysisUrl = (fen) => {
   if (!fen) return "https://lichess.org/analysis/atomic";
   return `https://lichess.org/analysis/atomic/${fen.replaceAll(" ", "_")}`;
@@ -49,7 +54,7 @@ const getCurrentPuzzlePath = () => {
 
 const parsePuzzleIdFromPath = () => {
   const currentPath = getCurrentPuzzlePath();
-  const match = currentPath.match(/^\/(\d+)\/?$/);
+  const match = currentPath.match(/^\/(?:solve\/)?(\d+)\/?$/);
   if (!match) return null;
 
   const puzzleId = Number.parseInt(match[1], 10);
@@ -81,7 +86,12 @@ const profileUsernameFromPath = () => {
 
 const isMatchesPath = () => {
   const currentPath = toAppRelativePath(window.location.pathname);
-  return currentPath === "/recent" || currentPath === "/matches";
+  return currentPath === "/recent" || currentPath === "/matches" || currentPath === "/recent/";
+};
+
+const isSolvePath = () => {
+  const currentPath = toAppRelativePath(window.location.pathname);
+  return /^\/solve(?:\/\d+)?\/?$/.test(currentPath) || /^\/\d+\/?$/.test(currentPath);
 };
 
 const puzzleIndexFromPath = (puzzles) => {
@@ -93,7 +103,7 @@ const puzzleIndexFromPath = (puzzles) => {
 };
 
 const replaceUrlWithPuzzle = (puzzleId) => {
-  const nextPath = `${appBasePath}/${puzzleId}`;
+  const nextPath = appPath(`/solve/${puzzleId}`);
   if (window.location.pathname !== nextPath) {
     window.history.replaceState(null, "", nextPath);
   }
@@ -228,10 +238,193 @@ const loadPuzzlesFromSupabase = async () => {
   return allRows;
 };
 
+const formatPreviewDateTime = (timestamp) => {
+  if (!Number.isFinite(timestamp)) return "—";
+  const date = new Date(timestamp);
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+};
+
+const TopNav = () => (
+  <header className="topNav">
+    <a className="homeBrand" href={appPath("/")} aria-label="Go to home page">
+      <img src={appPath("/favicon.ico")} alt="Atomic Puzzles" width="24" height="24" />
+    </a>
+    <nav className="topNavLinks" aria-label="Main navigation">
+      <a href={appPath("/rankings")}>Rankings</a>
+      <a href={appPath("/solve")}>Puzzles</a>
+      <a href={appPath("/recent")}>Recent</a>
+    </nav>
+  </header>
+);
+
+const HomePage = () => {
+  const [usernameQuery, setUsernameQuery] = useState("");
+  const [allUsernames, setAllUsernames] = useState([]);
+  const [rankingsPreview, setRankingsPreview] = useState([]);
+  const [recentPreview, setRecentPreview] = useState([]);
+  const [homeError, setHomeError] = useState("");
+
+  useEffect(() => {
+    const loadHomeData = async () => {
+      try {
+        setHomeError("");
+        const [leaderboardResponse, matchesResponse] = await Promise.all([
+          fetch("/private/lb.json", { headers: { Accept: "application/json" } }),
+          fetch("/private/blitz_matches.json", { headers: { Accept: "application/json" } }),
+        ]);
+
+        if (!leaderboardResponse.ok) {
+          throw new Error(`Could not load /private/lb.json (HTTP ${leaderboardResponse.status})`);
+        }
+        if (!matchesResponse.ok) {
+          throw new Error(
+            `Could not load /private/blitz_matches.json (HTTP ${matchesResponse.status})`,
+          );
+        }
+
+        const leaderboardData = await leaderboardResponse.json();
+        const rawMatches = await matchesResponse.json();
+
+        const latestMonthKey = Object.keys(leaderboardData || {})
+          .filter((value) => /^[A-Za-z]{3} \d{4}$/.test(value))
+          .sort((a, b) => new Date(`${b} 01 UTC`) - new Date(`${a} 01 UTC`))[0];
+
+        const latestBlitzRankings =
+          leaderboardData?.[latestMonthKey]?.blitz?.rankings ||
+          leaderboardData?.[latestMonthKey]?.bullet?.rankings ||
+          [];
+        const normalizedRankings = (Array.isArray(latestBlitzRankings) ? latestBlitzRankings : [])
+          .map((entry, index) => ({
+            rank: Number(entry?.rank) || index + 1,
+            username: String(entry?.username || entry?.user || entry?.player || "Unknown"),
+            score: Number(entry?.score),
+          }))
+          .slice(0, 5);
+        setRankingsPreview(normalizedRankings);
+
+        const usernameSet = new Set();
+        Object.values(leaderboardData || {}).forEach((monthData) => {
+          ["blitz", "bullet"].forEach((mode) => {
+            const rankings = monthData?.[mode]?.rankings;
+            if (!Array.isArray(rankings)) return;
+            rankings.forEach((row) => {
+              const username = String(row?.username || row?.user || row?.player || "").trim();
+              if (username) usernameSet.add(username);
+            });
+          });
+        });
+        setAllUsernames([...usernameSet].sort((a, b) => a.localeCompare(b)));
+
+        const normalizedRecent = (Array.isArray(rawMatches) ? rawMatches : [])
+          .map((match) => ({
+            startTs: Number(match?.start_ts),
+            players: Array.isArray(match?.players)
+              ? match.players.slice(0, 2).map((player) => String(player || "Unknown"))
+              : ["Unknown", "Unknown"],
+            gameCount: Array.isArray(match?.games) ? match.games.length : 0,
+          }))
+          .filter((match) => Number.isFinite(match.startTs))
+          .sort((a, b) => b.startTs - a.startTs)
+          .slice(0, 5);
+        setRecentPreview(normalizedRecent);
+      } catch (error) {
+        setHomeError(String(error?.message || error));
+      }
+    };
+
+    loadHomeData();
+  }, []);
+
+  const usernameSuggestions = useMemo(() => {
+    if (usernameQuery.trim().length < 3) return [];
+    const lower = usernameQuery.trim().toLowerCase();
+    return allUsernames
+      .filter((username) => username.toLowerCase().includes(lower))
+      .slice(0, 10);
+  }, [allUsernames, usernameQuery]);
+
+  const handleSearch = (event) => {
+    event.preventDefault();
+    const target = usernameQuery.trim();
+    if (!target) return;
+    window.location.href = appPath(`/@/${encodeURIComponent(target)}`);
+  };
+
+  return (
+    <div className="homePage">
+      <div className="panel homePanel">
+        <h1>Atomic Puzzles</h1>
+        <p>Solve tactics, track top rankings, and follow fresh match history.</p>
+        <a className="primaryCta" href={appPath("/solve")}>
+          Go solve puzzles
+        </a>
+
+        <form className="homeSearch" onSubmit={handleSearch}>
+          <label htmlFor="username-search">Search username</label>
+          <input
+            id="username-search"
+            type="text"
+            list="username-suggestions"
+            value={usernameQuery}
+            onChange={(event) => setUsernameQuery(event.target.value)}
+            placeholder="Type at least 3 characters"
+          />
+          <datalist id="username-suggestions">
+            {usernameSuggestions.map((username) => (
+              <option key={username} value={username} />
+            ))}
+          </datalist>
+          <button type="submit">Open profile</button>
+        </form>
+
+        {homeError ? <div className="errorText">{homeError}</div> : null}
+
+        <section className="homePreview">
+          <a className="previewHeader" href={appPath("/rankings")}>
+            Mar Rankings Preview →
+          </a>
+          <ul>
+            {rankingsPreview.map((player) => (
+              <li key={`${player.rank}-${player.username}`}>
+                #{player.rank}{" "}
+                <a className="rankingLink" href={appPath(`/@/${encodeURIComponent(player.username)}`)}>
+                  {player.username}
+                </a>{" "}
+                {Number.isFinite(player.score) ? `(${player.score.toFixed(1)})` : ""}
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="homePreview">
+          <a className="previewHeader" href={appPath("/recent")}>
+            Recent Matches Preview →
+          </a>
+          <ul>
+            {recentPreview.map((match, index) => (
+              <li key={`${match.startTs}-${index}`}>
+                {match.players[0]} vs {match.players[1]} • {match.gameCount} games •{" "}
+                {formatPreviewDateTime(match.startTs)}
+              </li>
+            ))}
+          </ul>
+        </section>
+      </div>
+    </div>
+  );
+};
+
 export const App = () => {
   const [isRankingsRoute, setIsRankingsRoute] = useState(() => isRankingsPath());
   const [isProfileRoute, setIsProfileRoute] = useState(() => isProfilePath());
   const [isMatchesRoute, setIsMatchesRoute] = useState(() => isMatchesPath());
+  const [isSolveRoute, setIsSolveRoute] = useState(() => isSolvePath());
   const [profileUsername, setProfileUsername] = useState(() => profileUsernameFromPath());
 
   useEffect(() => {
@@ -239,6 +432,7 @@ export const App = () => {
       setIsRankingsRoute(isRankingsPath());
       setIsProfileRoute(isProfilePath());
       setIsMatchesRoute(isMatchesPath());
+      setIsSolveRoute(isSolvePath());
       setProfileUsername(profileUsernameFromPath());
     };
 
@@ -246,19 +440,23 @@ export const App = () => {
     return () => window.removeEventListener("popstate", onRouteChange);
   }, []);
 
+  let content = <HomePage />;
   if (isProfileRoute) {
-    return <PlayerProfilePage username={profileUsername} />;
+    content = <PlayerProfilePage username={profileUsername} />;
+  } else if (isRankingsRoute) {
+    content = <RankingsPage />;
+  } else if (isMatchesRoute) {
+    content = <RecentMatchesPage />;
+  } else if (isSolveRoute) {
+    content = <AtomicTrainerPage />;
   }
 
-  if (isRankingsRoute) {
-    return <RankingsPage />;
-  }
-
-  if (isMatchesRoute) {
-    return <RecentMatchesPage />;
-  }
-
-  return <AtomicTrainerPage />;
+  return (
+    <div className="appShell">
+      <TopNav />
+      {content}
+    </div>
+  );
 };
 
 const AtomicTrainerPage = () => {
