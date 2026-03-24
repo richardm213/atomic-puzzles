@@ -449,7 +449,11 @@ export const PlayerProfilePage = ({ username }) => {
             <span className="statusLabel">Blitz Rating</span>
             <strong>
               {formatCurrentRating(blitzDisplaySummary)}
-              {Number.isFinite(blitzDisplaySummary.rank) ? ` (#${blitzDisplaySummary.rank})` : ""}
+              {Number.isFinite(blitzDisplaySummary.rank)
+                ? blitzDisplaySummary.rank > 0
+                  ? ` (#${blitzDisplaySummary.rank})`
+                  : ""
+                : ""}
             </strong>
           </div>
           <div className="profileMetric">
@@ -474,7 +478,11 @@ export const PlayerProfilePage = ({ username }) => {
             <span className="statusLabel">Bullet Rating</span>
             <strong>
               {formatCurrentRating(bulletDisplaySummary)}
-              {Number.isFinite(bulletDisplaySummary.rank) ? ` (#${bulletDisplaySummary.rank})` : ""}
+              {Number.isFinite(bulletDisplaySummary.rank)
+                ? bulletDisplaySummary.rank > 0
+                  ? ` (#${bulletDisplaySummary.rank})`
+                  : ""
+                : ""}
             </strong>
           </div>
           <div className="profileMetric">
