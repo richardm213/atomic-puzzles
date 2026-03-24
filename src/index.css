@@ -730,7 +730,6 @@ input {
 }
 
 .profileBestWins {
-  margin-top: 14px;
   padding: 12px;
   border-radius: 12px;
   background: #0f172a;
@@ -747,6 +746,38 @@ input {
   padding: 0;
   display: grid;
   gap: 6px;
+}
+
+.profileHighlights {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.profileAliases {
+  padding: 12px;
+  border-radius: 12px;
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.profileAliases h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.profileAliasesList {
+  margin-top: 10px;
+  display: grid;
+  gap: 6px;
+}
+
+@media (max-width: 900px) {
+  .profileHighlights {
+    grid-template-columns: 1fr;
+  }
 }
 
 .profileBackLinkWrap {
