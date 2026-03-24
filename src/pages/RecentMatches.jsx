@@ -57,14 +57,37 @@ const parseDateInputBoundary = (value, boundary) => {
   return parsed.getTime();
 };
 
+const recentMatchesUrlCandidates = (mode) => [
+  `/private/${mode}_matches.json`,
+  `/data/${mode}_matches.json`,
+  `https://raw.githubusercontent.com/atomicchess/atomic-rankings/main/data/${mode}_matches.json`,
+  `https://raw.githubusercontent.com/atomaire/atomic-rankings/main/data/${mode}_matches.json`,
+];
+
 const loadRawRecentMatchesByMode = async (mode) => {
-  const response = await fetch(`/private/${mode}_matches.json`, {
-    headers: { Accept: "application/json" },
-  });
-  if (!response.ok) {
-    throw new Error(`Could not load /private/${mode}_matches.json (HTTP ${response.status})`);
+  const candidates = recentMatchesUrlCandidates(mode);
+  let loaded = null;
+  let lastError = null;
+
+  for (const url of candidates) {
+    try {
+      const response = await fetch(url, { headers: { Accept: "application/json" } });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      loaded = await response.json();
+      break;
+    } catch (error) {
+      lastError = error;
+    }
   }
-  const loaded = await response.json();
+
+  if (!loaded) {
+    throw new Error(
+      `Could not load ${mode} match history from configured sources (${String(lastError)})`,
+    );
+  }
+
   return Array.isArray(loaded) ? loaded : [];
 };
 
@@ -78,15 +101,114 @@ const findRatingDataForPlayer = (ratings, playerName) => {
   return ratings[matchKey];
 };
 
+const winnerCodeLookup = {
+  w: "white",
+  b: "black",
+  d: "draw",
+};
+
+const winnerToFullWord = (winner) => {
+  const winnerValue = String(winner || "").toLowerCase();
+  return winnerCodeLookup[winnerValue] || winnerValue;
+};
+
+const normalizedPlayersFromMatch = (match) => {
+  if (Array.isArray(match?.players)) return match.players;
+  if (Array.isArray(match?.p)) return match.p;
+  return [];
+};
+
+const playerFromRef = (playerRef, players) => {
+  if (typeof playerRef === "number" && Number.isInteger(playerRef)) {
+    return String(players[playerRef] || "");
+  }
+
+  const numericRef = Number(playerRef);
+  if (Number.isInteger(numericRef) && String(playerRef).trim() !== "") {
+    return String(players[numericRef] || "");
+  }
+
+  return String(playerRef || "");
+};
+
+const normalizedGamesFromMatch = (match, players) => {
+  const rawGames = Array.isArray(match?.games)
+    ? match.games
+    : Array.isArray(match?.g)
+      ? match.g
+      : [];
+
+  return rawGames.map((game) => {
+    if (Array.isArray(game)) {
+      const [id, whiteRef, blackRef, winnerRef, endTs] = game;
+      return {
+        id: id ?? "—",
+        white: playerFromRef(whiteRef, players),
+        black: playerFromRef(blackRef, players),
+        winner: winnerToFullWord(winnerRef),
+        end_ts: endTs,
+      };
+    }
+
+    return {
+      id: game?.id ?? "—",
+      white: playerFromRef(game?.white, players),
+      black: playerFromRef(game?.black, players),
+      winner: winnerToFullWord(game?.winner),
+      end_ts: game?.end_ts,
+    };
+  });
+};
+
+const ratingsFromCompact = (ratingsCompact, players) => {
+  if (!Array.isArray(ratingsCompact)) return {};
+
+  const mapped = ratingsCompact
+    .map((entry) => {
+      if (!Array.isArray(entry) || entry.length < 5) return null;
+      const [playerRef, beforeRating, afterRating, beforeRd, afterRd] = entry;
+      const username = playerFromRef(playerRef, players);
+      if (!username) return null;
+      return [
+        username,
+        {
+          before_rating: beforeRating,
+          after_rating: afterRating,
+          before_rd: beforeRd,
+          after_rd: afterRd,
+        },
+      ];
+    })
+    .filter(Boolean);
+
+  return Object.fromEntries(mapped);
+};
+
+const normalizedRatingsFromMatch = (match, players) => {
+  const ratings =
+    match?.ratings && typeof match.ratings === "object"
+      ? match.ratings
+      : match?.ra && typeof match.ra === "object"
+        ? match.ra
+        : {};
+  const ratingsCompact = match?.ratings_compact ?? match?.u;
+  return {
+    ...ratingsFromCompact(ratingsCompact, players),
+    ...ratings,
+  };
+};
+
 const normalizeRecentMatches = (matches, mode) =>
   (Array.isArray(matches) ? matches : [])
     .map((match) => {
-      const players = Array.isArray(match?.players)
-        ? match.players.slice(0, 2).map((player) => String(player || "Unknown"))
-        : ["Unknown", "Unknown"];
+      const rawPlayers = normalizedPlayersFromMatch(match);
+      const players =
+        rawPlayers.length > 0
+          ? rawPlayers.slice(0, 2).map((player) => String(player || "Unknown"))
+          : ["Unknown", "Unknown"];
       const [playerA, playerB] = players.length >= 2 ? players : [players[0], "Unknown"];
       const playerALower = playerA.toLowerCase();
-      const games = Array.isArray(match?.games) ? match.games : [];
+      const games = normalizedGamesFromMatch(match, players);
       let scoreA = 0;
       let scoreB = 0;
       let playerAWins = 0;
@@ -96,7 +218,7 @@ const normalizeRecentMatches = (matches, mode) =>
       const mappedGames = games.map((game, index) => {
         const white = String(game?.white || "").toLowerCase();
         const black = String(game?.black || "").toLowerCase();
-        const winner = game?.winner;
+        const winner = winnerToFullWord(game?.winner);
         let resultLabel = "draw";
 
         if (winner === "white") {
@@ -134,7 +256,7 @@ const normalizeRecentMatches = (matches, mode) =>
         };
       });
 
-      const ratings = match?.ratings;
+      const ratings = normalizedRatingsFromMatch(match, players);
       const playerARatingData = findRatingDataForPlayer(ratings, playerA);
       const playerBRatingData = findRatingDataForPlayer(ratings, playerB);
       const playerABeforeRating = Number(playerARatingData?.before_rating);
@@ -164,8 +286,8 @@ const normalizeRecentMatches = (matches, mode) =>
       ].find((value) => value !== undefined && value !== null && String(value).trim().length > 0);
 
       return {
-        startTs: Number(match?.start_ts),
-        timeControl: String(match?.time_control || "—"),
+        startTs: Number(match?.start_ts ?? match?.s),
+        timeControl: String(match?.time_control ?? match?.t ?? "—"),
         mode,
         playerA,
         playerB,
