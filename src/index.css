@@ -782,9 +782,67 @@ input {
 .profileHighlights {
   margin-top: 14px;
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr) minmax(0, 1fr);
   gap: 12px;
   align-items: start;
+}
+
+.profileBestMonthRanks {
+  padding: 12px;
+  border-radius: 12px;
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.profileBestMonthRanksHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.profileBestMonthRanksHeader h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.profileBestMonthRanksHeader label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #a5b4fc;
+}
+
+.profileBestMonthRanksHeader select {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: #0b1220;
+  color: #e8ecf3;
+  border-radius: 8px;
+  padding: 4px 6px;
+}
+
+.profileBestMonthRanks ol {
+  margin: 10px 0 0 18px;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.profileBestMonthRanks li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  gap: 10px;
+  align-items: center;
+}
+
+.profileBestMonthRankPrimary {
+  min-width: 0;
+}
+
+.profileBestMonthRankRating {
+  text-align: right;
+  white-space: nowrap;
 }
 
 .profileAliases {
