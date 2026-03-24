@@ -616,8 +616,16 @@ input {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.profileMetricCompact {
+  padding: 8px 10px;
+}
+
 .profileMetric strong {
   font-size: 20px;
+}
+
+.profileMetricCompact strong {
+  font-size: 17px;
 }
 
 @media (max-width: 900px) {
