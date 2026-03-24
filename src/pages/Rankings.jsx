@@ -169,7 +169,7 @@ export const formatLocalDateTime = (timestamp) => {
   const date = new Date(timestamp);
   const now = new Date();
   const includeYear = date.getFullYear() !== now.getFullYear();
-  const month = date.toLocaleString("en-US", { month: "short" }).toLowerCase();
+  const month = date.toLocaleString("en-US", { month: "short" });
   const day = date.getDate();
   const year = date.getFullYear();
   const time = date
@@ -444,12 +444,6 @@ const LeaderboardView = () => {
       <div className="panel rankingsPanel">
         <h1>Atomic Monthly Leaderboards</h1>
         <p>Best atomic players for each month since January 2023.</p>
-        <div className="profileBackLinkWrap">
-          <a className="rankingLink" href="/recent">
-            View recent matches →
-          </a>
-        </div>
-
         <div className="controls rankingsControls">
           <label htmlFor="year-select">
             Year

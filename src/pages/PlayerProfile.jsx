@@ -345,11 +345,25 @@ export const PlayerProfilePage = ({ username }) => {
               <ol>
                 {bestWins.map((match) => (
                   <li key={`best-${match.startTs}-${match.firstGameId}`}>
-                    <a className="rankingLink" href={`/@/${encodeURIComponent(match.opponent)}`}>
-                      {formatOpponentWithRating(match.opponent, match.opponentAfterRating)}
-                    </a>
-                    <span> • </span>
-                    {formatLocalDateTime(match.startTs)}
+                    <span className="profileBestWinOpponent">
+                      <a className="rankingLink" href={`/@/${encodeURIComponent(match.opponent)}`}>
+                        {formatOpponentWithRating(match.opponent, match.opponentAfterRating)}
+                      </a>
+                    </span>
+                    <span className="profileBestWinDate">
+                      {match.firstGameId === "—" ? (
+                        formatLocalDateTime(match.startTs)
+                      ) : (
+                        <a
+                          className="rankingLink"
+                          href={`https://lichess.org/${encodeURIComponent(match.firstGameId)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {formatLocalDateTime(match.startTs)}
+                        </a>
+                      )}
+                    </span>
                   </li>
                 ))}
               </ol>
@@ -516,16 +530,6 @@ export const PlayerProfilePage = ({ username }) => {
           </div>
         </div>
 
-        <div className="profileBackLinkWrap">
-          <a className="rankingLink" href="/rankings">
-            ← Back to rankings
-          </a>
-          <span> • </span>
-          <a className="rankingLink" href="/recent">
-            View recent matches →
-          </a>
-        </div>
-
         {error ? <div className="errorText">{error}</div> : null}
 
         <div className="rankingsMeta">
@@ -539,9 +543,9 @@ export const PlayerProfilePage = ({ username }) => {
           <table className="rankingsTable">
             <thead>
               <tr>
-                <th>Date / Time (Local)</th>
+                <th>Date / Time</th>
                 <th>Opponent</th>
-                <th>Time Control</th>
+                <th>TC</th>
                 <th>Score</th>
                 <th>Rating (Δ)</th>
                 <th>RD (Δ)</th>
@@ -563,7 +567,21 @@ export const PlayerProfilePage = ({ username }) => {
                         )
                       }
                     >
-                      <td>{formatLocalDateTime(match.startTs)}</td>
+                      <td>
+                        {match.firstGameId === "—" ? (
+                          formatLocalDateTime(match.startTs)
+                        ) : (
+                          <a
+                            className="rankingLink"
+                            href={`https://lichess.org/${encodeURIComponent(match.firstGameId)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            {formatLocalDateTime(match.startTs)}
+                          </a>
+                        )}
+                      </td>
                       <td>
                         <a
                           className="rankingLink"

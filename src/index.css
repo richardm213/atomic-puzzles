@@ -757,6 +757,24 @@ input {
   gap: 6px;
 }
 
+.profileBestWins li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: center;
+  column-gap: 12px;
+  padding-right: 4px;
+}
+
+.profileBestWinOpponent {
+  min-width: 0;
+}
+
+.profileBestWinDate {
+  justify-self: end;
+  text-align: right;
+  white-space: nowrap;
+}
+
 .profileHighlights {
   margin-top: 14px;
   display: grid;
