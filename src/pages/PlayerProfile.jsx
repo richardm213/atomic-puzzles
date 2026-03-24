@@ -74,6 +74,36 @@ const loadAliasesLookup = async () => {
   return new Map();
 };
 
+const parseMonthKeyDate = (monthKey) => {
+  const parsed = new Date(`${monthKey} 01 UTC`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const findLatestRankByMode = (leaderboardData, username, mode) => {
+  if (!leaderboardData || typeof leaderboardData !== "object") return null;
+
+  const usernameLower = username.toLowerCase();
+  const sortedMonthKeys = Object.keys(leaderboardData)
+    .filter((monthKey) => parseMonthKeyDate(monthKey))
+    .sort((left, right) => parseMonthKeyDate(right) - parseMonthKeyDate(left));
+
+  for (const monthKey of sortedMonthKeys) {
+    const rankings = leaderboardData?.[monthKey]?.[mode]?.rankings;
+    if (!Array.isArray(rankings)) continue;
+
+    const foundIndex = rankings.findIndex((entry) => {
+      const entryUsername = entry?.username ?? entry?.user ?? entry?.player ?? entry?.name;
+      return String(entryUsername || "").toLowerCase() === usernameLower;
+    });
+    if (foundIndex < 0) continue;
+
+    const rawRank = Number(rankings[foundIndex]?.rank ?? rankings[foundIndex]?.position);
+    return Number.isFinite(rawRank) ? rawRank : foundIndex + 1;
+  }
+
+  return null;
+};
+
 export const PlayerProfilePage = ({ username }) => {
   const [selectedMode, setSelectedMode] = useState("blitz");
   const [matchesByMode, setMatchesByMode] = useState({
@@ -96,6 +126,10 @@ export const PlayerProfilePage = ({ username }) => {
   const [timeControlIncrementFilter, setTimeControlIncrementFilter] = useState("all");
   const [expandedMatchKeys, setExpandedMatchKeys] = useState([]);
   const [aliasesLookup, setAliasesLookup] = useState(() => new Map());
+  const [ranksByMode, setRanksByMode] = useState({
+    blitz: null,
+    bullet: null,
+  });
   const matchLengthBounds = matchLengthBoundsByMode[selectedMode] ?? matchLengthBoundsByMode.blitz;
 
   useEffect(() => {
@@ -110,6 +144,32 @@ export const PlayerProfilePage = ({ username }) => {
 
     loadAliases();
   }, []);
+
+  useEffect(() => {
+    const loadLatestRanks = async () => {
+      try {
+        const response = await fetch("/private/lb.json", {
+          headers: { Accept: "application/json" },
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const leaderboardData = await response.json();
+        setRanksByMode({
+          blitz: findLatestRankByMode(leaderboardData, username, "blitz"),
+          bullet: findLatestRankByMode(leaderboardData, username, "bullet"),
+        });
+      } catch {
+        setRanksByMode({
+          blitz: null,
+          bullet: null,
+        });
+      }
+    };
+
+    loadLatestRanks();
+  }, [username]);
 
   useEffect(() => {
     const loadMatches = async () => {
@@ -296,7 +356,7 @@ export const PlayerProfilePage = ({ username }) => {
 
         <div className="profileTopBar">
           <div className="profileMetric">
-            <span className="statusLabel">Blitz Current Rating</span>
+            <span className="statusLabel">Blitz Rating</span>
             <strong>
               {Number.isFinite(blitzSummary.currentRating)
                 ? blitzSummary.currentRating.toFixed(1)
@@ -304,7 +364,11 @@ export const PlayerProfilePage = ({ username }) => {
             </strong>
           </div>
           <div className="profileMetric">
-            <span className="statusLabel">Blitz Current RD</span>
+            <span className="statusLabel">Blitz Rank</span>
+            <strong>{Number.isFinite(ranksByMode.blitz) ? `#${ranksByMode.blitz}` : "—"}</strong>
+          </div>
+          <div className="profileMetric">
+            <span className="statusLabel">Blitz RD</span>
             <strong>
               {Number.isFinite(blitzSummary.currentRd) ? blitzSummary.currentRd.toFixed(1) : "—"}
             </strong>
@@ -326,6 +390,10 @@ export const PlayerProfilePage = ({ username }) => {
                 ? bulletSummary.currentRating.toFixed(1)
                 : "—"}
             </strong>
+          </div>
+          <div className="profileMetric">
+            <span className="statusLabel">Bullet Rank</span>
+            <strong>{Number.isFinite(ranksByMode.bullet) ? `#${ranksByMode.bullet}` : "—"}</strong>
           </div>
           <div className="profileMetric">
             <span className="statusLabel">Bullet Current RD</span>
