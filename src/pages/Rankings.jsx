@@ -115,6 +115,101 @@ const toPlayers = (value) => {
     .map((entry, index) => ({ ...entry, rank: index + 1 }));
 };
 
+const winnerCodeLookup = {
+  w: "white",
+  b: "black",
+  d: "draw",
+};
+
+const winnerToFullWord = (winner) => {
+  const winnerValue = String(winner || "").toLowerCase();
+  return winnerCodeLookup[winnerValue] || winnerValue;
+};
+
+const normalizedPlayersFromMatch = (match) => {
+  if (Array.isArray(match?.players)) return match.players;
+  if (Array.isArray(match?.p)) return match.p;
+  return [];
+};
+
+const playerFromRef = (playerRef, players) => {
+  if (typeof playerRef === "number" && Number.isInteger(playerRef)) {
+    return String(players[playerRef] || "");
+  }
+
+  const numericRef = Number(playerRef);
+  if (Number.isInteger(numericRef) && String(playerRef).trim() !== "") {
+    return String(players[numericRef] || "");
+  }
+
+  return String(playerRef || "");
+};
+
+const normalizedGamesFromMatch = (match, players) => {
+  const gamesRaw = Array.isArray(match?.games)
+    ? match.games
+    : Array.isArray(match?.g)
+      ? match.g
+      : [];
+
+  return gamesRaw.map((game) => {
+    if (Array.isArray(game)) {
+      const [id, whiteRef, blackRef, winnerRef] = game;
+      return {
+        id: id ?? "—",
+        white: playerFromRef(whiteRef, players),
+        black: playerFromRef(blackRef, players),
+        winner: winnerToFullWord(winnerRef),
+      };
+    }
+
+    return {
+      id: game?.id ?? "—",
+      white: playerFromRef(game?.white, players),
+      black: playerFromRef(game?.black, players),
+      winner: winnerToFullWord(game?.winner),
+    };
+  });
+};
+
+const ratingsFromCompact = (ratingsCompact, players) => {
+  if (!Array.isArray(ratingsCompact)) return {};
+
+  const mappedEntries = ratingsCompact
+    .map((entry) => {
+      if (!Array.isArray(entry) || entry.length < 5) return null;
+      const [playerRef, beforeRating, afterRating, beforeRd, afterRd] = entry;
+      const username = playerFromRef(playerRef, players);
+      if (!username) return null;
+      return [
+        username,
+        {
+          before_rating: beforeRating,
+          after_rating: afterRating,
+          before_rd: beforeRd,
+          after_rd: afterRd,
+        },
+      ];
+    })
+    .filter(Boolean);
+
+  return Object.fromEntries(mappedEntries);
+};
+
+const normalizedRatingsFromMatch = (match, players) => {
+  const ratings =
+    match?.ratings && typeof match.ratings === "object"
+      ? match.ratings
+      : match?.ra && typeof match.ra === "object"
+        ? match.ra
+        : {};
+  const ratingsCompact = match?.ratings_compact ?? match?.u;
+  return {
+    ...ratingsFromCompact(ratingsCompact, players),
+    ...ratings,
+  };
+};
+
 const normalizeLeaderboardData = (rawData) => {
   const monthMap = new Map();
   if (!rawData || typeof rawData !== "object" || Array.isArray(rawData)) {
@@ -127,13 +222,38 @@ const normalizeLeaderboardData = (rawData) => {
     const modes = {};
     modeOptions.forEach((mode) => {
       const modeData = monthData?.[mode];
-      if (!modeData || typeof modeData !== "object") {
+      if (!modeData) {
+        modes[mode] = { players: [], qualifiedPlayers: [] };
+        return;
+      }
+
+      if (Array.isArray(modeData)) {
+        modes[mode] = {
+          players: toPlayers(
+            modeData.map((row, index) => {
+              if (!Array.isArray(row)) return row;
+              const [username, rating, rd, games] = row;
+              return {
+                rank: index + 1,
+                username,
+                score: rating,
+                rd,
+                games,
+              };
+            }),
+          ),
+          qualifiedPlayers: [],
+        };
+        return;
+      }
+
+      if (typeof modeData !== "object") {
         modes[mode] = { players: [], qualifiedPlayers: [] };
         return;
       }
 
       modes[mode] = {
-        players: toPlayers(modeData.rankings),
+        players: toPlayers(modeData.rankings ?? modeData.players ?? []),
         qualifiedPlayers: Array.isArray(modeData.qualified_players)
           ? modeData.qualified_players
           : [],
@@ -149,7 +269,7 @@ const normalizeLeaderboardData = (rawData) => {
 const parseWinnerFromPerspective = (game, usernameLower) => {
   const white = String(game?.white || "").toLowerCase();
   const black = String(game?.black || "").toLowerCase();
-  const winner = game?.winner;
+  const winner = winnerToFullWord(game?.winner);
 
   if (winner === "draw") return "draw";
   if (winner === "white") return white === usernameLower ? "win" : "loss";
@@ -211,6 +331,15 @@ const matchJsonUrlCandidates = (mode) => [
   `https://raw.githubusercontent.com/atomaire/atomic-rankings/main/data/${mode}_matches.json`,
 ];
 
+const leaderboardJsonUrlCandidates = () => [
+  "/private/lb.json",
+  "/private/monthly_leaderboards.json",
+  "/data/lb.json",
+  "/data/monthly_leaderboards.json",
+  "https://raw.githubusercontent.com/atomicchess/atomic-rankings/main/data/monthly_leaderboards.json",
+  "https://raw.githubusercontent.com/atomaire/atomic-rankings/main/data/monthly_leaderboards.json",
+];
+
 export const loadRawMatchesByMode = async (mode) => {
   if (mode === "all") {
     const [blitzMatches, bulletMatches] = await Promise.all([
@@ -251,16 +380,15 @@ export const normalizeMatches = (matches, username) => {
   const usernameLower = username.toLowerCase();
 
   return (Array.isArray(matches) ? matches : [])
-    .filter((match) =>
-      (Array.isArray(match?.players) ? match.players : []).some(
-        (player) => String(player).toLowerCase() === usernameLower,
-      ),
-    )
+    .filter((match) => {
+      const players = normalizedPlayersFromMatch(match);
+      return players.some((player) => String(player).toLowerCase() === usernameLower);
+    })
     .map((match) => {
-      const players = Array.isArray(match.players) ? match.players : [];
+      const players = normalizedPlayersFromMatch(match);
       const opponent =
         players.find((player) => String(player).toLowerCase() !== usernameLower) || "Unknown";
-      const games = Array.isArray(match.games) ? match.games : [];
+      const games = normalizedGamesFromMatch(match, players);
       const score = games.reduce(
         (accumulator, game) => {
           const result = parseWinnerFromPerspective(game, usernameLower);
@@ -299,10 +427,10 @@ export const normalizeMatches = (matches, username) => {
         };
       });
 
-      const ratingData = match?.ratings?.[username] || match?.ratings?.[usernameLower] || null;
+      const ratings = normalizedRatingsFromMatch(match, players);
+      const ratingData = ratings?.[username] || ratings?.[usernameLower] || null;
       const opponentLower = String(opponent).toLowerCase();
-      const opponentRatingData =
-        match?.ratings?.[opponent] || match?.ratings?.[opponentLower] || null;
+      const opponentRatingData = ratings?.[opponent] || ratings?.[opponentLower] || null;
       const beforeRating = Number(ratingData?.before_rating);
       const afterRating = Number(ratingData?.after_rating);
       const beforeRd = Number(ratingData?.before_rd);
@@ -310,8 +438,8 @@ export const normalizeMatches = (matches, username) => {
       const opponentAfterRating = Number(opponentRatingData?.after_rating);
 
       return {
-        startTs: Number(match?.start_ts),
-        timeControl: String(match?.time_control || "—"),
+        startTs: Number(match?.start_ts ?? match?.s),
+        timeControl: String(match?.time_control ?? match?.t ?? "—"),
         opponent: String(opponent),
         score: `${score.player}-${score.opponent}`,
         playerScore: score.player,
@@ -350,17 +478,34 @@ const LeaderboardView = () => {
     const loadRankings = async () => {
       try {
         setError("");
-        const response = await fetch("/private/lb.json", {
-          headers: {
-            Accept: "application/json",
-          },
-        });
+        let data = null;
+        let lastError = null;
 
-        if (!response.ok) {
-          throw new Error(`Could not load /private/lb.json (HTTP ${response.status})`);
+        for (const url of leaderboardJsonUrlCandidates()) {
+          try {
+            const response = await fetch(url, {
+              headers: {
+                Accept: "application/json",
+              },
+            });
+
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}`);
+            }
+
+            data = await response.json();
+            break;
+          } catch (fetchError) {
+            lastError = fetchError;
+          }
         }
 
-        const data = await response.json();
+        if (!data) {
+          throw new Error(
+            `Could not load leaderboard data from configured sources (${String(lastError)})`,
+          );
+        }
+
         const normalized = normalizeLeaderboardData(data);
         setRankingsByMonth(normalized);
       } catch (loadError) {
