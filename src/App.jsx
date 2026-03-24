@@ -1,4 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Link,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
 import { Chessboard } from "./components/Chessboard";
 import { RankingsPage } from "./pages/Rankings";
 import { RecentMatchesPage } from "./pages/RecentMatches";
@@ -35,7 +44,7 @@ const orientationFromFen = (fen) => {
   return turn === "b" ? "black" : "white";
 };
 
-const getCurrentPuzzlePath = () => {
+const getRedirectedPath = () => {
   const redirectedPathFromQuery =
     new window.URLSearchParams(window.location.search).get("puzzlePath") || "";
 
@@ -49,12 +58,11 @@ const getCurrentPuzzlePath = () => {
     // Ignore storage failures and rely on the current path or query parameter.
   }
 
-  const rawPath = redirectedPathFromQuery || redirectedPathFromSession || window.location.pathname;
+  const rawPath = redirectedPathFromQuery || redirectedPathFromSession;
   return toAppRelativePath(rawPath);
 };
 
-const parsePuzzleIdFromPath = () => {
-  const currentPath = getCurrentPuzzlePath();
+const parsePuzzleIdFromPath = (currentPath) => {
   const match = currentPath.match(/^\/(?:solve\/)?(\d+)\/?$/);
   if (!match) return null;
 
@@ -63,51 +71,16 @@ const parsePuzzleIdFromPath = () => {
   return puzzleId;
 };
 
-const isRankingsPath = () => {
-  const currentPath = toAppRelativePath(window.location.pathname);
-  return currentPath === "/rankings" || currentPath === "/rankings/";
-};
-
-const isProfilePath = () => {
-  const currentPath = toAppRelativePath(window.location.pathname);
-  return /^\/@\/[^/]+\/?$/.test(currentPath);
-};
-
-const profileUsernameFromPath = () => {
-  const currentPath = toAppRelativePath(window.location.pathname);
-  const match = currentPath.match(/^\/@\/([^/]+)\/?$/);
-  if (!match) return "";
-
-  try {
-    return decodeURIComponent(match[1]);
-  } catch {
-    return match[1];
-  }
-};
-
-const isMatchesPath = () => {
-  const currentPath = toAppRelativePath(window.location.pathname);
-  return currentPath === "/recent" || currentPath === "/matches" || currentPath === "/recent/";
-};
-
-const isSolvePath = () => {
-  const currentPath = toAppRelativePath(window.location.pathname);
-  return /^\/solve(?:\/\d+)?\/?$/.test(currentPath) || /^\/\d+\/?$/.test(currentPath);
-};
-
-const puzzleIndexFromPath = (puzzles) => {
-  const puzzleId = parsePuzzleIdFromPath();
+const puzzleIndexFromPath = (puzzles, currentPath) => {
+  const puzzleId = parsePuzzleIdFromPath(currentPath);
   if (puzzleId === null) return -1;
 
   const puzzleIndex = puzzles.findIndex((puzzle) => puzzle.puzzleId === puzzleId);
   return puzzleIndex;
 };
 
-const replaceUrlWithPuzzle = (puzzleId) => {
-  const nextPath = appPath(`/solve/${puzzleId}`);
-  if (window.location.pathname !== nextPath) {
-    window.history.replaceState(null, "", nextPath);
-  }
+const replaceUrlWithPuzzle = (navigate, puzzleId) => {
+  navigate(appPath(`/solve/${puzzleId}`), { replace: true });
 };
 
 const hasSolution = (puzzle) => {
@@ -243,6 +216,7 @@ const TopNav = () => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!searchOpen) return;
@@ -253,7 +227,7 @@ const TopNav = () => {
     event.preventDefault();
     const target = searchQuery.trim();
     if (!target) return;
-    window.location.href = appPath(`/@/${encodeURIComponent(target)}`);
+    navigate(appPath(`/@/${encodeURIComponent(target)}`));
   };
 
   const closeSearchIfFocusOutside = () => {
@@ -277,9 +251,9 @@ const TopNav = () => {
 
   return (
     <header className="topNav">
-      <a className="homeBrand" href={appPath("/")} aria-label="Go to home page">
+      <Link className="homeBrand" to={appPath("/")} aria-label="Go to home page">
         <img src={appPath("/favicon.ico")} alt="Atomic Puzzles" width="24" height="24" />
-      </a>
+      </Link>
       <div className="topNavCenter">
         <div className="navSearchSlot">
           <form
@@ -317,9 +291,9 @@ const TopNav = () => {
           </form>
         </div>
         <nav className="topNavLinks" aria-label="Main navigation">
-          <a href={appPath("/rankings")}>Rankings</a>
-          <a href={appPath("/solve")}>Puzzles</a>
-          <a href={appPath("/recent")}>Recent</a>
+          <Link to={appPath("/rankings")}>Rankings</Link>
+          <Link to={appPath("/solve")}>Puzzles</Link>
+          <Link to={appPath("/recent")}>Recent</Link>
         </nav>
       </div>
     </header>
@@ -355,15 +329,15 @@ const HomePage = () => {
         </p>
 
         <section className="homeButtonRow">
-          <a className="primaryCta" href={appPath("/solve")}>
+          <Link className="primaryCta" to={appPath("/solve")}>
             Solve Puzzles
-          </a>
-          <a className="primaryCta" href={appPath("/rankings")}>
+          </Link>
+          <Link className="primaryCta" to={appPath("/rankings")}>
             View Rankings
-          </a>
-          <a className="primaryCta" href={appPath("/recent")}>
+          </Link>
+          <Link className="primaryCta" to={appPath("/recent")}>
             View Recent Matches
-          </a>
+          </Link>
         </section>
 
         {homeError ? <div className="errorText">{homeError}</div> : null}
@@ -407,45 +381,41 @@ const HomePage = () => {
 };
 
 export const App = () => {
-  const [isRankingsRoute, setIsRankingsRoute] = useState(() => isRankingsPath());
-  const [isProfileRoute, setIsProfileRoute] = useState(() => isProfilePath());
-  const [isMatchesRoute, setIsMatchesRoute] = useState(() => isMatchesPath());
-  const [isSolveRoute, setIsSolveRoute] = useState(() => isSolvePath());
-  const [profileUsername, setProfileUsername] = useState(() => profileUsernameFromPath());
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
-    const onRouteChange = () => {
-      setIsRankingsRoute(isRankingsPath());
-      setIsProfileRoute(isProfilePath());
-      setIsMatchesRoute(isMatchesPath());
-      setIsSolveRoute(isSolvePath());
-      setProfileUsername(profileUsernameFromPath());
-    };
-
-    window.addEventListener("popstate", onRouteChange);
-    return () => window.removeEventListener("popstate", onRouteChange);
-  }, []);
-
-  let content = <HomePage />;
-  if (isProfileRoute) {
-    content = <PlayerProfilePage username={profileUsername} />;
-  } else if (isRankingsRoute) {
-    content = <RankingsPage />;
-  } else if (isMatchesRoute) {
-    content = <RecentMatchesPage />;
-  } else if (isSolveRoute) {
-    content = <AtomicTrainerPage />;
-  }
+    if (location.pathname !== "/" || location.search) return;
+    const redirectedPath = getRedirectedPath();
+    if (!redirectedPath || redirectedPath === "/") return;
+    navigate(appPath(redirectedPath), { replace: true });
+  }, [location.pathname, location.search, navigate]);
 
   return (
     <div className="appShell">
       <TopNav />
-      {content}
+      <Routes>
+        <Route path={appPath("/")} element={<HomePage />} />
+        <Route path={appPath("/rankings")} element={<RankingsPage />} />
+        <Route path={appPath("/recent")} element={<RecentMatchesPage />} />
+        <Route path={appPath("/matches")} element={<RecentMatchesPage />} />
+        <Route path={appPath("/solve")} element={<AtomicTrainerPage />} />
+        <Route path={appPath("/solve/:puzzleId")} element={<AtomicTrainerPage />} />
+        <Route path={appPath("/:puzzleId")} element={<AtomicTrainerPage />} />
+        <Route path={appPath("/@/:username")} element={<ProfileRoute />} />
+        <Route path="*" element={<Navigate to={appPath("/")} replace />} />
+      </Routes>
     </div>
   );
 };
 
+const ProfileRoute = () => {
+  const { username = "" } = useParams();
+  return <PlayerProfilePage username={username} />;
+};
+
 const AtomicTrainerPage = () => {
+  const navigate = useNavigate();
   const [puzzles, setPuzzles] = useState([]);
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -527,7 +497,10 @@ const AtomicTrainerPage = () => {
       }
 
       if (!isCancelledRef.current) {
-        const firstIndexFromPath = puzzleIndexFromPath(availablePuzzles);
+        const firstIndexFromPath = puzzleIndexFromPath(
+          availablePuzzles,
+          toAppRelativePath(window.location.pathname),
+        );
         const firstIndex =
           firstIndexFromPath >= 0
             ? firstIndexFromPath
@@ -536,7 +509,7 @@ const AtomicTrainerPage = () => {
         setPuzzles(availablePuzzles);
         setHistory([firstIndex]);
         setHistoryIndex(0);
-        replaceUrlWithPuzzle(availablePuzzles[firstIndex].puzzleId);
+        replaceUrlWithPuzzle(navigate, availablePuzzles[firstIndex].puzzleId);
       }
     } catch (error) {
       if (!isCancelledRef.current) {
@@ -549,7 +522,7 @@ const AtomicTrainerPage = () => {
         }));
       }
     }
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
     isCancelledRef.current = false;
@@ -564,7 +537,7 @@ const AtomicTrainerPage = () => {
     if (puzzles.length === 0) return;
 
     const onPopState = () => {
-      const selectedIndex = puzzleIndexFromPath(puzzles);
+      const selectedIndex = puzzleIndexFromPath(puzzles, toAppRelativePath(window.location.pathname));
       if (selectedIndex < 0) return;
 
       setHistory([selectedIndex]);
@@ -593,7 +566,7 @@ const AtomicTrainerPage = () => {
       setHistoryIndex(nextHistoryIndex);
       const nextPuzzleIndex = history[nextHistoryIndex];
       const nextPuzzle = puzzles[nextPuzzleIndex];
-      if (nextPuzzle) replaceUrlWithPuzzle(nextPuzzle.puzzleId);
+      if (nextPuzzle) replaceUrlWithPuzzle(navigate, nextPuzzle.puzzleId);
       return;
     }
 
@@ -602,7 +575,7 @@ const AtomicTrainerPage = () => {
     const truncated = history.slice(0, historyIndex + 1);
     setHistory([...truncated, nextIndex]);
     setHistoryIndex(truncated.length);
-    replaceUrlWithPuzzle(puzzles[nextIndex].puzzleId);
+    replaceUrlWithPuzzle(navigate, puzzles[nextIndex].puzzleId);
   };
 
   const handlePreviousPuzzle = () => {
@@ -613,7 +586,7 @@ const AtomicTrainerPage = () => {
     setHistoryIndex(previousHistoryIndex);
     const previousPuzzleIndex = history[previousHistoryIndex];
     const previousPuzzle = puzzles[previousPuzzleIndex];
-    if (previousPuzzle) replaceUrlWithPuzzle(previousPuzzle.puzzleId);
+    if (previousPuzzle) replaceUrlWithPuzzle(navigate, previousPuzzle.puzzleId);
   };
 
   const handleToggleSolution = () => {
