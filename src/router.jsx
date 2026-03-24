@@ -61,12 +61,6 @@ const solveWithIdRoute = createRoute({
   component: PuzzleSolverPage,
 });
 
-const legacySolveWithIdRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/$puzzleId",
-  component: PuzzleSolverPage,
-});
-
 const profileRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/@/$username",
@@ -83,7 +77,6 @@ const routeTree = rootRoute.addChildren([
   matchesAliasRoute,
   solveRoute,
   solveWithIdRoute,
-  legacySolveWithIdRoute,
   profileRoute,
 ]);
 
