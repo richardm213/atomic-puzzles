@@ -35,7 +35,16 @@ const orientationFromFen = (fen) => {
   return turn === "b" ? "black" : "white";
 };
 
-const getCurrentPuzzlePath = () => {
+const extractPathname = (pathLikeValue) => {
+  if (!pathLikeValue) return "";
+  try {
+    return new window.URL(pathLikeValue, window.location.origin).pathname;
+  } catch {
+    return String(pathLikeValue).split(/[?#]/, 1)[0];
+  }
+};
+
+const getRedirectedPathname = () => {
   const redirectedPathFromQuery =
     new window.URLSearchParams(window.location.search).get("puzzlePath") || "";
 
@@ -49,12 +58,27 @@ const getCurrentPuzzlePath = () => {
     // Ignore storage failures and rely on the current path or query parameter.
   }
 
-  const rawPath = redirectedPathFromQuery || redirectedPathFromSession || window.location.pathname;
-  return toAppRelativePath(rawPath);
+  const rawPath = redirectedPathFromQuery || redirectedPathFromSession;
+  return toAppRelativePath(extractPathname(rawPath));
+};
+
+const applyRedirectedPathnameToUrl = () => {
+  const redirectedPathname = getRedirectedPathname();
+  if (!redirectedPathname) return;
+
+  const normalizedCurrentPath = toAppRelativePath(window.location.pathname);
+  if (normalizedCurrentPath === redirectedPathname) return;
+
+  window.history.replaceState(null, "", appPath(redirectedPathname));
+};
+
+const getCurrentAppPath = () => {
+  applyRedirectedPathnameToUrl();
+  return toAppRelativePath(window.location.pathname);
 };
 
 const parsePuzzleIdFromPath = () => {
-  const currentPath = getCurrentPuzzlePath();
+  const currentPath = getCurrentAppPath();
   const match = currentPath.match(/^\/(?:solve\/)?(\d+)\/?$/);
   if (!match) return null;
 
@@ -64,17 +88,17 @@ const parsePuzzleIdFromPath = () => {
 };
 
 const isRankingsPath = () => {
-  const currentPath = toAppRelativePath(window.location.pathname);
+  const currentPath = getCurrentAppPath();
   return currentPath === "/rankings" || currentPath === "/rankings/";
 };
 
 const isProfilePath = () => {
-  const currentPath = toAppRelativePath(window.location.pathname);
+  const currentPath = getCurrentAppPath();
   return /^\/@\/[^/]+\/?$/.test(currentPath);
 };
 
 const profileUsernameFromPath = () => {
-  const currentPath = toAppRelativePath(window.location.pathname);
+  const currentPath = getCurrentAppPath();
   const match = currentPath.match(/^\/@\/([^/]+)\/?$/);
   if (!match) return "";
 
@@ -86,12 +110,12 @@ const profileUsernameFromPath = () => {
 };
 
 const isMatchesPath = () => {
-  const currentPath = toAppRelativePath(window.location.pathname);
+  const currentPath = getCurrentAppPath();
   return currentPath === "/recent" || currentPath === "/matches" || currentPath === "/recent/";
 };
 
 const isSolvePath = () => {
-  const currentPath = toAppRelativePath(window.location.pathname);
+  const currentPath = getCurrentAppPath();
   return /^\/solve(?:\/\d+)?\/?$/.test(currentPath) || /^\/\d+\/?$/.test(currentPath);
 };
 
