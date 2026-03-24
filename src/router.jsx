@@ -58,19 +58,13 @@ const solveRoute = createRoute({
 const solveWithIdRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/solve/$puzzleId",
-  component: function SolveWithIdRoute() {
-    const { puzzleId } = useParams({ strict: false });
-    return <PuzzleSolverPage initialPuzzleId={puzzleId} />;
-  },
+  component: PuzzleSolverPage,
 });
 
 const legacySolveWithIdRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/$puzzleId",
-  component: function LegacySolveWithIdRoute() {
-    const { puzzleId } = useParams({ strict: false });
-    return <PuzzleSolverPage initialPuzzleId={puzzleId} />;
-  },
+  component: PuzzleSolverPage,
 });
 
 const profileRoute = createRoute({

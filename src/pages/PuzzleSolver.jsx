@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { Chessboard } from "../components/Chessboard";
 
 const lichessAnalysisUrl = (fen) => {
@@ -156,8 +156,9 @@ const loadPuzzlesFromSupabase = async () => {
   return allRows;
 };
 
-export const PuzzleSolverPage = ({ initialPuzzleId = "" }) => {
+export const PuzzleSolverPage = () => {
   const navigate = useNavigate();
+  const { puzzleId: routePuzzleId = "" } = useParams({ strict: false });
   const [puzzles, setPuzzles] = useState([]);
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -250,16 +251,7 @@ export const PuzzleSolverPage = ({ initialPuzzleId = "" }) => {
       }
 
       if (!isCancelledRef.current) {
-        const firstIndexFromPath = puzzleIndexFromParam(availablePuzzles, initialPuzzleId);
-        const firstIndex =
-          firstIndexFromPath >= 0
-            ? firstIndexFromPath
-            : Math.floor(Math.random() * availablePuzzles.length);
-
         setPuzzles(availablePuzzles);
-        setHistory([firstIndex]);
-        setHistoryIndex(0);
-        replaceUrlWithPuzzle(availablePuzzles[firstIndex].puzzleId);
       }
     } catch (error) {
       if (!isCancelledRef.current) {
@@ -272,7 +264,7 @@ export const PuzzleSolverPage = ({ initialPuzzleId = "" }) => {
         }));
       }
     }
-  }, [initialPuzzleId, replaceUrlWithPuzzle]);
+  }, [replaceUrlWithPuzzle]);
 
   useEffect(() => {
     isCancelledRef.current = false;
@@ -285,12 +277,42 @@ export const PuzzleSolverPage = ({ initialPuzzleId = "" }) => {
 
   useEffect(() => {
     if (puzzles.length === 0) return;
-    const selectedIndex = puzzleIndexFromParam(puzzles, initialPuzzleId);
-    if (selectedIndex < 0) return;
-    if (historyIndex >= 0 && history[historyIndex] === selectedIndex) return;
-    setHistory([selectedIndex]);
+    if (historyIndex >= 0) return;
+
+    const indexFromRoute = puzzleIndexFromParam(puzzles, routePuzzleId);
+    const initialIndex =
+      indexFromRoute >= 0 ? indexFromRoute : Math.floor(Math.random() * puzzles.length);
+
+    setHistory([initialIndex]);
     setHistoryIndex(0);
-  }, [puzzles, initialPuzzleId, history, historyIndex]);
+
+    if (indexFromRoute < 0) {
+      const puzzleId = puzzles[initialIndex]?.puzzleId;
+      if (puzzleId !== undefined) {
+        replaceUrlWithPuzzle(puzzleId);
+      }
+    }
+  }, [puzzles, historyIndex, routePuzzleId, replaceUrlWithPuzzle]);
+
+  useEffect(() => {
+    if (puzzles.length === 0) return;
+    if (historyIndex < 0) return;
+
+    const selectedIndex = puzzleIndexFromParam(puzzles, routePuzzleId);
+    if (selectedIndex < 0) return;
+
+    if (historyIndex >= 0 && history[historyIndex] === selectedIndex) return;
+
+    const existingHistoryPosition = history.findIndex((entry) => entry === selectedIndex);
+    if (existingHistoryPosition >= 0) {
+      setHistoryIndex(existingHistoryPosition);
+      return;
+    }
+
+    const truncatedHistory = historyIndex >= 0 ? history.slice(0, historyIndex + 1) : [];
+    setHistory([...truncatedHistory, selectedIndex]);
+    setHistoryIndex(truncatedHistory.length);
+  }, [puzzles, routePuzzleId, history, historyIndex]);
 
   const activePuzzleIndex = historyIndex >= 0 ? history[historyIndex] : -1;
   const activePuzzle = activePuzzleIndex >= 0 ? puzzles[activePuzzleIndex] : null;
