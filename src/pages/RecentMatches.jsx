@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "@tanstack/react-router";
 
 const opponentRatingSliderMin = 1000;
 const opponentRatingSliderMax = 2500;
@@ -714,21 +715,23 @@ export const RecentMatchesPage = () => {
               >
                 <div className="matchCardHeader">
                   <div className="matchCardPlayers">
-                    <a
+                    <Link
                       className="rankingLink"
-                      href={`/rankings/${encodeURIComponent(match.playerA)}`}
+                      to="/@/$username"
+                      params={{ username: match.playerA }}
                       onClick={(event) => event.stopPropagation()}
                     >
                       {match.playerA}
-                    </a>
+                    </Link>
                     <span>vs</span>
-                    <a
+                    <Link
                       className="rankingLink"
-                      href={`/rankings/${encodeURIComponent(match.playerB)}`}
+                      to="/@/$username"
+                      params={{ username: match.playerB }}
                       onClick={(event) => event.stopPropagation()}
                     >
                       {match.playerB}
-                    </a>
+                    </Link>
                   </div>
                   <div className="scoreCell">
                     <span>{formatScore(match.scoreA)}</span>

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { fetchLbRows, hasSupabaseLbConfig } from "../lib/supabaseLb";
 
-export const HomePage = ({ appPath }) => {
+export const HomePage = () => {
   const [homeError, setHomeError] = useState("");
 
   useEffect(() => {
@@ -30,15 +31,15 @@ export const HomePage = ({ appPath }) => {
         </p>
 
         <section className="homeButtonRow">
-          <a className="primaryCta" href={appPath("/solve")}>
+          <Link className="primaryCta" to="/solve">
             Solve Puzzles
-          </a>
-          <a className="primaryCta" href={appPath("/rankings")}>
+          </Link>
+          <Link className="primaryCta" to="/rankings">
             View Rankings
-          </a>
-          <a className="primaryCta" href={appPath("/recent")}>
+          </Link>
+          <Link className="primaryCta" to="/recent">
             View Recent Matches
-          </a>
+          </Link>
         </section>
 
         {homeError ? <div className="errorText">{homeError}</div> : null}

@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import {
   defaultMatchLengthMax,
   defaultMatchLengthMin,
@@ -531,9 +532,13 @@ export const PlayerProfilePage = ({ username }) => {
                 {bestWins.map((match) => (
                   <li key={`best-${match.startTs}-${match.firstGameId}`}>
                     <span className="profileBestWinOpponent">
-                      <a className="rankingLink" href={`/@/${encodeURIComponent(match.opponent)}`}>
+                      <Link
+                        className="rankingLink"
+                        to="/@/$username"
+                        params={{ username: match.opponent }}
+                      >
                         {formatOpponentWithRating(match.opponent, match.opponentAfterRating)}
-                      </a>
+                      </Link>
                     </span>
                     <span className="profileBestWinDate">
                       {match.firstGameId === "—" ? (
@@ -838,13 +843,14 @@ export const PlayerProfilePage = ({ username }) => {
                         )}
                       </td>
                       <td>
-                        <a
+                        <Link
                           className="rankingLink"
-                          href={`/@/${encodeURIComponent(match.opponent)}`}
+                          to="/@/$username"
+                          params={{ username: match.opponent }}
                           onClick={(event) => event.stopPropagation()}
                         >
                           {formatOpponentWithRating(match.opponent, match.opponentAfterRating)}
-                        </a>
+                        </Link>
                       </td>
                       <td>{match.timeControl}</td>
                       <td className="scoreCell">
