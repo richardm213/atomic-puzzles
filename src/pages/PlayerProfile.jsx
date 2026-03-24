@@ -96,6 +96,10 @@ export const PlayerProfilePage = ({ username }) => {
   const [timeControlIncrementFilter, setTimeControlIncrementFilter] = useState("all");
   const [expandedMatchKeys, setExpandedMatchKeys] = useState([]);
   const [aliasesLookup, setAliasesLookup] = useState(() => new Map());
+  const [rankingsByMode, setRankingsByMode] = useState({
+    blitz: null,
+    bullet: null,
+  });
   const matchLengthBounds = matchLengthBoundsByMode[selectedMode] ?? matchLengthBoundsByMode.blitz;
 
   useEffect(() => {
@@ -134,6 +138,58 @@ export const PlayerProfilePage = ({ username }) => {
     };
 
     loadMatches();
+  }, [username]);
+
+  useEffect(() => {
+    const loadRankings = async () => {
+      try {
+        const response = await fetch("/private/lb.json", {
+          headers: {
+            Accept: "application/json",
+          },
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        const monthKeys = Object.keys(data || {}).sort((a, b) => new Date(b) - new Date(a));
+        const usernameLower = username.toLowerCase();
+        const latestByMode = {
+          blitz: null,
+          bullet: null,
+        };
+
+        monthKeys.forEach((monthKey) => {
+          const monthData = data?.[monthKey];
+          if (!monthData || typeof monthData !== "object") return;
+
+          modeOptions.forEach((mode) => {
+            if (latestByMode[mode] !== null) return;
+            const rankings = Array.isArray(monthData?.[mode]?.rankings) ? monthData[mode].rankings : [];
+            const playerIndex = rankings.findIndex((entry) => {
+              const entryUsername = entry?.username ?? entry?.user ?? entry?.player ?? entry?.name;
+              return String(entryUsername || "").toLowerCase() === usernameLower;
+            });
+            if (playerIndex === -1) return;
+
+            const rankRaw = rankings[playerIndex]?.rank ?? rankings[playerIndex]?.position;
+            latestByMode[mode] = Number.isFinite(Number(rankRaw))
+              ? Number(rankRaw)
+              : playerIndex + 1;
+          });
+        });
+
+        setRankingsByMode(latestByMode);
+      } catch {
+        setRankingsByMode({
+          blitz: null,
+          bullet: null,
+        });
+      }
+    };
+
+    loadRankings();
   }, [username]);
 
   const matches = matchesByMode[selectedMode] ?? [];
@@ -294,57 +350,61 @@ export const PlayerProfilePage = ({ username }) => {
       <div className="panel rankingsPanel">
         <h1>{username}</h1>
 
-        <div className="profileTopBar">
-          <div className="profileMetric">
-            <span className="statusLabel">Blitz Current Rating</span>
-            <strong>
-              {Number.isFinite(blitzSummary.currentRating)
-                ? blitzSummary.currentRating.toFixed(1)
-                : "—"}
-            </strong>
-          </div>
-          <div className="profileMetric">
-            <span className="statusLabel">Blitz Current RD</span>
-            <strong>
-              {Number.isFinite(blitzSummary.currentRd) ? blitzSummary.currentRd.toFixed(1) : "—"}
-            </strong>
-          </div>
-          <div className="profileMetric">
-            <span className="statusLabel">Blitz Peak Rating</span>
-            <strong>
-              {Number.isFinite(blitzSummary.peakRating) ? blitzSummary.peakRating.toFixed(1) : "—"}
-            </strong>
-          </div>
-          <div className="profileMetric">
-            <span className="statusLabel">Blitz Games Played</span>
-            <strong>{blitzSummary.gamesPlayed.toLocaleString("en-US")}</strong>
-          </div>
-          <div className="profileMetric">
-            <span className="statusLabel">Bullet Current Rating</span>
-            <strong>
-              {Number.isFinite(bulletSummary.currentRating)
-                ? bulletSummary.currentRating.toFixed(1)
-                : "—"}
-            </strong>
-          </div>
-          <div className="profileMetric">
-            <span className="statusLabel">Bullet Current RD</span>
-            <strong>
-              {Number.isFinite(bulletSummary.currentRd) ? bulletSummary.currentRd.toFixed(1) : "—"}
-            </strong>
-          </div>
-          <div className="profileMetric">
-            <span className="statusLabel">Bullet Peak Rating</span>
-            <strong>
-              {Number.isFinite(bulletSummary.peakRating)
-                ? bulletSummary.peakRating.toFixed(1)
-                : "—"}
-            </strong>
-          </div>
-          <div className="profileMetric">
-            <span className="statusLabel">Bullet Games Played</span>
-            <strong>{bulletSummary.gamesPlayed.toLocaleString("en-US")}</strong>
-          </div>
+        <div className="rankingsTableWrap">
+          <table className="rankingsTable">
+            <thead>
+              <tr>
+                <th />
+                <th>Current Ranking</th>
+                <th>Current Rating</th>
+                <th>Current RD</th>
+                <th>Peak Rating</th>
+                <th>Games Played</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Blitz</td>
+                <td>
+                  {Number.isFinite(rankingsByMode.blitz) ? (
+                    <a className="rankingLink" href="/rankings">
+                      #{rankingsByMode.blitz}
+                    </a>
+                  ) : (
+                    "—"
+                  )}
+                </td>
+                <td>
+                  {Number.isFinite(blitzSummary.currentRating)
+                    ? blitzSummary.currentRating.toFixed(1)
+                    : "—"}
+                </td>
+                <td>{Number.isFinite(blitzSummary.currentRd) ? blitzSummary.currentRd.toFixed(1) : "—"}</td>
+                <td>{Number.isFinite(blitzSummary.peakRating) ? blitzSummary.peakRating.toFixed(1) : "—"}</td>
+                <td>{blitzSummary.gamesPlayed.toLocaleString("en-US")}</td>
+              </tr>
+              <tr>
+                <td>Bullet</td>
+                <td>
+                  {Number.isFinite(rankingsByMode.bullet) ? (
+                    <a className="rankingLink" href="/rankings">
+                      #{rankingsByMode.bullet}
+                    </a>
+                  ) : (
+                    "—"
+                  )}
+                </td>
+                <td>
+                  {Number.isFinite(bulletSummary.currentRating)
+                    ? bulletSummary.currentRating.toFixed(1)
+                    : "—"}
+                </td>
+                <td>{Number.isFinite(bulletSummary.currentRd) ? bulletSummary.currentRd.toFixed(1) : "—"}</td>
+                <td>{Number.isFinite(bulletSummary.peakRating) ? bulletSummary.peakRating.toFixed(1) : "—"}</td>
+                <td>{bulletSummary.gamesPlayed.toLocaleString("en-US")}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
         <div className="profileHighlights">
