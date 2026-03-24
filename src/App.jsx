@@ -35,7 +35,7 @@ const orientationFromFen = (fen) => {
   return turn === "b" ? "black" : "white";
 };
 
-const getCurrentPuzzlePath = () => {
+const getCurrentAppPath = () => {
   const redirectedPathFromQuery =
     new window.URLSearchParams(window.location.search).get("puzzlePath") || "";
 
@@ -54,7 +54,7 @@ const getCurrentPuzzlePath = () => {
 };
 
 const parsePuzzleIdFromPath = () => {
-  const currentPath = getCurrentPuzzlePath();
+  const currentPath = getCurrentAppPath();
   const match = currentPath.match(/^\/(?:solve\/)?(\d+)\/?$/);
   if (!match) return null;
 
@@ -64,17 +64,17 @@ const parsePuzzleIdFromPath = () => {
 };
 
 const isRankingsPath = () => {
-  const currentPath = toAppRelativePath(window.location.pathname);
+  const currentPath = getCurrentAppPath();
   return currentPath === "/rankings" || currentPath === "/rankings/";
 };
 
 const isProfilePath = () => {
-  const currentPath = toAppRelativePath(window.location.pathname);
+  const currentPath = getCurrentAppPath();
   return /^\/@\/[^/]+\/?$/.test(currentPath);
 };
 
 const profileUsernameFromPath = () => {
-  const currentPath = toAppRelativePath(window.location.pathname);
+  const currentPath = getCurrentAppPath();
   const match = currentPath.match(/^\/@\/([^/]+)\/?$/);
   if (!match) return "";
 
@@ -86,12 +86,12 @@ const profileUsernameFromPath = () => {
 };
 
 const isMatchesPath = () => {
-  const currentPath = toAppRelativePath(window.location.pathname);
+  const currentPath = getCurrentAppPath();
   return currentPath === "/recent" || currentPath === "/matches" || currentPath === "/recent/";
 };
 
 const isSolvePath = () => {
-  const currentPath = toAppRelativePath(window.location.pathname);
+  const currentPath = getCurrentAppPath();
   return /^\/solve(?:\/\d+)?\/?$/.test(currentPath) || /^\/\d+\/?$/.test(currentPath);
 };
 
