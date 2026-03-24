@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { Chessboard } from "../components/Chessboard";
 
 const lichessAnalysisUrl = (fen) => {
@@ -156,8 +156,9 @@ const loadPuzzlesFromSupabase = async () => {
   return allRows;
 };
 
-export const PuzzleSolverPage = ({ initialPuzzleId = "" }) => {
+export const PuzzleSolverPage = () => {
   const navigate = useNavigate();
+  const { puzzleId: routePuzzleId = "" } = useParams({ strict: false });
   const [puzzles, setPuzzles] = useState([]);
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -250,7 +251,7 @@ export const PuzzleSolverPage = ({ initialPuzzleId = "" }) => {
       }
 
       if (!isCancelledRef.current) {
-        const firstIndexFromPath = puzzleIndexFromParam(availablePuzzles, initialPuzzleId);
+        const firstIndexFromPath = puzzleIndexFromParam(availablePuzzles, routePuzzleId);
         const firstIndex =
           firstIndexFromPath >= 0
             ? firstIndexFromPath
@@ -272,7 +273,7 @@ export const PuzzleSolverPage = ({ initialPuzzleId = "" }) => {
         }));
       }
     }
-  }, [initialPuzzleId, replaceUrlWithPuzzle]);
+  }, [routePuzzleId, replaceUrlWithPuzzle]);
 
   useEffect(() => {
     isCancelledRef.current = false;
@@ -285,12 +286,12 @@ export const PuzzleSolverPage = ({ initialPuzzleId = "" }) => {
 
   useEffect(() => {
     if (puzzles.length === 0) return;
-    const selectedIndex = puzzleIndexFromParam(puzzles, initialPuzzleId);
+    const selectedIndex = puzzleIndexFromParam(puzzles, routePuzzleId);
     if (selectedIndex < 0) return;
     if (historyIndex >= 0 && history[historyIndex] === selectedIndex) return;
     setHistory([selectedIndex]);
     setHistoryIndex(0);
-  }, [puzzles, initialPuzzleId, history, historyIndex]);
+  }, [puzzles, routePuzzleId, history, historyIndex]);
 
   const activePuzzleIndex = historyIndex >= 0 ? history[historyIndex] : -1;
   const activePuzzle = activePuzzleIndex >= 0 ? puzzles[activePuzzleIndex] : null;
