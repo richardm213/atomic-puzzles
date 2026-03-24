@@ -9,9 +9,11 @@ import {
   formatScore,
   formatSignedDecimal,
   loadRawMatchesByMode,
+  loadRankingsByMonth,
   matchLengthBoundsByMode,
   modeOptions,
   normalizeMatches,
+  findLatestRankForUsername,
   opponentRatingSliderMax,
   opponentRatingSliderMin,
   pageSizeOptions,
@@ -96,6 +98,10 @@ export const PlayerProfilePage = ({ username }) => {
   const [timeControlIncrementFilter, setTimeControlIncrementFilter] = useState("all");
   const [expandedMatchKeys, setExpandedMatchKeys] = useState([]);
   const [aliasesLookup, setAliasesLookup] = useState(() => new Map());
+  const [profileRanks, setProfileRanks] = useState({
+    blitz: null,
+    bullet: null,
+  });
   const matchLengthBounds = matchLengthBoundsByMode[selectedMode] ?? matchLengthBoundsByMode.blitz;
 
   useEffect(() => {
@@ -134,6 +140,25 @@ export const PlayerProfilePage = ({ username }) => {
     };
 
     loadMatches();
+  }, [username]);
+
+  useEffect(() => {
+    const loadRanks = async () => {
+      try {
+        const rankingsByMonth = await loadRankingsByMonth();
+        setProfileRanks({
+          blitz: findLatestRankForUsername(rankingsByMonth, username, "blitz"),
+          bullet: findLatestRankForUsername(rankingsByMonth, username, "bullet"),
+        });
+      } catch {
+        setProfileRanks({
+          blitz: null,
+          bullet: null,
+        });
+      }
+    };
+
+    loadRanks();
   }, [username]);
 
   const matches = matchesByMode[selectedMode] ?? [];
@@ -293,10 +318,18 @@ export const PlayerProfilePage = ({ username }) => {
     <div className="rankingsPage">
       <div className="panel rankingsPanel">
         <h1>{username}</h1>
+        <div className="rankingsMeta">
+          <span>
+            {`#${Number.isFinite(profileRanks.blitz) ? profileRanks.blitz : "—"} blitz`}
+          </span>
+          <span>
+            {`#${Number.isFinite(profileRanks.bullet) ? profileRanks.bullet : "—"} bullet`}
+          </span>
+        </div>
 
         <div className="profileTopBar">
           <div className="profileMetric">
-            <span className="statusLabel">Blitz Current Rating</span>
+            <span className="statusLabel">Blitz Rating</span>
             <strong>
               {Number.isFinite(blitzSummary.currentRating)
                 ? blitzSummary.currentRating.toFixed(1)
@@ -304,7 +337,7 @@ export const PlayerProfilePage = ({ username }) => {
             </strong>
           </div>
           <div className="profileMetric">
-            <span className="statusLabel">Blitz Current RD</span>
+            <span className="statusLabel">Blitz RD</span>
             <strong>
               {Number.isFinite(blitzSummary.currentRd) ? blitzSummary.currentRd.toFixed(1) : "—"}
             </strong>
@@ -320,7 +353,7 @@ export const PlayerProfilePage = ({ username }) => {
             <strong>{blitzSummary.gamesPlayed.toLocaleString("en-US")}</strong>
           </div>
           <div className="profileMetric">
-            <span className="statusLabel">Bullet Current Rating</span>
+            <span className="statusLabel">Bullet Rating</span>
             <strong>
               {Number.isFinite(bulletSummary.currentRating)
                 ? bulletSummary.currentRating.toFixed(1)
@@ -328,7 +361,7 @@ export const PlayerProfilePage = ({ username }) => {
             </strong>
           </div>
           <div className="profileMetric">
-            <span className="statusLabel">Bullet Current RD</span>
+            <span className="statusLabel">Bullet RD</span>
             <strong>
               {Number.isFinite(bulletSummary.currentRd) ? bulletSummary.currentRd.toFixed(1) : "—"}
             </strong>

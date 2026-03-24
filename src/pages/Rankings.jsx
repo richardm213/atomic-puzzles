@@ -340,6 +340,59 @@ const leaderboardJsonUrlCandidates = () => [
   "https://raw.githubusercontent.com/atomaire/atomic-rankings/main/data/monthly_leaderboards.json",
 ];
 
+export const loadRankingsByMonth = async () => {
+  let data = null;
+  let lastError = null;
+
+  for (const url of leaderboardJsonUrlCandidates()) {
+    try {
+      const response = await fetch(url, {
+        headers: {
+          Accept: "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      data = await response.json();
+      break;
+    } catch (fetchError) {
+      lastError = fetchError;
+    }
+  }
+
+  if (!data) {
+    throw new Error(`Could not load leaderboard data from configured sources (${String(lastError)})`);
+  }
+
+  return normalizeLeaderboardData(data);
+};
+
+export const findLatestRankForUsername = (rankingsByMonth, username, mode) => {
+  const usernameLower = String(username || "").toLowerCase();
+  if (!usernameLower || !rankingsByMonth || typeof rankingsByMonth.entries !== "function") {
+    return null;
+  }
+
+  const sortedMonths = [...rankingsByMonth.keys()].sort((a, b) => {
+    const aDate = monthDateFromKey(a);
+    const bDate = monthDateFromKey(b);
+    return (bDate?.getTime() ?? -Infinity) - (aDate?.getTime() ?? -Infinity);
+  });
+
+  for (const monthKey of sortedMonths) {
+    const players = rankingsByMonth.get(monthKey)?.[mode]?.players ?? [];
+    const match = players.find((player) => String(player.username || "").toLowerCase() === usernameLower);
+    if (match && Number.isFinite(match.rank)) {
+      return match.rank;
+    }
+  }
+
+  return null;
+};
+
 export const loadRawMatchesByMode = async (mode) => {
   if (mode === "all") {
     const [blitzMatches, bulletMatches] = await Promise.all([
@@ -478,35 +531,7 @@ const LeaderboardView = () => {
     const loadRankings = async () => {
       try {
         setError("");
-        let data = null;
-        let lastError = null;
-
-        for (const url of leaderboardJsonUrlCandidates()) {
-          try {
-            const response = await fetch(url, {
-              headers: {
-                Accept: "application/json",
-              },
-            });
-
-            if (!response.ok) {
-              throw new Error(`HTTP ${response.status}`);
-            }
-
-            data = await response.json();
-            break;
-          } catch (fetchError) {
-            lastError = fetchError;
-          }
-        }
-
-        if (!data) {
-          throw new Error(
-            `Could not load leaderboard data from configured sources (${String(lastError)})`,
-          );
-        }
-
-        const normalized = normalizeLeaderboardData(data);
+        const normalized = await loadRankingsByMonth();
         setRankingsByMonth(normalized);
       } catch (loadError) {
         setError(loadError.message || "Failed to load leaderboard data");
