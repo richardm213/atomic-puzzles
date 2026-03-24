@@ -20,6 +20,33 @@ import {
 import { fetchLbRows, fetchPlayerRatingsRows, monthKeyFromMonthValue } from "../lib/supabaseLb";
 
 const aliasFileUrlCandidates = ["/private/users.txt", "/data/users.txt"];
+const profileStorageKeys = {
+  matchLength: (username, mode) => `profile.matchLengthRange.${String(username || "").toLowerCase()}.${mode}`,
+  opponentRating: (username) => `profile.opponentRatingRange.${String(username || "").toLowerCase()}`,
+};
+const readStoredRange = (key) => {
+  if (typeof window === "undefined") return null;
+  try {
+    const rawValue = window.localStorage.getItem(key);
+    if (!rawValue) return null;
+    const parsedValue = JSON.parse(rawValue);
+    if (!parsedValue || typeof parsedValue !== "object") return null;
+    const min = Number(parsedValue.min);
+    const max = Number(parsedValue.max);
+    if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
+    return { min, max };
+  } catch {
+    return null;
+  }
+};
+const writeStoredRange = (key, min, max) => {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, JSON.stringify({ min, max }));
+  } catch {
+    // Ignore storage write failures.
+  }
+};
 const parseAliasLookup = (rawText) => {
   const lookup = new Map();
   const lines = String(rawText || "")
@@ -245,12 +272,45 @@ export const PlayerProfilePage = ({ username }) => {
   const matches = matchesByMode[selectedMode] ?? [];
 
   useEffect(() => {
+    const storedRange = readStoredRange(profileStorageKeys.opponentRating(username));
+    if (!storedRange) return;
+    const nextMin = Math.max(opponentRatingSliderMin, Math.min(storedRange.min, opponentRatingSliderMax));
+    const nextMax = Math.max(opponentRatingSliderMin, Math.min(storedRange.max, opponentRatingSliderMax));
+    setOpponentRatingMin(Math.min(nextMin, nextMax));
+    setOpponentRatingMax(Math.max(nextMin, nextMax));
+  }, [username]);
+
+  useEffect(() => {
     const bounds = matchLengthBoundsByMode[selectedMode] ?? matchLengthBoundsByMode.blitz;
-    setMatchLengthMin(Math.max(defaultMatchLengthMin, bounds.min));
-    setMatchLengthMax(Math.min(defaultMatchLengthMax, bounds.max));
+    const defaults = {
+      min: Math.max(defaultMatchLengthMin, bounds.min),
+      max: Math.min(defaultMatchLengthMax, bounds.max),
+    };
+    const storedRange = readStoredRange(profileStorageKeys.matchLength(username, selectedMode));
+    if (!storedRange) {
+      setMatchLengthMin(defaults.min);
+      setMatchLengthMax(defaults.max);
+    } else {
+      const nextMin = Math.max(bounds.min, Math.min(storedRange.min, bounds.max));
+      const nextMax = Math.max(bounds.min, Math.min(storedRange.max, bounds.max));
+      setMatchLengthMin(Math.min(nextMin, nextMax));
+      setMatchLengthMax(Math.max(nextMin, nextMax));
+    }
     setTimeControlInitialFilter("all");
     setTimeControlIncrementFilter("all");
-  }, [selectedMode]);
+  }, [selectedMode, username]);
+
+  useEffect(() => {
+    writeStoredRange(
+      profileStorageKeys.matchLength(username, selectedMode),
+      matchLengthMin,
+      matchLengthMax,
+    );
+  }, [matchLengthMax, matchLengthMin, selectedMode, username]);
+
+  useEffect(() => {
+    writeStoredRange(profileStorageKeys.opponentRating(username), opponentRatingMin, opponentRatingMax);
+  }, [opponentRatingMax, opponentRatingMin, username]);
 
   const { initialOptions, incrementOptions } = useMemo(() => {
     const initialSet = new Set();
