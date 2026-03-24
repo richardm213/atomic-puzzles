@@ -266,6 +266,57 @@ const normalizeLeaderboardData = (rawData) => {
   return monthMap;
 };
 
+const normalizeCurrentLeaderboardData = (rawData) => {
+  if (!rawData || typeof rawData !== "object" || Array.isArray(rawData)) {
+    return {
+      blitz: [],
+      bullet: [],
+    };
+  }
+
+  const normalizeMode = (modeData) => {
+    if (!modeData) return [];
+
+    if (Array.isArray(modeData)) {
+      return toPlayers(
+        modeData.map((row, index) => {
+          if (!Array.isArray(row)) return row;
+          const [username, rating, rd, games] = row;
+          return {
+            rank: index + 1,
+            username,
+            score: rating,
+            rd,
+            games,
+          };
+        }),
+      );
+    }
+
+    if (typeof modeData !== "object") return [];
+    return toPlayers(modeData.rankings ?? modeData.players ?? []);
+  };
+
+  if (rawData.blitz || rawData.bullet) {
+    return {
+      blitz: normalizeMode(rawData.blitz),
+      bullet: normalizeMode(rawData.bullet),
+    };
+  }
+
+  const monthKeys = Object.keys(rawData).sort((a, b) => {
+    const aDate = monthDateFromKey(a);
+    const bDate = monthDateFromKey(b);
+    return (bDate?.getTime() ?? -Infinity) - (aDate?.getTime() ?? -Infinity);
+  });
+  const latestMonthData = monthKeys.length > 0 ? rawData[monthKeys[0]] : null;
+
+  return {
+    blitz: normalizeMode(latestMonthData?.blitz),
+    bullet: normalizeMode(latestMonthData?.bullet),
+  };
+};
+
 const parseWinnerFromPerspective = (game, usernameLower) => {
   const white = String(game?.white || "").toLowerCase();
   const black = String(game?.black || "").toLowerCase();
@@ -339,6 +390,100 @@ const leaderboardJsonUrlCandidates = () => [
   "https://raw.githubusercontent.com/atomicchess/atomic-rankings/main/data/monthly_leaderboards.json",
   "https://raw.githubusercontent.com/atomaire/atomic-rankings/main/data/monthly_leaderboards.json",
 ];
+
+const currentLeaderboardJsonUrlCandidates = () => ["/private/lb.json", "/data/lb.json"];
+
+export const loadRankingsByMonth = async () => {
+  let data = null;
+  let lastError = null;
+
+  for (const url of leaderboardJsonUrlCandidates()) {
+    try {
+      const response = await fetch(url, {
+        headers: {
+          Accept: "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      data = await response.json();
+      break;
+    } catch (fetchError) {
+      lastError = fetchError;
+    }
+  }
+
+  if (!data) {
+    throw new Error(`Could not load leaderboard data from configured sources (${String(lastError)})`);
+  }
+
+  return normalizeLeaderboardData(data);
+};
+
+export const loadCurrentLeaderboard = async () => {
+  let data = null;
+  let lastError = null;
+
+  for (const url of currentLeaderboardJsonUrlCandidates()) {
+    try {
+      const response = await fetch(url, {
+        headers: {
+          Accept: "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      data = await response.json();
+      break;
+    } catch (fetchError) {
+      lastError = fetchError;
+    }
+  }
+
+  if (!data) {
+    throw new Error(`Could not load current leaderboard data from lb.json (${String(lastError)})`);
+  }
+
+  return normalizeCurrentLeaderboardData(data);
+};
+
+export const findRankForUsernameInLeaderboard = (leaderboardByMode, username, mode) => {
+  const usernameLower = String(username || "").toLowerCase();
+  const players = leaderboardByMode?.[mode] ?? [];
+  const playerMatch = players.find(
+    (player) => String(player?.username || "").toLowerCase() === usernameLower,
+  );
+  return Number.isFinite(playerMatch?.rank) ? playerMatch.rank : null;
+};
+
+export const findLatestRankForUsername = (rankingsByMonth, username, mode) => {
+  const usernameLower = String(username || "").toLowerCase();
+  if (!usernameLower || !rankingsByMonth || typeof rankingsByMonth.entries !== "function") {
+    return null;
+  }
+
+  const sortedMonths = [...rankingsByMonth.keys()].sort((a, b) => {
+    const aDate = monthDateFromKey(a);
+    const bDate = monthDateFromKey(b);
+    return (bDate?.getTime() ?? -Infinity) - (aDate?.getTime() ?? -Infinity);
+  });
+
+  for (const monthKey of sortedMonths) {
+    const players = rankingsByMonth.get(monthKey)?.[mode]?.players ?? [];
+    const match = players.find((player) => String(player.username || "").toLowerCase() === usernameLower);
+    if (match && Number.isFinite(match.rank)) {
+      return match.rank;
+    }
+  }
+
+  return null;
+};
 
 export const loadRawMatchesByMode = async (mode) => {
   if (mode === "all") {
@@ -478,35 +623,7 @@ const LeaderboardView = () => {
     const loadRankings = async () => {
       try {
         setError("");
-        let data = null;
-        let lastError = null;
-
-        for (const url of leaderboardJsonUrlCandidates()) {
-          try {
-            const response = await fetch(url, {
-              headers: {
-                Accept: "application/json",
-              },
-            });
-
-            if (!response.ok) {
-              throw new Error(`HTTP ${response.status}`);
-            }
-
-            data = await response.json();
-            break;
-          } catch (fetchError) {
-            lastError = fetchError;
-          }
-        }
-
-        if (!data) {
-          throw new Error(
-            `Could not load leaderboard data from configured sources (${String(lastError)})`,
-          );
-        }
-
-        const normalized = normalizeLeaderboardData(data);
+        const normalized = await loadRankingsByMonth();
         setRankingsByMonth(normalized);
       } catch (loadError) {
         setError(loadError.message || "Failed to load leaderboard data");
