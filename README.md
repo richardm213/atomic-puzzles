@@ -66,18 +66,21 @@ This repository includes a GitHub Actions workflow at `.github/workflows/deploy.
 1. Open **Settings → Pages** in your GitHub repository.
 2. Set **Source** to **GitHub Actions**.
 
-### Routing for `/id` puzzle URLs
+### Routing for SPA URLs (`/rankings`, `/solve`, `/@/username`, `/id`)
 
-The app is configured for the custom domain root (`https://atomicpuzzles.org`) so puzzle URLs can be shared directly, e.g. `/12`.
+The app uses `BrowserRouter` and is configured for the custom domain root
+(`https://atomicpuzzles.org`) so app URLs can be shared directly.
 
-GitHub Pages still serves static files, so SPA-style deep links can hit `404.html` first on refresh/direct navigation.
+GitHub Pages still serves static files, so SPA deep links can hit `404.html` first
+on refresh/direct navigation.
 
 To keep links working:
 
 - The Vite production base path is `/` (site root).
 - `public/404.html` stores the original path in `sessionStorage` and redirects to `/`.
 - If browser storage is unavailable, it falls back to `/?puzzlePath=<original-path>`.
-- The React app restores the intended puzzle id from `sessionStorage` (or the fallback query parameter).
+- The React app restores the intended route via React Router from `sessionStorage`
+  (or the fallback query parameter).
 
 Example:
 
