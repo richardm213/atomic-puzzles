@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { Chessboard } from "./components/Chessboard";
 import { RankingsPage } from "./pages/Rankings";
 import { RecentMatchesPage } from "./pages/RecentMatches";
@@ -9,16 +10,6 @@ const appBasePath = (() => {
   const baseUrl = import.meta.env.BASE_URL || "/";
   return baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
 })();
-
-const toAppRelativePath = (pathname) => {
-  if (!pathname) return "/";
-  if (!appBasePath) return pathname;
-  if (pathname.startsWith(appBasePath)) {
-    const trimmed = pathname.slice(appBasePath.length);
-    return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
-  }
-  return pathname;
-};
 
 const appPath = (pathname = "/") => {
   const normalized = pathname.startsWith("/") ? pathname : `/${pathname}`;
@@ -35,7 +26,17 @@ const orientationFromFen = (fen) => {
   return turn === "b" ? "black" : "white";
 };
 
-const getCurrentPuzzlePath = () => {
+const parsePuzzleIdFromPathname = (pathname) => {
+  const safePathname = typeof pathname === "string" ? pathname : "";
+  const match = safePathname.match(/^\/(?:solve\/)?(\d+)\/?$/);
+  if (!match) return null;
+
+  const puzzleId = Number.parseInt(match[1], 10);
+  if (Number.isNaN(puzzleId)) return null;
+  return puzzleId;
+};
+
+const getInitialPuzzlePath = () => {
   const redirectedPathFromQuery =
     new window.URLSearchParams(window.location.search).get("puzzlePath") || "";
 
@@ -49,65 +50,15 @@ const getCurrentPuzzlePath = () => {
     // Ignore storage failures and rely on the current path or query parameter.
   }
 
-  const rawPath = redirectedPathFromQuery || redirectedPathFromSession || window.location.pathname;
-  return toAppRelativePath(rawPath);
+  return redirectedPathFromQuery || redirectedPathFromSession || "";
 };
 
-const parsePuzzleIdFromPath = () => {
-  const currentPath = getCurrentPuzzlePath();
-  const match = currentPath.match(/^\/(?:solve\/)?(\d+)\/?$/);
-  if (!match) return null;
-
-  const puzzleId = Number.parseInt(match[1], 10);
-  if (Number.isNaN(puzzleId)) return null;
-  return puzzleId;
-};
-
-const isRankingsPath = () => {
-  const currentPath = toAppRelativePath(window.location.pathname);
-  return currentPath === "/rankings" || currentPath === "/rankings/";
-};
-
-const isProfilePath = () => {
-  const currentPath = toAppRelativePath(window.location.pathname);
-  return /^\/@\/[^/]+\/?$/.test(currentPath);
-};
-
-const profileUsernameFromPath = () => {
-  const currentPath = toAppRelativePath(window.location.pathname);
-  const match = currentPath.match(/^\/@\/([^/]+)\/?$/);
-  if (!match) return "";
-
-  try {
-    return decodeURIComponent(match[1]);
-  } catch {
-    return match[1];
-  }
-};
-
-const isMatchesPath = () => {
-  const currentPath = toAppRelativePath(window.location.pathname);
-  return currentPath === "/recent" || currentPath === "/matches" || currentPath === "/recent/";
-};
-
-const isSolvePath = () => {
-  const currentPath = toAppRelativePath(window.location.pathname);
-  return /^\/solve(?:\/\d+)?\/?$/.test(currentPath) || /^\/\d+\/?$/.test(currentPath);
-};
-
-const puzzleIndexFromPath = (puzzles) => {
-  const puzzleId = parsePuzzleIdFromPath();
+const puzzleIndexFromPath = (puzzles, pathname) => {
+  const puzzleId = parsePuzzleIdFromPathname(pathname);
   if (puzzleId === null) return -1;
 
   const puzzleIndex = puzzles.findIndex((puzzle) => puzzle.puzzleId === puzzleId);
   return puzzleIndex;
-};
-
-const replaceUrlWithPuzzle = (puzzleId) => {
-  const nextPath = appPath(`/solve/${puzzleId}`);
-  if (window.location.pathname !== nextPath) {
-    window.history.replaceState(null, "", nextPath);
-  }
 };
 
 const hasSolution = (puzzle) => {
@@ -240,6 +191,7 @@ const loadPuzzlesFromSupabase = async () => {
 };
 
 const TopNav = () => {
+  const navigate = useNavigate();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef(null);
@@ -253,7 +205,7 @@ const TopNav = () => {
     event.preventDefault();
     const target = searchQuery.trim();
     if (!target) return;
-    window.location.href = appPath(`/@/${encodeURIComponent(target)}`);
+    navigate(`/@/${encodeURIComponent(target)}`);
   };
 
   const closeSearchIfFocusOutside = () => {
@@ -277,9 +229,9 @@ const TopNav = () => {
 
   return (
     <header className="topNav">
-      <a className="homeBrand" href={appPath("/")} aria-label="Go to home page">
+      <Link className="homeBrand" to="/" aria-label="Go to home page">
         <img src={appPath("/favicon.ico")} alt="Atomic Puzzles" width="24" height="24" />
-      </a>
+      </Link>
       <div className="topNavCenter">
         <div className="navSearchSlot">
           <form
@@ -317,9 +269,9 @@ const TopNav = () => {
           </form>
         </div>
         <nav className="topNavLinks" aria-label="Main navigation">
-          <a href={appPath("/rankings")}>Rankings</a>
-          <a href={appPath("/solve")}>Puzzles</a>
-          <a href={appPath("/recent")}>Recent</a>
+          <Link to="/rankings">Rankings</Link>
+          <Link to="/solve">Puzzles</Link>
+          <Link to="/recent">Recent</Link>
         </nav>
       </div>
     </header>
@@ -355,15 +307,15 @@ const HomePage = () => {
         </p>
 
         <section className="homeButtonRow">
-          <a className="primaryCta" href={appPath("/solve")}>
+          <Link className="primaryCta" to="/solve">
             Solve Puzzles
-          </a>
-          <a className="primaryCta" href={appPath("/rankings")}>
+          </Link>
+          <Link className="primaryCta" to="/rankings">
             View Rankings
-          </a>
-          <a className="primaryCta" href={appPath("/recent")}>
+          </Link>
+          <Link className="primaryCta" to="/recent">
             View Recent Matches
-          </a>
+          </Link>
         </section>
 
         {homeError ? <div className="errorText">{homeError}</div> : null}
@@ -407,45 +359,40 @@ const HomePage = () => {
 };
 
 export const App = () => {
-  const [isRankingsRoute, setIsRankingsRoute] = useState(() => isRankingsPath());
-  const [isProfileRoute, setIsProfileRoute] = useState(() => isProfilePath());
-  const [isMatchesRoute, setIsMatchesRoute] = useState(() => isMatchesPath());
-  const [isSolveRoute, setIsSolveRoute] = useState(() => isSolvePath());
-  const [profileUsername, setProfileUsername] = useState(() => profileUsernameFromPath());
-
-  useEffect(() => {
-    const onRouteChange = () => {
-      setIsRankingsRoute(isRankingsPath());
-      setIsProfileRoute(isProfilePath());
-      setIsMatchesRoute(isMatchesPath());
-      setIsSolveRoute(isSolvePath());
-      setProfileUsername(profileUsernameFromPath());
-    };
-
-    window.addEventListener("popstate", onRouteChange);
-    return () => window.removeEventListener("popstate", onRouteChange);
-  }, []);
-
-  let content = <HomePage />;
-  if (isProfileRoute) {
-    content = <PlayerProfilePage username={profileUsername} />;
-  } else if (isRankingsRoute) {
-    content = <RankingsPage />;
-  } else if (isMatchesRoute) {
-    content = <RecentMatchesPage />;
-  } else if (isSolveRoute) {
-    content = <AtomicTrainerPage />;
-  }
-
   return (
     <div className="appShell">
       <TopNav />
-      {content}
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/rankings" element={<RankingsPage />} />
+        <Route path="/recent" element={<RecentMatchesPage />} />
+        <Route path="/matches" element={<Navigate to="/recent" replace />} />
+        <Route path="/solve" element={<AtomicTrainerPage />} />
+        <Route path="/solve/:puzzleId" element={<AtomicTrainerPage />} />
+        <Route path="/:puzzleId" element={<AtomicTrainerPage />} />
+        <Route path="/@:username" element={<PlayerProfileRoute />} />
+        <Route path="*" element={<HomePage />} />
+      </Routes>
     </div>
   );
 };
 
+const PlayerProfileRoute = () => {
+  const { username = "" } = useParams();
+  return <PlayerProfilePage username={username} />;
+};
+
 const AtomicTrainerPage = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { puzzleId: routePuzzleId } = useParams();
+  const initialRequestedPathRef = useRef("");
+  if (!initialRequestedPathRef.current) {
+    const initialPath = getInitialPuzzlePath();
+    initialRequestedPathRef.current =
+      initialPath || (routePuzzleId ? `/solve/${routePuzzleId}` : location.pathname);
+  }
+
   const [puzzles, setPuzzles] = useState([]);
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -527,7 +474,10 @@ const AtomicTrainerPage = () => {
       }
 
       if (!isCancelledRef.current) {
-        const firstIndexFromPath = puzzleIndexFromPath(availablePuzzles);
+        const firstIndexFromPath = puzzleIndexFromPath(
+          availablePuzzles,
+          initialRequestedPathRef.current,
+        );
         const firstIndex =
           firstIndexFromPath >= 0
             ? firstIndexFromPath
@@ -536,7 +486,7 @@ const AtomicTrainerPage = () => {
         setPuzzles(availablePuzzles);
         setHistory([firstIndex]);
         setHistoryIndex(0);
-        replaceUrlWithPuzzle(availablePuzzles[firstIndex].puzzleId);
+        navigate(`/solve/${availablePuzzles[firstIndex].puzzleId}`, { replace: true });
       }
     } catch (error) {
       if (!isCancelledRef.current) {
@@ -549,7 +499,7 @@ const AtomicTrainerPage = () => {
         }));
       }
     }
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
     isCancelledRef.current = false;
@@ -562,18 +512,11 @@ const AtomicTrainerPage = () => {
 
   useEffect(() => {
     if (puzzles.length === 0) return;
-
-    const onPopState = () => {
-      const selectedIndex = puzzleIndexFromPath(puzzles);
-      if (selectedIndex < 0) return;
-
-      setHistory([selectedIndex]);
-      setHistoryIndex(0);
-    };
-
-    window.addEventListener("popstate", onPopState);
-    return () => window.removeEventListener("popstate", onPopState);
-  }, [puzzles]);
+    const selectedIndex = puzzleIndexFromPath(puzzles, location.pathname);
+    if (selectedIndex < 0) return;
+    setHistory([selectedIndex]);
+    setHistoryIndex(0);
+  }, [location.pathname, puzzles]);
 
   const activePuzzleIndex = historyIndex >= 0 ? history[historyIndex] : -1;
   const activePuzzle = activePuzzleIndex >= 0 ? puzzles[activePuzzleIndex] : null;
@@ -593,7 +536,7 @@ const AtomicTrainerPage = () => {
       setHistoryIndex(nextHistoryIndex);
       const nextPuzzleIndex = history[nextHistoryIndex];
       const nextPuzzle = puzzles[nextPuzzleIndex];
-      if (nextPuzzle) replaceUrlWithPuzzle(nextPuzzle.puzzleId);
+      if (nextPuzzle) navigate(`/solve/${nextPuzzle.puzzleId}`, { replace: true });
       return;
     }
 
@@ -602,7 +545,7 @@ const AtomicTrainerPage = () => {
     const truncated = history.slice(0, historyIndex + 1);
     setHistory([...truncated, nextIndex]);
     setHistoryIndex(truncated.length);
-    replaceUrlWithPuzzle(puzzles[nextIndex].puzzleId);
+    navigate(`/solve/${puzzles[nextIndex].puzzleId}`, { replace: true });
   };
 
   const handlePreviousPuzzle = () => {
@@ -613,7 +556,7 @@ const AtomicTrainerPage = () => {
     setHistoryIndex(previousHistoryIndex);
     const previousPuzzleIndex = history[previousHistoryIndex];
     const previousPuzzle = puzzles[previousPuzzleIndex];
-    if (previousPuzzle) replaceUrlWithPuzzle(previousPuzzle.puzzleId);
+    if (previousPuzzle) navigate(`/solve/${previousPuzzle.puzzleId}`, { replace: true });
   };
 
   const handleToggleSolution = () => {
