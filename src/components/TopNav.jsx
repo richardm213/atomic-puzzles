@@ -1,9 +1,16 @@
 import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
 
-export const TopNav = ({ appPath }) => {
+const appAssetPath = (pathname = "/") => {
+  const normalized = pathname.startsWith("/") ? pathname : `/${pathname}`;
+  return `${import.meta.env.BASE_URL}${normalized.slice(1)}`;
+};
+
+export const TopNav = () => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!searchOpen) return;
@@ -14,7 +21,11 @@ export const TopNav = ({ appPath }) => {
     event.preventDefault();
     const target = searchQuery.trim();
     if (!target) return;
-    window.location.href = appPath(`/@/${encodeURIComponent(target)}`);
+    navigate({
+      to: "/@/$username",
+      params: { username: target },
+    });
+    setSearchOpen(false);
   };
 
   const closeSearchIfFocusOutside = () => {
@@ -38,9 +49,9 @@ export const TopNav = ({ appPath }) => {
 
   return (
     <header className="topNav">
-      <a className="homeBrand" href={appPath("/")} aria-label="Go to home page">
-        <img src={appPath("/favicon.ico")} alt="Atomic Puzzles" width="24" height="24" />
-      </a>
+      <Link className="homeBrand" to="/" aria-label="Go to home page">
+        <img src={appAssetPath("/favicon.ico")} alt="Atomic Puzzles" width="24" height="24" />
+      </Link>
       <div className="topNavCenter">
         <div className="navSearchSlot">
           <form
@@ -78,9 +89,9 @@ export const TopNav = ({ appPath }) => {
           </form>
         </div>
         <nav className="topNavLinks" aria-label="Main navigation">
-          <a href={appPath("/rankings")}>Rankings</a>
-          <a href={appPath("/solve")}>Puzzles</a>
-          <a href={appPath("/recent")}>Recent</a>
+          <Link to="/rankings">Rankings</Link>
+          <Link to="/solve">Puzzles</Link>
+          <Link to="/recent">Recent</Link>
         </nav>
       </div>
     </header>

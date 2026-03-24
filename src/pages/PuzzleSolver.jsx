@@ -1,25 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { Chessboard } from "../components/Chessboard";
-
-const appBasePath = (() => {
-  const baseUrl = import.meta.env.BASE_URL || "/";
-  return baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
-})();
-
-const toAppRelativePath = (pathname) => {
-  if (!pathname) return "/";
-  if (!appBasePath) return pathname;
-  if (pathname.startsWith(appBasePath)) {
-    const trimmed = pathname.slice(appBasePath.length);
-    return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
-  }
-  return pathname;
-};
-
-const appPath = (pathname = "/") => {
-  const normalized = pathname.startsWith("/") ? pathname : `/${pathname}`;
-  return `${appBasePath}${normalized}`;
-};
 
 const lichessAnalysisUrl = (fen) => {
   if (!fen) return "https://lichess.org/analysis/atomic";
@@ -31,47 +12,19 @@ const orientationFromFen = (fen) => {
   return turn === "b" ? "black" : "white";
 };
 
-const getCurrentPuzzlePath = () => {
-  const redirectedPathFromQuery =
-    new window.URLSearchParams(window.location.search).get("puzzlePath") || "";
-
-  let redirectedPathFromSession = "";
-  try {
-    redirectedPathFromSession = window.sessionStorage.getItem("redirectedPuzzlePath") || "";
-    if (redirectedPathFromSession) {
-      window.sessionStorage.removeItem("redirectedPuzzlePath");
-    }
-  } catch {
-    // Ignore storage failures and rely on the current path or query parameter.
-  }
-
-  const rawPath = redirectedPathFromQuery || redirectedPathFromSession || window.location.pathname;
-  return toAppRelativePath(rawPath);
-};
-
-const parsePuzzleIdFromPath = () => {
-  const currentPath = getCurrentPuzzlePath();
-  const match = currentPath.match(/^\/(?:solve\/)?(\d+)\/?$/);
-  if (!match) return null;
-
-  const puzzleId = Number.parseInt(match[1], 10);
+const parsePuzzleId = (puzzleIdParam) => {
+  if (!puzzleIdParam) return null;
+  const puzzleId = Number.parseInt(String(puzzleIdParam), 10);
   if (Number.isNaN(puzzleId)) return null;
   return puzzleId;
 };
 
-const puzzleIndexFromPath = (puzzles) => {
-  const puzzleId = parsePuzzleIdFromPath();
+const puzzleIndexFromParam = (puzzles, puzzleIdParam) => {
+  const puzzleId = parsePuzzleId(puzzleIdParam);
   if (puzzleId === null) return -1;
 
   const puzzleIndex = puzzles.findIndex((puzzle) => puzzle.puzzleId === puzzleId);
   return puzzleIndex;
-};
-
-const replaceUrlWithPuzzle = (puzzleId) => {
-  const nextPath = appPath(`/solve/${puzzleId}`);
-  if (window.location.pathname !== nextPath) {
-    window.history.replaceState(null, "", nextPath);
-  }
 };
 
 const hasSolution = (puzzle) => {
@@ -203,7 +156,8 @@ const loadPuzzlesFromSupabase = async () => {
   return allRows;
 };
 
-export const PuzzleSolverPage = () => {
+export const PuzzleSolverPage = ({ initialPuzzleId = "" }) => {
+  const navigate = useNavigate();
   const [puzzles, setPuzzles] = useState([]);
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -228,6 +182,17 @@ export const PuzzleSolverPage = () => {
   });
 
   const isCancelledRef = useRef(false);
+
+  const replaceUrlWithPuzzle = useCallback(
+    (puzzleId) => {
+      navigate({
+        to: "/solve/$puzzleId",
+        params: { puzzleId: String(puzzleId) },
+        replace: true,
+      });
+    },
+    [navigate],
+  );
 
   const loadPuzzles = useCallback(async () => {
     try {
@@ -285,7 +250,7 @@ export const PuzzleSolverPage = () => {
       }
 
       if (!isCancelledRef.current) {
-        const firstIndexFromPath = puzzleIndexFromPath(availablePuzzles);
+        const firstIndexFromPath = puzzleIndexFromParam(availablePuzzles, initialPuzzleId);
         const firstIndex =
           firstIndexFromPath >= 0
             ? firstIndexFromPath
@@ -307,7 +272,7 @@ export const PuzzleSolverPage = () => {
         }));
       }
     }
-  }, []);
+  }, [initialPuzzleId, replaceUrlWithPuzzle]);
 
   useEffect(() => {
     isCancelledRef.current = false;
@@ -320,18 +285,12 @@ export const PuzzleSolverPage = () => {
 
   useEffect(() => {
     if (puzzles.length === 0) return;
-
-    const onPopState = () => {
-      const selectedIndex = puzzleIndexFromPath(puzzles);
-      if (selectedIndex < 0) return;
-
-      setHistory([selectedIndex]);
-      setHistoryIndex(0);
-    };
-
-    window.addEventListener("popstate", onPopState);
-    return () => window.removeEventListener("popstate", onPopState);
-  }, [puzzles]);
+    const selectedIndex = puzzleIndexFromParam(puzzles, initialPuzzleId);
+    if (selectedIndex < 0) return;
+    if (historyIndex >= 0 && history[historyIndex] === selectedIndex) return;
+    setHistory([selectedIndex]);
+    setHistoryIndex(0);
+  }, [puzzles, initialPuzzleId, history, historyIndex]);
 
   const activePuzzleIndex = historyIndex >= 0 ? history[historyIndex] : -1;
   const activePuzzle = activePuzzleIndex >= 0 ? puzzles[activePuzzleIndex] : null;

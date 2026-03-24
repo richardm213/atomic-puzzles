@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { fetchLbRows, isoMonthStartFromMonthKey } from "../lib/supabaseLb";
 
 export const modeOptions = ["blitz", "bullet"];
@@ -697,9 +698,13 @@ const LeaderboardView = () => {
                   <tr key={`${selectedMonth}-${player.rank}-${player.username}`}>
                     <td>{player.rank}</td>
                     <td>
-                      <a className="rankingLink" href={`/@/${encodeURIComponent(player.username)}`}>
+                      <Link
+                        className="rankingLink"
+                        to="/@/$username"
+                        params={{ username: player.username }}
+                      >
                         {player.username}
-                      </a>
+                      </Link>
                     </td>
                     <td>{Number.isFinite(player.score) ? player.score.toFixed(1) : "—"}</td>
                     <td>{Number.isFinite(player.rd) ? player.rd.toFixed(1) : "—"}</td>
