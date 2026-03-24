@@ -17,10 +17,9 @@ import {
   pageSizeOptions,
   parseTimeControlParts,
 } from "./Rankings";
-import { fetchLbRows, monthKeyFromMonthValue } from "../lib/supabaseLb";
+import { fetchLbRows, fetchPlayerRatingsRows, monthKeyFromMonthValue } from "../lib/supabaseLb";
 
 const aliasFileUrlCandidates = ["/private/users.txt", "/data/users.txt"];
-const rankingsTextUrlCandidates = ["/private/rankings.txt", "/data/rankings.txt"];
 const parseAliasLookup = (rawText) => {
   const lookup = new Map();
   const lines = String(rawText || "")
@@ -75,13 +74,6 @@ const loadAliasesLookup = async () => {
   return new Map();
 };
 
-const parseModeFromHeader = (line) => {
-  const match = String(line || "").match(/^===\s*([A-Z]+)\s*===$/);
-  if (!match) return null;
-  const mode = match[1].toLowerCase();
-  return modeOptions.includes(mode) ? mode : null;
-};
-
 const parseMonthRanksFromLbRows = (rows) => {
   return (Array.isArray(rows) ? rows : [])
     .map((row) => {
@@ -110,78 +102,45 @@ const loadMonthRanksFromLb = async (username) => {
   return parseMonthRanksFromLbRows(rows);
 };
 
-const parseCurrentRatingsFromText = (rawText) => {
+const parseCurrentRatingsFromRows = (rows) => {
   const snapshotsByMode = {
     blitz: new Map(),
     bullet: new Map(),
   };
 
-  let currentMode = null;
-  String(rawText || "")
-    .split(/\r?\n/)
-    .forEach((line) => {
-      const trimmed = line.trim();
-      if (!trimmed) return;
+  (Array.isArray(rows) ? rows : []).forEach((row) => {
+    const mode = String(row?.tc || "").toLowerCase();
+    const rowUsername = String(row?.username || "").trim();
+    const rating = Number(row?.rating);
+    const rd = Number(row?.rd);
+    const games = Number(row?.games);
+    const rank = Number(row?.rank);
+    if (!modeOptions.includes(mode)) return;
+    if (!rowUsername) return;
+    if (!Number.isFinite(rating) || !Number.isFinite(rd) || !Number.isFinite(games)) return;
 
-      const nextMode = parseModeFromHeader(trimmed);
-      if (nextMode) {
-        currentMode = nextMode;
-        return;
-      }
-      if (!currentMode) return;
-
-      const rowMatch = trimmed.match(
-        /^(\S+)\s+(-?\d+(?:\.\d+)?)\s+RD\s+(-?\d+(?:\.\d+)?)\s+G\s+(\d+)(?:\s+BR\s+(\d+|-)\s+BuR\s+(\d+|-))?\s*$/i,
-      );
-      if (!rowMatch) return;
-
-      const [, rowUsername, ratingRaw, rdRaw, gamesRaw, blitzRankRaw, bulletRankRaw] = rowMatch;
-      const rating = Number(ratingRaw);
-      const rd = Number(rdRaw);
-      const games = Number(gamesRaw);
-      if (!Number.isFinite(rating) || !Number.isFinite(rd) || !Number.isFinite(games)) return;
-      const blitzRank = Number.isFinite(Number(blitzRankRaw)) ? Number(blitzRankRaw) : null;
-      const bulletRank = Number.isFinite(Number(bulletRankRaw)) ? Number(bulletRankRaw) : null;
-      const rank = currentMode === "blitz" ? blitzRank : bulletRank;
-
-      snapshotsByMode[currentMode].set(rowUsername.toLowerCase(), {
+    snapshotsByMode[mode].set(rowUsername.toLowerCase(), {
         currentRating: rating,
         currentRd: rd,
         gamesPlayed: games,
-        rank,
+        rank: Number.isFinite(rank) ? rank : null,
       });
-    });
+  });
 
   return snapshotsByMode;
 };
 
-const loadCurrentRatingsSnapshot = async () => {
-  let lastError = null;
-
-  for (const url of rankingsTextUrlCandidates) {
-    try {
-      const response = await fetch(url, { headers: { Accept: "text/plain" } });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const text = await response.text();
-      return parseCurrentRatingsFromText(text);
-    } catch (error) {
-      lastError = error;
-    }
+const loadCurrentRatingsSnapshot = async (username) => {
+  const normalizedUsername = String(username || "").trim().toLowerCase();
+  if (!normalizedUsername) {
+    return {
+      blitz: new Map(),
+      bullet: new Map(),
+    };
   }
 
-  if (lastError) {
-    throw new Error(
-      `Could not load current ratings snapshot from configured sources (${String(lastError)})`,
-    );
-  }
-
-  return {
-    blitz: new Map(),
-    bullet: new Map(),
-  };
+  const rows = await fetchPlayerRatingsRows({ username: normalizedUsername });
+  return parseCurrentRatingsFromRows(rows);
 };
 
 export const PlayerProfilePage = ({ username }) => {
@@ -270,7 +229,7 @@ export const PlayerProfilePage = ({ username }) => {
   useEffect(() => {
     const loadRatingsSnapshot = async () => {
       try {
-        const snapshots = await loadCurrentRatingsSnapshot();
+        const snapshots = await loadCurrentRatingsSnapshot(username);
         setRatingsSnapshotByMode(snapshots);
       } catch {
         setRatingsSnapshotByMode({
@@ -281,7 +240,7 @@ export const PlayerProfilePage = ({ username }) => {
     };
 
     loadRatingsSnapshot();
-  }, []);
+  }, [username]);
 
   const matches = matchesByMode[selectedMode] ?? [];
 
