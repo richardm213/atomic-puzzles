@@ -396,7 +396,11 @@ export const PlayerProfilePage = ({ username }) => {
 
   const bestWins = useMemo(() => {
     return filteredMatches
-      .filter((match) => match.playerScore > match.opponentScore)
+      .filter((match) =>
+        Array.isArray(match.games)
+          ? match.games.some((game) => String(game?.winner || "").toLowerCase() === usernameLower)
+          : false,
+      )
       .sort((a, b) => {
         const ratingDiff =
           (b.opponentAfterRating ?? -Infinity) - (a.opponentAfterRating ?? -Infinity);
@@ -404,7 +408,7 @@ export const PlayerProfilePage = ({ username }) => {
         return b.startTs - a.startTs;
       })
       .slice(0, bestWinCount);
-  }, [bestWinCount, filteredMatches]);
+  }, [bestWinCount, filteredMatches, usernameLower]);
   const bestMonthRanks = useMemo(
     () =>
       [...monthRanks]
