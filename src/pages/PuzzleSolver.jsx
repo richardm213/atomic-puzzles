@@ -183,7 +183,6 @@ export const PuzzleSolverPage = () => {
   });
 
   const isCancelledRef = useRef(false);
-  const initialRoutePuzzleIdRef = useRef(routePuzzleId);
 
   const replaceUrlWithPuzzle = useCallback(
     (puzzleId) => {
@@ -252,20 +251,7 @@ export const PuzzleSolverPage = () => {
       }
 
       if (!isCancelledRef.current) {
-        const firstIndexFromPath = puzzleIndexFromParam(availablePuzzles, initialRoutePuzzleIdRef.current);
-        const firstIndex =
-          firstIndexFromPath >= 0
-            ? firstIndexFromPath
-            : Math.floor(Math.random() * availablePuzzles.length);
-
         setPuzzles(availablePuzzles);
-        setHistory([firstIndex]);
-        setHistoryIndex(0);
-
-        const selectedPuzzleId = availablePuzzles[firstIndex].puzzleId;
-        if (String(selectedPuzzleId) !== String(initialRoutePuzzleIdRef.current)) {
-          replaceUrlWithPuzzle(selectedPuzzleId);
-        }
       }
     } catch (error) {
       if (!isCancelledRef.current) {
@@ -291,6 +277,26 @@ export const PuzzleSolverPage = () => {
 
   useEffect(() => {
     if (puzzles.length === 0) return;
+    if (historyIndex >= 0) return;
+
+    const indexFromRoute = puzzleIndexFromParam(puzzles, routePuzzleId);
+    const initialIndex =
+      indexFromRoute >= 0 ? indexFromRoute : Math.floor(Math.random() * puzzles.length);
+
+    setHistory([initialIndex]);
+    setHistoryIndex(0);
+
+    if (indexFromRoute < 0) {
+      const puzzleId = puzzles[initialIndex]?.puzzleId;
+      if (puzzleId !== undefined) {
+        replaceUrlWithPuzzle(puzzleId);
+      }
+    }
+  }, [puzzles, historyIndex, routePuzzleId, replaceUrlWithPuzzle]);
+
+  useEffect(() => {
+    if (puzzles.length === 0) return;
+    if (historyIndex < 0) return;
 
     const selectedIndex = puzzleIndexFromParam(puzzles, routePuzzleId);
     if (selectedIndex < 0) return;
