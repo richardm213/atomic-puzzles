@@ -2,9 +2,12 @@ const supabaseLbConfig = {
   url: import.meta.env.VITE_SUPABASE_URL?.trim() || "",
   anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() || "",
   table: import.meta.env.VITE_SUPABASE_LB_TABLE?.trim() || "lb",
+  playerRatingsTable:
+    import.meta.env.VITE_SUPABASE_PLAYER_RATINGS_TABLE?.trim() || "player_ratings",
 };
 
 const LB_SELECT_COLUMNS = "username,month,rank,rating,rd,games,tc";
+const PLAYER_RATINGS_SELECT_COLUMNS = "username,rating,rd,games,tc,rank";
 
 const requireSupabaseConfig = () => {
   const { url, anonKey } = supabaseLbConfig;
@@ -57,6 +60,41 @@ export const fetchLbRows = async ({ month, username, limit } = {}) => {
   const rows = await response.json();
   if (!Array.isArray(rows)) {
     throw new Error(`Expected Supabase table "${table}" to return an array`);
+  }
+
+  return rows;
+};
+
+export const fetchPlayerRatingsRows = async ({ tc, username, limit } = {}) => {
+  requireSupabaseConfig();
+  const { url, anonKey, playerRatingsTable } = supabaseLbConfig;
+  const baseUrl = url.replace(/\/$/, "");
+  const queryParts = [`select=${encodeURIComponent(PLAYER_RATINGS_SELECT_COLUMNS)}`];
+  if (tc) queryParts.push(`tc=${encodeURIComponent(`eq.${tc}`)}`);
+  if (username) queryParts.push(`username=${encodeURIComponent(`eq.${username}`)}`);
+  queryParts.push("order=rank.asc");
+  if (Number.isFinite(Number(limit)) && Number(limit) > 0) {
+    queryParts.push(`limit=${Math.floor(Number(limit))}`);
+  }
+
+  const endpoint = `${baseUrl}/rest/v1/${encodeURIComponent(playerRatingsTable)}?${queryParts.join("&")}`;
+  const response = await fetch(endpoint, {
+    headers: {
+      apikey: anonKey,
+      Authorization: `Bearer ${anonKey}`,
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `HTTP ${response.status} while loading Supabase table "${playerRatingsTable}"`,
+    );
+  }
+
+  const rows = await response.json();
+  if (!Array.isArray(rows)) {
+    throw new Error(`Expected Supabase table "${playerRatingsTable}" to return an array`);
   }
 
   return rows;
