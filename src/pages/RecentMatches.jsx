@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 
-const opponentRatingSliderMin = 1500;
+const opponentRatingSliderMin = 1000;
 const opponentRatingSliderMax = 2500;
-const defaultRatingMin = 2000;
+const defaultRatingMin = 1000;
 const defaultRatingMax = 2500;
-const defaultMatchLengthMin = 2;
+const defaultMatchLengthMin = 1;
 const defaultMatchLengthMax = 50;
 const matchLengthBoundsByMode = {
   blitz: { min: 1, max: 50 },
@@ -690,7 +690,7 @@ export const RecentMatchesPage = () => {
           <span>
             {filteredMatches.length === 0
               ? "0 shown"
-              : `${(currentPage - 1) * pageSize + 1}-${Math.min(currentPage * pageSize, filteredMatches.length)} shown`} 
+              : `${(currentPage - 1) * pageSize + 1}-${Math.min(currentPage * pageSize, filteredMatches.length)} shown`}
             · {filteredMatches.length} filtered / {matches.length} total
           </span>
         </div>

@@ -17,11 +17,11 @@ const monthNames = [
   "Dec",
 ];
 export const pageSizeOptions = [10, 25, 50, 100];
-export const opponentRatingSliderMin = 1500;
+export const opponentRatingSliderMin = 1000;
 export const opponentRatingSliderMax = 2500;
-export const defaultRatingMin = 2000;
+export const defaultRatingMin = 1000;
 export const defaultRatingMax = 2500;
-export const defaultMatchLengthMin = 2;
+export const defaultMatchLengthMin = 1;
 export const defaultMatchLengthMax = 50;
 export const matchLengthBoundsByMode = {
   blitz: { min: 1, max: 50 },
@@ -211,7 +211,6 @@ const normalizedRatingsFromMatch = (match, players) => {
   };
 };
 
-
 const parseWinnerFromPerspective = (game, usernameLower) => {
   const white = String(game?.white || "").toLowerCase();
   const black = String(game?.black || "").toLowerCase();
@@ -353,7 +352,9 @@ export const findLatestRankForUsername = (rankingsByMonth, username, mode) => {
 
   for (const monthKey of sortedMonths) {
     const players = rankingsByMonth.get(monthKey)?.[mode]?.players ?? [];
-    const match = players.find((player) => String(player.username || "").toLowerCase() === usernameLower);
+    const match = players.find(
+      (player) => String(player.username || "").toLowerCase() === usernameLower,
+    );
     if (match && Number.isFinite(match.rank)) {
       return match.rank;
     }
@@ -495,7 +496,6 @@ const LeaderboardView = () => {
 
   const monthOptions = useMemo(() => allMonthsFromJan2023().reverse(), []);
   const yearOptions = useMemo(() => allYearsFromJan2023(), []);
-
 
   useEffect(() => {
     const firstWithData =
