@@ -3,6 +3,7 @@ import { Chessboard } from "./components/Chessboard";
 import { RankingsPage } from "./pages/Rankings";
 import { RecentMatchesPage } from "./pages/RecentMatches";
 import { PlayerProfilePage } from "./pages/PlayerProfile";
+import { fetchLbRows, hasSupabaseLbConfig } from "./lib/supabaseLb";
 
 const appBasePath = (() => {
   const baseUrl = import.meta.env.BASE_URL || "/";
@@ -332,14 +333,10 @@ const HomePage = () => {
     const loadHomeData = async () => {
       try {
         setHomeError("");
-        const leaderboardResponse = await fetch("/private/lb.json", {
-          headers: { Accept: "application/json" },
-        });
-
-        if (!leaderboardResponse.ok) {
-          throw new Error(`Could not load /private/lb.json (HTTP ${leaderboardResponse.status})`);
+        if (!hasSupabaseLbConfig()) {
+          throw new Error("Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in .env.local");
         }
-        await leaderboardResponse.json();
+        await fetchLbRows({ limit: 1 });
       } catch (error) {
         setHomeError(String(error?.message || error));
       }

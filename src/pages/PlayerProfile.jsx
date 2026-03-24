@@ -17,11 +17,10 @@ import {
   pageSizeOptions,
   parseTimeControlParts,
 } from "./Rankings";
+import { fetchLbRows, monthKeyFromMonthValue } from "../lib/supabaseLb";
 
 const aliasFileUrlCandidates = ["/private/users.txt", "/data/users.txt"];
 const rankingsTextUrlCandidates = ["/private/rankings.txt", "/data/rankings.txt"];
-const lbJsonUrlCandidates = ["/private/lb.json", "/data/lb.json"];
-
 const parseAliasLookup = (rawText) => {
   const lookup = new Map();
   const lines = String(rawText || "")
@@ -83,74 +82,32 @@ const parseModeFromHeader = (line) => {
   return modeOptions.includes(mode) ? mode : null;
 };
 
-const monthLabelFromLbKey = (monthKey) => {
-  const monthDate = new Date(`${monthKey} 01 UTC`);
-  if (Number.isNaN(monthDate.getTime())) return String(monthKey || "Unknown month");
-  return monthDate.toLocaleString("en-US", {
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-};
+const parseMonthRanksFromLbRows = (rows) => {
+  return (Array.isArray(rows) ? rows : [])
+    .map((row) => {
+      const monthKey = monthKeyFromMonthValue(row?.month);
+      if (!monthKey) return null;
+      const monthDate = new Date(`${String(row.month).slice(0, 10)}T00:00:00Z`);
+      const mode = String(row?.tc || "").toLowerCase();
+      const rank = Number(row?.rank);
+      const rating = Number(row?.rating);
+      if (!modeOptions.includes(mode) || !Number.isFinite(rank) || rank <= 0) return null;
 
-const parseMonthRanksFromLbData = (rawData, username) => {
-  if (!rawData || typeof rawData !== "object" || Array.isArray(rawData)) return [];
-  const usernameLower = String(username || "").toLowerCase();
-  if (!usernameLower) return [];
-
-  return Object.entries(rawData)
-    .flatMap(([monthKey, monthData]) => {
-      if (!monthData || typeof monthData !== "object") return null;
-      const monthDate = new Date(`${monthKey} 01 UTC`);
-      if (Number.isNaN(monthDate.getTime())) return null;
-
-      return ["blitz", "bullet"].flatMap((mode) => {
-        const modeRows = monthData?.[mode];
-        if (!Array.isArray(modeRows)) return [];
-
-        const matchedEntry = modeRows.find(
-          (row) => String(row?.[0] || "").toLowerCase() === usernameLower,
-        );
-        if (!matchedEntry) return [];
-
-        const [, ratingRaw] = matchedEntry;
-
-        const ranking = modeRows
-          .filter((row) => Number.isFinite(Number(row?.[1])))
-          .sort((a, b) => Number(b?.[1]) - Number(a?.[1]));
-        const rank =
-          ranking.findIndex((row) => String(row?.[0] || "").toLowerCase() === usernameLower) + 1;
-        if (!Number.isFinite(rank) || rank <= 0) return [];
-
-        const rating = Number(ratingRaw);
-        return {
-          monthKey,
-          monthDate,
-          monthLabel: monthLabelFromLbKey(monthKey),
-          mode,
-          rank,
-          rating: Number.isFinite(rating) ? rating : null,
-        };
-      });
+      return {
+        monthKey,
+        monthDate,
+        monthLabel: monthKey,
+        mode,
+        rank,
+        rating: Number.isFinite(rating) ? rating : null,
+      };
     })
     .filter(Boolean);
 };
 
 const loadMonthRanksFromLb = async (username) => {
-  let lastError = null;
-
-  for (const url of lbJsonUrlCandidates) {
-    try {
-      const response = await fetch(url, { headers: { Accept: "application/json" } });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
-      return parseMonthRanksFromLbData(data, username);
-    } catch (error) {
-      lastError = error;
-    }
-  }
-
-  throw new Error(`Could not load lb.json from configured sources (${String(lastError)})`);
+  const rows = await fetchLbRows({ username });
+  return parseMonthRanksFromLbRows(rows);
 };
 
 const parseCurrentRatingsFromText = (rawText) => {

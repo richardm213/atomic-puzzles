@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { fetchLbRows, isoMonthStartFromMonthKey } from "../lib/supabaseLb";
 
 export const modeOptions = ["blitz", "bullet"];
 const monthNames = [
@@ -210,112 +211,6 @@ const normalizedRatingsFromMatch = (match, players) => {
   };
 };
 
-const normalizeLeaderboardData = (rawData) => {
-  const monthMap = new Map();
-  if (!rawData || typeof rawData !== "object" || Array.isArray(rawData)) {
-    return monthMap;
-  }
-
-  Object.entries(rawData).forEach(([monthKey, monthData]) => {
-    if (!monthData || typeof monthData !== "object") return;
-
-    const modes = {};
-    modeOptions.forEach((mode) => {
-      const modeData = monthData?.[mode];
-      if (!modeData) {
-        modes[mode] = { players: [], qualifiedPlayers: [] };
-        return;
-      }
-
-      if (Array.isArray(modeData)) {
-        modes[mode] = {
-          players: toPlayers(
-            modeData.map((row, index) => {
-              if (!Array.isArray(row)) return row;
-              const [username, rating, rd, games] = row;
-              return {
-                rank: index + 1,
-                username,
-                score: rating,
-                rd,
-                games,
-              };
-            }),
-          ),
-          qualifiedPlayers: [],
-        };
-        return;
-      }
-
-      if (typeof modeData !== "object") {
-        modes[mode] = { players: [], qualifiedPlayers: [] };
-        return;
-      }
-
-      modes[mode] = {
-        players: toPlayers(modeData.rankings ?? modeData.players ?? []),
-        qualifiedPlayers: Array.isArray(modeData.qualified_players)
-          ? modeData.qualified_players
-          : [],
-      };
-    });
-
-    monthMap.set(monthKey, modes);
-  });
-
-  return monthMap;
-};
-
-const normalizeCurrentLeaderboardData = (rawData) => {
-  if (!rawData || typeof rawData !== "object" || Array.isArray(rawData)) {
-    return {
-      blitz: [],
-      bullet: [],
-    };
-  }
-
-  const normalizeMode = (modeData) => {
-    if (!modeData) return [];
-
-    if (Array.isArray(modeData)) {
-      return toPlayers(
-        modeData.map((row, index) => {
-          if (!Array.isArray(row)) return row;
-          const [username, rating, rd, games] = row;
-          return {
-            rank: index + 1,
-            username,
-            score: rating,
-            rd,
-            games,
-          };
-        }),
-      );
-    }
-
-    if (typeof modeData !== "object") return [];
-    return toPlayers(modeData.rankings ?? modeData.players ?? []);
-  };
-
-  if (rawData.blitz || rawData.bullet) {
-    return {
-      blitz: normalizeMode(rawData.blitz),
-      bullet: normalizeMode(rawData.bullet),
-    };
-  }
-
-  const monthKeys = Object.keys(rawData).sort((a, b) => {
-    const aDate = monthDateFromKey(a);
-    const bDate = monthDateFromKey(b);
-    return (bDate?.getTime() ?? -Infinity) - (aDate?.getTime() ?? -Infinity);
-  });
-  const latestMonthData = monthKeys.length > 0 ? rawData[monthKeys[0]] : null;
-
-  return {
-    blitz: normalizeMode(latestMonthData?.blitz),
-    bullet: normalizeMode(latestMonthData?.bullet),
-  };
-};
 
 const parseWinnerFromPerspective = (game, usernameLower) => {
   const white = String(game?.white || "").toLowerCase();
@@ -382,75 +277,57 @@ const matchJsonUrlCandidates = (mode) => [
   `https://raw.githubusercontent.com/atomaire/atomic-rankings/main/data/${mode}_matches.json`,
 ];
 
-const leaderboardJsonUrlCandidates = () => [
-  "/private/lb.json",
-  "/private/monthly_leaderboards.json",
-  "/data/lb.json",
-  "/data/monthly_leaderboards.json",
-  "https://raw.githubusercontent.com/atomicchess/atomic-rankings/main/data/monthly_leaderboards.json",
-  "https://raw.githubusercontent.com/atomaire/atomic-rankings/main/data/monthly_leaderboards.json",
-];
+const parseModeFromTimeControl = (timeControl) => {
+  const mode = String(timeControl || "").toLowerCase();
+  return modeOptions.includes(mode) ? mode : null;
+};
 
-const currentLeaderboardJsonUrlCandidates = () => ["/private/lb.json", "/data/lb.json"];
+const normalizeLbRowsForMonth = (rows) => {
+  const modes = {
+    blitz: { players: [], qualifiedPlayers: [] },
+    bullet: { players: [], qualifiedPlayers: [] },
+  };
 
-export const loadRankingsByMonth = async () => {
-  let data = null;
-  let lastError = null;
+  (Array.isArray(rows) ? rows : []).forEach((row) => {
+    const mode = parseModeFromTimeControl(row?.tc);
+    if (!mode) return;
+    modes[mode].players.push({
+      rank: Number(row?.rank),
+      username: String(row?.username || "Unknown"),
+      score: roundToTenth(row?.rating),
+      rd: roundToTenth(row?.rd),
+      games: Number.isFinite(Number(row?.games)) ? Number(row.games) : null,
+    });
+  });
 
-  for (const url of leaderboardJsonUrlCandidates()) {
-    try {
-      const response = await fetch(url, {
-        headers: {
-          Accept: "application/json",
-        },
-      });
+  modeOptions.forEach((mode) => {
+    modes[mode].players = toPlayers(modes[mode].players);
+  });
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
+  return modes;
+};
 
-      data = await response.json();
-      break;
-    } catch (fetchError) {
-      lastError = fetchError;
-    }
+export const loadRankingsForMonth = async (monthKey) => {
+  const month = isoMonthStartFromMonthKey(monthKey);
+  if (!month) {
+    throw new Error(`Invalid month selected: ${monthKey}`);
   }
 
-  if (!data) {
-    throw new Error(`Could not load leaderboard data from configured sources (${String(lastError)})`);
-  }
-
-  return normalizeLeaderboardData(data);
+  const rows = await fetchLbRows({ month });
+  return normalizeLbRowsForMonth(rows);
 };
 
 export const loadCurrentLeaderboard = async () => {
-  let data = null;
-  let lastError = null;
-
-  for (const url of currentLeaderboardJsonUrlCandidates()) {
-    try {
-      const response = await fetch(url, {
-        headers: {
-          Accept: "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      data = await response.json();
-      break;
-    } catch (fetchError) {
-      lastError = fetchError;
-    }
-  }
-
-  if (!data) {
-    throw new Error(`Could not load current leaderboard data from lb.json (${String(lastError)})`);
-  }
-
-  return normalizeCurrentLeaderboardData(data);
+  const now = new Date();
+  const currentMonthKey = now.toLocaleString("en-US", {
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+  return loadRankingsForMonth(currentMonthKey).then((data) => ({
+    blitz: data.blitz.players,
+    bullet: data.bullet.players,
+  }));
 };
 
 export const findRankForUsernameInLeaderboard = (leaderboardByMode, username, mode) => {
@@ -619,20 +496,6 @@ const LeaderboardView = () => {
   const monthOptions = useMemo(() => allMonthsFromJan2023().reverse(), []);
   const yearOptions = useMemo(() => allYearsFromJan2023(), []);
 
-  useEffect(() => {
-    const loadRankings = async () => {
-      try {
-        setError("");
-        const normalized = await loadRankingsByMonth();
-        setRankingsByMonth(normalized);
-      } catch (loadError) {
-        setError(loadError.message || "Failed to load leaderboard data");
-        setRankingsByMonth(new Map());
-      }
-    };
-
-    loadRankings();
-  }, []);
 
   useEffect(() => {
     const firstWithData =
@@ -648,6 +511,27 @@ const LeaderboardView = () => {
     if (!selectedMonthName || !selectedYear) return "";
     return `${selectedMonthName} ${selectedYear}`;
   }, [selectedMonthName, selectedYear]);
+
+  useEffect(() => {
+    if (!selectedMonth) return;
+    if (rankingsByMonth.has(selectedMonth)) return;
+
+    const loadRankings = async () => {
+      try {
+        setError("");
+        const monthData = await loadRankingsForMonth(selectedMonth);
+        setRankingsByMonth((previous) => {
+          const next = new Map(previous);
+          next.set(selectedMonth, monthData);
+          return next;
+        });
+      } catch (loadError) {
+        setError(loadError.message || "Failed to load leaderboard data");
+      }
+    };
+
+    loadRankings();
+  }, [selectedMonth, rankingsByMonth]);
 
   const availableMonthsForYear = useMemo(() => {
     if (!selectedYear) return monthNames;
