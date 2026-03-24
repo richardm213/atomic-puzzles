@@ -609,8 +609,8 @@ input {
 }
 
 .profileMetric {
-  flex: 1 1 calc((100% - 36px) / 4);
-  max-width: calc((100% - 36px) / 4);
+  flex: 1 1 calc((100% - 48px) / 5);
+  max-width: calc((100% - 48px) / 5);
   min-width: 0;
   padding: 12px;
   border-radius: 12px;
