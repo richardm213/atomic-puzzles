@@ -603,14 +603,12 @@ input {
 
 .profileTopBar {
   margin-top: 8px;
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
-  flex-wrap: wrap;
 }
 
 .profileMetric {
-  flex: 1 1 calc((100% - 36px) / 4);
-  max-width: calc((100% - 36px) / 4);
   min-width: 0;
   padding: 12px;
   border-radius: 12px;
@@ -618,21 +616,27 @@ input {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.profileMetricCompact {
+  padding: 8px 10px;
+}
+
 .profileMetric strong {
   font-size: 20px;
 }
 
+.profileMetricCompact strong {
+  font-size: 17px;
+}
+
 @media (max-width: 900px) {
-  .profileMetric {
-    flex: 1 1 calc((100% - 12px) / 2);
-    max-width: calc((100% - 12px) / 2);
+  .profileTopBar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 640px) {
-  .profileMetric {
-    flex: 1 1 100%;
-    max-width: 100%;
+  .profileTopBar {
+    grid-template-columns: 1fr;
   }
 }
 
