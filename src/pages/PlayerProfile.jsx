@@ -9,11 +9,9 @@ import {
   formatScore,
   formatSignedDecimal,
   loadRawMatchesByMode,
-  loadCurrentLeaderboard,
   matchLengthBoundsByMode,
   modeOptions,
   normalizeMatches,
-  findRankForUsernameInLeaderboard,
   opponentRatingSliderMax,
   opponentRatingSliderMin,
   pageSizeOptions,
@@ -105,20 +103,24 @@ const parseCurrentRatingsFromText = (rawText) => {
       if (!currentMode) return;
 
       const rowMatch = trimmed.match(
-        /^(\S+)\s+(-?\d+(?:\.\d+)?)\s+RD\s+(-?\d+(?:\.\d+)?)\s+G\s+(\d+)(?:\s+BR\s+(?:\d+|-)\s+BuR\s+(?:\d+|-))?\s*$/i,
+        /^(\S+)\s+(-?\d+(?:\.\d+)?)\s+RD\s+(-?\d+(?:\.\d+)?)\s+G\s+(\d+)(?:\s+BR\s+(\d+|-)\s+BuR\s+(\d+|-))?\s*$/i,
       );
       if (!rowMatch) return;
 
-      const [, rowUsername, ratingRaw, rdRaw, gamesRaw] = rowMatch;
+      const [, rowUsername, ratingRaw, rdRaw, gamesRaw, blitzRankRaw, bulletRankRaw] = rowMatch;
       const rating = Number(ratingRaw);
       const rd = Number(rdRaw);
       const games = Number(gamesRaw);
       if (!Number.isFinite(rating) || !Number.isFinite(rd) || !Number.isFinite(games)) return;
+      const blitzRank = Number.isFinite(Number(blitzRankRaw)) ? Number(blitzRankRaw) : null;
+      const bulletRank = Number.isFinite(Number(bulletRankRaw)) ? Number(bulletRankRaw) : null;
+      const rank = currentMode === "blitz" ? blitzRank : bulletRank;
 
       snapshotsByMode[currentMode].set(rowUsername.toLowerCase(), {
         currentRating: rating,
         currentRd: rd,
         gamesPlayed: games,
+        rank,
       });
     });
 
@@ -176,10 +178,6 @@ export const PlayerProfilePage = ({ username }) => {
   const [timeControlIncrementFilter, setTimeControlIncrementFilter] = useState("all");
   const [expandedMatchKeys, setExpandedMatchKeys] = useState([]);
   const [aliasesLookup, setAliasesLookup] = useState(() => new Map());
-  const [profileRanks, setProfileRanks] = useState({
-    blitz: null,
-    bullet: null,
-  });
   const [ratingsSnapshotByMode, setRatingsSnapshotByMode] = useState({
     blitz: new Map(),
     bullet: new Map(),
@@ -222,25 +220,6 @@ export const PlayerProfilePage = ({ username }) => {
     };
 
     loadMatches();
-  }, [username]);
-
-  useEffect(() => {
-    const loadRanks = async () => {
-      try {
-        const leaderboardByMode = await loadCurrentLeaderboard();
-        setProfileRanks({
-          blitz: findRankForUsernameInLeaderboard(leaderboardByMode, username, "blitz"),
-          bullet: findRankForUsernameInLeaderboard(leaderboardByMode, username, "bullet"),
-        });
-      } catch {
-        setProfileRanks({
-          blitz: null,
-          bullet: null,
-        });
-      }
-    };
-
-    loadRanks();
   }, [username]);
 
   useEffect(() => {
@@ -401,12 +380,14 @@ export const PlayerProfilePage = ({ username }) => {
     currentRating: blitzSnapshot?.currentRating ?? blitzSummary.currentRating,
     currentRd: blitzSnapshot?.currentRd ?? blitzSummary.currentRd,
     gamesPlayed: blitzSnapshot?.gamesPlayed ?? blitzSummary.gamesPlayed,
+    rank: blitzSnapshot?.rank ?? null,
   };
   const bulletDisplaySummary = {
     ...bulletSummary,
     currentRating: bulletSnapshot?.currentRating ?? bulletSummary.currentRating,
     currentRd: bulletSnapshot?.currentRd ?? bulletSummary.currentRd,
     gamesPlayed: bulletSnapshot?.gamesPlayed ?? bulletSummary.gamesPlayed,
+    rank: bulletSnapshot?.rank ?? null,
   };
 
   const bestWins = useMemo(() => {
@@ -443,7 +424,7 @@ export const PlayerProfilePage = ({ username }) => {
             <span className="statusLabel">Blitz Rating</span>
             <strong>
               {formatCurrentRating(blitzDisplaySummary)}
-              {Number.isFinite(profileRanks.blitz) ? ` (#${profileRanks.blitz})` : ""}
+              {Number.isFinite(blitzDisplaySummary.rank) ? ` (#${blitzDisplaySummary.rank})` : ""}
             </strong>
           </div>
           <div className="profileMetric">
@@ -468,7 +449,7 @@ export const PlayerProfilePage = ({ username }) => {
             <span className="statusLabel">Bullet Rating</span>
             <strong>
               {formatCurrentRating(bulletDisplaySummary)}
-              {Number.isFinite(profileRanks.bullet) ? ` (#${profileRanks.bullet})` : ""}
+              {Number.isFinite(bulletDisplaySummary.rank) ? ` (#${bulletDisplaySummary.rank})` : ""}
             </strong>
           </div>
           <div className="profileMetric">
