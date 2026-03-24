@@ -9,9 +9,11 @@ import {
   formatScore,
   formatSignedDecimal,
   loadRawMatchesByMode,
+  loadCurrentLeaderboard,
   matchLengthBoundsByMode,
   modeOptions,
   normalizeMatches,
+  findRankForUsernameInLeaderboard,
   opponentRatingSliderMax,
   opponentRatingSliderMin,
   pageSizeOptions,
@@ -96,6 +98,10 @@ export const PlayerProfilePage = ({ username }) => {
   const [timeControlIncrementFilter, setTimeControlIncrementFilter] = useState("all");
   const [expandedMatchKeys, setExpandedMatchKeys] = useState([]);
   const [aliasesLookup, setAliasesLookup] = useState(() => new Map());
+  const [profileRanks, setProfileRanks] = useState({
+    blitz: null,
+    bullet: null,
+  });
   const matchLengthBounds = matchLengthBoundsByMode[selectedMode] ?? matchLengthBoundsByMode.blitz;
 
   useEffect(() => {
@@ -134,6 +140,25 @@ export const PlayerProfilePage = ({ username }) => {
     };
 
     loadMatches();
+  }, [username]);
+
+  useEffect(() => {
+    const loadRanks = async () => {
+      try {
+        const leaderboardByMode = await loadCurrentLeaderboard();
+        setProfileRanks({
+          blitz: findRankForUsernameInLeaderboard(leaderboardByMode, username, "blitz"),
+          bullet: findRankForUsernameInLeaderboard(leaderboardByMode, username, "bullet"),
+        });
+      } catch {
+        setProfileRanks({
+          blitz: null,
+          bullet: null,
+        });
+      }
+    };
+
+    loadRanks();
   }, [username]);
 
   const matches = matchesByMode[selectedMode] ?? [];
@@ -289,6 +314,12 @@ export const PlayerProfilePage = ({ username }) => {
     return entry.members.filter((member) => member.toLowerCase() !== username.toLowerCase());
   }, [aliasesLookup, username]);
 
+  const formatCurrentRating = (summary) => {
+    if (!Number.isFinite(summary.currentRating)) return "—";
+    const provisionalSuffix = Number.isFinite(summary.currentRd) && summary.currentRd >= 100 ? "?" : "";
+    return `${summary.currentRating.toFixed(1)}${provisionalSuffix}`;
+  };
+
   return (
     <div className="rankingsPage">
       <div className="panel rankingsPanel">
@@ -296,15 +327,14 @@ export const PlayerProfilePage = ({ username }) => {
 
         <div className="profileTopBar">
           <div className="profileMetric">
-            <span className="statusLabel">Blitz Current Rating</span>
+            <span className="statusLabel">Blitz Rating</span>
             <strong>
-              {Number.isFinite(blitzSummary.currentRating)
-                ? blitzSummary.currentRating.toFixed(1)
-                : "—"}
+              {formatCurrentRating(blitzSummary)}
+              {Number.isFinite(profileRanks.blitz) ? ` (#${profileRanks.blitz})` : ""}
             </strong>
           </div>
           <div className="profileMetric">
-            <span className="statusLabel">Blitz Current RD</span>
+            <span className="statusLabel">Blitz RD</span>
             <strong>
               {Number.isFinite(blitzSummary.currentRd) ? blitzSummary.currentRd.toFixed(1) : "—"}
             </strong>
@@ -320,15 +350,14 @@ export const PlayerProfilePage = ({ username }) => {
             <strong>{blitzSummary.gamesPlayed.toLocaleString("en-US")}</strong>
           </div>
           <div className="profileMetric">
-            <span className="statusLabel">Bullet Current Rating</span>
+            <span className="statusLabel">Bullet Rating</span>
             <strong>
-              {Number.isFinite(bulletSummary.currentRating)
-                ? bulletSummary.currentRating.toFixed(1)
-                : "—"}
+              {formatCurrentRating(bulletSummary)}
+              {Number.isFinite(profileRanks.bullet) ? ` (#${profileRanks.bullet})` : ""}
             </strong>
           </div>
           <div className="profileMetric">
-            <span className="statusLabel">Bullet Current RD</span>
+            <span className="statusLabel">Bullet RD</span>
             <strong>
               {Number.isFinite(bulletSummary.currentRd) ? bulletSummary.currentRd.toFixed(1) : "—"}
             </strong>
