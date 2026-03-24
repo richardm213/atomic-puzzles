@@ -20,7 +20,7 @@ const formatLocalDateTime = (timestamp) => {
   const date = new Date(timestamp);
   const now = new Date();
   const includeYear = date.getFullYear() !== now.getFullYear();
-  const month = date.toLocaleString("en-US", { month: "short" }).toLowerCase();
+  const month = date.toLocaleString("en-US", { month: "short" });
   const day = date.getDate();
   const year = date.getFullYear();
   const time = date
@@ -561,12 +561,6 @@ export const RecentMatchesPage = () => {
           </div>
         </div>
 
-        <div className="profileBackLinkWrap">
-          <a className="rankingLink" href="/rankings">
-            ← Back to rankings
-          </a>
-        </div>
-
         {error ? <div className="errorText">{error}</div> : null}
 
         <div className="rankingsMeta">
@@ -621,7 +615,21 @@ export const RecentMatchesPage = () => {
                   </div>
                 </div>
                 <div className="matchCardMeta">
-                  <span>{formatLocalDateTime(match.startTs)}</span>
+                  <span>
+                    {match.firstGameId === "—" ? (
+                      formatLocalDateTime(match.startTs)
+                    ) : (
+                      <a
+                        className="rankingLink"
+                        href={`https://lichess.org/${encodeURIComponent(match.firstGameId)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        {formatLocalDateTime(match.startTs)}
+                      </a>
+                    )}
+                  </span>
                   <span>TC {match.timeControl}</span>
                   <span>Source: {match.sourceValue}</span>
                 </div>
