@@ -20,6 +20,7 @@ import {
 
 const aliasFileUrlCandidates = ["/private/users.txt", "/data/users.txt"];
 const rankingsTextUrlCandidates = ["/private/rankings.txt", "/data/rankings.txt"];
+const lbJsonUrlCandidates = ["/private/lb.json", "/data/lb.json"];
 
 const parseAliasLookup = (rawText) => {
   const lookup = new Map();
@@ -80,6 +81,73 @@ const parseModeFromHeader = (line) => {
   if (!match) return null;
   const mode = match[1].toLowerCase();
   return modeOptions.includes(mode) ? mode : null;
+};
+
+const monthLabelFromLbKey = (monthKey) => {
+  const monthDate = new Date(`${monthKey} 01 UTC`);
+  if (Number.isNaN(monthDate.getTime())) return String(monthKey || "Unknown month");
+  return monthDate.toLocaleString("en-US", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+};
+
+const parseBestMonthRanksFromLbData = (rawData, username, mode) => {
+  if (!rawData || typeof rawData !== "object" || Array.isArray(rawData)) return [];
+  const usernameLower = String(username || "").toLowerCase();
+  if (!usernameLower) return [];
+
+  return Object.entries(rawData)
+    .map(([monthKey, monthData]) => {
+      if (!monthData || typeof monthData !== "object") return null;
+      const modeRows = monthData?.[mode];
+      if (!Array.isArray(modeRows)) return null;
+
+      const matchedEntry = modeRows.find((row) => String(row?.[0] || "").toLowerCase() === usernameLower);
+      if (!matchedEntry) return null;
+
+      const [, ratingRaw] = matchedEntry;
+      const monthDate = new Date(`${monthKey} 01 UTC`);
+      if (Number.isNaN(monthDate.getTime())) return null;
+
+      const ranking = modeRows
+        .filter((row) => Number.isFinite(Number(row?.[1])))
+        .sort((a, b) => Number(b?.[1]) - Number(a?.[1]));
+      const rank = ranking.findIndex((row) => String(row?.[0] || "").toLowerCase() === usernameLower) + 1;
+      if (!Number.isFinite(rank) || rank <= 0) return null;
+
+      const rating = Number(ratingRaw);
+      return {
+        monthKey,
+        monthDate,
+        monthLabel: monthLabelFromLbKey(monthKey),
+        rank,
+        rating: Number.isFinite(rating) ? rating : null,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => {
+      if (a.rank !== b.rank) return a.rank - b.rank;
+      return b.monthDate.getTime() - a.monthDate.getTime();
+    });
+};
+
+const loadBestMonthRanksFromLb = async (username, mode) => {
+  let lastError = null;
+
+  for (const url of lbJsonUrlCandidates) {
+    try {
+      const response = await fetch(url, { headers: { Accept: "application/json" } });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      return parseBestMonthRanksFromLbData(data, username, mode);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw new Error(`Could not load lb.json from configured sources (${String(lastError)})`);
 };
 
 const parseCurrentRatingsFromText = (rawText) => {
@@ -182,6 +250,11 @@ export const PlayerProfilePage = ({ username }) => {
     blitz: new Map(),
     bullet: new Map(),
   });
+  const [bestMonthRanksByMode, setBestMonthRanksByMode] = useState({
+    blitz: [],
+    bullet: [],
+  });
+  const [bestMonthRankCount, setBestMonthRankCount] = useState(5);
   const matchLengthBounds = matchLengthBoundsByMode[selectedMode] ?? matchLengthBoundsByMode.blitz;
 
   useEffect(() => {
@@ -196,6 +269,28 @@ export const PlayerProfilePage = ({ username }) => {
 
     loadAliases();
   }, []);
+
+  useEffect(() => {
+    const loadBestMonthRanks = async () => {
+      try {
+        const [blitzRanks, bulletRanks] = await Promise.all([
+          loadBestMonthRanksFromLb(username, "blitz"),
+          loadBestMonthRanksFromLb(username, "bullet"),
+        ]);
+        setBestMonthRanksByMode({
+          blitz: blitzRanks,
+          bullet: bulletRanks,
+        });
+      } catch {
+        setBestMonthRanksByMode({
+          blitz: [],
+          bullet: [],
+        });
+      }
+    };
+
+    loadBestMonthRanks();
+  }, [username]);
 
   useEffect(() => {
     const loadMatches = async () => {
@@ -401,6 +496,7 @@ export const PlayerProfilePage = ({ username }) => {
       })
       .slice(0, 5);
   }, [filteredMatches]);
+  const bestMonthRanks = (bestMonthRanksByMode[selectedMode] ?? []).slice(0, bestMonthRankCount);
 
   const aliasesForUser = useMemo(() => {
     const entry = aliasesLookup.get(username.toLowerCase());
@@ -501,6 +597,39 @@ export const PlayerProfilePage = ({ username }) => {
                           {formatLocalDateTime(match.startTs)}
                         </a>
                       )}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+          <div className="profileBestMonthRanks">
+            <div className="profileBestMonthRanksHeader">
+              <h2>Best Month Ranks</h2>
+              <label htmlFor="profile-best-month-rank-count-select">
+                Show
+                <select
+                  id="profile-best-month-rank-count-select"
+                  value={bestMonthRankCount}
+                  onChange={(event) => setBestMonthRankCount(Number(event.target.value))}
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                </select>
+              </label>
+            </div>
+            {bestMonthRanks.length === 0 ? (
+              <div className="emptyRankings">No monthly ranks available in {selectedMode}.</div>
+            ) : (
+              <ol>
+                {bestMonthRanks.map((monthRank) => (
+                  <li key={`best-month-rank-${selectedMode}-${monthRank.monthKey}`}>
+                    <span className="profileBestMonthRankPrimary">
+                      {monthRank.monthLabel} · #{monthRank.rank}
+                    </span>
+                    <span className="profileBestMonthRankRating">
+                      {Number.isFinite(monthRank.rating) ? monthRank.rating.toFixed(1) : "—"}
                     </span>
                   </li>
                 ))}
