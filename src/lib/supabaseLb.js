@@ -7,7 +7,7 @@ const supabaseLbConfig = {
 };
 
 const LB_SELECT_COLUMNS = "username,month,rank,rating,rd,games,tc";
-const PLAYER_RATINGS_SELECT_COLUMNS = "username,rating,rd,games,tc,rank";
+const PLAYER_RATINGS_SELECT_COLUMNS = "username,rating,peak,rd,games,tc,rank";
 
 const requireSupabaseConfig = () => {
   const { url, anonKey } = supabaseLbConfig;

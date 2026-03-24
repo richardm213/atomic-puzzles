@@ -113,6 +113,7 @@ const parseCurrentRatingsFromRows = (rows) => {
     const mode = String(row?.tc || "").toLowerCase();
     const rowUsername = String(row?.username || "").trim();
     const rating = Number(row?.rating);
+    const peak = Number(row?.peak);
     const rd = Number(row?.rd);
     const games = Number(row?.games);
     const rank = Number(row?.rank);
@@ -121,11 +122,12 @@ const parseCurrentRatingsFromRows = (rows) => {
     if (!Number.isFinite(rating) || !Number.isFinite(rd) || !Number.isFinite(games)) return;
 
     snapshotsByMode[mode].set(rowUsername.toLowerCase(), {
-        currentRating: rating,
-        currentRd: rd,
-        gamesPlayed: games,
-        rank: Number.isFinite(rank) ? rank : null,
-      });
+      currentRating: rating,
+      peakRating: Number.isFinite(peak) ? peak : null,
+      currentRd: rd,
+      gamesPlayed: games,
+      rank: Number.isFinite(rank) ? rank : null,
+    });
   });
 
   return snapshotsByMode;
@@ -335,63 +337,34 @@ export const PlayerProfilePage = ({ username }) => {
     return filteredMatches.slice(start, start + pageSize);
   }, [currentPage, filteredMatches, pageSize]);
 
-  const getModeRatingSummary = (modeMatches) => {
-    const latestWithRating = modeMatches.find(
-      (match) => Number.isFinite(match.afterRating) || Number.isFinite(match.afterRd),
-    );
-    const ratings = modeMatches.flatMap((match) => {
-      const candidates = [];
-      if (
-        Number.isFinite(match.beforeRating) &&
-        Number.isFinite(match.beforeRd) &&
-        match.beforeRd <= 55
-      ) {
-        candidates.push(match.beforeRating);
-      }
-      if (
-        Number.isFinite(match.afterRating) &&
-        Number.isFinite(match.afterRd) &&
-        match.afterRd <= 55
-      ) {
-        candidates.push(match.afterRating);
-      }
-      return candidates;
-    });
-
+  const getModeRatingSummary = () => {
     return {
-      currentRating: latestWithRating?.afterRating ?? null,
-      currentRd: latestWithRating?.afterRd ?? null,
-      peakRating: ratings.length > 0 ? Math.max(...ratings) : null,
-      gamesPlayed: modeMatches.reduce(
-        (total, match) => total + (Number.isFinite(match.gameCount) ? match.gameCount : 0),
-        0,
-      ),
+      currentRating: null,
+      currentRd: null,
+      peakRating: null,
+      gamesPlayed: 0,
     };
   };
 
-  const blitzSummary = useMemo(
-    () => getModeRatingSummary(matchesByMode.blitz ?? []),
-    [matchesByMode],
-  );
-  const bulletSummary = useMemo(
-    () => getModeRatingSummary(matchesByMode.bullet ?? []),
-    [matchesByMode],
-  );
+  const blitzSummary = useMemo(() => getModeRatingSummary(), []);
+  const bulletSummary = useMemo(() => getModeRatingSummary(), []);
   const usernameLower = username.toLowerCase();
   const blitzSnapshot = ratingsSnapshotByMode.blitz.get(usernameLower);
   const bulletSnapshot = ratingsSnapshotByMode.bullet.get(usernameLower);
   const blitzDisplaySummary = {
     ...blitzSummary,
-    currentRating: blitzSnapshot?.currentRating ?? blitzSummary.currentRating,
-    currentRd: blitzSnapshot?.currentRd ?? blitzSummary.currentRd,
-    gamesPlayed: blitzSnapshot?.gamesPlayed ?? blitzSummary.gamesPlayed,
+    currentRating: blitzSnapshot?.currentRating ?? null,
+    peakRating: blitzSnapshot?.peakRating ?? null,
+    currentRd: blitzSnapshot?.currentRd ?? null,
+    gamesPlayed: blitzSnapshot?.gamesPlayed ?? 0,
     rank: blitzSnapshot?.rank ?? null,
   };
   const bulletDisplaySummary = {
     ...bulletSummary,
-    currentRating: bulletSnapshot?.currentRating ?? bulletSummary.currentRating,
-    currentRd: bulletSnapshot?.currentRd ?? bulletSummary.currentRd,
-    gamesPlayed: bulletSnapshot?.gamesPlayed ?? bulletSummary.gamesPlayed,
+    currentRating: bulletSnapshot?.currentRating ?? null,
+    peakRating: bulletSnapshot?.peakRating ?? null,
+    currentRd: bulletSnapshot?.currentRd ?? null,
+    gamesPlayed: bulletSnapshot?.gamesPlayed ?? 0,
     rank: bulletSnapshot?.rank ?? null,
   };
 
@@ -468,7 +441,9 @@ export const PlayerProfilePage = ({ username }) => {
           <div className="profileMetric">
             <span className="statusLabel">Blitz Peak Rating</span>
             <strong>
-              {Number.isFinite(blitzSummary.peakRating) ? blitzSummary.peakRating.toFixed(1) : "—"}
+              {Number.isFinite(blitzDisplaySummary.peakRating)
+                ? blitzDisplaySummary.peakRating.toFixed(1)
+                : "—"}
             </strong>
           </div>
           <div className="profileMetric">
@@ -497,8 +472,8 @@ export const PlayerProfilePage = ({ username }) => {
           <div className="profileMetric">
             <span className="statusLabel">Bullet Peak Rating</span>
             <strong>
-              {Number.isFinite(bulletSummary.peakRating)
-                ? bulletSummary.peakRating.toFixed(1)
+              {Number.isFinite(bulletDisplaySummary.peakRating)
+                ? bulletDisplaySummary.peakRating.toFixed(1)
                 : "—"}
             </strong>
           </div>
