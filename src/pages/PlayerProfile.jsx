@@ -21,6 +21,7 @@ import {
 } from "./Rankings";
 
 const aliasFileUrlCandidates = ["/private/users.txt", "/data/users.txt"];
+const rankingsTextUrlCandidates = ["/private/rankings.txt", "/data/rankings.txt"];
 
 const parseAliasLookup = (rawText) => {
   const lookup = new Map();
@@ -76,6 +77,83 @@ const loadAliasesLookup = async () => {
   return new Map();
 };
 
+const parseModeFromHeader = (line) => {
+  const match = String(line || "").match(/^===\s*([A-Z]+)\s*===$/);
+  if (!match) return null;
+  const mode = match[1].toLowerCase();
+  return modeOptions.includes(mode) ? mode : null;
+};
+
+const parseCurrentRatingsFromText = (rawText) => {
+  const snapshotsByMode = {
+    blitz: new Map(),
+    bullet: new Map(),
+  };
+
+  let currentMode = null;
+  String(rawText || "")
+    .split(/\r?\n/)
+    .forEach((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) return;
+
+      const nextMode = parseModeFromHeader(trimmed);
+      if (nextMode) {
+        currentMode = nextMode;
+        return;
+      }
+      if (!currentMode) return;
+
+      const rowMatch = trimmed.match(
+        /^(\S+)\s+(-?\d+(?:\.\d+)?)\s+RD\s+(-?\d+(?:\.\d+)?)\s+G\s+(\d+)(?:\s+BR\s+(?:\d+|-)\s+BuR\s+(?:\d+|-))?\s*$/i,
+      );
+      if (!rowMatch) return;
+
+      const [, rowUsername, ratingRaw, rdRaw, gamesRaw] = rowMatch;
+      const rating = Number(ratingRaw);
+      const rd = Number(rdRaw);
+      const games = Number(gamesRaw);
+      if (!Number.isFinite(rating) || !Number.isFinite(rd) || !Number.isFinite(games)) return;
+
+      snapshotsByMode[currentMode].set(rowUsername.toLowerCase(), {
+        currentRating: rating,
+        currentRd: rd,
+        gamesPlayed: games,
+      });
+    });
+
+  return snapshotsByMode;
+};
+
+const loadCurrentRatingsSnapshot = async () => {
+  let lastError = null;
+
+  for (const url of rankingsTextUrlCandidates) {
+    try {
+      const response = await fetch(url, { headers: { Accept: "text/plain" } });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const text = await response.text();
+      return parseCurrentRatingsFromText(text);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  if (lastError) {
+    throw new Error(
+      `Could not load current ratings snapshot from configured sources (${String(lastError)})`,
+    );
+  }
+
+  return {
+    blitz: new Map(),
+    bullet: new Map(),
+  };
+};
+
 export const PlayerProfilePage = ({ username }) => {
   const [selectedMode, setSelectedMode] = useState("blitz");
   const [matchesByMode, setMatchesByMode] = useState({
@@ -101,6 +179,10 @@ export const PlayerProfilePage = ({ username }) => {
   const [profileRanks, setProfileRanks] = useState({
     blitz: null,
     bullet: null,
+  });
+  const [ratingsSnapshotByMode, setRatingsSnapshotByMode] = useState({
+    blitz: new Map(),
+    bullet: new Map(),
   });
   const matchLengthBounds = matchLengthBoundsByMode[selectedMode] ?? matchLengthBoundsByMode.blitz;
 
@@ -160,6 +242,22 @@ export const PlayerProfilePage = ({ username }) => {
 
     loadRanks();
   }, [username]);
+
+  useEffect(() => {
+    const loadRatingsSnapshot = async () => {
+      try {
+        const snapshots = await loadCurrentRatingsSnapshot();
+        setRatingsSnapshotByMode(snapshots);
+      } catch {
+        setRatingsSnapshotByMode({
+          blitz: new Map(),
+          bullet: new Map(),
+        });
+      }
+    };
+
+    loadRatingsSnapshot();
+  }, []);
 
   const matches = matchesByMode[selectedMode] ?? [];
 
@@ -295,6 +393,21 @@ export const PlayerProfilePage = ({ username }) => {
     () => getModeRatingSummary(matchesByMode.bullet ?? []),
     [matchesByMode],
   );
+  const usernameLower = username.toLowerCase();
+  const blitzSnapshot = ratingsSnapshotByMode.blitz.get(usernameLower);
+  const bulletSnapshot = ratingsSnapshotByMode.bullet.get(usernameLower);
+  const blitzDisplaySummary = {
+    ...blitzSummary,
+    currentRating: blitzSnapshot?.currentRating ?? blitzSummary.currentRating,
+    currentRd: blitzSnapshot?.currentRd ?? blitzSummary.currentRd,
+    gamesPlayed: blitzSnapshot?.gamesPlayed ?? blitzSummary.gamesPlayed,
+  };
+  const bulletDisplaySummary = {
+    ...bulletSummary,
+    currentRating: bulletSnapshot?.currentRating ?? bulletSummary.currentRating,
+    currentRd: bulletSnapshot?.currentRd ?? bulletSummary.currentRd,
+    gamesPlayed: bulletSnapshot?.gamesPlayed ?? bulletSummary.gamesPlayed,
+  };
 
   const bestWins = useMemo(() => {
     return filteredMatches
@@ -329,14 +442,16 @@ export const PlayerProfilePage = ({ username }) => {
           <div className="profileMetric">
             <span className="statusLabel">Blitz Rating</span>
             <strong>
-              {formatCurrentRating(blitzSummary)}
+              {formatCurrentRating(blitzDisplaySummary)}
               {Number.isFinite(profileRanks.blitz) ? ` (#${profileRanks.blitz})` : ""}
             </strong>
           </div>
           <div className="profileMetric">
             <span className="statusLabel">Blitz RD</span>
             <strong>
-              {Number.isFinite(blitzSummary.currentRd) ? blitzSummary.currentRd.toFixed(1) : "—"}
+              {Number.isFinite(blitzDisplaySummary.currentRd)
+                ? blitzDisplaySummary.currentRd.toFixed(1)
+                : "—"}
             </strong>
           </div>
           <div className="profileMetric">
@@ -347,19 +462,21 @@ export const PlayerProfilePage = ({ username }) => {
           </div>
           <div className="profileMetric">
             <span className="statusLabel">Blitz Games Played</span>
-            <strong>{blitzSummary.gamesPlayed.toLocaleString("en-US")}</strong>
+            <strong>{blitzDisplaySummary.gamesPlayed.toLocaleString("en-US")}</strong>
           </div>
           <div className="profileMetric">
             <span className="statusLabel">Bullet Rating</span>
             <strong>
-              {formatCurrentRating(bulletSummary)}
+              {formatCurrentRating(bulletDisplaySummary)}
               {Number.isFinite(profileRanks.bullet) ? ` (#${profileRanks.bullet})` : ""}
             </strong>
           </div>
           <div className="profileMetric">
             <span className="statusLabel">Bullet RD</span>
             <strong>
-              {Number.isFinite(bulletSummary.currentRd) ? bulletSummary.currentRd.toFixed(1) : "—"}
+              {Number.isFinite(bulletDisplaySummary.currentRd)
+                ? bulletDisplaySummary.currentRd.toFixed(1)
+                : "—"}
             </strong>
           </div>
           <div className="profileMetric">
@@ -372,7 +489,7 @@ export const PlayerProfilePage = ({ username }) => {
           </div>
           <div className="profileMetric">
             <span className="statusLabel">Bullet Games Played</span>
-            <strong>{bulletSummary.gamesPlayed.toLocaleString("en-US")}</strong>
+            <strong>{bulletDisplaySummary.gamesPlayed.toLocaleString("en-US")}</strong>
           </div>
         </div>
 
