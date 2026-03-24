@@ -87,53 +87,56 @@ const monthLabelFromLbKey = (monthKey) => {
   const monthDate = new Date(`${monthKey} 01 UTC`);
   if (Number.isNaN(monthDate.getTime())) return String(monthKey || "Unknown month");
   return monthDate.toLocaleString("en-US", {
-    month: "long",
+    month: "short",
     year: "numeric",
     timeZone: "UTC",
   });
 };
 
-const parseBestMonthRanksFromLbData = (rawData, username, mode) => {
+const parseMonthRanksFromLbData = (rawData, username) => {
   if (!rawData || typeof rawData !== "object" || Array.isArray(rawData)) return [];
   const usernameLower = String(username || "").toLowerCase();
   if (!usernameLower) return [];
 
   return Object.entries(rawData)
-    .map(([monthKey, monthData]) => {
+    .flatMap(([monthKey, monthData]) => {
       if (!monthData || typeof monthData !== "object") return null;
-      const modeRows = monthData?.[mode];
-      if (!Array.isArray(modeRows)) return null;
-
-      const matchedEntry = modeRows.find((row) => String(row?.[0] || "").toLowerCase() === usernameLower);
-      if (!matchedEntry) return null;
-
-      const [, ratingRaw] = matchedEntry;
       const monthDate = new Date(`${monthKey} 01 UTC`);
       if (Number.isNaN(monthDate.getTime())) return null;
 
-      const ranking = modeRows
-        .filter((row) => Number.isFinite(Number(row?.[1])))
-        .sort((a, b) => Number(b?.[1]) - Number(a?.[1]));
-      const rank = ranking.findIndex((row) => String(row?.[0] || "").toLowerCase() === usernameLower) + 1;
-      if (!Number.isFinite(rank) || rank <= 0) return null;
+      return ["blitz", "bullet"].flatMap((mode) => {
+        const modeRows = monthData?.[mode];
+        if (!Array.isArray(modeRows)) return [];
 
-      const rating = Number(ratingRaw);
-      return {
-        monthKey,
-        monthDate,
-        monthLabel: monthLabelFromLbKey(monthKey),
-        rank,
-        rating: Number.isFinite(rating) ? rating : null,
-      };
+        const matchedEntry = modeRows.find(
+          (row) => String(row?.[0] || "").toLowerCase() === usernameLower,
+        );
+        if (!matchedEntry) return [];
+
+        const [, ratingRaw] = matchedEntry;
+
+        const ranking = modeRows
+          .filter((row) => Number.isFinite(Number(row?.[1])))
+          .sort((a, b) => Number(b?.[1]) - Number(a?.[1]));
+        const rank =
+          ranking.findIndex((row) => String(row?.[0] || "").toLowerCase() === usernameLower) + 1;
+        if (!Number.isFinite(rank) || rank <= 0) return [];
+
+        const rating = Number(ratingRaw);
+        return {
+          monthKey,
+          monthDate,
+          monthLabel: monthLabelFromLbKey(monthKey),
+          mode,
+          rank,
+          rating: Number.isFinite(rating) ? rating : null,
+        };
+      });
     })
-    .filter(Boolean)
-    .sort((a, b) => {
-      if (a.rank !== b.rank) return a.rank - b.rank;
-      return b.monthDate.getTime() - a.monthDate.getTime();
-    });
+    .filter(Boolean);
 };
 
-const loadBestMonthRanksFromLb = async (username, mode) => {
+const loadMonthRanksFromLb = async (username) => {
   let lastError = null;
 
   for (const url of lbJsonUrlCandidates) {
@@ -141,7 +144,7 @@ const loadBestMonthRanksFromLb = async (username, mode) => {
       const response = await fetch(url, { headers: { Accept: "application/json" } });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
-      return parseBestMonthRanksFromLbData(data, username, mode);
+      return parseMonthRanksFromLbData(data, username);
     } catch (error) {
       lastError = error;
     }
@@ -250,11 +253,10 @@ export const PlayerProfilePage = ({ username }) => {
     blitz: new Map(),
     bullet: new Map(),
   });
-  const [bestMonthRanksByMode, setBestMonthRanksByMode] = useState({
-    blitz: [],
-    bullet: [],
-  });
+  const [monthRanks, setMonthRanks] = useState([]);
   const [bestMonthRankCount, setBestMonthRankCount] = useState(5);
+  const [recentMonthRankCount, setRecentMonthRankCount] = useState(5);
+  const [bestWinCount, setBestWinCount] = useState(5);
   const matchLengthBounds = matchLengthBoundsByMode[selectedMode] ?? matchLengthBoundsByMode.blitz;
 
   useEffect(() => {
@@ -271,25 +273,16 @@ export const PlayerProfilePage = ({ username }) => {
   }, []);
 
   useEffect(() => {
-    const loadBestMonthRanks = async () => {
+    const loadMonthRanks = async () => {
       try {
-        const [blitzRanks, bulletRanks] = await Promise.all([
-          loadBestMonthRanksFromLb(username, "blitz"),
-          loadBestMonthRanksFromLb(username, "bullet"),
-        ]);
-        setBestMonthRanksByMode({
-          blitz: blitzRanks,
-          bullet: bulletRanks,
-        });
+        const ranks = await loadMonthRanksFromLb(username);
+        setMonthRanks(ranks);
       } catch {
-        setBestMonthRanksByMode({
-          blitz: [],
-          bullet: [],
-        });
+        setMonthRanks([]);
       }
     };
 
-    loadBestMonthRanks();
+    loadMonthRanks();
   }, [username]);
 
   useEffect(() => {
@@ -494,9 +487,25 @@ export const PlayerProfilePage = ({ username }) => {
         if (ratingDiff !== 0) return ratingDiff;
         return b.startTs - a.startTs;
       })
-      .slice(0, 5);
-  }, [filteredMatches]);
-  const bestMonthRanks = (bestMonthRanksByMode[selectedMode] ?? []).slice(0, bestMonthRankCount);
+      .slice(0, bestWinCount);
+  }, [bestWinCount, filteredMatches]);
+  const bestMonthRanks = useMemo(
+    () =>
+      [...monthRanks]
+        .sort((a, b) => {
+          if (a.rank !== b.rank) return a.rank - b.rank;
+          return b.monthDate.getTime() - a.monthDate.getTime();
+        })
+        .slice(0, bestMonthRankCount),
+    [bestMonthRankCount, monthRanks],
+  );
+  const recentMonthRanks = useMemo(
+    () =>
+      [...monthRanks]
+        .sort((a, b) => b.monthDate.getTime() - a.monthDate.getTime())
+        .slice(0, recentMonthRankCount),
+    [monthRanks, recentMonthRankCount],
+  );
 
   const aliasesForUser = useMemo(() => {
     const entry = aliasesLookup.get(username.toLowerCase());
@@ -570,9 +579,23 @@ export const PlayerProfilePage = ({ username }) => {
           </div>
         </div>
 
-        <div className="profileHighlights">
+        <div className="profileHighlights profileHighlightsTopRow">
           <div className="profileBestWins">
-            <h2>Best 5 Wins</h2>
+            <div className="profileBestMonthRanksHeader">
+              <h2>Best Wins</h2>
+              <label htmlFor="profile-best-win-count-select">
+                Show
+                <select
+                  id="profile-best-win-count-select"
+                  value={bestWinCount}
+                  onChange={(event) => setBestWinCount(Number(event.target.value))}
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                </select>
+              </label>
+            </div>
             {bestWins.length === 0 ? (
               <div className="emptyRankings">No wins available in {selectedMode}.</div>
             ) : (
@@ -603,9 +626,25 @@ export const PlayerProfilePage = ({ username }) => {
               </ol>
             )}
           </div>
+
+          <div className="profileAliases">
+            <h2>Aliases</h2>
+            {aliasesForUser.length === 0 ? (
+              <div className="emptyRankings">No aliases listed.</div>
+            ) : (
+              <div className="profileAliasesList">
+                {aliasesForUser.map((alias) => (
+                  <div key={`alias-${alias}`}>{alias}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="profileHighlights profileHighlightsBottomRow">
           <div className="profileBestMonthRanks">
             <div className="profileBestMonthRanksHeader">
-              <h2>Best Month Ranks</h2>
+              <h2>Best Ranks</h2>
               <label htmlFor="profile-best-month-rank-count-select">
                 Show
                 <select
@@ -624,9 +663,9 @@ export const PlayerProfilePage = ({ username }) => {
             ) : (
               <ol>
                 {bestMonthRanks.map((monthRank) => (
-                  <li key={`best-month-rank-${selectedMode}-${monthRank.monthKey}`}>
+                  <li key={`best-month-rank-${monthRank.mode}-${monthRank.monthKey}`}>
                     <span className="profileBestMonthRankPrimary">
-                      {monthRank.monthLabel} · #{monthRank.rank}
+                      {monthRank.monthLabel} {monthRank.mode} · #{monthRank.rank}
                     </span>
                     <span className="profileBestMonthRankRating">
                       {Number.isFinite(monthRank.rating) ? monthRank.rating.toFixed(1) : "—"}
@@ -637,16 +676,37 @@ export const PlayerProfilePage = ({ username }) => {
             )}
           </div>
 
-          <div className="profileAliases">
-            <h2>Aliases</h2>
-            {aliasesForUser.length === 0 ? (
-              <div className="emptyRankings">No aliases listed.</div>
+          <div className="profileBestMonthRanks">
+            <div className="profileBestMonthRanksHeader">
+              <h2>Recent Ranks</h2>
+              <label htmlFor="profile-recent-month-rank-count-select">
+                Show
+                <select
+                  id="profile-recent-month-rank-count-select"
+                  value={recentMonthRankCount}
+                  onChange={(event) => setRecentMonthRankCount(Number(event.target.value))}
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                </select>
+              </label>
+            </div>
+            {recentMonthRanks.length === 0 ? (
+              <div className="emptyRankings">No monthly ranks available.</div>
             ) : (
-              <div className="profileAliasesList">
-                {aliasesForUser.map((alias) => (
-                  <div key={`alias-${alias}`}>{alias}</div>
+              <ol>
+                {recentMonthRanks.map((monthRank) => (
+                  <li key={`recent-month-rank-${monthRank.mode}-${monthRank.monthKey}`}>
+                    <span className="profileBestMonthRankPrimary">
+                      {monthRank.monthLabel} {monthRank.mode} · #{monthRank.rank}
+                    </span>
+                    <span className="profileBestMonthRankRating">
+                      {Number.isFinite(monthRank.rating) ? monthRank.rating.toFixed(1) : "—"}
+                    </span>
+                  </li>
                 ))}
-              </div>
+              </ol>
             )}
           </div>
         </div>

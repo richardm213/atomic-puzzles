@@ -782,9 +782,13 @@ input {
 .profileHighlights {
   margin-top: 14px;
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   gap: 12px;
   align-items: start;
+}
+
+.profileHighlightsBottomRow {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .profileBestMonthRanks {
@@ -865,6 +869,10 @@ input {
 
 @media (max-width: 900px) {
   .profileHighlights {
+    grid-template-columns: 1fr;
+  }
+
+  .profileHighlightsBottomRow {
     grid-template-columns: 1fr;
   }
 }
