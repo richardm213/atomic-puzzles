@@ -270,12 +270,201 @@ export const parseTimeControlParts = (timeControl) => {
   };
 };
 
-const matchJsonUrlCandidates = (mode) => [
+const matchDataUrlCandidates = (mode) => [
+  `/private/${mode}_matches.csv`,
+  `/data/${mode}_matches.csv`,
+  `https://raw.githubusercontent.com/atomicchess/atomic-rankings/main/data/${mode}_matches.csv`,
+  `https://raw.githubusercontent.com/atomaire/atomic-rankings/main/data/${mode}_matches.csv`,
   `/private/${mode}_matches.json`,
   `/data/${mode}_matches.json`,
   `https://raw.githubusercontent.com/atomicchess/atomic-rankings/main/data/${mode}_matches.json`,
   `https://raw.githubusercontent.com/atomaire/atomic-rankings/main/data/${mode}_matches.json`,
 ];
+
+const gameDataUrlCandidates = (mode) => [
+  `/private/${mode}_games.csv`,
+  `/data/${mode}_games.csv`,
+  `https://raw.githubusercontent.com/atomicchess/atomic-rankings/main/data/${mode}_games.csv`,
+  `https://raw.githubusercontent.com/atomaire/atomic-rankings/main/data/${mode}_games.csv`,
+];
+
+const splitCsvLine = (line) => {
+  const values = [];
+  let current = "";
+  let insideQuotes = false;
+
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+
+    if (char === '"') {
+      if (insideQuotes && line[index + 1] === '"') {
+        current += '"';
+        index += 1;
+      } else {
+        insideQuotes = !insideQuotes;
+      }
+      continue;
+    }
+
+    if (char === "," && !insideQuotes) {
+      values.push(current);
+      current = "";
+      continue;
+    }
+
+    current += char;
+  }
+
+  values.push(current);
+  return values;
+};
+
+const parsePostgresTextArray = (value) => {
+  if (Array.isArray(value)) return value;
+  const raw = String(value ?? "").trim();
+  if (!raw) return [];
+  if (raw.startsWith("{") && raw.endsWith("}")) {
+    const inner = raw.slice(1, -1);
+    if (!inner) return [];
+    return inner
+      .split(",")
+      .map((entry) => entry.trim().replace(/^"(.*)"$/, "$1"))
+      .filter(Boolean);
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.map((entry) => String(entry || "")).filter(Boolean) : [];
+  } catch {
+    return raw
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+  }
+};
+
+const toNullableNumber = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const parseCsvRows = (rawCsv) => {
+  const text = String(rawCsv || "").trim();
+  if (!text) return [];
+  const lines = text.split(/\r?\n/).filter(Boolean);
+  if (lines.length < 2) return [];
+  const headers = splitCsvLine(lines[0]).map((header) => String(header || "").trim());
+
+  return lines.slice(1).map((line) => {
+    const values = splitCsvLine(line);
+    return Object.fromEntries(headers.map((header, index) => [header, values[index] ?? ""]));
+  });
+};
+
+const parseCsvGamesById = (rawCsv) => {
+  const rows = parseCsvRows(rawCsv);
+  const lookup = new Map();
+
+  rows.forEach((row) => {
+    const gameId = String(row.game_id || "").trim();
+    if (!gameId) return;
+    lookup.set(gameId, {
+      id: gameId,
+      game_index: toNullableNumber(row.game_index),
+      end_ts: toNullableNumber(row.end_ts),
+      winner: winnerToFullWord(row.winner),
+      white: String(row.white_player || ""),
+      black: String(row.black_player || ""),
+      time_control: row.time_control,
+      source: row.source,
+      ratings: {
+        white: {
+          before_rating: toNullableNumber(row.white_before_rating),
+          after_rating: toNullableNumber(row.white_after_rating),
+          before_rd: toNullableNumber(row.white_before_rd),
+          after_rd: toNullableNumber(row.white_after_rd),
+        },
+        black: {
+          before_rating: toNullableNumber(row.black_before_rating),
+          after_rating: toNullableNumber(row.black_after_rating),
+          before_rd: toNullableNumber(row.black_before_rd),
+          after_rd: toNullableNumber(row.black_after_rd),
+        },
+      },
+    });
+  });
+
+  return lookup;
+};
+
+const parseCsvMatches = (rawCsv, gamesById = new Map()) => {
+  const rows = parseCsvRows(rawCsv);
+  return rows.map((row) => {
+    const gameIds = parsePostgresTextArray(row.game_ids);
+    const games = gameIds.map((id) => {
+      const detailed = gamesById.get(id);
+      return (
+        detailed || {
+          id,
+          winner: "draw",
+          white: row.player_1,
+          black: row.player_2,
+          end_ts: toNullableNumber(row.end_ts),
+        }
+      );
+    });
+    games.sort((a, b) => {
+      const aIndex = Number.isFinite(a.game_index) ? a.game_index : Number.POSITIVE_INFINITY;
+      const bIndex = Number.isFinite(b.game_index) ? b.game_index : Number.POSITIVE_INFINITY;
+      if (aIndex !== bIndex) return aIndex - bIndex;
+      return (a.end_ts ?? 0) - (b.end_ts ?? 0);
+    });
+
+    const p1 = String(row.player_1 || "Unknown");
+    const p2 = String(row.player_2 || "Unknown");
+    return {
+      match_id: row.match_id,
+      players: [p1, p2],
+      start_ts: Number(row.start_ts),
+      end_ts: Number(row.end_ts),
+      time_control: row.time_control,
+      source: row.source,
+      tournament_id: row.tournament_id,
+      games,
+      ratings: {
+        [p1]: {
+          before_rating: toNullableNumber(row.p1_before_rating),
+          after_rating: toNullableNumber(row.p1_after_rating),
+          before_rd: toNullableNumber(row.p1_before_rd),
+          after_rd: toNullableNumber(row.p1_after_rd),
+        },
+        [p2]: {
+          before_rating: toNullableNumber(row.p2_before_rating),
+          after_rating: toNullableNumber(row.p2_after_rating),
+          before_rd: toNullableNumber(row.p2_before_rd),
+          after_rd: toNullableNumber(row.p2_after_rd),
+        },
+      },
+    };
+  });
+};
+
+const loadTextFromCandidates = async (candidates) => {
+  let lastError = null;
+  for (const url of candidates) {
+    try {
+      const response = await fetch(url, { headers: { Accept: "text/csv,text/plain,*/*" } });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      return await response.text();
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  if (lastError) throw lastError;
+  return "";
+};
 
 const parseModeFromTimeControl = (timeControl) => {
   const mode = String(timeControl || "").toLowerCase();
@@ -373,18 +562,29 @@ export const loadRawMatchesByMode = async (mode) => {
     return [...blitzMatches, ...bulletMatches];
   }
 
-  const candidates = matchJsonUrlCandidates(mode);
+  let gamesById = new Map();
+  try {
+    const gamesCsv = await loadTextFromCandidates(gameDataUrlCandidates(mode));
+    gamesById = parseCsvGamesById(gamesCsv);
+  } catch {
+    gamesById = new Map();
+  }
+
+  const candidates = matchDataUrlCandidates(mode);
   let loaded = null;
   let lastError = null;
 
   for (const url of candidates) {
     try {
-      const response = await fetch(url, { headers: { Accept: "application/json" } });
+      const isCsv = url.endsWith(".csv");
+      const response = await fetch(url, {
+        headers: { Accept: isCsv ? "text/csv,text/plain,*/*" : "application/json" },
+      });
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
 
-      loaded = await response.json();
+      loaded = isCsv ? parseCsvMatches(await response.text(), gamesById) : await response.json();
       break;
     } catch (fetchError) {
       lastError = fetchError;

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
+import { loadRawMatchesByMode } from "./Rankings";
 
 const opponentRatingSliderMin = 1000;
 const opponentRatingSliderMax = 2500;
@@ -56,40 +57,6 @@ const parseDateInputBoundary = (value, boundary) => {
     parsed.setHours(23, 59, 59, 999);
   }
   return parsed.getTime();
-};
-
-const recentMatchesUrlCandidates = (mode) => [
-  `/private/${mode}_matches.json`,
-  `/data/${mode}_matches.json`,
-  `https://raw.githubusercontent.com/atomicchess/atomic-rankings/main/data/${mode}_matches.json`,
-  `https://raw.githubusercontent.com/atomaire/atomic-rankings/main/data/${mode}_matches.json`,
-];
-
-const loadRawRecentMatchesByMode = async (mode) => {
-  const candidates = recentMatchesUrlCandidates(mode);
-  let loaded = null;
-  let lastError = null;
-
-  for (const url of candidates) {
-    try {
-      const response = await fetch(url, { headers: { Accept: "application/json" } });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      loaded = await response.json();
-      break;
-    } catch (error) {
-      lastError = error;
-    }
-  }
-
-  if (!loaded) {
-    throw new Error(
-      `Could not load ${mode} match history from configured sources (${String(lastError)})`,
-    );
-  }
-
-  return Array.isArray(loaded) ? loaded : [];
 };
 
 const findRatingDataForPlayer = (ratings, playerName) => {
@@ -355,7 +322,7 @@ export const RecentMatchesPage = () => {
     const loadMatches = async () => {
       setError("");
       try {
-        const loaded = await loadRawRecentMatchesByMode(selectedMode);
+        const loaded = await loadRawMatchesByMode(selectedMode);
         const normalized = normalizeRecentMatches(loaded, selectedMode);
         setMatches(normalized);
         setCurrentPage(1);
