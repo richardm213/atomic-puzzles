@@ -94,6 +94,11 @@ VITE_SUPABASE_URL=https://<your-project-ref>.supabase.co
 VITE_SUPABASE_ANON_KEY=<your-anon-key>
 # Optional (defaults to "puzzles")
 VITE_SUPABASE_PUZZLES_TABLE=puzzles
+# Optional (defaults shown)
+VITE_SUPABASE_LB_TABLE=lb
+VITE_SUPABASE_PLAYER_RATINGS_TABLE=player_ratings
+VITE_SUPABASE_BLITZ_MATCHES_TABLE=blitz_matches
+VITE_SUPABASE_BULLET_MATCHES_TABLE=bullet_matches
 ```
 
 The app fetches rows from `VITE_SUPABASE_PUZZLES_TABLE` via Supabase REST API and expects each row to include:

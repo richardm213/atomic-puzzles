@@ -4,10 +4,15 @@ const supabaseLbConfig = {
   table: import.meta.env.VITE_SUPABASE_LB_TABLE?.trim() || "lb",
   playerRatingsTable:
     import.meta.env.VITE_SUPABASE_PLAYER_RATINGS_TABLE?.trim() || "player_ratings",
+  blitzMatchesTable: import.meta.env.VITE_SUPABASE_BLITZ_MATCHES_TABLE?.trim() || "blitz_matches",
+  bulletMatchesTable:
+    import.meta.env.VITE_SUPABASE_BULLET_MATCHES_TABLE?.trim() || "bullet_matches",
 };
 
 const LB_SELECT_COLUMNS = "username,month,rank,rating,rd,games,tc";
 const PLAYER_RATINGS_SELECT_COLUMNS = "username,rating,peak,rd,games,tc,rank";
+const MATCHES_SELECT_COLUMNS =
+  "match_id,player_1,player_2,start_ts,end_ts,time_control,source,tournament_id,game_ids,p1_before_rating,p1_after_rating,p1_before_rd,p1_after_rd,p2_before_rating,p2_after_rating,p2_before_rd,p2_after_rd";
 
 const requireSupabaseConfig = () => {
   const { url, anonKey } = supabaseLbConfig;
@@ -101,3 +106,45 @@ export const fetchPlayerRatingsRows = async ({ tc, username, limit } = {}) => {
 };
 
 export const hasSupabaseLbConfig = () => Boolean(supabaseLbConfig.url && supabaseLbConfig.anonKey);
+
+export const fetchMatchRowsByMode = async ({ mode, limit } = {}) => {
+  requireSupabaseConfig();
+  const normalizedMode = String(mode || "").toLowerCase();
+  const { url, anonKey, blitzMatchesTable, bulletMatchesTable } = supabaseLbConfig;
+  const table =
+    normalizedMode === "blitz"
+      ? blitzMatchesTable
+      : normalizedMode === "bullet"
+        ? bulletMatchesTable
+        : "";
+
+  if (!table) {
+    throw new Error(`Invalid mode "${mode}" for match loading`);
+  }
+
+  const baseUrl = url.replace(/\/$/, "");
+  const queryParts = [`select=${encodeURIComponent(MATCHES_SELECT_COLUMNS)}`, "order=start_ts.desc"];
+  if (Number.isFinite(Number(limit)) && Number(limit) > 0) {
+    queryParts.push(`limit=${Math.floor(Number(limit))}`);
+  }
+
+  const endpoint = `${baseUrl}/rest/v1/${encodeURIComponent(table)}?${queryParts.join("&")}`;
+  const response = await fetch(endpoint, {
+    headers: {
+      apikey: anonKey,
+      Authorization: `Bearer ${anonKey}`,
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status} while loading Supabase table "${table}"`);
+  }
+
+  const rows = await response.json();
+  if (!Array.isArray(rows)) {
+    throw new Error(`Expected Supabase table "${table}" to return an array`);
+  }
+
+  return rows;
+};

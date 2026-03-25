@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
+import { loadRawMatchesByMode } from "./Rankings";
 
 const opponentRatingSliderMin = 1000;
 const opponentRatingSliderMax = 2500;
@@ -58,40 +59,6 @@ const parseDateInputBoundary = (value, boundary) => {
   return parsed.getTime();
 };
 
-const recentMatchesUrlCandidates = (mode) => [
-  `/private/${mode}_matches.json`,
-  `/data/${mode}_matches.json`,
-  `https://raw.githubusercontent.com/atomicchess/atomic-rankings/main/data/${mode}_matches.json`,
-  `https://raw.githubusercontent.com/atomaire/atomic-rankings/main/data/${mode}_matches.json`,
-];
-
-const loadRawRecentMatchesByMode = async (mode) => {
-  const candidates = recentMatchesUrlCandidates(mode);
-  let loaded = null;
-  let lastError = null;
-
-  for (const url of candidates) {
-    try {
-      const response = await fetch(url, { headers: { Accept: "application/json" } });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      loaded = await response.json();
-      break;
-    } catch (error) {
-      lastError = error;
-    }
-  }
-
-  if (!loaded) {
-    throw new Error(
-      `Could not load ${mode} match history from configured sources (${String(lastError)})`,
-    );
-  }
-
-  return Array.isArray(loaded) ? loaded : [];
-};
-
 const findRatingDataForPlayer = (ratings, playerName) => {
   if (!ratings || typeof ratings !== "object") return null;
   if (ratings[playerName]) return ratings[playerName];
@@ -116,6 +83,7 @@ const winnerToFullWord = (winner) => {
 const normalizedPlayersFromMatch = (match) => {
   if (Array.isArray(match?.players)) return match.players;
   if (Array.isArray(match?.p)) return match.p;
+  if (match?.player_1 || match?.player_2) return [match.player_1, match.player_2];
   return [];
 };
 
@@ -137,6 +105,13 @@ const normalizedGamesFromMatch = (match, players) => {
     ? match.games
     : Array.isArray(match?.g)
       ? match.g
+      : Array.isArray(match?.game_ids)
+        ? match.game_ids.map((gameId, index) => ({
+            id: gameId,
+            white: players[index % 2] || players[0] || "",
+            black: players[(index + 1) % 2] || players[1] || "",
+            winner: "draw",
+          }))
       : [];
 
   return rawGames.map((game) => {
@@ -186,6 +161,23 @@ const ratingsFromCompact = (ratingsCompact, players) => {
 };
 
 const normalizedRatingsFromMatch = (match, players) => {
+  if (match?.player_1 || match?.player_2) {
+    return {
+      [String(match?.player_1 || "")]: {
+        before_rating: match?.p1_before_rating,
+        after_rating: match?.p1_after_rating,
+        before_rd: match?.p1_before_rd,
+        after_rd: match?.p1_after_rd,
+      },
+      [String(match?.player_2 || "")]: {
+        before_rating: match?.p2_before_rating,
+        after_rating: match?.p2_after_rating,
+        before_rd: match?.p2_before_rd,
+        after_rd: match?.p2_after_rd,
+      },
+    };
+  }
+
   const ratings =
     match?.ratings && typeof match.ratings === "object"
       ? match.ratings
@@ -355,7 +347,7 @@ export const RecentMatchesPage = () => {
     const loadMatches = async () => {
       setError("");
       try {
-        const loaded = await loadRawRecentMatchesByMode(selectedMode);
+        const loaded = await loadRawMatchesByMode(selectedMode);
         const normalized = normalizeRecentMatches(loaded, selectedMode);
         setMatches(normalized);
         setCurrentPage(1);

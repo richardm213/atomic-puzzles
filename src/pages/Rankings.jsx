@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { fetchLbRows, isoMonthStartFromMonthKey } from "../lib/supabaseLb";
+import { fetchLbRows, fetchMatchRowsByMode, isoMonthStartFromMonthKey } from "../lib/supabaseLb";
 
 export const modeOptions = ["blitz", "bullet"];
 const monthNames = [
@@ -131,6 +131,7 @@ const winnerToFullWord = (winner) => {
 const normalizedPlayersFromMatch = (match) => {
   if (Array.isArray(match?.players)) return match.players;
   if (Array.isArray(match?.p)) return match.p;
+  if (match?.player_1 || match?.player_2) return [match.player_1, match.player_2];
   return [];
 };
 
@@ -152,6 +153,13 @@ const normalizedGamesFromMatch = (match, players) => {
     ? match.games
     : Array.isArray(match?.g)
       ? match.g
+      : Array.isArray(match?.game_ids)
+        ? match.game_ids.map((gameId, index) => ({
+            id: gameId,
+            white: players[index % 2] || players[0] || "",
+            black: players[(index + 1) % 2] || players[1] || "",
+            winner: "draw",
+          }))
       : [];
 
   return gamesRaw.map((game) => {
@@ -199,6 +207,23 @@ const ratingsFromCompact = (ratingsCompact, players) => {
 };
 
 const normalizedRatingsFromMatch = (match, players) => {
+  if (match?.player_1 || match?.player_2) {
+    return {
+      [String(match?.player_1 || "")]: {
+        before_rating: match?.p1_before_rating,
+        after_rating: match?.p1_after_rating,
+        before_rd: match?.p1_before_rd,
+        after_rd: match?.p1_after_rd,
+      },
+      [String(match?.player_2 || "")]: {
+        before_rating: match?.p2_before_rating,
+        after_rating: match?.p2_after_rating,
+        before_rd: match?.p2_before_rd,
+        after_rd: match?.p2_after_rd,
+      },
+    };
+  }
+
   const ratings =
     match?.ratings && typeof match.ratings === "object"
       ? match.ratings
@@ -269,13 +294,6 @@ export const parseTimeControlParts = (timeControl) => {
     increment: Number.isFinite(incrementSeconds) ? String(incrementSeconds) : "",
   };
 };
-
-const matchJsonUrlCandidates = (mode) => [
-  `/private/${mode}_matches.json`,
-  `/data/${mode}_matches.json`,
-  `https://raw.githubusercontent.com/atomicchess/atomic-rankings/main/data/${mode}_matches.json`,
-  `https://raw.githubusercontent.com/atomaire/atomic-rankings/main/data/${mode}_matches.json`,
-];
 
 const parseModeFromTimeControl = (timeControl) => {
   const mode = String(timeControl || "").toLowerCase();
@@ -373,31 +391,7 @@ export const loadRawMatchesByMode = async (mode) => {
     return [...blitzMatches, ...bulletMatches];
   }
 
-  const candidates = matchJsonUrlCandidates(mode);
-  let loaded = null;
-  let lastError = null;
-
-  for (const url of candidates) {
-    try {
-      const response = await fetch(url, { headers: { Accept: "application/json" } });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      loaded = await response.json();
-      break;
-    } catch (fetchError) {
-      lastError = fetchError;
-    }
-  }
-
-  if (!loaded) {
-    throw new Error(
-      `Could not load ${mode} match history from atomic-rankings sources (${String(lastError)})`,
-    );
-  }
-
-  return Array.isArray(loaded) ? loaded : [];
+  return fetchMatchRowsByMode({ mode });
 };
 
 export const normalizeMatches = (matches, username) => {
