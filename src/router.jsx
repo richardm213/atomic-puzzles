@@ -11,6 +11,7 @@ import { HomePage } from "./pages/Home";
 import { RankingsPage } from "./pages/Rankings";
 import { RecentMatchesPage } from "./pages/RecentMatches";
 import { PlayerProfilePage } from "./pages/PlayerProfile";
+import { MatchHistoryPage } from "./pages/MatchHistory";
 import { PuzzleSolverPage } from "./pages/PuzzleSolver";
 
 const appBasePath = (() => {
@@ -70,6 +71,15 @@ const profileRoute = createRoute({
   },
 });
 
+const matchHistoryRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/@/$username/match-history",
+  component: function MatchHistoryRoute() {
+    const { username } = useParams({ strict: false });
+    return <MatchHistoryPage username={username || ""} />;
+  },
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   rankingsRoute,
@@ -78,6 +88,7 @@ const routeTree = rootRoute.addChildren([
   solveRoute,
   solveWithIdRoute,
   profileRoute,
+  matchHistoryRoute,
 ]);
 
 export const router = createRouter({
