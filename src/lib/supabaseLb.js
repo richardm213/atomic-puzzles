@@ -4,6 +4,10 @@ const supabaseLbConfig = {
   table: import.meta.env.VITE_SUPABASE_LB_TABLE?.trim() || "lb",
   playerRatingsTable:
     import.meta.env.VITE_SUPABASE_PLAYER_RATINGS_TABLE?.trim() || "player_ratings",
+  blitzMatchesTable:
+    import.meta.env.VITE_SUPABASE_BLITZ_MATCHES_TABLE?.trim() || "blitz_matches",
+  bulletMatchesTable:
+    import.meta.env.VITE_SUPABASE_BULLET_MATCHES_TABLE?.trim() || "bullet_matches",
 };
 
 const LB_SELECT_COLUMNS = "username,month,rank,rating,rd,games,tc";
@@ -95,6 +99,73 @@ export const fetchPlayerRatingsRows = async ({ tc, username, limit } = {}) => {
   const rows = await response.json();
   if (!Array.isArray(rows)) {
     throw new Error(`Expected Supabase table "${playerRatingsTable}" to return an array`);
+  }
+
+  return rows;
+};
+
+const MATCH_SELECT_COLUMNS = [
+  "match_id",
+  "player_1",
+  "player_2",
+  "start_ts",
+  "end_ts",
+  "time_control",
+  "source",
+  "tournament_id",
+  "games",
+  "p1_before_rating",
+  "p1_after_rating",
+  "p1_before_rd",
+  "p1_after_rd",
+  "p2_before_rating",
+  "p2_after_rating",
+  "p2_before_rd",
+  "p2_after_rd",
+].join(",");
+
+export const fetchMatchRowsFromSupabase = async (mode) => {
+  requireSupabaseConfig();
+  const normalizedMode = String(mode || "").toLowerCase();
+  const tableName =
+    normalizedMode === "blitz"
+      ? supabaseLbConfig.blitzMatchesTable
+      : normalizedMode === "bullet"
+        ? supabaseLbConfig.bulletMatchesTable
+        : "";
+  if (!tableName) {
+    throw new Error(`Unsupported match mode "${mode}"`);
+  }
+
+  const { url, anonKey } = supabaseLbConfig;
+  const baseUrl = url.replace(/\/$/, "");
+  const pageSize = 1000;
+  const rows = [];
+  let from = 0;
+
+  while (true) {
+    const endpoint = `${baseUrl}/rest/v1/${encodeURIComponent(tableName)}?select=${encodeURIComponent(MATCH_SELECT_COLUMNS)}&order=start_ts.desc,end_ts.desc`;
+    const response = await fetch(endpoint, {
+      headers: {
+        apikey: anonKey,
+        Authorization: `Bearer ${anonKey}`,
+        Accept: "application/json",
+        Range: `${from}-${from + pageSize - 1}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status} while loading Supabase table "${tableName}"`);
+    }
+
+    const page = await response.json();
+    if (!Array.isArray(page)) {
+      throw new Error(`Expected Supabase table "${tableName}" to return an array`);
+    }
+
+    rows.push(...page);
+    if (page.length < pageSize) break;
+    from += pageSize;
   }
 
   return rows;
