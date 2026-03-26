@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { fetchLbRows, isoMonthStartFromMonthKey } from "../lib/supabaseLb";
+import {
+  fetchLbRows,
+  fetchMatchRowsFromSupabase,
+  isoMonthStartFromMonthKey,
+} from "../lib/supabaseLb";
 
 export const modeOptions = ["blitz", "bullet"];
 const monthNames = [
@@ -270,12 +274,98 @@ export const parseTimeControlParts = (timeControl) => {
   };
 };
 
-const matchJsonUrlCandidates = (mode) => [
-  `/private/${mode}_matches.json`,
-  `/data/${mode}_matches.json`,
-  `https://raw.githubusercontent.com/atomicchess/atomic-rankings/main/data/${mode}_matches.json`,
-  `https://raw.githubusercontent.com/atomaire/atomic-rankings/main/data/${mode}_matches.json`,
-];
+const toNullableNumber = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const parseGamesCompact = (gamesValue) => {
+  if (Array.isArray(gamesValue)) return gamesValue;
+  const raw = String(gamesValue ?? "").trim();
+  if (!raw) return [];
+
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const parseMatchRows = (rows) => {
+  if (!rows.length) return [];
+  return rows.map((row, index) => {
+    const fallbackMatchId = String(row.match_id || "").trim() || `match_${index + 1}`;
+    const p1 = String(row.player_1 || "Unknown");
+    const p2 = String(row.player_2 || "Unknown");
+    const games = parseGamesCompact(row.games)
+      .map((entry, gameOffset) => {
+        const [gameId, winnerCodeRaw, winnerPlayerRaw, whitePlayerRaw] = String(entry || "").split(",");
+        const winnerCode = String(winnerCodeRaw || "").trim().toLowerCase();
+        const winnerPlayer = String(winnerPlayerRaw || "").trim();
+        const whiteSlot = String(whitePlayerRaw || "").trim();
+        const white = whiteSlot === "2" ? p2 : p1;
+        const black = whiteSlot === "2" ? p1 : p2;
+
+        let winner = winnerToFullWord(winnerCode);
+        if (!["white", "black", "draw"].includes(winner)) {
+          if (winnerPlayer === "0" || winnerCode === "d") winner = "draw";
+          else if (winnerPlayer === "1") winner = white === p1 ? "white" : "black";
+          else if (winnerPlayer === "2") winner = white === p2 ? "white" : "black";
+          else winner = "draw";
+        }
+
+        return {
+          id: String(gameId || `game_${index + 1}_${gameOffset + 1}`),
+          game_index: gameOffset + 1,
+          end_ts: toNullableNumber(row.end_ts),
+          winner,
+          white,
+          black,
+        };
+      })
+      .filter((game) => game.id);
+
+    return {
+      match_id: fallbackMatchId,
+      players: [p1, p2],
+      start_ts: toNullableNumber(row.start_ts),
+      end_ts: toNullableNumber(row.end_ts),
+      time_control: row.time_control,
+      source: row.source,
+      tournament_id: row.tournament_id,
+      games,
+      ratings: {
+        [p1]: {
+          before_rating: toNullableNumber(row.p1_before_rating),
+          after_rating: toNullableNumber(row.p1_after_rating),
+          before_rd: toNullableNumber(row.p1_before_rd),
+          after_rd: toNullableNumber(row.p1_after_rd),
+        },
+        [p2]: {
+          before_rating: toNullableNumber(row.p2_before_rating),
+          after_rating: toNullableNumber(row.p2_after_rating),
+          before_rd: toNullableNumber(row.p2_before_rd),
+          after_rd: toNullableNumber(row.p2_after_rd),
+        },
+      },
+    };
+  }).map((match) => {
+    const orderedGames = [...match.games].sort((a, b) => {
+      const aIndex = Number.isFinite(a.game_index) ? a.game_index : Number.POSITIVE_INFINITY;
+      const bIndex = Number.isFinite(b.game_index) ? b.game_index : Number.POSITIVE_INFINITY;
+      if (aIndex !== bIndex) return aIndex - bIndex;
+      return (a.end_ts ?? 0) - (b.end_ts ?? 0);
+    });
+
+    return {
+      ...match,
+      start_ts: Number.isFinite(match.start_ts) ? match.start_ts : null,
+      end_ts: Number.isFinite(match.end_ts) ? match.end_ts : null,
+      games: orderedGames,
+    };
+  });
+};
 
 const parseModeFromTimeControl = (timeControl) => {
   const mode = String(timeControl || "").toLowerCase();
@@ -364,40 +454,31 @@ export const findLatestRankForUsername = (rankingsByMonth, username, mode) => {
   return null;
 };
 
-export const loadRawMatchesByMode = async (mode) => {
+export const loadRawMatchesByMode = async (mode, options = {}) => {
+  const { filters = {}, page, pageSize } = options;
   if (mode === "all") {
     const [blitzMatches, bulletMatches] = await Promise.all([
-      loadRawMatchesByMode("blitz"),
-      loadRawMatchesByMode("bullet"),
+      loadRawMatchesByMode("blitz", { filters, page, pageSize }),
+      loadRawMatchesByMode("bullet", { filters, page, pageSize }),
     ]);
+    if (pageSize) {
+      return {
+        matches: [...(blitzMatches.matches ?? []), ...(bulletMatches.matches ?? [])],
+        total: (blitzMatches.total ?? 0) + (bulletMatches.total ?? 0),
+      };
+    }
     return [...blitzMatches, ...bulletMatches];
   }
-
-  const candidates = matchJsonUrlCandidates(mode);
-  let loaded = null;
-  let lastError = null;
-
-  for (const url of candidates) {
-    try {
-      const response = await fetch(url, { headers: { Accept: "application/json" } });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      loaded = await response.json();
-      break;
-    } catch (fetchError) {
-      lastError = fetchError;
-    }
+  const result = await fetchMatchRowsFromSupabase(mode, filters, { page, pageSize });
+  const rows = Array.isArray(result?.rows) ? result.rows : [];
+  const matches = parseMatchRows(rows);
+  if (pageSize) {
+    return {
+      matches,
+      total: Number.isFinite(Number(result?.total)) ? Number(result.total) : matches.length,
+    };
   }
-
-  if (!loaded) {
-    throw new Error(
-      `Could not load ${mode} match history from atomic-rankings sources (${String(lastError)})`,
-    );
-  }
-
-  return Array.isArray(loaded) ? loaded : [];
+  return matches;
 };
 
 export const normalizeMatches = (matches, username) => {
