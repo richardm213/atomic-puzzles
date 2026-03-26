@@ -167,6 +167,7 @@ export const PlayerProfilePage = ({ username }) => {
   const [timeControlInitialFilter, setTimeControlInitialFilter] = useState("all");
   const [timeControlIncrementFilter, setTimeControlIncrementFilter] = useState("all");
   const [expandedMatchKeys, setExpandedMatchKeys] = useState([]);
+  const [loadingMatches, setLoadingMatches] = useState(false);
   const [aliasesLookup, setAliasesLookup] = useState(() => new Map());
   const [ratingsSnapshotByMode, setRatingsSnapshotByMode] = useState({
     blitz: new Map(),
@@ -176,6 +177,14 @@ export const PlayerProfilePage = ({ username }) => {
   const [bestMonthRankCount, setBestMonthRankCount] = useState(5);
   const [recentMonthRankCount, setRecentMonthRankCount] = useState(5);
   const [bestWinCount, setBestWinCount] = useState(5);
+  const [appliedFilters, setAppliedFilters] = useState({
+    matchLengthMin: Math.max(defaultMatchLengthMin, initialMatchBounds.min),
+    matchLengthMax: Math.min(defaultMatchLengthMax, initialMatchBounds.max),
+    opponentRatingMin: defaultRatingMin,
+    opponentRatingMax: defaultRatingMax,
+    timeControlInitialFilter: "all",
+    timeControlIncrementFilter: "all",
+  });
   const matchLengthBounds = matchLengthBoundsByMode[selectedMode] ?? matchLengthBoundsByMode.blitz;
 
   useEffect(() => {
@@ -204,29 +213,47 @@ export const PlayerProfilePage = ({ username }) => {
     loadMonthRanks();
   }, [username]);
 
-  useEffect(() => {
-    const loadMatches = async () => {
-      setError("");
-      try {
-        const [blitzLoaded, bulletLoaded] = await Promise.all([
-          loadRawMatchesByMode("blitz"),
-          loadRawMatchesByMode("bullet"),
-        ]);
-        setMatchesByMode({
-          blitz: normalizeMatches(blitzLoaded, username),
-          bullet: normalizeMatches(bulletLoaded, username),
-        });
-        setPage(1);
-      } catch (loadError) {
-        setMatchesByMode({
-          blitz: [],
-          bullet: [],
-        });
-        setError(String(loadError));
-      }
-    };
+  const runMatchSearch = async (mode, nextAppliedFilters) => {
+    setLoadingMatches(true);
+    setError("");
+    try {
+      const selectedInitial = nextAppliedFilters.timeControlInitialFilter;
+      const selectedIncrement = nextAppliedFilters.timeControlIncrementFilter;
+      const timeControl =
+        selectedInitial !== "all" && selectedIncrement !== "all"
+          ? `${selectedInitial}+${selectedIncrement}`
+          : "";
+      const loaded = await loadRawMatchesByMode(mode, {
+        username,
+        timeControl,
+      });
+      setMatchesByMode((current) => ({
+        ...current,
+        [mode]: normalizeMatches(loaded, username),
+      }));
+      setAppliedFilters(nextAppliedFilters);
+      setPage(1);
+    } catch (loadError) {
+      setMatchesByMode((current) => ({
+        ...current,
+        [mode]: [],
+      }));
+      setError(String(loadError));
+    } finally {
+      setLoadingMatches(false);
+    }
+  };
 
-    loadMatches();
+  useEffect(() => {
+    const defaultFilters = {
+      matchLengthMin: Math.max(defaultMatchLengthMin, initialMatchBounds.min),
+      matchLengthMax: Math.min(defaultMatchLengthMax, initialMatchBounds.max),
+      opponentRatingMin: defaultRatingMin,
+      opponentRatingMax: defaultRatingMax,
+      timeControlInitialFilter: "all",
+      timeControlIncrementFilter: "all",
+    };
+    runMatchSearch("blitz", defaultFilters);
   }, [username]);
 
   useEffect(() => {
@@ -273,47 +300,51 @@ export const PlayerProfilePage = ({ username }) => {
 
   const filteredMatches = useMemo(() => {
     return matches.filter((match) => {
-      if (match.gameCount < matchLengthMin || match.gameCount > matchLengthMax) {
+      if (
+        match.gameCount < appliedFilters.matchLengthMin ||
+        match.gameCount > appliedFilters.matchLengthMax
+      ) {
         return false;
       }
 
       if (Number.isFinite(match.opponentAfterRating)) {
         const inRatingRange =
-          match.opponentAfterRating >= opponentRatingMin &&
-          match.opponentAfterRating <= opponentRatingMax;
+          match.opponentAfterRating >= appliedFilters.opponentRatingMin &&
+          match.opponentAfterRating <= appliedFilters.opponentRatingMax;
         if (!inRatingRange) return false;
       }
 
       const { initial, increment } = parseTimeControlParts(match.timeControl);
-      if (timeControlInitialFilter !== "all" && initial !== timeControlInitialFilter) {
+      if (
+        appliedFilters.timeControlInitialFilter !== "all" &&
+        initial !== appliedFilters.timeControlInitialFilter
+      ) {
         return false;
       }
-      if (timeControlIncrementFilter !== "all" && increment !== timeControlIncrementFilter) {
+      if (
+        appliedFilters.timeControlIncrementFilter !== "all" &&
+        increment !== appliedFilters.timeControlIncrementFilter
+      ) {
         return false;
       }
 
       return true;
     });
   }, [
-    matchLengthMax,
-    matchLengthMin,
     matches,
-    opponentRatingMax,
-    opponentRatingMin,
-    timeControlIncrementFilter,
-    timeControlInitialFilter,
+    appliedFilters,
   ]);
 
-  useEffect(() => {
-    setPage(1);
-  }, [
-    matchLengthMax,
-    matchLengthMin,
-    opponentRatingMax,
-    opponentRatingMin,
-    timeControlIncrementFilter,
-    timeControlInitialFilter,
-  ]);
+  const handleSearchClick = async () => {
+    await runMatchSearch(selectedMode, {
+      matchLengthMin,
+      matchLengthMax,
+      opponentRatingMin,
+      opponentRatingMax,
+      timeControlInitialFilter,
+      timeControlIncrementFilter,
+    });
+  };
 
   const totalPages = Math.max(1, Math.ceil(filteredMatches.length / pageSize));
   const currentPage = Math.min(page, totalPages);
@@ -322,13 +353,8 @@ export const PlayerProfilePage = ({ username }) => {
     setExpandedMatchKeys([]);
   }, [
     currentPage,
-    matchLengthMax,
-    matchLengthMin,
-    opponentRatingMax,
-    opponentRatingMin,
     selectedMode,
-    timeControlIncrementFilter,
-    timeControlInitialFilter,
+    appliedFilters,
     username,
   ]);
 
@@ -681,6 +707,9 @@ export const PlayerProfilePage = ({ username }) => {
               ))}
             </select>
           </label>
+          <button type="button" onClick={handleSearchClick} disabled={loadingMatches}>
+            {loadingMatches ? "Searching..." : "Search"}
+          </button>
         </div>
 
         <div className="opponentRatingFilter">

@@ -308,6 +308,7 @@ export const RecentMatchesPage = () => {
   });
   const [startDateFilter, setStartDateFilter] = useState("");
   const [endDateFilter, setEndDateFilter] = useState("");
+  const [loadingMatches, setLoadingMatches] = useState(false);
   const initialMatchBounds = matchLengthBoundsByMode.blitz;
   const [matchLengthMin, setMatchLengthMin] = useState(
     Math.max(defaultMatchLengthMin, initialMatchBounds.min),
@@ -317,40 +318,41 @@ export const RecentMatchesPage = () => {
   );
   const modeBounds = matchLengthBoundsByMode[selectedMode] ?? matchLengthBoundsByMode.blitz;
   const appliedMatchBounds = modeBounds;
+  const [appliedFilters, setAppliedFilters] = useState({
+    selectedMode: "blitz",
+    ratingFilterType: "both",
+    ratingMin: defaultRatingMin,
+    ratingMax: defaultRatingMax,
+    player1Filter: "",
+    player2Filter: "",
+    sourceFilters: { arena: true, friend: true, lobby: true },
+    startDateFilter: "",
+    endDateFilter: "",
+    matchLengthMin: Math.max(defaultMatchLengthMin, initialMatchBounds.min),
+    matchLengthMax: Math.min(defaultMatchLengthMax, initialMatchBounds.max),
+  });
 
   useEffect(() => {
-    const loadMatches = async () => {
+    const runInitialLoad = async () => {
+      setLoadingMatches(true);
       setError("");
       try {
-        const loaded = await loadRawMatchesByMode(selectedMode);
-        const normalized = normalizeRecentMatches(loaded, selectedMode);
-        setMatches(normalized);
-        setCurrentPage(1);
+        const loaded = await loadRawMatchesByMode("blitz");
+        setMatches(normalizeRecentMatches(loaded, "blitz"));
       } catch (loadError) {
         setMatches([]);
-        setCurrentPage(1);
         setError(String(loadError));
+      } finally {
+        setLoadingMatches(false);
       }
     };
 
-    loadMatches();
-  }, [selectedMode]);
+    runInitialLoad();
+  }, []);
 
   useEffect(() => {
     setExpandedMatchKeys([]);
-  }, [
-    matchLengthMax,
-    matchLengthMin,
-    ratingFilterType,
-    ratingMax,
-    ratingMin,
-    selectedMode,
-    sourceFilters,
-    player1Filter,
-    player2Filter,
-    startDateFilter,
-    endDateFilter,
-  ]);
+  }, [currentPage, appliedFilters]);
 
   useEffect(() => {
     setMatchLengthMin(Math.max(defaultMatchLengthMin, appliedMatchBounds.min));
@@ -358,10 +360,13 @@ export const RecentMatchesPage = () => {
   }, [selectedMode, appliedMatchBounds.max, appliedMatchBounds.min]);
 
   const startDateTs = useMemo(
-    () => parseDateInputBoundary(startDateFilter, "start"),
-    [startDateFilter],
+    () => parseDateInputBoundary(appliedFilters.startDateFilter, "start"),
+    [appliedFilters.startDateFilter],
   );
-  const endDateTs = useMemo(() => parseDateInputBoundary(endDateFilter, "end"), [endDateFilter]);
+  const endDateTs = useMemo(
+    () => parseDateInputBoundary(appliedFilters.endDateFilter, "end"),
+    [appliedFilters.endDateFilter],
+  );
 
   const filteredMatches = useMemo(
     () =>
@@ -369,28 +374,33 @@ export const RecentMatchesPage = () => {
         if (startDateTs !== null && match.startTs < startDateTs) return false;
         if (endDateTs !== null && match.startTs > endDateTs) return false;
 
-        if (match.gameCount < matchLengthMin || match.gameCount > matchLengthMax) {
+        if (
+          match.gameCount < appliedFilters.matchLengthMin ||
+          match.gameCount > appliedFilters.matchLengthMax
+        ) {
           return false;
         }
 
-        if (ratingFilterType === "average") {
+        if (appliedFilters.ratingFilterType === "average") {
           if (Number.isFinite(match.avgRating)) {
-            const inAverageRange = match.avgRating >= ratingMin && match.avgRating <= ratingMax;
+            const inAverageRange =
+              match.avgRating >= appliedFilters.ratingMin &&
+              match.avgRating <= appliedFilters.ratingMax;
             if (!inAverageRange) return false;
           }
         } else if (Number.isFinite(match.playerARating) && Number.isFinite(match.playerBRating)) {
           const bothInRange =
-            match.playerARating >= ratingMin &&
-            match.playerARating <= ratingMax &&
-            match.playerBRating >= ratingMin &&
-            match.playerBRating <= ratingMax;
+            match.playerARating >= appliedFilters.ratingMin &&
+            match.playerARating <= appliedFilters.ratingMax &&
+            match.playerBRating >= appliedFilters.ratingMin &&
+            match.playerBRating <= appliedFilters.ratingMax;
           if (!bothInRange) return false;
         }
 
         const playerAName = match.playerA.toLowerCase();
         const playerBName = match.playerB.toLowerCase();
-        const first = player1Filter.trim().toLowerCase();
-        const second = player2Filter.trim().toLowerCase();
+        const first = appliedFilters.player1Filter.trim().toLowerCase();
+        const second = appliedFilters.player2Filter.trim().toLowerCase();
 
         if (first && second) {
           const firstFound = playerAName.includes(first) || playerBName.includes(first);
@@ -411,44 +421,55 @@ export const RecentMatchesPage = () => {
             : normalizedSource.includes("lobby")
               ? "lobby"
               : "";
-        if (!sourceKey || !sourceFilters[sourceKey]) {
+        if (!sourceKey || !appliedFilters.sourceFilters[sourceKey]) {
           return false;
         }
 
         return true;
       }),
     [
-      matchLengthMax,
-      matchLengthMin,
       matches,
-      player1Filter,
-      player2Filter,
-      ratingFilterType,
-      ratingMax,
-      ratingMin,
+      appliedFilters,
       startDateTs,
       endDateTs,
-      sourceFilters,
     ],
   );
   const totalPages = Math.max(1, Math.ceil(filteredMatches.length / pageSize));
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [
-    selectedMode,
-    matchLengthMin,
-    matchLengthMax,
-    ratingFilterType,
-    ratingMin,
-    ratingMax,
-    player1Filter,
-    player2Filter,
-    sourceFilters,
-    startDateFilter,
-    endDateFilter,
-    pageSize,
-  ]);
+  const handleSearch = async () => {
+    const nextAppliedFilters = {
+      selectedMode,
+      ratingFilterType,
+      ratingMin,
+      ratingMax,
+      player1Filter,
+      player2Filter,
+      sourceFilters: { ...sourceFilters },
+      startDateFilter,
+      endDateFilter,
+      matchLengthMin,
+      matchLengthMax,
+    };
+
+    setLoadingMatches(true);
+    setError("");
+    try {
+      const loaded = await loadRawMatchesByMode(selectedMode, {
+        username: player1Filter || player2Filter,
+        startTs: parseDateInputBoundary(startDateFilter, "start"),
+        endTs: parseDateInputBoundary(endDateFilter, "end"),
+      });
+      setMatches(normalizeRecentMatches(loaded, selectedMode));
+      setAppliedFilters(nextAppliedFilters);
+      setCurrentPage(1);
+    } catch (loadError) {
+      setMatches([]);
+      setError(String(loadError));
+      setCurrentPage(1);
+    } finally {
+      setLoadingMatches(false);
+    }
+  };
 
   useEffect(() => {
     setCurrentPage((current) => Math.min(current, totalPages));
@@ -527,6 +548,9 @@ export const RecentMatchesPage = () => {
               ))}
             </select>
           </label>
+          <button type="button" onClick={handleSearch} disabled={loadingMatches}>
+            {loadingMatches ? "Searching..." : "Search"}
+          </button>
         </div>
 
         <div className="controls profileControls">
