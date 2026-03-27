@@ -1,26 +1,6 @@
-import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { fetchLbRows, hasSupabaseLbConfig } from "../lib/supabaseLb";
 
 export const HomePage = () => {
-  const [homeError, setHomeError] = useState("");
-
-  useEffect(() => {
-    const loadHomeData = async () => {
-      try {
-        setHomeError("");
-        if (!hasSupabaseLbConfig()) {
-          throw new Error("Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in .env.local");
-        }
-        await fetchLbRows({ limit: 1 });
-      } catch (error) {
-        setHomeError(String(error?.message || error));
-      }
-    };
-
-    loadHomeData();
-  }, []);
-
   return (
     <div className="homePage">
       <div className="panel homePanel">
@@ -41,8 +21,6 @@ export const HomePage = () => {
             View Recent Matches
           </Link>
         </section>
-
-        {homeError ? <div className="errorText">{homeError}</div> : null}
 
         <section className="homeDescriptions">
           <article className="homeDescriptionCard">
