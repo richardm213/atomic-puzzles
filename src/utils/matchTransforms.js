@@ -95,14 +95,14 @@ export const normalizedRatingsFromMatch = (match, players) => {
   };
 };
 
-export const parseWinnerFromPerspective = (game, usernameLower) => {
+export const parseWinnerFromPerspective = (game, username) => {
   const white = String(game?.white || "").toLowerCase();
   const black = String(game?.black || "").toLowerCase();
   const winner = winnerToFullWord(game?.winner);
 
   if (winner === "draw") return "draw";
-  if (winner === "white") return white === usernameLower ? "win" : "loss";
-  if (winner === "black") return black === usernameLower ? "win" : "loss";
+  if (winner === "white") return white === username ? "win" : "loss";
+  if (winner === "black") return black === username ? "win" : "loss";
   return "draw";
 };
 

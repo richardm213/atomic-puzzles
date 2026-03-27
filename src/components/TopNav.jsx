@@ -19,11 +19,9 @@ export const TopNav = () => {
 
   const handleSearchSubmit = (event) => {
     event.preventDefault();
-    const target = searchQuery.trim();
-    if (!target) return;
     navigate({
       to: "/@/$username",
-      params: { username: target },
+      params: { username: searchQuery },
     });
     setSearchOpen(false);
   };

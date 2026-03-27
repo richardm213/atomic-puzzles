@@ -77,15 +77,7 @@ const parseCurrentRatingsFromRows = (rows) => {
 };
 
 const loadCurrentRatingsSnapshot = async (username) => {
-  const normalizedUsername = String(username || "").trim().toLowerCase();
-  if (!normalizedUsername) {
-    return {
-      blitz: new Map(),
-      bullet: new Map(),
-    };
-  }
-
-  const rows = await fetchPlayerRatingsRows({ username: normalizedUsername });
+  const rows = await fetchPlayerRatingsRows({ username });
   return parseCurrentRatingsFromRows(rows);
 };
 
@@ -334,9 +326,8 @@ export const PlayerProfilePage = ({ username }) => {
 
   const blitzSummary = useMemo(() => getModeRatingSummary(), []);
   const bulletSummary = useMemo(() => getModeRatingSummary(), []);
-  const usernameLower = username.toLowerCase();
-  const blitzSnapshot = ratingsSnapshotByMode.blitz.get(usernameLower);
-  const bulletSnapshot = ratingsSnapshotByMode.bullet.get(usernameLower);
+  const blitzSnapshot = ratingsSnapshotByMode.blitz.get(username);
+  const bulletSnapshot = ratingsSnapshotByMode.bullet.get(username);
   const blitzDisplaySummary = {
     ...blitzSummary,
     currentRating: blitzSnapshot?.currentRating ?? null,
@@ -358,7 +349,7 @@ export const PlayerProfilePage = ({ username }) => {
     return filteredMatches
       .filter((match) =>
         Array.isArray(match.games)
-          ? match.games.some((game) => String(game?.winner || "").toLowerCase() === usernameLower)
+          ? match.games.some((game) => String(game?.winner || "").toLowerCase() === username)
           : false,
       )
       .sort((a, b) => {
@@ -368,7 +359,7 @@ export const PlayerProfilePage = ({ username }) => {
         return b.startTs - a.startTs;
       })
       .slice(0, bestWinCount);
-  }, [bestWinCount, filteredMatches, usernameLower]);
+  }, [bestWinCount, filteredMatches, username]);
   const bestMonthRanks = useMemo(
     () =>
       [...monthRanks]
@@ -388,9 +379,9 @@ export const PlayerProfilePage = ({ username }) => {
   );
 
   const aliasesForUser = useMemo(() => {
-    const entry = aliasesLookup.get(username.toLowerCase());
+    const entry = aliasesLookup.get(username);
     if (!entry) return [];
-    return entry.members.filter((member) => member.toLowerCase() !== username.toLowerCase());
+    return entry.members.filter((member) => member.toLowerCase() !== username);
   }, [aliasesLookup, username]);
 
   const formatCurrentRating = (summary) => {

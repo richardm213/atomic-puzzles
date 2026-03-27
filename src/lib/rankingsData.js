@@ -97,17 +97,15 @@ export const loadCurrentLeaderboard = async () => {
 };
 
 export const findRankForUsernameInLeaderboard = (leaderboardByMode, username, mode) => {
-  const usernameLower = String(username || "").toLowerCase();
   const players = leaderboardByMode?.[mode] ?? [];
   const playerMatch = players.find(
-    (player) => String(player?.username || "").toLowerCase() === usernameLower,
+    (player) => String(player?.username || "").toLowerCase() === username,
   );
   return Number.isFinite(playerMatch?.rank) ? playerMatch.rank : null;
 };
 
 export const findLatestRankForUsername = (rankingsByMonth, username, mode) => {
-  const usernameLower = String(username || "").toLowerCase();
-  if (!usernameLower || !rankingsByMonth || typeof rankingsByMonth.entries !== "function") {
+  if (!rankingsByMonth || typeof rankingsByMonth.entries !== "function") {
     return null;
   }
 
@@ -120,7 +118,7 @@ export const findLatestRankForUsername = (rankingsByMonth, username, mode) => {
   for (const monthKey of sortedMonths) {
     const players = rankingsByMonth.get(monthKey)?.[mode]?.players ?? [];
     const match = players.find(
-      (player) => String(player.username || "").toLowerCase() === usernameLower,
+      (player) => String(player.username || "").toLowerCase() === username,
     );
     if (match && Number.isFinite(match.rank)) {
       return match.rank;
