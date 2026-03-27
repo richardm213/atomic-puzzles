@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { modeOptions } from "../constants/matches";
-import { loadRankingsForMonth } from "../lib/rankingsData";
+import { useRankingsByMonth } from "../hooks/useRankingsByMonth";
 
 const monthNames = [
   "Jan",
@@ -74,16 +74,21 @@ const allYearsFromJan2023 = () => {
 };
 
 const LeaderboardView = () => {
-  const [rankingsByMonth, setRankingsByMonth] = useState(new Map());
   const [selectedYear, setSelectedYear] = useState("");
   const [selectedMonthName, setSelectedMonthName] = useState("");
   const [selectedMode, setSelectedMode] = useState("blitz");
   const [sortKey, setSortKey] = useState("rank");
   const [sortDirection, setSortDirection] = useState("asc");
-  const [error, setError] = useState("");
 
   const monthOptions = useMemo(() => allMonthsFromJan2023().reverse(), []);
   const yearOptions = useMemo(() => allYearsFromJan2023(), []);
+
+  const selectedMonth = useMemo(() => {
+    if (!selectedMonthName || !selectedYear) return "";
+    return `${selectedMonthName} ${selectedYear}`;
+  }, [selectedMonthName, selectedYear]);
+
+  const { rankingsByMonth, error } = useRankingsByMonth(selectedMonth);
 
   useEffect(() => {
     const firstWithData =
@@ -94,32 +99,6 @@ const LeaderboardView = () => {
     setSelectedYear((previous) => previous || String(firstDate.getUTCFullYear()));
     setSelectedMonthName((previous) => previous || monthNameFromDate(firstDate));
   }, [monthOptions, rankingsByMonth]);
-
-  const selectedMonth = useMemo(() => {
-    if (!selectedMonthName || !selectedYear) return "";
-    return `${selectedMonthName} ${selectedYear}`;
-  }, [selectedMonthName, selectedYear]);
-
-  useEffect(() => {
-    if (!selectedMonth) return;
-    if (rankingsByMonth.has(selectedMonth)) return;
-
-    const loadRankings = async () => {
-      try {
-        setError("");
-        const monthData = await loadRankingsForMonth(selectedMonth);
-        setRankingsByMonth((previous) => {
-          const next = new Map(previous);
-          next.set(selectedMonth, monthData);
-          return next;
-        });
-      } catch (loadError) {
-        setError(loadError.message || "Failed to load leaderboard data");
-      }
-    };
-
-    loadRankings();
-  }, [selectedMonth, rankingsByMonth]);
 
   const availableMonthsForYear = useMemo(() => {
     if (!selectedYear) return monthNames;
