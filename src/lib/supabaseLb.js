@@ -126,6 +126,11 @@ export const fetchMatchRowsFromSupabase = async (mode, filters = {}, pageOptions
   let from = useSinglePage ? (pageNumber - 1) * pageSize : 0;
 
   const username = String(filters.username || "").trim();
+  const escapedUsername = username.replace(/,/g, "\\,");
+  const hasOpponentRatingMin = Number.isFinite(Number(filters.opponentRatingMin));
+  const hasOpponentRatingMax = Number.isFinite(Number(filters.opponentRatingMax));
+  const opponentRatingMin = Math.floor(Number(filters.opponentRatingMin));
+  const opponentRatingMax = Math.floor(Number(filters.opponentRatingMax));
   while (true) {
     const rangeEnd = useSinglePage ? from + pageSize - 1 : from + 999;
     let query = supabase
@@ -133,9 +138,12 @@ export const fetchMatchRowsFromSupabase = async (mode, filters = {}, pageOptions
       .select(MATCH_SELECT_COLUMNS, { count: "exact" })
       .order("start_ts", { ascending: false })
       .order("end_ts", { ascending: false });
-    if (username) {
-      const escaped = username.replace(/,/g, "\\,");
-      query = query.or(`player_1.ilike.${escaped},player_2.ilike.${escaped}`);
+    if (username && hasOpponentRatingMin && hasOpponentRatingMax) {
+      query = query.or(
+        `and(player_1.ilike.${escapedUsername},p2_after_rating.gte.${opponentRatingMin},p2_after_rating.lte.${opponentRatingMax}),and(player_2.ilike.${escapedUsername},p1_after_rating.gte.${opponentRatingMin},p1_after_rating.lte.${opponentRatingMax})`,
+      );
+    } else if (username) {
+      query = query.or(`player_1.ilike.${escapedUsername},player_2.ilike.${escapedUsername}`);
     }
     if (Number.isFinite(Number(filters.startTs))) {
       query = query.gte("start_ts", Math.floor(Number(filters.startTs)));

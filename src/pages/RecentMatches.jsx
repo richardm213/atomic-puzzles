@@ -26,9 +26,13 @@ const pageSizeOptions = [25, 50, 100, 200];
 const defaultPageSize = 50;
 
 const parseDateInputBoundary = (value, boundary) => {
-  if (!value) return null;
+  if (!value) {
+    return boundary === "end" ? Number.MAX_SAFE_INTEGER : Number.MIN_SAFE_INTEGER;
+  }
   const parsed = new Date(`${value}T00:00:00`);
-  if (Number.isNaN(parsed.getTime())) return null;
+  if (Number.isNaN(parsed.getTime())) {
+    return boundary === "end" ? Number.MAX_SAFE_INTEGER : Number.MIN_SAFE_INTEGER;
+  }
   if (boundary === "end") {
     parsed.setHours(23, 59, 59, 999);
   }
@@ -438,7 +442,7 @@ export const RecentMatchesPage = () => {
               ))}
             </select>
           </label>
-          <button type="button" onClick={handleSearch} disabled={loadingMatches}>
+          <button className="analyzeButton" type="button" onClick={handleSearch} disabled={loadingMatches}>
             {loadingMatches ? "Searching..." : "Search"}
           </button>
         </div>
