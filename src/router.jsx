@@ -12,6 +12,7 @@ import { RankingsPage } from "./pages/Rankings";
 import { RecentMatchesPage } from "./pages/RecentMatches";
 import { PlayerProfilePage } from "./pages/PlayerProfile";
 import { PuzzleSolverPage } from "./pages/PuzzleSolver";
+import { H2HPage } from "./pages/H2H";
 
 const appBasePath = (() => {
   const baseUrl = import.meta.env.BASE_URL || "/";
@@ -39,6 +40,12 @@ const recentRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/recent",
   component: RecentMatchesPage,
+});
+
+const h2hRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/h2h",
+  component: H2HPage,
 });
 
 const matchesAliasRoute = createRoute({
@@ -74,6 +81,7 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   rankingsRoute,
   recentRoute,
+  h2hRoute,
   matchesAliasRoute,
   solveRoute,
   solveWithIdRoute,
