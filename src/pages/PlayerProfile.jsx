@@ -315,35 +315,20 @@ export const PlayerProfilePage = ({ username }) => {
     return filteredMatches;
   }, [filteredMatches]);
 
-  const getModeRatingSummary = () => {
+  const getDisplaySummary = (snapshot) => {
     return {
-      currentRating: null,
-      currentRd: null,
-      peakRating: null,
-      gamesPlayed: 0,
+      currentRating: snapshot?.currentRating ?? null,
+      peakRating: snapshot?.peakRating ?? null,
+      currentRd: snapshot?.currentRd ?? null,
+      gamesPlayed: snapshot?.gamesPlayed ?? 0,
+      rank: snapshot?.rank ?? null,
     };
   };
 
-  const blitzSummary = useMemo(() => getModeRatingSummary(), []);
-  const bulletSummary = useMemo(() => getModeRatingSummary(), []);
   const blitzSnapshot = ratingsSnapshotByMode.blitz.get(username);
   const bulletSnapshot = ratingsSnapshotByMode.bullet.get(username);
-  const blitzDisplaySummary = {
-    ...blitzSummary,
-    currentRating: blitzSnapshot?.currentRating ?? null,
-    peakRating: blitzSnapshot?.peakRating ?? null,
-    currentRd: blitzSnapshot?.currentRd ?? null,
-    gamesPlayed: blitzSnapshot?.gamesPlayed ?? 0,
-    rank: blitzSnapshot?.rank ?? null,
-  };
-  const bulletDisplaySummary = {
-    ...bulletSummary,
-    currentRating: bulletSnapshot?.currentRating ?? null,
-    peakRating: bulletSnapshot?.peakRating ?? null,
-    currentRd: bulletSnapshot?.currentRd ?? null,
-    gamesPlayed: bulletSnapshot?.gamesPlayed ?? 0,
-    rank: bulletSnapshot?.rank ?? null,
-  };
+  const blitzDisplaySummary = getDisplaySummary(blitzSnapshot);
+  const bulletDisplaySummary = getDisplaySummary(bulletSnapshot);
 
   const bestWins = useMemo(() => {
     return filteredMatches
