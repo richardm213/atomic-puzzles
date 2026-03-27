@@ -1,19 +1,6 @@
 import { modeOptions } from "../constants/matches";
 import { fetchLbRows, isoMonthStartFromMonthKey } from "./supabaseLb";
 
-const monthDateFromKey = (monthKey) => {
-  const parsed = new Date(`${monthKey} 01 UTC`);
-  if (Number.isNaN(parsed.getTime())) return null;
-  return parsed;
-};
-
-const monthKeyFromDate = (date) =>
-  date.toLocaleString("en-US", {
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-
 const roundToTenth = (value) => {
   const numeric = Number(value);
   return Math.round(numeric * 10) / 10;
@@ -53,8 +40,8 @@ const parseModeFromTimeControl = (timeControl) => {
 
 const normalizeLbRowsForMonth = (rows) => {
   const modes = {
-    blitz: { players: [], qualifiedPlayers: [] },
-    bullet: { players: [], qualifiedPlayers: [] },
+    blitz: { players: [] },
+    bullet: { players: [] },
   };
 
   (Array.isArray(rows) ? rows : []).forEach((row) => {
@@ -84,45 +71,4 @@ export const loadRankingsForMonth = async (monthKey) => {
 
   const rows = await fetchLbRows({ month });
   return normalizeLbRowsForMonth(rows);
-};
-
-export const loadCurrentLeaderboard = async () => {
-  const now = new Date();
-  const currentMonthKey = monthKeyFromDate(now);
-  return loadRankingsForMonth(currentMonthKey).then((data) => ({
-    blitz: data.blitz.players,
-    bullet: data.bullet.players,
-  }));
-};
-
-export const findRankForUsernameInLeaderboard = (leaderboardByMode, username, mode) => {
-  const players = leaderboardByMode?.[mode] ?? [];
-  const playerMatch = players.find(
-    (player) => String(player?.username || "").toLowerCase() === username,
-  );
-  return playerMatch?.rank ?? null;
-};
-
-export const findLatestRankForUsername = (rankingsByMonth, username, mode) => {
-  if (!rankingsByMonth || typeof rankingsByMonth.entries !== "function") {
-    return null;
-  }
-
-  const sortedMonths = [...rankingsByMonth.keys()].sort((a, b) => {
-    const aDate = monthDateFromKey(a);
-    const bDate = monthDateFromKey(b);
-    return (bDate?.getTime() ?? -Infinity) - (aDate?.getTime() ?? -Infinity);
-  });
-
-  for (const monthKey of sortedMonths) {
-    const players = rankingsByMonth.get(monthKey)?.[mode]?.players ?? [];
-    const match = players.find(
-      (player) => String(player.username || "").toLowerCase() === username,
-    );
-    if (match) {
-      return match.rank;
-    }
-  }
-
-  return null;
 };

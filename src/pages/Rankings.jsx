@@ -141,10 +141,8 @@ const LeaderboardView = () => {
   const selectedMonthData = rankingsByMonth.get(selectedMonth);
   const selectedModeData = selectedMonthData?.[selectedMode] || {
     players: [],
-    qualifiedPlayers: [],
   };
   const players = selectedModeData.players;
-  const qualifiedCount = selectedModeData.qualifiedPlayers.length;
 
   const handleSort = (nextKey) => {
     if (sortKey === nextKey) {
@@ -229,9 +227,7 @@ const LeaderboardView = () => {
 
         <div className="rankingsMeta">
           <span>{readableMonthLabel(selectedMonth || monthOptions[0])}</span>
-          <span>
-            {players.length} ranked • {qualifiedCount} qualified
-          </span>
+          <span>{players.length} ranked</span>
         </div>
 
         {players.length === 0 ? (
