@@ -54,5 +54,3 @@ export const fetchLbRows = async ({ month, username, limit } = {}) => {
 
   return rows;
 };
-
-export const hasSupabaseLbConfig = () => Boolean(supabaseLbConfig.url && supabaseLbConfig.anonKey);

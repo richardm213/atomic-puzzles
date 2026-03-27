@@ -57,17 +57,11 @@ const extractSolutionFromRow = (row) => {
   for (const fieldName of solutionFieldCandidates) {
     const normalized = normalizeSolution(row?.[fieldName]);
     if (normalized) {
-      return {
-        solution: normalized,
-        sourceField: fieldName,
-      };
+      return normalized;
     }
   }
 
-  return {
-    solution: "",
-    sourceField: null,
-  };
+  return "";
 };
 
 const createMoveTree = (lines) => {
@@ -169,7 +163,7 @@ export const PuzzleSolverPage = () => {
         const parsedId = Number.parseInt(rawId, 10);
         const puzzleId = parsedId || index + 1;
         const fen = typeof item?.fen === "string" ? item.fen.trim() : "";
-        const { solution } = extractSolutionFromRow(item);
+        const solution = extractSolutionFromRow(item);
 
         return {
           ...item,
@@ -223,7 +217,7 @@ export const PuzzleSolverPage = () => {
         }));
       }
     }
-  }, [replaceUrlWithPuzzle]);
+  }, []);
 
   useEffect(() => {
     isCancelledRef.current = false;
