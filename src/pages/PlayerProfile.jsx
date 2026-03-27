@@ -14,7 +14,7 @@ import {
 import { useAliasesLookup } from "../hooks/useAliasesLookup";
 import { formatLocalDateTime, formatOpponentWithRating, formatScore, formatSignedDecimal } from "../utils/formatters";
 import { parseTimeControlParts } from "../utils/matchTransforms";
-import { loadRawMatchesByMode, normalizeMatches } from "./Rankings";
+import { loadRawMatchesByMode, normalizeMatches } from "../lib/rankingsData";
 import { fetchLbRows, fetchPlayerRatingsRows, monthKeyFromMonthValue } from "../lib/supabaseLb";
 
 const parseMonthRanksFromLbRows = (rows) => {
