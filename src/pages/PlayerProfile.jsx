@@ -160,6 +160,8 @@ export const PlayerProfilePage = ({ username }) => {
         filters: {
           username,
           timeControl,
+          opponentRatingMin: nextAppliedFilters.opponentRatingMin,
+          opponentRatingMax: nextAppliedFilters.opponentRatingMax,
         },
         page: nextPage,
         pageSize,
@@ -664,7 +666,7 @@ export const PlayerProfilePage = ({ username }) => {
               ))}
             </select>
           </label>
-          <button type="button" onClick={handleSearchClick} disabled={loadingMatches}>
+          <button className="analyzeButton" type="button" onClick={handleSearchClick} disabled={loadingMatches}>
             {loadingMatches ? "Searching..." : "Search"}
           </button>
         </div>
