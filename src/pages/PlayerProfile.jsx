@@ -5,6 +5,7 @@ import {
   defaultMatchLengthMin,
   defaultRatingMax,
   defaultRatingMin,
+  isMatchLengthWithinBounds,
   matchLengthBoundsByMode,
   modeOptions,
   opponentRatingSliderMax,
@@ -256,8 +257,12 @@ export const PlayerProfilePage = ({ username }) => {
   const filteredMatches = useMemo(() => {
     return matches.filter((match) => {
       if (
-        match.gameCount < appliedFilters.matchLengthMin ||
-        match.gameCount > appliedFilters.matchLengthMax
+        !isMatchLengthWithinBounds(
+          match.gameCount,
+          appliedFilters.matchLengthMin,
+          appliedFilters.matchLengthMax,
+          matchLengthBoundsByMode[selectedMode]?.max ?? defaultMatchLengthMax,
+        )
       ) {
         return false;
       }
@@ -278,7 +283,7 @@ export const PlayerProfilePage = ({ username }) => {
 
       return true;
     });
-  }, [matches, appliedFilters]);
+  }, [matches, appliedFilters, selectedMode]);
 
   const handleSearchClick = async () => {
     await runMatchSearch(
@@ -629,7 +634,8 @@ export const PlayerProfilePage = ({ username }) => {
 
         <div className="opponentRatingFilter">
           <label htmlFor="match-length-min">
-            Match length range: {matchLengthMin} - {matchLengthMax}
+            Match length range: {matchLengthMin} -
+            {matchLengthMax >= matchLengthBounds.max ? `${matchLengthBounds.max}+` : matchLengthMax}
           </label>
           <div className="dualRangeSlider">
             <div className="dualRangeTrack" />
