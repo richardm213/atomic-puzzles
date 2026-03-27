@@ -527,7 +527,7 @@ export const RecentMatchesPage = () => {
 
         <div className="opponentRatingFilter">
           <label htmlFor="recent-length-min">
-            Match length range: {matchLengthMin} -{" "}
+            Match length range: {matchLengthMin} - 
             {matchLengthMax >= appliedMatchBounds.max ? `${appliedMatchBounds.max}+` : matchLengthMax}
           </label>
           <div className="dualRangeSlider">
