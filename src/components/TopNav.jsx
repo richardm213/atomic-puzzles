@@ -90,6 +90,7 @@ export const TopNav = () => {
           <Link to="/rankings">Rankings</Link>
           <Link to="/solve">Puzzles</Link>
           <Link to="/recent">Recent</Link>
+          <Link to="/h2h">H2H</Link>
         </nav>
       </div>
     </header>

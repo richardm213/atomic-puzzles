@@ -16,26 +16,13 @@ import {
   normalizedRatingsFromMatch,
   winnerToFullWord,
 } from "../utils/matchTransforms";
+import { matchSourceFromValues, parseDateInputBoundary } from "../utils/matchFilters";
 import { loadRawMatchesByMode } from "../lib/matchData";
 
 const recentModeOptions = modeOptions;
 const ratingFilterTypeOptions = ["both", "average"];
 const pageSizeOptions = [25, 50, 100, 200];
 const defaultPageSize = 50;
-
-const parseDateInputBoundary = (value, boundary) => {
-  if (!value) {
-    return boundary === "end" ? Number.MAX_SAFE_INTEGER : Number.MIN_SAFE_INTEGER;
-  }
-  const parsed = new Date(`${value}T00:00:00`);
-  if (Number.isNaN(parsed.getTime())) {
-    return boundary === "end" ? Number.MAX_SAFE_INTEGER : Number.MIN_SAFE_INTEGER;
-  }
-  if (boundary === "end") {
-    parsed.setHours(23, 59, 59, 999);
-  }
-  return parsed.getTime();
-};
 
 const normalizeRecentMatches = (matches, mode) =>
   (Array.isArray(matches) ? matches : [])
@@ -108,7 +95,7 @@ const normalizeRecentMatches = (matches, mode) =>
       const playerBAfterRd = Number(playerBRatingData?.after_rd);
 
       const firstGame = games[0];
-      const sourceValue = [
+      const rawSourceValue = [
         firstGame?.source,
         firstGame?.match_source,
         firstGame?.queue,
@@ -116,7 +103,6 @@ const normalizeRecentMatches = (matches, mode) =>
         match?.match_source,
         match?.queue,
       ].find((value) => value !== undefined && value !== null && String(value).trim().length > 0);
-
       return {
         startTs: Number(match?.start_ts ?? match?.s),
         timeControl: String(match?.time_control ?? match?.t ?? "—"),
@@ -140,11 +126,19 @@ const normalizeRecentMatches = (matches, mode) =>
         firstGameId: String(games[0]?.id || "—"),
         games: mappedGames,
         sourceValue:
-          sourceValue === undefined ||
-          sourceValue === null ||
-          String(sourceValue).trim().length === 0
+          rawSourceValue === undefined ||
+          rawSourceValue === null ||
+          String(rawSourceValue).trim().length === 0
             ? "—"
-            : String(sourceValue),
+            : String(rawSourceValue),
+        sourceKey: matchSourceFromValues(
+          firstGame?.source,
+          firstGame?.match_source,
+          firstGame?.queue,
+          match?.source,
+          match?.match_source,
+          match?.queue,
+        ),
       };
     })
     .sort((a, b) => b.startTs - a.startTs);
@@ -238,21 +232,14 @@ export const RecentMatchesPage = () => {
           }
         }
 
-        const normalizedSource = String(match.sourceValue || "").toLowerCase();
-        const sourceKey = normalizedSource.includes("arena")
-          ? "arena"
-          : normalizedSource.includes("friend")
-            ? "friend"
-            : normalizedSource.includes("lobby")
-              ? "lobby"
-              : "";
+        const sourceKey = String(match.sourceKey || "unknown").toLowerCase();
         const enabledSources = Object.entries(appliedFilters.sourceFilters)
           .filter(([, enabled]) => Boolean(enabled))
           .map(([key]) => key);
-        if (!sourceKey && enabledSources.length === 0) {
+        if (sourceKey === "unknown" && enabledSources.length === 0) {
           return false;
         }
-        if (sourceKey && !appliedFilters.sourceFilters[sourceKey]) {
+        if (["arena", "friend", "lobby"].includes(sourceKey) && !appliedFilters.sourceFilters[sourceKey]) {
           return false;
         }
 
