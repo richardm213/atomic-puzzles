@@ -2,7 +2,6 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   defaultMatchLengthMax,
-  defaultMatchLengthMin,
   defaultRatingMax,
   defaultRatingMin,
   isMatchLengthWithinBounds,
@@ -13,6 +12,7 @@ import {
   pageSizeOptions,
 } from "../constants/matches";
 import { useAliasesLookup } from "../hooks/useAliasesLookup";
+import { toBoundedLengthRange, useMatchLengthRange } from "../hooks/useMatchLengthRange";
 import {
   formatLocalDateTime,
   formatOpponentWithRating,
@@ -110,13 +110,9 @@ export const PlayerProfilePage = ({ username }) => {
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
-  const initialMatchBounds = matchLengthBoundsByMode.blitz;
-  const [matchLengthMin, setMatchLengthMin] = useState(
-    Math.max(defaultMatchLengthMin, initialMatchBounds.min),
-  );
-  const [matchLengthMax, setMatchLengthMax] = useState(
-    Math.min(defaultMatchLengthMax, initialMatchBounds.max),
-  );
+  const defaultLengthRange = useMemo(() => toBoundedLengthRange("blitz"), []);
+  const { matchLengthMin, setMatchLengthMin, matchLengthMax, setMatchLengthMax } =
+    useMatchLengthRange(selectedMode);
   const [opponentRatingMin, setOpponentRatingMin] = useState(defaultRatingMin);
   const [opponentRatingMax, setOpponentRatingMax] = useState(defaultRatingMax);
   const [timeControlInitialFilter, setTimeControlInitialFilter] = useState("all");
@@ -133,8 +129,8 @@ export const PlayerProfilePage = ({ username }) => {
   const [recentMonthRankCount, setRecentMonthRankCount] = useState(5);
   const [bestWinCount, setBestWinCount] = useState(5);
   const [appliedFilters, setAppliedFilters] = useState({
-    matchLengthMin: Math.max(defaultMatchLengthMin, initialMatchBounds.min),
-    matchLengthMax: Math.min(defaultMatchLengthMax, initialMatchBounds.max),
+    matchLengthMin: defaultLengthRange.min,
+    matchLengthMax: defaultLengthRange.max,
     opponentRatingMin: defaultRatingMin,
     opponentRatingMax: defaultRatingMax,
     timeControlInitialFilter: "all",
@@ -202,8 +198,8 @@ export const PlayerProfilePage = ({ username }) => {
 
   useEffect(() => {
     const defaultFilters = {
-      matchLengthMin: Math.max(defaultMatchLengthMin, initialMatchBounds.min),
-      matchLengthMax: Math.min(defaultMatchLengthMax, initialMatchBounds.max),
+      matchLengthMin: defaultLengthRange.min,
+      matchLengthMax: defaultLengthRange.max,
       opponentRatingMin: defaultRatingMin,
       opponentRatingMax: defaultRatingMax,
       timeControlInitialFilter: "all",
@@ -231,9 +227,6 @@ export const PlayerProfilePage = ({ username }) => {
   const matches = matchesByMode[selectedMode] ?? [];
 
   useEffect(() => {
-    const bounds = matchLengthBoundsByMode[selectedMode] ?? matchLengthBoundsByMode.blitz;
-    setMatchLengthMin(Math.max(defaultMatchLengthMin, bounds.min));
-    setMatchLengthMax(Math.min(defaultMatchLengthMax, bounds.max));
     setTimeControlInitialFilter("all");
     setTimeControlIncrementFilter("all");
   }, [selectedMode]);
