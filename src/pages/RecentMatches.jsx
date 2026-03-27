@@ -111,10 +111,7 @@ const normalizeRecentMatches = (matches, mode) =>
 
       const playerARating = playerAAfterRating;
       const playerBRating = playerBAfterRating;
-      const avgRating =
-        Number.isFinite(playerARating) && Number.isFinite(playerBRating)
-          ? (playerARating + playerBRating) / 2
-          : null;
+      const avgRating = (playerARating + playerBRating) / 2;
 
       const firstGame = games[0];
       const sourceValue = [
@@ -137,16 +134,16 @@ const normalizeRecentMatches = (matches, mode) =>
         playerAWins,
         playerBWins,
         draws,
-        playerARating: Number.isFinite(playerARating) ? playerARating : null,
-        playerBRating: Number.isFinite(playerBRating) ? playerBRating : null,
-        playerABeforeRating: Number.isFinite(playerABeforeRating) ? playerABeforeRating : null,
-        playerAAfterRating: Number.isFinite(playerAAfterRating) ? playerAAfterRating : null,
-        playerABeforeRd: Number.isFinite(playerABeforeRd) ? playerABeforeRd : null,
-        playerAAfterRd: Number.isFinite(playerAAfterRd) ? playerAAfterRd : null,
-        playerBBeforeRating: Number.isFinite(playerBBeforeRating) ? playerBBeforeRating : null,
-        playerBAfterRating: Number.isFinite(playerBAfterRating) ? playerBAfterRating : null,
-        playerBBeforeRd: Number.isFinite(playerBBeforeRd) ? playerBBeforeRd : null,
-        playerBAfterRd: Number.isFinite(playerBAfterRd) ? playerBAfterRd : null,
+        playerARating,
+        playerBRating,
+        playerABeforeRating,
+        playerAAfterRating,
+        playerABeforeRd,
+        playerAAfterRd,
+        playerBBeforeRating,
+        playerBAfterRating,
+        playerBBeforeRd,
+        playerBAfterRd,
         avgRating,
         gameCount: games.length,
         firstGameId: String(games[0]?.id || "—"),
@@ -159,8 +156,7 @@ const normalizeRecentMatches = (matches, mode) =>
             : String(sourceValue),
       };
     })
-    .filter((match) => Number.isFinite(match.startTs))
-    .sort((a, b) => b.startTs - a.startTs);
+        .sort((a, b) => b.startTs - a.startTs);
 
 export const RecentMatchesPage = () => {
   const [selectedMode, setSelectedMode] = useState("blitz");
@@ -238,13 +234,11 @@ export const RecentMatchesPage = () => {
         }
 
         if (appliedFilters.ratingFilterType === "average") {
-          if (Number.isFinite(match.avgRating)) {
-            const inAverageRange =
-              match.avgRating >= appliedFilters.ratingMin &&
-              match.avgRating <= appliedFilters.ratingMax;
-            if (!inAverageRange) return false;
-          }
-        } else if (Number.isFinite(match.playerARating) && Number.isFinite(match.playerBRating)) {
+          const inAverageRange =
+            match.avgRating >= appliedFilters.ratingMin &&
+            match.avgRating <= appliedFilters.ratingMax;
+          if (!inAverageRange) return false;
+        } else {
           const bothInRange =
             match.playerARating >= appliedFilters.ratingMin &&
             match.playerARating <= appliedFilters.ratingMax &&

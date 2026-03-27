@@ -28,7 +28,7 @@ const parseMonthRanksFromLbRows = (rows) => {
       const mode = String(row?.tc || "").toLowerCase();
       const rank = Number(row?.rank);
       const rating = Number(row?.rating);
-      if (!modeOptions.includes(mode) || !Number.isFinite(rank) || rank <= 0) return null;
+      if (!modeOptions.includes(mode) || rank <= 0) return null;
 
       return {
         monthKey,
@@ -36,7 +36,7 @@ const parseMonthRanksFromLbRows = (rows) => {
         monthLabel: monthKey,
         mode,
         rank,
-        rating: Number.isFinite(rating) ? rating : null,
+        rating,
       };
     })
     .filter(Boolean);
@@ -63,14 +63,13 @@ const parseCurrentRatingsFromRows = (rows) => {
     const rank = Number(row?.rank);
     if (!modeOptions.includes(mode)) return;
     if (!rowUsername) return;
-    if (!Number.isFinite(rating) || !Number.isFinite(rd) || !Number.isFinite(games)) return;
 
     snapshotsByMode[mode].set(rowUsername, {
       currentRating: rating,
-      peakRating: Number.isFinite(peak) ? peak : null,
+      peakRating: peak,
       currentRd: rd,
       gamesPlayed: games,
-      rank: Number.isFinite(rank) ? rank : null,
+      rank,
     });
   });
 
@@ -258,7 +257,7 @@ export const PlayerProfilePage = ({ username }) => {
         return false;
       }
 
-      if (Number.isFinite(match.opponentAfterRating)) {
+      {
         const inRatingRange =
           match.opponentAfterRating >= appliedFilters.opponentRatingMin &&
           match.opponentAfterRating <= appliedFilters.opponentRatingMax;
@@ -375,12 +374,11 @@ export const PlayerProfilePage = ({ username }) => {
   }, [aliasesLookup, username]);
 
   const formatCurrentRating = (summary) => {
-    if (!Number.isFinite(summary.currentRating)) return "—";
-    const provisionalSuffix = Number.isFinite(summary.currentRd) && summary.currentRd >= 100 ? "?" : "";
-    return `${summary.currentRating.toFixed(1)}${provisionalSuffix}`;
+    const provisionalSuffix = summary.currentRd >= 100 ? "?" : "";
+    return `${summary.currentRating}${provisionalSuffix}`;
   };
   const formatRankSuffix = (rank) => {
-    if (!Number.isFinite(rank) || rank <= 0) return "";
+    if (rank <= 0) return "";
     return ` (#${rank})`;
   };
   const profileMetricCards = [
@@ -392,12 +390,12 @@ export const PlayerProfilePage = ({ username }) => {
     {
       key: "blitz-rd",
       label: "Blitz RD",
-      value: Number.isFinite(blitzDisplaySummary.currentRd) ? blitzDisplaySummary.currentRd.toFixed(1) : "—",
+      value: blitzDisplaySummary.currentRd,
     },
     {
       key: "blitz-peak-rating",
       label: "Blitz Peak Rating",
-      value: Number.isFinite(blitzDisplaySummary.peakRating) ? blitzDisplaySummary.peakRating.toFixed(1) : "—",
+      value: blitzDisplaySummary.peakRating,
     },
     {
       key: "blitz-games-played",
@@ -412,12 +410,12 @@ export const PlayerProfilePage = ({ username }) => {
     {
       key: "bullet-rd",
       label: "Bullet RD",
-      value: Number.isFinite(bulletDisplaySummary.currentRd) ? bulletDisplaySummary.currentRd.toFixed(1) : "—",
+      value: bulletDisplaySummary.currentRd,
     },
     {
       key: "bullet-peak-rating",
       label: "Bullet Peak Rating",
-      value: Number.isFinite(bulletDisplaySummary.peakRating) ? bulletDisplaySummary.peakRating.toFixed(1) : "—",
+      value: bulletDisplaySummary.peakRating,
     },
     {
       key: "bullet-games-played",
@@ -530,7 +528,7 @@ export const PlayerProfilePage = ({ username }) => {
                       {monthRank.monthLabel} {monthRank.mode} · #{monthRank.rank}
                     </span>
                     <span className="profileBestMonthRankRating">
-                      {Number.isFinite(monthRank.rating) ? monthRank.rating.toFixed(1) : "—"}
+                      {monthRank.rating}
                     </span>
                   </li>
                 ))}
@@ -564,7 +562,7 @@ export const PlayerProfilePage = ({ username }) => {
                       {monthRank.monthLabel} {monthRank.mode} · #{monthRank.rank}
                     </span>
                     <span className="profileBestMonthRankRating">
-                      {Number.isFinite(monthRank.rating) ? monthRank.rating.toFixed(1) : "—"}
+                      {monthRank.rating}
                     </span>
                   </li>
                 ))}
@@ -791,14 +789,10 @@ export const PlayerProfilePage = ({ username }) => {
                         <span>{formatScore(match.opponentScore)}</span>
                       </td>
                       <td>
-                        {Number.isFinite(match.afterRating)
-                          ? `${match.afterRating.toFixed(1)}(${formatSignedDecimal(match.ratingChange)})`
-                          : "—"}
+                        {`${match.afterRating}(${formatSignedDecimal(match.ratingChange)})`}
                       </td>
                       <td>
-                        {Number.isFinite(match.afterRd)
-                          ? `${match.afterRd.toFixed(1)}(${formatSignedDecimal(match.rdChange)})`
-                          : "—"}
+                        {`${match.afterRd}(${formatSignedDecimal(match.rdChange)})`}
                       </td>
                     </tr>
                     {isExpanded ? (

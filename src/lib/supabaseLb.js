@@ -39,7 +39,7 @@ export const fetchLbRows = async ({ month, username, limit } = {}) => {
   let query = supabase.from(table).select(LB_SELECT_COLUMNS);
   if (month) query = query.eq("month", month);
   if (username) query = query.eq("username", username);
-  if (Number.isFinite(Number(limit)) && Number(limit) > 0) {
+  if (Number(limit) > 0) {
     query = query.limit(Math.floor(Number(limit)));
   }
 

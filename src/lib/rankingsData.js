@@ -16,7 +16,6 @@ const monthKeyFromDate = (date) =>
 
 const roundToTenth = (value) => {
   const numeric = Number(value);
-  if (!Number.isFinite(numeric)) return null;
   return Math.round(numeric * 10) / 10;
 };
 
@@ -33,11 +32,11 @@ const toPlayers = (value) => {
       const rdRaw = entry?.rd;
 
       return {
-        rank: Number.isFinite(Number(rankRaw)) ? Number(rankRaw) : index + 1,
+        rank: Number(rankRaw) || index + 1,
         username: String(username || "Unknown"),
         score: roundToTenth(scoreRaw),
         rd: roundToTenth(rdRaw),
-        games: Number.isFinite(Number(gamesRaw)) ? Number(gamesRaw) : null,
+        games: Number(gamesRaw) || null,
       };
     })
     .sort((a, b) => {
@@ -66,7 +65,7 @@ const normalizeLbRowsForMonth = (rows) => {
       username: String(row?.username || "Unknown"),
       score: roundToTenth(row?.rating),
       rd: roundToTenth(row?.rd),
-      games: Number.isFinite(Number(row?.games)) ? Number(row.games) : null,
+      games: Number(row?.games) || null,
     });
   });
 
@@ -101,7 +100,7 @@ export const findRankForUsernameInLeaderboard = (leaderboardByMode, username, mo
   const playerMatch = players.find(
     (player) => String(player?.username || "").toLowerCase() === username,
   );
-  return Number.isFinite(playerMatch?.rank) ? playerMatch.rank : null;
+  return playerMatch?.rank ?? null;
 };
 
 export const findLatestRankForUsername = (rankingsByMonth, username, mode) => {
@@ -120,7 +119,7 @@ export const findLatestRankForUsername = (rankingsByMonth, username, mode) => {
     const match = players.find(
       (player) => String(player.username || "").toLowerCase() === username,
     );
-    if (match && Number.isFinite(match.rank)) {
+    if (match) {
       return match.rank;
     }
   }
