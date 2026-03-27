@@ -5,8 +5,17 @@ import {
   fetchMatchRowsFromSupabase,
   isoMonthStartFromMonthKey,
 } from "../lib/supabaseLb";
+import {
+  modeOptions,
+} from "../constants/matches";
+import {
+  normalizedGamesFromMatch,
+  normalizedPlayersFromMatch,
+  normalizedRatingsFromMatch,
+  parseWinnerFromPerspective,
+  winnerToFullWord,
+} from "../utils/matchTransforms";
 
-export const modeOptions = ["blitz", "bullet"];
 const monthNames = [
   "Jan",
   "Feb",
@@ -21,17 +30,6 @@ const monthNames = [
   "Nov",
   "Dec",
 ];
-export const pageSizeOptions = [10, 25, 50, 100];
-export const opponentRatingSliderMin = 1000;
-export const opponentRatingSliderMax = 2500;
-export const defaultRatingMin = 1000;
-export const defaultRatingMax = 2500;
-export const defaultMatchLengthMin = 1;
-export const defaultMatchLengthMax = 50;
-export const matchLengthBoundsByMode = {
-  blitz: { min: 1, max: 50 },
-  bullet: { min: 1, max: 200 },
-};
 
 const monthLabelFromDate = (date) =>
   date.toLocaleString("en-US", {
@@ -121,158 +119,6 @@ const toPlayers = (value) => {
     .map((entry, index) => ({ ...entry, rank: index + 1 }));
 };
 
-const winnerCodeLookup = {
-  w: "white",
-  b: "black",
-  d: "draw",
-};
-
-const winnerToFullWord = (winner) => {
-  const winnerValue = String(winner || "").toLowerCase();
-  return winnerCodeLookup[winnerValue] || winnerValue;
-};
-
-const normalizedPlayersFromMatch = (match) => {
-  if (Array.isArray(match?.players)) return match.players;
-  if (Array.isArray(match?.p)) return match.p;
-  return [];
-};
-
-const playerFromRef = (playerRef, players) => {
-  if (typeof playerRef === "number" && Number.isInteger(playerRef)) {
-    return String(players[playerRef] || "");
-  }
-
-  const numericRef = Number(playerRef);
-  if (Number.isInteger(numericRef) && String(playerRef).trim() !== "") {
-    return String(players[numericRef] || "");
-  }
-
-  return String(playerRef || "");
-};
-
-const normalizedGamesFromMatch = (match, players) => {
-  const gamesRaw = Array.isArray(match?.games)
-    ? match.games
-    : Array.isArray(match?.g)
-      ? match.g
-      : [];
-
-  return gamesRaw.map((game) => {
-    if (Array.isArray(game)) {
-      const [id, whiteRef, blackRef, winnerRef] = game;
-      return {
-        id: id ?? "—",
-        white: playerFromRef(whiteRef, players),
-        black: playerFromRef(blackRef, players),
-        winner: winnerToFullWord(winnerRef),
-      };
-    }
-
-    return {
-      id: game?.id ?? "—",
-      white: playerFromRef(game?.white, players),
-      black: playerFromRef(game?.black, players),
-      winner: winnerToFullWord(game?.winner),
-    };
-  });
-};
-
-const ratingsFromCompact = (ratingsCompact, players) => {
-  if (!Array.isArray(ratingsCompact)) return {};
-
-  const mappedEntries = ratingsCompact
-    .map((entry) => {
-      if (!Array.isArray(entry) || entry.length < 5) return null;
-      const [playerRef, beforeRating, afterRating, beforeRd, afterRd] = entry;
-      const username = playerFromRef(playerRef, players);
-      if (!username) return null;
-      return [
-        username,
-        {
-          before_rating: beforeRating,
-          after_rating: afterRating,
-          before_rd: beforeRd,
-          after_rd: afterRd,
-        },
-      ];
-    })
-    .filter(Boolean);
-
-  return Object.fromEntries(mappedEntries);
-};
-
-const normalizedRatingsFromMatch = (match, players) => {
-  const ratings =
-    match?.ratings && typeof match.ratings === "object"
-      ? match.ratings
-      : match?.ra && typeof match.ra === "object"
-        ? match.ra
-        : {};
-  const ratingsCompact = match?.ratings_compact ?? match?.u;
-  return {
-    ...ratingsFromCompact(ratingsCompact, players),
-    ...ratings,
-  };
-};
-
-const parseWinnerFromPerspective = (game, usernameLower) => {
-  const white = String(game?.white || "").toLowerCase();
-  const black = String(game?.black || "").toLowerCase();
-  const winner = winnerToFullWord(game?.winner);
-
-  if (winner === "draw") return "draw";
-  if (winner === "white") return white === usernameLower ? "win" : "loss";
-  if (winner === "black") return black === usernameLower ? "win" : "loss";
-  return "draw";
-};
-
-export const formatSignedDecimal = (value) => {
-  if (!Number.isFinite(value)) return "—";
-  const rounded = Math.round(value * 10) / 10;
-  if (rounded > 0) return `+${rounded.toFixed(1)}`;
-  return rounded.toFixed(1);
-};
-
-export const formatLocalDateTime = (timestamp) => {
-  if (!Number.isFinite(timestamp)) return "—";
-  const date = new Date(timestamp);
-  const now = new Date();
-  const includeYear = date.getFullYear() !== now.getFullYear();
-  const month = date.toLocaleString("en-US", { month: "short" });
-  const day = date.getDate();
-  const year = date.getFullYear();
-  const time = date
-    .toLocaleString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    })
-    .toLowerCase();
-
-  return includeYear ? `${month} ${day}, ${year} ${time}` : `${month} ${day} ${time}`;
-};
-
-export const formatScore = (value) => {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) return "0.0";
-  return numeric.toFixed(1);
-};
-
-export const formatOpponentWithRating = (opponent, opponentRating) => {
-  if (!Number.isFinite(opponentRating)) return opponent;
-  return `${opponent} (${opponentRating.toFixed(1)})`;
-};
-
-export const parseTimeControlParts = (timeControl) => {
-  const [initialRaw, incrementRaw] = String(timeControl || "").split("+");
-  const initialSeconds = Number(initialRaw);
-  const incrementSeconds = Number(incrementRaw);
-  return {
-    initial: Number.isFinite(initialSeconds) ? String(initialSeconds) : "",
-    increment: Number.isFinite(incrementSeconds) ? String(incrementSeconds) : "",
-  };
-};
 
 const toNullableNumber = (value) => {
   const parsed = Number(value);
