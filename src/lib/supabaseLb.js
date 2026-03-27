@@ -1,13 +1,12 @@
+import { getSupabaseClient } from "./supabaseClient";
+
 const supabaseLbConfig = {
   url: import.meta.env.VITE_SUPABASE_URL?.trim() || "",
   anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() || "",
   table: import.meta.env.VITE_SUPABASE_LB_TABLE?.trim() || "lb",
-  playerRatingsTable:
-    import.meta.env.VITE_SUPABASE_PLAYER_RATINGS_TABLE?.trim() || "player_ratings",
-  blitzMatchesTable:
-    import.meta.env.VITE_SUPABASE_BLITZ_MATCHES_TABLE?.trim() || "blitz_matches",
-  bulletMatchesTable:
-    import.meta.env.VITE_SUPABASE_BULLET_MATCHES_TABLE?.trim() || "bullet_matches",
+  playerRatingsTable: "player_ratings",
+  blitzMatchesTable: "blitz_matches",
+  bulletMatchesTable: "bullet_matches",
 };
 
 const LB_SELECT_COLUMNS = "username,month,rank,rating,rd,games,tc";
@@ -39,29 +38,20 @@ export const isoMonthStartFromMonthKey = (monthKey) => {
 
 export const fetchLbRows = async ({ month, username, limit } = {}) => {
   requireSupabaseConfig();
-  const { url, anonKey, table } = supabaseLbConfig;
-  const baseUrl = url.replace(/\/$/, "");
-  const queryParts = [`select=${encodeURIComponent(LB_SELECT_COLUMNS)}`];
-  if (month) queryParts.push(`month=${encodeURIComponent(`eq.${month}`)}`);
-  if (username) queryParts.push(`username=${encodeURIComponent(`eq.${username}`)}`);
+  const { table } = supabaseLbConfig;
+  const supabase = getSupabaseClient();
+  let query = supabase.from(table).select(LB_SELECT_COLUMNS);
+  if (month) query = query.eq("month", month);
+  if (username) query = query.eq("username", username);
   if (Number.isFinite(Number(limit)) && Number(limit) > 0) {
-    queryParts.push(`limit=${Math.floor(Number(limit))}`);
+    query = query.limit(Math.floor(Number(limit)));
   }
 
-  const endpoint = `${baseUrl}/rest/v1/${encodeURIComponent(table)}?${queryParts.join("&")}`;
-  const response = await fetch(endpoint, {
-    headers: {
-      apikey: anonKey,
-      Authorization: `Bearer ${anonKey}`,
-      Accept: "application/json",
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status} while loading Supabase table "${table}"`);
+  const { data, error } = await query;
+  if (error) {
+    throw new Error(`Failed loading Supabase table "${table}": ${error.message}`);
   }
-
-  const rows = await response.json();
+  const rows = data;
   if (!Array.isArray(rows)) {
     throw new Error(`Expected Supabase table "${table}" to return an array`);
   }
@@ -71,32 +61,23 @@ export const fetchLbRows = async ({ month, username, limit } = {}) => {
 
 export const fetchPlayerRatingsRows = async ({ tc, username, limit } = {}) => {
   requireSupabaseConfig();
-  const { url, anonKey, playerRatingsTable } = supabaseLbConfig;
-  const baseUrl = url.replace(/\/$/, "");
-  const queryParts = [`select=${encodeURIComponent(PLAYER_RATINGS_SELECT_COLUMNS)}`];
-  if (tc) queryParts.push(`tc=${encodeURIComponent(`eq.${tc}`)}`);
-  if (username) queryParts.push(`username=${encodeURIComponent(`eq.${username}`)}`);
-  queryParts.push("order=rank.asc");
+  const { playerRatingsTable } = supabaseLbConfig;
+  const supabase = getSupabaseClient();
+  let query = supabase
+    .from(playerRatingsTable)
+    .select(PLAYER_RATINGS_SELECT_COLUMNS)
+    .order("rank", { ascending: true });
+  if (tc) query = query.eq("tc", tc);
+  if (username) query = query.eq("username", username);
   if (Number.isFinite(Number(limit)) && Number(limit) > 0) {
-    queryParts.push(`limit=${Math.floor(Number(limit))}`);
+    query = query.limit(Math.floor(Number(limit)));
   }
 
-  const endpoint = `${baseUrl}/rest/v1/${encodeURIComponent(playerRatingsTable)}?${queryParts.join("&")}`;
-  const response = await fetch(endpoint, {
-    headers: {
-      apikey: anonKey,
-      Authorization: `Bearer ${anonKey}`,
-      Accept: "application/json",
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(
-      `HTTP ${response.status} while loading Supabase table "${playerRatingsTable}"`,
-    );
+  const { data, error } = await query;
+  if (error) {
+    throw new Error(`Failed loading Supabase table "${playerRatingsTable}": ${error.message}`);
   }
-
-  const rows = await response.json();
+  const rows = data;
   if (!Array.isArray(rows)) {
     throw new Error(`Expected Supabase table "${playerRatingsTable}" to return an array`);
   }
@@ -137,61 +118,48 @@ export const fetchMatchRowsFromSupabase = async (mode, filters = {}, pageOptions
     throw new Error(`Unsupported match mode "${mode}"`);
   }
 
-  const { url, anonKey } = supabaseLbConfig;
-  const baseUrl = url.replace(/\/$/, "");
+  const supabase = getSupabaseClient();
   const pageSize = Number(pageOptions.pageSize);
   const pageNumber = Math.max(1, Number(pageOptions.page) || 1);
   const useSinglePage = Number.isFinite(pageSize) && pageSize > 0;
   const rows = [];
   let from = useSinglePage ? (pageNumber - 1) * pageSize : 0;
 
-  const queryParts = [
-    `select=${encodeURIComponent(MATCH_SELECT_COLUMNS)}`,
-    "order=start_ts.desc,end_ts.desc",
-  ];
   const username = String(filters.username || "").trim();
-  if (username) {
-    const escaped = username.replace(/,/g, "\\,");
-    queryParts.push(
-      `or=${encodeURIComponent(`(player_1.ilike.${escaped},player_2.ilike.${escaped})`)}`,
-    );
-  }
-  if (Number.isFinite(Number(filters.startTs))) {
-    queryParts.push(`start_ts=${encodeURIComponent(`gte.${Math.floor(Number(filters.startTs))}`)}`);
-  }
-  if (Number.isFinite(Number(filters.endTs))) {
-    queryParts.push(`start_ts=${encodeURIComponent(`lte.${Math.floor(Number(filters.endTs))}`)}`);
-  }
-  if (filters.timeControl) {
-    queryParts.push(`time_control=${encodeURIComponent(`eq.${String(filters.timeControl)}`)}`);
-  }
   while (true) {
-    const endpoint = `${baseUrl}/rest/v1/${encodeURIComponent(tableName)}?${queryParts.join("&")}`;
     const rangeEnd = useSinglePage ? from + pageSize - 1 : from + 999;
-    const response = await fetch(endpoint, {
-      headers: {
-        apikey: anonKey,
-        Authorization: `Bearer ${anonKey}`,
-        Accept: "application/json",
-        Range: `${from}-${rangeEnd}`,
-        Prefer: "count=exact",
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status} while loading Supabase table "${tableName}"`);
+    let query = supabase
+      .from(tableName)
+      .select(MATCH_SELECT_COLUMNS, { count: "exact" })
+      .order("start_ts", { ascending: false })
+      .order("end_ts", { ascending: false });
+    if (username) {
+      const escaped = username.replace(/,/g, "\\,");
+      query = query.or(`player_1.ilike.${escaped},player_2.ilike.${escaped}`);
     }
+    if (Number.isFinite(Number(filters.startTs))) {
+      query = query.gte("start_ts", Math.floor(Number(filters.startTs)));
+    }
+    if (Number.isFinite(Number(filters.endTs))) {
+      query = query.lte("start_ts", Math.floor(Number(filters.endTs)));
+    }
+    if (filters.timeControl) {
+      query = query.eq("time_control", String(filters.timeControl));
+    }
+    query = query.range(from, rangeEnd);
 
-    const page = await response.json();
+    const { data, error, count } = await query;
+    if (error) {
+      throw new Error(`Failed loading Supabase table "${tableName}": ${error.message}`);
+    }
+    const page = data;
     if (!Array.isArray(page)) {
       throw new Error(`Expected Supabase table "${tableName}" to return an array`);
     }
 
     rows.push(...page);
     if (useSinglePage || page.length < 1000) {
-      const contentRange = response.headers.get("content-range") || "";
-      const totalMatch = contentRange.match(/\/(\d+)$/);
-      const total = totalMatch ? Number(totalMatch[1]) : rows.length;
+      const total = Number.isFinite(count) ? count : rows.length;
       return { rows, total };
     }
     from += 1000;
