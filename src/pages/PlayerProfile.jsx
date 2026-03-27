@@ -403,7 +403,7 @@ export const PlayerProfilePage = ({ username }) => {
 
         <div className="opponentRatingFilter">
           <label htmlFor="match-length-min">
-            Match length range: {matchLengthMin} -
+            Match length range: {matchLengthMin} -<span> </span>
             {matchLengthMax >= matchLengthBounds.max ? `${matchLengthBounds.max}+` : matchLengthMax}
           </label>
           <div className="dualRangeSlider">
