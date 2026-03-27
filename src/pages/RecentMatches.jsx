@@ -1,53 +1,29 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
+import {
+  defaultMatchLengthMax,
+  defaultMatchLengthMin,
+  defaultRatingMax,
+  defaultRatingMin,
+  matchLengthBoundsByMode,
+  modeOptions,
+  opponentRatingSliderMax,
+  opponentRatingSliderMin,
+} from "../constants/matches";
+import { formatLocalDateTime, formatScore, formatSignedDecimal } from "../utils/formatters";
+import {
+  findRatingDataForPlayer,
+  normalizedGamesFromMatch,
+  normalizedPlayersFromMatch,
+  normalizedRatingsFromMatch,
+  winnerToFullWord,
+} from "../utils/matchTransforms";
 import { loadRawMatchesByMode } from "./Rankings";
 
-const opponentRatingSliderMin = 1000;
-const opponentRatingSliderMax = 2500;
-const defaultRatingMin = 1000;
-const defaultRatingMax = 2500;
-const defaultMatchLengthMin = 1;
-const defaultMatchLengthMax = 50;
-const matchLengthBoundsByMode = {
-  blitz: { min: 1, max: 50 },
-  bullet: { min: 1, max: 200 },
-};
-const recentModeOptions = ["blitz", "bullet"];
+const recentModeOptions = modeOptions;
 const ratingFilterTypeOptions = ["both", "average"];
 const pageSizeOptions = [25, 50, 100, 200];
 const defaultPageSize = 50;
-
-const formatLocalDateTime = (timestamp) => {
-  if (!Number.isFinite(timestamp)) return "—";
-  const date = new Date(timestamp);
-  const now = new Date();
-  const includeYear = date.getFullYear() !== now.getFullYear();
-  const month = date.toLocaleString("en-US", { month: "short" });
-  const day = date.getDate();
-  const year = date.getFullYear();
-  const time = date
-    .toLocaleString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    })
-    .toLowerCase();
-
-  return includeYear ? `${month} ${day}, ${year} ${time}` : `${month} ${day} ${time}`;
-};
-
-const formatScore = (value) => {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) return "0.0";
-  return numeric.toFixed(1);
-};
-
-const formatSigned = (value) => {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) return "—";
-  if (numeric > 0) return `+${numeric.toFixed(1)}`;
-  return numeric.toFixed(1);
-};
 
 const parseDateInputBoundary = (value, boundary) => {
   if (!value) return null;
@@ -59,112 +35,6 @@ const parseDateInputBoundary = (value, boundary) => {
   return parsed.getTime();
 };
 
-const findRatingDataForPlayer = (ratings, playerName) => {
-  if (!ratings || typeof ratings !== "object") return null;
-  if (ratings[playerName]) return ratings[playerName];
-
-  const playerLower = String(playerName).toLowerCase();
-  const matchKey = Object.keys(ratings).find((key) => String(key).toLowerCase() === playerLower);
-  if (!matchKey) return null;
-  return ratings[matchKey];
-};
-
-const winnerCodeLookup = {
-  w: "white",
-  b: "black",
-  d: "draw",
-};
-
-const winnerToFullWord = (winner) => {
-  const winnerValue = String(winner || "").toLowerCase();
-  return winnerCodeLookup[winnerValue] || winnerValue;
-};
-
-const normalizedPlayersFromMatch = (match) => {
-  if (Array.isArray(match?.players)) return match.players;
-  if (Array.isArray(match?.p)) return match.p;
-  return [];
-};
-
-const playerFromRef = (playerRef, players) => {
-  if (typeof playerRef === "number" && Number.isInteger(playerRef)) {
-    return String(players[playerRef] || "");
-  }
-
-  const numericRef = Number(playerRef);
-  if (Number.isInteger(numericRef) && String(playerRef).trim() !== "") {
-    return String(players[numericRef] || "");
-  }
-
-  return String(playerRef || "");
-};
-
-const normalizedGamesFromMatch = (match, players) => {
-  const rawGames = Array.isArray(match?.games)
-    ? match.games
-    : Array.isArray(match?.g)
-      ? match.g
-      : [];
-
-  return rawGames.map((game) => {
-    if (Array.isArray(game)) {
-      const [id, whiteRef, blackRef, winnerRef, endTs] = game;
-      return {
-        id: id ?? "—",
-        white: playerFromRef(whiteRef, players),
-        black: playerFromRef(blackRef, players),
-        winner: winnerToFullWord(winnerRef),
-        end_ts: endTs,
-      };
-    }
-
-    return {
-      id: game?.id ?? "—",
-      white: playerFromRef(game?.white, players),
-      black: playerFromRef(game?.black, players),
-      winner: winnerToFullWord(game?.winner),
-      end_ts: game?.end_ts,
-    };
-  });
-};
-
-const ratingsFromCompact = (ratingsCompact, players) => {
-  if (!Array.isArray(ratingsCompact)) return {};
-
-  const mapped = ratingsCompact
-    .map((entry) => {
-      if (!Array.isArray(entry) || entry.length < 5) return null;
-      const [playerRef, beforeRating, afterRating, beforeRd, afterRd] = entry;
-      const username = playerFromRef(playerRef, players);
-      if (!username) return null;
-      return [
-        username,
-        {
-          before_rating: beforeRating,
-          after_rating: afterRating,
-          before_rd: beforeRd,
-          after_rd: afterRd,
-        },
-      ];
-    })
-    .filter(Boolean);
-
-  return Object.fromEntries(mapped);
-};
-
-const normalizedRatingsFromMatch = (match, players) => {
-  const ratings =
-    match?.ratings && typeof match.ratings === "object"
-      ? match.ratings
-      : match?.ra && typeof match.ra === "object"
-        ? match.ra
-        : {};
-  const ratingsCompact = match?.ratings_compact ?? match?.u;
-  return {
-    ...ratingsFromCompact(ratingsCompact, players),
-    ...ratings,
-  };
-};
 
 const normalizeRecentMatches = (matches, mode) =>
   (Array.isArray(matches) ? matches : [])
@@ -778,7 +648,7 @@ export const RecentMatchesPage = () => {
                           {`Rating ${Number.isFinite(match.playerABeforeRating) ? match.playerABeforeRating.toFixed(1) : "—"} (${
                             Number.isFinite(match.playerAAfterRating) &&
                             Number.isFinite(match.playerABeforeRating)
-                              ? formatSigned(match.playerAAfterRating - match.playerABeforeRating)
+                              ? formatSignedDecimal(match.playerAAfterRating - match.playerABeforeRating)
                               : "—"
                           })`}
                         </span>
@@ -786,7 +656,7 @@ export const RecentMatchesPage = () => {
                           {`RD ${Number.isFinite(match.playerABeforeRd) ? match.playerABeforeRd.toFixed(1) : "—"} (${
                             Number.isFinite(match.playerAAfterRd) &&
                             Number.isFinite(match.playerABeforeRd)
-                              ? formatSigned(match.playerAAfterRd - match.playerABeforeRd)
+                              ? formatSignedDecimal(match.playerAAfterRd - match.playerABeforeRd)
                               : "—"
                           })`}
                         </span>
@@ -797,7 +667,7 @@ export const RecentMatchesPage = () => {
                           {`Rating ${Number.isFinite(match.playerBBeforeRating) ? match.playerBBeforeRating.toFixed(1) : "—"} (${
                             Number.isFinite(match.playerBAfterRating) &&
                             Number.isFinite(match.playerBBeforeRating)
-                              ? formatSigned(match.playerBAfterRating - match.playerBBeforeRating)
+                              ? formatSignedDecimal(match.playerBAfterRating - match.playerBBeforeRating)
                               : "—"
                           })`}
                         </span>
@@ -805,7 +675,7 @@ export const RecentMatchesPage = () => {
                           {`RD ${Number.isFinite(match.playerBBeforeRd) ? match.playerBBeforeRd.toFixed(1) : "—"} (${
                             Number.isFinite(match.playerBAfterRd) &&
                             Number.isFinite(match.playerBBeforeRd)
-                              ? formatSigned(match.playerBAfterRd - match.playerBBeforeRd)
+                              ? formatSignedDecimal(match.playerBAfterRd - match.playerBBeforeRd)
                               : "—"
                           })`}
                         </span>
