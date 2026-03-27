@@ -12,7 +12,12 @@ import {
   pageSizeOptions,
 } from "../constants/matches";
 import { useAliasesLookup } from "../hooks/useAliasesLookup";
-import { formatLocalDateTime, formatOpponentWithRating, formatScore, formatSignedDecimal } from "../utils/formatters";
+import {
+  formatLocalDateTime,
+  formatOpponentWithRating,
+  formatScore,
+  formatSignedDecimal,
+} from "../utils/formatters";
 import { parseTimeControlParts } from "../utils/matchTransforms";
 import { loadRawMatchesByMode, normalizeMatches } from "../lib/matchData";
 import { fetchLbRows, monthKeyFromMonthValue } from "../lib/supabaseLb";
@@ -257,13 +262,6 @@ export const PlayerProfilePage = ({ username }) => {
         return false;
       }
 
-      {
-        const inRatingRange =
-          match.opponentAfterRating >= appliedFilters.opponentRatingMin &&
-          match.opponentAfterRating <= appliedFilters.opponentRatingMax;
-        if (!inRatingRange) return false;
-      }
-
       const { initial, increment } = parseTimeControlParts(match.timeControl);
       if (
         appliedFilters.timeControlInitialFilter !== "all" &&
@@ -280,20 +278,21 @@ export const PlayerProfilePage = ({ username }) => {
 
       return true;
     });
-  }, [
-    matches,
-    appliedFilters,
-  ]);
+  }, [matches, appliedFilters]);
 
   const handleSearchClick = async () => {
-    await runMatchSearch(selectedMode, {
-      matchLengthMin,
-      matchLengthMax,
-      opponentRatingMin,
-      opponentRatingMax,
-      timeControlInitialFilter,
-      timeControlIncrementFilter,
-    }, 1);
+    await runMatchSearch(
+      selectedMode,
+      {
+        matchLengthMin,
+        matchLengthMax,
+        opponentRatingMin,
+        opponentRatingMax,
+        timeControlInitialFilter,
+        timeControlIncrementFilter,
+      },
+      1,
+    );
   };
 
   const totalPages = Math.max(
@@ -314,16 +313,7 @@ export const PlayerProfilePage = ({ username }) => {
 
   useEffect(() => {
     setExpandedMatchKeys([]);
-  }, [
-    currentPage,
-    selectedMode,
-    appliedFilters,
-    username,
-  ]);
-
-  const pageRows = useMemo(() => {
-    return filteredMatches;
-  }, [filteredMatches]);
+  }, [currentPage, selectedMode, appliedFilters, username]);
 
   const ratingDisplayByMode = useMemo(() => {
     return {
@@ -337,9 +327,7 @@ export const PlayerProfilePage = ({ username }) => {
   const bestWins = useMemo(() => {
     return filteredMatches
       .filter((match) =>
-        Array.isArray(match.games)
-          ? match.games.some((game) => game?.winner === username)
-          : false,
+        Array.isArray(match.games) ? match.games.some((game) => game?.winner === username) : false,
       )
       .sort((a, b) => {
         const ratingDiff =
@@ -527,9 +515,7 @@ export const PlayerProfilePage = ({ username }) => {
                     <span className="profileBestMonthRankPrimary">
                       {monthRank.monthLabel} {monthRank.mode} · #{monthRank.rank}
                     </span>
-                    <span className="profileBestMonthRankRating">
-                      {monthRank.rating}
-                    </span>
+                    <span className="profileBestMonthRankRating">{monthRank.rating}</span>
                   </li>
                 ))}
               </ol>
@@ -561,9 +547,7 @@ export const PlayerProfilePage = ({ username }) => {
                     <span className="profileBestMonthRankPrimary">
                       {monthRank.monthLabel} {monthRank.mode} · #{monthRank.rank}
                     </span>
-                    <span className="profileBestMonthRankRating">
-                      {monthRank.rating}
-                    </span>
+                    <span className="profileBestMonthRankRating">{monthRank.rating}</span>
                   </li>
                 ))}
               </ol>
@@ -633,7 +617,12 @@ export const PlayerProfilePage = ({ username }) => {
               ))}
             </select>
           </label>
-          <button className="analyzeButton" type="button" onClick={handleSearchClick} disabled={loadingMatches}>
+          <button
+            className="analyzeButton"
+            type="button"
+            onClick={handleSearchClick}
+            disabled={loadingMatches}
+          >
             {loadingMatches ? "Searching..." : "Search"}
           </button>
         </div>
@@ -742,7 +731,7 @@ export const PlayerProfilePage = ({ username }) => {
               </tr>
             </thead>
             <tbody>
-              {pageRows.map((match) => {
+              {filteredMatches.map((match) => {
                 const matchKey = `${match.startTs}-${match.firstGameId}`;
                 const isExpanded = expandedMatchKeys.includes(matchKey);
                 return (
@@ -788,12 +777,8 @@ export const PlayerProfilePage = ({ username }) => {
                         <span className="scoreDash"> - </span>
                         <span>{formatScore(match.opponentScore)}</span>
                       </td>
-                      <td>
-                        {`${match.afterRating}(${formatSignedDecimal(match.ratingChange)})`}
-                      </td>
-                      <td>
-                        {`${match.afterRd}(${formatSignedDecimal(match.rdChange)})`}
-                      </td>
+                      <td>{`${match.afterRating}(${formatSignedDecimal(match.ratingChange)})`}</td>
+                      <td>{`${match.afterRd}(${formatSignedDecimal(match.rdChange)})`}</td>
                     </tr>
                     {isExpanded ? (
                       <tr className="matchDetailsRow">
@@ -829,7 +814,7 @@ export const PlayerProfilePage = ({ username }) => {
                   </Fragment>
                 );
               })}
-              {pageRows.length === 0 ? (
+              {filteredMatches.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="emptyRankings">
                     No matches found for this player with current filters in {selectedMode}.
