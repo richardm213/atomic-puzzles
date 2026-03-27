@@ -64,7 +64,7 @@ const parseCurrentRatingsFromRows = (rows) => {
     if (!rowUsername) return;
     if (!Number.isFinite(rating) || !Number.isFinite(rd) || !Number.isFinite(games)) return;
 
-    snapshotsByMode[mode].set(rowUsername.toLowerCase(), {
+    snapshotsByMode[mode].set(rowUsername, {
       currentRating: rating,
       peakRating: Number.isFinite(peak) ? peak : null,
       currentRd: rd,
@@ -79,6 +79,16 @@ const parseCurrentRatingsFromRows = (rows) => {
 const loadCurrentRatingsSnapshot = async (username) => {
   const rows = await fetchPlayerRatingsRows({ username });
   return parseCurrentRatingsFromRows(rows);
+};
+
+const normalizeRatingSnapshot = (snapshot) => {
+  return {
+    currentRating: snapshot?.currentRating ?? null,
+    peakRating: snapshot?.peakRating ?? null,
+    currentRd: snapshot?.currentRd ?? null,
+    gamesPlayed: snapshot?.gamesPlayed ?? 0,
+    rank: snapshot?.rank ?? null,
+  };
 };
 
 export const PlayerProfilePage = ({ username }) => {
@@ -315,26 +325,20 @@ export const PlayerProfilePage = ({ username }) => {
     return filteredMatches;
   }, [filteredMatches]);
 
-  const getDisplaySummary = (snapshot) => {
+  const ratingDisplayByMode = useMemo(() => {
     return {
-      currentRating: snapshot?.currentRating ?? null,
-      peakRating: snapshot?.peakRating ?? null,
-      currentRd: snapshot?.currentRd ?? null,
-      gamesPlayed: snapshot?.gamesPlayed ?? 0,
-      rank: snapshot?.rank ?? null,
+      blitz: normalizeRatingSnapshot(ratingsSnapshotByMode.blitz.get(username)),
+      bullet: normalizeRatingSnapshot(ratingsSnapshotByMode.bullet.get(username)),
     };
-  };
-
-  const blitzSnapshot = ratingsSnapshotByMode.blitz.get(username);
-  const bulletSnapshot = ratingsSnapshotByMode.bullet.get(username);
-  const blitzDisplaySummary = getDisplaySummary(blitzSnapshot);
-  const bulletDisplaySummary = getDisplaySummary(bulletSnapshot);
+  }, [ratingsSnapshotByMode, username]);
+  const blitzDisplaySummary = ratingDisplayByMode.blitz;
+  const bulletDisplaySummary = ratingDisplayByMode.bullet;
 
   const bestWins = useMemo(() => {
     return filteredMatches
       .filter((match) =>
         Array.isArray(match.games)
-          ? match.games.some((game) => String(game?.winner || "").toLowerCase() === username)
+          ? match.games.some((game) => game?.winner === username)
           : false,
       )
       .sort((a, b) => {
