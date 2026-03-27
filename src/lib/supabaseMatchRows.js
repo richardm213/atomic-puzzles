@@ -56,8 +56,10 @@ export const fetchMatchRowsFromSupabase = async (mode, filters = {}, pageOptions
 
   const username = filters.username || "";
   const escapedUsername = username.replace(/,/g, "\\,");
-  const hasOpponentRatingMin = filters.opponentRatingMin !== undefined && filters.opponentRatingMin !== null;
-  const hasOpponentRatingMax = filters.opponentRatingMax !== undefined && filters.opponentRatingMax !== null;
+  const hasOpponentRatingMin =
+    filters.opponentRatingMin !== undefined && filters.opponentRatingMin !== null;
+  const hasOpponentRatingMax =
+    filters.opponentRatingMax !== undefined && filters.opponentRatingMax !== null;
   const opponentRatingMin = Math.floor(Number(filters.opponentRatingMin));
   const opponentRatingMax = Math.floor(Number(filters.opponentRatingMax));
   while (true) {

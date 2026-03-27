@@ -38,7 +38,6 @@ const parseDateInputBoundary = (value, boundary) => {
   return parsed.getTime();
 };
 
-
 const normalizeRecentMatches = (matches, mode) =>
   (Array.isArray(matches) ? matches : [])
     .map((match) => {
@@ -156,7 +155,7 @@ const normalizeRecentMatches = (matches, mode) =>
             : String(sourceValue),
       };
     })
-        .sort((a, b) => b.startTs - a.startTs);
+    .sort((a, b) => b.startTs - a.startTs);
 
 export const RecentMatchesPage = () => {
   const [selectedMode, setSelectedMode] = useState("blitz");
@@ -283,12 +282,7 @@ export const RecentMatchesPage = () => {
 
         return true;
       }),
-    [
-      matches,
-      appliedFilters,
-      startDateTs,
-      endDateTs,
-    ],
+    [matches, appliedFilters, startDateTs, endDateTs],
   );
   const totalPages = Math.max(1, Math.ceil(totalMatches / Math.max(1, pageSize)));
 
@@ -435,7 +429,12 @@ export const RecentMatchesPage = () => {
               ))}
             </select>
           </label>
-          <button className="analyzeButton" type="button" onClick={handleSearch} disabled={loadingMatches}>
+          <button
+            className="analyzeButton"
+            type="button"
+            onClick={handleSearch}
+            disabled={loadingMatches}
+          >
             {loadingMatches ? "Searching..." : "Search"}
           </button>
         </div>

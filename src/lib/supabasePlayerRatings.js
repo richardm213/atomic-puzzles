@@ -19,7 +19,10 @@ export const fetchPlayerRatingsRows = async ({ tc, username, limit } = {}) => {
   requireSupabaseConfig();
   const { table } = supabasePlayerRatingsConfig;
   const supabase = getSupabaseClient();
-  let query = supabase.from(table).select(PLAYER_RATINGS_SELECT_COLUMNS).order("rank", { ascending: true });
+  let query = supabase
+    .from(table)
+    .select(PLAYER_RATINGS_SELECT_COLUMNS)
+    .order("rank", { ascending: true });
   if (tc) query = query.eq("tc", tc);
   if (username) query = query.eq("username", username);
   if (Number(limit) > 0) {

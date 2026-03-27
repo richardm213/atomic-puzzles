@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { Chessboard } from "../components/Chessboard";
-import {
-  fetchPuzzleRowsFromSupabase,
-  getSupabasePuzzlesTableName,
-} from "../lib/supabasePuzzles";
+import { fetchPuzzleRowsFromSupabase, getSupabasePuzzlesTableName } from "../lib/supabasePuzzles";
 
 const lichessAnalysisUrl = (fen) => {
   if (!fen) return "https://lichess.org/analysis/atomic";

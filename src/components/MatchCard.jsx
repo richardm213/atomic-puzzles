@@ -2,7 +2,11 @@ import { Link } from "@tanstack/react-router";
 import { formatLocalDateTime, formatScore, formatSignedDecimal } from "../utils/formatters";
 
 export const MatchCard = ({ match, matchKey, isExpanded, onToggle }) => (
-  <article key={matchKey} className={`matchCard${isExpanded ? " expanded" : ""}`} onClick={onToggle}>
+  <article
+    key={matchKey}
+    className={`matchCard${isExpanded ? " expanded" : ""}`}
+    onClick={onToggle}
+  >
     <div className="matchCardHeader">
       <div className="matchCardPlayers">
         <Link
@@ -54,27 +58,27 @@ export const MatchCard = ({ match, matchKey, isExpanded, onToggle }) => (
           <div>
             <strong>{match.playerA}</strong>
             <span>
-              {`Rating ${match.playerABeforeRating} (${
-                formatSignedDecimal(match.playerAAfterRating - match.playerABeforeRating)
-              })`}
+              {`Rating ${match.playerABeforeRating} (${formatSignedDecimal(
+                match.playerAAfterRating - match.playerABeforeRating,
+              )})`}
             </span>
             <span>
-              {`RD ${match.playerABeforeRd} (${
-                formatSignedDecimal(match.playerAAfterRd - match.playerABeforeRd)
-              })`}
+              {`RD ${match.playerABeforeRd} (${formatSignedDecimal(
+                match.playerAAfterRd - match.playerABeforeRd,
+              )})`}
             </span>
           </div>
           <div>
             <strong>{match.playerB}</strong>
             <span>
-              {`Rating ${match.playerBBeforeRating} (${
-                formatSignedDecimal(match.playerBAfterRating - match.playerBBeforeRating)
-              })`}
+              {`Rating ${match.playerBBeforeRating} (${formatSignedDecimal(
+                match.playerBAfterRating - match.playerBBeforeRating,
+              )})`}
             </span>
             <span>
-              {`RD ${match.playerBBeforeRd} (${
-                formatSignedDecimal(match.playerBAfterRd - match.playerBBeforeRd)
-              })`}
+              {`RD ${match.playerBBeforeRd} (${formatSignedDecimal(
+                match.playerBAfterRd - match.playerBBeforeRd,
+              )})`}
             </span>
           </div>
         </div>

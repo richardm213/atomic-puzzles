@@ -34,8 +34,12 @@ const parseMatchRows = (rows) => {
       const p2 = String(row.player_2 || "Unknown");
       const games = parseGamesCompact(row.games)
         .map((entry, gameOffset) => {
-          const [gameId, winnerCodeRaw, winnerPlayerRaw, whitePlayerRaw] = String(entry || "").split(",");
-          const winnerCode = String(winnerCodeRaw || "").trim().toLowerCase();
+          const [gameId, winnerCodeRaw, winnerPlayerRaw, whitePlayerRaw] = String(
+            entry || "",
+          ).split(",");
+          const winnerCode = String(winnerCodeRaw || "")
+            .trim()
+            .toLowerCase();
           const winnerPlayer = String(winnerPlayerRaw || "").trim();
           const whiteSlot = String(whitePlayerRaw || "").trim();
           const white = whiteSlot === "2" ? p2 : p1;
@@ -138,7 +142,8 @@ export const normalizeMatches = (matches, username) => {
     })
     .map((match) => {
       const players = normalizedPlayersFromMatch(match);
-      const opponent = players.find((player) => String(player).toLowerCase() !== username) || "Unknown";
+      const opponent =
+        players.find((player) => String(player).toLowerCase() !== username) || "Unknown";
       const games = normalizedGamesFromMatch(match, players);
       const score = games.reduce(
         (accumulator, game) => {
