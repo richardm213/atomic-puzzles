@@ -12,5 +12,11 @@ export const defaultMatchLengthMax = 50;
 
 export const matchLengthBoundsByMode = {
   blitz: { min: 1, max: 50 },
-  bullet: { min: 1, max: 200 },
+  bullet: { min: 1, max: 50 },
+};
+
+export const isMatchLengthWithinBounds = (gameCount, min, max, boundsMax) => {
+  if (gameCount < min) return false;
+  if (max >= boundsMax) return true;
+  return gameCount <= max;
 };

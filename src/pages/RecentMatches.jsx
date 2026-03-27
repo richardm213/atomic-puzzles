@@ -4,6 +4,7 @@ import {
   defaultMatchLengthMin,
   defaultRatingMax,
   defaultRatingMin,
+  isMatchLengthWithinBounds,
   matchLengthBoundsByMode,
   modeOptions,
   opponentRatingSliderMax,
@@ -226,8 +227,12 @@ export const RecentMatchesPage = () => {
         if (endDateTs !== null && match.startTs > endDateTs) return false;
 
         if (
-          match.gameCount < appliedFilters.matchLengthMin ||
-          match.gameCount > appliedFilters.matchLengthMax
+          !isMatchLengthWithinBounds(
+            match.gameCount,
+            appliedFilters.matchLengthMin,
+            appliedFilters.matchLengthMax,
+            appliedMatchBounds.max,
+          )
         ) {
           return false;
         }
@@ -282,7 +287,7 @@ export const RecentMatchesPage = () => {
 
         return true;
       }),
-    [matches, appliedFilters, startDateTs, endDateTs],
+    [matches, appliedFilters, startDateTs, endDateTs, appliedMatchBounds.max],
   );
   const totalPages = Math.max(1, Math.ceil(totalMatches / Math.max(1, pageSize)));
 
@@ -522,7 +527,8 @@ export const RecentMatchesPage = () => {
 
         <div className="opponentRatingFilter">
           <label htmlFor="recent-length-min">
-            Match length range: {matchLengthMin} - {matchLengthMax}
+            Match length range: {matchLengthMin} -{" "}
+            {matchLengthMax >= appliedMatchBounds.max ? `${appliedMatchBounds.max}+` : matchLengthMax}
           </label>
           <div className="dualRangeSlider">
             <div className="dualRangeTrack" />
