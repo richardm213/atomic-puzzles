@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { Chessboard } from "../components/Chessboard";
+import {
+  fetchPuzzleRowsFromSupabase,
+  getSupabasePuzzlesTableName,
+} from "../lib/supabasePuzzles";
 
 const lichessAnalysisUrl = (fen) => {
   if (!fen) return "https://lichess.org/analysis/atomic";
@@ -113,49 +117,6 @@ const orderedChildren = (node) =>
 
 const findMainChild = (children) => children[0];
 
-const supabaseConfig = {
-  url: import.meta.env.VITE_SUPABASE_URL?.trim() || "",
-  anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() || "",
-  table: import.meta.env.VITE_SUPABASE_PUZZLES_TABLE?.trim() || "puzzles",
-};
-
-const loadPuzzlesFromSupabase = async () => {
-  const { url, anonKey, table } = supabaseConfig;
-  if (!url || !anonKey) {
-    throw new Error("Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in .env.local");
-  }
-
-  const baseUrl = url.replace(/\/$/, "");
-  const pageSize = 1000;
-  let offset = 0;
-  const allRows = [];
-
-  while (true) {
-    const endpoint = `${baseUrl}/rest/v1/${encodeURIComponent(table)}?select=*&limit=${pageSize}&offset=${offset}`;
-    const response = await fetch(endpoint, {
-      headers: {
-        apikey: anonKey,
-        Authorization: `Bearer ${anonKey}`,
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status} while loading Supabase table "${table}"`);
-    }
-
-    const pageRows = await response.json();
-    if (!Array.isArray(pageRows)) {
-      throw new Error(`Expected Supabase table "${table}" to return an array`);
-    }
-
-    allRows.push(...pageRows);
-    if (pageRows.length < pageSize) break;
-    offset += pageSize;
-  }
-
-  return allRows;
-};
-
 export const PuzzleSolverPage = () => {
   const navigate = useNavigate();
   const { puzzleId: routePuzzleId = "" } = useParams({ strict: false });
@@ -203,7 +164,8 @@ export const PuzzleSolverPage = () => {
         status: "Loading puzzles...",
         error: "",
       }));
-      const data = await loadPuzzlesFromSupabase();
+      const data = await fetchPuzzleRowsFromSupabase();
+      const puzzleTable = getSupabasePuzzlesTableName();
 
       const normalizedPuzzles = data.map((item, index) => {
         const rawId = item?.id;
@@ -225,7 +187,7 @@ export const PuzzleSolverPage = () => {
       );
 
       if (data.length === 0) {
-        const message = `Supabase returned 0 rows from table "${supabaseConfig.table}". Check table name and RLS SELECT policy for the anon role.`;
+        const message = `Supabase returned 0 rows from table "${puzzleTable}". Check table name and RLS SELECT policy for the anon role.`;
         if (!isCancelledRef.current) {
           setLoadingError(message);
           setBoardState((prev) => ({
@@ -238,7 +200,7 @@ export const PuzzleSolverPage = () => {
       }
 
       if (availablePuzzles.length === 0) {
-        const message = `No puzzles found in "${supabaseConfig.table}" with both a valid fen and a solution`;
+        const message = `No puzzles found in "${puzzleTable}" with both a valid fen and a solution`;
         if (!isCancelledRef.current) {
           setLoadingError(message);
           setBoardState((prev) => ({
