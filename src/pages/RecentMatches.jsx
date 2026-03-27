@@ -1,15 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  defaultMatchLengthMax,
-  defaultMatchLengthMin,
   defaultRatingMax,
   defaultRatingMin,
   isMatchLengthWithinBounds,
-  matchLengthBoundsByMode,
   modeOptions,
   opponentRatingSliderMax,
   opponentRatingSliderMin,
 } from "../constants/matches";
+import { toBoundedLengthRange, useMatchLengthRange } from "../hooks/useMatchLengthRange";
 import { MatchCard } from "../components/MatchCard";
 import {
   findRatingDataForPlayer,
@@ -179,15 +177,9 @@ export const RecentMatchesPage = () => {
   const [startDateFilter, setStartDateFilter] = useState("");
   const [endDateFilter, setEndDateFilter] = useState("");
   const [loadingMatches, setLoadingMatches] = useState(false);
-  const initialMatchBounds = matchLengthBoundsByMode.blitz;
-  const [matchLengthMin, setMatchLengthMin] = useState(
-    Math.max(defaultMatchLengthMin, initialMatchBounds.min),
-  );
-  const [matchLengthMax, setMatchLengthMax] = useState(
-    Math.min(defaultMatchLengthMax, initialMatchBounds.max),
-  );
-  const modeBounds = matchLengthBoundsByMode[selectedMode] ?? matchLengthBoundsByMode.blitz;
-  const appliedMatchBounds = modeBounds;
+  const defaultLengthRange = useMemo(() => toBoundedLengthRange("blitz"), []);
+  const { bounds: appliedMatchBounds, matchLengthMin, setMatchLengthMin, matchLengthMax, setMatchLengthMax } =
+    useMatchLengthRange(selectedMode);
   const [appliedFilters, setAppliedFilters] = useState({
     selectedMode: "blitz",
     ratingFilterType: "both",
@@ -198,18 +190,13 @@ export const RecentMatchesPage = () => {
     sourceFilters: { arena: true, friend: true, lobby: true },
     startDateFilter: "",
     endDateFilter: "",
-    matchLengthMin: Math.max(defaultMatchLengthMin, initialMatchBounds.min),
-    matchLengthMax: Math.min(defaultMatchLengthMax, initialMatchBounds.max),
+    matchLengthMin: defaultLengthRange.min,
+    matchLengthMax: defaultLengthRange.max,
   });
 
   useEffect(() => {
     setExpandedMatchKeys([]);
   }, [currentPage, appliedFilters]);
-
-  useEffect(() => {
-    setMatchLengthMin(Math.max(defaultMatchLengthMin, appliedMatchBounds.min));
-    setMatchLengthMax(Math.min(defaultMatchLengthMax, appliedMatchBounds.max));
-  }, [selectedMode, appliedMatchBounds.max, appliedMatchBounds.min]);
 
   const startDateTs = useMemo(
     () => parseDateInputBoundary(appliedFilters.startDateFilter, "start"),
