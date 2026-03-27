@@ -17,6 +17,7 @@ import { parseTimeControlParts } from "../utils/matchTransforms";
 import { loadRawMatchesByMode, normalizeMatches } from "../lib/matchData";
 import { fetchLbRows, monthKeyFromMonthValue } from "../lib/supabaseLb";
 import { fetchPlayerRatingsRows } from "../lib/supabasePlayerRatings";
+import { ProfileMetricCard } from "../components/ProfileMetricCard";
 
 const parseMonthRanksFromLbRows = (rows) => {
   return (Array.isArray(rows) ? rows : [])
@@ -378,6 +379,36 @@ export const PlayerProfilePage = ({ username }) => {
     const provisionalSuffix = Number.isFinite(summary.currentRd) && summary.currentRd >= 100 ? "?" : "";
     return `${summary.currentRating.toFixed(1)}${provisionalSuffix}`;
   };
+  const formatRankSuffix = (rank) => {
+    if (!Number.isFinite(rank) || rank <= 0) return "";
+    return ` (#${rank})`;
+  };
+  const metricConfigs = [
+    {
+      key: "rating",
+      label: "Rating",
+      getValue: (summary) => `${formatCurrentRating(summary)}${formatRankSuffix(summary.rank)}`,
+    },
+    {
+      key: "rd",
+      label: "RD",
+      getValue: (summary) => (Number.isFinite(summary.currentRd) ? summary.currentRd.toFixed(1) : "—"),
+    },
+    {
+      key: "peak",
+      label: "Peak",
+      getValue: (summary) => (Number.isFinite(summary.peakRating) ? summary.peakRating.toFixed(1) : "—"),
+    },
+    {
+      key: "games",
+      label: "Games",
+      getValue: (summary) => summary.gamesPlayed.toLocaleString("en-US"),
+    },
+  ];
+  const modeSections = [
+    { key: "blitz", label: "Blitz", summary: blitzDisplaySummary },
+    { key: "bullet", label: "Bullet", summary: bulletDisplaySummary },
+  ];
 
   return (
     <div className="rankingsPage">
@@ -385,68 +416,20 @@ export const PlayerProfilePage = ({ username }) => {
         <h1>{username}</h1>
 
         <div className="profileTopBar">
-          <div className="profileMetric">
-            <span className="statusLabel">Blitz Rating</span>
-            <strong>
-              {formatCurrentRating(blitzDisplaySummary)}
-              {Number.isFinite(blitzDisplaySummary.rank)
-                ? blitzDisplaySummary.rank > 0
-                  ? ` (#${blitzDisplaySummary.rank})`
-                  : ""
-                : ""}
-            </strong>
-          </div>
-          <div className="profileMetric">
-            <span className="statusLabel">Blitz RD</span>
-            <strong>
-              {Number.isFinite(blitzDisplaySummary.currentRd)
-                ? blitzDisplaySummary.currentRd.toFixed(1)
-                : "—"}
-            </strong>
-          </div>
-          <div className="profileMetric">
-            <span className="statusLabel">Blitz Peak Rating</span>
-            <strong>
-              {Number.isFinite(blitzDisplaySummary.peakRating)
-                ? blitzDisplaySummary.peakRating.toFixed(1)
-                : "—"}
-            </strong>
-          </div>
-          <div className="profileMetric">
-            <span className="statusLabel">Blitz Games Played</span>
-            <strong>{blitzDisplaySummary.gamesPlayed.toLocaleString("en-US")}</strong>
-          </div>
-          <div className="profileMetric">
-            <span className="statusLabel">Bullet Rating</span>
-            <strong>
-              {formatCurrentRating(bulletDisplaySummary)}
-              {Number.isFinite(bulletDisplaySummary.rank)
-                ? bulletDisplaySummary.rank > 0
-                  ? ` (#${bulletDisplaySummary.rank})`
-                  : ""
-                : ""}
-            </strong>
-          </div>
-          <div className="profileMetric">
-            <span className="statusLabel">Bullet RD</span>
-            <strong>
-              {Number.isFinite(bulletDisplaySummary.currentRd)
-                ? bulletDisplaySummary.currentRd.toFixed(1)
-                : "—"}
-            </strong>
-          </div>
-          <div className="profileMetric">
-            <span className="statusLabel">Bullet Peak Rating</span>
-            <strong>
-              {Number.isFinite(bulletDisplaySummary.peakRating)
-                ? bulletDisplaySummary.peakRating.toFixed(1)
-                : "—"}
-            </strong>
-          </div>
-          <div className="profileMetric">
-            <span className="statusLabel">Bullet Games Played</span>
-            <strong>{bulletDisplaySummary.gamesPlayed.toLocaleString("en-US")}</strong>
-          </div>
+          {modeSections.map((mode) => (
+            <section key={mode.key} className="profileModeSection">
+              <h2>{mode.label}</h2>
+              <div className="profileMetricsGrid">
+                {metricConfigs.map((metric) => (
+                  <ProfileMetricCard
+                    key={`${mode.key}-${metric.key}`}
+                    label={metric.label}
+                    value={metric.getValue(mode.summary)}
+                  />
+                ))}
+              </div>
+            </section>
+          ))}
         </div>
 
         <div className="profileHighlights profileHighlightsTopRow">
