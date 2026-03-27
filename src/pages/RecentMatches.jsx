@@ -107,10 +107,6 @@ const normalizeRecentMatches = (matches, mode) =>
       const playerBBeforeRd = Number(playerBRatingData?.before_rd);
       const playerBAfterRd = Number(playerBRatingData?.after_rd);
 
-      const playerARating = playerAAfterRating;
-      const playerBRating = playerBAfterRating;
-      const avgRating = (playerARating + playerBRating) / 2;
-
       const firstGame = games[0];
       const sourceValue = [
         firstGame?.source,
@@ -132,8 +128,6 @@ const normalizeRecentMatches = (matches, mode) =>
         playerAWins,
         playerBWins,
         draws,
-        playerARating,
-        playerBRating,
         playerABeforeRating,
         playerAAfterRating,
         playerABeforeRd,
@@ -142,7 +136,6 @@ const normalizeRecentMatches = (matches, mode) =>
         playerBAfterRating,
         playerBBeforeRd,
         playerBAfterRd,
-        avgRating,
         gameCount: games.length,
         firstGameId: String(games[0]?.id || "—"),
         games: mappedGames,
@@ -229,20 +222,6 @@ export const RecentMatchesPage = () => {
           return false;
         }
 
-        if (appliedFilters.ratingFilterType === "average") {
-          const inAverageRange =
-            match.avgRating >= appliedFilters.ratingMin &&
-            match.avgRating <= appliedFilters.ratingMax;
-          if (!inAverageRange) return false;
-        } else {
-          const bothInRange =
-            match.playerARating >= appliedFilters.ratingMin &&
-            match.playerARating <= appliedFilters.ratingMax &&
-            match.playerBRating >= appliedFilters.ratingMin &&
-            match.playerBRating <= appliedFilters.ratingMax;
-          if (!bothInRange) return false;
-        }
-
         const playerAName = match.playerA.toLowerCase();
         const playerBName = match.playerB.toLowerCase();
         const first = appliedFilters.player1Filter.trim().toLowerCase();
@@ -306,6 +285,9 @@ export const RecentMatchesPage = () => {
           username: player1Filter || player2Filter,
           startTs: parseDateInputBoundary(startDateFilter, "start"),
           endTs: parseDateInputBoundary(endDateFilter, "end"),
+          ratingFilterType,
+          ratingMin,
+          ratingMax,
         },
         page: 1,
         pageSize,
@@ -338,6 +320,9 @@ export const RecentMatchesPage = () => {
             username: appliedFilters.player1Filter || appliedFilters.player2Filter,
             startTs: parseDateInputBoundary(appliedFilters.startDateFilter, "start"),
             endTs: parseDateInputBoundary(appliedFilters.endDateFilter, "end"),
+            ratingFilterType: appliedFilters.ratingFilterType,
+            ratingMin: appliedFilters.ratingMin,
+            ratingMax: appliedFilters.ratingMax,
           },
           page: currentPage,
           pageSize,
