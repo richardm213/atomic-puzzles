@@ -90,6 +90,7 @@ body {
   color: #e8ecf3;
   border-radius: 10px;
   height: 34px;
+  line-height: 1;
 }
 
 .navSearch input {
@@ -123,6 +124,9 @@ body {
   left: 0;
   z-index: 2;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .navSearchIcon i {
@@ -134,6 +138,10 @@ body {
   position: absolute;
   right: 4px;
   width: 58px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   opacity: 0;
   pointer-events: none;
   border-color: rgba(255, 255, 255, 0.14);
@@ -172,10 +180,13 @@ body {
 .primaryCta {
   display: inline-flex;
   width: fit-content;
+  align-items: center;
+  justify-content: center;
   text-decoration: none;
   background: #1d4ed8;
   color: #eff6ff;
   border-radius: 12px;
+  line-height: 1;
   padding: 10px 14px;
 }
 
