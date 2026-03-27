@@ -1025,3 +1025,103 @@ input {
   align-items: center;
   gap: 6px;
 }
+
+.h2hPanel {
+  display: grid;
+  gap: 14px;
+}
+
+.h2hSplitLayout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.h2hPlayerPanel {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 12px;
+  background: #0f172a;
+}
+
+.h2hPlayerPanel h2 {
+  margin: 0 0 10px;
+}
+
+.h2hModeCard {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 8px;
+  margin-top: 8px;
+}
+
+.h2hModeCard h3 {
+  margin: 0 0 6px;
+  text-transform: uppercase;
+  font-size: 13px;
+  color: #93c5fd;
+}
+
+.h2hModeCard p {
+  margin: 4px 0;
+  color: #c9d3e3;
+}
+
+.h2hScoreBoard {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(15, 23, 42, 0.72);
+}
+
+.h2hScoreBoard h2,
+.h2hTcScores h3 {
+  margin: 0 0 8px;
+}
+
+.h2hTcScores ul {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+}
+
+.h2hHistoryTable {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.h2hHistoryTable thead {
+  background: rgba(15, 23, 42, 0.95);
+}
+
+.h2hHistoryTable th,
+.h2hHistoryTable td {
+  padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.h2hHistoryRow {
+  cursor: pointer;
+}
+
+.h2hHistoryRow:hover {
+  background: rgba(96, 165, 250, 0.12);
+}
+
+.h2hHistoryRow.expanded {
+  background: rgba(96, 165, 250, 0.16);
+}
+
+.h2hHistoryDetailsRow td {
+  background: rgba(15, 23, 42, 0.82);
+}
+
+@media (max-width: 900px) {
+  .h2hSplitLayout {
+    grid-template-columns: 1fr;
+  }
+}
