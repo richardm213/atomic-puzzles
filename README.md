@@ -57,33 +57,22 @@ npm run build
 npm run preview
 ```
 
-## GitHub Pages Deployment
+## Netlify Deployment
 
-This repository includes a GitHub Actions workflow at `.github/workflows/deploy.yml` that automatically deploys to GitHub Pages when `main` is updated.
+This site is now deployed on **Netlify**.
 
-### One-time repository settings
+### Build settings
 
-1. Open **Settings → Pages** in your GitHub repository.
-2. Set **Source** to **GitHub Actions**.
+- **Build command:** `npm run build`
+- **Publish directory:** `dist`
 
-### Routing for `/id` puzzle URLs
+### SPA routing for deep links
 
-The app is configured for the custom domain root (`https://atomicpuzzles.org`) so puzzle URLs can be shared directly, e.g. `/12`.
+Netlify serves `public/_redirects` so client-side routes work on refresh/direct navigation:
 
-GitHub Pages still serves static files, so SPA-style deep links can hit `404.html` first on refresh/direct navigation.
+- `/*    /index.html   200`
 
-To keep links working:
-
-- The Vite production base path is `/` (site root).
-- `public/404.html` stores the original path in `sessionStorage` and redirects to `/`.
-- If browser storage is unavailable, it falls back to `/?puzzlePath=<original-path>`.
-- The React app restores the intended puzzle id from `sessionStorage` (or the fallback query parameter).
-
-Example:
-
-```text
-https://atomicpuzzles.org/12
-```
+This keeps links like `https://atomicpuzzles.org/solve/12` working without a custom `404.html` redirect hack.
 
 ## Supabase Setup
 
