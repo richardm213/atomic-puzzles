@@ -54,7 +54,7 @@ export const fetchMatchRowsFromSupabase = async (mode, filters = {}, pageOptions
   const rows = [];
   let from = useSinglePage ? (pageNumber - 1) * pageSize : 0;
 
-  const username = String(filters.username || "").trim();
+  const username = filters.username || "";
   const escapedUsername = username.replace(/,/g, "\\,");
   const hasOpponentRatingMin = Number.isFinite(Number(filters.opponentRatingMin));
   const hasOpponentRatingMax = Number.isFinite(Number(filters.opponentRatingMax));

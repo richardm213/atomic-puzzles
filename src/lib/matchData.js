@@ -131,21 +131,18 @@ export const loadRawMatchesByMode = async (mode, options = {}) => {
 };
 
 export const normalizeMatches = (matches, username) => {
-  const usernameLower = username.toLowerCase();
-
   return (Array.isArray(matches) ? matches : [])
     .filter((match) => {
       const players = normalizedPlayersFromMatch(match);
-      return players.some((player) => String(player).toLowerCase() === usernameLower);
+      return players.some((player) => String(player).toLowerCase() === username);
     })
     .map((match) => {
       const players = normalizedPlayersFromMatch(match);
-      const opponent =
-        players.find((player) => String(player).toLowerCase() !== usernameLower) || "Unknown";
+      const opponent = players.find((player) => String(player).toLowerCase() !== username) || "Unknown";
       const games = normalizedGamesFromMatch(match, players);
       const score = games.reduce(
         (accumulator, game) => {
-          const result = parseWinnerFromPerspective(game, usernameLower);
+          const result = parseWinnerFromPerspective(game, username);
           if (result === "win") {
             accumulator.player += 1;
           } else if (result === "draw") {
@@ -161,7 +158,7 @@ export const normalizeMatches = (matches, username) => {
       let runningPlayerScore = 0;
       let runningOpponentScore = 0;
       const matchGames = games.map((game) => {
-        const result = parseWinnerFromPerspective(game, usernameLower);
+        const result = parseWinnerFromPerspective(game, username);
         if (result === "win") {
           runningPlayerScore += 1;
         } else if (result === "draw") {
@@ -182,7 +179,7 @@ export const normalizeMatches = (matches, username) => {
       });
 
       const ratings = normalizedRatingsFromMatch(match, players);
-      const ratingData = ratings?.[username] || ratings?.[usernameLower] || null;
+      const ratingData = ratings?.[username] || null;
       const opponentLower = String(opponent).toLowerCase();
       const opponentRatingData = ratings?.[opponent] || ratings?.[opponentLower] || null;
       const beforeRating = Number(ratingData?.before_rating);

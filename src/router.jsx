@@ -66,7 +66,7 @@ const profileRoute = createRoute({
   path: "/@/$username",
   component: function ProfileRoute() {
     const { username } = useParams({ strict: false });
-    return <PlayerProfilePage username={username || ""} />;
+    return <PlayerProfilePage username={username} />;
   },
 });
 
