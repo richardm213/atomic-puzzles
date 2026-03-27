@@ -1,3 +1,5 @@
+import { getSupabaseClient } from "./supabaseClient";
+
 const supabasePuzzleConfig = {
   url: import.meta.env.VITE_SUPABASE_URL?.trim() || "",
   anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() || "",
@@ -16,33 +18,26 @@ export const getSupabasePuzzlesTableName = () => supabasePuzzleConfig.table;
 export const fetchPuzzleRowsFromSupabase = async () => {
   requireSupabasePuzzleConfig();
 
-  const { url, anonKey, table } = supabasePuzzleConfig;
-  const baseUrl = url.replace(/\/$/, "");
+  const { table } = supabasePuzzleConfig;
+  const supabase = getSupabaseClient();
   const pageSize = 1000;
-  let offset = 0;
+  let from = 0;
   const allRows = [];
 
   while (true) {
-    const endpoint = `${baseUrl}/rest/v1/${encodeURIComponent(table)}?select=*&limit=${pageSize}&offset=${offset}`;
-    const response = await fetch(endpoint, {
-      headers: {
-        apikey: anonKey,
-        Authorization: `Bearer ${anonKey}`,
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status} while loading Supabase table "${table}"`);
+    const to = from + pageSize - 1;
+    const { data, error } = await supabase.from(table).select("*").range(from, to);
+    if (error) {
+      throw new Error(`Failed loading Supabase table "${table}": ${error.message}`);
     }
-
-    const pageRows = await response.json();
+    const pageRows = data;
     if (!Array.isArray(pageRows)) {
       throw new Error(`Expected Supabase table "${table}" to return an array`);
     }
 
     allRows.push(...pageRows);
     if (pageRows.length < pageSize) break;
-    offset += pageSize;
+    from += pageSize;
   }
 
   return allRows;
