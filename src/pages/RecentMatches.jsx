@@ -18,7 +18,7 @@ import {
   normalizedRatingsFromMatch,
   winnerToFullWord,
 } from "../utils/matchTransforms";
-import { loadRawMatchesByMode } from "./Rankings";
+import { loadRawMatchesByMode } from "../lib/matchData";
 
 const recentModeOptions = modeOptions;
 const ratingFilterTypeOptions = ["both", "average"];
