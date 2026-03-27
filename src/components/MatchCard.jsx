@@ -54,34 +54,26 @@ export const MatchCard = ({ match, matchKey, isExpanded, onToggle }) => (
           <div>
             <strong>{match.playerA}</strong>
             <span>
-              {`Rating ${Number.isFinite(match.playerABeforeRating) ? match.playerABeforeRating.toFixed(1) : "—"} (${
-                Number.isFinite(match.playerAAfterRating) && Number.isFinite(match.playerABeforeRating)
-                  ? formatSignedDecimal(match.playerAAfterRating - match.playerABeforeRating)
-                  : "—"
+              {`Rating ${match.playerABeforeRating} (${
+                formatSignedDecimal(match.playerAAfterRating - match.playerABeforeRating)
               })`}
             </span>
             <span>
-              {`RD ${Number.isFinite(match.playerABeforeRd) ? match.playerABeforeRd.toFixed(1) : "—"} (${
-                Number.isFinite(match.playerAAfterRd) && Number.isFinite(match.playerABeforeRd)
-                  ? formatSignedDecimal(match.playerAAfterRd - match.playerABeforeRd)
-                  : "—"
+              {`RD ${match.playerABeforeRd} (${
+                formatSignedDecimal(match.playerAAfterRd - match.playerABeforeRd)
               })`}
             </span>
           </div>
           <div>
             <strong>{match.playerB}</strong>
             <span>
-              {`Rating ${Number.isFinite(match.playerBBeforeRating) ? match.playerBBeforeRating.toFixed(1) : "—"} (${
-                Number.isFinite(match.playerBAfterRating) && Number.isFinite(match.playerBBeforeRating)
-                  ? formatSignedDecimal(match.playerBAfterRating - match.playerBBeforeRating)
-                  : "—"
+              {`Rating ${match.playerBBeforeRating} (${
+                formatSignedDecimal(match.playerBAfterRating - match.playerBBeforeRating)
               })`}
             </span>
             <span>
-              {`RD ${Number.isFinite(match.playerBBeforeRd) ? match.playerBBeforeRd.toFixed(1) : "—"} (${
-                Number.isFinite(match.playerBAfterRd) && Number.isFinite(match.playerBBeforeRd)
-                  ? formatSignedDecimal(match.playerBAfterRd - match.playerBBeforeRd)
-                  : "—"
+              {`RD ${match.playerBBeforeRd} (${
+                formatSignedDecimal(match.playerBAfterRd - match.playerBBeforeRd)
               })`}
             </span>
           </div>

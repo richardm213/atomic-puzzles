@@ -121,7 +121,7 @@ export const parseTimeControlParts = (timeControl) => {
   const initialSeconds = Number(initialRaw);
   const incrementSeconds = Number(incrementRaw);
   return {
-    initial: Number.isFinite(initialSeconds) ? String(initialSeconds) : "",
-    increment: Number.isFinite(incrementSeconds) ? String(incrementSeconds) : "",
+    initial: String(initialSeconds),
+    increment: String(incrementSeconds),
   };
 };

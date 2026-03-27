@@ -9,7 +9,7 @@ import {
 
 const toNullableNumber = (value) => {
   const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
+  return parsed;
 };
 
 const parseGamesCompact = (gamesValue) => {
@@ -87,16 +87,16 @@ const parseMatchRows = (rows) => {
     })
     .map((match) => {
       const orderedGames = [...match.games].sort((a, b) => {
-        const aIndex = Number.isFinite(a.game_index) ? a.game_index : Number.POSITIVE_INFINITY;
-        const bIndex = Number.isFinite(b.game_index) ? b.game_index : Number.POSITIVE_INFINITY;
+        const aIndex = a.game_index;
+        const bIndex = b.game_index;
         if (aIndex !== bIndex) return aIndex - bIndex;
         return (a.end_ts ?? 0) - (b.end_ts ?? 0);
       });
 
       return {
         ...match,
-        start_ts: Number.isFinite(match.start_ts) ? match.start_ts : null,
-        end_ts: Number.isFinite(match.end_ts) ? match.end_ts : null,
+        start_ts: match.start_ts,
+        end_ts: match.end_ts,
         games: orderedGames,
       };
     });
@@ -124,7 +124,7 @@ export const loadRawMatchesByMode = async (mode, options = {}) => {
   if (pageSize) {
     return {
       matches,
-      total: Number.isFinite(Number(result?.total)) ? Number(result.total) : matches.length,
+      total: Number(result?.total) || matches.length,
     };
   }
   return matches;
@@ -195,16 +195,13 @@ export const normalizeMatches = (matches, username) => {
         score: `${score.player}-${score.opponent}`,
         playerScore: score.player,
         opponentScore: score.opponent,
-        ratingChange:
-          Number.isFinite(beforeRating) && Number.isFinite(afterRating)
-            ? afterRating - beforeRating
-            : null,
-        rdChange: Number.isFinite(beforeRd) && Number.isFinite(afterRd) ? afterRd - beforeRd : null,
-        beforeRating: Number.isFinite(beforeRating) ? beforeRating : null,
-        beforeRd: Number.isFinite(beforeRd) ? beforeRd : null,
-        afterRating: Number.isFinite(afterRating) ? afterRating : null,
-        afterRd: Number.isFinite(afterRd) ? afterRd : null,
-        opponentAfterRating: Number.isFinite(opponentAfterRating) ? opponentAfterRating : null,
+        ratingChange: afterRating - beforeRating,
+        rdChange: afterRd - beforeRd,
+        beforeRating,
+        beforeRd,
+        afterRating,
+        afterRd,
+        opponentAfterRating,
         gameCount: games.length,
         firstGameId: String(games[0]?.id || "—"),
         games: matchGames,

@@ -50,14 +50,14 @@ export const fetchMatchRowsFromSupabase = async (mode, filters = {}, pageOptions
   const supabase = getSupabaseClient();
   const pageSize = Number(pageOptions.pageSize);
   const pageNumber = Math.max(1, Number(pageOptions.page) || 1);
-  const useSinglePage = Number.isFinite(pageSize) && pageSize > 0;
+  const useSinglePage = pageSize > 0;
   const rows = [];
   let from = useSinglePage ? (pageNumber - 1) * pageSize : 0;
 
   const username = filters.username || "";
   const escapedUsername = username.replace(/,/g, "\\,");
-  const hasOpponentRatingMin = Number.isFinite(Number(filters.opponentRatingMin));
-  const hasOpponentRatingMax = Number.isFinite(Number(filters.opponentRatingMax));
+  const hasOpponentRatingMin = filters.opponentRatingMin !== undefined && filters.opponentRatingMin !== null;
+  const hasOpponentRatingMax = filters.opponentRatingMax !== undefined && filters.opponentRatingMax !== null;
   const opponentRatingMin = Math.floor(Number(filters.opponentRatingMin));
   const opponentRatingMax = Math.floor(Number(filters.opponentRatingMax));
   while (true) {
@@ -74,10 +74,10 @@ export const fetchMatchRowsFromSupabase = async (mode, filters = {}, pageOptions
     } else if (username) {
       query = query.or(`player_1.ilike.${escapedUsername},player_2.ilike.${escapedUsername}`);
     }
-    if (Number.isFinite(Number(filters.startTs))) {
+    if (filters.startTs !== undefined && filters.startTs !== null) {
       query = query.gte("start_ts", Math.floor(Number(filters.startTs)));
     }
-    if (Number.isFinite(Number(filters.endTs))) {
+    if (filters.endTs !== undefined && filters.endTs !== null) {
       query = query.lte("start_ts", Math.floor(Number(filters.endTs)));
     }
     if (filters.timeControl) {
@@ -96,7 +96,7 @@ export const fetchMatchRowsFromSupabase = async (mode, filters = {}, pageOptions
 
     rows.push(...page);
     if (useSinglePage || page.length < 1000) {
-      const total = Number.isFinite(count) ? count : rows.length;
+      const total = count ?? rows.length;
       return { rows, total };
     }
     from += 1000;

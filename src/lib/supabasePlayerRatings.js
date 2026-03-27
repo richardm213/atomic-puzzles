@@ -22,7 +22,7 @@ export const fetchPlayerRatingsRows = async ({ tc, username, limit } = {}) => {
   let query = supabase.from(table).select(PLAYER_RATINGS_SELECT_COLUMNS).order("rank", { ascending: true });
   if (tc) query = query.eq("tc", tc);
   if (username) query = query.eq("username", username);
-  if (Number.isFinite(Number(limit)) && Number(limit) > 0) {
+  if (Number(limit) > 0) {
     query = query.limit(Math.floor(Number(limit)));
   }
 

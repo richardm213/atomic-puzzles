@@ -164,8 +164,8 @@ const LeaderboardView = () => {
 
       const aValue = a[sortKey];
       const bValue = b[sortKey];
-      const aNumber = Number.isFinite(aValue) ? aValue : -Infinity;
-      const bNumber = Number.isFinite(bValue) ? bValue : -Infinity;
+      const aNumber = aValue;
+      const bNumber = bValue;
       if (aNumber === bNumber) return a.rank - b.rank;
       return directionMultiplier * (aNumber - bNumber);
     });
@@ -293,8 +293,8 @@ const LeaderboardView = () => {
                         {player.username}
                       </Link>
                     </td>
-                    <td>{Number.isFinite(player.score) ? player.score.toFixed(1) : "—"}</td>
-                    <td>{Number.isFinite(player.rd) ? player.rd.toFixed(1) : "—"}</td>
+                    <td>{player.score}</td>
+                    <td>{player.rd}</td>
                     <td>{player.games ?? "—"}</td>
                   </tr>
                 ))}

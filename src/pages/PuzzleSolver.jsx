@@ -170,7 +170,7 @@ export const PuzzleSolverPage = () => {
       const normalizedPuzzles = data.map((item, index) => {
         const rawId = item?.id;
         const parsedId = Number.parseInt(rawId, 10);
-        const puzzleId = Number.isFinite(parsedId) ? parsedId : index + 1;
+        const puzzleId = parsedId || index + 1;
         const fen = typeof item?.fen === "string" ? item.fen.trim() : "";
         const { solution } = extractSolutionFromRow(item);
 
