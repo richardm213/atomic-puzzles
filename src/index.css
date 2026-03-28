@@ -1042,7 +1042,7 @@ input {
   display: flex;
   align-items: baseline;
   justify-content: center;
-  gap: 14px;
+  gap: 22px;
   border: 1px solid rgba(147, 197, 253, 0.45);
   border-radius: 12px;
   padding: 10px 14px;
@@ -1051,6 +1051,12 @@ input {
 
 .h2hTotalScoreBox strong {
   color: #dbeafe;
+}
+
+.h2hTotalScoreName {
+  font-size: 42px;
+  line-height: 1;
+  font-weight: 700;
 }
 
 .h2hTotalScoreBox span {
@@ -1073,6 +1079,8 @@ input {
 
 .h2hPlayerPanel h2 {
   margin: 0 0 10px;
+  font-size: 46px;
+  line-height: 1;
 }
 
 .h2hPlayerPanelTop {
@@ -1088,30 +1096,6 @@ input {
 
 .h2hPlayerIdentity h2 {
   margin: 0;
-}
-
-.h2hModeScoreStack {
-  display: grid;
-  gap: 8px;
-}
-
-.h2hModeScoreStack.right {
-  justify-items: start;
-}
-
-.h2hModeScorePill {
-  border: 1px solid rgba(147, 197, 253, 0.5);
-  background: rgba(30, 64, 175, 0.25);
-  border-radius: 10px;
-  padding: 6px 10px;
-  display: grid;
-  min-width: 92px;
-  place-items: center;
-}
-
-.h2hModeScorePill strong {
-  font-size: 56px;
-  line-height: 1;
 }
 
 .h2hModeCard {
@@ -1137,6 +1121,10 @@ input {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+}
+
+.h2hModeCardBody.reverse {
+  flex-direction: row-reverse;
 }
 
 .h2hModeMeta {
