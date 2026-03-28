@@ -1037,29 +1037,6 @@ input {
   gap: 12px;
 }
 
-.h2hTotalScoreBox {
-  grid-column: 1 / -1;
-  display: flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 14px;
-  border: 1px solid rgba(147, 197, 253, 0.45);
-  border-radius: 12px;
-  padding: 10px 14px;
-  background: rgba(30, 64, 175, 0.18);
-}
-
-.h2hTotalScoreBox strong {
-  color: #dbeafe;
-}
-
-.h2hTotalScoreBox span {
-  font-size: 56px;
-  line-height: 1;
-  font-weight: 700;
-  color: #93c5fd;
-}
-
 .h2hPlayerPanel {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
@@ -1073,6 +1050,8 @@ input {
 
 .h2hPlayerPanel h2 {
   margin: 0 0 10px;
+  font-size: 46px;
+  line-height: 1;
 }
 
 .h2hPlayerPanelTop {
@@ -1090,28 +1069,10 @@ input {
   margin: 0;
 }
 
-.h2hModeScoreStack {
-  display: grid;
-  gap: 8px;
-}
-
-.h2hModeScoreStack.right {
-  justify-items: start;
-}
-
-.h2hModeScorePill {
-  border: 1px solid rgba(147, 197, 253, 0.5);
-  background: rgba(30, 64, 175, 0.25);
-  border-radius: 10px;
-  padding: 6px 10px;
-  display: grid;
-  min-width: 92px;
-  place-items: center;
-}
-
-.h2hModeScorePill strong {
-  font-size: 56px;
+.h2hPanelTotalScore {
+  font-size: 72px;
   line-height: 1;
+  color: #93c5fd;
 }
 
 .h2hModeCard {
@@ -1137,6 +1098,10 @@ input {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+}
+
+.h2hModeCardBody.reverse {
+  flex-direction: row-reverse;
 }
 
 .h2hModeMeta {

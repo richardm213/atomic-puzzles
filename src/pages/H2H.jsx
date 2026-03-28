@@ -249,7 +249,7 @@ export const H2HPage = () => {
   const player1Snapshot = playerSnapshots[loadedPlayer1.toLowerCase()] || {};
   const player2Snapshot = playerSnapshots[loadedPlayer2.toLowerCase()] || {};
 
-  const renderPlayerPanel = (name, snapshot, side, modeScores) => (
+  const renderPlayerPanel = (name, snapshot, side, modeScores, totalScore) => (
     <section className={`h2hPlayerPanel ${side === "right" ? "right" : "left"}`}>
       <div className={`h2hPlayerPanelTop ${side === "right" ? "reverse" : ""}`}>
         <div className="h2hPlayerIdentity">
@@ -259,14 +259,7 @@ export const H2HPage = () => {
             </Link>
           </h2>
         </div>
-        <div className={`h2hModeScoreStack ${side === "right" ? "right" : ""}`}>
-          <div className="h2hModeScorePill">
-            <strong>{modeScores.blitz}</strong>
-          </div>
-          <div className="h2hModeScorePill">
-            <strong>{modeScores.bullet}</strong>
-          </div>
-        </div>
+        <strong className="h2hPanelTotalScore">{totalScore}</strong>
       </div>
       {["blitz", "bullet"].map((mode) => {
         const modeData = snapshot[mode] || {};
@@ -274,7 +267,7 @@ export const H2HPage = () => {
         return (
           <div key={`${name}-${mode}`} className="h2hModeCard">
             <h3>{mode}</h3>
-            <div className="h2hModeCardBody">
+            <div className={`h2hModeCardBody ${side === "right" ? "reverse" : ""}`}>
               <div>
                 <p className="h2hModeMeta">
                   Rank: <strong>{modeData.rank || "—"}</strong>
@@ -377,21 +370,14 @@ export const H2HPage = () => {
             </div>
 
             <div className="h2hSplitLayout">
-              <div className="h2hTotalScoreBox">
-                <strong>{loadedPlayer1}</strong>
-                <span>{combinedScore.playerA}</span>
-                <span>-</span>
-                <span>{combinedScore.playerB}</span>
-                <strong>{loadedPlayer2}</strong>
-              </div>
               {renderPlayerPanel(loadedPlayer1, player1Snapshot, "left", {
                 blitz: blitzScore.playerA,
                 bullet: bulletScore.playerA,
-              })}
+              }, combinedScore.playerA)}
               {renderPlayerPanel(loadedPlayer2, player2Snapshot, "right", {
                 blitz: blitzScore.playerB,
                 bullet: bulletScore.playerB,
-              })}
+              }, combinedScore.playerB)}
             </div>
 
             <h2>Match History</h2>
