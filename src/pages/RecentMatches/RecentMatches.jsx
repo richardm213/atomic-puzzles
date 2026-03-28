@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import "./RecentMatches.css";
 import {
   defaultRatingMax,
   defaultRatingMin,
@@ -6,18 +7,18 @@ import {
   modeOptions,
   opponentRatingSliderMax,
   opponentRatingSliderMin,
-} from "../constants/matches";
-import { toBoundedLengthRange, useMatchLengthRange } from "../hooks/useMatchLengthRange";
-import { MatchCard } from "../components/MatchCard";
+} from "../../constants/matches";
+import { toBoundedLengthRange, useMatchLengthRange } from "../../hooks/useMatchLengthRange";
+import { MatchCard } from "../../components/MatchCard/MatchCard";
 import {
   findRatingDataForPlayer,
   normalizedGamesFromMatch,
   normalizedPlayersFromMatch,
   normalizedRatingsFromMatch,
   winnerToFullWord,
-} from "../utils/matchTransforms";
-import { matchSourceFromValues, parseDateInputBoundary } from "../utils/matchFilters";
-import { loadRawMatchesByMode } from "../lib/matchData";
+} from "../../utils/matchTransforms";
+import { matchSourceFromValues, parseDateInputBoundary } from "../../utils/matchFilters";
+import { loadRawMatchesByMode } from "../../lib/matchData";
 
 const recentModeOptions = modeOptions;
 const ratingFilterTypeOptions = ["both", "average"];

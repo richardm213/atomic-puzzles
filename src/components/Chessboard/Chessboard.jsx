@@ -5,6 +5,7 @@ import { makeFen, parseFen } from "chessops/fen";
 import { makeSan, parseSan } from "chessops/san";
 import { makeUci, parseSquare } from "chessops/util";
 import { Atomic } from "chessops/variant";
+import "./Chessboard.css";
 
 const createAtomicPosition = (fen) => {
   const parsed = parseFen(fen);

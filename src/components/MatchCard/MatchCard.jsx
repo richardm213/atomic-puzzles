@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { formatLocalDateTime, formatScore, formatSignedDecimal } from "../utils/formatters";
+import { formatLocalDateTime, formatScore, formatSignedDecimal } from "../../utils/formatters";
+import "./MatchCard.css";
 
 export const MatchCard = ({ match, matchKey, isExpanded, onToggle }) => (
   <article

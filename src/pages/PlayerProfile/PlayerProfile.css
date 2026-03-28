@@ -1,0 +1,134 @@
+@import "../RecentMatches/RecentMatches.css";
+
+.profileTopBar {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.profileHighlights {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.profileHighlightsBottomRow {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.profileBestWins,
+.profileBestMonthRanks,
+.profileAliases {
+  padding: 12px;
+  border-radius: 12px;
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.profileBestWins h2,
+.profileBestMonthRanksHeader h2,
+.profileAliases h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.profileBestWins ol,
+.profileBestMonthRanks ol {
+  margin: 10px 0 0 18px;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.profileBestWins li,
+.profileBestMonthRanks li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 10px;
+}
+
+.profileBestWinDate,
+.profileBestMonthRankRating {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.profileBestMonthRanksHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.profileBestMonthRanksHeader label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #a5b4fc;
+}
+
+.profileBestMonthRanksHeader select {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: #0b1220;
+  color: #e8ecf3;
+  border-radius: 8px;
+  padding: 4px 6px;
+}
+
+.profileAliasesList {
+  margin-top: 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.expandableMatchRow {
+  cursor: pointer;
+}
+
+.expandableMatchRow.expanded {
+  background: rgba(96, 165, 250, 0.14);
+}
+
+.matchDetailsRow td {
+  background: rgba(15, 23, 42, 0.9);
+}
+
+.matchDetailsInner {
+  padding: 6px 0;
+}
+
+.matchDetailsInner ul {
+  margin: 8px 0 0 18px;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+@media (max-width: 900px) {
+  .profileTopBar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .profileHighlights,
+  .profileHighlightsBottomRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .profileTopBar {
+    grid-template-columns: 1fr;
+  }
+}
+
+.profileBestWinOpponent,
+.profileBestMonthRankPrimary {
+  min-width: 0;
+}
+
+.profileHighlightsTopRow {}

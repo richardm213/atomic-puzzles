@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { Chessboard } from "../components/Chessboard";
-import { usePuzzleLibrary } from "../hooks/usePuzzleLibrary";
+import { Chessboard } from "../../components/Chessboard/Chessboard";
+import { usePuzzleLibrary } from "../../hooks/usePuzzleLibrary";
+import "./PuzzleSolver.css";
 
 const lichessAnalysisUrl = (fen) => {
   if (!fen) return "https://lichess.org/analysis/atomic";

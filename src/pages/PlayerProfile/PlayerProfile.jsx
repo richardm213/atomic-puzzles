@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
+import "./PlayerProfile.css";
 import {
   defaultRatingMax,
   defaultRatingMin,
@@ -8,9 +9,9 @@ import {
   opponentRatingSliderMax,
   opponentRatingSliderMin,
   pageSizeOptions,
-} from "../constants/matches";
-import { useAliasesLookup } from "../hooks/useAliasesLookup";
-import { toBoundedLengthRange, useMatchLengthRange } from "../hooks/useMatchLengthRange";
+} from "../../constants/matches";
+import { useAliasesLookup } from "../../hooks/useAliasesLookup";
+import { toBoundedLengthRange, useMatchLengthRange } from "../../hooks/useMatchLengthRange";
 import {
   useAliasesForUser,
   useBestWins,
@@ -22,15 +23,15 @@ import {
   useRatingDisplayByMode,
   useRatingsSnapshotByMode,
   useTimeControlOptions,
-} from "../hooks/usePlayerProfileData";
+} from "../../hooks/usePlayerProfileData";
 import {
   formatLocalDateTime,
   formatOpponentWithRating,
   formatScore,
   formatSignedDecimal,
-} from "../utils/formatters";
-import { loadRawMatchesByMode, normalizeMatches } from "../lib/matchData";
-import { ProfileMetricCard } from "../components/ProfileMetricCard";
+} from "../../utils/formatters";
+import { loadRawMatchesByMode, normalizeMatches } from "../../lib/matchData";
+import { ProfileMetricCard } from "../../components/ProfileMetricCard/ProfileMetricCard";
 
 export const PlayerProfilePage = ({ username }) => {
   const [selectedMode, setSelectedMode] = useState("blitz");

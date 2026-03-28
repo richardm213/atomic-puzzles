@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { modeOptions } from "../constants/matches";
-import { useRankingsByMonth } from "../hooks/useRankingsByMonth";
+import { modeOptions } from "../../constants/matches";
+import { useRankingsByMonth } from "../../hooks/useRankingsByMonth";
+import "./Rankings.css";
 
 const monthNames = [
   "Jan",
