@@ -1093,6 +1093,10 @@ input {
   white-space: nowrap;
 }
 
+.h2hPlayerIdentityRight {
+  text-align: right;
+}
+
 .h2hPanelTotalScore {
   font-size: 48px;
   line-height: 1;
