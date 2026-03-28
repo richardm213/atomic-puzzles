@@ -294,45 +294,21 @@ export const H2HPage = () => {
   const player1Snapshot = playerSnapshots[loadedPlayer1.toLowerCase()] || {};
   const player2Snapshot = playerSnapshots[loadedPlayer2.toLowerCase()] || {};
 
-  const renderPlayerPanel = (name, snapshot, side, modeScores, totalScore) => (
-    <section className={`h2hPlayerPanel ${side === "right" ? "right" : "left"}`}>
-      <div className={`h2hPlayerPanelTop ${side === "right" ? "reverse" : ""}`}>
-        <div className="h2hPlayerIdentity">
-          <h2>
-            <Link className="rankingLink" to="/@/$username" params={{ username: name }}>
-              {name}
-            </Link>
-          </h2>
-        </div>
-        <strong className="h2hPanelTotalScore">{totalScore}</strong>
-      </div>
-      {["blitz", "bullet"].map((mode) => {
-        const modeData = snapshot[mode] || {};
-        const modeScore = mode === "blitz" ? modeScores.blitz : modeScores.bullet;
-        return (
-          <div key={`${name}-${mode}`} className="h2hModeCard">
-            <h3>{mode}</h3>
-            <div className={`h2hModeCardBody ${side === "right" ? "reverse" : ""}`}>
-              <div>
-                <p className="h2hModeMeta">
-                  Rank: <strong>{modeData.rank || "—"}</strong>
-                </p>
-                <p className="h2hModeMeta">
-                  Rating: <strong>{modeData.rating || "—"}</strong>
-                </p>
-                <p className="h2hModeMeta">
-                  RD: <strong>{modeData.rd || "—"}</strong>
-                </p>
-                <p className="h2hModeMeta">
-                  Peak: <strong>{modeData.peak || "—"}</strong>
-                </p>
-              </div>
-              <strong className="h2hModeCardScore">{modeScore}</strong>
-            </div>
-          </div>
-        );
-      })}
-    </section>
+  const renderModeStats = (modeData) => (
+    <>
+      <p className="h2hModeMeta">
+        Rank: <strong>{modeData.rank || "—"}</strong>
+      </p>
+      <p className="h2hModeMeta">
+        Rating: <strong>{modeData.rating || "—"}</strong>
+      </p>
+      <p className="h2hModeMeta">
+        RD: <strong>{modeData.rd || "—"}</strong>
+      </p>
+      <p className="h2hModeMeta">
+        Peak: <strong>{modeData.peak || "—"}</strong>
+      </p>
+    </>
   );
 
   return (
@@ -424,26 +400,68 @@ export const H2HPage = () => {
             </div>
 
             <div className="h2hSplitLayout">
-              {renderPlayerPanel(
-                loadedPlayer1,
-                player1Snapshot,
-                "left",
-                {
-                  blitz: blitzScore.playerA,
-                  bullet: bulletScore.playerA,
-                },
-                combinedScore.playerA,
-              )}
-              {renderPlayerPanel(
-                loadedPlayer2,
-                player2Snapshot,
-                "right",
-                {
-                  blitz: blitzScore.playerB,
-                  bullet: bulletScore.playerB,
-                },
-                combinedScore.playerB,
-              )}
+              <section className="h2hPlayerPanel">
+                <div className="h2hPlayerPanelTop">
+                  <div className="h2hPlayerIdentity h2hPlayerIdentityLeft">
+                    <h2>
+                      <Link
+                        className="rankingLink h2hPlayerNameLink"
+                        to="/@/$username"
+                        params={{ username: loadedPlayer1 }}
+                      >
+                        {loadedPlayer1}
+                      </Link>
+                    </h2>
+                  </div>
+                  <div className="h2hScoreBlock">
+                    <h3>Overall</h3>
+                    <strong className="h2hModeCardScore h2hScoreLine">
+                      {formatScore(combinedScore.playerA)} - {formatScore(combinedScore.playerB)}
+                    </strong>
+                  </div>
+                  <div className="h2hPlayerIdentity h2hPlayerIdentityRight">
+                    <h2>
+                      <Link
+                        className="rankingLink h2hPlayerNameLink"
+                        to="/@/$username"
+                        params={{ username: loadedPlayer2 }}
+                      >
+                        {loadedPlayer2}
+                      </Link>
+                    </h2>
+                  </div>
+                </div>
+
+                <div className="h2hModeCard">
+                  <div className="h2hModeCardBody h2hModeCardBodyCombined">
+                    <div>{renderModeStats(player1Snapshot.blitz || {})}</div>
+                    <div className="h2hScoreBlock">
+                      <h3>Blitz</h3>
+                      <strong className="h2hModeCardScore h2hScoreLine">
+                        {formatScore(blitzScore.playerA)} - {formatScore(blitzScore.playerB)}
+                      </strong>
+                    </div>
+                    <div className="h2hModeCardRightStats">
+                      {renderModeStats(player2Snapshot.blitz || {})}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="h2hModeCard">
+                  <div className="h2hModeCardBody h2hModeCardBodyCombined">
+                    <div>{renderModeStats(player1Snapshot.bullet || {})}</div>
+                    <div className="h2hScoreBlock">
+                      <h3>Bullet</h3>
+                      <strong className="h2hModeCardScore h2hScoreLine">
+                        {formatScore(bulletScore.playerA)} - {formatScore(bulletScore.playerB)}
+                      </strong>
+                    </div>
+                    <div className="h2hModeCardRightStats">
+                      {renderModeStats(player2Snapshot.bullet || {})}
+                    </div>
+                  </div>
+                </div>
+              </section>
             </div>
 
             <h2>Match History</h2>
