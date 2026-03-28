@@ -1033,7 +1033,7 @@ input {
 
 .h2hSplitLayout {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
 }
 
@@ -1055,10 +1055,14 @@ input {
 }
 
 .h2hPlayerPanelTop {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
   gap: 12px;
+}
+
+.h2hPlayerPanelTopCombined {
+  align-items: center;
 }
 
 .h2hPlayerPanelTop.reverse {
@@ -1071,6 +1075,26 @@ input {
 
 .h2hPlayerIdentity {
   padding-top: 14px;
+  min-width: 0;
+}
+
+.h2hPlayerIdentityLeft {
+  text-align: left;
+}
+
+.h2hPlayerIdentityRight {
+  text-align: right;
+}
+
+.h2hPlayerNameLink {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.h2hPlayerIdentityRight {
+  text-align: right;
 }
 
 .h2hPanelTotalScore {
@@ -1100,7 +1124,7 @@ input {
 .h2hModeCardBody {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-end;
   gap: 12px;
 }
 
@@ -1108,14 +1132,40 @@ input {
   flex-direction: row-reverse;
 }
 
+.h2hModeCardBodyCombined {
+  align-items: center;
+}
+
 .h2hModeMeta {
   font-size: 14px;
 }
 
 .h2hModeCardScore {
-  font-size: 40px;
+  font-size: 32px;
   line-height: 1;
   color: #dbeafe;
+}
+
+.h2hScoreBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.h2hScoreBlock h3 {
+  margin: 0;
+  text-transform: uppercase;
+  font-size: 13px;
+  color: #93c5fd;
+}
+
+.h2hScoreLine {
+  white-space: nowrap;
+}
+
+.h2hModeCardRightStats {
+  text-align: right;
 }
 
 .h2hHistoryTable {
