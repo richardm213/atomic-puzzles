@@ -1,5 +1,5 @@
-import { Fragment, useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { loadRawMatchesByMode } from "../lib/matchData";
 import { fetchPlayerRatingsRows } from "../lib/supabasePlayerRatings";
 import { useTimeControlOptions } from "../hooks/usePlayerProfileData";
@@ -119,7 +119,31 @@ const computeGameScore = (matches) => {
 
 const defaultSources = { arena: true, friend: true, lobby: true };
 
+const matchSlugSeparator = "-vs-";
+
+const matchupToSlug = (player1, player2) =>
+  `${encodeURIComponent(player1)}${matchSlugSeparator}${encodeURIComponent(player2)}`;
+
+const parseMatchupSlug = (matchup) => {
+  const separatorIndex = String(matchup || "").indexOf(matchSlugSeparator);
+  if (separatorIndex <= 0) return null;
+  const player1Part = matchup.slice(0, separatorIndex);
+  const player2Part = matchup.slice(separatorIndex + matchSlugSeparator.length);
+  if (!player1Part || !player2Part) return null;
+
+  try {
+    return {
+      player1: decodeURIComponent(player1Part),
+      player2: decodeURIComponent(player2Part),
+    };
+  } catch {
+    return null;
+  }
+};
+
 export const H2HPage = () => {
+  const navigate = useNavigate();
+  const { matchup } = useParams({ strict: false });
   const [player1Input, setPlayer1Input] = useState("");
   const [player2Input, setPlayer2Input] = useState("");
   const [filters, setFilters] = useState({
@@ -187,9 +211,7 @@ export const H2HPage = () => {
     [blitzScore.playerA, blitzScore.playerB, bulletScore.playerA, bulletScore.playerB],
   );
 
-  const handleSearch = async () => {
-    const first = player1Input.trim();
-    const second = player2Input.trim();
+  const performSearch = useCallback(async (first, second) => {
     if (!first || !second) {
       setError("Enter both usernames to search head-to-head.");
       setHasSearched(true);
@@ -241,7 +263,33 @@ export const H2HPage = () => {
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  const handleSearch = async () => {
+    const first = player1Input.trim();
+    const second = player2Input.trim();
+    if (!first || !second) {
+      await performSearch(first, second);
+      return;
+    }
+
+    await navigate({
+      to: "/h2h/$matchup",
+      params: {
+        matchup: matchupToSlug(first, second),
+      },
+    });
   };
+
+  useEffect(() => {
+    const parsedMatchup = parseMatchupSlug(matchup);
+    if (!parsedMatchup) return;
+
+    const { player1, player2 } = parsedMatchup;
+    setPlayer1Input(player1);
+    setPlayer2Input(player2);
+    performSearch(player1.trim(), player2.trim());
+  }, [matchup, performSearch]);
 
   const player1Snapshot = playerSnapshots[loadedPlayer1.toLowerCase()] || {};
   const player2Snapshot = playerSnapshots[loadedPlayer2.toLowerCase()] || {};
