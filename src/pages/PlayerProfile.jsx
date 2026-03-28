@@ -79,13 +79,19 @@ export const PlayerProfilePage = ({ username }) => {
         selectedInitial !== "all" && selectedIncrement !== "all"
           ? `${selectedInitial}+${selectedIncrement}`
           : "";
+      const queryFilters = { username };
+      if (timeControl) {
+        queryFilters.timeControl = timeControl;
+      }
+      const isDefaultOpponentRatingRange =
+        nextAppliedFilters.opponentRatingMin === defaultRatingMin &&
+        nextAppliedFilters.opponentRatingMax === defaultRatingMax;
+      if (!isDefaultOpponentRatingRange) {
+        queryFilters.opponentRatingMin = nextAppliedFilters.opponentRatingMin;
+        queryFilters.opponentRatingMax = nextAppliedFilters.opponentRatingMax;
+      }
       const loaded = await loadRawMatchesByMode(mode, {
-        filters: {
-          username,
-          timeControl,
-          opponentRatingMin: nextAppliedFilters.opponentRatingMin,
-          opponentRatingMax: nextAppliedFilters.opponentRatingMax,
-        },
+        filters: queryFilters,
         page: nextPage,
         pageSize,
       });

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   defaultRatingMax,
   defaultRatingMin,
@@ -252,6 +252,28 @@ export const RecentMatchesPage = () => {
   );
   const totalPages = Math.max(1, Math.ceil(totalMatches / Math.max(1, pageSize)));
 
+  const buildSupabaseFilters = useCallback((nextFilters) => {
+    const queryFilters = {};
+    const username = String(nextFilters.player1Filter || nextFilters.player2Filter || "").trim();
+    if (username) {
+      queryFilters.username = username;
+    }
+    if (nextFilters.startDateFilter) {
+      queryFilters.startTs = parseDateInputBoundary(nextFilters.startDateFilter, "start");
+    }
+    if (nextFilters.endDateFilter) {
+      queryFilters.endTs = parseDateInputBoundary(nextFilters.endDateFilter, "end");
+    }
+    const isDefaultRatingRange =
+      nextFilters.ratingMin === defaultRatingMin && nextFilters.ratingMax === defaultRatingMax;
+    if (!isDefaultRatingRange) {
+      queryFilters.ratingFilterType = nextFilters.ratingFilterType;
+      queryFilters.ratingMin = nextFilters.ratingMin;
+      queryFilters.ratingMax = nextFilters.ratingMax;
+    }
+    return queryFilters;
+  }, []);
+
   const handleSearch = async () => {
     const nextAppliedFilters = {
       selectedMode,
@@ -271,14 +293,7 @@ export const RecentMatchesPage = () => {
     setError("");
     try {
       const loaded = await loadRawMatchesByMode(selectedMode, {
-        filters: {
-          username: player1Filter || player2Filter,
-          startTs: parseDateInputBoundary(startDateFilter, "start"),
-          endTs: parseDateInputBoundary(endDateFilter, "end"),
-          ratingFilterType,
-          ratingMin,
-          ratingMax,
-        },
+        filters: buildSupabaseFilters(nextAppliedFilters),
         page: 1,
         pageSize,
       });
@@ -306,14 +321,7 @@ export const RecentMatchesPage = () => {
       setError("");
       try {
         const loaded = await loadRawMatchesByMode(appliedFilters.selectedMode, {
-          filters: {
-            username: appliedFilters.player1Filter || appliedFilters.player2Filter,
-            startTs: parseDateInputBoundary(appliedFilters.startDateFilter, "start"),
-            endTs: parseDateInputBoundary(appliedFilters.endDateFilter, "end"),
-            ratingFilterType: appliedFilters.ratingFilterType,
-            ratingMin: appliedFilters.ratingMin,
-            ratingMax: appliedFilters.ratingMax,
-          },
+          filters: buildSupabaseFilters(appliedFilters),
           page: currentPage,
           pageSize,
         });
@@ -329,7 +337,7 @@ export const RecentMatchesPage = () => {
     };
 
     loadPage();
-  }, [currentPage, pageSize, appliedFilters]);
+  }, [currentPage, pageSize, appliedFilters, buildSupabaseFilters]);
 
   const paginatedMatches = filteredMatches;
 
