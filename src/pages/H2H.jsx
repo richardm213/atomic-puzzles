@@ -259,14 +259,6 @@ export const H2HPage = () => {
             </Link>
           </h2>
         </div>
-        <div className={`h2hModeScoreStack ${side === "right" ? "right" : ""}`}>
-          <div className="h2hModeScorePill">
-            <strong>{modeScores.blitz}</strong>
-          </div>
-          <div className="h2hModeScorePill">
-            <strong>{modeScores.bullet}</strong>
-          </div>
-        </div>
       </div>
       {["blitz", "bullet"].map((mode) => {
         const modeData = snapshot[mode] || {};
@@ -274,7 +266,7 @@ export const H2HPage = () => {
         return (
           <div key={`${name}-${mode}`} className="h2hModeCard">
             <h3>{mode}</h3>
-            <div className="h2hModeCardBody">
+            <div className={`h2hModeCardBody ${side === "right" ? "reverse" : ""}`}>
               <div>
                 <p className="h2hModeMeta">
                   Rank: <strong>{modeData.rank || "—"}</strong>
@@ -378,11 +370,11 @@ export const H2HPage = () => {
 
             <div className="h2hSplitLayout">
               <div className="h2hTotalScoreBox">
-                <strong>{loadedPlayer1}</strong>
+                <strong className="h2hTotalScoreName">{loadedPlayer1}</strong>
                 <span>{combinedScore.playerA}</span>
                 <span>-</span>
                 <span>{combinedScore.playerB}</span>
-                <strong>{loadedPlayer2}</strong>
+                <strong className="h2hTotalScoreName">{loadedPlayer2}</strong>
               </div>
               {renderPlayerPanel(loadedPlayer1, player1Snapshot, "left", {
                 blitz: blitzScore.playerA,
