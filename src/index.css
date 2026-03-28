@@ -1050,7 +1050,7 @@ input {
 
 .h2hPlayerPanel h2 {
   margin: 0 0 10px;
-  font-size: 46px;
+  font-size: 28px;
   line-height: 1;
 }
 
@@ -1069,8 +1069,12 @@ input {
   margin: 0;
 }
 
+.h2hPlayerIdentity {
+  padding-top: 14px;
+}
+
 .h2hPanelTotalScore {
-  font-size: 72px;
+  font-size: 48px;
   line-height: 1;
   color: #93c5fd;
 }
@@ -1109,7 +1113,7 @@ input {
 }
 
 .h2hModeCardScore {
-  font-size: 56px;
+  font-size: 40px;
   line-height: 1;
   color: #dbeafe;
 }
