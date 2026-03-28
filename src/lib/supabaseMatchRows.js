@@ -83,11 +83,11 @@ export const fetchMatchRowsFromSupabase = async (mode, filters = {}, pageOptions
       .select(MATCH_SELECT_COLUMNS, { count: "exact" })
       .order("start_ts", { ascending: false });
     if (username) {
-      query = query.or(`player_1.ilike.${escapedUsername},player_2.ilike.${escapedUsername}`);
+      query = query.or(`player_1.eq.${escapedUsername},player_2.eq.${escapedUsername}`);
     }
     if (pairPlayerA && pairPlayerB) {
       query = query.or(
-        `and(player_1.ilike.${escapedPairPlayerA},player_2.ilike.${escapedPairPlayerB}),and(player_1.ilike.${escapedPairPlayerB},player_2.ilike.${escapedPairPlayerA})`,
+        `and(player_1.eq.${escapedPairPlayerA},player_2.eq.${escapedPairPlayerB}),and(player_1.eq.${escapedPairPlayerB},player_2.eq.${escapedPairPlayerA})`,
       );
     }
 
