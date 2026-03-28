@@ -402,10 +402,10 @@ export const H2HPage = () => {
             <div className="h2hSplitLayout">
               <section className="h2hPlayerPanel h2hPlayerPanelCombined">
                 <div className="h2hPlayerPanelTop h2hPlayerPanelTopCombined">
-                  <div className="h2hPlayerIdentity">
+                  <div className="h2hPlayerIdentity h2hPlayerIdentityLeft">
                     <h2>
                       <Link
-                        className="rankingLink"
+                        className="rankingLink h2hPlayerNameLink"
                         to="/@/$username"
                         params={{ username: loadedPlayer1 }}
                       >
@@ -422,7 +422,7 @@ export const H2HPage = () => {
                   <div className="h2hPlayerIdentity h2hPlayerIdentityRight">
                     <h2>
                       <Link
-                        className="rankingLink"
+                        className="rankingLink h2hPlayerNameLink"
                         to="/@/$username"
                         params={{ username: loadedPlayer2 }}
                       >

@@ -1055,9 +1055,9 @@ input {
 }
 
 .h2hPlayerPanelTop {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
   gap: 12px;
 }
 
@@ -1075,6 +1075,22 @@ input {
 
 .h2hPlayerIdentity {
   padding-top: 14px;
+  min-width: 0;
+}
+
+.h2hPlayerIdentityLeft {
+  text-align: left;
+}
+
+.h2hPlayerIdentityRight {
+  text-align: right;
+}
+
+.h2hPlayerNameLink {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .h2hPlayerIdentityRight {
