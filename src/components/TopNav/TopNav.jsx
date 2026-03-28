@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
+import "./TopNav.css";
 
 const appAssetPath = (pathname = "/") => {
   const normalized = pathname.startsWith("/") ? pathname : `/${pathname}`;

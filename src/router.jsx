@@ -6,13 +6,13 @@ import {
   RouterProvider,
   useParams,
 } from "@tanstack/react-router";
-import { App } from "./App";
-import { HomePage } from "./pages/Home";
-import { RankingsPage } from "./pages/Rankings";
-import { RecentMatchesPage } from "./pages/RecentMatches";
-import { PlayerProfilePage } from "./pages/PlayerProfile";
-import { PuzzleSolverPage } from "./pages/PuzzleSolver";
-import { H2HPage } from "./pages/H2H";
+import { App } from "./App/App";
+import { HomePage } from "./pages/Home/Home";
+import { RankingsPage } from "./pages/Rankings/Rankings";
+import { RecentMatchesPage } from "./pages/RecentMatches/RecentMatches";
+import { PlayerProfilePage } from "./pages/PlayerProfile/PlayerProfile";
+import { PuzzleSolverPage } from "./pages/PuzzleSolver/PuzzleSolver";
+import { H2HPage } from "./pages/H2H/H2H";
 
 const appBasePath = (() => {
   const baseUrl = import.meta.env.BASE_URL || "/";

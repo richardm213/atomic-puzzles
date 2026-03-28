@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import "./Home.css";
 
 export const HomePage = () => {
   return (

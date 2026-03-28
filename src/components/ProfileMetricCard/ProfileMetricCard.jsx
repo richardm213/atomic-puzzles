@@ -1,3 +1,4 @@
+import "./ProfileMetricCard.css";
 export const ProfileMetricCard = ({ label, value }) => {
   return (
     <div className="profileMetric">

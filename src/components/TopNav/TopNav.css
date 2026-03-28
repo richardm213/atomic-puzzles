@@ -1,0 +1,137 @@
+.topNav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(11, 18, 32, 0.9);
+}
+
+.homeBrand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.topNavCenter {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.topNavLinks {
+  display: inline-flex;
+  gap: 18px;
+  position: relative;
+  z-index: 2;
+}
+
+.topNavLinks a {
+  color: #c9d3e3;
+  text-decoration: none;
+}
+
+.topNavLinks a:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
+.navSearchSlot {
+  width: 34px;
+  height: 34px;
+  position: relative;
+  display: inline-flex;
+  justify-content: flex-end;
+}
+
+.navSearch {
+  width: 34px;
+  height: 34px;
+  position: absolute;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  transition: width 180ms ease;
+  z-index: 3;
+}
+
+.navSearch.open {
+  width: 260px;
+}
+
+.navSearch input,
+.navSearch button {
+  border: 1px solid transparent;
+  background: #0f172a;
+  color: #e8ecf3;
+  border-radius: 10px;
+  height: 34px;
+  line-height: 1;
+}
+
+.navSearch input {
+  position: absolute;
+  right: 0;
+  width: 0;
+  padding: 8px 0;
+  opacity: 0;
+  pointer-events: none;
+  cursor: text;
+  transition: width 180ms ease, opacity 150ms ease, padding 180ms ease, border-color 180ms ease;
+}
+
+.navSearch.open input {
+  width: 260px;
+  opacity: 1;
+  pointer-events: auto;
+  border-color: rgba(255, 255, 255, 0.14);
+  padding: 8px 74px 8px 38px;
+}
+
+.navSearchIcon {
+  width: 34px;
+  min-width: 34px;
+  padding: 0;
+  position: absolute;
+  left: 0;
+  z-index: 2;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.navSearchIcon i {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.navSearchGo {
+  position: absolute;
+  right: 4px;
+  width: 58px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  border-color: rgba(255, 255, 255, 0.14);
+  cursor: pointer;
+  transition: opacity 120ms ease;
+}
+
+.navSearch.open .navSearchGo {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.navSearchIcon,
+.navSearchGo {
+  background: #1d4ed8;
+  color: #eff6ff;
+  border-color: #1d4ed8;
+}
