@@ -62,15 +62,9 @@
 
 .dualRangeInput::-webkit-slider-thumb {
   appearance: none;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: #dbeafe;
-  border: 1px solid #60a5fa;
-  cursor: pointer;
-  pointer-events: auto;
 }
 
+.dualRangeInput::-webkit-slider-thumb,
 .dualRangeInput::-moz-range-thumb {
   width: 14px;
   height: 14px;

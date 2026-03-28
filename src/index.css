@@ -80,12 +80,6 @@ input {
   min-width: 140px;
 }
 
-.checkbox {
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  gap: 10px;
-}
-
 .buttonRow {
   display: flex;
   gap: 10px;
