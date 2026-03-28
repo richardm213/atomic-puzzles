@@ -1,4 +1,5 @@
 import { getSupabaseClient } from "./supabaseClient";
+import { defaultRatingMax, defaultRatingMin } from "../constants/matches";
 
 const supabaseMatchConfig = {
   url: import.meta.env.VITE_SUPABASE_URL?.trim() || "",
@@ -61,11 +62,20 @@ export const fetchMatchRowsFromSupabase = async (mode, filters = {}, pageOptions
   const pairPlayerB = String(usernamePair[1] || "").trim();
   const escapedPairPlayerA = pairPlayerA.replace(/,/g, "\\,");
   const escapedPairPlayerB = pairPlayerB.replace(/,/g, "\\,");
-  const hasRatingMin = filters.ratingMin !== undefined && filters.ratingMin !== null;
-  const hasRatingMax = filters.ratingMax !== undefined && filters.ratingMax !== null;
+  const rawRatingMin =
+    filters.ratingMin !== undefined && filters.ratingMin !== null
+      ? filters.ratingMin
+      : filters.opponentRatingMin;
+  const rawRatingMax =
+    filters.ratingMax !== undefined && filters.ratingMax !== null
+      ? filters.ratingMax
+      : filters.opponentRatingMax;
   const ratingFilterType = String(filters.ratingFilterType || "both").toLowerCase();
-  const ratingMin = Math.floor(Number(filters.ratingMin));
-  const ratingMax = Math.floor(Number(filters.ratingMax));
+  const ratingMin = Math.floor(Number(rawRatingMin));
+  const ratingMax = Math.floor(Number(rawRatingMax));
+  const hasRatingMin = Number.isFinite(ratingMin);
+  const hasRatingMax = Number.isFinite(ratingMax);
+  const isDefaultRatingRange = ratingMin === defaultRatingMin && ratingMax === defaultRatingMax;
   while (true) {
     const rangeEnd = useSinglePage ? from + pageSize - 1 : from + 999;
     let query = supabase
@@ -82,7 +92,7 @@ export const fetchMatchRowsFromSupabase = async (mode, filters = {}, pageOptions
       );
     }
 
-    if (hasRatingMin && hasRatingMax) {
+    if (hasRatingMin && hasRatingMax && !isDefaultRatingRange) {
       if (ratingFilterType === "average") {
         query = query.gte("avg_after_rating", ratingMin).lte("avg_after_rating", ratingMax);
       } else {
@@ -93,13 +103,23 @@ export const fetchMatchRowsFromSupabase = async (mode, filters = {}, pageOptions
           .lte("p2_after_rating", ratingMax);
       }
     }
-    if (filters.startTs !== undefined && filters.startTs !== null) {
+    if (
+      filters.startTs !== undefined &&
+      filters.startTs !== null &&
+      Number.isFinite(Number(filters.startTs)) &&
+      Number(filters.startTs) !== Number.MIN_SAFE_INTEGER
+    ) {
       query = query.gte("start_ts", Math.floor(Number(filters.startTs)));
     }
-    if (filters.endTs !== undefined && filters.endTs !== null) {
+    if (
+      filters.endTs !== undefined &&
+      filters.endTs !== null &&
+      Number.isFinite(Number(filters.endTs)) &&
+      Number(filters.endTs) !== Number.MAX_SAFE_INTEGER
+    ) {
       query = query.lte("start_ts", Math.floor(Number(filters.endTs)));
     }
-    if (filters.timeControl) {
+    if (filters.timeControl && String(filters.timeControl).toLowerCase() !== "all") {
       query = query.eq("time_control", String(filters.timeControl));
     }
     query = query.range(from, rangeEnd);
