@@ -1,0 +1,50 @@
+.rankingsPanel {
+  width: min(920px, 100%);
+}
+
+.rankingsControls {
+  grid-template-columns: repeat(3, max-content);
+  justify-content: center;
+}
+
+.rankingsControls label {
+  justify-items: center;
+}
+
+.rankingsControls select {
+  width: fit-content;
+}
+
+.rankingsTableWrap {
+  margin-top: 12px;
+  overflow-x: auto;
+}
+
+.rankingsTable {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #0f172a;
+}
+
+.rankingsTable th,
+.rankingsTable td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sortButton {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+.rankingsTable tbody tr:hover {
+  background: rgba(148, 163, 184, 0.15);
+}

@@ -1,0 +1,8 @@
+.cg-board,
+.emptyBoard {
+  width: min(80vw, 560px);
+  height: min(80vw, 560px);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
+}

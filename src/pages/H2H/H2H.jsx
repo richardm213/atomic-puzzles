@@ -1,17 +1,18 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { loadRawMatchesByMode } from "../lib/matchData";
-import { fetchPlayerRatingsRows } from "../lib/supabasePlayerRatings";
-import { useTimeControlOptions } from "../hooks/usePlayerProfileData";
-import { matchSourceFromValues, parseDateInputBoundary } from "../utils/matchFilters";
+import "./H2H.css";
+import { loadRawMatchesByMode } from "../../lib/matchData";
+import { fetchPlayerRatingsRows } from "../../lib/supabasePlayerRatings";
+import { useTimeControlOptions } from "../../hooks/usePlayerProfileData";
+import { matchSourceFromValues, parseDateInputBoundary } from "../../utils/matchFilters";
 import {
   findRatingDataForPlayer,
   normalizedGamesFromMatch,
   normalizedPlayersFromMatch,
   normalizedRatingsFromMatch,
   winnerToFullWord,
-} from "../utils/matchTransforms";
-import { formatLocalDateTime, formatScore, formatSignedDecimal } from "../utils/formatters";
+} from "../../utils/matchTransforms";
+import { formatLocalDateTime, formatScore, formatSignedDecimal } from "../../utils/formatters";
 
 const normalizeH2HMatches = (matches, mode, playerA, playerB) => {
   const playerALower = playerA.toLowerCase();

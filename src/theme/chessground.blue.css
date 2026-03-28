@@ -4,21 +4,17 @@ cg-board {
 }
 
 cg-board square.move-dest {
-  background: radial-gradient(
-    rgba(18, 92, 173, 0.5) 22%,
-    #125cad 0,
-    rgba(0, 0, 0, 0.3) 0,
-    rgba(0, 0, 0, 0) 0
-  );
+  background: radial-gradient(rgba(18, 92, 173, 0.5) 22%,
+      #125cad 0,
+      rgba(0, 0, 0, 0.3) 0,
+      rgba(0, 0, 0, 0) 0);
 }
 
 cg-board square.premove-dest {
-  background: radial-gradient(
-    rgba(45, 82, 167, 0.45) 22%,
-    #2d52a7 0,
-    rgba(0, 0, 0, 0.3) 0,
-    rgba(0, 0, 0, 0) 0
-  );
+  background: radial-gradient(rgba(45, 82, 167, 0.45) 22%,
+      #2d52a7 0,
+      rgba(0, 0, 0, 0.3) 0,
+      rgba(0, 0, 0, 0) 0);
 }
 
 cg-board square.oc.move-dest {
@@ -48,13 +44,11 @@ cg-board square.selected {
 }
 
 cg-board square.check {
-  background: radial-gradient(
-    ellipse at center,
-    rgba(255, 56, 56, 0.95) 0%,
-    rgba(208, 38, 38, 0.9) 25%,
-    rgba(145, 18, 18, 0) 89%,
-    rgba(145, 18, 18, 0) 100%
-  );
+  background: radial-gradient(ellipse at center,
+      rgba(255, 56, 56, 0.95) 0%,
+      rgba(208, 38, 38, 0.9) 25%,
+      rgba(145, 18, 18, 0) 89%,
+      rgba(145, 18, 18, 0) 100%);
 }
 
 cg-board square.current-premove {
