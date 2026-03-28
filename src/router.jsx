@@ -48,6 +48,12 @@ const h2hRoute = createRoute({
   component: H2HPage,
 });
 
+const h2hMatchupRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/h2h/$matchup",
+  component: H2HPage,
+});
+
 const matchesAliasRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/matches",
@@ -82,6 +88,7 @@ const routeTree = rootRoute.addChildren([
   rankingsRoute,
   recentRoute,
   h2hRoute,
+  h2hMatchupRoute,
   matchesAliasRoute,
   solveRoute,
   solveWithIdRoute,
