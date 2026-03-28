@@ -1110,6 +1110,10 @@ input {
   align-items: center;
 }
 
+.h2hModeCardBodyCombined {
+  align-items: center;
+}
+
 .h2hModeMeta {
   font-size: 14px;
 }
