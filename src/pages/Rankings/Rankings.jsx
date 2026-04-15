@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { modeOptions } from "../../constants/matches";
 import { useRankingsByMonth } from "../../hooks/useRankingsByMonth";
+import { monthDateFromMonthKey } from "../../lib/supabaseLb";
 import "./Rankings.css";
 
 const monthNames = [
@@ -39,14 +40,8 @@ const monthNameFromDate = (date) =>
     timeZone: "UTC",
   });
 
-const monthDateFromKey = (monthKey) => {
-  const parsed = new Date(`${monthKey} 01 UTC`);
-  if (Number.isNaN(parsed.getTime())) return null;
-  return parsed;
-};
-
 const readableMonthLabel = (monthKey) => {
-  const date = monthDateFromKey(monthKey);
+  const date = monthDateFromMonthKey(monthKey);
   if (!date) return monthKey || "Unknown month";
   return monthLabelFromDate(date);
 };
@@ -94,7 +89,7 @@ const LeaderboardView = () => {
   useEffect(() => {
     const firstWithData =
       monthOptions.find((month) => rankingsByMonth.has(month)) || monthOptions[0] || "";
-    const firstDate = monthDateFromKey(firstWithData);
+    const firstDate = monthDateFromMonthKey(firstWithData);
     if (!firstDate) return;
 
     setSelectedYear((previous) => previous || String(firstDate.getUTCFullYear()));

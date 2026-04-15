@@ -48,3 +48,27 @@
 .rankingsTable tbody tr:hover {
   background: rgba(148, 163, 184, 0.15);
 }
+
+@media (max-width: 640px) {
+  .rankingsPage {
+    padding: 16px;
+  }
+
+  .rankingsPanel {
+    min-width: 0;
+  }
+
+  .rankingsControls {
+    grid-template-columns: 1fr;
+    justify-content: stretch;
+  }
+
+  .rankingsControls label {
+    justify-items: stretch;
+  }
+
+  .rankingsControls select {
+    width: 100%;
+    min-width: 0;
+  }
+}

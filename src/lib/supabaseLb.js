@@ -7,6 +7,20 @@ const supabaseLbConfig = {
 };
 
 const LB_SELECT_COLUMNS = "username,month,rank,rating,rd,games,tc";
+const MONTH_INDEX_BY_NAME = {
+  Jan: 0,
+  Feb: 1,
+  Mar: 2,
+  Apr: 3,
+  May: 4,
+  Jun: 5,
+  Jul: 6,
+  Aug: 7,
+  Sep: 8,
+  Oct: 9,
+  Nov: 10,
+  Dec: 11,
+};
 
 const requireSupabaseConfig = () => {
   const { url, anonKey } = supabaseLbConfig;
@@ -26,9 +40,18 @@ export const monthKeyFromMonthValue = (monthValue) => {
   });
 };
 
+export const monthDateFromMonthKey = (monthKey) => {
+  const [monthName, yearValue] = String(monthKey || "").trim().split(/\s+/);
+  const monthIndex = MONTH_INDEX_BY_NAME[monthName];
+  const year = Number(yearValue);
+
+  if (monthIndex === undefined || !Number.isInteger(year)) return null;
+  return new Date(Date.UTC(year, monthIndex, 1));
+};
+
 export const isoMonthStartFromMonthKey = (monthKey) => {
-  const monthDate = new Date(`${monthKey} 01 UTC`);
-  if (Number.isNaN(monthDate.getTime())) return "";
+  const monthDate = monthDateFromMonthKey(monthKey);
+  if (!monthDate) return "";
   return monthDate.toISOString().slice(0, 10);
 };
 
