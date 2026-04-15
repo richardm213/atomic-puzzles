@@ -177,6 +177,29 @@ export const PuzzleSolverPage = () => {
   const event = activePuzzle?.event?.trim() || "";
   const orientation = orientationFromFen(fen);
   const analysisUrl = useMemo(() => lichessAnalysisUrl(fen), [fen]);
+  const puzzleOrdinal = activePuzzleIndex >= 0 ? activePuzzleIndex + 1 : null;
+  const feedback = boardState.solved
+    ? {
+        type: "correct",
+        icon: "✓",
+        title: "Correct",
+        message: "Puzzle complete. Nice finish.",
+      }
+    : boardState.showWrongMove
+      ? {
+          type: "wrong",
+          icon: "×",
+          title: "Incorrect",
+          message: "That move is not part of the solution.",
+        }
+      : boardState.showRetryMove
+        ? {
+          type: "retry",
+          icon: "↺",
+          title: "Try again",
+          message: "A reasonable idea, but there is a stronger continuation.",
+        }
+        : null;
 
   const handleNextPuzzle = () => {
     if (puzzles.length === 0) return;
@@ -308,13 +331,24 @@ export const PuzzleSolverPage = () => {
   ]);
 
   return (
-    <div className="page">
-      <div className="panel">
-        <h1>Atomic Puzzle Trainer</h1>
-        <p>Available puzzles: {puzzles.length}</p>
+    <div className="page puzzlePage">
+      <div className="panel puzzlePanel">
+        <div className="puzzleHeader">
+          <div>
+            <p className="puzzleEyebrow">Atomic tactics</p>
+            <h1>Find the best move</h1>
+          </div>
+          <div className="puzzleCount" aria-label="Puzzle count">
+            <span>{puzzleOrdinal ?? "-"}</span>
+            <small>of {puzzles.length || "-"}</small>
+          </div>
+        </div>
+        <p className="puzzleIntro">
+          Play the forcing line on the board. Correct moves continue the puzzle automatically.
+        </p>
 
         <div className="controls">
-          <div className="buttonRow">
+          <div className="buttonRow puzzleActions">
             <button type="button" onClick={handlePreviousPuzzle} disabled={historyIndex <= 0}>
               Prev
             </button>
@@ -342,25 +376,25 @@ export const PuzzleSolverPage = () => {
         {boardState.error ? <div className="errorText">{boardState.error}</div> : null}
         {loadingError ? <div className="errorText">{loadingError}</div> : null}
 
-        <div className="fenBox">
-          <div className="fenLabel">Current FEN</div>
-          <code>{boardState.fen || fen || "No puzzle loaded"}</code>
-        </div>
-
-        <div className="fenBox">
-          <div className="fenLabel">Puzzle author</div>
-          <code>{author}</code>
-        </div>
-
-        {event ? (
-          <div className="fenBox">
-            <div className="fenLabel">Event</div>
-            <code>{event}</code>
+        <div className="puzzleDetails">
+          <div className="detailItem">
+            <div className="fenLabel">Author</div>
+            <div>{author}</div>
           </div>
-        ) : null}
+          {event ? (
+            <div className="detailItem">
+              <div className="fenLabel">Event</div>
+              <div>{event}</div>
+            </div>
+          ) : null}
+          <details className="fenDetails">
+            <summary>Position FEN</summary>
+            <code>{boardState.fen || fen || "No puzzle loaded"}</code>
+          </details>
+        </div>
 
         <div className="lineBox">
-          <div className="fenLabel">Move line (← / → to navigate)</div>
+          <div className="fenLabel">Move line</div>
           {boardState.viewingSolution && boardState.solutionLines?.length ? (
             <div
               className="moveList inlineSolutionTree"
@@ -393,16 +427,30 @@ export const PuzzleSolverPage = () => {
       </div>
 
       <div className="boardWrap">
-        <div className="boardFrame">
-          {boardState.showWrongMove ? (
-            <div className="moveIndicator wrong" aria-label="Wrong move" />
-          ) : null}
-          {boardState.showRetryMove ? (
-            <div className="moveIndicator retry" aria-label="Try again" />
-          ) : null}
-          {boardState.solved ? (
-            <div className="moveIndicator correct" aria-label="Puzzle solved" />
-          ) : null}
+        <div className={`boardFrame ${feedback ? `hasFeedback ${feedback.type}` : ""}`}>
+          <div className={`feedbackBanner ${feedback ? feedback.type : ""}`} aria-live="polite">
+            {feedback ? (
+              <>
+                <span className="feedbackIcon" aria-hidden="true">
+                  {feedback.icon}
+                </span>
+                <span className="feedbackCopy">
+                  <strong>{feedback.title}</strong>
+                  <span>{feedback.message}</span>
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="feedbackIcon neutral" aria-hidden="true">
+                  ?
+                </span>
+                <span className="feedbackCopy">
+                  <strong>{boardState.status || "Ready"}</strong>
+                  <span>Choose a move on the board.</span>
+                </span>
+              </>
+            )}
+          </div>
           {fen ? (
             <Chessboard
               fen={fen}
