@@ -163,7 +163,6 @@ const LeaderboardView = () => {
     <div className="rankingsPage">
       <div className="panel rankingsPanel">
         <h1>Atomic Monthly Leaderboards</h1>
-        <p>Best atomic players for each month since January 2023.</p>
         <div className="controls rankingsControls">
           <label htmlFor="year-select">
             Year
@@ -215,7 +214,26 @@ const LeaderboardView = () => {
 
         <div className="rankingsMeta">
           <span>{readableMonthLabel(selectedMonth || monthOptions[0])}</span>
-          <span>{players.length} ranked</span>
+          <span className="rankedCount">
+            {players.length} ranked
+            <span className="rankingsInfo">
+              <button
+                type="button"
+                className="rankingsInfoButton"
+                aria-label="Ranking eligibility rules"
+                aria-describedby="ranking-rules-tooltip"
+              >
+                <i className="fa-solid fa-circle-info" aria-hidden="true" />
+              </button>
+              <span id="ranking-rules-tooltip" className="rankingsInfoTooltip" role="tooltip">
+                Blitz: &gt;= 20 blitz games in that month.
+                <br />
+                Bullet: &gt;= 50 bullet games in that month.
+                <br />
+                RD must be &lt;= 65.0.
+              </span>
+            </span>
+          </span>
         </div>
 
         {players.length === 0 ? (

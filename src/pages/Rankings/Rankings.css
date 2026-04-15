@@ -1,23 +1,40 @@
 .rankingsPanel {
-  width: min(920px, 100%);
+  width: min(700px, 100%);
   min-width: 0;
 }
 
+.rankingsPanel h1 {
+  margin-bottom: 24px;
+  line-height: 1.1;
+}
+
 .rankingsControls {
-  grid-template-columns: repeat(3, max-content);
-  justify-content: center;
+  grid-template-columns: repeat(3, minmax(120px, max-content));
+  justify-content: start;
+  align-items: end;
+  column-gap: 14px;
+  row-gap: 12px;
 }
 
 .rankingsControls label {
-  justify-items: center;
+  justify-items: start;
+  gap: 6px;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .rankingsControls select {
-  width: fit-content;
+  width: 100%;
+  min-width: 120px;
+  border-radius: 8px;
+  min-height: 42px;
 }
 
 .rankingsTableWrap {
-  margin-top: 12px;
+  margin-top: 14px;
   overflow-x: auto;
   max-width: 100%;
   -webkit-overflow-scrolling: touch;
@@ -25,19 +42,47 @@
 
 .rankingsTable {
   width: 100%;
-  min-width: 520px;
+  min-width: 470px;
   border-collapse: collapse;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
+  border-radius: 8px;
   overflow: hidden;
   background: #0f172a;
+}
+
+.rankingsTable thead {
+  background: rgba(148, 163, 184, 0.08);
 }
 
 .rankingsTable th,
 .rankingsTable td {
   text-align: left;
-  padding: 10px 12px;
+  padding: 10px 11px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.rankingsTable th {
+  color: #c9d3e3;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.rankingsTable td {
+  color: #e8ecf3;
+}
+
+.rankingsTable th:nth-child(1),
+.rankingsTable td:nth-child(1),
+.rankingsTable th:nth-child(3),
+.rankingsTable td:nth-child(3),
+.rankingsTable th:nth-child(4),
+.rankingsTable td:nth-child(4),
+.rankingsTable th:nth-child(5),
+.rankingsTable td:nth-child(5) {
+  width: 1%;
+  white-space: nowrap;
 }
 
 .sortButton {
@@ -47,10 +92,96 @@
   font: inherit;
   cursor: pointer;
   padding: 0;
+  min-height: 24px;
+}
+
+.sortButton:hover {
+  color: #fff;
+}
+
+.rankingsMeta {
+  margin-top: 22px;
+  padding-top: 16px;
+  align-items: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.rankingsMeta > span:first-child {
+  color: #e8ecf3;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.rankedCount {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #94a3b8;
+}
+
+.rankingsInfo {
+  position: relative;
+  display: inline-flex;
+}
+
+.rankingsInfoButton {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(147, 197, 253, 0.35);
+  border-radius: 8px;
+  background: #0f172a;
+  color: #93c5fd;
+  cursor: help;
+  padding: 0;
+}
+
+.rankingsInfoButton i {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.rankingsInfoButton:hover,
+.rankingsInfoButton:focus-visible {
+  border-color: rgba(147, 197, 253, 0.75);
+  color: #bfdbfe;
+  outline: none;
+}
+
+.rankingsInfoTooltip {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 4;
+  width: max-content;
+  max-width: min(320px, calc(100vw - 48px));
+  padding: 10px 12px;
+  border: 1px solid rgba(147, 197, 253, 0.28);
+  border-radius: 8px;
+  background: #0b1220;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.32);
+  color: #e8ecf3;
+  font-size: 13px;
+  line-height: 1.45;
+  text-align: left;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+}
+
+.rankingsInfo:hover .rankingsInfoTooltip,
+.rankingsInfo:focus-within .rankingsInfoTooltip {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .rankingsTable tbody tr:hover {
-  background: rgba(148, 163, 184, 0.15);
+  background: rgba(147, 197, 253, 0.08);
 }
 
 @media (max-width: 640px) {
@@ -78,12 +209,21 @@
   }
 
   .rankingsTable {
-    min-width: 460px;
+    min-width: 440px;
     font-size: 14px;
   }
 
   .rankingsTable th,
   .rankingsTable td {
     padding: 9px 10px;
+  }
+
+  .rankedCount {
+    align-items: flex-start;
+  }
+
+  .rankingsInfoTooltip {
+    right: auto;
+    left: 0;
   }
 }
