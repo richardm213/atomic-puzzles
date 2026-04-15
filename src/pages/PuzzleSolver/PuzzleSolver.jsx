@@ -81,6 +81,8 @@ export const PuzzleSolverPage = () => {
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [showSolution, setShowSolution] = useState(false);
   const [solutionNavigation, setSolutionNavigation] = useState(null);
+  const [retrySignal, setRetrySignal] = useState(0);
+  const [solvedAfterRetry, setSolvedAfterRetry] = useState(false);
   const [boardState, setBoardState] = useState({
     fen: "",
     turn: "",
@@ -172,6 +174,7 @@ export const PuzzleSolverPage = () => {
 
   const activePuzzleIndex = historyIndex >= 0 ? history[historyIndex] : -1;
   const activePuzzle = activePuzzleIndex >= 0 ? puzzles[activePuzzleIndex] : null;
+  const activePuzzleId = activePuzzle?.puzzleId;
   const fen = activePuzzle?.fen ?? "";
   const author = activePuzzle?.author?.trim() || "Unknown";
   const event = activePuzzle?.event?.trim() || "";
@@ -180,27 +183,35 @@ export const PuzzleSolverPage = () => {
   const startAnalysisUrl = useMemo(() => lichessAnalysisUrl(fen), [fen]);
   const currentAnalysisUrl = useMemo(() => lichessAnalysisUrl(currentFen), [currentFen]);
   const puzzleOrdinal = activePuzzleIndex >= 0 ? activePuzzleIndex + 1 : null;
+
+  useEffect(() => {
+    setSolvedAfterRetry(false);
+  }, [activePuzzleId]);
+
   const showFenDetails = boardState.solved || boardState.showWrongMove;
   const feedback = boardState.solved
-    ? {
-        type: "correct",
-        icon: "✓",
-        title: "Correct",
-        message: "Puzzle complete. Nice finish.",
-      }
+    ? solvedAfterRetry
+      ? {
+          type: "retrySuccess",
+          icon: "↺",
+          title: "Solved on retry",
+        }
+      : {
+          type: "correct",
+          icon: "✓",
+          title: "Correct",
+        }
     : boardState.showWrongMove
       ? {
           type: "wrong",
           icon: "×",
           title: "Incorrect",
-          message: "That move is not part of the solution.",
         }
       : boardState.showRetryMove
         ? {
           type: "retry",
           icon: "↺",
           title: "Try again",
-          message: "A reasonable idea, but there is a stronger continuation.",
         }
         : null;
 
@@ -208,6 +219,7 @@ export const PuzzleSolverPage = () => {
     if (puzzles.length === 0) return;
     setShowSolution(false);
     setSolutionNavigation(null);
+    setSolvedAfterRetry(false);
 
     if (historyIndex < history.length - 1) {
       const nextHistoryIndex = historyIndex + 1;
@@ -230,6 +242,7 @@ export const PuzzleSolverPage = () => {
     if (historyIndex <= 0) return;
     setShowSolution(false);
     setSolutionNavigation(null);
+    setSolvedAfterRetry(false);
     const previousHistoryIndex = historyIndex - 1;
     setHistoryIndex(previousHistoryIndex);
     const previousPuzzleIndex = history[previousHistoryIndex];
@@ -240,6 +253,21 @@ export const PuzzleSolverPage = () => {
   const handleToggleSolution = () => {
     setShowSolution((prev) => !prev);
     setSolutionNavigation(null);
+  };
+
+  const handleBoardStateChange = useCallback((nextBoardState) => {
+    setBoardState(nextBoardState);
+    if (nextBoardState.solved) {
+      setSolutionNavigation(null);
+      setShowSolution(true);
+    }
+  }, []);
+
+  const handleTryAgain = () => {
+    setShowSolution(false);
+    setSolutionNavigation(null);
+    setSolvedAfterRetry(true);
+    setRetrySignal((current) => current + 1);
   };
 
   const handleMoveClick = (lineIndex, moveIndex) => {
@@ -390,7 +418,7 @@ export const PuzzleSolverPage = () => {
         <div className="puzzleHeader">
           <div>
             <p className="puzzleEyebrow">Atomic tactics</p>
-            <h1>Find the best move</h1>
+            <h1>Solve the position</h1>
           </div>
           <div className="puzzleCount" aria-label="Puzzle count">
             <span>{puzzleOrdinal ?? "-"}</span>
@@ -406,7 +434,11 @@ export const PuzzleSolverPage = () => {
             <button type="button" onClick={handleNextPuzzle} disabled={puzzles.length === 0}>
               Next
             </button>
-            <button type="button" onClick={handleToggleSolution} disabled={!fen}>
+            <button
+              type="button"
+              onClick={handleToggleSolution}
+              disabled={!fen || (!boardState.showWrongMove && !boardState.solved && !showSolution)}
+            >
               {showSolution ? "Hide solution" : "Show solution"}
             </button>
           </div>
@@ -582,8 +614,12 @@ export const PuzzleSolverPage = () => {
                 </span>
                 <span className="feedbackCopy">
                   <strong>{feedback.title}</strong>
-                  <span>{feedback.message}</span>
                 </span>
+                {feedback.type === "wrong" ? (
+                  <button type="button" className="feedbackAction" onClick={handleTryAgain}>
+                    Try again
+                  </button>
+                ) : null}
               </>
             ) : (
               <>
@@ -592,7 +628,6 @@ export const PuzzleSolverPage = () => {
                 </span>
                 <span className="feedbackCopy">
                   <strong>{boardState.status || "Ready"}</strong>
-                  <span>Choose a move on the board.</span>
                 </span>
               </>
             )}
@@ -605,8 +640,9 @@ export const PuzzleSolverPage = () => {
               solution={activePuzzle?.solution}
               showSolution={showSolution}
               solutionNavigation={solutionNavigation}
+              retrySignal={retrySignal}
               onNavigateHandled={() => setSolutionNavigation(null)}
-              onStateChange={setBoardState}
+              onStateChange={handleBoardStateChange}
             />
           ) : (
             <div className="emptyBoard">Waiting for puzzle data...</div>

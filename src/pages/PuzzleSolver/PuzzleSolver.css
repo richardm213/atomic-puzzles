@@ -384,6 +384,13 @@
     0 28px 80px rgba(0, 0, 0, 0.42);
 }
 
+.boardFrame.retrySuccess {
+  border-color: rgba(244, 208, 111, 0.74);
+  box-shadow:
+    0 0 0 4px rgba(244, 208, 111, 0.15),
+    0 28px 80px rgba(0, 0, 0, 0.42);
+}
+
 .boardFrame.wrong {
   border-color: rgba(239, 91, 91, 0.78);
   box-shadow:
@@ -400,7 +407,7 @@
 
 .feedbackBanner {
   display: grid;
-  grid-template-columns: 38px minmax(0, 1fr);
+  grid-template-columns: 38px minmax(0, 1fr) auto;
   align-items: center;
   gap: 11px;
   min-height: 62px;
@@ -415,6 +422,12 @@
   background: linear-gradient(135deg, rgba(35, 82, 65, 0.96), rgba(23, 50, 45, 0.96));
   border-color: rgba(64, 196, 157, 0.55);
   color: #ecfff7;
+}
+
+.feedbackBanner.retrySuccess {
+  background: linear-gradient(135deg, rgba(87, 71, 24, 0.97), rgba(44, 45, 35, 0.97));
+  border-color: rgba(244, 208, 111, 0.58);
+  color: #fff8df;
 }
 
 .feedbackBanner.wrong {
@@ -462,6 +475,23 @@
   color: rgba(255, 255, 255, 0.74);
   font-size: 13px;
   line-height: 1.35;
+}
+
+.feedbackAction {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  color: currentColor;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.feedbackAction:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .emptyBoard {
@@ -519,5 +549,14 @@
   .boardFrame {
     width: 100%;
     padding: 10px;
+  }
+
+  .feedbackBanner {
+    grid-template-columns: 38px minmax(0, 1fr);
+  }
+
+  .feedbackAction {
+    grid-column: 2;
+    justify-self: start;
   }
 }

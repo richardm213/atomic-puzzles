@@ -220,6 +220,7 @@ export const Chessboard = ({
   solution,
   showSolution,
   solutionNavigation,
+  retrySignal,
   onNavigateHandled,
   onStateChange,
 }) => {
@@ -443,7 +444,7 @@ export const Chessboard = ({
     moveLockRef.current = true;
     candidateLinesRef.current = [];
     progressRef.current = 0;
-    puzzleSolvedRef.current = false;
+    const solvedBeforeSolution = puzzleSolvedRef.current;
 
     const created = createAtomicPosition(solutionHistory.fens[clampedIndex]);
     if (!created.ok) return;
@@ -451,7 +452,7 @@ export const Chessboard = ({
     syncBoard(created.position, solutionHistory.lastMoves[clampedIndex], {
       showWrongMove: false,
       showRetryMove: false,
-      solved: false,
+      solved: solvedBeforeSolution,
       viewingSolution: true,
       solutionLineIndex: lineIndex,
       solutionLines: displaySolutionLinesRef.current,
@@ -568,20 +569,13 @@ export const Chessboard = ({
         .map((entry) => entry.key),
     );
 
-    const retryMoves = new Set(
-      candidates
-        .map((line) => line[progress])
-        .filter((entry) => entry && entry.questionable)
-        .map((entry) => entry.key),
-    );
-
     if (!accepted.has(userMoveKey)) {
-      const isRetryMove = retryMoves.has(userMoveKey);
+      moveLockRef.current = true;
       syncBoard(position, undefined, {
-        showWrongMove: !isRetryMove,
-        showRetryMove: isRetryMove,
+        showWrongMove: true,
+        showRetryMove: false,
         solved: false,
-        status: "Try again",
+        status: "Incorrect",
       });
       return;
     }
@@ -736,6 +730,24 @@ export const Chessboard = ({
   }, [solutionNavigation, onNavigateHandled]);
 
   useEffect(() => {
+    if (!retrySignal) return;
+
+    const position = positionRef.current;
+    if (!position || showSolutionRef.current) return;
+
+    const history = historyRef.current;
+    clearPendingPromotion();
+    moveLockRef.current = false;
+
+    syncBoard(position, history.lastMoves[history.index], {
+      showWrongMove: false,
+      showRetryMove: false,
+      solved: puzzleSolvedRef.current,
+      status: getStatus(position),
+    });
+  }, [retrySignal]);
+
+  useEffect(() => {
     const onKeyDown = (event) => {
       const isInputTarget =
         event.target instanceof HTMLElement &&
@@ -880,7 +892,7 @@ export const Chessboard = ({
         <div
           id="promotion-choice"
           className={`cg-wrap ${pendingPromotion.vertical}`}
-          aria-label="Choose promotion piece"
+          aria-label="Select promotion piece"
           onContextMenu={(event) => event.preventDefault()}
         >
           {pendingPromotion.choices.map((role, index) => (
