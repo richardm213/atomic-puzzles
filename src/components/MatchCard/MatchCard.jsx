@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { LichessGameLink } from "../LichessGameLink/LichessGameLink";
 import { formatLocalDateTime, formatScore, formatSignedDecimal } from "../../utils/formatters";
 import "./MatchCard.css";
 
@@ -36,19 +37,9 @@ export const MatchCard = ({ match, matchKey, isExpanded, onToggle }) => (
     </div>
     <div className="matchCardMeta">
       <span>
-        {match.firstGameId === "—" ? (
-          formatLocalDateTime(match.startTs)
-        ) : (
-          <a
-            className="rankingLink"
-            href={`https://lichess.org/${encodeURIComponent(match.firstGameId)}`}
-            target="_blank"
-            rel="noreferrer"
-            onClick={(event) => event.stopPropagation()}
-          >
-            {formatLocalDateTime(match.startTs)}
-          </a>
-        )}
+        <LichessGameLink gameId={match.firstGameId} onClick={(event) => event.stopPropagation()}>
+          {formatLocalDateTime(match.startTs)}
+        </LichessGameLink>
       </span>
       <span>TC {match.timeControl}</span>
       <span>Source: {match.sourceValue}</span>
@@ -94,19 +85,9 @@ export const MatchCard = ({ match, matchKey, isExpanded, onToggle }) => (
               <span>Game {game.index + 1}</span>
               <span>{game.resultLabel}</span>
               <span>
-                {game.id === "—" ? (
-                  "—"
-                ) : (
-                  <a
-                    className="rankingLink"
-                    href={`https://lichess.org/${encodeURIComponent(game.id)}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={(event) => event.stopPropagation()}
-                  >
-                    {game.id}
-                  </a>
-                )}
+                <LichessGameLink gameId={game.id} onClick={(event) => event.stopPropagation()}>
+                  {game.id}
+                </LichessGameLink>
               </span>
             </li>
           ))}

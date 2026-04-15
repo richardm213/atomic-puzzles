@@ -20,6 +20,14 @@ const monthNames = [
   "Dec",
 ];
 
+const rankingColumns = [
+  { key: "rank", label: "#" },
+  { key: "username", label: "Player" },
+  { key: "score", label: "Score" },
+  { key: "rd", label: "RD" },
+  { key: "games", label: "Games" },
+];
+
 const monthLabelFromDate = (date) =>
   date.toLocaleString("en-US", {
     month: "long",
@@ -44,6 +52,11 @@ const readableMonthLabel = (monthKey) => {
   const date = monthDateFromMonthKey(monthKey);
   if (!date) return monthKey || "Unknown month";
   return monthLabelFromDate(date);
+};
+
+const sortIndicator = (sortKey, sortDirection, columnKey) => {
+  if (sortKey !== columnKey) return "";
+  return sortDirection === "asc" ? "↑" : "↓";
 };
 
 const allMonthsFromJan2023 = () => {
@@ -212,43 +225,17 @@ const LeaderboardView = () => {
             <table className="rankingsTable">
               <thead>
                 <tr>
-                  <th>
-                    <button type="button" className="sortButton" onClick={() => handleSort("rank")}>
-                      # {sortKey === "rank" ? (sortDirection === "asc" ? "↑" : "↓") : ""}
-                    </button>
-                  </th>
-                  <th>
-                    <button
-                      type="button"
-                      className="sortButton"
-                      onClick={() => handleSort("username")}
-                    >
-                      Player {sortKey === "username" ? (sortDirection === "asc" ? "↑" : "↓") : ""}
-                    </button>
-                  </th>
-                  <th>
-                    <button
-                      type="button"
-                      className="sortButton"
-                      onClick={() => handleSort("score")}
-                    >
-                      Score {sortKey === "score" ? (sortDirection === "asc" ? "↑" : "↓") : ""}
-                    </button>
-                  </th>
-                  <th>
-                    <button type="button" className="sortButton" onClick={() => handleSort("rd")}>
-                      RD {sortKey === "rd" ? (sortDirection === "asc" ? "↑" : "↓") : ""}
-                    </button>
-                  </th>
-                  <th>
-                    <button
-                      type="button"
-                      className="sortButton"
-                      onClick={() => handleSort("games")}
-                    >
-                      Games {sortKey === "games" ? (sortDirection === "asc" ? "↑" : "↓") : ""}
-                    </button>
-                  </th>
+                  {rankingColumns.map((column) => (
+                    <th key={column.key}>
+                      <button
+                        type="button"
+                        className="sortButton"
+                        onClick={() => handleSort(column.key)}
+                      >
+                        {column.label} {sortIndicator(sortKey, sortDirection, column.key)}
+                      </button>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>

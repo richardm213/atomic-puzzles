@@ -13,6 +13,8 @@ import {
   winnerToFullWord,
 } from "../../utils/matchTransforms";
 import { formatLocalDateTime, formatScore, formatSignedDecimal } from "../../utils/formatters";
+import { LichessGameLink } from "../../components/LichessGameLink/LichessGameLink";
+import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFilterChecks";
 
 const normalizeH2HMatches = (matches, mode, playerA, playerB) => {
   const playerALower = playerA.toLowerCase();
@@ -119,6 +121,13 @@ const computeGameScore = (matches) => {
 };
 
 const defaultSources = { arena: true, friend: true, lobby: true };
+const knownSources = Object.keys(defaultSources);
+const modeStatLabels = {
+  rank: "Rank",
+  rating: "Rating",
+  rd: "RD",
+  peak: "Peak",
+};
 
 const matchSlugSeparator = "-vs-";
 
@@ -172,12 +181,8 @@ export const H2HPage = () => {
         if (filters.timeControl !== "all" && match.timeControl !== filters.timeControl)
           return false;
 
-        if (["arena", "friend", "lobby"].includes(match.source) && !filters.sources[match.source]) {
-          return false;
-        }
-        if (match.source === "unknown" && !Object.values(filters.sources).some(Boolean)) {
-          return false;
-        }
+        if (match.source === "unknown") return Object.values(filters.sources).some(Boolean);
+        if (knownSources.includes(match.source)) return filters.sources[match.source];
 
         return true;
       }),
@@ -294,21 +299,21 @@ export const H2HPage = () => {
 
   const player1Snapshot = playerSnapshots[loadedPlayer1.toLowerCase()] || {};
   const player2Snapshot = playerSnapshots[loadedPlayer2.toLowerCase()] || {};
+  const setSourceFilter = (source, checked) => {
+    setFilters((current) => ({
+      ...current,
+      sources: { ...current.sources, [source]: checked },
+    }));
+  };
 
   const renderModeStats = (modeData) => (
     <>
-      <p className="h2hModeMeta">
-        Rank: <strong>{modeData.rank || "—"}</strong>
-      </p>
-      <p className="h2hModeMeta">
-        Rating: <strong>{modeData.rating || "—"}</strong>
-      </p>
-      <p className="h2hModeMeta">
-        RD: <strong>{modeData.rd || "—"}</strong>
-      </p>
-      <p className="h2hModeMeta">
-        Peak: <strong>{modeData.peak || "—"}</strong>
-      </p>
+      {["rank", "rating", "rd", "peak"].map((key) => (
+        <p key={key} className="h2hModeMeta">
+          <span>{modeStatLabels[key]}: </span>
+          <strong>{modeData[key] || "—"}</strong>
+        </p>
+      ))}
     </>
   );
 
@@ -466,26 +471,7 @@ export const H2HPage = () => {
             </div>
 
             <h2>Match History</h2>
-            <div className="opponentRatingFilter">
-              <span className="statusLabel">Source filter</span>
-              <div className="sourceFilterChecks">
-                {["arena", "friend", "lobby"].map((source) => (
-                  <label key={source} className="sourceFilterCheck">
-                    <input
-                      type="checkbox"
-                      checked={filters.sources[source]}
-                      onChange={(event) =>
-                        setFilters((current) => ({
-                          ...current,
-                          sources: { ...current.sources, [source]: event.target.checked },
-                        }))
-                      }
-                    />
-                    <span>{source}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
+            <SourceFilterChecks values={filters.sources} onChange={setSourceFilter} />
 
             <table className="h2hHistoryTable">
               <thead>
@@ -512,19 +498,12 @@ export const H2HPage = () => {
                         }
                       >
                         <td>
-                          {match.firstGameId === "—" ? (
-                            formatLocalDateTime(match.startTs)
-                          ) : (
-                            <a
-                              className="rankingLink"
-                              href={`https://lichess.org/${encodeURIComponent(match.firstGameId)}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              onClick={(event) => event.stopPropagation()}
-                            >
-                              {formatLocalDateTime(match.startTs)}
-                            </a>
-                          )}
+                          <LichessGameLink
+                            gameId={match.firstGameId}
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            {formatLocalDateTime(match.startTs)}
+                          </LichessGameLink>
                         </td>
                         <td>{match.timeControl}</td>
                         <td>{match.winner}</td>
@@ -585,18 +564,7 @@ export const H2HPage = () => {
                                   <span>Game {game.index + 1}</span>
                                   <span>{game.resultLabel}</span>
                                   <span>
-                                    {game.id === "—" ? (
-                                      "—"
-                                    ) : (
-                                      <a
-                                        className="rankingLink"
-                                        href={`https://lichess.org/${encodeURIComponent(game.id)}`}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                      >
-                                        {game.id}
-                                      </a>
-                                    )}
+                                    <LichessGameLink gameId={game.id}>{game.id}</LichessGameLink>
                                   </span>
                                 </li>
                               ))}

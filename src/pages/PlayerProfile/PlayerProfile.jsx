@@ -31,7 +31,32 @@ import {
   formatSignedDecimal,
 } from "../../utils/formatters";
 import { loadRawMatchesByMode, normalizeMatches } from "../../lib/matchData";
+import { DualRangeSlider } from "../../components/DualRangeSlider/DualRangeSlider";
+import { LichessGameLink } from "../../components/LichessGameLink/LichessGameLink";
+import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { ProfileMetricCard } from "../../components/ProfileMetricCard/ProfileMetricCard";
+
+const countOptions = [5, 10, 20];
+
+const buildMatchFilters = (username, filters) => {
+  const queryFilters = { username };
+  const { timeControlInitialFilter, timeControlIncrementFilter } = filters;
+  const timeControl =
+    timeControlInitialFilter !== "all" && timeControlIncrementFilter !== "all"
+      ? `${timeControlInitialFilter}+${timeControlIncrementFilter}`
+      : "";
+
+  if (timeControl) queryFilters.timeControl = timeControl;
+  if (
+    filters.opponentRatingMin !== defaultRatingMin ||
+    filters.opponentRatingMax !== defaultRatingMax
+  ) {
+    queryFilters.opponentRatingMin = filters.opponentRatingMin;
+    queryFilters.opponentRatingMax = filters.opponentRatingMax;
+  }
+
+  return queryFilters;
+};
 
 export const PlayerProfilePage = ({ username }) => {
   const [selectedMode, setSelectedMode] = useState("blitz");
@@ -74,25 +99,8 @@ export const PlayerProfilePage = ({ username }) => {
     setLoadingMatches(true);
     setError("");
     try {
-      const selectedInitial = nextAppliedFilters.timeControlInitialFilter;
-      const selectedIncrement = nextAppliedFilters.timeControlIncrementFilter;
-      const timeControl =
-        selectedInitial !== "all" && selectedIncrement !== "all"
-          ? `${selectedInitial}+${selectedIncrement}`
-          : "";
-      const queryFilters = { username };
-      if (timeControl) {
-        queryFilters.timeControl = timeControl;
-      }
-      const isDefaultOpponentRatingRange =
-        nextAppliedFilters.opponentRatingMin === defaultRatingMin &&
-        nextAppliedFilters.opponentRatingMax === defaultRatingMax;
-      if (!isDefaultOpponentRatingRange) {
-        queryFilters.opponentRatingMin = nextAppliedFilters.opponentRatingMin;
-        queryFilters.opponentRatingMax = nextAppliedFilters.opponentRatingMax;
-      }
       const loaded = await loadRawMatchesByMode(mode, {
-        filters: queryFilters,
+        filters: buildMatchFilters(username, nextAppliedFilters),
         page: nextPage,
         pageSize,
       });
@@ -215,9 +223,11 @@ export const PlayerProfilePage = ({ username }) => {
                   value={bestWinCount}
                   onChange={(event) => setBestWinCount(Number(event.target.value))}
                 >
-                  <option value={5}>5</option>
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
+                  {countOptions.map((value) => (
+                    <option key={value} value={value}>
+                      {value}
+                    </option>
+                  ))}
                 </select>
               </label>
             </div>
@@ -237,18 +247,9 @@ export const PlayerProfilePage = ({ username }) => {
                       </Link>
                     </span>
                     <span className="profileBestWinDate">
-                      {match.firstGameId === "—" ? (
-                        formatLocalDateTime(match.startTs)
-                      ) : (
-                        <a
-                          className="rankingLink"
-                          href={`https://lichess.org/${encodeURIComponent(match.firstGameId)}`}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          {formatLocalDateTime(match.startTs)}
-                        </a>
-                      )}
+                      <LichessGameLink gameId={match.firstGameId}>
+                        {formatLocalDateTime(match.startTs)}
+                      </LichessGameLink>
                     </span>
                   </li>
                 ))}
@@ -281,9 +282,11 @@ export const PlayerProfilePage = ({ username }) => {
                   value={bestMonthRankCount}
                   onChange={(event) => setBestMonthRankCount(Number(event.target.value))}
                 >
-                  <option value={5}>5</option>
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
+                  {countOptions.map((value) => (
+                    <option key={value} value={value}>
+                      {value}
+                    </option>
+                  ))}
                 </select>
               </label>
             </div>
@@ -313,9 +316,11 @@ export const PlayerProfilePage = ({ username }) => {
                   value={recentMonthRankCount}
                   onChange={(event) => setRecentMonthRankCount(Number(event.target.value))}
                 >
-                  <option value={5}>5</option>
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
+                  {countOptions.map((value) => (
+                    <option key={value} value={value}>
+                      {value}
+                    </option>
+                  ))}
                 </select>
               </label>
             </div>
@@ -408,88 +413,30 @@ export const PlayerProfilePage = ({ username }) => {
           </button>
         </div>
 
-        <div className="opponentRatingFilter">
-          <label htmlFor="match-length-min">
-            Match length range: {matchLengthMin} -<span> </span>
-            {matchLengthMax >= matchLengthBounds.max ? `${matchLengthBounds.max}+` : matchLengthMax}
-          </label>
-          <div className="dualRangeSlider">
-            <div className="dualRangeTrack" />
-            <div
-              className="dualRangeSelected"
-              style={{
-                left: `${((matchLengthMin - matchLengthBounds.min) / (matchLengthBounds.max - matchLengthBounds.min)) * 100}%`,
-                right: `${100 - ((matchLengthMax - matchLengthBounds.min) / (matchLengthBounds.max - matchLengthBounds.min)) * 100}%`,
-              }}
-            />
-            <input
-              id="match-length-min"
-              className="dualRangeInput"
-              type="range"
-              min={matchLengthBounds.min}
-              max={matchLengthBounds.max}
-              step={1}
-              value={matchLengthMin}
-              onChange={(event) => {
-                const nextMin = Number(event.target.value);
-                setMatchLengthMin(Math.min(nextMin, matchLengthMax));
-              }}
-            />
-            <input
-              className="dualRangeInput"
-              type="range"
-              min={matchLengthBounds.min}
-              max={matchLengthBounds.max}
-              step={1}
-              value={matchLengthMax}
-              onChange={(event) => {
-                const nextMax = Number(event.target.value);
-                setMatchLengthMax(Math.max(nextMax, matchLengthMin));
-              }}
-            />
-          </div>
-        </div>
+        <DualRangeSlider
+          id="match-length-min"
+          label={`Match length range: ${matchLengthMin} - ${
+            matchLengthMax >= matchLengthBounds.max ? `${matchLengthBounds.max}+` : matchLengthMax
+          }`}
+          min={matchLengthBounds.min}
+          max={matchLengthBounds.max}
+          lowerValue={matchLengthMin}
+          upperValue={matchLengthMax}
+          onLowerChange={setMatchLengthMin}
+          onUpperChange={setMatchLengthMax}
+        />
 
-        <div className="opponentRatingFilter">
-          <label htmlFor="opponent-rating-min">
-            Opponent rating range: {opponentRatingMin} - {opponentRatingMax}
-          </label>
-          <div className="dualRangeSlider">
-            <div className="dualRangeTrack" />
-            <div
-              className="dualRangeSelected"
-              style={{
-                left: `${((opponentRatingMin - opponentRatingSliderMin) / (opponentRatingSliderMax - opponentRatingSliderMin)) * 100}%`,
-                right: `${100 - ((opponentRatingMax - opponentRatingSliderMin) / (opponentRatingSliderMax - opponentRatingSliderMin)) * 100}%`,
-              }}
-            />
-            <input
-              id="opponent-rating-min"
-              className="dualRangeInput"
-              type="range"
-              min={opponentRatingSliderMin}
-              max={opponentRatingSliderMax}
-              step={10}
-              value={opponentRatingMin}
-              onChange={(event) => {
-                const nextMin = Number(event.target.value);
-                setOpponentRatingMin(Math.min(nextMin, opponentRatingMax));
-              }}
-            />
-            <input
-              className="dualRangeInput"
-              type="range"
-              min={opponentRatingSliderMin}
-              max={opponentRatingSliderMax}
-              step={10}
-              value={opponentRatingMax}
-              onChange={(event) => {
-                const nextMax = Number(event.target.value);
-                setOpponentRatingMax(Math.max(nextMax, opponentRatingMin));
-              }}
-            />
-          </div>
-        </div>
+        <DualRangeSlider
+          id="opponent-rating-min"
+          label={`Opponent rating range: ${opponentRatingMin} - ${opponentRatingMax}`}
+          min={opponentRatingSliderMin}
+          max={opponentRatingSliderMax}
+          step={10}
+          lowerValue={opponentRatingMin}
+          upperValue={opponentRatingMax}
+          onLowerChange={setOpponentRatingMin}
+          onUpperChange={setOpponentRatingMax}
+        />
 
         {error ? <div className="errorText">{error}</div> : null}
 
@@ -523,19 +470,12 @@ export const PlayerProfilePage = ({ username }) => {
                       onClick={() => toggleExpandedMatchKey(matchKey)}
                     >
                       <td>
-                        {match.firstGameId === "—" ? (
-                          formatLocalDateTime(match.startTs)
-                        ) : (
-                          <a
-                            className="rankingLink"
-                            href={`https://lichess.org/${encodeURIComponent(match.firstGameId)}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            onClick={(event) => event.stopPropagation()}
-                          >
-                            {formatLocalDateTime(match.startTs)}
-                          </a>
-                        )}
+                        <LichessGameLink
+                          gameId={match.firstGameId}
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          {formatLocalDateTime(match.startTs)}
+                        </LichessGameLink>
                       </td>
                       <td>
                         <Link
@@ -568,18 +508,7 @@ export const PlayerProfilePage = ({ username }) => {
                                     game.playerScoreAfter,
                                   )} - ${formatScore(game.opponentScoreAfter)}`}
                                   <span> • </span>
-                                  {game.id === "—" ? (
-                                    "—"
-                                  ) : (
-                                    <a
-                                      className="rankingLink"
-                                      href={`https://lichess.org/${encodeURIComponent(game.id)}`}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                    >
-                                      {game.id}
-                                    </a>
-                                  )}
+                                  <LichessGameLink gameId={game.id}>{game.id}</LichessGameLink>
                                 </li>
                               ))}
                             </ul>
@@ -601,25 +530,12 @@ export const PlayerProfilePage = ({ username }) => {
           </table>
         </div>
 
-        <div className="paginationRow">
-          <button
-            type="button"
-            onClick={() => setPage((current) => Math.max(1, current - 1))}
-            disabled={currentPage <= 1}
-          >
-            Previous
-          </button>
-          <span>
-            Page {currentPage} / {totalPages}
-          </span>
-          <button
-            type="button"
-            onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-            disabled={currentPage >= totalPages}
-          >
-            Next
-          </button>
-        </div>
+        <PaginationRow
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          formatLabel={(current, total) => `Page ${current} / ${total}`}
+        />
       </div>
     </div>
   );

@@ -12,6 +12,7 @@ export const TopNav = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef(null);
   const navigate = useNavigate();
+  const trimmedSearchQuery = searchQuery.trim();
 
   useEffect(() => {
     if (!searchOpen) return;
@@ -20,9 +21,10 @@ export const TopNav = () => {
 
   const handleSearchSubmit = (event) => {
     event.preventDefault();
+    if (!trimmedSearchQuery) return;
     navigate({
       to: "/@/$username",
-      params: { username: searchQuery },
+      params: { username: trimmedSearchQuery },
     });
     setSearchOpen(false);
   };
@@ -82,7 +84,12 @@ export const TopNav = () => {
             >
               <i className="fa-solid fa-magnifying-glass" aria-hidden="true" />
             </button>
-            <button className="navSearchGo" type="submit" tabIndex={searchOpen ? 0 : -1}>
+            <button
+              className="navSearchGo"
+              type="submit"
+              tabIndex={searchOpen ? 0 : -1}
+              disabled={!trimmedSearchQuery}
+            >
               Go
             </button>
           </form>

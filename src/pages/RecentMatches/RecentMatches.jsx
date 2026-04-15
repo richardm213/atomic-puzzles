@@ -10,6 +10,9 @@ import {
 } from "../../constants/matches";
 import { toBoundedLengthRange, useMatchLengthRange } from "../../hooks/useMatchLengthRange";
 import { MatchCard } from "../../components/MatchCard/MatchCard";
+import { DualRangeSlider } from "../../components/DualRangeSlider/DualRangeSlider";
+import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
+import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFilterChecks";
 import {
   findRatingDataForPlayer,
   normalizedGamesFromMatch,
@@ -24,6 +27,8 @@ const recentModeOptions = modeOptions;
 const ratingFilterTypeOptions = ["both", "average"];
 const pageSizeOptions = [25, 50, 100, 200];
 const defaultPageSize = 50;
+const defaultSourceFilters = { arena: true, friend: true, lobby: true };
+const knownSourceKeys = Object.keys(defaultSourceFilters);
 
 const normalizeRecentMatches = (matches, mode) =>
   (Array.isArray(matches) ? matches : [])
@@ -157,11 +162,7 @@ export const RecentMatchesPage = () => {
   const [ratingMax, setRatingMax] = useState(defaultRatingMax);
   const [player1Filter, setPlayer1Filter] = useState("");
   const [player2Filter, setPlayer2Filter] = useState("");
-  const [sourceFilters, setSourceFilters] = useState({
-    arena: true,
-    friend: true,
-    lobby: true,
-  });
+  const [sourceFilters, setSourceFilters] = useState(defaultSourceFilters);
   const [startDateFilter, setStartDateFilter] = useState("");
   const [endDateFilter, setEndDateFilter] = useState("");
   const [loadingMatches, setLoadingMatches] = useState(false);
@@ -180,7 +181,7 @@ export const RecentMatchesPage = () => {
     ratingMax: defaultRatingMax,
     player1Filter: "",
     player2Filter: "",
-    sourceFilters: { arena: true, friend: true, lobby: true },
+    sourceFilters: defaultSourceFilters,
     startDateFilter: "",
     endDateFilter: "",
     matchLengthMin: defaultLengthRange.min,
@@ -234,18 +235,9 @@ export const RecentMatchesPage = () => {
         }
 
         const sourceKey = String(match.sourceKey || "unknown").toLowerCase();
-        const enabledSources = Object.entries(appliedFilters.sourceFilters)
-          .filter(([, enabled]) => Boolean(enabled))
-          .map(([key]) => key);
-        if (sourceKey === "unknown" && enabledSources.length === 0) {
-          return false;
-        }
-        if (
-          ["arena", "friend", "lobby"].includes(sourceKey) &&
-          !appliedFilters.sourceFilters[sourceKey]
-        ) {
-          return false;
-        }
+        const anyKnownSourceEnabled = Object.values(appliedFilters.sourceFilters).some(Boolean);
+        if (sourceKey === "unknown") return anyKnownSourceEnabled;
+        if (knownSourceKeys.includes(sourceKey)) return appliedFilters.sourceFilters[sourceKey];
 
         return true;
       }),
@@ -341,6 +333,9 @@ export const RecentMatchesPage = () => {
   }, [currentPage, pageSize, appliedFilters, buildSupabaseFilters]);
 
   const paginatedMatches = filteredMatches;
+  const setSourceFilter = (source, checked) => {
+    setSourceFilters((current) => ({ ...current, [source]: checked }));
+  };
 
   return (
     <div className="rankingsPage">
@@ -442,108 +437,32 @@ export const RecentMatchesPage = () => {
           </label>
         </div>
 
-        <div className="opponentRatingFilter">
-          <span className="statusLabel">Source filter</span>
-          <div className="sourceFilterChecks">
-            {["arena", "friend", "lobby"].map((source) => (
-              <label key={source} className="sourceFilterCheck">
-                <input
-                  type="checkbox"
-                  checked={sourceFilters[source]}
-                  onChange={(event) =>
-                    setSourceFilters((current) => ({ ...current, [source]: event.target.checked }))
-                  }
-                />
-                <span>{source}</span>
-              </label>
-            ))}
-          </div>
-        </div>
+        <SourceFilterChecks values={sourceFilters} onChange={setSourceFilter} />
 
-        <div className="opponentRatingFilter">
-          <label htmlFor="recent-rating-min">
-            {`${ratingFilterType === "both" ? "Both-player rating range" : "Average rating range"}: ${ratingMin} - ${ratingMax}`}
-          </label>
-          <div className="dualRangeSlider">
-            <div className="dualRangeTrack" />
-            <div
-              className="dualRangeSelected"
-              style={{
-                left: `${((ratingMin - opponentRatingSliderMin) / (opponentRatingSliderMax - opponentRatingSliderMin)) * 100}%`,
-                right: `${100 - ((ratingMax - opponentRatingSliderMin) / (opponentRatingSliderMax - opponentRatingSliderMin)) * 100}%`,
-              }}
-            />
-            <input
-              id="recent-rating-min"
-              className="dualRangeInput"
-              type="range"
-              min={opponentRatingSliderMin}
-              max={opponentRatingSliderMax}
-              step={10}
-              value={ratingMin}
-              onChange={(event) => {
-                const nextMin = Number(event.target.value);
-                setRatingMin(Math.min(nextMin, ratingMax));
-              }}
-            />
-            <input
-              className="dualRangeInput"
-              type="range"
-              min={opponentRatingSliderMin}
-              max={opponentRatingSliderMax}
-              step={10}
-              value={ratingMax}
-              onChange={(event) => {
-                const nextMax = Number(event.target.value);
-                setRatingMax(Math.max(nextMax, ratingMin));
-              }}
-            />
-          </div>
-        </div>
+        <DualRangeSlider
+          id="recent-rating-min"
+          label={`${ratingFilterType === "both" ? "Both-player rating range" : "Average rating range"}: ${ratingMin} - ${ratingMax}`}
+          min={opponentRatingSliderMin}
+          max={opponentRatingSliderMax}
+          step={10}
+          lowerValue={ratingMin}
+          upperValue={ratingMax}
+          onLowerChange={setRatingMin}
+          onUpperChange={setRatingMax}
+        />
 
-        <div className="opponentRatingFilter">
-          <label htmlFor="recent-length-min">
-            Match length range: {matchLengthMin} -<span> </span>
-            {matchLengthMax >= appliedMatchBounds.max
-              ? `${appliedMatchBounds.max}+`
-              : matchLengthMax}
-          </label>
-          <div className="dualRangeSlider">
-            <div className="dualRangeTrack" />
-            <div
-              className="dualRangeSelected"
-              style={{
-                left: `${((matchLengthMin - appliedMatchBounds.min) / (appliedMatchBounds.max - appliedMatchBounds.min)) * 100}%`,
-                right: `${100 - ((matchLengthMax - appliedMatchBounds.min) / (appliedMatchBounds.max - appliedMatchBounds.min)) * 100}%`,
-              }}
-            />
-            <input
-              id="recent-length-min"
-              className="dualRangeInput"
-              type="range"
-              min={appliedMatchBounds.min}
-              max={appliedMatchBounds.max}
-              step={1}
-              value={matchLengthMin}
-              onChange={(event) => {
-                const nextMin = Number(event.target.value);
-                setMatchLengthMin(Math.min(nextMin, matchLengthMax));
-              }}
-            />
-            <input
-              className="dualRangeInput"
-              type="range"
-              min={appliedMatchBounds.min}
-              max={appliedMatchBounds.max}
-              step={1}
-              value={matchLengthMax}
-              onChange={(event) => {
-                const nextMax = Number(event.target.value);
-                setMatchLengthMax(Math.max(nextMax, matchLengthMin));
-              }}
-            />
-          </div>
-        </div>
+        <DualRangeSlider
+          id="recent-length-min"
+          label={`Match length range: ${matchLengthMin} - ${
+            matchLengthMax >= appliedMatchBounds.max ? `${appliedMatchBounds.max}+` : matchLengthMax
+          }`}
+          min={appliedMatchBounds.min}
+          max={appliedMatchBounds.max}
+          lowerValue={matchLengthMin}
+          upperValue={matchLengthMax}
+          onLowerChange={setMatchLengthMin}
+          onUpperChange={setMatchLengthMax}
+        />
 
         {error ? <div className="errorText">{error}</div> : null}
 
@@ -583,25 +502,11 @@ export const RecentMatchesPage = () => {
           ) : null}
         </div>
         {filteredMatches.length > 0 ? (
-          <div className="paginationRow">
-            <button
-              type="button"
-              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-              disabled={currentPage <= 1}
-            >
-              Previous
-            </button>
-            <span>
-              Page {currentPage} of {totalPages}
-            </span>
-            <button
-              type="button"
-              onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-              disabled={currentPage >= totalPages}
-            >
-              Next
-            </button>
-          </div>
+          <PaginationRow
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
         ) : null}
       </div>
     </div>
