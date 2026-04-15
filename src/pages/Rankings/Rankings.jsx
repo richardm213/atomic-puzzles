@@ -226,11 +226,10 @@ const LeaderboardView = () => {
                 <i className="fa-solid fa-circle-info" aria-hidden="true" />
               </button>
               <span id="ranking-rules-tooltip" className="rankingsInfoTooltip" role="tooltip">
-                Blitz: &gt;= 20 blitz games in that month.
-                <br />
-                Bullet: &gt;= 50 bullet games in that month.
-                <br />
-                RD must be &lt;= 65.0.
+                <span className="rankingsInfoTooltipTitle">Rating requirements</span>
+                <span>Blitz: &gt;= 20 blitz games in that month</span>
+                <span>Bullet: &gt;= 50 bullet games in that month</span>
+                <span>RD must be &lt;= 65.0</span>
               </span>
             </span>
           </span>
