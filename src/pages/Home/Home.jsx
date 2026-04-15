@@ -1,58 +1,262 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
+import { normalizeUsername } from "../../utils/playerNames";
 import "./Home.css";
 
-const homeActions = [
-  { to: "/solve", label: "Solve Puzzles" },
-  { to: "/rankings", label: "View Rankings" },
-  { to: "/recent", label: "View Recent Matches" },
+const appAssetPath = (pathname = "/") => {
+  const normalized = pathname.startsWith("/") ? pathname : `/${pathname}`;
+  return `${import.meta.env.BASE_URL}${normalized.slice(1)}`;
+};
+
+const featureLinks = [
+  {
+    to: "/solve",
+    eyebrow: "Train",
+    title: "Atomic puzzle runs",
+    body: "Jump into forcing positions, calculate the blast radius, and play the line through on a real board.",
+    action: "Start solving",
+  },
+  {
+    to: "/rankings",
+    eyebrow: "Measure",
+    title: "Monthly ladders",
+    body: "Track blitz and bullet separately, browse past months, and keep the noisy pool honest.",
+    action: "Open rankings",
+  },
+  {
+    to: "/recent",
+    eyebrow: "Scout",
+    title: "Recent match room",
+    body: "Filter new match sets by mode, rating band, source, date, time control, and match length.",
+    action: "See matches",
+  },
+  {
+    to: "/h2h",
+    eyebrow: "Compare",
+    title: "Head-to-head checks",
+    body: "Put two names under the lamp and inspect the rivalry instead of guessing from memory.",
+    action: "Compare players",
+  },
 ];
 
-const homeDescriptions = [
+const boardSquares = [
+  "r",
+  "",
+  "",
+  "k",
+  "",
+  "",
+  "",
+  "r",
+  "",
+  "p",
+  "",
+  "",
+  "q",
+  "",
+  "p",
+  "",
+  "",
+  "",
+  "n",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "P",
+  "",
+  "B",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "N",
+  "",
+  "",
+  "",
+  "",
+  "P",
+  "",
+  "",
+  "",
+  "",
+  "P",
+  "",
+  "R",
+  "",
+  "",
+  "",
+  "K",
+  "",
+  "",
+  "R",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+];
+
+const statCards = [
+  { label: "Modes", value: "Blitz + bullet", detail: "Separate ratings, cleaner comparisons" },
+  { label: "Archive", value: "Since 2023", detail: "Monthly snapshots for form checks" },
+  { label: "Focus", value: "Fair pool", detail: "Cheaters and alt abuse filtered out" },
+];
+
+const principles = [
   {
-    title: "Puzzles and Improvement",
-    body: "Train with tactical puzzle positions to build pattern recognition, improve calculation speed, and perform better in practical atomic games.",
+    title: "Built for atomic, not borrowed from chess",
+    body: "The trainer is tuned around explosions, king safety, and forcing continuations that normal chess tools tend to flatten.",
   },
   {
-    title: "Rankings",
-    body: "View the top atomic blitz and bullet rankings for the current month. Explore historical rankings going back to 2023. Blitz and bullet ratings are tracked separately because skill transfer is not one-to-one: hyperbullet farmers and stronger blitz players often excel in very different ways.",
+    title: "A map of the active scene",
+    body: "Rankings, match filters, player pages, and H2H pages give the site a memory of who is playing well right now.",
   },
   {
-    title: "Player Stats and Fairness",
-    body: "Stats are tracked for each player account individually so you can review account-level progress over time. Cheaters and alt abusers are excluded from rankings and rating calculations to keep the system as fair and meaningful as possible.",
+    title: "Practice with receipts",
+    body: "Every route leads back to games, puzzles, ratings, or match records so improvement feels grounded instead of vibes-only.",
   },
-  {
-    title: "Recent Matches",
-    body: "Open recent matches for the latest competitive results and momentum checks across the strongest active players.",
-  },
+];
+
+const activityFeed = [
+  "Start a random tactic and play the whole candidate line.",
+  "Check who is climbing this month in blitz or bullet.",
+  "Search any player page from the nav or the command box here.",
+  "Open a recent match and inspect ratings, score flow, and source.",
 ];
 
 export const HomePage = () => {
+  const [playerQuery, setPlayerQuery] = useState("");
+  const navigate = useNavigate();
+  const trimmedPlayerQuery = playerQuery.trim();
+
+  const handlePlayerSearch = (event) => {
+    event.preventDefault();
+    if (!trimmedPlayerQuery) return;
+    navigate({
+      to: "/@/$username",
+      params: { username: normalizeUsername(trimmedPlayerQuery) },
+    });
+  };
+
   return (
     <div className="homePage">
-      <div className="panel homePanel">
-        <h1>Atomic Puzzles</h1>
-        <p className="homeIntro">
-          Welcome! This site helps you solve atomic puzzles, sharpen tactical ability, and keep up
-          with the current player rankings and stats.
-        </p>
+      <section className="homeHero" aria-labelledby="home-title">
+        <div className="homeHeroCopy">
+          <div className="homeKicker">
+            <img src={appAssetPath("/favicon.ico")} alt="" width="24" height="24" />
+            Atomic chess study room
+          </div>
+          <h1 id="home-title">Find the move that makes the board disappear.</h1>
+          <p className="homeIntro">
+            Train atomic tactics, watch the strongest players, and turn match data into a sharper
+            feel for who is dangerous, who is farming, and which ideas actually hold up.
+          </p>
 
-        <section className="homeButtonRow">
-          {homeActions.map((action) => (
-            <Link key={action.to} className="primaryCta" to={action.to}>
-              {action.label}
+          <div className="homeHeroActions">
+            <Link className="homePrimaryCta" to="/solve">
+              Start a puzzle
             </Link>
-          ))}
-        </section>
+            <Link className="homeSecondaryCta" to="/recent">
+              Scout recent matches
+            </Link>
+          </div>
 
-        <section className="homeDescriptions">
-          {homeDescriptions.map((description) => (
-            <article key={description.title} className="homeDescriptionCard">
-              <h2>{description.title}</h2>
-              <p>{description.body}</p>
-            </article>
-          ))}
-        </section>
-      </div>
+          <form className="homePlayerSearch" onSubmit={handlePlayerSearch}>
+            <label htmlFor="home-player-search">Look up a player</label>
+            <div className="homeSearchRow">
+              <input
+                id="home-player-search"
+                type="text"
+                value={playerQuery}
+                placeholder="username"
+                onChange={(event) => setPlayerQuery(event.target.value)}
+              />
+              <button type="submit" disabled={!trimmedPlayerQuery}>
+                Open profile
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div className="homeBoardStage" aria-label="Atomic board preview">
+          <div className="homeBoardTopline">
+            <span>Candidate line</span>
+            <strong>Qxf7#</strong>
+          </div>
+          <div className="homeBoard">
+            {boardSquares.map((piece, index) => (
+              <span
+                key={`${piece}-${index}`}
+                className={`homeBoardSquare ${(Math.floor(index / 8) + index) % 2 ? "dark" : "light"} ${
+                  index === 12 || index === 21 || index === 29 ? "blast" : ""
+                }`}
+              >
+                {piece}
+              </span>
+            ))}
+          </div>
+          <div className="homeBoardCaption">
+            <span>King exposure</span>
+            <span>Explosion tactics</span>
+            <span>Forced replies</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="homeStats" aria-label="Site highlights">
+        {statCards.map((stat) => (
+          <article key={stat.label} className="homeStatCard">
+            <span>{stat.label}</span>
+            <strong>{stat.value}</strong>
+            <p>{stat.detail}</p>
+          </article>
+        ))}
+      </section>
+
+      <section className="homeFeatureGrid" aria-label="Primary tools">
+        {featureLinks.map((feature) => (
+          <Link key={feature.to} className="homeFeatureCard" to={feature.to}>
+            <span>{feature.eyebrow}</span>
+            <h2>{feature.title}</h2>
+            <p>{feature.body}</p>
+            <strong>{feature.action}</strong>
+          </Link>
+        ))}
+      </section>
+
+      <section className="homeBottom">
+        <div className="homePrinciples">
+          <span className="homeSectionLabel">What this is becoming</span>
+          <h2>An atomic hub for training, scouting, and receipts.</h2>
+          <div className="homePrincipleList">
+            {principles.map((principle) => (
+              <article key={principle.title}>
+                <h3>{principle.title}</h3>
+                <p>{principle.body}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+
+        <aside className="homeActivity" aria-label="Suggested next steps">
+          <span className="homeSectionLabel">Good next click</span>
+          <ul>
+            {activityFeed.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </aside>
+      </section>
     </div>
   );
 };
