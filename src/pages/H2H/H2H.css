@@ -141,3 +141,80 @@
 .h2hPlayerPanelTopCombined {
   align-items: center;
 }
+
+@media (max-width: 640px) {
+  .h2hPanel {
+    gap: 12px;
+  }
+
+  .h2hPlayerPanel {
+    padding: 10px;
+  }
+
+  .h2hPlayerPanelTop {
+    gap: 8px;
+  }
+
+  .h2hPlayerIdentity {
+    padding-top: 8px;
+  }
+
+  .h2hPlayerIdentity h2 {
+    margin: 0;
+    font-size: 18px;
+    line-height: 1.15;
+  }
+
+  .h2hPlayerNameLink {
+    font-size: 18px;
+  }
+
+  .h2hModeCard h3,
+  .h2hScoreBlock h3 {
+    font-size: 11px;
+  }
+
+  .h2hModeCardBody {
+    gap: 8px;
+  }
+
+  .h2hModeMeta {
+    font-size: 12px;
+  }
+
+  .h2hModeCardScore {
+    font-size: 26px;
+  }
+
+  .h2hHistoryTable {
+    font-size: 13px;
+  }
+
+  .h2hHistoryTable th,
+  .h2hHistoryTable td {
+    padding: 8px 6px;
+  }
+}
+
+@media (max-width: 390px) {
+  .h2hPlayerPanelTop {
+    gap: 6px;
+  }
+
+  .h2hPlayerIdentity h2,
+  .h2hPlayerNameLink {
+    font-size: 16px;
+  }
+
+  .h2hModeMeta {
+    font-size: 11px;
+  }
+
+  .h2hModeCardScore {
+    font-size: 23px;
+  }
+
+  .h2hHistoryTable {
+    font-size: 12px;
+  }
+}
