@@ -1,7 +1,32 @@
 :root {
+  --color-page-top: #111827;
+  --color-page-bottom: #0b1220;
+  --color-panel: rgba(15, 23, 42, 0.82);
+  --color-panel-strong: #0f172a;
+  --color-panel-deep: #020617;
+  --color-border: rgba(148, 163, 184, 0.16);
+  --color-border-strong: rgba(255, 255, 255, 0.14);
+  --color-text: #e8ecf3;
+  --color-heading: #f8fafc;
+  --color-muted: #c9d3e3;
+  --color-subtle: #94a3b8;
+  --color-primary: #1d4ed8;
+  --color-primary-soft: #93c5fd;
+  --color-primary-pale: #bfdbfe;
+  --color-cyan: #0e7490;
+  --color-cyan-bright: #38bdf8;
+  --color-success: #86efac;
+  --color-warning: #facc15;
+  --color-danger: #fca5a5;
+  --radius-ui: 8px;
+  --shadow-panel: 0 24px 60px rgba(2, 6, 23, 0.34);
+  --page-background:
+    radial-gradient(circle at 14% 10%, rgba(29, 78, 216, 0.18), transparent 28%),
+    radial-gradient(circle at 82% 4%, rgba(14, 116, 144, 0.16), transparent 25%),
+    linear-gradient(180deg, var(--color-page-top) 0%, var(--color-page-bottom) 100%);
   font-family: Inter, Arial, sans-serif;
-  color: #e8ecf3;
-  background: #111827;
+  color: var(--color-text);
+  background: var(--color-page-top);
   -webkit-text-size-adjust: 100%;
 }
 
@@ -13,7 +38,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: linear-gradient(180deg, #111827 0%, #0b1220 100%);
+  background: var(--page-background);
   overflow-x: hidden;
 }
 
@@ -36,6 +61,7 @@ canvas {
   gap: 32px;
   align-items: start;
   justify-content: center;
+  background: var(--page-background);
   padding: max(32px, env(safe-area-inset-top)) max(32px, env(safe-area-inset-right))
     max(32px, env(safe-area-inset-bottom)) max(32px, env(safe-area-inset-left));
 }
@@ -45,6 +71,7 @@ canvas {
   display: flex;
   justify-content: center;
   align-items: flex-start;
+  background: var(--page-background);
   padding: max(32px, env(safe-area-inset-top)) max(32px, env(safe-area-inset-right))
     max(32px, env(safe-area-inset-bottom)) max(32px, env(safe-area-inset-left));
 }
@@ -52,11 +79,11 @@ canvas {
 .panel {
   min-width: 0;
   max-width: 100%;
-  background: rgba(17, 24, 39, 0.82);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 20px;
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
   padding: 24px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--shadow-panel);
 }
 
 .panel h1 {
@@ -67,7 +94,7 @@ canvas {
 .panel p {
   margin: 0 0 20px;
   line-height: 1.5;
-  color: #c9d3e3;
+  color: var(--color-muted);
 }
 
 .controls {
@@ -85,9 +112,9 @@ canvas {
 .controls input[type="text"],
 .controls input[type="date"] {
   border: 1px solid rgba(255, 255, 255, 0.14);
-  background: #0f172a;
-  color: #e8ecf3;
-  border-radius: 12px;
+  background: var(--color-panel-strong);
+  color: var(--color-text);
+  border-radius: var(--radius-ui);
   font-size: 16px;
   padding: 10px 12px;
   min-width: 140px;
@@ -102,13 +129,20 @@ canvas {
 .buttonRow button,
 .analyzeButton {
   border: 1px solid rgba(255, 255, 255, 0.14);
-  background: #0f172a;
-  color: #e8ecf3;
-  border-radius: 12px;
+  background: var(--color-panel-strong);
+  color: var(--color-text);
+  border-radius: var(--radius-ui);
   font-size: 16px;
   padding: 10px 12px;
   text-decoration: none;
   cursor: pointer;
+}
+
+.analyzeButton {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #eff6ff;
+  font-weight: 800;
 }
 
 .buttonRow button:disabled,
@@ -122,12 +156,12 @@ canvas {
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #94a3b8;
+  color: var(--color-subtle);
   margin-bottom: 6px;
 }
 
 .errorText {
-  color: #fca5a5;
+  color: var(--color-danger);
   font-size: 14px;
 }
 
@@ -135,7 +169,7 @@ canvas {
   margin-top: 18px;
   display: flex;
   justify-content: space-between;
-  color: #c9d3e3;
+  color: var(--color-muted);
   font-size: 14px;
 }
 
@@ -143,12 +177,12 @@ canvas {
   margin-top: 12px;
   padding: 12px;
   border-radius: 10px;
-  background: #0f172a;
-  color: #c9d3e3;
+  background: var(--color-panel-strong);
+  color: var(--color-muted);
 }
 
 .rankingLink {
-  color: #93c5fd;
+  color: var(--color-primary-soft);
   text-decoration: none;
 }
 
@@ -182,7 +216,7 @@ canvas {
   }
 
   .panel {
-    border-radius: 14px;
+    border-radius: var(--radius-ui);
     padding: 16px;
   }
 

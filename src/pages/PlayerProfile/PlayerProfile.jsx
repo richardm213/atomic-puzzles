@@ -632,14 +632,7 @@ export const PlayerProfilePage = ({ username }) => {
                             {formatScore(match.playerScore)}
                           </span>
                           <span className="scoreDash">-</span>
-                          <span
-                            className={`profileScoreValue${scoreTone(
-                              match.opponentScore,
-                              match.playerScore,
-                            )}`}
-                          >
-                            {formatScore(match.opponentScore)}
-                          </span>
+                          <span className="profileScoreValue">{formatScore(match.opponentScore)}</span>
                         </span>
                       </td>
                       <td>

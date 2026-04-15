@@ -1,10 +1,7 @@
 .homePage {
   min-height: calc(100vh - 58px);
-  color: #e8ecf3;
-  background:
-    radial-gradient(circle at 14% 10%, rgba(29, 78, 216, 0.18), transparent 28%),
-    radial-gradient(circle at 82% 4%, rgba(14, 116, 144, 0.16), transparent 25%),
-    linear-gradient(180deg, #111827 0%, #0b1220 100%);
+  color: var(--color-text);
+  background: var(--page-background);
   display: grid;
   gap: 26px;
   padding: max(42px, env(safe-area-inset-top)) max(30px, env(safe-area-inset-right))
@@ -39,9 +36,9 @@
   align-items: center;
   gap: 10px;
   border: 1px solid rgba(148, 163, 184, 0.18);
-  border-radius: 8px;
-  background: rgba(15, 23, 42, 0.82);
-  color: #bfdbfe;
+  border-radius: var(--radius-ui);
+  background: var(--color-panel);
+  color: var(--color-primary-pale);
   font-size: 14px;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -58,7 +55,7 @@
 .homeHero h1 {
   max-width: 760px;
   margin: 0;
-  color: #f8fafc;
+  color: var(--color-heading);
   font-size: 56px;
   line-height: 1.02;
   letter-spacing: 0;
@@ -67,7 +64,7 @@
 .homeIntro {
   max-width: 700px;
   margin: 0;
-  color: #c9d3e3;
+  color: var(--color-muted);
   font-size: 19px;
   line-height: 1.65;
 }
@@ -94,22 +91,22 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: var(--radius-ui);
   padding: 12px 16px;
   font-weight: 800;
   text-decoration: none;
 }
 
 .homePrimaryCta {
-  border: 1px solid #1d4ed8;
-  background: #1d4ed8;
+  border: 1px solid var(--color-primary);
+  background: var(--color-primary);
   color: #eff6ff;
 }
 
 .homeSecondaryCta {
   border: 1px solid rgba(147, 197, 253, 0.35);
-  background: #0f172a;
-  color: #bfdbfe;
+  background: var(--color-panel-strong);
+  color: var(--color-primary-pale);
 }
 
 .homePrimaryCta:hover,
@@ -127,13 +124,13 @@
   display: grid;
   gap: 8px;
   border: 1px solid rgba(148, 163, 184, 0.16);
-  border-radius: 8px;
-  background: rgba(15, 23, 42, 0.82);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel);
   padding: 12px;
 }
 
 .homePlayerSearch label {
-  color: #94a3b8;
+  color: var(--color-subtle);
   font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -149,15 +146,15 @@
 .homeSearchRow input,
 .homeSearchRow button {
   min-height: 44px;
-  border-radius: 8px;
+  border-radius: var(--radius-ui);
   font: inherit;
 }
 
 .homeSearchRow input {
   min-width: 0;
   border: 1px solid rgba(255, 255, 255, 0.14);
-  background: #0f172a;
-  color: #e8ecf3;
+  background: var(--color-panel-strong);
+  color: var(--color-text);
   padding: 10px 12px;
 }
 
@@ -166,9 +163,9 @@
 }
 
 .homeSearchRow button {
-  border: 1px solid #0e7490;
-  background: #0e7490;
-  color: #ecfeff;
+  border: 1px solid var(--color-primary);
+  background: var(--color-primary);
+  color: #eff6ff;
   cursor: pointer;
   font-weight: 800;
   padding: 10px 14px;
@@ -184,7 +181,7 @@
   justify-self: end;
   width: min(480px, 100%);
   aspect-ratio: 870 / 990;
-  border-radius: 8px;
+  border-radius: var(--radius-ui);
   background: rgba(15, 23, 42, 0.54);
   box-shadow: 0 28px 42px rgba(2, 6, 23, 0.42);
   overflow: hidden;
@@ -198,7 +195,7 @@
   height: 100%;
   aspect-ratio: 870 / 990;
   border: 1px solid rgba(148, 163, 184, 0.18);
-  border-radius: 8px;
+  border-radius: var(--radius-ui);
   object-fit: cover;
   opacity: 0;
   animation: homePuzzleFade 72s ease-in-out infinite;
@@ -252,8 +249,8 @@
 .homePrinciples,
 .homeActivity {
   border: 1px solid rgba(148, 163, 184, 0.16);
-  border-radius: 8px;
-  background: rgba(15, 23, 42, 0.82);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel);
 }
 
 .homeStatCard {
@@ -267,7 +264,7 @@
 .homeStatCard span,
 .homeFeatureCard span,
 .homeSectionLabel {
-  color: #94a3b8;
+  color: var(--color-subtle);
   font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.1em;
@@ -275,7 +272,7 @@
 }
 
 .homeStatCard strong {
-  color: #f8fafc;
+  color: var(--color-heading);
   font-size: 24px;
 }
 
@@ -284,7 +281,7 @@
 .homePrincipleList p,
 .homeActivity li {
   margin: 0;
-  color: #c9d3e3;
+  color: var(--color-muted);
   line-height: 1.55;
 }
 
@@ -311,14 +308,14 @@
 
 .homeFeatureCard h2 {
   margin: 0;
-  color: #f8fafc;
+  color: var(--color-heading);
   font-size: 22px;
   line-height: 1.18;
 }
 
 .homeFeatureCard strong {
   align-self: end;
-  color: #93c5fd;
+  color: var(--color-primary-soft);
   margin-top: auto;
 }
 
@@ -336,7 +333,7 @@
 .homePrinciples h2 {
   max-width: 650px;
   margin: 10px 0 22px;
-  color: #f8fafc;
+  color: var(--color-heading);
   font-size: 32px;
   line-height: 1.12;
 }
@@ -353,7 +350,7 @@
 
 .homePrincipleList h3 {
   margin: 0 0 8px;
-  color: #e8ecf3;
+  color: var(--color-text);
   font-size: 17px;
   line-height: 1.25;
 }
@@ -367,7 +364,7 @@
 }
 
 .homeActivity li {
-  border-left: 3px solid #38bdf8;
+  border-left: 3px solid var(--color-cyan-bright);
   padding-left: 12px;
 }
 

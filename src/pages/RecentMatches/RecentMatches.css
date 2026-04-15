@@ -10,7 +10,7 @@
 .recentMatchesPanel > p {
   max-width: 520px;
   margin-bottom: 22px;
-  color: #b6c5d8;
+  color: var(--color-muted);
 }
 
 .matchFilterPanel {
@@ -60,14 +60,14 @@
 .recentMatchesPanel .analyzeButton {
   min-height: 42px;
   border-radius: 8px;
-  background: #155e75;
-  border-color: rgba(103, 232, 249, 0.28);
-  color: #ecfeff;
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #eff6ff;
   font-weight: 800;
 }
 
 .recentMatchesPanel .analyzeButton:hover:not(:disabled) {
-  background: #0e7490;
+  background: #1e40af;
 }
 
 .recentMatchesPanel .analyzeButton:disabled {
@@ -150,7 +150,7 @@
 }
 
 .dualRangeSelected {
-  background: linear-gradient(90deg, #22c55e, #38bdf8);
+  background: linear-gradient(90deg, var(--color-primary), var(--color-cyan-bright));
 }
 
 .dualRangeInput {
@@ -211,7 +211,7 @@
 }
 
 .sourceFilterCheck input {
-  accent-color: #22c55e;
+  accent-color: var(--color-primary);
 }
 
 .paginationRow {

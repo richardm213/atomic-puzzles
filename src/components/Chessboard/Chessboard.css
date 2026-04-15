@@ -12,7 +12,7 @@
 
 .cg-board,
 .emptyBoard {
-  border-radius: 18px;
+  border-radius: var(--radius-ui);
   overflow: hidden;
   box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
 }
@@ -44,7 +44,7 @@
 #promotion-choice square:focus-visible {
   border-radius: 0;
   outline: none;
-  box-shadow: inset 0 0 48px 8px #40c49d;
+  box-shadow: inset 0 0 48px 8px var(--color-cyan-bright);
 }
 
 #promotion-choice piece {
@@ -73,6 +73,6 @@
 @media (max-width: 640px) {
   .cg-board,
   .emptyBoard {
-    border-radius: 12px;
+    border-radius: var(--radius-ui);
   }
 }

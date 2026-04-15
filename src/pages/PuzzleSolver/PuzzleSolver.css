@@ -2,18 +2,15 @@
   grid-template-columns: minmax(320px, 430px) minmax(420px, 620px);
   gap: clamp(24px, 5vw, 56px);
   align-items: center;
-  background:
-    radial-gradient(circle at 16% 12%, rgba(64, 196, 157, 0.14), transparent 28%),
-    radial-gradient(circle at 78% 0%, rgba(234, 179, 8, 0.11), transparent 24%),
-    linear-gradient(145deg, #111318 0%, #15191f 48%, #0d1116 100%);
+  background: var(--page-background);
 }
 
 .puzzlePanel {
-  border-radius: 8px;
+  border-radius: var(--radius-ui);
   padding: clamp(18px, 3vw, 28px);
-  background: rgba(22, 25, 30, 0.88);
-  border: 1px solid rgba(236, 240, 243, 0.11);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.38);
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-panel);
   backdrop-filter: blur(16px);
 }
 
@@ -27,7 +24,7 @@
 
 .puzzleEyebrow {
   margin: 0 0 7px;
-  color: #9fb3a9;
+  color: var(--color-subtle);
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.14em;
@@ -36,7 +33,7 @@
 
 .puzzlePanel h1 {
   margin: 0;
-  color: #f5f1e8;
+  color: var(--color-heading);
   font-size: clamp(30px, 4vw, 44px);
   line-height: 1.02;
   letter-spacing: 0;
@@ -48,14 +45,14 @@
   place-items: center;
   min-width: 76px;
   padding: 10px 12px;
-  border-radius: 8px;
-  background: #20252a;
-  border: 1px solid rgba(245, 241, 232, 0.1);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+  border: 1px solid var(--color-border);
   text-align: center;
 }
 
 .puzzleCount span {
-  color: #f4d06f;
+  color: var(--color-primary-soft);
   font-size: 22px;
   font-weight: 800;
   line-height: 1;
@@ -63,7 +60,7 @@
 
 .puzzleCount small {
   margin-top: 4px;
-  color: #9ca8a2;
+  color: var(--color-subtle);
   font-size: 12px;
 }
 
@@ -79,10 +76,10 @@
   align-items: center;
   justify-content: center;
   min-height: 42px;
-  border-radius: 8px;
-  border: 1px solid rgba(245, 241, 232, 0.12);
-  background: #242a30;
-  color: #f5f1e8;
+  border-radius: var(--radius-ui);
+  border: 1px solid var(--color-border);
+  background: var(--color-panel-strong);
+  color: var(--color-text);
   font-weight: 700;
   text-decoration: none;
   cursor: pointer;
@@ -95,21 +92,21 @@
 
 .puzzleActions button:hover:not(:disabled) {
   transform: translateY(-1px);
-  border-color: rgba(244, 208, 111, 0.45);
-  background: #2d3339;
+  border-color: rgba(147, 197, 253, 0.42);
+  background: rgba(15, 23, 42, 0.98);
 }
 
 .puzzleActions button:focus-visible,
 .fenAnalyzeButton:focus-visible,
 .moveChip:focus-visible,
 .fenDetails:focus-within {
-  outline: 3px solid rgba(64, 196, 157, 0.42);
+  outline: 3px solid rgba(147, 197, 253, 0.42);
   outline-offset: 2px;
 }
 
 .puzzleActions button:disabled,
 .fenAnalyzeButton.disabled {
-  color: #78817c;
+  color: var(--color-subtle);
   opacity: 1;
   pointer-events: none;
 }
@@ -123,14 +120,14 @@
 .detailItem,
 .fenDetails,
 .lineBox {
-  border-radius: 8px;
-  background: rgba(10, 12, 15, 0.36);
-  border: 1px solid rgba(245, 241, 232, 0.09);
+  border-radius: var(--radius-ui);
+  background: rgba(2, 6, 23, 0.18);
+  border: 1px solid rgba(148, 163, 184, 0.12);
 }
 
 .detailItem {
   padding: 12px;
-  color: #eef2ed;
+  color: var(--color-text);
   line-height: 1.35;
 }
 
@@ -138,7 +135,7 @@
   display: grid;
   gap: 8px;
   padding: 12px;
-  color: #c9d0cc;
+  color: var(--color-muted);
 }
 
 .fenHeader {
@@ -159,10 +156,10 @@
   justify-content: center;
   min-height: 30px;
   padding: 5px 9px;
-  border-radius: 8px;
-  border: 1px solid rgba(245, 241, 232, 0.12);
-  background: #242a30;
-  color: #f5f1e8;
+  border-radius: var(--radius-ui);
+  border: 1px solid var(--color-border);
+  background: var(--color-panel-strong);
+  color: var(--color-text);
   font-size: 12px;
   font-weight: 800;
   text-decoration: none;
@@ -175,13 +172,13 @@
 
 .fenAnalyzeButton:hover:not(.disabled) {
   transform: translateY(-1px);
-  border-color: rgba(244, 208, 111, 0.45);
-  background: #2d3339;
+  border-color: rgba(147, 197, 253, 0.42);
+  background: rgba(15, 23, 42, 0.98);
 }
 
 .fenDetails code {
   display: block;
-  color: #b8c0bb;
+  color: var(--color-muted);
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
@@ -205,7 +202,7 @@
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: #89958f;
+  color: var(--color-subtle);
   margin-bottom: 7px;
 }
 
@@ -215,7 +212,7 @@
 
 .lineBox code {
   display: block;
-  color: #cdd6d1;
+  color: var(--color-muted);
   line-height: 1.5;
 }
 
@@ -231,10 +228,10 @@
   justify-content: center;
   width: 32px;
   height: 32px;
-  border: 1px solid rgba(245, 241, 232, 0.12);
-  border-radius: 8px;
-  background: #242a30;
-  color: #f5f1e8;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+  color: var(--color-text);
   cursor: pointer;
   font-size: 14px;
   font-weight: 800;
@@ -246,8 +243,8 @@
 }
 
 .solutionNavButton:hover:not(:disabled) {
-  border-color: rgba(64, 196, 157, 0.42);
-  color: #ffffff;
+  border-color: rgba(147, 197, 253, 0.42);
+  color: var(--color-heading);
 }
 
 .solutionNavButton:disabled {
@@ -260,13 +257,13 @@
   gap: 8px;
   margin-bottom: 12px;
   padding: 10px;
-  border: 1px solid rgba(64, 196, 157, 0.24);
-  border-radius: 8px;
-  background: rgba(64, 196, 157, 0.08);
+  border: 1px solid rgba(147, 197, 253, 0.28);
+  border-radius: var(--radius-ui);
+  background: rgba(29, 78, 216, 0.1);
 }
 
 .solutionOptionsLabel {
-  color: #a8c5ba;
+  color: var(--color-primary-pale);
   font-size: 12px;
   font-weight: 800;
 }
@@ -279,10 +276,10 @@
 
 .solutionOption {
   min-height: 32px;
-  border: 1px solid rgba(64, 196, 157, 0.28);
-  border-radius: 8px;
-  background: #182323;
-  color: #dff5ed;
+  border: 1px solid rgba(147, 197, 253, 0.28);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+  color: var(--color-primary-pale);
   cursor: pointer;
   font-weight: 800;
   padding: 5px 10px;
@@ -293,14 +290,14 @@
 }
 
 .solutionOption:hover {
-  border-color: rgba(64, 196, 157, 0.68);
-  color: #ffffff;
+  border-color: rgba(147, 197, 253, 0.68);
+  color: var(--color-heading);
 }
 
 .solutionOption.active {
-  border-color: rgba(244, 208, 111, 0.72);
-  background: rgba(244, 208, 111, 0.12);
-  color: #fff8df;
+  border-color: rgba(56, 189, 248, 0.72);
+  background: rgba(14, 116, 144, 0.2);
+  color: #ecfeff;
 }
 
 .moveList {
@@ -314,16 +311,16 @@
 }
 
 .variationParen {
-  color: #83908a;
+  color: var(--color-subtle);
   line-height: 30px;
 }
 
 .moveChip {
   min-height: 32px;
-  border: 1px solid rgba(245, 241, 232, 0.12);
-  background: #1f2429;
-  color: #dfe7e2;
-  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-panel-strong);
+  color: var(--color-muted);
+  border-radius: var(--radius-ui);
   padding: 5px 9px;
   cursor: pointer;
   font-weight: 700;
@@ -334,14 +331,14 @@
 }
 
 .moveChip:hover {
-  border-color: rgba(64, 196, 157, 0.42);
-  color: #ffffff;
+  border-color: rgba(147, 197, 253, 0.42);
+  color: var(--color-heading);
 }
 
 .moveChip.active {
-  border-color: rgba(64, 196, 157, 0.78);
-  background: rgba(64, 196, 157, 0.18);
-  color: #eefbf5;
+  border-color: rgba(56, 189, 248, 0.78);
+  background: rgba(14, 116, 144, 0.2);
+  color: #ecfeff;
 }
 
 .boardWrap {
@@ -360,9 +357,9 @@
   width: 100%;
   max-width: 590px;
   padding: 14px;
-  border-radius: 8px;
-  background: rgba(245, 241, 232, 0.06);
-  border: 1px solid rgba(245, 241, 232, 0.1);
+  border-radius: var(--radius-ui);
+  background: rgba(15, 23, 42, 0.54);
+  border: 1px solid rgba(148, 163, 184, 0.18);
   box-shadow: 0 28px 80px rgba(0, 0, 0, 0.42);
   transition:
     border-color 180ms ease,
@@ -378,16 +375,16 @@
 }
 
 .boardFrame.correct {
-  border-color: rgba(64, 196, 157, 0.7);
+  border-color: rgba(56, 189, 248, 0.7);
   box-shadow:
-    0 0 0 4px rgba(64, 196, 157, 0.16),
+    0 0 0 4px rgba(56, 189, 248, 0.16),
     0 28px 80px rgba(0, 0, 0, 0.42);
 }
 
 .boardFrame.retrySuccess {
-  border-color: rgba(244, 208, 111, 0.74);
+  border-color: rgba(147, 197, 253, 0.74);
   box-shadow:
-    0 0 0 4px rgba(244, 208, 111, 0.15),
+    0 0 0 4px rgba(147, 197, 253, 0.15),
     0 28px 80px rgba(0, 0, 0, 0.42);
 }
 
@@ -399,9 +396,9 @@
 }
 
 .boardFrame.retry {
-  border-color: rgba(244, 208, 111, 0.72);
+  border-color: rgba(147, 197, 253, 0.72);
   box-shadow:
-    0 0 0 4px rgba(244, 208, 111, 0.14),
+    0 0 0 4px rgba(147, 197, 253, 0.14),
     0 28px 80px rgba(0, 0, 0, 0.42);
 }
 
@@ -412,22 +409,22 @@
   gap: 11px;
   min-height: 62px;
   padding: 10px 12px;
-  border-radius: 8px;
-  background: #1d2227;
-  border: 1px solid rgba(245, 241, 232, 0.1);
-  color: #dce4df;
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+  border: 1px solid var(--color-border);
+  color: var(--color-muted);
 }
 
 .feedbackBanner.correct {
-  background: linear-gradient(135deg, rgba(35, 82, 65, 0.96), rgba(23, 50, 45, 0.96));
-  border-color: rgba(64, 196, 157, 0.55);
+  background: linear-gradient(135deg, rgba(14, 116, 144, 0.96), rgba(15, 23, 42, 0.96));
+  border-color: rgba(56, 189, 248, 0.55);
   color: #ecfff7;
 }
 
 .feedbackBanner.retrySuccess {
-  background: linear-gradient(135deg, rgba(87, 71, 24, 0.97), rgba(44, 45, 35, 0.97));
-  border-color: rgba(244, 208, 111, 0.58);
-  color: #fff8df;
+  background: linear-gradient(135deg, rgba(29, 78, 216, 0.96), rgba(15, 23, 42, 0.96));
+  border-color: rgba(147, 197, 253, 0.58);
+  color: #eff6ff;
 }
 
 .feedbackBanner.wrong {
@@ -437,9 +434,9 @@
 }
 
 .feedbackBanner.retry {
-  background: linear-gradient(135deg, rgba(94, 75, 28, 0.97), rgba(57, 47, 28, 0.97));
-  border-color: rgba(244, 208, 111, 0.58);
-  color: #fff8df;
+  background: linear-gradient(135deg, rgba(29, 78, 216, 0.96), rgba(15, 23, 42, 0.96));
+  border-color: rgba(147, 197, 253, 0.58);
+  color: #eff6ff;
 }
 
 .feedbackIcon {
@@ -456,7 +453,7 @@
 }
 
 .feedbackIcon.neutral {
-  color: #f4d06f;
+  color: var(--color-primary-soft);
 }
 
 .feedbackCopy {
@@ -481,7 +478,7 @@
   min-height: 36px;
   padding: 0 14px;
   border: 1px solid rgba(255, 255, 255, 0.45);
-  border-radius: 8px;
+  border-radius: var(--radius-ui);
   background: rgba(255, 255, 255, 0.12);
   color: currentColor;
   font: inherit;
@@ -497,9 +494,9 @@
 .emptyBoard {
   display: grid;
   place-content: center;
-  border: 1px solid rgba(245, 241, 232, 0.1);
-  color: #c9d0cc;
-  background: #1b2025;
+  border: 1px solid var(--color-border);
+  color: var(--color-muted);
+  background: var(--color-panel-strong);
 }
 
 @media (max-width: 900px) {
