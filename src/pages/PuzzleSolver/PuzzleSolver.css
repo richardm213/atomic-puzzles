@@ -42,13 +42,6 @@
   letter-spacing: 0;
 }
 
-.puzzleIntro {
-  margin: 0 0 22px;
-  color: #b8c0bb;
-  font-size: 15px;
-  line-height: 1.55;
-}
-
 .puzzleCount {
   flex: 0 0 auto;
   display: grid;
@@ -75,13 +68,12 @@
 
 .puzzleActions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 18px;
 }
 
-.puzzleActions button,
-.puzzleActions .analyzeButton {
+.puzzleActions button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -100,23 +92,22 @@
     color 140ms ease;
 }
 
-.puzzleActions button:hover:not(:disabled),
-.puzzleActions .analyzeButton:hover:not(.disabled) {
+.puzzleActions button:hover:not(:disabled) {
   transform: translateY(-1px);
   border-color: rgba(244, 208, 111, 0.45);
   background: #2d3339;
 }
 
 .puzzleActions button:focus-visible,
-.puzzleActions .analyzeButton:focus-visible,
+.fenAnalyzeButton:focus-visible,
 .moveChip:focus-visible,
-.fenDetails summary:focus-visible {
+.fenDetails:focus-within {
   outline: 3px solid rgba(64, 196, 157, 0.42);
   outline-offset: 2px;
 }
 
 .puzzleActions button:disabled,
-.puzzleActions .analyzeButton.disabled {
+.fenAnalyzeButton.disabled {
   color: #78817c;
   opacity: 1;
   pointer-events: none;
@@ -143,23 +134,52 @@
 }
 
 .fenDetails {
-  padding: 0;
+  display: grid;
+  gap: 8px;
+  padding: 12px;
   color: #c9d0cc;
 }
 
-.fenDetails summary {
-  min-height: 42px;
+.fenHeader {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  padding: 10px 12px;
-  cursor: pointer;
-  color: #dbe3de;
-  font-weight: 700;
+  gap: 12px;
+}
+
+.fenHeader .fenLabel {
+  margin-bottom: 0;
+}
+
+.fenAnalyzeButton {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 5px 9px;
+  border-radius: 8px;
+  border: 1px solid rgba(245, 241, 232, 0.12);
+  background: #242a30;
+  color: #f5f1e8;
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+  transition:
+    transform 140ms ease,
+    border-color 140ms ease,
+    background-color 140ms ease,
+    color 140ms ease;
+}
+
+.fenAnalyzeButton:hover:not(.disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(244, 208, 111, 0.45);
+  background: #2d3339;
 }
 
 .fenDetails code {
   display: block;
-  padding: 0 12px 12px;
   color: #b8c0bb;
   line-height: 1.5;
   white-space: pre-wrap;
@@ -370,6 +390,11 @@
 
   .puzzleActions {
     grid-template-columns: 1fr;
+  }
+
+  .fenHeader {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .moveChip {

@@ -176,8 +176,11 @@ export const PuzzleSolverPage = () => {
   const author = activePuzzle?.author?.trim() || "Unknown";
   const event = activePuzzle?.event?.trim() || "";
   const orientation = orientationFromFen(fen);
-  const analysisUrl = useMemo(() => lichessAnalysisUrl(fen), [fen]);
+  const currentFen = boardState.fen || fen;
+  const startAnalysisUrl = useMemo(() => lichessAnalysisUrl(fen), [fen]);
+  const currentAnalysisUrl = useMemo(() => lichessAnalysisUrl(currentFen), [currentFen]);
   const puzzleOrdinal = activePuzzleIndex >= 0 ? activePuzzleIndex + 1 : null;
+  const showFenDetails = boardState.solved || boardState.showWrongMove;
   const feedback = boardState.solved
     ? {
         type: "correct",
@@ -343,9 +346,6 @@ export const PuzzleSolverPage = () => {
             <small>of {puzzles.length || "-"}</small>
           </div>
         </div>
-        <p className="puzzleIntro">
-          Play the forcing line on the board. Correct moves continue the puzzle automatically.
-        </p>
 
         <div className="controls">
           <div className="buttonRow puzzleActions">
@@ -355,18 +355,6 @@ export const PuzzleSolverPage = () => {
             <button type="button" onClick={handleNextPuzzle} disabled={puzzles.length === 0}>
               Next
             </button>
-            <a
-              className={`analyzeButton ${!fen ? "disabled" : ""}`}
-              href={analysisUrl}
-              target="_blank"
-              rel="noreferrer"
-              aria-disabled={!fen}
-              onClick={(event) => {
-                if (!fen) event.preventDefault();
-              }}
-            >
-              Analyze
-            </a>
             <button type="button" onClick={handleToggleSolution} disabled={!fen}>
               {showSolution ? "Hide solution" : "Show solution"}
             </button>
@@ -387,10 +375,46 @@ export const PuzzleSolverPage = () => {
               <div>{event}</div>
             </div>
           ) : null}
-          <details className="fenDetails">
-            <summary>Position FEN</summary>
-            <code>{boardState.fen || fen || "No puzzle loaded"}</code>
-          </details>
+          {showFenDetails ? (
+            <>
+              <div className="fenDetails">
+                <div className="fenHeader">
+                  <div className="fenLabel">Puzzle FEN</div>
+                  <a
+                    className={`fenAnalyzeButton ${!fen ? "disabled" : ""}`}
+                    href={startAnalysisUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-disabled={!fen}
+                    onClick={(event) => {
+                      if (!fen) event.preventDefault();
+                    }}
+                  >
+                    Analyze on Lichess
+                  </a>
+                </div>
+                <code>{fen || "No puzzle loaded"}</code>
+              </div>
+              <div className="fenDetails">
+                <div className="fenHeader">
+                  <div className="fenLabel">Current FEN</div>
+                  <a
+                    className={`fenAnalyzeButton ${!currentFen ? "disabled" : ""}`}
+                    href={currentAnalysisUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-disabled={!currentFen}
+                    onClick={(event) => {
+                      if (!currentFen) event.preventDefault();
+                    }}
+                  >
+                    Analyze on Lichess
+                  </a>
+                </div>
+                <code>{currentFen || "No puzzle loaded"}</code>
+              </div>
+            </>
+          ) : null}
         </div>
 
         <div className="lineBox">
