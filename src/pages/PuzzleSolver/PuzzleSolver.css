@@ -45,12 +45,13 @@
 .puzzleCount {
   flex: 0 0 auto;
   display: grid;
+  place-items: center;
   min-width: 76px;
   padding: 10px 12px;
   border-radius: 8px;
   background: #20252a;
   border: 1px solid rgba(245, 241, 232, 0.1);
-  text-align: right;
+  text-align: center;
 }
 
 .puzzleCount span {
@@ -258,8 +259,10 @@
 .boardFrame {
   position: relative;
   display: grid;
+  justify-items: center;
   gap: 14px;
-  max-width: 100%;
+  width: 100%;
+  max-width: 590px;
   padding: 14px;
   border-radius: 8px;
   background: rgba(245, 241, 232, 0.06);
@@ -269,6 +272,13 @@
     border-color 180ms ease,
     box-shadow 180ms ease,
     background-color 180ms ease;
+}
+
+.boardFrame .cg-boardShell,
+.boardFrame .cg-board,
+.boardFrame .emptyBoard {
+  width: 100%;
+  max-width: 560px;
 }
 
 .boardFrame.correct {
@@ -381,11 +391,11 @@
 @media (max-width: 640px) {
   .puzzleHeader {
     display: grid;
+    justify-items: start;
   }
 
   .puzzleCount {
     justify-self: start;
-    text-align: left;
   }
 
   .puzzleActions {
