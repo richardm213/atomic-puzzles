@@ -1,10 +1,10 @@
 .homePage {
   min-height: calc(100vh - 58px);
-  color: #f7f2e8;
+  color: #e8ecf3;
   background:
-    linear-gradient(135deg, rgba(16, 87, 82, 0.45), transparent 34%),
-    linear-gradient(100deg, transparent 0 62%, rgba(244, 166, 63, 0.16) 62% 74%, transparent 74%),
-    linear-gradient(180deg, #1f211c 0%, #11140f 55%, #17130f 100%);
+    radial-gradient(circle at 14% 10%, rgba(29, 78, 216, 0.18), transparent 28%),
+    radial-gradient(circle at 82% 4%, rgba(14, 116, 144, 0.16), transparent 25%),
+    linear-gradient(180deg, #111827 0%, #0b1220 100%);
   display: grid;
   gap: 26px;
   padding: max(42px, env(safe-area-inset-top)) max(30px, env(safe-area-inset-right))
@@ -38,10 +38,10 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  border: 1px solid rgba(247, 242, 232, 0.2);
+  border: 1px solid rgba(148, 163, 184, 0.18);
   border-radius: 8px;
-  background: rgba(12, 17, 13, 0.58);
-  color: #d8f3dc;
+  background: rgba(15, 23, 42, 0.82);
+  color: #bfdbfe;
   font-size: 14px;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -58,7 +58,7 @@
 .homeHero h1 {
   max-width: 760px;
   margin: 0;
-  color: #fffaf0;
+  color: #f8fafc;
   font-size: 56px;
   line-height: 1.02;
   letter-spacing: 0;
@@ -67,7 +67,7 @@
 .homeIntro {
   max-width: 700px;
   margin: 0;
-  color: #d7d0c2;
+  color: #c9d3e3;
   font-size: 19px;
   line-height: 1.65;
 }
@@ -101,15 +101,15 @@
 }
 
 .homePrimaryCta {
-  border: 1px solid #f7b267;
-  background: #f7b267;
-  color: #1b1308;
+  border: 1px solid #1d4ed8;
+  background: #1d4ed8;
+  color: #eff6ff;
 }
 
 .homeSecondaryCta {
-  border: 1px solid rgba(247, 242, 232, 0.28);
-  background: rgba(247, 242, 232, 0.08);
-  color: #fffaf0;
+  border: 1px solid rgba(147, 197, 253, 0.35);
+  background: #0f172a;
+  color: #bfdbfe;
 }
 
 .homePrimaryCta:hover,
@@ -119,21 +119,21 @@
 }
 
 .homePrimaryCta:hover {
-  box-shadow: 0 16px 34px rgba(247, 178, 103, 0.2);
+  box-shadow: 0 16px 34px rgba(29, 78, 216, 0.24);
 }
 
 .homePlayerSearch {
   width: min(560px, 100%);
   display: grid;
   gap: 8px;
-  border: 1px solid rgba(247, 242, 232, 0.16);
+  border: 1px solid rgba(148, 163, 184, 0.16);
   border-radius: 8px;
-  background: rgba(12, 17, 13, 0.62);
+  background: rgba(15, 23, 42, 0.82);
   padding: 12px;
 }
 
 .homePlayerSearch label {
-  color: #abc4aa;
+  color: #94a3b8;
   font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -155,20 +155,20 @@
 
 .homeSearchRow input {
   min-width: 0;
-  border: 1px solid rgba(247, 242, 232, 0.18);
-  background: #0e140f;
-  color: #fffaf0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: #0f172a;
+  color: #e8ecf3;
   padding: 10px 12px;
 }
 
 .homeSearchRow input::placeholder {
-  color: #8e9888;
+  color: #64748b;
 }
 
 .homeSearchRow button {
-  border: 1px solid #7dd3a6;
-  background: #7dd3a6;
-  color: #07120c;
+  border: 1px solid #0e7490;
+  background: #0e7490;
+  color: #ecfeff;
   cursor: pointer;
   font-weight: 800;
   padding: 10px 14px;
@@ -179,80 +179,66 @@
   opacity: 0.45;
 }
 
-.homeBoardStage {
-  display: grid;
-  gap: 14px;
-  border: 1px solid rgba(247, 242, 232, 0.16);
-  border-radius: 8px;
-  background: rgba(8, 11, 9, 0.72);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.34);
-  padding: 16px;
-}
-
-.homeBoardTopline,
-.homeBoardCaption {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.homeBoardTopline span,
-.homeBoardCaption span {
-  color: #aab5a6;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.homeBoardTopline strong {
-  color: #f7b267;
-  font-size: 24px;
-}
-
-.homeBoard {
-  display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  aspect-ratio: 1;
-  overflow: hidden;
-  border: 1px solid rgba(247, 242, 232, 0.22);
-  border-radius: 8px;
-}
-
-.homeBoardSquare {
+.homeImageStage {
   position: relative;
-  display: grid;
-  place-items: center;
-  min-width: 0;
-  color: #14110d;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 28px;
-  font-weight: 900;
-  line-height: 1;
-  aspect-ratio: 1;
+  justify-self: end;
+  width: min(480px, 100%);
+  aspect-ratio: 870 / 990;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.54);
+  box-shadow: 0 28px 42px rgba(2, 6, 23, 0.42);
+  overflow: hidden;
 }
 
-.homeBoardSquare.light {
-  background: #d8d2ba;
+.homePuzzleCard {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 870 / 990;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 8px;
+  object-fit: cover;
+  opacity: 0;
+  animation: homePuzzleFade 72s ease-in-out infinite;
+  animation-delay: var(--slide-delay);
+  will-change: opacity;
 }
 
-.homeBoardSquare.dark {
-  background: #517664;
+.homePuzzleAccessibleImage {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
-.homeBoardSquare.light.blast {
-  background: radial-gradient(circle, rgba(228, 87, 46, 0.84) 0 36%, #d8d2ba 38% 100%);
+@keyframes homePuzzleFade {
+  0% {
+    opacity: 0;
+  }
+
+  1.5%,
+  10% {
+    opacity: 1;
+  }
+
+  12.5%,
+  100% {
+    opacity: 0;
+  }
 }
 
-.homeBoardSquare.dark.blast {
-  background: radial-gradient(circle, rgba(228, 87, 46, 0.84) 0 36%, #517664 38% 100%);
-}
+@media (prefers-reduced-motion: reduce) {
+  .homePuzzleCard {
+    animation: none;
+  }
 
-.homeBoardSquare.blast {
-  color: #fffaf0;
-  box-shadow: inset 0 0 0 8px rgba(247, 178, 103, 0.18);
-  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55);
+  .homePuzzleCard:first-child {
+    opacity: 1;
+  }
 }
 
 .homeStats {
@@ -265,9 +251,9 @@
 .homeFeatureCard,
 .homePrinciples,
 .homeActivity {
-  border: 1px solid rgba(247, 242, 232, 0.14);
+  border: 1px solid rgba(148, 163, 184, 0.16);
   border-radius: 8px;
-  background: rgba(247, 242, 232, 0.07);
+  background: rgba(15, 23, 42, 0.82);
 }
 
 .homeStatCard {
@@ -281,7 +267,7 @@
 .homeStatCard span,
 .homeFeatureCard span,
 .homeSectionLabel {
-  color: #9ed8ad;
+  color: #94a3b8;
   font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.1em;
@@ -289,7 +275,7 @@
 }
 
 .homeStatCard strong {
-  color: #fffaf0;
+  color: #f8fafc;
   font-size: 24px;
 }
 
@@ -298,7 +284,7 @@
 .homePrincipleList p,
 .homeActivity li {
   margin: 0;
-  color: #d4cbbd;
+  color: #c9d3e3;
   line-height: 1.55;
 }
 
@@ -319,20 +305,20 @@
 }
 
 .homeFeatureCard:hover {
-  border-color: rgba(247, 178, 103, 0.58);
-  background: rgba(247, 242, 232, 0.1);
+  border-color: rgba(147, 197, 253, 0.42);
+  background: rgba(15, 23, 42, 0.98);
 }
 
 .homeFeatureCard h2 {
   margin: 0;
-  color: #fffaf0;
+  color: #f8fafc;
   font-size: 22px;
   line-height: 1.18;
 }
 
 .homeFeatureCard strong {
   align-self: end;
-  color: #f7b267;
+  color: #93c5fd;
   margin-top: auto;
 }
 
@@ -350,7 +336,7 @@
 .homePrinciples h2 {
   max-width: 650px;
   margin: 10px 0 22px;
-  color: #fffaf0;
+  color: #f8fafc;
   font-size: 32px;
   line-height: 1.12;
 }
@@ -367,7 +353,7 @@
 
 .homePrincipleList h3 {
   margin: 0 0 8px;
-  color: #f7f2e8;
+  color: #e8ecf3;
   font-size: 17px;
   line-height: 1.25;
 }
@@ -381,7 +367,7 @@
 }
 
 .homeActivity li {
-  border-left: 3px solid #e4572e;
+  border-left: 3px solid #38bdf8;
   padding-left: 12px;
 }
 
@@ -395,7 +381,8 @@
     min-height: auto;
   }
 
-  .homeBoardStage {
+  .homeImageStage {
+    justify-self: center;
     width: min(520px, 100%);
   }
 
@@ -438,12 +425,8 @@
     width: 100%;
   }
 
-  .homeBoardCaption {
-    align-items: flex-start;
-    flex-direction: column;
+  .homeImageStage {
+    width: min(520px, 100%);
   }
 
-  .homeBoardSquare {
-    font-size: 22px;
-  }
 }

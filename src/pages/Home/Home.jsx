@@ -39,71 +39,43 @@ const featureLinks = [
   },
 ];
 
-const boardSquares = [
-  "r",
-  "",
-  "",
-  "k",
-  "",
-  "",
-  "",
-  "r",
-  "",
-  "p",
-  "",
-  "",
-  "q",
-  "",
-  "p",
-  "",
-  "",
-  "",
-  "n",
-  "",
-  "",
-  "",
-  "",
-  "",
-  "",
-  "",
-  "",
-  "P",
-  "",
-  "B",
-  "",
-  "",
-  "",
-  "",
-  "",
-  "",
-  "N",
-  "",
-  "",
-  "",
-  "",
-  "P",
-  "",
-  "",
-  "",
-  "",
-  "P",
-  "",
-  "R",
-  "",
-  "",
-  "",
-  "K",
-  "",
-  "",
-  "R",
-  "",
-  "",
-  "",
-  "",
-  "",
-  "",
-  "",
-  "",
+const puzzleCollageImages = [
+  {
+    src: "/home-puzzle-1.png",
+    alt: "Atomic chess puzzle position with white to move",
+  },
+  {
+    src: "/home-puzzle-2.png",
+    alt: "Atomic chess puzzle position with black to move",
+  },
+  {
+    src: "/home-puzzle-3.png",
+    alt: "Atomic chess puzzle position with white to move",
+  },
+  {
+    src: "/home-puzzle-4.png",
+    alt: "Atomic chess puzzle position with white to move",
+  },
+  {
+    src: "/home-puzzle-5.png",
+    alt: "Atomic chess puzzle position with white to move",
+  },
+  {
+    src: "/home-puzzle-6.png",
+    alt: "Atomic chess puzzle position with black to move",
+  },
+  {
+    src: "/home-puzzle-7.png",
+    alt: "Atomic chess puzzle position with white to move",
+  },
+  {
+    src: "/home-puzzle-8.png",
+    alt: "Atomic chess puzzle position with black to move",
+  },
+  {
+    src: "/home-puzzle-9.png",
+    alt: "Atomic chess puzzle position with white to move",
+  },
 ];
 
 const statCards = [
@@ -188,28 +160,27 @@ export const HomePage = () => {
           </form>
         </div>
 
-        <div className="homeBoardStage" aria-label="Atomic board preview">
-          <div className="homeBoardTopline">
-            <span>Candidate line</span>
-            <strong>Qxf7#</strong>
-          </div>
-          <div className="homeBoard">
-            {boardSquares.map((piece, index) => (
-              <span
-                key={`${piece}-${index}`}
-                className={`homeBoardSquare ${(Math.floor(index / 8) + index) % 2 ? "dark" : "light"} ${
-                  index === 12 || index === 21 || index === 29 ? "blast" : ""
-                }`}
-              >
-                {piece}
-              </span>
-            ))}
-          </div>
-          <div className="homeBoardCaption">
-            <span>King exposure</span>
-            <span>Explosion tactics</span>
-            <span>Forced replies</span>
-          </div>
+        <div
+          className="homeImageStage"
+          aria-label="Slideshow of atomic puzzle positions"
+        >
+          {puzzleCollageImages.map((image, index) => (
+            <img
+              key={image.src}
+              className="homePuzzleCard"
+              src={appAssetPath(image.src)}
+              alt=""
+              width="870"
+              height="990"
+              style={{ "--slide-delay": `${index * 8}s` }}
+              aria-hidden="true"
+            />
+          ))}
+          <img
+            className="homePuzzleAccessibleImage"
+            src={appAssetPath(puzzleCollageImages[0].src)}
+            alt={puzzleCollageImages[0].alt}
+          />
         </div>
       </section>
 
