@@ -42,38 +42,47 @@ const featureLinks = [
 const puzzleCollageImages = [
   {
     src: "/home-puzzle-1.png",
+    webpSrc: "/home-puzzle-1.webp",
     alt: "Atomic chess puzzle position with white to move",
   },
   {
     src: "/home-puzzle-2.png",
+    webpSrc: "/home-puzzle-2.webp",
     alt: "Atomic chess puzzle position with black to move",
   },
   {
     src: "/home-puzzle-3.png",
+    webpSrc: "/home-puzzle-3.webp",
     alt: "Atomic chess puzzle position with white to move",
   },
   {
     src: "/home-puzzle-4.png",
+    webpSrc: "/home-puzzle-4.webp",
     alt: "Atomic chess puzzle position with white to move",
   },
   {
     src: "/home-puzzle-5.png",
+    webpSrc: "/home-puzzle-5.webp",
     alt: "Atomic chess puzzle position with white to move",
   },
   {
     src: "/home-puzzle-6.png",
+    webpSrc: "/home-puzzle-6.webp",
     alt: "Atomic chess puzzle position with black to move",
   },
   {
     src: "/home-puzzle-7.png",
+    webpSrc: "/home-puzzle-7.webp",
     alt: "Atomic chess puzzle position with white to move",
   },
   {
     src: "/home-puzzle-8.png",
+    webpSrc: "/home-puzzle-8.webp",
     alt: "Atomic chess puzzle position with black to move",
   },
   {
     src: "/home-puzzle-9.png",
+    webpSrc: "/home-puzzle-9.webp",
     alt: "Atomic chess puzzle position with white to move",
   },
 ];
@@ -163,24 +172,27 @@ export const HomePage = () => {
         <div
           className="homeImageStage"
           aria-label="Slideshow of atomic puzzle positions"
+          role="img"
         >
           {puzzleCollageImages.map((image, index) => (
-            <img
+            <picture
               key={image.src}
               className="homePuzzleCard"
-              src={appAssetPath(image.src)}
-              alt=""
-              width="870"
-              height="990"
               style={{ "--slide-delay": `${index * 8}s` }}
               aria-hidden="true"
-            />
+            >
+              <source srcSet={appAssetPath(image.webpSrc)} type="image/webp" />
+              <img
+                src={appAssetPath(image.src)}
+                alt=""
+                width="870"
+                height="990"
+                decoding="async"
+                fetchPriority={index === 0 ? "high" : "low"}
+                loading={index === 0 ? "eager" : "lazy"}
+              />
+            </picture>
           ))}
-          <img
-            className="homePuzzleAccessibleImage"
-            src={appAssetPath(puzzleCollageImages[0].src)}
-            alt={puzzleCollageImages[0].alt}
-          />
         </div>
       </section>
 
