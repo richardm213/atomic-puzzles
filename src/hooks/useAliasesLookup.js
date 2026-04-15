@@ -1,75 +1,47 @@
 import { useEffect, useState } from "react";
+import { fetchAliasRows } from "../lib/supabaseAliases";
 
-const aliasFileUrlCandidates = ["/private/users.txt", "/data/users.txt"];
-
-const parseAliasLookup = (rawText) => {
+const buildAliasesLookup = (rows) => {
   const lookup = new Map();
-  const lines = String(rawText || "")
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
 
-  lines.forEach((line) => {
-    const members = line
-      .split(",")
-      .map((entry) => entry.trim())
-      .filter(Boolean);
-    if (members.length === 0) return;
-
-    const uniqueMembers = [...new Set(members)];
-    const [primary, ...aliases] = uniqueMembers;
+  rows.forEach((row) => {
+    const username = row.username;
+    const aliases = Array.isArray(row.aliases) ? row.aliases : [];
+    const members = [username, ...aliases];
     const entry = {
-      primary,
+      primary: username,
       aliases,
-      members: uniqueMembers,
+      members,
     };
 
-    uniqueMembers.forEach((member) => {
-      lookup.set(member.toLowerCase(), entry);
+    members.forEach((member) => {
+      lookup.set(member, entry);
     });
   });
 
   return lookup;
 };
 
-const loadAliasesLookup = async () => {
-  let lastError = null;
-
-  for (const url of aliasFileUrlCandidates) {
-    try {
-      const response = await fetch(url, { headers: { Accept: "text/plain" } });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const text = await response.text();
-      return parseAliasLookup(text);
-    } catch (error) {
-      lastError = error;
-    }
-  }
-
-  if (lastError) {
-    throw new Error(`Could not load aliases from configured sources (${String(lastError)})`);
-  }
-
-  return new Map();
-};
-
 export const useAliasesLookup = () => {
   const [aliasesLookup, setAliasesLookup] = useState(() => new Map());
 
   useEffect(() => {
+    let isCurrent = true;
+
     const loadAliases = async () => {
       try {
-        const loadedLookup = await loadAliasesLookup();
-        setAliasesLookup(loadedLookup);
+        const rows = await fetchAliasRows();
+        if (isCurrent) setAliasesLookup(buildAliasesLookup(rows));
       } catch {
-        setAliasesLookup(new Map());
+        if (isCurrent) setAliasesLookup(new Map());
       }
     };
 
     loadAliases();
+
+    return () => {
+      isCurrent = false;
+    };
   }, []);
 
   return aliasesLookup;

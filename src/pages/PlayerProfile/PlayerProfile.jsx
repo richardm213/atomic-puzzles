@@ -84,8 +84,9 @@ export const PlayerProfilePage = ({ username }) => {
   const matchRequestIdRef = useRef(0);
   const searchSubmitInFlightRef = useRef(false);
   const aliasesLookup = useAliasesLookup();
-  const ratingsSnapshotByMode = useRatingsSnapshotByMode(normalizedUsername);
-  const monthRanks = useMonthRanks(normalizedUsername);
+  const canonicalUsername = aliasesLookup.get(normalizedUsername)?.primary ?? normalizedUsername;
+  const ratingsSnapshotByMode = useRatingsSnapshotByMode(canonicalUsername);
+  const monthRanks = useMonthRanks(canonicalUsername);
   const [bestMonthRankCount, setBestMonthRankCount] = useState(5);
   const [recentMonthRankCount, setRecentMonthRankCount] = useState(5);
   const [bestWinCount, setBestWinCount] = useState(5);
@@ -106,14 +107,14 @@ export const PlayerProfilePage = ({ username }) => {
     setError("");
     try {
       const loaded = await loadRawMatchesByMode(mode, {
-        filters: buildMatchFilters(normalizedUsername, nextAppliedFilters),
+        filters: buildMatchFilters(canonicalUsername, nextAppliedFilters),
         page: nextPage,
         pageSize,
       });
       if (requestId !== matchRequestIdRef.current) return;
       setMatchesByMode((current) => ({
         ...current,
-        [mode]: normalizeMatches(loaded.matches, normalizedUsername),
+        [mode]: normalizeMatches(loaded.matches, canonicalUsername),
       }));
       setTotalMatchesByMode((current) => ({
         ...current,
@@ -149,7 +150,7 @@ export const PlayerProfilePage = ({ username }) => {
       timeControlIncrementFilter: "all",
     };
     runMatchSearch("blitz", defaultFilters, 1);
-  }, [normalizedUsername]);
+  }, [canonicalUsername]);
 
   const matches = matchesByMode[selectedMode] ?? [];
 
@@ -203,25 +204,25 @@ export const PlayerProfilePage = ({ username }) => {
     currentPage,
     selectedMode,
     appliedFilters,
-    normalizedUsername,
+    canonicalUsername,
   );
 
-  const ratingDisplayByMode = useRatingDisplayByMode(ratingsSnapshotByMode, normalizedUsername);
+  const ratingDisplayByMode = useRatingDisplayByMode(ratingsSnapshotByMode, canonicalUsername);
   const blitzDisplaySummary = ratingDisplayByMode.blitz;
   const bulletDisplaySummary = ratingDisplayByMode.bullet;
-  const bestWins = useBestWins(filteredMatches, normalizedUsername, bestWinCount);
+  const bestWins = useBestWins(filteredMatches, canonicalUsername, bestWinCount);
   const { bestMonthRanks, recentMonthRanks } = useMonthRankHighlights(
     monthRanks,
     bestMonthRankCount,
     recentMonthRankCount,
   );
-  const aliasesForUser = useAliasesForUser(aliasesLookup, normalizedUsername);
+  const aliasesForUser = useAliasesForUser(aliasesLookup, canonicalUsername);
   const profileMetricCards = useProfileMetricCards(blitzDisplaySummary, bulletDisplaySummary);
 
   return (
     <div className="rankingsPage">
       <div className="panel rankingsPanel">
-        <h1>{normalizedUsername}</h1>
+        <h1>{canonicalUsername}</h1>
 
         <div className="profileTopBar">
           {profileMetricCards.map((card) => (
