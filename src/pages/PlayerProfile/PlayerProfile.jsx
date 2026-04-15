@@ -66,6 +66,10 @@ export const PlayerProfilePage = ({ username }) => {
     blitz: [],
     bullet: [],
   });
+  const [bestWinMatchesByMode, setBestWinMatchesByMode] = useState({
+    blitz: [],
+    bullet: [],
+  });
   const [totalMatchesByMode, setTotalMatchesByMode] = useState({
     blitz: 0,
     bullet: 0,
@@ -82,6 +86,7 @@ export const PlayerProfilePage = ({ username }) => {
   const [timeControlIncrementFilter, setTimeControlIncrementFilter] = useState("all");
   const [loadingMatches, setLoadingMatches] = useState(false);
   const matchRequestIdRef = useRef(0);
+  const bestWinRequestKeyByModeRef = useRef({});
   const searchSubmitInFlightRef = useRef(false);
   const aliasesLookup = useAliasesLookup();
   const canonicalUsername = aliasesLookup.get(normalizedUsername)?.primary ?? normalizedUsername;
@@ -106,16 +111,30 @@ export const PlayerProfilePage = ({ username }) => {
     setLoadingMatches(true);
     setError("");
     try {
-      const loaded = await loadRawMatchesByMode(mode, {
-        filters: buildMatchFilters(canonicalUsername, nextAppliedFilters),
-        page: nextPage,
-        pageSize,
-      });
+      const filters = buildMatchFilters(canonicalUsername, nextAppliedFilters);
+      const bestWinRequestKey = JSON.stringify({ mode, username: canonicalUsername, filters });
+      const shouldLoadBestWinMatches =
+        bestWinRequestKeyByModeRef.current[mode] !== bestWinRequestKey;
+      const [loaded, bestWinMatches] = await Promise.all([
+        loadRawMatchesByMode(mode, {
+          filters,
+          page: nextPage,
+          pageSize,
+        }),
+        shouldLoadBestWinMatches ? loadRawMatchesByMode(mode, { filters }) : null,
+      ]);
       if (requestId !== matchRequestIdRef.current) return;
       setMatchesByMode((current) => ({
         ...current,
         [mode]: normalizeMatches(loaded.matches, canonicalUsername),
       }));
+      if (bestWinMatches) {
+        bestWinRequestKeyByModeRef.current[mode] = bestWinRequestKey;
+        setBestWinMatchesByMode((current) => ({
+          ...current,
+          [mode]: normalizeMatches(bestWinMatches, canonicalUsername),
+        }));
+      }
       setTotalMatchesByMode((current) => ({
         ...current,
         [mode]: loaded.total,
@@ -125,6 +144,10 @@ export const PlayerProfilePage = ({ username }) => {
     } catch (loadError) {
       if (requestId !== matchRequestIdRef.current) return;
       setMatchesByMode((current) => ({
+        ...current,
+        [mode]: [],
+      }));
+      setBestWinMatchesByMode((current) => ({
         ...current,
         [mode]: [],
       }));
@@ -153,6 +176,7 @@ export const PlayerProfilePage = ({ username }) => {
   }, [canonicalUsername]);
 
   const matches = matchesByMode[selectedMode] ?? [];
+  const bestWinMatches = bestWinMatchesByMode[selectedMode] ?? [];
 
   useEffect(() => {
     setTimeControlInitialFilter("all");
@@ -161,6 +185,7 @@ export const PlayerProfilePage = ({ username }) => {
 
   const { initialOptions, incrementOptions } = useTimeControlOptions(matches);
   const filteredMatches = useFilteredMatches(matches, appliedFilters, selectedMode);
+  const filteredBestWinMatches = useFilteredMatches(bestWinMatches, appliedFilters, selectedMode);
 
   const handleSearchClick = async () => {
     if (searchSubmitInFlightRef.current || loadingMatches) return;
@@ -210,7 +235,7 @@ export const PlayerProfilePage = ({ username }) => {
   const ratingDisplayByMode = useRatingDisplayByMode(ratingsSnapshotByMode, canonicalUsername);
   const blitzDisplaySummary = ratingDisplayByMode.blitz;
   const bulletDisplaySummary = ratingDisplayByMode.bullet;
-  const bestWins = useBestWins(filteredMatches, canonicalUsername, bestWinCount);
+  const bestWins = useBestWins(filteredBestWinMatches, canonicalUsername, bestWinCount);
   const { bestMonthRanks, recentMonthRanks } = useMonthRankHighlights(
     monthRanks,
     bestMonthRankCount,
