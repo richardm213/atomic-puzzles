@@ -27,6 +27,7 @@ export const TopNav = () => {
       to: "/@/$username",
       params: { username: normalizeUsername(trimmedSearchQuery) },
     });
+    setSearchQuery("");
     setSearchOpen(false);
   };
 
