@@ -249,6 +249,57 @@ export const PuzzleSolverPage = () => {
     });
   };
 
+  const activeSolutionMoves = boardState.solutionLines?.[boardState.solutionLineIndex] ?? [];
+  const solutionPlyCount = activeSolutionMoves.length;
+  const canNavigateSolution =
+    boardState.viewingSolution && boardState.solutionLines?.length > 0 && solutionPlyCount > 0;
+  const canStepBackward = canNavigateSolution && boardState.lineIndex > 0;
+  const canStepForward = canNavigateSolution && boardState.lineIndex < solutionPlyCount;
+
+  const handleSolutionJump = (targetPly) => {
+    if (!canNavigateSolution) return;
+
+    setSolutionNavigation({
+      lineIndex: boardState.solutionLineIndex,
+      plyIndex: Math.max(0, Math.min(targetPly, solutionPlyCount)),
+    });
+  };
+
+  const solutionOptions = useMemo(() => {
+    if (!canNavigateSolution) return [];
+
+    const activeLine = boardState.solutionLines[boardState.solutionLineIndex];
+    if (!activeLine) return [];
+
+    const currentPly = boardState.lineIndex;
+    const currentPrefix = activeLine.slice(0, currentPly).join("\n");
+    const groupedOptions = new Map();
+
+    boardState.solutionLines.forEach((line, lineIndex) => {
+      if (!line[currentPly]) return;
+      if (line.slice(0, currentPly).join("\n") !== currentPrefix) return;
+
+      const move = line[currentPly];
+      if (!groupedOptions.has(move)) {
+        groupedOptions.set(move, {
+          move,
+          lineIndex,
+          plyIndex: currentPly,
+        });
+      }
+    });
+
+    return [...groupedOptions.values()];
+  }, [
+    boardState.lineIndex,
+    boardState.solutionLineIndex,
+    boardState.solutionLines,
+    canNavigateSolution,
+  ]);
+
+  const hasSolutionOptions = solutionOptions.length > 1;
+  const activeSolutionOption = activeSolutionMoves[boardState.lineIndex];
+
   const inlineSolutionMoves = useMemo(() => {
     if (!boardState.solutionLines?.length) return null;
 
@@ -418,15 +469,86 @@ export const PuzzleSolverPage = () => {
         </div>
 
         <div className="lineBox">
-          <div className="fenLabel">Move line</div>
+          <div className="lineHeader">
+            <div className="fenLabel">Move line</div>
+            {canNavigateSolution ? (
+              <div className="solutionNav" aria-label="Solution navigation">
+                <button
+                  type="button"
+                  className="solutionNavButton"
+                  onClick={() => handleSolutionJump(0)}
+                  disabled={!canStepBackward}
+                  aria-label="Jump to start"
+                >
+                  ⏮
+                </button>
+                <button
+                  type="button"
+                  className="solutionNavButton"
+                  onClick={() => handleSolutionJump(boardState.lineIndex - 1)}
+                  disabled={!canStepBackward}
+                  aria-label="Step backward"
+                >
+                  ◀
+                </button>
+                <button
+                  type="button"
+                  className="solutionNavButton"
+                  onClick={() => handleSolutionJump(boardState.lineIndex + 1)}
+                  disabled={!canStepForward}
+                  aria-label="Step forward"
+                >
+                  ▶
+                </button>
+                <button
+                  type="button"
+                  className="solutionNavButton"
+                  onClick={() => handleSolutionJump(solutionPlyCount)}
+                  disabled={!canStepForward}
+                  aria-label="Jump to end"
+                >
+                  ⏭
+                </button>
+              </div>
+            ) : null}
+          </div>
           {boardState.viewingSolution && boardState.solutionLines?.length ? (
-            <div
-              className="moveList inlineSolutionTree"
-              role="list"
-              aria-label="Solution variations"
-            >
-              {inlineSolutionMoves}
-            </div>
+            <>
+              {hasSolutionOptions ? (
+                <div className="solutionOptions">
+                  <span className="solutionOptionsLabel">
+                    {solutionOptions.length} options from here
+                  </span>
+                  <div className="solutionOptionList" role="list" aria-label="Solution options">
+                    {solutionOptions.map((option) => (
+                      <button
+                        key={`${option.lineIndex}-${option.plyIndex}-${option.move}`}
+                        type="button"
+                        className={`solutionOption ${
+                          option.move === activeSolutionOption ? "active" : ""
+                        }`}
+                        onClick={() =>
+                          setSolutionNavigation({
+                            lineIndex: option.lineIndex,
+                            plyIndex: option.plyIndex,
+                          })
+                        }
+                      >
+                        {movePrefix(boardState.lineIndex, boardState.lineIndex % 2 === 1)}
+                        {option.move}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              <div
+                className="moveList inlineSolutionTree"
+                role="list"
+                aria-label="Solution variations"
+              >
+                {inlineSolutionMoves}
+              </div>
+            </>
           ) : boardState.lineMoves?.length ? (
             <div className="moveList" role="list" aria-label="Move line">
               {boardState.lineMoves.map((move, index) => {

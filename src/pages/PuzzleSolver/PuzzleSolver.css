@@ -192,6 +192,14 @@
   padding: 14px;
 }
 
+.lineHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 9px;
+}
+
 .fenLabel {
   font-size: 11px;
   font-weight: 800;
@@ -201,10 +209,98 @@
   margin-bottom: 7px;
 }
 
+.lineHeader .fenLabel {
+  margin-bottom: 0;
+}
+
 .lineBox code {
   display: block;
   color: #cdd6d1;
   line-height: 1.5;
+}
+
+.solutionNav {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.solutionNavButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(245, 241, 232, 0.12);
+  border-radius: 8px;
+  background: #242a30;
+  color: #f5f1e8;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+
+.solutionNavButton:hover:not(:disabled) {
+  border-color: rgba(64, 196, 157, 0.42);
+  color: #ffffff;
+}
+
+.solutionNavButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.solutionOptions {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 10px;
+  border: 1px solid rgba(64, 196, 157, 0.24);
+  border-radius: 8px;
+  background: rgba(64, 196, 157, 0.08);
+}
+
+.solutionOptionsLabel {
+  color: #a8c5ba;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.solutionOptionList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.solutionOption {
+  min-height: 32px;
+  border: 1px solid rgba(64, 196, 157, 0.28);
+  border-radius: 8px;
+  background: #182323;
+  color: #dff5ed;
+  cursor: pointer;
+  font-weight: 800;
+  padding: 5px 10px;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+
+.solutionOption:hover {
+  border-color: rgba(64, 196, 157, 0.68);
+  color: #ffffff;
+}
+
+.solutionOption.active {
+  border-color: rgba(244, 208, 111, 0.72);
+  background: rgba(244, 208, 111, 0.12);
+  color: #fff8df;
 }
 
 .moveList {
@@ -403,6 +499,11 @@
   }
 
   .fenHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .lineHeader {
     align-items: flex-start;
     flex-direction: column;
   }

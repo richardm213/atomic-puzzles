@@ -710,7 +710,14 @@ export const Chessboard = ({
 
   useEffect(() => {
     if (!showSolution) return;
-    showSolutionLine(0);
+    const currentHistory = historyRef.current;
+    const currentPly = currentHistory.index;
+    const playedMoveKeys = currentHistory.moveKeys.slice(0, currentPly);
+    const matchingLineIndex = displaySolutionEntriesRef.current.findIndex((entry) =>
+      playedMoveKeys.every((moveKey, index) => entry.moveEntries[index]?.key === moveKey),
+    );
+
+    showSolutionLine(matchingLineIndex >= 0 ? matchingLineIndex : 0, currentPly);
   }, [fen, showSolution]);
 
   useEffect(() => {
@@ -751,25 +758,23 @@ export const Chessboard = ({
       if (!showSolutionRef.current) return;
 
       const currentPly = historyRef.current.index;
-      if (currentPly <= 0) return;
-
       const entries = displaySolutionEntriesRef.current;
       const currentLineIndex = activeSolutionLineRef.current;
       const currentLine = entries[currentLineIndex]?.uciLine;
-      if (!currentLine || !currentLine[currentPly - 1]) return;
+      if (!currentLine || !currentLine[currentPly]) return;
 
-      const moveAtPly = currentPly - 1;
-      const sharedPrefix = currentLine.slice(0, moveAtPly).join(" ");
+      const optionPly = currentPly;
+      const sharedPrefix = currentLine.slice(0, currentPly).join(" ");
       const groupedByMove = new Map();
 
       entries.forEach((entry, index) => {
         const line = entry?.uciLine;
-        if (!line || !line[moveAtPly]) return;
+        if (!line || !line[optionPly]) return;
 
-        const linePrefix = line.slice(0, moveAtPly).join(" ");
+        const linePrefix = line.slice(0, optionPly).join(" ");
         if (linePrefix !== sharedPrefix) return;
 
-        const move = line[moveAtPly];
+        const move = line[optionPly];
         if (!groupedByMove.has(move)) {
           groupedByMove.set(move, index);
         }
@@ -779,7 +784,7 @@ export const Chessboard = ({
       if (breadthOptions.length <= 1) return;
 
       const currentOptionIndex = breadthOptions.findIndex(
-        (optionIndex) => entries[optionIndex]?.uciLine?.[moveAtPly] === currentLine[moveAtPly],
+        (optionIndex) => entries[optionIndex]?.uciLine?.[optionPly] === currentLine[optionPly],
       );
       if (currentOptionIndex === -1) return;
 
