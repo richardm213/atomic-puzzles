@@ -3,6 +3,7 @@
 .h2hPanel {
   display: grid;
   gap: 14px;
+  min-width: 0;
 }
 
 .h2hSplitLayout {
@@ -16,6 +17,7 @@
   border-radius: 12px;
   padding: 12px;
   background: #0f172a;
+  min-width: 0;
 }
 
 .h2hPlayerPanelTop {
@@ -70,6 +72,7 @@
   justify-content: space-between;
   align-items: flex-end;
   gap: 12px;
+  min-width: 0;
 }
 
 .h2hModeCardBodyCombined {
@@ -99,6 +102,7 @@
 
 .h2hHistoryTable {
   width: 100%;
+  min-width: 520px;
   border-collapse: collapse;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
@@ -114,6 +118,7 @@
   padding: 10px;
   text-align: left;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  overflow-wrap: anywhere;
 }
 
 .h2hHistoryRow {
@@ -152,7 +157,14 @@
   }
 
   .h2hPlayerPanelTop {
+    grid-template-columns: minmax(0, 1fr);
     gap: 8px;
+  }
+
+  .h2hPlayerIdentityLeft,
+  .h2hPlayerIdentityRight,
+  .h2hModeCardRightStats {
+    text-align: center;
   }
 
   .h2hPlayerIdentity {
@@ -175,7 +187,10 @@
   }
 
   .h2hModeCardBody {
+    align-items: stretch;
+    flex-direction: column;
     gap: 8px;
+    text-align: center;
   }
 
   .h2hModeMeta {
@@ -187,7 +202,11 @@
   }
 
   .h2hHistoryTable {
+    display: block;
+    overflow-x: auto;
+    min-width: 0;
     font-size: 13px;
+    -webkit-overflow-scrolling: touch;
   }
 
   .h2hHistoryTable th,

@@ -2,6 +2,7 @@
   font-family: Inter, Arial, sans-serif;
   color: #e8ecf3;
   background: #111827;
+  -webkit-text-size-adjust: 100%;
 }
 
 * {
@@ -13,6 +14,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background: linear-gradient(180deg, #111827 0%, #0b1220 100%);
+  overflow-x: hidden;
 }
 
 button,
@@ -21,14 +23,21 @@ input {
   font: inherit;
 }
 
+img,
+svg,
+canvas {
+  max-width: 100%;
+}
+
 .page {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: minmax(320px, 420px) minmax(320px, 560px);
+  grid-template-columns: minmax(0, 420px) minmax(0, 560px);
   gap: 32px;
   align-items: start;
   justify-content: center;
-  padding: 32px;
+  padding: max(32px, env(safe-area-inset-top)) max(32px, env(safe-area-inset-right))
+    max(32px, env(safe-area-inset-bottom)) max(32px, env(safe-area-inset-left));
 }
 
 .rankingsPage {
@@ -36,10 +45,13 @@ input {
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  padding: 32px;
+  padding: max(32px, env(safe-area-inset-top)) max(32px, env(safe-area-inset-right))
+    max(32px, env(safe-area-inset-bottom)) max(32px, env(safe-area-inset-left));
 }
 
 .panel {
+  min-width: 0;
+  max-width: 100%;
   background: rgba(17, 24, 39, 0.82);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 20px;
@@ -76,6 +88,7 @@ input {
   background: #0f172a;
   color: #e8ecf3;
   border-radius: 12px;
+  font-size: 16px;
   padding: 10px 12px;
   min-width: 140px;
 }
@@ -83,6 +96,7 @@ input {
 .buttonRow {
   display: flex;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .buttonRow button,
@@ -91,6 +105,7 @@ input {
   background: #0f172a;
   color: #e8ecf3;
   border-radius: 12px;
+  font-size: 16px;
   padding: 10px 12px;
   text-decoration: none;
   cursor: pointer;
@@ -155,5 +170,49 @@ input {
 @media (max-width: 900px) {
   .page {
     grid-template-columns: 1fr;
+    justify-items: stretch;
+  }
+}
+
+@media (max-width: 640px) {
+  .page,
+  .rankingsPage {
+    padding: max(16px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right))
+      max(18px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  }
+
+  .panel {
+    border-radius: 14px;
+    padding: 16px;
+  }
+
+  .panel h1 {
+    font-size: 26px;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+  }
+
+  .controls {
+    gap: 12px;
+  }
+
+  .controls select,
+  .controls input[type="text"],
+  .controls input[type="date"],
+  .buttonRow button,
+  .analyzeButton {
+    min-height: 44px;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .buttonRow > * {
+    flex: 1 1 140px;
+  }
+
+  .rankingsMeta {
+    gap: 6px;
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

@@ -58,10 +58,12 @@
   display: flex;
   justify-content: center;
   align-items: flex-start;
+  min-width: 0;
 }
 
 .boardFrame {
   position: relative;
+  max-width: 100%;
 }
 
 .moveIndicator {
@@ -129,6 +131,24 @@
 
 @media (max-width: 900px) {
   .boardWrap {
-    justify-content: flex-start;
+    justify-content: center;
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .moveChip {
+    min-height: 36px;
+  }
+
+  .inlineSolutionTree {
+    align-items: flex-start;
+  }
+
+  .moveIndicator {
+    top: 8px;
+    right: 8px;
+    width: 42px;
+    height: 42px;
   }
 }

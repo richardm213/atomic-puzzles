@@ -2,13 +2,15 @@
   min-height: calc(100vh - 58px);
   display: flex;
   justify-content: center;
-  padding: 32px;
+  padding: max(32px, env(safe-area-inset-top)) max(32px, env(safe-area-inset-right))
+    max(32px, env(safe-area-inset-bottom)) max(32px, env(safe-area-inset-left));
 }
 
 .homePanel {
   width: min(900px, 100%);
   display: grid;
   gap: 18px;
+  min-width: 0;
 }
 
 .homeIntro {
@@ -35,6 +37,28 @@
   line-height: 1.2;
   padding: 0.6em 0.9em;
   white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .homePage {
+    padding: max(16px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right))
+      max(18px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  }
+
+  .homeButtonRow {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .primaryCta {
+    width: 100%;
+    min-height: 44px;
+    white-space: normal;
+  }
+
+  .homeDescriptionCard {
+    border-radius: 10px;
+  }
 }
 
 .homeDescriptions {

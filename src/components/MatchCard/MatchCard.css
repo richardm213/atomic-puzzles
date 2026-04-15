@@ -10,6 +10,7 @@
   border-radius: 12px;
   padding: 12px;
   cursor: pointer;
+  min-width: 0;
 }
 
 .matchCard.expanded {
@@ -22,6 +23,7 @@
   justify-content: space-between;
   align-items: center;
   gap: 10px;
+  min-width: 0;
 }
 
 .matchCardPlayers {
@@ -78,4 +80,39 @@
   list-style: none;
   display: grid;
   gap: 4px;
+}
+
+@media (max-width: 640px) {
+  .matchCard {
+    padding: 10px;
+  }
+
+  .matchCardHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .matchCardPlayers,
+  .matchCardMeta,
+  .matchCardPlayerStats,
+  .matchGamesHeader,
+  .matchGameRow {
+    min-width: 0;
+  }
+
+  .matchCardPlayerStats {
+    grid-template-columns: 1fr;
+  }
+
+  .matchGamesHeader,
+  .matchGameRow {
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .matchGamesHeader > :last-child,
+  .matchGameRow > :last-child {
+    grid-column: 1 / -1;
+    overflow-wrap: anywhere;
+  }
 }

@@ -6,3 +6,18 @@
   overflow: hidden;
   box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
 }
+
+@media (max-width: 900px) {
+  .cg-board,
+  .emptyBoard {
+    width: min(100%, calc(100vw - 28px));
+    height: min(calc(100vw - 28px), 560px);
+  }
+}
+
+@media (max-width: 640px) {
+  .cg-board,
+  .emptyBoard {
+    border-radius: 12px;
+  }
+}

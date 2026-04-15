@@ -1,5 +1,6 @@
 .rankingsPanel {
   width: min(920px, 100%);
+  min-width: 0;
 }
 
 .rankingsControls {
@@ -18,10 +19,13 @@
 .rankingsTableWrap {
   margin-top: 12px;
   overflow-x: auto;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
 }
 
 .rankingsTable {
   width: 100%;
+  min-width: 520px;
   border-collapse: collapse;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
@@ -51,7 +55,8 @@
 
 @media (max-width: 640px) {
   .rankingsPage {
-    padding: 16px;
+    padding: max(16px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right))
+      max(18px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
   }
 
   .rankingsPanel {
@@ -70,5 +75,15 @@
   .rankingsControls select {
     width: 100%;
     min-width: 0;
+  }
+
+  .rankingsTable {
+    min-width: 460px;
+    font-size: 14px;
+  }
+
+  .rankingsTable th,
+  .rankingsTable td {
+    padding: 9px 10px;
   }
 }
