@@ -1,9 +1,9 @@
-export const PaginationRow = ({ currentPage, totalPages, onPageChange, formatLabel }) => (
+export const PaginationRow = ({ currentPage, totalPages, onPageChange, formatLabel, disabled }) => (
   <div className="paginationRow">
     <button
       type="button"
       onClick={() => onPageChange(Math.max(1, currentPage - 1))}
-      disabled={currentPage <= 1}
+      disabled={disabled || currentPage <= 1}
     >
       Previous
     </button>
@@ -13,7 +13,7 @@ export const PaginationRow = ({ currentPage, totalPages, onPageChange, formatLab
     <button
       type="button"
       onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
-      disabled={currentPage >= totalPages}
+      disabled={disabled || currentPage >= totalPages}
     >
       Next
     </button>

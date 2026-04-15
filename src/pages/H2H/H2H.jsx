@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import "./H2H.css";
 import { loadRawMatchesByMode } from "../../lib/matchData";
@@ -170,6 +170,8 @@ export const H2HPage = () => {
   const [hasSearched, setHasSearched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const searchRequestIdRef = useRef(0);
+  const searchSubmitInFlightRef = useRef(false);
 
   const startDateTs = useMemo(() => parseDateInputBoundary(filters.startDate, "start"), [filters]);
   const endDateTs = useMemo(() => parseDateInputBoundary(filters.endDate, "end"), [filters]);
@@ -218,10 +220,14 @@ export const H2HPage = () => {
   );
 
   const performSearch = useCallback(async (first, second) => {
+    const requestId = searchRequestIdRef.current + 1;
+    searchRequestIdRef.current = requestId;
+
     if (!first || !second) {
       setError("Enter both usernames to search head-to-head.");
       setHasSearched(true);
       setMatches([]);
+      setLoading(false);
       return;
     }
 
@@ -241,6 +247,7 @@ export const H2HPage = () => {
         loadPlayerSnapshot(first),
         loadPlayerSnapshot(second),
       ]);
+      if (requestId !== searchRequestIdRef.current) return;
 
       const blitzNormalized = normalizeH2HMatches(blitzRaw, "blitz", first, second);
       const bulletNormalized = normalizeH2HMatches(bulletRaw, "bullet", first, second);
@@ -264,27 +271,37 @@ export const H2HPage = () => {
         setError("No head-to-head matches found for the selected players.");
       }
     } catch (loadError) {
+      if (requestId !== searchRequestIdRef.current) return;
       setMatches([]);
       setError(String(loadError));
     } finally {
-      setLoading(false);
+      if (requestId === searchRequestIdRef.current) {
+        setLoading(false);
+      }
     }
   }, []);
 
   const handleSearch = async () => {
+    if (searchSubmitInFlightRef.current || loading) return;
+
     const first = player1Input.trim();
     const second = player2Input.trim();
-    if (!first || !second) {
-      await performSearch(first, second);
-      return;
-    }
+    searchSubmitInFlightRef.current = true;
+    try {
+      if (!first || !second) {
+        await performSearch(first, second);
+        return;
+      }
 
-    await navigate({
-      to: "/h2h/$matchup",
-      params: {
-        matchup: matchupToSlug(first, second),
-      },
-    });
+      await navigate({
+        to: "/h2h/$matchup",
+        params: {
+          matchup: matchupToSlug(first, second),
+        },
+      });
+    } finally {
+      searchSubmitInFlightRef.current = false;
+    }
   };
 
   useEffect(() => {

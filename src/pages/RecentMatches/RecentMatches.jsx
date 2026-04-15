@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./RecentMatches.css";
 import {
   defaultRatingMax,
@@ -166,6 +166,9 @@ export const RecentMatchesPage = () => {
   const [startDateFilter, setStartDateFilter] = useState("");
   const [endDateFilter, setEndDateFilter] = useState("");
   const [loadingMatches, setLoadingMatches] = useState(false);
+  const searchInFlightRef = useRef(false);
+  const pageLoadIdRef = useRef(0);
+  const skipNextPageLoadKeyRef = useRef("");
   const defaultLengthRange = useMemo(() => toBoundedLengthRange("blitz"), []);
   const {
     bounds: appliedMatchBounds,
@@ -267,7 +270,20 @@ export const RecentMatchesPage = () => {
     return queryFilters;
   }, []);
 
+  const pageRequestKey = useCallback(
+    (nextAppliedFilters, nextPage, nextPageSize = pageSize) =>
+      JSON.stringify({
+        filters: buildSupabaseFilters(nextAppliedFilters),
+        mode: nextAppliedFilters.selectedMode,
+        page: nextPage,
+        pageSize: nextPageSize,
+      }),
+    [buildSupabaseFilters, pageSize],
+  );
+
   const handleSearch = async () => {
+    if (searchInFlightRef.current || loadingMatches) return;
+
     const nextAppliedFilters = {
       selectedMode,
       ratingFilterType,
@@ -282,6 +298,9 @@ export const RecentMatchesPage = () => {
       matchLengthMax,
     };
 
+    searchInFlightRef.current = true;
+    const requestId = pageLoadIdRef.current + 1;
+    pageLoadIdRef.current = requestId;
     setLoadingMatches(true);
     setError("");
     try {
@@ -290,17 +309,23 @@ export const RecentMatchesPage = () => {
         page: 1,
         pageSize,
       });
+      if (requestId !== pageLoadIdRef.current) return;
       setMatches(normalizeRecentMatches(loaded.matches, selectedMode));
       setTotalMatches(loaded.total);
+      skipNextPageLoadKeyRef.current = pageRequestKey(nextAppliedFilters, 1);
       setAppliedFilters(nextAppliedFilters);
       setCurrentPage(1);
     } catch (loadError) {
+      if (requestId !== pageLoadIdRef.current) return;
       setMatches([]);
       setTotalMatches(0);
       setError(String(loadError));
       setCurrentPage(1);
     } finally {
-      setLoadingMatches(false);
+      searchInFlightRef.current = false;
+      if (requestId === pageLoadIdRef.current) {
+        setLoadingMatches(false);
+      }
     }
   };
 
@@ -310,6 +335,14 @@ export const RecentMatchesPage = () => {
 
   useEffect(() => {
     const loadPage = async () => {
+      const requestKey = pageRequestKey(appliedFilters, currentPage);
+      if (skipNextPageLoadKeyRef.current === requestKey) {
+        skipNextPageLoadKeyRef.current = "";
+        return;
+      }
+
+      const requestId = pageLoadIdRef.current + 1;
+      pageLoadIdRef.current = requestId;
       setLoadingMatches(true);
       setError("");
       try {
@@ -318,19 +351,23 @@ export const RecentMatchesPage = () => {
           page: currentPage,
           pageSize,
         });
+        if (requestId !== pageLoadIdRef.current) return;
         setMatches(normalizeRecentMatches(loaded.matches, appliedFilters.selectedMode));
         setTotalMatches(loaded.total);
       } catch (loadError) {
+        if (requestId !== pageLoadIdRef.current) return;
         setMatches([]);
         setTotalMatches(0);
         setError(String(loadError));
       } finally {
-        setLoadingMatches(false);
+        if (requestId === pageLoadIdRef.current) {
+          setLoadingMatches(false);
+        }
       }
     };
 
     loadPage();
-  }, [currentPage, pageSize, appliedFilters, buildSupabaseFilters]);
+  }, [currentPage, pageSize, appliedFilters, buildSupabaseFilters, pageRequestKey]);
 
   const paginatedMatches = filteredMatches;
   const setSourceFilter = (source, checked) => {
@@ -342,7 +379,13 @@ export const RecentMatchesPage = () => {
       <div className="panel rankingsPanel recentMatchesPanel">
         <h1>Recent Matches</h1>
         <p>Newest atomic matches in a card view.</p>
-        <div className="controls rankingsControls profileControls">
+        <form
+          className="controls rankingsControls profileControls"
+          onSubmit={(event) => {
+            event.preventDefault();
+            handleSearch();
+          }}
+        >
           <label htmlFor="recent-mode-select">
             Mode
             <select
@@ -407,13 +450,12 @@ export const RecentMatchesPage = () => {
           </label>
           <button
             className="analyzeButton"
-            type="button"
-            onClick={handleSearch}
+            type="submit"
             disabled={loadingMatches}
           >
             {loadingMatches ? "Searching..." : "Search"}
           </button>
-        </div>
+        </form>
 
         <div className="controls profileControls">
           <label htmlFor="recent-start-date-filter">
@@ -506,6 +548,7 @@ export const RecentMatchesPage = () => {
             currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={setCurrentPage}
+            disabled={loadingMatches}
           />
         ) : null}
       </div>

@@ -30,6 +30,7 @@ const MATCH_SELECT_COLUMNS = [
 ].join(",");
 
 const matchRowsCache = new Map();
+const MAX_MATCH_PAGE_SIZE = 200;
 
 const escapeOrValue = (value) => String(value || "").trim().replace(/,/g, "\\,");
 
@@ -117,7 +118,7 @@ const buildMatchQuery = (supabase, tableName, filters) => {
 };
 
 const normalizePageOptions = ({ page, pageSize } = {}) => {
-  const size = Math.floor(Number(pageSize));
+  const size = Math.min(MAX_MATCH_PAGE_SIZE, Math.floor(Number(pageSize)));
   if (!Number.isFinite(size) || size <= 0) {
     return { pageSize: 1000, from: 0, useSinglePage: false };
   }

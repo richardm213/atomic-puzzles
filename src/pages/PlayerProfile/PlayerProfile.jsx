@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import "./PlayerProfile.css";
 import {
@@ -81,6 +81,8 @@ export const PlayerProfilePage = ({ username }) => {
   const [timeControlInitialFilter, setTimeControlInitialFilter] = useState("all");
   const [timeControlIncrementFilter, setTimeControlIncrementFilter] = useState("all");
   const [loadingMatches, setLoadingMatches] = useState(false);
+  const matchRequestIdRef = useRef(0);
+  const searchSubmitInFlightRef = useRef(false);
   const aliasesLookup = useAliasesLookup();
   const ratingsSnapshotByMode = useRatingsSnapshotByMode(normalizedUsername);
   const monthRanks = useMonthRanks(normalizedUsername);
@@ -98,6 +100,8 @@ export const PlayerProfilePage = ({ username }) => {
   const matchLengthBounds = matchLengthBoundsByMode[selectedMode] ?? matchLengthBoundsByMode.blitz;
 
   const runMatchSearch = async (mode, nextAppliedFilters, nextPage = 1) => {
+    const requestId = matchRequestIdRef.current + 1;
+    matchRequestIdRef.current = requestId;
     setLoadingMatches(true);
     setError("");
     try {
@@ -106,6 +110,7 @@ export const PlayerProfilePage = ({ username }) => {
         page: nextPage,
         pageSize,
       });
+      if (requestId !== matchRequestIdRef.current) return;
       setMatchesByMode((current) => ({
         ...current,
         [mode]: normalizeMatches(loaded.matches, normalizedUsername),
@@ -117,6 +122,7 @@ export const PlayerProfilePage = ({ username }) => {
       setAppliedFilters(nextAppliedFilters);
       setPage(nextPage);
     } catch (loadError) {
+      if (requestId !== matchRequestIdRef.current) return;
       setMatchesByMode((current) => ({
         ...current,
         [mode]: [],
@@ -127,7 +133,9 @@ export const PlayerProfilePage = ({ username }) => {
       }));
       setError(String(loadError));
     } finally {
-      setLoadingMatches(false);
+      if (requestId === matchRequestIdRef.current) {
+        setLoadingMatches(false);
+      }
     }
   };
 
@@ -154,18 +162,25 @@ export const PlayerProfilePage = ({ username }) => {
   const filteredMatches = useFilteredMatches(matches, appliedFilters, selectedMode);
 
   const handleSearchClick = async () => {
-    await runMatchSearch(
-      selectedMode,
-      {
-        matchLengthMin,
-        matchLengthMax,
-        opponentRatingMin,
-        opponentRatingMax,
-        timeControlInitialFilter,
-        timeControlIncrementFilter,
-      },
-      1,
-    );
+    if (searchSubmitInFlightRef.current || loadingMatches) return;
+
+    searchSubmitInFlightRef.current = true;
+    try {
+      await runMatchSearch(
+        selectedMode,
+        {
+          matchLengthMin,
+          matchLengthMax,
+          opponentRatingMin,
+          opponentRatingMax,
+          timeControlInitialFilter,
+          timeControlIncrementFilter,
+        },
+        1,
+      );
+    } finally {
+      searchSubmitInFlightRef.current = false;
+    }
   };
 
   const totalPages = Math.max(
@@ -343,7 +358,13 @@ export const PlayerProfilePage = ({ username }) => {
           </div>
         </div>
 
-        <div className="controls rankingsControls profileControls">
+        <form
+          className="controls rankingsControls profileControls"
+          onSubmit={(event) => {
+            event.preventDefault();
+            handleSearchClick();
+          }}
+        >
           <label htmlFor="profile-mode-select">
             Mode
             <select
@@ -407,13 +428,12 @@ export const PlayerProfilePage = ({ username }) => {
           </label>
           <button
             className="analyzeButton"
-            type="button"
-            onClick={handleSearchClick}
+            type="submit"
             disabled={loadingMatches}
           >
             {loadingMatches ? "Searching..." : "Search"}
           </button>
-        </div>
+        </form>
 
         <DualRangeSlider
           id="match-length-min"
@@ -537,6 +557,7 @@ export const PlayerProfilePage = ({ username }) => {
           totalPages={totalPages}
           onPageChange={setPage}
           formatLabel={(current, total) => `Page ${current} / ${total}`}
+          disabled={loadingMatches}
         />
       </div>
     </div>
