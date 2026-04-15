@@ -11,7 +11,7 @@ export const DualRangeSlider = ({
   onLowerChange,
   onUpperChange,
 }) => (
-  <div className="opponentRatingFilter">
+  <div className="opponentRatingFilter rangeFilter">
     <label htmlFor={id}>{label}</label>
     <div className="dualRangeSlider">
       <div className="dualRangeTrack" />

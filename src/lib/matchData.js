@@ -6,6 +6,7 @@ import {
   parseWinnerFromPerspective,
   winnerToFullWord,
 } from "../utils/matchTransforms";
+import { matchSourceFromValues } from "../utils/matchFilters";
 import { normalizeUsername } from "../utils/playerNames";
 
 const toNullableNumber = (value) => {
@@ -194,7 +195,19 @@ export const normalizeMatches = (matches, username) => {
       const afterRating = Number(ratingData?.after_rating);
       const beforeRd = Number(ratingData?.before_rd);
       const afterRd = Number(ratingData?.after_rd);
+      const opponentBeforeRating = Number(opponentRatingData?.before_rating);
       const opponentAfterRating = Number(opponentRatingData?.after_rating);
+      const opponentBeforeRd = Number(opponentRatingData?.before_rd);
+      const opponentAfterRd = Number(opponentRatingData?.after_rd);
+      const firstGame = games[0];
+      const rawSourceValue = [
+        firstGame?.source,
+        firstGame?.match_source,
+        firstGame?.queue,
+        match?.source,
+        match?.match_source,
+        match?.queue,
+      ].find((value) => value !== undefined && value !== null && String(value).trim().length > 0);
 
       return {
         startTs: Number(match?.start_ts ?? match?.s),
@@ -209,10 +222,27 @@ export const normalizeMatches = (matches, username) => {
         beforeRd,
         afterRating,
         afterRd,
+        opponentBeforeRating,
         opponentAfterRating,
+        opponentBeforeRd,
+        opponentAfterRd,
         gameCount: games.length,
         firstGameId: String(games[0]?.id || "—"),
         games: matchGames,
+        sourceValue:
+          rawSourceValue === undefined ||
+          rawSourceValue === null ||
+          String(rawSourceValue).trim().length === 0
+            ? "—"
+            : String(rawSourceValue),
+        sourceKey: matchSourceFromValues(
+          firstGame?.source,
+          firstGame?.match_source,
+          firstGame?.queue,
+          match?.source,
+          match?.match_source,
+          match?.queue,
+        ),
       };
     })
     .sort((a, b) => b.startTs - a.startTs);

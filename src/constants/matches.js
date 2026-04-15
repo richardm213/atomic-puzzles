@@ -1,6 +1,8 @@
 export const modeOptions = ["blitz", "bullet"];
 
-export const pageSizeOptions = [10, 25, 50, 100];
+export const pageSizeOptions = [25, 50, 100, 200];
+export const defaultSourceFilters = { arena: true, friend: true, lobby: true };
+export const knownSourceKeys = Object.keys(defaultSourceFilters);
 
 export const opponentRatingSliderMin = 1000;
 export const opponentRatingSliderMax = 2500;

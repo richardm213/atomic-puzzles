@@ -1,5 +1,9 @@
 @import "../RecentMatches/RecentMatches.css";
 
+.playerProfilePanel {
+  width: min(980px, 100%);
+}
+
 .profileTopBar {
   margin-top: 8px;
   display: grid;
@@ -89,27 +93,162 @@
   overflow-wrap: anywhere;
 }
 
+.playerProfilePanel .analyzeButton {
+  min-height: 42px;
+  border-radius: 8px;
+  background: #155e75;
+  border-color: rgba(103, 232, 249, 0.28);
+  color: #ecfeff;
+  font-weight: 800;
+}
+
+.playerProfilePanel .analyzeButton:hover:not(:disabled) {
+  background: #0e7490;
+}
+
+.playerProfilePanel .analyzeButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.profileMatchTableWrap {
+  margin-top: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 8px;
+  background: rgba(2, 6, 23, 0.16);
+}
+
+.profileMatchTable {
+  min-width: 780px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.profileMatchTable thead {
+  background: rgba(148, 163, 184, 0.1);
+}
+
+.profileMatchTable th {
+  color: #aebdd0;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.profileMatchTable th,
+.profileMatchTable td {
+  border-bottom-color: rgba(148, 163, 184, 0.11);
+  padding: 11px 12px;
+  vertical-align: middle;
+}
+
+.profileMatchTable tbody tr:last-child td {
+  border-bottom: 0;
+}
+
 .expandableMatchRow {
   cursor: pointer;
+  transition:
+    background 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.profileMatchTable .expandableMatchRow:hover,
+.profileMatchTable .expandableMatchRow:focus-visible {
+  background: rgba(14, 116, 144, 0.16);
+  box-shadow: inset 3px 0 0 #38bdf8;
+  outline: none;
 }
 
 .expandableMatchRow.expanded {
-  background: rgba(96, 165, 250, 0.14);
+  background: rgba(14, 116, 144, 0.2);
+  box-shadow: inset 3px 0 0 #38bdf8;
+}
+
+.profileTablePill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.72);
+  color: #cbd5e1;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 0 9px;
+  white-space: nowrap;
+}
+
+.profileScoreBox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 96px;
+  min-height: 34px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 8px;
+  background: rgba(2, 6, 23, 0.22);
+  font-size: 16px;
+  font-weight: 850;
+}
+
+.profileScoreValue {
+  min-width: 24px;
+  text-align: center;
+}
+
+.profileScoreValue.winner {
+  color: #86efac;
+}
+
+.profileScoreValue.loser {
+  color: #94a3b8;
+}
+
+.profileMetricValue {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.profileDelta {
+  margin-left: 6px;
+  color: #94a3b8;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 
 .matchDetailsRow td {
-  background: rgba(15, 23, 42, 0.9);
+  background: rgba(2, 6, 23, 0.28);
 }
 
 .matchDetailsInner {
-  padding: 6px 0;
+  padding: 4px 0 2px;
 }
 
-.matchDetailsInner ul {
-  margin: 8px 0 0 18px;
-  padding: 0;
-  display: grid;
-  gap: 4px;
+.profileMatchPlayerStats {
+  margin-bottom: 12px;
+}
+
+.profileMatchGames {
+  max-width: none;
+}
+
+.profileMatchGameHeader,
+.profileMatchGame {
+  grid-template-columns: 80px minmax(0, 1fr) 80px minmax(90px, auto);
+  gap: 12px;
+  font-size: 13px;
+}
+
+.profileMatchGameHeader {
+  font-size: 11px;
+}
+
+.profileMatchGame > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 @media (max-width: 900px) {
@@ -120,6 +259,10 @@
   .profileHighlights,
   .profileHighlightsBottomRow {
     grid-template-columns: 1fr;
+  }
+
+  .matchFilterGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -143,6 +286,32 @@
   .profileBestMonthRankRating {
     text-align: left;
     white-space: normal;
+  }
+
+  .matchFilterGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .profileMatchTable {
+    min-width: 700px;
+    font-size: 14px;
+  }
+
+  .profileMatchTable th,
+  .profileMatchTable td {
+    padding: 10px;
+  }
+
+  .profileMatchGameHeader,
+  .profileMatchGame {
+    grid-template-columns: 68px minmax(0, 1fr);
+  }
+
+  .profileMatchGameHeader > :nth-child(3),
+  .profileMatchGameHeader > :nth-child(4),
+  .profileMatchGame > :nth-child(3),
+  .profileMatchGame > :nth-child(4) {
+    grid-column: 1 / -1;
   }
 }
 

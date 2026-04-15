@@ -67,6 +67,8 @@ const normalizeH2HMatches = (matches, mode, playerA, playerB) => {
           id: String(game?.id || "—"),
           index,
           resultLabel,
+          scoreAAfter: scoreA,
+          scoreBAfter: scoreB,
         };
       });
 
@@ -570,6 +572,7 @@ export const H2HPage = () => {
                             <div className="matchGamesHeader">
                               <strong>Game</strong>
                               <strong>Result</strong>
+                              <strong>Score</strong>
                               <strong>ID</strong>
                             </div>
                             <ul className="matchGamesList">
@@ -580,6 +583,9 @@ export const H2HPage = () => {
                                 >
                                   <span>Game {game.index + 1}</span>
                                   <span>{game.resultLabel}</span>
+                                  <span>{`${formatScore(game.scoreAAfter)} - ${formatScore(
+                                    game.scoreBAfter,
+                                  )}`}</span>
                                   <span>
                                     <LichessGameLink gameId={game.id}>{game.id}</LichessGameLink>
                                   </span>

@@ -1,6 +1,93 @@
 .recentMatchesPanel {
-  width: min(760px, 100%);
+  width: min(920px, 100%);
   min-width: 0;
+}
+
+.recentMatchesPanel h1 {
+  margin-bottom: 8px;
+}
+
+.recentMatchesPanel > p {
+  max-width: 520px;
+  margin-bottom: 22px;
+  color: #b6c5d8;
+}
+
+.matchFilterPanel {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+  padding: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 8px;
+  background: rgba(2, 6, 23, 0.18);
+}
+
+.matchFilterGrid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(120px, 1fr)) max-content;
+  align-items: end;
+  gap: 12px;
+}
+
+.matchFilterGrid label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  justify-items: start;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.matchFilterGrid select,
+.matchFilterGrid input[type="text"],
+.matchFilterGrid input[type="date"] {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.92);
+  color: #e8ecf3;
+  font-size: 16px;
+  padding: 10px 12px;
+}
+
+.matchFilterSearch,
+.recentMatchesPanel .analyzeButton {
+  min-height: 42px;
+  border-radius: 8px;
+  background: #155e75;
+  border-color: rgba(103, 232, 249, 0.28);
+  color: #ecfeff;
+  font-weight: 800;
+}
+
+.recentMatchesPanel .analyzeButton:hover:not(:disabled) {
+  background: #0e7490;
+}
+
+.recentMatchesPanel .analyzeButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.matchFilterRanges {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.matchFilterActions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.matchFilterActions .matchFilterSearch {
+  min-width: 160px;
 }
 
 .profileControls {
@@ -14,20 +101,37 @@
 }
 
 .opponentRatingFilter {
-  margin-top: 10px;
   padding: 12px;
-  border-radius: 12px;
+  border-radius: 8px;
   background: #0f172a;
   border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.rangeFilter {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 8px;
+  background: rgba(2, 6, 23, 0.18);
+}
+
+.rangeFilter > label,
+.sourceFilterGroup > .statusLabel {
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .dualRangeSlider {
   position: relative;
   height: 24px;
   margin-top: 8px;
-  width: 50%;
+  width: 100%;
   min-width: 240px;
-  max-width: 420px;
+  max-width: 520px;
 }
 
 .dualRangeTrack,
@@ -42,11 +146,11 @@
 .dualRangeTrack {
   left: 0;
   right: 0;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(148, 163, 184, 0.24);
 }
 
 .dualRangeSelected {
-  background: #60a5fa;
+  background: linear-gradient(90deg, #22c55e, #38bdf8);
 }
 
 .dualRangeInput {
@@ -70,27 +174,48 @@
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: #dbeafe;
-  border: 1px solid #60a5fa;
+  background: #ecfeff;
+  border: 2px solid #38bdf8;
   cursor: pointer;
   pointer-events: auto;
 }
 
 .sourceFilterChecks {
   display: flex;
-  gap: 14px;
+  gap: 10px;
   flex-wrap: wrap;
+  padding: 12px 14px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 8px;
+  background: rgba(2, 6, 23, 0.18);
+}
+
+.sourceFilterGroup .sourceFilterChecks {
+  margin-top: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 
 .sourceFilterCheck {
   display: inline-flex !important;
   align-items: center;
-  gap: 6px;
-  min-height: 32px;
+  gap: 8px;
+  min-height: 34px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.72);
+  color: #cbd5e1;
+  padding: 0 10px;
+  width: auto;
+}
+
+.sourceFilterCheck input {
+  accent-color: #22c55e;
 }
 
 .paginationRow {
-  margin-top: 12px;
+  margin-top: 16px;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -101,9 +226,14 @@
   border: 1px solid rgba(255, 255, 255, 0.14);
   background: #0f172a;
   color: #e8ecf3;
-  border-radius: 12px;
+  border-radius: 8px;
   padding: 8px 10px;
   cursor: pointer;
+}
+
+.paginationRow button:hover:not(:disabled) {
+  border-color: rgba(147, 197, 253, 0.42);
+  color: #fff;
 }
 
 .paginationRow button:disabled {
@@ -111,7 +241,30 @@
   cursor: not-allowed;
 }
 
+@media (max-width: 900px) {
+  .matchFilterGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 640px) {
+  .matchFilterGrid,
+  .matchFilterRanges {
+    grid-template-columns: 1fr;
+  }
+
+  .matchFilterGrid label {
+    justify-items: stretch;
+  }
+
+  .matchFilterActions {
+    justify-content: stretch;
+  }
+
+  .matchFilterActions .matchFilterSearch {
+    width: 100%;
+  }
+
   .profileControls {
     grid-template-columns: 1fr;
     justify-content: stretch;
@@ -148,6 +301,7 @@
   }
 
   .sourceFilterCheck {
+    flex: 1 1 140px;
     min-height: 44px;
   }
 

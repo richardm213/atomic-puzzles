@@ -3,11 +3,15 @@ import "./RecentMatches.css";
 import {
   defaultRatingMax,
   defaultRatingMin,
+  defaultSourceFilters,
   isMatchLengthWithinBounds,
+  knownSourceKeys,
   modeOptions,
   opponentRatingSliderMax,
   opponentRatingSliderMin,
+  pageSizeOptions,
 } from "../../constants/matches";
+import { useTimeControlOptions } from "../../hooks/usePlayerProfileData";
 import { toBoundedLengthRange, useMatchLengthRange } from "../../hooks/useMatchLengthRange";
 import { MatchCard } from "../../components/MatchCard/MatchCard";
 import { DualRangeSlider } from "../../components/DualRangeSlider/DualRangeSlider";
@@ -25,10 +29,7 @@ import { loadRawMatchesByMode } from "../../lib/matchData";
 
 const recentModeOptions = modeOptions;
 const ratingFilterTypeOptions = ["both", "average"];
-const pageSizeOptions = [25, 50, 100, 200];
 const defaultPageSize = 50;
-const defaultSourceFilters = { arena: true, friend: true, lobby: true };
-const knownSourceKeys = Object.keys(defaultSourceFilters);
 
 const normalizeRecentMatches = (matches, mode) =>
   (Array.isArray(matches) ? matches : [])
@@ -165,6 +166,8 @@ export const RecentMatchesPage = () => {
   const [sourceFilters, setSourceFilters] = useState(defaultSourceFilters);
   const [startDateFilter, setStartDateFilter] = useState("");
   const [endDateFilter, setEndDateFilter] = useState("");
+  const [timeControlInitialFilter, setTimeControlInitialFilter] = useState("all");
+  const [timeControlIncrementFilter, setTimeControlIncrementFilter] = useState("all");
   const [loadingMatches, setLoadingMatches] = useState(false);
   const searchInFlightRef = useRef(false);
   const pageLoadIdRef = useRef(0);
@@ -187,6 +190,8 @@ export const RecentMatchesPage = () => {
     sourceFilters: defaultSourceFilters,
     startDateFilter: "",
     endDateFilter: "",
+    timeControlInitialFilter: "all",
+    timeControlIncrementFilter: "all",
     matchLengthMin: defaultLengthRange.min,
     matchLengthMax: defaultLengthRange.max,
   });
@@ -203,12 +208,32 @@ export const RecentMatchesPage = () => {
     () => parseDateInputBoundary(appliedFilters.endDateFilter, "end"),
     [appliedFilters.endDateFilter],
   );
+  const { initialOptions, incrementOptions } = useTimeControlOptions(matches);
+
+  useEffect(() => {
+    setTimeControlInitialFilter("all");
+    setTimeControlIncrementFilter("all");
+  }, [selectedMode]);
 
   const filteredMatches = useMemo(
     () =>
       matches.filter((match) => {
         if (startDateTs !== null && match.startTs < startDateTs) return false;
         if (endDateTs !== null && match.startTs > endDateTs) return false;
+
+        const [initial = "", increment = ""] = String(match.timeControl || "").split("+");
+        if (
+          appliedFilters.timeControlInitialFilter !== "all" &&
+          initial !== appliedFilters.timeControlInitialFilter
+        ) {
+          return false;
+        }
+        if (
+          appliedFilters.timeControlIncrementFilter !== "all" &&
+          increment !== appliedFilters.timeControlIncrementFilter
+        ) {
+          return false;
+        }
 
         if (
           !isMatchLengthWithinBounds(
@@ -260,6 +285,12 @@ export const RecentMatchesPage = () => {
     if (nextFilters.endDateFilter) {
       queryFilters.endTs = parseDateInputBoundary(nextFilters.endDateFilter, "end");
     }
+    if (
+      nextFilters.timeControlInitialFilter !== "all" &&
+      nextFilters.timeControlIncrementFilter !== "all"
+    ) {
+      queryFilters.timeControl = `${nextFilters.timeControlInitialFilter}+${nextFilters.timeControlIncrementFilter}`;
+    }
     const isDefaultRatingRange =
       nextFilters.ratingMin === defaultRatingMin && nextFilters.ratingMax === defaultRatingMax;
     if (!isDefaultRatingRange) {
@@ -294,6 +325,8 @@ export const RecentMatchesPage = () => {
       sourceFilters: { ...sourceFilters },
       startDateFilter,
       endDateFilter,
+      timeControlInitialFilter,
+      timeControlIncrementFilter,
       matchLengthMin,
       matchLengthMax,
     };
@@ -380,131 +413,162 @@ export const RecentMatchesPage = () => {
         <h1>Recent Matches</h1>
         <p>Newest atomic matches in a card view.</p>
         <form
-          className="controls rankingsControls profileControls"
+          className="matchFilterPanel"
           onSubmit={(event) => {
             event.preventDefault();
             handleSearch();
           }}
         >
-          <label htmlFor="recent-mode-select">
-            Mode
-            <select
-              id="recent-mode-select"
-              value={selectedMode}
-              onChange={(event) => setSelectedMode(event.target.value)}
-            >
-              {recentModeOptions.map((mode) => (
-                <option key={mode} value={mode}>
-                  {mode}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label htmlFor="recent-rating-filter-type">
-            Rating filter type
-            <select
-              id="recent-rating-filter-type"
-              value={ratingFilterType}
-              onChange={(event) => setRatingFilterType(event.target.value)}
-            >
-              {ratingFilterTypeOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option === "both" ? "Both players in range" : "Average rating in range"}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label htmlFor="recent-player1-filter">
-            Player 1
-            <input
-              id="recent-player1-filter"
-              type="text"
-              value={player1Filter}
-              onChange={(event) => setPlayer1Filter(event.target.value)}
-              placeholder="username"
+          <div className="matchFilterGrid">
+            <label htmlFor="recent-mode-select">
+              Mode
+              <select
+                id="recent-mode-select"
+                value={selectedMode}
+                onChange={(event) => setSelectedMode(event.target.value)}
+              >
+                {recentModeOptions.map((mode) => (
+                  <option key={mode} value={mode}>
+                    {mode}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label htmlFor="recent-page-size">
+              Page size
+              <select
+                id="recent-page-size"
+                value={pageSize}
+                onChange={(event) => setPageSize(Number(event.target.value))}
+              >
+                {pageSizeOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label htmlFor="recent-time-initial-select">
+              Initial (sec)
+              <select
+                id="recent-time-initial-select"
+                value={timeControlInitialFilter}
+                onChange={(event) => setTimeControlInitialFilter(event.target.value)}
+              >
+                <option value="all">All</option>
+                {initialOptions.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label htmlFor="recent-time-increment-select">
+              Increment (sec)
+              <select
+                id="recent-time-increment-select"
+                value={timeControlIncrementFilter}
+                onChange={(event) => setTimeControlIncrementFilter(event.target.value)}
+              >
+                <option value="all">All</option>
+                {incrementOptions.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label htmlFor="recent-rating-filter-type">
+              Rating type
+              <select
+                id="recent-rating-filter-type"
+                value={ratingFilterType}
+                onChange={(event) => setRatingFilterType(event.target.value)}
+              >
+                {ratingFilterTypeOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option === "both" ? "Both players" : "Average"}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label htmlFor="recent-player1-filter">
+              Player 1
+              <input
+                id="recent-player1-filter"
+                type="text"
+                value={player1Filter}
+                onChange={(event) => setPlayer1Filter(event.target.value)}
+                placeholder="username"
+              />
+            </label>
+            <label htmlFor="recent-player2-filter">
+              Player 2
+              <input
+                id="recent-player2-filter"
+                type="text"
+                value={player2Filter}
+                onChange={(event) => setPlayer2Filter(event.target.value)}
+                placeholder="username"
+              />
+            </label>
+            <label htmlFor="recent-start-date-filter">
+              From
+              <input
+                id="recent-start-date-filter"
+                type="date"
+                value={startDateFilter}
+                onChange={(event) => setStartDateFilter(event.target.value)}
+              />
+            </label>
+            <label htmlFor="recent-end-date-filter">
+              To
+              <input
+                id="recent-end-date-filter"
+                type="date"
+                value={endDateFilter}
+                min={startDateFilter || undefined}
+                onChange={(event) => setEndDateFilter(event.target.value)}
+              />
+            </label>
+          </div>
+
+          <div className="matchFilterRanges">
+            <DualRangeSlider
+              id="recent-rating-min"
+              label={`${ratingFilterType === "both" ? "Both-player rating range" : "Average rating range"}: ${ratingMin} - ${ratingMax}`}
+              min={opponentRatingSliderMin}
+              max={opponentRatingSliderMax}
+              step={10}
+              lowerValue={ratingMin}
+              upperValue={ratingMax}
+              onLowerChange={setRatingMin}
+              onUpperChange={setRatingMax}
             />
-          </label>
-          <label htmlFor="recent-player2-filter">
-            Player 2
-            <input
-              id="recent-player2-filter"
-              type="text"
-              value={player2Filter}
-              onChange={(event) => setPlayer2Filter(event.target.value)}
-              placeholder="username"
+
+            <DualRangeSlider
+              id="recent-length-min"
+              label={`Match length range: ${matchLengthMin} - ${
+                matchLengthMax >= appliedMatchBounds.max
+                  ? `${appliedMatchBounds.max}+`
+                  : matchLengthMax
+              }`}
+              min={appliedMatchBounds.min}
+              max={appliedMatchBounds.max}
+              lowerValue={matchLengthMin}
+              upperValue={matchLengthMax}
+              onLowerChange={setMatchLengthMin}
+              onUpperChange={setMatchLengthMax}
             />
-          </label>
-          <label htmlFor="recent-page-size">
-            Page size
-            <select
-              id="recent-page-size"
-              value={pageSize}
-              onChange={(event) => setPageSize(Number(event.target.value))}
-            >
-              {pageSizeOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button
-            className="analyzeButton"
-            type="submit"
-            disabled={loadingMatches}
-          >
-            {loadingMatches ? "Searching..." : "Search"}
-          </button>
+          </div>
+
+          <SourceFilterChecks values={sourceFilters} onChange={setSourceFilter} />
+          <div className="matchFilterActions">
+            <button className="analyzeButton matchFilterSearch" type="submit" disabled={loadingMatches}>
+              {loadingMatches ? "Searching..." : "Search"}
+            </button>
+          </div>
         </form>
-
-        <div className="controls profileControls">
-          <label htmlFor="recent-start-date-filter">
-            From
-            <input
-              id="recent-start-date-filter"
-              type="date"
-              value={startDateFilter}
-              onChange={(event) => setStartDateFilter(event.target.value)}
-            />
-          </label>
-          <label htmlFor="recent-end-date-filter">
-            To
-            <input
-              id="recent-end-date-filter"
-              type="date"
-              value={endDateFilter}
-              min={startDateFilter || undefined}
-              onChange={(event) => setEndDateFilter(event.target.value)}
-            />
-          </label>
-        </div>
-
-        <SourceFilterChecks values={sourceFilters} onChange={setSourceFilter} />
-
-        <DualRangeSlider
-          id="recent-rating-min"
-          label={`${ratingFilterType === "both" ? "Both-player rating range" : "Average rating range"}: ${ratingMin} - ${ratingMax}`}
-          min={opponentRatingSliderMin}
-          max={opponentRatingSliderMax}
-          step={10}
-          lowerValue={ratingMin}
-          upperValue={ratingMax}
-          onLowerChange={setRatingMin}
-          onUpperChange={setRatingMax}
-        />
-
-        <DualRangeSlider
-          id="recent-length-min"
-          label={`Match length range: ${matchLengthMin} - ${
-            matchLengthMax >= appliedMatchBounds.max ? `${appliedMatchBounds.max}+` : matchLengthMax
-          }`}
-          min={appliedMatchBounds.min}
-          max={appliedMatchBounds.max}
-          lowerValue={matchLengthMin}
-          upperValue={matchLengthMax}
-          onLowerChange={setMatchLengthMin}
-          onUpperChange={setMatchLengthMax}
-        />
 
         {error ? <div className="errorText">{error}</div> : null}
 

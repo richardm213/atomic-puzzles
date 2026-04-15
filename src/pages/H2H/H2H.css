@@ -107,6 +107,8 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   overflow: hidden;
+  font-size: 14px;
+  line-height: 1.35;
 }
 
 .h2hHistoryTable thead {
@@ -115,10 +117,32 @@
 
 .h2hHistoryTable th,
 .h2hHistoryTable td {
-  padding: 10px;
+  padding: 11px 12px;
   text-align: left;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   overflow-wrap: anywhere;
+  vertical-align: middle;
+}
+
+.h2hHistoryTable th {
+  color: #aebdd0;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.h2hHistoryTable td {
+  color: #e8ecf3;
+}
+
+.h2hHistoryTable td:nth-child(2),
+.h2hHistoryTable td:nth-child(4) {
+  font-size: 13px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .h2hHistoryRow {
@@ -135,6 +159,13 @@
 
 .h2hHistoryDetailsRow td {
   background: rgba(15, 23, 42, 0.82);
+  font-size: 13px;
+}
+
+.h2hHistoryDetailsRow .matchGamesHeader,
+.h2hHistoryDetailsRow .matchGameRow {
+  grid-template-columns: max-content max-content max-content max-content;
+  justify-content: start;
 }
 
 @media (max-width: 900px) {
@@ -205,13 +236,20 @@
     display: block;
     overflow-x: auto;
     min-width: 0;
-    font-size: 13px;
     -webkit-overflow-scrolling: touch;
   }
 
   .h2hHistoryTable th,
   .h2hHistoryTable td {
     padding: 8px 6px;
+  }
+
+  .h2hHistoryTable td {
+    font-size: 13px;
+  }
+
+  .h2hHistoryTable th {
+    font-size: 10px;
   }
 }
 
@@ -235,5 +273,13 @@
 
   .h2hHistoryTable {
     font-size: 12px;
+  }
+
+  .h2hHistoryTable td {
+    font-size: 12px;
+  }
+
+  .h2hHistoryTable th {
+    font-size: 10px;
   }
 }

@@ -1,77 +1,211 @@
 .matchCards {
-  margin-top: 12px;
+  margin-top: 14px;
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .matchCard {
-  background: #0f172a;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  padding: 12px;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(13, 19, 34, 0.98));
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 8px;
+  padding: 14px;
   cursor: pointer;
   min-width: 0;
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+.matchCard::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: #38bdf8;
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+
+.matchCard:hover,
+.matchCard:focus-visible {
+  border-color: rgba(147, 197, 253, 0.42);
+  box-shadow: 0 14px 28px rgba(2, 6, 23, 0.28);
+  outline: none;
+  transform: translateY(-1px);
 }
 
 .matchCard.expanded {
-  border-color: rgba(96, 165, 250, 0.5);
-  background: rgba(15, 23, 42, 0.95);
+  border-color: rgba(56, 189, 248, 0.58);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 1), rgba(11, 18, 32, 1));
+}
+
+.matchCard.expanded::before {
+  opacity: 1;
 }
 
 .matchCardHeader {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content max-content;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  min-width: 0;
+}
+
+.matchCardMain {
   min-width: 0;
 }
 
 .matchCardPlayers {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
+  min-width: 0;
+  color: #e8ecf3;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.matchPlayerLink {
+  color: #eef6ff;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.matchPlayerLink:hover {
+  color: #bae6fd;
+  text-decoration: underline;
+}
+
+.matchVersus {
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .matchCardMeta {
-  margin-top: 8px;
-  color: #c9d3e3;
-  font-size: 14px;
+  margin-top: 10px;
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 6px;
+}
+
+.matchMetaPill,
+.matchExpandCue {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 8px;
+  background: rgba(2, 6, 23, 0.22);
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0 9px;
+  white-space: nowrap;
+}
+
+.matchMetaLink {
+  color: #bfdbfe;
+  text-decoration: none;
+}
+
+.matchMetaLink:hover {
+  color: #e0f2fe;
+  text-decoration: underline;
+}
+
+.matchScoreBlock {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 118px;
+  min-height: 48px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 8px;
+  background: rgba(2, 6, 23, 0.28);
+  color: #e8ecf3;
+  font-size: 23px;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+}
+
+.matchScoreValue {
+  min-width: 30px;
+  text-align: center;
+}
+
+.matchScoreValue.winner {
+  color: #86efac;
+}
+
+.matchScoreValue.loser {
+  color: #94a3b8;
+}
+
+.matchExpandCue {
+  color: #93c5fd;
 }
 
 .matchCardDetails {
-  margin-top: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  padding-top: 8px;
+  margin-top: 14px;
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
+  padding-top: 12px;
 }
 
 .matchCardPlayerStats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 8px 12px;
+  gap: 10px;
   color: #c9d3e3;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 .matchCardPlayerStats > div {
   display: grid;
-  gap: 2px;
+  gap: 4px;
+  min-width: 0;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 8px;
+  background: rgba(2, 6, 23, 0.18);
+  padding: 10px;
+}
+
+.matchCardPlayerStats strong {
+  color: #eef6ff;
+  overflow-wrap: anywhere;
+}
+
+.matchGames {
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 8px;
+  background: rgba(2, 6, 23, 0.18);
 }
 
 .matchGamesHeader,
 .matchGameRow {
   display: grid;
-  grid-template-columns: 84px 1fr minmax(90px, auto);
-  gap: 10px;
+  grid-template-columns: 80px minmax(0, 1fr) minmax(90px, auto);
+  gap: 12px;
   align-items: center;
+  min-width: 0;
 }
 
 .matchGamesHeader {
-  color: #c9d3e3;
-  margin-bottom: 4px;
+  color: #94a3b8;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  padding: 9px 10px;
+  text-transform: uppercase;
+  background: rgba(148, 163, 184, 0.08);
 }
 
 .matchGamesList {
@@ -79,17 +213,47 @@
   padding: 0;
   list-style: none;
   display: grid;
-  gap: 4px;
+}
+
+.matchGameRow {
+  padding: 9px 10px;
+  color: #dbe6f5;
+}
+
+.matchGameRow + .matchGameRow {
+  border-top: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.matchGameRow > :last-child {
+  overflow-wrap: anywhere;
 }
 
 @media (max-width: 640px) {
   .matchCard {
-    padding: 10px;
+    padding: 12px;
   }
 
   .matchCardHeader {
-    align-items: flex-start;
-    flex-direction: column;
+    align-items: stretch;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .matchCardPlayers {
+    font-size: 17px;
+  }
+
+  .matchScoreBlock {
+    justify-content: flex-start;
+    min-width: 0;
+    width: 100%;
+    min-height: 42px;
+    padding: 0 10px;
+  }
+
+  .matchExpandCue {
+    justify-content: center;
+    min-height: 36px;
   }
 
   .matchCardPlayers,
@@ -106,8 +270,8 @@
 
   .matchGamesHeader,
   .matchGameRow {
-    grid-template-columns: 72px minmax(0, 1fr);
-    gap: 6px;
+    grid-template-columns: 68px minmax(0, 1fr);
+    gap: 7px;
   }
 
   .matchGamesHeader > :last-child,

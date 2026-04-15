@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import {
   defaultMatchLengthMax,
   isMatchLengthWithinBounds,
+  knownSourceKeys,
   modeOptions,
   matchLengthBoundsByMode,
 } from "../constants/matches";
+import { parseDateInputBoundary } from "../utils/matchFilters";
 import { parseTimeControlParts } from "../utils/matchTransforms";
 import { fetchLbRows, monthKeyFromMonthValue } from "../lib/supabaseLb";
 import { fetchPlayerRatingsRows } from "../lib/supabasePlayerRatings";
@@ -201,8 +203,20 @@ export const useTimeControlOptions = (matches) => {
 };
 
 export const useFilteredMatches = (matches, appliedFilters, selectedMode) => {
+  const startDateTs = useMemo(
+    () => parseDateInputBoundary(appliedFilters.startDateFilter, "start"),
+    [appliedFilters.startDateFilter],
+  );
+  const endDateTs = useMemo(
+    () => parseDateInputBoundary(appliedFilters.endDateFilter, "end"),
+    [appliedFilters.endDateFilter],
+  );
+
   return useMemo(() => {
     return matches.filter((match) => {
+      if (startDateTs !== null && match.startTs < startDateTs) return false;
+      if (endDateTs !== null && match.startTs > endDateTs) return false;
+
       if (
         !isMatchLengthWithinBounds(
           match.gameCount,
@@ -228,9 +242,20 @@ export const useFilteredMatches = (matches, appliedFilters, selectedMode) => {
         return false;
       }
 
+      const opponentFilter = String(appliedFilters.opponentFilter || "").trim().toLowerCase();
+      if (opponentFilter && !String(match.opponent || "").toLowerCase().includes(opponentFilter)) {
+        return false;
+      }
+
+      const sourceFilters = appliedFilters.sourceFilters || {};
+      const sourceKey = String(match.sourceKey || "unknown").toLowerCase();
+      const anyKnownSourceEnabled = Object.values(sourceFilters).some(Boolean);
+      if (sourceKey === "unknown") return anyKnownSourceEnabled;
+      if (knownSourceKeys.includes(sourceKey)) return sourceFilters[sourceKey];
+
       return true;
     });
-  }, [appliedFilters, matches, selectedMode]);
+  }, [appliedFilters, matches, selectedMode, startDateTs, endDateTs]);
 };
 
 export const useBestWins = (filteredMatches, username, bestWinCount) => {

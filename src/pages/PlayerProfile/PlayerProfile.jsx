@@ -4,6 +4,7 @@ import "./PlayerProfile.css";
 import {
   defaultRatingMax,
   defaultRatingMin,
+  defaultSourceFilters,
   matchLengthBoundsByMode,
   modeOptions,
   opponentRatingSliderMax,
@@ -31,13 +32,29 @@ import {
   formatSignedDecimal,
 } from "../../utils/formatters";
 import { normalizeUsername } from "../../utils/playerNames";
+import { parseDateInputBoundary } from "../../utils/matchFilters";
 import { loadRawMatchesByMode, normalizeMatches } from "../../lib/matchData";
 import { DualRangeSlider } from "../../components/DualRangeSlider/DualRangeSlider";
 import { LichessGameLink } from "../../components/LichessGameLink/LichessGameLink";
 import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { ProfileMetricCard } from "../../components/ProfileMetricCard/ProfileMetricCard";
+import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFilterChecks";
 
 const countOptions = [5, 10, 20];
+
+const scoreTone = (score, opponentScore) => {
+  const numericScore = Number(score);
+  const numericOpponentScore = Number(opponentScore);
+  if (numericScore > numericOpponentScore) return " winner";
+  if (numericScore < numericOpponentScore) return " loser";
+  return "";
+};
+
+const handleMatchRowKeyDown = (event, onToggle) => {
+  if (event.key !== "Enter" && event.key !== " ") return;
+  event.preventDefault();
+  onToggle();
+};
 
 const buildMatchFilters = (username, filters) => {
   const queryFilters = { username };
@@ -54,6 +71,12 @@ const buildMatchFilters = (username, filters) => {
   ) {
     queryFilters.opponentRatingMin = filters.opponentRatingMin;
     queryFilters.opponentRatingMax = filters.opponentRatingMax;
+  }
+  if (filters.startDateFilter) {
+    queryFilters.startTs = parseDateInputBoundary(filters.startDateFilter, "start");
+  }
+  if (filters.endDateFilter) {
+    queryFilters.endTs = parseDateInputBoundary(filters.endDateFilter, "end");
   }
 
   return queryFilters;
@@ -82,6 +105,10 @@ export const PlayerProfilePage = ({ username }) => {
     useMatchLengthRange(selectedMode);
   const [opponentRatingMin, setOpponentRatingMin] = useState(defaultRatingMin);
   const [opponentRatingMax, setOpponentRatingMax] = useState(defaultRatingMax);
+  const [opponentFilter, setOpponentFilter] = useState("");
+  const [startDateFilter, setStartDateFilter] = useState("");
+  const [endDateFilter, setEndDateFilter] = useState("");
+  const [sourceFilters, setSourceFilters] = useState(defaultSourceFilters);
   const [timeControlInitialFilter, setTimeControlInitialFilter] = useState("all");
   const [timeControlIncrementFilter, setTimeControlIncrementFilter] = useState("all");
   const [loadingMatches, setLoadingMatches] = useState(false);
@@ -100,6 +127,10 @@ export const PlayerProfilePage = ({ username }) => {
     matchLengthMax: defaultLengthRange.max,
     opponentRatingMin: defaultRatingMin,
     opponentRatingMax: defaultRatingMax,
+    opponentFilter: "",
+    startDateFilter: "",
+    endDateFilter: "",
+    sourceFilters: defaultSourceFilters,
     timeControlInitialFilter: "all",
     timeControlIncrementFilter: "all",
   });
@@ -169,6 +200,10 @@ export const PlayerProfilePage = ({ username }) => {
       matchLengthMax: defaultLengthRange.max,
       opponentRatingMin: defaultRatingMin,
       opponentRatingMax: defaultRatingMax,
+      opponentFilter: "",
+      startDateFilter: "",
+      endDateFilter: "",
+      sourceFilters: defaultSourceFilters,
       timeControlInitialFilter: "all",
       timeControlIncrementFilter: "all",
     };
@@ -199,6 +234,10 @@ export const PlayerProfilePage = ({ username }) => {
           matchLengthMax,
           opponentRatingMin,
           opponentRatingMax,
+          opponentFilter,
+          startDateFilter,
+          endDateFilter,
+          sourceFilters: { ...sourceFilters },
           timeControlInitialFilter,
           timeControlIncrementFilter,
         },
@@ -214,6 +253,9 @@ export const PlayerProfilePage = ({ username }) => {
     Math.ceil((totalMatchesByMode[selectedMode] ?? 0) / Math.max(1, pageSize)),
   );
   const currentPage = Math.min(page, totalPages);
+  const setSourceFilter = (source, checked) => {
+    setSourceFilters((current) => ({ ...current, [source]: checked }));
+  };
 
   useEffect(() => {
     if (currentPage !== page) {
@@ -246,7 +288,7 @@ export const PlayerProfilePage = ({ username }) => {
 
   return (
     <div className="rankingsPage">
-      <div className="panel rankingsPanel">
+      <div className="panel rankingsPanel playerProfilePanel">
         <h1>{canonicalUsername}</h1>
 
         <div className="profileTopBar">
@@ -385,106 +427,141 @@ export const PlayerProfilePage = ({ username }) => {
         </div>
 
         <form
-          className="controls rankingsControls profileControls"
+          className="matchFilterPanel profileMatchFilters"
           onSubmit={(event) => {
             event.preventDefault();
             handleSearchClick();
           }}
         >
-          <label htmlFor="profile-mode-select">
-            Mode
-            <select
-              id="profile-mode-select"
-              value={selectedMode}
-              onChange={(event) => setSelectedMode(event.target.value)}
-            >
-              {modeOptions.map((mode) => (
-                <option key={mode} value={mode}>
-                  {mode}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label htmlFor="profile-page-size-select">
-            Page size
-            <select
-              id="profile-page-size-select"
-              value={pageSize}
-              onChange={(event) => {
-                setPageSize(Number(event.target.value));
-                setPage(1);
-              }}
-            >
-              {pageSizeOptions.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label htmlFor="profile-time-initial-select">
-            Initial (sec)
-            <select
-              id="profile-time-initial-select"
-              value={timeControlInitialFilter}
-              onChange={(event) => setTimeControlInitialFilter(event.target.value)}
-            >
-              <option value="all">All</option>
-              {initialOptions.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label htmlFor="profile-time-increment-select">
-            Increment (sec)
-            <select
-              id="profile-time-increment-select"
-              value={timeControlIncrementFilter}
-              onChange={(event) => setTimeControlIncrementFilter(event.target.value)}
-            >
-              <option value="all">All</option>
-              {incrementOptions.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button
-            className="analyzeButton"
-            type="submit"
-            disabled={loadingMatches}
-          >
-            {loadingMatches ? "Searching..." : "Search"}
-          </button>
+          <div className="matchFilterGrid">
+            <label htmlFor="profile-mode-select">
+              Mode
+              <select
+                id="profile-mode-select"
+                value={selectedMode}
+                onChange={(event) => setSelectedMode(event.target.value)}
+              >
+                {modeOptions.map((mode) => (
+                  <option key={mode} value={mode}>
+                    {mode}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label htmlFor="profile-page-size-select">
+              Page size
+              <select
+                id="profile-page-size-select"
+                value={pageSize}
+                onChange={(event) => {
+                  setPageSize(Number(event.target.value));
+                  setPage(1);
+                }}
+              >
+                {pageSizeOptions.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label htmlFor="profile-time-initial-select">
+              Initial (sec)
+              <select
+                id="profile-time-initial-select"
+                value={timeControlInitialFilter}
+                onChange={(event) => setTimeControlInitialFilter(event.target.value)}
+              >
+                <option value="all">All</option>
+                {initialOptions.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label htmlFor="profile-time-increment-select">
+              Increment (sec)
+              <select
+                id="profile-time-increment-select"
+                value={timeControlIncrementFilter}
+                onChange={(event) => setTimeControlIncrementFilter(event.target.value)}
+              >
+                <option value="all">All</option>
+                {incrementOptions.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label htmlFor="profile-opponent-filter">
+              Opponent
+              <input
+                id="profile-opponent-filter"
+                type="text"
+                value={opponentFilter}
+                onChange={(event) => setOpponentFilter(event.target.value)}
+                placeholder="username"
+              />
+            </label>
+            <label htmlFor="profile-start-date-filter">
+              From
+              <input
+                id="profile-start-date-filter"
+                type="date"
+                value={startDateFilter}
+                onChange={(event) => setStartDateFilter(event.target.value)}
+              />
+            </label>
+            <label htmlFor="profile-end-date-filter">
+              To
+              <input
+                id="profile-end-date-filter"
+                type="date"
+                value={endDateFilter}
+                min={startDateFilter || undefined}
+                onChange={(event) => setEndDateFilter(event.target.value)}
+              />
+            </label>
+          </div>
+
+          <div className="matchFilterRanges">
+            <DualRangeSlider
+              id="opponent-rating-min"
+              label={`Opponent rating range: ${opponentRatingMin} - ${opponentRatingMax}`}
+              min={opponentRatingSliderMin}
+              max={opponentRatingSliderMax}
+              step={10}
+              lowerValue={opponentRatingMin}
+              upperValue={opponentRatingMax}
+              onLowerChange={setOpponentRatingMin}
+              onUpperChange={setOpponentRatingMax}
+            />
+
+            <DualRangeSlider
+              id="match-length-min"
+              label={`Match length range: ${matchLengthMin} - ${
+                matchLengthMax >= matchLengthBounds.max
+                  ? `${matchLengthBounds.max}+`
+                  : matchLengthMax
+              }`}
+              min={matchLengthBounds.min}
+              max={matchLengthBounds.max}
+              lowerValue={matchLengthMin}
+              upperValue={matchLengthMax}
+              onLowerChange={setMatchLengthMin}
+              onUpperChange={setMatchLengthMax}
+            />
+          </div>
+
+          <SourceFilterChecks values={sourceFilters} onChange={setSourceFilter} />
+          <div className="matchFilterActions">
+            <button className="analyzeButton matchFilterSearch" type="submit" disabled={loadingMatches}>
+              {loadingMatches ? "Searching..." : "Search"}
+            </button>
+          </div>
         </form>
-
-        <DualRangeSlider
-          id="match-length-min"
-          label={`Match length range: ${matchLengthMin} - ${
-            matchLengthMax >= matchLengthBounds.max ? `${matchLengthBounds.max}+` : matchLengthMax
-          }`}
-          min={matchLengthBounds.min}
-          max={matchLengthBounds.max}
-          lowerValue={matchLengthMin}
-          upperValue={matchLengthMax}
-          onLowerChange={setMatchLengthMin}
-          onUpperChange={setMatchLengthMax}
-        />
-
-        <DualRangeSlider
-          id="opponent-rating-min"
-          label={`Opponent rating range: ${opponentRatingMin} - ${opponentRatingMax}`}
-          min={opponentRatingSliderMin}
-          max={opponentRatingSliderMax}
-          step={10}
-          lowerValue={opponentRatingMin}
-          upperValue={opponentRatingMax}
-          onLowerChange={setOpponentRatingMin}
-          onUpperChange={setOpponentRatingMax}
-        />
 
         {error ? <div className="errorText">{error}</div> : null}
 
@@ -495,8 +572,8 @@ export const PlayerProfilePage = ({ username }) => {
           </span>
         </div>
 
-        <div className="rankingsTableWrap">
-          <table className="rankingsTable">
+        <div className="rankingsTableWrap profileMatchTableWrap">
+          <table className="rankingsTable profileMatchTable">
             <thead>
               <tr>
                 <th>Date / Time</th>
@@ -516,6 +593,12 @@ export const PlayerProfilePage = ({ username }) => {
                     <tr
                       className={`expandableMatchRow${isExpanded ? " expanded" : ""}`}
                       onClick={() => toggleExpandedMatchKey(matchKey)}
+                      onKeyDown={(event) =>
+                        handleMatchRowKeyDown(event, () => toggleExpandedMatchKey(matchKey))
+                      }
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={isExpanded}
                     >
                       <td>
                         <LichessGameLink
@@ -535,31 +618,96 @@ export const PlayerProfilePage = ({ username }) => {
                           {formatOpponentWithRating(match.opponent, match.opponentAfterRating)}
                         </Link>
                       </td>
-                      <td>{match.timeControl}</td>
-                      <td className="scoreCell">
-                        <span>{formatScore(match.playerScore)}</span>
-                        <span className="scoreDash"> - </span>
-                        <span>{formatScore(match.opponentScore)}</span>
+                      <td>
+                        <span className="profileTablePill">{match.timeControl}</span>
                       </td>
-                      <td>{`${match.afterRating}(${formatSignedDecimal(match.ratingChange)})`}</td>
-                      <td>{`${match.afterRd}(${formatSignedDecimal(match.rdChange)})`}</td>
+                      <td className="scoreCell">
+                        <span className="profileScoreBox">
+                          <span
+                            className={`profileScoreValue${scoreTone(
+                              match.playerScore,
+                              match.opponentScore,
+                            )}`}
+                          >
+                            {formatScore(match.playerScore)}
+                          </span>
+                          <span className="scoreDash">-</span>
+                          <span
+                            className={`profileScoreValue${scoreTone(
+                              match.opponentScore,
+                              match.playerScore,
+                            )}`}
+                          >
+                            {formatScore(match.opponentScore)}
+                          </span>
+                        </span>
+                      </td>
+                      <td>
+                        <span className="profileMetricValue">{match.afterRating}</span>
+                        <span className="profileDelta">
+                          {formatSignedDecimal(match.ratingChange)}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="profileMetricValue">{match.afterRd}</span>
+                        <span className="profileDelta">{formatSignedDecimal(match.rdChange)}</span>
+                      </td>
                     </tr>
                     {isExpanded ? (
                       <tr className="matchDetailsRow">
                         <td colSpan={6}>
                           <div className="matchDetailsInner">
-                            <strong>Games</strong>
-                            <ul>
-                              {match.games.map((game, index) => (
-                                <li key={`${matchKey}-${game.id}-${index}`}>
-                                  {`Game ${index + 1}: winner ${game.winner}, score ${formatScore(
-                                    game.playerScoreAfter,
-                                  )} - ${formatScore(game.opponentScoreAfter)}`}
-                                  <span> • </span>
-                                  <LichessGameLink gameId={game.id}>{game.id}</LichessGameLink>
-                                </li>
-                              ))}
-                            </ul>
+                            <div className="matchCardPlayerStats profileMatchPlayerStats">
+                              <div>
+                                <strong>{canonicalUsername}</strong>
+                                <span>
+                                  {`Rating ${match.beforeRating} (${formatSignedDecimal(
+                                    match.ratingChange,
+                                  )})`}
+                                </span>
+                                <span>
+                                  {`RD ${match.beforeRd} (${formatSignedDecimal(match.rdChange)})`}
+                                </span>
+                              </div>
+                              <div>
+                                <strong>{match.opponent}</strong>
+                                <span>
+                                  {`Rating ${match.opponentBeforeRating} (${formatSignedDecimal(
+                                    match.opponentAfterRating - match.opponentBeforeRating,
+                                  )})`}
+                                </span>
+                                <span>
+                                  {`RD ${match.opponentBeforeRd} (${formatSignedDecimal(
+                                    match.opponentAfterRd - match.opponentBeforeRd,
+                                  )})`}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="matchGames profileMatchGames">
+                              <div className="matchGamesHeader profileMatchGameHeader">
+                                <strong>Game</strong>
+                                <strong>Result</strong>
+                                <strong>Score</strong>
+                                <strong>ID</strong>
+                              </div>
+                              <ul className="matchGamesList profileMatchGamesList">
+                                {match.games.map((game, index) => (
+                                  <li
+                                    key={`${matchKey}-${game.id}-${index}`}
+                                    className="matchGameRow profileMatchGame"
+                                  >
+                                    <span>Game {index + 1}</span>
+                                    <span>{game.winner}</span>
+                                    <span>{`${formatScore(game.playerScoreAfter)} - ${formatScore(
+                                      game.opponentScoreAfter,
+                                    )}`}</span>
+                                    <span>
+                                      <LichessGameLink gameId={game.id}>{game.id}</LichessGameLink>
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
                           </div>
                         </td>
                       </tr>

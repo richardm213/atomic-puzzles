@@ -1,7 +1,7 @@
 const sources = ["arena", "friend", "lobby"];
 
 export const SourceFilterChecks = ({ values, onChange }) => (
-  <div className="opponentRatingFilter">
+  <div className="opponentRatingFilter sourceFilterGroup">
     <span className="statusLabel">Source filter</span>
     <div className="sourceFilterChecks">
       {sources.map((source) => (
