@@ -1,4 +1,5 @@
 import { getSupabaseClient } from "./supabaseClient";
+import { cachedRequest } from "../utils/requestCache";
 
 const supabasePlayerRatingsConfig = {
   url: import.meta.env.VITE_SUPABASE_URL?.trim() || "",
@@ -7,6 +8,7 @@ const supabasePlayerRatingsConfig = {
 };
 
 const PLAYER_RATINGS_SELECT_COLUMNS = "username,rating,peak,rd,games,tc,rank";
+const playerRatingsCache = new Map();
 
 const requireSupabaseConfig = () => {
   const { url, anonKey } = supabasePlayerRatingsConfig;
@@ -15,7 +17,7 @@ const requireSupabaseConfig = () => {
   }
 };
 
-export const fetchPlayerRatingsRows = async ({ tc, username, limit } = {}) => {
+const fetchUncachedPlayerRatingsRows = async ({ tc, username, limit } = {}) => {
   requireSupabaseConfig();
   const { table } = supabasePlayerRatingsConfig;
   const supabase = getSupabaseClient();
@@ -40,3 +42,8 @@ export const fetchPlayerRatingsRows = async ({ tc, username, limit } = {}) => {
 
   return rows;
 };
+
+export const fetchPlayerRatingsRows = async (filters = {}) =>
+  cachedRequest(playerRatingsCache, ["playerRatings", filters], () =>
+    fetchUncachedPlayerRatingsRows(filters),
+  );

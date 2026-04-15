@@ -1,10 +1,12 @@
 import { getSupabaseClient } from "./supabaseClient";
+import { cachedRequest } from "../utils/requestCache";
 
 const supabasePuzzleConfig = {
   url: import.meta.env.VITE_SUPABASE_URL?.trim() || "",
   anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() || "",
   table: import.meta.env.VITE_SUPABASE_PUZZLES_TABLE?.trim() || "puzzles",
 };
+const puzzleRowsCache = new Map();
 
 const requireSupabasePuzzleConfig = () => {
   const { url, anonKey } = supabasePuzzleConfig;
@@ -15,7 +17,7 @@ const requireSupabasePuzzleConfig = () => {
 
 export const getSupabasePuzzlesTableName = () => supabasePuzzleConfig.table;
 
-export const fetchPuzzleRowsFromSupabase = async () => {
+const fetchUncachedPuzzleRowsFromSupabase = async () => {
   requireSupabasePuzzleConfig();
 
   const { table } = supabasePuzzleConfig;
@@ -42,3 +44,8 @@ export const fetchPuzzleRowsFromSupabase = async () => {
 
   return allRows;
 };
+
+export const fetchPuzzleRowsFromSupabase = async () =>
+  cachedRequest(puzzleRowsCache, ["puzzles", supabasePuzzleConfig.table], () =>
+    fetchUncachedPuzzleRowsFromSupabase(),
+  );

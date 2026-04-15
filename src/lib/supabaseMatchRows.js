@@ -1,5 +1,6 @@
 import { getSupabaseClient } from "./supabaseClient";
 import { defaultRatingMax, defaultRatingMin } from "../constants/matches";
+import { cachedRequest } from "../utils/requestCache";
 
 const supabaseMatchConfig = {
   url: import.meta.env.VITE_SUPABASE_URL?.trim() || "",
@@ -28,6 +29,8 @@ const MATCH_SELECT_COLUMNS = [
   "p2_after_rd",
 ].join(",");
 
+const matchRowsCache = new Map();
+
 const requireSupabaseConfig = () => {
   const { url, anonKey } = supabaseMatchConfig;
   if (!url || !anonKey) {
@@ -35,7 +38,7 @@ const requireSupabaseConfig = () => {
   }
 };
 
-export const fetchMatchRowsFromSupabase = async (mode, filters = {}, pageOptions = {}) => {
+const fetchUncachedMatchRowsFromSupabase = async (mode, filters = {}, pageOptions = {}) => {
   requireSupabaseConfig();
   const normalizedMode = String(mode || "").toLowerCase();
   const tableName =
@@ -140,3 +143,8 @@ export const fetchMatchRowsFromSupabase = async (mode, filters = {}, pageOptions
     from += 1000;
   }
 };
+
+export const fetchMatchRowsFromSupabase = async (mode, filters = {}, pageOptions = {}) =>
+  cachedRequest(matchRowsCache, ["matches", mode, filters, pageOptions], () =>
+    fetchUncachedMatchRowsFromSupabase(mode, filters, pageOptions),
+  );

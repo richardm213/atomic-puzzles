@@ -1,4 +1,5 @@
 import { getSupabaseClient } from "./supabaseClient";
+import { cachedRequest } from "../utils/requestCache";
 
 const supabaseLbConfig = {
   url: import.meta.env.VITE_SUPABASE_URL?.trim() || "",
@@ -7,6 +8,7 @@ const supabaseLbConfig = {
 };
 
 const LB_SELECT_COLUMNS = "username,month,rank,rating,rd,games,tc";
+const lbRowsCache = new Map();
 const MONTH_INDEX_BY_NAME = {
   Jan: 0,
   Feb: 1,
@@ -55,7 +57,7 @@ export const isoMonthStartFromMonthKey = (monthKey) => {
   return monthDate.toISOString().slice(0, 10);
 };
 
-export const fetchLbRows = async ({ month, username, limit } = {}) => {
+const fetchUncachedLbRows = async ({ month, username, limit } = {}) => {
   requireSupabaseConfig();
   const { table } = supabaseLbConfig;
   const supabase = getSupabaseClient();
@@ -77,3 +79,6 @@ export const fetchLbRows = async ({ month, username, limit } = {}) => {
 
   return rows;
 };
+
+export const fetchLbRows = async (filters = {}) =>
+  cachedRequest(lbRowsCache, ["leaderboard", filters], () => fetchUncachedLbRows(filters));
