@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Chessground } from "@lichess-org/chessground";
 import { chessgroundDests } from "chessops/compat";
 import { makeFen, parseFen } from "chessops/fen";
@@ -46,6 +46,8 @@ const toPromotion = (square) => {
   const rank = square[1];
   return rank === "1" || rank === "8" ? "queen" : undefined;
 };
+
+const promotionOptions = ["queen", "knight", "rook", "bishop"];
 
 const squareName = (file, rank) => `${String.fromCharCode("a".charCodeAt(0) + file)}${rank + 1}`;
 
@@ -224,6 +226,8 @@ export const Chessboard = ({
   const elementRef = useRef(null);
   const cgRef = useRef(null);
   const positionRef = useRef(null);
+  const pendingPromotionRef = useRef(null);
+  const [pendingPromotion, setPendingPromotion] = useState(null);
   const historyRef = useRef({
     fens: [],
     lastMoves: [],
@@ -491,6 +495,155 @@ export const Chessboard = ({
     return true;
   };
 
+  const clearPendingPromotion = () => {
+    pendingPromotionRef.current = null;
+    setPendingPromotion(null);
+  };
+
+  const getPromotionChoices = (position, from, to, piece) => {
+    if (piece?.role !== "pawn") return [];
+
+    const destination = squareName(to % 8, Math.floor(to / 8));
+    if (!toPromotion(destination)) return [];
+
+    return promotionOptions.filter((role) => position.isLegal({ from, to, promotion: role }));
+  };
+
+  const getPromotionSquareStyle = (pending, index) => {
+    const to = parseSquare(pending.dest);
+    if (to === undefined) return {};
+
+    const file = to % 8;
+    const orientationValue = orientationRef.current;
+    const left = (orientationValue === "white" ? file : 7 - file) * 12.5;
+    const top = (pending.color === orientationValue ? index : 7 - index) * 12.5;
+
+    return {
+      left: `${left}%`,
+      top: `${top}%`,
+    };
+  };
+
+  const playUserMove = (orig, dest, promotion) => {
+    const position = positionRef.current;
+    if (!position || moveLockRef.current || showSolutionRef.current) return;
+
+    const from = parseSquare(orig);
+    const to = parseSquare(dest);
+    if (from === undefined || to === undefined) return;
+
+    const move = {
+      from,
+      to,
+      promotion,
+    };
+
+    if (!position.isLegal(move)) {
+      syncBoard(position, [orig, dest]);
+      return;
+    }
+
+    const userMoveText = makeUci(move).toLowerCase();
+    const userMoveSan = makeSan(position, move);
+    const userMoveKey = toComparableUci(position, userMoveText, move);
+    const trainingEnabled = trainingEnabledRef.current;
+
+    if (!trainingEnabled || puzzleSolvedRef.current) {
+      position.play(move);
+      saveMove(position, [orig, dest], userMoveText, userMoveKey, userMoveSan);
+      syncBoard(position, [orig, dest], {
+        showWrongMove: false,
+        showRetryMove: false,
+        solved: puzzleSolvedRef.current,
+      });
+      return;
+    }
+
+    const progress = progressRef.current;
+    const candidates = candidateLinesRef.current;
+    const accepted = new Set(
+      candidates
+        .map((line) => line[progress])
+        .filter((entry) => entry && !entry.questionable)
+        .map((entry) => entry.key),
+    );
+
+    const retryMoves = new Set(
+      candidates
+        .map((line) => line[progress])
+        .filter((entry) => entry && entry.questionable)
+        .map((entry) => entry.key),
+    );
+
+    if (!accepted.has(userMoveKey)) {
+      const isRetryMove = retryMoves.has(userMoveKey);
+      syncBoard(position, undefined, {
+        showWrongMove: !isRetryMove,
+        showRetryMove: isRetryMove,
+        solved: false,
+        status: "Try again",
+      });
+      return;
+    }
+
+    position.play(move);
+    saveMove(position, [orig, dest], userMoveText, userMoveKey, userMoveSan);
+
+    const nextCandidates = candidates.filter((line) => line[progress]?.key === userMoveKey);
+    candidateLinesRef.current = nextCandidates;
+    progressRef.current = progress + 1;
+
+    if (!hasExpectedMoveAt(nextCandidates, progressRef.current)) {
+      puzzleSolvedRef.current = true;
+      syncBoard(position, [orig, dest], {
+        showWrongMove: false,
+        showRetryMove: false,
+        solved: true,
+        status: "Correct",
+      });
+      return;
+    }
+
+    moveLockRef.current = true;
+    syncBoard(position, [orig, dest], {
+      showWrongMove: false,
+      showRetryMove: false,
+      solved: false,
+    });
+
+    window.setTimeout(() => {
+      const activePosition = positionRef.current;
+      if (!activePosition) return;
+
+      const playedOpponent = autoplayOpponentMove(activePosition);
+      moveLockRef.current = false;
+
+      syncBoard(
+        activePosition,
+        playedOpponent
+          ? [
+              historyRef.current.moveUcis[historyRef.current.index - 1].slice(0, 2),
+              historyRef.current.moveUcis[historyRef.current.index - 1].slice(2, 4),
+            ]
+          : undefined,
+        {
+          showWrongMove: false,
+          showRetryMove: false,
+          solved: puzzleSolvedRef.current,
+          status: puzzleSolvedRef.current ? "Correct" : getStatus(activePosition),
+        },
+      );
+    }, 250);
+  };
+
+  const choosePromotion = (role) => {
+    const pending = pendingPromotionRef.current;
+    if (!pending) return;
+
+    clearPendingPromotion();
+    playUserMove(pending.orig, pending.dest, role);
+  };
+
   useEffect(() => {
     if (!elementRef.current) return;
 
@@ -506,115 +659,37 @@ export const Chessboard = ({
         events: {
           after: (orig, dest) => {
             const position = positionRef.current;
-            if (!position || moveLockRef.current || showSolutionRef.current) return;
+            if (
+              !position ||
+              moveLockRef.current ||
+              showSolutionRef.current ||
+              pendingPromotionRef.current
+            ) {
+              return;
+            }
 
             const from = parseSquare(orig);
             const to = parseSquare(dest);
             if (from === undefined || to === undefined) return;
 
             const piece = position.board.get(from);
-            const move = {
-              from,
-              to,
-              promotion: piece?.role === "pawn" ? toPromotion(dest) : undefined,
-            };
+            const promotionChoices = getPromotionChoices(position, from, to, piece);
 
-            if (!position.isLegal(move)) {
-              syncBoard(position, [orig, dest]);
+            if (promotionChoices.length > 1) {
+              const pending = {
+                orig,
+                dest,
+                color: piece.color,
+                vertical: piece.color === orientationRef.current ? "top" : "bottom",
+                choices: promotionChoices,
+              };
+              pendingPromotionRef.current = pending;
+              setPendingPromotion(pending);
+              syncBoard(position, undefined);
               return;
             }
 
-            const userMoveText = `${orig}${dest}`.toLowerCase();
-            const userMoveSan = makeSan(position, move);
-            const userMoveKey = toComparableUci(position, userMoveText, move);
-            const trainingEnabled = trainingEnabledRef.current;
-
-            if (!trainingEnabled || puzzleSolvedRef.current) {
-              position.play(move);
-              saveMove(position, [orig, dest], userMoveText, userMoveKey, userMoveSan);
-              syncBoard(position, [orig, dest], {
-                showWrongMove: false,
-                showRetryMove: false,
-                solved: puzzleSolvedRef.current,
-              });
-              return;
-            }
-
-            const progress = progressRef.current;
-            const candidates = candidateLinesRef.current;
-            const accepted = new Set(
-              candidates
-                .map((line) => line[progress])
-                .filter((entry) => entry && !entry.questionable)
-                .map((entry) => entry.key),
-            );
-
-            const retryMoves = new Set(
-              candidates
-                .map((line) => line[progress])
-                .filter((entry) => entry && entry.questionable)
-                .map((entry) => entry.key),
-            );
-
-            if (!accepted.has(userMoveKey)) {
-              const isRetryMove = retryMoves.has(userMoveKey);
-              syncBoard(position, undefined, {
-                showWrongMove: !isRetryMove,
-                showRetryMove: isRetryMove,
-                solved: false,
-                status: "Try again",
-              });
-              return;
-            }
-
-            position.play(move);
-            saveMove(position, [orig, dest], userMoveText, userMoveKey, userMoveSan);
-
-            const nextCandidates = candidates.filter((line) => line[progress]?.key === userMoveKey);
-            candidateLinesRef.current = nextCandidates;
-            progressRef.current = progress + 1;
-
-            if (!hasExpectedMoveAt(nextCandidates, progressRef.current)) {
-              puzzleSolvedRef.current = true;
-              syncBoard(position, [orig, dest], {
-                showWrongMove: false,
-                showRetryMove: false,
-                solved: true,
-                status: "Correct",
-              });
-              return;
-            }
-
-            moveLockRef.current = true;
-            syncBoard(position, [orig, dest], {
-              showWrongMove: false,
-              showRetryMove: false,
-              solved: false,
-            });
-
-            window.setTimeout(() => {
-              const activePosition = positionRef.current;
-              if (!activePosition) return;
-
-              const playedOpponent = autoplayOpponentMove(activePosition);
-              moveLockRef.current = false;
-
-              syncBoard(
-                activePosition,
-                playedOpponent
-                  ? [
-                      historyRef.current.moveUcis[historyRef.current.index - 1].slice(0, 2),
-                      historyRef.current.moveUcis[historyRef.current.index - 1].slice(2, 4),
-                    ]
-                  : undefined,
-                {
-                  showWrongMove: false,
-                  showRetryMove: false,
-                  solved: puzzleSolvedRef.current,
-                  status: puzzleSolvedRef.current ? "Correct" : getStatus(activePosition),
-                },
-              );
-            }, 250);
+            playUserMove(orig, dest, promotionChoices[0]?.role);
           },
         },
       },
@@ -629,6 +704,7 @@ export const Chessboard = ({
     return () => {
       cgRef.current = null;
       positionRef.current = null;
+      clearPendingPromotion();
     };
   }, []);
 
@@ -757,6 +833,7 @@ export const Chessboard = ({
       moveSans: [],
       index: 0,
     };
+    clearPendingPromotion();
     activeSolutionLineRef.current = 0;
     moveLockRef.current = showSolution;
     candidateLinesRef.current = solutionUciLines;
@@ -791,5 +868,35 @@ export const Chessboard = ({
     });
   }, [orientation, coordinates]);
 
-  return <div ref={elementRef} className="cg-board" />;
+  return (
+    <div className="cg-boardShell">
+      <div ref={elementRef} className="cg-board" />
+      {pendingPromotion ? (
+        <div
+          id="promotion-choice"
+          className={`cg-wrap ${pendingPromotion.vertical}`}
+          aria-label="Choose promotion piece"
+          onContextMenu={(event) => event.preventDefault()}
+        >
+          {pendingPromotion.choices.map((role, index) => (
+            <square
+              key={role}
+              role="button"
+              tabIndex="0"
+              style={getPromotionSquareStyle(pendingPromotion, index)}
+              aria-label={`Promote to ${role}`}
+              onClick={() => choosePromotion(role)}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter" && event.key !== " ") return;
+                event.preventDefault();
+                choosePromotion(role);
+              }}
+            >
+              <piece className={`${role} ${pendingPromotion.color}`} aria-hidden="true" />
+            </square>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
 };
