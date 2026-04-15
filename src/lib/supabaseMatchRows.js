@@ -2,6 +2,7 @@ import { getSupabaseClient } from "./supabaseClient";
 import { loadSupabasePage } from "./supabaseRows";
 import { defaultRatingMax, defaultRatingMin } from "../constants/matches";
 import { cachedRequest } from "../utils/requestCache";
+import { normalizeUsername } from "../utils/playerNames";
 
 const MATCH_TABLE_BY_MODE = {
   blitz: "blitz_matches",
@@ -53,9 +54,9 @@ const normalizeMatchFilters = (filters = {}) => {
   const ratingMax = numericBoundary(rawRatingMax, null);
 
   return {
-    username: escapeOrValue(filters.username),
-    pairPlayerA: escapeOrValue(usernamePair[0]),
-    pairPlayerB: escapeOrValue(usernamePair[1]),
+    username: escapeOrValue(normalizeUsername(filters.username)),
+    pairPlayerA: escapeOrValue(normalizeUsername(usernamePair[0])),
+    pairPlayerB: escapeOrValue(normalizeUsername(usernamePair[1])),
     ratingFilterType: String(filters.ratingFilterType || "both").toLowerCase(),
     ratingMin,
     ratingMax,

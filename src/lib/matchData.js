@@ -6,6 +6,7 @@ import {
   parseWinnerFromPerspective,
   winnerToFullWord,
 } from "../utils/matchTransforms";
+import { normalizeUsername } from "../utils/playerNames";
 
 const toNullableNumber = (value) => {
   const parsed = Number(value);
@@ -135,19 +136,20 @@ export const loadRawMatchesByMode = async (mode, options = {}) => {
 };
 
 export const normalizeMatches = (matches, username) => {
+  const normalizedUsername = normalizeUsername(username);
   return (Array.isArray(matches) ? matches : [])
     .filter((match) => {
       const players = normalizedPlayersFromMatch(match);
-      return players.some((player) => String(player).toLowerCase() === username);
+      return players.some((player) => normalizeUsername(player) === normalizedUsername);
     })
     .map((match) => {
       const players = normalizedPlayersFromMatch(match);
       const opponent =
-        players.find((player) => String(player).toLowerCase() !== username) || "Unknown";
+        players.find((player) => normalizeUsername(player) !== normalizedUsername) || "Unknown";
       const games = normalizedGamesFromMatch(match, players);
       const score = games.reduce(
         (accumulator, game) => {
-          const result = parseWinnerFromPerspective(game, username);
+          const result = parseWinnerFromPerspective(game, normalizedUsername);
           if (result === "win") {
             accumulator.player += 1;
           } else if (result === "draw") {
@@ -163,7 +165,7 @@ export const normalizeMatches = (matches, username) => {
       let runningPlayerScore = 0;
       let runningOpponentScore = 0;
       const matchGames = games.map((game) => {
-        const result = parseWinnerFromPerspective(game, username);
+        const result = parseWinnerFromPerspective(game, normalizedUsername);
         if (result === "win") {
           runningPlayerScore += 1;
         } else if (result === "draw") {
@@ -173,7 +175,8 @@ export const normalizeMatches = (matches, username) => {
           runningOpponentScore += 1;
         }
 
-        const winnerLabel = result === "win" ? username : result === "loss" ? opponent : "draw";
+        const winnerLabel =
+          result === "win" ? normalizedUsername : result === "loss" ? opponent : "draw";
 
         return {
           id: String(game?.id || "—"),
@@ -184,7 +187,7 @@ export const normalizeMatches = (matches, username) => {
       });
 
       const ratings = normalizedRatingsFromMatch(match, players);
-      const ratingData = ratings?.[username] || null;
+      const ratingData = ratings?.[normalizedUsername] || null;
       const opponentLower = String(opponent).toLowerCase();
       const opponentRatingData = ratings?.[opponent] || ratings?.[opponentLower] || null;
       const beforeRating = Number(ratingData?.before_rating);

@@ -1,6 +1,7 @@
 import { getSupabaseClient } from "./supabaseClient";
 import { loadSupabaseRows } from "./supabaseRows";
 import { cachedRequest } from "../utils/requestCache";
+import { normalizeUsername } from "../utils/playerNames";
 
 const LB_TABLE = import.meta.env.VITE_SUPABASE_LB_TABLE?.trim() || "lb";
 const LB_SELECT_COLUMNS = "username,month,rank,rating,rd,games,tc";
@@ -48,9 +49,10 @@ export const isoMonthStartFromMonthKey = (monthKey) => {
 
 const fetchUncachedLbRows = async ({ month, username, limit } = {}) => {
   const supabase = getSupabaseClient();
+  const normalizedUsername = normalizeUsername(username);
   let query = supabase.from(LB_TABLE).select(LB_SELECT_COLUMNS);
   if (month) query = query.eq("month", month);
-  if (username) query = query.eq("username", username);
+  if (normalizedUsername) query = query.eq("username", normalizedUsername);
   if (Number(limit) > 0) {
     query = query.limit(Math.floor(Number(limit)));
   }

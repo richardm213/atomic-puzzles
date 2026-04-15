@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
+import { normalizeUsername } from "../../utils/playerNames";
 import "./TopNav.css";
 
 const appAssetPath = (pathname = "/") => {
@@ -24,7 +25,7 @@ export const TopNav = () => {
     if (!trimmedSearchQuery) return;
     navigate({
       to: "/@/$username",
-      params: { username: trimmedSearchQuery },
+      params: { username: normalizeUsername(trimmedSearchQuery) },
     });
     setSearchOpen(false);
   };

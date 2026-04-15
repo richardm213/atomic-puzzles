@@ -30,6 +30,7 @@ import {
   formatScore,
   formatSignedDecimal,
 } from "../../utils/formatters";
+import { normalizeUsername } from "../../utils/playerNames";
 import { loadRawMatchesByMode, normalizeMatches } from "../../lib/matchData";
 import { DualRangeSlider } from "../../components/DualRangeSlider/DualRangeSlider";
 import { LichessGameLink } from "../../components/LichessGameLink/LichessGameLink";
@@ -59,6 +60,7 @@ const buildMatchFilters = (username, filters) => {
 };
 
 export const PlayerProfilePage = ({ username }) => {
+  const normalizedUsername = useMemo(() => normalizeUsername(username), [username]);
   const [selectedMode, setSelectedMode] = useState("blitz");
   const [matchesByMode, setMatchesByMode] = useState({
     blitz: [],
@@ -80,8 +82,8 @@ export const PlayerProfilePage = ({ username }) => {
   const [timeControlIncrementFilter, setTimeControlIncrementFilter] = useState("all");
   const [loadingMatches, setLoadingMatches] = useState(false);
   const aliasesLookup = useAliasesLookup();
-  const ratingsSnapshotByMode = useRatingsSnapshotByMode(username);
-  const monthRanks = useMonthRanks(username);
+  const ratingsSnapshotByMode = useRatingsSnapshotByMode(normalizedUsername);
+  const monthRanks = useMonthRanks(normalizedUsername);
   const [bestMonthRankCount, setBestMonthRankCount] = useState(5);
   const [recentMonthRankCount, setRecentMonthRankCount] = useState(5);
   const [bestWinCount, setBestWinCount] = useState(5);
@@ -100,13 +102,13 @@ export const PlayerProfilePage = ({ username }) => {
     setError("");
     try {
       const loaded = await loadRawMatchesByMode(mode, {
-        filters: buildMatchFilters(username, nextAppliedFilters),
+        filters: buildMatchFilters(normalizedUsername, nextAppliedFilters),
         page: nextPage,
         pageSize,
       });
       setMatchesByMode((current) => ({
         ...current,
-        [mode]: normalizeMatches(loaded.matches, username),
+        [mode]: normalizeMatches(loaded.matches, normalizedUsername),
       }));
       setTotalMatchesByMode((current) => ({
         ...current,
@@ -139,7 +141,7 @@ export const PlayerProfilePage = ({ username }) => {
       timeControlIncrementFilter: "all",
     };
     runMatchSearch("blitz", defaultFilters, 1);
-  }, [username]);
+  }, [normalizedUsername]);
 
   const matches = matchesByMode[selectedMode] ?? [];
 
@@ -186,25 +188,25 @@ export const PlayerProfilePage = ({ username }) => {
     currentPage,
     selectedMode,
     appliedFilters,
-    username,
+    normalizedUsername,
   );
 
-  const ratingDisplayByMode = useRatingDisplayByMode(ratingsSnapshotByMode, username);
+  const ratingDisplayByMode = useRatingDisplayByMode(ratingsSnapshotByMode, normalizedUsername);
   const blitzDisplaySummary = ratingDisplayByMode.blitz;
   const bulletDisplaySummary = ratingDisplayByMode.bullet;
-  const bestWins = useBestWins(filteredMatches, username, bestWinCount);
+  const bestWins = useBestWins(filteredMatches, normalizedUsername, bestWinCount);
   const { bestMonthRanks, recentMonthRanks } = useMonthRankHighlights(
     monthRanks,
     bestMonthRankCount,
     recentMonthRankCount,
   );
-  const aliasesForUser = useAliasesForUser(aliasesLookup, username);
+  const aliasesForUser = useAliasesForUser(aliasesLookup, normalizedUsername);
   const profileMetricCards = useProfileMetricCards(blitzDisplaySummary, bulletDisplaySummary);
 
   return (
     <div className="rankingsPage">
       <div className="panel rankingsPanel">
-        <h1>{username}</h1>
+        <h1>{normalizedUsername}</h1>
 
         <div className="profileTopBar">
           {profileMetricCards.map((card) => (
