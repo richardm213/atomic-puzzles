@@ -1,12 +1,11 @@
 import { getSupabaseClient } from "./supabaseClient";
+import { loadSupabasePage } from "./supabaseRows";
 import { defaultRatingMax, defaultRatingMin } from "../constants/matches";
 import { cachedRequest } from "../utils/requestCache";
 
-const supabaseMatchConfig = {
-  url: import.meta.env.VITE_SUPABASE_URL?.trim() || "",
-  anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() || "",
-  blitzMatchesTable: "blitz_matches",
-  bulletMatchesTable: "bullet_matches",
+const MATCH_TABLE_BY_MODE = {
+  blitz: "blitz_matches",
+  bullet: "bullet_matches",
 };
 
 const MATCH_SELECT_COLUMNS = [
@@ -31,116 +30,122 @@ const MATCH_SELECT_COLUMNS = [
 
 const matchRowsCache = new Map();
 
-const requireSupabaseConfig = () => {
-  const { url, anonKey } = supabaseMatchConfig;
-  if (!url || !anonKey) {
-    throw new Error("Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in .env.local");
+const escapeOrValue = (value) => String(value || "").trim().replace(/,/g, "\\,");
+
+const numericBoundary = (value, fallback) => {
+  if (value === undefined || value === null || String(value).trim() === "") return fallback;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? Math.floor(numeric) : fallback;
+};
+
+const getMatchTableName = (mode) => {
+  const normalizedMode = String(mode || "").toLowerCase();
+  const tableName = MATCH_TABLE_BY_MODE[normalizedMode];
+  if (!tableName) throw new Error(`Unsupported match mode "${mode}"`);
+  return tableName;
+};
+
+const normalizeMatchFilters = (filters = {}) => {
+  const usernamePair = Array.isArray(filters.usernamePair) ? filters.usernamePair : [];
+  const rawRatingMin = filters.ratingMin ?? filters.opponentRatingMin;
+  const rawRatingMax = filters.ratingMax ?? filters.opponentRatingMax;
+  const ratingMin = numericBoundary(rawRatingMin, null);
+  const ratingMax = numericBoundary(rawRatingMax, null);
+
+  return {
+    username: escapeOrValue(filters.username),
+    pairPlayerA: escapeOrValue(usernamePair[0]),
+    pairPlayerB: escapeOrValue(usernamePair[1]),
+    ratingFilterType: String(filters.ratingFilterType || "both").toLowerCase(),
+    ratingMin,
+    ratingMax,
+    startTs: numericBoundary(filters.startTs, Number.MIN_SAFE_INTEGER),
+    endTs: numericBoundary(filters.endTs, Number.MAX_SAFE_INTEGER),
+    timeControl: String(filters.timeControl || "").trim(),
+  };
+};
+
+const applyPlayerFilters = (query, { username, pairPlayerA, pairPlayerB }) => {
+  if (username) {
+    query = query.or(`player_1.eq.${username},player_2.eq.${username}`);
   }
+  if (pairPlayerA && pairPlayerB) {
+    query = query.or(
+      `and(player_1.eq.${pairPlayerA},player_2.eq.${pairPlayerB}),and(player_1.eq.${pairPlayerB},player_2.eq.${pairPlayerA})`,
+    );
+  }
+  return query;
+};
+
+const applyRatingFilter = (query, { ratingFilterType, ratingMin, ratingMax }) => {
+  const hasRatingRange = Number.isFinite(ratingMin) && Number.isFinite(ratingMax);
+  if (!hasRatingRange || (ratingMin === defaultRatingMin && ratingMax === defaultRatingMax)) {
+    return query;
+  }
+
+  if (ratingFilterType === "average") {
+    return query.gte("avg_after_rating", ratingMin).lte("avg_after_rating", ratingMax);
+  }
+
+  return query
+    .gte("p1_after_rating", ratingMin)
+    .lte("p1_after_rating", ratingMax)
+    .gte("p2_after_rating", ratingMin)
+    .lte("p2_after_rating", ratingMax);
+};
+
+const applyDateAndTimeFilters = (query, { startTs, endTs, timeControl }) => {
+  if (startTs !== Number.MIN_SAFE_INTEGER) query = query.gte("start_ts", startTs);
+  if (endTs !== Number.MAX_SAFE_INTEGER) query = query.lte("start_ts", endTs);
+  if (timeControl && timeControl.toLowerCase() !== "all") {
+    query = query.eq("time_control", timeControl);
+  }
+  return query;
+};
+
+const buildMatchQuery = (supabase, tableName, filters) => {
+  const baseQuery = supabase
+    .from(tableName)
+    .select(MATCH_SELECT_COLUMNS, { count: "exact" })
+    .order("start_ts", { ascending: false });
+
+  return applyDateAndTimeFilters(
+    applyRatingFilter(applyPlayerFilters(baseQuery, filters), filters),
+    filters,
+  );
+};
+
+const normalizePageOptions = ({ page, pageSize } = {}) => {
+  const size = Math.floor(Number(pageSize));
+  if (!Number.isFinite(size) || size <= 0) {
+    return { pageSize: 1000, from: 0, useSinglePage: false };
+  }
+
+  const pageNumber = Math.max(1, Math.floor(Number(page)) || 1);
+  return {
+    pageSize: size,
+    from: (pageNumber - 1) * size,
+    useSinglePage: true,
+  };
 };
 
 const fetchUncachedMatchRowsFromSupabase = async (mode, filters = {}, pageOptions = {}) => {
-  requireSupabaseConfig();
-  const normalizedMode = String(mode || "").toLowerCase();
-  const tableName =
-    normalizedMode === "blitz"
-      ? supabaseMatchConfig.blitzMatchesTable
-      : normalizedMode === "bullet"
-        ? supabaseMatchConfig.bulletMatchesTable
-        : "";
-  if (!tableName) {
-    throw new Error(`Unsupported match mode "${mode}"`);
-  }
-
+  const tableName = getMatchTableName(mode);
   const supabase = getSupabaseClient();
-  const pageSize = Number(pageOptions.pageSize);
-  const pageNumber = Math.max(1, Number(pageOptions.page) || 1);
-  const useSinglePage = pageSize > 0;
+  const normalizedFilters = normalizeMatchFilters(filters);
+  const { pageSize, useSinglePage, from: firstRow } = normalizePageOptions(pageOptions);
   const rows = [];
-  let from = useSinglePage ? (pageNumber - 1) * pageSize : 0;
+  let from = firstRow;
 
-  const username = String(filters.username || "").trim();
-  const escapedUsername = username.replace(/,/g, "\\,");
-  const usernamePair = Array.isArray(filters.usernamePair) ? filters.usernamePair : [];
-  const pairPlayerA = String(usernamePair[0] || "").trim();
-  const pairPlayerB = String(usernamePair[1] || "").trim();
-  const escapedPairPlayerA = pairPlayerA.replace(/,/g, "\\,");
-  const escapedPairPlayerB = pairPlayerB.replace(/,/g, "\\,");
-  const rawRatingMin =
-    filters.ratingMin !== undefined && filters.ratingMin !== null
-      ? filters.ratingMin
-      : filters.opponentRatingMin;
-  const rawRatingMax =
-    filters.ratingMax !== undefined && filters.ratingMax !== null
-      ? filters.ratingMax
-      : filters.opponentRatingMax;
-  const ratingFilterType = String(filters.ratingFilterType || "both").toLowerCase();
-  const ratingMin = Math.floor(Number(rawRatingMin));
-  const ratingMax = Math.floor(Number(rawRatingMax));
-  const hasRatingMin = Number.isFinite(ratingMin);
-  const hasRatingMax = Number.isFinite(ratingMax);
-  const isDefaultRatingRange = ratingMin === defaultRatingMin && ratingMax === defaultRatingMax;
   while (true) {
-    const rangeEnd = useSinglePage ? from + pageSize - 1 : from + 999;
-    let query = supabase
-      .from(tableName)
-      .select(MATCH_SELECT_COLUMNS, { count: "exact" })
-      .order("start_ts", { ascending: false });
-    if (username) {
-      query = query.or(`player_1.eq.${escapedUsername},player_2.eq.${escapedUsername}`);
-    }
-    if (pairPlayerA && pairPlayerB) {
-      query = query.or(
-        `and(player_1.eq.${escapedPairPlayerA},player_2.eq.${escapedPairPlayerB}),and(player_1.eq.${escapedPairPlayerB},player_2.eq.${escapedPairPlayerA})`,
-      );
-    }
-
-    if (hasRatingMin && hasRatingMax && !isDefaultRatingRange) {
-      if (ratingFilterType === "average") {
-        query = query.gte("avg_after_rating", ratingMin).lte("avg_after_rating", ratingMax);
-      } else {
-        query = query
-          .gte("p1_after_rating", ratingMin)
-          .lte("p1_after_rating", ratingMax)
-          .gte("p2_after_rating", ratingMin)
-          .lte("p2_after_rating", ratingMax);
-      }
-    }
-    if (
-      filters.startTs !== undefined &&
-      filters.startTs !== null &&
-      Number.isFinite(Number(filters.startTs)) &&
-      Number(filters.startTs) !== Number.MIN_SAFE_INTEGER
-    ) {
-      query = query.gte("start_ts", Math.floor(Number(filters.startTs)));
-    }
-    if (
-      filters.endTs !== undefined &&
-      filters.endTs !== null &&
-      Number.isFinite(Number(filters.endTs)) &&
-      Number(filters.endTs) !== Number.MAX_SAFE_INTEGER
-    ) {
-      query = query.lte("start_ts", Math.floor(Number(filters.endTs)));
-    }
-    if (filters.timeControl && String(filters.timeControl).toLowerCase() !== "all") {
-      query = query.eq("time_control", String(filters.timeControl));
-    }
-    query = query.range(from, rangeEnd);
-
-    const { data, error, count } = await query;
-    if (error) {
-      throw new Error(`Failed loading Supabase table "${tableName}": ${error.message}`);
-    }
-    const page = data;
-    if (!Array.isArray(page)) {
-      throw new Error(`Expected Supabase table "${tableName}" to return an array`);
-    }
+    const { rows: page, count } = await loadSupabasePage(
+      tableName,
+      buildMatchQuery(supabase, tableName, normalizedFilters).range(from, from + pageSize - 1),
+    );
 
     rows.push(...page);
-    if (useSinglePage || page.length < 1000) {
-      const total = count ?? rows.length;
-      return { rows, total };
-    }
-    from += 1000;
+    if (useSinglePage || page.length < pageSize) return { rows, total: count ?? rows.length };
+    from += pageSize;
   }
 };
 
