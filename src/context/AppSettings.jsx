@@ -124,47 +124,24 @@ const isValidPieceSet = (value) => LICHESS_PIECE_SETS.some((entry) => entry.valu
 const isValidBoardTheme = (value) => LICHESS_BOARD_THEMES.some((entry) => entry.value === value);
 const isValidHexColor = (value) => /^#([0-9a-f]{6})$/i.test(value ?? "");
 export const isImageBoardTheme = (value) => IMAGE_BOARD_THEMES.includes(value);
-const readStoredTheme = () => {
-  if (typeof window === "undefined") return DEFAULT_THEME;
-  const storedTheme = window.localStorage.getItem(STORAGE_KEYS.theme);
-  return isValidTheme(storedTheme) ? storedTheme : DEFAULT_THEME;
+const isValidBoardColorOverrideTheme = (value) =>
+  isValidBoardTheme(value) && value !== "custom" && !isImageBoardTheme(value);
+
+const readStoredValue = (key, validator, fallback) => {
+  if (typeof window === "undefined") return fallback;
+  const storedValue = window.localStorage.getItem(key);
+  return validator(storedValue) ? storedValue : fallback;
 };
-const readStoredPieceSet = () => {
-  if (typeof window === "undefined") return DEFAULT_PIECE_SET;
-  const storedPieceSet = window.localStorage.getItem(STORAGE_KEYS.pieceSet);
-  return isValidPieceSet(storedPieceSet) ? storedPieceSet : DEFAULT_PIECE_SET;
-};
-const readStoredBoardTheme = () => {
-  if (typeof window === "undefined") return DEFAULT_BOARD_THEME;
-  const storedBoardTheme = window.localStorage.getItem(STORAGE_KEYS.boardTheme);
-  return isValidBoardTheme(storedBoardTheme) ? storedBoardTheme : DEFAULT_BOARD_THEME;
-};
-const readStoredCustomLightSquare = () => {
-  if (typeof window === "undefined") return DEFAULT_CUSTOM_LIGHT_SQUARE;
-  const storedColor = window.localStorage.getItem(STORAGE_KEYS.customLightSquare);
-  return isValidHexColor(storedColor) ? storedColor : DEFAULT_CUSTOM_LIGHT_SQUARE;
-};
-const readStoredCustomDarkSquare = () => {
-  if (typeof window === "undefined") return DEFAULT_CUSTOM_DARK_SQUARE;
-  const storedColor = window.localStorage.getItem(STORAGE_KEYS.customDarkSquare);
-  return isValidHexColor(storedColor) ? storedColor : DEFAULT_CUSTOM_DARK_SQUARE;
-};
-const readStoredBoardColorOverrideTheme = () => {
-  if (typeof window === "undefined") return "";
-  const storedTheme = window.localStorage.getItem(STORAGE_KEYS.boardColorOverrideTheme);
-  if (!isValidBoardTheme(storedTheme)) return "";
-  if (storedTheme === "custom" || isImageBoardTheme(storedTheme)) return "";
-  return storedTheme;
-};
-const readStoredBoardOverrideLightSquare = () => {
-  if (typeof window === "undefined") return DEFAULT_CUSTOM_LIGHT_SQUARE;
-  const storedColor = window.localStorage.getItem(STORAGE_KEYS.boardOverrideLightSquare);
-  return isValidHexColor(storedColor) ? storedColor : DEFAULT_CUSTOM_LIGHT_SQUARE;
-};
-const readStoredBoardOverrideDarkSquare = () => {
-  if (typeof window === "undefined") return DEFAULT_CUSTOM_DARK_SQUARE;
-  const storedColor = window.localStorage.getItem(STORAGE_KEYS.boardOverrideDarkSquare);
-  return isValidHexColor(storedColor) ? storedColor : DEFAULT_CUSTOM_DARK_SQUARE;
+
+const usePersistedState = (key, validator, fallback) => {
+  const [value, setValue] = useState(() => readStoredValue(key, validator, fallback));
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(key, value);
+  }, [key, value]);
+
+  return [value, setValue];
 };
 
 export const getBoardThemeColors = (
@@ -187,19 +164,41 @@ export const getBoardThemeColors = (
 };
 
 export const AppSettingsProvider = ({ children }) => {
-  const [theme, setTheme] = useState(readStoredTheme);
-  const [pieceSet, setPieceSet] = useState(readStoredPieceSet);
-  const [boardTheme, setBoardTheme] = useState(readStoredBoardTheme);
-  const [customLightSquare, setCustomLightSquare] = useState(readStoredCustomLightSquare);
-  const [customDarkSquare, setCustomDarkSquare] = useState(readStoredCustomDarkSquare);
-  const [boardColorOverrideTheme, setBoardColorOverrideTheme] = useState(
-    readStoredBoardColorOverrideTheme,
+  const [theme, setTheme] = usePersistedState(STORAGE_KEYS.theme, isValidTheme, DEFAULT_THEME);
+  const [pieceSet, setPieceSet] = usePersistedState(
+    STORAGE_KEYS.pieceSet,
+    isValidPieceSet,
+    DEFAULT_PIECE_SET,
   );
-  const [boardOverrideLightSquare, setBoardOverrideLightSquare] = useState(
-    readStoredBoardOverrideLightSquare,
+  const [boardTheme, setBoardTheme] = usePersistedState(
+    STORAGE_KEYS.boardTheme,
+    isValidBoardTheme,
+    DEFAULT_BOARD_THEME,
   );
-  const [boardOverrideDarkSquare, setBoardOverrideDarkSquare] = useState(
-    readStoredBoardOverrideDarkSquare,
+  const [customLightSquare, setCustomLightSquare] = usePersistedState(
+    STORAGE_KEYS.customLightSquare,
+    isValidHexColor,
+    DEFAULT_CUSTOM_LIGHT_SQUARE,
+  );
+  const [customDarkSquare, setCustomDarkSquare] = usePersistedState(
+    STORAGE_KEYS.customDarkSquare,
+    isValidHexColor,
+    DEFAULT_CUSTOM_DARK_SQUARE,
+  );
+  const [boardColorOverrideTheme, setBoardColorOverrideTheme] = usePersistedState(
+    STORAGE_KEYS.boardColorOverrideTheme,
+    isValidBoardColorOverrideTheme,
+    "",
+  );
+  const [boardOverrideLightSquare, setBoardOverrideLightSquare] = usePersistedState(
+    STORAGE_KEYS.boardOverrideLightSquare,
+    isValidHexColor,
+    DEFAULT_CUSTOM_LIGHT_SQUARE,
+  );
+  const [boardOverrideDarkSquare, setBoardOverrideDarkSquare] = usePersistedState(
+    STORAGE_KEYS.boardOverrideDarkSquare,
+    isValidHexColor,
+    DEFAULT_CUSTOM_DARK_SQUARE,
   );
 
   const resetDisplaySettings = () => {
@@ -216,43 +215,7 @@ export const AppSettingsProvider = ({ children }) => {
   useEffect(() => {
     if (typeof window === "undefined") return;
     document.documentElement.dataset.theme = theme;
-    window.localStorage.setItem(STORAGE_KEYS.theme, theme);
   }, [theme]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(STORAGE_KEYS.pieceSet, pieceSet);
-  }, [pieceSet]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(STORAGE_KEYS.boardTheme, boardTheme);
-  }, [boardTheme]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(STORAGE_KEYS.customLightSquare, customLightSquare);
-  }, [customLightSquare]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(STORAGE_KEYS.customDarkSquare, customDarkSquare);
-  }, [customDarkSquare]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(STORAGE_KEYS.boardColorOverrideTheme, boardColorOverrideTheme);
-  }, [boardColorOverrideTheme]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(STORAGE_KEYS.boardOverrideLightSquare, boardOverrideLightSquare);
-  }, [boardOverrideLightSquare]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(STORAGE_KEYS.boardOverrideDarkSquare, boardOverrideDarkSquare);
-  }, [boardOverrideDarkSquare]);
 
   const value = useMemo(
     () => ({
