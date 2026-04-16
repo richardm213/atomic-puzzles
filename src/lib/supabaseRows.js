@@ -25,19 +25,12 @@ const runQueuedSupabaseRequest = (request) => {
   return queuedRequest;
 };
 
-const assertSupabaseRows = (tableName, data) => {
-  if (!Array.isArray(data)) {
-    throw new Error(`Expected Supabase table "${tableName}" to return an array`);
-  }
-  return data;
-};
-
 export const loadSupabaseRows = async (tableName, query) => {
   const { data, error } = await runQueuedSupabaseRequest(() => query);
   if (error) {
     throw new Error(`Failed loading Supabase table "${tableName}": ${error.message}`);
   }
-  return assertSupabaseRows(tableName, data);
+  return data ?? [];
 };
 
 export const loadSupabasePage = async (tableName, query) => {
@@ -45,7 +38,7 @@ export const loadSupabasePage = async (tableName, query) => {
   if (error) {
     throw new Error(`Failed loading Supabase table "${tableName}": ${error.message}`);
   }
-  return { rows: assertSupabaseRows(tableName, data), count };
+  return { rows: data ?? [], count };
 };
 
 export const fetchAllSupabaseRows = async (tableName, buildQuery, pageSize = 1000) => {

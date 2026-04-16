@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchPuzzleRowsFromSupabase, getSupabasePuzzlesTableName } from "../lib/supabasePuzzles";
+import { fetchPuzzleRowsFromSupabase } from "../lib/supabasePuzzles";
 
 const solutionFieldCandidates = ["solution", "moves", "line", "pgn", "variation"];
 const emptyPuzzles = [];
@@ -56,22 +56,9 @@ export const usePuzzleLibrary = () => {
       try {
         setLoadingError("");
         const data = await fetchPuzzleRowsFromSupabase();
-        const puzzleTable = getSupabasePuzzlesTableName();
         const availablePuzzles = data
           .map(normalizePuzzleRow)
           .filter((item) => item.fen.length > 0 && hasSolution(item));
-
-        if (data.length === 0) {
-          throw new Error(
-            `Supabase returned 0 rows from table "${puzzleTable}". Check table name and RLS SELECT policy for the anon role.`,
-          );
-        }
-
-        if (availablePuzzles.length === 0) {
-          throw new Error(
-            `No puzzles found in "${puzzleTable}" with both a valid fen and a solution`,
-          );
-        }
 
         if (isCurrent) setPuzzles(availablePuzzles);
       } catch (error) {
