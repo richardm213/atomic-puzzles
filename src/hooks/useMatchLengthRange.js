@@ -18,21 +18,19 @@ export const toBoundedLengthRange = (mode) => {
 
 export const useMatchLengthRange = (mode) => {
   const bounds = useMemo(() => resolveBounds(mode), [mode]);
-  const initialRange = useMemo(() => toBoundedLengthRange(mode), [mode]);
-  const [matchLengthMin, setMatchLengthMin] = useState(initialRange.min);
-  const [matchLengthMax, setMatchLengthMax] = useState(initialRange.max);
+  const [range, setRange] = useState(() => toBoundedLengthRange(mode));
 
   useEffect(() => {
-    const nextRange = toBoundedLengthRange(mode);
-    setMatchLengthMin(nextRange.min);
-    setMatchLengthMax(nextRange.max);
+    setRange(toBoundedLengthRange(mode));
   }, [mode]);
 
   return {
     bounds,
-    matchLengthMin,
-    setMatchLengthMin,
-    matchLengthMax,
-    setMatchLengthMax,
+    matchLengthMin: range.min,
+    setMatchLengthMin: (matchLengthMin) =>
+      setRange((current) => ({ ...current, min: matchLengthMin })),
+    matchLengthMax: range.max,
+    setMatchLengthMax: (matchLengthMax) =>
+      setRange((current) => ({ ...current, max: matchLengthMax })),
   };
 };

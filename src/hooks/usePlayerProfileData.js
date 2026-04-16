@@ -11,6 +11,11 @@ import { parseTimeControlParts } from "../utils/matchTransforms";
 import { fetchLbRows, monthKeyFromMonthValue } from "../lib/supabaseLb";
 import { fetchPlayerRatingsRows } from "../lib/supabasePlayerRatings";
 
+const emptyRatingsSnapshotByMode = {
+  blitz: new Map(),
+  bullet: new Map(),
+};
+
 const parseMonthRanksFromLbRows = (rows) => {
   return (Array.isArray(rows) ? rows : [])
     .map((row) => {
@@ -102,10 +107,7 @@ export const useMonthRanks = (username) => {
 };
 
 export const useRatingsSnapshotByMode = (username) => {
-  const [ratingsSnapshotByMode, setRatingsSnapshotByMode] = useState({
-    blitz: new Map(),
-    bullet: new Map(),
-  });
+  const [ratingsSnapshotByMode, setRatingsSnapshotByMode] = useState(emptyRatingsSnapshotByMode);
 
   useEffect(() => {
     const loadRatingsSnapshot = async () => {
@@ -113,10 +115,7 @@ export const useRatingsSnapshotByMode = (username) => {
         const rows = await fetchPlayerRatingsRows({ username });
         setRatingsSnapshotByMode(parseCurrentRatingsFromRows(rows));
       } catch {
-        setRatingsSnapshotByMode({
-          blitz: new Map(),
-          bullet: new Map(),
-        });
+        setRatingsSnapshotByMode(emptyRatingsSnapshotByMode);
       }
     };
 
@@ -138,48 +137,32 @@ export const useRatingDisplayByMode = (ratingsSnapshotByMode, username) => {
 
 export const useProfileMetricCards = (blitzDisplaySummary, bulletDisplaySummary) => {
   return useMemo(
-    () => [
-      {
-        key: "blitz-rating",
-        label: "Blitz Rating",
-        value: `${formatCurrentRating(blitzDisplaySummary)}${formatRankSuffix(blitzDisplaySummary.rank)}`,
-      },
-      {
-        key: "blitz-rd",
-        label: "Blitz RD",
-        value: blitzDisplaySummary.currentRd,
-      },
-      {
-        key: "blitz-peak-rating",
-        label: "Blitz Peak Rating",
-        value: blitzDisplaySummary.peakRating,
-      },
-      {
-        key: "blitz-games-played",
-        label: "Blitz Games Played",
-        value: blitzDisplaySummary.gamesPlayed.toLocaleString("en-US"),
-      },
-      {
-        key: "bullet-rating",
-        label: "Bullet Rating",
-        value: `${formatCurrentRating(bulletDisplaySummary)}${formatRankSuffix(bulletDisplaySummary.rank)}`,
-      },
-      {
-        key: "bullet-rd",
-        label: "Bullet RD",
-        value: bulletDisplaySummary.currentRd,
-      },
-      {
-        key: "bullet-peak-rating",
-        label: "Bullet Peak Rating",
-        value: bulletDisplaySummary.peakRating,
-      },
-      {
-        key: "bullet-games-played",
-        label: "Bullet Games Played",
-        value: bulletDisplaySummary.gamesPlayed.toLocaleString("en-US"),
-      },
-    ],
+    () =>
+      [
+        ["blitz", "Blitz", blitzDisplaySummary],
+        ["bullet", "Bullet", bulletDisplaySummary],
+      ].flatMap(([mode, label, summary]) => [
+        {
+          key: `${mode}-rating`,
+          label: `${label} Rating`,
+          value: `${formatCurrentRating(summary)}${formatRankSuffix(summary.rank)}`,
+        },
+        {
+          key: `${mode}-rd`,
+          label: `${label} RD`,
+          value: summary.currentRd,
+        },
+        {
+          key: `${mode}-peak-rating`,
+          label: `${label} Peak Rating`,
+          value: summary.peakRating,
+        },
+        {
+          key: `${mode}-games-played`,
+          label: `${label} Games Played`,
+          value: summary.gamesPlayed.toLocaleString("en-US"),
+        },
+      ]),
     [blitzDisplaySummary, bulletDisplaySummary],
   );
 };
@@ -212,8 +195,9 @@ export const useFilteredMatches = (matches, appliedFilters, selectedMode) => {
     [appliedFilters.endDateFilter],
   );
 
-  return useMemo(() => {
-    return matches.filter((match) => {
+  return useMemo(
+    () =>
+      matches.filter((match) => {
       if (startDateTs !== null && match.startTs < startDateTs) return false;
       if (endDateTs !== null && match.startTs > endDateTs) return false;
 
@@ -254,24 +238,29 @@ export const useFilteredMatches = (matches, appliedFilters, selectedMode) => {
       if (knownSourceKeys.includes(sourceKey)) return sourceFilters[sourceKey];
 
       return true;
-    });
-  }, [appliedFilters, matches, selectedMode, startDateTs, endDateTs]);
+      }),
+    [appliedFilters, matches, selectedMode, startDateTs, endDateTs],
+  );
 };
 
 export const useBestWins = (filteredMatches, username, bestWinCount) => {
-  return useMemo(() => {
-    return filteredMatches
-      .filter((match) =>
-        Array.isArray(match.games) ? match.games.some((game) => game?.winner === username) : false,
-      )
-      .sort((a, b) => {
-        const ratingDiff =
-          (b.opponentAfterRating ?? -Infinity) - (a.opponentAfterRating ?? -Infinity);
-        if (ratingDiff !== 0) return ratingDiff;
-        return b.startTs - a.startTs;
-      })
-      .slice(0, bestWinCount);
-  }, [bestWinCount, filteredMatches, username]);
+  return useMemo(
+    () =>
+      filteredMatches
+        .filter((match) =>
+          Array.isArray(match.games)
+            ? match.games.some((game) => game?.winner === username)
+            : false,
+        )
+        .sort((a, b) => {
+          const ratingDiff =
+            (b.opponentAfterRating ?? -Infinity) - (a.opponentAfterRating ?? -Infinity);
+          if (ratingDiff !== 0) return ratingDiff;
+          return b.startTs - a.startTs;
+        })
+        .slice(0, bestWinCount),
+    [bestWinCount, filteredMatches, username],
+  );
 };
 
 export const useMonthRankHighlights = (monthRanks, bestMonthRankCount, recentMonthRankCount) => {
@@ -301,11 +290,7 @@ export const useMonthRankHighlights = (monthRanks, bestMonthRankCount, recentMon
 };
 
 export const useAliasesForUser = (aliasesLookup, username) => {
-  return useMemo(() => {
-    const entry = aliasesLookup.get(username);
-    if (!entry) return [];
-    return entry.members;
-  }, [aliasesLookup, username]);
+  return useMemo(() => aliasesLookup.get(username)?.members ?? [], [aliasesLookup, username]);
 };
 
 export const useExpandedMatchKeys = (currentPage, selectedMode, appliedFilters, username) => {

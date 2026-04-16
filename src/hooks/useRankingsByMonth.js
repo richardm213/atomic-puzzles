@@ -4,18 +4,18 @@ import { loadRankingsForMonth } from "../lib/rankingsData";
 export const useRankingsByMonth = (selectedMonth) => {
   const [rankingsByMonth, setRankingsByMonth] = useState(new Map());
   const [error, setError] = useState("");
+  const cachedMonth = selectedMonth ? rankingsByMonth.get(selectedMonth) : null;
 
   useEffect(() => {
-    if (!selectedMonth) return;
-    if (rankingsByMonth.has(selectedMonth)) return;
+    if (!selectedMonth || cachedMonth) return;
 
-    let ignore = false;
+    let isCurrent = true;
 
     const loadRankings = async () => {
       try {
         setError("");
         const monthData = await loadRankingsForMonth(selectedMonth);
-        if (ignore) return;
+        if (!isCurrent) return;
 
         setRankingsByMonth((previous) => {
           const next = new Map(previous);
@@ -23,7 +23,7 @@ export const useRankingsByMonth = (selectedMonth) => {
           return next;
         });
       } catch (loadError) {
-        if (ignore) return;
+        if (!isCurrent) return;
         setError(loadError.message || "Failed to load leaderboard data");
       }
     };
@@ -31,9 +31,9 @@ export const useRankingsByMonth = (selectedMonth) => {
     loadRankings();
 
     return () => {
-      ignore = true;
+      isCurrent = false;
     };
-  }, [selectedMonth, rankingsByMonth]);
+  }, [cachedMonth, selectedMonth]);
 
   return {
     rankingsByMonth,

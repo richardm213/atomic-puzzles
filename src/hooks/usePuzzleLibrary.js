@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { fetchPuzzleRowsFromSupabase, getSupabasePuzzlesTableName } from "../lib/supabasePuzzles";
 
 const solutionFieldCandidates = ["solution", "moves", "line", "pgn", "variation"];
+const emptyPuzzles = [];
 
 const normalizeSolution = (rawValue) => {
   if (typeof rawValue === "string") {
@@ -33,37 +34,32 @@ const hasSolution = (puzzle) => {
   return Array.isArray(puzzle.solution) && puzzle.solution.length > 0;
 };
 
+const normalizePuzzleRow = (item, index) => {
+  const parsedId = Number.parseInt(item?.id, 10);
+
+  return {
+    ...item,
+    fen: typeof item?.fen === "string" ? item.fen.trim() : "",
+    solution: extractSolutionFromRow(item),
+    puzzleId: parsedId || index + 1,
+  };
+};
+
 export const usePuzzleLibrary = () => {
-  const [puzzles, setPuzzles] = useState([]);
+  const [puzzles, setPuzzles] = useState(emptyPuzzles);
   const [loadingError, setLoadingError] = useState("");
 
   useEffect(() => {
-    let ignore = false;
+    let isCurrent = true;
 
     const loadPuzzles = async () => {
       try {
         setLoadingError("");
         const data = await fetchPuzzleRowsFromSupabase();
         const puzzleTable = getSupabasePuzzlesTableName();
-
-        const normalizedPuzzles = data.map((item, index) => {
-          const rawId = item?.id;
-          const parsedId = Number.parseInt(rawId, 10);
-          const puzzleId = parsedId || index + 1;
-          const fen = typeof item?.fen === "string" ? item.fen.trim() : "";
-          const solution = extractSolutionFromRow(item);
-
-          return {
-            ...item,
-            fen,
-            solution,
-            puzzleId,
-          };
-        });
-
-        const availablePuzzles = normalizedPuzzles.filter(
-          (item) => typeof item?.fen === "string" && item.fen.length > 0 && hasSolution(item),
-        );
+        const availablePuzzles = data
+          .map(normalizePuzzleRow)
+          .filter((item) => item.fen.length > 0 && hasSolution(item));
 
         if (data.length === 0) {
           throw new Error(
@@ -77,21 +73,18 @@ export const usePuzzleLibrary = () => {
           );
         }
 
-        if (!ignore) {
-          setPuzzles(availablePuzzles);
-        }
+        if (isCurrent) setPuzzles(availablePuzzles);
       } catch (error) {
-        if (!ignore) {
-          setPuzzles([]);
-          setLoadingError(error.message || "Failed to load puzzles");
-        }
+        if (!isCurrent) return;
+        setPuzzles(emptyPuzzles);
+        setLoadingError(error.message || "Failed to load puzzles");
       }
     };
 
     loadPuzzles();
 
     return () => {
-      ignore = true;
+      isCurrent = false;
     };
   }, []);
 

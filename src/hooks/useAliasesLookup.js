@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { fetchAliasRows } from "../lib/supabaseAliases";
 
+const emptyLookup = new Map();
+
 const buildAliasesLookup = (rows) => {
   const lookup = new Map();
 
@@ -23,7 +25,7 @@ const buildAliasesLookup = (rows) => {
 };
 
 export const useAliasesLookup = () => {
-  const [aliasesLookup, setAliasesLookup] = useState(() => new Map());
+  const [aliasesLookup, setAliasesLookup] = useState(() => emptyLookup);
 
   useEffect(() => {
     let isCurrent = true;
@@ -33,7 +35,7 @@ export const useAliasesLookup = () => {
         const rows = await fetchAliasRows();
         if (isCurrent) setAliasesLookup(buildAliasesLookup(rows));
       } catch {
-        if (isCurrent) setAliasesLookup(new Map());
+        if (isCurrent) setAliasesLookup(emptyLookup);
       }
     };
 
