@@ -1,6 +1,8 @@
 cg-board {
-  background-color: #d4e4ff;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Crect width='8' height='8' fill='%23d4e4ff'/%3E%3Cg fill='%236291d8'%3E%3Crect width='1' height='1'/%3E%3Crect x='2' width='1' height='1'/%3E%3Crect x='4' width='1' height='1'/%3E%3Crect x='6' width='1' height='1'/%3E%3Crect x='1' y='1' width='1' height='1'/%3E%3Crect x='3' y='1' width='1' height='1'/%3E%3Crect x='5' y='1' width='1' height='1'/%3E%3Crect x='7' y='1' width='1' height='1'/%3E%3Crect y='2' width='1' height='1'/%3E%3Crect x='2' y='2' width='1' height='1'/%3E%3Crect x='4' y='2' width='1' height='1'/%3E%3Crect x='6' y='2' width='1' height='1'/%3E%3Crect x='1' y='3' width='1' height='1'/%3E%3Crect x='3' y='3' width='1' height='1'/%3E%3Crect x='5' y='3' width='1' height='1'/%3E%3Crect x='7' y='3' width='1' height='1'/%3E%3Crect y='4' width='1' height='1'/%3E%3Crect x='2' y='4' width='1' height='1'/%3E%3Crect x='4' y='4' width='1' height='1'/%3E%3Crect x='6' y='4' width='1' height='1'/%3E%3Crect x='1' y='5' width='1' height='1'/%3E%3Crect x='3' y='5' width='1' height='1'/%3E%3Crect x='5' y='5' width='1' height='1'/%3E%3Crect x='7' y='5' width='1' height='1'/%3E%3Crect y='6' width='1' height='1'/%3E%3Crect x='2' y='6' width='1' height='1'/%3E%3Crect x='4' y='6' width='1' height='1'/%3E%3Crect x='6' y='6' width='1' height='1'/%3E%3Crect x='1' y='7' width='1' height='1'/%3E%3Crect x='3' y='7' width='1' height='1'/%3E%3Crect x='5' y='7' width='1' height='1'/%3E%3Crect x='7' y='7' width='1' height='1'/%3E%3C/g%3E%3C/svg%3E");
+  background-image: var(--cg-board-background-image);
+  background-size: var(--cg-board-background-size, 100% 100%);
+  background-repeat: no-repeat;
+  background-blend-mode: var(--cg-board-background-blend-mode, normal);
 }
 
 cg-board square.move-dest {
@@ -36,7 +38,7 @@ cg-board square.premove-dest.hover {
 }
 
 cg-board square.last-move {
-  background-color: rgba(79, 150, 255, 0.4);
+  background-color: var(--cg-board-light-last-move, rgba(79, 150, 255, 0.4));
 }
 
 cg-board square.selected {
@@ -61,7 +63,7 @@ cg-board square.current-premove {
 .orientation-black .files :nth-child(odd),
 coords.squares:nth-of-type(odd) :nth-child(even),
 coords.squares:nth-of-type(even) :nth-child(odd) {
-  color: rgba(62, 88, 130, 0.85);
+  color: var(--cg-board-coord-dark, rgba(62, 88, 130, 0.85));
 }
 
 .orientation-white .ranks :nth-child(even),
@@ -70,5 +72,5 @@ coords.squares:nth-of-type(even) :nth-child(odd) {
 .orientation-black .files :nth-child(even),
 coords.squares:nth-of-type(odd) :nth-child(odd),
 coords.squares:nth-of-type(even) :nth-child(even) {
-  color: rgba(240, 246, 255, 0.85);
+  color: var(--cg-board-coord-light, rgba(240, 246, 255, 0.85));
 }

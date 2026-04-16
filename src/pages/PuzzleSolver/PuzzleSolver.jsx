@@ -418,7 +418,7 @@ export const PuzzleSolverPage = () => {
         <div className="puzzleHeader">
           <div>
             <p className="puzzleEyebrow">Atomic tactics</p>
-            <h1>Solve the position</h1>
+            <h1>Find the best move</h1>
           </div>
           <div className="puzzleCount" aria-label="Puzzle count">
             <span>{puzzleOrdinal ?? "-"}</span>

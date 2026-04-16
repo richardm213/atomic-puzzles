@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useAppSettings } from "../../context/AppSettings";
+import { getBoardThemeColors, useAppSettings } from "../../context/AppSettings";
 import { normalizeUsername } from "../../utils/playerNames";
 import "./TopNav.css";
 
@@ -17,9 +17,64 @@ export const TopNav = () => {
   const settingsRef = useRef(null);
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const { theme, setTheme, pieceSet, setPieceSet, pieceSets } = useAppSettings();
+  const {
+    theme,
+    setTheme,
+    pieceSet,
+    setPieceSet,
+    pieceSets,
+    boardTheme,
+    setBoardTheme,
+    boardThemes,
+    customLightSquare,
+    setCustomLightSquare,
+    customDarkSquare,
+    setCustomDarkSquare,
+    boardColorOverrideTheme,
+    setBoardColorOverrideTheme,
+    boardOverrideLightSquare,
+    setBoardOverrideLightSquare,
+    boardOverrideDarkSquare,
+    setBoardOverrideDarkSquare,
+    resetDisplaySettings,
+  } = useAppSettings();
   const trimmedSearchQuery = searchQuery.trim();
-  const showPieceSetSetting = pathname === "/solve" || pathname.startsWith("/solve/");
+  const showBoardSettings = pathname === "/solve" || pathname.startsWith("/solve/");
+  const activeBoardColors = getBoardThemeColors(
+    boardTheme,
+    customLightSquare,
+    customDarkSquare,
+    boardColorOverrideTheme,
+    boardOverrideLightSquare,
+    boardOverrideDarkSquare,
+  );
+
+  const handleBoardThemeChange = (event) => {
+    setBoardTheme(event.target.value);
+    setBoardColorOverrideTheme("");
+  };
+
+  const handleCustomLightSquareChange = (event) => {
+    const nextLight = event.target.value;
+
+    setCustomLightSquare(nextLight);
+    setCustomDarkSquare(activeBoardColors.dark);
+    setBoardColorOverrideTheme("");
+    setBoardOverrideLightSquare(activeBoardColors.light);
+    setBoardOverrideDarkSquare(activeBoardColors.dark);
+    setBoardTheme("custom");
+  };
+
+  const handleCustomDarkSquareChange = (event) => {
+    const nextDark = event.target.value;
+
+    setCustomLightSquare(activeBoardColors.light);
+    setCustomDarkSquare(nextDark);
+    setBoardColorOverrideTheme("");
+    setBoardOverrideLightSquare(activeBoardColors.light);
+    setBoardOverrideDarkSquare(activeBoardColors.dark);
+    setBoardTheme("custom");
+  };
 
   useEffect(() => {
     if (!searchOpen) return;
@@ -157,23 +212,68 @@ export const TopNav = () => {
                   </button>
                 </div>
               </div>
-              {showPieceSetSetting ? (
-                <div className="navSettingsSection">
-                  <label className="navSettingsLabel" htmlFor="piece-set-select">
-                    Piece set
-                  </label>
-                  <select
-                    id="piece-set-select"
-                    value={pieceSet}
-                    onChange={(event) => setPieceSet(event.target.value)}
-                  >
-                    {pieceSets.map((entry) => (
-                      <option key={entry.value} value={entry.value}>
-                        {entry.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              {showBoardSettings ? (
+                <>
+                  <div className="navSettingsSection">
+                    <label className="navSettingsLabel" htmlFor="piece-set-select">
+                      Piece set
+                    </label>
+                    <select
+                      id="piece-set-select"
+                      value={pieceSet}
+                      onChange={(event) => setPieceSet(event.target.value)}
+                    >
+                      {pieceSets.map((entry) => (
+                        <option key={entry.value} value={entry.value}>
+                          {entry.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="navSettingsSection">
+                    <label className="navSettingsLabel" htmlFor="board-theme-select">
+                      Board
+                    </label>
+                    <select
+                      id="board-theme-select"
+                      value={boardTheme}
+                      onChange={handleBoardThemeChange}
+                    >
+                      {boardThemes.map((entry) => (
+                        <option key={entry.value} value={entry.value}>
+                          {entry.label}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="navColorInputs">
+                      <label className="navColorField" htmlFor="light-square-color">
+                        <span>Light square</span>
+                        <input
+                          id="light-square-color"
+                          type="color"
+                          value={activeBoardColors.light}
+                          onChange={handleCustomLightSquareChange}
+                        />
+                      </label>
+                      <label className="navColorField" htmlFor="dark-square-color">
+                        <span>Dark square</span>
+                        <input
+                          id="dark-square-color"
+                          type="color"
+                          value={activeBoardColors.dark}
+                          onChange={handleCustomDarkSquareChange}
+                        />
+                      </label>
+                    </div>
+                    <button
+                      type="button"
+                      className="navSecondaryButton"
+                      onClick={resetDisplaySettings}
+                    >
+                      Reset to defaults
+                    </button>
+                  </div>
+                </>
               ) : null}
             </div>
           ) : null}
