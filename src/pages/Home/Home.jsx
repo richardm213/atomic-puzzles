@@ -12,30 +12,26 @@ const featureLinks = [
   {
     to: "/solve",
     eyebrow: "Train",
-    title: "Atomic puzzle runs",
-    body: "Jump into forcing positions, calculate the blast radius, and play the line through on a real board.",
-    action: "Start solving",
+    title: "Atomic puzzles",
+    body: "Solve forcing positions, play the full line, and stay sharp for real games.",
   },
   {
     to: "/rankings",
     eyebrow: "Measure",
-    title: "Monthly ladders",
-    body: "Track blitz and bullet separately, browse past months, and keep the noisy pool honest.",
-    action: "Open rankings",
+    title: "Monthly rankings",
+    body: "View blitz and bullet separately, with known alts merged into one profile.",
   },
   {
     to: "/recent",
     eyebrow: "Scout",
-    title: "Recent match room",
-    body: "Filter new match sets by mode, rating band, source, date, time control, and match length.",
-    action: "See matches",
+    title: "Recent matches",
+    body: "View results with score, ratings, source, and date in one place.",
   },
   {
     to: "/h2h",
     eyebrow: "Compare",
-    title: "Head-to-head checks",
-    body: "Put two names under the lamp and inspect the rivalry instead of guessing from memory.",
-    action: "Compare players",
+    title: "Head-to-head",
+    body: "Compare two players side by side across both pools.",
   },
 ];
 
@@ -87,32 +83,39 @@ const puzzleCollageImages = [
   },
 ];
 
-const statCards = [
-  { label: "Modes", value: "Blitz + bullet", detail: "Separate ratings, cleaner comparisons" },
-  { label: "Archive", value: "Since 2023", detail: "Monthly snapshots for form checks" },
-  { label: "Focus", value: "Fair pool", detail: "Cheaters and alt abuse filtered out" },
-];
-
 const principles = [
   {
-    title: "Built for atomic, not borrowed from chess",
-    body: "The trainer is tuned around explosions, king safety, and forcing continuations that normal chess tools tend to flatten.",
+    title: "From real games",
+    body: (
+      <>
+        Puzzles come from Lichess games,{" "}
+        <a href="https://lichess.org/team/atomic-wc" target="_blank" rel="noreferrer">
+          AWC
+        </a>
+        ,{" "}
+        <a
+          href="https://lichess.org/team/the-atomic-chess-league"
+          target="_blank"
+          rel="noreferrer"
+        >
+          ACL
+        </a>
+        ,{" "}
+        <a href="https://lichess.org/team/atomic960-swiss" target="_blank" rel="noreferrer">
+          Atomic960 Swiss
+        </a>
+        , studies, analysis, and the community.
+      </>
+    ),
   },
   {
-    title: "A map of the active scene",
-    body: "Rankings, match filters, player pages, and H2H pages give the site a memory of who is playing well right now.",
+    title: "Form changes fast",
+    body: "Monthly ranks and match records make it easier to see what actually changed.",
   },
   {
-    title: "Practice with receipts",
-    body: "Every route leads back to games, puzzles, ratings, or match records so improvement feels grounded instead of vibes-only.",
+    title: "Keep the pool clean",
+    body: "Rankings exclude cheaters and fair play violators, and known alts are merged under one profile.",
   },
-];
-
-const activityFeed = [
-  "Start a random tactic and play the whole candidate line.",
-  "Check who is climbing this month in blitz or bullet.",
-  "Search any player page from the nav or the command box here.",
-  "Open a recent match and inspect ratings, score flow, and source.",
 ];
 
 export const HomePage = () => {
@@ -137,18 +140,18 @@ export const HomePage = () => {
             <img src={appAssetPath("/favicon.ico")} alt="" width="24" height="24" />
             Atomic chess study room
           </div>
-          <h1 id="home-title">Find the move that makes the board disappear.</h1>
+          <h1 id="home-title">Find the move that makes the board go boom.</h1>
           <p className="homeIntro">
-            Train atomic tactics, watch the strongest players, and turn match data into a sharper
-            feel for who is dangerous, who is farming, and which ideas actually hold up.
+            Solve atomic puzzles, follow top-player matches, and use the ratings to get a better
+            read on who is dangerous, who is farming, and whose ideas actually hold up.
           </p>
 
           <div className="homeHeroActions">
             <Link className="homePrimaryCta" to="/solve">
-              Start a puzzle
+              Solve puzzles
             </Link>
             <Link className="homeSecondaryCta" to="/recent">
-              Scout recent matches
+              View recent matches
             </Link>
           </div>
 
@@ -163,7 +166,7 @@ export const HomePage = () => {
                 onChange={(event) => setPlayerQuery(event.target.value)}
               />
               <button type="submit" disabled={!trimmedPlayerQuery}>
-                Open profile
+                View profile
               </button>
             </div>
           </form>
@@ -196,31 +199,22 @@ export const HomePage = () => {
         </div>
       </section>
 
-      <section className="homeStats" aria-label="Site highlights">
-        {statCards.map((stat) => (
-          <article key={stat.label} className="homeStatCard">
-            <span>{stat.label}</span>
-            <strong>{stat.value}</strong>
-            <p>{stat.detail}</p>
-          </article>
-        ))}
+      <section className="homeContent" aria-label="Atomic training tools and notes">
+        <div className="homeFeatureGrid" aria-label="Primary tools">
+          {featureLinks.map((feature) => (
+            <Link key={feature.to} className="homeFeatureCard" to={feature.to}>
+              <span>{feature.eyebrow}</span>
+              <h2>{feature.title}</h2>
+              <p>{feature.body}</p>
+            </Link>
+          ))}
+        </div>
       </section>
 
-      <section className="homeFeatureGrid" aria-label="Primary tools">
-        {featureLinks.map((feature) => (
-          <Link key={feature.to} className="homeFeatureCard" to={feature.to}>
-            <span>{feature.eyebrow}</span>
-            <h2>{feature.title}</h2>
-            <p>{feature.body}</p>
-            <strong>{feature.action}</strong>
-          </Link>
-        ))}
-      </section>
-
-      <section className="homeBottom">
-        <div className="homePrinciples">
-          <span className="homeSectionLabel">What this is becoming</span>
-          <h2>An atomic hub for training, scouting, and receipts.</h2>
+      <section className="homeNotesSection" aria-label="Notes for the atomic scene">
+        <aside className="homeNotes">
+          <span className="homeSectionLabel">For the scene</span>
+          <h2>A compact place to train, check names, and follow the pool.</h2>
           <div className="homePrincipleList">
             {principles.map((principle) => (
               <article key={principle.title}>
@@ -229,15 +223,6 @@ export const HomePage = () => {
               </article>
             ))}
           </div>
-        </div>
-
-        <aside className="homeActivity" aria-label="Suggested next steps">
-          <span className="homeSectionLabel">Good next click</span>
-          <ul>
-            {activityFeed.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
         </aside>
       </section>
     </div>
