@@ -13,7 +13,7 @@ const sortValue = (value) => {
   return value;
 };
 
-export const stableRequestKey = (parts) => JSON.stringify(sortValue(parts));
+const stableRequestKey = (parts) => JSON.stringify(sortValue(parts));
 
 export const cachedRequest = async (cache, keyParts, request) => {
   const key = stableRequestKey(keyParts);

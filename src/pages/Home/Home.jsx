@@ -202,9 +202,6 @@ export const HomePage = () => {
               style={{ "--slide-delay": `${index * 8}s` }}
               aria-hidden="true"
             >
-              {image.webpSrc ? (
-                <source srcSet={appAssetPath(image.webpSrc)} type="image/webp" />
-              ) : null}
               <img
                 src={appAssetPath(image.src)}
                 alt=""

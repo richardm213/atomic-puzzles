@@ -25,7 +25,7 @@ const runQueuedSupabaseRequest = (request) => {
   return queuedRequest;
 };
 
-export const assertSupabaseRows = (tableName, data) => {
+const assertSupabaseRows = (tableName, data) => {
   if (!Array.isArray(data)) {
     throw new Error(`Expected Supabase table "${tableName}" to return an array`);
   }

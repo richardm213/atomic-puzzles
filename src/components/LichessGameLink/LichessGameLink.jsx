@@ -1,5 +1,4 @@
-export const lichessGameUrl = (gameId) =>
-  `https://lichess.org/${encodeURIComponent(String(gameId))}`;
+const lichessGameUrl = (gameId) => `https://lichess.org/${encodeURIComponent(String(gameId))}`;
 
 export const LichessGameLink = ({ gameId, children, className = "rankingLink", onClick }) => {
   if (gameId === "—") return children;
