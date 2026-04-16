@@ -304,7 +304,7 @@ export const useAliasesForUser = (aliasesLookup, username) => {
   return useMemo(() => {
     const entry = aliasesLookup.get(username);
     if (!entry) return [];
-    return entry.members.filter((member) => member.toLowerCase() !== username);
+    return entry.members;
   }, [aliasesLookup, username]);
 };
 

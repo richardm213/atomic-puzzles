@@ -93,6 +93,50 @@
   overflow-wrap: anywhere;
 }
 
+.profileAliasRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.profileAliasRow span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.profileAliasLichessLink {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  color: #f5c26b;
+  background: rgba(245, 194, 107, 0.1);
+  border: 1px solid rgba(245, 194, 107, 0.2);
+  text-decoration: none;
+  transition:
+    transform 140ms ease,
+    background 140ms ease,
+    border-color 140ms ease;
+}
+
+.profileAliasLichessLink:hover,
+.profileAliasLichessLink:focus-visible {
+  transform: translateY(-1px);
+  background: rgba(245, 194, 107, 0.16);
+  border-color: rgba(245, 194, 107, 0.34);
+}
+
+.profileAliasLichessLink svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
 .playerProfilePanel .analyzeButton {
   min-height: 42px;
   border-radius: 8px;
