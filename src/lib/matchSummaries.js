@@ -3,13 +3,10 @@ import {
   normalizedRatingsFromMatch,
   winnerToFullWord,
 } from "../utils/matchTransforms";
-import { matchSourceFromValues } from "../utils/matchFilters";
-
-const firstNonEmptyValue = (...values) =>
-  values.find((value) => value !== undefined && value !== null && String(value).trim().length > 0);
+import { matchSourceFromValues, sourceValueFromValues } from "../utils/matchFilters";
 
 export const sourceValueFromMatch = (match, firstGame) => {
-  const sourceValue = firstNonEmptyValue(
+  return sourceValueFromValues(
     firstGame?.source,
     firstGame?.match_source,
     firstGame?.queue,
@@ -17,10 +14,6 @@ export const sourceValueFromMatch = (match, firstGame) => {
     match?.match_source,
     match?.queue,
   );
-
-  return sourceValue === undefined || sourceValue === null || String(sourceValue).trim().length === 0
-    ? "—"
-    : String(sourceValue);
 };
 
 export const sourceKeyFromMatch = (match, firstGame) =>

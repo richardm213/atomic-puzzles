@@ -21,6 +21,7 @@ import { TimeControlFields } from "../../components/TimeControlFields/TimeContro
 import {
   normalizedGamesFromMatch,
   normalizedPlayersFromMatch,
+  parseTimeControlParts,
 } from "../../utils/matchTransforms";
 import { parseDateInputBoundary } from "../../utils/matchFilters";
 import {
@@ -30,6 +31,7 @@ import {
   summarizeMatchGames,
 } from "../../lib/matchSummaries";
 import { loadRawMatchesByMode } from "../../lib/matchData";
+import { toggleExpandedMatchKey } from "../../hooks/usePlayerProfileData";
 
 const recentModeOptions = modeOptions;
 const ratingFilterTypeOptions = ["both", "average"];
@@ -139,10 +141,9 @@ export const RecentMatchesPage = () => {
   const filteredMatches = useMemo(
     () =>
       matches.filter((match) => {
-        if (startDateTs !== null && match.startTs < startDateTs) return false;
-        if (endDateTs !== null && match.startTs > endDateTs) return false;
+        if (match.startTs < startDateTs || match.startTs > endDateTs) return false;
 
-        const [initial = "", increment = ""] = String(match.timeControl || "").split("+");
+        const { initial, increment } = parseTimeControlParts(match.timeControl);
         if (
           appliedFilters.timeControlInitialFilter !== "all" &&
           initial !== appliedFilters.timeControlInitialFilter
@@ -482,11 +483,7 @@ export const RecentMatchesPage = () => {
                 matchKey={matchKey}
                 isExpanded={isExpanded}
                 onToggle={() =>
-                  setExpandedMatchKeys((current) =>
-                    current.includes(matchKey)
-                      ? current.filter((key) => key !== matchKey)
-                      : [...current, matchKey],
-                  )
+                  setExpandedMatchKeys((current) => toggleExpandedMatchKey(current, matchKey))
                 }
               />
             );

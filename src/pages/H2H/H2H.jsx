@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import "./H2H.css";
+import { defaultSourceFilters, knownSourceKeys } from "../../constants/matches";
 import { loadRawMatchesByMode } from "../../lib/matchData";
 import { fetchPlayerRatingsRows } from "../../lib/supabasePlayerRatings";
 import { getTimeControlOptions } from "../../hooks/usePlayerProfileData";
@@ -68,8 +69,6 @@ const computeGameScore = (matches) => {
   );
 };
 
-const defaultSources = { arena: true, friend: true, lobby: true };
-const knownSources = Object.keys(defaultSources);
 const modeStatLabels = {
   rank: "Rank",
   rating: "Rating",
@@ -84,6 +83,17 @@ const sourceLabels = {
 };
 
 const matchSlugSeparator = "-vs-";
+const indexRatingsRowsByTimeControl = (rows) => {
+  const snapshots = {};
+
+  (Array.isArray(rows) ? rows : []).forEach((row) => {
+    const timeControl = String(row?.tc || "").toLowerCase();
+    if (!timeControl) return;
+    snapshots[timeControl] = row;
+  });
+
+  return snapshots;
+};
 
 const matchupToSlug = (player1, player2) =>
   `${encodeURIComponent(player1)}${matchSlugSeparator}${encodeURIComponent(player2)}`;
@@ -114,7 +124,7 @@ export const H2HPage = () => {
     startDate: "",
     endDate: "",
     timeControl: "all",
-    sources: defaultSources,
+    sources: defaultSourceFilters,
   });
   const [loadedPlayer1, setLoadedPlayer1] = useState("");
   const [loadedPlayer2, setLoadedPlayer2] = useState("");
@@ -138,7 +148,7 @@ export const H2HPage = () => {
           return false;
 
         if (match.source === "unknown") return Object.values(filters.sources).some(Boolean);
-        if (knownSources.includes(match.source)) return filters.sources[match.source];
+        if (knownSourceKeys.includes(match.source)) return filters.sources[match.source];
 
         return true;
       }),
@@ -212,14 +222,9 @@ export const H2HPage = () => {
       setLoadedPlayer1(first);
       setLoadedPlayer2(second);
       setMatches(merged);
-      const byTc = (rows) =>
-        (Array.isArray(rows) ? rows : []).reduce(
-          (acc, row) => ({ ...acc, [String(row?.tc || "").toLowerCase()]: row }),
-          {},
-        );
       setPlayerSnapshots({
-        [first.toLowerCase()]: byTc(firstRatings),
-        [second.toLowerCase()]: byTc(secondRatings),
+        [first.toLowerCase()]: indexRatingsRowsByTimeControl(firstRatings),
+        [second.toLowerCase()]: indexRatingsRowsByTimeControl(secondRatings),
       });
       if (!merged.length) {
         setError("No head-to-head matches found for the selected players.");

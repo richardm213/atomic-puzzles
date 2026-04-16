@@ -1,3 +1,6 @@
+export const firstNonEmptyValue = (...values) =>
+  values.find((value) => value !== undefined && value !== null && String(value).trim().length > 0);
+
 export const parseDateInputBoundary = (value, boundary) => {
   if (!value) {
     return boundary === "end" ? Number.MAX_SAFE_INTEGER : Number.MIN_SAFE_INTEGER;
@@ -12,10 +15,15 @@ export const parseDateInputBoundary = (value, boundary) => {
   return parsed.getTime();
 };
 
+export const sourceValueFromValues = (...values) => {
+  const sourceValue = firstNonEmptyValue(...values);
+  return sourceValue === undefined || sourceValue === null || String(sourceValue).trim().length === 0
+    ? "—"
+    : String(sourceValue);
+};
+
 export const matchSourceFromValues = (...values) => {
-  const sourceValue = values.find(
-    (value) => value !== undefined && value !== null && String(value).trim().length > 0,
-  );
+  const sourceValue = firstNonEmptyValue(...values);
 
   if (sourceValue === undefined || sourceValue === null || String(sourceValue).trim().length === 0) {
     return "unknown";
