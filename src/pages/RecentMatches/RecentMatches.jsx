@@ -17,6 +17,7 @@ import { MatchCard } from "../../components/MatchCard/MatchCard";
 import { DualRangeSlider } from "../../components/DualRangeSlider/DualRangeSlider";
 import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFilterChecks";
+import { TimeControlFields } from "../../components/TimeControlFields/TimeControlFields";
 import {
   findRatingDataForPlayer,
   normalizedGamesFromMatch,
@@ -448,36 +449,22 @@ export const RecentMatchesPage = () => {
                 ))}
               </select>
             </label>
-            <label htmlFor="recent-time-initial-select">
-              Initial (sec)
-              <select
-                id="recent-time-initial-select"
-                value={timeControlInitialFilter}
-                onChange={(event) => setTimeControlInitialFilter(event.target.value)}
-              >
-                <option value="all">All</option>
-                {initialOptions.map((value) => (
-                  <option key={value} value={value}>
-                    {value}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label htmlFor="recent-time-increment-select">
-              Increment (sec)
-              <select
-                id="recent-time-increment-select"
-                value={timeControlIncrementFilter}
-                onChange={(event) => setTimeControlIncrementFilter(event.target.value)}
-              >
-                <option value="all">All</option>
-                {incrementOptions.map((value) => (
-                  <option key={value} value={value}>
-                    {value}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <TimeControlFields
+              initialId="recent-time-initial-select"
+              incrementId="recent-time-increment-select"
+              initialValue={timeControlInitialFilter}
+              incrementValue={timeControlIncrementFilter}
+              initialOptions={initialOptions}
+              incrementOptions={incrementOptions}
+              onInitialChange={setTimeControlInitialFilter}
+              onIncrementChange={setTimeControlIncrementFilter}
+              startDateId="recent-start-date-filter"
+              endDateId="recent-end-date-filter"
+              startDateValue={startDateFilter}
+              endDateValue={endDateFilter}
+              onStartDateChange={setStartDateFilter}
+              onEndDateChange={setEndDateFilter}
+            />
             <label htmlFor="recent-rating-filter-type">
               Rating type
               <select
@@ -510,25 +497,6 @@ export const RecentMatchesPage = () => {
                 value={player2Filter}
                 onChange={(event) => setPlayer2Filter(event.target.value)}
                 placeholder="username"
-              />
-            </label>
-            <label htmlFor="recent-start-date-filter">
-              From
-              <input
-                id="recent-start-date-filter"
-                type="date"
-                value={startDateFilter}
-                onChange={(event) => setStartDateFilter(event.target.value)}
-              />
-            </label>
-            <label htmlFor="recent-end-date-filter">
-              To
-              <input
-                id="recent-end-date-filter"
-                type="date"
-                value={endDateFilter}
-                min={startDateFilter || undefined}
-                onChange={(event) => setEndDateFilter(event.target.value)}
               />
             </label>
           </div>

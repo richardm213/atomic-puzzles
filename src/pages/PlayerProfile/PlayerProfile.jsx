@@ -39,6 +39,7 @@ import { LichessGameLink } from "../../components/LichessGameLink/LichessGameLin
 import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { ProfileMetricCard } from "../../components/ProfileMetricCard/ProfileMetricCard";
 import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFilterChecks";
+import { TimeControlFields } from "../../components/TimeControlFields/TimeControlFields";
 
 const countOptions = [5, 10, 20];
 
@@ -489,36 +490,22 @@ export const PlayerProfilePage = ({ username }) => {
                 ))}
               </select>
             </label>
-            <label htmlFor="profile-time-initial-select">
-              Initial (sec)
-              <select
-                id="profile-time-initial-select"
-                value={timeControlInitialFilter}
-                onChange={(event) => setTimeControlInitialFilter(event.target.value)}
-              >
-                <option value="all">All</option>
-                {initialOptions.map((value) => (
-                  <option key={value} value={value}>
-                    {value}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label htmlFor="profile-time-increment-select">
-              Increment (sec)
-              <select
-                id="profile-time-increment-select"
-                value={timeControlIncrementFilter}
-                onChange={(event) => setTimeControlIncrementFilter(event.target.value)}
-              >
-                <option value="all">All</option>
-                {incrementOptions.map((value) => (
-                  <option key={value} value={value}>
-                    {value}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <TimeControlFields
+              initialId="profile-time-initial-select"
+              incrementId="profile-time-increment-select"
+              initialValue={timeControlInitialFilter}
+              incrementValue={timeControlIncrementFilter}
+              initialOptions={initialOptions}
+              incrementOptions={incrementOptions}
+              onInitialChange={setTimeControlInitialFilter}
+              onIncrementChange={setTimeControlIncrementFilter}
+              startDateId="profile-start-date-filter"
+              endDateId="profile-end-date-filter"
+              startDateValue={startDateFilter}
+              endDateValue={endDateFilter}
+              onStartDateChange={setStartDateFilter}
+              onEndDateChange={setEndDateFilter}
+            />
             <label htmlFor="profile-opponent-filter">
               Opponent
               <input
@@ -527,25 +514,6 @@ export const PlayerProfilePage = ({ username }) => {
                 value={opponentFilter}
                 onChange={(event) => setOpponentFilter(event.target.value)}
                 placeholder="username"
-              />
-            </label>
-            <label htmlFor="profile-start-date-filter">
-              From
-              <input
-                id="profile-start-date-filter"
-                type="date"
-                value={startDateFilter}
-                onChange={(event) => setStartDateFilter(event.target.value)}
-              />
-            </label>
-            <label htmlFor="profile-end-date-filter">
-              To
-              <input
-                id="profile-end-date-filter"
-                type="date"
-                value={endDateFilter}
-                min={startDateFilter || undefined}
-                onChange={(event) => setEndDateFilter(event.target.value)}
               />
             </label>
           </div>

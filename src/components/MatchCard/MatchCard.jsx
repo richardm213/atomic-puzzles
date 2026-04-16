@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { LichessGameLink } from "../LichessGameLink/LichessGameLink";
-import { formatLocalDateTime, formatScore, formatSignedDecimal } from "../../utils/formatters";
+import { MatchDetails } from "../MatchDetails/MatchDetails";
+import { formatLocalDateTime, formatScore } from "../../utils/formatters";
 import "./MatchCard.css";
 
 const scoreTone = (score, opponentScore) => {
@@ -75,54 +76,11 @@ export const MatchCard = ({ match, matchKey, isExpanded, onToggle }) => (
     </div>
     {isExpanded ? (
       <div className="matchCardDetails">
-        <div className="matchCardPlayerStats">
-          <div>
-            <strong>{match.playerA}</strong>
-            <span>
-              {`Rating ${match.playerABeforeRating} (${formatSignedDecimal(
-                match.playerAAfterRating - match.playerABeforeRating,
-              )})`}
-            </span>
-            <span>
-              {`RD ${match.playerABeforeRd} (${formatSignedDecimal(
-                match.playerAAfterRd - match.playerABeforeRd,
-              )})`}
-            </span>
-          </div>
-          <div>
-            <strong>{match.playerB}</strong>
-            <span>
-              {`Rating ${match.playerBBeforeRating} (${formatSignedDecimal(
-                match.playerBAfterRating - match.playerBBeforeRating,
-              )})`}
-            </span>
-            <span>
-              {`RD ${match.playerBBeforeRd} (${formatSignedDecimal(
-                match.playerBAfterRd - match.playerBBeforeRd,
-              )})`}
-            </span>
-          </div>
-        </div>
-        <div className="matchGames">
-          <div className="matchGamesHeader">
-            <strong>Game</strong>
-            <strong>Result</strong>
-            <strong>ID</strong>
-          </div>
-          <ul className="matchGamesList">
-            {match.games.map((game) => (
-              <li key={`${matchKey}-${game.id}-${game.index}`} className="matchGameRow">
-                <span>Game {game.index + 1}</span>
-                <span>{game.resultLabel}</span>
-                <span>
-                  <LichessGameLink gameId={game.id} onClick={(event) => event.stopPropagation()}>
-                    {game.id}
-                  </LichessGameLink>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <MatchDetails
+          match={match}
+          matchKey={matchKey}
+          stopPropagation={(event) => event.stopPropagation()}
+        />
       </div>
     ) : null}
   </article>

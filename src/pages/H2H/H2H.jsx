@@ -12,8 +12,9 @@ import {
   normalizedRatingsFromMatch,
   winnerToFullWord,
 } from "../../utils/matchTransforms";
-import { formatLocalDateTime, formatScore, formatSignedDecimal } from "../../utils/formatters";
+import { formatLocalDateTime, formatScore } from "../../utils/formatters";
 import { LichessGameLink } from "../../components/LichessGameLink/LichessGameLink";
+import { MatchDetails } from "../../components/MatchDetails/MatchDetails";
 import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFilterChecks";
 
 const normalizeH2HMatches = (matches, mode, playerA, playerB) => {
@@ -604,65 +605,11 @@ export const H2HPage = () => {
                           {isExpanded ? (
                             <tr className="h2hHistoryDetailsRow">
                               <td colSpan={4}>
-                                <div className="matchCardPlayerStats">
-                                  <div>
-                                    <strong>{match.playerA}</strong>
-                                    <span>
-                                      Rating {match.playerABeforeRating} (
-                                      {formatSignedDecimal(
-                                        match.playerAAfterRating - match.playerABeforeRating,
-                                      )}
-                                      )
-                                    </span>
-                                    <span>
-                                      RD {match.playerABeforeRd} (
-                                      {formatSignedDecimal(
-                                        match.playerAAfterRd - match.playerABeforeRd,
-                                      )}
-                                      )
-                                    </span>
-                                  </div>
-                                  <div>
-                                    <strong>{match.playerB}</strong>
-                                    <span>
-                                      Rating {match.playerBBeforeRating} (
-                                      {formatSignedDecimal(
-                                        match.playerBAfterRating - match.playerBBeforeRating,
-                                      )}
-                                      )
-                                    </span>
-                                    <span>
-                                      RD {match.playerBBeforeRd} (
-                                      {formatSignedDecimal(
-                                        match.playerBAfterRd - match.playerBBeforeRd,
-                                      )}
-                                      )
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="matchGamesHeader">
-                                  <strong>Game</strong>
-                                  <strong>Result</strong>
-                                  <strong>Score</strong>
-                                  <strong>ID</strong>
-                                </div>
-                                <ul className="matchGamesList">
-                                  {match.games.map((game) => (
-                                    <li
-                                      key={`${match.key}-${game.id}-${game.index}`}
-                                      className="matchGameRow"
-                                    >
-                                      <span>Game {game.index + 1}</span>
-                                      <span>{game.resultLabel}</span>
-                                      <span>{`${formatScore(game.scoreAAfter)} - ${formatScore(
-                                        game.scoreBAfter,
-                                      )}`}</span>
-                                      <span>
-                                        <LichessGameLink gameId={game.id}>{game.id}</LichessGameLink>
-                                      </span>
-                                    </li>
-                                  ))}
-                                </ul>
+                                <MatchDetails
+                                  match={match}
+                                  matchKey={match.key}
+                                  showRunningScore
+                                />
                               </td>
                             </tr>
                           ) : null}
@@ -712,61 +659,11 @@ export const H2HPage = () => {
                       </button>
                       {isExpanded ? (
                         <div className="h2hHistoryCardDetails">
-                          <div className="matchCardPlayerStats">
-                            <div>
-                              <strong>{match.playerA}</strong>
-                              <span>
-                                Rating {match.playerABeforeRating} (
-                                {formatSignedDecimal(
-                                  match.playerAAfterRating - match.playerABeforeRating,
-                                )}
-                                )
-                              </span>
-                              <span>
-                                RD {match.playerABeforeRd} (
-                                {formatSignedDecimal(match.playerAAfterRd - match.playerABeforeRd)}
-                                )
-                              </span>
-                            </div>
-                            <div>
-                              <strong>{match.playerB}</strong>
-                              <span>
-                                Rating {match.playerBBeforeRating} (
-                                {formatSignedDecimal(
-                                  match.playerBAfterRating - match.playerBBeforeRating,
-                                )}
-                                )
-                              </span>
-                              <span>
-                                RD {match.playerBBeforeRd} (
-                                {formatSignedDecimal(match.playerBAfterRd - match.playerBBeforeRd)}
-                                )
-                              </span>
-                            </div>
-                          </div>
-                          <div className="matchGamesHeader">
-                            <strong>Game</strong>
-                            <strong>Result</strong>
-                            <strong>Score</strong>
-                            <strong>ID</strong>
-                          </div>
-                          <ul className="matchGamesList">
-                            {match.games.map((game) => (
-                              <li
-                                key={`${match.key}-${game.id}-${game.index}-mobile`}
-                                className="matchGameRow"
-                              >
-                                <span>Game {game.index + 1}</span>
-                                <span>{game.resultLabel}</span>
-                                <span>{`${formatScore(game.scoreAAfter)} - ${formatScore(
-                                  game.scoreBAfter,
-                                )}`}</span>
-                                <span>
-                                  <LichessGameLink gameId={game.id}>{game.id}</LichessGameLink>
-                                </span>
-                              </li>
-                            ))}
-                          </ul>
+                          <MatchDetails
+                            match={match}
+                            matchKey={`${match.key}-mobile`}
+                            showRunningScore
+                          />
                         </div>
                       ) : null}
                     </article>
