@@ -130,6 +130,12 @@ const modeStatLabels = {
   rd: "RD",
   peak: "Peak",
 };
+const sourceLabels = {
+  arena: "Arena",
+  friend: "Friend",
+  lobby: "Lobby",
+  unknown: "Other",
+};
 
 const matchSlugSeparator = "-vs-";
 
@@ -336,178 +342,348 @@ export const H2HPage = () => {
     </>
   );
 
+  const winsPlayer1 = filteredMatches.filter((match) => match.winner === loadedPlayer1).length;
+  const winsPlayer2 = filteredMatches.filter((match) => match.winner === loadedPlayer2).length;
+  const draws = filteredMatches.filter((match) => match.winner === "Draw").length;
+  const lastMatch = filteredMatches[0] || null;
+
   return (
     <div className="rankingsPage">
       <div className="panel rankingsPanel h2hPanel">
-        <h1>Head to Head</h1>
-        <p>Compare two players, then inspect score splits and full match history.</p>
+        <section className="h2hHero">
+          <div className="h2hHeroCopy">
+            <span className="h2hEyebrow">Head to Head</span>
+            <h1>See how two players stack up.</h1>
+            <p>
+              Compare overall score, bullet and blitz splits, and every match in the rivalry.
+            </p>
+          </div>
 
-        <form
-          className="controls rankingsControls profileControls"
-          onSubmit={(event) => {
-            event.preventDefault();
-            handleSearch();
-          }}
-        >
-          <label htmlFor="h2h-player-1">
-            Player 1
-            <input
-              id="h2h-player-1"
-              type="text"
-              placeholder="username"
-              value={player1Input}
-              onChange={(event) => setPlayer1Input(event.target.value)}
-            />
-          </label>
-          <label htmlFor="h2h-player-2">
-            Player 2
-            <input
-              id="h2h-player-2"
-              type="text"
-              placeholder="username"
-              value={player2Input}
-              onChange={(event) => setPlayer2Input(event.target.value)}
-            />
-          </label>
-          <button className="analyzeButton" type="submit" disabled={loading}>
-            {loading ? "Searching..." : "Search"}
-          </button>
-        </form>
+          <div className="h2hSearchCard">
+            <form
+              className="controls rankingsControls profileControls h2hSearchForm"
+              onSubmit={(event) => {
+                event.preventDefault();
+                handleSearch();
+              }}
+            >
+              <label htmlFor="h2h-player-1">
+                Player 1
+                <input
+                  id="h2h-player-1"
+                  type="text"
+                  inputMode="text"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  placeholder="username"
+                  value={player1Input}
+                  onChange={(event) => setPlayer1Input(event.target.value)}
+                />
+              </label>
+              <label htmlFor="h2h-player-2">
+                Player 2
+                <input
+                  id="h2h-player-2"
+                  type="text"
+                  inputMode="text"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  placeholder="username"
+                  value={player2Input}
+                  onChange={(event) => setPlayer2Input(event.target.value)}
+                />
+              </label>
+              <button className="analyzeButton h2hSearchButton" type="submit" disabled={loading}>
+                {loading ? "Searching..." : "Compare Players"}
+              </button>
+            </form>
+          </div>
+        </section>
 
         {!hasSearched ? (
-          <div className="emptyRankings">Enter two usernames and press search.</div>
+          <div className="emptyRankings h2hEmptyState">
+            Enter two usernames to load the matchup overview.
+          </div>
         ) : null}
         {error ? <div className="errorText">{error}</div> : null}
 
         {hasSearched && loadedPlayer1 && loadedPlayer2 ? (
           <>
-            <div className="controls profileControls">
-              <label htmlFor="h2h-start-date-filter">
-                From
-                <input
-                  id="h2h-start-date-filter"
-                  type="date"
-                  value={filters.startDate}
-                  onChange={(event) =>
-                    setFilters((current) => ({ ...current, startDate: event.target.value }))
-                  }
-                />
-              </label>
-              <label htmlFor="h2h-end-date-filter">
-                To
-                <input
-                  id="h2h-end-date-filter"
-                  type="date"
-                  value={filters.endDate}
-                  min={filters.startDate || undefined}
-                  onChange={(event) =>
-                    setFilters((current) => ({ ...current, endDate: event.target.value }))
-                  }
-                />
-              </label>
-              <label htmlFor="h2h-time-control-filter">
-                Time control
-                <select
-                  id="h2h-time-control-filter"
-                  value={filters.timeControl}
-                  onChange={(event) =>
-                    setFilters((current) => ({ ...current, timeControl: event.target.value }))
-                  }
-                >
-                  <option value="all">All</option>
-                  {timeControlOptions.map((tc) => (
-                    <option key={`tc-${tc}`} value={tc}>
-                      {tc}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
+            <section className="h2hSummaryShell">
+              <div className="h2hSummaryBar">
+                <div className="h2hSummaryPill">
+                  <span>Matches</span>
+                  <strong>{filteredMatches.length}</strong>
+                </div>
+                <div className="h2hSummaryPill">
+                  <span>{loadedPlayer1} wins</span>
+                  <strong>{winsPlayer1}</strong>
+                </div>
+                <div className="h2hSummaryPill">
+                  <span>{loadedPlayer2} wins</span>
+                  <strong>{winsPlayer2}</strong>
+                </div>
+                <div className="h2hSummaryPill">
+                  <span>Draws</span>
+                  <strong>{draws}</strong>
+                </div>
+                <div className="h2hSummaryPill">
+                  <span>Latest</span>
+                  <strong>{lastMatch ? formatLocalDateTime(lastMatch.startTs) : "—"}</strong>
+                </div>
+              </div>
 
-            <div className="h2hSplitLayout">
-              <section className="h2hPlayerPanel h2hPlayerPanelCombined">
-                <div className="h2hPlayerPanelTop h2hPlayerPanelTopCombined">
-                  <div className="h2hPlayerIdentity h2hPlayerIdentityLeft">
-                    <h2>
-                      <Link
-                        className="rankingLink h2hPlayerNameLink"
-                        to="/@/$username"
-                        params={{ username: loadedPlayer1 }}
-                      >
-                        {loadedPlayer1}
-                      </Link>
-                    </h2>
-                  </div>
-                  <div className="h2hScoreBlock">
-                    <h3>Overall</h3>
-                    <strong className="h2hModeCardScore h2hScoreLine">
-                      {formatScore(combinedScore.playerA)} - {formatScore(combinedScore.playerB)}
-                    </strong>
-                  </div>
-                  <div className="h2hPlayerIdentity h2hPlayerIdentityRight">
-                    <h2>
-                      <Link
-                        className="rankingLink h2hPlayerNameLink"
-                        to="/@/$username"
-                        params={{ username: loadedPlayer2 }}
-                      >
-                        {loadedPlayer2}
-                      </Link>
-                    </h2>
-                  </div>
+              <div className="h2hFilterCard">
+                <div className="h2hSectionHeading">
+                  <h2>Refine Matchup</h2>
+                  <p>Trim the rivalry down by date, source, and time control.</p>
                 </div>
 
-                <div className="h2hModeCard">
-                  <div className="h2hModeCardBody h2hModeCardBodyCombined">
-                    <div>{renderModeStats(player1Snapshot.blitz || {})}</div>
-                    <div className="h2hScoreBlock">
-                      <h3>Blitz</h3>
+                <div className="controls profileControls h2hFilterGrid">
+                  <label htmlFor="h2h-start-date-filter">
+                    From
+                    <input
+                      id="h2h-start-date-filter"
+                      type="date"
+                      value={filters.startDate}
+                      onChange={(event) =>
+                        setFilters((current) => ({ ...current, startDate: event.target.value }))
+                      }
+                    />
+                  </label>
+                  <label htmlFor="h2h-end-date-filter">
+                    To
+                    <input
+                      id="h2h-end-date-filter"
+                      type="date"
+                      value={filters.endDate}
+                      min={filters.startDate || undefined}
+                      onChange={(event) =>
+                        setFilters((current) => ({ ...current, endDate: event.target.value }))
+                      }
+                    />
+                  </label>
+                  <label htmlFor="h2h-time-control-filter">
+                    Time control
+                    <select
+                      id="h2h-time-control-filter"
+                      value={filters.timeControl}
+                      onChange={(event) =>
+                        setFilters((current) => ({ ...current, timeControl: event.target.value }))
+                      }
+                    >
+                      <option value="all">All</option>
+                      {timeControlOptions.map((tc) => (
+                        <option key={`tc-${tc}`} value={tc}>
+                          {tc}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <SourceFilterChecks values={filters.sources} onChange={setSourceFilter} />
+              </div>
+
+              <div className="h2hSplitLayout">
+                <section className="h2hPlayerPanel h2hPlayerPanelCombined">
+                  <div className="h2hPlayerPanelTop h2hPlayerPanelTopCombined">
+                    <div className="h2hPlayerIdentity h2hPlayerIdentityLeft">
+                      <span className="h2hPlayerLabel">Player One</span>
+                      <h2>
+                        <Link
+                          className="rankingLink h2hPlayerNameLink"
+                          to="/@/$username"
+                          params={{ username: loadedPlayer1 }}
+                        >
+                          {loadedPlayer1}
+                        </Link>
+                      </h2>
+                    </div>
+                    <div className="h2hScoreBlock h2hScoreBlockHero">
+                      <h3>Overall Score</h3>
                       <strong className="h2hModeCardScore h2hScoreLine">
-                        {formatScore(blitzScore.playerA)} - {formatScore(blitzScore.playerB)}
+                        {formatScore(combinedScore.playerA)} - {formatScore(combinedScore.playerB)}
                       </strong>
+                      <span className="h2hScoreCaption">Across all filtered games</span>
                     </div>
-                    <div className="h2hModeCardRightStats">
-                      {renderModeStats(player2Snapshot.blitz || {})}
+                    <div className="h2hPlayerIdentity h2hPlayerIdentityRight">
+                      <span className="h2hPlayerLabel">Player Two</span>
+                      <h2>
+                        <Link
+                          className="rankingLink h2hPlayerNameLink"
+                          to="/@/$username"
+                          params={{ username: loadedPlayer2 }}
+                        >
+                          {loadedPlayer2}
+                        </Link>
+                      </h2>
                     </div>
                   </div>
-                </div>
 
-                <div className="h2hModeCard">
-                  <div className="h2hModeCardBody h2hModeCardBodyCombined">
-                    <div>{renderModeStats(player1Snapshot.bullet || {})}</div>
-                    <div className="h2hScoreBlock">
-                      <h3>Bullet</h3>
-                      <strong className="h2hModeCardScore h2hScoreLine">
-                        {formatScore(bulletScore.playerA)} - {formatScore(bulletScore.playerB)}
-                      </strong>
-                    </div>
-                    <div className="h2hModeCardRightStats">
-                      {renderModeStats(player2Snapshot.bullet || {})}
+                  <div className="h2hModeCard">
+                    <div className="h2hModeCardBody h2hModeCardBodyCombined">
+                      <div className="h2hModeStatsGroup">{renderModeStats(player1Snapshot.blitz || {})}</div>
+                      <div className="h2hScoreBlock">
+                        <h3>Blitz</h3>
+                        <strong className="h2hModeCardScore h2hScoreLine">
+                          {formatScore(blitzScore.playerA)} - {formatScore(blitzScore.playerB)}
+                        </strong>
+                      </div>
+                      <div className="h2hModeStatsGroup h2hModeCardRightStats">
+                        {renderModeStats(player2Snapshot.blitz || {})}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </section>
-            </div>
 
-            <h2>Match History</h2>
-            <SourceFilterChecks values={filters.sources} onChange={setSourceFilter} />
+                  <div className="h2hModeCard">
+                    <div className="h2hModeCardBody h2hModeCardBodyCombined">
+                      <div className="h2hModeStatsGroup">{renderModeStats(player1Snapshot.bullet || {})}</div>
+                      <div className="h2hScoreBlock">
+                        <h3>Bullet</h3>
+                        <strong className="h2hModeCardScore h2hScoreLine">
+                          {formatScore(bulletScore.playerA)} - {formatScore(bulletScore.playerB)}
+                        </strong>
+                      </div>
+                      <div className="h2hModeStatsGroup h2hModeCardRightStats">
+                        {renderModeStats(player2Snapshot.bullet || {})}
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </section>
 
-            <table className="h2hHistoryTable">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>TC</th>
-                  <th>Winner</th>
-                  <th>Score</th>
-                </tr>
-              </thead>
-              <tbody>
+            <section className="h2hHistorySection">
+              <div className="h2hSectionHeading">
+                <h2>Match History</h2>
+                <p>Tap any row or card to expand the game-by-game breakdown.</p>
+              </div>
+
+              <div className="h2hHistoryTableWrap">
+                <table className="h2hHistoryTable">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>TC</th>
+                      <th>Winner</th>
+                      <th>Score</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredMatches.map((match) => {
+                      const isExpanded = expandedMatchKeys.includes(match.key);
+                      return (
+                        <Fragment key={match.key}>
+                          <tr
+                            className={`h2hHistoryRow ${isExpanded ? "expanded" : ""}`}
+                            onClick={() =>
+                              setExpandedMatchKeys((current) =>
+                                current.includes(match.key)
+                                  ? current.filter((key) => key !== match.key)
+                                  : [...current, match.key],
+                              )
+                            }
+                          >
+                            <td>
+                              <LichessGameLink
+                                gameId={match.firstGameId}
+                                onClick={(event) => event.stopPropagation()}
+                              >
+                                {formatLocalDateTime(match.startTs)}
+                              </LichessGameLink>
+                            </td>
+                            <td>{match.timeControl}</td>
+                            <td>{match.winner}</td>
+                            <td>
+                              {formatScore(match.scoreA)} - {formatScore(match.scoreB)}
+                            </td>
+                          </tr>
+                          {isExpanded ? (
+                            <tr className="h2hHistoryDetailsRow">
+                              <td colSpan={4}>
+                                <div className="matchCardPlayerStats">
+                                  <div>
+                                    <strong>{match.playerA}</strong>
+                                    <span>
+                                      Rating {match.playerABeforeRating} (
+                                      {formatSignedDecimal(
+                                        match.playerAAfterRating - match.playerABeforeRating,
+                                      )}
+                                      )
+                                    </span>
+                                    <span>
+                                      RD {match.playerABeforeRd} (
+                                      {formatSignedDecimal(
+                                        match.playerAAfterRd - match.playerABeforeRd,
+                                      )}
+                                      )
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <strong>{match.playerB}</strong>
+                                    <span>
+                                      Rating {match.playerBBeforeRating} (
+                                      {formatSignedDecimal(
+                                        match.playerBAfterRating - match.playerBBeforeRating,
+                                      )}
+                                      )
+                                    </span>
+                                    <span>
+                                      RD {match.playerBBeforeRd} (
+                                      {formatSignedDecimal(
+                                        match.playerBAfterRd - match.playerBBeforeRd,
+                                      )}
+                                      )
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="matchGamesHeader">
+                                  <strong>Game</strong>
+                                  <strong>Result</strong>
+                                  <strong>Score</strong>
+                                  <strong>ID</strong>
+                                </div>
+                                <ul className="matchGamesList">
+                                  {match.games.map((game) => (
+                                    <li
+                                      key={`${match.key}-${game.id}-${game.index}`}
+                                      className="matchGameRow"
+                                    >
+                                      <span>Game {game.index + 1}</span>
+                                      <span>{game.resultLabel}</span>
+                                      <span>{`${formatScore(game.scoreAAfter)} - ${formatScore(
+                                        game.scoreBAfter,
+                                      )}`}</span>
+                                      <span>
+                                        <LichessGameLink gameId={game.id}>{game.id}</LichessGameLink>
+                                      </span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </td>
+                            </tr>
+                          ) : null}
+                        </Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="h2hHistoryCards" aria-label="Match history cards">
                 {filteredMatches.map((match) => {
                   const isExpanded = expandedMatchKeys.includes(match.key);
                   return (
-                    <Fragment key={match.key}>
-                      <tr
-                        className={`h2hHistoryRow ${isExpanded ? "expanded" : ""}`}
+                    <article
+                      key={`${match.key}-card`}
+                      className={`h2hHistoryCard ${isExpanded ? "expanded" : ""}`}
+                    >
+                      <button
+                        type="button"
+                        className="h2hHistoryCardButton"
                         onClick={() =>
                           setExpandedMatchKeys((current) =>
                             current.includes(match.key)
@@ -516,92 +692,92 @@ export const H2HPage = () => {
                           )
                         }
                       >
-                        <td>
+                        <div className="h2hHistoryCardTop">
+                          <span className="h2hHistoryCardKicker">{match.timeControl}</span>
                           <LichessGameLink
                             gameId={match.firstGameId}
                             onClick={(event) => event.stopPropagation()}
+                            className="rankingLink h2hHistoryCardDate"
                           >
                             {formatLocalDateTime(match.startTs)}
                           </LichessGameLink>
-                        </td>
-                        <td>{match.timeControl}</td>
-                        <td>{match.winner}</td>
-                        <td>
+                        </div>
+                        <div className="h2hHistoryCardScore">
                           {formatScore(match.scoreA)} - {formatScore(match.scoreB)}
-                        </td>
-                      </tr>
+                        </div>
+                        <div className="h2hHistoryCardMeta">
+                          <span>Winner: {match.winner}</span>
+                          <span>Source: {sourceLabels[match.source] || "Other"}</span>
+                        </div>
+                      </button>
                       {isExpanded ? (
-                        <tr className="h2hHistoryDetailsRow">
-                          <td colSpan={4}>
-                            <div className="matchCardPlayerStats">
-                              <div>
-                                <strong>{match.playerA}</strong>
-                                <span>
-                                  Rating {match.playerABeforeRating} (
-                                  {formatSignedDecimal(
-                                    match.playerAAfterRating - match.playerABeforeRating,
-                                  )}
-                                  )
-                                </span>
-                                <span>
-                                  RD {match.playerABeforeRd} (
-                                  {formatSignedDecimal(
-                                    match.playerAAfterRd - match.playerABeforeRd,
-                                  )}
-                                  )
-                                </span>
-                              </div>
-                              <div>
-                                <strong>{match.playerB}</strong>
-                                <span>
-                                  Rating {match.playerBBeforeRating} (
-                                  {formatSignedDecimal(
-                                    match.playerBAfterRating - match.playerBBeforeRating,
-                                  )}
-                                  )
-                                </span>
-                                <span>
-                                  RD {match.playerBBeforeRd} (
-                                  {formatSignedDecimal(
-                                    match.playerBAfterRd - match.playerBBeforeRd,
-                                  )}
-                                  )
-                                </span>
-                              </div>
+                        <div className="h2hHistoryCardDetails">
+                          <div className="matchCardPlayerStats">
+                            <div>
+                              <strong>{match.playerA}</strong>
+                              <span>
+                                Rating {match.playerABeforeRating} (
+                                {formatSignedDecimal(
+                                  match.playerAAfterRating - match.playerABeforeRating,
+                                )}
+                                )
+                              </span>
+                              <span>
+                                RD {match.playerABeforeRd} (
+                                {formatSignedDecimal(match.playerAAfterRd - match.playerABeforeRd)}
+                                )
+                              </span>
                             </div>
-                            <div className="matchGamesHeader">
-                              <strong>Game</strong>
-                              <strong>Result</strong>
-                              <strong>Score</strong>
-                              <strong>ID</strong>
+                            <div>
+                              <strong>{match.playerB}</strong>
+                              <span>
+                                Rating {match.playerBBeforeRating} (
+                                {formatSignedDecimal(
+                                  match.playerBAfterRating - match.playerBBeforeRating,
+                                )}
+                                )
+                              </span>
+                              <span>
+                                RD {match.playerBBeforeRd} (
+                                {formatSignedDecimal(match.playerBAfterRd - match.playerBBeforeRd)}
+                                )
+                              </span>
                             </div>
-                            <ul className="matchGamesList">
-                              {match.games.map((game) => (
-                                <li
-                                  key={`${match.key}-${game.id}-${game.index}`}
-                                  className="matchGameRow"
-                                >
-                                  <span>Game {game.index + 1}</span>
-                                  <span>{game.resultLabel}</span>
-                                  <span>{`${formatScore(game.scoreAAfter)} - ${formatScore(
-                                    game.scoreBAfter,
-                                  )}`}</span>
-                                  <span>
-                                    <LichessGameLink gameId={game.id}>{game.id}</LichessGameLink>
-                                  </span>
-                                </li>
-                              ))}
-                            </ul>
-                          </td>
-                        </tr>
+                          </div>
+                          <div className="matchGamesHeader">
+                            <strong>Game</strong>
+                            <strong>Result</strong>
+                            <strong>Score</strong>
+                            <strong>ID</strong>
+                          </div>
+                          <ul className="matchGamesList">
+                            {match.games.map((game) => (
+                              <li
+                                key={`${match.key}-${game.id}-${game.index}-mobile`}
+                                className="matchGameRow"
+                              >
+                                <span>Game {game.index + 1}</span>
+                                <span>{game.resultLabel}</span>
+                                <span>{`${formatScore(game.scoreAAfter)} - ${formatScore(
+                                  game.scoreBAfter,
+                                )}`}</span>
+                                <span>
+                                  <LichessGameLink gameId={game.id}>{game.id}</LichessGameLink>
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
                       ) : null}
-                    </Fragment>
+                    </article>
                   );
                 })}
-              </tbody>
-            </table>
+              </div>
+            </section>
             {filteredMatches.length === 0 ? (
-              <div className="emptyRankings">No matches found with current filters.</div>
+              <div className="emptyRankings h2hEmptyState">
+                No matches found with the current filters.
+              </div>
             ) : null}
           </>
         ) : null}
