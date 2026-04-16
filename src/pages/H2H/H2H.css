@@ -49,7 +49,7 @@
 }
 
 .h2hModeCard {
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--color-border);
   padding-top: 8px;
   margin-top: 8px;
 }
@@ -59,12 +59,12 @@
   margin: 0;
   text-transform: uppercase;
   font-size: 13px;
-  color: #93c5fd;
+  color: var(--color-primary-soft);
 }
 
 .h2hModeCard p {
   margin: 4px 0;
-  color: #c9d3e3;
+  color: var(--color-muted);
 }
 
 .h2hModeCardBody {
@@ -86,7 +86,7 @@
 .h2hModeCardScore {
   font-size: 32px;
   line-height: 1;
-  color: #dbeafe;
+  color: var(--color-primary-pale);
 }
 
 .h2hScoreBlock {
@@ -112,20 +112,20 @@
 }
 
 .h2hHistoryTable thead {
-  background: rgba(15, 23, 42, 0.95);
+  background: var(--color-table-head);
 }
 
 .h2hHistoryTable th,
 .h2hHistoryTable td {
   padding: 11px 12px;
   text-align: left;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--color-border);
   overflow-wrap: anywhere;
   vertical-align: middle;
 }
 
 .h2hHistoryTable th {
-  color: #aebdd0;
+  color: var(--color-subtle);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.06em;
@@ -134,7 +134,7 @@
 }
 
 .h2hHistoryTable td {
-  color: #e8ecf3;
+  color: var(--color-text);
 }
 
 .h2hHistoryTable td:nth-child(2),
@@ -150,15 +150,15 @@
 }
 
 .h2hHistoryRow:hover {
-  background: rgba(96, 165, 250, 0.12);
+  background: var(--color-table-hover);
 }
 
 .h2hHistoryRow.expanded {
-  background: rgba(96, 165, 250, 0.16);
+  background: var(--color-accent-soft-bg);
 }
 
 .h2hHistoryDetailsRow td {
-  background: rgba(15, 23, 42, 0.82);
+  background: var(--color-surface-elevated);
   font-size: 13px;
 }
 

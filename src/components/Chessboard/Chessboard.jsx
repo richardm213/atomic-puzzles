@@ -5,6 +5,7 @@ import { makeFen, parseFen } from "chessops/fen";
 import { makeSan, parseSan } from "chessops/san";
 import { makeUci, parseSquare } from "chessops/util";
 import { Atomic } from "chessops/variant";
+import { useAppSettings } from "../../context/AppSettings";
 import "./Chessboard.css";
 
 const createAtomicPosition = (fen) => {
@@ -50,6 +51,25 @@ const toPromotion = (square) => {
 const promotionOptions = ["queen", "knight", "rook", "bishop"];
 
 const squareName = (file, rank) => `${String.fromCharCode("a".charCodeAt(0) + file)}${rank + 1}`;
+const pieceCodes = {
+  pawn: "P",
+  bishop: "B",
+  knight: "N",
+  rook: "R",
+  queen: "Q",
+  king: "K",
+};
+
+const buildPieceStyle = (pieceSet) => {
+  const pieceStyle = {};
+
+  for (const [role, code] of Object.entries(pieceCodes)) {
+    pieceStyle[`--cg-piece-white-${role}`] = `url("https://lichess1.org/assets/piece/${pieceSet}/w${code}.svg")`;
+    pieceStyle[`--cg-piece-black-${role}`] = `url("https://lichess1.org/assets/piece/${pieceSet}/b${code}.svg")`;
+  }
+
+  return pieceStyle;
+};
 
 const toComparableUci = (position, uci, move) => {
   const normalized = uci.toLowerCase();
@@ -224,6 +244,7 @@ export const Chessboard = ({
   onNavigateHandled,
   onStateChange,
 }) => {
+  const { pieceSet } = useAppSettings();
   const elementRef = useRef(null);
   const cgRef = useRef(null);
   const positionRef = useRef(null);
@@ -253,6 +274,7 @@ export const Chessboard = ({
   const displaySolutionEntriesRef = useRef([]);
   const displaySolutionLinesRef = useRef([]);
   const activeSolutionLineRef = useRef(0);
+  const pieceStyle = useMemo(() => buildPieceStyle(pieceSet), [pieceSet]);
 
   useEffect(() => {
     solutionLinesRef.current = solutionUciLines;
@@ -886,12 +908,12 @@ export const Chessboard = ({
   }, [orientation, coordinates]);
 
   return (
-    <div className="cg-boardShell">
+    <div className="cg-boardShell cg-pieceTheme" style={pieceStyle}>
       <div ref={elementRef} className="cg-board" />
       {pendingPromotion ? (
         <div
           id="promotion-choice"
-          className={`cg-wrap ${pendingPromotion.vertical}`}
+          className={pendingPromotion.vertical}
           aria-label="Select promotion piece"
           onContextMenu={(event) => event.preventDefault()}
         >

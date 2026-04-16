@@ -1,3 +1,36 @@
 .appShell {
   min-height: 100vh;
+  position: relative;
+  isolation: isolate;
+}
+
+.appShell::before,
+.appShell::after {
+  content: "";
+  position: fixed;
+  inset: auto;
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+:root[data-theme="light"] .appShell::before {
+  top: 72px;
+  left: clamp(18px, 6vw, 84px);
+  width: min(36vw, 320px);
+  height: min(36vw, 320px);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(233, 190, 118, 0.26) 0%, rgba(233, 190, 118, 0) 72%);
+  opacity: 1;
+}
+
+:root[data-theme="light"] .appShell::after {
+  top: 120px;
+  right: clamp(12px, 5vw, 72px);
+  width: min(42vw, 380px);
+  height: min(42vw, 380px);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(83, 120, 216, 0.16) 0%, rgba(83, 120, 216, 0) 72%);
+  opacity: 1;
 }

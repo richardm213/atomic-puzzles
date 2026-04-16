@@ -1,4 +1,6 @@
 .topNav {
+  position: relative;
+  z-index: 30;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -6,13 +8,16 @@
   padding: max(14px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) 14px
     max(24px, env(safe-area-inset-left));
   border-bottom: 1px solid var(--color-border);
-  background: rgba(11, 18, 32, 0.9);
+  background: var(--color-nav);
+  backdrop-filter: blur(18px);
 }
 
 .homeBrand {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  z-index: 31;
 }
 
 .topNavCenter {
@@ -42,6 +47,114 @@
   text-decoration: underline;
 }
 
+:root[data-theme="light"] .topNav {
+  box-shadow: 0 10px 30px rgba(128, 146, 173, 0.08);
+}
+
+:root[data-theme="light"] .topNavLinks a {
+  transition:
+    color 140ms ease,
+    opacity 140ms ease;
+}
+
+:root[data-theme="light"] .topNavLinks a:hover {
+  opacity: 1;
+}
+
+.navSettings {
+  position: relative;
+  display: inline-flex;
+  z-index: 40;
+}
+
+.navSettingsButton {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border-radius: var(--radius-ui);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.navSettingsButton.open {
+  box-shadow: 0 0 0 3px var(--color-primary-ring);
+}
+
+.navSettingsButton i {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.navSettingsMenu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 41;
+  min-width: 220px;
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--color-panel);
+  border: 1px solid var(--color-border-strong);
+  box-shadow: var(--shadow-panel);
+  backdrop-filter: blur(18px);
+}
+
+:root[data-theme="light"] .navSettingsMenu {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(250, 245, 237, 0.82)),
+    var(--color-panel);
+}
+
+.navSettingsSection + .navSettingsSection {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-border);
+}
+
+.navSettingsLabel {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-subtle);
+}
+
+.navThemeToggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.navThemeToggle button,
+.navSettingsMenu select {
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-panel-strong);
+  color: var(--color-text);
+  border-radius: var(--radius-ui);
+  min-height: 38px;
+  padding: 8px 10px;
+}
+
+.navThemeToggle button {
+  cursor: pointer;
+}
+
+.navThemeToggle button.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.navSettingsMenu select {
+  width: 100%;
+}
+
 .navSearchSlot {
   width: 34px;
   height: 34px;
@@ -59,7 +172,7 @@
   align-items: center;
   justify-content: flex-end;
   transition: width 180ms ease;
-  z-index: 3;
+  z-index: 35;
 }
 
 .navSearch.open {
@@ -96,7 +209,7 @@
   width: min(260px, calc(100vw - 48px));
   opacity: 1;
   pointer-events: auto;
-  border-color: rgba(255, 255, 255, 0.14);
+  border-color: var(--color-input-border);
   padding: 8px 74px 8px 38px;
 }
 
@@ -128,7 +241,7 @@
   justify-content: center;
   opacity: 0;
   pointer-events: none;
-  border-color: rgba(255, 255, 255, 0.14);
+  border-color: var(--color-input-border);
   cursor: pointer;
   transition: opacity 120ms ease;
 }
@@ -141,7 +254,7 @@
 .navSearchIcon,
 .navSearchGo {
   background: var(--color-primary);
-  color: #eff6ff;
+  color: var(--color-on-primary);
   border-color: var(--color-primary);
 }
 
@@ -162,6 +275,7 @@
     width: 100%;
     margin-left: 0;
     gap: 12px;
+    flex-wrap: wrap;
   }
 
   .topNavLinks {
@@ -187,6 +301,10 @@
     flex: 0 0 34px;
   }
 
+  .navSettings {
+    flex: 0 0 34px;
+  }
+
   .navSearch.open,
   .navSearch.open input {
     width: min(240px, calc(100vw - 32px));
@@ -196,12 +314,17 @@
 @media (max-width: 430px) {
   .topNavCenter {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 34px;
+    grid-template-columns: minmax(0, 1fr) 34px 34px;
     align-items: center;
   }
 
   .navSearchSlot {
     grid-column: 2;
+    grid-row: 1;
+  }
+
+  .navSettings {
+    grid-column: 3;
     grid-row: 1;
   }
 
@@ -214,6 +337,10 @@
 
   .navSearch.open,
   .navSearch.open input {
-    width: calc(100vw - max(32px, env(safe-area-inset-left)) - max(32px, env(safe-area-inset-right)));
+    width: calc(100vw - max(74px, env(safe-area-inset-left)) - max(74px, env(safe-area-inset-right)));
+  }
+
+  .navSettingsMenu {
+    right: -2px;
   }
 }

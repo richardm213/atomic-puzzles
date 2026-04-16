@@ -7,8 +7,8 @@
 .matchCard {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(13, 19, 34, 0.98));
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: linear-gradient(180deg, var(--color-surface-elevated-strong), var(--color-panel));
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: 14px;
   cursor: pointer;
@@ -24,22 +24,22 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 3px;
-  background: #38bdf8;
+  background: var(--color-cyan-bright);
   opacity: 0;
   transition: opacity 140ms ease;
 }
 
 .matchCard:hover,
 .matchCard:focus-visible {
-  border-color: rgba(147, 197, 253, 0.42);
-  box-shadow: 0 14px 28px rgba(2, 6, 23, 0.28);
+  border-color: var(--color-accent-soft-border);
+  box-shadow: var(--shadow-soft);
   outline: none;
   transform: translateY(-1px);
 }
 
 .matchCard.expanded {
-  border-color: rgba(56, 189, 248, 0.58);
-  background: linear-gradient(180deg, rgba(15, 23, 42, 1), rgba(11, 18, 32, 1));
+  border-color: var(--color-cyan-bright);
+  background: linear-gradient(180deg, var(--color-surface-elevated-strong), var(--color-panel-strong));
 }
 
 .matchCard.expanded::before {
@@ -64,25 +64,25 @@
   gap: 8px;
   align-items: center;
   min-width: 0;
-  color: #e8ecf3;
+  color: var(--color-text);
   font-size: 18px;
   font-weight: 800;
   line-height: 1.2;
 }
 
 .matchPlayerLink {
-  color: #eef6ff;
+  color: var(--color-heading);
   text-decoration: none;
   overflow-wrap: anywhere;
 }
 
 .matchPlayerLink:hover {
-  color: #bae6fd;
+  color: var(--color-primary-pale);
   text-decoration: underline;
 }
 
 .matchVersus {
-  color: #94a3b8;
+  color: var(--color-subtle);
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -101,10 +101,10 @@
   display: inline-flex;
   align-items: center;
   min-height: 28px;
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: rgba(2, 6, 23, 0.22);
-  color: #cbd5e1;
+  background: var(--color-surface-soft-strong);
+  color: var(--color-muted);
   font-size: 12px;
   font-weight: 700;
   line-height: 1;
@@ -113,12 +113,12 @@
 }
 
 .matchMetaLink {
-  color: #bfdbfe;
+  color: var(--color-primary-pale);
   text-decoration: none;
 }
 
 .matchMetaLink:hover {
-  color: #e0f2fe;
+  color: var(--color-heading);
   text-decoration: underline;
 }
 
@@ -128,10 +128,10 @@
   justify-content: center;
   min-width: 118px;
   min-height: 48px;
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: rgba(2, 6, 23, 0.28);
-  color: #e8ecf3;
+  background: var(--color-surface-soft-strong);
+  color: var(--color-text);
   font-size: 23px;
   font-weight: 850;
   font-variant-numeric: tabular-nums;
@@ -147,16 +147,16 @@
 }
 
 .matchScoreValue.loser {
-  color: #94a3b8;
+  color: var(--color-subtle);
 }
 
 .matchExpandCue {
-  color: #93c5fd;
+  color: var(--color-primary-soft);
 }
 
 .matchCardDetails {
   margin-top: 14px;
-  border-top: 1px solid rgba(148, 163, 184, 0.14);
+  border-top: 1px solid var(--color-border);
   padding-top: 12px;
 }
 
@@ -164,7 +164,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 10px;
-  color: #c9d3e3;
+  color: var(--color-muted);
   margin-bottom: 12px;
 }
 
@@ -172,22 +172,22 @@
   display: grid;
   gap: 4px;
   min-width: 0;
-  border: 1px solid rgba(148, 163, 184, 0.12);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: rgba(2, 6, 23, 0.18);
+  background: var(--color-surface-soft);
   padding: 10px;
 }
 
 .matchCardPlayerStats strong {
-  color: #eef6ff;
+  color: var(--color-heading);
   overflow-wrap: anywhere;
 }
 
 .matchGames {
   overflow: hidden;
-  border: 1px solid rgba(148, 163, 184, 0.12);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: rgba(2, 6, 23, 0.18);
+  background: var(--color-surface-soft);
 }
 
 .matchGamesHeader,
@@ -200,12 +200,12 @@
 }
 
 .matchGamesHeader {
-  color: #94a3b8;
+  color: var(--color-subtle);
   font-size: 12px;
   letter-spacing: 0.06em;
   padding: 9px 10px;
   text-transform: uppercase;
-  background: rgba(148, 163, 184, 0.08);
+  background: var(--color-table-head);
 }
 
 .matchGamesList {
@@ -217,11 +217,11 @@
 
 .matchGameRow {
   padding: 9px 10px;
-  color: #dbe6f5;
+  color: var(--color-text);
 }
 
 .matchGameRow + .matchGameRow {
-  border-top: 1px solid rgba(148, 163, 184, 0.1);
+  border-top: 1px solid var(--color-border);
 }
 
 .matchGameRow > :last-child {

@@ -4,13 +4,16 @@
   --color-panel: rgba(15, 23, 42, 0.82);
   --color-panel-strong: #0f172a;
   --color-panel-deep: #020617;
+  --color-nav: rgba(11, 18, 32, 0.9);
   --color-border: rgba(148, 163, 184, 0.16);
   --color-border-strong: rgba(255, 255, 255, 0.14);
+  --color-input-border: rgba(255, 255, 255, 0.14);
   --color-text: #e8ecf3;
   --color-heading: #f8fafc;
   --color-muted: #c9d3e3;
   --color-subtle: #94a3b8;
   --color-primary: #1d4ed8;
+  --color-primary-hover: #1e40af;
   --color-primary-soft: #93c5fd;
   --color-primary-pale: #bfdbfe;
   --color-cyan: #0e7490;
@@ -18,8 +21,33 @@
   --color-success: #86efac;
   --color-warning: #facc15;
   --color-danger: #fca5a5;
+  --color-on-primary: #eff6ff;
+  --color-gold: #f5c26b;
+  --color-surface-soft: rgba(2, 6, 23, 0.18);
+  --color-surface-soft-strong: rgba(2, 6, 23, 0.28);
+  --color-surface-elevated: rgba(15, 23, 42, 0.72);
+  --color-surface-elevated-strong: rgba(15, 23, 42, 0.92);
+  --color-surface-inset: rgba(148, 163, 184, 0.08);
+  --color-surface-inset-strong: rgba(148, 163, 184, 0.1);
+  --color-accent-soft-bg: rgba(14, 116, 144, 0.16);
+  --color-accent-soft-bg-strong: rgba(14, 116, 144, 0.2);
+  --color-accent-soft-border: rgba(56, 189, 248, 0.42);
+  --color-accent-soft-text: #ecfeff;
+  --color-success-soft-bg: rgba(21, 128, 61, 0.14);
+  --color-danger-soft-bg: rgba(220, 38, 38, 0.12);
+  --color-warning-soft-bg: rgba(245, 194, 107, 0.1);
+  --color-warning-soft-border: rgba(245, 194, 107, 0.2);
+  --color-table-head: rgba(148, 163, 184, 0.08);
+  --color-table-hover: rgba(147, 197, 253, 0.08);
+  --color-overlay: rgba(15, 23, 42, 0.54);
+  --color-overlay-strong: rgba(15, 23, 42, 0.95);
+  --color-modal-bg: rgba(15, 23, 42, 0.54);
+  --color-glass-border: rgba(148, 163, 184, 0.18);
+  --color-primary-ring: rgba(147, 197, 253, 0.28);
   --radius-ui: 8px;
   --shadow-panel: 0 24px 60px rgba(2, 6, 23, 0.34);
+  --shadow-soft: 0 14px 28px rgba(2, 6, 23, 0.28);
+  --shadow-strong: 0 28px 80px rgba(0, 0, 0, 0.42);
   --page-background:
     radial-gradient(circle at 14% 10%, rgba(29, 78, 216, 0.18), transparent 28%),
     radial-gradient(circle at 82% 4%, rgba(14, 116, 144, 0.16), transparent 25%),
@@ -28,6 +56,64 @@
   color: var(--color-text);
   background: var(--color-page-top);
   -webkit-text-size-adjust: 100%;
+}
+
+:root[data-theme="light"] {
+  --color-page-top: #f6f0e8;
+  --color-page-bottom: #e0ebf7;
+  --color-panel: rgba(255, 255, 255, 0.76);
+  --color-panel-strong: #ffffff;
+  --color-panel-deep: #d4deec;
+  --color-nav: rgba(255, 252, 247, 0.78);
+  --color-border: rgba(76, 94, 122, 0.16);
+  --color-border-strong: rgba(76, 94, 122, 0.2);
+  --color-input-border: rgba(76, 94, 122, 0.24);
+  --color-text: #1a2840;
+  --color-heading: #142033;
+  --color-muted: #4a5b76;
+  --color-subtle: #70829d;
+  --color-primary: #2a5bd7;
+  --color-primary-hover: #214bc0;
+  --color-primary-soft: #1e429f;
+  --color-primary-pale: #214bc0;
+  --color-cyan: #0e7c79;
+  --color-cyan-bright: #0f8ea3;
+  --color-success: #15803d;
+  --color-warning: #a86d00;
+  --color-danger: #dc2626;
+  --color-on-primary: #eff6ff;
+  --color-gold: #8f6500;
+  --color-surface-soft: rgba(236, 241, 248, 0.62);
+  --color-surface-soft-strong: rgba(227, 235, 246, 0.84);
+  --color-surface-elevated: rgba(255, 255, 255, 0.88);
+  --color-surface-elevated-strong: rgba(255, 255, 255, 0.98);
+  --color-surface-inset: rgba(146, 161, 186, 0.13);
+  --color-surface-inset-strong: rgba(146, 161, 186, 0.19);
+  --color-accent-soft-bg: rgba(15, 142, 163, 0.09);
+  --color-accent-soft-bg-strong: rgba(15, 142, 163, 0.14);
+  --color-accent-soft-border: rgba(15, 142, 163, 0.24);
+  --color-accent-soft-text: #124654;
+  --color-success-soft-bg: rgba(21, 128, 61, 0.1);
+  --color-danger-soft-bg: rgba(220, 38, 38, 0.1);
+  --color-warning-soft-bg: rgba(232, 190, 114, 0.2);
+  --color-warning-soft-border: rgba(143, 101, 0, 0.22);
+  --color-table-head: rgba(148, 163, 184, 0.14);
+  --color-table-hover: rgba(42, 91, 215, 0.08);
+  --color-overlay: rgba(255, 251, 246, 0.7);
+  --color-overlay-strong: rgba(255, 252, 249, 0.96);
+  --color-modal-bg: rgba(255, 250, 245, 0.74);
+  --color-glass-border: rgba(105, 123, 150, 0.18);
+  --color-primary-ring: rgba(42, 91, 215, 0.18);
+  --shadow-panel:
+    0 22px 60px rgba(133, 153, 184, 0.18),
+    0 2px 0 rgba(255, 255, 255, 0.6) inset;
+  --shadow-soft: 0 14px 28px rgba(139, 157, 184, 0.18);
+  --shadow-strong: 0 30px 80px rgba(139, 157, 184, 0.26);
+  --page-background:
+    radial-gradient(circle at 8% 10%, rgba(236, 179, 92, 0.2), transparent 24%),
+    radial-gradient(circle at 82% 2%, rgba(42, 91, 215, 0.13), transparent 28%),
+    radial-gradient(circle at 58% 22%, rgba(15, 142, 163, 0.1), transparent 24%),
+    linear-gradient(180deg, var(--color-page-top) 0%, var(--color-page-bottom) 100%);
 }
 
 * {
@@ -39,6 +125,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background: var(--page-background);
+  color: var(--color-text);
   overflow-x: hidden;
 }
 
@@ -84,6 +171,7 @@ canvas {
   border-radius: var(--radius-ui);
   padding: 24px;
   box-shadow: var(--shadow-panel);
+  backdrop-filter: blur(16px);
 }
 
 .panel h1 {
@@ -111,7 +199,7 @@ canvas {
 .controls select,
 .controls input[type="text"],
 .controls input[type="date"] {
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid var(--color-input-border);
   background: var(--color-panel-strong);
   color: var(--color-text);
   border-radius: var(--radius-ui);
@@ -128,7 +216,7 @@ canvas {
 
 .buttonRow button,
 .analyzeButton {
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid var(--color-input-border);
   background: var(--color-panel-strong);
   color: var(--color-text);
   border-radius: var(--radius-ui);
@@ -141,7 +229,7 @@ canvas {
 .analyzeButton {
   border-color: var(--color-primary);
   background: var(--color-primary);
-  color: #eff6ff;
+  color: var(--color-on-primary);
   font-weight: 800;
 }
 

@@ -1,0 +1,47 @@
+.cg-pieceTheme piece.pawn.white {
+  background-image: var(--cg-piece-white-pawn);
+}
+
+.cg-pieceTheme piece.bishop.white {
+  background-image: var(--cg-piece-white-bishop);
+}
+
+.cg-pieceTheme piece.knight.white {
+  background-image: var(--cg-piece-white-knight);
+}
+
+.cg-pieceTheme piece.rook.white {
+  background-image: var(--cg-piece-white-rook);
+}
+
+.cg-pieceTheme piece.queen.white {
+  background-image: var(--cg-piece-white-queen);
+}
+
+.cg-pieceTheme piece.king.white {
+  background-image: var(--cg-piece-white-king);
+}
+
+.cg-pieceTheme piece.pawn.black {
+  background-image: var(--cg-piece-black-pawn);
+}
+
+.cg-pieceTheme piece.bishop.black {
+  background-image: var(--cg-piece-black-bishop);
+}
+
+.cg-pieceTheme piece.knight.black {
+  background-image: var(--cg-piece-black-knight);
+}
+
+.cg-pieceTheme piece.rook.black {
+  background-image: var(--cg-piece-black-rook);
+}
+
+.cg-pieceTheme piece.queen.black {
+  background-image: var(--cg-piece-black-queen);
+}
+
+.cg-pieceTheme piece.king.black {
+  background-image: var(--cg-piece-black-king);
+}

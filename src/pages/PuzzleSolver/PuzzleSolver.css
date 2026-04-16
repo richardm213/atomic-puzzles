@@ -92,15 +92,15 @@
 
 .puzzleActions button:hover:not(:disabled) {
   transform: translateY(-1px);
-  border-color: rgba(147, 197, 253, 0.42);
-  background: rgba(15, 23, 42, 0.98);
+  border-color: var(--color-accent-soft-border);
+  background: var(--color-surface-elevated-strong);
 }
 
 .puzzleActions button:focus-visible,
 .fenAnalyzeButton:focus-visible,
 .moveChip:focus-visible,
 .fenDetails:focus-within {
-  outline: 3px solid rgba(147, 197, 253, 0.42);
+  outline: 3px solid var(--color-primary-ring);
   outline-offset: 2px;
 }
 
@@ -121,8 +121,8 @@
 .fenDetails,
 .lineBox {
   border-radius: var(--radius-ui);
-  background: rgba(2, 6, 23, 0.18);
-  border: 1px solid rgba(148, 163, 184, 0.12);
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-border);
 }
 
 .detailItem {
@@ -172,8 +172,8 @@
 
 .fenAnalyzeButton:hover:not(.disabled) {
   transform: translateY(-1px);
-  border-color: rgba(147, 197, 253, 0.42);
-  background: rgba(15, 23, 42, 0.98);
+  border-color: var(--color-accent-soft-border);
+  background: var(--color-surface-elevated-strong);
 }
 
 .fenDetails code {
@@ -243,7 +243,7 @@
 }
 
 .solutionNavButton:hover:not(:disabled) {
-  border-color: rgba(147, 197, 253, 0.42);
+  border-color: var(--color-accent-soft-border);
   color: var(--color-heading);
 }
 
@@ -257,9 +257,9 @@
   gap: 8px;
   margin-bottom: 12px;
   padding: 10px;
-  border: 1px solid rgba(147, 197, 253, 0.28);
+  border: 1px solid var(--color-accent-soft-border);
   border-radius: var(--radius-ui);
-  background: rgba(29, 78, 216, 0.1);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
 }
 
 .solutionOptionsLabel {
@@ -276,7 +276,7 @@
 
 .solutionOption {
   min-height: 32px;
-  border: 1px solid rgba(147, 197, 253, 0.28);
+  border: 1px solid var(--color-accent-soft-border);
   border-radius: var(--radius-ui);
   background: var(--color-panel-strong);
   color: var(--color-primary-pale);
@@ -290,14 +290,14 @@
 }
 
 .solutionOption:hover {
-  border-color: rgba(147, 197, 253, 0.68);
+  border-color: var(--color-primary);
   color: var(--color-heading);
 }
 
 .solutionOption.active {
-  border-color: rgba(56, 189, 248, 0.72);
-  background: rgba(14, 116, 144, 0.2);
-  color: #ecfeff;
+  border-color: var(--color-cyan-bright);
+  background: var(--color-accent-soft-bg-strong);
+  color: var(--color-accent-soft-text);
 }
 
 .moveList {
@@ -331,14 +331,14 @@
 }
 
 .moveChip:hover {
-  border-color: rgba(147, 197, 253, 0.42);
+  border-color: var(--color-accent-soft-border);
   color: var(--color-heading);
 }
 
 .moveChip.active {
-  border-color: rgba(56, 189, 248, 0.78);
-  background: rgba(14, 116, 144, 0.2);
-  color: #ecfeff;
+  border-color: var(--color-cyan-bright);
+  background: var(--color-accent-soft-bg-strong);
+  color: var(--color-accent-soft-text);
 }
 
 .boardWrap {
@@ -358,9 +358,9 @@
   max-width: 590px;
   padding: 14px;
   border-radius: var(--radius-ui);
-  background: rgba(15, 23, 42, 0.54);
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.42);
+  background: var(--color-modal-bg);
+  border: 1px solid var(--color-glass-border);
+  box-shadow: var(--shadow-strong);
   transition:
     border-color 180ms ease,
     box-shadow 180ms ease,
@@ -375,31 +375,31 @@
 }
 
 .boardFrame.correct {
-  border-color: rgba(56, 189, 248, 0.7);
+  border-color: var(--color-cyan-bright);
   box-shadow:
-    0 0 0 4px rgba(56, 189, 248, 0.16),
-    0 28px 80px rgba(0, 0, 0, 0.42);
+    0 0 0 4px color-mix(in srgb, var(--color-cyan-bright) 16%, transparent),
+    var(--shadow-strong);
 }
 
 .boardFrame.retrySuccess {
-  border-color: rgba(147, 197, 253, 0.74);
+  border-color: var(--color-primary);
   box-shadow:
-    0 0 0 4px rgba(147, 197, 253, 0.15),
-    0 28px 80px rgba(0, 0, 0, 0.42);
+    0 0 0 4px color-mix(in srgb, var(--color-primary) 15%, transparent),
+    var(--shadow-strong);
 }
 
 .boardFrame.wrong {
-  border-color: rgba(239, 91, 91, 0.78);
+  border-color: var(--color-danger);
   box-shadow:
-    0 0 0 4px rgba(239, 91, 91, 0.15),
-    0 28px 80px rgba(0, 0, 0, 0.42);
+    0 0 0 4px color-mix(in srgb, var(--color-danger) 15%, transparent),
+    var(--shadow-strong);
 }
 
 .boardFrame.retry {
-  border-color: rgba(147, 197, 253, 0.72);
+  border-color: var(--color-primary);
   box-shadow:
-    0 0 0 4px rgba(147, 197, 253, 0.14),
-    0 28px 80px rgba(0, 0, 0, 0.42);
+    0 0 0 4px color-mix(in srgb, var(--color-primary) 14%, transparent),
+    var(--shadow-strong);
 }
 
 .feedbackBanner {
@@ -416,27 +416,43 @@
 }
 
 .feedbackBanner.correct {
-  background: linear-gradient(135deg, rgba(14, 116, 144, 0.96), rgba(15, 23, 42, 0.96));
-  border-color: rgba(56, 189, 248, 0.55);
-  color: #ecfff7;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-cyan) 88%, var(--color-panel-strong)),
+    var(--color-panel-strong)
+  );
+  border-color: var(--color-cyan-bright);
+  color: var(--color-accent-soft-text);
 }
 
 .feedbackBanner.retrySuccess {
-  background: linear-gradient(135deg, rgba(29, 78, 216, 0.96), rgba(15, 23, 42, 0.96));
-  border-color: rgba(147, 197, 253, 0.58);
-  color: #eff6ff;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-primary) 88%, var(--color-panel-strong)),
+    var(--color-panel-strong)
+  );
+  border-color: var(--color-primary);
+  color: var(--color-on-primary);
 }
 
 .feedbackBanner.wrong {
-  background: linear-gradient(135deg, rgba(96, 36, 39, 0.97), rgba(55, 30, 34, 0.97));
-  border-color: rgba(239, 91, 91, 0.6);
-  color: #fff1f1;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-danger) 82%, var(--color-panel-strong)),
+    var(--color-panel-strong)
+  );
+  border-color: var(--color-danger);
+  color: color-mix(in srgb, var(--color-danger) 20%, white);
 }
 
 .feedbackBanner.retry {
-  background: linear-gradient(135deg, rgba(29, 78, 216, 0.96), rgba(15, 23, 42, 0.96));
-  border-color: rgba(147, 197, 253, 0.58);
-  color: #eff6ff;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-primary) 88%, var(--color-panel-strong)),
+    var(--color-panel-strong)
+  );
+  border-color: var(--color-primary);
+  color: var(--color-on-primary);
 }
 
 .feedbackIcon {
@@ -445,7 +461,7 @@
   display: inline-grid;
   place-items: center;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.13);
+  background: color-mix(in srgb, currentColor 13%, transparent);
   color: currentColor;
   font-size: 24px;
   font-weight: 900;
@@ -469,7 +485,7 @@
 }
 
 .feedbackCopy span {
-  color: rgba(255, 255, 255, 0.74);
+  color: color-mix(in srgb, currentColor 74%, transparent);
   font-size: 13px;
   line-height: 1.35;
 }
@@ -477,9 +493,9 @@
 .feedbackAction {
   min-height: 36px;
   padding: 0 14px;
-  border: 1px solid rgba(255, 255, 255, 0.45);
+  border: 1px solid color-mix(in srgb, currentColor 45%, transparent);
   border-radius: var(--radius-ui);
-  background: rgba(255, 255, 255, 0.12);
+  background: color-mix(in srgb, currentColor 12%, transparent);
   color: currentColor;
   font: inherit;
   font-size: 13px;
@@ -488,7 +504,7 @@
 }
 
 .feedbackAction:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: color-mix(in srgb, currentColor 20%, transparent);
 }
 
 .emptyBoard {

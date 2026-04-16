@@ -18,9 +18,9 @@
   gap: 12px;
   margin-top: 18px;
   padding: 14px;
-  border: 1px solid rgba(148, 163, 184, 0.12);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: rgba(2, 6, 23, 0.18);
+  background: var(--color-surface-soft);
 }
 
 .matchFilterGrid {
@@ -35,7 +35,7 @@
   gap: 6px;
   min-width: 0;
   justify-items: start;
-  color: #94a3b8;
+  color: var(--color-subtle);
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -48,10 +48,10 @@
   width: 100%;
   min-width: 0;
   min-height: 42px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid var(--color-input-border);
   border-radius: 8px;
-  background: rgba(15, 23, 42, 0.92);
-  color: #e8ecf3;
+  background: var(--color-surface-elevated-strong);
+  color: var(--color-text);
   font-size: 16px;
   padding: 10px 12px;
 }
@@ -62,12 +62,12 @@
   border-radius: 8px;
   background: var(--color-primary);
   border-color: var(--color-primary);
-  color: #eff6ff;
+  color: var(--color-on-primary);
   font-weight: 800;
 }
 
 .recentMatchesPanel .analyzeButton:hover:not(:disabled) {
-  background: #1e40af;
+  background: var(--color-primary-hover);
 }
 
 .recentMatchesPanel .analyzeButton:disabled {
@@ -103,22 +103,22 @@
 .opponentRatingFilter {
   padding: 12px;
   border-radius: 8px;
-  background: #0f172a;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--color-panel-strong);
+  border: 1px solid var(--color-border);
 }
 
 .rangeFilter {
   display: grid;
   gap: 8px;
   padding: 14px;
-  border: 1px solid rgba(148, 163, 184, 0.12);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: rgba(2, 6, 23, 0.18);
+  background: var(--color-surface-soft);
 }
 
 .rangeFilter > label,
 .sourceFilterGroup > .statusLabel {
-  color: #94a3b8;
+  color: var(--color-subtle);
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -146,7 +146,7 @@
 .dualRangeTrack {
   left: 0;
   right: 0;
-  background: rgba(148, 163, 184, 0.24);
+  background: var(--color-surface-inset-strong);
 }
 
 .dualRangeSelected {
@@ -174,8 +174,8 @@
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: #ecfeff;
-  border: 2px solid #38bdf8;
+  background: var(--color-panel-strong);
+  border: 2px solid var(--color-cyan-bright);
   cursor: pointer;
   pointer-events: auto;
 }
@@ -185,9 +185,9 @@
   gap: 10px;
   flex-wrap: wrap;
   padding: 12px 14px;
-  border: 1px solid rgba(148, 163, 184, 0.12);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: rgba(2, 6, 23, 0.18);
+  background: var(--color-surface-soft);
 }
 
 .sourceFilterGroup .sourceFilterChecks {
@@ -202,10 +202,10 @@
   align-items: center;
   gap: 8px;
   min-height: 34px;
-  border: 1px solid rgba(148, 163, 184, 0.12);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: rgba(15, 23, 42, 0.72);
-  color: #cbd5e1;
+  background: var(--color-surface-elevated);
+  color: var(--color-muted);
   padding: 0 10px;
   width: auto;
 }
@@ -223,17 +223,17 @@
 }
 
 .paginationRow button {
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: #0f172a;
-  color: #e8ecf3;
+  border: 1px solid var(--color-input-border);
+  background: var(--color-panel-strong);
+  color: var(--color-text);
   border-radius: 8px;
   padding: 8px 10px;
   cursor: pointer;
 }
 
 .paginationRow button:hover:not(:disabled) {
-  border-color: rgba(147, 197, 253, 0.42);
-  color: #fff;
+  border-color: var(--color-accent-soft-border);
+  color: var(--color-heading);
 }
 
 .paginationRow button:disabled {

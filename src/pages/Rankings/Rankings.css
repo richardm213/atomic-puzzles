@@ -19,7 +19,7 @@
 .rankingsControls label {
   justify-items: start;
   gap: 6px;
-  color: #94a3b8;
+  color: var(--color-subtle);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -44,25 +44,25 @@
   width: 100%;
   min-width: 470px;
   border-collapse: collapse;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   overflow: hidden;
-  background: #0f172a;
+  background: var(--color-panel-strong);
 }
 
 .rankingsTable thead {
-  background: rgba(148, 163, 184, 0.08);
+  background: var(--color-table-head);
 }
 
 .rankingsTable th,
 .rankingsTable td {
   text-align: left;
   padding: 10px 11px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .rankingsTable th {
-  color: #c9d3e3;
+  color: var(--color-muted);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -70,7 +70,7 @@
 }
 
 .rankingsTable td {
-  color: #e8ecf3;
+  color: var(--color-text);
 }
 
 .rankingsTable th:nth-child(1),
@@ -96,18 +96,18 @@
 }
 
 .sortButton:hover {
-  color: #fff;
+  color: var(--color-heading);
 }
 
 .rankingsMeta {
   margin-top: 22px;
   padding-top: 16px;
   align-items: center;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--color-border);
 }
 
 .rankingsMeta > span:first-child {
-  color: #e8ecf3;
+  color: var(--color-text);
   font-size: 18px;
   font-weight: 700;
 }
@@ -116,7 +116,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: #94a3b8;
+  color: var(--color-subtle);
 }
 
 .rankingsInfo {
@@ -130,10 +130,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(147, 197, 253, 0.35);
+  border: 1px solid var(--color-accent-soft-border);
   border-radius: 8px;
-  background: #0f172a;
-  color: #93c5fd;
+  background: var(--color-panel-strong);
+  color: var(--color-primary-soft);
   cursor: help;
   padding: 0;
 }
@@ -145,8 +145,8 @@
 
 .rankingsInfoButton:hover,
 .rankingsInfoButton:focus-visible {
-  border-color: rgba(147, 197, 253, 0.75);
-  color: #bfdbfe;
+  border-color: var(--color-primary);
+  color: var(--color-primary-pale);
   outline: none;
 }
 
@@ -161,11 +161,11 @@
   width: max-content;
   max-width: min(320px, calc(100vw - 48px));
   padding: 10px 12px;
-  border: 1px solid rgba(147, 197, 253, 0.28);
+  border: 1px solid var(--color-accent-soft-border);
   border-radius: 8px;
-  background: #0b1220;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.32);
-  color: #e8ecf3;
+  background: var(--color-surface-elevated-strong);
+  box-shadow: var(--shadow-soft);
+  color: var(--color-text);
   font-size: 13px;
   line-height: 1.45;
   text-align: left;
@@ -193,7 +193,7 @@
 }
 
 .rankingsTable tbody tr:hover {
-  background: rgba(147, 197, 253, 0.08);
+  background: var(--color-table-hover);
 }
 
 @media (max-width: 640px) {

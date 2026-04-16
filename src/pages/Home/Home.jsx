@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { useAppSettings } from "../../context/AppSettings";
 import { normalizeUsername } from "../../utils/playerNames";
 import "./Home.css";
 
@@ -35,7 +36,7 @@ const featureLinks = [
   },
 ];
 
-const puzzleCollageImages = [
+const darkModePuzzleCollageImages = [
   {
     src: "/home-puzzle-1.png",
     webpSrc: "/home-puzzle-1.webp",
@@ -83,6 +84,37 @@ const puzzleCollageImages = [
   },
 ];
 
+const lightModePuzzleCollageImages = [
+  {
+    src: "/home-puzzle-light-1.png",
+    alt: "Atomic chess puzzle position with white to move",
+  },
+  {
+    src: "/home-puzzle-light-2.png",
+    alt: "Atomic chess puzzle position with white to move",
+  },
+  {
+    src: "/home-puzzle-light-3.png",
+    alt: "Atomic chess puzzle position with white to move",
+  },
+  {
+    src: "/home-puzzle-light-4.png",
+    alt: "Atomic chess puzzle position with white to move",
+  },
+  {
+    src: "/home-puzzle-light-5.png",
+    alt: "Atomic chess puzzle position with black to move",
+  },
+  {
+    src: "/home-puzzle-light-6.png",
+    alt: "Atomic chess puzzle position with black to move",
+  },
+  {
+    src: "/home-puzzle-light-7.png",
+    alt: "Atomic chess puzzle position with white to move",
+  },
+];
+
 const principles = [
   {
     title: "From real games",
@@ -119,9 +151,12 @@ const principles = [
 ];
 
 export const HomePage = () => {
+  const { theme } = useAppSettings();
   const [playerQuery, setPlayerQuery] = useState("");
   const navigate = useNavigate();
   const trimmedPlayerQuery = playerQuery.trim();
+  const puzzleCollageImages =
+    theme === "light" ? lightModePuzzleCollageImages : darkModePuzzleCollageImages;
 
   const handlePlayerSearch = (event) => {
     event.preventDefault();
@@ -184,7 +219,9 @@ export const HomePage = () => {
               style={{ "--slide-delay": `${index * 8}s` }}
               aria-hidden="true"
             >
-              <source srcSet={appAssetPath(image.webpSrc)} type="image/webp" />
+              {image.webpSrc ? (
+                <source srcSet={appAssetPath(image.webpSrc)} type="image/webp" />
+              ) : null}
               <img
                 src={appAssetPath(image.src)}
                 alt=""

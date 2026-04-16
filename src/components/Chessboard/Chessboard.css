@@ -14,7 +14,7 @@
 .emptyBoard {
   border-radius: var(--radius-ui);
   overflow: hidden;
-  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--shadow-soft);
 }
 
 #promotion-choice {
@@ -23,7 +23,7 @@
   z-index: 5;
   width: 100%;
   height: 100%;
-  background: rgba(9, 12, 14, 0.3);
+  background: color-mix(in srgb, var(--color-panel-deep) 30%, transparent);
 }
 
 #promotion-choice square {
@@ -31,8 +31,8 @@
   width: 12.5%;
   height: 12.5%;
   border-radius: 50%;
-  background-color: #b0b0b0;
-  box-shadow: inset 0 0 25px 3px #808080;
+  background-color: var(--color-panel-strong);
+  box-shadow: inset 0 0 25px 3px color-mix(in srgb, var(--color-subtle) 70%, transparent);
   cursor: pointer;
   pointer-events: all;
   transition:

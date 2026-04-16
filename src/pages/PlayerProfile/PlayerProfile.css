@@ -79,9 +79,9 @@
 }
 
 .profileBestMonthRanksHeader select {
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: #0b1220;
-  color: #e8ecf3;
+  border: 1px solid var(--color-input-border);
+  background: var(--color-panel-strong);
+  color: var(--color-text);
   border-radius: 8px;
   padding: 4px 6px;
 }
@@ -114,9 +114,9 @@
   width: 28px;
   height: 28px;
   border-radius: 999px;
-  color: #f5c26b;
-  background: rgba(245, 194, 107, 0.1);
-  border: 1px solid rgba(245, 194, 107, 0.2);
+  color: var(--color-gold);
+  background: var(--color-warning-soft-bg);
+  border: 1px solid var(--color-warning-soft-border);
   text-decoration: none;
   transition:
     transform 140ms ease,
@@ -127,8 +127,8 @@
 .profileAliasLichessLink:hover,
 .profileAliasLichessLink:focus-visible {
   transform: translateY(-1px);
-  background: rgba(245, 194, 107, 0.16);
-  border-color: rgba(245, 194, 107, 0.34);
+  background: color-mix(in srgb, var(--color-warning-soft-bg) 80%, var(--color-panel-strong));
+  border-color: color-mix(in srgb, var(--color-warning-soft-border) 80%, var(--color-gold));
 }
 
 .profileAliasLichessLink svg {
@@ -142,12 +142,12 @@
   border-radius: 8px;
   background: var(--color-primary);
   border-color: var(--color-primary);
-  color: #eff6ff;
+  color: var(--color-on-primary);
   font-weight: 800;
 }
 
 .playerProfilePanel .analyzeButton:hover:not(:disabled) {
-  background: #1e40af;
+  background: var(--color-primary-hover);
 }
 
 .playerProfilePanel .analyzeButton:disabled {
@@ -157,9 +157,9 @@
 
 .profileMatchTableWrap {
   margin-top: 14px;
-  border: 1px solid rgba(148, 163, 184, 0.14);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: rgba(2, 6, 23, 0.16);
+  background: var(--color-surface-soft);
 }
 
 .profileMatchTable {
@@ -172,18 +172,18 @@
 }
 
 .profileMatchTable thead {
-  background: rgba(148, 163, 184, 0.1);
+  background: var(--color-table-head);
 }
 
 .profileMatchTable th {
-  color: #aebdd0;
+  color: var(--color-subtle);
   font-size: 11px;
   line-height: 1.2;
 }
 
 .profileMatchTable th,
 .profileMatchTable td {
-  border-bottom-color: rgba(148, 163, 184, 0.11);
+  border-bottom-color: var(--color-border);
   padding: 11px 12px;
   vertical-align: middle;
 }
@@ -201,24 +201,24 @@
 
 .profileMatchTable .expandableMatchRow:hover,
 .profileMatchTable .expandableMatchRow:focus-visible {
-  background: rgba(14, 116, 144, 0.16);
-  box-shadow: inset 3px 0 0 #38bdf8;
+  background: var(--color-accent-soft-bg);
+  box-shadow: inset 3px 0 0 var(--color-cyan-bright);
   outline: none;
 }
 
 .expandableMatchRow.expanded {
-  background: rgba(14, 116, 144, 0.2);
-  box-shadow: inset 3px 0 0 #38bdf8;
+  background: var(--color-accent-soft-bg-strong);
+  box-shadow: inset 3px 0 0 var(--color-cyan-bright);
 }
 
 .profileTablePill {
   display: inline-flex;
   align-items: center;
   min-height: 28px;
-  border: 1px solid rgba(148, 163, 184, 0.14);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: rgba(15, 23, 42, 0.72);
-  color: #cbd5e1;
+  background: var(--color-surface-elevated);
+  color: var(--color-muted);
   font-size: 13px;
   font-weight: 800;
   padding: 0 9px;
@@ -231,9 +231,9 @@
   justify-content: center;
   min-width: 96px;
   min-height: 34px;
-  border: 1px solid rgba(148, 163, 184, 0.14);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: rgba(2, 6, 23, 0.22);
+  background: var(--color-surface-soft-strong);
   font-size: 16px;
   font-weight: 850;
 }
@@ -258,13 +258,13 @@
 
 .profileDelta {
   margin-left: 6px;
-  color: #94a3b8;
+  color: var(--color-subtle);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
 
 .matchDetailsRow td {
-  background: rgba(2, 6, 23, 0.28);
+  background: var(--color-surface-soft-strong);
 }
 
 .matchDetailsInner {
