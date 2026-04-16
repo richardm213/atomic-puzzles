@@ -38,48 +38,31 @@ const featureLinks = [
 
 const darkModePuzzleCollageImages = [
   {
-    src: "/home-puzzle-1.png",
-    webpSrc: "/home-puzzle-1.webp",
-    alt: "Atomic chess puzzle position with white to move",
-  },
-  {
-    src: "/home-puzzle-2.png",
-    webpSrc: "/home-puzzle-2.webp",
+    src: "/home-puzzle-dark-1.png",
     alt: "Atomic chess puzzle position with black to move",
   },
   {
-    src: "/home-puzzle-3.png",
-    webpSrc: "/home-puzzle-3.webp",
+    src: "/home-puzzle-dark-2.png",
     alt: "Atomic chess puzzle position with white to move",
   },
   {
-    src: "/home-puzzle-4.png",
-    webpSrc: "/home-puzzle-4.webp",
+    src: "/home-puzzle-dark-3.png",
     alt: "Atomic chess puzzle position with white to move",
   },
   {
-    src: "/home-puzzle-5.png",
-    webpSrc: "/home-puzzle-5.webp",
+    src: "/home-puzzle-dark-4.png",
     alt: "Atomic chess puzzle position with white to move",
   },
   {
-    src: "/home-puzzle-6.png",
-    webpSrc: "/home-puzzle-6.webp",
+    src: "/home-puzzle-dark-5.png",
     alt: "Atomic chess puzzle position with black to move",
   },
   {
-    src: "/home-puzzle-7.png",
-    webpSrc: "/home-puzzle-7.webp",
+    src: "/home-puzzle-dark-6.png",
     alt: "Atomic chess puzzle position with white to move",
   },
   {
-    src: "/home-puzzle-8.png",
-    webpSrc: "/home-puzzle-8.webp",
-    alt: "Atomic chess puzzle position with black to move",
-  },
-  {
-    src: "/home-puzzle-9.png",
-    webpSrc: "/home-puzzle-9.webp",
+    src: "/home-puzzle-dark-7.png",
     alt: "Atomic chess puzzle position with white to move",
   },
 ];
