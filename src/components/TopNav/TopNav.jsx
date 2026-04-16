@@ -1,13 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { getBoardThemeColors, useAppSettings } from "../../context/AppSettings";
+import { appAssetPath } from "../../utils/appAssetPath";
 import { normalizeUsername } from "../../utils/playerNames";
 import "./TopNav.css";
-
-const appAssetPath = (pathname = "/") => {
-  const normalized = pathname.startsWith("/") ? pathname : `/${pathname}`;
-  return `${import.meta.env.BASE_URL}${normalized.slice(1)}`;
-};
 
 export const TopNav = () => {
   const [searchOpen, setSearchOpen] = useState(false);

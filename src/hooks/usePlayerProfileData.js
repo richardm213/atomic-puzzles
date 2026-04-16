@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   defaultMatchLengthMax,
   isMatchLengthWithinBounds,
@@ -125,79 +125,59 @@ export const useRatingsSnapshotByMode = (username) => {
   return ratingsSnapshotByMode;
 };
 
-export const useRatingDisplayByMode = (ratingsSnapshotByMode, username) => {
-  return useMemo(
-    () => ({
-      blitz: normalizeRatingSnapshot(ratingsSnapshotByMode.blitz.get(username)),
-      bullet: normalizeRatingSnapshot(ratingsSnapshotByMode.bullet.get(username)),
-    }),
-    [ratingsSnapshotByMode, username],
-  );
+export const getRatingDisplayByMode = (ratingsSnapshotByMode, username) => ({
+  blitz: normalizeRatingSnapshot(ratingsSnapshotByMode.blitz.get(username)),
+  bullet: normalizeRatingSnapshot(ratingsSnapshotByMode.bullet.get(username)),
+});
+
+export const getProfileMetricCards = (blitzDisplaySummary, bulletDisplaySummary) =>
+  [
+    ["blitz", "Blitz", blitzDisplaySummary],
+    ["bullet", "Bullet", bulletDisplaySummary],
+  ].flatMap(([mode, label, summary]) => [
+    {
+      key: `${mode}-rating`,
+      label: `${label} Rating`,
+      value: `${formatCurrentRating(summary)}${formatRankSuffix(summary.rank)}`,
+    },
+    {
+      key: `${mode}-rd`,
+      label: `${label} RD`,
+      value: summary.currentRd,
+    },
+    {
+      key: `${mode}-peak-rating`,
+      label: `${label} Peak Rating`,
+      value: summary.peakRating,
+    },
+    {
+      key: `${mode}-games-played`,
+      label: `${label} Games Played`,
+      value: summary.gamesPlayed.toLocaleString("en-US"),
+    },
+  ]);
+
+export const getTimeControlOptions = (matches) => {
+  const initialSet = new Set();
+  const incrementSet = new Set();
+  matches.forEach((match) => {
+    const parts = parseTimeControlParts(match.timeControl);
+    if (parts.initial) initialSet.add(parts.initial);
+    if (parts.increment) incrementSet.add(parts.increment);
+  });
+
+  const numericSort = (a, b) => Number(a) - Number(b);
+  return {
+    initialOptions: [...initialSet].sort(numericSort),
+    incrementOptions: [...incrementSet].sort(numericSort),
+  };
 };
 
-export const useProfileMetricCards = (blitzDisplaySummary, bulletDisplaySummary) => {
-  return useMemo(
-    () =>
-      [
-        ["blitz", "Blitz", blitzDisplaySummary],
-        ["bullet", "Bullet", bulletDisplaySummary],
-      ].flatMap(([mode, label, summary]) => [
-        {
-          key: `${mode}-rating`,
-          label: `${label} Rating`,
-          value: `${formatCurrentRating(summary)}${formatRankSuffix(summary.rank)}`,
-        },
-        {
-          key: `${mode}-rd`,
-          label: `${label} RD`,
-          value: summary.currentRd,
-        },
-        {
-          key: `${mode}-peak-rating`,
-          label: `${label} Peak Rating`,
-          value: summary.peakRating,
-        },
-        {
-          key: `${mode}-games-played`,
-          label: `${label} Games Played`,
-          value: summary.gamesPlayed.toLocaleString("en-US"),
-        },
-      ]),
-    [blitzDisplaySummary, bulletDisplaySummary],
-  );
-};
+export const filterMatches = (matches, appliedFilters, selectedMode) => {
+  const startDateTs = parseDateInputBoundary(appliedFilters.startDateFilter, "start");
+  const endDateTs = parseDateInputBoundary(appliedFilters.endDateFilter, "end");
 
-export const useTimeControlOptions = (matches) => {
-  return useMemo(() => {
-    const initialSet = new Set();
-    const incrementSet = new Set();
-    matches.forEach((match) => {
-      const parts = parseTimeControlParts(match.timeControl);
-      if (parts.initial) initialSet.add(parts.initial);
-      if (parts.increment) incrementSet.add(parts.increment);
-    });
-
-    const numericSort = (a, b) => Number(a) - Number(b);
-    return {
-      initialOptions: [...initialSet].sort(numericSort),
-      incrementOptions: [...incrementSet].sort(numericSort),
-    };
-  }, [matches]);
-};
-
-export const useFilteredMatches = (matches, appliedFilters, selectedMode) => {
-  const startDateTs = useMemo(
-    () => parseDateInputBoundary(appliedFilters.startDateFilter, "start"),
-    [appliedFilters.startDateFilter],
-  );
-  const endDateTs = useMemo(
-    () => parseDateInputBoundary(appliedFilters.endDateFilter, "end"),
-    [appliedFilters.endDateFilter],
-  );
-
-  return useMemo(
-    () =>
-      matches.filter((match) => {
+  return matches.filter((match) => {
       if (startDateTs !== null && match.startTs < startDateTs) return false;
       if (endDateTs !== null && match.startTs > endDateTs) return false;
 
@@ -238,78 +218,37 @@ export const useFilteredMatches = (matches, appliedFilters, selectedMode) => {
       if (knownSourceKeys.includes(sourceKey)) return sourceFilters[sourceKey];
 
       return true;
-      }),
-    [appliedFilters, matches, selectedMode, startDateTs, endDateTs],
-  );
+  });
 };
 
-export const useBestWins = (filteredMatches, username, bestWinCount) => {
-  return useMemo(
-    () =>
-      filteredMatches
-        .filter((match) =>
-          Array.isArray(match.games)
-            ? match.games.some((game) => game?.winner === username)
-            : false,
-        )
-        .sort((a, b) => {
-          const ratingDiff =
-            (b.opponentAfterRating ?? -Infinity) - (a.opponentAfterRating ?? -Infinity);
-          if (ratingDiff !== 0) return ratingDiff;
-          return b.startTs - a.startTs;
-        })
-        .slice(0, bestWinCount),
-    [bestWinCount, filteredMatches, username],
-  );
-};
+export const getBestWins = (filteredMatches, username, bestWinCount) =>
+  filteredMatches
+    .filter((match) =>
+      Array.isArray(match.games) ? match.games.some((game) => game?.winner === username) : false,
+    )
+    .sort((a, b) => {
+      const ratingDiff = (b.opponentAfterRating ?? -Infinity) - (a.opponentAfterRating ?? -Infinity);
+      if (ratingDiff !== 0) return ratingDiff;
+      return b.startTs - a.startTs;
+    })
+    .slice(0, bestWinCount);
 
-export const useMonthRankHighlights = (monthRanks, bestMonthRankCount, recentMonthRankCount) => {
-  const bestMonthRanks = useMemo(
-    () =>
-      [...monthRanks]
-        .sort((a, b) => {
-          if (a.rank !== b.rank) return a.rank - b.rank;
-          return b.monthDate.getTime() - a.monthDate.getTime();
-        })
-        .slice(0, bestMonthRankCount),
-    [bestMonthRankCount, monthRanks],
-  );
+export const getMonthRankHighlights = (monthRanks, bestMonthRankCount, recentMonthRankCount) => ({
+  bestMonthRanks: [...monthRanks]
+    .sort((a, b) => {
+      if (a.rank !== b.rank) return a.rank - b.rank;
+      return b.monthDate.getTime() - a.monthDate.getTime();
+    })
+    .slice(0, bestMonthRankCount),
+  recentMonthRanks: [...monthRanks]
+    .sort((a, b) => b.monthDate.getTime() - a.monthDate.getTime())
+    .slice(0, recentMonthRankCount),
+});
 
-  const recentMonthRanks = useMemo(
-    () =>
-      [...monthRanks]
-        .sort((a, b) => b.monthDate.getTime() - a.monthDate.getTime())
-        .slice(0, recentMonthRankCount),
-    [monthRanks, recentMonthRankCount],
-  );
+export const getAliasesForUser = (aliasesLookup, username) =>
+  aliasesLookup.get(username)?.members ?? [];
 
-  return {
-    bestMonthRanks,
-    recentMonthRanks,
-  };
-};
-
-export const useAliasesForUser = (aliasesLookup, username) => {
-  return useMemo(() => aliasesLookup.get(username)?.members ?? [], [aliasesLookup, username]);
-};
-
-export const useExpandedMatchKeys = (currentPage, selectedMode, appliedFilters, username) => {
-  const [expandedMatchKeys, setExpandedMatchKeys] = useState([]);
-
-  useEffect(() => {
-    setExpandedMatchKeys([]);
-  }, [currentPage, selectedMode, appliedFilters, username]);
-
-  const toggleExpandedMatchKey = (matchKey) => {
-    setExpandedMatchKeys((current) =>
-      current.includes(matchKey)
-        ? current.filter((key) => key !== matchKey)
-        : [...current, matchKey],
-    );
-  };
-
-  return {
-    expandedMatchKeys,
-    toggleExpandedMatchKey,
-  };
-};
+export const toggleExpandedMatchKey = (currentKeys, matchKey) =>
+  currentKeys.includes(matchKey)
+    ? currentKeys.filter((key) => key !== matchKey)
+    : [...currentKeys, matchKey];

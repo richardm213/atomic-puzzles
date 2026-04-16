@@ -2,28 +2,20 @@ import { Link } from "@tanstack/react-router";
 import { LichessGameLink } from "../LichessGameLink/LichessGameLink";
 import { MatchDetails } from "../MatchDetails/MatchDetails";
 import { formatLocalDateTime, formatScore } from "../../utils/formatters";
+import { scoreToneClass } from "../../utils/matchPresentation";
+import { isToggleActionKey } from "../../utils/toggleActionKey";
 import "./MatchCard.css";
-
-const scoreTone = (score, opponentScore) => {
-  const numericScore = Number(score);
-  const numericOpponentScore = Number(opponentScore);
-  if (numericScore > numericOpponentScore) return " winner";
-  if (numericScore < numericOpponentScore) return " loser";
-  return "";
-};
-
-const handleCardKeyDown = (event, onToggle) => {
-  if (event.key !== "Enter" && event.key !== " ") return;
-  event.preventDefault();
-  onToggle();
-};
 
 export const MatchCard = ({ match, matchKey, isExpanded, onToggle }) => (
   <article
     key={matchKey}
     className={`matchCard${isExpanded ? " expanded" : ""}`}
     onClick={onToggle}
-    onKeyDown={(event) => handleCardKeyDown(event, onToggle)}
+    onKeyDown={(event) => {
+      if (!isToggleActionKey(event)) return;
+      event.preventDefault();
+      onToggle();
+    }}
     role="button"
     tabIndex={0}
     aria-expanded={isExpanded}
@@ -64,11 +56,11 @@ export const MatchCard = ({ match, matchKey, isExpanded, onToggle }) => (
         </div>
       </div>
       <div className="matchScoreBlock" aria-label={`Score ${match.scoreA} to ${match.scoreB}`}>
-        <span className={`matchScoreValue${scoreTone(match.scoreA, match.scoreB)}`}>
+        <span className={`matchScoreValue${scoreToneClass(match.scoreA, match.scoreB)}`}>
           {formatScore(match.scoreA)}
         </span>
         <span className="scoreDash">-</span>
-        <span className={`matchScoreValue${scoreTone(match.scoreB, match.scoreA)}`}>
+        <span className={`matchScoreValue${scoreToneClass(match.scoreB, match.scoreA)}`}>
           {formatScore(match.scoreB)}
         </span>
       </div>

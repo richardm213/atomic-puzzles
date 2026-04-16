@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { Chessboard } from "../../components/Chessboard/Chessboard";
-import { usePuzzleLibrary } from "../../hooks/usePuzzleLibrary";
+import { loadPuzzleLibrary } from "../../lib/puzzleLibrary";
 import "./PuzzleSolver.css";
 
 const lichessAnalysisUrl = (fen) => {
@@ -76,7 +76,8 @@ const findMainChild = (children) => children[0];
 export const PuzzleSolverPage = () => {
   const navigate = useNavigate();
   const { puzzleId: routePuzzleId = "" } = useParams({ strict: false });
-  const { puzzles, loadingError } = usePuzzleLibrary();
+  const [puzzles, setPuzzles] = useState([]);
+  const [loadingError, setLoadingError] = useState("");
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [showSolution, setShowSolution] = useState(false);
@@ -110,6 +111,28 @@ export const PuzzleSolverPage = () => {
     },
     [navigate],
   );
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    const loadPuzzles = async () => {
+      try {
+        setLoadingError("");
+        const loadedPuzzles = await loadPuzzleLibrary();
+        if (isCurrent) setPuzzles(loadedPuzzles);
+      } catch (error) {
+        if (!isCurrent) return;
+        setPuzzles([]);
+        setLoadingError(error.message || "Failed to load puzzles");
+      }
+    };
+
+    loadPuzzles();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
 
   useEffect(() => {
     setBoardState((prev) => {

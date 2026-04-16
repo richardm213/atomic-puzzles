@@ -11,19 +11,19 @@ import {
   opponentRatingSliderMin,
   pageSizeOptions,
 } from "../../constants/matches";
-import { useAliasesLookup } from "../../hooks/useAliasesLookup";
+import { loadAliasesLookup } from "../../lib/aliasesLookup";
 import { toBoundedLengthRange, useMatchLengthRange } from "../../hooks/useMatchLengthRange";
 import {
-  useAliasesForUser,
-  useBestWins,
-  useExpandedMatchKeys,
-  useFilteredMatches,
-  useMonthRankHighlights,
+  filterMatches,
+  getAliasesForUser,
+  getBestWins,
+  getMonthRankHighlights,
+  getProfileMetricCards,
+  getRatingDisplayByMode,
+  getTimeControlOptions,
+  toggleExpandedMatchKey,
   useMonthRanks,
-  useProfileMetricCards,
-  useRatingDisplayByMode,
   useRatingsSnapshotByMode,
-  useTimeControlOptions,
 } from "../../hooks/usePlayerProfileData";
 import {
   formatLocalDateTime,
@@ -31,7 +31,9 @@ import {
   formatScore,
   formatSignedDecimal,
 } from "../../utils/formatters";
+import { scoreToneClass } from "../../utils/matchPresentation";
 import { normalizeUsername } from "../../utils/playerNames";
+import { isToggleActionKey } from "../../utils/toggleActionKey";
 import { parseDateInputBoundary } from "../../utils/matchFilters";
 import { loadRawMatchesByMode, normalizeMatches } from "../../lib/matchData";
 import { DualRangeSlider } from "../../components/DualRangeSlider/DualRangeSlider";
@@ -54,20 +56,6 @@ const LichessProfileIcon = () => (
     />
   </svg>
 );
-
-const scoreTone = (score, opponentScore) => {
-  const numericScore = Number(score);
-  const numericOpponentScore = Number(opponentScore);
-  if (numericScore > numericOpponentScore) return " winner";
-  if (numericScore < numericOpponentScore) return " loser";
-  return "";
-};
-
-const handleMatchRowKeyDown = (event, onToggle) => {
-  if (event.key !== "Enter" && event.key !== " ") return;
-  event.preventDefault();
-  onToggle();
-};
 
 const buildMatchFilters = (username, filters) => {
   const queryFilters = { username };
@@ -98,6 +86,7 @@ const buildMatchFilters = (username, filters) => {
 export const PlayerProfilePage = ({ username }) => {
   const normalizedUsername = useMemo(() => normalizeUsername(username), [username]);
   const [selectedMode, setSelectedMode] = useState("blitz");
+  const [aliasesLookup, setAliasesLookup] = useState(() => new Map());
   const [matchesByMode, setMatchesByMode] = useState({
     blitz: [],
     bullet: [],
@@ -113,7 +102,8 @@ export const PlayerProfilePage = ({ username }) => {
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
-  const defaultLengthRange = useMemo(() => toBoundedLengthRange("blitz"), []);
+  const [expandedMatchKeys, setExpandedMatchKeys] = useState([]);
+  const defaultLengthRange = toBoundedLengthRange("blitz");
   const { matchLengthMin, setMatchLengthMin, matchLengthMax, setMatchLengthMax } =
     useMatchLengthRange(selectedMode);
   const [opponentRatingMin, setOpponentRatingMin] = useState(defaultRatingMin);
@@ -128,7 +118,6 @@ export const PlayerProfilePage = ({ username }) => {
   const matchRequestIdRef = useRef(0);
   const bestWinRequestKeyByModeRef = useRef({});
   const searchSubmitInFlightRef = useRef(false);
-  const aliasesLookup = useAliasesLookup();
   const canonicalUsername = aliasesLookup.get(normalizedUsername)?.primary ?? normalizedUsername;
   const ratingsSnapshotByMode = useRatingsSnapshotByMode(canonicalUsername);
   const monthRanks = useMonthRanks(canonicalUsername);
@@ -148,6 +137,25 @@ export const PlayerProfilePage = ({ username }) => {
     timeControlIncrementFilter: "all",
   });
   const matchLengthBounds = matchLengthBoundsByMode[selectedMode] ?? matchLengthBoundsByMode.blitz;
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    const loadAliases = async () => {
+      try {
+        const lookup = await loadAliasesLookup();
+        if (isCurrent) setAliasesLookup(lookup);
+      } catch {
+        if (isCurrent) setAliasesLookup(new Map());
+      }
+    };
+
+    loadAliases();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
 
   const runMatchSearch = async (mode, nextAppliedFilters, nextPage = 1) => {
     const requestId = matchRequestIdRef.current + 1;
@@ -223,6 +231,10 @@ export const PlayerProfilePage = ({ username }) => {
     runMatchSearch("blitz", defaultFilters, 1);
   }, [canonicalUsername]);
 
+  useEffect(() => {
+    setExpandedMatchKeys([]);
+  }, [page, selectedMode, appliedFilters, canonicalUsername]);
+
   const matches = matchesByMode[selectedMode] ?? [];
   const bestWinMatches = bestWinMatchesByMode[selectedMode] ?? [];
 
@@ -231,9 +243,18 @@ export const PlayerProfilePage = ({ username }) => {
     setTimeControlIncrementFilter("all");
   }, [selectedMode]);
 
-  const { initialOptions, incrementOptions } = useTimeControlOptions(matches);
-  const filteredMatches = useFilteredMatches(matches, appliedFilters, selectedMode);
-  const filteredBestWinMatches = useFilteredMatches(bestWinMatches, appliedFilters, selectedMode);
+  const { initialOptions, incrementOptions } = useMemo(
+    () => getTimeControlOptions(matches),
+    [matches],
+  );
+  const filteredMatches = useMemo(
+    () => filterMatches(matches, appliedFilters, selectedMode),
+    [matches, appliedFilters, selectedMode],
+  );
+  const filteredBestWinMatches = useMemo(
+    () => filterMatches(bestWinMatches, appliedFilters, selectedMode),
+    [bestWinMatches, appliedFilters, selectedMode],
+  );
 
   const handleSearchClick = async () => {
     if (searchSubmitInFlightRef.current || loadingMatches) return;
@@ -280,24 +301,28 @@ export const PlayerProfilePage = ({ username }) => {
     }
   }, [currentPage, pageSize, selectedMode]);
 
-  const { expandedMatchKeys, toggleExpandedMatchKey } = useExpandedMatchKeys(
-    currentPage,
-    selectedMode,
-    appliedFilters,
-    canonicalUsername,
+  const ratingDisplayByMode = useMemo(
+    () => getRatingDisplayByMode(ratingsSnapshotByMode, canonicalUsername),
+    [ratingsSnapshotByMode, canonicalUsername],
   );
-
-  const ratingDisplayByMode = useRatingDisplayByMode(ratingsSnapshotByMode, canonicalUsername);
   const blitzDisplaySummary = ratingDisplayByMode.blitz;
   const bulletDisplaySummary = ratingDisplayByMode.bullet;
-  const bestWins = useBestWins(filteredBestWinMatches, canonicalUsername, bestWinCount);
-  const { bestMonthRanks, recentMonthRanks } = useMonthRankHighlights(
-    monthRanks,
-    bestMonthRankCount,
-    recentMonthRankCount,
+  const bestWins = useMemo(
+    () => getBestWins(filteredBestWinMatches, canonicalUsername, bestWinCount),
+    [filteredBestWinMatches, canonicalUsername, bestWinCount],
   );
-  const aliasesForUser = useAliasesForUser(aliasesLookup, canonicalUsername);
-  const profileMetricCards = useProfileMetricCards(blitzDisplaySummary, bulletDisplaySummary);
+  const { bestMonthRanks, recentMonthRanks } = useMemo(
+    () => getMonthRankHighlights(monthRanks, bestMonthRankCount, recentMonthRankCount),
+    [monthRanks, bestMonthRankCount, recentMonthRankCount],
+  );
+  const aliasesForUser = useMemo(
+    () => getAliasesForUser(aliasesLookup, canonicalUsername),
+    [aliasesLookup, canonicalUsername],
+  );
+  const profileMetricCards = useMemo(
+    () => getProfileMetricCards(blitzDisplaySummary, bulletDisplaySummary),
+    [blitzDisplaySummary, bulletDisplaySummary],
+  );
 
   return (
     <div className="rankingsPage">
@@ -584,10 +609,16 @@ export const PlayerProfilePage = ({ username }) => {
                   <Fragment key={matchKey}>
                     <tr
                       className={`expandableMatchRow${isExpanded ? " expanded" : ""}`}
-                      onClick={() => toggleExpandedMatchKey(matchKey)}
-                      onKeyDown={(event) =>
-                        handleMatchRowKeyDown(event, () => toggleExpandedMatchKey(matchKey))
+                      onClick={() =>
+                        setExpandedMatchKeys((current) => toggleExpandedMatchKey(current, matchKey))
                       }
+                      onKeyDown={(event) => {
+                        if (!isToggleActionKey(event)) return;
+                        event.preventDefault();
+                        setExpandedMatchKeys((current) =>
+                          toggleExpandedMatchKey(current, matchKey),
+                        );
+                      }}
                       role="button"
                       tabIndex={0}
                       aria-expanded={isExpanded}
@@ -616,7 +647,7 @@ export const PlayerProfilePage = ({ username }) => {
                       <td className="scoreCell">
                         <span className="profileScoreBox">
                           <span
-                            className={`profileScoreValue${scoreTone(
+                            className={`profileScoreValue${scoreToneClass(
                               match.playerScore,
                               match.opponentScore,
                             )}`}

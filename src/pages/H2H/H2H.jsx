@@ -3,19 +3,18 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import "./H2H.css";
 import { loadRawMatchesByMode } from "../../lib/matchData";
 import { fetchPlayerRatingsRows } from "../../lib/supabasePlayerRatings";
-import { useTimeControlOptions } from "../../hooks/usePlayerProfileData";
-import { matchSourceFromValues, parseDateInputBoundary } from "../../utils/matchFilters";
-import {
-  findRatingDataForPlayer,
-  normalizedGamesFromMatch,
-  normalizedPlayersFromMatch,
-  normalizedRatingsFromMatch,
-  winnerToFullWord,
-} from "../../utils/matchTransforms";
+import { getTimeControlOptions } from "../../hooks/usePlayerProfileData";
+import { parseDateInputBoundary } from "../../utils/matchFilters";
+import { normalizedGamesFromMatch, normalizedPlayersFromMatch } from "../../utils/matchTransforms";
 import { formatLocalDateTime, formatScore } from "../../utils/formatters";
 import { LichessGameLink } from "../../components/LichessGameLink/LichessGameLink";
 import { MatchDetails } from "../../components/MatchDetails/MatchDetails";
 import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFilterChecks";
+import {
+  ratingsForPlayers,
+  sourceKeyFromMatch,
+  summarizeMatchGames,
+} from "../../lib/matchSummaries";
 
 const normalizeH2HMatches = (matches, mode, playerA, playerB) => {
   const playerALower = playerA.toLowerCase();
@@ -34,64 +33,17 @@ const normalizeH2HMatches = (matches, mode, playerA, playerB) => {
       const resolvedB =
         players.find((player) => String(player).toLowerCase() === playerBLower) || playerB;
       const games = normalizedGamesFromMatch(match, players);
-      let scoreA = 0;
-      let scoreB = 0;
-
-      const mappedGames = games.map((game, index) => {
-        const white = String(game?.white || "").toLowerCase();
-        const black = String(game?.black || "").toLowerCase();
-        const winner = winnerToFullWord(game?.winner);
-        let resultLabel = "draw";
-
-        if (winner === "white") {
-          if (white === String(resolvedA).toLowerCase()) {
-            scoreA += 1;
-            resultLabel = resolvedA;
-          } else {
-            scoreB += 1;
-            resultLabel = resolvedB;
-          }
-        } else if (winner === "black") {
-          if (black === String(resolvedA).toLowerCase()) {
-            scoreA += 1;
-            resultLabel = resolvedA;
-          } else {
-            scoreB += 1;
-            resultLabel = resolvedB;
-          }
-        } else {
-          scoreA += 0.5;
-          scoreB += 0.5;
-        }
-
-        return {
-          id: String(game?.id || "—"),
-          index,
-          resultLabel,
-          scoreAAfter: scoreA,
-          scoreBAfter: scoreB,
-        };
-      });
-
+      const { scoreA, scoreB, mappedGames } = summarizeMatchGames(games, resolvedA, resolvedB);
       const winner = scoreA === scoreB ? "Draw" : scoreA > scoreB ? resolvedA : resolvedB;
-      const ratings = normalizedRatingsFromMatch(match, players);
-      const playerARatingData = findRatingDataForPlayer(ratings, resolvedA);
-      const playerBRatingData = findRatingDataForPlayer(ratings, resolvedB);
       const firstGameId = String(games[0]?.id || "—");
+      const firstGame = games[0];
 
       return {
         key: `${mode}-${match?.match_id || match?.start_ts || ""}-${firstGameId}-${resolvedA}-${resolvedB}`,
         mode,
         startTs: Number(match?.start_ts ?? match?.s),
         timeControl: String(match?.time_control ?? match?.t ?? "—"),
-        source: matchSourceFromValues(
-          games[0]?.source,
-          games[0]?.match_source,
-          games[0]?.queue,
-          match?.source,
-          match?.match_source,
-          match?.queue,
-        ),
+        source: sourceKeyFromMatch(match, firstGame),
         playerA: resolvedA,
         playerB: resolvedB,
         scoreA,
@@ -99,14 +51,7 @@ const normalizeH2HMatches = (matches, mode, playerA, playerB) => {
         winner,
         firstGameId,
         games: mappedGames,
-        playerABeforeRating: Number(playerARatingData?.before_rating),
-        playerAAfterRating: Number(playerARatingData?.after_rating),
-        playerABeforeRd: Number(playerARatingData?.before_rd),
-        playerAAfterRd: Number(playerARatingData?.after_rd),
-        playerBBeforeRating: Number(playerBRatingData?.before_rating),
-        playerBAfterRating: Number(playerBRatingData?.after_rating),
-        playerBBeforeRd: Number(playerBRatingData?.before_rd),
-        playerBAfterRd: Number(playerBRatingData?.after_rd),
+        ...ratingsForPlayers(match, players, resolvedA, resolvedB),
       };
     })
     .filter(Boolean)
@@ -200,7 +145,7 @@ export const H2HPage = () => {
     [endDateTs, filters, matches, startDateTs],
   );
 
-  const { initialOptions, incrementOptions } = useTimeControlOptions(matches);
+  const { initialOptions, incrementOptions } = useMemo(() => getTimeControlOptions(matches), [matches]);
   const timeControlOptions = useMemo(() => {
     const known = new Set(matches.map((match) => match.timeControl));
     return initialOptions.flatMap((initial) =>

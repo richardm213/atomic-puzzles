@@ -11,7 +11,7 @@ import {
   opponentRatingSliderMin,
   pageSizeOptions,
 } from "../../constants/matches";
-import { useTimeControlOptions } from "../../hooks/usePlayerProfileData";
+import { getTimeControlOptions } from "../../hooks/usePlayerProfileData";
 import { toBoundedLengthRange, useMatchLengthRange } from "../../hooks/useMatchLengthRange";
 import { MatchCard } from "../../components/MatchCard/MatchCard";
 import { DualRangeSlider } from "../../components/DualRangeSlider/DualRangeSlider";
@@ -19,13 +19,16 @@ import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFilterChecks";
 import { TimeControlFields } from "../../components/TimeControlFields/TimeControlFields";
 import {
-  findRatingDataForPlayer,
   normalizedGamesFromMatch,
   normalizedPlayersFromMatch,
-  normalizedRatingsFromMatch,
-  winnerToFullWord,
 } from "../../utils/matchTransforms";
-import { matchSourceFromValues, parseDateInputBoundary } from "../../utils/matchFilters";
+import { parseDateInputBoundary } from "../../utils/matchFilters";
+import {
+  ratingsForPlayers,
+  sourceKeyFromMatch,
+  sourceValueFromMatch,
+  summarizeMatchGames,
+} from "../../lib/matchSummaries";
 import { loadRawMatchesByMode } from "../../lib/matchData";
 
 const recentModeOptions = modeOptions;
@@ -41,76 +44,12 @@ const normalizeRecentMatches = (matches, mode) =>
           ? rawPlayers.slice(0, 2).map((player) => String(player || "Unknown"))
           : ["Unknown", "Unknown"];
       const [playerA, playerB] = players.length >= 2 ? players : [players[0], "Unknown"];
-      const playerALower = playerA.toLowerCase();
       const games = normalizedGamesFromMatch(match, players);
-      let scoreA = 0;
-      let scoreB = 0;
-      let playerAWins = 0;
-      let playerBWins = 0;
-      let draws = 0;
-
-      const mappedGames = games.map((game, index) => {
-        const white = String(game?.white || "").toLowerCase();
-        const black = String(game?.black || "").toLowerCase();
-        const winner = winnerToFullWord(game?.winner);
-        let resultLabel = "draw";
-
-        if (winner === "white") {
-          if (white === playerALower) {
-            scoreA += 1;
-            playerAWins += 1;
-            resultLabel = playerA;
-          } else {
-            scoreB += 1;
-            playerBWins += 1;
-            resultLabel = playerB;
-          }
-        } else if (winner === "black") {
-          if (black === playerALower) {
-            scoreA += 1;
-            playerAWins += 1;
-            resultLabel = playerA;
-          } else {
-            scoreB += 1;
-            playerBWins += 1;
-            resultLabel = playerB;
-          }
-        } else {
-          scoreA += 0.5;
-          scoreB += 0.5;
-          draws += 1;
-        }
-
-        return {
-          id: String(game?.id || "—"),
-          resultLabel,
-          scoreAAfter: scoreA,
-          scoreBAfter: scoreB,
-          index,
-        };
-      });
-
-      const ratings = normalizedRatingsFromMatch(match, players);
-      const playerARatingData = findRatingDataForPlayer(ratings, playerA);
-      const playerBRatingData = findRatingDataForPlayer(ratings, playerB);
-      const playerABeforeRating = Number(playerARatingData?.before_rating);
-      const playerAAfterRating = Number(playerARatingData?.after_rating);
-      const playerABeforeRd = Number(playerARatingData?.before_rd);
-      const playerAAfterRd = Number(playerARatingData?.after_rd);
-      const playerBBeforeRating = Number(playerBRatingData?.before_rating);
-      const playerBAfterRating = Number(playerBRatingData?.after_rating);
-      const playerBBeforeRd = Number(playerBRatingData?.before_rd);
-      const playerBAfterRd = Number(playerBRatingData?.after_rd);
+      const { scoreA, scoreB, playerAWins, playerBWins, draws, mappedGames } =
+        summarizeMatchGames(games, playerA, playerB);
+      const ratings = ratingsForPlayers(match, players, playerA, playerB);
 
       const firstGame = games[0];
-      const rawSourceValue = [
-        firstGame?.source,
-        firstGame?.match_source,
-        firstGame?.queue,
-        match?.source,
-        match?.match_source,
-        match?.queue,
-      ].find((value) => value !== undefined && value !== null && String(value).trim().length > 0);
       return {
         startTs: Number(match?.start_ts ?? match?.s),
         timeControl: String(match?.time_control ?? match?.t ?? "—"),
@@ -122,31 +61,12 @@ const normalizeRecentMatches = (matches, mode) =>
         playerAWins,
         playerBWins,
         draws,
-        playerABeforeRating,
-        playerAAfterRating,
-        playerABeforeRd,
-        playerAAfterRd,
-        playerBBeforeRating,
-        playerBAfterRating,
-        playerBBeforeRd,
-        playerBAfterRd,
+        ...ratings,
         gameCount: games.length,
         firstGameId: String(games[0]?.id || "—"),
         games: mappedGames,
-        sourceValue:
-          rawSourceValue === undefined ||
-          rawSourceValue === null ||
-          String(rawSourceValue).trim().length === 0
-            ? "—"
-            : String(rawSourceValue),
-        sourceKey: matchSourceFromValues(
-          firstGame?.source,
-          firstGame?.match_source,
-          firstGame?.queue,
-          match?.source,
-          match?.match_source,
-          match?.queue,
-        ),
+        sourceValue: sourceValueFromMatch(match, firstGame),
+        sourceKey: sourceKeyFromMatch(match, firstGame),
       };
     })
     .sort((a, b) => b.startTs - a.startTs);
@@ -209,7 +129,7 @@ export const RecentMatchesPage = () => {
     () => parseDateInputBoundary(appliedFilters.endDateFilter, "end"),
     [appliedFilters.endDateFilter],
   );
-  const { initialOptions, incrementOptions } = useTimeControlOptions(matches);
+  const { initialOptions, incrementOptions } = useMemo(() => getTimeControlOptions(matches), [matches]);
 
   useEffect(() => {
     setTimeControlInitialFilter("all");
