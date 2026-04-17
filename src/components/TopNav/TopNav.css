@@ -360,15 +360,168 @@
   min-width: 0;
 }
 
-.navAuthProfile {
-  color: var(--color-heading);
-  text-decoration: none;
-  font-weight: 700;
-  white-space: nowrap;
+.navProfileMenu {
+  position: relative;
+  display: inline-flex;
 }
 
-.navAuthProfile:hover {
+.navAuthProfileGroup {
+  min-height: 34px;
+  max-width: 100%;
+  padding: 0 12px 0 0;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+  color: var(--color-heading);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    transform 100ms ease;
+}
+
+.navAuthProfileGroup:hover {
+  background: var(--color-panel);
+  border-color: var(--color-input-border);
+  transform: translateY(-1px);
+}
+
+.navAuthProfileGroup:active {
+  transform: translateY(0) scale(0.985);
+}
+
+.navAuthProfileGroup.open {
+  box-shadow: 0 0 0 3px var(--color-primary-ring);
+  border-color: var(--color-input-border);
+  background: var(--color-panel);
+}
+
+.navAuthProfileIcon {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 34px;
+}
+
+.navAuthProfileCaret {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--color-muted);
+  transition:
+    color 140ms ease,
+    transform 140ms ease;
+}
+
+.navAuthProfileGroup:hover .navAuthProfileCaret {
+  color: var(--color-heading);
+}
+
+.navAuthProfileGroup.open .navAuthProfileCaret {
+  color: var(--color-heading);
+  transform: rotate(180deg);
+}
+
+.navAuthProfile {
+  font-weight: 700;
+  white-space: nowrap;
+  transition: color 140ms ease;
+}
+
+.navAuthProfileGroup:hover .navAuthProfile {
   text-decoration: underline;
+}
+
+.navProfileDropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 41;
+  min-width: 160px;
+  padding: 8px;
+  border-radius: 14px;
+  background: var(--color-panel);
+  border: 1px solid var(--color-border-strong);
+  box-shadow: var(--shadow-panel);
+  backdrop-filter: blur(18px);
+  display: grid;
+  gap: 4px;
+  transform-origin: top right;
+  animation: navProfileDropdownIn 140ms ease;
+}
+
+:root[data-theme="light"] .navProfileDropdown {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(250, 245, 237, 0.82)),
+    var(--color-panel);
+}
+
+.navProfileDropdownItem {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--color-text);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  cursor: pointer;
+  font: inherit;
+  transition:
+    background 120ms ease,
+    color 120ms ease,
+    transform 90ms ease;
+}
+
+.navProfileDropdownItem:hover {
+  background: var(--color-panel-strong);
+  text-decoration: none;
+}
+
+.navProfileDropdownItem:active {
+  transform: scale(0.985);
+}
+
+.navProfileDropdownItem:focus-visible,
+.navAuthProfileGroup:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-primary-ring);
+}
+
+.navProfileDropdownIcon {
+  width: 16px;
+  display: inline-flex;
+  justify-content: center;
+  color: var(--color-muted);
+  transition: color 120ms ease;
+}
+
+.navProfileDropdownItem:hover .navProfileDropdownIcon,
+.navProfileDropdownItem:focus-visible .navProfileDropdownIcon {
+  color: var(--color-heading);
+}
+
+@keyframes navProfileDropdownIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .navAuthButton {
@@ -385,16 +538,6 @@
 .navAuthButton:disabled {
   opacity: 0.65;
   cursor: wait;
-}
-
-.navAuthLogout {
-  border-color: var(--color-border-strong);
-  background: transparent;
-  color: var(--color-text);
-}
-
-.navAuthLogout:hover {
-  background: var(--color-panel-strong);
 }
 
 @media (max-width: 920px) {

@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faChevronDown, faRightFromBracket, faUser } from "@fortawesome/free-solid-svg-icons";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { getBoardThemeColors, useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
 import { resolveUsernameInput } from "../../lib/searchUsernames";
+import { resolveProfileUsernameFromAliases } from "../../lib/supabaseAliases";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { normalizeUsername } from "../../utils/playerNames";
 import "./TopNav.css";
@@ -30,11 +33,35 @@ const navItems = [
   },
 ];
 
+const PROFILE_USERNAME_STORAGE_PREFIX = "atomic-puzzles.profile-username";
+
+const getStoredProfileUsername = (username) => {
+  const normalizedUsername = normalizeUsername(username);
+  if (!normalizedUsername || typeof window === "undefined") return "";
+
+  return normalizeUsername(
+    window.localStorage.getItem(`${PROFILE_USERNAME_STORAGE_PREFIX}.${normalizedUsername}`),
+  );
+};
+
+const setStoredProfileUsername = (username, profileUsername) => {
+  const normalizedUsername = normalizeUsername(username);
+  const normalizedProfileUsername = normalizeUsername(profileUsername);
+  if (!normalizedUsername || !normalizedProfileUsername || typeof window === "undefined") return;
+
+  window.localStorage.setItem(
+    `${PROFILE_USERNAME_STORAGE_PREFIX}.${normalizedUsername}`,
+    normalizedProfileUsername,
+  );
+};
+
 export const TopNav = () => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const searchInputRef = useRef(null);
+  const profileMenuRef = useRef(null);
   const settingsRef = useRef(null);
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
@@ -61,6 +88,8 @@ export const TopNav = () => {
     resetDisplaySettings,
   } = useAppSettings();
   const trimmedSearchQuery = searchQuery.trim();
+  const normalizedAuthUsername = normalizeUsername(user?.username);
+  const [profileUsername, setProfileUsername] = useState(() => getStoredProfileUsername(user?.username));
   const showBoardSettings = pathname === "/solve" || pathname.startsWith("/solve/");
   const activeBoardColors = getBoardThemeColors(
     boardTheme,
@@ -71,7 +100,40 @@ export const TopNav = () => {
     boardOverrideDarkSquare,
   );
   const currentLocation = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-  const lichessProfilePath = user?.username ? `/@/${normalizeUsername(user.username)}` : "/";
+
+  useEffect(() => {
+    if (!normalizedAuthUsername) {
+      setProfileUsername("");
+      return;
+    }
+
+    const storedProfileUsername = getStoredProfileUsername(normalizedAuthUsername);
+    setProfileUsername(storedProfileUsername || normalizedAuthUsername);
+
+    let cancelled = false;
+
+    const loadProfileUsername = async () => {
+      try {
+        const resolvedProfileUsername =
+          (await resolveProfileUsernameFromAliases(normalizedAuthUsername)) || normalizedAuthUsername;
+        if (cancelled) return;
+        setProfileUsername(resolvedProfileUsername);
+        setStoredProfileUsername(normalizedAuthUsername, resolvedProfileUsername);
+      } catch {
+        if (cancelled) return;
+        setProfileUsername(normalizedAuthUsername);
+        setStoredProfileUsername(normalizedAuthUsername, normalizedAuthUsername);
+      }
+    };
+
+    loadProfileUsername();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [normalizedAuthUsername]);
+
+  const resolvedProfileUsername = profileUsername || normalizedAuthUsername;
 
   const handleBoardThemeChange = (event) => {
     setBoardTheme(event.target.value);
@@ -104,6 +166,29 @@ export const TopNav = () => {
     if (!searchOpen) return;
     searchInputRef.current?.focus();
   }, [searchOpen]);
+
+  useEffect(() => {
+    if (!profileMenuOpen) return undefined;
+
+    const handlePointerDown = (event) => {
+      if (profileMenuRef.current?.contains(event.target)) return;
+      setProfileMenuOpen(false);
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        setProfileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [profileMenuOpen]);
 
   useEffect(() => {
     if (!settingsOpen) return undefined;
@@ -228,14 +313,54 @@ export const TopNav = () => {
         </nav>
         <div className="navAuth" aria-live="polite">
           {isAuthenticated && user ? (
-            <>
-              <Link className="navAuthProfile" to={lichessProfilePath}>
-                {user.username}
-              </Link>
-              <button className="navAuthButton navAuthLogout" type="button" onClick={logout}>
-                Log out
+            <div className="navProfileMenu" ref={profileMenuRef}>
+              <button
+                className={`navAuthProfileGroup ${profileMenuOpen ? "open" : ""}`}
+                type="button"
+                aria-label={`Open account menu for ${resolvedProfileUsername}`}
+                aria-haspopup="menu"
+                aria-expanded={profileMenuOpen}
+                onClick={() => setProfileMenuOpen((open) => !open)}
+              >
+                <span className="navAuthProfileIcon" aria-hidden="true">
+                  <FontAwesomeIcon icon={faUser} />
+                </span>
+                <span className="navAuthProfile">{user.username}</span>
+                <span className="navAuthProfileCaret" aria-hidden="true">
+                  <FontAwesomeIcon icon={faChevronDown} />
+                </span>
               </button>
-            </>
+              {profileMenuOpen ? (
+                <div className="navProfileDropdown" role="menu" aria-label="Account menu">
+                  <Link
+                    className="navProfileDropdownItem"
+                    to="/@/$username"
+                    params={{ username: resolvedProfileUsername }}
+                    role="menuitem"
+                    onClick={() => setProfileMenuOpen(false)}
+                  >
+                    <span className="navProfileDropdownIcon" aria-hidden="true">
+                      <FontAwesomeIcon icon={faUser} />
+                    </span>
+                    View profile
+                  </Link>
+                  <button
+                    className="navProfileDropdownItem"
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setProfileMenuOpen(false);
+                      logout();
+                    }}
+                  >
+                    <span className="navProfileDropdownIcon" aria-hidden="true">
+                      <FontAwesomeIcon icon={faRightFromBracket} />
+                    </span>
+                    Log out
+                  </button>
+                </div>
+              ) : null}
+            </div>
           ) : (
             <button
               className="navAuthButton"

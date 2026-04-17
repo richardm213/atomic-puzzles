@@ -7,6 +7,9 @@ const ALIASES_TABLE = "aliases";
 const ALIASES2_TABLE = "aliases2";
 const ALIASES_SELECT_COLUMNS = "username,aliases,banned";
 const aliasesRowsCache = new Map();
+const aliasTableRowsCache = new Map();
+const alias2TableRowsCache = new Map();
+const profileUsernameCache = new Map();
 
 const normalizeAliasRow = (row) => {
   const username = normalizeUsername(row?.username);
@@ -29,6 +32,9 @@ const fetchUncachedAliasRows = async () => {
 
   return rows.map(normalizeAliasRow).filter(Boolean);
 };
+
+export const fetchAliasesTableRows = async () =>
+  cachedRequest(aliasTableRowsCache, ["aliases-table"], async () => fetchUncachedAliasRows());
 
 const normalizeAliasList = (value) => {
   if (Array.isArray(value)) {
@@ -97,11 +103,30 @@ const fetchUncachedAlias2Rows = async () => {
   }
 };
 
+export const fetchAliases2TableRows = async () =>
+  cachedRequest(alias2TableRowsCache, ["aliases2-table"], async () => fetchUncachedAlias2Rows());
+
+const findCanonicalUsername = (rows, username) =>
+  rows.find((row) => row.username === username || row.aliases.includes(username))?.username ?? "";
+
+export const resolveProfileUsernameFromAliases = async (value) =>
+  cachedRequest(profileUsernameCache, ["profile-username", value], async () => {
+    const username = normalizeUsername(value);
+    if (!username) return "";
+
+    const aliasRows = await fetchAliasesTableRows();
+    const aliasMatch = findCanonicalUsername(aliasRows, username);
+    if (aliasMatch) return aliasMatch;
+
+    const alias2Rows = await fetchAliases2TableRows();
+    return findCanonicalUsername(alias2Rows, username) || username;
+  });
+
 export const fetchAliasRows = async () =>
   cachedRequest(aliasesRowsCache, ["aliases"], async () => {
     const [aliasRows, alias2Rows] = await Promise.all([
-      fetchUncachedAliasRows(),
-      fetchUncachedAlias2Rows(),
+      fetchAliasesTableRows(),
+      fetchAliases2TableRows(),
     ]);
     const mergedRows = new Map();
 
