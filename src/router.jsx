@@ -9,6 +9,7 @@ import {
 import { App } from "./App/App";
 import { HomePage } from "./pages/Home/Home";
 import { RankingsPage } from "./pages/Rankings/Rankings";
+import { RankingsMethodologyPage } from "./pages/Rankings/RankingsMethodology";
 import { RecentMatchesPage } from "./pages/RecentMatches/RecentMatches";
 import { PlayerProfilePage } from "./pages/PlayerProfile/PlayerProfile";
 import { PuzzleSolverPage } from "./pages/PuzzleSolver/PuzzleSolver";
@@ -36,6 +37,12 @@ const rankingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/rankings",
   component: RankingsPage,
+});
+
+const rankingsMethodologyRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/rankings/how-ratings-work",
+  component: RankingsMethodologyPage,
 });
 
 const recentRoute = createRoute({
@@ -109,6 +116,7 @@ const lichessAuthCallbackRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   rankingsRoute,
+  rankingsMethodologyRoute,
   recentRoute,
   h2hRoute,
   h2hMatchupRoute,

@@ -222,22 +222,10 @@ const LeaderboardView = () => {
           <span>{readableMonthLabel(selectedMonth || monthOptions[0])}</span>
           <span className="rankedCount">
             {players.length} ranked
-            <span className="rankingsInfo">
-              <button
-                type="button"
-                className="rankingsInfoButton"
-                aria-label="Ranking eligibility rules"
-                aria-describedby="ranking-rules-tooltip"
-              >
-                <i className="fa-solid fa-circle-info" aria-hidden="true" />
-              </button>
-              <span id="ranking-rules-tooltip" className="rankingsInfoTooltip" role="tooltip">
-                <span className="rankingsInfoTooltipTitle">Rating requirements</span>
-                <span>Blitz: &gt;= 20 blitz games in that month</span>
-                <span>Bullet: &gt;= 50 bullet games in that month</span>
-                <span>RD must be &lt;= 65.0</span>
-              </span>
-            </span>
+            <Link className="rankingsMetaLink" to="/rankings/how-ratings-work">
+              <i className="fa-solid fa-circle-info" aria-hidden="true" />
+              How are ratings calculated?
+            </Link>
           </span>
         </div>
 

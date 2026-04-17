@@ -14,7 +14,7 @@ const navItems = [
   {
     to: "/rankings",
     label: "Rankings",
-    isActive: (pathname) => pathname === "/rankings",
+    isActive: (pathname) => pathname === "/rankings" || pathname.startsWith("/rankings/"),
   },
   {
     to: "/solve",
