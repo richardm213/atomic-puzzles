@@ -12,6 +12,7 @@ import {
   pageSizeOptions,
 } from "../../constants/matches";
 import { loadAliasesLookup } from "../../lib/aliasesLookup";
+import { resolveUsernameInput } from "../../lib/searchUsernames";
 import { toBoundedLengthRange, useMatchLengthRange } from "../../hooks/useMatchLengthRange";
 import {
   filterMatches,
@@ -85,6 +86,7 @@ const buildMatchFilters = (username, filters) => {
 
 export const PlayerProfilePage = ({ username }) => {
   const normalizedUsername = useMemo(() => normalizeUsername(username), [username]);
+  const [resolvedUsername, setResolvedUsername] = useState(normalizedUsername);
   const [selectedMode, setSelectedMode] = useState("blitz");
   const [aliasesLookup, setAliasesLookup] = useState(() => new Map());
   const [matchesByMode, setMatchesByMode] = useState({
@@ -118,7 +120,7 @@ export const PlayerProfilePage = ({ username }) => {
   const matchRequestIdRef = useRef(0);
   const bestWinRequestKeyByModeRef = useRef({});
   const searchSubmitInFlightRef = useRef(false);
-  const canonicalUsername = aliasesLookup.get(normalizedUsername)?.primary ?? normalizedUsername;
+  const canonicalUsername = aliasesLookup.get(resolvedUsername)?.primary ?? resolvedUsername;
   const ratingsSnapshotByMode = useRatingsSnapshotByMode(canonicalUsername);
   const monthRanks = useMonthRanks(canonicalUsername);
   const [bestMonthRankCount, setBestMonthRankCount] = useState(5);
@@ -137,6 +139,25 @@ export const PlayerProfilePage = ({ username }) => {
     timeControlIncrementFilter: "all",
   });
   const matchLengthBounds = matchLengthBoundsByMode[selectedMode] ?? matchLengthBoundsByMode.blitz;
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    const resolveUsername = async () => {
+      try {
+        const nextResolvedUsername = await resolveUsernameInput(normalizedUsername);
+        if (isCurrent) setResolvedUsername(nextResolvedUsername || normalizedUsername);
+      } catch {
+        if (isCurrent) setResolvedUsername(normalizedUsername);
+      }
+    };
+
+    resolveUsername();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [normalizedUsername]);
 
   useEffect(() => {
     let isCurrent = true;

@@ -31,6 +31,7 @@ import {
   summarizeMatchGames,
 } from "../../lib/matchSummaries";
 import { loadRawMatchesByMode } from "../../lib/matchData";
+import { resolveUsernameInputs } from "../../lib/searchUsernames";
 import { toggleExpandedMatchKey } from "../../hooks/usePlayerProfileData";
 
 const recentModeOptions = modeOptions;
@@ -223,6 +224,19 @@ export const RecentMatchesPage = () => {
     return queryFilters;
   }, []);
 
+  const resolveSearchFilters = useCallback(async (nextFilters) => {
+    const [resolvedPlayer1Filter, resolvedPlayer2Filter] = await resolveUsernameInputs([
+      nextFilters.player1Filter,
+      nextFilters.player2Filter,
+    ]);
+
+    return {
+      ...nextFilters,
+      player1Filter: resolvedPlayer1Filter,
+      player2Filter: resolvedPlayer2Filter,
+    };
+  }, []);
+
   const pageRequestKey = useCallback(
     (nextAppliedFilters, nextPage, nextPageSize = pageSize) =>
       JSON.stringify({
@@ -259,16 +273,19 @@ export const RecentMatchesPage = () => {
     setLoadingMatches(true);
     setError("");
     try {
+      const resolvedAppliedFilters = await resolveSearchFilters(nextAppliedFilters);
+      if (requestId !== pageLoadIdRef.current) return;
+
       const loaded = await loadRawMatchesByMode(selectedMode, {
-        filters: buildSupabaseFilters(nextAppliedFilters),
+        filters: buildSupabaseFilters(resolvedAppliedFilters),
         page: 1,
         pageSize,
       });
       if (requestId !== pageLoadIdRef.current) return;
       setMatches(normalizeRecentMatches(loaded.matches, selectedMode));
       setTotalMatches(loaded.total);
-      skipNextPageLoadKeyRef.current = pageRequestKey(nextAppliedFilters, 1);
-      setAppliedFilters(nextAppliedFilters);
+      skipNextPageLoadKeyRef.current = pageRequestKey(resolvedAppliedFilters, 1);
+      setAppliedFilters(resolvedAppliedFilters);
       setCurrentPage(1);
     } catch (loadError) {
       if (requestId !== pageLoadIdRef.current) return;

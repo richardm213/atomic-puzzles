@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAppSettings } from "../../context/AppSettings";
+import { resolveUsernameInput } from "../../lib/searchUsernames";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { normalizeUsername } from "../../utils/playerNames";
 import "./Home.css";
@@ -137,12 +138,13 @@ export const HomePage = () => {
   const puzzleCollageImages =
     theme === "light" ? lightModePuzzleCollageImages : darkModePuzzleCollageImages;
 
-  const handlePlayerSearch = (event) => {
+  const handlePlayerSearch = async (event) => {
     event.preventDefault();
     if (!trimmedPlayerQuery) return;
+    const resolvedUsername = await resolveUsernameInput(trimmedPlayerQuery);
     navigate({
       to: "/@/$username",
-      params: { username: normalizeUsername(trimmedPlayerQuery) },
+      params: { username: normalizeUsername(resolvedUsername) },
     });
   };
 

@@ -4,6 +4,7 @@ import "./H2H.css";
 import { defaultSourceFilters, knownSourceKeys } from "../../constants/matches";
 import { loadRawMatchesByMode } from "../../lib/matchData";
 import { fetchPlayerRatingsRows } from "../../lib/supabasePlayerRatings";
+import { resolveUsernameInputs } from "../../lib/searchUsernames";
 import { getTimeControlOptions } from "../../hooks/usePlayerProfileData";
 import { parseDateInputBoundary } from "../../utils/matchFilters";
 import { normalizedGamesFromMatch, normalizedPlayersFromMatch } from "../../utils/matchTransforms";
@@ -201,30 +202,38 @@ export const H2HPage = () => {
     setError("");
 
     try {
+      const [resolvedFirst, resolvedSecond] = await resolveUsernameInputs([first, second]);
+      if (requestId !== searchRequestIdRef.current) return;
+
       const loadModeMatches = async (mode) =>
-        loadRawMatchesByMode(mode, { filters: { usernamePair: [first, second] } });
+        loadRawMatchesByMode(mode, { filters: { usernamePair: [resolvedFirst, resolvedSecond] } });
       const loadPlayerSnapshot = async (username) => fetchPlayerRatingsRows({ username });
 
       const [blitzRaw, bulletRaw, firstRatings, secondRatings] = await Promise.all([
         loadModeMatches("blitz"),
         loadModeMatches("bullet"),
-        loadPlayerSnapshot(first),
-        loadPlayerSnapshot(second),
+        loadPlayerSnapshot(resolvedFirst),
+        loadPlayerSnapshot(resolvedSecond),
       ]);
       if (requestId !== searchRequestIdRef.current) return;
 
-      const blitzNormalized = normalizeH2HMatches(blitzRaw, "blitz", first, second);
-      const bulletNormalized = normalizeH2HMatches(bulletRaw, "bullet", first, second);
+      const blitzNormalized = normalizeH2HMatches(blitzRaw, "blitz", resolvedFirst, resolvedSecond);
+      const bulletNormalized = normalizeH2HMatches(
+        bulletRaw,
+        "bullet",
+        resolvedFirst,
+        resolvedSecond,
+      );
       const merged = [...blitzNormalized, ...bulletNormalized].sort(
         (a, b) => b.startTs - a.startTs,
       );
 
-      setLoadedPlayer1(first);
-      setLoadedPlayer2(second);
+      setLoadedPlayer1(resolvedFirst);
+      setLoadedPlayer2(resolvedSecond);
       setMatches(merged);
       setPlayerSnapshots({
-        [first.toLowerCase()]: indexRatingsRowsByTimeControl(firstRatings),
-        [second.toLowerCase()]: indexRatingsRowsByTimeControl(secondRatings),
+        [resolvedFirst.toLowerCase()]: indexRatingsRowsByTimeControl(firstRatings),
+        [resolvedSecond.toLowerCase()]: indexRatingsRowsByTimeControl(secondRatings),
       });
       if (!merged.length) {
         setError("No head-to-head matches found for the selected players.");
@@ -252,10 +261,12 @@ export const H2HPage = () => {
         return;
       }
 
+      const [resolvedFirst, resolvedSecond] = await resolveUsernameInputs([first, second]);
+
       await navigate({
         to: "/h2h/$matchup",
         params: {
-          matchup: matchupToSlug(first, second),
+          matchup: matchupToSlug(resolvedFirst, resolvedSecond),
         },
       });
     } finally {

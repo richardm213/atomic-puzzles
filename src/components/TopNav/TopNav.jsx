@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { getBoardThemeColors, useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
+import { resolveUsernameInput } from "../../lib/searchUsernames";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { normalizeUsername } from "../../utils/playerNames";
 import "./TopNav.css";
@@ -104,12 +105,13 @@ export const TopNav = () => {
     };
   }, [settingsOpen]);
 
-  const handleSearchSubmit = (event) => {
+  const handleSearchSubmit = async (event) => {
     event.preventDefault();
     if (!trimmedSearchQuery) return;
+    const resolvedUsername = await resolveUsernameInput(trimmedSearchQuery);
     navigate({
       to: "/@/$username",
-      params: { username: normalizeUsername(trimmedSearchQuery) },
+      params: { username: normalizeUsername(resolvedUsername) },
     });
     setSearchQuery("");
     setSearchOpen(false);
