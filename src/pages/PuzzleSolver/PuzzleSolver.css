@@ -117,12 +117,45 @@
   margin-bottom: 12px;
 }
 
+.puzzleMetaRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+}
+
+.metaChip,
 .detailItem,
 .fenDetails,
 .lineBox {
   border-radius: var(--radius-ui);
   background: var(--color-surface-soft);
   border: 1px solid var(--color-border);
+}
+
+.metaChip {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 10px 12px;
+}
+
+.metaChipLabel {
+  color: var(--color-subtle);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.metaChipValue {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.25;
 }
 
 .detailItem {
@@ -531,6 +564,10 @@
   .puzzleHeader {
     display: grid;
     justify-items: start;
+  }
+
+  .puzzleMetaRow {
+    grid-template-columns: 1fr;
   }
 
   .puzzleCount {

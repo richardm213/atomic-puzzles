@@ -471,16 +471,18 @@ export const PuzzleSolverPage = () => {
         {loadingError ? <div className="errorText">{loadingError}</div> : null}
 
         <div className="puzzleDetails">
-          <div className="detailItem">
-            <div className="fenLabel">Author</div>
-            <div>{author}</div>
-          </div>
-          {event ? (
-            <div className="detailItem">
-              <div className="fenLabel">Event</div>
-              <div>{event}</div>
+          <div className="puzzleMetaRow">
+            <div className="metaChip" title={author}>
+              <span className="metaChipLabel">Author</span>
+              <span className="metaChipValue">{author}</span>
             </div>
-          ) : null}
+            {event ? (
+              <div className="metaChip" title={event}>
+                <span className="metaChipLabel">Event</span>
+                <span className="metaChipValue">{event}</span>
+              </div>
+            ) : null}
+          </div>
           {showFenDetails ? (
             <>
               <div className="fenDetails">
