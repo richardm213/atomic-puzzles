@@ -283,6 +283,7 @@ const mergeDests = (...maps) => {
 };
 
 export const Chessboard = ({
+  puzzleId,
   fen,
   orientation,
   coordinates,
@@ -293,6 +294,7 @@ export const Chessboard = ({
   solutionNavigation,
   retrySignal,
   onNavigateHandled,
+  onAttemptResolved,
   onStateChange,
 }) => {
   const {
@@ -326,6 +328,7 @@ export const Chessboard = ({
   const showSolutionRef = useRef(showSolution);
   const analysisModeRef = useRef(analysisMode);
   const fenRef = useRef(fen);
+  const puzzleIdRef = useRef(puzzleId);
 
   const solutionUciLines = useMemo(() => parseSolutionUciLines(fen, solution), [fen, solution]);
 
@@ -391,6 +394,10 @@ export const Chessboard = ({
   useEffect(() => {
     fenRef.current = fen;
   }, [fen]);
+
+  useEffect(() => {
+    puzzleIdRef.current = puzzleId;
+  }, [puzzleId]);
 
   const emitState = (position, next) => {
     const history = historyRef.current;
@@ -731,6 +738,7 @@ export const Chessboard = ({
 
     if (!accepted.has(userMoveKey)) {
       moveLockRef.current = !autoRetryWrongMoves;
+      onAttemptResolved?.({ puzzleId: puzzleIdRef.current, puzzleCorrect: false });
       syncBoard(position, undefined, {
         showWrongMove: true,
         solved: false,
@@ -748,6 +756,7 @@ export const Chessboard = ({
 
     if (!hasExpectedMoveAt(nextCandidates, progressRef.current)) {
       puzzleSolvedRef.current = true;
+      onAttemptResolved?.({ puzzleId: puzzleIdRef.current, puzzleCorrect: true });
       syncBoard(position, [orig, dest], {
         showWrongMove: false,
         solved: true,
@@ -768,6 +777,10 @@ export const Chessboard = ({
 
       const playedOpponent = autoplayOpponentMove(activePosition);
       moveLockRef.current = false;
+
+      if (puzzleSolvedRef.current) {
+        onAttemptResolved?.({ puzzleId: puzzleIdRef.current, puzzleCorrect: true });
+      }
 
       syncBoard(
         activePosition,

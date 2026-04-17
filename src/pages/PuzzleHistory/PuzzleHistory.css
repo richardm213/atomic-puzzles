@@ -1,0 +1,425 @@
+.puzzleHistoryPage {
+  min-height: calc(100vh - 58px);
+  min-height: calc(100svh - 58px);
+  background: var(--page-background);
+  color: var(--color-text);
+  padding: max(var(--page-gutter), env(safe-area-inset-top))
+    max(var(--page-gutter), env(safe-area-inset-right))
+    max(calc(var(--page-gutter) + 2px), env(safe-area-inset-bottom))
+    max(var(--page-gutter), env(safe-area-inset-left));
+}
+
+.puzzleHistoryShell {
+  width: min(1080px, 100%);
+  margin: 0 auto;
+  display: grid;
+  gap: 22px;
+}
+
+.historyBanner {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(220px, 0.75fr);
+  gap: 20px;
+  align-items: stretch;
+  padding: clamp(20px, 2.6vw, 28px);
+  border: 1px solid var(--color-border);
+  border-radius: calc(var(--radius-ui) + 6px);
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--color-primary) 18%, transparent), transparent 30%),
+    linear-gradient(180deg, color-mix(in srgb, var(--color-panel) 84%, transparent), transparent),
+    var(--color-panel);
+  box-shadow: var(--shadow-panel);
+  backdrop-filter: blur(16px);
+}
+
+.historyBannerCopy {
+  display: grid;
+  gap: 12px;
+}
+
+.puzzleHistoryEyebrow {
+  width: fit-content;
+  margin: 0;
+  color: var(--color-primary-pale);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 7px 10px;
+  border: 1px solid var(--color-glass-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-panel-strong) 72%, transparent);
+}
+
+.historyBanner h1 {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: clamp(32px, 4vw, 48px);
+  line-height: 1.02;
+}
+
+.puzzleHistoryIntro {
+  margin: 0;
+  max-width: 60ch;
+  color: var(--color-muted);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.historyBannerActions {
+  display: grid;
+  align-content: space-between;
+  justify-items: end;
+  gap: 14px;
+}
+
+.historyIdentityCard {
+  width: min(100%, 260px);
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-panel-strong) 90%, transparent), transparent),
+    var(--color-surface-soft);
+}
+
+.historyIdentityCard strong {
+  color: var(--color-heading);
+  font-size: 22px;
+  line-height: 1.1;
+}
+
+.historyIdentityLabel,
+.historyStatLabel,
+.historySectionEyebrow,
+.historyMiniLabel {
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.puzzleHistoryBackLink,
+.historyPuzzleLink,
+.historyOpenLink {
+  text-decoration: none;
+}
+
+.puzzleHistoryBackLink {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
+  border-radius: var(--radius-ui);
+  border: 1px solid var(--color-accent-soft-border);
+  background: var(--color-panel-strong);
+  color: var(--color-heading);
+  font-weight: 800;
+  transition:
+    transform 140ms ease,
+    border-color 140ms ease,
+    background-color 140ms ease;
+}
+
+.puzzleHistoryBackLink:hover,
+.historyOpenLink:hover {
+  transform: translateY(-1px);
+  border-color: var(--color-primary);
+  background: var(--color-surface-elevated-strong);
+}
+
+.historyStatsStrip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.historyStatCard {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 16px 18px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-panel) 75%, transparent), transparent),
+    var(--color-panel-strong);
+}
+
+.historyStatCard strong {
+  color: var(--color-heading);
+  font-size: clamp(24px, 3vw, 34px);
+  line-height: 1;
+}
+
+.historyLedger {
+  display: grid;
+  gap: 16px;
+  padding: clamp(18px, 2.3vw, 24px);
+  border: 1px solid var(--color-border);
+  border-radius: calc(var(--radius-ui) + 2px);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-panel) 82%, transparent), transparent),
+    var(--color-panel);
+  box-shadow: var(--shadow-panel);
+}
+
+.historyLedgerHeader,
+.historyLedgerFooter {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.historyLedgerHeader h2 {
+  margin: 6px 0 0;
+  color: var(--color-heading);
+  font-size: clamp(24px, 3vw, 32px);
+  line-height: 1.08;
+}
+
+.historySectionIntro {
+  margin: 8px 0 0;
+  color: var(--color-muted);
+  line-height: 1.55;
+}
+
+.historyLedgerRows {
+  display: grid;
+  gap: 12px;
+}
+
+.historyLedgerRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+  gap: 16px;
+  align-items: center;
+  padding: 16px 18px;
+  border: 1px solid var(--color-border);
+  border-radius: calc(var(--radius-ui) - 2px);
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--color-primary) 10%, transparent), transparent 34%),
+    var(--color-surface-soft);
+}
+
+.historyLedgerPrimary {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  min-width: 0;
+}
+
+.historyRowNumber {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-panel-strong) 92%, transparent);
+  color: var(--color-heading);
+  font-weight: 800;
+}
+
+.historyPuzzleBlock {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.historyPuzzleLink {
+  color: var(--color-heading);
+  font-size: clamp(20px, 2vw, 24px);
+  font-weight: 800;
+}
+
+.historyPuzzleLink:hover {
+  text-decoration: underline;
+}
+
+.historyPuzzleSubline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  color: var(--color-muted);
+  font-size: 14px;
+}
+
+.historyPuzzleSubline span {
+  position: relative;
+}
+
+.historyPuzzleSubline span:not(:first-child)::before {
+  content: "";
+  position: absolute;
+  left: -7px;
+  top: 50%;
+  width: 3px;
+  height: 3px;
+  border-radius: 999px;
+  transform: translateY(-50%);
+  background: var(--color-subtle);
+}
+
+.historyLedgerMeta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.historyLedgerCell {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-panel-strong) 88%, transparent);
+}
+
+.historyLedgerActionCell {
+  align-content: space-between;
+}
+
+.historyLedgerValue {
+  color: var(--color-text);
+  line-height: 1.45;
+}
+
+.historyStatus {
+  width: fit-content;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.historyStatus.correct {
+  background: color-mix(in srgb, var(--color-cyan-bright) 18%, transparent);
+  color: var(--color-accent-soft-text);
+  border: 1px solid color-mix(in srgb, var(--color-cyan-bright) 45%, transparent);
+}
+
+.historyStatus.incorrect {
+  background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+  color: color-mix(in srgb, var(--color-danger) 45%, white);
+  border: 1px solid color-mix(in srgb, var(--color-danger) 35%, transparent);
+}
+
+.historyOpenLink {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-panel-strong);
+  color: var(--color-heading);
+  font-weight: 800;
+}
+
+.historyStateCard,
+.errorText {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-panel) 76%, transparent), transparent),
+    var(--color-surface-soft);
+  color: var(--color-muted);
+}
+
+.historyStateCard p {
+  margin: 0;
+}
+
+.paginationRow {
+  margin-top: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.paginationRow button {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-panel-strong);
+  color: var(--color-text);
+  font-weight: 800;
+}
+
+.paginationRow button:hover:not(:disabled) {
+  border-color: var(--color-accent-soft-border);
+  background: var(--color-surface-elevated-strong);
+}
+
+.paginationRow button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 960px) {
+  .historyBanner,
+  .historyLedgerRow {
+    grid-template-columns: 1fr;
+  }
+
+  .historyBannerActions {
+    justify-items: start;
+    align-content: start;
+  }
+
+  .historyStatsStrip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .historyLedgerMeta {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .historyStatsStrip {
+    grid-template-columns: 1fr;
+  }
+
+  .historyLedgerHeader,
+  .historyLedgerFooter {
+    display: grid;
+    align-items: stretch;
+  }
+
+  .historyLedgerPrimary {
+    gap: 12px;
+  }
+
+  .historyPuzzleSubline {
+    display: grid;
+    gap: 4px;
+  }
+
+  .historyPuzzleSubline span:not(:first-child)::before {
+    display: none;
+  }
+
+  .puzzleHistoryBackLink,
+  .historyOpenLink,
+  .paginationRow button {
+    width: 100%;
+  }
+}

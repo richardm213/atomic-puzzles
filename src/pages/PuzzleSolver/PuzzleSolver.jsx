@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faRotateLeft } from "@fortawesome/free-solid-svg-icons";
+import { faClockRotateLeft, faRotateLeft } from "@fortawesome/free-solid-svg-icons";
 import { Chessboard } from "../../components/Chessboard/Chessboard";
 import { loadPuzzleLibrary } from "../../lib/puzzleLibrary";
+import { fetchAttemptedPuzzleIds, recordPuzzleProgress } from "../../lib/supabasePuzzleProgress";
+import { useAuth } from "../../context/AuthContext";
 import { Seo } from "../../components/Seo/Seo";
 import "./PuzzleSolver.css";
 
@@ -191,12 +193,12 @@ const buildCompletionFeedback = (nextBoardState, solvedAfterRetry) => {
       ? {
           type: "retrySuccess",
           icon: "↺",
-          title: "Solved on retry",
+          title: "Puzzle solved on retry",
         }
       : {
           type: "correct",
           icon: "✓",
-          title: "Correct",
+          title: "Puzzle correct",
         };
   }
 
@@ -204,7 +206,7 @@ const buildCompletionFeedback = (nextBoardState, solvedAfterRetry) => {
     return {
       type: "wrong",
       icon: "×",
-      title: "Incorrect",
+      title: "Puzzle incorrect",
     };
   }
 
@@ -227,10 +229,21 @@ const createInitialBoardState = () => ({
   solved: false,
 });
 
+const createInitialBoardSnapshot = () => ({
+  fen: "",
+  lineIndex: 0,
+  solutionLineIndex: 0,
+  viewingSolution: false,
+  showWrongMove: false,
+  solved: false,
+});
+
 export const PuzzleSolverPage = () => {
   const navigate = useNavigate();
   const { puzzleId: routePuzzleId = "" } = useParams({ strict: false });
+  const { isAuthenticated, user } = useAuth();
   const [puzzles, setPuzzles] = useState([]);
+  const [attemptedPuzzleIds, setAttemptedPuzzleIds] = useState(() => new Set());
   const [loadingError, setLoadingError] = useState("");
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -244,16 +257,12 @@ export const PuzzleSolverPage = () => {
   const [completionFeedback, setCompletionFeedback] = useState(null);
   const [pinnedSolutionLineIndex, setPinnedSolutionLineIndex] = useState(null);
   const [boardState, setBoardState] = useState(createInitialBoardState);
-  const previousBoardSnapshotRef = useRef({
-    fen: "",
-    lineIndex: 0,
-    solutionLineIndex: 0,
-    viewingSolution: false,
-  });
+  const previousBoardSnapshotRef = useRef(createInitialBoardSnapshot());
   const analysisModeRef = useRef(false);
   const mobileFeedbackIdRef = useRef(0);
   const activeSolutionOptionRef = useRef(null);
   const upcomingPuzzleIndexesRef = useRef([]);
+  const progressWriteQueueRef = useRef(Promise.resolve());
 
   const getNextShuffledPuzzleIndex = useCallback(
     (currentIndex) => {
@@ -263,13 +272,17 @@ export const PuzzleSolverPage = () => {
       if (upcomingPuzzleIndexesRef.current.length === 0) {
         const candidateIndexes = puzzles
           .map((_, index) => index)
-          .filter((index) => index !== currentIndex);
+          .filter(
+            (index) =>
+              index !== currentIndex &&
+              !attemptedPuzzleIds.has(String(puzzles[index]?.puzzleId ?? "")),
+          );
         upcomingPuzzleIndexesRef.current = shuffleIndexes(candidateIndexes);
       }
 
       return upcomingPuzzleIndexesRef.current.pop() ?? -1;
     },
-    [puzzles],
+    [attemptedPuzzleIds, puzzles],
   );
 
   const replaceUrlWithPuzzle = useCallback(
@@ -317,8 +330,31 @@ export const PuzzleSolverPage = () => {
   }, []);
 
   useEffect(() => {
+    let isCurrent = true;
+
+    const loadAttemptedPuzzleIds = async () => {
+      try {
+        const attemptedIds = user?.username
+          ? await fetchAttemptedPuzzleIds(user.username)
+          : new Set();
+        if (isCurrent) setAttemptedPuzzleIds(attemptedIds);
+      } catch (error) {
+        if (!isCurrent) return;
+        setAttemptedPuzzleIds(new Set());
+        globalThis.console?.error(error);
+      }
+    };
+
+    loadAttemptedPuzzleIds();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [user?.username]);
+
+  useEffect(() => {
     upcomingPuzzleIndexesRef.current = [];
-  }, [puzzles]);
+  }, [attemptedPuzzleIds, puzzles]);
 
   useEffect(() => {
     setBoardState((prev) => {
@@ -389,9 +425,45 @@ export const PuzzleSolverPage = () => {
   const event = activePuzzle?.event?.trim() || "";
   const orientation = orientationFromFen(fen);
   const currentFen = boardState.fen || fen;
-  const startAnalysisUrl = useMemo(() => lichessAnalysisUrl(fen), [fen]);
-  const currentAnalysisUrl = useMemo(() => lichessAnalysisUrl(currentFen), [currentFen]);
+  const startAnalysisUrl = lichessAnalysisUrl(fen);
+  const currentAnalysisUrl = lichessAnalysisUrl(currentFen);
   const puzzleOrdinal = activePuzzleIndex >= 0 ? activePuzzleIndex + 1 : null;
+
+  const enqueuePuzzleProgressWrite = useCallback(
+    ({ puzzleId, puzzleCorrect }) => {
+      if (!puzzleId || !user?.username) return;
+
+      progressWriteQueueRef.current = progressWriteQueueRef.current
+        .catch(() => {})
+        .then(() =>
+          recordPuzzleProgress({
+            username: user.username,
+            puzzleId,
+            puzzleCorrect,
+          }).then(() => {
+            setAttemptedPuzzleIds((current) => {
+              const next = new Set(current);
+              next.add(String(puzzleId));
+              return next;
+            });
+          }),
+        )
+        .catch((error) => {
+          globalThis.console?.error(error);
+        });
+    },
+    [user?.username],
+  );
+
+  const handleAttemptResolved = useCallback(
+    ({ puzzleId, puzzleCorrect }) => {
+      enqueuePuzzleProgressWrite({
+        puzzleId,
+        puzzleCorrect,
+      });
+    },
+    [enqueuePuzzleProgressWrite],
+  );
 
   const resetPuzzleUiState = useCallback(() => {
     setShowSolution(false);
@@ -417,12 +489,7 @@ export const PuzzleSolverPage = () => {
   useEffect(() => {
     resetPuzzleUiState();
     setMobileFeedback(null);
-    previousBoardSnapshotRef.current = {
-      fen: "",
-      lineIndex: 0,
-      solutionLineIndex: 0,
-      viewingSolution: false,
-    };
+    previousBoardSnapshotRef.current = createInitialBoardSnapshot();
   }, [activePuzzleId, resetPuzzleUiState]);
 
   useEffect(() => {
@@ -505,7 +572,7 @@ export const PuzzleSolverPage = () => {
 
   const handleBoardStateChange = useCallback((nextBoardState) => {
     const previousBoardSnapshot = previousBoardSnapshotRef.current;
-    const positionChanged =
+    const boardPositionChanged =
       previousBoardSnapshot.fen !== nextBoardState.fen ||
       previousBoardSnapshot.lineIndex !== nextBoardState.lineIndex ||
       previousBoardSnapshot.solutionLineIndex !== nextBoardState.solutionLineIndex ||
@@ -521,7 +588,7 @@ export const PuzzleSolverPage = () => {
     if (isMobileLayout) {
       if ((enteringAnalysisMode || deferMobileWrongAnalysis) && nextCompletionFeedback) {
         showMobileFeedback(nextCompletionFeedback);
-      } else if (!analysisModeRef.current && positionChanged) {
+      } else if (!analysisModeRef.current && boardPositionChanged) {
         setMobileFeedback(null);
       }
     }
@@ -531,8 +598,6 @@ export const PuzzleSolverPage = () => {
       setCompletionFeedback(nextCompletionFeedback);
     } else if (deferMobileWrongAnalysis) {
       setCompletionFeedback(nextCompletionFeedback);
-    } else if (!analysisModeRef.current && !nextCompletionFeedback) {
-      setCompletionFeedback(null);
     }
 
     if (
@@ -549,12 +614,19 @@ export const PuzzleSolverPage = () => {
       lineIndex: nextBoardState.lineIndex,
       solutionLineIndex: nextBoardState.solutionLineIndex,
       viewingSolution: nextBoardState.viewingSolution,
+      showWrongMove: nextBoardState.showWrongMove,
+      solved: nextBoardState.solved,
     };
 
     if (nextBoardState.solved) {
       setSolutionNavigation(null);
     }
-  }, [isMobileLayout, showMobileFeedback, showSolution, solvedAfterRetry]);
+  }, [
+    isMobileLayout,
+    showMobileFeedback,
+    showSolution,
+    solvedAfterRetry,
+  ]);
 
   const handleTryAgain = () => {
     setShowSolution(false);
@@ -867,9 +939,17 @@ export const PuzzleSolverPage = () => {
             <p className="puzzleEyebrow">Atomic tactics</p>
             <h1>Find the best move</h1>
           </div>
-          <div className="puzzleCount" aria-label="Puzzle count">
-            <span>{puzzleOrdinal ?? "-"}</span>
-            <small>of {puzzles.length || "-"}</small>
+          <div className="puzzleHeaderAside">
+            {isAuthenticated ? (
+              <Link className="puzzleHistoryLink" to="/solve/history">
+                <FontAwesomeIcon icon={faClockRotateLeft} />
+                <span>History</span>
+              </Link>
+            ) : null}
+            <div className="puzzleCount" aria-label="Puzzle count">
+              <span>{puzzleOrdinal ?? "-"}</span>
+              <small>of {puzzles.length || "-"}</small>
+            </div>
           </div>
         </div>
 
@@ -978,6 +1058,7 @@ export const PuzzleSolverPage = () => {
           ) : null}
           {fen ? (
             <Chessboard
+              puzzleId={activePuzzleId}
               fen={fen}
               orientation={orientation}
               coordinates
@@ -988,6 +1069,7 @@ export const PuzzleSolverPage = () => {
               solutionNavigation={solutionNavigation}
               retrySignal={retrySignal}
               onNavigateHandled={() => setSolutionNavigation(null)}
+              onAttemptResolved={handleAttemptResolved}
               onStateChange={handleBoardStateChange}
             />
           ) : (
@@ -1013,47 +1095,47 @@ export const PuzzleSolverPage = () => {
 
       {isMobileLayout ? (
         <div className="mobileWorkflowPanel">
-        <div className="mobileActionCard">
-          <button
-            type="button"
-            className="puzzlePrimaryAction"
-            onClick={handleToggleSolution}
-            disabled={!canRevealSolution}
-          >
-            {showSolution ? "Hide solution" : "Show solution"}
-          </button>
-          {showFenDetails ? (
-            <a
-              className={`fenAnalyzeButton mobileAnalyzeButton ${!fen ? "disabled" : ""}`}
-              href={startAnalysisUrl}
-              target="_blank"
-              rel="noreferrer"
-              aria-disabled={!fen}
-              onClick={(event) => {
-                if (!fen) event.preventDefault();
-              }}
+          <div className="mobileActionCard">
+            <button
+              type="button"
+              className="puzzlePrimaryAction"
+              onClick={handleToggleSolution}
+              disabled={!canRevealSolution}
             >
-              Analyze on Lichess
-            </a>
-          ) : null}
-        </div>
-
-        {showSolution && canRevealSolution ? renderMoveLine("lineBox mobileLineBox") : null}
-
-        <div className="puzzleDetails mobilePuzzleDetails">
-          <div className="puzzleMetaRow">
-            <div className="metaChip" title={author}>
-              <span className="metaChipLabel">Author</span>
-              <span className="metaChipValue">{author}</span>
-            </div>
-            {event ? (
-              <div className="metaChip" title={event}>
-                <span className="metaChipLabel">Event</span>
-                <span className="metaChipValue">{event}</span>
-              </div>
+              {showSolution ? "Hide solution" : "Show solution"}
+            </button>
+            {showFenDetails ? (
+              <a
+                className={`fenAnalyzeButton mobileAnalyzeButton ${!fen ? "disabled" : ""}`}
+                href={startAnalysisUrl}
+                target="_blank"
+                rel="noreferrer"
+                aria-disabled={!fen}
+                onClick={(event) => {
+                  if (!fen) event.preventDefault();
+                }}
+              >
+                Analyze on Lichess
+              </a>
             ) : null}
           </div>
-        </div>
+
+          {showSolution && canRevealSolution ? renderMoveLine("lineBox mobileLineBox") : null}
+
+          <div className="puzzleDetails mobilePuzzleDetails">
+            <div className="puzzleMetaRow">
+              <div className="metaChip" title={author}>
+                <span className="metaChipLabel">Author</span>
+                <span className="metaChipValue">{author}</span>
+              </div>
+              {event ? (
+                <div className="metaChip" title={event}>
+                  <span className="metaChipLabel">Event</span>
+                  <span className="metaChipValue">{event}</span>
+                </div>
+              ) : null}
+            </div>
+          </div>
         </div>
       ) : null}
 

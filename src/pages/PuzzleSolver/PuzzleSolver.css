@@ -22,6 +22,12 @@
   margin-bottom: 12px;
 }
 
+.puzzleHeaderAside {
+  display: grid;
+  justify-items: end;
+  gap: 10px;
+}
+
 .puzzleEyebrow {
   margin: 0 0 7px;
   color: var(--color-subtle);
@@ -62,6 +68,33 @@
   margin-top: 4px;
   color: var(--color-subtle);
   font-size: 12px;
+}
+
+.puzzleHistoryLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: var(--radius-ui);
+  border: 1px solid var(--color-border);
+  background: var(--color-panel-strong);
+  color: var(--color-text);
+  font-weight: 700;
+  text-decoration: none;
+  transition:
+    transform 140ms ease,
+    border-color 140ms ease,
+    background-color 140ms ease,
+    color 140ms ease;
+}
+
+.puzzleHistoryLink:hover {
+  transform: translateY(-1px);
+  border-color: var(--color-accent-soft-border);
+  background: var(--color-surface-elevated-strong);
+  text-decoration: none;
 }
 
 .puzzleActions {
@@ -810,6 +843,10 @@
   .puzzleHeader {
     display: grid;
     justify-items: start;
+  }
+
+  .puzzleHeaderAside {
+    justify-items: stretch;
   }
 
   .puzzlePanel {

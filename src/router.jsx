@@ -12,6 +12,7 @@ import { RankingsPage } from "./pages/Rankings/Rankings";
 import { RecentMatchesPage } from "./pages/RecentMatches/RecentMatches";
 import { PlayerProfilePage } from "./pages/PlayerProfile/PlayerProfile";
 import { PuzzleSolverPage } from "./pages/PuzzleSolver/PuzzleSolver";
+import { PuzzleHistoryPage } from "./pages/PuzzleHistory/PuzzleHistory";
 import { H2HPage } from "./pages/H2H/H2H";
 import { AuthCallbackPage } from "./pages/AuthCallback/AuthCallback";
 
@@ -69,6 +70,12 @@ const solveRoute = createRoute({
   component: PuzzleSolverPage,
 });
 
+const solveHistoryRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/solve/history",
+  component: PuzzleHistoryPage,
+});
+
 const solveWithIdRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/solve/$puzzleId",
@@ -98,6 +105,7 @@ const routeTree = rootRoute.addChildren([
   h2hMatchupRoute,
   matchesAliasRoute,
   solveRoute,
+  solveHistoryRoute,
   solveWithIdRoute,
   profileRoute,
   lichessAuthCallbackRoute,
