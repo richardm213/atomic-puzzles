@@ -170,10 +170,10 @@ export const HomePage = () => {
             <img src={appAssetPath("/favicon.ico")} alt="" width="24" height="24" />
             Atomic puzzles
           </div>
-          <h1 id="home-title">Find the move that makes your opponent go boom</h1>
+          <h1 id="home-title">A better place to train and follow atomic chess</h1>
           <p className="homeIntro">
-            Solve atomic puzzles, follow top-player matches, and use the ratings to get a better
-            read on who is dangerous, who is farming, and who has ideas that actually hold up.
+            Solve real atomic puzzles, browse monthly rankings, follow recent matches, and look up
+            player profiles all in one place.
           </p>
 
           <div className="homeHeroActions">
@@ -232,8 +232,8 @@ export const HomePage = () => {
         <div className="homeSectionIntro">
           <h2>Explore Atomic Chess Tools</h2>
           <p>
-            Use the sections below to solve atomic chess puzzles, follow player form, and compare
-            results across the current pool.
+            Start with puzzles, then use the rest of the site to track form, compare players, and
+            get a clearer picture of the current pool.
           </p>
         </div>
         <div className="homeFeatureGrid" aria-label="Primary tools">
