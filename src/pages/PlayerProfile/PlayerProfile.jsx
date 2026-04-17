@@ -90,6 +90,7 @@ export const PlayerProfilePage = ({ username }) => {
   const [resolvedUsername, setResolvedUsername] = useState(normalizedUsername);
   const [selectedMode, setSelectedMode] = useState("blitz");
   const [aliasesLookup, setAliasesLookup] = useState(() => new Map());
+  const [aliasesLoaded, setAliasesLoaded] = useState(false);
   const [matchesByMode, setMatchesByMode] = useState({
     blitz: [],
     bullet: [],
@@ -122,6 +123,8 @@ export const PlayerProfilePage = ({ username }) => {
   const bestWinRequestKeyByModeRef = useRef({});
   const searchSubmitInFlightRef = useRef(false);
   const canonicalUsername = aliasesLookup.get(resolvedUsername)?.primary ?? resolvedUsername;
+  const profileAliasEntry = aliasesLookup.get(canonicalUsername);
+  const isBanned = Boolean(profileAliasEntry?.banned);
   const ratingsSnapshotByMode = useRatingsSnapshotByMode(canonicalUsername);
   const monthRanks = useMonthRanks(canonicalUsername);
   const [bestMonthRankCount, setBestMonthRankCount] = useState(5);
@@ -166,9 +169,15 @@ export const PlayerProfilePage = ({ username }) => {
     const loadAliases = async () => {
       try {
         const lookup = await loadAliasesLookup();
-        if (isCurrent) setAliasesLookup(lookup);
+        if (isCurrent) {
+          setAliasesLookup(lookup);
+          setAliasesLoaded(true);
+        }
       } catch {
-        if (isCurrent) setAliasesLookup(new Map());
+        if (isCurrent) {
+          setAliasesLookup(new Map());
+          setAliasesLoaded(true);
+        }
       }
     };
 
@@ -238,6 +247,8 @@ export const PlayerProfilePage = ({ username }) => {
   };
 
   useEffect(() => {
+    if (!aliasesLoaded || isBanned) return;
+
     const defaultFilters = {
       matchLengthMin: defaultLengthRange.min,
       matchLengthMax: defaultLengthRange.max,
@@ -251,7 +262,7 @@ export const PlayerProfilePage = ({ username }) => {
       timeControlIncrementFilter: "all",
     };
     runMatchSearch("blitz", defaultFilters, 1);
-  }, [canonicalUsername]);
+  }, [aliasesLoaded, canonicalUsername, isBanned]);
 
   useEffect(() => {
     setExpandedMatchKeys([]);
@@ -314,6 +325,8 @@ export const PlayerProfilePage = ({ username }) => {
   };
 
   useEffect(() => {
+    if (isBanned) return;
+
     if (currentPage !== page) {
       setPage(currentPage);
       return;
@@ -321,7 +334,7 @@ export const PlayerProfilePage = ({ username }) => {
     if (appliedFilters && totalPages > 0) {
       runMatchSearch(selectedMode, appliedFilters, currentPage);
     }
-  }, [currentPage, pageSize, selectedMode]);
+  }, [appliedFilters, currentPage, isBanned, page, pageSize, selectedMode, totalPages]);
 
   const ratingDisplayByMode = useMemo(
     () => getRatingDisplayByMode(ratingsSnapshotByMode, canonicalUsername),
@@ -356,56 +369,73 @@ export const PlayerProfilePage = ({ username }) => {
       <div className="panel rankingsPanel playerProfilePanel">
         <h1>{canonicalUsername}</h1>
 
-        <div className="profileTopBar">
-          {profileMetricCards.map((card) => (
-            <ProfileMetricCard key={card.key} label={card.label} value={card.value} />
-          ))}
-        </div>
+        {isBanned ? (
+          <section className="profileBanNotice" aria-labelledby="profile-ban-notice-title">
+            <div className="profileBanNoticeHeader">
+              <span className="profileBanBadge">Fair Play Ban</span>
+              <h2 id="profile-ban-notice-title">
+                This player was banned by Lichess for fair play violations.
+              </h2>
+            </div>
+            <p>
+              This player was banned by Lichess for fair play violations, so we do not include
+              them in the rating or ranking system here.
+            </p>
+          </section>
+        ) : (
+          <div className="profileTopBar">
+            {profileMetricCards.map((card) => (
+              <ProfileMetricCard key={card.key} label={card.label} value={card.value} />
+            ))}
+          </div>
+        )}
 
         <div className="profileHighlights profileHighlightsTopRow">
-          <div className="profileBestWins">
-            <div className="profileBestMonthRanksHeader">
-              <h2>Best Wins</h2>
-              <label htmlFor="profile-best-win-count-select">
-                Show
-                <select
-                  id="profile-best-win-count-select"
-                  value={bestWinCount}
-                  onChange={(event) => setBestWinCount(Number(event.target.value))}
-                >
-                  {countOptions.map((value) => (
-                    <option key={value} value={value}>
-                      {value}
-                    </option>
+          {!isBanned ? (
+            <div className="profileBestWins">
+              <div className="profileBestMonthRanksHeader">
+                <h2>Best Wins</h2>
+                <label htmlFor="profile-best-win-count-select">
+                  Show
+                  <select
+                    id="profile-best-win-count-select"
+                    value={bestWinCount}
+                    onChange={(event) => setBestWinCount(Number(event.target.value))}
+                  >
+                    {countOptions.map((value) => (
+                      <option key={value} value={value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              {bestWins.length === 0 ? (
+                <div className="emptyRankings">No wins available in {selectedMode}.</div>
+              ) : (
+                <ol>
+                  {bestWins.map((match) => (
+                    <li key={`best-${match.startTs}-${match.firstGameId}`}>
+                      <span className="profileBestWinOpponent">
+                        <Link
+                          className="rankingLink"
+                          to="/@/$username"
+                          params={{ username: match.opponent }}
+                        >
+                          {formatOpponentWithRating(match.opponent, match.opponentAfterRating)}
+                        </Link>
+                      </span>
+                      <span className="profileBestWinDate">
+                        <LichessGameLink gameId={match.firstGameId}>
+                          {formatLocalDateTime(match.startTs)}
+                        </LichessGameLink>
+                      </span>
+                    </li>
                   ))}
-                </select>
-              </label>
+                </ol>
+              )}
             </div>
-            {bestWins.length === 0 ? (
-              <div className="emptyRankings">No wins available in {selectedMode}.</div>
-            ) : (
-              <ol>
-                {bestWins.map((match) => (
-                  <li key={`best-${match.startTs}-${match.firstGameId}`}>
-                    <span className="profileBestWinOpponent">
-                      <Link
-                        className="rankingLink"
-                        to="/@/$username"
-                        params={{ username: match.opponent }}
-                      >
-                        {formatOpponentWithRating(match.opponent, match.opponentAfterRating)}
-                      </Link>
-                    </span>
-                    <span className="profileBestWinDate">
-                      <LichessGameLink gameId={match.firstGameId}>
-                        {formatLocalDateTime(match.startTs)}
-                      </LichessGameLink>
-                    </span>
-                  </li>
-                ))}
-              </ol>
-            )}
-          </div>
+          ) : null}
 
           <div className="profileAliases">
             <h2>Aliases</h2>
@@ -433,83 +463,87 @@ export const PlayerProfilePage = ({ username }) => {
           </div>
         </div>
 
-        <div className="profileHighlights profileHighlightsBottomRow">
-          <div className="profileBestMonthRanks">
-            <div className="profileBestMonthRanksHeader">
-              <h2>Best Ranks</h2>
-              <label htmlFor="profile-best-month-rank-count-select">
-                Show
-                <select
-                  id="profile-best-month-rank-count-select"
-                  value={bestMonthRankCount}
-                  onChange={(event) => setBestMonthRankCount(Number(event.target.value))}
-                >
-                  {countOptions.map((value) => (
-                    <option key={value} value={value}>
-                      {value}
-                    </option>
+        {!isBanned ? (
+          <div className="profileHighlights profileHighlightsBottomRow">
+            <div className="profileBestMonthRanks">
+              <div className="profileBestMonthRanksHeader">
+                <h2>Best Ranks</h2>
+                <label htmlFor="profile-best-month-rank-count-select">
+                  Show
+                  <select
+                    id="profile-best-month-rank-count-select"
+                    value={bestMonthRankCount}
+                    onChange={(event) => setBestMonthRankCount(Number(event.target.value))}
+                  >
+                    {countOptions.map((value) => (
+                      <option key={value} value={value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              {bestMonthRanks.length === 0 ? (
+                <div className="emptyRankings">No monthly ranks available in {selectedMode}.</div>
+              ) : (
+                <ol>
+                  {bestMonthRanks.map((monthRank) => (
+                    <li key={`best-month-rank-${monthRank.mode}-${monthRank.monthKey}`}>
+                      <span className="profileBestMonthRankPrimary">
+                        {monthRank.monthLabel} {monthRank.mode} · #{monthRank.rank}
+                      </span>
+                      <span className="profileBestMonthRankRating">{monthRank.rating}</span>
+                    </li>
                   ))}
-                </select>
-              </label>
+                </ol>
+              )}
             </div>
-            {bestMonthRanks.length === 0 ? (
-              <div className="emptyRankings">No monthly ranks available in {selectedMode}.</div>
-            ) : (
-              <ol>
-                {bestMonthRanks.map((monthRank) => (
-                  <li key={`best-month-rank-${monthRank.mode}-${monthRank.monthKey}`}>
-                    <span className="profileBestMonthRankPrimary">
-                      {monthRank.monthLabel} {monthRank.mode} · #{monthRank.rank}
-                    </span>
-                    <span className="profileBestMonthRankRating">{monthRank.rating}</span>
-                  </li>
-                ))}
-              </ol>
-            )}
-          </div>
 
-          <div className="profileBestMonthRanks">
-            <div className="profileBestMonthRanksHeader">
-              <h2>Recent Ranks</h2>
-              <label htmlFor="profile-recent-month-rank-count-select">
-                Show
-                <select
-                  id="profile-recent-month-rank-count-select"
-                  value={recentMonthRankCount}
-                  onChange={(event) => setRecentMonthRankCount(Number(event.target.value))}
-                >
-                  {countOptions.map((value) => (
-                    <option key={value} value={value}>
-                      {value}
-                    </option>
+            <div className="profileBestMonthRanks">
+              <div className="profileBestMonthRanksHeader">
+                <h2>Recent Ranks</h2>
+                <label htmlFor="profile-recent-month-rank-count-select">
+                  Show
+                  <select
+                    id="profile-recent-month-rank-count-select"
+                    value={recentMonthRankCount}
+                    onChange={(event) => setRecentMonthRankCount(Number(event.target.value))}
+                  >
+                    {countOptions.map((value) => (
+                      <option key={value} value={value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              {recentMonthRanks.length === 0 ? (
+                <div className="emptyRankings">No monthly ranks available.</div>
+              ) : (
+                <ol>
+                  {recentMonthRanks.map((monthRank) => (
+                    <li key={`recent-month-rank-${monthRank.mode}-${monthRank.monthKey}`}>
+                      <span className="profileBestMonthRankPrimary">
+                        {monthRank.monthLabel} {monthRank.mode} · #{monthRank.rank}
+                      </span>
+                      <span className="profileBestMonthRankRating">{monthRank.rating}</span>
+                    </li>
                   ))}
-                </select>
-              </label>
+                </ol>
+              )}
             </div>
-            {recentMonthRanks.length === 0 ? (
-              <div className="emptyRankings">No monthly ranks available.</div>
-            ) : (
-              <ol>
-                {recentMonthRanks.map((monthRank) => (
-                  <li key={`recent-month-rank-${monthRank.mode}-${monthRank.monthKey}`}>
-                    <span className="profileBestMonthRankPrimary">
-                      {monthRank.monthLabel} {monthRank.mode} · #{monthRank.rank}
-                    </span>
-                    <span className="profileBestMonthRankRating">{monthRank.rating}</span>
-                  </li>
-                ))}
-              </ol>
-            )}
           </div>
-        </div>
+        ) : null}
 
-        <form
-          className="matchFilterPanel profileMatchFilters"
-          onSubmit={(event) => {
-            event.preventDefault();
-            handleSearchClick();
-          }}
-        >
+        {!isBanned ? (
+          <>
+            <form
+              className="matchFilterPanel profileMatchFilters"
+              onSubmit={(event) => {
+                event.preventDefault();
+                handleSearchClick();
+              }}
+            >
           <div className="matchFilterGrid">
             <label htmlFor="profile-mode-select">
               Mode
@@ -605,19 +639,19 @@ export const PlayerProfilePage = ({ username }) => {
               {loadingMatches ? "Searching..." : "Search"}
             </button>
           </div>
-        </form>
+            </form>
 
-        {error ? <div className="errorText">{error}</div> : null}
+            {error ? <div className="errorText">{error}</div> : null}
 
-        <div className="rankingsMeta">
-          <span>Match History ({selectedMode})</span>
-          <span>
-            {filteredMatches.length} filtered / {matches.length} total
-          </span>
-        </div>
+            <div className="rankingsMeta">
+              <span>Match History ({selectedMode})</span>
+              <span>
+                {filteredMatches.length} filtered / {matches.length} total
+              </span>
+            </div>
 
-        <div className="rankingsTableWrap profileMatchTableWrap">
-          <table className="rankingsTable profileMatchTable">
+            <div className="rankingsTableWrap profileMatchTableWrap">
+              <table className="rankingsTable profileMatchTable">
             <thead>
               <tr>
                 <th>Date / Time</th>
@@ -766,16 +800,18 @@ export const PlayerProfilePage = ({ username }) => {
                 </tr>
               ) : null}
             </tbody>
-          </table>
-        </div>
+              </table>
+            </div>
 
-        <PaginationRow
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setPage}
-          formatLabel={(current, total) => `Page ${current} / ${total}`}
-          disabled={loadingMatches}
-        />
+            <PaginationRow
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              formatLabel={(current, total) => `Page ${current} / ${total}`}
+              disabled={loadingMatches}
+            />
+          </>
+        ) : null}
       </div>
     </div>
   );

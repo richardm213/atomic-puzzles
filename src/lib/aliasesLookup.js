@@ -11,6 +11,7 @@ export const buildAliasesLookup = (rows) => {
       primary: username,
       aliases,
       members,
+      banned: Boolean(row.banned),
     };
 
     members.forEach((member) => {

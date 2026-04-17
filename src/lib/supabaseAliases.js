@@ -5,7 +5,7 @@ import { normalizeUsername } from "../utils/playerNames";
 
 const ALIASES_TABLE = "aliases";
 const ALIASES2_TABLE = "aliases2";
-const ALIASES_SELECT_COLUMNS = "username,aliases";
+const ALIASES_SELECT_COLUMNS = "username,aliases,banned";
 const aliasesRowsCache = new Map();
 
 const normalizeAliasRow = (row) => {
@@ -17,6 +17,7 @@ const normalizeAliasRow = (row) => {
   return {
     username,
     aliases: [...new Set(aliases.filter((alias) => alias !== username))],
+    banned: Boolean(row?.banned),
   };
 };
 
@@ -75,16 +76,21 @@ const fetchUncachedAlias2Rows = async () => {
         normalizeUsername(row?.alias_username),
       ].filter(Boolean);
 
-      const existingAliases = aliasesByUsername.get(username) ?? new Set();
+      const existingEntry = aliasesByUsername.get(username) ?? {
+        aliases: new Set(),
+        banned: false,
+      };
       aliases.forEach((alias) => {
-        if (alias !== username) existingAliases.add(alias);
+        if (alias !== username) existingEntry.aliases.add(alias);
       });
-      aliasesByUsername.set(username, existingAliases);
+      existingEntry.banned = Boolean(existingEntry.banned || row?.banned);
+      aliasesByUsername.set(username, existingEntry);
     });
 
-    return Array.from(aliasesByUsername.entries()).map(([username, aliases]) => ({
+    return Array.from(aliasesByUsername.entries()).map(([username, entry]) => ({
       username,
-      aliases: [...aliases],
+      aliases: [...entry.aliases],
+      banned: Boolean(entry.banned),
     }));
   } catch {
     return [];
@@ -105,6 +111,7 @@ export const fetchAliasRows = async () =>
         mergedRows.set(row.username, {
           username: row.username,
           aliases: [...row.aliases],
+          banned: Boolean(row.banned),
         });
         return;
       }
@@ -112,6 +119,7 @@ export const fetchAliasRows = async () =>
       mergedRows.set(row.username, {
         username: row.username,
         aliases: [...new Set([...existing.aliases, ...row.aliases])],
+        banned: Boolean(existing.banned || row.banned),
       });
     });
 
