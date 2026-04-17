@@ -390,6 +390,16 @@ export const PlayerProfilePage = ({ username }) => {
           </div>
         )}
 
+        <div className="profileActionRow">
+          <Link
+            className="profilePuzzleHistoryLink"
+            to="/@/$username/puzzles"
+            params={{ username: canonicalUsername }}
+          >
+            View puzzle history
+          </Link>
+        </div>
+
         <div className="profileHighlights profileHighlightsTopRow">
           {!isBanned ? (
             <div className="profileBestWins">

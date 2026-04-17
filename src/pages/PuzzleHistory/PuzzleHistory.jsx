@@ -5,6 +5,7 @@ import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
 import { loadPuzzleLibrary } from "../../lib/puzzleLibrary";
 import { fetchPuzzleProgressPage } from "../../lib/supabasePuzzleProgress";
+import { normalizeUsername } from "../../utils/playerNames";
 import "./PuzzleHistory.css";
 
 const PAGE_SIZE = 20;
@@ -40,8 +41,11 @@ const buildHistoryEntries = (historyRows, puzzlesById) =>
 
 const resultLabel = (isCorrect) => (isCorrect ? "Correct" : "Incorrect");
 
-export const PuzzleHistoryPage = () => {
+export const PuzzleHistoryPage = ({ username = "" }) => {
   const { isAuthenticated, isLoading, user } = useAuth();
+  const routeUsername = useMemo(() => normalizeUsername(username), [username]);
+  const viewingOwnHistory = !routeUsername;
+  const targetUsername = viewingOwnHistory ? normalizeUsername(user?.username) : routeUsername;
   const [currentPage, setCurrentPage] = useState(1);
   const [historyRows, setHistoryRows] = useState([]);
   const [totalHistoryRows, setTotalHistoryRows] = useState(0);
@@ -52,7 +56,7 @@ export const PuzzleHistoryPage = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [user?.username]);
+  }, [targetUsername]);
 
   useEffect(() => {
     let isCurrent = true;
@@ -83,7 +87,7 @@ export const PuzzleHistoryPage = () => {
   }, []);
 
   useEffect(() => {
-    if (!isAuthenticated || !user?.username) {
+    if (!targetUsername) {
       setHistoryRows([]);
       setTotalHistoryRows(0);
       return;
@@ -96,7 +100,7 @@ export const PuzzleHistoryPage = () => {
       setError("");
 
       try {
-        const { rows, total } = await fetchPuzzleProgressPage(user.username, {
+        const { rows, total } = await fetchPuzzleProgressPage(targetUsername, {
           page: currentPage,
           pageSize: PAGE_SIZE,
         });
@@ -119,7 +123,7 @@ export const PuzzleHistoryPage = () => {
     return () => {
       isCurrent = false;
     };
-  }, [currentPage, isAuthenticated, user?.username]);
+  }, [currentPage, targetUsername]);
 
   const historyEntries = useMemo(
     () => buildHistoryEntries(historyRows, puzzlesById),
@@ -134,39 +138,55 @@ export const PuzzleHistoryPage = () => {
   const incorrectCount = historyRows.length - solvedCount;
   const pageStart = totalHistoryRows === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
   const pageEnd = Math.min(totalHistoryRows, currentPage * PAGE_SIZE);
+  const seoTitle = viewingOwnHistory
+    ? "Puzzle History"
+    : `${targetUsername} Puzzle History`;
+  const seoDescription = viewingOwnHistory
+    ? "Review your first recorded puzzle attempts and jump back into any puzzle."
+    : `Review ${targetUsername}'s recorded puzzle attempts and jump back into any puzzle.`;
+  const seoPath = viewingOwnHistory
+    ? "/solve/history"
+    : `/@/${encodeURIComponent(targetUsername)}/puzzles`;
+  const introText = viewingOwnHistory
+    ? "Review first attempts, spot misses quickly, and jump back into any position without digging through the solver."
+    : `Browse ${targetUsername}'s first recorded puzzle attempts, spot misses quickly, and jump back into any position without digging through the solver.`;
+  const ledgerIntro = viewingOwnHistory
+    ? "Every row is clickable and linked back to the original puzzle."
+    : `Every row is clickable and linked back to the original puzzle for ${targetUsername}.`;
+  const emptyText = viewingOwnHistory
+    ? "No puzzle history yet."
+    : `No recorded puzzle history for ${targetUsername} yet.`;
+  const emptyLinkLabel = viewingOwnHistory ? "Solve your first puzzle" : "Open player profile";
+  const backLinkTo = viewingOwnHistory ? "/solve" : "/@/$username";
+  const backLinkParams = viewingOwnHistory ? undefined : { username: targetUsername };
+  const backLinkLabel = viewingOwnHistory ? "Back to puzzles" : "Back to profile";
+  const needsLoginForOwnHistory = viewingOwnHistory && !isLoading && !isAuthenticated;
 
   return (
     <div className="puzzleHistoryPage">
-      <Seo
-        title="Puzzle History"
-        description="Review your first recorded puzzle attempts and jump back into any puzzle."
-        path="/solve/history"
-      />
+      <Seo title={seoTitle} description={seoDescription} path={seoPath} />
       <div className="puzzleHistoryShell">
         <header className="historyBanner">
           <div className="historyBannerCopy">
             <p className="puzzleHistoryEyebrow">Atomic tactics</p>
             <h1>Puzzle history</h1>
-            <p className="puzzleHistoryIntro">
-              Review first attempts, spot misses quickly, and jump back into any position without
-              digging through the solver.
-            </p>
+            <p className="puzzleHistoryIntro">{introText}</p>
           </div>
           <div className="historyBannerActions">
-            {user?.username ? (
+            {targetUsername ? (
               <div className="historyIdentityCard">
                 <span className="historyIdentityLabel">Player</span>
-                <strong>{user.username}</strong>
+                <strong>{targetUsername}</strong>
               </div>
             ) : null}
-            <Link className="puzzleHistoryBackLink" to="/solve">
-              Back to puzzles
+            <Link className="puzzleHistoryBackLink" to={backLinkTo} params={backLinkParams}>
+              {backLinkLabel}
             </Link>
           </div>
         </header>
 
-        {isLoading ? <div className="historyStateCard">Checking your login…</div> : null}
-        {!isLoading && !isAuthenticated ? (
+        {isLoading && viewingOwnHistory ? <div className="historyStateCard">Checking your login…</div> : null}
+        {needsLoginForOwnHistory ? (
           <div className="historyStateCard">
             <p>Log in with Lichess to view your puzzle history.</p>
             <Link className="puzzleHistoryBackLink" to="/solve">
@@ -174,9 +194,9 @@ export const PuzzleHistoryPage = () => {
             </Link>
           </div>
         ) : null}
-        {!isLoading && isAuthenticated && error ? <div className="historyStateCard errorText">{error}</div> : null}
+        {!needsLoginForOwnHistory && error ? <div className="historyStateCard errorText">{error}</div> : null}
 
-        {!isLoading && isAuthenticated && !error ? (
+        {!needsLoginForOwnHistory && !error ? (
           <>
             <section className="historyStatsStrip" aria-label="Puzzle history summary">
               <div className="historyStatCard">
@@ -202,9 +222,7 @@ export const PuzzleHistoryPage = () => {
                 <div>
                   <p className="historySectionEyebrow">Attempt ledger</p>
                   <h2>First attempts only</h2>
-                  <p className="historySectionIntro">
-                    Every row is clickable and linked back to the original puzzle.
-                  </p>
+                  <p className="historySectionIntro">{ledgerIntro}</p>
                 </div>
                 <PaginationRow
                   currentPage={currentPage}
@@ -273,9 +291,9 @@ export const PuzzleHistoryPage = () => {
                 </div>
               ) : (
                 <div className="historyStateCard">
-                  <p>No puzzle history yet.</p>
-                  <Link className="puzzleHistoryBackLink" to="/solve">
-                    Solve your first puzzle
+                  <p>{emptyText}</p>
+                  <Link className="puzzleHistoryBackLink" to={backLinkTo} params={backLinkParams}>
+                    {emptyLinkLabel}
                   </Link>
                 </div>
               )}
