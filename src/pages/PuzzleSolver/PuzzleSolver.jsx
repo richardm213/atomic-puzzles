@@ -32,6 +32,36 @@ const puzzleIndexFromParam = (puzzles, puzzleIdParam) => {
   return puzzleIndex;
 };
 
+const randomInt = (max) => {
+  if (!Number.isInteger(max) || max <= 0) return 0;
+
+  const cryptoObject = window.crypto;
+  if (!cryptoObject?.getRandomValues) {
+    return Math.floor(Math.random() * max);
+  }
+
+  const maxUint32 = 0x100000000;
+  const limit = maxUint32 - (maxUint32 % max);
+  const values = new Uint32Array(1);
+
+  do {
+    cryptoObject.getRandomValues(values);
+  } while (values[0] >= limit);
+
+  return values[0] % max;
+};
+
+const shuffleIndexes = (indexes) => {
+  const shuffled = [...indexes];
+
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = randomInt(index + 1);
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+
+  return shuffled;
+};
+
 const createMoveTree = (lines) => {
   const root = {
     children: new Map(),
@@ -223,6 +253,24 @@ export const PuzzleSolverPage = () => {
   const analysisModeRef = useRef(false);
   const mobileFeedbackIdRef = useRef(0);
   const activeSolutionOptionRef = useRef(null);
+  const upcomingPuzzleIndexesRef = useRef([]);
+
+  const getNextShuffledPuzzleIndex = useCallback(
+    (currentIndex) => {
+      if (puzzles.length === 0) return -1;
+      if (puzzles.length === 1) return 0;
+
+      if (upcomingPuzzleIndexesRef.current.length === 0) {
+        const candidateIndexes = puzzles
+          .map((_, index) => index)
+          .filter((index) => index !== currentIndex);
+        upcomingPuzzleIndexesRef.current = shuffleIndexes(candidateIndexes);
+      }
+
+      return upcomingPuzzleIndexesRef.current.pop() ?? -1;
+    },
+    [puzzles],
+  );
 
   const replaceUrlWithPuzzle = useCallback(
     (puzzleId) => {
@@ -269,6 +317,10 @@ export const PuzzleSolverPage = () => {
   }, []);
 
   useEffect(() => {
+    upcomingPuzzleIndexesRef.current = [];
+  }, [puzzles]);
+
+  useEffect(() => {
     setBoardState((prev) => {
       if (loadingError) {
         return {
@@ -296,7 +348,7 @@ export const PuzzleSolverPage = () => {
 
     const indexFromRoute = puzzleIndexFromParam(puzzles, routePuzzleId);
     const initialIndex =
-      indexFromRoute >= 0 ? indexFromRoute : Math.floor(Math.random() * puzzles.length);
+      indexFromRoute >= 0 ? indexFromRoute : getNextShuffledPuzzleIndex(-1);
 
     setHistory([initialIndex]);
     setHistoryIndex(0);
@@ -307,7 +359,7 @@ export const PuzzleSolverPage = () => {
         replaceUrlWithPuzzle(puzzleId);
       }
     }
-  }, [puzzles, historyIndex, routePuzzleId, replaceUrlWithPuzzle]);
+  }, [puzzles, historyIndex, routePuzzleId, replaceUrlWithPuzzle, getNextShuffledPuzzleIndex]);
 
   useEffect(() => {
     if (puzzles.length === 0) return;
@@ -353,6 +405,14 @@ export const PuzzleSolverPage = () => {
   useEffect(() => {
     analysisModeRef.current = analysisMode;
   }, [analysisMode]);
+
+  useEffect(() => {
+    if (activePuzzleIndex < 0) return;
+
+    upcomingPuzzleIndexesRef.current = upcomingPuzzleIndexesRef.current.filter(
+      (index) => index !== activePuzzleIndex,
+    );
+  }, [activePuzzleIndex]);
 
   useEffect(() => {
     resetPuzzleUiState();
@@ -406,7 +466,8 @@ export const PuzzleSolverPage = () => {
       return;
     }
 
-    const nextIndex = Math.floor(Math.random() * puzzles.length);
+    const nextIndex = getNextShuffledPuzzleIndex(activePuzzleIndex);
+    if (nextIndex < 0) return;
 
     const truncated = history.slice(0, historyIndex + 1);
     setHistory([...truncated, nextIndex]);
