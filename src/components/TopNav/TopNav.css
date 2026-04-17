@@ -70,14 +70,18 @@
 .navSettingsButton {
   width: 34px;
   height: 34px;
-  border: 1px solid var(--color-primary);
-  background: var(--color-primary);
-  color: var(--color-on-primary);
+  border: 1px solid var(--color-border-strong);
+  background: transparent;
+  color: var(--color-text);
   border-radius: var(--radius-ui);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+.navSettingsButton:hover {
+  background: var(--color-panel-strong);
 }
 
 .navSettingsButton.open {
@@ -324,6 +328,50 @@
   border-color: var(--color-primary);
 }
 
+.navAuth {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.navAuthProfile {
+  color: var(--color-heading);
+  text-decoration: none;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.navAuthProfile:hover {
+  text-decoration: underline;
+}
+
+.navAuthButton {
+  min-height: 34px;
+  border: 1px solid var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border-radius: var(--radius-ui);
+  padding: 0 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.navAuthButton:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.navAuthLogout {
+  border-color: var(--color-border-strong);
+  background: transparent;
+  color: var(--color-text);
+}
+
+.navAuthLogout:hover {
+  background: var(--color-panel-strong);
+}
+
 @media (max-width: 700px) {
   .topNav {
     flex-wrap: wrap;
@@ -375,6 +423,10 @@
   .navSearch.open input {
     width: min(240px, calc(100vw - 32px));
   }
+
+  .navAuth {
+    margin-left: auto;
+  }
 }
 
 @media (max-width: 430px) {
@@ -399,6 +451,14 @@
     grid-row: 2;
     width: 100%;
     order: 2;
+  }
+
+  .navAuth {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    justify-content: flex-end;
+    width: 100%;
+    padding-top: 4px;
   }
 
   .navSearch.open,

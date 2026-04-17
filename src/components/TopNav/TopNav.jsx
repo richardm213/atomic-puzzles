@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { getBoardThemeColors, useAppSettings } from "../../context/AppSettings";
+import { useAuth } from "../../context/AuthContext";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { normalizeUsername } from "../../utils/playerNames";
 import "./TopNav.css";
@@ -13,6 +14,7 @@ export const TopNav = () => {
   const settingsRef = useRef(null);
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const { isAuthenticated, isLoading, user, login, logout } = useAuth();
   const {
     theme,
     setTheme,
@@ -44,6 +46,8 @@ export const TopNav = () => {
     boardOverrideLightSquare,
     boardOverrideDarkSquare,
   );
+  const currentLocation = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  const lichessProfilePath = user?.username ? `/@/${normalizeUsername(user.username)}` : "/";
 
   const handleBoardThemeChange = (event) => {
     setBoardTheme(event.target.value);
@@ -176,6 +180,33 @@ export const TopNav = () => {
             </button>
           </form>
         </div>
+        <nav className="topNavLinks" aria-label="Main navigation">
+          <Link to="/rankings">Rankings</Link>
+          <Link to="/solve">Puzzles</Link>
+          <Link to="/recent">Recent</Link>
+          <Link to="/h2h">H2H</Link>
+        </nav>
+        <div className="navAuth" aria-live="polite">
+          {isAuthenticated && user ? (
+            <>
+              <Link className="navAuthProfile" to={lichessProfilePath}>
+                {user.username}
+              </Link>
+              <button className="navAuthButton navAuthLogout" type="button" onClick={logout}>
+                Log out
+              </button>
+            </>
+          ) : (
+            <button
+              className="navAuthButton"
+              type="button"
+              onClick={() => login(currentLocation)}
+              disabled={isLoading}
+            >
+              {isLoading ? "Checking..." : "Login"}
+            </button>
+          )}
+        </div>
         <div className="navSettings" ref={settingsRef}>
           <button
             className={`navSettingsButton ${settingsOpen ? "open" : ""}`}
@@ -274,12 +305,6 @@ export const TopNav = () => {
             </div>
           ) : null}
         </div>
-        <nav className="topNavLinks" aria-label="Main navigation">
-          <Link to="/rankings">Rankings</Link>
-          <Link to="/solve">Puzzles</Link>
-          <Link to="/recent">Recent</Link>
-          <Link to="/h2h">H2H</Link>
-        </nav>
       </div>
     </header>
   );

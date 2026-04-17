@@ -15,6 +15,7 @@ This project loads atomic chess positions from Supabase, renders an interactive 
   - `←` step backward through played moves
   - `→` step forward through played moves
 - Quick link to analyze the current FEN on Lichess.
+- Login with Lichess using OAuth2 PKCE.
 
 ## Tech Stack
 
@@ -81,9 +82,17 @@ Create a `.env.local` file with:
 ```bash
 VITE_SUPABASE_URL=https://<your-project-ref>.supabase.co
 VITE_SUPABASE_ANON_KEY=<your-anon-key>
+VITE_LICHESS_CLIENT_ID=<optional-client-id>
+# Optional extra scopes, space-separated
+VITE_LICHESS_OAUTH_SCOPE=
 # Optional (defaults to "puzzles")
 VITE_SUPABASE_PUZZLES_TABLE=puzzles
 ```
+
+Notes:
+
+- `VITE_LICHESS_CLIENT_ID` defaults to the current host, which is usually enough for a pure client-side Lichess OAuth app.
+- The login callback route is `/auth/lichess/callback`, so keep that path available in local and production environments.
 
 The app fetches rows from `VITE_SUPABASE_PUZZLES_TABLE` via Supabase REST API and expects each row to include:
 

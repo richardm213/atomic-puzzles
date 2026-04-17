@@ -152,12 +152,12 @@ export const HomePage = () => {
         <div className="homeHeroCopy">
           <div className="homeKicker">
             <img src={appAssetPath("/favicon.ico")} alt="" width="24" height="24" />
-            Atomic chess study room
+            Atomic puzzles
           </div>
-          <h1 id="home-title">Find the move that makes the board go boom.</h1>
+          <h1 id="home-title">Find the move that makes your opponent go boom</h1>
           <p className="homeIntro">
             Solve atomic puzzles, follow top-player matches, and use the ratings to get a better
-            read on who is dangerous, who is farming, and whose ideas actually hold up.
+            read on who is dangerous, who is farming, and who has ideas that actually hold up.
           </p>
 
           <div className="homeHeroActions">
@@ -195,7 +195,7 @@ export const HomePage = () => {
             <picture
               key={image.src}
               className="homePuzzleCard"
-              style={{ "--slide-delay": `${index * 8}s` }}
+              style={{ "--slide-delay": `${index * 7}s` }}
               aria-hidden="true"
             >
               <img

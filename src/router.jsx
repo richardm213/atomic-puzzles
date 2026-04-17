@@ -13,6 +13,7 @@ import { RecentMatchesPage } from "./pages/RecentMatches/RecentMatches";
 import { PlayerProfilePage } from "./pages/PlayerProfile/PlayerProfile";
 import { PuzzleSolverPage } from "./pages/PuzzleSolver/PuzzleSolver";
 import { H2HPage } from "./pages/H2H/H2H";
+import { AuthCallbackPage } from "./pages/AuthCallback/AuthCallback";
 
 const appBasePath = (() => {
   const baseUrl = import.meta.env.BASE_URL || "/";
@@ -83,6 +84,12 @@ const profileRoute = createRoute({
   },
 });
 
+const lichessAuthCallbackRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/auth/lichess/callback",
+  component: AuthCallbackPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   rankingsRoute,
@@ -93,6 +100,7 @@ const routeTree = rootRoute.addChildren([
   solveRoute,
   solveWithIdRoute,
   profileRoute,
+  lichessAuthCallbackRoute,
 ]);
 
 export const router = createRouter({

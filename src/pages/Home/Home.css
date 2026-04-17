@@ -203,7 +203,7 @@
   border-radius: var(--radius-ui);
   overflow: hidden;
   opacity: 0;
-  animation: homePuzzleFade 72s ease-in-out infinite;
+  animation: homePuzzleFade 49s ease-in-out infinite;
   animation-delay: var(--slide-delay);
   will-change: opacity;
 }
@@ -227,6 +227,11 @@
   }
 
   12.5%,
+  14.285% {
+    opacity: 1;
+  }
+
+  14.286%,
   100% {
     opacity: 0;
   }
