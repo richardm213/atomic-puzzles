@@ -8,8 +8,13 @@ export const App = () => (
   <AuthProvider>
     <AppSettingsProvider>
       <div className="appShell">
+        <a className="skipLink" href="#main-content">
+          Skip to content
+        </a>
         <TopNav />
-        <Outlet />
+        <main id="main-content" className="appMain">
+          <Outlet />
+        </main>
       </div>
     </AppSettingsProvider>
   </AuthProvider>

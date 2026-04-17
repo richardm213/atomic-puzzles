@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { modeOptions } from "../../constants/matches";
 import { useRankingsByMonth } from "../../hooks/useRankingsByMonth";
 import { monthDateFromMonthKey } from "../../lib/supabaseLb";
+import { Seo } from "../../components/Seo/Seo";
 import "./Rankings.css";
 
 const monthNames = [
@@ -161,6 +162,11 @@ const LeaderboardView = () => {
 
   return (
     <div className="rankingsPage">
+      <Seo
+        title="Atomic Chess Rankings"
+        description="Browse monthly atomic chess rankings for blitz and bullet, with merged aliases and rating eligibility rules."
+        path="/rankings"
+      />
       <div className="panel rankingsPanel">
         <h1>Atomic Monthly Leaderboards</h1>
         <div className="controls rankingsControls">

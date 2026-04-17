@@ -7,6 +7,29 @@ import { appAssetPath } from "../../utils/appAssetPath";
 import { normalizeUsername } from "../../utils/playerNames";
 import "./TopNav.css";
 
+const navItems = [
+  {
+    to: "/rankings",
+    label: "Rankings",
+    isActive: (pathname) => pathname === "/rankings",
+  },
+  {
+    to: "/solve",
+    label: "Puzzles",
+    isActive: (pathname) => pathname === "/solve" || pathname.startsWith("/solve/"),
+  },
+  {
+    to: "/recent",
+    label: "Recent",
+    isActive: (pathname) => pathname === "/recent" || pathname === "/matches",
+  },
+  {
+    to: "/h2h",
+    label: "H2H",
+    isActive: (pathname) => pathname === "/h2h" || pathname.startsWith("/h2h/"),
+  },
+];
+
 export const TopNav = () => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -138,8 +161,14 @@ export const TopNav = () => {
 
   return (
     <header className="topNav">
-      <Link className="homeBrand" to="/" aria-label="Go to home page">
+      <Link
+        className={`homeBrand ${pathname === "/" ? "isActive" : ""}`}
+        to="/"
+        aria-label="Go to Atomic Puzzles home page"
+        aria-current={pathname === "/" ? "page" : undefined}
+      >
         <img src={appAssetPath("/favicon.ico")} alt="Atomic Puzzles" width="24" height="24" />
+        <span>Atomic Puzzles</span>
       </Link>
       <div className="topNavCenter">
         <div className="navSearchSlot">
@@ -183,10 +212,19 @@ export const TopNav = () => {
           </form>
         </div>
         <nav className="topNavLinks" aria-label="Main navigation">
-          <Link to="/rankings">Rankings</Link>
-          <Link to="/solve">Puzzles</Link>
-          <Link to="/recent">Recent</Link>
-          <Link to="/h2h">H2H</Link>
+          {navItems.map((item) => {
+            const active = item.isActive(pathname);
+            return (
+              <Link
+                key={item.to}
+                className={active ? "isActive" : ""}
+                to={item.to}
+                aria-current={active ? "page" : undefined}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
         </nav>
         <div className="navAuth" aria-live="polite">
           {isAuthenticated && user ? (

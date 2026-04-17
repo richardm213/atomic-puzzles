@@ -4,6 +4,7 @@ import { useAppSettings } from "../../context/AppSettings";
 import { resolveUsernameInput } from "../../lib/searchUsernames";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { normalizeUsername } from "../../utils/playerNames";
+import { Seo } from "../../components/Seo/Seo";
 import "./Home.css";
 
 const featureLinks = [
@@ -150,6 +151,19 @@ export const HomePage = () => {
 
   return (
     <div className="homePage">
+      <Seo
+        title="Atomic Chess Puzzles, Rankings, and Match Tracker"
+        description="Train with atomic chess puzzles, browse monthly rankings, track recent matches, and look up player profiles in one place."
+        path="/"
+        structuredData={{
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: "Atomic Puzzles",
+          url: typeof window === "undefined" ? "/" : window.location.origin,
+          description:
+            "Atomic chess puzzles, rankings, recent matches, and player profiles for the Lichess atomic community.",
+        }}
+      />
       <section className="homeHero" aria-labelledby="home-title">
         <div className="homeHeroCopy">
           <div className="homeKicker">
@@ -215,6 +229,13 @@ export const HomePage = () => {
       </section>
 
       <section className="homeContent" aria-label="Atomic training tools and notes">
+        <div className="homeSectionIntro">
+          <h2>Explore Atomic Chess Tools</h2>
+          <p>
+            Use the sections below to solve atomic chess puzzles, follow player form, and compare
+            results across the current pool.
+          </p>
+        </div>
         <div className="homeFeatureGrid" aria-label="Primary tools">
           {featureLinks.map((feature) => (
             <Link key={feature.to} className="homeFeatureCard" to={feature.to}>

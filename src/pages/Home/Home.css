@@ -251,6 +251,23 @@
   display: block;
 }
 
+.homeSectionIntro {
+  margin: 0 0 16px;
+}
+
+.homeSectionIntro h2 {
+  margin: 0 0 8px;
+  color: var(--color-heading);
+  font-size: 26px;
+  line-height: 1.15;
+}
+
+.homeSectionIntro p {
+  margin: 0;
+  color: var(--color-muted);
+  line-height: 1.55;
+}
+
 .homeFeatureCard,
 .homeNotes {
   border: 1px solid var(--color-border);

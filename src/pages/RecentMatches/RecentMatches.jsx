@@ -33,6 +33,7 @@ import {
 import { loadRawMatchesByMode } from "../../lib/matchData";
 import { resolveUsernameInputs } from "../../lib/searchUsernames";
 import { toggleExpandedMatchKey } from "../../hooks/usePlayerProfileData";
+import { Seo } from "../../components/Seo/Seo";
 
 const recentModeOptions = modeOptions;
 const ratingFilterTypeOptions = ["both", "average"];
@@ -348,6 +349,11 @@ export const RecentMatchesPage = () => {
 
   return (
     <div className="rankingsPage">
+      <Seo
+        title="Recent Atomic Chess Matches"
+        description="Filter recent atomic chess matches by player, rating, source, date, time control, and match length."
+        path="/recent"
+      />
       <div className="panel rankingsPanel recentMatchesPanel">
         <h1>Recent Matches</h1>
         <p>Newest atomic matches in a card view.</p>

@@ -16,8 +16,21 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 10px;
   position: relative;
   z-index: 31;
+  color: var(--color-heading);
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.homeBrand:hover {
+  text-decoration: none;
+}
+
+.homeBrand.isActive span {
+  color: var(--color-heading);
 }
 
 .topNavCenter {
@@ -45,6 +58,12 @@
 .topNavLinks a:hover {
   color: var(--color-heading);
   text-decoration: underline;
+}
+
+.topNavLinks a.isActive {
+  color: var(--color-heading);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
 }
 
 :root[data-theme="light"] .topNav {
@@ -258,6 +277,12 @@
   font-size: 16px;
   height: 34px;
   line-height: 1;
+}
+
+@media (max-width: 840px) {
+  .homeBrand span {
+    display: none;
+  }
 }
 
 .navSearch input {

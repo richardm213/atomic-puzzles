@@ -43,6 +43,7 @@ import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { ProfileMetricCard } from "../../components/ProfileMetricCard/ProfileMetricCard";
 import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFilterChecks";
 import { TimeControlFields } from "../../components/TimeControlFields/TimeControlFields";
+import { Seo } from "../../components/Seo/Seo";
 
 const countOptions = [5, 10, 20];
 
@@ -347,6 +348,11 @@ export const PlayerProfilePage = ({ username }) => {
 
   return (
     <div className="rankingsPage">
+      <Seo
+        title={`${canonicalUsername} Atomic Chess Profile`}
+        description={`View ${canonicalUsername}'s atomic chess profile, ratings, monthly ranks, best wins, aliases, and recent matches.`}
+        path={`/@/${encodeURIComponent(canonicalUsername)}`}
+      />
       <div className="panel rankingsPanel playerProfilePanel">
         <h1>{canonicalUsername}</h1>
 

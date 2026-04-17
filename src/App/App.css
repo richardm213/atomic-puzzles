@@ -4,6 +4,29 @@
   isolation: isolate;
 }
 
+.skipLink {
+  position: absolute;
+  left: 18px;
+  top: 12px;
+  z-index: 60;
+  transform: translateY(-160%);
+  padding: 10px 14px;
+  border-radius: var(--radius-ui);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-weight: 700;
+  text-decoration: none;
+  transition: transform 140ms ease;
+}
+
+.skipLink:focus {
+  transform: translateY(0);
+}
+
+.appMain {
+  display: block;
+}
+
 .appShell::before,
 .appShell::after {
   content: "";

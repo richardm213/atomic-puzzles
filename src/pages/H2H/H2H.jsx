@@ -12,6 +12,7 @@ import { formatLocalDateTime, formatScore } from "../../utils/formatters";
 import { LichessGameLink } from "../../components/LichessGameLink/LichessGameLink";
 import { MatchDetails } from "../../components/MatchDetails/MatchDetails";
 import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFilterChecks";
+import { Seo } from "../../components/Seo/Seo";
 import {
   ratingsForPlayers,
   sourceKeyFromMatch,
@@ -308,9 +309,20 @@ export const H2HPage = () => {
   const winsPlayer2 = filteredMatches.filter((match) => match.winner === loadedPlayer2).length;
   const draws = filteredMatches.filter((match) => match.winner === "Draw").length;
   const lastMatch = filteredMatches[0] || null;
+  const seoPath =
+    loadedPlayer1 && loadedPlayer2 ? `/h2h/${matchupToSlug(loadedPlayer1, loadedPlayer2)}` : "/h2h";
+  const seoTitle =
+    loadedPlayer1 && loadedPlayer2
+      ? `${loadedPlayer1} vs ${loadedPlayer2} Atomic Chess Head-to-Head`
+      : "Atomic Chess Head-to-Head";
+  const seoDescription =
+    loadedPlayer1 && loadedPlayer2
+      ? `Compare ${loadedPlayer1} and ${loadedPlayer2} across atomic chess matches, scores, and blitz and bullet splits.`
+      : "Compare two atomic chess players side by side across recent results, total score, and time-control splits.";
 
   return (
     <div className="rankingsPage">
+      <Seo title={seoTitle} description={seoDescription} path={seoPath} />
       <div className="panel rankingsPanel h2hPanel">
         <section className="h2hHero">
           <div className="h2hHeroCopy">

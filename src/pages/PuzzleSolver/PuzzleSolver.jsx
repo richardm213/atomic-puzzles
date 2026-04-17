@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { Chessboard } from "../../components/Chessboard/Chessboard";
 import { loadPuzzleLibrary } from "../../lib/puzzleLibrary";
+import { Seo } from "../../components/Seo/Seo";
 import "./PuzzleSolver.css";
 
 const lichessAnalysisUrl = (fen) => {
@@ -649,6 +650,15 @@ export const PuzzleSolverPage = () => {
 
   return (
     <div className="page puzzlePage">
+      <Seo
+        title={activePuzzleId ? `Atomic Chess Puzzle ${activePuzzleId}` : "Atomic Chess Puzzles"}
+        description={
+          activePuzzleId
+            ? `Solve atomic chess puzzle ${activePuzzleId} and play through the full forcing line.`
+            : "Solve atomic chess puzzles drawn from real games and community analysis."
+        }
+        path={activePuzzleId ? `/solve/${activePuzzleId}` : "/solve"}
+      />
       <div className="panel puzzlePanel">
         <div className="puzzleHeader">
           <div>

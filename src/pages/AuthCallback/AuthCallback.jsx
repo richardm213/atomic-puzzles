@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
+import { Seo } from "../../components/Seo/Seo";
 
 const resolveFallbackPath = () => {
   const baseUrl = import.meta.env.BASE_URL || "/";
@@ -68,12 +69,18 @@ export const AuthCallbackPage = () => {
   }, [clearError, clearPostLoginRedirect, finishLogin, getDebugSnapshot]);
 
   return (
-    <main className="rankingsPage">
+    <div className="rankingsPage">
+      <Seo
+        title="Lichess Login"
+        description="Finish Lichess login for Atomic Puzzles."
+        path="/auth/lichess/callback"
+        robots="noindex,nofollow"
+      />
       <section className="panel" aria-live="polite">
         <span className="statusLabel">Lichess Login</span>
         <h1>Authorizing</h1>
         <p>{message}</p>
       </section>
-    </main>
+    </div>
   );
 };
