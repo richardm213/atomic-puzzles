@@ -13,6 +13,7 @@ import {
 } from "../../constants/matches";
 import { loadAliasesLookup } from "../../lib/aliasesLookup";
 import { resolveUsernameInput } from "../../lib/searchUsernames";
+import { isRegisteredSiteUser } from "../../lib/supabaseUsers";
 import { toBoundedLengthRange, useMatchLengthRange } from "../../hooks/useMatchLengthRange";
 import {
   filterMatches,
@@ -118,6 +119,7 @@ export const PlayerProfilePage = ({ username }) => {
   const [sourceFilters, setSourceFilters] = useState(defaultSourceFilters);
   const [timeControlInitialFilter, setTimeControlInitialFilter] = useState("all");
   const [timeControlIncrementFilter, setTimeControlIncrementFilter] = useState("all");
+  const [isHistoryAvailable, setIsHistoryAvailable] = useState(false);
   const [loadingMatches, setLoadingMatches] = useState(false);
   const matchRequestIdRef = useRef(0);
   const bestWinRequestKeyByModeRef = useRef({});
@@ -187,6 +189,32 @@ export const PlayerProfilePage = ({ username }) => {
       isCurrent = false;
     };
   }, []);
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    const loadHistoryAvailability = async () => {
+      if (!canonicalUsername) {
+        setIsHistoryAvailable(false);
+        return;
+      }
+
+      try {
+        const isRegistered = await isRegisteredSiteUser(canonicalUsername);
+        if (!isCurrent) return;
+        setIsHistoryAvailable(isRegistered);
+      } catch {
+        if (!isCurrent) return;
+        setIsHistoryAvailable(false);
+      }
+    };
+
+    loadHistoryAvailability();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [canonicalUsername]);
 
   const runMatchSearch = async (mode, nextAppliedFilters, nextPage = 1) => {
     const requestId = matchRequestIdRef.current + 1;
@@ -390,15 +418,17 @@ export const PlayerProfilePage = ({ username }) => {
           </div>
         )}
 
-        <div className="profileActionRow">
-          <Link
-            className="profilePuzzleHistoryLink"
-            to="/@/$username/puzzles"
-            params={{ username: canonicalUsername }}
-          >
-            View puzzle history
-          </Link>
-        </div>
+        {isHistoryAvailable ? (
+          <div className="profileActionRow">
+            <Link
+              className="profilePuzzleHistoryLink"
+              to="/@/$username/puzzles"
+              params={{ username: canonicalUsername }}
+            >
+              View puzzle history
+            </Link>
+          </div>
+        ) : null}
 
         <div className="profileHighlights profileHighlightsTopRow">
           {!isBanned ? (

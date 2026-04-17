@@ -5,6 +5,7 @@ const USERS_TABLE = import.meta.env.VITE_SUPABASE_USERS_TABLE?.trim() || "users"
 const USER_COLUMNS = "username, created_at";
 const USER_CONFLICT_COLUMNS = "username";
 const userEnsureRequests = new Map();
+const userLookupRequests = new Map();
 
 const getUserByUsername = async (username) => {
   const supabase = getSupabaseClient();
@@ -19,6 +20,30 @@ const getUserByUsername = async (username) => {
   }
 
   return data;
+};
+
+export const fetchSupabaseUser = async (username) => {
+  const normalizedUsername = normalizeUsername(username);
+  if (!normalizedUsername) return null;
+
+  const inFlightRequest = userLookupRequests.get(normalizedUsername);
+  if (inFlightRequest) {
+    return inFlightRequest;
+  }
+
+  const request = getUserByUsername(normalizedUsername).finally(() => {
+    if (userLookupRequests.get(normalizedUsername) === request) {
+      userLookupRequests.delete(normalizedUsername);
+    }
+  });
+
+  userLookupRequests.set(normalizedUsername, request);
+  return request;
+};
+
+export const isRegisteredSiteUser = async (username) => {
+  const user = await fetchSupabaseUser(username);
+  return Boolean(user?.username);
 };
 
 const ensureSupabaseUserRecord = async (normalizedUsername) => {

@@ -5,6 +5,7 @@ import { faClockRotateLeft, faRotateLeft } from "@fortawesome/free-solid-svg-ico
 import { Chessboard } from "../../components/Chessboard/Chessboard";
 import { loadPuzzleLibrary } from "../../lib/puzzleLibrary";
 import { fetchAttemptedPuzzleIds, recordPuzzleProgress } from "../../lib/supabasePuzzleProgress";
+import { isRegisteredSiteUser } from "../../lib/supabaseUsers";
 import { useAuth } from "../../context/AuthContext";
 import { Seo } from "../../components/Seo/Seo";
 import "./PuzzleSolver.css";
@@ -242,6 +243,7 @@ export const PuzzleSolverPage = () => {
   const navigate = useNavigate();
   const { puzzleId: routePuzzleId = "" } = useParams({ strict: false });
   const { isAuthenticated, user } = useAuth();
+  const [canViewHistory, setCanViewHistory] = useState(false);
   const [puzzles, setPuzzles] = useState([]);
   const [attemptedPuzzleIds, setAttemptedPuzzleIds] = useState(() => new Set());
   const [loadingError, setLoadingError] = useState("");
@@ -264,6 +266,32 @@ export const PuzzleSolverPage = () => {
   const upcomingPuzzleIndexesRef = useRef([]);
   const progressWriteQueueRef = useRef(Promise.resolve());
   const attemptedPuzzleIdsRef = useRef(new Set());
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    const loadHistoryAccess = async () => {
+      if (!isAuthenticated || !user?.username) {
+        setCanViewHistory(false);
+        return;
+      }
+
+      try {
+        const isRegistered = await isRegisteredSiteUser(user.username);
+        if (!isCurrent) return;
+        setCanViewHistory(isRegistered);
+      } catch {
+        if (!isCurrent) return;
+        setCanViewHistory(false);
+      }
+    };
+
+    loadHistoryAccess();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [isAuthenticated, user?.username]);
 
   const getNextShuffledPuzzleIndex = useCallback(
     (currentIndex) => {
@@ -947,7 +975,7 @@ export const PuzzleSolverPage = () => {
             <h1>Find the best move</h1>
           </div>
           <div className="puzzleHeaderAside">
-            {isAuthenticated ? (
+            {canViewHistory ? (
               <Link className="puzzleHistoryLink" to="/solve/history">
                 <FontAwesomeIcon icon={faClockRotateLeft} />
                 <span>History</span>

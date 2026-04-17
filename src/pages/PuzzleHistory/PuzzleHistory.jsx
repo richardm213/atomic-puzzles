@@ -5,6 +5,7 @@ import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
 import { loadPuzzleLibrary } from "../../lib/puzzleLibrary";
 import { fetchPuzzleProgressPage } from "../../lib/supabasePuzzleProgress";
+import { isRegisteredSiteUser } from "../../lib/supabaseUsers";
 import { normalizeUsername } from "../../utils/playerNames";
 import "./PuzzleHistory.css";
 
@@ -52,6 +53,8 @@ export const PuzzleHistoryPage = ({ username = "" }) => {
   const [puzzlesById, setPuzzlesById] = useState(new Map());
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [loadingPuzzles, setLoadingPuzzles] = useState(false);
+  const [isRegistrationCheckLoading, setIsRegistrationCheckLoading] = useState(false);
+  const [canViewHistory, setCanViewHistory] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -87,7 +90,7 @@ export const PuzzleHistoryPage = ({ username = "" }) => {
   }, []);
 
   useEffect(() => {
-    if (!targetUsername) {
+    if (!targetUsername || !canViewHistory) {
       setHistoryRows([]);
       setTotalHistoryRows(0);
       return;
@@ -123,7 +126,41 @@ export const PuzzleHistoryPage = ({ username = "" }) => {
     return () => {
       isCurrent = false;
     };
-  }, [currentPage, targetUsername]);
+  }, [canViewHistory, currentPage, targetUsername]);
+
+  useEffect(() => {
+    if (!targetUsername) {
+      setCanViewHistory(false);
+      return;
+    }
+
+    let isCurrent = true;
+
+    const verifyHistoryAccess = async () => {
+      setCanViewHistory(false);
+      setIsRegistrationCheckLoading(true);
+
+      try {
+        const isRegistered = await isRegisteredSiteUser(targetUsername);
+        if (!isCurrent) return;
+        setCanViewHistory(isRegistered);
+      } catch (loadError) {
+        if (!isCurrent) return;
+        setCanViewHistory(false);
+        setError(
+          loadError instanceof Error ? loadError.message : "Failed to verify puzzle history access.",
+        );
+      } finally {
+        if (isCurrent) setIsRegistrationCheckLoading(false);
+      }
+    };
+
+    verifyHistoryAccess();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [targetUsername]);
 
   const historyEntries = useMemo(
     () => buildHistoryEntries(historyRows, puzzlesById),
@@ -161,6 +198,13 @@ export const PuzzleHistoryPage = ({ username = "" }) => {
   const backLinkParams = viewingOwnHistory ? undefined : { username: targetUsername };
   const backLinkLabel = viewingOwnHistory ? "Back to puzzles" : "Back to profile";
   const needsLoginForOwnHistory = viewingOwnHistory && !isLoading && !isAuthenticated;
+  const isCheckingAccess = isLoading || isRegistrationCheckLoading;
+  const isRegisteredViewer = Boolean(targetUsername) && canViewHistory;
+  const shouldHideHistory = !needsLoginForOwnHistory && !error && !isCheckingAccess && !isRegisteredViewer;
+  const unavailableMessage = viewingOwnHistory
+    ? "Puzzle history is only available for registered site users."
+    : `${targetUsername} does not have a registered site account yet, so puzzle history is hidden.`;
+  const loadingMessage = viewingOwnHistory ? "Checking your history access…" : "Checking history access…";
 
   return (
     <div className="puzzleHistoryPage">
@@ -185,7 +229,7 @@ export const PuzzleHistoryPage = ({ username = "" }) => {
           </div>
         </header>
 
-        {isLoading && viewingOwnHistory ? <div className="historyStateCard">Checking your login…</div> : null}
+        {isCheckingAccess ? <div className="historyStateCard">{loadingMessage}</div> : null}
         {needsLoginForOwnHistory ? (
           <div className="historyStateCard">
             <p>Log in with Lichess to view your puzzle history.</p>
@@ -195,8 +239,16 @@ export const PuzzleHistoryPage = ({ username = "" }) => {
           </div>
         ) : null}
         {!needsLoginForOwnHistory && error ? <div className="historyStateCard errorText">{error}</div> : null}
+        {shouldHideHistory ? (
+          <div className="historyStateCard">
+            <p>{unavailableMessage}</p>
+            <Link className="puzzleHistoryBackLink" to={backLinkTo} params={backLinkParams}>
+              {backLinkLabel}
+            </Link>
+          </div>
+        ) : null}
 
-        {!needsLoginForOwnHistory && !error ? (
+        {!needsLoginForOwnHistory && !error && !isCheckingAccess && isRegisteredViewer ? (
           <>
             <section className="historyStatsStrip" aria-label="Puzzle history summary">
               <div className="historyStatCard">
