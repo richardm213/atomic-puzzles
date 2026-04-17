@@ -121,13 +121,11 @@
   align-items: center;
   justify-content: center;
   width: 100%;
+  min-height: 46px;
+  padding: 10px 14px;
   border: 1px solid var(--color-primary);
   border-radius: var(--radius-ui);
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--color-primary) 88%, var(--color-panel-strong)),
-    var(--color-panel-strong)
-  );
+  background: var(--color-primary);
   color: var(--color-on-primary);
   font-weight: 800;
   text-decoration: none;
@@ -136,21 +134,19 @@
     transform 140ms ease,
     border-color 140ms ease,
     background-color 140ms ease,
-    color 140ms ease,
-    box-shadow 140ms ease;
+    color 140ms ease;
 }
 
 .puzzlePrimaryAction:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 8px 22px color-mix(in srgb, var(--color-primary) 22%, transparent);
+  transform: none;
 }
 
 .puzzlePrimaryAction:disabled {
-  border-color: var(--color-border);
-  background: var(--color-panel-strong);
-  color: var(--color-subtle);
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
   cursor: not-allowed;
-  box-shadow: none;
+  opacity: 0.45;
 }
 
 .puzzleActions button {

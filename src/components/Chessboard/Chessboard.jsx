@@ -292,7 +292,6 @@ export const Chessboard = ({
   analysisMode = false,
   autoRetryWrongMoves = false,
   solutionNavigation,
-  retrySignal,
   onNavigateHandled,
   onAttemptResolved,
   onStateChange,
@@ -422,6 +421,9 @@ export const Chessboard = ({
     return state;
   };
 
+  const isAnalysisModeActive = () => analysisModeRef.current;
+  const isSolutionPlaybackLocked = () => showSolutionRef.current && !isAnalysisModeActive();
+
   const getAnalysisPositionForMove = (position, from) => {
     const piece = position.board.get(from);
     if (!piece) return null;
@@ -441,7 +443,7 @@ export const Chessboard = ({
       };
     }
 
-    if (!analysisModeRef.current) {
+    if (!isAnalysisModeActive()) {
       return {
         color: position.outcome() ? undefined : position.turn,
         dests: chessgroundDests(position),
@@ -500,7 +502,7 @@ export const Chessboard = ({
   };
 
   const recomputeTrainingFromHistory = (targetIndex) => {
-    if (!trainingEnabledRef.current || analysisModeRef.current) {
+    if (!trainingEnabledRef.current || isAnalysisModeActive()) {
       candidateLinesRef.current = [];
       progressRef.current = 0;
       puzzleSolvedRef.current = false;
@@ -536,7 +538,7 @@ export const Chessboard = ({
     if (!created.ok) return;
 
     history.index = targetIndex;
-    moveLockRef.current = showSolutionRef.current && !analysisModeRef.current;
+    moveLockRef.current = isSolutionPlaybackLocked();
     recomputeTrainingFromHistory(targetIndex);
 
     syncBoard(created.position, history.lastMoves[targetIndex]);
@@ -587,7 +589,7 @@ export const Chessboard = ({
       index: clampedIndex,
     };
     activeSolutionLineRef.current = lineIndex;
-    moveLockRef.current = !analysisModeRef.current;
+    moveLockRef.current = !isAnalysisModeActive();
     candidateLinesRef.current = [];
     progressRef.current = 0;
     const solvedBeforeSolution = puzzleSolvedRef.current;
@@ -652,7 +654,7 @@ export const Chessboard = ({
     const destination = squareName(to % 8, Math.floor(to / 8));
     if (!toPromotion(destination)) return [];
     const activePosition =
-      analysisModeRef.current ? getAnalysisPositionForMove(position, from) ?? position : position;
+      isAnalysisModeActive() ? getAnalysisPositionForMove(position, from) ?? position : position;
 
     return promotionOptions.filter((role) => activePosition.isLegal({ from, to, promotion: role }));
   };
@@ -677,7 +679,7 @@ export const Chessboard = ({
     if (
       !position ||
       moveLockRef.current ||
-      (showSolutionRef.current && !analysisModeRef.current)
+      isSolutionPlaybackLocked()
     ) {
       return;
     }
@@ -693,7 +695,7 @@ export const Chessboard = ({
     };
 
     const activePosition =
-      analysisModeRef.current ? getAnalysisPositionForMove(position, from) ?? position : position;
+      isAnalysisModeActive() ? getAnalysisPositionForMove(position, from) ?? position : position;
 
     if (!activePosition.isLegal(move)) {
       syncBoard(position, [orig, dest]);
@@ -704,7 +706,7 @@ export const Chessboard = ({
     const userMoveSan = makeSan(activePosition, move);
     const userMoveKey = toComparableUci(activePosition, userMoveText, move);
 
-    if (analysisModeRef.current) {
+    if (isAnalysisModeActive()) {
       activePosition.play(move);
       saveMove(activePosition, [orig, dest], userMoveText, userMoveKey, userMoveSan);
       syncBoard(activePosition, [orig, dest], {
@@ -715,7 +717,7 @@ export const Chessboard = ({
       return;
     }
 
-    const trainingEnabled = trainingEnabledRef.current && !analysisModeRef.current;
+    const trainingEnabled = trainingEnabledRef.current && !isAnalysisModeActive();
 
     if (!trainingEnabled || puzzleSolvedRef.current) {
       position.play(move);
@@ -737,7 +739,7 @@ export const Chessboard = ({
     );
 
     if (!accepted.has(userMoveKey)) {
-      moveLockRef.current = !autoRetryWrongMoves;
+      moveLockRef.current = false;
       onAttemptResolved?.({ puzzleId: puzzleIdRef.current, puzzleCorrect: false });
       syncBoard(position, undefined, {
         showWrongMove: true,
@@ -825,7 +827,7 @@ export const Chessboard = ({
             if (
               !position ||
               moveLockRef.current ||
-              (showSolutionRef.current && !analysisModeRef.current) ||
+              isSolutionPlaybackLocked() ||
               pendingPromotionRef.current
             ) {
               return;
@@ -913,41 +915,10 @@ export const Chessboard = ({
 
     syncBoard(position, historyRef.current.lastMoves[historyRef.current.index], {
       showWrongMove: false,
-      solved: false,
-      status: getStatus(position),
+      solved: puzzleSolvedRef.current,
+      status: puzzleSolvedRef.current ? "Correct" : getStatus(position),
     });
   }, [analysisMode]);
-
-  useEffect(() => {
-    if (!retrySignal) return;
-
-    const created = createAtomicPosition(fenRef.current);
-    if (!created.ok) return;
-
-    clearPendingPromotion();
-    moveLockRef.current = false;
-    candidateLinesRef.current = solutionLinesRef.current;
-    progressRef.current = 0;
-    puzzleSolvedRef.current = false;
-    activeSolutionLineRef.current = 0;
-    historyRef.current = {
-      fens: [fenRef.current],
-      lastMoves: [undefined],
-      moveUcis: [],
-      moveKeys: [],
-      moveSans: [],
-      index: 0,
-    };
-
-    syncBoard(created.position, undefined, {
-      showWrongMove: false,
-      solved: false,
-      viewingSolution: false,
-      solutionLineIndex: 0,
-      solutionLines: displaySolutionLinesRef.current,
-      status: getStatus(created.position),
-    });
-  }, [retrySignal]);
 
   useEffect(() => {
     const onKeyDown = (event) => {
@@ -1024,7 +995,7 @@ export const Chessboard = ({
     };
     clearPendingPromotion();
     activeSolutionLineRef.current = 0;
-    moveLockRef.current = showSolution && !analysisModeRef.current;
+    moveLockRef.current = showSolution && !isAnalysisModeActive();
     candidateLinesRef.current = solutionUciLines;
     progressRef.current = 0;
     puzzleSolvedRef.current = trainingEnabledRef.current && !hasExpectedMoveAt(solutionUciLines, 0);

@@ -188,9 +188,9 @@ const orderedChildren = (node) =>
 
 const findMainChild = (children) => children[0];
 
-const buildCompletionFeedback = (nextBoardState, solvedAfterRetry) => {
+const buildCompletionFeedback = (nextBoardState, hadWrongAttempt) => {
   if (nextBoardState.solved) {
-    return solvedAfterRetry
+    return hadWrongAttempt
       ? {
           type: "retrySuccess",
           icon: "↺",
@@ -239,6 +239,9 @@ const createInitialBoardSnapshot = () => ({
   solved: false,
 });
 
+const SOLVE_MODE = "solve";
+const ANALYSIS_MODE = "analysis";
+
 export const PuzzleSolverPage = () => {
   const navigate = useNavigate();
   const { puzzleId: routePuzzleId = "" } = useParams({ strict: false });
@@ -253,14 +256,13 @@ export const PuzzleSolverPage = () => {
   const [mobileFeedback, setMobileFeedback] = useState(null);
   const [showSolution, setShowSolution] = useState(false);
   const [solutionNavigation, setSolutionNavigation] = useState(null);
-  const [retrySignal, setRetrySignal] = useState(0);
-  const [solvedAfterRetry, setSolvedAfterRetry] = useState(false);
-  const [analysisMode, setAnalysisMode] = useState(false);
+  const [interactionMode, setInteractionMode] = useState(SOLVE_MODE);
   const [completionFeedback, setCompletionFeedback] = useState(null);
   const [pinnedSolutionLineIndex, setPinnedSolutionLineIndex] = useState(null);
   const [boardState, setBoardState] = useState(createInitialBoardState);
   const previousBoardSnapshotRef = useRef(createInitialBoardSnapshot());
-  const analysisModeRef = useRef(false);
+  const interactionModeRef = useRef(SOLVE_MODE);
+  const hadWrongAttemptRef = useRef(false);
   const mobileFeedbackIdRef = useRef(0);
   const activeSolutionOptionRef = useRef(null);
   const upcomingPuzzleIndexesRef = useRef([]);
@@ -461,6 +463,7 @@ export const PuzzleSolverPage = () => {
   const startAnalysisUrl = lichessAnalysisUrl(fen);
   const currentAnalysisUrl = lichessAnalysisUrl(currentFen);
   const puzzleOrdinal = activePuzzleIndex >= 0 ? activePuzzleIndex + 1 : null;
+  const isAnalysisMode = interactionMode === ANALYSIS_MODE;
 
   const enqueuePuzzleProgressWrite = useCallback(
     ({ puzzleId, puzzleCorrect }) => {
@@ -503,15 +506,15 @@ export const PuzzleSolverPage = () => {
   const resetPuzzleUiState = useCallback(() => {
     setShowSolution(false);
     setSolutionNavigation(null);
-    setSolvedAfterRetry(false);
-    setAnalysisMode(false);
+    setInteractionMode(SOLVE_MODE);
     setCompletionFeedback(null);
     setPinnedSolutionLineIndex(null);
+    hadWrongAttemptRef.current = false;
   }, []);
 
   useEffect(() => {
-    analysisModeRef.current = analysisMode;
-  }, [analysisMode]);
+    interactionModeRef.current = interactionMode;
+  }, [interactionMode]);
 
   useEffect(() => {
     if (activePuzzleIndex < 0) return;
@@ -551,9 +554,9 @@ export const PuzzleSolverPage = () => {
     };
   }, [mobileFeedback]);
 
-  const showFenDetails = analysisMode;
-  const canRevealSolution = Boolean(fen) && (analysisMode || completionFeedback?.type === "wrong");
-  const feedback = analysisMode ? completionFeedback : null;
+  const showFenDetails = showSolution;
+  const canRevealSolution = Boolean(fen);
+  const feedback = completionFeedback;
 
   const handleNextPuzzle = () => {
     if (puzzles.length === 0) return;
@@ -588,8 +591,8 @@ export const PuzzleSolverPage = () => {
   };
 
   const handleToggleSolution = () => {
-    if (isMobileLayout && !analysisMode && !showSolution && completionFeedback?.type === "wrong") {
-      setAnalysisMode(true);
+    if (!showSolution) {
+      setInteractionMode(ANALYSIS_MODE);
     }
 
     setShowSolution((prev) => !prev);
@@ -612,31 +615,40 @@ export const PuzzleSolverPage = () => {
       previousBoardSnapshot.lineIndex !== nextBoardState.lineIndex ||
       previousBoardSnapshot.solutionLineIndex !== nextBoardState.solutionLineIndex ||
       previousBoardSnapshot.viewingSolution !== nextBoardState.viewingSolution;
-    const nextCompletionFeedback = buildCompletionFeedback(nextBoardState, solvedAfterRetry);
-    const deferMobileWrongAnalysis =
-      isMobileLayout && !analysisModeRef.current && nextCompletionFeedback?.type === "wrong";
+    const nextCompletionFeedback = buildCompletionFeedback(
+      nextBoardState,
+      hadWrongAttemptRef.current,
+    );
     const enteringAnalysisMode =
-      !analysisModeRef.current && Boolean(nextCompletionFeedback) && !deferMobileWrongAnalysis;
+      interactionModeRef.current !== ANALYSIS_MODE &&
+      Boolean(nextCompletionFeedback) &&
+      nextCompletionFeedback.type !== "wrong";
 
     setBoardState(nextBoardState);
 
     if (isMobileLayout) {
-      if ((enteringAnalysisMode || deferMobileWrongAnalysis) && nextCompletionFeedback) {
+      if (nextCompletionFeedback) {
         showMobileFeedback(nextCompletionFeedback);
-      } else if (!analysisModeRef.current && boardPositionChanged) {
+      } else if (interactionModeRef.current === SOLVE_MODE && boardPositionChanged) {
         setMobileFeedback(null);
       }
     }
 
+    if (nextBoardState.showWrongMove) {
+      hadWrongAttemptRef.current = true;
+    }
+
     if (enteringAnalysisMode && nextCompletionFeedback) {
-      setAnalysisMode(true);
+      setInteractionMode(ANALYSIS_MODE);
       setCompletionFeedback(nextCompletionFeedback);
-    } else if (deferMobileWrongAnalysis) {
+    } else if (nextCompletionFeedback) {
       setCompletionFeedback(nextCompletionFeedback);
+    } else {
+      setCompletionFeedback(null);
     }
 
     if (
-      analysisModeRef.current &&
+      interactionModeRef.current === ANALYSIS_MODE &&
       showSolution &&
       previousBoardSnapshot.viewingSolution &&
       previousBoardSnapshot.solutionLineIndex !== nextBoardState.solutionLineIndex
@@ -660,18 +672,7 @@ export const PuzzleSolverPage = () => {
     isMobileLayout,
     showMobileFeedback,
     showSolution,
-    solvedAfterRetry,
   ]);
-
-  const handleTryAgain = () => {
-    setShowSolution(false);
-    setSolutionNavigation(null);
-    setSolvedAfterRetry(true);
-    setAnalysisMode(false);
-    setCompletionFeedback(null);
-    setPinnedSolutionLineIndex(null);
-    setRetrySignal((current) => current + 1);
-  };
 
   const handleMoveClick = (lineIndex, moveIndex, { advance = false } = {}) => {
     setPinnedSolutionLineIndex(lineIndex);
@@ -729,7 +730,7 @@ export const PuzzleSolverPage = () => {
     matchingSolutionLineIndexes.length > 0 && activeSolutionLine.length >= currentAnalysisMoves.length;
 
   useEffect(() => {
-    if (!analysisMode || !showSolution || !isOnSolutionPath) return;
+    if (!isAnalysisMode || !showSolution || !isOnSolutionPath) return;
     if (boardState.solutionLineIndex === activeSolutionLineIndex) return;
 
     setSolutionNavigation({
@@ -738,9 +739,9 @@ export const PuzzleSolverPage = () => {
     });
   }, [
     activeSolutionLineIndex,
-    analysisMode,
     boardState.solutionLineIndex,
     currentAnalysisMoves.length,
+    isAnalysisMode,
     isOnSolutionPath,
     showSolution,
   ]);
@@ -769,7 +770,7 @@ export const PuzzleSolverPage = () => {
   useEffect(() => {
     const onKeyDown = (event) => {
       if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
-      if (!analysisMode || !showSolution || !hasSolutionOptions) return;
+      if (!isAnalysisMode || !showSolution || !hasSolutionOptions) return;
 
       const isInputTarget =
         event.target instanceof HTMLElement &&
@@ -797,9 +798,9 @@ export const PuzzleSolverPage = () => {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [
     activeSolutionLineIndex,
-    analysisMode,
     handleMoveClick,
     hasSolutionOptions,
+    isAnalysisMode,
     showSolution,
     solutionOptions,
   ]);
@@ -1019,13 +1020,15 @@ export const PuzzleSolverPage = () => {
                 <span className="metaChipLabel">Author</span>
                 <span className="metaChipValue">{author}</span>
               </div>
-              {event ? (
+            </div>
+            {event ? (
+              <div className="puzzleMetaRow">
                 <div className="metaChip" title={event}>
                   <span className="metaChipLabel">Event</span>
                   <span className="metaChipValue">{event}</span>
                 </div>
-              ) : null}
-            </div>
+              </div>
+            ) : null}
             {showFenDetails ? (
               <>
                 <div className="fenDetails">
@@ -1082,13 +1085,7 @@ export const PuzzleSolverPage = () => {
               <span className="feedbackCopy">
                 <strong>{feedback ? feedback.title : boardState.status || "Ready"}</strong>
               </span>
-              <div className="feedbackActionSlot">
-                {feedback?.type === "wrong" ? (
-                  <button type="button" className="feedbackAction" onClick={handleTryAgain}>
-                    Try again
-                  </button>
-                ) : null}
-              </div>
+              <div className="feedbackActionSlot" />
             </div>
           ) : null}
           {fen ? (
@@ -1098,11 +1095,10 @@ export const PuzzleSolverPage = () => {
               orientation={orientation}
               coordinates
               solution={activePuzzle?.solution}
-              showSolution={analysisMode && showSolution}
-              analysisMode={analysisMode}
+              showSolution={isAnalysisMode && showSolution}
+              analysisMode={isAnalysisMode}
               autoRetryWrongMoves={isMobileLayout}
               solutionNavigation={solutionNavigation}
-              retrySignal={retrySignal}
               onNavigateHandled={() => setSolutionNavigation(null)}
               onAttemptResolved={handleAttemptResolved}
               onStateChange={handleBoardStateChange}
