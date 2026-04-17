@@ -13,6 +13,9 @@
     "format:write": "prettier . --write"
   },
   "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "^7.2.0",
+    "@fortawesome/free-solid-svg-icons": "^7.2.0",
+    "@fortawesome/react-fontawesome": "^3.3.0",
     "@lichess-org/chessground": "latest",
     "@supabase/supabase-js": "^2.100.1",
     "@tanstack/react-router": "^1.168.3",

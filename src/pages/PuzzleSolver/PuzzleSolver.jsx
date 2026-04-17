@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faRotateLeft } from "@fortawesome/free-solid-svg-icons";
 import { Chessboard } from "../../components/Chessboard/Chessboard";
 import { loadPuzzleLibrary } from "../../lib/puzzleLibrary";
 import { Seo } from "../../components/Seo/Seo";
@@ -65,14 +67,135 @@ const movePrefix = (plyIndex, force = false) => {
   return "";
 };
 
+const isQuestionableMoveLabel = (move = "") => move.includes("?");
+
+const compareSolutionMoves = (moveA = "", moveB = "", fallbackA = 0, fallbackB = 0) => {
+  const questionableDiff =
+    Number(isQuestionableMoveLabel(moveA)) - Number(isQuestionableMoveLabel(moveB));
+  if (questionableDiff !== 0) return questionableDiff;
+  return fallbackA - fallbackB;
+};
+
+const getMatchingSolutionLineIndexes = (solutionLines = [], currentAnalysisMoves = []) =>
+  solutionLines.reduce((matches, line, index) => {
+    if (currentAnalysisMoves.every((move, moveIndex) => line[moveIndex] === move)) {
+      matches.push(index);
+    }
+    return matches;
+  }, []);
+
+const sortMatchingSolutionLineIndexes = ({
+  solutionLines = [],
+  currentPly = 0,
+  matchingLineIndexes = [],
+}) =>
+  [...matchingLineIndexes].sort((a, b) =>
+    compareSolutionMoves(
+      solutionLines[a]?.[currentPly] ?? "",
+      solutionLines[b]?.[currentPly] ?? "",
+      a,
+      b,
+    ),
+  );
+
+const getActiveSolutionLineIndex = ({
+  sortedMatchingLineIndexes = [],
+  pinnedSolutionLineIndex,
+  fallbackLineIndex = 0,
+}) => {
+  if (!sortedMatchingLineIndexes.length) return fallbackLineIndex;
+  if (
+    pinnedSolutionLineIndex !== null &&
+    sortedMatchingLineIndexes.includes(pinnedSolutionLineIndex)
+  ) {
+    return pinnedSolutionLineIndex;
+  }
+  return sortedMatchingLineIndexes[0];
+};
+
+const buildSolutionOptions = ({
+  solutionLines = [],
+  currentAnalysisMoves = [],
+  isOnSolutionPath,
+}) => {
+  if (!solutionLines.length || !isOnSolutionPath) return [];
+
+  const currentPly = currentAnalysisMoves.length;
+  const currentPrefix = currentAnalysisMoves.join("\n");
+  const groupedOptions = new Map();
+
+  solutionLines.forEach((line, lineIndex) => {
+    if (!line[currentPly]) return;
+    if (line.slice(0, currentPly).join("\n") !== currentPrefix) return;
+
+    const move = line[currentPly];
+    if (!groupedOptions.has(move)) {
+      groupedOptions.set(move, {
+        move,
+        lineIndex,
+        plyIndex: currentPly,
+      });
+    }
+  });
+
+  return [...groupedOptions.values()].sort((a, b) =>
+    compareSolutionMoves(a.move, b.move, a.lineIndex, b.lineIndex),
+  );
+};
+
 const orderedChildren = (node) =>
   [...node.children.values()].sort((a, b) => {
+    const moveOrder = compareSolutionMoves(a.move, b.move);
+    if (moveOrder !== 0) return moveOrder;
+
     const firstLineDiff = (a.firstOccurrence?.lineIndex ?? 0) - (b.firstOccurrence?.lineIndex ?? 0);
     if (firstLineDiff !== 0) return firstLineDiff;
     return (a.firstOccurrence?.moveIndex ?? 0) - (b.firstOccurrence?.moveIndex ?? 0);
   });
 
 const findMainChild = (children) => children[0];
+
+const buildCompletionFeedback = (nextBoardState, solvedAfterRetry) => {
+  if (nextBoardState.solved) {
+    return solvedAfterRetry
+      ? {
+          type: "retrySuccess",
+          icon: "↺",
+          title: "Solved on retry",
+        }
+      : {
+          type: "correct",
+          icon: "✓",
+          title: "Correct",
+        };
+  }
+
+  if (nextBoardState.showWrongMove) {
+    return {
+      type: "wrong",
+      icon: "×",
+      title: "Incorrect",
+    };
+  }
+
+  return null;
+};
+
+const createInitialBoardState = () => ({
+  fen: "",
+  turn: "",
+  status: "Loading puzzles...",
+  winner: undefined,
+  error: "",
+  line: "",
+  lineMoves: [],
+  solutionLines: [],
+  solutionLineIndex: 0,
+  lineIndex: 0,
+  viewingSolution: false,
+  showWrongMove: false,
+  solved: false,
+});
 
 export const PuzzleSolverPage = () => {
   const navigate = useNavigate();
@@ -87,29 +210,19 @@ export const PuzzleSolverPage = () => {
   const [solutionNavigation, setSolutionNavigation] = useState(null);
   const [retrySignal, setRetrySignal] = useState(0);
   const [solvedAfterRetry, setSolvedAfterRetry] = useState(false);
-  const [boardState, setBoardState] = useState({
-    fen: "",
-    turn: "",
-    status: "Loading puzzles...",
-    winner: undefined,
-    error: "",
-    line: "",
-    lineMoves: [],
-    solutionLines: [],
-    solutionLineIndex: 0,
-    lineIndex: 0,
-    viewingSolution: false,
-    showWrongMove: false,
-    showRetryMove: false,
-    solved: false,
-  });
+  const [analysisMode, setAnalysisMode] = useState(false);
+  const [completionFeedback, setCompletionFeedback] = useState(null);
+  const [pinnedSolutionLineIndex, setPinnedSolutionLineIndex] = useState(null);
+  const [boardState, setBoardState] = useState(createInitialBoardState);
   const previousBoardSnapshotRef = useRef({
     fen: "",
     lineIndex: 0,
     solutionLineIndex: 0,
     viewingSolution: false,
   });
+  const analysisModeRef = useRef(false);
   const mobileFeedbackIdRef = useRef(0);
+  const activeSolutionOptionRef = useRef(null);
 
   const replaceUrlWithPuzzle = useCallback(
     (puzzleId) => {
@@ -228,8 +341,21 @@ export const PuzzleSolverPage = () => {
   const currentAnalysisUrl = useMemo(() => lichessAnalysisUrl(currentFen), [currentFen]);
   const puzzleOrdinal = activePuzzleIndex >= 0 ? activePuzzleIndex + 1 : null;
 
-  useEffect(() => {
+  const resetPuzzleUiState = useCallback(() => {
+    setShowSolution(false);
+    setSolutionNavigation(null);
     setSolvedAfterRetry(false);
+    setAnalysisMode(false);
+    setCompletionFeedback(null);
+    setPinnedSolutionLineIndex(null);
+  }, []);
+
+  useEffect(() => {
+    analysisModeRef.current = analysisMode;
+  }, [analysisMode]);
+
+  useEffect(() => {
+    resetPuzzleUiState();
     setMobileFeedback(null);
     previousBoardSnapshotRef.current = {
       fen: "",
@@ -237,7 +363,7 @@ export const PuzzleSolverPage = () => {
       solutionLineIndex: 0,
       viewingSolution: false,
     };
-  }, [activePuzzleId]);
+  }, [activePuzzleId, resetPuzzleUiState]);
 
   useEffect(() => {
     if (!mobileFeedback) return undefined;
@@ -263,38 +389,13 @@ export const PuzzleSolverPage = () => {
     };
   }, [mobileFeedback]);
 
-  const showFenDetails = boardState.solved || boardState.showWrongMove;
-  const feedback = boardState.solved
-    ? solvedAfterRetry
-      ? {
-          type: "retrySuccess",
-          icon: "↺",
-          title: "Solved on retry",
-        }
-      : {
-          type: "correct",
-          icon: "✓",
-          title: "Correct",
-        }
-    : boardState.showWrongMove
-      ? {
-          type: "wrong",
-          icon: "×",
-          title: "Incorrect",
-        }
-      : boardState.showRetryMove
-        ? {
-          type: "retry",
-          icon: "↺",
-          title: "Try again",
-        }
-      : null;
+  const showFenDetails = analysisMode;
+  const canRevealSolution = Boolean(fen) && analysisMode;
+  const feedback = analysisMode ? completionFeedback : null;
 
   const handleNextPuzzle = () => {
     if (puzzles.length === 0) return;
-    setShowSolution(false);
-    setSolutionNavigation(null);
-    setSolvedAfterRetry(false);
+    resetPuzzleUiState();
 
     if (historyIndex < history.length - 1) {
       const nextHistoryIndex = historyIndex + 1;
@@ -315,9 +416,7 @@ export const PuzzleSolverPage = () => {
 
   const handlePreviousPuzzle = () => {
     if (historyIndex <= 0) return;
-    setShowSolution(false);
-    setSolutionNavigation(null);
-    setSolvedAfterRetry(false);
+    resetPuzzleUiState();
     const previousHistoryIndex = historyIndex - 1;
     setHistoryIndex(previousHistoryIndex);
     const previousPuzzleIndex = history[previousHistoryIndex];
@@ -346,33 +445,31 @@ export const PuzzleSolverPage = () => {
       previousBoardSnapshot.lineIndex !== nextBoardState.lineIndex ||
       previousBoardSnapshot.solutionLineIndex !== nextBoardState.solutionLineIndex ||
       previousBoardSnapshot.viewingSolution !== nextBoardState.viewingSolution;
+    const nextCompletionFeedback = buildCompletionFeedback(nextBoardState, solvedAfterRetry);
+    const enteringAnalysisMode = !analysisModeRef.current && Boolean(nextCompletionFeedback);
 
     setBoardState(nextBoardState);
 
     if (isMobileLayout) {
-      if (nextBoardState.showWrongMove) {
-        showMobileFeedback({
-          type: "wrong",
-          icon: "×",
-          title: "Incorrect",
-        });
-      } else if (nextBoardState.solved) {
-        showMobileFeedback(
-          solvedAfterRetry
-            ? {
-                type: "retrySuccess",
-                icon: "↺",
-                title: "Solved on retry",
-              }
-            : {
-                type: "correct",
-                icon: "✓",
-                title: "Correct",
-              },
-        );
-      } else if (positionChanged) {
+      if (enteringAnalysisMode && nextCompletionFeedback) {
+        showMobileFeedback(nextCompletionFeedback);
+      } else if (!analysisModeRef.current && positionChanged) {
         setMobileFeedback(null);
       }
+    }
+
+    if (enteringAnalysisMode && nextCompletionFeedback) {
+      setAnalysisMode(true);
+      setCompletionFeedback(nextCompletionFeedback);
+    }
+
+    if (
+      analysisModeRef.current &&
+      showSolution &&
+      previousBoardSnapshot.viewingSolution &&
+      previousBoardSnapshot.solutionLineIndex !== nextBoardState.solutionLineIndex
+    ) {
+      setPinnedSolutionLineIndex(nextBoardState.solutionLineIndex);
     }
 
     previousBoardSnapshotRef.current = {
@@ -384,81 +481,149 @@ export const PuzzleSolverPage = () => {
 
     if (nextBoardState.solved) {
       setSolutionNavigation(null);
-      setShowSolution(true);
     }
-  }, [isMobileLayout, showMobileFeedback, solvedAfterRetry]);
+  }, [isMobileLayout, showMobileFeedback, showSolution, solvedAfterRetry]);
 
   const handleTryAgain = () => {
     setShowSolution(false);
     setSolutionNavigation(null);
     setSolvedAfterRetry(true);
+    setAnalysisMode(false);
+    setCompletionFeedback(null);
+    setPinnedSolutionLineIndex(null);
     setRetrySignal((current) => current + 1);
   };
 
   const handleMoveClick = (lineIndex, moveIndex, { advance = false } = {}) => {
+    setPinnedSolutionLineIndex(lineIndex);
     setSolutionNavigation({
       lineIndex,
       plyIndex: moveIndex + (advance ? 2 : 1),
     });
   };
 
-  const activeSolutionMoves = boardState.solutionLines?.[boardState.solutionLineIndex] ?? [];
-  const solutionPlyCount = activeSolutionMoves.length;
-  const canNavigateSolution =
-    boardState.viewingSolution && boardState.solutionLines?.length > 0 && solutionPlyCount > 0;
-  const canStepBackward = canNavigateSolution && boardState.lineIndex > 0;
-  const canStepForward = canNavigateSolution && boardState.lineIndex < solutionPlyCount;
-
-  const handleSolutionJump = (targetPly) => {
-    if (!canNavigateSolution) return;
-
+  const handleAnalysisMoveClick = (moveIndex) => {
     setSolutionNavigation({
-      lineIndex: boardState.solutionLineIndex,
-      plyIndex: Math.max(0, Math.min(targetPly, solutionPlyCount)),
+      plyIndex: moveIndex + 1,
+      useHistory: true,
     });
   };
 
-  const solutionOptions = useMemo(() => {
-    if (!canNavigateSolution) return [];
+  const handleResetSolutionView = () => {
+    const mainSolutionLine = boardState.solutionLines?.[0] ?? [];
+    const targetPly = Math.min(currentAnalysisMoves.length, mainSolutionLine.length);
+    setPinnedSolutionLineIndex(0);
 
-    const activeLine = boardState.solutionLines[boardState.solutionLineIndex];
-    if (!activeLine) return [];
-
-    const currentPly = boardState.lineIndex;
-    const currentPrefix = activeLine.slice(0, currentPly).join("\n");
-    const groupedOptions = new Map();
-
-    boardState.solutionLines.forEach((line, lineIndex) => {
-      if (!line[currentPly]) return;
-      if (line.slice(0, currentPly).join("\n") !== currentPrefix) return;
-
-      const move = line[currentPly];
-      if (!groupedOptions.has(move)) {
-        groupedOptions.set(move, {
-          move,
-          lineIndex,
-          plyIndex: currentPly,
-        });
-      }
+    setSolutionNavigation({
+      lineIndex: 0,
+      plyIndex: targetPly,
     });
+  };
 
-    return [...groupedOptions.values()];
+  const currentAnalysisMoves = boardState.lineMoves?.slice(0, boardState.lineIndex) ?? [];
+  const matchingSolutionLineIndexes = useMemo(
+    () => getMatchingSolutionLineIndexes(boardState.solutionLines, currentAnalysisMoves),
+    [boardState.solutionLines, currentAnalysisMoves],
+  );
+
+  const sortedMatchingSolutionLineIndexes = useMemo(
+    () =>
+      sortMatchingSolutionLineIndexes({
+        solutionLines: boardState.solutionLines,
+        currentPly: currentAnalysisMoves.length,
+        matchingLineIndexes: matchingSolutionLineIndexes,
+      }),
+    [boardState.solutionLines, currentAnalysisMoves.length, matchingSolutionLineIndexes],
+  );
+
+  const activeSolutionLineIndex = useMemo(
+    () =>
+      getActiveSolutionLineIndex({
+        sortedMatchingLineIndexes: sortedMatchingSolutionLineIndexes,
+        pinnedSolutionLineIndex,
+        fallbackLineIndex: boardState.solutionLineIndex,
+      }),
+    [boardState.solutionLineIndex, pinnedSolutionLineIndex, sortedMatchingSolutionLineIndexes],
+  );
+  const activeSolutionLine = boardState.solutionLines?.[activeSolutionLineIndex] ?? [];
+  const isOnSolutionPath =
+    matchingSolutionLineIndexes.length > 0 && activeSolutionLine.length >= currentAnalysisMoves.length;
+
+  useEffect(() => {
+    if (!analysisMode || !showSolution || !isOnSolutionPath) return;
+    if (boardState.solutionLineIndex === activeSolutionLineIndex) return;
+
+    setSolutionNavigation({
+      lineIndex: activeSolutionLineIndex,
+      plyIndex: currentAnalysisMoves.length,
+    });
   }, [
-    boardState.lineIndex,
+    activeSolutionLineIndex,
+    analysisMode,
     boardState.solutionLineIndex,
-    boardState.solutionLines,
-    canNavigateSolution,
+    currentAnalysisMoves.length,
+    isOnSolutionPath,
+    showSolution,
   ]);
 
-  const hasSolutionOptions = solutionOptions.length > 1;
-  const activeSolutionOption = activeSolutionMoves[boardState.lineIndex];
-  const isActiveSolutionOption = useCallback(
-    (lineIndex, plyIndex) =>
-      boardState.viewingSolution &&
-      lineIndex === boardState.solutionLineIndex &&
-      plyIndex === boardState.lineIndex,
-    [boardState.lineIndex, boardState.solutionLineIndex, boardState.viewingSolution],
+  const solutionOptions = useMemo(
+    () =>
+      buildSolutionOptions({
+        solutionLines: boardState.solutionLines,
+        currentAnalysisMoves,
+        isOnSolutionPath,
+      }),
+    [boardState.solutionLines, currentAnalysisMoves, isOnSolutionPath],
   );
+
+  const hasSolutionOptions = solutionOptions.length > 1;
+  const activeSolutionOption = solutionOptions.find((option) => option.lineIndex === activeSolutionLineIndex)
+    ?.move ?? solutionOptions[0]?.move;
+
+  useEffect(() => {
+    activeSolutionOptionRef.current?.scrollIntoView({
+      block: "nearest",
+      inline: "nearest",
+    });
+  }, [activeSolutionOption]);
+
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+      if (!analysisMode || !showSolution || !hasSolutionOptions) return;
+
+      const isInputTarget =
+        event.target instanceof HTMLElement &&
+        (event.target.tagName === "INPUT" ||
+          event.target.tagName === "TEXTAREA" ||
+          event.target.isContentEditable);
+      if (isInputTarget) return;
+
+      const activeOptionIndex = solutionOptions.findIndex(
+        (option) => option.lineIndex === activeSolutionLineIndex,
+      );
+      if (activeOptionIndex === -1) return;
+
+      const delta = event.key === "ArrowDown" ? 1 : -1;
+      const nextOptionIndex =
+        (activeOptionIndex + delta + solutionOptions.length) % solutionOptions.length;
+      const nextOption = solutionOptions[nextOptionIndex];
+      if (!nextOption) return;
+
+      event.preventDefault();
+      handleMoveClick(nextOption.lineIndex, nextOption.plyIndex - 1);
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [
+    activeSolutionLineIndex,
+    analysisMode,
+    handleMoveClick,
+    hasSolutionOptions,
+    showSolution,
+    solutionOptions,
+  ]);
 
   const inlineSolutionMoves = useMemo(() => {
     if (!boardState.solutionLines?.length) return null;
@@ -467,25 +632,21 @@ export const PuzzleSolverPage = () => {
 
     const renderNode = (node, plyIndex, keyPrefix, forceMoveNumber = false) => {
       const availableLineIndexes = [...node.lineIndexes.values()].sort((a, b) => a - b);
-      const targetLineIndex = node.lineIndexes.has(boardState.solutionLineIndex)
-        ? boardState.solutionLineIndex
+      const targetLineIndex = node.lineIndexes.has(activeSolutionLineIndex)
+        ? activeSolutionLineIndex
         : (availableLineIndexes[0] ?? 0);
 
       const isActiveMove =
-        node.lineIndexes.has(boardState.solutionLineIndex) && boardState.lineIndex === plyIndex + 1;
-      const shouldAdvanceActiveMove =
-        isActiveMove && boardState.viewingSolution && solutionOptions.length > 1;
+        isOnSolutionPath &&
+        node.lineIndexes.has(activeSolutionLineIndex) &&
+        currentAnalysisMoves.length === plyIndex + 1;
 
       const content = [
         <button
           key={`${keyPrefix}-move-${plyIndex}-${node.move}`}
           type="button"
           className={`moveChip ${isActiveMove ? "active" : ""}`}
-          onClick={() =>
-            handleMoveClick(targetLineIndex, plyIndex, {
-              advance: shouldAdvanceActiveMove,
-            })
-          }
+          onClick={() => handleMoveClick(targetLineIndex, plyIndex)}
         >
           {movePrefix(plyIndex, forceMoveNumber)}
           {node.move}
@@ -522,7 +683,9 @@ export const PuzzleSolverPage = () => {
     const rootChildren = orderedChildren(tree);
     if (rootChildren.length === 0) return null;
 
-    const rootMain = findMainChild(rootChildren, boardState.solutionLineIndex);
+    const rootMain =
+      rootChildren.find((child) => child.lineIndexes.has(activeSolutionLineIndex)) ??
+      findMainChild(rootChildren);
     const rootVariations = rootChildren.filter((child) => child !== rootMain);
 
     const content = [...renderNode(rootMain, 0, "root-main")];
@@ -544,60 +707,31 @@ export const PuzzleSolverPage = () => {
 
     return content;
   }, [
-    boardState.lineIndex,
-    boardState.solutionLineIndex,
     boardState.solutionLines,
-    boardState.viewingSolution,
+    activeSolutionLineIndex,
     handleMoveClick,
-    solutionOptions.length,
+    currentAnalysisMoves.length,
+    isOnSolutionPath,
   ]);
 
   const renderMoveLine = (className = "lineBox") => (
     <div className={className}>
       <div className="lineHeader">
-        <div className="fenLabel">Move line</div>
-        {canNavigateSolution ? (
-          <div className="solutionNav" aria-label="Solution navigation">
-            <button
-              type="button"
-              className="solutionNavButton"
-              onClick={() => handleSolutionJump(0)}
-              disabled={!canStepBackward}
-              aria-label="Jump to start"
-            >
-              ⏮
-            </button>
-            <button
-              type="button"
-              className="solutionNavButton"
-              onClick={() => handleSolutionJump(boardState.lineIndex - 1)}
-              disabled={!canStepBackward}
-              aria-label="Step backward"
-            >
-              ◀
-            </button>
-            <button
-              type="button"
-              className="solutionNavButton"
-              onClick={() => handleSolutionJump(boardState.lineIndex + 1)}
-              disabled={!canStepForward}
-              aria-label="Step forward"
-            >
-              ▶
-            </button>
-            <button
-              type="button"
-              className="solutionNavButton"
-              onClick={() => handleSolutionJump(solutionPlyCount)}
-              disabled={!canStepForward}
-              aria-label="Jump to end"
-            >
-              ⏭
-            </button>
-          </div>
-        ) : null}
+        <div className="fenLabel">Solution</div>
+        <div className="solutionHeaderActions">
+          <button
+            type="button"
+            className="solutionNavButton"
+            onClick={handleResetSolutionView}
+            disabled={!boardState.solutionLines?.length}
+            aria-label="Reset to main solution"
+            title="Reset to main solution"
+          >
+            <FontAwesomeIcon icon={faRotateLeft} />
+          </button>
+        </div>
       </div>
-      {boardState.viewingSolution && boardState.solutionLines?.length ? (
+      {boardState.solutionLines?.length ? (
         <>
           {hasSolutionOptions ? (
             <div className="solutionOptions">
@@ -608,42 +742,38 @@ export const PuzzleSolverPage = () => {
                     key={`${option.lineIndex}-${option.plyIndex}-${option.move}`}
                     type="button"
                     className={`solutionOption ${option.move === activeSolutionOption ? "active" : ""}`}
-                    onClick={() =>
-                      handleMoveClick(option.lineIndex, option.plyIndex - 1, {
-                        advance: isActiveSolutionOption(option.lineIndex, option.plyIndex),
-                      })
-                    }
+                    ref={option.move === activeSolutionOption ? activeSolutionOptionRef : null}
+                    onClick={() => handleMoveClick(option.lineIndex, option.plyIndex - 1)}
                   >
-                    {movePrefix(boardState.lineIndex, boardState.lineIndex % 2 === 1)}
+                    {movePrefix(currentAnalysisMoves.length, currentAnalysisMoves.length % 2 === 1)}
                     {option.move}
                   </button>
                 ))}
               </div>
             </div>
           ) : null}
-          <div className="moveList inlineSolutionTree" role="list" aria-label="Solution variations">
-            {inlineSolutionMoves}
-          </div>
+          {isOnSolutionPath ? (
+            <div className="moveList inlineSolutionTree" role="list" aria-label="Solution variations">
+              {inlineSolutionMoves}
+            </div>
+          ) : boardState.lineMoves?.length ? (
+            <div className="moveList" role="list" aria-label="Analysis line">
+              {boardState.lineMoves.map((move, index) => (
+                <button
+                  key={`${move}-${index}`}
+                  type="button"
+                  className={`moveChip ${boardState.lineIndex === index + 1 ? "active" : ""}`}
+                  onClick={() => handleAnalysisMoveClick(index)}
+                >
+                  {index % 2 === 0 ? `${Math.floor(index / 2) + 1}.` : ""}
+                  {move}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </>
-      ) : boardState.lineMoves?.length ? (
-        <div className="moveList" role="list" aria-label="Move line">
-          {boardState.lineMoves.map((move, index) => {
-            const isActive = boardState.viewingSolution && boardState.lineIndex === index + 1;
-            return (
-              <button
-                key={`${move}-${index}`}
-                type="button"
-                className={`moveChip ${isActive ? "active" : ""}`}
-                onClick={() => handleMoveClick(0, index)}
-              >
-                {index % 2 === 0 ? `${Math.floor(index / 2) + 1}.` : ""}
-                {move}
-              </button>
-            );
-          })}
-        </div>
       ) : (
-        <code>{boardState.line || "No moves yet"}</code>
+        <code>No solution available</code>
       )}
     </div>
   );
@@ -684,7 +814,7 @@ export const PuzzleSolverPage = () => {
                 type="button"
                 className="puzzlePrimaryAction"
                 onClick={handleToggleSolution}
-                disabled={!fen || (!boardState.showWrongMove && !boardState.solved && !showSolution)}
+                disabled={!canRevealSolution}
               >
                 {showSolution ? "Hide solution" : "Show solution"}
               </button>
@@ -752,7 +882,7 @@ export const PuzzleSolverPage = () => {
           </div>
         ) : null}
 
-        {!isMobileLayout ? renderMoveLine() : null}
+        {!isMobileLayout && showSolution && canRevealSolution ? renderMoveLine() : null}
       </div>
 
       <div className="boardWrap">
@@ -780,7 +910,8 @@ export const PuzzleSolverPage = () => {
               orientation={orientation}
               coordinates
               solution={activePuzzle?.solution}
-              showSolution={showSolution}
+              showSolution={analysisMode && showSolution}
+              analysisMode={analysisMode}
               autoRetryWrongMoves={isMobileLayout}
               solutionNavigation={solutionNavigation}
               retrySignal={retrySignal}
@@ -815,7 +946,7 @@ export const PuzzleSolverPage = () => {
             type="button"
             className="puzzlePrimaryAction"
             onClick={handleToggleSolution}
-            disabled={!fen || (!boardState.showWrongMove && !boardState.solved && !showSolution)}
+            disabled={!canRevealSolution}
           >
             {showSolution ? "Hide solution" : "Show solution"}
           </button>
@@ -835,7 +966,7 @@ export const PuzzleSolverPage = () => {
           ) : null}
         </div>
 
-        {renderMoveLine("lineBox mobileLineBox")}
+        {showSolution && canRevealSolution ? renderMoveLine("lineBox mobileLineBox") : null}
 
         <div className="puzzleDetails mobilePuzzleDetails">
           <div className="puzzleMetaRow">

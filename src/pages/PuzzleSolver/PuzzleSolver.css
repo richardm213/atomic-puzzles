@@ -283,6 +283,12 @@
   margin-bottom: 9px;
 }
 
+.solutionHeaderActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .fenLabel {
   font-size: 11px;
   font-weight: 800;

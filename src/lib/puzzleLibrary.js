@@ -1,4 +1,5 @@
 import { fetchPuzzleRowsFromSupabase } from "./supabasePuzzles";
+import { normalizeSolutionPgn } from "./solutionPgn";
 
 const solutionFieldCandidates = ["solution", "moves", "line", "pgn", "variation"];
 
@@ -38,7 +39,10 @@ const normalizePuzzleRow = (item, index) => {
   return {
     ...item,
     fen: typeof item?.fen === "string" ? item.fen.trim() : "",
-    solution: extractSolutionFromRow(item),
+    solution: normalizeSolutionPgn(
+      typeof item?.fen === "string" ? item.fen.trim() : "",
+      extractSolutionFromRow(item),
+    ),
     puzzleId: parsedId || index + 1,
   };
 };
