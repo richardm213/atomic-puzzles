@@ -390,7 +390,7 @@ export const PuzzleSolverPage = () => {
   }, [mobileFeedback]);
 
   const showFenDetails = analysisMode;
-  const canRevealSolution = Boolean(fen) && analysisMode;
+  const canRevealSolution = Boolean(fen) && (analysisMode || completionFeedback?.type === "wrong");
   const feedback = analysisMode ? completionFeedback : null;
 
   const handleNextPuzzle = () => {
@@ -425,6 +425,10 @@ export const PuzzleSolverPage = () => {
   };
 
   const handleToggleSolution = () => {
+    if (isMobileLayout && !analysisMode && !showSolution && completionFeedback?.type === "wrong") {
+      setAnalysisMode(true);
+    }
+
     setShowSolution((prev) => !prev);
     setSolutionNavigation(null);
   };
@@ -446,12 +450,15 @@ export const PuzzleSolverPage = () => {
       previousBoardSnapshot.solutionLineIndex !== nextBoardState.solutionLineIndex ||
       previousBoardSnapshot.viewingSolution !== nextBoardState.viewingSolution;
     const nextCompletionFeedback = buildCompletionFeedback(nextBoardState, solvedAfterRetry);
-    const enteringAnalysisMode = !analysisModeRef.current && Boolean(nextCompletionFeedback);
+    const deferMobileWrongAnalysis =
+      isMobileLayout && !analysisModeRef.current && nextCompletionFeedback?.type === "wrong";
+    const enteringAnalysisMode =
+      !analysisModeRef.current && Boolean(nextCompletionFeedback) && !deferMobileWrongAnalysis;
 
     setBoardState(nextBoardState);
 
     if (isMobileLayout) {
-      if (enteringAnalysisMode && nextCompletionFeedback) {
+      if ((enteringAnalysisMode || deferMobileWrongAnalysis) && nextCompletionFeedback) {
         showMobileFeedback(nextCompletionFeedback);
       } else if (!analysisModeRef.current && positionChanged) {
         setMobileFeedback(null);
@@ -461,6 +468,10 @@ export const PuzzleSolverPage = () => {
     if (enteringAnalysisMode && nextCompletionFeedback) {
       setAnalysisMode(true);
       setCompletionFeedback(nextCompletionFeedback);
+    } else if (deferMobileWrongAnalysis) {
+      setCompletionFeedback(nextCompletionFeedback);
+    } else if (!analysisModeRef.current && !nextCompletionFeedback) {
+      setCompletionFeedback(null);
     }
 
     if (
