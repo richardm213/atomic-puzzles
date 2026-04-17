@@ -394,10 +394,10 @@ export const PuzzleSolverPage = () => {
     setRetrySignal((current) => current + 1);
   };
 
-  const handleMoveClick = (lineIndex, moveIndex) => {
+  const handleMoveClick = (lineIndex, moveIndex, { advance = false } = {}) => {
     setSolutionNavigation({
       lineIndex,
-      plyIndex: moveIndex + 1,
+      plyIndex: moveIndex + (advance ? 2 : 1),
     });
   };
 
@@ -451,6 +451,13 @@ export const PuzzleSolverPage = () => {
 
   const hasSolutionOptions = solutionOptions.length > 1;
   const activeSolutionOption = activeSolutionMoves[boardState.lineIndex];
+  const isActiveSolutionOption = useCallback(
+    (lineIndex, plyIndex) =>
+      boardState.viewingSolution &&
+      lineIndex === boardState.solutionLineIndex &&
+      plyIndex === boardState.lineIndex,
+    [boardState.lineIndex, boardState.solutionLineIndex, boardState.viewingSolution],
+  );
 
   const inlineSolutionMoves = useMemo(() => {
     if (!boardState.solutionLines?.length) return null;
@@ -465,13 +472,19 @@ export const PuzzleSolverPage = () => {
 
       const isActiveMove =
         node.lineIndexes.has(boardState.solutionLineIndex) && boardState.lineIndex === plyIndex + 1;
+      const shouldAdvanceActiveMove =
+        isActiveMove && boardState.viewingSolution && solutionOptions.length > 1;
 
       const content = [
         <button
           key={`${keyPrefix}-move-${plyIndex}-${node.move}`}
           type="button"
           className={`moveChip ${isActiveMove ? "active" : ""}`}
-          onClick={() => handleMoveClick(targetLineIndex, plyIndex)}
+          onClick={() =>
+            handleMoveClick(targetLineIndex, plyIndex, {
+              advance: shouldAdvanceActiveMove,
+            })
+          }
         >
           {movePrefix(plyIndex, forceMoveNumber)}
           {node.move}
@@ -533,7 +546,9 @@ export const PuzzleSolverPage = () => {
     boardState.lineIndex,
     boardState.solutionLineIndex,
     boardState.solutionLines,
+    boardState.viewingSolution,
     handleMoveClick,
+    solutionOptions.length,
   ]);
 
   const renderMoveLine = (className = "lineBox") => (
@@ -593,9 +608,8 @@ export const PuzzleSolverPage = () => {
                     type="button"
                     className={`solutionOption ${option.move === activeSolutionOption ? "active" : ""}`}
                     onClick={() =>
-                      setSolutionNavigation({
-                        lineIndex: option.lineIndex,
-                        plyIndex: option.plyIndex,
+                      handleMoveClick(option.lineIndex, option.plyIndex - 1, {
+                        advance: isActiveSolutionOption(option.lineIndex, option.plyIndex),
                       })
                     }
                   >
