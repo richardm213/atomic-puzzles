@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { Chessboard } from "../../components/Chessboard/Chessboard";
 import { loadPuzzleLibrary } from "../../lib/puzzleLibrary";
@@ -80,6 +80,8 @@ export const PuzzleSolverPage = () => {
   const [loadingError, setLoadingError] = useState("");
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const [isMobileLayout, setIsMobileLayout] = useState(false);
+  const [mobileFeedback, setMobileFeedback] = useState(null);
   const [showSolution, setShowSolution] = useState(false);
   const [solutionNavigation, setSolutionNavigation] = useState(null);
   const [retrySignal, setRetrySignal] = useState(0);
@@ -100,6 +102,13 @@ export const PuzzleSolverPage = () => {
     showRetryMove: false,
     solved: false,
   });
+  const previousBoardSnapshotRef = useRef({
+    fen: "",
+    lineIndex: 0,
+    solutionLineIndex: 0,
+    viewingSolution: false,
+  });
+  const mobileFeedbackIdRef = useRef(0);
 
   const replaceUrlWithPuzzle = useCallback(
     (puzzleId) => {
@@ -111,6 +120,17 @@ export const PuzzleSolverPage = () => {
     },
     [navigate],
   );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const mediaQuery = window.matchMedia("(max-width: 900px)");
+    const updateLayout = () => setIsMobileLayout(mediaQuery.matches);
+    updateLayout();
+
+    mediaQuery.addEventListener("change", updateLayout);
+    return () => mediaQuery.removeEventListener("change", updateLayout);
+  }, []);
 
   useEffect(() => {
     let isCurrent = true;
@@ -209,7 +229,38 @@ export const PuzzleSolverPage = () => {
 
   useEffect(() => {
     setSolvedAfterRetry(false);
+    setMobileFeedback(null);
+    previousBoardSnapshotRef.current = {
+      fen: "",
+      lineIndex: 0,
+      solutionLineIndex: 0,
+      viewingSolution: false,
+    };
   }, [activePuzzleId]);
+
+  useEffect(() => {
+    if (!mobileFeedback) return undefined;
+
+    const clearFeedbackTimer = window.setTimeout(() => {
+      setMobileFeedback((current) =>
+        current?.id === mobileFeedback.id
+          ? {
+              ...current,
+              fading: true,
+            }
+          : current,
+      );
+    }, 1800);
+
+    const removeFeedbackTimer = window.setTimeout(() => {
+      setMobileFeedback((current) => (current?.id === mobileFeedback.id ? null : current));
+    }, 2200);
+
+    return () => {
+      window.clearTimeout(clearFeedbackTimer);
+      window.clearTimeout(removeFeedbackTimer);
+    };
+  }, [mobileFeedback]);
 
   const showFenDetails = boardState.solved || boardState.showWrongMove;
   const feedback = boardState.solved
@@ -236,7 +287,7 @@ export const PuzzleSolverPage = () => {
           icon: "↺",
           title: "Try again",
         }
-        : null;
+      : null;
 
   const handleNextPuzzle = () => {
     if (puzzles.length === 0) return;
@@ -278,13 +329,63 @@ export const PuzzleSolverPage = () => {
     setSolutionNavigation(null);
   };
 
+  const showMobileFeedback = useCallback((nextFeedback) => {
+    mobileFeedbackIdRef.current += 1;
+    setMobileFeedback({
+      ...nextFeedback,
+      id: mobileFeedbackIdRef.current,
+      fading: false,
+    });
+  }, []);
+
   const handleBoardStateChange = useCallback((nextBoardState) => {
+    const previousBoardSnapshot = previousBoardSnapshotRef.current;
+    const positionChanged =
+      previousBoardSnapshot.fen !== nextBoardState.fen ||
+      previousBoardSnapshot.lineIndex !== nextBoardState.lineIndex ||
+      previousBoardSnapshot.solutionLineIndex !== nextBoardState.solutionLineIndex ||
+      previousBoardSnapshot.viewingSolution !== nextBoardState.viewingSolution;
+
     setBoardState(nextBoardState);
+
+    if (isMobileLayout) {
+      if (nextBoardState.showWrongMove) {
+        showMobileFeedback({
+          type: "wrong",
+          icon: "×",
+          title: "Incorrect",
+        });
+      } else if (nextBoardState.solved) {
+        showMobileFeedback(
+          solvedAfterRetry
+            ? {
+                type: "retrySuccess",
+                icon: "↺",
+                title: "Solved on retry",
+              }
+            : {
+                type: "correct",
+                icon: "✓",
+                title: "Correct",
+              },
+        );
+      } else if (positionChanged) {
+        setMobileFeedback(null);
+      }
+    }
+
+    previousBoardSnapshotRef.current = {
+      fen: nextBoardState.fen,
+      lineIndex: nextBoardState.lineIndex,
+      solutionLineIndex: nextBoardState.solutionLineIndex,
+      viewingSolution: nextBoardState.viewingSolution,
+    };
+
     if (nextBoardState.solved) {
       setSolutionNavigation(null);
       setShowSolution(true);
     }
-  }, []);
+  }, [isMobileLayout, showMobileFeedback, solvedAfterRetry]);
 
   const handleTryAgain = () => {
     setShowSolution(false);
@@ -435,6 +536,103 @@ export const PuzzleSolverPage = () => {
     handleMoveClick,
   ]);
 
+  const renderMoveLine = (className = "lineBox") => (
+    <div className={className}>
+      <div className="lineHeader">
+        <div className="fenLabel">Move line</div>
+        {canNavigateSolution ? (
+          <div className="solutionNav" aria-label="Solution navigation">
+            <button
+              type="button"
+              className="solutionNavButton"
+              onClick={() => handleSolutionJump(0)}
+              disabled={!canStepBackward}
+              aria-label="Jump to start"
+            >
+              ⏮
+            </button>
+            <button
+              type="button"
+              className="solutionNavButton"
+              onClick={() => handleSolutionJump(boardState.lineIndex - 1)}
+              disabled={!canStepBackward}
+              aria-label="Step backward"
+            >
+              ◀
+            </button>
+            <button
+              type="button"
+              className="solutionNavButton"
+              onClick={() => handleSolutionJump(boardState.lineIndex + 1)}
+              disabled={!canStepForward}
+              aria-label="Step forward"
+            >
+              ▶
+            </button>
+            <button
+              type="button"
+              className="solutionNavButton"
+              onClick={() => handleSolutionJump(solutionPlyCount)}
+              disabled={!canStepForward}
+              aria-label="Jump to end"
+            >
+              ⏭
+            </button>
+          </div>
+        ) : null}
+      </div>
+      {boardState.viewingSolution && boardState.solutionLines?.length ? (
+        <>
+          {hasSolutionOptions ? (
+            <div className="solutionOptions">
+              <span className="solutionOptionsLabel">{solutionOptions.length} options from here</span>
+              <div className="solutionOptionList" role="list" aria-label="Solution options">
+                {solutionOptions.map((option) => (
+                  <button
+                    key={`${option.lineIndex}-${option.plyIndex}-${option.move}`}
+                    type="button"
+                    className={`solutionOption ${option.move === activeSolutionOption ? "active" : ""}`}
+                    onClick={() =>
+                      setSolutionNavigation({
+                        lineIndex: option.lineIndex,
+                        plyIndex: option.plyIndex,
+                      })
+                    }
+                  >
+                    {movePrefix(boardState.lineIndex, boardState.lineIndex % 2 === 1)}
+                    {option.move}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          <div className="moveList inlineSolutionTree" role="list" aria-label="Solution variations">
+            {inlineSolutionMoves}
+          </div>
+        </>
+      ) : boardState.lineMoves?.length ? (
+        <div className="moveList" role="list" aria-label="Move line">
+          {boardState.lineMoves.map((move, index) => {
+            const isActive = boardState.viewingSolution && boardState.lineIndex === index + 1;
+            return (
+              <button
+                key={`${move}-${index}`}
+                type="button"
+                className={`moveChip ${isActive ? "active" : ""}`}
+                onClick={() => handleMoveClick(0, index)}
+              >
+                {index % 2 === 0 ? `${Math.floor(index / 2) + 1}.` : ""}
+                {move}
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <code>{boardState.line || "No moves yet"}</code>
+      )}
+    </div>
+  );
+
   return (
     <div className="page puzzlePage">
       <div className="panel puzzlePanel">
@@ -449,28 +647,173 @@ export const PuzzleSolverPage = () => {
           </div>
         </div>
 
-        <div className="controls">
-          <div className="buttonRow puzzleActions">
-            <button type="button" onClick={handlePreviousPuzzle} disabled={historyIndex <= 0}>
-              Prev
-            </button>
-            <button type="button" onClick={handleNextPuzzle} disabled={puzzles.length === 0}>
-              Next
-            </button>
-            <button
-              type="button"
-              onClick={handleToggleSolution}
-              disabled={!fen || (!boardState.showWrongMove && !boardState.solved && !showSolution)}
-            >
-              {showSolution ? "Hide solution" : "Show solution"}
-            </button>
+        {!isMobileLayout ? (
+          <div className="controls">
+            <div className="buttonRow puzzleActions">
+              <button type="button" onClick={handlePreviousPuzzle} disabled={historyIndex <= 0}>
+                Prev
+              </button>
+              <button type="button" onClick={handleNextPuzzle} disabled={puzzles.length === 0}>
+                Next
+              </button>
+              <button
+                type="button"
+                className="puzzlePrimaryAction"
+                onClick={handleToggleSolution}
+                disabled={!fen || (!boardState.showWrongMove && !boardState.solved && !showSolution)}
+              >
+                {showSolution ? "Hide solution" : "Show solution"}
+              </button>
+            </div>
           </div>
-        </div>
+        ) : null}
 
         {boardState.error ? <div className="errorText">{boardState.error}</div> : null}
         {loadingError ? <div className="errorText">{loadingError}</div> : null}
 
-        <div className="puzzleDetails">
+        {!isMobileLayout ? (
+          <div className="puzzleDetails">
+            <div className="puzzleMetaRow">
+              <div className="metaChip" title={author}>
+                <span className="metaChipLabel">Author</span>
+                <span className="metaChipValue">{author}</span>
+              </div>
+              {event ? (
+                <div className="metaChip" title={event}>
+                  <span className="metaChipLabel">Event</span>
+                  <span className="metaChipValue">{event}</span>
+                </div>
+              ) : null}
+            </div>
+            {showFenDetails ? (
+              <>
+                <div className="fenDetails">
+                  <div className="fenHeader">
+                    <div className="fenLabel">Puzzle FEN</div>
+                    <a
+                      className={`fenAnalyzeButton ${!fen ? "disabled" : ""}`}
+                      href={startAnalysisUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-disabled={!fen}
+                      onClick={(event) => {
+                        if (!fen) event.preventDefault();
+                      }}
+                    >
+                      Analyze on Lichess
+                    </a>
+                  </div>
+                  <code>{fen || "No puzzle loaded"}</code>
+                </div>
+                <div className="fenDetails">
+                  <div className="fenHeader">
+                    <div className="fenLabel">Current FEN</div>
+                    <a
+                      className={`fenAnalyzeButton ${!currentFen ? "disabled" : ""}`}
+                      href={currentAnalysisUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-disabled={!currentFen}
+                      onClick={(event) => {
+                        if (!currentFen) event.preventDefault();
+                      }}
+                    >
+                      Analyze on Lichess
+                    </a>
+                  </div>
+                  <code>{currentFen || "No puzzle loaded"}</code>
+                </div>
+              </>
+            ) : null}
+          </div>
+        ) : null}
+
+        {!isMobileLayout ? renderMoveLine() : null}
+      </div>
+
+      <div className="boardWrap">
+        <div className={`boardFrame ${feedback ? `hasFeedback ${feedback.type}` : ""}`}>
+          {!isMobileLayout ? (
+            <div className={`feedbackBanner ${feedback ? feedback.type : ""}`} aria-live="polite">
+              <span className={`feedbackIcon ${feedback ? "" : "neutral"}`.trim()} aria-hidden="true">
+                {feedback ? feedback.icon : "?"}
+              </span>
+              <span className="feedbackCopy">
+                <strong>{feedback ? feedback.title : boardState.status || "Ready"}</strong>
+              </span>
+              <div className="feedbackActionSlot">
+                {feedback?.type === "wrong" ? (
+                  <button type="button" className="feedbackAction" onClick={handleTryAgain}>
+                    Try again
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+          {fen ? (
+            <Chessboard
+              fen={fen}
+              orientation={orientation}
+              coordinates
+              solution={activePuzzle?.solution}
+              showSolution={showSolution}
+              autoRetryWrongMoves={isMobileLayout}
+              solutionNavigation={solutionNavigation}
+              retrySignal={retrySignal}
+              onNavigateHandled={() => setSolutionNavigation(null)}
+              onStateChange={handleBoardStateChange}
+            />
+          ) : (
+            <div className="emptyBoard">Waiting for puzzle data...</div>
+          )}
+          {isMobileLayout && mobileFeedback ? (
+            <div
+              className={`mobileFeedbackOverlay ${mobileFeedback.type} ${
+                mobileFeedback.fading ? "fading" : ""
+              }`.trim()}
+              aria-live="polite"
+              aria-atomic="true"
+              key={mobileFeedback.id}
+            >
+              <span className="mobileFeedbackIcon" aria-hidden="true">
+                {mobileFeedback.icon}
+              </span>
+              <span className="mobileFeedbackText">{mobileFeedback.title}</span>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      {isMobileLayout ? (
+        <div className="mobileWorkflowPanel">
+        <div className="mobileActionCard">
+          <button
+            type="button"
+            className="puzzlePrimaryAction"
+            onClick={handleToggleSolution}
+            disabled={!fen || (!boardState.showWrongMove && !boardState.solved && !showSolution)}
+          >
+            {showSolution ? "Hide solution" : "Show solution"}
+          </button>
+          {showFenDetails ? (
+            <a
+              className={`fenAnalyzeButton mobileAnalyzeButton ${!fen ? "disabled" : ""}`}
+              href={startAnalysisUrl}
+              target="_blank"
+              rel="noreferrer"
+              aria-disabled={!fen}
+              onClick={(event) => {
+                if (!fen) event.preventDefault();
+              }}
+            >
+              Analyze on Lichess
+            </a>
+          ) : null}
+        </div>
+
+        {renderMoveLine("lineBox mobileLineBox")}
+
+        <div className="puzzleDetails mobilePuzzleDetails">
           <div className="puzzleMetaRow">
             <div className="metaChip" title={author}>
               <span className="metaChipLabel">Author</span>
@@ -483,197 +826,20 @@ export const PuzzleSolverPage = () => {
               </div>
             ) : null}
           </div>
-          {showFenDetails ? (
-            <>
-              <div className="fenDetails">
-                <div className="fenHeader">
-                  <div className="fenLabel">Puzzle FEN</div>
-                  <a
-                    className={`fenAnalyzeButton ${!fen ? "disabled" : ""}`}
-                    href={startAnalysisUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-disabled={!fen}
-                    onClick={(event) => {
-                      if (!fen) event.preventDefault();
-                    }}
-                  >
-                    Analyze on Lichess
-                  </a>
-                </div>
-                <code>{fen || "No puzzle loaded"}</code>
-              </div>
-              <div className="fenDetails">
-                <div className="fenHeader">
-                  <div className="fenLabel">Current FEN</div>
-                  <a
-                    className={`fenAnalyzeButton ${!currentFen ? "disabled" : ""}`}
-                    href={currentAnalysisUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-disabled={!currentFen}
-                    onClick={(event) => {
-                      if (!currentFen) event.preventDefault();
-                    }}
-                  >
-                    Analyze on Lichess
-                  </a>
-                </div>
-                <code>{currentFen || "No puzzle loaded"}</code>
-              </div>
-            </>
-          ) : null}
         </div>
+        </div>
+      ) : null}
 
-        <div className="lineBox">
-          <div className="lineHeader">
-            <div className="fenLabel">Move line</div>
-            {canNavigateSolution ? (
-              <div className="solutionNav" aria-label="Solution navigation">
-                <button
-                  type="button"
-                  className="solutionNavButton"
-                  onClick={() => handleSolutionJump(0)}
-                  disabled={!canStepBackward}
-                  aria-label="Jump to start"
-                >
-                  ⏮
-                </button>
-                <button
-                  type="button"
-                  className="solutionNavButton"
-                  onClick={() => handleSolutionJump(boardState.lineIndex - 1)}
-                  disabled={!canStepBackward}
-                  aria-label="Step backward"
-                >
-                  ◀
-                </button>
-                <button
-                  type="button"
-                  className="solutionNavButton"
-                  onClick={() => handleSolutionJump(boardState.lineIndex + 1)}
-                  disabled={!canStepForward}
-                  aria-label="Step forward"
-                >
-                  ▶
-                </button>
-                <button
-                  type="button"
-                  className="solutionNavButton"
-                  onClick={() => handleSolutionJump(solutionPlyCount)}
-                  disabled={!canStepForward}
-                  aria-label="Jump to end"
-                >
-                  ⏭
-                </button>
-              </div>
-            ) : null}
-          </div>
-          {boardState.viewingSolution && boardState.solutionLines?.length ? (
-            <>
-              {hasSolutionOptions ? (
-                <div className="solutionOptions">
-                  <span className="solutionOptionsLabel">
-                    {solutionOptions.length} options from here
-                  </span>
-                  <div className="solutionOptionList" role="list" aria-label="Solution options">
-                    {solutionOptions.map((option) => (
-                      <button
-                        key={`${option.lineIndex}-${option.plyIndex}-${option.move}`}
-                        type="button"
-                        className={`solutionOption ${
-                          option.move === activeSolutionOption ? "active" : ""
-                        }`}
-                        onClick={() =>
-                          setSolutionNavigation({
-                            lineIndex: option.lineIndex,
-                            plyIndex: option.plyIndex,
-                          })
-                        }
-                      >
-                        {movePrefix(boardState.lineIndex, boardState.lineIndex % 2 === 1)}
-                        {option.move}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-              <div
-                className="moveList inlineSolutionTree"
-                role="list"
-                aria-label="Solution variations"
-              >
-                {inlineSolutionMoves}
-              </div>
-            </>
-          ) : boardState.lineMoves?.length ? (
-            <div className="moveList" role="list" aria-label="Move line">
-              {boardState.lineMoves.map((move, index) => {
-                const isActive = boardState.viewingSolution && boardState.lineIndex === index + 1;
-                return (
-                  <button
-                    key={`${move}-${index}`}
-                    type="button"
-                    className={`moveChip ${isActive ? "active" : ""}`}
-                    onClick={() => handleMoveClick(0, index)}
-                  >
-                    {index % 2 === 0 ? `${Math.floor(index / 2) + 1}.` : ""}
-                    {move}
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <code>{boardState.line || "No moves yet"}</code>
-          )}
+      {isMobileLayout ? (
+        <div className="mobileBottomNav" aria-label="Puzzle navigation">
+          <button type="button" onClick={handlePreviousPuzzle} disabled={historyIndex <= 0}>
+            Prev
+          </button>
+          <button type="button" onClick={handleNextPuzzle} disabled={puzzles.length === 0}>
+            Next
+          </button>
         </div>
-      </div>
-
-      <div className="boardWrap">
-        <div className={`boardFrame ${feedback ? `hasFeedback ${feedback.type}` : ""}`}>
-          <div className={`feedbackBanner ${feedback ? feedback.type : ""}`} aria-live="polite">
-            {feedback ? (
-              <>
-                <span className="feedbackIcon" aria-hidden="true">
-                  {feedback.icon}
-                </span>
-                <span className="feedbackCopy">
-                  <strong>{feedback.title}</strong>
-                </span>
-                {feedback.type === "wrong" ? (
-                  <button type="button" className="feedbackAction" onClick={handleTryAgain}>
-                    Try again
-                  </button>
-                ) : null}
-              </>
-            ) : (
-              <>
-                <span className="feedbackIcon neutral" aria-hidden="true">
-                  ?
-                </span>
-                <span className="feedbackCopy">
-                  <strong>{boardState.status || "Ready"}</strong>
-                </span>
-              </>
-            )}
-          </div>
-          {fen ? (
-            <Chessboard
-              fen={fen}
-              orientation={orientation}
-              coordinates
-              solution={activePuzzle?.solution}
-              showSolution={showSolution}
-              solutionNavigation={solutionNavigation}
-              retrySignal={retrySignal}
-              onNavigateHandled={() => setSolutionNavigation(null)}
-              onStateChange={handleBoardStateChange}
-            />
-          ) : (
-            <div className="emptyBoard">Waiting for puzzle data...</div>
-          )}
-        </div>
-      </div>
+      ) : null}
     </div>
   );
 };

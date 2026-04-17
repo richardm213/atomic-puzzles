@@ -385,6 +385,7 @@ export const Chessboard = ({
   coordinates,
   solution,
   showSolution,
+  autoRetryWrongMoves = false,
   solutionNavigation,
   retrySignal,
   onNavigateHandled,
@@ -765,7 +766,7 @@ export const Chessboard = ({
     );
 
     if (!accepted.has(userMoveKey)) {
-      moveLockRef.current = true;
+      moveLockRef.current = !autoRetryWrongMoves;
       syncBoard(position, undefined, {
         showWrongMove: true,
         showRetryMove: false,

@@ -8,6 +8,11 @@
 
 .cg-boardShell {
   position: relative;
+  touch-action: none;
+  overscroll-behavior: contain;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .cg-board,
@@ -15,6 +20,10 @@
   border-radius: var(--radius-ui);
   overflow: hidden;
   box-shadow: var(--shadow-soft);
+}
+
+.cg-board {
+  touch-action: none;
 }
 
 #promotion-choice {
