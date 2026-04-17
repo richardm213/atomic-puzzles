@@ -65,7 +65,7 @@
   align-items: center;
   min-width: 0;
   color: var(--color-text);
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 800;
   line-height: 1.2;
 }
@@ -126,13 +126,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 118px;
-  min-height: 48px;
+  min-width: 112px;
+  min-height: 44px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: var(--color-surface-soft-strong);
   color: var(--color-text);
-  font-size: 23px;
+  font-size: 21px;
   font-weight: 850;
   font-variant-numeric: tabular-nums;
 }
@@ -162,7 +162,7 @@
 
 .matchCardPlayerStats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 10px;
   color: var(--color-muted);
   margin-bottom: 12px;

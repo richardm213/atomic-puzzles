@@ -1,13 +1,13 @@
 .puzzlePage {
-  grid-template-columns: minmax(320px, 430px) minmax(420px, 620px);
-  gap: clamp(24px, 5vw, 56px);
+  grid-template-columns: minmax(300px, 24rem) minmax(0, 34rem);
+  gap: clamp(18px, 2.4vw, 30px);
   align-items: center;
   background: var(--page-background);
 }
 
 .puzzlePanel {
   border-radius: var(--radius-ui);
-  padding: clamp(18px, 3vw, 28px);
+  padding: clamp(16px, 2.2vw, 22px);
   background: var(--color-panel);
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-panel);
@@ -34,8 +34,8 @@
 .puzzlePanel h1 {
   margin: 0;
   color: var(--color-heading);
-  font-size: clamp(30px, 4vw, 44px);
-  line-height: 1.02;
+  font-size: clamp(26px, 3vw, 36px);
+  line-height: 1.06;
   letter-spacing: 0;
 }
 
@@ -43,8 +43,8 @@
   flex: 0 0 auto;
   display: grid;
   place-items: center;
-  min-width: 76px;
-  padding: 10px 12px;
+  min-width: 68px;
+  padding: 8px 10px;
   border-radius: var(--radius-ui);
   background: var(--color-panel-strong);
   border: 1px solid var(--color-border);
@@ -53,7 +53,7 @@
 
 .puzzleCount span {
   color: var(--color-primary-soft);
-  font-size: 22px;
+  font-size: 19px;
   font-weight: 800;
   line-height: 1;
 }
@@ -67,8 +67,8 @@
 .puzzleActions {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 18px;
+  gap: 8px;
+  margin-bottom: 16px;
 }
 
 .desktopOnly {
@@ -124,7 +124,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 42px;
+  min-height: 40px;
   border-radius: var(--radius-ui);
   border: 1px solid var(--color-border);
   background: var(--color-panel-strong);
@@ -168,8 +168,8 @@
 
 .puzzleMetaRow {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
 }
 
 .metaChip,
@@ -185,7 +185,7 @@
   display: grid;
   gap: 3px;
   min-width: 0;
-  padding: 10px 12px;
+  padding: 9px 10px;
 }
 
 .metaChipLabel {
@@ -202,13 +202,13 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--color-text);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   line-height: 1.25;
 }
 
 .detailItem {
-  padding: 12px;
+  padding: 10px;
   color: var(--color-text);
   line-height: 1.35;
 }
@@ -216,7 +216,7 @@
 .fenDetails {
   display: grid;
   gap: 8px;
-  padding: 12px;
+  padding: 10px;
   color: var(--color-muted);
 }
 
@@ -272,7 +272,7 @@
 
 .lineBox {
   margin-top: 12px;
-  padding: 14px;
+  padding: 12px;
 }
 
 .lineHeader {
@@ -463,10 +463,10 @@
   position: relative;
   display: grid;
   justify-items: center;
-  gap: 14px;
+  gap: 12px;
   width: 100%;
-  max-width: 590px;
-  padding: 14px;
+  max-width: 520px;
+  padding: 10px;
   border-radius: var(--radius-ui);
   background: var(--color-modal-bg);
   border: 1px solid var(--color-glass-border);
@@ -481,7 +481,7 @@
 .boardFrame .cg-board,
 .boardFrame .emptyBoard {
   width: 100%;
-  max-width: 560px;
+  max-width: 500px;
 }
 
 .boardFrame.correct {
@@ -636,7 +636,7 @@
   background: var(--color-panel-strong);
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1180px) {
   .desktopOnly {
     display: none;
   }
@@ -653,7 +653,7 @@
   }
 
   .puzzlePanel {
-    padding: 16px 16px 12px;
+    padding: 14px 14px 12px;
   }
 
   .boardWrap {
@@ -729,7 +729,7 @@
   }
 
   .boardFrame {
-    padding: 12px;
+    padding: 10px;
   }
 
   .mobileFeedbackOverlay {
@@ -829,7 +829,7 @@
   }
 
   .puzzlePanel h1 {
-    font-size: clamp(26px, 8vw, 34px);
+    font-size: clamp(24px, 7vw, 31px);
   }
 
   .fenHeader {

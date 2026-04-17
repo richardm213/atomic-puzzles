@@ -1,4 +1,7 @@
 :root {
+  --page-max-width: 1040px;
+  --page-gutter: clamp(14px, 2vw, 28px);
+  --page-section-gap: clamp(18px, 2.4vw, 28px);
   --color-page-top: #111827;
   --color-page-bottom: #0b1220;
   --color-panel: rgba(15, 23, 42, 0.82);
@@ -144,13 +147,17 @@ canvas {
 .page {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: minmax(0, 420px) minmax(0, 560px);
-  gap: 32px;
+  grid-template-columns: minmax(300px, 24rem) minmax(0, 36rem);
+  gap: var(--page-section-gap);
   align-items: start;
   justify-content: center;
+  width: min(var(--page-max-width), 100%);
+  margin: 0 auto;
   background: var(--page-background);
-  padding: max(32px, env(safe-area-inset-top)) max(32px, env(safe-area-inset-right))
-    max(32px, env(safe-area-inset-bottom)) max(32px, env(safe-area-inset-left));
+  padding: max(var(--page-gutter), env(safe-area-inset-top))
+    max(var(--page-gutter), env(safe-area-inset-right))
+    max(var(--page-gutter), env(safe-area-inset-bottom))
+    max(var(--page-gutter), env(safe-area-inset-left));
 }
 
 .rankingsPage {
@@ -159,8 +166,10 @@ canvas {
   justify-content: center;
   align-items: flex-start;
   background: var(--page-background);
-  padding: max(32px, env(safe-area-inset-top)) max(32px, env(safe-area-inset-right))
-    max(32px, env(safe-area-inset-bottom)) max(32px, env(safe-area-inset-left));
+  padding: max(var(--page-gutter), env(safe-area-inset-top))
+    max(var(--page-gutter), env(safe-area-inset-right))
+    max(var(--page-gutter), env(safe-area-inset-bottom))
+    max(var(--page-gutter), env(safe-area-inset-left));
 }
 
 .panel {
@@ -169,19 +178,19 @@ canvas {
   background: var(--color-panel);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-ui);
-  padding: 24px;
+  padding: 20px;
   box-shadow: var(--shadow-panel);
   backdrop-filter: blur(16px);
 }
 
 .panel h1 {
   margin: 0 0 12px;
-  font-size: 32px;
+  font-size: 29px;
 }
 
 .panel p {
   margin: 0 0 20px;
-  line-height: 1.5;
+  line-height: 1.55;
   color: var(--color-muted);
 }
 
@@ -289,10 +298,12 @@ canvas {
   padding: 0 2px;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1180px) {
   .page {
     grid-template-columns: 1fr;
     justify-items: stretch;
+    width: 100%;
+    max-width: 740px;
   }
 }
 

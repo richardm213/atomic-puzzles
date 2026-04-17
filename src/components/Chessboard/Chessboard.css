@@ -1,7 +1,7 @@
 .cg-boardShell,
 .cg-board,
 .emptyBoard {
-  width: min(80vw, 560px);
+  width: min(100%, 31rem);
   aspect-ratio: 1 / 1;
   height: auto;
 }
@@ -71,11 +71,11 @@
 #promotion-choice square:focus-visible piece {
   transform: none;
 }
-@media (max-width: 900px) {
+@media (max-width: 1180px) {
   .cg-boardShell,
   .cg-board,
   .emptyBoard {
-    width: min(100%, 560px);
+    width: min(100%, 31rem);
   }
 }
 
