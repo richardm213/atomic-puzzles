@@ -263,6 +263,7 @@ export const PuzzleSolverPage = () => {
   const activeSolutionOptionRef = useRef(null);
   const upcomingPuzzleIndexesRef = useRef([]);
   const progressWriteQueueRef = useRef(Promise.resolve());
+  const attemptedPuzzleIdsRef = useRef(new Set());
 
   const getNextShuffledPuzzleIndex = useCallback(
     (currentIndex) => {
@@ -357,6 +358,10 @@ export const PuzzleSolverPage = () => {
   }, [attemptedPuzzleIds, puzzles]);
 
   useEffect(() => {
+    attemptedPuzzleIdsRef.current = attemptedPuzzleIds;
+  }, [attemptedPuzzleIds]);
+
+  useEffect(() => {
     setBoardState((prev) => {
       if (loadingError) {
         return {
@@ -432,18 +437,20 @@ export const PuzzleSolverPage = () => {
   const enqueuePuzzleProgressWrite = useCallback(
     ({ puzzleId, puzzleCorrect }) => {
       if (!puzzleId || !user?.username) return;
+      const normalizedPuzzleId = String(puzzleId);
+      if (attemptedPuzzleIdsRef.current.has(normalizedPuzzleId)) return;
 
       progressWriteQueueRef.current = progressWriteQueueRef.current
         .catch(() => {})
         .then(() =>
           recordPuzzleProgress({
             username: user.username,
-            puzzleId,
+            puzzleId: normalizedPuzzleId,
             puzzleCorrect,
           }).then(() => {
             setAttemptedPuzzleIds((current) => {
               const next = new Set(current);
-              next.add(String(puzzleId));
+              next.add(normalizedPuzzleId);
               return next;
             });
           }),

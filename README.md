@@ -93,6 +93,7 @@ Notes:
 
 - `VITE_LICHESS_CLIENT_ID` defaults to the current host, which is usually enough for a pure client-side Lichess OAuth app.
 - The login callback route is `/auth/lichess/callback`, so keep that path available in local and production environments.
+- For concurrent sign-ins and puzzle submissions, Supabase should enforce a unique constraint on `users.username` and on `(puzzle_progress.username, puzzle_progress.puzzle_id)`. The app now treats those writes as idempotent, but cross-tab and cross-user race safety still depends on those database constraints.
 
 The app fetches rows from `VITE_SUPABASE_PUZZLES_TABLE` via Supabase REST API and expects each row to include:
 

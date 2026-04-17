@@ -10,6 +10,7 @@ const PUZZLE_PROGRESS_PAGE_RPC =
   import.meta.env.VITE_SUPABASE_PUZZLE_PROGRESS_PAGE_RPC?.trim() || "get_puzzle_progress_page";
 const ATTEMPTED_PUZZLE_IDS_RPC =
   import.meta.env.VITE_SUPABASE_ATTEMPTED_PUZZLE_IDS_RPC?.trim() || "get_attempted_puzzle_ids";
+const puzzleProgressWriteRequests = new Map();
 
 const normalizePuzzleId = (puzzleId) => {
   if (puzzleId === undefined || puzzleId === null) return "";
@@ -158,22 +159,38 @@ export const recordPuzzleProgress = async ({ username, puzzleId, puzzleCorrect }
 
   if (!normalizedUsername || !normalizedPuzzleId) return;
 
-  const supabase = getSupabaseClient();
-  const { error } = await supabase.rpc(PUZZLE_PROGRESS_RPC, {
-    p_username: normalizedUsername,
-    p_puzzle_id: normalizedPuzzleId,
-    p_puzzle_correct: Boolean(puzzleCorrect),
-  });
-
-  if (error) {
-    throw new Error(`Unable to record puzzle progress: ${error.message}`);
+  const requestKey = `${normalizedUsername}:${normalizedPuzzleId}`;
+  const existingRequest = puzzleProgressWriteRequests.get(requestKey);
+  if (existingRequest) {
+    return existingRequest;
   }
 
-  upsertLocalPuzzleProgressRow(normalizedUsername, {
-    puzzle_id: normalizedPuzzleId,
-    first_attempt_at: new Date().toISOString(),
-    puzzle_correct: Boolean(puzzleCorrect),
+  const request = (async () => {
+    const firstAttemptAt = new Date().toISOString();
+    const supabase = getSupabaseClient();
+    const { error } = await supabase.rpc(PUZZLE_PROGRESS_RPC, {
+      p_username: normalizedUsername,
+      p_puzzle_id: normalizedPuzzleId,
+      p_puzzle_correct: Boolean(puzzleCorrect),
+    });
+
+    if (error) {
+      throw new Error(`Unable to record puzzle progress: ${error.message}`);
+    }
+
+    upsertLocalPuzzleProgressRow(normalizedUsername, {
+      puzzle_id: normalizedPuzzleId,
+      first_attempt_at: firstAttemptAt,
+      puzzle_correct: Boolean(puzzleCorrect),
+    });
+  })().finally(() => {
+    if (puzzleProgressWriteRequests.get(requestKey) === request) {
+      puzzleProgressWriteRequests.delete(requestKey);
+    }
   });
+
+  puzzleProgressWriteRequests.set(requestKey, request);
+  return request;
 };
 
 export const fetchPuzzleProgressPage = async (

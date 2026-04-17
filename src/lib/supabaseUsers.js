@@ -3,6 +3,8 @@ import { normalizeUsername } from "../utils/playerNames";
 
 const USERS_TABLE = import.meta.env.VITE_SUPABASE_USERS_TABLE?.trim() || "users";
 const USER_COLUMNS = "username, created_at";
+const USER_CONFLICT_COLUMNS = "username";
+const userEnsureRequests = new Map();
 
 const getUserByUsername = async (username) => {
   const supabase = getSupabaseClient();
@@ -19,10 +21,20 @@ const getUserByUsername = async (username) => {
   return data;
 };
 
-export const ensureSupabaseUser = async (username) => {
-  const normalizedUsername = normalizeUsername(username);
-  if (!normalizedUsername) {
-    throw new Error("Missing Lichess username.");
+const ensureSupabaseUserRecord = async (normalizedUsername) => {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from(USERS_TABLE)
+    .upsert({ username: normalizedUsername }, { onConflict: USER_CONFLICT_COLUMNS, ignoreDuplicates: true })
+    .select(USER_COLUMNS)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Unable to save user record: ${error.message}`);
+  }
+
+  if (data) {
+    return { user: data, created: true };
   }
 
   const existingUser = await getUserByUsername(normalizedUsername);
@@ -30,22 +42,26 @@ export const ensureSupabaseUser = async (username) => {
     return { user: existingUser, created: false };
   }
 
-  const supabase = getSupabaseClient();
-  const { data, error } = await supabase
-    .from(USERS_TABLE)
-    .insert({ username: normalizedUsername })
-    .select(USER_COLUMNS)
-    .single();
+  throw new Error("Unable to save user record: user was not returned after upsert.");
+};
 
-  if (!error && data) {
-    return { user: data, created: true };
+export const ensureSupabaseUser = async (username) => {
+  const normalizedUsername = normalizeUsername(username);
+  if (!normalizedUsername) {
+    throw new Error("Missing Lichess username.");
   }
 
-  // Another login could have created the row between our read and insert.
-  const racedUser = await getUserByUsername(normalizedUsername);
-  if (racedUser) {
-    return { user: racedUser, created: false };
+  const inFlightRequest = userEnsureRequests.get(normalizedUsername);
+  if (inFlightRequest) {
+    return inFlightRequest;
   }
 
-  throw new Error(`Unable to save user record: ${error?.message || "unknown error"}`);
+  const request = ensureSupabaseUserRecord(normalizedUsername).finally(() => {
+    if (userEnsureRequests.get(normalizedUsername) === request) {
+      userEnsureRequests.delete(normalizedUsername);
+    }
+  });
+
+  userEnsureRequests.set(normalizedUsername, request);
+  return request;
 };
