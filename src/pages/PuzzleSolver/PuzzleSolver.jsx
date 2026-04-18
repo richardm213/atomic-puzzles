@@ -855,9 +855,10 @@ export const PuzzleSolverPage = () => {
     const rootChildren = orderedChildren(tree);
     if (rootChildren.length === 0) return null;
 
-    const rootMain =
-      rootChildren.find((child) => child.lineIndexes.has(activeSolutionLineIndex)) ??
-      findMainChild(rootChildren);
+    // Keep the displayed PGN structure stable when the user switches between
+    // sibling solution options. The active option should highlight/navigation-target
+    // a branch, but it should not reshuffle which root variation is rendered first.
+    const rootMain = findMainChild(rootChildren);
     const rootVariations = rootChildren.filter((child) => child !== rootMain);
 
     const content = [...renderNode(rootMain, 0, "root-main")];
