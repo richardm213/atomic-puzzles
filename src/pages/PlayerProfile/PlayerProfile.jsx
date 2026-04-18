@@ -143,6 +143,10 @@ export const PlayerProfilePage = ({ username }) => {
   const matchLengthBounds = matchLengthBoundsByMode[selectedMode] ?? matchLengthBoundsByMode[defaultMode];
 
   useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [normalizedUsername]);
+
+  useEffect(() => {
     let isCurrent = true;
 
     const resolveUsername = async () => {
@@ -771,13 +775,13 @@ export const PlayerProfilePage = ({ username }) => {
                         </span>
                       </td>
                       <td>
-                        <span className="profileMetricValue">{match.afterRating}</span>
+                        <span className="profileMetricValue">{match.beforeRating}</span>
                         <span className="profileDelta">
                           {formatSignedDecimal(match.ratingChange)}
                         </span>
                       </td>
                       <td>
-                        <span className="profileMetricValue">{match.afterRd}</span>
+                        <span className="profileMetricValue">{match.beforeRd}</span>
                         <span className="profileDelta">{formatSignedDecimal(match.rdChange)}</span>
                       </td>
                     </tr>
