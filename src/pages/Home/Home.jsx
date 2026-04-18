@@ -170,7 +170,7 @@ export const HomePage = () => {
             <img src={appAssetPath("/favicon.ico")} alt="" width="24" height="24" />
             Atomic puzzles
           </div>
-          <h1 id="home-title">A better place to train and follow atomic chess</h1>
+          <h1 id="home-title">The best place to train and follow atomic chess</h1>
           <p className="homeIntro">
             Solve real atomic puzzles, browse monthly rankings, follow recent matches, and look up
             player profiles all in one place.
