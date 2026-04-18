@@ -9,8 +9,8 @@ export const modeLabels = {
 
 export const modeDescriptions = {
   blitz: "",
-  bullet: "Fast tactical games where clock handling and instant patterns matter.",
-  hyperbullet: "Ultra-fast games where instinct, premoves, and chaos dominate.",
+  bullet: "",
+  hyperbullet: "",
 };
 
 export const createModeRecord = (valueFactory) =>

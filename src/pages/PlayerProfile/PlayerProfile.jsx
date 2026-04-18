@@ -544,7 +544,8 @@ export const PlayerProfilePage = ({ username }) => {
                   {bestMonthRanks.map((monthRank) => (
                     <li key={`best-month-rank-${monthRank.mode}-${monthRank.monthKey}`}>
                       <span className="profileBestMonthRankPrimary">
-                        {monthRank.monthLabel} {monthRank.mode} · #{monthRank.rank}
+                        {monthRank.monthLabel} {modeLabels[monthRank.mode] ?? monthRank.mode} · #
+                        {monthRank.rank}
                       </span>
                       <span className="profileBestMonthRankRating">{monthRank.rating}</span>
                     </li>
@@ -578,7 +579,8 @@ export const PlayerProfilePage = ({ username }) => {
                   {recentMonthRanks.map((monthRank) => (
                     <li key={`recent-month-rank-${monthRank.mode}-${monthRank.monthKey}`}>
                       <span className="profileBestMonthRankPrimary">
-                        {monthRank.monthLabel} {monthRank.mode} · #{monthRank.rank}
+                        {monthRank.monthLabel} {modeLabels[monthRank.mode] ?? monthRank.mode} · #
+                        {monthRank.rank}
                       </span>
                       <span className="profileBestMonthRankRating">{monthRank.rating}</span>
                     </li>
