@@ -24,7 +24,7 @@ const monthNames = [
 const rankingColumns = [
   { key: "rank", label: "#" },
   { key: "username", label: "Player" },
-  { key: "score", label: "Score" },
+  { key: "score", label: "Rating" },
   { key: "rd", label: "RD" },
   { key: "games", label: "Games" },
 ];
