@@ -373,6 +373,43 @@
   cursor: not-allowed;
 }
 
+.paginationPageButton {
+  font-weight: 800;
+}
+
+.paginationJumpForm {
+  margin: 0;
+}
+
+.paginationJumpLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-panel-strong);
+  color: var(--color-text);
+  font-weight: 800;
+}
+
+.paginationJumpInput {
+  width: 72px;
+  min-height: 32px;
+  border: 1px solid var(--color-input-border);
+  border-radius: 8px;
+  background: var(--color-surface-elevated-strong);
+  color: var(--color-text);
+  font: inherit;
+  padding: 4px 8px;
+}
+
+.paginationJumpInput:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-primary) 65%, white);
+  outline-offset: 1px;
+}
+
 @media (max-width: 960px) {
   .historyBanner,
   .historyLedgerRow {
@@ -421,5 +458,16 @@
   .historyOpenLink,
   .paginationRow button {
     width: 100%;
+  }
+
+  .paginationJumpForm,
+  .paginationJumpLabel {
+    width: 100%;
+  }
+
+  .paginationJumpLabel {
+    justify-content: center;
+    flex-wrap: wrap;
+    padding: 10px 14px;
   }
 }

@@ -241,6 +241,41 @@
   cursor: pointer;
 }
 
+.paginationPageButton {
+  font-weight: 700;
+}
+
+.paginationJumpForm {
+  margin: 0;
+}
+
+.paginationJumpLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--color-input-border);
+  border-radius: 8px;
+  background: var(--color-panel-strong);
+  color: var(--color-text);
+  padding: 8px 10px;
+}
+
+.paginationJumpInput {
+  width: 72px;
+  min-height: 34px;
+  border: 1px solid var(--color-input-border);
+  border-radius: 6px;
+  background: var(--color-surface-elevated-strong);
+  color: var(--color-text);
+  font: inherit;
+  padding: 6px 8px;
+}
+
+.paginationJumpInput:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-primary) 65%, white);
+  outline-offset: 1px;
+}
+
 .paginationRow button:hover:not(:disabled) {
   border-color: var(--color-accent-soft-border);
   color: var(--color-heading);
@@ -324,5 +359,19 @@
   .paginationRow button {
     flex: 1 1 96px;
     min-height: 44px;
+  }
+
+  .paginationJumpForm {
+    flex: 1 1 100%;
+  }
+
+  .paginationJumpLabel {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .paginationJumpInput {
+    width: min(100%, 120px);
   }
 }
