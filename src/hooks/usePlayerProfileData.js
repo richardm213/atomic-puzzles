@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
 import {
+  createModeRecord,
+  defaultMode,
   defaultMatchLengthMax,
   isMatchLengthWithinBounds,
   knownSourceKeys,
+  modeLabels,
   modeOptions,
   matchLengthBoundsByMode,
 } from "../constants/matches";
@@ -12,10 +15,7 @@ import { fetchLbRows, monthKeyFromMonthValue } from "../lib/supabaseLb";
 import { fetchPlayerRatingsRows } from "../lib/supabasePlayerRatings";
 import { formatCalendarDate } from "../utils/formatters";
 
-const emptyRatingsSnapshotByMode = {
-  blitz: new Map(),
-  bullet: new Map(),
-};
+const emptyRatingsSnapshotByMode = createModeRecord(() => new Map());
 
 const parseMonthRanksFromLbRows = (rows) => {
   return (Array.isArray(rows) ? rows : [])
@@ -41,10 +41,7 @@ const parseMonthRanksFromLbRows = (rows) => {
 };
 
 const parseCurrentRatingsFromRows = (rows) => {
-  const snapshotsByMode = {
-    blitz: new Map(),
-    bullet: new Map(),
-  };
+  const snapshotsByMode = createModeRecord(() => new Map());
 
   (Array.isArray(rows) ? rows : []).forEach((row) => {
     const mode = String(row?.tc || "").toLowerCase();
@@ -129,41 +126,49 @@ export const useRatingsSnapshotByMode = (username) => {
   return ratingsSnapshotByMode;
 };
 
-export const getRatingDisplayByMode = (ratingsSnapshotByMode, username) => ({
-  blitz: normalizeRatingSnapshot(ratingsSnapshotByMode.blitz.get(username)),
-  bullet: normalizeRatingSnapshot(ratingsSnapshotByMode.bullet.get(username)),
-});
+export const getRatingDisplayByMode = (ratingsSnapshotByMode, username) =>
+  Object.fromEntries(
+    modeOptions.map((mode) => [
+      mode,
+      normalizeRatingSnapshot(ratingsSnapshotByMode[mode]?.get(username)),
+    ]),
+  );
 
-export const getProfileMetricCards = (blitzDisplaySummary, bulletDisplaySummary) =>
-  [
-    ["blitz", "Blitz", blitzDisplaySummary],
-    ["bullet", "Bullet", bulletDisplaySummary],
-  ].flatMap(([mode, label, summary]) => [
-    {
-      key: `${mode}-rating`,
-      label: `${label} Rating`,
-      value: `${formatCurrentRating(summary)}${formatRankSuffix(summary.rank)}`,
-    },
-    {
-      key: `${mode}-rd`,
-      label: `${label} RD`,
-      value: summary.currentRd,
-    },
-    {
-      key: `${mode}-peak-rating`,
-      label: `${label} Peak Rating`,
-      value: summary.peakRating === 0 ? "N/A" : summary.peakRating,
-      subtext:
-        summary.peakRating !== null && summary.peakRating !== 0 && summary.peakDate
-          ? formatCalendarDate(summary.peakDate)
-          : "",
-    },
-    {
-      key: `${mode}-games-played`,
-      label: `${label} Games Played`,
-      value: summary.gamesPlayed.toLocaleString("en-US"),
-    },
-  ]);
+export const getProfileMetricCardRows = (ratingDisplayByMode) =>
+  modeOptions.map((mode) => {
+    const label = modeLabels[mode] ?? mode;
+    const summary = ratingDisplayByMode[mode] ?? normalizeRatingSnapshot(null);
+    return {
+      key: `${mode}-row`,
+      label,
+      cards: [
+        {
+          key: `${mode}-rating`,
+          label: "Rating",
+          value: `${formatCurrentRating(summary)}${formatRankSuffix(summary.rank)}`,
+        },
+        {
+          key: `${mode}-rd`,
+          label: "RD",
+          value: summary.currentRd,
+        },
+        {
+          key: `${mode}-peak-rating`,
+          label: "Peak Rating",
+          value: summary.peakRating === 0 ? "N/A" : summary.peakRating,
+          subtext:
+            summary.peakRating !== null && summary.peakRating !== 0 && summary.peakDate
+              ? formatCalendarDate(summary.peakDate)
+              : "",
+        },
+        {
+          key: `${mode}-games-played`,
+          label: "Games Played",
+          value: summary.gamesPlayed.toLocaleString("en-US"),
+        },
+      ],
+    };
+  });
 
 export const getTimeControlOptions = (matches) => {
   const initialSet = new Set();
@@ -194,7 +199,7 @@ export const filterMatches = (matches, appliedFilters, selectedMode) => {
           match.gameCount,
           appliedFilters.matchLengthMin,
           appliedFilters.matchLengthMax,
-          matchLengthBoundsByMode[selectedMode]?.max ?? defaultMatchLengthMax,
+          matchLengthBoundsByMode[selectedMode]?.max ?? matchLengthBoundsByMode[defaultMode]?.max ?? defaultMatchLengthMax,
         )
       ) {
         return false;

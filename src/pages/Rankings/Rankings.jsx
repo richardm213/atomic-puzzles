@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { modeOptions } from "../../constants/matches";
+import { defaultMode, modeLabels, modeOptions } from "../../constants/matches";
 import { useRankingsByMonth } from "../../hooks/useRankingsByMonth";
 import { monthDateFromMonthKey } from "../../lib/supabaseLb";
 import { Seo } from "../../components/Seo/Seo";
@@ -86,7 +86,7 @@ const allYearsFromJan2023 = () => {
 const LeaderboardView = () => {
   const [selectedYear, setSelectedYear] = useState("");
   const [selectedMonthName, setSelectedMonthName] = useState("");
-  const [selectedMode, setSelectedMode] = useState("blitz");
+  const [selectedMode, setSelectedMode] = useState(defaultMode);
   const [sortKey, setSortKey] = useState("rank");
   const [sortDirection, setSortDirection] = useState("asc");
 
@@ -164,7 +164,7 @@ const LeaderboardView = () => {
     <div className="rankingsPage">
       <Seo
         title="Atomic Chess Rankings"
-        description="Browse monthly atomic chess rankings for blitz and bullet, with merged aliases and rating eligibility rules."
+        description="Browse monthly atomic chess rankings for blitz, bullet, and hyperbullet, with merged aliases and rating eligibility rules."
         path="/rankings"
       />
       <div className="panel rankingsPanel">
@@ -208,11 +208,11 @@ const LeaderboardView = () => {
               onChange={(event) => setSelectedMode(event.target.value)}
             >
               {modeOptions.map((mode) => (
-                <option key={mode} value={mode}>
-                  {mode}
-                </option>
-              ))}
-            </select>
+                  <option key={mode} value={mode}>
+                  {modeLabels[mode] ?? mode}
+                  </option>
+                ))}
+              </select>
           </label>
         </div>
 

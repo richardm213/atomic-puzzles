@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import "./H2H.css";
-import { defaultSourceFilters, knownSourceKeys } from "../../constants/matches";
+import { defaultSourceFilters, modeLabels, modeOptions, knownSourceKeys } from "../../constants/matches";
 import { loadRawMatchesByMode } from "../../lib/matchData";
 import { fetchPlayerRatingsRows } from "../../lib/supabasePlayerRatings";
 import { resolveUsernameInputs } from "../../lib/searchUsernames";
@@ -167,22 +167,22 @@ export const H2HPage = () => {
     );
   }, [incrementOptions, initialOptions, matches]);
 
-  const blitzMatches = useMemo(
-    () => filteredMatches.filter((match) => match.mode === "blitz"),
+  const scoresByMode = useMemo(
+    () =>
+      Object.fromEntries(
+        modeOptions.map((mode) => [
+          mode,
+          computeGameScore(filteredMatches.filter((match) => match.mode === mode)),
+        ]),
+      ),
     [filteredMatches],
   );
-  const bulletMatches = useMemo(
-    () => filteredMatches.filter((match) => match.mode === "bullet"),
-    [filteredMatches],
-  );
-  const blitzScore = useMemo(() => computeGameScore(blitzMatches), [blitzMatches]);
-  const bulletScore = useMemo(() => computeGameScore(bulletMatches), [bulletMatches]);
   const combinedScore = useMemo(
     () => ({
-      playerA: blitzScore.playerA + bulletScore.playerA,
-      playerB: blitzScore.playerB + bulletScore.playerB,
+      playerA: modeOptions.reduce((sum, mode) => sum + (scoresByMode[mode]?.playerA ?? 0), 0),
+      playerB: modeOptions.reduce((sum, mode) => sum + (scoresByMode[mode]?.playerB ?? 0), 0),
     }),
-    [blitzScore.playerA, blitzScore.playerB, bulletScore.playerA, bulletScore.playerB],
+    [scoresByMode],
   );
 
   const performSearch = useCallback(async (first, second) => {
@@ -210,24 +210,18 @@ export const H2HPage = () => {
         loadRawMatchesByMode(mode, { filters: { usernamePair: [resolvedFirst, resolvedSecond] } });
       const loadPlayerSnapshot = async (username) => fetchPlayerRatingsRows({ username });
 
-      const [blitzRaw, bulletRaw, firstRatings, secondRatings] = await Promise.all([
-        loadModeMatches("blitz"),
-        loadModeMatches("bullet"),
+      const [modeResults, firstRatings, secondRatings] = await Promise.all([
+        Promise.all(modeOptions.map((mode) => loadModeMatches(mode))),
         loadPlayerSnapshot(resolvedFirst),
         loadPlayerSnapshot(resolvedSecond),
       ]);
       if (requestId !== searchRequestIdRef.current) return;
 
-      const blitzNormalized = normalizeH2HMatches(blitzRaw, "blitz", resolvedFirst, resolvedSecond);
-      const bulletNormalized = normalizeH2HMatches(
-        bulletRaw,
-        "bullet",
-        resolvedFirst,
-        resolvedSecond,
-      );
-      const merged = [...blitzNormalized, ...bulletNormalized].sort(
-        (a, b) => b.startTs - a.startTs,
-      );
+      const merged = modeResults
+        .flatMap((rawMatches, index) =>
+          normalizeH2HMatches(rawMatches, modeOptions[index], resolvedFirst, resolvedSecond),
+        )
+        .sort((a, b) => b.startTs - a.startTs);
 
       setLoadedPlayer1(resolvedFirst);
       setLoadedPlayer2(resolvedSecond);
@@ -317,7 +311,7 @@ export const H2HPage = () => {
       : "Atomic Chess Head-to-Head";
   const seoDescription =
     loadedPlayer1 && loadedPlayer2
-      ? `Compare ${loadedPlayer1} and ${loadedPlayer2} across atomic chess matches, scores, and blitz and bullet splits.`
+      ? `Compare ${loadedPlayer1} and ${loadedPlayer2} across atomic chess matches, scores, and blitz, bullet, and hyperbullet splits.`
       : "Compare two atomic chess players side by side across recent results, total score, and time-control splits.";
 
   return (
@@ -329,7 +323,7 @@ export const H2HPage = () => {
             <span className="h2hEyebrow">Head to Head</span>
             <h1>See how two players stack up.</h1>
             <p>
-              Compare overall score, bullet and blitz splits, and every match in the rivalry.
+              Compare overall score, blitz, bullet, and hyperbullet splits, and every match in the rivalry.
             </p>
           </div>
 
@@ -497,35 +491,25 @@ export const H2HPage = () => {
                     </div>
                   </div>
 
-                  <div className="h2hModeCard">
-                    <div className="h2hModeCardBody h2hModeCardBodyCombined">
-                      <div className="h2hModeStatsGroup">{renderModeStats(player1Snapshot.blitz || {})}</div>
-                      <div className="h2hScoreBlock">
-                        <h3>Blitz</h3>
-                        <strong className="h2hModeCardScore h2hScoreLine">
-                          {formatScore(blitzScore.playerA)} - {formatScore(blitzScore.playerB)}
-                        </strong>
-                      </div>
-                      <div className="h2hModeStatsGroup h2hModeCardRightStats">
-                        {renderModeStats(player2Snapshot.blitz || {})}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="h2hModeCard">
-                    <div className="h2hModeCardBody h2hModeCardBodyCombined">
-                      <div className="h2hModeStatsGroup">{renderModeStats(player1Snapshot.bullet || {})}</div>
-                      <div className="h2hScoreBlock">
-                        <h3>Bullet</h3>
-                        <strong className="h2hModeCardScore h2hScoreLine">
-                          {formatScore(bulletScore.playerA)} - {formatScore(bulletScore.playerB)}
-                        </strong>
-                      </div>
-                      <div className="h2hModeStatsGroup h2hModeCardRightStats">
-                        {renderModeStats(player2Snapshot.bullet || {})}
+                  {modeOptions.map((mode) => (
+                    <div key={mode} className="h2hModeCard">
+                      <div className="h2hModeCardBody h2hModeCardBodyCombined">
+                        <div className="h2hModeStatsGroup">
+                          {renderModeStats(player1Snapshot[mode] || {})}
+                        </div>
+                        <div className="h2hScoreBlock">
+                          <h3>{modeLabels[mode] ?? mode}</h3>
+                          <strong className="h2hModeCardScore h2hScoreLine">
+                            {formatScore(scoresByMode[mode]?.playerA ?? 0)} -{" "}
+                            {formatScore(scoresByMode[mode]?.playerB ?? 0)}
+                          </strong>
+                        </div>
+                        <div className="h2hModeStatsGroup h2hModeCardRightStats">
+                          {renderModeStats(player2Snapshot[mode] || {})}
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ))}
                 </section>
               </div>
             </section>

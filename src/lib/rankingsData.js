@@ -1,4 +1,4 @@
-import { modeOptions } from "../constants/matches";
+import { createModeRecord, modeOptions } from "../constants/matches";
 import { fetchLbRows, isoMonthStartFromMonthKey } from "./supabaseLb";
 
 const roundToTenth = (value) => {
@@ -39,10 +39,7 @@ const parseModeFromTimeControl = (timeControl) => {
 };
 
 const normalizeLbRowsForMonth = (rows) => {
-  const modes = {
-    blitz: { players: [] },
-    bullet: { players: [] },
-  };
+  const modes = createModeRecord(() => ({ players: [] }));
 
   (Array.isArray(rows) ? rows : []).forEach((row) => {
     const mode = parseModeFromTimeControl(row?.tc);

@@ -42,6 +42,15 @@
   text-transform: uppercase;
 }
 
+.controlHint {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: normal;
+  line-height: 1.35;
+  text-transform: none;
+  color: var(--color-muted);
+}
+
 .matchFilterGrid select,
 .matchFilterGrid input[type="text"],
 .matchFilterGrid input[type="date"] {

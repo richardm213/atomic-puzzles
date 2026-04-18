@@ -4,9 +4,10 @@ import { defaultRatingMax, defaultRatingMin } from "../constants/matches";
 import { cachedRequest } from "../utils/requestCache";
 import { normalizeUsername } from "../utils/playerNames";
 
-const MATCH_TABLE_BY_MODE = {
+export const MATCH_TABLE_BY_MODE = {
   blitz: "blitz_matches",
   bullet: "bullet_matches",
+  hyperbullet: "hyper_matches",
 };
 
 const MATCH_SELECT_COLUMNS = [

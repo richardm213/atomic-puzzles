@@ -27,8 +27,8 @@ const ratingFaq = [
   {
     title: "How are time controls separated?",
     body: [
-      "The pools are split by time control. Blitz games feed the blitz leaderboard, and bullet games feed the bullet leaderboard.",
-      "This separation matters because bullet and blitz reward different skills. Mixing them into one pool blurs the meaning of each rating.",
+      "The pools are split by time control. Blitz games feed the blitz leaderboard, bullet games feed the bullet leaderboard, and hyperbullet games feed the hyperbullet leaderboard.",
+      "This separation matters because hyperbullet, bullet, and blitz reward different skills. Mixing them into one pool blurs the meaning of each rating.",
     ],
   },
   {
@@ -48,8 +48,9 @@ const ratingFaq = [
 ];
 
 const eligibilityNotes = [
-  "A player needs at least 20 blitz games in a month to appear in the monthly blitz rankings.",
-  "A player needs at least 50 bullet games in a month to appear in the monthly bullet rankings.",
+  "A player needs at least 15 blitz games in a month to appear in the monthly blitz rankings.",
+  "A player needs at least 25 bullet games in a month to appear in the monthly bullet rankings.",
+  "A player needs at least 25 hyperbullet games in a month to appear in the monthly hyperbullet rankings.",
   "A player's rating deviation must be 65.0 or lower to be shown in the published leaderboard.",
 ];
 
@@ -57,7 +58,7 @@ export const RankingsMethodologyPage = () => (
   <div className="rankingsPage">
     <Seo
       title="How Atomic Ratings Work"
-      description="Learn how the atomic rankings are built, which games count, how aliases are merged, and how blitz and bullet pools are separated."
+      description="Learn how the atomic rankings are built, which games count, how aliases are merged, and how blitz, bullet, and hyperbullet pools are separated."
       path="/rankings/how-ratings-work"
     />
     <div className="panel rankingsPanel methodologyPanel">

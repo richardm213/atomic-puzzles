@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  defaultMode,
   defaultMatchLengthMax,
   defaultMatchLengthMin,
   matchLengthBoundsByMode,
 } from "../constants/matches";
 
-const resolveBounds = (mode) => matchLengthBoundsByMode[mode] ?? matchLengthBoundsByMode.blitz;
+const resolveBounds = (mode) => matchLengthBoundsByMode[mode] ?? matchLengthBoundsByMode[defaultMode];
 
 export const toBoundedLengthRange = (mode) => {
   const bounds = resolveBounds(mode);

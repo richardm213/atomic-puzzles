@@ -1,3 +1,4 @@
+import { modeOptions } from "../constants/matches";
 import { fetchMatchRowsFromSupabase } from "./supabaseMatchRows";
 import {
   normalizedGamesFromMatch,
@@ -111,17 +112,16 @@ const parseMatchRows = (rows) => {
 export const loadRawMatchesByMode = async (mode, options = {}) => {
   const { filters = {}, page, pageSize } = options;
   if (mode === "all") {
-    const [blitzMatches, bulletMatches] = await Promise.all([
-      loadRawMatchesByMode("blitz", { filters, page, pageSize }),
-      loadRawMatchesByMode("bullet", { filters, page, pageSize }),
-    ]);
+    const matchesByMode = await Promise.all(
+      modeOptions.map((modeOption) => loadRawMatchesByMode(modeOption, { filters, page, pageSize })),
+    );
     if (pageSize) {
       return {
-        matches: [...(blitzMatches.matches ?? []), ...(bulletMatches.matches ?? [])],
-        total: (blitzMatches.total ?? 0) + (bulletMatches.total ?? 0),
+        matches: matchesByMode.flatMap((entry) => entry.matches ?? []),
+        total: matchesByMode.reduce((sum, entry) => sum + (entry.total ?? 0), 0),
       };
     }
-    return [...blitzMatches, ...bulletMatches];
+    return matchesByMode.flat();
   }
 
   const result = await fetchMatchRowsFromSupabase(mode, filters, { page, pageSize });

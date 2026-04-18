@@ -7,6 +7,21 @@
 .profileTopBar {
   margin-top: 8px;
   display: grid;
+  gap: 14px;
+}
+
+.profileMetricRow {
+  display: grid;
+  gap: 10px;
+}
+
+.profileMetricRowTitle {
+  margin: 0;
+  font-size: 17px;
+}
+
+.profileMetricRowCards {
+  display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
 }
@@ -374,10 +389,6 @@
 }
 
 @media (max-width: 1180px) {
-  .profileTopBar {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .profileHighlights,
   .profileHighlightsBottomRow {
     grid-template-columns: 1fr;
@@ -389,8 +400,8 @@
 }
 
 @media (max-width: 720px) {
-  .profileTopBar {
-    grid-template-columns: 1fr;
+  .profileMetricRowCards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .profileActionRow {
@@ -407,6 +418,10 @@
 }
 
 @media (max-width: 640px) {
+  .profileMetricRowCards {
+    grid-template-columns: 1fr;
+  }
+
   .profileBestMonthRanksHeader {
     align-items: flex-start;
     flex-direction: column;

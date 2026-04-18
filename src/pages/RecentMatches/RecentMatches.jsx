@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./RecentMatches.css";
 import {
+  defaultMode,
   defaultRatingMax,
   defaultRatingMin,
   defaultSourceFilters,
   isMatchLengthWithinBounds,
   knownSourceKeys,
+  modeDescriptions,
+  modeLabels,
   modeOptions,
   opponentRatingSliderMax,
   opponentRatingSliderMin,
@@ -76,7 +79,7 @@ const normalizeRecentMatches = (matches, mode) =>
     .sort((a, b) => b.startTs - a.startTs);
 
 export const RecentMatchesPage = () => {
-  const [selectedMode, setSelectedMode] = useState("blitz");
+  const [selectedMode, setSelectedMode] = useState(defaultMode);
   const [matches, setMatches] = useState([]);
   const [totalMatches, setTotalMatches] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -97,7 +100,7 @@ export const RecentMatchesPage = () => {
   const searchInFlightRef = useRef(false);
   const pageLoadIdRef = useRef(0);
   const skipNextPageLoadKeyRef = useRef("");
-  const defaultLengthRange = useMemo(() => toBoundedLengthRange("blitz"), []);
+  const defaultLengthRange = useMemo(() => toBoundedLengthRange(defaultMode), []);
   const {
     bounds: appliedMatchBounds,
     matchLengthMin,
@@ -106,7 +109,7 @@ export const RecentMatchesPage = () => {
     setMatchLengthMax,
   } = useMatchLengthRange(selectedMode);
   const [appliedFilters, setAppliedFilters] = useState({
-    selectedMode: "blitz",
+    selectedMode: defaultMode,
     ratingFilterType: "both",
     ratingMin: defaultRatingMin,
     ratingMax: defaultRatingMax,
@@ -351,12 +354,12 @@ export const RecentMatchesPage = () => {
     <div className="rankingsPage">
       <Seo
         title="Recent Atomic Chess Matches"
-        description="Filter recent atomic chess matches by player, rating, source, date, time control, and match length."
+        description="Filter recent atomic chess matches by player, rating, source, date, time control, and match length across blitz, bullet, and hyperbullet."
         path="/recent"
       />
       <div className="panel rankingsPanel recentMatchesPanel">
         <h1>Recent Matches</h1>
-        <p>Newest atomic matches in a card view.</p>
+        <p>Newest atomic matches in a card view across blitz, bullet, and hyperbullet.</p>
         <form
           className="matchFilterPanel"
           onSubmit={(event) => {
@@ -374,10 +377,11 @@ export const RecentMatchesPage = () => {
               >
                 {recentModeOptions.map((mode) => (
                   <option key={mode} value={mode}>
-                    {mode}
+                    {modeLabels[mode] ?? mode}
                   </option>
                 ))}
               </select>
+              <span className="controlHint">{modeDescriptions[selectedMode]}</span>
             </label>
             <label htmlFor="recent-page-size">
               Page size

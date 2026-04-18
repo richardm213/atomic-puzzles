@@ -2,10 +2,14 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import "./PlayerProfile.css";
 import {
+  createModeRecord,
+  defaultMode,
   defaultRatingMax,
   defaultRatingMin,
   defaultSourceFilters,
   matchLengthBoundsByMode,
+  modeDescriptions,
+  modeLabels,
   modeOptions,
   opponentRatingSliderMax,
   opponentRatingSliderMin,
@@ -20,7 +24,7 @@ import {
   getAliasesForUser,
   getBestWins,
   getMonthRankHighlights,
-  getProfileMetricCards,
+  getProfileMetricCardRows,
   getRatingDisplayByMode,
   getTimeControlOptions,
   toggleExpandedMatchKey,
@@ -90,26 +94,17 @@ const buildMatchFilters = (username, filters) => {
 export const PlayerProfilePage = ({ username }) => {
   const normalizedUsername = useMemo(() => normalizeUsername(username), [username]);
   const [resolvedUsername, setResolvedUsername] = useState(normalizedUsername);
-  const [selectedMode, setSelectedMode] = useState("blitz");
+  const [selectedMode, setSelectedMode] = useState(defaultMode);
   const [aliasesLookup, setAliasesLookup] = useState(() => new Map());
   const [aliasesLoaded, setAliasesLoaded] = useState(false);
-  const [matchesByMode, setMatchesByMode] = useState({
-    blitz: [],
-    bullet: [],
-  });
-  const [bestWinMatchesByMode, setBestWinMatchesByMode] = useState({
-    blitz: [],
-    bullet: [],
-  });
-  const [totalMatchesByMode, setTotalMatchesByMode] = useState({
-    blitz: 0,
-    bullet: 0,
-  });
+  const [matchesByMode, setMatchesByMode] = useState(() => createModeRecord(() => []));
+  const [bestWinMatchesByMode, setBestWinMatchesByMode] = useState(() => createModeRecord(() => []));
+  const [totalMatchesByMode, setTotalMatchesByMode] = useState(() => createModeRecord(() => 0));
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [expandedMatchKeys, setExpandedMatchKeys] = useState([]);
-  const defaultLengthRange = toBoundedLengthRange("blitz");
+  const defaultLengthRange = toBoundedLengthRange(defaultMode);
   const { matchLengthMin, setMatchLengthMin, matchLengthMax, setMatchLengthMax } =
     useMatchLengthRange(selectedMode);
   const [opponentRatingMin, setOpponentRatingMin] = useState(defaultRatingMin);
@@ -145,7 +140,7 @@ export const PlayerProfilePage = ({ username }) => {
     timeControlInitialFilter: "all",
     timeControlIncrementFilter: "all",
   });
-  const matchLengthBounds = matchLengthBoundsByMode[selectedMode] ?? matchLengthBoundsByMode.blitz;
+  const matchLengthBounds = matchLengthBoundsByMode[selectedMode] ?? matchLengthBoundsByMode[defaultMode];
 
   useEffect(() => {
     let isCurrent = true;
@@ -290,7 +285,7 @@ export const PlayerProfilePage = ({ username }) => {
       timeControlInitialFilter: "all",
       timeControlIncrementFilter: "all",
     };
-    runMatchSearch("blitz", defaultFilters, 1);
+    runMatchSearch(defaultMode, defaultFilters, 1);
   }, [aliasesLoaded, canonicalUsername, isBanned]);
 
   useEffect(() => {
@@ -373,8 +368,6 @@ export const PlayerProfilePage = ({ username }) => {
     () => getRatingDisplayByMode(ratingsSnapshotByMode, canonicalUsername),
     [ratingsSnapshotByMode, canonicalUsername],
   );
-  const blitzDisplaySummary = ratingDisplayByMode.blitz;
-  const bulletDisplaySummary = ratingDisplayByMode.bullet;
   const bestWins = useMemo(
     () => getBestWins(eligibleBestWinMatches, canonicalUsername, bestWinCount),
     [eligibleBestWinMatches, canonicalUsername, bestWinCount],
@@ -387,9 +380,9 @@ export const PlayerProfilePage = ({ username }) => {
     () => getAliasesForUser(aliasesLookup, canonicalUsername),
     [aliasesLookup, canonicalUsername],
   );
-  const profileMetricCards = useMemo(
-    () => getProfileMetricCards(blitzDisplaySummary, bulletDisplaySummary),
-    [blitzDisplaySummary, bulletDisplaySummary],
+  const profileMetricRows = useMemo(
+    () => getProfileMetricCardRows(ratingDisplayByMode),
+    [ratingDisplayByMode],
   );
 
   return (
@@ -417,13 +410,20 @@ export const PlayerProfilePage = ({ username }) => {
           </section>
         ) : (
           <div className="profileTopBar">
-            {profileMetricCards.map((card) => (
-              <ProfileMetricCard
-                key={card.key}
-                label={card.label}
-                value={card.value}
-                subtext={card.subtext}
-              />
+            {profileMetricRows.map((row) => (
+              <section key={row.key} className="profileMetricRow" aria-label={`${row.label} ratings`}>
+                <h2 className="profileMetricRowTitle">{row.label}</h2>
+                <div className="profileMetricRowCards">
+                  {row.cards.map((card) => (
+                    <ProfileMetricCard
+                      key={card.key}
+                      label={card.label}
+                      value={card.value}
+                      subtext={card.subtext}
+                    />
+                  ))}
+                </div>
+              </section>
             ))}
           </div>
         )}
@@ -604,10 +604,11 @@ export const PlayerProfilePage = ({ username }) => {
               >
                 {modeOptions.map((mode) => (
                   <option key={mode} value={mode}>
-                    {mode}
+                    {modeLabels[mode] ?? mode}
                   </option>
                 ))}
               </select>
+              <span className="controlHint">{modeDescriptions[selectedMode]}</span>
             </label>
             <label htmlFor="profile-page-size-select">
               Page size

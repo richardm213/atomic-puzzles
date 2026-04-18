@@ -1,5 +1,7 @@
+import { modeOptions } from "../constants/matches";
 import { loadAliasesLookup } from "./aliasesLookup";
 import { getSupabaseClient } from "./supabaseClient";
+import { MATCH_TABLE_BY_MODE } from "./supabaseMatchRows";
 import { loadSupabaseRows } from "./supabaseRows";
 import { cachedRequest } from "../utils/requestCache";
 import { normalizeUsername } from "../utils/playerNames";
@@ -27,26 +29,21 @@ const usernameExistsInProfileTables = async (supabase, username) => {
 
 const usernameExistsInMatchTables = async (supabase, username) => {
   const escapedUsername = escapeFilterValue(username);
-  const [blitzRows, bulletRows] = await Promise.all([
-    loadSupabaseRows(
-      "blitz_matches",
-      supabase
-        .from("blitz_matches")
-        .select("match_id")
-        .or(`player_1.eq.${escapedUsername},player_2.eq.${escapedUsername}`)
-        .limit(1),
-    ),
-    loadSupabaseRows(
-      "bullet_matches",
-      supabase
-        .from("bullet_matches")
-        .select("match_id")
-        .or(`player_1.eq.${escapedUsername},player_2.eq.${escapedUsername}`)
-        .limit(1),
-    ),
-  ]);
+  const matchRowsByMode = await Promise.all(
+    modeOptions.map((mode) => {
+      const tableName = MATCH_TABLE_BY_MODE[mode];
+      return loadSupabaseRows(
+        tableName,
+        supabase
+          .from(tableName)
+          .select("match_id")
+          .or(`player_1.eq.${escapedUsername},player_2.eq.${escapedUsername}`)
+          .limit(1),
+      );
+    }),
+  );
 
-  return blitzRows.length > 0 || bulletRows.length > 0;
+  return matchRowsByMode.some((rows) => rows.length > 0);
 };
 
 export const hasSupabaseUsernameMatch = async (value) =>

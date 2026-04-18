@@ -18,7 +18,7 @@ const featureLinks = [
     to: "/rankings",
     eyebrow: "Measure",
     title: "Monthly rankings",
-    body: "View blitz and bullet separately, with known alts merged into one profile.",
+    body: "View blitz, bullet, and hyperbullet separately, with known alts merged into one profile.",
   },
   {
     to: "/recent",
@@ -30,7 +30,7 @@ const featureLinks = [
     to: "/h2h",
     eyebrow: "Compare",
     title: "Head-to-head",
-    body: "Compare two players side by side across both pools.",
+    body: "Compare two players side by side across all three pools.",
   },
 ];
 
