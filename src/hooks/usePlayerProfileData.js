@@ -10,6 +10,7 @@ import { parseDateInputBoundary } from "../utils/matchFilters";
 import { parseTimeControlParts } from "../utils/matchTransforms";
 import { fetchLbRows, monthKeyFromMonthValue } from "../lib/supabaseLb";
 import { fetchPlayerRatingsRows } from "../lib/supabasePlayerRatings";
+import { formatCalendarDate } from "../utils/formatters";
 
 const emptyRatingsSnapshotByMode = {
   blitz: new Map(),
@@ -50,6 +51,7 @@ const parseCurrentRatingsFromRows = (rows) => {
     const rowUsername = String(row?.username || "").trim();
     const rating = Number(row?.rating);
     const peak = Number(row?.peak);
+    const peakDate = String(row?.peak_date || "").slice(0, 10);
     const rd = Number(row?.rd);
     const games = Number(row?.games);
     const rank = Number(row?.rank);
@@ -58,6 +60,7 @@ const parseCurrentRatingsFromRows = (rows) => {
     snapshotsByMode[mode].set(rowUsername, {
       currentRating: rating,
       peakRating: peak,
+      peakDate,
       currentRd: rd,
       gamesPlayed: games,
       rank,
@@ -71,6 +74,7 @@ const normalizeRatingSnapshot = (snapshot) => {
   return {
     currentRating: snapshot?.currentRating ?? null,
     peakRating: snapshot?.peakRating ?? null,
+    peakDate: snapshot?.peakDate ?? "",
     currentRd: snapshot?.currentRd ?? null,
     gamesPlayed: snapshot?.gamesPlayed ?? 0,
     rank: snapshot?.rank ?? null,
@@ -148,7 +152,11 @@ export const getProfileMetricCards = (blitzDisplaySummary, bulletDisplaySummary)
     {
       key: `${mode}-peak-rating`,
       label: `${label} Peak Rating`,
-      value: summary.peakRating,
+      value: summary.peakRating === 0 ? "N/A" : summary.peakRating,
+      subtext:
+        summary.peakRating !== null && summary.peakRating !== 0 && summary.peakDate
+          ? formatCalendarDate(summary.peakDate)
+          : "",
     },
     {
       key: `${mode}-games-played`,

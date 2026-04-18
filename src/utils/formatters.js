@@ -22,6 +22,20 @@ export const formatLocalDateTime = (timestamp) => {
   return includeYear ? `${month} ${day}, ${year} ${time}` : `${month} ${day} ${time}`;
 };
 
+export const formatCalendarDate = (value) => {
+  if (!value) return "";
+
+  const date = new Date(`${String(value).slice(0, 10)}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return "";
+
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+};
+
 export const formatScore = (value) => {
   const numeric = Number(value);
   return String(numeric);

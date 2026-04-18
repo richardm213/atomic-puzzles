@@ -2,11 +2,25 @@
   min-width: 0;
   padding: 12px;
   border-radius: var(--radius-ui);
-  background: var(--color-panel-strong);
-  border: 1px solid var(--color-border);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-primary) 7%, var(--color-panel-strong)),
+    var(--color-panel-strong) 55%
+  );
+  border: 1px solid color-mix(in srgb, var(--color-border) 82%, var(--color-primary));
   overflow-wrap: anywhere;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 14%, transparent);
+  display: grid;
+  gap: 4px;
 }
 
 .profileMetric strong {
   font-size: 20px;
+  line-height: 1.15;
+}
+
+.profileMetricSubtext {
+  color: var(--color-primary-pale);
+  font-size: 12px;
+  line-height: 1.35;
 }

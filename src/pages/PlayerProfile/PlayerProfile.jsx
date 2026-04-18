@@ -413,7 +413,12 @@ export const PlayerProfilePage = ({ username }) => {
         ) : (
           <div className="profileTopBar">
             {profileMetricCards.map((card) => (
-              <ProfileMetricCard key={card.key} label={card.label} value={card.value} />
+              <ProfileMetricCard
+                key={card.key}
+                label={card.label}
+                value={card.value}
+                subtext={card.subtext}
+              />
             ))}
           </div>
         )}
