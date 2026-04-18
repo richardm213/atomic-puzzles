@@ -47,6 +47,7 @@ import { TimeControlFields } from "../../components/TimeControlFields/TimeContro
 import { Seo } from "../../components/Seo/Seo";
 
 const countOptions = [5, 10, 20];
+const blitzBestWinsStartTs = Date.parse("2024-07-01T00:00:00Z");
 
 const lichessProfileUrl = (username) =>
   `https://lichess.org/@/${encodeURIComponent(String(username || "").trim())}`;
@@ -316,6 +317,10 @@ export const PlayerProfilePage = ({ username }) => {
     () => filterMatches(bestWinMatches, appliedFilters, selectedMode),
     [bestWinMatches, appliedFilters, selectedMode],
   );
+  const eligibleBestWinMatches = useMemo(() => {
+    if (selectedMode !== "blitz") return filteredBestWinMatches;
+    return filteredBestWinMatches.filter((match) => match.startTs >= blitzBestWinsStartTs);
+  }, [filteredBestWinMatches, selectedMode]);
 
   const handleSearchClick = async () => {
     if (searchSubmitInFlightRef.current || loadingMatches) return;
@@ -371,8 +376,8 @@ export const PlayerProfilePage = ({ username }) => {
   const blitzDisplaySummary = ratingDisplayByMode.blitz;
   const bulletDisplaySummary = ratingDisplayByMode.bullet;
   const bestWins = useMemo(
-    () => getBestWins(filteredBestWinMatches, canonicalUsername, bestWinCount),
-    [filteredBestWinMatches, canonicalUsername, bestWinCount],
+    () => getBestWins(eligibleBestWinMatches, canonicalUsername, bestWinCount),
+    [eligibleBestWinMatches, canonicalUsername, bestWinCount],
   );
   const { bestMonthRanks, recentMonthRanks } = useMemo(
     () => getMonthRankHighlights(monthRanks, bestMonthRankCount, recentMonthRankCount),
