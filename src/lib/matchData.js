@@ -184,6 +184,7 @@ export const normalizeMatches = (matches, username) => {
           winner: winnerLabel,
           playerScoreAfter: runningPlayerScore,
           opponentScoreAfter: runningOpponentScore,
+          endTs: Number(game?.end_ts) || null,
         };
       });
 
@@ -200,6 +201,10 @@ export const normalizeMatches = (matches, username) => {
       const opponentBeforeRd = Number(opponentRatingData?.before_rd);
       const opponentAfterRd = Number(opponentRatingData?.after_rd);
       const firstGame = games[0];
+      const clinchingGame = matchGames.find((game, index) => {
+        const remainingGames = matchGames.length - index - 1;
+        return game.playerScoreAfter > game.opponentScoreAfter + remainingGames;
+      });
       return {
         startTs: Number(match?.start_ts ?? match?.s),
         timeControl: String(match?.time_control ?? match?.t ?? "—"),
@@ -219,6 +224,13 @@ export const normalizeMatches = (matches, username) => {
         opponentAfterRd,
         gameCount: games.length,
         firstGameId: String(games[0]?.id || "—"),
+        clinchingGameId: String(
+          (score.player > score.opponent ? clinchingGame?.id : null) || games[0]?.id || "—",
+        ),
+        clinchingGameEndTs:
+          score.player > score.opponent
+            ? Number(clinchingGame?.endTs) || Number(match?.end_ts) || null
+            : Number(match?.end_ts) || null,
         games: matchGames,
         sourceValue: sourceValueFromValues(
           firstGame?.source,

@@ -22,7 +22,7 @@ import { toBoundedLengthRange, useMatchLengthRange } from "../../hooks/useMatchL
 import {
   filterMatches,
   getAliasesForUser,
-  getBestWins,
+  getBestWinsForMode,
   getMonthRankHighlights,
   getProfileMetricCardRows,
   getRatingDisplayByMode,
@@ -51,7 +51,6 @@ import { TimeControlFields } from "../../components/TimeControlFields/TimeContro
 import { Seo } from "../../components/Seo/Seo";
 
 const countOptions = [5, 10, 20];
-const blitzBestWinsStartTs = Date.parse("2024-07-01T00:00:00Z");
 
 const lichessProfileUrl = (username) =>
   `https://lichess.org/@/${encodeURIComponent(String(username || "").trim())}`;
@@ -98,7 +97,6 @@ export const PlayerProfilePage = ({ username }) => {
   const [aliasesLookup, setAliasesLookup] = useState(() => new Map());
   const [aliasesLoaded, setAliasesLoaded] = useState(false);
   const [matchesByMode, setMatchesByMode] = useState(() => createModeRecord(() => []));
-  const [bestWinMatchesByMode, setBestWinMatchesByMode] = useState(() => createModeRecord(() => []));
   const [totalMatchesByMode, setTotalMatchesByMode] = useState(() => createModeRecord(() => 0));
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
@@ -118,7 +116,6 @@ export const PlayerProfilePage = ({ username }) => {
   const [isHistoryAvailable, setIsHistoryAvailable] = useState(false);
   const [loadingMatches, setLoadingMatches] = useState(false);
   const matchRequestIdRef = useRef(0);
-  const bestWinRequestKeyByModeRef = useRef({});
   const searchSubmitInFlightRef = useRef(false);
   const canonicalUsername = aliasesLookup.get(resolvedUsername)?.primary ?? resolvedUsername;
   const profileAliasEntry = aliasesLookup.get(canonicalUsername);
@@ -223,29 +220,16 @@ export const PlayerProfilePage = ({ username }) => {
     setError("");
     try {
       const filters = buildMatchFilters(canonicalUsername, nextAppliedFilters);
-      const bestWinRequestKey = JSON.stringify({ mode, username: canonicalUsername, filters });
-      const shouldLoadBestWinMatches =
-        bestWinRequestKeyByModeRef.current[mode] !== bestWinRequestKey;
-      const [loaded, bestWinMatches] = await Promise.all([
-        loadRawMatchesByMode(mode, {
-          filters,
-          page: nextPage,
-          pageSize,
-        }),
-        shouldLoadBestWinMatches ? loadRawMatchesByMode(mode, { filters }) : null,
-      ]);
+      const loaded = await loadRawMatchesByMode(mode, {
+        filters,
+        page: nextPage,
+        pageSize,
+      });
       if (requestId !== matchRequestIdRef.current) return;
       setMatchesByMode((current) => ({
         ...current,
         [mode]: normalizeMatches(loaded.matches, canonicalUsername),
       }));
-      if (bestWinMatches) {
-        bestWinRequestKeyByModeRef.current[mode] = bestWinRequestKey;
-        setBestWinMatchesByMode((current) => ({
-          ...current,
-          [mode]: normalizeMatches(bestWinMatches, canonicalUsername),
-        }));
-      }
       setTotalMatchesByMode((current) => ({
         ...current,
         [mode]: loaded.total,
@@ -255,10 +239,6 @@ export const PlayerProfilePage = ({ username }) => {
     } catch (loadError) {
       if (requestId !== matchRequestIdRef.current) return;
       setMatchesByMode((current) => ({
-        ...current,
-        [mode]: [],
-      }));
-      setBestWinMatchesByMode((current) => ({
         ...current,
         [mode]: [],
       }));
@@ -297,7 +277,6 @@ export const PlayerProfilePage = ({ username }) => {
   }, [page, selectedMode, appliedFilters, canonicalUsername]);
 
   const matches = matchesByMode[selectedMode] ?? [];
-  const bestWinMatches = bestWinMatchesByMode[selectedMode] ?? [];
 
   useEffect(() => {
     setTimeControlInitialFilter("all");
@@ -312,14 +291,6 @@ export const PlayerProfilePage = ({ username }) => {
     () => filterMatches(matches, appliedFilters, selectedMode),
     [matches, appliedFilters, selectedMode],
   );
-  const filteredBestWinMatches = useMemo(
-    () => filterMatches(bestWinMatches, appliedFilters, selectedMode),
-    [bestWinMatches, appliedFilters, selectedMode],
-  );
-  const eligibleBestWinMatches = useMemo(() => {
-    if (selectedMode !== "blitz") return filteredBestWinMatches;
-    return filteredBestWinMatches.filter((match) => match.startTs >= blitzBestWinsStartTs);
-  }, [filteredBestWinMatches, selectedMode]);
 
   const handleSearchClick = async () => {
     if (searchSubmitInFlightRef.current || loadingMatches) return;
@@ -373,8 +344,8 @@ export const PlayerProfilePage = ({ username }) => {
     [ratingsSnapshotByMode, canonicalUsername],
   );
   const bestWins = useMemo(
-    () => getBestWins(eligibleBestWinMatches, canonicalUsername, bestWinCount),
-    [eligibleBestWinMatches, canonicalUsername, bestWinCount],
+    () => getBestWinsForMode(ratingDisplayByMode, selectedMode, bestWinCount),
+    [bestWinCount, ratingDisplayByMode, selectedMode],
   );
   const { bestMonthRanks, recentMonthRanks } = useMemo(
     () => getMonthRankHighlights(monthRanks, bestMonthRankCount, recentMonthRankCount),
@@ -468,20 +439,20 @@ export const PlayerProfilePage = ({ username }) => {
                 <div className="emptyRankings">No wins available in {selectedMode}.</div>
               ) : (
                 <ol>
-                  {bestWins.map((match) => (
-                    <li key={`best-${match.startTs}-${match.firstGameId}`}>
+                  {bestWins.map((win) => (
+                    <li key={`best-${win.gameId}`}>
                       <span className="profileBestWinOpponent">
                         <Link
                           className="rankingLink"
                           to="/@/$username"
-                          params={{ username: match.opponent }}
+                          params={{ username: win.opponent }}
                         >
-                          {formatOpponentWithRating(match.opponent, match.opponentAfterRating)}
+                          {formatOpponentWithRating(win.opponent, win.opponentRating)}
                         </Link>
                       </span>
                       <span className="profileBestWinDate">
-                        <LichessGameLink gameId={match.firstGameId}>
-                          {formatLocalDateTime(match.startTs)}
+                        <LichessGameLink gameId={win.gameId}>
+                          {formatLocalDateTime(win.startTs)}
                         </LichessGameLink>
                       </span>
                     </li>

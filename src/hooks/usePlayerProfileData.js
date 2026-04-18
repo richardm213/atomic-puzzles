@@ -40,6 +40,37 @@ const parseMonthRanksFromLbRows = (rows) => {
     .filter(Boolean);
 };
 
+const parseTopWinEntry = (entry) => {
+  const [opponent, gameId, startTs, opponentRating] = String(entry || "").split(":");
+  const normalizedOpponent = String(opponent || "").trim();
+  const normalizedGameId = String(gameId || "").trim();
+  const numericStartTs = Number(startTs);
+  const numericOpponentRating = Number(opponentRating);
+  if (
+    !normalizedOpponent ||
+    !normalizedGameId ||
+    Number.isNaN(numericStartTs) ||
+    Number.isNaN(numericOpponentRating)
+  ) {
+    return null;
+  }
+
+  return {
+    opponent: normalizedOpponent,
+    gameId: normalizedGameId,
+    startTs: numericStartTs,
+    opponentRating: numericOpponentRating,
+  };
+};
+
+const parseTopWins = (serializedWins) =>
+  String(serializedWins || "")
+    .split("|")
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map(parseTopWinEntry)
+    .filter(Boolean);
+
 const parseCurrentRatingsFromRows = (rows) => {
   const snapshotsByMode = createModeRecord(() => new Map());
 
@@ -52,6 +83,7 @@ const parseCurrentRatingsFromRows = (rows) => {
     const rd = Number(row?.rd);
     const games = Number(row?.games);
     const rank = Number(row?.rank);
+    const topWins = parseTopWins(row?.top20_wins);
     if (!modeOptions.includes(mode) || !rowUsername) return;
 
     snapshotsByMode[mode].set(rowUsername, {
@@ -61,6 +93,7 @@ const parseCurrentRatingsFromRows = (rows) => {
       currentRd: rd,
       gamesPlayed: games,
       rank,
+      topWins,
     });
   });
 
@@ -75,6 +108,7 @@ const normalizeRatingSnapshot = (snapshot) => {
     currentRd: snapshot?.currentRd ?? null,
     gamesPlayed: snapshot?.gamesPlayed ?? 0,
     rank: snapshot?.rank ?? null,
+    topWins: Array.isArray(snapshot?.topWins) ? snapshot.topWins : [],
   };
 };
 
@@ -170,6 +204,9 @@ export const getProfileMetricCardRows = (ratingDisplayByMode) =>
     };
   });
 
+export const getBestWinsForMode = (ratingDisplayByMode, mode, bestWinCount) =>
+  (ratingDisplayByMode[mode]?.topWins ?? []).slice(0, bestWinCount);
+
 export const getTimeControlOptions = (matches) => {
   const initialSet = new Set();
   const incrementSet = new Set();
@@ -233,18 +270,6 @@ export const filterMatches = (matches, appliedFilters, selectedMode) => {
       return true;
   });
 };
-
-export const getBestWins = (filteredMatches, username, bestWinCount) =>
-  filteredMatches
-    .filter((match) =>
-      Array.isArray(match.games) ? match.games.some((game) => game?.winner === username) : false,
-    )
-    .sort((a, b) => {
-      const ratingDiff = (b.opponentAfterRating ?? -Infinity) - (a.opponentAfterRating ?? -Infinity);
-      if (ratingDiff !== 0) return ratingDiff;
-      return b.startTs - a.startTs;
-    })
-    .slice(0, bestWinCount);
 
 export const getMonthRankHighlights = (monthRanks, bestMonthRankCount, recentMonthRankCount) => ({
   bestMonthRanks: [...monthRanks]
