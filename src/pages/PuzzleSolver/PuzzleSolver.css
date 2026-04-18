@@ -149,7 +149,7 @@
   opacity: 0.45;
 }
 
-.puzzleActions button {
+.puzzleActions button:not(.puzzlePrimaryAction) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -168,7 +168,7 @@
     color 140ms ease;
 }
 
-.puzzleActions button:hover:not(:disabled) {
+.puzzleActions button:not(.puzzlePrimaryAction):hover:not(:disabled) {
   transform: translateY(-1px);
   border-color: var(--color-accent-soft-border);
   background: var(--color-surface-elevated-strong);
@@ -182,7 +182,7 @@
   outline-offset: 2px;
 }
 
-.puzzleActions button:disabled,
+.puzzleActions button:not(.puzzlePrimaryAction):disabled,
 .fenAnalyzeButton.disabled {
   color: var(--color-subtle);
   opacity: 1;

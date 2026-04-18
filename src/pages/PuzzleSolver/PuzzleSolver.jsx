@@ -34,6 +34,16 @@ const parsePuzzleId = (puzzleIdParam) => {
   return puzzleId;
 };
 
+const toPuzzleKey = (puzzleId) =>
+  puzzleId === undefined || puzzleId === null ? "" : String(puzzleId).trim();
+
+const addValueToSet = (currentSet, value) => {
+  if (!value) return currentSet;
+  const next = new Set(currentSet);
+  next.add(value);
+  return next;
+};
+
 const puzzleIndexFromParam = (puzzles, puzzleIdParam) => {
   const puzzleId = parsePuzzleId(puzzleIdParam);
   if (puzzleId === null) return -1;
@@ -209,6 +219,7 @@ const createInitialBoardSnapshot = () => ({
 
 const SOLVE_MODE = "solve";
 const ANALYSIS_MODE = "analysis";
+const SOLUTION_UNLOCK_HINT = "Make at least one attempt before viewing the solution.";
 
 export const PuzzleSolverPage = () => {
   const navigate = useNavigate();
@@ -217,6 +228,7 @@ export const PuzzleSolverPage = () => {
   const [canViewHistory, setCanViewHistory] = useState(false);
   const [puzzles, setPuzzles] = useState([]);
   const [attemptedPuzzleIds, setAttemptedPuzzleIds] = useState(() => new Set());
+  const [resolvedAttemptedPuzzleIds, setResolvedAttemptedPuzzleIds] = useState(() => new Set());
   const [loadingError, setLoadingError] = useState("");
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -423,6 +435,7 @@ export const PuzzleSolverPage = () => {
   const activePuzzleIndex = historyIndex >= 0 ? history[historyIndex] : -1;
   const activePuzzle = activePuzzleIndex >= 0 ? puzzles[activePuzzleIndex] : null;
   const activePuzzleId = activePuzzle?.puzzleId;
+  const activePuzzleKey = toPuzzleKey(activePuzzleId);
   const fen = activePuzzle?.fen ?? "";
   const author = activePuzzle?.author?.trim() || "Unknown";
   const event = activePuzzle?.event?.trim() || "";
@@ -432,11 +445,16 @@ export const PuzzleSolverPage = () => {
   const currentAnalysisUrl = lichessAnalysisUrl(currentFen);
   const puzzleOrdinal = activePuzzleIndex >= 0 ? activePuzzleIndex + 1 : null;
   const isAnalysisMode = interactionMode === ANALYSIS_MODE;
+  const hasPersistedAttempt = activePuzzleKey ? attemptedPuzzleIds.has(activePuzzleKey) : false;
+  const hasResolvedAttempt = activePuzzleKey
+    ? resolvedAttemptedPuzzleIds.has(activePuzzleKey)
+    : false;
+  const hasAttemptedActivePuzzle = hasPersistedAttempt || hasResolvedAttempt;
 
   const enqueuePuzzleProgressWrite = useCallback(
     ({ puzzleId, puzzleCorrect }) => {
-      if (!puzzleId || !user?.username) return;
-      const normalizedPuzzleId = String(puzzleId);
+      const normalizedPuzzleId = toPuzzleKey(puzzleId);
+      if (!normalizedPuzzleId || !user?.username) return;
       if (attemptedPuzzleIdsRef.current.has(normalizedPuzzleId)) return;
 
       progressWriteQueueRef.current = progressWriteQueueRef.current
@@ -447,11 +465,7 @@ export const PuzzleSolverPage = () => {
             puzzleId: normalizedPuzzleId,
             puzzleCorrect,
           }).then(() => {
-            setAttemptedPuzzleIds((current) => {
-              const next = new Set(current);
-              next.add(normalizedPuzzleId);
-              return next;
-            });
+            setAttemptedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
           }),
         )
         .catch((error) => {
@@ -463,8 +477,11 @@ export const PuzzleSolverPage = () => {
 
   const handleAttemptResolved = useCallback(
     ({ puzzleId, puzzleCorrect }) => {
+      const normalizedPuzzleId = toPuzzleKey(puzzleId);
+      setResolvedAttemptedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
+
       enqueuePuzzleProgressWrite({
-        puzzleId,
+        puzzleId: normalizedPuzzleId,
         puzzleCorrect,
       });
     },
@@ -523,7 +540,12 @@ export const PuzzleSolverPage = () => {
   }, [mobileFeedback]);
 
   const showFenDetails = showSolution;
-  const canRevealSolution = Boolean(fen);
+  const canRevealSolution = Boolean(fen) && hasAttemptedActivePuzzle;
+  const solutionButtonTitle = hasAttemptedActivePuzzle
+    ? showSolution
+      ? "Hide solution"
+      : "Show solution"
+    : SOLUTION_UNLOCK_HINT;
   const feedback = completionFeedback;
 
   const handleNextPuzzle = () => {
@@ -559,6 +581,8 @@ export const PuzzleSolverPage = () => {
   };
 
   const handleToggleSolution = () => {
+    if (!canRevealSolution) return;
+
     if (!showSolution) {
       setInteractionMode(ANALYSIS_MODE);
     }
@@ -971,6 +995,7 @@ export const PuzzleSolverPage = () => {
                 className="puzzlePrimaryAction"
                 onClick={handleToggleSolution}
                 disabled={!canRevealSolution}
+                title={solutionButtonTitle}
               >
                 {showSolution ? "Hide solution" : "Show solution"}
               </button>
@@ -1100,6 +1125,7 @@ export const PuzzleSolverPage = () => {
               className="puzzlePrimaryAction"
               onClick={handleToggleSolution}
               disabled={!canRevealSolution}
+              title={solutionButtonTitle}
             >
               {showSolution ? "Hide solution" : "Show solution"}
             </button>
