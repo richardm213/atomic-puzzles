@@ -100,25 +100,33 @@ const moveFromUci = (position, uci) => {
   return position.isLegal(move) ? move : null;
 };
 
-const movePrefix = (plyIndex, force = false) => {
+export const movePrefix = (plyIndex, force = false) => {
   if (plyIndex % 2 === 0) return `${Math.floor(plyIndex / 2) + 1}. `;
   if (force) return `${Math.floor(plyIndex / 2) + 1}... `;
   return "";
 };
 
+const startingPlyFromFen = (fen) => {
+  const [, turn = "w", , , , fullmove = "1"] = String(fen || "").trim().split(/\s+/);
+  const fullmoveNumber = Number.parseInt(fullmove, 10);
+  const basePly = Number.isFinite(fullmoveNumber) && fullmoveNumber > 0 ? (fullmoveNumber - 1) * 2 : 0;
+  return turn === "b" ? basePly + 1 : basePly;
+};
+
 const isQuestionableMoveLabel = (move = "") => move.includes("?");
 
-const compareMoves = (moveA = "", moveB = "", fallbackA = 0, fallbackB = 0) => {
+export const compareMoves = (moveA = "", moveB = "", fallbackA = 0, fallbackB = 0) => {
   const questionableDiff =
     Number(isQuestionableMoveLabel(moveA)) - Number(isQuestionableMoveLabel(moveB));
   if (questionableDiff !== 0) return questionableDiff;
   return fallbackA - fallbackB;
 };
 
-const buildSolutionMoveTree = (lines) => {
+export const buildSolutionMoveTree = (lines, createNodeExtras = () => ({})) => {
   const root = {
     children: new Map(),
     firstOccurrence: null,
+    ...createNodeExtras(),
   };
 
   lines.forEach((line, lineIndex) => {
@@ -130,6 +138,7 @@ const buildSolutionMoveTree = (lines) => {
           move,
           children: new Map(),
           firstOccurrence: { lineIndex, moveIndex },
+          ...createNodeExtras(lineIndex),
         });
       }
 
@@ -140,7 +149,7 @@ const buildSolutionMoveTree = (lines) => {
   return root;
 };
 
-const orderedChildren = (node) =>
+export const orderedChildren = (node) =>
   [...node.children.values()].sort((a, b) => {
     const moveOrder = compareMoves(a.move, b.move);
     if (moveOrder !== 0) return moveOrder;
@@ -150,20 +159,30 @@ const orderedChildren = (node) =>
     return (a.firstOccurrence?.moveIndex ?? 0) - (b.firstOccurrence?.moveIndex ?? 0);
   });
 
-const serializeSolutionNode = (node, plyIndex) => {
-  const tokens = [`${movePrefix(plyIndex, plyIndex % 2 === 1)}${node.move}`.trim()];
+export const findMainChild = (children) => children[0];
+
+const serializeSolutionBranch = (node, plyIndex, forceMoveNumber = false) => {
+  const tokens = [`${movePrefix(plyIndex, forceMoveNumber)}${node.move}`.trim()];
   const children = orderedChildren(node);
   if (children.length === 0) return tokens;
 
   const [main, ...variations] = children;
+  const mainTokens = serializeSolutionBranch(main, plyIndex + 1);
+  const [mainHead, ...mainTail] = mainTokens;
+
+  if (mainHead) {
+    tokens.push(mainHead);
+  }
+
   variations.forEach((variation) => {
-    tokens.push(`(${serializeSolutionNode(variation, plyIndex + 1).join(" ")})`);
+    tokens.push(`(${serializeSolutionBranch(variation, plyIndex + 1, true).join(" ")})`);
   });
-  tokens.push(...serializeSolutionNode(main, plyIndex + 1));
+
+  tokens.push(...mainTail);
   return tokens;
 };
 
-const serializeSolutionLines = (sanLines) => {
+const serializeSolutionLines = (sanLines, initialPly = 0) => {
   if (!sanLines.length) return "";
 
   const root = buildSolutionMoveTree(sanLines);
@@ -171,11 +190,22 @@ const serializeSolutionLines = (sanLines) => {
   if (rootChildren.length === 0) return "";
 
   const [main, ...variations] = rootChildren;
-  const tokens = [...serializeSolutionNode(main, 0)];
+  const tokens = [...serializeSolutionBranch(main, initialPly, initialPly % 2 === 1)];
   variations.forEach((variation) => {
-    tokens.push(`(${serializeSolutionNode(variation, 0).join(" ")})`);
+    tokens.push(`(${serializeSolutionBranch(variation, initialPly, true).join(" ")})`);
   });
   return tokens.join(" ");
+};
+
+const lineSignature = (line) =>
+  line.map((entry) => `${entry.uci}:${entry.questionable ? "q" : "s"}`).join(" ");
+
+const linesMatch = (expected, actual) => {
+  if (expected.length !== actual.length) return false;
+
+  const expectedSorted = expected.map(lineSignature).sort();
+  const actualSorted = actual.map(lineSignature).sort();
+  return expectedSorted.every((line, index) => line === actualSorted[index]);
 };
 
 export const parseSolutionUciLines = (fen, solution) => {
@@ -276,6 +306,7 @@ export const convertUciLineToSan = (initialFen, uciLine) => {
 export const normalizeSolutionPgn = (fen, solution) => {
   const normalized = typeof solution === "string" ? solution.trim() : "";
   if (!normalized || !fen) return normalized;
+  if (/[()]/.test(normalized)) return normalized;
 
   const parsedLines = parseSolutionUciLines(fen, normalized);
   if (parsedLines.length === 0) return normalized;
@@ -284,6 +315,9 @@ export const normalizeSolutionPgn = (fen, solution) => {
     .map((line) => convertUciLineToSan(fen, line))
     .filter((line) => line.length > 0);
 
-  const serialized = serializeSolutionLines(sanLines);
-  return serialized || normalized;
+  const serialized = serializeSolutionLines(sanLines, startingPlyFromFen(fen));
+  if (!serialized) return normalized;
+
+  const reparsedLines = parseSolutionUciLines(fen, serialized);
+  return linesMatch(parsedLines, reparsedLines) ? serialized : normalized;
 };

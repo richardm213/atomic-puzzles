@@ -4,6 +4,13 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faClockRotateLeft, faRotateLeft } from "@fortawesome/free-solid-svg-icons";
 import { Chessboard } from "../../components/Chessboard/Chessboard";
 import { loadPuzzleLibrary } from "../../lib/puzzleLibrary";
+import {
+  buildSolutionMoveTree,
+  compareMoves,
+  findMainChild,
+  movePrefix,
+  orderedChildren,
+} from "../../lib/solutionPgn";
 import { fetchAttemptedPuzzleIds, recordPuzzleProgress } from "../../lib/supabasePuzzleProgress";
 import { isRegisteredSiteUser } from "../../lib/supabaseUsers";
 import { useAuth } from "../../context/AuthContext";
@@ -66,47 +73,20 @@ const shuffleIndexes = (indexes) => {
 };
 
 const createMoveTree = (lines) => {
-  const root = {
-    children: new Map(),
-    lineIndexes: new Set(),
-    firstOccurrence: null,
-  };
+  const tree = buildSolutionMoveTree(lines, () => ({ lineIndexes: new Set() }));
+  tree.lineIndexes ??= new Set();
 
   for (const [lineIndex, line] of lines.entries()) {
-    let node = root;
+    let node = tree;
     node.lineIndexes.add(lineIndex);
 
-    for (const [moveIndex, move] of line.entries()) {
-      if (!node.children.has(move)) {
-        node.children.set(move, {
-          move,
-          children: new Map(),
-          lineIndexes: new Set(),
-          firstOccurrence: { lineIndex, moveIndex },
-        });
-      }
-
+    for (const move of line) {
       node = node.children.get(move);
-      node.lineIndexes.add(lineIndex);
+      node?.lineIndexes.add(lineIndex);
     }
   }
 
-  return root;
-};
-
-const movePrefix = (plyIndex, force = false) => {
-  if (plyIndex % 2 === 0) return `${Math.floor(plyIndex / 2) + 1}. `;
-  if (force) return `${Math.floor(plyIndex / 2) + 1}... `;
-  return "";
-};
-
-const isQuestionableMoveLabel = (move = "") => move.includes("?");
-
-const compareSolutionMoves = (moveA = "", moveB = "", fallbackA = 0, fallbackB = 0) => {
-  const questionableDiff =
-    Number(isQuestionableMoveLabel(moveA)) - Number(isQuestionableMoveLabel(moveB));
-  if (questionableDiff !== 0) return questionableDiff;
-  return fallbackA - fallbackB;
+  return tree;
 };
 
 const getMatchingSolutionLineIndexes = (solutionLines = [], currentAnalysisMoves = []) =>
@@ -123,7 +103,7 @@ const sortMatchingSolutionLineIndexes = ({
   matchingLineIndexes = [],
 }) =>
   [...matchingLineIndexes].sort((a, b) =>
-    compareSolutionMoves(
+    compareMoves(
       solutionLines[a]?.[currentPly] ?? "",
       solutionLines[b]?.[currentPly] ?? "",
       a,
@@ -172,21 +152,9 @@ const buildSolutionOptions = ({
   });
 
   return [...groupedOptions.values()].sort((a, b) =>
-    compareSolutionMoves(a.move, b.move, a.lineIndex, b.lineIndex),
+    compareMoves(a.move, b.move, a.lineIndex, b.lineIndex),
   );
 };
-
-const orderedChildren = (node) =>
-  [...node.children.values()].sort((a, b) => {
-    const moveOrder = compareSolutionMoves(a.move, b.move);
-    if (moveOrder !== 0) return moveOrder;
-
-    const firstLineDiff = (a.firstOccurrence?.lineIndex ?? 0) - (b.firstOccurrence?.lineIndex ?? 0);
-    if (firstLineDiff !== 0) return firstLineDiff;
-    return (a.firstOccurrence?.moveIndex ?? 0) - (b.firstOccurrence?.moveIndex ?? 0);
-  });
-
-const findMainChild = (children) => children[0];
 
 const buildCompletionFeedback = (nextBoardState, hadWrongAttempt) => {
   if (nextBoardState.solved) {
