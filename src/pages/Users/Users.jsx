@@ -62,10 +62,12 @@ const buildUserRows = (ratingRows, aliasesLookup) => {
       bullet: { display: "?", sortValue: null },
       hyperbullet: { display: "?", sortValue: null },
       aliasCount: aliasesLookup.get(username)?.aliases?.length ?? 0,
+      aliases: aliasesLookup.get(username)?.aliases ?? [],
     };
 
     existing[mode] = normalizeRatingCell(row);
     existing.aliasCount = aliasesLookup.get(username)?.aliases?.length ?? existing.aliasCount ?? 0;
+    existing.aliases = aliasesLookup.get(username)?.aliases ?? existing.aliases ?? [];
     rowsByUsername.set(username, existing);
   });
 
@@ -76,8 +78,8 @@ const UsersTablePage = () => {
   const [rows, setRows] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  const [sortKey, setSortKey] = useState("username");
-  const [sortDirection, setSortDirection] = useState("asc");
+  const [sortKey, setSortKey] = useState("aliasCount");
+  const [sortDirection, setSortDirection] = useState("desc");
 
   useEffect(() => {
     let isCurrent = true;
@@ -229,7 +231,35 @@ const UsersTablePage = () => {
                     <td>{row.blitz.display}</td>
                     <td>{row.bullet.display}</td>
                     <td>{row.hyperbullet.display}</td>
-                    <td>{row.aliasCount}</td>
+                    <td>
+                      {row.aliasCount > 0 ? (
+                        <div className="usersAliasCell">
+                          <span
+                            className="usersAliasToggle"
+                            tabIndex={0}
+                            aria-controls={`user-aliases-${row.username}`}
+                          >
+                            <span>{row.aliasCount}</span>
+                            <i className="fa-solid fa-chevron-down" aria-hidden="true" />
+                          </span>
+                          <div
+                            id={`user-aliases-${row.username}`}
+                            className="usersAliasList"
+                          >
+                            {row.aliases.map((alias) => (
+                              <span
+                                key={`${row.username}-${alias}`}
+                                className="usersAliasText"
+                              >
+                                {alias}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        0
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
