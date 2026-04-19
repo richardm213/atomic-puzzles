@@ -222,6 +222,9 @@ const LeaderboardView = () => {
           <span>{readableMonthLabel(selectedMonth || monthOptions[0])}</span>
           <span className="rankedCount">
             {players.length} ranked
+            <Link className="rankingsMetaLink" to="/users">
+              Full user list
+            </Link>
             <Link className="rankingsMetaLink" to="/rankings/how-ratings-work">
               <i className="fa-solid fa-circle-info" aria-hidden="true" />
               How are ratings calculated?

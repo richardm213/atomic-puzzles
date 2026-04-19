@@ -21,6 +21,12 @@ const featureLinks = [
     body: "View blitz, bullet, and hyperbullet separately, with known alts merged into one profile.",
   },
   {
+    to: "/users",
+    eyebrow: "Browse",
+    title: "Full user list",
+    body: "Scan every tracked user with blitz, bullet, hyperbullet, and alias counts in one table.",
+  },
+  {
     to: "/recent",
     eyebrow: "Scout",
     title: "Recent matches",

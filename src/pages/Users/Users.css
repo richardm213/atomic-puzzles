@@ -1,0 +1,115 @@
+@import "../Rankings/Rankings.css";
+
+.usersPanel {
+  width: min(920px, 100%);
+}
+
+.usersMeta {
+  margin-bottom: 14px;
+}
+
+.usersHelpCallout {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 16px;
+  color: var(--color-subtle);
+  font-size: 14px;
+}
+
+.usersHelpLabel {
+  font-weight: 600;
+}
+
+.usersHelpTooltip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.usersHelpButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-primary-soft);
+  cursor: help;
+  font-size: 15px;
+}
+
+.usersHelpButton:hover,
+.usersHelpButton:focus-visible {
+  color: var(--color-primary-pale);
+}
+
+.usersHelpButton:focus-visible {
+  outline: 2px solid var(--color-primary-soft);
+  outline-offset: 2px;
+}
+
+.usersHelpTooltipBubble {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  z-index: 5;
+  width: min(320px, calc(100vw - 40px));
+  padding: 12px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-panel-strong);
+  color: var(--color-text);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.18);
+  line-height: 1.45;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.usersHelpTooltip:hover .usersHelpTooltipBubble,
+.usersHelpTooltip:focus-within .usersHelpTooltipBubble {
+  opacity: 1;
+  visibility: visible;
+}
+
+.usersTable {
+  min-width: 720px;
+}
+
+.usersTable th:nth-child(2),
+.usersTable td:nth-child(2),
+.usersTable th:nth-child(3),
+.usersTable td:nth-child(3),
+.usersTable th:nth-child(4),
+.usersTable td:nth-child(4),
+.usersTable th:nth-child(5),
+.usersTable td:nth-child(5) {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.bannedUsersTable {
+  min-width: 560px;
+}
+
+@media (max-width: 640px) {
+  .usersHelpCallout {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .usersHelpTooltipBubble {
+    left: 0;
+    right: auto;
+    transform: none;
+  }
+
+  .usersTable {
+    min-width: 640px;
+  }
+}

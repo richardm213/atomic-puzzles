@@ -16,6 +16,8 @@ import { PuzzleSolverPage } from "./pages/PuzzleSolver/PuzzleSolver";
 import { PuzzleHistoryPage } from "./pages/PuzzleHistory/PuzzleHistory";
 import { H2HPage } from "./pages/H2H/H2H";
 import { AuthCallbackPage } from "./pages/AuthCallback/AuthCallback";
+import { UsersPage } from "./pages/Users/Users";
+import { BannedUsersPage } from "./pages/Users/BannedUsers";
 
 const appBasePath = (() => {
   const baseUrl = import.meta.env.BASE_URL || "/";
@@ -37,6 +39,18 @@ const rankingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/rankings",
   component: RankingsPage,
+});
+
+const usersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/users",
+  component: UsersPage,
+});
+
+const bannedUsersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/users/banned",
+  component: BannedUsersPage,
 });
 
 const rankingsMethodologyRoute = createRoute({
@@ -116,6 +130,8 @@ const lichessAuthCallbackRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   rankingsRoute,
+  usersRoute,
+  bannedUsersRoute,
   rankingsMethodologyRoute,
   recentRoute,
   h2hRoute,
