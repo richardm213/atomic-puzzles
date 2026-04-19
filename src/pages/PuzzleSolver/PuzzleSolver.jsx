@@ -243,6 +243,7 @@ export const PuzzleSolverPage = () => {
   const previousBoardSnapshotRef = useRef(createInitialBoardSnapshot());
   const interactionModeRef = useRef(SOLVE_MODE);
   const hadWrongAttemptRef = useRef(false);
+  const lockedCompletionFeedbackRef = useRef(null);
   const mobileFeedbackIdRef = useRef(0);
   const activeSolutionOptionRef = useRef(null);
   const upcomingPuzzleIndexesRef = useRef([]);
@@ -493,6 +494,7 @@ export const PuzzleSolverPage = () => {
     setSolutionNavigation(null);
     setInteractionMode(SOLVE_MODE);
     setCompletionFeedback(null);
+    lockedCompletionFeedbackRef.current = null;
     setPinnedSolutionLineIndex(null);
     hadWrongAttemptRef.current = false;
   }, []);
@@ -611,6 +613,7 @@ export const PuzzleSolverPage = () => {
       nextBoardState,
       hadWrongAttemptRef.current,
     );
+    const lockedCompletionFeedback = nextCompletionFeedback ?? lockedCompletionFeedbackRef.current;
     const enteringAnalysisMode =
       interactionModeRef.current !== ANALYSIS_MODE &&
       Boolean(nextCompletionFeedback) &&
@@ -630,11 +633,17 @@ export const PuzzleSolverPage = () => {
       hadWrongAttemptRef.current = true;
     }
 
+    if (nextCompletionFeedback) {
+      lockedCompletionFeedbackRef.current = nextCompletionFeedback;
+    }
+
     if (enteringAnalysisMode && nextCompletionFeedback) {
       setInteractionMode(ANALYSIS_MODE);
       setCompletionFeedback(nextCompletionFeedback);
     } else if (nextCompletionFeedback) {
       setCompletionFeedback(nextCompletionFeedback);
+    } else if (lockedCompletionFeedback) {
+      setCompletionFeedback(lockedCompletionFeedback);
     } else {
       setCompletionFeedback(null);
     }
