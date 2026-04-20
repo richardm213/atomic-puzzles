@@ -20,6 +20,7 @@ import { resolveUsernameInput } from "../../lib/searchUsernames";
 import { isRegisteredSiteUser } from "../../lib/supabaseUsers";
 import { toBoundedLengthRange, useMatchLengthRange } from "../../hooks/useMatchLengthRange";
 import {
+  buildRankingsLocation,
   filterMatches,
   getAliasesForUser,
   getBestWinsForMode,
@@ -355,9 +356,28 @@ export const PlayerProfilePage = ({ username }) => {
     () => getAliasesForUser(aliasesLookup, canonicalUsername),
     [aliasesLookup, canonicalUsername],
   );
+  const latestMonthKeyByMode = useMemo(
+    () =>
+      monthRanks.reduce((accumulator, monthRank) => {
+        const currentDate = accumulator[monthRank.mode]
+          ? new Date(accumulator[monthRank.mode].monthDate)
+          : null;
+        if (!currentDate || monthRank.monthDate > currentDate) {
+          accumulator[monthRank.mode] = monthRank;
+        }
+        return accumulator;
+      }, {}),
+    [monthRanks],
+  );
   const profileMetricRows = useMemo(
-    () => getProfileMetricCardRows(ratingDisplayByMode),
-    [ratingDisplayByMode],
+    () =>
+      getProfileMetricCardRows(
+        ratingDisplayByMode,
+        Object.fromEntries(
+          Object.entries(latestMonthKeyByMode).map(([mode, monthRank]) => [mode, monthRank.monthKey]),
+        ),
+      ),
+    [latestMonthKeyByMode, ratingDisplayByMode],
   );
 
   return (
@@ -394,6 +414,8 @@ export const PlayerProfilePage = ({ username }) => {
                       key={card.key}
                       label={card.label}
                       value={card.value}
+                      valueSuffix={card.valueSuffix}
+                      valueLink={card.valueLink}
                       subtext={card.subtext}
                     />
                   ))}
@@ -514,10 +536,13 @@ export const PlayerProfilePage = ({ username }) => {
                 <ol>
                   {bestMonthRanks.map((monthRank) => (
                     <li key={`best-month-rank-${monthRank.mode}-${monthRank.monthKey}`}>
-                      <span className="profileBestMonthRankPrimary">
+                      <a
+                        className="rankingLink profileBestMonthRankPrimary"
+                        href={buildRankingsLocation(monthRank.monthKey, monthRank.mode)}
+                      >
                         {monthRank.monthLabel} {modeLabels[monthRank.mode] ?? monthRank.mode} · #
                         {monthRank.rank}
-                      </span>
+                      </a>
                       <span className="profileBestMonthRankRating">{monthRank.rating}</span>
                     </li>
                   ))}
@@ -549,10 +574,13 @@ export const PlayerProfilePage = ({ username }) => {
                 <ol>
                   {recentMonthRanks.map((monthRank) => (
                     <li key={`recent-month-rank-${monthRank.mode}-${monthRank.monthKey}`}>
-                      <span className="profileBestMonthRankPrimary">
+                      <a
+                        className="rankingLink profileBestMonthRankPrimary"
+                        href={buildRankingsLocation(monthRank.monthKey, monthRank.mode)}
+                      >
                         {monthRank.monthLabel} {modeLabels[monthRank.mode] ?? monthRank.mode} · #
                         {monthRank.rank}
-                      </span>
+                      </a>
                       <span className="profileBestMonthRankRating">{monthRank.rating}</span>
                     </li>
                   ))}

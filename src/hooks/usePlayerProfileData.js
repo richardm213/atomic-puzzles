@@ -122,6 +122,17 @@ const formatRankSuffix = (rank) => {
   return ` (#${rank})`;
 };
 
+export const buildRankingsLocation = (monthKey, mode) => {
+  const [month, year] = String(monthKey || "").trim().split(/\s+/);
+  if (!month || !year || !modeOptions.includes(mode)) return "";
+  const params = [
+    `month=${encodeURIComponent(month)}`,
+    `year=${encodeURIComponent(year)}`,
+    `mode=${encodeURIComponent(mode)}`,
+  ];
+  return `/rankings?${params.join("&")}`;
+};
+
 export const useMonthRanks = (username) => {
   const [monthRanks, setMonthRanks] = useState([]);
 
@@ -168,10 +179,11 @@ export const getRatingDisplayByMode = (ratingsSnapshotByMode, username) =>
     ]),
   );
 
-export const getProfileMetricCardRows = (ratingDisplayByMode) =>
+export const getProfileMetricCardRows = (ratingDisplayByMode, latestMonthKeyByMode = {}) =>
   modeOptions.map((mode) => {
     const label = modeLabels[mode] ?? mode;
     const summary = ratingDisplayByMode[mode] ?? normalizeRatingSnapshot(null);
+    const rankingsLocation = buildRankingsLocation(latestMonthKeyByMode[mode], mode);
     return {
       key: `${mode}-row`,
       label,
@@ -179,7 +191,9 @@ export const getProfileMetricCardRows = (ratingDisplayByMode) =>
         {
           key: `${mode}-rating`,
           label: "Rating",
-          value: `${formatCurrentRating(summary)}${formatRankSuffix(summary.rank)}`,
+          value: formatCurrentRating(summary),
+          valueSuffix: formatRankSuffix(summary.rank),
+          valueLink: summary.rank > 0 && rankingsLocation ? rankingsLocation : null,
         },
         {
           key: `${mode}-rd`,

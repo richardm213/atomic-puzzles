@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { defaultMode, modeLabels, modeOptions } from "../../constants/matches";
 import { useRankingsByMonth } from "../../hooks/useRankingsByMonth";
@@ -83,12 +83,47 @@ const allYearsFromJan2023 = () => {
   return years;
 };
 
+const getInitialRankingsFilters = () => {
+  if (typeof window === "undefined") {
+    return {
+      selectedYear: "",
+      selectedMonthName: "",
+      selectedMode: defaultMode,
+    };
+  }
+
+  const searchParams = new window.URLSearchParams(window.location.search);
+  const selectedYear = String(searchParams.get("year") || "").trim();
+  const selectedMonthName = String(searchParams.get("month") || "").trim();
+  const requestedMode = String(searchParams.get("mode") || "").trim().toLowerCase();
+
+  return {
+    selectedYear,
+    selectedMonthName,
+    selectedMode: modeOptions.includes(requestedMode) ? requestedMode : defaultMode,
+  };
+};
+
+const updateRankingsUrl = (selectedYear, selectedMonthName, selectedMode) => {
+  if (typeof window === "undefined" || !selectedYear || !selectedMonthName || !selectedMode) return;
+
+  const searchParams = new window.URLSearchParams(window.location.search);
+  searchParams.set("year", selectedYear);
+  searchParams.set("month", selectedMonthName);
+  searchParams.set("mode", selectedMode);
+  const nextSearch = searchParams.toString();
+  const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ""}`;
+  window.history.replaceState({}, "", nextUrl);
+};
+
 const LeaderboardView = () => {
-  const [selectedYear, setSelectedYear] = useState("");
-  const [selectedMonthName, setSelectedMonthName] = useState("");
-  const [selectedMode, setSelectedMode] = useState(defaultMode);
+  const initialFilters = useMemo(() => getInitialRankingsFilters(), []);
+  const [selectedYear, setSelectedYear] = useState(initialFilters.selectedYear);
+  const [selectedMonthName, setSelectedMonthName] = useState(initialFilters.selectedMonthName);
+  const [selectedMode, setSelectedMode] = useState(initialFilters.selectedMode);
   const [sortKey, setSortKey] = useState("rank");
   const [sortDirection, setSortDirection] = useState("asc");
+  const hasInitializedFiltersRef = useRef(false);
 
   const monthOptions = useMemo(() => allMonthsFromJan2023().reverse(), []);
   const yearOptions = useMemo(() => allYearsFromJan2023(), []);
@@ -106,9 +141,20 @@ const LeaderboardView = () => {
     const firstDate = monthDateFromMonthKey(firstWithData);
     if (!firstDate) return;
 
-    setSelectedYear((previous) => previous || String(firstDate.getUTCFullYear()));
-    setSelectedMonthName((previous) => previous || monthNameFromDate(firstDate));
-  }, [monthOptions, rankingsByMonth]);
+    if (hasInitializedFiltersRef.current) return;
+
+    const fallbackYear = String(firstDate.getUTCFullYear());
+    const fallbackMonthName = monthNameFromDate(firstDate);
+    const requestedMonthKey =
+      initialFilters.selectedYear && initialFilters.selectedMonthName
+        ? `${initialFilters.selectedMonthName} ${initialFilters.selectedYear}`
+        : "";
+    const hasRequestedMonth = requestedMonthKey && monthOptions.includes(requestedMonthKey);
+
+    setSelectedYear(hasRequestedMonth ? initialFilters.selectedYear : fallbackYear);
+    setSelectedMonthName(hasRequestedMonth ? initialFilters.selectedMonthName : fallbackMonthName);
+    hasInitializedFiltersRef.current = true;
+  }, [initialFilters.selectedMonthName, initialFilters.selectedYear, monthOptions, rankingsByMonth]);
 
   const availableMonthsForYear = useMemo(() => {
     if (!selectedYear) return monthNames;
@@ -126,6 +172,10 @@ const LeaderboardView = () => {
     if (availableMonthsForYear.includes(selectedMonthName)) return;
     setSelectedMonthName(availableMonthsForYear[0] || monthNames[0]);
   }, [availableMonthsForYear, selectedMonthName, selectedYear]);
+
+  useEffect(() => {
+    updateRankingsUrl(selectedYear, selectedMonthName, selectedMode);
+  }, [selectedMonthName, selectedMode, selectedYear]);
 
   const selectedMonthData = rankingsByMonth.get(selectedMonth);
   const selectedModeData = selectedMonthData?.[selectedMode] || {
@@ -208,11 +258,11 @@ const LeaderboardView = () => {
               onChange={(event) => setSelectedMode(event.target.value)}
             >
               {modeOptions.map((mode) => (
-                  <option key={mode} value={mode}>
+                <option key={mode} value={mode}>
                   {modeLabels[mode] ?? mode}
-                  </option>
-                ))}
-              </select>
+                </option>
+              ))}
+            </select>
           </label>
         </div>
 

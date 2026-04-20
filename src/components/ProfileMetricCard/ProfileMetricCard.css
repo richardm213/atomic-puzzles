@@ -19,6 +19,24 @@
   line-height: 1.15;
 }
 
+.profileMetricValue {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  align-items: baseline;
+}
+
+.profileMetricValueLink {
+  margin-left: 0.25em;
+  color: var(--color-primary-soft);
+  text-decoration: none;
+}
+
+.profileMetricValueLink:hover,
+.profileMetricValueLink:focus-visible {
+  text-decoration: underline;
+}
+
 .profileMetricSubtext {
   color: var(--color-primary-pale);
   font-size: 12px;
