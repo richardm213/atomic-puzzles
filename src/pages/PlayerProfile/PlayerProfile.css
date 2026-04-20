@@ -32,7 +32,7 @@
   justify-content: flex-end;
 }
 
-.profilePuzzleHistoryLink {
+.profilePuzzleDashboardLink {
   min-height: 42px;
   display: inline-flex;
   align-items: center;
@@ -50,8 +50,8 @@
     background-color 140ms ease;
 }
 
-.profilePuzzleHistoryLink:hover,
-.profilePuzzleHistoryLink:focus-visible {
+.profilePuzzleDashboardLink:hover,
+.profilePuzzleDashboardLink:focus-visible {
   transform: translateY(-1px);
   border-color: var(--color-primary);
   background: var(--color-surface-elevated-strong);
@@ -408,7 +408,7 @@
     justify-content: stretch;
   }
 
-  .profilePuzzleHistoryLink {
+  .profilePuzzleDashboardLink {
     width: 100%;
   }
 

@@ -12,8 +12,9 @@ import { RankingsPage } from "./pages/Rankings/Rankings";
 import { RankingsMethodologyPage } from "./pages/Rankings/RankingsMethodology";
 import { RecentMatchesPage } from "./pages/RecentMatches/RecentMatches";
 import { PlayerProfilePage } from "./pages/PlayerProfile/PlayerProfile";
+import { PuzzleDashboardPage } from "./pages/PuzzleDashboard/PuzzleDashboard";
 import { PuzzleSolverPage } from "./pages/PuzzleSolver/PuzzleSolver";
-import { PuzzleHistoryPage } from "./pages/PuzzleHistory/PuzzleHistory";
+import { PuzzleSetsPage } from "./pages/PuzzleSets/PuzzleSets";
 import { H2HPage } from "./pages/H2H/H2H";
 import { AuthCallbackPage } from "./pages/AuthCallback/AuthCallback";
 import { UsersPage } from "./pages/Users/Users";
@@ -91,18 +92,32 @@ const solveRoute = createRoute({
   component: PuzzleSolverPage,
 });
 
-const solveHistoryRoute = createRoute({
+const dashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/solve/history",
-  component: PuzzleHistoryPage,
+  path: "/dashboard",
+  component: PuzzleDashboardPage,
 });
 
-const profilePuzzleHistoryRoute = createRoute({
+const legacyPuzzleHistoryRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/solve/history",
+  beforeLoad: () => {
+    throw redirect({ to: "/dashboard" });
+  },
+});
+
+const solveSetsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/solve/sets",
+  component: PuzzleSetsPage,
+});
+
+const profilePuzzleDashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/@/$username/puzzles",
-  component: function ProfilePuzzleHistoryRoute() {
+  component: function ProfilePuzzleDashboardRoute() {
     const { username } = useParams({ strict: false });
-    return <PuzzleHistoryPage username={username} />;
+    return <PuzzleDashboardPage username={username} />;
   },
 });
 
@@ -138,10 +153,12 @@ const routeTree = rootRoute.addChildren([
   h2hMatchupRoute,
   matchesAliasRoute,
   solveRoute,
-  solveHistoryRoute,
+  dashboardRoute,
+  legacyPuzzleHistoryRoute,
+  solveSetsRoute,
   solveWithIdRoute,
   profileRoute,
-  profilePuzzleHistoryRoute,
+  profilePuzzleDashboardRoute,
   lichessAuthCallbackRoute,
 ]);
 

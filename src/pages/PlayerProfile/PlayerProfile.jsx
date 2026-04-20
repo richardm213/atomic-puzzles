@@ -406,11 +406,11 @@ export const PlayerProfilePage = ({ username }) => {
         {isHistoryAvailable ? (
           <div className="profileActionRow">
             <Link
-              className="profilePuzzleHistoryLink"
+              className="profilePuzzleDashboardLink"
               to="/@/$username/puzzles"
               params={{ username: canonicalUsername }}
             >
-              View puzzle history
+              View puzzle dashboard
             </Link>
           </div>
         ) : null}

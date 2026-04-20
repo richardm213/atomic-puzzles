@@ -70,7 +70,7 @@
   font-size: 12px;
 }
 
-.puzzleHistoryLink {
+.puzzleDashboardLink {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -90,7 +90,7 @@
     color 140ms ease;
 }
 
-.puzzleHistoryLink:hover {
+.puzzleDashboardLink:hover {
   transform: translateY(-1px);
   border-color: var(--color-accent-soft-border);
   background: var(--color-surface-elevated-strong);

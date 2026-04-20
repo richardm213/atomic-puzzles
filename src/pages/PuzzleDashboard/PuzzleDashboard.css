@@ -1,4 +1,4 @@
-.puzzleHistoryPage {
+.puzzleDashboardPage {
   min-height: calc(100vh - 58px);
   min-height: calc(100svh - 58px);
   background: var(--page-background);
@@ -9,14 +9,14 @@
     max(var(--page-gutter), env(safe-area-inset-left));
 }
 
-.puzzleHistoryShell {
+.puzzleDashboardShell {
   width: min(1080px, 100%);
   margin: 0 auto;
   display: grid;
   gap: 22px;
 }
 
-.historyBanner {
+.dashboardHero {
   display: grid;
   grid-template-columns: minmax(0, 1.25fr) minmax(220px, 0.75fr);
   gap: 20px;
@@ -32,12 +32,12 @@
   backdrop-filter: blur(16px);
 }
 
-.historyBannerCopy {
+.dashboardHeroCopy {
   display: grid;
   gap: 12px;
 }
 
-.puzzleHistoryEyebrow {
+.puzzleDashboardEyebrow {
   width: fit-content;
   margin: 0;
   color: var(--color-primary-pale);
@@ -51,14 +51,14 @@
   background: color-mix(in srgb, var(--color-panel-strong) 72%, transparent);
 }
 
-.historyBanner h1 {
+.dashboardHero h1 {
   margin: 0;
   color: var(--color-heading);
   font-size: clamp(32px, 4vw, 48px);
   line-height: 1.02;
 }
 
-.puzzleHistoryIntro {
+.puzzleDashboardIntro {
   margin: 0;
   max-width: 60ch;
   color: var(--color-muted);
@@ -66,14 +66,24 @@
   line-height: 1.6;
 }
 
-.historyBannerActions {
+.dashboardHeroActions {
   display: grid;
   align-content: space-between;
   justify-items: end;
   gap: 14px;
 }
 
-.historyIdentityCard {
+.dashboardHeroActionStack,
+.dashboardHeroLinks {
+  display: grid;
+  gap: 12px;
+}
+
+.dashboardHeroLinks {
+  justify-items: end;
+}
+
+.dashboardIdentityCard {
   width: min(100%, 260px);
   display: grid;
   gap: 6px;
@@ -84,16 +94,16 @@
     var(--color-surface-soft);
 }
 
-.historyIdentityCard strong {
+.dashboardIdentityCard strong {
   color: var(--color-heading);
   font-size: 22px;
   line-height: 1.1;
 }
 
-.historyIdentityLabel,
-.historyStatLabel,
-.historySectionEyebrow,
-.historyMiniLabel {
+.dashboardIdentityLabel,
+.dashboardStatLabel,
+.dashboardSectionEyebrow,
+.dashboardMiniLabel {
   color: var(--color-subtle);
   font-size: 11px;
   font-weight: 800;
@@ -101,13 +111,13 @@
   text-transform: uppercase;
 }
 
-.puzzleHistoryBackLink,
-.historyPuzzleLink,
-.historyOpenLink {
+.puzzleDashboardBackLink,
+.dashboardPuzzleLink,
+.dashboardReplayLink {
   text-decoration: none;
 }
 
-.puzzleHistoryBackLink {
+.puzzleDashboardBackLink {
   min-height: 42px;
   display: inline-flex;
   align-items: center;
@@ -124,37 +134,75 @@
     background-color 140ms ease;
 }
 
-.puzzleHistoryBackLink:hover,
-.historyOpenLink:hover {
+.puzzleDashboardBackLink:hover,
+.dashboardReplayLink:hover {
   transform: translateY(-1px);
   border-color: var(--color-primary);
   background: var(--color-surface-elevated-strong);
 }
 
-.historyStatsStrip {
+.dashboardStatsStrip {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
-.historyStatCard {
+.dashboardStatCard {
   display: grid;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
-  padding: 16px 18px;
+  align-content: start;
+  padding: 18px 20px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-ui);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--color-panel) 75%, transparent), transparent),
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-panel) 75%, transparent), transparent),
+    var(--color-panel-strong);
+  box-shadow: var(--shadow-panel);
+}
+
+.dashboardStatCardPrimary {
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--color-primary) 18%, transparent), transparent 42%),
+    linear-gradient(180deg, color-mix(in srgb, var(--color-panel) 75%, transparent), transparent),
     var(--color-panel-strong);
 }
 
-.historyStatCard strong {
-  color: var(--color-heading);
-  font-size: clamp(24px, 3vw, 34px);
-  line-height: 1;
+.dashboardStatCardCorrect {
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--color-cyan-bright) 18%, transparent), transparent 42%),
+    linear-gradient(180deg, color-mix(in srgb, var(--color-panel) 75%, transparent), transparent),
+    var(--color-panel-strong);
 }
 
-.historyLedger {
+.dashboardStatCardIncorrect {
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--color-danger) 16%, transparent), transparent 42%),
+    linear-gradient(180deg, color-mix(in srgb, var(--color-panel) 75%, transparent), transparent),
+    var(--color-panel-strong);
+}
+
+.dashboardStatCard strong {
+  color: var(--color-heading);
+  font-size: clamp(30px, 4vw, 42px);
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+}
+
+.dashboardStatNote {
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.dashboardSummaryNote {
+  margin: -4px 0 0;
+  color: var(--color-subtle);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.dashboardAttempts {
   display: grid;
   gap: 16px;
   padding: clamp(18px, 2.3vw, 24px);
@@ -165,8 +213,8 @@
   box-shadow: var(--shadow-panel);
 }
 
-.historyLedgerHeader,
-.historyLedgerFooter {
+.dashboardAttemptsHeader,
+.dashboardAttemptsFooter {
   display: flex;
   align-items: end;
   justify-content: space-between;
@@ -174,25 +222,25 @@
   flex-wrap: wrap;
 }
 
-.historyLedgerHeader h2 {
+.dashboardAttemptsHeader h2 {
   margin: 6px 0 0;
   color: var(--color-heading);
   font-size: clamp(24px, 3vw, 32px);
   line-height: 1.08;
 }
 
-.historySectionIntro {
+.dashboardSectionIntro {
   margin: 8px 0 0;
   color: var(--color-muted);
   line-height: 1.55;
 }
 
-.historyLedgerRows {
+.dashboardAttemptRows {
   display: grid;
   gap: 12px;
 }
 
-.historyLedgerRow {
+.dashboardAttemptRow {
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
   gap: 16px;
@@ -205,14 +253,14 @@
     var(--color-surface-soft);
 }
 
-.historyLedgerPrimary {
+.dashboardAttemptPrimary {
   display: flex;
   align-items: flex-start;
   gap: 14px;
   min-width: 0;
 }
 
-.historyRowNumber {
+.dashboardRowNumber {
   width: 42px;
   height: 42px;
   flex: 0 0 42px;
@@ -225,23 +273,23 @@
   font-weight: 800;
 }
 
-.historyPuzzleBlock {
+.dashboardPuzzleBlock {
   display: grid;
   gap: 6px;
   min-width: 0;
 }
 
-.historyPuzzleLink {
+.dashboardPuzzleLink {
   color: var(--color-heading);
   font-size: clamp(20px, 2vw, 24px);
   font-weight: 800;
 }
 
-.historyPuzzleLink:hover {
+.dashboardPuzzleLink:hover {
   text-decoration: underline;
 }
 
-.historyPuzzleSubline {
+.dashboardPuzzleSubline {
   display: flex;
   flex-wrap: wrap;
   gap: 8px 12px;
@@ -249,11 +297,11 @@
   font-size: 14px;
 }
 
-.historyPuzzleSubline span {
+.dashboardPuzzleSubline span {
   position: relative;
 }
 
-.historyPuzzleSubline span:not(:first-child)::before {
+.dashboardPuzzleSubline span:not(:first-child)::before {
   content: "";
   position: absolute;
   left: -7px;
@@ -265,13 +313,13 @@
   background: var(--color-subtle);
 }
 
-.historyLedgerMeta {
+.dashboardAttemptMeta {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 
-.historyLedgerCell {
+.dashboardMetaCard {
   display: grid;
   gap: 6px;
   min-width: 0;
@@ -281,16 +329,16 @@
   background: color-mix(in srgb, var(--color-panel-strong) 88%, transparent);
 }
 
-.historyLedgerActionCell {
+.dashboardActionCard {
   align-content: space-between;
 }
 
-.historyLedgerValue {
+.dashboardMetaValue {
   color: var(--color-text);
   line-height: 1.45;
 }
 
-.historyStatus {
+.dashboardStatus {
   width: fit-content;
   min-height: 32px;
   display: inline-flex;
@@ -304,19 +352,19 @@
   text-transform: uppercase;
 }
 
-.historyStatus.correct {
+.dashboardStatus.correct {
   background: color-mix(in srgb, var(--color-cyan-bright) 18%, transparent);
   color: var(--color-accent-soft-text);
   border: 1px solid color-mix(in srgb, var(--color-cyan-bright) 45%, transparent);
 }
 
-.historyStatus.incorrect {
+.dashboardStatus.incorrect {
   background: color-mix(in srgb, var(--color-danger) 12%, transparent);
   color: color-mix(in srgb, var(--color-danger) 45%, white);
   border: 1px solid color-mix(in srgb, var(--color-danger) 35%, transparent);
 }
 
-.historyOpenLink {
+.dashboardReplayLink {
   min-height: 38px;
   display: inline-flex;
   align-items: center;
@@ -329,8 +377,8 @@
   font-weight: 800;
 }
 
-.historyStateCard,
-.errorText {
+.dashboardStateCard,
+.dashboardErrorText {
   display: grid;
   gap: 12px;
   padding: 18px;
@@ -341,7 +389,7 @@
   color: var(--color-muted);
 }
 
-.historyStateCard p {
+.dashboardStateCard p {
   margin: 0;
 }
 
@@ -411,51 +459,55 @@
 }
 
 @media (max-width: 960px) {
-  .historyBanner,
-  .historyLedgerRow {
+  .dashboardHero,
+  .dashboardAttemptRow {
     grid-template-columns: 1fr;
   }
 
-  .historyBannerActions {
+  .dashboardHeroActions {
     justify-items: start;
     align-content: start;
   }
 
-  .historyStatsStrip {
+  .dashboardHeroLinks {
+    justify-items: start;
+  }
+
+  .dashboardStatsStrip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .historyLedgerMeta {
+  .dashboardAttemptMeta {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 680px) {
-  .historyStatsStrip {
+  .dashboardStatsStrip {
     grid-template-columns: 1fr;
   }
 
-  .historyLedgerHeader,
-  .historyLedgerFooter {
+  .dashboardAttemptsHeader,
+  .dashboardAttemptsFooter {
     display: grid;
     align-items: stretch;
   }
 
-  .historyLedgerPrimary {
+  .dashboardAttemptPrimary {
     gap: 12px;
   }
 
-  .historyPuzzleSubline {
+  .dashboardPuzzleSubline {
     display: grid;
     gap: 4px;
   }
 
-  .historyPuzzleSubline span:not(:first-child)::before {
+  .dashboardPuzzleSubline span:not(:first-child)::before {
     display: none;
   }
 
-  .puzzleHistoryBackLink,
-  .historyOpenLink,
+  .puzzleDashboardBackLink,
+  .dashboardReplayLink,
   .paginationRow button {
     width: 100%;
   }

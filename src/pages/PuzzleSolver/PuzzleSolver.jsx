@@ -979,9 +979,9 @@ export const PuzzleSolverPage = () => {
           </div>
           <div className="puzzleHeaderAside">
             {canViewHistory ? (
-              <Link className="puzzleHistoryLink" to="/solve/history">
+              <Link className="puzzleDashboardLink" to="/dashboard">
                 <FontAwesomeIcon icon={faClockRotateLeft} />
-                <span>History</span>
+                <span>Dashboard</span>
               </Link>
             ) : null}
             <div className="puzzleCount" aria-label="Puzzle count">

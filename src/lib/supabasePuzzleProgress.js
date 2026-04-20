@@ -140,6 +140,31 @@ const loadPuzzleProgressPageFromRpc = async (supabase, username, page, pageSize)
   return { rows: normalizedRows, total };
 };
 
+const loadAllPuzzleProgressRowsFromRpc = async (supabase, username, pageSize = 1000) => {
+  const normalizedPageSize = Math.max(1, Math.floor(Number(pageSize)) || 1000);
+  const allRows = [];
+  let currentPage = 1;
+  let total = 0;
+
+  for (;;) {
+    const { rows, total: pageTotal } = await loadPuzzleProgressPageFromRpc(
+      supabase,
+      username,
+      currentPage,
+      normalizedPageSize,
+    );
+
+    allRows.push(...rows);
+    total = pageTotal;
+
+    if (allRows.length >= total || rows.length < normalizedPageSize) {
+      return allRows;
+    }
+
+    currentPage += 1;
+  }
+};
+
 const loadAttemptedPuzzleIdsFromRpc = async (supabase, username) => {
   const { data, error } = await supabase.rpc(ATTEMPTED_PUZZLE_IDS_RPC, {
     p_username: username,
@@ -245,6 +270,47 @@ export const fetchPuzzleProgressPage = async (
   return {
     rows: pagedRows,
     total: Math.max(serverCount, mergedRows.length),
+  };
+};
+
+export const fetchPuzzleProgressSummary = async (username) => {
+  const normalizedUsername = normalizeUsername(username);
+  if (!normalizedUsername) {
+    return {
+      total: 0,
+      correct: 0,
+      incorrect: 0,
+    };
+  }
+
+  const localRows = readLocalPuzzleProgress(normalizedUsername);
+  let serverRows = [];
+
+  try {
+    const supabase = getSupabaseClient();
+    try {
+      serverRows = await loadAllPuzzleProgressRowsFromRpc(supabase, normalizedUsername);
+    } catch {
+      serverRows = await fetchAllSupabaseRows(PUZZLE_PROGRESS_TABLE, () =>
+        supabase
+          .from(PUZZLE_PROGRESS_TABLE)
+          .select("puzzle_id,first_attempt_at,puzzle_correct")
+          .eq("username", normalizedUsername)
+          .order("first_attempt_at", { ascending: false }),
+      );
+    }
+  } catch {
+    serverRows = [];
+  }
+
+  const mergedRows = mergePuzzleProgressRows(serverRows, localRows);
+  const correct = mergedRows.filter((row) => Boolean(row?.puzzle_correct)).length;
+  const total = mergedRows.length;
+
+  return {
+    total,
+    correct,
+    incorrect: total - correct,
   };
 };
 
