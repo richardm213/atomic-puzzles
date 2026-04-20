@@ -47,6 +47,13 @@
   gap: 12px;
 }
 
+.puzzleSetsFilterBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
 .puzzleSetsEyebrow,
 .puzzleSetsSummaryLabel,
 .puzzleSetsSectionEyebrow,
@@ -146,6 +153,36 @@
   background: var(--color-surface-elevated-strong);
 }
 
+.puzzleSetsFilterButton {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-panel-strong) 92%, transparent);
+  color: var(--color-heading);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 140ms ease,
+    border-color 140ms ease,
+    background-color 140ms ease,
+    color 140ms ease;
+}
+
+.puzzleSetsFilterButton:hover,
+.puzzleSetsFilterButton:focus-visible {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--color-primary) 60%, var(--color-border));
+  background: color-mix(in srgb, var(--color-panel) 84%, var(--color-primary) 16%);
+}
+
+.puzzleSetsFilterButton.active {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 20%, var(--color-panel-strong));
+  color: var(--color-heading);
+}
+
 .puzzleSetOpenIcon {
   font-size: 13px;
   line-height: 1;
@@ -209,6 +246,12 @@
 .puzzleSetCardAuthors {
   color: var(--color-subtle);
   font-size: 13px;
+}
+
+.puzzleSetsFilterSummary {
+  margin: 0;
+  color: var(--color-subtle);
+  font-size: 14px;
 }
 
 .puzzleSetPuzzleRow {

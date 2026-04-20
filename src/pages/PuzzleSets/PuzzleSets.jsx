@@ -5,6 +5,44 @@ import { loadPuzzleLibrary } from "../../lib/puzzleLibrary";
 import { groupPuzzlesByEvent } from "../../lib/puzzleSets";
 import "./PuzzleSets.css";
 
+const EVENT_FILTERS = [
+  { id: "all", label: "All" },
+  { id: "acl", label: "ACL" },
+  { id: "swiss960", label: "960 Swiss" },
+  { id: "chess960", label: "960" },
+  { id: "awc", label: "AWC" },
+  { id: "practiceMatch", label: "Practice" },
+];
+
+const matchesEventFilter = (group, filterId) => {
+  if (filterId === "all") return true;
+
+  const normalizedEvent = String(group?.event ?? "").trim().toLocaleLowerCase();
+  if (!normalizedEvent) return false;
+
+  if (filterId === "acl") {
+    return normalizedEvent.includes("acl") || normalizedEvent.includes("atomic chess league");
+  }
+
+  if (filterId === "swiss960") {
+    return normalizedEvent.includes("960 swiss") || normalizedEvent.includes("atomic960 swiss");
+  }
+
+  if (filterId === "chess960") {
+    return normalizedEvent.includes("960") && !matchesEventFilter(group, "swiss960");
+  }
+
+  if (filterId === "awc") {
+    return normalizedEvent.includes("awc") || normalizedEvent.includes("atomic wc");
+  }
+
+  if (filterId === "practiceMatch") {
+    return normalizedEvent.includes("practice match");
+  }
+
+  return true;
+};
+
 const readEventKeyFromHash = () => {
   if (typeof window === "undefined") return "";
   return window.location.hash.replace(/^#/, "").trim();
@@ -13,6 +51,7 @@ const readEventKeyFromHash = () => {
 export const PuzzleSetsPage = () => {
   const [puzzles, setPuzzles] = useState([]);
   const [selectedEventKey, setSelectedEventKey] = useState(() => readEventKeyFromHash());
+  const [activeFilterId, setActiveFilterId] = useState("all");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const selectedSetSectionRef = useRef(null);
@@ -59,20 +98,28 @@ export const PuzzleSetsPage = () => {
   }, []);
 
   const puzzleGroups = useMemo(() => groupPuzzlesByEvent(puzzles), [puzzles]);
+  const filteredPuzzleGroups = useMemo(
+    () => puzzleGroups.filter((group) => matchesEventFilter(group, activeFilterId)),
+    [activeFilterId, puzzleGroups],
+  );
   const selectedGroup = useMemo(() => {
-    if (!puzzleGroups.length) return null;
+    if (!filteredPuzzleGroups.length) return null;
 
-    const fromHash = puzzleGroups.find((group) => group.eventKey === selectedEventKey);
+    const fromHash = filteredPuzzleGroups.find((group) => group.eventKey === selectedEventKey);
     if (fromHash) return fromHash;
 
     return null;
-  }, [puzzleGroups, selectedEventKey]);
+  }, [filteredPuzzleGroups, selectedEventKey]);
 
   const totalPuzzleCount = useMemo(
     () => puzzleGroups.reduce((count, group) => count + group.puzzles.length, 0),
     [puzzleGroups],
   );
   const totalSetCount = puzzleGroups.length;
+  const filteredPuzzleCount = useMemo(
+    () => filteredPuzzleGroups.reduce((count, group) => count + group.puzzles.length, 0),
+    [filteredPuzzleGroups],
+  );
 
   const handleSetSelection = (eventKey) => {
     shouldScrollToSelectionRef.current = true;
@@ -129,13 +176,30 @@ export const PuzzleSetsPage = () => {
                 Select a card to reveal every puzzle from that event.
               </p>
             </div>
+            <div className="puzzleSetsFilterBar" role="toolbar" aria-label="Filter puzzle sets">
+              {EVENT_FILTERS.map((filter) => {
+                const isActive = filter.id === activeFilterId;
+
+                return (
+                  <button
+                    key={filter.id}
+                    type="button"
+                    className={`puzzleSetsFilterButton ${isActive ? "active" : ""}`}
+                    onClick={() => setActiveFilterId(filter.id)}
+                    aria-pressed={isActive}
+                  >
+                    {filter.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {isLoading ? (
             <div className="puzzleSetsStateCard">Loading puzzle sets…</div>
-          ) : puzzleGroups.length > 0 ? (
+          ) : filteredPuzzleGroups.length > 0 ? (
             <div className="puzzleSetGrid" role="list" aria-label="Puzzle events">
-              {puzzleGroups.map((group) => {
+              {filteredPuzzleGroups.map((group) => {
                 const firstPuzzleId = group.puzzles[0]?.puzzleId ?? "—";
                 const lastPuzzleId = group.puzzles[group.puzzles.length - 1]?.puzzleId ?? "—";
                 const isSelected = selectedGroup?.eventKey === group.eventKey;
@@ -164,7 +228,11 @@ export const PuzzleSetsPage = () => {
               })}
             </div>
           ) : (
-            <div className="puzzleSetsStateCard">No puzzle sets are available yet.</div>
+            <div className="puzzleSetsStateCard">
+              {puzzleGroups.length > 0
+                ? "No puzzle sets match this filter yet."
+                : "No puzzle sets are available yet."}
+            </div>
           )}
         </section>
 
@@ -176,7 +244,14 @@ export const PuzzleSetsPage = () => {
               <p className="puzzleSetsSectionIntro">
                 {selectedGroup
                   ? `Open any puzzle from ${selectedGroup.event}.`
-                  : "The puzzle list will appear here after you choose a set."}
+                  : filteredPuzzleGroups.length > 0
+                    ? "The puzzle list will appear here after you choose a set."
+                    : `No sets are visible for the ${EVENT_FILTERS.find((filter) => filter.id === activeFilterId)?.label ?? "active"} filter.`}
+              </p>
+              <p className="puzzleSetsFilterSummary">
+                Showing {filteredPuzzleGroups.length} set{filteredPuzzleGroups.length === 1 ? "" : "s"}
+                {" · "}
+                {filteredPuzzleCount} puzzle{filteredPuzzleCount === 1 ? "" : "s"}
               </p>
             </div>
           </div>

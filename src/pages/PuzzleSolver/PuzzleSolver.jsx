@@ -978,6 +978,9 @@ export const PuzzleSolverPage = () => {
             <h1>Find the best move</h1>
           </div>
           <div className="puzzleHeaderAside">
+            <Link className="puzzleDashboardLink" to="/solve/sets">
+              <span>Sets</span>
+            </Link>
             {canViewHistory ? (
               <Link className="puzzleDashboardLink" to="/dashboard">
                 <FontAwesomeIcon icon={faClockRotateLeft} />
