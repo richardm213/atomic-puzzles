@@ -1,8 +1,9 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAppSettings } from "../../context/AppSettings";
-import { resolveUsernameInput } from "../../lib/searchUsernames";
+import { resolveUsernameInput, resolveUsernameInputs } from "../../lib/searchUsernames";
 import { appAssetPath } from "../../utils/appAssetPath";
+import { matchupToSlug } from "../../utils/h2hRoutes";
 import { normalizeUsername } from "../../utils/playerNames";
 import { Seo } from "../../components/Seo/Seo";
 import "./Home.css";
@@ -140,8 +141,12 @@ const principles = [
 export const HomePage = () => {
   const { theme } = useAppSettings();
   const [playerQuery, setPlayerQuery] = useState("");
+  const [comparePlayerOneQuery, setComparePlayerOneQuery] = useState("");
+  const [comparePlayerTwoQuery, setComparePlayerTwoQuery] = useState("");
   const navigate = useNavigate();
   const trimmedPlayerQuery = playerQuery.trim();
+  const trimmedComparePlayerOneQuery = comparePlayerOneQuery.trim();
+  const trimmedComparePlayerTwoQuery = comparePlayerTwoQuery.trim();
   const puzzleCollageImages =
     theme === "light" ? lightModePuzzleCollageImages : darkModePuzzleCollageImages;
 
@@ -152,6 +157,23 @@ export const HomePage = () => {
     navigate({
       to: "/@/$username",
       params: { username: normalizeUsername(resolvedUsername) },
+    });
+  };
+
+  const handleCompareSearch = async (event) => {
+    event.preventDefault();
+    if (!trimmedComparePlayerOneQuery || !trimmedComparePlayerTwoQuery) return;
+
+    const [resolvedPlayerOne, resolvedPlayerTwo] = await resolveUsernameInputs([
+      trimmedComparePlayerOneQuery,
+      trimmedComparePlayerTwoQuery,
+    ]);
+
+    navigate({
+      to: "/h2h/$matchup",
+      params: {
+        matchup: matchupToSlug(resolvedPlayerOne, resolvedPlayerTwo),
+      },
     });
   };
 
@@ -203,6 +225,38 @@ export const HomePage = () => {
               />
               <button type="submit" disabled={!trimmedPlayerQuery}>
                 View profile
+              </button>
+            </div>
+          </form>
+
+          <form className="homeCompareSearch" onSubmit={handleCompareSearch}>
+            <label htmlFor="home-compare-player-one">Compare two players</label>
+            <div className="homeCompareGrid">
+              <input
+                id="home-compare-player-one"
+                type="text"
+                value={comparePlayerOneQuery}
+                placeholder="player one"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                onChange={(event) => setComparePlayerOneQuery(event.target.value)}
+              />
+              <input
+                id="home-compare-player-two"
+                type="text"
+                value={comparePlayerTwoQuery}
+                placeholder="player two"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                onChange={(event) => setComparePlayerTwoQuery(event.target.value)}
+              />
+              <button
+                type="submit"
+                disabled={!trimmedComparePlayerOneQuery || !trimmedComparePlayerTwoQuery}
+              >
+                View H2H
               </button>
             </div>
           </form>
