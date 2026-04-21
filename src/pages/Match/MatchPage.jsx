@@ -7,6 +7,7 @@ import { modeLabels } from "../../constants/matches";
 import { formatLocalDateTime, formatScore } from "../../utils/formatters";
 import { normalizedGamesFromMatch, normalizedPlayersFromMatch } from "../../utils/matchTransforms";
 import { ratingsForPlayers, sourceValueFromMatch, summarizeMatchGames } from "../../lib/matchSummaries";
+import { matchupToSlug } from "../../utils/h2hRoutes";
 import { normalizeMatchMode } from "../../utils/matchRoutes";
 import "./MatchPage.css";
 
@@ -138,6 +139,15 @@ export const MatchPage = () => {
                   <span className="matchMetaPill">{formatLocalDateTime(match.startTs)}</span>
                   <span className="matchMetaPill">{match.timeControl}</span>
                   <span className="matchMetaPill">{match.sourceValue}</span>
+                </div>
+                <div className="matchPageActions">
+                  <Link
+                    className="matchPageH2HLink"
+                    to="/h2h/$matchup"
+                    params={{ matchup: matchupToSlug(match.playerA, match.playerB) }}
+                  >
+                    View head-to-head
+                  </Link>
                 </div>
               </div>
 

@@ -155,6 +155,43 @@
   gap: 10px;
 }
 
+.matchPageActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.matchPageH2HLink {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid color-mix(in srgb, var(--color-accent-soft-border) 78%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-accent-soft-bg) 80%, transparent);
+  color: var(--color-heading);
+  font-weight: 800;
+  text-decoration: none;
+  transition:
+    transform 140ms ease,
+    border-color 140ms ease,
+    background-color 140ms ease;
+}
+
+.matchPageH2HLink:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--color-primary) 50%, transparent);
+  background: color-mix(in srgb, var(--color-accent-soft-bg-strong) 88%, transparent);
+}
+
+.matchPageH2HLink:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-primary) 56%, white);
+  outline-offset: 2px;
+}
+
 .matchPageSummaryGrid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
