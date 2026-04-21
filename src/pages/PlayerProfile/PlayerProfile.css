@@ -199,6 +199,103 @@
   overflow-wrap: anywhere;
 }
 
+.profileAliasName {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.profileAliasStatus {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-warning) 26%, var(--color-border));
+  background: color-mix(in srgb, var(--color-warning-soft-bg) 62%, white 38%);
+  color: color-mix(in srgb, var(--color-warning) 68%, #6b4b12);
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--color-warning) 8%, transparent);
+  cursor: default;
+  transition:
+    transform 140ms ease,
+    border-color 140ms ease,
+    background-color 140ms ease,
+    color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.profileAliasStatus > span:first-child {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.profileAliasTooltip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  z-index: 2;
+  width: min(320px, calc(100vw - 32px));
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-panel-strong);
+  color: var(--color-text);
+  box-shadow: 0 10px 30px color-mix(in srgb, black 18%, transparent);
+  font-size: 12px;
+  line-height: 1.45;
+  opacity: 0;
+  pointer-events: auto;
+  transform: translate(-50%, 6px);
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease;
+}
+
+.profileAliasTooltip::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 10px;
+  height: 10px;
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-panel-strong);
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.profileAliasStatus:hover .profileAliasTooltip,
+.profileAliasStatus:focus-within .profileAliasTooltip,
+.profileAliasTooltip:hover {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.profileAliasStatus:hover,
+.profileAliasStatus:focus-within {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--color-warning) 44%, var(--color-border));
+  background: color-mix(in srgb, var(--color-warning-soft-bg) 72%, white 28%);
+  color: color-mix(in srgb, var(--color-warning) 78%, #5b3200);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--color-warning) 12%, transparent);
+}
+
+.profileAliasTooltipLink {
+  color: color-mix(in srgb, var(--color-primary) 78%, white 22%);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.profileAliasTooltipLink:hover,
+.profileAliasTooltipLink:focus-visible {
+  color: color-mix(in srgb, var(--color-primary) 60%, white 40%);
+}
+
 .profileAliasLichessLink {
   flex: 0 0 auto;
   display: inline-flex;
@@ -207,27 +304,86 @@
   width: 28px;
   height: 28px;
   border-radius: 999px;
-  color: var(--color-gold);
-  background: var(--color-warning-soft-bg);
-  border: 1px solid var(--color-warning-soft-border);
+  color: color-mix(in srgb, var(--color-primary) 82%, #0f172a);
+  background: color-mix(in srgb, var(--color-primary-ring) 72%, white 28%);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 36%, var(--color-border));
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--color-primary) 12%, transparent);
   text-decoration: none;
   transition:
     transform 140ms ease,
     background 140ms ease,
-    border-color 140ms ease;
+    border-color 140ms ease,
+    color 140ms ease,
+    box-shadow 140ms ease;
 }
 
 .profileAliasLichessLink:hover,
 .profileAliasLichessLink:focus-visible {
   transform: translateY(-1px);
-  background: color-mix(in srgb, var(--color-warning-soft-bg) 80%, var(--color-panel-strong));
-  border-color: color-mix(in srgb, var(--color-warning-soft-border) 80%, var(--color-gold));
+  background: color-mix(in srgb, var(--color-primary-ring) 88%, white 12%);
+  border-color: color-mix(in srgb, var(--color-primary) 62%, var(--color-border));
+  color: color-mix(in srgb, var(--color-primary-hover) 86%, #0f172a);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--color-primary) 16%, transparent);
 }
 
 .profileAliasLichessLink svg {
   width: 18px;
   height: 18px;
   display: block;
+}
+
+:root:not([data-theme="light"]) .profileAliasStatus {
+  width: 18px;
+  height: 18px;
+  border: 0;
+  background: transparent;
+  color: color-mix(in srgb, #ffd166 80%, white);
+  box-shadow: none;
+}
+
+:root:not([data-theme="light"]) .profileAliasStatus:hover,
+:root:not([data-theme="light"]) .profileAliasStatus:focus-within {
+  border: 0;
+  background: transparent;
+  color: color-mix(in srgb, #ffd166 88%, white);
+  box-shadow: none;
+}
+
+:root:not([data-theme="light"]) .profileAliasLichessLink {
+  color: var(--color-gold);
+  background: var(--color-warning-soft-bg);
+  border: 1px solid var(--color-warning-soft-border);
+  box-shadow: none;
+}
+
+:root:not([data-theme="light"]) .profileAliasLichessLink:hover,
+:root:not([data-theme="light"]) .profileAliasLichessLink:focus-visible {
+  background: color-mix(in srgb, var(--color-warning-soft-bg) 80%, var(--color-panel-strong));
+  border-color: color-mix(in srgb, var(--color-warning-soft-border) 80%, var(--color-gold));
+  color: var(--color-gold);
+  box-shadow: none;
+}
+
+:root[data-theme="light"] .profileAliasTooltipLink {
+  color: #3f73ee;
+}
+
+:root[data-theme="light"] .profileAliasTooltipLink:hover,
+:root[data-theme="light"] .profileAliasTooltipLink:focus-visible {
+  color: #2f62dd;
+}
+
+:root[data-theme="light"] .profileAliasLichessLink {
+  color: #3b6fe8;
+  background: color-mix(in srgb, #dce8ff 84%, white 16%);
+  border-color: color-mix(in srgb, #3b6fe8 34%, var(--color-border));
+}
+
+:root[data-theme="light"] .profileAliasLichessLink:hover,
+:root[data-theme="light"] .profileAliasLichessLink:focus-visible {
+  color: #2f62dd;
+  background: color-mix(in srgb, #dce8ff 94%, white 6%);
+  border-color: color-mix(in srgb, #2f62dd 52%, var(--color-border));
 }
 
 .playerProfilePanel .analyzeButton {

@@ -6,6 +6,7 @@ import { normalizeUsername } from "../utils/playerNames";
 const ALIASES_TABLE = "aliases";
 const ALIASES2_TABLE = "aliases2";
 const ALIASES_SELECT_COLUMNS = "username,aliases,banned";
+const ALIASES2_SELECT_COLUMNS = "alias,username,banned,count_games";
 const aliasesRowsCache = new Map();
 const aliasTableRowsCache = new Map();
 const alias2TableRowsCache = new Map();
@@ -21,6 +22,7 @@ const normalizeAliasRow = (row) => {
     username,
     aliases: [...new Set(aliases.filter((alias) => alias !== username))],
     banned: Boolean(row?.banned),
+    hasExplicitCountableAliases: false,
   };
 };
 
@@ -36,27 +38,18 @@ const fetchUncachedAliasRows = async () => {
 export const fetchAliasesTableRows = async () =>
   cachedRequest(aliasTableRowsCache, ["aliases-table"], async () => fetchUncachedAliasRows());
 
-const normalizeAliasList = (value) => {
-  if (Array.isArray(value)) {
-    return value.map(normalizeUsername).filter(Boolean);
-  }
+const normalizeAlias2Row = (row) => {
+  const username = normalizeUsername(row?.username);
+  const alias = normalizeUsername(row?.alias);
 
-  const raw = String(value ?? "").trim();
-  if (!raw) return [];
+  if (!username || !alias) return null;
 
-  try {
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) {
-      return parsed.map(normalizeUsername).filter(Boolean);
-    }
-  } catch {
-    // Fall back to comma-separated parsing below.
-  }
-
-  return raw
-    .split(",")
-    .map((entry) => normalizeUsername(entry))
-    .filter(Boolean);
+  return {
+    username,
+    alias,
+    banned: Boolean(row?.banned),
+    countGames: row?.count_games === undefined || row?.count_games === null ? true : Boolean(row.count_games),
+  };
 };
 
 const fetchUncachedAlias2Rows = async () => {
@@ -64,31 +57,20 @@ const fetchUncachedAlias2Rows = async () => {
 
   try {
     const rows = await fetchAllSupabaseRows(ALIASES2_TABLE, () =>
-      supabase.from(ALIASES2_TABLE).select("*").order("username"),
+      supabase.from(ALIASES2_TABLE).select(ALIASES2_SELECT_COLUMNS).order("username").order("alias"),
     );
     const aliasesByUsername = new Map();
 
-    rows.forEach((row) => {
-      const username = normalizeUsername(
-        row?.username ?? row?.primary ?? row?.canonical_username ?? row?.user ?? row?.player,
-      );
-      if (!username) return;
-
-      const aliases = [
-        ...normalizeAliasList(row?.aliases),
-        ...normalizeAliasList(row?.members),
-        normalizeUsername(row?.alias),
-        normalizeUsername(row?.alt),
-        normalizeUsername(row?.alias_username),
-      ].filter(Boolean);
-
+    rows.map(normalizeAlias2Row).filter(Boolean).forEach((row) => {
+      const { username, alias } = row;
       const existingEntry = aliasesByUsername.get(username) ?? {
         aliases: new Set(),
         banned: false,
+        countableAliases: new Set(),
       };
-      aliases.forEach((alias) => {
-        if (alias !== username) existingEntry.aliases.add(alias);
-      });
+
+      if (alias !== username) existingEntry.aliases.add(alias);
+      if (row.countGames) existingEntry.countableAliases.add(alias);
       existingEntry.banned = Boolean(existingEntry.banned || row?.banned);
       aliasesByUsername.set(username, existingEntry);
     });
@@ -97,6 +79,8 @@ const fetchUncachedAlias2Rows = async () => {
       username,
       aliases: [...entry.aliases],
       banned: Boolean(entry.banned),
+      countableAliases: [...entry.countableAliases],
+      hasExplicitCountableAliases: true,
     }));
   } catch {
     return [];
@@ -137,14 +121,42 @@ export const fetchAliasRows = async () =>
           username: row.username,
           aliases: [...row.aliases],
           banned: Boolean(row.banned),
+          countableAliases: Array.isArray(row.countableAliases)
+            ? [...row.countableAliases]
+            : [row.username, ...row.aliases],
+          hasExplicitCountableAliases: Boolean(row.hasExplicitCountableAliases),
         });
         return;
       }
 
+      const nextAliases = [...new Set([...existing.aliases, ...row.aliases])];
+      const existingExplicit = Boolean(existing.hasExplicitCountableAliases);
+      const rowExplicit = Boolean(row.hasExplicitCountableAliases);
+      const nextCountableAliases =
+        existingExplicit || rowExplicit
+          ? [
+              ...new Set([
+                ...(existingExplicit ? existing.countableAliases : []),
+                ...(rowExplicit ? row.countableAliases ?? [] : []),
+              ]),
+            ]
+          : [
+              ...new Set([
+                ...(Array.isArray(existing.countableAliases)
+                  ? existing.countableAliases
+                  : [existing.username, ...existing.aliases]),
+                ...(Array.isArray(row.countableAliases)
+                  ? row.countableAliases
+                  : [row.username, ...row.aliases]),
+              ]),
+            ];
+
       mergedRows.set(row.username, {
         username: row.username,
-        aliases: [...new Set([...existing.aliases, ...row.aliases])],
+        aliases: nextAliases,
         banned: Boolean(existing.banned || row.banned),
+        countableAliases: nextCountableAliases,
+        hasExplicitCountableAliases: existingExplicit || rowExplicit,
       });
     });
 

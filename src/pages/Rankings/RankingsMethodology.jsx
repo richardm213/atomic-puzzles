@@ -92,6 +92,26 @@ export const RankingsMethodologyPage = () => (
             ))}
           </section>
         ))}
+
+        <section id="drunk-accounts" className="methodologySection">
+          <h2 className="methodologyIconHeading">
+            <span aria-hidden="true">🍺</span>
+            <span>How drunk accounts are handled</span>
+          </h2>
+          <p>
+            Some accounts are tagged as drunk accounts. These are accounts a player uses in a way
+            that is not meant to reflect their normal playing strength.
+          </p>
+          <p>
+            Games from those accounts are left out of the rating system so one player&apos;s public
+            rating is not dragged around by results from intentionally unserious play.
+          </p>
+          <p>
+            This is reviewed case by case rather than applied automatically. In general, the
+            account should perform clearly below the player&apos;s main profile, usually by at least
+            100 points or more, before it is treated this way.
+          </p>
+        </section>
       </div>
 
       <section className="methodologySection methodologyEligibility">

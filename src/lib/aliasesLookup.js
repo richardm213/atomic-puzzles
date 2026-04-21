@@ -7,10 +7,12 @@ export const buildAliasesLookup = (rows) => {
     const username = row.username;
     const aliases = Array.isArray(row.aliases) ? row.aliases : [];
     const members = [username, ...aliases];
+    const countableAliases = Array.isArray(row.countableAliases) ? row.countableAliases : members;
     const entry = {
       primary: username,
       aliases,
       members,
+      countableAliases,
       banned: Boolean(row.banned),
     };
 

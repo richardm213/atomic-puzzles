@@ -56,6 +56,9 @@ const countOptions = [5, 10, 20];
 const lichessProfileUrl = (username) =>
   `https://lichess.org/@/${encodeURIComponent(String(username || "").trim())}`;
 
+const NON_COUNTED_ALIAS_MESSAGE =
+  "This account is marked as a drunk account and is not included in the rating system.";
+
 const LichessProfileIcon = () => (
   <svg viewBox="0 0 50 50" aria-hidden="true" focusable="false">
     <path
@@ -356,6 +359,13 @@ export const PlayerProfilePage = ({ username }) => {
     () => getAliasesForUser(aliasesLookup, canonicalUsername),
     [aliasesLookup, canonicalUsername],
   );
+  const aliasDisplayRows = useMemo(() => {
+    const countableAliases = new Set(profileAliasEntry?.countableAliases ?? aliasesForUser);
+    return aliasesForUser.map((alias) => ({
+      alias,
+      isCounted: countableAliases.has(alias),
+    }));
+  }, [aliasesForUser, profileAliasEntry]);
   const latestMonthKeyByMode = useMemo(
     () =>
       monthRanks.reduce((accumulator, monthRank) => {
@@ -486,13 +496,35 @@ export const PlayerProfilePage = ({ username }) => {
 
           <div className="profileAliases">
             <h2>Aliases</h2>
-            {aliasesForUser.length === 0 ? (
+            {aliasDisplayRows.length === 0 ? (
               <div className="emptyRankings">No aliases listed.</div>
             ) : (
               <div className="profileAliasesList">
-                {aliasesForUser.map((alias) => (
+                {aliasDisplayRows.map(({ alias, isCounted }) => (
                   <div key={`alias-${alias}`} className="profileAliasRow">
-                    <span>{alias}</span>
+                    <span className="profileAliasName">
+                      <span>{alias}</span>
+                      {!isCounted ? (
+                        <span
+                          className="profileAliasStatus"
+                          aria-label={NON_COUNTED_ALIAS_MESSAGE}
+                          tabIndex={0}
+                        >
+                          <span aria-hidden="true">🍺</span>
+                          <span className="profileAliasTooltip" role="tooltip">
+                            {NON_COUNTED_ALIAS_MESSAGE} For more info, click{" "}
+                            <Link
+                              className="profileAliasTooltipLink"
+                              to="/rankings/how-ratings-work"
+                              hash="drunk-accounts"
+                            >
+                              here
+                            </Link>
+                            .
+                          </span>
+                        </span>
+                      ) : null}
+                    </span>
                     <a
                       className="profileAliasLichessLink"
                       href={lichessProfileUrl(alias)}
