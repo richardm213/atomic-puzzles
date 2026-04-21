@@ -496,13 +496,13 @@ export const PlayerProfilePage = ({ username }) => {
                         >
                           <span aria-hidden="true">🍺</span>
                           <span className="profileAliasTooltip" role="tooltip">
-                            {NON_COUNTED_ALIAS_MESSAGE} For more info, click 
+                            {NON_COUNTED_ALIAS_MESSAGE} For more info,{" "}
                             <Link
                               className="profileAliasTooltipLink"
                               to="/rankings/how-ratings-work"
                               hash="drunk-accounts"
                             >
-                              here
+                              click here
                             </Link>
                             .
                           </span>
