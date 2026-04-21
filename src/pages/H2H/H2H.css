@@ -1,47 +1,39 @@
 @import "../RecentMatches/RecentMatches.css";
 
 .h2hPanel {
-  width: min(1000px, 100%);
+  width: min(1180px, 100%);
   display: grid;
   gap: clamp(18px, 2.8vw, 28px);
   min-width: 0;
   padding: clamp(18px, 3vw, 30px);
   background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--color-primary) 14%, transparent), transparent 30%),
+    radial-gradient(circle at top right, color-mix(in srgb, var(--color-cyan-bright) 14%, transparent), transparent 28%),
     linear-gradient(180deg, color-mix(in srgb, var(--color-panel) 84%, transparent), transparent),
     var(--color-panel);
+  border-radius: 24px;
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-panel);
+  backdrop-filter: blur(20px);
 }
 
 .h2hHero {
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
-  gap: clamp(18px, 2.5vw, 24px);
-  align-items: stretch;
-}
-
-.h2hHeroCopy,
-.h2hSearchCard,
-.h2hFilterCard,
-.h2hPlayerPanel,
-.h2hHistorySection {
   position: relative;
   overflow: hidden;
+  display: grid;
+  gap: 22px;
+  padding: clamp(20px, 3vw, 28px);
   border: 1px solid var(--color-border);
-  border-radius: 18px;
+  border-radius: 22px;
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--color-surface-elevated) 92%, transparent), transparent),
+    radial-gradient(circle at 12% 12%, color-mix(in srgb, var(--color-primary) 18%, transparent), transparent 26%),
+    radial-gradient(circle at 88% 10%, color-mix(in srgb, var(--color-cyan-bright) 16%, transparent), transparent 22%),
+    linear-gradient(180deg, color-mix(in srgb, var(--color-surface-elevated) 94%, transparent), transparent),
     var(--color-panel-strong);
   box-shadow: var(--shadow-soft);
 }
 
-.h2hHeroCopy,
-.h2hSearchCard,
-.h2hFilterCard,
-.h2hHistorySection {
-  padding: clamp(18px, 3vw, 24px);
-}
-
-.h2hHeroCopy::before,
-.h2hSearchCard::before,
+.h2hHero::before,
 .h2hFilterCard::before,
 .h2hPlayerPanel::before,
 .h2hHistorySection::before {
@@ -57,16 +49,45 @@
   );
 }
 
-.h2hHeroCopy {
-  display: grid;
-  align-content: center;
-  gap: 14px;
-  min-height: 220px;
+.h2hFilterCard,
+.h2hPlayerPanel,
+.h2hHistorySection {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
   background:
-    radial-gradient(circle at 18% 18%, color-mix(in srgb, var(--color-primary) 26%, transparent), transparent 32%),
-    radial-gradient(circle at 80% 26%, color-mix(in srgb, var(--color-cyan-bright) 18%, transparent), transparent 28%),
-    linear-gradient(180deg, color-mix(in srgb, var(--color-panel) 75%, transparent), transparent),
+    linear-gradient(180deg, color-mix(in srgb, var(--color-surface-elevated) 92%, transparent), transparent),
     var(--color-panel-strong);
+  box-shadow: var(--shadow-soft);
+}
+
+.h2hFilterCard,
+.h2hHistorySection {
+  padding: clamp(18px, 3vw, 24px);
+}
+
+.h2hHeroIntro {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.h2hHeroIntro h1 {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: clamp(28px, 3.1vw, 40px);
+  line-height: 0.96;
+  max-width: none;
+  white-space: nowrap;
+}
+
+.h2hHeroIntro p {
+  margin: 0;
+  max-width: 56ch;
+  color: var(--color-muted);
+  font-size: clamp(14px, 1vw, 16px);
+  line-height: 1.55;
 }
 
 .h2hEyebrow,
@@ -86,15 +107,8 @@
   text-transform: uppercase;
 }
 
-.h2hHeroCopy h1 {
-  margin: 0;
-  max-width: 10ch;
-  color: var(--color-heading);
-  font-size: clamp(28px, 3.8vw, 42px);
-  line-height: 0.98;
-}
-
-.h2hHeroCopy p,
+.h2hSectionHeading p,
+.h2hHeroIntro p,
 .h2hSectionHeading p {
   margin: 0;
   max-width: 58ch;
@@ -103,21 +117,33 @@
   line-height: 1.55;
 }
 
-.h2hSearchCard {
-  display: grid;
-  align-content: center;
-  background:
-    radial-gradient(circle at 82% 18%, color-mix(in srgb, var(--color-primary-soft) 18%, transparent), transparent 24%),
-    var(--color-panel-strong);
-}
-
 .h2hSearchForm {
+  display: grid;
   margin-top: 0;
   grid-template-columns: 1fr;
-  gap: 14px;
+  gap: 16px;
 }
 
-.h2hSearchForm label,
+.h2hSearchFormUnified {
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(220px, auto);
+  align-items: end;
+  gap: 14px;
+  padding-top: 4px;
+}
+
+.h2hSearchForm label {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  justify-items: stretch;
+  color: var(--color-subtle);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .h2hFilterGrid label {
   justify-items: stretch;
 }
@@ -128,6 +154,7 @@
   width: 100%;
   min-width: 0;
   min-height: 48px;
+  border: 1px solid var(--color-input-border);
   border-radius: 12px;
   background: color-mix(in srgb, var(--color-surface-elevated-strong) 92%, transparent);
   box-shadow: inset 0 1px 0 color-mix(in srgb, white 8%, transparent);
@@ -149,6 +176,7 @@
   width: 100%;
   border-radius: 12px;
   justify-content: center;
+  box-shadow: 0 14px 28px color-mix(in srgb, var(--color-primary) 28%, transparent);
 }
 
 .h2hEmptyState {
@@ -167,7 +195,7 @@
 
 .h2hSummaryBar {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 12px;
 }
 
@@ -181,6 +209,13 @@
   border-radius: 16px;
   background: color-mix(in srgb, var(--color-surface-elevated) 80%, transparent);
   box-shadow: inset 0 1px 0 color-mix(in srgb, white 6%, transparent);
+}
+
+.h2hSummaryPill:first-child,
+.h2hSummaryPill:last-child {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-accent-soft-bg) 72%, transparent), transparent),
+    color-mix(in srgb, var(--color-surface-elevated) 80%, transparent);
 }
 
 .h2hSummaryPill span {
@@ -233,6 +268,7 @@
   padding: clamp(18px, 3vw, 26px);
   min-width: 0;
   background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-surface-elevated) 68%, transparent), transparent),
     radial-gradient(circle at 16% 0%, color-mix(in srgb, var(--color-primary) 12%, transparent), transparent 24%),
     radial-gradient(circle at 88% 10%, color-mix(in srgb, var(--color-cyan-bright) 12%, transparent), transparent 20%),
     var(--color-panel-strong);
@@ -243,6 +279,7 @@
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: clamp(14px, 2vw, 20px);
+  padding-bottom: 22px;
 }
 
 .h2hPlayerIdentity {
@@ -264,7 +301,7 @@
 
 .h2hPlayerIdentity h2 {
   margin: 0;
-  font-size: clamp(23px, 2.8vw, 32px);
+  font-size: clamp(20px, 2.1vw, 28px);
   line-height: 1;
 }
 
@@ -284,27 +321,19 @@
 }
 
 .h2hScoreBlockHero {
-  min-width: clamp(180px, 28vw, 300px);
-  padding: 18px 20px;
-  border: 1px solid var(--color-accent-soft-border);
-  border-radius: 20px;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--color-accent-soft-bg-strong) 95%, transparent),
-    color-mix(in srgb, var(--color-panel-strong) 92%, transparent)
-  );
-  box-shadow: var(--shadow-soft);
-}
-
-.h2hScoreCaption {
-  color: var(--color-muted);
-  font-size: 13px;
+  min-width: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  z-index: 1;
 }
 
 .h2hModeCard {
   border-top: 1px solid var(--color-border);
-  padding-top: 16px;
-  margin-top: 16px;
+  padding-top: 22px;
+  margin-top: 18px;
 }
 
 .h2hModeCard h3,
@@ -317,6 +346,22 @@
   text-transform: uppercase;
 }
 
+.h2hModeCardHeader {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.h2hModeCardHeader h3 {
+  color: var(--color-primary-pale);
+  font-size: clamp(17px, 1.5vw, 22px);
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+
 .h2hModeCard p {
   margin: 0;
   color: var(--color-muted);
@@ -324,19 +369,21 @@
 
 .h2hModeCardBody {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(180px, auto) minmax(0, 1fr);
   align-items: center;
-  gap: 14px;
+  gap: 18px;
   min-width: 0;
 }
 
 .h2hModeStatsGroup {
   display: grid;
   gap: 8px;
-  padding: 14px 16px;
+  padding: 16px 18px;
   border: 1px solid var(--color-border);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--color-surface-soft-strong) 72%, transparent);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-surface-soft-strong) 78%, transparent), transparent),
+    color-mix(in srgb, var(--color-surface-soft-strong) 72%, transparent);
 }
 
 .h2hModeMeta {
@@ -377,6 +424,35 @@
   justify-content: flex-end;
 }
 
+.h2hModeVersus {
+  position: relative;
+  gap: 6px;
+  padding-inline: 8px;
+  transform: translateY(8px);
+}
+
+.h2hVersusMarker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  min-width: 42px;
+  min-height: 42px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--color-accent-soft-border);
+  background: color-mix(in srgb, var(--color-accent-soft-bg-strong) 88%, transparent);
+  color: var(--color-accent-soft-text);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.h2hModeVersus .h2hModeCardScore {
+  font-size: clamp(28px, 3.1vw, 38px);
+}
+
 .h2hModeCardScore {
   font-size: clamp(28px, 3vw, 36px);
   line-height: 1;
@@ -391,10 +467,13 @@
 .h2hHistorySection {
   display: grid;
   gap: 18px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-surface-elevated) 90%, transparent), transparent),
+    var(--color-panel-strong);
 }
 
 .h2hHistoryTableWrap {
-  overflow-x: auto;
+  overflow-x: hidden;
   overflow-y: hidden;
   border-radius: 16px;
   -webkit-overflow-scrolling: touch;
@@ -402,7 +481,8 @@
 
 .h2hHistoryTable {
   width: 100%;
-  min-width: 700px;
+  min-width: 0;
+  table-layout: fixed;
   border-collapse: collapse;
   border: 1px solid var(--color-border);
   border-radius: 16px;
@@ -443,12 +523,11 @@
   font-size: 13px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
 }
 
 .h2hHistoryTable th:last-child,
 .h2hHistoryTable td:last-child {
-  width: 1%;
+  width: 52px;
   white-space: nowrap;
 }
 
@@ -528,7 +607,7 @@
 
 .h2hHistoryCard {
   border: 1px solid var(--color-border);
-  border-radius: 16px;
+  border-radius: 18px;
   background: color-mix(in srgb, var(--color-panel-strong) 95%, transparent);
   overflow: hidden;
   box-shadow: var(--shadow-soft);
@@ -605,16 +684,16 @@
 }
 
 @media (max-width: 1180px) {
-  .h2hHero {
-    grid-template-columns: 1fr;
-  }
-
-  .h2hSummaryBar {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
   .h2hFilterGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .h2hHistoryTableWrap {
+    display: none;
+  }
+
+  .h2hHistoryCards {
+    display: grid;
   }
 }
 
@@ -648,6 +727,14 @@
     gap: 14px;
   }
 
+  .h2hModeCardHeader {
+    align-items: center;
+  }
+
+  .h2hSearchFormUnified {
+    grid-template-columns: 1fr;
+  }
+
   .h2hModeStatsGroup {
     width: min(360px, 100%);
   }
@@ -672,8 +759,6 @@
     border-radius: 18px;
   }
 
-  .h2hHeroCopy,
-  .h2hSearchCard,
   .h2hFilterCard,
   .h2hPlayerPanel,
   .h2hHistorySection {
@@ -681,20 +766,18 @@
     padding: 16px;
   }
 
-  .h2hHeroCopy {
-    min-height: auto;
+  .h2hHero {
+    padding: 16px;
   }
 
-  .h2hHeroCopy h1 {
-    max-width: 12ch;
-    font-size: clamp(30px, 10vw, 42px);
+  .h2hHeroIntro h1 {
+    max-width: none;
+    white-space: normal;
   }
 
-  .h2hSummaryBar,
   .h2hFilterGrid {
     grid-template-columns: 1fr;
   }
-
   .h2hSummaryPill strong {
     font-size: 20px;
   }
@@ -702,12 +785,6 @@
   .h2hEyebrow,
   .h2hPlayerLabel {
     font-size: 11px;
-  }
-
-  .h2hScoreBlockHero {
-    width: 100%;
-    min-width: 0;
-    padding: 16px;
   }
 
   .h2hModeCard {
@@ -725,20 +802,16 @@
     padding: 12px 14px;
   }
 
+  .h2hModeVersus {
+    transform: none;
+  }
+
   .h2hModeMeta {
     font-size: 14px;
   }
 
   .h2hModeMeta strong {
     font-size: 17px;
-  }
-
-  .h2hHistoryTableWrap {
-    display: none;
-  }
-
-  .h2hHistoryCards {
-    display: grid;
   }
 
   .h2hHistoryCardButton {
@@ -772,8 +845,6 @@
     padding: 12px;
   }
 
-  .h2hHeroCopy,
-  .h2hSearchCard,
   .h2hFilterCard,
   .h2hPlayerPanel,
   .h2hHistorySection {
@@ -789,7 +860,4 @@
     font-size: 12px;
   }
 
-  .h2hScoreCaption {
-    font-size: 12px;
-  }
 }

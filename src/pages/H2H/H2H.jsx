@@ -301,55 +301,51 @@ export const H2HPage = () => {
       <Seo title={seoTitle} description={seoDescription} path={seoPath} />
       <div className="panel rankingsPanel h2hPanel">
         <section className="h2hHero">
-          <div className="h2hHeroCopy">
+          <div className="h2hHeroIntro">
             <span className="h2hEyebrow">Head to Head</span>
-            <h1>See how two players stack up.</h1>
-            <p>
-              Compare overall score, blitz, bullet, and hyperbullet splits, and every match in the rivalry.
-            </p>
+            <h1>Compare two players</h1>
+            <p>Enter two usernames to load their rivalry, filter the matches, and compare every time control side by side.</p>
           </div>
 
-          <div className="h2hSearchCard">
-            <form
-              className="controls rankingsControls profileControls h2hSearchForm"
-              onSubmit={(event) => {
-                event.preventDefault();
-                handleSearch();
-              }}
-            >
-              <label htmlFor="h2h-player-1">
-                Player 1
-                <input
-                  id="h2h-player-1"
-                  type="text"
-                  inputMode="text"
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  placeholder="username"
-                  value={player1Input}
-                  onChange={(event) => setPlayer1Input(event.target.value)}
-                />
-              </label>
-              <label htmlFor="h2h-player-2">
-                Player 2
-                <input
-                  id="h2h-player-2"
-                  type="text"
-                  inputMode="text"
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  placeholder="username"
-                  value={player2Input}
-                  onChange={(event) => setPlayer2Input(event.target.value)}
-                />
-              </label>
-              <button className="analyzeButton h2hSearchButton" type="submit" disabled={loading}>
-                {loading ? "Searching..." : "Compare Players"}
-              </button>
-            </form>
-          </div>
+          <form
+            className="controls rankingsControls profileControls h2hSearchForm h2hSearchFormUnified"
+            onSubmit={(event) => {
+              event.preventDefault();
+              handleSearch();
+            }}
+          >
+            <label htmlFor="h2h-player-1">
+              Player 1
+              <input
+                id="h2h-player-1"
+                type="text"
+                inputMode="text"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                placeholder="username"
+                value={player1Input}
+                onChange={(event) => setPlayer1Input(event.target.value)}
+              />
+            </label>
+            <label htmlFor="h2h-player-2">
+              Player 2
+              <input
+                id="h2h-player-2"
+                type="text"
+                inputMode="text"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                placeholder="username"
+                value={player2Input}
+                onChange={(event) => setPlayer2Input(event.target.value)}
+              />
+            </label>
+            <button className="analyzeButton h2hSearchButton" type="submit" disabled={loading}>
+              {loading ? "Searching..." : "Compare Players"}
+            </button>
+          </form>
         </section>
 
         {!hasSearched ? (
@@ -438,8 +434,8 @@ export const H2HPage = () => {
               </div>
 
               <div className="h2hSplitLayout">
-                <section className="h2hPlayerPanel h2hPlayerPanelCombined">
-                  <div className="h2hPlayerPanelTop h2hPlayerPanelTopCombined">
+                <section className="h2hPlayerPanel">
+                  <div className="h2hPlayerPanelTop">
                     <div className="h2hPlayerIdentity h2hPlayerIdentityLeft">
                       <span className="h2hPlayerLabel">Player One</span>
                       <h2>
@@ -452,12 +448,10 @@ export const H2HPage = () => {
                         </Link>
                       </h2>
                     </div>
-                    <div className="h2hScoreBlock h2hScoreBlockHero">
-                      <h3>Overall Score</h3>
+                    <div className="h2hScoreBlock h2hScoreBlockHero" aria-label="Overall score">
                       <strong className="h2hModeCardScore h2hScoreLine">
                         {formatScore(combinedScore.playerA)} - {formatScore(combinedScore.playerB)}
                       </strong>
-                      <span className="h2hScoreCaption">Across all filtered games</span>
                     </div>
                     <div className="h2hPlayerIdentity h2hPlayerIdentityRight">
                       <span className="h2hPlayerLabel">Player Two</span>
@@ -475,14 +469,19 @@ export const H2HPage = () => {
 
                   {modeOptions.map((mode) => (
                     <div key={mode} className="h2hModeCard">
-                      <div className="h2hModeCardBody h2hModeCardBodyCombined">
+                      <div className="h2hModeCardHeader">
+                        <h3>{modeLabels[mode] ?? mode}</h3>
+                      </div>
+                      <div className="h2hModeCardBody">
                         <div className="h2hModeStatsGroup">
                           {renderModeStats(player1Snapshot[mode] || {})}
                         </div>
-                        <div className="h2hScoreBlock">
-                          <h3>{modeLabels[mode] ?? mode}</h3>
+                        <div className="h2hScoreBlock h2hModeVersus">
+                          <span className="h2hVersusMarker" aria-hidden="true">
+                            vs
+                          </span>
                           <strong className="h2hModeCardScore h2hScoreLine">
-                            {formatScore(scoresByMode[mode]?.playerA ?? 0)} - 
+                            {formatScore(scoresByMode[mode]?.playerA ?? 0)} -{" "}
                             {formatScore(scoresByMode[mode]?.playerB ?? 0)}
                           </strong>
                         </div>
