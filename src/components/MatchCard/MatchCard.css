@@ -48,7 +48,7 @@
 
 .matchCardHeader {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) max-content max-content;
+  grid-template-columns: minmax(0, 1fr) max-content max-content max-content;
   align-items: center;
   gap: 12px;
   min-width: 0;

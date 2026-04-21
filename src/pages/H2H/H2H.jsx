@@ -11,6 +11,7 @@ import { normalizedGamesFromMatch, normalizedPlayersFromMatch } from "../../util
 import { formatLocalDateTime, formatScore } from "../../utils/formatters";
 import { LichessGameLink } from "../../components/LichessGameLink/LichessGameLink";
 import { MatchDetails } from "../../components/MatchDetails/MatchDetails";
+import { MatchPageLink } from "../../components/MatchPageLink/MatchPageLink";
 import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFilterChecks";
 import { Seo } from "../../components/Seo/Seo";
 import {
@@ -43,6 +44,7 @@ const normalizeH2HMatches = (matches, mode, playerA, playerB) => {
 
       return {
         key: `${mode}-${match?.match_id || match?.start_ts || ""}-${firstGameId}-${resolvedA}-${resolvedB}`,
+        matchId: String(match?.match_id || ""),
         mode,
         startTs: Number(match?.start_ts ?? match?.s),
         timeControl: String(match?.time_control ?? match?.t ?? "—"),
@@ -500,7 +502,7 @@ export const H2HPage = () => {
                         <div className="h2hScoreBlock">
                           <h3>{modeLabels[mode] ?? mode}</h3>
                           <strong className="h2hModeCardScore h2hScoreLine">
-                            {formatScore(scoresByMode[mode]?.playerA ?? 0)} -{" "}
+                            {formatScore(scoresByMode[mode]?.playerA ?? 0)} - 
                             {formatScore(scoresByMode[mode]?.playerB ?? 0)}
                           </strong>
                         </div>
@@ -528,6 +530,7 @@ export const H2HPage = () => {
                       <th>TC</th>
                       <th>Winner</th>
                       <th>Score</th>
+                      <th aria-label="Open match page" />
                     </tr>
                   </thead>
                   <tbody>
@@ -558,10 +561,17 @@ export const H2HPage = () => {
                             <td>
                               {formatScore(match.scoreA)} - {formatScore(match.scoreB)}
                             </td>
+                            <td>
+                              <MatchPageLink
+                                match={match}
+                                onClick={(event) => event.stopPropagation()}
+                                title="Open match page in new tab"
+                              />
+                            </td>
                           </tr>
                           {isExpanded ? (
                             <tr className="h2hHistoryDetailsRow">
-                              <td colSpan={4}>
+                              <td colSpan={5}>
                                 <MatchDetails
                                   match={match}
                                   matchKey={match.key}
@@ -614,6 +624,12 @@ export const H2HPage = () => {
                           <span>Source: {sourceLabels[match.source] || "Other"}</span>
                         </div>
                       </button>
+                      <div className="h2hHistoryCardActions">
+                        <MatchPageLink
+                          match={match}
+                          title="Open match page in new tab"
+                        />
+                      </div>
                       {isExpanded ? (
                         <div className="h2hHistoryCardDetails">
                           <MatchDetails

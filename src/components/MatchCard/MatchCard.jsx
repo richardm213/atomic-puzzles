@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { LichessGameLink } from "../LichessGameLink/LichessGameLink";
 import { MatchDetails } from "../MatchDetails/MatchDetails";
+import { MatchPageLink } from "../MatchPageLink/MatchPageLink";
 import { formatLocalDateTime, formatScore } from "../../utils/formatters";
 import { scoreToneClass } from "../../utils/matchPresentation";
 import { isToggleActionKey } from "../../utils/toggleActionKey";
@@ -64,6 +65,11 @@ export const MatchCard = ({ match, matchKey, isExpanded, onToggle }) => (
           {formatScore(match.scoreB)}
         </span>
       </div>
+      <MatchPageLink
+        match={match}
+        onClick={(event) => event.stopPropagation()}
+        title="Open match page in new tab"
+      />
       <span className="matchExpandCue">{isExpanded ? "Less" : "Details"}</span>
     </div>
     {isExpanded ? (

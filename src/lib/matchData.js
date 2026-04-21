@@ -206,6 +206,7 @@ export const normalizeMatches = (matches, username) => {
         return game.playerScoreAfter > game.opponentScoreAfter + remainingGames;
       });
       return {
+        matchId: String(match?.match_id || ""),
         startTs: Number(match?.start_ts ?? match?.s),
         timeControl: String(match?.time_control ?? match?.t ?? "—"),
         opponent: String(opponent),

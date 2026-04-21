@@ -24,7 +24,8 @@ const navItems = [
   {
     to: "/recent",
     label: "Recent",
-    isActive: (pathname) => pathname === "/recent" || pathname === "/matches",
+    isActive: (pathname) =>
+      pathname === "/recent" || pathname === "/matches" || pathname.startsWith("/matches/"),
   },
   {
     to: "/h2h",

@@ -58,6 +58,7 @@ const normalizeRecentMatches = (matches, mode) =>
 
       const firstGame = games[0];
       return {
+        matchId: String(match?.match_id || ""),
         startTs: Number(match?.start_ts ?? match?.s),
         timeControl: String(match?.time_control ?? match?.t ?? "—"),
         mode,

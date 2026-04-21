@@ -1,0 +1,25 @@
+.matchPageLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.95rem;
+  height: 1.95rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-border-strong) 72%, transparent);
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  color: var(--color-text-muted);
+  text-decoration: none;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease,
+    transform 140ms ease;
+}
+
+.matchPageLink:hover,
+.matchPageLink:focus-visible {
+  color: var(--color-primary);
+  border-color: color-mix(in srgb, var(--color-primary) 56%, transparent);
+  background: color-mix(in srgb, var(--color-primary-soft) 70%, transparent);
+  transform: translateY(-1px);
+}

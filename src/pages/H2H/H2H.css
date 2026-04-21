@@ -402,7 +402,7 @@
 
 .h2hHistoryTable {
   width: 100%;
-  min-width: 620px;
+  min-width: 700px;
   border-collapse: collapse;
   border: 1px solid var(--color-border);
   border-radius: 16px;
@@ -443,6 +443,12 @@
   font-size: 13px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.h2hHistoryTable th:last-child,
+.h2hHistoryTable td:last-child {
+  width: 1%;
   white-space: nowrap;
 }
 
@@ -590,6 +596,12 @@
   gap: 12px;
   padding: 0 16px 16px;
   border-top: 1px solid var(--color-border);
+}
+
+.h2hHistoryCardActions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 16px 14px;
 }
 
 @media (max-width: 1180px) {

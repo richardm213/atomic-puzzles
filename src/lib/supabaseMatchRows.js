@@ -59,6 +59,7 @@ const normalizeMatchFilters = (filters = {}) => {
     username: escapeOrValue(normalizeUsername(filters.username)),
     pairPlayerA: escapeOrValue(normalizeUsername(usernamePair[0])),
     pairPlayerB: escapeOrValue(normalizeUsername(usernamePair[1])),
+    matchId: escapeOrValue(filters.matchId),
     ratingFilterType: String(filters.ratingFilterType || "both").toLowerCase(),
     ratingMin,
     ratingMax,
@@ -68,7 +69,10 @@ const normalizeMatchFilters = (filters = {}) => {
   };
 };
 
-const applyPlayerFilters = (query, { username, pairPlayerA, pairPlayerB }) => {
+const applyPlayerFilters = (query, { username, pairPlayerA, pairPlayerB, matchId }) => {
+  if (matchId) {
+    query = query.eq("match_id", matchId);
+  }
   if (username) {
     query = query.or(`player_1.eq.${username},player_2.eq.${username}`);
   }

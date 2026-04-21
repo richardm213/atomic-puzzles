@@ -38,6 +38,7 @@ import {
 } from "../../utils/formatters";
 import { scoreToneClass } from "../../utils/matchPresentation";
 import { normalizeUsername } from "../../utils/playerNames";
+import { MatchPageLink } from "../../components/MatchPageLink/MatchPageLink";
 import { isToggleActionKey } from "../../utils/toggleActionKey";
 import { parseDateInputBoundary } from "../../utils/matchFilters";
 import { loadRawMatchesByMode, normalizeMatches } from "../../lib/matchData";
@@ -495,7 +496,7 @@ export const PlayerProfilePage = ({ username }) => {
                         >
                           <span aria-hidden="true">🍺</span>
                           <span className="profileAliasTooltip" role="tooltip">
-                            {NON_COUNTED_ALIAS_MESSAGE} For more info, click{" "}
+                            {NON_COUNTED_ALIAS_MESSAGE} For more info, click 
                             <Link
                               className="profileAliasTooltipLink"
                               to="/rankings/how-ratings-work"
@@ -731,6 +732,7 @@ export const PlayerProfilePage = ({ username }) => {
                 <th>Score</th>
                 <th>Rating (Δ)</th>
                 <th>RD (Δ)</th>
+                <th aria-label="Open match page" />
               </tr>
             </thead>
             <tbody>
@@ -800,10 +802,17 @@ export const PlayerProfilePage = ({ username }) => {
                         <span className="profileMetricValue">{match.beforeRd}</span>
                         <span className="profileDelta">{formatSignedDecimal(match.rdChange)}</span>
                       </td>
+                      <td>
+                        <MatchPageLink
+                          match={{ ...match, playerA: canonicalUsername, playerB: match.opponent, mode: selectedMode }}
+                          onClick={(event) => event.stopPropagation()}
+                          title="Open match page in new tab"
+                        />
+                      </td>
                     </tr>
                     {isExpanded ? (
                       <tr className="matchDetailsRow">
-                        <td colSpan={6}>
+                        <td colSpan={7}>
                           <div className="matchDetailsInner">
                             <div className="matchCardPlayerStats profileMatchPlayerStats">
                               <div>

@@ -250,7 +250,7 @@ export const PuzzleSetsPage = () => {
               </p>
               <p className="puzzleSetsFilterSummary">
                 Showing {filteredPuzzleGroups.length} set{filteredPuzzleGroups.length === 1 ? "" : "s"}
-                {" · "}
+                 · 
                 {filteredPuzzleCount} puzzle{filteredPuzzleCount === 1 ? "" : "s"}
               </p>
             </div>

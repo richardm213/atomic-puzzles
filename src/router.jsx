@@ -16,6 +16,7 @@ import { PuzzleDashboardPage } from "./pages/PuzzleDashboard/PuzzleDashboard";
 import { PuzzleSolverPage } from "./pages/PuzzleSolver/PuzzleSolver";
 import { PuzzleSetsPage } from "./pages/PuzzleSets/PuzzleSets";
 import { H2HPage } from "./pages/H2H/H2H";
+import { MatchPage } from "./pages/Match/MatchPage";
 import { AuthCallbackPage } from "./pages/AuthCallback/AuthCallback";
 import { UsersPage } from "./pages/Users/Users";
 import { BannedUsersPage } from "./pages/Users/BannedUsers";
@@ -86,6 +87,12 @@ const matchesAliasRoute = createRoute({
   },
 });
 
+const matchRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/matches/$mode/$matchId",
+  component: MatchPage,
+});
+
 const solveRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/solve",
@@ -151,6 +158,7 @@ const routeTree = rootRoute.addChildren([
   recentRoute,
   h2hRoute,
   h2hMatchupRoute,
+  matchRoute,
   matchesAliasRoute,
   solveRoute,
   dashboardRoute,
