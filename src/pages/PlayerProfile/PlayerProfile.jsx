@@ -15,14 +15,12 @@ import {
   opponentRatingSliderMin,
   pageSizeOptions,
 } from "../../constants/matches";
-import { loadAliasesLookup } from "../../lib/aliasesLookup";
-import { resolveUsernameInput } from "../../lib/searchUsernames";
+import { fetchProfileAliasRow } from "../../lib/supabaseAliases";
 import { isRegisteredSiteUser } from "../../lib/supabaseUsers";
 import { toBoundedLengthRange, useMatchLengthRange } from "../../hooks/useMatchLengthRange";
 import {
   buildRankingsLocation,
   filterMatches,
-  getAliasesForUser,
   getBestWinsForMode,
   getMonthRankHighlights,
   getProfileMetricCardRows,
@@ -96,9 +94,8 @@ const buildMatchFilters = (username, filters) => {
 
 export const PlayerProfilePage = ({ username }) => {
   const normalizedUsername = useMemo(() => normalizeUsername(username), [username]);
-  const [resolvedUsername, setResolvedUsername] = useState(normalizedUsername);
   const [selectedMode, setSelectedMode] = useState(defaultMode);
-  const [aliasesLookup, setAliasesLookup] = useState(() => new Map());
+  const [profileAliasEntry, setProfileAliasEntry] = useState(null);
   const [aliasesLoaded, setAliasesLoaded] = useState(false);
   const [matchesByMode, setMatchesByMode] = useState(() => createModeRecord(() => []));
   const [totalMatchesByMode, setTotalMatchesByMode] = useState(() => createModeRecord(() => 0));
@@ -121,8 +118,7 @@ export const PlayerProfilePage = ({ username }) => {
   const [loadingMatches, setLoadingMatches] = useState(false);
   const matchRequestIdRef = useRef(0);
   const searchSubmitInFlightRef = useRef(false);
-  const canonicalUsername = aliasesLookup.get(resolvedUsername)?.primary ?? resolvedUsername;
-  const profileAliasEntry = aliasesLookup.get(canonicalUsername);
+  const canonicalUsername = profileAliasEntry?.username ?? normalizedUsername;
   const isBanned = Boolean(profileAliasEntry?.banned);
   const ratingsSnapshotByMode = useRatingsSnapshotByMode(canonicalUsername);
   const monthRanks = useMonthRanks(canonicalUsername);
@@ -150,46 +146,29 @@ export const PlayerProfilePage = ({ username }) => {
   useEffect(() => {
     let isCurrent = true;
 
-    const resolveUsername = async () => {
+    const loadProfileAliasEntry = async () => {
+      if (isCurrent) setAliasesLoaded(false);
+
       try {
-        const nextResolvedUsername = await resolveUsernameInput(normalizedUsername);
-        if (isCurrent) setResolvedUsername(nextResolvedUsername || normalizedUsername);
+        const nextProfileAliasEntry = await fetchProfileAliasRow(normalizedUsername);
+        if (isCurrent) {
+          setProfileAliasEntry(nextProfileAliasEntry);
+          setAliasesLoaded(true);
+        }
       } catch {
-        if (isCurrent) setResolvedUsername(normalizedUsername);
+        if (isCurrent) {
+          setProfileAliasEntry(null);
+          setAliasesLoaded(true);
+        }
       }
     };
 
-    resolveUsername();
+    loadProfileAliasEntry();
 
     return () => {
       isCurrent = false;
     };
   }, [normalizedUsername]);
-
-  useEffect(() => {
-    let isCurrent = true;
-
-    const loadAliases = async () => {
-      try {
-        const lookup = await loadAliasesLookup();
-        if (isCurrent) {
-          setAliasesLookup(lookup);
-          setAliasesLoaded(true);
-        }
-      } catch {
-        if (isCurrent) {
-          setAliasesLookup(new Map());
-          setAliasesLoaded(true);
-        }
-      }
-    };
-
-    loadAliases();
-
-    return () => {
-      isCurrent = false;
-    };
-  }, []);
 
   useEffect(() => {
     let isCurrent = true;
@@ -355,10 +334,12 @@ export const PlayerProfilePage = ({ username }) => {
     () => getMonthRankHighlights(monthRanks, bestMonthRankCount, recentMonthRankCount),
     [monthRanks, bestMonthRankCount, recentMonthRankCount],
   );
-  const aliasesForUser = useMemo(
-    () => getAliasesForUser(aliasesLookup, canonicalUsername),
-    [aliasesLookup, canonicalUsername],
-  );
+  const aliasesForUser = useMemo(() => {
+    if (!aliasesLoaded) return [];
+
+    const aliases = Array.isArray(profileAliasEntry?.aliases) ? profileAliasEntry.aliases : [];
+    return [...new Set([canonicalUsername, ...aliases])];
+  }, [aliasesLoaded, canonicalUsername, profileAliasEntry]);
   const aliasDisplayRows = useMemo(() => {
     const countableAliases = new Set(profileAliasEntry?.countableAliases ?? aliasesForUser);
     return aliasesForUser.map((alias) => ({
@@ -496,7 +477,9 @@ export const PlayerProfilePage = ({ username }) => {
 
           <div className="profileAliases">
             <h2>Aliases</h2>
-            {aliasDisplayRows.length === 0 ? (
+            {!aliasesLoaded ? (
+              <div className="emptyRankings">Loading aliases...</div>
+            ) : aliasDisplayRows.length === 0 ? (
               <div className="emptyRankings">No aliases listed.</div>
             ) : (
               <div className="profileAliasesList">
