@@ -59,7 +59,6 @@ const parseMatchRows = (rows) => {
           return {
             id: String(gameId || `game_${index + 1}_${gameOffset + 1}`),
             game_index: gameOffset + 1,
-            end_ts: toNullableNumber(row.end_ts),
             winner,
             white,
             black,
@@ -71,7 +70,6 @@ const parseMatchRows = (rows) => {
         match_id: fallbackMatchId,
         players: [p1, p2],
         start_ts: toNullableNumber(row.start_ts),
-        end_ts: toNullableNumber(row.end_ts),
         time_control: row.time_control,
         source: row.source,
         tournament_id: row.tournament_id,
@@ -96,14 +94,12 @@ const parseMatchRows = (rows) => {
       const orderedGames = [...match.games].sort((a, b) => {
         const aIndex = a.game_index;
         const bIndex = b.game_index;
-        if (aIndex !== bIndex) return aIndex - bIndex;
-        return (a.end_ts ?? 0) - (b.end_ts ?? 0);
+        return aIndex - bIndex;
       });
 
       return {
         ...match,
         start_ts: match.start_ts,
-        end_ts: match.end_ts,
         games: orderedGames,
       };
     });
@@ -184,7 +180,6 @@ export const normalizeMatches = (matches, username) => {
           winner: winnerLabel,
           playerScoreAfter: runningPlayerScore,
           opponentScoreAfter: runningOpponentScore,
-          endTs: Number(game?.end_ts) || null,
         };
       });
 
@@ -228,10 +223,6 @@ export const normalizeMatches = (matches, username) => {
         clinchingGameId: String(
           (score.player > score.opponent ? clinchingGame?.id : null) || games[0]?.id || "—",
         ),
-        clinchingGameEndTs:
-          score.player > score.opponent
-            ? Number(clinchingGame?.endTs) || Number(match?.end_ts) || null
-            : Number(match?.end_ts) || null,
         games: matchGames,
         sourceValue: sourceValueFromValues(
           firstGame?.source,

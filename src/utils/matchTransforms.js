@@ -37,13 +37,12 @@ export const normalizedGamesFromMatch = (match, players) => {
 
   return gamesRaw.map((game) => {
     if (Array.isArray(game)) {
-      const [id, whiteRef, blackRef, winnerRef, endTs] = game;
+      const [id, whiteRef, blackRef, winnerRef] = game;
       return {
         id: id ?? "—",
         white: playerFromRef(whiteRef, players),
         black: playerFromRef(blackRef, players),
         winner: winnerToFullWord(winnerRef),
-        end_ts: endTs,
       };
     }
 
@@ -52,7 +51,6 @@ export const normalizedGamesFromMatch = (match, players) => {
       white: playerFromRef(game?.white, players),
       black: playerFromRef(game?.black, players),
       winner: winnerToFullWord(game?.winner),
-      end_ts: game?.end_ts,
     };
   });
 };

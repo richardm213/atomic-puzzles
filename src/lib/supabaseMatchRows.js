@@ -15,7 +15,6 @@ const MATCH_SELECT_COLUMNS = [
   "player_1",
   "player_2",
   "start_ts",
-  "end_ts",
   "time_control",
   "source",
   "tournament_id",
