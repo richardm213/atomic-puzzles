@@ -30,6 +30,7 @@ import {
   useMonthRanks,
   useRatingsSnapshotByMode,
 } from "../../hooks/usePlayerProfileData";
+import { monthKeyFromMonthValue } from "../../lib/supabaseLb";
 import {
   formatLocalDateTime,
   formatOpponentWithRating,
@@ -42,6 +43,7 @@ import { MatchPageLink } from "../../components/MatchPageLink/MatchPageLink";
 import { isToggleActionKey } from "../../utils/toggleActionKey";
 import { parseDateInputBoundary } from "../../utils/matchFilters";
 import { loadRawMatchesByMode, normalizeMatches } from "../../lib/matchData";
+import { appAssetPath } from "../../utils/appAssetPath";
 import { DualRangeSlider } from "../../components/DualRangeSlider/DualRangeSlider";
 import { LichessGameLink } from "../../components/LichessGameLink/LichessGameLink";
 import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
@@ -57,6 +59,56 @@ const lichessProfileUrl = (username) =>
 
 const NON_COUNTED_ALIAS_MESSAGE =
   "This account is marked as a drunk account and is not included in the rating system.";
+
+const profileTrophyAssets = {
+  champion: appAssetPath("/lichess-trophies/gold-cup-2.png"),
+  top10: appAssetPath("/lichess-trophies/silver-cup-2.png"),
+};
+
+const getCurrentMonthKey = () =>
+  monthKeyFromMonthValue(new Date().toISOString().slice(0, 10));
+
+const getProfileTrophies = (monthRanks, currentMonthKey, ratingDisplayByMode) =>
+  modeOptions.flatMap((mode) => {
+    const currentRank = Number(ratingDisplayByMode?.[mode]?.rank);
+    if (!(currentRank > 0)) {
+      return [];
+    }
+
+    const bestRank = monthRanks
+      .filter((monthRank) => monthRank.monthKey === currentMonthKey)
+      .filter((monthRank) => monthRank.mode === mode)
+      .reduce(
+        (lowestRank, monthRank) => Math.min(lowestRank, monthRank.rank),
+        Number.POSITIVE_INFINITY,
+      );
+
+    if (bestRank === 1) {
+      return [
+        {
+          key: `${mode}-champion`,
+          mode,
+          label: modeLabels[mode] ?? mode,
+          title: `${modeLabels[mode] ?? mode} Atomic Champion`,
+          imageSrc: profileTrophyAssets.champion,
+        },
+      ];
+    }
+
+    if (bestRank <= 10) {
+      return [
+        {
+          key: `${mode}-top10`,
+          mode,
+          label: modeLabels[mode] ?? mode,
+          title: `${modeLabels[mode] ?? mode} Atomic Top 10`,
+          imageSrc: profileTrophyAssets.top10,
+        },
+      ];
+    }
+
+    return [];
+  });
 
 const LichessProfileIcon = () => (
   <svg viewBox="0 0 50 50" aria-hidden="true" focusable="false">
@@ -371,6 +423,11 @@ export const PlayerProfilePage = ({ username }) => {
       ),
     [latestMonthKeyByMode, ratingDisplayByMode],
   );
+  const currentMonthKey = useMemo(() => getCurrentMonthKey(), []);
+  const profileTrophies = useMemo(
+    () => getProfileTrophies(monthRanks, currentMonthKey, ratingDisplayByMode),
+    [currentMonthKey, monthRanks, ratingDisplayByMode],
+  );
 
   return (
     <div className="rankingsPage">
@@ -380,7 +437,24 @@ export const PlayerProfilePage = ({ username }) => {
         path={`/@/${encodeURIComponent(canonicalUsername)}`}
       />
       <div className="panel rankingsPanel playerProfilePanel">
-        <h1>{canonicalUsername}</h1>
+        <div className="profileIdentityRow">
+          <h1>{canonicalUsername}</h1>
+          {!isBanned && profileTrophies.length ? (
+            <div className="profileTrophyRow" aria-label="Atomic ranking trophies">
+              {profileTrophies.map((trophy) => (
+                <span
+                  key={trophy.key}
+                  className="profileTrophy"
+                  title={trophy.title}
+                  aria-label={trophy.title}
+                >
+                  <img src={trophy.imageSrc} alt="" aria-hidden="true" />
+                  <span className="profileTrophyLabel">{trophy.label}</span>
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
 
         {isBanned ? (
           <section className="profileBanNotice" aria-labelledby="profile-ban-notice-title">

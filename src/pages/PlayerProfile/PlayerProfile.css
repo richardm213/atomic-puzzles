@@ -4,6 +4,58 @@
   width: min(1000px, 100%);
 }
 
+.profileIdentityRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.profileIdentityRow h1 {
+  margin: 0;
+}
+
+.profileTrophyRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.profileTrophy {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 62px;
+  padding: 8px 16px 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-panel-strong);
+  box-shadow: 0 6px 16px color-mix(in srgb, black 10%, transparent);
+}
+
+.profileTrophy img {
+  width: 36px;
+  height: 58px;
+  display: block;
+  object-fit: contain;
+  transition: transform 0.2s;
+}
+
+.profileTrophy:hover img,
+.profileTrophy:focus-within img {
+  transform: translateY(-3px);
+}
+
+.profileTrophyLabel {
+  color: var(--color-heading);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
 .profileTopBar {
   margin-top: 8px;
   display: grid;
@@ -551,6 +603,14 @@
 }
 
 @media (max-width: 1180px) {
+  .profileIdentityRow {
+    align-items: flex-start;
+  }
+
+  .profileTrophyRow {
+    justify-content: flex-start;
+  }
+
   .profileHighlights,
   .profileHighlightsBottomRow {
     grid-template-columns: 1fr;
@@ -564,6 +624,15 @@
 @media (max-width: 720px) {
   .profileMetricRowCards {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .profileTrophy {
+    min-height: 54px;
+    padding-right: 14px;
+  }
+
+  .profileTrophyLabel {
+    font-size: 14px;
   }
 
   .profileActionRow {
