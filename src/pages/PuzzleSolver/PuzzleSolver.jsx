@@ -10,6 +10,7 @@ import {
   findMainChild,
   movePrefix,
   orderedChildren,
+  serializeSanLinesToPgn,
 } from "../../lib/solutionPgn";
 import { fetchAttemptedPuzzleIds, recordPuzzleProgress } from "../../lib/supabasePuzzleProgress";
 import { isRegisteredSiteUser } from "../../lib/supabaseUsers";
@@ -221,6 +222,34 @@ const SOLVE_MODE = "solve";
 const ANALYSIS_MODE = "analysis";
 const SOLUTION_UNLOCK_HINT = "Make at least one attempt before viewing the solution.";
 
+const copyTextToClipboard = async (value) => {
+  if (!value) return false;
+
+  if (navigator?.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(value);
+      return true;
+    } catch {
+      // Fall through to the textarea fallback.
+    }
+  }
+
+  try {
+    const textArea = document.createElement("textarea");
+    textArea.value = value;
+    textArea.setAttribute("readonly", "");
+    textArea.style.position = "fixed";
+    textArea.style.opacity = "0";
+    document.body.append(textArea);
+    textArea.select();
+    const copied = document.execCommand("copy");
+    textArea.remove();
+    return copied;
+  } catch {
+    return false;
+  }
+};
+
 export const PuzzleSolverPage = () => {
   const navigate = useNavigate();
   const { puzzleId: routePuzzleId = "" } = useParams({ strict: false });
@@ -239,6 +268,7 @@ export const PuzzleSolverPage = () => {
   const [interactionMode, setInteractionMode] = useState(SOLVE_MODE);
   const [completionFeedback, setCompletionFeedback] = useState(null);
   const [pinnedSolutionLineIndex, setPinnedSolutionLineIndex] = useState(null);
+  const [copyPgnLabel, setCopyPgnLabel] = useState("Copy PGN");
   const [boardState, setBoardState] = useState(createInitialBoardState);
   const previousBoardSnapshotRef = useRef(createInitialBoardSnapshot());
   const interactionModeRef = useRef(SOLVE_MODE);
@@ -514,6 +544,7 @@ export const PuzzleSolverPage = () => {
   useEffect(() => {
     resetPuzzleUiState();
     setMobileFeedback(null);
+    setCopyPgnLabel("Copy PGN");
     previousBoardSnapshotRef.current = createInitialBoardSnapshot();
   }, [activePuzzleId, resetPuzzleUiState]);
 
@@ -896,11 +927,42 @@ export const PuzzleSolverPage = () => {
     isOnSolutionPath,
   ]);
 
+  const moveLinePgn = useMemo(() => {
+    if (boardState.solutionLines?.length && isOnSolutionPath) {
+      return serializeSanLinesToPgn(fen, boardState.solutionLines);
+    }
+
+    if (!boardState.lineMoves?.length) return "";
+
+    return boardState.lineMoves
+      .map((move, index) => `${movePrefix(index, index % 2 === 1)}${move}`.trim())
+      .join(" ");
+  }, [boardState.lineMoves, boardState.solutionLines, fen, isOnSolutionPath]);
+
+  const handleCopyPgn = useCallback(async () => {
+    if (!moveLinePgn) return;
+
+    const copied = await copyTextToClipboard(moveLinePgn);
+    setCopyPgnLabel(copied ? "Copied" : "Copy failed");
+
+    window.setTimeout(() => {
+      setCopyPgnLabel("Copy PGN");
+    }, 1800);
+  }, [moveLinePgn]);
+
   const renderMoveLine = (className = "lineBox") => (
     <div className={className}>
       <div className="lineHeader">
         <div className="fenLabel">Solution</div>
         <div className="solutionHeaderActions">
+          <button
+            type="button"
+            className="fenAnalyzeButton"
+            onClick={handleCopyPgn}
+            disabled={!moveLinePgn}
+          >
+            {copyPgnLabel}
+          </button>
           <button
             type="button"
             className="solutionNavButton"
@@ -1036,44 +1098,32 @@ export const PuzzleSolverPage = () => {
               </div>
             ) : null}
             {showFenDetails ? (
-              <>
-                <div className="fenDetails">
-                  <div className="fenHeader">
-                    <div className="fenLabel">Puzzle FEN</div>
-                    <a
-                      className={`fenAnalyzeButton ${!fen ? "disabled" : ""}`}
-                      href={startAnalysisUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      aria-disabled={!fen}
-                      onClick={(event) => {
-                        if (!fen) event.preventDefault();
-                      }}
-                    >
-                      Analyze on Lichess
-                    </a>
-                  </div>
-                  <code>{fen || "No puzzle loaded"}</code>
-                </div>
-                <div className="fenDetails">
-                  <div className="fenHeader">
-                    <div className="fenLabel">Current FEN</div>
-                    <a
-                      className={`fenAnalyzeButton ${!currentFen ? "disabled" : ""}`}
-                      href={currentAnalysisUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      aria-disabled={!currentFen}
-                      onClick={(event) => {
-                        if (!currentFen) event.preventDefault();
-                      }}
-                    >
-                      Analyze on Lichess
-                    </a>
-                  </div>
-                  <code>{currentFen || "No puzzle loaded"}</code>
-                </div>
-              </>
+              <div className="analysisButtonsRow">
+                <a
+                  className={`fenAnalyzeButton ${!fen ? "disabled" : ""}`}
+                  href={startAnalysisUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-disabled={!fen}
+                  onClick={(event) => {
+                    if (!fen) event.preventDefault();
+                  }}
+                >
+                  Analyze Puzzle
+                </a>
+                <a
+                  className={`fenAnalyzeButton ${!currentFen ? "disabled" : ""}`}
+                  href={currentAnalysisUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-disabled={!currentFen}
+                  onClick={(event) => {
+                    if (!currentFen) event.preventDefault();
+                  }}
+                >
+                  Analyze Current Position
+                </a>
+              </div>
             ) : null}
           </div>
         ) : null}
@@ -1143,18 +1193,32 @@ export const PuzzleSolverPage = () => {
               {showSolution ? "Hide solution" : "Show solution"}
             </button>
             {showFenDetails ? (
-              <a
-                className={`fenAnalyzeButton mobileAnalyzeButton ${!fen ? "disabled" : ""}`}
-                href={startAnalysisUrl}
-                target="_blank"
-                rel="noreferrer"
-                aria-disabled={!fen}
-                onClick={(event) => {
-                  if (!fen) event.preventDefault();
-                }}
-              >
-                Analyze on Lichess
-              </a>
+              <div className="mobileAnalyzeActions">
+                <a
+                  className={`fenAnalyzeButton mobileAnalyzeButton ${!fen ? "disabled" : ""}`}
+                  href={startAnalysisUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-disabled={!fen}
+                  onClick={(event) => {
+                    if (!fen) event.preventDefault();
+                  }}
+                >
+                  Analyze Puzzle
+                </a>
+                <a
+                  className={`fenAnalyzeButton mobileAnalyzeButton ${!currentFen ? "disabled" : ""}`}
+                  href={currentAnalysisUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-disabled={!currentFen}
+                  onClick={(event) => {
+                    if (!currentFen) event.preventDefault();
+                  }}
+                >
+                  Analyze Current Position
+                </a>
+              </div>
             ) : null}
           </div>
 

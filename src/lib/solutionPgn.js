@@ -197,6 +197,11 @@ const serializeSolutionLines = (sanLines, initialPly = 0) => {
   return tokens.join(" ");
 };
 
+export const serializeSanLinesToPgn = (fen, sanLines = []) => {
+  if (!fen || !Array.isArray(sanLines) || sanLines.length === 0) return "";
+  return serializeSolutionLines(sanLines, startingPlyFromFen(fen));
+};
+
 const lineSignature = (line) =>
   line.map((entry) => `${entry.uci}:${entry.questionable ? "q" : "s"}`).join(" ");
 

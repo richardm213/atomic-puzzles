@@ -299,6 +299,12 @@
   word-break: break-word;
 }
 
+.analysisButtonsRow,
+.mobileAnalyzeActions {
+  display: grid;
+  gap: 8px;
+}
+
 .lineBox {
   margin-top: 12px;
   padding: 12px;
@@ -481,7 +487,7 @@
 
 .mobileAnalyzeButton {
   width: 100%;
-  min-height: 44px;
+  min-height: 42px;
 }
 
 .mobilePuzzleDetails {
