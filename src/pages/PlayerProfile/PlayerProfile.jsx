@@ -25,8 +25,6 @@ import {
   getMonthRankHighlights,
   getProfileMetricCardRows,
   getRatingDisplayByMode,
-  getTimeControlOptions,
-  toggleExpandedMatchKey,
   useMonthRanks,
   useRatingsSnapshotByMode,
 } from "../../hooks/usePlayerProfileData";
@@ -44,6 +42,7 @@ import { isToggleActionKey } from "../../utils/toggleActionKey";
 import { parseDateInputBoundary } from "../../utils/matchFilters";
 import { loadRawMatchesByMode, normalizeMatches } from "../../lib/matchData";
 import { appAssetPath } from "../../utils/appAssetPath";
+import { getTimeControlOptions } from "../../utils/matchCollection";
 import { DualRangeSlider } from "../../components/DualRangeSlider/DualRangeSlider";
 import { LichessGameLink } from "../../components/LichessGameLink/LichessGameLink";
 import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
@@ -830,14 +829,18 @@ export const PlayerProfilePage = ({ username }) => {
                           className={`expandableMatchRow${isExpanded ? " expanded" : ""}`}
                           onClick={() =>
                             setExpandedMatchKeys((current) =>
-                              toggleExpandedMatchKey(current, matchKey),
+                              current.includes(matchKey)
+                                ? current.filter((key) => key !== matchKey)
+                                : [...current, matchKey],
                             )
                           }
                           onKeyDown={(event) => {
                             if (!isToggleActionKey(event)) return;
                             event.preventDefault();
                             setExpandedMatchKeys((current) =>
-                              toggleExpandedMatchKey(current, matchKey),
+                              current.includes(matchKey)
+                                ? current.filter((key) => key !== matchKey)
+                                : [...current, matchKey],
                             );
                           }}
                           role="button"

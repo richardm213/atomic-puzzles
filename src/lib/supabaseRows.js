@@ -8,16 +8,20 @@ const sleep = (durationMs) =>
     globalThis.setTimeout(resolve, durationMs);
   });
 
-const runQueuedSupabaseRequest = (request) => {
-  const run = async () => {
-    const elapsed = Date.now() - lastSupabaseRequestStart;
-    const waitMs = Math.max(0, MIN_SUPABASE_REQUEST_INTERVAL_MS - elapsed);
-    if (waitMs > 0) {
-      await sleep(waitMs);
-    }
+const runQueuedSupabaseRequest = async (query) => {
+  const elapsed = Date.now() - lastSupabaseRequestStart;
+  const waitMs = Math.max(0, MIN_SUPABASE_REQUEST_INTERVAL_MS - elapsed);
+  if (waitMs > 0) {
+    await sleep(waitMs);
+  }
 
-    lastSupabaseRequestStart = Date.now();
-    return request();
+  lastSupabaseRequestStart = Date.now();
+  return query;
+};
+
+const queueSupabaseQuery = (query) => {
+  const run = async () => {
+    return runQueuedSupabaseRequest(query);
   };
 
   const queuedRequest = supabaseRequestQueue.then(run, run);
@@ -26,7 +30,7 @@ const runQueuedSupabaseRequest = (request) => {
 };
 
 export const loadSupabaseRows = async (tableName, query) => {
-  const { data, error } = await runQueuedSupabaseRequest(() => query);
+  const { data, error } = await queueSupabaseQuery(query);
   if (error) {
     throw new Error(`Failed loading Supabase table "${tableName}": ${error.message}`);
   }
@@ -34,7 +38,7 @@ export const loadSupabaseRows = async (tableName, query) => {
 };
 
 export const loadSupabasePage = async (tableName, query) => {
-  const { data, error, count } = await runQueuedSupabaseRequest(() => query);
+  const { data, error, count } = await queueSupabaseQuery(query);
   if (error) {
     throw new Error(`Failed loading Supabase table "${tableName}": ${error.message}`);
   }

@@ -10,8 +10,8 @@ import {
 import { loadRawMatchesByMode } from "../../lib/matchData";
 import { fetchPlayerRatingsRows } from "../../lib/supabasePlayerRatings";
 import { resolveUsernameInputs } from "../../lib/searchUsernames";
-import { getTimeControlOptions } from "../../hooks/usePlayerProfileData";
 import { parseDateInputBoundary } from "../../utils/matchFilters";
+import { getTimeControlOptions } from "../../utils/matchCollection";
 import { normalizedGamesFromMatch, normalizedPlayersFromMatch } from "../../utils/matchTransforms";
 import { formatLocalDateTime, formatScore } from "../../utils/formatters";
 import { LichessGameLink } from "../../components/LichessGameLink/LichessGameLink";

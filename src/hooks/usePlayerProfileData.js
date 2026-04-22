@@ -223,22 +223,6 @@ export const getProfileMetricCardRows = (ratingDisplayByMode, latestMonthKeyByMo
 export const getBestWinsForMode = (ratingDisplayByMode, mode, bestWinCount) =>
   (ratingDisplayByMode[mode]?.topWins ?? []).slice(0, bestWinCount);
 
-export const getTimeControlOptions = (matches) => {
-  const initialSet = new Set();
-  const incrementSet = new Set();
-  matches.forEach((match) => {
-    const parts = parseTimeControlParts(match.timeControl);
-    if (parts.initial) initialSet.add(parts.initial);
-    if (parts.increment) incrementSet.add(parts.increment);
-  });
-
-  const numericSort = (a, b) => Number(a) - Number(b);
-  return {
-    initialOptions: [...initialSet].sort(numericSort),
-    incrementOptions: [...incrementSet].sort(numericSort),
-  };
-};
-
 export const filterMatches = (matches, appliedFilters, selectedMode) => {
   const startDateTs = parseDateInputBoundary(appliedFilters.startDateFilter, "start");
   const endDateTs = parseDateInputBoundary(appliedFilters.endDateFilter, "end");
@@ -307,8 +291,3 @@ export const getMonthRankHighlights = (monthRanks, bestMonthRankCount, recentMon
     .sort((a, b) => b.monthDate.getTime() - a.monthDate.getTime())
     .slice(0, recentMonthRankCount),
 });
-
-export const toggleExpandedMatchKey = (currentKeys, matchKey) =>
-  currentKeys.includes(matchKey)
-    ? currentKeys.filter((key) => key !== matchKey)
-    : [...currentKeys, matchKey];

@@ -10,11 +10,6 @@ import {
 import { matchSourceFromValues, sourceValueFromValues } from "../utils/matchFilters";
 import { normalizeUsername } from "../utils/playerNames";
 
-const toNullableNumber = (value) => {
-  const parsed = Number(value);
-  return parsed;
-};
-
 const parseGamesCompact = (gamesValue) => {
   if (Array.isArray(gamesValue)) return gamesValue;
   const raw = String(gamesValue ?? "").trim();
@@ -30,79 +25,66 @@ const parseGamesCompact = (gamesValue) => {
 
 const parseMatchRows = (rows) => {
   if (!rows.length) return [];
-  return rows
-    .map((row, index) => {
-      const fallbackMatchId = String(row.match_id || "").trim() || `match_${index + 1}`;
-      const p1 = String(row.player_1 || "Unknown");
-      const p2 = String(row.player_2 || "Unknown");
-      const games = parseGamesCompact(row.games)
-        .map((entry, gameOffset) => {
-          const [gameId, winnerCodeRaw, winnerPlayerRaw, whitePlayerRaw] = String(
-            entry || "",
-          ).split(",");
-          const winnerCode = String(winnerCodeRaw || "")
-            .trim()
-            .toLowerCase();
-          const winnerPlayer = String(winnerPlayerRaw || "").trim();
-          const whiteSlot = String(whitePlayerRaw || "").trim();
-          const white = whiteSlot === "2" ? p2 : p1;
-          const black = whiteSlot === "2" ? p1 : p2;
+  return rows.map((row, index) => {
+    const fallbackMatchId = String(row.match_id || "").trim() || `match_${index + 1}`;
+    const p1 = String(row.player_1 || "Unknown");
+    const p2 = String(row.player_2 || "Unknown");
+    const games = parseGamesCompact(row.games)
+      .map((entry, gameOffset) => {
+        const [gameId, winnerCodeRaw, winnerPlayerRaw, whitePlayerRaw] = String(entry || "").split(
+          ",",
+        );
+        const winnerCode = String(winnerCodeRaw || "")
+          .trim()
+          .toLowerCase();
+        const winnerPlayer = String(winnerPlayerRaw || "").trim();
+        const whiteSlot = String(whitePlayerRaw || "").trim();
+        const white = whiteSlot === "2" ? p2 : p1;
+        const black = whiteSlot === "2" ? p1 : p2;
 
-          let winner = winnerToFullWord(winnerCode);
-          if (!["white", "black", "draw"].includes(winner)) {
-            if (winnerPlayer === "0" || winnerCode === "d") winner = "draw";
-            else if (winnerPlayer === "1") winner = white === p1 ? "white" : "black";
-            else if (winnerPlayer === "2") winner = white === p2 ? "white" : "black";
-            else winner = "draw";
-          }
+        let winner = winnerToFullWord(winnerCode);
+        if (!["white", "black", "draw"].includes(winner)) {
+          if (winnerPlayer === "0" || winnerCode === "d") winner = "draw";
+          else if (winnerPlayer === "1") winner = white === p1 ? "white" : "black";
+          else if (winnerPlayer === "2") winner = white === p2 ? "white" : "black";
+          else winner = "draw";
+        }
 
-          return {
-            id: String(gameId || `game_${index + 1}_${gameOffset + 1}`),
-            game_index: gameOffset + 1,
-            winner,
-            white,
-            black,
-          };
-        })
-        .filter((game) => game.id);
+        return {
+          id: String(gameId || `game_${index + 1}_${gameOffset + 1}`),
+          game_index: gameOffset + 1,
+          winner,
+          white,
+          black,
+        };
+      })
+      .filter((game) => game.id)
+      .sort((a, b) => a.game_index - b.game_index);
 
-      return {
-        match_id: fallbackMatchId,
-        players: [p1, p2],
-        start_ts: toNullableNumber(row.start_ts),
-        time_control: row.time_control,
-        source: row.source,
-        tournament_id: row.tournament_id,
-        games,
-        ratings: {
-          [p1]: {
-            before_rating: toNullableNumber(row.p1_before_rating),
-            after_rating: toNullableNumber(row.p1_after_rating),
-            before_rd: toNullableNumber(row.p1_before_rd),
-            after_rd: toNullableNumber(row.p1_after_rd),
-          },
-          [p2]: {
-            before_rating: toNullableNumber(row.p2_before_rating),
-            after_rating: toNullableNumber(row.p2_after_rating),
-            before_rd: toNullableNumber(row.p2_before_rd),
-            after_rd: toNullableNumber(row.p2_after_rd),
-          },
+    return {
+      match_id: fallbackMatchId,
+      players: [p1, p2],
+      start_ts: Number(row.start_ts),
+      time_control: row.time_control,
+      source: row.source,
+      tournament_id: row.tournament_id,
+      games,
+      ratings: {
+        [p1]: {
+          before_rating: Number(row.p1_before_rating),
+          after_rating: Number(row.p1_after_rating),
+          before_rd: Number(row.p1_before_rd),
+          after_rd: Number(row.p1_after_rd),
         },
-      };
-    })
-    .map((match) => {
-      const orderedGames = [...match.games].sort((a, b) => {
-        const aIndex = a.game_index;
-        const bIndex = b.game_index;
-        return aIndex - bIndex;
-      });
-
-      return {
-        ...match,
-        start_ts: match.start_ts,
-        games: orderedGames,
-      };
-    });
+        [p2]: {
+          before_rating: Number(row.p2_before_rating),
+          after_rating: Number(row.p2_after_rating),
+          before_rd: Number(row.p2_before_rd),
+          after_rd: Number(row.p2_after_rd),
+        },
+      },
+    };
+  });
 };
 
 export const loadRawMatchesByMode = async (mode, options = {}) => {

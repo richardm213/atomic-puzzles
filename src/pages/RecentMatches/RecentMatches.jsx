@@ -14,7 +14,6 @@ import {
   opponentRatingSliderMin,
   pageSizeOptions,
 } from "../../constants/matches";
-import { getTimeControlOptions } from "../../hooks/usePlayerProfileData";
 import { toBoundedLengthRange, useMatchLengthRange } from "../../hooks/useMatchLengthRange";
 import { MatchCard } from "../../components/MatchCard/MatchCard";
 import { DualRangeSlider } from "../../components/DualRangeSlider/DualRangeSlider";
@@ -35,7 +34,7 @@ import {
 } from "../../lib/matchSummaries";
 import { loadRawMatchesByMode } from "../../lib/matchData";
 import { resolveUsernameInputs } from "../../lib/searchUsernames";
-import { toggleExpandedMatchKey } from "../../hooks/usePlayerProfileData";
+import { getTimeControlOptions } from "../../utils/matchCollection";
 import { Seo } from "../../components/Seo/Seo";
 
 const recentModeOptions = modeOptions;
@@ -521,7 +520,11 @@ export const RecentMatchesPage = () => {
                 matchKey={matchKey}
                 isExpanded={isExpanded}
                 onToggle={() =>
-                  setExpandedMatchKeys((current) => toggleExpandedMatchKey(current, matchKey))
+                  setExpandedMatchKeys((current) =>
+                    current.includes(matchKey)
+                      ? current.filter((key) => key !== matchKey)
+                      : [...current, matchKey],
+                  )
                 }
               />
             );
