@@ -110,11 +110,7 @@ export const DualRangeSlider = ({
   return (
     <div className="opponentRatingFilter rangeFilter">
       <label htmlFor={id}>{label}</label>
-      <div
-        ref={sliderRef}
-        className="dualRangeSlider"
-        onPointerDown={handleTrackPointerDown}
-      >
+      <div ref={sliderRef} className="dualRangeSlider" onPointerDown={handleTrackPointerDown}>
         <div className="dualRangeTrack" />
         <div
           className="dualRangeSelected"

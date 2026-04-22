@@ -105,9 +105,9 @@ export const RankingsMethodologyPage = () => (
             rating is not dragged around by results from intentionally unserious play.
           </p>
           <p>
-            This is reviewed case by case rather than applied automatically. In general, the
-            account should perform clearly below the player&apos;s main profile, usually by at least
-            100 points or more, before it is treated this way.
+            This is reviewed case by case rather than applied automatically. In general, the account
+            should perform clearly below the player&apos;s main profile, usually by at least 100
+            points or more, before it is treated this way.
           </p>
         </section>
       </div>

@@ -5,8 +5,6 @@ import { cachedRequest } from "../utils/requestCache";
 const PUZZLES_TABLE = import.meta.env.VITE_SUPABASE_PUZZLES_TABLE?.trim() || "puzzles";
 const puzzleRowsCache = new Map();
 
-export const getSupabasePuzzlesTableName = () => PUZZLES_TABLE;
-
 const fetchUncachedPuzzleRowsFromSupabase = async () => {
   const supabase = getSupabaseClient();
   return fetchAllSupabaseRows(PUZZLES_TABLE, () => supabase.from(PUZZLES_TABLE).select("*"));

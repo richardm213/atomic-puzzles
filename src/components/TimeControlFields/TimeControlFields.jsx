@@ -17,7 +17,11 @@ export const TimeControlFields = ({
   <>
     <label htmlFor={initialId}>
       Initial (sec)
-      <select id={initialId} value={initialValue} onChange={(event) => onInitialChange(event.target.value)}>
+      <select
+        id={initialId}
+        value={initialValue}
+        onChange={(event) => onInitialChange(event.target.value)}
+      >
         <option value="all">All</option>
         {initialOptions.map((value) => (
           <option key={value} value={value}>

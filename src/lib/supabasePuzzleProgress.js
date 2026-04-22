@@ -218,10 +218,7 @@ export const recordPuzzleProgress = async ({ username, puzzleId, puzzleCorrect }
   return request;
 };
 
-export const fetchPuzzleProgressPage = async (
-  username,
-  { page = 1, pageSize = 20 } = {},
-) => {
+export const fetchPuzzleProgressPage = async (username, { page = 1, pageSize = 20 } = {}) => {
   const normalizedUsername = normalizeUsername(username);
   if (!normalizedUsername) {
     return { rows: [], total: 0 };
@@ -326,10 +323,7 @@ export const fetchAttemptedPuzzleIds = async (username) => {
       serverRows = await loadAttemptedPuzzleIdsFromRpc(supabase, normalizedUsername);
     } catch {
       serverRows = await fetchAllSupabaseRows(PUZZLE_PROGRESS_TABLE, () =>
-        supabase
-          .from(PUZZLE_PROGRESS_TABLE)
-          .select("puzzle_id")
-          .eq("username", normalizedUsername),
+        supabase.from(PUZZLE_PROGRESS_TABLE).select("puzzle_id").eq("username", normalizedUsername),
       );
     }
   } catch {

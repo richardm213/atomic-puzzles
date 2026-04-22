@@ -73,8 +73,7 @@ const tokenizeSolution = (solution) =>
     .replace(/\$\d+/g, " ")
     .match(/\(|\)|[^\s()]+/g);
 
-const squareName = (file, rank) =>
-  `${String.fromCharCode("a".charCodeAt(0) + file)}${rank + 1}`;
+const squareName = (file, rank) => `${String.fromCharCode("a".charCodeAt(0) + file)}${rank + 1}`;
 
 const moveFromUci = (position, uci) => {
   const from = parseSquare(uci.slice(0, 2));
@@ -107,9 +106,12 @@ export const movePrefix = (plyIndex, force = false) => {
 };
 
 const startingPlyFromFen = (fen) => {
-  const [, turn = "w", , , , fullmove = "1"] = String(fen || "").trim().split(/\s+/);
+  const [, turn = "w", , , , fullmove = "1"] = String(fen || "")
+    .trim()
+    .split(/\s+/);
   const fullmoveNumber = Number.parseInt(fullmove, 10);
-  const basePly = Number.isFinite(fullmoveNumber) && fullmoveNumber > 0 ? (fullmoveNumber - 1) * 2 : 0;
+  const basePly =
+    Number.isFinite(fullmoveNumber) && fullmoveNumber > 0 ? (fullmoveNumber - 1) * 2 : 0;
   return turn === "b" ? basePly + 1 : basePly;
 };
 

@@ -16,7 +16,9 @@ const profileAliasEntryCache = new Map();
 
 const normalizeAliasRow = (row) => {
   const username = normalizeUsername(row?.username);
-  const aliases = Array.isArray(row?.aliases) ? row.aliases.map(normalizeUsername).filter(Boolean) : [];
+  const aliases = Array.isArray(row?.aliases)
+    ? row.aliases.map(normalizeUsername).filter(Boolean)
+    : [];
 
   if (!username) return null;
 
@@ -37,7 +39,7 @@ const fetchUncachedAliasRows = async () => {
   return rows.map(normalizeAliasRow).filter(Boolean);
 };
 
-export const fetchAliasesTableRows = async () =>
+const fetchAliasesTableRows = async () =>
   cachedRequest(aliasTableRowsCache, ["aliases-table"], async () => fetchUncachedAliasRows());
 
 const normalizeAlias2Row = (row) => {
@@ -50,7 +52,8 @@ const normalizeAlias2Row = (row) => {
     username,
     alias,
     banned: Boolean(row?.banned),
-    countGames: row?.count_games === undefined || row?.count_games === null ? true : Boolean(row.count_games),
+    countGames:
+      row?.count_games === undefined || row?.count_games === null ? true : Boolean(row.count_games),
   };
 };
 
@@ -80,7 +83,7 @@ const mergeAliasRows = (rows = []) => {
         ? [
             ...new Set([
               ...(existingExplicit ? existing.countableAliases : []),
-              ...(rowExplicit ? row.countableAliases ?? [] : []),
+              ...(rowExplicit ? (row.countableAliases ?? []) : []),
             ]),
           ]
         : [
@@ -143,7 +146,11 @@ const fetchAliasesTableRowForAlias = async (alias) => {
   const supabase = getSupabaseClient();
   const rows = await loadSupabaseRows(
     ALIASES_TABLE,
-    supabase.from(ALIASES_TABLE).select(ALIASES_SELECT_COLUMNS).contains("aliases", [alias]).limit(1),
+    supabase
+      .from(ALIASES_TABLE)
+      .select(ALIASES_SELECT_COLUMNS)
+      .contains("aliases", [alias])
+      .limit(1),
   );
   return normalizeAliasRow(rows[0]);
 };
@@ -165,7 +172,11 @@ const fetchAliases2AggregateRowForUsername = async (username) => {
   const supabase = getSupabaseClient();
   const rows = await loadSupabaseRows(
     ALIASES2_TABLE,
-    supabase.from(ALIASES2_TABLE).select(ALIASES2_SELECT_COLUMNS).eq("username", username).order("alias"),
+    supabase
+      .from(ALIASES2_TABLE)
+      .select(ALIASES2_SELECT_COLUMNS)
+      .eq("username", username)
+      .order("alias"),
   );
   return buildAlias2AggregateRow(rows);
 };
@@ -175,23 +186,30 @@ const fetchUncachedAlias2Rows = async () => {
 
   try {
     const rows = await fetchAllSupabaseRows(ALIASES2_TABLE, () =>
-      supabase.from(ALIASES2_TABLE).select(ALIASES2_SELECT_COLUMNS).order("username").order("alias"),
+      supabase
+        .from(ALIASES2_TABLE)
+        .select(ALIASES2_SELECT_COLUMNS)
+        .order("username")
+        .order("alias"),
     );
     const aliasesByUsername = new Map();
 
-    rows.map(normalizeAlias2Row).filter(Boolean).forEach((row) => {
-      const { username, alias } = row;
-      const existingEntry = aliasesByUsername.get(username) ?? {
-        aliases: new Set(),
-        banned: false,
-        countableAliases: new Set(),
-      };
+    rows
+      .map(normalizeAlias2Row)
+      .filter(Boolean)
+      .forEach((row) => {
+        const { username, alias } = row;
+        const existingEntry = aliasesByUsername.get(username) ?? {
+          aliases: new Set(),
+          banned: false,
+          countableAliases: new Set(),
+        };
 
-      if (alias !== username) existingEntry.aliases.add(alias);
-      if (row.countGames) existingEntry.countableAliases.add(alias);
-      existingEntry.banned = Boolean(existingEntry.banned || row?.banned);
-      aliasesByUsername.set(username, existingEntry);
-    });
+        if (alias !== username) existingEntry.aliases.add(alias);
+        if (row.countGames) existingEntry.countableAliases.add(alias);
+        existingEntry.banned = Boolean(existingEntry.banned || row?.banned);
+        aliasesByUsername.set(username, existingEntry);
+      });
 
     return Array.from(aliasesByUsername.entries()).map(([username, entry]) => ({
       username,
@@ -205,11 +223,8 @@ const fetchUncachedAlias2Rows = async () => {
   }
 };
 
-export const fetchAliases2TableRows = async () =>
+const fetchAliases2TableRows = async () =>
   cachedRequest(alias2TableRowsCache, ["aliases2-table"], async () => fetchUncachedAlias2Rows());
-
-const findCanonicalUsername = (rows, username) =>
-  rows.find((row) => row.username === username || row.aliases.includes(username))?.username ?? "";
 
 export const resolveProfileUsernameFromAliases = async (value) =>
   cachedRequest(profileUsernameCache, ["profile-username", value], async () => {

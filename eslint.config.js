@@ -148,6 +148,7 @@ export default [
       },
       globals: {
         window: "readonly",
+        navigator: "readonly",
         document: "readonly",
         fetch: "readonly",
         HTMLElement: "readonly",

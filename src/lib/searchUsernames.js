@@ -10,7 +10,10 @@ const LB_TABLE = import.meta.env.VITE_SUPABASE_LB_TABLE?.trim() || "lb";
 const usernameResolutionCache = new Map();
 const usernamePresenceCache = new Map();
 
-const escapeFilterValue = (value) => String(value || "").trim().replace(/,/g, "\\,");
+const escapeFilterValue = (value) =>
+  String(value || "")
+    .trim()
+    .replace(/,/g, "\\,");
 
 const usernameExistsInProfileTables = async (supabase, username) => {
   const [playerRatingsRows, leaderboardRows] = await Promise.all([
@@ -46,7 +49,7 @@ const usernameExistsInMatchTables = async (supabase, username) => {
   return matchRowsByMode.some((rows) => rows.length > 0);
 };
 
-export const hasSupabaseUsernameMatch = async (value) =>
+const hasSupabaseUsernameMatch = async (value) =>
   cachedRequest(usernamePresenceCache, ["username-presence", value], async () => {
     const username = normalizeUsername(value);
     if (!username) return false;

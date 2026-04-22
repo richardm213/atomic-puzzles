@@ -90,7 +90,9 @@ export const TopNav = () => {
   } = useAppSettings();
   const trimmedSearchQuery = searchQuery.trim();
   const normalizedAuthUsername = normalizeUsername(user?.username);
-  const [profileUsername, setProfileUsername] = useState(() => getStoredProfileUsername(user?.username));
+  const [profileUsername, setProfileUsername] = useState(() =>
+    getStoredProfileUsername(user?.username),
+  );
   const showBoardSettings = pathname === "/solve" || pathname.startsWith("/solve/");
   const activeBoardColors = getBoardThemeColors(
     boardTheme,
@@ -116,7 +118,8 @@ export const TopNav = () => {
     const loadProfileUsername = async () => {
       try {
         const resolvedProfileUsername =
-          (await resolveProfileUsernameFromAliases(normalizedAuthUsername)) || normalizedAuthUsername;
+          (await resolveProfileUsernameFromAliases(normalizedAuthUsername)) ||
+          normalizedAuthUsername;
         if (cancelled) return;
         setProfileUsername(resolvedProfileUsername);
         setStoredProfileUsername(normalizedAuthUsername, resolvedProfileUsername);

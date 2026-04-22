@@ -15,7 +15,7 @@ export const normalizedPlayersFromMatch = (match) => {
   return [];
 };
 
-export const playerFromRef = (playerRef, players) => {
+const playerFromRef = (playerRef, players) => {
   if (typeof playerRef === "number" && Number.isInteger(playerRef)) {
     return String(players[playerRef] || "");
   }

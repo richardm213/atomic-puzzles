@@ -17,7 +17,9 @@ const EVENT_FILTERS = [
 const matchesEventFilter = (group, filterId) => {
   if (filterId === "all") return true;
 
-  const normalizedEvent = String(group?.event ?? "").trim().toLocaleLowerCase();
+  const normalizedEvent = String(group?.event ?? "")
+    .trim()
+    .toLocaleLowerCase();
   if (!normalizedEvent) return false;
 
   if (filterId === "acl") {
@@ -236,7 +238,10 @@ export const PuzzleSetsPage = () => {
           )}
         </section>
 
-        <section className="puzzleSetsSection puzzleSetsSelectedSection" ref={selectedSetSectionRef}>
+        <section
+          className="puzzleSetsSection puzzleSetsSelectedSection"
+          ref={selectedSetSectionRef}
+        >
           <div className="puzzleSetsSectionHeader">
             <div>
               <p className="puzzleSetsSectionEyebrow">Selected set</p>
@@ -249,25 +254,36 @@ export const PuzzleSetsPage = () => {
                     : `No sets are visible for the ${EVENT_FILTERS.find((filter) => filter.id === activeFilterId)?.label ?? "active"} filter.`}
               </p>
               <p className="puzzleSetsFilterSummary">
-                Showing {filteredPuzzleGroups.length} set{filteredPuzzleGroups.length === 1 ? "" : "s"}
-                 · 
-                {filteredPuzzleCount} puzzle{filteredPuzzleCount === 1 ? "" : "s"}
+                Showing {filteredPuzzleGroups.length} set
+                {filteredPuzzleGroups.length === 1 ? "" : "s"}·{filteredPuzzleCount} puzzle
+                {filteredPuzzleCount === 1 ? "" : "s"}
               </p>
             </div>
           </div>
 
           {selectedGroup ? (
-            <div className="puzzleSetPuzzleList" role="list" aria-label={`${selectedGroup.event} puzzles`}>
+            <div
+              className="puzzleSetPuzzleList"
+              role="list"
+              aria-label={`${selectedGroup.event} puzzles`}
+            >
               {selectedGroup.puzzles.map((puzzle) => {
                 const puzzleId = String(puzzle?.puzzleId ?? "").trim();
                 const author = (puzzle?.author || "").trim() || "Unknown";
                 const opening = (puzzle?.opening || "").trim();
 
                 return (
-                  <article key={`${selectedGroup.eventKey}-${puzzleId}`} className="puzzleSetPuzzleRow">
+                  <article
+                    key={`${selectedGroup.eventKey}-${puzzleId}`}
+                    className="puzzleSetPuzzleRow"
+                  >
                     <div className="puzzleSetPuzzlePrimary">
                       <span className="puzzleSetsMiniLabel">Puzzle</span>
-                      <Link className="puzzleSetPuzzleLink" to="/solve/$puzzleId" params={{ puzzleId }}>
+                      <Link
+                        className="puzzleSetPuzzleLink"
+                        to="/solve/$puzzleId"
+                        params={{ puzzleId }}
+                      >
                         Puzzle {puzzleId}
                       </Link>
                       <div className="puzzleSetPuzzleMeta">

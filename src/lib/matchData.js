@@ -109,7 +109,9 @@ export const loadRawMatchesByMode = async (mode, options = {}) => {
   const { filters = {}, page, pageSize } = options;
   if (mode === "all") {
     const matchesByMode = await Promise.all(
-      modeOptions.map((modeOption) => loadRawMatchesByMode(modeOption, { filters, page, pageSize })),
+      modeOptions.map((modeOption) =>
+        loadRawMatchesByMode(modeOption, { filters, page, pageSize }),
+      ),
     );
     if (pageSize) {
       return {

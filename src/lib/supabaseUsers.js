@@ -22,7 +22,7 @@ const getUserByUsername = async (username) => {
   return data;
 };
 
-export const fetchSupabaseUser = async (username) => {
+const fetchSupabaseUser = async (username) => {
   const normalizedUsername = normalizeUsername(username);
   if (!normalizedUsername) return null;
 
@@ -50,7 +50,10 @@ const ensureSupabaseUserRecord = async (normalizedUsername) => {
   const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from(USERS_TABLE)
-    .upsert({ username: normalizedUsername }, { onConflict: USER_CONFLICT_COLUMNS, ignoreDuplicates: true })
+    .upsert(
+      { username: normalizedUsername },
+      { onConflict: USER_CONFLICT_COLUMNS, ignoreDuplicates: true },
+    )
     .select(USER_COLUMNS)
     .maybeSingle();
 

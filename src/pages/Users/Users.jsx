@@ -133,7 +133,11 @@ const UsersTablePage = () => {
       }
 
       if (sortKey === "aliasCount") {
-        const aliasCompare = compareNullableNumbers(a.aliasCount, b.aliasCount, directionMultiplier);
+        const aliasCompare = compareNullableNumbers(
+          a.aliasCount,
+          b.aliasCount,
+          directionMultiplier,
+        );
         if (aliasCompare !== 0) return aliasCompare;
         return a.username.localeCompare(b.username);
       }
@@ -184,9 +188,9 @@ const UsersTablePage = () => {
               <i className="fa-solid fa-circle-info" aria-hidden="true" />
             </button>
             <span className="usersHelpTooltipBubble" role="tooltip">
-              Message <strong>seaside_tiramisu</strong> on Lichess to be added to the rating
-              system. Your account should be at least six months old, unless you are genuinely new
-              to atomic. If you are using a newer account but have played before, send your old
+              Message <strong>seaside_tiramisu</strong> on Lichess to be added to the rating system.
+              Your account should be at least six months old, unless you are genuinely new to
+              atomic. If you are using a newer account but have played before, send your old
               accounts along with the new one.
             </span>
           </span>
@@ -242,15 +246,9 @@ const UsersTablePage = () => {
                             <span>{row.aliasCount}</span>
                             <i className="fa-solid fa-chevron-down" aria-hidden="true" />
                           </span>
-                          <div
-                            id={`user-aliases-${row.username}`}
-                            className="usersAliasList"
-                          >
+                          <div id={`user-aliases-${row.username}`} className="usersAliasList">
                             {row.aliases.map((alias) => (
-                              <span
-                                key={`${row.username}-${alias}`}
-                                className="usersAliasText"
-                              >
+                              <span key={`${row.username}-${alias}`} className="usersAliasText">
                                 {alias}
                               </span>
                             ))}

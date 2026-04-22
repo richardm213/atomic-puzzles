@@ -45,10 +45,7 @@ export const fetchAllSupabaseRows = async (tableName, buildQuery, pageSize = 100
   const rows = [];
 
   for (let from = 0; ; from += pageSize) {
-    const page = await loadSupabaseRows(
-      tableName,
-      buildQuery().range(from, from + pageSize - 1),
-    );
+    const page = await loadSupabaseRows(tableName, buildQuery().range(from, from + pageSize - 1));
     rows.push(...page);
     if (page.length < pageSize) return rows;
   }

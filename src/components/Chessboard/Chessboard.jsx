@@ -66,7 +66,8 @@ const checkerboardSvg = (light, dark) =>
     `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8' shape-rendering='crispEdges'><rect width='8' height='8' fill='${light}'/><g fill='${dark}'><rect x='1' width='1' height='1'/><rect x='3' width='1' height='1'/><rect x='5' width='1' height='1'/><rect x='7' width='1' height='1'/><rect y='1' width='1' height='1'/><rect x='2' y='1' width='1' height='1'/><rect x='4' y='1' width='1' height='1'/><rect x='6' y='1' width='1' height='1'/><rect x='1' y='2' width='1' height='1'/><rect x='3' y='2' width='1' height='1'/><rect x='5' y='2' width='1' height='1'/><rect x='7' y='2' width='1' height='1'/><rect y='3' width='1' height='1'/><rect x='2' y='3' width='1' height='1'/><rect x='4' y='3' width='1' height='1'/><rect x='6' y='3' width='1' height='1'/><rect x='1' y='4' width='1' height='1'/><rect x='3' y='4' width='1' height='1'/><rect x='5' y='4' width='1' height='1'/><rect x='7' y='4' width='1' height='1'/><rect y='5' width='1' height='1'/><rect x='2' y='5' width='1' height='1'/><rect x='4' y='5' width='1' height='1'/><rect x='6' y='5' width='1' height='1'/><rect x='1' y='6' width='1' height='1'/><rect x='3' y='6' width='1' height='1'/><rect x='5' y='6' width='1' height='1'/><rect x='7' y='6' width='1' height='1'/><rect y='7' width='1' height='1'/><rect x='2' y='7' width='1' height='1'/><rect x='4' y='7' width='1' height='1'/><rect x='6' y='7' width='1' height='1'/></g></svg>`,
   )}")`;
 
-const boardTextureAsset = (filename) => `url("${import.meta.env.BASE_URL}board-textures/${filename}")`;
+const boardTextureAsset = (filename) =>
+  `url("${import.meta.env.BASE_URL}board-textures/${filename}")`;
 
 const clampColorChannel = (value) => Math.max(0, Math.min(255, Math.round(value)));
 
@@ -198,7 +199,8 @@ const buildBoardStyle = (
 
   return {
     "--cg-board-background-image": backgroundImage,
-    "--cg-board-background-size": texture?.size ?? (texture?.overlay ? "100% 100%, 100% 100%" : "100% 100%"),
+    "--cg-board-background-size":
+      texture?.size ?? (texture?.overlay ? "100% 100%, 100% 100%" : "100% 100%"),
     "--cg-board-background-blend-mode": texture?.blendMode ?? "normal",
     "--cg-board-light-last-move": toRgba(mixHexColors(palette.light, "#7fd0ff", 0.35), 0.46),
     "--cg-board-dark-last-move": toRgba(mixHexColors(palette.dark, "#2a95ff", 0.2), 0.42),
@@ -211,8 +213,10 @@ const buildPieceStyle = (pieceSet) => {
   const pieceStyle = {};
 
   for (const [role, code] of Object.entries(pieceCodes)) {
-    pieceStyle[`--cg-piece-white-${role}`] = `url("https://lichess1.org/assets/piece/${pieceSet}/w${code}.svg")`;
-    pieceStyle[`--cg-piece-black-${role}`] = `url("https://lichess1.org/assets/piece/${pieceSet}/b${code}.svg")`;
+    pieceStyle[`--cg-piece-white-${role}`] =
+      `url("https://lichess1.org/assets/piece/${pieceSet}/w${code}.svg")`;
+    pieceStyle[`--cg-piece-black-${role}`] =
+      `url("https://lichess1.org/assets/piece/${pieceSet}/b${code}.svg")`;
   }
 
   return pieceStyle;
@@ -290,7 +294,6 @@ export const Chessboard = ({
   solution,
   showSolution,
   analysisMode = false,
-  autoRetryWrongMoves = false,
   solutionNavigation,
   onNavigateHandled,
   onAttemptResolved,
@@ -653,8 +656,9 @@ export const Chessboard = ({
 
     const destination = squareName(to % 8, Math.floor(to / 8));
     if (!toPromotion(destination)) return [];
-    const activePosition =
-      isAnalysisModeActive() ? getAnalysisPositionForMove(position, from) ?? position : position;
+    const activePosition = isAnalysisModeActive()
+      ? (getAnalysisPositionForMove(position, from) ?? position)
+      : position;
 
     return promotionOptions.filter((role) => activePosition.isLegal({ from, to, promotion: role }));
   };
@@ -676,11 +680,7 @@ export const Chessboard = ({
 
   const playUserMove = (orig, dest, promotion) => {
     const position = positionRef.current;
-    if (
-      !position ||
-      moveLockRef.current ||
-      isSolutionPlaybackLocked()
-    ) {
+    if (!position || moveLockRef.current || isSolutionPlaybackLocked()) {
       return;
     }
 
@@ -694,8 +694,9 @@ export const Chessboard = ({
       promotion,
     };
 
-    const activePosition =
-      isAnalysisModeActive() ? getAnalysisPositionForMove(position, from) ?? position : position;
+    const activePosition = isAnalysisModeActive()
+      ? (getAnalysisPositionForMove(position, from) ?? position)
+      : position;
 
     if (!activePosition.isLegal(move)) {
       syncBoard(position, [orig, dest]);

@@ -1,4 +1,4 @@
-export const firstNonEmptyValue = (...values) =>
+const firstNonEmptyValue = (...values) =>
   values.find((value) => value !== undefined && value !== null && String(value).trim().length > 0);
 
 export const parseDateInputBoundary = (value, boundary) => {
@@ -17,7 +17,9 @@ export const parseDateInputBoundary = (value, boundary) => {
 
 export const sourceValueFromValues = (...values) => {
   const sourceValue = firstNonEmptyValue(...values);
-  return sourceValue === undefined || sourceValue === null || String(sourceValue).trim().length === 0
+  return sourceValue === undefined ||
+    sourceValue === null ||
+    String(sourceValue).trim().length === 0
     ? "—"
     : String(sourceValue);
 };
@@ -25,7 +27,11 @@ export const sourceValueFromValues = (...values) => {
 export const matchSourceFromValues = (...values) => {
   const sourceValue = firstNonEmptyValue(...values);
 
-  if (sourceValue === undefined || sourceValue === null || String(sourceValue).trim().length === 0) {
+  if (
+    sourceValue === undefined ||
+    sourceValue === null ||
+    String(sourceValue).trim().length === 0
+  ) {
     return "unknown";
   }
 

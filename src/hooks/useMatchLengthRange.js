@@ -6,7 +6,8 @@ import {
   matchLengthBoundsByMode,
 } from "../constants/matches";
 
-const resolveBounds = (mode) => matchLengthBoundsByMode[mode] ?? matchLengthBoundsByMode[defaultMode];
+const resolveBounds = (mode) =>
+  matchLengthBoundsByMode[mode] ?? matchLengthBoundsByMode[defaultMode];
 
 export const toBoundedLengthRange = (mode) => {
   const bounds = resolveBounds(mode);

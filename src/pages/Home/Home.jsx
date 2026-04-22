@@ -113,11 +113,7 @@ const principles = [
           AWC
         </a>
         ,{" "}
-        <a
-          href="https://lichess.org/team/the-atomic-chess-league"
-          target="_blank"
-          rel="noreferrer"
-        >
+        <a href="https://lichess.org/team/the-atomic-chess-league" target="_blank" rel="noreferrer">
           ACL
         </a>
         ,{" "}

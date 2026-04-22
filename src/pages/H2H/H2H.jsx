@@ -1,7 +1,12 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import "./H2H.css";
-import { defaultSourceFilters, modeLabels, modeOptions, knownSourceKeys } from "../../constants/matches";
+import {
+  defaultSourceFilters,
+  modeLabels,
+  modeOptions,
+  knownSourceKeys,
+} from "../../constants/matches";
 import { loadRawMatchesByMode } from "../../lib/matchData";
 import { fetchPlayerRatingsRows } from "../../lib/supabasePlayerRatings";
 import { resolveUsernameInputs } from "../../lib/searchUsernames";
@@ -139,7 +144,10 @@ export const H2HPage = () => {
     [endDateTs, filters, matches, startDateTs],
   );
 
-  const { initialOptions, incrementOptions } = useMemo(() => getTimeControlOptions(matches), [matches]);
+  const { initialOptions, incrementOptions } = useMemo(
+    () => getTimeControlOptions(matches),
+    [matches],
+  );
   const timeControlOptions = useMemo(() => {
     const known = new Set(matches.map((match) => match.timeControl));
     return initialOptions.flatMap((initial) =>
@@ -304,7 +312,10 @@ export const H2HPage = () => {
           <div className="h2hHeroIntro">
             <span className="h2hEyebrow">Head to Head</span>
             <h1>Compare two players</h1>
-            <p>Enter two usernames to load their rivalry, filter the matches, and compare every time control side by side.</p>
+            <p>
+              Enter two usernames to load their rivalry, filter the matches, and compare every time
+              control side by side.
+            </p>
           </div>
 
           <form
@@ -481,7 +492,7 @@ export const H2HPage = () => {
                             vs
                           </span>
                           <strong className="h2hModeCardScore h2hScoreLine">
-                            {formatScore(scoresByMode[mode]?.playerA ?? 0)} -{" "}
+                            {formatScore(scoresByMode[mode]?.playerA ?? 0)} -
                             {formatScore(scoresByMode[mode]?.playerB ?? 0)}
                           </strong>
                         </div>
@@ -551,11 +562,7 @@ export const H2HPage = () => {
                           {isExpanded ? (
                             <tr className="h2hHistoryDetailsRow">
                               <td colSpan={5}>
-                                <MatchDetails
-                                  match={match}
-                                  matchKey={match.key}
-                                  showRunningScore
-                                />
+                                <MatchDetails match={match} matchKey={match.key} showRunningScore />
                               </td>
                             </tr>
                           ) : null}
@@ -604,10 +611,7 @@ export const H2HPage = () => {
                         </div>
                       </button>
                       <div className="h2hHistoryCardActions">
-                        <MatchPageLink
-                          match={match}
-                          title="Open match page in new tab"
-                        />
+                        <MatchPageLink match={match} title="Open match page in new tab" />
                       </div>
                       {isExpanded ? (
                         <div className="h2hHistoryCardDetails">

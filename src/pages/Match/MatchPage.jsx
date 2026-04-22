@@ -6,7 +6,11 @@ import { Seo } from "../../components/Seo/Seo";
 import { modeLabels } from "../../constants/matches";
 import { formatLocalDateTime, formatScore } from "../../utils/formatters";
 import { normalizedGamesFromMatch, normalizedPlayersFromMatch } from "../../utils/matchTransforms";
-import { ratingsForPlayers, sourceValueFromMatch, summarizeMatchGames } from "../../lib/matchSummaries";
+import {
+  ratingsForPlayers,
+  sourceValueFromMatch,
+  summarizeMatchGames,
+} from "../../lib/matchSummaries";
 import { matchupToSlug } from "../../utils/h2hRoutes";
 import { normalizeMatchMode } from "../../utils/matchRoutes";
 import "./MatchPage.css";
@@ -127,11 +131,19 @@ export const MatchPage = () => {
               <div className="matchPageHeroCopy">
                 <p className="matchPageEyebrow">{modeLabels[match.mode] || match.mode} match</p>
                 <h1 className="matchPageTitle">
-                  <Link className="matchPlayerLink" to="/@/$username" params={{ username: match.playerA }}>
+                  <Link
+                    className="matchPlayerLink"
+                    to="/@/$username"
+                    params={{ username: match.playerA }}
+                  >
                     {match.playerA}
                   </Link>
                   <span className="matchPageVersus">vs</span>
-                  <Link className="matchPlayerLink" to="/@/$username" params={{ username: match.playerB }}>
+                  <Link
+                    className="matchPlayerLink"
+                    to="/@/$username"
+                    params={{ username: match.playerB }}
+                  >
                     {match.playerB}
                   </Link>
                 </h1>
@@ -151,7 +163,10 @@ export const MatchPage = () => {
                 </div>
               </div>
 
-              <div className="matchPageScoreCard" aria-label={`Score ${match.scoreA} to ${match.scoreB}`}>
+              <div
+                className="matchPageScoreCard"
+                aria-label={`Score ${match.scoreA} to ${match.scoreB}`}
+              >
                 <div className="matchPageScore">
                   <div className="matchPageScoreSide">
                     <span className="matchPageScoreName">{match.playerA}</span>

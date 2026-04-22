@@ -121,7 +121,9 @@ export const BannedUsersPage = () => {
           </span>
         </div>
 
-        {!error && loading ? <div className="emptyRankings">Loading banned user list...</div> : null}
+        {!error && loading ? (
+          <div className="emptyRankings">Loading banned user list...</div>
+        ) : null}
 
         {!error && !loading && rows.length === 0 ? (
           <div className="emptyRankings">No banned users available.</div>
@@ -157,9 +159,7 @@ export const BannedUsersPage = () => {
                         {row.username}
                       </Link>
                     </td>
-                    <td>
-                      {row.aliases.length > 0 ? row.aliases.join(", ") : "—"}
-                    </td>
+                    <td>{row.aliases.length > 0 ? row.aliases.join(", ") : "—"}</td>
                   </tr>
                 ))}
               </tbody>

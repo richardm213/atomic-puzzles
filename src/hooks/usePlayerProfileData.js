@@ -123,7 +123,9 @@ const formatRankSuffix = (rank) => {
 };
 
 export const buildRankingsLocation = (monthKey, mode) => {
-  const [month, year] = String(monthKey || "").trim().split(/\s+/);
+  const [month, year] = String(monthKey || "")
+    .trim()
+    .split(/\s+/);
   if (!month || !year || !modeOptions.includes(mode)) return "";
   const params = [
     `month=${encodeURIComponent(month)}`,
@@ -242,46 +244,55 @@ export const filterMatches = (matches, appliedFilters, selectedMode) => {
   const endDateTs = parseDateInputBoundary(appliedFilters.endDateFilter, "end");
 
   return matches.filter((match) => {
-      if (startDateTs !== null && match.startTs < startDateTs) return false;
-      if (endDateTs !== null && match.startTs > endDateTs) return false;
+    if (startDateTs !== null && match.startTs < startDateTs) return false;
+    if (endDateTs !== null && match.startTs > endDateTs) return false;
 
-      if (
-        !isMatchLengthWithinBounds(
-          match.gameCount,
-          appliedFilters.matchLengthMin,
-          appliedFilters.matchLengthMax,
-          matchLengthBoundsByMode[selectedMode]?.max ?? matchLengthBoundsByMode[defaultMode]?.max ?? defaultMatchLengthMax,
-        )
-      ) {
-        return false;
-      }
+    if (
+      !isMatchLengthWithinBounds(
+        match.gameCount,
+        appliedFilters.matchLengthMin,
+        appliedFilters.matchLengthMax,
+        matchLengthBoundsByMode[selectedMode]?.max ??
+          matchLengthBoundsByMode[defaultMode]?.max ??
+          defaultMatchLengthMax,
+      )
+    ) {
+      return false;
+    }
 
-      const { initial, increment } = parseTimeControlParts(match.timeControl);
-      if (
-        appliedFilters.timeControlInitialFilter !== "all" &&
-        initial !== appliedFilters.timeControlInitialFilter
-      ) {
-        return false;
-      }
-      if (
-        appliedFilters.timeControlIncrementFilter !== "all" &&
-        increment !== appliedFilters.timeControlIncrementFilter
-      ) {
-        return false;
-      }
+    const { initial, increment } = parseTimeControlParts(match.timeControl);
+    if (
+      appliedFilters.timeControlInitialFilter !== "all" &&
+      initial !== appliedFilters.timeControlInitialFilter
+    ) {
+      return false;
+    }
+    if (
+      appliedFilters.timeControlIncrementFilter !== "all" &&
+      increment !== appliedFilters.timeControlIncrementFilter
+    ) {
+      return false;
+    }
 
-      const opponentFilter = String(appliedFilters.opponentFilter || "").trim().toLowerCase();
-      if (opponentFilter && !String(match.opponent || "").toLowerCase().includes(opponentFilter)) {
-        return false;
-      }
+    const opponentFilter = String(appliedFilters.opponentFilter || "")
+      .trim()
+      .toLowerCase();
+    if (
+      opponentFilter &&
+      !String(match.opponent || "")
+        .toLowerCase()
+        .includes(opponentFilter)
+    ) {
+      return false;
+    }
 
-      const sourceFilters = appliedFilters.sourceFilters || {};
-      const sourceKey = String(match.sourceKey || "unknown").toLowerCase();
-      const anyKnownSourceEnabled = Object.values(sourceFilters).some(Boolean);
-      if (sourceKey === "unknown") return anyKnownSourceEnabled;
-      if (knownSourceKeys.includes(sourceKey)) return sourceFilters[sourceKey];
+    const sourceFilters = appliedFilters.sourceFilters || {};
+    const sourceKey = String(match.sourceKey || "unknown").toLowerCase();
+    const anyKnownSourceEnabled = Object.values(sourceFilters).some(Boolean);
+    if (sourceKey === "unknown") return anyKnownSourceEnabled;
+    if (knownSourceKeys.includes(sourceKey)) return sourceFilters[sourceKey];
 
-      return true;
+    return true;
   });
 };
 
@@ -296,9 +307,6 @@ export const getMonthRankHighlights = (monthRanks, bestMonthRankCount, recentMon
     .sort((a, b) => b.monthDate.getTime() - a.monthDate.getTime())
     .slice(0, recentMonthRankCount),
 });
-
-export const getAliasesForUser = (aliasesLookup, username) =>
-  aliasesLookup.get(username)?.members ?? [];
 
 export const toggleExpandedMatchKey = (currentKeys, matchKey) =>
   currentKeys.includes(matchKey)

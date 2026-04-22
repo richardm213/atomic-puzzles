@@ -33,7 +33,9 @@ export const monthKeyFromMonthValue = (monthValue) => {
 };
 
 export const monthDateFromMonthKey = (monthKey) => {
-  const [monthName, yearValue] = String(monthKey || "").trim().split(/\s+/);
+  const [monthName, yearValue] = String(monthKey || "")
+    .trim()
+    .split(/\s+/);
   const monthIndex = MONTH_INDEX_BY_NAME[monthName];
   const year = Number(yearValue);
 

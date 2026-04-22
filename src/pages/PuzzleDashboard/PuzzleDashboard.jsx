@@ -130,7 +130,9 @@ export const PuzzleDashboardPage = ({ username = "" }) => {
         if (!isCurrent) return;
         setProgressRows([]);
         setTotalProgressRows(0);
-        setError(loadError instanceof Error ? loadError.message : "Failed to load the puzzle dashboard.");
+        setError(
+          loadError instanceof Error ? loadError.message : "Failed to load the puzzle dashboard.",
+        );
       } finally {
         if (isCurrent) setIsDashboardLoading(false);
       }
@@ -174,7 +176,11 @@ export const PuzzleDashboardPage = ({ username = "" }) => {
           correct: 0,
           incorrect: 0,
         });
-        setError(loadError instanceof Error ? loadError.message : "Failed to load puzzle dashboard totals.");
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : "Failed to load puzzle dashboard totals.",
+        );
       } finally {
         if (isCurrent) setIsSummaryLoading(false);
       }
@@ -207,7 +213,9 @@ export const PuzzleDashboardPage = ({ username = "" }) => {
         if (!isCurrent) return;
         setCanViewDashboard(false);
         setError(
-          loadError instanceof Error ? loadError.message : "Failed to verify puzzle dashboard access.",
+          loadError instanceof Error
+            ? loadError.message
+            : "Failed to verify puzzle dashboard access.",
         );
       } finally {
         if (isCurrent) setIsAccessCheckLoading(false);
@@ -232,9 +240,7 @@ export const PuzzleDashboardPage = ({ username = "" }) => {
   const isPageLoading = isDashboardLoading || arePuzzlesLoading;
   const areStatsLoading = isSummaryLoading || isDashboardLoading;
   const firstRowNumber = totalProgressRows === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
-  const seoTitle = viewingOwnDashboard
-    ? "Puzzle Dashboard"
-    : `${targetUsername} Puzzle Dashboard`;
+  const seoTitle = viewingOwnDashboard ? "Puzzle Dashboard" : `${targetUsername} Puzzle Dashboard`;
   const seoDescription = viewingOwnDashboard
     ? "Review your first recorded puzzle attempts, stats, and links back into every puzzle."
     : `Review ${targetUsername}'s recorded puzzle attempts, stats, and links back into every puzzle.`;
@@ -354,7 +360,10 @@ export const PuzzleDashboardPage = ({ username = "" }) => {
               ) : dashboardEntries.length > 0 ? (
                 <div className="dashboardAttemptRows" role="list" aria-label="Puzzle dashboard">
                   {dashboardEntries.map((entry, index) => (
-                    <article key={`${entry.puzzleId}-${entry.firstAttemptAt}`} className="dashboardAttemptRow">
+                    <article
+                      key={`${entry.puzzleId}-${entry.firstAttemptAt}`}
+                      className="dashboardAttemptRow"
+                    >
                       <div className="dashboardAttemptPrimary">
                         <div className="dashboardRowNumber" aria-hidden="true">
                           {firstRowNumber + index}
@@ -387,7 +396,9 @@ export const PuzzleDashboardPage = ({ username = "" }) => {
                         </div>
                         <div className="dashboardMetaCard">
                           <span className="dashboardMiniLabel">Attempt date</span>
-                          <span className="dashboardMetaValue">{formatDateTime(entry.firstAttemptAt)}</span>
+                          <span className="dashboardMetaValue">
+                            {formatDateTime(entry.firstAttemptAt)}
+                          </span>
                         </div>
                         <div className="dashboardMetaCard dashboardActionCard">
                           <span className="dashboardMiniLabel">Replay</span>

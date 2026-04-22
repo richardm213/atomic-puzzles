@@ -170,7 +170,7 @@ const routeTree = rootRoute.addChildren([
   lichessAuthCallbackRoute,
 ]);
 
-export const router = createRouter({
+const router = createRouter({
   routeTree,
   basepath: appBasePath,
 });

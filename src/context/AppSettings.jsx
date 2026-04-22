@@ -11,9 +11,9 @@ const STORAGE_KEYS = {
   boardOverrideDarkSquare: "atomic-puzzles.board-override-dark-square",
 };
 
-export const THEMES = ["dark", "light"];
+const THEMES = ["dark", "light"];
 
-export const LICHESS_PIECE_SETS = [
+const LICHESS_PIECE_SETS = [
   { value: "cburnett", label: "Cburnett" },
   { value: "merida", label: "Merida" },
   { value: "alpha", label: "Alpha" },
@@ -55,7 +55,7 @@ export const LICHESS_PIECE_SETS = [
   { value: "disguised", label: "Disguised" },
 ];
 
-export const LICHESS_BOARD_THEMES = [
+const LICHESS_BOARD_THEMES = [
   { value: "blue", label: "Blue" },
   { value: "blue2", label: "Blue 2" },
   { value: "blue3", label: "Blue 3" },
@@ -82,7 +82,7 @@ export const LICHESS_BOARD_THEMES = [
   { value: "custom", label: "Custom" },
 ];
 
-export const BOARD_THEME_PALETTE = {
+const BOARD_THEME_PALETTE = {
   blue: { light: "#d4e4ff", dark: "#6291d8" },
   blue2: { light: "#cbdfff", dark: "#4d7fca" },
   blue3: { light: "#e0e7ef", dark: "#6c88a6" },
@@ -109,7 +109,7 @@ export const BOARD_THEME_PALETTE = {
   ic: { light: "#dff6ff", dark: "#66b9d6" },
 };
 
-export const IMAGE_BOARD_THEMES = ["wood", "wood2", "wood3", "wood4", "maple", "maple2"];
+const IMAGE_BOARD_THEMES = ["wood", "wood2", "wood3", "wood4", "maple", "maple2"];
 
 const DEFAULT_THEME = "dark";
 const DEFAULT_PIECE_SET = "cburnett";
@@ -123,7 +123,7 @@ const isValidTheme = (value) => THEMES.includes(value);
 const isValidPieceSet = (value) => LICHESS_PIECE_SETS.some((entry) => entry.value === value);
 const isValidBoardTheme = (value) => LICHESS_BOARD_THEMES.some((entry) => entry.value === value);
 const isValidHexColor = (value) => /^#([0-9a-f]{6})$/i.test(value ?? "");
-export const isImageBoardTheme = (value) => IMAGE_BOARD_THEMES.includes(value);
+const isImageBoardTheme = (value) => IMAGE_BOARD_THEMES.includes(value);
 const isValidBoardColorOverrideTheme = (value) =>
   isValidBoardTheme(value) && value !== "custom" && !isImageBoardTheme(value);
 

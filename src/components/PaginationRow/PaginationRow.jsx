@@ -10,7 +10,10 @@ export const PaginationRow = ({ currentPage, totalPages, onPageChange, formatLab
 
   const commitPageChange = () => {
     const parsedPage = Number.parseInt(pageInput, 10);
-    const nextPage = Math.min(totalPages, Math.max(1, Number.isNaN(parsedPage) ? currentPage : parsedPage));
+    const nextPage = Math.min(
+      totalPages,
+      Math.max(1, Number.isNaN(parsedPage) ? currentPage : parsedPage),
+    );
     setIsEditingPage(false);
     setPageInput(String(nextPage));
     if (nextPage !== currentPage) {
@@ -67,7 +70,9 @@ export const PaginationRow = ({ currentPage, totalPages, onPageChange, formatLab
           disabled={disabled}
           aria-label={`Current page ${currentPage} of ${totalPages}. Click to enter a page number.`}
         >
-          {formatLabel ? formatLabel(currentPage, totalPages) : `Page ${currentPage} of ${totalPages}`}
+          {formatLabel
+            ? formatLabel(currentPage, totalPages)
+            : `Page ${currentPage} of ${totalPages}`}
         </button>
       )}
       <button

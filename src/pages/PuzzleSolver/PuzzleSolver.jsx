@@ -114,12 +114,7 @@ const sortMatchingSolutionLineIndexes = ({
   matchingLineIndexes = [],
 }) =>
   [...matchingLineIndexes].sort((a, b) =>
-    compareMoves(
-      solutionLines[a]?.[currentPly] ?? "",
-      solutionLines[b]?.[currentPly] ?? "",
-      a,
-      b,
-    ),
+    compareMoves(solutionLines[a]?.[currentPly] ?? "", solutionLines[b]?.[currentPly] ?? "", a, b),
   );
 
 const getActiveSolutionLineIndex = ({
@@ -429,8 +424,7 @@ export const PuzzleSolverPage = () => {
     if (historyIndex >= 0) return;
 
     const indexFromRoute = puzzleIndexFromParam(puzzles, routePuzzleId);
-    const initialIndex =
-      indexFromRoute >= 0 ? indexFromRoute : getNextShuffledPuzzleIndex(-1);
+    const initialIndex = indexFromRoute >= 0 ? indexFromRoute : getNextShuffledPuzzleIndex(-1);
 
     setHistory([initialIndex]);
     setHistoryIndex(0);
@@ -633,78 +627,78 @@ export const PuzzleSolverPage = () => {
     });
   }, []);
 
-  const handleBoardStateChange = useCallback((nextBoardState) => {
-    const previousBoardSnapshot = previousBoardSnapshotRef.current;
-    const boardPositionChanged =
-      previousBoardSnapshot.fen !== nextBoardState.fen ||
-      previousBoardSnapshot.lineIndex !== nextBoardState.lineIndex ||
-      previousBoardSnapshot.solutionLineIndex !== nextBoardState.solutionLineIndex ||
-      previousBoardSnapshot.viewingSolution !== nextBoardState.viewingSolution;
-    const nextCompletionFeedback = buildCompletionFeedback(
-      nextBoardState,
-      hadWrongAttemptRef.current,
-    );
-    const lockedCompletionFeedback = nextCompletionFeedback ?? lockedCompletionFeedbackRef.current;
-    const enteringAnalysisMode =
-      interactionModeRef.current !== ANALYSIS_MODE &&
-      Boolean(nextCompletionFeedback) &&
-      nextCompletionFeedback.type !== "wrong";
+  const handleBoardStateChange = useCallback(
+    (nextBoardState) => {
+      const previousBoardSnapshot = previousBoardSnapshotRef.current;
+      const boardPositionChanged =
+        previousBoardSnapshot.fen !== nextBoardState.fen ||
+        previousBoardSnapshot.lineIndex !== nextBoardState.lineIndex ||
+        previousBoardSnapshot.solutionLineIndex !== nextBoardState.solutionLineIndex ||
+        previousBoardSnapshot.viewingSolution !== nextBoardState.viewingSolution;
+      const nextCompletionFeedback = buildCompletionFeedback(
+        nextBoardState,
+        hadWrongAttemptRef.current,
+      );
+      const lockedCompletionFeedback =
+        nextCompletionFeedback ?? lockedCompletionFeedbackRef.current;
+      const enteringAnalysisMode =
+        interactionModeRef.current !== ANALYSIS_MODE &&
+        Boolean(nextCompletionFeedback) &&
+        nextCompletionFeedback.type !== "wrong";
 
-    setBoardState(nextBoardState);
+      setBoardState(nextBoardState);
 
-    if (isMobileLayout) {
-      if (nextCompletionFeedback) {
-        showMobileFeedback(nextCompletionFeedback);
-      } else if (interactionModeRef.current === SOLVE_MODE && boardPositionChanged) {
-        setMobileFeedback(null);
+      if (isMobileLayout) {
+        if (nextCompletionFeedback) {
+          showMobileFeedback(nextCompletionFeedback);
+        } else if (interactionModeRef.current === SOLVE_MODE && boardPositionChanged) {
+          setMobileFeedback(null);
+        }
       }
-    }
 
-    if (nextBoardState.showWrongMove) {
-      hadWrongAttemptRef.current = true;
-    }
+      if (nextBoardState.showWrongMove) {
+        hadWrongAttemptRef.current = true;
+      }
 
-    if (nextCompletionFeedback) {
-      lockedCompletionFeedbackRef.current = nextCompletionFeedback;
-    }
+      if (nextCompletionFeedback) {
+        lockedCompletionFeedbackRef.current = nextCompletionFeedback;
+      }
 
-    if (enteringAnalysisMode && nextCompletionFeedback) {
-      setInteractionMode(ANALYSIS_MODE);
-      setCompletionFeedback(nextCompletionFeedback);
-    } else if (nextCompletionFeedback) {
-      setCompletionFeedback(nextCompletionFeedback);
-    } else if (lockedCompletionFeedback) {
-      setCompletionFeedback(lockedCompletionFeedback);
-    } else {
-      setCompletionFeedback(null);
-    }
+      if (enteringAnalysisMode && nextCompletionFeedback) {
+        setInteractionMode(ANALYSIS_MODE);
+        setCompletionFeedback(nextCompletionFeedback);
+      } else if (nextCompletionFeedback) {
+        setCompletionFeedback(nextCompletionFeedback);
+      } else if (lockedCompletionFeedback) {
+        setCompletionFeedback(lockedCompletionFeedback);
+      } else {
+        setCompletionFeedback(null);
+      }
 
-    if (
-      interactionModeRef.current === ANALYSIS_MODE &&
-      showSolution &&
-      previousBoardSnapshot.viewingSolution &&
-      previousBoardSnapshot.solutionLineIndex !== nextBoardState.solutionLineIndex
-    ) {
-      setPinnedSolutionLineIndex(nextBoardState.solutionLineIndex);
-    }
+      if (
+        interactionModeRef.current === ANALYSIS_MODE &&
+        showSolution &&
+        previousBoardSnapshot.viewingSolution &&
+        previousBoardSnapshot.solutionLineIndex !== nextBoardState.solutionLineIndex
+      ) {
+        setPinnedSolutionLineIndex(nextBoardState.solutionLineIndex);
+      }
 
-    previousBoardSnapshotRef.current = {
-      fen: nextBoardState.fen,
-      lineIndex: nextBoardState.lineIndex,
-      solutionLineIndex: nextBoardState.solutionLineIndex,
-      viewingSolution: nextBoardState.viewingSolution,
-      showWrongMove: nextBoardState.showWrongMove,
-      solved: nextBoardState.solved,
-    };
+      previousBoardSnapshotRef.current = {
+        fen: nextBoardState.fen,
+        lineIndex: nextBoardState.lineIndex,
+        solutionLineIndex: nextBoardState.solutionLineIndex,
+        viewingSolution: nextBoardState.viewingSolution,
+        showWrongMove: nextBoardState.showWrongMove,
+        solved: nextBoardState.solved,
+      };
 
-    if (nextBoardState.solved) {
-      setSolutionNavigation(null);
-    }
-  }, [
-    isMobileLayout,
-    showMobileFeedback,
-    showSolution,
-  ]);
+      if (nextBoardState.solved) {
+        setSolutionNavigation(null);
+      }
+    },
+    [isMobileLayout, showMobileFeedback, showSolution],
+  );
 
   const handleMoveClick = (lineIndex, moveIndex, { advance = false } = {}) => {
     setPinnedSolutionLineIndex(lineIndex);
@@ -759,7 +753,8 @@ export const PuzzleSolverPage = () => {
   );
   const activeSolutionLine = boardState.solutionLines?.[activeSolutionLineIndex] ?? [];
   const isOnSolutionPath =
-    matchingSolutionLineIndexes.length > 0 && activeSolutionLine.length >= currentAnalysisMoves.length;
+    matchingSolutionLineIndexes.length > 0 &&
+    activeSolutionLine.length >= currentAnalysisMoves.length;
 
   useEffect(() => {
     if (!isAnalysisMode || !showSolution || !isOnSolutionPath) return;
@@ -789,8 +784,9 @@ export const PuzzleSolverPage = () => {
   );
 
   const hasSolutionOptions = solutionOptions.length > 1;
-  const activeSolutionOption = solutionOptions.find((option) => option.lineIndex === activeSolutionLineIndex)
-    ?.move ?? solutionOptions[0]?.move;
+  const activeSolutionOption =
+    solutionOptions.find((option) => option.lineIndex === activeSolutionLineIndex)?.move ??
+    solutionOptions[0]?.move;
 
   useEffect(() => {
     activeSolutionOptionRef.current?.scrollIntoView({
@@ -979,7 +975,9 @@ export const PuzzleSolverPage = () => {
         <>
           {hasSolutionOptions ? (
             <div className="solutionOptions">
-              <span className="solutionOptionsLabel">{solutionOptions.length} options from here</span>
+              <span className="solutionOptionsLabel">
+                {solutionOptions.length} options from here
+              </span>
               <div className="solutionOptionList" role="list" aria-label="Solution options">
                 {solutionOptions.map((option) => (
                   <button
@@ -997,7 +995,11 @@ export const PuzzleSolverPage = () => {
             </div>
           ) : null}
           {isOnSolutionPath ? (
-            <div className="moveList inlineSolutionTree" role="list" aria-label="Solution variations">
+            <div
+              className="moveList inlineSolutionTree"
+              role="list"
+              aria-label="Solution variations"
+            >
               {inlineSolutionMoves}
             </div>
           ) : boardState.lineMoves?.length ? (
@@ -1135,7 +1137,10 @@ export const PuzzleSolverPage = () => {
         <div className={`boardFrame ${feedback ? `hasFeedback ${feedback.type}` : ""}`}>
           {!isMobileLayout ? (
             <div className={`feedbackBanner ${feedback ? feedback.type : ""}`} aria-live="polite">
-              <span className={`feedbackIcon ${feedback ? "" : "neutral"}`.trim()} aria-hidden="true">
+              <span
+                className={`feedbackIcon ${feedback ? "" : "neutral"}`.trim()}
+                aria-hidden="true"
+              >
                 {feedback ? feedback.icon : "?"}
               </span>
               <span className="feedbackCopy">
@@ -1153,7 +1158,6 @@ export const PuzzleSolverPage = () => {
               solution={activePuzzle?.solution}
               showSolution={isAnalysisMode && showSolution}
               analysisMode={isAnalysisMode}
-              autoRetryWrongMoves={isMobileLayout}
               solutionNavigation={solutionNavigation}
               onNavigateHandled={() => setSolutionNavigation(null)}
               onAttemptResolved={handleAttemptResolved}

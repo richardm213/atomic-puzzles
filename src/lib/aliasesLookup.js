@@ -1,6 +1,6 @@
 import { fetchAliasRows } from "./supabaseAliases";
 
-export const buildAliasesLookup = (rows) => {
+const buildAliasesLookup = (rows) => {
   const lookup = new Map();
 
   rows.forEach((row) => {

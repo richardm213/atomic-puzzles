@@ -21,10 +21,7 @@ const fetchUncachedPlayerRatingsRows = async ({ tc, username, limit } = {}) => {
   };
 
   if (Number(limit) > 0) {
-    return loadSupabaseRows(
-      PLAYER_RATINGS_TABLE,
-      buildQuery().limit(Math.floor(Number(limit))),
-    );
+    return loadSupabaseRows(PLAYER_RATINGS_TABLE, buildQuery().limit(Math.floor(Number(limit))));
   }
 
   return fetchAllSupabaseRows(PLAYER_RATINGS_TABLE, buildQuery);

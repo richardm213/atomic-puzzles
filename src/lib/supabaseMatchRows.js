@@ -32,7 +32,10 @@ const MATCH_SELECT_COLUMNS = [
 const matchRowsCache = new Map();
 const MAX_MATCH_PAGE_SIZE = 200;
 
-const escapeOrValue = (value) => String(value || "").trim().replace(/,/g, "\\,");
+const escapeOrValue = (value) =>
+  String(value || "")
+    .trim()
+    .replace(/,/g, "\\,");
 
 const numericBoundary = (value, fallback) => {
   if (value === undefined || value === null || String(value).trim() === "") return fallback;

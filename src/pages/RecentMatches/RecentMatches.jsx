@@ -52,8 +52,11 @@ const normalizeRecentMatches = (matches, mode) =>
           : ["Unknown", "Unknown"];
       const [playerA, playerB] = players.length >= 2 ? players : [players[0], "Unknown"];
       const games = normalizedGamesFromMatch(match, players);
-      const { scoreA, scoreB, playerAWins, playerBWins, draws, mappedGames } =
-        summarizeMatchGames(games, playerA, playerB);
+      const { scoreA, scoreB, playerAWins, playerBWins, draws, mappedGames } = summarizeMatchGames(
+        games,
+        playerA,
+        playerB,
+      );
       const ratings = ratingsForPlayers(match, players, playerA, playerB);
 
       const firstGame = games[0];
@@ -137,7 +140,10 @@ export const RecentMatchesPage = () => {
     () => parseDateInputBoundary(appliedFilters.endDateFilter, "end"),
     [appliedFilters.endDateFilter],
   );
-  const { initialOptions, incrementOptions } = useMemo(() => getTimeControlOptions(matches), [matches]);
+  const { initialOptions, incrementOptions } = useMemo(
+    () => getTimeControlOptions(matches),
+    [matches],
+  );
 
   useEffect(() => {
     setTimeControlInitialFilter("all");
@@ -481,7 +487,11 @@ export const RecentMatchesPage = () => {
 
           <SourceFilterChecks values={sourceFilters} onChange={setSourceFilter} />
           <div className="matchFilterActions">
-            <button className="analyzeButton matchFilterSearch" type="submit" disabled={loadingMatches}>
+            <button
+              className="analyzeButton matchFilterSearch"
+              type="submit"
+              disabled={loadingMatches}
+            >
               {loadingMatches ? "Searching..." : "Search"}
             </button>
           </div>

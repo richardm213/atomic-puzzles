@@ -7,7 +7,7 @@ export const normalizePuzzleEventName = (value) => {
   return trimmed || UNKNOWN_PUZZLE_EVENT_LABEL;
 };
 
-export const getPuzzleEventKey = (value) => {
+const getPuzzleEventKey = (value) => {
   const normalizedEvent = normalizePuzzleEventName(value);
 
   if (normalizedEvent === UNKNOWN_PUZZLE_EVENT_LABEL) {

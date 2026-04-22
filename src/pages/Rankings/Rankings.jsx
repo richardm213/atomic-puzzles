@@ -109,7 +109,9 @@ const getInitialRankingsFilters = () => {
   const searchParams = new window.URLSearchParams(window.location.search);
   const selectedYear = String(searchParams.get("year") || "").trim();
   const selectedMonthName = String(searchParams.get("month") || "").trim();
-  const requestedMode = String(searchParams.get("mode") || "").trim().toLowerCase();
+  const requestedMode = String(searchParams.get("mode") || "")
+    .trim()
+    .toLowerCase();
 
   return {
     selectedYear,
@@ -168,7 +170,12 @@ const LeaderboardView = () => {
     setSelectedYear(hasRequestedMonth ? initialFilters.selectedYear : fallbackYear);
     setSelectedMonthName(hasRequestedMonth ? initialFilters.selectedMonthName : fallbackMonthName);
     hasInitializedFiltersRef.current = true;
-  }, [initialFilters.selectedMonthName, initialFilters.selectedYear, monthOptions, rankingsByMonth]);
+  }, [
+    initialFilters.selectedMonthName,
+    initialFilters.selectedYear,
+    monthOptions,
+    rankingsByMonth,
+  ]);
 
   const availableMonthsForYear = useMemo(() => {
     if (!selectedYear) return monthNames;
@@ -300,9 +307,12 @@ const LeaderboardView = () => {
               </Link>
             </span>
             {eligibilityRequirement ? (
-              <p className="rankingsEligibilityNote" aria-label={`${modeLabels[selectedMode]} eligibility`}>
+              <p
+                className="rankingsEligibilityNote"
+                aria-label={`${modeLabels[selectedMode]} eligibility`}
+              >
                 Note: {modeLabels[selectedMode]} requires {eligibilityRequirement.minGames}+ games
-                this month and RD {"<"} {eligibilityRequirement.maxRd}.
+                this month and RD &lt; {eligibilityRequirement.maxRd}.
               </p>
             ) : null}
           </div>

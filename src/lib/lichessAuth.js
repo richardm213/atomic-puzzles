@@ -14,8 +14,7 @@ const getBasePath = () => {
   return baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
 };
 
-const getClientId = () =>
-  import.meta.env.VITE_LICHESS_CLIENT_ID?.trim() || window.location.host;
+const getClientId = () => import.meta.env.VITE_LICHESS_CLIENT_ID?.trim() || window.location.host;
 
 const getRequestedScope = () => import.meta.env.VITE_LICHESS_OAUTH_SCOPE?.trim() || "";
 
@@ -40,11 +39,7 @@ const withTimeout = async (promise, timeoutMs, timeoutMessage) => {
 };
 
 const toBase64Url = (value) =>
-  window
-    .btoa(value)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/g, "");
+  window.btoa(value).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 
 const randomString = (byteLength = 64) => {
   const bytes = new Uint8Array(byteLength);
@@ -90,7 +85,7 @@ export const clearStoredPostLoginRedirect = () => {
   window.localStorage.removeItem(STORAGE_KEYS.postLoginRedirect);
 };
 
-export const getStoredLichessSession = () => parseStoredJson(STORAGE_KEYS.session);
+const getStoredLichessSession = () => parseStoredJson(STORAGE_KEYS.session);
 
 export const clearStoredLichessSession = () => {
   window.localStorage.removeItem(STORAGE_KEYS.session);
@@ -135,7 +130,7 @@ const fetchJson = async (input, init, timeoutMessage = "Request timed out.") => 
   return { response, body };
 };
 
-export const fetchLichessAccount = async (accessToken) => {
+const fetchLichessAccount = async (accessToken) => {
   const { response, body } = await fetchJson(
     `${LICHESS_HOST}/api/account`,
     {
@@ -185,7 +180,13 @@ export const completeLichessLogin = async (search) => {
     throw new Error(errorDescription || error);
   }
 
-  if (!code || !returnedState || !expectedState || returnedState !== expectedState || !codeVerifier) {
+  if (
+    !code ||
+    !returnedState ||
+    !expectedState ||
+    returnedState !== expectedState ||
+    !codeVerifier
+  ) {
     clearPendingAuthState();
     throw new Error("Lichess login could not be verified. Please try again.");
   }
