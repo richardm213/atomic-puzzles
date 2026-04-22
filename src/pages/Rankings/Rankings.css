@@ -120,6 +120,13 @@
   color: var(--color-subtle);
 }
 
+.rankingsMetaDetails {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
 .rankingsMetaLink {
   display: inline-flex;
   align-items: center;
@@ -133,6 +140,13 @@
 .rankingsMetaLink:focus-visible {
   color: var(--color-primary-pale);
   text-decoration: underline;
+}
+
+.rankingsEligibilityNote {
+  margin: 0;
+  color: var(--color-subtle);
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .rankingsTable tbody tr:hover {
@@ -174,6 +188,10 @@
   }
 
   .rankedCount {
+    align-items: flex-start;
+  }
+
+  .rankingsMetaDetails {
     align-items: flex-start;
   }
 }

@@ -13,6 +13,21 @@ export const modeDescriptions = {
   hyperbullet: "",
 };
 
+export const rankingEligibilityByMode = {
+  blitz: {
+    minGames: 15,
+    maxRd: 65,
+  },
+  bullet: {
+    minGames: 25,
+    maxRd: 65,
+  },
+  hyperbullet: {
+    minGames: 25,
+    maxRd: 60,
+  },
+};
+
 export const createModeRecord = (valueFactory) =>
   Object.fromEntries(modeOptions.map((mode) => [mode, valueFactory(mode)]));
 

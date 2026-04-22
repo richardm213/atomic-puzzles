@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { defaultMode, modeLabels, modeOptions } from "../../constants/matches";
+import {
+  defaultMode,
+  modeLabels,
+  modeOptions,
+  rankingEligibilityByMode,
+} from "../../constants/matches";
 import { useRankingsByMonth } from "../../hooks/useRankingsByMonth";
 import { monthDateFromMonthKey } from "../../lib/supabaseLb";
 import { Seo } from "../../components/Seo/Seo";
@@ -58,6 +63,15 @@ const readableMonthLabel = (monthKey) => {
 const sortIndicator = (sortKey, sortDirection, columnKey) => {
   if (sortKey !== columnKey) return "";
   return sortDirection === "asc" ? "↑" : "↓";
+};
+
+const isEligibleForRankings = (player, mode) => {
+  const requirement = rankingEligibilityByMode[mode];
+  if (!requirement) return true;
+
+  const games = Number(player?.games);
+  const rd = Number(player?.rd);
+  return games >= requirement.minGames && rd < requirement.maxRd;
 };
 
 const allMonthsFromJan2023 = () => {
@@ -181,7 +195,11 @@ const LeaderboardView = () => {
   const selectedModeData = selectedMonthData?.[selectedMode] || {
     players: [],
   };
-  const players = selectedModeData.players;
+  const eligibilityRequirement = rankingEligibilityByMode[selectedMode];
+  const players = useMemo(
+    () => selectedModeData.players.filter((player) => isEligibleForRankings(player, selectedMode)),
+    [selectedMode, selectedModeData.players],
+  );
 
   const handleSort = (nextKey) => {
     if (sortKey === nextKey) {
@@ -270,16 +288,24 @@ const LeaderboardView = () => {
 
         <div className="rankingsMeta">
           <span>{readableMonthLabel(selectedMonth || monthOptions[0])}</span>
-          <span className="rankedCount">
-            {players.length} ranked
-            <Link className="rankingsMetaLink" to="/users">
-              Full user list
-            </Link>
-            <Link className="rankingsMetaLink" to="/rankings/how-ratings-work">
-              <i className="fa-solid fa-circle-info" aria-hidden="true" />
-              How are ratings calculated?
-            </Link>
-          </span>
+          <div className="rankingsMetaDetails">
+            <span className="rankedCount">
+              {players.length} ranked
+              <Link className="rankingsMetaLink" to="/users">
+                Full user list
+              </Link>
+              <Link className="rankingsMetaLink" to="/rankings/how-ratings-work">
+                <i className="fa-solid fa-circle-info" aria-hidden="true" />
+                How are ratings calculated?
+              </Link>
+            </span>
+            {eligibilityRequirement ? (
+              <p className="rankingsEligibilityNote" aria-label={`${modeLabels[selectedMode]} eligibility`}>
+                Note: {modeLabels[selectedMode]} requires {eligibilityRequirement.minGames}+ games
+                this month and RD {"<"} {eligibilityRequirement.maxRd}.
+              </p>
+            ) : null}
+          </div>
         </div>
 
         {players.length === 0 ? (

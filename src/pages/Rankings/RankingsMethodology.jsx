@@ -1,3 +1,4 @@
+import { modeLabels, rankingEligibilityByMode } from "../../constants/matches";
 import { Link } from "@tanstack/react-router";
 import { Seo } from "../../components/Seo/Seo";
 import "./RankingsMethodology.css";
@@ -47,12 +48,9 @@ const ratingFaq = [
   },
 ];
 
-const eligibilityNotes = [
-  "A player needs at least 15 blitz games in a month to appear in the monthly blitz rankings.",
-  "A player needs at least 25 bullet games in a month to appear in the monthly bullet rankings.",
-  "A player needs at least 25 hyperbullet games in a month to appear in the monthly hyperbullet rankings.",
-  "A player's rating deviation must be 65.0 or lower to be shown in the published leaderboard.",
-];
+const eligibilityNotes = Object.entries(rankingEligibilityByMode).map(([mode, requirements]) => {
+  return `A player needs at least ${requirements.minGames} ${mode} games in that month and an RD below ${requirements.maxRd} to appear in the monthly ${modeLabels[mode].toLowerCase()} rankings.`;
+});
 
 export const RankingsMethodologyPage = () => (
   <div className="rankingsPage">
