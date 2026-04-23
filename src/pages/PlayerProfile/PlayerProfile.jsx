@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import "./PlayerProfile.css";
 import {
@@ -160,6 +160,23 @@ const buildMatchFilters = (username, filters) => {
 
 const isClientSidePagedSearch = (filters) => Boolean(String(filters?.opponentFilter || "").trim());
 
+const createDefaultProfileFilters = (mode = defaultMode) => {
+  const matchLengthRange = toBoundedLengthRange(mode);
+
+  return {
+    matchLengthMin: matchLengthRange.min,
+    matchLengthMax: matchLengthRange.max,
+    opponentRatingMin: defaultRatingMin,
+    opponentRatingMax: defaultRatingMax,
+    opponentFilter: "",
+    startDateFilter: "",
+    endDateFilter: "",
+    sourceFilters: { ...defaultSourceFilters },
+    timeControlInitialFilter: "all",
+    timeControlIncrementFilter: "all",
+  };
+};
+
 export const PlayerProfilePage = ({ username }) => {
   const normalizedUsername = useMemo(() => normalizeUsername(username), [username]);
   const [selectedMode, setSelectedMode] = useState(defaultMode);
@@ -171,7 +188,6 @@ export const PlayerProfilePage = ({ username }) => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [expandedMatchKeys, setExpandedMatchKeys] = useState([]);
-  const defaultLengthRange = toBoundedLengthRange(defaultMode);
   const { matchLengthMin, setMatchLengthMin, matchLengthMax, setMatchLengthMax } =
     useMatchLengthRange(selectedMode);
   const [opponentRatingMin, setOpponentRatingMin] = useState(defaultRatingMin);
@@ -193,35 +209,32 @@ export const PlayerProfilePage = ({ username }) => {
   const [bestMonthRankCount, setBestMonthRankCount] = useState(5);
   const [recentMonthRankCount, setRecentMonthRankCount] = useState(5);
   const [bestWinCount, setBestWinCount] = useState(5);
-  const [appliedFilters, setAppliedFilters] = useState({
-    matchLengthMin: defaultLengthRange.min,
-    matchLengthMax: defaultLengthRange.max,
-    opponentRatingMin: defaultRatingMin,
-    opponentRatingMax: defaultRatingMax,
-    opponentFilter: "",
-    startDateFilter: "",
-    endDateFilter: "",
-    sourceFilters: defaultSourceFilters,
-    timeControlInitialFilter: "all",
-    timeControlIncrementFilter: "all",
-  });
+  const [appliedFilters, setAppliedFilters] = useState(() => createDefaultProfileFilters());
   const matchLengthBounds =
     matchLengthBoundsByMode[selectedMode] ?? matchLengthBoundsByMode[defaultMode];
 
   useEffect(() => {
-    const resetLengthRange = toBoundedLengthRange(defaultMode);
+    const defaultFilters = createDefaultProfileFilters(defaultMode);
+    matchRequestIdRef.current += 1;
+    searchSubmitInFlightRef.current = false;
     setSelectedMode(defaultMode);
     setPage(1);
-    setOpponentRatingMin(defaultRatingMin);
-    setOpponentRatingMax(defaultRatingMax);
-    setOpponentFilter("");
-    setStartDateFilter("");
-    setEndDateFilter("");
-    setSourceFilters(defaultSourceFilters);
-    setTimeControlInitialFilter("all");
-    setTimeControlIncrementFilter("all");
-    setMatchLengthMin(resetLengthRange.min);
-    setMatchLengthMax(resetLengthRange.max);
+    setError("");
+    setLoadingMatches(false);
+    setExpandedMatchKeys([]);
+    setMatchesByMode(createModeRecord(() => []));
+    setTotalMatchesByMode(createModeRecord(() => 0));
+    setOpponentRatingMin(defaultFilters.opponentRatingMin);
+    setOpponentRatingMax(defaultFilters.opponentRatingMax);
+    setOpponentFilter(defaultFilters.opponentFilter);
+    setStartDateFilter(defaultFilters.startDateFilter);
+    setEndDateFilter(defaultFilters.endDateFilter);
+    setSourceFilters(defaultFilters.sourceFilters);
+    setTimeControlInitialFilter(defaultFilters.timeControlInitialFilter);
+    setTimeControlIncrementFilter(defaultFilters.timeControlIncrementFilter);
+    setMatchLengthMin(defaultFilters.matchLengthMin);
+    setMatchLengthMax(defaultFilters.matchLengthMax);
+    setAppliedFilters(defaultFilters);
   }, [normalizedUsername, setMatchLengthMax, setMatchLengthMin]);
 
   useEffect(() => {
@@ -232,7 +245,10 @@ export const PlayerProfilePage = ({ username }) => {
     let isCurrent = true;
 
     const loadProfileAliasEntry = async () => {
-      if (isCurrent) setAliasesLoaded(false);
+      if (isCurrent) {
+        setAliasesLoaded(false);
+        setProfileAliasEntry(null);
+      }
 
       try {
         const nextProfileAliasEntry = await fetchProfileAliasRow(normalizedUsername);
@@ -259,7 +275,7 @@ export const PlayerProfilePage = ({ username }) => {
     let isCurrent = true;
 
     const loadHistoryAvailability = async () => {
-      if (!canonicalUsername) {
+      if (!aliasesLoaded || !canonicalUsername) {
         setIsHistoryAvailable(false);
         return;
       }
@@ -279,9 +295,9 @@ export const PlayerProfilePage = ({ username }) => {
     return () => {
       isCurrent = false;
     };
-  }, [canonicalUsername]);
+  }, [aliasesLoaded, canonicalUsername]);
 
-  const runMatchSearch = async (mode, nextAppliedFilters, nextPage = 1) => {
+  const runMatchSearch = useCallback(async (mode, nextAppliedFilters, nextPage = 1) => {
     const requestId = matchRequestIdRef.current + 1;
     matchRequestIdRef.current = requestId;
     setLoadingMatches(true);
@@ -334,36 +350,13 @@ export const PlayerProfilePage = ({ username }) => {
         setLoadingMatches(false);
       }
     }
-  };
-
-  useEffect(() => {
-    if (!aliasesLoaded || isBanned) return;
-
-    const defaultFilters = {
-      matchLengthMin: defaultLengthRange.min,
-      matchLengthMax: defaultLengthRange.max,
-      opponentRatingMin: defaultRatingMin,
-      opponentRatingMax: defaultRatingMax,
-      opponentFilter: "",
-      startDateFilter: "",
-      endDateFilter: "",
-      sourceFilters: defaultSourceFilters,
-      timeControlInitialFilter: "all",
-      timeControlIncrementFilter: "all",
-    };
-    runMatchSearch(defaultMode, defaultFilters, 1);
-  }, [aliasesLoaded, canonicalUsername, isBanned]);
+  }, [canonicalUsername, pageSize]);
 
   useEffect(() => {
     setExpandedMatchKeys([]);
   }, [page, selectedMode, appliedFilters, canonicalUsername]);
 
   const matches = matchesByMode[selectedMode] ?? [];
-
-  useEffect(() => {
-    setTimeControlInitialFilter("all");
-    setTimeControlIncrementFilter("all");
-  }, [selectedMode]);
 
   const { initialOptions, incrementOptions } = useMemo(
     () => getTimeControlOptions(matches),
@@ -387,28 +380,31 @@ export const PlayerProfilePage = ({ username }) => {
     const pageStart = (currentPage - 1) * pageSize;
     return filteredMatches.slice(pageStart, pageStart + pageSize);
   }, [currentPage, filteredMatches, isClientPagedResults, pageSize]);
+  const requestedServerPage = isClientPagedResults ? 1 : currentPage;
+
+  useEffect(() => {
+    if (!aliasesLoaded || isBanned) return;
+    runMatchSearch(selectedMode, appliedFilters, requestedServerPage);
+  }, [aliasesLoaded, appliedFilters, isBanned, requestedServerPage, runMatchSearch, selectedMode]);
 
   const handleSearchClick = async () => {
     if (searchSubmitInFlightRef.current || loadingMatches) return;
 
     searchSubmitInFlightRef.current = true;
     try {
-      await runMatchSearch(
-        selectedMode,
-        {
-          matchLengthMin,
-          matchLengthMax,
-          opponentRatingMin,
-          opponentRatingMax,
-          opponentFilter,
-          startDateFilter,
-          endDateFilter,
-          sourceFilters: { ...sourceFilters },
-          timeControlInitialFilter,
-          timeControlIncrementFilter,
-        },
-        1,
-      );
+      setPage(1);
+      setAppliedFilters({
+        matchLengthMin,
+        matchLengthMax,
+        opponentRatingMin,
+        opponentRatingMax,
+        opponentFilter,
+        startDateFilter,
+        endDateFilter,
+        sourceFilters: { ...sourceFilters },
+        timeControlInitialFilter,
+        timeControlIncrementFilter,
+      });
     } finally {
       searchSubmitInFlightRef.current = false;
     }
@@ -416,18 +412,31 @@ export const PlayerProfilePage = ({ username }) => {
   const setSourceFilter = (source, checked) => {
     setSourceFilters((current) => ({ ...current, [source]: checked }));
   };
+  const handleModeChange = (nextMode) => {
+    const nextModeFilters = createDefaultProfileFilters(nextMode);
+
+    setSelectedMode(nextMode);
+    setPage(1);
+    setTimeControlInitialFilter(nextModeFilters.timeControlInitialFilter);
+    setTimeControlIncrementFilter(nextModeFilters.timeControlIncrementFilter);
+    setMatchLengthMin(nextModeFilters.matchLengthMin);
+    setMatchLengthMax(nextModeFilters.matchLengthMax);
+    setAppliedFilters((current) => ({
+      ...current,
+      matchLengthMin: nextModeFilters.matchLengthMin,
+      matchLengthMax: nextModeFilters.matchLengthMax,
+      timeControlInitialFilter: nextModeFilters.timeControlInitialFilter,
+      timeControlIncrementFilter: nextModeFilters.timeControlIncrementFilter,
+    }));
+  };
 
   useEffect(() => {
     if (isBanned) return;
 
     if (currentPage !== page) {
       setPage(currentPage);
-      return;
     }
-    if (appliedFilters && totalPages > 0 && !isClientSidePagedSearch(appliedFilters)) {
-      runMatchSearch(selectedMode, appliedFilters, currentPage);
-    }
-  }, [appliedFilters, currentPage, isBanned, page, pageSize, selectedMode, totalPages]);
+  }, [currentPage, isBanned, page]);
 
   const ratingDisplayByMode = useMemo(
     () => getRatingDisplayByMode(ratingsSnapshotByMode, canonicalUsername),
@@ -759,7 +768,7 @@ export const PlayerProfilePage = ({ username }) => {
                   <select
                     id="profile-mode-select"
                     value={selectedMode}
-                    onChange={(event) => setSelectedMode(event.target.value)}
+                    onChange={(event) => handleModeChange(event.target.value)}
                   >
                     {modeOptions.map((mode) => (
                       <option key={mode} value={mode}>

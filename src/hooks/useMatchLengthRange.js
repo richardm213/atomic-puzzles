@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   defaultMode,
   defaultMatchLengthMax,
@@ -26,13 +26,20 @@ export const useMatchLengthRange = (mode) => {
     setRange(toBoundedLengthRange(mode));
   }, [mode]);
 
+  const setMatchLengthMin = useCallback(
+    (matchLengthMin) => setRange((current) => ({ ...current, min: matchLengthMin })),
+    [],
+  );
+  const setMatchLengthMax = useCallback(
+    (matchLengthMax) => setRange((current) => ({ ...current, max: matchLengthMax })),
+    [],
+  );
+
   return {
     bounds,
     matchLengthMin: range.min,
-    setMatchLengthMin: (matchLengthMin) =>
-      setRange((current) => ({ ...current, min: matchLengthMin })),
+    setMatchLengthMin,
     matchLengthMax: range.max,
-    setMatchLengthMax: (matchLengthMax) =>
-      setRange((current) => ({ ...current, max: matchLengthMax })),
+    setMatchLengthMax,
   };
 };
