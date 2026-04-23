@@ -62,11 +62,12 @@ const NON_COUNTED_ALIAS_MESSAGE =
 const profileTrophyAssets = {
   champion: appAssetPath("/lichess-trophies/gold-cup-2.png"),
   top10: appAssetPath("/lichess-trophies/silver-cup-2.png"),
+  top30: appAssetPath("/lichess-trophies/bronze-cup-2.png"),
 };
 
 const getCurrentMonthKey = () => monthKeyFromMonthValue(new Date().toISOString().slice(0, 10));
 
-const getProfileTrophies = (monthRanks, currentMonthKey, ratingDisplayByMode) =>
+const getProfileTrophies = (monthRanks, currentMonthKey, ratingDisplayByMode, username) =>
   modeOptions.flatMap((mode) => {
     const currentRank = Number(ratingDisplayByMode?.[mode]?.rank);
     if (!(currentRank > 0)) {
@@ -89,6 +90,7 @@ const getProfileTrophies = (monthRanks, currentMonthKey, ratingDisplayByMode) =>
           label: modeLabels[mode] ?? mode,
           title: `${modeLabels[mode] ?? mode} Atomic Champion`,
           imageSrc: profileTrophyAssets.champion,
+          href: lichessProfileUrl(username),
         },
       ];
     }
@@ -101,6 +103,20 @@ const getProfileTrophies = (monthRanks, currentMonthKey, ratingDisplayByMode) =>
           label: modeLabels[mode] ?? mode,
           title: `${modeLabels[mode] ?? mode} Atomic Top 10`,
           imageSrc: profileTrophyAssets.top10,
+          href: lichessProfileUrl(username),
+        },
+      ];
+    }
+
+    if (bestRank <= 30) {
+      return [
+        {
+          key: `${mode}-top30`,
+          mode,
+          label: modeLabels[mode] ?? mode,
+          title: `${modeLabels[mode] ?? mode} Atomic Top 30`,
+          imageSrc: profileTrophyAssets.top30,
+          href: lichessProfileUrl(username),
         },
       ];
     }
@@ -466,8 +482,8 @@ export const PlayerProfilePage = ({ username }) => {
   );
   const currentMonthKey = useMemo(() => getCurrentMonthKey(), []);
   const profileTrophies = useMemo(
-    () => getProfileTrophies(monthRanks, currentMonthKey, ratingDisplayByMode),
-    [currentMonthKey, monthRanks, ratingDisplayByMode],
+    () => getProfileTrophies(monthRanks, currentMonthKey, ratingDisplayByMode, canonicalUsername),
+    [canonicalUsername, currentMonthKey, monthRanks, ratingDisplayByMode],
   );
 
   return (
@@ -483,15 +499,18 @@ export const PlayerProfilePage = ({ username }) => {
           {!isBanned && profileTrophies.length ? (
             <div className="profileTrophyRow" aria-label="Atomic ranking trophies">
               {profileTrophies.map((trophy) => (
-                <span
+                <a
                   key={trophy.key}
                   className="profileTrophy"
                   title={trophy.title}
                   aria-label={trophy.title}
+                  href={trophy.href}
+                  target="_blank"
+                  rel="noreferrer"
                 >
                   <img src={trophy.imageSrc} alt="" aria-hidden="true" />
                   <span className="profileTrophyLabel">{trophy.label}</span>
-                </span>
+                </a>
               ))}
             </div>
           ) : null}
