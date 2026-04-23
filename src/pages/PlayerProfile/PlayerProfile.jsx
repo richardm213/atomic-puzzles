@@ -62,7 +62,7 @@ const NON_COUNTED_ALIAS_MESSAGE =
 const profileTrophyAssets = {
   champion: appAssetPath("/lichess-trophies/gold-cup-2.png"),
   top10: appAssetPath("/lichess-trophies/silver-cup-2.png"),
-  top30: appAssetPath("/lichess-trophies/bronze-cup-2.png"),
+  top30: appAssetPath("/lichess-trophies/gold-cup-2-blue.png"),
 };
 
 const getCurrentMonthKey = () => monthKeyFromMonthValue(new Date().toISOString().slice(0, 10));
