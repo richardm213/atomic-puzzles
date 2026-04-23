@@ -7,12 +7,22 @@ import { fetchPlayerRatingsRows } from "../../lib/supabasePlayerRatings";
 import "./Users.css";
 
 const HIGH_RD_THRESHOLD = 100;
+const ratingDisplayOptions = ["current", "peak"];
 
-const userColumns = [
+const getUserColumns = (ratingDisplayMode) => [
   { key: "username", label: "Username" },
-  { key: "blitz", label: "Blitz Rating" },
-  { key: "bullet", label: "Bullet Rating" },
-  { key: "hyperbullet", label: "Hyper Rating" },
+  {
+    key: "blitz",
+    label: `Blitz ${ratingDisplayMode === "peak" ? "Peak" : "Rating"}`,
+  },
+  {
+    key: "bullet",
+    label: `Bullet ${ratingDisplayMode === "peak" ? "Peak" : "Rating"}`,
+  },
+  {
+    key: "hyperbullet",
+    label: `Hyper ${ratingDisplayMode === "peak" ? "Peak" : "Rating"}`,
+  },
   { key: "aliasCount", label: "Number of Aliases" },
 ];
 
@@ -21,14 +31,23 @@ const roundToTenth = (value) => {
   return Number.isFinite(numeric) ? Math.round(numeric * 10) / 10 : null;
 };
 
-const normalizeRatingCell = (row) => {
-  const rating = roundToTenth(row?.rating);
-  const rd = Number(row?.rd);
-  const hidden = !Number.isFinite(rating) || (Number.isFinite(rd) && rd >= HIGH_RD_THRESHOLD);
+const normalizeRatingCell = (ratingValue, rdValue, hideForHighRd = true) => {
+  const rating = roundToTenth(ratingValue);
+  const rd = Number(rdValue);
+  const hidden = !Number.isFinite(rating) || (hideForHighRd && Number.isFinite(rd) && rd >= HIGH_RD_THRESHOLD);
 
   return {
     display: hidden ? "?" : rating,
     sortValue: hidden ? null : rating,
+  };
+};
+
+const normalizeRatingCells = (row) => {
+  const rd = Number(row?.rd);
+
+  return {
+    current: normalizeRatingCell(row?.rating, rd, true),
+    peak: normalizeRatingCell(row?.peak, rd, false),
   };
 };
 
@@ -56,16 +75,21 @@ const buildUserRows = (ratingRows, aliasesLookup) => {
     const mode = String(row?.tc || "").toLowerCase();
     if (!username || !modeOptions.includes(mode)) return;
 
+    const emptyRatingCells = {
+      current: { display: "?", sortValue: null },
+      peak: { display: "?", sortValue: null },
+    };
+
     const existing = rowsByUsername.get(username) ?? {
       username,
-      blitz: { display: "?", sortValue: null },
-      bullet: { display: "?", sortValue: null },
-      hyperbullet: { display: "?", sortValue: null },
+      blitz: emptyRatingCells,
+      bullet: emptyRatingCells,
+      hyperbullet: emptyRatingCells,
       aliasCount: aliasesLookup.get(username)?.aliases?.length ?? 0,
       aliases: aliasesLookup.get(username)?.aliases ?? [],
     };
 
-    existing[mode] = normalizeRatingCell(row);
+    existing[mode] = normalizeRatingCells(row);
     existing.aliasCount = aliasesLookup.get(username)?.aliases?.length ?? existing.aliasCount ?? 0;
     existing.aliases = aliasesLookup.get(username)?.aliases ?? existing.aliases ?? [];
     rowsByUsername.set(username, existing);
@@ -80,6 +104,7 @@ const UsersTablePage = () => {
   const [loading, setLoading] = useState(true);
   const [sortKey, setSortKey] = useState("aliasCount");
   const [sortDirection, setSortDirection] = useState("desc");
+  const [ratingDisplayMode, setRatingDisplayMode] = useState("current");
 
   useEffect(() => {
     let isCurrent = true;
@@ -143,15 +168,17 @@ const UsersTablePage = () => {
       }
 
       const ratingCompare = compareNullableNumbers(
-        a[sortKey]?.sortValue,
-        b[sortKey]?.sortValue,
+        a[sortKey]?.[ratingDisplayMode]?.sortValue,
+        b[sortKey]?.[ratingDisplayMode]?.sortValue,
         directionMultiplier,
       );
       if (ratingCompare !== 0) return ratingCompare;
 
       return a.username.localeCompare(b.username);
     });
-  }, [rows, sortDirection, sortKey]);
+  }, [ratingDisplayMode, rows, sortDirection, sortKey]);
+
+  const userColumns = useMemo(() => getUserColumns(ratingDisplayMode), [ratingDisplayMode]);
 
   return (
     <div className="rankingsPage">
@@ -175,6 +202,25 @@ const UsersTablePage = () => {
               Back to rankings
             </Link>
           </span>
+        </div>
+
+        <div className="usersToolbar" aria-label="User list rating display mode">
+          <span className="usersToolbarLabel">Ratings shown as</span>
+          <div className="usersDisplayModeGroup" role="group" aria-label="Choose current or peak ratings">
+            {ratingDisplayOptions.map((option) => (
+              <button
+                key={option}
+                type="button"
+                className={`usersDisplayModeButton${
+                  ratingDisplayMode === option ? " usersDisplayModeButtonActive" : ""
+                }`}
+                aria-pressed={ratingDisplayMode === option}
+                onClick={() => setRatingDisplayMode(option)}
+              >
+                {option === "peak" ? "Peak" : "Current"}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="usersHelpCallout">
@@ -232,9 +278,9 @@ const UsersTablePage = () => {
                         {row.username}
                       </Link>
                     </td>
-                    <td>{row.blitz.display}</td>
-                    <td>{row.bullet.display}</td>
-                    <td>{row.hyperbullet.display}</td>
+                    <td>{row.blitz[ratingDisplayMode].display}</td>
+                    <td>{row.bullet[ratingDisplayMode].display}</td>
+                    <td>{row.hyperbullet[ratingDisplayMode].display}</td>
                     <td>
                       {row.aliasCount > 0 ? (
                         <div className="usersAliasCell">
