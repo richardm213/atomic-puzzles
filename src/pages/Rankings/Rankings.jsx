@@ -74,9 +74,11 @@ const isEligibleForRankings = (player, mode) => {
   return games >= requirement.minGames && rd < requirement.maxRd;
 };
 
-const allMonthsFromJan2022 = () => {
+const earliestLeaderboardMonth = new Date(Date.UTC(2021, 8, 1));
+
+const allLeaderboardMonths = () => {
   const months = [];
-  const cursor = new Date(Date.UTC(2022, 0, 1));
+  const cursor = new Date(earliestLeaderboardMonth);
   const now = new Date();
   const nowUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 
@@ -88,10 +90,10 @@ const allMonthsFromJan2022 = () => {
   return months;
 };
 
-const allYearsFromJan2022 = () => {
+const allLeaderboardYears = () => {
   const now = new Date();
   const years = [];
-  for (let year = now.getUTCFullYear(); year >= 2022; year -= 1) {
+  for (let year = now.getUTCFullYear(); year >= earliestLeaderboardMonth.getUTCFullYear(); year -= 1) {
     years.push(String(year));
   }
   return years;
@@ -141,8 +143,8 @@ const LeaderboardView = () => {
   const [sortDirection, setSortDirection] = useState("asc");
   const hasInitializedFiltersRef = useRef(false);
 
-  const monthOptions = useMemo(() => allMonthsFromJan2022().reverse(), []);
-  const yearOptions = useMemo(() => allYearsFromJan2022(), []);
+  const monthOptions = useMemo(() => allLeaderboardMonths().reverse(), []);
+  const yearOptions = useMemo(() => allLeaderboardYears(), []);
 
   const selectedMonth = useMemo(() => {
     if (!selectedMonthName || !selectedYear) return "";
