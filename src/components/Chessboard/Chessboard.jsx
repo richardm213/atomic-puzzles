@@ -67,7 +67,7 @@ const checkerboardSvg = (light, dark) =>
   )}")`;
 
 const boardTextureAsset = (filename) =>
-  `url("${import.meta.env.BASE_URL}board-textures/${filename}")`;
+  `url("${import.meta.env.BASE_URL}images/board-textures/${filename}")`;
 
 const clampColorChannel = (value) => Math.max(0, Math.min(255, Math.round(value)));
 

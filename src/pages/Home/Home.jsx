@@ -43,62 +43,62 @@ const featureLinks = [
 
 const darkModePuzzleCollageImages = [
   {
-    src: "/home-puzzle-dark-1.png",
+    src: "/images/home-puzzles/home-puzzle-dark-1.png",
     alt: "Atomic chess puzzle position with black to move",
   },
   {
-    src: "/home-puzzle-dark-2.png",
+    src: "/images/home-puzzles/home-puzzle-dark-2.png",
     alt: "Atomic chess puzzle position with white to move",
   },
   {
-    src: "/home-puzzle-dark-3.png",
+    src: "/images/home-puzzles/home-puzzle-dark-3.png",
     alt: "Atomic chess puzzle position with white to move",
   },
   {
-    src: "/home-puzzle-dark-4.png",
+    src: "/images/home-puzzles/home-puzzle-dark-4.png",
     alt: "Atomic chess puzzle position with white to move",
   },
   {
-    src: "/home-puzzle-dark-5.png",
+    src: "/images/home-puzzles/home-puzzle-dark-5.png",
     alt: "Atomic chess puzzle position with black to move",
   },
   {
-    src: "/home-puzzle-dark-6.png",
+    src: "/images/home-puzzles/home-puzzle-dark-6.png",
     alt: "Atomic chess puzzle position with white to move",
   },
   {
-    src: "/home-puzzle-dark-7.png",
+    src: "/images/home-puzzles/home-puzzle-dark-7.png",
     alt: "Atomic chess puzzle position with white to move",
   },
 ];
 
 const lightModePuzzleCollageImages = [
   {
-    src: "/home-puzzle-light-1.png",
+    src: "/images/home-puzzles/home-puzzle-light-1.png",
     alt: "Atomic chess puzzle position with white to move",
   },
   {
-    src: "/home-puzzle-light-2.png",
+    src: "/images/home-puzzles/home-puzzle-light-2.png",
     alt: "Atomic chess puzzle position with white to move",
   },
   {
-    src: "/home-puzzle-light-3.png",
+    src: "/images/home-puzzles/home-puzzle-light-3.png",
     alt: "Atomic chess puzzle position with white to move",
   },
   {
-    src: "/home-puzzle-light-4.png",
+    src: "/images/home-puzzles/home-puzzle-light-4.png",
     alt: "Atomic chess puzzle position with white to move",
   },
   {
-    src: "/home-puzzle-light-5.png",
+    src: "/images/home-puzzles/home-puzzle-light-5.png",
     alt: "Atomic chess puzzle position with black to move",
   },
   {
-    src: "/home-puzzle-light-6.png",
+    src: "/images/home-puzzles/home-puzzle-light-6.png",
     alt: "Atomic chess puzzle position with black to move",
   },
   {
-    src: "/home-puzzle-light-7.png",
+    src: "/images/home-puzzles/home-puzzle-light-7.png",
     alt: "Atomic chess puzzle position with white to move",
   },
 ];

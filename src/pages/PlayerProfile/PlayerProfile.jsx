@@ -60,9 +60,9 @@ const NON_COUNTED_ALIAS_MESSAGE =
   "This account is marked as a drunk account and is not included in the rating system.";
 
 const profileTrophyAssets = {
-  champion: appAssetPath("/lichess-trophies/gold-cup-2.png"),
-  top10: appAssetPath("/lichess-trophies/silver-cup-2.png"),
-  top30: appAssetPath("/lichess-trophies/gold-cup-2-blue.png"),
+  champion: appAssetPath("/images/lichess-trophies/gold-cup-2.png"),
+  top10: appAssetPath("/images/lichess-trophies/silver-cup-2.png"),
+  top30: appAssetPath("/images/lichess-trophies/gold-cup-2-blue.png"),
 };
 
 const getCurrentMonthKey = () => monthKeyFromMonthValue(new Date().toISOString().slice(0, 10));
