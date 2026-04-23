@@ -139,9 +139,10 @@ const buildMatchFilters = (username, filters) => {
   if (filters.endDateFilter) {
     queryFilters.endTs = parseDateInputBoundary(filters.endDateFilter, "end");
   }
-
   return queryFilters;
 };
+
+const isClientSidePagedSearch = (filters) => Boolean(String(filters?.opponentFilter || "").trim());
 
 export const PlayerProfilePage = ({ username }) => {
   const normalizedUsername = useMemo(() => normalizeUsername(username), [username]);
@@ -190,6 +191,22 @@ export const PlayerProfilePage = ({ username }) => {
   });
   const matchLengthBounds =
     matchLengthBoundsByMode[selectedMode] ?? matchLengthBoundsByMode[defaultMode];
+
+  useEffect(() => {
+    const resetLengthRange = toBoundedLengthRange(defaultMode);
+    setSelectedMode(defaultMode);
+    setPage(1);
+    setOpponentRatingMin(defaultRatingMin);
+    setOpponentRatingMax(defaultRatingMax);
+    setOpponentFilter("");
+    setStartDateFilter("");
+    setEndDateFilter("");
+    setSourceFilters(defaultSourceFilters);
+    setTimeControlInitialFilter("all");
+    setTimeControlIncrementFilter("all");
+    setMatchLengthMin(resetLengthRange.min);
+    setMatchLengthMax(resetLengthRange.max);
+  }, [normalizedUsername, setMatchLengthMax, setMatchLengthMin]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
@@ -255,19 +272,33 @@ export const PlayerProfilePage = ({ username }) => {
     setError("");
     try {
       const filters = buildMatchFilters(canonicalUsername, nextAppliedFilters);
-      const loaded = await loadRawMatchesByMode(mode, {
-        filters,
-        page: nextPage,
-        pageSize,
-      });
+      const shouldClientPageResults = isClientSidePagedSearch(nextAppliedFilters);
+      const loaded = await loadRawMatchesByMode(
+        mode,
+        shouldClientPageResults
+          ? {
+              filters,
+            }
+          : {
+              filters,
+              page: nextPage,
+              pageSize,
+            },
+      );
       if (requestId !== matchRequestIdRef.current) return;
+      const normalizedMatchesForMode = normalizeMatches(
+        shouldClientPageResults ? loaded : loaded.matches,
+        canonicalUsername,
+      );
       setMatchesByMode((current) => ({
         ...current,
-        [mode]: normalizeMatches(loaded.matches, canonicalUsername),
+        [mode]: normalizedMatchesForMode,
       }));
       setTotalMatchesByMode((current) => ({
         ...current,
-        [mode]: loaded.total,
+        [mode]: shouldClientPageResults
+          ? normalizedMatchesForMode.length
+          : loaded.total,
       }));
       setAppliedFilters(nextAppliedFilters);
       setPage(nextPage);
@@ -326,6 +357,20 @@ export const PlayerProfilePage = ({ username }) => {
     () => filterMatches(matches, appliedFilters, selectedMode),
     [matches, appliedFilters, selectedMode],
   );
+  const isClientPagedResults = isClientSidePagedSearch(appliedFilters);
+  const totalPages = Math.max(
+    1,
+    Math.ceil(
+      (isClientPagedResults ? filteredMatches.length : totalMatchesByMode[selectedMode] ?? 0) /
+        Math.max(1, pageSize),
+    ),
+  );
+  const currentPage = Math.min(page, totalPages);
+  const visibleMatches = useMemo(() => {
+    if (!isClientPagedResults) return filteredMatches;
+    const pageStart = (currentPage - 1) * pageSize;
+    return filteredMatches.slice(pageStart, pageStart + pageSize);
+  }, [currentPage, filteredMatches, isClientPagedResults, pageSize]);
 
   const handleSearchClick = async () => {
     if (searchSubmitInFlightRef.current || loadingMatches) return;
@@ -352,12 +397,6 @@ export const PlayerProfilePage = ({ username }) => {
       searchSubmitInFlightRef.current = false;
     }
   };
-
-  const totalPages = Math.max(
-    1,
-    Math.ceil((totalMatchesByMode[selectedMode] ?? 0) / Math.max(1, pageSize)),
-  );
-  const currentPage = Math.min(page, totalPages);
   const setSourceFilter = (source, checked) => {
     setSourceFilters((current) => ({ ...current, [source]: checked }));
   };
@@ -369,7 +408,7 @@ export const PlayerProfilePage = ({ username }) => {
       setPage(currentPage);
       return;
     }
-    if (appliedFilters && totalPages > 0) {
+    if (appliedFilters && totalPages > 0 && !isClientSidePagedSearch(appliedFilters)) {
       runMatchSearch(selectedMode, appliedFilters, currentPage);
     }
   }, [appliedFilters, currentPage, isBanned, page, pageSize, selectedMode, totalPages]);
@@ -744,7 +783,10 @@ export const PlayerProfilePage = ({ username }) => {
                   onStartDateChange={setStartDateFilter}
                   onEndDateChange={setEndDateFilter}
                 />
-                <label htmlFor="profile-opponent-filter">
+                <label
+                  htmlFor="profile-opponent-filter"
+                  className="profileOpponentFilterField"
+                >
                   Opponent
                   <input
                     id="profile-opponent-filter"
@@ -820,7 +862,7 @@ export const PlayerProfilePage = ({ username }) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredMatches.map((match) => {
+                  {visibleMatches.map((match) => {
                     const matchKey = `${match.startTs}-${match.firstGameId}`;
                     const isExpanded = expandedMatchKeys.includes(matchKey);
                     return (
@@ -973,7 +1015,7 @@ export const PlayerProfilePage = ({ username }) => {
                       </Fragment>
                     );
                   })}
-                  {filteredMatches.length === 0 ? (
+                  {visibleMatches.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="emptyRankings">
                         No matches found for this player with current filters in {selectedMode}.
