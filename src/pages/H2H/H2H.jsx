@@ -79,6 +79,9 @@ const computeGameScore = (matches) => {
   );
 };
 
+const formatScorePair = (leftScore, rightScore) =>
+  `${formatScore(leftScore)}\u00A0-\u00A0${formatScore(rightScore)}`;
+
 const modeStatLabels = {
   rank: "Rank",
   rating: "Rating",
@@ -461,7 +464,7 @@ export const H2HPage = () => {
                     </div>
                     <div className="h2hScoreBlock h2hScoreBlockHero" aria-label="Overall score">
                       <strong className="h2hModeCardScore h2hScoreLine">
-                        {formatScore(combinedScore.playerA)} - {formatScore(combinedScore.playerB)}
+                        {formatScorePair(combinedScore.playerA, combinedScore.playerB)}
                       </strong>
                     </div>
                     <div className="h2hPlayerIdentity h2hPlayerIdentityRight">
@@ -492,8 +495,10 @@ export const H2HPage = () => {
                             vs
                           </span>
                           <strong className="h2hModeCardScore h2hScoreLine">
-                            {formatScore(scoresByMode[mode]?.playerA ?? 0)} -
-                            {formatScore(scoresByMode[mode]?.playerB ?? 0)}
+                            {formatScorePair(
+                              scoresByMode[mode]?.playerA ?? 0,
+                              scoresByMode[mode]?.playerB ?? 0,
+                            )}
                           </strong>
                         </div>
                         <div className="h2hModeStatsGroup h2hModeCardRightStats">
@@ -548,9 +553,7 @@ export const H2HPage = () => {
                             </td>
                             <td>{match.timeControl}</td>
                             <td>{match.winner}</td>
-                            <td>
-                              {formatScore(match.scoreA)} - {formatScore(match.scoreB)}
-                            </td>
+                            <td>{formatScorePair(match.scoreA, match.scoreB)}</td>
                             <td>
                               <MatchPageLink
                                 match={match}
@@ -603,7 +606,7 @@ export const H2HPage = () => {
                           </LichessGameLink>
                         </div>
                         <div className="h2hHistoryCardScore">
-                          {formatScore(match.scoreA)} - {formatScore(match.scoreB)}
+                          {formatScorePair(match.scoreA, match.scoreB)}
                         </div>
                         <div className="h2hHistoryCardMeta">
                           <span>Winner: {match.winner}</span>

@@ -21,6 +21,8 @@ import { MatchPage } from "./pages/Match/MatchPage";
 import { AuthCallbackPage } from "./pages/AuthCallback/AuthCallback";
 import { UsersPage } from "./pages/Users/Users";
 import { BannedUsersPage } from "./pages/Users/BannedUsers";
+import { TournamentsPage } from "./pages/Tournaments/Tournaments";
+import { TournamentPage } from "./pages/Tournament/TournamentPage";
 
 const appBasePath = (() => {
   const baseUrl = import.meta.env.BASE_URL || "/";
@@ -66,6 +68,21 @@ const recentRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/recent",
   component: RecentMatchesPage,
+});
+
+const tournamentsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/tournaments",
+  component: TournamentsPage,
+});
+
+const tournamentRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/tournaments/$tournamentId",
+  component: function TournamentRoute() {
+    const { tournamentId } = useParams({ strict: false });
+    return <TournamentPage tournamentId={tournamentId} />;
+  },
 });
 
 const h2hRoute = createRoute({
@@ -166,6 +183,8 @@ const routeTree = rootRoute.addChildren([
   bannedUsersRoute,
   rankingsMethodologyRoute,
   recentRoute,
+  tournamentsRoute,
+  tournamentRoute,
   h2hRoute,
   h2hMatchupRoute,
   matchRoute,

@@ -1,0 +1,134 @@
+.tournamentsPage {
+  min-height: var(--page-shell-min-height);
+  min-height: var(--page-shell-min-height-dynamic);
+  width: min(1100px, 100%);
+  margin: 0 auto;
+  padding:
+    max(var(--page-gutter), env(safe-area-inset-top))
+    max(clamp(22px, 4vw, 48px), env(safe-area-inset-right))
+    max(calc(var(--page-gutter) + 2px), env(safe-area-inset-bottom))
+    max(clamp(22px, 4vw, 48px), env(safe-area-inset-left));
+  display: grid;
+  gap: 28px;
+}
+
+.tournamentsHero {
+  display: grid;
+  gap: 14px;
+  padding: clamp(22px, 4vw, 34px);
+  border: 1px solid var(--color-border);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--color-primary) 16%, transparent), transparent 34%),
+    linear-gradient(180deg, color-mix(in srgb, var(--color-panel) 90%, transparent), var(--color-panel));
+  box-shadow: var(--shadow-panel);
+}
+
+.tournamentsEyebrow {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-primary-pale);
+}
+
+.tournamentsHero h1,
+.tournamentCard h2 {
+  margin: 0;
+  color: var(--color-heading);
+}
+
+.tournamentsHero p,
+.tournamentCard p {
+  margin: 0;
+  color: var(--color-muted);
+  line-height: 1.6;
+}
+
+.tournamentsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 18px;
+}
+
+.tournamentCard {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--color-border);
+  border-radius: 22px;
+  background: var(--color-panel);
+  box-shadow: var(--shadow-soft);
+}
+
+.tournamentCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tournamentCardYear {
+  font-size: 26px;
+  font-weight: 900;
+  color: var(--color-heading);
+}
+
+.tournamentCardStatus {
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.tournamentCardStatus.live {
+  background: color-mix(in srgb, var(--color-primary) 20%, transparent);
+  color: var(--color-primary-pale);
+}
+
+.tournamentCardStatus.soon {
+  background: color-mix(in srgb, var(--color-border-strong) 25%, transparent);
+  color: var(--color-subtle);
+}
+
+.tournamentCardLink,
+.tournamentCardDisabled {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-ui);
+  font-weight: 800;
+}
+
+.tournamentCardLink {
+  border: 1px solid var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  text-decoration: none;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.tournamentCardLink:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 34px color-mix(in srgb, var(--color-primary) 24%, transparent);
+}
+
+.tournamentCardDisabled {
+  border: 1px dashed var(--color-border-strong);
+  color: var(--color-subtle);
+}
+
+.tournamentCard.isAvailable {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-panel) 92%, transparent), var(--color-panel)),
+    var(--color-panel);
+}
+
+.tournamentCard.isLocked {
+  opacity: 0.88;
+}
+

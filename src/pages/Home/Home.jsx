@@ -39,6 +39,12 @@ const featureLinks = [
     title: "Head-to-head",
     body: "Compare two players side by side across all three pools.",
   },
+  {
+    to: "/tournaments",
+    eyebrow: "Archive",
+    title: "Tournaments",
+    body: "Browse Atomic World Championship pages and open interactive brackets by year.",
+  },
 ];
 
 const darkModePuzzleCollageImages = [
@@ -206,6 +212,9 @@ export const HomePage = () => {
             </Link>
             <Link className="homeSecondaryCta" to="/recent">
               View recent matches
+            </Link>
+            <Link className="homeSecondaryCta" to="/tournaments">
+              Browse tournaments
             </Link>
           </div>
         </div>

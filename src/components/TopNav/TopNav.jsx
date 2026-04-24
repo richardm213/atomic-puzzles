@@ -34,6 +34,12 @@ const navItems = [
       pathname === "/recent" || pathname === "/matches" || pathname.startsWith("/matches/"),
   },
   {
+    to: "/tournaments",
+    label: "Tournaments",
+    isActive: (pathname) =>
+      pathname === "/tournaments" || pathname.startsWith("/tournaments/"),
+  },
+  {
     to: "/h2h",
     label: "H2H",
     isActive: (pathname) => pathname === "/h2h" || pathname.startsWith("/h2h/"),

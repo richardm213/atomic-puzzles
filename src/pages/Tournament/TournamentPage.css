@@ -1,0 +1,554 @@
+.tournamentPage {
+  min-height: var(--page-shell-min-height);
+  min-height: var(--page-shell-min-height-dynamic);
+  width: min(1040px, 100%);
+  margin: 0 auto;
+  padding:
+    max(var(--page-gutter), env(safe-area-inset-top))
+    max(clamp(18px, 3vw, 28px), env(safe-area-inset-right))
+    max(calc(var(--page-gutter) + 2px), env(safe-area-inset-bottom))
+    max(clamp(18px, 3vw, 28px), env(safe-area-inset-left));
+  display: grid;
+  gap: 22px;
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--color-primary) 12%, transparent), transparent 24%),
+    radial-gradient(circle at top right, color-mix(in srgb, #d4a24c 10%, transparent), transparent 22%);
+}
+
+.tournamentPageHero {
+  display: block;
+}
+
+.tournamentPageHeroCopy,
+.tournamentStageSection {
+  border: 1px solid var(--color-border);
+  border-radius: 24px;
+  background: var(--color-panel);
+  box-shadow: var(--shadow-soft);
+}
+
+.tournamentPageHeroCopy {
+  display: grid;
+  gap: 10px;
+  padding: clamp(20px, 3.5vw, 28px);
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--color-primary) 26%, transparent), transparent 30%),
+    linear-gradient(145deg, color-mix(in srgb, #17365f 55%, var(--color-panel)), var(--color-panel));
+  border-color: color-mix(in srgb, var(--color-primary) 28%, var(--color-border));
+  box-shadow:
+    0 20px 50px color-mix(in srgb, #071324 70%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 6%, transparent);
+}
+
+.tournamentBackLink {
+  width: fit-content;
+  color: var(--color-primary-pale);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.tournamentBackLink:hover {
+  text-decoration: underline;
+}
+
+.tournamentHeroTopRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.tournamentYearNav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tournamentYearNavLink,
+.tournamentYearNavSpacer {
+  min-width: 78px;
+}
+
+.tournamentYearNavCurrent {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  color: var(--color-heading);
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.tournamentYearNavLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 18%, var(--color-border));
+  background: color-mix(in srgb, #122646 76%, transparent);
+  color: var(--color-primary-pale);
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.tournamentYearNavLink:hover,
+.tournamentYearNavLink:focus-visible {
+  border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 18%, #122646);
+  color: #eff5ff;
+  outline: none;
+}
+
+.tournamentPageEyebrow,
+.tournamentSelectionLabel {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-primary-pale) 84%, #f2d38b 16%);
+}
+
+.tournamentPageHeroCopy h1,
+.tournamentStageHeader h2 {
+  margin: 0;
+  color: var(--color-heading);
+}
+
+.tournamentPageHeroCopy h1 {
+  font-size: clamp(1.75rem, 3.2vw, 2.7rem);
+  line-height: 0.94;
+  letter-spacing: -0.04em;
+}
+
+.tournamentRoundHeader small,
+.tournamentMatchMeta span,
+.tournamentMatchPlayers span {
+  color: var(--color-muted);
+}
+
+.tournamentMatchPlayers > div > span {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.tournamentPlayerLabel {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.tournamentSeedBadge {
+  display: inline-block;
+  margin-left: 4px;
+  color: var(--color-primary-pale);
+  font-size: 0.9em;
+  font-weight: 800;
+}
+
+.tournamentPlayerLink {
+  display: inline-block;
+  max-width: 13ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition:
+    color 160ms ease,
+    border-color 160ms ease;
+}
+
+.tournamentPlayerLink:hover,
+.tournamentPlayerLink:focus-visible {
+  color: #dbe8ff;
+  border-color: color-mix(in srgb, #9fc0ff 72%, transparent);
+  outline: none;
+}
+
+.tournamentAdvanceCheck {
+  display: inline-block;
+  margin-left: 8px;
+  color: #49d17d;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.tournamentPlayerFlag {
+  display: inline-block;
+  width: 20px;
+  height: 14px;
+  object-fit: cover;
+  border-radius: 2px;
+  border: 1px solid color-mix(in srgb, white 12%, transparent);
+  box-shadow: 0 1px 3px color-mix(in srgb, #04101f 48%, transparent);
+  margin-right: 6px;
+  vertical-align: -0.12em;
+}
+
+.tournamentStages {
+  display: grid;
+  gap: 18px;
+}
+
+.tournamentStageToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  width: fit-content;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 18%, var(--color-border));
+  background: color-mix(in srgb, #0f203a 70%, var(--color-panel-strong));
+  box-shadow: var(--shadow-soft);
+}
+
+.tournamentStageToggleButton {
+  border: 0;
+  border-radius: 999px;
+  min-height: 40px;
+  padding: 8px 16px;
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 0.95rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.tournamentStageToggleButton.isActive {
+  background: color-mix(in srgb, var(--color-primary) 16%, #152745);
+  color: var(--color-heading);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+.tournamentStageToggleButton:hover,
+.tournamentStageToggleButton:focus-visible {
+  color: var(--color-heading);
+  outline: none;
+}
+
+.tournamentStageSection {
+  padding: 18px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 20% 0%, color-mix(in srgb, var(--color-primary) 9%, transparent), transparent 20%),
+    linear-gradient(180deg, color-mix(in srgb, #0b1730 62%, var(--color-panel)), var(--color-panel));
+  border-color: color-mix(in srgb, var(--color-primary) 16%, var(--color-border));
+  box-shadow:
+    0 18px 38px color-mix(in srgb, #06101d 70%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 4%, transparent);
+}
+
+.tournamentStageHeader {
+  display: grid;
+  grid-template-columns: minmax(150px, 200px) minmax(0, 1fr);
+  align-items: start;
+  gap: 12px 18px;
+  margin-bottom: 12px;
+}
+
+.tournamentStageHeader h2 {
+  font-size: clamp(1.2rem, 2vw, 1.65rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  max-width: 180px;
+}
+
+.tournamentStageHeaderActions {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.tournamentStageControls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  max-width: none;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.tournamentZoomControls {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, #0f203a 72%, var(--color-panel-strong));
+  border: 1px solid color-mix(in srgb, var(--color-primary) 16%, var(--color-border));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 5%, transparent);
+}
+
+.tournamentZoomButton,
+.tournamentZoomValue {
+  border: 0;
+  border-radius: 999px;
+  min-height: 32px;
+  padding: 6px 12px;
+  background: transparent;
+  color: var(--color-heading);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.tournamentZoomButton {
+  min-width: 32px;
+  padding-inline: 0;
+}
+
+.tournamentZoomValue {
+  background: color-mix(in srgb, var(--color-primary) 12%, #152745);
+  color: var(--color-primary-pale);
+  min-width: 86px;
+  justify-content: center;
+}
+
+.tournamentZoomButton:hover,
+.tournamentZoomValue:hover {
+  background: color-mix(in srgb, var(--color-primary) 18%, #183156);
+}
+
+.tournamentRoundFilter {
+  border: 1px solid var(--color-border-strong);
+  background: color-mix(in srgb, #0f203a 66%, var(--color-panel-strong));
+  color: var(--color-muted);
+  border-radius: 999px;
+  min-height: 34px;
+  padding: 7px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.tournamentRoundFilter.isActive {
+  border-color: var(--color-primary);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, #f0b553 18%, transparent), transparent),
+    color-mix(in srgb, var(--color-primary) 16%, #14294c);
+  color: #f9fbff;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 18%, transparent);
+}
+
+.tournamentRoundsScroller {
+  overflow: auto;
+  padding-bottom: 6px;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  scrollbar-width: thin;
+  touch-action: none;
+  mask-image: linear-gradient(90deg, transparent 0, black 16px, black calc(100% - 16px), transparent 100%);
+}
+
+.tournamentRoundsScroller.isDragging {
+  cursor: grabbing;
+}
+
+.tournamentRoundsScroller.isMainBracket {
+  align-items: start;
+}
+
+.tournamentRoundHeader {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, #f2c873 12%, transparent), transparent),
+    color-mix(in srgb, #0e213d 72%, var(--color-panel-strong));
+  border: 1px solid color-mix(in srgb, #f0b553 18%, var(--color-border));
+  box-shadow:
+    0 10px 24px color-mix(in srgb, #06101d 65%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 6%, transparent);
+}
+
+.tournamentRoundHeader span {
+  font-weight: 800;
+  color: #f7f4ec;
+  letter-spacing: 0.02em;
+}
+
+.tournamentRoundHeaderFloating {
+  position: absolute;
+  z-index: 6;
+}
+
+.tournamentMatchCard {
+  width: 100%;
+  border: 1px solid color-mix(in srgb, #35507b 46%, var(--color-border));
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, white 3%, transparent), transparent),
+    linear-gradient(160deg, color-mix(in srgb, #102343 88%, var(--color-panel)), color-mix(in srgb, #0b1730 92%, var(--color-panel)));
+  color: inherit;
+  padding: 15px 16px;
+  display: grid;
+  gap: 10px;
+  text-align: left;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease,
+    background 160ms ease;
+  overflow: visible;
+}
+
+.tournamentMatchCardTree {
+  position: absolute;
+  z-index: 3;
+  height: 102px;
+  box-sizing: border-box;
+  align-content: center;
+}
+
+.tournamentMatchCardTree.isClickable {
+  cursor: alias;
+}
+
+.tournamentMatchCardTree.isClickable:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 44%, var(--color-border));
+  box-shadow:
+    0 14px 30px color-mix(in srgb, #071324 54%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 6%, transparent);
+}
+
+.tournamentMatchMeta,
+.tournamentMatchPlayers > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tournamentMatchMeta {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tournamentMatchPlayers {
+  display: grid;
+  gap: 8px;
+  align-content: center;
+  min-height: 100%;
+}
+
+.tournamentMatchPlayers strong {
+  flex: 0 0 auto;
+  min-width: 2.6ch;
+  color: #f5f7fb;
+  font-size: 1.02rem;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.tournamentScoreWithdrawal {
+  color: #f5f7fb !important;
+  font-size: inherit !important;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tournamentTreeBoard {
+  position: relative;
+  min-height: 260px;
+  transform-origin: top left;
+  isolation: isolate;
+}
+
+.tournamentTreeBoardViewport {
+  position: relative;
+}
+
+.tournamentTreeLines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 5;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.tournamentTreeLines path {
+  fill: none;
+  stroke: color-mix(in srgb, #6a8cd8 72%, #f0b553 12%);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 8px color-mix(in srgb, #4c79d8 16%, transparent));
+}
+
+:root[data-theme="light"] .tournamentTreeLines path {
+  stroke: color-mix(in srgb, #8b7d6b 54%, #3469d4 22%);
+}
+
+:root[data-theme="light"] .tournamentPage {
+  background:
+    radial-gradient(circle at top left, rgba(56, 103, 196, 0.1), transparent 24%),
+    radial-gradient(circle at top right, rgba(214, 163, 76, 0.08), transparent 22%);
+}
+
+:root[data-theme="light"] .tournamentStageSection,
+:root[data-theme="light"] .tournamentPageHeroCopy {
+  box-shadow:
+    0 18px 34px rgba(72, 93, 126, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.tournamentPageMissing {
+  width: min(760px, 100%);
+}
+
+@media (max-width: 900px) {
+  .tournamentStageHeader {
+    grid-template-columns: 1fr;
+  }
+
+  .tournamentStageHeaderActions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .tournamentStageControls {
+    justify-content: flex-start;
+  }
+
+  .tournamentRoundsScroller {
+    min-width: 100%;
+  }
+}

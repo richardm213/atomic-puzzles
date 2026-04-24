@@ -2,3 +2,6 @@ node_modules
 private/
 .env.local
 dist/
+data/tournaments/visible-tournament-matches.csv
+data/tournaments/player-countries.csv
+data/tournaments/tournament-seeds.csv
