@@ -96,7 +96,9 @@
 .profileActionRow {
   margin-top: 14px;
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
+  gap: 10px;
 }
 
 .playerProfilePanel .matchFilterGrid {

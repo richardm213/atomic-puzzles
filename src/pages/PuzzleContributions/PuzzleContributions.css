@@ -1,0 +1,265 @@
+.puzzleContributionsPage {
+  min-height: calc(100vh - 58px);
+  min-height: calc(100svh - 58px);
+  background: var(--page-background);
+  color: var(--color-text);
+  padding: max(var(--page-gutter), env(safe-area-inset-top))
+    max(var(--page-gutter), env(safe-area-inset-right))
+    max(calc(var(--page-gutter) + 2px), env(safe-area-inset-bottom))
+    max(var(--page-gutter), env(safe-area-inset-left));
+}
+
+.puzzleContributionsShell {
+  width: min(920px, 100%);
+  margin: 0 auto;
+  display: grid;
+  gap: 18px;
+}
+
+.puzzleContributionsHero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(240px, 0.8fr);
+  gap: 18px;
+  align-items: stretch;
+  padding: clamp(16px, 2.2vw, 22px);
+  border: 1px solid var(--color-border);
+  border-radius: calc(var(--radius-ui) + 6px);
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--color-primary) 16%, transparent), transparent 32%),
+    linear-gradient(180deg, color-mix(in srgb, var(--color-panel) 84%, transparent), transparent),
+    var(--color-panel);
+  box-shadow: var(--shadow-panel);
+  backdrop-filter: blur(16px);
+}
+
+.puzzleContributionsHeroCopy,
+.puzzleContributionsHeroActions,
+.puzzleContributionsHeroLinks,
+.puzzleContributionsIdentityCard,
+.puzzleContributionsListSection,
+.puzzleContributionsList,
+.puzzleContributionPrimary {
+  display: grid;
+  gap: 10px;
+}
+
+.puzzleContributionsEyebrow,
+.puzzleContributionsMiniLabel {
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.puzzleContributionsEyebrow {
+  width: fit-content;
+  margin: 0;
+  color: var(--color-primary-pale);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  padding: 6px 9px;
+  border: 1px solid var(--color-glass-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-panel-strong) 72%, transparent);
+}
+
+.puzzleContributionsHero h1,
+.puzzleContributionsListHeader h2 {
+  margin: 0;
+  color: var(--color-heading);
+}
+
+.puzzleContributionsHero h1 {
+  font-size: clamp(27px, 3.3vw, 38px);
+  line-height: 1.04;
+}
+
+.puzzleContributionsIntro {
+  margin: 0;
+  max-width: 60ch;
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.puzzleContributionsHeroActions {
+  align-content: space-between;
+  justify-items: end;
+}
+
+.puzzleContributionsIdentityCard,
+.puzzleContributionsStatCard,
+.puzzleContributionsListSection,
+.puzzleContributionsStateCard {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-panel) 78%, transparent), transparent),
+    var(--color-panel-strong);
+  box-shadow: var(--shadow-panel);
+}
+
+.puzzleContributionsIdentityCard {
+  width: min(100%, 280px);
+  padding: 12px 14px;
+}
+
+.puzzleContributionsIdentityCard strong,
+.puzzleContributionsStatCard strong {
+  color: var(--color-heading);
+}
+
+.puzzleContributionsIdentityCard strong {
+  font-size: 20px;
+  line-height: 1.08;
+}
+
+.puzzleContributionsBackLink,
+.puzzleContributionLink,
+.puzzleContributionOpenLink {
+  text-decoration: none;
+}
+
+.puzzleContributionsBackLink,
+.puzzleContributionOpenLink {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border-radius: var(--radius-ui);
+  border: 1px solid var(--color-accent-soft-border);
+  background: var(--color-panel-strong);
+  color: var(--color-heading);
+  font-size: 14px;
+  font-weight: 800;
+  transition:
+    transform 140ms ease,
+    border-color 140ms ease,
+    background-color 140ms ease;
+}
+
+.puzzleContributionsBackLink:hover,
+.puzzleContributionsBackLink:focus-visible,
+.puzzleContributionOpenLink:hover,
+.puzzleContributionOpenLink:focus-visible {
+  transform: translateY(-1px);
+  border-color: var(--color-primary);
+  background: var(--color-surface-elevated-strong);
+}
+
+.puzzleContributionsStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.puzzleContributionsStatCard {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+}
+
+.puzzleContributionsStatCard strong {
+  font-size: clamp(24px, 3.2vw, 32px);
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.puzzleContributionsListSection {
+  gap: 14px;
+  padding: clamp(16px, 2vw, 20px);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-panel) 82%, transparent), transparent),
+    var(--color-panel);
+}
+
+.puzzleContributionsListHeader {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.puzzleContributionsStateCard {
+  display: grid;
+  gap: 12px;
+  padding: 16px 18px;
+}
+
+.puzzleContributionsStateCard p {
+  margin: 0;
+}
+
+.puzzleContributionRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 13px 15px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+}
+
+.puzzleContributionLink {
+  color: var(--color-heading);
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.puzzleContributionLink:hover,
+.puzzleContributionLink:focus-visible {
+  color: var(--color-primary-hover);
+}
+
+.puzzleContributionMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.puzzleContributionMeta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.puzzleContributionMeta span:not(:last-child)::after {
+  content: "•";
+  color: var(--color-subtle);
+}
+
+@media (max-width: 860px) {
+  .puzzleContributionsHero,
+  .puzzleContributionsStats {
+    grid-template-columns: 1fr;
+  }
+
+  .puzzleContributionsHeroActions {
+    justify-items: stretch;
+  }
+
+  .puzzleContributionsIdentityCard {
+    width: 100%;
+  }
+}
+
+@media (max-width: 720px) {
+  .puzzleContributionsListHeader,
+  .puzzleContributionRow {
+    grid-template-columns: 1fr;
+  }
+
+  .puzzleContributionsListHeader {
+    display: grid;
+    align-items: stretch;
+  }
+
+  .puzzleContributionOpenLink {
+    width: 100%;
+  }
+}
