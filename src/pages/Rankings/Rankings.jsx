@@ -143,7 +143,8 @@ const LeaderboardView = () => {
   const [sortDirection, setSortDirection] = useState("asc");
   const hasInitializedFiltersRef = useRef(false);
 
-  const monthOptions = useMemo(() => allLeaderboardMonths().reverse(), []);
+  const allMonthKeys = useMemo(() => allLeaderboardMonths(), []);
+  const monthOptions = useMemo(() => [...allMonthKeys].reverse(), [allMonthKeys]);
   const yearOptions = useMemo(() => allLeaderboardYears(), []);
 
   const selectedMonth = useMemo(() => {
@@ -204,11 +205,31 @@ const LeaderboardView = () => {
   const selectedModeData = selectedMonthData?.[selectedMode] || {
     players: [],
   };
+  const selectedMonthIndex = allMonthKeys.indexOf(selectedMonth);
+  const hasPreviousMonth = selectedMonthIndex > 0;
+  const hasNextMonth = selectedMonthIndex >= 0 && selectedMonthIndex < allMonthKeys.length - 1;
   const eligibilityRequirement = rankingEligibilityByMode[selectedMode];
   const players = useMemo(
     () => selectedModeData.players.filter((player) => isEligibleForRankings(player, selectedMode)),
     [selectedMode, selectedModeData.players],
   );
+
+  const selectMonthKey = (monthKey) => {
+    const monthDate = monthDateFromMonthKey(monthKey);
+    if (!monthDate) return;
+    setSelectedYear(String(monthDate.getUTCFullYear()));
+    setSelectedMonthName(monthNameFromDate(monthDate));
+  };
+
+  const handlePreviousMonth = () => {
+    if (!hasPreviousMonth) return;
+    selectMonthKey(allMonthKeys[selectedMonthIndex - 1]);
+  };
+
+  const handleNextMonth = () => {
+    if (!hasNextMonth) return;
+    selectMonthKey(allMonthKeys[selectedMonthIndex + 1]);
+  };
 
   const handleSort = (nextKey) => {
     if (sortKey === nextKey) {
@@ -296,7 +317,27 @@ const LeaderboardView = () => {
         {error ? <div className="errorText">{error}</div> : null}
 
         <div className="rankingsMeta">
-          <span>{readableMonthLabel(selectedMonth || monthOptions[0])}</span>
+          <div className="monthStepControls" aria-label="Month navigation">
+            <button
+              type="button"
+              className="monthStepButton"
+              aria-label="Previous month"
+              onClick={handlePreviousMonth}
+              disabled={!hasPreviousMonth}
+            >
+              <span aria-hidden="true">←</span>
+            </button>
+            <span className="currentMonthLabel">{readableMonthLabel(selectedMonth || monthOptions[0])}</span>
+            <button
+              type="button"
+              className="monthStepButton"
+              aria-label="Next month"
+              onClick={handleNextMonth}
+              disabled={!hasNextMonth}
+            >
+              <span aria-hidden="true">→</span>
+            </button>
+          </div>
           <div className="rankingsMetaDetails">
             <span className="rankedCount">
               {players.length} ranked

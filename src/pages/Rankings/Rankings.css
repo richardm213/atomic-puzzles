@@ -33,6 +33,50 @@
   min-height: 42px;
 }
 
+.monthStepControls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.monthStepButton {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-panel-strong);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
+}
+
+.currentMonthLabel {
+  color: var(--color-text);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.monthStepButton:hover:not(:disabled),
+.monthStepButton:focus-visible:not(:disabled) {
+  border-color: var(--color-primary-soft);
+  color: var(--color-heading);
+}
+
+.monthStepButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .rankingsTableWrap {
   margin-top: 14px;
   overflow-x: auto;
@@ -106,12 +150,6 @@
   border-top: 1px solid var(--color-border);
 }
 
-.rankingsMeta > span:first-child {
-  color: var(--color-text);
-  font-size: 16px;
-  font-weight: 700;
-}
-
 .rankedCount {
   display: inline-flex;
   align-items: center;
@@ -170,6 +208,15 @@
 
   .rankingsControls label {
     justify-items: stretch;
+  }
+
+  .monthStepControls {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .currentMonthLabel {
+    font-size: 15px;
   }
 
   .rankingsControls select {
