@@ -122,6 +122,12 @@ export const PuzzleSetsPage = () => {
     () => filteredPuzzleGroups.reduce((count, group) => count + group.puzzles.length, 0),
     [filteredPuzzleGroups],
   );
+  const selectedPuzzleCount = selectedGroup?.puzzles.length ?? 0;
+  const selectedSummaryCount = selectedGroup ? selectedPuzzleCount : filteredPuzzleCount;
+  const emptySelectionMessage =
+    filteredPuzzleGroups.length > 0
+      ? "The puzzle list will appear here after you choose a set."
+      : `No sets are visible for the ${EVENT_FILTERS.find((filter) => filter.id === activeFilterId)?.label ?? "active"} filter.`;
 
   const handleSetSelection = (eventKey) => {
     shouldScrollToSelectionRef.current = true;
@@ -171,7 +177,7 @@ export const PuzzleSetsPage = () => {
 
         <section className="puzzleSetsSection">
           <div className="puzzleSetsSectionHeader">
-            <div>
+            <div className="puzzleSetsSectionCopy">
               <p className="puzzleSetsSectionEyebrow">Events</p>
               <h2>Choose a puzzle set</h2>
               <p className="puzzleSetsSectionIntro">
@@ -243,20 +249,15 @@ export const PuzzleSetsPage = () => {
           ref={selectedSetSectionRef}
         >
           <div className="puzzleSetsSectionHeader">
-            <div>
+            <div className="puzzleSetsSectionCopy">
               <p className="puzzleSetsSectionEyebrow">Selected set</p>
               <h2>{selectedGroup ? selectedGroup.event : "Pick an event to view its puzzles"}</h2>
-              <p className="puzzleSetsSectionIntro">
-                {selectedGroup
-                  ? `Open any puzzle from ${selectedGroup.event}.`
-                  : filteredPuzzleGroups.length > 0
-                    ? "The puzzle list will appear here after you choose a set."
-                    : `No sets are visible for the ${EVENT_FILTERS.find((filter) => filter.id === activeFilterId)?.label ?? "active"} filter.`}
-              </p>
+              {selectedGroup ? null : (
+                <p className="puzzleSetsSectionIntro">{emptySelectionMessage}</p>
+              )}
               <p className="puzzleSetsFilterSummary">
-                Showing {filteredPuzzleGroups.length} set
-                {filteredPuzzleGroups.length === 1 ? "" : "s"}·{filteredPuzzleCount} puzzle
-                {filteredPuzzleCount === 1 ? "" : "s"}
+                {selectedSummaryCount} puzzle
+                {selectedSummaryCount === 1 ? "" : "s"}
               </p>
             </div>
           </div>
