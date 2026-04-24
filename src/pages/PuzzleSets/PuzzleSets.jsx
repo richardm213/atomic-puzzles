@@ -39,7 +39,7 @@ const matchesEventFilter = (group, filterId) => {
   }
 
   if (filterId === "practiceMatch") {
-    return normalizedEvent.includes("practice match");
+    return normalizedEvent.includes("practice");
   }
 
   return true;
