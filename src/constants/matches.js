@@ -16,11 +16,11 @@ export const modeDescriptions = {
 export const rankingEligibilityByMode = {
   blitz: {
     minGames: 15,
-    maxRd: 65,
+    maxRd: 60,
   },
   bullet: {
     minGames: 25,
-    maxRd: 65,
+    maxRd: 60,
   },
   hyperbullet: {
     minGames: 25,
