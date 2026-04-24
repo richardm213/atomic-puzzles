@@ -6,30 +6,48 @@
   display: grid;
   gap: clamp(18px, 2.8vw, 30px);
   align-content: start;
-  padding: var(--page-shell-padding);
+  padding:
+    max(var(--page-gutter), env(safe-area-inset-top))
+    max(clamp(22px, 4vw, 48px), env(safe-area-inset-right))
+    max(calc(var(--page-gutter) + 2px), env(safe-area-inset-bottom))
+    max(clamp(22px, 4vw, 48px), env(safe-area-inset-left));
 }
 
 .homeHero,
 .homeContent,
 .homeNotesSection {
-  width: min(1080px, 100%);
+  width: min(980px, 100%);
   margin: 0 auto;
 }
 
 .homeHero {
   display: grid;
-  grid-template-columns: minmax(0, 1.28fr) minmax(220px, 0.72fr);
-  gap: clamp(18px, 2.6vw, 36px);
-  align-items: center;
-  min-height: min(460px, calc(100vh - 170px));
-  min-height: min(460px, calc(100svh - 170px));
+  grid-template-columns: minmax(0, 1.12fr) minmax(260px, 0.78fr);
+  grid-template-areas:
+    "lead image"
+    "forms image";
+  gap: clamp(6px, 1.2vw, 16px);
+  align-items: start;
+  min-height: min(400px, calc(100vh - 210px));
+  min-height: min(400px, calc(100svh - 210px));
+  padding-block: clamp(12px, 3vh, 28px);
 }
 
-.homeHeroCopy {
+.homeHeroLead,
+.homeHeroForms {
   display: grid;
-  gap: 18px;
+  gap: 16px;
   min-width: 0;
+}
+
+.homeHeroLead {
+  grid-area: lead;
   max-width: 44rem;
+}
+
+.homeHeroForms {
+  grid-area: forms;
+  align-content: start;
 }
 
 .homeKicker {
@@ -54,12 +72,12 @@
   flex: 0 0 auto;
 }
 
-.homeHeroCopy > h1 {
-  max-width: 13ch;
+.homeHeroLead > h1 {
+  max-width: 22ch;
   margin: 0;
   color: var(--color-heading);
-  font-size: clamp(30px, 3.7vw, 48px);
-  line-height: 1.08;
+  font-size: clamp(29px, 3vw, 43px);
+  line-height: 1.06;
   letter-spacing: 0;
 }
 
@@ -212,10 +230,13 @@
 }
 
 .homeImageStage {
+  grid-area: image;
   position: relative;
-  justify-self: end;
+  justify-self: center;
+  align-self: center;
   width: min(100%, 320px);
   aspect-ratio: 870 / 990;
+  transform: translateY(-18px);
   border-radius: var(--radius-ui);
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--color-panel) 82%, transparent), transparent),
@@ -423,34 +444,39 @@
   }
 }
 
-@media (max-width: 860px) {
+@media (max-width: 1080px) {
   .homeHero {
-    grid-template-columns: minmax(0, 1fr) minmax(190px, 240px);
-    gap: 18px;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "lead"
+      "image"
+      "forms";
+    gap: 14px;
     min-height: 0;
+    padding-block: 8px;
   }
 
   .homeImageStage {
-    justify-self: center;
-    width: min(240px, 100%);
+    width: min(280px, 100%);
+    transform: none;
   }
 }
 
 @media (max-width: 680px) {
-  .homeHero {
-    grid-template-columns: 1fr;
+  .homeImageStage {
+    width: min(72vw, 280px);
   }
 }
 
 @media (max-width: 720px) {
   .homePage {
     gap: 16px;
-    padding: max(18px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right))
-      max(24px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+    padding: max(18px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right))
+      max(24px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
   }
 
-  .homeHeroCopy > h1 {
-    font-size: 32px;
+  .homeHeroLead > h1 {
+    font-size: 30px;
   }
 
   .homeHero,
@@ -522,11 +548,12 @@
     font-size: 12px;
   }
 
-  .homeHeroCopy {
+  .homeHeroLead,
+  .homeHeroForms {
     gap: 16px;
   }
 
-  .homeHeroCopy > h1 {
+  .homeHeroLead > h1 {
     font-size: 30px;
   }
 

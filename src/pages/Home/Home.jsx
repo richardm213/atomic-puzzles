@@ -189,7 +189,7 @@ export const HomePage = () => {
         }}
       />
       <section className="homeHero" aria-labelledby="home-title">
-        <div className="homeHeroCopy">
+        <div className="homeHeroLead">
           <div className="homeKicker">
             <img src={appAssetPath("/favicon.ico")} alt="" width="24" height="24" />
             Atomic puzzles
@@ -208,7 +208,34 @@ export const HomePage = () => {
               View recent matches
             </Link>
           </div>
+        </div>
 
+        <div
+          className="homeImageStage"
+          aria-label="Slideshow of atomic puzzle positions"
+          role="img"
+        >
+          {puzzleCollageImages.map((image, index) => (
+            <picture
+              key={image.src}
+              className="homePuzzleCard"
+              style={{ "--slide-delay": `${index * 7}s` }}
+              aria-hidden="true"
+            >
+              <img
+                src={appAssetPath(image.src)}
+                alt=""
+                width="870"
+                height="990"
+                decoding="async"
+                fetchPriority={index === 0 ? "high" : "low"}
+                loading={index === 0 ? "eager" : "lazy"}
+              />
+            </picture>
+          ))}
+        </div>
+
+        <div className="homeHeroForms">
           <form className="homePlayerSearch" onSubmit={handlePlayerSearch}>
             <label htmlFor="home-player-search">Look up a player</label>
             <div className="homeSearchRow">
@@ -256,31 +283,6 @@ export const HomePage = () => {
               </button>
             </div>
           </form>
-        </div>
-
-        <div
-          className="homeImageStage"
-          aria-label="Slideshow of atomic puzzle positions"
-          role="img"
-        >
-          {puzzleCollageImages.map((image, index) => (
-            <picture
-              key={image.src}
-              className="homePuzzleCard"
-              style={{ "--slide-delay": `${index * 7}s` }}
-              aria-hidden="true"
-            >
-              <img
-                src={appAssetPath(image.src)}
-                alt=""
-                width="870"
-                height="990"
-                decoding="async"
-                fetchPriority={index === 0 ? "high" : "low"}
-                loading={index === 0 ? "eager" : "lazy"}
-              />
-            </picture>
-          ))}
         </div>
       </section>
 
