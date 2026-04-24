@@ -284,6 +284,10 @@
   padding: 8px 74px 8px 38px;
 }
 
+.navSearch.pending input {
+  padding-right: 98px;
+}
+
 .navSearchIcon {
   width: 34px;
   min-width: 34px;
@@ -305,7 +309,7 @@
 .navSearchGo {
   position: absolute;
   right: 4px;
-  width: 58px;
+  width: 34px;
   padding: 0;
   display: inline-flex;
   align-items: center;
@@ -327,6 +331,67 @@
   background: var(--color-primary);
   color: var(--color-on-primary);
   border-color: var(--color-primary);
+}
+
+.navSearchStatus {
+  position: absolute;
+  right: 44px;
+  top: 50%;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transform: translateY(-50%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms ease;
+}
+
+.navSearch.pending .navSearchStatus {
+  opacity: 1;
+}
+
+.navSearchPulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-primary) 70%, white 30%);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 16%, transparent);
+  animation: navSearchPulse 1s ease-in-out infinite;
+}
+
+.navSearchPulse:nth-child(2) {
+  animation-delay: 120ms;
+}
+
+.navSearchPulse:nth-child(3) {
+  animation-delay: 240ms;
+}
+
+.navSearchSpinner {
+  animation: navSearchSpin 0.9s linear infinite;
+}
+
+@keyframes navSearchPulse {
+  0%,
+  100% {
+    transform: scale(0.72);
+    opacity: 0.4;
+  }
+
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes navSearchSpin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .navAuth {

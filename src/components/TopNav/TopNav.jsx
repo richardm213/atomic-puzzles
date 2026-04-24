@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChevronDown, faRightFromBracket, faUser } from "@fortawesome/free-solid-svg-icons";
+import {
+  faChevronDown,
+  faMagnifyingGlass,
+  faRightFromBracket,
+  faSpinner,
+  faUser,
+} from "@fortawesome/free-solid-svg-icons";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { getBoardThemeColors, useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
@@ -59,6 +65,7 @@ const setStoredProfileUsername = (username, profileUsername) => {
 export const TopNav = () => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchPending, setSearchPending] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const searchInputRef = useRef(null);
@@ -219,18 +226,27 @@ export const TopNav = () => {
 
   const handleSearchSubmit = async (event) => {
     event.preventDefault();
-    if (!trimmedSearchQuery) return;
-    const resolvedUsername = await resolveUsernameInput(trimmedSearchQuery);
-    navigate({
-      to: "/@/$username",
-      params: { username: normalizeUsername(resolvedUsername) },
-    });
-    setSearchQuery("");
-    setSearchOpen(false);
+    if (!trimmedSearchQuery || searchPending) return;
+
+    setSearchPending(true);
+
+    try {
+      const resolvedUsername = await resolveUsernameInput(trimmedSearchQuery);
+      navigate({
+        to: "/@/$username",
+        params: { username: normalizeUsername(resolvedUsername) },
+      });
+      setSearchQuery("");
+      setSearchOpen(false);
+    } finally {
+      setSearchPending(false);
+    }
   };
 
   const closeSearchIfFocusOutside = () => {
     window.requestAnimationFrame(() => {
+      if (searchPending) return;
+
       const activeElement = document.activeElement;
       if (!(activeElement instanceof HTMLElement)) {
         setSearchOpen(false);
@@ -244,6 +260,7 @@ export const TopNav = () => {
   };
 
   const closeSearchOnMouseLeave = () => {
+    if (searchPending) return;
     setSearchOpen(false);
     searchInputRef.current?.blur();
   };
@@ -262,11 +279,15 @@ export const TopNav = () => {
       <div className="topNavCenter">
         <div className="navSearchSlot">
           <form
-            className={`navSearch ${searchOpen ? "open" : ""}`}
+            className={`navSearch ${searchOpen ? "open" : ""} ${searchPending ? "pending" : ""}`}
             onSubmit={handleSearchSubmit}
-            onMouseEnter={() => setSearchOpen(true)}
+            onMouseEnter={() => {
+              if (!searchPending) setSearchOpen(true);
+            }}
             onMouseLeave={closeSearchOnMouseLeave}
-            onFocusCapture={() => setSearchOpen(true)}
+            onFocusCapture={() => {
+              if (!searchPending) setSearchOpen(true);
+            }}
             onBlurCapture={closeSearchIfFocusOutside}
           >
             <input
@@ -275,28 +296,40 @@ export const TopNav = () => {
               value={searchQuery}
               placeholder="Search player"
               aria-label="Search player username"
+              aria-busy={searchPending}
               onChange={(event) => setSearchQuery(event.target.value)}
+              disabled={searchPending}
               tabIndex={searchOpen ? 0 : -1}
             />
+            <div className="navSearchStatus" aria-hidden={!searchPending}>
+              <span className="navSearchPulse" />
+              <span className="navSearchPulse" />
+              <span className="navSearchPulse" />
+            </div>
             <button
               className="navSearchIcon"
               type={searchOpen ? "submit" : "button"}
-              aria-label="Search player"
+              aria-label={searchPending ? "Searching for player" : "Search player"}
+              disabled={searchPending}
               onClick={() => {
                 if (!searchOpen) {
                   setSearchOpen(true);
                 }
               }}
             >
-              <i className="fa-solid fa-magnifying-glass" aria-hidden="true" />
+              <FontAwesomeIcon
+                icon={searchPending ? faSpinner : faMagnifyingGlass}
+                className={searchPending ? "navSearchSpinner" : undefined}
+              />
             </button>
             <button
               className="navSearchGo"
               type="submit"
               tabIndex={searchOpen ? 0 : -1}
-              disabled={!trimmedSearchQuery}
+              disabled={!trimmedSearchQuery || searchPending}
+              aria-label="Submit player search"
             >
-              Go
+              <i className="fa-solid fa-magnifying-glass" aria-hidden="true" />
             </button>
           </form>
         </div>
