@@ -122,102 +122,68 @@ export const MatchPage = () => {
   return (
     <>
       <Seo title={title} description={description} />
-      <div className="panel matchPagePanel">
-        {loading ? <div className="emptyRankings">Loading match...</div> : null}
-        {!loading && error ? <div className="errorText">{error}</div> : null}
-        {!loading && !error && match ? (
-          <>
-            <section className="matchPageHero">
-              <div className="matchPageHeroCopy">
-                <p className="matchPageEyebrow">{modeLabels[match.mode] || match.mode} match</p>
-                <h1 className="matchPageTitle">
+      <div className="rankingsPage">
+        <div className="panel matchPagePanel">
+          {loading ? <div className="emptyRankings">Loading match...</div> : null}
+          {!loading && error ? <div className="errorText">{error}</div> : null}
+          {!loading && !error && match ? (
+            <>
+              <section className="matchPageHeader" aria-label="Match result">
+                <p className="matchPageHeaderLabel">{modeLabels[match.mode] || match.mode} match</p>
+                <div className="matchPageHeaderRow">
                   <Link
-                    className="matchPlayerLink"
+                    className="matchPageHeaderPlayer"
                     to="/@/$username"
                     params={{ username: match.playerA }}
+                    title={match.playerA}
                   >
                     {match.playerA}
                   </Link>
-                  <span className="matchPageVersus">vs</span>
+                  <div className="matchPageHeaderScore" aria-label={`Score ${match.scoreA} to ${match.scoreB}`}>
+                    <strong>{formatScore(match.scoreA)}</strong>
+                    <span>-</span>
+                    <strong>{formatScore(match.scoreB)}</strong>
+                  </div>
                   <Link
-                    className="matchPlayerLink"
+                    className="matchPageHeaderPlayer matchPageHeaderPlayerRight"
                     to="/@/$username"
                     params={{ username: match.playerB }}
+                    title={match.playerB}
                   >
                     {match.playerB}
                   </Link>
-                </h1>
-                <div className="matchPageMeta">
+                </div>
+                <div className="matchPageHeaderMeta">
                   <span className="matchMetaPill">{formatLocalDateTime(match.startTs)}</span>
                   <span className="matchMetaPill">{match.timeControl}</span>
                   <span className="matchMetaPill">{match.sourceValue}</span>
                 </div>
-                <div className="matchPageActions">
+                <div className="matchPageHeaderActions">
                   <Link
                     className="matchPageH2HLink"
                     to="/h2h/$matchup"
                     params={{ matchup: matchupToSlug(match.playerA, match.playerB) }}
                   >
-                    View head-to-head
+                    View H2H
                   </Link>
                 </div>
-              </div>
+              </section>
 
-              <div
-                className="matchPageScoreCard"
-                aria-label={`Score ${match.scoreA} to ${match.scoreB}`}
-              >
-                <div className="matchPageScore">
-                  <div className="matchPageScoreSide">
-                    <span className="matchPageScoreName">{match.playerA}</span>
-                    <strong>{formatScore(match.scoreA)}</strong>
+              <section className="matchPageContent">
+                <div className="matchPageDetailsCard">
+                  <div className="matchPageSectionHeading">
+                    <h2>Game Breakdown</h2>
                   </div>
-                  <span className="matchPageScoreDivider">-</span>
-                  <div className="matchPageScoreSide">
-                    <span className="matchPageScoreName">{match.playerB}</span>
-                    <strong>{formatScore(match.scoreB)}</strong>
-                  </div>
+                  <MatchDetails
+                    match={match}
+                    matchKey={`standalone-${match.matchId || match.firstGameId}`}
+                    showRunningScore
+                  />
                 </div>
-              </div>
-            </section>
-
-            <section className="matchPageSummaryGrid" aria-label="Match summary">
-              <article className="matchPageSummaryCard">
-                <span>Games</span>
-                <strong>{match.gameCount}</strong>
-              </article>
-              <article className="matchPageSummaryCard">
-                <span className="matchPageSummaryLabel" title={`${match.playerA} wins`}>
-                  {match.playerA} wins
-                </span>
-                <strong>{formatScore(match.playerAWins)}</strong>
-              </article>
-              <article className="matchPageSummaryCard">
-                <span className="matchPageSummaryLabel" title={`${match.playerB} wins`}>
-                  {match.playerB} wins
-                </span>
-                <strong>{formatScore(match.playerBWins)}</strong>
-              </article>
-              <article className="matchPageSummaryCard matchPageSummaryCardCompact">
-                <span>Draws</span>
-                <strong>{formatScore(match.draws)}</strong>
-              </article>
-            </section>
-
-            <section className="matchPageContent">
-              <div className="matchPageDetailsCard">
-                <div className="matchPageSectionHeading">
-                  <h2>Game Breakdown</h2>
-                </div>
-                <MatchDetails
-                  match={match}
-                  matchKey={`standalone-${match.matchId || match.firstGameId}`}
-                  showRunningScore
-                />
-              </div>
-            </section>
-          </>
-        ) : null}
+              </section>
+            </>
+          ) : null}
+        </div>
       </div>
     </>
   );
