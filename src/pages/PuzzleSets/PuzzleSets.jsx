@@ -122,8 +122,6 @@ export const PuzzleSetsPage = () => {
     () => filteredPuzzleGroups.reduce((count, group) => count + group.puzzles.length, 0),
     [filteredPuzzleGroups],
   );
-  const selectedPuzzleCount = selectedGroup?.puzzles.length ?? 0;
-  const selectedSummaryCount = selectedGroup ? selectedPuzzleCount : filteredPuzzleCount;
   const emptySelectionMessage =
     filteredPuzzleGroups.length > 0
       ? "The puzzle list will appear here after you choose a set."
@@ -255,10 +253,6 @@ export const PuzzleSetsPage = () => {
               {selectedGroup ? null : (
                 <p className="puzzleSetsSectionIntro">{emptySelectionMessage}</p>
               )}
-              <p className="puzzleSetsFilterSummary">
-                {selectedSummaryCount} puzzle
-                {selectedSummaryCount === 1 ? "" : "s"}
-              </p>
             </div>
           </div>
 
