@@ -29,10 +29,6 @@
   text-decoration: none;
 }
 
-.homeBrand.isActive span {
-  color: var(--color-heading);
-}
-
 .topNavCenter {
   margin-left: auto;
   display: inline-flex;
@@ -68,16 +64,6 @@
 
 :root[data-theme="light"] .topNav {
   box-shadow: 0 10px 30px rgba(128, 146, 173, 0.08);
-}
-
-:root[data-theme="light"] .topNavLinks a {
-  transition:
-    color 140ms ease,
-    opacity 140ms ease;
-}
-
-:root[data-theme="light"] .topNavLinks a:hover {
-  opacity: 1;
 }
 
 .navSettings {
@@ -120,16 +106,6 @@
   min-width: 220px;
   padding: 14px;
   border-radius: 14px;
-  background: var(--color-panel);
-  border: 1px solid var(--color-border-strong);
-  box-shadow: var(--shadow-panel);
-  backdrop-filter: blur(18px);
-}
-
-:root[data-theme="light"] .navSettingsMenu {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(250, 245, 237, 0.82)),
-    var(--color-panel);
 }
 
 .navSettingsSection + .navSettingsSection {
@@ -448,16 +424,21 @@
   min-width: 160px;
   padding: 8px;
   border-radius: 14px;
-  background: var(--color-panel);
-  border: 1px solid var(--color-border-strong);
-  box-shadow: var(--shadow-panel);
-  backdrop-filter: blur(18px);
   display: grid;
   gap: 4px;
   transform-origin: top right;
   animation: navProfileDropdownIn 140ms ease;
 }
 
+.navSettingsMenu,
+.navProfileDropdown {
+  background: var(--color-panel);
+  border: 1px solid var(--color-border-strong);
+  box-shadow: var(--shadow-panel);
+  backdrop-filter: blur(18px);
+}
+
+:root[data-theme="light"] .navSettingsMenu,
 :root[data-theme="light"] .navProfileDropdown {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(250, 245, 237, 0.82)),

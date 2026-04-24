@@ -232,12 +232,16 @@
   gap: 10px;
 }
 
-.paginationRow button {
+.paginationRow button,
+.paginationJumpLabel {
   border: 1px solid var(--color-input-border);
   background: var(--color-panel-strong);
   color: var(--color-text);
   border-radius: 8px;
   padding: 8px 10px;
+}
+
+.paginationRow button {
   cursor: pointer;
 }
 
@@ -253,11 +257,6 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid var(--color-input-border);
-  border-radius: 8px;
-  background: var(--color-panel-strong);
-  color: var(--color-text);
-  padding: 8px 10px;
 }
 
 .paginationJumpInput {

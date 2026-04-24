@@ -1,15 +1,12 @@
 .homePage {
-  min-height: calc(100vh - 58px);
-  min-height: calc(100svh - 58px);
+  min-height: var(--page-shell-min-height);
+  min-height: var(--page-shell-min-height-dynamic);
   color: var(--color-text);
   background: var(--page-background);
   display: grid;
   gap: clamp(18px, 2.8vw, 30px);
   align-content: start;
-  padding: max(var(--page-gutter), env(safe-area-inset-top))
-    max(var(--page-gutter), env(safe-area-inset-right))
-    max(calc(var(--page-gutter) + 2px), env(safe-area-inset-bottom))
-    max(var(--page-gutter), env(safe-area-inset-left));
+  padding: var(--page-shell-padding);
 }
 
 .homeHero,
@@ -57,7 +54,7 @@
   flex: 0 0 auto;
 }
 
-.homeHero h1 {
+.homeHeroCopy > h1 {
   max-width: 13ch;
   margin: 0;
   color: var(--color-heading);
@@ -126,35 +123,19 @@
 
 .homePlayerSearch {
   width: min(580px, 100%);
-  display: grid;
-  gap: 10px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-ui);
-  background: var(--color-panel);
-  padding: 14px;
-  box-shadow: var(--shadow-soft);
-  backdrop-filter: blur(16px);
 }
 
-.homePlayerSearch label,
-.homeCompareSearch label {
+.homeCompareSearch {
+  width: min(640px, 100%);
+}
+
+.homePlayerSearch > label,
+.homeCompareSearch > label {
   color: var(--color-subtle);
   font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-}
-
-.homeCompareSearch {
-  width: min(640px, 100%);
-  display: grid;
-  gap: 10px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-ui);
-  background: var(--color-panel);
-  padding: 14px;
-  box-shadow: var(--shadow-soft);
-  backdrop-filter: blur(16px);
 }
 
 .homeSearchRow {
@@ -169,10 +150,10 @@
   gap: 10px;
 }
 
-.homeSearchRow input,
-.homeSearchRow button,
-.homeCompareGrid input,
-.homeCompareGrid button {
+.homeSearchRow > input,
+.homeSearchRow > button,
+.homeCompareGrid > input,
+.homeCompareGrid > button {
   min-height: 46px;
   border-radius: var(--radius-ui);
   -webkit-appearance: none;
@@ -180,7 +161,20 @@
   font: inherit;
 }
 
-.homeSearchRow input {
+.homePlayerSearch,
+.homeCompareSearch {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel);
+  padding: 14px;
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(16px);
+}
+
+.homeSearchRow > input,
+.homeCompareGrid > input {
   min-width: 0;
   border: 1px solid var(--color-input-border);
   background: var(--color-panel-strong);
@@ -189,44 +183,30 @@
   padding: 10px 12px;
 }
 
-.homeCompareGrid input {
-  min-width: 0;
-  border: 1px solid var(--color-input-border);
-  background: var(--color-panel-strong);
-  color: var(--color-text);
-  font-size: 16px;
-  padding: 10px 12px;
-}
-
-.homeSearchRow input::placeholder,
-.homeCompareGrid input::placeholder {
+.homeSearchRow > input::placeholder,
+.homeCompareGrid > input::placeholder {
   color: var(--color-subtle);
 }
 
-.homeSearchRow button {
+.homeSearchRow > button,
+.homeCompareGrid > button {
   border: 1px solid var(--color-primary);
   background: var(--color-primary);
   color: var(--color-on-primary);
   cursor: pointer;
   font-weight: 800;
+}
+
+.homeSearchRow > button {
   padding: 10px 14px;
 }
 
-.homeCompareGrid button {
-  border: 1px solid var(--color-primary);
-  background: var(--color-primary);
-  color: var(--color-on-primary);
-  cursor: pointer;
-  font-weight: 800;
+.homeCompareGrid > button {
   padding: 10px 18px;
 }
 
-.homeSearchRow button:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
-}
-
-.homeCompareGrid button:disabled {
+.homeSearchRow > button:disabled,
+.homeCompareGrid > button:disabled {
   cursor: not-allowed;
   opacity: 0.45;
 }
@@ -312,14 +292,14 @@
   top: 84px;
 }
 
-.homeSectionIntro h2 {
+.homeSectionIntro > h2 {
   margin: 0 0 8px;
   color: var(--color-heading);
   font-size: 23px;
   line-height: 1.15;
 }
 
-.homeSectionIntro p {
+.homeSectionIntro > p {
   margin: 0;
   color: var(--color-muted);
   line-height: 1.55;
@@ -332,7 +312,7 @@
   background: var(--color-panel);
 }
 
-.homeFeatureCard span,
+.homeFeatureCard > span,
 .homeSectionLabel {
   color: var(--color-subtle);
   font-size: 12px;
@@ -341,8 +321,8 @@
   text-transform: uppercase;
 }
 
-.homeFeatureCard p,
-.homePrincipleList p {
+.homeFeatureCard > p,
+.homePrincipleList > article > p {
   margin: 0;
   color: var(--color-muted);
   line-height: 1.55;
@@ -370,7 +350,7 @@
   background: var(--color-surface-elevated-strong);
 }
 
-.homeFeatureCard h2 {
+.homeFeatureCard > h2 {
   margin: 0;
   color: var(--color-heading);
   font-size: 20px;
@@ -390,7 +370,7 @@
   box-shadow: var(--shadow-soft);
 }
 
-.homeNotes h2 {
+.homeNotes > h2 {
   margin: 8px 0 18px;
   color: var(--color-heading);
   font-size: 22px;
@@ -403,7 +383,7 @@
   gap: 16px;
 }
 
-.homePrincipleList article {
+.homePrincipleList > article {
   min-width: 0;
   display: grid;
   align-content: start;
@@ -415,19 +395,19 @@
   background: color-mix(in srgb, var(--color-panel-strong) 72%, transparent);
 }
 
-.homePrincipleList h3 {
+.homePrincipleList > article > h3 {
   margin: 0 0 8px;
   color: var(--color-text);
   font-size: 16px;
   line-height: 1.25;
 }
 
-.homePrincipleList a {
+.homePrincipleList > article a {
   color: var(--color-primary-soft);
   text-decoration: none;
 }
 
-.homePrincipleList a:hover {
+.homePrincipleList > article a:hover {
   text-decoration: underline;
 }
 
@@ -460,10 +440,6 @@
   .homeHero {
     grid-template-columns: 1fr;
   }
-
-  .homeImageStage {
-    width: min(72vw, 280px);
-  }
 }
 
 @media (max-width: 720px) {
@@ -473,7 +449,7 @@
       max(24px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
   }
 
-  .homeHero h1 {
+  .homeHeroCopy > h1 {
     font-size: 32px;
   }
 
@@ -513,11 +489,11 @@
     padding: 18px;
   }
 
-  .homeNotes h2 {
+  .homeNotes > h2 {
     font-size: 22px;
   }
 
-  .homePrincipleList article {
+  .homePrincipleList > article {
     padding: 14px;
   }
 }
@@ -529,10 +505,14 @@
     grid-template-columns: 1fr;
   }
 
+  .homeImageStage {
+    width: min(72vw, 280px);
+  }
+
   .homePrimaryCta,
   .homeSecondaryCta,
-  .homeSearchRow button,
-  .homeCompareGrid button {
+  .homeSearchRow > button,
+  .homeCompareGrid > button {
     width: 100%;
   }
 }
@@ -546,7 +526,7 @@
     gap: 16px;
   }
 
-  .homeHero h1 {
+  .homeHeroCopy > h1 {
     font-size: 30px;
   }
 
@@ -560,8 +540,8 @@
 
   .homePrimaryCta,
   .homeSecondaryCta,
-  .homeSearchRow button,
-  .homeCompareGrid button {
+  .homeSearchRow > button,
+  .homeCompareGrid > button {
     min-height: 48px;
   }
 }

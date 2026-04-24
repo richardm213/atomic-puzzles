@@ -71,17 +71,3 @@
 #promotion-choice square:focus-visible piece {
   transform: none;
 }
-@media (max-width: 1180px) {
-  .cg-boardShell,
-  .cg-board,
-  .emptyBoard {
-    width: min(100%, 31rem);
-  }
-}
-
-@media (max-width: 640px) {
-  .cg-board,
-  .emptyBoard {
-    border-radius: var(--radius-ui);
-  }
-}

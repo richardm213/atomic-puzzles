@@ -32,6 +32,9 @@
   --color-surface-elevated-strong: rgba(15, 23, 42, 0.92);
   --color-surface-inset: rgba(148, 163, 184, 0.08);
   --color-surface-inset-strong: rgba(148, 163, 184, 0.1);
+  --color-panel-soft: var(--color-surface-soft);
+  --color-surface: var(--color-surface-elevated);
+  --color-text-muted: var(--color-muted);
   --color-accent-soft-bg: rgba(14, 116, 144, 0.16);
   --color-accent-soft-bg-strong: rgba(14, 116, 144, 0.2);
   --color-accent-soft-border: rgba(56, 189, 248, 0.42);
@@ -51,6 +54,13 @@
   --shadow-panel: 0 24px 60px rgba(2, 6, 23, 0.34);
   --shadow-soft: 0 14px 28px rgba(2, 6, 23, 0.28);
   --shadow-strong: 0 28px 80px rgba(0, 0, 0, 0.42);
+  --page-shell-min-height: calc(100vh - 58px);
+  --page-shell-min-height-dynamic: calc(100svh - 58px);
+  --page-shell-padding:
+    max(var(--page-gutter), env(safe-area-inset-top))
+    max(var(--page-gutter), env(safe-area-inset-right))
+    max(calc(var(--page-gutter) + 2px), env(safe-area-inset-bottom))
+    max(var(--page-gutter), env(safe-area-inset-left));
   --page-background:
     radial-gradient(circle at 14% 10%, rgba(29, 78, 216, 0.18), transparent 28%),
     radial-gradient(circle at 82% 4%, rgba(14, 116, 144, 0.16), transparent 25%),
@@ -183,12 +193,12 @@ canvas {
   backdrop-filter: blur(16px);
 }
 
-.panel h1 {
+.panel > h1 {
   margin: 0 0 12px;
   font-size: 29px;
 }
 
-.panel p {
+.panel > p {
   margin: 0 0 20px;
   line-height: 1.55;
   color: var(--color-muted);
@@ -199,15 +209,15 @@ canvas {
   gap: 16px;
 }
 
-.controls label {
+.controls > label {
   display: grid;
   gap: 8px;
   font-size: 14px;
 }
 
-.controls select,
-.controls input[type="text"],
-.controls input[type="date"] {
+.controls > label > select,
+.controls > label > input[type="text"],
+.controls > label > input[type="date"] {
   border: 1px solid var(--color-input-border);
   background: var(--color-panel-strong);
   color: var(--color-text);
@@ -319,7 +329,7 @@ canvas {
     padding: 16px;
   }
 
-  .panel h1 {
+  .panel > h1 {
     font-size: 26px;
     line-height: 1.15;
     overflow-wrap: anywhere;
@@ -329,9 +339,9 @@ canvas {
     gap: 12px;
   }
 
-  .controls select,
-  .controls input[type="text"],
-  .controls input[type="date"],
+  .controls > label > select,
+  .controls > label > input[type="text"],
+  .controls > label > input[type="date"],
   .buttonRow button,
   .analyzeButton {
     min-height: 44px;

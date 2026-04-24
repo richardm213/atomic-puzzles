@@ -1,22 +1,15 @@
 .puzzleSetsPage {
   --puzzle-sets-panel-padding: clamp(18px, 2.2vw, 24px);
   --puzzle-sets-pill-radius: 999px;
-  --puzzle-sets-ui-transition:
+  --puzzle-sets-transition:
     transform 140ms ease,
     border-color 140ms ease,
     background-color 140ms ease;
-  --puzzle-sets-card-transition:
-    transform 140ms ease,
-    border-color 140ms ease,
-    background-color 140ms ease;
-  min-height: calc(100vh - 58px);
-  min-height: calc(100svh - 58px);
+  min-height: var(--page-shell-min-height);
+  min-height: var(--page-shell-min-height-dynamic);
   background: var(--page-background);
   color: var(--color-text);
-  padding: max(var(--page-gutter), env(safe-area-inset-top))
-    max(var(--page-gutter), env(safe-area-inset-right))
-    max(calc(var(--page-gutter) + 2px), env(safe-area-inset-bottom))
-    max(var(--page-gutter), env(safe-area-inset-left));
+  padding: var(--page-shell-padding);
 }
 
 .puzzleSetsShell {
@@ -90,18 +83,18 @@
   text-transform: uppercase;
 }
 
-.puzzleSetsHero h1,
-.puzzleSetsSectionHeader h2 {
+.puzzleSetsHeroCopy > h1,
+.puzzleSetsSectionCopy > h2 {
   margin: 0;
   color: var(--color-heading);
 }
 
-.puzzleSetsHero h1 {
+.puzzleSetsHeroCopy > h1 {
   font-size: clamp(28px, 3.3vw, 40px);
   line-height: 1.06;
 }
 
-.puzzleSetsSectionHeader h2 {
+.puzzleSetsSectionCopy > h2 {
   font-size: clamp(21px, 2.4vw, 28px);
   line-height: 1.12;
 }
@@ -134,13 +127,13 @@
   padding: 16px 18px;
 }
 
-.puzzleSetsSummaryCard strong {
+.puzzleSetsSummaryCard > strong {
   color: var(--color-heading);
   font-size: clamp(24px, 3vw, 34px);
   line-height: 1;
 }
 
-.puzzleSetsSummaryCard span:last-child,
+.puzzleSetsSummaryCard > span:last-child,
 .puzzleSetsStateCard {
   color: var(--color-muted);
 }
@@ -164,7 +157,7 @@
   background: var(--color-panel-strong);
   color: var(--color-heading);
   font-weight: 800;
-  transition: var(--puzzle-sets-ui-transition);
+  transition: var(--puzzle-sets-transition);
 }
 
 .puzzleSetsBackLink:hover,
@@ -186,7 +179,7 @@
   font: inherit;
   font-weight: 700;
   cursor: pointer;
-  transition: var(--puzzle-sets-ui-transition), color 140ms ease;
+  transition: var(--puzzle-sets-transition), color 140ms ease;
 }
 
 .puzzleSetsFilterButton:hover,
@@ -231,7 +224,7 @@
     var(--color-surface-soft);
   color: inherit;
   cursor: pointer;
-  transition: var(--puzzle-sets-card-transition);
+  transition: var(--puzzle-sets-transition);
 }
 
 .puzzleSetCard:hover,
@@ -244,7 +237,7 @@
     color-mix(in srgb, var(--color-panel-strong) 88%, transparent);
 }
 
-.puzzleSetCard strong {
+.puzzleSetCard > strong {
   color: var(--color-heading);
   font-size: 20px;
   line-height: 1.2;

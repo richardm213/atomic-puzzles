@@ -62,7 +62,7 @@
   color: var(--color-heading);
 }
 
-.methodologyHeader h1 {
+.methodologyHeader > h1 {
   margin: 0;
   font-size: clamp(30px, 4vw, 42px);
   line-height: 1.02;
@@ -70,7 +70,7 @@
   color: var(--color-heading);
 }
 
-.methodologyHeader p {
+.methodologyHeader > p {
   margin: 0;
   max-width: 66ch;
   font-size: 16px;
@@ -92,8 +92,8 @@
   box-shadow: inset 0 1px 0 color-mix(in srgb, white 7%, transparent);
 }
 
-.methodologyIntroCard h2,
-.methodologySection h2 {
+.methodologyIntroCard > h2,
+.methodologySection > h2 {
   margin: 0 0 10px;
   font-size: 20px;
   color: var(--color-heading);
@@ -105,8 +105,8 @@
   gap: 8px;
 }
 
-.methodologyIntroCard p,
-.methodologySection p,
+.methodologyIntroCard > p,
+.methodologySection > p,
 .methodologyEligibility li {
   margin: 0;
   color: var(--color-muted);
@@ -180,8 +180,8 @@
     padding: 16px;
   }
 
-  .methodologyIntroCard h2,
-  .methodologySection h2 {
+  .methodologyIntroCard > h2,
+  .methodologySection > h2 {
     font-size: 18px;
   }
 }
