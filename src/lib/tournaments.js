@@ -150,17 +150,6 @@ const winnerName = (match) => {
   return "";
 };
 
-const getMatchWinnerLabel = (match) => {
-  const winner = winnerName(match);
-  return winner || "Draw";
-};
-
-const getMatchLoserLabel = (match) => {
-  const winner = winnerName(match);
-  if (!winner) return "Draw";
-  return winner === match.p1 ? match.p2 : match.p1;
-};
-
 const addImplicitByeMatches = (matches) => {
   const augmented = [...matches];
   const mainRounds = roundDisplayOrder.main || [];
@@ -301,8 +290,7 @@ export const getTournamentChampion = (bracket) => {
     bracket.matches.find((match) => match.bracket === "main" && match.round === "Finals");
 
   if (!championshipMatch) return "";
-  if (bracket.id === "awc2025") return getMatchLoserLabel(championshipMatch);
-  return getMatchWinnerLabel(championshipMatch);
+  return winnerName(championshipMatch);
 };
 
 export const getTournamentBracket = async (tournamentId) =>

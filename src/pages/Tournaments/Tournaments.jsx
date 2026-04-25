@@ -53,6 +53,7 @@ export const TournamentsPage = () => {
         {tournamentCatalog.map((tournament) => {
           const isAvailable = tournament.status === "available";
           const champion = championsById[tournament.id];
+          const showWinner = Boolean(champion) && tournament.id !== "awc2025";
 
           return (
             <article
@@ -66,7 +67,7 @@ export const TournamentsPage = () => {
               </div>
 
               <h2>{tournament.title}</h2>
-              {champion ? (
+              {showWinner ? (
                 <p className="tournamentCardWinner">
                   Winner:{" "}
                   <Link
