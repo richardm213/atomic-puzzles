@@ -150,6 +150,17 @@ const winnerName = (match) => {
   return "";
 };
 
+const getMatchWinnerLabel = (match) => {
+  const winner = winnerName(match);
+  return winner || "Draw";
+};
+
+const getMatchLoserLabel = (match) => {
+  const winner = winnerName(match);
+  if (!winner) return "Draw";
+  return winner === match.p1 ? match.p2 : match.p1;
+};
+
 const addImplicitByeMatches = (matches) => {
   const augmented = [...matches];
   const mainRounds = roundDisplayOrder.main || [];
@@ -280,6 +291,19 @@ export const getAdjacentTournamentMetas = (tournamentId) => {
 
 export const getTournamentMeta = (tournamentId) =>
   tournaments.find((entry) => entry.id === tournamentId) || null;
+
+export const getTournamentChampion = (bracket) => {
+  if (!bracket || !Array.isArray(bracket.matches)) return "";
+
+  const championshipMatch =
+    bracket.matches.find((match) => match.bracket === "grand_final" && match.round === "Reset") ||
+    bracket.matches.find((match) => match.bracket === "grand_final" && match.round === "Set 1") ||
+    bracket.matches.find((match) => match.bracket === "main" && match.round === "Finals");
+
+  if (!championshipMatch) return "";
+  if (bracket.id === "awc2025") return getMatchLoserLabel(championshipMatch);
+  return getMatchWinnerLabel(championshipMatch);
+};
 
 export const getTournamentBracket = async (tournamentId) =>
   cachedRequest(tournamentBracketCache, ["tournamentBracket", tournamentId], async () => {

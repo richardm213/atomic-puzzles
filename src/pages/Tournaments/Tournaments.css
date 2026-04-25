@@ -61,6 +61,21 @@
   box-shadow: var(--shadow-soft);
 }
 
+.tournamentCardWinner {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-heading);
+}
+
+.tournamentCardWinnerLink {
+  color: inherit;
+  text-decoration: none;
+}
+
+.tournamentCardFinalists {
+  font-size: 0.92rem;
+}
+
 .tournamentCardHeader {
   display: flex;
   align-items: center;
@@ -131,4 +146,3 @@
 .tournamentCard.isLocked {
   opacity: 0.88;
 }
-
