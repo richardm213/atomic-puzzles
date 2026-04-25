@@ -35,6 +35,8 @@ const buildZoomState = (stages = []) =>
     return accumulator;
   }, {});
 
+const getStageStartRound = (stage, startRounds) => startRounds[stage.key] || stage.rounds[0]?.roundName;
+
 const clampZoom = (zoomLevel) =>
   Math.min(MAX_STAGE_ZOOM, Math.max(MIN_STAGE_ZOOM, Number(zoomLevel) || DEFAULT_STAGE_ZOOM));
 
@@ -236,6 +238,211 @@ const PlayerLabel = ({
   </span>
 );
 
+const TournamentStateMessage = ({ title, message }) => (
+  <div className="tournamentPage tournamentPageMissing">
+    <h1>{title}</h1>
+    <p>{message}</p>
+    <Link className="tournamentBackLink" to="/tournaments">
+      Back to tournaments
+    </Link>
+  </div>
+);
+
+const TournamentMatchCard = ({
+  match,
+  topSeedMap,
+  countryMap,
+}) => {
+  const matchWinner = winnerName(match);
+  const withdrawalPlayer = withdrewPlayerName(match);
+  const hasMatchPage = Boolean(match.match_id);
+  const matchHref = getMatchHref(match.match_id);
+
+  return (
+    <div
+      className={`tournamentMatchCard tournamentMatchCardTree${hasMatchPage ? " isClickable" : ""}`}
+      style={{
+        left: `${match.x}px`,
+        top: `${match.y}px`,
+        width: `${CARD_WIDTH}px`,
+      }}
+      onPointerDown={hasMatchPage ? (event) => event.stopPropagation() : undefined}
+      onClick={
+        hasMatchPage
+          ? () => {
+              window.open(matchHref, "_blank", "noopener,noreferrer");
+            }
+          : undefined
+      }
+    >
+      <div className="tournamentMatchPlayers">
+        <div>
+          <span>
+            <PlayerLabel
+              playerName={match.p1}
+              seed={topSeedMap.get(match.p1)}
+              isWinner={matchWinner === match.p1}
+              countryCode={countryMap.get(match.p1)}
+            />
+          </span>
+          <strong className={withdrawalPlayer === match.p1 ? "tournamentScoreWithdrawal" : ""}>
+            {scoreSlotDisplay(match, match.p1)}
+          </strong>
+        </div>
+        <div>
+          <span>
+            <PlayerLabel
+              playerName={match.p2}
+              seed={topSeedMap.get(match.p2)}
+              isWinner={matchWinner === match.p2}
+              countryCode={countryMap.get(match.p2)}
+            />
+          </span>
+          <strong className={withdrawalPlayer === match.p2 ? "tournamentScoreWithdrawal" : ""}>
+            {scoreSlotDisplay(match, match.p2)}
+          </strong>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const TournamentStageSection = ({
+  stage,
+  layout,
+  zoomLevel,
+  isDragging,
+  startRoundName,
+  topSeedMap,
+  countryMap,
+  onZoomOut,
+  onZoomReset,
+  onZoomIn,
+  onStartRoundChange,
+  setScrollerRef,
+  onPointerDown,
+  onPointerMove,
+  onPointerEnd,
+}) => {
+  const visibleRoundOptions = stage.rounds.filter(
+    (round) => !hiddenStartRoundsByStage[stage.key]?.has(round.roundName),
+  );
+
+  return (
+    <section className="tournamentStageSection" aria-labelledby={`${stage.key}-heading`}>
+      <div className="tournamentStageHeader">
+        <h2 id={`${stage.key}-heading`}>{stage.label}</h2>
+        <div className="tournamentStageHeaderActions">
+          {stage.key === "main" ? (
+            <div className="tournamentZoomControls" role="group" aria-label={`Zoom controls for ${stage.label}`}>
+              <button
+                type="button"
+                className="tournamentZoomButton"
+                onClick={onZoomOut}
+                aria-label={`Zoom out ${stage.label}`}
+              >
+                -
+              </button>
+              <button
+                type="button"
+                className="tournamentZoomValue"
+                onClick={onZoomReset}
+                aria-label={`Reset zoom for ${stage.label}`}
+              >
+                {Math.round(zoomLevel * 100)}%
+              </button>
+              <button
+                type="button"
+                className="tournamentZoomButton"
+                onClick={onZoomIn}
+                aria-label={`Zoom in ${stage.label}`}
+              >
+                +
+              </button>
+            </div>
+          ) : null}
+          <div className="tournamentStageControls" role="group" aria-label={`Starting round for ${stage.label}`}>
+            {visibleRoundOptions.map((round) => {
+              const isActive = startRoundName === round.roundName;
+              return (
+                <button
+                  key={`${stage.key}-${round.roundName}-filter`}
+                  type="button"
+                  className={`tournamentRoundFilter${isActive ? " isActive" : ""}`}
+                  onClick={() => onStartRoundChange(round.roundName)}
+                >
+                  {roundRangeLabel(round.roundName)}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+      <div
+        className={`tournamentRoundsScroller${isDragging ? " isDragging" : ""}${stage.key === "main" ? " isMainBracket" : ""}`}
+        ref={(node) => setScrollerRef(stage.key, node)}
+        onPointerDown={(event) => onPointerDown(stage.key, event)}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerEnd}
+        onPointerCancel={onPointerEnd}
+      >
+        {!layout ? null : (
+          <div
+            className="tournamentTreeBoardViewport"
+            style={{
+              width: `${layout.width * zoomLevel}px`,
+              height: `${layout.height * zoomLevel}px`,
+            }}
+          >
+            <div
+              className={`tournamentTreeBoard${stage.key === "main" ? " isMainTree" : ""}`}
+              style={{
+                width: `${layout.width}px`,
+                height: `${layout.height}px`,
+                transform: `scale(${zoomLevel})`,
+              }}
+            >
+              <svg
+                className="tournamentTreeLines"
+                viewBox={`0 0 ${layout.width} ${layout.height}`}
+                preserveAspectRatio="none"
+                aria-hidden="true"
+              >
+                {layout.connectors.map((connector) => (
+                  <path key={connector.key} d={connector.d} />
+                ))}
+              </svg>
+
+              {layout.rounds.map((round, roundIndex) => (
+                <div
+                  key={`${stage.key}-${round.roundName}`}
+                  className="tournamentRoundHeader tournamentRoundHeaderFloating"
+                  style={{
+                    left: `${BOARD_PADDING + roundIndex * (CARD_WIDTH + COLUMN_GAP)}px`,
+                    top: "0px",
+                    width: `${CARD_WIDTH}px`,
+                  }}
+                >
+                  <span>{round.roundName}</span>
+                </div>
+              ))}
+
+              {layout.positionedMatches.map((match) => (
+                <TournamentMatchCard
+                  key={match.id}
+                  match={match}
+                  topSeedMap={topSeedMap}
+                  countryMap={countryMap}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+};
+
 export const TournamentPage = ({ tournamentId }) => {
   const adjacentTournaments = useMemo(
     () => getAdjacentTournamentMetas(tournamentId),
@@ -375,7 +582,7 @@ export const TournamentPage = ({ tournamentId }) => {
     return new Map(
       bracket.stages.map((stage) => [
         stage.key,
-        buildStageTreeLayout(stage, startRounds[stage.key] || stage.rounds[0]?.roundName),
+        buildStageTreeLayout(stage, getStageStartRound(stage, startRounds)),
       ]),
     );
   }, [bracket, startRounds]);
@@ -390,8 +597,52 @@ export const TournamentPage = ({ tournamentId }) => {
     [bracket, activeStageKey],
   );
 
+  const setScrollerRef = (stageKey, node) => {
+    if (node) {
+      scrollerRefs.current[stageKey] = node;
+      return;
+    }
+
+    delete scrollerRefs.current[stageKey];
+  };
+
+  const updateStageZoom = (stageKey, delta) => {
+    setZoomLevels((current) => ({
+      ...current,
+      [stageKey]: clampZoom((current[stageKey] || DEFAULT_STAGE_ZOOM) + delta),
+    }));
+  };
+
+  const resetStageZoom = (stageKey) => {
+    setZoomLevels((current) => ({
+      ...current,
+      [stageKey]: DEFAULT_STAGE_ZOOM,
+    }));
+  };
+
+  const setStageStartRound = (stageKey, roundName) => {
+    setStartRounds((current) => ({
+      ...current,
+      [stageKey]: roundName,
+    }));
+  };
+
+  const isPointerOnNativeScrollbar = (element, event) => {
+    const rect = element.getBoundingClientRect();
+    const localX = event.clientX - rect.left;
+    const localY = event.clientY - rect.top;
+    const verticalScrollbarWidth = element.offsetWidth - element.clientWidth;
+    const horizontalScrollbarHeight = element.offsetHeight - element.clientHeight;
+
+    return (
+      (verticalScrollbarWidth > 0 && localX >= element.clientWidth) ||
+      (horizontalScrollbarHeight > 0 && localY >= element.clientHeight)
+    );
+  };
+
   const handleScrollerPointerDown = (stageKey, event) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
+    if (isPointerOnNativeScrollbar(event.currentTarget, event)) return;
 
     const currentTarget = event.currentTarget;
     dragStateRef.current = {
@@ -441,39 +692,15 @@ export const TournamentPage = ({ tournamentId }) => {
   };
 
   if (bracketLoading) {
-    return (
-      <div className="tournamentPage tournamentPageMissing">
-        <h1>Loading tournament…</h1>
-        <p>Fetching bracket data from Supabase.</p>
-        <Link className="tournamentBackLink" to="/tournaments">
-          Back to tournaments
-        </Link>
-      </div>
-    );
+    return <TournamentStateMessage title="Loading tournament…" message="Fetching bracket data from Supabase." />;
   }
 
   if (bracketError) {
-    return (
-      <div className="tournamentPage tournamentPageMissing">
-        <h1>Unable to load tournament</h1>
-        <p>{bracketError}</p>
-        <Link className="tournamentBackLink" to="/tournaments">
-          Back to tournaments
-        </Link>
-      </div>
-    );
+    return <TournamentStateMessage title="Unable to load tournament" message={bracketError} />;
   }
 
   if (!bracket) {
-    return (
-      <div className="tournamentPage tournamentPageMissing">
-        <h1>Tournament not available</h1>
-        <p>This archive has not been published yet.</p>
-        <Link className="tournamentBackLink" to="/tournaments">
-          Back to tournaments
-        </Link>
-      </div>
-    );
+    return <TournamentStateMessage title="Tournament not available" message="This archive has not been published yet." />;
   }
 
   return (
@@ -542,223 +769,31 @@ export const TournamentPage = ({ tournamentId }) => {
       </div>
 
       <div className="tournamentStages">
-        {visibleStages.map((stage) => (
-          <section
-            key={stage.key}
-            className="tournamentStageSection"
-            aria-labelledby={`${stage.key}-heading`}
-          >
-            {(() => {
-              const zoomLevel = clampZoom(zoomLevels[stage.key] || DEFAULT_STAGE_ZOOM);
+        {visibleStages.map((stage) => {
+          const zoomLevel = clampZoom(zoomLevels[stage.key] || DEFAULT_STAGE_ZOOM);
+          const startRoundName = getStageStartRound(stage, startRounds);
 
-              return (
-                <>
-            <div className="tournamentStageHeader">
-              <h2 id={`${stage.key}-heading`}>{stage.label}</h2>
-              <div className="tournamentStageHeaderActions">
-                {stage.key === "main" ? (
-                  <div className="tournamentZoomControls" role="group" aria-label={`Zoom controls for ${stage.label}`}>
-                    <button
-                      type="button"
-                      className="tournamentZoomButton"
-                      onClick={() =>
-                        setZoomLevels((current) => ({
-                          ...current,
-                          [stage.key]: clampZoom((current[stage.key] || DEFAULT_STAGE_ZOOM) - STAGE_ZOOM_STEP),
-                        }))
-                      }
-                      aria-label={`Zoom out ${stage.label}`}
-                    >
-                      -
-                    </button>
-                    <button
-                      type="button"
-                      className="tournamentZoomValue"
-                      onClick={() =>
-                        setZoomLevels((current) => ({
-                          ...current,
-                          [stage.key]: DEFAULT_STAGE_ZOOM,
-                        }))
-                      }
-                      aria-label={`Reset zoom for ${stage.label}`}
-                    >
-                      {Math.round(zoomLevel * 100)}%
-                    </button>
-                    <button
-                      type="button"
-                      className="tournamentZoomButton"
-                      onClick={() =>
-                        setZoomLevels((current) => ({
-                          ...current,
-                          [stage.key]: clampZoom((current[stage.key] || DEFAULT_STAGE_ZOOM) + STAGE_ZOOM_STEP),
-                        }))
-                      }
-                      aria-label={`Zoom in ${stage.label}`}
-                    >
-                      +
-                    </button>
-                  </div>
-                ) : null}
-                <div className="tournamentStageControls" role="group" aria-label={`Starting round for ${stage.label}`}>
-                  {stage.rounds
-                    .filter(
-                      (round) => !hiddenStartRoundsByStage[stage.key]?.has(round.roundName),
-                    )
-                    .map((round) => {
-                    const isActive = (startRounds[stage.key] || stage.rounds[0]?.roundName) === round.roundName;
-                    return (
-                      <button
-                        key={`${stage.key}-${round.roundName}-filter`}
-                        type="button"
-                        className={`tournamentRoundFilter${isActive ? " isActive" : ""}`}
-                        onClick={() =>
-                          setStartRounds((current) => ({
-                            ...current,
-                            [stage.key]: round.roundName,
-                          }))
-                        }
-                      >
-                        {roundRangeLabel(round.roundName)}
-                      </button>
-                    );
-                    })}
-                </div>
-              </div>
-            </div>
-            <div
-              className={`tournamentRoundsScroller${draggingStage === stage.key ? " isDragging" : ""}${stage.key === "main" ? " isMainBracket" : ""}`}
-              ref={(node) => {
-                if (node) {
-                  scrollerRefs.current[stage.key] = node;
-                  return;
-                }
-
-                delete scrollerRefs.current[stage.key];
-              }}
-              onPointerDown={(event) => handleScrollerPointerDown(stage.key, event)}
+          return (
+            <TournamentStageSection
+              key={stage.key}
+              stage={stage}
+              layout={stageLayouts.get(stage.key)}
+              zoomLevel={zoomLevel}
+              isDragging={draggingStage === stage.key}
+              startRoundName={startRoundName}
+              topSeedMap={topSeedMap}
+              countryMap={countryMap}
+              onZoomOut={() => updateStageZoom(stage.key, -STAGE_ZOOM_STEP)}
+              onZoomReset={() => resetStageZoom(stage.key)}
+              onZoomIn={() => updateStageZoom(stage.key, STAGE_ZOOM_STEP)}
+              onStartRoundChange={(roundName) => setStageStartRound(stage.key, roundName)}
+              setScrollerRef={setScrollerRef}
+              onPointerDown={handleScrollerPointerDown}
               onPointerMove={handleScrollerPointerMove}
-              onPointerUp={endScrollerDrag}
-              onPointerCancel={endScrollerDrag}
-            >
-              {(() => {
-                const layout = stageLayouts.get(stage.key);
-                if (!layout) return null;
-
-                return (
-                  <div
-                    className="tournamentTreeBoardViewport"
-                    style={{
-                      width: `${layout.width * zoomLevel}px`,
-                      height: `${layout.height * zoomLevel}px`,
-                    }}
-                  >
-                    <div
-                      className={`tournamentTreeBoard${stage.key === "main" ? " isMainTree" : ""}`}
-                      style={{
-                        width: `${layout.width}px`,
-                        height: `${layout.height}px`,
-                        transform: `scale(${zoomLevel})`,
-                      }}
-                    >
-                      <svg
-                        className="tournamentTreeLines"
-                        viewBox={`0 0 ${layout.width} ${layout.height}`}
-                        preserveAspectRatio="none"
-                        aria-hidden="true"
-                      >
-                        {layout.connectors.map((connector) => (
-                          <path key={connector.key} d={connector.d} />
-                        ))}
-                      </svg>
-
-                      {layout.rounds.map((round, roundIndex) => (
-                        <div
-                          key={`${stage.key}-${round.roundName}`}
-                          className="tournamentRoundHeader tournamentRoundHeaderFloating"
-                          style={{
-                            left: `${BOARD_PADDING + roundIndex * (CARD_WIDTH + COLUMN_GAP)}px`,
-                            top: "0px",
-                            width: `${CARD_WIDTH}px`,
-                          }}
-                        >
-                          <span>{round.roundName}</span>
-                        </div>
-                      ))}
-
-                      {layout.positionedMatches.map((match) => {
-                        const matchWinner = winnerName(match);
-                        const withdrawalPlayer = withdrewPlayerName(match);
-                        const hasMatchPage = Boolean(match.match_id);
-                        const matchHref = getMatchHref(match.match_id);
-
-                        return (
-                          <div
-                            key={match.id}
-                            className={`tournamentMatchCard tournamentMatchCardTree${hasMatchPage ? " isClickable" : ""}`}
-                            style={{
-                              left: `${match.x}px`,
-                              top: `${match.y}px`,
-                              width: `${CARD_WIDTH}px`,
-                            }}
-                            onPointerDown={
-                              hasMatchPage ? (event) => event.stopPropagation() : undefined
-                            }
-                            onClick={
-                              hasMatchPage
-                                ? () =>
-                                    window.open(
-                                      matchHref,
-                                      "_blank",
-                                      "noopener,noreferrer",
-                                    )
-                                : undefined
-                            }
-                          >
-                            <div className="tournamentMatchPlayers">
-                              <div>
-                                <span>
-                                  <PlayerLabel
-                                    playerName={match.p1}
-                                    seed={topSeedMap.get(match.p1)}
-                                    isWinner={matchWinner === match.p1}
-                                    countryCode={countryMap.get(match.p1)}
-                                  />
-                                </span>
-                                <strong
-                                  className={withdrawalPlayer === match.p1 ? "tournamentScoreWithdrawal" : ""}
-                                >
-                                  {scoreSlotDisplay(match, match.p1)}
-                                </strong>
-                              </div>
-                              <div>
-                                <span>
-                                  <PlayerLabel
-                                    playerName={match.p2}
-                                    seed={topSeedMap.get(match.p2)}
-                                    isWinner={matchWinner === match.p2}
-                                    countryCode={countryMap.get(match.p2)}
-                                  />
-                                </span>
-                                <strong
-                                  className={withdrawalPlayer === match.p2 ? "tournamentScoreWithdrawal" : ""}
-                                >
-                                  {scoreSlotDisplay(match, match.p2)}
-                                </strong>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-                </>
-              );
-            })()}
-          </section>
-        ))}
+              onPointerEnd={endScrollerDrag}
+            />
+          );
+        })}
       </div>
     </div>
   );
