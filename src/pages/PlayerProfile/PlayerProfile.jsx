@@ -56,6 +56,8 @@ const countOptions = [5, 10, 20];
 const lichessProfileUrl = (username) =>
   `https://lichess.org/@/${encodeURIComponent(String(username || "").trim())}`;
 
+const isExternalHref = (href) => /^https?:\/\//i.test(String(href || "").trim());
+
 const NON_COUNTED_ALIAS_MESSAGE =
   "This account is marked as a drunk account and is not included in the rating system.";
 
@@ -63,6 +65,52 @@ const profileTrophyAssets = {
   champion: appAssetPath("/images/lichess-trophies/gold-cup-2.png"),
   top10: appAssetPath("/images/lichess-trophies/silver-cup-2.png"),
   top30: appAssetPath("/images/lichess-trophies/gold-cup-2-blue.png"),
+};
+
+const awcTrophyAssets = {
+  awc2021: appAssetPath("/images/awc-trophies/atomicwc21.png"),
+  awc2022: appAssetPath("/images/awc-trophies/atomicwc22.png"),
+  awc2023: appAssetPath("/images/awc-trophies/atomicwc23.png"),
+  awc2024: appAssetPath("/images/awc-trophies/atomicwc24.png"),
+};
+
+const awcChampionTrophiesByUsername = {
+  "fast-tsunami": [
+    {
+      key: "awc-2021",
+      label: "AWC 2021",
+      title: "Atomic World Champion 2021",
+      imageSrc: awcTrophyAssets.awc2021,
+      href: appAssetPath("/tournaments/awc2021"),
+    },
+  ],
+  natso: [
+    {
+      key: "awc-2024",
+      label: "AWC 2024",
+      title: "Atomic World Champion 2024",
+      imageSrc: awcTrophyAssets.awc2024,
+      href: appAssetPath("/tournaments/awc2024"),
+    },
+  ],
+  sutcunuri: [
+    {
+      key: "awc-2022",
+      label: "AWC 2022",
+      title: "Atomic World Champion 2022",
+      imageSrc: awcTrophyAssets.awc2022,
+      href: appAssetPath("/tournaments/awc2022"),
+    },
+  ],
+  vlad_00: [
+    {
+      key: "awc-2023",
+      label: "AWC 2023",
+      title: "Atomic World Champion 2023",
+      imageSrc: awcTrophyAssets.awc2023,
+      href: appAssetPath("/tournaments/awc2023"),
+    },
+  ],
 };
 
 const getCurrentMonthKey = () => monthKeyFromMonthValue(new Date().toISOString().slice(0, 10));
@@ -123,6 +171,9 @@ const getProfileTrophies = (monthRanks, currentMonthKey, ratingDisplayByMode, us
 
     return [];
   });
+
+const getProfileAwcTrophies = (username) =>
+  awcChampionTrophiesByUsername[normalizeUsername(username)] ?? [];
 
 const LichessProfileIcon = () => (
   <svg viewBox="0 0 50 50" aria-hidden="true" focusable="false">
@@ -490,9 +541,14 @@ export const PlayerProfilePage = ({ username }) => {
     [latestMonthKeyByMode, ratingDisplayByMode],
   );
   const currentMonthKey = useMemo(() => getCurrentMonthKey(), []);
-  const profileTrophies = useMemo(
+  const rankingTrophies = useMemo(
     () => getProfileTrophies(monthRanks, currentMonthKey, ratingDisplayByMode, canonicalUsername),
     [canonicalUsername, currentMonthKey, monthRanks, ratingDisplayByMode],
+  );
+  const awcTrophies = useMemo(() => getProfileAwcTrophies(canonicalUsername), [canonicalUsername]);
+  const profileTrophies = useMemo(
+    () => [...rankingTrophies, ...awcTrophies],
+    [awcTrophies, rankingTrophies],
   );
 
   return (
@@ -508,18 +564,31 @@ export const PlayerProfilePage = ({ username }) => {
           {!isBanned && profileTrophies.length ? (
             <div className="profileTrophyRow" aria-label="Atomic ranking trophies">
               {profileTrophies.map((trophy) => (
-                <a
-                  key={trophy.key}
-                  className="profileTrophy"
-                  title={trophy.title}
-                  aria-label={trophy.title}
-                  href={trophy.href}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <img src={trophy.imageSrc} alt="" aria-hidden="true" />
-                  <span className="profileTrophyLabel">{trophy.label}</span>
-                </a>
+                isExternalHref(trophy.href) ? (
+                  <a
+                    key={trophy.key}
+                    className="profileTrophy"
+                    title={trophy.title}
+                    aria-label={trophy.title}
+                    href={trophy.href}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <img src={trophy.imageSrc} alt="" aria-hidden="true" />
+                    <span className="profileTrophyLabel">{trophy.label}</span>
+                  </a>
+                ) : (
+                  <Link
+                    key={trophy.key}
+                    className="profileTrophy"
+                    title={trophy.title}
+                    aria-label={trophy.title}
+                    to={trophy.href}
+                  >
+                    <img src={trophy.imageSrc} alt="" aria-hidden="true" />
+                    <span className="profileTrophyLabel">{trophy.label}</span>
+                  </Link>
+                )
               ))}
             </div>
           ) : null}
