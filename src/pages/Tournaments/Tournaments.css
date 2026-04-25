@@ -67,6 +67,10 @@
   color: var(--color-heading);
 }
 
+.tournamentCardWinnerPlaceholder {
+  visibility: hidden;
+}
+
 .tournamentCardWinnerLink {
   color: inherit;
   text-decoration: none;

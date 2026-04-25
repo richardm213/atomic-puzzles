@@ -67,18 +67,25 @@ export const TournamentsPage = () => {
               </div>
 
               <h2>{tournament.title}</h2>
-              {showWinner ? (
-                <p className="tournamentCardWinner">
-                  Winner:{" "}
-                  <Link
-                    className="tournamentCardWinnerLink"
-                    to="/@/$username"
-                    params={{ username: normalizeUsername(champion) }}
-                  >
-                    {champion}
-                  </Link>
-                </p>
-              ) : null}
+              <p
+                className={`tournamentCardWinner${showWinner ? "" : " tournamentCardWinnerPlaceholder"}`}
+                aria-hidden={showWinner ? undefined : true}
+              >
+                {showWinner ? (
+                  <>
+                    Winner:{" "}
+                    <Link
+                      className="tournamentCardWinnerLink"
+                      to="/@/$username"
+                      params={{ username: normalizeUsername(champion) }}
+                    >
+                      {champion}
+                    </Link>
+                  </>
+                ) : (
+                  "\u00A0"
+                )}
+              </p>
 
               {isAvailable ? (
                 <Link className="tournamentCardLink" to="/tournaments/$tournamentId" params={{ tournamentId: tournament.id }}>
