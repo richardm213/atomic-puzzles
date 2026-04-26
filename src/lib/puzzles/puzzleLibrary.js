@@ -1,5 +1,5 @@
 import { fetchPuzzleRowsFromSupabase } from "../supabase/supabasePuzzles";
-import { normalizeSolutionPgn } from "./solutionPgn";
+import { normalizeSolutionPgn, parseSolutionUciLines } from "./solutionPgn";
 
 const solutionFieldCandidates = ["solution", "moves", "line", "pgn", "variation"];
 
@@ -28,10 +28,8 @@ const extractSolutionFromRow = (row) => {
   return "";
 };
 
-const hasSolution = (puzzle) => {
-  if (!puzzle) return false;
-  return puzzle.solution.length > 0;
-};
+const hasPlayableSolution = (puzzle) =>
+  Boolean(puzzle?.fen && parseSolutionUciLines(puzzle.fen, puzzle.solution).length > 0);
 
 const normalizePuzzleRow = (item, index) => {
   const parsedId = Number.parseInt(item?.id, 10);
@@ -50,4 +48,4 @@ const normalizePuzzleRow = (item, index) => {
 export const loadPuzzleLibrary = async () =>
   (await fetchPuzzleRowsFromSupabase())
     .map(normalizePuzzleRow)
-    .filter((item) => item.fen.length > 0 && hasSolution(item));
+    .filter((item) => item.fen.length > 0 && hasPlayableSolution(item));
