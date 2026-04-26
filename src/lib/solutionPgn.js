@@ -188,17 +188,6 @@ export const serializeSanLinesToPgn = (fen, sanLines = []) => {
   return serializeSolutionLines(sanLines, startingPlyFromFen(fen));
 };
 
-const lineSignature = (line) =>
-  line.map((entry) => `${entry.uci}:${entry.questionable ? "q" : "s"}`).join(" ");
-
-const linesMatch = (expected, actual) => {
-  if (expected.length !== actual.length) return false;
-
-  const expectedSorted = expected.map(lineSignature).sort();
-  const actualSorted = actual.map(lineSignature).sort();
-  return expectedSorted.every((line, index) => line === actualSorted[index]);
-};
-
 export const parseSolutionUciLines = (fen, solution) => {
   if (typeof solution !== "string" || solution.trim().length === 0) return [];
 
@@ -213,6 +202,7 @@ export const parseSolutionUciLines = (fen, solution) => {
   if (!tokens) return [];
 
   const uciLines = [];
+  let parseFailed = false;
 
   const walk = (startIndex, position, line) => {
     let index = startIndex;
@@ -231,6 +221,7 @@ export const parseSolutionUciLines = (fen, solution) => {
 
       if (token === "(") {
         index = walk(index + 1, lastBranchPosition, lastBranchLine);
+        if (parseFailed) return tokens.length;
         continue;
       }
 
@@ -245,8 +236,8 @@ export const parseSolutionUciLines = (fen, solution) => {
 
       const move = parseSan(currentPosition, parsedToken.san);
       if (!move || !currentPosition.isLegal(move)) {
-        index += 1;
-        continue;
+        parseFailed = true;
+        return tokens.length;
       }
 
       const uci = makeUci(move).toLowerCase();
@@ -265,6 +256,7 @@ export const parseSolutionUciLines = (fen, solution) => {
   };
 
   walk(0, position, []);
+  if (parseFailed) return [];
 
   const unique = [];
   const seen = new Set();
@@ -300,6 +292,17 @@ export const convertUciLineToSan = (initialFen, uciLine) => {
   return sanLine;
 };
 
+export const serializeUciLinesToPgn = (fen, uciLines = []) => {
+  if (!fen || !Array.isArray(uciLines) || uciLines.length === 0) return "";
+
+  const sanLines = uciLines
+    .map((line) => convertUciLineToSan(fen, line))
+    .filter((line) => line.length > 0);
+
+  if (sanLines.length === 0) return "";
+  return serializeSolutionLines(sanLines, startingPlyFromFen(fen));
+};
+
 export const normalizeSolutionPgn = (fen, solution) => {
   const normalized = typeof solution === "string" ? solution.trim() : "";
   if (!normalized || !fen) return normalized;
@@ -308,13 +311,5 @@ export const normalizeSolutionPgn = (fen, solution) => {
   const parsedLines = parseSolutionUciLines(fen, normalized);
   if (parsedLines.length === 0) return normalized;
 
-  const sanLines = parsedLines
-    .map((line) => convertUciLineToSan(fen, line))
-    .filter((line) => line.length > 0);
-
-  const serialized = serializeSolutionLines(sanLines, startingPlyFromFen(fen));
-  if (!serialized) return normalized;
-
-  const reparsedLines = parseSolutionUciLines(fen, serialized);
-  return linesMatch(parsedLines, reparsedLines) ? serialized : normalized;
+  return serializeUciLinesToPgn(fen, parsedLines) || normalized;
 };

@@ -64,7 +64,7 @@ export const buildSolutionHistory = (initialFen, line) => {
   for (const entry of line) {
     const uci = entry.uci;
     const move = moveFromUci(position, uci);
-    if (!move) break;
+    if (!move) return null;
 
     const san = makeSan(position, move);
     position.play(move);
