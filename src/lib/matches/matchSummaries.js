@@ -2,8 +2,8 @@ import {
   findRatingDataForPlayer,
   normalizedRatingsFromMatch,
   winnerToFullWord,
-} from "../utils/matchTransforms";
-import { matchSourceFromValues, sourceValueFromValues } from "../utils/matchFilters";
+} from "../../utils/matchTransforms";
+import { matchSourceFromValues, sourceValueFromValues } from "../../utils/matchFilters";
 
 export const sourceValueFromMatch = (match, firstGame) => {
   return sourceValueFromValues(

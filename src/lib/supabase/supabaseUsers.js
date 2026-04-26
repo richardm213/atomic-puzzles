@@ -1,5 +1,5 @@
 import { getSupabaseClient } from "./supabaseClient";
-import { normalizeUsername } from "../utils/playerNames";
+import { normalizeUsername } from "../../utils/playerNames";
 
 const USERS_TABLE = import.meta.env.VITE_SUPABASE_USERS_TABLE?.trim() || "users";
 const USER_COLUMNS = "username, created_at";

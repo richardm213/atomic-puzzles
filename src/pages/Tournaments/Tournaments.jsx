@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Seo } from "../../components/Seo/Seo";
-import { getTournamentBracket, getTournamentChampion, tournamentCatalog } from "../../lib/tournaments";
+import { getTournamentBracket, getTournamentChampion, tournamentCatalog } from "../../lib/matches/tournaments";
 import { normalizeUsername } from "../../utils/playerNames";
 import "./Tournaments.css";
 

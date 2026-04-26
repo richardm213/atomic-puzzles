@@ -11,8 +11,8 @@ import {
 } from "../constants/matches";
 import { parseDateInputBoundary } from "../utils/matchFilters";
 import { parseTimeControlParts } from "../utils/matchTransforms";
-import { fetchLbRows, monthKeyFromMonthValue } from "../lib/supabaseLb";
-import { fetchPlayerRatingsRows } from "../lib/supabasePlayerRatings";
+import { fetchLbRows, monthKeyFromMonthValue } from "../lib/supabase/supabaseLb";
+import { fetchPlayerRatingsRows } from "../lib/supabase/supabasePlayerRatings";
 import { formatCalendarDate } from "../utils/formatters";
 
 const emptyRatingsSnapshotByMode = createModeRecord(() => new Map());

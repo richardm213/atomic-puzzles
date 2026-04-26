@@ -1,7 +1,7 @@
 import { getSupabaseClient } from "./supabaseClient";
 import { loadSupabaseRows } from "./supabaseRows";
-import { cachedRequest } from "../utils/requestCache";
-import { normalizeUsername } from "../utils/playerNames";
+import { cachedRequest } from "../../utils/requestCache";
+import { normalizeUsername } from "../../utils/playerNames";
 
 const LB_TABLE = import.meta.env.VITE_SUPABASE_LB_TABLE?.trim() || "lb";
 const LB_SELECT_COLUMNS = "username,month,rank,rating,rd,games,tc";

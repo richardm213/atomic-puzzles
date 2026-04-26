@@ -1,4 +1,4 @@
-import { fetchPuzzleRowsFromSupabase } from "./supabasePuzzles";
+import { fetchPuzzleRowsFromSupabase } from "../supabase/supabasePuzzles";
 import { normalizeSolutionPgn } from "./solutionPgn";
 
 const solutionFieldCandidates = ["solution", "moves", "line", "pgn", "variation"];

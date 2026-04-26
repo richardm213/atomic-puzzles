@@ -1,5 +1,5 @@
-import { createModeRecord, modeOptions } from "../constants/matches";
-import { fetchLbRows, isoMonthStartFromMonthKey } from "./supabaseLb";
+import { createModeRecord, modeOptions } from "../../constants/matches";
+import { fetchLbRows, isoMonthStartFromMonthKey } from "../supabase/supabaseLb";
 
 const roundToTenth = (value) => {
   const numeric = Number(value);

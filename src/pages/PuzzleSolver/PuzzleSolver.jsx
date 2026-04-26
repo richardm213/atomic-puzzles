@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faClockRotateLeft, faRotateLeft } from "@fortawesome/free-solid-svg-icons";
 import { Chessboard } from "../../components/Chessboard/Chessboard";
-import { loadPuzzleLibrary } from "../../lib/puzzleLibrary";
+import { loadPuzzleLibrary } from "../../lib/puzzles/puzzleLibrary";
 import {
   buildSolutionMoveTree,
   compareMoves,
@@ -11,9 +11,9 @@ import {
   movePrefix,
   orderedChildren,
   serializeSanLinesToPgn,
-} from "../../lib/solutionPgn";
-import { fetchAttemptedPuzzleIds, recordPuzzleProgress } from "../../lib/supabasePuzzleProgress";
-import { isRegisteredSiteUser } from "../../lib/supabaseUsers";
+} from "../../lib/puzzles/solutionPgn";
+import { fetchAttemptedPuzzleIds, recordPuzzleProgress } from "../../lib/supabase/supabasePuzzleProgress";
+import { isRegisteredSiteUser } from "../../lib/supabase/supabaseUsers";
 import { useAuth } from "../../context/AuthContext";
 import { Seo } from "../../components/Seo/Seo";
 import "./PuzzleSolver.css";

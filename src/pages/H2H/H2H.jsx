@@ -7,9 +7,9 @@ import {
   modeOptions,
   knownSourceKeys,
 } from "../../constants/matches";
-import { loadRawMatchesByMode } from "../../lib/matchData";
-import { fetchPlayerRatingsRows } from "../../lib/supabasePlayerRatings";
-import { resolveUsernameInputs } from "../../lib/searchUsernames";
+import { loadRawMatchesByMode } from "../../lib/matches/matchData";
+import { fetchPlayerRatingsRows } from "../../lib/supabase/supabasePlayerRatings";
+import { resolveUsernameInputs } from "../../lib/users/usernameSearch";
 import { parseDateInputBoundary } from "../../utils/matchFilters";
 import { getTimeControlOptions } from "../../utils/matchCollection";
 import { normalizedGamesFromMatch, normalizedPlayersFromMatch } from "../../utils/matchTransforms";
@@ -24,7 +24,7 @@ import {
   ratingsForPlayers,
   sourceKeyFromMatch,
   summarizeMatchGames,
-} from "../../lib/matchSummaries";
+} from "../../lib/matches/matchSummaries";
 
 const normalizeH2HMatches = (matches, mode, playerA, playerB) => {
   const playerALower = playerA.toLowerCase();

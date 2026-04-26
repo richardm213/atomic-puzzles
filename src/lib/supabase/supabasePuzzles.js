@@ -1,6 +1,6 @@
 import { getSupabaseClient } from "./supabaseClient";
 import { fetchAllSupabaseRows } from "./supabaseRows";
-import { cachedRequest } from "../utils/requestCache";
+import { cachedRequest } from "../../utils/requestCache";
 
 const PUZZLES_TABLE = import.meta.env.VITE_SUPABASE_PUZZLES_TABLE?.trim() || "puzzles";
 const puzzleRowsCache = new Map();

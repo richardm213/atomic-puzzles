@@ -2,10 +2,10 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { Seo } from "../../components/Seo/Seo";
-import { loadPuzzleLibrary } from "../../lib/puzzleLibrary";
-import { normalizePuzzleEventName } from "../../lib/puzzleSets";
-import { fetchProfileAliasRow } from "../../lib/supabaseAliases";
-import { isRegisteredSiteUser } from "../../lib/supabaseUsers";
+import { loadPuzzleLibrary } from "../../lib/puzzles/puzzleLibrary";
+import { normalizePuzzleEventName } from "../../lib/puzzles/puzzleSets";
+import { fetchProfileAliasRow } from "../../lib/supabase/supabaseAliases";
+import { isRegisteredSiteUser } from "../../lib/supabase/supabaseUsers";
 import { normalizeUsername } from "../../utils/playerNames";
 import "./PuzzleContributions.css";
 

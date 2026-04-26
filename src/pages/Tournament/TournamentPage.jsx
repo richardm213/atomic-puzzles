@@ -3,7 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheck } from "@fortawesome/free-solid-svg-icons";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Seo } from "../../components/Seo/Seo";
-import { getAdjacentTournamentMetas, getTournamentBracket } from "../../lib/tournaments";
+import { getAdjacentTournamentMetas, getTournamentBracket } from "../../lib/matches/tournaments";
 import { normalizeUsername } from "../../utils/playerNames";
 import "./TournamentPage.css";
 const roundRangeLabel = (roundName) => `Start at ${roundName}`;

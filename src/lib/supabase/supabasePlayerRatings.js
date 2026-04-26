@@ -1,7 +1,7 @@
 import { getSupabaseClient } from "./supabaseClient";
 import { fetchAllSupabaseRows, loadSupabaseRows } from "./supabaseRows";
-import { cachedRequest } from "../utils/requestCache";
-import { normalizeUsername } from "../utils/playerNames";
+import { cachedRequest } from "../../utils/requestCache";
+import { normalizeUsername } from "../../utils/playerNames";
 
 const PLAYER_RATINGS_TABLE = "player_ratings";
 const PLAYER_RATINGS_SELECT_COLUMNS = "username,rating,peak,peak_date,rd,games,tc,rank,top20_wins";

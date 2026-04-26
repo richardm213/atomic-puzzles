@@ -1,10 +1,10 @@
-import { modeOptions } from "../constants/matches";
+import { modeOptions } from "../../constants/matches";
 import { loadAliasesLookup } from "./aliasesLookup";
-import { getSupabaseClient } from "./supabaseClient";
-import { MATCH_TABLE_BY_MODE } from "./supabaseMatchRows";
-import { loadSupabaseRows } from "./supabaseRows";
-import { cachedRequest } from "../utils/requestCache";
-import { normalizeUsername } from "../utils/playerNames";
+import { getSupabaseClient } from "../supabase/supabaseClient";
+import { MATCH_TABLE_BY_MODE } from "../supabase/supabaseMatchRows";
+import { loadSupabaseRows } from "../supabase/supabaseRows";
+import { cachedRequest } from "../../utils/requestCache";
+import { normalizeUsername } from "../../utils/playerNames";
 
 const LB_TABLE = import.meta.env.VITE_SUPABASE_LB_TABLE?.trim() || "lb";
 const usernameResolutionCache = new Map();

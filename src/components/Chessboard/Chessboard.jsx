@@ -10,7 +10,7 @@ import {
   moveFromUci,
   parseSolutionUciLines,
   toComparableUci,
-} from "../../lib/solutionPgn";
+} from "../../lib/puzzles/solutionPgn";
 import { buildBoardStyle, buildPieceStyle } from "./boardStyle";
 import {
   buildSolutionHistory,
@@ -22,7 +22,7 @@ import {
   createPendingPromotion,
   getPromotionChoices,
   getPromotionSquareStyle,
-} from "./promotionLogic";
+} from "./promotionHelpers";
 import "./Chessboard.css";
 
 const getStatus = (position) => {

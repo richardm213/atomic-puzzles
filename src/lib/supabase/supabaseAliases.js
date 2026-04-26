@@ -1,8 +1,8 @@
 import { getSupabaseClient } from "./supabaseClient";
 import { fetchAllSupabaseRows } from "./supabaseRows";
 import { loadSupabaseRows } from "./supabaseRows";
-import { cachedRequest } from "../utils/requestCache";
-import { normalizeUsername } from "../utils/playerNames";
+import { cachedRequest } from "../../utils/requestCache";
+import { normalizeUsername } from "../../utils/playerNames";
 
 const ALIASES_TABLE = "aliases";
 const ALIASES2_TABLE = "aliases2";

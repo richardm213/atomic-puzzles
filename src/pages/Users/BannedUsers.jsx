@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Seo } from "../../components/Seo/Seo";
-import { fetchAliasRows } from "../../lib/supabaseAliases";
+import { fetchAliasRows } from "../../lib/supabase/supabaseAliases";
 import "./Users.css";
 
 const bannedUserColumns = [

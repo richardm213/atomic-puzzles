@@ -2,8 +2,8 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Seo } from "../../components/Seo/Seo";
 import { modeOptions } from "../../constants/matches";
-import { loadAliasesLookup } from "../../lib/aliasesLookup";
-import { fetchPlayerRatingsRows } from "../../lib/supabasePlayerRatings";
+import { loadAliasesLookup } from "../../lib/users/aliasesLookup";
+import { fetchPlayerRatingsRows } from "../../lib/supabase/supabasePlayerRatings";
 import "./Users.css";
 
 const HIGH_RD_THRESHOLD = 100;

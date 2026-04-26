@@ -1,14 +1,14 @@
-import { modeOptions } from "../constants/matches";
-import { fetchMatchRowsFromSupabase } from "./supabaseMatchRows";
+import { modeOptions } from "../../constants/matches";
+import { fetchMatchRowsFromSupabase } from "../supabase/supabaseMatchRows";
 import {
   normalizedGamesFromMatch,
   normalizedPlayersFromMatch,
   normalizedRatingsFromMatch,
   parseWinnerFromPerspective,
   winnerToFullWord,
-} from "../utils/matchTransforms";
-import { matchSourceFromValues, sourceValueFromValues } from "../utils/matchFilters";
-import { normalizeUsername } from "../utils/playerNames";
+} from "../../utils/matchTransforms";
+import { matchSourceFromValues, sourceValueFromValues } from "../../utils/matchFilters";
+import { normalizeUsername } from "../../utils/playerNames";
 
 const parseGamesCompact = (gamesValue) => {
   if (Array.isArray(gamesValue)) return gamesValue;

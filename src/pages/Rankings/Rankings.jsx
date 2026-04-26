@@ -7,7 +7,7 @@ import {
   rankingEligibilityByMode,
 } from "../../constants/matches";
 import { useRankingsByMonth } from "../../hooks/useRankingsByMonth";
-import { monthDateFromMonthKey } from "../../lib/supabaseLb";
+import { monthDateFromMonthKey } from "../../lib/supabase/supabaseLb";
 import { Seo } from "../../components/Seo/Seo";
 import "./Rankings.css";
 

@@ -15,8 +15,8 @@ import {
   opponentRatingSliderMin,
   pageSizeOptions,
 } from "../../constants/matches";
-import { fetchProfileAliasRow } from "../../lib/supabaseAliases";
-import { isRegisteredSiteUser } from "../../lib/supabaseUsers";
+import { fetchProfileAliasRow } from "../../lib/supabase/supabaseAliases";
+import { isRegisteredSiteUser } from "../../lib/supabase/supabaseUsers";
 import { toBoundedLengthRange, useMatchLengthRange } from "../../hooks/useMatchLengthRange";
 import {
   buildRankingsLocation,
@@ -28,7 +28,7 @@ import {
   useMonthRanks,
   useRatingsSnapshotByMode,
 } from "../../hooks/usePlayerProfileData";
-import { monthKeyFromMonthValue } from "../../lib/supabaseLb";
+import { monthKeyFromMonthValue } from "../../lib/supabase/supabaseLb";
 import {
   formatLocalDateTime,
   formatOpponentWithRating,
@@ -40,7 +40,7 @@ import { normalizeUsername } from "../../utils/playerNames";
 import { MatchPageLink } from "../../components/MatchPageLink/MatchPageLink";
 import { isToggleActionKey } from "../../utils/toggleActionKey";
 import { parseDateInputBoundary } from "../../utils/matchFilters";
-import { loadRawMatchesByMode, normalizeMatches } from "../../lib/matchData";
+import { loadRawMatchesByMode, normalizeMatches } from "../../lib/matches/matchData";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { getTimeControlOptions } from "../../utils/matchCollection";
 import { DualRangeSlider } from "../../components/DualRangeSlider/DualRangeSlider";

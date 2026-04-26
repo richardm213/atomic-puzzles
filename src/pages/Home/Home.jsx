@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAppSettings } from "../../context/AppSettings";
-import { resolveUsernameInput, resolveUsernameInputs } from "../../lib/searchUsernames";
+import { resolveUsernameInput, resolveUsernameInputs } from "../../lib/users/usernameSearch";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { matchupToSlug } from "../../utils/h2hRoutes";
 import { normalizeUsername } from "../../utils/playerNames";

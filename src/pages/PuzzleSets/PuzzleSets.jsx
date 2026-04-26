@@ -1,8 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Seo } from "../../components/Seo/Seo";
-import { loadPuzzleLibrary } from "../../lib/puzzleLibrary";
-import { groupPuzzlesByEvent } from "../../lib/puzzleSets";
+import { loadPuzzleLibrary } from "../../lib/puzzles/puzzleLibrary";
+import { groupPuzzlesByEvent } from "../../lib/puzzles/puzzleSets";
 import "./PuzzleSets.css";
 
 const EVENT_FILTERS = [

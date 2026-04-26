@@ -10,8 +10,8 @@ import {
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { getBoardThemeColors, useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
-import { resolveUsernameInput } from "../../lib/searchUsernames";
-import { resolveProfileUsernameFromAliases } from "../../lib/supabaseAliases";
+import { resolveUsernameInput } from "../../lib/users/usernameSearch";
+import { resolveProfileUsernameFromAliases } from "../../lib/supabase/supabaseAliases";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { normalizeUsername } from "../../utils/playerNames";
 import "./TopNav.css";

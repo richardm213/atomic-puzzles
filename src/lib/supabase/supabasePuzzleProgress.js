@@ -1,6 +1,6 @@
 import { getSupabaseClient } from "./supabaseClient";
 import { fetchAllSupabaseRows, loadSupabasePage } from "./supabaseRows";
-import { normalizeUsername } from "../utils/playerNames";
+import { normalizeUsername } from "../../utils/playerNames";
 
 const PUZZLE_PROGRESS_RPC =
   import.meta.env.VITE_SUPABASE_PUZZLE_PROGRESS_RPC?.trim() || "record_first_puzzle_attempt";

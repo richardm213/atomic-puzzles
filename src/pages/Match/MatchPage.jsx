@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "@tanstack/react-router";
-import { loadRawMatchesByMode } from "../../lib/matchData";
+import { loadRawMatchesByMode } from "../../lib/matches/matchData";
 import { MatchDetails } from "../../components/MatchDetails/MatchDetails";
 import { Seo } from "../../components/Seo/Seo";
 import { modeLabels } from "../../constants/matches";
@@ -10,7 +10,7 @@ import {
   ratingsForPlayers,
   sourceValueFromMatch,
   summarizeMatchGames,
-} from "../../lib/matchSummaries";
+} from "../../lib/matches/matchSummaries";
 import { matchupToSlug } from "../../utils/h2hRoutes";
 import { normalizeMatchMode } from "../../utils/matchRoutes";
 import "./MatchPage.css";

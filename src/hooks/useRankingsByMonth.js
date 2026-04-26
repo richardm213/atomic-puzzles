@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { loadRankingsForMonth } from "../lib/rankingsData";
+import { loadRankingsForMonth } from "../lib/rankings/rankingsByMonth";
 
 export const useRankingsByMonth = (selectedMonth) => {
   const [rankingsByMonth, setRankingsByMonth] = useState(new Map());

@@ -1,6 +1,6 @@
-import { getSupabaseClient } from "./supabaseClient";
-import { fetchAllSupabaseRows } from "./supabaseRows";
-import { cachedRequest } from "../utils/requestCache";
+import { getSupabaseClient } from "../supabase/supabaseClient";
+import { fetchAllSupabaseRows } from "../supabase/supabaseRows";
+import { cachedRequest } from "../../utils/requestCache";
 
 const TOURNAMENT_MATCHES_TABLE = "tournament_matches";
 const PLAYER_COUNTRIES_TABLE = "player_countries";

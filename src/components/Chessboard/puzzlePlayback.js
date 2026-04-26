@@ -1,6 +1,6 @@
 import { makeFen } from "chessops/fen";
 import { makeSan } from "chessops/san";
-import { createAtomicPosition, moveFromUci } from "../../lib/solutionPgn";
+import { createAtomicPosition, moveFromUci } from "../../lib/puzzles/solutionPgn";
 
 export const hasExpectedMoveAt = (lines, progress) =>
   lines.some((line) => line[progress] && !line[progress].questionable);

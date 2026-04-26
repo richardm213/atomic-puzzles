@@ -9,8 +9,8 @@ import {
   revokeLichessSession,
   setStoredPostLoginRedirect,
   startLichessLogin,
-} from "../lib/lichessAuth";
-import { ensureSupabaseUser } from "../lib/supabaseUsers";
+} from "../lib/auth/lichessAuth";
+import { ensureSupabaseUser } from "../lib/supabase/supabaseUsers";
 
 const AuthContext = createContext(null);
 

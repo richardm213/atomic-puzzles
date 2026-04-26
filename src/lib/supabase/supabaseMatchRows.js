@@ -1,8 +1,8 @@
 import { getSupabaseClient } from "./supabaseClient";
 import { loadSupabasePage } from "./supabaseRows";
-import { defaultRatingMax, defaultRatingMin } from "../constants/matches";
-import { cachedRequest } from "../utils/requestCache";
-import { normalizeUsername } from "../utils/playerNames";
+import { defaultRatingMax, defaultRatingMin } from "../../constants/matches";
+import { cachedRequest } from "../../utils/requestCache";
+import { normalizeUsername } from "../../utils/playerNames";
 
 export const MATCH_TABLE_BY_MODE = {
   blitz: "blitz_matches",

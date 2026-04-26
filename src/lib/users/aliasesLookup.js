@@ -1,4 +1,4 @@
-import { fetchAliasRows } from "./supabaseAliases";
+import { fetchAliasRows } from "../supabase/supabaseAliases";
 
 const buildAliasesLookup = (rows) => {
   const lookup = new Map();

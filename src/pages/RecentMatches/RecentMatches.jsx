@@ -31,9 +31,9 @@ import {
   sourceKeyFromMatch,
   sourceValueFromMatch,
   summarizeMatchGames,
-} from "../../lib/matchSummaries";
-import { loadRawMatchesByMode } from "../../lib/matchData";
-import { resolveUsernameInputs } from "../../lib/searchUsernames";
+} from "../../lib/matches/matchSummaries";
+import { loadRawMatchesByMode } from "../../lib/matches/matchData";
+import { resolveUsernameInputs } from "../../lib/users/usernameSearch";
 import { getTimeControlOptions } from "../../utils/matchCollection";
 import { Seo } from "../../components/Seo/Seo";
 
