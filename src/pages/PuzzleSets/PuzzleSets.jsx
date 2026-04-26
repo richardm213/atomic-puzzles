@@ -118,10 +118,6 @@ export const PuzzleSetsPage = () => {
     [puzzleGroups],
   );
   const totalSetCount = puzzleGroups.length;
-  const filteredPuzzleCount = useMemo(
-    () => filteredPuzzleGroups.reduce((count, group) => count + group.puzzles.length, 0),
-    [filteredPuzzleGroups],
-  );
   const emptySelectionMessage =
     filteredPuzzleGroups.length > 0
       ? "The puzzle list will appear here after you choose a set."

@@ -39,6 +39,10 @@ const getStatus = (position) => {
 
 const otherColor = (color) => (color === "white" ? "black" : "white");
 
+const colorFromFen = (fen) => (fen?.split(" ")?.[1] === "b" ? "black" : "white");
+
+const MOVE_EVALUATION_DELAY_MS = 250;
+
 const mergeDests = (...maps) => {
   const merged = new Map();
 
@@ -88,6 +92,7 @@ export const Chessboard = ({
     index: 0,
   });
   const moveLockRef = useRef(false);
+  const moveEvaluationTimerRef = useRef(null);
   const puzzleSolvedRef = useRef(false);
   const candidateLinesRef = useRef([]);
   const progressRef = useRef(0);
@@ -97,6 +102,7 @@ export const Chessboard = ({
   const analysisModeRef = useRef(analysisMode);
   const fenRef = useRef(fen);
   const puzzleIdRef = useRef(puzzleId);
+  const solverColorRef = useRef(colorFromFen(fen));
 
   const solutionUciLines = useMemo(() => parseSolutionUciLines(fen, solution), [fen, solution]);
 
@@ -135,7 +141,6 @@ export const Chessboard = ({
         if (sanLine.length === 0) return null;
         return {
           moveEntries: line,
-          uciLine: line.map((entry) => entry.uci),
           sanLine,
         };
       })
@@ -161,6 +166,7 @@ export const Chessboard = ({
 
   useEffect(() => {
     fenRef.current = fen;
+    solverColorRef.current = colorFromFen(fen);
   }, [fen]);
 
   useEffect(() => {
@@ -169,10 +175,11 @@ export const Chessboard = ({
 
   const emitState = (position, next) => {
     const history = historyRef.current;
+    const displayTurn = getDisplayTurn(position, next);
     const state = {
       fen: makeFen(position.toSetup()),
-      turn: position.turn,
-      status: getStatus(position),
+      turn: displayTurn,
+      status: next?.status ?? (displayTurn === position.turn ? getStatus(position) : `${displayTurn} to move`),
       winner: position.outcome()?.winner,
       error: "",
       line: history.moveSans.join(" "),
@@ -192,6 +199,25 @@ export const Chessboard = ({
 
   const isAnalysisModeActive = () => analysisModeRef.current;
   const isSolutionPlaybackLocked = () => showSolutionRef.current && !isAnalysisModeActive();
+
+  const clearMoveEvaluationTimer = () => {
+    if (moveEvaluationTimerRef.current === null) return;
+
+    window.clearTimeout(moveEvaluationTimerRef.current);
+    moveEvaluationTimerRef.current = null;
+  };
+
+  const getDisplayTurn = (position, nextState) => {
+    if (!trainingEnabledRef.current || isAnalysisModeActive() || showSolutionRef.current) {
+      return position.turn;
+    }
+
+    if (nextState?.showWrongMove || nextState?.solved || nextState?.status === "Correct") {
+      return position.turn;
+    }
+
+    return solverColorRef.current ?? position.turn;
+  };
 
   const getAnalysisPositionForMove = (position, from) => {
     const piece = position.board.get(from);
@@ -256,14 +282,16 @@ export const Chessboard = ({
     positionRef.current = position;
 
     const movable = getMovableConfig(position);
+    const displayTurn = getDisplayTurn(position, nextState);
+    const displayCheck = displayTurn === position.turn && position.isCheck() ? position.turn : false;
 
     cgRef.current?.set({
       fen: makeFen(position.toSetup()),
       orientation: orientationRef.current,
       coordinates: coordinatesRef.current,
-      turnColor: position.turn,
+      turnColor: displayTurn,
       lastMove,
-      check: position.isCheck() ? position.turn : false,
+      check: displayCheck,
       movable,
     });
 
@@ -287,6 +315,8 @@ export const Chessboard = ({
     const history = historyRef.current;
     if (targetIndex < 0 || targetIndex >= history.fens.length) return;
 
+    clearMoveEvaluationTimer();
+
     const { position } = tryCreateAtomicPosition(history.fens[targetIndex]);
     if (!position) return;
 
@@ -300,6 +330,8 @@ export const Chessboard = ({
   const showSolutionLine = (lineIndex, targetPly) => {
     const solutionEntry = displaySolutionEntriesRef.current[lineIndex];
     if (!solutionEntry?.moveEntries?.length) return;
+
+    clearMoveEvaluationTimer();
 
     const solutionHistory = buildSolutionHistory(fenRef.current, solutionEntry.moveEntries);
     if (!solutionHistory) return;
@@ -430,44 +462,66 @@ export const Chessboard = ({
         .map((entry) => entry.key),
     );
 
-    if (!accepted.has(userMoveKey)) {
-      moveLockRef.current = false;
-      onAttemptResolved?.({ puzzleId: puzzleIdRef.current, puzzleCorrect: false });
-      syncBoard(position, undefined, {
-        showWrongMove: true,
-        solved: false,
-        status: "Incorrect",
-      });
-      return;
-    }
-
-    position.play(move);
-    saveMove(position, [orig, dest], userMoveText, userMoveKey, userMoveSan);
-
-    const nextCandidates = candidates.filter((line) => line[progress]?.key === userMoveKey);
-    candidateLinesRef.current = nextCandidates;
-    progressRef.current = progress + 1;
-
-    if (!hasExpectedMoveAt(nextCandidates, progressRef.current)) {
-      puzzleSolvedRef.current = true;
-      onAttemptResolved?.({ puzzleId: puzzleIdRef.current, puzzleCorrect: true });
-      syncBoard(position, [orig, dest], {
-        showWrongMove: false,
-        solved: true,
-        status: "Correct",
-      });
-      return;
-    }
-
     moveLockRef.current = true;
-    syncBoard(position, [orig, dest], {
-      showWrongMove: false,
-      solved: false,
+    cgRef.current?.set({
+      lastMove: [orig, dest],
+      movable: {
+        color: undefined,
+        dests: new Map(),
+        free: false,
+      },
     });
 
-    window.setTimeout(() => {
+    clearMoveEvaluationTimer();
+    const scheduledPuzzleId = puzzleIdRef.current;
+    const scheduledFen = fenRef.current;
+    const scheduledHistoryIndex = historyRef.current.index;
+    const scheduledProgress = progressRef.current;
+
+    moveEvaluationTimerRef.current = window.setTimeout(() => {
+      moveEvaluationTimerRef.current = null;
+
+      if (
+        puzzleIdRef.current !== scheduledPuzzleId ||
+        fenRef.current !== scheduledFen ||
+        historyRef.current.index !== scheduledHistoryIndex ||
+        progressRef.current !== scheduledProgress
+      ) {
+        return;
+      }
+
       const activePosition = positionRef.current;
       if (!activePosition) return;
+
+      if (!accepted.has(userMoveKey)) {
+        moveLockRef.current = false;
+        onAttemptResolved?.({ puzzleId: puzzleIdRef.current, puzzleCorrect: false });
+        syncBoard(activePosition, undefined, {
+          showWrongMove: true,
+          solved: false,
+          status: "Incorrect",
+        });
+        return;
+      }
+
+      activePosition.play(move);
+      saveMove(activePosition, [orig, dest], userMoveText, userMoveKey, userMoveSan);
+
+      const nextCandidates = candidates.filter((line) => line[progress]?.key === userMoveKey);
+      candidateLinesRef.current = nextCandidates;
+      progressRef.current = progress + 1;
+
+      if (!hasExpectedMoveAt(nextCandidates, progressRef.current)) {
+        moveLockRef.current = false;
+        puzzleSolvedRef.current = true;
+        onAttemptResolved?.({ puzzleId: puzzleIdRef.current, puzzleCorrect: true });
+        syncBoard(activePosition, [orig, dest], {
+          showWrongMove: false,
+          solved: true,
+          status: "Correct",
+        });
+        return;
+      }
 
       const playedOpponent = autoplayOpponentMove(activePosition);
       moveLockRef.current = false;
@@ -490,7 +544,7 @@ export const Chessboard = ({
           status: puzzleSolvedRef.current ? "Correct" : getStatus(activePosition),
         },
       );
-    }, 250);
+    }, MOVE_EVALUATION_DELAY_MS);
   };
 
   const choosePromotion = (role) => {
@@ -566,6 +620,7 @@ export const Chessboard = ({
     });
 
     return () => {
+      clearMoveEvaluationTimer();
       cgRef.current = null;
       positionRef.current = null;
       clearPendingPromotion();
@@ -607,6 +662,7 @@ export const Chessboard = ({
     const position = positionRef.current;
     if (!position) return;
 
+    clearMoveEvaluationTimer();
     clearPendingPromotion();
     moveLockRef.current = false;
     candidateLinesRef.current = [];
@@ -657,6 +713,8 @@ export const Chessboard = ({
 
   useEffect(() => {
     if (showSolution && displaySolutionLinesRef.current.length > 0) return;
+
+    clearMoveEvaluationTimer();
 
     const { position, error } = tryCreateAtomicPosition(fen);
     if (!position) {
