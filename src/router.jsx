@@ -13,7 +13,6 @@ import { RankingsMethodologyPage } from "./pages/Rankings/RankingsMethodology";
 import { RecentMatchesPage } from "./pages/RecentMatches/RecentMatches";
 import { PlayerProfilePage } from "./pages/PlayerProfile/PlayerProfile";
 import { PuzzleDashboardPage } from "./pages/PuzzleDashboard/PuzzleDashboard";
-import { PuzzleContributionsPage } from "./pages/PuzzleContributions/PuzzleContributions";
 import { PuzzleSolverPage } from "./pages/PuzzleSolver/PuzzleSolver";
 import { PuzzleSetsPage } from "./pages/PuzzleSets/PuzzleSets";
 import { H2HPage } from "./pages/H2H/H2H";
@@ -149,9 +148,13 @@ const profilePuzzleDashboardRoute = createRoute({
 const profilePuzzleContributionsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/@/$username/contributions",
-  component: function ProfilePuzzleContributionsRoute() {
+  beforeLoad: ({ params }) => {
+    const username = typeof params?.username === "string" ? params.username : "";
+    throw redirect({ to: "/@/$username", params: { username } });
+  },
+  component: function HiddenProfilePuzzleContributionsRoute() {
     const { username } = useParams({ strict: false });
-    return <PuzzleContributionsPage username={username} />;
+    return <PlayerProfilePage username={username} />;
   },
 });
 

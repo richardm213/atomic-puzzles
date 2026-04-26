@@ -642,13 +642,6 @@ export const PlayerProfilePage = ({ username }) => {
             >
               View puzzle dashboard
             </Link>
-            <Link
-              className="profilePuzzleDashboardLink"
-              to="/@/$username/contributions"
-              params={{ username: canonicalUsername }}
-            >
-              View puzzle contributions
-            </Link>
           </div>
         ) : null}
 
