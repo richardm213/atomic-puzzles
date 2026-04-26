@@ -3,35 +3,24 @@ import { makeSan, parseSan } from "chessops/san";
 import { makeUci, parseSquare } from "chessops/util";
 import { Atomic } from "chessops/variant";
 
-const createAtomicPosition = (fen) => {
+const promotionByCode = {
+  q: "queen",
+  r: "rook",
+  b: "bishop",
+  n: "knight",
+};
+
+export const createAtomicPosition = (fen) => {
   const parsed = parseFen(fen);
-  if (parsed.isErr) {
-    return {
-      ok: false,
-      error: `Invalid FEN: ${parsed.error.message}`,
-    };
-  }
+  if (parsed.isErr) throw new Error(`Invalid FEN: ${parsed.error.message}`);
 
   const created = Atomic.fromSetup(parsed.value);
-  if (created.isErr) {
-    return {
-      ok: false,
-      error: `Atomic setup error: ${created.error.message}`,
-    };
-  }
+  if (created.isErr) throw new Error(`Invalid atomic position: ${created.error.message}`);
 
-  return {
-    ok: true,
-    position: created.value,
-  };
+  return created.value;
 };
 
-const toPromotion = (square) => {
-  const rank = square[1];
-  return rank === "1" || rank === "8" ? "queen" : undefined;
-};
-
-const toComparableUci = (position, uci, move) => {
+export const toComparableUci = (position, uci, move) => {
   const normalized = uci.toLowerCase();
   const activeMove = move ?? moveFromUci(position, normalized);
   if (!activeMove) return normalized;
@@ -73,27 +62,22 @@ const tokenizeSolution = (solution) =>
     .replace(/\$\d+/g, " ")
     .match(/\(|\)|[^\s()]+/g);
 
-const squareName = (file, rank) => `${String.fromCharCode("a".charCodeAt(0) + file)}${rank + 1}`;
+export const squareName = (file, rank) =>
+  `${String.fromCharCode("a".charCodeAt(0) + file)}${rank + 1}`;
 
-const moveFromUci = (position, uci) => {
+export const moveFromUci = (position, uci) => {
   const from = parseSquare(uci.slice(0, 2));
   const to = parseSquare(uci.slice(2, 4));
   if (from === undefined || to === undefined) return null;
 
   const piece = position.board.get(from);
+  const targetSquare = uci.slice(2, 4);
   const promotionCode = uci[4];
+  const targetRank = targetSquare[1];
+  const isBackRank = targetRank === "1" || targetRank === "8";
   const promotion =
-    promotionCode === "q"
-      ? "queen"
-      : promotionCode === "r"
-        ? "rook"
-        : promotionCode === "b"
-          ? "bishop"
-          : promotionCode === "n"
-            ? "knight"
-            : piece?.role === "pawn"
-              ? toPromotion(uci.slice(2, 4))
-              : undefined;
+    promotionByCode[promotionCode] ??
+    (piece?.role === "pawn" && isBackRank ? "queen" : undefined);
 
   const move = { from, to, promotion };
   return position.isLegal(move) ? move : null;
@@ -218,8 +202,12 @@ const linesMatch = (expected, actual) => {
 export const parseSolutionUciLines = (fen, solution) => {
   if (typeof solution !== "string" || solution.trim().length === 0) return [];
 
-  const created = createAtomicPosition(fen);
-  if (!created.ok) return [];
+  let position;
+  try {
+    position = createAtomicPosition(fen);
+  } catch {
+    return [];
+  }
 
   const tokens = tokenizeSolution(solution);
   if (!tokens) return [];
@@ -276,7 +264,7 @@ export const parseSolutionUciLines = (fen, solution) => {
     return index;
   };
 
-  walk(0, created.position, []);
+  walk(0, position, []);
 
   const unique = [];
   const seen = new Set();
@@ -292,10 +280,12 @@ export const parseSolutionUciLines = (fen, solution) => {
 };
 
 export const convertUciLineToSan = (initialFen, uciLine) => {
-  const created = createAtomicPosition(initialFen);
-  if (!created.ok) return [];
-
-  const position = created.position;
+  let position;
+  try {
+    position = createAtomicPosition(initialFen);
+  } catch {
+    return [];
+  }
   const sanLine = [];
 
   for (const entry of uciLine) {

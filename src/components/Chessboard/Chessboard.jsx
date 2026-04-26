@@ -1,36 +1,24 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Chessground } from "@lichess-org/chessground";
 import { chessgroundDests } from "chessops/compat";
-import { makeFen, parseFen } from "chessops/fen";
+import { makeFen } from "chessops/fen";
 import { makeSan } from "chessops/san";
 import { makeUci, parseSquare } from "chessops/util";
-import { Atomic } from "chessops/variant";
-import { getBoardThemeColors, useAppSettings } from "../../context/AppSettings";
-import { convertUciLineToSan, parseSolutionUciLines } from "../../lib/solutionPgn";
+import { useAppSettings } from "../../context/AppSettings";
+import {
+  convertUciLineToSan,
+  moveFromUci,
+  parseSolutionUciLines,
+  toComparableUci,
+} from "../../lib/solutionPgn";
+import { buildBoardStyle, buildPieceStyle } from "./boardStyle";
+import {
+  buildSolutionHistory,
+  hasExpectedMoveAt,
+  recomputeTrainingState,
+  tryCreateAtomicPosition,
+} from "./puzzlePlayback";
 import "./Chessboard.css";
-
-const createAtomicPosition = (fen) => {
-  const parsed = parseFen(fen);
-  if (parsed.isErr) {
-    return {
-      ok: false,
-      error: `Invalid FEN: ${parsed.error.message}`,
-    };
-  }
-
-  const created = Atomic.fromSetup(parsed.value);
-  if (created.isErr) {
-    return {
-      ok: false,
-      error: `Atomic setup error: ${created.error.message}`,
-    };
-  }
-
-  return {
-    ok: true,
-    position: created.value,
-  };
-};
 
 const getStatus = (position) => {
   const outcome = position.outcome();
@@ -44,234 +32,13 @@ const getStatus = (position) => {
   return `${position.turn} to move`;
 };
 
-const toPromotion = (square) => {
-  const rank = square[1];
-  return rank === "1" || rank === "8" ? "queen" : undefined;
-};
-
 const promotionOptions = ["queen", "knight", "rook", "bishop"];
 
-const squareName = (file, rank) => `${String.fromCharCode("a".charCodeAt(0) + file)}${rank + 1}`;
-const pieceCodes = {
-  pawn: "P",
-  bishop: "B",
-  knight: "N",
-  rook: "R",
-  queen: "Q",
-  king: "K",
-};
-
-const checkerboardSvg = (light, dark) =>
-  `url("data:image/svg+xml,${encodeURIComponent(
-    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8' shape-rendering='crispEdges'><rect width='8' height='8' fill='${light}'/><g fill='${dark}'><rect x='1' width='1' height='1'/><rect x='3' width='1' height='1'/><rect x='5' width='1' height='1'/><rect x='7' width='1' height='1'/><rect y='1' width='1' height='1'/><rect x='2' y='1' width='1' height='1'/><rect x='4' y='1' width='1' height='1'/><rect x='6' y='1' width='1' height='1'/><rect x='1' y='2' width='1' height='1'/><rect x='3' y='2' width='1' height='1'/><rect x='5' y='2' width='1' height='1'/><rect x='7' y='2' width='1' height='1'/><rect y='3' width='1' height='1'/><rect x='2' y='3' width='1' height='1'/><rect x='4' y='3' width='1' height='1'/><rect x='6' y='3' width='1' height='1'/><rect x='1' y='4' width='1' height='1'/><rect x='3' y='4' width='1' height='1'/><rect x='5' y='4' width='1' height='1'/><rect x='7' y='4' width='1' height='1'/><rect y='5' width='1' height='1'/><rect x='2' y='5' width='1' height='1'/><rect x='4' y='5' width='1' height='1'/><rect x='6' y='5' width='1' height='1'/><rect x='1' y='6' width='1' height='1'/><rect x='3' y='6' width='1' height='1'/><rect x='5' y='6' width='1' height='1'/><rect x='7' y='6' width='1' height='1'/><rect y='7' width='1' height='1'/><rect x='2' y='7' width='1' height='1'/><rect x='4' y='7' width='1' height='1'/><rect x='6' y='7' width='1' height='1'/></g></svg>`,
-  )}")`;
-
-const boardTextureAsset = (filename) =>
-  `url("${import.meta.env.BASE_URL}images/board-textures/${filename}")`;
-
-const clampColorChannel = (value) => Math.max(0, Math.min(255, Math.round(value)));
-
-const parseHexColor = (value) => {
-  const normalized = /^#([0-9a-f]{6})$/i.exec(value ?? "");
-  if (!normalized) return null;
-
-  return {
-    r: Number.parseInt(normalized[1].slice(0, 2), 16),
-    g: Number.parseInt(normalized[1].slice(2, 4), 16),
-    b: Number.parseInt(normalized[1].slice(4, 6), 16),
-  };
-};
-
-const toHexColor = ({ r, g, b }) =>
-  `#${[r, g, b].map((channel) => clampColorChannel(channel).toString(16).padStart(2, "0")).join("")}`;
-
-const mixHexColors = (base, target, amount) => {
-  const baseRgb = parseHexColor(base);
-  const targetRgb = parseHexColor(target);
-  if (!baseRgb || !targetRgb) return base;
-
-  return toHexColor({
-    r: baseRgb.r + (targetRgb.r - baseRgb.r) * amount,
-    g: baseRgb.g + (targetRgb.g - baseRgb.g) * amount,
-    b: baseRgb.b + (targetRgb.b - baseRgb.b) * amount,
-  });
-};
-
-const toRgba = (hex, alpha) => {
-  const rgb = parseHexColor(hex);
-  if (!rgb) return `rgba(0, 0, 0, ${alpha})`;
-  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
-};
-
-const boardTextureConfig = {
-  "blue-marble": {
-    overlay:
-      "radial-gradient(circle at 16% 20%, rgba(255, 255, 255, 0.35), transparent 32%), radial-gradient(circle at 84% 18%, rgba(255, 255, 255, 0.2), transparent 28%), linear-gradient(135deg, rgba(61, 91, 126, 0.26), rgba(255, 255, 255, 0.08) 30%, rgba(61, 91, 126, 0.2) 60%, transparent 100%)",
-    blendMode: "soft-light, normal",
-  },
-  canvas: {
-    overlay:
-      "repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.1) 0 2px, rgba(120, 96, 53, 0.05) 2px 4px), repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.08) 0 2px, rgba(120, 96, 53, 0.05) 2px 4px)",
-    blendMode: "multiply, normal",
-  },
-  wood: {
-    backgroundImage: boardTextureAsset("wood.jpg"),
-    size: "cover",
-  },
-  wood2: {
-    backgroundImage: boardTextureAsset("wood2.jpg"),
-    size: "cover",
-  },
-  wood3: {
-    backgroundImage: boardTextureAsset("wood3.jpg"),
-    size: "cover",
-  },
-  wood4: {
-    backgroundImage: boardTextureAsset("wood4.jpg"),
-    size: "cover",
-  },
-  maple: {
-    backgroundImage: boardTextureAsset("maple.jpg"),
-    size: "cover",
-  },
-  maple2: {
-    backgroundImage: boardTextureAsset("maple2.jpg"),
-    size: "cover",
-  },
-  leather: {
-    backgroundImage: boardTextureAsset("leather.jpg"),
-    size: "cover",
-  },
-  marble: {
-    backgroundImage: boardTextureAsset("marble.jpg"),
-    size: "cover",
-  },
-  "green-plastic": {
-    overlay:
-      "linear-gradient(180deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.03) 32%, rgba(0, 0, 0, 0.1) 100%)",
-    blendMode: "soft-light, normal",
-  },
-  metal: {
-    backgroundImage: boardTextureAsset("metal.jpg"),
-    size: "cover",
-  },
-  newspaper: {
-    overlay:
-      "repeating-linear-gradient(0deg, rgba(94, 82, 66, 0.08) 0 2px, transparent 2px 5px), radial-gradient(circle at 14% 20%, rgba(120, 109, 91, 0.09), transparent 26%)",
-    blendMode: "multiply, normal",
-  },
-  "purple-diag": {
-    overlay:
-      "repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0 10px, rgba(70, 37, 106, 0.08) 10px 20px)",
-    blendMode: "multiply, normal",
-  },
-  ic: {
-    overlay:
-      "linear-gradient(135deg, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.04) 45%, rgba(76, 177, 210, 0.16) 100%), repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0 8px, rgba(91, 188, 214, 0.08) 8px 18px)",
-    blendMode: "screen, normal",
-  },
-};
-
-const buildBoardStyle = (
-  boardTheme,
-  customLightSquare,
-  customDarkSquare,
-  boardColorOverrideTheme,
-  boardOverrideLightSquare,
-  boardOverrideDarkSquare,
-) => {
-  const palette = getBoardThemeColors(
-    boardTheme,
-    customLightSquare,
-    customDarkSquare,
-    boardColorOverrideTheme,
-    boardOverrideLightSquare,
-    boardOverrideDarkSquare,
-  );
-  const texture = boardTextureConfig[boardTheme];
-  const lightCoordColor = mixHexColors(palette.light, "#000000", 0.45);
-  const darkCoordColor = mixHexColors(palette.dark, "#ffffff", 0.72);
-  const backgroundImage = texture?.backgroundImage
-    ? texture.backgroundImage
-    : texture?.overlay
-      ? `${texture.overlay}, ${checkerboardSvg(palette.light, palette.dark)}`
-      : checkerboardSvg(palette.light, palette.dark);
-
-  return {
-    "--cg-board-background-image": backgroundImage,
-    "--cg-board-background-size":
-      texture?.size ?? (texture?.overlay ? "100% 100%, 100% 100%" : "100% 100%"),
-    "--cg-board-background-blend-mode": texture?.blendMode ?? "normal",
-    "--cg-board-light-last-move": toRgba(mixHexColors(palette.light, "#7fd0ff", 0.35), 0.46),
-    "--cg-board-dark-last-move": toRgba(mixHexColors(palette.dark, "#2a95ff", 0.2), 0.42),
-    "--cg-board-coord-dark": lightCoordColor,
-    "--cg-board-coord-light": darkCoordColor,
-  };
-};
-
-const buildPieceStyle = (pieceSet) => {
-  const pieceStyle = {};
-
-  for (const [role, code] of Object.entries(pieceCodes)) {
-    pieceStyle[`--cg-piece-white-${role}`] =
-      `url("https://lichess1.org/assets/piece/${pieceSet}/w${code}.svg")`;
-    pieceStyle[`--cg-piece-black-${role}`] =
-      `url("https://lichess1.org/assets/piece/${pieceSet}/b${code}.svg")`;
-  }
-
-  return pieceStyle;
-};
-
-const toComparableUci = (position, uci, move) => {
-  const normalized = uci.toLowerCase();
-  const activeMove = move ?? moveFromUci(position, normalized);
-  if (!activeMove) return normalized;
-
-  const piece = position.board.get(activeMove.from);
-  if (piece?.role !== "king") return normalized;
-
-  const fromFile = activeMove.from % 8;
-  const fromRank = Math.floor(activeMove.from / 8);
-  const toFile = activeMove.to % 8;
-  const toRank = Math.floor(activeMove.to / 8);
-  const fileDelta = toFile - fromFile;
-
-  if (fromRank !== toRank || Math.abs(fileDelta) < 2) return normalized;
-
-  const castledKingFile = fromFile + 2 * Math.sign(fileDelta);
-  if (castledKingFile < 0 || castledKingFile > 7) return normalized;
-
-  return `${squareName(fromFile, fromRank)}${squareName(castledKingFile, fromRank)}`;
-};
-
-const moveFromUci = (position, uci) => {
-  const from = parseSquare(uci.slice(0, 2));
-  const to = parseSquare(uci.slice(2, 4));
-  if (from === undefined || to === undefined) return null;
-
-  const piece = position.board.get(from);
-  const promotionCode = uci[4];
-  const promotion =
-    promotionCode === "q"
-      ? "queen"
-      : promotionCode === "r"
-        ? "rook"
-        : promotionCode === "b"
-          ? "bishop"
-          : promotionCode === "n"
-            ? "knight"
-            : piece?.role === "pawn"
-              ? toPromotion(uci.slice(2, 4))
-              : undefined;
-
-  const move = { from, to, promotion };
-  return position.isLegal(move) ? move : null;
-};
-
-const hasExpectedMoveAt = (lines, progress) =>
-  lines.some((line) => line[progress] && !line[progress].questionable);
-
 const otherColor = (color) => (color === "white" ? "black" : "white");
+const isBackRank = (square) => {
+  const rank = Math.floor(square / 8);
+  return rank === 0 || rank === 7;
+};
 
 const mergeDests = (...maps) => {
   const merged = new Map();
@@ -505,74 +272,30 @@ export const Chessboard = ({
   };
 
   const recomputeTrainingFromHistory = (targetIndex) => {
-    if (!trainingEnabledRef.current || isAnalysisModeActive()) {
-      candidateLinesRef.current = [];
-      progressRef.current = 0;
-      puzzleSolvedRef.current = false;
-      return;
-    }
+    const nextState = recomputeTrainingState({
+      isTrainingEnabled: trainingEnabledRef.current,
+      isAnalysisMode: isAnalysisModeActive(),
+      playedMoveKeys: historyRef.current.moveKeys.slice(0, targetIndex),
+      solutionLines: solutionLinesRef.current,
+    });
 
-    const playedMoves = historyRef.current.moveKeys.slice(0, targetIndex);
-    let candidates = solutionLinesRef.current;
-    let progress = 0;
-    let solved = !hasExpectedMoveAt(candidates, progress);
-
-    for (const moveText of playedMoves) {
-      if (solved) continue;
-
-      const matching = candidates.filter((line) => line[progress]?.key === moveText);
-      if (matching.length === 0) break;
-
-      candidates = matching;
-      progress += 1;
-      solved = !hasExpectedMoveAt(candidates, progress);
-    }
-
-    candidateLinesRef.current = candidates;
-    progressRef.current = progress;
-    puzzleSolvedRef.current = solved;
+    candidateLinesRef.current = nextState.candidates;
+    progressRef.current = nextState.progress;
+    puzzleSolvedRef.current = nextState.solved;
   };
 
   const navigateTo = (targetIndex) => {
     const history = historyRef.current;
     if (targetIndex < 0 || targetIndex >= history.fens.length) return;
 
-    const created = createAtomicPosition(history.fens[targetIndex]);
-    if (!created.ok) return;
+    const { position } = tryCreateAtomicPosition(history.fens[targetIndex]);
+    if (!position) return;
 
     history.index = targetIndex;
     moveLockRef.current = isSolutionPlaybackLocked();
     recomputeTrainingFromHistory(targetIndex);
 
-    syncBoard(created.position, history.lastMoves[targetIndex]);
-  };
-
-  const buildSolutionHistory = (initialFen, line) => {
-    const created = createAtomicPosition(initialFen);
-    if (!created.ok) return null;
-
-    const position = created.position;
-    const fens = [initialFen];
-    const lastMoves = [undefined];
-    const moveUcis = [];
-    const moveSans = [];
-    const moveKeys = [];
-
-    for (const entry of line) {
-      const uci = entry.uci;
-      const move = moveFromUci(position, uci);
-      if (!move) break;
-
-      const san = makeSan(position, move);
-      position.play(move);
-      fens.push(makeFen(position.toSetup()));
-      lastMoves.push([uci.slice(0, 2), uci.slice(2, 4)]);
-      moveUcis.push(uci);
-      moveKeys.push(entry.key);
-      moveSans.push(san);
-    }
-
-    return { fens, lastMoves, moveUcis, moveKeys, moveSans };
+    syncBoard(position, history.lastMoves[targetIndex]);
   };
 
   const showSolutionLine = (lineIndex, targetPly) => {
@@ -597,10 +320,10 @@ export const Chessboard = ({
     progressRef.current = 0;
     const solvedBeforeSolution = puzzleSolvedRef.current;
 
-    const created = createAtomicPosition(solutionHistory.fens[clampedIndex]);
-    if (!created.ok) return;
+    const { position } = tryCreateAtomicPosition(solutionHistory.fens[clampedIndex]);
+    if (!position) return;
 
-    syncBoard(created.position, solutionHistory.lastMoves[clampedIndex], {
+    syncBoard(position, solutionHistory.lastMoves[clampedIndex], {
       showWrongMove: false,
       solved: solvedBeforeSolution,
       viewingSolution: true,
@@ -653,9 +376,7 @@ export const Chessboard = ({
 
   const getPromotionChoices = (position, from, to, piece) => {
     if (piece?.role !== "pawn") return [];
-
-    const destination = squareName(to % 8, Math.floor(to / 8));
-    if (!toPromotion(destination)) return [];
+    if (!isBackRank(to)) return [];
     const activePosition = isAnalysisModeActive()
       ? (getAnalysisPositionForMove(position, from) ?? position)
       : position;
@@ -960,9 +681,8 @@ export const Chessboard = ({
   useEffect(() => {
     if (showSolution && displaySolutionLinesRef.current.length > 0) return;
 
-    const created = createAtomicPosition(fen);
-
-    if (!created.ok) {
+    const { position, error } = tryCreateAtomicPosition(fen);
+    if (!position) {
       positionRef.current = null;
       cgRef.current?.set({
         orientation: orientationRef.current,
@@ -979,7 +699,7 @@ export const Chessboard = ({
         turn: "",
         status: "Invalid position",
         winner: undefined,
-        error: created.error,
+        error,
         showWrongMove: false,
         solved: false,
       });
@@ -1001,7 +721,7 @@ export const Chessboard = ({
     progressRef.current = 0;
     puzzleSolvedRef.current = trainingEnabledRef.current && !hasExpectedMoveAt(solutionUciLines, 0);
 
-    syncBoard(created.position, undefined, {
+    syncBoard(position, undefined, {
       showWrongMove: false,
       solved: false,
       viewingSolution: showSolution,
