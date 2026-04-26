@@ -769,13 +769,16 @@ export const Chessboard = ({
 
     const history = historyRef.current;
     const movable = getMovableConfig(position);
+    const displayTurn = getDisplayTurn(position);
+    const displayCheck = displayTurn === position.turn && position.isCheck() ? position.turn : false;
 
     cgRef.current?.set({
       orientation,
       coordinates,
       movable,
+      turnColor: displayTurn,
       lastMove: history.lastMoves[history.index],
-      check: position.isCheck() ? position.turn : false,
+      check: displayCheck,
     });
   }, [orientation, coordinates]);
 
