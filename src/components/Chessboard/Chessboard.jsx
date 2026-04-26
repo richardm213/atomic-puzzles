@@ -18,6 +18,11 @@ import {
   recomputeTrainingState,
   tryCreateAtomicPosition,
 } from "./puzzlePlayback";
+import {
+  createPendingPromotion,
+  getPromotionChoices,
+  getPromotionSquareStyle,
+} from "./promotionLogic";
 import "./Chessboard.css";
 
 const getStatus = (position) => {
@@ -32,13 +37,7 @@ const getStatus = (position) => {
   return `${position.turn} to move`;
 };
 
-const promotionOptions = ["queen", "knight", "rook", "bishop"];
-
 const otherColor = (color) => (color === "white" ? "black" : "white");
-const isBackRank = (square) => {
-  const rank = Math.floor(square / 8);
-  return rank === 0 || rank === 7;
-};
 
 const mergeDests = (...maps) => {
   const merged = new Map();
@@ -335,17 +334,14 @@ export const Chessboard = ({
   const autoplayOpponentMove = (position) => {
     const candidates = candidateLinesRef.current;
     const progress = progressRef.current;
-    const nextOpponentMove = candidates.find(
-      (line) => line[progress] && !line[progress].questionable,
-    )?.[progress]?.uci;
+    const nextEntry = candidates[0]?.[progress];
 
-    if (!nextOpponentMove) {
+    if (!nextEntry) {
       puzzleSolvedRef.current = true;
       return false;
     }
 
-    const nextCandidates = candidates.filter((line) => line[progress]?.uci === nextOpponentMove);
-    const move = moveFromUci(position, nextOpponentMove);
+    const move = moveFromUci(position, nextEntry.uci);
     if (!move) {
       puzzleSolvedRef.current = true;
       return false;
@@ -355,16 +351,15 @@ export const Chessboard = ({
     position.play(move);
     saveMove(
       position,
-      [nextOpponentMove.slice(0, 2), nextOpponentMove.slice(2, 4)],
-      nextOpponentMove,
-      candidates.find((line) => line[progress]?.uci === nextOpponentMove)?.[progress]?.key ??
-        nextOpponentMove,
+      [nextEntry.uci.slice(0, 2), nextEntry.uci.slice(2, 4)],
+      nextEntry.uci,
+      nextEntry.key,
       opponentMoveSan,
     );
 
-    candidateLinesRef.current = nextCandidates;
+    candidateLinesRef.current = candidates.filter((line) => line[progress]?.uci === nextEntry.uci);
     progressRef.current = progress + 1;
-    puzzleSolvedRef.current = !hasExpectedMoveAt(nextCandidates, progressRef.current);
+    puzzleSolvedRef.current = !hasExpectedMoveAt(candidateLinesRef.current, progressRef.current);
 
     return true;
   };
@@ -372,31 +367,6 @@ export const Chessboard = ({
   const clearPendingPromotion = () => {
     pendingPromotionRef.current = null;
     setPendingPromotion(null);
-  };
-
-  const getPromotionChoices = (position, from, to, piece) => {
-    if (piece?.role !== "pawn") return [];
-    if (!isBackRank(to)) return [];
-    const activePosition = isAnalysisModeActive()
-      ? (getAnalysisPositionForMove(position, from) ?? position)
-      : position;
-
-    return promotionOptions.filter((role) => activePosition.isLegal({ from, to, promotion: role }));
-  };
-
-  const getPromotionSquareStyle = (pending, index) => {
-    const to = parseSquare(pending.dest);
-    if (to === undefined) return {};
-
-    const file = to % 8;
-    const orientationValue = orientationRef.current;
-    const left = (orientationValue === "white" ? file : 7 - file) * 12.5;
-    const top = (pending.color === orientationValue ? index : 7 - index) * 12.5;
-
-    return {
-      left: `${left}%`,
-      top: `${top}%`,
-    };
   };
 
   const playUserMove = (orig, dest, promotion) => {
@@ -560,16 +530,23 @@ export const Chessboard = ({
             if (from === undefined || to === undefined) return;
 
             const piece = position.board.get(from);
-            const promotionChoices = getPromotionChoices(position, from, to, piece);
+            const promotionChoices = getPromotionChoices({
+              position,
+              from,
+              to,
+              piece,
+              isAnalysisMode: isAnalysisModeActive(),
+              getAnalysisPositionForMove,
+            });
 
             if (promotionChoices.length > 1) {
-              const pending = {
+              const pending = createPendingPromotion({
                 orig,
                 dest,
                 color: piece.color,
-                vertical: piece.color === orientationRef.current ? "top" : "bottom",
                 choices: promotionChoices,
-              };
+                orientation: orientationRef.current,
+              });
               pendingPromotionRef.current = pending;
               setPendingPromotion(pending);
               syncBoard(position, undefined);
@@ -759,7 +736,7 @@ export const Chessboard = ({
               key={role}
               role="button"
               tabIndex="0"
-              style={getPromotionSquareStyle(pendingPromotion, index)}
+              style={getPromotionSquareStyle(pendingPromotion, index, orientationRef.current)}
               aria-label={`Promote to ${role}`}
               onClick={() => choosePromotion(role)}
               onKeyDown={(event) => {
