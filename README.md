@@ -193,4 +193,4 @@ The repository currently does not include an automated test suite, so manual ver
 
 ## License
 
-A license file is not currently included in this repository. Until one is added, assume the code is not available for unrestricted reuse.
+This project is licensed under the GNU General Public License v3.0 or later (`GPL-3.0-or-later`). See [LICENSE](/Users/ymeng/Desktop/chess/atomic-puzzles/LICENSE) for the full text.
