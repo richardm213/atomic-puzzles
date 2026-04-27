@@ -12,8 +12,7 @@
   grid-template-columns: repeat(3, minmax(140px, max-content));
   justify-content: start;
   align-items: end;
-  column-gap: 14px;
-  row-gap: 12px;
+  gap: 12px 14px;
 }
 
 .rankingsControls label {

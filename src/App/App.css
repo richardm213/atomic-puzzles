@@ -23,15 +23,10 @@
   transform: translateY(0);
 }
 
-.appMain {
-  display: block;
-}
-
 .appShell::before,
 .appShell::after {
   content: "";
   position: fixed;
-  inset: auto;
   pointer-events: none;
   z-index: -1;
   opacity: 0;

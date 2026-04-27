@@ -131,14 +131,7 @@
   min-width: 720px;
 }
 
-.usersTable th:nth-child(2),
-.usersTable td:nth-child(2),
-.usersTable th:nth-child(3),
-.usersTable td:nth-child(3),
-.usersTable th:nth-child(4),
-.usersTable td:nth-child(4),
-.usersTable th:nth-child(5),
-.usersTable td:nth-child(5) {
+.usersTable :is(th, td):nth-child(n+2):nth-child(-n+5) {
   width: 1%;
   white-space: nowrap;
 }

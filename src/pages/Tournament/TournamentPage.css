@@ -329,7 +329,6 @@
   background: color-mix(in srgb, var(--color-primary) 12%, #152745);
   color: var(--color-primary-pale);
   min-width: 86px;
-  justify-content: center;
 }
 
 .tournamentZoomButton:hover,

@@ -239,10 +239,6 @@
     gap: 10px;
   }
 
-  .matchCardPlayers {
-    font-size: 17px;
-  }
-
   .matchScoreBlock {
     justify-content: flex-start;
     min-width: 0;

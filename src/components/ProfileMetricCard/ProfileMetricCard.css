@@ -22,7 +22,6 @@
 .profileMetricValue {
   display: flex;
   flex-wrap: wrap;
-  gap: 0;
   align-items: baseline;
 }
 

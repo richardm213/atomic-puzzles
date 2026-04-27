@@ -25,10 +25,6 @@
   white-space: nowrap;
 }
 
-.homeBrand:hover {
-  text-decoration: none;
-}
-
 .topNavCenter {
   margin-left: auto;
   display: inline-flex;
@@ -532,7 +528,6 @@
 
 .navProfileDropdownItem:hover {
   background: var(--color-panel-strong);
-  text-decoration: none;
 }
 
 .navProfileDropdownItem:active {

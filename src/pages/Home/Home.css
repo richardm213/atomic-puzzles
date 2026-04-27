@@ -462,12 +462,6 @@
   }
 }
 
-@media (max-width: 680px) {
-  .homeImageStage {
-    width: min(72vw, 280px);
-  }
-}
-
 @media (max-width: 720px) {
   .homePage {
     gap: 16px;
@@ -525,14 +519,9 @@
 }
 
 @media (max-width: 680px) {
-  .homeHeroActions,
-  .homeSearchRow {
+  .homeHeroActions {
     display: grid;
     grid-template-columns: 1fr;
-  }
-
-  .homeImageStage {
-    width: min(72vw, 280px);
   }
 
   .homePrimaryCta,
