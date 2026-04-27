@@ -117,14 +117,14 @@
   color: var(--color-text);
 }
 
-.rankingsTable th:nth-child(1),
-.rankingsTable td:nth-child(1),
-.rankingsTable th:nth-child(3),
-.rankingsTable td:nth-child(3),
-.rankingsTable th:nth-child(4),
-.rankingsTable td:nth-child(4),
-.rankingsTable th:nth-child(5),
-.rankingsTable td:nth-child(5) {
+.rankingsTable :is(th, td):nth-child(1) {
+  width: 60px;
+  white-space: nowrap;
+}
+
+.rankingsTable :is(th, td):nth-child(3),
+.rankingsTable :is(th, td):nth-child(4),
+.rankingsTable :is(th, td):nth-child(5) {
   width: 1%;
   white-space: nowrap;
 }
