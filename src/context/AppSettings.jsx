@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 const STORAGE_KEYS = {
   theme: "atomic-puzzles.theme",
@@ -201,7 +201,7 @@ export const AppSettingsProvider = ({ children }) => {
     DEFAULT_CUSTOM_DARK_SQUARE,
   );
 
-  const resetDisplaySettings = () => {
+  const resetDisplaySettings = useCallback(() => {
     setTheme(DEFAULT_THEME);
     setPieceSet(DEFAULT_PIECE_SET);
     setBoardTheme(DEFAULT_BOARD_THEME);
@@ -210,7 +210,7 @@ export const AppSettingsProvider = ({ children }) => {
     setBoardColorOverrideTheme("");
     setBoardOverrideLightSquare(DEFAULT_CUSTOM_LIGHT_SQUARE);
     setBoardOverrideDarkSquare(DEFAULT_CUSTOM_DARK_SQUARE);
-  };
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -248,6 +248,7 @@ export const AppSettingsProvider = ({ children }) => {
       boardColorOverrideTheme,
       boardOverrideLightSquare,
       boardOverrideDarkSquare,
+      resetDisplaySettings,
     ],
   );
 

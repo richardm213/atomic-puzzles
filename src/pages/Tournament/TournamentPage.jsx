@@ -24,16 +24,10 @@ const STAGE_ZOOM_STEP = 0.15;
 const TOURNAMENT_VIEW_STORAGE_KEY = "tournament-view:";
 
 const buildStartRoundState = (stages = []) =>
-  stages.reduce((accumulator, stage) => {
-    accumulator[stage.key] = stage.rounds[0]?.roundName || "";
-    return accumulator;
-  }, {});
+  Object.fromEntries(stages.map((stage) => [stage.key, stage.rounds[0]?.roundName || ""]));
 
 const buildZoomState = (stages = []) =>
-  stages.reduce((accumulator, stage) => {
-    accumulator[stage.key] = DEFAULT_STAGE_ZOOM;
-    return accumulator;
-  }, {});
+  Object.fromEntries(stages.map((stage) => [stage.key, DEFAULT_STAGE_ZOOM]));
 
 const getStageStartRound = (stage, startRounds) => startRounds[stage.key] || stage.rounds[0]?.roundName;
 
@@ -44,7 +38,7 @@ const getTournamentViewStorageKey = (tournamentId) => `${TOURNAMENT_VIEW_STORAGE
 
 const getVisibleRounds = (stage, startRoundName) => {
   const startIndex = stage.rounds.findIndex((round) => round.roundName === startRoundName);
-  return stage.rounds.filter((_, index) => index >= Math.max(0, startIndex));
+  return stage.rounds.slice(Math.max(0, startIndex));
 };
 
 const getConnectorPath = (from, to) => {

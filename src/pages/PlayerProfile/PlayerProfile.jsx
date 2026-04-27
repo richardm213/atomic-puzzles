@@ -115,61 +115,35 @@ const awcChampionTrophiesByUsername = {
 
 const getCurrentMonthKey = () => monthKeyFromMonthValue(new Date().toISOString().slice(0, 10));
 
+const trophyLevels = [
+  { maxRank: 1, key: "champion", imageSrc: profileTrophyAssets.champion, suffix: "Atomic Champion" },
+  { maxRank: 10, key: "top10", imageSrc: profileTrophyAssets.top10, suffix: "Atomic Top 10" },
+  { maxRank: 30, key: "top30", imageSrc: profileTrophyAssets.top30, suffix: "Atomic Top 30" },
+];
+
 const getProfileTrophies = (monthRanks, currentMonthKey, ratingDisplayByMode, username) =>
   modeOptions.flatMap((mode) => {
     const currentRank = Number(ratingDisplayByMode?.[mode]?.rank);
-    if (!(currentRank > 0)) {
-      return [];
-    }
+    if (!(currentRank > 0)) return [];
 
     const bestRank = monthRanks
-      .filter((monthRank) => monthRank.monthKey === currentMonthKey)
-      .filter((monthRank) => monthRank.mode === mode)
-      .reduce(
-        (lowestRank, monthRank) => Math.min(lowestRank, monthRank.rank),
-        Number.POSITIVE_INFINITY,
-      );
+      .filter((r) => r.monthKey === currentMonthKey && r.mode === mode)
+      .reduce((lowest, r) => Math.min(lowest, r.rank), Number.POSITIVE_INFINITY);
 
-    if (bestRank === 1) {
-      return [
-        {
-          key: `${mode}-champion`,
-          mode,
-          label: modeLabels[mode] ?? mode,
-          title: `${modeLabels[mode] ?? mode} Atomic Champion`,
-          imageSrc: profileTrophyAssets.champion,
-          href: lichessProfileUrl(username),
-        },
-      ];
-    }
+    const level = trophyLevels.find(({ maxRank }) => bestRank <= maxRank);
+    if (!level) return [];
 
-    if (bestRank <= 10) {
-      return [
-        {
-          key: `${mode}-top10`,
-          mode,
-          label: modeLabels[mode] ?? mode,
-          title: `${modeLabels[mode] ?? mode} Atomic Top 10`,
-          imageSrc: profileTrophyAssets.top10,
-          href: lichessProfileUrl(username),
-        },
-      ];
-    }
-
-    if (bestRank <= 30) {
-      return [
-        {
-          key: `${mode}-top30`,
-          mode,
-          label: modeLabels[mode] ?? mode,
-          title: `${modeLabels[mode] ?? mode} Atomic Top 30`,
-          imageSrc: profileTrophyAssets.top30,
-          href: lichessProfileUrl(username),
-        },
-      ];
-    }
-
-    return [];
+    const modeLabel = modeLabels[mode] ?? mode;
+    return [
+      {
+        key: `${mode}-${level.key}`,
+        mode,
+        label: modeLabel,
+        title: `${modeLabel} ${level.suffix}`,
+        imageSrc: level.imageSrc,
+        href: lichessProfileUrl(username),
+      },
+    ];
   });
 
 const getProfileAwcTrophies = (username) =>
@@ -438,27 +412,23 @@ export const PlayerProfilePage = ({ username }) => {
     runMatchSearch(selectedMode, appliedFilters, requestedServerPage);
   }, [aliasesLoaded, appliedFilters, isBanned, requestedServerPage, runMatchSearch, selectedMode]);
 
-  const handleSearchClick = async () => {
+  const handleSearchClick = () => {
     if (searchSubmitInFlightRef.current || loadingMatches) return;
-
     searchSubmitInFlightRef.current = true;
-    try {
-      setPage(1);
-      setAppliedFilters({
-        matchLengthMin,
-        matchLengthMax,
-        opponentRatingMin,
-        opponentRatingMax,
-        opponentFilter,
-        startDateFilter,
-        endDateFilter,
-        sourceFilters: { ...sourceFilters },
-        timeControlInitialFilter,
-        timeControlIncrementFilter,
-      });
-    } finally {
-      searchSubmitInFlightRef.current = false;
-    }
+    setPage(1);
+    setAppliedFilters({
+      matchLengthMin,
+      matchLengthMax,
+      opponentRatingMin,
+      opponentRatingMax,
+      opponentFilter,
+      startDateFilter,
+      endDateFilter,
+      sourceFilters: { ...sourceFilters },
+      timeControlInitialFilter,
+      timeControlIncrementFilter,
+    });
+    searchSubmitInFlightRef.current = false;
   };
   const setSourceFilter = (source, checked) => {
     setSourceFilters((current) => ({ ...current, [source]: checked }));
@@ -516,14 +486,12 @@ export const PlayerProfilePage = ({ username }) => {
   }, [aliasesForUser, profileAliasEntry]);
   const latestMonthKeyByMode = useMemo(
     () =>
-      monthRanks.reduce((accumulator, monthRank) => {
-        const currentDate = accumulator[monthRank.mode]
-          ? new Date(accumulator[monthRank.mode].monthDate)
-          : null;
-        if (!currentDate || monthRank.monthDate > currentDate) {
-          accumulator[monthRank.mode] = monthRank;
+      monthRanks.reduce((acc, monthRank) => {
+        const existing = acc[monthRank.mode];
+        if (!existing || monthRank.monthDate > existing.monthDate) {
+          acc[monthRank.mode] = monthRank;
         }
-        return accumulator;
+        return acc;
       }, {}),
     [monthRanks],
   );
@@ -540,16 +508,20 @@ export const PlayerProfilePage = ({ username }) => {
       ),
     [latestMonthKeyByMode, ratingDisplayByMode],
   );
-  const currentMonthKey = useMemo(() => getCurrentMonthKey(), []);
-  const rankingTrophies = useMemo(
-    () => getProfileTrophies(monthRanks, currentMonthKey, ratingDisplayByMode, canonicalUsername),
+  const currentMonthKey = getCurrentMonthKey();
+  const profileTrophies = useMemo(
+    () => [
+      ...getProfileTrophies(monthRanks, currentMonthKey, ratingDisplayByMode, canonicalUsername),
+      ...getProfileAwcTrophies(canonicalUsername),
+    ],
     [canonicalUsername, currentMonthKey, monthRanks, ratingDisplayByMode],
   );
-  const awcTrophies = useMemo(() => getProfileAwcTrophies(canonicalUsername), [canonicalUsername]);
-  const profileTrophies = useMemo(
-    () => [...rankingTrophies, ...awcTrophies],
-    [awcTrophies, rankingTrophies],
-  );
+
+  const toggleMatchKey = (key) => {
+    setExpandedMatchKeys((current) =>
+      current.includes(key) ? current.filter((k) => k !== key) : [...current, key],
+    );
+  };
 
   return (
     <div className="rankingsPage">
@@ -966,21 +938,11 @@ export const PlayerProfilePage = ({ username }) => {
                       <Fragment key={matchKey}>
                         <tr
                           className={`expandableMatchRow${isExpanded ? " expanded" : ""}`}
-                          onClick={() =>
-                            setExpandedMatchKeys((current) =>
-                              current.includes(matchKey)
-                                ? current.filter((key) => key !== matchKey)
-                                : [...current, matchKey],
-                            )
-                          }
+                          onClick={() => toggleMatchKey(matchKey)}
                           onKeyDown={(event) => {
                             if (!isToggleActionKey(event)) return;
                             event.preventDefault();
-                            setExpandedMatchKeys((current) =>
-                              current.includes(matchKey)
-                                ? current.filter((key) => key !== matchKey)
-                                : [...current, matchKey],
-                            );
+                            toggleMatchKey(matchKey);
                           }}
                           role="button"
                           tabIndex={0}
