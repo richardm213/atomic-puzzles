@@ -2,25 +2,46 @@ import { getSupabaseClient } from "./supabaseClient";
 import { fetchAllSupabaseRows, loadSupabasePage } from "./supabaseRows";
 import { normalizeUsername } from "../../utils/playerNames";
 
-const PUZZLE_PROGRESS_RPC =
-  import.meta.env.VITE_SUPABASE_PUZZLE_PROGRESS_RPC?.trim() || "record_first_puzzle_attempt";
-const PUZZLE_PROGRESS_TABLE =
-  import.meta.env.VITE_SUPABASE_PUZZLE_PROGRESS_TABLE?.trim() || "puzzle_progress";
-const PUZZLE_PROGRESS_PAGE_RPC =
-  import.meta.env.VITE_SUPABASE_PUZZLE_PROGRESS_PAGE_RPC?.trim() || "get_puzzle_progress_page";
-const ATTEMPTED_PUZZLE_IDS_RPC =
-  import.meta.env.VITE_SUPABASE_ATTEMPTED_PUZZLE_IDS_RPC?.trim() || "get_attempted_puzzle_ids";
-const puzzleProgressWriteRequests = new Map();
+export type PuzzleProgressRow = {
+  puzzle_id: string;
+  first_attempt_at: string;
+  puzzle_correct: boolean;
+};
 
-const normalizePuzzleId = (puzzleId) => {
+export type PuzzleProgressSummary = {
+  total: number;
+  correct: number;
+  incorrect: number;
+};
+
+type RawProgressRow = {
+  puzzle_id?: unknown;
+  first_attempt_at?: unknown;
+  puzzle_correct?: unknown;
+  total_count?: unknown;
+};
+
+type SupabaseClient = ReturnType<typeof getSupabaseClient>;
+
+const PUZZLE_PROGRESS_RPC =
+  import.meta.env.VITE_SUPABASE_PUZZLE_PROGRESS_RPC?.trim() ?? "record_first_puzzle_attempt";
+const PUZZLE_PROGRESS_TABLE =
+  import.meta.env.VITE_SUPABASE_PUZZLE_PROGRESS_TABLE?.trim() ?? "puzzle_progress";
+const PUZZLE_PROGRESS_PAGE_RPC =
+  import.meta.env.VITE_SUPABASE_PUZZLE_PROGRESS_PAGE_RPC?.trim() ?? "get_puzzle_progress_page";
+const ATTEMPTED_PUZZLE_IDS_RPC =
+  import.meta.env.VITE_SUPABASE_ATTEMPTED_PUZZLE_IDS_RPC?.trim() ?? "get_attempted_puzzle_ids";
+const puzzleProgressWriteRequests = new Map<string, Promise<void>>();
+
+const normalizePuzzleId = (puzzleId: unknown): string => {
   if (puzzleId === undefined || puzzleId === null) return "";
   return String(puzzleId).trim();
 };
 
-const getLocalProgressStorageKey = (username) =>
+const getLocalProgressStorageKey = (username: string): string =>
   `atomic-puzzles.puzzle-progress.${normalizeUsername(username)}`;
 
-const readLocalPuzzleProgress = (username) => {
+const readLocalPuzzleProgress = (username: string): PuzzleProgressRow[] => {
   if (typeof window === "undefined") return [];
 
   const storageKey = getLocalProgressStorageKey(username);
@@ -30,22 +51,25 @@ const readLocalPuzzleProgress = (username) => {
     const rawValue = window.localStorage.getItem(storageKey);
     if (!rawValue) return [];
 
-    const parsedValue = JSON.parse(rawValue);
+    const parsedValue: unknown = JSON.parse(rawValue);
     if (!Array.isArray(parsedValue)) return [];
 
     return parsedValue
-      .map((row) => ({
-        puzzle_id: normalizePuzzleId(row?.puzzle_id),
-        first_attempt_at: typeof row?.first_attempt_at === "string" ? row.first_attempt_at : "",
-        puzzle_correct: Boolean(row?.puzzle_correct),
-      }))
+      .map((row): PuzzleProgressRow => {
+        const r = row as RawProgressRow;
+        return {
+          puzzle_id: normalizePuzzleId(r?.puzzle_id),
+          first_attempt_at: typeof r?.first_attempt_at === "string" ? r.first_attempt_at : "",
+          puzzle_correct: Boolean(r?.puzzle_correct),
+        };
+      })
       .filter((row) => row.puzzle_id && row.first_attempt_at);
   } catch {
     return [];
   }
 };
 
-const writeLocalPuzzleProgress = (username, rows) => {
+const writeLocalPuzzleProgress = (username: string, rows: PuzzleProgressRow[]): void => {
   if (typeof window === "undefined") return;
 
   const storageKey = getLocalProgressStorageKey(username);
@@ -58,15 +82,18 @@ const writeLocalPuzzleProgress = (username, rows) => {
   }
 };
 
-const mergePuzzleProgressRows = (serverRows, localRows) => {
-  const rowsByPuzzleId = new Map();
+const mergePuzzleProgressRows = (
+  serverRows: PuzzleProgressRow[],
+  localRows: PuzzleProgressRow[],
+): PuzzleProgressRow[] => {
+  const rowsByPuzzleId = new Map<string, PuzzleProgressRow>();
 
   [...serverRows, ...localRows].forEach((row) => {
     const puzzleId = normalizePuzzleId(row?.puzzle_id);
     const firstAttemptAt = typeof row?.first_attempt_at === "string" ? row.first_attempt_at : "";
     if (!puzzleId || !firstAttemptAt) return;
 
-    const normalizedRow = {
+    const normalizedRow: PuzzleProgressRow = {
       puzzle_id: puzzleId,
       first_attempt_at: firstAttemptAt,
       puzzle_correct: Boolean(row?.puzzle_correct),
@@ -95,7 +122,7 @@ const mergePuzzleProgressRows = (serverRows, localRows) => {
   });
 };
 
-const upsertLocalPuzzleProgressRow = (username, row) => {
+const upsertLocalPuzzleProgressRow = (username: string, row: PuzzleProgressRow): void => {
   const puzzleId = normalizePuzzleId(row?.puzzle_id);
   const firstAttemptAt = typeof row?.first_attempt_at === "string" ? row.first_attempt_at : "";
   if (!puzzleId || !firstAttemptAt) return;
@@ -111,7 +138,12 @@ const upsertLocalPuzzleProgressRow = (username, row) => {
   writeLocalPuzzleProgress(username, mergedRows);
 };
 
-const loadPuzzleProgressPageFromRpc = async (supabase, username, page, pageSize) => {
+const loadPuzzleProgressPageFromRpc = async (
+  supabase: SupabaseClient,
+  username: string,
+  page: number,
+  pageSize: number,
+): Promise<{ rows: PuzzleProgressRow[]; total: number }> => {
   const { data, error } = await supabase.rpc(PUZZLE_PROGRESS_PAGE_RPC, {
     p_username: username,
     p_page: page,
@@ -122,7 +154,7 @@ const loadPuzzleProgressPageFromRpc = async (supabase, username, page, pageSize)
     throw error;
   }
 
-  const rows = Array.isArray(data) ? data : [];
+  const rows: RawProgressRow[] = Array.isArray(data) ? data : [];
   const normalizedRows = rows
     .map((row) => ({
       puzzle_id: normalizePuzzleId(row?.puzzle_id),
@@ -132,17 +164,24 @@ const loadPuzzleProgressPageFromRpc = async (supabase, username, page, pageSize)
     }))
     .filter((row) => row.puzzle_id && row.first_attempt_at);
 
+  const firstRow = normalizedRows[0];
+  const firstTotal = firstRow ? Number(firstRow.total_count) : Number.NaN;
   const total =
-    normalizedRows.length > 0 && Number.isFinite(Number(normalizedRows[0]?.total_count))
-      ? Number(normalizedRows[0].total_count)
-      : normalizedRows.length;
+    normalizedRows.length > 0 && Number.isFinite(firstTotal) ? firstTotal : normalizedRows.length;
 
-  return { rows: normalizedRows, total };
+  return {
+    rows: normalizedRows.map(({ total_count: _t, ...rest }) => rest),
+    total,
+  };
 };
 
-const loadAllPuzzleProgressRowsFromRpc = async (supabase, username, pageSize = 1000) => {
+const loadAllPuzzleProgressRowsFromRpc = async (
+  supabase: SupabaseClient,
+  username: string,
+  pageSize = 1000,
+): Promise<PuzzleProgressRow[]> => {
   const normalizedPageSize = Math.max(1, Math.floor(Number(pageSize)) || 1000);
-  const allRows = [];
+  const allRows: PuzzleProgressRow[] = [];
   let currentPage = 1;
   let total = 0;
 
@@ -165,7 +204,10 @@ const loadAllPuzzleProgressRowsFromRpc = async (supabase, username, pageSize = 1
   }
 };
 
-const loadAttemptedPuzzleIdsFromRpc = async (supabase, username) => {
+const loadAttemptedPuzzleIdsFromRpc = async (
+  supabase: SupabaseClient,
+  username: string,
+): Promise<string[]> => {
   const { data, error } = await supabase.rpc(ATTEMPTED_PUZZLE_IDS_RPC, {
     p_username: username,
   });
@@ -174,11 +216,23 @@ const loadAttemptedPuzzleIdsFromRpc = async (supabase, username) => {
     throw error;
   }
 
-  const rows = Array.isArray(data) ? data : [];
-  return rows.map((row) => normalizePuzzleId(row?.puzzle_id ?? row)).filter(Boolean);
+  const rows: unknown[] = Array.isArray(data) ? data : [];
+  return rows
+    .map((row) => normalizePuzzleId((row as RawProgressRow)?.puzzle_id ?? row))
+    .filter(Boolean);
 };
 
-export const recordPuzzleProgress = async ({ username, puzzleId, puzzleCorrect }) => {
+export type RecordPuzzleProgressInput = {
+  username: string;
+  puzzleId: string | number;
+  puzzleCorrect: boolean;
+};
+
+export const recordPuzzleProgress = async ({
+  username,
+  puzzleId,
+  puzzleCorrect,
+}: RecordPuzzleProgressInput): Promise<void> => {
   const normalizedUsername = normalizeUsername(username);
   const normalizedPuzzleId = normalizePuzzleId(puzzleId);
 
@@ -190,7 +244,7 @@ export const recordPuzzleProgress = async ({ username, puzzleId, puzzleCorrect }
     return existingRequest;
   }
 
-  const request = (async () => {
+  const request = (async (): Promise<void> => {
     const firstAttemptAt = new Date().toISOString();
     const supabase = getSupabaseClient();
     const { error } = await supabase.rpc(PUZZLE_PROGRESS_RPC, {
@@ -218,7 +272,11 @@ export const recordPuzzleProgress = async ({ username, puzzleId, puzzleCorrect }
   return request;
 };
 
-export const fetchPuzzleProgressPage = async (username, { page = 1, pageSize = 20 } = {}) => {
+export const fetchPuzzleProgressPage = async (
+  username: string,
+  options: { page?: number; pageSize?: number } = {},
+): Promise<{ rows: PuzzleProgressRow[]; total: number }> => {
+  const { page = 1, pageSize = 20 } = options;
   const normalizedUsername = normalizeUsername(username);
   if (!normalizedUsername) {
     return { rows: [], total: 0 };
@@ -228,7 +286,7 @@ export const fetchPuzzleProgressPage = async (username, { page = 1, pageSize = 2
   const boundedPageSize = Math.max(1, Math.floor(Number(pageSize)) || 20);
   const from = (boundedPage - 1) * boundedPageSize;
   const localRows = readLocalPuzzleProgress(normalizedUsername);
-  let serverRows = [];
+  let serverRows: PuzzleProgressRow[] = [];
   let serverCount = 0;
 
   try {
@@ -243,7 +301,7 @@ export const fetchPuzzleProgressPage = async (username, { page = 1, pageSize = 2
       serverRows = rows;
       serverCount = total;
     } catch {
-      const { rows, count } = await loadSupabasePage(
+      const { rows, count } = await loadSupabasePage<PuzzleProgressRow>(
         PUZZLE_PROGRESS_TABLE,
         supabase
           .from(PUZZLE_PROGRESS_TABLE)
@@ -270,7 +328,9 @@ export const fetchPuzzleProgressPage = async (username, { page = 1, pageSize = 2
   };
 };
 
-export const fetchPuzzleProgressSummary = async (username) => {
+export const fetchPuzzleProgressSummary = async (
+  username: string,
+): Promise<PuzzleProgressSummary> => {
   const normalizedUsername = normalizeUsername(username);
   if (!normalizedUsername) {
     return {
@@ -281,14 +341,14 @@ export const fetchPuzzleProgressSummary = async (username) => {
   }
 
   const localRows = readLocalPuzzleProgress(normalizedUsername);
-  let serverRows = [];
+  let serverRows: PuzzleProgressRow[] = [];
 
   try {
     const supabase = getSupabaseClient();
     try {
       serverRows = await loadAllPuzzleProgressRowsFromRpc(supabase, normalizedUsername);
     } catch {
-      serverRows = await fetchAllSupabaseRows(PUZZLE_PROGRESS_TABLE, () =>
+      serverRows = await fetchAllSupabaseRows<PuzzleProgressRow>(PUZZLE_PROGRESS_TABLE, () =>
         supabase
           .from(PUZZLE_PROGRESS_TABLE)
           .select("puzzle_id,first_attempt_at,puzzle_correct")
@@ -311,18 +371,19 @@ export const fetchPuzzleProgressSummary = async (username) => {
   };
 };
 
-export const fetchAttemptedPuzzleIds = async (username) => {
+export const fetchAttemptedPuzzleIds = async (username: string): Promise<Set<string>> => {
   const normalizedUsername = normalizeUsername(username);
   if (!normalizedUsername) return new Set();
   const localRows = readLocalPuzzleProgress(normalizedUsername);
-  let serverRows = [];
+  let serverRows: Array<{ puzzle_id?: unknown }> = [];
 
   try {
     const supabase = getSupabaseClient();
     try {
-      serverRows = await loadAttemptedPuzzleIdsFromRpc(supabase, normalizedUsername);
+      const ids = await loadAttemptedPuzzleIdsFromRpc(supabase, normalizedUsername);
+      serverRows = ids.map((id) => ({ puzzle_id: id }));
     } catch {
-      serverRows = await fetchAllSupabaseRows(PUZZLE_PROGRESS_TABLE, () =>
+      serverRows = await fetchAllSupabaseRows<{ puzzle_id: string }>(PUZZLE_PROGRESS_TABLE, () =>
         supabase.from(PUZZLE_PROGRESS_TABLE).select("puzzle_id").eq("username", normalizedUsername),
       );
     }

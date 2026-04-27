@@ -1,20 +1,60 @@
 import { getSupabaseClient } from "./supabaseClient";
-import { fetchAllSupabaseRows } from "./supabaseRows";
-import { loadSupabaseRows } from "./supabaseRows";
+import { fetchAllSupabaseRows, loadSupabaseRows } from "./supabaseRows";
 import { cachedRequest } from "../../utils/requestCache";
 import { normalizeUsername } from "../../utils/playerNames";
+
+type AliasesTableRow = {
+  username: string | null;
+  aliases: string[] | null;
+  banned: boolean | null;
+};
+
+type Aliases2TableRow = {
+  alias: string | null;
+  username: string | null;
+  banned: boolean | null;
+  count_games: boolean | number | null;
+};
+
+export type NormalizedAliasRow = {
+  username: string;
+  aliases: string[];
+  banned: boolean;
+  hasExplicitCountableAliases: boolean;
+};
+
+type NormalizedAlias2Row = {
+  username: string;
+  alias: string;
+  banned: boolean;
+  countGames: boolean;
+};
+
+export type MergedAliasRow = {
+  username: string;
+  aliases: string[];
+  banned: boolean;
+  countableAliases: string[];
+  hasExplicitCountableAliases: boolean;
+};
+
+type MergeInputRow = NormalizedAliasRow & {
+  countableAliases?: string[];
+};
 
 const ALIASES_TABLE = "aliases";
 const ALIASES2_TABLE = "aliases2";
 const ALIASES_SELECT_COLUMNS = "username,aliases,banned";
 const ALIASES2_SELECT_COLUMNS = "alias,username,banned,count_games";
-const aliasesRowsCache = new Map();
-const aliasTableRowsCache = new Map();
-const alias2TableRowsCache = new Map();
-const profileUsernameCache = new Map();
-const profileAliasEntryCache = new Map();
+const aliasesRowsCache = new Map<string, Promise<MergedAliasRow[]>>();
+const aliasTableRowsCache = new Map<string, Promise<NormalizedAliasRow[]>>();
+const alias2TableRowsCache = new Map<string, Promise<MergedAliasRow[]>>();
+const profileUsernameCache = new Map<string, Promise<string>>();
+const profileAliasEntryCache = new Map<string, Promise<MergedAliasRow | null>>();
 
-const normalizeAliasRow = (row) => {
+const normalizeAliasRow = (
+  row: AliasesTableRow | null | undefined,
+): NormalizedAliasRow | null => {
   const username = normalizeUsername(row?.username);
   const aliases = Array.isArray(row?.aliases)
     ? row.aliases.map(normalizeUsername).filter(Boolean)
@@ -30,19 +70,23 @@ const normalizeAliasRow = (row) => {
   };
 };
 
-const fetchUncachedAliasRows = async () => {
+const fetchUncachedAliasRows = async (): Promise<NormalizedAliasRow[]> => {
   const supabase = getSupabaseClient();
-  const rows = await fetchAllSupabaseRows(ALIASES_TABLE, () =>
+  const rows = await fetchAllSupabaseRows<AliasesTableRow>(ALIASES_TABLE, () =>
     supabase.from(ALIASES_TABLE).select(ALIASES_SELECT_COLUMNS).order("username"),
   );
 
-  return rows.map(normalizeAliasRow).filter(Boolean);
+  return rows
+    .map(normalizeAliasRow)
+    .filter((row): row is NormalizedAliasRow => row !== null);
 };
 
-const fetchAliasesTableRows = async () =>
+const fetchAliasesTableRows = async (): Promise<NormalizedAliasRow[]> =>
   cachedRequest(aliasTableRowsCache, ["aliases-table"], async () => fetchUncachedAliasRows());
 
-const normalizeAlias2Row = (row) => {
+const normalizeAlias2Row = (
+  row: Aliases2TableRow | null | undefined,
+): NormalizedAlias2Row | null => {
   const username = normalizeUsername(row?.username);
   const alias = normalizeUsername(row?.alias);
 
@@ -57,8 +101,8 @@ const normalizeAlias2Row = (row) => {
   };
 };
 
-const mergeAliasRows = (rows = []) => {
-  const mergedRows = new Map();
+const mergeAliasRows = (rows: MergeInputRow[] = []): MergedAliasRow[] => {
+  const mergedRows = new Map<string, MergedAliasRow>();
 
   rows.filter(Boolean).forEach((row) => {
     const existing = mergedRows.get(row.username);
@@ -109,13 +153,15 @@ const mergeAliasRows = (rows = []) => {
   return [...mergedRows.values()];
 };
 
-const buildAlias2AggregateRow = (rows = []) => {
-  const normalizedRows = rows.map(normalizeAlias2Row).filter(Boolean);
+const buildAlias2AggregateRow = (rows: Aliases2TableRow[] = []): MergedAliasRow | null => {
+  const normalizedRows = rows
+    .map(normalizeAlias2Row)
+    .filter((row): row is NormalizedAlias2Row => row !== null);
   if (normalizedRows.length === 0) return null;
 
-  const username = normalizedRows[0].username;
-  const aliases = new Set();
-  const countableAliases = new Set();
+  const username = normalizedRows[0]!.username;
+  const aliases = new Set<string>();
+  const countableAliases = new Set<string>();
   let banned = false;
 
   normalizedRows.forEach((row) => {
@@ -133,18 +179,20 @@ const buildAlias2AggregateRow = (rows = []) => {
   };
 };
 
-const fetchAliasesTableRowForUsername = async (username) => {
+const fetchAliasesTableRowForUsername = async (
+  username: string,
+): Promise<NormalizedAliasRow | null> => {
   const supabase = getSupabaseClient();
-  const rows = await loadSupabaseRows(
+  const rows = await loadSupabaseRows<AliasesTableRow>(
     ALIASES_TABLE,
     supabase.from(ALIASES_TABLE).select(ALIASES_SELECT_COLUMNS).eq("username", username).limit(1),
   );
   return normalizeAliasRow(rows[0]);
 };
 
-const fetchAliasesTableRowForAlias = async (alias) => {
+const fetchAliasesTableRowForAlias = async (alias: string): Promise<NormalizedAliasRow | null> => {
   const supabase = getSupabaseClient();
-  const rows = await loadSupabaseRows(
+  const rows = await loadSupabaseRows<AliasesTableRow>(
     ALIASES_TABLE,
     supabase
       .from(ALIASES_TABLE)
@@ -155,12 +203,12 @@ const fetchAliasesTableRowForAlias = async (alias) => {
   return normalizeAliasRow(rows[0]);
 };
 
-const fetchAliases2CanonicalUsername = async (value) => {
+const fetchAliases2CanonicalUsername = async (value: string): Promise<string> => {
   const username = normalizeUsername(value);
   if (!username) return "";
 
   const supabase = getSupabaseClient();
-  const rows = await loadSupabaseRows(
+  const rows = await loadSupabaseRows<{ username: string | null; alias: string | null }>(
     ALIASES2_TABLE,
     supabase.from(ALIASES2_TABLE).select("username,alias").eq("alias", username).limit(1),
   );
@@ -168,9 +216,11 @@ const fetchAliases2CanonicalUsername = async (value) => {
   return normalizeUsername(rows[0]?.username);
 };
 
-const fetchAliases2AggregateRowForUsername = async (username) => {
+const fetchAliases2AggregateRowForUsername = async (
+  username: string,
+): Promise<MergedAliasRow | null> => {
   const supabase = getSupabaseClient();
-  const rows = await loadSupabaseRows(
+  const rows = await loadSupabaseRows<Aliases2TableRow>(
     ALIASES2_TABLE,
     supabase
       .from(ALIASES2_TABLE)
@@ -181,33 +231,38 @@ const fetchAliases2AggregateRowForUsername = async (username) => {
   return buildAlias2AggregateRow(rows);
 };
 
-const fetchUncachedAlias2Rows = async () => {
+const fetchUncachedAlias2Rows = async (): Promise<MergedAliasRow[]> => {
   const supabase = getSupabaseClient();
 
   try {
-    const rows = await fetchAllSupabaseRows(ALIASES2_TABLE, () =>
+    const rows = await fetchAllSupabaseRows<Aliases2TableRow>(ALIASES2_TABLE, () =>
       supabase
         .from(ALIASES2_TABLE)
         .select(ALIASES2_SELECT_COLUMNS)
         .order("username")
         .order("alias"),
     );
-    const aliasesByUsername = new Map();
+    type AggregateEntry = {
+      aliases: Set<string>;
+      banned: boolean;
+      countableAliases: Set<string>;
+    };
+    const aliasesByUsername = new Map<string, AggregateEntry>();
 
     rows
       .map(normalizeAlias2Row)
-      .filter(Boolean)
+      .filter((row): row is NormalizedAlias2Row => row !== null)
       .forEach((row) => {
         const { username, alias } = row;
-        const existingEntry = aliasesByUsername.get(username) ?? {
-          aliases: new Set(),
+        const existingEntry: AggregateEntry = aliasesByUsername.get(username) ?? {
+          aliases: new Set<string>(),
           banned: false,
-          countableAliases: new Set(),
+          countableAliases: new Set<string>(),
         };
 
         if (alias !== username) existingEntry.aliases.add(alias);
         if (row.countGames) existingEntry.countableAliases.add(alias);
-        existingEntry.banned = Boolean(existingEntry.banned || row?.banned);
+        existingEntry.banned = Boolean(existingEntry.banned || row.banned);
         aliasesByUsername.set(username, existingEntry);
       });
 
@@ -223,10 +278,10 @@ const fetchUncachedAlias2Rows = async () => {
   }
 };
 
-const fetchAliases2TableRows = async () =>
+const fetchAliases2TableRows = async (): Promise<MergedAliasRow[]> =>
   cachedRequest(alias2TableRowsCache, ["aliases2-table"], async () => fetchUncachedAlias2Rows());
 
-export const resolveProfileUsernameFromAliases = async (value) =>
+export const resolveProfileUsernameFromAliases = async (value: string): Promise<string> =>
   cachedRequest(profileUsernameCache, ["profile-username", value], async () => {
     const username = normalizeUsername(value);
     if (!username) return "";
@@ -243,7 +298,7 @@ export const resolveProfileUsernameFromAliases = async (value) =>
     return username;
   });
 
-export const fetchProfileAliasRow = async (value) =>
+export const fetchProfileAliasRow = async (value: string): Promise<MergedAliasRow | null> =>
   cachedRequest(profileAliasEntryCache, ["profile-alias-entry", value], async () => {
     const canonicalUsername = await resolveProfileUsernameFromAliases(value);
     if (!canonicalUsername) return null;
@@ -251,7 +306,7 @@ export const fetchProfileAliasRow = async (value) =>
     return fetchAliases2AggregateRowForUsername(canonicalUsername);
   });
 
-export const fetchAliasRows = async () =>
+export const fetchAliasRows = async (): Promise<MergedAliasRow[]> =>
   cachedRequest(aliasesRowsCache, ["aliases"], async () => {
     const [aliasRows, alias2Rows] = await Promise.all([
       fetchAliasesTableRows(),

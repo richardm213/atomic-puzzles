@@ -3,11 +3,32 @@ import { fetchAllSupabaseRows, loadSupabaseRows } from "./supabaseRows";
 import { cachedRequest } from "../../utils/requestCache";
 import { normalizeUsername } from "../../utils/playerNames";
 
+export type PlayerRatingRow = {
+  username: string;
+  rating: number | null;
+  peak: number | null;
+  peak_date: string | null;
+  rd: number | null;
+  games: number | null;
+  tc: string | null;
+  rank: number | null;
+  top20_wins: number | null;
+};
+
+export type PlayerRatingFilters = {
+  tc?: string;
+  username?: string;
+  limit?: number;
+};
+
 const PLAYER_RATINGS_TABLE = "player_ratings";
 const PLAYER_RATINGS_SELECT_COLUMNS = "username,rating,peak,peak_date,rd,games,tc,rank,top20_wins";
-const playerRatingsCache = new Map();
+const playerRatingsCache = new Map<string, Promise<PlayerRatingRow[]>>();
 
-const fetchUncachedPlayerRatingsRows = async ({ tc, username, limit } = {}) => {
+const fetchUncachedPlayerRatingsRows = async (
+  filters: PlayerRatingFilters = {},
+): Promise<PlayerRatingRow[]> => {
+  const { tc, username, limit } = filters;
   const supabase = getSupabaseClient();
   const normalizedUsername = normalizeUsername(username);
   const buildQuery = () => {
@@ -21,13 +42,18 @@ const fetchUncachedPlayerRatingsRows = async ({ tc, username, limit } = {}) => {
   };
 
   if (Number(limit) > 0) {
-    return loadSupabaseRows(PLAYER_RATINGS_TABLE, buildQuery().limit(Math.floor(Number(limit))));
+    return loadSupabaseRows<PlayerRatingRow>(
+      PLAYER_RATINGS_TABLE,
+      buildQuery().limit(Math.floor(Number(limit))),
+    );
   }
 
-  return fetchAllSupabaseRows(PLAYER_RATINGS_TABLE, buildQuery);
+  return fetchAllSupabaseRows<PlayerRatingRow>(PLAYER_RATINGS_TABLE, buildQuery);
 };
 
-export const fetchPlayerRatingsRows = async (filters = {}) =>
+export const fetchPlayerRatingsRows = async (
+  filters: PlayerRatingFilters = {},
+): Promise<PlayerRatingRow[]> =>
   cachedRequest(playerRatingsCache, ["playerRatings", filters], () =>
     fetchUncachedPlayerRatingsRows(filters),
   );

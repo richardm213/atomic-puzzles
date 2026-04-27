@@ -6,22 +6,27 @@ import { loadSupabaseRows } from "../supabase/supabaseRows";
 import { cachedRequest } from "../../utils/requestCache";
 import { normalizeUsername } from "../../utils/playerNames";
 
-const LB_TABLE = import.meta.env.VITE_SUPABASE_LB_TABLE?.trim() || "lb";
-const usernameResolutionCache = new Map();
-const usernamePresenceCache = new Map();
+type SupabaseClient = ReturnType<typeof getSupabaseClient>;
 
-const escapeFilterValue = (value) =>
-  String(value || "")
+const LB_TABLE = import.meta.env.VITE_SUPABASE_LB_TABLE?.trim() ?? "lb";
+const usernameResolutionCache = new Map<string, Promise<string>>();
+const usernamePresenceCache = new Map<string, Promise<boolean>>();
+
+const escapeFilterValue = (value: unknown): string =>
+  String(value ?? "")
     .trim()
     .replace(/,/g, "\\,");
 
-const usernameExistsInProfileTables = async (supabase, username) => {
+const usernameExistsInProfileTables = async (
+  supabase: SupabaseClient,
+  username: string,
+): Promise<boolean> => {
   const [playerRatingsRows, leaderboardRows] = await Promise.all([
-    loadSupabaseRows(
+    loadSupabaseRows<{ username: string }>(
       "player_ratings",
       supabase.from("player_ratings").select("username").eq("username", username).limit(1),
     ),
-    loadSupabaseRows(
+    loadSupabaseRows<{ username: string }>(
       LB_TABLE,
       supabase.from(LB_TABLE).select("username").eq("username", username).limit(1),
     ),
@@ -30,12 +35,15 @@ const usernameExistsInProfileTables = async (supabase, username) => {
   return playerRatingsRows.length > 0 || leaderboardRows.length > 0;
 };
 
-const usernameExistsInMatchTables = async (supabase, username) => {
+const usernameExistsInMatchTables = async (
+  supabase: SupabaseClient,
+  username: string,
+): Promise<boolean> => {
   const escapedUsername = escapeFilterValue(username);
   const matchRowsByMode = await Promise.all(
     modeOptions.map((mode) => {
       const tableName = MATCH_TABLE_BY_MODE[mode];
-      return loadSupabaseRows(
+      return loadSupabaseRows<{ match_id: string }>(
         tableName,
         supabase
           .from(tableName)
@@ -49,7 +57,7 @@ const usernameExistsInMatchTables = async (supabase, username) => {
   return matchRowsByMode.some((rows) => rows.length > 0);
 };
 
-const hasSupabaseUsernameMatch = async (value) =>
+const hasSupabaseUsernameMatch = async (value: string): Promise<boolean> =>
   cachedRequest(usernamePresenceCache, ["username-presence", value], async () => {
     const username = normalizeUsername(value);
     if (!username) return false;
@@ -59,7 +67,7 @@ const hasSupabaseUsernameMatch = async (value) =>
     return usernameExistsInMatchTables(supabase, username);
   });
 
-export const resolveUsernameInput = async (value) =>
+export const resolveUsernameInput = async (value: string): Promise<string> =>
   cachedRequest(usernameResolutionCache, ["resolved-username", value], async () => {
     const username = normalizeUsername(value);
     if (!username) return "";
@@ -69,5 +77,5 @@ export const resolveUsernameInput = async (value) =>
     return aliasesLookup.get(username)?.primary ?? username;
   });
 
-export const resolveUsernameInputs = async (values = []) =>
+export const resolveUsernameInputs = async (values: string[] = []): Promise<string[]> =>
   Promise.all(values.map((value) => resolveUsernameInput(value)));

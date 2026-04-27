@@ -2,10 +2,55 @@ import {
   findRatingDataForPlayer,
   normalizedRatingsFromMatch,
   winnerToFullWord,
+  type NormalizedGame,
 } from "../../utils/matchTransforms";
 import { matchSourceFromValues, sourceValueFromValues } from "../../utils/matchFilters";
 
-export const sourceValueFromMatch = (match, firstGame) => {
+type MatchSourceFields = {
+  source?: unknown;
+  match_source?: unknown;
+  queue?: unknown;
+};
+
+type GameSourceFields = MatchSourceFields & {
+  white?: unknown;
+  black?: unknown;
+  winner?: unknown;
+  id?: string | number;
+};
+
+export type MappedGameSummary = {
+  id: string;
+  index: number;
+  resultLabel: string;
+  scoreAAfter: number;
+  scoreBAfter: number;
+};
+
+export type MatchGameSummary = {
+  scoreA: number;
+  scoreB: number;
+  playerAWins: number;
+  playerBWins: number;
+  draws: number;
+  mappedGames: MappedGameSummary[];
+};
+
+export type PlayerRatingsForMatch = {
+  playerABeforeRating: number;
+  playerAAfterRating: number;
+  playerABeforeRd: number;
+  playerAAfterRd: number;
+  playerBBeforeRating: number;
+  playerBAfterRating: number;
+  playerBBeforeRd: number;
+  playerBAfterRd: number;
+};
+
+export const sourceValueFromMatch = (
+  match: MatchSourceFields | null | undefined,
+  firstGame: GameSourceFields | null | undefined,
+): string => {
   return sourceValueFromValues(
     firstGame?.source,
     firstGame?.match_source,
@@ -16,7 +61,10 @@ export const sourceValueFromMatch = (match, firstGame) => {
   );
 };
 
-export const sourceKeyFromMatch = (match, firstGame) =>
+export const sourceKeyFromMatch = (
+  match: MatchSourceFields | null | undefined,
+  firstGame: GameSourceFields | null | undefined,
+) =>
   matchSourceFromValues(
     firstGame?.source,
     firstGame?.match_source,
@@ -26,7 +74,11 @@ export const sourceKeyFromMatch = (match, firstGame) =>
     match?.queue,
   );
 
-export const summarizeMatchGames = (games, playerA, playerB) => {
+export const summarizeMatchGames = (
+  games: NormalizedGame[],
+  playerA: string,
+  playerB: string,
+): MatchGameSummary => {
   const playerALower = String(playerA).toLowerCase();
   let scoreA = 0;
   let scoreB = 0;
@@ -34,9 +86,9 @@ export const summarizeMatchGames = (games, playerA, playerB) => {
   let playerBWins = 0;
   let draws = 0;
 
-  const mappedGames = games.map((game, index) => {
-    const white = String(game?.white || "").toLowerCase();
-    const black = String(game?.black || "").toLowerCase();
+  const mappedGames = games.map((game, index): MappedGameSummary => {
+    const white = String(game?.white ?? "").toLowerCase();
+    const black = String(game?.black ?? "").toLowerCase();
     const winner = winnerToFullWord(game?.winner);
     let resultLabel = "draw";
 
@@ -67,7 +119,7 @@ export const summarizeMatchGames = (games, playerA, playerB) => {
     }
 
     return {
-      id: String(game?.id || "—"),
+      id: String(game?.id ?? "—"),
       index,
       resultLabel,
       scoreAAfter: scoreA,
@@ -85,7 +137,12 @@ export const summarizeMatchGames = (games, playerA, playerB) => {
   };
 };
 
-export const ratingsForPlayers = (match, players, playerA, playerB) => {
+export const ratingsForPlayers = (
+  match: Parameters<typeof normalizedRatingsFromMatch>[0],
+  players: string[],
+  playerA: string,
+  playerB: string,
+): PlayerRatingsForMatch => {
   const ratings = normalizedRatingsFromMatch(match, players);
   const playerARatingData = findRatingDataForPlayer(ratings, playerA);
   const playerBRatingData = findRatingDataForPlayer(ratings, playerB);
