@@ -1,10 +1,10 @@
-export const formatSignedDecimal = (value) => {
+export const formatSignedDecimal = (value: number): string => {
   const rounded = Math.round(value * 10) / 10;
   if (rounded > 0) return `+${rounded}`;
   return String(rounded);
 };
 
-export const formatLocalDateTime = (timestamp) => {
+export const formatLocalDateTime = (timestamp: number | string | Date): string => {
   const date = new Date(timestamp);
   const now = new Date();
   const includeYear = date.getFullYear() !== now.getFullYear();
@@ -22,7 +22,7 @@ export const formatLocalDateTime = (timestamp) => {
   return includeYear ? `${month} ${day}, ${year} ${time}` : `${month} ${day} ${time}`;
 };
 
-export const formatCalendarDate = (value) => {
+export const formatCalendarDate = (value: string | null | undefined): string => {
   if (!value) return "";
 
   const date = new Date(`${String(value).slice(0, 10)}T00:00:00Z`);
@@ -36,11 +36,14 @@ export const formatCalendarDate = (value) => {
   });
 };
 
-export const formatScore = (value) => {
+export const formatScore = (value: number | string): string => {
   const numeric = Number(value);
   return String(numeric);
 };
 
-export const formatOpponentWithRating = (opponent, opponentRating) => {
+export const formatOpponentWithRating = (
+  opponent: string,
+  opponentRating: number | string,
+): string => {
   return `${opponent} (${opponentRating})`;
 };

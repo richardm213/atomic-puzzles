@@ -1,8 +1,12 @@
 import { parseTimeControlParts } from "./matchTransforms";
 
-export const getTimeControlOptions = (matches) => {
-  const initialSet = new Set();
-  const incrementSet = new Set();
+type MatchTimeControlInput = { timeControl?: string | null | undefined };
+
+export const getTimeControlOptions = (
+  matches: MatchTimeControlInput[] | null | undefined,
+): { initialOptions: string[]; incrementOptions: string[] } => {
+  const initialSet = new Set<string>();
+  const incrementSet = new Set<string>();
 
   (Array.isArray(matches) ? matches : []).forEach((match) => {
     const { initial, increment } = parseTimeControlParts(match?.timeControl);
@@ -10,7 +14,7 @@ export const getTimeControlOptions = (matches) => {
     if (increment) incrementSet.add(increment);
   });
 
-  const numericSort = (a, b) => Number(a) - Number(b);
+  const numericSort = (a: string, b: string): number => Number(a) - Number(b);
 
   return {
     initialOptions: [...initialSet].sort(numericSort),

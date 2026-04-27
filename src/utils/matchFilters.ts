@@ -1,7 +1,12 @@
-const firstNonEmptyValue = (...values) =>
+export type MatchSource = "arena" | "friend" | "lobby" | "unknown";
+
+const firstNonEmptyValue = (...values: unknown[]): unknown =>
   values.find((value) => value !== undefined && value !== null && String(value).trim().length > 0);
 
-export const parseDateInputBoundary = (value, boundary) => {
+export const parseDateInputBoundary = (
+  value: string | null | undefined,
+  boundary: "start" | "end",
+): number => {
   if (!value) {
     return boundary === "end" ? Number.MAX_SAFE_INTEGER : Number.MIN_SAFE_INTEGER;
   }
@@ -15,7 +20,7 @@ export const parseDateInputBoundary = (value, boundary) => {
   return parsed.getTime();
 };
 
-export const sourceValueFromValues = (...values) => {
+export const sourceValueFromValues = (...values: unknown[]): string => {
   const sourceValue = firstNonEmptyValue(...values);
   return sourceValue === undefined ||
     sourceValue === null ||
@@ -24,7 +29,7 @@ export const sourceValueFromValues = (...values) => {
     : String(sourceValue);
 };
 
-export const matchSourceFromValues = (...values) => {
+export const matchSourceFromValues = (...values: unknown[]): MatchSource => {
   const sourceValue = firstNonEmptyValue(...values);
 
   if (

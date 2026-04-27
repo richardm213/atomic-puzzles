@@ -132,12 +132,14 @@ const reactHooks = {
   },
 };
 
+import tseslint from "typescript-eslint";
+
 export default [
   {
     ignores: [".claude/**", "dist/**", "node_modules/**"],
   },
   {
-    files: ["**/*.{js,jsx}"],
+    files: ["**/*.{js,jsx,ts,tsx}"],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "module",
@@ -176,7 +178,27 @@ export default [
     },
   },
   {
-    files: ["src/**/*.{js,jsx}"],
+    files: ["**/*.{ts,tsx}"],
+    languageOptions: {
+      parser: tseslint.parser,
+      parserOptions: {
+        ecmaFeatures: { jsx: true },
+      },
+    },
+    plugins: {
+      "@typescript-eslint": tseslint.plugin,
+    },
+    rules: {
+      "no-undef": "off",
+      "no-unused-vars": "off",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { varsIgnorePattern: "^React$|^[A-Z]", argsIgnorePattern: "^_" },
+      ],
+    },
+  },
+  {
+    files: ["src/**/*.{js,jsx,ts,tsx}"],
     rules: {
       "no-restricted-syntax": [
         "error",
