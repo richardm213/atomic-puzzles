@@ -103,6 +103,8 @@ export const Chessboard = ({
   const fenRef = useRef(fen);
   const puzzleIdRef = useRef(puzzleId);
   const solverColorRef = useRef(colorFromFen(fen));
+  const onStateChangeRef = useRef(onStateChange);
+  const onAttemptResolvedRef = useRef(onAttemptResolved);
 
   const solutionUciLines = useMemo(() => parseSolutionUciLines(fen, solution), [fen, solution]);
 
@@ -173,6 +175,11 @@ export const Chessboard = ({
     puzzleIdRef.current = puzzleId;
   }, [puzzleId]);
 
+  useEffect(() => {
+    onStateChangeRef.current = onStateChange;
+    onAttemptResolvedRef.current = onAttemptResolved;
+  }, [onStateChange, onAttemptResolved]);
+
   const emitState = (position, next) => {
     const history = historyRef.current;
     const displayTurn = getDisplayTurn(position, next);
@@ -193,7 +200,7 @@ export const Chessboard = ({
       ...(next || {}),
     };
 
-    onStateChange?.(state);
+    onStateChangeRef.current?.(state);
     return state;
   };
 
@@ -495,7 +502,7 @@ export const Chessboard = ({
 
       if (!accepted.has(userMoveKey)) {
         moveLockRef.current = false;
-        onAttemptResolved?.({ puzzleId: puzzleIdRef.current, puzzleCorrect: false });
+        onAttemptResolvedRef.current?.({ puzzleId: puzzleIdRef.current, puzzleCorrect: false });
         syncBoard(activePosition, undefined, {
           showWrongMove: true,
           solved: false,
@@ -514,7 +521,7 @@ export const Chessboard = ({
       if (!hasExpectedMoveAt(nextCandidates, progressRef.current)) {
         moveLockRef.current = false;
         puzzleSolvedRef.current = true;
-        onAttemptResolved?.({ puzzleId: puzzleIdRef.current, puzzleCorrect: true });
+        onAttemptResolvedRef.current?.({ puzzleId: puzzleIdRef.current, puzzleCorrect: true });
         syncBoard(activePosition, [orig, dest], {
           showWrongMove: false,
           solved: true,
@@ -527,7 +534,7 @@ export const Chessboard = ({
       moveLockRef.current = false;
 
       if (puzzleSolvedRef.current) {
-        onAttemptResolved?.({ puzzleId: puzzleIdRef.current, puzzleCorrect: true });
+        onAttemptResolvedRef.current?.({ puzzleId: puzzleIdRef.current, puzzleCorrect: true });
       }
 
       syncBoard(
@@ -729,7 +736,7 @@ export const Chessboard = ({
           dests: new Map(),
         },
       });
-      onStateChange?.({
+      onStateChangeRef.current?.({
         fen,
         turn: "",
         status: "Invalid position",

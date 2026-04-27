@@ -134,7 +134,7 @@ const reactHooks = {
 
 export default [
   {
-    ignores: ["dist/**", "node_modules/**"],
+    ignores: [".claude/**", "dist/**", "node_modules/**"],
   },
   {
     files: ["**/*.{js,jsx}"],

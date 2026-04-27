@@ -700,20 +700,25 @@ export const PuzzleSolverPage = () => {
     [isMobileLayout, showMobileFeedback, showSolution],
   );
 
-  const handleMoveClick = (lineIndex, moveIndex, { advance = false } = {}) => {
+  const handleMoveClick = useCallback((lineIndex, moveIndex, { advance = false } = {}) => {
     setPinnedSolutionLineIndex(lineIndex);
     setSolutionNavigation({
       lineIndex,
       plyIndex: moveIndex + (advance ? 2 : 1),
     });
-  };
+  }, []);
 
-  const handleAnalysisMoveClick = (moveIndex) => {
+  const handleAnalysisMoveClick = useCallback((moveIndex) => {
     setSolutionNavigation({
       plyIndex: moveIndex + 1,
       useHistory: true,
     });
-  };
+  }, []);
+
+  const currentAnalysisMoves = useMemo(
+    () => boardState.lineMoves?.slice(0, boardState.lineIndex) ?? [],
+    [boardState.lineMoves, boardState.lineIndex],
+  );
 
   const handleResetSolutionView = () => {
     const mainSolutionLine = boardState.solutionLines?.[0] ?? [];
@@ -725,8 +730,6 @@ export const PuzzleSolverPage = () => {
       plyIndex: targetPly,
     });
   };
-
-  const currentAnalysisMoves = boardState.lineMoves?.slice(0, boardState.lineIndex) ?? [];
   const matchingSolutionLineIndexes = useMemo(
     () => getMatchingSolutionLineIndexes(boardState.solutionLines, currentAnalysisMoves),
     [boardState.solutionLines, currentAnalysisMoves],
@@ -933,7 +936,7 @@ export const PuzzleSolverPage = () => {
     return boardState.lineMoves
       .map((move, index) => `${movePrefix(index, index % 2 === 1)}${move}`.trim())
       .join(" ");
-  }, [boardState.lineMoves, boardState.solutionLines, fen, isOnSolutionPath]);
+  }, [boardState.lineIndex, boardState.lineMoves, boardState.solutionLines, fen, isOnSolutionPath]);
 
   const handleCopyPgn = useCallback(async () => {
     if (!moveLinePgn) return;
