@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import type { StructuredData } from "../../types/seo";
 
 const SITE_NAME = "Atomic Puzzles";
 const DEFAULT_DESCRIPTION =
@@ -11,7 +12,7 @@ export type SeoProps = {
   path?: string;
   robots?: string;
   type?: string;
-  structuredData?: unknown;
+  structuredData?: StructuredData;
 };
 
 const absoluteUrl = (path: string): string => {
@@ -70,7 +71,7 @@ export const Seo = ({
   path = "/",
   robots = DEFAULT_ROBOTS,
   type = "website",
-  structuredData = null,
+  structuredData,
 }: SeoProps) => {
   useEffect(() => {
     const pageTitle = title ? `${title} | ${SITE_NAME}` : SITE_NAME;

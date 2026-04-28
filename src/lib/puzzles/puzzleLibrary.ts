@@ -1,5 +1,6 @@
 import { fetchPuzzleRowsFromSupabase, type PuzzleRow } from "../supabase/supabasePuzzles";
 import { normalizeSolutionPgn, parseSolutionUciLines } from "./solutionPgn";
+import type { PuzzleSolutionField } from "../../types/puzzles";
 
 export type Puzzle = PuzzleRow & {
   fen: string;
@@ -7,7 +8,13 @@ export type Puzzle = PuzzleRow & {
   puzzleId: number;
 };
 
-const solutionFieldCandidates = ["solution", "moves", "line", "pgn", "variation"];
+const solutionFieldCandidates: PuzzleSolutionField[] = [
+  "solution",
+  "moves",
+  "line",
+  "pgn",
+  "variation",
+];
 
 const normalizeSolution = (rawValue: unknown): string => {
   if (typeof rawValue === "string") {

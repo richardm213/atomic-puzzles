@@ -5,19 +5,7 @@ import {
   type NormalizedGame,
 } from "../../utils/matchTransforms";
 import { matchSourceFromValues, sourceValueFromValues } from "../../utils/matchFilters";
-
-type MatchSourceFields = {
-  source?: unknown;
-  match_source?: unknown;
-  queue?: unknown;
-};
-
-type GameSourceFields = MatchSourceFields & {
-  white?: unknown;
-  black?: unknown;
-  winner?: unknown;
-  id?: string | number;
-};
+import type { RawGameObject, RawMatchLike, RawMatchSourceFields } from "../../types/matchRaw";
 
 export type MappedGameSummary = {
   id: string;
@@ -48,8 +36,8 @@ export type PlayerRatingsForMatch = {
 };
 
 export const sourceValueFromMatch = (
-  match: MatchSourceFields | null | undefined,
-  firstGame: GameSourceFields | null | undefined,
+  match: RawMatchSourceFields | null | undefined,
+  firstGame: (RawGameObject | NormalizedGame) | null | undefined,
 ): string => {
   return sourceValueFromValues(
     firstGame?.source,
@@ -62,8 +50,8 @@ export const sourceValueFromMatch = (
 };
 
 export const sourceKeyFromMatch = (
-  match: MatchSourceFields | null | undefined,
-  firstGame: GameSourceFields | null | undefined,
+  match: RawMatchSourceFields | null | undefined,
+  firstGame: (RawGameObject | NormalizedGame) | null | undefined,
 ) =>
   matchSourceFromValues(
     firstGame?.source,
@@ -138,7 +126,7 @@ export const summarizeMatchGames = (
 };
 
 export const ratingsForPlayers = (
-  match: Parameters<typeof normalizedRatingsFromMatch>[0],
+  match: RawMatchLike | null | undefined,
   players: string[],
   playerA: string,
   playerB: string,

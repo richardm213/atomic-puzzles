@@ -1,21 +1,26 @@
+import type {
+  GameSourceMetadata,
+  RawCompactGameTuple,
+  RawCompactRatingTuple,
+  RawGameObject,
+  RawMatchLike,
+  RatingFields,
+  RawRatingsByPlayer,
+} from "../types/matchRaw";
+
 export type WinnerWord = "white" | "black" | "draw" | string;
 export type GameOutcome = "win" | "loss" | "draw";
 
-export type NormalizedGame = {
+export type NormalizedGame = GameSourceMetadata & {
   id: string | number;
   white: string;
   black: string;
   winner: WinnerWord;
 };
 
-export type RatingEntry = {
-  before_rating: number | null;
-  after_rating: number | null;
-  before_rd: number | null;
-  after_rd: number | null;
-};
+export type RatingEntry = RatingFields;
 
-export type RatingsByPlayer = Record<string, RatingEntry>;
+export type RatingsByPlayer = RawRatingsByPlayer;
 
 const winnerCodeLookup: Record<string, string> = {
   w: "white",
@@ -28,18 +33,7 @@ export const winnerToFullWord = (winner: unknown): WinnerWord => {
   return winnerCodeLookup[winnerValue] ?? winnerValue;
 };
 
-type MatchLike = {
-  players?: unknown;
-  p?: unknown;
-  games?: unknown;
-  g?: unknown;
-  ratings?: unknown;
-  ra?: unknown;
-  ratings_compact?: unknown;
-  u?: unknown;
-};
-
-export const normalizedPlayersFromMatch = (match: MatchLike | null | undefined): string[] => {
+export const normalizedPlayersFromMatch = (match: RawMatchLike | null | undefined): string[] => {
   if (Array.isArray(match?.players)) return match.players as string[];
   if (Array.isArray(match?.p)) return match.p as string[];
   return [];
@@ -59,23 +53,18 @@ const playerFromRef = (playerRef: unknown, players: string[]): string => {
 };
 
 export const normalizedGamesFromMatch = (
-  match: MatchLike | null | undefined,
+  match: RawMatchLike | null | undefined,
   players: string[],
 ): NormalizedGame[] => {
-  const gamesRaw: unknown[] = Array.isArray(match?.games)
-    ? (match.games as unknown[])
+  const gamesRaw: Array<RawCompactGameTuple | RawGameObject> = Array.isArray(match?.games)
+    ? match.games
     : Array.isArray(match?.g)
-      ? (match.g as unknown[])
+      ? match.g
       : [];
 
   return gamesRaw.map((game): NormalizedGame => {
     if (Array.isArray(game)) {
-      const [id, whiteRef, blackRef, winnerRef] = game as [
-        string | number | undefined,
-        unknown,
-        unknown,
-        unknown,
-      ];
+      const [id, whiteRef, blackRef, winnerRef] = game;
       return {
         id: id ?? "—",
         white: playerFromRef(whiteRef, players),
@@ -84,41 +73,37 @@ export const normalizedGamesFromMatch = (
       };
     }
 
-    const gameObj = game as
-      | { id?: string | number; white?: unknown; black?: unknown; winner?: unknown }
-      | null
-      | undefined;
     return {
-      id: gameObj?.id ?? "—",
-      white: playerFromRef(gameObj?.white, players),
-      black: playerFromRef(gameObj?.black, players),
-      winner: winnerToFullWord(gameObj?.winner),
+      id: game.id ?? "—",
+      white: playerFromRef(game.white, players),
+      black: playerFromRef(game.black, players),
+      winner: winnerToFullWord(game.winner),
+      source: game.source,
+      match_source: game.match_source,
+      queue: game.queue,
     };
   });
 };
 
-const ratingsFromCompact = (ratingsCompact: unknown, players: string[]): RatingsByPlayer => {
+const ratingsFromCompact = (
+  ratingsCompact: RawCompactRatingTuple[] | null | undefined,
+  players: string[],
+): RatingsByPlayer => {
   if (!Array.isArray(ratingsCompact)) return {};
 
   const mappedEntries = ratingsCompact
     .map((entry): [string, RatingEntry] | null => {
       if (!Array.isArray(entry) || entry.length < 5) return null;
-      const [playerRef, beforeRating, afterRating, beforeRd, afterRd] = entry as [
-        unknown,
-        number | null,
-        number | null,
-        number | null,
-        number | null,
-      ];
+      const [playerRef, beforeRating, afterRating, beforeRd, afterRd] = entry;
       const username = playerFromRef(playerRef, players);
       if (!username) return null;
       return [
         username,
         {
-          before_rating: beforeRating,
-          after_rating: afterRating,
-          before_rd: beforeRd,
-          after_rd: afterRd,
+          before_rating: beforeRating ?? null,
+          after_rating: afterRating ?? null,
+          before_rd: beforeRd ?? null,
+          after_rd: afterRd ?? null,
         },
       ];
     })
@@ -128,7 +113,7 @@ const ratingsFromCompact = (ratingsCompact: unknown, players: string[]): Ratings
 };
 
 export const normalizedRatingsFromMatch = (
-  match: MatchLike | null | undefined,
+  match: RawMatchLike | null | undefined,
   players: string[],
 ): RatingsByPlayer => {
   const ratings: RatingsByPlayer =

@@ -11,6 +11,7 @@ import {
 } from "../../constants/matches";
 import type { MatchCardData } from "../../types/matchCard";
 import type { PlayerRatingRow } from "../../lib/supabase/supabasePlayerRatings";
+import type { RawMatchLike } from "../../types/matchRaw";
 
 type H2HMatch = MatchCardData & {
   key: string;
@@ -39,7 +40,7 @@ import {
 } from "../../lib/matches/matchSummaries";
 
 const normalizeH2HMatches = (
-  matches: unknown,
+  matches: RawMatchLike[] | null | undefined,
   mode: Mode,
   playerA: string,
   playerB: string,
@@ -47,7 +48,7 @@ const normalizeH2HMatches = (
   const playerALower = playerA.toLowerCase();
   const playerBLower = playerB.toLowerCase();
 
-  return (Array.isArray(matches) ? (matches as Record<string, unknown>[]) : [])
+  return (Array.isArray(matches) ? matches : [])
     .map((match): H2HMatch | null => {
       const players = normalizedPlayersFromMatch(match);
       const includesBoth =
@@ -66,13 +67,13 @@ const normalizeH2HMatches = (
       const firstGame = games[0];
 
       return {
-        key: `${mode}-${(match["match_id"] ?? match["start_ts"] ?? "") as string | number}-${firstGameId}-${resolvedA}-${resolvedB}`,
-        matchId: String(match["match_id"] ?? ""),
+        key: `${mode}-${String(match.match_id ?? match.start_ts ?? "")}-${firstGameId}-${resolvedA}-${resolvedB}`,
+        matchId: String(match.match_id ?? ""),
         mode,
-        startTs: Number(match["start_ts"] ?? match["s"]),
-        timeControl: String(match["time_control"] ?? match["t"] ?? "—"),
-        sourceValue: String(match["source"] ?? ""),
-        source: sourceKeyFromMatch(match as never, firstGame as never),
+        startTs: Number(match.start_ts ?? match.s),
+        timeControl: String(match.time_control ?? match.t ?? "—"),
+        sourceValue: String(match.source ?? ""),
+        source: sourceKeyFromMatch(match, firstGame),
         firstGameId,
         playerA: resolvedA,
         playerB: resolvedB,

@@ -18,6 +18,7 @@ import {
 } from "../../constants/matches";
 import type { MatchCardData } from "../../types/matchCard";
 import type { MatchFilters as SupabaseMatchFilters } from "../../lib/supabase/supabaseMatchRows";
+import type { RawMatchLike } from "../../types/matchRaw";
 
 type RecentMatch = MatchCardData & {
   sourceKey: string;
@@ -68,8 +69,8 @@ const recentModeOptions = modeOptions;
 const ratingFilterTypeOptions = ["both", "average"];
 const defaultPageSize = 50;
 
-const normalizeRecentMatches = (matches: unknown, mode: Mode): RecentMatch[] =>
-  (Array.isArray(matches) ? (matches as Record<string, unknown>[]) : [])
+const normalizeRecentMatches = (matches: RawMatchLike[] | null | undefined, mode: Mode): RecentMatch[] =>
+  (Array.isArray(matches) ? matches : [])
     .map((match): RecentMatch => {
       const rawPlayers = normalizedPlayersFromMatch(match);
       const players: string[] =

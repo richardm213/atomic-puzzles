@@ -2,18 +2,9 @@ import { getSupabaseClient } from "./supabaseClient";
 import { fetchAllSupabaseRows, loadSupabaseRows } from "./supabaseRows";
 import { cachedRequest } from "../../utils/requestCache";
 import { normalizeUsername } from "../../utils/playerNames";
+import type { PlayerRatingRow } from "../../types/supabase";
 
-export type PlayerRatingRow = {
-  username: string;
-  rating: number | null;
-  peak: number | null;
-  peak_date: string | null;
-  rd: number | null;
-  games: number | null;
-  tc: string | null;
-  rank: number | null;
-  top20_wins: number | null;
-};
+export type { PlayerRatingRow } from "../../types/supabase";
 
 export type PlayerRatingFilters = {
   tc?: string;
@@ -21,7 +12,7 @@ export type PlayerRatingFilters = {
   limit?: number;
 };
 
-const PLAYER_RATINGS_TABLE = "player_ratings";
+const PLAYER_RATINGS_TABLE = "player_ratings" as const;
 const PLAYER_RATINGS_SELECT_COLUMNS = "username,rating,peak,peak_date,rd,games,tc,rank,top20_wins";
 const playerRatingsCache = new Map<string, Promise<PlayerRatingRow[]>>();
 

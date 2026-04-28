@@ -86,7 +86,9 @@ describe("normalizedRatingsFromMatch", () => {
   it("merges expanded `ratings` with compact `ratings_compact`", () => {
     const result = normalizedRatingsFromMatch(
       {
-        ratings: { alice: { before_rating: 1500, after_rating: 1510 } },
+        ratings: {
+          alice: { before_rating: 1500, after_rating: 1510, before_rd: null, after_rd: null },
+        },
         u: [["bob", 1400, 1390, 50, 60]],
       },
       ["alice", "bob"],

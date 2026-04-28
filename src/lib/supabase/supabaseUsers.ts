@@ -1,12 +1,9 @@
 import { getSupabaseClient } from "./supabaseClient";
 import { normalizeUsername } from "../../utils/playerNames";
+import type { SupabaseUser } from "../../types/supabase";
 
-export type SupabaseUser = {
-  username: string;
-  created_at: string;
-};
+export type { SupabaseUser } from "../../types/supabase";
 
-const USERS_TABLE = import.meta.env.VITE_SUPABASE_USERS_TABLE?.trim() ?? "users";
 const USER_COLUMNS = "username, created_at";
 const USER_CONFLICT_COLUMNS = "username";
 const userEnsureRequests = new Map<string, Promise<{ user: SupabaseUser; created: boolean }>>();
@@ -15,7 +12,7 @@ const userLookupRequests = new Map<string, Promise<SupabaseUser | null>>();
 const getUserByUsername = async (username: string): Promise<SupabaseUser | null> => {
   const supabase = getSupabaseClient();
   const { data, error } = await supabase
-    .from(USERS_TABLE)
+    .from("users")
     .select(USER_COLUMNS)
     .eq("username", username)
     .maybeSingle<SupabaseUser>();
@@ -56,7 +53,7 @@ const ensureSupabaseUserRecord = async (
 ): Promise<{ user: SupabaseUser; created: boolean }> => {
   const supabase = getSupabaseClient();
   const { data, error } = await supabase
-    .from(USERS_TABLE)
+    .from("users")
     .upsert(
       { username: normalizedUsername },
       { onConflict: USER_CONFLICT_COLUMNS, ignoreDuplicates: true },

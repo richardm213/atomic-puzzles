@@ -2,16 +2,9 @@ import { getSupabaseClient } from "./supabaseClient";
 import { loadSupabaseRows } from "./supabaseRows";
 import { cachedRequest } from "../../utils/requestCache";
 import { normalizeUsername } from "../../utils/playerNames";
+import type { LbRow } from "../../types/supabase";
 
-export type LbRow = {
-  username: string;
-  month: string;
-  rank: number | null;
-  rating: number | null;
-  rd: number | null;
-  games: number | null;
-  tc: string | null;
-};
+export type { LbRow } from "../../types/supabase";
 
 export type LbFilters = {
   month?: string;

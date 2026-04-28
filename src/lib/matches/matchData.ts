@@ -11,7 +11,6 @@ import {
   parseWinnerFromPerspective,
   winnerToFullWord,
   type NormalizedGame,
-  type RatingEntry,
 } from "../../utils/matchTransforms";
 import {
   matchSourceFromValues,
@@ -19,11 +18,17 @@ import {
   type MatchSource,
 } from "../../utils/matchFilters";
 import { normalizeUsername } from "../../utils/playerNames";
+import type {
+  RawDbCompactGame,
+  RawMatchLike,
+  RawRatingsByPlayer,
+  WinnerCode,
+} from "../../types/matchRaw";
 
 export type ParsedMatchGame = {
   id: string;
   game_index: number;
-  winner: string;
+  winner: WinnerCode;
   white: string;
   black: string;
 };
@@ -36,7 +41,7 @@ export type ParsedMatch = {
   source: string | null;
   tournament_id: string | null;
   games: ParsedMatchGame[];
-  ratings: Record<string, RatingEntry>;
+  ratings: RawRatingsByPlayer;
 };
 
 export type LoadMatchesOptions = {
@@ -83,14 +88,14 @@ export type NormalizedMatch = {
   sourceKey: MatchSource;
 };
 
-const parseGamesCompact = (gamesValue: unknown): unknown[] => {
+const parseGamesCompact = (gamesValue: unknown): RawDbCompactGame[] => {
   if (Array.isArray(gamesValue)) return gamesValue;
   const raw = String(gamesValue ?? "").trim();
   if (!raw) return [];
 
   try {
     const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) ? parsed.filter((entry): entry is RawDbCompactGame => typeof entry === "string") : [];
   } catch {
     return [];
   }
@@ -216,27 +221,8 @@ export async function loadRawMatchesByMode(
   return matches;
 }
 
-type MatchLikeForNormalize = {
-  match_id?: string | null;
-  start_ts?: unknown;
-  s?: unknown;
-  time_control?: unknown;
-  t?: unknown;
-  source?: unknown;
-  match_source?: unknown;
-  queue?: unknown;
-  players?: unknown;
-  p?: unknown;
-  games?: unknown;
-  g?: unknown;
-  ratings?: unknown;
-  ra?: unknown;
-  ratings_compact?: unknown;
-  u?: unknown;
-};
-
 export const normalizeMatches = (
-  matches: MatchLikeForNormalize[] | null | undefined,
+  matches: RawMatchLike[] | null | undefined,
   username: string,
 ): NormalizedMatch[] => {
   const normalizedUsername = normalizeUsername(username);

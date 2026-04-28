@@ -3,25 +3,9 @@ import { loadSupabasePage } from "./supabaseRows";
 import { defaultRatingMax, defaultRatingMin, type Mode } from "../../constants/matches";
 import { cachedRequest } from "../../utils/requestCache";
 import { normalizeUsername } from "../../utils/playerNames";
+import type { MatchRow } from "../../types/supabase";
 
-export type MatchRow = {
-  match_id: string;
-  player_1: string;
-  player_2: string;
-  start_ts: number;
-  time_control: string | null;
-  source: string | null;
-  tournament_id: string | null;
-  games: unknown;
-  p1_before_rating: number | null;
-  p1_after_rating: number | null;
-  p1_before_rd: number | null;
-  p1_after_rd: number | null;
-  p2_before_rating: number | null;
-  p2_after_rating: number | null;
-  p2_before_rd: number | null;
-  p2_after_rd: number | null;
-};
+export type { MatchRow } from "../../types/supabase";
 
 export type MatchFilters = {
   username?: string;
@@ -128,14 +112,16 @@ const normalizeMatchFilters = (filters: MatchFilters = {}): NormalizedFilters =>
   };
 };
 
-// PostgrestFilterBuilder generics get too deep when chained, so the helper
-// boundaries use `any`. Filters in / rows out are still strongly typed.
-type ChainedQuery = any;
+type MatchQuery = ReturnType<
+  ReturnType<typeof getSupabaseClient>["from"]
+> extends never
+  ? never
+  : ReturnType<ReturnType<typeof getSupabaseClient>["from"]>;
 
 const applyPlayerFilters = (
-  query: ChainedQuery,
+  query: MatchQuery,
   { username, pairPlayerA, pairPlayerB, matchId }: NormalizedFilters,
-): ChainedQuery => {
+): MatchQuery => {
   let next = query;
   if (matchId) {
     next = next.eq("match_id", matchId);
@@ -152,9 +138,9 @@ const applyPlayerFilters = (
 };
 
 const applyRatingFilter = (
-  query: ChainedQuery,
+  query: MatchQuery,
   { ratingFilterType, ratingMin, ratingMax }: NormalizedFilters,
-): ChainedQuery => {
+): MatchQuery => {
   const hasRatingRange = Number.isFinite(ratingMin) && Number.isFinite(ratingMax);
   if (
     !hasRatingRange ||
@@ -177,9 +163,9 @@ const applyRatingFilter = (
 };
 
 const applyDateAndTimeFilters = (
-  query: ChainedQuery,
+  query: MatchQuery,
   { startTs, endTs, timeControl }: NormalizedFilters,
-): ChainedQuery => {
+): MatchQuery => {
   let next = query;
   if (startTs !== Number.MIN_SAFE_INTEGER) next = next.gte("start_ts", startTs);
   if (endTs !== Number.MAX_SAFE_INTEGER) next = next.lte("start_ts", endTs);
@@ -193,7 +179,7 @@ const buildMatchQuery = (
   supabase: ReturnType<typeof getSupabaseClient>,
   tableName: string,
   filters: NormalizedFilters,
-): ChainedQuery => {
+): MatchQuery => {
   const baseQuery = supabase
     .from(tableName)
     .select(MATCH_SELECT_COLUMNS, { count: "exact" })

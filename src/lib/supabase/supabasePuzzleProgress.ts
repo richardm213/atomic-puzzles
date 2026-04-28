@@ -1,12 +1,14 @@
 import { getSupabaseClient } from "./supabaseClient";
 import { fetchAllSupabaseRows, loadSupabasePage } from "./supabaseRows";
 import { normalizeUsername } from "../../utils/playerNames";
+import type {
+  Database,
+  AttemptedPuzzleIdRow,
+  PuzzleProgressRow,
+  PuzzleProgressRpcRow,
+} from "../../types/supabase";
 
-export type PuzzleProgressRow = {
-  puzzle_id: string;
-  first_attempt_at: string;
-  puzzle_correct: boolean;
-};
+export type { PuzzleProgressRow } from "../../types/supabase";
 
 export type PuzzleProgressSummary = {
   total: number;
@@ -14,23 +16,19 @@ export type PuzzleProgressSummary = {
   incorrect: number;
 };
 
-type RawProgressRow = {
-  puzzle_id?: unknown;
-  first_attempt_at?: unknown;
-  puzzle_correct?: unknown;
-  total_count?: unknown;
-};
-
 type SupabaseClient = ReturnType<typeof getSupabaseClient>;
 
 const PUZZLE_PROGRESS_RPC =
-  import.meta.env.VITE_SUPABASE_PUZZLE_PROGRESS_RPC?.trim() ?? "record_first_puzzle_attempt";
+  (import.meta.env.VITE_SUPABASE_PUZZLE_PROGRESS_RPC?.trim() ??
+    "record_first_puzzle_attempt") as keyof Database["public"]["Functions"];
 const PUZZLE_PROGRESS_TABLE =
   import.meta.env.VITE_SUPABASE_PUZZLE_PROGRESS_TABLE?.trim() ?? "puzzle_progress";
 const PUZZLE_PROGRESS_PAGE_RPC =
-  import.meta.env.VITE_SUPABASE_PUZZLE_PROGRESS_PAGE_RPC?.trim() ?? "get_puzzle_progress_page";
+  (import.meta.env.VITE_SUPABASE_PUZZLE_PROGRESS_PAGE_RPC?.trim() ??
+    "get_puzzle_progress_page") as keyof Database["public"]["Functions"];
 const ATTEMPTED_PUZZLE_IDS_RPC =
-  import.meta.env.VITE_SUPABASE_ATTEMPTED_PUZZLE_IDS_RPC?.trim() ?? "get_attempted_puzzle_ids";
+  (import.meta.env.VITE_SUPABASE_ATTEMPTED_PUZZLE_IDS_RPC?.trim() ??
+    "get_attempted_puzzle_ids") as keyof Database["public"]["Functions"];
 const puzzleProgressWriteRequests = new Map<string, Promise<void>>();
 
 const normalizePuzzleId = (puzzleId: unknown): string => {
@@ -56,11 +54,10 @@ const readLocalPuzzleProgress = (username: string): PuzzleProgressRow[] => {
 
     return parsedValue
       .map((row): PuzzleProgressRow => {
-        const r = row as RawProgressRow;
         return {
-          puzzle_id: normalizePuzzleId(r?.puzzle_id),
-          first_attempt_at: typeof r?.first_attempt_at === "string" ? r.first_attempt_at : "",
-          puzzle_correct: Boolean(r?.puzzle_correct),
+          puzzle_id: normalizePuzzleId(row?.puzzle_id),
+          first_attempt_at: typeof row?.first_attempt_at === "string" ? row.first_attempt_at : "",
+          puzzle_correct: Boolean(row?.puzzle_correct),
         };
       })
       .filter((row) => row.puzzle_id && row.first_attempt_at);
@@ -154,7 +151,7 @@ const loadPuzzleProgressPageFromRpc = async (
     throw error;
   }
 
-  const rows: RawProgressRow[] = Array.isArray(data) ? data : [];
+  const rows: PuzzleProgressRpcRow[] = Array.isArray(data) ? data : [];
   const normalizedRows = rows
     .map((row) => ({
       puzzle_id: normalizePuzzleId(row?.puzzle_id),
@@ -216,10 +213,8 @@ const loadAttemptedPuzzleIdsFromRpc = async (
     throw error;
   }
 
-  const rows: unknown[] = Array.isArray(data) ? data : [];
-  return rows
-    .map((row) => normalizePuzzleId((row as RawProgressRow)?.puzzle_id ?? row))
-    .filter(Boolean);
+  const rows: AttemptedPuzzleIdRow[] = Array.isArray(data) ? data : [];
+  return rows.map((row) => normalizePuzzleId(row?.puzzle_id)).filter(Boolean);
 };
 
 export type RecordPuzzleProgressInput = {

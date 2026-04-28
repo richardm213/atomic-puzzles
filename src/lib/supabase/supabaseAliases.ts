@@ -2,19 +2,7 @@ import { getSupabaseClient } from "./supabaseClient";
 import { fetchAllSupabaseRows, loadSupabaseRows } from "./supabaseRows";
 import { cachedRequest } from "../../utils/requestCache";
 import { normalizeUsername } from "../../utils/playerNames";
-
-type AliasesTableRow = {
-  username: string | null;
-  aliases: string[] | null;
-  banned: boolean | null;
-};
-
-type Aliases2TableRow = {
-  alias: string | null;
-  username: string | null;
-  banned: boolean | null;
-  count_games: boolean | number | null;
-};
+import type { Aliases2TableRow, AliasesTableRow } from "../../types/supabase";
 
 export type NormalizedAliasRow = {
   username: string;
@@ -42,8 +30,8 @@ type MergeInputRow = NormalizedAliasRow & {
   countableAliases?: string[];
 };
 
-const ALIASES_TABLE = "aliases";
-const ALIASES2_TABLE = "aliases2";
+const ALIASES_TABLE = "aliases" as const;
+const ALIASES2_TABLE = "aliases2" as const;
 const ALIASES_SELECT_COLUMNS = "username,aliases,banned";
 const ALIASES2_SELECT_COLUMNS = "alias,username,banned,count_games";
 const aliasesRowsCache = new Map<string, Promise<MergedAliasRow[]>>();

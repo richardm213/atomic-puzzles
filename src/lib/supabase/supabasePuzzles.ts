@@ -1,8 +1,9 @@
 import { getSupabaseClient } from "./supabaseClient";
 import { fetchAllSupabaseRows } from "./supabaseRows";
 import { cachedRequest } from "../../utils/requestCache";
+import type { RawPuzzleRow } from "../../types/puzzles";
 
-export type PuzzleRow = Record<string, unknown>;
+export type PuzzleRow = RawPuzzleRow;
 
 const PUZZLES_TABLE = import.meta.env.VITE_SUPABASE_PUZZLES_TABLE?.trim() ?? "puzzles";
 const puzzleRowsCache = new Map<string, Promise<PuzzleRow[]>>();

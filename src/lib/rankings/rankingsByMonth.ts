@@ -1,5 +1,6 @@
 import { createModeRecord, modeOptions, type Mode } from "../../constants/matches";
 import { fetchLbRows, isoMonthStartFromMonthKey } from "../supabase/supabaseLb";
+import type { LbRow } from "../../types/supabase";
 
 export type RankingPlayer = {
   rank: number;
@@ -16,26 +17,8 @@ const roundToTenth = (value: unknown): number => {
   return Math.round(numeric * 10) / 10;
 };
 
-const toPlayers = (value: unknown): RankingPlayer[] => {
-  if (!Array.isArray(value)) return [];
-
-  return value
-    .map((entry, index): RankingPlayer => {
-      const e = entry as Record<string, unknown> | null | undefined;
-      const username = e?.username ?? e?.user ?? e?.player ?? e?.name ?? "";
-      const scoreRaw = e?.score ?? e?.rating ?? e?.points ?? e?.elo ?? e?.performance;
-      const gamesRaw = e?.games ?? e?.game_count ?? e?.played ?? e?.num_games;
-      const rankRaw = e?.rank ?? e?.position;
-      const rdRaw = e?.rd;
-
-      return {
-        rank: Number(rankRaw) || index + 1,
-        username: String(username || "Unknown"),
-        score: roundToTenth(scoreRaw),
-        rd: roundToTenth(rdRaw),
-        games: Number(gamesRaw) || null,
-      };
-    })
+const toPlayers = (players: RankingPlayer[]): RankingPlayer[] => {
+  return players
     .sort((a, b) => {
       if (b.score !== a.score) return (b.score ?? -Infinity) - (a.score ?? -Infinity);
       return a.rank - b.rank;
@@ -48,19 +31,18 @@ const parseModeFromTimeControl = (timeControl: unknown): Mode | null => {
   return (modeOptions as readonly string[]).includes(mode) ? (mode as Mode) : null;
 };
 
-const normalizeLbRowsForMonth = (rows: unknown): RankingsByMode => {
+const normalizeLbRowsForMonth = (rows: LbRow[]): RankingsByMode => {
   const modes: RankingsByMode = createModeRecord(() => ({ players: [] }));
 
-  (Array.isArray(rows) ? rows : []).forEach((row) => {
-    const r = row as Record<string, unknown> | null | undefined;
-    const mode = parseModeFromTimeControl(r?.tc);
+  rows.forEach((row) => {
+    const mode = parseModeFromTimeControl(row.tc);
     if (!mode) return;
     modes[mode].players.push({
-      rank: Number(r?.rank),
-      username: String(r?.username ?? "Unknown"),
-      score: roundToTenth(r?.rating),
-      rd: roundToTenth(r?.rd),
-      games: Number(r?.games) || null,
+      rank: Number(row.rank),
+      username: String(row.username ?? "Unknown"),
+      score: roundToTenth(row.rating),
+      rd: roundToTenth(row.rd),
+      games: Number(row.games) || null,
     });
   });
 

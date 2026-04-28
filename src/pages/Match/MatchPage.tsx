@@ -13,6 +13,8 @@ import {
 } from "../../lib/matches/matchSummaries";
 import { matchupToSlug } from "../../utils/h2hRoutes";
 import { normalizeMatchMode } from "../../utils/matchRoutes";
+import type { RawMatchLike } from "../../types/matchRaw";
+import type { MatchCardData } from "../../types/matchCard";
 import "./MatchPage.css";
 
 const decodeParam = (value: unknown): string => {
@@ -23,7 +25,10 @@ const decodeParam = (value: unknown): string => {
   }
 };
 
-const normalizeStandaloneMatch = (match: import("../../lib/matches/matchData").ParsedMatch | Record<string, unknown>, mode: import("../../constants/matches").Mode | ""): import("../../types/matchCard").MatchCardData => {
+const normalizeStandaloneMatch = (
+  match: RawMatchLike,
+  mode: import("../../constants/matches").Mode | "",
+): MatchCardData => {
   const rawPlayers = normalizedPlayersFromMatch(match);
   const players =
     rawPlayers.length > 0
@@ -39,13 +44,11 @@ const normalizeStandaloneMatch = (match: import("../../lib/matches/matchData").P
   );
   const ratings = ratingsForPlayers(match, players, playerA, playerB);
   const firstGame = games[0];
-  const m = match as Record<string, unknown>;
-
   return {
-    matchId: String(m["match_id"] ?? ""),
+    matchId: String(match.match_id ?? ""),
     mode,
-    startTs: Number(m["start_ts"] ?? m["s"]),
-    timeControl: String(m["time_control"] ?? m["t"] ?? "—"),
+    startTs: Number(match.start_ts ?? match.s),
+    timeControl: String(match.time_control ?? match.t ?? "—"),
     playerA,
     playerB,
     scoreA,
@@ -65,7 +68,7 @@ export const MatchPage = () => {
   const { mode: modeParam, matchId: matchIdParam } = useParams({ strict: false });
   const mode = normalizeMatchMode(modeParam);
   const decodedMatchId = decodeParam(matchIdParam);
-  const [match, setMatch] = useState<import("../../types/matchCard").MatchCardData | null>(null);
+  const [match, setMatch] = useState<MatchCardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
