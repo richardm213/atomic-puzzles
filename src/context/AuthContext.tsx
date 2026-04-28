@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   clearStoredPostLoginRedirect,
   clearStoredLichessSession,
@@ -9,20 +17,41 @@ import {
   revokeLichessSession,
   setStoredPostLoginRedirect,
   startLichessLogin,
+  type LichessAccount,
+  type LichessSession,
 } from "../lib/auth/lichessAuth";
 import { ensureSupabaseUser } from "../lib/supabase/supabaseUsers";
 
-const AuthContext = createContext(null);
+type AuthStatus = "loading" | "authenticated" | "anonymous";
 
-export const AuthProvider = ({ children }) => {
-  const [status, setStatus] = useState("loading");
-  const [session, setSession] = useState(null);
+type AuthDebugSnapshot = ReturnType<typeof getLichessAuthDebugSnapshot>;
+
+export type AuthContextValue = {
+  status: AuthStatus;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  user: LichessAccount | null;
+  error: string;
+  login: (returnTo: string) => Promise<void>;
+  finishLogin: (search: string) => Promise<string>;
+  logout: () => Promise<void>;
+  clearError: () => void;
+  getDebugSnapshot: () => AuthDebugSnapshot;
+  getPostLoginRedirect: () => string;
+  clearPostLoginRedirect: () => void;
+};
+
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [status, setStatus] = useState<AuthStatus>("loading");
+  const [session, setSession] = useState<LichessSession | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
 
-    const restoreSession = async () => {
+    const restoreSession = async (): Promise<void> => {
       try {
         const restoredSession = await restoreLichessSession();
         if (cancelled) return;
@@ -33,11 +62,13 @@ export const AuthProvider = ({ children }) => {
         clearStoredLichessSession();
         setSession(null);
         setStatus("anonymous");
-        setError(restoreError instanceof Error ? restoreError.message : "Unable to restore login.");
+        setError(
+          restoreError instanceof Error ? restoreError.message : "Unable to restore login.",
+        );
       }
     };
 
-    restoreSession();
+    void restoreSession();
 
     return () => {
       cancelled = true;
@@ -48,13 +79,13 @@ export const AuthProvider = ({ children }) => {
     setError("");
   }, []);
 
-  const login = useCallback(async (returnTo) => {
+  const login = useCallback(async (returnTo: string) => {
     setError("");
     setStoredPostLoginRedirect(returnTo);
     await startLichessLogin(returnTo);
   }, []);
 
-  const finishLogin = useCallback(async (search) => {
+  const finishLogin = useCallback(async (search: string): Promise<string> => {
     setStatus("loading");
     setError("");
     try {
@@ -71,14 +102,15 @@ export const AuthProvider = ({ children }) => {
       clearStoredLichessSession();
       setSession(null);
       setStatus("anonymous");
-      const message = loginError instanceof Error ? loginError.message : "Unable to finish login.";
+      const message =
+        loginError instanceof Error ? loginError.message : "Unable to finish login.";
       setError(message);
       throw loginError;
     }
   }, []);
 
-  const logout = useCallback(async () => {
-    const accessToken = session?.accessToken || "";
+  const logout = useCallback(async (): Promise<void> => {
+    const accessToken = session?.accessToken ?? "";
     clearStoredLichessSession();
     setSession(null);
     setStatus("anonymous");
@@ -92,12 +124,12 @@ export const AuthProvider = ({ children }) => {
 
   const getDebugSnapshot = useCallback(() => getLichessAuthDebugSnapshot(), []);
 
-  const value = useMemo(
+  const value = useMemo<AuthContextValue>(
     () => ({
       status,
       isAuthenticated: status === "authenticated" && Boolean(session?.me),
       isLoading: status === "loading",
-      user: session?.me || null,
+      user: session?.me ?? null,
       error,
       login,
       finishLogin,
@@ -113,7 +145,7 @@ export const AuthProvider = ({ children }) => {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-export const useAuth = () => {
+export const useAuth = (): AuthContextValue => {
   const context = useContext(AuthContext);
   if (!context) {
     throw new Error("useAuth must be used inside AuthProvider");

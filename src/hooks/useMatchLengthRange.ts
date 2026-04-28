@@ -4,12 +4,14 @@ import {
   defaultMatchLengthMax,
   defaultMatchLengthMin,
   matchLengthBoundsByMode,
+  type MatchLengthBounds,
+  type Mode,
 } from "../constants/matches";
 
-const resolveBounds = (mode) =>
+const resolveBounds = (mode: Mode): MatchLengthBounds =>
   matchLengthBoundsByMode[mode] ?? matchLengthBoundsByMode[defaultMode];
 
-export const toBoundedLengthRange = (mode) => {
+export const toBoundedLengthRange = (mode: Mode): MatchLengthBounds => {
   const bounds = resolveBounds(mode);
 
   return {
@@ -18,20 +20,28 @@ export const toBoundedLengthRange = (mode) => {
   };
 };
 
-export const useMatchLengthRange = (mode) => {
+export const useMatchLengthRange = (
+  mode: Mode,
+): {
+  bounds: MatchLengthBounds;
+  matchLengthMin: number;
+  setMatchLengthMin: (value: number) => void;
+  matchLengthMax: number;
+  setMatchLengthMax: (value: number) => void;
+} => {
   const bounds = useMemo(() => resolveBounds(mode), [mode]);
-  const [range, setRange] = useState(() => toBoundedLengthRange(mode));
+  const [range, setRange] = useState<MatchLengthBounds>(() => toBoundedLengthRange(mode));
 
   useEffect(() => {
     setRange(toBoundedLengthRange(mode));
   }, [mode]);
 
   const setMatchLengthMin = useCallback(
-    (matchLengthMin) => setRange((current) => ({ ...current, min: matchLengthMin })),
+    (matchLengthMin: number) => setRange((current) => ({ ...current, min: matchLengthMin })),
     [],
   );
   const setMatchLengthMax = useCallback(
-    (matchLengthMax) => setRange((current) => ({ ...current, max: matchLengthMax })),
+    (matchLengthMax: number) => setRange((current) => ({ ...current, max: matchLengthMax })),
     [],
   );
 

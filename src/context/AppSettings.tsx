@@ -1,4 +1,14 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from "react";
 
 const STORAGE_KEYS = {
   theme: "atomic-puzzles.theme",
@@ -11,9 +21,12 @@ const STORAGE_KEYS = {
   boardOverrideDarkSquare: "atomic-puzzles.board-override-dark-square",
 };
 
-const THEMES = ["dark", "light"];
+const THEMES = ["dark", "light"] as const;
+export type Theme = (typeof THEMES)[number];
 
-const LICHESS_PIECE_SETS = [
+export type LabeledOption = { value: string; label: string };
+
+const LICHESS_PIECE_SETS: LabeledOption[] = [
   { value: "cburnett", label: "Cburnett" },
   { value: "merida", label: "Merida" },
   { value: "alpha", label: "Alpha" },
@@ -55,7 +68,7 @@ const LICHESS_PIECE_SETS = [
   { value: "disguised", label: "Disguised" },
 ];
 
-const LICHESS_BOARD_THEMES = [
+const LICHESS_BOARD_THEMES: LabeledOption[] = [
   { value: "blue", label: "Blue" },
   { value: "blue2", label: "Blue 2" },
   { value: "blue3", label: "Blue 3" },
@@ -82,7 +95,9 @@ const LICHESS_BOARD_THEMES = [
   { value: "custom", label: "Custom" },
 ];
 
-const BOARD_THEME_PALETTE = {
+export type BoardSquareColors = { light: string; dark: string };
+
+const BOARD_THEME_PALETTE: Record<string, BoardSquareColors> = {
   blue: { light: "#d4e4ff", dark: "#6291d8" },
   blue2: { light: "#cbdfff", dark: "#4d7fca" },
   blue3: { light: "#e0e7ef", dark: "#6c88a6" },
@@ -111,30 +126,64 @@ const BOARD_THEME_PALETTE = {
 
 const IMAGE_BOARD_THEMES = ["wood", "wood2", "wood3", "wood4", "maple", "maple2"];
 
-const DEFAULT_THEME = "dark";
+const DEFAULT_THEME: Theme = "dark";
 const DEFAULT_PIECE_SET = "cburnett";
 const DEFAULT_BOARD_THEME = "blue";
 const DEFAULT_CUSTOM_LIGHT_SQUARE = "#d4e4ff";
 const DEFAULT_CUSTOM_DARK_SQUARE = "#6291d8";
 
-const AppSettingsContext = createContext(null);
+export type AppSettingsContextValue = {
+  theme: Theme;
+  setTheme: Dispatch<SetStateAction<Theme>>;
+  pieceSet: string;
+  setPieceSet: Dispatch<SetStateAction<string>>;
+  pieceSets: LabeledOption[];
+  boardTheme: string;
+  setBoardTheme: Dispatch<SetStateAction<string>>;
+  boardThemes: LabeledOption[];
+  customLightSquare: string;
+  setCustomLightSquare: Dispatch<SetStateAction<string>>;
+  customDarkSquare: string;
+  setCustomDarkSquare: Dispatch<SetStateAction<string>>;
+  boardColorOverrideTheme: string;
+  setBoardColorOverrideTheme: Dispatch<SetStateAction<string>>;
+  boardOverrideLightSquare: string;
+  setBoardOverrideLightSquare: Dispatch<SetStateAction<string>>;
+  boardOverrideDarkSquare: string;
+  setBoardOverrideDarkSquare: Dispatch<SetStateAction<string>>;
+  resetDisplaySettings: () => void;
+};
 
-const isValidTheme = (value) => THEMES.includes(value);
-const isValidPieceSet = (value) => LICHESS_PIECE_SETS.some((entry) => entry.value === value);
-const isValidBoardTheme = (value) => LICHESS_BOARD_THEMES.some((entry) => entry.value === value);
-const isValidHexColor = (value) => /^#([0-9a-f]{6})$/i.test(value ?? "");
-const isImageBoardTheme = (value) => IMAGE_BOARD_THEMES.includes(value);
-const isValidBoardColorOverrideTheme = (value) =>
+const AppSettingsContext = createContext<AppSettingsContextValue | null>(null);
+
+const isValidTheme = (value: unknown): value is Theme =>
+  typeof value === "string" && (THEMES as readonly string[]).includes(value);
+const isValidPieceSet = (value: unknown): value is string =>
+  typeof value === "string" && LICHESS_PIECE_SETS.some((entry) => entry.value === value);
+const isValidBoardTheme = (value: unknown): value is string =>
+  typeof value === "string" && LICHESS_BOARD_THEMES.some((entry) => entry.value === value);
+const isValidHexColor = (value: unknown): value is string =>
+  typeof value === "string" && /^#([0-9a-f]{6})$/i.test(value);
+const isImageBoardTheme = (value: string): boolean => IMAGE_BOARD_THEMES.includes(value);
+const isValidBoardColorOverrideTheme = (value: unknown): value is string =>
   isValidBoardTheme(value) && value !== "custom" && !isImageBoardTheme(value);
 
-const readStoredValue = (key, validator, fallback) => {
+const readStoredValue = <T extends string>(
+  key: string,
+  validator: (value: unknown) => value is T,
+  fallback: T,
+): T => {
   if (typeof window === "undefined") return fallback;
   const storedValue = window.localStorage.getItem(key);
   return validator(storedValue) ? storedValue : fallback;
 };
 
-const usePersistedState = (key, validator, fallback) => {
-  const [value, setValue] = useState(() => readStoredValue(key, validator, fallback));
+const usePersistedState = <T extends string>(
+  key: string,
+  validator: (value: unknown) => value is T,
+  fallback: T,
+): [T, Dispatch<SetStateAction<T>>] => {
+  const [value, setValue] = useState<T>(() => readStoredValue(key, validator, fallback));
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -144,14 +193,17 @@ const usePersistedState = (key, validator, fallback) => {
   return [value, setValue];
 };
 
+const isOptionalString = (value: unknown): value is string =>
+  value === "" || (typeof value === "string" && value.length > 0);
+
 export const getBoardThemeColors = (
-  boardTheme,
-  customLightSquare,
-  customDarkSquare,
+  boardTheme: string,
+  customLightSquare: string,
+  customDarkSquare: string,
   boardColorOverrideTheme = "",
-  boardOverrideLightSquare = DEFAULT_CUSTOM_LIGHT_SQUARE,
-  boardOverrideDarkSquare = DEFAULT_CUSTOM_DARK_SQUARE,
-) => {
+  boardOverrideLightSquare: string = DEFAULT_CUSTOM_LIGHT_SQUARE,
+  boardOverrideDarkSquare: string = DEFAULT_CUSTOM_DARK_SQUARE,
+): BoardSquareColors => {
   if (boardTheme === "custom") {
     return { light: customLightSquare, dark: customDarkSquare };
   }
@@ -160,42 +212,49 @@ export const getBoardThemeColors = (
     return { light: boardOverrideLightSquare, dark: boardOverrideDarkSquare };
   }
 
-  return BOARD_THEME_PALETTE[boardTheme] ?? BOARD_THEME_PALETTE[DEFAULT_BOARD_THEME];
+  return (
+    BOARD_THEME_PALETTE[boardTheme] ??
+    BOARD_THEME_PALETTE[DEFAULT_BOARD_THEME] ?? { light: "#ffffff", dark: "#000000" }
+  );
 };
 
-export const AppSettingsProvider = ({ children }) => {
-  const [theme, setTheme] = usePersistedState(STORAGE_KEYS.theme, isValidTheme, DEFAULT_THEME);
-  const [pieceSet, setPieceSet] = usePersistedState(
+export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
+  const [theme, setTheme] = usePersistedState<Theme>(
+    STORAGE_KEYS.theme,
+    isValidTheme,
+    DEFAULT_THEME,
+  );
+  const [pieceSet, setPieceSet] = usePersistedState<string>(
     STORAGE_KEYS.pieceSet,
     isValidPieceSet,
     DEFAULT_PIECE_SET,
   );
-  const [boardTheme, setBoardTheme] = usePersistedState(
+  const [boardTheme, setBoardTheme] = usePersistedState<string>(
     STORAGE_KEYS.boardTheme,
     isValidBoardTheme,
     DEFAULT_BOARD_THEME,
   );
-  const [customLightSquare, setCustomLightSquare] = usePersistedState(
+  const [customLightSquare, setCustomLightSquare] = usePersistedState<string>(
     STORAGE_KEYS.customLightSquare,
     isValidHexColor,
     DEFAULT_CUSTOM_LIGHT_SQUARE,
   );
-  const [customDarkSquare, setCustomDarkSquare] = usePersistedState(
+  const [customDarkSquare, setCustomDarkSquare] = usePersistedState<string>(
     STORAGE_KEYS.customDarkSquare,
     isValidHexColor,
     DEFAULT_CUSTOM_DARK_SQUARE,
   );
-  const [boardColorOverrideTheme, setBoardColorOverrideTheme] = usePersistedState(
+  const [boardColorOverrideTheme, setBoardColorOverrideTheme] = usePersistedState<string>(
     STORAGE_KEYS.boardColorOverrideTheme,
-    isValidBoardColorOverrideTheme,
+    (value): value is string => isValidBoardColorOverrideTheme(value) || isOptionalString(value),
     "",
   );
-  const [boardOverrideLightSquare, setBoardOverrideLightSquare] = usePersistedState(
+  const [boardOverrideLightSquare, setBoardOverrideLightSquare] = usePersistedState<string>(
     STORAGE_KEYS.boardOverrideLightSquare,
     isValidHexColor,
     DEFAULT_CUSTOM_LIGHT_SQUARE,
   );
-  const [boardOverrideDarkSquare, setBoardOverrideDarkSquare] = usePersistedState(
+  const [boardOverrideDarkSquare, setBoardOverrideDarkSquare] = usePersistedState<string>(
     STORAGE_KEYS.boardOverrideDarkSquare,
     isValidHexColor,
     DEFAULT_CUSTOM_DARK_SQUARE,
@@ -210,14 +269,23 @@ export const AppSettingsProvider = ({ children }) => {
     setBoardColorOverrideTheme("");
     setBoardOverrideLightSquare(DEFAULT_CUSTOM_LIGHT_SQUARE);
     setBoardOverrideDarkSquare(DEFAULT_CUSTOM_DARK_SQUARE);
-  }, []);
+  }, [
+    setTheme,
+    setPieceSet,
+    setBoardTheme,
+    setCustomLightSquare,
+    setCustomDarkSquare,
+    setBoardColorOverrideTheme,
+    setBoardOverrideLightSquare,
+    setBoardOverrideDarkSquare,
+  ]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    document.documentElement.dataset.theme = theme;
+    document.documentElement.dataset["theme"] = theme;
   }, [theme]);
 
-  const value = useMemo(
+  const value = useMemo<AppSettingsContextValue>(
     () => ({
       theme,
       setTheme,
@@ -241,13 +309,21 @@ export const AppSettingsProvider = ({ children }) => {
     }),
     [
       theme,
+      setTheme,
       pieceSet,
+      setPieceSet,
       boardTheme,
+      setBoardTheme,
       customLightSquare,
+      setCustomLightSquare,
       customDarkSquare,
+      setCustomDarkSquare,
       boardColorOverrideTheme,
+      setBoardColorOverrideTheme,
       boardOverrideLightSquare,
+      setBoardOverrideLightSquare,
       boardOverrideDarkSquare,
+      setBoardOverrideDarkSquare,
       resetDisplaySettings,
     ],
   );
@@ -255,7 +331,7 @@ export const AppSettingsProvider = ({ children }) => {
   return <AppSettingsContext.Provider value={value}>{children}</AppSettingsContext.Provider>;
 };
 
-export const useAppSettings = () => {
+export const useAppSettings = (): AppSettingsContextValue => {
   const context = useContext(AppSettingsContext);
   if (!context) {
     throw new Error("useAppSettings must be used inside AppSettingsProvider");

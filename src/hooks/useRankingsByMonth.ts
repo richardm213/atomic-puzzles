@@ -1,8 +1,15 @@
 import { useEffect, useState } from "react";
-import { loadRankingsForMonth } from "../lib/rankings/rankingsByMonth";
+import { loadRankingsForMonth, type RankingsByMode } from "../lib/rankings/rankingsByMonth";
 
-export const useRankingsByMonth = (selectedMonth) => {
-  const [rankingsByMonth, setRankingsByMonth] = useState(new Map());
+export const useRankingsByMonth = (
+  selectedMonth: string | null | undefined,
+): {
+  rankingsByMonth: Map<string, RankingsByMode>;
+  error: string;
+} => {
+  const [rankingsByMonth, setRankingsByMonth] = useState<Map<string, RankingsByMode>>(
+    () => new Map(),
+  );
   const [error, setError] = useState("");
   const cachedMonth = selectedMonth ? rankingsByMonth.get(selectedMonth) : null;
 
@@ -11,7 +18,7 @@ export const useRankingsByMonth = (selectedMonth) => {
 
     let isCurrent = true;
 
-    const loadRankings = async () => {
+    const loadRankings = async (): Promise<void> => {
       try {
         setError("");
         const monthData = await loadRankingsForMonth(selectedMonth);
@@ -24,11 +31,13 @@ export const useRankingsByMonth = (selectedMonth) => {
         });
       } catch (loadError) {
         if (!isCurrent) return;
-        setError(loadError.message || "Failed to load leaderboard data");
+        const message =
+          loadError instanceof Error ? loadError.message : "Failed to load leaderboard data";
+        setError(message);
       }
     };
 
-    loadRankings();
+    void loadRankings();
 
     return () => {
       isCurrent = false;
