@@ -17,3 +17,12 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+// Chessground renders custom elements `<square>` and `<piece>` inside the board.
+// Declaring them here keeps JSX type-safe when we render promotion overlays.
+declare namespace JSX {
+  interface IntrinsicElements {
+    square: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
+    piece: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
+  }
+}

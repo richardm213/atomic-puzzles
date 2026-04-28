@@ -3,6 +3,7 @@ import type { Mode } from "../constants/matches";
 type MatchRouteInput = {
   mode?: string | null | undefined;
   matchId?: string | number | null | undefined;
+  [key: string]: unknown;
 };
 
 export const normalizeMatchMode = (mode: unknown): Mode | "" => {
