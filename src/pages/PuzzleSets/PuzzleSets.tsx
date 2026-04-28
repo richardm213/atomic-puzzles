@@ -47,7 +47,22 @@ const matchesEventFilter = (group: { event?: string | null | undefined }, filter
 
 const readEventKeyFromHash = (): string => {
   if (typeof window === "undefined") return "";
-  return window.location.hash.replace(/^#/, "").trim();
+  const hashValue = window.location.hash.replace(/^#/, "").trim();
+
+  try {
+    return decodeURIComponent(hashValue);
+  } catch {
+    return hashValue;
+  }
+};
+
+const updateEventKeyHash = (eventKey: string): void => {
+  if (typeof window === "undefined") return;
+
+  const nextHash = eventKey ? `#${encodeURIComponent(eventKey)}` : "";
+  if (window.location.hash === nextHash) return;
+
+  window.history.pushState(null, "", `${window.location.pathname}${window.location.search}${nextHash}`);
 };
 
 export const PuzzleSetsPage = () => {
@@ -94,8 +109,10 @@ export const PuzzleSetsPage = () => {
     };
 
     window.addEventListener("hashchange", handleHashChange);
+    window.addEventListener("popstate", handleHashChange);
     return () => {
       window.removeEventListener("hashchange", handleHashChange);
+      window.removeEventListener("popstate", handleHashChange);
     };
   }, []);
 
@@ -126,6 +143,7 @@ export const PuzzleSetsPage = () => {
   const handleSetSelection = (eventKey: string): void => {
     shouldScrollToSelectionRef.current = true;
     setSelectedEventKey(eventKey);
+    updateEventKeyHash(eventKey);
   };
 
   useEffect(() => {

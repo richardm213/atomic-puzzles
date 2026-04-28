@@ -49,6 +49,14 @@ const MAX_STAGE_ZOOM = 1.35;
 const STAGE_ZOOM_STEP = 0.15;
 const TOURNAMENT_VIEW_STORAGE_KEY = "tournament-view:";
 
+type SavedTournamentView = {
+  startRounds?: Record<string, string>;
+  zoomLevels?: Record<string, number>;
+  activeStageKey?: string;
+  scrollPositions?: Record<string, { left?: number; top?: number }>;
+  pageScrollY?: number;
+};
+
 const buildStartRoundState = (stages: TournamentBracketStage[] = []): Record<string, string> =>
   Object.fromEntries(stages.map((stage) => [stage.key, stage.rounds[0]?.roundName || ""]));
 
@@ -62,6 +70,25 @@ const clampZoom = (zoomLevel: unknown): number =>
   Math.min(MAX_STAGE_ZOOM, Math.max(MIN_STAGE_ZOOM, Number(zoomLevel) || DEFAULT_STAGE_ZOOM));
 
 const getTournamentViewStorageKey = (tournamentId: string): string => `${TOURNAMENT_VIEW_STORAGE_KEY}${tournamentId}`;
+
+const readSavedTournamentView = (tournamentId: string): SavedTournamentView | null => {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const rawValue = window.sessionStorage.getItem(getTournamentViewStorageKey(tournamentId));
+    if (!rawValue) return null;
+
+    const parsedValue: unknown = JSON.parse(rawValue);
+    if (!parsedValue || typeof parsedValue !== "object" || Array.isArray(parsedValue)) {
+      return null;
+    }
+
+    return parsedValue as SavedTournamentView;
+  } catch {
+    window.sessionStorage.removeItem(getTournamentViewStorageKey(tournamentId));
+    return null;
+  }
+};
 
 const getVisibleRounds = (stage: TournamentBracketStage, startRoundName: string): TournamentBracketStage["rounds"] => {
   const startIndex = stage.rounds.findIndex((round) => round.roundName === startRoundName);
@@ -579,10 +606,7 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
 
     const defaultStartRounds = buildStartRoundState(bracket.stages || []);
     const defaultZoomLevels = buildZoomState(bracket.stages || []);
-    const savedView =
-      typeof window !== "undefined"
-        ? JSON.parse(window.sessionStorage.getItem(getTournamentViewStorageKey(bracket.id)) || "null")
-        : null;
+    const savedView = readSavedTournamentView(bracket.id);
     const availableStageKeys = new Set((bracket.stages || []).map((stage) => stage.key));
     const defaultActiveStageKey = availableStageKeys.has("main")
       ? "main"
@@ -634,7 +658,7 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
     return () => {
       saveViewState();
     };
-  }, [bracket, startRounds, zoomLevels]);
+  }, [activeStageKey, bracket, startRounds, zoomLevels]);
 
   const stageLayouts = useMemo(() => {
     if (!bracket) return new Map();

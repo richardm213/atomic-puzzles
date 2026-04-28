@@ -152,10 +152,6 @@ const profilePuzzleContributionsRoute = createRoute({
     const username = typeof params?.username === "string" ? params.username : "";
     throw redirect({ to: "/@/$username", params: { username } });
   },
-  component: function HiddenProfilePuzzleContributionsRoute() {
-    const { username } = useParams({ strict: false });
-    return <PlayerProfilePage username={username} />;
-  },
 });
 
 const solveWithIdRoute = createRoute({
