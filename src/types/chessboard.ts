@@ -13,6 +13,7 @@ export type ChessboardState = {
   lineIndex?: number;
   viewingSolution?: boolean;
   showWrongMove: boolean;
+  showRetryMove?: boolean;
   solved: boolean;
 };
 

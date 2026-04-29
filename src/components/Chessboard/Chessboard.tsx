@@ -20,6 +20,7 @@ import {
 import { buildBoardStyle, buildPieceStyle } from "./boardStyle";
 import {
   buildSolutionHistory,
+  evaluateTrainingMove,
   hasExpectedMoveAt,
   recomputeTrainingState,
   tryCreateAtomicPosition,
@@ -264,6 +265,7 @@ export const Chessboard = ({
       lineIndex: history.index,
       viewingSolution: showSolutionRef.current,
       showWrongMove: false,
+      showRetryMove: false,
       solved: puzzleSolvedRef.current,
       ...(next ?? {}),
     };
@@ -436,7 +438,6 @@ export const Chessboard = ({
     if (!position) return;
 
     syncBoard(position, solutionHistory.lastMoves[clampedIndex], {
-      showWrongMove: false,
       solved: solvedBeforeSolution,
       viewingSolution: true,
       solutionLineIndex: lineIndex,
@@ -511,7 +512,6 @@ export const Chessboard = ({
       activePosition.play(move);
       saveMove(activePosition, keyPair(orig, dest), userMoveText, userMoveKey, userMoveSan);
       syncBoard(activePosition, keyPair(orig, dest), {
-        showWrongMove: false,
         solved: false,
         status: getStatus(activePosition),
       });
@@ -524,7 +524,6 @@ export const Chessboard = ({
       position.play(move);
       saveMove(position, keyPair(orig, dest), userMoveText, userMoveKey, userMoveSan);
       syncBoard(position, keyPair(orig, dest), {
-        showWrongMove: false,
         solved: puzzleSolvedRef.current,
       });
       return;
@@ -532,12 +531,11 @@ export const Chessboard = ({
 
     const progress = progressRef.current;
     const candidates = candidateLinesRef.current;
-    const accepted = new Set(
-      candidates
-        .map((line) => line[progress])
-        .filter((entry): entry is UciSolutionEntry => entry !== undefined && !entry.questionable)
-        .map((entry) => entry.key),
-    );
+    const moveEvaluation = evaluateTrainingMove({
+      candidates,
+      progress,
+      moveKey: userMoveKey,
+    });
 
     moveLockRef.current = true;
     cgRef.current?.set({
@@ -569,7 +567,17 @@ export const Chessboard = ({
       const activePos = positionRef.current;
       if (!activePos) return;
 
-      if (!accepted.has(userMoveKey)) {
+      if (moveEvaluation === "retry") {
+        moveLockRef.current = false;
+        syncBoard(activePos, undefined, {
+          showRetryMove: true,
+          solved: false,
+          status: "Try again",
+        });
+        return;
+      }
+
+      if (moveEvaluation === "wrong") {
         moveLockRef.current = false;
         onAttemptResolvedRef.current?.({ puzzleId: puzzleIdRef.current, puzzleCorrect: false });
         syncBoard(activePos, undefined, {
@@ -592,7 +600,6 @@ export const Chessboard = ({
         puzzleSolvedRef.current = true;
         onAttemptResolvedRef.current?.({ puzzleId: puzzleIdRef.current, puzzleCorrect: true });
         syncBoard(activePos, keyPair(orig, dest), {
-          showWrongMove: false,
           solved: true,
           status: "Correct",
         });
@@ -613,7 +620,6 @@ export const Chessboard = ({
           ? keyPair(lastUci.slice(0, 2), lastUci.slice(2, 4))
           : undefined,
         {
-          showWrongMove: false,
           solved: puzzleSolvedRef.current,
           status: puzzleSolvedRef.current ? "Correct" : getStatus(activePos),
         },
@@ -743,7 +749,6 @@ export const Chessboard = ({
     progressRef.current = 0;
 
     syncBoard(position, historyRef.current.lastMoves[historyRef.current.index], {
-      showWrongMove: false,
       solved: puzzleSolvedRef.current,
       status: puzzleSolvedRef.current ? "Correct" : getStatus(position),
     });
@@ -804,6 +809,7 @@ export const Chessboard = ({
         winner: undefined,
         error,
         showWrongMove: false,
+        showRetryMove: false,
         solved: false,
       });
       return;
@@ -825,7 +831,6 @@ export const Chessboard = ({
     puzzleSolvedRef.current = trainingEnabledRef.current && !hasExpectedMoveAt(solutionUciLines, 0);
 
     syncBoard(position, undefined, {
-      showWrongMove: false,
       solved: false,
       viewingSolution: showSolution,
     });

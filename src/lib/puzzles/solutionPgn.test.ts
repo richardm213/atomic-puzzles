@@ -14,6 +14,10 @@ import {
 } from "./solutionPgn";
 
 const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+const BLACK_TO_MOVE_FEN =
+  "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+const BLACK_TO_MOVE_LONG_FEN =
+  "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 37";
 
 describe("squareName", () => {
   it("translates file/rank into algebraic coordinates", () => {
@@ -104,10 +108,34 @@ describe("parseSolutionUciLines", () => {
     expect(uciLines).toContainEqual(["e2e4", "c7c5"]);
   });
 
+  it("parses solutions that start with black's elided move number", () => {
+    const lines = parseSolutionUciLines(BLACK_TO_MOVE_FEN, "1... e5 2. Nf3");
+    expect(lines).toHaveLength(1);
+    expect(lines[0]?.map((entry) => entry.uci)).toEqual(["e7e5", "g1f3"]);
+  });
+
+  it("parses long black-move ellipses", () => {
+    const lines = parseSolutionUciLines(BLACK_TO_MOVE_LONG_FEN, "37... e5 38. Nf3");
+    expect(lines).toHaveLength(1);
+    expect(lines[0]?.map((entry) => entry.uci)).toEqual(["e7e5", "g1f3"]);
+  });
+
+  it("ignores standalone ellipsis tokens before SAN moves", () => {
+    const lines = parseSolutionUciLines(BLACK_TO_MOVE_FEN, "... e5 2. Nf3");
+    expect(lines).toHaveLength(1);
+    expect(lines[0]?.map((entry) => entry.uci)).toEqual(["e7e5", "g1f3"]);
+  });
+
   it("flags moves with ? as questionable", () => {
     const lines = parseSolutionUciLines(STARTING_FEN, "1. e4 e5? 2. Nf3");
     expect(lines[0]?.[1]?.questionable).toBe(true);
     expect(lines[0]?.[0]?.questionable).toBe(false);
+  });
+
+  it("flags mixed ?! annotations as questionable and ignores ! annotations", () => {
+    const lines = parseSolutionUciLines(STARTING_FEN, "1. e4! e5?! 2. Nf3!!");
+    expect(lines[0]?.map((entry) => entry.uci)).toEqual(["e2e4", "e7e5", "g1f3"]);
+    expect(lines[0]?.map((entry) => entry.questionable)).toEqual([false, true, false]);
   });
 
   it("returns [] when the FEN is invalid", () => {
@@ -165,12 +193,22 @@ describe("serializeSanLinesToPgn", () => {
     ]);
     expect(pgn).toContain("(1... c5)");
   });
+
+  it("starts serialized black-to-move lines with an ellipsis", () => {
+    const pgn = serializeSanLinesToPgn(BLACK_TO_MOVE_LONG_FEN, [["e5", "Nf3"]]);
+    expect(pgn).toBe("37... e5 38. Nf3");
+  });
 });
 
 describe("serializeUciLinesToPgn / normalizeSolutionPgn", () => {
   it("normalizeSolutionPgn round-trips SAN through UCI", () => {
     const normalized = normalizeSolutionPgn(STARTING_FEN, "1. e4 e5 2. Nf3");
     expect(normalized).toBe("1. e4 e5 2. Nf3");
+  });
+
+  it("normalizeSolutionPgn preserves black-to-move ellipsis numbering", () => {
+    const normalized = normalizeSolutionPgn(BLACK_TO_MOVE_LONG_FEN, "37... e5 38. Nf3");
+    expect(normalized).toBe("37... e5 38. Nf3");
   });
 
   it("normalizeSolutionPgn preserves PGNs containing variations", () => {

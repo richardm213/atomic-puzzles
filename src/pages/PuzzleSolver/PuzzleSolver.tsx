@@ -108,12 +108,15 @@ const createMoveTree = (lines: string[][]): MoveTreeNode => {
   return tree;
 };
 
+const lineStartsWithMoves = (line: string[], moves: string[]): boolean =>
+  moves.every((move, moveIndex) => line[moveIndex] === move);
+
 const getMatchingSolutionLineIndexes = (
   solutionLines: string[][] | undefined = [],
   currentAnalysisMoves: string[] | undefined = [],
 ): number[] =>
   (solutionLines ?? []).reduce<number[]>((matches, line, index) => {
-    if ((currentAnalysisMoves ?? []).every((move, moveIndex) => line[moveIndex] === move)) {
+    if (lineStartsWithMoves(line, currentAnalysisMoves ?? [])) {
       matches.push(index);
     }
     return matches;
@@ -156,28 +159,28 @@ const getActiveSolutionLineIndex = ({
 };
 
 type SolutionOption = { move: string; lineIndex: number; plyIndex: number };
+type CompletionFeedback = { type: string; icon: string; title: string };
 
 const buildSolutionOptions = ({
   solutionLines,
-  currentAnalysisMoves,
-  isOnSolutionPath,
+  currentPly = 0,
+  matchingLineIndexes,
 }: {
   solutionLines?: string[][] | undefined;
-  currentAnalysisMoves?: string[] | undefined;
-  isOnSolutionPath: boolean;
+  currentPly?: number | undefined;
+  matchingLineIndexes?: number[] | undefined;
 }): SolutionOption[] => {
   const lines = solutionLines ?? [];
-  const moves = currentAnalysisMoves ?? [];
-  if (!lines.length || !isOnSolutionPath) return [];
+  const lineIndexes = matchingLineIndexes ?? [];
+  if (!lines.length || !lineIndexes.length) return [];
 
-  const currentPly = moves.length;
-  const currentPrefix = moves.join("\n");
   const groupedOptions = new Map<string, SolutionOption>();
 
-  lines.forEach((line, lineIndex) => {
+  lineIndexes.forEach((lineIndex) => {
+    const line = lines[lineIndex];
+    if (!line) return;
     const move = line[currentPly];
     if (!move) return;
-    if (line.slice(0, currentPly).join("\n") !== currentPrefix) return;
 
     if (!groupedOptions.has(move)) {
       groupedOptions.set(move, {
@@ -193,7 +196,10 @@ const buildSolutionOptions = ({
   );
 };
 
-const buildCompletionFeedback = (nextBoardState: import("../../types/chessboard").ChessboardState, hadWrongAttempt: boolean): { type: string; icon: string; title: string } | null => {
+const buildCompletionFeedback = (
+  nextBoardState: import("../../types/chessboard").ChessboardState,
+  hadWrongAttempt: boolean,
+): CompletionFeedback | null => {
   if (nextBoardState.solved) {
     return hadWrongAttempt
       ? {
@@ -216,6 +222,14 @@ const buildCompletionFeedback = (nextBoardState: import("../../types/chessboard"
     };
   }
 
+  if (nextBoardState.showRetryMove) {
+    return {
+      type: "retry",
+      icon: "↺",
+      title: "Try again",
+    };
+  }
+
   return null;
 };
 
@@ -231,6 +245,7 @@ const createInitialBoardState = (): import("../../types/chessboard").ChessboardS
   lineIndex: 0,
   viewingSolution: false,
   showWrongMove: false,
+  showRetryMove: false,
   solved: false,
 });
 
@@ -239,8 +254,6 @@ const createInitialBoardSnapshot = () => ({
   lineIndex: 0,
   solutionLineIndex: 0,
   viewingSolution: false,
-  showWrongMove: false,
-  solved: false,
 });
 
 const SOLVE_MODE = "solve";
@@ -692,7 +705,8 @@ export const PuzzleSolverPage = () => {
       const enteringAnalysisMode =
         interactionModeRef.current !== ANALYSIS_MODE &&
         nextCompletionFeedback !== null &&
-        nextCompletionFeedback.type !== "wrong";
+        nextCompletionFeedback.type !== "wrong" &&
+        nextCompletionFeedback.type !== "retry";
 
       setBoardState(nextBoardState);
 
@@ -737,8 +751,6 @@ export const PuzzleSolverPage = () => {
         lineIndex: nextBoardState.lineIndex ?? 0,
         solutionLineIndex: nextBoardState.solutionLineIndex ?? 0,
         viewingSolution: nextBoardState.viewingSolution ?? false,
-        showWrongMove: nextBoardState.showWrongMove,
-        solved: nextBoardState.solved,
       };
 
       if (nextBoardState.solved) {
@@ -828,10 +840,10 @@ export const PuzzleSolverPage = () => {
     () =>
       buildSolutionOptions({
         solutionLines: boardState.solutionLines,
-        currentAnalysisMoves,
-        isOnSolutionPath,
+        currentPly: currentAnalysisMoves.length,
+        matchingLineIndexes: matchingSolutionLineIndexes,
       }),
-    [boardState.solutionLines, currentAnalysisMoves, isOnSolutionPath],
+    [boardState.solutionLines, currentAnalysisMoves.length, matchingSolutionLineIndexes],
   );
 
   const hasSolutionOptions = solutionOptions.length > 1;

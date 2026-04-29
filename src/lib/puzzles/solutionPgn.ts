@@ -91,6 +91,7 @@ const tokenFromSolution = (token: string): ParsedSolutionToken | null => {
   const questionable = /[!?]*\?[!?]*$/.test(strippedMoveNumber);
   const strippedAnnotation = strippedMoveNumber.replace(/[!?]+$/g, "");
   if (!strippedAnnotation) return null;
+  if (strippedAnnotation === "...") return null;
   if (["*", "1-0", "0-1", "1/2-1/2"].includes(strippedAnnotation)) {
     return null;
   }

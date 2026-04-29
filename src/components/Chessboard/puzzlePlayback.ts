@@ -23,11 +23,34 @@ export type TrainingState = {
   solved: boolean;
 };
 
+export type TrainingMoveEvaluation = "accepted" | "retry" | "wrong";
+
 export const hasExpectedMoveAt = (lines: UciSolutionLine[], progress: number): boolean =>
   lines.some((line) => {
     const entry = line[progress];
     return entry !== undefined && !entry.questionable;
   });
+
+export const evaluateTrainingMove = ({
+  candidates,
+  progress,
+  moveKey,
+}: {
+  candidates: UciSolutionLine[];
+  progress: number;
+  moveKey: string;
+}): TrainingMoveEvaluation => {
+  let sawRetryMove = false;
+
+  for (const line of candidates) {
+    const entry = line[progress];
+    if (!entry || entry.key !== moveKey) continue;
+    if (!entry.questionable) return "accepted";
+    sawRetryMove = true;
+  }
+
+  return sawRetryMove ? "retry" : "wrong";
+};
 
 export const tryCreateAtomicPosition = (
   fen: string,
@@ -66,17 +89,23 @@ export const recomputeTrainingState = ({
 
   let candidates = solutionLines;
   let progress = 0;
-  let solved = !hasExpectedMoveAt(candidates, progress);
+  let solved = false;
 
   for (const moveKey of playedMoveKeys) {
-    if (solved) continue;
+    if (solved) break;
 
-    const matching = candidates.filter((line) => line[progress]?.key === moveKey);
+    let matchedEntry: UciSolutionEntry | undefined;
+    const matching = candidates.filter((line) => {
+      const entry = line[progress];
+      const matches = entry?.key === moveKey;
+      if (matches && !matchedEntry) matchedEntry = entry;
+      return matches;
+    });
     if (matching.length === 0) break;
 
     candidates = matching;
     progress += 1;
-    solved = !hasExpectedMoveAt(candidates, progress);
+    solved = !matchedEntry?.questionable && !hasExpectedMoveAt(candidates, progress);
   }
 
   return { candidates, progress, solved };
