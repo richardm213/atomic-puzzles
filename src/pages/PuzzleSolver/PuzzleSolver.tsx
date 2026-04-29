@@ -701,7 +701,9 @@ export const PuzzleSolverPage = () => {
         hadWrongAttemptRef.current,
       );
       const lockedCompletionFeedback =
-        nextCompletionFeedback ?? lockedCompletionFeedbackRef.current;
+        nextCompletionFeedback?.type === "retry" || nextCompletionFeedback?.type === "wrong"
+          ? null
+          : nextCompletionFeedback ?? lockedCompletionFeedbackRef.current;
       const enteringAnalysisMode =
         interactionModeRef.current !== ANALYSIS_MODE &&
         nextCompletionFeedback !== null &&
@@ -722,7 +724,12 @@ export const PuzzleSolverPage = () => {
         hadWrongAttemptRef.current = true;
       }
 
-      if (nextCompletionFeedback) {
+      if (
+        nextCompletionFeedback?.type === "retry" ||
+        nextCompletionFeedback?.type === "wrong"
+      ) {
+        lockedCompletionFeedbackRef.current = null;
+      } else if (nextCompletionFeedback) {
         lockedCompletionFeedbackRef.current = nextCompletionFeedback;
       }
 
