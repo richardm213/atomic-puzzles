@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+
 import {
-  defaultMode,
   defaultMatchLengthMax,
   defaultMatchLengthMin,
-  matchLengthBoundsByMode,
+  defaultMode,
   type MatchLengthBounds,
+  matchLengthBoundsByMode,
   type Mode,
 } from "../constants/matches";
 

@@ -1,10 +1,10 @@
 import { modeOptions } from "../../constants/matches";
-import { loadAliasesLookup } from "./aliasesLookup";
+import { normalizeUsername } from "../../utils/playerNames";
+import { cachedRequest } from "../../utils/requestCache";
 import { getSupabaseClient } from "../supabase/supabaseClient";
 import { MATCH_TABLE_BY_MODE } from "../supabase/supabaseMatchRows";
 import { loadSupabaseRows } from "../supabase/supabaseRows";
-import { cachedRequest } from "../../utils/requestCache";
-import { normalizeUsername } from "../../utils/playerNames";
+import { loadAliasesLookup } from "./aliasesLookup";
 
 type SupabaseClient = ReturnType<typeof getSupabaseClient>;
 

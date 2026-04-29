@@ -1,6 +1,6 @@
-import { getSupabaseClient } from "./supabaseClient";
-import { normalizeUsername } from "../../utils/playerNames";
 import type { SupabaseUser } from "../../types/supabase";
+import { normalizeUsername } from "../../utils/playerNames";
+import { getSupabaseClient } from "./supabaseClient";
 
 export type { SupabaseUser } from "../../types/supabase";
 

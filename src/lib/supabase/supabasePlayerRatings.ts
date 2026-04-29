@@ -1,8 +1,8 @@
+import type { PlayerRatingRow } from "../../types/supabase";
+import { normalizeUsername } from "../../utils/playerNames";
+import { cachedRequest } from "../../utils/requestCache";
 import { getSupabaseClient } from "./supabaseClient";
 import { fetchAllSupabaseRows, loadSupabaseRows } from "./supabaseRows";
-import { cachedRequest } from "../../utils/requestCache";
-import { normalizeUsername } from "../../utils/playerNames";
-import type { PlayerRatingRow } from "../../types/supabase";
 
 export type { PlayerRatingRow } from "../../types/supabase";
 

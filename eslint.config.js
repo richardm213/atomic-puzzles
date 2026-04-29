@@ -77,62 +77,11 @@ const react = {
   },
 };
 
-const reactHooks = {
-  rules: {
-    "rules-of-hooks": {
-      meta: {
-        type: "problem",
-        docs: {
-          description: "Enforce React hooks to be called at the top level",
-        },
-        schema: [],
-        messages: {
-          conditionalHook:
-            "React Hook '{{name}}' cannot be called inside conditional or loop blocks.",
-        },
-      },
-      create(context) {
-        const disallowedAncestors = new Set([
-          "IfStatement",
-          "ConditionalExpression",
-          "SwitchStatement",
-          "SwitchCase",
-          "ForStatement",
-          "ForInStatement",
-          "ForOfStatement",
-          "WhileStatement",
-          "DoWhileStatement",
-          "TryStatement",
-          "CatchClause",
-        ]);
-
-        return {
-          CallExpression(node) {
-            if (node.callee.type !== "Identifier") return;
-
-            const hookName = node.callee.name;
-            if (!/^use[A-Z0-9]/.test(hookName)) return;
-
-            const ancestors = context.sourceCode.getAncestors(node);
-            const isInDisallowedBlock = ancestors.some((ancestor) =>
-              disallowedAncestors.has(ancestor.type),
-            );
-
-            if (isInDisallowedBlock) {
-              context.report({
-                node,
-                messageId: "conditionalHook",
-                data: { name: hookName },
-              });
-            }
-          },
-        };
-      },
-    },
-  },
-};
-
+import reactHooks from "eslint-plugin-react-hooks";
+import simpleImportSort from "eslint-plugin-simple-import-sort";
 import tseslint from "typescript-eslint";
+
+const tsconfigRootDir = import.meta.dirname;
 
 export default [
   {
@@ -159,6 +108,7 @@ export default [
     plugins: {
       react,
       "react-hooks": reactHooks,
+      "simple-import-sort": simpleImportSort,
     },
     rules: {
       "no-undef": "error",
@@ -175,6 +125,9 @@ export default [
         },
       ],
       "react-hooks/rules-of-hooks": "error",
+      "react-hooks/exhaustive-deps": "warn",
+      "simple-import-sort/imports": "error",
+      "simple-import-sort/exports": "error",
     },
   },
   {
@@ -183,6 +136,10 @@ export default [
       parser: tseslint.parser,
       parserOptions: {
         ecmaFeatures: { jsx: true },
+        projectService: {
+          allowDefaultProject: ["vitest.config.ts"],
+        },
+        tsconfigRootDir,
       },
     },
     plugins: {
@@ -194,6 +151,19 @@ export default [
       "@typescript-eslint/no-unused-vars": [
         "error",
         { varsIgnorePattern: "^React$|^[A-Z]", argsIgnorePattern: "^_" },
+      ],
+      "@typescript-eslint/consistent-type-imports": [
+        "error",
+        { disallowTypeAnnotations: false, prefer: "type-imports" },
+      ],
+      "@typescript-eslint/no-floating-promises": "error",
+      "@typescript-eslint/no-misused-promises": [
+        "error",
+        {
+          checksVoidReturn: {
+            attributes: false,
+          },
+        },
       ],
     },
   },

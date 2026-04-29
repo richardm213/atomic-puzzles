@@ -1,6 +1,6 @@
+import type { PuzzleSolutionField } from "../../types/puzzles";
 import { fetchPuzzleRowsFromSupabase, type PuzzleRow } from "../supabase/supabasePuzzles";
 import { normalizeSolutionPgn, parseSolutionUciLines } from "./solutionPgn";
-import type { PuzzleSolutionField } from "../../types/puzzles";
 
 export type Puzzle = PuzzleRow & {
   fen: string;

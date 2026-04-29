@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import "./TopNav.css";
+
 import {
   faChevronDown,
   faMagnifyingGlass,
@@ -7,14 +7,16 @@ import {
   faSpinner,
   faUser,
 } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { type ChangeEvent, type FormEvent,useEffect, useRef, useState } from "react";
+
 import { getBoardThemeColors, useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
-import { resolveUsernameInput } from "../../lib/users/usernameSearch";
 import { resolveProfileUsernameFromAliases } from "../../lib/supabase/supabaseAliases";
+import { resolveUsernameInput } from "../../lib/users/usernameSearch";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { normalizeUsername } from "../../utils/playerNames";
-import "./TopNav.css";
 
 type NavItem = {
   to: string;
@@ -42,8 +44,7 @@ const navItems: NavItem[] = [
   {
     to: "/tournaments",
     label: "Tournaments",
-    isActive: (pathname) =>
-      pathname === "/tournaments" || pathname.startsWith("/tournaments/"),
+    isActive: (pathname) => pathname === "/tournaments" || pathname.startsWith("/tournaments/"),
   },
   {
     to: "/h2h",
@@ -149,7 +150,7 @@ export const TopNav = () => {
       }
     };
 
-    loadProfileUsername();
+    void loadProfileUsername();
 
     return () => {
       cancelled = true;
@@ -244,7 +245,7 @@ export const TopNav = () => {
 
     try {
       const resolvedUsername = await resolveUsernameInput(trimmedSearchQuery);
-      navigate({
+      void navigate({
         to: "/@/$username",
         params: { username: normalizeUsername(resolvedUsername) },
       });
@@ -399,7 +400,7 @@ export const TopNav = () => {
                     role="menuitem"
                     onClick={() => {
                       setProfileMenuOpen(false);
-                      logout();
+                      void logout();
                     }}
                   >
                     <span className="navProfileDropdownIcon" aria-hidden="true">

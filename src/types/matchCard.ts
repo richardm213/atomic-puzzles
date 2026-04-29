@@ -1,5 +1,5 @@
-import type { MappedGameSummary } from "../lib/matches/matchSummaries";
 import type { Mode } from "../constants/matches";
+import type { MappedGameSummary } from "../lib/matches/matchSummaries";
 
 /**
  * Shape consumed by MatchCard / MatchDetails. This is the H2H/match-row

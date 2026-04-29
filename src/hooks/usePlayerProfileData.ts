@@ -1,22 +1,23 @@
 import { useEffect, useState } from "react";
+
 import {
   createModeRecord,
-  defaultMode,
   defaultMatchLengthMax,
+  defaultMode,
   isMatchLengthWithinBounds,
   knownSourceKeys,
-  modeLabels,
-  modeOptions,
   matchLengthBoundsByMode,
   type Mode,
+  modeLabels,
+  modeOptions,
   type SourceFilters,
 } from "../constants/matches";
-import { parseDateInputBoundary } from "../utils/matchFilters";
-import { parseTimeControlParts } from "../utils/matchTransforms";
+import type { NormalizedMatch } from "../lib/matches/matchData";
 import { fetchLbRows, monthKeyFromMonthValue } from "../lib/supabase/supabaseLb";
 import { fetchPlayerRatingsRows } from "../lib/supabase/supabasePlayerRatings";
 import { formatCalendarDate } from "../utils/formatters";
-import type { NormalizedMatch } from "../lib/matches/matchData";
+import { parseDateInputBoundary } from "../utils/matchFilters";
+import { parseTimeControlParts } from "../utils/matchTransforms";
 
 export type MonthRank = {
   monthKey: string;

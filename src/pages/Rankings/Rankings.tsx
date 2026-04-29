@@ -1,19 +1,21 @@
-import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
+import { useEffect, useMemo, useRef, useState } from "react";
+
 import {
   defaultMode,
+  type Mode,
   modeLabels,
   modeOptions,
   rankingEligibilityByMode,
-  type Mode,
 } from "../../constants/matches";
 
 const isMode = (value: unknown): value is Mode =>
   typeof value === "string" && (modeOptions as readonly string[]).includes(value);
+import "./Rankings.css";
+
+import { Seo } from "../../components/Seo/Seo";
 import { useRankingsByMonth } from "../../hooks/useRankingsByMonth";
 import { monthDateFromMonthKey } from "../../lib/supabase/supabaseLb";
-import { Seo } from "../../components/Seo/Seo";
-import "./Rankings.css";
 
 const monthNames = [
   "Jan",

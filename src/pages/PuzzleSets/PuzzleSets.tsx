@@ -1,9 +1,11 @@
+import "./PuzzleSets.css";
+
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+
 import { Seo } from "../../components/Seo/Seo";
 import { loadPuzzleLibrary } from "../../lib/puzzles/puzzleLibrary";
 import { groupPuzzlesByEvent } from "../../lib/puzzles/puzzleSets";
-import "./PuzzleSets.css";
 
 const EVENT_FILTERS = [
   { id: "all", label: "All" },
@@ -14,7 +16,10 @@ const EVENT_FILTERS = [
   { id: "practiceMatch", label: "Practice" },
 ];
 
-const matchesEventFilter = (group: { event?: string | null | undefined }, filterId: string): boolean => {
+const matchesEventFilter = (
+  group: { event?: string | null | undefined },
+  filterId: string,
+): boolean => {
   if (filterId === "all") return true;
 
   const normalizedEvent = String(group?.event ?? "")
@@ -62,7 +67,11 @@ const updateEventKeyHash = (eventKey: string): void => {
   const nextHash = eventKey ? `#${encodeURIComponent(eventKey)}` : "";
   if (window.location.hash === nextHash) return;
 
-  window.history.pushState(null, "", `${window.location.pathname}${window.location.search}${nextHash}`);
+  window.history.pushState(
+    null,
+    "",
+    `${window.location.pathname}${window.location.search}${nextHash}`,
+  );
 };
 
 export const PuzzleSetsPage = () => {
@@ -94,7 +103,7 @@ export const PuzzleSetsPage = () => {
       }
     };
 
-    loadPuzzles();
+    void loadPuzzles();
 
     return () => {
       isCurrent = false;

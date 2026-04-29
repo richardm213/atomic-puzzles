@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+
 import { loadRankingsForMonth, type RankingsByMode } from "../lib/rankings/rankingsByMonth";
 
 export const useRankingsByMonth = (

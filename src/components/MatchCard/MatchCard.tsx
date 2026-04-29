@@ -1,13 +1,15 @@
+import "./MatchCard.css";
+
 import { Link } from "@tanstack/react-router";
 import type { MouseEventHandler } from "react";
-import { LichessGameLink } from "../LichessGameLink/LichessGameLink";
-import { MatchDetails } from "../MatchDetails/MatchDetails";
-import { MatchPageLink } from "../MatchPageLink/MatchPageLink";
+
+import type { MatchCardData } from "../../types/matchCard";
 import { formatLocalDateTime, formatScore } from "../../utils/formatters";
 import { scoreToneClass } from "../../utils/matchPresentation";
 import { isToggleActionKey } from "../../utils/toggleActionKey";
-import type { MatchCardData } from "../../types/matchCard";
-import "./MatchCard.css";
+import { LichessGameLink } from "../LichessGameLink/LichessGameLink";
+import { MatchDetails } from "../MatchDetails/MatchDetails";
+import { MatchPageLink } from "../MatchPageLink/MatchPageLink";
 
 export type MatchCardProps = {
   match: MatchCardData;

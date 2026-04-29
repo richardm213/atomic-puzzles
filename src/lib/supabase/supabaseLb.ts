@@ -1,8 +1,8 @@
+import type { LbRow } from "../../types/supabase";
+import { normalizeUsername } from "../../utils/playerNames";
+import { cachedRequest } from "../../utils/requestCache";
 import { getSupabaseClient } from "./supabaseClient";
 import { loadSupabaseRows } from "./supabaseRows";
-import { cachedRequest } from "../../utils/requestCache";
-import { normalizeUsername } from "../../utils/playerNames";
-import type { LbRow } from "../../types/supabase";
 
 export type { LbRow } from "../../types/supabase";
 

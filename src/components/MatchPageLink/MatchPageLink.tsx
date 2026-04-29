@@ -1,9 +1,11 @@
-import { Link } from "@tanstack/react-router";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
-import type { MouseEventHandler } from "react";
-import { buildMatchRouteParams, hasMatchRouteParams } from "../../utils/matchRoutes";
 import "./MatchPageLink.css";
+
+import { faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Link } from "@tanstack/react-router";
+import type { MouseEventHandler } from "react";
+
+import { buildMatchRouteParams, hasMatchRouteParams } from "../../utils/matchRoutes";
 
 export type MatchPageLinkMatch = Parameters<typeof buildMatchRouteParams>[0];
 

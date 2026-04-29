@@ -1,6 +1,6 @@
+import { cachedRequest } from "../../utils/requestCache";
 import { getSupabaseClient } from "../supabase/supabaseClient";
 import { fetchAllSupabaseRows } from "../supabase/supabaseRows";
-import { cachedRequest } from "../../utils/requestCache";
 
 export type TournamentMeta = {
   id: string;

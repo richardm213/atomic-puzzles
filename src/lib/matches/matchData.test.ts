@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { normalizeMatches } from "./matchData";
 
 const baseMatch = {

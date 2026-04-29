@@ -1,5 +1,5 @@
-import { parseSquare } from "chessops/util";
 import type { Color, Piece, Role, Square } from "chessops";
+import { parseSquare } from "chessops/util";
 import type { Atomic } from "chessops/variant";
 import type { CSSProperties } from "react";
 

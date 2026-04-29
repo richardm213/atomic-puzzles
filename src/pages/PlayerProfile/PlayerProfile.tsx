@@ -1,6 +1,16 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "@tanstack/react-router";
 import "./PlayerProfile.css";
+
+import { Link } from "@tanstack/react-router";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+import { DualRangeSlider } from "../../components/DualRangeSlider/DualRangeSlider";
+import { LichessGameLink } from "../../components/LichessGameLink/LichessGameLink";
+import { MatchPageLink } from "../../components/MatchPageLink/MatchPageLink";
+import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
+import { ProfileMetricCard } from "../../components/ProfileMetricCard/ProfileMetricCard";
+import { Seo } from "../../components/Seo/Seo";
+import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFilterChecks";
+import { TimeControlFields } from "../../components/TimeControlFields/TimeControlFields";
 import {
   createModeRecord,
   defaultMode,
@@ -15,8 +25,6 @@ import {
   opponentRatingSliderMin,
   pageSizeOptions,
 } from "../../constants/matches";
-import { fetchProfileAliasRow } from "../../lib/supabase/supabaseAliases";
-import { isRegisteredSiteUser } from "../../lib/supabase/supabaseUsers";
 import { toBoundedLengthRange, useMatchLengthRange } from "../../hooks/useMatchLengthRange";
 import {
   buildRankingsLocation,
@@ -28,28 +36,22 @@ import {
   useMonthRanks,
   useRatingsSnapshotByMode,
 } from "../../hooks/usePlayerProfileData";
+import { loadRawMatchesByMode, normalizeMatches } from "../../lib/matches/matchData";
+import { fetchProfileAliasRow } from "../../lib/supabase/supabaseAliases";
 import { monthKeyFromMonthValue } from "../../lib/supabase/supabaseLb";
+import { isRegisteredSiteUser } from "../../lib/supabase/supabaseUsers";
+import { appAssetPath } from "../../utils/appAssetPath";
 import {
   formatLocalDateTime,
   formatOpponentWithRating,
   formatScore,
   formatSignedDecimal,
 } from "../../utils/formatters";
+import { getTimeControlOptions } from "../../utils/matchCollection";
+import { parseDateInputBoundary } from "../../utils/matchFilters";
 import { scoreToneClass } from "../../utils/matchPresentation";
 import { normalizeUsername } from "../../utils/playerNames";
-import { MatchPageLink } from "../../components/MatchPageLink/MatchPageLink";
 import { isToggleActionKey } from "../../utils/toggleActionKey";
-import { parseDateInputBoundary } from "../../utils/matchFilters";
-import { loadRawMatchesByMode, normalizeMatches } from "../../lib/matches/matchData";
-import { appAssetPath } from "../../utils/appAssetPath";
-import { getTimeControlOptions } from "../../utils/matchCollection";
-import { DualRangeSlider } from "../../components/DualRangeSlider/DualRangeSlider";
-import { LichessGameLink } from "../../components/LichessGameLink/LichessGameLink";
-import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
-import { ProfileMetricCard } from "../../components/ProfileMetricCard/ProfileMetricCard";
-import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFilterChecks";
-import { TimeControlFields } from "../../components/TimeControlFields/TimeControlFields";
-import { Seo } from "../../components/Seo/Seo";
 
 const countOptions = [5, 10, 20];
 
@@ -129,12 +131,29 @@ const awcChampionTrophiesByUsername = {
 const getCurrentMonthKey = () => monthKeyFromMonthValue(new Date().toISOString().slice(0, 10));
 
 const trophyLevels = [
-  { maxRank: 1, key: "champion", imageSrc: profileTrophyAssets.champion, suffix: "Atomic Champion" },
+  {
+    maxRank: 1,
+    key: "champion",
+    imageSrc: profileTrophyAssets.champion,
+    suffix: "Atomic Champion",
+  },
   { maxRank: 10, key: "top10", imageSrc: profileTrophyAssets.top10, suffix: "Atomic Top 10" },
   { maxRank: 30, key: "top30", imageSrc: profileTrophyAssets.top30, suffix: "Atomic Top 30" },
 ];
 
-const getProfileTrophies = (monthRanks: import("../../hooks/usePlayerProfileData").MonthRank[], currentMonthKey: string, ratingDisplayByMode: import("../../hooks/usePlayerProfileData").RatingDisplayByMode, username: string): Array<{ key: string; mode: import("../../constants/matches").Mode; label: string; title: string; imageSrc: string; href: string }> =>
+const getProfileTrophies = (
+  monthRanks: import("../../hooks/usePlayerProfileData").MonthRank[],
+  currentMonthKey: string,
+  ratingDisplayByMode: import("../../hooks/usePlayerProfileData").RatingDisplayByMode,
+  username: string,
+): Array<{
+  key: string;
+  mode: import("../../constants/matches").Mode;
+  label: string;
+  title: string;
+  imageSrc: string;
+  href: string;
+}> =>
   modeOptions.flatMap((mode) => {
     const currentRank = Number(ratingDisplayByMode?.[mode]?.rank);
     if (!(currentRank > 0)) return [];
@@ -160,7 +179,9 @@ const getProfileTrophies = (monthRanks: import("../../hooks/usePlayerProfileData
   });
 
 const getProfileAwcTrophies = (username: string) =>
-  awcChampionTrophiesByUsername[normalizeUsername(username) as keyof typeof awcChampionTrophiesByUsername] ?? [];
+  awcChampionTrophiesByUsername[
+    normalizeUsername(username) as keyof typeof awcChampionTrophiesByUsername
+  ] ?? [];
 
 const LichessProfileIcon = () => (
   <svg viewBox="0 0 50 50" aria-hidden="true" focusable="false">
@@ -171,7 +192,10 @@ const LichessProfileIcon = () => (
   </svg>
 );
 
-const buildMatchFilters = (username: string, filters: ProfileFilters): import("../../lib/supabase/supabaseMatchRows").MatchFilters => {
+const buildMatchFilters = (
+  username: string,
+  filters: ProfileFilters,
+): import("../../lib/supabase/supabaseMatchRows").MatchFilters => {
   const queryFilters: import("../../lib/supabase/supabaseMatchRows").MatchFilters = { username };
   const { timeControlInitialFilter, timeControlIncrementFilter } = filters;
   const timeControl =
@@ -196,9 +220,12 @@ const buildMatchFilters = (username: string, filters: ProfileFilters): import(".
   return queryFilters;
 };
 
-const isClientSidePagedSearch = (filters: { opponentFilter?: string }): boolean => Boolean(String(filters?.opponentFilter || "").trim());
+const isClientSidePagedSearch = (filters: { opponentFilter?: string }): boolean =>
+  Boolean(String(filters?.opponentFilter || "").trim());
 
-const createDefaultProfileFilters = (mode: import("../../constants/matches").Mode = defaultMode): ProfileFilters => {
+const createDefaultProfileFilters = (
+  mode: import("../../constants/matches").Mode = defaultMode,
+): ProfileFilters => {
   const matchLengthRange = toBoundedLengthRange(mode);
 
   return {
@@ -217,8 +244,11 @@ const createDefaultProfileFilters = (mode: import("../../constants/matches").Mod
 
 export const PlayerProfilePage = ({ username }: { username?: string }) => {
   const normalizedUsername = useMemo(() => normalizeUsername(username), [username]);
-  const [selectedMode, setSelectedMode] = useState<import("../../constants/matches").Mode>(defaultMode);
-  const [profileAliasEntry, setProfileAliasEntry] = useState<import("../../lib/supabase/supabaseAliases").MergedAliasRow | null>(null);
+  const [selectedMode, setSelectedMode] =
+    useState<import("../../constants/matches").Mode>(defaultMode);
+  const [profileAliasEntry, setProfileAliasEntry] = useState<
+    import("../../lib/supabase/supabaseAliases").MergedAliasRow | null
+  >(null);
   const [aliasesLoaded, setAliasesLoaded] = useState(false);
   const [matchesByMode, setMatchesByMode] = useState(() => createModeRecord(() => []));
   const [totalMatchesByMode, setTotalMatchesByMode] = useState(() => createModeRecord(() => 0));
@@ -302,7 +332,7 @@ export const PlayerProfilePage = ({ username }: { username?: string }) => {
       }
     };
 
-    loadProfileAliasEntry();
+    void loadProfileAliasEntry();
 
     return () => {
       isCurrent = false;
@@ -328,68 +358,75 @@ export const PlayerProfilePage = ({ username }: { username?: string }) => {
       }
     };
 
-    loadHistoryAvailability();
+    void loadHistoryAvailability();
 
     return () => {
       isCurrent = false;
     };
   }, [aliasesLoaded, canonicalUsername]);
 
-  const runMatchSearch = useCallback(async (mode: import("../../constants/matches").Mode, nextAppliedFilters: ProfileFilters, nextPage: number = 1): Promise<void> => {
-    const requestId = matchRequestIdRef.current + 1;
-    matchRequestIdRef.current = requestId;
-    setLoadingMatches(true);
-    setError("");
-    try {
-      const filters = buildMatchFilters(canonicalUsername, nextAppliedFilters);
-      const shouldClientPageResults = isClientSidePagedSearch(nextAppliedFilters);
-      const rawMatches: import("../../lib/matches/matchData").ParsedMatch[] = [];
-      let totalForServerPaging = 0;
-      if (shouldClientPageResults) {
-        const result = await loadRawMatchesByMode(mode, { filters });
+  const runMatchSearch = useCallback(
+    async (
+      mode: import("../../constants/matches").Mode,
+      nextAppliedFilters: ProfileFilters,
+      nextPage: number = 1,
+    ): Promise<void> => {
+      const requestId = matchRequestIdRef.current + 1;
+      matchRequestIdRef.current = requestId;
+      setLoadingMatches(true);
+      setError("");
+      try {
+        const filters = buildMatchFilters(canonicalUsername, nextAppliedFilters);
+        const shouldClientPageResults = isClientSidePagedSearch(nextAppliedFilters);
+        const rawMatches: import("../../lib/matches/matchData").ParsedMatch[] = [];
+        let totalForServerPaging = 0;
+        if (shouldClientPageResults) {
+          const result = await loadRawMatchesByMode(mode, { filters });
+          if (requestId !== matchRequestIdRef.current) return;
+          rawMatches.push(...result);
+          totalForServerPaging = result.length;
+        } else {
+          const result = await loadRawMatchesByMode(mode, { filters, page: nextPage, pageSize });
+          if (requestId !== matchRequestIdRef.current) return;
+          rawMatches.push(...result.matches);
+          totalForServerPaging = result.total;
+        }
+        const normalizedMatchesForMode = normalizeMatches(rawMatches, canonicalUsername);
+        setMatchesByMode((current) => ({
+          ...current,
+          [mode]: normalizedMatchesForMode,
+        }));
+        setTotalMatchesByMode((current) => ({
+          ...current,
+          [mode]: shouldClientPageResults ? normalizedMatchesForMode.length : totalForServerPaging,
+        }));
+        setAppliedFilters(nextAppliedFilters);
+        setPage(nextPage);
+      } catch (loadError) {
         if (requestId !== matchRequestIdRef.current) return;
-        rawMatches.push(...result);
-        totalForServerPaging = result.length;
-      } else {
-        const result = await loadRawMatchesByMode(mode, { filters, page: nextPage, pageSize });
-        if (requestId !== matchRequestIdRef.current) return;
-        rawMatches.push(...result.matches);
-        totalForServerPaging = result.total;
+        setMatchesByMode((current) => ({
+          ...current,
+          [mode]: [],
+        }));
+        setTotalMatchesByMode((current) => ({
+          ...current,
+          [mode]: 0,
+        }));
+        setError(String(loadError));
+      } finally {
+        if (requestId === matchRequestIdRef.current) {
+          setLoadingMatches(false);
+        }
       }
-      const normalizedMatchesForMode = normalizeMatches(rawMatches, canonicalUsername);
-      setMatchesByMode((current) => ({
-        ...current,
-        [mode]: normalizedMatchesForMode,
-      }));
-      setTotalMatchesByMode((current) => ({
-        ...current,
-        [mode]: shouldClientPageResults ? normalizedMatchesForMode.length : totalForServerPaging,
-      }));
-      setAppliedFilters(nextAppliedFilters);
-      setPage(nextPage);
-    } catch (loadError) {
-      if (requestId !== matchRequestIdRef.current) return;
-      setMatchesByMode((current) => ({
-        ...current,
-        [mode]: [],
-      }));
-      setTotalMatchesByMode((current) => ({
-        ...current,
-        [mode]: 0,
-      }));
-      setError(String(loadError));
-    } finally {
-      if (requestId === matchRequestIdRef.current) {
-        setLoadingMatches(false);
-      }
-    }
-  }, [canonicalUsername, pageSize]);
+    },
+    [canonicalUsername, pageSize],
+  );
 
   useEffect(() => {
     setExpandedMatchKeys([]);
   }, [page, selectedMode, appliedFilters, canonicalUsername]);
 
-  const matches = matchesByMode[selectedMode] ?? [];
+  const matches = useMemo(() => matchesByMode[selectedMode] ?? [], [matchesByMode, selectedMode]);
 
   const { initialOptions, incrementOptions } = useMemo(
     () => getTimeControlOptions(matches),
@@ -403,7 +440,7 @@ export const PlayerProfilePage = ({ username }: { username?: string }) => {
   const totalPages = Math.max(
     1,
     Math.ceil(
-      (isClientPagedResults ? filteredMatches.length : totalMatchesByMode[selectedMode] ?? 0) /
+      (isClientPagedResults ? filteredMatches.length : (totalMatchesByMode[selectedMode] ?? 0)) /
         Math.max(1, pageSize),
     ),
   );
@@ -417,7 +454,7 @@ export const PlayerProfilePage = ({ username }: { username?: string }) => {
 
   useEffect(() => {
     if (!aliasesLoaded || isBanned) return;
-    runMatchSearch(selectedMode, appliedFilters, requestedServerPage);
+    void runMatchSearch(selectedMode, appliedFilters, requestedServerPage);
   }, [aliasesLoaded, appliedFilters, isBanned, requestedServerPage, runMatchSearch, selectedMode]);
 
   const handleSearchClick = () => {
@@ -438,7 +475,10 @@ export const PlayerProfilePage = ({ username }: { username?: string }) => {
     });
     searchSubmitInFlightRef.current = false;
   };
-  const setSourceFilter = (source: keyof import("../../constants/matches").SourceFilters, checked: boolean): void => {
+  const setSourceFilter = (
+    source: keyof import("../../constants/matches").SourceFilters,
+    checked: boolean,
+  ): void => {
     setSourceFilters((current) => ({ ...current, [source]: checked }));
   };
   const handleModeChange = (nextMode: import("../../constants/matches").Mode): void => {
@@ -494,16 +534,20 @@ export const PlayerProfilePage = ({ username }: { username?: string }) => {
   }, [aliasesForUser, profileAliasEntry]);
   const latestMonthKeyByMode = useMemo(
     () =>
-      monthRanks.reduce<Partial<Record<import("../../constants/matches").Mode, import("../../hooks/usePlayerProfileData").MonthRank>>>(
-        (acc, monthRank) => {
-          const existing = acc[monthRank.mode];
-          if (!existing || monthRank.monthDate > existing.monthDate) {
-            acc[monthRank.mode] = monthRank;
-          }
-          return acc;
-        },
-        {},
-      ),
+      monthRanks.reduce<
+        Partial<
+          Record<
+            import("../../constants/matches").Mode,
+            import("../../hooks/usePlayerProfileData").MonthRank
+          >
+        >
+      >((acc, monthRank) => {
+        const existing = acc[monthRank.mode];
+        if (!existing || monthRank.monthDate > existing.monthDate) {
+          acc[monthRank.mode] = monthRank;
+        }
+        return acc;
+      }, {}),
     [monthRanks],
   );
   const profileMetricRows = useMemo(
@@ -546,7 +590,7 @@ export const PlayerProfilePage = ({ username }: { username?: string }) => {
           <h1>{canonicalUsername}</h1>
           {!isBanned && profileTrophies.length ? (
             <div className="profileTrophyRow" aria-label="Atomic ranking trophies">
-              {profileTrophies.map((trophy) => (
+              {profileTrophies.map((trophy) =>
                 isExternalHref(trophy.href) ? (
                   <a
                     key={trophy.key}
@@ -571,8 +615,8 @@ export const PlayerProfilePage = ({ username }: { username?: string }) => {
                     <img src={trophy.imageSrc} alt="" aria-hidden="true" />
                     <span className="profileTrophyLabel">{trophy.label}</span>
                   </Link>
-                )
-              ))}
+                ),
+              )}
             </div>
           ) : null}
         </div>
@@ -868,10 +912,7 @@ export const PlayerProfilePage = ({ username }: { username?: string }) => {
                   onStartDateChange={setStartDateFilter}
                   onEndDateChange={setEndDateFilter}
                 />
-                <label
-                  htmlFor="profile-opponent-filter"
-                  className="profileOpponentFilterField"
-                >
+                <label htmlFor="profile-opponent-filter" className="profileOpponentFilterField">
                   Opponent
                   <input
                     id="profile-opponent-filter"

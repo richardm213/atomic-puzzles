@@ -1,5 +1,6 @@
-import type { ReactNode } from "react";
 import "./ProfileMetricCard.css";
+
+import type { ReactNode } from "react";
 
 export type ProfileMetricCardProps = {
   label: ReactNode;

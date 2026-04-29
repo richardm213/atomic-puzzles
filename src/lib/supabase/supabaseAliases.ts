@@ -1,8 +1,8 @@
+import type { Aliases2TableRow, AliasesTableRow } from "../../types/supabase";
+import { normalizeUsername } from "../../utils/playerNames";
+import { cachedRequest } from "../../utils/requestCache";
 import { getSupabaseClient } from "./supabaseClient";
 import { fetchAllSupabaseRows, loadSupabaseRows } from "./supabaseRows";
-import { cachedRequest } from "../../utils/requestCache";
-import { normalizeUsername } from "../../utils/playerNames";
-import type { Aliases2TableRow, AliasesTableRow } from "../../types/supabase";
 
 export type NormalizedAliasRow = {
   username: string;

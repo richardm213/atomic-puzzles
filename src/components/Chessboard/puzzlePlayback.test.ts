@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+
+import { parseSolutionUciLines } from "../../lib/puzzles/solutionPgn";
 import {
   buildSolutionHistory,
   evaluateTrainingMove,
@@ -6,7 +8,6 @@ import {
   recomputeTrainingState,
   tryCreateAtomicPosition,
 } from "./puzzlePlayback";
-import { parseSolutionUciLines } from "../../lib/puzzles/solutionPgn";
 
 const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const PUZZLE_506_FEN = "rnbqkbnr/5pp1/p3p2p/3p4/3PP2P/1p3P1N/PPP3P1/R1BQKB1R w KQkq - 0 9";

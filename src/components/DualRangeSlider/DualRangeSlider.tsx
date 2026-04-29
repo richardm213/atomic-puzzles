@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
+import {
+  type KeyboardEvent,
+  type PointerEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 const clamp = (value: number, min: number, max: number): number =>
   Math.min(Math.max(value, min), max);
@@ -42,28 +49,34 @@ export const DualRangeSlider = ({
   const lowerPercent = percentBetween(lowerValue, min, max);
   const upperPercent = percentBetween(upperValue, min, max);
 
-  const valueFromClientX = (clientX: number): number => {
-    const sliderElement = sliderRef.current;
-    if (!sliderElement) {
-      return min;
-    }
+  const valueFromClientX = useCallback(
+    (clientX: number): number => {
+      const sliderElement = sliderRef.current;
+      if (!sliderElement) {
+        return min;
+      }
 
-    const rect = sliderElement.getBoundingClientRect();
-    const ratio = clamp((clientX - rect.left) / rect.width, 0, 1);
-    const rawValue = min + ratio * (max - min);
-    return clamp(roundToStep(rawValue, min, step), min, max);
-  };
+      const rect = sliderElement.getBoundingClientRect();
+      const ratio = clamp((clientX - rect.left) / rect.width, 0, 1);
+      const rawValue = min + ratio * (max - min);
+      return clamp(roundToStep(rawValue, min, step), min, max);
+    },
+    [max, min, step],
+  );
 
-  const updateFromPointer = (thumb: Thumb, clientX: number): void => {
-    const nextValue = valueFromClientX(clientX);
+  const updateFromPointer = useCallback(
+    (thumb: Thumb, clientX: number): void => {
+      const nextValue = valueFromClientX(clientX);
 
-    if (thumb === "lower") {
-      onLowerChange(Math.min(nextValue, upperValue));
-      return;
-    }
+      if (thumb === "lower") {
+        onLowerChange(Math.min(nextValue, upperValue));
+        return;
+      }
 
-    onUpperChange(Math.max(nextValue, lowerValue));
-  };
+      onUpperChange(Math.max(nextValue, lowerValue));
+    },
+    [lowerValue, onLowerChange, onUpperChange, upperValue, valueFromClientX],
+  );
 
   useEffect(() => {
     if (!activeThumb) {
@@ -85,7 +98,7 @@ export const DualRangeSlider = ({
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerup", handlePointerUp);
     };
-  }, [activeThumb, lowerValue, upperValue]);
+  }, [activeThumb, updateFromPointer]);
 
   const startDrag = (thumb: Thumb, event: PointerEvent<HTMLElement>): void => {
     event.preventDefault();

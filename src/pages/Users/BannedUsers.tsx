@@ -1,20 +1,28 @@
+import "./Users.css";
+
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+
 import { Seo } from "../../components/Seo/Seo";
 import { fetchAliasRows } from "../../lib/supabase/supabaseAliases";
-import "./Users.css";
 
 const bannedUserColumns = [
   { key: "username", label: "Username" },
   { key: "aliases", label: "Aliases" },
 ];
 
-const sortIndicator = (sortKey: string, sortDirection: "asc" | "desc", columnKey: string): string => {
+const sortIndicator = (
+  sortKey: string,
+  sortDirection: "asc" | "desc",
+  columnKey: string,
+): string => {
   if (sortKey !== columnKey) return "";
   return sortDirection === "asc" ? "↑" : "↓";
 };
 
-const buildBannedRows = (aliasRows: import("../../lib/supabase/supabaseAliases").MergedAliasRow[]): Array<{ username: string; aliases: string[] }> =>
+const buildBannedRows = (
+  aliasRows: import("../../lib/supabase/supabaseAliases").MergedAliasRow[],
+): Array<{ username: string; aliases: string[] }> =>
   (Array.isArray(aliasRows) ? aliasRows : [])
     .filter((row) => Boolean(row?.banned) && String(row?.username || "").trim())
     .map((row) => ({
@@ -49,7 +57,7 @@ export const BannedUsersPage = () => {
       }
     };
 
-    loadBannedUsers();
+    void loadBannedUsers();
 
     return () => {
       isCurrent = false;

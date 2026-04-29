@@ -1,9 +1,9 @@
+import { defaultRatingMax, defaultRatingMin, type Mode } from "../../constants/matches";
+import type { MatchRow } from "../../types/supabase";
+import { normalizeUsername } from "../../utils/playerNames";
+import { cachedRequest } from "../../utils/requestCache";
 import { getSupabaseClient } from "./supabaseClient";
 import { loadSupabasePage } from "./supabaseRows";
-import { defaultRatingMax, defaultRatingMin, type Mode } from "../../constants/matches";
-import { cachedRequest } from "../../utils/requestCache";
-import { normalizeUsername } from "../../utils/playerNames";
-import type { MatchRow } from "../../types/supabase";
 
 export type { MatchRow } from "../../types/supabase";
 

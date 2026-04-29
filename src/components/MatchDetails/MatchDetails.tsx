@@ -1,8 +1,10 @@
-import type { MouseEventHandler } from "react";
-import { LichessGameLink } from "../LichessGameLink/LichessGameLink";
-import { formatScore, formatSignedDecimal } from "../../utils/formatters";
-import type { MatchCardData } from "../../types/matchCard";
 import "../MatchCard/MatchCard.css";
+
+import type { MouseEventHandler } from "react";
+
+import type { MatchCardData } from "../../types/matchCard";
+import { formatScore, formatSignedDecimal } from "../../utils/formatters";
+import { LichessGameLink } from "../LichessGameLink/LichessGameLink";
 
 export type MatchDetailsProps = {
   match: MatchCardData;

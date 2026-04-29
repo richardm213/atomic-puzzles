@@ -1,8 +1,8 @@
+import type { Move, NormalMove, Role } from "chessops";
 import { parseFen } from "chessops/fen";
 import { makeSan, parseSan } from "chessops/san";
 import { makeUci, parseSquare } from "chessops/util";
 import { Atomic } from "chessops/variant";
-import type { Move, NormalMove, Role } from "chessops";
 
 type Position = Atomic;
 

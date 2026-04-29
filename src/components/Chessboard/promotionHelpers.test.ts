@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
+
+import { createAtomicPosition } from "../../lib/puzzles/solutionPgn";
 import {
   createPendingPromotion,
   getPromotionChoices,
   getPromotionSquareStyle,
 } from "./promotionHelpers";
-import { createAtomicPosition } from "../../lib/puzzles/solutionPgn";
 
 describe("getPromotionChoices", () => {
   it("returns nothing when the moving piece is not a pawn", () => {

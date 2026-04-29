@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { matchupToSlug, parseMatchupSlug } from "./h2hRoutes";
 
 describe("matchupToSlug", () => {

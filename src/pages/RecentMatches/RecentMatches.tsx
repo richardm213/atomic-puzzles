@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./RecentMatches.css";
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
 import {
   defaultMode,
   defaultRatingMax,
@@ -7,17 +9,17 @@ import {
   defaultSourceFilters,
   isMatchLengthWithinBounds,
   knownSourceKeys,
+  type Mode,
   modeDescriptions,
   modeLabels,
   modeOptions,
   opponentRatingSliderMax,
   opponentRatingSliderMin,
   pageSizeOptions,
-  type Mode,
   type SourceFilters,
 } from "../../constants/matches";
-import type { MatchCardData } from "../../types/matchCard";
 import type { MatchFilters as SupabaseMatchFilters } from "../../lib/supabase/supabaseMatchRows";
+import type { MatchCardData } from "../../types/matchCard";
 import type { RawMatchLike } from "../../types/matchRaw";
 
 type RecentMatch = MatchCardData & {
@@ -40,36 +42,38 @@ type AppliedFilters = {
   matchLengthMax: number;
 };
 
-const isMode = (value: string): value is Mode =>
-  (modeOptions as readonly string[]).includes(value);
-import { toBoundedLengthRange, useMatchLengthRange } from "../../hooks/useMatchLengthRange";
-import { MatchCard } from "../../components/MatchCard/MatchCard";
+const isMode = (value: string): value is Mode => (modeOptions as readonly string[]).includes(value);
 import { DualRangeSlider } from "../../components/DualRangeSlider/DualRangeSlider";
+import { MatchCard } from "../../components/MatchCard/MatchCard";
 import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
+import { Seo } from "../../components/Seo/Seo";
 import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFilterChecks";
 import { TimeControlFields } from "../../components/TimeControlFields/TimeControlFields";
-import {
-  normalizedGamesFromMatch,
-  normalizedPlayersFromMatch,
-  parseTimeControlParts,
-} from "../../utils/matchTransforms";
-import { parseDateInputBoundary } from "../../utils/matchFilters";
+import { toBoundedLengthRange, useMatchLengthRange } from "../../hooks/useMatchLengthRange";
+import { loadRawMatchesByMode } from "../../lib/matches/matchData";
 import {
   ratingsForPlayers,
   sourceKeyFromMatch,
   sourceValueFromMatch,
   summarizeMatchGames,
 } from "../../lib/matches/matchSummaries";
-import { loadRawMatchesByMode } from "../../lib/matches/matchData";
 import { resolveUsernameInputs } from "../../lib/users/usernameSearch";
 import { getTimeControlOptions } from "../../utils/matchCollection";
-import { Seo } from "../../components/Seo/Seo";
+import { parseDateInputBoundary } from "../../utils/matchFilters";
+import {
+  normalizedGamesFromMatch,
+  normalizedPlayersFromMatch,
+  parseTimeControlParts,
+} from "../../utils/matchTransforms";
 
 const recentModeOptions = modeOptions;
 const ratingFilterTypeOptions = ["both", "average"];
 const defaultPageSize = 50;
 
-const normalizeRecentMatches = (matches: RawMatchLike[] | null | undefined, mode: Mode): RecentMatch[] =>
+const normalizeRecentMatches = (
+  matches: RawMatchLike[] | null | undefined,
+  mode: Mode,
+): RecentMatch[] =>
   (Array.isArray(matches) ? matches : [])
     .map((match): RecentMatch => {
       const rawPlayers = normalizedPlayersFromMatch(match);
@@ -264,21 +268,28 @@ export const RecentMatchesPage = () => {
     return queryFilters;
   }, []);
 
-  const resolveSearchFilters = useCallback(async (nextFilters: AppliedFilters): Promise<AppliedFilters> => {
-    const [resolvedPlayer1Filter, resolvedPlayer2Filter] = await resolveUsernameInputs([
-      nextFilters.player1Filter,
-      nextFilters.player2Filter,
-    ]);
+  const resolveSearchFilters = useCallback(
+    async (nextFilters: AppliedFilters): Promise<AppliedFilters> => {
+      const [resolvedPlayer1Filter, resolvedPlayer2Filter] = await resolveUsernameInputs([
+        nextFilters.player1Filter,
+        nextFilters.player2Filter,
+      ]);
 
-    return {
-      ...nextFilters,
-      player1Filter: resolvedPlayer1Filter ?? "",
-      player2Filter: resolvedPlayer2Filter ?? "",
-    };
-  }, []);
+      return {
+        ...nextFilters,
+        player1Filter: resolvedPlayer1Filter ?? "",
+        player2Filter: resolvedPlayer2Filter ?? "",
+      };
+    },
+    [],
+  );
 
   const pageRequestKey = useCallback(
-    (nextAppliedFilters: AppliedFilters, nextPage: number, nextPageSize: number = pageSize): string =>
+    (
+      nextAppliedFilters: AppliedFilters,
+      nextPage: number,
+      nextPageSize: number = pageSize,
+    ): string =>
       JSON.stringify({
         filters: buildSupabaseFilters(nextAppliedFilters),
         mode: nextAppliedFilters.selectedMode,
@@ -378,7 +389,7 @@ export const RecentMatchesPage = () => {
       }
     };
 
-    loadPage();
+    void loadPage();
   }, [currentPage, pageSize, appliedFilters, buildSupabaseFilters, pageRequestKey]);
 
   const paginatedMatches = filteredMatches;
@@ -400,7 +411,7 @@ export const RecentMatchesPage = () => {
           className="matchFilterPanel"
           onSubmit={(event) => {
             event.preventDefault();
-            handleSearch();
+            void handleSearch();
           }}
         >
           <div className="matchFilterGrid">

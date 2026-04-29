@@ -1,9 +1,15 @@
+import "./Tournaments.css";
+
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+
 import { Seo } from "../../components/Seo/Seo";
-import { getTournamentBracket, getTournamentChampion, tournamentCatalog } from "../../lib/matches/tournaments";
+import {
+  getTournamentBracket,
+  getTournamentChampion,
+  tournamentCatalog,
+} from "../../lib/matches/tournaments";
 import { normalizeUsername } from "../../utils/playerNames";
-import "./Tournaments.css";
 
 export const TournamentsPage = () => {
   const [championsById, setChampionsById] = useState<Record<string, string>>({});
@@ -12,7 +18,9 @@ export const TournamentsPage = () => {
     let isCancelled = false;
 
     const loadChampions = async () => {
-      const availableTournaments = tournamentCatalog.filter((tournament) => tournament.status === "available");
+      const availableTournaments = tournamentCatalog.filter(
+        (tournament) => tournament.status === "available",
+      );
 
       const championEntries = await Promise.all(
         availableTournaments.map(async (tournament) => {
@@ -29,7 +37,7 @@ export const TournamentsPage = () => {
       setChampionsById(Object.fromEntries(championEntries.filter(([, champion]) => champion)));
     };
 
-    loadChampions();
+    void loadChampions();
 
     return () => {
       isCancelled = true;
@@ -88,7 +96,11 @@ export const TournamentsPage = () => {
               </p>
 
               {isAvailable ? (
-                <Link className="tournamentCardLink" to="/tournaments/$tournamentId" params={{ tournamentId: tournament.id }}>
+                <Link
+                  className="tournamentCardLink"
+                  to="/tournaments/$tournamentId"
+                  params={{ tournamentId: tournament.id }}
+                >
                   Open bracket
                 </Link>
               ) : (

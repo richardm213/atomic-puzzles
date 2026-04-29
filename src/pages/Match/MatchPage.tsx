@@ -1,21 +1,23 @@
-import { useEffect, useMemo, useState } from "react";
+import "./MatchPage.css";
+
 import { Link, useParams } from "@tanstack/react-router";
-import { loadRawMatchesByMode } from "../../lib/matches/matchData";
+import { useEffect, useMemo, useState } from "react";
+
 import { MatchDetails } from "../../components/MatchDetails/MatchDetails";
 import { Seo } from "../../components/Seo/Seo";
 import { modeLabels } from "../../constants/matches";
-import { formatLocalDateTime, formatScore } from "../../utils/formatters";
-import { normalizedGamesFromMatch, normalizedPlayersFromMatch } from "../../utils/matchTransforms";
+import { loadRawMatchesByMode } from "../../lib/matches/matchData";
 import {
   ratingsForPlayers,
   sourceValueFromMatch,
   summarizeMatchGames,
 } from "../../lib/matches/matchSummaries";
+import type { MatchCardData } from "../../types/matchCard";
+import type { RawMatchLike } from "../../types/matchRaw";
+import { formatLocalDateTime, formatScore } from "../../utils/formatters";
 import { matchupToSlug } from "../../utils/h2hRoutes";
 import { normalizeMatchMode } from "../../utils/matchRoutes";
-import type { RawMatchLike } from "../../types/matchRaw";
-import type { MatchCardData } from "../../types/matchCard";
-import "./MatchPage.css";
+import { normalizedGamesFromMatch, normalizedPlayersFromMatch } from "../../utils/matchTransforms";
 
 const decodeParam = (value: unknown): string => {
   try {
@@ -107,7 +109,7 @@ export const MatchPage = () => {
       }
     };
 
-    loadMatch();
+    void loadMatch();
 
     return () => {
       cancelled = true;
@@ -134,7 +136,9 @@ export const MatchPage = () => {
           {!loading && !error && match ? (
             <>
               <section className="matchPageHeader" aria-label="Match result">
-                <p className="matchPageHeaderLabel">{(match.mode && modeLabels[match.mode]) || match.mode} match</p>
+                <p className="matchPageHeaderLabel">
+                  {(match.mode && modeLabels[match.mode]) || match.mode} match
+                </p>
                 <div className="matchPageHeaderRow">
                   <Link
                     className="matchPageHeaderPlayer"
@@ -144,7 +148,10 @@ export const MatchPage = () => {
                   >
                     {match.playerA}
                   </Link>
-                  <div className="matchPageHeaderScore" aria-label={`Score ${match.scoreA} to ${match.scoreB}`}>
+                  <div
+                    className="matchPageHeaderScore"
+                    aria-label={`Score ${match.scoreA} to ${match.scoreB}`}
+                  >
                     <strong>{formatScore(match.scoreA)}</strong>
                     <span>-</span>
                     <strong>{formatScore(match.scoreB)}</strong>

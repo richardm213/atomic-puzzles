@@ -1,24 +1,25 @@
 import {
   createContext,
+  type ReactNode,
   useCallback,
   useContext,
   useEffect,
   useMemo,
   useState,
-  type ReactNode,
 } from "react";
+
 import {
-  clearStoredPostLoginRedirect,
   clearStoredLichessSession,
+  clearStoredPostLoginRedirect,
   completeLichessLogin,
   getLichessAuthDebugSnapshot,
   getStoredPostLoginRedirect,
+  type LichessAccount,
+  type LichessSession,
   restoreLichessSession,
   revokeLichessSession,
   setStoredPostLoginRedirect,
   startLichessLogin,
-  type LichessAccount,
-  type LichessSession,
 } from "../lib/auth/lichessAuth";
 import { ensureSupabaseUser } from "../lib/supabase/supabaseUsers";
 

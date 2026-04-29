@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { afterEach,beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../supabase/supabaseLb", async () => {
   const actual = await vi.importActual<typeof import("../supabase/supabaseLb")>(
@@ -10,8 +10,8 @@ vi.mock("../supabase/supabaseLb", async () => {
   };
 });
 
-import { loadRankingsForMonth } from "./rankingsByMonth";
 import { fetchLbRows } from "../supabase/supabaseLb";
+import { loadRankingsForMonth } from "./rankingsByMonth";
 
 const fetchLbRowsMock = fetchLbRows as unknown as ReturnType<typeof vi.fn>;
 

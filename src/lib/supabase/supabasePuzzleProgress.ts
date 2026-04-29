@@ -1,12 +1,12 @@
-import { getSupabaseClient } from "./supabaseClient";
-import { fetchAllSupabaseRows, loadSupabasePage } from "./supabaseRows";
-import { normalizeUsername } from "../../utils/playerNames";
 import type {
-  Database,
   AttemptedPuzzleIdRow,
+  Database,
   PuzzleProgressRow,
   PuzzleProgressRpcRow,
 } from "../../types/supabase";
+import { normalizeUsername } from "../../utils/playerNames";
+import { getSupabaseClient } from "./supabaseClient";
+import { fetchAllSupabaseRows, loadSupabasePage } from "./supabaseRows";
 
 export type { PuzzleProgressRow } from "../../types/supabase";
 

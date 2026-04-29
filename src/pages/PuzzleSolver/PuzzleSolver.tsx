@@ -1,8 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import "./PuzzleSolver.css";
+
 import { faClockRotateLeft, faRotateLeft } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
 import { Chessboard } from "../../components/Chessboard/Chessboard";
+import { Seo } from "../../components/Seo/Seo";
+import { useAuth } from "../../context/AuthContext";
 import { loadPuzzleLibrary } from "../../lib/puzzles/puzzleLibrary";
 import {
   buildSolutionMoveTree,
@@ -12,11 +17,11 @@ import {
   orderedChildren,
   serializeSanLinesToPgn,
 } from "../../lib/puzzles/solutionPgn";
-import { fetchAttemptedPuzzleIds, recordPuzzleProgress } from "../../lib/supabase/supabasePuzzleProgress";
+import {
+  fetchAttemptedPuzzleIds,
+  recordPuzzleProgress,
+} from "../../lib/supabase/supabasePuzzleProgress";
 import { isRegisteredSiteUser } from "../../lib/supabase/supabaseUsers";
-import { useAuth } from "../../context/AuthContext";
-import { Seo } from "../../components/Seo/Seo";
-import "./PuzzleSolver.css";
 
 const lichessAnalysisUrl = (fen: string | null | undefined): string => {
   if (!fen) return "https://lichess.org/analysis/atomic";
@@ -45,7 +50,10 @@ const addValueToSet = (currentSet: Set<string>, value: string): Set<string> => {
   return next;
 };
 
-const puzzleIndexFromParam = (puzzles: import("../../lib/puzzles/puzzleLibrary").Puzzle[], puzzleIdParam: string | null | undefined): number => {
+const puzzleIndexFromParam = (
+  puzzles: import("../../lib/puzzles/puzzleLibrary").Puzzle[],
+  puzzleIdParam: string | null | undefined,
+): number => {
   const puzzleId = parsePuzzleId(puzzleIdParam);
   if (puzzleId === null) return -1;
 
@@ -302,27 +310,34 @@ export const PuzzleSolverPage = () => {
   const [history, setHistory] = useState<number[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [isMobileLayout, setIsMobileLayout] = useState(false);
-  const [mobileFeedback, setMobileFeedback] = useState<
-    | { type: string; icon: string; title: string; id: number; fading: boolean }
-    | null
-  >(null);
+  const [mobileFeedback, setMobileFeedback] = useState<{
+    type: string;
+    icon: string;
+    title: string;
+    id: number;
+    fading: boolean;
+  } | null>(null);
   const [showSolution, setShowSolution] = useState(false);
   const [solutionNavigation, setSolutionNavigation] = useState<
     import("../../types/chessboard").SolutionNavigation | null
   >(null);
   const [interactionMode, setInteractionMode] = useState(SOLVE_MODE);
-  const [completionFeedback, setCompletionFeedback] = useState<
-    { type: string; icon: string; title: string } | null
-  >(null);
+  const [completionFeedback, setCompletionFeedback] = useState<{
+    type: string;
+    icon: string;
+    title: string;
+  } | null>(null);
   const [pinnedSolutionLineIndex, setPinnedSolutionLineIndex] = useState<number | null>(null);
   const [copyPgnLabel, setCopyPgnLabel] = useState("Copy PGN");
   const [boardState, setBoardState] = useState(createInitialBoardState);
-  const previousBoardSnapshotRef = useRef<ReturnType<typeof createInitialBoardSnapshot>>(createInitialBoardSnapshot());
+  const previousBoardSnapshotRef = useRef<ReturnType<typeof createInitialBoardSnapshot>>(
+    createInitialBoardSnapshot(),
+  );
   const interactionModeRef = useRef(SOLVE_MODE);
   const hadWrongAttemptRef = useRef(false);
-  const lockedCompletionFeedbackRef = useRef<
-    { type: string; icon: string; title: string } | null
-  >(null);
+  const lockedCompletionFeedbackRef = useRef<{ type: string; icon: string; title: string } | null>(
+    null,
+  );
   const mobileFeedbackIdRef = useRef(0);
   const activeSolutionOptionRef = useRef<HTMLButtonElement | null>(null);
   const upcomingPuzzleIndexesRef = useRef<number[]>([]);
@@ -348,7 +363,7 @@ export const PuzzleSolverPage = () => {
       }
     };
 
-    loadHistoryAccess();
+    void loadHistoryAccess();
 
     return () => {
       isCurrent = false;
@@ -378,7 +393,7 @@ export const PuzzleSolverPage = () => {
 
   const replaceUrlWithPuzzle = useCallback(
     (puzzleId: string | number): void => {
-      navigate({
+      void navigate({
         to: "/solve/$puzzleId",
         params: { puzzleId: String(puzzleId) },
         replace: true,
@@ -413,7 +428,7 @@ export const PuzzleSolverPage = () => {
       }
     };
 
-    loadPuzzles();
+    void loadPuzzles();
 
     return () => {
       isCurrent = false;
@@ -436,7 +451,7 @@ export const PuzzleSolverPage = () => {
       }
     };
 
-    loadAttemptedPuzzleIds();
+    void loadAttemptedPuzzleIds();
 
     return () => {
       isCurrent = false;
@@ -512,7 +527,7 @@ export const PuzzleSolverPage = () => {
   }, [puzzles, routePuzzleId, history, historyIndex]);
 
   const activePuzzleIndex: number = historyIndex >= 0 ? (history[historyIndex] ?? -1) : -1;
-  const activePuzzle = activePuzzleIndex >= 0 ? puzzles[activePuzzleIndex] ?? null : null;
+  const activePuzzle = activePuzzleIndex >= 0 ? (puzzles[activePuzzleIndex] ?? null) : null;
   const activePuzzleId = activePuzzle?.puzzleId;
   const activePuzzleKey = toPuzzleKey(activePuzzleId);
   const fen = activePuzzle?.fen ?? "";
@@ -664,7 +679,8 @@ export const PuzzleSolverPage = () => {
     const previousHistoryIndex = historyIndex - 1;
     setHistoryIndex(previousHistoryIndex);
     const previousPuzzleIndex = history[previousHistoryIndex];
-    const previousPuzzle = previousPuzzleIndex !== undefined ? puzzles[previousPuzzleIndex] : undefined;
+    const previousPuzzle =
+      previousPuzzleIndex !== undefined ? puzzles[previousPuzzleIndex] : undefined;
     if (previousPuzzle) replaceUrlWithPuzzle(previousPuzzle.puzzleId);
   };
 
@@ -679,14 +695,17 @@ export const PuzzleSolverPage = () => {
     setSolutionNavigation(null);
   };
 
-  const showMobileFeedback = useCallback((nextFeedback: { type: string; icon: string; title: string }): void => {
-    mobileFeedbackIdRef.current += 1;
-    setMobileFeedback({
-      ...nextFeedback,
-      id: mobileFeedbackIdRef.current,
-      fading: false,
-    });
-  }, []);
+  const showMobileFeedback = useCallback(
+    (nextFeedback: { type: string; icon: string; title: string }): void => {
+      mobileFeedbackIdRef.current += 1;
+      setMobileFeedback({
+        ...nextFeedback,
+        id: mobileFeedbackIdRef.current,
+        fading: false,
+      });
+    },
+    [],
+  );
 
   const handleBoardStateChange = useCallback(
     (nextBoardState: import("../../types/chessboard").ChessboardState): void => {
@@ -703,7 +722,7 @@ export const PuzzleSolverPage = () => {
       const lockedCompletionFeedback =
         nextCompletionFeedback?.type === "retry" || nextCompletionFeedback?.type === "wrong"
           ? null
-          : nextCompletionFeedback ?? lockedCompletionFeedbackRef.current;
+          : (nextCompletionFeedback ?? lockedCompletionFeedbackRef.current);
       const enteringAnalysisMode =
         interactionModeRef.current !== ANALYSIS_MODE &&
         nextCompletionFeedback !== null &&
@@ -724,10 +743,7 @@ export const PuzzleSolverPage = () => {
         hadWrongAttemptRef.current = true;
       }
 
-      if (
-        nextCompletionFeedback?.type === "retry" ||
-        nextCompletionFeedback?.type === "wrong"
-      ) {
+      if (nextCompletionFeedback?.type === "retry" || nextCompletionFeedback?.type === "wrong") {
         lockedCompletionFeedbackRef.current = null;
       } else if (nextCompletionFeedback) {
         lockedCompletionFeedbackRef.current = nextCompletionFeedback;
@@ -767,13 +783,20 @@ export const PuzzleSolverPage = () => {
     [isMobileLayout, showMobileFeedback, showSolution],
   );
 
-  const handleMoveClick = useCallback((lineIndex: number, moveIndex: number, { advance = false }: { advance?: boolean } = {}): void => {
-    setPinnedSolutionLineIndex(lineIndex);
-    setSolutionNavigation({
-      lineIndex,
-      plyIndex: moveIndex + (advance ? 2 : 1),
-    });
-  }, []);
+  const handleMoveClick = useCallback(
+    (
+      lineIndex: number,
+      moveIndex: number,
+      { advance = false }: { advance?: boolean } = {},
+    ): void => {
+      setPinnedSolutionLineIndex(lineIndex);
+      setSolutionNavigation({
+        lineIndex,
+        plyIndex: moveIndex + (advance ? 2 : 1),
+      });
+    },
+    [],
+  );
 
   const handleAnalysisMoveClick = useCallback((moveIndex: number): void => {
     setSolutionNavigation({
@@ -1010,7 +1033,7 @@ export const PuzzleSolverPage = () => {
     return boardState.lineMoves
       .map((move, index) => `${movePrefix(index, index % 2 === 1)}${move}`.trim())
       .join(" ");
-  }, [boardState.lineIndex, boardState.lineMoves, boardState.solutionLines, fen, isOnSolutionPath]);
+  }, [boardState.lineMoves, boardState.solutionLines, fen, isOnSolutionPath]);
 
   const handleCopyPgn = useCallback(async () => {
     if (!moveLinePgn) return;

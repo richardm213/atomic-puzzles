@@ -1,8 +1,11 @@
-import { Link } from "@tanstack/react-router";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import "./TournamentPage.css";
+
 import { faCheck } from "@fortawesome/free-solid-svg-icons";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Link } from "@tanstack/react-router";
 import type { PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
 import { Seo } from "../../components/Seo/Seo";
 import {
   getAdjacentTournamentMetas,
@@ -12,7 +15,6 @@ import {
   type TournamentMatch,
 } from "../../lib/matches/tournaments";
 import { normalizeUsername } from "../../utils/playerNames";
-import "./TournamentPage.css";
 
 type StageKey = string;
 
@@ -63,13 +65,16 @@ const buildStartRoundState = (stages: TournamentBracketStage[] = []): Record<str
 const buildZoomState = (stages: TournamentBracketStage[] = []): Record<string, number> =>
   Object.fromEntries(stages.map((stage) => [stage.key, DEFAULT_STAGE_ZOOM]));
 
-const getStageStartRound = (stage: TournamentBracketStage, startRounds: Record<string, string>): string =>
-  startRounds[stage.key] || stage.rounds[0]?.roundName || "";
+const getStageStartRound = (
+  stage: TournamentBracketStage,
+  startRounds: Record<string, string>,
+): string => startRounds[stage.key] || stage.rounds[0]?.roundName || "";
 
 const clampZoom = (zoomLevel: unknown): number =>
   Math.min(MAX_STAGE_ZOOM, Math.max(MIN_STAGE_ZOOM, Number(zoomLevel) || DEFAULT_STAGE_ZOOM));
 
-const getTournamentViewStorageKey = (tournamentId: string): string => `${TOURNAMENT_VIEW_STORAGE_KEY}${tournamentId}`;
+const getTournamentViewStorageKey = (tournamentId: string): string =>
+  `${TOURNAMENT_VIEW_STORAGE_KEY}${tournamentId}`;
 
 const readSavedTournamentView = (tournamentId: string): SavedTournamentView | null => {
   if (typeof window === "undefined") return null;
@@ -90,7 +95,10 @@ const readSavedTournamentView = (tournamentId: string): SavedTournamentView | nu
   }
 };
 
-const getVisibleRounds = (stage: TournamentBracketStage, startRoundName: string): TournamentBracketStage["rounds"] => {
+const getVisibleRounds = (
+  stage: TournamentBracketStage,
+  startRoundName: string,
+): TournamentBracketStage["rounds"] => {
   const startIndex = stage.rounds.findIndex((round) => round.roundName === startRoundName);
   return stage.rounds.slice(Math.max(0, startIndex));
 };
@@ -108,7 +116,10 @@ const getConnectorPath = (from: AnchorPoint, to: AnchorPoint): string => {
   ].join(" ");
 };
 
-const buildStageTreeLayout = (stage: TournamentBracketStage, startRoundName: string): StageLayout => {
+const buildStageTreeLayout = (
+  stage: TournamentBracketStage,
+  startRoundName: string,
+): StageLayout => {
   const rounds = getVisibleRounds(stage, startRoundName);
   if (!rounds.length) return null;
 
@@ -177,9 +188,7 @@ const buildStageTreeLayout = (stage: TournamentBracketStage, startRoundName: str
   return {
     rounds,
     width:
-      BOARD_PADDING * 2 +
-      rounds.length * CARD_WIDTH +
-      Math.max(0, rounds.length - 1) * COLUMN_GAP,
+      BOARD_PADDING * 2 + rounds.length * CARD_WIDTH + Math.max(0, rounds.length - 1) * COLUMN_GAP,
     height: maxY + BOARD_PADDING,
     positionedMatches,
     connectors,
@@ -192,7 +201,10 @@ const winnerName = (match: TournamentMatch): string => {
   return "Draw";
 };
 
-const isByePlayer = (playerName: string): boolean => String(playerName || "").trim().toLowerCase() === "bye";
+const isByePlayer = (playerName: string): boolean =>
+  String(playerName || "")
+    .trim()
+    .toLowerCase() === "bye";
 
 const isByeMatch = (match: TournamentMatch | null | undefined): boolean =>
   isByePlayer(match?.p1 ?? "") || isByePlayer(match?.p2 ?? "");
@@ -217,7 +229,8 @@ const scoreSlotDisplay = (match: TournamentMatch, playerName: string): string =>
   return withdrewPlayerName(match) === playerName ? "w/o" : "—";
 };
 const PLAYER_NAME_TRUNCATION_LIMIT = 13;
-const isExternalMatchUrl = (value: string): boolean => /^https?:\/\//i.test(String(value || "").trim());
+const isExternalMatchUrl = (value: string): boolean =>
+  /^https?:\/\//i.test(String(value || "").trim());
 const getMatchHref = (matchId: string): string => {
   const normalized = String(matchId || "").trim();
   if (!normalized) return "";
@@ -408,7 +421,11 @@ const TournamentStageSection = ({
         <h2 id={`${stage.key}-heading`}>{stage.label}</h2>
         <div className="tournamentStageHeaderActions">
           {stage.key === "main" ? (
-            <div className="tournamentZoomControls" role="group" aria-label={`Zoom controls for ${stage.label}`}>
+            <div
+              className="tournamentZoomControls"
+              role="group"
+              aria-label={`Zoom controls for ${stage.label}`}
+            >
               <button
                 type="button"
                 className="tournamentZoomButton"
@@ -435,7 +452,11 @@ const TournamentStageSection = ({
               </button>
             </div>
           ) : null}
-          <div className="tournamentStageControls" role="group" aria-label={`Starting round for ${stage.label}`}>
+          <div
+            className="tournamentStageControls"
+            role="group"
+            aria-label={`Starting round for ${stage.label}`}
+          >
             {visibleRoundOptions.map((round) => {
               const isActive = startRoundName === round.roundName;
               return (
@@ -546,7 +567,7 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
     pageScrollY: number;
   } | null>(null);
 
-  const saveViewState = () => {
+  const saveViewState = useCallback(() => {
     if (!bracket || typeof window === "undefined") return;
 
     const scrollPositions = Object.fromEntries(
@@ -572,7 +593,7 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
         pageScrollY: window.scrollY || 0,
       }),
     );
-  };
+  }, [activeStageKey, bracket, startRounds, zoomLevels]);
 
   useEffect(() => {
     let cancelled = false;
@@ -658,7 +679,7 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
     return () => {
       saveViewState();
     };
-  }, [activeStageKey, bracket, startRounds, zoomLevels]);
+  }, [bracket, saveViewState]);
 
   const stageLayouts = useMemo(() => {
     if (!bracket) return new Map();
@@ -672,10 +693,7 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
   }, [bracket, startRounds]);
 
   const topSeedMap = useMemo(() => new Map(Object.entries(bracket?.seedMap || {})), [bracket]);
-  const countryMap = useMemo(
-    () => new Map(Object.entries(bracket?.countryMap || {})),
-    [bracket],
-  );
+  const countryMap = useMemo(() => new Map(Object.entries(bracket?.countryMap || {})), [bracket]);
   const visibleStages = useMemo(
     () => bracket?.stages?.filter((stage) => stage.key === activeStageKey) || [],
     [bracket, activeStageKey],
@@ -724,7 +742,10 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
     );
   };
 
-  const handleScrollerPointerDown = (stageKey: string, event: ReactPointerEvent<HTMLDivElement>): void => {
+  const handleScrollerPointerDown = (
+    stageKey: string,
+    event: ReactPointerEvent<HTMLDivElement>,
+  ): void => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
     if (isPointerOnNativeScrollbar(event.currentTarget, event)) return;
 
@@ -753,7 +774,10 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
 
     event.currentTarget.scrollLeft = dragState.startScrollLeft - deltaX;
     const targetScrollTop = dragState.startScrollTop - deltaY;
-    const maxInternalScrollTop = Math.max(0, event.currentTarget.scrollHeight - event.currentTarget.clientHeight);
+    const maxInternalScrollTop = Math.max(
+      0,
+      event.currentTarget.scrollHeight - event.currentTarget.clientHeight,
+    );
     const clampedScrollTop = Math.min(maxInternalScrollTop, Math.max(0, targetScrollTop));
     event.currentTarget.scrollTop = clampedScrollTop;
 
@@ -776,7 +800,12 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
   };
 
   if (bracketLoading) {
-    return <TournamentStateMessage title="Loading tournament…" message="Fetching bracket data from Supabase." />;
+    return (
+      <TournamentStateMessage
+        title="Loading tournament…"
+        message="Fetching bracket data from Supabase."
+      />
+    );
   }
 
   if (bracketError) {
@@ -784,7 +813,12 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
   }
 
   if (!bracket) {
-    return <TournamentStateMessage title="Tournament not available" message="This archive has not been published yet." />;
+    return (
+      <TournamentStateMessage
+        title="Tournament not available"
+        message="This archive has not been published yet."
+      />
+    );
   }
 
   return (

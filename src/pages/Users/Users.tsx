@@ -1,13 +1,15 @@
+import "./Users.css";
+
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+
 import { Seo } from "../../components/Seo/Seo";
-import { modeOptions, type Mode } from "../../constants/matches";
-import { loadAliasesLookup, type AliasLookup } from "../../lib/users/aliasesLookup";
+import { type Mode,modeOptions } from "../../constants/matches";
 import {
   fetchPlayerRatingsRows,
   type PlayerRatingRow,
 } from "../../lib/supabase/supabasePlayerRatings";
-import "./Users.css";
+import { type AliasLookup,loadAliasesLookup } from "../../lib/users/aliasesLookup";
 
 const HIGH_RD_THRESHOLD = 100;
 const ratingDisplayOptions = ["current", "peak"] as const;

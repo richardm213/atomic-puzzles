@@ -1,10 +1,10 @@
 import type {
   GameSourceMetadata,
+  RatingFields,
   RawCompactGameTuple,
   RawCompactRatingTuple,
   RawGameObject,
   RawMatchLike,
-  RatingFields,
   RawRatingsByPlayer,
 } from "../types/matchRaw";
 

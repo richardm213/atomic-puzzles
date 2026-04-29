@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+
 import type { StructuredData } from "../../types/seo";
 
 const SITE_NAME = "Atomic Puzzles";

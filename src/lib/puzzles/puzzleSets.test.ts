@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
+
+import type { Puzzle } from "./puzzleLibrary";
 import {
-  UNKNOWN_PUZZLE_EVENT_LABEL,
   groupPuzzlesByEvent,
   normalizePuzzleEventName,
+  UNKNOWN_PUZZLE_EVENT_LABEL,
 } from "./puzzleSets";
-import type { Puzzle } from "./puzzleLibrary";
 
 const makePuzzle = (overrides: Partial<Puzzle>): Puzzle =>
   ({

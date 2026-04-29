@@ -1,16 +1,18 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import "./H2H.css";
+
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+
 import {
   defaultSourceFilters,
-  modeLabels,
-  modeOptions,
   knownSourceKeys,
   type Mode,
+  modeLabels,
+  modeOptions,
   type SourceFilters,
 } from "../../constants/matches";
-import type { MatchCardData } from "../../types/matchCard";
 import type { PlayerRatingRow } from "../../lib/supabase/supabasePlayerRatings";
+import type { MatchCardData } from "../../types/matchCard";
 import type { RawMatchLike } from "../../types/matchRaw";
 
 type H2HMatch = MatchCardData & {
@@ -20,24 +22,24 @@ type H2HMatch = MatchCardData & {
 };
 
 type PlayerSnapshotsByMode = Partial<Record<Mode, PlayerRatingRow>>;
-import { loadRawMatchesByMode } from "../../lib/matches/matchData";
-import { fetchPlayerRatingsRows } from "../../lib/supabase/supabasePlayerRatings";
-import { resolveUsernameInputs } from "../../lib/users/usernameSearch";
-import { parseDateInputBoundary } from "../../utils/matchFilters";
-import { getTimeControlOptions } from "../../utils/matchCollection";
-import { normalizedGamesFromMatch, normalizedPlayersFromMatch } from "../../utils/matchTransforms";
-import { formatLocalDateTime, formatScore } from "../../utils/formatters";
 import { LichessGameLink } from "../../components/LichessGameLink/LichessGameLink";
 import { MatchDetails } from "../../components/MatchDetails/MatchDetails";
 import { MatchPageLink } from "../../components/MatchPageLink/MatchPageLink";
-import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFilterChecks";
 import { Seo } from "../../components/Seo/Seo";
-import { matchupToSlug, parseMatchupSlug } from "../../utils/h2hRoutes";
+import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFilterChecks";
+import { loadRawMatchesByMode } from "../../lib/matches/matchData";
 import {
   ratingsForPlayers,
   sourceKeyFromMatch,
   summarizeMatchGames,
 } from "../../lib/matches/matchSummaries";
+import { fetchPlayerRatingsRows } from "../../lib/supabase/supabasePlayerRatings";
+import { resolveUsernameInputs } from "../../lib/users/usernameSearch";
+import { formatLocalDateTime, formatScore } from "../../utils/formatters";
+import { matchupToSlug, parseMatchupSlug } from "../../utils/h2hRoutes";
+import { getTimeControlOptions } from "../../utils/matchCollection";
+import { parseDateInputBoundary } from "../../utils/matchFilters";
+import { normalizedGamesFromMatch, normalizedPlayersFromMatch } from "../../utils/matchTransforms";
 
 const normalizeH2HMatches = (
   matches: RawMatchLike[] | null | undefined,
@@ -88,9 +90,7 @@ const normalizeH2HMatches = (
     .sort((a, b) => b.startTs - a.startTs);
 };
 
-const computeGameScore = (
-  matches: H2HMatch[],
-): { playerA: number; playerB: number } => {
+const computeGameScore = (matches: H2HMatch[]): { playerA: number; playerB: number } => {
   return matches.reduce(
     (accumulator, match) => ({
       playerA: accumulator.playerA + Number(match.scoreA || 0),
@@ -302,7 +302,7 @@ export const H2HPage = () => {
     const { player1, player2 } = parsedMatchup;
     setPlayer1Input(player1);
     setPlayer2Input(player2);
-    performSearch(player1.trim(), player2.trim());
+    void performSearch(player1.trim(), player2.trim());
   }, [matchup, performSearch]);
 
   const player1Snapshot = playerSnapshots[loadedPlayer1.toLowerCase()] || {};
@@ -319,7 +319,11 @@ export const H2HPage = () => {
       {(["rank", "rating", "rd", "peak"] as const).map((key) => (
         <p key={key} className="h2hModeMeta">
           <span>{modeStatLabels[key]}: </span>
-          <strong>{(modeData as Record<string, unknown>)[key] !== undefined ? String((modeData as Record<string, unknown>)[key]) : "—"}</strong>
+          <strong>
+            {(modeData as Record<string, unknown>)[key] !== undefined
+              ? String((modeData as Record<string, unknown>)[key])
+              : "—"}
+          </strong>
         </p>
       ))}
     </>
@@ -358,7 +362,7 @@ export const H2HPage = () => {
             className="controls rankingsControls profileControls h2hSearchForm h2hSearchFormUnified"
             onSubmit={(event) => {
               event.preventDefault();
-              handleSearch();
+              void handleSearch();
             }}
           >
             <label htmlFor="h2h-player-1">

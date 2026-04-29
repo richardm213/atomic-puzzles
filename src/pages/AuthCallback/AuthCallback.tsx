@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { useAuth } from "../../context/AuthContext";
+
 import { Seo } from "../../components/Seo/Seo";
+import { useAuth } from "../../context/AuthContext";
 
 const resolveFallbackPath = () => {
   const baseUrl = import.meta.env.BASE_URL || "/";
@@ -60,7 +61,7 @@ export const AuthCallbackPage = () => {
       }
     };
 
-    run();
+    void run();
 
     return () => {
       active = false;

@@ -6,22 +6,23 @@ import {
   RouterProvider,
   useParams,
 } from "@tanstack/react-router";
+
 import { App } from "./App/App";
+import { AuthCallbackPage } from "./pages/AuthCallback/AuthCallback";
+import { H2HPage } from "./pages/H2H/H2H";
 import { HomePage } from "./pages/Home/Home";
+import { MatchPage } from "./pages/Match/MatchPage";
+import { PlayerProfilePage } from "./pages/PlayerProfile/PlayerProfile";
+import { PuzzleDashboardPage } from "./pages/PuzzleDashboard/PuzzleDashboard";
+import { PuzzleSetsPage } from "./pages/PuzzleSets/PuzzleSets";
+import { PuzzleSolverPage } from "./pages/PuzzleSolver/PuzzleSolver";
 import { RankingsPage } from "./pages/Rankings/Rankings";
 import { RankingsMethodologyPage } from "./pages/Rankings/RankingsMethodology";
 import { RecentMatchesPage } from "./pages/RecentMatches/RecentMatches";
-import { PlayerProfilePage } from "./pages/PlayerProfile/PlayerProfile";
-import { PuzzleDashboardPage } from "./pages/PuzzleDashboard/PuzzleDashboard";
-import { PuzzleSolverPage } from "./pages/PuzzleSolver/PuzzleSolver";
-import { PuzzleSetsPage } from "./pages/PuzzleSets/PuzzleSets";
-import { H2HPage } from "./pages/H2H/H2H";
-import { MatchPage } from "./pages/Match/MatchPage";
-import { AuthCallbackPage } from "./pages/AuthCallback/AuthCallback";
-import { UsersPage } from "./pages/Users/Users";
-import { BannedUsersPage } from "./pages/Users/BannedUsers";
-import { TournamentsPage } from "./pages/Tournaments/Tournaments";
 import { TournamentPage } from "./pages/Tournament/TournamentPage";
+import { TournamentsPage } from "./pages/Tournaments/Tournaments";
+import { BannedUsersPage } from "./pages/Users/BannedUsers";
+import { UsersPage } from "./pages/Users/Users";
 
 const appBasePath = (() => {
   const baseUrl = import.meta.env.BASE_URL || "/";

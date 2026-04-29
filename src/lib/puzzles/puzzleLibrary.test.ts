@@ -1,11 +1,11 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { afterEach,beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../supabase/supabasePuzzles", () => ({
   fetchPuzzleRowsFromSupabase: vi.fn(),
 }));
 
-import { loadPuzzleLibrary } from "./puzzleLibrary";
 import { fetchPuzzleRowsFromSupabase } from "../supabase/supabasePuzzles";
+import { loadPuzzleLibrary } from "./puzzleLibrary";
 
 const fetchMock = fetchPuzzleRowsFromSupabase as unknown as ReturnType<typeof vi.fn>;
 

@@ -1,6 +1,6 @@
-import { createModeRecord, modeOptions, type Mode } from "../../constants/matches";
-import { fetchLbRows, isoMonthStartFromMonthKey } from "../supabase/supabaseLb";
+import { createModeRecord, type Mode,modeOptions } from "../../constants/matches";
 import type { LbRow } from "../../types/supabase";
+import { fetchLbRows, isoMonthStartFromMonthKey } from "../supabase/supabaseLb";
 
 export type RankingPlayer = {
   rank: number;

@@ -1,7 +1,9 @@
-import { modeLabels, rankingEligibilityByMode } from "../../constants/matches";
-import { Link } from "@tanstack/react-router";
-import { Seo } from "../../components/Seo/Seo";
 import "./RankingsMethodology.css";
+
+import { Link } from "@tanstack/react-router";
+
+import { Seo } from "../../components/Seo/Seo";
+import { modeLabels, rankingEligibilityByMode } from "../../constants/matches";
 
 const ratingFaq = [
   {

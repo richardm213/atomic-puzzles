@@ -1,7 +1,7 @@
+import type { RawPuzzleRow } from "../../types/puzzles";
+import { cachedRequest } from "../../utils/requestCache";
 import { getSupabaseClient } from "./supabaseClient";
 import { fetchAllSupabaseRows } from "./supabaseRows";
-import { cachedRequest } from "../../utils/requestCache";
-import type { RawPuzzleRow } from "../../types/puzzles";
 
 export type PuzzleRow = RawPuzzleRow;
 

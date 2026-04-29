@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+
 import { getBoardThemeColors } from "../../context/AppSettings";
 
 type Rgb = { r: number; g: number; b: number };

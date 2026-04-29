@@ -1,12 +1,13 @@
+import type { Key } from "@lichess-org/chessground/types";
 import { makeFen } from "chessops/fen";
 import { makeSan } from "chessops/san";
 import type { Atomic } from "chessops/variant";
-import type { Key } from "@lichess-org/chessground/types";
+
 import {
   createAtomicPosition,
   moveFromUci,
-  type UciSolutionLine,
   type UciSolutionEntry,
+  type UciSolutionLine,
 } from "../../lib/puzzles/solutionPgn";
 
 export type SolutionHistory = {

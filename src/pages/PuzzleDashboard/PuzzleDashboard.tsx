@@ -1,5 +1,8 @@
+import "./PuzzleDashboard.css";
+
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+
 import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
@@ -11,7 +14,6 @@ import {
 } from "../../lib/supabase/supabasePuzzleProgress";
 import { isRegisteredSiteUser } from "../../lib/supabase/supabaseUsers";
 import { normalizeUsername } from "../../utils/playerNames";
-import "./PuzzleDashboard.css";
 
 const PAGE_SIZE = 20;
 
@@ -27,7 +29,17 @@ const formatDateTime = (value: string | number | Date | null | undefined): strin
   }).format(date);
 };
 
-const buildDashboardEntries = (progressRows: import("../../lib/supabase/supabasePuzzleProgress").PuzzleProgressRow[], puzzlesById: Map<string, import("../../lib/puzzles/puzzleLibrary").Puzzle>): Array<{ puzzleId: string; linkedPuzzleId: string | number; author: string; event: string; puzzleCorrect: boolean; firstAttemptAt: string }> =>
+const buildDashboardEntries = (
+  progressRows: import("../../lib/supabase/supabasePuzzleProgress").PuzzleProgressRow[],
+  puzzlesById: Map<string, import("../../lib/puzzles/puzzleLibrary").Puzzle>,
+): Array<{
+  puzzleId: string;
+  linkedPuzzleId: string | number;
+  author: string;
+  event: string;
+  puzzleCorrect: boolean;
+  firstAttemptAt: string;
+}> =>
   progressRows.map((row) => {
     const puzzle = puzzlesById.get(String(row?.puzzle_id ?? "").trim()) || null;
     const author = String(puzzle?.["author"] ?? "").trim() || "Unknown";
@@ -52,14 +64,18 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
   const viewingOwnDashboard = !routeUsername;
   const targetUsername = viewingOwnDashboard ? normalizeUsername(user?.username) : routeUsername;
   const [currentPage, setCurrentPage] = useState(1);
-  const [progressRows, setProgressRows] = useState<import("../../lib/supabase/supabasePuzzleProgress").PuzzleProgressRow[]>([]);
+  const [progressRows, setProgressRows] = useState<
+    import("../../lib/supabase/supabasePuzzleProgress").PuzzleProgressRow[]
+  >([]);
   const [totalProgressRows, setTotalProgressRows] = useState(0);
   const [dashboardSummary, setDashboardSummary] = useState({
     total: 0,
     correct: 0,
     incorrect: 0,
   });
-  const [puzzlesById, setPuzzlesById] = useState<Map<string, import("../../lib/puzzles/puzzleLibrary").Puzzle>>(new Map());
+  const [puzzlesById, setPuzzlesById] = useState<
+    Map<string, import("../../lib/puzzles/puzzleLibrary").Puzzle>
+  >(new Map());
   const [isDashboardLoading, setIsDashboardLoading] = useState(false);
   const [isSummaryLoading, setIsSummaryLoading] = useState(false);
   const [arePuzzlesLoading, setArePuzzlesLoading] = useState(false);
@@ -92,7 +108,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
       }
     };
 
-    loadPuzzles();
+    void loadPuzzles();
 
     return () => {
       isCurrent = false;
@@ -138,7 +154,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
       }
     };
 
-    loadDashboardEntries();
+    void loadDashboardEntries();
 
     return () => {
       isCurrent = false;
@@ -186,7 +202,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
       }
     };
 
-    loadDashboardSummary();
+    void loadDashboardSummary();
 
     return () => {
       isCurrent = false;
@@ -222,7 +238,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
       }
     };
 
-    verifyDashboardAccess();
+    void verifyDashboardAccess();
 
     return () => {
       isCurrent = false;

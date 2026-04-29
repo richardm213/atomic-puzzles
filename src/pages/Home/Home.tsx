@@ -1,12 +1,14 @@
+import "./Home.css";
+
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+
+import { Seo } from "../../components/Seo/Seo";
 import { useAppSettings } from "../../context/AppSettings";
 import { resolveUsernameInput, resolveUsernameInputs } from "../../lib/users/usernameSearch";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { matchupToSlug } from "../../utils/h2hRoutes";
 import { normalizeUsername } from "../../utils/playerNames";
-import { Seo } from "../../components/Seo/Seo";
-import "./Home.css";
 
 const featureLinks = [
   {
@@ -152,17 +154,21 @@ export const HomePage = () => {
   const puzzleCollageImages =
     theme === "light" ? lightModePuzzleCollageImages : darkModePuzzleCollageImages;
 
-  const handlePlayerSearch = async (event: import("react").FormEvent<HTMLFormElement>): Promise<void> => {
+  const handlePlayerSearch = async (
+    event: import("react").FormEvent<HTMLFormElement>,
+  ): Promise<void> => {
     event.preventDefault();
     if (!trimmedPlayerQuery) return;
     const resolvedUsername = await resolveUsernameInput(trimmedPlayerQuery);
-    navigate({
+    void navigate({
       to: "/@/$username",
       params: { username: normalizeUsername(resolvedUsername) },
     });
   };
 
-  const handleCompareSearch = async (event: import("react").FormEvent<HTMLFormElement>): Promise<void> => {
+  const handleCompareSearch = async (
+    event: import("react").FormEvent<HTMLFormElement>,
+  ): Promise<void> => {
     event.preventDefault();
     if (!trimmedComparePlayerOneQuery || !trimmedComparePlayerTwoQuery) return;
 
@@ -172,7 +178,7 @@ export const HomePage = () => {
     ]);
     if (!resolvedPlayerOne || !resolvedPlayerTwo) return;
 
-    navigate({
+    void navigate({
       to: "/h2h/$matchup",
       params: {
         matchup: matchupToSlug(resolvedPlayerOne, resolvedPlayerTwo),

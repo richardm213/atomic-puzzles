@@ -1,29 +1,29 @@
-import { modeOptions, type Mode } from "../../constants/matches";
-import {
-  fetchMatchRowsFromSupabase,
-  type MatchFilters,
-  type MatchRow,
-} from "../supabase/supabaseMatchRows";
-import {
-  normalizedGamesFromMatch,
-  normalizedPlayersFromMatch,
-  normalizedRatingsFromMatch,
-  parseWinnerFromPerspective,
-  winnerToFullWord,
-  type NormalizedGame,
-} from "../../utils/matchTransforms";
-import {
-  matchSourceFromValues,
-  sourceValueFromValues,
-  type MatchSource,
-} from "../../utils/matchFilters";
-import { normalizeUsername } from "../../utils/playerNames";
+import { type Mode,modeOptions } from "../../constants/matches";
 import type {
   RawDbCompactGame,
   RawMatchLike,
   RawRatingsByPlayer,
   WinnerCode,
 } from "../../types/matchRaw";
+import {
+  type MatchSource,
+  matchSourceFromValues,
+  sourceValueFromValues,
+} from "../../utils/matchFilters";
+import {
+  type NormalizedGame,
+  normalizedGamesFromMatch,
+  normalizedPlayersFromMatch,
+  normalizedRatingsFromMatch,
+  parseWinnerFromPerspective,
+  winnerToFullWord,
+} from "../../utils/matchTransforms";
+import { normalizeUsername } from "../../utils/playerNames";
+import {
+  fetchMatchRowsFromSupabase,
+  type MatchFilters,
+  type MatchRow,
+} from "../supabase/supabaseMatchRows";
 
 export type ParsedMatchGame = {
   id: string;

@@ -1,11 +1,11 @@
+import type { RawGameObject, RawMatchLike, RawMatchSourceFields } from "../../types/matchRaw";
+import { matchSourceFromValues, sourceValueFromValues } from "../../utils/matchFilters";
 import {
   findRatingDataForPlayer,
+  type NormalizedGame,
   normalizedRatingsFromMatch,
   winnerToFullWord,
-  type NormalizedGame,
 } from "../../utils/matchTransforms";
-import { matchSourceFromValues, sourceValueFromValues } from "../../utils/matchFilters";
-import type { RawGameObject, RawMatchLike, RawMatchSourceFields } from "../../types/matchRaw";
 
 export type MappedGameSummary = {
   id: string;
