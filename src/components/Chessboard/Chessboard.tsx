@@ -6,7 +6,7 @@ import { chessgroundDests } from "chessops/compat";
 import { makeFen } from "chessops/fen";
 import { makeSan } from "chessops/san";
 import { makeUci, parseSquare } from "chessops/util";
-import type { Color, Role, Square } from "chessops";
+import type { Color, Role } from "chessops";
 import type { Atomic } from "chessops/variant";
 import { useAppSettings } from "../../context/AppSettings";
 import {
@@ -79,28 +79,12 @@ const getStatus = (position: Atomic): string => {
   return `${position.turn} to move`;
 };
 
-const otherColor = (color: Color): Color => (color === "white" ? "black" : "white");
-
 const colorFromFen = (fen: string): Color =>
   fen?.split(" ")?.[1] === "b" ? "black" : "white";
 
 const MOVE_EVALUATION_DELAY_MS = 250;
 
-type DestsMap = Map<Key, Key[]>;
 const keyPair = (a: string, b: string): [Key, Key] => [a as Key, b as Key];
-
-const mergeDests = (...maps: DestsMap[]): DestsMap => {
-  const merged: DestsMap = new Map();
-
-  maps.forEach((map) => {
-    map.forEach((destinations, square) => {
-      const existing = merged.get(square) ?? [];
-      merged.set(square, [...new Set([...existing, ...destinations])]);
-    });
-  });
-
-  return merged;
-};
 
 export const Chessboard = ({
   puzzleId,
@@ -281,19 +265,9 @@ export const Chessboard = ({
     moveEvaluationTimerRef.current = null;
   };
 
-  const getAnalysisPositionForMove = (position: Atomic, from: Square): Atomic | null => {
-    const piece = position.board.get(from);
-    if (!piece) return null;
-    if (piece.color === position.turn) return position;
-
-    const adjusted = position.clone();
-    adjusted.turn = piece.color;
-    return adjusted;
-  };
-
   type MovableConfig = {
-    color?: Color | "both";
-    dests: DestsMap;
+    color?: Color;
+    dests: Map<Key, Key[]>;
     free: boolean;
   };
 
@@ -305,23 +279,10 @@ export const Chessboard = ({
       };
     }
 
-    if (!isAnalysisModeActive()) {
-      const outcome = position.outcome();
-      return {
-        ...(outcome ? {} : { color: position.turn }),
-        dests: chessgroundDests(position),
-        free: false,
-      };
-    }
-
-    const currentTurnDests = chessgroundDests(position);
-    const alternatePosition = position.clone();
-    alternatePosition.turn = otherColor(position.turn);
-    const alternateTurnDests = chessgroundDests(alternatePosition);
-
+    const outcome = position.outcome();
     return {
-      color: "both",
-      dests: mergeDests(currentTurnDests, alternateTurnDests),
+      ...(outcome ? {} : { color: position.turn }),
+      dests: chessgroundDests(position),
       free: false,
     };
   };
@@ -495,25 +456,21 @@ export const Chessboard = ({
 
     const move = promotion ? { from, to, promotion } : { from, to };
 
-    const activePosition = isAnalysisModeActive()
-      ? (getAnalysisPositionForMove(position, from) ?? position)
-      : position;
-
-    if (!activePosition.isLegal(move)) {
+    if (!position.isLegal(move)) {
       syncBoard(position, keyPair(orig, dest));
       return;
     }
 
     const userMoveText = makeUci(move).toLowerCase();
-    const userMoveSan = makeSan(activePosition, move);
-    const userMoveKey = toComparableUci(activePosition, userMoveText, move);
+    const userMoveSan = makeSan(position, move);
+    const userMoveKey = toComparableUci(position, userMoveText, move);
 
     if (isAnalysisModeActive()) {
-      activePosition.play(move);
-      saveMove(activePosition, keyPair(orig, dest), userMoveText, userMoveKey, userMoveSan);
-      syncBoard(activePosition, keyPair(orig, dest), {
+      position.play(move);
+      saveMove(position, keyPair(orig, dest), userMoveText, userMoveKey, userMoveSan);
+      syncBoard(position, keyPair(orig, dest), {
         solved: false,
-        status: getStatus(activePosition),
+        status: getStatus(position),
       });
       return;
     }
@@ -669,8 +626,6 @@ export const Chessboard = ({
               from,
               to,
               piece,
-              isAnalysisMode: isAnalysisModeActive(),
-              getAnalysisPositionForMove,
             });
 
             if (promotionChoices.length > 1 && piece) {

@@ -25,8 +25,6 @@ export type GetPromotionChoicesArgs = {
   from: Square;
   to: Square;
   piece: Piece | undefined;
-  isAnalysisMode: boolean;
-  getAnalysisPositionForMove: (position: Atomic, from: Square) => Atomic | null | undefined;
 };
 
 export const getPromotionChoices = ({
@@ -34,18 +32,12 @@ export const getPromotionChoices = ({
   from,
   to,
   piece,
-  isAnalysisMode,
-  getAnalysisPositionForMove,
 }: GetPromotionChoicesArgs): PromotionRole[] => {
   if (piece?.role !== "pawn") return [];
   if (!isBackRank(to)) return [];
 
-  const activePosition = isAnalysisMode
-    ? (getAnalysisPositionForMove(position, from) ?? position)
-    : position;
-
   return promotionOptions.filter((role) =>
-    activePosition.isLegal({ from, to, promotion: role as Role }),
+    position.isLegal({ from, to, promotion: role as Role }),
   );
 };
 

@@ -17,8 +17,6 @@ describe("getPromotionChoices", () => {
         from: 12, // e2
         to: 28, // e4
         piece: { color: "white", role: "pawn", promoted: false } as never,
-        isAnalysisMode: false,
-        getAnalysisPositionForMove: () => position,
       }),
     ).toEqual([]);
   });
@@ -33,8 +31,6 @@ describe("getPromotionChoices", () => {
         from: 12,
         to: 28,
         piece: { color: "white", role: "pawn", promoted: false } as never,
-        isAnalysisMode: false,
-        getAnalysisPositionForMove: () => position,
       }),
     ).toEqual([]);
   });
@@ -51,8 +47,6 @@ describe("getPromotionChoices", () => {
       from: 52,
       to: 60,
       piece,
-      isAnalysisMode: false,
-      getAnalysisPositionForMove: () => position,
     });
     // Atomic chess promotion is identical to standard except the king
     // detonation rules; the role list should be queen/knight/rook/bishop in
