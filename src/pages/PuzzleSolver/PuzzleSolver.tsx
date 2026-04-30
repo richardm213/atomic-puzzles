@@ -1,6 +1,6 @@
 import "./PuzzleSolver.css";
 
-import { faClockRotateLeft, faRotateLeft } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faClockRotateLeft, faRotateLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -641,7 +641,6 @@ export const PuzzleSolverPage = () => {
     };
   }, [mobileFeedback]);
 
-  const showFenDetails = showSolution;
   const canRevealSolution = Boolean(fen) && hasAttemptedActivePuzzle;
   const solutionButtonTitle = hasAttemptedActivePuzzle
     ? showSolution
@@ -1057,6 +1056,9 @@ export const PuzzleSolverPage = () => {
             onClick={handleCopyPgn}
             disabled={!moveLinePgn}
           >
+            {copyPgnLabel === "Copied" ? (
+              <FontAwesomeIcon className="copyPgnCheck" icon={faCheck} aria-hidden="true" />
+            ) : null}
             {copyPgnLabel}
           </button>
           <button
@@ -1199,7 +1201,7 @@ export const PuzzleSolverPage = () => {
                 </div>
               </div>
             ) : null}
-            {showFenDetails ? (
+            {showSolution ? (
               <div className="analysisButtonsRow">
                 <a
                   className={`fenAnalyzeButton ${!fen ? "disabled" : ""}`}
@@ -1246,7 +1248,6 @@ export const PuzzleSolverPage = () => {
               <span className="feedbackCopy">
                 <strong>{feedback ? feedback.title : boardState.status || "Ready"}</strong>
               </span>
-              <div className="feedbackActionSlot" />
             </div>
           ) : null}
           {fen ? (
@@ -1296,7 +1297,7 @@ export const PuzzleSolverPage = () => {
             >
               {showSolution ? "Hide solution" : "Show solution"}
             </button>
-            {showFenDetails ? (
+            {showSolution ? (
               <div className="mobileAnalyzeActions">
                 <a
                   className={`fenAnalyzeButton mobileAnalyzeButton ${!fen ? "disabled" : ""}`}
@@ -1327,21 +1328,6 @@ export const PuzzleSolverPage = () => {
           </div>
 
           {showSolution && canRevealSolution ? renderMoveLine("lineBox mobileLineBox") : null}
-
-          <div className="puzzleDetails mobilePuzzleDetails">
-            <div className="puzzleMetaRow">
-              <div className="metaChip" title={author}>
-                <span className="metaChipLabel">Author</span>
-                <span className="metaChipValue">{author}</span>
-              </div>
-              {event ? (
-                <div className="metaChip" title={event}>
-                  <span className="metaChipLabel">Event</span>
-                  <span className="metaChipValue">{event}</span>
-                </div>
-              ) : null}
-            </div>
-          </div>
         </div>
       ) : null}
 
