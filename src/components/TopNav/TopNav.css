@@ -7,12 +7,38 @@
   gap: 12px;
   width: 100%;
   max-width: 100vw;
-  overflow: hidden;
+  overflow: visible;
   padding: max(12px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) 12px
     max(18px, env(safe-area-inset-left));
   border-bottom: 1px solid var(--color-border);
   background: var(--color-nav);
   backdrop-filter: blur(18px);
+}
+
+.mobileMenuButton {
+  position: relative;
+  z-index: 42;
+  display: none;
+  width: 36px;
+  height: 36px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+  color: var(--color-heading);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.mobileMenuButton:hover,
+.mobileMenuButton:focus-visible {
+  background: var(--color-panel);
+  border-color: transparent;
+}
+
+.mobileMenuButton:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-primary-ring);
 }
 
 .homeBrand {
@@ -22,10 +48,22 @@
   gap: 10px;
   position: relative;
   z-index: 31;
+  margin-right: 22px;
   color: var(--color-heading);
+  font-family: "Arial Rounded MT Bold", "Trebuchet MS", "Avenir Next", system-ui, sans-serif;
+  font-size: 20px;
   font-weight: 800;
+  line-height: 1;
   text-decoration: none;
   white-space: nowrap;
+}
+
+.homeBrand span {
+  background: linear-gradient(180deg, #ffffff 0%, var(--color-primary-pale) 100%);
+  background-clip: text;
+  font-weight: 900;
+  color: transparent;
+  text-shadow: 0 0 18px rgba(147, 197, 253, 0.18);
 }
 
 .topNavCenter {
@@ -64,6 +102,10 @@
   color: var(--color-heading);
   text-decoration: underline;
   text-underline-offset: 0.18em;
+}
+
+.mobileHomeLink {
+  display: none;
 }
 
 :root[data-theme="light"] .topNav {
@@ -621,46 +663,101 @@
   }
 
   .homeBrand {
-    min-width: 32px;
-    min-height: 32px;
-  }
-
-  .topNavCenter {
-    flex: 1 1 0;
-    width: auto;
-    margin-left: auto;
-    gap: 8px;
-    flex-wrap: nowrap;
-    justify-content: flex-end;
-  }
-
-  .topNavLinks {
-    flex: 1 1 0;
-    flex-wrap: nowrap;
-    gap: 12px;
-    overflow-x: auto;
-    padding: 0 2px;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-
-  .topNavLinks::-webkit-scrollbar {
     display: none;
   }
 
-  .topNavLinks a {
-    min-height: 32px;
+  .mobileMenuButton {
+    display: inline-flex;
+    flex: 0 0 36px;
+  }
+
+  .topNavCenter {
+    position: static;
+    flex: 0 1 auto;
+    width: auto;
+    max-width: calc(100vw - 112px);
+    margin-left: auto;
     display: inline-flex;
     align-items: center;
-    font-size: 14px;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: nowrap;
+    padding: 0;
+    border-bottom: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  .topNav.mobileMenuOpen .topNavCenter {
+    display: inline-flex;
+    gap: 8px;
+  }
+
+  .topNavLinks {
+    position: absolute;
+    top: calc(100% + 1px);
+    left: 0;
+    right: auto;
+    z-index: 38;
+    display: none;
+    width: min(260px, calc(100vw - 24px));
+    max-width: none;
+    margin-left: 0;
+    padding: 12px max(16px, env(safe-area-inset-right)) 16px
+      max(16px, env(safe-area-inset-left));
+    border-right: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+    border-bottom-right-radius: var(--radius-ui);
+    background: var(--color-panel-strong);
+    box-shadow: var(--shadow-panel);
+    backdrop-filter: none;
+    align-items: stretch;
+    justify-content: stretch;
+    grid-template-columns: 1fr;
+    gap: 2px;
+    overflow: visible;
+  }
+
+  .topNav.mobileMenuOpen .topNavLinks {
+    display: grid;
+  }
+
+  .topNavLinks a {
+    min-height: 42px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    border-radius: var(--radius-ui);
+    color: var(--color-text);
+    font-size: 15px;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .topNavLinks .mobileHomeLink {
+    display: flex;
+  }
+
+  .topNavLinks a:hover,
+  .topNavLinks a.isActive {
+    background: var(--color-panel-strong);
+    color: var(--color-heading);
+    text-decoration: none;
   }
 
   .navSearchSlot {
     flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
   }
 
-  .navSettings {
-    flex: 0 0 32px;
+  .navSearch {
+    position: absolute;
+    width: 32px;
+    height: 32px;
+    right: 0;
+    justify-content: flex-end;
   }
 
   .navSearch.open,
@@ -668,49 +765,79 @@
     width: min(240px, calc(100vw - 32px));
   }
 
+  .navSearch input,
+  .navSearch button {
+    height: 32px;
+  }
+
+  .navSearchIcon {
+    left: 0;
+  }
+
+  .navSearchGo {
+    right: 4px;
+  }
+
   .navAuth {
     flex: 0 0 auto;
+    width: auto;
     margin-left: 0;
+  }
+
+  .navProfileMenu,
+  .navAuthProfileGroup,
+  .navAuthButton {
+    width: auto;
+  }
+
+  .navAuthProfileGroup {
+    justify-content: center;
+    min-height: 34px;
+  }
+
+  .navAuthProfileCaret {
+    margin-left: 0;
+  }
+
+  .navAuthButton {
+    min-height: 32px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .navProfileDropdown {
+    position: absolute;
+    width: auto;
+    min-width: 160px;
+    margin-top: 0;
+    transform-origin: top right;
+  }
+
+  .navSettings {
+    flex: 0 0 32px;
+    width: 32px;
+    display: inline-flex;
+  }
+
+  .navSettingsButton {
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+  }
+
+  .navSettingsMenu {
+    position: absolute;
+    width: min(280px, calc(100vw - 32px));
+    min-width: 220px;
+    margin-top: 0;
   }
 }
 
 @media (max-width: 430px) {
-  .topNavCenter {
-    display: inline-flex;
-    align-items: center;
-  }
-
-  .navSearchSlot {
-    grid-column: auto;
-    grid-row: auto;
-  }
-
-  .navSettings {
-    grid-column: auto;
-    grid-row: auto;
-  }
-
-  .topNavLinks {
-    grid-column: auto;
-    grid-row: auto;
-    width: auto;
-    order: 0;
-  }
-
-  .navAuth {
-    grid-column: auto;
-    grid-row: auto;
-    justify-content: flex-end;
-    width: auto;
-    padding-top: 0;
-  }
-
   .navSearch.open,
   .navSearch.open input {
     width: calc(100vw - max(74px, env(safe-area-inset-left)) - max(74px, env(safe-area-inset-right)));
-  }
-
-  .navSettingsMenu {
-    right: -2px;
   }
 }

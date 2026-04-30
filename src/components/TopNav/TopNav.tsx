@@ -1,15 +1,17 @@
 import "./TopNav.css";
 
 import {
+  faBars,
   faChevronDown,
   faMagnifyingGlass,
   faRightFromBracket,
   faSpinner,
   faUser,
+  faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { type ChangeEvent, type FormEvent,useEffect, useRef, useState } from "react";
+import { type ChangeEvent, type FormEvent, useEffect, useRef, useState } from "react";
 
 import { getBoardThemeColors, useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
@@ -81,7 +83,9 @@ export const TopNav = () => {
   const [searchPending, setSearchPending] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const topNavRef = useRef<HTMLElement | null>(null);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const settingsRef = useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
@@ -158,6 +162,7 @@ export const TopNav = () => {
   }, [normalizedAuthUsername]);
 
   const resolvedProfileUsername = profileUsername || normalizedAuthUsername;
+  const searchExpanded = searchOpen;
 
   const handleBoardThemeChange = (event: ChangeEvent<HTMLSelectElement>): void => {
     setBoardTheme(event.target.value);
@@ -190,6 +195,39 @@ export const TopNav = () => {
     if (!searchOpen) return;
     searchInputRef.current?.focus();
   }, [searchOpen]);
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+    setProfileMenuOpen(false);
+    setSettingsOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return undefined;
+
+    const handlePointerDown = (event: MouseEvent): void => {
+      if (topNavRef.current?.contains(event.target as Node)) return;
+      setMobileMenuOpen(false);
+      setProfileMenuOpen(false);
+      setSettingsOpen(false);
+    };
+
+    const handleEscape = (event: KeyboardEvent): void => {
+      if (event.key === "Escape") {
+        setMobileMenuOpen(false);
+        setProfileMenuOpen(false);
+        setSettingsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [mobileMenuOpen]);
 
   useEffect(() => {
     if (!profileMenuOpen) return undefined;
@@ -251,6 +289,7 @@ export const TopNav = () => {
       });
       setSearchQuery("");
       setSearchOpen(false);
+      setMobileMenuOpen(false);
     } finally {
       setSearchPending(false);
     }
@@ -279,7 +318,7 @@ export const TopNav = () => {
   };
 
   return (
-    <header className="topNav">
+    <header className={`topNav ${mobileMenuOpen ? "mobileMenuOpen" : ""}`} ref={topNavRef}>
       <Link
         className={`homeBrand ${pathname === "/" ? "isActive" : ""}`}
         to="/"
@@ -289,10 +328,50 @@ export const TopNav = () => {
         <img src={appAssetPath("/favicon.ico")} alt="Atomic Puzzles" width="24" height="24" />
         <span>Atomic Puzzles</span>
       </Link>
+      <button
+        className="mobileMenuButton"
+        type="button"
+        aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+        aria-expanded={mobileMenuOpen}
+        aria-controls="top-nav-menu"
+        onClick={() => {
+          setMobileMenuOpen((open) => !open);
+          setProfileMenuOpen(false);
+          setSettingsOpen(false);
+        }}
+      >
+        <FontAwesomeIcon icon={mobileMenuOpen ? faXmark : faBars} />
+      </button>
       <div className="topNavCenter">
+        <nav className="topNavLinks" id="top-nav-menu" aria-label="Main navigation">
+          <Link
+            className={`mobileHomeLink ${pathname === "/" ? "isActive" : ""}`}
+            to="/"
+            aria-current={pathname === "/" ? "page" : undefined}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            Home
+          </Link>
+          {navItems.map((item) => {
+            const active = item.isActive(pathname);
+            return (
+              <Link
+                key={item.to}
+                className={active ? "isActive" : ""}
+                to={item.to}
+                aria-current={active ? "page" : undefined}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
         <div className="navSearchSlot">
           <form
-            className={`navSearch ${searchOpen ? "open" : ""} ${searchPending ? "pending" : ""}`}
+            className={`navSearch ${searchExpanded ? "open" : ""} ${
+              searchPending ? "pending" : ""
+            }`}
             onSubmit={handleSearchSubmit}
             onMouseEnter={() => {
               if (!searchPending) setSearchOpen(true);
@@ -312,7 +391,7 @@ export const TopNav = () => {
               aria-busy={searchPending}
               onChange={(event) => setSearchQuery(event.target.value)}
               disabled={searchPending}
-              tabIndex={searchOpen ? 0 : -1}
+              tabIndex={searchExpanded ? 0 : -1}
             />
             <div className="navSearchStatus" aria-hidden={!searchPending}>
               <span className="navSearchPulse" />
@@ -321,7 +400,7 @@ export const TopNav = () => {
             </div>
             <button
               className="navSearchIcon"
-              type={searchOpen ? "submit" : "button"}
+              type={searchExpanded ? "submit" : "button"}
               aria-label={searchPending ? "Searching for player" : "Search player"}
               disabled={searchPending}
               onClick={() => {
@@ -338,7 +417,7 @@ export const TopNav = () => {
             <button
               className="navSearchGo"
               type="submit"
-              tabIndex={searchOpen ? 0 : -1}
+              tabIndex={searchExpanded ? 0 : -1}
               disabled={!trimmedSearchQuery || searchPending}
               aria-label="Submit player search"
             >
@@ -346,21 +425,6 @@ export const TopNav = () => {
             </button>
           </form>
         </div>
-        <nav className="topNavLinks" aria-label="Main navigation">
-          {navItems.map((item) => {
-            const active = item.isActive(pathname);
-            return (
-              <Link
-                key={item.to}
-                className={active ? "isActive" : ""}
-                to={item.to}
-                aria-current={active ? "page" : undefined}
-              >
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
         <div className="navAuth" aria-live="polite">
           {isAuthenticated && user ? (
             <div className="navProfileMenu" ref={profileMenuRef}>
