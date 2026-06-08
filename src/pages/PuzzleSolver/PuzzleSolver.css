@@ -5,7 +5,7 @@
   background: var(--page-background);
   min-height: var(--page-shell-min-height);
   min-height: var(--page-shell-min-height-dynamic);
-  padding-block: 4px clamp(10px, 1.4vw, 18px);
+  padding-block: clamp(10px, 1.4vw, 16px) clamp(10px, 1.4vw, 18px);
 }
 
 body:has(.puzzlePage),
@@ -537,95 +537,102 @@ body:has(.puzzlePage),
   opacity: 0.45;
 }
 
-.feedbackBanner {
-  display: grid;
-  grid-template-columns: 24px minmax(0, 1fr);
-  grid-template-areas: "icon copy";
+.feedbackBadge {
+  --feedback-tone: var(--color-primary-soft);
+  --feedback-text: var(--color-heading);
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  z-index: 6;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  min-height: 38px;
-  padding: 5px 8px;
-  border-radius: var(--radius-ui);
-  background: var(--color-panel-strong);
-  border: 1px solid var(--color-border);
-  color: var(--color-muted);
+  min-height: 36px;
+  max-width: calc(100% - 28px);
+  padding: 6px 13px 6px 8px;
+  border-radius: 999px;
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--feedback-tone) 20%, transparent),
+      transparent 58%
+    ),
+    color-mix(in srgb, var(--color-panel-deep) 86%, transparent);
+  border: 1px solid color-mix(in srgb, var(--feedback-tone) 58%, transparent);
+  color: var(--feedback-text);
+  box-shadow:
+    0 16px 34px rgba(2, 6, 23, 0.34),
+    0 0 0 1px color-mix(in srgb, white 7%, transparent) inset,
+    0 8px 26px color-mix(in srgb, var(--feedback-tone) 18%, transparent);
+  pointer-events: none;
+  transform: translateX(-50%);
+  backdrop-filter: blur(14px) saturate(1.2);
+  animation: feedbackBadgeFade 2400ms ease forwards;
 }
 
-.feedbackBanner.correct {
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--color-cyan) 88%, var(--color-panel-strong)),
-    var(--color-panel-strong)
-  );
-  border-color: var(--color-cyan-bright);
-  color: var(--color-accent-soft-text);
+.feedbackBadge.correct {
+  --feedback-tone: var(--color-success);
+  --feedback-text: color-mix(in srgb, var(--color-success) 32%, white);
 }
 
-.feedbackBanner.retrySuccess {
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--color-primary) 88%, var(--color-panel-strong)),
-    var(--color-panel-strong)
-  );
-  border-color: var(--color-primary);
-  color: var(--color-on-primary);
+.feedbackBadge.retrySuccess {
+  --feedback-tone: var(--color-success);
+  --feedback-text: color-mix(in srgb, var(--color-success) 32%, white);
 }
 
-.feedbackBanner.wrong {
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--color-danger) 82%, var(--color-panel-strong)),
-    var(--color-panel-strong)
-  );
-  border-color: var(--color-danger);
-  color: color-mix(in srgb, var(--color-danger) 20%, white);
+.feedbackBadge.wrong {
+  --feedback-tone: var(--color-danger);
+  --feedback-text: color-mix(in srgb, var(--color-danger) 25%, white);
 }
 
-.feedbackBanner.retry {
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--color-primary) 88%, var(--color-panel-strong)),
-    var(--color-panel-strong)
-  );
-  border-color: var(--color-primary);
-  color: var(--color-on-primary);
+.feedbackBadge.retry {
+  --feedback-tone: var(--color-warning);
+  --feedback-text: color-mix(in srgb, var(--color-warning) 38%, white);
 }
 
 .feedbackIcon {
-  grid-area: icon;
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   display: inline-grid;
   place-items: center;
+  flex: 0 0 auto;
   border-radius: 50%;
-  background: color-mix(in srgb, currentColor 13%, transparent);
-  color: currentColor;
-  font-size: 15px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, white 16%, transparent), transparent),
+    color-mix(in srgb, var(--feedback-tone) 28%, transparent);
+  color: var(--feedback-text);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--feedback-tone) 34%, transparent) inset,
+    0 5px 12px color-mix(in srgb, var(--feedback-tone) 18%, transparent);
+  font-size: 12px;
   font-weight: 900;
   line-height: 1;
 }
 
-.feedbackIcon.neutral {
-  color: var(--color-primary-soft);
-}
-
-.feedbackCopy {
-  grid-area: copy;
-  display: grid;
-  gap: 2px;
+.feedbackBadge strong {
   min-width: 0;
-}
-
-.feedbackCopy strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: currentColor;
-  font-size: 13px;
-  line-height: 1.15;
+  font-size: 13.5px;
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: 0 1px 8px rgba(2, 6, 23, 0.36);
 }
 
-.feedbackCopy span {
-  color: color-mix(in srgb, currentColor 74%, transparent);
-  font-size: 13px;
-  line-height: 1.35;
+@keyframes feedbackBadgeFade {
+  0%,
+  72% {
+    opacity: 1;
+    transform: translateX(-50%);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -4px);
+  }
 }
 
 .emptyBoard {
@@ -645,7 +652,7 @@ body:has(.puzzlePage),
     height: var(--page-shell-min-height-dynamic);
     min-height: 0;
     overflow: hidden;
-    padding-block: 2px calc(106px + env(safe-area-inset-bottom, 0px));
+    padding-block: 10px calc(106px + env(safe-area-inset-bottom, 0px));
   }
 
   .puzzlePanel {
@@ -659,6 +666,7 @@ body:has(.puzzlePage),
 
   .boardWrap {
     order: -1;
+    padding-top: 2px;
   }
 
   .mobileWorkflowPanel {
@@ -735,26 +743,38 @@ body:has(.puzzlePage),
   }
 
   .mobileFeedbackOverlay {
+    --feedback-tone: var(--color-primary-soft);
+    --feedback-text: var(--color-heading);
     position: absolute;
-    top: 18px;
-    left: 18px;
-    right: 18px;
+    top: 14px;
+    left: 50%;
+    right: auto;
     z-index: 6;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
     min-height: 36px;
-    padding: 8px 12px;
+    max-width: calc(100% - 24px);
+    padding: 6px 13px 6px 8px;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--color-panel-strong) 94%, transparent);
-    border: 1px solid color-mix(in srgb, var(--color-border) 88%, transparent);
-    box-shadow: var(--shadow-panel);
-    color: var(--color-text);
+    background:
+      linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--feedback-tone) 20%, transparent),
+        transparent 58%
+      ),
+      color-mix(in srgb, var(--color-panel-deep) 86%, transparent);
+    border: 1px solid color-mix(in srgb, var(--feedback-tone) 58%, transparent);
+    box-shadow:
+      0 16px 34px rgba(2, 6, 23, 0.34),
+      0 0 0 1px color-mix(in srgb, white 7%, transparent) inset,
+      0 8px 26px color-mix(in srgb, var(--feedback-tone) 18%, transparent);
+    color: var(--feedback-text);
     pointer-events: none;
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(14px) saturate(1.2);
     opacity: 1;
-    transform: translateY(0);
+    transform: translate(-50%, 0);
     transition:
       opacity 220ms ease,
       transform 220ms ease;
@@ -762,49 +782,57 @@ body:has(.puzzlePage),
 
   .mobileFeedbackOverlay.fading {
     opacity: 0;
-    transform: translateY(-4px);
+    transform: translate(-50%, -4px);
   }
 
   .mobileFeedbackOverlay.correct {
-    background: color-mix(in srgb, var(--color-cyan-bright) 14%, var(--color-panel-strong));
-    border-color: color-mix(in srgb, var(--color-cyan-bright) 45%, transparent);
-    color: var(--color-accent-soft-text);
+    --feedback-tone: var(--color-success);
+    --feedback-text: color-mix(in srgb, var(--color-success) 32%, white);
   }
 
   .mobileFeedbackOverlay.retrySuccess {
-    background: color-mix(in srgb, var(--color-primary) 16%, var(--color-panel-strong));
-    border-color: color-mix(in srgb, var(--color-primary) 44%, transparent);
-    color: var(--color-on-primary);
+    --feedback-tone: var(--color-success);
+    --feedback-text: color-mix(in srgb, var(--color-success) 32%, white);
   }
 
   .mobileFeedbackOverlay.wrong {
-    background: color-mix(in srgb, var(--color-danger) 14%, var(--color-panel-strong));
-    border-color: color-mix(in srgb, var(--color-danger) 42%, transparent);
-    color: color-mix(in srgb, var(--color-danger) 18%, white);
+    --feedback-tone: var(--color-danger);
+    --feedback-text: color-mix(in srgb, var(--color-danger) 25%, white);
   }
 
   .mobileFeedbackOverlay.retry {
-    background: color-mix(in srgb, var(--color-primary) 15%, var(--color-panel-strong));
-    border-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
-    color: var(--color-on-primary);
+    --feedback-tone: var(--color-warning);
+    --feedback-text: color-mix(in srgb, var(--color-warning) 38%, white);
   }
 
   .mobileFeedbackIcon {
     display: inline-grid;
     place-items: center;
-    width: 20px;
-    height: 20px;
+    flex: 0 0 auto;
+    width: 22px;
+    height: 22px;
     border-radius: 50%;
-    background: color-mix(in srgb, currentColor 14%, transparent);
-    font-size: 13px;
+    background:
+      linear-gradient(180deg, color-mix(in srgb, white 16%, transparent), transparent),
+      color-mix(in srgb, var(--feedback-tone) 28%, transparent);
+    color: var(--feedback-text);
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--feedback-tone) 34%, transparent) inset,
+      0 5px 12px color-mix(in srgb, var(--feedback-tone) 18%, transparent);
+    font-size: 12px;
     font-weight: 900;
     line-height: 1;
   }
 
   .mobileFeedbackText {
-    font-size: 13px;
-    font-weight: 800;
-    line-height: 1.2;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13.5px;
+    font-weight: 900;
+    line-height: 1;
+    text-shadow: 0 1px 8px rgba(2, 6, 23, 0.36);
   }
 }
 
@@ -815,7 +843,7 @@ body:has(.puzzlePage),
 
   .puzzlePage {
     gap: 8px;
-    padding-block: 2px calc(104px + env(safe-area-inset-bottom, 0px));
+    padding-block: 10px calc(104px + env(safe-area-inset-bottom, 0px));
   }
 
   .mobileActionCard {
@@ -848,7 +876,7 @@ body:has(.puzzlePage),
     max-width: 416px;
   }
 
-  .feedbackBanner {
-    padding: 5px 8px;
+  .feedbackBadge {
+    top: 14px;
   }
 }

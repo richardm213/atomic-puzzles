@@ -174,7 +174,11 @@ const getActiveSolutionLineIndex = ({
 };
 
 type SolutionOption = { move: string; lineIndex: number; plyIndex: number };
-type CompletionFeedback = { type: string; icon: string; title: string };
+type CompletionFeedback = {
+  type: string;
+  icon: string;
+  title: string;
+};
 type PlaybackCommand = NonNullable<import("../../types/chessboard").SolutionNavigation["command"]>;
 
 const buildSolutionOptions = ({
@@ -221,12 +225,12 @@ const buildCompletionFeedback = (
       ? {
           type: "retrySuccess",
           icon: "↺",
-          title: "Puzzle solved on retry",
+          title: "Correct",
         }
       : {
           type: "correct",
           icon: "✓",
-          title: "Puzzle correct",
+          title: "Correct",
         };
   }
 
@@ -234,7 +238,7 @@ const buildCompletionFeedback = (
     return {
       type: "wrong",
       icon: "×",
-      title: "Puzzle incorrect",
+      title: "Incorrect",
     };
   }
 
@@ -335,6 +339,7 @@ export const PuzzleSolverPage = () => {
     icon: string;
     title: string;
   } | null>(null);
+  const [feedbackBadgeId, setFeedbackBadgeId] = useState(0);
   const [pinnedSolutionLineIndex, setPinnedSolutionLineIndex] = useState<number | null>(null);
   const [copyPgnLabel, setCopyPgnLabel] = useState("Copy PGN");
   const [boardState, setBoardState] = useState(createInitialBoardState);
@@ -343,9 +348,7 @@ export const PuzzleSolverPage = () => {
   );
   const interactionModeRef = useRef(SOLVE_MODE);
   const hadWrongAttemptRef = useRef(false);
-  const lockedCompletionFeedbackRef = useRef<{ type: string; icon: string; title: string } | null>(
-    null,
-  );
+  const lockedCompletionFeedbackRef = useRef<CompletionFeedback | null>(null);
   const mobileFeedbackIdRef = useRef(0);
   const activeSolutionOptionRef = useRef<HTMLButtonElement | null>(null);
   const upcomingPuzzleIndexesRef = useRef<number[]>([]);
@@ -601,6 +604,7 @@ export const PuzzleSolverPage = () => {
     setSolutionNavigation(null);
     setInteractionMode(SOLVE_MODE);
     setCompletionFeedback(null);
+    setFeedbackBadgeId(0);
     lockedCompletionFeedbackRef.current = null;
     setPinnedSolutionLineIndex(null);
     hadWrongAttemptRef.current = false;
@@ -702,17 +706,14 @@ export const PuzzleSolverPage = () => {
     setSolutionNavigation(null);
   };
 
-  const showMobileFeedback = useCallback(
-    (nextFeedback: { type: string; icon: string; title: string }): void => {
-      mobileFeedbackIdRef.current += 1;
-      setMobileFeedback({
-        ...nextFeedback,
-        id: mobileFeedbackIdRef.current,
-        fading: false,
-      });
-    },
-    [],
-  );
+  const showMobileFeedback = useCallback((nextFeedback: CompletionFeedback): void => {
+    mobileFeedbackIdRef.current += 1;
+    setMobileFeedback({
+      ...nextFeedback,
+      id: mobileFeedbackIdRef.current,
+      fading: false,
+    });
+  }, []);
 
   const handleBoardStateChange = useCallback(
     (nextBoardState: import("../../types/chessboard").ChessboardState): void => {
@@ -726,6 +727,8 @@ export const PuzzleSolverPage = () => {
         nextBoardState,
         hadWrongAttemptRef.current,
       );
+      const shouldShowTransientFeedback =
+        nextCompletionFeedback !== null && !nextBoardState.viewingSolution;
       const lockedCompletionFeedback =
         nextCompletionFeedback?.type === "retry" || nextCompletionFeedback?.type === "wrong"
           ? null
@@ -739,7 +742,7 @@ export const PuzzleSolverPage = () => {
       setBoardState(nextBoardState);
 
       if (isMobileLayout) {
-        if (nextCompletionFeedback) {
+        if (shouldShowTransientFeedback) {
           showMobileFeedback(nextCompletionFeedback);
         } else if (interactionModeRef.current === SOLVE_MODE && boardPositionChanged) {
           setMobileFeedback(null);
@@ -748,6 +751,10 @@ export const PuzzleSolverPage = () => {
 
       if (nextBoardState.showWrongMove) {
         hadWrongAttemptRef.current = true;
+      }
+
+      if (shouldShowTransientFeedback) {
+        setFeedbackBadgeId((current) => current + 1);
       }
 
       if (nextCompletionFeedback?.type === "retry" || nextCompletionFeedback?.type === "wrong") {
@@ -1247,17 +1254,16 @@ export const PuzzleSolverPage = () => {
 
       <div className="boardWrap">
         <div className={`boardFrame ${feedback ? `hasFeedback ${feedback.type}` : ""}`}>
-          {!isMobileLayout ? (
-            <div className={`feedbackBanner ${feedback ? feedback.type : ""}`} aria-live="polite">
-              <span
-                className={`feedbackIcon ${feedback ? "" : "neutral"}`.trim()}
-                aria-hidden="true"
-              >
-                {feedback ? feedback.icon : "?"}
+          {!isMobileLayout && feedback ? (
+            <div
+              className={`feedbackBadge ${feedback.type}`}
+              aria-live="polite"
+              key={feedbackBadgeId}
+            >
+              <span className="feedbackIcon" aria-hidden="true">
+                {feedback.icon}
               </span>
-              <span className="feedbackCopy">
-                <strong>{feedback ? feedback.title : boardState.status || "Ready"}</strong>
-              </span>
+              <strong>{feedback.title}</strong>
             </div>
           ) : null}
           {fen ? (
@@ -1289,7 +1295,7 @@ export const PuzzleSolverPage = () => {
               <span className="mobileFeedbackIcon" aria-hidden="true">
                 {mobileFeedback.icon}
               </span>
-              <span className="mobileFeedbackText">{mobileFeedback.title}</span>
+              <strong className="mobileFeedbackText">{mobileFeedback.title}</strong>
             </div>
           ) : null}
         </div>
