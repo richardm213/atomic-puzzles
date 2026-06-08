@@ -1,6 +1,13 @@
 import "./PuzzleSolver.css";
 
-import { faCheck, faClockRotateLeft, faRotateLeft } from "@fortawesome/free-solid-svg-icons";
+import {
+  faBackward,
+  faBackwardStep,
+  faCheck,
+  faClockRotateLeft,
+  faForward,
+  faForwardStep,
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -168,6 +175,7 @@ const getActiveSolutionLineIndex = ({
 
 type SolutionOption = { move: string; lineIndex: number; plyIndex: number };
 type CompletionFeedback = { type: string; icon: string; title: string };
+type PlaybackCommand = NonNullable<import("../../types/chessboard").SolutionNavigation["command"]>;
 
 const buildSolutionOptions = ({
   solutionLines,
@@ -782,20 +790,13 @@ export const PuzzleSolverPage = () => {
     [isMobileLayout, showMobileFeedback, showSolution],
   );
 
-  const handleMoveClick = useCallback(
-    (
-      lineIndex: number,
-      moveIndex: number,
-      { advance = false }: { advance?: boolean } = {},
-    ): void => {
-      setPinnedSolutionLineIndex(lineIndex);
-      setSolutionNavigation({
-        lineIndex,
-        plyIndex: moveIndex + (advance ? 2 : 1),
-      });
-    },
-    [],
-  );
+  const handleMoveClick = useCallback((lineIndex: number, moveIndex: number): void => {
+    setPinnedSolutionLineIndex(lineIndex);
+    setSolutionNavigation({
+      lineIndex,
+      plyIndex: moveIndex + 1,
+    });
+  }, []);
 
   const handleAnalysisMoveClick = useCallback((moveIndex: number): void => {
     setSolutionNavigation({
@@ -804,21 +805,15 @@ export const PuzzleSolverPage = () => {
     });
   }, []);
 
+  const handlePlaybackCommand = useCallback((command: PlaybackCommand): void => {
+    setSolutionNavigation({ command });
+  }, []);
+
   const currentAnalysisMoves = useMemo(
     () => boardState.lineMoves?.slice(0, boardState.lineIndex) ?? [],
     [boardState.lineMoves, boardState.lineIndex],
   );
 
-  const handleResetSolutionView = () => {
-    const mainSolutionLine = boardState.solutionLines?.[0] ?? [];
-    const targetPly = Math.min(currentAnalysisMoves.length, mainSolutionLine.length);
-    setPinnedSolutionLineIndex(0);
-
-    setSolutionNavigation({
-      lineIndex: 0,
-      plyIndex: targetPly,
-    });
-  };
   const matchingSolutionLineIndexes = useMemo(
     () => getMatchingSolutionLineIndexes(boardState.solutionLines, currentAnalysisMoves),
     [boardState.solutionLines, currentAnalysisMoves],
@@ -844,6 +839,7 @@ export const PuzzleSolverPage = () => {
     [boardState.solutionLineIndex, pinnedSolutionLineIndex, sortedMatchingSolutionLineIndexes],
   );
   const activeSolutionLine = boardState.solutionLines?.[activeSolutionLineIndex] ?? [];
+  const mainSolutionLine = boardState.solutionLines?.[0] ?? [];
   const isOnSolutionPath =
     matchingSolutionLineIndexes.length > 0 &&
     activeSolutionLine.length >= currentAnalysisMoves.length;
@@ -886,44 +882,6 @@ export const PuzzleSolverPage = () => {
       inline: "nearest",
     });
   }, [activeSolutionOption]);
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
-      if (!isAnalysisMode || !showSolution || !hasSolutionOptions) return;
-
-      const isInputTarget =
-        event.target instanceof HTMLElement &&
-        (event.target.tagName === "INPUT" ||
-          event.target.tagName === "TEXTAREA" ||
-          event.target.isContentEditable);
-      if (isInputTarget) return;
-
-      const activeOptionIndex = solutionOptions.findIndex(
-        (option) => option.lineIndex === activeSolutionLineIndex,
-      );
-      if (activeOptionIndex === -1) return;
-
-      const delta = event.key === "ArrowDown" ? 1 : -1;
-      const nextOptionIndex =
-        (activeOptionIndex + delta + solutionOptions.length) % solutionOptions.length;
-      const nextOption = solutionOptions[nextOptionIndex];
-      if (!nextOption) return;
-
-      event.preventDefault();
-      handleMoveClick(nextOption.lineIndex, nextOption.plyIndex - 1);
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [
-    activeSolutionLineIndex,
-    handleMoveClick,
-    hasSolutionOptions,
-    isAnalysisMode,
-    showSolution,
-    solutionOptions,
-  ]);
 
   const inlineSolutionMoves = useMemo(() => {
     if (!boardState.solutionLines?.length) return null;
@@ -1045,11 +1003,73 @@ export const PuzzleSolverPage = () => {
     }, 1800);
   }, [moveLinePgn]);
 
+  const currentLineLength =
+    showSolution && canRevealSolution
+      ? activeSolutionLine.length
+      : (boardState.lineMoves?.length ?? 0);
+  const currentPly = boardState.lineIndex ?? 0;
+  const isAtMainSolutionEnd =
+    showSolution &&
+    canRevealSolution &&
+    (boardState.solutionLineIndex ?? 0) === 0 &&
+    currentPly >= mainSolutionLine.length;
+  const canPlaybackStart = currentPly > 0;
+  const canPlaybackPrevious = currentPly > 0;
+  const canPlaybackNext = currentPly < currentLineLength;
+  const canPlaybackEnd =
+    showSolution && canRevealSolution ? !isAtMainSolutionEnd : currentPly < currentLineLength;
+
+  const renderPlaybackControls = () => (
+    <div className="playbackControls" aria-label="Line playback">
+      <button
+        type="button"
+        className="playbackButton"
+        onClick={() => handlePlaybackCommand("start")}
+        disabled={!fen || !canPlaybackStart}
+        aria-label="Go to start of line"
+        title="Start (Arrow Up)"
+      >
+        <FontAwesomeIcon icon={faBackwardStep} />
+      </button>
+      <button
+        type="button"
+        className="playbackButton"
+        onClick={() => handlePlaybackCommand("previous")}
+        disabled={!fen || !canPlaybackPrevious}
+        aria-label="Go to previous move"
+        title="Previous (Arrow Left)"
+      >
+        <FontAwesomeIcon icon={faBackward} />
+      </button>
+      <button
+        type="button"
+        className="playbackButton"
+        onClick={() => handlePlaybackCommand("next")}
+        disabled={!fen || !canPlaybackNext}
+        aria-label="Go to next move"
+        title="Next (Arrow Right)"
+      >
+        <FontAwesomeIcon icon={faForward} />
+      </button>
+      <button
+        type="button"
+        className="playbackButton"
+        onClick={() => handlePlaybackCommand("end")}
+        disabled={!fen || !canPlaybackEnd}
+        aria-label="Go to end of main line"
+        title="End of main line (Arrow Down)"
+      >
+        <FontAwesomeIcon icon={faForwardStep} />
+      </button>
+    </div>
+  );
+
   const renderMoveLine = (className = "lineBox") => (
     <div className={className}>
       <div className="lineHeader">
         <div className="fenLabel">Solution</div>
         <div className="solutionHeaderActions">
+          {renderPlaybackControls()}
           <button
             type="button"
             className="fenAnalyzeButton"
@@ -1060,16 +1080,6 @@ export const PuzzleSolverPage = () => {
               <FontAwesomeIcon className="copyPgnCheck" icon={faCheck} aria-hidden="true" />
             ) : null}
             {copyPgnLabel}
-          </button>
-          <button
-            type="button"
-            className="solutionNavButton"
-            onClick={handleResetSolutionView}
-            disabled={!boardState.solutionLines?.length}
-            aria-label="Reset to main solution"
-            title="Reset to main solution"
-          >
-            <FontAwesomeIcon icon={faRotateLeft} />
           </button>
         </div>
       </div>

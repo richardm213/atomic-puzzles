@@ -18,6 +18,7 @@ export type ChessboardState = {
 };
 
 export type SolutionNavigation = {
+  command?: "start" | "previous" | "next" | "end";
   useHistory?: boolean;
   plyIndex?: number;
   lineIndex?: number;

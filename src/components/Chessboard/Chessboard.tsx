@@ -421,6 +421,49 @@ export const Chessboard = ({
     [clearMoveEvaluationTimer, isAnalysisModeActive, syncBoard],
   );
 
+  const navigatePlayback = useCallback(
+    (command: NonNullable<SolutionNavigation["command"]>): void => {
+      const history = historyRef.current;
+
+      if (showSolutionRef.current) {
+        const activeLineIndex = activeSolutionLineRef.current;
+        const mainLineIndex = 0;
+        const targetLineIndex = command === "end" ? mainLineIndex : activeLineIndex;
+        const targetLine =
+          displaySolutionEntriesRef.current[targetLineIndex]?.moveEntries ??
+          displaySolutionEntriesRef.current[activeLineIndex]?.moveEntries;
+        const targetLineLength = targetLine?.length ?? 0;
+
+        if (command === "start") {
+          showSolutionLine(targetLineIndex, 0);
+          return;
+        }
+
+        if (command === "end") {
+          showSolutionLine(targetLineIndex, targetLineLength);
+          return;
+        }
+
+        const delta = command === "next" ? 1 : -1;
+        showSolutionLine(activeLineIndex, history.index + delta);
+        return;
+      }
+
+      if (command === "start") {
+        navigateTo(0);
+        return;
+      }
+
+      if (command === "end") {
+        navigateTo(history.fens.length - 1);
+        return;
+      }
+
+      navigateTo(history.index + (command === "next" ? 1 : -1));
+    },
+    [navigateTo, showSolutionLine],
+  );
+
   const autoplayOpponentMove = useCallback(
     (position: Atomic): boolean => {
       const candidates = candidateLinesRef.current;
@@ -719,7 +762,9 @@ export const Chessboard = ({
   useEffect(() => {
     if (!solutionNavigation) return;
 
-    if (solutionNavigation.useHistory && solutionNavigation.plyIndex !== undefined) {
+    if (solutionNavigation.command) {
+      navigatePlayback(solutionNavigation.command);
+    } else if (solutionNavigation.useHistory && solutionNavigation.plyIndex !== undefined) {
       navigateTo(solutionNavigation.plyIndex);
     } else if (showSolutionRef.current) {
       showSolutionLine(
@@ -731,7 +776,7 @@ export const Chessboard = ({
     }
 
     onNavigateHandled?.();
-  }, [solutionNavigation, onNavigateHandled, navigateTo, showSolutionLine]);
+  }, [solutionNavigation, onNavigateHandled, navigatePlayback, navigateTo, showSolutionLine]);
 
   useEffect(() => {
     if (!analysisMode) return;
@@ -760,28 +805,26 @@ export const Chessboard = ({
           event.target.isContentEditable);
       if (isInputTarget) return;
 
-      if (event.key === "ArrowLeft") {
+      if (
+        event.key === "ArrowLeft" ||
+        event.key === "ArrowRight" ||
+        event.key === "ArrowUp" ||
+        event.key === "ArrowDown"
+      ) {
         event.preventDefault();
-        if (showSolutionRef.current) {
-          showSolutionLine(activeSolutionLineRef.current, historyRef.current.index - 1);
-        } else {
-          navigateTo(historyRef.current.index - 1);
-        }
-      }
-
-      if (event.key === "ArrowRight") {
-        event.preventDefault();
-        if (showSolutionRef.current) {
-          showSolutionLine(activeSolutionLineRef.current, historyRef.current.index + 1);
-        } else {
-          navigateTo(historyRef.current.index + 1);
-        }
+        const commandByKey: Record<string, NonNullable<SolutionNavigation["command"]>> = {
+          ArrowLeft: "previous",
+          ArrowRight: "next",
+          ArrowUp: "start",
+          ArrowDown: "end",
+        };
+        navigatePlayback(commandByKey[event.key]!);
       }
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [navigateTo, showSolutionLine]);
+  }, [navigatePlayback]);
 
   useEffect(() => {
     if (showSolution && displaySolutionLinesRef.current.length > 0) return;
