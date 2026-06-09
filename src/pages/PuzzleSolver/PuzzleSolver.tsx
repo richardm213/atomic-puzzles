@@ -248,7 +248,7 @@ const buildCompletionFeedback = (
     return {
       type: "retry",
       icon: "↺",
-      title: "Try again",
+      title: "Try again: better move",
     };
   }
 
@@ -655,12 +655,17 @@ export const PuzzleSolverPage = () => {
     };
   }, [mobileFeedback]);
 
-  const canRevealSolution = Boolean(fen) && hasAttemptedActivePuzzle;
-  const solutionButtonTitle = hasAttemptedActivePuzzle
-    ? showSolution
-      ? "Hide solution"
-      : "Show solution"
-    : SOLUTION_UNLOCK_HINT;
+  const isRetryFeedbackActive = Boolean(
+    boardState.showRetryMove && !boardState.viewingSolution && !boardState.solved,
+  );
+  const canRevealSolution = Boolean(fen) && hasAttemptedActivePuzzle && !isRetryFeedbackActive;
+  const solutionButtonTitle = isRetryFeedbackActive
+    ? "Find the better move before viewing the solution."
+    : hasAttemptedActivePuzzle
+      ? showSolution
+        ? "Hide solution"
+        : "Show solution"
+      : SOLUTION_UNLOCK_HINT;
   const feedback = completionFeedback;
 
   const handleNextPuzzle = () => {
