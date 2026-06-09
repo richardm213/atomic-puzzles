@@ -12,7 +12,7 @@
   gap: 22px;
   background:
     radial-gradient(circle at top left, color-mix(in srgb, var(--color-primary) 12%, transparent), transparent 24%),
-    radial-gradient(circle at top right, color-mix(in srgb, #d4a24c 10%, transparent), transparent 22%);
+    radial-gradient(circle at top right, color-mix(in srgb, var(--color-accent-warm) 10%, transparent), transparent 22%);
 }
 
 .tournamentPageHero {
@@ -33,10 +33,10 @@
   padding: clamp(20px, 3.5vw, 28px);
   background:
     radial-gradient(circle at top right, color-mix(in srgb, var(--color-primary) 26%, transparent), transparent 30%),
-    linear-gradient(145deg, color-mix(in srgb, #17365f 55%, var(--color-panel)), var(--color-panel));
+    linear-gradient(145deg, color-mix(in srgb, var(--color-primary-hover) 24%, var(--color-panel)), var(--color-panel));
   border-color: color-mix(in srgb, var(--color-primary) 28%, var(--color-border));
   box-shadow:
-    0 20px 50px color-mix(in srgb, #071324 70%, transparent),
+    0 20px 50px color-mix(in srgb, var(--color-panel-deep) 70%, transparent),
     inset 0 1px 0 color-mix(in srgb, white 6%, transparent);
 }
 
@@ -90,7 +90,7 @@
   padding: 8px 12px;
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--color-primary) 18%, var(--color-border));
-  background: color-mix(in srgb, #122646 76%, transparent);
+  background: color-mix(in srgb, var(--color-panel-strong) 76%, transparent);
   color: var(--color-primary-pale);
   font-size: 0.95rem;
   font-weight: 700;
@@ -104,8 +104,8 @@
 .tournamentYearNavLink:hover,
 .tournamentYearNavLink:focus-visible {
   border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-border));
-  background: color-mix(in srgb, var(--color-primary) 18%, #122646);
-  color: #eff5ff;
+  background: color-mix(in srgb, var(--color-primary) 18%, var(--color-panel-strong));
+  color: var(--color-on-primary);
   outline: none;
 }
 
@@ -115,7 +115,7 @@
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--color-primary-pale) 84%, #f2d38b 16%);
+  color: color-mix(in srgb, var(--color-primary-pale) 84%, var(--color-accent-warm) 16%);
 }
 
 .tournamentPageHeroCopy h1,
@@ -176,15 +176,15 @@
 
 .tournamentPlayerLink:hover,
 .tournamentPlayerLink:focus-visible {
-  color: #dbe8ff;
-  border-color: color-mix(in srgb, #9fc0ff 72%, transparent);
+  color: var(--link-hover-color);
+  border-color: color-mix(in srgb, var(--color-primary-soft) 72%, transparent);
   outline: none;
 }
 
 .tournamentAdvanceCheck {
   display: inline-block;
   margin-left: 8px;
-  color: #49d17d;
+  color: var(--color-success);
   font-size: 14px;
   font-weight: 900;
   line-height: 1;
@@ -198,7 +198,7 @@
   object-fit: cover;
   border-radius: 2px;
   border: 1px solid color-mix(in srgb, white 12%, transparent);
-  box-shadow: 0 1px 3px color-mix(in srgb, #04101f 48%, transparent);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--color-panel-deep) 48%, transparent);
   margin-right: 6px;
   vertical-align: -0.12em;
 }
@@ -216,7 +216,7 @@
   width: fit-content;
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--color-primary) 18%, var(--color-border));
-  background: color-mix(in srgb, #0f203a 70%, var(--color-panel-strong));
+  background: color-mix(in srgb, var(--color-surface-elevated-strong) 70%, var(--color-panel-strong));
   box-shadow: var(--shadow-soft);
 }
 
@@ -237,7 +237,7 @@
 }
 
 .tournamentStageToggleButton.isActive {
-  background: color-mix(in srgb, var(--color-primary) 16%, #152745);
+  background: color-mix(in srgb, var(--color-primary) 16%, var(--color-panel-strong));
   color: var(--color-heading);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent);
 }
@@ -253,10 +253,10 @@
   overflow: hidden;
   background:
     radial-gradient(circle at 20% 0%, color-mix(in srgb, var(--color-primary) 9%, transparent), transparent 20%),
-    linear-gradient(180deg, color-mix(in srgb, #0b1730 62%, var(--color-panel)), var(--color-panel));
+    linear-gradient(180deg, color-mix(in srgb, var(--color-panel-deep) 20%, var(--color-panel)), var(--color-panel));
   border-color: color-mix(in srgb, var(--color-primary) 16%, var(--color-border));
   box-shadow:
-    0 18px 38px color-mix(in srgb, #06101d 70%, transparent),
+    0 18px 38px color-mix(in srgb, var(--color-panel-deep) 70%, transparent),
     inset 0 1px 0 color-mix(in srgb, white 4%, transparent);
 }
 
@@ -302,7 +302,7 @@
   gap: 6px;
   padding: 4px;
   border-radius: 999px;
-  background: color-mix(in srgb, #0f203a 72%, var(--color-panel-strong));
+  background: color-mix(in srgb, var(--color-surface-elevated-strong) 72%, var(--color-panel-strong));
   border: 1px solid color-mix(in srgb, var(--color-primary) 16%, var(--color-border));
   box-shadow: inset 0 1px 0 color-mix(in srgb, white 5%, transparent);
 }
@@ -326,19 +326,19 @@
 }
 
 .tournamentZoomValue {
-  background: color-mix(in srgb, var(--color-primary) 12%, #152745);
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-panel-strong));
   color: var(--color-primary-pale);
   min-width: 86px;
 }
 
 .tournamentZoomButton:hover,
 .tournamentZoomValue:hover {
-  background: color-mix(in srgb, var(--color-primary) 18%, #183156);
+  background: color-mix(in srgb, var(--color-primary) 18%, var(--color-surface-elevated-strong));
 }
 
 .tournamentRoundFilter {
   border: 1px solid var(--color-border-strong);
-  background: color-mix(in srgb, #0f203a 66%, var(--color-panel-strong));
+  background: color-mix(in srgb, var(--color-surface-elevated-strong) 66%, var(--color-panel-strong));
   color: var(--color-muted);
   border-radius: 999px;
   min-height: 34px;
@@ -356,9 +356,9 @@
 .tournamentRoundFilter.isActive {
   border-color: var(--color-primary);
   background:
-    linear-gradient(180deg, color-mix(in srgb, #f0b553 18%, transparent), transparent),
-    color-mix(in srgb, var(--color-primary) 16%, #14294c);
-  color: #f9fbff;
+    linear-gradient(180deg, color-mix(in srgb, var(--color-accent-warm-strong) 18%, transparent), transparent),
+    color-mix(in srgb, var(--color-primary) 16%, var(--color-panel-strong));
+  color: var(--color-heading);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 18%, transparent);
 }
 
@@ -387,17 +387,17 @@
   padding: 12px 14px;
   border-radius: 16px;
   background:
-    linear-gradient(180deg, color-mix(in srgb, #f2c873 12%, transparent), transparent),
-    color-mix(in srgb, #0e213d 72%, var(--color-panel-strong));
-  border: 1px solid color-mix(in srgb, #f0b553 18%, var(--color-border));
+    linear-gradient(180deg, color-mix(in srgb, var(--color-accent-warm) 12%, transparent), transparent),
+    color-mix(in srgb, var(--color-surface-elevated-strong) 72%, var(--color-panel-strong));
+  border: 1px solid color-mix(in srgb, var(--color-accent-warm-strong) 18%, var(--color-border));
   box-shadow:
-    0 10px 24px color-mix(in srgb, #06101d 65%, transparent),
+    0 10px 24px color-mix(in srgb, var(--color-panel-deep) 65%, transparent),
     inset 0 1px 0 color-mix(in srgb, white 6%, transparent);
 }
 
 .tournamentRoundHeader span {
   font-weight: 800;
-  color: #f7f4ec;
+  color: var(--color-heading);
   letter-spacing: 0.02em;
 }
 
@@ -408,11 +408,15 @@
 
 .tournamentMatchCard {
   width: 100%;
-  border: 1px solid color-mix(in srgb, #35507b 46%, var(--color-border));
+  border: 1px solid color-mix(in srgb, var(--color-primary-soft) 24%, var(--color-border));
   border-radius: 20px;
   background:
     linear-gradient(180deg, color-mix(in srgb, white 3%, transparent), transparent),
-    linear-gradient(160deg, color-mix(in srgb, #102343 88%, var(--color-panel)), color-mix(in srgb, #0b1730 92%, var(--color-panel)));
+    linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--color-surface-elevated-strong) 88%, var(--color-panel)),
+      color-mix(in srgb, var(--color-panel-strong) 92%, var(--color-panel))
+    );
   color: inherit;
   padding: 15px 16px;
   display: grid;
@@ -441,7 +445,7 @@
 .tournamentMatchCardTree.isClickable:hover {
   border-color: color-mix(in srgb, var(--color-primary) 44%, var(--color-border));
   box-shadow:
-    0 14px 30px color-mix(in srgb, #071324 54%, transparent),
+    0 14px 30px color-mix(in srgb, var(--color-panel-deep) 54%, transparent),
     inset 0 1px 0 color-mix(in srgb, white 6%, transparent);
 }
 
@@ -470,14 +474,14 @@
 .tournamentMatchPlayers strong {
   flex: 0 0 auto;
   min-width: 2.6ch;
-  color: #f5f7fb;
+  color: var(--color-on-elevated);
   font-size: 1.02rem;
   white-space: nowrap;
   text-align: right;
 }
 
 .tournamentScoreWithdrawal {
-  color: #f5f7fb !important;
+  color: var(--color-on-elevated) !important;
   font-size: inherit !important;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -506,28 +510,28 @@
 
 .tournamentTreeLines path {
   fill: none;
-  stroke: color-mix(in srgb, #6a8cd8 72%, #f0b553 12%);
+  stroke: color-mix(in srgb, var(--color-primary-soft) 72%, var(--color-accent-warm-strong) 12%);
   stroke-width: 2.5;
   stroke-linecap: round;
   stroke-linejoin: round;
-  filter: drop-shadow(0 0 8px color-mix(in srgb, #4c79d8 16%, transparent));
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--color-primary) 16%, transparent));
 }
 
 :root[data-theme="light"] .tournamentTreeLines path {
-  stroke: color-mix(in srgb, #8b7d6b 54%, #3469d4 22%);
+  stroke: color-mix(in srgb, var(--color-gold) 54%, var(--color-primary) 22%);
 }
 
 :root[data-theme="light"] .tournamentPage {
   background:
-    radial-gradient(circle at top left, rgba(56, 103, 196, 0.1), transparent 24%),
-    radial-gradient(circle at top right, rgba(214, 163, 76, 0.08), transparent 22%);
+    radial-gradient(circle at top left, color-mix(in srgb, var(--color-primary) 10%, transparent), transparent 24%),
+    radial-gradient(circle at top right, color-mix(in srgb, var(--color-accent-warm) 8%, transparent), transparent 22%);
 }
 
 :root[data-theme="light"] .tournamentStageSection,
 :root[data-theme="light"] .tournamentPageHeroCopy {
   box-shadow:
-    0 18px 34px rgba(72, 93, 126, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    0 18px 34px color-mix(in srgb, var(--color-muted) 12%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 35%, transparent);
 }
 
 .tournamentPageMissing {

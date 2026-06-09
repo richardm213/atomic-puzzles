@@ -2,7 +2,8 @@
   grid-template-columns: minmax(280px, 23rem) minmax(0, 31.5rem);
   gap: clamp(14px, 2vw, 24px);
   align-items: start;
-  background: var(--page-background);
+  background: var(--site-background);
+  background-size: var(--site-background-size);
   min-height: var(--page-shell-min-height);
   min-height: var(--page-shell-min-height-dynamic);
   width: min(100%, 980px);

@@ -1,7 +1,8 @@
 .puzzleDashboardPage {
   min-height: var(--page-shell-min-height);
   min-height: var(--page-shell-min-height-dynamic);
-  background: var(--page-background);
+  background: var(--site-background);
+  background-size: var(--site-background-size);
   color: var(--color-text);
   padding: var(--page-shell-padding);
 }

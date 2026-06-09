@@ -2,7 +2,8 @@
   min-height: var(--page-shell-min-height);
   min-height: var(--page-shell-min-height-dynamic);
   color: var(--color-text);
-  background: var(--page-background);
+  background: var(--site-background);
+  background-size: var(--site-background-size);
   display: grid;
   gap: clamp(18px, 2.8vw, 30px);
   align-content: start;
