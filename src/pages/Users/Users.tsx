@@ -4,12 +4,12 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
 import { Seo } from "../../components/Seo/Seo";
-import { type Mode,modeOptions } from "../../constants/matches";
+import { type Mode, modeOptions } from "../../constants/matches";
 import {
   fetchPlayerRatingsRows,
   type PlayerRatingRow,
 } from "../../lib/supabase/supabasePlayerRatings";
-import { type AliasLookup,loadAliasesLookup } from "../../lib/users/aliasesLookup";
+import { type AliasLookup, loadAliasesLookup } from "../../lib/users/aliasesLookup";
 
 const HIGH_RD_THRESHOLD = 100;
 const ratingDisplayOptions = ["current", "peak"] as const;
@@ -25,12 +25,37 @@ type UserRow = {
   hyperbullet: RatingCells;
   aliasCount: number;
   aliases: string[];
+  openings: string[];
 };
 
-type UserSortKey = "username" | "aliasCount" | Mode;
+type UserSortKey = "username" | "openings" | "aliasCount" | Mode;
 
-const isMode = (value: string): value is Mode =>
-  (modeOptions as readonly string[]).includes(value);
+const openingDisplayLabels: Record<string, string> = {
+  "nf3 e3": "Nf3 e3",
+  "nf3 e4": "Nf3 e4",
+  e4: "e4",
+  d4: "d4",
+  "2n": "2N",
+  "2n h3": "2N h3",
+  "nh3 d4": "Nh3 d4",
+  "nh3 e4": "Nh3 e4",
+  "nh3 e3": "Nh3 e3",
+  nc3: "Nc3",
+  na3: "Na3",
+  "nf3 d4": "Nf3 d4",
+  "nf3 nd4": "Nf3 Nd4",
+  "nf3 c3": "Nf3 c3",
+  variety: "All-around",
+};
+
+const getOpeningDisplayLabel = (opening: string): string => {
+  const normalizedOpening = String(opening || "")
+    .trim()
+    .toLowerCase();
+  return openingDisplayLabels[normalizedOpening] ?? String(opening || "").trim();
+};
+
+const isMode = (value: string): value is Mode => (modeOptions as readonly string[]).includes(value);
 
 const getUserColumns = (
   ratingDisplayMode: RatingDisplayMode,
@@ -39,6 +64,7 @@ const getUserColumns = (
   { key: "blitz", label: `Blitz ${ratingDisplayMode === "peak" ? "Peak" : "Rating"}` },
   { key: "bullet", label: `Bullet ${ratingDisplayMode === "peak" ? "Peak" : "Rating"}` },
   { key: "hyperbullet", label: `Hyper ${ratingDisplayMode === "peak" ? "Peak" : "Rating"}` },
+  { key: "openings", label: "Openings" },
   { key: "aliasCount", label: "Number of Aliases" },
 ];
 
@@ -95,10 +121,7 @@ const compareNullableNumbers = (
   return directionMultiplier * ((a as number) - (b as number));
 };
 
-const buildUserRows = (
-  ratingRows: PlayerRatingRow[],
-  aliasesLookup: AliasLookup,
-): UserRow[] => {
+const buildUserRows = (ratingRows: PlayerRatingRow[], aliasesLookup: AliasLookup): UserRow[] => {
   const rowsByUsername = new Map<string, UserRow>();
 
   (Array.isArray(ratingRows) ? ratingRows : []).forEach((row) => {
@@ -118,11 +141,13 @@ const buildUserRows = (
       hyperbullet: emptyRatingCells,
       aliasCount: aliasesLookup.get(username)?.aliases?.length ?? 0,
       aliases: aliasesLookup.get(username)?.aliases ?? [],
+      openings: aliasesLookup.get(username)?.openings ?? [],
     };
 
     existing[mode] = normalizeRatingCells(row);
     existing.aliasCount = aliasesLookup.get(username)?.aliases?.length ?? existing.aliasCount ?? 0;
     existing.aliases = aliasesLookup.get(username)?.aliases ?? existing.aliases ?? [];
+    existing.openings = aliasesLookup.get(username)?.openings ?? existing.openings ?? [];
     rowsByUsername.set(username, existing);
   });
 
@@ -198,6 +223,16 @@ const UsersTablePage = () => {
         return a.username.localeCompare(b.username);
       }
 
+      if (sortKey === "openings") {
+        const openingCompare = compareNullableNumbers(
+          a.openings.length,
+          b.openings.length,
+          directionMultiplier,
+        );
+        if (openingCompare !== 0) return openingCompare;
+        return a.username.localeCompare(b.username);
+      }
+
       const ratingCompare = compareNullableNumbers(
         a[sortKey][ratingDisplayMode].sortValue,
         b[sortKey][ratingDisplayMode].sortValue,
@@ -214,17 +249,17 @@ const UsersTablePage = () => {
   return (
     <div className="rankingsPage">
       <Seo
-        title="Atomic User List"
-        description="Browse the full atomic user list with blitz, bullet, hyperbullet, and alias counts."
+        title="Atomic Player List"
+        description="Browse the full atomic player list with blitz, bullet, hyperbullet, openings, and alias counts."
         path="/users"
       />
       <div className="panel rankingsPanel usersPanel">
-        <h1>Full User List</h1>
+        <h1>Full Player List</h1>
 
         {error ? <div className="errorText">{error}</div> : null}
 
         <div className="rankingsMeta usersMeta">
-          <span>{loading ? "Loading users..." : `${rows.length} users`}</span>
+          <span>{loading ? "Loading players..." : `${rows.length} players`}</span>
           <span className="rankedCount">
             <Link className="rankingsMetaLink" to="/users/banned">
               Banned user list
@@ -277,10 +312,10 @@ const UsersTablePage = () => {
           </span>
         </div>
 
-        {!error && loading ? <div className="emptyRankings">Loading user list...</div> : null}
+        {!error && loading ? <div className="emptyRankings">Loading player list...</div> : null}
 
         {!error && !loading && rows.length === 0 ? (
-          <div className="emptyRankings">No users available.</div>
+          <div className="emptyRankings">No players available.</div>
         ) : null}
 
         {!error && !loading && rows.length > 0 ? (
@@ -316,6 +351,29 @@ const UsersTablePage = () => {
                     <td>{row.blitz[ratingDisplayMode].display}</td>
                     <td>{row.bullet[ratingDisplayMode].display}</td>
                     <td>{row.hyperbullet[ratingDisplayMode].display}</td>
+                    <td>
+                      {row.openings.length > 0 ? (
+                        <div className="usersOpeningsCell">
+                          <span
+                            className="usersOpeningsPreview"
+                            tabIndex={0}
+                            aria-controls={`user-openings-${row.username}`}
+                          >
+                            {row.openings.slice(0, 2).map(getOpeningDisplayLabel).join(", ")}
+                            {row.openings.length > 2 ? ` +${row.openings.length - 2}` : ""}
+                          </span>
+                          <div id={`user-openings-${row.username}`} className="usersOpeningsList">
+                            {row.openings.map((opening) => (
+                              <span key={`${row.username}-${opening}`} className="usersOpeningTag">
+                                {getOpeningDisplayLabel(opening)}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
                     <td>
                       {row.aliasCount > 0 ? (
                         <div className="usersAliasCell">

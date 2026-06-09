@@ -1,7 +1,7 @@
 @import "../Rankings/Rankings.css";
 
 .usersPanel {
-  width: min(920px, 100%);
+  width: min(1080px, 100%);
 }
 
 .usersMeta {
@@ -128,12 +128,83 @@
 }
 
 .usersTable {
-  min-width: 720px;
+  min-width: 860px;
 }
 
-.usersTable :is(th, td):nth-child(n+2):nth-child(-n+5) {
+.usersTable :is(th, td):nth-child(n + 2):nth-child(-n + 6) {
   width: 1%;
   white-space: nowrap;
+}
+
+.usersOpeningsCell {
+  position: relative;
+  display: inline-block;
+  max-width: 190px;
+}
+
+.usersOpeningsPreview {
+  display: inline-block;
+  max-width: 190px;
+  color: var(--color-heading);
+  cursor: default;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+  white-space: nowrap;
+}
+
+.usersOpeningsPreview:hover,
+.usersOpeningsPreview:focus-visible {
+  color: var(--color-primary-soft);
+}
+
+.usersOpeningsPreview:focus-visible {
+  outline: 2px solid var(--color-primary-soft);
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+
+.usersOpeningsList {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 6;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 6px;
+  max-width: 260px;
+  min-width: 180px;
+  padding: 10px 12px;
+  white-space: normal;
+  text-align: left;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 140ms ease,
+    visibility 140ms ease;
+}
+
+.usersOpeningTag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 4px 9px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-panel-soft);
+  color: var(--color-heading);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.usersOpeningsCell:hover .usersOpeningsList,
+.usersOpeningsCell:focus-within .usersOpeningsList {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
 }
 
 .usersAliasCell {
@@ -195,6 +266,7 @@
 }
 
 .usersHelpTooltipBubble,
+.usersOpeningsList,
 .usersAliasList {
   border: 1px solid var(--color-border);
   border-radius: 12px;
@@ -237,9 +309,10 @@
   }
 
   .usersTable {
-    min-width: 640px;
+    min-width: 760px;
   }
 
+  .usersOpeningsList,
   .usersAliasList {
     left: 0;
     right: auto;

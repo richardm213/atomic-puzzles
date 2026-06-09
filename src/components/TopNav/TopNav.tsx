@@ -53,6 +53,11 @@ const navItems: NavItem[] = [
     label: "H2H",
     isActive: (pathname) => pathname === "/h2h" || pathname.startsWith("/h2h/"),
   },
+  {
+    to: "/users",
+    label: "Players",
+    isActive: (pathname) => pathname === "/users" || pathname.startsWith("/users/"),
+  },
 ];
 
 const PROFILE_USERNAME_STORAGE_PREFIX = "atomic-puzzles.profile-username";
