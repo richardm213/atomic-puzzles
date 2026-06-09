@@ -93,6 +93,12 @@
   --opening-text: #fbe2ff;
 }
 
+.openingToneNh3 {
+  --opening-bg: rgba(14, 165, 233, 0.16);
+  --opening-border: rgba(56, 189, 248, 0.42);
+  --opening-text: #dff7ff;
+}
+
 .openingToneNh3D4 {
   --opening-bg: rgba(20, 184, 166, 0.16);
   --opening-border: rgba(45, 212, 191, 0.4);
@@ -139,6 +145,12 @@
   --opening-bg: rgba(16, 185, 129, 0.16);
   --opening-border: rgba(52, 211, 153, 0.4);
   --opening-text: #ddfff3;
+}
+
+.openingToneE3Nc3 {
+  --opening-bg: rgba(132, 204, 22, 0.16);
+  --opening-border: rgba(163, 230, 53, 0.4);
+  --opening-text: #efffd1;
 }
 
 .openingToneE3Qh5 {
@@ -658,6 +670,12 @@
   --opening-text: #7b258b;
 }
 
+:root[data-theme="light"] .openingToneNh3 {
+  --opening-bg: #d9f2ff;
+  --opening-border: #7cc8e8;
+  --opening-text: #07506f;
+}
+
 :root[data-theme="light"] .openingToneNh3D4 {
   --opening-bg: #d9f8f3;
   --opening-border: #78cfc0;
@@ -704,6 +722,12 @@
   --opening-bg: #d9f7ed;
   --opening-border: #78cfb2;
   --opening-text: #135946;
+}
+
+:root[data-theme="light"] .openingToneE3Nc3 {
+  --opening-bg: #eef8d2;
+  --opening-border: #abc966;
+  --opening-text: #4d6514;
 }
 
 :root[data-theme="light"] .openingToneE3Qh5 {

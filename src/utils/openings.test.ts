@@ -8,6 +8,12 @@ describe("opening display labels", () => {
     expect(getOpeningDisplayLabel(" 2N h3 ")).toBe("2N h3");
   });
 
+  it("displays knight openings with uppercase piece notation", () => {
+    expect(getOpeningDisplayLabel("nh3")).toBe("Nh3");
+    expect(getOpeningDisplayLabel("na3")).toBe("Na3");
+    expect(getOpeningDisplayLabel("e3 nc3")).toBe("e3 Nc3");
+  });
+
   it("normalizes opening keys for filtering without changing stored values", () => {
     expect(normalizeOpeningKey(" 2N h3 ")).toBe("2n h3");
   });
