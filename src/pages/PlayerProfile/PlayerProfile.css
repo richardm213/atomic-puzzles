@@ -141,7 +141,7 @@
   --opening-text: #ddfff3;
 }
 
-.openingToneE3Qh5Nf3 {
+.openingToneE3Qh5 {
   --opening-bg: rgba(234, 179, 8, 0.16);
   --opening-border: rgba(250, 204, 21, 0.42);
   --opening-text: #fff6cf;
@@ -706,7 +706,7 @@
   --opening-text: #135946;
 }
 
-:root[data-theme="light"] .openingToneE3Qh5Nf3 {
+:root[data-theme="light"] .openingToneE3Qh5 {
   --opening-bg: #fff4bf;
   --opening-border: #d7b950;
   --opening-text: #6d5600;
