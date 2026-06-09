@@ -302,7 +302,6 @@ export const getBestWinsForMode = (
 export const filterMatches = (
   matches: NormalizedMatch[],
   appliedFilters: AppliedMatchFilters,
-  selectedMode: Mode,
 ): NormalizedMatch[] => {
   const startDateTs = parseDateInputBoundary(appliedFilters.startDateFilter, "start");
   const endDateTs = parseDateInputBoundary(appliedFilters.endDateFilter, "end");

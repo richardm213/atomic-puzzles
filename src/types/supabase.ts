@@ -66,6 +66,7 @@ export type SupabaseUser = {
 export type AliasesTableRow = {
   username: string | null;
   aliases: string[] | null;
+  openings: string[] | null;
   banned: boolean | null;
 };
 

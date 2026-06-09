@@ -72,6 +72,50 @@ const isExternalHref = (href: string): boolean => /^https?:\/\//i.test(String(hr
 const NON_COUNTED_ALIAS_MESSAGE =
   "This account is marked as a drunk account and is not included in the rating system.";
 
+const openingToneClasses: Record<string, string> = {
+  "nf3 e3": "openingToneNf3E3",
+  "nf3 e4": "openingToneNf3E4",
+  e4: "openingToneE4",
+  d4: "openingToneD4",
+  "2n": "openingTone2n",
+  "2n h3": "openingTone2nH3",
+  "nh3 d4": "openingToneNh3D4",
+  "nh3 e4": "openingToneNh3E4",
+  "nh3 e3": "openingToneNh3E3",
+  nc3: "openingToneNc3",
+  na3: "openingToneNa3",
+  "nf3 d4": "openingToneNf3D4",
+  "nf3 nd4": "openingToneNf3Nd4",
+  "nf3 c3": "openingToneNf3C3",
+  variety: "openingToneVariety",
+};
+
+const openingDisplayLabels: Record<string, string> = {
+  "nf3 e3": "Nf3 e3",
+  "nf3 e4": "Nf3 e4",
+  e4: "e4",
+  d4: "d4",
+  "2n": "2N",
+  "2n h3": "2N h3",
+  "nh3 d4": "Nh3 d4",
+  "nh3 e4": "Nh3 e4",
+  "nh3 e3": "Nh3 e3",
+  nc3: "Nc3",
+  na3: "Na3",
+  "nf3 d4": "Nf3 d4",
+  "nf3 nd4": "Nf3 Nd4",
+  "nf3 c3": "Nf3 c3",
+  variety: "Variety",
+};
+
+const getOpeningToneClass = (opening: string): string =>
+  openingToneClasses[String(opening || "").trim().toLowerCase()] ?? "openingToneDefault";
+
+const getOpeningDisplayLabel = (opening: string): string => {
+  const normalizedOpening = String(opening || "").trim().toLowerCase();
+  return openingDisplayLabels[normalizedOpening] ?? String(opening || "").trim();
+};
+
 const profileTrophyAssets = {
   champion: appAssetPath("/images/lichess-trophies/gold-cup-2.png"),
   top10: appAssetPath("/images/lichess-trophies/silver-cup-2.png"),
@@ -421,8 +465,8 @@ export const PlayerProfilePage = ({ username }: { username?: string }) => {
     [matches],
   );
   const filteredMatches = useMemo(
-    () => filterMatches(matches, appliedFilters, selectedMode),
-    [matches, appliedFilters, selectedMode],
+    () => filterMatches(matches, appliedFilters),
+    [matches, appliedFilters],
   );
   const isClientPagedResults = isClientSidePagedSearch(appliedFilters);
   const totalPages = Math.max(
@@ -507,6 +551,17 @@ export const PlayerProfilePage = ({ username }: { username?: string }) => {
     const aliases = Array.isArray(profileAliasEntry?.aliases) ? profileAliasEntry.aliases : [];
     return [...new Set([canonicalUsername, ...aliases])];
   }, [aliasesLoaded, canonicalUsername, profileAliasEntry]);
+  const profileOpenings = useMemo(() => {
+    if (!aliasesLoaded || !Array.isArray(profileAliasEntry?.openings)) return [];
+
+    return [
+      ...new Set(
+        profileAliasEntry.openings
+          .map((opening) => String(opening || "").trim())
+          .filter(Boolean),
+      ),
+    ];
+  }, [aliasesLoaded, profileAliasEntry]);
   const aliasDisplayRows = useMemo(() => {
     const countableAliases = new Set(profileAliasEntry?.countableAliases ?? aliasesForUser);
     return aliasesForUser.map((alias) => ({
@@ -569,7 +624,21 @@ export const PlayerProfilePage = ({ username }: { username?: string }) => {
       />
       <div className="panel rankingsPanel playerProfilePanel">
         <div className="profileIdentityRow">
-          <h1>{canonicalUsername}</h1>
+          <div className="profileIdentityTitle">
+            <h1>{canonicalUsername}</h1>
+            {profileOpenings.length ? (
+              <div className="profileOpeningTags" aria-label="Recognized atomic openings">
+                {profileOpenings.map((opening) => (
+                  <span
+                    key={`opening-${opening}`}
+                    className={`profileOpeningTag ${getOpeningToneClass(opening)}`}
+                  >
+                    {getOpeningDisplayLabel(opening)}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </div>
           {!isBanned && profileTrophies.length ? (
             <div className="profileTrophyRow" aria-label="Atomic ranking trophies">
               {profileTrophies.map((trophy) =>

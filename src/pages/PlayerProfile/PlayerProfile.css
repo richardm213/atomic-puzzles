@@ -13,8 +13,134 @@
   gap: 12px;
 }
 
-.profileIdentityRow h1 {
+.playerProfilePanel .profileIdentityTitle h1 {
   margin: 0;
+}
+
+.profileIdentityTitle {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.profileOpeningTags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 520px;
+}
+
+.profileOpeningTag {
+  --opening-bg: rgba(148, 163, 184, 0.16);
+  --opening-border: rgba(148, 163, 184, 0.28);
+  --opening-text: var(--color-heading);
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--opening-border);
+  background: var(--opening-bg);
+  color: var(--opening-text);
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.2;
+  white-space: nowrap;
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--opening-border) 32%, transparent);
+}
+
+.openingToneNf3E3 {
+  --opening-bg: rgba(14, 165, 233, 0.16);
+  --opening-border: rgba(56, 189, 248, 0.42);
+  --opening-text: #dff7ff;
+}
+
+.openingToneNf3E4 {
+  --opening-bg: rgba(34, 197, 94, 0.16);
+  --opening-border: rgba(74, 222, 128, 0.4);
+  --opening-text: #ddffe8;
+}
+
+.openingToneE4 {
+  --opening-bg: rgba(239, 68, 68, 0.15);
+  --opening-border: rgba(248, 113, 113, 0.38);
+  --opening-text: #ffe2e2;
+}
+
+.openingToneD4 {
+  --opening-bg: rgba(245, 158, 11, 0.16);
+  --opening-border: rgba(251, 191, 36, 0.42);
+  --opening-text: #fff3d4;
+}
+
+.openingTone2n {
+  --opening-bg: rgba(168, 85, 247, 0.16);
+  --opening-border: rgba(192, 132, 252, 0.42);
+  --opening-text: #f1e4ff;
+}
+
+.openingTone2nH3 {
+  --opening-bg: rgba(217, 70, 239, 0.16);
+  --opening-border: rgba(232, 121, 249, 0.42);
+  --opening-text: #fbe2ff;
+}
+
+.openingToneNh3D4 {
+  --opening-bg: rgba(20, 184, 166, 0.16);
+  --opening-border: rgba(45, 212, 191, 0.4);
+  --opening-text: #d9fffb;
+}
+
+.openingToneNh3E4 {
+  --opening-bg: rgba(244, 114, 182, 0.16);
+  --opening-border: rgba(249, 168, 212, 0.42);
+  --opening-text: #ffe4f2;
+}
+
+.openingToneNh3E3 {
+  --opening-bg: rgba(99, 102, 241, 0.17);
+  --opening-border: rgba(129, 140, 248, 0.43);
+  --opening-text: #e4e7ff;
+}
+
+.openingToneNc3 {
+  --opening-bg: rgba(132, 204, 22, 0.16);
+  --opening-border: rgba(163, 230, 53, 0.4);
+  --opening-text: #efffd1;
+}
+
+.openingToneNa3 {
+  --opening-bg: rgba(249, 115, 22, 0.16);
+  --opening-border: rgba(251, 146, 60, 0.42);
+  --opening-text: #ffe9d8;
+}
+
+.openingToneNf3D4 {
+  --opening-bg: rgba(6, 182, 212, 0.16);
+  --opening-border: rgba(34, 211, 238, 0.4);
+  --opening-text: #dbfbff;
+}
+
+.openingToneNf3Nd4 {
+  --opening-bg: rgba(59, 130, 246, 0.16);
+  --opening-border: rgba(96, 165, 250, 0.42);
+  --opening-text: #deedff;
+}
+
+.openingToneNf3C3 {
+  --opening-bg: rgba(16, 185, 129, 0.16);
+  --opening-border: rgba(52, 211, 153, 0.4);
+  --opening-text: #ddfff3;
+}
+
+.openingToneVariety {
+  --opening-bg: rgba(236, 72, 153, 0.16);
+  --opening-border: rgba(244, 114, 182, 0.42);
+  --opening-text: #ffe3f0;
 }
 
 .profileTrophyRow {
@@ -468,6 +594,100 @@
   color: #2f62dd;
   background: color-mix(in srgb, #dce8ff 94%, white 6%);
   border-color: color-mix(in srgb, #2f62dd 52%, var(--color-border));
+}
+
+:root[data-theme="light"] .profileOpeningTag {
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--opening-border) 20%, transparent);
+}
+
+:root[data-theme="light"] .openingToneNf3E3 {
+  --opening-bg: #d9f2ff;
+  --opening-border: #7cc8e8;
+  --opening-text: #07506f;
+}
+
+:root[data-theme="light"] .openingToneNf3E4 {
+  --opening-bg: #dcf8e4;
+  --opening-border: #7bcf91;
+  --opening-text: #155b2b;
+}
+
+:root[data-theme="light"] .openingToneE4 {
+  --opening-bg: #ffe0df;
+  --opening-border: #ee9995;
+  --opening-text: #92241f;
+}
+
+:root[data-theme="light"] .openingToneD4 {
+  --opening-bg: #fff0c8;
+  --opening-border: #dfb65e;
+  --opening-text: #76510a;
+}
+
+:root[data-theme="light"] .openingTone2n {
+  --opening-bg: #f0e2ff;
+  --opening-border: #bf92e8;
+  --opening-text: #64249c;
+}
+
+:root[data-theme="light"] .openingTone2nH3 {
+  --opening-bg: #f9ddff;
+  --opening-border: #d78be5;
+  --opening-text: #7b258b;
+}
+
+:root[data-theme="light"] .openingToneNh3D4 {
+  --opening-bg: #d9f8f3;
+  --opening-border: #78cfc0;
+  --opening-text: #0d5b51;
+}
+
+:root[data-theme="light"] .openingToneNh3E4 {
+  --opening-bg: #ffe0ef;
+  --opening-border: #e998bf;
+  --opening-text: #862b5a;
+}
+
+:root[data-theme="light"] .openingToneNh3E3 {
+  --opening-bg: #e4e6ff;
+  --opening-border: #9ca4ef;
+  --opening-text: #333a96;
+}
+
+:root[data-theme="light"] .openingToneNc3 {
+  --opening-bg: #eef8d2;
+  --opening-border: #abc966;
+  --opening-text: #4d6514;
+}
+
+:root[data-theme="light"] .openingToneNa3 {
+  --opening-bg: #ffe8d7;
+  --opening-border: #efaa75;
+  --opening-text: #88400e;
+}
+
+:root[data-theme="light"] .openingToneNf3D4 {
+  --opening-bg: #d7f8fc;
+  --opening-border: #70cbd7;
+  --opening-text: #0b5962;
+}
+
+:root[data-theme="light"] .openingToneNf3Nd4 {
+  --opening-bg: #dceaff;
+  --opening-border: #87b7ee;
+  --opening-text: #174f98;
+}
+
+:root[data-theme="light"] .openingToneNf3C3 {
+  --opening-bg: #d9f7ed;
+  --opening-border: #78cfb2;
+  --opening-text: #135946;
+}
+
+:root[data-theme="light"] .openingToneVariety {
+  --opening-bg: #ffe0ec;
+  --opening-border: #e993b7;
+  --opening-text: #89284f;
 }
 
 .playerProfilePanel .analyzeButton {

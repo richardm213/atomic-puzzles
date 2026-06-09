@@ -7,6 +7,7 @@ import { fetchAllSupabaseRows, loadSupabaseRows } from "./supabaseRows";
 export type NormalizedAliasRow = {
   username: string;
   aliases: string[];
+  openings: string[];
   banned: boolean;
   hasExplicitCountableAliases: boolean;
 };
@@ -21,6 +22,7 @@ type NormalizedAlias2Row = {
 export type MergedAliasRow = {
   username: string;
   aliases: string[];
+  openings: string[];
   banned: boolean;
   countableAliases: string[];
   hasExplicitCountableAliases: boolean;
@@ -32,13 +34,28 @@ type MergeInputRow = NormalizedAliasRow & {
 
 const ALIASES_TABLE = "aliases" as const;
 const ALIASES2_TABLE = "aliases2" as const;
-const ALIASES_SELECT_COLUMNS = "username,aliases,banned";
+const ALIASES_SELECT_COLUMNS = "username,aliases,openings,banned";
 const ALIASES2_SELECT_COLUMNS = "alias,username,banned,count_games";
 const aliasesRowsCache = new Map<string, Promise<MergedAliasRow[]>>();
 const aliasTableRowsCache = new Map<string, Promise<NormalizedAliasRow[]>>();
 const alias2TableRowsCache = new Map<string, Promise<MergedAliasRow[]>>();
 const profileUsernameCache = new Map<string, Promise<string>>();
 const profileAliasEntryCache = new Map<string, Promise<MergedAliasRow | null>>();
+
+const normalizeOpenings = (openings: unknown): string[] =>
+  Array.isArray(openings)
+    ? [
+        ...new Set(
+          openings
+            .map((opening) =>
+              String(opening || "")
+                .trim()
+                .toLowerCase(),
+            )
+            .filter(Boolean),
+        ),
+      ]
+    : [];
 
 const normalizeAliasRow = (
   row: AliasesTableRow | null | undefined,
@@ -53,6 +70,7 @@ const normalizeAliasRow = (
   return {
     username,
     aliases: [...new Set(aliases.filter((alias) => alias !== username))],
+    openings: normalizeOpenings(row?.openings),
     banned: Boolean(row?.banned),
     hasExplicitCountableAliases: false,
   };
@@ -98,6 +116,7 @@ const mergeAliasRows = (rows: MergeInputRow[] = []): MergedAliasRow[] => {
       mergedRows.set(row.username, {
         username: row.username,
         aliases: [...row.aliases],
+        openings: [...row.openings],
         banned: Boolean(row.banned),
         countableAliases: Array.isArray(row.countableAliases)
           ? [...row.countableAliases]
@@ -108,6 +127,7 @@ const mergeAliasRows = (rows: MergeInputRow[] = []): MergedAliasRow[] => {
     }
 
     const nextAliases = [...new Set([...existing.aliases, ...row.aliases])];
+    const nextOpenings = [...new Set([...existing.openings, ...row.openings])];
     const existingExplicit = Boolean(existing.hasExplicitCountableAliases);
     const rowExplicit = Boolean(row.hasExplicitCountableAliases);
     const nextCountableAliases =
@@ -132,6 +152,7 @@ const mergeAliasRows = (rows: MergeInputRow[] = []): MergedAliasRow[] => {
     mergedRows.set(row.username, {
       username: row.username,
       aliases: nextAliases,
+      openings: nextOpenings,
       banned: Boolean(existing.banned || row.banned),
       countableAliases: nextCountableAliases,
       hasExplicitCountableAliases: existingExplicit || rowExplicit,
@@ -161,6 +182,7 @@ const buildAlias2AggregateRow = (rows: Aliases2TableRow[] = []): MergedAliasRow 
   return {
     username,
     aliases: [...aliases],
+    openings: [],
     banned,
     countableAliases: [...countableAliases],
     hasExplicitCountableAliases: true,
@@ -257,6 +279,7 @@ const fetchUncachedAlias2Rows = async (): Promise<MergedAliasRow[]> => {
     return Array.from(aliasesByUsername.entries()).map(([username, entry]) => ({
       username,
       aliases: [...entry.aliases],
+      openings: [],
       banned: Boolean(entry.banned),
       countableAliases: [...entry.countableAliases],
       hasExplicitCountableAliases: true,
@@ -291,7 +314,15 @@ export const fetchProfileAliasRow = async (value: string): Promise<MergedAliasRo
     const canonicalUsername = await resolveProfileUsernameFromAliases(value);
     if (!canonicalUsername) return null;
 
-    return fetchAliases2AggregateRowForUsername(canonicalUsername);
+    const [aliasTableRow, alias2AggregateRow] = await Promise.all([
+      fetchAliasesTableRowForUsername(canonicalUsername),
+      fetchAliases2AggregateRowForUsername(canonicalUsername),
+    ]);
+    const mergedRows = mergeAliasRows(
+      [aliasTableRow, alias2AggregateRow].filter((row): row is MergeInputRow => row !== null),
+    );
+
+    return mergedRows[0] ?? null;
   });
 
 export const fetchAliasRows = async (): Promise<MergedAliasRow[]> =>
