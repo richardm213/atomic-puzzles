@@ -860,6 +860,7 @@ export const PuzzleSolverPage = () => {
 
   useEffect(() => {
     if (!isAnalysisMode || !showSolution || !isOnSolutionPath) return;
+    if (solutionNavigation) return;
     if (boardState.solutionLineIndex === activeSolutionLineIndex) return;
 
     setSolutionNavigation({
@@ -873,6 +874,7 @@ export const PuzzleSolverPage = () => {
     isAnalysisMode,
     isOnSolutionPath,
     showSolution,
+    solutionNavigation,
   ]);
 
   const solutionOptions = useMemo(
@@ -1111,7 +1113,7 @@ export const PuzzleSolverPage = () => {
                     type="button"
                     className={`solutionOption ${option.move === activeSolutionOption ? "active" : ""}`}
                     ref={option.move === activeSolutionOption ? activeSolutionOptionRef : null}
-                    onClick={() => handleMoveClick(option.lineIndex, option.plyIndex - 1)}
+                    onClick={() => handleMoveClick(option.lineIndex, option.plyIndex)}
                   >
                     {movePrefix(currentAnalysisMoves.length, currentAnalysisMoves.length % 2 === 1)}
                     {option.move}
