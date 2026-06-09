@@ -13,6 +13,10 @@
   gap: 12px;
 }
 
+.profileIdentityRow.noTrophies {
+  margin-bottom: 22px;
+}
+
 .playerProfilePanel .profileIdentityTitle h1 {
   margin: 0;
 }
@@ -22,7 +26,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 12px;
+  gap: 8px clamp(14px, 2vw, 22px);
 }
 
 .profileOpeningTags {
@@ -900,6 +904,10 @@
 }
 
 @media (max-width: 640px) {
+  .profileIdentityTitle {
+    gap: 8px 10px;
+  }
+
   .profileMetricRowCards {
     grid-template-columns: 1fr;
   }

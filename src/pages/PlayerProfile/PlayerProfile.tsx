@@ -623,7 +623,9 @@ export const PlayerProfilePage = ({ username }: { username?: string }) => {
         path={`/@/${encodeURIComponent(canonicalUsername)}`}
       />
       <div className="panel rankingsPanel playerProfilePanel">
-        <div className="profileIdentityRow">
+        <div
+          className={`profileIdentityRow${!isBanned && profileTrophies.length ? "" : " noTrophies"}`}
+        >
           <div className="profileIdentityTitle">
             <h1>{canonicalUsername}</h1>
             {profileOpenings.length ? (
