@@ -105,7 +105,7 @@ const openingDisplayLabels: Record<string, string> = {
   "nf3 d4": "Nf3 d4",
   "nf3 nd4": "Nf3 Nd4",
   "nf3 c3": "Nf3 c3",
-  variety: "Variety",
+  variety: "All-around",
 };
 
 const getOpeningToneClass = (opening: string): string =>
