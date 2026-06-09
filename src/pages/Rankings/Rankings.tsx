@@ -16,6 +16,8 @@ import "./Rankings.css";
 import { Seo } from "../../components/Seo/Seo";
 import { useRankingsByMonth } from "../../hooks/useRankingsByMonth";
 import { monthDateFromMonthKey } from "../../lib/supabase/supabaseLb";
+import { type AliasLookup, loadAliasesLookup } from "../../lib/users/aliasesLookup";
+import { normalizeUsername } from "../../utils/playerNames";
 
 const monthNames = [
   "Jan",
@@ -39,6 +41,48 @@ const rankingColumns = [
   { key: "rd", label: "RD" },
   { key: "games", label: "Games" },
 ];
+
+const openingDisplayLabels: Record<string, string> = {
+  "nf3 e3": "Nf3 e3",
+  "nf3 e4": "Nf3 e4",
+  e4: "e4",
+  d4: "d4",
+  "2n": "2n",
+  "2n h3": "2n h3",
+  "nh3 d4": "Nh3 d4",
+  "nh3 e4": "Nh3 e4",
+  "nh3 e3": "Nh3 e3",
+  nc3: "Nc3",
+  na3: "Na3",
+  "nf3 d4": "Nf3 d4",
+  "nf3 nd4": "Nf3 Nd4",
+  "nf3 c3": "Nf3 c3",
+  "e3 qh5 nf3": "e3 Qh5 Nf3",
+  "e3 qf3": "e3 Qf3",
+  "nh3 nc3": "Nh3 Nc3",
+  variety: "All-around",
+};
+
+const getOpeningDisplayLabel = (opening: string): string => {
+  const normalizedOpening = String(opening || "")
+    .trim()
+    .toLowerCase();
+  return openingDisplayLabels[normalizedOpening] ?? String(opening || "").trim();
+};
+
+const normalizeOpeningKey = (opening: string): string =>
+  String(opening || "")
+    .trim()
+    .toLowerCase();
+
+const getOpeningsForPlayer = (aliasesLookup: AliasLookup, username: string): string[] => {
+  const entry = aliasesLookup.get(username) ?? aliasesLookup.get(normalizeUsername(username));
+  if (!Array.isArray(entry?.openings)) return [];
+
+  return [
+    ...new Set(entry.openings.map((opening) => normalizeOpeningKey(opening)).filter(Boolean)),
+  ];
+};
 
 const monthLabelFromDate = (date: Date): string =>
   date.toLocaleString("en-US", {
@@ -66,12 +110,19 @@ const readableMonthLabel = (monthKey: string): string => {
   return monthLabelFromDate(date);
 };
 
-const sortIndicator = (sortKey: string, sortDirection: "asc" | "desc", columnKey: string): string => {
+const sortIndicator = (
+  sortKey: string,
+  sortDirection: "asc" | "desc",
+  columnKey: string,
+): string => {
   if (sortKey !== columnKey) return "";
   return sortDirection === "asc" ? "↑" : "↓";
 };
 
-const isEligibleForRankings = (player: import("../../lib/rankings/rankingsByMonth").RankingPlayer, mode: import("../../constants/matches").Mode): boolean => {
+const isEligibleForRankings = (
+  player: import("../../lib/rankings/rankingsByMonth").RankingPlayer,
+  mode: import("../../constants/matches").Mode,
+): boolean => {
   const requirement = rankingEligibilityByMode[mode];
   if (!requirement) return true;
 
@@ -99,7 +150,11 @@ const allLeaderboardMonths = (): string[] => {
 const allLeaderboardYears = (): string[] => {
   const now = new Date();
   const years: string[] = [];
-  for (let year = now.getUTCFullYear(); year >= earliestLeaderboardMonth.getUTCFullYear(); year -= 1) {
+  for (
+    let year = now.getUTCFullYear();
+    year >= earliestLeaderboardMonth.getUTCFullYear();
+    year -= 1
+  ) {
     years.push(String(year));
   }
   return years;
@@ -128,7 +183,11 @@ const getInitialRankingsFilters = () => {
   };
 };
 
-const updateRankingsUrl = (selectedYear: string, selectedMonthName: string, selectedMode: string): void => {
+const updateRankingsUrl = (
+  selectedYear: string,
+  selectedMonthName: string,
+  selectedMode: string,
+): void => {
   if (typeof window === "undefined" || !selectedYear || !selectedMonthName || !selectedMode) return;
 
   const searchParams = new window.URLSearchParams(window.location.search);
@@ -147,6 +206,8 @@ const LeaderboardView = () => {
   const [selectedMode, setSelectedMode] = useState<Mode>(initialFilters.selectedMode);
   const [sortKey, setSortKey] = useState("rank");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [activeOpeningFilter, setActiveOpeningFilter] = useState("");
+  const [aliasesLookup, setAliasesLookup] = useState<AliasLookup>(() => new Map());
   const hasInitializedFiltersRef = useRef(false);
 
   const allMonthKeys = useMemo(() => allLeaderboardMonths(), []);
@@ -159,6 +220,27 @@ const LeaderboardView = () => {
   }, [selectedMonthName, selectedYear]);
 
   const { rankingsByMonth, error } = useRankingsByMonth(selectedMonth);
+
+  useEffect(() => {
+    if (aliasesLookup.size > 0) return;
+
+    let isCurrent = true;
+
+    const loadOpenings = async () => {
+      try {
+        const lookup = await loadAliasesLookup();
+        if (isCurrent) setAliasesLookup(lookup);
+      } catch {
+        if (isCurrent) setAliasesLookup(new Map());
+      }
+    };
+
+    void loadOpenings();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [aliasesLookup.size]);
 
   useEffect(() => {
     const firstWithData =
@@ -219,6 +301,13 @@ const LeaderboardView = () => {
     () => selectedModeData.players.filter((player) => isEligibleForRankings(player, selectedMode)),
     [selectedMode, selectedModeData.players],
   );
+  const filteredPlayers = useMemo(() => {
+    if (!activeOpeningFilter) return players;
+
+    return players.filter((player) =>
+      getOpeningsForPlayer(aliasesLookup, player.username).includes(activeOpeningFilter),
+    );
+  }, [activeOpeningFilter, aliasesLookup, players]);
 
   const selectMonthKey = (monthKey: string): void => {
     const monthDate = monthDateFromMonthKey(monthKey);
@@ -250,7 +339,7 @@ const LeaderboardView = () => {
 
   const sortedPlayers = useMemo(() => {
     const directionMultiplier = sortDirection === "asc" ? 1 : -1;
-    const sorted = [...players].sort((a, b) => {
+    const sorted = [...filteredPlayers].sort((a, b) => {
       if (sortKey === "username") {
         return directionMultiplier * a.username.localeCompare(b.username);
       }
@@ -264,7 +353,7 @@ const LeaderboardView = () => {
     });
 
     return sorted;
-  }, [players, sortDirection, sortKey]);
+  }, [filteredPlayers, sortDirection, sortKey]);
 
   return (
     <div className="rankingsPage">
@@ -337,7 +426,9 @@ const LeaderboardView = () => {
             >
               <span aria-hidden="true">←</span>
             </button>
-            <span className="currentMonthLabel">{readableMonthLabel(selectedMonth || monthOptions[0] || "")}</span>
+            <span className="currentMonthLabel">
+              {readableMonthLabel(selectedMonth || monthOptions[0] || "")}
+            </span>
             <button
               type="button"
               className="monthStepButton"
@@ -350,7 +441,9 @@ const LeaderboardView = () => {
           </div>
           <div className="rankingsMetaDetails">
             <span className="rankedCount">
-              {players.length} ranked
+              {activeOpeningFilter
+                ? `${filteredPlayers.length} of ${players.length} ranked`
+                : `${players.length} ranked`}
               <Link className="rankingsMetaLink" to="/users">
                 Full user list
               </Link>
@@ -371,8 +464,12 @@ const LeaderboardView = () => {
           </div>
         </div>
 
-        {players.length === 0 ? (
-          <div className="emptyRankings">No leaderboard entries available for this month.</div>
+        {filteredPlayers.length === 0 ? (
+          <div className="emptyRankings">
+            {activeOpeningFilter
+              ? `No ranked players found for ${getOpeningDisplayLabel(activeOpeningFilter)}.`
+              : "No leaderboard entries available for this month."}
+          </div>
         ) : (
           <div className="rankingsTableWrap">
             <table className="rankingsTable">
@@ -396,13 +493,37 @@ const LeaderboardView = () => {
                   <tr key={`${selectedMonth}-${player.rank}-${player.username}`}>
                     <td>{player.rank}</td>
                     <td>
-                      <Link
-                        className="rankingLink"
-                        to="/@/$username"
-                        params={{ username: player.username }}
-                      >
-                        {player.username}
-                      </Link>
+                      <div className="rankingPlayerCell">
+                        <Link
+                          className="rankingLink"
+                          to="/@/$username"
+                          params={{ username: player.username }}
+                        >
+                          {player.username}
+                        </Link>
+                        <div
+                          className="rankingOpeningTags"
+                          aria-label={`${player.username} openings`}
+                        >
+                          {getOpeningsForPlayer(aliasesLookup, player.username).map((opening) => (
+                            <button
+                              type="button"
+                              key={`${player.username}-${opening}`}
+                              className={`rankingOpeningTag${
+                                activeOpeningFilter === opening ? " active" : ""
+                              }`}
+                              aria-pressed={activeOpeningFilter === opening}
+                              onClick={() =>
+                                setActiveOpeningFilter((current) =>
+                                  current === opening ? "" : opening,
+                                )
+                              }
+                            >
+                              {getOpeningDisplayLabel(opening)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </td>
                     <td>{player.score}</td>
                     <td>{player.rd}</td>

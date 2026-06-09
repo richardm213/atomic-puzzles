@@ -87,6 +87,9 @@ const openingToneClasses: Record<string, string> = {
   "nf3 d4": "openingToneNf3D4",
   "nf3 nd4": "openingToneNf3Nd4",
   "nf3 c3": "openingToneNf3C3",
+  "e3 qh5 nf3": "openingToneE3Qh5Nf3",
+  "e3 qf3": "openingToneE3Qf3",
+  "nh3 nc3": "openingToneNh3Nc3",
   variety: "openingToneVariety",
 };
 
@@ -95,8 +98,8 @@ const openingDisplayLabels: Record<string, string> = {
   "nf3 e4": "Nf3 e4",
   e4: "e4",
   d4: "d4",
-  "2n": "2N",
-  "2n h3": "2N h3",
+  "2n": "2n",
+  "2n h3": "2n h3",
   "nh3 d4": "Nh3 d4",
   "nh3 e4": "Nh3 e4",
   "nh3 e3": "Nh3 e3",
@@ -105,14 +108,23 @@ const openingDisplayLabels: Record<string, string> = {
   "nf3 d4": "Nf3 d4",
   "nf3 nd4": "Nf3 Nd4",
   "nf3 c3": "Nf3 c3",
+  "e3 qh5 nf3": "e3 Qh5 Nf3",
+  "e3 qf3": "e3 Qf3",
+  "nh3 nc3": "Nh3 Nc3",
   variety: "All-around",
 };
 
 const getOpeningToneClass = (opening: string): string =>
-  openingToneClasses[String(opening || "").trim().toLowerCase()] ?? "openingToneDefault";
+  openingToneClasses[
+    String(opening || "")
+      .trim()
+      .toLowerCase()
+  ] ?? "openingToneDefault";
 
 const getOpeningDisplayLabel = (opening: string): string => {
-  const normalizedOpening = String(opening || "").trim().toLowerCase();
+  const normalizedOpening = String(opening || "")
+    .trim()
+    .toLowerCase();
   return openingDisplayLabels[normalizedOpening] ?? String(opening || "").trim();
 };
 
@@ -556,9 +568,7 @@ export const PlayerProfilePage = ({ username }: { username?: string }) => {
 
     return [
       ...new Set(
-        profileAliasEntry.openings
-          .map((opening) => String(opening || "").trim())
-          .filter(Boolean),
+        profileAliasEntry.openings.map((opening) => String(opening || "").trim()).filter(Boolean),
       ),
     ];
   }, [aliasesLoaded, profileAliasEntry]);

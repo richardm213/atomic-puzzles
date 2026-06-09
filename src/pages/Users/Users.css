@@ -137,53 +137,17 @@
 }
 
 .usersOpeningsCell {
-  position: relative;
-  display: inline-block;
-  max-width: 190px;
+  display: flex;
+  min-width: 0;
+  max-width: 280px;
 }
 
-.usersOpeningsPreview {
-  display: inline-block;
-  max-width: 190px;
-  color: var(--color-heading);
-  cursor: default;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  vertical-align: bottom;
-  white-space: nowrap;
-}
-
-.usersOpeningsPreview:hover,
-.usersOpeningsPreview:focus-visible {
-  color: var(--color-primary-soft);
-}
-
-.usersOpeningsPreview:focus-visible {
-  outline: 2px solid var(--color-primary-soft);
-  outline-offset: 4px;
-  border-radius: 8px;
-}
-
-.usersOpeningsList {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  z-index: 6;
+.usersOpeningTags {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: center;
   gap: 6px;
-  max-width: 260px;
-  min-width: 180px;
-  padding: 10px 12px;
-  white-space: normal;
-  text-align: left;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition:
-    opacity 140ms ease,
-    visibility 140ms ease;
+  min-width: 0;
 }
 
 .usersOpeningTag {
@@ -195,16 +159,29 @@
   border-radius: 999px;
   background: var(--color-panel-soft);
   color: var(--color-heading);
+  cursor: pointer;
+  font: inherit;
   font-size: 12px;
   font-weight: 800;
   line-height: 1.2;
+  white-space: nowrap;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
 }
 
-.usersOpeningsCell:hover .usersOpeningsList,
-.usersOpeningsCell:focus-within .usersOpeningsList {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
+.usersOpeningTag:hover,
+.usersOpeningTag:focus-visible,
+.usersOpeningTag.active {
+  border-color: var(--color-primary-soft);
+  background: var(--color-panel-strong);
+  color: var(--color-primary-pale);
+}
+
+.usersOpeningTag:focus-visible {
+  outline: 2px solid var(--color-primary-soft);
+  outline-offset: 2px;
 }
 
 .usersAliasCell {
@@ -266,7 +243,6 @@
 }
 
 .usersHelpTooltipBubble,
-.usersOpeningsList,
 .usersAliasList {
   border: 1px solid var(--color-border);
   border-radius: 12px;
@@ -312,7 +288,6 @@
     min-width: 760px;
   }
 
-  .usersOpeningsList,
   .usersAliasList {
     left: 0;
     right: auto;

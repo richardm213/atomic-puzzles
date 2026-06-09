@@ -35,8 +35,8 @@ const openingDisplayLabels: Record<string, string> = {
   "nf3 e4": "Nf3 e4",
   e4: "e4",
   d4: "d4",
-  "2n": "2N",
-  "2n h3": "2N h3",
+  "2n": "2n",
+  "2n h3": "2n h3",
   "nh3 d4": "Nh3 d4",
   "nh3 e4": "Nh3 e4",
   "nh3 e3": "Nh3 e3",
@@ -45,6 +45,9 @@ const openingDisplayLabels: Record<string, string> = {
   "nf3 d4": "Nf3 d4",
   "nf3 nd4": "Nf3 Nd4",
   "nf3 c3": "Nf3 c3",
+  "e3 qh5 nf3": "e3 Qh5 Nf3",
+  "e3 qf3": "e3 Qf3",
+  "nh3 nc3": "Nh3 Nc3",
   variety: "All-around",
 };
 
@@ -54,6 +57,11 @@ const getOpeningDisplayLabel = (opening: string): string => {
     .toLowerCase();
   return openingDisplayLabels[normalizedOpening] ?? String(opening || "").trim();
 };
+
+const normalizeOpeningKey = (opening: string): string =>
+  String(opening || "")
+    .trim()
+    .toLowerCase();
 
 const isMode = (value: string): value is Mode => (modeOptions as readonly string[]).includes(value);
 
@@ -161,6 +169,7 @@ const UsersTablePage = () => {
   const [sortKey, setSortKey] = useState<UserSortKey>("aliasCount");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [ratingDisplayMode, setRatingDisplayMode] = useState<RatingDisplayMode>("current");
+  const [activeOpeningFilter, setActiveOpeningFilter] = useState("");
 
   useEffect(() => {
     let isCurrent = true;
@@ -203,10 +212,18 @@ const UsersTablePage = () => {
     setSortDirection(nextKey === "username" ? "asc" : "desc");
   };
 
+  const filteredRows = useMemo(() => {
+    if (!activeOpeningFilter) return rows;
+
+    return rows.filter((row) =>
+      row.openings.map(normalizeOpeningKey).includes(activeOpeningFilter),
+    );
+  }, [activeOpeningFilter, rows]);
+
   const sortedRows = useMemo(() => {
     const directionMultiplier = sortDirection === "asc" ? 1 : -1;
 
-    return [...rows].sort((a, b) => {
+    return [...filteredRows].sort((a, b) => {
       if (sortKey === "username") {
         const usernameCompare = directionMultiplier * a.username.localeCompare(b.username);
         if (usernameCompare !== 0) return usernameCompare;
@@ -242,7 +259,7 @@ const UsersTablePage = () => {
 
       return a.username.localeCompare(b.username);
     });
-  }, [ratingDisplayMode, rows, sortDirection, sortKey]);
+  }, [filteredRows, ratingDisplayMode, sortDirection, sortKey]);
 
   const userColumns = useMemo(() => getUserColumns(ratingDisplayMode), [ratingDisplayMode]);
 
@@ -259,7 +276,13 @@ const UsersTablePage = () => {
         {error ? <div className="errorText">{error}</div> : null}
 
         <div className="rankingsMeta usersMeta">
-          <span>{loading ? "Loading players..." : `${rows.length} players`}</span>
+          <span>
+            {loading
+              ? "Loading players..."
+              : activeOpeningFilter
+                ? `${filteredRows.length} of ${rows.length} players`
+                : `${rows.length} players`}
+          </span>
           <span className="rankedCount">
             <Link className="rankingsMetaLink" to="/users/banned">
               Banned user list
@@ -318,7 +341,13 @@ const UsersTablePage = () => {
           <div className="emptyRankings">No players available.</div>
         ) : null}
 
-        {!error && !loading && rows.length > 0 ? (
+        {!error && !loading && rows.length > 0 && filteredRows.length === 0 ? (
+          <div className="emptyRankings">
+            No players found for {getOpeningDisplayLabel(activeOpeningFilter)}.
+          </div>
+        ) : null}
+
+        {!error && !loading && rows.length > 0 && filteredRows.length > 0 ? (
           <div className="rankingsTableWrap">
             <table className="rankingsTable usersTable">
               <thead>
@@ -354,20 +383,28 @@ const UsersTablePage = () => {
                     <td>
                       {row.openings.length > 0 ? (
                         <div className="usersOpeningsCell">
-                          <span
-                            className="usersOpeningsPreview"
-                            tabIndex={0}
-                            aria-controls={`user-openings-${row.username}`}
-                          >
-                            {row.openings.slice(0, 2).map(getOpeningDisplayLabel).join(", ")}
-                            {row.openings.length > 2 ? ` +${row.openings.length - 2}` : ""}
-                          </span>
-                          <div id={`user-openings-${row.username}`} className="usersOpeningsList">
-                            {row.openings.map((opening) => (
-                              <span key={`${row.username}-${opening}`} className="usersOpeningTag">
-                                {getOpeningDisplayLabel(opening)}
-                              </span>
-                            ))}
+                          <div className="usersOpeningTags" aria-label={`${row.username} openings`}>
+                            {row.openings.map((opening) => {
+                              const openingKey = normalizeOpeningKey(opening);
+
+                              return (
+                                <button
+                                  type="button"
+                                  key={`${row.username}-${openingKey}`}
+                                  className={`usersOpeningTag${
+                                    activeOpeningFilter === openingKey ? " active" : ""
+                                  }`}
+                                  aria-pressed={activeOpeningFilter === openingKey}
+                                  onClick={() =>
+                                    setActiveOpeningFilter((current) =>
+                                      current === openingKey ? "" : openingKey,
+                                    )
+                                  }
+                                >
+                                  {getOpeningDisplayLabel(opening)}
+                                </button>
+                              );
+                            })}
                           </div>
                         </div>
                       ) : (

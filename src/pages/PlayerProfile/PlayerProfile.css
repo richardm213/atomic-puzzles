@@ -141,6 +141,24 @@
   --opening-text: #ddfff3;
 }
 
+.openingToneE3Qh5Nf3 {
+  --opening-bg: rgba(234, 179, 8, 0.16);
+  --opening-border: rgba(250, 204, 21, 0.42);
+  --opening-text: #fff6cf;
+}
+
+.openingToneE3Qf3 {
+  --opening-bg: rgba(251, 113, 133, 0.16);
+  --opening-border: rgba(253, 164, 175, 0.42);
+  --opening-text: #ffe4e9;
+}
+
+.openingToneNh3Nc3 {
+  --opening-bg: rgba(100, 116, 139, 0.18);
+  --opening-border: rgba(148, 163, 184, 0.44);
+  --opening-text: #edf2f7;
+}
+
 .openingToneVariety {
   --opening-bg: rgba(236, 72, 153, 0.16);
   --opening-border: rgba(244, 114, 182, 0.42);
@@ -688,6 +706,24 @@
   --opening-text: #135946;
 }
 
+:root[data-theme="light"] .openingToneE3Qh5Nf3 {
+  --opening-bg: #fff4bf;
+  --opening-border: #d7b950;
+  --opening-text: #6d5600;
+}
+
+:root[data-theme="light"] .openingToneE3Qf3 {
+  --opening-bg: #ffe1e7;
+  --opening-border: #e89ca9;
+  --opening-text: #842938;
+}
+
+:root[data-theme="light"] .openingToneNh3Nc3 {
+  --opening-bg: #e7edf5;
+  --opening-border: #a7b4c4;
+  --opening-text: #354255;
+}
+
 :root[data-theme="light"] .openingToneVariety {
   --opening-bg: #ffe0ec;
   --opening-border: #e993b7;
@@ -942,7 +978,6 @@
   .profileMatchTable td {
     padding: 10px;
   }
-
 }
 
 .profileBestWinOpponent,
