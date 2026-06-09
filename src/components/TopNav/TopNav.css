@@ -58,6 +58,28 @@
   white-space: nowrap;
 }
 
+.homeBrand img {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  padding: 3px;
+  border: 1px solid var(--brand-mark-border);
+  border-radius: var(--radius-ui);
+  background: var(--brand-mark-bg);
+  box-shadow: var(--brand-mark-shadow);
+  object-fit: contain;
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+.homeBrand:hover img,
+.homeBrand:focus-visible img {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--color-primary-soft) 74%, white);
+}
+
 .homeBrand span {
   background: var(--brand-wordmark-gradient);
   background-clip: text;
@@ -69,7 +91,9 @@
 }
 
 :root[data-theme="light"] .homeBrand span {
-  background: var(--brand-wordmark-gradient);
+  background: none;
+  color: var(--brand-wordmark-color);
+  -webkit-text-fill-color: currentColor;
 }
 
 .topNavCenter {

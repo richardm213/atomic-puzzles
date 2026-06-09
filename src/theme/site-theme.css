@@ -76,7 +76,14 @@
   --site-background-size:
     var(--page-background-texture-size), var(--page-background-texture-size), auto, auto, auto;
   --brand-wordmark-gradient: linear-gradient(180deg, #ffffff 0%, var(--color-primary-pale) 100%);
+  --brand-wordmark-color: var(--color-heading);
   --brand-wordmark-shadow: 0 0 18px rgba(147, 197, 253, 0.18);
+  --brand-mark-bg:
+    linear-gradient(145deg, color-mix(in srgb, var(--color-primary) 18%, var(--color-panel-deep)), var(--color-panel-deep));
+  --brand-mark-border: color-mix(in srgb, var(--color-primary-soft) 58%, transparent);
+  --brand-mark-shadow:
+    0 0 0 1px color-mix(in srgb, white 8%, transparent) inset,
+    0 8px 18px color-mix(in srgb, var(--color-primary) 24%, transparent);
   --nav-shadow: none;
   --dropdown-panel-bg: var(--color-panel);
 }
@@ -148,11 +155,19 @@
     var(--page-background-texture-size), var(--page-background-texture-size), auto, auto, auto, auto;
   --brand-wordmark-gradient: linear-gradient(
     180deg,
-    var(--color-panel-deep) 0%,
-    var(--color-primary-hover) 58%,
-    var(--color-cyan) 100%
+    #07111f 0%,
+    #123177 62%,
+    #0b5264 100%
   );
+  --brand-wordmark-color: #10265d;
   --brand-wordmark-shadow: none;
+  --brand-mark-bg:
+    linear-gradient(145deg, #1d4ed8 0%, #2563eb 58%, #0e7490 100%);
+  --brand-mark-border: color-mix(in srgb, var(--color-primary) 64%, white);
+  --brand-mark-shadow:
+    0 0 0 1px color-mix(in srgb, white 32%, transparent) inset,
+    0 10px 20px color-mix(in srgb, var(--color-primary) 18%, transparent),
+    0 2px 5px color-mix(in srgb, var(--color-panel-deep) 12%, transparent);
   --nav-shadow: 0 10px 30px color-mix(in srgb, var(--color-muted) 8%, transparent);
   --dropdown-panel-bg:
     linear-gradient(
