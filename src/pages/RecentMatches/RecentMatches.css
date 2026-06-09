@@ -1,6 +1,10 @@
 .recentMatchesPanel {
-  width: min(960px, 100%);
+  width: min(820px, 100%);
   min-width: 0;
+}
+
+.rankingsPanel.recentMatchesPanel {
+  width: min(820px, 100%);
 }
 
 .recentMatchesPanel h1 {
@@ -11,6 +15,7 @@
   max-width: 62ch;
   margin-bottom: 22px;
   color: var(--color-muted);
+  line-height: 1.5;
 }
 
 .matchFilterPanel {
@@ -90,13 +95,122 @@
   gap: 12px;
 }
 
+.matchFilterRanges > .rangeFilter:only-child {
+  grid-column: 1 / -1;
+}
+
 .matchFilterActions {
   display: flex;
   justify-content: flex-end;
 }
 
+.matchFilterFooter {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
 .matchFilterActions .matchFilterSearch {
   min-width: 160px;
+}
+
+.recentMatchesPanel .matchFilterPanel {
+  gap: 14px;
+  padding: 16px;
+  border-color: color-mix(in srgb, var(--color-border) 72%, transparent);
+  background: color-mix(in srgb, var(--color-surface-soft) 42%, transparent);
+}
+
+.recentMatchesPanel .matchFilterGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+}
+
+.recentMatchesPanel .matchFilterGrid label {
+  font-weight: 650;
+  letter-spacing: 0.06em;
+}
+
+.recentMatchesPanel .matchFilterGrid select,
+.recentMatchesPanel .matchFilterGrid input[type="text"],
+.recentMatchesPanel .matchFilterGrid input[type="date"] {
+  background: var(--color-panel-strong);
+}
+
+.recentMatchesPanel .matchFilterRanges {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.recentMatchesPanel .rangeFilter {
+  padding: 12px;
+  background: color-mix(in srgb, var(--color-panel-strong) 70%, transparent);
+}
+
+.recentMatchesPanel .rangeFilter > label {
+  font-weight: 650;
+  letter-spacing: 0.06em;
+}
+
+.recentMatchesPanel .sourceFilterGroup {
+  flex: 1 1 420px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.recentMatchesPanel .sourceFilterChecks {
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.recentMatchesPanel .sourceFilterCheck {
+  min-height: 32px;
+  border-color: color-mix(in srgb, var(--color-border) 78%, transparent);
+  background: color-mix(in srgb, var(--color-panel-strong) 72%, transparent);
+  color: var(--color-text);
+  font-weight: 650;
+}
+
+.recentMatchesPanel .rankingsMeta {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+.recentMatchesPanel .matchCards {
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.recentMatchesPanel .matchCard {
+  border-color: color-mix(in srgb, var(--color-border) 78%, transparent);
+  background: color-mix(in srgb, var(--color-panel-strong) 82%, transparent);
+  padding: 13px 15px;
+}
+
+.recentMatchesPanel .matchCardHeader {
+  grid-template-columns: minmax(0, 1fr) minmax(70px, auto) max-content;
+  gap: 14px;
+}
+
+.recentMatchesPanel .matchCard:hover,
+.recentMatchesPanel .matchCard:focus-visible {
+  transform: none;
+}
+
+.recentMatchesPanel .matchCardPlayers {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.recentMatchesPanel .matchScoreBlock {
+  color: var(--color-text);
+  font-size: 15px;
+  font-weight: 650;
 }
 
 .profileControls {
@@ -295,9 +409,62 @@
   .matchFilterGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .recentMatchesPanel .matchFilterGrid,
+  .recentMatchesPanel .matchFilterRanges {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 640px) {
+  .recentMatchesPanel .matchFilterGrid,
+  .recentMatchesPanel .matchFilterRanges {
+    grid-template-columns: 1fr;
+  }
+
+  .matchFilterFooter,
+  .matchFilterActions,
+  .matchFilterActions .matchFilterSearch {
+    width: 100%;
+  }
+
+  .recentMatchesPanel .sourceFilterGroup {
+    flex-basis: 100%;
+  }
+
+  .recentMatchesPanel .sourceFilterChecks {
+    gap: 4px;
+  }
+
+  .recentMatchesPanel .sourceFilterCheck {
+    flex: 0 0 calc((100% - 20px) / 3);
+    box-sizing: border-box;
+    justify-content: center;
+    padding: 0 8px;
+  }
+
+  .recentMatchesPanel .matchCardHeader {
+    grid-template-columns: minmax(0, 1fr) max-content;
+    align-items: center;
+    gap: 8px 12px;
+  }
+
+  .recentMatchesPanel .matchCardMain {
+    grid-column: 1 / -1;
+  }
+
+  .recentMatchesPanel .matchScoreBlock {
+    grid-column: 1;
+    width: auto;
+    min-width: 0;
+    justify-content: flex-start;
+  }
+
+  .recentMatchesPanel .matchPageLink {
+    grid-column: 2;
+    justify-self: end;
+  }
+
   .matchFilterGrid,
   .matchFilterRanges {
     grid-template-columns: 1fr;

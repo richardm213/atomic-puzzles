@@ -7,7 +7,6 @@ import {
   defaultRatingMax,
   defaultRatingMin,
   defaultSourceFilters,
-  isMatchLengthWithinBounds,
   knownSourceKeys,
   type Mode,
   modeDescriptions,
@@ -38,8 +37,6 @@ type AppliedFilters = {
   endDateFilter: string;
   timeControlInitialFilter: string;
   timeControlIncrementFilter: string;
-  matchLengthMin: number;
-  matchLengthMax: number;
 };
 
 const isMode = (value: string): value is Mode => (modeOptions as readonly string[]).includes(value);
@@ -49,7 +46,6 @@ import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { Seo } from "../../components/Seo/Seo";
 import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFilterChecks";
 import { TimeControlFields } from "../../components/TimeControlFields/TimeControlFields";
-import { toBoundedLengthRange, useMatchLengthRange } from "../../hooks/useMatchLengthRange";
 import { loadRawMatchesByMode } from "../../lib/matches/matchData";
 import {
   ratingsForPlayers,
@@ -136,14 +132,6 @@ export const RecentMatchesPage = () => {
   const searchInFlightRef = useRef(false);
   const pageLoadIdRef = useRef(0);
   const skipNextPageLoadKeyRef = useRef("");
-  const defaultLengthRange = useMemo(() => toBoundedLengthRange(defaultMode), []);
-  const {
-    bounds: appliedMatchBounds,
-    matchLengthMin,
-    setMatchLengthMin,
-    matchLengthMax,
-    setMatchLengthMax,
-  } = useMatchLengthRange(selectedMode);
   const [appliedFilters, setAppliedFilters] = useState<AppliedFilters>({
     selectedMode: defaultMode,
     ratingFilterType: "both",
@@ -156,8 +144,6 @@ export const RecentMatchesPage = () => {
     endDateFilter: "",
     timeControlInitialFilter: "all",
     timeControlIncrementFilter: "all",
-    matchLengthMin: defaultLengthRange.min,
-    matchLengthMax: defaultLengthRange.max,
   });
 
   useEffect(() => {
@@ -201,17 +187,6 @@ export const RecentMatchesPage = () => {
           return false;
         }
 
-        if (
-          !isMatchLengthWithinBounds(
-            match.gameCount ?? 0,
-            appliedFilters.matchLengthMin,
-            appliedFilters.matchLengthMax,
-            appliedMatchBounds.max,
-          )
-        ) {
-          return false;
-        }
-
         const playerAName = match.playerA.toLowerCase();
         const playerBName = match.playerB.toLowerCase();
         const first = appliedFilters.player1Filter.trim().toLowerCase();
@@ -236,7 +211,7 @@ export const RecentMatchesPage = () => {
 
         return true;
       }),
-    [matches, appliedFilters, startDateTs, endDateTs, appliedMatchBounds.max],
+    [matches, appliedFilters, startDateTs, endDateTs],
   );
   const totalPages = Math.max(1, Math.ceil(totalMatches / Math.max(1, pageSize)));
 
@@ -314,8 +289,6 @@ export const RecentMatchesPage = () => {
       endDateFilter,
       timeControlInitialFilter,
       timeControlIncrementFilter,
-      matchLengthMin,
-      matchLengthMax,
     };
 
     searchInFlightRef.current = true;
@@ -406,7 +379,6 @@ export const RecentMatchesPage = () => {
       />
       <div className="panel rankingsPanel recentMatchesPanel">
         <h1>Recent Matches</h1>
-        <p>Newest atomic matches in a card view across blitz, bullet, and hyperbullet.</p>
         <form
           className="matchFilterPanel"
           onSubmit={(event) => {
@@ -510,32 +482,19 @@ export const RecentMatchesPage = () => {
               onLowerChange={setRatingMin}
               onUpperChange={setRatingMax}
             />
-
-            <DualRangeSlider
-              id="recent-length-min"
-              label={`Match length range: ${matchLengthMin} - ${
-                matchLengthMax >= appliedMatchBounds.max
-                  ? `${appliedMatchBounds.max}+`
-                  : matchLengthMax
-              }`}
-              min={appliedMatchBounds.min}
-              max={appliedMatchBounds.max}
-              lowerValue={matchLengthMin}
-              upperValue={matchLengthMax}
-              onLowerChange={setMatchLengthMin}
-              onUpperChange={setMatchLengthMax}
-            />
           </div>
 
-          <SourceFilterChecks values={sourceFilters} onChange={setSourceFilter} />
-          <div className="matchFilterActions">
-            <button
-              className="analyzeButton matchFilterSearch"
-              type="submit"
-              disabled={loadingMatches}
-            >
-              {loadingMatches ? "Searching..." : "Search"}
-            </button>
+          <div className="matchFilterFooter">
+            <SourceFilterChecks values={sourceFilters} onChange={setSourceFilter} />
+            <div className="matchFilterActions">
+              <button
+                className="analyzeButton matchFilterSearch"
+                type="submit"
+                disabled={loadingMatches}
+              >
+                {loadingMatches ? "Searching..." : "Search"}
+              </button>
+            </div>
           </div>
         </form>
 

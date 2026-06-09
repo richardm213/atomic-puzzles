@@ -50,7 +50,7 @@
   z-index: 31;
   margin-right: 22px;
   color: var(--color-heading);
-  font-family: "Arial Rounded MT Bold", "Trebuchet MS", "Avenir Next", system-ui, sans-serif;
+  font-family: var(--font-brand);
   font-size: 20px;
   font-weight: 800;
   line-height: 1;
@@ -59,11 +59,17 @@
 }
 
 .homeBrand span {
-  background: linear-gradient(180deg, #ffffff 0%, var(--color-primary-pale) 100%);
+  background: var(--brand-wordmark-gradient);
   background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
   font-weight: 900;
   color: transparent;
-  text-shadow: 0 0 18px rgba(147, 197, 253, 0.18);
+  text-shadow: var(--brand-wordmark-shadow);
+}
+
+:root[data-theme="light"] .homeBrand span {
+  background: var(--brand-wordmark-gradient);
 }
 
 .topNavCenter {
@@ -109,7 +115,7 @@
 }
 
 :root[data-theme="light"] .topNav {
-  box-shadow: 0 10px 30px rgba(128, 146, 173, 0.08);
+  box-shadow: var(--nav-shadow);
 }
 
 .navSettings {
@@ -560,16 +566,10 @@
 
 .navSettingsMenu,
 .navProfileDropdown {
-  background: var(--color-panel);
+  background: var(--dropdown-panel-bg);
   border: 1px solid var(--color-border-strong);
   box-shadow: var(--shadow-panel);
   backdrop-filter: blur(18px);
-}
-
-:root[data-theme="light"] .navSettingsMenu,
-:root[data-theme="light"] .navProfileDropdown {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(250, 245, 237, 0.82)), var(--color-panel);
 }
 
 .navProfileDropdownItem {

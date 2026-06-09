@@ -37,15 +37,6 @@ export const MatchDetails = ({
           )})`}
         </span>
       </div>
-      {showH2HLink ? (
-        <div className="matchH2HSlot">
-          <MatchH2HLink
-            playerA={match.playerA}
-            playerB={match.playerB}
-            onClick={(event) => stopPropagation?.(event)}
-          />
-        </div>
-      ) : null}
       <div>
         <strong>{match.playerB}</strong>
         <span>
@@ -59,8 +50,17 @@ export const MatchDetails = ({
           )})`}
         </span>
       </div>
+      {showH2HLink ? (
+        <div className="matchH2HSlot">
+          <MatchH2HLink
+            playerA={match.playerA}
+            playerB={match.playerB}
+            onClick={(event) => stopPropagation?.(event)}
+          />
+        </div>
+      ) : null}
     </div>
-    <div className="matchGames">
+    <div className={`matchGames${showRunningScore ? " matchGamesWithScore" : ""}`}>
       <div className="matchGamesHeader">
         <strong>Game</strong>
         <strong>Result</strong>

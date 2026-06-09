@@ -5,7 +5,6 @@ import type { MouseEventHandler } from "react";
 
 import type { MatchCardData } from "../../types/matchCard";
 import { formatLocalDateTime, formatScore } from "../../utils/formatters";
-import { scoreToneClass } from "../../utils/matchPresentation";
 import { isToggleActionKey } from "../../utils/toggleActionKey";
 import { LichessGameLink } from "../LichessGameLink/LichessGameLink";
 import { MatchDetails } from "../MatchDetails/MatchDetails";
@@ -16,11 +15,20 @@ export type MatchCardProps = {
   matchKey: string;
   isExpanded: boolean;
   onToggle: () => void;
+  showH2HLink?: boolean;
+  showRunningScore?: boolean;
 };
 
 const stopPropagation: MouseEventHandler = (event) => event.stopPropagation();
 
-export const MatchCard = ({ match, matchKey, isExpanded, onToggle }: MatchCardProps) => (
+export const MatchCard = ({
+  match,
+  matchKey,
+  isExpanded,
+  onToggle,
+  showH2HLink = true,
+  showRunningScore = false,
+}: MatchCardProps) => (
   <article
     key={matchKey}
     className={`matchCard${isExpanded ? " expanded" : ""}`}
@@ -69,12 +77,8 @@ export const MatchCard = ({ match, matchKey, isExpanded, onToggle }: MatchCardPr
         </div>
       </div>
       <div className="matchScoreBlock" aria-label={`Score ${match.scoreA} to ${match.scoreB}`}>
-        <span className={`matchScoreValue${scoreToneClass(match.scoreA, match.scoreB)}`}>
-          {formatScore(match.scoreA)}
-        </span>
-        <span className="scoreDash">-</span>
-        <span className={`matchScoreValue${scoreToneClass(match.scoreB, match.scoreA)}`}>
-          {formatScore(match.scoreB)}
+        <span className="matchScoreText">
+          {formatScore(match.scoreA)} - {formatScore(match.scoreB)}
         </span>
       </div>
       <MatchPageLink
@@ -88,7 +92,8 @@ export const MatchCard = ({ match, matchKey, isExpanded, onToggle }: MatchCardPr
         <MatchDetails
           match={match}
           matchKey={matchKey}
-          showH2HLink
+          showH2HLink={showH2HLink}
+          showRunningScore={showRunningScore}
           stopPropagation={stopPropagation}
         />
       </div>

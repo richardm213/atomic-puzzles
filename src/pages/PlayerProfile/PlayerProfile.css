@@ -573,16 +573,11 @@
 }
 
 .profileTablePill {
-  display: inline-flex;
-  align-items: center;
-  min-height: 28px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-surface-elevated);
-  color: var(--color-muted);
+  display: inline;
+  color: var(--color-text);
   font-size: 13px;
   font-weight: 800;
-  padding: 0 9px;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
@@ -590,26 +585,25 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 88px;
-  min-height: 32px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-surface-soft-strong);
-  font-size: 15px;
-  font-weight: 850;
+  gap: 5px;
+  min-width: 74px;
+  color: var(--color-heading);
+  font-size: 16px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 
 .profileScoreValue {
-  min-width: 24px;
+  min-width: 18px;
   text-align: center;
 }
 
 .profileScoreValue.winner {
-  color: #86efac;
+  color: #5fbf7a;
 }
 
 .profileScoreValue.loser {
-  color: var(--color-danger);
+  color: #df7474;
 }
 
 .profileMetricValue {
@@ -625,35 +619,18 @@
 }
 
 .matchDetailsRow td {
-  background: var(--color-surface-soft-strong);
+  background: transparent;
 }
 
 .matchDetailsInner {
   padding: 4px 0 2px;
 }
 
-.profileMatchPlayerStats {
-  margin-bottom: 12px;
-}
-
-.profileMatchGames {
-  max-width: none;
-}
-
-.profileMatchGameHeader,
-.profileMatchGame {
-  grid-template-columns: 80px minmax(0, 1fr) 80px minmax(90px, auto);
-  gap: 12px;
-  font-size: 13px;
-}
-
-.profileMatchGameHeader {
-  font-size: 11px;
-}
-
-.profileMatchGame > * {
-  min-width: 0;
-  overflow-wrap: anywhere;
+.matchDetailsInner .matchCardPlayerStats > div {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
 }
 
 @media (max-width: 1180px) {
@@ -738,17 +715,6 @@
     padding: 10px;
   }
 
-  .profileMatchGameHeader,
-  .profileMatchGame {
-    grid-template-columns: 68px minmax(0, 1fr);
-  }
-
-  .profileMatchGameHeader > :nth-child(3),
-  .profileMatchGameHeader > :nth-child(4),
-  .profileMatchGame > :nth-child(3),
-  .profileMatchGame > :nth-child(4) {
-    grid-column: 1 / -1;
-  }
 }
 
 .profileBestWinOpponent,

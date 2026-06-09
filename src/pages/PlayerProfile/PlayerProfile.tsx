@@ -5,7 +5,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 
 import { DualRangeSlider } from "../../components/DualRangeSlider/DualRangeSlider";
 import { LichessGameLink } from "../../components/LichessGameLink/LichessGameLink";
-import { MatchH2HLink } from "../../components/MatchH2HLink/MatchH2HLink";
+import { MatchDetails } from "../../components/MatchDetails/MatchDetails";
 import { MatchPageLink } from "../../components/MatchPageLink/MatchPageLink";
 import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { ProfileMetricCard } from "../../components/ProfileMetricCard/ProfileMetricCard";
@@ -18,7 +18,6 @@ import {
   defaultRatingMax,
   defaultRatingMin,
   defaultSourceFilters,
-  matchLengthBoundsByMode,
   modeDescriptions,
   modeLabels,
   modeOptions,
@@ -26,7 +25,6 @@ import {
   opponentRatingSliderMin,
   pageSizeOptions,
 } from "../../constants/matches";
-import { toBoundedLengthRange, useMatchLengthRange } from "../../hooks/useMatchLengthRange";
 import {
   buildRankingsLocation,
   filterMatches,
@@ -50,15 +48,12 @@ import {
 } from "../../utils/formatters";
 import { getTimeControlOptions } from "../../utils/matchCollection";
 import { parseDateInputBoundary } from "../../utils/matchFilters";
-import { scoreToneClass } from "../../utils/matchPresentation";
 import { normalizeUsername } from "../../utils/playerNames";
 import { isToggleActionKey } from "../../utils/toggleActionKey";
 
 const countOptions = [5, 10, 20];
 
 type ProfileFilters = {
-  matchLengthMin: number;
-  matchLengthMax: number;
   opponentRatingMin: number;
   opponentRatingMax: number;
   opponentFilter: string;
@@ -130,6 +125,12 @@ const awcChampionTrophiesByUsername = {
 };
 
 const getCurrentMonthKey = () => monthKeyFromMonthValue(new Date().toISOString().slice(0, 10));
+
+const profileResultToneClass = (playerScore: number, opponentScore: number): string => {
+  if (playerScore > opponentScore) return " winner";
+  if (playerScore < opponentScore) return " loser";
+  return "";
+};
 
 const trophyLevels = [
   {
@@ -224,24 +225,16 @@ const buildMatchFilters = (
 const isClientSidePagedSearch = (filters: { opponentFilter?: string }): boolean =>
   Boolean(String(filters?.opponentFilter || "").trim());
 
-const createDefaultProfileFilters = (
-  mode: import("../../constants/matches").Mode = defaultMode,
-): ProfileFilters => {
-  const matchLengthRange = toBoundedLengthRange(mode);
-
-  return {
-    matchLengthMin: matchLengthRange.min,
-    matchLengthMax: matchLengthRange.max,
-    opponentRatingMin: defaultRatingMin,
-    opponentRatingMax: defaultRatingMax,
-    opponentFilter: "",
-    startDateFilter: "",
-    endDateFilter: "",
-    sourceFilters: { ...defaultSourceFilters },
-    timeControlInitialFilter: "all",
-    timeControlIncrementFilter: "all",
-  };
-};
+const createDefaultProfileFilters = (): ProfileFilters => ({
+  opponentRatingMin: defaultRatingMin,
+  opponentRatingMax: defaultRatingMax,
+  opponentFilter: "",
+  startDateFilter: "",
+  endDateFilter: "",
+  sourceFilters: { ...defaultSourceFilters },
+  timeControlInitialFilter: "all",
+  timeControlIncrementFilter: "all",
+});
 
 export const PlayerProfilePage = ({ username }: { username?: string }) => {
   const normalizedUsername = useMemo(() => normalizeUsername(username), [username]);
@@ -257,8 +250,6 @@ export const PlayerProfilePage = ({ username }: { username?: string }) => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [expandedMatchKeys, setExpandedMatchKeys] = useState<string[]>([]);
-  const { matchLengthMin, setMatchLengthMin, matchLengthMax, setMatchLengthMax } =
-    useMatchLengthRange(selectedMode);
   const [opponentRatingMin, setOpponentRatingMin] = useState(defaultRatingMin);
   const [opponentRatingMax, setOpponentRatingMax] = useState(defaultRatingMax);
   const [opponentFilter, setOpponentFilter] = useState("");
@@ -279,11 +270,9 @@ export const PlayerProfilePage = ({ username }: { username?: string }) => {
   const [recentMonthRankCount, setRecentMonthRankCount] = useState(5);
   const [bestWinCount, setBestWinCount] = useState(5);
   const [appliedFilters, setAppliedFilters] = useState(() => createDefaultProfileFilters());
-  const matchLengthBounds =
-    matchLengthBoundsByMode[selectedMode] ?? matchLengthBoundsByMode[defaultMode];
 
   useEffect(() => {
-    const defaultFilters = createDefaultProfileFilters(defaultMode);
+    const defaultFilters = createDefaultProfileFilters();
     matchRequestIdRef.current += 1;
     searchSubmitInFlightRef.current = false;
     setSelectedMode(defaultMode);
@@ -301,10 +290,8 @@ export const PlayerProfilePage = ({ username }: { username?: string }) => {
     setSourceFilters(defaultFilters.sourceFilters);
     setTimeControlInitialFilter(defaultFilters.timeControlInitialFilter);
     setTimeControlIncrementFilter(defaultFilters.timeControlIncrementFilter);
-    setMatchLengthMin(defaultFilters.matchLengthMin);
-    setMatchLengthMax(defaultFilters.matchLengthMax);
     setAppliedFilters(defaultFilters);
-  }, [normalizedUsername, setMatchLengthMax, setMatchLengthMin]);
+  }, [normalizedUsername]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
@@ -463,8 +450,6 @@ export const PlayerProfilePage = ({ username }: { username?: string }) => {
     searchSubmitInFlightRef.current = true;
     setPage(1);
     setAppliedFilters({
-      matchLengthMin,
-      matchLengthMax,
       opponentRatingMin,
       opponentRatingMax,
       opponentFilter,
@@ -483,18 +468,14 @@ export const PlayerProfilePage = ({ username }: { username?: string }) => {
     setSourceFilters((current) => ({ ...current, [source]: checked }));
   };
   const handleModeChange = (nextMode: import("../../constants/matches").Mode): void => {
-    const nextModeFilters = createDefaultProfileFilters(nextMode);
+    const nextModeFilters = createDefaultProfileFilters();
 
     setSelectedMode(nextMode);
     setPage(1);
     setTimeControlInitialFilter(nextModeFilters.timeControlInitialFilter);
     setTimeControlIncrementFilter(nextModeFilters.timeControlIncrementFilter);
-    setMatchLengthMin(nextModeFilters.matchLengthMin);
-    setMatchLengthMax(nextModeFilters.matchLengthMax);
     setAppliedFilters((current) => ({
       ...current,
-      matchLengthMin: nextModeFilters.matchLengthMin,
-      matchLengthMax: nextModeFilters.matchLengthMax,
       timeControlInitialFilter: nextModeFilters.timeControlInitialFilter,
       timeControlIncrementFilter: nextModeFilters.timeControlIncrementFilter,
     }));
@@ -937,21 +918,6 @@ export const PlayerProfilePage = ({ username }: { username?: string }) => {
                   onLowerChange={setOpponentRatingMin}
                   onUpperChange={setOpponentRatingMax}
                 />
-
-                <DualRangeSlider
-                  id="match-length-min"
-                  label={`Match length range: ${matchLengthMin} - ${
-                    matchLengthMax >= matchLengthBounds.max
-                      ? `${matchLengthBounds.max}+`
-                      : matchLengthMax
-                  }`}
-                  min={matchLengthBounds.min}
-                  max={matchLengthBounds.max}
-                  lowerValue={matchLengthMin}
-                  upperValue={matchLengthMax}
-                  onLowerChange={setMatchLengthMin}
-                  onUpperChange={setMatchLengthMax}
-                />
               </div>
 
               <SourceFilterChecks values={sourceFilters} onChange={setSourceFilter} />
@@ -1030,7 +996,7 @@ export const PlayerProfilePage = ({ username }: { username?: string }) => {
                           <td className="scoreCell">
                             <span className="profileScoreBox">
                               <span
-                                className={`profileScoreValue${scoreToneClass(
+                                className={`profileScoreValue${profileResultToneClass(
                                   match.playerScore,
                                   match.opponentScore,
                                 )}`}
@@ -1072,66 +1038,39 @@ export const PlayerProfilePage = ({ username }: { username?: string }) => {
                           <tr className="matchDetailsRow">
                             <td colSpan={7}>
                               <div className="matchDetailsInner">
-                                <div className="matchCardPlayerStats matchCardPlayerStatsWithH2H profileMatchPlayerStats">
-                                  <div>
-                                    <strong>{canonicalUsername}</strong>
-                                    <span>
-                                      {`Rating ${match.beforeRating} (${formatSignedDecimal(
-                                        match.ratingChange,
-                                      )})`}
-                                    </span>
-                                    <span>
-                                      {`RD ${match.beforeRd} (${formatSignedDecimal(match.rdChange)})`}
-                                    </span>
-                                  </div>
-                                  <div className="matchH2HSlot">
-                                    <MatchH2HLink
-                                      playerA={canonicalUsername}
-                                      playerB={match.opponent}
-                                      onClick={(event) => event.stopPropagation()}
-                                    />
-                                  </div>
-                                  <div>
-                                    <strong>{match.opponent}</strong>
-                                    <span>
-                                      {`Rating ${match.opponentBeforeRating} (${formatSignedDecimal(
-                                        match.opponentAfterRating - match.opponentBeforeRating,
-                                      )})`}
-                                    </span>
-                                    <span>
-                                      {`RD ${match.opponentBeforeRd} (${formatSignedDecimal(
-                                        match.opponentAfterRd - match.opponentBeforeRd,
-                                      )})`}
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="matchGames profileMatchGames">
-                                  <div className="matchGamesHeader profileMatchGameHeader">
-                                    <strong>Game</strong>
-                                    <strong>Result</strong>
-                                    <strong>Score</strong>
-                                    <strong>ID</strong>
-                                  </div>
-                                  <ul className="matchGamesList profileMatchGamesList">
-                                    {match.games.map((game, index) => (
-                                      <li
-                                        key={`${matchKey}-${game.id}-${index}`}
-                                        className="matchGameRow profileMatchGame"
-                                      >
-                                        <span>Game {index + 1}</span>
-                                        <span>{game.winner}</span>
-                                        <span>{`${formatScore(game.playerScoreAfter)} - ${formatScore(
-                                          game.opponentScoreAfter,
-                                        )}`}</span>
-                                        <span>
-                                          <LichessGameLink gameId={game.id}>
-                                            {game.id}
-                                          </LichessGameLink>
-                                        </span>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </div>
+                                <MatchDetails
+                                  match={{
+                                    matchId: match.matchId,
+                                    mode: selectedMode,
+                                    playerA: canonicalUsername,
+                                    playerB: match.opponent,
+                                    startTs: match.startTs,
+                                    timeControl: match.timeControl,
+                                    sourceValue: match.sourceValue,
+                                    firstGameId: match.firstGameId,
+                                    scoreA: match.playerScore,
+                                    scoreB: match.opponentScore,
+                                    playerABeforeRating: match.beforeRating,
+                                    playerAAfterRating: match.afterRating,
+                                    playerABeforeRd: match.beforeRd,
+                                    playerAAfterRd: match.afterRd,
+                                    playerBBeforeRating: match.opponentBeforeRating,
+                                    playerBAfterRating: match.opponentAfterRating,
+                                    playerBBeforeRd: match.opponentBeforeRd,
+                                    playerBAfterRd: match.opponentAfterRd,
+                                    games: match.games.map((game, index) => ({
+                                      id: game.id,
+                                      index,
+                                      resultLabel: game.winner,
+                                      scoreAAfter: game.playerScoreAfter,
+                                      scoreBAfter: game.opponentScoreAfter,
+                                    })),
+                                  }}
+                                  matchKey={matchKey}
+                                  showH2HLink
+                                  showRunningScore
+                                  stopPropagation={(event) => event.stopPropagation()}
+                                />
                               </div>
                             </td>
                           </tr>

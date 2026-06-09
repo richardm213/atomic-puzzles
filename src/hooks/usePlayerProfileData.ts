@@ -2,11 +2,7 @@ import { useEffect, useState } from "react";
 
 import {
   createModeRecord,
-  defaultMatchLengthMax,
-  defaultMode,
-  isMatchLengthWithinBounds,
   knownSourceKeys,
-  matchLengthBoundsByMode,
   type Mode,
   modeLabels,
   modeOptions,
@@ -51,8 +47,6 @@ export type RatingDisplayByMode = Record<Mode, RatingSnapshot>;
 export type AppliedMatchFilters = {
   startDateFilter?: string | null;
   endDateFilter?: string | null;
-  matchLengthMin: number;
-  matchLengthMax: number;
   timeControlInitialFilter: string;
   timeControlIncrementFilter: string;
   opponentFilter?: string;
@@ -316,19 +310,6 @@ export const filterMatches = (
   return matches.filter((match) => {
     if (startDateTs !== null && match.startTs < startDateTs) return false;
     if (endDateTs !== null && match.startTs > endDateTs) return false;
-
-    if (
-      !isMatchLengthWithinBounds(
-        match.gameCount,
-        appliedFilters.matchLengthMin,
-        appliedFilters.matchLengthMax,
-        matchLengthBoundsByMode[selectedMode]?.max ??
-          matchLengthBoundsByMode[defaultMode]?.max ??
-          defaultMatchLengthMax,
-      )
-    ) {
-      return false;
-    }
 
     const { initial, increment } = parseTimeControlParts(match.timeControl);
     if (

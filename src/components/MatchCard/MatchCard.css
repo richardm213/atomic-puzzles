@@ -90,13 +90,22 @@
 }
 
 .matchCardMeta {
-  margin-top: 10px;
+  margin-top: 8px;
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 10px;
 }
 
-.matchMetaPill,
+.matchMetaPill {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
 .matchExpandCue {
   display: inline-flex;
   align-items: center;
@@ -125,29 +134,17 @@
 .matchScoreBlock {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  min-width: 112px;
-  min-height: 44px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-surface-soft-strong);
-  color: var(--color-text);
-  font-size: 21px;
-  font-weight: 850;
+  justify-content: flex-end;
+  min-width: 70px;
+  min-height: 32px;
+  color: var(--color-heading);
+  font-size: 16px;
+  font-weight: 750;
   font-variant-numeric: tabular-nums;
 }
 
-.matchScoreValue {
-  min-width: 30px;
-  text-align: center;
-}
-
-.matchScoreValue.winner {
-  color: #86efac;
-}
-
-.matchScoreValue.loser {
-  color: var(--color-subtle);
+.matchScoreText {
+  white-space: nowrap;
 }
 
 .matchExpandCue {
@@ -169,8 +166,8 @@
 }
 
 .matchCardPlayerStatsWithH2H {
-  grid-template-columns: minmax(180px, 1fr) auto minmax(180px, 1fr);
-  align-items: stretch;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) max-content;
+  align-items: start;
 }
 
 .matchCardPlayerStats > div {
@@ -184,9 +181,10 @@
 }
 
 .matchCardPlayerStats > .matchH2HSlot {
+  grid-column: 3;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-start;
+  justify-content: flex-end;
   align-self: stretch;
   min-width: 0;
   border-color: transparent;
@@ -213,6 +211,11 @@
   gap: 12px;
   align-items: center;
   min-width: 0;
+}
+
+.matchGamesWithScore .matchGamesHeader,
+.matchGamesWithScore .matchGameRow {
+  grid-template-columns: 80px minmax(0, 1fr) 80px minmax(90px, auto);
 }
 
 .matchGamesHeader {
@@ -259,8 +262,8 @@
     justify-content: flex-start;
     min-width: 0;
     width: 100%;
-    min-height: 42px;
-    padding: 0 10px;
+    min-height: 28px;
+    padding: 0;
   }
 
   .matchExpandCue {
@@ -284,8 +287,20 @@
     grid-template-columns: 1fr;
   }
 
+  .matchDetailsInner .matchCardPlayerStatsWithH2H {
+    grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) max-content;
+  }
+
   .matchCardPlayerStats > .matchH2HSlot {
+    grid-column: auto;
+    justify-content: flex-start;
     min-height: 38px;
+  }
+
+  .matchDetailsInner .matchCardPlayerStats > .matchH2HSlot {
+    grid-column: 3;
+    justify-content: flex-end;
+    min-height: 0;
   }
 
   .matchGamesHeader,
@@ -296,6 +311,19 @@
 
   .matchGamesHeader > :last-child,
   .matchGameRow > :last-child {
+    grid-column: 1 / -1;
+    overflow-wrap: anywhere;
+  }
+
+  .matchGamesWithScore .matchGamesHeader,
+  .matchGamesWithScore .matchGameRow {
+    grid-template-columns: 68px minmax(0, 1fr);
+  }
+
+  .matchGamesWithScore .matchGamesHeader > :nth-child(3),
+  .matchGamesWithScore .matchGamesHeader > :nth-child(4),
+  .matchGamesWithScore .matchGameRow > :nth-child(3),
+  .matchGamesWithScore .matchGameRow > :nth-child(4) {
     grid-column: 1 / -1;
     overflow-wrap: anywhere;
   }

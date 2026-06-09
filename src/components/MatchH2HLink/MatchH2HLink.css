@@ -2,29 +2,28 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  min-width: 54px;
-  min-height: 34px;
-  border: 1px solid color-mix(in srgb, var(--color-accent-soft-border) 78%, transparent);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--color-accent-soft-bg) 80%, transparent);
-  color: var(--color-heading);
+  min-width: 42px;
+  min-height: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-muted);
   font-size: 12px;
-  font-weight: 850;
+  font-weight: 650;
   line-height: 1;
-  padding: 0 10px;
+  padding: 0 8px;
   text-decoration: none;
   transition:
-    transform 140ms ease,
     border-color 140ms ease,
+    color 140ms ease,
     background-color 140ms ease;
   white-space: nowrap;
 }
 
 .matchH2HLink:hover {
-  transform: translateY(-1px);
-  border-color: color-mix(in srgb, var(--color-primary) 50%, transparent);
-  background: color-mix(in srgb, var(--color-accent-soft-bg-strong) 88%, transparent);
+  border-color: var(--color-input-border);
+  background: color-mix(in srgb, var(--color-surface-soft) 62%, transparent);
+  color: var(--color-heading);
 }
 
 .matchH2HLink:focus-visible {
