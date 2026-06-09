@@ -1,22 +1,27 @@
 .puzzlePage {
-  grid-template-columns: minmax(300px, 24rem) minmax(0, 34rem);
+  grid-template-columns: minmax(280px, 23rem) minmax(0, 31.5rem);
   gap: clamp(14px, 2vw, 24px);
   align-items: start;
   background: var(--page-background);
   min-height: var(--page-shell-min-height);
   min-height: var(--page-shell-min-height-dynamic);
+  width: min(100%, 980px);
   padding-block: clamp(10px, 1.4vw, 16px) clamp(10px, 1.4vw, 18px);
 }
 
 body:has(.puzzlePage),
 .appShell:has(.puzzlePage),
 .appMain:has(.puzzlePage) {
-  height: 100svh;
-  overflow: hidden;
+  min-height: 100svh;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .puzzlePanel {
   align-self: start;
+  min-width: 0;
+  overflow: visible;
+  overscroll-behavior: contain;
   border-radius: var(--radius-ui);
   padding: 14px;
   background: var(--color-panel);
@@ -431,6 +436,10 @@ body:has(.puzzlePage),
   display: none;
 }
 
+.mobilePuzzleStatus {
+  display: none;
+}
+
 .mobileActionCard {
   display: grid;
   gap: 10px;
@@ -442,9 +451,11 @@ body:has(.puzzlePage),
 }
 
 .boardFrame {
+  --board-feedback-color: transparent;
+  --board-feedback-gap: 7px;
   position: relative;
   display: grid;
-  justify-items: center;
+  place-items: center;
   gap: 9px;
   width: 100%;
   max-width: 498px;
@@ -459,38 +470,59 @@ body:has(.puzzlePage),
     background-color 180ms ease;
 }
 
+.boardStage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: min(100%, 480px, calc(100svh - 126px));
+  max-width: 480px;
+  aspect-ratio: 1 / 1;
+}
+
+.boardFrame.hasFeedback .boardStage::before {
+  content: "";
+  position: absolute;
+  inset: calc(-1 * var(--board-feedback-gap));
+  z-index: 0;
+  border: 2px solid var(--board-feedback-color);
+  border-radius: calc(var(--radius-ui) + var(--board-feedback-gap));
+  pointer-events: none;
+}
+
 .boardFrame .cg-boardShell,
 .boardFrame .cg-board,
 .boardFrame .emptyBoard {
-  width: min(100%, 480px, calc(100svh - 150px));
+  position: relative;
+  z-index: 1;
+  width: 100%;
   max-width: 480px;
 }
 
 .boardFrame.correct {
-  border-color: var(--color-cyan-bright);
+  --board-feedback-color: var(--color-cyan-bright);
   box-shadow:
-    0 0 0 4px color-mix(in srgb, var(--color-cyan-bright) 16%, transparent),
+    0 16px 40px color-mix(in srgb, var(--color-cyan-bright) 12%, transparent),
     var(--shadow-strong);
 }
 
 .boardFrame.retrySuccess {
-  border-color: var(--color-primary);
+  --board-feedback-color: var(--color-primary);
   box-shadow:
-    0 0 0 4px color-mix(in srgb, var(--color-primary) 15%, transparent),
+    0 16px 40px color-mix(in srgb, var(--color-primary) 12%, transparent),
     var(--shadow-strong);
 }
 
 .boardFrame.wrong {
-  border-color: var(--color-danger);
+  --board-feedback-color: var(--color-danger);
   box-shadow:
-    0 0 0 4px color-mix(in srgb, var(--color-danger) 15%, transparent),
+    0 16px 40px color-mix(in srgb, var(--color-danger) 12%, transparent),
     var(--shadow-strong);
 }
 
 .boardFrame.retry {
-  border-color: var(--color-primary);
+  --board-feedback-color: var(--color-primary);
   box-shadow:
-    0 0 0 4px color-mix(in srgb, var(--color-primary) 14%, transparent),
+    0 16px 40px color-mix(in srgb, var(--color-primary) 11%, transparent),
     var(--shadow-strong);
 }
 
@@ -644,19 +676,32 @@ body:has(.puzzlePage),
 }
 
 @media (max-width: 1180px) {
-  .puzzlePage {
-    grid-template-columns: 1fr;
+  .page.puzzlePage {
+    grid-template-columns: minmax(220px, 0.58fr) minmax(0, 1fr);
     align-items: start;
-    gap: 8px;
-    height: var(--page-shell-min-height);
-    height: var(--page-shell-min-height-dynamic);
-    min-height: 0;
-    overflow: hidden;
-    padding-block: 10px calc(106px + env(safe-area-inset-bottom, 0px));
+    gap: clamp(8px, 1.2vw, 16px);
+    justify-items: stretch;
+    width: min(100%, 940px);
+    max-width: 940px;
+    padding-inline: max(12px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-right));
+    padding-block: 10px 12px;
+    min-height: var(--page-shell-min-height);
+    min-height: var(--page-shell-min-height-dynamic);
+    overflow: visible;
   }
 
   .puzzlePanel {
     padding: 10px;
+  }
+
+  .puzzleHeader {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .puzzleHeaderAside {
+    justify-content: flex-start;
+    max-width: none;
   }
 
   .puzzlePanel h1 {
@@ -664,31 +709,122 @@ body:has(.puzzlePage),
     line-height: 1.12;
   }
 
+  .lineBox {
+    padding: 10px;
+  }
+
+  .lineHeader,
+  .solutionHeaderActions {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .solutionHeaderActions {
+    width: 100%;
+  }
+
+  .solutionHeaderActions .playbackControls {
+    width: 100%;
+  }
+
+  .boardFrame {
+    --board-feedback-gap: 6px;
+    max-width: 486px;
+    padding: 7px;
+  }
+
+  .boardStage {
+    width: min(100%, 472px, calc(100svh - 112px));
+    max-width: 472px;
+  }
+
+  .boardFrame .cg-boardShell,
+  .boardFrame .cg-board,
+  .boardFrame .emptyBoard {
+    width: 100%;
+    max-width: 472px;
+  }
+}
+
+@media (max-width: 680px) {
+  .page.puzzlePage {
+    grid-template-columns: 1fr;
+    align-items: start;
+    align-content: start;
+    gap: 7px;
+    width: 100%;
+    max-width: 740px;
+    min-height: var(--page-shell-min-height);
+    min-height: var(--page-shell-min-height-dynamic);
+    overflow: visible;
+    padding-inline: max(8px, env(safe-area-inset-left)) max(8px, env(safe-area-inset-right));
+    padding-block: 10px calc(106px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .puzzlePanel {
+    display: none;
+  }
+
   .boardWrap {
     order: -1;
-    padding-top: 2px;
+    padding-top: 0;
   }
 
   .mobileWorkflowPanel {
     position: fixed;
-    left: max(var(--page-gutter), env(safe-area-inset-left));
-    right: max(var(--page-gutter), env(safe-area-inset-right));
+    left: max(8px, env(safe-area-inset-left));
+    right: max(8px, env(safe-area-inset-right));
     bottom: calc(54px + env(safe-area-inset-bottom, 0px));
     z-index: 21;
     display: grid;
     gap: 6px;
   }
 
+  .mobilePuzzleStatus {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-width: 0;
+    width: min(100%, 548px);
+    margin: 0 auto;
+  }
+
+  .mobilePuzzleStatus .puzzleDashboardLink,
+  .mobilePuzzleStatus .puzzleCount {
+    min-height: 28px;
+    padding-inline: 8px;
+  }
+
+  .mobilePuzzleAuthor {
+    min-width: 0;
+    max-width: min(38vw, 160px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    padding: 0 9px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-ui);
+    background: var(--color-panel-strong);
+    color: var(--color-muted);
+    font-size: 12px;
+    font-weight: 800;
+  }
+
   .puzzlePrimaryAction,
   .mobileBottomNav button {
-    min-height: 38px;
+    min-height: 40px;
     font-size: 13px;
   }
 
   .mobileBottomNav {
     position: fixed;
-    left: max(var(--page-gutter), env(safe-area-inset-left));
-    right: max(var(--page-gutter), env(safe-area-inset-right));
+    left: max(8px, env(safe-area-inset-left));
+    right: max(8px, env(safe-area-inset-right));
     bottom: 0;
     z-index: 20;
     display: grid;
@@ -731,15 +867,22 @@ body:has(.puzzlePage),
   }
 
   .boardFrame {
-    max-width: 430px;
-    padding: 7px;
+    --board-feedback-gap: 5px;
+    width: min(100%, 548px, calc(100svh - 210px));
+    max-width: 548px;
+    padding: 5px;
+  }
+
+  .boardStage {
+    width: min(100%, 538px, calc(100svh - 220px));
+    max-width: 538px;
   }
 
   .boardFrame .cg-boardShell,
   .boardFrame .cg-board,
   .boardFrame .emptyBoard {
-    width: min(100%, 416px, calc(100svh - 262px));
-    max-width: 416px;
+    width: 100%;
+    max-width: 538px;
   }
 
   .mobileFeedbackOverlay {
@@ -837,13 +980,9 @@ body:has(.puzzlePage),
 }
 
 @media (max-width: 640px) {
-  .puzzlePanel {
-    display: none;
-  }
-
   .puzzlePage {
-    gap: 8px;
-    padding-block: 10px calc(104px + env(safe-area-inset-bottom, 0px));
+    gap: 7px;
+    padding-block: 8px calc(104px + env(safe-area-inset-bottom, 0px));
   }
 
   .mobileActionCard {
@@ -864,16 +1003,22 @@ body:has(.puzzlePage),
   }
 
   .boardFrame {
-    width: 100%;
-    max-width: 430px;
-    padding: 6px;
+    --board-feedback-gap: 5px;
+    width: min(100%, 548px, calc(100svh - 210px));
+    max-width: 548px;
+    padding: 5px;
+  }
+
+  .boardStage {
+    width: min(100%, 538px, calc(100svh - 220px));
+    max-width: 538px;
   }
 
   .boardFrame .cg-boardShell,
   .boardFrame .cg-board,
   .boardFrame .emptyBoard {
-    width: min(100%, 416px, calc(100svh - 164px));
-    max-width: 416px;
+    width: 100%;
+    max-width: 538px;
   }
 
   .feedbackBadge {

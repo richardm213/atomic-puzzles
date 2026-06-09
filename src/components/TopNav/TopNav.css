@@ -458,28 +458,27 @@
 }
 
 .navAuthProfileGroup {
-  min-height: 34px;
+  min-height: 32px;
   max-width: 100%;
-  padding: 0 12px 0 0;
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-ui);
-  background: var(--color-panel-strong);
+  padding: 0 4px 0 2px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
   color: var(--color-heading);
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 7px;
   overflow: hidden;
   cursor: pointer;
   transition:
     background 140ms ease,
-    border-color 140ms ease,
     box-shadow 140ms ease,
+    color 140ms ease,
     transform 100ms ease;
 }
 
 .navAuthProfileGroup:hover {
-  background: var(--color-panel);
-  border-color: var(--color-input-border);
+  background: color-mix(in srgb, var(--color-panel-strong) 58%, transparent);
   transform: translateY(-1px);
 }
 
@@ -488,18 +487,25 @@
 }
 
 .navAuthProfileGroup.open {
-  box-shadow: 0 0 0 3px var(--color-primary-ring);
-  border-color: var(--color-input-border);
-  background: var(--color-panel);
+  background: color-mix(in srgb, var(--color-panel-strong) 70%, transparent);
+  box-shadow: none;
 }
 
 .navAuthProfileIcon {
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex: 0 0 34px;
+  flex: 0 0 28px;
+  border-radius: 50%;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, white 14%, transparent), transparent),
+    color-mix(in srgb, var(--color-primary) 68%, var(--color-panel-strong));
+  color: var(--color-on-primary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, white 10%, transparent) inset;
+  font-size: 12px;
+  line-height: 1;
 }
 
 .navAuthProfileCaret {
@@ -520,6 +526,12 @@
 .navAuthProfileGroup.open .navAuthProfileCaret {
   color: var(--color-heading);
   transform: rotate(180deg);
+}
+
+.navAuthProfileGroup.open .navAuthProfileIcon {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, white 10%, transparent) inset,
+    0 0 0 3px var(--color-primary-ring);
 }
 
 .navAuthProfile {
@@ -557,8 +569,7 @@
 :root[data-theme="light"] .navSettingsMenu,
 :root[data-theme="light"] .navProfileDropdown {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(250, 245, 237, 0.82)),
-    var(--color-panel);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(250, 245, 237, 0.82)), var(--color-panel);
 }
 
 .navProfileDropdownItem {
@@ -704,8 +715,7 @@
     width: min(260px, calc(100vw - 24px));
     max-width: none;
     margin-left: 0;
-    padding: 12px max(16px, env(safe-area-inset-right)) 16px
-      max(16px, env(safe-area-inset-left));
+    padding: 12px max(16px, env(safe-area-inset-right)) 16px max(16px, env(safe-area-inset-left));
     border-right: 1px solid var(--color-border);
     border-bottom: 1px solid var(--color-border);
     border-bottom-right-radius: var(--radius-ui);
@@ -838,6 +848,8 @@
 @media (max-width: 430px) {
   .navSearch.open,
   .navSearch.open input {
-    width: calc(100vw - max(74px, env(safe-area-inset-left)) - max(74px, env(safe-area-inset-right)));
+    width: calc(
+      100vw - max(74px, env(safe-area-inset-left)) - max(74px, env(safe-area-inset-right))
+    );
   }
 }

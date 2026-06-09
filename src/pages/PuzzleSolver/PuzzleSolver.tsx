@@ -416,7 +416,7 @@ export const PuzzleSolverPage = () => {
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
 
-    const mediaQuery = window.matchMedia("(max-width: 900px)");
+    const mediaQuery = window.matchMedia("(max-width: 680px)");
     const updateLayout = () => setIsMobileLayout(mediaQuery.matches);
     updateLayout();
 
@@ -1266,23 +1266,25 @@ export const PuzzleSolverPage = () => {
               <strong>{feedback.title}</strong>
             </div>
           ) : null}
-          {fen ? (
-            <Chessboard
-              puzzleId={activePuzzleId}
-              fen={fen}
-              orientation={orientation}
-              coordinates
-              solution={activePuzzle?.solution ?? ""}
-              showSolution={isAnalysisMode && showSolution}
-              analysisMode={isAnalysisMode}
-              solutionNavigation={solutionNavigation}
-              onNavigateHandled={() => setSolutionNavigation(null)}
-              onAttemptResolved={handleAttemptResolved}
-              onStateChange={handleBoardStateChange}
-            />
-          ) : (
-            <div className="emptyBoard">Waiting for puzzle data...</div>
-          )}
+          <div className="boardStage">
+            {fen ? (
+              <Chessboard
+                puzzleId={activePuzzleId}
+                fen={fen}
+                orientation={orientation}
+                coordinates
+                solution={activePuzzle?.solution ?? ""}
+                showSolution={isAnalysisMode && showSolution}
+                analysisMode={isAnalysisMode}
+                solutionNavigation={solutionNavigation}
+                onNavigateHandled={() => setSolutionNavigation(null)}
+                onAttemptResolved={handleAttemptResolved}
+                onStateChange={handleBoardStateChange}
+              />
+            ) : (
+              <div className="emptyBoard">Waiting for puzzle data...</div>
+            )}
+          </div>
           {isMobileLayout && mobileFeedback ? (
             <div
               className={`mobileFeedbackOverlay ${mobileFeedback.type} ${
@@ -1300,6 +1302,21 @@ export const PuzzleSolverPage = () => {
           ) : null}
         </div>
       </div>
+
+      {isMobileLayout ? (
+        <div className="mobilePuzzleStatus" aria-label="Puzzle details">
+          <Link className="puzzleDashboardLink" to="/solve/sets">
+            <span>Sets</span>
+          </Link>
+          <div className="puzzleCount" aria-label="Puzzle count">
+            <span>{puzzleOrdinal ?? "-"}</span>
+            <small>of {puzzles.length || "-"}</small>
+          </div>
+          <span className="mobilePuzzleAuthor" title={author}>
+            {author}
+          </span>
+        </div>
+      ) : null}
 
       {isMobileLayout ? (
         <div className="mobileWorkflowPanel">
