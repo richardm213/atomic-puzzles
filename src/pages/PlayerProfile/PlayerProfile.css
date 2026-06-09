@@ -1,4 +1,5 @@
 @import "../RecentMatches/RecentMatches.css";
+@import "../../components/MatchCard/MatchCard.css";
 
 .playerProfilePanel {
   width: min(1000px, 100%);

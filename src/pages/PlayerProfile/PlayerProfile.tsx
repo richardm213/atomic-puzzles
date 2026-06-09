@@ -5,6 +5,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 
 import { DualRangeSlider } from "../../components/DualRangeSlider/DualRangeSlider";
 import { LichessGameLink } from "../../components/LichessGameLink/LichessGameLink";
+import { MatchH2HLink } from "../../components/MatchH2HLink/MatchH2HLink";
 import { MatchPageLink } from "../../components/MatchPageLink/MatchPageLink";
 import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { ProfileMetricCard } from "../../components/ProfileMetricCard/ProfileMetricCard";
@@ -1071,7 +1072,7 @@ export const PlayerProfilePage = ({ username }: { username?: string }) => {
                           <tr className="matchDetailsRow">
                             <td colSpan={7}>
                               <div className="matchDetailsInner">
-                                <div className="matchCardPlayerStats profileMatchPlayerStats">
+                                <div className="matchCardPlayerStats matchCardPlayerStatsWithH2H profileMatchPlayerStats">
                                   <div>
                                     <strong>{canonicalUsername}</strong>
                                     <span>
@@ -1082,6 +1083,13 @@ export const PlayerProfilePage = ({ username }: { username?: string }) => {
                                     <span>
                                       {`RD ${match.beforeRd} (${formatSignedDecimal(match.rdChange)})`}
                                     </span>
+                                  </div>
+                                  <div className="matchH2HSlot">
+                                    <MatchH2HLink
+                                      playerA={canonicalUsername}
+                                      playerB={match.opponent}
+                                      onClick={(event) => event.stopPropagation()}
+                                    />
                                   </div>
                                   <div>
                                     <strong>{match.opponent}</strong>

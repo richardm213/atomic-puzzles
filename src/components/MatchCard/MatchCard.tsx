@@ -66,7 +66,6 @@ export const MatchCard = ({ match, matchKey, isExpanded, onToggle }: MatchCardPr
             </LichessGameLink>
           </span>
           <span className="matchMetaPill">{match.timeControl}</span>
-          <span className="matchMetaPill">{match.sourceValue}</span>
         </div>
       </div>
       <div className="matchScoreBlock" aria-label={`Score ${match.scoreA} to ${match.scoreB}`}>
@@ -83,11 +82,15 @@ export const MatchCard = ({ match, matchKey, isExpanded, onToggle }: MatchCardPr
         onClick={stopPropagation}
         title="Open match page in new tab"
       />
-      <span className="matchExpandCue">{isExpanded ? "Less" : "Details"}</span>
     </div>
     {isExpanded ? (
       <div className="matchCardDetails">
-        <MatchDetails match={match} matchKey={matchKey} stopPropagation={stopPropagation} />
+        <MatchDetails
+          match={match}
+          matchKey={matchKey}
+          showH2HLink
+          stopPropagation={stopPropagation}
+        />
       </div>
     ) : null}
   </article>

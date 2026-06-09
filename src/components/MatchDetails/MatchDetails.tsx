@@ -5,10 +5,12 @@ import type { MouseEventHandler } from "react";
 import type { MatchCardData } from "../../types/matchCard";
 import { formatScore, formatSignedDecimal } from "../../utils/formatters";
 import { LichessGameLink } from "../LichessGameLink/LichessGameLink";
+import { MatchH2HLink } from "../MatchH2HLink/MatchH2HLink";
 
 export type MatchDetailsProps = {
   match: MatchCardData;
   matchKey: string;
+  showH2HLink?: boolean;
   showRunningScore?: boolean;
   stopPropagation?: MouseEventHandler;
 };
@@ -16,11 +18,12 @@ export type MatchDetailsProps = {
 export const MatchDetails = ({
   match,
   matchKey,
+  showH2HLink = false,
   showRunningScore = false,
   stopPropagation,
 }: MatchDetailsProps) => (
   <>
-    <div className="matchCardPlayerStats">
+    <div className={`matchCardPlayerStats${showH2HLink ? " matchCardPlayerStatsWithH2H" : ""}`}>
       <div>
         <strong>{match.playerA}</strong>
         <span>
@@ -34,6 +37,15 @@ export const MatchDetails = ({
           )})`}
         </span>
       </div>
+      {showH2HLink ? (
+        <div className="matchH2HSlot">
+          <MatchH2HLink
+            playerA={match.playerA}
+            playerB={match.playerB}
+            onClick={(event) => stopPropagation?.(event)}
+          />
+        </div>
+      ) : null}
       <div>
         <strong>{match.playerB}</strong>
         <span>

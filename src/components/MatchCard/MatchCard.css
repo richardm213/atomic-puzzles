@@ -48,7 +48,7 @@
 
 .matchCardHeader {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) max-content max-content max-content;
+  grid-template-columns: minmax(0, 1fr) max-content max-content;
   align-items: center;
   gap: 12px;
   min-width: 0;
@@ -168,6 +168,11 @@
   margin-bottom: 12px;
 }
 
+.matchCardPlayerStatsWithH2H {
+  grid-template-columns: minmax(180px, 1fr) auto minmax(180px, 1fr);
+  align-items: stretch;
+}
+
 .matchCardPlayerStats > div {
   display: grid;
   gap: 4px;
@@ -176,6 +181,17 @@
   border-radius: 8px;
   background: var(--color-surface-soft);
   padding: 10px;
+}
+
+.matchCardPlayerStats > .matchH2HSlot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  min-width: 0;
+  border-color: transparent;
+  background: transparent;
+  padding: 0;
 }
 
 .matchCardPlayerStats strong {
@@ -262,6 +278,14 @@
 
   .matchCardPlayerStats {
     grid-template-columns: 1fr;
+  }
+
+  .matchCardPlayerStatsWithH2H {
+    grid-template-columns: 1fr;
+  }
+
+  .matchCardPlayerStats > .matchH2HSlot {
+    min-height: 38px;
   }
 
   .matchGamesHeader,
