@@ -102,23 +102,29 @@ body:has(.puzzlePage),
   min-height: 30px;
   padding: 0 9px;
   border-radius: var(--radius-ui);
-  border: 1px solid var(--color-border);
-  background: var(--color-panel-strong);
+  border: 1px solid var(--color-border-strong);
+  background: color-mix(in srgb, var(--color-panel-strong) 92%, var(--color-primary) 8%);
   color: var(--color-text);
   font-size: 12px;
   font-weight: 700;
   text-decoration: none;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--color-panel-deep) 16%, transparent);
   transition:
     transform 140ms ease,
     border-color 140ms ease,
-    background-color 140ms ease,
+    box-shadow 140ms ease,
     color 140ms ease;
 }
 
 .puzzleDashboardLink:hover {
   transform: translateY(-1px);
   border-color: var(--color-accent-soft-border);
-  background: var(--color-surface-elevated-strong);
+  background: color-mix(
+    in srgb,
+    var(--color-surface-elevated-strong) 88%,
+    var(--color-primary) 12%
+  );
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--color-cyan-bright) 10%, transparent);
   text-decoration: none;
 }
 
@@ -133,64 +139,87 @@ body:has(.puzzlePage),
   display: none;
 }
 
-.puzzlePrimaryAction {
+.puzzleActions .puzzlePrimaryAction,
+.mobileActionCard .puzzlePrimaryAction {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 100%;
   grid-column: 1 / -1;
-  min-height: 36px;
-  padding: 8px 10px;
-  border: 1px solid var(--color-primary);
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--color-primary-soft) 28%, var(--color-primary));
   border-radius: var(--radius-ui);
-  background: var(--color-primary);
+  background: linear-gradient(
+    135deg,
+    var(--color-primary),
+    color-mix(in srgb, var(--color-primary) 72%, var(--color-cyan) 28%)
+  );
   color: var(--color-on-primary);
   font-size: 13px;
   font-weight: 800;
   white-space: nowrap;
   text-decoration: none;
+  box-shadow: 0 12px 26px color-mix(in srgb, var(--color-primary) 22%, transparent);
   cursor: pointer;
   transition:
     transform 140ms ease,
     border-color 140ms ease,
-    background-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease,
     color 140ms ease;
 }
 
-.puzzlePrimaryAction:hover:not(:disabled) {
-  transform: none;
+.puzzleActions .puzzlePrimaryAction:hover:not(:disabled),
+.mobileActionCard .puzzlePrimaryAction:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-primary) 90%, white 10%),
+    color-mix(in srgb, var(--color-primary) 64%, var(--color-cyan) 36%)
+  );
+  box-shadow: 0 16px 30px color-mix(in srgb, var(--color-primary) 28%, transparent);
 }
 
-.puzzlePrimaryAction:disabled {
+.puzzleActions .puzzlePrimaryAction:disabled,
+.mobileActionCard .puzzlePrimaryAction:disabled {
   cursor: not-allowed;
   opacity: 0.45;
+  box-shadow: none;
 }
 
 .puzzleActions button:not(.puzzlePrimaryAction) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 36px;
-  padding: 7px 10px;
+  min-height: 40px;
+  padding: 9px 12px;
   border-radius: var(--radius-ui);
-  border: 1px solid var(--color-border);
-  background: var(--color-panel-strong);
+  border: 1px solid var(--color-border-strong);
+  background: color-mix(in srgb, var(--color-panel-strong) 94%, var(--color-primary) 6%);
   color: var(--color-text);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 800;
   text-decoration: none;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--color-panel-deep) 18%, transparent);
   cursor: pointer;
   transition:
     transform 140ms ease,
     border-color 140ms ease,
-    background-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease,
     color 140ms ease;
 }
 
 .puzzleActions button:not(.puzzlePrimaryAction):hover:not(:disabled) {
   transform: translateY(-1px);
   border-color: var(--color-accent-soft-border);
-  background: var(--color-surface-elevated-strong);
+  background: color-mix(
+    in srgb,
+    var(--color-surface-elevated-strong) 90%,
+    var(--color-primary) 10%
+  );
+  box-shadow: 0 11px 22px color-mix(in srgb, var(--color-cyan-bright) 10%, transparent);
 }
 
 .puzzleActions button:focus-visible,
@@ -206,6 +235,14 @@ body:has(.puzzlePage),
   color: var(--color-subtle);
   opacity: 1;
   pointer-events: none;
+  box-shadow: none;
+  filter: grayscale(0.18);
+}
+
+.fenAnalyzeButton.disabled .fenAnalyzeIcon,
+.fenAnalyzeButton.disabled .fenAnalyzeExternalIcon,
+.fenAnalyzeButton.disabled .fenAnalyzeText {
+  opacity: 0.48;
 }
 
 .puzzleDetails {
@@ -258,21 +295,24 @@ body:has(.puzzlePage),
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  min-height: 30px;
-  padding: 5px 9px;
+  gap: 8px;
+  min-height: 34px;
+  padding: 7px 10px;
   border-radius: var(--radius-ui);
-  border: 1px solid var(--color-border);
-  background: var(--color-panel-strong);
+  border: 1px solid color-mix(in srgb, var(--color-accent-soft-border) 36%, var(--color-border));
+  background: color-mix(in srgb, var(--color-panel-strong) 88%, var(--color-primary) 12%);
   color: var(--color-text);
   font-size: 12px;
   font-weight: 800;
   text-decoration: none;
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--color-panel-deep) 18%, transparent);
   transition:
     transform 140ms ease,
     border-color 140ms ease,
-    background-color 140ms ease,
-    color 140ms ease;
+    background 140ms ease,
+    box-shadow 140ms ease,
+    color 140ms ease,
+    opacity 140ms ease;
 }
 
 .copyPgnCheck {
@@ -284,14 +324,77 @@ body:has(.puzzlePage),
 
 .fenAnalyzeButton:hover:not(.disabled) {
   transform: translateY(-1px);
-  border-color: var(--color-accent-soft-border);
-  background: var(--color-surface-elevated-strong);
+  border-color: color-mix(in srgb, var(--color-cyan-bright) 46%, var(--color-primary));
+  background: color-mix(
+    in srgb,
+    var(--color-surface-elevated-strong) 82%,
+    var(--color-primary) 18%
+  );
+  box-shadow: 0 14px 28px color-mix(in srgb, var(--color-cyan-bright) 12%, transparent);
+  color: var(--color-heading);
 }
 
 .analysisButtonsRow,
 .mobileAnalyzeActions {
   display: grid;
   gap: 8px;
+}
+
+.analysisButtonsRow {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.analysisButtonsRow .fenAnalyzeButton,
+.mobileAnalyzeActions .fenAnalyzeButton {
+  justify-content: flex-start;
+  min-width: 0;
+  min-height: 50px;
+  padding: 9px 10px;
+}
+
+.fenAnalyzeIcon {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 27px;
+  height: 27px;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--color-primary) 18%, transparent);
+  color: var(--color-primary-pale);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary-soft) 18%, transparent) inset;
+  font-size: 12px;
+}
+
+.fenAnalyzeText {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+  text-align: left;
+  line-height: 1.1;
+}
+
+.fenAnalyzeText span {
+  color: var(--color-subtle);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.fenAnalyzeText strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--color-heading);
+  font-size: 12.5px;
+  font-weight: 900;
+}
+
+.fenAnalyzeExternalIcon {
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: var(--color-primary-soft);
+  font-size: 10px;
+  opacity: 0.82;
 }
 
 .lineBox {
@@ -817,7 +920,7 @@ body:has(.puzzlePage),
 
   .puzzlePrimaryAction,
   .mobileBottomNav button {
-    min-height: 40px;
+    min-height: 42px;
     font-size: 13px;
   }
 
@@ -846,16 +949,35 @@ body:has(.puzzlePage),
     align-items: center;
     justify-content: center;
     border-radius: var(--radius-ui);
-    border: 1px solid var(--color-border);
-    background: var(--color-panel-strong);
+    border: 1px solid var(--color-border-strong);
+    background: color-mix(in srgb, var(--color-panel-strong) 94%, var(--color-primary) 6%);
     color: var(--color-text);
     font-weight: 800;
-    box-shadow: var(--shadow-soft);
+    box-shadow: 0 10px 22px color-mix(in srgb, var(--color-panel-deep) 20%, transparent);
+    transition:
+      transform 140ms ease,
+      border-color 140ms ease,
+      background 140ms ease,
+      box-shadow 140ms ease,
+      color 140ms ease;
+  }
+
+  .mobileBottomNav button:hover:not(:disabled) {
+    transform: translateY(-1px);
+    border-color: var(--color-accent-soft-border);
+    background: color-mix(
+      in srgb,
+      var(--color-surface-elevated-strong) 90%,
+      var(--color-primary) 10%
+    );
+    box-shadow: 0 13px 24px color-mix(in srgb, var(--color-cyan-bright) 10%, transparent);
   }
 
   .mobileBottomNav button:disabled {
     color: var(--color-subtle);
     cursor: not-allowed;
+    box-shadow: none;
+    opacity: 0.62;
   }
 
   .lineBox {
@@ -986,7 +1108,7 @@ body:has(.puzzlePage),
   }
 
   .mobileActionCard {
-    gap: 0;
+    gap: 8px;
   }
 
   .lineHeader {

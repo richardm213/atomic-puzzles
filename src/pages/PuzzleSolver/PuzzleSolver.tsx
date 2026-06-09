@@ -1,12 +1,14 @@
 import "./PuzzleSolver.css";
 
 import {
+  faArrowUpRightFromSquare,
   faBackward,
   faBackwardStep,
   faCheck,
   faClockRotateLeft,
   faForward,
   faForwardStep,
+  faMagnifyingGlassChart,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
@@ -1230,7 +1232,17 @@ export const PuzzleSolverPage = () => {
                     if (!fen) event.preventDefault();
                   }}
                 >
-                  Analyze Puzzle
+                  <span className="fenAnalyzeIcon" aria-hidden="true">
+                    <FontAwesomeIcon icon={faMagnifyingGlassChart} />
+                  </span>
+                  <span className="fenAnalyzeText">
+                    <span>Analyze</span>
+                    <strong>Puzzle</strong>
+                  </span>
+                  <FontAwesomeIcon
+                    className="fenAnalyzeExternalIcon"
+                    icon={faArrowUpRightFromSquare}
+                  />
                 </a>
                 <a
                   className={`fenAnalyzeButton ${!currentFen ? "disabled" : ""}`}
@@ -1242,7 +1254,17 @@ export const PuzzleSolverPage = () => {
                     if (!currentFen) event.preventDefault();
                   }}
                 >
-                  Analyze Current Position
+                  <span className="fenAnalyzeIcon" aria-hidden="true">
+                    <FontAwesomeIcon icon={faMagnifyingGlassChart} />
+                  </span>
+                  <span className="fenAnalyzeText">
+                    <span>Analyze</span>
+                    <strong>Current Position</strong>
+                  </span>
+                  <FontAwesomeIcon
+                    className="fenAnalyzeExternalIcon"
+                    icon={faArrowUpRightFromSquare}
+                  />
                 </a>
               </div>
             ) : null}
@@ -1342,7 +1364,17 @@ export const PuzzleSolverPage = () => {
                     if (!fen) event.preventDefault();
                   }}
                 >
-                  Analyze Puzzle
+                  <span className="fenAnalyzeIcon" aria-hidden="true">
+                    <FontAwesomeIcon icon={faMagnifyingGlassChart} />
+                  </span>
+                  <span className="fenAnalyzeText">
+                    <span>Analyze</span>
+                    <strong>Puzzle</strong>
+                  </span>
+                  <FontAwesomeIcon
+                    className="fenAnalyzeExternalIcon"
+                    icon={faArrowUpRightFromSquare}
+                  />
                 </a>
                 <a
                   className={`fenAnalyzeButton mobileAnalyzeButton ${!currentFen ? "disabled" : ""}`}
@@ -1354,7 +1386,17 @@ export const PuzzleSolverPage = () => {
                     if (!currentFen) event.preventDefault();
                   }}
                 >
-                  Analyze Current Position
+                  <span className="fenAnalyzeIcon" aria-hidden="true">
+                    <FontAwesomeIcon icon={faMagnifyingGlassChart} />
+                  </span>
+                  <span className="fenAnalyzeText">
+                    <span>Analyze</span>
+                    <strong>Current Position</strong>
+                  </span>
+                  <FontAwesomeIcon
+                    className="fenAnalyzeExternalIcon"
+                    icon={faArrowUpRightFromSquare}
+                  />
                 </a>
               </div>
             ) : null}
