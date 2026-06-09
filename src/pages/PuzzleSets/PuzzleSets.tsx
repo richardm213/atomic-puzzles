@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Seo } from "../../components/Seo/Seo";
 import { loadPuzzleLibrary } from "../../lib/puzzles/puzzleLibrary";
 import { groupPuzzlesByEvent } from "../../lib/puzzles/puzzleSets";
+import { getOpeningDisplayLabel } from "../../utils/openings";
 
 const EVENT_FILTERS = [
   { id: "all", label: "All" },
@@ -306,7 +307,7 @@ export const PuzzleSetsPage = () => {
                       </Link>
                       <div className="puzzleSetPuzzleMeta">
                         <span>{author}</span>
-                        {opening ? <span>{opening}</span> : null}
+                        {opening ? <span>{getOpeningDisplayLabel(opening)}</span> : null}
                         <span>{selectedGroup.event}</span>
                       </div>
                     </div>
