@@ -68,13 +68,8 @@
     radial-gradient(circle at 14% 10%, rgba(29, 78, 216, 0.18), transparent 28%),
     radial-gradient(circle at 82% 4%, rgba(14, 116, 144, 0.16), transparent 25%),
     linear-gradient(180deg, var(--color-page-top) 0%, var(--color-page-bottom) 100%);
-  --page-background-texture:
-    linear-gradient(90deg, rgba(147, 197, 253, 0.035) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(56, 189, 248, 0.025) 1px, transparent 1px);
-  --page-background-texture-size: 72px 72px;
-  --site-background: var(--page-background-texture), var(--page-background);
-  --site-background-size:
-    var(--page-background-texture-size), var(--page-background-texture-size), auto, auto, auto;
+  --site-background: var(--page-background);
+  --site-background-size: auto;
   --brand-wordmark-gradient: linear-gradient(180deg, #ffffff 0%, var(--color-primary-pale) 100%);
   --brand-wordmark-color: var(--color-heading);
   --brand-wordmark-shadow: 0 0 18px rgba(147, 197, 253, 0.18);
@@ -147,12 +142,8 @@
     radial-gradient(circle at 82% 2%, rgba(42, 91, 215, 0.13), transparent 28%),
     radial-gradient(circle at 58% 22%, rgba(15, 142, 163, 0.1), transparent 24%),
     linear-gradient(180deg, var(--color-page-top) 0%, var(--color-page-bottom) 100%);
-  --page-background-texture:
-    linear-gradient(90deg, rgba(42, 91, 215, 0.045) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(15, 142, 163, 0.035) 1px, transparent 1px);
-  --site-background: var(--page-background-texture), var(--page-background);
-  --site-background-size:
-    var(--page-background-texture-size), var(--page-background-texture-size), auto, auto, auto, auto;
+  --site-background: var(--page-background);
+  --site-background-size: auto;
   --brand-wordmark-gradient: linear-gradient(
     180deg,
     #07111f 0%,

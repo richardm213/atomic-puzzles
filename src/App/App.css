@@ -41,10 +41,7 @@
 }
 
 .appShell::before {
-  inset: 58px 0 0;
-  background-image: var(--page-background-texture);
-  background-size: var(--page-background-texture-size);
-  mask-image: linear-gradient(180deg, transparent 0, black 18%, black 72%, transparent 100%);
+  display: none;
 }
 
 .appShell::after {
