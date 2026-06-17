@@ -5,7 +5,11 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import type { MouseEventHandler } from "react";
 
-import { buildMatchRouteParams, hasMatchRouteParams } from "../../utils/matchRoutes";
+import {
+  buildMatchRouteParams,
+  buildSingleGameMatchUrl,
+  hasMatchRouteParams,
+} from "../../utils/matchRoutes";
 
 export type MatchPageLinkMatch = Parameters<typeof buildMatchRouteParams>[0];
 
@@ -22,6 +26,23 @@ export const MatchPageLink = ({
   onClick,
   title = "Open match page",
 }: MatchPageLinkProps) => {
+  const singleGameUrl = buildSingleGameMatchUrl(match);
+  if (singleGameUrl) {
+    return (
+      <a
+        className={`matchPageLink ${className}`.trim()}
+        href={singleGameUrl}
+        target="_blank"
+        rel="noreferrer"
+        title={title}
+        aria-label={title}
+        onClick={onClick}
+      >
+        <FontAwesomeIcon icon={faUpRightFromSquare} />
+      </a>
+    );
+  }
+
   if (!hasMatchRouteParams(match)) return null;
 
   return (
