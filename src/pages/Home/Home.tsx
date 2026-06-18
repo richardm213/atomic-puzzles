@@ -5,49 +5,33 @@ import { useState } from "react";
 
 import { Seo } from "../../components/Seo/Seo";
 import { useAppSettings } from "../../context/AppSettings";
-import { resolveUsernameInput, resolveUsernameInputs } from "../../lib/users/usernameSearch";
+import { resolveUsernameInputs } from "../../lib/users/usernameSearch";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { matchupToSlug } from "../../utils/h2hRoutes";
-import { normalizeUsername } from "../../utils/playerNames";
 
 const featureLinks = [
-  {
-    to: "/solve",
-    eyebrow: "Train",
-    title: "Atomic puzzles",
-    body: "Solve forcing positions, play the full line, and stay sharp for real games.",
-  },
-  {
-    to: "/rankings",
-    eyebrow: "Measure",
-    title: "Monthly rankings",
-    body: "View blitz, bullet, and hyperbullet separately, with known alts merged into one profile.",
-  },
-  {
-    to: "/users",
-    eyebrow: "Browse",
-    title: "Full user list",
-    body: "Scan every tracked user with blitz, bullet, hyperbullet, and alias counts in one table.",
-  },
   {
     to: "/recent",
     eyebrow: "Scout",
     title: "Recent matches",
-    body: "View results with score, ratings, source, and date in one place.",
+    body: "Scores, ratings, dates, and sources.",
   },
   {
-    to: "/h2h",
-    eyebrow: "Compare",
-    title: "Head-to-head",
-    body: "Compare two players side by side across all three pools.",
+    to: "/solve/sets",
+    eyebrow: "Train",
+    title: "Puzzle sets",
+    body: "Curated runs for focused training.",
   },
   {
-    to: "/tournaments",
-    eyebrow: "Archive",
-    title: "Tournaments",
-    body: "Browse Atomic World Championship pages and open interactive brackets by year.",
+    to: "/users",
+    eyebrow: "Browse",
+    title: "Player index",
+    body: "Tracked players, ratings, and aliases.",
   },
 ];
+
+const featuredH2HMatchup = matchupToSlug("maxwellssilvrhammer", "rechesster");
+const lastYearRankingsPath = "/rankings?year=2025&month=Jun&mode=blitz";
 
 const darkModePuzzleCollageImages = [
   {
@@ -111,60 +95,15 @@ const lightModePuzzleCollageImages = [
   },
 ];
 
-const principles = [
-  {
-    title: "From real games",
-    body: (
-      <>
-        Puzzles come from Lichess games,{" "}
-        <a href="https://lichess.org/team/atomic-wc" target="_blank" rel="noreferrer">
-          AWC
-        </a>
-        ,{" "}
-        <a href="https://lichess.org/team/the-atomic-chess-league" target="_blank" rel="noreferrer">
-          ACL
-        </a>
-        ,{" "}
-        <a href="https://lichess.org/team/atomic960-swiss" target="_blank" rel="noreferrer">
-          Atomic960 Swiss
-        </a>
-        , studies, analysis, and the community.
-      </>
-    ),
-  },
-  {
-    title: "Form changes fast",
-    body: "Monthly ranks and match records make it easier to see what actually changed.",
-  },
-  {
-    title: "Keep the pool clean",
-    body: "Rankings exclude cheaters and fair play violators, and known alts are merged under one profile.",
-  },
-];
-
 export const HomePage = () => {
   const { theme } = useAppSettings();
-  const [playerQuery, setPlayerQuery] = useState("");
   const [comparePlayerOneQuery, setComparePlayerOneQuery] = useState("");
   const [comparePlayerTwoQuery, setComparePlayerTwoQuery] = useState("");
   const navigate = useNavigate();
-  const trimmedPlayerQuery = playerQuery.trim();
   const trimmedComparePlayerOneQuery = comparePlayerOneQuery.trim();
   const trimmedComparePlayerTwoQuery = comparePlayerTwoQuery.trim();
   const puzzleCollageImages =
     theme === "light" ? lightModePuzzleCollageImages : darkModePuzzleCollageImages;
-
-  const handlePlayerSearch = async (
-    event: import("react").FormEvent<HTMLFormElement>,
-  ): Promise<void> => {
-    event.preventDefault();
-    if (!trimmedPlayerQuery) return;
-    const resolvedUsername = await resolveUsernameInput(trimmedPlayerQuery);
-    void navigate({
-      to: "/@/$username",
-      params: { username: normalizeUsername(resolvedUsername) },
-    });
-  };
 
   const handleCompareSearch = async (
     event: import("react").FormEvent<HTMLFormElement>,
@@ -209,19 +148,15 @@ export const HomePage = () => {
           </div>
           <h1 id="home-title">The best place to train and follow atomic chess</h1>
           <p className="homeIntro">
-            Solve real atomic puzzles, browse monthly rankings, follow recent matches, and look up
-            player profiles all in one place.
+            Atomic puzzles, rankings, match history, and player pages for the Lichess atomic scene.
           </p>
 
           <div className="homeHeroActions">
             <Link className="homePrimaryCta" to="/solve">
               Solve puzzles
             </Link>
-            <Link className="homeSecondaryCta" to="/recent">
-              View recent matches
-            </Link>
-            <Link className="homeSecondaryCta" to="/tournaments">
-              Browse tournaments
+            <Link className="homeSecondaryCta" to="/rankings">
+              View rankings
             </Link>
           </div>
         </div>
@@ -252,22 +187,6 @@ export const HomePage = () => {
         </div>
 
         <div className="homeHeroForms">
-          <form className="homePlayerSearch" onSubmit={handlePlayerSearch}>
-            <label htmlFor="home-player-search">Look up a player</label>
-            <div className="homeSearchRow">
-              <input
-                id="home-player-search"
-                type="text"
-                value={playerQuery}
-                placeholder="username"
-                onChange={(event) => setPlayerQuery(event.target.value)}
-              />
-              <button type="submit" disabled={!trimmedPlayerQuery}>
-                View profile
-              </button>
-            </div>
-          </form>
-
           <form className="homeCompareSearch" onSubmit={handleCompareSearch}>
             <label htmlFor="home-compare-player-one">Compare two players</label>
             <div className="homeCompareGrid">
@@ -302,13 +221,54 @@ export const HomePage = () => {
         </div>
       </section>
 
-      <section className="homeContent" aria-label="Atomic training tools and notes">
-        <div className="homeSectionIntro">
-          <h2>Explore Atomic Chess Tools</h2>
-          <p>
-            Start with puzzles, then use the rest of the site to track form, compare players, and
-            get a clearer picture of the current pool.
-          </p>
+      <section className="homeSpotlightSection" aria-label="Atomic chess shortcuts">
+        <div className="homeSpotlightGrid">
+          <Link className="homeSpotlightCard" to="/solve/leaderboard">
+            <span>Puzzles</span>
+            <h2>Puzzle leaderboard</h2>
+            <p>Points, correct solves, misses, and total attempts.</p>
+          </Link>
+
+          <Link
+            className="homeSpotlightCard homeTournamentShortcut"
+            to="/tournaments/$tournamentId"
+            params={{ tournamentId: "awc2025" }}
+          >
+            <span>Tournament</span>
+            <h2>AWC 2025</h2>
+            <p>Bracket and match paths from last year's championship.</p>
+            <img
+              src={appAssetPath("/images/awc-trophies/atomicwc25.png")}
+              alt=""
+              width="140"
+              height="140"
+              loading="lazy"
+              decoding="async"
+            />
+          </Link>
+
+          <a className="homeSpotlightCard" href={lastYearRankingsPath}>
+            <span>This time last year</span>
+            <h2>June 2025 blitz</h2>
+            <p>Revisit the top of the table one year ago.</p>
+          </a>
+
+          <Link
+            className="homeSpotlightCard homeH2HShortcut"
+            to="/h2h/$matchup"
+            params={{ matchup: featuredH2HMatchup }}
+          >
+            <span>Featured H2H</span>
+            <h2>maxwellssilvrhammer vs rechesster</h2>
+            <p>Max won the yearly, just edging out rechesster. Check out the games.</p>
+          </Link>
+        </div>
+      </section>
+
+      <section className="homeQuickLinksSection" aria-label="More atomic chess tools">
+        <div className="homeQuickLinksHeader">
+          <span className="homeSectionLabel">More</span>
+          <h2>Database tools</h2>
         </div>
         <div className="homeFeatureGrid" aria-label="Primary tools">
           {featureLinks.map((feature) => (
@@ -319,21 +279,6 @@ export const HomePage = () => {
             </Link>
           ))}
         </div>
-      </section>
-
-      <section className="homeNotesSection" aria-label="Notes for the atomic scene">
-        <aside className="homeNotes">
-          <span className="homeSectionLabel">For the scene</span>
-          <h2>A compact place to train, check names, and follow the pool.</h2>
-          <div className="homePrincipleList">
-            {principles.map((principle) => (
-              <article key={principle.title}>
-                <h3>{principle.title}</h3>
-                <p>{principle.body}</p>
-              </article>
-            ))}
-          </div>
-        </aside>
       </section>
     </div>
   );

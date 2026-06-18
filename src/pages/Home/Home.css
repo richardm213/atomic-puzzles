@@ -15,8 +15,8 @@
 }
 
 .homeHero,
-.homeContent,
-.homeNotesSection {
+.homeSpotlightSection,
+.homeQuickLinksSection {
   width: min(980px, 100%);
   margin: 0 auto;
 }
@@ -140,15 +140,10 @@
   box-shadow: 0 16px 34px color-mix(in srgb, var(--color-primary) 24%, transparent);
 }
 
-.homePlayerSearch {
-  width: min(580px, 100%);
-}
-
 .homeCompareSearch {
   width: min(640px, 100%);
 }
 
-.homePlayerSearch > label,
 .homeCompareSearch > label {
   color: var(--color-subtle);
   font-size: 13px;
@@ -157,20 +152,12 @@
   text-transform: uppercase;
 }
 
-.homeSearchRow {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-}
-
 .homeCompareGrid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
   gap: 10px;
 }
 
-.homeSearchRow > input,
-.homeSearchRow > button,
 .homeCompareGrid > input,
 .homeCompareGrid > button {
   min-height: 46px;
@@ -180,7 +167,6 @@
   font: inherit;
 }
 
-.homePlayerSearch,
 .homeCompareSearch {
   display: grid;
   gap: 10px;
@@ -192,7 +178,6 @@
   backdrop-filter: blur(16px);
 }
 
-.homeSearchRow > input,
 .homeCompareGrid > input {
   min-width: 0;
   border: 1px solid var(--color-input-border);
@@ -202,12 +187,10 @@
   padding: 10px 12px;
 }
 
-.homeSearchRow > input::placeholder,
 .homeCompareGrid > input::placeholder {
   color: var(--color-subtle);
 }
 
-.homeSearchRow > button,
 .homeCompareGrid > button {
   border: 1px solid var(--color-primary);
   background: var(--color-primary);
@@ -216,15 +199,10 @@
   font-weight: 800;
 }
 
-.homeSearchRow > button {
-  padding: 10px 14px;
-}
-
 .homeCompareGrid > button {
   padding: 10px 18px;
 }
 
-.homeSearchRow > button:disabled,
 .homeCompareGrid > button:disabled {
   cursor: not-allowed;
   opacity: 0.45;
@@ -301,40 +279,20 @@
   }
 }
 
-.homeContent {
+.homeSpotlightSection {
   display: grid;
-  grid-template-columns: minmax(0, 240px) minmax(0, 1fr);
-  gap: clamp(18px, 2.5vw, 28px);
-  align-items: start;
-}
-
-.homeSectionIntro {
-  margin: 0;
-  position: sticky;
-  top: 84px;
-}
-
-.homeSectionIntro > h2 {
-  margin: 0 0 8px;
-  color: var(--color-heading);
-  font-size: 23px;
-  line-height: 1.15;
-}
-
-.homeSectionIntro > p {
-  margin: 0;
-  color: var(--color-muted);
-  line-height: 1.55;
+  gap: 16px;
 }
 
 .homeFeatureCard,
-.homeNotes {
+.homeSpotlightCard {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-ui);
   background: var(--color-panel);
 }
 
 .homeFeatureCard > span,
+.homeSpotlightCard > span,
 .homeSectionLabel {
   color: var(--color-subtle);
   font-size: 12px;
@@ -344,10 +302,82 @@
 }
 
 .homeFeatureCard > p,
-.homePrincipleList > article > p {
+.homeSpotlightCard > p {
   margin: 0;
   color: var(--color-muted);
   line-height: 1.55;
+}
+
+.homeSpotlightGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.homeSpotlightCard {
+  position: relative;
+  min-width: 0;
+  min-height: 168px;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  color: inherit;
+  padding: 20px;
+  overflow: hidden;
+  text-decoration: none;
+  box-shadow: var(--shadow-soft);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease,
+    background 160ms ease;
+}
+
+.homeSpotlightCard:hover {
+  transform: translateY(-2px);
+  border-color: var(--color-accent-soft-border);
+  background: var(--color-surface-elevated-strong);
+}
+
+.homeSpotlightCard > h2 {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: clamp(20px, 2vw, 28px);
+  line-height: 1.12;
+  overflow-wrap: anywhere;
+}
+
+.homeSpotlightCard:nth-child(1) {
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--color-primary) 16%, transparent),
+      transparent 58%
+    ),
+    var(--color-panel);
+}
+
+.homeTournamentShortcut {
+  padding-right: 122px;
+}
+
+.homeTournamentShortcut > img {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  width: min(28%, 104px);
+  height: auto;
+  filter: drop-shadow(0 18px 22px color-mix(in srgb, black 26%, transparent));
+}
+
+.homeH2HShortcut {
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--color-warning) 13%, transparent),
+      transparent 62%
+    ),
+    var(--color-panel);
 }
 
 .homeFeatureGrid {
@@ -379,69 +409,32 @@
   line-height: 1.18;
 }
 
-.homeNotesSection {
+.homeQuickLinksSection {
   display: grid;
+  gap: 16px;
 }
 
-.homeNotes {
+.homeQuickLinksHeader {
   display: grid;
-  grid-template-columns: minmax(0, 250px) minmax(0, 1fr);
-  gap: clamp(18px, 2.5vw, 28px);
-  align-items: start;
-  padding: 20px 22px;
-  box-shadow: var(--shadow-soft);
+  gap: 8px;
 }
 
-.homeNotes > h2 {
-  margin: 8px 0 18px;
+.homeQuickLinksHeader > h2 {
+  margin: 0;
   color: var(--color-heading);
   font-size: 22px;
   line-height: 1.18;
 }
 
-.homePrincipleList {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
-  gap: 16px;
-}
-
-.homePrincipleList > article {
-  min-width: 0;
-  display: grid;
-  align-content: start;
-  gap: 6px;
-  min-height: 100%;
-  padding: 16px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-ui);
-  background: color-mix(in srgb, var(--color-panel-strong) 72%, transparent);
-}
-
-.homePrincipleList > article > h3 {
-  margin: 0 0 8px;
-  color: var(--color-text);
-  font-size: 16px;
-  line-height: 1.25;
-}
-
-.homePrincipleList > article a {
-  color: var(--color-primary-soft);
-  text-decoration: none;
-}
-
-.homePrincipleList > article a:hover {
-  text-decoration: underline;
-}
-
 @media (max-width: 1180px) {
-  .homeContent,
-  .homeNotes,
-  .homePrincipleList {
+  .homeSpotlightSection {
     grid-template-columns: 1fr;
   }
+}
 
-  .homeSectionIntro {
-    position: static;
+@media (max-width: 860px) {
+  .homeSpotlightGrid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -475,23 +468,13 @@
   }
 
   .homeHero,
-  .homeContent,
-  .homeNotes {
+  .homeSpotlightSection,
+  .homeQuickLinksSection {
     gap: 16px;
   }
 
   .homeIntro {
     font-size: 16px;
-  }
-
-  .homePrincipleList {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-
-  .homeSearchRow {
-    display: grid;
-    grid-template-columns: 1fr;
   }
 
   .homeCompareGrid {
@@ -506,16 +489,17 @@
     min-height: 0;
   }
 
-  .homeNotes {
-    padding: 18px;
+  .homeTournamentShortcut {
+    min-height: 168px;
+    padding-right: 116px;
   }
 
-  .homeNotes > h2 {
-    font-size: 22px;
-  }
-
-  .homePrincipleList > article {
-    padding: 14px;
+  .homeTournamentShortcut > img {
+    position: absolute;
+    width: 86px;
+    right: 14px;
+    bottom: 14px;
+    margin-top: 0;
   }
 }
 
@@ -527,7 +511,6 @@
 
   .homePrimaryCta,
   .homeSecondaryCta,
-  .homeSearchRow > button,
   .homeCompareGrid > button {
     width: 100%;
   }
@@ -557,7 +540,6 @@
 
   .homePrimaryCta,
   .homeSecondaryCta,
-  .homeSearchRow > button,
   .homeCompareGrid > button {
     min-height: 48px;
   }
