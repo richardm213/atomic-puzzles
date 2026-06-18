@@ -450,11 +450,11 @@
   opacity: 1;
   pointer-events: auto;
   border-color: var(--color-input-border);
-  padding: 8px 74px 8px 38px;
+  padding: 8px 14px 8px 38px;
 }
 
 .navSearch.pending input {
-  padding-right: 98px;
+  color: var(--color-muted);
 }
 
 .navSearchIcon {
@@ -475,28 +475,7 @@
   line-height: 1;
 }
 
-.navSearchGo {
-  position: absolute;
-  right: 4px;
-  width: 32px;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  pointer-events: none;
-  border-color: var(--color-input-border);
-  cursor: pointer;
-  transition: opacity 120ms ease;
-}
-
-.navSearch.open .navSearchGo {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.navSearchIcon,
-.navSearchGo {
+.navSearchIcon {
   background: var(--color-primary);
   color: var(--color-on-primary);
   border-color: var(--color-primary);
@@ -504,62 +483,138 @@
 
 .navSearchStatus {
   position: absolute;
-  right: 44px;
-  top: 50%;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  transform: translateY(-50%);
+  left: 38px;
+  right: 12px;
+  bottom: 4px;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 999px;
   opacity: 0;
   pointer-events: none;
   transition: opacity 140ms ease;
 }
 
-.navSearch.pending .navSearchStatus {
+.navSearch.pending .navSearchStatus,
+.navSearch.suggesting .navSearchStatus {
   opacity: 1;
 }
 
-.navSearchPulse {
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--color-primary) 70%, white 30%);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 16%, transparent);
-  animation: navSearchPulse 1s ease-in-out infinite;
+.navSearchProgress {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 42%;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--color-primary) 64%, transparent);
+  animation: navSearchProgress 1.15s ease-in-out infinite;
 }
 
-.navSearchPulse:nth-child(2) {
-  animation-delay: 120ms;
-}
-
-.navSearchPulse:nth-child(3) {
-  animation-delay: 240ms;
-}
-
-.navSearchSpinner {
-  animation: navSearchSpin 0.9s linear infinite;
-}
-
-@keyframes navSearchPulse {
+@keyframes navSearchProgress {
   0%,
   100% {
-    transform: scale(0.72);
-    opacity: 0.4;
+    transform: translateX(-115%);
+    opacity: 0.34;
   }
 
   50% {
-    transform: scale(1);
-    opacity: 1;
+    transform: translateX(250%);
+    opacity: 0.7;
   }
 }
 
-@keyframes navSearchSpin {
+.navSearchResults {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 42;
+  width: min(260px, calc(100vw - 48px));
+  max-height: min(340px, calc(100vh - 96px));
+  padding: 6px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 12px;
+  background: var(--dropdown-panel-bg);
+  box-shadow: var(--shadow-panel);
+  backdrop-filter: blur(18px);
+  display: grid;
+  gap: 3px;
+  transform-origin: top right;
+  animation: navSearchResultsIn 140ms ease both;
+}
+
+.navSearchResult {
+  width: 100%;
+  height: auto;
+  min-height: 38px;
+  padding: 7px 9px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-ui);
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  font: inherit;
+  line-height: 1.2;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
+}
+
+.navSearchResult:hover,
+.navSearchResult.active {
+  border-color: color-mix(in srgb, var(--color-primary) 34%, transparent);
+  background: color-mix(in srgb, var(--color-panel-strong) 78%, var(--color-primary) 22%);
+  color: var(--color-heading);
+}
+
+.navSearchResultName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.navSearchResultMeta {
+  min-width: 0;
+  max-width: 92px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.navSearchResult:hover .navSearchResultMeta,
+.navSearchResult.active .navSearchResultMeta {
+  color: color-mix(in srgb, var(--color-heading) 72%, var(--color-muted));
+}
+
+.navSearchResultsHint {
+  min-height: 38px;
+  padding: 0 10px;
+  color: var(--color-muted);
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+@keyframes navSearchResultsIn {
   from {
-    transform: rotate(0deg);
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
   }
 
   to {
-    transform: rotate(360deg);
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
@@ -908,7 +963,8 @@
   }
 
   .navSearch.open,
-  .navSearch.open input {
+  .navSearch.open input,
+  .navSearchResults {
     width: min(240px, calc(100vw - 32px));
   }
 
@@ -919,10 +975,6 @@
 
   .navSearchIcon {
     left: 0;
-  }
-
-  .navSearchGo {
-    right: 4px;
   }
 
   .navAuth {
@@ -984,7 +1036,8 @@
 
 @media (max-width: 430px) {
   .navSearch.open,
-  .navSearch.open input {
+  .navSearch.open input,
+  .navSearchResults {
     width: calc(
       100vw - max(74px, env(safe-area-inset-left)) - max(74px, env(safe-area-inset-right))
     );

@@ -5,18 +5,28 @@ import {
   faChevronDown,
   faMagnifyingGlass,
   faRightFromBracket,
-  faSpinner,
   faUser,
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { type ChangeEvent, type FormEvent, useEffect, useRef, useState } from "react";
+import {
+  type ChangeEvent,
+  type FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { getBoardThemeColors, useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
 import { resolveProfileUsernameFromAliases } from "../../lib/supabase/supabaseAliases";
-import { resolveUsernameInput } from "../../lib/users/usernameSearch";
+import {
+  resolveUsernameInput,
+  searchUsernameSuggestions,
+  type UsernameSearchSuggestion,
+} from "../../lib/users/usernameSearch";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { normalizeUsername } from "../../utils/playerNames";
 
@@ -90,6 +100,8 @@ const navItems: NavItem[] = [
 ];
 
 const PROFILE_USERNAME_STORAGE_PREFIX = "atomic-puzzles.profile-username";
+const SEARCH_SUGGESTION_MIN_LENGTH = 3;
+const SEARCH_SUGGESTION_DELAY_MS = 150;
 
 const getStoredProfileUsername = (username: string | null | undefined): string => {
   const normalizedUsername = normalizeUsername(username);
@@ -115,11 +127,16 @@ export const TopNav = () => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchPending, setSearchPending] = useState(false);
+  const [searchSuggestionsPending, setSearchSuggestionsPending] = useState(false);
+  const [searchSuggestionsSearched, setSearchSuggestionsSearched] = useState(false);
+  const [searchSuggestions, setSearchSuggestions] = useState<UsernameSearchSuggestion[]>([]);
+  const [activeSearchSuggestionIndex, setActiveSearchSuggestionIndex] = useState(-1);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [puzzleMenuOpen, setPuzzleMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const searchSuggestionsRequestIdRef = useRef(0);
   const topNavRef = useRef<HTMLElement | null>(null);
   const puzzleMenuRef = useRef<HTMLDivElement | null>(null);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
@@ -199,6 +216,11 @@ export const TopNav = () => {
 
   const resolvedProfileUsername = profileUsername || normalizedAuthUsername;
   const searchExpanded = searchOpen;
+  const searchBusy = searchPending || searchSuggestionsPending;
+  const showSearchSuggestions =
+    searchExpanded &&
+    trimmedSearchQuery.length >= SEARCH_SUGGESTION_MIN_LENGTH &&
+    (searchSuggestionsPending || searchSuggestionsSearched || searchSuggestions.length > 0);
 
   const handleBoardThemeChange = (event: ChangeEvent<HTMLSelectElement>): void => {
     setBoardTheme(event.target.value);
@@ -231,6 +253,48 @@ export const TopNav = () => {
     if (!searchOpen) return;
     searchInputRef.current?.focus();
   }, [searchOpen]);
+
+  useEffect(() => {
+    const requestId = searchSuggestionsRequestIdRef.current + 1;
+    searchSuggestionsRequestIdRef.current = requestId;
+    setActiveSearchSuggestionIndex(-1);
+    setSearchSuggestionsSearched(false);
+    setSearchSuggestionsPending(false);
+
+    if (
+      !searchOpen ||
+      searchPending ||
+      trimmedSearchQuery.length < SEARCH_SUGGESTION_MIN_LENGTH
+    ) {
+      setSearchSuggestions([]);
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setSearchSuggestionsPending(true);
+
+      void searchUsernameSuggestions(trimmedSearchQuery)
+        .then((suggestions) => {
+          if (requestId !== searchSuggestionsRequestIdRef.current) return;
+          setSearchSuggestions(suggestions);
+          setSearchSuggestionsSearched(true);
+        })
+        .catch(() => {
+          if (requestId !== searchSuggestionsRequestIdRef.current) return;
+          setSearchSuggestions([]);
+          setSearchSuggestionsSearched(true);
+        })
+        .finally(() => {
+          if (requestId === searchSuggestionsRequestIdRef.current) {
+            setSearchSuggestionsPending(false);
+          }
+        });
+    }, SEARCH_SUGGESTION_DELAY_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [searchOpen, searchPending, trimmedSearchQuery]);
 
   useEffect(() => {
     setMobileMenuOpen(false);
@@ -350,10 +414,78 @@ export const TopNav = () => {
         params: { username: normalizeUsername(resolvedUsername) },
       });
       setSearchQuery("");
+      setSearchSuggestions([]);
+      setSearchSuggestionsSearched(false);
+      setActiveSearchSuggestionIndex(-1);
       setSearchOpen(false);
       setMobileMenuOpen(false);
     } finally {
       setSearchPending(false);
+    }
+  };
+
+  const handleSearchSuggestionSelect = async (
+    suggestion: UsernameSearchSuggestion,
+  ): Promise<void> => {
+    if (searchPending) return;
+
+    setSearchPending(true);
+
+    try {
+      void navigate({
+        to: "/@/$username",
+        params: { username: normalizeUsername(suggestion.username) },
+      });
+      setSearchQuery("");
+      setSearchSuggestions([]);
+      setSearchSuggestionsSearched(false);
+      setActiveSearchSuggestionIndex(-1);
+      setSearchOpen(false);
+      setMobileMenuOpen(false);
+    } finally {
+      setSearchPending(false);
+    }
+  };
+
+  const handleSearchInputKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>): void => {
+    if (event.key === "Escape") {
+      if (searchSuggestions.length > 0) {
+        event.preventDefault();
+        setSearchSuggestions([]);
+        setSearchSuggestionsSearched(false);
+        setActiveSearchSuggestionIndex(-1);
+        return;
+      }
+
+      setSearchOpen(false);
+      searchInputRef.current?.blur();
+      return;
+    }
+
+    if (searchSuggestions.length === 0) return;
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveSearchSuggestionIndex((currentIndex) =>
+        currentIndex >= searchSuggestions.length - 1 ? 0 : currentIndex + 1,
+      );
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveSearchSuggestionIndex((currentIndex) =>
+        currentIndex <= 0 ? searchSuggestions.length - 1 : currentIndex - 1,
+      );
+      return;
+    }
+
+    if (event.key === "Enter" && activeSearchSuggestionIndex >= 0) {
+      event.preventDefault();
+      const activeSuggestion = searchSuggestions[activeSearchSuggestionIndex];
+      if (activeSuggestion) {
+        void handleSearchSuggestionSelect(activeSuggestion);
+      }
     }
   };
 
@@ -485,7 +617,7 @@ export const TopNav = () => {
           <form
             className={`navSearch ${searchExpanded ? "open" : ""} ${
               searchPending ? "pending" : ""
-            }`}
+            } ${searchSuggestionsPending ? "suggesting" : ""}`}
             onSubmit={handleSearchSubmit}
             onMouseEnter={() => {
               if (!searchPending) setSearchOpen(true);
@@ -502,15 +634,22 @@ export const TopNav = () => {
               value={searchQuery}
               placeholder="Search player"
               aria-label="Search player username"
-              aria-busy={searchPending}
+              aria-busy={searchBusy}
+              aria-autocomplete="list"
+              aria-controls="nav-search-results"
+              aria-expanded={showSearchSuggestions}
+              aria-activedescendant={
+                activeSearchSuggestionIndex >= 0
+                  ? `nav-search-result-${activeSearchSuggestionIndex}`
+                  : undefined
+              }
               onChange={(event) => setSearchQuery(event.target.value)}
+              onKeyDown={handleSearchInputKeyDown}
               disabled={searchPending}
               tabIndex={searchExpanded ? 0 : -1}
             />
-            <div className="navSearchStatus" aria-hidden={!searchPending}>
-              <span className="navSearchPulse" />
-              <span className="navSearchPulse" />
-              <span className="navSearchPulse" />
+            <div className="navSearchStatus" aria-hidden={!searchBusy}>
+              <span className="navSearchProgress" />
             </div>
             <button
               className="navSearchIcon"
@@ -523,20 +662,40 @@ export const TopNav = () => {
                 }
               }}
             >
-              <FontAwesomeIcon
-                icon={searchPending ? faSpinner : faMagnifyingGlass}
-                className={searchPending ? "navSearchSpinner" : undefined}
-              />
+              <FontAwesomeIcon icon={faMagnifyingGlass} />
             </button>
-            <button
-              className="navSearchGo"
-              type="submit"
-              tabIndex={searchExpanded ? 0 : -1}
-              disabled={!trimmedSearchQuery || searchPending}
-              aria-label="Submit player search"
-            >
-              <i className="fa-solid fa-magnifying-glass" aria-hidden="true" />
-            </button>
+            {showSearchSuggestions ? (
+              <div className="navSearchResults" id="nav-search-results" role="listbox">
+                {searchSuggestionsPending ? (
+                  <div className="navSearchResultsHint">Searching...</div>
+                ) : null}
+                {!searchSuggestionsPending && searchSuggestions.length === 0 ? (
+                  <div className="navSearchResultsHint">No players found</div>
+                ) : null}
+                {!searchSuggestionsPending
+                  ? searchSuggestions.map((suggestion, index) => (
+                      <button
+                        className={`navSearchResult ${
+                          index === activeSearchSuggestionIndex ? "active" : ""
+                        }`}
+                        id={`nav-search-result-${index}`}
+                        key={`${suggestion.username}-${suggestion.matchedName}`}
+                        type="button"
+                        role="option"
+                        aria-selected={index === activeSearchSuggestionIndex}
+                        onMouseDown={(event) => event.preventDefault()}
+                        onMouseEnter={() => setActiveSearchSuggestionIndex(index)}
+                        onClick={() => void handleSearchSuggestionSelect(suggestion)}
+                      >
+                        <span className="navSearchResultName">{suggestion.matchedName}</span>
+                        {suggestion.matchType === "alias" ? (
+                          <span className="navSearchResultMeta">{suggestion.username}</span>
+                        ) : null}
+                      </button>
+                    ))
+                  : null}
+              </div>
+            ) : null}
           </form>
         </div>
         <div className="navAuth" aria-live="polite">
