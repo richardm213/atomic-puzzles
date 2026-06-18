@@ -10,6 +10,7 @@ export type PuzzleLeaderboardRow = {
   score: number;
   correct: number;
   incorrect: number;
+  percentCorrect: number;
   attempted: number;
 };
 
@@ -21,6 +22,14 @@ export const calculatePuzzleScore = (correct: number, attempted: number): number
   const incorrect = normalizedAttempted - normalizedCorrect;
 
   return normalizedCorrect * PUZZLE_CORRECT_POINTS + incorrect * PUZZLE_INCORRECT_POINTS;
+};
+
+export const calculatePuzzleCorrectPercent = (correct: number, attempted: number): number => {
+  const normalizedCorrect = Math.max(0, Math.floor(Number(correct)) || 0);
+  const normalizedAttempted = Math.max(normalizedCorrect, Math.floor(Number(attempted)) || 0);
+  if (normalizedAttempted === 0) return 0;
+
+  return Math.round((normalizedCorrect / normalizedAttempted) * 100);
 };
 
 const rankPuzzleLeaderboardRows = (
@@ -62,6 +71,7 @@ export const buildPuzzleLeaderboardRows = (
       score: 0,
       correct: 0,
       incorrect: 0,
+      percentCorrect: 0,
       attempted: 0,
     };
 
@@ -72,6 +82,7 @@ export const buildPuzzleLeaderboardRows = (
       existing.incorrect += 1;
     }
     existing.score = calculatePuzzleScore(existing.correct, existing.attempted);
+    existing.percentCorrect = calculatePuzzleCorrectPercent(existing.correct, existing.attempted);
     rowsByUsername.set(username, existing);
   });
 

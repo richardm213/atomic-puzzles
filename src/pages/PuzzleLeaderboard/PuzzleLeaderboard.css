@@ -76,11 +76,12 @@
 }
 
 .puzzleLeaderboardTable {
-  min-width: 620px;
+  min-width: 700px;
 }
 
 .rankingsTable.puzzleLeaderboardTable :is(th, td):nth-child(4),
-.rankingsTable.puzzleLeaderboardTable :is(th, td):nth-child(5) {
+.rankingsTable.puzzleLeaderboardTable :is(th, td):nth-child(5),
+.rankingsTable.puzzleLeaderboardTable :is(th, td):nth-child(6) {
   width: 1%;
   white-space: nowrap;
 }

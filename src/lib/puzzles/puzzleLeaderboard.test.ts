@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildPuzzleLeaderboardRows,
+  calculatePuzzleCorrectPercent,
   calculatePuzzleScore,
   PUZZLE_CORRECT_POINTS,
   PUZZLE_INCORRECT_POINTS,
@@ -10,6 +11,12 @@ import {
 describe("puzzleLeaderboard", () => {
   it("scores correct and incorrect attempts", () => {
     expect(calculatePuzzleScore(3, 5)).toBe(3 * PUZZLE_CORRECT_POINTS + 2 * PUZZLE_INCORRECT_POINTS);
+  });
+
+  it("calculates whole-number correct percentages", () => {
+    expect(calculatePuzzleCorrectPercent(6, 11)).toBe(55);
+    expect(calculatePuzzleCorrectPercent(1, 8)).toBe(13);
+    expect(calculatePuzzleCorrectPercent(0, 0)).toBe(0);
   });
 
   it("groups users from puzzle progress rows", () => {
@@ -23,7 +30,15 @@ describe("puzzleLeaderboard", () => {
     ]);
 
     expect(rows).toEqual([
-      { rank: 1, username: "alpha", score: 5, correct: 1, incorrect: 0, attempted: 1 },
+      {
+        rank: 1,
+        username: "alpha",
+        score: 5,
+        correct: 1,
+        incorrect: 0,
+        percentCorrect: 100,
+        attempted: 1,
+      },
     ]);
   });
 
@@ -50,9 +65,33 @@ describe("puzzleLeaderboard", () => {
     ]);
 
     expect(rows).toEqual([
-      { rank: 1, username: "first", score: 5, correct: 1, incorrect: 0, attempted: 1 },
-      { rank: 1, username: "second", score: 5, correct: 1, incorrect: 0, attempted: 1 },
-      { rank: 3, username: "third", score: -3, correct: 0, incorrect: 1, attempted: 1 },
+      {
+        rank: 1,
+        username: "first",
+        score: 5,
+        correct: 1,
+        incorrect: 0,
+        percentCorrect: 100,
+        attempted: 1,
+      },
+      {
+        rank: 1,
+        username: "second",
+        score: 5,
+        correct: 1,
+        incorrect: 0,
+        percentCorrect: 100,
+        attempted: 1,
+      },
+      {
+        rank: 3,
+        username: "third",
+        score: -3,
+        correct: 0,
+        incorrect: 1,
+        percentCorrect: 0,
+        attempted: 1,
+      },
     ]);
   });
 });

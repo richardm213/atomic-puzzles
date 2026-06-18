@@ -15,7 +15,7 @@ import { fetchAllPuzzleProgressRows } from "../../lib/supabase/supabasePuzzlePro
 
 type PuzzleLeaderboardSortKey = keyof Pick<
   PuzzleLeaderboardRow,
-  "rank" | "username" | "score" | "correct" | "incorrect"
+  "rank" | "username" | "score" | "correct" | "incorrect" | "percentCorrect"
 >;
 
 const puzzleLeaderboardColumns: Array<{ key: PuzzleLeaderboardSortKey; label: string }> = [
@@ -24,6 +24,7 @@ const puzzleLeaderboardColumns: Array<{ key: PuzzleLeaderboardSortKey; label: st
   { key: "score", label: "Points" },
   { key: "correct", label: "# correct" },
   { key: "incorrect", label: "# incorrect" },
+  { key: "percentCorrect", label: "% correct" },
 ];
 
 const sortIndicator = (
@@ -194,6 +195,7 @@ const PuzzleLeaderboard = () => {
                     <td>{row.score}</td>
                     <td>{row.correct}</td>
                     <td>{row.incorrect}</td>
+                    <td>{row.percentCorrect}%</td>
                   </tr>
                 ))}
               </tbody>
