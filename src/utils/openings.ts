@@ -9,6 +9,7 @@ const openingDisplayLabels: Record<string, string> = {
   "nh3 d4": "Nh3 d4",
   "nh3 e4": "Nh3 e4",
   "nh3 e3": "Nh3 e3",
+  "nh3 na3": "Nh3 Na3",
   nc3: "Nc3",
   na3: "Na3",
   "nf3 d4": "Nf3 d4",
@@ -17,6 +18,7 @@ const openingDisplayLabels: Record<string, string> = {
   "e3 nc3": "e3 Nc3",
   "e3 qh5": "e3 Qh5",
   "e3 qf3": "e3 Qf3",
+  "e3 f4": "e3 f4",
   "nh3 nc3": "Nh3 Nc3",
   variety: "All-around",
 };

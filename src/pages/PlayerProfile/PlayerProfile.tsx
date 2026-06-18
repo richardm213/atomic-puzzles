@@ -124,6 +124,7 @@ const openingToneClasses: Record<string, string> = {
   "nh3 d4": "openingToneNh3D4",
   "nh3 e4": "openingToneNh3E4",
   "nh3 e3": "openingToneNh3E3",
+  "nh3 na3": "openingToneNh3Na3",
   nc3: "openingToneNc3",
   na3: "openingToneNa3",
   "nf3 d4": "openingToneNf3D4",
@@ -132,6 +133,7 @@ const openingToneClasses: Record<string, string> = {
   "e3 nc3": "openingToneE3Nc3",
   "e3 qh5": "openingToneE3Qh5",
   "e3 qf3": "openingToneE3Qf3",
+  "e3 f4": "openingToneE3F4",
   "nh3 nc3": "openingToneNh3Nc3",
   variety: "openingToneVariety",
 };
