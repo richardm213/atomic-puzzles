@@ -9,7 +9,11 @@ import {
   type SourceFilters,
 } from "../constants/matches";
 import type { NormalizedMatch } from "../lib/matches/matchData";
-import { fetchLbRows, monthKeyFromMonthValue } from "../lib/supabase/supabaseLb";
+import {
+  fetchLbPlayerCount,
+  fetchLbRows,
+  monthKeyFromMonthValue,
+} from "../lib/supabase/supabaseLb";
 import { fetchPlayerRatingsRows } from "../lib/supabase/supabasePlayerRatings";
 import { formatCalendarDate } from "../utils/formatters";
 import { parseDateInputBoundary } from "../utils/matchFilters";
@@ -17,11 +21,15 @@ import { parseTimeControlParts } from "../utils/matchTransforms";
 
 export type MonthRank = {
   monthKey: string;
+  monthValue: string;
   monthDate: Date;
   monthLabel: string;
   mode: Mode;
   rank: number;
-  rating: number;
+  rating: number | null;
+  rd: number | null;
+  games: number | null;
+  playerCount?: number | null;
 };
 
 export type TopWin = {
@@ -79,21 +87,27 @@ const parseMonthRanksFromLbRows = (rows: unknown): MonthRank[] => {
   return (Array.isArray(rows) ? rows : [])
     .map((row): MonthRank | null => {
       const r = row as Record<string, unknown>;
-      const monthKey = monthKeyFromMonthValue(r?.["month"] as string | null | undefined);
+      const monthValue = String(r?.["month"] ?? "").slice(0, 10);
+      const monthKey = monthKeyFromMonthValue(monthValue);
       if (!monthKey) return null;
-      const monthDate = new Date(`${String(r["month"]).slice(0, 10)}T00:00:00Z`);
+      const monthDate = new Date(`${monthValue}T00:00:00Z`);
       const mode = String(r?.["tc"] ?? "").toLowerCase();
       const rank = Number(r?.["rank"]);
       const rating = Number(r?.["rating"]);
+      const rd = Number(r?.["rd"]);
+      const games = Number(r?.["games"]);
       if (!isMode(mode) || rank <= 0) return null;
 
       return {
         monthKey,
+        monthValue,
         monthDate,
         monthLabel: monthKey,
         mode,
         rank,
-        rating,
+        rating: Number.isFinite(rating) ? rating : null,
+        rd: Number.isFinite(rd) ? rd : null,
+        games: Number.isFinite(games) ? games : null,
       };
     })
     .filter((entry): entry is MonthRank => entry !== null);
@@ -219,6 +233,50 @@ export const useMonthRanks = (username: string): MonthRank[] => {
   return monthRanks;
 };
 
+export const useMonthRankPlayerCounts = (monthRanks: MonthRank[]): Record<string, number> => {
+  const [playerCounts, setPlayerCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const keys = [
+      ...new Set(
+        monthRanks
+          .map((monthRank) => `${monthRank.monthValue}|${monthRank.mode}`)
+          .filter((key) => !playerCounts[key]),
+      ),
+    ];
+
+    if (keys.length === 0) return;
+
+    let isCurrent = true;
+
+    const loadPlayerCounts = async (): Promise<void> => {
+      const entries = await Promise.all(
+        keys.map(async (key): Promise<[string, number]> => {
+          const [monthValue, mode] = key.split("|");
+          if (!monthValue || !isMode(mode)) return [key, 0];
+
+          try {
+            return [key, await fetchLbPlayerCount(monthValue, mode)];
+          } catch {
+            return [key, 0];
+          }
+        }),
+      );
+
+      if (!isCurrent) return;
+      setPlayerCounts((current) => ({ ...current, ...Object.fromEntries(entries) }));
+    };
+
+    void loadPlayerCounts();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [monthRanks, playerCounts]);
+
+  return playerCounts;
+};
+
 export const useRatingsSnapshotByMode = (username: string): RatingsSnapshotByMode => {
   const [ratingsSnapshotByMode, setRatingsSnapshotByMode] = useState<RatingsSnapshotByMode>(
     emptyRatingsSnapshotByMode,
@@ -298,6 +356,9 @@ export const getBestWinsForMode = (
   mode: Mode,
   bestWinCount: number,
 ): TopWin[] => (ratingDisplayByMode[mode]?.topWins ?? []).slice(0, bestWinCount);
+
+export const getMonthRanksForMode = (monthRanks: MonthRank[], mode: Mode | "all"): MonthRank[] =>
+  mode === "all" ? monthRanks : monthRanks.filter((rank) => rank.mode === mode);
 
 export const filterMatches = (
   matches: NormalizedMatch[],

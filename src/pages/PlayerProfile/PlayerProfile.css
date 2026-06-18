@@ -263,11 +263,13 @@
 }
 
 .playerProfilePanel .matchFilterGrid {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns:
+    minmax(76px, 0.65fr) minmax(88px, 0.75fr) minmax(96px, 0.85fr)
+    repeat(2, minmax(112px, 1fr)) minmax(124px, 1.1fr);
+  gap: 10px;
 }
 
 .profileOpponentFilterField {
-  grid-column: span 2;
   min-width: 0;
 }
 
@@ -406,7 +408,16 @@
   gap: 10px;
 }
 
-.profileBestMonthRanksHeader label {
+.profileHeaderControls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.profileBestMonthRanksHeader label,
+.profileHistoryTitleControl label,
+.profileFavoriteOpponentsControls label {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -414,7 +425,9 @@
   color: var(--color-primary-pale);
 }
 
-.profileBestMonthRanksHeader select {
+.profileBestMonthRanksHeader select,
+.profileHistoryTitleControl select,
+.profileFavoriteOpponentsControls select {
   border: 1px solid var(--color-input-border);
   background: var(--color-panel-strong);
   color: var(--color-text);
@@ -772,8 +785,171 @@
   cursor: not-allowed;
 }
 
-.profileMatchTableWrap {
+.profileHistoryArea {
+  margin-top: 18px;
+  min-width: 0;
+}
+
+.profileHistoryTabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 2px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.profileHistoryTabs button {
+  position: relative;
+  min-height: 42px;
+  margin-bottom: -1px;
+  padding: 0 18px;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: 8px 8px 0 0;
+  background: transparent;
+  color: var(--color-muted);
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+
+.profileHistoryTabs button:hover,
+.profileHistoryTabs button:focus-visible {
+  background: color-mix(in srgb, var(--color-panel-strong) 58%, transparent);
+  color: var(--color-heading);
+  outline: none;
+}
+
+.profileHistoryTabs button.active {
+  border-color: var(--color-border);
+  background: color-mix(in srgb, var(--color-panel-strong) 92%, transparent);
+  color: var(--color-heading);
+  box-shadow: inset 0 3px 0 var(--color-primary);
+}
+
+.profileHistorySection {
+  min-width: 0;
+}
+
+.profileHistorySection[hidden] {
+  display: none;
+}
+
+.profileHistoryArea .profileMatchFilters {
+  margin-top: 0;
+  gap: 14px;
+  padding: 14px;
+  border-color: color-mix(in srgb, var(--color-border) 76%, transparent);
+  background: color-mix(in srgb, var(--color-panel-strong) 55%, transparent);
+}
+
+.profileMatchFilters + .profileHistoryMeta,
+.profileMatchFilters + .errorText + .profileHistoryMeta {
   margin-top: 14px;
+}
+
+.profileMatchFilters .matchFilterGrid label {
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+}
+
+.profileMatchFilters .matchFilterGrid select,
+.profileMatchFilters .matchFilterGrid input[type="text"],
+.profileMatchFilters .matchFilterGrid input[type="date"] {
+  min-height: 38px;
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--color-surface-elevated-strong) 82%, transparent);
+  font-size: 14px;
+}
+
+.profileMatchFilters .matchFilterRanges {
+  display: block;
+}
+
+.profileMatchFilters .rangeFilter,
+.profileMatchFilters .sourceFilterGroup {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.profileMatchFilters .rangeFilter > label,
+.profileMatchFilters .sourceFilterGroup > .statusLabel {
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+}
+
+.profileMatchFilters .dualRangeSlider {
+  min-width: 0;
+  max-width: none;
+  height: 20px;
+  margin-top: 6px;
+}
+
+.profileMatchFilterFooter {
+  align-items: end;
+  padding-top: 4px;
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
+}
+
+.profileMatchFilterFooter .sourceFilterChecks {
+  gap: 8px;
+  margin-top: 6px;
+  align-items: center;
+}
+
+.profileMatchFilterFooter .sourceFilterCheck {
+  min-height: 30px;
+  flex: 0 0 auto;
+  padding: 0 9px;
+  border-color: color-mix(in srgb, var(--color-border) 78%, transparent);
+  background: color-mix(in srgb, var(--color-surface-elevated-strong) 66%, transparent);
+  color: var(--color-text);
+  font-weight: 650;
+}
+
+.profileMatchFilterFooter .matchFilterActions {
+  flex: 0 0 auto;
+}
+
+.profileMatchFilterFooter .matchFilterActions .matchFilterSearch {
+  min-width: 132px;
+}
+
+.profileHistoryMeta {
+  margin-top: 0;
+  min-height: 42px;
+  align-items: center;
+  gap: 12px;
+}
+
+.profileHistoryTitleControl {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-heading);
+  font-weight: 800;
+}
+
+.profileFavoriteOpponentsControls {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  color: var(--color-subtle);
+}
+
+.profileMatchTableWrap {
+  margin-top: 0;
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: var(--color-surface-soft);
@@ -812,6 +988,61 @@
 }
 
 .profileMatchTable tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.profileRankHistoryTableWrap {
+  margin-top: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface-soft);
+}
+
+.profileFavoriteOpponentsTableWrap {
+  margin-top: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface-soft);
+}
+
+.profileRankHistoryTable,
+.profileFavoriteOpponentsTable {
+  min-width: 560px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.profileFavoriteOpponentsTable {
+  min-width: 700px;
+}
+
+.profileRankHistoryTable thead,
+.profileFavoriteOpponentsTable thead {
+  background: var(--color-table-head);
+}
+
+.profileRankHistoryTable th,
+.profileRankHistoryTable td,
+.profileFavoriteOpponentsTable th,
+.profileFavoriteOpponentsTable td {
+  border-bottom-color: var(--color-border);
+  padding: 10px 11px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.profileRankHistoryTable th,
+.profileFavoriteOpponentsTable th {
+  color: var(--color-subtle);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.profileRankHistoryTable tbody tr:last-child td,
+.profileFavoriteOpponentsTable tbody tr:last-child td {
   border-bottom: 0;
 }
 
@@ -975,6 +1206,32 @@
   .profileBestMonthRanksHeader {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .profileHeaderControls {
+    justify-content: flex-start;
+  }
+
+  .profileHistoryMeta {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .profileMatchFilterFooter {
+    align-items: stretch;
+  }
+
+  .profileMatchFilterFooter .sourceFilterGroup {
+    flex-basis: auto;
+  }
+
+  .profileMatchFilterFooter .sourceFilterCheck {
+    width: auto;
+  }
+
+  .profileMatchFilterFooter .matchFilterActions,
+  .profileMatchFilterFooter .matchFilterSearch {
+    width: 100%;
   }
 
   .profileBestWins li,

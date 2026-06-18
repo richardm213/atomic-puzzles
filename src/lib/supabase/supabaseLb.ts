@@ -2,12 +2,13 @@ import type { LbRow } from "../../types/supabase";
 import { normalizeUsername } from "../../utils/playerNames";
 import { cachedRequest } from "../../utils/requestCache";
 import { getSupabaseClient } from "./supabaseClient";
-import { loadSupabaseRows } from "./supabaseRows";
+import { loadSupabasePage, loadSupabaseRows } from "./supabaseRows";
 
 export type { LbRow } from "../../types/supabase";
 
 export type LbFilters = {
   month?: string;
+  mode?: string;
   username?: string;
   limit?: number;
 };
@@ -15,6 +16,7 @@ export type LbFilters = {
 const LB_TABLE = import.meta.env.VITE_SUPABASE_LB_TABLE?.trim() ?? "lb";
 const LB_SELECT_COLUMNS = "username,month,rank,rating,rd,games,tc";
 const lbRowsCache = new Map<string, Promise<LbRow[]>>();
+const lbCountCache = new Map<string, Promise<number>>();
 const MONTH_INDEX_BY_NAME: Record<string, number> = {
   Jan: 0,
   Feb: 1,
@@ -59,11 +61,12 @@ export const isoMonthStartFromMonthKey = (monthKey: string | null | undefined): 
 };
 
 const fetchUncachedLbRows = async (filters: LbFilters = {}): Promise<LbRow[]> => {
-  const { month, username, limit } = filters;
+  const { month, mode, username, limit } = filters;
   const supabase = getSupabaseClient();
   const normalizedUsername = normalizeUsername(username);
   let query = supabase.from(LB_TABLE).select(LB_SELECT_COLUMNS);
   if (month) query = query.eq("month", month);
+  if (mode) query = query.eq("tc", mode);
   if (normalizedUsername) query = query.eq("username", normalizedUsername);
   if (Number(limit) > 0) {
     query = query.limit(Math.floor(Number(limit)));
@@ -74,3 +77,20 @@ const fetchUncachedLbRows = async (filters: LbFilters = {}): Promise<LbRow[]> =>
 
 export const fetchLbRows = async (filters: LbFilters = {}): Promise<LbRow[]> =>
   cachedRequest(lbRowsCache, ["leaderboard", filters], () => fetchUncachedLbRows(filters));
+
+const fetchUncachedLbPlayerCount = async (month: string, mode: string): Promise<number> => {
+  const supabase = getSupabaseClient();
+  const query = supabase
+    .from(LB_TABLE)
+    .select("username", { count: "exact", head: true })
+    .eq("month", month)
+    .eq("tc", mode);
+
+  const { count } = await loadSupabasePage<LbRow>(LB_TABLE, query);
+  return Number(count) || 0;
+};
+
+export const fetchLbPlayerCount = async (month: string, mode: string): Promise<number> =>
+  cachedRequest(lbCountCache, ["leaderboard-count", month, mode], () =>
+    fetchUncachedLbPlayerCount(month, mode),
+  );
