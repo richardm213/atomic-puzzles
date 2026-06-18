@@ -523,7 +523,7 @@
 
 .navSearchResults {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% - 1px);
   right: 0;
   z-index: 42;
   width: min(260px, calc(100vw - 48px));
