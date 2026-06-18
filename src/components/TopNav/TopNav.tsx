@@ -24,6 +24,11 @@ type NavItem = {
   to: string;
   label: string;
   isActive: (pathname: string) => boolean;
+  children?: {
+    to: string;
+    label: string;
+    isActive: (pathname: string) => boolean;
+  }[];
 };
 
 const navItems: NavItem[] = [
@@ -35,7 +40,31 @@ const navItems: NavItem[] = [
   {
     to: "/solve",
     label: "Puzzles",
-    isActive: (pathname) => pathname === "/solve" || pathname.startsWith("/solve/"),
+    isActive: (pathname) =>
+      pathname === "/solve" ||
+      pathname.startsWith("/solve/") ||
+      pathname === "/dashboard",
+    children: [
+      {
+        to: "/solve",
+        label: "Solve puzzles",
+        isActive: (pathname) =>
+          pathname === "/solve" ||
+          (/^\/solve\/[^/]+$/.test(pathname) &&
+            pathname !== "/solve/sets" &&
+            pathname !== "/solve/history"),
+      },
+      {
+        to: "/dashboard",
+        label: "Puzzle dashboard",
+        isActive: (pathname) => pathname === "/dashboard" || pathname === "/solve/history",
+      },
+      {
+        to: "/solve/sets",
+        label: "Puzzle sets",
+        isActive: (pathname) => pathname === "/solve/sets",
+      },
+    ],
   },
   {
     to: "/recent",
@@ -88,9 +117,11 @@ export const TopNav = () => {
   const [searchPending, setSearchPending] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [puzzleMenuOpen, setPuzzleMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const topNavRef = useRef<HTMLElement | null>(null);
+  const puzzleMenuRef = useRef<HTMLDivElement | null>(null);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const settingsRef = useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
@@ -203,6 +234,7 @@ export const TopNav = () => {
 
   useEffect(() => {
     setMobileMenuOpen(false);
+    setPuzzleMenuOpen(false);
     setProfileMenuOpen(false);
     setSettingsOpen(false);
   }, [pathname]);
@@ -213,6 +245,7 @@ export const TopNav = () => {
     const handlePointerDown = (event: MouseEvent): void => {
       if (topNavRef.current?.contains(event.target as Node)) return;
       setMobileMenuOpen(false);
+      setPuzzleMenuOpen(false);
       setProfileMenuOpen(false);
       setSettingsOpen(false);
     };
@@ -220,6 +253,7 @@ export const TopNav = () => {
     const handleEscape = (event: KeyboardEvent): void => {
       if (event.key === "Escape") {
         setMobileMenuOpen(false);
+        setPuzzleMenuOpen(false);
         setProfileMenuOpen(false);
         setSettingsOpen(false);
       }
@@ -233,6 +267,29 @@ export const TopNav = () => {
       window.removeEventListener("keydown", handleEscape);
     };
   }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    if (!puzzleMenuOpen) return undefined;
+
+    const handlePointerDown = (event: MouseEvent): void => {
+      if (puzzleMenuRef.current?.contains(event.target as Node)) return;
+      setPuzzleMenuOpen(false);
+    };
+
+    const handleEscape = (event: KeyboardEvent): void => {
+      if (event.key === "Escape") {
+        setPuzzleMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [puzzleMenuOpen]);
 
   useEffect(() => {
     if (!profileMenuOpen) return undefined;
@@ -341,6 +398,7 @@ export const TopNav = () => {
         aria-controls="top-nav-menu"
         onClick={() => {
           setMobileMenuOpen((open) => !open);
+          setPuzzleMenuOpen(false);
           setProfileMenuOpen(false);
           setSettingsOpen(false);
         }}
@@ -359,6 +417,57 @@ export const TopNav = () => {
           </Link>
           {navItems.map((item) => {
             const active = item.isActive(pathname);
+            if (item.children) {
+              return (
+                <div
+                  className={`navDropdown ${active ? "isActive" : ""} ${
+                    puzzleMenuOpen ? "open" : ""
+                  }`}
+                  key={item.to}
+                  ref={puzzleMenuRef}
+                  onMouseEnter={() => setPuzzleMenuOpen(true)}
+                  onMouseLeave={() => setPuzzleMenuOpen(false)}
+                >
+                  <button
+                    className="navDropdownTrigger"
+                    type="button"
+                    aria-haspopup="menu"
+                    aria-expanded={puzzleMenuOpen}
+                    aria-current={active ? "page" : undefined}
+                    onClick={() => {
+                      setPuzzleMenuOpen((open) => !open);
+                      setProfileMenuOpen(false);
+                      setSettingsOpen(false);
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                  {puzzleMenuOpen ? (
+                    <div className="navDropdownMenu" role="menu" aria-label="Puzzle navigation">
+                      {item.children.map((child) => {
+                        const childActive = child.isActive(pathname);
+                        return (
+                          <Link
+                            key={child.to}
+                            className={childActive ? "isActive" : ""}
+                            to={child.to}
+                            aria-current={childActive ? "page" : undefined}
+                            role="menuitem"
+                            onClick={() => {
+                              setPuzzleMenuOpen(false);
+                              setMobileMenuOpen(false);
+                            }}
+                          >
+                            {child.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            }
+
             return (
               <Link
                 key={item.to}

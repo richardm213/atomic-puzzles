@@ -62,22 +62,13 @@
   width: 30px;
   height: 30px;
   flex: 0 0 30px;
-  padding: 3px;
-  border: 1px solid var(--brand-mark-border);
-  border-radius: var(--radius-ui);
-  background: var(--brand-mark-bg);
-  box-shadow: var(--brand-mark-shadow);
   object-fit: contain;
-  transition:
-    border-color 140ms ease,
-    box-shadow 140ms ease,
-    transform 140ms ease;
+  transition: filter 140ms ease;
 }
 
 .homeBrand:hover img,
 .homeBrand:focus-visible img {
-  transform: translateY(-1px);
-  border-color: color-mix(in srgb, var(--color-primary-soft) 74%, white);
+  filter: brightness(1.12) saturate(1.08);
 }
 
 .homeBrand span {
@@ -88,12 +79,25 @@
   font-weight: 900;
   color: transparent;
   text-shadow: var(--brand-wordmark-shadow);
+  transition:
+    color 140ms ease,
+    filter 140ms ease;
+}
+
+.homeBrand:hover span,
+.homeBrand:focus-visible span {
+  filter: brightness(1.12) saturate(1.08);
 }
 
 :root[data-theme="light"] .homeBrand span {
   background: none;
   color: var(--brand-wordmark-color);
   -webkit-text-fill-color: currentColor;
+}
+
+:root[data-theme="light"] .homeBrand:hover span,
+:root[data-theme="light"] .homeBrand:focus-visible span {
+  color: color-mix(in srgb, var(--brand-wordmark-color) 82%, var(--color-primary));
 }
 
 .topNavCenter {
@@ -116,22 +120,106 @@
   max-width: 100%;
 }
 
-.topNavLinks a {
+.topNavLinks a,
+.navDropdownTrigger {
   color: var(--color-muted);
   font-size: 15px;
   text-decoration: none;
   white-space: nowrap;
 }
 
-.topNavLinks a:hover {
+.topNavLinks a:hover,
+.navDropdownTrigger:hover {
   color: var(--color-heading);
-  text-decoration: underline;
 }
 
-.topNavLinks a.isActive {
+.navDropdown {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.navDropdownTrigger {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  line-height: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.navDropdownTrigger:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-primary-ring);
+  border-radius: 6px;
+}
+
+.navDropdownTrigger svg {
+  width: 10px;
+  height: 10px;
+  transition: transform 140ms ease;
+}
+
+.navDropdown.open .navDropdownTrigger svg {
+  transform: rotate(180deg);
+}
+
+.navDropdownMenu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 41;
+  min-width: 190px;
+  padding: 8px;
+  border-radius: 12px;
+  display: grid;
+  gap: 4px;
+  background: var(--dropdown-panel-bg);
+  border: 1px solid var(--color-border-strong);
+  box-shadow: var(--shadow-panel);
+  backdrop-filter: blur(18px);
+  transform-origin: top left;
+  animation: navDropdownMenuIn 160ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: opacity, transform;
+}
+
+.topNavLinks .navDropdownMenu a {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--color-border-strong) 70%, transparent);
+  background: color-mix(in srgb, var(--color-panel-strong) 88%, black 12%);
+  display: flex;
+  align-items: center;
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
+}
+
+.topNavLinks .navDropdownMenu a:hover {
+  background: color-mix(in srgb, var(--color-panel-strong) 78%, var(--color-primary) 22%);
   color: var(--color-heading);
-  text-decoration: underline;
-  text-underline-offset: 0.18em;
+  text-decoration: none;
+}
+
+@keyframes navDropdownMenuIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .mobileHomeLink {
@@ -501,19 +589,16 @@
   overflow: hidden;
   cursor: pointer;
   transition:
-    background 140ms ease,
     box-shadow 140ms ease,
-    color 140ms ease,
-    transform 100ms ease;
+    color 140ms ease;
 }
 
 .navAuthProfileGroup:hover {
-  background: color-mix(in srgb, var(--color-panel-strong) 58%, transparent);
-  transform: translateY(-1px);
+  color: color-mix(in srgb, var(--color-heading) 82%, var(--color-primary));
 }
 
 .navAuthProfileGroup:active {
-  transform: translateY(0) scale(0.985);
+  color: color-mix(in srgb, var(--color-heading) 74%, var(--color-primary));
 }
 
 .navAuthProfileGroup.open {
@@ -571,7 +656,7 @@
 }
 
 .navAuthProfileGroup:hover .navAuthProfile {
-  text-decoration: underline;
+  color: color-mix(in srgb, var(--color-heading) 82%, var(--color-primary));
 }
 
 .navProfileDropdown {
@@ -757,7 +842,8 @@
     display: grid;
   }
 
-  .topNavLinks a {
+  .topNavLinks a,
+  .navDropdownTrigger {
     min-height: 42px;
     display: flex;
     align-items: center;
@@ -769,12 +855,39 @@
     text-decoration: none;
   }
 
+  .navDropdown {
+    display: grid;
+    width: 100%;
+  }
+
+  .navDropdownTrigger {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .navDropdownMenu {
+    position: static;
+    width: 100%;
+    min-width: 0;
+    margin: 2px 0 4px;
+    padding: 4px;
+    border-radius: var(--radius-ui);
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  .topNavLinks .navDropdownMenu a {
+    min-height: 36px;
+    padding-left: 22px;
+    font-size: 14px;
+  }
+
   .topNavLinks .mobileHomeLink {
     display: flex;
   }
 
   .topNavLinks a:hover,
-  .topNavLinks a.isActive {
+  .navDropdownTrigger:hover {
     background: var(--color-panel-strong);
     color: var(--color-heading);
     text-decoration: none;
