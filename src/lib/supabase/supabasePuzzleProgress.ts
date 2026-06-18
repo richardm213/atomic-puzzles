@@ -3,12 +3,14 @@ import type {
   Database,
   PuzzleProgressRow,
   PuzzleProgressRpcRow,
+  PuzzleProgressWithUsernameRow,
 } from "../../types/supabase";
 import { normalizeUsername } from "../../utils/playerNames";
 import { getSupabaseClient } from "./supabaseClient";
 import { fetchAllSupabaseRows, loadSupabasePage } from "./supabaseRows";
 
 export type { PuzzleProgressRow } from "../../types/supabase";
+export type { PuzzleProgressWithUsernameRow } from "../../types/supabase";
 
 export type PuzzleProgressSummary = {
   total: number;
@@ -364,6 +366,16 @@ export const fetchPuzzleProgressSummary = async (
     correct,
     incorrect: total - correct,
   };
+};
+
+export const fetchAllPuzzleProgressRows = async (): Promise<PuzzleProgressWithUsernameRow[]> => {
+  const supabase = getSupabaseClient();
+  return fetchAllSupabaseRows<PuzzleProgressWithUsernameRow>(PUZZLE_PROGRESS_TABLE, () =>
+    supabase
+      .from(PUZZLE_PROGRESS_TABLE)
+      .select("username,puzzle_id,first_attempt_at,puzzle_correct")
+      .order("first_attempt_at", { ascending: false }),
+  );
 };
 
 export const fetchAttemptedPuzzleIds = async (username: string): Promise<Set<string>> => {

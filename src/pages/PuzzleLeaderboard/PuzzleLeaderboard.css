@@ -1,0 +1,98 @@
+.puzzleLeaderboardPanel {
+  width: min(860px, 100%);
+}
+
+.puzzleLeaderboardScoring {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, var(--color-surface-inset), transparent),
+    var(--color-panel-strong);
+  color: var(--color-text);
+  line-height: 1.2;
+}
+
+.puzzleLeaderboardScoringLabel {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 4px 0 2px;
+  color: var(--color-heading);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.puzzleLeaderboardScoringRule {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 7px 11px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface-soft);
+  color: var(--color-muted);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.puzzleLeaderboardScoringRule.positive {
+  border-color: color-mix(in srgb, var(--color-success) 32%, transparent);
+  background: var(--color-success-soft-bg);
+}
+
+.puzzleLeaderboardScoringRule.negative {
+  border-color: color-mix(in srgb, var(--color-danger) 30%, transparent);
+  background: var(--color-danger-soft-bg);
+}
+
+.puzzleLeaderboardScoringPoints {
+  color: var(--color-heading);
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.puzzleLeaderboardScoringRule.positive .puzzleLeaderboardScoringPoints {
+  color: var(--color-success);
+}
+
+.puzzleLeaderboardScoringRule.negative .puzzleLeaderboardScoringPoints {
+  color: var(--color-danger);
+}
+
+.puzzleLeaderboardMeta {
+  align-items: center;
+}
+
+.puzzleLeaderboardTable {
+  min-width: 620px;
+}
+
+.rankingsTable.puzzleLeaderboardTable :is(th, td):nth-child(4),
+.rankingsTable.puzzleLeaderboardTable :is(th, td):nth-child(5) {
+  width: 1%;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .puzzleLeaderboardScoring {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .puzzleLeaderboardScoringLabel,
+  .puzzleLeaderboardScoringRule {
+    width: 100%;
+  }
+}

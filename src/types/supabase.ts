@@ -47,6 +47,10 @@ export type PuzzleProgressRow = {
   puzzle_correct: boolean;
 };
 
+export type PuzzleProgressWithUsernameRow = PuzzleProgressRow & {
+  username: string;
+};
+
 export type PuzzleProgressRpcRow = {
   puzzle_id?: string | number | null;
   first_attempt_at?: string | null;
@@ -95,9 +99,9 @@ export type Database = {
       lb: TableDef<LbRow>;
       player_ratings: TableDef<PlayerRatingRow>;
       puzzle_progress: TableDef<
-        PuzzleProgressRow,
-        PuzzleProgressRow,
-        Partial<PuzzleProgressRow>
+        PuzzleProgressWithUsernameRow,
+        PuzzleProgressWithUsernameRow,
+        Partial<PuzzleProgressWithUsernameRow>
       >;
       puzzles: TableDef<RawPuzzleRow>;
       users: TableDef<{ username: string; created_at: string | null }, { username: string }>;

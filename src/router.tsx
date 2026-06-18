@@ -14,6 +14,7 @@ import { HomePage } from "./pages/Home/Home";
 import { MatchPage } from "./pages/Match/MatchPage";
 import { PlayerProfilePage } from "./pages/PlayerProfile/PlayerProfile";
 import { PuzzleDashboardPage } from "./pages/PuzzleDashboard/PuzzleDashboard";
+import { PuzzleLeaderboardPage } from "./pages/PuzzleLeaderboard/PuzzleLeaderboard";
 import { PuzzleSetsPage } from "./pages/PuzzleSets/PuzzleSets";
 import { PuzzleSolverPage } from "./pages/PuzzleSolver/PuzzleSolver";
 import { RankingsPage } from "./pages/Rankings/Rankings";
@@ -137,6 +138,12 @@ const solveSetsRoute = createRoute({
   component: PuzzleSetsPage,
 });
 
+const puzzleLeaderboardRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/solve/leaderboard",
+  component: PuzzleLeaderboardPage,
+});
+
 const profilePuzzleDashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/@/$username/puzzles",
@@ -193,6 +200,7 @@ const routeTree = rootRoute.addChildren([
   dashboardRoute,
   legacyPuzzleHistoryRoute,
   solveSetsRoute,
+  puzzleLeaderboardRoute,
   solveWithIdRoute,
   profileRoute,
   profilePuzzleDashboardRoute,

@@ -62,12 +62,18 @@ const navItems: NavItem[] = [
           pathname === "/solve" ||
           (/^\/solve\/[^/]+$/.test(pathname) &&
             pathname !== "/solve/sets" &&
+            pathname !== "/solve/leaderboard" &&
             pathname !== "/solve/history"),
       },
       {
         to: "/dashboard",
         label: "Puzzle dashboard",
         isActive: (pathname) => pathname === "/dashboard" || pathname === "/solve/history",
+      },
+      {
+        to: "/solve/leaderboard",
+        label: "Puzzle leaderboard",
+        isActive: (pathname) => pathname === "/solve/leaderboard",
       },
       {
         to: "/solve/sets",
