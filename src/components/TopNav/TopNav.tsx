@@ -14,6 +14,7 @@ import {
   type ChangeEvent,
   type FormEvent,
   type KeyboardEvent as ReactKeyboardEvent,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -126,6 +127,7 @@ const navItems: NavItem[] = [
 const PROFILE_USERNAME_STORAGE_PREFIX = "atomic-puzzles.profile-username";
 const SEARCH_SUGGESTION_MIN_LENGTH = 3;
 const SEARCH_SUGGESTION_DELAY_MS = 150;
+const NAV_DROPDOWN_CLOSE_DELAY_MS = 180;
 
 const getStoredProfileUsername = (username: string | null | undefined): string => {
   const normalizedUsername = normalizeUsername(username);
@@ -163,6 +165,7 @@ export const TopNav = () => {
   const searchSuggestionsRequestIdRef = useRef(0);
   const topNavRef = useRef<HTMLElement | null>(null);
   const navDropdownRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const navDropdownCloseTimeoutRef = useRef<number | null>(null);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const settingsRef = useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
@@ -246,6 +249,30 @@ export const TopNav = () => {
     trimmedSearchQuery.length >= SEARCH_SUGGESTION_MIN_LENGTH &&
     (searchSuggestionsPending || searchSuggestionsSearched || searchSuggestions.length > 0);
 
+  const clearNavDropdownCloseTimeout = useCallback((): void => {
+    if (navDropdownCloseTimeoutRef.current === null) return;
+    window.clearTimeout(navDropdownCloseTimeoutRef.current);
+    navDropdownCloseTimeoutRef.current = null;
+  }, []);
+
+  const openNavDropdownFor = useCallback((navItemTo: string): void => {
+    clearNavDropdownCloseTimeout();
+    setOpenNavDropdown(navItemTo);
+  }, [clearNavDropdownCloseTimeout]);
+
+  const closeNavDropdown = useCallback((): void => {
+    clearNavDropdownCloseTimeout();
+    setOpenNavDropdown(null);
+  }, [clearNavDropdownCloseTimeout]);
+
+  const scheduleNavDropdownClose = useCallback((): void => {
+    clearNavDropdownCloseTimeout();
+    navDropdownCloseTimeoutRef.current = window.setTimeout(() => {
+      navDropdownCloseTimeoutRef.current = null;
+      setOpenNavDropdown(null);
+    }, NAV_DROPDOWN_CLOSE_DELAY_MS);
+  }, [clearNavDropdownCloseTimeout]);
+
   const handleBoardThemeChange = (event: ChangeEvent<HTMLSelectElement>): void => {
     setBoardTheme(event.target.value);
     setBoardColorOverrideTheme("");
@@ -277,6 +304,8 @@ export const TopNav = () => {
     if (!searchOpen) return;
     searchInputRef.current?.focus();
   }, [searchOpen]);
+
+  useEffect(() => clearNavDropdownCloseTimeout, [clearNavDropdownCloseTimeout]);
 
   useEffect(() => {
     const requestId = searchSuggestionsRequestIdRef.current + 1;
@@ -322,10 +351,10 @@ export const TopNav = () => {
 
   useEffect(() => {
     setMobileMenuOpen(false);
-    setOpenNavDropdown(null);
+    closeNavDropdown();
     setProfileMenuOpen(false);
     setSettingsOpen(false);
-  }, [pathname]);
+  }, [closeNavDropdown, pathname]);
 
   useEffect(() => {
     if (!mobileMenuOpen) return undefined;
@@ -333,7 +362,7 @@ export const TopNav = () => {
     const handlePointerDown = (event: MouseEvent): void => {
       if (topNavRef.current?.contains(event.target as Node)) return;
       setMobileMenuOpen(false);
-      setOpenNavDropdown(null);
+      closeNavDropdown();
       setProfileMenuOpen(false);
       setSettingsOpen(false);
     };
@@ -341,7 +370,7 @@ export const TopNav = () => {
     const handleEscape = (event: KeyboardEvent): void => {
       if (event.key === "Escape") {
         setMobileMenuOpen(false);
-        setOpenNavDropdown(null);
+        closeNavDropdown();
         setProfileMenuOpen(false);
         setSettingsOpen(false);
       }
@@ -354,19 +383,19 @@ export const TopNav = () => {
       document.removeEventListener("mousedown", handlePointerDown);
       window.removeEventListener("keydown", handleEscape);
     };
-  }, [mobileMenuOpen]);
+  }, [closeNavDropdown, mobileMenuOpen]);
 
   useEffect(() => {
     if (!openNavDropdown) return undefined;
 
     const handlePointerDown = (event: MouseEvent): void => {
       if (navDropdownRefs.current[openNavDropdown]?.contains(event.target as Node)) return;
-      setOpenNavDropdown(null);
+      closeNavDropdown();
     };
 
     const handleEscape = (event: KeyboardEvent): void => {
       if (event.key === "Escape") {
-        setOpenNavDropdown(null);
+        closeNavDropdown();
       }
     };
 
@@ -377,7 +406,7 @@ export const TopNav = () => {
       document.removeEventListener("mousedown", handlePointerDown);
       window.removeEventListener("keydown", handleEscape);
     };
-  }, [openNavDropdown]);
+  }, [closeNavDropdown, openNavDropdown]);
 
   useEffect(() => {
     if (!profileMenuOpen) return undefined;
@@ -554,7 +583,7 @@ export const TopNav = () => {
         aria-controls="top-nav-menu"
         onClick={() => {
           setMobileMenuOpen((open) => !open);
-          setOpenNavDropdown(null);
+          closeNavDropdown();
           setProfileMenuOpen(false);
           setSettingsOpen(false);
         }}
@@ -584,8 +613,8 @@ export const TopNav = () => {
                   ref={(element) => {
                     navDropdownRefs.current[item.to] = element;
                   }}
-                  onMouseEnter={() => setOpenNavDropdown(item.to)}
-                  onMouseLeave={() => setOpenNavDropdown(null)}
+                  onMouseEnter={() => openNavDropdownFor(item.to)}
+                  onMouseLeave={scheduleNavDropdownClose}
                 >
                   <button
                     className="navDropdownTrigger"
@@ -594,6 +623,7 @@ export const TopNav = () => {
                     aria-expanded={dropdownOpen}
                     aria-current={active ? "page" : undefined}
                     onClick={() => {
+                      clearNavDropdownCloseTimeout();
                       setOpenNavDropdown((openDropdown) =>
                         openDropdown === item.to ? null : item.to,
                       );
@@ -619,7 +649,7 @@ export const TopNav = () => {
                             aria-current={childActive ? "page" : undefined}
                             role="menuitem"
                             onClick={() => {
-                              setOpenNavDropdown(null);
+                              closeNavDropdown();
                               setMobileMenuOpen(false);
                             }}
                           >

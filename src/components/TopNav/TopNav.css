@@ -139,6 +139,16 @@
   align-items: center;
 }
 
+.navDropdown.open::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: -8px;
+  right: -8px;
+  height: 10px;
+  z-index: 40;
+}
+
 .navDropdownTrigger {
   border: 0;
   background: transparent;
@@ -926,6 +936,10 @@
   .navDropdown {
     display: grid;
     width: 100%;
+  }
+
+  .navDropdown.open::after {
+    display: none;
   }
 
   .navDropdownTrigger {
