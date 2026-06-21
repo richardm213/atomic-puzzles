@@ -84,14 +84,27 @@ const navItems: NavItem[] = [
   },
   {
     to: "/recent",
-    label: "Recent",
+    label: "Games",
     isActive: (pathname) =>
-      pathname === "/recent" || pathname === "/matches" || pathname.startsWith("/matches/"),
-  },
-  {
-    to: "/tournaments",
-    label: "Tournaments",
-    isActive: (pathname) => pathname === "/tournaments" || pathname.startsWith("/tournaments/"),
+      pathname === "/recent" ||
+      pathname === "/matches" ||
+      pathname.startsWith("/matches/") ||
+      pathname === "/tournaments" ||
+      pathname.startsWith("/tournaments/"),
+    children: [
+      {
+        to: "/recent",
+        label: "Recent games",
+        isActive: (pathname) =>
+          pathname === "/recent" || pathname === "/matches" || pathname.startsWith("/matches/"),
+      },
+      {
+        to: "/tournaments",
+        label: "Tournaments",
+        isActive: (pathname) =>
+          pathname === "/tournaments" || pathname.startsWith("/tournaments/"),
+      },
+    ],
   },
   {
     to: "/h2h",
@@ -102,6 +115,11 @@ const navItems: NavItem[] = [
     to: "/users",
     label: "Players",
     isActive: (pathname) => pathname === "/users" || pathname.startsWith("/users/"),
+  },
+  {
+    to: "/analysis",
+    label: "Analysis",
+    isActive: (pathname) => pathname === "/analysis",
   },
 ];
 
@@ -139,12 +157,12 @@ export const TopNav = () => {
   const [activeSearchSuggestionIndex, setActiveSearchSuggestionIndex] = useState(-1);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [puzzleMenuOpen, setPuzzleMenuOpen] = useState(false);
+  const [openNavDropdown, setOpenNavDropdown] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const searchSuggestionsRequestIdRef = useRef(0);
   const topNavRef = useRef<HTMLElement | null>(null);
-  const puzzleMenuRef = useRef<HTMLDivElement | null>(null);
+  const navDropdownRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const settingsRef = useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
@@ -304,7 +322,7 @@ export const TopNav = () => {
 
   useEffect(() => {
     setMobileMenuOpen(false);
-    setPuzzleMenuOpen(false);
+    setOpenNavDropdown(null);
     setProfileMenuOpen(false);
     setSettingsOpen(false);
   }, [pathname]);
@@ -315,7 +333,7 @@ export const TopNav = () => {
     const handlePointerDown = (event: MouseEvent): void => {
       if (topNavRef.current?.contains(event.target as Node)) return;
       setMobileMenuOpen(false);
-      setPuzzleMenuOpen(false);
+      setOpenNavDropdown(null);
       setProfileMenuOpen(false);
       setSettingsOpen(false);
     };
@@ -323,7 +341,7 @@ export const TopNav = () => {
     const handleEscape = (event: KeyboardEvent): void => {
       if (event.key === "Escape") {
         setMobileMenuOpen(false);
-        setPuzzleMenuOpen(false);
+        setOpenNavDropdown(null);
         setProfileMenuOpen(false);
         setSettingsOpen(false);
       }
@@ -339,16 +357,16 @@ export const TopNav = () => {
   }, [mobileMenuOpen]);
 
   useEffect(() => {
-    if (!puzzleMenuOpen) return undefined;
+    if (!openNavDropdown) return undefined;
 
     const handlePointerDown = (event: MouseEvent): void => {
-      if (puzzleMenuRef.current?.contains(event.target as Node)) return;
-      setPuzzleMenuOpen(false);
+      if (navDropdownRefs.current[openNavDropdown]?.contains(event.target as Node)) return;
+      setOpenNavDropdown(null);
     };
 
     const handleEscape = (event: KeyboardEvent): void => {
       if (event.key === "Escape") {
-        setPuzzleMenuOpen(false);
+        setOpenNavDropdown(null);
       }
     };
 
@@ -359,7 +377,7 @@ export const TopNav = () => {
       document.removeEventListener("mousedown", handlePointerDown);
       window.removeEventListener("keydown", handleEscape);
     };
-  }, [puzzleMenuOpen]);
+  }, [openNavDropdown]);
 
   useEffect(() => {
     if (!profileMenuOpen) return undefined;
@@ -536,7 +554,7 @@ export const TopNav = () => {
         aria-controls="top-nav-menu"
         onClick={() => {
           setMobileMenuOpen((open) => !open);
-          setPuzzleMenuOpen(false);
+          setOpenNavDropdown(null);
           setProfileMenuOpen(false);
           setSettingsOpen(false);
         }}
@@ -556,32 +574,41 @@ export const TopNav = () => {
           {navItems.map((item) => {
             const active = item.isActive(pathname);
             if (item.children) {
+              const dropdownOpen = openNavDropdown === item.to;
               return (
                 <div
                   className={`navDropdown ${active ? "isActive" : ""} ${
-                    puzzleMenuOpen ? "open" : ""
+                    dropdownOpen ? "open" : ""
                   }`}
                   key={item.to}
-                  ref={puzzleMenuRef}
-                  onMouseEnter={() => setPuzzleMenuOpen(true)}
-                  onMouseLeave={() => setPuzzleMenuOpen(false)}
+                  ref={(element) => {
+                    navDropdownRefs.current[item.to] = element;
+                  }}
+                  onMouseEnter={() => setOpenNavDropdown(item.to)}
+                  onMouseLeave={() => setOpenNavDropdown(null)}
                 >
                   <button
                     className="navDropdownTrigger"
                     type="button"
                     aria-haspopup="menu"
-                    aria-expanded={puzzleMenuOpen}
+                    aria-expanded={dropdownOpen}
                     aria-current={active ? "page" : undefined}
                     onClick={() => {
-                      setPuzzleMenuOpen((open) => !open);
+                      setOpenNavDropdown((openDropdown) =>
+                        openDropdown === item.to ? null : item.to,
+                      );
                       setProfileMenuOpen(false);
                       setSettingsOpen(false);
                     }}
                   >
                     {item.label}
                   </button>
-                  {puzzleMenuOpen ? (
-                    <div className="navDropdownMenu" role="menu" aria-label="Puzzle navigation">
+                  {dropdownOpen ? (
+                    <div
+                      className="navDropdownMenu"
+                      role="menu"
+                      aria-label={`${item.label} navigation`}
+                    >
                       {item.children.map((child) => {
                         const childActive = child.isActive(pathname);
                         return (
@@ -592,7 +619,7 @@ export const TopNav = () => {
                             aria-current={childActive ? "page" : undefined}
                             role="menuitem"
                             onClick={() => {
-                              setPuzzleMenuOpen(false);
+                              setOpenNavDropdown(null);
                               setMobileMenuOpen(false);
                             }}
                           >

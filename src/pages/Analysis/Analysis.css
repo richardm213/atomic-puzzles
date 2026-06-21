@@ -1,0 +1,732 @@
+.analysisPage {
+  min-height: var(--page-shell-min-height);
+  min-height: var(--page-shell-min-height-dynamic);
+  width: min(100%, 980px);
+  margin: 0 auto;
+  padding: clamp(8px, 1.2vw, 14px) var(--page-gutter);
+  display: grid;
+  grid-template-columns: minmax(360px, 516px) minmax(310px, 380px);
+  align-items: start;
+  justify-content: center;
+  gap: clamp(8px, 1.2vw, 12px);
+}
+
+body:has(.analysisPage),
+.appShell:has(.analysisPage),
+.appMain:has(.analysisPage) {
+  overflow-x: hidden;
+}
+
+.analysisPanel {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel);
+  box-shadow: var(--shadow-panel);
+  backdrop-filter: blur(16px);
+}
+
+.analysisPanel {
+  min-width: 0;
+  padding: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.analysisPanelHeader {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.analysisEyebrow {
+  margin: 0;
+  color: var(--color-subtle);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.analysisPanel h1,
+.analysisPanel h2 {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: 22px;
+  line-height: 1.12;
+  letter-spacing: 0;
+}
+
+.analysisPanel h2 {
+  font-size: 16px;
+}
+
+.analysisFenBox {
+  min-width: 0;
+  padding: 6px 8px;
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: color-mix(in srgb, var(--color-panel-strong) 82%, transparent);
+}
+
+.analysisFenBox span,
+.analysisSectionTitle span {
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.analysisFenBox code {
+  min-width: 0;
+  max-height: 38px;
+  overflow: auto;
+  color: var(--color-heading);
+  font-size: 12px;
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.analysisToolGrid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.analysisIconButton {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  min-height: 32px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-ui);
+  background: color-mix(in srgb, var(--color-panel-strong) 92%, var(--color-primary) 8%);
+  color: var(--color-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    transform 140ms ease;
+}
+
+.analysisIconButton:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: var(--color-accent-soft-border);
+  background: color-mix(in srgb, var(--color-panel-strong) 82%, var(--color-primary) 18%);
+  color: var(--color-heading);
+}
+
+.analysisIconButton:disabled,
+.analysisPrimaryButton:disabled,
+.analysisSecondaryButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+.analysisIconButton:focus-visible,
+.analysisPrimaryButton:focus-visible,
+.analysisSecondaryButton:focus-visible,
+.analysisFilterToggle:focus-visible,
+.analysisToolbarButton:focus-visible,
+.analysisMoveList button:focus-visible {
+  outline: 3px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+.analysisRightPanel {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: start;
+  height: min(70vh, 516px);
+  min-height: 420px;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+}
+
+.analysisRightPanel.explorerCollapsed {
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.analysisMovePanel {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 6px;
+  min-height: 0;
+}
+
+.analysisSectionTitle {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.analysisSectionTitle small {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.analysisMoveList {
+  min-height: 102px;
+  max-height: min(34vh, 260px);
+  margin: 0;
+  padding: 4px;
+  display: grid;
+  align-content: start;
+  gap: 1px;
+  overflow: auto;
+  list-style: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: color-mix(in srgb, var(--color-surface-soft) 64%, transparent);
+}
+
+.analysisRightPanel.explorerCollapsed .analysisMoveList {
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+}
+
+.analysisMoveList li {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 34px repeat(2, minmax(0, 1fr));
+  align-items: center;
+  gap: 3px;
+}
+
+.analysisMoveNumber {
+  color: var(--color-subtle);
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.analysisMoveList button {
+  min-width: 0;
+  min-height: 26px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analysisMoveList button:hover {
+  border-color: var(--color-border);
+  background: var(--color-panel-strong);
+}
+
+.analysisMoveList button.active {
+  border-color: color-mix(in srgb, var(--color-primary) 48%, transparent);
+  background: color-mix(in srgb, var(--color-panel-strong) 72%, var(--color-primary) 28%);
+  color: var(--color-heading);
+}
+
+.analysisPgnBox {
+  min-width: 0;
+  padding: 6px 8px;
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: color-mix(in srgb, var(--color-panel-strong) 78%, transparent);
+}
+
+.analysisPgnBox span {
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.analysisPgnBox p {
+  min-height: 20px;
+  max-height: 54px;
+  margin: 0;
+  overflow: auto;
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.analysisEmptyState,
+.analysisEmptyExplorer {
+  min-height: 104px;
+  padding: 14px;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-ui);
+  background: color-mix(in srgb, var(--color-surface-soft) 58%, transparent);
+  color: var(--color-muted);
+  display: grid;
+  place-items: center;
+  text-align: center;
+  line-height: 1.45;
+}
+
+.analysisBoardColumn {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  min-width: 0;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+
+.analysisBoardPanel {
+  width: min(100%, 516px);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.analysisBoardPanel .cg-boardShell,
+.analysisBoardPanel .cg-board {
+  width: min(100%, 516px);
+}
+
+.analysisBoardTextPanel {
+  width: min(100%, 516px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+}
+
+.analysisBoardTextPanel .analysisFenBox,
+.analysisBoardTextPanel .analysisPgnBox {
+  grid-column: 1 / -1;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: center;
+  min-height: 34px;
+}
+
+.analysisBoardTextPanel .analysisFenBox span,
+.analysisBoardTextPanel .analysisPgnBox span {
+  justify-self: end;
+}
+
+.analysisBoardTextPanel .analysisPgnBox p {
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.analysisLichessLink {
+  grid-column: 2;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: color-mix(in srgb, var(--color-panel-strong) 82%, transparent);
+  color: var(--color-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.analysisLichessLink:hover {
+  border-color: var(--color-accent-soft-border);
+  background: color-mix(in srgb, var(--color-panel-strong) 80%, var(--color-primary) 20%);
+  color: var(--color-heading);
+  text-decoration: none;
+}
+
+.analysisExplorerPanel {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--color-border);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.analysisExplorerCompactHeader {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.analysisExplorerTitle {
+  min-width: 0;
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-heading);
+  font-size: 14px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.analysisExplorerTitle svg {
+  color: var(--color-primary-soft);
+}
+
+.analysisFilterToggle {
+  min-width: 0;
+  min-height: 30px;
+  width: 32px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: color-mix(in srgb, var(--color-panel-strong) 78%, transparent);
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.analysisFilterToggle {
+  flex: 0 0 auto;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+
+.analysisFilterToggle:hover {
+  border-color: var(--color-accent-soft-border);
+  background: color-mix(in srgb, var(--color-panel-strong) 82%, var(--color-primary) 18%);
+  color: var(--color-heading);
+}
+
+.analysisFilterPanel {
+  display: grid;
+  gap: 9px;
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-panel-deep) 30%, transparent);
+}
+
+.analysisFilterGroup,
+.analysisRatingSlider {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.analysisFilterGroup > span,
+.analysisRatingSlider > span {
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.analysisSpeedToggles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.analysisSpeedToggles button {
+  width: 100%;
+  min-height: 30px;
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.analysisSpeedToggles button.active {
+  border-color: color-mix(in srgb, var(--color-primary) 72%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 72%, var(--color-cyan) 28%);
+  color: var(--color-on-primary);
+}
+
+.analysisRatingSlider {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.analysisRatingSlider input {
+  grid-column: 1 / -1;
+  width: 100%;
+  accent-color: var(--color-primary);
+}
+
+.analysisRatingSlider output {
+  color: var(--color-heading);
+  font-size: 12px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.analysisExplorerToolbar {
+  display: flex;
+}
+
+.analysisPrimaryButton,
+.analysisSecondaryButton {
+  min-height: 32px;
+  min-width: 0;
+  padding: 0 11px;
+  border-radius: var(--radius-ui);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.analysisPrimaryButton {
+  border: 1px solid var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.analysisSecondaryButton {
+  border: 1px solid var(--color-border-strong);
+  background: color-mix(in srgb, var(--color-panel-strong) 92%, var(--color-primary) 8%);
+  color: var(--color-text);
+}
+
+.analysisExplorerTableWrap {
+  min-width: 0;
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-surface-soft) 56%, transparent);
+}
+
+.analysisBottomToolbar {
+  min-width: 0;
+  min-height: 48px;
+  margin: 0 -8px -8px;
+  padding: 0 10px;
+  border-top: 1px solid var(--color-border);
+  border-bottom-left-radius: var(--radius-ui);
+  border-bottom-right-radius: var(--radius-ui);
+  background: color-mix(in srgb, var(--color-panel-deep) 52%, transparent);
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: center;
+  gap: 6px;
+}
+
+.analysisToolbarButton {
+  width: 100%;
+  min-width: 0;
+  height: 40px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: color-mix(in srgb, var(--color-muted) 70%, transparent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    color 140ms ease,
+    opacity 140ms ease;
+}
+
+.analysisToolbarButton:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-panel-strong) 80%, transparent);
+  color: var(--color-heading);
+}
+
+.analysisToolbarButton.active {
+  background: color-mix(in srgb, var(--color-primary) 74%, var(--color-cyan) 26%);
+  color: var(--color-on-primary);
+}
+
+.analysisToolbarButton:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+.analysisExplorerTable {
+  width: 100%;
+  min-width: 330px;
+  border-collapse: collapse;
+  color: var(--color-text);
+  font-size: 13px;
+}
+
+.analysisExplorerTable th,
+.analysisExplorerTable td {
+  height: 34px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--color-border);
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.analysisExplorerTable tr:last-child td {
+  border-bottom: 0;
+}
+
+.analysisExplorerTable th:first-child,
+.analysisExplorerTable td:first-child {
+  text-align: left;
+}
+
+.analysisExplorerTable th {
+  background: var(--color-table-head);
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.analysisExplorerMove {
+  color: #ffffff;
+  font: inherit;
+  font-weight: inherit;
+}
+
+.analysisWinRateBar {
+  --white-rate: 34%;
+  --draw-rate: 0%;
+  --black-rate: 66%;
+  width: 100%;
+  min-width: 160px;
+  height: 20px;
+  display: grid;
+  grid-template-columns: var(--white-rate) var(--draw-rate) var(--black-rate);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--color-border-strong) 72%, transparent);
+  border-radius: 5px;
+  background: var(--color-panel-strong);
+  box-shadow: 0 1px 0 color-mix(in srgb, white 8%, transparent) inset;
+}
+
+.analysisWinRateBar span {
+  min-width: 0;
+  height: 100%;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  color: var(--color-panel-deep);
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: 0 1px 0 color-mix(in srgb, white 18%, transparent);
+  white-space: nowrap;
+}
+
+.analysisWinRateBar .white {
+  background: #dbeafe;
+}
+
+.analysisWinRateBar .draw {
+  background: #94a3b8;
+  color: #0f172a;
+}
+
+.analysisWinRateBar .black {
+  background: #334155;
+  color: #f8fafc;
+  text-shadow: none;
+}
+
+@media (max-width: 980px) {
+  .analysisPage {
+    grid-template-columns: 1fr;
+    width: min(100%, 720px);
+  }
+
+  .analysisBoardColumn {
+    grid-column: auto;
+    grid-row: 1;
+    order: -1;
+  }
+
+  .analysisRightPanel {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .analysisExplorerPanel {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 780px) {
+  .analysisPage {
+    grid-template-columns: 1fr;
+    padding-inline: max(10px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-right));
+  }
+
+  .analysisBoardColumn,
+  .analysisRightPanel,
+  .analysisExplorerPanel {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .analysisBoardColumn {
+    order: -1;
+  }
+
+  .analysisBoardPanel {
+    width: min(100%, 520px);
+  }
+
+  .analysisToolGrid {
+    grid-template-columns: repeat(6, minmax(38px, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .analysisPanel,
+  .analysisBoardPanel {
+    padding: 10px;
+  }
+
+  .analysisExplorerToolbar,
+  .analysisPrimaryButton {
+    width: 100%;
+  }
+}

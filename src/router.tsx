@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-router";
 
 import { App } from "./App/App";
+import { AnalysisPage } from "./pages/Analysis/Analysis";
 import { AuthCallbackPage } from "./pages/AuthCallback/AuthCallback";
 import { H2HPage } from "./pages/H2H/H2H";
 import { HomePage } from "./pages/Home/Home";
@@ -69,6 +70,12 @@ const recentRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/recent",
   component: RecentMatchesPage,
+});
+
+const analysisRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/analysis",
+  component: AnalysisPage,
 });
 
 const tournamentsRoute = createRoute({
@@ -189,6 +196,7 @@ const routeTree = rootRoute.addChildren([
   usersRoute,
   bannedUsersRoute,
   rankingsMethodologyRoute,
+  analysisRoute,
   recentRoute,
   tournamentsRoute,
   tournamentRoute,
