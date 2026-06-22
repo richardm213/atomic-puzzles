@@ -428,8 +428,7 @@ export const handler = async (event: NetlifyEvent) => {
   const detailsRatingFilter = username
     ? `and ${opponentRatingColumn} >= ${minRating}`
     : `and ((g.white_rating + g.black_rating) / 2.0) >= ${minRating}`;
-  const movesSql = username
-    ? `
+  const movesSql = `
       select
         next_uci as uci,
         sum(games) as games,
@@ -440,30 +439,6 @@ export const handler = async (event: NetlifyEvent) => {
       from opening_edges_daily
       where ${edgesWhere}
         and (opponent_rating_sum * 1.0 / games) >= ${minRating}
-      group by next_uci
-      order by games desc
-      limit 12;
-    `
-    : `
-      select
-        next_uci as uci,
-        count(*) as games,
-        sum(case when winner = 1 then 1 else 0 end) as whiteWins,
-        sum(case when winner = 0 then 1 else 0 end) as draws,
-        sum(case when winner = 2 then 1 else 0 end) as blackWins,
-        round(avg((white_rating + black_rating) / 2.0)) as avgOpponentRating
-      from (
-        select
-          g.game_id,
-          g.next_uci,
-          g.white_rating,
-          g.black_rating,
-          g.winner
-        from opening_position_games g
-        where ${gamesWhere}
-          ${detailsRatingFilter}
-        group by g.game_id, g.next_uci
-      )
       group by next_uci
       order by games desc
       limit 12;

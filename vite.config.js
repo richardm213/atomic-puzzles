@@ -119,7 +119,8 @@ const openingExplorerPlugin = () => {
       1700,
       Math.min(2200, Number.isFinite(requestedRating) ? requestedRating : 1700),
     );
-    const startDate = sqlMonthBounds(url.searchParams.get("startDate")?.trim() ?? "")?.start ?? null;
+    const startDate =
+      sqlMonthBounds(url.searchParams.get("startDate")?.trim() ?? "")?.start ?? null;
     const endDate = sqlMonthBounds(url.searchParams.get("endDate")?.trim() ?? "")?.end ?? null;
     const requestedSpeeds = (url.searchParams.get("speeds") ?? "0,1")
       .split(",")
@@ -178,8 +179,7 @@ const openingExplorerPlugin = () => {
     const detailsRatingFilter = username
       ? `and ${opponentRatingColumn} >= ${minRating}`
       : `and ((g.white_rating + g.black_rating) / 2.0) >= ${minRating}`;
-    const movesSql = username
-      ? `
+    const movesSql = `
         select
           next_uci as uci,
           sum(games) as games,
@@ -190,30 +190,6 @@ const openingExplorerPlugin = () => {
         from opening_edges_daily
         where ${edgesWhere}
           and (opponent_rating_sum * 1.0 / games) >= ${minRating}
-        group by next_uci
-        order by games desc
-        limit 12;
-      `
-      : `
-        select
-          next_uci as uci,
-          count(*) as games,
-          sum(case when winner = 1 then 1 else 0 end) as whiteWins,
-          sum(case when winner = 0 then 1 else 0 end) as draws,
-          sum(case when winner = 2 then 1 else 0 end) as blackWins,
-          round(avg((white_rating + black_rating) / 2.0)) as avgOpponentRating
-        from (
-          select
-            g.game_id,
-            g.next_uci,
-            g.white_rating,
-            g.black_rating,
-            g.winner
-          from opening_position_games g
-          where ${gamesWhere}
-            ${detailsRatingFilter}
-          group by g.game_id, g.next_uci
-        )
         group by next_uci
         order by games desc
         limit 12;
@@ -265,7 +241,9 @@ const openingExplorerPlugin = () => {
     name: "atomic-opening-explorer-api",
     enforce: "pre",
     configureServer(server) {
-      console.log(`[opening-explorer] SQLite middleware mounted at /api/opening-explorer (${dbPath})`);
+      console.log(
+        `[opening-explorer] SQLite middleware mounted at /api/opening-explorer (${dbPath})`,
+      );
       server.middlewares.use("/api/opening-explorer", handleOpeningExplorerRequest);
     },
     configurePreviewServer(server) {
