@@ -80,7 +80,9 @@ type ExplorerScope = "general" | "player";
 type ExplorerSpeed = "bullet" | "blitz";
 
 const WIN_RATE_LABEL_MIN_PERCENT = 14;
-const BOARD_WHEEL_STEP_PX = 64;
+const BOARD_WHEEL_STEP_PX = 128;
+const BOARD_WHEEL_STEP_INTERVAL_MS = 220;
+const EXPLORER_REQUEST_TIMEOUT_MS = 15_000;
 const MONTH_FILTER_PATTERN = /^\d{4}-\d{2}$/;
 const EXPLORER_SETTINGS_STORAGE_KEY = "atomic-puzzles.analysis.explorer-settings";
 const RECENT_USERNAME_STORAGE_KEY = "atomic-puzzles.analysis.recent-usernames";
@@ -192,16 +194,29 @@ const addRecentUsername = (usernames: string[], username: string): string[] => {
 
 const SpeedFilterIcon = ({ speed }: { speed: ExplorerSpeed }) =>
   speed === "bullet" ? (
-    <svg className="analysisSpeedIcon bullet" viewBox="0 0 44 28" aria-hidden="true" focusable="false">
+    <svg
+      className="analysisSpeedIcon bullet"
+      viewBox="0 0 44 28"
+      aria-hidden="true"
+      focusable="false"
+    >
       <path className="speedLines" d="M4 8.2h8M1.5 14h9.5M4 19.8h8" />
       <path
         className="bulletBody"
         d="M15.1 6.2c3.5-1.7 8.9-1.8 14.4.4 5.2 2.1 9.2 5.7 11.1 7.4-1.9 1.7-5.9 5.3-11.1 7.4-5.5 2.2-10.9 2.1-14.4.4-1.1-4.8-1.1-10.8 0-15.6Z"
       />
-      <path className="bulletDetail" d="M16.7 7.7c5.2-1.1 12.9.4 20.1 6.3-7.2 5.9-14.9 7.4-20.1 6.3" />
+      <path
+        className="bulletDetail"
+        d="M16.7 7.7c5.2-1.1 12.9.4 20.1 6.3-7.2 5.9-14.9 7.4-20.1 6.3"
+      />
     </svg>
   ) : (
-    <svg className="analysisSpeedIcon blitz" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+    <svg
+      className="analysisSpeedIcon blitz"
+      viewBox="0 0 32 32"
+      aria-hidden="true"
+      focusable="false"
+    >
       <path
         className="flameBody"
         d="M18.1 2.4c2.8 5.1 1 8.1-1.5 10.4 3.7-1.1 5.7-4 5.4-8.4 4.2 3.5 6.3 7.8 6.3 12.4 0 7.1-5.1 12.4-12.3 12.4-7.1 0-12.3-4.8-12.3-11.4 0-4.9 2.7-8.3 6.2-11.1 2.7-2.1 5.8-3.7 8.2-4.3Z"
@@ -279,9 +294,7 @@ const toExplorerMove = (
   const draw = total > 0 ? Math.round((row.draws / total) * 100) : 0;
   const black = total > 0 ? Math.round((row.blackWins / total) * 100) : 0;
   const playerScore =
-    options.playerColor === "white"
-      ? row.whiteWins + row.draws / 2
-      : row.blackWins + row.draws / 2;
+    options.playerColor === "white" ? row.whiteWins + row.draws / 2 : row.blackWins + row.draws / 2;
 
   return {
     uci: row.uci,
@@ -319,6 +332,7 @@ export const AnalysisPage = () => {
   const [initialExplorerSettings] = useState(loadExplorerSettings);
   const boardWheelDeltaRef = useRef(0);
   const boardWheelLastAtRef = useRef(0);
+  const boardWheelStepLastAtRef = useRef(0);
   const [boardState, setBoardState] = useState<ChessboardState | null>(null);
   const [orientation, setOrientation] = useState<"white" | "black">("white");
   const [navigation, setNavigation] = useState<SolutionNavigation | null>(null);
@@ -391,6 +405,7 @@ export const AnalysisPage = () => {
     if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
 
     event.preventDefault();
+    event.stopPropagation();
 
     const now = window.performance.now();
     if (now - boardWheelLastAtRef.current > 280) {
@@ -402,6 +417,7 @@ export const AnalysisPage = () => {
     boardWheelDeltaRef.current += event.deltaY * deltaScale;
 
     if (Math.abs(boardWheelDeltaRef.current) < BOARD_WHEEL_STEP_PX) return;
+    if (now - boardWheelStepLastAtRef.current < BOARD_WHEEL_STEP_INTERVAL_MS) return;
 
     const command = boardWheelDeltaRef.current > 0 ? "next" : "previous";
     boardWheelDeltaRef.current = 0;
@@ -409,6 +425,7 @@ export const AnalysisPage = () => {
     if (command === "next" && !canStepForward) return;
     if (command === "previous" && !canStepBack) return;
 
+    boardWheelStepLastAtRef.current = now;
     requestNavigation(command);
   };
 
@@ -453,6 +470,11 @@ export const AnalysisPage = () => {
     setPlayerColor((currentColor) => (currentColor === "white" ? "black" : "white"));
   };
 
+  const showPlayerExplorer = (): void => {
+    setExplorerScope("player");
+    setFiltersOpen(!username.trim());
+  };
+
   const toggleSpeed = (speed: ExplorerSpeed): void => {
     setSelectedSpeeds((currentSpeeds) => {
       if (currentSpeeds.includes(speed)) {
@@ -489,9 +511,14 @@ export const AnalysisPage = () => {
     }
 
     const abortController = new AbortController();
-    const selectedSpeedValues = SPEED_FILTERS
-      .filter((speed) => selectedSpeeds.includes(speed.key))
-      .map((speed) => speed.value);
+    let requestTimedOut = false;
+    const requestTimeout = window.setTimeout(() => {
+      requestTimedOut = true;
+      abortController.abort();
+    }, EXPLORER_REQUEST_TIMEOUT_MS);
+    const selectedSpeedValues = SPEED_FILTERS.filter((speed) =>
+      selectedSpeeds.includes(speed.key),
+    ).map((speed) => speed.value);
     const params = new URLSearchParams({
       fen: currentFen,
       color: playerColor,
@@ -560,21 +587,52 @@ export const AnalysisPage = () => {
         setExplorerStatus("ready");
       })
       .catch((error) => {
-        if (abortController.signal.aborted) return;
+        if (abortController.signal.aborted && !requestTimedOut) return;
         setExplorerMoves([]);
         setRecentGames([]);
         setExplorerStatus("error");
-        setExplorerError(error instanceof Error ? error.message : "Opening explorer failed");
+        setExplorerError(
+          requestTimedOut
+            ? "Opening explorer took too long to respond. Try fewer filters or refresh."
+            : error instanceof Error
+              ? error.message
+              : "Opening explorer failed",
+        );
+      })
+      .finally(() => {
+        window.clearTimeout(requestTimeout);
       });
 
-    return () => abortController.abort();
-  }, [currentFen, endDate, explorerOpen, explorerScope, minRating, playerColor, selectedSpeeds, startDate, username]);
+    return () => {
+      window.clearTimeout(requestTimeout);
+      abortController.abort();
+    };
+  }, [
+    currentFen,
+    endDate,
+    explorerOpen,
+    explorerScope,
+    minRating,
+    playerColor,
+    selectedSpeeds,
+    startDate,
+    username,
+  ]);
 
   useEffect(() => {
     const handleAnalysisShortcut = (event: KeyboardEvent): void => {
       const key = event.key.toLowerCase();
-      const isExplorerMoveShortcut =
-        key === " " || key === "spacebar" || /^[1-9]$/.test(key);
+      const shortcutIndex =
+        key === " " || key === "spacebar"
+          ? 0
+          : /^[1-9]$/.test(key)
+            ? Number(key) - 1
+            : /^digit[1-9]$/.test(event.code.toLowerCase())
+              ? Number(event.code.slice(-1)) - 1
+              : /^numpad[1-9]$/.test(event.code.toLowerCase())
+                ? Number(event.code.slice(-1)) - 1
+                : null;
+      const isExplorerMoveShortcut = shortcutIndex !== null;
 
       if (
         (key !== "e" && key !== "f" && !isExplorerMoveShortcut) ||
@@ -600,8 +658,7 @@ export const AnalysisPage = () => {
           return;
         }
 
-        const moveIndex = key === " " || key === "spacebar" ? 0 : Number(key) - 1;
-        const explorerMove = explorerMoves[moveIndex];
+        const explorerMove = explorerMoves[shortcutIndex];
         if (!explorerMove) return;
 
         event.preventDefault();
@@ -616,8 +673,8 @@ export const AnalysisPage = () => {
       }
     };
 
-    window.addEventListener("keydown", handleAnalysisShortcut);
-    return () => window.removeEventListener("keydown", handleAnalysisShortcut);
+    window.addEventListener("keydown", handleAnalysisShortcut, { capture: true });
+    return () => window.removeEventListener("keydown", handleAnalysisShortcut, { capture: true });
   }, [explorerMoves, explorerOpen, explorerStatus, filtersOpen, usernamePickerOpen]);
 
   useEffect(() => {
@@ -685,7 +742,11 @@ export const AnalysisPage = () => {
         {explorerOpen ? (
           <section className="analysisExplorerPanel" aria-label="Opening explorer">
             <div className="analysisExplorerCompactHeader">
-              <div className="analysisExplorerTabs" role="tablist" aria-label="Opening explorer source">
+              <div
+                className="analysisExplorerTabs"
+                role="tablist"
+                aria-label="Opening explorer source"
+              >
                 <button
                   type="button"
                   role="tab"
@@ -705,10 +766,7 @@ export const AnalysisPage = () => {
                   className={explorerScope === "player" ? "active" : ""}
                   aria-selected={explorerScope === "player"}
                   aria-label={`${username.trim() || "Player"} as ${playerColor}`}
-                  onClick={() => {
-                    setExplorerScope("player");
-                    setFiltersOpen(true);
-                  }}
+                  onClick={showPlayerExplorer}
                 >
                   <span className="analysisExplorerPlayerLabel">
                     <span>{username.trim() || "Player"}</span>
@@ -721,7 +779,9 @@ export const AnalysisPage = () => {
                 className={`analysisFilterToggle ${filtersOpen ? "open" : ""}`}
                 aria-expanded={filtersOpen}
                 aria-controls="analysis-explorer-filters"
-                aria-label={filtersOpen ? "Close opening explorer settings" : "Opening explorer settings"}
+                aria-label={
+                  filtersOpen ? "Close opening explorer settings" : "Opening explorer settings"
+                }
                 title={filtersOpen ? "Close settings" : "Opening explorer settings"}
                 onClick={() => setFiltersOpen((open) => !open)}
               >
@@ -795,7 +855,9 @@ export const AnalysisPage = () => {
                   </div>
                 ) : null}
                 <label className="analysisRatingSlider">
-                  <span>{explorerScope === "player" ? "Min opponent rating" : "Min average rating"}</span>
+                  <span>
+                    {explorerScope === "player" ? "Min opponent rating" : "Min average rating"}
+                  </span>
                   <output>{minRating}</output>
                   <input
                     type="range"
@@ -1153,7 +1215,6 @@ export const AnalysisPage = () => {
           </div>
         </div>
       </div>
-
     </section>
   );
 };
