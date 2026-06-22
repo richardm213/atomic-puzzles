@@ -184,6 +184,15 @@ const profileRoute = createRoute({
   },
 });
 
+const profileHistoryRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/@/$username/history",
+  component: function ProfileHistoryRoute() {
+    const { username } = useParams({ strict: false });
+    return <PlayerProfilePage username={username} historyOnly />;
+  },
+});
+
 const lichessAuthCallbackRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/auth/lichess/callback",
@@ -210,6 +219,7 @@ const routeTree = rootRoute.addChildren([
   solveSetsRoute,
   puzzleLeaderboardRoute,
   solveWithIdRoute,
+  profileHistoryRoute,
   profileRoute,
   profilePuzzleDashboardRoute,
   profilePuzzleContributionsRoute,

@@ -392,7 +392,13 @@ const createDefaultProfileFilters = (): ProfileFilters => ({
   timeControlIncrementFilter: "all",
 });
 
-export const PlayerProfilePage = ({ username }: { username?: string }) => {
+export const PlayerProfilePage = ({
+  username,
+  historyOnly = false,
+}: {
+  username?: string;
+  historyOnly?: boolean;
+}) => {
   const normalizedUsername = useMemo(() => normalizeUsername(username), [username]);
   const [matchHistoryMode, setMatchHistoryMode] =
     useState<import("../../constants/matches").Mode>(defaultMode);
@@ -894,61 +900,83 @@ export const PlayerProfilePage = ({ username }: { username?: string }) => {
   return (
     <div className="rankingsPage">
       <Seo
-        title={`${canonicalUsername} Atomic Chess Profile`}
-        description={`View ${canonicalUsername}'s atomic chess profile, ratings, monthly ranks, best wins, aliases, and recent matches.`}
-        path={`/@/${encodeURIComponent(canonicalUsername)}`}
+        title={
+          historyOnly
+            ? `${canonicalUsername} Atomic Chess History`
+            : `${canonicalUsername} Atomic Chess Profile`
+        }
+        description={
+          historyOnly
+            ? `View ${canonicalUsername}'s atomic chess match history, rank history, and favorite opponents.`
+            : `View ${canonicalUsername}'s atomic chess profile, ratings, monthly ranks, best wins, aliases, and recent matches.`
+        }
+        path={
+          historyOnly
+            ? `/@/${encodeURIComponent(canonicalUsername)}/history`
+            : `/@/${encodeURIComponent(canonicalUsername)}`
+        }
       />
-      <div className="panel rankingsPanel playerProfilePanel">
-        <div
-          className={`profileIdentityRow${!isBanned && profileTrophies.length ? "" : " noTrophies"}`}
-        >
-          <div className="profileIdentityTitle">
-            <h1>{canonicalUsername}</h1>
-            {profileOpenings.length ? (
-              <div className="profileOpeningTags" aria-label="Recognized atomic openings">
-                {profileOpenings.map((opening) => (
-                  <span
-                    key={`opening-${opening}`}
-                    className={`profileOpeningTag ${getOpeningToneClass(opening)}`}
-                  >
-                    {getOpeningDisplayLabel(opening)}
-                  </span>
-                ))}
+      <div
+        className={`panel rankingsPanel playerProfilePanel${historyOnly ? " playerHistoryPanel" : ""}`}
+      >
+        {historyOnly ? (
+          <div className="profileIdentityRow noTrophies">
+            <div className="profileIdentityTitle">
+              <h1>{canonicalUsername}</h1>
+            </div>
+          </div>
+        ) : (
+          <div
+            className={`profileIdentityRow${!isBanned && profileTrophies.length ? "" : " noTrophies"}`}
+          >
+            <div className="profileIdentityTitle">
+              <h1>{canonicalUsername}</h1>
+              {profileOpenings.length ? (
+                <div className="profileOpeningTags" aria-label="Recognized atomic openings">
+                  {profileOpenings.map((opening) => (
+                    <span
+                      key={`opening-${opening}`}
+                      className={`profileOpeningTag ${getOpeningToneClass(opening)}`}
+                    >
+                      {getOpeningDisplayLabel(opening)}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+            {!isBanned && profileTrophies.length ? (
+              <div className="profileTrophyRow" aria-label="Atomic ranking trophies">
+                {profileTrophies.map((trophy) =>
+                  isExternalHref(trophy.href) ? (
+                    <a
+                      key={trophy.key}
+                      className="profileTrophy"
+                      title={trophy.title}
+                      aria-label={trophy.title}
+                      href={trophy.href}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <img src={trophy.imageSrc} alt="" aria-hidden="true" />
+                      <span className="profileTrophyLabel">{trophy.label}</span>
+                    </a>
+                  ) : (
+                    <Link
+                      key={trophy.key}
+                      className="profileTrophy"
+                      title={trophy.title}
+                      aria-label={trophy.title}
+                      to={trophy.href}
+                    >
+                      <img src={trophy.imageSrc} alt="" aria-hidden="true" />
+                      <span className="profileTrophyLabel">{trophy.label}</span>
+                    </Link>
+                  ),
+                )}
               </div>
             ) : null}
           </div>
-          {!isBanned && profileTrophies.length ? (
-            <div className="profileTrophyRow" aria-label="Atomic ranking trophies">
-              {profileTrophies.map((trophy) =>
-                isExternalHref(trophy.href) ? (
-                  <a
-                    key={trophy.key}
-                    className="profileTrophy"
-                    title={trophy.title}
-                    aria-label={trophy.title}
-                    href={trophy.href}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    <img src={trophy.imageSrc} alt="" aria-hidden="true" />
-                    <span className="profileTrophyLabel">{trophy.label}</span>
-                  </a>
-                ) : (
-                  <Link
-                    key={trophy.key}
-                    className="profileTrophy"
-                    title={trophy.title}
-                    aria-label={trophy.title}
-                    to={trophy.href}
-                  >
-                    <img src={trophy.imageSrc} alt="" aria-hidden="true" />
-                    <span className="profileTrophyLabel">{trophy.label}</span>
-                  </Link>
-                ),
-              )}
-            </div>
-          ) : null}
-        </div>
+        )}
 
         {isBanned ? (
           <section className="profileBanNotice" aria-labelledby="profile-ban-notice-title">
@@ -963,7 +991,7 @@ export const PlayerProfilePage = ({ username }: { username?: string }) => {
               in the rating or ranking system here.
             </p>
           </section>
-        ) : (
+        ) : !historyOnly ? (
           <div className="profileTopBar">
             {profileMetricRows.map((row) => (
               <section
@@ -987,139 +1015,162 @@ export const PlayerProfilePage = ({ username }: { username?: string }) => {
               </section>
             ))}
           </div>
-        )}
+        ) : null}
 
-        {isHistoryAvailable ? (
+        {!isBanned && (isHistoryAvailable || !historyOnly) ? (
           <div className="profileActionRow">
-            <Link
-              className="profilePuzzleDashboardLink"
-              to="/@/$username/puzzles"
-              params={{ username: canonicalUsername }}
-            >
-              View puzzle dashboard
-            </Link>
+            {isHistoryAvailable ? (
+              <Link
+                className="profilePuzzleDashboardLink"
+                to="/@/$username/puzzles"
+                params={{ username: canonicalUsername }}
+              >
+                View puzzle dashboard
+              </Link>
+            ) : null}
+            {historyOnly ? (
+              <Link
+                className="profilePuzzleDashboardLink"
+                to="/@/$username"
+                params={{ username: canonicalUsername }}
+              >
+                View profile
+              </Link>
+            ) : (
+              <Link
+                className="profilePuzzleDashboardLink"
+                to="/@/$username/history"
+                params={{ username: canonicalUsername }}
+              >
+                View history
+              </Link>
+            )}
           </div>
         ) : null}
 
-        <div className="profileHighlights profileHighlightsTopRow">
-          {!isBanned ? (
-            <div className="profileBestWins">
-              <div className="profileBestMonthRanksHeader">
-                <h2>Best Wins</h2>
-                <div className="profileHeaderControls">
-                  <label htmlFor="profile-best-win-mode-select">
-                    Mode
-                    <select
-                      id="profile-best-win-mode-select"
-                      value={bestWinMode}
-                      onChange={(event) => {
-                        const v = event.target.value;
-                        if ((modeOptions as readonly string[]).includes(v)) {
-                          setBestWinMode(v as import("../../constants/matches").Mode);
-                        }
-                      }}
-                    >
-                      {modeOptions.map((mode) => (
-                        <option key={mode} value={mode}>
-                          {modeLabels[mode] ?? mode}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label htmlFor="profile-best-win-count-select">
-                    Show
-                    <select
-                      id="profile-best-win-count-select"
-                      value={bestWinCount}
-                      onChange={(event) => setBestWinCount(Number(event.target.value))}
-                    >
-                      {countOptions.map((value) => (
-                        <option key={value} value={value}>
-                          {value}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+        {!historyOnly ? (
+          <div className="profileHighlights profileHighlightsTopRow">
+            {!isBanned ? (
+              <div className="profileBestWins">
+                <div className="profileBestMonthRanksHeader">
+                  <h2>Best Wins</h2>
+                  <div className="profileHeaderControls">
+                    <label htmlFor="profile-best-win-mode-select">
+                      Mode
+                      <select
+                        id="profile-best-win-mode-select"
+                        value={bestWinMode}
+                        onChange={(event) => {
+                          const v = event.target.value;
+                          if ((modeOptions as readonly string[]).includes(v)) {
+                            setBestWinMode(v as import("../../constants/matches").Mode);
+                          }
+                        }}
+                      >
+                        {modeOptions.map((mode) => (
+                          <option key={mode} value={mode}>
+                            {modeLabels[mode] ?? mode}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label htmlFor="profile-best-win-count-select">
+                      Show
+                      <select
+                        id="profile-best-win-count-select"
+                        value={bestWinCount}
+                        onChange={(event) => setBestWinCount(Number(event.target.value))}
+                      >
+                        {countOptions.map((value) => (
+                          <option key={value} value={value}>
+                            {value}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
                 </div>
+                {bestWins.length === 0 ? (
+                  <div className="emptyRankings">
+                    No wins available in {modeLabels[bestWinMode]}.
+                  </div>
+                ) : (
+                  <ol>
+                    {bestWins.map((win) => (
+                      <li key={`best-${win.gameId}`}>
+                        <span className="profileBestWinOpponent">
+                          <Link
+                            className="rankingLink"
+                            to="/@/$username"
+                            params={{ username: win.opponent }}
+                          >
+                            {formatOpponentWithRating(win.opponent, win.opponentRating)}
+                          </Link>
+                        </span>
+                        <span className="profileBestWinDate">
+                          <LichessGameLink gameId={win.gameId}>
+                            {formatLocalDateTime(win.startTs)}
+                          </LichessGameLink>
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
               </div>
-              {bestWins.length === 0 ? (
-                <div className="emptyRankings">No wins available in {modeLabels[bestWinMode]}.</div>
+            ) : null}
+
+            <div className="profileAliases">
+              <h2>Aliases</h2>
+              {!aliasesLoaded ? (
+                <div className="emptyRankings">Loading aliases...</div>
+              ) : aliasDisplayRows.length === 0 ? (
+                <div className="emptyRankings">No aliases listed.</div>
               ) : (
-                <ol>
-                  {bestWins.map((win) => (
-                    <li key={`best-${win.gameId}`}>
-                      <span className="profileBestWinOpponent">
-                        <Link
-                          className="rankingLink"
-                          to="/@/$username"
-                          params={{ username: win.opponent }}
-                        >
-                          {formatOpponentWithRating(win.opponent, win.opponentRating)}
-                        </Link>
+                <div className="profileAliasesList">
+                  {aliasDisplayRows.map(({ alias, isCounted }) => (
+                    <div key={`alias-${alias}`} className="profileAliasRow">
+                      <span className="profileAliasName">
+                        <span>{alias}</span>
+                        {!isCounted ? (
+                          <span
+                            className="profileAliasStatus"
+                            aria-label={NON_COUNTED_ALIAS_MESSAGE}
+                            tabIndex={0}
+                          >
+                            <span aria-hidden="true">🍺</span>
+                            <span className="profileAliasTooltip" role="tooltip">
+                              {NON_COUNTED_ALIAS_MESSAGE} For more info,
+                              <Link
+                                className="profileAliasTooltipLink"
+                                to="/rankings/how-ratings-work"
+                                hash="drunk-accounts"
+                              >
+                                click here
+                              </Link>
+                              .
+                            </span>
+                          </span>
+                        ) : null}
                       </span>
-                      <span className="profileBestWinDate">
-                        <LichessGameLink gameId={win.gameId}>
-                          {formatLocalDateTime(win.startTs)}
-                        </LichessGameLink>
-                      </span>
-                    </li>
+                      <a
+                        className="profileAliasLichessLink"
+                        href={lichessProfileUrl(alias)}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label={`Open ${alias} on Lichess`}
+                        title={`Open ${alias} on Lichess`}
+                      >
+                        <LichessProfileIcon />
+                      </a>
+                    </div>
                   ))}
-                </ol>
+                </div>
               )}
             </div>
-          ) : null}
-
-          <div className="profileAliases">
-            <h2>Aliases</h2>
-            {!aliasesLoaded ? (
-              <div className="emptyRankings">Loading aliases...</div>
-            ) : aliasDisplayRows.length === 0 ? (
-              <div className="emptyRankings">No aliases listed.</div>
-            ) : (
-              <div className="profileAliasesList">
-                {aliasDisplayRows.map(({ alias, isCounted }) => (
-                  <div key={`alias-${alias}`} className="profileAliasRow">
-                    <span className="profileAliasName">
-                      <span>{alias}</span>
-                      {!isCounted ? (
-                        <span
-                          className="profileAliasStatus"
-                          aria-label={NON_COUNTED_ALIAS_MESSAGE}
-                          tabIndex={0}
-                        >
-                          <span aria-hidden="true">🍺</span>
-                          <span className="profileAliasTooltip" role="tooltip">
-                            {NON_COUNTED_ALIAS_MESSAGE} For more info,
-                            <Link
-                              className="profileAliasTooltipLink"
-                              to="/rankings/how-ratings-work"
-                              hash="drunk-accounts"
-                            >
-                              click here
-                            </Link>
-                            .
-                          </span>
-                        </span>
-                      ) : null}
-                    </span>
-                    <a
-                      className="profileAliasLichessLink"
-                      href={lichessProfileUrl(alias)}
-                      target="_blank"
-                      rel="noreferrer"
-                      aria-label={`Open ${alias} on Lichess`}
-                      title={`Open ${alias} on Lichess`}
-                    >
-                      <LichessProfileIcon />
-                    </a>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
-        </div>
+        ) : null}
 
-        {!isBanned ? (
+        {!historyOnly && !isBanned ? (
           <div className="profileHighlights profileHighlightsBottomRow">
             <div className="profileBestMonthRanks">
               <div className="profileBestMonthRanksHeader">

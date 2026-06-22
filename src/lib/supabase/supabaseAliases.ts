@@ -62,9 +62,7 @@ const normalizeOpenings = (openings: unknown): string[] =>
       ]
     : [];
 
-const normalizeAliasRow = (
-  row: AliasesTableRow | null | undefined,
-): NormalizedAliasRow | null => {
+const normalizeAliasRow = (row: AliasesTableRow | null | undefined): NormalizedAliasRow | null => {
   const username = normalizeUsername(row?.username);
   const aliases = Array.isArray(row?.aliases)
     ? row.aliases.map(normalizeUsername).filter(Boolean)
@@ -87,9 +85,7 @@ const fetchUncachedAliasRows = async (): Promise<NormalizedAliasRow[]> => {
     supabase.from(ALIASES_TABLE).select(ALIASES_SELECT_COLUMNS).order("username"),
   );
 
-  return rows
-    .map(normalizeAliasRow)
-    .filter((row): row is NormalizedAliasRow => row !== null);
+  return rows.map(normalizeAliasRow).filter((row): row is NormalizedAliasRow => row !== null);
 };
 
 const fetchAliasesTableRows = async (): Promise<NormalizedAliasRow[]> =>
