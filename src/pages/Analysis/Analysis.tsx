@@ -368,8 +368,7 @@ export const AnalysisPage = () => {
   const [opponent, setOpponent] = useState(initialExplorerSettings.opponent);
   const [usernameDraft, setUsernameDraft] = useState(initialExplorerSettings.username);
   const [usernamePickerOpen, setUsernamePickerOpen] = useState(false);
-  const [usernamePickerTarget, setUsernamePickerTarget] =
-    useState<UsernamePickerTarget>("player");
+  const [usernamePickerTarget, setUsernamePickerTarget] = useState<UsernamePickerTarget>("player");
   const [recentUsernames, setRecentUsernames] = useState<string[]>(loadRecentUsernames);
   const [explorerMoves, setExplorerMoves] = useState<ExplorerMove[]>([]);
   const [recentGames, setRecentGames] = useState<ExplorerGame[]>([]);
@@ -529,7 +528,13 @@ export const AnalysisPage = () => {
     setStartDate(
       (currentStartDate) => validMonthFilter(currentStartDate) || DEFAULT_PLAYER_START_DATE,
     );
-    setFiltersOpen(!username.trim());
+    if (username.trim()) {
+      setFiltersOpen(false);
+      switchPlayerColor();
+      return;
+    }
+
+    setFiltersOpen(true);
   };
 
   const toggleSpeed = (speed: ExplorerSpeed): void => {
