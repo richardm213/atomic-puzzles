@@ -142,6 +142,7 @@ body:has(.analysisPage),
 .analysisOpponentClearButton:focus-visible,
 .analysisUsernamePickerClose:focus-visible,
 .analysisUsernamePickerForm input:focus-visible,
+.analysisUsernamePickerSubmit:focus-visible,
 .analysisRecentUsernameChip button:focus-visible,
 .analysisExplorerRow:focus-visible,
 .analysisMoveList button:focus-visible {
@@ -555,7 +556,7 @@ body:has(.analysisPage),
 .analysisPlayerSettingsRow {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(112px, auto);
   align-items: center;
   gap: 8px;
 }
@@ -620,7 +621,7 @@ body:has(.analysisPage),
 .analysisOpponentFieldRow {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(112px, auto);
   align-items: center;
   gap: 8px;
 }
@@ -695,13 +696,17 @@ body:has(.analysisPage),
 }
 
 .analysisUsernamePickerForm {
-  display: flex;
+  width: min(100%, 350px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px;
   justify-content: center;
+  gap: 8px;
+  margin-inline: auto;
   margin-bottom: 22px;
 }
 
 .analysisUsernamePickerForm input {
-  width: min(100%, 300px);
+  width: 100%;
   min-height: 38px;
   padding: 0 16px;
   border: 2px solid var(--color-primary);
@@ -718,6 +723,40 @@ body:has(.analysisPage),
 .analysisUsernamePickerForm input::placeholder {
   color: color-mix(in srgb, var(--color-muted) 80%, transparent);
   opacity: 1;
+}
+
+.analysisUsernamePickerSubmit {
+  width: 42px;
+  min-height: 38px;
+  padding: 0;
+  border: 2px solid var(--color-primary);
+  border-radius: 8px;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    filter 140ms ease;
+}
+
+.analysisUsernamePickerSubmit:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.analysisUsernamePickerSubmit:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.analysisUsernamePickerSubmit svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+  margin: 0;
 }
 
 .analysisRecentUsernameGrid {

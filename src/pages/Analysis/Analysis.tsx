@@ -5,6 +5,7 @@ import {
   faBackward,
   faBackwardStep,
   faBookOpen,
+  faCheck,
   faExternalLinkAlt,
   faForward,
   faForwardStep,
@@ -556,14 +557,19 @@ export const AnalysisPage = () => {
     setPlayerColor((currentColor) => (currentColor === "white" ? "black" : "white"));
   };
 
-  const showPlayerExplorer = (): void => {
+  const showPlayerExplorer = (playerTabWasSelected: boolean): void => {
+    if (playerTabWasSelected && username.trim()) {
+      switchPlayerColor();
+      setFiltersOpen(false);
+      return;
+    }
+
     setExplorerScope("player");
     setStartDate(
       (currentStartDate) => validMonthFilter(currentStartDate) || DEFAULT_PLAYER_START_DATE,
     );
     if (username.trim()) {
       setFiltersOpen(false);
-      switchPlayerColor();
       return;
     }
 
@@ -877,7 +883,9 @@ export const AnalysisPage = () => {
                   aria-label={`${username.trim() || "Player"}${
                     opponent.trim() ? ` vs ${opponent.trim()}` : ""
                   } as ${playerColor}`}
-                  onClick={showPlayerExplorer}
+                  onClick={(event) =>
+                    showPlayerExplorer(event.currentTarget.getAttribute("aria-selected") === "true")
+                  }
                 >
                   <span className="analysisExplorerPlayerLabel">
                     <span>
@@ -1305,6 +1313,15 @@ export const AnalysisPage = () => {
                   commitUsername(usernameDraft);
                 }}
               />
+              <button
+                type="submit"
+                className="analysisUsernamePickerSubmit"
+                aria-label={`Select ${usernameDraft.trim() || "username"}`}
+                title="Select username"
+                disabled={!usernameDraft.trim()}
+              >
+                <FontAwesomeIcon icon={faCheck} />
+              </button>
             </form>
             {recentUsernames.length ? (
               <div className="analysisRecentUsernameGrid" aria-label="Recent username searches">
