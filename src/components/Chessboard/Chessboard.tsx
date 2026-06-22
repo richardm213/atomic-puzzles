@@ -2,6 +2,7 @@ import "./Chessboard.css";
 
 import { Chessground } from "@lichess-org/chessground";
 import type { Api } from "@lichess-org/chessground/api";
+import type { DrawShape } from "@lichess-org/chessground/draw";
 import type { Key } from "@lichess-org/chessground/types";
 import type { Color, Role } from "chessops";
 import { chessgroundDests } from "chessops/compat";
@@ -60,6 +61,7 @@ export type ChessboardProps = {
   showSolution: boolean;
   analysisMode?: boolean;
   solutionNavigation?: SolutionNavigation | null | undefined;
+  previewMove?: string | null | undefined;
   onNavigateHandled?: () => void;
   onAttemptResolved?: (result: AttemptResolved) => void;
   onStateChange?: (state: ChessboardState) => void;
@@ -82,6 +84,20 @@ const colorFromFen = (fen: string): Color => (fen?.split(" ")?.[1] === "b" ? "bl
 const MOVE_EVALUATION_DELAY_MS = 250;
 
 const keyPair = (a: string, b: string): [Key, Key] => [a as Key, b as Key];
+
+const previewMoveShape = (uci: string | null | undefined): DrawShape[] => {
+  const normalized = uci?.trim().toLowerCase() ?? "";
+  if (!/^[a-h][1-8][a-h][1-8]/.test(normalized)) return [];
+
+  return [
+    {
+      orig: normalized.slice(0, 2) as Key,
+      dest: normalized.slice(2, 4) as Key,
+      brush: "paleBlue",
+      below: true,
+    },
+  ];
+};
 
 const promotionRoleByUci: Partial<Record<string, Role>> = {
   q: "queen",
@@ -139,6 +155,7 @@ export const Chessboard = ({
   showSolution,
   analysisMode = false,
   solutionNavigation,
+  previewMove,
   onNavigateHandled,
   onAttemptResolved,
   onStateChange,
@@ -919,6 +936,9 @@ export const Chessboard = ({
       selectable: {
         enabled: true,
       },
+      drawable: {
+        visible: true,
+      },
     });
 
     return () => {
@@ -935,6 +955,10 @@ export const Chessboard = ({
     playUserMove,
     syncBoard,
   ]);
+
+  useEffect(() => {
+    cgRef.current?.setAutoShapes(previewMoveShape(previewMove));
+  }, [previewMove]);
 
   useEffect(() => {
     if (!showSolution) return;

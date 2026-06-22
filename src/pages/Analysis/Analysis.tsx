@@ -449,6 +449,7 @@ export const AnalysisPage = () => {
   const [recentGames, setRecentGames] = useState<ExplorerGame[]>([]);
   const [explorerStatus, setExplorerStatus] = useState<ExplorerStatus>("idle");
   const [explorerError, setExplorerError] = useState("");
+  const [hoveredExplorerMoveUci, setHoveredExplorerMoveUci] = useState<string | null>(null);
 
   const moveList = boardState?.lineMoves ?? [];
   const currentFen = boardState?.fen || STARTING_FEN;
@@ -686,6 +687,7 @@ export const AnalysisPage = () => {
   };
 
   const playExplorerMove = (uci: string): void => {
+    setHoveredExplorerMoveUci(null);
     setNavigation({ playUci: uci });
   };
 
@@ -1041,6 +1043,10 @@ export const AnalysisPage = () => {
     startDate,
     username,
   ]);
+
+  useEffect(() => {
+    setHoveredExplorerMoveUci(null);
+  }, [currentFen, explorerOpen, explorerStatus, filtersOpen]);
 
   useEffect(() => {
     const handleAnalysisShortcut = (event: KeyboardEvent): void => {
@@ -1426,6 +1432,10 @@ export const AnalysisPage = () => {
                         role="button"
                         tabIndex={0}
                         aria-label={`Play ${row.move}`}
+                        onPointerEnter={() => setHoveredExplorerMoveUci(row.uci)}
+                        onPointerLeave={() => setHoveredExplorerMoveUci(null)}
+                        onFocus={() => setHoveredExplorerMoveUci(row.uci)}
+                        onBlur={() => setHoveredExplorerMoveUci(null)}
                         onClick={() => playExplorerMove(row.uci)}
                         onKeyDown={(event) => {
                           if (event.key !== "Enter" && event.key !== " ") return;
@@ -1546,6 +1556,10 @@ export const AnalysisPage = () => {
                             target="_blank"
                             rel="noreferrer"
                             title={`${game.whiteName} vs ${game.blackName}`}
+                            onPointerEnter={() => setHoveredExplorerMoveUci(game.uci)}
+                            onPointerLeave={() => setHoveredExplorerMoveUci(null)}
+                            onFocus={() => setHoveredExplorerMoveUci(game.uci)}
+                            onBlur={() => setHoveredExplorerMoveUci(null)}
                           >
                             <span className="analysisRecentRatings">
                               <span>{game.whiteRating ?? "-"}</span>
@@ -1726,6 +1740,7 @@ export const AnalysisPage = () => {
             showSolution={false}
             analysisMode
             solutionNavigation={navigation}
+            previewMove={hoveredExplorerMoveUci}
             onNavigateHandled={() => setNavigation(null)}
             onStateChange={setBoardState}
           />
