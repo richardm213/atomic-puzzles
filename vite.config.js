@@ -1,9 +1,10 @@
-import react from "@vitejs/plugin-react";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
+
+import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 const execFileAsync = promisify(execFile);
@@ -110,9 +111,13 @@ const openingExplorerPlugin = () => {
       return;
     }
 
-    const requestedUsername = url.searchParams.get("username")?.trim().toLowerCase() ?? "";
     const signature = dbSignature();
+    const requestedUsername = url.searchParams.get("username")?.trim().toLowerCase() ?? "";
     const username = await resolveCanonicalUsername(requestedUsername, signature);
+    const requestedOpponent = url.searchParams.get("opponent")?.trim().toLowerCase() ?? "";
+    const opponent = username
+      ? await resolveCanonicalUsername(requestedOpponent, signature)
+      : "";
     const color = url.searchParams.get("color") === "black" ? 1 : 0;
     const requestedRating = Number.parseInt(url.searchParams.get("minRating") ?? "1700", 10);
     const minRating = Math.max(
@@ -134,6 +139,8 @@ const openingExplorerPlugin = () => {
       color,
       requestedUsername,
       username,
+      requestedOpponent,
+      opponent,
       minRating,
       speeds,
       startDate,
@@ -148,8 +155,13 @@ const openingExplorerPlugin = () => {
     const playerIdSql = username
       ? `(select name_id from opening_names where lower(name) = ${sqlString(username)} limit 1)`
       : "";
+    const opponentIdSql = opponent
+      ? `(select name_id from opening_names where lower(name) = ${sqlString(opponent)} limit 1)`
+      : "";
+    const opponentIdColumn = color === 0 ? "black_id" : "white_id";
     const edgesPlayerSql = username ? `and canonical_player_id = ${playerIdSql}` : "";
     const gamesPlayerSql = username ? `and g.canonical_player_id = ${playerIdSql}` : "";
+    const gamesOpponentSql = opponent ? `and g.${opponentIdColumn} = ${opponentIdSql}` : "";
     const edgesColorSql = `and player_color = ${color}`;
     const gamesColorSql = `and g.player_color = ${color}`;
     const speedSql = speeds.join(",");
@@ -173,13 +185,30 @@ const openingExplorerPlugin = () => {
       ${gamesColorSql}
       and g.speed in (${speedSql})
       ${gamesPlayerSql}
+      ${gamesOpponentSql}
       ${gamesDateSql}
     `;
     const opponentRatingColumn = color === 0 ? "g.black_rating" : "g.white_rating";
     const detailsRatingFilter = username
       ? `and ${opponentRatingColumn} >= ${minRating}`
       : `and ((g.white_rating + g.black_rating) / 2.0) >= ${minRating}`;
-    const movesSql = `
+    const movesSql = opponent
+      ? `
+        select
+          g.next_uci as uci,
+          count(*) as games,
+          sum(case when g.winner = 1 then 1 else 0 end) as whiteWins,
+          sum(case when g.winner = 0 then 1 else 0 end) as draws,
+          sum(case when g.winner = 2 then 1 else 0 end) as blackWins,
+          round(avg(${opponentRatingColumn})) as avgOpponentRating
+        from opening_position_games g
+        where ${gamesWhere}
+          ${detailsRatingFilter}
+        group by g.next_uci
+        order by games desc
+        limit 12;
+      `
+      : `
         select
           next_uci as uci,
           sum(games) as games,

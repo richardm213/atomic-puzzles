@@ -17,8 +17,8 @@ import type { CSSProperties, FormEvent, WheelEvent as ReactWheelEvent } from "re
 import { useEffect, useRef, useState } from "react";
 
 import { Chessboard } from "../../components/Chessboard/Chessboard";
-import { createAtomicPosition, moveFromUci } from "../../lib/puzzles/solutionPgn";
 import { Seo } from "../../components/Seo/Seo";
+import { createAtomicPosition, moveFromUci } from "../../lib/puzzles/solutionPgn";
 import type { ChessboardState, SolutionNavigation } from "../../types/chessboard";
 import { appAssetPath } from "../../utils/appAssetPath";
 
@@ -81,6 +81,7 @@ type ExplorerGame = {
 type ExplorerStatus = "idle" | "loading" | "ready" | "error";
 type ExplorerScope = "general" | "player";
 type ExplorerSpeed = "bullet" | "blitz";
+type UsernamePickerTarget = "player" | "opponent";
 
 const WIN_RATE_LABEL_MIN_PERCENT = 14;
 const BOARD_WHEEL_STEP_PX = 128;
@@ -104,6 +105,7 @@ const DEFAULT_EXPLORER_SETTINGS = {
   startDate: "",
   endDate: "",
   username: "",
+  opponent: "",
 };
 
 type StoredExplorerSettings = typeof DEFAULT_EXPLORER_SETTINGS;
@@ -151,6 +153,7 @@ const loadExplorerSettings = (): StoredExplorerSettings => {
       startDate,
       endDate: validMonthFilter(rawSettings.endDate),
       username: String(rawSettings.username ?? "").trim(),
+      opponent: String(rawSettings.opponent ?? "").trim(),
     };
   } catch {
     return DEFAULT_EXPLORER_SETTINGS;
@@ -362,8 +365,11 @@ export const AnalysisPage = () => {
   const [startDate, setStartDate] = useState(initialExplorerSettings.startDate);
   const [endDate, setEndDate] = useState(initialExplorerSettings.endDate);
   const [username, setUsername] = useState(initialExplorerSettings.username);
+  const [opponent, setOpponent] = useState(initialExplorerSettings.opponent);
   const [usernameDraft, setUsernameDraft] = useState(initialExplorerSettings.username);
   const [usernamePickerOpen, setUsernamePickerOpen] = useState(false);
+  const [usernamePickerTarget, setUsernamePickerTarget] =
+    useState<UsernamePickerTarget>("player");
   const [recentUsernames, setRecentUsernames] = useState<string[]>(loadRecentUsernames);
   const [explorerMoves, setExplorerMoves] = useState<ExplorerMove[]>([]);
   const [recentGames, setRecentGames] = useState<ExplorerGame[]>([]);
@@ -472,18 +478,33 @@ export const AnalysisPage = () => {
     storeRecentUsernames(nextUsernames);
   };
 
+  const closeUsernamePicker = (): void => {
+    setUsernamePickerOpen(false);
+  };
+
+  const openUsernamePicker = (target: UsernamePickerTarget): void => {
+    setUsernamePickerTarget(target);
+    setUsernameDraft(target === "player" ? username : opponent);
+    setUsernamePickerOpen(true);
+  };
+
   const commitUsername = (nextUsername: string): void => {
     const trimmedUsername = nextUsername.trim();
     if (!trimmedUsername) return;
 
-    setUsername(trimmedUsername);
+    if (usernamePickerTarget === "opponent") {
+      setOpponent(trimmedUsername);
+    } else {
+      setUsername(trimmedUsername);
+    }
+
     setUsernameDraft(trimmedUsername);
     setExplorerScope("player");
     setStartDate(
       (currentStartDate) => validMonthFilter(currentStartDate) || DEFAULT_PLAYER_START_DATE,
     );
     saveRecentUsernames(addRecentUsername(recentUsernames, trimmedUsername));
-    setUsernamePickerOpen(false);
+    closeUsernamePicker();
   };
 
   const submitUsernamePicker = (event: FormEvent<HTMLFormElement>): void => {
@@ -532,8 +553,18 @@ export const AnalysisPage = () => {
       startDate,
       endDate,
       username,
+      opponent,
     });
-  }, [endDate, explorerScope, minRating, playerColor, selectedSpeeds, startDate, username]);
+  }, [
+    endDate,
+    explorerScope,
+    minRating,
+    opponent,
+    playerColor,
+    selectedSpeeds,
+    startDate,
+    username,
+  ]);
 
   useEffect(() => {
     if (!explorerOpen) return;
@@ -570,6 +601,10 @@ export const AnalysisPage = () => {
     const trimmedUsername = username.trim();
     if (explorerScope === "player" && trimmedUsername) {
       params.set("username", trimmedUsername);
+      const trimmedOpponent = opponent.trim();
+      if (trimmedOpponent) {
+        params.set("opponent", trimmedOpponent);
+      }
     }
 
     setExplorerStatus("loading");
@@ -649,6 +684,7 @@ export const AnalysisPage = () => {
     explorerOpen,
     explorerScope,
     minRating,
+    opponent,
     playerColor,
     selectedSpeeds,
     startDate,
@@ -716,17 +752,15 @@ export const AnalysisPage = () => {
   useEffect(() => {
     if (!usernamePickerOpen) return;
 
-    setUsernameDraft(username);
-
     const handlePickerShortcut = (event: KeyboardEvent): void => {
       if (event.key === "Escape") {
-        setUsernamePickerOpen(false);
+        closeUsernamePicker();
       }
     };
 
     window.addEventListener("keydown", handlePickerShortcut);
     return () => window.removeEventListener("keydown", handlePickerShortcut);
-  }, [username, usernamePickerOpen]);
+  }, [usernamePickerOpen]);
 
   return (
     <section className="analysisPage">
@@ -802,11 +836,16 @@ export const AnalysisPage = () => {
                   role="tab"
                   className={explorerScope === "player" ? "active" : ""}
                   aria-selected={explorerScope === "player"}
-                  aria-label={`${username.trim() || "Player"} as ${playerColor}`}
+                  aria-label={`${username.trim() || "Player"}${
+                    opponent.trim() ? ` vs ${opponent.trim()}` : ""
+                  } as ${playerColor}`}
                   onClick={showPlayerExplorer}
                 >
                   <span className="analysisExplorerPlayerLabel">
-                    <span>{username.trim() || "Player"}</span>
+                    <span>
+                      {username.trim() || "Player"}
+                      {opponent.trim() ? ` vs ${opponent.trim()}` : ""}
+                    </span>
                     <small>as {playerColor}</small>
                   </span>
                 </button>
@@ -835,10 +874,7 @@ export const AnalysisPage = () => {
                       <button
                         type="button"
                         className="analysisPlayerNameButton"
-                        onClick={() => {
-                          setUsernameDraft(username);
-                          setUsernamePickerOpen(true);
-                        }}
+                        onClick={() => openUsernamePicker("player")}
                       >
                         {username.trim() || "Choose player"}
                       </button>
@@ -852,6 +888,29 @@ export const AnalysisPage = () => {
                         <FontAwesomeIcon icon={faArrowsRotate} />
                         <span>as {playerColor}</span>
                       </button>
+                    </div>
+                    <div className="analysisOpponentField">
+                      <span>Opponent</span>
+                      <div className="analysisOpponentFieldRow">
+                        <button
+                          type="button"
+                          className="analysisPlayerNameButton"
+                          onClick={() => openUsernamePicker("opponent")}
+                        >
+                          {opponent.trim() || "Choose opponent"}
+                        </button>
+                        {opponent.trim() ? (
+                          <button
+                            type="button"
+                            className="analysisOpponentClearButton"
+                            aria-label="Clear opponent"
+                            title="Clear opponent"
+                            onClick={() => setOpponent("")}
+                          >
+                            <FontAwesomeIcon icon={faXmark} />
+                          </button>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
                 ) : null}
@@ -1190,7 +1249,7 @@ export const AnalysisPage = () => {
           role="presentation"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) {
-              setUsernamePickerOpen(false);
+              closeUsernamePicker();
             }
           }}
         >
@@ -1204,11 +1263,13 @@ export const AnalysisPage = () => {
               type="button"
               className="analysisUsernamePickerClose"
               aria-label="Close username picker"
-              onClick={() => setUsernamePickerOpen(false)}
+              onClick={closeUsernamePicker}
             >
               <FontAwesomeIcon icon={faXmark} />
             </button>
-            <h2 id="analysis-username-picker-title">Personal opening explorer</h2>
+            <h2 id="analysis-username-picker-title">
+              {usernamePickerTarget === "opponent" ? "Choose opponent" : "Choose player"}
+            </h2>
             <form className="analysisUsernamePickerForm" onSubmit={submitUsernamePicker}>
               <input
                 type="text"
@@ -1232,7 +1293,9 @@ export const AnalysisPage = () => {
                     <button
                       type="button"
                       className={
-                        username.trim().toLowerCase() === recentUsername.toLowerCase()
+                        (usernamePickerTarget === "opponent" ? opponent : username)
+                          .trim()
+                          .toLowerCase() === recentUsername.toLowerCase()
                           ? "active"
                           : ""
                       }

@@ -139,6 +139,7 @@ body:has(.analysisPage),
 .analysisColorToggles button:focus-visible,
 .analysisPlayerNameButton:focus-visible,
 .analysisPlayerSideButton:focus-visible,
+.analysisOpponentClearButton:focus-visible,
 .analysisUsernamePickerClose:focus-visible,
 .analysisUsernamePickerForm input:focus-visible,
 .analysisRecentUsernameChip button:focus-visible,
@@ -530,6 +531,7 @@ body:has(.analysisPage),
 .analysisFilterGroup,
 .analysisUsernameField,
 .analysisPlayerSettings,
+.analysisOpponentField,
 .analysisDateFilters label,
 .analysisRatingSlider {
   min-width: 0;
@@ -540,6 +542,7 @@ body:has(.analysisPage),
 .analysisFilterGroup > span,
 .analysisUsernameField > span,
 .analysisPlayerSettings > span,
+.analysisOpponentField > span,
 .analysisDateFilters span,
 .analysisRatingSlider > span {
   color: color-mix(in srgb, var(--color-muted) 70%, var(--color-panel-deep) 30%);
@@ -607,6 +610,37 @@ body:has(.analysisPage),
 }
 
 .analysisPlayerSideButton:hover {
+  color: var(--color-heading);
+}
+
+.analysisOpponentField {
+  margin-top: 2px;
+}
+
+.analysisOpponentFieldRow {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.analysisOpponentClearButton {
+  width: 32px;
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-panel-deep) 18%, transparent);
+  color: color-mix(in srgb, var(--color-heading) 78%, transparent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.analysisOpponentClearButton:hover {
+  background: color-mix(in srgb, var(--color-primary) 20%, transparent);
   color: var(--color-heading);
 }
 

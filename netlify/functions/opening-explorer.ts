@@ -24,6 +24,7 @@ const ALLOWED_QUERY_PARAMS = new Set([
   "startDate",
   "endDate",
   "username",
+  "opponent",
 ]);
 const cache = new Map<string, string>();
 const aliasCache = new Map<string, Map<string, string>>();
@@ -345,6 +346,13 @@ export const handler = async (event: NetlifyEvent) => {
   }
 
   const username = await resolveCanonicalUsername(requestedUsername, databaseUrl);
+  const requestedOpponent = parseUsername(params.get("opponent"));
+  if (requestedOpponent === null) {
+    return jsonResponse(400, { error: "Invalid opponent query parameter" });
+  }
+  const opponent = username
+    ? await resolveCanonicalUsername(requestedOpponent, databaseUrl)
+    : "";
   const color = parseColor(params.get("color"));
   if (color === null) {
     return jsonResponse(400, { error: "Invalid color query parameter" });
@@ -377,6 +385,8 @@ export const handler = async (event: NetlifyEvent) => {
     color,
     requestedUsername,
     username,
+    requestedOpponent,
+    opponent,
     minRating,
     speeds,
     startDate,
@@ -397,8 +407,13 @@ export const handler = async (event: NetlifyEvent) => {
   const playerIdSql = username
     ? `(select name_id from opening_names where lower(name) = ${sqlString(username)} limit 1)`
     : "";
+  const opponentIdSql = opponent
+    ? `(select name_id from opening_names where lower(name) = ${sqlString(opponent)} limit 1)`
+    : "";
+  const opponentIdColumn = color === 0 ? "black_id" : "white_id";
   const edgesPlayerSql = username ? `and canonical_player_id = ${playerIdSql}` : "";
   const gamesPlayerSql = username ? `and g.canonical_player_id = ${playerIdSql}` : "";
+  const gamesOpponentSql = opponent ? `and g.${opponentIdColumn} = ${opponentIdSql}` : "";
   const edgesColorSql = `and player_color = ${color}`;
   const gamesColorSql = `and g.player_color = ${color}`;
   const speedSql = speeds.join(",");
@@ -422,13 +437,30 @@ export const handler = async (event: NetlifyEvent) => {
     ${gamesColorSql}
     and g.speed in (${speedSql})
     ${gamesPlayerSql}
+    ${gamesOpponentSql}
     ${gamesDateSql}
   `;
   const opponentRatingColumn = color === 0 ? "g.black_rating" : "g.white_rating";
   const detailsRatingFilter = username
     ? `and ${opponentRatingColumn} >= ${minRating}`
     : `and ((g.white_rating + g.black_rating) / 2.0) >= ${minRating}`;
-  const movesSql = `
+  const movesSql = opponent
+    ? `
+      select
+        g.next_uci as uci,
+        count(*) as games,
+        sum(case when g.winner = 1 then 1 else 0 end) as whiteWins,
+        sum(case when g.winner = 0 then 1 else 0 end) as draws,
+        sum(case when g.winner = 2 then 1 else 0 end) as blackWins,
+        round(avg(${opponentRatingColumn})) as avgOpponentRating
+      from opening_position_games g
+      where ${gamesWhere}
+        ${detailsRatingFilter}
+      group by g.next_uci
+      order by games desc
+      limit 12;
+    `
+    : `
       select
         next_uci as uci,
         sum(games) as games,
