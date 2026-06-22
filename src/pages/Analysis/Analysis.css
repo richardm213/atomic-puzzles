@@ -1,11 +1,17 @@
 .analysisPage {
+  --analysis-board-column-height: calc(var(--analysis-board-size, 516px) + 154px);
+  --analysis-side-panel-max-height: calc(100dvh - clamp(72px, 10vh, 96px));
+  --analysis-side-panel-height: min(
+    max(440px, var(--analysis-board-column-height)),
+    var(--analysis-side-panel-max-height)
+  );
   min-height: var(--page-shell-min-height);
   min-height: var(--page-shell-min-height-dynamic);
-  width: min(100%, 980px);
+  width: min(100%, max(980px, calc(var(--analysis-board-size, 516px) + 392px)));
   margin: 0 auto;
   padding: clamp(8px, 1.2vw, 14px) var(--page-gutter);
   display: grid;
-  grid-template-columns: minmax(360px, 516px) minmax(310px, 380px);
+  grid-template-columns: minmax(360px, var(--analysis-board-size, 516px)) minmax(310px, 380px);
   align-items: start;
   justify-content: center;
   gap: clamp(8px, 1.2vw, 12px);
@@ -79,7 +85,6 @@ body:has(.analysisPage),
   text-transform: uppercase;
 }
 
-.analysisFenBox code,
 .analysisTextBox textarea {
   min-width: 0;
   max-height: 58px;
@@ -103,26 +108,6 @@ body:has(.analysisPage),
   font-size: 12px;
   line-height: 1.35;
   resize: vertical;
-}
-
-.analysisTextApplyButton {
-  width: 34px;
-  min-height: 34px;
-  padding: 0;
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-ui);
-  background: color-mix(in srgb, var(--color-panel-strong) 86%, var(--color-primary) 14%);
-  color: var(--color-text);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.analysisTextApplyButton:hover {
-  border-color: var(--color-accent-soft-border);
-  background: color-mix(in srgb, var(--color-panel-strong) 76%, var(--color-primary) 24%);
-  color: var(--color-heading);
 }
 
 .analysisTextBoxError {
@@ -188,8 +173,9 @@ body:has(.analysisPage),
 .analysisUsernamePickerSubmit:focus-visible,
 .analysisRecentUsernameChip button:focus-visible,
 .analysisExplorerRow:focus-visible,
+.analysisExplorerResizeHandle:focus-visible,
+.analysisBoardResizeHandle:focus-visible,
 .analysisTextBox textarea:focus-visible,
-.analysisTextApplyButton:focus-visible,
 .analysisMoveList button:focus-visible {
   outline: 3px solid var(--color-primary-ring);
   outline-offset: 2px;
@@ -199,11 +185,16 @@ body:has(.analysisPage),
   grid-column: 2;
   grid-row: 1;
   align-self: start;
-  height: min(820px, calc(100dvh - clamp(72px, 10vh, 96px)));
-  max-height: calc(100dvh - clamp(72px, 10vh, 96px));
+  height: var(--analysis-side-panel-height);
+  max-height: var(--analysis-side-panel-max-height);
   min-height: 0;
-  grid-template-rows: minmax(86px, 0.2fr) minmax(0, 1fr) auto;
+  grid-template-rows: minmax(86px, var(--analysis-move-panel-height, 0.32fr)) minmax(0, 1fr) auto;
   overflow: hidden;
+}
+
+.analysisRightPanel.explorerResizing {
+  cursor: row-resize;
+  user-select: none;
 }
 
 .analysisRightPanel.explorerCollapsed {
@@ -313,18 +304,6 @@ body:has(.analysisPage),
   text-transform: uppercase;
 }
 
-.analysisPgnBox p {
-  min-height: 20px;
-  max-height: 54px;
-  margin: 0;
-  overflow: auto;
-  color: var(--color-text);
-  font-size: 13px;
-  font-weight: 650;
-  line-height: 1.45;
-  overflow-wrap: anywhere;
-}
-
 .analysisEmptyState,
 .analysisEmptyExplorer {
   min-height: 104px;
@@ -343,13 +322,16 @@ body:has(.analysisPage),
   grid-column: 1;
   grid-row: 1 / span 2;
   min-width: 0;
+  width: min(100%, var(--analysis-board-size, 516px));
   display: grid;
   justify-items: center;
   gap: 8px;
 }
 
 .analysisBoardPanel {
-  width: min(100%, 516px);
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
   padding: 0;
   border: 0;
   background: transparent;
@@ -366,11 +348,48 @@ body:has(.analysisPage),
 
 .analysisBoardPanel .cg-boardShell,
 .analysisBoardPanel .cg-board {
-  width: min(100%, 516px);
+  width: 100%;
+}
+
+.analysisBoardResizeHandle {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  z-index: 8;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: color-mix(in srgb, var(--color-heading) 58%, transparent);
+  cursor: nwse-resize;
+  opacity: 0.7;
+  touch-action: none;
+}
+
+.analysisBoardResizeHandle::before {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  background: repeating-linear-gradient(
+    135deg,
+    transparent 0 4px,
+    currentColor 4px 5px,
+    transparent 5px 8px
+  );
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+}
+
+.analysisBoardResizeHandle:hover,
+.analysisBoardResizeHandle:focus-visible,
+.analysisBoardResizeHandle:active {
+  color: color-mix(in srgb, var(--color-heading) 88%, var(--color-primary) 12%);
+  opacity: 1;
 }
 
 .analysisBoardTextPanel {
-  width: min(100%, 516px);
+  width: 100%;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 6px;
@@ -379,7 +398,7 @@ body:has(.analysisPage),
 .analysisBoardTextPanel .analysisFenBox,
 .analysisBoardTextPanel .analysisPgnBox {
   grid-column: 1 / -1;
-  grid-template-columns: 44px minmax(0, 1fr) 34px;
+  grid-template-columns: 44px minmax(0, 1fr);
   align-items: center;
   min-height: 34px;
 }
@@ -387,11 +406,6 @@ body:has(.analysisPage),
 .analysisBoardTextPanel .analysisFenBox span,
 .analysisBoardTextPanel .analysisPgnBox span {
   justify-self: end;
-}
-
-.analysisBoardTextPanel .analysisPgnBox p {
-  white-space: nowrap;
-  text-overflow: ellipsis;
 }
 
 .analysisBoardTextPanel .analysisPgnBox textarea {
@@ -426,12 +440,46 @@ body:has(.analysisPage),
 .analysisExplorerPanel {
   min-width: 0;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
   gap: 4px;
   padding-top: 2px;
   border-top: 1px solid var(--color-border);
   min-height: 0;
   overflow: hidden;
+}
+
+.analysisExplorerResizeHandle {
+  width: 100%;
+  height: 12px;
+  margin: -5px 0 -3px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: row-resize;
+  touch-action: none;
+}
+
+.analysisExplorerResizeHandle::before {
+  content: "";
+  width: 42px;
+  height: 3px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-muted) 58%, transparent);
+  opacity: 0.72;
+  transition:
+    background 140ms ease,
+    opacity 140ms ease;
+}
+
+.analysisExplorerResizeHandle:hover::before,
+.analysisExplorerResizeHandle:focus-visible::before,
+.analysisRightPanel.explorerResizing .analysisExplorerResizeHandle::before {
+  background: color-mix(in srgb, var(--color-heading) 72%, var(--color-primary) 28%);
+  opacity: 1;
 }
 
 .analysisExplorerCompactHeader {
@@ -1455,8 +1503,12 @@ body:has(.analysisPage),
 
 @media (max-width: 980px) {
   .analysisPage {
+    --analysis-side-panel-height: min(
+      max(520px, calc(var(--analysis-board-size, 516px) * 0.92)),
+      720px
+    );
     grid-template-columns: 1fr;
-    width: min(100%, 720px);
+    width: min(100%, max(720px, var(--analysis-board-size, 516px)));
   }
 
   .analysisBoardColumn {
@@ -1468,8 +1520,8 @@ body:has(.analysisPage),
   .analysisRightPanel {
     grid-column: auto;
     grid-row: auto;
-    height: min(82vh, 720px);
-    min-height: 560px;
+    height: min(82vh, var(--analysis-side-panel-height));
+    min-height: min(520px, var(--analysis-side-panel-height));
   }
 
   .analysisExplorerPanel {
@@ -1479,6 +1531,7 @@ body:has(.analysisPage),
 
 @media (max-width: 780px) {
   .analysisPage {
+    --analysis-side-panel-height: auto;
     grid-template-columns: 1fr;
     padding-inline: max(10px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-right));
   }
@@ -1503,10 +1556,11 @@ body:has(.analysisPage),
 
   .analysisBoardColumn {
     order: -1;
+    width: min(100%, var(--analysis-board-size, 520px));
   }
 
   .analysisBoardPanel {
-    width: min(100%, 520px);
+    width: 100%;
   }
 
   .analysisToolGrid {
@@ -1515,8 +1569,7 @@ body:has(.analysisPage),
 }
 
 @media (max-width: 480px) {
-  .analysisPanel,
-  .analysisBoardPanel {
+  .analysisPanel {
     padding: 10px;
   }
 

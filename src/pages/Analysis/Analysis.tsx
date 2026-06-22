@@ -14,7 +14,12 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { makeSan } from "chessops/san";
-import type { CSSProperties, FormEvent } from "react";
+import type {
+  CSSProperties,
+  FormEvent,
+  KeyboardEvent as ReactKeyboardEvent,
+  PointerEvent as ReactPointerEvent,
+} from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Chessboard } from "../../components/Chessboard/Chessboard";
@@ -24,6 +29,9 @@ import type { ChessboardState, SolutionNavigation } from "../../types/chessboard
 import { appAssetPath } from "../../utils/appAssetPath";
 
 const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+const MIN_MOVE_PANEL_HEIGHT = 86;
+const MIN_EXPLORER_PANEL_HEIGHT = 220;
+const EXPLORER_RESIZE_STEP = 24;
 
 type ExplorerApiMove = {
   uci: string;
@@ -92,7 +100,12 @@ const EXPLORER_REQUEST_TIMEOUT_MS = 15_000;
 const MONTH_FILTER_PATTERN = /^\d{4}-\d{2}$/;
 const EXPLORER_SETTINGS_STORAGE_KEY = "atomic-puzzles.analysis.explorer-settings";
 const RECENT_USERNAME_STORAGE_KEY = "atomic-puzzles.analysis.recent-usernames";
+const BOARD_SIZE_STORAGE_KEY = "atomic-puzzles.analysis.board-size";
 const MAX_RECENT_USERNAMES = 18;
+const DEFAULT_ANALYSIS_BOARD_SIZE = 516;
+const MIN_ANALYSIS_BOARD_SIZE = 320;
+const MAX_ANALYSIS_BOARD_SIZE = 760;
+const ANALYSIS_DESKTOP_RESERVED_WIDTH = 430;
 const DEFAULT_PLAYER_START_DATE = "2025-01";
 const SPEED_FILTERS: Array<{ key: ExplorerSpeed; label: string; value: 0 | 1 }> = [
   { key: "bullet", label: "Bullet", value: 0 },
@@ -114,6 +127,32 @@ type StoredExplorerSettings = typeof DEFAULT_EXPLORER_SETTINGS;
 
 const clampRating = (rating: number): number =>
   Math.max(1700, Math.min(2200, Number.isFinite(rating) ? rating : 1700));
+
+const clampAnalysisBoardSize = (size: number, maxSize = MAX_ANALYSIS_BOARD_SIZE): number =>
+  Math.round(
+    Math.max(
+      MIN_ANALYSIS_BOARD_SIZE,
+      Math.min(maxSize, Number.isFinite(size) ? size : DEFAULT_ANALYSIS_BOARD_SIZE),
+    ),
+  );
+
+const getMaxAnalysisBoardSize = (): number => {
+  if (typeof window === "undefined") return MAX_ANALYSIS_BOARD_SIZE;
+
+  const viewportWidth = window.innerWidth;
+  if (viewportWidth <= 780) {
+    return Math.max(MIN_ANALYSIS_BOARD_SIZE, Math.min(MAX_ANALYSIS_BOARD_SIZE, viewportWidth - 20));
+  }
+
+  if (viewportWidth <= 980) {
+    return Math.min(MAX_ANALYSIS_BOARD_SIZE, 720);
+  }
+
+  return Math.max(
+    MIN_ANALYSIS_BOARD_SIZE,
+    Math.min(MAX_ANALYSIS_BOARD_SIZE, viewportWidth - ANALYSIS_DESKTOP_RESERVED_WIDTH),
+  );
+};
 
 const validMonthFilter = (value: unknown): string => {
   const monthValue = String(value ?? "").trim();
@@ -191,6 +230,22 @@ const storeRecentUsernames = (usernames: string[]): void => {
     RECENT_USERNAME_STORAGE_KEY,
     JSON.stringify(usernames.slice(0, MAX_RECENT_USERNAMES)),
   );
+};
+
+const loadBoardSize = (): number => {
+  if (typeof window === "undefined") return DEFAULT_ANALYSIS_BOARD_SIZE;
+
+  const storedSize = Number(window.localStorage.getItem(BOARD_SIZE_STORAGE_KEY));
+  return clampAnalysisBoardSize(
+    Number.isFinite(storedSize) && storedSize > 0 ? storedSize : DEFAULT_ANALYSIS_BOARD_SIZE,
+    getMaxAnalysisBoardSize(),
+  );
+};
+
+const storeBoardSize = (size: number): void => {
+  if (typeof window === "undefined") return;
+
+  window.localStorage.setItem(BOARD_SIZE_STORAGE_KEY, String(size));
 };
 
 const addRecentUsername = (usernames: string[], username: string): string[] => {
@@ -347,12 +402,17 @@ const lichessAnalysisUrl = (fen: string): string =>
 export const AnalysisPage = () => {
   const [initialExplorerSettings] = useState(loadExplorerSettings);
   const boardPanelRef = useRef<HTMLDivElement | null>(null);
+  const rightPanelRef = useRef<HTMLElement | null>(null);
+  const movePanelRef = useRef<HTMLDivElement | null>(null);
   const boardWheelDeltaRef = useRef(0);
   const boardWheelLastAtRef = useRef(0);
   const boardWheelDirectionRef = useRef(0);
   const boardWheelCanStepBackRef = useRef(false);
   const boardWheelCanStepForwardRef = useRef(false);
+  const fenDraftDirtyRef = useRef(false);
+  const pgnDraftDirtyRef = useRef(false);
   const [boardState, setBoardState] = useState<ChessboardState | null>(null);
+  const [boardSize, setBoardSize] = useState(loadBoardSize);
   const [rootFen, setRootFen] = useState(STARTING_FEN);
   const [fenDraft, setFenDraft] = useState(STARTING_FEN);
   const [pgnDraft, setPgnDraft] = useState("*");
@@ -363,6 +423,8 @@ export const AnalysisPage = () => {
   const [navigation, setNavigation] = useState<SolutionNavigation | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [explorerOpen, setExplorerOpen] = useState(true);
+  const [movePanelHeight, setMovePanelHeight] = useState<number | null>(null);
+  const [explorerResizing, setExplorerResizing] = useState(false);
   const [explorerScope, setExplorerScope] = useState<ExplorerScope>(
     initialExplorerSettings.explorerScope,
   );
@@ -390,6 +452,9 @@ export const AnalysisPage = () => {
   const currentFen = boardState?.fen || STARTING_FEN;
   const currentLichessAnalysisUrl = lichessAnalysisUrl(currentFen);
   const currentPly = boardState?.lineIndex ?? 0;
+  const analysisPageStyle = {
+    "--analysis-board-size": `${boardSize}px`,
+  } as CSSProperties;
   const canStepBack = currentPly > 0;
   const canStepForward = currentPly < moveList.length;
   const showExplorerResults = !filtersOpen;
@@ -413,6 +478,10 @@ export const AnalysisPage = () => {
       : 0;
   const explorerSummaryBlack =
     explorerSummary.games > 0 ? Math.max(0, 100 - explorerSummaryWhite - explorerSummaryDraw) : 0;
+  const rightPanelStyle =
+    explorerOpen && movePanelHeight !== null
+      ? ({ "--analysis-move-panel-height": `${movePanelHeight}px` } as CSSProperties)
+      : undefined;
 
   const movePairs: Array<{
     number: number;
@@ -527,6 +596,56 @@ export const AnalysisPage = () => {
     };
   }, [handleBoardWheel]);
 
+  useEffect(() => {
+    storeBoardSize(boardSize);
+  }, [boardSize]);
+
+  useEffect(() => {
+    const handleWindowResize = (): void => {
+      setBoardSize((currentSize) => clampAnalysisBoardSize(currentSize, getMaxAnalysisBoardSize()));
+    };
+
+    handleWindowResize();
+    window.addEventListener("resize", handleWindowResize);
+    return () => window.removeEventListener("resize", handleWindowResize);
+  }, []);
+
+  const handleBoardResizePointerDown = (event: ReactPointerEvent<HTMLButtonElement>): void => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const startSize = boardSize;
+    const pointerId = event.pointerId;
+    const controller = new AbortController();
+
+    const handlePointerMove = (moveEvent: PointerEvent): void => {
+      if (moveEvent.pointerId !== pointerId) return;
+
+      moveEvent.preventDefault();
+      const deltaX = moveEvent.clientX - startX;
+      const deltaY = moveEvent.clientY - startY;
+      const resizeDelta = Math.abs(deltaX) > Math.abs(deltaY) ? deltaX : deltaY;
+
+      setBoardSize(clampAnalysisBoardSize(startSize + resizeDelta, getMaxAnalysisBoardSize()));
+    };
+
+    const handlePointerUp = (upEvent: PointerEvent): void => {
+      if (upEvent.pointerId !== pointerId) return;
+      controller.abort();
+    };
+
+    window.addEventListener("pointermove", handlePointerMove, {
+      passive: false,
+      signal: controller.signal,
+    });
+    window.addEventListener("pointerup", handlePointerUp, { signal: controller.signal });
+    window.addEventListener("pointercancel", handlePointerUp, { signal: controller.signal });
+  };
+
   const navigateToPly = (plyIndex: number): void => {
     setNavigation({ useHistory: true, plyIndex });
   };
@@ -535,10 +654,14 @@ export const AnalysisPage = () => {
     setNavigation({ playUci: uci });
   };
 
-  const submitFen = (event: FormEvent<HTMLFormElement>): void => {
-    event.preventDefault();
-    const nextFen = fenDraft.trim();
+  const commitFenDraft = (draft = fenDraft, force = false): void => {
+    if (!force && !fenDraftDirtyRef.current) {
+      setFenError("");
+      setActiveTextEditor(null);
+      return;
+    }
 
+    const nextFen = draft.trim();
     try {
       createAtomicPosition(nextFen);
     } catch (error) {
@@ -548,15 +671,110 @@ export const AnalysisPage = () => {
 
     setRootFen(nextFen);
     setFenDraft(nextFen);
+    setPgnDraft("*");
+    fenDraftDirtyRef.current = false;
+    pgnDraftDirtyRef.current = false;
+    setActiveTextEditor(null);
     setFenError("");
     setPgnError("");
     setNavigation({ resetFen: nextFen });
   };
 
-  const submitPgn = (event: FormEvent<HTMLFormElement>): void => {
-    event.preventDefault();
+  const commitPgnDraft = (draft = pgnDraft, force = false): void => {
+    if (!force && !pgnDraftDirtyRef.current) {
+      setPgnError("");
+      setActiveTextEditor(null);
+      return;
+    }
+
     setPgnError("");
-    setNavigation({ loadPgn: pgnDraft, loadPgnFen: rootFen });
+    setNavigation({ loadPgn: draft, loadPgnFen: rootFen });
+    pgnDraftDirtyRef.current = false;
+    setActiveTextEditor(null);
+  };
+
+  const handleFenKeyDown = (event: ReactKeyboardEvent<HTMLTextAreaElement>): void => {
+    if (event.key !== "Enter" || event.shiftKey) return;
+
+    event.preventDefault();
+    commitFenDraft(event.currentTarget.value, true);
+  };
+
+  const handlePgnKeyDown = (event: ReactKeyboardEvent<HTMLTextAreaElement>): void => {
+    if (event.key !== "Enter" || event.shiftKey) return;
+
+    event.preventDefault();
+    commitPgnDraft(event.currentTarget.value, true);
+  };
+
+  const clampMovePanelHeight = useCallback((nextHeight: number): number | null => {
+    const panel = rightPanelRef.current;
+    if (!panel) return null;
+
+    const panelHeight = panel.getBoundingClientRect().height;
+    const maxHeight = Math.max(MIN_MOVE_PANEL_HEIGHT, panelHeight - MIN_EXPLORER_PANEL_HEIGHT);
+    return Math.round(Math.min(Math.max(nextHeight, MIN_MOVE_PANEL_HEIGHT), maxHeight));
+  }, []);
+
+  const adjustExplorerSplit = useCallback(
+    (delta: number): void => {
+      const panel = rightPanelRef.current;
+      const fallbackHeight =
+        movePanelRef.current?.getBoundingClientRect().height ??
+        (panel ? panel.getBoundingClientRect().height * 0.32 : MIN_MOVE_PANEL_HEIGHT);
+      const currentHeight = movePanelHeight ?? fallbackHeight;
+      const nextHeight = clampMovePanelHeight(currentHeight + delta);
+      if (nextHeight !== null) {
+        setMovePanelHeight(nextHeight);
+      }
+    },
+    [clampMovePanelHeight, movePanelHeight],
+  );
+
+  const handleExplorerResizePointerDown = (event: ReactPointerEvent<HTMLButtonElement>): void => {
+    if (!rightPanelRef.current) return;
+
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setExplorerResizing(true);
+
+    const ownerDocument = event.currentTarget.ownerDocument;
+    const startY = event.clientY;
+    const startHeight =
+      movePanelHeight ??
+      movePanelRef.current?.getBoundingClientRect().height ??
+      MIN_MOVE_PANEL_HEIGHT;
+
+    const handlePointerMove = (pointerEvent: PointerEvent): void => {
+      pointerEvent.preventDefault();
+      const nextHeight = clampMovePanelHeight(startHeight + pointerEvent.clientY - startY);
+      if (nextHeight !== null) {
+        setMovePanelHeight(nextHeight);
+      }
+    };
+    const handlePointerUp = (): void => {
+      setExplorerResizing(false);
+      ownerDocument.removeEventListener("pointermove", handlePointerMove);
+      ownerDocument.removeEventListener("pointerup", handlePointerUp);
+      ownerDocument.removeEventListener("pointercancel", handlePointerUp);
+    };
+
+    ownerDocument.addEventListener("pointermove", handlePointerMove);
+    ownerDocument.addEventListener("pointerup", handlePointerUp);
+    ownerDocument.addEventListener("pointercancel", handlePointerUp);
+  };
+
+  const handleExplorerResizeKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>): void => {
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      adjustExplorerSplit(-EXPLORER_RESIZE_STEP);
+      return;
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      adjustExplorerSplit(EXPLORER_RESIZE_STEP);
+    }
   };
 
   const saveRecentUsernames = (nextUsernames: string[]): void => {
@@ -566,11 +784,12 @@ export const AnalysisPage = () => {
 
   const closeUsernamePicker = (): void => {
     setUsernamePickerOpen(false);
+    setUsernameDraft("");
   };
 
   const openUsernamePicker = (target: UsernamePickerTarget): void => {
     setUsernamePickerTarget(target);
-    setUsernameDraft(target === "player" ? username : opponent);
+    setUsernameDraft("");
     setUsernamePickerOpen(true);
   };
 
@@ -860,7 +1079,7 @@ export const AnalysisPage = () => {
   }, [usernamePickerOpen]);
 
   return (
-    <section className="analysisPage">
+    <section className="analysisPage" style={analysisPageStyle}>
       <Seo
         title="Analysis"
         description="Analyze atomic chess positions and browse opening explorer filters."
@@ -868,10 +1087,14 @@ export const AnalysisPage = () => {
       />
 
       <aside
-        className={`analysisPanel analysisRightPanel ${explorerOpen ? "explorerOpen" : "explorerCollapsed"}`}
+        ref={rightPanelRef}
+        className={`analysisPanel analysisRightPanel ${explorerOpen ? "explorerOpen" : "explorerCollapsed"} ${
+          explorerResizing ? "explorerResizing" : ""
+        }`}
+        style={rightPanelStyle}
         aria-label="Analysis controls"
       >
-        <div className="analysisMovePanel">
+        <div className="analysisMovePanel" ref={movePanelRef}>
           <div className="analysisSectionTitle">
             <span>Moves</span>
           </div>
@@ -908,6 +1131,16 @@ export const AnalysisPage = () => {
 
         {explorerOpen ? (
           <section className="analysisExplorerPanel" aria-label="Opening explorer">
+            <button
+              type="button"
+              className="analysisExplorerResizeHandle"
+              role="separator"
+              aria-orientation="horizontal"
+              aria-label="Resize moves and opening explorer"
+              title="Resize moves and opening explorer"
+              onPointerDown={handleExplorerResizePointerDown}
+              onKeyDown={handleExplorerResizeKeyDown}
+            />
             <div className="analysisExplorerCompactHeader">
               <div
                 className="analysisExplorerTabs"
@@ -1428,6 +1661,13 @@ export const AnalysisPage = () => {
             onNavigateHandled={() => setNavigation(null)}
             onStateChange={setBoardState}
           />
+          <button
+            type="button"
+            className="analysisBoardResizeHandle"
+            aria-label="Resize analysis board"
+            title="Resize board"
+            onPointerDown={handleBoardResizePointerDown}
+          />
         </div>
         <div className="analysisBoardTextPanel">
           <a
@@ -1439,7 +1679,7 @@ export const AnalysisPage = () => {
             <FontAwesomeIcon icon={faExternalLinkAlt} />
             <span>View on Lichess</span>
           </a>
-          <form className="analysisFenBox analysisTextBox" onSubmit={submitFen}>
+          <div className="analysisFenBox analysisTextBox">
             <span>FEN</span>
             <textarea
               value={fenDraft}
@@ -1447,21 +1687,20 @@ export const AnalysisPage = () => {
               spellCheck={false}
               aria-label="FEN"
               aria-invalid={Boolean(fenError)}
-              onFocus={() => setActiveTextEditor("fen")}
-              onBlur={() => setActiveTextEditor(null)}
-              onChange={(event) => setFenDraft(event.target.value)}
+              onFocus={() => {
+                fenDraftDirtyRef.current = false;
+                setActiveTextEditor("fen");
+              }}
+              onBlur={(event) => commitFenDraft(event.currentTarget.value)}
+              onKeyDown={handleFenKeyDown}
+              onChange={(event) => {
+                fenDraftDirtyRef.current = true;
+                setFenDraft(event.target.value);
+              }}
             />
-            <button
-              type="submit"
-              className="analysisTextApplyButton"
-              aria-label="Apply FEN"
-              onMouseDown={(event) => event.preventDefault()}
-            >
-              <FontAwesomeIcon icon={faCheck} />
-            </button>
             {fenError ? <small className="analysisTextBoxError">{fenError}</small> : null}
-          </form>
-          <form className="analysisPgnBox analysisTextBox" aria-label="PGN" onSubmit={submitPgn}>
+          </div>
+          <div className="analysisPgnBox analysisTextBox" aria-label="PGN">
             <span>PGN</span>
             <textarea
               value={pgnDraft}
@@ -1469,20 +1708,19 @@ export const AnalysisPage = () => {
               spellCheck={false}
               aria-label="PGN"
               aria-invalid={Boolean(pgnError)}
-              onFocus={() => setActiveTextEditor("pgn")}
-              onBlur={() => setActiveTextEditor(null)}
-              onChange={(event) => setPgnDraft(event.target.value)}
+              onFocus={() => {
+                pgnDraftDirtyRef.current = false;
+                setActiveTextEditor("pgn");
+              }}
+              onBlur={(event) => commitPgnDraft(event.currentTarget.value)}
+              onKeyDown={handlePgnKeyDown}
+              onChange={(event) => {
+                pgnDraftDirtyRef.current = true;
+                setPgnDraft(event.target.value);
+              }}
             />
-            <button
-              type="submit"
-              className="analysisTextApplyButton"
-              aria-label="Apply PGN"
-              onMouseDown={(event) => event.preventDefault()}
-            >
-              <FontAwesomeIcon icon={faCheck} />
-            </button>
             {pgnError ? <small className="analysisTextBoxError">{pgnError}</small> : null}
-          </form>
+          </div>
         </div>
       </div>
     </section>
