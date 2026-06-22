@@ -55,6 +55,9 @@ type ExplorerMove = {
   move: string;
   games: number;
   gamesLabel: string;
+  whiteWins: number;
+  draws: number;
+  blackWins: number;
   white: number;
   draw: number;
   black: number;
@@ -87,6 +90,7 @@ const MONTH_FILTER_PATTERN = /^\d{4}-\d{2}$/;
 const EXPLORER_SETTINGS_STORAGE_KEY = "atomic-puzzles.analysis.explorer-settings";
 const RECENT_USERNAME_STORAGE_KEY = "atomic-puzzles.analysis.recent-usernames";
 const MAX_RECENT_USERNAMES = 18;
+const DEFAULT_PLAYER_START_DATE = "2025-01";
 const SPEED_FILTERS: Array<{ key: ExplorerSpeed; label: string; value: 0 | 1 }> = [
   { key: "bullet", label: "Bullet", value: 0 },
   { key: "blitz", label: "Blitz", value: 1 },
@@ -134,13 +138,17 @@ const loadExplorerSettings = (): StoredExplorerSettings => {
     const rawSettings = parsed as Partial<StoredExplorerSettings>;
     const explorerScope = rawSettings.explorerScope === "player" ? "player" : "general";
     const playerColor = rawSettings.playerColor === "black" ? "black" : "white";
+    const startDate =
+      explorerScope === "player"
+        ? validMonthFilter(rawSettings.startDate) || DEFAULT_PLAYER_START_DATE
+        : "";
 
     return {
       explorerScope,
       playerColor,
       selectedSpeeds: normalizeStoredSpeeds(rawSettings.selectedSpeeds),
       minRating: clampRating(Number(rawSettings.minRating)),
-      startDate: validMonthFilter(rawSettings.startDate),
+      startDate,
       endDate: validMonthFilter(rawSettings.endDate),
       username: String(rawSettings.username ?? "").trim(),
     };
@@ -301,6 +309,9 @@ const toExplorerMove = (
     move: sanFromUci(fen, row.uci),
     games: row.games,
     gamesLabel: formatGameCount(row.games),
+    whiteWins: row.whiteWins,
+    draws: row.draws,
+    blackWins: row.blackWins,
     white,
     draw,
     black,
@@ -367,6 +378,25 @@ export const AnalysisPage = () => {
   const canStepForward = currentPly < moveList.length;
   const showExplorerResults = !filtersOpen;
   const explorerColumnCount = explorerScope === "player" ? 4 : 3;
+  const explorerSummary = explorerMoves.reduce(
+    (summary, row) => ({
+      games: summary.games + row.games,
+      whiteWins: summary.whiteWins + row.whiteWins,
+      draws: summary.draws + row.draws,
+      blackWins: summary.blackWins + row.blackWins,
+    }),
+    { games: 0, whiteWins: 0, draws: 0, blackWins: 0 },
+  );
+  const explorerSummaryWhite =
+    explorerSummary.games > 0
+      ? Math.round((explorerSummary.whiteWins / explorerSummary.games) * 100)
+      : 0;
+  const explorerSummaryDraw =
+    explorerSummary.games > 0
+      ? Math.round((explorerSummary.draws / explorerSummary.games) * 100)
+      : 0;
+  const explorerSummaryBlack =
+    explorerSummary.games > 0 ? Math.max(0, 100 - explorerSummaryWhite - explorerSummaryDraw) : 0;
 
   const movePairs: Array<{
     number: number;
@@ -449,6 +479,9 @@ export const AnalysisPage = () => {
     setUsername(trimmedUsername);
     setUsernameDraft(trimmedUsername);
     setExplorerScope("player");
+    setStartDate(
+      (currentStartDate) => validMonthFilter(currentStartDate) || DEFAULT_PLAYER_START_DATE,
+    );
     saveRecentUsernames(addRecentUsername(recentUsernames, trimmedUsername));
     setUsernamePickerOpen(false);
   };
@@ -472,6 +505,9 @@ export const AnalysisPage = () => {
 
   const showPlayerExplorer = (): void => {
     setExplorerScope("player");
+    setStartDate(
+      (currentStartDate) => validMonthFilter(currentStartDate) || DEFAULT_PLAYER_START_DATE,
+    );
     setFiltersOpen(!username.trim());
   };
 
@@ -754,6 +790,7 @@ export const AnalysisPage = () => {
                   aria-selected={explorerScope === "general"}
                   onClick={() => {
                     setExplorerScope("general");
+                    setStartDate("");
                     setFiltersOpen(false);
                   }}
                 >
@@ -1011,6 +1048,50 @@ export const AnalysisPage = () => {
                       </tr>
                     ))}
                   </tbody>
+                  {explorerStatus === "ready" && explorerMoves.length > 0 ? (
+                    <tfoot>
+                      <tr className="analysisExplorerSummaryRow">
+                        <td>
+                          <span className="analysisExplorerSummaryMove">Σ</span>
+                        </td>
+                        <td>{formatGameCount(explorerSummary.games)}</td>
+                        {explorerScope === "player" ? <td>-</td> : null}
+                        <td>
+                          <div
+                            className="analysisWinRateBar analysisSummaryWinRateBar"
+                            title={`Shown moves: ${explorerSummaryWhite}% white, ${explorerSummaryDraw}% draw, ${explorerSummaryBlack}% black`}
+                            style={
+                              {
+                                "--white-rate": `${explorerSummaryWhite}%`,
+                                "--draw-rate": `${explorerSummaryDraw}%`,
+                                "--black-rate": `${explorerSummaryBlack}%`,
+                              } as CSSProperties
+                            }
+                            aria-label={`Shown moves: white ${explorerSummaryWhite}%, draw ${explorerSummaryDraw}%, black ${explorerSummaryBlack}%`}
+                          >
+                            <span
+                              className="white"
+                              aria-hidden={explorerSummaryWhite < WIN_RATE_LABEL_MIN_PERCENT}
+                            >
+                              {visibleWinRateLabel(explorerSummaryWhite)}
+                            </span>
+                            <span
+                              className="draw"
+                              aria-hidden={explorerSummaryDraw < WIN_RATE_LABEL_MIN_PERCENT}
+                            >
+                              {visibleWinRateLabel(explorerSummaryDraw)}
+                            </span>
+                            <span
+                              className="black"
+                              aria-hidden={explorerSummaryBlack < WIN_RATE_LABEL_MIN_PERCENT}
+                            >
+                              {visibleWinRateLabel(explorerSummaryBlack)}
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    </tfoot>
+                  ) : null}
                 </table>
 
                 {explorerStatus === "ready" && recentGames.length > 0 ? (
