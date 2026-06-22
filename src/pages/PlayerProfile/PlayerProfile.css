@@ -75,10 +75,22 @@
   --opening-text: #ffe2e2;
 }
 
+.openingToneE5 {
+  --opening-bg: rgba(225, 29, 72, 0.15);
+  --opening-border: rgba(251, 113, 133, 0.4);
+  --opening-text: #ffe4e9;
+}
+
 .openingToneD4 {
   --opening-bg: rgba(245, 158, 11, 0.16);
   --opening-border: rgba(251, 191, 36, 0.42);
   --opening-text: #fff3d4;
+}
+
+.openingToneD6 {
+  --opening-bg: rgba(124, 58, 237, 0.16);
+  --opening-border: rgba(167, 139, 250, 0.42);
+  --opening-text: #eee7ff;
 }
 
 .openingTone2n {
@@ -677,10 +689,22 @@
   --opening-text: #92241f;
 }
 
+:root[data-theme="light"] .openingToneE5 {
+  --opening-bg: #ffe1e7;
+  --opening-border: #e89ca9;
+  --opening-text: #842938;
+}
+
 :root[data-theme="light"] .openingToneD4 {
   --opening-bg: #fff0c8;
   --opening-border: #dfb65e;
   --opening-text: #76510a;
+}
+
+:root[data-theme="light"] .openingToneD6 {
+  --opening-bg: #e8e1ff;
+  --opening-border: #aa96e8;
+  --opening-text: #442a8b;
 }
 
 :root[data-theme="light"] .openingTone2n {
