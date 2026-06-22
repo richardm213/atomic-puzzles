@@ -134,6 +134,15 @@ body:has(.analysisPage),
 .analysisSecondaryButton:focus-visible,
 .analysisFilterToggle:focus-visible,
 .analysisToolbarButton:focus-visible,
+.analysisExplorerTabs button:focus-visible,
+.analysisSpeedToggles button:focus-visible,
+.analysisColorToggles button:focus-visible,
+.analysisPlayerNameButton:focus-visible,
+.analysisPlayerSideButton:focus-visible,
+.analysisUsernamePickerClose:focus-visible,
+.analysisUsernamePickerForm input:focus-visible,
+.analysisRecentUsernameChip button:focus-visible,
+.analysisExplorerRow:focus-visible,
 .analysisMoveList button:focus-visible {
   outline: 3px solid var(--color-primary-ring);
   outline-offset: 2px;
@@ -143,9 +152,10 @@ body:has(.analysisPage),
   grid-column: 2;
   grid-row: 1;
   align-self: start;
-  height: min(70vh, 516px);
-  min-height: 420px;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: min(820px, calc(100dvh - clamp(72px, 10vh, 96px)));
+  max-height: calc(100dvh - clamp(72px, 10vh, 96px));
+  min-height: 0;
+  grid-template-rows: minmax(100px, 0.26fr) minmax(0, 1fr) auto;
   overflow: hidden;
 }
 
@@ -157,7 +167,7 @@ body:has(.analysisPage),
   min-width: 0;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  gap: 6px;
+  gap: 2px;
   min-height: 0;
 }
 
@@ -177,18 +187,18 @@ body:has(.analysisPage),
 }
 
 .analysisMoveList {
-  min-height: 102px;
-  max-height: min(34vh, 260px);
+  min-height: 0;
+  max-height: none;
   margin: 0;
-  padding: 4px;
+  padding: 0;
   display: grid;
   align-content: start;
   gap: 1px;
   overflow: auto;
   list-style: none;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-ui);
-  background: color-mix(in srgb, var(--color-surface-soft) 64%, transparent);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .analysisRightPanel.explorerCollapsed .analysisMoveList {
@@ -216,8 +226,8 @@ body:has(.analysisPage),
   min-width: 0;
   min-height: 26px;
   padding: 0 6px;
-  border: 1px solid transparent;
-  border-radius: 6px;
+  border: 0;
+  border-radius: 4px;
   background: transparent;
   color: var(--color-text);
   font: inherit;
@@ -230,12 +240,10 @@ body:has(.analysisPage),
 }
 
 .analysisMoveList button:hover {
-  border-color: var(--color-border);
-  background: var(--color-panel-strong);
+  background: color-mix(in srgb, var(--color-panel-strong) 54%, transparent);
 }
 
 .analysisMoveList button.active {
-  border-color: color-mix(in srgb, var(--color-primary) 48%, transparent);
   background: color-mix(in srgb, var(--color-panel-strong) 72%, var(--color-primary) 28%);
   color: var(--color-heading);
 }
@@ -300,6 +308,12 @@ body:has(.analysisPage),
   background: transparent;
   box-shadow: none;
   backdrop-filter: none;
+  outline: none;
+}
+
+.analysisBoardPanel:focus-visible {
+  border-radius: 2px;
+  box-shadow: 0 0 0 3px var(--color-primary-ring);
 }
 
 .analysisBoardPanel .cg-boardShell,
@@ -360,8 +374,8 @@ body:has(.analysisPage),
 .analysisExplorerPanel {
   min-width: 0;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
-  gap: 6px;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 4px;
   padding-top: 6px;
   border-top: 1px solid var(--color-border);
   min-height: 0;
@@ -370,41 +384,119 @@ body:has(.analysisPage),
 
 .analysisExplorerCompactHeader {
   min-width: 0;
+  min-height: 38px;
+  padding: 0 4px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  margin: 0;
+  border-bottom: 1px solid var(--color-border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
-.analysisExplorerTitle {
+.analysisExplorerTabs {
   min-width: 0;
-  min-height: 30px;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  overflow: hidden;
+}
+
+.analysisExplorerTabs button {
+  position: relative;
+  min-width: 0;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: color-mix(in srgb, var(--color-muted) 76%, var(--color-panel-deep) 24%);
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: var(--color-heading);
+  font: inherit;
   font-size: 14px;
-  font-weight: 850;
+  font-weight: 680;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
+  opacity: 0.74;
+  transition:
+    background 140ms ease,
+    color 140ms ease,
+    opacity 140ms ease,
+    text-shadow 140ms ease;
 }
 
-.analysisExplorerTitle svg {
-  color: var(--color-primary-soft);
+.analysisExplorerTabs button:focus {
+  outline: none;
+}
+
+.analysisExplorerTabs button.active {
+  background: transparent;
+  color: var(--color-heading);
+  font-weight: 920;
+  opacity: 1;
+  box-shadow: none;
+  text-shadow: 0 0 16px color-mix(in srgb, var(--color-primary) 26%, transparent);
+}
+
+.analysisExplorerTabs button:hover {
+  background: transparent;
+  color: var(--color-heading);
+  opacity: 1;
+}
+
+.analysisExplorerTabs svg {
+  flex: 0 0 auto;
+  width: 15px;
+  color: color-mix(in srgb, var(--color-muted) 72%, var(--color-primary) 28%);
+  filter: none;
+}
+
+.analysisExplorerTabs button.active svg {
+  color: var(--color-primary-pale);
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--color-primary) 38%, transparent));
+}
+
+.analysisExplorerTabs span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.analysisExplorerTabs small {
+  flex: 0 0 auto;
+  color: color-mix(in srgb, currentColor 68%, transparent);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.analysisExplorerPlayerLabel {
+  min-width: 0;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
 }
 
 .analysisFilterToggle {
   min-width: 0;
-  min-height: 30px;
-  width: 32px;
+  min-height: 32px;
+  width: 34px;
   padding: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-ui);
-  background: color-mix(in srgb, var(--color-panel-strong) 78%, transparent);
-  color: var(--color-text);
-  font-size: 14px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: color-mix(in srgb, var(--color-heading) 82%, var(--color-primary) 18%);
+  font-size: 16px;
   font-weight: 800;
 }
 
@@ -418,74 +510,424 @@ body:has(.analysisPage),
 }
 
 .analysisFilterToggle:hover {
-  border-color: var(--color-accent-soft-border);
-  background: color-mix(in srgb, var(--color-panel-strong) 82%, var(--color-primary) 18%);
+  background: color-mix(in srgb, var(--color-primary) 22%, transparent);
   color: var(--color-heading);
 }
 
 .analysisFilterPanel {
+  min-height: 0;
+  overflow: auto;
   display: grid;
-  gap: 9px;
-  padding: 8px;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--color-panel-deep) 30%, transparent);
+  gap: 8px;
+  padding: 4px 8px 8px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .analysisFilterGroup,
+.analysisUsernameField,
+.analysisPlayerSettings,
+.analysisDateFilters label,
 .analysisRatingSlider {
   min-width: 0;
   display: grid;
-  gap: 6px;
+  gap: 4px;
 }
 
 .analysisFilterGroup > span,
+.analysisUsernameField > span,
+.analysisPlayerSettings > span,
+.analysisDateFilters span,
 .analysisRatingSlider > span {
-  color: var(--color-subtle);
-  font-size: 11px;
+  color: color-mix(in srgb, var(--color-muted) 70%, var(--color-panel-deep) 30%);
+  font-size: 10px;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
-.analysisSpeedToggles {
+.analysisPlayerSettingsRow {
+  min-width: 0;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
 }
 
-.analysisSpeedToggles button {
+.analysisPlayerNameButton {
+  min-width: 0;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 68%, var(--color-border) 32%);
+  border-radius: 8px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-primary) 78%, var(--color-cyan) 22%),
+    color-mix(in srgb, var(--color-primary) 82%, var(--color-panel-deep) 18%)
+  );
+  color: #ffffff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 900;
+  text-align: left;
+  text-shadow: 0 1px 1px color-mix(in srgb, black 48%, transparent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 1px 0 color-mix(in srgb, white 16%, transparent) inset;
+}
+
+.analysisPlayerNameButton:hover {
+  filter: brightness(1.06);
+}
+
+.analysisPlayerSideButton {
+  min-height: 36px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--color-primary-pale);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 780;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.analysisPlayerSideButton svg {
+  color: var(--color-primary);
+  font-size: 18px;
+}
+
+.analysisPlayerSideButton:hover {
+  color: var(--color-heading);
+}
+
+.analysisUsernamePickerBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  padding: max(20px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right))
+    max(20px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  background: color-mix(in srgb, black 54%, transparent);
+  display: grid;
+  place-items: center;
+}
+
+.analysisUsernamePicker {
+  position: relative;
+  width: min(88vw, 560px);
+  max-height: min(72vh, 480px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: clamp(22px, 3vw, 32px);
+  border-radius: 9px;
+  background: color-mix(in srgb, #24231f 90%, var(--color-panel-deep) 10%);
+  color: var(--color-text);
+  box-shadow: 0 22px 64px color-mix(in srgb, black 46%, transparent);
+}
+
+.analysisUsernamePickerClose {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 999px;
+  background: #2d2c28;
+  color: color-mix(in srgb, var(--color-heading) 80%, transparent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  cursor: pointer;
+}
+
+.analysisUsernamePicker h2 {
+  margin: 0 0 20px;
+  color: color-mix(in srgb, var(--color-heading) 78%, transparent);
+  font-size: clamp(25px, 4vw, 38px);
+  font-weight: 360;
+  line-height: 1;
+  text-align: center;
+}
+
+.analysisUsernamePickerForm {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 22px;
+}
+
+.analysisUsernamePickerForm input {
+  width: min(100%, 300px);
+  min-height: 38px;
+  padding: 0 16px;
+  border: 2px solid var(--color-primary);
+  border-radius: 8px;
+  background: #25221e;
+  color: var(--color-heading);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 650;
+  outline: none;
+  text-align: left;
+}
+
+.analysisUsernamePickerForm input::placeholder {
+  color: color-mix(in srgb, var(--color-muted) 80%, transparent);
+  opacity: 1;
+}
+
+.analysisRecentUsernameGrid {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px 12px;
+}
+
+.analysisRecentUsernameChip {
+  position: relative;
+  min-width: 0;
+  display: inline-flex;
+}
+
+.analysisRecentUsernameChip > button:first-child {
+  max-width: min(200px, 62vw);
+  min-height: 42px;
+  padding: 0 18px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 62%, black 20%);
+  border-radius: 8px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-primary) 70%, #8ed2ff 30%),
+    color-mix(in srgb, var(--color-primary) 88%, black 8%)
+  );
+  color: #ffffff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 850;
+  text-shadow: 0 1px 1px color-mix(in srgb, black 46%, transparent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 1px 0 color-mix(in srgb, white 18%, transparent) inset;
+}
+
+.analysisRecentUsernameChip > button:first-child.active {
+  border-color: color-mix(in srgb, var(--color-primary) 72%, var(--color-border) 28%);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-primary) 78%, var(--color-cyan) 22%),
+    color-mix(in srgb, var(--color-primary) 82%, var(--color-panel-deep) 18%)
+  );
+}
+
+.analysisRecentUsernameChip > button:first-child:hover {
+  filter: brightness(1.07);
+}
+
+.analysisRecentUsernameChip .remove {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: #4b4944;
+  color: color-mix(in srgb, white 78%, transparent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.analysisRecentUsernameChip .remove:hover,
+.analysisUsernamePickerClose:hover {
+  color: #ffffff;
+  filter: brightness(1.12);
+}
+
+.analysisUsernameField input {
   width: 100%;
+  min-width: 0;
   min-height: 30px;
-  border: 1px solid var(--color-input-border);
-  border-radius: var(--radius-ui);
-  background: var(--color-panel-strong);
+  padding: 0 9px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-panel-deep) 24%, transparent);
+  color: var(--color-heading);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 750;
+  outline: none;
+}
+
+.analysisDateFilters {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  padding: 0;
+}
+
+.analysisDateFilters label {
+  grid-template-columns: minmax(0, 1fr) 96px;
+  align-items: center;
+  gap: 12px;
+}
+
+.analysisDateFilters input {
+  width: 100%;
+  min-width: 0;
+  min-height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: color-mix(in srgb, var(--color-heading) 76%, var(--color-muted) 24%);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 850;
+  letter-spacing: 0;
+  outline: none;
+  text-align: left;
+}
+
+.analysisDateFilters input:focus {
+  color: var(--color-heading);
+  text-shadow: 0 0 12px color-mix(in srgb, var(--color-primary) 26%, transparent);
+}
+
+.analysisDateFilters input::placeholder {
+  color: color-mix(in srgb, var(--color-muted) 78%, transparent);
+  opacity: 1;
+}
+
+.analysisUsernameField input::placeholder {
   color: var(--color-muted);
+}
+
+.analysisUsernameField input:focus {
+  border-color: var(--color-accent-soft-border);
+  box-shadow: 0 0 0 3px var(--color-primary-ring);
+}
+
+.analysisSpeedToggles,
+.analysisColorToggles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.analysisSpeedToggles button,
+.analysisColorToggles button {
+  width: 100%;
+  min-height: 29px;
+  border: 0;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-panel-deep) 20%, transparent);
+  color: color-mix(in srgb, var(--color-muted) 82%, transparent);
   font: inherit;
   font-size: 13px;
   font-weight: 800;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  transition:
+    background 140ms ease,
+    color 140ms ease,
+    box-shadow 140ms ease;
 }
 
-.analysisSpeedToggles button.active {
-  border-color: color-mix(in srgb, var(--color-primary) 72%, transparent);
-  background: color-mix(in srgb, var(--color-primary) 72%, var(--color-cyan) 28%);
-  color: var(--color-on-primary);
+.analysisSpeedToggles button {
+  min-height: 30px;
+  font-size: 15px;
+}
+
+.analysisSpeedIcon {
+  width: 25px;
+  height: 16px;
+  display: block;
+  overflow: visible;
+}
+
+.analysisSpeedIcon path {
+  fill: currentColor;
+}
+
+.analysisSpeedIcon.bullet .speedLines,
+.analysisSpeedIcon.bullet .bulletDetail {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+}
+
+.analysisSpeedIcon.bullet .speedLines {
+  stroke-width: 2.2;
+}
+
+.analysisSpeedIcon.bullet .bulletDetail {
+  stroke-width: 1.7;
+}
+
+.analysisSpeedIcon.blitz {
+  width: 18px;
+  height: 18px;
+}
+
+.analysisSpeedIcon.blitz .cutout {
+  fill: color-mix(in srgb, var(--color-panel-strong) 72%, var(--color-primary) 28%);
+}
+
+.analysisSpeedToggles button:not(.active) .analysisSpeedIcon.blitz .cutout {
+  fill: color-mix(in srgb, var(--color-panel-deep) 34%, transparent);
+}
+
+.analysisSpeedToggles button.active,
+.analysisColorToggles button.active {
+  background: color-mix(in srgb, var(--color-primary) 28%, var(--color-panel-strong) 72%);
+  color: var(--color-heading);
+  box-shadow: none;
+}
+
+.analysisSpeedToggles button:hover,
+.analysisColorToggles button:hover {
+  color: var(--color-heading);
 }
 
 .analysisRatingSlider {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
+  padding: 0;
+  gap: 5px 8px;
 }
 
 .analysisRatingSlider input {
   grid-column: 1 / -1;
   width: 100%;
   accent-color: var(--color-primary);
+  margin: 0;
 }
 
 .analysisRatingSlider output {
-  color: var(--color-heading);
+  color: color-mix(in srgb, var(--color-heading) 82%, var(--color-primary-soft) 18%);
   font-size: 12px;
   font-weight: 900;
   font-variant-numeric: tabular-nums;
@@ -493,6 +935,28 @@ body:has(.analysisPage),
 
 .analysisExplorerToolbar {
   display: flex;
+}
+
+.analysisFilterPanel .analysisExplorerToolbar {
+  position: sticky;
+  bottom: -8px;
+  z-index: 1;
+  padding-top: 2px;
+  padding-bottom: 0;
+  background:
+    linear-gradient(
+      180deg,
+      transparent,
+      color-mix(in srgb, var(--color-panel-deep) 92%, transparent) 40%
+    );
+}
+
+.analysisFilterPanel .analysisPrimaryButton {
+  width: 100%;
+  min-height: 30px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-primary) 72%, var(--color-cyan) 28%);
+  box-shadow: none;
 }
 
 .analysisPrimaryButton,
@@ -528,12 +992,155 @@ body:has(.analysisPage),
   min-height: 0;
   overflow-x: auto;
   overflow-y: auto;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--color-surface-soft) 56%, transparent);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.analysisMoveList,
+.analysisFilterPanel,
+.analysisExplorerTableWrap {
+  scrollbar-color: color-mix(in srgb, var(--color-muted) 58%, transparent) transparent;
+  scrollbar-width: thin;
+}
+
+.analysisMoveList::-webkit-scrollbar,
+.analysisFilterPanel::-webkit-scrollbar,
+.analysisExplorerTableWrap::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.analysisMoveList::-webkit-scrollbar-track,
+.analysisFilterPanel::-webkit-scrollbar-track,
+.analysisExplorerTableWrap::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.analysisMoveList::-webkit-scrollbar-thumb,
+.analysisFilterPanel::-webkit-scrollbar-thumb,
+.analysisExplorerTableWrap::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-muted) 58%, transparent);
+  background-clip: padding-box;
+}
+
+.analysisRecentGames {
+  min-width: 0;
+  min-height: 0;
+  display: block;
+  border-top: 1px solid var(--color-border);
+  background: transparent;
+}
+
+.analysisRecentGames > span {
+  min-height: 36px;
+  padding: 0 8px;
+  background: color-mix(in srgb, var(--color-primary) 34%, var(--color-panel-deep) 66%);
+  color: color-mix(in srgb, var(--color-heading) 82%, transparent);
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 760;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.analysisRecentGames ol {
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  list-style: none;
+}
+
+.analysisRecentGames a {
+  min-width: 0;
+  min-height: 56px;
+  padding: 5px 8px;
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) 58px 64px 28px;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text);
+  font-size: 13px;
+  line-height: 1.25;
+  text-decoration: none;
+}
+
+.analysisRecentGames li:nth-child(even) a {
+  background: color-mix(in srgb, var(--color-panel-strong) 44%, transparent);
+}
+
+.analysisRecentGames a:hover {
+  background: color-mix(in srgb, var(--color-panel-strong) 66%, var(--color-primary) 12%);
+  text-decoration: none;
+}
+
+.analysisRecentRatings,
+.analysisRecentPlayers {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.analysisRecentRatings,
+.analysisRecentDate {
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.analysisRecentPlayers span,
+.analysisRecentRatings span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analysisRecentPlayers {
+  color: color-mix(in srgb, var(--color-heading) 78%, transparent);
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.analysisRecentResult {
+  min-height: 28px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+.analysisRecentResult.white {
+  background: linear-gradient(#f8fafc, #cbd5e1);
+  color: #172033;
+}
+
+.analysisRecentResult.draw {
+  background: linear-gradient(#a5b4c8, #64748b);
+  color: #f8fafc;
+}
+
+.analysisRecentResult.black {
+  background: linear-gradient(#475569, #1f2937);
+  color: #f8fafc;
+}
+
+.analysisRecentMove {
+  color: color-mix(in srgb, var(--color-heading) 70%, transparent);
+  font-size: 12px;
+  font-weight: 850;
+  text-align: right;
 }
 
 .analysisBottomToolbar {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
   min-width: 0;
   min-height: 48px;
   margin: 0 -8px -8px;
@@ -584,7 +1191,7 @@ body:has(.analysisPage),
 
 .analysisExplorerTable {
   width: 100%;
-  min-width: 330px;
+  min-width: 350px;
   border-collapse: collapse;
   color: var(--color-text);
   font-size: 13px;
@@ -593,7 +1200,7 @@ body:has(.analysisPage),
 .analysisExplorerTable th,
 .analysisExplorerTable td {
   height: 34px;
-  padding: 0 8px;
+  padding: 0 6px;
   border-bottom: 1px solid var(--color-border);
   text-align: right;
   white-space: nowrap;
@@ -618,10 +1225,32 @@ body:has(.analysisPage),
   text-transform: uppercase;
 }
 
+.analysisExplorerRow {
+  cursor: pointer;
+}
+
+.analysisExplorerRow:hover td,
+.analysisExplorerRow:focus-visible td {
+  background: color-mix(in srgb, var(--color-panel-strong) 68%, var(--color-primary) 16%);
+}
+
+.analysisExplorerState {
+  height: 64px;
+  color: var(--color-muted);
+  font-weight: 750;
+  text-align: center !important;
+}
+
 .analysisExplorerMove {
   color: #ffffff;
   font: inherit;
   font-weight: inherit;
+}
+
+.analysisPerformanceCell {
+  color: color-mix(in srgb, var(--color-heading) 82%, var(--color-primary-soft) 18%);
+  font-size: 12px;
+  font-weight: 850;
 }
 
 .analysisWinRateBar {
@@ -629,7 +1258,7 @@ body:has(.analysisPage),
   --draw-rate: 0%;
   --black-rate: 66%;
   width: 100%;
-  min-width: 160px;
+  min-width: 144px;
   height: 20px;
   display: grid;
   grid-template-columns: var(--white-rate) var(--draw-rate) var(--black-rate);
@@ -686,6 +1315,8 @@ body:has(.analysisPage),
   .analysisRightPanel {
     grid-column: auto;
     grid-row: auto;
+    height: min(82vh, 720px);
+    min-height: 560px;
   }
 
   .analysisExplorerPanel {
@@ -704,6 +1335,17 @@ body:has(.analysisPage),
   .analysisExplorerPanel {
     grid-column: auto;
     grid-row: auto;
+  }
+
+  .analysisRightPanel {
+    height: auto;
+    min-height: 0;
+    max-height: none;
+  }
+
+  .analysisMoveList {
+    min-height: 120px;
+    max-height: 240px;
   }
 
   .analysisBoardColumn {

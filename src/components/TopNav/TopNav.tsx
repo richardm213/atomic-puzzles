@@ -197,7 +197,11 @@ export const TopNav = () => {
   const [profileUsername, setProfileUsername] = useState(() =>
     getStoredProfileUsername(user?.username),
   );
-  const showBoardSettings = pathname === "/solve" || pathname.startsWith("/solve/");
+  const showBoardSettings =
+    pathname === "/solve" ||
+    pathname.startsWith("/solve/") ||
+    pathname === "/analysis" ||
+    pathname.startsWith("/analysis/");
   const activeBoardColors = getBoardThemeColors(
     boardTheme,
     customLightSquare,

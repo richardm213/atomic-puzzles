@@ -1,50 +1,349 @@
 import "./Analysis.css";
 
 import {
+  faArrowsRotate,
   faBackward,
   faBackwardStep,
   faBookOpen,
-  faDatabase,
   faExternalLinkAlt,
   faForward,
   faForwardStep,
-  faMagnifyingGlassChart,
   faGear,
+  faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import type { CSSProperties } from "react";
-import { useEffect, useState } from "react";
+import { makeSan } from "chessops/san";
+import type { CSSProperties, FormEvent, WheelEvent as ReactWheelEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Chessboard } from "../../components/Chessboard/Chessboard";
+import { createAtomicPosition, moveFromUci } from "../../lib/puzzles/solutionPgn";
 import { Seo } from "../../components/Seo/Seo";
 import type { ChessboardState, SolutionNavigation } from "../../types/chessboard";
+import { appAssetPath } from "../../utils/appAssetPath";
 
 const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-const previewMoves = [
-  { move: "Nf3", games: "1.4M", white: 45, draw: 2, black: 53 },
-  { move: "e3", games: "872k", white: 41, draw: 3, black: 56 },
-  { move: "Nc3", games: "641k", white: 48, draw: 1, black: 51 },
-  { move: "g3", games: "312k", white: 37, draw: 4, black: 59 },
-  { move: "b3", games: "226k", white: 44, draw: 2, black: 54 },
-];
+type ExplorerApiMove = {
+  uci: string;
+  games: number;
+  whiteWins: number;
+  draws: number;
+  blackWins: number;
+  avgOpponentRating: number | null;
+};
+
+type ExplorerApiGame = {
+  uci: string;
+  gameId: string;
+  playedAt: number;
+  playedOn: number;
+  white: string | null;
+  black: string | null;
+  whiteRating: number | null;
+  blackRating: number | null;
+  winner: 0 | 1 | 2;
+};
+
+type ExplorerApiResponse = {
+  moves: ExplorerApiMove[];
+  recentGames: ExplorerApiGame[];
+};
+
+type ExplorerMove = {
+  uci: string;
+  move: string;
+  games: number;
+  gamesLabel: string;
+  white: number;
+  draw: number;
+  black: number;
+  avgOpponentRating: number | null;
+  performanceRating: number | null;
+};
+
+type ExplorerGame = {
+  uci: string;
+  move: string;
+  gameId: string;
+  playedOn: string;
+  whiteName: string;
+  blackName: string;
+  whiteRating: number | null;
+  blackRating: number | null;
+  result: string;
+  resultClass: "white" | "draw" | "black";
+};
+
+type ExplorerStatus = "idle" | "loading" | "ready" | "error";
+type ExplorerScope = "general" | "player";
+type ExplorerSpeed = "bullet" | "blitz";
 
 const WIN_RATE_LABEL_MIN_PERCENT = 14;
+const BOARD_WHEEL_STEP_PX = 64;
+const MONTH_FILTER_PATTERN = /^\d{4}-\d{2}$/;
+const EXPLORER_SETTINGS_STORAGE_KEY = "atomic-puzzles.analysis.explorer-settings";
+const RECENT_USERNAME_STORAGE_KEY = "atomic-puzzles.analysis.recent-usernames";
+const MAX_RECENT_USERNAMES = 18;
+const SPEED_FILTERS: Array<{ key: ExplorerSpeed; label: string; value: 0 | 1 }> = [
+  { key: "bullet", label: "Bullet", value: 0 },
+  { key: "blitz", label: "Blitz", value: 1 },
+];
+const EXPLORER_SPEED_KEYS = SPEED_FILTERS.map((speed) => speed.key);
+const DEFAULT_EXPLORER_SETTINGS = {
+  explorerScope: "general" as ExplorerScope,
+  playerColor: "white" as "white" | "black",
+  selectedSpeeds: ["bullet", "blitz"] as ExplorerSpeed[],
+  minRating: 1700,
+  startDate: "",
+  endDate: "",
+  username: "",
+};
+
+type StoredExplorerSettings = typeof DEFAULT_EXPLORER_SETTINGS;
+
+const clampRating = (rating: number): number =>
+  Math.max(1700, Math.min(2200, Number.isFinite(rating) ? rating : 1700));
+
+const validMonthFilter = (value: unknown): string => {
+  const monthValue = String(value ?? "").trim();
+  return MONTH_FILTER_PATTERN.test(monthValue) ? monthValue : "";
+};
+
+const normalizeStoredSpeeds = (value: unknown): ExplorerSpeed[] => {
+  if (!Array.isArray(value)) return DEFAULT_EXPLORER_SETTINGS.selectedSpeeds;
+
+  const speeds = value.filter((speed): speed is ExplorerSpeed =>
+    EXPLORER_SPEED_KEYS.includes(speed as ExplorerSpeed),
+  );
+
+  return speeds.length ? [...new Set(speeds)] : DEFAULT_EXPLORER_SETTINGS.selectedSpeeds;
+};
+
+const loadExplorerSettings = (): StoredExplorerSettings => {
+  if (typeof window === "undefined") return DEFAULT_EXPLORER_SETTINGS;
+
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(EXPLORER_SETTINGS_STORAGE_KEY) ?? "{}");
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return DEFAULT_EXPLORER_SETTINGS;
+    }
+
+    const rawSettings = parsed as Partial<StoredExplorerSettings>;
+    const explorerScope = rawSettings.explorerScope === "player" ? "player" : "general";
+    const playerColor = rawSettings.playerColor === "black" ? "black" : "white";
+
+    return {
+      explorerScope,
+      playerColor,
+      selectedSpeeds: normalizeStoredSpeeds(rawSettings.selectedSpeeds),
+      minRating: clampRating(Number(rawSettings.minRating)),
+      startDate: validMonthFilter(rawSettings.startDate),
+      endDate: validMonthFilter(rawSettings.endDate),
+      username: String(rawSettings.username ?? "").trim(),
+    };
+  } catch {
+    return DEFAULT_EXPLORER_SETTINGS;
+  }
+};
+
+const storeExplorerSettings = (settings: StoredExplorerSettings): void => {
+  if (typeof window === "undefined") return;
+
+  window.localStorage.setItem(EXPLORER_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+};
+
+const loadRecentUsernames = (): string[] => {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(RECENT_USERNAME_STORAGE_KEY) ?? "[]");
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed
+      .map((value) => String(value).trim())
+      .filter(Boolean)
+      .slice(0, MAX_RECENT_USERNAMES);
+  } catch {
+    return [];
+  }
+};
+
+const storeRecentUsernames = (usernames: string[]): void => {
+  if (typeof window === "undefined") return;
+
+  window.localStorage.setItem(
+    RECENT_USERNAME_STORAGE_KEY,
+    JSON.stringify(usernames.slice(0, MAX_RECENT_USERNAMES)),
+  );
+};
+
+const addRecentUsername = (usernames: string[], username: string): string[] => {
+  const trimmedUsername = username.trim();
+  if (!trimmedUsername) return usernames;
+
+  return [
+    trimmedUsername,
+    ...usernames.filter(
+      (recentUsername) => recentUsername.toLowerCase() !== trimmedUsername.toLowerCase(),
+    ),
+  ].slice(0, MAX_RECENT_USERNAMES);
+};
+
+const SpeedFilterIcon = ({ speed }: { speed: ExplorerSpeed }) =>
+  speed === "bullet" ? (
+    <svg className="analysisSpeedIcon bullet" viewBox="0 0 44 28" aria-hidden="true" focusable="false">
+      <path className="speedLines" d="M4 8.2h8M1.5 14h9.5M4 19.8h8" />
+      <path
+        className="bulletBody"
+        d="M15.1 6.2c3.5-1.7 8.9-1.8 14.4.4 5.2 2.1 9.2 5.7 11.1 7.4-1.9 1.7-5.9 5.3-11.1 7.4-5.5 2.2-10.9 2.1-14.4.4-1.1-4.8-1.1-10.8 0-15.6Z"
+      />
+      <path className="bulletDetail" d="M16.7 7.7c5.2-1.1 12.9.4 20.1 6.3-7.2 5.9-14.9 7.4-20.1 6.3" />
+    </svg>
+  ) : (
+    <svg className="analysisSpeedIcon blitz" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+      <path
+        className="flameBody"
+        d="M18.1 2.4c2.8 5.1 1 8.1-1.5 10.4 3.7-1.1 5.7-4 5.4-8.4 4.2 3.5 6.3 7.8 6.3 12.4 0 7.1-5.1 12.4-12.3 12.4-7.1 0-12.3-4.8-12.3-11.4 0-4.9 2.7-8.3 6.2-11.1 2.7-2.1 5.8-3.7 8.2-4.3Z"
+      />
+      <path
+        className="cutout"
+        d="M16.4 17.3c2.2 1.6 3.4 3.5 3.4 5.5 0 3-2.1 5.1-5.2 5.1-2.9 0-5.1-2-5.1-4.9 0-2 1.2-3.5 3-4.8.5 1.7 1.7 2.9 3.4 3.4-.2-1.6 0-2.9.5-4.3Z"
+      />
+    </svg>
+  );
 
 const visibleWinRateLabel = (rate: number): string =>
   rate >= WIN_RATE_LABEL_MIN_PERCENT ? `${rate}%` : "";
+
+const formatGameCount = (games: number): string => {
+  if (games >= 1_000_000) {
+    return `${(games / 1_000_000).toFixed(games >= 10_000_000 ? 0 : 1).replace(/\.0$/, "")}M`;
+  }
+
+  if (games >= 1_000) {
+    return `${(games / 1_000).toFixed(games >= 10_000 ? 0 : 1).replace(/\.0$/, "")}k`;
+  }
+
+  return String(games);
+};
+
+const sanFromUci = (fen: string, uci: string): string => {
+  try {
+    const position = createAtomicPosition(fen);
+    const move = moveFromUci(position, uci);
+    return move ? makeSan(position, move) : uci;
+  } catch {
+    return uci;
+  }
+};
+
+const formatEncodedDate = (date: number): string => {
+  const raw = String(date);
+  if (!/^\d{8}$/.test(raw)) return raw;
+  return `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`;
+};
+
+const resultFromWinner = (winner: ExplorerApiGame["winner"]): string => {
+  if (winner === 1) return "1-0";
+  if (winner === 2) return "0-1";
+  return "1/2-1/2";
+};
+
+const resultClassFromWinner = (winner: ExplorerApiGame["winner"]): ExplorerGame["resultClass"] => {
+  if (winner === 1) return "white";
+  if (winner === 2) return "black";
+  return "draw";
+};
+
+const performanceFromScore = (
+  avgOpponentRating: number | null,
+  score: number,
+  games: number,
+): number | null => {
+  if (!avgOpponentRating || games <= 0) return null;
+
+  const scoreRate = Math.min(0.99, Math.max(0.01, score / games));
+  const ratingDiff = -400 * Math.log10(1 / scoreRate - 1);
+  return Math.round(avgOpponentRating + ratingDiff);
+};
+
+const toExplorerMove = (
+  row: ExplorerApiMove,
+  fen: string,
+  options: { scope: ExplorerScope; playerColor: "white" | "black" },
+): ExplorerMove => {
+  const totalResults = row.whiteWins + row.draws + row.blackWins;
+  const total = totalResults > 0 ? totalResults : row.games;
+  const white = total > 0 ? Math.round((row.whiteWins / total) * 100) : 0;
+  const draw = total > 0 ? Math.round((row.draws / total) * 100) : 0;
+  const black = total > 0 ? Math.round((row.blackWins / total) * 100) : 0;
+  const playerScore =
+    options.playerColor === "white"
+      ? row.whiteWins + row.draws / 2
+      : row.blackWins + row.draws / 2;
+
+  return {
+    uci: row.uci,
+    move: sanFromUci(fen, row.uci),
+    games: row.games,
+    gamesLabel: formatGameCount(row.games),
+    white,
+    draw,
+    black,
+    avgOpponentRating: row.avgOpponentRating,
+    performanceRating:
+      options.scope === "player"
+        ? performanceFromScore(row.avgOpponentRating, playerScore, total)
+        : null,
+  };
+};
+
+const toExplorerGame = (row: ExplorerApiGame, fen: string): ExplorerGame => ({
+  uci: row.uci,
+  move: sanFromUci(fen, row.uci),
+  gameId: row.gameId,
+  playedOn: formatEncodedDate(row.playedOn),
+  whiteName: row.white ?? "?",
+  blackName: row.black ?? "?",
+  whiteRating: row.whiteRating,
+  blackRating: row.blackRating,
+  result: resultFromWinner(row.winner),
+  resultClass: resultClassFromWinner(row.winner),
+});
 
 const lichessAnalysisUrl = (fen: string): string =>
   `https://lichess.org/analysis/atomic/${fen.replaceAll(" ", "_")}`;
 
 export const AnalysisPage = () => {
+  const [initialExplorerSettings] = useState(loadExplorerSettings);
+  const boardWheelDeltaRef = useRef(0);
+  const boardWheelLastAtRef = useRef(0);
   const [boardState, setBoardState] = useState<ChessboardState | null>(null);
   const [orientation, setOrientation] = useState<"white" | "black">("white");
   const [navigation, setNavigation] = useState<SolutionNavigation | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [explorerOpen, setExplorerOpen] = useState(true);
-  const [selectedSpeeds, setSelectedSpeeds] = useState<string[]>(["bullet", "blitz"]);
-  const [minRating, setMinRating] = useState(1700);
+  const [explorerScope, setExplorerScope] = useState<ExplorerScope>(
+    initialExplorerSettings.explorerScope,
+  );
+  const [playerColor, setPlayerColor] = useState<"white" | "black">(
+    initialExplorerSettings.playerColor,
+  );
+  const [selectedSpeeds, setSelectedSpeeds] = useState<ExplorerSpeed[]>(
+    initialExplorerSettings.selectedSpeeds,
+  );
+  const [minRating, setMinRating] = useState(initialExplorerSettings.minRating);
+  const [startDate, setStartDate] = useState(initialExplorerSettings.startDate);
+  const [endDate, setEndDate] = useState(initialExplorerSettings.endDate);
+  const [username, setUsername] = useState(initialExplorerSettings.username);
+  const [usernameDraft, setUsernameDraft] = useState(initialExplorerSettings.username);
+  const [usernamePickerOpen, setUsernamePickerOpen] = useState(false);
+  const [recentUsernames, setRecentUsernames] = useState<string[]>(loadRecentUsernames);
+  const [explorerMoves, setExplorerMoves] = useState<ExplorerMove[]>([]);
+  const [recentGames, setRecentGames] = useState<ExplorerGame[]>([]);
+  const [explorerStatus, setExplorerStatus] = useState<ExplorerStatus>("idle");
+  const [explorerError, setExplorerError] = useState("");
 
   const moveList = boardState?.lineMoves ?? [];
   const currentFen = boardState?.fen || STARTING_FEN;
@@ -52,6 +351,8 @@ export const AnalysisPage = () => {
   const currentPly = boardState?.lineIndex ?? 0;
   const canStepBack = currentPly > 0;
   const canStepForward = currentPly < moveList.length;
+  const showExplorerResults = !filtersOpen;
+  const explorerColumnCount = explorerScope === "player" ? 4 : 3;
 
   const movePairs: Array<{
     number: number;
@@ -86,11 +387,73 @@ export const AnalysisPage = () => {
     setNavigation({ command });
   };
 
+  const handleBoardWheel = (event: ReactWheelEvent<HTMLDivElement>): void => {
+    if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
+
+    event.preventDefault();
+
+    const now = window.performance.now();
+    if (now - boardWheelLastAtRef.current > 280) {
+      boardWheelDeltaRef.current = 0;
+    }
+    boardWheelLastAtRef.current = now;
+
+    const deltaScale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 240 : 1;
+    boardWheelDeltaRef.current += event.deltaY * deltaScale;
+
+    if (Math.abs(boardWheelDeltaRef.current) < BOARD_WHEEL_STEP_PX) return;
+
+    const command = boardWheelDeltaRef.current > 0 ? "next" : "previous";
+    boardWheelDeltaRef.current = 0;
+
+    if (command === "next" && !canStepForward) return;
+    if (command === "previous" && !canStepBack) return;
+
+    requestNavigation(command);
+  };
+
   const navigateToPly = (plyIndex: number): void => {
     setNavigation({ useHistory: true, plyIndex });
   };
 
-  const toggleSpeed = (speed: string): void => {
+  const playExplorerMove = (uci: string): void => {
+    setNavigation({ playUci: uci });
+  };
+
+  const saveRecentUsernames = (nextUsernames: string[]): void => {
+    setRecentUsernames(nextUsernames);
+    storeRecentUsernames(nextUsernames);
+  };
+
+  const commitUsername = (nextUsername: string): void => {
+    const trimmedUsername = nextUsername.trim();
+    if (!trimmedUsername) return;
+
+    setUsername(trimmedUsername);
+    setUsernameDraft(trimmedUsername);
+    setExplorerScope("player");
+    saveRecentUsernames(addRecentUsername(recentUsernames, trimmedUsername));
+    setUsernamePickerOpen(false);
+  };
+
+  const submitUsernamePicker = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+    commitUsername(usernameDraft);
+  };
+
+  const removeRecentUsername = (usernameToRemove: string): void => {
+    saveRecentUsernames(
+      recentUsernames.filter(
+        (recentUsername) => recentUsername.toLowerCase() !== usernameToRemove.toLowerCase(),
+      ),
+    );
+  };
+
+  const switchPlayerColor = (): void => {
+    setPlayerColor((currentColor) => (currentColor === "white" ? "black" : "white"));
+  };
+
+  const toggleSpeed = (speed: ExplorerSpeed): void => {
     setSelectedSpeeds((currentSpeeds) => {
       if (currentSpeeds.includes(speed)) {
         return currentSpeeds.length > 1
@@ -103,9 +466,122 @@ export const AnalysisPage = () => {
   };
 
   useEffect(() => {
+    storeExplorerSettings({
+      explorerScope,
+      playerColor,
+      selectedSpeeds,
+      minRating,
+      startDate,
+      endDate,
+      username,
+    });
+  }, [endDate, explorerScope, minRating, playerColor, selectedSpeeds, startDate, username]);
+
+  useEffect(() => {
+    if (!explorerOpen) return;
+
+    if (explorerScope === "player" && !username.trim()) {
+      setExplorerMoves([]);
+      setRecentGames([]);
+      setExplorerStatus("ready");
+      setExplorerError("");
+      return;
+    }
+
+    const abortController = new AbortController();
+    const selectedSpeedValues = SPEED_FILTERS
+      .filter((speed) => selectedSpeeds.includes(speed.key))
+      .map((speed) => speed.value);
+    const params = new URLSearchParams({
+      fen: currentFen,
+      color: playerColor,
+      minRating: String(minRating),
+      speeds: selectedSpeedValues.join(","),
+    });
+    if (MONTH_FILTER_PATTERN.test(startDate)) {
+      params.set("startDate", startDate);
+    }
+    if (MONTH_FILTER_PATTERN.test(endDate)) {
+      params.set("endDate", endDate);
+    }
+    const trimmedUsername = username.trim();
+    if (explorerScope === "player" && trimmedUsername) {
+      params.set("username", trimmedUsername);
+    }
+
+    setExplorerStatus("loading");
+    setExplorerError("");
+    setExplorerMoves([]);
+    setRecentGames([]);
+
+    const explorerApiUrl = `${appAssetPath("/api/opening-explorer")}?${params.toString()}`;
+
+    fetch(explorerApiUrl, {
+      signal: abortController.signal,
+    })
+      .then(async (response) => {
+        const text = await response.text();
+        let body: unknown = null;
+
+        try {
+          body = text ? JSON.parse(text) : [];
+        } catch {
+          const returnedHtml = text.trimStart().startsWith("<!doctype") || text.includes("<html");
+          throw new Error(
+            returnedHtml
+              ? `Opening explorer API returned the app page from ${window.location.origin}${explorerApiUrl}. Open http://127.0.0.1:5180/analysis and hard-refresh.`
+              : `Opening explorer API returned invalid JSON from ${window.location.origin}${explorerApiUrl}.`,
+          );
+        }
+
+        if (!response.ok) {
+          const errorBody = body as { error?: string } | null;
+          throw new Error(errorBody?.error ?? "Opening explorer is unavailable");
+        }
+
+        if (
+          !body ||
+          typeof body !== "object" ||
+          !Array.isArray((body as Partial<ExplorerApiResponse>).moves) ||
+          !Array.isArray((body as Partial<ExplorerApiResponse>).recentGames)
+        ) {
+          throw new Error("Opening explorer API returned an unexpected response.");
+        }
+
+        return body as ExplorerApiResponse;
+      })
+      .then((data) => {
+        setExplorerMoves(
+          data.moves.map((row) =>
+            toExplorerMove(row, currentFen, { scope: explorerScope, playerColor }),
+          ),
+        );
+        setRecentGames(data.recentGames.map((row) => toExplorerGame(row, currentFen)));
+        setExplorerStatus("ready");
+      })
+      .catch((error) => {
+        if (abortController.signal.aborted) return;
+        setExplorerMoves([]);
+        setRecentGames([]);
+        setExplorerStatus("error");
+        setExplorerError(error instanceof Error ? error.message : "Opening explorer failed");
+      });
+
+    return () => abortController.abort();
+  }, [currentFen, endDate, explorerOpen, explorerScope, minRating, playerColor, selectedSpeeds, startDate, username]);
+
+  useEffect(() => {
     const handleAnalysisShortcut = (event: KeyboardEvent): void => {
       const key = event.key.toLowerCase();
-      if ((key !== "e" && key !== "f") || event.metaKey || event.ctrlKey || event.altKey) {
+      const isExplorerMoveShortcut =
+        key === " " || key === "spacebar" || /^[1-9]$/.test(key);
+
+      if (
+        (key !== "e" && key !== "f" && !isExplorerMoveShortcut) ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey
+      ) {
         return;
       }
 
@@ -119,6 +595,20 @@ export const AnalysisPage = () => {
 
       if (isTypingTarget) return;
 
+      if (isExplorerMoveShortcut) {
+        if (usernamePickerOpen || filtersOpen || !explorerOpen || explorerStatus !== "ready") {
+          return;
+        }
+
+        const moveIndex = key === " " || key === "spacebar" ? 0 : Number(key) - 1;
+        const explorerMove = explorerMoves[moveIndex];
+        if (!explorerMove) return;
+
+        event.preventDefault();
+        playExplorerMove(explorerMove.uci);
+        return;
+      }
+
       if (key === "e") {
         setExplorerOpen((open) => !open);
       } else {
@@ -128,7 +618,22 @@ export const AnalysisPage = () => {
 
     window.addEventListener("keydown", handleAnalysisShortcut);
     return () => window.removeEventListener("keydown", handleAnalysisShortcut);
-  }, []);
+  }, [explorerMoves, explorerOpen, explorerStatus, filtersOpen, usernamePickerOpen]);
+
+  useEffect(() => {
+    if (!usernamePickerOpen) return;
+
+    setUsernameDraft(username);
+
+    const handlePickerShortcut = (event: KeyboardEvent): void => {
+      if (event.key === "Escape") {
+        setUsernamePickerOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handlePickerShortcut);
+    return () => window.removeEventListener("keydown", handlePickerShortcut);
+  }, [username, usernamePickerOpen]);
 
   return (
     <section className="analysisPage">
@@ -180,43 +685,117 @@ export const AnalysisPage = () => {
         {explorerOpen ? (
           <section className="analysisExplorerPanel" aria-label="Opening explorer">
             <div className="analysisExplorerCompactHeader">
-              <div className="analysisExplorerTitle">
-                <FontAwesomeIcon icon={faDatabase} />
-                <span>Atomic DB</span>
+              <div className="analysisExplorerTabs" role="tablist" aria-label="Opening explorer source">
+                <button
+                  type="button"
+                  role="tab"
+                  className={explorerScope === "general" ? "active" : ""}
+                  aria-selected={explorerScope === "general"}
+                  onClick={() => {
+                    setExplorerScope("general");
+                    setFiltersOpen(false);
+                  }}
+                >
+                  <FontAwesomeIcon icon={faBookOpen} />
+                  <span>General</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  className={explorerScope === "player" ? "active" : ""}
+                  aria-selected={explorerScope === "player"}
+                  aria-label={`${username.trim() || "Player"} as ${playerColor}`}
+                  onClick={() => {
+                    setExplorerScope("player");
+                    setFiltersOpen(true);
+                  }}
+                >
+                  <span className="analysisExplorerPlayerLabel">
+                    <span>{username.trim() || "Player"}</span>
+                    <small>as {playerColor}</small>
+                  </span>
+                </button>
               </div>
               <button
                 type="button"
                 className={`analysisFilterToggle ${filtersOpen ? "open" : ""}`}
                 aria-expanded={filtersOpen}
                 aria-controls="analysis-explorer-filters"
-                aria-label="Opening explorer settings"
-                title="Opening explorer settings"
+                aria-label={filtersOpen ? "Close opening explorer settings" : "Opening explorer settings"}
+                title={filtersOpen ? "Close settings" : "Opening explorer settings"}
                 onClick={() => setFiltersOpen((open) => !open)}
               >
-                <FontAwesomeIcon icon={faGear} />
+                <FontAwesomeIcon icon={filtersOpen ? faXmark : faGear} />
               </button>
             </div>
 
             {filtersOpen ? (
               <div className="analysisFilterPanel" id="analysis-explorer-filters">
+                {explorerScope === "player" ? (
+                  <div className="analysisPlayerSettings">
+                    <span>Player</span>
+                    <div className="analysisPlayerSettingsRow">
+                      <button
+                        type="button"
+                        className="analysisPlayerNameButton"
+                        onClick={() => {
+                          setUsernameDraft(username);
+                          setUsernamePickerOpen(true);
+                        }}
+                      >
+                        {username.trim() || "Choose player"}
+                      </button>
+                      <button
+                        type="button"
+                        className="analysisPlayerSideButton"
+                        aria-label={`Switch to ${playerColor === "white" ? "black" : "white"}`}
+                        title="Switch sides"
+                        onClick={switchPlayerColor}
+                      >
+                        <FontAwesomeIcon icon={faArrowsRotate} />
+                        <span>as {playerColor}</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
                 <div className="analysisFilterGroup">
                   <span>Speed</span>
                   <div className="analysisSpeedToggles" aria-label="Speed filters">
-                    {["bullet", "blitz"].map((speed) => (
+                    {SPEED_FILTERS.map((speed) => (
                       <button
-                        key={speed}
+                        key={speed.key}
                         type="button"
-                        className={selectedSpeeds.includes(speed) ? "active" : ""}
-                        aria-pressed={selectedSpeeds.includes(speed)}
-                        onClick={() => toggleSpeed(speed)}
+                        className={selectedSpeeds.includes(speed.key) ? "active" : ""}
+                        aria-label={speed.label}
+                        aria-pressed={selectedSpeeds.includes(speed.key)}
+                        title={speed.label}
+                        onClick={() => toggleSpeed(speed.key)}
                       >
-                        {speed === "bullet" ? "Bullet" : "Blitz"}
+                        <SpeedFilterIcon speed={speed.key} />
                       </button>
                     ))}
                   </div>
                 </div>
+                {explorerScope === "general" ? (
+                  <div className="analysisFilterGroup">
+                    <span>Color</span>
+                    <div className="analysisColorToggles" aria-label="Database color filter">
+                      {["white", "black"].map((color) => (
+                        <button
+                          key={color}
+                          type="button"
+                          className={playerColor === color ? "active" : ""}
+                          aria-pressed={playerColor === color}
+                          onClick={() => setPlayerColor(color as "white" | "black")}
+                        >
+                          {color === "white" ? "White" : "Black"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 <label className="analysisRatingSlider">
-                  <span>Min rating</span>
+                  <span>{explorerScope === "player" ? "Min opponent rating" : "Min average rating"}</span>
                   <output>{minRating}</output>
                   <input
                     type="range"
@@ -227,68 +806,184 @@ export const AnalysisPage = () => {
                     onChange={(event) => setMinRating(Number(event.target.value))}
                   />
                 </label>
+                <div className="analysisDateFilters">
+                  <label>
+                    <span>Since</span>
+                    <input
+                      type="text"
+                      value={startDate}
+                      inputMode="numeric"
+                      maxLength={7}
+                      pattern="\d{4}-\d{2}"
+                      placeholder="YYYY-MM"
+                      onChange={(event) => setStartDate(event.target.value)}
+                    />
+                  </label>
+                  <label>
+                    <span>Until</span>
+                    <input
+                      type="text"
+                      value={endDate}
+                      inputMode="numeric"
+                      maxLength={7}
+                      pattern="\d{4}-\d{2}"
+                      placeholder="YYYY-MM"
+                      onChange={(event) => setEndDate(event.target.value)}
+                    />
+                  </label>
+                </div>
                 <div className="analysisExplorerToolbar">
-                  <button type="button" className="analysisPrimaryButton" disabled>
-                    <FontAwesomeIcon icon={faMagnifyingGlassChart} />
-                    Search
+                  <button
+                    type="button"
+                    className="analysisPrimaryButton"
+                    onClick={() => setFiltersOpen(false)}
+                  >
+                    Apply
                   </button>
                 </div>
               </div>
             ) : null}
 
-            <div className="analysisExplorerTableWrap">
-              <table className="analysisExplorerTable">
-                <thead>
-                  <tr>
-                    <th>Move</th>
-                    <th>Games</th>
-                    <th>Win rate</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {previewMoves.map((row) => (
-                    <tr key={row.move}>
-                      <td>
-                        <span className="analysisExplorerMove">{row.move}</span>
-                      </td>
-                      <td>{row.games}</td>
-                      <td>
-                        <div
-                          className="analysisWinRateBar"
-                          style={
-                            {
-                              "--white-rate": `${row.white}%`,
-                              "--draw-rate": `${row.draw}%`,
-                              "--black-rate": `${row.black}%`,
-                            } as CSSProperties
-                          }
-                          aria-label={`White ${row.white}%, draw ${row.draw}%, black ${row.black}%`}
-                        >
-                          <span
-                            className="white"
-                            aria-hidden={row.white < WIN_RATE_LABEL_MIN_PERCENT}
-                          >
-                            {visibleWinRateLabel(row.white)}
-                          </span>
-                          <span
-                            className="draw"
-                            aria-hidden={row.draw < WIN_RATE_LABEL_MIN_PERCENT}
-                          >
-                            {visibleWinRateLabel(row.draw)}
-                          </span>
-                          <span
-                            className="black"
-                            aria-hidden={row.black < WIN_RATE_LABEL_MIN_PERCENT}
-                          >
-                            {visibleWinRateLabel(row.black)}
-                          </span>
-                        </div>
-                      </td>
+            {showExplorerResults ? (
+              <div className="analysisExplorerTableWrap">
+                <table className="analysisExplorerTable">
+                  <thead>
+                    <tr>
+                      <th>Move</th>
+                      <th>Games</th>
+                      {explorerScope === "player" ? <th>Perf</th> : null}
+                      <th>Win rate</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {explorerStatus === "loading" ? (
+                      <tr>
+                        <td colSpan={explorerColumnCount} className="analysisExplorerState">
+                          Loading database moves...
+                        </td>
+                      </tr>
+                    ) : null}
+                    {explorerStatus === "error" ? (
+                      <tr>
+                        <td colSpan={explorerColumnCount} className="analysisExplorerState">
+                          {explorerError}
+                        </td>
+                      </tr>
+                    ) : null}
+                    {explorerStatus === "ready" && explorerMoves.length === 0 ? (
+                      <tr>
+                        <td colSpan={explorerColumnCount} className="analysisExplorerState">
+                          {explorerScope === "player" && !username.trim()
+                            ? "Enter a username for player explorer."
+                            : "No database games for this position."}
+                        </td>
+                      </tr>
+                    ) : null}
+                    {explorerMoves.map((row) => (
+                      <tr
+                        key={row.uci}
+                        className="analysisExplorerRow"
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Play ${row.move}`}
+                        onClick={() => playExplorerMove(row.uci)}
+                        onKeyDown={(event) => {
+                          if (event.key !== "Enter" && event.key !== " ") return;
+                          event.preventDefault();
+                          playExplorerMove(row.uci);
+                        }}
+                      >
+                        <td>
+                          <span className="analysisExplorerMove">{row.move}</span>
+                        </td>
+                        <td>{row.gamesLabel}</td>
+                        {explorerScope === "player" ? (
+                          <td
+                            className="analysisPerformanceCell"
+                            title={
+                              row.performanceRating
+                                ? `Performance rating estimate: ${row.performanceRating}`
+                                : "Performance rating unavailable"
+                            }
+                          >
+                            {row.performanceRating ?? "-"}
+                          </td>
+                        ) : null}
+                        <td>
+                          <div
+                            className="analysisWinRateBar"
+                            title={
+                              row.avgOpponentRating
+                                ? `Average opponent rating: ${row.avgOpponentRating}`
+                                : "Average opponent rating unavailable"
+                            }
+                            style={
+                              {
+                                "--white-rate": `${row.white}%`,
+                                "--draw-rate": `${row.draw}%`,
+                                "--black-rate": `${row.black}%`,
+                              } as CSSProperties
+                            }
+                            aria-label={`White ${row.white}%, draw ${row.draw}%, black ${row.black}%, average opponent rating ${row.avgOpponentRating ?? "unavailable"}`}
+                          >
+                            <span
+                              className="white"
+                              aria-hidden={row.white < WIN_RATE_LABEL_MIN_PERCENT}
+                            >
+                              {visibleWinRateLabel(row.white)}
+                            </span>
+                            <span
+                              className="draw"
+                              aria-hidden={row.draw < WIN_RATE_LABEL_MIN_PERCENT}
+                            >
+                              {visibleWinRateLabel(row.draw)}
+                            </span>
+                            <span
+                              className="black"
+                              aria-hidden={row.black < WIN_RATE_LABEL_MIN_PERCENT}
+                            >
+                              {visibleWinRateLabel(row.black)}
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {explorerStatus === "ready" && recentGames.length > 0 ? (
+                  <div className="analysisRecentGames" aria-label="Recent games">
+                    <span>Recent games</span>
+                    <ol>
+                      {recentGames.map((game) => (
+                        <li key={game.gameId}>
+                          <a
+                            href={`https://lichess.org/${game.gameId}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            title={`${game.whiteName} vs ${game.blackName}`}
+                          >
+                            <span className="analysisRecentRatings">
+                              <span>{game.whiteRating ?? "-"}</span>
+                              <span>{game.blackRating ?? "-"}</span>
+                            </span>
+                            <span className="analysisRecentPlayers">
+                              <span>{game.whiteName}</span>
+                              <span>{game.blackName}</span>
+                            </span>
+                            <span className={`analysisRecentResult ${game.resultClass}`}>
+                              {game.result}
+                            </span>
+                            <span className="analysisRecentDate">{game.playedOn.slice(0, 7)}</span>
+                            <span className="analysisRecentMove">{game.move}</span>
+                          </a>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </section>
         ) : null}
 
@@ -346,8 +1041,85 @@ export const AnalysisPage = () => {
         </div>
       </aside>
 
+      {usernamePickerOpen ? (
+        <div
+          className="analysisUsernamePickerBackdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setUsernamePickerOpen(false);
+            }
+          }}
+        >
+          <section
+            className="analysisUsernamePicker"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="analysis-username-picker-title"
+          >
+            <button
+              type="button"
+              className="analysisUsernamePickerClose"
+              aria-label="Close username picker"
+              onClick={() => setUsernamePickerOpen(false)}
+            >
+              <FontAwesomeIcon icon={faXmark} />
+            </button>
+            <h2 id="analysis-username-picker-title">Personal opening explorer</h2>
+            <form className="analysisUsernamePickerForm" onSubmit={submitUsernamePicker}>
+              <input
+                type="text"
+                value={usernameDraft}
+                placeholder="Search by username"
+                autoComplete="off"
+                spellCheck={false}
+                autoFocus
+                onChange={(event) => setUsernameDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter") return;
+                  event.preventDefault();
+                  commitUsername(usernameDraft);
+                }}
+              />
+            </form>
+            {recentUsernames.length ? (
+              <div className="analysisRecentUsernameGrid" aria-label="Recent username searches">
+                {recentUsernames.map((recentUsername) => (
+                  <span className="analysisRecentUsernameChip" key={recentUsername}>
+                    <button
+                      type="button"
+                      className={
+                        username.trim().toLowerCase() === recentUsername.toLowerCase()
+                          ? "active"
+                          : ""
+                      }
+                      onClick={() => commitUsername(recentUsername)}
+                    >
+                      {recentUsername}
+                    </button>
+                    <button
+                      type="button"
+                      className="remove"
+                      aria-label={`Remove ${recentUsername} from recent searches`}
+                      onClick={() => removeRecentUsername(recentUsername)}
+                    >
+                      <FontAwesomeIcon icon={faXmark} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </section>
+        </div>
+      ) : null}
+
       <div className="analysisBoardColumn">
-        <div className="analysisBoardPanel" aria-label="Atomic chess board">
+        <div
+          className="analysisBoardPanel"
+          aria-label="Atomic chess board"
+          tabIndex={0}
+          onWheel={handleBoardWheel}
+        >
           <Chessboard
             puzzleId="analysis"
             fen={STARTING_FEN}

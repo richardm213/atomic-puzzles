@@ -83,6 +83,13 @@ const MOVE_EVALUATION_DELAY_MS = 250;
 
 const keyPair = (a: string, b: string): [Key, Key] => [a as Key, b as Key];
 
+const promotionRoleByUci: Partial<Record<string, Role>> = {
+  q: "queen",
+  r: "rook",
+  b: "bishop",
+  n: "knight",
+};
+
 export const Chessboard = ({
   puzzleId,
   fen,
@@ -668,6 +675,22 @@ export const Chessboard = ({
     [clearPendingPromotion, playUserMove],
   );
 
+  const playUciMove = useCallback(
+    (uci: string): void => {
+      const normalized = uci.trim().toLowerCase();
+      if (normalized.length < 4) return;
+
+      clearPendingPromotion();
+      const promotionCode = normalized[4];
+      playUserMove(
+        normalized.slice(0, 2),
+        normalized.slice(2, 4),
+        promotionCode ? promotionRoleByUci[promotionCode] : undefined,
+      );
+    },
+    [clearPendingPromotion, playUserMove],
+  );
+
   useEffect(() => {
     if (!elementRef.current) return;
 
@@ -762,7 +785,9 @@ export const Chessboard = ({
   useEffect(() => {
     if (!solutionNavigation) return;
 
-    if (solutionNavigation.command) {
+    if (solutionNavigation.playUci) {
+      playUciMove(solutionNavigation.playUci);
+    } else if (solutionNavigation.command) {
       navigatePlayback(solutionNavigation.command);
     } else if (solutionNavigation.useHistory && solutionNavigation.plyIndex !== undefined) {
       navigateTo(solutionNavigation.plyIndex);
@@ -776,7 +801,14 @@ export const Chessboard = ({
     }
 
     onNavigateHandled?.();
-  }, [solutionNavigation, onNavigateHandled, navigatePlayback, navigateTo, showSolutionLine]);
+  }, [
+    solutionNavigation,
+    onNavigateHandled,
+    navigatePlayback,
+    navigateTo,
+    playUciMove,
+    showSolutionLine,
+  ]);
 
   useEffect(() => {
     if (!analysisMode) return;

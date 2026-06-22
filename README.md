@@ -164,9 +164,17 @@ The app is set up like a standard static SPA build:
 - Build command: `npm run build`
 - Output directory: `dist`
 
+The production opening explorer uses a Netlify Function backed by Turso. Configure these
+environment variables in Netlify:
+
+- `TURSO_DATABASE_URL`, from `turso db show --url openings2`
+- `TURSO_AUTH_TOKEN`, from `turso db tokens create openings2 --read-only`
+
 Netlify deep-link support is handled through [`public/_redirects`](public/_redirects):
 
 ```text
+/api/opening-explorer/health    /.netlify/functions/opening-explorer    200
+/api/opening-explorer    /.netlify/functions/opening-explorer    200
 /*    /index.html   200
 ```
 

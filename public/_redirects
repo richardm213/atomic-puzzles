@@ -1,1 +1,3 @@
+/api/opening-explorer/health    /.netlify/functions/opening-explorer    200
+/api/opening-explorer    /.netlify/functions/opening-explorer    200
 /*    /index.html   200

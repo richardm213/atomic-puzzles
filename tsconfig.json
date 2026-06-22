@@ -23,8 +23,8 @@
     "isolatedModules": true,
     "noEmit": true,
     "useDefineForClassFields": true,
-    "types": ["vite/client", "vitest/globals", "@testing-library/jest-dom/vitest"]
+    "types": ["vite/client", "vitest/globals", "@testing-library/jest-dom/vitest", "node"]
   },
-  "include": ["src", "vite.config.ts"],
+  "include": ["src"],
   "exclude": ["node_modules", "dist"]
 }
