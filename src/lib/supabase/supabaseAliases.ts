@@ -32,6 +32,11 @@ type MergeInputRow = NormalizedAliasRow & {
   countableAliases?: string[];
 };
 
+type ProfileAliasSource = {
+  username: string;
+  aliasTableRow: NormalizedAliasRow | null;
+};
+
 const ALIASES_TABLE = "aliases" as const;
 const ALIASES2_TABLE = "aliases2" as const;
 const ALIASES_SELECT_COLUMNS = "username,aliases,openings,banned";
@@ -39,7 +44,7 @@ const ALIASES2_SELECT_COLUMNS = "alias,username,banned,count_games";
 const aliasesRowsCache = new Map<string, Promise<MergedAliasRow[]>>();
 const aliasTableRowsCache = new Map<string, Promise<NormalizedAliasRow[]>>();
 const alias2TableRowsCache = new Map<string, Promise<MergedAliasRow[]>>();
-const profileUsernameCache = new Map<string, Promise<string>>();
+const profileAliasSourceCache = new Map<string, Promise<ProfileAliasSource>>();
 const profileAliasEntryCache = new Map<string, Promise<MergedAliasRow | null>>();
 
 const normalizeOpenings = (openings: unknown): string[] =>
@@ -292,30 +297,45 @@ const fetchUncachedAlias2Rows = async (): Promise<MergedAliasRow[]> => {
 const fetchAliases2TableRows = async (): Promise<MergedAliasRow[]> =>
   cachedRequest(alias2TableRowsCache, ["aliases2-table"], async () => fetchUncachedAlias2Rows());
 
-export const resolveProfileUsernameFromAliases = async (value: string): Promise<string> =>
-  cachedRequest(profileUsernameCache, ["profile-username", value], async () => {
+const resolveProfileAliasSource = async (value: string): Promise<ProfileAliasSource> =>
+  cachedRequest(profileAliasSourceCache, ["profile-alias-source", value], async () => {
     const username = normalizeUsername(value);
-    if (!username) return "";
+    if (!username) return { username: "", aliasTableRow: null };
 
-    const alias2Match = await fetchAliases2CanonicalUsername(username);
-    if (alias2Match) return alias2Match;
+    const [alias2Match, aliasTableDirectMatch] = await Promise.all([
+      fetchAliases2CanonicalUsername(username),
+      fetchAliasesTableRowForUsername(username),
+    ]);
 
-    const aliasTableDirectMatch = await fetchAliasesTableRowForUsername(username);
-    if (aliasTableDirectMatch) return aliasTableDirectMatch.username;
+    if (alias2Match) {
+      return {
+        username: alias2Match,
+        aliasTableRow: alias2Match === username ? aliasTableDirectMatch : null,
+      };
+    }
 
-    const aliasTableAliasMatch = await fetchAliasesTableRowForAlias(username);
-    if (aliasTableAliasMatch) return aliasTableAliasMatch.username;
-
-    return username;
+    const aliasTableRow = aliasTableDirectMatch ?? (await fetchAliasesTableRowForAlias(username));
+    return {
+      username: aliasTableRow?.username ?? username,
+      aliasTableRow,
+    };
   });
+
+export const resolveProfileUsernameFromAliases = async (value: string): Promise<string> => {
+  const { username } = await resolveProfileAliasSource(value);
+  return username;
+};
 
 export const fetchProfileAliasRow = async (value: string): Promise<MergedAliasRow | null> =>
   cachedRequest(profileAliasEntryCache, ["profile-alias-entry", value], async () => {
-    const canonicalUsername = await resolveProfileUsernameFromAliases(value);
+    const { username: canonicalUsername, aliasTableRow: resolvedAliasTableRow } =
+      await resolveProfileAliasSource(value);
     if (!canonicalUsername) return null;
 
+    const aliasTableRowRequest =
+      resolvedAliasTableRow ?? fetchAliasesTableRowForUsername(canonicalUsername);
     const [aliasTableRow, alias2AggregateRow] = await Promise.all([
-      fetchAliasesTableRowForUsername(canonicalUsername),
+      aliasTableRowRequest,
       fetchAliases2AggregateRowForUsername(canonicalUsername),
     ]);
     const mergedRows = mergeAliasRows(

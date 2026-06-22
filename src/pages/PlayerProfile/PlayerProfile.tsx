@@ -439,8 +439,9 @@ export const PlayerProfilePage = ({ username }: { username?: string }) => {
   const canonicalUsername = profileAliasEntry?.username ?? normalizedUsername;
   const favoriteOpponentQueryKey = `${canonicalUsername}|${favoriteOpponentMode}|${favoriteOpponentMatchLimit}`;
   const isBanned = Boolean(profileAliasEntry?.banned);
-  const ratingsSnapshotByMode = useRatingsSnapshotByMode(canonicalUsername);
-  const monthRanks = useMonthRanks(canonicalUsername);
+  const profileDataUsername = aliasesLoaded ? canonicalUsername : "";
+  const ratingsSnapshotByMode = useRatingsSnapshotByMode(profileDataUsername);
+  const monthRanks = useMonthRanks(profileDataUsername);
   const monthRankPlayerCounts = useMonthRankPlayerCounts(monthRanks);
   const [bestMonthRankCount, setBestMonthRankCount] = useState(5);
   const [recentMonthRankCount, setRecentMonthRankCount] = useState(5);

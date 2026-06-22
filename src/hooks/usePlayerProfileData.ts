@@ -218,16 +218,29 @@ export const useMonthRanks = (username: string): MonthRank[] => {
   const [monthRanks, setMonthRanks] = useState<MonthRank[]>([]);
 
   useEffect(() => {
+    if (!username) {
+      setMonthRanks([]);
+      return;
+    }
+
+    let isCurrent = true;
+
     const loadMonthRanks = async (): Promise<void> => {
       try {
         const rows = await fetchLbRows({ username });
+        if (!isCurrent) return;
         setMonthRanks(parseMonthRanksFromLbRows(rows));
       } catch {
+        if (!isCurrent) return;
         setMonthRanks([]);
       }
     };
 
     void loadMonthRanks();
+
+    return () => {
+      isCurrent = false;
+    };
   }, [username]);
 
   return monthRanks;
@@ -283,16 +296,29 @@ export const useRatingsSnapshotByMode = (username: string): RatingsSnapshotByMod
   );
 
   useEffect(() => {
+    if (!username) {
+      setRatingsSnapshotByMode(emptyRatingsSnapshotByMode);
+      return;
+    }
+
+    let isCurrent = true;
+
     const loadRatingsSnapshot = async (): Promise<void> => {
       try {
         const rows = await fetchPlayerRatingsRows({ username });
+        if (!isCurrent) return;
         setRatingsSnapshotByMode(parseCurrentRatingsFromRows(rows));
       } catch {
+        if (!isCurrent) return;
         setRatingsSnapshotByMode(emptyRatingsSnapshotByMode);
       }
     };
 
     void loadRatingsSnapshot();
+
+    return () => {
+      isCurrent = false;
+    };
   }, [username]);
 
   return ratingsSnapshotByMode;
