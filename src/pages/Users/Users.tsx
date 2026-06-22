@@ -13,6 +13,7 @@ import { type AliasLookup, loadAliasesLookup } from "../../lib/users/aliasesLook
 import { getOpeningDisplayLabel, normalizeOpeningKey } from "../../utils/openings";
 
 const HIGH_RD_THRESHOLD = 100;
+const RATING_DISPLAY_STORAGE_KEY = "atomic-users-rating-display-mode";
 const ratingDisplayOptions = ["current", "peak"] as const;
 type RatingDisplayMode = (typeof ratingDisplayOptions)[number];
 
@@ -32,6 +33,20 @@ type UserRow = {
 type UserSortKey = "username" | "openings" | "aliasCount" | Mode;
 
 const isMode = (value: string): value is Mode => (modeOptions as readonly string[]).includes(value);
+
+const isRatingDisplayMode = (value: string | null): value is RatingDisplayMode =>
+  value === "current" || value === "peak";
+
+const getStoredRatingDisplayMode = (): RatingDisplayMode => {
+  if (typeof window === "undefined") return "current";
+
+  try {
+    const storedMode = window.localStorage.getItem(RATING_DISPLAY_STORAGE_KEY);
+    return isRatingDisplayMode(storedMode) ? storedMode : "current";
+  } catch {
+    return "current";
+  }
+};
 
 const getUserColumns = (
   ratingDisplayMode: RatingDisplayMode,
@@ -134,9 +149,10 @@ const UsersTablePage = () => {
   const [rows, setRows] = useState<UserRow[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  const [sortKey, setSortKey] = useState<UserSortKey>("aliasCount");
+  const [sortKey, setSortKey] = useState<UserSortKey>("blitz");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
-  const [ratingDisplayMode, setRatingDisplayMode] = useState<RatingDisplayMode>("current");
+  const [ratingDisplayMode, setRatingDisplayMode] =
+    useState<RatingDisplayMode>(getStoredRatingDisplayMode);
   const [activeOpeningFilter, setActiveOpeningFilter] = useState("");
 
   useEffect(() => {
@@ -169,6 +185,14 @@ const UsersTablePage = () => {
       isCurrent = false;
     };
   }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(RATING_DISPLAY_STORAGE_KEY, ratingDisplayMode);
+    } catch {
+      // Ignore storage failures; the selected mode still applies for the current session.
+    }
+  }, [ratingDisplayMode]);
 
   const handleSort = (nextKey: UserSortKey): void => {
     if (sortKey === nextKey) {

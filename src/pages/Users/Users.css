@@ -1,7 +1,7 @@
 @import "../Rankings/Rankings.css";
 
 .usersPanel {
-  width: min(1080px, 100%);
+  width: min(920px, 100%);
 }
 
 .usersMeta {
@@ -11,8 +11,8 @@
 .usersToolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  justify-content: flex-start;
+  gap: 10px;
   margin-bottom: 16px;
 }
 
@@ -128,7 +128,12 @@
 }
 
 .usersTable {
-  min-width: 860px;
+  min-width: 760px;
+}
+
+.usersTable th,
+.usersTable td {
+  padding-inline: 9px;
 }
 
 .usersTable :is(th, td):nth-child(n + 2):nth-child(-n + 6) {
@@ -139,7 +144,7 @@
 .usersOpeningsCell {
   display: flex;
   min-width: 0;
-  max-width: 280px;
+  max-width: 220px;
 }
 
 .usersOpeningTags {
@@ -285,7 +290,7 @@
   }
 
   .usersTable {
-    min-width: 760px;
+    min-width: 700px;
   }
 
   .usersAliasList {
