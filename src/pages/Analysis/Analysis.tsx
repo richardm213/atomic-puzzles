@@ -353,6 +353,12 @@ export const AnalysisPage = () => {
   const boardWheelCanStepBackRef = useRef(false);
   const boardWheelCanStepForwardRef = useRef(false);
   const [boardState, setBoardState] = useState<ChessboardState | null>(null);
+  const [rootFen, setRootFen] = useState(STARTING_FEN);
+  const [fenDraft, setFenDraft] = useState(STARTING_FEN);
+  const [pgnDraft, setPgnDraft] = useState("*");
+  const [activeTextEditor, setActiveTextEditor] = useState<"fen" | "pgn" | null>(null);
+  const [fenError, setFenError] = useState("");
+  const [pgnError, setPgnError] = useState("");
   const [orientation, setOrientation] = useState<"white" | "black">("white");
   const [navigation, setNavigation] = useState<SolutionNavigation | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -437,6 +443,29 @@ export const AnalysisPage = () => {
         .join(" ")} *`
     : "*";
 
+  useEffect(() => {
+    if (activeTextEditor !== "fen") {
+      setFenDraft(currentFen);
+    }
+  }, [activeTextEditor, currentFen]);
+
+  useEffect(() => {
+    if (activeTextEditor !== "pgn") {
+      setPgnDraft(pgnText);
+    }
+  }, [activeTextEditor, pgnText]);
+
+  useEffect(() => {
+    if (boardState?.status === "Invalid PGN" && boardState.error) {
+      setPgnError(boardState.error);
+      return;
+    }
+
+    if (boardState?.status !== "Invalid PGN") {
+      setPgnError("");
+    }
+  }, [boardState?.error, boardState?.status]);
+
   const requestNavigation = (command: NonNullable<SolutionNavigation["command"]>): void => {
     setNavigation({ command });
   };
@@ -504,6 +533,30 @@ export const AnalysisPage = () => {
 
   const playExplorerMove = (uci: string): void => {
     setNavigation({ playUci: uci });
+  };
+
+  const submitFen = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+    const nextFen = fenDraft.trim();
+
+    try {
+      createAtomicPosition(nextFen);
+    } catch (error) {
+      setFenError(error instanceof Error ? error.message : "Invalid FEN");
+      return;
+    }
+
+    setRootFen(nextFen);
+    setFenDraft(nextFen);
+    setFenError("");
+    setPgnError("");
+    setNavigation({ resetFen: nextFen });
+  };
+
+  const submitPgn = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+    setPgnError("");
+    setNavigation({ loadPgn: pgnDraft, loadPgnFen: rootFen });
   };
 
   const saveRecentUsernames = (nextUsernames: string[]): void => {
@@ -1365,7 +1418,7 @@ export const AnalysisPage = () => {
         >
           <Chessboard
             puzzleId="analysis"
-            fen={STARTING_FEN}
+            fen={rootFen}
             orientation={orientation}
             coordinates
             solution=""
@@ -1386,14 +1439,50 @@ export const AnalysisPage = () => {
             <FontAwesomeIcon icon={faExternalLinkAlt} />
             <span>View on Lichess</span>
           </a>
-          <div className="analysisFenBox">
+          <form className="analysisFenBox analysisTextBox" onSubmit={submitFen}>
             <span>FEN</span>
-            <code>{currentFen}</code>
-          </div>
-          <div className="analysisPgnBox" aria-label="PGN">
+            <textarea
+              value={fenDraft}
+              rows={2}
+              spellCheck={false}
+              aria-label="FEN"
+              aria-invalid={Boolean(fenError)}
+              onFocus={() => setActiveTextEditor("fen")}
+              onBlur={() => setActiveTextEditor(null)}
+              onChange={(event) => setFenDraft(event.target.value)}
+            />
+            <button
+              type="submit"
+              className="analysisTextApplyButton"
+              aria-label="Apply FEN"
+              onMouseDown={(event) => event.preventDefault()}
+            >
+              <FontAwesomeIcon icon={faCheck} />
+            </button>
+            {fenError ? <small className="analysisTextBoxError">{fenError}</small> : null}
+          </form>
+          <form className="analysisPgnBox analysisTextBox" aria-label="PGN" onSubmit={submitPgn}>
             <span>PGN</span>
-            <p aria-live="polite">{pgnText}</p>
-          </div>
+            <textarea
+              value={pgnDraft}
+              rows={3}
+              spellCheck={false}
+              aria-label="PGN"
+              aria-invalid={Boolean(pgnError)}
+              onFocus={() => setActiveTextEditor("pgn")}
+              onBlur={() => setActiveTextEditor(null)}
+              onChange={(event) => setPgnDraft(event.target.value)}
+            />
+            <button
+              type="submit"
+              className="analysisTextApplyButton"
+              aria-label="Apply PGN"
+              onMouseDown={(event) => event.preventDefault()}
+            >
+              <FontAwesomeIcon icon={faCheck} />
+            </button>
+            {pgnError ? <small className="analysisTextBoxError">{pgnError}</small> : null}
+          </form>
         </div>
       </div>
     </section>

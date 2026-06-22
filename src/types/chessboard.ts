@@ -20,6 +20,9 @@ export type ChessboardState = {
 export type SolutionNavigation = {
   command?: "start" | "previous" | "next" | "end";
   playUci?: string;
+  resetFen?: string;
+  loadPgn?: string;
+  loadPgnFen?: string;
   useHistory?: boolean;
   plyIndex?: number;
   lineIndex?: number;

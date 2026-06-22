@@ -6,7 +6,7 @@ import type { Key } from "@lichess-org/chessground/types";
 import type { Color, Role } from "chessops";
 import { chessgroundDests } from "chessops/compat";
 import { makeFen } from "chessops/fen";
-import { makeSan } from "chessops/san";
+import { makeSan, parseSan } from "chessops/san";
 import { makeUci, parseSquare } from "chessops/util";
 import type { Atomic } from "chessops/variant";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -89,6 +89,46 @@ const promotionRoleByUci: Partial<Record<string, Role>> = {
   b: "bishop",
   n: "knight",
 };
+
+const stripPgnVariations = (value: string): string => {
+  let depth = 0;
+  let stripped = "";
+
+  for (const character of value) {
+    if (character === "(") {
+      depth += 1;
+      stripped += " ";
+      continue;
+    }
+
+    if (character === ")") {
+      depth = Math.max(0, depth - 1);
+      stripped += " ";
+      continue;
+    }
+
+    if (depth === 0) {
+      stripped += character;
+    }
+  }
+
+  return stripped;
+};
+
+const tokenizeMainlinePgn = (value: string): string[] =>
+  stripPgnVariations(value)
+    .replace(/\[[^\]]*\]/g, " ")
+    .replace(/\{[^}]*\}/g, " ")
+    .replace(/;[^\n\r]*/g, " ")
+    .replace(/\$\d+/g, " ")
+    .split(/\s+/)
+    .map((token) =>
+      token
+        .replace(/^\d+\.(\.\.)?/, "")
+        .replace(/[!?]+$/g, "")
+        .trim(),
+    )
+    .filter((token) => Boolean(token) && !["*", "1-0", "0-1", "1/2-1/2"].includes(token));
 
 export const Chessboard = ({
   puzzleId,
@@ -691,6 +731,134 @@ export const Chessboard = ({
     [clearPendingPromotion, playUserMove],
   );
 
+  const resetToFen = useCallback(
+    (nextFen: string): void => {
+      clearMoveEvaluationTimer();
+      clearPendingPromotion();
+
+      const { position, error } = tryCreateAtomicPosition(nextFen);
+      if (!position) {
+        positionRef.current = null;
+        cgRef.current?.set({
+          orientation: orientationRef.current,
+          coordinates: coordinatesRef.current,
+          check: false,
+          movable: {
+            dests: new Map(),
+          },
+        });
+        onStateChangeRef.current?.({
+          fen: nextFen,
+          turn: "",
+          status: "Invalid position",
+          winner: undefined,
+          error,
+          showWrongMove: false,
+          showRetryMove: false,
+          solved: false,
+        });
+        return;
+      }
+
+      historyRef.current = {
+        fens: [nextFen],
+        lastMoves: [undefined],
+        moveUcis: [],
+        moveKeys: [],
+        moveSans: [],
+        index: 0,
+      };
+      activeSolutionLineRef.current = 0;
+      moveLockRef.current = false;
+      candidateLinesRef.current = [];
+      progressRef.current = 0;
+      puzzleSolvedRef.current = false;
+
+      syncBoard(position, undefined, {
+        solved: false,
+        viewingSolution: false,
+      });
+    },
+    [clearMoveEvaluationTimer, clearPendingPromotion, syncBoard],
+  );
+
+  const loadPgnMainline = useCallback(
+    (initialFen: string, pgn: string): void => {
+      clearMoveEvaluationTimer();
+      clearPendingPromotion();
+
+      const { position, error } = tryCreateAtomicPosition(initialFen);
+      if (!position) {
+        onStateChangeRef.current?.({
+          fen: initialFen,
+          turn: "",
+          status: "Invalid position",
+          winner: undefined,
+          error,
+          showWrongMove: false,
+          showRetryMove: false,
+          solved: false,
+        });
+        return;
+      }
+
+      const tokens = tokenizeMainlinePgn(pgn);
+      const nextHistory: BoardHistory = {
+        fens: [initialFen],
+        lastMoves: [undefined],
+        moveUcis: [],
+        moveKeys: [],
+        moveSans: [],
+        index: 0,
+      };
+
+      try {
+        for (const token of tokens) {
+          const sanMove = parseSan(position, token);
+          const uciMove = sanMove ?? moveFromUci(position, token.toLowerCase());
+
+          if (!uciMove || !position.isLegal(uciMove)) {
+            throw new Error(`Invalid PGN move: ${token}`);
+          }
+
+          const uci = makeUci(uciMove).toLowerCase();
+          const moveKey = toComparableUci(position, uci, uciMove);
+          const moveSan = makeSan(position, uciMove);
+          position.play(uciMove);
+
+          nextHistory.fens.push(makeFen(position.toSetup()));
+          nextHistory.lastMoves.push(keyPair(uci.slice(0, 2), uci.slice(2, 4)));
+          nextHistory.moveUcis.push(uci);
+          nextHistory.moveKeys.push(moveKey);
+          nextHistory.moveSans.push(moveSan);
+          nextHistory.index += 1;
+        }
+      } catch (loadError) {
+        const currentPosition = positionRef.current;
+        if (currentPosition) {
+          emitState(currentPosition, {
+            status: "Invalid PGN",
+            error: loadError instanceof Error ? loadError.message : "Invalid PGN",
+          });
+        }
+        return;
+      }
+
+      historyRef.current = nextHistory;
+      activeSolutionLineRef.current = 0;
+      moveLockRef.current = false;
+      candidateLinesRef.current = [];
+      progressRef.current = 0;
+      puzzleSolvedRef.current = false;
+
+      syncBoard(position, nextHistory.lastMoves[nextHistory.index], {
+        solved: false,
+        viewingSolution: false,
+      });
+    },
+    [clearMoveEvaluationTimer, clearPendingPromotion, emitState, syncBoard],
+  );
+
   useEffect(() => {
     if (!elementRef.current) return;
 
@@ -785,7 +953,11 @@ export const Chessboard = ({
   useEffect(() => {
     if (!solutionNavigation) return;
 
-    if (solutionNavigation.playUci) {
+    if (solutionNavigation.resetFen) {
+      resetToFen(solutionNavigation.resetFen);
+    } else if (solutionNavigation.loadPgn !== undefined) {
+      loadPgnMainline(solutionNavigation.loadPgnFen ?? fenRef.current, solutionNavigation.loadPgn);
+    } else if (solutionNavigation.playUci) {
       playUciMove(solutionNavigation.playUci);
     } else if (solutionNavigation.command) {
       navigatePlayback(solutionNavigation.command);
@@ -806,7 +978,9 @@ export const Chessboard = ({
     onNavigateHandled,
     navigatePlayback,
     navigateTo,
+    loadPgnMainline,
     playUciMove,
+    resetToFen,
     showSolutionLine,
   ]);
 
