@@ -351,9 +351,7 @@ export const handler = async (event: NetlifyEvent) => {
   if (requestedOpponent === null) {
     return jsonResponse(400, { error: "Invalid opponent query parameter" });
   }
-  const opponent = username
-    ? await resolveCanonicalUsername(requestedOpponent, databaseUrl)
-    : "";
+  const opponent = username ? await resolveCanonicalUsername(requestedOpponent, databaseUrl) : "";
   const requestedColor = parseColor(params.get("color"));
   if (requestedColor === null) {
     return jsonResponse(400, { error: "Invalid color query parameter" });
@@ -462,7 +460,8 @@ export const handler = async (event: NetlifyEvent) => {
       order by games desc
       limit 12;
     `
-    : `
+    : username
+      ? `
       select
         next_uci as uci,
         sum(games) as games,
@@ -474,6 +473,29 @@ export const handler = async (event: NetlifyEvent) => {
       where ${edgesWhere}
         and (opponent_rating_sum * 1.0 / games) >= ${minRating}
       group by next_uci
+      order by games desc
+      limit 12;
+    `
+      : `
+      select
+        uci,
+        count(*) as games,
+        sum(case when winner = 1 then 1 else 0 end) as whiteWins,
+        sum(case when winner = 0 then 1 else 0 end) as draws,
+        sum(case when winner = 2 then 1 else 0 end) as blackWins,
+        round(avg(averageRating)) as avgOpponentRating
+      from (
+        select
+          g.game_id,
+          g.next_uci as uci,
+          g.winner,
+          avg((g.white_rating + g.black_rating) / 2.0) as averageRating
+        from opening_position_games g
+        where ${gamesWhere}
+          ${detailsRatingFilter}
+        group by g.game_id, g.next_uci, g.winner
+      ) deduped_games
+      group by uci
       order by games desc
       limit 12;
     `;
