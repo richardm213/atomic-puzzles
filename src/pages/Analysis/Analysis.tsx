@@ -404,6 +404,7 @@ export const AnalysisPage = () => {
   const boardPanelRef = useRef<HTMLDivElement | null>(null);
   const rightPanelRef = useRef<HTMLElement | null>(null);
   const movePanelRef = useRef<HTMLDivElement | null>(null);
+  const moveSettingsRef = useRef<HTMLDivElement | null>(null);
   const boardWheelDeltaRef = useRef(0);
   const boardWheelLastAtRef = useRef(0);
   const boardWheelDirectionRef = useRef(0);
@@ -422,6 +423,7 @@ export const AnalysisPage = () => {
   const [orientation, setOrientation] = useState<"white" | "black">("white");
   const [navigation, setNavigation] = useState<SolutionNavigation | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [moveSettingsOpen, setMoveSettingsOpen] = useState(false);
   const [explorerOpen, setExplorerOpen] = useState(true);
   const [movePanelHeight, setMovePanelHeight] = useState<number | null>(null);
   const [explorerResizing, setExplorerResizing] = useState(false);
@@ -539,6 +541,34 @@ export const AnalysisPage = () => {
     setNavigation({ command });
   };
 
+  const flipBoard = useCallback((): void => {
+    setOrientation((current) => (current === "white" ? "black" : "white"));
+  }, []);
+
+  useEffect(() => {
+    if (!moveSettingsOpen) return;
+
+    const closeMoveSettings = (event: PointerEvent): void => {
+      const target = event.target;
+      if (target instanceof Node && moveSettingsRef.current?.contains(target)) return;
+
+      setMoveSettingsOpen(false);
+    };
+
+    const closeMoveSettingsOnEscape = (event: KeyboardEvent): void => {
+      if (event.key === "Escape") {
+        setMoveSettingsOpen(false);
+      }
+    };
+
+    window.addEventListener("pointerdown", closeMoveSettings);
+    window.addEventListener("keydown", closeMoveSettingsOnEscape);
+    return () => {
+      window.removeEventListener("pointerdown", closeMoveSettings);
+      window.removeEventListener("keydown", closeMoveSettingsOnEscape);
+    };
+  }, [moveSettingsOpen]);
+
   useEffect(() => {
     boardWheelCanStepBackRef.current = canStepBack;
     boardWheelCanStepForwardRef.current = canStepForward;
@@ -616,11 +646,13 @@ export const AnalysisPage = () => {
     event.preventDefault();
     event.stopPropagation();
 
+    const handle = event.currentTarget;
     const startX = event.clientX;
     const startY = event.clientY;
     const startSize = boardSize;
     const pointerId = event.pointerId;
     const controller = new AbortController();
+    handle.setPointerCapture(pointerId);
 
     const handlePointerMove = (moveEvent: PointerEvent): void => {
       if (moveEvent.pointerId !== pointerId) return;
@@ -635,15 +667,18 @@ export const AnalysisPage = () => {
 
     const handlePointerUp = (upEvent: PointerEvent): void => {
       if (upEvent.pointerId !== pointerId) return;
+      if (handle.hasPointerCapture(pointerId)) {
+        handle.releasePointerCapture(pointerId);
+      }
       controller.abort();
     };
 
-    window.addEventListener("pointermove", handlePointerMove, {
+    handle.addEventListener("pointermove", handlePointerMove, {
       passive: false,
       signal: controller.signal,
     });
-    window.addEventListener("pointerup", handlePointerUp, { signal: controller.signal });
-    window.addEventListener("pointercancel", handlePointerUp, { signal: controller.signal });
+    handle.addEventListener("pointerup", handlePointerUp, { signal: controller.signal });
+    handle.addEventListener("pointercancel", handlePointerUp, { signal: controller.signal });
   };
 
   const navigateToPly = (plyIndex: number): void => {
@@ -1057,13 +1092,13 @@ export const AnalysisPage = () => {
       if (key === "e") {
         setExplorerOpen((open) => !open);
       } else {
-        setOrientation((current) => (current === "white" ? "black" : "white"));
+        flipBoard();
       }
     };
 
     window.addEventListener("keydown", handleAnalysisShortcut, { capture: true });
     return () => window.removeEventListener("keydown", handleAnalysisShortcut, { capture: true });
-  }, [explorerMoves, explorerOpen, explorerStatus, filtersOpen, usernamePickerOpen]);
+  }, [explorerMoves, explorerOpen, explorerStatus, filtersOpen, flipBoard, usernamePickerOpen]);
 
   useEffect(() => {
     if (!usernamePickerOpen) return;
@@ -1097,6 +1132,39 @@ export const AnalysisPage = () => {
         <div className="analysisMovePanel" ref={movePanelRef}>
           <div className="analysisSectionTitle">
             <span>Moves</span>
+            <div className="analysisMoveSettings" ref={moveSettingsRef}>
+              <button
+                type="button"
+                className="analysisMoveSettingsButton"
+                aria-label="Moves settings"
+                aria-haspopup="menu"
+                aria-expanded={moveSettingsOpen}
+                aria-controls="analysis-move-settings-menu"
+                title="Moves settings"
+                onClick={() => setMoveSettingsOpen((open) => !open)}
+              >
+                <FontAwesomeIcon icon={faGear} />
+              </button>
+              {moveSettingsOpen ? (
+                <div
+                  className="analysisMoveSettingsMenu"
+                  id="analysis-move-settings-menu"
+                  role="menu"
+                >
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      flipBoard();
+                      setMoveSettingsOpen(false);
+                    }}
+                  >
+                    <FontAwesomeIcon icon={faArrowsRotate} />
+                    <span>Flip board</span>
+                  </button>
+                </div>
+              ) : null}
+            </div>
           </div>
           <ol className="analysisMoveList" aria-label="Played moves" aria-live="polite">
             {movePairs.map((pair) => (

@@ -161,6 +161,8 @@ body:has(.analysisPage),
 .analysisPrimaryButton:focus-visible,
 .analysisSecondaryButton:focus-visible,
 .analysisFilterToggle:focus-visible,
+.analysisMoveSettingsButton:focus-visible,
+.analysisMoveSettingsMenu button:focus-visible,
 .analysisToolbarButton:focus-visible,
 .analysisExplorerTabs button:focus-visible,
 .analysisSpeedToggles button:focus-visible,
@@ -222,6 +224,72 @@ body:has(.analysisPage),
   font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
+}
+
+.analysisMoveSettings {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.analysisMoveSettingsButton {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: color-mix(in srgb, var(--color-muted) 72%, transparent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    color 140ms ease;
+}
+
+.analysisMoveSettingsButton:hover,
+.analysisMoveSettingsButton[aria-expanded="true"] {
+  background: color-mix(in srgb, var(--color-panel-strong) 72%, transparent);
+  color: var(--color-heading);
+}
+
+.analysisMoveSettingsMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 12;
+  width: 150px;
+  padding: 4px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-panel-deep) 94%, var(--color-panel-strong) 6%);
+  box-shadow: 0 14px 32px color-mix(in srgb, black 32%, transparent);
+}
+
+.analysisMoveSettingsMenu button {
+  width: 100%;
+  min-height: 34px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--color-text);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 780;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.analysisMoveSettingsMenu button:hover {
+  background: color-mix(in srgb, var(--color-panel-strong) 72%, var(--color-primary) 16%);
+  color: var(--color-heading);
 }
 
 .analysisMoveList {

@@ -864,8 +864,8 @@ export const Chessboard = ({
 
     cgRef.current = Chessground(elementRef.current, {
       fen,
-      orientation,
-      coordinates,
+      orientation: orientationRef.current,
+      coordinates: coordinatesRef.current,
       movable: {
         free: false,
         color: "white",
@@ -930,10 +930,8 @@ export const Chessboard = ({
   }, [
     clearMoveEvaluationTimer,
     clearPendingPromotion,
-    coordinates,
     fen,
     isSolutionPlaybackLocked,
-    orientation,
     playUserMove,
     syncBoard,
   ]);
@@ -1091,8 +1089,13 @@ export const Chessboard = ({
   ]);
 
   useEffect(() => {
-    const position = positionRef.current;
+    let position = positionRef.current;
+    if (!position) {
+      const fallbackFen = historyRef.current.fens[historyRef.current.index] ?? fenRef.current;
+      position = tryCreateAtomicPosition(fallbackFen).position;
+    }
     if (!position) return;
+    positionRef.current = position;
 
     const history = historyRef.current;
     const movable = getMovableConfig(position);
