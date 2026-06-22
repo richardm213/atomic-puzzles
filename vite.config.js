@@ -118,7 +118,13 @@ const openingExplorerPlugin = () => {
     const opponent = username
       ? await resolveCanonicalUsername(requestedOpponent, signature)
       : "";
-    const color = url.searchParams.get("color") === "black" ? 1 : 0;
+    const requestedColor =
+      url.searchParams.get("color") === "white"
+        ? 0
+        : url.searchParams.get("color") === "black"
+          ? 1
+          : "all";
+    const color = username && requestedColor === "all" ? 0 : requestedColor;
     const requestedRating = Number.parseInt(url.searchParams.get("minRating") ?? "1700", 10);
     const minRating = Math.max(
       1700,
@@ -162,8 +168,8 @@ const openingExplorerPlugin = () => {
     const edgesPlayerSql = username ? `and canonical_player_id = ${playerIdSql}` : "";
     const gamesPlayerSql = username ? `and g.canonical_player_id = ${playerIdSql}` : "";
     const gamesOpponentSql = opponent ? `and g.${opponentIdColumn} = ${opponentIdSql}` : "";
-    const edgesColorSql = `and player_color = ${color}`;
-    const gamesColorSql = `and g.player_color = ${color}`;
+    const edgesColorSql = color === "all" ? "" : `and player_color = ${color}`;
+    const gamesColorSql = color === "all" ? "" : `and g.player_color = ${color}`;
     const speedSql = speeds.join(",");
     const edgesDateSql = `
       ${startDate ? `and played_on >= ${startDate}` : ""}

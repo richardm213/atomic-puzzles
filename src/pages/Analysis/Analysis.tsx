@@ -13,8 +13,8 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { makeSan } from "chessops/san";
-import type { CSSProperties, FormEvent, WheelEvent as ReactWheelEvent } from "react";
-import { useEffect, useRef, useState } from "react";
+import type { CSSProperties, FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Chessboard } from "../../components/Chessboard/Chessboard";
 import { Seo } from "../../components/Seo/Seo";
@@ -84,8 +84,9 @@ type ExplorerSpeed = "bullet" | "blitz";
 type UsernamePickerTarget = "player" | "opponent";
 
 const WIN_RATE_LABEL_MIN_PERCENT = 14;
-const BOARD_WHEEL_STEP_PX = 128;
-const BOARD_WHEEL_STEP_INTERVAL_MS = 220;
+const BOARD_WHEEL_DISCRETE_STEP_PX = 10;
+const BOARD_WHEEL_TRACKPAD_STEP_PX = 24;
+const BOARD_WHEEL_GESTURE_RESET_MS = 120;
 const EXPLORER_REQUEST_TIMEOUT_MS = 15_000;
 const MONTH_FILTER_PATTERN = /^\d{4}-\d{2}$/;
 const EXPLORER_SETTINGS_STORAGE_KEY = "atomic-puzzles.analysis.explorer-settings";
@@ -344,9 +345,12 @@ const lichessAnalysisUrl = (fen: string): string =>
 
 export const AnalysisPage = () => {
   const [initialExplorerSettings] = useState(loadExplorerSettings);
+  const boardPanelRef = useRef<HTMLDivElement | null>(null);
   const boardWheelDeltaRef = useRef(0);
   const boardWheelLastAtRef = useRef(0);
-  const boardWheelStepLastAtRef = useRef(0);
+  const boardWheelDirectionRef = useRef(0);
+  const boardWheelCanStepBackRef = useRef(false);
+  const boardWheelCanStepForwardRef = useRef(false);
   const [boardState, setBoardState] = useState<ChessboardState | null>(null);
   const [orientation, setOrientation] = useState<"white" | "black">("white");
   const [navigation, setNavigation] = useState<SolutionNavigation | null>(null);
@@ -436,33 +440,62 @@ export const AnalysisPage = () => {
     setNavigation({ command });
   };
 
-  const handleBoardWheel = (event: ReactWheelEvent<HTMLDivElement>): void => {
+  useEffect(() => {
+    boardWheelCanStepBackRef.current = canStepBack;
+    boardWheelCanStepForwardRef.current = canStepForward;
+  }, [canStepBack, canStepForward]);
+
+  const handleBoardWheel = useCallback((event: WheelEvent): void => {
     if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
 
     event.preventDefault();
     event.stopPropagation();
 
     const now = window.performance.now();
-    if (now - boardWheelLastAtRef.current > 280) {
+    const direction = Math.sign(event.deltaY);
+    if (direction === 0) return;
+
+    if (
+      direction !== boardWheelDirectionRef.current ||
+      now - boardWheelLastAtRef.current > BOARD_WHEEL_GESTURE_RESET_MS
+    ) {
       boardWheelDeltaRef.current = 0;
     }
     boardWheelLastAtRef.current = now;
+    boardWheelDirectionRef.current = direction;
 
     const deltaScale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 240 : 1;
-    boardWheelDeltaRef.current += event.deltaY * deltaScale;
+    const scaledDelta = event.deltaY * deltaScale;
+    const isDiscreteStep =
+      event.deltaMode !== 0 || Math.abs(scaledDelta) >= BOARD_WHEEL_DISCRETE_STEP_PX;
 
-    if (Math.abs(boardWheelDeltaRef.current) < BOARD_WHEEL_STEP_PX) return;
-    if (now - boardWheelStepLastAtRef.current < BOARD_WHEEL_STEP_INTERVAL_MS) return;
+    if (isDiscreteStep) {
+      boardWheelDeltaRef.current = 0;
+    } else {
+      boardWheelDeltaRef.current += scaledDelta;
+      if (Math.abs(boardWheelDeltaRef.current) < BOARD_WHEEL_TRACKPAD_STEP_PX) return;
+    }
 
-    const command = boardWheelDeltaRef.current > 0 ? "next" : "previous";
+    const command =
+      (isDiscreteStep ? scaledDelta : boardWheelDeltaRef.current) > 0 ? "next" : "previous";
     boardWheelDeltaRef.current = 0;
 
-    if (command === "next" && !canStepForward) return;
-    if (command === "previous" && !canStepBack) return;
+    if (command === "next" && !boardWheelCanStepForwardRef.current) return;
+    if (command === "previous" && !boardWheelCanStepBackRef.current) return;
 
-    boardWheelStepLastAtRef.current = now;
-    requestNavigation(command);
-  };
+    setNavigation({ command });
+  }, []);
+
+  useEffect(() => {
+    const boardPanel = boardPanelRef.current;
+    if (!boardPanel) return;
+
+    boardPanel.addEventListener("wheel", handleBoardWheel, { passive: false });
+
+    return () => {
+      boardPanel.removeEventListener("wheel", handleBoardWheel);
+    };
+  }, [handleBoardWheel]);
 
   const navigateToPly = (plyIndex: number): void => {
     setNavigation({ useHistory: true, plyIndex });
@@ -593,7 +626,6 @@ export const AnalysisPage = () => {
     ).map((speed) => speed.value);
     const params = new URLSearchParams({
       fen: currentFen,
-      color: playerColor,
       minRating: String(minRating),
       speeds: selectedSpeedValues.join(","),
     });
@@ -605,6 +637,7 @@ export const AnalysisPage = () => {
     }
     const trimmedUsername = username.trim();
     if (explorerScope === "player" && trimmedUsername) {
+      params.set("color", playerColor);
       params.set("username", trimmedUsername);
       const trimmedOpponent = opponent.trim();
       if (trimmedOpponent) {
@@ -937,24 +970,6 @@ export const AnalysisPage = () => {
                     ))}
                   </div>
                 </div>
-                {explorerScope === "general" ? (
-                  <div className="analysisFilterGroup">
-                    <span>Color</span>
-                    <div className="analysisColorToggles" aria-label="Database color filter">
-                      {["white", "black"].map((color) => (
-                        <button
-                          key={color}
-                          type="button"
-                          className={playerColor === color ? "active" : ""}
-                          aria-pressed={playerColor === color}
-                          onClick={() => setPlayerColor(color as "white" | "black")}
-                        >
-                          {color === "white" ? "White" : "Black"}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
                 <label className="analysisRatingSlider">
                   <span>
                     {explorerScope === "player" ? "Min opponent rating" : "Min average rating"}
@@ -1326,10 +1341,10 @@ export const AnalysisPage = () => {
 
       <div className="analysisBoardColumn">
         <div
+          ref={boardPanelRef}
           className="analysisBoardPanel"
           aria-label="Atomic chess board"
           tabIndex={0}
-          onWheel={handleBoardWheel}
         >
           <Chessboard
             puzzleId="analysis"

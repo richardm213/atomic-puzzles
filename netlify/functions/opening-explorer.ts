@@ -192,8 +192,9 @@ const parseUsername = (value: string | null): string | null => {
   return username;
 };
 
-const parseColor = (value: string | null): 0 | 1 | null => {
-  if (!value || value === "white") return 0;
+const parseColor = (value: string | null): 0 | 1 | "all" | null => {
+  if (!value) return "all";
+  if (value === "white") return 0;
   if (value === "black") return 1;
   return null;
 };
@@ -353,10 +354,11 @@ export const handler = async (event: NetlifyEvent) => {
   const opponent = username
     ? await resolveCanonicalUsername(requestedOpponent, databaseUrl)
     : "";
-  const color = parseColor(params.get("color"));
-  if (color === null) {
+  const requestedColor = parseColor(params.get("color"));
+  if (requestedColor === null) {
     return jsonResponse(400, { error: "Invalid color query parameter" });
   }
+  const color = username && requestedColor === "all" ? 0 : requestedColor;
 
   const minRating = parseMinRating(params.get("minRating"));
   if (minRating === null) {
@@ -414,8 +416,8 @@ export const handler = async (event: NetlifyEvent) => {
   const edgesPlayerSql = username ? `and canonical_player_id = ${playerIdSql}` : "";
   const gamesPlayerSql = username ? `and g.canonical_player_id = ${playerIdSql}` : "";
   const gamesOpponentSql = opponent ? `and g.${opponentIdColumn} = ${opponentIdSql}` : "";
-  const edgesColorSql = `and player_color = ${color}`;
-  const gamesColorSql = `and g.player_color = ${color}`;
+  const edgesColorSql = color === "all" ? "" : `and player_color = ${color}`;
+  const gamesColorSql = color === "all" ? "" : `and g.player_color = ${color}`;
   const speedSql = speeds.join(",");
   const edgesDateSql = `
     ${startDate ? `and played_on >= ${startDate}` : ""}
