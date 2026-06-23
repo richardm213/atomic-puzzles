@@ -54,7 +54,20 @@ type ExplorerApiGame = {
   winner: 0 | 1 | 2;
 };
 
+type ExplorerApiPositionLeader = {
+  username: string;
+  games: number;
+};
+
+type ExplorerApiPositionLeaders = {
+  lastMoveColor: 0 | 1;
+  totalGames: number;
+  leaders: ExplorerApiPositionLeader[];
+};
+
 type ExplorerApiResponse = {
+  positionLeaders?: ExplorerApiPositionLeaders | null;
+  topGames?: ExplorerApiGame[];
   moves: ExplorerApiMove[];
   recentGames: ExplorerApiGame[];
 };
@@ -85,6 +98,17 @@ type ExplorerGame = {
   blackRating: number | null;
   result: string;
   resultClass: "white" | "draw" | "black";
+};
+
+type ExplorerPositionLeader = ExplorerApiPositionLeader & {
+  share: number;
+  gamesLabel: string;
+};
+
+type ExplorerPositionLeaders = {
+  sideLabel: "White" | "Black";
+  totalGamesLabel: string;
+  leaders: ExplorerPositionLeader[];
 };
 
 type ExplorerStatus = "idle" | "loading" | "ready" | "error";
@@ -121,6 +145,7 @@ const DEFAULT_EXPLORER_SETTINGS = {
   endDate: "",
   username: "",
   opponent: "",
+  showPositionLeaders: true,
 };
 
 type StoredExplorerSettings = typeof DEFAULT_EXPLORER_SETTINGS;
@@ -195,6 +220,7 @@ const loadExplorerSettings = (): StoredExplorerSettings => {
       endDate: validMonthFilter(rawSettings.endDate),
       username: String(rawSettings.username ?? "").trim(),
       opponent: String(rawSettings.opponent ?? "").trim(),
+      showPositionLeaders: rawSettings.showPositionLeaders !== false,
     };
   } catch {
     return DEFAULT_EXPLORER_SETTINGS;
@@ -311,6 +337,14 @@ const formatGameCount = (games: number): string => {
   return String(games);
 };
 
+const formatWholePercent = (value: number): string => `${Math.round(value)}%`;
+
+const sideLabelFromColor = (color: number): "White" | "Black" | null => {
+  if (color === 0) return "White";
+  if (color === 1) return "Black";
+  return null;
+};
+
 const sanFromUci = (fen: string, uci: string): string => {
   try {
     const position = createAtomicPosition(fen);
@@ -396,6 +430,47 @@ const toExplorerGame = (row: ExplorerApiGame, fen: string): ExplorerGame => ({
   resultClass: resultClassFromWinner(row.winner),
 });
 
+const toExplorerTopGames = (
+  rows: ExplorerApiGame[] | undefined,
+  fen: string,
+  scope: ExplorerScope,
+): ExplorerGame[] => {
+  if (scope !== "general") return [];
+  return Array.isArray(rows) ? rows.map((row) => toExplorerGame(row, fen)) : [];
+};
+
+const toExplorerPositionLeaders = (
+  value: ExplorerApiPositionLeaders | null | undefined,
+): ExplorerPositionLeaders | null => {
+  if (!value || !Number.isFinite(value.totalGames) || value.totalGames <= 0) return null;
+  if (!Array.isArray(value.leaders) || value.leaders.length === 0) return null;
+  const sideLabel = sideLabelFromColor(Number(value.lastMoveColor));
+  if (!sideLabel) return null;
+
+  const leaders = value.leaders
+    .map((leader) => {
+      const username = String(leader.username ?? "").trim();
+      const games = Number(leader.games);
+      if (!username || !Number.isFinite(games) || games <= 0) return null;
+
+      return {
+        username,
+        games,
+        gamesLabel: formatGameCount(games),
+        share: Math.max(0, Math.min(100, (games / value.totalGames) * 100)),
+      };
+    })
+    .filter((leader): leader is ExplorerPositionLeader => leader !== null);
+
+  if (!leaders.length) return null;
+
+  return {
+    sideLabel,
+    totalGamesLabel: formatGameCount(value.totalGames),
+    leaders,
+  };
+};
+
 const lichessAnalysisUrl = (fen: string): string =>
   `https://lichess.org/analysis/atomic/${fen.replaceAll(" ", "_")}`;
 
@@ -441,12 +516,17 @@ export const AnalysisPage = () => {
   const [endDate, setEndDate] = useState(initialExplorerSettings.endDate);
   const [username, setUsername] = useState(initialExplorerSettings.username);
   const [opponent, setOpponent] = useState(initialExplorerSettings.opponent);
+  const [showPositionLeaders, setShowPositionLeaders] = useState(
+    initialExplorerSettings.showPositionLeaders,
+  );
   const [usernameDraft, setUsernameDraft] = useState(initialExplorerSettings.username);
   const [usernamePickerOpen, setUsernamePickerOpen] = useState(false);
   const [usernamePickerTarget, setUsernamePickerTarget] = useState<UsernamePickerTarget>("player");
   const [recentUsernames, setRecentUsernames] = useState<string[]>(loadRecentUsernames);
   const [explorerMoves, setExplorerMoves] = useState<ExplorerMove[]>([]);
   const [recentGames, setRecentGames] = useState<ExplorerGame[]>([]);
+  const [topGames, setTopGames] = useState<ExplorerGame[]>([]);
+  const [positionLeaders, setPositionLeaders] = useState<ExplorerPositionLeaders | null>(null);
   const [explorerStatus, setExplorerStatus] = useState<ExplorerStatus>("idle");
   const [explorerError, setExplorerError] = useState("");
   const [hoveredExplorerMoveUci, setHoveredExplorerMoveUci] = useState<string | null>(null);
@@ -897,6 +977,41 @@ export const AnalysisPage = () => {
     });
   };
 
+  const renderExplorerGameSection = (title: string, games: ExplorerGame[], ariaLabel: string) =>
+    games.length > 0 ? (
+      <div className="analysisRecentGames" aria-label={ariaLabel}>
+        <span>{title}</span>
+        <ol>
+          {games.map((game) => (
+            <li key={`${ariaLabel}-${game.gameId}`}>
+              <a
+                href={`https://lichess.org/${game.gameId}`}
+                target="_blank"
+                rel="noreferrer"
+                title={`${game.whiteName} vs ${game.blackName}`}
+                onPointerEnter={() => setHoveredExplorerMoveUci(game.uci || null)}
+                onPointerLeave={() => setHoveredExplorerMoveUci(null)}
+                onFocus={() => setHoveredExplorerMoveUci(game.uci || null)}
+                onBlur={() => setHoveredExplorerMoveUci(null)}
+              >
+                <span className="analysisRecentRatings">
+                  <span>{game.whiteRating ?? "-"}</span>
+                  <span>{game.blackRating ?? "-"}</span>
+                </span>
+                <span className="analysisRecentPlayers">
+                  <span>{game.whiteName}</span>
+                  <span>{game.blackName}</span>
+                </span>
+                <span className={`analysisRecentResult ${game.resultClass}`}>{game.result}</span>
+                <span className="analysisRecentDate">{game.playedOn.slice(0, 7)}</span>
+                <span className="analysisRecentMove">{game.move}</span>
+              </a>
+            </li>
+          ))}
+        </ol>
+      </div>
+    ) : null;
+
   useEffect(() => {
     storeExplorerSettings({
       explorerScope,
@@ -907,6 +1022,7 @@ export const AnalysisPage = () => {
       endDate,
       username,
       opponent,
+      showPositionLeaders,
     });
   }, [
     endDate,
@@ -915,6 +1031,7 @@ export const AnalysisPage = () => {
     opponent,
     playerColor,
     selectedSpeeds,
+    showPositionLeaders,
     startDate,
     username,
   ]);
@@ -925,6 +1042,8 @@ export const AnalysisPage = () => {
     if (explorerScope === "player" && !username.trim()) {
       setExplorerMoves([]);
       setRecentGames([]);
+      setTopGames([]);
+      setPositionLeaders(null);
       setExplorerStatus("ready");
       setExplorerError("");
       return;
@@ -964,6 +1083,8 @@ export const AnalysisPage = () => {
     setExplorerError("");
     setExplorerMoves([]);
     setRecentGames([]);
+    setTopGames([]);
+    setPositionLeaders(null);
 
     const explorerApiUrl = `${appAssetPath("/api/opening-explorer")}?${params.toString()}`;
 
@@ -1008,12 +1129,20 @@ export const AnalysisPage = () => {
           ),
         );
         setRecentGames(data.recentGames.map((row) => toExplorerGame(row, currentFen)));
+        setTopGames(toExplorerTopGames(data.topGames, currentFen, explorerScope));
+        setPositionLeaders(
+          explorerScope === "general" && showPositionLeaders
+            ? toExplorerPositionLeaders(data.positionLeaders)
+            : null,
+        );
         setExplorerStatus("ready");
       })
       .catch((error) => {
         if (abortController.signal.aborted && !requestTimedOut) return;
         setExplorerMoves([]);
         setRecentGames([]);
+        setTopGames([]);
+        setPositionLeaders(null);
         setExplorerStatus("error");
         setExplorerError(
           requestTimedOut
@@ -1040,6 +1169,7 @@ export const AnalysisPage = () => {
     opponent,
     playerColor,
     selectedSpeeds,
+    showPositionLeaders,
     startDate,
     username,
   ]);
@@ -1338,6 +1468,16 @@ export const AnalysisPage = () => {
                     ))}
                   </div>
                 </div>
+                {explorerScope === "general" ? (
+                  <label className="analysisToggleSetting">
+                    <span>Position leaders</span>
+                    <input
+                      type="checkbox"
+                      checked={showPositionLeaders}
+                      onChange={(event) => setShowPositionLeaders(event.target.checked)}
+                    />
+                  </label>
+                ) : null}
                 <label className="analysisRatingSlider">
                   <span>
                     {explorerScope === "player" ? "Min opponent rating" : "Min average rating"}
@@ -1392,6 +1532,37 @@ export const AnalysisPage = () => {
 
             {showExplorerResults ? (
               <div className="analysisExplorerTableWrap">
+                {explorerScope === "general" && explorerStatus === "ready" && positionLeaders ? (
+                  <section className="analysisPositionLeaders" aria-label="Position leaders">
+                    <div className="analysisPositionLeadersHeader">
+                      <span>Position leaders</span>
+                      <small>{positionLeaders.sideLabel}</small>
+                      <strong>{positionLeaders.totalGamesLabel} games</strong>
+                    </div>
+                    <ol>
+                      {positionLeaders.leaders.map((leader, index) => (
+                        <li key={`position-leader-${index}-${leader.username}`}>
+                          <span className="analysisPositionLeaderRank">{index + 1}</span>
+                          <span className="analysisPositionLeaderName">{leader.username}</span>
+                          <span className="analysisPositionLeaderGames">{leader.gamesLabel}</span>
+                          <span
+                            className="analysisPositionLeaderBar"
+                            aria-label={`${leader.username}: ${leader.gamesLabel} games, ${formatWholePercent(
+                              leader.share,
+                            )} of games reaching this position`}
+                          >
+                            <span
+                              style={{ "--leader-share": `${leader.share}%` } as CSSProperties}
+                            />
+                          </span>
+                          <span className="analysisPositionLeaderShare">
+                            {formatWholePercent(leader.share)}
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
+                  </section>
+                ) : null}
                 <table className="analysisExplorerTable">
                   <thead>
                     <tr>
@@ -1545,41 +1716,12 @@ export const AnalysisPage = () => {
                   ) : null}
                 </table>
 
-                {explorerStatus === "ready" && recentGames.length > 0 ? (
-                  <div className="analysisRecentGames" aria-label="Recent games">
-                    <span>Recent games</span>
-                    <ol>
-                      {recentGames.map((game) => (
-                        <li key={game.gameId}>
-                          <a
-                            href={`https://lichess.org/${game.gameId}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            title={`${game.whiteName} vs ${game.blackName}`}
-                            onPointerEnter={() => setHoveredExplorerMoveUci(game.uci)}
-                            onPointerLeave={() => setHoveredExplorerMoveUci(null)}
-                            onFocus={() => setHoveredExplorerMoveUci(game.uci)}
-                            onBlur={() => setHoveredExplorerMoveUci(null)}
-                          >
-                            <span className="analysisRecentRatings">
-                              <span>{game.whiteRating ?? "-"}</span>
-                              <span>{game.blackRating ?? "-"}</span>
-                            </span>
-                            <span className="analysisRecentPlayers">
-                              <span>{game.whiteName}</span>
-                              <span>{game.blackName}</span>
-                            </span>
-                            <span className={`analysisRecentResult ${game.resultClass}`}>
-                              {game.result}
-                            </span>
-                            <span className="analysisRecentDate">{game.playedOn.slice(0, 7)}</span>
-                            <span className="analysisRecentMove">{game.move}</span>
-                          </a>
-                        </li>
-                      ))}
-                    </ol>
-                  </div>
-                ) : null}
+                {explorerScope === "general" && explorerStatus === "ready"
+                  ? renderExplorerGameSection("Top games", topGames, "Top games")
+                  : null}
+                {explorerStatus === "ready"
+                  ? renderExplorerGameSection("Recent games", recentGames, "Recent games")
+                  : null}
               </div>
             ) : null}
           </section>

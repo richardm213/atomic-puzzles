@@ -6,7 +6,19 @@ import { promisify } from "node:util";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
-import { buildOpeningExplorerSql, positionKeyHex, sqlMonthBounds } from "./opening-explorer-sql.js";
+import {
+  buildOpeningExplorerSql,
+  buildPositionGameDetailsSql,
+  buildPositionPlayerLeaderBandsSql,
+  buildPositionPlayerLeadersSql,
+  buildPositionTopGamesSql,
+  lastMoveColorFromFen,
+  OPENING_EXPLORER_RESPONSE_SCHEMA,
+  positionKeyHex,
+  sqlMonthBounds,
+  toPositionPlayerLeadersPayload,
+  toPositionTopGamesPayload,
+} from "./opening-explorer-sql.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -58,6 +70,54 @@ const openingExplorerPlugin = () => {
     return aliases.get(username) ?? username;
   };
 
+  const fetchPositionPlayerLeaders = async (keyHex, lastMoveColor) => {
+    if (lastMoveColor !== 0 && lastMoveColor !== 1) return null;
+
+    try {
+      const sqliteArgs = ["-json", "-cmd", ".timeout 10000", dbPath];
+      const [{ stdout: leadersStdout }, { stdout: bandsStdout }] = await Promise.all([
+        execFileAsync("sqlite3", [
+          ...sqliteArgs,
+          buildPositionPlayerLeadersSql(keyHex, lastMoveColor),
+        ]),
+        execFileAsync("sqlite3", [...sqliteArgs, buildPositionPlayerLeaderBandsSql()]),
+      ]);
+      const leaderRows = JSON.parse(leadersStdout.trim() || "[]");
+      const bandRows = JSON.parse(bandsStdout.trim() || "[]");
+
+      return toPositionPlayerLeadersPayload(leaderRows, bandRows[0]?.value);
+    } catch {
+      // Older local opening databases do not include position-player leader tables.
+      return null;
+    }
+  };
+
+  const fetchPositionTopGames = async (keyHex, lastMoveColor) => {
+    if (lastMoveColor !== 0 && lastMoveColor !== 1) return null;
+
+    try {
+      const sqliteArgs = ["-json", "-cmd", ".timeout 10000", dbPath];
+      const { stdout } = await execFileAsync("sqlite3", [
+        ...sqliteArgs,
+        buildPositionTopGamesSql(keyHex, lastMoveColor),
+      ]);
+
+      return toPositionTopGamesPayload(JSON.parse(stdout.trim() || "[]"));
+    } catch {
+      // Older local opening databases do not include compact position top-game tables.
+      return null;
+    }
+  };
+
+  const fetchPositionGameDetails = async (keyHex, gameIds) => {
+    const detailsSql = buildPositionGameDetailsSql(keyHex, gameIds);
+    if (!detailsSql) return [];
+
+    const sqliteArgs = ["-json", "-cmd", ".timeout 10000", dbPath];
+    const { stdout } = await execFileAsync("sqlite3", [...sqliteArgs, detailsSql]);
+    return JSON.parse(stdout.trim() || "[]");
+  };
+
   const handleOpeningExplorerRequest = async (req, res, next) => {
     const url = new URL(req.url ?? "/", "http://localhost");
 
@@ -68,7 +128,7 @@ const openingExplorerPlugin = () => {
           ok: true,
           dbExists: existsSync(dbPath),
           dbSignature: dbSignature(),
-          schema: "compact",
+          schema: OPENING_EXPLORER_RESPONSE_SCHEMA,
         }),
       );
       return;
@@ -120,7 +180,10 @@ const openingExplorerPlugin = () => {
       .filter((speed) => speed === 0 || speed === 1);
     const speeds = requestedSpeeds.length ? [...new Set(requestedSpeeds)].sort() : [0, 1];
     const keyHex = positionKeyHex(fen);
+    const lastMoveColor = lastMoveColorFromFen(fen);
+    const includePositionExtras = !username;
     const cacheKey = JSON.stringify({
+      responseSchema: OPENING_EXPLORER_RESPONSE_SCHEMA,
       dbSignature: signature,
       fen,
       color,
@@ -152,10 +215,29 @@ const openingExplorerPlugin = () => {
 
     try {
       const sqliteArgs = ["-json", "-cmd", ".timeout 10000", dbPath];
-      const { stdout: movesStdout } = await execFileAsync("sqlite3", [...sqliteArgs, movesSql]);
-      const { stdout: gamesStdout } = await execFileAsync("sqlite3", [...sqliteArgs, gamesSql]);
+      const positionExtrasPromise = includePositionExtras
+        ? Promise.all([
+            fetchPositionPlayerLeaders(keyHex, lastMoveColor),
+            fetchPositionTopGames(keyHex, lastMoveColor),
+          ])
+        : Promise.resolve([null, null]);
+      const [
+        { stdout: movesStdout },
+        { stdout: gamesStdout },
+        [positionLeaders, positionTopGames],
+      ] = await Promise.all([
+        execFileAsync("sqlite3", [...sqliteArgs, movesSql]),
+        execFileAsync("sqlite3", [...sqliteArgs, gamesSql]),
+        positionExtrasPromise,
+      ]);
+      const topGames = positionTopGames
+        ? await fetchPositionGameDetails(keyHex, positionTopGames.topGameIds)
+        : [];
       const body = JSON.stringify({
         positionKey: keyHex,
+        positionLeaders,
+        positionTopGames,
+        topGames,
         moves: JSON.parse(movesStdout.trim() || "[]"),
         recentGames: JSON.parse(gamesStdout.trim() || "[]"),
       });

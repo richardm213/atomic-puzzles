@@ -170,6 +170,7 @@ body:has(.analysisPage),
 .analysisPlayerNameButton:focus-visible,
 .analysisPlayerSideButton:focus-visible,
 .analysisOpponentClearButton:focus-visible,
+.analysisToggleSetting input:focus-visible,
 .analysisUsernamePickerClose:focus-visible,
 .analysisUsernamePickerForm input:focus-visible,
 .analysisUsernamePickerSubmit:focus-visible,
@@ -699,6 +700,7 @@ body:has(.analysisPage),
 .analysisPlayerSettings,
 .analysisOpponentField,
 .analysisDateFilters label,
+.analysisToggleSetting,
 .analysisRatingSlider {
   min-width: 0;
   display: grid;
@@ -710,12 +712,29 @@ body:has(.analysisPage),
 .analysisPlayerSettings > span,
 .analysisOpponentField > span,
 .analysisDateFilters span,
+.analysisToggleSetting > span,
 .analysisRatingSlider > span {
   color: color-mix(in srgb, var(--color-muted) 70%, var(--color-panel-deep) 30%);
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.analysisToggleSetting {
+  min-height: 30px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.analysisToggleSetting input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--color-primary);
+  cursor: pointer;
 }
 
 .analysisPlayerSettingsRow {
@@ -1433,6 +1452,125 @@ body:has(.analysisPage),
   border-collapse: collapse;
   color: var(--color-text);
   font-size: 13px;
+}
+
+.analysisPositionLeaders {
+  min-width: 350px;
+  padding: 8px 8px 10px;
+  border-bottom: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-panel-strong) 34%, transparent);
+  display: grid;
+  gap: 7px;
+}
+
+.analysisPositionLeadersHeader {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.analysisPositionLeadersHeader span {
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.analysisPositionLeadersHeader small {
+  margin-right: auto;
+  min-height: 20px;
+  padding: 0 7px;
+  border: 1px solid color-mix(in srgb, var(--color-border-strong) 74%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-panel-deep) 20%, transparent);
+  color: color-mix(in srgb, var(--color-heading) 82%, var(--color-primary-soft) 18%);
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.analysisPositionLeadersHeader strong {
+  color: color-mix(in srgb, var(--color-heading) 82%, var(--color-primary-soft) 18%);
+  font-size: 12px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.analysisPositionLeaders ol {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 5px;
+  list-style: none;
+}
+
+.analysisPositionLeaders li {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 18px minmax(84px, 1fr) 42px minmax(78px, 0.7fr) 34px;
+  align-items: center;
+  gap: 7px;
+  color: var(--color-text);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.analysisPositionLeaderRank {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-primary) 26%, var(--color-panel-deep) 74%);
+  color: var(--color-heading);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.analysisPositionLeaderName {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-heading);
+  font-weight: 820;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analysisPositionLeaderGames,
+.analysisPositionLeaderShare {
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 820;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.analysisPositionLeaderBar {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-panel-deep) 58%, transparent);
+}
+
+.analysisPositionLeaderBar span {
+  --leader-share: 0%;
+  width: var(--leader-share);
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--color-cyan) 72%, white 10%),
+    color-mix(in srgb, var(--color-primary) 70%, var(--color-heading) 12%)
+  );
+  display: block;
 }
 
 .analysisExplorerTable th,

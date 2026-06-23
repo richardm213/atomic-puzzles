@@ -2,8 +2,16 @@ import { createClient } from "@libsql/client/web";
 
 import {
   buildOpeningExplorerSql,
+  buildPositionGameDetailsSql,
+  buildPositionPlayerLeaderBandsSql,
+  buildPositionPlayerLeadersSql,
+  buildPositionTopGamesSql,
+  lastMoveColorFromFen,
+  OPENING_EXPLORER_RESPONSE_SCHEMA,
   positionKeyHex,
   sqlMonthBounds,
+  toPositionPlayerLeadersPayload,
+  toPositionTopGamesPayload,
 } from "../../opening-explorer-sql.js";
 
 type NetlifyEvent = {
@@ -267,6 +275,48 @@ const resolveCanonicalUsername = async (username: string, databaseUrl: string): 
   return aliases.get(username) ?? username;
 };
 
+const fetchPositionPlayerLeaders = async (keyHex: string, lastMoveColor: number | null) => {
+  if (lastMoveColor !== 0 && lastMoveColor !== 1) return null;
+
+  try {
+    const client = getClient();
+    const [leadersResult, bandsResult] = await Promise.all([
+      client.execute(buildPositionPlayerLeadersSql(keyHex, lastMoveColor)),
+      client.execute(buildPositionPlayerLeaderBandsSql()),
+    ]);
+    const leaderRows = normalizeRows(leadersResult.rows);
+    const bandRows = normalizeRows(bandsResult.rows);
+
+    return toPositionPlayerLeadersPayload(leaderRows, bandRows[0]?.value);
+  } catch {
+    // Keep the main explorer available while the optional leader table rolls out.
+    return null;
+  }
+};
+
+const fetchPositionTopGames = async (keyHex: string, lastMoveColor: number | null) => {
+  if (lastMoveColor !== 0 && lastMoveColor !== 1) return null;
+
+  try {
+    const client = getClient();
+    const result = await client.execute(buildPositionTopGamesSql(keyHex, lastMoveColor));
+
+    return toPositionTopGamesPayload(normalizeRows(result.rows));
+  } catch {
+    // Keep the main explorer available while the optional top-game table rolls out.
+    return null;
+  }
+};
+
+const fetchPositionGameDetails = async (keyHex: string, gameIds: string[]) => {
+  const detailsSql = buildPositionGameDetailsSql(keyHex, gameIds);
+  if (!detailsSql) return [];
+
+  const client = getClient();
+  const result = await client.execute(detailsSql);
+  return normalizeRows(result.rows);
+};
+
 export const handler = async (event: NetlifyEvent) => {
   const databaseUrl = process.env.TURSO_DATABASE_URL?.trim() ?? "";
   const method = event.httpMethod ?? "GET";
@@ -295,7 +345,7 @@ export const handler = async (event: NetlifyEvent) => {
     return jsonResponse(200, {
       ok: true,
       configured: Boolean(databaseUrl && process.env.TURSO_AUTH_TOKEN?.trim()),
-      schema: "compact",
+      schema: OPENING_EXPLORER_RESPONSE_SCHEMA,
       source: "turso",
     });
   }
@@ -362,7 +412,10 @@ export const handler = async (event: NetlifyEvent) => {
   }
 
   const keyHex = positionKeyHex(fen);
+  const lastMoveColor = lastMoveColorFromFen(fen);
+  const includePositionExtras = !username;
   const cacheKey = JSON.stringify({
+    responseSchema: OPENING_EXPLORER_RESPONSE_SCHEMA,
     source: "turso",
     databaseUrl,
     fen,
@@ -401,12 +454,25 @@ export const handler = async (event: NetlifyEvent) => {
 
   try {
     const client = getClient();
-    const [movesResult, gamesResult] = await Promise.all([
+    const positionExtrasPromise = includePositionExtras
+      ? Promise.all([
+          fetchPositionPlayerLeaders(keyHex, lastMoveColor),
+          fetchPositionTopGames(keyHex, lastMoveColor),
+        ])
+      : Promise.resolve([null, null]);
+    const [movesResult, gamesResult, [positionLeaders, positionTopGames]] = await Promise.all([
       client.execute(movesSql),
       client.execute(gamesSql),
+      positionExtrasPromise,
     ]);
+    const topGames = positionTopGames
+      ? await fetchPositionGameDetails(keyHex, positionTopGames.topGameIds)
+      : [];
     const body = JSON.stringify({
       positionKey: keyHex,
+      positionLeaders,
+      positionTopGames,
+      topGames,
       moves: normalizeRows(movesResult.rows),
       recentGames: normalizeRows(gamesResult.rows),
     });
