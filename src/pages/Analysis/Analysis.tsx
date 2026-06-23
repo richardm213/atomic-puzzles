@@ -115,6 +115,17 @@ type ExplorerStatus = "idle" | "loading" | "ready" | "error";
 type ExplorerScope = "general" | "player";
 type ExplorerSpeed = "bullet" | "blitz";
 type UsernamePickerTarget = "player" | "opponent";
+type ExplorerRequestOptions = {
+  fen: string;
+  minRating: number;
+  selectedSpeeds: ExplorerSpeed[];
+  startDate: string;
+  endDate: string;
+  scope: ExplorerScope;
+  playerColor: "white" | "black";
+  username: string;
+  opponent: string;
+};
 
 const WIN_RATE_LABEL_MIN_PERCENT = 14;
 const BOARD_WHEEL_DISCRETE_STEP_PX = 10;
@@ -184,6 +195,9 @@ const validMonthFilter = (value: unknown): string => {
   return MONTH_FILTER_PATTERN.test(monthValue) ? monthValue : "";
 };
 
+const getPlayerStartDate = (currentStartDate: string): string =>
+  validMonthFilter(currentStartDate) || DEFAULT_PLAYER_START_DATE;
+
 const normalizeStoredSpeeds = (value: unknown): ExplorerSpeed[] => {
   if (!Array.isArray(value)) return DEFAULT_EXPLORER_SETTINGS.selectedSpeeds;
 
@@ -206,10 +220,9 @@ const loadExplorerSettings = (): StoredExplorerSettings => {
     const rawSettings = parsed as Partial<StoredExplorerSettings>;
     const explorerScope = rawSettings.explorerScope === "player" ? "player" : "general";
     const playerColor = rawSettings.playerColor === "black" ? "black" : "white";
+    const storedStartDate = validMonthFilter(rawSettings.startDate);
     const startDate =
-      explorerScope === "player"
-        ? validMonthFilter(rawSettings.startDate) || DEFAULT_PLAYER_START_DATE
-        : "";
+      storedStartDate || (explorerScope === "player" ? DEFAULT_PLAYER_START_DATE : "");
 
     return {
       explorerScope,
@@ -272,6 +285,48 @@ const storeBoardSize = (size: number): void => {
   if (typeof window === "undefined") return;
 
   window.localStorage.setItem(BOARD_SIZE_STORAGE_KEY, String(size));
+};
+
+const buildExplorerApiUrl = ({
+  fen,
+  minRating,
+  selectedSpeeds,
+  startDate,
+  endDate,
+  scope,
+  playerColor,
+  username,
+  opponent,
+}: ExplorerRequestOptions): string => {
+  const selectedSpeedValues = SPEED_FILTERS.filter((speed) =>
+    selectedSpeeds.includes(speed.key),
+  ).map((speed) => speed.value);
+  const params = new URLSearchParams({
+    fen,
+    minRating: String(minRating),
+    speeds: selectedSpeedValues.join(","),
+  });
+
+  if (MONTH_FILTER_PATTERN.test(startDate)) {
+    params.set("startDate", startDate);
+  }
+
+  if (MONTH_FILTER_PATTERN.test(endDate)) {
+    params.set("endDate", endDate);
+  }
+
+  const trimmedUsername = username.trim();
+  if (scope === "player" && trimmedUsername) {
+    params.set("color", playerColor);
+    params.set("username", trimmedUsername);
+
+    const trimmedOpponent = opponent.trim();
+    if (trimmedOpponent) {
+      params.set("opponent", trimmedOpponent);
+    }
+  }
+
+  return `${appAssetPath("/api/opening-explorer")}?${params.toString()}`;
 };
 
 const addRecentUsername = (usernames: string[], username: string): string[] => {
@@ -771,6 +826,17 @@ export const AnalysisPage = () => {
     setNavigation({ playUci: uci });
   };
 
+  const clearExplorerResults = useCallback((): void => {
+    setExplorerMoves([]);
+    setRecentGames([]);
+    setTopGames([]);
+    setPositionLeaders(null);
+  }, []);
+
+  const ensurePlayerStartDate = useCallback((): void => {
+    setStartDate(getPlayerStartDate);
+  }, []);
+
   const commitFenDraft = (draft = fenDraft, force = false): void => {
     if (!force && !fenDraftDirtyRef.current) {
       setFenError("");
@@ -922,9 +988,8 @@ export const AnalysisPage = () => {
 
     setUsernameDraft(trimmedUsername);
     setExplorerScope("player");
-    setStartDate(
-      (currentStartDate) => validMonthFilter(currentStartDate) || DEFAULT_PLAYER_START_DATE,
-    );
+    ensurePlayerStartDate();
+    setFiltersOpen(false);
     saveRecentUsernames(addRecentUsername(recentUsernames, trimmedUsername));
     closeUsernamePicker();
   };
@@ -954,9 +1019,7 @@ export const AnalysisPage = () => {
     }
 
     setExplorerScope("player");
-    setStartDate(
-      (currentStartDate) => validMonthFilter(currentStartDate) || DEFAULT_PLAYER_START_DATE,
-    );
+    ensurePlayerStartDate();
     if (username.trim()) {
       setFiltersOpen(false);
       return;
@@ -1040,10 +1103,7 @@ export const AnalysisPage = () => {
     if (!explorerOpen) return;
 
     if (explorerScope === "player" && !username.trim()) {
-      setExplorerMoves([]);
-      setRecentGames([]);
-      setTopGames([]);
-      setPositionLeaders(null);
+      clearExplorerResults();
       setExplorerStatus("ready");
       setExplorerError("");
       return;
@@ -1055,38 +1115,22 @@ export const AnalysisPage = () => {
       requestTimedOut = true;
       abortController.abort();
     }, EXPLORER_REQUEST_TIMEOUT_MS);
-    const selectedSpeedValues = SPEED_FILTERS.filter((speed) =>
-      selectedSpeeds.includes(speed.key),
-    ).map((speed) => speed.value);
-    const params = new URLSearchParams({
-      fen: currentFen,
-      minRating: String(minRating),
-      speeds: selectedSpeedValues.join(","),
-    });
-    if (MONTH_FILTER_PATTERN.test(startDate)) {
-      params.set("startDate", startDate);
-    }
-    if (MONTH_FILTER_PATTERN.test(endDate)) {
-      params.set("endDate", endDate);
-    }
-    const trimmedUsername = username.trim();
-    if (explorerScope === "player" && trimmedUsername) {
-      params.set("color", playerColor);
-      params.set("username", trimmedUsername);
-      const trimmedOpponent = opponent.trim();
-      if (trimmedOpponent) {
-        params.set("opponent", trimmedOpponent);
-      }
-    }
 
     setExplorerStatus("loading");
     setExplorerError("");
-    setExplorerMoves([]);
-    setRecentGames([]);
-    setTopGames([]);
-    setPositionLeaders(null);
+    clearExplorerResults();
 
-    const explorerApiUrl = `${appAssetPath("/api/opening-explorer")}?${params.toString()}`;
+    const explorerApiUrl = buildExplorerApiUrl({
+      fen: currentFen,
+      minRating,
+      selectedSpeeds,
+      startDate,
+      endDate,
+      scope: explorerScope,
+      playerColor,
+      username,
+      opponent,
+    });
 
     fetch(explorerApiUrl, {
       signal: abortController.signal,
@@ -1139,10 +1183,7 @@ export const AnalysisPage = () => {
       })
       .catch((error) => {
         if (abortController.signal.aborted && !requestTimedOut) return;
-        setExplorerMoves([]);
-        setRecentGames([]);
-        setTopGames([]);
-        setPositionLeaders(null);
+        clearExplorerResults();
         setExplorerStatus("error");
         setExplorerError(
           requestTimedOut
@@ -1161,6 +1202,7 @@ export const AnalysisPage = () => {
       abortController.abort();
     };
   }, [
+    clearExplorerResults,
     currentFen,
     endDate,
     explorerOpen,
@@ -1358,7 +1400,6 @@ export const AnalysisPage = () => {
                   aria-selected={explorerScope === "general"}
                   onClick={() => {
                     setExplorerScope("general");
-                    setStartDate("");
                     setFiltersOpen(false);
                   }}
                 >
