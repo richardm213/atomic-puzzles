@@ -67,6 +67,18 @@ describe("buildLichessGameUrl", () => {
     expect(buildLichessGameUrl("abc 123")).toBe("https://lichess.org/abc%20123");
   });
 
+  it("includes orientation and ply when provided", () => {
+    expect(buildLichessGameUrl("abc123", { orientation: "black", ply: 12 })).toBe(
+      "https://lichess.org/abc123/black#12",
+    );
+  });
+
+  it("omits invalid ply values", () => {
+    expect(buildLichessGameUrl("abc123", { orientation: "white", ply: -1 })).toBe(
+      "https://lichess.org/abc123/white",
+    );
+  });
+
   it("returns an empty string when the game id is missing", () => {
     expect(buildLichessGameUrl("—")).toBe("");
     expect(buildLichessGameUrl(null)).toBe("");

@@ -27,6 +27,7 @@ import { Seo } from "../../components/Seo/Seo";
 import { createAtomicPosition, moveFromUci } from "../../lib/puzzles/solutionPgn";
 import type { ChessboardState, SolutionNavigation } from "../../types/chessboard";
 import { appAssetPath } from "../../utils/appAssetPath";
+import { buildLichessGameUrl } from "../../utils/matchRoutes";
 
 const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const MIN_MOVE_PANEL_HEIGHT = 86;
@@ -1057,7 +1058,10 @@ export const AnalysisPage = () => {
           {games.map((game) => (
             <li key={`${ariaLabel}-${game.gameId}`}>
               <a
-                href={`https://lichess.org/${game.gameId}`}
+                href={buildLichessGameUrl(game.gameId, {
+                  orientation,
+                  ply: currentPly + (game.uci ? 1 : 0),
+                })}
                 target="_blank"
                 rel="noreferrer"
                 title={`${game.whiteName} vs ${game.blackName}`}

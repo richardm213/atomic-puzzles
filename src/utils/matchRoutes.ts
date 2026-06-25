@@ -32,11 +32,16 @@ export const isSingleGameMatch = (match: MatchRouteInput | null | undefined): bo
 
 export const buildLichessGameUrl = (
   gameId: string | number | null | undefined,
+  options: { orientation?: "white" | "black"; ply?: number | null | undefined } = {},
 ): string => {
   const normalizedGameId = String(gameId ?? "").trim();
-  return normalizedGameId && normalizedGameId !== "—"
-    ? `https://lichess.org/${encodeURIComponent(normalizedGameId)}`
-    : "";
+  if (!normalizedGameId || normalizedGameId === "—") return "";
+
+  const orientationPath = options.orientation ? `/${options.orientation}` : "";
+  const ply = Number(options.ply);
+  const plyHash = Number.isInteger(ply) && ply >= 0 ? `#${ply}` : "";
+
+  return `https://lichess.org/${encodeURIComponent(normalizedGameId)}${orientationPath}${plyHash}`;
 };
 
 export const buildSingleGameMatchUrl = (
