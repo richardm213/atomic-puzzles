@@ -8,19 +8,24 @@ import { defineConfig } from "vite";
 
 import {
   buildOpeningExplorerSql,
-  buildPositionGameDetailsSql,
   buildPositionPlayerLeaderBandsSql,
   buildPositionPlayerLeadersSql,
-  buildPositionTopGamesSql,
   lastMoveColorFromFen,
   OPENING_EXPLORER_RESPONSE_SCHEMA,
   positionKeyHex,
   sqlMonthBounds,
   toPositionPlayerLeadersPayload,
-  toPositionTopGamesPayload,
 } from "./opening-explorer-sql.js";
 
 const execFileAsync = promisify(execFile);
+const PLAYER_MIN_RATING = 1700;
+const MAX_EXPLORER_RATING = 2200;
+
+const parsePlayerMinRating = (value) => {
+  const rating = Number.parseInt(value ?? String(PLAYER_MIN_RATING), 10);
+  if (!Number.isFinite(rating)) return PLAYER_MIN_RATING;
+  return Math.max(PLAYER_MIN_RATING, Math.min(MAX_EXPLORER_RATING, rating));
+};
 
 const openingExplorerPlugin = () => {
   const dbPath = resolve(process.cwd(), "data/openings.sqlite");
@@ -92,32 +97,6 @@ const openingExplorerPlugin = () => {
     }
   };
 
-  const fetchPositionTopGames = async (keyHex, lastMoveColor) => {
-    if (lastMoveColor !== 0 && lastMoveColor !== 1) return null;
-
-    try {
-      const sqliteArgs = ["-json", "-cmd", ".timeout 10000", dbPath];
-      const { stdout } = await execFileAsync("sqlite3", [
-        ...sqliteArgs,
-        buildPositionTopGamesSql(keyHex, lastMoveColor),
-      ]);
-
-      return toPositionTopGamesPayload(JSON.parse(stdout.trim() || "[]"));
-    } catch {
-      // Older local opening databases do not include compact position top-game tables.
-      return null;
-    }
-  };
-
-  const fetchPositionGameDetails = async (keyHex, gameIds) => {
-    const detailsSql = buildPositionGameDetailsSql(keyHex, gameIds);
-    if (!detailsSql) return [];
-
-    const sqliteArgs = ["-json", "-cmd", ".timeout 10000", dbPath];
-    const { stdout } = await execFileAsync("sqlite3", [...sqliteArgs, detailsSql]);
-    return JSON.parse(stdout.trim() || "[]");
-  };
-
   const handleOpeningExplorerRequest = async (req, res, next) => {
     const url = new URL(req.url ?? "/", "http://localhost");
 
@@ -166,11 +145,10 @@ const openingExplorerPlugin = () => {
           ? 1
           : "all";
     const color = username && requestedColor === "all" ? 0 : requestedColor;
-    const requestedRating = Number.parseInt(url.searchParams.get("minRating") ?? "1700", 10);
-    const minRating = Math.max(
-      1700,
-      Math.min(2200, Number.isFinite(requestedRating) ? requestedRating : 1700),
-    );
+    const playerMinRating = username
+      ? parsePlayerMinRating(url.searchParams.get("minRating"))
+      : null;
+    const queryMinRating = playerMinRating ?? PLAYER_MIN_RATING;
     const startDate =
       sqlMonthBounds(url.searchParams.get("startDate")?.trim() ?? "")?.start ?? null;
     const endDate = sqlMonthBounds(url.searchParams.get("endDate")?.trim() ?? "")?.end ?? null;
@@ -191,7 +169,7 @@ const openingExplorerPlugin = () => {
       username,
       requestedOpponent,
       opponent,
-      minRating,
+      playerMinRating,
       speeds,
       startDate,
       endDate,
@@ -206,8 +184,8 @@ const openingExplorerPlugin = () => {
       color,
       endDate,
       keyHex,
-      minRating,
       opponent,
+      playerMinRating: queryMinRating,
       speeds,
       startDate,
       username,
@@ -216,28 +194,18 @@ const openingExplorerPlugin = () => {
     try {
       const sqliteArgs = ["-json", "-cmd", ".timeout 10000", dbPath];
       const positionExtrasPromise = includePositionExtras
-        ? Promise.all([
-            fetchPositionPlayerLeaders(keyHex, lastMoveColor),
-            fetchPositionTopGames(keyHex, lastMoveColor),
-          ])
-        : Promise.resolve([null, null]);
-      const [
-        { stdout: movesStdout },
-        { stdout: gamesStdout },
-        [positionLeaders, positionTopGames],
-      ] = await Promise.all([
-        execFileAsync("sqlite3", [...sqliteArgs, movesSql]),
-        execFileAsync("sqlite3", [...sqliteArgs, gamesSql]),
-        positionExtrasPromise,
-      ]);
-      const topGames = positionTopGames
-        ? await fetchPositionGameDetails(keyHex, positionTopGames.topGameIds)
-        : [];
+        ? fetchPositionPlayerLeaders(keyHex, lastMoveColor)
+        : Promise.resolve(null);
+      const [{ stdout: movesStdout }, { stdout: gamesStdout }, positionLeaders] = await Promise.all(
+        [
+          execFileAsync("sqlite3", [...sqliteArgs, movesSql]),
+          execFileAsync("sqlite3", [...sqliteArgs, gamesSql]),
+          positionExtrasPromise,
+        ],
+      );
       const body = JSON.stringify({
         positionKey: keyHex,
         positionLeaders,
-        positionTopGames,
-        topGames,
         moves: JSON.parse(movesStdout.trim() || "[]"),
         recentGames: JSON.parse(gamesStdout.trim() || "[]"),
       });

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-export const OPENING_EXPLORER_RESPONSE_SCHEMA = "compact-position-extras-v3";
+export const OPENING_EXPLORER_RESPONSE_SCHEMA = "compact-position-extras-v5";
 
 export const sqlString = (value) => `'${value.replaceAll("'", "''")}'`;
 
@@ -21,6 +21,8 @@ export const sqlMonthBounds = (value) => {
     end: year * 10000 + month * 100 + lastDay,
   };
 };
+
+const monthKeyFromDateKey = (value) => (Number.isInteger(value) ? Math.floor(value / 100) : null);
 
 export const buildPositionPlayerLeadersSql = (keyHex, lastMoveColor) => `
   select
@@ -55,79 +57,9 @@ export const lastMoveColorFromFen = (fen) => {
   return null;
 };
 
-export const buildPositionTopGamesSql = (keyHex, lastMoveColor) => `
-  select
-    hex(position_key) as positionKey,
-    last_move_color as lastMoveColor,
-    game_ids as gameIds,
-    rating_floor_game_ids as ratingFloorGameIds
-  from opening_position_top_games
-  where position_key = X'${keyHex}'
-    and last_move_color = ${lastMoveColor}
-  limit 1;
-`;
-
-export const buildPositionGameDetailsSql = (keyHex, gameIds) => {
-  const uniqueGameIds = [...new Set((Array.isArray(gameIds) ? gameIds : []).filter(Boolean))];
-  if (!uniqueGameIds.length) return "";
-
-  const gameIdList = uniqueGameIds.map(sqlString).join(",");
-  const orderCases = uniqueGameIds
-    .map((gameId, index) => `when ${sqlString(gameId)} then ${index}`)
-    .join(" ");
-
-  return `
-    select
-      g.next_uci as uci,
-      g.game_id as gameId,
-      g.played_at as playedAt,
-      g.played_on as playedOn,
-      white_name.name as white,
-      black_name.name as black,
-      g.white_rating as whiteRating,
-      g.black_rating as blackRating,
-      g.winner as winner
-    from opening_position_games g
-    left join opening_names white_name on white_name.name_id = g.white_id
-    left join opening_names black_name on black_name.name_id = g.black_id
-    where g.position_key = X'${keyHex}'
-      and g.game_id in (${gameIdList})
-    group by g.game_id, g.next_uci
-    order by case g.game_id ${orderCases} else ${uniqueGameIds.length} end
-    limit ${uniqueGameIds.length};
-  `;
-};
-
 const integerOrNull = (value) => {
   const number = Number(value);
   return Number.isInteger(number) ? number : null;
-};
-
-const parseGameIds = (value) =>
-  String(value ?? "")
-    .split(",")
-    .map((gameId) => gameId.trim())
-    .filter(Boolean)
-    .slice(0, 3);
-
-export const toPositionTopGamesPayload = (rows) => {
-  const row = Array.isArray(rows) ? rows[0] : null;
-  if (!row) return null;
-
-  const positionKey = String(row?.positionKey ?? row?.position_key ?? "").trim();
-  const lastMoveColor = integerOrNull(row?.lastMoveColor ?? row?.last_move_color);
-  const recentGameIds = parseGameIds(row?.gameIds ?? row?.game_ids);
-  const topGameIds = parseGameIds(row?.ratingFloorGameIds ?? row?.rating_floor_game_ids);
-
-  if (!positionKey || (lastMoveColor !== 0 && lastMoveColor !== 1)) return null;
-  if (!recentGameIds.length && !topGameIds.length) return null;
-
-  return {
-    positionKey,
-    lastMoveColor,
-    recentGameIds,
-    topGameIds,
-  };
 };
 
 const parsePositionPlayerLeaderBands = (rawValue) => {
@@ -213,8 +145,8 @@ export const buildOpeningExplorerSql = ({
   color,
   endDate,
   keyHex,
-  minRating,
   opponent,
+  playerMinRating,
   speeds,
   startDate,
   username,
@@ -232,6 +164,8 @@ export const buildOpeningExplorerSql = ({
   const edgesColorSql = color === "all" ? "" : `and player_color = ${color}`;
   const gamesColorSql = color === "all" ? "" : `and g.player_color = ${color}`;
   const speedSql = speeds.join(",");
+  const startMonth = monthKeyFromDateKey(startDate);
+  const endMonth = monthKeyFromDateKey(endDate);
   const edgesDateSql = `
     ${startDate ? `and played_on >= ${startDate}` : ""}
     ${endDate ? `and played_on <= ${endDate}` : ""}
@@ -240,6 +174,41 @@ export const buildOpeningExplorerSql = ({
     ${startDate ? `and g.played_on >= ${startDate}` : ""}
     ${endDate ? `and g.played_on <= ${endDate}` : ""}
   `;
+  const generalMovesMonthSql = `
+    ${startMonth ? `and played_month >= ${startMonth}` : ""}
+    ${endMonth ? `and played_month <= ${endMonth}` : ""}
+  `;
+  const generalGamesDateSql = `
+    ${startDate ? `and rg.played_on >= ${startDate}` : ""}
+    ${endDate ? `and rg.played_on <= ${endDate}` : ""}
+  `;
+  const generalRecentGameSelects = speeds
+    .map(
+      (speed) => `
+        select *
+        from (
+          select
+            rg.next_uci as uci,
+            rg.game_id as gameId,
+            rg.played_at as playedAt,
+            rg.played_on as playedOn,
+            white_name.name as white,
+            black_name.name as black,
+            rg.white_rating as whiteRating,
+            rg.black_rating as blackRating,
+            rg.winner as winner
+          from opening_position_recent_games rg
+          left join opening_names white_name on white_name.name_id = rg.white_id
+          left join opening_names black_name on black_name.name_id = rg.black_id
+          where rg.position_key = X'${keyHex}'
+            and rg.speed = ${speed}
+            ${generalGamesDateSql}
+          order by rg.played_at desc
+          limit 8
+        )
+      `,
+    )
+    .join("\n      union all\n");
   const edgesWhere = `
     position_key = X'${keyHex}'
     ${edgesColorSql}
@@ -256,9 +225,7 @@ export const buildOpeningExplorerSql = ({
     ${gamesDateSql}
   `;
   const opponentRatingColumn = color === 0 ? "g.black_rating" : "g.white_rating";
-  const detailsRatingFilter = username
-    ? `and ${opponentRatingColumn} >= ${minRating}`
-    : `and ((g.white_rating + g.black_rating) / 2.0) >= ${minRating}`;
+  const playerDetailsRatingFilter = `and ${opponentRatingColumn} >= ${playerMinRating}`;
 
   const movesSql = opponent
     ? `
@@ -271,7 +238,7 @@ export const buildOpeningExplorerSql = ({
         round(avg(${opponentRatingColumn})) as avgOpponentRating
       from opening_position_games g
       where ${gamesWhere}
-        ${detailsRatingFilter}
+        ${playerDetailsRatingFilter}
       group by g.next_uci
       order by games desc
       limit 12;
@@ -287,36 +254,34 @@ export const buildOpeningExplorerSql = ({
         round(sum(opponent_rating_sum) * 1.0 / sum(games)) as avgOpponentRating
       from opening_edges_daily
       where ${edgesWhere}
-        and (opponent_rating_sum * 1.0 / games) >= ${minRating}
+        and (opponent_rating_sum * 1.0 / games) >= ${playerMinRating}
       group by next_uci
       order by games desc
       limit 12;
     `
       : `
       select
-        uci,
-        count(*) as games,
-        sum(case when winner = 1 then 1 else 0 end) as whiteWins,
-        sum(case when winner = 0 then 1 else 0 end) as draws,
-        sum(case when winner = 2 then 1 else 0 end) as blackWins,
-        round(avg(averageRating)) as avgOpponentRating
-      from (
-        select
-          g.game_id,
-          g.next_uci as uci,
-          g.winner,
-          avg((g.white_rating + g.black_rating) / 2.0) as averageRating
-        from opening_position_games g
-        where ${gamesWhere}
-          ${detailsRatingFilter}
-        group by g.game_id, g.next_uci, g.winner
-      ) deduped_games
-      group by uci
+        next_uci as uci,
+        sum(games) as games,
+        sum(white_wins) as whiteWins,
+        sum(draws) as draws,
+        sum(black_wins) as blackWins,
+        case
+          when sum(rated_games) > 0
+          then round(sum(rating_pair_sum) * 1.0 / (sum(rated_games) * 2))
+        end as avgOpponentRating
+      from opening_position_moves_monthly
+      where position_key = X'${keyHex}'
+        and speed in (${speedSql})
+        ${generalMovesMonthSql}
+      group by next_uci
       order by games desc
       limit 12;
     `;
 
-  const gamesSql = `
+  const gamesSql =
+    username || opponent
+      ? `
     select
       g.next_uci as uci,
       g.game_id as gameId,
@@ -331,9 +296,17 @@ export const buildOpeningExplorerSql = ({
     left join opening_names white_name on white_name.name_id = g.white_id
     left join opening_names black_name on black_name.name_id = g.black_id
     where ${gamesWhere}
-      ${detailsRatingFilter}
+      ${playerDetailsRatingFilter}
     ${username ? "" : "group by g.game_id, g.next_uci"}
     order by g.played_at desc
+    limit 8;
+  `
+      : `
+    select *
+    from (
+      ${generalRecentGameSelects}
+    )
+    order by playedAt desc
     limit 8;
   `;
 

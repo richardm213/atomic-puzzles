@@ -67,7 +67,6 @@ type ExplorerApiPositionLeaders = {
 
 type ExplorerApiResponse = {
   positionLeaders?: ExplorerApiPositionLeaders | null;
-  topGames?: ExplorerApiGame[];
   moves: ExplorerApiMove[];
   recentGames: ExplorerApiGame[];
 };
@@ -117,7 +116,7 @@ type ExplorerSpeed = "bullet" | "blitz";
 type UsernamePickerTarget = "player" | "opponent";
 type ExplorerRequestOptions = {
   fen: string;
-  minRating: number;
+  playerMinRating: number;
   selectedSpeeds: ExplorerSpeed[];
   startDate: string;
   endDate: string;
@@ -147,12 +146,17 @@ const SPEED_FILTERS: Array<{ key: ExplorerSpeed; label: string; value: 0 | 1 }> 
   { key: "blitz", label: "Blitz", value: 1 },
 ];
 const EXPLORER_SPEED_KEYS = SPEED_FILTERS.map((speed) => speed.key);
+const PLAYER_MIN_RATING = 1700;
+const MAX_EXPLORER_RATING = 2200;
+const PLAYER_RATING_STEP = 50;
+
 const DEFAULT_EXPLORER_SETTINGS = {
   explorerScope: "general" as ExplorerScope,
   playerColor: "white" as "white" | "black",
   selectedSpeeds: ["bullet", "blitz"] as ExplorerSpeed[],
-  minRating: 1700,
-  startDate: "",
+  minRating: PLAYER_MIN_RATING,
+  generalStartDate: "",
+  playerStartDate: DEFAULT_PLAYER_START_DATE,
   endDate: "",
   username: "",
   opponent: "",
@@ -162,7 +166,10 @@ const DEFAULT_EXPLORER_SETTINGS = {
 type StoredExplorerSettings = typeof DEFAULT_EXPLORER_SETTINGS;
 
 const clampRating = (rating: number): number =>
-  Math.max(1700, Math.min(2200, Number.isFinite(rating) ? rating : 1700));
+  Math.max(
+    PLAYER_MIN_RATING,
+    Math.min(MAX_EXPLORER_RATING, Number.isFinite(rating) ? rating : PLAYER_MIN_RATING),
+  );
 
 const clampAnalysisBoardSize = (size: number, maxSize = MAX_ANALYSIS_BOARD_SIZE): number =>
   Math.round(
@@ -220,16 +227,24 @@ const loadExplorerSettings = (): StoredExplorerSettings => {
     const rawSettings = parsed as Partial<StoredExplorerSettings>;
     const explorerScope = rawSettings.explorerScope === "player" ? "player" : "general";
     const playerColor = rawSettings.playerColor === "black" ? "black" : "white";
-    const storedStartDate = validMonthFilter(rawSettings.startDate);
-    const startDate =
-      storedStartDate || (explorerScope === "player" ? DEFAULT_PLAYER_START_DATE : "");
+    const legacyStartDate = validMonthFilter(
+      (rawSettings as Partial<StoredExplorerSettings> & { startDate?: unknown }).startDate,
+    );
+    const generalStartDate =
+      validMonthFilter(rawSettings.generalStartDate) ||
+      (explorerScope === "general" ? legacyStartDate : "");
+    const playerStartDate =
+      validMonthFilter(rawSettings.playerStartDate) ||
+      (explorerScope === "player" ? legacyStartDate : "") ||
+      DEFAULT_PLAYER_START_DATE;
 
     return {
       explorerScope,
       playerColor,
       selectedSpeeds: normalizeStoredSpeeds(rawSettings.selectedSpeeds),
       minRating: clampRating(Number(rawSettings.minRating)),
-      startDate,
+      generalStartDate,
+      playerStartDate,
       endDate: validMonthFilter(rawSettings.endDate),
       username: String(rawSettings.username ?? "").trim(),
       opponent: String(rawSettings.opponent ?? "").trim(),
@@ -289,7 +304,7 @@ const storeBoardSize = (size: number): void => {
 
 const buildExplorerApiUrl = ({
   fen,
-  minRating,
+  playerMinRating,
   selectedSpeeds,
   startDate,
   endDate,
@@ -303,7 +318,6 @@ const buildExplorerApiUrl = ({
   ).map((speed) => speed.value);
   const params = new URLSearchParams({
     fen,
-    minRating: String(minRating),
     speeds: selectedSpeedValues.join(","),
   });
 
@@ -318,6 +332,7 @@ const buildExplorerApiUrl = ({
   const trimmedUsername = username.trim();
   if (scope === "player" && trimmedUsername) {
     params.set("color", playerColor);
+    params.set("minRating", String(playerMinRating));
     params.set("username", trimmedUsername);
 
     const trimmedOpponent = opponent.trim();
@@ -485,15 +500,6 @@ const toExplorerGame = (row: ExplorerApiGame, fen: string): ExplorerGame => ({
   resultClass: resultClassFromWinner(row.winner),
 });
 
-const toExplorerTopGames = (
-  rows: ExplorerApiGame[] | undefined,
-  fen: string,
-  scope: ExplorerScope,
-): ExplorerGame[] => {
-  if (scope !== "general") return [];
-  return Array.isArray(rows) ? rows.map((row) => toExplorerGame(row, fen)) : [];
-};
-
 const toExplorerPositionLeaders = (
   value: ExplorerApiPositionLeaders | null | undefined,
 ): ExplorerPositionLeaders | null => {
@@ -567,7 +573,10 @@ export const AnalysisPage = () => {
     initialExplorerSettings.selectedSpeeds,
   );
   const [minRating, setMinRating] = useState(initialExplorerSettings.minRating);
-  const [startDate, setStartDate] = useState(initialExplorerSettings.startDate);
+  const [generalStartDate, setGeneralStartDate] = useState(
+    initialExplorerSettings.generalStartDate,
+  );
+  const [playerStartDate, setPlayerStartDate] = useState(initialExplorerSettings.playerStartDate);
   const [endDate, setEndDate] = useState(initialExplorerSettings.endDate);
   const [username, setUsername] = useState(initialExplorerSettings.username);
   const [opponent, setOpponent] = useState(initialExplorerSettings.opponent);
@@ -580,7 +589,6 @@ export const AnalysisPage = () => {
   const [recentUsernames, setRecentUsernames] = useState<string[]>(loadRecentUsernames);
   const [explorerMoves, setExplorerMoves] = useState<ExplorerMove[]>([]);
   const [recentGames, setRecentGames] = useState<ExplorerGame[]>([]);
-  const [topGames, setTopGames] = useState<ExplorerGame[]>([]);
   const [positionLeaders, setPositionLeaders] = useState<ExplorerPositionLeaders | null>(null);
   const [explorerStatus, setExplorerStatus] = useState<ExplorerStatus>("idle");
   const [explorerError, setExplorerError] = useState("");
@@ -597,6 +605,8 @@ export const AnalysisPage = () => {
   const canStepForward = currentPly < moveList.length;
   const showExplorerResults = !filtersOpen;
   const explorerColumnCount = explorerScope === "player" ? 4 : 3;
+  const playerRatingValue = clampRating(minRating);
+  const activeStartDate = explorerScope === "player" ? playerStartDate : generalStartDate;
   const explorerSummary = explorerMoves.reduce(
     (summary, row) => ({
       games: summary.games + row.games,
@@ -829,12 +839,11 @@ export const AnalysisPage = () => {
   const clearExplorerResults = useCallback((): void => {
     setExplorerMoves([]);
     setRecentGames([]);
-    setTopGames([]);
     setPositionLeaders(null);
   }, []);
 
   const ensurePlayerStartDate = useCallback((): void => {
-    setStartDate(getPlayerStartDate);
+    setPlayerStartDate(getPlayerStartDate);
   }, []);
 
   const commitFenDraft = (draft = fenDraft, force = false): void => {
@@ -1081,7 +1090,8 @@ export const AnalysisPage = () => {
       playerColor,
       selectedSpeeds,
       minRating,
-      startDate,
+      generalStartDate,
+      playerStartDate,
       endDate,
       username,
       opponent,
@@ -1090,12 +1100,13 @@ export const AnalysisPage = () => {
   }, [
     endDate,
     explorerScope,
+    generalStartDate,
     minRating,
     opponent,
     playerColor,
+    playerStartDate,
     selectedSpeeds,
     showPositionLeaders,
-    startDate,
     username,
   ]);
 
@@ -1122,9 +1133,9 @@ export const AnalysisPage = () => {
 
     const explorerApiUrl = buildExplorerApiUrl({
       fen: currentFen,
-      minRating,
+      playerMinRating: playerRatingValue,
       selectedSpeeds,
-      startDate,
+      startDate: activeStartDate,
       endDate,
       scope: explorerScope,
       playerColor,
@@ -1173,7 +1184,6 @@ export const AnalysisPage = () => {
           ),
         );
         setRecentGames(data.recentGames.map((row) => toExplorerGame(row, currentFen)));
-        setTopGames(toExplorerTopGames(data.topGames, currentFen, explorerScope));
         setPositionLeaders(
           explorerScope === "general" && showPositionLeaders
             ? toExplorerPositionLeaders(data.positionLeaders)
@@ -1207,12 +1217,12 @@ export const AnalysisPage = () => {
     endDate,
     explorerOpen,
     explorerScope,
-    minRating,
+    activeStartDate,
+    playerRatingValue,
     opponent,
     playerColor,
     selectedSpeeds,
     showPositionLeaders,
-    startDate,
     username,
   ]);
 
@@ -1519,31 +1529,38 @@ export const AnalysisPage = () => {
                     />
                   </label>
                 ) : null}
-                <label className="analysisRatingSlider">
-                  <span>
-                    {explorerScope === "player" ? "Min opponent rating" : "Min average rating"}
-                  </span>
-                  <output>{minRating}</output>
-                  <input
-                    type="range"
-                    min="1700"
-                    max="2200"
-                    step="50"
-                    value={minRating}
-                    onChange={(event) => setMinRating(Number(event.target.value))}
-                  />
-                </label>
+                {explorerScope === "player" ? (
+                  <label className="analysisRatingSlider">
+                    <span>Min opponent rating</span>
+                    <output>{playerRatingValue}</output>
+                    <input
+                      type="range"
+                      min={PLAYER_MIN_RATING}
+                      max={MAX_EXPLORER_RATING}
+                      step={PLAYER_RATING_STEP}
+                      value={playerRatingValue}
+                      onChange={(event) => setMinRating(Number(event.target.value))}
+                    />
+                  </label>
+                ) : null}
                 <div className="analysisDateFilters">
                   <label>
                     <span>Since</span>
                     <input
                       type="text"
-                      value={startDate}
+                      value={activeStartDate}
                       inputMode="numeric"
                       maxLength={7}
                       pattern="\d{4}-\d{2}"
                       placeholder="YYYY-MM"
-                      onChange={(event) => setStartDate(event.target.value)}
+                      onChange={(event) => {
+                        const nextStartDate = event.target.value;
+                        if (explorerScope === "player") {
+                          setPlayerStartDate(nextStartDate);
+                        } else {
+                          setGeneralStartDate(nextStartDate);
+                        }
+                      }}
                     />
                   </label>
                   <label>
@@ -1757,9 +1774,6 @@ export const AnalysisPage = () => {
                   ) : null}
                 </table>
 
-                {explorerScope === "general" && explorerStatus === "ready"
-                  ? renderExplorerGameSection("Top games", topGames, "Top games")
-                  : null}
                 {explorerStatus === "ready"
                   ? renderExplorerGameSection("Recent games", recentGames, "Recent games")
                   : null}

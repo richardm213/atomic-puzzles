@@ -2,16 +2,13 @@ import { createClient } from "@libsql/client/web";
 
 import {
   buildOpeningExplorerSql,
-  buildPositionGameDetailsSql,
   buildPositionPlayerLeaderBandsSql,
   buildPositionPlayerLeadersSql,
-  buildPositionTopGamesSql,
   lastMoveColorFromFen,
   OPENING_EXPLORER_RESPONSE_SCHEMA,
   positionKeyHex,
   sqlMonthBounds,
   toPositionPlayerLeadersPayload,
-  toPositionTopGamesPayload,
 } from "../../opening-explorer-sql.js";
 
 type NetlifyEvent = {
@@ -26,6 +23,8 @@ type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string
 const MAX_CACHE_ENTRIES = 500;
 const MAX_FEN_LENGTH = 120;
 const MAX_USERNAME_LENGTH = 40;
+const PLAYER_MIN_RATING = 1700;
+const MAX_EXPLORER_RATING = 2200;
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = 90;
 const ALLOWED_QUERY_PARAMS = new Set([
@@ -191,13 +190,13 @@ const parseColor = (value: string | null): 0 | 1 | "all" | null => {
   return null;
 };
 
-const parseMinRating = (value: string | null): number | null => {
-  if (!value) return 1700;
-  if (!/^\d{3,4}$/.test(value)) return null;
+const parsePlayerMinRating = (value: string | null): number => {
+  if (!value) return PLAYER_MIN_RATING;
+  if (!/^\d{3,4}$/.test(value)) return PLAYER_MIN_RATING;
 
   const rating = Number.parseInt(value, 10);
-  if (!Number.isFinite(rating)) return null;
-  return Math.max(1700, Math.min(2200, rating));
+  if (!Number.isFinite(rating)) return PLAYER_MIN_RATING;
+  return Math.max(PLAYER_MIN_RATING, Math.min(MAX_EXPLORER_RATING, rating));
 };
 
 const parseSpeeds = (value: string | null): number[] | null => {
@@ -294,29 +293,6 @@ const fetchPositionPlayerLeaders = async (keyHex: string, lastMoveColor: number 
   }
 };
 
-const fetchPositionTopGames = async (keyHex: string, lastMoveColor: number | null) => {
-  if (lastMoveColor !== 0 && lastMoveColor !== 1) return null;
-
-  try {
-    const client = getClient();
-    const result = await client.execute(buildPositionTopGamesSql(keyHex, lastMoveColor));
-
-    return toPositionTopGamesPayload(normalizeRows(result.rows));
-  } catch {
-    // Keep the main explorer available while the optional top-game table rolls out.
-    return null;
-  }
-};
-
-const fetchPositionGameDetails = async (keyHex: string, gameIds: string[]) => {
-  const detailsSql = buildPositionGameDetailsSql(keyHex, gameIds);
-  if (!detailsSql) return [];
-
-  const client = getClient();
-  const result = await client.execute(detailsSql);
-  return normalizeRows(result.rows);
-};
-
 export const handler = async (event: NetlifyEvent) => {
   const databaseUrl = process.env.TURSO_DATABASE_URL?.trim() ?? "";
   const method = event.httpMethod ?? "GET";
@@ -392,10 +368,8 @@ export const handler = async (event: NetlifyEvent) => {
   }
   const color = username && requestedColor === "all" ? 0 : requestedColor;
 
-  const minRating = parseMinRating(params.get("minRating"));
-  if (minRating === null) {
-    return jsonResponse(400, { error: "Invalid minRating query parameter" });
-  }
+  const playerMinRating = username ? parsePlayerMinRating(params.get("minRating")) : null;
+  const queryMinRating = playerMinRating ?? PLAYER_MIN_RATING;
 
   const startDate = sqlMonthBounds(params.get("startDate")?.trim() ?? "")?.start ?? null;
   const endDate = sqlMonthBounds(params.get("endDate")?.trim() ?? "")?.end ?? null;
@@ -424,7 +398,7 @@ export const handler = async (event: NetlifyEvent) => {
     username,
     requestedOpponent,
     opponent,
-    minRating,
+    playerMinRating,
     speeds,
     startDate,
     endDate,
@@ -445,8 +419,8 @@ export const handler = async (event: NetlifyEvent) => {
     color,
     endDate,
     keyHex,
-    minRating,
     opponent,
+    playerMinRating: queryMinRating,
     speeds,
     startDate,
     username,
@@ -455,24 +429,16 @@ export const handler = async (event: NetlifyEvent) => {
   try {
     const client = getClient();
     const positionExtrasPromise = includePositionExtras
-      ? Promise.all([
-          fetchPositionPlayerLeaders(keyHex, lastMoveColor),
-          fetchPositionTopGames(keyHex, lastMoveColor),
-        ])
-      : Promise.resolve([null, null]);
-    const [movesResult, gamesResult, [positionLeaders, positionTopGames]] = await Promise.all([
+      ? fetchPositionPlayerLeaders(keyHex, lastMoveColor)
+      : Promise.resolve(null);
+    const [movesResult, gamesResult, positionLeaders] = await Promise.all([
       client.execute(movesSql),
       client.execute(gamesSql),
       positionExtrasPromise,
     ]);
-    const topGames = positionTopGames
-      ? await fetchPositionGameDetails(keyHex, positionTopGames.topGameIds)
-      : [];
     const body = JSON.stringify({
       positionKey: keyHex,
       positionLeaders,
-      positionTopGames,
-      topGames,
       moves: normalizeRows(movesResult.rows),
       recentGames: normalizeRows(gamesResult.rows),
     });
