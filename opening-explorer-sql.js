@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-export const OPENING_EXPLORER_RESPONSE_SCHEMA = "compact-position-extras-v5";
+export const OPENING_EXPLORER_RESPONSE_SCHEMA = "compact-position-extras-v8";
 
 export const sqlString = (value) => `'${value.replaceAll("'", "''")}'`;
 
@@ -141,6 +141,174 @@ export const toPositionPlayerLeadersPayload = (rows, rawBandsValue) => {
   };
 };
 
+const hasDefaultGeneralSpeeds = (speeds) =>
+  speeds.length === 2 && speeds.includes(0) && speeds.includes(1);
+
+const SAVED_GENERAL_MIN_GAMES = 1_000;
+
+const buildAggregateMovesCte = ({ generalMovesMonthSql, keyHex, speedSql }) => `
+  aggregate_moves as (
+    select
+      next_uci as uci,
+      sum(games) as games,
+      sum(white_wins) as whiteWins,
+      sum(draws) as draws,
+      sum(black_wins) as blackWins,
+      case
+        when sum(rated_games) > 0
+        then round(sum(rating_pair_sum) * 1.0 / (sum(rated_games) * 2))
+      end as avgOpponentRating
+    from opening_position_moves_monthly
+    where position_key = X'${keyHex}'
+      and speed in (${speedSql})
+      ${generalMovesMonthSql}
+    group by next_uci
+  )
+`;
+
+const buildRawGeneralGamesCte = ({ fallbackBlockerCte = "", gamesWhere }) => `
+  raw_general_games as (
+    select
+      g.game_id,
+      max(g.next_uci) as next_uci,
+      max(g.played_at) as played_at,
+      max(g.played_on) as played_on,
+      max(g.white_id) as white_id,
+      max(g.black_id) as black_id,
+      max(g.white_rating) as white_rating,
+      max(g.black_rating) as black_rating,
+      max(g.winner) as winner
+    from opening_position_games g
+    where ${gamesWhere}
+      ${fallbackBlockerCte ? `and not exists (select 1 from ${fallbackBlockerCte})` : ""}
+    group by g.game_id
+  )
+`;
+
+const rawMovesCte = () => `
+  raw_moves as (
+    select
+      next_uci as uci,
+      count(*) as games,
+      sum(case when winner = 1 then 1 else 0 end) as whiteWins,
+      sum(case when winner = 0 then 1 else 0 end) as draws,
+      sum(case when winner = 2 then 1 else 0 end) as blackWins,
+      round(avg(
+        case
+          when white_rating is not null and black_rating is not null
+          then (white_rating + black_rating) / 2.0
+        end
+      )) as avgOpponentRating
+    from raw_general_games
+    group by next_uci
+  )
+`;
+
+const rawRecentGamesCte = () => `
+  raw_recent_games as (
+    select
+      g.next_uci as uci,
+      g.game_id as gameId,
+      g.played_at as playedAt,
+      g.played_on as playedOn,
+      white_name.name as white,
+      black_name.name as black,
+      g.white_rating as whiteRating,
+      g.black_rating as blackRating,
+      g.winner as winner
+    from raw_general_games g
+    left join opening_names white_name on white_name.name_id = g.white_id
+    left join opening_names black_name on black_name.name_id = g.black_id
+    order by g.played_at desc
+    limit 8
+  )
+`;
+
+const buildAggregateGeneralMovesSql = ({ aggregateMovesCte, rawGeneralGamesCte }) => `
+  with
+    ${aggregateMovesCte},
+    ${rawGeneralGamesCte},
+    ${rawMovesCte()}
+  select *
+  from aggregate_moves
+  union all
+  select *
+  from raw_moves
+  where not exists (select 1 from aggregate_moves)
+  order by games desc
+  limit 12;
+`;
+
+const buildHighVolumeGeneralMovesSql = ({ aggregateMovesCte, rawGeneralGamesCte }) => `
+  with
+    ${aggregateMovesCte},
+    aggregate_total as (
+      select coalesce(sum(games), 0) as games
+      from aggregate_moves
+    ),
+    ${rawGeneralGamesCte},
+    ${rawMovesCte()}
+  select *
+  from aggregate_moves
+  where exists (select 1 from aggregate_total where games >= ${SAVED_GENERAL_MIN_GAMES})
+  union all
+  select *
+  from raw_moves
+  where not exists (select 1 from aggregate_total where games >= ${SAVED_GENERAL_MIN_GAMES})
+  order by games desc
+  limit 12;
+`;
+
+const buildAggregateGeneralRecentGamesSql = ({ rawGeneralGamesCte, recentGamesCte }) => `
+  with
+    ${recentGamesCte},
+    ${rawGeneralGamesCte},
+    ${rawRecentGamesCte()}
+  select *
+  from recent_games
+  union all
+  select *
+  from raw_recent_games
+  where not exists (select 1 from recent_games)
+  order by playedAt desc
+  limit 8;
+`;
+
+const buildHighVolumeGeneralRecentGamesSql = ({
+  aggregateMovesCte,
+  rawGeneralGamesCte,
+  recentGamesCte,
+}) => `
+  with
+    ${aggregateMovesCte},
+    aggregate_total as (
+      select coalesce(sum(games), 0) as games
+      from aggregate_moves
+    ),
+    ${recentGamesCte},
+    ${rawGeneralGamesCte},
+    ${rawRecentGamesCte()}
+  select *
+  from recent_games
+  where exists (
+    select 1
+    from aggregate_total
+    where games >= ${SAVED_GENERAL_MIN_GAMES}
+      and exists (select 1 from recent_games)
+  )
+  union all
+  select *
+  from raw_recent_games
+  where not exists (
+    select 1
+    from aggregate_total
+    where games >= ${SAVED_GENERAL_MIN_GAMES}
+      and exists (select 1 from recent_games)
+  )
+  order by playedAt desc
+  limit 8;
+`;
+
 export const buildOpeningExplorerSql = ({
   color,
   endDate,
@@ -224,6 +392,19 @@ export const buildOpeningExplorerSql = ({
     ${gamesOpponentSql}
     ${gamesDateSql}
   `;
+  const isDefaultGeneralRequest = !startDate && !endDate && hasDefaultGeneralSpeeds(speeds);
+  const aggregateMovesCte = buildAggregateMovesCte({
+    generalMovesMonthSql,
+    keyHex,
+    speedSql,
+  });
+  const recentGamesCte = `
+    recent_games as (
+      ${generalRecentGameSelects}
+    )
+  `;
+  const rawGeneralGamesCte = (fallbackBlockerCte = "") =>
+    buildRawGeneralGamesCte({ fallbackBlockerCte, gamesWhere });
   const opponentRatingColumn = color === 0 ? "g.black_rating" : "g.white_rating";
   const playerDetailsRatingFilter = `and ${opponentRatingColumn} >= ${playerMinRating}`;
 
@@ -259,25 +440,17 @@ export const buildOpeningExplorerSql = ({
       order by games desc
       limit 12;
     `
-      : `
-      select
-        next_uci as uci,
-        sum(games) as games,
-        sum(white_wins) as whiteWins,
-        sum(draws) as draws,
-        sum(black_wins) as blackWins,
-        case
-          when sum(rated_games) > 0
-          then round(sum(rating_pair_sum) * 1.0 / (sum(rated_games) * 2))
-        end as avgOpponentRating
-      from opening_position_moves_monthly
-      where position_key = X'${keyHex}'
-        and speed in (${speedSql})
-        ${generalMovesMonthSql}
-      group by next_uci
-      order by games desc
-      limit 12;
-    `;
+      : isDefaultGeneralRequest
+        ? buildHighVolumeGeneralMovesSql({
+            aggregateMovesCte,
+            rawGeneralGamesCte: rawGeneralGamesCte(
+              `aggregate_total where games >= ${SAVED_GENERAL_MIN_GAMES}`,
+            ),
+          })
+        : buildAggregateGeneralMovesSql({
+            aggregateMovesCte,
+            rawGeneralGamesCte: rawGeneralGamesCte("aggregate_moves"),
+          });
 
   const gamesSql =
     username || opponent
@@ -301,14 +474,18 @@ export const buildOpeningExplorerSql = ({
     order by g.played_at desc
     limit 8;
   `
-      : `
-    select *
-    from (
-      ${generalRecentGameSelects}
-    )
-    order by playedAt desc
-    limit 8;
-  `;
+      : isDefaultGeneralRequest
+        ? buildHighVolumeGeneralRecentGamesSql({
+            aggregateMovesCte,
+            rawGeneralGamesCte: rawGeneralGamesCte(
+              `aggregate_total where games >= ${SAVED_GENERAL_MIN_GAMES} and exists (select 1 from recent_games)`,
+            ),
+            recentGamesCte,
+          })
+        : buildAggregateGeneralRecentGamesSql({
+            rawGeneralGamesCte: rawGeneralGamesCte("recent_games"),
+            recentGamesCte,
+          });
 
   return { gamesSql, movesSql };
 };
