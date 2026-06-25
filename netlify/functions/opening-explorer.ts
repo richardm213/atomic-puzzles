@@ -1,12 +1,14 @@
 import { createClient } from "@libsql/client/web";
 
 import {
+  buildGeneralSavedStatusSql,
   buildOpeningExplorerSql,
   buildPositionPlayerLeaderBandsSql,
   buildPositionPlayerLeadersSql,
   lastMoveColorFromFen,
   OPENING_EXPLORER_RESPONSE_SCHEMA,
   positionKeyHex,
+  selectGeneralExplorerSources,
   sqlMonthBounds,
   toPositionPlayerLeadersPayload,
 } from "../../opening-explorer-sql.js";
@@ -415,19 +417,35 @@ export const handler = async (event: NetlifyEvent) => {
     };
   }
 
-  const { gamesSql, movesSql } = buildOpeningExplorerSql({
-    color,
-    endDate,
-    keyHex,
-    opponent,
-    playerMinRating: queryMinRating,
-    speeds,
-    startDate,
-    username,
-  });
-
   try {
     const client = getClient();
+    let generalSources = {};
+
+    if (!username && !opponent) {
+      const savedStatusResult = await client.execute(
+        buildGeneralSavedStatusSql({ endDate, keyHex, speeds, startDate }),
+      );
+      const [savedStatus = {}] = normalizeRows(savedStatusResult.rows);
+      generalSources = selectGeneralExplorerSources({
+        endDate,
+        savedGames: Number(savedStatus.savedGames ?? 0),
+        savedRecentGames: Number(savedStatus.savedRecentGames ?? 0),
+        speeds,
+        startDate,
+      });
+    }
+
+    const { gamesSql, movesSql } = buildOpeningExplorerSql({
+      color,
+      endDate,
+      keyHex,
+      opponent,
+      playerMinRating: queryMinRating,
+      speeds,
+      startDate,
+      username,
+      ...generalSources,
+    });
     const positionExtrasPromise = includePositionExtras
       ? fetchPositionPlayerLeaders(keyHex, lastMoveColor)
       : Promise.resolve(null);

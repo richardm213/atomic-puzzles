@@ -146,6 +146,24 @@ const hasDefaultGeneralSpeeds = (speeds) =>
 
 const SAVED_GENERAL_MIN_GAMES = 1_000;
 
+export const selectGeneralExplorerSources = ({
+  endDate,
+  savedGames,
+  savedRecentGames,
+  speeds,
+  startDate,
+}) => {
+  const hasDateFilter = Boolean(startDate || endDate);
+  const canUseSavedMoves =
+    savedGames > 0 &&
+    (hasDateFilter || !hasDefaultGeneralSpeeds(speeds) || savedGames >= SAVED_GENERAL_MIN_GAMES);
+
+  return {
+    generalMovesSource: canUseSavedMoves ? "saved" : "raw",
+    generalGamesSource: canUseSavedMoves && savedRecentGames > 0 ? "saved" : "raw",
+  };
+};
+
 const buildAggregateMovesCte = ({ generalMovesMonthSql, keyHex, speedSql }) => `
   aggregate_moves as (
     select
@@ -165,6 +183,38 @@ const buildAggregateMovesCte = ({ generalMovesMonthSql, keyHex, speedSql }) => `
     group by next_uci
   )
 `;
+
+export const buildGeneralSavedStatusSql = ({ endDate, keyHex, speeds, startDate }) => {
+  const speedSql = speeds.join(",");
+  const startMonth = monthKeyFromDateKey(startDate);
+  const endMonth = monthKeyFromDateKey(endDate);
+  const generalMovesMonthSql = `
+    ${startMonth ? `and played_month >= ${startMonth}` : ""}
+    ${endMonth ? `and played_month <= ${endMonth}` : ""}
+  `;
+  const generalGamesDateSql = `
+    ${startDate ? `and played_on >= ${startDate}` : ""}
+    ${endDate ? `and played_on <= ${endDate}` : ""}
+  `;
+
+  return `
+    select
+      coalesce((
+        select sum(games)
+        from opening_position_moves_monthly
+        where position_key = X'${keyHex}'
+          and speed in (${speedSql})
+          ${generalMovesMonthSql}
+      ), 0) as savedGames,
+      coalesce((
+        select count(*)
+        from opening_position_recent_games
+        where position_key = X'${keyHex}'
+          and speed in (${speedSql})
+          ${generalGamesDateSql}
+      ), 0) as savedRecentGames;
+  `;
+};
 
 const buildRawGeneralGamesCte = ({ fallbackBlockerCte = "", gamesWhere }) => `
   raw_general_games as (
@@ -239,6 +289,25 @@ const buildAggregateGeneralMovesSql = ({ aggregateMovesCte, rawGeneralGamesCte }
   limit 12;
 `;
 
+const buildSavedGeneralMovesSql = ({ aggregateMovesCte }) => `
+  with
+    ${aggregateMovesCte}
+  select *
+  from aggregate_moves
+  order by games desc
+  limit 12;
+`;
+
+const buildRawGeneralMovesSql = ({ rawGeneralGamesCte }) => `
+  with
+    ${rawGeneralGamesCte},
+    ${rawMovesCte()}
+  select *
+  from raw_moves
+  order by games desc
+  limit 12;
+`;
+
 const buildHighVolumeGeneralMovesSql = ({ aggregateMovesCte, rawGeneralGamesCte }) => `
   with
     ${aggregateMovesCte},
@@ -270,6 +339,25 @@ const buildAggregateGeneralRecentGamesSql = ({ rawGeneralGamesCte, recentGamesCt
   select *
   from raw_recent_games
   where not exists (select 1 from recent_games)
+  order by playedAt desc
+  limit 8;
+`;
+
+const buildSavedGeneralRecentGamesSql = ({ recentGamesCte }) => `
+  with
+    ${recentGamesCte}
+  select *
+  from recent_games
+  order by playedAt desc
+  limit 8;
+`;
+
+const buildRawGeneralRecentGamesSql = ({ rawGeneralGamesCte }) => `
+  with
+    ${rawGeneralGamesCte},
+    ${rawRecentGamesCte()}
+  select *
+  from raw_recent_games
   order by playedAt desc
   limit 8;
 `;
@@ -309,9 +397,61 @@ const buildHighVolumeGeneralRecentGamesSql = ({
   limit 8;
 `;
 
+const buildGeneralMovesSql = ({
+  aggregateMovesCte,
+  generalMovesSource,
+  isDefaultGeneralRequest,
+  rawGeneralGamesCte,
+}) => {
+  if (generalMovesSource === "saved") return buildSavedGeneralMovesSql({ aggregateMovesCte });
+  if (generalMovesSource === "raw") {
+    return buildRawGeneralMovesSql({ rawGeneralGamesCte: rawGeneralGamesCte() });
+  }
+
+  return isDefaultGeneralRequest
+    ? buildHighVolumeGeneralMovesSql({
+        aggregateMovesCte,
+        rawGeneralGamesCte: rawGeneralGamesCte(
+          `aggregate_total where games >= ${SAVED_GENERAL_MIN_GAMES}`,
+        ),
+      })
+    : buildAggregateGeneralMovesSql({
+        aggregateMovesCte,
+        rawGeneralGamesCte: rawGeneralGamesCte("aggregate_moves"),
+      });
+};
+
+const buildGeneralGamesSql = ({
+  aggregateMovesCte,
+  generalGamesSource,
+  isDefaultGeneralRequest,
+  rawGeneralGamesCte,
+  recentGamesCte,
+}) => {
+  if (generalGamesSource === "saved") return buildSavedGeneralRecentGamesSql({ recentGamesCte });
+  if (generalGamesSource === "raw") {
+    return buildRawGeneralRecentGamesSql({ rawGeneralGamesCte: rawGeneralGamesCte() });
+  }
+
+  return isDefaultGeneralRequest
+    ? buildHighVolumeGeneralRecentGamesSql({
+        aggregateMovesCte,
+        rawGeneralGamesCte: rawGeneralGamesCte(
+          `aggregate_total where games >= ${SAVED_GENERAL_MIN_GAMES} and exists (select 1 from recent_games)`,
+        ),
+        recentGamesCte,
+      })
+    : buildAggregateGeneralRecentGamesSql({
+        rawGeneralGamesCte: rawGeneralGamesCte("recent_games"),
+        recentGamesCte,
+      });
+};
+
 export const buildOpeningExplorerSql = ({
   color,
   endDate,
+  generalGamesSource = "auto",
+  generalMovesSource = "auto",
   keyHex,
   opponent,
   playerMinRating,
@@ -440,17 +580,12 @@ export const buildOpeningExplorerSql = ({
       order by games desc
       limit 12;
     `
-      : isDefaultGeneralRequest
-        ? buildHighVolumeGeneralMovesSql({
-            aggregateMovesCte,
-            rawGeneralGamesCte: rawGeneralGamesCte(
-              `aggregate_total where games >= ${SAVED_GENERAL_MIN_GAMES}`,
-            ),
-          })
-        : buildAggregateGeneralMovesSql({
-            aggregateMovesCte,
-            rawGeneralGamesCte: rawGeneralGamesCte("aggregate_moves"),
-          });
+      : buildGeneralMovesSql({
+          aggregateMovesCte,
+          generalMovesSource,
+          isDefaultGeneralRequest,
+          rawGeneralGamesCte,
+        });
 
   const gamesSql =
     username || opponent
@@ -474,18 +609,13 @@ export const buildOpeningExplorerSql = ({
     order by g.played_at desc
     limit 8;
   `
-      : isDefaultGeneralRequest
-        ? buildHighVolumeGeneralRecentGamesSql({
-            aggregateMovesCte,
-            rawGeneralGamesCte: rawGeneralGamesCte(
-              `aggregate_total where games >= ${SAVED_GENERAL_MIN_GAMES} and exists (select 1 from recent_games)`,
-            ),
-            recentGamesCte,
-          })
-        : buildAggregateGeneralRecentGamesSql({
-            rawGeneralGamesCte: rawGeneralGamesCte("recent_games"),
-            recentGamesCte,
-          });
+      : buildGeneralGamesSql({
+          aggregateMovesCte,
+          generalGamesSource,
+          isDefaultGeneralRequest,
+          rawGeneralGamesCte,
+          recentGamesCte,
+        });
 
   return { gamesSql, movesSql };
 };

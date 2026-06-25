@@ -7,12 +7,14 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 import {
+  buildGeneralSavedStatusSql,
   buildOpeningExplorerSql,
   buildPositionPlayerLeaderBandsSql,
   buildPositionPlayerLeadersSql,
   lastMoveColorFromFen,
   OPENING_EXPLORER_RESPONSE_SCHEMA,
   positionKeyHex,
+  selectGeneralExplorerSources,
   sqlMonthBounds,
   toPositionPlayerLeadersPayload,
 } from "./opening-explorer-sql.js";
@@ -180,19 +182,36 @@ const openingExplorerPlugin = () => {
       return;
     }
 
-    const { gamesSql, movesSql } = buildOpeningExplorerSql({
-      color,
-      endDate,
-      keyHex,
-      opponent,
-      playerMinRating: queryMinRating,
-      speeds,
-      startDate,
-      username,
-    });
-
     try {
       const sqliteArgs = ["-json", "-cmd", ".timeout 10000", dbPath];
+      let generalSources = {};
+
+      if (!username && !opponent) {
+        const { stdout: savedStatusStdout } = await execFileAsync("sqlite3", [
+          ...sqliteArgs,
+          buildGeneralSavedStatusSql({ endDate, keyHex, speeds, startDate }),
+        ]);
+        const [savedStatus = {}] = JSON.parse(savedStatusStdout.trim() || "[]");
+        generalSources = selectGeneralExplorerSources({
+          endDate,
+          savedGames: Number(savedStatus.savedGames ?? 0),
+          savedRecentGames: Number(savedStatus.savedRecentGames ?? 0),
+          speeds,
+          startDate,
+        });
+      }
+
+      const { gamesSql, movesSql } = buildOpeningExplorerSql({
+        color,
+        endDate,
+        keyHex,
+        opponent,
+        playerMinRating: queryMinRating,
+        speeds,
+        startDate,
+        username,
+        ...generalSources,
+      });
       const positionExtrasPromise = includePositionExtras
         ? fetchPositionPlayerLeaders(keyHex, lastMoveColor)
         : Promise.resolve(null);
