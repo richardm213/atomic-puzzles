@@ -137,7 +137,7 @@ export default [
       parserOptions: {
         ecmaFeatures: { jsx: true },
         projectService: {
-          allowDefaultProject: ["vitest.config.ts"],
+          allowDefaultProject: ["vitest.config.ts", "netlify/functions/opening-explorer.ts"],
         },
         tsconfigRootDir,
       },
@@ -165,6 +165,16 @@ export default [
           },
         },
       ],
+    },
+  },
+  {
+    files: ["*.config.js"],
+    languageOptions: {
+      globals: {
+        console: "readonly",
+        process: "readonly",
+        URL: "readonly",
+      },
     },
   },
   {

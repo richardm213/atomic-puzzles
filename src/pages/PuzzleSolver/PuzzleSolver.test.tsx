@@ -70,14 +70,15 @@ vi.mock("../../components/Chessboard/Chessboard", async () => {
       onStateChange?: (state: unknown) => void;
     }) => {
       mocks.chessboardProps.push(props);
+      const { fen, onStateChange, showSolution, solutionNavigation } = props;
 
       React.useEffect(() => {
-        const lineIndex = props.solutionNavigation?.lineIndex ?? 0;
-        const lineIndexPly = props.solutionNavigation?.plyIndex ?? 0;
+        const lineIndex = solutionNavigation?.lineIndex ?? 0;
+        const lineIndexPly = solutionNavigation?.plyIndex ?? 0;
         const lineMoves = solutionLines[lineIndex] ?? solutionLines[0] ?? [];
 
-        props.onStateChange?.({
-          fen: props.fen,
+        onStateChange?.({
+          fen,
           turn: "black",
           status: "black to move",
           winner: undefined,
@@ -87,12 +88,12 @@ vi.mock("../../components/Chessboard/Chessboard", async () => {
           solutionLines,
           solutionLineIndex: lineIndex,
           lineIndex: lineIndexPly,
-          viewingSolution: props.showSolution ?? false,
+          viewingSolution: showSolution ?? false,
           showWrongMove: false,
           showRetryMove: false,
           solved: false,
         });
-      }, [props.fen, props.onStateChange, props.showSolution, props.solutionNavigation]);
+      }, [fen, onStateChange, showSolution, solutionNavigation]);
 
       return React.createElement("div", { "data-testid": "mock-board" });
     },

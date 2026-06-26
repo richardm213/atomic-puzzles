@@ -7,6 +7,11 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 import {
+  createOpeningExplorerQueue,
+  createPriorityFactory,
+  OpeningExplorerQueueError,
+} from "./opening-explorer-request-queue.js";
+import {
   buildGeneralSavedStatusSql,
   buildOpeningExplorerSql,
   buildPositionPlayerLeaderBandsSql,
@@ -22,6 +27,9 @@ import {
 const execFileAsync = promisify(execFile);
 const PLAYER_MIN_RATING = 1700;
 const MAX_EXPLORER_RATING = 2200;
+const MAX_SQLITE_CONCURRENT_QUERIES = 3;
+const MAX_SQLITE_QUEUED_QUERIES = 36;
+const HIGH_VOLUME_GENERAL_CACHE_MIN_GAMES = 1_000;
 
 const parsePlayerMinRating = (value) => {
   const rating = Number.parseInt(value ?? String(PLAYER_MIN_RATING), 10);
@@ -32,7 +40,25 @@ const parsePlayerMinRating = (value) => {
 const openingExplorerPlugin = () => {
   const dbPath = resolve(process.cwd(), "data/openings.sqlite");
   const cache = new Map();
+  const pendingCache = new Map();
   const aliasCache = new Map();
+  const nextSqlitePriority = createPriorityFactory();
+  const sqliteQueue = createOpeningExplorerQueue({
+    maxConcurrent: MAX_SQLITE_CONCURRENT_QUERIES,
+    maxQueued: MAX_SQLITE_QUEUED_QUERIES,
+  });
+  const enqueueSqliteQuery = (run, priorityRef) => sqliteQueue.enqueue(run, priorityRef);
+
+  const shouldCacheExplorerResponse = ({ moves, opponent, username }) => {
+    if (username || opponent) return false;
+
+    const shownGames = moves.reduce((total, row) => total + Number(row.games ?? 0), 0);
+    return shownGames >= HIGH_VOLUME_GENERAL_CACHE_MIN_GAMES;
+  };
+
+  const setExplorerCacheHeader = (res, shouldCache) => {
+    res.setHeader("Cache-Control", shouldCache ? "public, max-age=30" : "no-store");
+  };
 
   const dbSignature = () => {
     try {
@@ -43,7 +69,7 @@ const openingExplorerPlugin = () => {
     }
   };
 
-  const resolveCanonicalUsername = async (username, signature) => {
+  const resolveCanonicalUsername = async (username, signature, priorityRef) => {
     if (!username) return "";
 
     const cachedAliases = aliasCache.get(signature);
@@ -54,12 +80,16 @@ const openingExplorerPlugin = () => {
     const aliases = new Map();
 
     try {
-      const { stdout } = await execFileAsync("sqlite3", [
-        "-cmd",
-        ".timeout 10000",
-        dbPath,
-        "select value from opening_index_meta where key = 'aliases' limit 1;",
-      ]);
+      const { stdout } = await enqueueSqliteQuery(
+        () =>
+          execFileAsync("sqlite3", [
+            "-cmd",
+            ".timeout 10000",
+            dbPath,
+            "select value from opening_index_meta where key = 'aliases' limit 1;",
+          ]),
+        priorityRef,
+      );
       const rawAliases = JSON.parse(stdout.trim() || "{}");
 
       if (rawAliases && typeof rawAliases === "object" && !Array.isArray(rawAliases)) {
@@ -77,17 +107,24 @@ const openingExplorerPlugin = () => {
     return aliases.get(username) ?? username;
   };
 
-  const fetchPositionPlayerLeaders = async (keyHex, lastMoveColor) => {
+  const fetchPositionPlayerLeaders = async (keyHex, lastMoveColor, priorityRef) => {
     if (lastMoveColor !== 0 && lastMoveColor !== 1) return null;
 
     try {
       const sqliteArgs = ["-json", "-cmd", ".timeout 10000", dbPath];
       const [{ stdout: leadersStdout }, { stdout: bandsStdout }] = await Promise.all([
-        execFileAsync("sqlite3", [
-          ...sqliteArgs,
-          buildPositionPlayerLeadersSql(keyHex, lastMoveColor),
-        ]),
-        execFileAsync("sqlite3", [...sqliteArgs, buildPositionPlayerLeaderBandsSql()]),
+        enqueueSqliteQuery(
+          () =>
+            execFileAsync("sqlite3", [
+              ...sqliteArgs,
+              buildPositionPlayerLeadersSql(keyHex, lastMoveColor),
+            ]),
+          priorityRef,
+        ),
+        enqueueSqliteQuery(
+          () => execFileAsync("sqlite3", [...sqliteArgs, buildPositionPlayerLeaderBandsSql()]),
+          priorityRef,
+        ),
       ]);
       const leaderRows = JSON.parse(leadersStdout.trim() || "[]");
       const bandRows = JSON.parse(bandsStdout.trim() || "[]");
@@ -136,10 +173,15 @@ const openingExplorerPlugin = () => {
     }
 
     const signature = dbSignature();
+    const requestIntent =
+      typeof req.headers["x-explorer-intent"] === "string" ? req.headers["x-explorer-intent"] : "";
+    const priorityRef = nextSqlitePriority(requestIntent);
     const requestedUsername = url.searchParams.get("username")?.trim().toLowerCase() ?? "";
-    const username = await resolveCanonicalUsername(requestedUsername, signature);
+    const username = await resolveCanonicalUsername(requestedUsername, signature, priorityRef);
     const requestedOpponent = url.searchParams.get("opponent")?.trim().toLowerCase() ?? "";
-    const opponent = username ? await resolveCanonicalUsername(requestedOpponent, signature) : "";
+    const opponent = username
+      ? await resolveCanonicalUsername(requestedOpponent, signature, priorityRef)
+      : "";
     const requestedColor =
       url.searchParams.get("color") === "white"
         ? 0
@@ -178,65 +220,106 @@ const openingExplorerPlugin = () => {
     });
     const cached = cache.get(cacheKey);
     if (cached) {
+      setExplorerCacheHeader(res, true);
       res.end(cached);
       return;
     }
 
+    const pending = pendingCache.get(cacheKey);
+    if (pending) {
+      try {
+        pending.priorityRef.value = Math.max(pending.priorityRef.value, priorityRef.value);
+        const { body, shouldCache } = await pending.promise;
+        setExplorerCacheHeader(res, shouldCache);
+        res.end(body);
+        return;
+      } catch {
+        // Run the query below if the shared pending request failed.
+      }
+    }
+
     try {
       const sqliteArgs = ["-json", "-cmd", ".timeout 10000", dbPath];
+      const positionExtrasPromise = includePositionExtras
+        ? fetchPositionPlayerLeaders(keyHex, lastMoveColor, priorityRef)
+        : Promise.resolve(null);
       let generalSources = {};
 
-      if (!username && !opponent) {
-        const { stdout: savedStatusStdout } = await execFileAsync("sqlite3", [
-          ...sqliteArgs,
-          buildGeneralSavedStatusSql({ endDate, keyHex, speeds, startDate }),
-        ]);
-        const [savedStatus = {}] = JSON.parse(savedStatusStdout.trim() || "[]");
-        generalSources = selectGeneralExplorerSources({
+      const bodyPromise = (async () => {
+        if (!username && !opponent) {
+          const { stdout: savedStatusStdout } = await enqueueSqliteQuery(
+            () =>
+              execFileAsync("sqlite3", [
+                ...sqliteArgs,
+                buildGeneralSavedStatusSql({ endDate, keyHex, speeds, startDate }),
+              ]),
+            priorityRef,
+          );
+          const [savedStatus = {}] = JSON.parse(savedStatusStdout.trim() || "[]");
+          generalSources = selectGeneralExplorerSources({
+            endDate,
+            savedGames: Number(savedStatus.savedGames ?? 0),
+            savedRecentGames: Number(savedStatus.savedRecentGames ?? 0),
+            speeds,
+            startDate,
+          });
+        }
+
+        const { gamesSql, movesSql } = buildOpeningExplorerSql({
+          color,
           endDate,
-          savedGames: Number(savedStatus.savedGames ?? 0),
-          savedRecentGames: Number(savedStatus.savedRecentGames ?? 0),
+          keyHex,
+          opponent,
+          playerMinRating: queryMinRating,
           speeds,
           startDate,
+          username,
+          ...generalSources,
         });
-      }
 
-      const { gamesSql, movesSql } = buildOpeningExplorerSql({
-        color,
-        endDate,
-        keyHex,
-        opponent,
-        playerMinRating: queryMinRating,
-        speeds,
-        startDate,
-        username,
-        ...generalSources,
-      });
-      const positionExtrasPromise = includePositionExtras
-        ? fetchPositionPlayerLeaders(keyHex, lastMoveColor)
-        : Promise.resolve(null);
-      const [{ stdout: movesStdout }, { stdout: gamesStdout }, positionLeaders] = await Promise.all(
-        [
-          execFileAsync("sqlite3", [...sqliteArgs, movesSql]),
-          execFileAsync("sqlite3", [...sqliteArgs, gamesSql]),
-          positionExtrasPromise,
-        ],
-      );
-      const body = JSON.stringify({
-        positionKey: keyHex,
-        positionLeaders,
-        moves: JSON.parse(movesStdout.trim() || "[]"),
-        recentGames: JSON.parse(gamesStdout.trim() || "[]"),
-      });
-      cache.set(cacheKey, body);
+        const [{ stdout: movesStdout }, { stdout: gamesStdout }, positionLeaders] =
+          await Promise.all([
+            enqueueSqliteQuery(
+              () => execFileAsync("sqlite3", [...sqliteArgs, movesSql]),
+              priorityRef,
+            ),
+            enqueueSqliteQuery(
+              () => execFileAsync("sqlite3", [...sqliteArgs, gamesSql]),
+              priorityRef,
+            ),
+            positionExtrasPromise,
+          ]);
+
+        const moves = JSON.parse(movesStdout.trim() || "[]");
+        const recentGames = JSON.parse(gamesStdout.trim() || "[]");
+
+        return {
+          body: JSON.stringify({
+            positionKey: keyHex,
+            positionLeaders,
+            moves,
+            recentGames,
+          }),
+          shouldCache: shouldCacheExplorerResponse({ moves, opponent, username }),
+        };
+      })();
+
+      pendingCache.set(cacheKey, { promise: bodyPromise, priorityRef });
+      const { body, shouldCache } = await bodyPromise;
+      if (shouldCache) {
+        cache.set(cacheKey, body);
+      }
+      setExplorerCacheHeader(res, shouldCache);
       res.end(body);
     } catch (error) {
-      res.statusCode = 500;
+      res.statusCode = error instanceof OpeningExplorerQueueError ? error.statusCode : 500;
       res.end(
         JSON.stringify({
           error: error instanceof Error ? error.message : "Opening explorer query failed",
         }),
       );
+    } finally {
+      pendingCache.delete(cacheKey);
     }
   };
 

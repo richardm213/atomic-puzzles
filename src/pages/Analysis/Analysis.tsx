@@ -166,6 +166,8 @@ const DEFAULT_EXPLORER_SETTINGS = {
 
 type StoredExplorerSettings = typeof DEFAULT_EXPLORER_SETTINGS;
 
+const explorerInFlightRequests = new Map<string, Promise<ExplorerApiResponse>>();
+
 const clampRating = (rating: number): number =>
   Math.max(
     PLAYER_MIN_RATING,
@@ -536,6 +538,61 @@ const toExplorerPositionLeaders = (
 const lichessAnalysisUrl = (fen: string): string =>
   `https://lichess.org/analysis/atomic/${fen.replaceAll(" ", "_")}`;
 
+const parseExplorerApiResponse = async (
+  response: Response,
+  explorerApiUrl: string,
+): Promise<ExplorerApiResponse> => {
+  const text = await response.text();
+  let body: unknown = null;
+
+  try {
+    body = text ? JSON.parse(text) : [];
+  } catch {
+    const returnedHtml = text.trimStart().startsWith("<!doctype") || text.includes("<html");
+    throw new Error(
+      returnedHtml
+        ? `Opening explorer API returned the app page from ${window.location.origin}${explorerApiUrl}. Open http://127.0.0.1:5180/analysis and hard-refresh.`
+        : `Opening explorer API returned invalid JSON from ${window.location.origin}${explorerApiUrl}.`,
+    );
+  }
+
+  if (!response.ok) {
+    const errorBody = body as { error?: string } | null;
+    throw new Error(errorBody?.error ?? "Opening explorer is unavailable");
+  }
+
+  if (
+    !body ||
+    typeof body !== "object" ||
+    !Array.isArray((body as Partial<ExplorerApiResponse>).moves) ||
+    !Array.isArray((body as Partial<ExplorerApiResponse>).recentGames)
+  ) {
+    throw new Error("Opening explorer API returned an unexpected response.");
+  }
+
+  return body as ExplorerApiResponse;
+};
+
+const fetchExplorerApiResponse = (explorerApiUrl: string): Promise<ExplorerApiResponse> => {
+  const existingRequest = explorerInFlightRequests.get(explorerApiUrl);
+  if (existingRequest) return existingRequest;
+
+  const promise = fetch(explorerApiUrl, {
+    headers: {
+      "X-Explorer-Intent": "visible",
+    },
+  })
+    .then((response) => parseExplorerApiResponse(response, explorerApiUrl))
+    .finally(() => {
+      if (explorerInFlightRequests.get(explorerApiUrl) === promise) {
+        explorerInFlightRequests.delete(explorerApiUrl);
+      }
+    });
+
+  explorerInFlightRequests.set(explorerApiUrl, promise);
+  return promise;
+};
+
 export const AnalysisPage = () => {
   const [initialExplorerSettings] = useState(loadExplorerSettings);
   const boardPanelRef = useRef<HTMLDivElement | null>(null);
@@ -549,6 +606,7 @@ export const AnalysisPage = () => {
   const boardWheelCanStepForwardRef = useRef(false);
   const fenDraftDirtyRef = useRef(false);
   const pgnDraftDirtyRef = useRef(false);
+  const explorerRequestIdRef = useRef(0);
   const [boardState, setBoardState] = useState<ChessboardState | null>(null);
   const [boardSize, setBoardSize] = useState(loadBoardSize);
   const [rootFen, setRootFen] = useState(STARTING_FEN);
@@ -1088,6 +1146,22 @@ export const AnalysisPage = () => {
       </div>
     ) : null;
 
+  const applyExplorerResponse = useCallback(
+    (data: ExplorerApiResponse, fen: string, scope: ExplorerScope, color: "white" | "black") => {
+      setExplorerMoves(
+        data.moves.map((row) => toExplorerMove(row, fen, { scope, playerColor: color })),
+      );
+      setRecentGames(data.recentGames.map((row) => toExplorerGame(row, fen)));
+      setPositionLeaders(
+        scope === "general" && showPositionLeaders
+          ? toExplorerPositionLeaders(data.positionLeaders)
+          : null,
+      );
+      setExplorerStatus("ready");
+    },
+    [showPositionLeaders],
+  );
+
   useEffect(() => {
     storeExplorerSettings({
       explorerScope,
@@ -1117,23 +1191,15 @@ export const AnalysisPage = () => {
   useEffect(() => {
     if (!explorerOpen) return;
 
+    const requestId = explorerRequestIdRef.current + 1;
+    explorerRequestIdRef.current = requestId;
+
     if (explorerScope === "player" && !username.trim()) {
       clearExplorerResults();
       setExplorerStatus("ready");
       setExplorerError("");
       return;
     }
-
-    const abortController = new AbortController();
-    let requestTimedOut = false;
-    const requestTimeout = window.setTimeout(() => {
-      requestTimedOut = true;
-      abortController.abort();
-    }, EXPLORER_REQUEST_TIMEOUT_MS);
-
-    setExplorerStatus("loading");
-    setExplorerError("");
-    clearExplorerResults();
 
     const explorerApiUrl = buildExplorerApiUrl({
       fen: currentFen,
@@ -1147,75 +1213,46 @@ export const AnalysisPage = () => {
       opponent,
     });
 
-    fetch(explorerApiUrl, {
-      signal: abortController.signal,
-    })
-      .then(async (response) => {
-        const text = await response.text();
-        let body: unknown = null;
-
-        try {
-          body = text ? JSON.parse(text) : [];
-        } catch {
-          const returnedHtml = text.trimStart().startsWith("<!doctype") || text.includes("<html");
-          throw new Error(
-            returnedHtml
-              ? `Opening explorer API returned the app page from ${window.location.origin}${explorerApiUrl}. Open http://127.0.0.1:5180/analysis and hard-refresh.`
-              : `Opening explorer API returned invalid JSON from ${window.location.origin}${explorerApiUrl}.`,
-          );
-        }
-
-        if (!response.ok) {
-          const errorBody = body as { error?: string } | null;
-          throw new Error(errorBody?.error ?? "Opening explorer is unavailable");
-        }
-
-        if (
-          !body ||
-          typeof body !== "object" ||
-          !Array.isArray((body as Partial<ExplorerApiResponse>).moves) ||
-          !Array.isArray((body as Partial<ExplorerApiResponse>).recentGames)
-        ) {
-          throw new Error("Opening explorer API returned an unexpected response.");
-        }
-
-        return body as ExplorerApiResponse;
-      })
-      .then((data) => {
-        setExplorerMoves(
-          data.moves.map((row) =>
-            toExplorerMove(row, currentFen, { scope: explorerScope, playerColor }),
-          ),
-        );
-        setRecentGames(data.recentGames.map((row) => toExplorerGame(row, currentFen)));
-        setPositionLeaders(
-          explorerScope === "general" && showPositionLeaders
-            ? toExplorerPositionLeaders(data.positionLeaders)
-            : null,
-        );
-        setExplorerStatus("ready");
-      })
-      .catch((error) => {
-        if (abortController.signal.aborted && !requestTimedOut) return;
+    let requestCancelled = false;
+    let requestTimedOut = false;
+    const requestTimeout = window.setTimeout(() => {
+      requestTimedOut = true;
+      if (!requestCancelled) {
         clearExplorerResults();
         setExplorerStatus("error");
         setExplorerError(
-          requestTimedOut
-            ? "Opening explorer took too long to respond. Try fewer filters or refresh."
-            : error instanceof Error
-              ? error.message
-              : "Opening explorer failed",
+          "Opening explorer took too long to respond. Try fewer filters or refresh.",
         );
+      }
+    }, EXPLORER_REQUEST_TIMEOUT_MS);
+
+    setExplorerStatus("loading");
+    setExplorerError("");
+    clearExplorerResults();
+
+    fetchExplorerApiResponse(explorerApiUrl)
+      .then((data) => {
+        if (requestCancelled || requestTimedOut || requestId !== explorerRequestIdRef.current) {
+          return;
+        }
+        applyExplorerResponse(data, currentFen, explorerScope, playerColor);
+      })
+      .catch((error) => {
+        if (requestCancelled || requestTimedOut) return;
+        clearExplorerResults();
+        setExplorerStatus("error");
+        setExplorerError(error instanceof Error ? error.message : "Opening explorer failed");
       })
       .finally(() => {
         window.clearTimeout(requestTimeout);
       });
 
     return () => {
+      requestCancelled = true;
       window.clearTimeout(requestTimeout);
-      abortController.abort();
     };
   }, [
+    applyExplorerResponse,
     clearExplorerResults,
     currentFen,
     endDate,
@@ -1226,7 +1263,6 @@ export const AnalysisPage = () => {
     opponent,
     playerColor,
     selectedSpeeds,
-    showPositionLeaders,
     username,
   ]);
 

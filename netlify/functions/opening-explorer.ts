@@ -1,6 +1,11 @@
 import { createClient } from "@libsql/client/web";
 
 import {
+  createOpeningExplorerQueue,
+  createPriorityFactory,
+  OpeningExplorerQueueError,
+} from "../../opening-explorer-request-queue.js";
+import {
   buildGeneralSavedStatusSql,
   buildOpeningExplorerSql,
   buildPositionPlayerLeaderBandsSql,
@@ -29,6 +34,9 @@ const PLAYER_MIN_RATING = 1700;
 const MAX_EXPLORER_RATING = 2200;
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = 90;
+const MAX_TURSO_CONCURRENT_QUERIES = 3;
+const MAX_TURSO_QUEUED_QUERIES = 36;
+const HIGH_VOLUME_GENERAL_CACHE_MIN_GAMES = 1_000;
 const ALLOWED_QUERY_PARAMS = new Set([
   "fen",
   "color",
@@ -39,9 +47,26 @@ const ALLOWED_QUERY_PARAMS = new Set([
   "username",
   "opponent",
 ]);
+type PriorityRef = { value: number };
+type ExplorerResponsePayload = {
+  body: string;
+  shouldCache: boolean;
+};
+type PendingExplorerRequest = {
+  promise: Promise<ExplorerResponsePayload>;
+  priorityRef: PriorityRef;
+};
 const cache = new Map<string, string>();
+const pendingCache = new Map<string, PendingExplorerRequest>();
 const aliasCache = new Map<string, Map<string, string>>();
 const rateLimits = new Map<string, { count: number; resetAt: number }>();
+const nextTursoPriority = createPriorityFactory();
+const tursoQueue = createOpeningExplorerQueue({
+  maxConcurrent: MAX_TURSO_CONCURRENT_QUERIES,
+  maxQueued: MAX_TURSO_QUEUED_QUERIES,
+});
+const enqueueTursoQuery = <T>(run: () => Promise<T>, priorityRef: PriorityRef): Promise<T> =>
+  tursoQueue.enqueue(run, priorityRef) as Promise<T>;
 
 const getHeader = (event: NetlifyEvent, name: string): string => {
   const headers = event.headers ?? {};
@@ -110,6 +135,11 @@ const jsonResponse = (statusCode: number, body: JsonValue) => ({
     "Cache-Control": statusCode === 200 ? "public, max-age=30" : "no-store",
   },
   body: JSON.stringify(body),
+});
+
+const explorerSuccessHeaders = (shouldCache: boolean) => ({
+  "Content-Type": "application/json",
+  "Cache-Control": shouldCache ? "public, max-age=30" : "no-store",
 });
 
 const rateLimitResponse = (retryAfterSeconds: number) => ({
@@ -242,7 +272,26 @@ const remember = (key: string, body: string): void => {
   cache.set(key, body);
 };
 
-const resolveCanonicalUsername = async (username: string, databaseUrl: string): Promise<string> => {
+const shouldCacheExplorerResponse = ({
+  moves,
+  opponent,
+  username,
+}: {
+  moves: Record<string, JsonValue>[];
+  opponent: string;
+  username: string;
+}): boolean => {
+  if (username || opponent) return false;
+
+  const shownGames = moves.reduce((total, row) => total + Number(row.games ?? 0), 0);
+  return shownGames >= HIGH_VOLUME_GENERAL_CACHE_MIN_GAMES;
+};
+
+const resolveCanonicalUsername = async (
+  username: string,
+  databaseUrl: string,
+  priorityRef: PriorityRef,
+): Promise<string> => {
   if (!username) return "";
 
   const cachedAliases = aliasCache.get(databaseUrl);
@@ -254,8 +303,9 @@ const resolveCanonicalUsername = async (username: string, databaseUrl: string): 
 
   try {
     const client = getClient();
-    const result = await client.execute(
-      "select value from opening_index_meta where key = 'aliases' limit 1;",
+    const result = await enqueueTursoQuery(
+      () => client.execute("select value from opening_index_meta where key = 'aliases' limit 1;"),
+      priorityRef,
     );
     const rows = normalizeRows(result.rows);
     const rawValue = rows[0]?.value;
@@ -276,14 +326,21 @@ const resolveCanonicalUsername = async (username: string, databaseUrl: string): 
   return aliases.get(username) ?? username;
 };
 
-const fetchPositionPlayerLeaders = async (keyHex: string, lastMoveColor: number | null) => {
+const fetchPositionPlayerLeaders = async (
+  keyHex: string,
+  lastMoveColor: number | null,
+  priorityRef: PriorityRef,
+) => {
   if (lastMoveColor !== 0 && lastMoveColor !== 1) return null;
 
   try {
     const client = getClient();
     const [leadersResult, bandsResult] = await Promise.all([
-      client.execute(buildPositionPlayerLeadersSql(keyHex, lastMoveColor)),
-      client.execute(buildPositionPlayerLeaderBandsSql()),
+      enqueueTursoQuery(
+        () => client.execute(buildPositionPlayerLeadersSql(keyHex, lastMoveColor)),
+        priorityRef,
+      ),
+      enqueueTursoQuery(() => client.execute(buildPositionPlayerLeaderBandsSql()), priorityRef),
     ]);
     const leaderRows = normalizeRows(leadersResult.rows);
     const bandRows = normalizeRows(bandsResult.rows);
@@ -353,17 +410,22 @@ export const handler = async (event: NetlifyEvent) => {
     return jsonResponse(503, { error: "Opening explorer Turso credentials are not configured" });
   }
 
+  const requestIntent = getHeader(event, "x-explorer-intent").toLowerCase();
+  const priorityRef = nextTursoPriority(requestIntent);
+
   const requestedUsername = parseUsername(params.get("username"));
   if (requestedUsername === null) {
     return jsonResponse(400, { error: "Invalid username query parameter" });
   }
 
-  const username = await resolveCanonicalUsername(requestedUsername, databaseUrl);
+  const username = await resolveCanonicalUsername(requestedUsername, databaseUrl, priorityRef);
   const requestedOpponent = parseUsername(params.get("opponent"));
   if (requestedOpponent === null) {
     return jsonResponse(400, { error: "Invalid opponent query parameter" });
   }
-  const opponent = username ? await resolveCanonicalUsername(requestedOpponent, databaseUrl) : "";
+  const opponent = username
+    ? await resolveCanonicalUsername(requestedOpponent, databaseUrl, priorityRef)
+    : "";
   const requestedColor = parseColor(params.get("color"));
   if (requestedColor === null) {
     return jsonResponse(400, { error: "Invalid color query parameter" });
@@ -409,70 +471,99 @@ export const handler = async (event: NetlifyEvent) => {
   if (cached) {
     return {
       statusCode: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "Cache-Control": "public, max-age=30",
-      },
+      headers: explorerSuccessHeaders(true),
       body: cached,
     };
   }
 
+  const pending = pendingCache.get(cacheKey);
+  if (pending) {
+    try {
+      pending.priorityRef.value = Math.max(pending.priorityRef.value, priorityRef.value);
+      const { body, shouldCache } = await pending.promise;
+      return {
+        statusCode: 200,
+        headers: explorerSuccessHeaders(shouldCache),
+        body,
+      };
+    } catch {
+      // Run the query below if the shared pending request failed.
+    }
+  }
+
   try {
     const client = getClient();
+    const positionExtrasPromise = includePositionExtras
+      ? fetchPositionPlayerLeaders(keyHex, lastMoveColor, priorityRef)
+      : Promise.resolve(null);
     let generalSources = {};
 
-    if (!username && !opponent) {
-      const savedStatusResult = await client.execute(
-        buildGeneralSavedStatusSql({ endDate, keyHex, speeds, startDate }),
-      );
-      const [savedStatus = {}] = normalizeRows(savedStatusResult.rows);
-      generalSources = selectGeneralExplorerSources({
+    const bodyPromise = (async () => {
+      if (!username && !opponent) {
+        const savedStatusResult = await enqueueTursoQuery(
+          () => client.execute(buildGeneralSavedStatusSql({ endDate, keyHex, speeds, startDate })),
+          priorityRef,
+        );
+        const [savedStatus = {}] = normalizeRows(savedStatusResult.rows);
+        generalSources = selectGeneralExplorerSources({
+          endDate,
+          savedGames: Number(savedStatus.savedGames ?? 0),
+          savedRecentGames: Number(savedStatus.savedRecentGames ?? 0),
+          speeds,
+          startDate,
+        });
+      }
+
+      const { gamesSql, movesSql } = buildOpeningExplorerSql({
+        color,
         endDate,
-        savedGames: Number(savedStatus.savedGames ?? 0),
-        savedRecentGames: Number(savedStatus.savedRecentGames ?? 0),
+        keyHex,
+        opponent,
+        playerMinRating: queryMinRating,
         speeds,
         startDate,
+        username,
+        ...generalSources,
       });
-    }
 
-    const { gamesSql, movesSql } = buildOpeningExplorerSql({
-      color,
-      endDate,
-      keyHex,
-      opponent,
-      playerMinRating: queryMinRating,
-      speeds,
-      startDate,
-      username,
-      ...generalSources,
-    });
-    const positionExtrasPromise = includePositionExtras
-      ? fetchPositionPlayerLeaders(keyHex, lastMoveColor)
-      : Promise.resolve(null);
-    const [movesResult, gamesResult, positionLeaders] = await Promise.all([
-      client.execute(movesSql),
-      client.execute(gamesSql),
-      positionExtrasPromise,
-    ]);
-    const body = JSON.stringify({
-      positionKey: keyHex,
-      positionLeaders,
-      moves: normalizeRows(movesResult.rows),
-      recentGames: normalizeRows(gamesResult.rows),
-    });
-    remember(cacheKey, body);
+      const [movesResult, gamesResult, positionLeaders] = await Promise.all([
+        enqueueTursoQuery(() => client.execute(movesSql), priorityRef),
+        enqueueTursoQuery(() => client.execute(gamesSql), priorityRef),
+        positionExtrasPromise,
+      ]);
+
+      const moves = normalizeRows(movesResult.rows);
+      const recentGames = normalizeRows(gamesResult.rows);
+      const shouldCache = shouldCacheExplorerResponse({ moves, opponent, username });
+
+      return {
+        body: JSON.stringify({
+          positionKey: keyHex,
+          positionLeaders,
+          moves,
+          recentGames,
+        }),
+        shouldCache,
+      };
+    })();
+
+    pendingCache.set(cacheKey, { promise: bodyPromise, priorityRef });
+    const { body, shouldCache } = await bodyPromise;
+    if (shouldCache) {
+      remember(cacheKey, body);
+    }
 
     return {
       statusCode: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "Cache-Control": "public, max-age=30",
-      },
+      headers: explorerSuccessHeaders(shouldCache),
       body,
     };
   } catch (error) {
-    return jsonResponse(500, {
+    const statusCode = error instanceof OpeningExplorerQueueError ? error.statusCode : 500;
+    return jsonResponse(statusCode, {
       error: error instanceof Error ? error.message : "Opening explorer query failed",
     });
+  } finally {
+    pendingCache.delete(cacheKey);
   }
 };
