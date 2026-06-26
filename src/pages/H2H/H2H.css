@@ -107,6 +107,28 @@
   margin-top: 0;
 }
 
+.h2hFilterPanel .sourceFilterCheck {
+  min-height: 32px;
+  border-color: color-mix(in srgb, var(--color-border) 78%, transparent);
+  background: color-mix(in srgb, var(--color-panel-strong) 72%, transparent);
+  color: var(--color-text);
+  font-weight: 650;
+}
+
+.h2hModeFilterGroup {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.h2hModeFilterChecks {
+  gap: 8px;
+}
+
+.h2hModeFilterCheck {
+  min-width: 92px;
+}
+
 .h2hSectionHeading {
   display: grid;
   gap: 4px;

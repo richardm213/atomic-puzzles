@@ -118,6 +118,48 @@ const modeStatLabels = {
 };
 
 const h2hSearchStorageKey = "atomic-puzzles:h2h-search";
+const h2hModeFiltersStorageKey = "atomic-puzzles:h2h-mode-filters";
+const defaultH2HModeFilters: Record<Mode, boolean> = {
+  blitz: true,
+  bullet: true,
+  hyperbullet: true,
+};
+
+const readStoredH2HModeFilters = (): Record<Mode, boolean> => {
+  if (typeof window === "undefined") return defaultH2HModeFilters;
+
+  try {
+    const saved = window.localStorage.getItem(h2hModeFiltersStorageKey);
+    if (!saved) return defaultH2HModeFilters;
+
+    const parsed = JSON.parse(saved) as unknown;
+    if (Array.isArray(parsed)) {
+      return {
+        ...defaultH2HModeFilters,
+        ...Object.fromEntries(modeOptions.map((mode) => [mode, parsed.includes(mode)])),
+      };
+    }
+
+    if (parsed && typeof parsed === "object") {
+      const parsedRecord = parsed as Record<string, unknown>;
+      return {
+        ...defaultH2HModeFilters,
+        ...Object.fromEntries(
+          modeOptions.map((mode) => [
+            mode,
+            typeof parsedRecord[mode] === "boolean"
+              ? Boolean(parsedRecord[mode])
+              : defaultH2HModeFilters[mode],
+          ]),
+        ),
+      };
+    }
+  } catch {
+    // Local storage is a convenience only; defaults still provide the full view.
+  }
+
+  return defaultH2HModeFilters;
+};
 
 const storeLastSearch = (player1: string, player2: string): void => {
   try {
@@ -162,11 +204,13 @@ export const H2HPage = () => {
     startDate: string;
     endDate: string;
     timeControl: string;
+    modes: Record<Mode, boolean>;
     sources: SourceFilters;
   }>({
     startDate: "",
     endDate: "",
     timeControl: "all",
+    modes: readStoredH2HModeFilters(),
     sources: defaultSourceFilters,
   });
   const [loadedPlayer1, setLoadedPlayer1] = useState("");
@@ -187,6 +231,7 @@ export const H2HPage = () => {
     () =>
       matches.filter((match) => {
         if (match.startTs < startDateTs || match.startTs > endDateTs) return false;
+        if (!filters.modes[match.mode]) return false;
         if (filters.timeControl !== "all" && match.timeControl !== filters.timeControl)
           return false;
 
@@ -294,6 +339,14 @@ export const H2HPage = () => {
     }
   }, []);
 
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(h2hModeFiltersStorageKey, JSON.stringify(filters.modes));
+    } catch {
+      // Ignore storage failures; the active filters still apply for this page view.
+    }
+  }, [filters.modes]);
+
   const handleSearch = async () => {
     if (searchSubmitInFlightRef.current || loading) return;
 
@@ -356,6 +409,12 @@ export const H2HPage = () => {
     setFilters((current) => ({
       ...current,
       sources: { ...current.sources, [source]: checked },
+    }));
+  };
+  const setModeFilter = (mode: Mode, checked: boolean): void => {
+    setFilters((current) => ({
+      ...current,
+      modes: { ...current.modes, [mode]: checked },
     }));
   };
 
@@ -551,7 +610,7 @@ export const H2HPage = () => {
                       />
                     </label>
                     <label htmlFor="h2h-time-control-filter">
-                      Time control
+                      Clock
                       <select
                         id="h2h-time-control-filter"
                         value={filters.timeControl}
@@ -570,6 +629,22 @@ export const H2HPage = () => {
                         ))}
                       </select>
                     </label>
+                  </div>
+
+                  <div className="opponentRatingFilter sourceFilterGroup h2hModeFilterGroup">
+                    <span className="statusLabel">Time control</span>
+                    <div className="sourceFilterChecks h2hModeFilterChecks">
+                      {modeOptions.map((mode) => (
+                        <label key={mode} className="sourceFilterCheck h2hModeFilterCheck">
+                          <input
+                            type="checkbox"
+                            checked={filters.modes[mode]}
+                            onChange={(event) => setModeFilter(mode, event.target.checked)}
+                          />
+                          <span>{modeLabels[mode]}</span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
 
                   <SourceFilterChecks values={filters.sources} onChange={setSourceFilter} />
