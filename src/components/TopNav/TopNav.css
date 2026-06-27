@@ -820,19 +820,64 @@
 
 .navAuthButton {
   min-height: 32px;
-  border: 1px solid var(--color-primary);
-  background: var(--color-primary);
+  border: 1px solid color-mix(in srgb, var(--color-primary-soft) 36%, var(--color-primary));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, white 13%, transparent), transparent 58%),
+    linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 76%, var(--color-cyan)));
   color: var(--color-on-primary);
-  border-radius: var(--radius-ui);
-  padding: 0 10px;
+  border-radius: 6px;
+  padding: 0 12px;
   font-size: 13px;
+  font-weight: 800;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  line-height: 1;
+  box-shadow:
+    0 1px 0 color-mix(in srgb, white 20%, transparent) inset,
+    0 8px 18px color-mix(in srgb, var(--color-primary) 24%, transparent);
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    transform 90ms ease;
   white-space: nowrap;
+}
+
+.navAuthButton:hover {
+  border-color: color-mix(in srgb, var(--color-primary-soft) 48%, var(--color-primary));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, white 17%, transparent), transparent 58%),
+    linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 64%, var(--color-cyan-bright)));
+  box-shadow:
+    0 1px 0 color-mix(in srgb, white 24%, transparent) inset,
+    0 10px 22px color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+
+.navAuthButton:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 0 color-mix(in srgb, white 16%, transparent) inset;
+}
+
+.navAuthButton:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px var(--color-primary-ring),
+    0 8px 18px color-mix(in srgb, var(--color-primary) 24%, transparent);
+}
+
+.navAuthButton svg {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
 }
 
 .navAuthButton:disabled {
   opacity: 0.65;
   cursor: wait;
+  transform: none;
 }
 
 @media (max-width: 920px) {

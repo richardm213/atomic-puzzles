@@ -5,6 +5,7 @@ import {
   faChevronDown,
   faMagnifyingGlass,
   faRightFromBracket,
+  faRightToBracket,
   faUser,
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
@@ -822,7 +823,8 @@ export const TopNav = () => {
               onClick={() => login(currentLocation)}
               disabled={isLoading}
             >
-              {isLoading ? "Checking..." : "Login"}
+              <FontAwesomeIcon icon={faRightToBracket} aria-hidden="true" />
+              <span>{isLoading ? "Checking..." : "Login"}</span>
             </button>
           )}
         </div>
