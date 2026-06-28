@@ -91,6 +91,11 @@ export const BannedUsersPage = () => {
     });
   }, [rows, sortDirection, sortKey]);
 
+  const aliasTotal = useMemo(
+    () => rows.reduce((total, row) => total + row.aliases.length, 0),
+    [rows],
+  );
+
   return (
     <div className="rankingsPage">
       <Seo
@@ -98,33 +103,50 @@ export const BannedUsersPage = () => {
         description="Browse banned users and their known aliases."
         path="/users/banned"
       />
-      <div className="panel rankingsPanel usersPanel">
+      <div className="panel rankingsPanel usersPanel bannedUsersPanel">
         <h1>Banned User List</h1>
 
         {error ? <div className="errorText">{error}</div> : null}
 
-        <div className="rankingsMeta usersMeta">
-          <span>{loading ? "Loading banned users..." : `${rows.length} banned users`}</span>
-          <span className="rankedCount">
+        <div className="bannedUsersHero">
+          <span className="bannedUsersHeroIcon" aria-hidden="true">
+            <i className="fa-solid fa-shield-halved" />
+          </span>
+          <div className="bannedUsersHeroCopy">
+            <span className="bannedUsersEyebrow">Fair play exclusions</span>
+            <p>
+              Accounts listed here are omitted from Atomic Puzzles ratings if they were banned by
+              Lichess or deemed highly suspicious.
+            </p>
+          </div>
+          <div className="bannedUsersHeroStats" aria-label="Banned user list summary">
+            <span className="bannedUsersStat">
+              <strong>{loading ? "..." : rows.length}</strong>
+              <span>Users</span>
+            </span>
+            <span className="bannedUsersStat">
+              <strong>{loading ? "..." : aliasTotal}</strong>
+              <span>Aliases</span>
+            </span>
             <Link className="rankingsMetaLink" to="/users">
               Back to full user list
             </Link>
-          </span>
+          </div>
         </div>
 
-        <div className="usersHelpCallout">
-          <span className="usersHelpLabel">Why am I banned?</span>
+        <div className="usersHelpCallout bannedUsersHelpCallout">
+          <span className="usersHelpLabel">Why am I excluded?</span>
           <span className="usersHelpTooltip">
             <button
               type="button"
               className="usersHelpButton"
-              aria-label="Why banned users are excluded"
+              aria-label="Why excluded users are omitted"
             >
               <i className="fa-solid fa-circle-info" aria-hidden="true" />
             </button>
             <span className="usersHelpTooltipBubble" role="tooltip">
-              It&apos;s nothing personal. If Lichess marked your account for a fair play violation,
-              I won&apos;t include it in the rating system.
+              It&apos;s nothing personal. If your account was banned by Lichess or deemed highly
+              suspicious, I won&apos;t include it in the rating system.
             </span>
           </span>
         </div>
@@ -159,15 +181,27 @@ export const BannedUsersPage = () => {
                 {sortedRows.map((row) => (
                   <tr key={row.username}>
                     <td>
-                      <Link
-                        className="rankingLink"
-                        to="/@/$username"
-                        params={{ username: row.username }}
-                      >
-                        {row.username}
-                      </Link>
+                      <span className="bannedUserName">
+                        <Link
+                          className="rankingLink"
+                          to="/@/$username"
+                          params={{ username: row.username }}
+                        >
+                          {row.username}
+                        </Link>
+                      </span>
                     </td>
-                    <td>{row.aliases.length > 0 ? row.aliases.join(", ") : "—"}</td>
+                    <td>
+                      {row.aliases.length > 0 ? (
+                        <div className="bannedAliasTags" aria-label={`${row.username} aliases`}>
+                          {row.aliases.map((alias) => (
+                            <span key={`${row.username}-${alias}`} className="bannedAliasTag">
+                              {alias}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                    </td>
                   </tr>
                 ))}
               </tbody>

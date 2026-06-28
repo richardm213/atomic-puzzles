@@ -980,16 +980,24 @@ export const PlayerProfilePage = ({
 
         {isBanned ? (
           <section className="profileBanNotice" aria-labelledby="profile-ban-notice-title">
-            <div className="profileBanNoticeHeader">
-              <span className="profileBanBadge">Fair Play Ban</span>
-              <h2 id="profile-ban-notice-title">
-                This player was banned by Lichess for fair play violations.
-              </h2>
+            <span className="profileBanIcon" aria-hidden="true">
+              <i className="fa-solid fa-shield-halved" />
+            </span>
+            <div className="profileBanNoticeContent">
+              <span className="profileBanEyebrow">Fair play status</span>
+              <div className="profileBanNoticeHeader">
+                <h2 id="profile-ban-notice-title">
+                  This player is not included in Atomic Puzzles ratings.
+                </h2>
+              </div>
+              <p>
+                This player was banned by Lichess or deemed highly suspicious, so we do not include
+                them in the rating system.
+              </p>
+              <div className="profileBanActions" aria-label="Fair play links">
+                <Link to="/users/banned">Banned user list</Link>
+              </div>
             </div>
-            <p>
-              This player was banned by Lichess for fair play violations, so we do not include them
-              in the rating or ranking system here.
-            </p>
           </section>
         ) : !historyOnly ? (
           <div className="profileTopBar">

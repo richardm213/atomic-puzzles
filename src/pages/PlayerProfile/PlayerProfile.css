@@ -327,50 +327,100 @@
 }
 
 .profileBanNotice {
-  margin-top: 10px;
-  padding: 16px 18px;
-  border-radius: var(--radius-ui);
-  border: 1px solid color-mix(in srgb, var(--color-danger) 45%, var(--color-border));
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+  margin-top: 12px;
+  padding: 18px;
+  border-radius: 8px;
+  border: 1px solid rgba(252, 165, 165, 0.3);
   background:
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--color-danger) 16%, transparent),
-      transparent 55%
-    ),
-    var(--color-panel-strong);
+    linear-gradient(135deg, rgba(127, 29, 29, 0.34), rgba(180, 83, 9, 0.13)),
+    var(--color-surface-elevated);
+  box-shadow: 0 18px 36px rgba(2, 6, 23, 0.24);
+}
+
+.profileBanIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border: 1px solid rgba(252, 165, 165, 0.32);
+  border-radius: 8px;
+  background: rgba(127, 29, 29, 0.28);
+  color: var(--color-danger);
+  font-size: 23px;
+}
+
+.profileBanNoticeContent {
+  min-width: 0;
+}
+
+.profileBanEyebrow {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--color-danger);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .profileBanNoticeHeader {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
 }
 
 .profileBanNoticeHeader h2 {
   margin: 0;
-  font-size: 18px;
+  color: var(--color-heading);
+  font-size: 21px;
+  line-height: 1.2;
 }
 
 .profileBanNotice p {
   margin: 10px 0 0;
   max-width: 72ch;
-  color: var(--color-text);
+  color: var(--color-muted);
+  line-height: 1.5;
 }
 
-.profileBanBadge {
+.profileBanActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.profileBanActions a {
   display: inline-flex;
   align-items: center;
-  min-height: 28px;
-  padding: 0 10px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--color-danger) 55%, var(--color-border));
-  background: color-mix(in srgb, var(--color-danger) 18%, transparent);
-  color: color-mix(in srgb, var(--color-danger) 76%, white);
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  justify-content: center;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid rgba(252, 165, 165, 0.24);
+  border-radius: 8px;
+  background: rgba(2, 6, 23, 0.18);
+  color: var(--color-primary-pale);
+  font-weight: 800;
+  text-decoration: none;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    transform 140ms ease;
+}
+
+.profileBanActions a:hover,
+.profileBanActions a:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(252, 165, 165, 0.42);
+  background: rgba(127, 29, 29, 0.18);
+  color: var(--color-heading);
 }
 
 .profileHighlights {
@@ -1245,6 +1295,14 @@
 @media (max-width: 640px) {
   .profileIdentityTitle {
     gap: 8px 10px;
+  }
+
+  .profileBanNotice {
+    grid-template-columns: 1fr;
+  }
+
+  .profileBanActions a {
+    width: 100%;
   }
 
   .profileMetricRowCards {
