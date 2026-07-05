@@ -149,6 +149,7 @@ const getOpeningToneClass = (opening: string): string =>
 
 const profileTrophyAssets = {
   champion: appAssetPath("/images/lichess-trophies/gold-cup-2.png"),
+  secondPlace: appAssetPath("/images/lichess-trophies/red-cup-2.png"),
   top10: appAssetPath("/images/lichess-trophies/silver-cup-2.png"),
   top30: appAssetPath("/images/lichess-trophies/gold-cup-2-blue.png"),
 };
@@ -294,6 +295,12 @@ const trophyLevels = [
     key: "champion",
     imageSrc: profileTrophyAssets.champion,
     suffix: "Atomic Champion",
+  },
+  {
+    maxRank: 2,
+    key: "top2",
+    imageSrc: profileTrophyAssets.secondPlace,
+    suffix: "Atomic Top 2",
   },
   { maxRank: 10, key: "top10", imageSrc: profileTrophyAssets.top10, suffix: "Atomic Top 10" },
   { maxRank: 30, key: "top30", imageSrc: profileTrophyAssets.top30, suffix: "Atomic Top 30" },
