@@ -31,7 +31,6 @@ const featureLinks = [
 ];
 
 const featuredH2HMatchup = matchupToSlug("maxwellssilvrhammer", "rechesster");
-const lastYearRankingsPath = "/rankings?year=2025&month=Jun&mode=blitz";
 
 const darkModePuzzleCollageImages = [
   {
@@ -230,7 +229,7 @@ export const HomePage = () => {
           </Link>
 
           <Link
-            className="homeSpotlightCard homeTournamentShortcut"
+            className="homeSpotlightCard homeTrophyShortcut"
             to="/tournaments/$tournamentId"
             params={{ tournamentId: "awc2025" }}
           >
@@ -247,10 +246,18 @@ export const HomePage = () => {
             />
           </Link>
 
-          <a className="homeSpotlightCard" href={lastYearRankingsPath}>
-            <span>This time last year</span>
-            <h2>June 2025 blitz</h2>
-            <p>Revisit the top of the table one year ago.</p>
+          <a className="homeSpotlightCard homeTrophyShortcut" href="https://www.chess.com">
+            <span>Championship</span>
+            <h2>Chess.com Atomic 2026</h2>
+            <p>Follow the next Chess.com atomic championship.</p>
+            <img
+              src={appAssetPath("/images/awc-trophies/chesscomatomic.png")}
+              alt=""
+              width="140"
+              height="140"
+              loading="lazy"
+              decoding="async"
+            />
           </a>
 
           <Link
