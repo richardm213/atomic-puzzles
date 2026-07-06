@@ -1463,9 +1463,9 @@
 }
 
 .favoriteOpponentMatchesHeader {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
   gap: 10px;
   margin-bottom: 8px;
   color: var(--color-subtle);
@@ -1473,10 +1473,15 @@
   font-weight: 700;
 }
 
+.favoriteOpponentMatchesHeader > span {
+  min-width: 0;
+}
+
 .profileFavoriteOpponentH2HButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  justify-self: center;
   min-height: 28px;
   border: 1px solid var(--color-border);
   border-radius: 8px;

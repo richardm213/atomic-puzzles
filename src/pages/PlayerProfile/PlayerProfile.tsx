@@ -1,7 +1,5 @@
 import "./PlayerProfile.css";
 
-import { faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -2568,7 +2566,6 @@ export const PlayerProfilePage = ({
                             </span>
                           </button>
                         </th>
-                        <th aria-label="Open H2H page" />
                       </tr>
                     </thead>
                     <tbody>
@@ -2622,26 +2619,10 @@ export const PlayerProfilePage = ({
                                   ? ` (${row.favoriteTimeControlCount})`
                                   : ""}
                               </td>
-                              <td>
-                                <Link
-                                  className="matchPageLink"
-                                  to="/h2h/$matchup"
-                                  params={{
-                                    matchup: matchupToSlug(canonicalUsername, row.opponent),
-                                  }}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  title={`Open H2H: ${canonicalUsername} vs ${row.opponent}`}
-                                  aria-label={`Open H2H: ${canonicalUsername} vs ${row.opponent}`}
-                                  onClick={(event) => event.stopPropagation()}
-                                >
-                                  <FontAwesomeIcon icon={faUpRightFromSquare} />
-                                </Link>
-                              </td>
                             </tr>
                             {isExpanded ? (
                               <tr className="favoriteOpponentMatchesRow">
-                                <td colSpan={7}>
+                                <td colSpan={6}>
                                   <div className="favoriteOpponentMatchesInner">
                                     <div className="favoriteOpponentMatchesHeader">
                                       <span>{`${row.matches.length.toLocaleString(
@@ -2664,12 +2645,10 @@ export const PlayerProfilePage = ({
                                       <thead>
                                         <tr>
                                           <th>Date / Time</th>
-                                          <th>Game ID</th>
-                                          <th>Mode</th>
+                                          <th>Match ID</th>
                                           <th>TC</th>
                                           <th>Score</th>
                                           <th>Rating Δ</th>
-                                          <th>Games</th>
                                           <th aria-label="Open match page" />
                                         </tr>
                                       </thead>
@@ -2717,7 +2696,6 @@ export const PlayerProfilePage = ({
                                                   match.firstGameId
                                                 )}
                                               </td>
-                                              <td>{modeLabels[match.mode] ?? match.mode}</td>
                                               <td>
                                                 <span className="profileTablePill">
                                                   {match.timeControl}
@@ -2735,7 +2713,6 @@ export const PlayerProfilePage = ({
                                                   "—"
                                                 )}
                                               </td>
-                                              <td>{match.gameCount.toLocaleString("en-US")}</td>
                                               <td>
                                                 <MatchPageLink
                                                   match={matchLinkMatch}
@@ -2757,14 +2734,14 @@ export const PlayerProfilePage = ({
                       })}
                       {loadingFavoriteOpponents ? (
                         <tr>
-                          <td colSpan={7} className="emptyRankings">
+                          <td colSpan={6} className="emptyRankings">
                             {`Loading favorite opponents from the last ${favoriteOpponentMatchLimit.toLocaleString("en-US")} ${favoriteOpponentScopeLabel}...`}
                           </td>
                         </tr>
                       ) : null}
                       {!loadingFavoriteOpponents && favoriteOpponentRows.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="emptyRankings">
+                          <td colSpan={6} className="emptyRankings">
                             {`No favorite opponents found in the last ${favoriteOpponentMatchLimit.toLocaleString("en-US")} ${favoriteOpponentScopeLabel}.`}
                           </td>
                         </tr>
