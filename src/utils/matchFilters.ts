@@ -1,3 +1,5 @@
+import { knownSourceKeys, type SourceFilters } from "../constants/matches";
+
 export type MatchSource = "arena" | "friend" | "lobby" | "swiss" | "chesscom" | "unknown";
 
 const firstNonEmptyValue = (...values: unknown[]): unknown =>
@@ -53,4 +55,20 @@ export const matchSourceFromValues = (...values: unknown[]): MatchSource => {
   if (normalizedSource.includes("lobby")) return "lobby";
   if (normalizedSource.includes("swiss")) return "swiss";
   return "unknown";
+};
+
+export const areSourceFiltersDefault = (sourceFilters: Partial<SourceFilters> = {}): boolean =>
+  knownSourceKeys.every((source) => sourceFilters[source] !== false);
+
+export const isSourceAllowedByFilters = (
+  source: unknown,
+  sourceFilters: Partial<SourceFilters> = {},
+): boolean => {
+  const sourceKey = String(source ?? "unknown").toLowerCase();
+  if (sourceKey === "unknown") return areSourceFiltersDefault(sourceFilters);
+  if ((knownSourceKeys as string[]).includes(sourceKey)) {
+    return sourceFilters[sourceKey as keyof SourceFilters] !== false;
+  }
+
+  return true;
 };

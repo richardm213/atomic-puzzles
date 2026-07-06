@@ -58,7 +58,7 @@ export const isChessComSource = (source: unknown): boolean => {
 export const buildChessComGameUrl = (gameId: string | number | null | undefined): string => {
   const normalizedGameId = String(gameId ?? "").trim();
   if (!normalizedGameId || normalizedGameId === "—") return "";
-  return `https://www.chess.com/game/live/${encodeURIComponent(normalizedGameId)}`;
+  return `https://www.chess.com/variants/atomic/game/${encodeURIComponent(normalizedGameId)}`;
 };
 
 const looksLikeChessComGameId = (gameId: string): boolean => /^\d{8,}$/.test(gameId);

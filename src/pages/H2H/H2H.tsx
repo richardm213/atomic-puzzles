@@ -3,14 +3,7 @@ import "./H2H.css";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import {
-  defaultSourceFilters,
-  knownSourceKeys,
-  type Mode,
-  modeLabels,
-  modeOptions,
-  type SourceFilters,
-} from "../../constants/matches";
+import { type Mode, modeLabels, modeOptions, type SourceFilters } from "../../constants/matches";
 import type { PlayerRatingRow } from "../../lib/supabase/supabasePlayerRatings";
 import type { MatchCardData } from "../../types/matchCard";
 import type { RawMatchLike } from "../../types/matchRaw";
@@ -40,8 +33,9 @@ import { resolveUsernameInputs } from "../../lib/users/usernameSearch";
 import { formatLocalDateTime, formatScore } from "../../utils/formatters";
 import { matchupToSlug, parseMatchupSlug } from "../../utils/h2hRoutes";
 import { getTimeControlOptions } from "../../utils/matchCollection";
-import { parseDateInputBoundary } from "../../utils/matchFilters";
+import { isSourceAllowedByFilters, parseDateInputBoundary } from "../../utils/matchFilters";
 import { normalizedGamesFromMatch, normalizedPlayersFromMatch } from "../../utils/matchTransforms";
+import { readStoredSourceFilters, writeStoredSourceFilters } from "../../utils/sourceFilterStorage";
 import { isToggleActionKey } from "../../utils/toggleActionKey";
 
 const normalizeH2HMatches = (
@@ -212,7 +206,7 @@ export const H2HPage = () => {
     endDate: "",
     timeControl: "all",
     modes: readStoredH2HModeFilters(),
-    sources: defaultSourceFilters,
+    sources: readStoredSourceFilters(),
   });
   const [loadedPlayer1, setLoadedPlayer1] = useState("");
   const [loadedPlayer2, setLoadedPlayer2] = useState("");
@@ -236,12 +230,7 @@ export const H2HPage = () => {
         if (filters.timeControl !== "all" && match.timeControl !== filters.timeControl)
           return false;
 
-        if (match.source === "unknown") return Object.values(filters.sources).some(Boolean);
-        if ((knownSourceKeys as string[]).includes(match.source)) {
-          return Boolean(filters.sources[match.source as keyof SourceFilters]);
-        }
-
-        return true;
+        return isSourceAllowedByFilters(match.source, filters.sources);
       }),
     [endDateTs, filters, matches, startDateTs],
   );
@@ -407,10 +396,14 @@ export const H2HPage = () => {
   const player1Snapshot = playerSnapshots[loadedPlayer1.toLowerCase()] || {};
   const player2Snapshot = playerSnapshots[loadedPlayer2.toLowerCase()] || {};
   const setSourceFilter = (source: keyof SourceFilters, checked: boolean): void => {
-    setFilters((current) => ({
-      ...current,
-      sources: { ...current.sources, [source]: checked },
-    }));
+    setFilters((current) => {
+      const nextSources = { ...current.sources, [source]: checked };
+      writeStoredSourceFilters(nextSources);
+      return {
+        ...current,
+        sources: nextSources,
+      };
+    });
   };
   const setModeFilter = (mode: Mode, checked: boolean): void => {
     setFilters((current) => ({

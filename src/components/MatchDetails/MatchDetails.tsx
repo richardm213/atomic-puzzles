@@ -15,6 +15,11 @@ export type MatchDetailsProps = {
   stopPropagation?: MouseEventHandler;
 };
 
+const getMatchSourceLabel = (sourceValue: unknown): string => {
+  const source = String(sourceValue ?? "").trim();
+  return source && source !== "—" ? source : "Unknown";
+};
+
 export const MatchDetails = ({
   match,
   matchKey,
@@ -59,6 +64,10 @@ export const MatchDetails = ({
           />
         </div>
       ) : null}
+    </div>
+    <div className="matchDetailsMeta">
+      <span>Source</span>
+      <strong>{getMatchSourceLabel(match.sourceValue)}</strong>
     </div>
     <div className={`matchGames${showRunningScore ? " matchGamesWithScore" : ""}`}>
       <div className="matchGamesHeader">

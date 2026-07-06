@@ -19,7 +19,6 @@ import {
   defaultMode,
   defaultRatingMax,
   defaultRatingMin,
-  defaultSourceFilters,
   modeLabels,
   modeOptions,
   opponentRatingSliderMax,
@@ -59,6 +58,7 @@ import { getTimeControlOptions } from "../../utils/matchCollection";
 import { parseDateInputBoundary } from "../../utils/matchFilters";
 import { getOpeningDisplayLabel } from "../../utils/openings";
 import { normalizeUsername } from "../../utils/playerNames";
+import { readStoredSourceFilters, writeStoredSourceFilters } from "../../utils/sourceFilterStorage";
 import { isToggleActionKey } from "../../utils/toggleActionKey";
 
 const countOptions = [5, 10, 20];
@@ -379,16 +379,16 @@ const rankingTrophyLevels = [
     maxRank: 1,
     key: "top1",
     imageSrc: rankingTrophyAssets.top1,
-    suffix: "Atomic Top 1",
-    placementLabel: "Champion",
+    suffix: "Atomic 1st place",
+    placementLabel: "1st place",
     prestige: 900,
   },
   {
     maxRank: 2,
     key: "top2",
     imageSrc: rankingTrophyAssets.secondPlace,
-    suffix: "Atomic Top 2",
-    placementLabel: "Runner up",
+    suffix: "Atomic 2nd place",
+    placementLabel: "2nd place",
     prestige: 800,
   },
   {
@@ -414,7 +414,7 @@ const getRankingTrophies = (
       {
         key: `${monthRank.mode}-${monthRank.monthValue}-${level.key}`,
         label: modeLabel,
-        title: `${modeLabel} ${level.suffix} · ${monthRank.monthLabel}`,
+        title: `${modeLabel} ${level.suffix}`,
         imageSrc: level.imageSrc,
         href: lichessProfileUrl(username),
         dateLabel: monthRank.monthLabel,
@@ -566,6 +566,7 @@ const buildMatchFilters = (
   if (filters.endDateFilter) {
     queryFilters.endTs = parseDateInputBoundary(filters.endDateFilter, "end");
   }
+  queryFilters.sourceFilters = filters.sourceFilters;
   return queryFilters;
 };
 
@@ -578,7 +579,7 @@ const createDefaultProfileFilters = (): ProfileFilters => ({
   opponentFilter: "",
   startDateFilter: "",
   endDateFilter: "",
-  sourceFilters: { ...defaultSourceFilters },
+  sourceFilters: readStoredSourceFilters(),
   timeControlInitialFilter: "all",
   timeControlIncrementFilter: "all",
 });
@@ -615,7 +616,7 @@ export const PlayerProfilePage = ({
   const [opponentFilter, setOpponentFilter] = useState("");
   const [startDateFilter, setStartDateFilter] = useState("");
   const [endDateFilter, setEndDateFilter] = useState("");
-  const [sourceFilters, setSourceFilters] = useState(defaultSourceFilters);
+  const [sourceFilters, setSourceFilters] = useState(readStoredSourceFilters);
   const [timeControlInitialFilter, setTimeControlInitialFilter] = useState("all");
   const [timeControlIncrementFilter, setTimeControlIncrementFilter] = useState("all");
   const [isHistoryAvailable, setIsHistoryAvailable] = useState(false);
@@ -941,7 +942,11 @@ export const PlayerProfilePage = ({
     source: keyof import("../../constants/matches").SourceFilters,
     checked: boolean,
   ): void => {
-    setSourceFilters((current) => ({ ...current, [source]: checked }));
+    setSourceFilters((current) => {
+      const next = { ...current, [source]: checked };
+      writeStoredSourceFilters(next);
+      return next;
+    });
   };
   const handleModeChange = (nextMode: import("../../constants/matches").Mode): void => {
     const nextModeFilters = createDefaultProfileFilters();
@@ -1159,12 +1164,22 @@ export const PlayerProfilePage = ({
         {historyOnly ? (
           <div className="profileIdentityRow noTrophies">
             <div className="profileIdentityTitle">
-              <h1>{profileDisplayUsername}</h1>
+              <h1>
+                <Link
+                  className="profileHistoryTitleLink"
+                  to="/@/$username"
+                  params={{ username: canonicalUsername }}
+                >
+                  {profileDisplayUsername}
+                </Link>
+              </h1>
             </div>
           </div>
         ) : (
           <div
-            className={`profileIdentityRow${!isBanned && hasVisibleProfileTrophies ? "" : " noTrophies"}`}
+            className={`profileIdentityRow${!isBanned && hasVisibleProfileTrophies ? "" : " noTrophies"}${
+              !isBanned && visibleProfileTrophies.length >= 3 ? " compactOpenings" : ""
+            }`}
           >
             <div className="profileIdentityTitle">
               <h1>{profileDisplayUsername}</h1>
@@ -1238,7 +1253,7 @@ export const PlayerProfilePage = ({
           </div>
         ) : null}
 
-        {!isBanned && (isHistoryAvailable || !historyOnly) ? (
+        {!isBanned && !historyOnly ? (
           <div className="profileActionRow">
             {isHistoryAvailable ? (
               <Link
@@ -1249,23 +1264,13 @@ export const PlayerProfilePage = ({
                 View puzzle dashboard
               </Link>
             ) : null}
-            {historyOnly ? (
-              <Link
-                className="profilePuzzleDashboardLink"
-                to="/@/$username"
-                params={{ username: canonicalUsername }}
-              >
-                View profile
-              </Link>
-            ) : (
-              <Link
-                className="profilePuzzleDashboardLink"
-                to="/@/$username/history"
-                params={{ username: canonicalUsername }}
-              >
-                View history
-              </Link>
-            )}
+            <Link
+              className="profilePuzzleDashboardLink"
+              to="/@/$username/history"
+              params={{ username: canonicalUsername }}
+            >
+              View history
+            </Link>
           </div>
         ) : null}
 

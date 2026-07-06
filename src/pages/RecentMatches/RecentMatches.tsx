@@ -6,8 +6,6 @@ import {
   defaultMode,
   defaultRatingMax,
   defaultRatingMin,
-  defaultSourceFilters,
-  knownSourceKeys,
   type Mode,
   modeDescriptions,
   modeLabels,
@@ -55,12 +53,13 @@ import {
 } from "../../lib/matches/matchSummaries";
 import { resolveUsernameInputs } from "../../lib/users/usernameSearch";
 import { getTimeControlOptions } from "../../utils/matchCollection";
-import { parseDateInputBoundary } from "../../utils/matchFilters";
+import { isSourceAllowedByFilters, parseDateInputBoundary } from "../../utils/matchFilters";
 import {
   normalizedGamesFromMatch,
   normalizedPlayersFromMatch,
   parseTimeControlParts,
 } from "../../utils/matchTransforms";
+import { readStoredSourceFilters, writeStoredSourceFilters } from "../../utils/sourceFilterStorage";
 
 const recentModeOptions = modeOptions;
 const ratingFilterTypeOptions = ["both", "average"];
@@ -123,7 +122,7 @@ export const RecentMatchesPage = () => {
   const [ratingMax, setRatingMax] = useState(defaultRatingMax);
   const [player1Filter, setPlayer1Filter] = useState("");
   const [player2Filter, setPlayer2Filter] = useState("");
-  const [sourceFilters, setSourceFilters] = useState(defaultSourceFilters);
+  const [sourceFilters, setSourceFilters] = useState(readStoredSourceFilters);
   const [startDateFilter, setStartDateFilter] = useState("");
   const [endDateFilter, setEndDateFilter] = useState("");
   const [timeControlInitialFilter, setTimeControlInitialFilter] = useState("all");
@@ -139,7 +138,7 @@ export const RecentMatchesPage = () => {
     ratingMax: defaultRatingMax,
     player1Filter: "",
     player2Filter: "",
-    sourceFilters: defaultSourceFilters,
+    sourceFilters: readStoredSourceFilters(),
     startDateFilter: "",
     endDateFilter: "",
     timeControlInitialFilter: "all",
@@ -203,13 +202,7 @@ export const RecentMatchesPage = () => {
           }
         }
 
-        const sourceKey = String(match.sourceKey || "unknown").toLowerCase();
-        const anyKnownSourceEnabled = Object.values(appliedFilters.sourceFilters).some(Boolean);
-        if (sourceKey === "unknown") return anyKnownSourceEnabled;
-        if ((knownSourceKeys as string[]).includes(sourceKey))
-          return Boolean(appliedFilters.sourceFilters[sourceKey as keyof SourceFilters]);
-
-        return true;
+        return isSourceAllowedByFilters(match.sourceKey, appliedFilters.sourceFilters);
       }),
     [matches, appliedFilters, startDateTs, endDateTs],
   );
@@ -240,6 +233,7 @@ export const RecentMatchesPage = () => {
       queryFilters.ratingMin = nextFilters.ratingMin;
       queryFilters.ratingMax = nextFilters.ratingMax;
     }
+    queryFilters.sourceFilters = nextFilters.sourceFilters;
     return queryFilters;
   }, []);
 
@@ -367,7 +361,11 @@ export const RecentMatchesPage = () => {
 
   const paginatedMatches = filteredMatches;
   const setSourceFilter = (source: keyof SourceFilters, checked: boolean): void => {
-    setSourceFilters((current) => ({ ...current, [source]: checked }));
+    setSourceFilters((current) => {
+      const next = { ...current, [source]: checked };
+      writeStoredSourceFilters(next);
+      return next;
+    });
   };
 
   return (

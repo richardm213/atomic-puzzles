@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 
 import {
   createModeRecord,
-  knownSourceKeys,
   type Mode,
   modeLabels,
   modeOptions,
@@ -16,7 +15,7 @@ import {
 } from "../lib/supabase/supabaseLb";
 import { fetchPlayerRatingsRows } from "../lib/supabase/supabasePlayerRatings";
 import { formatCalendarDate } from "../utils/formatters";
-import { parseDateInputBoundary } from "../utils/matchFilters";
+import { isSourceAllowedByFilters, parseDateInputBoundary } from "../utils/matchFilters";
 import { parseTimeControlParts } from "../utils/matchTransforms";
 
 export type MonthRank = {
@@ -423,15 +422,7 @@ export const filterMatches = (
       return false;
     }
 
-    const sourceFilters = appliedFilters.sourceFilters ?? {};
-    const sourceKey = String(match.sourceKey ?? "unknown").toLowerCase();
-    const anyKnownSourceEnabled = Object.values(sourceFilters).some(Boolean);
-    if (sourceKey === "unknown") return anyKnownSourceEnabled;
-    if ((knownSourceKeys as string[]).includes(sourceKey)) {
-      return Boolean(sourceFilters[sourceKey as keyof SourceFilters]);
-    }
-
-    return true;
+    return isSourceAllowedByFilters(match.sourceKey, appliedFilters.sourceFilters);
   });
 };
 

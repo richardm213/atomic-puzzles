@@ -85,14 +85,16 @@ describe("buildLichessGameUrl", () => {
 });
 
 describe("buildExternalGameUrl", () => {
-  it("returns a Chess.com live game URL for a chesscom source", () => {
+  it("returns a Chess.com atomic variant game URL for a chesscom source", () => {
     expect(buildExternalGameUrl("123456789", { source: "chesscom" })).toBe(
-      "https://www.chess.com/game/live/123456789",
+      "https://www.chess.com/variants/atomic/game/123456789",
     );
   });
 
-  it("returns a Chess.com live game URL for source-less numeric live game ids", () => {
-    expect(buildExternalGameUrl("123456789")).toBe("https://www.chess.com/game/live/123456789");
+  it("returns a Chess.com atomic variant game URL for source-less numeric game ids", () => {
+    expect(buildExternalGameUrl("123456789")).toBe(
+      "https://www.chess.com/variants/atomic/game/123456789",
+    );
   });
 
   it("keeps Lichess orientation and ply for Lichess sources", () => {
@@ -131,7 +133,7 @@ describe("buildSingleGameMatchUrl", () => {
         gameCount: 1,
         sourceValue: "chesscom",
       }),
-    ).toBe("https://www.chess.com/game/live/123456789");
+    ).toBe("https://www.chess.com/variants/atomic/game/123456789");
   });
 
   it("does not build an external game URL for longer matches", () => {

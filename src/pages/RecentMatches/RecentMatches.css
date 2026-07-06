@@ -338,6 +338,12 @@
   accent-color: var(--color-primary);
 }
 
+.sourceFilterSourceCheck {
+  border: 0;
+  background: transparent;
+  padding: 0 4px;
+}
+
 .paginationRow {
   margin-top: 16px;
   display: flex;
@@ -443,6 +449,11 @@
     padding: 0 8px;
   }
 
+  .recentMatchesPanel .sourceFilterSourceCheck {
+    flex: 0 0 auto;
+    padding: 0 4px;
+  }
+
   .recentMatchesPanel .matchCardHeader {
     grid-template-columns: minmax(0, 1fr) max-content;
     align-items: center;
@@ -515,6 +526,11 @@
   .sourceFilterCheck {
     flex: 1 1 140px;
     min-height: 44px;
+  }
+
+  .sourceFilterSourceCheck {
+    flex: 0 0 auto;
+    min-height: 34px;
   }
 
   .paginationRow {

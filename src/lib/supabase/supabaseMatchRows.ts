@@ -1,4 +1,10 @@
-import { defaultRatingMax, defaultRatingMin, type Mode } from "../../constants/matches";
+import {
+  defaultRatingMax,
+  defaultRatingMin,
+  knownSourceKeys,
+  type Mode,
+  type SourceFilters,
+} from "../../constants/matches";
 import type { MatchRow } from "../../types/supabase";
 import { normalizeUsername } from "../../utils/playerNames";
 import { cachedRequest } from "../../utils/requestCache";
@@ -19,6 +25,7 @@ export type MatchFilters = {
   startTs?: number | string | null;
   endTs?: number | string | null;
   timeControl?: string;
+  sourceFilters?: Partial<SourceFilters>;
 };
 
 export type MatchPageOptions = {
@@ -82,6 +89,15 @@ type NormalizedFilters = {
   startTs: number;
   endTs: number;
   timeControl: string;
+  sourceFilters: Partial<SourceFilters>;
+};
+
+const sourceValuesByKey: Record<keyof SourceFilters, string[]> = {
+  arena: ["arena"],
+  friend: ["friend"],
+  lobby: ["lobby"],
+  swiss: ["swiss"],
+  chesscom: ["chesscom", "Chess.com", "chess.com", "chess_com"],
 };
 
 const getMatchTableName = (mode: string): string => {
@@ -109,6 +125,7 @@ const normalizeMatchFilters = (filters: MatchFilters = {}): NormalizedFilters =>
     startTs: numericBoundary(filters.startTs, Number.MIN_SAFE_INTEGER),
     endTs: numericBoundary(filters.endTs, Number.MAX_SAFE_INTEGER),
     timeControl: String(filters.timeControl ?? "").trim(),
+    sourceFilters: filters.sourceFilters ?? {},
   };
 };
 
@@ -175,6 +192,21 @@ const applyDateAndTimeFilters = (
   return next;
 };
 
+const applySourceFilters = (
+  query: MatchQuery,
+  { sourceFilters }: NormalizedFilters,
+): MatchQuery => {
+  const allSourcesEnabled = knownSourceKeys.every((source) => sourceFilters[source] !== false);
+  if (allSourcesEnabled) return query;
+
+  const enabledSources = knownSourceKeys.filter((source) => sourceFilters[source] === true);
+  if (!enabledSources.length) return query.eq("source", "__no_enabled_sources__");
+
+  const sourceValues = enabledSources.flatMap((source) => sourceValuesByKey[source]);
+
+  return query.in("source", sourceValues);
+};
+
 const buildMatchQuery = (
   supabase: ReturnType<typeof getSupabaseClient>,
   tableName: string,
@@ -185,8 +217,11 @@ const buildMatchQuery = (
     .select(MATCH_SELECT_COLUMNS, { count: "exact" })
     .order("start_ts", { ascending: false });
 
-  return applyDateAndTimeFilters(
-    applyRatingFilter(applyPlayerFilters(baseQuery, filters), filters),
+  return applySourceFilters(
+    applyDateAndTimeFilters(
+      applyRatingFilter(applyPlayerFilters(baseQuery, filters), filters),
+      filters,
+    ),
     filters,
   );
 };

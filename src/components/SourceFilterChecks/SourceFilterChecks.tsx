@@ -13,7 +13,7 @@ export const SourceFilterChecks = ({ values, onChange }: SourceFilterChecksProps
     <span className="statusLabel">Source filter</span>
     <div className="sourceFilterChecks">
       {sources.map((source) => (
-        <label key={source} className="sourceFilterCheck">
+        <label key={source} className="sourceFilterCheck sourceFilterSourceCheck">
           <input
             type="checkbox"
             checked={values[source]}

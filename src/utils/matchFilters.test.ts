@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  areSourceFiltersDefault,
+  isSourceAllowedByFilters,
   matchSourceFromValues,
   parseDateInputBoundary,
   sourceValueFromValues,
@@ -66,5 +68,37 @@ describe("matchSourceFromValues", () => {
   it("returns 'unknown' for empty / nullish values", () => {
     expect(matchSourceFromValues()).toBe("unknown");
     expect(matchSourceFromValues(null, undefined, "")).toBe("unknown");
+  });
+});
+
+describe("source filter helpers", () => {
+  it("treats all enabled sources as the default/unrestricted selection", () => {
+    expect(
+      areSourceFiltersDefault({
+        arena: true,
+        friend: true,
+        lobby: true,
+        swiss: true,
+        chesscom: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("only allows unknown sources while the source filter is unrestricted", () => {
+    expect(
+      isSourceAllowedByFilters("unknown", {
+        arena: false,
+        friend: false,
+        lobby: false,
+        swiss: false,
+        chesscom: true,
+      }),
+    ).toBe(false);
+    expect(isSourceAllowedByFilters("unknown", {})).toBe(true);
+  });
+
+  it("allows known sources unless they are explicitly disabled", () => {
+    expect(isSourceAllowedByFilters("chesscom", { chesscom: true })).toBe(true);
+    expect(isSourceAllowedByFilters("chesscom", { chesscom: false })).toBe(false);
   });
 });
