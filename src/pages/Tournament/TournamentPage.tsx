@@ -39,6 +39,10 @@ const hiddenStartRoundsByStage: Record<string, Set<string>> = {
   main: new Set(["Semifinals", "Finals", "Grand Final", "Grand Final Reset"]),
   losers: new Set(["Round 4", "Round 5", "Final"]),
 };
+const tournamentHeading = (bracket: TournamentBracket): string => {
+  if (bracket.headingTitle) return bracket.headingTitle;
+  return bracket.title.startsWith("AWC ") ? `Atomic World Championship ${bracket.year}` : bracket.title;
+};
 const CARD_WIDTH = 238;
 const CARD_HEIGHT = 102;
 const COLUMN_GAP = 78;
@@ -386,6 +390,7 @@ const TournamentStageSection = ({
   startRoundName,
   topSeedMap,
   countryMap,
+  hideStartRoundControls,
   onZoomOut,
   onZoomReset,
   onZoomIn,
@@ -402,6 +407,7 @@ const TournamentStageSection = ({
   startRoundName: string;
   topSeedMap: Map<string, number>;
   countryMap: Map<string, string>;
+  hideStartRoundControls?: boolean;
   onZoomOut: () => void;
   onZoomReset: () => void;
   onZoomIn: () => void;
@@ -452,25 +458,27 @@ const TournamentStageSection = ({
               </button>
             </div>
           ) : null}
-          <div
-            className="tournamentStageControls"
-            role="group"
-            aria-label={`Starting round for ${stage.label}`}
-          >
-            {visibleRoundOptions.map((round) => {
-              const isActive = startRoundName === round.roundName;
-              return (
-                <button
-                  key={`${stage.key}-${round.roundName}-filter`}
-                  type="button"
-                  className={`tournamentRoundFilter${isActive ? " isActive" : ""}`}
-                  onClick={() => onStartRoundChange(round.roundName)}
-                >
-                  {roundRangeLabel(round.roundName)}
-                </button>
-              );
-            })}
-          </div>
+          {hideStartRoundControls ? null : (
+            <div
+              className="tournamentStageControls"
+              role="group"
+              aria-label={`Starting round for ${stage.label}`}
+            >
+              {visibleRoundOptions.map((round) => {
+                const isActive = startRoundName === round.roundName;
+                return (
+                  <button
+                    key={`${stage.key}-${round.roundName}-filter`}
+                    type="button"
+                    className={`tournamentRoundFilter${isActive ? " isActive" : ""}`}
+                    onClick={() => onStartRoundChange(round.roundName)}
+                  >
+                    {roundRangeLabel(round.roundName)}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
       <div
@@ -821,6 +829,8 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
     );
   }
 
+  const heading = tournamentHeading(bracket);
+
   return (
     <div className="tournamentPage">
       <Seo
@@ -864,7 +874,7 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
             </div>
           </div>
           <span className="tournamentPageEyebrow">Interactive bracket</span>
-          <h1>{`Atomic World Championship ${bracket.year}`}</h1>
+          <h1>{heading}</h1>
         </div>
       </section>
 
@@ -901,6 +911,7 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
               startRoundName={startRoundName}
               topSeedMap={topSeedMap}
               countryMap={countryMap}
+              hideStartRoundControls={Boolean(bracket.hideStartRoundControls)}
               onZoomOut={() => updateStageZoom(stage.key, -STAGE_ZOOM_STEP)}
               onZoomReset={() => resetStageZoom(stage.key)}
               onZoomIn={() => updateStageZoom(stage.key, STAGE_ZOOM_STEP)}

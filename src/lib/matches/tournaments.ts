@@ -5,8 +5,10 @@ import { fetchAllSupabaseRows } from "../supabase/supabaseRows";
 export type TournamentMeta = {
   id: string;
   title: string;
+  headingTitle?: string;
   year: number;
   status: "available" | "pending";
+  hideStartRoundControls?: boolean;
 };
 
 export type TournamentMatch = {
@@ -72,7 +74,17 @@ const playerCountriesCache = new Map<string, Promise<Record<string, string>>>();
 const tournamentSeedsCache = new Map<string, Promise<Record<string, number>>>();
 const tournamentBracketCache = new Map<string, Promise<TournamentBracket | null>>();
 
+type CsvRow = Record<string, string>;
+
 const tournaments: TournamentMeta[] = [
+  {
+    id: "awc2026",
+    title: "CCAC 2026",
+    headingTitle: "Chess.com Atomic Championship 2026",
+    year: 2026,
+    status: "available",
+    hideStartRoundControls: true,
+  },
   { id: "awc2025", title: "AWC 2025", year: 2025, status: "available" },
   { id: "awc2024", title: "AWC 2024", year: 2024, status: "available" },
   { id: "awc2023", title: "AWC 2023", year: 2023, status: "available" },
@@ -96,7 +108,16 @@ const roundDisplayOrder: Record<string, string[]> = {
     "Grand Final",
     "Grand Final Reset",
   ],
-  losers: ["Round 1", "Round 2", "Round 3", "Round 4", "Round 5", "Final"],
+  losers: [
+    "Round 1",
+    "Quarterfinals",
+    "Round 2",
+    "Semifinal",
+    "Round 3",
+    "Round 4",
+    "Round 5",
+    "Final",
+  ],
   grand_final: ["Set 1", "Reset"],
 };
 
@@ -152,6 +173,103 @@ const normalizeMatchRow = (row: TournamentMatchRowFromDb): TournamentMatch => ({
   winner_to: String(row?.winner_to ?? "").trim(),
   loser_to: String(row?.loser_to ?? "").trim(),
 });
+
+const parseCsvLine = (line: string): string[] => {
+  const values: string[] = [];
+  let currentValue = "";
+  let inQuotes = false;
+
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index];
+    const nextCharacter = line[index + 1];
+
+    if (character === '"' && inQuotes && nextCharacter === '"') {
+      currentValue += '"';
+      index += 1;
+      continue;
+    }
+
+    if (character === '"') {
+      inQuotes = !inQuotes;
+      continue;
+    }
+
+    if (character === "," && !inQuotes) {
+      values.push(currentValue.trim());
+      currentValue = "";
+      continue;
+    }
+
+    currentValue += character;
+  }
+
+  values.push(currentValue.trim());
+  return values;
+};
+
+const parseCsvRows = (csv: string): CsvRow[] => {
+  const lines = csv
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const [headerLine, ...dataLines] = lines;
+  if (!headerLine) return [];
+
+  const headers = parseCsvLine(headerLine);
+  return dataLines.map((line) => {
+    const values = parseCsvLine(line);
+    return Object.fromEntries(headers.map((header, index) => [header, values[index] ?? ""]));
+  });
+};
+
+const shouldUseLocalTournamentCsv = (): boolean => import.meta.env.DEV;
+
+const fetchLocalTournamentRows = async (tournamentId: string): Promise<TournamentMatch[]> => {
+  const { default: tournamentMatchesCsv } = await import(
+    "../../../data/tournaments/tournament_matches.csv?raw"
+  );
+
+  return parseCsvRows(tournamentMatchesCsv)
+    .filter((row) => row.tournament === tournamentId)
+    .map(normalizeMatchRow);
+};
+
+const fetchLocalPlayerCountryMap = async (): Promise<Record<string, string>> => {
+  const { default: playerCountriesCsv } = await import(
+    "../../../data/tournaments/player-countries.csv?raw"
+  );
+
+  return parseCsvRows(playerCountriesCsv).reduce<Record<string, string>>((accumulator, row) => {
+    const playerName = String(row.player_name ?? "")
+      .trim()
+      .toLowerCase();
+    const countryCode = String(row.country_code ?? "")
+      .trim()
+      .toUpperCase();
+    if (!playerName || !countryCode) return accumulator;
+    accumulator[playerName] = countryCode;
+    return accumulator;
+  }, {});
+};
+
+const fetchLocalTournamentSeedMap = async (tournamentId: string): Promise<Record<string, number>> => {
+  const { default: tournamentSeedsCsv } = await import(
+    "../../../data/tournaments/tournament-seeds.csv?raw"
+  );
+
+  return parseCsvRows(tournamentSeedsCsv)
+    .filter((row) => row.tournament === tournamentId)
+    .reduce<Record<string, number>>((accumulator, row) => {
+      const playerName = String(row.player_name ?? "")
+        .trim()
+        .toLowerCase();
+      const seed = Number(row.seed);
+      if (!playerName || !Number.isFinite(seed)) return accumulator;
+      accumulator[playerName] = seed;
+      return accumulator;
+    }, {});
+};
 
 const winnerName = (match: TournamentMatch): string => {
   if (Number(match.s1) > Number(match.s2)) return match.p1;
@@ -225,6 +343,10 @@ const addImplicitByeMatches = (matches: TournamentMatch[]): TournamentMatch[] =>
 
 const fetchTournamentMatchRows = async (tournamentId: string): Promise<TournamentMatch[]> =>
   cachedRequest(tournamentMatchesCache, ["tournamentMatches", tournamentId], async () => {
+    if (shouldUseLocalTournamentCsv()) {
+      return fetchLocalTournamentRows(tournamentId);
+    }
+
     const supabase = getSupabaseClient();
     const buildQuery = () =>
       supabase
@@ -241,6 +363,10 @@ const fetchTournamentMatchRows = async (tournamentId: string): Promise<Tournamen
 
 const fetchPlayerCountryMap = async (): Promise<Record<string, string>> =>
   cachedRequest(playerCountriesCache, ["playerCountries"], async () => {
+    if (shouldUseLocalTournamentCsv()) {
+      return fetchLocalPlayerCountryMap();
+    }
+
     const supabase = getSupabaseClient();
     const buildQuery = () =>
       supabase.from(PLAYER_COUNTRIES_TABLE).select(PLAYER_COUNTRIES_SELECT_COLUMNS);
@@ -264,6 +390,10 @@ const fetchPlayerCountryMap = async (): Promise<Record<string, string>> =>
 
 const fetchTournamentSeedMap = async (tournamentId: string): Promise<Record<string, number>> =>
   cachedRequest(tournamentSeedsCache, ["tournamentSeeds", tournamentId], async () => {
+    if (shouldUseLocalTournamentCsv()) {
+      return fetchLocalTournamentSeedMap(tournamentId);
+    }
+
     const supabase = getSupabaseClient();
     const buildQuery = () =>
       supabase
