@@ -111,7 +111,7 @@ const favoriteOpponentScoreConfidenceZ = 1.281551565545;
 const favoriteOpponentPerformanceScoreRateMin = 0.01;
 const favoriteOpponentPerformanceScoreRateMax = 0.99;
 const favoriteOpponentPerformanceConfidenceScale = 400;
-const favoriteOpponentMaxCountedRatingChangeRd = 75;
+const favoriteOpponentMaxCountedRatingChangeRd = 90;
 
 type ProfileFilters = {
   opponentRatingMin: number;
@@ -645,6 +645,11 @@ const getFavoriteOpponentBestScoreValue = (row: FavoriteOpponentRow): number => 
   );
 };
 
+const getFavoriteOpponentRatingGainSortValue = (row: FavoriteOpponentRow): number => {
+  if (row.ratedMatchCount <= 0) return 0;
+  return Math.max(0, row.ratingChange);
+};
+
 const compareFavoriteOpponentRowsByPrimarySort = (
   left: FavoriteOpponentRow,
   right: FavoriteOpponentRow,
@@ -672,7 +677,8 @@ const compareFavoriteOpponentRowsByPrimarySort = (
     const ratedMatchDifference =
       Number(left.ratedMatchCount > 0) - Number(right.ratedMatchCount > 0);
     if (ratedMatchDifference !== 0) return ratedMatchDifference;
-    const ratingDifference = left.ratingChange - right.ratingChange;
+    const ratingDifference =
+      getFavoriteOpponentRatingGainSortValue(left) - getFavoriteOpponentRatingGainSortValue(right);
     if (ratingDifference !== 0) return ratingDifference;
   }
 
@@ -981,6 +987,7 @@ export const PlayerProfilePage = ({
   const [favoriteOpponentMatchLimit, setFavoriteOpponentMatchLimit] = useState(() =>
     getStoredFavoriteOpponentMatchLimit(getStoredFavoriteOpponentMode()),
   );
+  const [favoriteOpponentPage, setFavoriteOpponentPage] = useState(1);
   const [favoriteOpponentDisplayCount, setFavoriteOpponentDisplayCount] = useState(25);
   const [favoriteOpponentSort, setFavoriteOpponentSort] = useState<FavoriteOpponentSort>(
     getStoredFavoriteOpponentSort,
@@ -1028,6 +1035,7 @@ export const PlayerProfilePage = ({
     const storedFavoriteOpponentMode = getStoredFavoriteOpponentMode();
     setFavoriteOpponentMode(storedFavoriteOpponentMode);
     setFavoriteOpponentMatchLimit(getStoredFavoriteOpponentMatchLimit(storedFavoriteOpponentMode));
+    setFavoriteOpponentPage(1);
     setFavoriteOpponentDisplayCount(25);
     setFavoriteOpponentSort(getStoredFavoriteOpponentSort());
     setFavoriteOpponentSortDirection(getStoredFavoriteOpponentSortDirection());
@@ -1207,6 +1215,7 @@ export const PlayerProfilePage = ({
         .slice(0, favoriteOpponentMatchLimit);
 
       setFavoriteOpponentRows(getFavoriteOpponentRows(recentMatches));
+      setFavoriteOpponentPage(1);
       setExpandedFavoriteOpponentKeys([]);
       setFavoriteOpponentLoadKey(favoriteOpponentQueryKey);
     } catch (loadError) {
@@ -1382,25 +1391,32 @@ export const PlayerProfilePage = ({
         }),
     [monthRankPlayerCounts, monthRanks, rankHistoryMode],
   );
-  const visibleFavoriteOpponentRows = useMemo(
+  const sortedFavoriteOpponentRows = useMemo(
     () =>
-      [...favoriteOpponentRows]
-        .sort((left, right) =>
-          compareFavoriteOpponentRows(
-            left,
-            right,
-            favoriteOpponentSort,
-            favoriteOpponentSortDirection,
-          ),
-        )
-        .slice(0, favoriteOpponentDisplayCount),
-    [
-      favoriteOpponentDisplayCount,
-      favoriteOpponentRows,
-      favoriteOpponentSort,
-      favoriteOpponentSortDirection,
-    ],
+      [...favoriteOpponentRows].sort((left, right) =>
+        compareFavoriteOpponentRows(
+          left,
+          right,
+          favoriteOpponentSort,
+          favoriteOpponentSortDirection,
+        ),
+      ),
+    [favoriteOpponentRows, favoriteOpponentSort, favoriteOpponentSortDirection],
   );
+  const favoriteOpponentTotalPages = Math.max(
+    1,
+    Math.ceil(sortedFavoriteOpponentRows.length / Math.max(1, favoriteOpponentDisplayCount)),
+  );
+  const currentFavoriteOpponentPage = Math.min(favoriteOpponentPage, favoriteOpponentTotalPages);
+  const visibleFavoriteOpponentRows = useMemo(() => {
+    const pageStart = (currentFavoriteOpponentPage - 1) * favoriteOpponentDisplayCount;
+    return sortedFavoriteOpponentRows.slice(pageStart, pageStart + favoriteOpponentDisplayCount);
+  }, [currentFavoriteOpponentPage, favoriteOpponentDisplayCount, sortedFavoriteOpponentRows]);
+  useEffect(() => {
+    if (currentFavoriteOpponentPage !== favoriteOpponentPage) {
+      setFavoriteOpponentPage(currentFavoriteOpponentPage);
+    }
+  }, [currentFavoriteOpponentPage, favoriteOpponentPage]);
   const favoriteOpponentScopeLabel =
     favoriteOpponentMode === "all"
       ? "matches overall"
@@ -1516,6 +1532,7 @@ export const PlayerProfilePage = ({
   ): void => {
     setFavoriteOpponentSort(sort);
     setFavoriteOpponentSortDirection(direction);
+    setFavoriteOpponentPage(1);
     setStoredFavoriteOpponentSort(sort);
     setStoredFavoriteOpponentSortDirection(direction);
   };
@@ -2382,6 +2399,7 @@ export const PlayerProfilePage = ({
                             );
                             setFavoriteOpponentMode(v);
                             setStoredFavoriteOpponentMode(v);
+                            setFavoriteOpponentPage(1);
                             if (nextMatchLimit !== favoriteOpponentMatchLimit) {
                               setFavoriteOpponentMatchLimit(nextMatchLimit);
                               setStoredFavoriteOpponentMatchLimit(nextMatchLimit);
@@ -2407,6 +2425,7 @@ export const PlayerProfilePage = ({
                           const nextMatchLimit = Number(event.target.value);
                           setFavoriteOpponentMatchLimit(nextMatchLimit);
                           setStoredFavoriteOpponentMatchLimit(nextMatchLimit);
+                          setFavoriteOpponentPage(1);
                         }}
                       >
                         {getFavoriteOpponentMatchLimitOptions(favoriteOpponentMode).map((count) => (
@@ -2422,9 +2441,10 @@ export const PlayerProfilePage = ({
                         id="profile-favorite-opponents-count-select"
                         aria-label="Favorite opponents shown"
                         value={favoriteOpponentDisplayCount}
-                        onChange={(event) =>
-                          setFavoriteOpponentDisplayCount(Number(event.target.value))
-                        }
+                        onChange={(event) => {
+                          setFavoriteOpponentDisplayCount(Number(event.target.value));
+                          setFavoriteOpponentPage(1);
+                        }}
                       >
                         {favoriteOpponentDisplayCountOptions.map((count) => (
                           <option key={count} value={count}>
@@ -2752,6 +2772,15 @@ export const PlayerProfilePage = ({
                     </tbody>
                   </table>
                 </div>
+                {favoriteOpponentRows.length > favoriteOpponentDisplayCount ? (
+                  <PaginationRow
+                    currentPage={currentFavoriteOpponentPage}
+                    totalPages={favoriteOpponentTotalPages}
+                    onPageChange={setFavoriteOpponentPage}
+                    formatLabel={(current, total) => `Page ${current} / ${total}`}
+                    disabled={loadingFavoriteOpponents}
+                  />
+                ) : null}
               </section>
             </div>
           </>
