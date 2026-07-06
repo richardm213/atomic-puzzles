@@ -2526,7 +2526,7 @@ export const PlayerProfilePage = ({
                             type="button"
                             onClick={() => handleFavoriteOpponentHeaderSort("performance")}
                           >
-                            Performance
+                            Perf
                             <span aria-hidden="true">
                               {favoriteOpponentSortGlyph("performance")}
                             </span>
