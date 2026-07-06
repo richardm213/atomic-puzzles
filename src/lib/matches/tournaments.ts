@@ -225,10 +225,16 @@ const parseCsvRows = (csv: string): CsvRow[] => {
 
 const shouldUseLocalTournamentCsv = (): boolean => import.meta.env.DEV;
 
+const fetchLocalTournamentCsv = async (fileName: string): Promise<string> => {
+  const response = await fetch(`/data/tournaments/${fileName}`);
+  if (!response.ok) {
+    throw new Error(`Unable to load local tournament CSV: ${fileName}`);
+  }
+  return response.text();
+};
+
 const fetchLocalTournamentRows = async (tournamentId: string): Promise<TournamentMatch[]> => {
-  const { default: tournamentMatchesCsv } = await import(
-    "../../../data/tournaments/tournament_matches.csv?raw"
-  );
+  const tournamentMatchesCsv = await fetchLocalTournamentCsv("tournament_matches.csv");
 
   return parseCsvRows(tournamentMatchesCsv)
     .filter((row) => row.tournament === tournamentId)
@@ -236,9 +242,7 @@ const fetchLocalTournamentRows = async (tournamentId: string): Promise<Tournamen
 };
 
 const fetchLocalPlayerCountryMap = async (): Promise<Record<string, string>> => {
-  const { default: playerCountriesCsv } = await import(
-    "../../../data/tournaments/player-countries.csv?raw"
-  );
+  const playerCountriesCsv = await fetchLocalTournamentCsv("player-countries.csv");
 
   return parseCsvRows(playerCountriesCsv).reduce<Record<string, string>>((accumulator, row) => {
     const playerName = String(row.player_name ?? "")
@@ -254,9 +258,7 @@ const fetchLocalPlayerCountryMap = async (): Promise<Record<string, string>> => 
 };
 
 const fetchLocalTournamentSeedMap = async (tournamentId: string): Promise<Record<string, number>> => {
-  const { default: tournamentSeedsCsv } = await import(
-    "../../../data/tournaments/tournament-seeds.csv?raw"
-  );
+  const tournamentSeedsCsv = await fetchLocalTournamentCsv("tournament-seeds.csv");
 
   return parseCsvRows(tournamentSeedsCsv)
     .filter((row) => row.tournament === tournamentId)
