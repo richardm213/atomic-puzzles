@@ -30,8 +30,6 @@ const featureLinks = [
   },
 ];
 
-const featuredH2HMatchup = matchupToSlug("maxwellssilvrhammer", "rechesster");
-
 const darkModePuzzleCollageImages = [
   {
     src: "/images/home-puzzles/home-puzzle-dark-1.png",
@@ -246,7 +244,11 @@ export const HomePage = () => {
             />
           </Link>
 
-          <a className="homeSpotlightCard homeTrophyShortcut" href="https://www.chess.com">
+          <Link
+            className="homeSpotlightCard homeTrophyShortcut"
+            to="/tournaments/$tournamentId"
+            params={{ tournamentId: "awc2026" }}
+          >
             <span>Championship</span>
             <h2>Chess.com Atomic 2026</h2>
             <p>Follow the next Chess.com atomic championship.</p>
@@ -258,16 +260,16 @@ export const HomePage = () => {
               loading="lazy"
               decoding="async"
             />
-          </a>
+          </Link>
 
           <Link
             className="homeSpotlightCard homeH2HShortcut"
-            to="/h2h/$matchup"
-            params={{ matchup: featuredH2HMatchup }}
+            to="/matches/$mode/$matchId"
+            params={{ mode: "blitz", matchId: "MPme5e0a" }}
           >
-            <span>Featured H2H</span>
-            <h2>maxwellssilvrhammer vs rechesster</h2>
-            <p>Max won the yearly, just edging out rechesster. Check out the games.</p>
+            <span>Blockbuster match</span>
+            <h2>maxwellssilvrhammer vs wolfram_ep</h2>
+            <p>Top two ranked blitz players collide in a marquee atomic showdown.</p>
           </Link>
         </div>
       </section>

@@ -374,12 +374,40 @@
 
 .homeH2HShortcut {
   background:
+    conic-gradient(
+      from 218deg at 86% 18%,
+      color-mix(in srgb, var(--color-danger) 18%, transparent),
+      transparent 24%,
+      color-mix(in srgb, var(--color-primary) 10%, transparent) 44%,
+      transparent 66%,
+      color-mix(in srgb, var(--color-danger) 12%, transparent) 84%,
+      transparent
+    ),
     linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--color-warning) 13%, transparent),
-      transparent 62%
+      142deg,
+      color-mix(in srgb, var(--color-danger) 9%, transparent),
+      transparent 58%
     ),
     var(--color-panel);
+}
+
+.homeH2HShortcut:hover {
+  background:
+    conic-gradient(
+      from 218deg at 86% 18%,
+      color-mix(in srgb, var(--color-danger) 22%, transparent),
+      transparent 24%,
+      color-mix(in srgb, var(--color-primary) 12%, transparent) 44%,
+      transparent 66%,
+      color-mix(in srgb, var(--color-danger) 15%, transparent) 84%,
+      transparent
+    ),
+    linear-gradient(
+      142deg,
+      color-mix(in srgb, var(--color-danger) 12%, transparent),
+      transparent 58%
+    ),
+    var(--color-surface-elevated-strong);
 }
 
 .homeFeatureGrid {
