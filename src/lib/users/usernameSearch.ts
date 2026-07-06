@@ -148,9 +148,7 @@ export const searchUsernameSuggestions = async (
     aliasRows.forEach((row) => {
       const members = [
         { value: row.username, matchType: "username" as const },
-        ...(Array.isArray(row.aliases)
-          ? row.aliases.map((alias) => ({ value: alias, matchType: "alias" as const }))
-          : []),
+        ...row.aliases.map((alias) => ({ value: alias, matchType: "alias" as const })),
       ];
 
       members.forEach((member) => {

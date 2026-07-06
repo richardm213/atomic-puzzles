@@ -67,18 +67,12 @@ export type SupabaseUser = {
   created_at: string;
 };
 
-export type AliasesTableRow = {
-  username: string | null;
-  aliases: string[] | null;
-  openings: string[] | null;
-  banned: boolean | null;
-};
-
 export type Aliases2TableRow = {
   alias: string | null;
   username: string | null;
   banned: boolean | null;
   count_games: boolean | number | string | null;
+  openings: string[] | string | null;
 };
 
 type TableDef<Row, Insert = Partial<Row>, Update = Partial<Row>> = {
@@ -91,7 +85,6 @@ type TableDef<Row, Insert = Partial<Row>, Update = Partial<Row>> = {
 export type Database = {
   public: {
     Tables: {
-      aliases: TableDef<AliasesTableRow>;
       aliases2: TableDef<Aliases2TableRow>;
       blitz_matches: TableDef<MatchRow>;
       bullet_matches: TableDef<MatchRow>;

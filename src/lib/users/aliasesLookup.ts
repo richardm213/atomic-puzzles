@@ -1,31 +1,25 @@
-import { fetchAliasRows, type MergedAliasRow } from "../supabase/supabaseAliases";
+import { type AliasIdentityRow, fetchAliasRows } from "../supabase/supabaseAliases";
 
 export type AliasLookupEntry = {
   primary: string;
   aliases: string[];
   openings: string[];
-  members: string[];
-  countableAliases: string[];
   banned: boolean;
 };
 
 export type AliasLookup = Map<string, AliasLookupEntry>;
 
-const buildAliasesLookup = (rows: MergedAliasRow[]): AliasLookup => {
+const buildAliasesLookup = (rows: AliasIdentityRow[]): AliasLookup => {
   const lookup: AliasLookup = new Map();
 
   rows.forEach((row) => {
     const username = row.username;
-    const aliases = Array.isArray(row.aliases) ? row.aliases : [];
-    const openings = Array.isArray(row.openings) ? row.openings : [];
+    const { aliases, openings } = row;
     const members = [username, ...aliases];
-    const countableAliases = Array.isArray(row.countableAliases) ? row.countableAliases : members;
     const entry: AliasLookupEntry = {
       primary: username,
       aliases,
       openings,
-      members,
-      countableAliases,
       banned: Boolean(row.banned),
     };
 

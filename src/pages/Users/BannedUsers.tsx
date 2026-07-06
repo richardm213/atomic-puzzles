@@ -4,11 +4,11 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
 import { Seo } from "../../components/Seo/Seo";
-import { fetchAliasRows } from "../../lib/supabase/supabaseAliases";
+import { type AliasIdentityRow, fetchAliasRows } from "../../lib/supabase/supabaseAliases";
 
 const bannedUserColumns = [
   { key: "username", label: "Username" },
-  { key: "aliases", label: "Aliases" },
+  { key: "accounts", label: "Banned Accounts" },
 ];
 
 const sortIndicator = (
@@ -21,17 +21,26 @@ const sortIndicator = (
 };
 
 const buildBannedRows = (
-  aliasRows: import("../../lib/supabase/supabaseAliases").MergedAliasRow[],
-): Array<{ username: string; aliases: string[] }> =>
-  (Array.isArray(aliasRows) ? aliasRows : [])
-    .filter((row) => Boolean(row?.banned) && String(row?.username || "").trim())
-    .map((row) => ({
-      username: String(row.username).trim(),
-      aliases: Array.isArray(row.aliases) ? row.aliases.filter(Boolean) : [],
-    }));
+  aliasRows: AliasIdentityRow[],
+): Array<{ username: string; accounts: string[] }> =>
+  aliasRows
+    .map((row) => {
+      const username = String(row?.username || "").trim();
+      const accounts = [
+        ...new Set(
+          row.accounts
+            .filter((account) => Boolean(account?.banned))
+            .map((account) => String(account.displayAlias || account.alias || "").trim())
+            .filter(Boolean),
+        ),
+      ];
+
+      return { username, accounts };
+    })
+    .filter((row) => row.username && row.accounts.length > 0);
 
 export const BannedUsersPage = () => {
-  const [rows, setRows] = useState<Array<{ username: string; aliases: string[] }>>([]);
+  const [rows, setRows] = useState<Array<{ username: string; accounts: string[] }>>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [sortKey, setSortKey] = useState("username");
@@ -78,9 +87,9 @@ export const BannedUsersPage = () => {
     const directionMultiplier = sortDirection === "asc" ? 1 : -1;
 
     return [...rows].sort((a, b) => {
-      if (sortKey === "aliases") {
+      if (sortKey === "accounts") {
         const aliasCompare =
-          directionMultiplier * a.aliases.join(", ").localeCompare(b.aliases.join(", "));
+          directionMultiplier * a.accounts.join(", ").localeCompare(b.accounts.join(", "));
         if (aliasCompare !== 0) return aliasCompare;
       } else {
         const usernameCompare = directionMultiplier * a.username.localeCompare(b.username);
@@ -92,7 +101,7 @@ export const BannedUsersPage = () => {
   }, [rows, sortDirection, sortKey]);
 
   const aliasTotal = useMemo(
-    () => rows.reduce((total, row) => total + row.aliases.length, 0),
+    () => rows.reduce((total, row) => total + row.accounts.length, 0),
     [rows],
   );
 
@@ -100,7 +109,7 @@ export const BannedUsersPage = () => {
     <div className="rankingsPage">
       <Seo
         title="Banned User List"
-        description="Browse banned users and their known aliases."
+        description="Browse canonical users with banned account rows."
         path="/users/banned"
       />
       <div className="panel rankingsPanel usersPanel bannedUsersPanel">
@@ -126,7 +135,7 @@ export const BannedUsersPage = () => {
             </span>
             <span className="bannedUsersStat">
               <strong>{loading ? "..." : aliasTotal}</strong>
-              <span>Aliases</span>
+              <span>Accounts</span>
             </span>
             <Link className="rankingsMetaLink" to="/users">
               Back to full user list
@@ -192,9 +201,12 @@ export const BannedUsersPage = () => {
                       </span>
                     </td>
                     <td>
-                      {row.aliases.length > 0 ? (
-                        <div className="bannedAliasTags" aria-label={`${row.username} aliases`}>
-                          {row.aliases.map((alias) => (
+                      {row.accounts.length > 0 ? (
+                        <div
+                          className="bannedAliasTags"
+                          aria-label={`${row.username} banned accounts`}
+                        >
+                          {row.accounts.map((alias) => (
                             <span key={`${row.username}-${alias}`} className="bannedAliasTag">
                               {alias}
                             </span>

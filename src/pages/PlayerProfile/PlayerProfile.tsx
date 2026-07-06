@@ -41,8 +41,8 @@ import { loadRawMatchesByMode, normalizeMatches } from "../../lib/matches/matchD
 import {
   type AliasAccount,
   type AliasAccountSource,
+  type AliasIdentityRow,
   fetchProfileAliasRow,
-  type MergedAliasRow,
 } from "../../lib/supabase/supabaseAliases";
 import { monthKeyFromMonthValue } from "../../lib/supabase/supabaseLb";
 import { isRegisteredSiteUser } from "../../lib/supabase/supabaseUsers";
@@ -603,7 +603,7 @@ export const PlayerProfilePage = ({
   const [profileHistoryTab, setProfileHistoryTab] = useState<ProfileHistoryTab>(() =>
     getProfileHistoryTabFromLocation(),
   );
-  const [profileAliasEntry, setProfileAliasEntry] = useState<MergedAliasRow | null>(null);
+  const [profileAliasEntry, setProfileAliasEntry] = useState<AliasIdentityRow | null>(null);
   const [aliasesLoaded, setAliasesLoaded] = useState(false);
   const [matchesByMode, setMatchesByMode] = useState(() => createModeRecord(() => []));
   const [totalMatchesByMode, setTotalMatchesByMode] = useState(() => createModeRecord(() => 0));
@@ -1026,11 +1026,13 @@ export const PlayerProfilePage = ({
       ? "matches overall"
       : `${modeLabels[favoriteOpponentMode] ?? favoriteOpponentMode} matches`;
   const profileOpenings = useMemo(() => {
-    if (!aliasesLoaded || !Array.isArray(profileAliasEntry?.openings)) return [];
+    if (!aliasesLoaded) return [];
 
     return [
       ...new Set(
-        profileAliasEntry.openings.map((opening) => String(opening || "").trim()).filter(Boolean),
+        (profileAliasEntry?.openings ?? [])
+          .map((opening) => String(opening || "").trim())
+          .filter(Boolean),
       ),
     ];
   }, [aliasesLoaded, profileAliasEntry]);
@@ -1054,22 +1056,8 @@ export const PlayerProfilePage = ({
       return left.displayAlias.localeCompare(right.displayAlias);
     };
 
-    const accounts = Array.isArray(profileAliasEntry?.accounts) ? profileAliasEntry.accounts : [];
-    if (accounts.length > 0) {
-      return accounts.map((account): AliasAccount => ({ ...account })).sort(compareAliasRows);
-    }
-
-    const aliases = Array.isArray(profileAliasEntry?.aliases) ? profileAliasEntry.aliases : [];
-    const uniqueAliases = [...new Set(aliases)];
-    const countableAliases = new Set(profileAliasEntry?.countableAliases ?? uniqueAliases);
-    return uniqueAliases
-      .map((alias) => ({
-        alias,
-        displayAlias: alias,
-        source: "lichess" as const,
-        isCounted: countableAliases.has(alias),
-        banned: Boolean(profileAliasEntry?.banned),
-      }))
+    return (profileAliasEntry?.accounts ?? [])
+      .map((account): AliasAccount => ({ ...account }))
       .sort(compareAliasRows);
   }, [canonicalUsername, profileAliasEntry]);
   const latestMonthKeyByMode = useMemo(
