@@ -1267,7 +1267,7 @@
 }
 
 .profileFavoriteOpponentsTable {
-  min-width: 760px;
+  min-width: 830px;
 }
 
 .profileRankHistoryTable thead,
@@ -1305,7 +1305,9 @@
 }
 
 .profileMatchTable .expandableMatchRow:hover,
-.profileMatchTable .expandableMatchRow:focus-visible {
+.profileMatchTable .expandableMatchRow:focus-visible,
+.profileFavoriteOpponentsTable .profileFavoriteOpponentRow:hover,
+.profileFavoriteOpponentsTable .profileFavoriteOpponentRow:focus-visible {
   background: var(--color-accent-soft-bg);
   box-shadow: inset 3px 0 0 var(--color-cyan-bright);
   outline: none;
@@ -1397,6 +1399,47 @@
   border-radius: 0;
   background: transparent;
   padding: 0;
+}
+
+.favoriteOpponentMatchesRow td {
+  background: transparent;
+}
+
+.favoriteOpponentMatchesInner {
+  padding: 4px 0 8px;
+}
+
+.favoriteOpponentMatchesTable {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--color-surface-soft);
+  font-size: 12px;
+}
+
+.favoriteOpponentMatchesTable thead {
+  background: var(--color-table-head);
+}
+
+.favoriteOpponentMatchesTable th,
+.favoriteOpponentMatchesTable td {
+  border-bottom: 1px solid var(--color-border);
+  padding: 8px 9px;
+  text-align: left;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.favoriteOpponentMatchesTable th {
+  color: var(--color-subtle);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.favoriteOpponentMatchesTable tbody tr:last-child td {
+  border-bottom: 0;
 }
 
 @media (max-width: 1180px) {

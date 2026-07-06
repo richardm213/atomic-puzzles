@@ -66,7 +66,7 @@ type RankHistoryMode = import("../../constants/matches").Mode | "all";
 const profileHistoryTabOptions = ["matches", "ranks", "trophies", "opponents"] as const;
 type ProfileHistoryTab = (typeof profileHistoryTabOptions)[number];
 type TrophyCaseSort = "prestige" | "date";
-type FavoriteOpponentSort = "matches" | "score" | "games";
+type FavoriteOpponentSort = "matches" | "score" | "games" | "ratingGain";
 const trophyCaseSortStorageKey = "atomic-puzzles:profile-trophy-case-sort";
 const rankHistoryModeOptions: RankHistoryMode[] = ["all", ...modeOptions];
 const favoriteOpponentModeOptions: RankHistoryMode[] = ["all", ...modeOptions];
@@ -78,6 +78,7 @@ const favoriteOpponentSortLabels = {
   matches: "Most matches",
   score: "Best score",
   games: "Most games",
+  ratingGain: "Most rating gain",
 } satisfies Record<FavoriteOpponentSort, string>;
 const favoriteOpponentSortOptions = Object.keys(
   favoriteOpponentSortLabels,
@@ -105,9 +106,12 @@ type FavoriteOpponentRow = {
   gameCount: number;
   playerScore: number;
   opponentScore: number;
+  ratingChange: number;
+  ratedMatchCount: number;
   mostRecentTs: number;
   favoriteTimeControl: string;
   favoriteTimeControlCount: number;
+  matches: FavoriteOpponentMatch[];
 };
 
 type ProfileTrophy = {
@@ -305,17 +309,17 @@ const profileResultToneClass = (playerScore: number, opponentScore: number): str
 };
 
 const favoriteTimeControlFromCounts = (
-  counts: Map<string, { count: number; latestTs: number }>,
+  counts: Map<string, { gameCount: number; latestTs: number }>,
 ): { favoriteTimeControl: string; favoriteTimeControlCount: number } => {
   const favorite = [...counts.entries()].sort((left, right) => {
-    const countDifference = right[1].count - left[1].count;
+    const countDifference = right[1].gameCount - left[1].gameCount;
     if (countDifference !== 0) return countDifference;
     return right[1].latestTs - left[1].latestTs;
   })[0];
 
   return {
     favoriteTimeControl: favorite?.[0] ?? "—",
-    favoriteTimeControlCount: favorite?.[1].count ?? 0,
+    favoriteTimeControlCount: favorite?.[1].gameCount ?? 0,
   };
 };
 
@@ -328,8 +332,11 @@ const getFavoriteOpponentRows = (matches: FavoriteOpponentMatch[]): FavoriteOppo
       gameCount: number;
       playerScore: number;
       opponentScore: number;
+      ratingChange: number;
+      ratedMatchCount: number;
       mostRecentTs: number;
-      timeControlCounts: Map<string, { count: number; latestTs: number }>;
+      timeControlCounts: Map<string, { gameCount: number; latestTs: number }>;
+      matches: FavoriteOpponentMatch[];
     }
   >();
 
@@ -345,30 +352,46 @@ const getFavoriteOpponentRows = (matches: FavoriteOpponentMatch[]): FavoriteOppo
         gameCount: 0,
         playerScore: 0,
         opponentScore: 0,
+        ratingChange: 0,
+        ratedMatchCount: 0,
         mostRecentTs: Number.NEGATIVE_INFINITY,
-        timeControlCounts: new Map<string, { count: number; latestTs: number }>(),
+        timeControlCounts: new Map<string, { gameCount: number; latestTs: number }>(),
+        matches: [],
       } satisfies {
         opponent: string;
         matchCount: number;
         gameCount: number;
         playerScore: number;
         opponentScore: number;
+        ratingChange: number;
+        ratedMatchCount: number;
         mostRecentTs: number;
-        timeControlCounts: Map<string, { count: number; latestTs: number }>;
+        timeControlCounts: Map<string, { gameCount: number; latestTs: number }>;
+        matches: FavoriteOpponentMatch[];
       });
+
+    const matchGameCount =
+      Number.isFinite(match.gameCount) && match.gameCount > 0
+        ? match.gameCount
+        : match.playerScore + match.opponentScore;
 
     existing.matchCount += 1;
     existing.playerScore += match.playerScore;
     existing.opponentScore += match.opponentScore;
-    existing.gameCount += match.playerScore + match.opponentScore;
+    existing.gameCount += matchGameCount;
+    if (Number.isFinite(match.ratingChange)) {
+      existing.ratingChange += match.ratingChange;
+      existing.ratedMatchCount += 1;
+    }
     existing.mostRecentTs = Math.max(existing.mostRecentTs, match.startTs);
+    existing.matches.push(match);
 
     const timeControl = match.timeControl || "—";
     const timeControlEntry = existing.timeControlCounts.get(timeControl) ?? {
-      count: 0,
+      gameCount: 0,
       latestTs: Number.NEGATIVE_INFINITY,
     };
-    timeControlEntry.count += 1;
+    timeControlEntry.gameCount += matchGameCount;
     timeControlEntry.latestTs = Math.max(timeControlEntry.latestTs, match.startTs);
     existing.timeControlCounts.set(timeControl, timeControlEntry);
 
@@ -378,6 +401,7 @@ const getFavoriteOpponentRows = (matches: FavoriteOpponentMatch[]): FavoriteOppo
   return [...rowsByOpponent.values()]
     .map(({ timeControlCounts, ...row }) => ({
       ...row,
+      matches: [...row.matches].sort((left, right) => right.startTs - left.startTs),
       ...favoriteTimeControlFromCounts(timeControlCounts),
     }))
     .sort((left, right) => {
@@ -421,6 +445,14 @@ const compareFavoriteOpponentRows = (
   if (sort === "games") {
     const gameDifference = right.gameCount - left.gameCount;
     if (gameDifference !== 0) return gameDifference;
+  }
+
+  if (sort === "ratingGain") {
+    const ratedMatchDifference =
+      Number(right.ratedMatchCount > 0) - Number(left.ratedMatchCount > 0);
+    if (ratedMatchDifference !== 0) return ratedMatchDifference;
+    const ratingDifference = right.ratingChange - left.ratingChange;
+    if (ratingDifference !== 0) return ratingDifference;
   }
 
   const matchDifference = right.matchCount - left.matchCount;
@@ -672,6 +704,7 @@ export const PlayerProfilePage = ({
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [expandedMatchKeys, setExpandedMatchKeys] = useState<string[]>([]);
+  const [expandedFavoriteOpponentKeys, setExpandedFavoriteOpponentKeys] = useState<string[]>([]);
   const [opponentRatingMin, setOpponentRatingMin] = useState(defaultRatingMin);
   const [opponentRatingMax, setOpponentRatingMax] = useState(defaultRatingMax);
   const [opponentFilter, setOpponentFilter] = useState("");
@@ -723,6 +756,7 @@ export const PlayerProfilePage = ({
     setLoadingMatches(false);
     setLoadingFavoriteOpponents(false);
     setExpandedMatchKeys([]);
+    setExpandedFavoriteOpponentKeys([]);
     setMatchesByMode(createModeRecord(() => []));
     setTotalMatchesByMode(createModeRecord(() => 0));
     setFavoriteOpponentRows([]);
@@ -906,6 +940,7 @@ export const PlayerProfilePage = ({
         .slice(0, favoriteOpponentMatchLimit);
 
       setFavoriteOpponentRows(getFavoriteOpponentRows(recentMatches));
+      setExpandedFavoriteOpponentKeys([]);
       setFavoriteOpponentLoadKey(favoriteOpponentQueryKey);
     } catch (loadError) {
       if (requestId !== favoriteOpponentsRequestIdRef.current) return;
@@ -1189,6 +1224,11 @@ export const PlayerProfilePage = ({
 
   const toggleMatchKey = (key: string): void => {
     setExpandedMatchKeys((current) =>
+      current.includes(key) ? current.filter((k) => k !== key) : [...current, key],
+    );
+  };
+  const toggleFavoriteOpponentKey = (key: string): void => {
+    setExpandedFavoriteOpponentKeys((current) =>
       current.includes(key) ? current.filter((k) => k !== key) : [...current, key],
     );
   };
@@ -2111,60 +2151,167 @@ export const PlayerProfilePage = ({
                         <th>Matches</th>
                         <th>Games</th>
                         <th>H2H Score</th>
+                        <th>Rating Δ</th>
                         <th>Most Recent</th>
                         <th>Most Played TC</th>
                         <th aria-label="Open H2H page" />
                       </tr>
                     </thead>
                     <tbody>
-                      {visibleFavoriteOpponentRows.map((row) => (
-                        <tr key={`favorite-opponent-${normalizeUsername(row.opponent)}`}>
-                          <td>
-                            <Link
-                              className="rankingLink"
-                              to="/@/$username"
-                              params={{ username: row.opponent }}
+                      {visibleFavoriteOpponentRows.map((row) => {
+                        const opponentKey = normalizeUsername(row.opponent);
+                        const isExpanded = expandedFavoriteOpponentKeys.includes(opponentKey);
+
+                        return (
+                          <Fragment key={`favorite-opponent-${opponentKey}`}>
+                            <tr
+                              className={`expandableMatchRow profileFavoriteOpponentRow${
+                                isExpanded ? " expanded" : ""
+                              }`}
+                              onClick={() => toggleFavoriteOpponentKey(opponentKey)}
+                              onKeyDown={(event) => {
+                                if (!isToggleActionKey(event)) return;
+                                event.preventDefault();
+                                toggleFavoriteOpponentKey(opponentKey);
+                              }}
+                              role="button"
+                              tabIndex={0}
+                              aria-expanded={isExpanded}
                             >
-                              {row.opponent}
-                            </Link>
-                          </td>
-                          <td>{row.matchCount.toLocaleString("en-US")}</td>
-                          <td>{row.gameCount.toLocaleString("en-US")}</td>
-                          <td>
-                            {formatScore(row.playerScore)} - {formatScore(row.opponentScore)}
-                          </td>
-                          <td>{formatLocalDateTime(row.mostRecentTs)}</td>
-                          <td>
-                            {row.favoriteTimeControl}
-                            {row.favoriteTimeControlCount > 0
-                              ? ` (${row.favoriteTimeControlCount})`
-                              : ""}
-                          </td>
-                          <td>
-                            <Link
-                              className="matchPageLink"
-                              to="/h2h/$matchup"
-                              params={{ matchup: matchupToSlug(canonicalUsername, row.opponent) }}
-                              target="_blank"
-                              rel="noreferrer"
-                              title={`Open H2H: ${canonicalUsername} vs ${row.opponent}`}
-                              aria-label={`Open H2H: ${canonicalUsername} vs ${row.opponent}`}
-                            >
-                              <FontAwesomeIcon icon={faUpRightFromSquare} />
-                            </Link>
-                          </td>
-                        </tr>
-                      ))}
+                              <td>
+                                <Link
+                                  className="rankingLink"
+                                  to="/@/$username"
+                                  params={{ username: row.opponent }}
+                                  onClick={(event) => event.stopPropagation()}
+                                >
+                                  {row.opponent}
+                                </Link>
+                              </td>
+                              <td>{row.matchCount.toLocaleString("en-US")}</td>
+                              <td>{row.gameCount.toLocaleString("en-US")}</td>
+                              <td>
+                                {formatScore(row.playerScore)} - {formatScore(row.opponentScore)}
+                              </td>
+                              <td>
+                                {row.ratedMatchCount > 0 ? (
+                                  <span className="profileDelta">
+                                    {formatSignedDecimal(row.ratingChange)}
+                                  </span>
+                                ) : (
+                                  "—"
+                                )}
+                              </td>
+                              <td>{formatLocalDateTime(row.mostRecentTs)}</td>
+                              <td>
+                                {row.favoriteTimeControl}
+                                {row.favoriteTimeControlCount > 0
+                                  ? ` (${row.favoriteTimeControlCount})`
+                                  : ""}
+                              </td>
+                              <td>
+                                <Link
+                                  className="matchPageLink"
+                                  to="/h2h/$matchup"
+                                  params={{
+                                    matchup: matchupToSlug(canonicalUsername, row.opponent),
+                                  }}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  title={`Open H2H: ${canonicalUsername} vs ${row.opponent}`}
+                                  aria-label={`Open H2H: ${canonicalUsername} vs ${row.opponent}`}
+                                  onClick={(event) => event.stopPropagation()}
+                                >
+                                  <FontAwesomeIcon icon={faUpRightFromSquare} />
+                                </Link>
+                              </td>
+                            </tr>
+                            {isExpanded ? (
+                              <tr className="favoriteOpponentMatchesRow">
+                                <td colSpan={8}>
+                                  <div className="favoriteOpponentMatchesInner">
+                                    <table className="favoriteOpponentMatchesTable">
+                                      <thead>
+                                        <tr>
+                                          <th>Date / Time</th>
+                                          <th>Game ID</th>
+                                          <th>Mode</th>
+                                          <th>TC</th>
+                                          <th>Score</th>
+                                          <th>Rating Δ</th>
+                                          <th>Games</th>
+                                          <th aria-label="Open match page" />
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {row.matches.map((match) => {
+                                          const favoriteMatchKey = `${opponentKey}-${match.startTs}-${match.firstGameId}-${match.matchId}`;
+
+                                          return (
+                                            <tr key={favoriteMatchKey}>
+                                              <td>{formatLocalDateTime(match.startTs)}</td>
+                                              <td>
+                                                <LichessGameLink
+                                                  gameId={match.firstGameId}
+                                                  source={match.sourceValue}
+                                                  onClick={(event) => event.stopPropagation()}
+                                                >
+                                                  {match.firstGameId}
+                                                </LichessGameLink>
+                                              </td>
+                                              <td>{modeLabels[match.mode] ?? match.mode}</td>
+                                              <td>
+                                                <span className="profileTablePill">
+                                                  {match.timeControl}
+                                                </span>
+                                              </td>
+                                              <td>{`${formatScore(match.playerScore)} - ${formatScore(
+                                                match.opponentScore,
+                                              )}`}</td>
+                                              <td>
+                                                {Number.isFinite(match.ratingChange) ? (
+                                                  <span className="profileDelta">
+                                                    {formatSignedDecimal(match.ratingChange)}
+                                                  </span>
+                                                ) : (
+                                                  "—"
+                                                )}
+                                              </td>
+                                              <td>{match.gameCount.toLocaleString("en-US")}</td>
+                                              <td>
+                                                <MatchPageLink
+                                                  match={{
+                                                    ...match,
+                                                    playerA: canonicalUsername,
+                                                    playerB: row.opponent,
+                                                    mode: match.mode,
+                                                  }}
+                                                  onClick={(event) => event.stopPropagation()}
+                                                  title="Open match page in new tab"
+                                                />
+                                              </td>
+                                            </tr>
+                                          );
+                                        })}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </td>
+                              </tr>
+                            ) : null}
+                          </Fragment>
+                        );
+                      })}
                       {loadingFavoriteOpponents ? (
                         <tr>
-                          <td colSpan={7} className="emptyRankings">
+                          <td colSpan={8} className="emptyRankings">
                             {`Loading favorite opponents from the last ${favoriteOpponentMatchLimit.toLocaleString("en-US")} ${favoriteOpponentScopeLabel}...`}
                           </td>
                         </tr>
                       ) : null}
                       {!loadingFavoriteOpponents && favoriteOpponentRows.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="emptyRankings">
+                          <td colSpan={8} className="emptyRankings">
                             {`No favorite opponents found in the last ${favoriteOpponentMatchLimit.toLocaleString("en-US")} ${favoriteOpponentScopeLabel}.`}
                           </td>
                         </tr>
