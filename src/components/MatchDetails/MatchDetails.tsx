@@ -76,7 +76,11 @@ export const MatchDetails = ({
               <span>{`${formatScore(game.scoreAAfter)} - ${formatScore(game.scoreBAfter)}`}</span>
             ) : null}
             <span>
-              <LichessGameLink gameId={game.id} onClick={stopPropagation}>
+              <LichessGameLink
+                gameId={game.id}
+                source={match.sourceValue}
+                onClick={stopPropagation}
+              >
                 {game.id}
               </LichessGameLink>
             </span>

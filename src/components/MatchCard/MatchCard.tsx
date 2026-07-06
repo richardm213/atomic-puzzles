@@ -67,6 +67,7 @@ export const MatchCard = ({
           <span className="matchMetaPill">
             <LichessGameLink
               gameId={match.firstGameId}
+              source={match.sourceValue}
               className="matchMetaLink"
               onClick={stopPropagation}
             >
@@ -81,11 +82,7 @@ export const MatchCard = ({
           {formatScore(match.scoreA)} - {formatScore(match.scoreB)}
         </span>
       </div>
-      <MatchPageLink
-        match={match}
-        onClick={stopPropagation}
-        title="Open match page in new tab"
-      />
+      <MatchPageLink match={match} onClick={stopPropagation} title="Open match page in new tab" />
     </div>
     {isExpanded ? (
       <div className="matchCardDetails">

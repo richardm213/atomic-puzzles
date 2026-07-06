@@ -1,6 +1,7 @@
 import type { SourceFilters } from "../../constants/matches";
+import { knownSourceKeys } from "../../constants/matches";
 
-const sources: Array<keyof SourceFilters> = ["arena", "friend", "lobby"];
+const sources: Array<keyof SourceFilters> = knownSourceKeys;
 
 export type SourceFilterChecksProps = {
   values: SourceFilters;

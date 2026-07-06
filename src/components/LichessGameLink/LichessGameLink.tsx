@@ -1,10 +1,10 @@
 import type { MouseEventHandler, ReactNode } from "react";
 
-const lichessGameUrl = (gameId: string | number): string =>
-  `https://lichess.org/${encodeURIComponent(String(gameId))}`;
+import { buildExternalGameUrl } from "../../utils/matchRoutes";
 
 export type LichessGameLinkProps = {
   gameId: string | number;
+  source?: unknown;
   children?: ReactNode;
   className?: string;
   onClick?: MouseEventHandler<HTMLAnchorElement> | undefined;
@@ -12,20 +12,16 @@ export type LichessGameLinkProps = {
 
 export const LichessGameLink = ({
   gameId,
+  source,
   children,
   className = "rankingLink",
   onClick,
 }: LichessGameLinkProps) => {
-  if (gameId === "—") return <>{children}</>;
+  const gameUrl = buildExternalGameUrl(gameId, { source });
+  if (!gameUrl) return <>{children}</>;
 
   return (
-    <a
-      className={className}
-      href={lichessGameUrl(gameId)}
-      target="_blank"
-      rel="noreferrer"
-      onClick={onClick}
-    >
+    <a className={className} href={gameUrl} target="_blank" rel="noreferrer" onClick={onClick}>
       {children}
     </a>
   );

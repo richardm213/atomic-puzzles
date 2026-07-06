@@ -32,6 +32,7 @@ import { loadRawMatchesByMode } from "../../lib/matches/matchData";
 import {
   ratingsForPlayers,
   sourceKeyFromMatch,
+  sourceValueFromMatch,
   summarizeMatchGames,
 } from "../../lib/matches/matchSummaries";
 import { fetchPlayerRatingsRows } from "../../lib/supabase/supabasePlayerRatings";
@@ -76,7 +77,7 @@ const normalizeH2HMatches = (
         mode,
         startTs: Number(match.start_ts ?? match.s),
         timeControl: String(match.time_control ?? match.t ?? "—"),
-        sourceValue: String(match.source ?? ""),
+        sourceValue: sourceValueFromMatch(match, firstGame),
         source: sourceKeyFromMatch(match, firstGame),
         firstGameId,
         playerA: resolvedA,
@@ -692,6 +693,7 @@ export const H2HPage = () => {
                               <td>
                                 <LichessGameLink
                                   gameId={match.firstGameId}
+                                  source={match.sourceValue}
                                   className="rankingLink h2hMatchDate"
                                   onClick={(event) => event.stopPropagation()}
                                 >

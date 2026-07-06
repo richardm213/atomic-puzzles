@@ -25,7 +25,6 @@ import { getBoardThemeColors, useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
 import { resolveProfileUsernameFromAliases } from "../../lib/supabase/supabaseAliases";
 import {
-  resolveUsernameInput,
   searchUsernameSuggestions,
   type UsernameSearchSuggestion,
 } from "../../lib/users/usernameSearch";
@@ -53,9 +52,7 @@ const navItems: NavItem[] = [
     to: "/solve",
     label: "Puzzles",
     isActive: (pathname) =>
-      pathname === "/solve" ||
-      pathname.startsWith("/solve/") ||
-      pathname === "/dashboard",
+      pathname === "/solve" || pathname.startsWith("/solve/") || pathname === "/dashboard",
     children: [
       {
         to: "/solve",
@@ -103,8 +100,7 @@ const navItems: NavItem[] = [
       {
         to: "/tournaments",
         label: "Tournaments",
-        isActive: (pathname) =>
-          pathname === "/tournaments" || pathname.startsWith("/tournaments/"),
+        isActive: (pathname) => pathname === "/tournaments" || pathname.startsWith("/tournaments/"),
       },
     ],
   },
@@ -260,10 +256,13 @@ export const TopNav = () => {
     navDropdownCloseTimeoutRef.current = null;
   }, []);
 
-  const openNavDropdownFor = useCallback((navItemTo: string): void => {
-    clearNavDropdownCloseTimeout();
-    setOpenNavDropdown(navItemTo);
-  }, [clearNavDropdownCloseTimeout]);
+  const openNavDropdownFor = useCallback(
+    (navItemTo: string): void => {
+      clearNavDropdownCloseTimeout();
+      setOpenNavDropdown(navItemTo);
+    },
+    [clearNavDropdownCloseTimeout],
+  );
 
   const closeNavDropdown = useCallback((): void => {
     clearNavDropdownCloseTimeout();
@@ -319,11 +318,7 @@ export const TopNav = () => {
     setSearchSuggestionsSearched(false);
     setSearchSuggestionsPending(false);
 
-    if (
-      !searchOpen ||
-      searchPending ||
-      trimmedSearchQuery.length < SEARCH_SUGGESTION_MIN_LENGTH
-    ) {
+    if (!searchOpen || searchPending || trimmedSearchQuery.length < SEARCH_SUGGESTION_MIN_LENGTH) {
       setSearchSuggestions([]);
       return undefined;
     }
@@ -466,10 +461,9 @@ export const TopNav = () => {
     setSearchPending(true);
 
     try {
-      const resolvedUsername = await resolveUsernameInput(trimmedSearchQuery);
       void navigate({
         to: "/@/$username",
-        params: { username: normalizeUsername(resolvedUsername) },
+        params: { username: trimmedSearchQuery },
       });
       setSearchQuery("");
       setSearchSuggestions([]);
@@ -492,7 +486,7 @@ export const TopNav = () => {
     try {
       void navigate({
         to: "/@/$username",
-        params: { username: normalizeUsername(suggestion.username) },
+        params: { username: suggestion.matchedName },
       });
       setSearchQuery("");
       setSearchSuggestions([]);

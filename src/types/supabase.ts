@@ -78,7 +78,7 @@ export type Aliases2TableRow = {
   alias: string | null;
   username: string | null;
   banned: boolean | null;
-  count_games: boolean | number | null;
+  count_games: boolean | number | string | null;
 };
 
 type TableDef<Row, Insert = Partial<Row>, Update = Partial<Row>> = {

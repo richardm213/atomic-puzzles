@@ -1,4 +1,4 @@
-export type MatchSource = "arena" | "friend" | "lobby" | "unknown";
+export type MatchSource = "arena" | "friend" | "lobby" | "swiss" | "chesscom" | "unknown";
 
 const firstNonEmptyValue = (...values: unknown[]): unknown =>
   values.find((value) => value !== undefined && value !== null && String(value).trim().length > 0);
@@ -41,8 +41,16 @@ export const matchSourceFromValues = (...values: unknown[]): MatchSource => {
   }
 
   const normalizedSource = String(sourceValue).toLowerCase();
+  if (
+    normalizedSource.includes("chesscom") ||
+    normalizedSource.includes("chess.com") ||
+    normalizedSource.includes("chess_com")
+  ) {
+    return "chesscom";
+  }
   if (normalizedSource.includes("arena")) return "arena";
   if (normalizedSource.includes("friend")) return "friend";
   if (normalizedSource.includes("lobby")) return "lobby";
+  if (normalizedSource.includes("swiss")) return "swiss";
   return "unknown";
 };

@@ -40,8 +40,20 @@ export const createModeRecord = <T>(valueFactory: (mode: Mode) => T): Record<Mod
 
 export const pageSizeOptions = [25, 50, 100, 200] as const;
 
-export type SourceFilters = { arena: boolean; friend: boolean; lobby: boolean };
-export const defaultSourceFilters: SourceFilters = { arena: true, friend: true, lobby: true };
+export type SourceFilters = {
+  arena: boolean;
+  friend: boolean;
+  lobby: boolean;
+  swiss: boolean;
+  chesscom: boolean;
+};
+export const defaultSourceFilters: SourceFilters = {
+  arena: true,
+  friend: true,
+  lobby: true,
+  swiss: true,
+  chesscom: true,
+};
 export const knownSourceKeys = Object.keys(defaultSourceFilters) as Array<keyof SourceFilters>;
 
 export const opponentRatingSliderMin = 1000;

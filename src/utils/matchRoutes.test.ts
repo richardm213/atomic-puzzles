@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildExternalGameUrl,
   buildLichessGameUrl,
   buildMatchRouteParams,
   buildSingleGameMatchUrl,
@@ -54,9 +55,7 @@ describe("isSingleGameMatch", () => {
 
   it("returns false for missing, empty, or multi-game matches", () => {
     expect(isSingleGameMatch({ games: [] })).toBe(false);
-    expect(isSingleGameMatch({ games: [{ id: "abc" }, { id: "def" }], gameCount: 1 })).toBe(
-      false,
-    );
+    expect(isSingleGameMatch({ games: [{ id: "abc" }, { id: "def" }], gameCount: 1 })).toBe(false);
     expect(isSingleGameMatch({ gameCount: 2 })).toBe(false);
     expect(isSingleGameMatch(null)).toBe(false);
   });
@@ -85,6 +84,24 @@ describe("buildLichessGameUrl", () => {
   });
 });
 
+describe("buildExternalGameUrl", () => {
+  it("returns a Chess.com live game URL for a chesscom source", () => {
+    expect(buildExternalGameUrl("123456789", { source: "chesscom" })).toBe(
+      "https://www.chess.com/game/live/123456789",
+    );
+  });
+
+  it("returns a Chess.com live game URL for source-less numeric live game ids", () => {
+    expect(buildExternalGameUrl("123456789")).toBe("https://www.chess.com/game/live/123456789");
+  });
+
+  it("keeps Lichess orientation and ply for Lichess sources", () => {
+    expect(buildExternalGameUrl("abc123", { source: "arena", orientation: "white", ply: 4 })).toBe(
+      "https://lichess.org/abc123/white#4",
+    );
+  });
+});
+
 describe("buildSingleGameMatchUrl", () => {
   it("uses the first game id for one-game matches", () => {
     expect(
@@ -106,7 +123,18 @@ describe("buildSingleGameMatchUrl", () => {
     );
   });
 
-  it("does not build a lichess URL for longer matches", () => {
+  it("builds Chess.com URLs for one-game Chess.com matches", () => {
+    expect(
+      buildSingleGameMatchUrl({
+        matchId: "match-id",
+        firstGameId: "123456789",
+        gameCount: 1,
+        sourceValue: "chesscom",
+      }),
+    ).toBe("https://www.chess.com/game/live/123456789");
+  });
+
+  it("does not build an external game URL for longer matches", () => {
     expect(
       buildSingleGameMatchUrl({
         matchId: "match-id",

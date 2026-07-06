@@ -55,6 +55,9 @@ describe("matchSourceFromValues", () => {
     ["arena tournament", "arena"],
     ["Friend Game", "friend"],
     ["Lobby pool", "lobby"],
+    ["Swiss", "swiss"],
+    ["chesscom", "chesscom"],
+    ["Chess.com", "chesscom"],
     ["something weird", "unknown"],
   ])("classifies %p as %s", (input, expected) => {
     expect(matchSourceFromValues(input)).toBe(expected);

@@ -7,7 +7,7 @@
 
 .profileIdentityRow {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -24,18 +24,19 @@
 .profileIdentityTitle {
   min-width: 0;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 8px clamp(14px, 2vw, 22px);
+  flex: 1 1 auto;
 }
 
 .profileOpeningTags {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 8px;
+  flex: 0 1 auto;
   min-width: 0;
-  max-width: 520px;
 }
 
 .profileOpeningTag {
@@ -203,10 +204,11 @@
 
 .profileTrophyRow {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
+  flex: 0 0 auto;
   margin-left: auto;
 }
 
@@ -628,7 +630,7 @@
   color: color-mix(in srgb, var(--color-primary) 60%, white 40%);
 }
 
-.profileAliasLichessLink {
+.profileAliasAccountLink {
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
@@ -649,19 +651,66 @@
     box-shadow 140ms ease;
 }
 
+.profileAliasLichessLink {
+  color: color-mix(in srgb, var(--color-primary) 82%, #0f172a);
+  background: color-mix(in srgb, var(--color-primary-ring) 72%, white 28%);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 36%, var(--color-border));
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+.profileAliasChessComLink {
+  color: color-mix(in srgb, #5c8f22 82%, #0f172a);
+  background: color-mix(in srgb, #c8e89a 70%, white 30%);
+  border: 1px solid color-mix(in srgb, #7fa650 46%, var(--color-border));
+  box-shadow: 0 6px 16px color-mix(in srgb, #7fa650 14%, transparent);
+}
+
+.profileAliasAccountLink:hover,
+.profileAliasAccountLink:focus-visible {
+  transform: translateY(-1px);
+}
+
 .profileAliasLichessLink:hover,
 .profileAliasLichessLink:focus-visible {
-  transform: translateY(-1px);
   background: color-mix(in srgb, var(--color-primary-ring) 88%, white 12%);
   border-color: color-mix(in srgb, var(--color-primary) 62%, var(--color-border));
   color: color-mix(in srgb, var(--color-primary-hover) 86%, #0f172a);
   box-shadow: 0 10px 22px color-mix(in srgb, var(--color-primary) 16%, transparent);
 }
 
-.profileAliasLichessLink svg {
+.profileAliasChessComLink:hover,
+.profileAliasChessComLink:focus-visible {
+  background: color-mix(in srgb, #c8e89a 84%, white 16%);
+  border-color: color-mix(in srgb, #7fa650 70%, var(--color-border));
+  color: color-mix(in srgb, #4d7e18 86%, #0f172a);
+  box-shadow: 0 10px 22px color-mix(in srgb, #7fa650 18%, transparent);
+}
+
+.profileAliasAccountLink svg {
   width: 18px;
   height: 18px;
   display: block;
+}
+
+.profileAliasAccountLink .chessComProfileIcon {
+  width: 14px;
+  height: 20px;
+}
+
+.chessComIconShadow {
+  fill: #2f6b20;
+}
+
+.chessComIconBody {
+  fill: #5f9f32;
+}
+
+.chessComIconFront {
+  fill: #6da737;
+}
+
+.chessComIconHighlight {
+  fill: #a5d877;
 }
 
 :root:not([data-theme="light"]) .profileAliasStatus {
@@ -688,11 +737,26 @@
   box-shadow: none;
 }
 
+:root:not([data-theme="light"]) .profileAliasChessComLink {
+  color: #9ed26a;
+  background: color-mix(in srgb, #365314 36%, var(--color-panel-strong));
+  border: 1px solid color-mix(in srgb, #84cc16 48%, var(--color-border));
+  box-shadow: none;
+}
+
 :root:not([data-theme="light"]) .profileAliasLichessLink:hover,
 :root:not([data-theme="light"]) .profileAliasLichessLink:focus-visible {
   background: color-mix(in srgb, var(--color-warning-soft-bg) 80%, var(--color-panel-strong));
   border-color: color-mix(in srgb, var(--color-warning-soft-border) 80%, var(--color-gold));
   color: var(--color-gold);
+  box-shadow: none;
+}
+
+:root:not([data-theme="light"]) .profileAliasChessComLink:hover,
+:root:not([data-theme="light"]) .profileAliasChessComLink:focus-visible {
+  background: color-mix(in srgb, #365314 48%, var(--color-panel-strong));
+  border-color: color-mix(in srgb, #84cc16 68%, var(--color-border));
+  color: #b7e889;
   box-shadow: none;
 }
 
@@ -1311,14 +1375,6 @@
 }
 
 @media (max-width: 1180px) {
-  .profileIdentityRow {
-    align-items: flex-start;
-  }
-
-  .profileTrophyRow {
-    justify-content: flex-start;
-  }
-
   .profileHighlights,
   .profileHighlightsBottomRow {
     grid-template-columns: 1fr;
@@ -1330,6 +1386,25 @@
 }
 
 @media (max-width: 720px) {
+  .profileIdentityRow {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .profileIdentityTitle {
+    flex-wrap: wrap;
+  }
+
+  .profileOpeningTags {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .profileTrophyRow {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
   .profileMetricRowCards {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

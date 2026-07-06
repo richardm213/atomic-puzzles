@@ -44,16 +44,54 @@ export const buildLichessGameUrl = (
   return `https://lichess.org/${encodeURIComponent(normalizedGameId)}${orientationPath}${plyHash}`;
 };
 
-export const buildSingleGameMatchUrl = (
-  match: MatchRouteInput | null | undefined,
+export const isChessComSource = (source: unknown): boolean => {
+  const normalizedSource = String(source ?? "")
+    .trim()
+    .toLowerCase();
+  return (
+    normalizedSource.includes("chesscom") ||
+    normalizedSource.includes("chess.com") ||
+    normalizedSource.includes("chess_com")
+  );
+};
+
+export const buildChessComGameUrl = (gameId: string | number | null | undefined): string => {
+  const normalizedGameId = String(gameId ?? "").trim();
+  if (!normalizedGameId || normalizedGameId === "—") return "";
+  return `https://www.chess.com/game/live/${encodeURIComponent(normalizedGameId)}`;
+};
+
+const looksLikeChessComGameId = (gameId: string): boolean => /^\d{8,}$/.test(gameId);
+
+export const buildExternalGameUrl = (
+  gameId: string | number | null | undefined,
+  options: {
+    source?: unknown;
+    orientation?: "white" | "black";
+    ply?: number | null | undefined;
+  } = {},
 ): string => {
+  const normalizedGameId = String(gameId ?? "").trim();
+  if (!normalizedGameId || normalizedGameId === "—") return "";
+
+  if (isChessComSource(options.source) || looksLikeChessComGameId(normalizedGameId)) {
+    return buildChessComGameUrl(normalizedGameId);
+  }
+
+  return buildLichessGameUrl(normalizedGameId, {
+    ...(options.orientation ? { orientation: options.orientation } : {}),
+    ...(options.ply !== undefined ? { ply: options.ply } : {}),
+  });
+};
+
+export const buildSingleGameMatchUrl = (match: MatchRouteInput | null | undefined): string => {
   if (!isSingleGameMatch(match)) return "";
   const firstGameFromGames = Array.isArray(match?.games)
     ? (match.games[0] as { id?: string | number | null | undefined } | null | undefined)?.id
     : undefined;
   const candidates = [match?.firstGameId, firstGameFromGames, match?.matchId];
   for (const candidate of candidates) {
-    const url = buildLichessGameUrl(candidate);
+    const url = buildExternalGameUrl(candidate, { source: match?.sourceValue ?? match?.source });
     if (url) return url;
   }
   return "";

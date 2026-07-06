@@ -39,7 +39,12 @@ import {
   useRatingsSnapshotByMode,
 } from "../../hooks/usePlayerProfileData";
 import { loadRawMatchesByMode, normalizeMatches } from "../../lib/matches/matchData";
-import { fetchProfileAliasRow } from "../../lib/supabase/supabaseAliases";
+import {
+  type AliasAccount,
+  type AliasAccountSource,
+  fetchProfileAliasRow,
+  type MergedAliasRow,
+} from "../../lib/supabase/supabaseAliases";
 import { monthKeyFromMonthValue } from "../../lib/supabase/supabaseLb";
 import { isRegisteredSiteUser } from "../../lib/supabase/supabaseUsers";
 import { appAssetPath } from "../../utils/appAssetPath";
@@ -108,6 +113,9 @@ type ProfileTrophy = {
 
 const lichessProfileUrl = (username: string): string =>
   `https://lichess.org/@/${encodeURIComponent(String(username || "").trim())}`;
+
+const chessComProfileUrl = (username: string): string =>
+  `https://www.chess.com/member/${encodeURIComponent(String(username || "").trim())}`;
 
 const isExternalHref = (href: string): boolean => /^https?:\/\//i.test(String(href || "").trim());
 
@@ -372,7 +380,7 @@ const rankingTrophyLevels = [
     key: "top1",
     imageSrc: rankingTrophyAssets.top1,
     suffix: "Atomic Top 1",
-    placementLabel: "#1",
+    placementLabel: "Champion",
     prestige: 900,
   },
   {
@@ -380,7 +388,7 @@ const rankingTrophyLevels = [
     key: "top2",
     imageSrc: rankingTrophyAssets.secondPlace,
     suffix: "Atomic Top 2",
-    placementLabel: "#2",
+    placementLabel: "Runner up",
     prestige: 800,
   },
   {
@@ -502,6 +510,37 @@ const LichessProfileIcon = () => (
   </svg>
 );
 
+const ChessComProfileIcon = () => (
+  <svg className="chessComProfileIcon" viewBox="-2 0 82 110" aria-hidden="true" focusable="false">
+    <path
+      className="chessComIconShadow"
+      d="M46.3 4.6C55.1 7.4 61.5 15.7 61.5 25.7c0 6.7-2.8 12.6-7.3 16.7l10.6 8c-.4 5.5-2.1 9.7-5.2 12.6h-9.3c.9 8 5.4 14.1 13.4 19.4 7.1 4.6 10.8 10 11 16.3-5.6 2.9-17.5 4.3-35.7 4.3-18.5 0-30.5-1.4-36.1-4.3.2-6.3 3.9-11.7 11-16.3 8-5.3 12.5-11.4 13.4-19.4H18c-3.1-2.9-4.8-7.1-5.2-12.6l10.6-8c-4.5-4.1-7.3-10-7.3-16.7C16.1 13.5 26 3.7 38.2 3.7c2.8 0 5.5.3 8.1.9z"
+    />
+    <path
+      className="chessComIconBody"
+      d="M38.2 3.7c12.2 0 22.2 9.8 22.2 22 0 6.7-2.9 12.6-7.3 16.7l10.6 8c-.4 5.5-2.1 9.7-5.2 12.6h-9.3c.9 8 5.4 14.1 13.4 19.4 7.1 4.6 10.8 10 11 16.3-5.6 2.9-17.6 4.3-36 4.3S7.3 101.6 1.7 98.7c.2-6.3 3.9-11.7 11-16.3 8-5.3 12.5-11.4 13.4-19.4h-9.3c-3.1-2.9-4.8-7.1-5.2-12.6l10.6-8c-4.4-4.1-7.3-10-7.3-16.7 0-12.2 10-22 22.2-22h1.1z"
+    />
+    <path
+      className="chessComIconFront"
+      d="M35.7 5.5C24.9 6.8 16.4 16.1 16.4 27.4c0 6.1 2.4 11.4 6.3 15.4l-9.9 7.6c.5 3.7 1.7 6.4 3.7 8.2h16.2c.3 12.5-4.7 22.2-14.9 29-5.4 3.6-8.8 7.2-10.3 10.6 5.2 1.8 14.3 2.7 27.2 2.7 2.8 0 5.3 0 7.7-.1 7.7-5.1 12-13.3 12.9-24.4.7-7.6-.8-13-4.6-16.1-3.2-2.6-8.4-3.9-15.7-3.9h-5.8L34.5 40 24.4 25.4C34.9 22 40.5 15.2 41 5c-1.7-.4-3.5-.6-5.3-.6z"
+    />
+    <ellipse
+      className="chessComIconHighlight"
+      cx="33.5"
+      cy="16.8"
+      rx="9.2"
+      ry="4.9"
+      transform="rotate(-35 33.5 16.8)"
+    />
+  </svg>
+);
+
+const getAliasProfileHref = (source: AliasAccountSource, alias: string): string =>
+  source === "chesscom" ? chessComProfileUrl(alias) : lichessProfileUrl(alias);
+
+const getAliasProfileSourceLabel = (source: AliasAccountSource): string =>
+  source === "chesscom" ? "Chess.com" : "Lichess";
+
 const buildMatchFilters = (
   username: string,
   filters: ProfileFilters,
@@ -563,9 +602,7 @@ export const PlayerProfilePage = ({
   const [profileHistoryTab, setProfileHistoryTab] = useState<ProfileHistoryTab>(() =>
     getProfileHistoryTabFromLocation(),
   );
-  const [profileAliasEntry, setProfileAliasEntry] = useState<
-    import("../../lib/supabase/supabaseAliases").MergedAliasRow | null
-  >(null);
+  const [profileAliasEntry, setProfileAliasEntry] = useState<MergedAliasRow | null>(null);
   const [aliasesLoaded, setAliasesLoaded] = useState(false);
   const [matchesByMode, setMatchesByMode] = useState(() => createModeRecord(() => []));
   const [totalMatchesByMode, setTotalMatchesByMode] = useState(() => createModeRecord(() => 0));
@@ -596,6 +633,7 @@ export const PlayerProfilePage = ({
   const favoriteOpponentsRequestIdRef = useRef(0);
   const searchSubmitInFlightRef = useRef(false);
   const canonicalUsername = profileAliasEntry?.username ?? normalizedUsername;
+  const profileDisplayUsername = String(username || "").trim() || canonicalUsername;
   const favoriteOpponentQueryKey = `${canonicalUsername}|${favoriteOpponentMode}|${favoriteOpponentMatchLimit}`;
   const isBanned = Boolean(profileAliasEntry?.banned);
   const profileDataUsername = aliasesLoaded ? canonicalUsername : "";
@@ -982,12 +1020,6 @@ export const PlayerProfilePage = ({
     favoriteOpponentMode === "all"
       ? "matches overall"
       : `${modeLabels[favoriteOpponentMode] ?? favoriteOpponentMode} matches`;
-  const aliasesForUser = useMemo(() => {
-    if (!aliasesLoaded) return [];
-
-    const aliases = Array.isArray(profileAliasEntry?.aliases) ? profileAliasEntry.aliases : [];
-    return [...new Set([canonicalUsername, ...aliases])];
-  }, [aliasesLoaded, canonicalUsername, profileAliasEntry]);
   const profileOpenings = useMemo(() => {
     if (!aliasesLoaded || !Array.isArray(profileAliasEntry?.openings)) return [];
 
@@ -998,12 +1030,43 @@ export const PlayerProfilePage = ({
     ];
   }, [aliasesLoaded, profileAliasEntry]);
   const aliasDisplayRows = useMemo(() => {
-    const countableAliases = new Set(profileAliasEntry?.countableAliases ?? aliasesForUser);
-    return aliasesForUser.map((alias) => ({
-      alias,
-      isCounted: countableAliases.has(alias),
-    }));
-  }, [aliasesForUser, profileAliasEntry]);
+    const canonicalAlias = normalizeUsername(canonicalUsername);
+    const isCanonicalAlias = (account: Pick<AliasAccount, "alias" | "displayAlias">): boolean =>
+      normalizeUsername(account.alias) === canonicalAlias ||
+      normalizeUsername(account.displayAlias) === canonicalAlias;
+    const isDrunkAlias = (account: Pick<AliasAccount, "source" | "isCounted">): boolean =>
+      account.source === "lichess" && !account.isCounted;
+    const compareAliasRows = (left: AliasAccount, right: AliasAccount): number => {
+      const leftIsCanonical = isCanonicalAlias(left);
+      const rightIsCanonical = isCanonicalAlias(right);
+      if (leftIsCanonical !== rightIsCanonical) return leftIsCanonical ? -1 : 1;
+
+      const leftIsDrunk = isDrunkAlias(left);
+      const rightIsDrunk = isDrunkAlias(right);
+      if (leftIsDrunk !== rightIsDrunk) return leftIsDrunk ? 1 : -1;
+
+      if (left.source !== right.source) return left.source === "lichess" ? -1 : 1;
+      return left.displayAlias.localeCompare(right.displayAlias);
+    };
+
+    const accounts = Array.isArray(profileAliasEntry?.accounts) ? profileAliasEntry.accounts : [];
+    if (accounts.length > 0) {
+      return accounts.map((account): AliasAccount => ({ ...account })).sort(compareAliasRows);
+    }
+
+    const aliases = Array.isArray(profileAliasEntry?.aliases) ? profileAliasEntry.aliases : [];
+    const uniqueAliases = [...new Set(aliases)];
+    const countableAliases = new Set(profileAliasEntry?.countableAliases ?? uniqueAliases);
+    return uniqueAliases
+      .map((alias) => ({
+        alias,
+        displayAlias: alias,
+        source: "lichess" as const,
+        isCounted: countableAliases.has(alias),
+        banned: Boolean(profileAliasEntry?.banned),
+      }))
+      .sort(compareAliasRows);
+  }, [canonicalUsername, profileAliasEntry]);
   const latestMonthKeyByMode = useMemo(
     () =>
       monthRanks.reduce<
@@ -1096,7 +1159,7 @@ export const PlayerProfilePage = ({
         {historyOnly ? (
           <div className="profileIdentityRow noTrophies">
             <div className="profileIdentityTitle">
-              <h1>{canonicalUsername}</h1>
+              <h1>{profileDisplayUsername}</h1>
             </div>
           </div>
         ) : (
@@ -1104,7 +1167,7 @@ export const PlayerProfilePage = ({
             className={`profileIdentityRow${!isBanned && hasVisibleProfileTrophies ? "" : " noTrophies"}`}
           >
             <div className="profileIdentityTitle">
-              <h1>{canonicalUsername}</h1>
+              <h1>{profileDisplayUsername}</h1>
               {profileOpenings.length ? (
                 <div className="profileOpeningTags" aria-label="Recognized atomic openings">
                   {profileOpenings.map((opening) => (
@@ -1285,43 +1348,51 @@ export const PlayerProfilePage = ({
                 <div className="emptyRankings">No aliases listed.</div>
               ) : (
                 <div className="profileAliasesList">
-                  {aliasDisplayRows.map(({ alias, isCounted }) => (
-                    <div key={`alias-${alias}`} className="profileAliasRow">
-                      <span className="profileAliasName">
-                        <span>{alias}</span>
-                        {!isCounted ? (
-                          <span
-                            className="profileAliasStatus"
-                            aria-label={NON_COUNTED_ALIAS_MESSAGE}
-                            tabIndex={0}
-                          >
-                            <span aria-hidden="true">🍺</span>
-                            <span className="profileAliasTooltip" role="tooltip">
-                              {NON_COUNTED_ALIAS_MESSAGE} For more info,
-                              <Link
-                                className="profileAliasTooltipLink"
-                                to="/rankings/how-ratings-work"
-                                hash="drunk-accounts"
-                              >
-                                click here
-                              </Link>
-                              .
+                  {aliasDisplayRows.map(({ alias, displayAlias, source, isCounted }) => {
+                    const sourceLabel = getAliasProfileSourceLabel(source);
+                    const externalAlias = displayAlias || alias;
+                    return (
+                      <div key={`alias-${source}-${alias}`} className="profileAliasRow">
+                        <span className="profileAliasName">
+                          <span>{externalAlias}</span>
+                          {source === "lichess" && !isCounted ? (
+                            <span
+                              className="profileAliasStatus"
+                              aria-label={NON_COUNTED_ALIAS_MESSAGE}
+                              tabIndex={0}
+                            >
+                              <span aria-hidden="true">🍺</span>
+                              <span className="profileAliasTooltip" role="tooltip">
+                                {NON_COUNTED_ALIAS_MESSAGE} For more info,
+                                <Link
+                                  className="profileAliasTooltipLink"
+                                  to="/rankings/how-ratings-work"
+                                  hash="drunk-accounts"
+                                >
+                                  click here
+                                </Link>
+                                .
+                              </span>
                             </span>
-                          </span>
-                        ) : null}
-                      </span>
-                      <a
-                        className="profileAliasLichessLink"
-                        href={lichessProfileUrl(alias)}
-                        target="_blank"
-                        rel="noreferrer"
-                        aria-label={`Open ${alias} on Lichess`}
-                        title={`Open ${alias} on Lichess`}
-                      >
-                        <LichessProfileIcon />
-                      </a>
-                    </div>
-                  ))}
+                          ) : null}
+                        </span>
+                        <a
+                          className={`profileAliasAccountLink ${
+                            source === "chesscom"
+                              ? "profileAliasChessComLink"
+                              : "profileAliasLichessLink"
+                          }`}
+                          href={getAliasProfileHref(source, externalAlias)}
+                          target="_blank"
+                          rel="noreferrer"
+                          aria-label={`Open ${externalAlias} on ${sourceLabel}`}
+                          title={`Open ${externalAlias} on ${sourceLabel}`}
+                        >
+                          {source === "chesscom" ? <ChessComProfileIcon /> : <LichessProfileIcon />}
+                        </a>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -1633,6 +1704,7 @@ export const PlayerProfilePage = ({
                               <td>
                                 <LichessGameLink
                                   gameId={match.firstGameId}
+                                  source={match.sourceValue}
                                   onClick={(event) => event.stopPropagation()}
                                 >
                                   {formatLocalDateTime(match.startTs)}
