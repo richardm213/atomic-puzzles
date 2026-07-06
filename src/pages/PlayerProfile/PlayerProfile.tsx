@@ -110,6 +110,7 @@ const favoriteOpponentSortOptions = Object.keys(
 const favoriteOpponentScoreConfidenceZ = 1.281551565545;
 const favoriteOpponentPerformanceScoreRateMin = 0.01;
 const favoriteOpponentPerformanceScoreRateMax = 0.99;
+const favoriteOpponentPerformanceConfidenceScale = 400;
 
 type ProfileFilters = {
   opponentRatingMin: number;
@@ -135,6 +136,7 @@ type FavoriteOpponentRow = {
   ratingChange: number;
   ratedMatchCount: number;
   performanceScore: number | null;
+  performanceSortScore: number | null;
   mostRecentTs: number;
   favoriteTimeControl: string;
   favoriteTimeControlCount: number;
@@ -489,6 +491,19 @@ const getMatchPerformanceScore = ({
   return opponentRating + performanceDelta;
 };
 
+const getFavoriteOpponentPerformanceSortScore = (
+  performanceScore: number | null,
+  performanceGameCount: number,
+): number | null => {
+  if (performanceScore === null || performanceGameCount <= 0) return null;
+
+  const confidencePenalty =
+    (favoriteOpponentScoreConfidenceZ * favoriteOpponentPerformanceConfidenceScale) /
+    Math.sqrt(performanceGameCount);
+
+  return performanceScore - confidencePenalty;
+};
+
 const getFavoriteOpponentRows = (matches: FavoriteOpponentMatch[]): FavoriteOpponentRow[] => {
   const rowsByOpponent = new Map<
     string,
@@ -583,15 +598,23 @@ const getFavoriteOpponentRows = (matches: FavoriteOpponentMatch[]): FavoriteOppo
   });
 
   return [...rowsByOpponent.values()]
-    .map(({ performanceScoreTotal, performanceScoreGameCount, timeControlCounts, ...row }) => ({
-      ...row,
-      performanceScore:
+    .map(({ performanceScoreTotal, performanceScoreGameCount, timeControlCounts, ...row }) => {
+      const performanceScore =
         performanceScoreGameCount > 0
           ? Math.round(performanceScoreTotal / performanceScoreGameCount)
-          : null,
-      matches: [...row.matches].sort((left, right) => right.startTs - left.startTs),
-      ...favoriteTimeControlFromCounts(timeControlCounts),
-    }))
+          : null;
+
+      return {
+        ...row,
+        performanceScore,
+        performanceSortScore: getFavoriteOpponentPerformanceSortScore(
+          performanceScore,
+          performanceScoreGameCount,
+        ),
+        matches: [...row.matches].sort((left, right) => right.startTs - left.startTs),
+        ...favoriteTimeControlFromCounts(timeControlCounts),
+      };
+    })
     .sort((left, right) => {
       const matchDifference = right.matchCount - left.matchCount;
       if (matchDifference !== 0) return matchDifference;
@@ -649,9 +672,10 @@ const compareFavoriteOpponentRowsByPrimarySort = (
 
   if (sort === "performance") {
     const performanceAvailabilityDifference =
-      Number(left.performanceScore !== null) - Number(right.performanceScore !== null);
+      Number(left.performanceSortScore !== null) - Number(right.performanceSortScore !== null);
     if (performanceAvailabilityDifference !== 0) return performanceAvailabilityDifference;
-    const performanceDifference = (left.performanceScore ?? 0) - (right.performanceScore ?? 0);
+    const performanceDifference =
+      (left.performanceSortScore ?? 0) - (right.performanceSortScore ?? 0);
     if (performanceDifference !== 0) return performanceDifference;
   }
 
@@ -1441,10 +1465,7 @@ export const PlayerProfilePage = ({
       ),
     [latestMonthKeyByMode, ratingDisplayByMode],
   );
-  const rankingTrophies = useMemo(
-    () => getRankingTrophies(monthRanks),
-    [monthRanks],
-  );
+  const rankingTrophies = useMemo(() => getRankingTrophies(monthRanks), [monthRanks]);
   const championshipTrophies = useMemo(
     () => getChampionshipTrophies(canonicalUsername),
     [canonicalUsername],
