@@ -66,6 +66,7 @@ type RankHistoryMode = import("../../constants/matches").Mode | "all";
 const profileHistoryTabOptions = ["matches", "ranks", "trophies", "opponents"] as const;
 type ProfileHistoryTab = (typeof profileHistoryTabOptions)[number];
 type TrophyCaseSort = "prestige" | "date";
+type FavoriteOpponentSort = "matches" | "score" | "games";
 const trophyCaseSortStorageKey = "atomic-puzzles:profile-trophy-case-sort";
 const rankHistoryModeOptions: RankHistoryMode[] = ["all", ...modeOptions];
 const favoriteOpponentModeOptions: RankHistoryMode[] = ["all", ...modeOptions];
@@ -73,6 +74,15 @@ const favoriteOpponentDefaultMatchLimit = 500;
 const favoriteOpponentMatchLimitOptions = [500, 1000, 2000];
 const favoriteOpponentPageSize = 200;
 const favoriteOpponentDisplayCountOptions = [25, 50, 100];
+const favoriteOpponentSortLabels = {
+  matches: "Most matches",
+  score: "Best score",
+  games: "Most games",
+} satisfies Record<FavoriteOpponentSort, string>;
+const favoriteOpponentSortOptions = Object.keys(
+  favoriteOpponentSortLabels,
+) as FavoriteOpponentSort[];
+const favoriteOpponentScoreConfidenceZ = 1.281551565545;
 
 type ProfileFilters = {
   opponentRatingMin: number;
@@ -92,6 +102,7 @@ type FavoriteOpponentMatch = import("../../lib/matches/matchData").NormalizedMat
 type FavoriteOpponentRow = {
   opponent: string;
   matchCount: number;
+  gameCount: number;
   playerScore: number;
   opponentScore: number;
   mostRecentTs: number;
@@ -314,6 +325,7 @@ const getFavoriteOpponentRows = (matches: FavoriteOpponentMatch[]): FavoriteOppo
     {
       opponent: string;
       matchCount: number;
+      gameCount: number;
       playerScore: number;
       opponentScore: number;
       mostRecentTs: number;
@@ -330,6 +342,7 @@ const getFavoriteOpponentRows = (matches: FavoriteOpponentMatch[]): FavoriteOppo
       ({
         opponent: match.opponent,
         matchCount: 0,
+        gameCount: 0,
         playerScore: 0,
         opponentScore: 0,
         mostRecentTs: Number.NEGATIVE_INFINITY,
@@ -337,6 +350,7 @@ const getFavoriteOpponentRows = (matches: FavoriteOpponentMatch[]): FavoriteOppo
       } satisfies {
         opponent: string;
         matchCount: number;
+        gameCount: number;
         playerScore: number;
         opponentScore: number;
         mostRecentTs: number;
@@ -346,6 +360,7 @@ const getFavoriteOpponentRows = (matches: FavoriteOpponentMatch[]): FavoriteOppo
     existing.matchCount += 1;
     existing.playerScore += match.playerScore;
     existing.opponentScore += match.opponentScore;
+    existing.gameCount += match.playerScore + match.opponentScore;
     existing.mostRecentTs = Math.max(existing.mostRecentTs, match.startTs);
 
     const timeControl = match.timeControl || "—";
@@ -372,6 +387,53 @@ const getFavoriteOpponentRows = (matches: FavoriteOpponentMatch[]): FavoriteOppo
       if (recencyDifference !== 0) return recencyDifference;
       return left.opponent.localeCompare(right.opponent);
     });
+};
+
+const getFavoriteOpponentBestScoreValue = (row: FavoriteOpponentRow): number => {
+  if (row.gameCount <= 0) return Number.NEGATIVE_INFINITY;
+
+  const scoreRate = row.playerScore / row.gameCount;
+  const zSquared = favoriteOpponentScoreConfidenceZ * favoriteOpponentScoreConfidenceZ;
+  const confidencePenalty =
+    favoriteOpponentScoreConfidenceZ *
+    Math.sqrt((scoreRate * (1 - scoreRate) + zSquared / (4 * row.gameCount)) / row.gameCount);
+
+  return (
+    (scoreRate + zSquared / (2 * row.gameCount) - confidencePenalty) /
+    (1 + zSquared / row.gameCount)
+  );
+};
+
+const compareFavoriteOpponentRows = (
+  left: FavoriteOpponentRow,
+  right: FavoriteOpponentRow,
+  sort: FavoriteOpponentSort,
+): number => {
+  if (sort === "score") {
+    const scoreDifference =
+      getFavoriteOpponentBestScoreValue(right) - getFavoriteOpponentBestScoreValue(left);
+    if (scoreDifference !== 0) return scoreDifference;
+    const scoreMarginDifference =
+      right.playerScore - right.opponentScore - (left.playerScore - left.opponentScore);
+    if (scoreMarginDifference !== 0) return scoreMarginDifference;
+  }
+
+  if (sort === "games") {
+    const gameDifference = right.gameCount - left.gameCount;
+    if (gameDifference !== 0) return gameDifference;
+  }
+
+  const matchDifference = right.matchCount - left.matchCount;
+  if (matchDifference !== 0) return matchDifference;
+
+  if (sort !== "games") {
+    const gameDifference = right.gameCount - left.gameCount;
+    if (gameDifference !== 0) return gameDifference;
+  }
+
+  const recencyDifference = right.mostRecentTs - left.mostRecentTs;
+  if (recencyDifference !== 0) return recencyDifference;
+  return left.opponent.localeCompare(right.opponent);
 };
 
 const rankingTrophyLevels = [
@@ -626,6 +688,7 @@ export const PlayerProfilePage = ({
     favoriteOpponentDefaultMatchLimit,
   );
   const [favoriteOpponentDisplayCount, setFavoriteOpponentDisplayCount] = useState(25);
+  const [favoriteOpponentSort, setFavoriteOpponentSort] = useState<FavoriteOpponentSort>("matches");
   const [favoriteOpponentLoadKey, setFavoriteOpponentLoadKey] = useState("");
   const [loadingFavoriteOpponents, setLoadingFavoriteOpponents] = useState(false);
   const [favoriteOpponentsError, setFavoriteOpponentsError] = useState("");
@@ -666,6 +729,7 @@ export const PlayerProfilePage = ({
     setFavoriteOpponentMode("all");
     setFavoriteOpponentMatchLimit(favoriteOpponentDefaultMatchLimit);
     setFavoriteOpponentDisplayCount(25);
+    setFavoriteOpponentSort("matches");
     setFavoriteOpponentLoadKey("");
     setOpponentRatingMin(defaultFilters.opponentRatingMin);
     setOpponentRatingMax(defaultFilters.opponentRatingMax);
@@ -1017,8 +1081,11 @@ export const PlayerProfilePage = ({
     [monthRankPlayerCounts, monthRanks, rankHistoryMode],
   );
   const visibleFavoriteOpponentRows = useMemo(
-    () => favoriteOpponentRows.slice(0, favoriteOpponentDisplayCount),
-    [favoriteOpponentDisplayCount, favoriteOpponentRows],
+    () =>
+      [...favoriteOpponentRows]
+        .sort((left, right) => compareFavoriteOpponentRows(left, right, favoriteOpponentSort))
+        .slice(0, favoriteOpponentDisplayCount),
+    [favoriteOpponentDisplayCount, favoriteOpponentRows, favoriteOpponentSort],
   );
   const favoriteOpponentScopeLabel =
     favoriteOpponentMode === "all"
@@ -2009,6 +2076,26 @@ export const PlayerProfilePage = ({
                         ))}
                       </select>
                     </label>
+                    <label htmlFor="profile-favorite-opponents-sort-select">
+                      <span>Sort</span>
+                      <select
+                        id="profile-favorite-opponents-sort-select"
+                        aria-label="Favorite opponents sort"
+                        value={favoriteOpponentSort}
+                        onChange={(event) => {
+                          const v = event.target.value;
+                          if ((favoriteOpponentSortOptions as readonly string[]).includes(v)) {
+                            setFavoriteOpponentSort(v as FavoriteOpponentSort);
+                          }
+                        }}
+                      >
+                        {favoriteOpponentSortOptions.map((sort) => (
+                          <option key={sort} value={sort}>
+                            {favoriteOpponentSortLabels[sort]}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                   </div>
                 </div>
 
@@ -2022,6 +2109,7 @@ export const PlayerProfilePage = ({
                       <tr>
                         <th>Opponent</th>
                         <th>Matches</th>
+                        <th>Games</th>
                         <th>H2H Score</th>
                         <th>Most Recent</th>
                         <th>Most Played TC</th>
@@ -2041,6 +2129,7 @@ export const PlayerProfilePage = ({
                             </Link>
                           </td>
                           <td>{row.matchCount.toLocaleString("en-US")}</td>
+                          <td>{row.gameCount.toLocaleString("en-US")}</td>
                           <td>
                             {formatScore(row.playerScore)} - {formatScore(row.opponentScore)}
                           </td>
@@ -2068,14 +2157,14 @@ export const PlayerProfilePage = ({
                       ))}
                       {loadingFavoriteOpponents ? (
                         <tr>
-                          <td colSpan={6} className="emptyRankings">
+                          <td colSpan={7} className="emptyRankings">
                             {`Loading favorite opponents from the last ${favoriteOpponentMatchLimit.toLocaleString("en-US")} ${favoriteOpponentScopeLabel}...`}
                           </td>
                         </tr>
                       ) : null}
                       {!loadingFavoriteOpponents && favoriteOpponentRows.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="emptyRankings">
+                          <td colSpan={7} className="emptyRankings">
                             {`No favorite opponents found in the last ${favoriteOpponentMatchLimit.toLocaleString("en-US")} ${favoriteOpponentScopeLabel}.`}
                           </td>
                         </tr>
