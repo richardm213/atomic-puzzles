@@ -247,7 +247,7 @@ export const HomePage = () => {
           <Link
             className="homeSpotlightCard homeTrophyShortcut"
             to="/tournaments/$tournamentId"
-            params={{ tournamentId: "awc2026" }}
+            params={{ tournamentId: "ccac2026" }}
           >
             <span>Championship</span>
             <h2>Chess.com Atomic 2026</h2>

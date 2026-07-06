@@ -4,11 +4,13 @@ import { fetchAllSupabaseRows } from "../supabase/supabaseRows";
 
 export type TournamentMeta = {
   id: string;
+  dataId?: string;
   title: string;
   headingTitle?: string;
   year: number;
   status: "available" | "pending";
   hideStartRoundControls?: boolean;
+  trophyAssetPath?: string;
 };
 
 export type TournamentMatch = {
@@ -78,12 +80,14 @@ type CsvRow = Record<string, string>;
 
 const tournaments: TournamentMeta[] = [
   {
-    id: "awc2026",
+    id: "ccac2026",
+    dataId: "awc2026",
     title: "CCAC 2026",
     headingTitle: "Chess.com Atomic Championship 2026",
     year: 2026,
     status: "available",
     hideStartRoundControls: true,
+    trophyAssetPath: "/images/awc-trophies/chesscomatomic.png",
   },
   { id: "awc2025", title: "AWC 2025", year: 2025, status: "available" },
   { id: "awc2024", title: "AWC 2024", year: 2024, status: "available" },
@@ -463,10 +467,12 @@ export const getTournamentBracket = async (
     const meta = getTournamentMeta(tournamentId);
     if (!meta) return null;
 
+    const dataTournamentId = meta.dataId ?? meta.id;
+
     const [rawMatches, countryMap, seedMap] = await Promise.all([
-      fetchTournamentMatchRows(tournamentId),
+      fetchTournamentMatchRows(dataTournamentId),
       fetchPlayerCountryMap(),
-      fetchTournamentSeedMap(tournamentId),
+      fetchTournamentSeedMap(dataTournamentId),
     ]);
 
     const matches = addImplicitByeMatches(rawMatches).sort(

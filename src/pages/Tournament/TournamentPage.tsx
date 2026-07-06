@@ -14,6 +14,8 @@ import {
   type TournamentBracketStage,
   type TournamentMatch,
 } from "../../lib/matches/tournaments";
+import { appAssetPath } from "../../utils/appAssetPath";
+import { buildExternalGameUrl } from "../../utils/matchRoutes";
 import { normalizeUsername } from "../../utils/playerNames";
 
 type StageKey = string;
@@ -238,7 +240,10 @@ const isExternalMatchUrl = (value: string): boolean =>
 const getMatchHref = (matchId: string): string => {
   const normalized = String(matchId || "").trim();
   if (!normalized) return "";
-  return isExternalMatchUrl(normalized) ? normalized : `/matches/blitz/${normalized}`;
+  if (isExternalMatchUrl(normalized)) return normalized;
+
+  const externalGameUrl = buildExternalGameUrl(normalized);
+  return externalGameUrl.includes("chess.com") ? externalGameUrl : `/matches/blitz/${normalized}`;
 };
 
 const getBracketDisplayName = (playerName: string): string => {
@@ -876,6 +881,18 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
           <span className="tournamentPageEyebrow">Interactive bracket</span>
           <h1>{heading}</h1>
         </div>
+        {bracket.trophyAssetPath ? (
+          <img
+            className="tournamentPageTrophy"
+            src={appAssetPath(bracket.trophyAssetPath)}
+            alt=""
+            width="152"
+            height="152"
+            loading="eager"
+            decoding="async"
+            aria-hidden="true"
+          />
+        ) : null}
       </section>
 
       <div className="tournamentStageToggle" role="tablist" aria-label="Bracket type">

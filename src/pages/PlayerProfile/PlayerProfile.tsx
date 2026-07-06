@@ -263,7 +263,7 @@ const championshipTrophiesByUsername: Record<string, ProfileTrophy[]> = {
       label: "Chess.com",
       title: "2025 Chess.com Atomic Champion",
       imageSrc: championshipTrophyAssets.chesscomAtomic,
-      href: "https://www.chess.com",
+      href: appAssetPath("/tournaments/awc2025"),
       dateLabel: "Mar 2025",
       dateValue: "2025-03-01",
       placementLabel: "Champion",
@@ -276,7 +276,7 @@ const championshipTrophiesByUsername: Record<string, ProfileTrophy[]> = {
       label: "Chess.com",
       title: "2026 Chess.com Atomic Champion",
       imageSrc: championshipTrophyAssets.chesscomAtomic,
-      href: "https://www.chess.com",
+      href: appAssetPath("/tournaments/ccac2026"),
       dateLabel: "Mar 2026",
       dateValue: "2026-03-01",
       placementLabel: "Champion",
@@ -403,7 +403,6 @@ const rankingTrophyLevels = [
 
 const getRankingTrophies = (
   monthRanks: import("../../hooks/usePlayerProfileData").MonthRank[],
-  username: string,
 ): ProfileTrophy[] =>
   monthRanks.flatMap((monthRank) => {
     const level = rankingTrophyLevels.find(({ maxRank }) => monthRank.rank <= maxRank);
@@ -416,7 +415,7 @@ const getRankingTrophies = (
         label: modeLabel,
         title: `${modeLabel} ${level.suffix}`,
         imageSrc: level.imageSrc,
-        href: lichessProfileUrl(username),
+        href: buildRankingsLocation(monthRank.monthLabel, monthRank.mode),
         dateLabel: monthRank.monthLabel,
         dateValue: monthRank.monthValue,
         placementLabel: level.placementLabel,
@@ -1092,8 +1091,8 @@ export const PlayerProfilePage = ({
     [latestMonthKeyByMode, ratingDisplayByMode],
   );
   const rankingTrophies = useMemo(
-    () => getRankingTrophies(monthRanks, canonicalUsername),
-    [canonicalUsername, monthRanks],
+    () => getRankingTrophies(monthRanks),
+    [monthRanks],
   );
   const championshipTrophies = useMemo(
     () => getChampionshipTrophies(canonicalUsername),

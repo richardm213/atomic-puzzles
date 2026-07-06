@@ -95,6 +95,9 @@ describe("buildExternalGameUrl", () => {
     expect(buildExternalGameUrl("123456789")).toBe(
       "https://www.chess.com/variants/atomic/game/123456789",
     );
+    expect(buildExternalGameUrl("1234")).toBe(
+      "https://www.chess.com/variants/atomic/game/1234",
+    );
   });
 
   it("keeps Lichess orientation and ply for Lichess sources", () => {
