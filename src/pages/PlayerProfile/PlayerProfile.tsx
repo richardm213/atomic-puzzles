@@ -111,6 +111,7 @@ const favoriteOpponentScoreConfidenceZ = 1.281551565545;
 const favoriteOpponentPerformanceScoreRateMin = 0.01;
 const favoriteOpponentPerformanceScoreRateMax = 0.99;
 const favoriteOpponentPerformanceConfidenceScale = 400;
+const favoriteOpponentMaxCountedRatingChangeRd = 75;
 
 type ProfileFilters = {
   opponentRatingMin: number;
@@ -491,6 +492,11 @@ const getMatchPerformanceScore = ({
   return opponentRating + performanceDelta;
 };
 
+const shouldCountFavoriteOpponentRatingChange = (match: FavoriteOpponentMatch): boolean =>
+  Number.isFinite(match.ratingChange) &&
+  Number.isFinite(match.beforeRd) &&
+  match.beforeRd < favoriteOpponentMaxCountedRatingChangeRd;
+
 const getFavoriteOpponentPerformanceSortScore = (
   performanceScore: number | null,
   performanceGameCount: number,
@@ -566,7 +572,7 @@ const getFavoriteOpponentRows = (matches: FavoriteOpponentMatch[]): FavoriteOppo
     existing.playerScore += match.playerScore;
     existing.opponentScore += match.opponentScore;
     existing.gameCount += matchGameCount;
-    if (Number.isFinite(match.ratingChange)) {
+    if (shouldCountFavoriteOpponentRatingChange(match)) {
       existing.ratingChange += match.ratingChange;
       existing.ratedMatchCount += 1;
     }
