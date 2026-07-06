@@ -58,8 +58,10 @@ import { isToggleActionKey } from "../../utils/toggleActionKey";
 
 const countOptions = [5, 10, 20];
 type RankHistoryMode = import("../../constants/matches").Mode | "all";
-const profileHistoryTabOptions = ["matches", "ranks", "opponents"] as const;
+const profileHistoryTabOptions = ["matches", "ranks", "trophies", "opponents"] as const;
 type ProfileHistoryTab = (typeof profileHistoryTabOptions)[number];
+type TrophyCaseSort = "prestige" | "date";
+const trophyCaseSortStorageKey = "atomic-puzzles:profile-trophy-case-sort";
 const rankHistoryModeOptions: RankHistoryMode[] = ["all", ...modeOptions];
 const favoriteOpponentModeOptions: RankHistoryMode[] = ["all", ...modeOptions];
 const favoriteOpponentDefaultMatchLimit = 500;
@@ -98,6 +100,10 @@ type ProfileTrophy = {
   title: string;
   imageSrc: string;
   href: string;
+  dateLabel: string;
+  dateValue: string;
+  placementLabel: string;
+  prestige: number;
 };
 
 const lichessProfileUrl = (username: string): string =>
@@ -119,6 +125,30 @@ const getProfileHistoryTabFromSearch = (search: string): ProfileHistoryTab => {
 const getProfileHistoryTabFromLocation = (): ProfileHistoryTab => {
   if (typeof window === "undefined") return "matches";
   return getProfileHistoryTabFromSearch(window.location.search);
+};
+
+const isTrophyCaseSort = (value: string): value is TrophyCaseSort =>
+  value === "prestige" || value === "date";
+
+const getStoredTrophyCaseSort = (): TrophyCaseSort => {
+  if (typeof window === "undefined") return "date";
+
+  try {
+    const storedSort = window.localStorage.getItem(trophyCaseSortStorageKey) ?? "";
+    return isTrophyCaseSort(storedSort) ? storedSort : "date";
+  } catch {
+    return "date";
+  }
+};
+
+const setStoredTrophyCaseSort = (sort: TrophyCaseSort): void => {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.setItem(trophyCaseSortStorageKey, sort);
+  } catch {
+    // Ignore storage failures; the in-memory choice still applies.
+  }
 };
 
 const openingToneClasses: Record<string, string> = {
@@ -159,7 +189,6 @@ const rankingTrophyAssets = {
   top1: appAssetPath("/images/lichess-trophies/gold-cup-2.png"),
   secondPlace: appAssetPath("/images/lichess-trophies/red-cup-2.png"),
   top10: appAssetPath("/images/lichess-trophies/silver-cup-2.png"),
-  top30: appAssetPath("/images/lichess-trophies/gold-cup-2-blue.png"),
 };
 
 const championshipTrophyAssets = {
@@ -175,6 +204,10 @@ const championshipTrophiesByUsername: Record<string, ProfileTrophy[]> = {
       title: "Atomic World Champion 2021",
       imageSrc: championshipTrophyAssets.awc,
       href: appAssetPath("/tournaments/awc2021"),
+      dateLabel: "Dec 2021",
+      dateValue: "2021-12-01",
+      placementLabel: "Champion",
+      prestige: 1000,
     },
   ],
   natso: [
@@ -184,6 +217,10 @@ const championshipTrophiesByUsername: Record<string, ProfileTrophy[]> = {
       title: "Atomic World Champion 2024",
       imageSrc: championshipTrophyAssets.awc,
       href: appAssetPath("/tournaments/awc2024"),
+      dateLabel: "Dec 2024",
+      dateValue: "2024-12-01",
+      placementLabel: "Champion",
+      prestige: 1000,
     },
   ],
   sutcunuri: [
@@ -193,6 +230,10 @@ const championshipTrophiesByUsername: Record<string, ProfileTrophy[]> = {
       title: "Atomic World Champion 2022",
       imageSrc: championshipTrophyAssets.awc,
       href: appAssetPath("/tournaments/awc2022"),
+      dateLabel: "Dec 2022",
+      dateValue: "2022-12-01",
+      placementLabel: "Champion",
+      prestige: 1000,
     },
   ],
   vlad_00: [
@@ -202,6 +243,10 @@ const championshipTrophiesByUsername: Record<string, ProfileTrophy[]> = {
       title: "Atomic World Champion 2023",
       imageSrc: championshipTrophyAssets.awc,
       href: appAssetPath("/tournaments/awc2023"),
+      dateLabel: "Dec 2023",
+      dateValue: "2023-12-01",
+      placementLabel: "Champion",
+      prestige: 1000,
     },
   ],
   jakestatefarm: [
@@ -211,6 +256,10 @@ const championshipTrophiesByUsername: Record<string, ProfileTrophy[]> = {
       title: "2025 Chess.com Atomic Champion",
       imageSrc: championshipTrophyAssets.chesscomAtomic,
       href: "https://www.chess.com",
+      dateLabel: "Mar 2025",
+      dateValue: "2025-03-01",
+      placementLabel: "Champion",
+      prestige: 980,
     },
   ],
   wolfram_ep: [
@@ -220,6 +269,10 @@ const championshipTrophiesByUsername: Record<string, ProfileTrophy[]> = {
       title: "2026 Chess.com Atomic Champion",
       imageSrc: championshipTrophyAssets.chesscomAtomic,
       href: "https://www.chess.com",
+      dateLabel: "Mar 2026",
+      dateValue: "2026-03-01",
+      placementLabel: "Champion",
+      prestige: 980,
     },
   ],
 };
@@ -319,48 +372,70 @@ const rankingTrophyLevels = [
     key: "top1",
     imageSrc: rankingTrophyAssets.top1,
     suffix: "Atomic Top 1",
+    placementLabel: "#1",
+    prestige: 900,
   },
   {
     maxRank: 2,
     key: "top2",
     imageSrc: rankingTrophyAssets.secondPlace,
     suffix: "Atomic Top 2",
+    placementLabel: "#2",
+    prestige: 800,
   },
-  { maxRank: 10, key: "top10", imageSrc: rankingTrophyAssets.top10, suffix: "Atomic Top 10" },
-  { maxRank: 30, key: "top30", imageSrc: rankingTrophyAssets.top30, suffix: "Atomic Top 30" },
+  {
+    maxRank: 10,
+    key: "top10",
+    imageSrc: rankingTrophyAssets.top10,
+    suffix: "Atomic Top 10",
+    placementLabel: "Top 10",
+    prestige: 700,
+  },
 ];
 
 const getRankingTrophies = (
   monthRanks: import("../../hooks/usePlayerProfileData").MonthRank[],
-  currentMonthKey: string,
-  ratingDisplayByMode: import("../../hooks/usePlayerProfileData").RatingDisplayByMode,
   username: string,
 ): ProfileTrophy[] =>
-  modeOptions.flatMap((mode) => {
-    const currentRank = Number(ratingDisplayByMode?.[mode]?.rank);
-    if (!(currentRank > 0)) return [];
-
-    const bestRank = monthRanks
-      .filter((r) => r.monthKey === currentMonthKey && r.mode === mode)
-      .reduce((lowest, r) => Math.min(lowest, r.rank), Number.POSITIVE_INFINITY);
-
-    const level = rankingTrophyLevels.find(({ maxRank }) => bestRank <= maxRank);
+  monthRanks.flatMap((monthRank) => {
+    const level = rankingTrophyLevels.find(({ maxRank }) => monthRank.rank <= maxRank);
     if (!level) return [];
 
-    const modeLabel = modeLabels[mode] ?? mode;
+    const modeLabel = modeLabels[monthRank.mode] ?? monthRank.mode;
     return [
       {
-        key: `${mode}-${level.key}`,
+        key: `${monthRank.mode}-${monthRank.monthValue}-${level.key}`,
         label: modeLabel,
-        title: `${modeLabel} ${level.suffix}`,
+        title: `${modeLabel} ${level.suffix} · ${monthRank.monthLabel}`,
         imageSrc: level.imageSrc,
         href: lichessProfileUrl(username),
+        dateLabel: monthRank.monthLabel,
+        dateValue: monthRank.monthValue,
+        placementLabel: level.placementLabel,
+        prestige: level.prestige,
       },
     ];
   });
 
 const getChampionshipTrophies = (username: string): ProfileTrophy[] =>
   championshipTrophiesByUsername[normalizeUsername(username)] ?? [];
+
+const sortProfileTrophies = (trophies: ProfileTrophy[], sort: TrophyCaseSort): ProfileTrophy[] =>
+  [...trophies].sort((left, right) => {
+    if (sort === "prestige") {
+      const prestigeDifference = right.prestige - left.prestige;
+      if (prestigeDifference !== 0) return prestigeDifference;
+    }
+
+    const dateDifference =
+      new Date(`${right.dateValue}T00:00:00Z`).getTime() -
+      new Date(`${left.dateValue}T00:00:00Z`).getTime();
+    if (dateDifference !== 0) return dateDifference;
+    return left.title.localeCompare(right.title);
+  });
+
+const getTrophyHoverLabel = (trophy: ProfileTrophy): string =>
+  `${trophy.title} · ${trophy.dateLabel}`;
 
 const ProfileTrophyLink = ({ trophy }: { trophy: ProfileTrophy }) =>
   isExternalHref(trophy.href) ? (
@@ -376,16 +451,47 @@ const ProfileTrophyLink = ({ trophy }: { trophy: ProfileTrophy }) =>
       <span className="profileTrophyLabel">{trophy.label}</span>
     </a>
   ) : (
-    <Link
-      className="profileTrophy"
-      title={trophy.title}
-      aria-label={trophy.title}
-      to={trophy.href}
-    >
+    <Link className="profileTrophy" title={trophy.title} aria-label={trophy.title} to={trophy.href}>
       <img src={trophy.imageSrc} alt="" aria-hidden="true" />
       <span className="profileTrophyLabel">{trophy.label}</span>
     </Link>
   );
+
+const ProfileTrophyCaseCard = ({ trophy }: { trophy: ProfileTrophy }) => {
+  const content = (
+    <>
+      <img src={trophy.imageSrc} alt="" aria-hidden="true" />
+      <span className="profileTrophyCaseDetails">
+        <strong>{trophy.title}</strong>
+        <span>
+          {trophy.placementLabel} · {trophy.dateLabel}
+        </span>
+      </span>
+    </>
+  );
+
+  return isExternalHref(trophy.href) ? (
+    <a
+      className="profileTrophyCaseCard"
+      title={getTrophyHoverLabel(trophy)}
+      aria-label={getTrophyHoverLabel(trophy)}
+      href={trophy.href}
+      target="_blank"
+      rel="noreferrer"
+    >
+      {content}
+    </a>
+  ) : (
+    <Link
+      className="profileTrophyCaseCard"
+      title={getTrophyHoverLabel(trophy)}
+      aria-label={getTrophyHoverLabel(trophy)}
+      to={trophy.href}
+    >
+      {content}
+    </Link>
+  );
+};
 
 const LichessProfileIcon = () => (
   <svg viewBox="0 0 50 50" aria-hidden="true" focusable="false">
@@ -453,6 +559,7 @@ export const PlayerProfilePage = ({
   const [bestRankMode, setBestRankMode] =
     useState<import("../../constants/matches").Mode>(defaultMode);
   const [rankHistoryMode, setRankHistoryMode] = useState<RankHistoryMode>("all");
+  const [trophyCaseSort, setTrophyCaseSort] = useState<TrophyCaseSort>(getStoredTrophyCaseSort);
   const [profileHistoryTab, setProfileHistoryTab] = useState<ProfileHistoryTab>(() =>
     getProfileHistoryTabFromLocation(),
   );
@@ -928,20 +1035,35 @@ export const PlayerProfilePage = ({
       ),
     [latestMonthKeyByMode, ratingDisplayByMode],
   );
-  const currentMonthKey = getCurrentMonthKey();
   const rankingTrophies = useMemo(
-    () => getRankingTrophies(monthRanks, currentMonthKey, ratingDisplayByMode, canonicalUsername),
-    [canonicalUsername, currentMonthKey, monthRanks, ratingDisplayByMode],
+    () => getRankingTrophies(monthRanks, canonicalUsername),
+    [canonicalUsername, monthRanks],
   );
   const championshipTrophies = useMemo(
     () => getChampionshipTrophies(canonicalUsername),
     [canonicalUsername],
   );
   const profileTrophies = useMemo(
-    () => [...championshipTrophies, ...rankingTrophies],
+    () => sortProfileTrophies([...championshipTrophies, ...rankingTrophies], "prestige"),
     [championshipTrophies, rankingTrophies],
   );
-  const hasProfileTrophies = profileTrophies.length > 0;
+  const trophyCaseTrophies = useMemo(
+    () => sortProfileTrophies(profileTrophies, trophyCaseSort),
+    [profileTrophies, trophyCaseSort],
+  );
+  const currentMonthKey = getCurrentMonthKey();
+  const visibleProfileTrophies = useMemo(
+    () =>
+      sortProfileTrophies(
+        [
+          ...championshipTrophies,
+          ...rankingTrophies.filter((trophy) => trophy.dateLabel === currentMonthKey),
+        ],
+        "prestige",
+      ).slice(0, 3),
+    [championshipTrophies, currentMonthKey, rankingTrophies],
+  );
+  const hasVisibleProfileTrophies = visibleProfileTrophies.length > 0;
 
   const toggleMatchKey = (key: string): void => {
     setExpandedMatchKeys((current) =>
@@ -979,7 +1101,7 @@ export const PlayerProfilePage = ({
           </div>
         ) : (
           <div
-            className={`profileIdentityRow${!isBanned && hasProfileTrophies ? "" : " noTrophies"}`}
+            className={`profileIdentityRow${!isBanned && hasVisibleProfileTrophies ? "" : " noTrophies"}`}
           >
             <div className="profileIdentityTitle">
               <h1>{canonicalUsername}</h1>
@@ -996,9 +1118,9 @@ export const PlayerProfilePage = ({
                 </div>
               ) : null}
             </div>
-            {!isBanned && profileTrophies.length ? (
+            {!isBanned && visibleProfileTrophies.length ? (
               <div className="profileTrophyRow" aria-label="Atomic trophies">
-                {profileTrophies.map((trophy) => (
+                {visibleProfileTrophies.map((trophy) => (
                   <ProfileTrophyLink key={trophy.key} trophy={trophy} />
                 ))}
               </div>
@@ -1334,6 +1456,17 @@ export const PlayerProfilePage = ({
                   onClick={() => handleProfileHistoryTabChange("ranks")}
                 >
                   Rank History
+                </button>
+                <button
+                  id="profile-trophy-case-tab"
+                  type="button"
+                  role="tab"
+                  aria-selected={profileHistoryTab === "trophies"}
+                  aria-controls="profile-trophy-case-panel"
+                  className={profileHistoryTab === "trophies" ? "active" : ""}
+                  onClick={() => handleProfileHistoryTabChange("trophies")}
+                >
+                  Trophy Case
                 </button>
                 <button
                   id="profile-favorite-opponents-tab"
@@ -1701,6 +1834,50 @@ export const PlayerProfilePage = ({
                     </tbody>
                   </table>
                 </div>
+              </section>
+
+              <section
+                id="profile-trophy-case-panel"
+                className="profileHistorySection"
+                role="tabpanel"
+                aria-labelledby="profile-trophy-case-tab"
+                hidden={profileHistoryTab !== "trophies"}
+              >
+                <div className="rankingsMeta profileHistoryMeta">
+                  <div className="profileHistoryTitleControl">
+                    <label htmlFor="profile-trophy-case-sort-select">
+                      <span>Sort</span>
+                      <select
+                        id="profile-trophy-case-sort-select"
+                        aria-label="Trophy case sort"
+                        value={trophyCaseSort}
+                        onChange={(event) => {
+                          const nextSort = event.target.value;
+                          if (isTrophyCaseSort(nextSort)) {
+                            setTrophyCaseSort(nextSort);
+                            setStoredTrophyCaseSort(nextSort);
+                          }
+                        }}
+                      >
+                        <option value="prestige">Prestige</option>
+                        <option value="date">Date</option>
+                      </select>
+                    </label>
+                  </div>
+                  <span>{trophyCaseTrophies.length} trophies</span>
+                </div>
+
+                {trophyCaseTrophies.length ? (
+                  <div className="profileTrophyCaseGrid" aria-label="Trophy case">
+                    {trophyCaseTrophies.map((trophy) => (
+                      <ProfileTrophyCaseCard key={`case-${trophy.key}`} trophy={trophy} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="emptyRankings">
+                    No top 10, AWC, or Chess.com championship trophies yet.
+                  </div>
+                )}
               </section>
 
               <section
