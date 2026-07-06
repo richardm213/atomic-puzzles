@@ -238,7 +238,7 @@ export const HomePage = () => {
             <h2>AWC 2025</h2>
             <p>Bracket and match paths from last year's championship.</p>
             <img
-              src={appAssetPath("/images/awc-trophies/atomicwc25.png")}
+              src={appAssetPath("/images/awc-trophies/awc.png")}
               alt=""
               width="140"
               height="140"

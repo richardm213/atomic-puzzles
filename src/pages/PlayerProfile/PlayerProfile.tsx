@@ -92,6 +92,14 @@ type FavoriteOpponentRow = {
   favoriteTimeControlCount: number;
 };
 
+type ProfileTrophy = {
+  key: string;
+  label: string;
+  title: string;
+  imageSrc: string;
+  href: string;
+};
+
 const lichessProfileUrl = (username: string): string =>
   `https://lichess.org/@/${encodeURIComponent(String(username || "").trim())}`;
 
@@ -147,27 +155,25 @@ const getOpeningToneClass = (opening: string): string =>
       .toLowerCase()
   ] ?? "openingToneDefault";
 
-const profileTrophyAssets = {
-  champion: appAssetPath("/images/lichess-trophies/gold-cup-2.png"),
+const rankingTrophyAssets = {
+  top1: appAssetPath("/images/lichess-trophies/gold-cup-2.png"),
   secondPlace: appAssetPath("/images/lichess-trophies/red-cup-2.png"),
   top10: appAssetPath("/images/lichess-trophies/silver-cup-2.png"),
   top30: appAssetPath("/images/lichess-trophies/gold-cup-2-blue.png"),
 };
 
-const awcTrophyAssets = {
-  awc2021: appAssetPath("/images/awc-trophies/atomicwc21.png"),
-  awc2022: appAssetPath("/images/awc-trophies/atomicwc22.png"),
-  awc2023: appAssetPath("/images/awc-trophies/atomicwc23.png"),
-  awc2024: appAssetPath("/images/awc-trophies/atomicwc24.png"),
+const championshipTrophyAssets = {
+  awc: appAssetPath("/images/awc-trophies/awc.png"),
+  chesscomAtomic: appAssetPath("/images/awc-trophies/chesscomatomic.png"),
 };
 
-const awcChampionTrophiesByUsername = {
+const championshipTrophiesByUsername: Record<string, ProfileTrophy[]> = {
   "fast-tsunami": [
     {
       key: "awc-2021",
       label: "AWC 2021",
       title: "Atomic World Champion 2021",
-      imageSrc: awcTrophyAssets.awc2021,
+      imageSrc: championshipTrophyAssets.awc,
       href: appAssetPath("/tournaments/awc2021"),
     },
   ],
@@ -176,7 +182,7 @@ const awcChampionTrophiesByUsername = {
       key: "awc-2024",
       label: "AWC 2024",
       title: "Atomic World Champion 2024",
-      imageSrc: awcTrophyAssets.awc2024,
+      imageSrc: championshipTrophyAssets.awc,
       href: appAssetPath("/tournaments/awc2024"),
     },
   ],
@@ -185,7 +191,7 @@ const awcChampionTrophiesByUsername = {
       key: "awc-2022",
       label: "AWC 2022",
       title: "Atomic World Champion 2022",
-      imageSrc: awcTrophyAssets.awc2022,
+      imageSrc: championshipTrophyAssets.awc,
       href: appAssetPath("/tournaments/awc2022"),
     },
   ],
@@ -194,8 +200,26 @@ const awcChampionTrophiesByUsername = {
       key: "awc-2023",
       label: "AWC 2023",
       title: "Atomic World Champion 2023",
-      imageSrc: awcTrophyAssets.awc2023,
+      imageSrc: championshipTrophyAssets.awc,
       href: appAssetPath("/tournaments/awc2023"),
+    },
+  ],
+  jakestatefarm: [
+    {
+      key: "chesscom-atomic-2025",
+      label: "Chess.com",
+      title: "2025 Chess.com Atomic Champion",
+      imageSrc: championshipTrophyAssets.chesscomAtomic,
+      href: "https://www.chess.com",
+    },
+  ],
+  wolfram_ep: [
+    {
+      key: "chesscom-atomic-2026",
+      label: "Chess.com",
+      title: "2026 Chess.com Atomic Champion",
+      imageSrc: championshipTrophyAssets.chesscomAtomic,
+      href: "https://www.chess.com",
     },
   ],
 };
@@ -289,36 +313,29 @@ const getFavoriteOpponentRows = (matches: FavoriteOpponentMatch[]): FavoriteOppo
     });
 };
 
-const trophyLevels = [
+const rankingTrophyLevels = [
   {
     maxRank: 1,
-    key: "champion",
-    imageSrc: profileTrophyAssets.champion,
-    suffix: "Atomic Champion",
+    key: "top1",
+    imageSrc: rankingTrophyAssets.top1,
+    suffix: "Atomic Top 1",
   },
   {
     maxRank: 2,
     key: "top2",
-    imageSrc: profileTrophyAssets.secondPlace,
+    imageSrc: rankingTrophyAssets.secondPlace,
     suffix: "Atomic Top 2",
   },
-  { maxRank: 10, key: "top10", imageSrc: profileTrophyAssets.top10, suffix: "Atomic Top 10" },
-  { maxRank: 30, key: "top30", imageSrc: profileTrophyAssets.top30, suffix: "Atomic Top 30" },
+  { maxRank: 10, key: "top10", imageSrc: rankingTrophyAssets.top10, suffix: "Atomic Top 10" },
+  { maxRank: 30, key: "top30", imageSrc: rankingTrophyAssets.top30, suffix: "Atomic Top 30" },
 ];
 
-const getProfileTrophies = (
+const getRankingTrophies = (
   monthRanks: import("../../hooks/usePlayerProfileData").MonthRank[],
   currentMonthKey: string,
   ratingDisplayByMode: import("../../hooks/usePlayerProfileData").RatingDisplayByMode,
   username: string,
-): Array<{
-  key: string;
-  mode: import("../../constants/matches").Mode;
-  label: string;
-  title: string;
-  imageSrc: string;
-  href: string;
-}> =>
+): ProfileTrophy[] =>
   modeOptions.flatMap((mode) => {
     const currentRank = Number(ratingDisplayByMode?.[mode]?.rank);
     if (!(currentRank > 0)) return [];
@@ -327,14 +344,13 @@ const getProfileTrophies = (
       .filter((r) => r.monthKey === currentMonthKey && r.mode === mode)
       .reduce((lowest, r) => Math.min(lowest, r.rank), Number.POSITIVE_INFINITY);
 
-    const level = trophyLevels.find(({ maxRank }) => bestRank <= maxRank);
+    const level = rankingTrophyLevels.find(({ maxRank }) => bestRank <= maxRank);
     if (!level) return [];
 
     const modeLabel = modeLabels[mode] ?? mode;
     return [
       {
         key: `${mode}-${level.key}`,
-        mode,
         label: modeLabel,
         title: `${modeLabel} ${level.suffix}`,
         imageSrc: level.imageSrc,
@@ -343,10 +359,33 @@ const getProfileTrophies = (
     ];
   });
 
-const getProfileAwcTrophies = (username: string) =>
-  awcChampionTrophiesByUsername[
-    normalizeUsername(username) as keyof typeof awcChampionTrophiesByUsername
-  ] ?? [];
+const getChampionshipTrophies = (username: string): ProfileTrophy[] =>
+  championshipTrophiesByUsername[normalizeUsername(username)] ?? [];
+
+const ProfileTrophyLink = ({ trophy }: { trophy: ProfileTrophy }) =>
+  isExternalHref(trophy.href) ? (
+    <a
+      className="profileTrophy"
+      title={trophy.title}
+      aria-label={trophy.title}
+      href={trophy.href}
+      target="_blank"
+      rel="noreferrer"
+    >
+      <img src={trophy.imageSrc} alt="" aria-hidden="true" />
+      <span className="profileTrophyLabel">{trophy.label}</span>
+    </a>
+  ) : (
+    <Link
+      className="profileTrophy"
+      title={trophy.title}
+      aria-label={trophy.title}
+      to={trophy.href}
+    >
+      <img src={trophy.imageSrc} alt="" aria-hidden="true" />
+      <span className="profileTrophyLabel">{trophy.label}</span>
+    </Link>
+  );
 
 const LichessProfileIcon = () => (
   <svg viewBox="0 0 50 50" aria-hidden="true" focusable="false">
@@ -890,13 +929,19 @@ export const PlayerProfilePage = ({
     [latestMonthKeyByMode, ratingDisplayByMode],
   );
   const currentMonthKey = getCurrentMonthKey();
-  const profileTrophies = useMemo(
-    () => [
-      ...getProfileTrophies(monthRanks, currentMonthKey, ratingDisplayByMode, canonicalUsername),
-      ...getProfileAwcTrophies(canonicalUsername),
-    ],
+  const rankingTrophies = useMemo(
+    () => getRankingTrophies(monthRanks, currentMonthKey, ratingDisplayByMode, canonicalUsername),
     [canonicalUsername, currentMonthKey, monthRanks, ratingDisplayByMode],
   );
+  const championshipTrophies = useMemo(
+    () => getChampionshipTrophies(canonicalUsername),
+    [canonicalUsername],
+  );
+  const profileTrophies = useMemo(
+    () => [...championshipTrophies, ...rankingTrophies],
+    [championshipTrophies, rankingTrophies],
+  );
+  const hasProfileTrophies = profileTrophies.length > 0;
 
   const toggleMatchKey = (key: string): void => {
     setExpandedMatchKeys((current) =>
@@ -934,7 +979,7 @@ export const PlayerProfilePage = ({
           </div>
         ) : (
           <div
-            className={`profileIdentityRow${!isBanned && profileTrophies.length ? "" : " noTrophies"}`}
+            className={`profileIdentityRow${!isBanned && hasProfileTrophies ? "" : " noTrophies"}`}
           >
             <div className="profileIdentityTitle">
               <h1>{canonicalUsername}</h1>
@@ -952,34 +997,10 @@ export const PlayerProfilePage = ({
               ) : null}
             </div>
             {!isBanned && profileTrophies.length ? (
-              <div className="profileTrophyRow" aria-label="Atomic ranking trophies">
-                {profileTrophies.map((trophy) =>
-                  isExternalHref(trophy.href) ? (
-                    <a
-                      key={trophy.key}
-                      className="profileTrophy"
-                      title={trophy.title}
-                      aria-label={trophy.title}
-                      href={trophy.href}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      <img src={trophy.imageSrc} alt="" aria-hidden="true" />
-                      <span className="profileTrophyLabel">{trophy.label}</span>
-                    </a>
-                  ) : (
-                    <Link
-                      key={trophy.key}
-                      className="profileTrophy"
-                      title={trophy.title}
-                      aria-label={trophy.title}
-                      to={trophy.href}
-                    >
-                      <img src={trophy.imageSrc} alt="" aria-hidden="true" />
-                      <span className="profileTrophyLabel">{trophy.label}</span>
-                    </Link>
-                  ),
-                )}
+              <div className="profileTrophyRow" aria-label="Atomic trophies">
+                {profileTrophies.map((trophy) => (
+                  <ProfileTrophyLink key={trophy.key} trophy={trophy} />
+                ))}
               </div>
             ) : null}
           </div>
