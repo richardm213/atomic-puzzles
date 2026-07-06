@@ -15,7 +15,6 @@ import {
   type TournamentMatch,
 } from "../../lib/matches/tournaments";
 import { appAssetPath } from "../../utils/appAssetPath";
-import { buildExternalGameUrl } from "../../utils/matchRoutes";
 import { normalizeUsername } from "../../utils/playerNames";
 
 type StageKey = string;
@@ -36,26 +35,29 @@ type PositionedMatch = TournamentMatch & {
 
 type AnchorPoint = { x: number; y: number; anchorY: number };
 
-const roundRangeLabel = (roundName: string): string => `Start at ${roundName}`;
 const hiddenStartRoundsByStage: Record<string, Set<string>> = {
   main: new Set(["Semifinals", "Finals", "Grand Final", "Grand Final Reset"]),
   losers: new Set(["Round 4", "Round 5", "Final"]),
 };
+
+const getStartRoundOptions = (stage: TournamentBracketStage): TournamentBracketStage["rounds"] =>
+  stage.rounds.filter((round) => !hiddenStartRoundsByStage[stage.key]?.has(round.roundName));
+
 const tournamentHeading = (bracket: TournamentBracket): string => {
   if (bracket.headingTitle) return bracket.headingTitle;
   return bracket.title.startsWith("AWC ") ? `Atomic World Championship ${bracket.year}` : bracket.title;
 };
-const CARD_WIDTH = 238;
+const CARD_WIDTH = 260;
 const CARD_HEIGHT = 102;
 const COLUMN_GAP = 78;
 const LEAF_GAP = 30;
 const BOARD_PADDING = 18;
 const HEADER_SPACE = 64;
-const DEFAULT_STAGE_ZOOM = 1;
+const DEFAULT_STAGE_ZOOM = 0.85;
 const MIN_STAGE_ZOOM = 0.55;
 const MAX_STAGE_ZOOM = 1.35;
 const STAGE_ZOOM_STEP = 0.15;
-const TOURNAMENT_VIEW_STORAGE_KEY = "tournament-view:";
+const TOURNAMENT_VIEW_STORAGE_KEY = "tournament-view:v3:";
 
 type SavedTournamentView = {
   startRounds?: Record<string, string>;
@@ -68,8 +70,11 @@ type SavedTournamentView = {
 const buildStartRoundState = (stages: TournamentBracketStage[] = []): Record<string, string> =>
   Object.fromEntries(stages.map((stage) => [stage.key, stage.rounds[0]?.roundName || ""]));
 
-const buildZoomState = (stages: TournamentBracketStage[] = []): Record<string, number> =>
-  Object.fromEntries(stages.map((stage) => [stage.key, DEFAULT_STAGE_ZOOM]));
+const buildZoomState = (
+  stages: TournamentBracketStage[],
+  savedZoomLevels: Record<string, number> = {},
+): Record<string, number> =>
+  Object.fromEntries(stages.map((stage) => [stage.key, savedZoomLevels[stage.key] ?? DEFAULT_STAGE_ZOOM]));
 
 const getStageStartRound = (
   stage: TournamentBracketStage,
@@ -78,6 +83,9 @@ const getStageStartRound = (
 
 const clampZoom = (zoomLevel: unknown): number =>
   Math.min(MAX_STAGE_ZOOM, Math.max(MIN_STAGE_ZOOM, Number(zoomLevel) || DEFAULT_STAGE_ZOOM));
+
+const zoomDisplayPercent = (zoomLevel: number): number =>
+  Math.round((zoomLevel / DEFAULT_STAGE_ZOOM) * 100);
 
 const getTournamentViewStorageKey = (tournamentId: string): string =>
   `${TOURNAMENT_VIEW_STORAGE_KEY}${tournamentId}`;
@@ -240,10 +248,7 @@ const isExternalMatchUrl = (value: string): boolean =>
 const getMatchHref = (matchId: string): string => {
   const normalized = String(matchId || "").trim();
   if (!normalized) return "";
-  if (isExternalMatchUrl(normalized)) return normalized;
-
-  const externalGameUrl = buildExternalGameUrl(normalized);
-  return externalGameUrl.includes("chess.com") ? externalGameUrl : `/matches/blitz/${normalized}`;
+  return isExternalMatchUrl(normalized) ? normalized : `/matches/blitz/${normalized}`;
 };
 
 const getBracketDisplayName = (playerName: string): string => {
@@ -356,7 +361,7 @@ const TournamentMatchCard = ({
       }
     >
       <div className="tournamentMatchPlayers">
-        <div>
+        <div className={`tournamentPlayerRow${matchWinner === match.p1 ? " isWinner" : ""}`}>
           <span>
             <PlayerLabel
               playerName={match.p1}
@@ -369,7 +374,7 @@ const TournamentMatchCard = ({
             {scoreSlotDisplay(match, match.p1)}
           </strong>
         </div>
-        <div>
+        <div className={`tournamentPlayerRow${matchWinner === match.p2 ? " isWinner" : ""}`}>
           <span>
             <PlayerLabel
               playerName={match.p2}
@@ -422,69 +427,58 @@ const TournamentStageSection = ({
   onPointerMove: (event: ReactPointerEvent<HTMLDivElement>) => void;
   onPointerEnd: (event: ReactPointerEvent<HTMLDivElement>) => void;
 }) => {
-  const visibleRoundOptions = stage.rounds.filter(
-    (round) => !hiddenStartRoundsByStage[stage.key]?.has(round.roundName),
-  );
+  const startRoundOptions = getStartRoundOptions(stage);
 
   return (
     <section className="tournamentStageSection" aria-labelledby={`${stage.key}-heading`}>
       <div className="tournamentStageHeader">
         <h2 id={`${stage.key}-heading`}>{stage.label}</h2>
-        <div className="tournamentStageHeaderActions">
-          {stage.key === "main" ? (
-            <div
-              className="tournamentZoomControls"
-              role="group"
-              aria-label={`Zoom controls for ${stage.label}`}
-            >
-              <button
-                type="button"
-                className="tournamentZoomButton"
-                onClick={onZoomOut}
-                aria-label={`Zoom out ${stage.label}`}
-              >
-                -
-              </button>
-              <button
-                type="button"
-                className="tournamentZoomValue"
-                onClick={onZoomReset}
-                aria-label={`Reset zoom for ${stage.label}`}
-              >
-                {Math.round(zoomLevel * 100)}%
-              </button>
-              <button
-                type="button"
-                className="tournamentZoomButton"
-                onClick={onZoomIn}
-                aria-label={`Zoom in ${stage.label}`}
-              >
-                +
-              </button>
-            </div>
-          ) : null}
-          {hideStartRoundControls ? null : (
-            <div
-              className="tournamentStageControls"
-              role="group"
-              aria-label={`Starting round for ${stage.label}`}
-            >
-              {visibleRoundOptions.map((round) => {
-                const isActive = startRoundName === round.roundName;
-                return (
-                  <button
-                    key={`${stage.key}-${round.roundName}-filter`}
-                    type="button"
-                    className={`tournamentRoundFilter${isActive ? " isActive" : ""}`}
-                    onClick={() => onStartRoundChange(round.roundName)}
-                  >
-                    {roundRangeLabel(round.roundName)}
-                  </button>
-                );
-              })}
-            </div>
-          )}
+        <div
+          className="tournamentZoomControls"
+          role="group"
+          aria-label={`Zoom controls for ${stage.label}`}
+        >
+          <button
+            type="button"
+            className="tournamentZoomButton"
+            onClick={onZoomOut}
+            aria-label={`Zoom out ${stage.label}`}
+          >
+            -
+          </button>
+          <button
+            type="button"
+            className="tournamentZoomValue"
+            onClick={onZoomReset}
+            aria-label={`Reset zoom for ${stage.label}`}
+          >
+            {zoomDisplayPercent(zoomLevel)}%
+          </button>
+          <button
+            type="button"
+            className="tournamentZoomButton"
+            onClick={onZoomIn}
+            aria-label={`Zoom in ${stage.label}`}
+          >
+            +
+          </button>
         </div>
+        {!hideStartRoundControls && (
+          <label className="tournamentStageControls" htmlFor={`${stage.key}-start-round`}>
+            <select
+              id={`${stage.key}-start-round`}
+              className="tournamentStartRoundSelect"
+              value={startRoundName}
+              onChange={(event) => onStartRoundChange(event.currentTarget.value)}
+            >
+              {startRoundOptions.map((round) => (
+                <option key={round.roundName} value={round.roundName}>
+                  Start at {round.roundName}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
       <div
         className={`tournamentRoundsScroller${isDragging ? " isDragging" : ""}${stage.key === "main" ? " isMainBracket" : ""}`}
@@ -639,7 +633,6 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
     if (!bracket) return;
 
     const defaultStartRounds = buildStartRoundState(bracket.stages || []);
-    const defaultZoomLevels = buildZoomState(bracket.stages || []);
     const savedView = readSavedTournamentView(bracket.id);
     const availableStageKeys = new Set((bracket.stages || []).map((stage) => stage.key));
     const defaultActiveStageKey = availableStageKeys.has("main")
@@ -648,7 +641,7 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
     const savedActiveStageKey = String(savedView?.activeStageKey || "").trim();
 
     setStartRounds({ ...defaultStartRounds, ...(savedView?.startRounds || {}) });
-    setZoomLevels({ ...defaultZoomLevels, ...(savedView?.zoomLevels || {}) });
+    setZoomLevels(buildZoomState(bracket.stages || [], savedView?.zoomLevels || {}));
     setActiveStageKey(
       savedActiveStageKey && availableStageKeys.has(savedActiveStageKey)
         ? savedActiveStageKey

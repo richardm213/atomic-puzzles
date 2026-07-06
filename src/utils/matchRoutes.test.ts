@@ -91,13 +91,8 @@ describe("buildExternalGameUrl", () => {
     );
   });
 
-  it("returns a Chess.com atomic variant game URL for source-less numeric game ids", () => {
-    expect(buildExternalGameUrl("123456789")).toBe(
-      "https://www.chess.com/variants/atomic/game/123456789",
-    );
-    expect(buildExternalGameUrl("1234")).toBe(
-      "https://www.chess.com/variants/atomic/game/1234",
-    );
+  it("does not infer Chess.com from source-less numeric game ids", () => {
+    expect(buildExternalGameUrl("123456789")).toBe("https://lichess.org/123456789");
   });
 
   it("keeps Lichess orientation and ply for Lichess sources", () => {

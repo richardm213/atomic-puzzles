@@ -78,6 +78,8 @@ const tournamentBracketCache = new Map<string, Promise<TournamentBracket | null>
 
 type CsvRow = Record<string, string>;
 
+const AWC_TROPHY_ASSET_PATH = "/images/awc-trophies/awc.png";
+
 const tournaments: TournamentMeta[] = [
   {
     id: "ccac2026",
@@ -89,11 +91,41 @@ const tournaments: TournamentMeta[] = [
     hideStartRoundControls: true,
     trophyAssetPath: "/images/awc-trophies/chesscomatomic.png",
   },
-  { id: "awc2025", title: "AWC 2025", year: 2025, status: "available" },
-  { id: "awc2024", title: "AWC 2024", year: 2024, status: "available" },
-  { id: "awc2023", title: "AWC 2023", year: 2023, status: "available" },
-  { id: "awc2022", title: "AWC 2022", year: 2022, status: "available" },
-  { id: "awc2021", title: "AWC 2021", year: 2021, status: "available" },
+  {
+    id: "awc2025",
+    title: "AWC 2025",
+    year: 2025,
+    status: "available",
+    trophyAssetPath: AWC_TROPHY_ASSET_PATH,
+  },
+  {
+    id: "awc2024",
+    title: "AWC 2024",
+    year: 2024,
+    status: "available",
+    trophyAssetPath: AWC_TROPHY_ASSET_PATH,
+  },
+  {
+    id: "awc2023",
+    title: "AWC 2023",
+    year: 2023,
+    status: "available",
+    trophyAssetPath: AWC_TROPHY_ASSET_PATH,
+  },
+  {
+    id: "awc2022",
+    title: "AWC 2022",
+    year: 2022,
+    status: "available",
+    trophyAssetPath: AWC_TROPHY_ASSET_PATH,
+  },
+  {
+    id: "awc2021",
+    title: "AWC 2021",
+    year: 2021,
+    status: "available",
+    trophyAssetPath: AWC_TROPHY_ASSET_PATH,
+  },
   { id: "awc2020", title: "AWC 2020", year: 2020, status: "pending" },
   { id: "awc2019", title: "AWC 2019", year: 2019, status: "pending" },
   { id: "awc2018", title: "AWC 2018", year: 2018, status: "pending" },

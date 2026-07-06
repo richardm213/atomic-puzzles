@@ -61,8 +61,6 @@ export const buildChessComGameUrl = (gameId: string | number | null | undefined)
   return `https://www.chess.com/variants/atomic/game/${encodeURIComponent(normalizedGameId)}`;
 };
 
-const looksLikeChessComGameId = (gameId: string): boolean => /^\d+$/.test(gameId);
-
 export const buildExternalGameUrl = (
   gameId: string | number | null | undefined,
   options: {
@@ -74,7 +72,7 @@ export const buildExternalGameUrl = (
   const normalizedGameId = String(gameId ?? "").trim();
   if (!normalizedGameId || normalizedGameId === "—") return "";
 
-  if (isChessComSource(options.source) || looksLikeChessComGameId(normalizedGameId)) {
+  if (isChessComSource(options.source)) {
     return buildChessComGameUrl(normalizedGameId);
   }
 

@@ -1,7 +1,8 @@
 .tournamentPage {
   min-height: var(--page-shell-min-height);
   min-height: var(--page-shell-min-height-dynamic);
-  width: min(1040px, 100%);
+  width: min(1180px, 100%);
+  box-sizing: border-box;
   margin: 0 auto;
   padding:
     max(var(--page-gutter), env(safe-area-inset-top))
@@ -9,10 +10,10 @@
     max(calc(var(--page-gutter) + 2px), env(safe-area-inset-bottom))
     max(clamp(18px, 3vw, 28px), env(safe-area-inset-left));
   display: grid;
-  gap: 22px;
+  gap: 18px;
   background:
-    radial-gradient(circle at top left, color-mix(in srgb, var(--color-primary) 12%, transparent), transparent 24%),
-    radial-gradient(circle at top right, color-mix(in srgb, var(--color-accent-warm) 10%, transparent), transparent 22%);
+    radial-gradient(circle at 0% 4%, color-mix(in srgb, var(--color-primary) 9%, transparent), transparent 26%),
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--color-accent-warm) 7%, transparent), transparent 24%);
 }
 
 .tournamentPageHero {
@@ -23,7 +24,7 @@
 .tournamentPageHeroCopy,
 .tournamentStageSection {
   border: 1px solid var(--color-border);
-  border-radius: 24px;
+  border-radius: 14px;
   background: var(--color-panel);
   box-shadow: var(--shadow-soft);
 }
@@ -46,8 +47,8 @@
   position: absolute;
   right: clamp(22px, 4vw, 42px);
   bottom: clamp(14px, 2.4vw, 24px);
-  width: clamp(104px, 14vw, 152px);
-  height: auto;
+  inline-size: clamp(54px, 7vw, 76px);
+  block-size: clamp(54px, 7vw, 76px);
   object-fit: contain;
   filter: drop-shadow(0 18px 28px color-mix(in srgb, var(--color-panel-deep) 56%, transparent));
   pointer-events: none;
@@ -152,7 +153,8 @@
   .tournamentPageTrophy {
     right: clamp(18px, 5vw, 24px);
     bottom: 14px;
-    width: 92px;
+    inline-size: 54px;
+    block-size: 54px;
   }
 }
 
@@ -164,18 +166,26 @@
 
 .tournamentMatchPlayers > div > span {
   display: block;
-  flex: 1 1 auto;
-  min-width: 0;
+  min-inline-size: 0;
+  inline-size: 100%;
+  max-inline-size: 100%;
   white-space: nowrap;
   overflow: hidden;
 }
 
 .tournamentPlayerLabel {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   flex-wrap: nowrap;
-  max-width: 100%;
-  min-width: 0;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  overflow: hidden;
+}
+
+.tournamentPlayerFlag,
+.tournamentSeedBadge,
+.tournamentAdvanceCheck {
+  flex: 0 0 auto;
 }
 
 .tournamentSeedBadge {
@@ -187,8 +197,10 @@
 }
 
 .tournamentPlayerLink {
-  display: inline-block;
-  max-width: 13ch;
+  display: block;
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  max-inline-size: min(12ch, 100%);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -209,7 +221,7 @@
 
 .tournamentAdvanceCheck {
   display: inline-block;
-  margin-left: 8px;
+  margin-left: 6px;
   color: var(--color-success);
   font-size: 14px;
   font-weight: 900;
@@ -275,21 +287,20 @@
 }
 
 .tournamentStageSection {
-  padding: 18px;
+  padding: 18px 20px 20px;
   overflow: hidden;
   background:
-    radial-gradient(circle at 20% 0%, color-mix(in srgb, var(--color-primary) 9%, transparent), transparent 20%),
-    linear-gradient(180deg, color-mix(in srgb, var(--color-panel-deep) 20%, var(--color-panel)), var(--color-panel));
-  border-color: color-mix(in srgb, var(--color-primary) 16%, var(--color-border));
+    linear-gradient(180deg, color-mix(in srgb, var(--color-surface-elevated-strong) 32%, var(--color-panel)), var(--color-panel));
+  border-color: color-mix(in srgb, var(--color-primary) 12%, var(--color-border));
   box-shadow:
-    0 18px 38px color-mix(in srgb, var(--color-panel-deep) 70%, transparent),
-    inset 0 1px 0 color-mix(in srgb, white 4%, transparent);
+    0 14px 30px color-mix(in srgb, var(--color-panel-deep) 48%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 5%, transparent);
 }
 
 .tournamentStageHeader {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: start;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
   gap: 12px 18px;
   margin-bottom: 12px;
 }
@@ -302,26 +313,23 @@
   white-space: nowrap;
 }
 
-.tournamentStageHeaderActions {
-  display: flex;
-  flex-wrap: nowrap;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
 .tournamentStageControls {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
-  max-width: none;
-  flex: 1 1 auto;
-  min-width: 0;
+  display: inline-flex;
+  grid-column: 2;
+  grid-row: 1;
+  align-items: center;
+  justify-self: center;
+  gap: 10px;
+  width: fit-content;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 0;
 }
 
 .tournamentZoomControls {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
@@ -362,41 +370,46 @@
   background: color-mix(in srgb, var(--color-primary) 18%, var(--color-surface-elevated-strong));
 }
 
-.tournamentRoundFilter {
-  border: 1px solid var(--color-border-strong);
-  background: color-mix(in srgb, var(--color-surface-elevated-strong) 66%, var(--color-panel-strong));
-  color: var(--color-muted);
-  border-radius: 999px;
-  min-height: 34px;
-  padding: 7px 12px;
-  font-size: 11px;
-  font-weight: 700;
+.tournamentStartRoundSelect {
+  min-height: 38px;
+  max-width: 100%;
+  border: 1px solid color-mix(in srgb, var(--color-primary-soft) 26%, var(--color-border));
+  border-radius: 8px;
+  padding: 0 34px 0 12px;
+  background: color-mix(in srgb, var(--color-panel-strong) 82%, transparent);
+  color: var(--color-heading);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
   white-space: nowrap;
   cursor: pointer;
   transition:
     border-color 160ms ease,
     background 160ms ease,
-    color 160ms ease;
+    color 160ms ease,
+    box-shadow 160ms ease;
 }
 
-.tournamentRoundFilter.isActive {
-  border-color: var(--color-primary);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--color-accent-warm-strong) 18%, transparent), transparent),
-    color-mix(in srgb, var(--color-primary) 16%, var(--color-panel-strong));
-  color: var(--color-heading);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 18%, transparent);
+.tournamentStartRoundSelect:hover,
+.tournamentStartRoundSelect:focus-visible {
+  border-color: color-mix(in srgb, var(--color-primary) 42%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-panel-strong));
+  outline: none;
+}
+
+.tournamentStartRoundSelect:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 16%, transparent);
 }
 
 .tournamentRoundsScroller {
   overflow: auto;
-  padding-bottom: 6px;
+  padding: 0 clamp(28px, 5vw, 64px) 8px 0;
   cursor: grab;
   user-select: none;
   -webkit-user-select: none;
   scrollbar-width: thin;
   touch-action: none;
-  mask-image: linear-gradient(90deg, transparent 0, black 16px, black calc(100% - 16px), transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, black 10px, black calc(100% - 10px), transparent 100%);
 }
 
 .tournamentRoundsScroller.isDragging {
@@ -408,17 +421,7 @@
 }
 
 .tournamentRoundHeader {
-  display: grid;
-  gap: 4px;
-  padding: 12px 14px;
-  border-radius: 16px;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--color-accent-warm) 12%, transparent), transparent),
-    color-mix(in srgb, var(--color-surface-elevated-strong) 72%, var(--color-panel-strong));
-  border: 1px solid color-mix(in srgb, var(--color-accent-warm-strong) 18%, var(--color-border));
-  box-shadow:
-    0 10px 24px color-mix(in srgb, var(--color-panel-deep) 65%, transparent),
-    inset 0 1px 0 color-mix(in srgb, white 6%, transparent);
+  padding: 6px 0 10px;
 }
 
 .tournamentRoundHeader span {
@@ -433,27 +436,21 @@
 }
 
 .tournamentMatchCard {
-  width: 100%;
-  border: 1px solid color-mix(in srgb, var(--color-primary-soft) 24%, var(--color-border));
-  border-radius: 20px;
+  border: 1px solid color-mix(in srgb, var(--color-primary-soft) 18%, var(--color-border));
+  border-left: 3px solid color-mix(in srgb, var(--color-primary-soft) 58%, var(--color-accent-warm) 12%);
+  border-radius: 8px;
   background:
-    linear-gradient(180deg, color-mix(in srgb, white 3%, transparent), transparent),
-    linear-gradient(
-      160deg,
-      color-mix(in srgb, var(--color-surface-elevated-strong) 88%, var(--color-panel)),
-      color-mix(in srgb, var(--color-panel-strong) 92%, var(--color-panel))
-    );
+    linear-gradient(180deg, color-mix(in srgb, white 4%, transparent), transparent),
+    color-mix(in srgb, var(--color-panel-strong) 88%, var(--color-surface-elevated-strong));
   color: inherit;
-  padding: 15px 16px;
-  display: grid;
-  gap: 10px;
+  padding: 10px 11px 10px 12px;
   text-align: left;
   transition:
     border-color 160ms ease,
     box-shadow 160ms ease,
     transform 160ms ease,
     background 160ms ease;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .tournamentMatchCardTree {
@@ -465,25 +462,22 @@
 }
 
 .tournamentMatchCardTree.isClickable {
-  cursor: alias;
+  cursor: pointer;
 }
 
 .tournamentMatchCardTree.isClickable:hover {
-  border-color: color-mix(in srgb, var(--color-primary) 44%, var(--color-border));
+  border-color: color-mix(in srgb, var(--color-primary) 38%, var(--color-border));
+  border-left-color: color-mix(in srgb, var(--color-accent-warm) 54%, var(--color-primary));
   box-shadow:
-    0 14px 30px color-mix(in srgb, var(--color-panel-deep) 54%, transparent),
-    inset 0 1px 0 color-mix(in srgb, white 6%, transparent);
-}
-
-.tournamentMatchMeta,
-.tournamentMatchPlayers > div {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+    0 10px 22px color-mix(in srgb, var(--color-panel-deep) 42%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 7%, transparent);
 }
 
 .tournamentMatchMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -492,16 +486,40 @@
 
 .tournamentMatchPlayers {
   display: grid;
-  gap: 8px;
+  gap: 4px;
   align-content: center;
   min-height: 100%;
 }
 
+.tournamentPlayerRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(3.2ch, max-content);
+  align-items: center;
+  column-gap: 8px;
+  min-width: 0;
+  min-height: 32px;
+  padding: 4px 8px 4px 6px;
+  border-radius: 6px;
+}
+
+.tournamentPlayerRow.isWinner {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--color-primary) 16%, transparent), transparent 86%),
+    color-mix(in srgb, var(--color-primary) 8%, transparent);
+  color: var(--color-heading);
+}
+
+.tournamentPlayerRow.isWinner .tournamentPlayerLink {
+  color: var(--color-heading);
+  font-weight: 800;
+}
+
 .tournamentMatchPlayers strong {
-  flex: 0 0 auto;
-  min-width: 2.6ch;
+  justify-self: end;
+  min-width: 3.2ch;
   color: var(--color-on-elevated);
-  font-size: 1.02rem;
+  font-size: 0.98rem;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
   text-align: right;
 }
@@ -536,11 +554,11 @@
 
 .tournamentTreeLines path {
   fill: none;
-  stroke: color-mix(in srgb, var(--color-primary-soft) 72%, var(--color-accent-warm-strong) 12%);
-  stroke-width: 2.5;
+  stroke: color-mix(in srgb, var(--color-primary-soft) 58%, var(--color-accent-warm-strong) 10%);
+  stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
-  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--color-primary) 16%, transparent));
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--color-primary) 10%, transparent));
 }
 
 :root[data-theme="light"] .tournamentTreeLines path {
@@ -564,7 +582,7 @@
   width: min(760px, 100%);
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
   .tournamentStageHeader {
     grid-template-columns: 1fr;
   }
@@ -573,13 +591,15 @@
     white-space: normal;
   }
 
-  .tournamentStageHeaderActions {
-    flex-wrap: wrap;
+  .tournamentStageControls {
+    grid-column: auto;
     justify-content: flex-start;
   }
 
-  .tournamentStageControls {
-    justify-content: flex-start;
+  .tournamentZoomControls {
+    grid-column: auto;
+    grid-row: auto;
+    width: fit-content;
   }
 
   .tournamentRoundsScroller {
