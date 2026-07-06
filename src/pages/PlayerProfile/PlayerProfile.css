@@ -533,6 +533,32 @@
   padding: 4px 6px;
 }
 
+.profileFavoriteOpponentsDirectionButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--color-input-border);
+  border-radius: 8px;
+  background: var(--color-panel-strong);
+  color: var(--color-text);
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.profileFavoriteOpponentsDirectionButton span {
+  color: var(--color-heading);
+  font-size: 11px;
+}
+
+.profileFavoriteOpponentsDirectionButton:hover,
+.profileFavoriteOpponentsDirectionButton:focus-visible {
+  border-color: var(--color-cyan-bright);
+  color: var(--color-cyan-bright);
+  outline: none;
+}
+
 .profileAliasesList {
   margin-top: 10px;
   display: grid;
@@ -1267,7 +1293,7 @@
 }
 
 .profileFavoriteOpponentsTable {
-  min-width: 830px;
+  min-width: 800px;
 }
 
 .profileRankHistoryTable thead,
@@ -1290,6 +1316,33 @@
   color: var(--color-subtle);
   font-size: 11px;
   line-height: 1.2;
+}
+
+.profileFavoriteOpponentsSortButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  font: inherit;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+}
+
+.profileFavoriteOpponentsSortButton span {
+  display: inline-block;
+  min-width: 9px;
+  color: var(--color-heading);
+  font-size: 10px;
+}
+
+.profileFavoriteOpponentsSortButton:hover,
+.profileFavoriteOpponentsSortButton:focus-visible {
+  color: var(--color-cyan-bright);
+  outline: none;
 }
 
 .profileRankHistoryTable tbody tr:last-child td,
@@ -1407,6 +1460,40 @@
 
 .favoriteOpponentMatchesInner {
   padding: 4px 0 8px;
+}
+
+.favoriteOpponentMatchesHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  color: var(--color-subtle);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.profileFavoriteOpponentH2HButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-panel-strong);
+  color: var(--color-heading);
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.profileFavoriteOpponentH2HButton:hover,
+.profileFavoriteOpponentH2HButton:focus-visible {
+  border-color: var(--color-cyan-bright);
+  color: var(--color-cyan-bright);
+  outline: none;
 }
 
 .favoriteOpponentMatchesTable {
