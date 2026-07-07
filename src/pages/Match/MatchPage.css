@@ -140,12 +140,6 @@
   outline-offset: 4px;
 }
 
-.matchPageTournamentLabel {
-  font-size: 0.86rem;
-  font-weight: 700;
-  line-height: 1.25;
-}
-
 .matchPageTournamentText {
   max-width: 100%;
   color: var(--color-heading);

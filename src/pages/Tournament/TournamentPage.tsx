@@ -896,7 +896,6 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
               )}
             </div>
           </div>
-          <span className="tournamentPageEyebrow">Interactive bracket</span>
           <h1>{heading}</h1>
         </div>
         {bracket.trophyAssetPath ? (

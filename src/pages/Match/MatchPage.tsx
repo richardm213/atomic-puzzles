@@ -193,10 +193,8 @@ export const MatchPage = () => {
                       params={{ tournamentId: tournamentLocation.tournament.id }}
                       title={`Open ${tournamentLocation.tournament.title}`}
                     >
-                      <span className="matchPageTournamentLabel">From</span>
-                      {" "}
                       <span className="matchPageTournamentText">
-                        {tournamentLocation.tournament.title} · {tournamentLocation.roundLabel}
+                        {tournamentLocation.tournament.title} {tournamentLocation.roundLabel}
                       </span>
                     </Link>
                   ) : null}
