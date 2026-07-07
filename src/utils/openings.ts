@@ -21,6 +21,7 @@ const openingDisplayLabels: Record<string, string> = {
   "e3 qh5": "e3 Qh5",
   "e3 qf3": "e3 Qf3",
   "e3 f4": "e3 f4",
+  "e3 b4": "e3 b4",
   "nh3 nc3": "Nh3 Nc3",
   variety: "All-around",
 };

@@ -17,6 +17,7 @@ describe("opening display labels", () => {
 
   it("displays pawn-only openings as coordinates", () => {
     expect(getOpeningDisplayLabel("e3 f4")).toBe("e3 f4");
+    expect(getOpeningDisplayLabel("e3 b4")).toBe("e3 b4");
     expect(getOpeningDisplayLabel("e5")).toBe("e5");
     expect(getOpeningDisplayLabel("d6")).toBe("d6");
   });
