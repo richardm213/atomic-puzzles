@@ -10,6 +10,7 @@ import { Seo } from "../../components/Seo/Seo";
 import {
   getAdjacentTournamentMetas,
   getTournamentBracket,
+  getTournamentDecisiveMatch,
   type TournamentBracket,
   type TournamentBracketStage,
   type TournamentMatch,
@@ -333,19 +334,24 @@ const TournamentMatchCard = ({
   match,
   topSeedMap,
   countryMap,
+  trophyAssetPath,
+  isDecisive,
 }: {
   match: PositionedMatch;
   topSeedMap: Map<string, number>;
   countryMap: Map<string, string>;
+  trophyAssetPath: string | undefined;
+  isDecisive: boolean;
 }) => {
   const matchWinner = winnerName(match);
   const withdrawalPlayer = withdrewPlayerName(match);
   const hasMatchPage = Boolean(match.match_id);
   const matchHref = getMatchHref(match.match_id);
+  const showTrophy = isDecisive && Boolean(trophyAssetPath);
 
   return (
     <div
-      className={`tournamentMatchCard tournamentMatchCardTree${hasMatchPage ? " isClickable" : ""}`}
+      className={`tournamentMatchCard tournamentMatchCardTree${hasMatchPage ? " isClickable" : ""}${showTrophy ? " isDecisive" : ""}`}
       style={{
         left: `${match.x}px`,
         top: `${match.y}px`,
@@ -360,6 +366,18 @@ const TournamentMatchCard = ({
           : undefined
       }
     >
+      {showTrophy ? (
+        <img
+          className="tournamentMatchTrophy"
+          src={appAssetPath(trophyAssetPath || "")}
+          alt=""
+          width="48"
+          height="48"
+          loading="eager"
+          decoding="async"
+          aria-hidden="true"
+        />
+      ) : null}
       <div className="tournamentMatchPlayers">
         <div className={`tournamentPlayerRow${matchWinner === match.p1 ? " isWinner" : ""}`}>
           <span>
@@ -400,6 +418,8 @@ const TournamentStageSection = ({
   startRoundName,
   topSeedMap,
   countryMap,
+  trophyAssetPath,
+  decisiveMatchId,
   hideStartRoundControls,
   onZoomOut,
   onZoomReset,
@@ -417,6 +437,8 @@ const TournamentStageSection = ({
   startRoundName: string;
   topSeedMap: Map<string, number>;
   countryMap: Map<string, string>;
+  trophyAssetPath: string | undefined;
+  decisiveMatchId: string;
   hideStartRoundControls?: boolean;
   onZoomOut: () => void;
   onZoomReset: () => void;
@@ -535,6 +557,8 @@ const TournamentStageSection = ({
                   match={match}
                   topSeedMap={topSeedMap}
                   countryMap={countryMap}
+                  trophyAssetPath={trophyAssetPath}
+                  isDecisive={match.id === decisiveMatchId}
                 />
               ))}
             </div>
@@ -700,6 +724,7 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
 
   const topSeedMap = useMemo(() => new Map(Object.entries(bracket?.seedMap || {})), [bracket]);
   const countryMap = useMemo(() => new Map(Object.entries(bracket?.countryMap || {})), [bracket]);
+  const decisiveMatchId = useMemo(() => getTournamentDecisiveMatch(bracket)?.id || "", [bracket]);
   const visibleStages = useMemo(
     () => bracket?.stages?.filter((stage) => stage.key === activeStageKey) || [],
     [bracket, activeStageKey],
@@ -921,6 +946,8 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
               startRoundName={startRoundName}
               topSeedMap={topSeedMap}
               countryMap={countryMap}
+              trophyAssetPath={bracket.trophyAssetPath}
+              decisiveMatchId={decisiveMatchId}
               hideStartRoundControls={Boolean(bracket.hideStartRoundControls)}
               onZoomOut={() => updateStageZoom(stage.key, -STAGE_ZOOM_STEP)}
               onZoomReset={() => resetStageZoom(stage.key)}

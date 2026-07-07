@@ -8,6 +8,10 @@ import { Seo } from "../../components/Seo/Seo";
 import { modeLabels } from "../../constants/matches";
 import { loadRawMatchesByMode } from "../../lib/matches/matchData";
 import {
+  getTournamentMatchLocation,
+  type TournamentMatchLocation,
+} from "../../lib/matches/tournaments";
+import {
   ratingsForPlayers,
   sourceValueFromMatch,
   summarizeMatchGames,
@@ -71,6 +75,9 @@ export const MatchPage = () => {
   const mode = normalizeMatchMode(modeParam);
   const decodedMatchId = decodeParam(matchIdParam);
   const [match, setMatch] = useState<MatchCardData | null>(null);
+  const [tournamentLocation, setTournamentLocation] = useState<TournamentMatchLocation | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -80,6 +87,7 @@ export const MatchPage = () => {
     const loadMatch = async () => {
       if (!mode || !decodedMatchId) {
         setMatch(null);
+        setTournamentLocation(null);
         setError("This match link is missing a valid mode or match id.");
         setLoading(false);
         return;
@@ -87,22 +95,29 @@ export const MatchPage = () => {
 
       setLoading(true);
       setError("");
+      setTournamentLocation(null);
 
       try {
-        const matches = await loadRawMatchesByMode(mode, { filters: { matchId: decodedMatchId } });
+        const [matches, resolvedTournamentLocation] = await Promise.all([
+          loadRawMatchesByMode(mode, { filters: { matchId: decodedMatchId } }),
+          getTournamentMatchLocation(decodedMatchId).catch(() => null),
+        ]);
         if (cancelled) return;
 
         const resolvedMatch = Array.isArray(matches) ? matches[0] : null;
         if (!resolvedMatch) {
           setMatch(null);
+          setTournamentLocation(null);
           setError("Match not found.");
           return;
         }
 
         setMatch(normalizeStandaloneMatch(resolvedMatch, mode));
+        setTournamentLocation(resolvedTournamentLocation);
       } catch (loadError) {
         if (cancelled) return;
         setMatch(null);
+        setTournamentLocation(null);
         setError(String(loadError));
       } finally {
         if (!cancelled) setLoading(false);
@@ -171,6 +186,20 @@ export const MatchPage = () => {
                   <span className="matchMetaPill">{match.sourceValue}</span>
                 </div>
                 <div className="matchPageHeaderActions">
+                  {tournamentLocation ? (
+                    <Link
+                      className="matchPageTournamentLink"
+                      to="/tournaments/$tournamentId"
+                      params={{ tournamentId: tournamentLocation.tournament.id }}
+                      title={`Open ${tournamentLocation.tournament.title}`}
+                    >
+                      <span className="matchPageTournamentLabel">From</span>
+                      {" "}
+                      <span className="matchPageTournamentText">
+                        {tournamentLocation.tournament.title} · {tournamentLocation.roundLabel}
+                      </span>
+                    </Link>
+                  ) : null}
                   <Link
                     className="matchPageH2HLink"
                     to="/h2h/$matchup"

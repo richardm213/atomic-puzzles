@@ -461,6 +461,11 @@
   align-content: center;
 }
 
+.tournamentMatchCardTree.isDecisive {
+  z-index: 7;
+  overflow: visible;
+}
+
 .tournamentMatchCardTree.isClickable {
   cursor: pointer;
 }
@@ -471,6 +476,19 @@
   box-shadow:
     0 10px 22px color-mix(in srgb, var(--color-panel-deep) 42%, transparent),
     inset 0 1px 0 color-mix(in srgb, white 7%, transparent);
+}
+
+.tournamentMatchTrophy {
+  position: absolute;
+  top: -52px;
+  left: 50%;
+  z-index: 2;
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  pointer-events: none;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 10px 12px color-mix(in srgb, black 40%, transparent));
 }
 
 .tournamentMatchMeta {

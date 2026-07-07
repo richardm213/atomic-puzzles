@@ -1,10 +1,9 @@
 import { cachedRequest } from "../../utils/requestCache";
 import { getSupabaseClient } from "../supabase/supabaseClient";
-import { fetchAllSupabaseRows } from "../supabase/supabaseRows";
+import { fetchAllSupabaseRows, loadSupabaseRows } from "../supabase/supabaseRows";
 
 export type TournamentMeta = {
   id: string;
-  dataId?: string;
   title: string;
   headingTitle?: string;
   year: number;
@@ -47,6 +46,12 @@ export type TournamentBracket = TournamentMeta & {
   countryMap: Record<string, string>;
 };
 
+export type TournamentMatchLocation = {
+  tournament: TournamentMeta;
+  match: TournamentMatch;
+  roundLabel: string;
+};
+
 type TournamentMatchRowFromDb = {
   tournament?: string | null;
   bracket?: string | null;
@@ -72,6 +77,7 @@ const PLAYER_COUNTRIES_SELECT_COLUMNS = "player_name,country_code";
 const TOURNAMENT_SEEDS_SELECT_COLUMNS = "tournament,player_name,seed";
 
 const tournamentMatchesCache = new Map<string, Promise<TournamentMatch[]>>();
+const tournamentMatchLocationCache = new Map<string, Promise<TournamentMatchLocation | null>>();
 const playerCountriesCache = new Map<string, Promise<Record<string, string>>>();
 const tournamentSeedsCache = new Map<string, Promise<Record<string, number>>>();
 const tournamentBracketCache = new Map<string, Promise<TournamentBracket | null>>();
@@ -83,7 +89,6 @@ const AWC_TROPHY_ASSET_PATH = "/images/awc-trophies/awc.png";
 const tournaments: TournamentMeta[] = [
   {
     id: "ccac2026",
-    dataId: "awc2026",
     title: "CCAC 2026",
     headingTitle: "Chess.com Atomic Championship 2026",
     year: 2026,
@@ -274,6 +279,14 @@ const fetchLocalTournamentRows = async (tournamentId: string): Promise<Tournamen
 
   return parseCsvRows(tournamentMatchesCsv)
     .filter((row) => row.tournament === tournamentId)
+    .map(normalizeMatchRow);
+};
+
+const fetchLocalTournamentRowsByMatchId = async (matchId: string): Promise<TournamentMatch[]> => {
+  const tournamentMatchesCsv = await fetchLocalTournamentCsv("tournament_matches.csv");
+
+  return parseCsvRows(tournamentMatchesCsv)
+    .filter((row) => String(row.match_id ?? "").trim() === matchId)
     .map(normalizeMatchRow);
 };
 
@@ -478,18 +491,101 @@ export const getAdjacentTournamentMetas = (
 export const getTournamentMeta = (tournamentId: string): TournamentMeta | null =>
   tournaments.find((entry) => entry.id === tournamentId) ?? null;
 
+const getTournamentRoundLabel = (match: TournamentMatch): string => {
+  if (match.bracket === "grand_final") {
+    return match.round === "Reset" ? "Grand Final Reset" : "Grand Final";
+  }
+
+  const bracketLabel = getBracketLabel(match.bracket);
+  if (!bracketLabel || match.bracket === "main") return match.round;
+  return `${bracketLabel}, ${match.round}`;
+};
+
+const compareTournamentMatchesByBracketOrder = (
+  left: TournamentMatch,
+  right: TournamentMatch,
+): number =>
+  left.order - right.order ||
+  bracketPriority(left.bracket) - bracketPriority(right.bracket) ||
+  getRoundIndex(left.bracket, left.round) - getRoundIndex(right.bracket, right.round) ||
+  left.id.localeCompare(right.id);
+
+export const getTournamentMatchLocation = async (
+  matchId: string,
+): Promise<TournamentMatchLocation | null> => {
+  const normalizedMatchId = String(matchId || "").trim();
+  if (!normalizedMatchId) return null;
+
+  return cachedRequest(
+    tournamentMatchLocationCache,
+    ["tournamentMatchLocation", normalizedMatchId],
+    async () => {
+      const rows = shouldUseLocalTournamentCsv()
+        ? await fetchLocalTournamentRowsByMatchId(normalizedMatchId)
+        : await loadSupabaseRows<TournamentMatchRowFromDb>(
+            TOURNAMENT_MATCHES_TABLE,
+            getSupabaseClient()
+              .from(TOURNAMENT_MATCHES_TABLE)
+              .select(TOURNAMENT_MATCHES_SELECT_COLUMNS)
+              .eq("match_id", normalizedMatchId),
+          );
+
+      const match =
+        rows
+          .map(normalizeMatchRow)
+          .filter((row) => row.match_id === normalizedMatchId)
+          .sort(compareTournamentMatchesByBracketOrder)[0] ?? null;
+      if (!match) return null;
+
+      const tournament = getTournamentMeta(match.tournament);
+      if (!tournament) return null;
+
+      return {
+        tournament,
+        match,
+        roundLabel: getTournamentRoundLabel(match),
+      };
+    },
+  );
+};
+
+const hasDecisiveScore = (match: TournamentMatch | null | undefined): boolean =>
+  Boolean(match?.p1 && match?.p2 && winnerName(match));
+
+export const getTournamentDecisiveMatch = (
+  bracket: { matches?: TournamentMatch[] } | null | undefined,
+): TournamentMatch | null => {
+  if (!bracket || !Array.isArray(bracket.matches)) return null;
+
+  return (
+    bracket.matches.find(
+      (match) =>
+        match.bracket === "grand_final" && match.round === "Reset" && hasDecisiveScore(match),
+    ) ??
+    bracket.matches.find(
+      (match) =>
+        match.bracket === "grand_final" && match.round === "Set 1" && hasDecisiveScore(match),
+    ) ??
+    bracket.matches.find(
+      (match) =>
+        match.bracket === "main" && match.round === "Grand Final Reset" && hasDecisiveScore(match),
+    ) ??
+    bracket.matches.find(
+      (match) =>
+        match.bracket === "main" && match.round === "Grand Final" && hasDecisiveScore(match),
+    ) ??
+    bracket.matches.find(
+      (match) => match.bracket === "main" && match.round === "Finals" && hasDecisiveScore(match),
+    ) ??
+    null
+  );
+};
+
 export const getTournamentChampion = (
   bracket: { matches?: TournamentMatch[] } | null | undefined,
 ): string => {
-  if (!bracket || !Array.isArray(bracket.matches)) return "";
-
-  const championshipMatch =
-    bracket.matches.find((match) => match.bracket === "grand_final" && match.round === "Reset") ??
-    bracket.matches.find((match) => match.bracket === "grand_final" && match.round === "Set 1") ??
-    bracket.matches.find((match) => match.bracket === "main" && match.round === "Finals");
-
-  if (!championshipMatch) return "";
-  return winnerName(championshipMatch);
+  const championshipMatch = getTournamentDecisiveMatch(bracket);
+  return championshipMatch ? winnerName(championshipMatch) : "";
 };
 
 export const getTournamentBracket = async (
@@ -499,12 +595,10 @@ export const getTournamentBracket = async (
     const meta = getTournamentMeta(tournamentId);
     if (!meta) return null;
 
-    const dataTournamentId = meta.dataId ?? meta.id;
-
     const [rawMatches, countryMap, seedMap] = await Promise.all([
-      fetchTournamentMatchRows(dataTournamentId),
+      fetchTournamentMatchRows(meta.id),
       fetchPlayerCountryMap(),
-      fetchTournamentSeedMap(dataTournamentId),
+      fetchTournamentSeedMap(meta.id),
     ]);
 
     const matches = addImplicitByeMatches(rawMatches).sort(
