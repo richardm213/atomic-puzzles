@@ -3,7 +3,7 @@ import "./TournamentPage.css";
 import { faCheck } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
-import type { PointerEvent as ReactPointerEvent } from "react";
+import type { PointerEvent as ReactPointerEvent, UIEvent as ReactUIEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Seo } from "../../components/Seo/Seo";
@@ -25,35 +25,81 @@ type StageLayout = {
   width: number;
   height: number;
   positionedMatches: PositionedMatch[];
-  connectors: Array<{ key: string; d: string }>;
+  connectors: ConnectorSegment[];
 } | null;
 
 type PositionedMatch = TournamentMatch & {
   x: number;
   y: number;
-  roundIndex: number;
 };
 
-type AnchorPoint = { x: number; y: number; anchorY: number };
+type MatchPosition = { x: number; y: number };
+type SourcePosition = { id: string; rightX: number; centerY: number };
+
+type ConnectorSegment = {
+  key: string;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+};
+
+type DragState = {
+  stageKey: string;
+  pointerId: number;
+  startX: number;
+  startY: number;
+  startScrollLeft: number;
+  startScrollTop: number;
+  startWindowScrollY: number;
+  moved: boolean;
+};
 
 const hiddenStartRoundsByStage: Record<string, Set<string>> = {
-  main: new Set(["Semifinals", "Finals", "Grand Final", "Grand Final Reset"]),
-  losers: new Set(["Round 4", "Round 5", "Final"]),
+  main: new Set(["Grand Final", "Grand Final Reset"]),
 };
 
 const getStartRoundOptions = (stage: TournamentBracketStage): TournamentBracketStage["rounds"] =>
   stage.rounds.filter((round) => !hiddenStartRoundsByStage[stage.key]?.has(round.roundName));
 
+const roundShortLabels: Record<string, string> = {
+  "Round of 128": "R128",
+  "Round of 64": "R64",
+  "Round of 32": "R32",
+  "Round of 16": "R16",
+  Quarterfinals: "QF",
+  Semifinals: "SF",
+  Finals: "F",
+  "Grand Final": "GF",
+  "Grand Final Reset": "Reset",
+  "Round 1": "R1",
+  "Round 2": "R2",
+  "Round 3": "R3",
+  "Round 4": "R4",
+  "Round 5": "R5",
+  Semifinal: "SF",
+  Final: "F",
+  "Set 1": "Set 1",
+  Reset: "Reset",
+};
+
+const getRoundShortLabel = (roundName: string): string =>
+  roundShortLabels[roundName] ?? roundName.replace(/^Round\s+/i, "R");
+
 const tournamentHeading = (bracket: TournamentBracket): string => {
   if (bracket.headingTitle) return bracket.headingTitle;
-  return bracket.title.startsWith("AWC ") ? `Atomic World Championship ${bracket.year}` : bracket.title;
+  return bracket.title.startsWith("AWC ")
+    ? `Atomic World Championship ${bracket.year}`
+    : bracket.title;
 };
 const CARD_WIDTH = 260;
 const CARD_HEIGHT = 102;
 const COLUMN_GAP = 78;
-const LEAF_GAP = 30;
+const LEAF_GAP = 26;
 const BOARD_PADDING = 18;
+const BOARD_BOTTOM_PADDING = 12;
 const HEADER_SPACE = 64;
+const CARD_CENTER_ANCHOR_OFFSET = CARD_HEIGHT / 2;
 const DEFAULT_STAGE_ZOOM = 0.85;
 const MIN_STAGE_ZOOM = 0.55;
 const MAX_STAGE_ZOOM = 1.35;
@@ -75,7 +121,9 @@ const buildZoomState = (
   stages: TournamentBracketStage[],
   savedZoomLevels: Record<string, number> = {},
 ): Record<string, number> =>
-  Object.fromEntries(stages.map((stage) => [stage.key, savedZoomLevels[stage.key] ?? DEFAULT_STAGE_ZOOM]));
+  Object.fromEntries(
+    stages.map((stage) => [stage.key, savedZoomLevels[stage.key] ?? DEFAULT_STAGE_ZOOM]),
+  );
 
 const getStageStartRound = (
   stage: TournamentBracketStage,
@@ -118,18 +166,13 @@ const getVisibleRounds = (
   return stage.rounds.slice(Math.max(0, startIndex));
 };
 
-const getConnectorPath = (from: AnchorPoint, to: AnchorPoint): string => {
-  const fromY = from.anchorY;
-  const toY = to.anchorY;
-  const elbowX = from.x + CARD_WIDTH + COLUMN_GAP / 2;
-
-  return [
-    `M ${from.x + CARD_WIDTH} ${fromY}`,
-    `L ${elbowX} ${fromY}`,
-    `L ${elbowX} ${toY}`,
-    `L ${to.x} ${toY}`,
-  ].join(" ");
-};
+const createConnector = (
+  key: string,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+): ConnectorSegment => ({ key, x1, y1, x2, y2 });
 
 const buildStageTreeLayout = (
   stage: TournamentBracketStage,
@@ -157,8 +200,8 @@ const buildStageTreeLayout = (
   });
 
   const positionedMatches: PositionedMatch[] = [];
-  const positions = new Map<string, AnchorPoint>();
-  const connectors: Array<{ key: string; d: string }> = [];
+  const positions = new Map<string, MatchPosition>();
+  const connectors: ConnectorSegment[] = [];
   let maxY = 0;
 
   rounds.forEach((round, roundIndex) => {
@@ -167,44 +210,124 @@ const buildStageTreeLayout = (
       const feederKeys = incoming.get(match.id) || [];
       const feederCenters = feederKeys
         .map((key) => positions.get(key))
-        .filter((p): p is AnchorPoint => Boolean(p))
-        .map((position) => position.y + CARD_HEIGHT / 2);
+        .filter((p): p is MatchPosition => Boolean(p))
+        .map((position) => position.y + CARD_CENTER_ANCHOR_OFFSET);
 
       const fallbackY = HEADER_SPACE + BOARD_PADDING + matchIndex * (CARD_HEIGHT + LEAF_GAP);
       const y =
         feederCenters.length > 0
           ? feederCenters.reduce((sum, value) => sum + value, 0) / feederCenters.length -
-            CARD_HEIGHT / 2
+            CARD_CENTER_ANCHOR_OFFSET
           : fallbackY;
 
       const position = {
         x,
         y,
-        anchorY: y + CARD_HEIGHT / 2,
       };
       positions.set(match.id, position);
-      positionedMatches.push({ ...match, x, y, roundIndex });
+      positionedMatches.push({ ...match, x, y });
       maxY = Math.max(maxY, y + CARD_HEIGHT);
     });
   });
 
-  positionedMatches.forEach((match) => {
-    if (!match.winner_to) return;
-    const from = positions.get(match.id);
-    const to = positions.get(match.winner_to);
-    if (!from || !to) return;
+  incoming.forEach((sourceMatchIds, targetMatchId) => {
+    const targetPosition = positions.get(targetMatchId);
+    if (!targetPosition) return;
 
-    connectors.push({
-      key: `${match.id}-${match.winner_to}`,
-      d: getConnectorPath(from, to),
+    const sourcePositions = sourceMatchIds
+      .map((sourceMatchId) => {
+        const position = positions.get(sourceMatchId);
+        if (!position) return null;
+        return {
+          id: sourceMatchId,
+          rightX: position.x + CARD_WIDTH,
+          centerY: position.y + CARD_CENTER_ANCHOR_OFFSET,
+        };
+      })
+      .filter((source): source is SourcePosition => source !== null);
+
+    if (!sourcePositions.length) return;
+
+    const targetLeftX = targetPosition.x;
+    const targetCenterY = targetPosition.y + CARD_CENTER_ANCHOR_OFFSET;
+
+    if (sourcePositions.length === 1) {
+      const source = sourcePositions[0]!;
+      const elbowX = source.rightX + (targetLeftX - source.rightX) / 2;
+
+      if (Math.abs(source.centerY - targetCenterY) < 0.5) {
+        connectors.push(
+          createConnector(
+            `${source.id}-${targetMatchId}-straight`,
+            source.rightX,
+            source.centerY,
+            targetLeftX,
+            targetCenterY,
+          ),
+        );
+        return;
+      }
+
+      connectors.push(
+        createConnector(
+          `${source.id}-${targetMatchId}-source-arm`,
+          source.rightX,
+          source.centerY,
+          elbowX,
+          source.centerY,
+        ),
+        createConnector(
+          `${source.id}-${targetMatchId}-elbow`,
+          elbowX,
+          source.centerY,
+          elbowX,
+          targetCenterY,
+        ),
+        createConnector(
+          `${source.id}-${targetMatchId}-target-arm`,
+          elbowX,
+          targetCenterY,
+          targetLeftX,
+          targetCenterY,
+        ),
+      );
+      return;
+    }
+
+    const junctionX = sourcePositions[0]!.rightX + (targetLeftX - sourcePositions[0]!.rightX) / 2;
+    const sourceYValues = [...sourcePositions.map((source) => source.centerY), targetCenterY];
+    const minSourceY = Math.min(...sourceYValues);
+    const maxSourceY = Math.max(...sourceYValues);
+
+    sourcePositions.forEach((source) => {
+      connectors.push(
+        createConnector(
+          `${source.id}-${targetMatchId}-source-arm`,
+          source.rightX,
+          source.centerY,
+          junctionX,
+          source.centerY,
+        ),
+      );
     });
+
+    connectors.push(
+      createConnector(`${targetMatchId}-merge-spine`, junctionX, minSourceY, junctionX, maxSourceY),
+      createConnector(
+        `${targetMatchId}-target-arm`,
+        junctionX,
+        targetCenterY,
+        targetLeftX,
+        targetCenterY,
+      ),
+    );
   });
 
   return {
     rounds,
     width:
       BOARD_PADDING * 2 + rounds.length * CARD_WIDTH + Math.max(0, rounds.length - 1) * COLUMN_GAP,
-    height: maxY + BOARD_PADDING,
+    height: maxY + BOARD_BOTTOM_PADDING,
     positionedMatches,
     connectors,
   };
@@ -290,11 +413,13 @@ const PlayerLabel = ({
   seed,
   isWinner,
   countryCode,
+  shouldSuppressClick,
 }: {
   playerName: string;
   seed?: number | null | undefined;
   isWinner: boolean;
   countryCode?: string | null | undefined;
+  shouldSuppressClick: () => boolean;
 }) => (
   <span className="tournamentPlayerLabel">
     <img
@@ -309,8 +434,12 @@ const PlayerLabel = ({
       className="tournamentPlayerLink"
       to="/@/$username"
       params={{ username: normalizeUsername(playerName) }}
-      onPointerDown={(event) => event.stopPropagation()}
-      onClick={(event) => event.stopPropagation()}
+      onClick={(event) => {
+        if (shouldSuppressClick()) {
+          event.preventDefault();
+        }
+        event.stopPropagation();
+      }}
       title={playerName}
     >
       {getBracketDisplayName(playerName)}
@@ -336,12 +465,14 @@ const TournamentMatchCard = ({
   countryMap,
   trophyAssetPath,
   isDecisive,
+  shouldSuppressClick,
 }: {
   match: PositionedMatch;
   topSeedMap: Map<string, number>;
   countryMap: Map<string, string>;
   trophyAssetPath: string | undefined;
   isDecisive: boolean;
+  shouldSuppressClick: () => boolean;
 }) => {
   const matchWinner = winnerName(match);
   const withdrawalPlayer = withdrewPlayerName(match);
@@ -357,10 +488,14 @@ const TournamentMatchCard = ({
         top: `${match.y}px`,
         width: `${CARD_WIDTH}px`,
       }}
-      onPointerDown={hasMatchPage ? (event) => event.stopPropagation() : undefined}
       onClick={
         hasMatchPage
-          ? () => {
+          ? (event) => {
+              if (shouldSuppressClick()) {
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+              }
               window.open(matchHref, "_blank", "noopener,noreferrer");
             }
           : undefined
@@ -386,6 +521,7 @@ const TournamentMatchCard = ({
               seed={topSeedMap.get(match.p1)}
               isWinner={matchWinner === match.p1}
               countryCode={countryMap.get(match.p1)}
+              shouldSuppressClick={shouldSuppressClick}
             />
           </span>
           <strong className={withdrawalPlayer === match.p1 ? "tournamentScoreWithdrawal" : ""}>
@@ -399,6 +535,7 @@ const TournamentMatchCard = ({
               seed={topSeedMap.get(match.p2)}
               isWinner={matchWinner === match.p2}
               countryCode={countryMap.get(match.p2)}
+              shouldSuppressClick={shouldSuppressClick}
             />
           </span>
           <strong className={withdrawalPlayer === match.p2 ? "tournamentScoreWithdrawal" : ""}>
@@ -421,11 +558,14 @@ const TournamentStageSection = ({
   trophyAssetPath,
   decisiveMatchId,
   hideStartRoundControls,
+  shouldSuppressMatchClick,
   onZoomOut,
   onZoomReset,
   onZoomIn,
   onStartRoundChange,
+  setHeaderTrackRef,
   setScrollerRef,
+  onScrollerScroll,
   onPointerDown,
   onPointerMove,
   onPointerEnd,
@@ -440,11 +580,14 @@ const TournamentStageSection = ({
   trophyAssetPath: string | undefined;
   decisiveMatchId: string;
   hideStartRoundControls?: boolean;
+  shouldSuppressMatchClick: () => boolean;
   onZoomOut: () => void;
   onZoomReset: () => void;
   onZoomIn: () => void;
   onStartRoundChange: (roundName: string) => void;
+  setHeaderTrackRef: (stageKey: StageKey, node: HTMLDivElement | null) => void;
   setScrollerRef: (stageKey: StageKey, node: HTMLDivElement | null) => void;
+  onScrollerScroll: (stageKey: StageKey, event: ReactUIEvent<HTMLDivElement>) => void;
   onPointerDown: (stageKey: StageKey, event: ReactPointerEvent<HTMLDivElement>) => void;
   onPointerMove: (event: ReactPointerEvent<HTMLDivElement>) => void;
   onPointerEnd: (event: ReactPointerEvent<HTMLDivElement>) => void;
@@ -485,85 +628,121 @@ const TournamentStageSection = ({
             +
           </button>
         </div>
-        {!hideStartRoundControls && (
-          <label className="tournamentStageControls" htmlFor={`${stage.key}-start-round`}>
-            <select
-              id={`${stage.key}-start-round`}
-              className="tournamentStartRoundSelect"
-              value={startRoundName}
-              onChange={(event) => onStartRoundChange(event.currentTarget.value)}
-            >
-              {startRoundOptions.map((round) => (
-                <option key={round.roundName} value={round.roundName}>
-                  Start at {round.roundName}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
       </div>
-      <div
-        className={`tournamentRoundsScroller${isDragging ? " isDragging" : ""}${stage.key === "main" ? " isMainBracket" : ""}`}
-        ref={(node) => setScrollerRef(stage.key, node)}
-        onPointerDown={(event) => onPointerDown(stage.key, event)}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerEnd}
-        onPointerCancel={onPointerEnd}
-      >
-        {!layout ? null : (
+      {!hideStartRoundControls && startRoundOptions.length > 1 ? (
+        <div className="tournamentRoundNavigator" aria-label={`Starting round for ${stage.label}`}>
+          <div className="tournamentRoundTabs" role="tablist" aria-label={`${stage.label} rounds`}>
+            {startRoundOptions.map((round) => {
+              const isSelected = round.roundName === startRoundName;
+
+              return (
+                <button
+                  key={round.roundName}
+                  type="button"
+                  role="tab"
+                  aria-selected={isSelected}
+                  className={`tournamentRoundTab${isSelected ? " isActive" : ""}`}
+                  onClick={() => onStartRoundChange(round.roundName)}
+                  title={`Start bracket at ${round.roundName}`}
+                >
+                  {getRoundShortLabel(round.roundName)}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+      {layout ? (
+        <div
+          className="tournamentRoundHeaderRail"
+          style={{
+            height: `${HEADER_SPACE * zoomLevel}px`,
+            marginBottom: `${-HEADER_SPACE * zoomLevel}px`,
+          }}
+        >
           <div
-            className="tournamentTreeBoardViewport"
+            className="tournamentRoundHeaderTrack"
+            ref={(node) => setHeaderTrackRef(stage.key, node)}
             style={{
               width: `${layout.width * zoomLevel}px`,
-              height: `${layout.height * zoomLevel}px`,
             }}
           >
+            {layout.rounds.map((round, roundIndex) => (
+              <div
+                key={`${stage.key}-${round.roundName}-sticky`}
+                className="tournamentRoundHeader tournamentRoundHeaderSticky"
+                style={{
+                  left: `${(BOARD_PADDING + roundIndex * (CARD_WIDTH + COLUMN_GAP)) * zoomLevel}px`,
+                  width: `${CARD_WIDTH * zoomLevel}px`,
+                }}
+              >
+                <span>{round.roundName}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      <div
+        className="tournamentDrawViewport"
+        aria-label={`${stage.label} draw starting at ${startRoundName}`}
+      >
+        <div
+          className={`tournamentRoundsScroller${isDragging ? " isDragging" : ""}${stage.key === "main" ? " isMainBracket" : ""}`}
+          ref={(node) => setScrollerRef(stage.key, node)}
+          onPointerDown={(event) => onPointerDown(stage.key, event)}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerEnd}
+          onPointerCancel={onPointerEnd}
+          onScroll={(event) => onScrollerScroll(stage.key, event)}
+        >
+          {!layout ? null : (
             <div
-              className={`tournamentTreeBoard${stage.key === "main" ? " isMainTree" : ""}`}
+              className="tournamentTreeBoardViewport"
               style={{
-                width: `${layout.width}px`,
-                height: `${layout.height}px`,
-                transform: `scale(${zoomLevel})`,
+                width: `${layout.width * zoomLevel}px`,
+                height: `${layout.height * zoomLevel}px`,
               }}
             >
-              <svg
-                className="tournamentTreeLines"
-                viewBox={`0 0 ${layout.width} ${layout.height}`}
-                preserveAspectRatio="none"
-                aria-hidden="true"
+              <div
+                className={`tournamentTreeBoard${stage.key === "main" ? " isMainTree" : ""}`}
+                style={{
+                  width: `${layout.width}px`,
+                  height: `${layout.height}px`,
+                  transform: `scale(${zoomLevel})`,
+                }}
               >
-                {layout.connectors.map((connector) => (
-                  <path key={connector.key} d={connector.d} />
-                ))}
-              </svg>
-
-              {layout.rounds.map((round, roundIndex) => (
-                <div
-                  key={`${stage.key}-${round.roundName}`}
-                  className="tournamentRoundHeader tournamentRoundHeaderFloating"
-                  style={{
-                    left: `${BOARD_PADDING + roundIndex * (CARD_WIDTH + COLUMN_GAP)}px`,
-                    top: "0px",
-                    width: `${CARD_WIDTH}px`,
-                  }}
+                <svg
+                  className="tournamentTreeLines"
+                  viewBox={`0 0 ${layout.width} ${layout.height}`}
+                  preserveAspectRatio="none"
+                  aria-hidden="true"
                 >
-                  <span>{round.roundName}</span>
-                </div>
-              ))}
+                  {layout.connectors.map((connector) => (
+                    <line
+                      key={connector.key}
+                      x1={connector.x1}
+                      y1={connector.y1}
+                      x2={connector.x2}
+                      y2={connector.y2}
+                    />
+                  ))}
+                </svg>
 
-              {layout.positionedMatches.map((match) => (
-                <TournamentMatchCard
-                  key={match.id}
-                  match={match}
-                  topSeedMap={topSeedMap}
-                  countryMap={countryMap}
-                  trophyAssetPath={trophyAssetPath}
-                  isDecisive={match.id === decisiveMatchId}
-                />
-              ))}
+                {layout.positionedMatches.map((match) => (
+                  <TournamentMatchCard
+                    key={match.id}
+                    match={match}
+                    topSeedMap={topSeedMap}
+                    countryMap={countryMap}
+                    trophyAssetPath={trophyAssetPath}
+                    isDecisive={match.id === decisiveMatchId}
+                    shouldSuppressClick={shouldSuppressMatchClick}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </section>
   );
@@ -581,18 +760,10 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
   const [zoomLevels, setZoomLevels] = useState<Record<string, number>>({});
   const [activeStageKey, setActiveStageKey] = useState<string>("main");
   const [draggingStage, setDraggingStage] = useState<string>("");
-  type DragState = {
-    stageKey: string;
-    pointerId: number;
-    startX: number;
-    startY: number;
-    startScrollLeft: number;
-    startScrollTop: number;
-    startWindowScrollY: number;
-    moved: boolean;
-  };
   const dragStateRef = useRef<DragState | null>(null);
+  const suppressNextMatchClickRef = useRef(false);
   const scrollerRefs = useRef<Record<string, HTMLDivElement>>({});
+  const headerTrackRefs = useRef<Record<string, HTMLDivElement>>({});
   const pendingRestoreRef = useRef<{
     scrollPositions: Record<string, { left?: number; top?: number }>;
     pageScrollY: number;
@@ -689,6 +860,7 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
         if (!scroller) return;
         scroller.scrollLeft = Number(scrollPosition?.left) || 0;
         scroller.scrollTop = Number(scrollPosition?.top) || 0;
+        syncRoundHeaderTrack(stageKey, scroller.scrollLeft);
       });
 
       window.scrollTo({
@@ -733,10 +905,27 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
   const setScrollerRef = (stageKey: string, node: HTMLDivElement | null): void => {
     if (node) {
       scrollerRefs.current[stageKey] = node;
+      syncRoundHeaderTrack(stageKey, node.scrollLeft);
       return;
     }
 
     delete scrollerRefs.current[stageKey];
+  };
+
+  const syncRoundHeaderTrack = (stageKey: string, scrollLeft: number): void => {
+    const headerTrack = headerTrackRefs.current[stageKey];
+    if (!headerTrack) return;
+    headerTrack.style.transform = `translate3d(${-scrollLeft}px, 0, 0)`;
+  };
+
+  const setHeaderTrackRef = (stageKey: string, node: HTMLDivElement | null): void => {
+    if (node) {
+      headerTrackRefs.current[stageKey] = node;
+      syncRoundHeaderTrack(stageKey, scrollerRefs.current[stageKey]?.scrollLeft || 0);
+      return;
+    }
+
+    delete headerTrackRefs.current[stageKey];
   };
 
   const updateStageZoom = (stageKey: string, delta: number): void => {
@@ -758,6 +947,25 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
       ...current,
       [stageKey]: roundName,
     }));
+
+    if (typeof window === "undefined") return;
+
+    window.requestAnimationFrame(() => {
+      const scroller = scrollerRefs.current[stageKey];
+      if (!scroller) return;
+      scroller.scrollTo({ left: 0, top: 0, behavior: "auto" });
+      syncRoundHeaderTrack(stageKey, 0);
+    });
+  };
+
+  const handleScrollerScroll = (stageKey: string, event: ReactUIEvent<HTMLDivElement>): void => {
+    syncRoundHeaderTrack(stageKey, event.currentTarget.scrollLeft);
+  };
+
+  const shouldSuppressMatchClick = (): boolean => {
+    if (!suppressNextMatchClickRef.current) return false;
+    suppressNextMatchClickRef.current = false;
+    return true;
   };
 
   const isPointerOnNativeScrollbar = (element: HTMLElement, event: ReactPointerEvent): boolean => {
@@ -826,16 +1034,19 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
     if (!dragState || dragState.pointerId !== event.pointerId) return;
 
     event.currentTarget.releasePointerCapture?.(event.pointerId);
+    suppressNextMatchClickRef.current = dragState.moved;
+    if (dragState.moved && typeof window !== "undefined") {
+      window.setTimeout(() => {
+        suppressNextMatchClickRef.current = false;
+      }, 0);
+    }
     dragStateRef.current = null;
     setDraggingStage("");
   };
 
   if (bracketLoading) {
     return (
-      <TournamentStateMessage
-        title="Loading tournament…"
-        message="Fetching bracket data from Supabase."
-      />
+      <TournamentStateMessage title="Loading bracket…" message="Preparing the tournament draw." />
     );
   }
 
@@ -948,11 +1159,14 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
               trophyAssetPath={bracket.trophyAssetPath}
               decisiveMatchId={decisiveMatchId}
               hideStartRoundControls={Boolean(bracket.hideStartRoundControls)}
+              shouldSuppressMatchClick={shouldSuppressMatchClick}
               onZoomOut={() => updateStageZoom(stage.key, -STAGE_ZOOM_STEP)}
               onZoomReset={() => resetStageZoom(stage.key)}
               onZoomIn={() => updateStageZoom(stage.key, STAGE_ZOOM_STEP)}
               onStartRoundChange={(roundName) => setStageStartRound(stage.key, roundName)}
+              setHeaderTrackRef={setHeaderTrackRef}
               setScrollerRef={setScrollerRef}
+              onScrollerScroll={handleScrollerScroll}
               onPointerDown={handleScrollerPointerDown}
               onPointerMove={handleScrollerPointerMove}
               onPointerEnd={endScrollerDrag}
