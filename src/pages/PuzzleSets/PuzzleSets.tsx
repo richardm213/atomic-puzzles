@@ -15,6 +15,7 @@ const EVENT_FILTERS = [
   { id: "chess960", label: "960" },
   { id: "awc", label: "AWC" },
   { id: "practiceMatch", label: "Practice" },
+  { id: "wolfrandom", label: "WolframRandom" },
 ];
 
 const matchesEventFilter = (
@@ -46,6 +47,11 @@ const matchesEventFilter = (
 
   if (filterId === "practiceMatch") {
     return normalizedEvent.includes("practice");
+  }
+
+  if (filterId === "wolfrandom") {
+    const compactEvent = normalizedEvent.replace(/[^a-z0-9]/g, "");
+    return compactEvent.includes("wolfrandom") || compactEvent.includes("wolframrandom");
   }
 
   return true;
