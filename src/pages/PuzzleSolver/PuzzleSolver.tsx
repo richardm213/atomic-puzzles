@@ -9,6 +9,8 @@ import {
   faForward,
   faForwardStep,
   faMagnifyingGlassChart,
+  faUsers,
+  faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
@@ -28,9 +30,12 @@ import {
 } from "../../lib/puzzles/solutionPgn";
 import {
   fetchAttemptedPuzzleIds,
+  fetchPuzzleAttemptsForPuzzle,
+  type PuzzleProgressWithUsernameRow,
   recordPuzzleProgress,
 } from "../../lib/supabase/supabasePuzzleProgress";
 import { isRegisteredSiteUser } from "../../lib/supabase/supabaseUsers";
+import { formatLocalDateTime } from "../../utils/formatters";
 
 const lichessAnalysisUrl = (fen: string | null | undefined): string => {
   if (!fen) return "https://lichess.org/analysis/atomic";
@@ -51,6 +56,11 @@ const parsePuzzleId = (puzzleIdParam: string | null | undefined): number | null 
 
 const toPuzzleKey = (puzzleId: unknown): string =>
   puzzleId === undefined || puzzleId === null ? "" : String(puzzleId).trim();
+
+const ATTEMPTED_PUZZLE_BADGE_LABEL = "You've already attempted this puzzle before";
+const OTHER_PUZZLE_ATTEMPTS_LIMIT = 30;
+
+type PuzzleInfoTab = "solution" | "attempts";
 
 const addValueToSet = (currentSet: Set<string>, value: string): Set<string> => {
   if (!value) return currentSet;
@@ -331,7 +341,7 @@ export const PuzzleSolverPage = () => {
     id: number;
     fading: boolean;
   } | null>(null);
-  const [showSolution, setShowSolution] = useState(false);
+  const [activePuzzleInfoTab, setActivePuzzleInfoTab] = useState<PuzzleInfoTab | null>(null);
   const [solutionNavigation, setSolutionNavigation] = useState<
     import("../../types/chessboard").SolutionNavigation | null
   >(null);
@@ -344,6 +354,12 @@ export const PuzzleSolverPage = () => {
   const [feedbackBadgeId, setFeedbackBadgeId] = useState(0);
   const [pinnedSolutionLineIndex, setPinnedSolutionLineIndex] = useState<number | null>(null);
   const [copyPgnLabel, setCopyPgnLabel] = useState("Copy PGN");
+  const [otherPuzzleAttemptsStatus, setOtherPuzzleAttemptsStatus] = useState<
+    "idle" | "loading" | "loaded" | "error"
+  >("idle");
+  const [otherPuzzleAttempts, setOtherPuzzleAttempts] = useState<PuzzleProgressWithUsernameRow[]>(
+    [],
+  );
   const [boardState, setBoardState] = useState(createInitialBoardState);
   const previousBoardSnapshotRef = useRef<ReturnType<typeof createInitialBoardSnapshot>>(
     createInitialBoardSnapshot(),
@@ -356,6 +372,7 @@ export const PuzzleSolverPage = () => {
   const upcomingPuzzleIndexesRef = useRef<number[]>([]);
   const progressWriteQueueRef = useRef(Promise.resolve());
   const attemptedPuzzleIdsRef = useRef<Set<string>>(new Set());
+  const activePuzzleKeyRef = useRef("");
 
   useEffect(() => {
     let isCurrent = true;
@@ -557,6 +574,12 @@ export const PuzzleSolverPage = () => {
     ? resolvedAttemptedPuzzleIds.has(activePuzzleKey)
     : false;
   const hasAttemptedActivePuzzle = hasPersistedAttempt || hasResolvedAttempt;
+  const showSolution = activePuzzleInfoTab === "solution";
+  const otherPuzzleAttemptsOpen = activePuzzleInfoTab === "attempts";
+
+  useEffect(() => {
+    activePuzzleKeyRef.current = activePuzzleKey;
+  }, [activePuzzleKey]);
 
   const enqueuePuzzleProgressWrite = useCallback(
     ({
@@ -602,7 +625,7 @@ export const PuzzleSolverPage = () => {
   );
 
   const resetPuzzleUiState = useCallback(() => {
-    setShowSolution(false);
+    setActivePuzzleInfoTab(null);
     setSolutionNavigation(null);
     setInteractionMode(SOLVE_MODE);
     setCompletionFeedback(null);
@@ -628,6 +651,8 @@ export const PuzzleSolverPage = () => {
     resetPuzzleUiState();
     setMobileFeedback(null);
     setCopyPgnLabel("Copy PGN");
+    setOtherPuzzleAttemptsStatus("idle");
+    setOtherPuzzleAttempts([]);
     previousBoardSnapshotRef.current = createInitialBoardSnapshot();
   }, [activePuzzleId, resetPuzzleUiState]);
 
@@ -662,9 +687,7 @@ export const PuzzleSolverPage = () => {
   const solutionButtonTitle = isRetryFeedbackActive
     ? "Find the better move before viewing the solution."
     : hasAttemptedActivePuzzle
-      ? showSolution
-        ? "Hide solution"
-        : "Show solution"
+      ? "View the solution"
       : SOLUTION_UNLOCK_HINT;
   const feedback = completionFeedback;
 
@@ -702,15 +725,44 @@ export const PuzzleSolverPage = () => {
     if (previousPuzzle) replaceUrlWithPuzzle(previousPuzzle.puzzleId);
   };
 
-  const handleToggleSolution = () => {
+  const handleSelectSolutionTab = () => {
     if (!canRevealSolution) return;
 
-    if (!showSolution) {
-      setInteractionMode(ANALYSIS_MODE);
+    setInteractionMode(ANALYSIS_MODE);
+    setActivePuzzleInfoTab("solution");
+    setSolutionNavigation(null);
+  };
+
+  const handleSelectOtherPuzzleAttemptsTab = () => {
+    if (!hasAttemptedActivePuzzle) return;
+
+    setActivePuzzleInfoTab("attempts");
+    setInteractionMode(SOLVE_MODE);
+    setSolutionNavigation(null);
+    if (!activePuzzleKey || otherPuzzleAttemptsStatus === "loaded") return;
+
+    const puzzleKeyForRequest = activePuzzleKey;
+    const fetchOptions: {
+      excludeUsername?: string;
+      limit: number;
+    } = { limit: OTHER_PUZZLE_ATTEMPTS_LIMIT };
+    if (user?.username) {
+      fetchOptions.excludeUsername = user.username;
     }
 
-    setShowSolution((prev) => !prev);
-    setSolutionNavigation(null);
+    setOtherPuzzleAttemptsStatus("loading");
+    void fetchPuzzleAttemptsForPuzzle(puzzleKeyForRequest, fetchOptions)
+      .then((rows) => {
+        if (activePuzzleKeyRef.current !== puzzleKeyForRequest) return;
+        setOtherPuzzleAttempts(rows);
+        setOtherPuzzleAttemptsStatus("loaded");
+      })
+      .catch((error) => {
+        if (activePuzzleKeyRef.current !== puzzleKeyForRequest) return;
+        globalThis.console?.error(error);
+        setOtherPuzzleAttempts([]);
+        setOtherPuzzleAttemptsStatus("error");
+      });
   };
 
   const showMobileFeedback = useCallback((nextFeedback: CompletionFeedback): void => {
@@ -1152,6 +1204,162 @@ export const PuzzleSolverPage = () => {
     </div>
   );
 
+  const renderAnalysisActions = (mobile = false) => (
+    <div className={mobile ? "mobileAnalyzeActions" : "analysisButtonsRow"}>
+      <a
+        className={`fenAnalyzeButton ${mobile ? "mobileAnalyzeButton" : ""} ${
+          !fen ? "disabled" : ""
+        }`}
+        href={startAnalysisUrl}
+        target="_blank"
+        rel="noreferrer"
+        aria-disabled={!fen}
+        onClick={(event) => {
+          if (!fen) event.preventDefault();
+        }}
+      >
+        <span className="fenAnalyzeIcon" aria-hidden="true">
+          <FontAwesomeIcon icon={faMagnifyingGlassChart} />
+        </span>
+        <span className="fenAnalyzeText">
+          <span>Analyze</span>
+          <strong>Puzzle</strong>
+        </span>
+        <FontAwesomeIcon className="fenAnalyzeExternalIcon" icon={faArrowUpRightFromSquare} />
+      </a>
+      <a
+        className={`fenAnalyzeButton ${mobile ? "mobileAnalyzeButton" : ""} ${
+          !currentFen ? "disabled" : ""
+        }`}
+        href={currentAnalysisUrl}
+        target="_blank"
+        rel="noreferrer"
+        aria-disabled={!currentFen}
+        onClick={(event) => {
+          if (!currentFen) event.preventDefault();
+        }}
+      >
+        <span className="fenAnalyzeIcon" aria-hidden="true">
+          <FontAwesomeIcon icon={faMagnifyingGlassChart} />
+        </span>
+        <span className="fenAnalyzeText">
+          <span>Analyze</span>
+          <strong>Current Position</strong>
+        </span>
+        <FontAwesomeIcon className="fenAnalyzeExternalIcon" icon={faArrowUpRightFromSquare} />
+      </a>
+    </div>
+  );
+
+  const renderOtherPuzzleAttemptsPanel = () => (
+    <div className="puzzleOtherAttemptsPanel" aria-live="polite">
+      {otherPuzzleAttemptsStatus === "loading" ? (
+        <div className="puzzleOtherAttemptsState">Loading attempts...</div>
+      ) : otherPuzzleAttemptsStatus === "error" ? (
+        <div className="puzzleOtherAttemptsState">Could not load attempts.</div>
+      ) : otherPuzzleAttempts.length > 0 ? (
+        <ul className="puzzleOtherAttemptsList" aria-label="Other puzzle attempts">
+          {otherPuzzleAttempts.map((attempt) => (
+            <li
+              key={`${attempt.username}-${attempt.first_attempt_at}`}
+              className={`puzzleOtherAttemptRow ${
+                attempt.puzzle_correct ? "correct" : "incorrect"
+              }`}
+            >
+              <Link
+                className="puzzleOtherAttemptUser"
+                to="/@/$username/puzzles"
+                params={{ username: attempt.username }}
+              >
+                {attempt.username}
+              </Link>
+              <span
+                className={`puzzleOtherAttemptResult ${
+                  attempt.puzzle_correct ? "correct" : "incorrect"
+                }`}
+              >
+                <FontAwesomeIcon
+                  icon={attempt.puzzle_correct ? faCheck : faXmark}
+                  aria-hidden="true"
+                />
+                <span>{attempt.puzzle_correct ? "Correct" : "Incorrect"}</span>
+              </span>
+              <time className="puzzleOtherAttemptTime" dateTime={attempt.first_attempt_at}>
+                {formatLocalDateTime(attempt.first_attempt_at)}
+              </time>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div className="puzzleOtherAttemptsState">No other attempts yet.</div>
+      )}
+    </div>
+  );
+
+  const renderPuzzleInfoTabs = () => (
+    <div className="puzzleInfoTabs" role="tablist" aria-label="Puzzle details">
+      <button
+        type="button"
+        role="tab"
+        className={`puzzleInfoTab ${showSolution ? "active" : ""}`}
+        onClick={handleSelectSolutionTab}
+        disabled={!canRevealSolution}
+        aria-selected={showSolution}
+        title={solutionButtonTitle}
+      >
+        <FontAwesomeIcon icon={faMagnifyingGlassChart} aria-hidden="true" />
+        <span>Solution</span>
+      </button>
+      <button
+        type="button"
+        role="tab"
+        className={`puzzleInfoTab ${otherPuzzleAttemptsOpen ? "active" : ""}`}
+        onClick={handleSelectOtherPuzzleAttemptsTab}
+        disabled={
+          !hasAttemptedActivePuzzle || !activePuzzleKey || otherPuzzleAttemptsStatus === "loading"
+        }
+        aria-expanded={otherPuzzleAttemptsOpen}
+        aria-selected={otherPuzzleAttemptsOpen}
+        title={
+          hasAttemptedActivePuzzle
+            ? "View other attempts for this puzzle"
+            : "Attempt this puzzle before viewing other attempts."
+        }
+      >
+        <FontAwesomeIcon icon={faUsers} aria-hidden="true" />
+        <span>Other attempts</span>
+      </button>
+    </div>
+  );
+
+  const renderPuzzleInfoPanel = (mobile = false) => {
+    if (showSolution && canRevealSolution) {
+      return (
+        <div className="puzzleInfoPanel">
+          {renderAnalysisActions(mobile)}
+          {renderMoveLine(mobile ? "lineBox mobileLineBox" : "lineBox")}
+        </div>
+      );
+    }
+
+    if (otherPuzzleAttemptsOpen && hasAttemptedActivePuzzle) {
+      return <div className="puzzleInfoPanel">{renderOtherPuzzleAttemptsPanel()}</div>;
+    }
+
+    return null;
+  };
+
+  const renderPuzzleInfoSection = (mobile = false) => {
+    const panel = renderPuzzleInfoPanel(mobile);
+
+    return (
+      <div className={`puzzleInfoStack ${panel ? "hasContent" : ""}`}>
+        {renderPuzzleInfoTabs()}
+        {panel}
+      </div>
+    );
+  };
+
   return (
     <div className="page puzzlePage">
       <Seo
@@ -1165,8 +1373,7 @@ export const PuzzleSolverPage = () => {
       />
       <div className="panel puzzlePanel">
         <div className="puzzleHeader">
-          <div>
-            <p className="puzzleEyebrow">Atomic tactics</p>
+          <div className="puzzleHeaderTitle">
             <h1>Find the best move</h1>
           </div>
           <div className="puzzleHeaderAside">
@@ -1179,15 +1386,28 @@ export const PuzzleSolverPage = () => {
                 <span>Dashboard</span>
               </Link>
             ) : null}
+            {hasPersistedAttempt ? (
+              <span
+                className="puzzleAttemptedBadge"
+                role="img"
+                tabIndex={0}
+                title={ATTEMPTED_PUZZLE_BADGE_LABEL}
+                aria-label={ATTEMPTED_PUZZLE_BADGE_LABEL}
+                data-tooltip={ATTEMPTED_PUZZLE_BADGE_LABEL}
+              >
+                <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
+              </span>
+            ) : null}
             <div className="puzzleCount" aria-label="Puzzle count">
               <span>{puzzleOrdinal ?? "-"}</span>
               <small>of {puzzles.length || "-"}</small>
             </div>
           </div>
-        </div>
-
-        {!isMobileLayout ? (
-          <div className="controls">
+          <div className="puzzleHeaderMeta" title={author}>
+            <span>Author</span>
+            <strong>{author}</strong>
+          </div>
+          {!isMobileLayout ? (
             <div className="buttonRow puzzleActions">
               <button type="button" onClick={handlePreviousPuzzle} disabled={historyIndex <= 0}>
                 Prev
@@ -1195,30 +1415,15 @@ export const PuzzleSolverPage = () => {
               <button type="button" onClick={handleNextPuzzle} disabled={puzzles.length === 0}>
                 Next
               </button>
-              <button
-                type="button"
-                className="puzzlePrimaryAction"
-                onClick={handleToggleSolution}
-                disabled={!canRevealSolution}
-                title={solutionButtonTitle}
-              >
-                {showSolution ? "Hide solution" : "Show solution"}
-              </button>
             </div>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
 
         {boardState.error ? <div className="errorText">{boardState.error}</div> : null}
         {loadingError ? <div className="errorText">{loadingError}</div> : null}
 
         {!isMobileLayout ? (
           <div className="puzzleDetails">
-            <div className="puzzleMetaRow">
-              <div className="metaChip" title={author}>
-                <span className="metaChipLabel">Author</span>
-                <span className="metaChipValue">{author}</span>
-              </div>
-            </div>
             {event ? (
               <div className="puzzleMetaRow">
                 <div className="metaChip" title={event}>
@@ -1227,58 +1432,9 @@ export const PuzzleSolverPage = () => {
                 </div>
               </div>
             ) : null}
-            {showSolution ? (
-              <div className="analysisButtonsRow">
-                <a
-                  className={`fenAnalyzeButton ${!fen ? "disabled" : ""}`}
-                  href={startAnalysisUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-disabled={!fen}
-                  onClick={(event) => {
-                    if (!fen) event.preventDefault();
-                  }}
-                >
-                  <span className="fenAnalyzeIcon" aria-hidden="true">
-                    <FontAwesomeIcon icon={faMagnifyingGlassChart} />
-                  </span>
-                  <span className="fenAnalyzeText">
-                    <span>Analyze</span>
-                    <strong>Puzzle</strong>
-                  </span>
-                  <FontAwesomeIcon
-                    className="fenAnalyzeExternalIcon"
-                    icon={faArrowUpRightFromSquare}
-                  />
-                </a>
-                <a
-                  className={`fenAnalyzeButton ${!currentFen ? "disabled" : ""}`}
-                  href={currentAnalysisUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-disabled={!currentFen}
-                  onClick={(event) => {
-                    if (!currentFen) event.preventDefault();
-                  }}
-                >
-                  <span className="fenAnalyzeIcon" aria-hidden="true">
-                    <FontAwesomeIcon icon={faMagnifyingGlassChart} />
-                  </span>
-                  <span className="fenAnalyzeText">
-                    <span>Analyze</span>
-                    <strong>Current Position</strong>
-                  </span>
-                  <FontAwesomeIcon
-                    className="fenAnalyzeExternalIcon"
-                    icon={faArrowUpRightFromSquare}
-                  />
-                </a>
-              </div>
-            ) : null}
+            {renderPuzzleInfoSection()}
           </div>
         ) : null}
-
-        {!isMobileLayout && showSolution && canRevealSolution ? renderMoveLine() : null}
       </div>
 
       <div className="boardWrap">
@@ -1341,6 +1497,18 @@ export const PuzzleSolverPage = () => {
             <span>{puzzleOrdinal ?? "-"}</span>
             <small>of {puzzles.length || "-"}</small>
           </div>
+          {hasPersistedAttempt ? (
+            <span
+              className="puzzleAttemptedBadge"
+              role="img"
+              tabIndex={0}
+              title={ATTEMPTED_PUZZLE_BADGE_LABEL}
+              aria-label={ATTEMPTED_PUZZLE_BADGE_LABEL}
+              data-tooltip={ATTEMPTED_PUZZLE_BADGE_LABEL}
+            >
+              <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
+            </span>
+          ) : null}
           <span className="mobilePuzzleAuthor" title={author}>
             {author}
           </span>
@@ -1350,66 +1518,8 @@ export const PuzzleSolverPage = () => {
       {isMobileLayout ? (
         <div className="mobileWorkflowPanel">
           <div className="mobileActionCard">
-            <button
-              type="button"
-              className="puzzlePrimaryAction"
-              onClick={handleToggleSolution}
-              disabled={!canRevealSolution}
-              title={solutionButtonTitle}
-            >
-              {showSolution ? "Hide solution" : "Show solution"}
-            </button>
-            {showSolution ? (
-              <div className="mobileAnalyzeActions">
-                <a
-                  className={`fenAnalyzeButton mobileAnalyzeButton ${!fen ? "disabled" : ""}`}
-                  href={startAnalysisUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-disabled={!fen}
-                  onClick={(event) => {
-                    if (!fen) event.preventDefault();
-                  }}
-                >
-                  <span className="fenAnalyzeIcon" aria-hidden="true">
-                    <FontAwesomeIcon icon={faMagnifyingGlassChart} />
-                  </span>
-                  <span className="fenAnalyzeText">
-                    <span>Analyze</span>
-                    <strong>Puzzle</strong>
-                  </span>
-                  <FontAwesomeIcon
-                    className="fenAnalyzeExternalIcon"
-                    icon={faArrowUpRightFromSquare}
-                  />
-                </a>
-                <a
-                  className={`fenAnalyzeButton mobileAnalyzeButton ${!currentFen ? "disabled" : ""}`}
-                  href={currentAnalysisUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-disabled={!currentFen}
-                  onClick={(event) => {
-                    if (!currentFen) event.preventDefault();
-                  }}
-                >
-                  <span className="fenAnalyzeIcon" aria-hidden="true">
-                    <FontAwesomeIcon icon={faMagnifyingGlassChart} />
-                  </span>
-                  <span className="fenAnalyzeText">
-                    <span>Analyze</span>
-                    <strong>Current Position</strong>
-                  </span>
-                  <FontAwesomeIcon
-                    className="fenAnalyzeExternalIcon"
-                    icon={faArrowUpRightFromSquare}
-                  />
-                </a>
-              </div>
-            ) : null}
+            {renderPuzzleInfoSection(true)}
           </div>
-
-          {showSolution && canRevealSolution ? renderMoveLine("lineBox mobileLineBox") : null}
         </div>
       ) : null}
 

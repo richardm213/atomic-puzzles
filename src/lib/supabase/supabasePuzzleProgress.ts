@@ -7,7 +7,7 @@ import type {
 } from "../../types/supabase";
 import { normalizeUsername } from "../../utils/playerNames";
 import { getSupabaseClient } from "./supabaseClient";
-import { fetchAllSupabaseRows, loadSupabasePage } from "./supabaseRows";
+import { fetchAllSupabaseRows, loadSupabasePage, loadSupabaseRows } from "./supabaseRows";
 
 export type { PuzzleProgressRow } from "../../types/supabase";
 export type { PuzzleProgressWithUsernameRow } from "../../types/supabase";
@@ -247,6 +247,11 @@ export type RecordPuzzleProgressInput = {
   puzzleCorrect: boolean;
 };
 
+export type FetchPuzzleAttemptsForPuzzleOptions = {
+  excludeUsername?: string;
+  limit?: number;
+};
+
 export const recordPuzzleProgress = async ({
   username,
   puzzleId,
@@ -432,6 +437,39 @@ export const fetchAllPuzzleProgressRows = async (): Promise<PuzzleProgressWithUs
       .select("username,puzzle_id,first_attempt_at,puzzle_correct")
       .order("first_attempt_at", { ascending: false }),
   );
+};
+
+export const fetchPuzzleAttemptsForPuzzle = async (
+  puzzleId: string | number | null | undefined,
+  options: FetchPuzzleAttemptsForPuzzleOptions = {},
+): Promise<PuzzleProgressWithUsernameRow[]> => {
+  const normalizedPuzzleId = normalizePuzzleId(puzzleId);
+  if (!normalizedPuzzleId) return [];
+
+  const normalizedExcludeUsername = normalizeUsername(options.excludeUsername);
+  const boundedLimit = Math.min(100, Math.max(1, Math.floor(Number(options.limit)) || 30));
+  const supabase = getSupabaseClient();
+  let query = supabase
+    .from(PUZZLE_PROGRESS_TABLE)
+    .select("username,puzzle_id,first_attempt_at,puzzle_correct")
+    .eq("puzzle_id", normalizedPuzzleId)
+    .order("first_attempt_at", { ascending: false })
+    .limit(boundedLimit);
+
+  if (normalizedExcludeUsername) {
+    query = query.neq("username", normalizedExcludeUsername);
+  }
+
+  const rows = await loadSupabaseRows<PuzzleProgressWithUsernameRow>(PUZZLE_PROGRESS_TABLE, query);
+
+  return rows
+    .map((row) => ({
+      username: normalizeUsername(row?.username),
+      puzzle_id: normalizePuzzleId(row?.puzzle_id),
+      first_attempt_at: typeof row?.first_attempt_at === "string" ? row.first_attempt_at : "",
+      puzzle_correct: Boolean(row?.puzzle_correct),
+    }))
+    .filter((row) => row.username && row.puzzle_id && row.first_attempt_at);
 };
 
 export const fetchAttemptedPuzzleIds = async (username: string): Promise<Set<string>> => {

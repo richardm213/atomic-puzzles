@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
     solutionNavigation?: { lineIndex?: number; plyIndex?: number } | null;
     onStateChange?: (state: unknown) => void;
   }>,
+  attemptedPuzzleIds: new Set(["1369"]),
   navigate: vi.fn(),
 }));
 
@@ -47,7 +48,21 @@ vi.mock("../../lib/puzzles/puzzleLibrary", () => ({
 }));
 
 vi.mock("../../lib/supabase/supabasePuzzleProgress", () => ({
-  fetchAttemptedPuzzleIds: vi.fn(async () => new Set(["1369"])),
+  fetchAttemptedPuzzleIds: vi.fn(async () => new Set(mocks.attemptedPuzzleIds)),
+  fetchPuzzleAttemptsForPuzzle: vi.fn(async () => [
+    {
+      username: "alpha",
+      puzzle_id: "1369",
+      first_attempt_at: "2026-07-09T07:00:00.000Z",
+      puzzle_correct: true,
+    },
+    {
+      username: "beta",
+      puzzle_id: "1369",
+      first_attempt_at: "2026-07-09T07:10:00.000Z",
+      puzzle_correct: false,
+    },
+  ]),
   recordPuzzleProgress: vi.fn(async () => undefined),
 }));
 
@@ -105,6 +120,7 @@ import { PuzzleSolverPage } from "./PuzzleSolver";
 describe("PuzzleSolverPage solution options", () => {
   beforeEach(() => {
     mocks.chessboardProps.length = 0;
+    mocks.attemptedPuzzleIds = new Set(["1369"]);
     mocks.navigate.mockReset();
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
@@ -124,9 +140,9 @@ describe("PuzzleSolverPage solution options", () => {
     const user = userEvent.setup();
     render(<PuzzleSolverPage />);
 
-    const showSolution = await screen.findByRole("button", { name: "Show solution" });
-    await waitFor(() => expect(showSolution).toBeEnabled());
-    await user.click(showSolution);
+    const solutionTab = await screen.findByRole("tab", { name: "Solution" });
+    await waitFor(() => expect(solutionTab).toBeEnabled());
+    await user.click(solutionTab);
 
     const optionList = await screen.findByRole("list", { name: "Solution options" });
     await user.click(within(optionList).getByRole("button", { name: optionName }));
@@ -137,5 +153,27 @@ describe("PuzzleSolverPage solution options", () => {
         plyIndex: 1,
       });
     });
+  });
+
+  it("shows other players who attempted the puzzle", async () => {
+    const user = userEvent.setup();
+    render(<PuzzleSolverPage />);
+
+    await user.click(await screen.findByRole("tab", { name: "Other attempts" }));
+
+    const attempts = await screen.findByRole("list", { name: "Other puzzle attempts" });
+    expect(within(attempts).getByRole("link", { name: "alpha" })).toBeInTheDocument();
+    expect(within(attempts).getByText("Correct")).toBeInTheDocument();
+    expect(within(attempts).getByRole("link", { name: "beta" })).toBeInTheDocument();
+    expect(within(attempts).getByText("Incorrect")).toBeInTheDocument();
+  });
+
+  it("locks other attempts until the current user has attempted the puzzle", async () => {
+    mocks.attemptedPuzzleIds = new Set();
+
+    render(<PuzzleSolverPage />);
+
+    const otherAttemptsTab = await screen.findByRole("tab", { name: "Other attempts" });
+    await waitFor(() => expect(otherAttemptsTab).toBeDisabled());
   });
 });
