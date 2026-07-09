@@ -2,7 +2,7 @@ import "./TournamentPage.css";
 
 import { faCheck } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import type { PointerEvent as ReactPointerEvent, UIEvent as ReactUIEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -369,11 +369,6 @@ const scoreSlotDisplay = (match: TournamentMatch, playerName: string): string =>
 const PLAYER_NAME_TRUNCATION_LIMIT = 13;
 const isExternalMatchUrl = (value: string): boolean =>
   /^https?:\/\//i.test(String(value || "").trim());
-const getMatchHref = (matchId: string): string => {
-  const normalized = String(matchId || "").trim();
-  if (!normalized) return "";
-  return isExternalMatchUrl(normalized) ? normalized : `/matches/blitz/${normalized}`;
-};
 
 const getBracketDisplayName = (playerName: string): string => {
   const name = String(playerName || "");
@@ -408,6 +403,15 @@ const countryCodeToFlagUrl = (countryCode: string | null | undefined): string =>
   return normalized ? `https://flagcdn.com/${normalized.toLowerCase()}.svg` : neutralFlagDataUrl;
 };
 
+const isInteractivePointerTarget = (target: EventTarget | null): boolean => {
+  if (!(target instanceof Element)) return false;
+  return Boolean(
+    target.closest(
+      "a, button, input, select, textarea, [role='button'], [role='link'], .tournamentMatchCardTree.isClickable",
+    ),
+  );
+};
+
 const PlayerLabel = ({
   playerName,
   seed,
@@ -422,14 +426,16 @@ const PlayerLabel = ({
   shouldSuppressClick: () => boolean;
 }) => (
   <span className="tournamentPlayerLabel">
-    <img
-      className="tournamentPlayerFlag"
-      src={countryCodeToFlagUrl(countryCode)}
-      alt=""
-      loading="lazy"
-      decoding="async"
-      aria-hidden="true"
-    />
+    {!isByePlayer(playerName) ? (
+      <img
+        className="tournamentPlayerFlag"
+        src={countryCodeToFlagUrl(countryCode)}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        aria-hidden="true"
+      />
+    ) : null}
     <Link
       className="tournamentPlayerLink"
       to="/@/$username"
@@ -466,6 +472,7 @@ const TournamentMatchCard = ({
   trophyAssetPath,
   isDecisive,
   shouldSuppressClick,
+  onOpenMatch,
 }: {
   match: PositionedMatch;
   topSeedMap: Map<string, number>;
@@ -473,11 +480,11 @@ const TournamentMatchCard = ({
   trophyAssetPath: string | undefined;
   isDecisive: boolean;
   shouldSuppressClick: () => boolean;
+  onOpenMatch: (match: TournamentMatch) => void;
 }) => {
   const matchWinner = winnerName(match);
   const withdrawalPlayer = withdrewPlayerName(match);
   const hasMatchPage = Boolean(match.match_id);
-  const matchHref = getMatchHref(match.match_id);
   const showTrophy = isDecisive && Boolean(trophyAssetPath);
 
   return (
@@ -496,7 +503,19 @@ const TournamentMatchCard = ({
                 event.stopPropagation();
                 return;
               }
-              window.open(matchHref, "_blank", "noopener,noreferrer");
+              onOpenMatch(match);
+            }
+          : undefined
+      }
+      role={hasMatchPage ? "link" : undefined}
+      tabIndex={hasMatchPage ? 0 : undefined}
+      onKeyDown={
+        hasMatchPage
+          ? (event) => {
+              if (event.target !== event.currentTarget) return;
+              if (event.key !== "Enter" && event.key !== " ") return;
+              event.preventDefault();
+              onOpenMatch(match);
             }
           : undefined
       }
@@ -559,6 +578,7 @@ const TournamentStageSection = ({
   decisiveMatchId,
   hideStartRoundControls,
   shouldSuppressMatchClick,
+  onOpenMatch,
   onZoomOut,
   onZoomReset,
   onZoomIn,
@@ -581,6 +601,7 @@ const TournamentStageSection = ({
   decisiveMatchId: string;
   hideStartRoundControls?: boolean;
   shouldSuppressMatchClick: () => boolean;
+  onOpenMatch: (match: TournamentMatch) => void;
   onZoomOut: () => void;
   onZoomReset: () => void;
   onZoomIn: () => void;
@@ -737,6 +758,7 @@ const TournamentStageSection = ({
                     trophyAssetPath={trophyAssetPath}
                     isDecisive={match.id === decisiveMatchId}
                     shouldSuppressClick={shouldSuppressMatchClick}
+                    onOpenMatch={onOpenMatch}
                   />
                 ))}
               </div>
@@ -749,6 +771,7 @@ const TournamentStageSection = ({
 };
 
 export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
+  const navigate = useNavigate();
   const adjacentTournaments = useMemo(
     () => getAdjacentTournamentMetas(tournamentId),
     [tournamentId],
@@ -962,6 +985,24 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
     syncRoundHeaderTrack(stageKey, event.currentTarget.scrollLeft);
   };
 
+  const openMatchPage = useCallback(
+    (match: TournamentMatch): void => {
+      const matchId = String(match.match_id || "").trim();
+      if (!matchId) return;
+
+      if (isExternalMatchUrl(matchId)) {
+        window.location.assign(matchId);
+        return;
+      }
+
+      void navigate({
+        to: "/matches/$mode/$matchId",
+        params: { mode: "blitz", matchId },
+      });
+    },
+    [navigate],
+  );
+
   const shouldSuppressMatchClick = (): boolean => {
     if (!suppressNextMatchClickRef.current) return false;
     suppressNextMatchClickRef.current = false;
@@ -986,6 +1027,7 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
     event: ReactPointerEvent<HTMLDivElement>,
   ): void => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
+    if (isInteractivePointerTarget(event.target)) return;
     if (isPointerOnNativeScrollbar(event.currentTarget, event)) return;
 
     const currentTarget = event.currentTarget;
@@ -1160,6 +1202,7 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
               decisiveMatchId={decisiveMatchId}
               hideStartRoundControls={Boolean(bracket.hideStartRoundControls)}
               shouldSuppressMatchClick={shouldSuppressMatchClick}
+              onOpenMatch={openMatchPage}
               onZoomOut={() => updateStageZoom(stage.key, -STAGE_ZOOM_STEP)}
               onZoomReset={() => resetStageZoom(stage.key)}
               onZoomIn={() => updateStageZoom(stage.key, STAGE_ZOOM_STEP)}
