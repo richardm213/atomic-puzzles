@@ -1,6 +1,6 @@
 import "./TournamentPage.css";
 
-import { faCheck } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faRobot } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate } from "@tanstack/react-router";
 import type { PointerEvent as ReactPointerEvent, UIEvent as ReactUIEvent } from "react";
@@ -383,6 +383,24 @@ const getBracketDisplayName = (playerName: string): string => {
 const SeedBadge = ({ seed }: { seed?: number | null | undefined }) =>
   seed ? <span className="tournamentSeedBadge">({seed})</span> : null;
 
+const FAIR_PLAY_FLAGGED_PLAYERS = new Set(["neverofzero", "taisthuban", "jasos12"]);
+const FAIR_PLAY_FLAG_LABEL =
+  "Fair-play flag: this player cheated in this tournament, so interpret their results accordingly.";
+
+const isFairPlayFlaggedPlayer = (playerName: string): boolean =>
+  FAIR_PLAY_FLAGGED_PLAYERS.has(normalizeUsername(playerName));
+
+const FairPlayFlagBadge = ({ playerName }: { playerName: string }) =>
+  isFairPlayFlaggedPlayer(playerName) ? (
+    <span
+      className="tournamentFairPlayFlag"
+      title={FAIR_PLAY_FLAG_LABEL}
+      aria-label={FAIR_PLAY_FLAG_LABEL}
+    >
+      <FontAwesomeIcon icon={faRobot} />
+    </span>
+  ) : null;
+
 const AdvanceCheck = () => (
   <span className="tournamentAdvanceCheck" aria-label="Advanced">
     <FontAwesomeIcon icon={faCheck} />
@@ -451,6 +469,7 @@ const PlayerLabel = ({
       {getBracketDisplayName(playerName)}
     </Link>
     <SeedBadge seed={seed} />
+    <FairPlayFlagBadge playerName={playerName} />
     {isWinner ? <AdvanceCheck /> : null}
   </span>
 );

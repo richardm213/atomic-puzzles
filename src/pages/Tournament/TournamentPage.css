@@ -188,6 +188,7 @@
 
 .tournamentPlayerFlag,
 .tournamentSeedBadge,
+.tournamentFairPlayFlag,
 .tournamentAdvanceCheck {
   flex: 0 0 auto;
 }
@@ -198,6 +199,17 @@
   color: var(--color-primary-pale);
   font-size: 0.9em;
   font-weight: 800;
+}
+
+.tournamentFairPlayFlag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 5px;
+  color: color-mix(in srgb, var(--color-accent-warm) 86%, var(--color-heading));
+  font-size: 13px;
+  line-height: 1;
+  cursor: help;
 }
 
 .tournamentPlayerLink {
