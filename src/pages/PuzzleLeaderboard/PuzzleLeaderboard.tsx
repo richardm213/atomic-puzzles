@@ -1,6 +1,8 @@
 import "../Rankings/Rankings.css";
 import "./PuzzleLeaderboard.css";
 
+import { faArrowUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
@@ -184,13 +186,24 @@ const PuzzleLeaderboard = () => {
                   <tr key={row.username}>
                     <td>{row.rank}</td>
                     <td>
-                      <Link
-                        className="rankingLink"
-                        to="/@/$username"
-                        params={{ username: row.username }}
-                      >
-                        {row.username}
-                      </Link>
+                      <span className="puzzleLeaderboardPlayerCell">
+                        <Link
+                          className="rankingLink"
+                          to="/@/$username"
+                          params={{ username: row.username }}
+                        >
+                          {row.username}
+                        </Link>
+                        <Link
+                          className="puzzleLeaderboardDashboardLink"
+                          to="/@/$username/puzzles"
+                          params={{ username: row.username }}
+                          aria-label={`Open ${row.username}'s puzzle dashboard`}
+                          title="Puzzle dashboard"
+                        >
+                          <FontAwesomeIcon icon={faArrowUpRightFromSquare} aria-hidden="true" />
+                        </Link>
+                      </span>
                     </td>
                     <td>{row.score}</td>
                     <td>{row.correct}</td>

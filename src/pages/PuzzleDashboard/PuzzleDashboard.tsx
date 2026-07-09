@@ -1,5 +1,10 @@
 import "./PuzzleDashboard.css";
 
+import {
+  faArrowUpRightFromSquare,
+  faClockRotateLeft,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
@@ -15,7 +20,29 @@ import {
 import { isRegisteredSiteUser } from "../../lib/supabase/supabaseUsers";
 import { normalizeUsername } from "../../utils/playerNames";
 
-const PAGE_SIZE = 20;
+const DEFAULT_PAGE_SIZE = 20;
+const PAGE_SIZE_OPTIONS = [20, 50, 100] as const;
+const PAGE_SIZE_STORAGE_KEY = "atomic-puzzles.puzzle-dashboard-page-size";
+const UNKNOWN_EVENT_LABEL = "Unknown event";
+
+type PuzzleDashboardPageSize = (typeof PAGE_SIZE_OPTIONS)[number];
+
+const isPuzzleDashboardPageSize = (value: number): value is PuzzleDashboardPageSize =>
+  PAGE_SIZE_OPTIONS.includes(value as PuzzleDashboardPageSize);
+
+const readStoredPageSize = (): PuzzleDashboardPageSize => {
+  if (typeof window === "undefined") return DEFAULT_PAGE_SIZE;
+
+  try {
+    const storedValue = Number.parseInt(
+      window.localStorage.getItem(PAGE_SIZE_STORAGE_KEY) ?? "",
+      10,
+    );
+    return isPuzzleDashboardPageSize(storedValue) ? storedValue : DEFAULT_PAGE_SIZE;
+  } catch {
+    return DEFAULT_PAGE_SIZE;
+  }
+};
 
 const formatDateTime = (value: string | number | Date | null | undefined): string => {
   if (!value) return "—";
@@ -58,12 +85,16 @@ const buildDashboardEntries = (
 
 const resultLabel = (isCorrect: boolean): string => (isCorrect ? "Correct" : "Incorrect");
 
+const isKnownEvent = (event: string): boolean => event.trim() !== UNKNOWN_EVENT_LABEL;
+
 export const PuzzleDashboardPage = ({ username = "" }: { username?: string | undefined }) => {
   const { isAuthenticated, isLoading, user } = useAuth();
   const routeUsername = useMemo(() => normalizeUsername(username), [username]);
   const viewingOwnDashboard = !routeUsername;
   const targetUsername = viewingOwnDashboard ? normalizeUsername(user?.username) : routeUsername;
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<PuzzleDashboardPageSize>(readStoredPageSize);
+  const [sinceDate, setSinceDate] = useState("");
   const [progressRows, setProgressRows] = useState<
     import("../../lib/supabase/supabasePuzzleProgress").PuzzleProgressRow[]
   >([]);
@@ -85,7 +116,16 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [targetUsername]);
+  }, [pageSize, sinceDate, targetUsername]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(PAGE_SIZE_STORAGE_KEY, String(pageSize));
+    } catch {
+      // Keep the dashboard usable if browser storage is unavailable.
+    }
+  }, [pageSize]);
 
   useEffect(() => {
     let isCurrent = true;
@@ -136,7 +176,8 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
       try {
         const { rows, total } = await fetchPuzzleProgressPage(targetUsername, {
           page: currentPage,
-          pageSize: PAGE_SIZE,
+          pageSize,
+          sinceDate,
         });
         if (!isCurrent) return;
 
@@ -159,7 +200,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
     return () => {
       isCurrent = false;
     };
-  }, [canViewDashboard, currentPage, targetUsername]);
+  }, [canViewDashboard, currentPage, pageSize, sinceDate, targetUsername]);
 
   useEffect(() => {
     if (!targetUsername || !canViewDashboard) {
@@ -177,7 +218,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
       setIsSummaryLoading(true);
 
       try {
-        const summary = await fetchPuzzleProgressSummary(targetUsername);
+        const summary = await fetchPuzzleProgressSummary(targetUsername, { sinceDate });
         if (!isCurrent) return;
 
         setDashboardSummary({
@@ -207,7 +248,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
     return () => {
       isCurrent = false;
     };
-  }, [canViewDashboard, targetUsername]);
+  }, [canViewDashboard, sinceDate, targetUsername]);
 
   useEffect(() => {
     if (!targetUsername) {
@@ -251,11 +292,15 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
   );
   const totalPages = Math.max(
     1,
-    Math.ceil(Math.max(totalProgressRows, dashboardSummary.total) / PAGE_SIZE),
+    Math.ceil(Math.max(totalProgressRows, dashboardSummary.total) / pageSize),
   );
+  const accuracy =
+    dashboardSummary.total > 0
+      ? Math.round((dashboardSummary.correct / dashboardSummary.total) * 100)
+      : 0;
   const isPageLoading = isDashboardLoading || arePuzzlesLoading;
   const areStatsLoading = isSummaryLoading || isDashboardLoading;
-  const firstRowNumber = totalProgressRows === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+  const firstRowNumber = totalProgressRows === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const seoTitle = viewingOwnDashboard ? "Puzzle Dashboard" : `${targetUsername} Puzzle Dashboard`;
   const seoDescription = viewingOwnDashboard
     ? "Review your first recorded puzzle attempts, stats, and links back into every puzzle."
@@ -263,9 +308,6 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
   const seoPath = viewingOwnDashboard
     ? "/dashboard"
     : `/@/${encodeURIComponent(targetUsername)}/puzzles`;
-  const introText = viewingOwnDashboard
-    ? "Track your recorded puzzle attempts, review results, and jump back into any puzzle from one place."
-    : `Browse ${targetUsername}'s recorded puzzle attempts, review results, and jump back into any puzzle from one place.`;
   const emptyText = viewingOwnDashboard
     ? "No puzzle dashboard entries yet."
     : `No recorded puzzle dashboard entries for ${targetUsername} yet.`;
@@ -284,33 +326,34 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
   const loadingMessage = viewingOwnDashboard
     ? "Checking your puzzle dashboard access…"
     : "Checking puzzle dashboard access…";
+  const heroTitle = viewingOwnDashboard ? "Puzzle dashboard" : `${targetUsername}'s puzzle dashboard`;
 
   return (
     <div className="puzzleDashboardPage">
       <Seo title={seoTitle} description={seoDescription} path={seoPath} />
       <div className="puzzleDashboardShell">
         <header className="dashboardHero">
-          <div className="dashboardHeroCopy">
-            <p className="puzzleDashboardEyebrow">Atomic tactics</p>
-            <h1>Puzzle dashboard</h1>
-            <p className="puzzleDashboardIntro">{introText}</p>
-          </div>
-          <div className="dashboardHeroActions">
-            <div className="dashboardHeroActionStack">
-              {targetUsername ? (
-                <div className="dashboardIdentityCard">
-                  <span className="dashboardIdentityLabel">Player</span>
-                  <strong>{targetUsername}</strong>
-                </div>
-              ) : null}
-              <div className="dashboardHeroLinks">
-                <Link className="puzzleDashboardBackLink" to="/solve/sets">
-                  Puzzle sets
-                </Link>
-                <Link className="puzzleDashboardBackLink" to={backLinkTo} params={backLinkParams}>
-                  {backLinkLabel}
-                </Link>
-              </div>
+          <div className="dashboardHeroTop">
+            <div className="dashboardHeroCopy">
+              <h1>{heroTitle}</h1>
+            </div>
+            <div className="dashboardHeroLinks" aria-label="Puzzle dashboard links">
+              <Link className="puzzleDashboardActionLink primary" to="/solve">
+                <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
+                <span>Solve puzzles</span>
+              </Link>
+              <Link className="puzzleDashboardActionLink" to="/solve/sets">
+                <FontAwesomeIcon icon={faArrowUpRightFromSquare} aria-hidden="true" />
+                <span>Puzzle sets</span>
+              </Link>
+              <Link
+                className="puzzleDashboardActionLink"
+                to={backLinkTo}
+                params={backLinkParams}
+              >
+                <FontAwesomeIcon icon={faArrowUpRightFromSquare} aria-hidden="true" />
+                <span>{backLinkLabel}</span>
+              </Link>
             </div>
           </div>
         </header>
@@ -319,7 +362,8 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
         {needsLoginForOwnDashboard ? (
           <div className="dashboardStateCard">
             <p>Log in with Lichess to view your puzzle dashboard.</p>
-            <Link className="puzzleDashboardBackLink" to="/solve">
+            <Link className="puzzleDashboardActionLink primary" to="/solve">
+              <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
               Go to puzzles
             </Link>
           </div>
@@ -330,7 +374,8 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
         {shouldHideDashboard ? (
           <div className="dashboardStateCard">
             <p>{unavailableMessage}</p>
-            <Link className="puzzleDashboardBackLink" to={backLinkTo} params={backLinkParams}>
+            <Link className="puzzleDashboardActionLink" to={backLinkTo} params={backLinkParams}>
+              <FontAwesomeIcon icon={faArrowUpRightFromSquare} aria-hidden="true" />
               {backLinkLabel}
             </Link>
           </div>
@@ -340,35 +385,66 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
           <>
             <section className="dashboardStatsStrip" aria-label="Puzzle dashboard summary">
               <div className="dashboardStatCard dashboardStatCardPrimary">
-                <span className="dashboardStatLabel">Puzzles attempted</span>
+                <span className="dashboardStatLabel">Attempted</span>
                 <strong>{areStatsLoading ? "…" : dashboardSummary.total}</strong>
-                <span className="dashboardStatNote">Total recorded attempts</span>
               </div>
               <div className="dashboardStatCard dashboardStatCardCorrect">
-                <span className="dashboardStatLabel">Puzzles correct</span>
+                <span className="dashboardStatLabel">Correct</span>
                 <strong>{areStatsLoading ? "…" : dashboardSummary.correct}</strong>
-                <span className="dashboardStatNote">Correct results across all attempts</span>
               </div>
               <div className="dashboardStatCard dashboardStatCardIncorrect">
-                <span className="dashboardStatLabel">Puzzles incorrect</span>
+                <span className="dashboardStatLabel">Missed</span>
                 <strong>{areStatsLoading ? "…" : dashboardSummary.incorrect}</strong>
-                <span className="dashboardStatNote">Incorrect results across all attempts</span>
+              </div>
+              <div className="dashboardStatCard dashboardStatCardAccuracy">
+                <span className="dashboardStatLabel">Accuracy</span>
+                <strong>{areStatsLoading ? "…" : `${accuracy}%`}</strong>
               </div>
             </section>
 
             <section className="dashboardAttempts">
               <div className="dashboardAttemptsHeader">
-                <div>
-                  <p className="dashboardSectionEyebrow">Attempt history</p>
-                  <h2>Recorded puzzle attempts</h2>
+                <div className="dashboardAttemptsTitleRow">
+                  <h2>Puzzle attempts</h2>
+                  <label className="dashboardFilterLabel">
+                    <span>Since</span>
+                    <input
+                      type="date"
+                      value={sinceDate}
+                      onChange={(event) => setSinceDate(event.target.value)}
+                      onInput={(event) => setSinceDate(event.currentTarget.value)}
+                      disabled={isPageLoading}
+                    />
+                  </label>
                 </div>
-                <PaginationRow
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={setCurrentPage}
-                  formatLabel={(current, total) => `Page ${current} / ${total}`}
-                  disabled={isPageLoading}
-                />
+                <div className="dashboardAttemptsPager">
+                  <label className="dashboardFilterLabel">
+                    <span>Rows</span>
+                    <select
+                      value={pageSize}
+                      onChange={(event) => {
+                        const nextPageSize = Number.parseInt(event.target.value, 10);
+                        if (isPuzzleDashboardPageSize(nextPageSize)) {
+                          setPageSize(nextPageSize);
+                        }
+                      }}
+                      disabled={isPageLoading}
+                    >
+                      {PAGE_SIZE_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <PaginationRow
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                    formatLabel={(current, total) => `Page ${current} / ${total}`}
+                    disabled={isPageLoading}
+                  />
+                </div>
               </div>
 
               {isPageLoading && dashboardEntries.length === 0 ? (
@@ -378,14 +454,15 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
                   {dashboardEntries.map((entry, index) => (
                     <article
                       key={`${entry.puzzleId}-${entry.firstAttemptAt}`}
-                      className="dashboardAttemptRow"
+                      className={`dashboardAttemptRow ${
+                        entry.puzzleCorrect ? "correct" : "incorrect"
+                      }`}
                     >
                       <div className="dashboardAttemptPrimary">
-                        <div className="dashboardRowNumber" aria-hidden="true">
+                        <span className="dashboardRowNumber" aria-hidden="true">
                           {firstRowNumber + index}
-                        </div>
+                        </span>
                         <div className="dashboardPuzzleBlock">
-                          <span className="dashboardMiniLabel">Puzzle</span>
                           <Link
                             className="dashboardPuzzleLink"
                             to="/solve/$puzzleId"
@@ -394,38 +471,33 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
                             Puzzle {entry.linkedPuzzleId}
                           </Link>
                           <div className="dashboardPuzzleSubline">
-                            <span>#{entry.puzzleId}</span>
-                            <span>{entry.author}</span>
-                            <span>{entry.event}</span>
+                            <span className="dashboardPuzzleAuthor">{entry.author}</span>
+                            {isKnownEvent(entry.event) ? (
+                              <span className="dashboardPuzzleEvent">{entry.event}</span>
+                            ) : null}
                           </div>
                         </div>
                       </div>
 
                       <div className="dashboardAttemptMeta">
-                        <div className="dashboardMetaCard">
-                          <span className="dashboardMiniLabel">Result</span>
-                          <span
-                            className={`dashboardStatus ${entry.puzzleCorrect ? "correct" : "incorrect"}`}
-                          >
-                            {resultLabel(entry.puzzleCorrect)}
-                          </span>
-                        </div>
-                        <div className="dashboardMetaCard">
-                          <span className="dashboardMiniLabel">Attempt date</span>
-                          <span className="dashboardMetaValue">
-                            {formatDateTime(entry.firstAttemptAt)}
-                          </span>
-                        </div>
-                        <div className="dashboardMetaCard dashboardActionCard">
-                          <span className="dashboardMiniLabel">Replay</span>
-                          <Link
-                            className="dashboardReplayLink"
-                            to="/solve/$puzzleId"
-                            params={{ puzzleId: String(entry.linkedPuzzleId) }}
-                          >
-                            Play again
-                          </Link>
-                        </div>
+                        <span
+                          className={`dashboardStatus ${
+                            entry.puzzleCorrect ? "correct" : "incorrect"
+                          }`}
+                        >
+                          {resultLabel(entry.puzzleCorrect)}
+                        </span>
+                        <span className="dashboardMetaValue">
+                          {formatDateTime(entry.firstAttemptAt)}
+                        </span>
+                        <Link
+                          className="dashboardReplayLink"
+                          to="/solve/$puzzleId"
+                          params={{ puzzleId: String(entry.linkedPuzzleId) }}
+                        >
+                          <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
+                          <span>Replay</span>
+                        </Link>
                       </div>
                     </article>
                   ))}
@@ -433,7 +505,12 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
               ) : (
                 <div className="dashboardStateCard">
                   <p>{emptyText}</p>
-                  <Link className="puzzleDashboardBackLink" to={backLinkTo} params={backLinkParams}>
+                  <Link
+                    className="puzzleDashboardActionLink primary"
+                    to={backLinkTo}
+                    params={backLinkParams}
+                  >
+                    <FontAwesomeIcon icon={faArrowUpRightFromSquare} aria-hidden="true" />
                     {emptyLinkLabel}
                   </Link>
                 </div>

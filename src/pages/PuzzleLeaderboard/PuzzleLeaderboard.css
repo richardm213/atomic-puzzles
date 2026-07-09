@@ -86,6 +86,34 @@
   white-space: nowrap;
 }
 
+.puzzleLeaderboardPlayerCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.puzzleLeaderboardDashboardLink {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: color-mix(in srgb, var(--color-panel-strong) 92%, transparent);
+  color: var(--color-heading);
+  font-size: 12px;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.puzzleLeaderboardDashboardLink:hover {
+  border-color: var(--color-primary);
+  background: var(--color-surface-elevated-strong);
+}
+
 @media (max-width: 640px) {
   .puzzleLeaderboardScoring {
     display: grid;

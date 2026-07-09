@@ -121,6 +121,28 @@ const mergePuzzleProgressRows = (
   });
 };
 
+const getSinceTimestamp = (sinceDate: string | null | undefined): number | null => {
+  const value = String(sinceDate ?? "").trim();
+  if (!value) return null;
+
+  const dateValue = /^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T00:00:00` : value;
+  const timestamp = new Date(dateValue).getTime();
+  return Number.isNaN(timestamp) ? null : timestamp;
+};
+
+const filterPuzzleProgressRowsSince = (
+  rows: PuzzleProgressRow[],
+  sinceDate: string | null | undefined,
+): PuzzleProgressRow[] => {
+  const sinceTimestamp = getSinceTimestamp(sinceDate);
+  if (sinceTimestamp === null) return rows;
+
+  return rows.filter((row) => {
+    const attemptTimestamp = new Date(row?.first_attempt_at ?? "").getTime();
+    return !Number.isNaN(attemptTimestamp) && attemptTimestamp >= sinceTimestamp;
+  });
+};
+
 const upsertLocalPuzzleProgressRow = (username: string, row: PuzzleProgressRow): void => {
   const puzzleId = normalizePuzzleId(row?.puzzle_id);
   const firstAttemptAt = typeof row?.first_attempt_at === "string" ? row.first_attempt_at : "";
@@ -271,9 +293,9 @@ export const recordPuzzleProgress = async ({
 
 export const fetchPuzzleProgressPage = async (
   username: string,
-  options: { page?: number; pageSize?: number } = {},
+  options: { page?: number; pageSize?: number; sinceDate?: string } = {},
 ): Promise<{ rows: PuzzleProgressRow[]; total: number }> => {
-  const { page = 1, pageSize = 20 } = options;
+  const { page = 1, pageSize = 20, sinceDate = "" } = options;
   const normalizedUsername = normalizeUsername(username);
   if (!normalizedUsername) {
     return { rows: [], total: 0 };
@@ -282,52 +304,83 @@ export const fetchPuzzleProgressPage = async (
   const boundedPage = Math.max(1, Math.floor(Number(page)) || 1);
   const boundedPageSize = Math.max(1, Math.floor(Number(pageSize)) || 20);
   const from = (boundedPage - 1) * boundedPageSize;
+  const hasSinceFilter = getSinceTimestamp(sinceDate) !== null;
   const localRows = readLocalPuzzleProgress(normalizedUsername);
   let serverRows: PuzzleProgressRow[] = [];
   let serverCount = 0;
+  let serverRowsArePaged = false;
 
   try {
     const supabase = getSupabaseClient();
     try {
-      const { rows, total } = await loadPuzzleProgressPageFromRpc(
-        supabase,
-        normalizedUsername,
-        boundedPage,
-        boundedPageSize,
-      );
-      serverRows = rows;
-      serverCount = total;
+      if (hasSinceFilter || localRows.length > 0) {
+        serverRows = await loadAllPuzzleProgressRowsFromRpc(supabase, normalizedUsername);
+        serverCount = serverRows.length;
+      } else {
+        const { rows, total } = await loadPuzzleProgressPageFromRpc(
+          supabase,
+          normalizedUsername,
+          boundedPage,
+          boundedPageSize,
+        );
+        serverRows = rows;
+        serverCount = total;
+        serverRowsArePaged = true;
+      }
     } catch {
-      const { rows, count } = await loadSupabasePage<PuzzleProgressRow>(
-        PUZZLE_PROGRESS_TABLE,
-        supabase
-          .from(PUZZLE_PROGRESS_TABLE)
-          .select("puzzle_id,first_attempt_at,puzzle_correct", { count: "exact" })
-          .eq("username", normalizedUsername)
-          .order("first_attempt_at", { ascending: false })
-          .range(0, Math.max(from + boundedPageSize - 1, boundedPageSize - 1)),
-      );
+      if (hasSinceFilter) {
+        serverRows = await fetchAllSupabaseRows<PuzzleProgressRow>(PUZZLE_PROGRESS_TABLE, () =>
+          supabase
+            .from(PUZZLE_PROGRESS_TABLE)
+            .select("puzzle_id,first_attempt_at,puzzle_correct")
+            .eq("username", normalizedUsername)
+            .order("first_attempt_at", { ascending: false }),
+        );
+        serverCount = serverRows.length;
+      } else {
+        const { rows, count } = await loadSupabasePage<PuzzleProgressRow>(
+          PUZZLE_PROGRESS_TABLE,
+          supabase
+            .from(PUZZLE_PROGRESS_TABLE)
+            .select("puzzle_id,first_attempt_at,puzzle_correct", { count: "exact" })
+            .eq("username", normalizedUsername)
+            .order("first_attempt_at", { ascending: false })
+            .range(0, Math.max(from + boundedPageSize - 1, boundedPageSize - 1)),
+        );
 
-      serverRows = Array.isArray(rows) ? rows : [];
-      serverCount = count ?? serverRows.length;
+        serverRows = Array.isArray(rows) ? rows : [];
+        serverCount = count ?? serverRows.length;
+      }
     }
   } catch {
     serverRows = [];
     serverCount = 0;
   }
 
-  const mergedRows = mergePuzzleProgressRows(serverRows, localRows);
+  if (serverRowsArePaged) {
+    return {
+      rows: serverRows,
+      total: Math.max(serverCount, serverRows.length),
+    };
+  }
+
+  const mergedRows = filterPuzzleProgressRowsSince(
+    mergePuzzleProgressRows(serverRows, localRows),
+    sinceDate,
+  );
   const pagedRows = mergedRows.slice(from, from + boundedPageSize);
 
   return {
     rows: pagedRows,
-    total: Math.max(serverCount, mergedRows.length),
+    total: hasSinceFilter ? mergedRows.length : Math.max(serverCount, mergedRows.length),
   };
 };
 
 export const fetchPuzzleProgressSummary = async (
   username: string,
+  options: { sinceDate?: string } = {},
 ): Promise<PuzzleProgressSummary> => {
+  const { sinceDate = "" } = options;
   const normalizedUsername = normalizeUsername(username);
   if (!normalizedUsername) {
     return {
@@ -357,7 +410,10 @@ export const fetchPuzzleProgressSummary = async (
     serverRows = [];
   }
 
-  const mergedRows = mergePuzzleProgressRows(serverRows, localRows);
+  const mergedRows = filterPuzzleProgressRowsSince(
+    mergePuzzleProgressRows(serverRows, localRows),
+    sinceDate,
+  );
   const correct = mergedRows.filter((row) => Boolean(row?.puzzle_correct)).length;
   const total = mergedRows.length;
 
