@@ -9,6 +9,7 @@ export type TournamentMeta = {
   year: number;
   status: "available" | "pending";
   hideStartRoundControls?: boolean;
+  completeMainBracketFromRound?: string;
   trophyAssetPath?: string;
 };
 
@@ -87,6 +88,15 @@ type CsvRow = Record<string, string>;
 const AWC_TROPHY_ASSET_PATH = "/images/awc-trophies/awc.png";
 
 const tournaments: TournamentMeta[] = [
+  {
+    id: "ahc2026",
+    title: "AHC 2026",
+    headingTitle: "Atomic Hyper Championship 2026",
+    year: 2026,
+    status: "available",
+    hideStartRoundControls: true,
+    completeMainBracketFromRound: "Round of 32",
+  },
   {
     id: "ccac2026",
     title: "CCAC 2026",
@@ -306,7 +316,9 @@ const fetchLocalPlayerCountryMap = async (): Promise<Record<string, string>> => 
   }, {});
 };
 
-const fetchLocalTournamentSeedMap = async (tournamentId: string): Promise<Record<string, number>> => {
+const fetchLocalTournamentSeedMap = async (
+  tournamentId: string,
+): Promise<Record<string, number>> => {
   const tournamentSeedsCsv = await fetchLocalTournamentCsv("tournament-seeds.csv");
 
   return parseCsvRows(tournamentSeedsCsv)
@@ -358,10 +370,7 @@ const addImplicitByeMatches = (matches: TournamentMatch[]): TournamentMatch[] =>
       const feeder = feederMatches[0]!;
 
       const feederWinner = winnerName(feeder);
-      if (
-        !feederWinner ||
-        (feederWinner !== currentMatch.p1 && feederWinner !== currentMatch.p2)
-      )
+      if (!feederWinner || (feederWinner !== currentMatch.p1 && feederWinner !== currentMatch.p2))
         return;
 
       const missingPlayer = feederWinner === currentMatch.p1 ? currentMatch.p2 : currentMatch.p1;
@@ -386,6 +395,73 @@ const addImplicitByeMatches = (matches: TournamentMatch[]): TournamentMatch[] =>
         winner_to: currentMatch.id,
         loser_to: "",
       });
+    });
+  }
+
+  return augmented;
+};
+
+const emptyTournamentMatch = (
+  sourceMatch: TournamentMatch,
+  roundName: string,
+  order: number,
+): TournamentMatch => ({
+  tournament: sourceMatch.tournament,
+  bracket: sourceMatch.bracket,
+  round: roundName,
+  order,
+  id: `${sourceMatch.tournament}-${roundName.toLowerCase().replaceAll(" ", "-")}-m${order}`,
+  match_id: "",
+  p1: "",
+  p2: "",
+  s1: 0,
+  s2: 0,
+  winner_to: "",
+  loser_to: "",
+});
+
+const addEmptyMainBracketRounds = (
+  matches: TournamentMatch[],
+  startRoundName: string | undefined,
+): TournamentMatch[] => {
+  if (!startRoundName) return matches;
+
+  const augmented = matches.map((match) => ({ ...match }));
+  const mainRounds = roundDisplayOrder["main"] ?? [];
+  const startRoundIndex = mainRounds.indexOf(startRoundName);
+  if (startRoundIndex < 0) return augmented;
+
+  for (let roundIndex = startRoundIndex; roundIndex < mainRounds.length - 1; roundIndex += 1) {
+    const roundName = mainRounds[roundIndex]!;
+    const nextRoundName = mainRounds[roundIndex + 1]!;
+    const roundMatches = augmented
+      .filter((match) => match.bracket === "main" && match.round === roundName)
+      .sort((left, right) => left.order - right.order);
+
+    if (roundMatches.length <= 1) break;
+
+    const expectedNextMatchCount = Math.ceil(roundMatches.length / 2);
+    const nextRoundMatches = augmented
+      .filter((match) => match.bracket === "main" && match.round === nextRoundName)
+      .sort((left, right) => left.order - right.order);
+
+    while (nextRoundMatches.length < expectedNextMatchCount) {
+      const sourceMatch = roundMatches[nextRoundMatches.length * 2] ?? roundMatches[0];
+      if (!sourceMatch) break;
+
+      const nextMatch = emptyTournamentMatch(
+        sourceMatch,
+        nextRoundName,
+        nextRoundMatches.length + 1,
+      );
+      nextRoundMatches.push(nextMatch);
+      augmented.push(nextMatch);
+    }
+
+    roundMatches.forEach((match, matchIndex) => {
+      if (match.winner_to) return;
+      const nextMatch = nextRoundMatches[Math.floor(matchIndex / 2)];
+      if (nextMatch) match.winner_to = nextMatch.id;
     });
   }
 
@@ -601,7 +677,10 @@ export const getTournamentBracket = async (
       fetchTournamentSeedMap(meta.id),
     ]);
 
-    const matches = addImplicitByeMatches(rawMatches).sort(
+    const matches = addEmptyMainBracketRounds(
+      addImplicitByeMatches(rawMatches),
+      meta.completeMainBracketFromRound,
+    ).sort(
       (left, right) =>
         bracketPriority(left.bracket) - bracketPriority(right.bracket) ||
         getRoundIndex(left.bracket, left.round) - getRoundIndex(right.bracket, right.round) ||

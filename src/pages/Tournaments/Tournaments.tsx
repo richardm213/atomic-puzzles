@@ -47,14 +47,14 @@ export const TournamentsPage = () => {
   return (
     <div className="tournamentsPage">
       <Seo
-        title="Atomic World Championship Tournaments"
-        description="Browse Atomic World Championship tournament brackets and archives."
+        title="Atomic Tournaments"
+        description="Browse atomic tournament brackets and archives."
         path="/tournaments"
       />
 
       <section className="tournamentsHero">
         <span className="tournamentsEyebrow">Tournaments</span>
-        <h1>Atomic World Championship brackets</h1>
+        <h1>Atomic tournament brackets</h1>
       </section>
 
       <section className="tournamentsGrid" aria-label="Tournament archive">

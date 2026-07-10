@@ -228,6 +228,12 @@
     border-color 160ms ease;
 }
 
+.tournamentPlayerEmpty {
+  display: block;
+  flex: 1 1 auto;
+  min-inline-size: 0;
+}
+
 .tournamentPlayerLink:hover,
 .tournamentPlayerLink:focus-visible {
   color: var(--link-hover-color);

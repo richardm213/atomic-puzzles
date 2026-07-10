@@ -339,6 +339,8 @@ const winnerName = (match: TournamentMatch): string => {
   return "Draw";
 };
 
+const isEmptyPlayer = (playerName: string): boolean => String(playerName || "").trim() === "";
+
 const isByePlayer = (playerName: string): boolean =>
   String(playerName || "")
     .trim()
@@ -346,6 +348,9 @@ const isByePlayer = (playerName: string): boolean =>
 
 const isByeMatch = (match: TournamentMatch | null | undefined): boolean =>
   isByePlayer(match?.p1 ?? "") || isByePlayer(match?.p2 ?? "");
+
+const isEmptyMatch = (match: TournamentMatch | null | undefined): boolean =>
+  isEmptyPlayer(match?.p1 ?? "") && isEmptyPlayer(match?.p2 ?? "");
 
 const isWithdrawalScore = (leftScore: number, rightScore: number): boolean =>
   (leftScore === 1 && rightScore === 0) || (leftScore === 0 && rightScore === 1);
@@ -356,6 +361,10 @@ const withdrewPlayerName = (match: TournamentMatch): string => {
   return match.s1 < match.s2 ? match.p1 : match.p2;
 };
 const scoreSlotDisplay = (match: TournamentMatch, playerName: string): string => {
+  if (isEmptyMatch(match)) {
+    return "";
+  }
+
   if (isByeMatch(match)) {
     return "";
   }
@@ -444,7 +453,7 @@ const PlayerLabel = ({
   shouldSuppressClick: () => boolean;
 }) => (
   <span className="tournamentPlayerLabel">
-    {!isByePlayer(playerName) ? (
+    {!isByePlayer(playerName) && !isEmptyPlayer(playerName) ? (
       <img
         className="tournamentPlayerFlag"
         src={countryCodeToFlagUrl(countryCode)}
@@ -454,20 +463,26 @@ const PlayerLabel = ({
         aria-hidden="true"
       />
     ) : null}
-    <Link
-      className="tournamentPlayerLink"
-      to="/@/$username"
-      params={{ username: normalizeUsername(playerName) }}
-      onClick={(event) => {
-        if (shouldSuppressClick()) {
-          event.preventDefault();
-        }
-        event.stopPropagation();
-      }}
-      title={playerName}
-    >
-      {getBracketDisplayName(playerName)}
-    </Link>
+    {isEmptyPlayer(playerName) ? (
+      <span className="tournamentPlayerEmpty" aria-hidden="true">
+        &nbsp;
+      </span>
+    ) : (
+      <Link
+        className="tournamentPlayerLink"
+        to="/@/$username"
+        params={{ username: normalizeUsername(playerName) }}
+        onClick={(event) => {
+          if (shouldSuppressClick()) {
+            event.preventDefault();
+          }
+          event.stopPropagation();
+        }}
+        title={playerName}
+      >
+        {getBracketDisplayName(playerName)}
+      </Link>
+    )}
     <SeedBadge seed={seed} />
     <FairPlayFlagBadge playerName={playerName} />
     {isWinner ? <AdvanceCheck /> : null}
@@ -1130,7 +1145,7 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
     <div className="tournamentPage">
       <Seo
         title={`${bracket.title} Bracket`}
-        description={`View the ${bracket.title} bracket, including the championship, losers bracket, and grand final.`}
+        description={`View the ${bracket.title} tournament bracket and match archive.`}
         path={`/tournaments/${bracket.id}`}
       />
 
