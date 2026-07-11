@@ -1,0 +1,344 @@
+.practicePage {
+  width: min(100%, max(980px, calc(var(--analysis-board-size, 516px) + 406px)));
+  grid-template-columns: minmax(360px, var(--analysis-board-size, 516px)) minmax(320px, 394px);
+}
+
+.practicePanel {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: start;
+  height: var(--analysis-side-panel-height);
+  max-height: var(--analysis-side-panel-max-height);
+  min-height: 0;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  overflow: hidden;
+}
+
+.practicePanel.dbMovesCollapsed {
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+}
+
+.practiceHeader {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.practiceHeader > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.practiceHeader > .practiceHeaderActions {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.practiceLichessButton {
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: color-mix(in srgb, var(--color-panel-strong) 76%, transparent);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.practiceLichessButton:hover {
+  border-color: var(--color-accent-soft-border);
+  background: color-mix(in srgb, var(--color-panel-strong) 78%, var(--color-primary) 18%);
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.practiceLichessButton svg {
+  width: 24px;
+  height: 24px;
+  display: block;
+}
+
+.practiceSideButton {
+  min-width: 104px;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-ui);
+  background: color-mix(in srgb, var(--color-primary) 76%, var(--color-cyan) 24%);
+  color: var(--color-on-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 900;
+  text-transform: capitalize;
+  cursor: pointer;
+}
+
+.practiceStatus {
+  min-width: 0;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: color-mix(in srgb, var(--color-panel-strong) 70%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.practiceStatus span,
+.practiceStatus strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.practiceStatus span {
+  color: var(--color-heading);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.practiceStatus strong {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.practiceSettings {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.practiceSettingGroup {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.practiceSettingGroup > span {
+  color: color-mix(in srgb, var(--color-muted) 72%, var(--color-panel-deep) 28%);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.practiceSegmented,
+.practiceModeGrid {
+  display: grid;
+  gap: 4px;
+}
+
+.practiceSegmented {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.practiceModeGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.practiceSegmented button,
+.practiceModeGrid button {
+  min-width: 0;
+  min-height: 34px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-panel-deep) 20%, transparent);
+  color: color-mix(in srgb, var(--color-muted) 86%, transparent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 820;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.practiceSegmented button.active,
+.practiceModeGrid button.active {
+  background: color-mix(in srgb, var(--color-primary) 28%, var(--color-panel-strong) 72%);
+  color: var(--color-heading);
+}
+
+.practicePlayerChooserRow {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.practicePlayerChooserRow .analysisOpponentClearButton {
+  min-height: 36px;
+}
+
+.practiceCheckbox {
+  min-width: 0;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--color-heading);
+  font-size: 13px;
+  font-weight: 820;
+  cursor: pointer;
+}
+
+.practiceCheckbox input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+.practiceMovesPanel {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 4px;
+  overflow: hidden;
+}
+
+.practiceMoveTableWrap {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-color: color-mix(in srgb, var(--color-muted) 58%, transparent) transparent;
+  scrollbar-width: thin;
+}
+
+.practiceMoveTable {
+  width: 100%;
+  min-width: 300px;
+  border-collapse: collapse;
+  color: var(--color-text);
+  font-size: 13px;
+}
+
+.practiceMoveTable th,
+.practiceMoveTable td {
+  height: 34px;
+  padding: 0 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 64%, transparent);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.practiceMoveTable th {
+  color: var(--color-subtle);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.practiceMoveTable td:nth-child(2) {
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.practiceMoveTable tr[role="button"] {
+  cursor: pointer;
+}
+
+.practiceMoveTable tr[role="button"]:hover,
+.practiceMoveTable tr[role="button"]:focus-visible {
+  background: color-mix(in srgb, var(--color-panel-strong) 66%, var(--color-primary) 12%);
+  outline: none;
+}
+
+.practiceShareBar {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-panel-deep) 38%, transparent);
+  display: block;
+  overflow: hidden;
+}
+
+.practiceShareBar span {
+  width: var(--practice-share, 0%);
+  height: 100%;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--color-primary) 76%, var(--color-cyan) 24%);
+  display: block;
+}
+
+.practiceToolbar {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-self: end;
+}
+
+.practiceBoardColumn {
+  align-self: start;
+}
+
+.practiceSideButton:focus-visible,
+.practiceSegmented button:focus-visible,
+.practiceModeGrid button:focus-visible,
+.practiceLichessButton:focus-visible,
+.practiceCheckbox input:focus-visible,
+.practiceMoveTable tr[role="button"]:focus-visible {
+  outline: 3px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+@media (max-width: 900px) {
+  .practicePage {
+    width: min(100%, 620px);
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .practicePanel {
+    grid-column: 1;
+    grid-row: 2;
+    width: 100%;
+    height: auto;
+    max-height: none;
+    grid-template-rows: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .practiceHeader,
+  .practiceStatus {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .practiceSideButton,
+  .practiceStatus strong {
+    width: 100%;
+  }
+
+  .practiceModeGrid,
+  .practicePlayerChooserRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

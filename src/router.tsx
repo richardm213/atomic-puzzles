@@ -14,6 +14,7 @@ import { H2HPage } from "./pages/H2H/H2H";
 import { HomePage } from "./pages/Home/Home";
 import { MatchPage } from "./pages/Match/MatchPage";
 import { PlayerProfilePage } from "./pages/PlayerProfile/PlayerProfile";
+import { PracticePage } from "./pages/Practice/Practice";
 import { PuzzleDashboardPage } from "./pages/PuzzleDashboard/PuzzleDashboard";
 import { PuzzleLeaderboardPage } from "./pages/PuzzleLeaderboard/PuzzleLeaderboard";
 import { PuzzleSetsPage } from "./pages/PuzzleSets/PuzzleSets";
@@ -76,6 +77,12 @@ const analysisRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/analysis",
   component: AnalysisPage,
+});
+
+const practiceRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/practice",
+  component: PracticePage,
 });
 
 const tournamentsRoute = createRoute({
@@ -206,6 +213,7 @@ const routeTree = rootRoute.addChildren([
   bannedUsersRoute,
   rankingsMethodologyRoute,
   analysisRoute,
+  practiceRoute,
   recentRoute,
   tournamentsRoute,
   tournamentRoute,

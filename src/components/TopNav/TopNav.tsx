@@ -117,7 +117,19 @@ const navItems: NavItem[] = [
   {
     to: "/analysis",
     label: "Analysis",
-    isActive: (pathname) => pathname === "/analysis",
+    isActive: (pathname) => pathname === "/analysis" || pathname === "/practice",
+    children: [
+      {
+        to: "/analysis",
+        label: "Analysis board",
+        isActive: (pathname) => pathname === "/analysis",
+      },
+      {
+        to: "/practice",
+        label: "Practice",
+        isActive: (pathname) => pathname === "/practice",
+      },
+    ],
   },
 ];
 
