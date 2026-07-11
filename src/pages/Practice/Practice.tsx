@@ -58,6 +58,10 @@ type PracticeStatus = "idle" | "loading" | "ready" | "error";
 type PracticeSide = "white" | "black";
 type OpponentMode = "frequency" | "random" | "popular";
 type OpponentSource = "general" | "player";
+type PendingAutoMove = {
+  fen: string;
+  uci: string;
+};
 
 type StoredPracticeSettings = {
   side: PracticeSide;
@@ -282,6 +286,7 @@ export const PracticePage = () => {
   const requestIdRef = useRef(0);
   const lastAutoFenRef = useRef("");
   const navigationRef = useRef<SolutionNavigation | null>(null);
+  const triedMoveUcisByFenRef = useRef<Map<string, Set<string>>>(new Map());
   const boardWheelDeltaRef = useRef(0);
   const boardWheelLastAtRef = useRef(0);
   const boardWheelDirectionRef = useRef(0);
@@ -289,7 +294,7 @@ export const PracticePage = () => {
   const boardWheelCanStepForwardRef = useRef(false);
   const [boardState, setBoardState] = useState<ChessboardState | null>(null);
   const [navigation, setNavigation] = useState<SolutionNavigation | null>(null);
-  const [pendingAutoMoveUci, setPendingAutoMoveUci] = useState<string | null>(null);
+  const [pendingAutoMove, setPendingAutoMove] = useState<PendingAutoMove | null>(null);
   const [side, setSide] = useState<PracticeSide>(initialSettings.side);
   const [opponentMode, setOpponentMode] = useState<OpponentMode>(initialSettings.opponentMode);
   const [opponentSource, setOpponentSource] = useState<OpponentSource>(
@@ -300,6 +305,7 @@ export const PracticePage = () => {
   const [usernamePickerOpen, setUsernamePickerOpen] = useState(false);
   const [recentUsernames, setRecentUsernames] = useState<string[]>(loadRecentUsernames);
   const [automove, setAutomove] = useState(initialSettings.automove);
+  const [forceAutoMove, setForceAutoMove] = useState(false);
   const [databaseExhausted, setDatabaseExhausted] = useState(false);
   const [dbMovesOpen, setDbMovesOpen] = useState(true);
   const [practiceMoves, setPracticeMoves] = useState<PracticeMove[]>([]);
@@ -335,6 +341,23 @@ export const PracticePage = () => {
     },
     [],
   );
+
+  const recordTriedMove = useCallback((fen: string, uci: string): void => {
+    const triedMoves = triedMoveUcisByFenRef.current.get(fen) ?? new Set<string>();
+    triedMoves.add(uci);
+    triedMoveUcisByFenRef.current.set(fen, triedMoves);
+  }, []);
+
+  const getUntriedMoves = useCallback((fen: string, moves: PracticeMove[]): PracticeMove[] => {
+    const triedMoves = triedMoveUcisByFenRef.current.get(fen);
+    if (!triedMoves?.size) return moves;
+
+    return moves.filter((move) => !triedMoves.has(move.uci));
+  }, []);
+
+  const clearTriedMoves = useCallback((): void => {
+    triedMoveUcisByFenRef.current.clear();
+  }, []);
 
   useEffect(() => {
     storePracticeSettings({
@@ -395,14 +418,18 @@ export const PracticePage = () => {
         setStatus("ready");
 
         if (
-          automove &&
+          (automove || forceAutoMove) &&
           currentTurn === opponentSide &&
           !databaseExhausted &&
           lastAutoFenRef.current !== currentFen
         ) {
-          const autoMove = chooseOpponentMove(nextPracticeMoves, opponentMode);
+          const autoMove = chooseOpponentMove(
+            getUntriedMoves(currentFen, nextPracticeMoves),
+            opponentMode,
+          );
           if (!autoMove) {
             setDatabaseExhausted(true);
+            setForceAutoMove(false);
             return;
           }
 
@@ -412,7 +439,8 @@ export const PracticePage = () => {
           const queueAutoMove = (): void => {
             if (requestCancelled || requestTimedOut || requestId !== requestIdRef.current) return;
 
-            setPendingAutoMoveUci(autoMove.uci);
+            setForceAutoMove(false);
+            setPendingAutoMove({ fen: currentFen, uci: autoMove.uci });
           };
 
           if (remainingThinkTime > 0) {
@@ -445,6 +473,8 @@ export const PracticePage = () => {
     currentFen,
     currentTurn,
     databaseExhausted,
+    forceAutoMove,
+    getUntriedMoves,
     opponentMode,
     opponentSide,
     opponentSource,
@@ -461,32 +491,37 @@ export const PracticePage = () => {
   }, [canStepBack, canStepForward]);
 
   useEffect(() => {
-    if (!pendingAutoMoveUci || navigation) return;
+    if (!pendingAutoMove || navigation) return;
 
-    queueNavigation({ playUci: pendingAutoMoveUci });
-  }, [navigation, pendingAutoMoveUci, queueNavigation]);
+    recordTriedMove(pendingAutoMove.fen, pendingAutoMove.uci);
+    queueNavigation({ playUci: pendingAutoMove.uci });
+  }, [navigation, pendingAutoMove, queueNavigation, recordTriedMove]);
 
   useEffect(() => {
-    if (!pendingAutoMoveUci || currentTurn === opponentSide) return;
+    if (!pendingAutoMove || currentTurn === opponentSide) return;
 
-    setPendingAutoMoveUci(null);
-  }, [currentTurn, opponentSide, pendingAutoMoveUci]);
+    setPendingAutoMove(null);
+  }, [currentTurn, opponentSide, pendingAutoMove]);
 
   const playPracticeMove = useCallback(
     (uci: string): void => {
       lastAutoFenRef.current = "";
-      setPendingAutoMoveUci(null);
+      setPendingAutoMove(null);
+      setForceAutoMove(false);
       setDatabaseExhausted(false);
       setHoveredMoveUci(null);
+      recordTriedMove(currentFen, uci);
       queueNavigation({ playUci: uci });
     },
-    [queueNavigation],
+    [currentFen, queueNavigation, recordTriedMove],
   );
 
   const requestNavigation = useCallback(
     (command: NonNullable<SolutionNavigation["command"]>): void => {
       lastAutoFenRef.current = "";
-      setPendingAutoMoveUci(null);
+      setPendingAutoMove(null);
+      setForceAutoMove(false);
+      setDatabaseExhausted(false);
       queueNavigation({ command });
     },
     [queueNavigation],
@@ -549,17 +584,21 @@ export const PracticePage = () => {
 
   const resetPractice = useCallback((): void => {
     lastAutoFenRef.current = "";
-    setPendingAutoMoveUci(null);
+    setPendingAutoMove(null);
+    setForceAutoMove(false);
     setDatabaseExhausted(false);
+    clearTriedMoves();
     queueNavigation({ resetFen: STARTING_FEN });
-  }, [queueNavigation]);
+  }, [clearTriedMoves, queueNavigation]);
 
-  const flipPracticeSide = (): void => {
+  const flipPracticeSide = useCallback((): void => {
     lastAutoFenRef.current = "";
-    setPendingAutoMoveUci(null);
+    setPendingAutoMove(null);
+    setForceAutoMove(false);
     setDatabaseExhausted(false);
+    clearTriedMoves();
     setSide((currentSide) => oppositeSide(currentSide));
-  };
+  }, [clearTriedMoves]);
 
   const saveRecentUsernames = useCallback((nextUsernames: string[]): void => {
     setRecentUsernames(nextUsernames);
@@ -585,12 +624,14 @@ export const PracticePage = () => {
       setUsernameDraft(trimmedUsername);
       setOpponentSource("player");
       setDatabaseExhausted(false);
-      setPendingAutoMoveUci(null);
+      setPendingAutoMove(null);
+      setForceAutoMove(false);
+      clearTriedMoves();
       lastAutoFenRef.current = "";
       saveRecentUsernames(addRecentUsername(recentUsernames, trimmedUsername));
       closeUsernamePicker();
     },
-    [closeUsernamePicker, recentUsernames, saveRecentUsernames],
+    [clearTriedMoves, closeUsernamePicker, recentUsernames, saveRecentUsernames],
   );
 
   const submitUsernamePicker = useCallback(
@@ -617,7 +658,9 @@ export const PracticePage = () => {
     setUsernameDraft("");
     setOpponentSource("general");
     setDatabaseExhausted(false);
-    setPendingAutoMoveUci(null);
+    setPendingAutoMove(null);
+    setForceAutoMove(false);
+    clearTriedMoves();
     lastAutoFenRef.current = "";
   };
 
@@ -627,6 +670,17 @@ export const PracticePage = () => {
       openUsernamePicker();
     }
   };
+
+  const requestAlternateAutoMove = useCallback((): void => {
+    lastAutoFenRef.current = "";
+    setPendingAutoMove(null);
+    setDatabaseExhausted(false);
+    setForceAutoMove(true);
+
+    if (currentTurn !== opponentSide && canStepBack) {
+      queueNavigation({ command: "previous" });
+    }
+  }, [canStepBack, currentTurn, opponentSide, queueNavigation]);
 
   useEffect(() => {
     const handlePracticeShortcut = (event: KeyboardEvent): void => {
@@ -645,7 +699,7 @@ export const PracticePage = () => {
 
       if (
         usernamePickerOpen ||
-        (key !== "a" && key !== "e" && key !== "f" && !isMoveShortcut) ||
+        (key !== "a" && key !== "e" && key !== "f" && key !== "q" && !isMoveShortcut) ||
         event.metaKey ||
         event.ctrlKey ||
         event.altKey
@@ -680,6 +734,8 @@ export const PracticePage = () => {
       } else if (key === "a") {
         lastAutoFenRef.current = "";
         setAutomove((current) => !current);
+      } else if (key === "q") {
+        requestAlternateAutoMove();
       } else {
         flipPracticeSide();
       }
@@ -687,7 +743,15 @@ export const PracticePage = () => {
 
     window.addEventListener("keydown", handlePracticeShortcut, { capture: true });
     return () => window.removeEventListener("keydown", handlePracticeShortcut, { capture: true });
-  }, [dbMovesOpen, playPracticeMove, practiceMoves, status, usernamePickerOpen]);
+  }, [
+    dbMovesOpen,
+    flipPracticeSide,
+    playPracticeMove,
+    practiceMoves,
+    requestAlternateAutoMove,
+    status,
+    usernamePickerOpen,
+  ]);
 
   useEffect(() => {
     if (!usernamePickerOpen) return;
