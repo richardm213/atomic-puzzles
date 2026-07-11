@@ -166,6 +166,29 @@ const getVisibleRounds = (
   return stage.rounds.slice(Math.max(0, startIndex));
 };
 
+const trophyRoundNames = new Set([
+  "Final",
+  "Finals",
+  "Grand Final",
+  "Grand Final Reset",
+  "Set 1",
+  "Reset",
+]);
+
+const getStageTrophyMatchId = (stage: TournamentBracketStage, decisiveMatchId: string): string => {
+  const decisiveMatch = stage.rounds
+    .flatMap((round) => round.matches)
+    .find((match) => match.id === decisiveMatchId);
+  if (decisiveMatch) return decisiveMatch.id;
+  if (stage.key !== "main") return "";
+
+  const finalRound =
+    [...stage.rounds].reverse().find((round) => trophyRoundNames.has(round.roundName)) ??
+    stage.rounds.at(-1);
+
+  return finalRound?.matches.at(-1)?.id ?? "";
+};
+
 const createConnector = (
   key: string,
   x1: number,
@@ -361,7 +384,15 @@ const withdrewPlayerName = (match: TournamentMatch): string => {
   return match.s1 < match.s2 ? match.p1 : match.p2;
 };
 const scoreSlotDisplay = (match: TournamentMatch, playerName: string): string => {
+  if (isEmptyPlayer(playerName)) {
+    return "";
+  }
+
   if (isEmptyMatch(match)) {
+    return "";
+  }
+
+  if (!match.match_id && (isEmptyPlayer(match.p1) || isEmptyPlayer(match.p2))) {
     return "";
   }
 
@@ -504,7 +535,7 @@ const TournamentMatchCard = ({
   topSeedMap,
   countryMap,
   trophyAssetPath,
-  isDecisive,
+  showTrophy,
   shouldSuppressClick,
   onOpenMatch,
 }: {
@@ -512,18 +543,18 @@ const TournamentMatchCard = ({
   topSeedMap: Map<string, number>;
   countryMap: Map<string, string>;
   trophyAssetPath: string | undefined;
-  isDecisive: boolean;
+  showTrophy: boolean;
   shouldSuppressClick: () => boolean;
   onOpenMatch: (match: TournamentMatch) => void;
 }) => {
   const matchWinner = winnerName(match);
   const withdrawalPlayer = withdrewPlayerName(match);
   const hasMatchPage = Boolean(match.match_id);
-  const showTrophy = isDecisive && Boolean(trophyAssetPath);
+  const shouldShowTrophy = showTrophy && Boolean(trophyAssetPath);
 
   return (
     <div
-      className={`tournamentMatchCard tournamentMatchCardTree${hasMatchPage ? " isClickable" : ""}${showTrophy ? " isDecisive" : ""}`}
+      className={`tournamentMatchCard tournamentMatchCardTree${hasMatchPage ? " isClickable" : ""}${shouldShowTrophy ? " hasTrophy" : ""}`}
       style={{
         left: `${match.x}px`,
         top: `${match.y}px`,
@@ -554,13 +585,13 @@ const TournamentMatchCard = ({
           : undefined
       }
     >
-      {showTrophy ? (
+      {shouldShowTrophy ? (
         <img
           className="tournamentMatchTrophy"
           src={appAssetPath(trophyAssetPath || "")}
           alt=""
-          width="48"
-          height="48"
+          width="96"
+          height="96"
           loading="eager"
           decoding="async"
           aria-hidden="true"
@@ -648,6 +679,7 @@ const TournamentStageSection = ({
   onPointerEnd: (event: ReactPointerEvent<HTMLDivElement>) => void;
 }) => {
   const startRoundOptions = getStartRoundOptions(stage);
+  const trophyMatchId = trophyAssetPath ? getStageTrophyMatchId(stage, decisiveMatchId) : "";
 
   return (
     <section className="tournamentStageSection" aria-labelledby={`${stage.key}-heading`}>
@@ -790,7 +822,7 @@ const TournamentStageSection = ({
                     topSeedMap={topSeedMap}
                     countryMap={countryMap}
                     trophyAssetPath={trophyAssetPath}
-                    isDecisive={match.id === decisiveMatchId}
+                    showTrophy={match.id === trophyMatchId}
                     shouldSuppressClick={shouldSuppressMatchClick}
                     onOpenMatch={onOpenMatch}
                   />

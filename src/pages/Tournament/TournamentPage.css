@@ -555,7 +555,7 @@
   align-content: center;
 }
 
-.tournamentMatchCardTree.isDecisive {
+.tournamentMatchCardTree.hasTrophy {
   z-index: 7;
   overflow: visible;
 }
@@ -574,15 +574,15 @@
 
 .tournamentMatchTrophy {
   position: absolute;
-  top: -52px;
+  top: -104px;
   left: 50%;
   z-index: 2;
-  width: 48px;
-  height: 48px;
+  width: 104px;
+  height: 94px;
   object-fit: contain;
   pointer-events: none;
   transform: translateX(-50%);
-  filter: drop-shadow(0 10px 12px color-mix(in srgb, black 40%, transparent));
+  filter: drop-shadow(0 16px 18px color-mix(in srgb, black 42%, transparent));
 }
 
 .tournamentMatchPlayers {

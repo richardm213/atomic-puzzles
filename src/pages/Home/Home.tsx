@@ -4,7 +4,6 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { Seo } from "../../components/Seo/Seo";
-import { useAppSettings } from "../../context/AppSettings";
 import { resolveUsernameInputs } from "../../lib/users/usernameSearch";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { matchupToSlug } from "../../utils/h2hRoutes";
@@ -30,77 +29,12 @@ const featureLinks = [
   },
 ];
 
-const darkModePuzzleCollageImages = [
-  {
-    src: "/images/home-puzzles/home-puzzle-dark-1.png",
-    alt: "Atomic chess puzzle position with black to move",
-  },
-  {
-    src: "/images/home-puzzles/home-puzzle-dark-2.png",
-    alt: "Atomic chess puzzle position with white to move",
-  },
-  {
-    src: "/images/home-puzzles/home-puzzle-dark-3.png",
-    alt: "Atomic chess puzzle position with white to move",
-  },
-  {
-    src: "/images/home-puzzles/home-puzzle-dark-4.png",
-    alt: "Atomic chess puzzle position with white to move",
-  },
-  {
-    src: "/images/home-puzzles/home-puzzle-dark-5.png",
-    alt: "Atomic chess puzzle position with black to move",
-  },
-  {
-    src: "/images/home-puzzles/home-puzzle-dark-6.png",
-    alt: "Atomic chess puzzle position with white to move",
-  },
-  {
-    src: "/images/home-puzzles/home-puzzle-dark-7.png",
-    alt: "Atomic chess puzzle position with white to move",
-  },
-];
-
-const lightModePuzzleCollageImages = [
-  {
-    src: "/images/home-puzzles/home-puzzle-light-1.png",
-    alt: "Atomic chess puzzle position with white to move",
-  },
-  {
-    src: "/images/home-puzzles/home-puzzle-light-2.png",
-    alt: "Atomic chess puzzle position with white to move",
-  },
-  {
-    src: "/images/home-puzzles/home-puzzle-light-3.png",
-    alt: "Atomic chess puzzle position with white to move",
-  },
-  {
-    src: "/images/home-puzzles/home-puzzle-light-4.png",
-    alt: "Atomic chess puzzle position with white to move",
-  },
-  {
-    src: "/images/home-puzzles/home-puzzle-light-5.png",
-    alt: "Atomic chess puzzle position with black to move",
-  },
-  {
-    src: "/images/home-puzzles/home-puzzle-light-6.png",
-    alt: "Atomic chess puzzle position with black to move",
-  },
-  {
-    src: "/images/home-puzzles/home-puzzle-light-7.png",
-    alt: "Atomic chess puzzle position with white to move",
-  },
-];
-
 export const HomePage = () => {
-  const { theme } = useAppSettings();
   const [comparePlayerOneQuery, setComparePlayerOneQuery] = useState("");
   const [comparePlayerTwoQuery, setComparePlayerTwoQuery] = useState("");
   const navigate = useNavigate();
   const trimmedComparePlayerOneQuery = comparePlayerOneQuery.trim();
   const trimmedComparePlayerTwoQuery = comparePlayerTwoQuery.trim();
-  const puzzleCollageImages =
-    theme === "light" ? lightModePuzzleCollageImages : darkModePuzzleCollageImages;
 
   const handleCompareSearch = async (
     event: import("react").FormEvent<HTMLFormElement>,
@@ -139,14 +73,7 @@ export const HomePage = () => {
       />
       <section className="homeHero" aria-labelledby="home-title">
         <div className="homeHeroLead">
-          <div className="homeKicker">
-            <img src={appAssetPath("/favicon.ico")} alt="" width="24" height="24" />
-            Atomic puzzles
-          </div>
           <h1 id="home-title">The best place to train and follow atomic chess</h1>
-          <p className="homeIntro">
-            Atomic puzzles, rankings, match history, and player pages for the Lichess atomic scene.
-          </p>
 
           <div className="homeHeroActions">
             <Link className="homePrimaryCta" to="/solve">
@@ -155,32 +82,10 @@ export const HomePage = () => {
             <Link className="homeSecondaryCta" to="/rankings">
               View rankings
             </Link>
+            <Link className="homeSecondaryCta" to="/analysis">
+              Analyze
+            </Link>
           </div>
-        </div>
-
-        <div
-          className="homeImageStage"
-          aria-label="Slideshow of atomic puzzle positions"
-          role="img"
-        >
-          {puzzleCollageImages.map((image, index) => (
-            <picture
-              key={image.src}
-              className="homePuzzleCard"
-              style={{ "--slide-delay": `${index * 7}s` } as import("react").CSSProperties}
-              aria-hidden="true"
-            >
-              <img
-                src={appAssetPath(image.src)}
-                alt=""
-                width="870"
-                height="990"
-                decoding="async"
-                fetchPriority={index === 0 ? "high" : "low"}
-                loading={index === 0 ? "eager" : "lazy"}
-              />
-            </picture>
-          ))}
         </div>
 
         <div className="homeHeroForms">
@@ -220,25 +125,25 @@ export const HomePage = () => {
 
       <section className="homeSpotlightSection" aria-label="Atomic chess shortcuts">
         <div className="homeSpotlightGrid">
-          <Link className="homeSpotlightCard" to="/solve/leaderboard">
+          <Link className="homeSpotlightCard homePuzzleLeaderboardShortcut" to="/solve/leaderboard">
             <span>Puzzles</span>
             <h2>Puzzle leaderboard</h2>
             <p>Points, correct solves, misses, and total attempts.</p>
           </Link>
 
           <Link
-            className="homeSpotlightCard homeTrophyShortcut"
+            className="homeSpotlightCard homeTrophyShortcut homeAtomicHyperShortcut"
             to="/tournaments/$tournamentId"
-            params={{ tournamentId: "awc2025" }}
+            params={{ tournamentId: "ahc2026" }}
           >
-            <span>Tournament</span>
-            <h2>AWC 2025</h2>
-            <p>Bracket and match paths from last year's championship.</p>
+            <span>Championship</span>
+            <h2>Atomic Hyper Championship</h2>
+            <p>Follow the 2026 bracket, match paths, and championship run.</p>
             <img
-              src={appAssetPath("/images/awc-trophies/awc.png")}
+              src={appAssetPath("/images/awc-trophies/atomic-hyper-championship.png")}
               alt=""
               width="140"
-              height="140"
+              height="250"
               loading="lazy"
               decoding="async"
             />
@@ -251,7 +156,7 @@ export const HomePage = () => {
           >
             <span>Championship</span>
             <h2>Chess.com Atomic 2026</h2>
-            <p>Follow the next Chess.com atomic championship.</p>
+            <p>wolfram_ep won the 2026 Chess.com atomic championship.</p>
             <img
               src={appAssetPath("/images/awc-trophies/chesscomatomic.png")}
               alt=""

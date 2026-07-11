@@ -85,67 +85,52 @@ const tournamentBracketCache = new Map<string, Promise<TournamentBracket | null>
 
 type CsvRow = Record<string, string>;
 
-const AWC_TROPHY_ASSET_PATH = "/images/awc-trophies/awc.png";
+const trophyAssetPaths = {
+  ahc: "/images/awc-trophies/atomic-hyper-championship.png",
+  awc: "/images/awc-trophies/awc.png",
+  ccac: "/images/awc-trophies/chesscomatomic.png",
+} as const;
+
+const availableTournament = (meta: Omit<TournamentMeta, "status">): TournamentMeta => ({
+  ...meta,
+  status: "available",
+});
+
+const awcTournament = (year: number): TournamentMeta =>
+  availableTournament({
+    id: `awc${year}`,
+    title: `AWC ${year}`,
+    year,
+    trophyAssetPath: trophyAssetPaths.awc,
+  });
+
+const pendingAwcTournament = (year: number): TournamentMeta => ({
+  id: `awc${year}`,
+  title: `AWC ${year}`,
+  year,
+  status: "pending",
+});
 
 const tournaments: TournamentMeta[] = [
-  {
+  availableTournament({
     id: "ahc2026",
     title: "AHC 2026",
     headingTitle: "Atomic Hyper Championship 2026",
     year: 2026,
-    status: "available",
     hideStartRoundControls: true,
     completeMainBracketFromRound: "Round of 32",
-  },
-  {
+    trophyAssetPath: trophyAssetPaths.ahc,
+  }),
+  availableTournament({
     id: "ccac2026",
     title: "CCAC 2026",
     headingTitle: "Chess.com Atomic Championship 2026",
     year: 2026,
-    status: "available",
     hideStartRoundControls: true,
-    trophyAssetPath: "/images/awc-trophies/chesscomatomic.png",
-  },
-  {
-    id: "awc2025",
-    title: "AWC 2025",
-    year: 2025,
-    status: "available",
-    trophyAssetPath: AWC_TROPHY_ASSET_PATH,
-  },
-  {
-    id: "awc2024",
-    title: "AWC 2024",
-    year: 2024,
-    status: "available",
-    trophyAssetPath: AWC_TROPHY_ASSET_PATH,
-  },
-  {
-    id: "awc2023",
-    title: "AWC 2023",
-    year: 2023,
-    status: "available",
-    trophyAssetPath: AWC_TROPHY_ASSET_PATH,
-  },
-  {
-    id: "awc2022",
-    title: "AWC 2022",
-    year: 2022,
-    status: "available",
-    trophyAssetPath: AWC_TROPHY_ASSET_PATH,
-  },
-  {
-    id: "awc2021",
-    title: "AWC 2021",
-    year: 2021,
-    status: "available",
-    trophyAssetPath: AWC_TROPHY_ASSET_PATH,
-  },
-  { id: "awc2020", title: "AWC 2020", year: 2020, status: "pending" },
-  { id: "awc2019", title: "AWC 2019", year: 2019, status: "pending" },
-  { id: "awc2018", title: "AWC 2018", year: 2018, status: "pending" },
-  { id: "awc2017", title: "AWC 2017", year: 2017, status: "pending" },
-  { id: "awc2016", title: "AWC 2016", year: 2016, status: "pending" },
+    trophyAssetPath: trophyAssetPaths.ccac,
+  }),
+  ...[2025, 2024, 2023, 2022, 2021].map(awcTournament),
+  ...[2020, 2019, 2018, 2017, 2016].map(pendingAwcTournament),
 ];
 
 const roundDisplayOrder: Record<string, string[]> = {
@@ -459,9 +444,20 @@ const addEmptyMainBracketRounds = (
     }
 
     roundMatches.forEach((match, matchIndex) => {
-      if (match.winner_to) return;
       const nextMatch = nextRoundMatches[Math.floor(matchIndex / 2)];
-      if (nextMatch) match.winner_to = nextMatch.id;
+      if (!nextMatch) return;
+
+      if (!match.winner_to) {
+        match.winner_to = nextMatch.id;
+      }
+
+      const winner = winnerName(match);
+      if (!winner) return;
+
+      const targetPlayerKey = matchIndex % 2 === 0 ? "p1" : "p2";
+      if (!nextMatch[targetPlayerKey]) {
+        nextMatch[targetPlayerKey] = winner;
+      }
     });
   }
 
