@@ -658,6 +658,18 @@ export const PracticePage = () => {
     setUsernamePickerOpen(true);
   }, []);
 
+  const resetBoardForOpponent = useCallback((): void => {
+    lastAutoFenRef.current = "";
+    previousBoardPlyRef.current = 0;
+    setPendingAutoMove(null);
+    setForceAutoMove(false);
+    setExhaustedFen(null);
+    setUsingGeneralFallback(false);
+    setHoveredMoveUci(null);
+    clearTriedMoves();
+    queueNavigation({ type: "reset", fen: STARTING_FEN });
+  }, [clearTriedMoves, queueNavigation]);
+
   const commitUsername = useCallback(
     (nextUsername: string): void => {
       const trimmedUsername = nextUsername.trim();
@@ -669,12 +681,7 @@ export const PracticePage = () => {
           : [trimmedUsername],
       );
       setOpponentSource("player");
-      setExhaustedFen(null);
-      setUsingGeneralFallback(false);
-      setPendingAutoMove(null);
-      setForceAutoMove(false);
-      clearTriedMoves();
-      lastAutoFenRef.current = "";
+      resetBoardForOpponent();
       saveRecentUsernames(addRecentUsername(recentUsernames, trimmedUsername));
 
       if (!allowMultiplePlayers) {
@@ -683,9 +690,9 @@ export const PracticePage = () => {
     },
     [
       allowMultiplePlayers,
-      clearTriedMoves,
       closeUsernamePicker,
       recentUsernames,
+      resetBoardForOpponent,
       saveRecentUsernames,
     ],
   );
