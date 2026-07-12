@@ -343,11 +343,43 @@
 }
 
 .practiceAutomoveToggle {
+  flex: 1;
   min-height: 36px;
   padding: 0 10px;
   border: 1px solid color-mix(in srgb, var(--color-border) 76%, transparent);
   border-radius: var(--radius-ui);
   background: color-mix(in srgb, var(--color-panel-strong) 52%, transparent);
+}
+
+.practiceAutomoveRow {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.practiceAlternateMoveButton {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 11px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 76%, transparent);
+  border-radius: var(--radius-ui);
+  background: color-mix(in srgb, var(--color-panel-strong) 52%, transparent);
+  color: var(--color-muted);
+  font-weight: 760;
+  cursor: pointer;
+}
+
+.practiceAlternateMoveButton:hover:not(:disabled) {
+  border-color: var(--color-accent-soft-border);
+  color: var(--color-heading);
+}
+
+.practiceAlternateMoveButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .practiceMovesPanel {
