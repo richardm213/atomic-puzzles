@@ -467,8 +467,7 @@ const LeaderboardView = () => {
                 className="rankingsEligibilityNote"
                 aria-label={`${modeLabels[selectedMode]} eligibility`}
               >
-                Note: {modeLabels[selectedMode]} requires {eligibilityRequirement.minGames}+ games
-                this month
+                Requirements: {eligibilityRequirement.minGames}+ games this month
                 {eligibilityRequirement.maxRd === null
                   ? "."
                   : ` and RD < ${eligibilityRequirement.maxRd}.`}
