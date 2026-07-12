@@ -24,8 +24,8 @@ describe("createModeRecord", () => {
 });
 
 describe("rankingEligibilityByMode", () => {
-  it("requires Wolfrandom RD below 100", () => {
-    expect(rankingEligibilityByMode.wolfrandom).toEqual({ minGames: 10, maxRd: 100 });
+  it("requires Wolfrandom RD below 80", () => {
+    expect(rankingEligibilityByMode.wolfrandom).toEqual({ minGames: 10, maxRd: 80 });
   });
 });
 

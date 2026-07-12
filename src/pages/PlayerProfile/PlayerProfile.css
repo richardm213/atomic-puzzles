@@ -1194,21 +1194,20 @@
 .profileMatchTable th,
 .profileMatchTable td {
   border-bottom-color: var(--color-border);
-  padding: 11px 12px;
+  padding: 11px 8px;
   vertical-align: middle;
 }
 
 .profileMatchTable :is(th, td):nth-child(1) {
-  width: 22%;
+  width: 19%;
 }
 
 .profileMatchTable :is(th, td):nth-child(2) {
-  width: 22%;
-  overflow-wrap: anywhere;
+  width: 24%;
 }
 
 .profileMatchTable :is(th, td):nth-child(3) {
-  width: 9%;
+  width: 8%;
 }
 
 .profileMatchTable :is(th, td):nth-child(4) {
@@ -1222,8 +1221,12 @@
 
 .profileMatchTable th:last-child,
 .profileMatchTable td:last-child {
-  width: 6%;
+  width: 8%;
   white-space: nowrap;
+}
+
+.profileMatchTable th + th {
+  border-left: 0;
 }
 
 .profileMatchTable tbody tr:last-child td {
@@ -1420,40 +1423,6 @@
   .profileOpponentFilterField {
     grid-column: auto;
   }
-
-  .profileMatchTable {
-    font-size: 12px;
-  }
-
-  .profileMatchTable th,
-  .profileMatchTable td {
-    padding: 8px 5px;
-  }
-
-  .profileMatchTable th {
-    font-size: 9px;
-    letter-spacing: 0.02em;
-  }
-
-  .profileScoreBox {
-    gap: 2px;
-    min-width: 0;
-    font-size: 13px;
-  }
-
-  .profileScoreValue {
-    min-width: 0;
-  }
-
-  .profileMetricValue {
-    font-size: 12px;
-  }
-
-  .profileDelta {
-    display: block;
-    margin-left: 0;
-    font-size: 10px;
-  }
 }
 
 .profileTablePill {
@@ -1491,15 +1460,24 @@
 }
 
 .profileMetricValue {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 800;
 }
 
 .profileDelta {
-  margin-left: 6px;
+  margin-left: 4px;
   color: var(--color-subtle);
-  font-size: 12px;
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
+}
+
+.profileMetricValue,
+.profileDelta {
+  white-space: nowrap;
+}
+
+.profileMatchTable td > :is(.profileMetricValue, .profileDelta) {
+  display: inline;
 }
 
 .matchDetailsRow td {
@@ -1507,8 +1485,6 @@
 }
 
 .matchDetailsInner {
-  min-width: 0;
-  max-width: 100%;
   padding: 4px 0 2px;
 }
 
@@ -1723,12 +1699,12 @@
   }
 
   .profileMatchTable {
-    font-size: 14px;
+    font-size: 12px;
   }
 
   .profileMatchTable th,
   .profileMatchTable td {
-    padding: 10px;
+    padding: 8px 5px;
   }
 }
 
