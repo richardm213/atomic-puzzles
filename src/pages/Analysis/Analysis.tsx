@@ -5,7 +5,6 @@ import {
   faBackward,
   faBackwardStep,
   faBookOpen,
-  faCheck,
   faExternalLinkAlt,
   faForward,
   faForwardStep,
@@ -13,10 +12,8 @@ import {
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { makeSan } from "chessops/san";
 import type {
   CSSProperties,
-  FormEvent,
   KeyboardEvent as ReactKeyboardEvent,
   PointerEvent as ReactPointerEvent,
 } from "react";
@@ -24,53 +21,34 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Chessboard } from "../../components/Chessboard/Chessboard";
 import { Seo } from "../../components/Seo/Seo";
-import { createAtomicPosition, moveFromUci } from "../../lib/puzzles/solutionPgn";
+import { UsernamePickerModal } from "../../components/UsernamePickerModal/UsernamePickerModal";
+import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
+import { createAtomicPosition } from "../../lib/puzzles/solutionPgn";
 import type { ChessboardState, SolutionNavigation } from "../../types/chessboard";
 import { appAssetPath } from "../../utils/appAssetPath";
+import { sanFromUci } from "../../utils/chessNotation";
+import { formatGameCount } from "../../utils/formatters";
+import { lichessAtomicAnalysisUrl } from "../../utils/lichess";
 import { buildLichessGameUrl } from "../../utils/matchRoutes";
+import {
+  type ExplorerApiGame,
+  type ExplorerApiMove,
+  type ExplorerApiPositionLeader,
+  type ExplorerApiPositionLeaders,
+  type ExplorerApiResponse,
+  fetchExplorerApiResponse,
+} from "../../utils/openingExplorer";
+import {
+  addRecentUsername,
+  loadRecentUsernames,
+  removeRecentUsername as removeRecentUsernameFromList,
+  storeRecentUsernames,
+} from "../../utils/recentUsernames";
 
 const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const MIN_MOVE_PANEL_HEIGHT = 86;
 const MIN_EXPLORER_PANEL_HEIGHT = 220;
 const EXPLORER_RESIZE_STEP = 24;
-
-type ExplorerApiMove = {
-  uci: string;
-  games: number;
-  whiteWins: number;
-  draws: number;
-  blackWins: number;
-  avgOpponentRating: number | null;
-};
-
-type ExplorerApiGame = {
-  uci: string;
-  gameId: string;
-  playedAt: number;
-  playedOn: number;
-  white: string | null;
-  black: string | null;
-  whiteRating: number | null;
-  blackRating: number | null;
-  winner: 0 | 1 | 2;
-};
-
-type ExplorerApiPositionLeader = {
-  username: string;
-  games: number;
-};
-
-type ExplorerApiPositionLeaders = {
-  lastMoveColor: 0 | 1;
-  totalGames: number;
-  leaders: ExplorerApiPositionLeader[];
-};
-
-type ExplorerApiResponse = {
-  positionLeaders?: ExplorerApiPositionLeaders | null;
-  moves: ExplorerApiMove[];
-  recentGames: ExplorerApiGame[];
-};
 
 type ExplorerMove = {
   uci: string;
@@ -113,7 +91,8 @@ type ExplorerPositionLeaders = {
 
 type ExplorerStatus = "idle" | "loading" | "ready" | "error";
 type ExplorerScope = "general" | "player";
-type ExplorerSpeed = "bullet" | "blitz";
+type ExplorerSpeed = "bullet" | "blitz" | "hyperbullet";
+type ExplorerSpeedValue = 0 | 1 | 2;
 type UsernamePickerTarget = "player" | "opponent";
 type ExplorerRequestOptions = {
   fen: string;
@@ -128,33 +107,31 @@ type ExplorerRequestOptions = {
 };
 
 const WIN_RATE_LABEL_MIN_PERCENT = 14;
-const BOARD_WHEEL_DISCRETE_STEP_PX = 10;
-const BOARD_WHEEL_TRACKPAD_STEP_PX = 24;
-const BOARD_WHEEL_GESTURE_RESET_MS = 120;
 const EXPLORER_REQUEST_TIMEOUT_MS = 15_000;
 const MONTH_FILTER_PATTERN = /^\d{4}-\d{2}$/;
 const EXPLORER_SETTINGS_STORAGE_KEY = "atomic-puzzles.analysis.explorer-settings";
-const RECENT_USERNAME_STORAGE_KEY = "atomic-puzzles.analysis.recent-usernames";
 const BOARD_SIZE_STORAGE_KEY = "atomic-puzzles.analysis.board-size";
-const MAX_RECENT_USERNAMES = 18;
 const DEFAULT_ANALYSIS_BOARD_SIZE = 516;
 const MIN_ANALYSIS_BOARD_SIZE = 320;
 const MAX_ANALYSIS_BOARD_SIZE = 760;
 const ANALYSIS_DESKTOP_RESERVED_WIDTH = 430;
 const DEFAULT_PLAYER_START_DATE = "2025-01";
-const SPEED_FILTERS: Array<{ key: ExplorerSpeed; label: string; value: 0 | 1 }> = [
+const SPEED_FILTERS: Array<{ key: ExplorerSpeed; label: string; value: ExplorerSpeedValue }> = [
+  { key: "hyperbullet", label: "Hyper", value: 2 },
   { key: "bullet", label: "Bullet", value: 0 },
   { key: "blitz", label: "Blitz", value: 1 },
 ];
 const EXPLORER_SPEED_KEYS = SPEED_FILTERS.map((speed) => speed.key);
+const EXPLORER_SPEED_FILTER_VERSION = 2;
 const PLAYER_MIN_RATING = 1700;
 const MAX_EXPLORER_RATING = 2200;
 const PLAYER_RATING_STEP = 50;
 
 const DEFAULT_EXPLORER_SETTINGS = {
+  speedFilterVersion: EXPLORER_SPEED_FILTER_VERSION,
   explorerScope: "general" as ExplorerScope,
   playerColor: "white" as "white" | "black",
-  selectedSpeeds: ["bullet", "blitz"] as ExplorerSpeed[],
+  selectedSpeeds: ["bullet", "blitz", "hyperbullet"] as ExplorerSpeed[],
   minRating: PLAYER_MIN_RATING,
   generalStartDate: "",
   playerStartDate: DEFAULT_PLAYER_START_DATE,
@@ -165,8 +142,6 @@ const DEFAULT_EXPLORER_SETTINGS = {
 };
 
 type StoredExplorerSettings = typeof DEFAULT_EXPLORER_SETTINGS;
-
-const explorerInFlightRequests = new Map<string, Promise<ExplorerApiResponse>>();
 
 const clampRating = (rating: number): number =>
   Math.max(
@@ -208,14 +183,24 @@ const validMonthFilter = (value: unknown): string => {
 const getPlayerStartDate = (currentStartDate: string): string =>
   validMonthFilter(currentStartDate) || DEFAULT_PLAYER_START_DATE;
 
-const normalizeStoredSpeeds = (value: unknown): ExplorerSpeed[] => {
+const normalizeStoredSpeeds = (value: unknown, speedFilterVersion: unknown): ExplorerSpeed[] => {
   if (!Array.isArray(value)) return DEFAULT_EXPLORER_SETTINGS.selectedSpeeds;
 
   const speeds = value.filter((speed): speed is ExplorerSpeed =>
     EXPLORER_SPEED_KEYS.includes(speed as ExplorerSpeed),
   );
+  const uniqueSpeeds = [...new Set(speeds)];
 
-  return speeds.length ? [...new Set(speeds)] : DEFAULT_EXPLORER_SETTINGS.selectedSpeeds;
+  if (
+    speedFilterVersion !== EXPLORER_SPEED_FILTER_VERSION &&
+    uniqueSpeeds.length === 2 &&
+    uniqueSpeeds.includes("bullet") &&
+    uniqueSpeeds.includes("blitz")
+  ) {
+    return DEFAULT_EXPLORER_SETTINGS.selectedSpeeds;
+  }
+
+  return uniqueSpeeds.length ? uniqueSpeeds : DEFAULT_EXPLORER_SETTINGS.selectedSpeeds;
 };
 
 const loadExplorerSettings = (): StoredExplorerSettings => {
@@ -242,9 +227,13 @@ const loadExplorerSettings = (): StoredExplorerSettings => {
       DEFAULT_PLAYER_START_DATE;
 
     return {
+      speedFilterVersion: EXPLORER_SPEED_FILTER_VERSION,
       explorerScope,
       playerColor,
-      selectedSpeeds: normalizeStoredSpeeds(rawSettings.selectedSpeeds),
+      selectedSpeeds: normalizeStoredSpeeds(
+        rawSettings.selectedSpeeds,
+        rawSettings.speedFilterVersion,
+      ),
       minRating: clampRating(Number(rawSettings.minRating)),
       generalStartDate,
       playerStartDate,
@@ -262,31 +251,6 @@ const storeExplorerSettings = (settings: StoredExplorerSettings): void => {
   if (typeof window === "undefined") return;
 
   window.localStorage.setItem(EXPLORER_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
-};
-
-const loadRecentUsernames = (): string[] => {
-  if (typeof window === "undefined") return [];
-
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(RECENT_USERNAME_STORAGE_KEY) ?? "[]");
-    if (!Array.isArray(parsed)) return [];
-
-    return parsed
-      .map((value) => String(value).trim())
-      .filter(Boolean)
-      .slice(0, MAX_RECENT_USERNAMES);
-  } catch {
-    return [];
-  }
-};
-
-const storeRecentUsernames = (usernames: string[]): void => {
-  if (typeof window === "undefined") return;
-
-  window.localStorage.setItem(
-    RECENT_USERNAME_STORAGE_KEY,
-    JSON.stringify(usernames.slice(0, MAX_RECENT_USERNAMES)),
-  );
 };
 
 const loadBoardSize = (): number => {
@@ -347,68 +311,69 @@ const buildExplorerApiUrl = ({
   return `${appAssetPath("/api/opening-explorer")}?${params.toString()}`;
 };
 
-const addRecentUsername = (usernames: string[], username: string): string[] => {
-  const trimmedUsername = username.trim();
-  if (!trimmedUsername) return usernames;
+const SpeedFilterIcon = ({ speed }: { speed: ExplorerSpeed }) => {
+  if (speed === "bullet") {
+    return (
+      <svg
+        className="analysisSpeedIcon bullet"
+        viewBox="0 0 44 28"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <path className="speedLines" d="M4 8.2h8M1.5 14h9.5M4 19.8h8" />
+        <path
+          className="bulletBody"
+          d="M15.1 6.2c3.5-1.7 8.9-1.8 14.4.4 5.2 2.1 9.2 5.7 11.1 7.4-1.9 1.7-5.9 5.3-11.1 7.4-5.5 2.2-10.9 2.1-14.4.4-1.1-4.8-1.1-10.8 0-15.6Z"
+        />
+        <path
+          className="bulletDetail"
+          d="M16.7 7.7c5.2-1.1 12.9.4 20.1 6.3-7.2 5.9-14.9 7.4-20.1 6.3"
+        />
+      </svg>
+    );
+  }
 
-  return [
-    trimmedUsername,
-    ...usernames.filter(
-      (recentUsername) => recentUsername.toLowerCase() !== trimmedUsername.toLowerCase(),
-    ),
-  ].slice(0, MAX_RECENT_USERNAMES);
-};
+  if (speed === "blitz") {
+    return (
+      <svg
+        className="analysisSpeedIcon blitz"
+        viewBox="0 0 32 32"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <path
+          className="flameBody"
+          d="M18.1 2.4c2.8 5.1 1 8.1-1.5 10.4 3.7-1.1 5.7-4 5.4-8.4 4.2 3.5 6.3 7.8 6.3 12.4 0 7.1-5.1 12.4-12.3 12.4-7.1 0-12.3-4.8-12.3-11.4 0-4.9 2.7-8.3 6.2-11.1 2.7-2.1 5.8-3.7 8.2-4.3Z"
+        />
+        <path
+          className="cutout"
+          d="M16.4 17.3c2.2 1.6 3.4 3.5 3.4 5.5 0 3-2.1 5.1-5.2 5.1-2.9 0-5.1-2-5.1-4.9 0-2 1.2-3.5 3-4.8.5 1.7 1.7 2.9 3.4 3.4-.2-1.6 0-2.9.5-4.3Z"
+        />
+      </svg>
+    );
+  }
 
-const SpeedFilterIcon = ({ speed }: { speed: ExplorerSpeed }) =>
-  speed === "bullet" ? (
+  return (
     <svg
-      className="analysisSpeedIcon bullet"
-      viewBox="0 0 44 28"
+      className="analysisSpeedIcon hyper"
+      viewBox="0 0 36 28"
       aria-hidden="true"
       focusable="false"
     >
-      <path className="speedLines" d="M4 8.2h8M1.5 14h9.5M4 19.8h8" />
       <path
-        className="bulletBody"
-        d="M15.1 6.2c3.5-1.7 8.9-1.8 14.4.4 5.2 2.1 9.2 5.7 11.1 7.4-1.9 1.7-5.9 5.3-11.1 7.4-5.5 2.2-10.9 2.1-14.4.4-1.1-4.8-1.1-10.8 0-15.6Z"
+        className="hyperBoltSecondary"
+        d="M7.8 2.8h11.4l-6.1 8.4h7.4L5.7 25.2l3.5-10.5H2.8L7.8 2.8Z"
       />
       <path
-        className="bulletDetail"
-        d="M16.7 7.7c5.2-1.1 12.9.4 20.1 6.3-7.2 5.9-14.9 7.4-20.1 6.3"
-      />
-    </svg>
-  ) : (
-    <svg
-      className="analysisSpeedIcon blitz"
-      viewBox="0 0 32 32"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <path
-        className="flameBody"
-        d="M18.1 2.4c2.8 5.1 1 8.1-1.5 10.4 3.7-1.1 5.7-4 5.4-8.4 4.2 3.5 6.3 7.8 6.3 12.4 0 7.1-5.1 12.4-12.3 12.4-7.1 0-12.3-4.8-12.3-11.4 0-4.9 2.7-8.3 6.2-11.1 2.7-2.1 5.8-3.7 8.2-4.3Z"
-      />
-      <path
-        className="cutout"
-        d="M16.4 17.3c2.2 1.6 3.4 3.5 3.4 5.5 0 3-2.1 5.1-5.2 5.1-2.9 0-5.1-2-5.1-4.9 0-2 1.2-3.5 3-4.8.5 1.7 1.7 2.9 3.4 3.4-.2-1.6 0-2.9.5-4.3Z"
+        className="hyperBoltPrimary"
+        d="M20 1.7h12.8l-7 9.5h8.4L16.8 26.5l4.1-11.8h-7.2L20 1.7Z"
       />
     </svg>
   );
+};
 
 const visibleWinRateLabel = (rate: number): string =>
   rate >= WIN_RATE_LABEL_MIN_PERCENT ? `${rate}%` : "";
-
-const formatGameCount = (games: number): string => {
-  if (games >= 1_000_000) {
-    return `${(games / 1_000_000).toFixed(games >= 10_000_000 ? 0 : 1).replace(/\.0$/, "")}M`;
-  }
-
-  if (games >= 1_000) {
-    return `${(games / 1_000).toFixed(games >= 10_000 ? 0 : 1).replace(/\.0$/, "")}k`;
-  }
-
-  return String(games);
-};
 
 const formatWholePercent = (value: number): string => `${Math.round(value)}%`;
 
@@ -416,16 +381,6 @@ const sideLabelFromColor = (color: number): "White" | "Black" | null => {
   if (color === 0) return "White";
   if (color === 1) return "Black";
   return null;
-};
-
-const sanFromUci = (fen: string, uci: string): string => {
-  try {
-    const position = createAtomicPosition(fen);
-    const move = moveFromUci(position, uci);
-    return move ? makeSan(position, move) : uci;
-  } catch {
-    return uci;
-  }
 };
 
 const formatEncodedDate = (date: number): string => {
@@ -535,75 +490,12 @@ const toExplorerPositionLeaders = (
   };
 };
 
-const lichessAnalysisUrl = (fen: string): string =>
-  `https://lichess.org/analysis/atomic/${fen.replaceAll(" ", "_")}`;
-
-const parseExplorerApiResponse = async (
-  response: Response,
-  explorerApiUrl: string,
-): Promise<ExplorerApiResponse> => {
-  const text = await response.text();
-  let body: unknown = null;
-
-  try {
-    body = text ? JSON.parse(text) : [];
-  } catch {
-    const returnedHtml = text.trimStart().startsWith("<!doctype") || text.includes("<html");
-    throw new Error(
-      returnedHtml
-        ? `Opening explorer API returned the app page from ${window.location.origin}${explorerApiUrl}. Open http://127.0.0.1:5180/analysis and hard-refresh.`
-        : `Opening explorer API returned invalid JSON from ${window.location.origin}${explorerApiUrl}.`,
-    );
-  }
-
-  if (!response.ok) {
-    const errorBody = body as { error?: string } | null;
-    throw new Error(errorBody?.error ?? "Opening explorer is unavailable");
-  }
-
-  if (
-    !body ||
-    typeof body !== "object" ||
-    !Array.isArray((body as Partial<ExplorerApiResponse>).moves) ||
-    !Array.isArray((body as Partial<ExplorerApiResponse>).recentGames)
-  ) {
-    throw new Error("Opening explorer API returned an unexpected response.");
-  }
-
-  return body as ExplorerApiResponse;
-};
-
-const fetchExplorerApiResponse = (explorerApiUrl: string): Promise<ExplorerApiResponse> => {
-  const existingRequest = explorerInFlightRequests.get(explorerApiUrl);
-  if (existingRequest) return existingRequest;
-
-  const promise = fetch(explorerApiUrl, {
-    headers: {
-      "X-Explorer-Intent": "visible",
-    },
-  })
-    .then((response) => parseExplorerApiResponse(response, explorerApiUrl))
-    .finally(() => {
-      if (explorerInFlightRequests.get(explorerApiUrl) === promise) {
-        explorerInFlightRequests.delete(explorerApiUrl);
-      }
-    });
-
-  explorerInFlightRequests.set(explorerApiUrl, promise);
-  return promise;
-};
-
 export const AnalysisPage = () => {
   const [initialExplorerSettings] = useState(loadExplorerSettings);
   const boardPanelRef = useRef<HTMLDivElement | null>(null);
   const rightPanelRef = useRef<HTMLElement | null>(null);
   const movePanelRef = useRef<HTMLDivElement | null>(null);
   const moveSettingsRef = useRef<HTMLDivElement | null>(null);
-  const boardWheelDeltaRef = useRef(0);
-  const boardWheelLastAtRef = useRef(0);
-  const boardWheelDirectionRef = useRef(0);
-  const boardWheelCanStepBackRef = useRef(false);
-  const boardWheelCanStepForwardRef = useRef(false);
   const fenDraftDirtyRef = useRef(false);
   const pgnDraftDirtyRef = useRef(false);
   const explorerRequestIdRef = useRef(0);
@@ -642,7 +534,6 @@ export const AnalysisPage = () => {
   const [showPositionLeaders, setShowPositionLeaders] = useState(
     initialExplorerSettings.showPositionLeaders,
   );
-  const [usernameDraft, setUsernameDraft] = useState(initialExplorerSettings.username);
   const [usernamePickerOpen, setUsernamePickerOpen] = useState(false);
   const [usernamePickerTarget, setUsernamePickerTarget] = useState<UsernamePickerTarget>("player");
   const [recentUsernames, setRecentUsernames] = useState<string[]>(loadRecentUsernames);
@@ -655,7 +546,7 @@ export const AnalysisPage = () => {
 
   const moveList = boardState?.lineMoves ?? [];
   const currentFen = boardState?.fen || STARTING_FEN;
-  const currentLichessAnalysisUrl = lichessAnalysisUrl(currentFen);
+  const currentLichessAnalysisUrl = lichessAtomicAnalysisUrl(currentFen);
   const currentPly = boardState?.lineIndex ?? 0;
   const analysisPageStyle = {
     "--analysis-board-size": `${boardSize}px`,
@@ -774,62 +665,17 @@ export const AnalysisPage = () => {
     };
   }, [moveSettingsOpen]);
 
-  useEffect(() => {
-    boardWheelCanStepBackRef.current = canStepBack;
-    boardWheelCanStepForwardRef.current = canStepForward;
-  }, [canStepBack, canStepForward]);
+  const requestBoardWheelNavigation = useCallback(
+    (command: "next" | "previous"): void => setNavigation({ command }),
+    [],
+  );
 
-  const handleBoardWheel = useCallback((event: WheelEvent): void => {
-    if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
-
-    event.preventDefault();
-    event.stopPropagation();
-
-    const now = window.performance.now();
-    const direction = Math.sign(event.deltaY);
-    if (direction === 0) return;
-
-    if (
-      direction !== boardWheelDirectionRef.current ||
-      now - boardWheelLastAtRef.current > BOARD_WHEEL_GESTURE_RESET_MS
-    ) {
-      boardWheelDeltaRef.current = 0;
-    }
-    boardWheelLastAtRef.current = now;
-    boardWheelDirectionRef.current = direction;
-
-    const deltaScale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 240 : 1;
-    const scaledDelta = event.deltaY * deltaScale;
-    const isDiscreteStep =
-      event.deltaMode !== 0 || Math.abs(scaledDelta) >= BOARD_WHEEL_DISCRETE_STEP_PX;
-
-    if (isDiscreteStep) {
-      boardWheelDeltaRef.current = 0;
-    } else {
-      boardWheelDeltaRef.current += scaledDelta;
-      if (Math.abs(boardWheelDeltaRef.current) < BOARD_WHEEL_TRACKPAD_STEP_PX) return;
-    }
-
-    const command =
-      (isDiscreteStep ? scaledDelta : boardWheelDeltaRef.current) > 0 ? "next" : "previous";
-    boardWheelDeltaRef.current = 0;
-
-    if (command === "next" && !boardWheelCanStepForwardRef.current) return;
-    if (command === "previous" && !boardWheelCanStepBackRef.current) return;
-
-    setNavigation({ command });
-  }, []);
-
-  useEffect(() => {
-    const boardPanel = boardPanelRef.current;
-    if (!boardPanel) return;
-
-    boardPanel.addEventListener("wheel", handleBoardWheel, { passive: false });
-
-    return () => {
-      boardPanel.removeEventListener("wheel", handleBoardWheel);
-    };
-  }, [handleBoardWheel]);
+  useBoardWheelNavigation({
+    boardPanelRef,
+    canStepBack,
+    canStepForward,
+    onNavigate: requestBoardWheelNavigation,
+  });
 
   useEffect(() => {
     storeBoardSize(boardSize);
@@ -1035,12 +881,10 @@ export const AnalysisPage = () => {
 
   const closeUsernamePicker = (): void => {
     setUsernamePickerOpen(false);
-    setUsernameDraft("");
   };
 
   const openUsernamePicker = (target: UsernamePickerTarget): void => {
     setUsernamePickerTarget(target);
-    setUsernameDraft("");
     setUsernamePickerOpen(true);
   };
 
@@ -1054,7 +898,6 @@ export const AnalysisPage = () => {
       setUsername(trimmedUsername);
     }
 
-    setUsernameDraft(trimmedUsername);
     setExplorerScope("player");
     ensurePlayerStartDate();
     setFiltersOpen(false);
@@ -1062,17 +905,8 @@ export const AnalysisPage = () => {
     closeUsernamePicker();
   };
 
-  const submitUsernamePicker = (event: FormEvent<HTMLFormElement>): void => {
-    event.preventDefault();
-    commitUsername(usernameDraft);
-  };
-
   const removeRecentUsername = (usernameToRemove: string): void => {
-    saveRecentUsernames(
-      recentUsernames.filter(
-        (recentUsername) => recentUsername.toLowerCase() !== usernameToRemove.toLowerCase(),
-      ),
-    );
+    saveRecentUsernames(removeRecentUsernameFromList(recentUsernames, usernameToRemove));
   };
 
   const switchPlayerColor = (): void => {
@@ -1164,6 +998,7 @@ export const AnalysisPage = () => {
 
   useEffect(() => {
     storeExplorerSettings({
+      speedFilterVersion: EXPLORER_SPEED_FILTER_VERSION,
       explorerScope,
       playerColor,
       selectedSpeeds,
@@ -1230,7 +1065,7 @@ export const AnalysisPage = () => {
     setExplorerError("");
     clearExplorerResults();
 
-    fetchExplorerApiResponse(explorerApiUrl)
+    fetchExplorerApiResponse(explorerApiUrl, "visible")
       .then((data) => {
         if (requestCancelled || requestTimedOut || requestId !== explorerRequestIdRef.current) {
           return;
@@ -1877,88 +1712,19 @@ export const AnalysisPage = () => {
       </aside>
 
       {usernamePickerOpen ? (
-        <div
-          className="analysisUsernamePickerBackdrop"
-          role="presentation"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
-              closeUsernamePicker();
-            }
-          }}
-        >
-          <section
-            className="analysisUsernamePicker"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="analysis-username-picker-title"
-          >
-            <button
-              type="button"
-              className="analysisUsernamePickerClose"
-              aria-label="Close username picker"
-              onClick={closeUsernamePicker}
-            >
-              <FontAwesomeIcon icon={faXmark} />
-            </button>
-            <h2 id="analysis-username-picker-title">
-              {usernamePickerTarget === "opponent" ? "Choose opponent" : "Choose player"}
-            </h2>
-            <form className="analysisUsernamePickerForm" onSubmit={submitUsernamePicker}>
-              <input
-                type="text"
-                value={usernameDraft}
-                placeholder="Search by username"
-                autoComplete="off"
-                spellCheck={false}
-                autoFocus
-                onChange={(event) => setUsernameDraft(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key !== "Enter") return;
-                  event.preventDefault();
-                  commitUsername(usernameDraft);
-                }}
-              />
-              <button
-                type="submit"
-                className="analysisUsernamePickerSubmit"
-                aria-label={`Select ${usernameDraft.trim() || "username"}`}
-                title="Select username"
-                disabled={!usernameDraft.trim()}
-              >
-                <FontAwesomeIcon icon={faCheck} />
-              </button>
-            </form>
-            {recentUsernames.length ? (
-              <div className="analysisRecentUsernameGrid" aria-label="Recent username searches">
-                {recentUsernames.map((recentUsername) => (
-                  <span className="analysisRecentUsernameChip" key={recentUsername}>
-                    <button
-                      type="button"
-                      className={
-                        (usernamePickerTarget === "opponent" ? opponent : username)
-                          .trim()
-                          .toLowerCase() === recentUsername.toLowerCase()
-                          ? "active"
-                          : ""
-                      }
-                      onClick={() => commitUsername(recentUsername)}
-                    >
-                      {recentUsername}
-                    </button>
-                    <button
-                      type="button"
-                      className="remove"
-                      aria-label={`Remove ${recentUsername} from recent searches`}
-                      onClick={() => removeRecentUsername(recentUsername)}
-                    >
-                      <FontAwesomeIcon icon={faXmark} />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            ) : null}
-          </section>
-        </div>
+        <UsernamePickerModal
+          id="analysis-username-picker-title"
+          title={usernamePickerTarget === "opponent" ? "Choose opponent" : "Choose player"}
+          recentUsernames={recentUsernames}
+          selectedUsernames={[
+            (usernamePickerTarget === "opponent" ? opponent : username).trim(),
+          ].filter(Boolean)}
+          maxSelectedUsernames={1}
+          submitLabel="Select"
+          onClose={closeUsernamePicker}
+          onSelectUsername={commitUsername}
+          onRemoveRecentUsername={removeRecentUsername}
+        />
       ) : null}
 
       <div className="analysisBoardColumn">

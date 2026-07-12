@@ -232,8 +232,8 @@ const parsePlayerMinRating = (value: string | null): number => {
 };
 
 const parseSpeeds = (value: string | null): number[] | null => {
-  if (!value) return [0, 1];
-  if (!/^[01](?:,[01])?$/.test(value)) return null;
+  if (!value) return [0, 1, 2];
+  if (!/^[012](?:,[012])*$/.test(value)) return null;
 
   return [...new Set(value.split(",").map((speed) => Number.parseInt(speed, 10)))].sort();
 };

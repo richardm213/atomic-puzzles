@@ -22,6 +22,18 @@ export const formatLocalDateTime = (timestamp: number | string | Date): string =
   return includeYear ? `${month} ${day}, ${year} ${time}` : `${month} ${day} ${time}`;
 };
 
+export const formatGameCount = (games: number): string => {
+  if (games >= 1_000_000) {
+    return `${(games / 1_000_000).toFixed(games >= 10_000_000 ? 0 : 1).replace(/\.0$/, "")}M`;
+  }
+
+  if (games >= 1_000) {
+    return `${(games / 1_000).toFixed(games >= 10_000 ? 0 : 1).replace(/\.0$/, "")}k`;
+  }
+
+  return String(games);
+};
+
 export const formatCalendarDate = (value: string | null | undefined): string => {
   if (!value) return "";
 

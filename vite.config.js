@@ -196,11 +196,11 @@ const openingExplorerPlugin = () => {
     const startDate =
       sqlMonthBounds(url.searchParams.get("startDate")?.trim() ?? "")?.start ?? null;
     const endDate = sqlMonthBounds(url.searchParams.get("endDate")?.trim() ?? "")?.end ?? null;
-    const requestedSpeeds = (url.searchParams.get("speeds") ?? "0,1")
+    const requestedSpeeds = (url.searchParams.get("speeds") ?? "0,1,2")
       .split(",")
       .map((speed) => Number.parseInt(speed, 10))
-      .filter((speed) => speed === 0 || speed === 1);
-    const speeds = requestedSpeeds.length ? [...new Set(requestedSpeeds)].sort() : [0, 1];
+      .filter((speed) => speed === 0 || speed === 1 || speed === 2);
+    const speeds = requestedSpeeds.length ? [...new Set(requestedSpeeds)].sort() : [0, 1, 2];
     const keyHex = positionKeyHex(fen);
     const lastMoveColor = lastMoveColorFromFen(fen);
     const includePositionExtras = !username;

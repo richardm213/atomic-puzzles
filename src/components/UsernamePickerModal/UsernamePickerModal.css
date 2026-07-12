@@ -1,0 +1,302 @@
+.analysisUsernamePickerBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  padding: max(20px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right))
+    max(20px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  background: color-mix(in srgb, black 54%, transparent);
+  display: grid;
+  place-items: center;
+}
+
+.analysisUsernamePicker {
+  position: relative;
+  width: min(88vw, 560px);
+  max-height: min(72vh, 480px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: clamp(22px, 3vw, 32px);
+  border-radius: 9px;
+  background: color-mix(in srgb, #24231f 90%, var(--color-panel-deep) 10%);
+  color: var(--color-text);
+  box-shadow: 0 22px 64px color-mix(in srgb, black 46%, transparent);
+}
+
+.analysisUsernamePickerClose {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 999px;
+  background: #2d2c28;
+  color: color-mix(in srgb, var(--color-heading) 80%, transparent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  cursor: pointer;
+}
+
+.analysisUsernamePicker h2 {
+  margin: 0 0 20px;
+  color: color-mix(in srgb, var(--color-heading) 78%, transparent);
+  font-size: clamp(25px, 4vw, 38px);
+  font-weight: 360;
+  line-height: 1;
+  text-align: center;
+}
+
+.analysisUsernamePickerForm {
+  width: min(100%, 350px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px;
+  justify-content: center;
+  gap: 8px;
+  margin-inline: auto;
+  margin-bottom: 22px;
+}
+
+.analysisUsernamePickerForm input {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 16px;
+  border: 2px solid var(--color-primary);
+  border-radius: 8px;
+  background: #25221e;
+  color: var(--color-heading);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 650;
+  outline: none;
+  text-align: left;
+}
+
+.analysisUsernamePickerForm input::placeholder {
+  color: color-mix(in srgb, var(--color-muted) 80%, transparent);
+  opacity: 1;
+}
+
+.analysisUsernamePickerForm input:disabled {
+  cursor: not-allowed;
+  opacity: 0.54;
+}
+
+.analysisUsernamePickerSubmit {
+  width: 42px;
+  min-height: 38px;
+  padding: 0;
+  border: 2px solid var(--color-primary);
+  border-radius: 8px;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    filter 140ms ease;
+}
+
+.analysisUsernamePickerSubmit:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.analysisUsernamePickerSubmit:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.analysisUsernamePickerSubmit svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+
+.analysisUsernamePickerClose:focus-visible,
+.analysisUsernamePickerForm input:focus-visible,
+.analysisUsernamePickerSubmit:focus-visible,
+.analysisRecentUsernameChip button:focus-visible {
+  outline: 3px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+.analysisRecentUsernameGrid {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px 12px;
+}
+
+.analysisRecentUsernameChip {
+  position: relative;
+  min-width: 0;
+  display: inline-flex;
+}
+
+.analysisRecentUsernameChip > button:first-child {
+  max-width: min(200px, 62vw);
+  min-height: 42px;
+  padding: 0 18px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 62%, black 20%);
+  border-radius: 8px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-primary) 70%, #8ed2ff 30%),
+    color-mix(in srgb, var(--color-primary) 88%, black 8%)
+  );
+  color: #ffffff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 850;
+  text-shadow: 0 1px 1px color-mix(in srgb, black 46%, transparent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 1px 0 color-mix(in srgb, white 18%, transparent) inset;
+}
+
+.analysisRecentUsernameChip > button:first-child.active {
+  border-color: color-mix(in srgb, var(--color-primary) 72%, var(--color-border) 28%);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-primary) 78%, var(--color-cyan) 22%),
+    color-mix(in srgb, var(--color-primary) 82%, var(--color-panel-deep) 18%)
+  );
+}
+
+.analysisRecentUsernameChip > button:first-child:hover {
+  filter: brightness(1.07);
+}
+
+.analysisRecentUsernameChip > button:first-child:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.analysisRecentUsernameChip .remove {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: #4b4944;
+  color: color-mix(in srgb, white 78%, transparent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.analysisRecentUsernameChip .remove:hover,
+.analysisUsernamePickerClose:hover {
+  color: #ffffff;
+  filter: brightness(1.12);
+}
+
+.usernamePickerSelectedBlock {
+  min-width: 0;
+  padding: 9px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 76%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-panel-strong) 58%, transparent);
+  display: grid;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.usernamePickerSelectedHeader {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.usernamePickerSelectedHeader span,
+.usernamePickerSelectedHeader small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.usernamePickerSelectedHeader span {
+  color: var(--color-heading);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.usernamePickerSelectedHeader small {
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.usernamePickerSelectedUsers {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.usernamePickerSelectedChip {
+  max-width: 100%;
+  min-height: 28px;
+  padding: 0 4px 0 9px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 34%, var(--color-border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-primary) 16%, var(--color-panel-strong));
+  color: var(--color-heading);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 820;
+}
+
+.usernamePickerSelectedChip > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.usernamePickerSelectedChip button {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: color-mix(in srgb, var(--color-heading) 72%, transparent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.usernamePickerSelectedChip button:hover {
+  background: color-mix(in srgb, var(--color-primary) 22%, transparent);
+  color: var(--color-heading);
+}
+
+.usernamePickerLimitNote {
+  color: var(--color-subtle);
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.35;
+  margin: -10px 0 18px;
+  text-align: center;
+}
