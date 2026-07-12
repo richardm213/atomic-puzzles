@@ -310,20 +310,10 @@
     grid-template-columns: 1fr;
   }
 
-  .matchDetailsInner .matchCardPlayerStatsWithH2H {
-    grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) max-content;
-  }
-
   .matchCardPlayerStats > .matchH2HSlot {
     grid-column: auto;
     justify-content: flex-start;
     min-height: 38px;
-  }
-
-  .matchDetailsInner .matchCardPlayerStats > .matchH2HSlot {
-    grid-column: 3;
-    justify-content: flex-end;
-    min-height: 0;
   }
 
   .matchGamesHeader,

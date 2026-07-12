@@ -443,18 +443,24 @@ const LeaderboardView = () => {
               ) : null}
             </span>
             {selectedMode === "wolfrandom" ? (
-              <p className="rankingsWolfrandomInfo">
-                <strong>What is Wolfrandom?</strong> Wolfrandom is a new atomic variant created by
-                Wolfram_EP. For more information, check out the
-                <a
-                  href="https://lichess.org/team/wolfrandom-atomic-game"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Wolfrandom Atomic Game team
-                </a>
-                .
-              </p>
+              <span className="rankingsWolfrandomHelp">
+                <button type="button" className="rankingsWolfrandomTrigger">
+                  <i className="fa-solid fa-circle-info" aria-hidden="true" />
+                  What is Wolfrandom?
+                </button>
+                <span className="rankingsWolfrandomTooltip" role="tooltip">
+                  Wolfrandom is a new atomic variant created by Wolfram_EP. For more information,
+                  check out the
+                  <a
+                    href="https://lichess.org/team/wolfrandom-atomic-game"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Wolfrandom Lichess team
+                  </a>
+                  .
+                </span>
+              </span>
             ) : null}
             {eligibilityRequirement ? (
               <p

@@ -1176,13 +1176,16 @@
 
 .profileMatchTableWrap {
   margin-top: 0;
+  overflow-x: hidden;
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: var(--color-surface-soft);
 }
 
 .profileMatchTable {
-  min-width: 840px;
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -1207,9 +1210,31 @@
   vertical-align: middle;
 }
 
+.profileMatchTable :is(th, td):nth-child(1) {
+  width: 22%;
+}
+
+.profileMatchTable :is(th, td):nth-child(2) {
+  width: 22%;
+  overflow-wrap: anywhere;
+}
+
+.profileMatchTable :is(th, td):nth-child(3) {
+  width: 9%;
+}
+
+.profileMatchTable :is(th, td):nth-child(4) {
+  width: 13%;
+}
+
+.profileMatchTable :is(th, td):nth-child(5),
+.profileMatchTable :is(th, td):nth-child(6) {
+  width: 14%;
+}
+
 .profileMatchTable th:last-child,
 .profileMatchTable td:last-child {
-  width: 1%;
+  width: 6%;
   white-space: nowrap;
 }
 
@@ -1407,6 +1432,40 @@
   .profileOpponentFilterField {
     grid-column: auto;
   }
+
+  .profileMatchTable {
+    font-size: 12px;
+  }
+
+  .profileMatchTable th,
+  .profileMatchTable td {
+    padding: 8px 5px;
+  }
+
+  .profileMatchTable th {
+    font-size: 9px;
+    letter-spacing: 0.02em;
+  }
+
+  .profileScoreBox {
+    gap: 2px;
+    min-width: 0;
+    font-size: 13px;
+  }
+
+  .profileScoreValue {
+    min-width: 0;
+  }
+
+  .profileMetricValue {
+    font-size: 12px;
+  }
+
+  .profileDelta {
+    display: block;
+    margin-left: 0;
+    font-size: 10px;
+  }
 }
 
 .profileTablePill {
@@ -1460,6 +1519,8 @@
 }
 
 .matchDetailsInner {
+  min-width: 0;
+  max-width: 100%;
   padding: 4px 0 2px;
 }
 
@@ -1674,7 +1735,6 @@
   }
 
   .profileMatchTable {
-    min-width: 660px;
     font-size: 14px;
   }
 

@@ -179,20 +179,62 @@
   text-decoration: underline;
 }
 
-.rankingsWolfrandomInfo {
-  max-width: 660px;
-  margin: 0;
+.rankingsWolfrandomHelp {
+  position: relative;
+  display: inline-flex;
+}
+
+.rankingsWolfrandomTrigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-primary-soft);
+  font: inherit;
+  font-weight: 600;
+  cursor: help;
+}
+
+.rankingsWolfrandomTrigger:hover,
+.rankingsWolfrandomTrigger:focus-visible {
+  color: var(--color-primary-pale);
+  text-decoration: underline;
+}
+
+.rankingsWolfrandomTooltip {
+  position: absolute;
+  z-index: 10;
+  right: 0;
+  bottom: calc(100% + 10px);
+  width: min(340px, calc(100vw - 32px));
+  padding: 12px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-panel-strong);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 28%);
   color: var(--color-muted);
   font-size: 13px;
   line-height: 1.5;
-  text-align: right;
+  text-align: left;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease,
+    visibility 140ms;
 }
 
-.rankingsWolfrandomInfo strong {
-  color: var(--color-heading);
+.rankingsWolfrandomHelp:hover .rankingsWolfrandomTooltip,
+.rankingsWolfrandomHelp:focus-within .rankingsWolfrandomTooltip {
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(0);
 }
 
-.rankingsWolfrandomInfo a {
+.rankingsWolfrandomTooltip a {
   margin-left: 0.28em;
   color: var(--color-primary-soft);
   font-weight: 700;
@@ -314,7 +356,8 @@
     align-items: flex-start;
   }
 
-  .rankingsWolfrandomInfo {
-    text-align: left;
+  .rankingsWolfrandomTooltip {
+    right: auto;
+    left: 0;
   }
 }
