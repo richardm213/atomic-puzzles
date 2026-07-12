@@ -164,6 +164,14 @@
   gap: 6px;
 }
 
+.rankingsMetaSummary {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .rankingsMetaLink {
   display: inline-flex;
   align-items: center;

@@ -431,37 +431,39 @@ const LeaderboardView = () => {
             </button>
           </div>
           <div className="rankingsMetaDetails">
-            <span className="rankedCount">
-              {activeModeOpeningFilter
-                ? `${filteredPlayers.length} of ${players.length} ranked`
-                : `${players.length} ranked`}
-              {selectedMode !== "wolfrandom" ? (
-                <Link className="rankingsMetaLink" to="/rankings/how-ratings-work">
-                  <i className="fa-solid fa-circle-info" aria-hidden="true" />
-                  How are ratings calculated?
-                </Link>
-              ) : null}
-            </span>
-            {selectedMode === "wolfrandom" ? (
-              <span className="rankingsWolfrandomHelp">
-                <button type="button" className="rankingsWolfrandomTrigger">
-                  <i className="fa-solid fa-circle-info" aria-hidden="true" />
-                  What is Wolfrandom?
-                </button>
-                <span className="rankingsWolfrandomTooltip" role="tooltip">
-                  Wolfrandom is a new atomic variant designed to shift the focus away from opening
-                  theory. For more information, check out the
-                  <a
-                    href="https://lichess.org/team/wolfrandom-atomic-game"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Wolfrandom Lichess team
-                  </a>
-                  .
-                </span>
+            <div className="rankingsMetaSummary">
+              <span className="rankedCount">
+                {activeModeOpeningFilter
+                  ? `${filteredPlayers.length} of ${players.length} ranked`
+                  : `${players.length} ranked`}
+                {selectedMode !== "wolfrandom" ? (
+                  <Link className="rankingsMetaLink" to="/rankings/how-ratings-work">
+                    <i className="fa-solid fa-circle-info" aria-hidden="true" />
+                    How are ratings calculated?
+                  </Link>
+                ) : null}
               </span>
-            ) : null}
+              {selectedMode === "wolfrandom" ? (
+                <span className="rankingsWolfrandomHelp">
+                  <button type="button" className="rankingsWolfrandomTrigger">
+                    <i className="fa-solid fa-circle-info" aria-hidden="true" />
+                    What is Wolfrandom?
+                  </button>
+                  <span className="rankingsWolfrandomTooltip" role="tooltip">
+                    Wolfrandom is a new atomic variant designed to shift the focus away from opening
+                    theory. For more information, check out the
+                    <a
+                      href="https://lichess.org/team/wolfrandom-atomic-game"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Wolfrandom Lichess team
+                    </a>
+                    .
+                  </span>
+                </span>
+              ) : null}
+            </div>
             {eligibilityRequirement ? (
               <p
                 className="rankingsEligibilityNote"
