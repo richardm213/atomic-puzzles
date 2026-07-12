@@ -449,8 +449,8 @@ const LeaderboardView = () => {
                   What is Wolfrandom?
                 </button>
                 <span className="rankingsWolfrandomTooltip" role="tooltip">
-                  Wolfrandom is a new atomic variant created by Wolfram_EP. For more information,
-                  check out the
+                  Wolfrandom is a new atomic variant designed to shift the focus away from opening
+                  theory. For more information, check out the
                   <a
                     href="https://lichess.org/team/wolfrandom-atomic-game"
                     target="_blank"
