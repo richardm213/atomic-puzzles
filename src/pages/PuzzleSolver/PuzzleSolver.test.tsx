@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -155,6 +155,27 @@ describe("PuzzleSolverPage solution options", () => {
         ply: 1,
       });
     });
+  });
+
+  it("uses the mouse wheel for moves only after the solution is open", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<PuzzleSolverPage />);
+    const boardFrame = container.querySelector(".boardFrame")!;
+    const solutionTab = await screen.findByRole("tab", { name: "Solution" });
+    await waitFor(() => expect(solutionTab).toBeEnabled());
+
+    fireEvent.wheel(boardFrame, { deltaY: 12 });
+    expect(mocks.chessboardProps.at(-1)?.solutionNavigation == null).toBe(true);
+
+    await user.click(solutionTab);
+    fireEvent.wheel(boardFrame, { deltaY: 12 });
+
+    await waitFor(() =>
+      expect(mocks.chessboardProps.at(-1)?.solutionNavigation).toEqual({
+        type: "command",
+        command: "next",
+      }),
+    );
   });
 
   it("shows other players who attempted the puzzle", async () => {

@@ -23,6 +23,7 @@ import {
   VariationTree,
 } from "../../components/VariationTree/VariationTree";
 import { useAuth } from "../../context/AuthContext";
+import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
 import { loadPuzzleLibrary } from "../../lib/puzzles/puzzleLibrary";
 import { movePrefix, serializeSanLinesToPgn } from "../../lib/puzzles/solutionPgn";
 import {
@@ -259,6 +260,7 @@ export const PuzzleSolverPage = () => {
   const lockedCompletionFeedbackRef = useRef<CompletionFeedback | null>(null);
   const mobileFeedbackIdRef = useRef(0);
   const activeVariationOptionRef = useRef<HTMLButtonElement | null>(null);
+  const boardPanelRef = useRef<HTMLDivElement | null>(null);
   const upcomingPuzzleIndexesRef = useRef<number[]>([]);
   const progressWriteQueueRef = useRef(Promise.resolve());
   const attemptedPuzzleIdsRef = useRef<Set<string>>(new Set());
@@ -909,6 +911,13 @@ export const PuzzleSolverPage = () => {
   const canPlaybackEnd =
     showSolution && canRevealSolution ? !isAtMainSolutionEnd : currentPly < currentLineLength;
 
+  useBoardWheelNavigation({
+    boardPanelRef,
+    canStepBack: isAnalysisMode && showSolution && canRevealSolution && canPlaybackPrevious,
+    canStepForward: isAnalysisMode && showSolution && canRevealSolution && canPlaybackNext,
+    onNavigate: handlePlaybackCommand,
+  });
+
   const renderPlaybackControls = () => (
     <div className="playbackControls" aria-label="Line playback">
       <PlaybackButtons
@@ -1226,7 +1235,10 @@ export const PuzzleSolverPage = () => {
       </div>
 
       <div className="boardWrap">
-        <div className={`boardFrame ${feedback ? `hasFeedback ${feedback.type}` : ""}`}>
+        <div
+          ref={boardPanelRef}
+          className={`boardFrame ${feedback ? `hasFeedback ${feedback.type}` : ""}`}
+        >
           {!isMobileLayout && feedback ? (
             <div
               className={`feedbackBadge ${feedback.type}`}
@@ -1249,6 +1261,7 @@ export const PuzzleSolverPage = () => {
                 solution={activePuzzle?.solution ?? ""}
                 showSolution={isAnalysisMode && showSolution}
                 analysisMode={isAnalysisMode}
+                captureNavigationShortcuts
                 solutionNavigation={solutionNavigation}
                 onNavigateHandled={() => setSolutionNavigation(null)}
                 onAttemptResolved={handleAttemptResolved}

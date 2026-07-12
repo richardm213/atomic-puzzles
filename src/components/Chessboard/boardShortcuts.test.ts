@@ -25,4 +25,20 @@ describe("boardShortcutCommand", () => {
       boardShortcutCommand(new KeyboardEvent("keydown", { key: "ArrowLeft", metaKey: true })),
     ).toBeNull();
   });
+
+  it("captures focused solution buttons when requested", () => {
+    const button = document.createElement("button");
+    expect(
+      boardShortcutCommand(
+        {
+          key: "ArrowRight",
+          target: button,
+          metaKey: false,
+          ctrlKey: false,
+          altKey: false,
+        },
+        true,
+      ),
+    ).toBe("next");
+  });
 });

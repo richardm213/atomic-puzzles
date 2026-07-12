@@ -82,6 +82,7 @@ export type ChessboardProps = {
   analysisMode?: boolean;
   solutionNavigation?: SolutionNavigation | null | undefined;
   previewMove?: string | null | undefined;
+  captureNavigationShortcuts?: boolean;
   onNavigateHandled?: () => void;
   onAttemptResolved?: (result: AttemptResolved) => void;
   onStateChange?: (state: ChessboardState) => void;
@@ -142,6 +143,7 @@ export const Chessboard = ({
   analysisMode = false,
   solutionNavigation,
   previewMove,
+  captureNavigationShortcuts = false,
   onNavigateHandled,
   onAttemptResolved,
   onStateChange,
@@ -1033,7 +1035,7 @@ export const Chessboard = ({
     syncBoard,
   ]);
 
-  useBoardShortcuts(navigatePlayback, pendingPromotion !== null);
+  useBoardShortcuts(navigatePlayback, pendingPromotion !== null, captureNavigationShortcuts);
 
   useEffect(() => {
     if (showSolution && solutionEntriesRef.current.length > 0) return;
