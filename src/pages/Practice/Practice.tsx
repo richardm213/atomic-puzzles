@@ -941,12 +941,19 @@ export const PracticePage = () => {
             <button
               type="button"
               className="practiceSideButton"
+              data-side={side}
               aria-label={`Play as ${opponentSide}`}
               title="Switch sides"
               onClick={flipPracticeSide}
             >
-              <FontAwesomeIcon icon={faArrowsRotate} />
-              <span>{side}</span>
+              <span className="practiceSideColor" aria-hidden="true" />
+              <span className="practiceSideCopy">
+                <small>Playing as</small>
+                <strong>{side}</strong>
+              </span>
+              <span className="practiceSideFlip" aria-hidden="true">
+                <FontAwesomeIcon icon={faArrowsRotate} />
+              </span>
             </button>
           </div>
         </div>

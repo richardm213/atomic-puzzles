@@ -2,7 +2,7 @@
 @import "../../components/MatchCard/MatchCard.css";
 
 .playerProfilePanel {
-  width: min(1000px, 100%);
+  width: min(740px, 100%);
 }
 
 .profileIdentityRow {
@@ -1370,7 +1370,11 @@
 }
 
 .profileMatchTable .expandableMatchRow:hover,
-.profileMatchTable .expandableMatchRow:focus-visible,
+.profileMatchTable .expandableMatchRow:focus-visible {
+  background: var(--color-accent-soft-bg);
+  outline: none;
+}
+
 .profileFavoriteOpponentsTable .profileFavoriteOpponentRow:hover,
 .profileFavoriteOpponentsTable .profileFavoriteOpponentRow:focus-visible {
   background: var(--color-accent-soft-bg);

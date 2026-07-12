@@ -37,7 +37,7 @@ export const rankingEligibilityByMode: Record<Mode, RankingEligibility> = {
   },
   wolfrandom: {
     minGames: 10,
-    maxRd: null,
+    maxRd: 100,
   },
 };
 

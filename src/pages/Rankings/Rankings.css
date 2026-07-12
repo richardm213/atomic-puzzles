@@ -179,6 +179,25 @@
   text-decoration: underline;
 }
 
+.rankingsWolfrandomInfo {
+  max-width: 660px;
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: right;
+}
+
+.rankingsWolfrandomInfo strong {
+  color: var(--color-heading);
+}
+
+.rankingsWolfrandomInfo a {
+  margin-left: 0.28em;
+  color: var(--color-primary-soft);
+  font-weight: 700;
+}
+
 .rankingsEligibilityNote {
   margin: 0;
   color: var(--color-subtle);
@@ -293,5 +312,9 @@
 
   .rankingsMetaDetails {
     align-items: flex-start;
+  }
+
+  .rankingsWolfrandomInfo {
+    text-align: left;
   }
 }

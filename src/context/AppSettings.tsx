@@ -19,6 +19,7 @@ const STORAGE_KEYS = {
   boardColorOverrideTheme: "atomic-puzzles.board-color-override-theme",
   boardOverrideLightSquare: "atomic-puzzles.board-override-light-square",
   boardOverrideDarkSquare: "atomic-puzzles.board-override-dark-square",
+  hideRankingsOpenings: "atomic-puzzles.rankings.hide-openings",
 };
 
 const THEMES = ["dark", "light"] as const;
@@ -152,6 +153,8 @@ export type AppSettingsContextValue = {
   boardOverrideDarkSquare: string;
   setBoardOverrideDarkSquare: Dispatch<SetStateAction<string>>;
   resetDisplaySettings: () => void;
+  hideRankingsOpenings: boolean;
+  setHideRankingsOpenings: Dispatch<SetStateAction<boolean>>;
 };
 
 const AppSettingsContext = createContext<AppSettingsContextValue | null>(null);
@@ -188,6 +191,24 @@ const usePersistedState = <T extends string>(
   useEffect(() => {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(key, value);
+  }, [key, value]);
+
+  return [value, setValue];
+};
+
+const usePersistedBoolean = (
+  key: string,
+  fallback: boolean,
+): [boolean, Dispatch<SetStateAction<boolean>>] => {
+  const [value, setValue] = useState(() => {
+    if (typeof window === "undefined") return fallback;
+    const stored = window.localStorage.getItem(key);
+    return stored === null ? fallback : stored === "true";
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(key, String(value));
   }, [key, value]);
 
   return [value, setValue];
@@ -259,6 +280,10 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     isValidHexColor,
     DEFAULT_CUSTOM_DARK_SQUARE,
   );
+  const [hideRankingsOpenings, setHideRankingsOpenings] = usePersistedBoolean(
+    STORAGE_KEYS.hideRankingsOpenings,
+    false,
+  );
 
   const resetDisplaySettings = useCallback(() => {
     setTheme(DEFAULT_THEME);
@@ -306,6 +331,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       boardOverrideDarkSquare,
       setBoardOverrideDarkSquare,
       resetDisplaySettings,
+      hideRankingsOpenings,
+      setHideRankingsOpenings,
     }),
     [
       theme,
@@ -325,6 +352,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       boardOverrideDarkSquare,
       setBoardOverrideDarkSquare,
       resetDisplaySettings,
+      hideRankingsOpenings,
+      setHideRankingsOpenings,
     ],
   );
 

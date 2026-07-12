@@ -200,6 +200,8 @@ export const TopNav = () => {
     boardOverrideDarkSquare,
     setBoardOverrideDarkSquare,
     resetDisplaySettings,
+    hideRankingsOpenings,
+    setHideRankingsOpenings,
   } = useAppSettings();
   const trimmedSearchQuery = searchQuery.trim();
   const normalizedAuthUsername = normalizeUsername(user?.username);
@@ -866,6 +868,18 @@ export const TopNav = () => {
                   </button>
                 </div>
               </div>
+              {pathname === "/rankings" ? (
+                <div className="navSettingsSection">
+                  <label className="navSettingsCheckbox">
+                    <span>Hide openings</span>
+                    <input
+                      type="checkbox"
+                      checked={hideRankingsOpenings}
+                      onChange={(event) => setHideRankingsOpenings(event.target.checked)}
+                    />
+                  </label>
+                </div>
+              ) : null}
               {showBoardSettings ? (
                 <>
                   <div className="navSettingsSection">

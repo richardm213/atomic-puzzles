@@ -8,6 +8,7 @@ import {
   knownSourceKeys,
   matchLengthBoundsByMode,
   modeOptions,
+  rankingEligibilityByMode,
 } from "./matches";
 
 describe("createModeRecord", () => {
@@ -19,6 +20,12 @@ describe("createModeRecord", () => {
       hyperbullet: "HYPERBULLET",
       wolfrandom: "WOLFRANDOM",
     });
+  });
+});
+
+describe("rankingEligibilityByMode", () => {
+  it("requires Wolfrandom RD below 100", () => {
+    expect(rankingEligibilityByMode.wolfrandom).toEqual({ minGames: 10, maxRd: 100 });
   });
 });
 

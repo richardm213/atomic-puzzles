@@ -14,6 +14,7 @@ const isMode = (value: unknown): value is Mode =>
 import "./Rankings.css";
 
 import { Seo } from "../../components/Seo/Seo";
+import { useAppSettings } from "../../context/AppSettings";
 import { useRankingsByMonth } from "../../hooks/useRankingsByMonth";
 import { monthDateFromMonthKey } from "../../lib/supabase/supabaseLb";
 import { type AliasLookup, loadAliasesLookup } from "../../lib/users/aliasesLookup";
@@ -175,6 +176,7 @@ const updateRankingsUrl = (
 };
 
 const LeaderboardView = () => {
+  const { hideRankingsOpenings } = useAppSettings();
   const initialFilters = useMemo(() => getInitialRankingsFilters(), []);
   const [selectedYear, setSelectedYear] = useState(initialFilters.selectedYear);
   const [selectedMonthName, setSelectedMonthName] = useState(initialFilters.selectedMonthName);
@@ -288,7 +290,8 @@ const LeaderboardView = () => {
     () => selectedModeData.players.filter((player) => isEligibleForRankings(player, selectedMode)),
     [selectedMode, selectedModeData.players],
   );
-  const activeModeOpeningFilter = selectedMode === "wolfrandom" ? "" : activeOpeningFilter;
+  const activeModeOpeningFilter =
+    selectedMode === "wolfrandom" || hideRankingsOpenings ? "" : activeOpeningFilter;
   const filteredPlayers = useMemo(() => {
     if (!activeModeOpeningFilter) return players;
 
@@ -432,14 +435,27 @@ const LeaderboardView = () => {
               {activeModeOpeningFilter
                 ? `${filteredPlayers.length} of ${players.length} ranked`
                 : `${players.length} ranked`}
-              <Link className="rankingsMetaLink" to="/users">
-                Full user list
-              </Link>
-              <Link className="rankingsMetaLink" to="/rankings/how-ratings-work">
-                <i className="fa-solid fa-circle-info" aria-hidden="true" />
-                How are ratings calculated?
-              </Link>
+              {selectedMode !== "wolfrandom" ? (
+                <Link className="rankingsMetaLink" to="/rankings/how-ratings-work">
+                  <i className="fa-solid fa-circle-info" aria-hidden="true" />
+                  How are ratings calculated?
+                </Link>
+              ) : null}
             </span>
+            {selectedMode === "wolfrandom" ? (
+              <p className="rankingsWolfrandomInfo">
+                <strong>What is Wolfrandom?</strong> Wolfrandom is a new atomic variant created by
+                Wolfram_EP. For more information, check out the
+                <a
+                  href="https://lichess.org/team/wolfrandom-atomic-game"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Wolfrandom Atomic Game team
+                </a>
+                .
+              </p>
+            ) : null}
             {eligibilityRequirement ? (
               <p
                 className="rankingsEligibilityNote"
@@ -492,7 +508,7 @@ const LeaderboardView = () => {
                         >
                           {player.username}
                         </Link>
-                        {selectedMode !== "wolfrandom" ? (
+                        {selectedMode !== "wolfrandom" && !hideRankingsOpenings ? (
                           <div
                             className="rankingOpeningTags"
                             aria-label={`${player.username} openings`}

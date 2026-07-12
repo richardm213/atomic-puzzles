@@ -316,6 +316,24 @@
   color: var(--color-subtle);
 }
 
+.navSettingsCheckbox {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--color-heading);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.navSettingsCheckbox input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--color-primary);
+}
+
 .navThemeToggle {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -823,7 +841,11 @@
   border: 1px solid color-mix(in srgb, var(--color-primary-soft) 36%, var(--color-primary));
   background:
     linear-gradient(180deg, color-mix(in srgb, white 13%, transparent), transparent 58%),
-    linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 76%, var(--color-cyan)));
+    linear-gradient(
+      135deg,
+      var(--color-primary),
+      color-mix(in srgb, var(--color-primary) 76%, var(--color-cyan))
+    );
   color: var(--color-on-primary);
   border-radius: 6px;
   padding: 0 12px;
@@ -850,7 +872,11 @@
   border-color: color-mix(in srgb, var(--color-primary-soft) 48%, var(--color-primary));
   background:
     linear-gradient(180deg, color-mix(in srgb, white 17%, transparent), transparent 58%),
-    linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 64%, var(--color-cyan-bright)));
+    linear-gradient(
+      135deg,
+      var(--color-primary),
+      color-mix(in srgb, var(--color-primary) 64%, var(--color-cyan-bright))
+    );
   box-shadow:
     0 1px 0 color-mix(in srgb, white 24%, transparent) inset,
     0 10px 22px color-mix(in srgb, var(--color-primary) 30%, transparent);

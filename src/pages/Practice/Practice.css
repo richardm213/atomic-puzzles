@@ -67,22 +67,100 @@
 }
 
 .practiceSideButton {
-  min-width: 104px;
-  min-height: 38px;
-  padding: 0 12px;
-  border: 1px solid var(--color-primary);
-  border-radius: var(--radius-ui);
-  background: color-mix(in srgb, var(--color-primary) 76%, var(--color-cyan) 24%);
-  color: var(--color-on-primary);
+  min-width: 148px;
+  min-height: 46px;
+  padding: 5px 6px 5px 9px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 48%, var(--color-border));
+  border-radius: calc(var(--radius-ui) + 3px);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-panel-strong) 94%, var(--color-primary) 6%),
+    color-mix(in srgb, var(--color-panel) 82%, var(--color-cyan) 18%)
+  );
+  color: var(--color-heading);
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
+  gap: 9px;
   font: inherit;
+  cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 8%, transparent),
+    0 6px 16px color-mix(in srgb, var(--color-primary) 10%, transparent);
+  transition:
+    transform 140ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.practiceSideButton:hover {
+  transform: translateY(-1px);
+  border-color: var(--color-primary);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 12%, transparent),
+    0 9px 20px color-mix(in srgb, var(--color-primary) 18%, transparent);
+}
+
+.practiceSideButton:active {
+  transform: translateY(0);
+}
+
+.practiceSideColor {
+  width: 25px;
+  height: 25px;
+  flex: 0 0 25px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--color-border) 82%, white 18%);
+  box-shadow:
+    inset 0 0 0 3px color-mix(in srgb, var(--color-panel-strong) 70%, transparent),
+    0 2px 7px color-mix(in srgb, black 28%, transparent);
+}
+
+.practiceSideButton[data-side="white"] .practiceSideColor {
+  background: linear-gradient(145deg, #ffffff, #cfd6df);
+}
+
+.practiceSideButton[data-side="black"] .practiceSideColor {
+  background: linear-gradient(145deg, #4d5663, #10141a);
+}
+
+.practiceSideCopy {
+  min-width: 0;
+  display: grid;
+  justify-items: start;
+  line-height: 1.05;
+}
+
+.practiceSideCopy small {
+  color: var(--color-subtle);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.practiceSideCopy strong {
+  margin-top: 3px;
+  color: var(--color-heading);
   font-size: 14px;
   font-weight: 900;
   text-transform: capitalize;
-  cursor: pointer;
+}
+
+.practiceSideFlip {
+  width: 29px;
+  height: 29px;
+  margin-left: auto;
+  border-radius: var(--radius-ui);
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--color-primary) 20%, transparent);
+  color: var(--color-accent-soft-text);
+  font-size: 12px;
+  transition: transform 180ms ease;
+}
+
+.practiceSideButton:hover .practiceSideFlip {
+  transform: rotate(180deg);
 }
 
 .practiceStatus {
