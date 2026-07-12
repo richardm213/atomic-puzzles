@@ -5,6 +5,7 @@ import {
   faArrowsRotate,
   faBookOpen,
   faCheck,
+  faDice,
   faGear,
   faShuffle,
   faXmark,
@@ -321,6 +322,8 @@ export const PracticePage = () => {
   const [error, setError] = useState("");
   const [hoveredMoveUci, setHoveredMoveUci] = useState<string | null>(null);
   const [copyPgnLabel, setCopyPgnLabel] = useState("Copy PGN");
+  const [randomPlayerLoading, setRandomPlayerLoading] = useState(false);
+  const [randomPlayerError, setRandomPlayerError] = useState("");
 
   const currentFen = boardState?.fen || STARTING_FEN;
   const databaseExhausted = exhaustedFen === currentFen;
@@ -687,6 +690,33 @@ export const PracticePage = () => {
     ],
   );
 
+  const selectRandomPlayer = useCallback(async (): Promise<void> => {
+    if (randomPlayerLoading || !canChoosePracticePlayer) return;
+
+    setRandomPlayerLoading(true);
+    setRandomPlayerError("");
+
+    try {
+      const response = await fetch(`${appAssetPath("/api/opening-explorer")}?randomPlayer=1`, {
+        headers: { "X-Explorer-Intent": "visible" },
+      });
+      const data = (await response.json()) as { username?: string; error?: string };
+      const username = data.username?.trim() ?? "";
+
+      if (!response.ok || !username) {
+        throw new Error(data.error || "Could not select a random player");
+      }
+
+      commitUsername(username);
+    } catch (randomError) {
+      setRandomPlayerError(
+        randomError instanceof Error ? randomError.message : "Could not select a random player",
+      );
+    } finally {
+      setRandomPlayerLoading(false);
+    }
+  }, [canChoosePracticePlayer, commitUsername, randomPlayerLoading]);
+
   const removeRecentUsername = useCallback(
     (usernameToRemove: string): void => {
       saveRecentUsernames(removeRecentUsernameFromList(recentUsernames, usernameToRemove));
@@ -996,6 +1026,16 @@ export const PracticePage = () => {
                           : opponentUsernames[0] || "Choose player"
                         : "Player limit reached"}
                     </button>
+                    <button
+                      type="button"
+                      className="practiceRandomPlayerButton"
+                      onClick={selectRandomPlayer}
+                      disabled={randomPlayerLoading || !canChoosePracticePlayer}
+                      title="Select a random opening database player"
+                    >
+                      <FontAwesomeIcon icon={faDice} />
+                      <span>{randomPlayerLoading ? "Choosing..." : "Random"}</span>
+                    </button>
                     {allowMultiplePlayers && opponentUsernames.length ? (
                       <button
                         type="button"
@@ -1008,6 +1048,11 @@ export const PracticePage = () => {
                       </button>
                     ) : null}
                   </div>
+                  {randomPlayerError ? (
+                    <small className="practiceRandomPlayerError" role="alert">
+                      {randomPlayerError}
+                    </small>
+                  ) : null}
                   {allowMultiplePlayers && opponentUsernames.length ? (
                     <div className="practicePlayerChipList" aria-label="Selected players">
                       {opponentUsernames.map((opponentUsername) => (

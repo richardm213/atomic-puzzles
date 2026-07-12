@@ -8,8 +8,10 @@ import {
 import {
   buildGeneralSavedStatusSql,
   buildOpeningExplorerSql,
+  buildOpeningPlayersSql,
   buildPositionPlayerLeaderBandsSql,
   buildPositionPlayerLeadersSql,
+  buildRandomOpeningPlayerSql,
   lastMoveColorFromFen,
   OPENING_EXPLORER_RESPONSE_SCHEMA,
   positionKeyHex,
@@ -46,6 +48,8 @@ const ALLOWED_QUERY_PARAMS = new Set([
   "endDate",
   "username",
   "opponent",
+  "players",
+  "randomPlayer",
 ]);
 type PriorityRef = { value: number };
 type ExplorerResponsePayload = {
@@ -394,6 +398,50 @@ export const handler = async (event: NetlifyEvent) => {
   const rateLimit = checkRateLimit(getClientIp(event));
   if (!rateLimit.allowed) {
     return rateLimitResponse(rateLimit.retryAfterSeconds);
+  }
+
+  if (event.path?.endsWith("/opening-players") || params.get("players") === "1") {
+    if (!databaseUrl || !process.env.TURSO_AUTH_TOKEN?.trim()) {
+      return jsonResponse(503, { error: "Opening explorer Turso credentials are not configured" });
+    }
+
+    try {
+      const priorityRef = nextTursoPriority("visible");
+      const result = await enqueueTursoQuery(
+        () => getClient().execute(buildOpeningPlayersSql()),
+        priorityRef,
+      );
+      const players = normalizeRows(result.rows)
+        .map((row) => String(row.username ?? "").trim())
+        .filter(Boolean);
+      return jsonResponse(200, { players });
+    } catch (error) {
+      return jsonResponse(500, {
+        error: error instanceof Error ? error.message : "Could not load opening database players",
+      });
+    }
+  }
+
+  if (params.get("randomPlayer") === "1") {
+    if (!databaseUrl || !process.env.TURSO_AUTH_TOKEN?.trim()) {
+      return jsonResponse(503, { error: "Opening explorer Turso credentials are not configured" });
+    }
+
+    try {
+      const priorityRef = nextTursoPriority("visible");
+      const result = await enqueueTursoQuery(
+        () => getClient().execute(buildRandomOpeningPlayerSql()),
+        priorityRef,
+      );
+      const username = String(normalizeRows(result.rows)[0]?.username ?? "").trim();
+      return username
+        ? jsonResponse(200, { username })
+        : jsonResponse(404, { error: "No opening database players are available" });
+    } catch (error) {
+      return jsonResponse(500, {
+        error: error instanceof Error ? error.message : "Could not select a random player",
+      });
+    }
   }
 
   const fen = params.get("fen")?.trim();

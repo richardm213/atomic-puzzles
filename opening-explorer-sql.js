@@ -48,6 +48,29 @@ export const buildPositionPlayerLeaderBandsSql = () => `
   limit 1;
 `;
 
+export const buildRandomOpeningPlayerSql = () => `
+  select n.name as username
+  from opening_names n
+  join (
+    select distinct canonical_player_id
+    from opening_edges_daily
+  ) players
+    on players.canonical_player_id = n.name_id
+  order by random()
+  limit 1;
+`;
+
+export const buildOpeningPlayersSql = () => `
+  select n.name as username
+  from opening_names n
+  join (
+    select distinct canonical_player_id
+    from opening_edges_daily
+  ) players
+    on players.canonical_player_id = n.name_id
+  order by lower(n.name), n.name;
+`;
+
 export const lastMoveColorFromFen = (fen) => {
   const activeColor = String(fen ?? "")
     .trim()

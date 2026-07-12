@@ -120,7 +120,9 @@
 .analysisUsernamePickerClose:focus-visible,
 .analysisUsernamePickerForm input:focus-visible,
 .analysisUsernamePickerSubmit:focus-visible,
-.analysisRecentUsernameChip button:focus-visible {
+.analysisRecentUsernameChip button:focus-visible,
+.usernamePickerTabs button:focus-visible,
+.usernamePickerDatabaseList button:focus-visible {
   outline: 3px solid var(--color-primary-ring);
   outline-offset: 2px;
 }
@@ -131,6 +133,99 @@
   flex-wrap: wrap;
   justify-content: center;
   gap: 14px 12px;
+}
+
+.usernamePickerTabs {
+  width: min(100%, 350px);
+  margin: 0 auto 14px;
+  padding: 3px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-panel-deep) 58%, transparent);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.usernamePickerTabs button {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.usernamePickerTabs button.active {
+  background: color-mix(in srgb, var(--color-primary) 68%, var(--color-panel-strong));
+  color: var(--color-on-primary);
+}
+
+.usernamePickerDatabasePanel {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.usernamePickerDatabaseCount {
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.usernamePickerDatabaseList {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.usernamePickerDatabaseList button {
+  min-width: 0;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 76%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-panel-strong) 64%, transparent);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 760;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.usernamePickerDatabaseList button:hover:not(:disabled),
+.usernamePickerDatabaseList button.active {
+  border-color: color-mix(in srgb, var(--color-primary) 70%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 26%, var(--color-panel-strong));
+  color: var(--color-heading);
+}
+
+.usernamePickerDatabaseList button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.usernamePickerListState {
+  min-height: 48px;
+  color: var(--color-subtle);
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 750;
+  text-align: center;
+}
+
+.usernamePickerListState.error {
+  color: #fca5a5;
 }
 
 .analysisRecentUsernameChip {
@@ -299,4 +394,10 @@
   line-height: 1.35;
   margin: -10px 0 18px;
   text-align: center;
+}
+
+@media (max-width: 460px) {
+  .usernamePickerDatabaseList {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

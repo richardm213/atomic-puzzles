@@ -14,8 +14,10 @@ import {
 import {
   buildGeneralSavedStatusSql,
   buildOpeningExplorerSql,
+  buildOpeningPlayersSql,
   buildPositionPlayerLeaderBandsSql,
   buildPositionPlayerLeadersSql,
+  buildRandomOpeningPlayerSql,
   lastMoveColorFromFen,
   OPENING_EXPLORER_RESPONSE_SCHEMA,
   positionKeyHex,
@@ -162,6 +164,67 @@ const openingExplorerPlugin = () => {
     if (!existsSync(dbPath)) {
       res.statusCode = 503;
       res.end(JSON.stringify({ error: "data/openings.sqlite was not found" }));
+      return;
+    }
+
+    if (url.searchParams.get("players") === "1") {
+      try {
+        const { stdout } = await enqueueSqliteQuery(
+          () =>
+            execFileAsync("sqlite3", [
+              "-json",
+              "-cmd",
+              ".timeout 10000",
+              dbPath,
+              buildOpeningPlayersSql(),
+            ]),
+          nextSqlitePriority("visible"),
+        );
+        const players = JSON.parse(stdout.trim() || "[]")
+          .map((player) => String(player.username ?? "").trim())
+          .filter(Boolean);
+        res.end(JSON.stringify({ players }));
+      } catch (error) {
+        res.statusCode = 500;
+        res.end(
+          JSON.stringify({
+            error:
+              error instanceof Error ? error.message : "Could not load opening database players",
+          }),
+        );
+      }
+      return;
+    }
+
+    if (url.searchParams.get("randomPlayer") === "1") {
+      try {
+        const { stdout } = await enqueueSqliteQuery(
+          () =>
+            execFileAsync("sqlite3", [
+              "-json",
+              "-cmd",
+              ".timeout 10000",
+              dbPath,
+              buildRandomOpeningPlayerSql(),
+            ]),
+          nextSqlitePriority("visible"),
+        );
+        const [player = {}] = JSON.parse(stdout.trim() || "[]");
+        const username = String(player.username ?? "").trim();
+        res.statusCode = username ? 200 : 404;
+        res.end(
+          JSON.stringify(
+            username ? { username } : { error: "No opening database players are available" },
+          ),
+        );
+      } catch (error) {
+        res.statusCode = 500;
+        res.end(
+          JSON.stringify({
+            error: error instanceof Error ? error.message : "Could not select a random player",
+          }),
+        );
+      }
       return;
     }
 
@@ -330,9 +393,17 @@ const openingExplorerPlugin = () => {
       console.log(
         `[opening-explorer] SQLite middleware mounted at /api/opening-explorer (${dbPath})`,
       );
+      server.middlewares.use("/api/opening-players", (req, res, next) => {
+        req.url = "/?players=1";
+        handleOpeningExplorerRequest(req, res, next);
+      });
       server.middlewares.use("/api/opening-explorer", handleOpeningExplorerRequest);
     },
     configurePreviewServer(server) {
+      server.middlewares.use("/api/opening-players", (req, res, next) => {
+        req.url = "/?players=1";
+        handleOpeningExplorerRequest(req, res, next);
+      });
       server.middlewares.use("/api/opening-explorer", handleOpeningExplorerRequest);
     },
   };
