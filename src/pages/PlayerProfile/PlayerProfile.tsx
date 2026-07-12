@@ -327,7 +327,6 @@ const openingToneClasses: Record<string, string> = {
   d6: "openingToneD6",
   "2n": "openingTone2n",
   "2n h3": "openingTone2nH3",
-  nh3: "openingToneNh3",
   "nh3 d4": "openingToneNh3D4",
   "nh3 e4": "openingToneNh3E4",
   "nh3 e3": "openingToneNh3E3",

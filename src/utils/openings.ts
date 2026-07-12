@@ -7,11 +7,11 @@ const openingDisplayLabels: Record<string, string> = {
   d6: "d6",
   "2n": "2N",
   "2n h3": "2N h3",
-  nh3: "Nh3",
   "nh3 d4": "Nh3 d4",
   "nh3 e4": "Nh3 e4",
   "nh3 e3": "Nh3 e3",
   "nh3 na3": "Nh3 Na3",
+  "nh3 nc3": "Nh3 Nc3",
   nc3: "Nc3",
   na3: "Na3",
   "nf3 d4": "Nf3 d4",
@@ -22,7 +22,6 @@ const openingDisplayLabels: Record<string, string> = {
   "e3 qf3": "e3 Qf3",
   "e3 f4": "e3 f4",
   "e3 b4": "e3 b4",
-  "nh3 nc3": "Nh3 Nc3",
   variety: "All-around",
 };
 
