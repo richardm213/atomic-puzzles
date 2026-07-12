@@ -36,9 +36,7 @@ export const getPromotionChoices = ({
   if (piece?.role !== "pawn") return [];
   if (!isBackRank(to)) return [];
 
-  return promotionOptions.filter((role) =>
-    position.isLegal({ from, to, promotion: role as Role }),
-  );
+  return promotionOptions.filter((role) => position.isLegal({ from, to, promotion: role as Role }));
 };
 
 export const createPendingPromotion = ({

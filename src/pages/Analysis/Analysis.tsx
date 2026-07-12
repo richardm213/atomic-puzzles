@@ -27,7 +27,7 @@ import { Seo } from "../../components/Seo/Seo";
 import { UsernamePickerModal } from "../../components/UsernamePickerModal/UsernamePickerModal";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
 import { createAtomicPosition } from "../../lib/puzzles/solutionPgn";
-import type { ChessboardState, SolutionNavigation } from "../../types/chessboard";
+import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { formatGameCount } from "../../utils/formatters";
 import { lichessAtomicAnalysisUrl } from "../../utils/lichess";
@@ -505,8 +505,8 @@ export const AnalysisPage = () => {
     }
   }, [boardState?.error, boardState?.status]);
 
-  const requestNavigation = (command: NonNullable<SolutionNavigation["command"]>): void => {
-    setNavigation({ command });
+  const requestNavigation = (command: PlaybackCommand): void => {
+    setNavigation({ type: "command", command });
   };
 
   const flipBoard = useCallback((): void => {
@@ -538,7 +538,7 @@ export const AnalysisPage = () => {
   }, [moveSettingsOpen]);
 
   const requestBoardWheelNavigation = useCallback(
-    (command: "next" | "previous"): void => setNavigation({ command }),
+    (command: "next" | "previous"): void => setNavigation({ type: "command", command }),
     [],
   );
 
@@ -605,12 +605,12 @@ export const AnalysisPage = () => {
   };
 
   const navigateToPly = (plyIndex: number): void => {
-    setNavigation({ useHistory: true, plyIndex });
+    setNavigation({ type: "history", ply: plyIndex });
   };
 
   const playExplorerMove = (uci: string): void => {
     setHoveredExplorerMoveUci(null);
-    setNavigation({ playUci: uci });
+    setNavigation({ type: "play", uci });
   };
 
   const clearExplorerResults = useCallback((): void => {
@@ -646,7 +646,7 @@ export const AnalysisPage = () => {
     setActiveTextEditor(null);
     setFenError("");
     setPgnError("");
-    setNavigation({ resetFen: nextFen });
+    setNavigation({ type: "reset", fen: nextFen });
   };
 
   const commitPgnDraft = (draft = pgnDraft, force = false): void => {
@@ -657,7 +657,7 @@ export const AnalysisPage = () => {
     }
 
     setPgnError("");
-    setNavigation({ loadPgn: draft, loadPgnFen: rootFen });
+    setNavigation({ type: "loadPgn", pgn: draft, fen: rootFen });
     pgnDraftDirtyRef.current = false;
     setActiveTextEditor(null);
   };

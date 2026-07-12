@@ -196,18 +196,14 @@ describe("evaluateTrainingMove", () => {
   it("returns wrong for moves absent from the current PGN candidates", () => {
     const lines = parseSolutionUciLines(STARTING_FEN, "1. e4 e5");
 
-    expect(evaluateTrainingMove({ candidates: lines, progress: 0, moveKey: "d2d4" })).toBe(
-      "wrong",
-    );
+    expect(evaluateTrainingMove({ candidates: lines, progress: 0, moveKey: "d2d4" })).toBe("wrong");
   });
 
   it("returns wrong when there are no candidate moves at the requested ply", () => {
     const lines = parseSolutionUciLines(STARTING_FEN, "1. e4");
     const e4Key = lines[0]?.[0]?.key ?? "";
 
-    expect(evaluateTrainingMove({ candidates: lines, progress: 1, moveKey: e4Key })).toBe(
-      "wrong",
-    );
+    expect(evaluateTrainingMove({ candidates: lines, progress: 1, moveKey: e4Key })).toBe("wrong");
     expect(evaluateTrainingMove({ candidates: [], progress: 0, moveKey: e4Key })).toBe("wrong");
   });
 });
@@ -217,11 +213,11 @@ describe("buildSolutionHistory", () => {
     const lines = parseSolutionUciLines(STARTING_FEN, "1. e4 e5 2. Nf3");
     const history = buildSolutionHistory(STARTING_FEN, lines[0] ?? []);
     expect(history).not.toBeNull();
-    expect(history?.fens).toHaveLength(4); // initial + 3 plies
-    expect(history?.moveSans).toEqual(["e4", "e5", "Nf3"]);
-    expect(history?.moveUcis).toEqual(["e2e4", "e7e5", "g1f3"]);
-    expect(history?.lastMoves[0]).toBeUndefined();
-    expect(history?.lastMoves[1]).toEqual(["e2", "e4"]);
+    expect(history?.plies).toHaveLength(4); // initial + 3 plies
+    expect(history?.plies.slice(1).map((ply) => ply.san)).toEqual(["e4", "e5", "Nf3"]);
+    expect(history?.plies.slice(1).map((ply) => ply.uci)).toEqual(["e2e4", "e7e5", "g1f3"]);
+    expect(history?.plies[0]?.lastMove).toBeUndefined();
+    expect(history?.plies[1]?.lastMove).toEqual(["e2", "e4"]);
   });
 
   it("returns null when the initial FEN is unusable", () => {

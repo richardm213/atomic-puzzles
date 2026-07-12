@@ -26,7 +26,7 @@ import { Seo } from "../../components/Seo/Seo";
 import { UsernamePickerModal } from "../../components/UsernamePickerModal/UsernamePickerModal";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
 import { movePrefix } from "../../lib/puzzles/solutionPgn";
-import type { ChessboardState, SolutionNavigation } from "../../types/chessboard";
+import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { formatGameCount } from "../../utils/formatters";
 import { lichessAtomicAnalysisUrl } from "../../utils/lichess";
@@ -570,7 +570,7 @@ export const PracticePage = () => {
     if (!pendingAutoMove || navigation) return;
 
     recordTriedMove(pendingAutoMove.fen, pendingAutoMove.uci);
-    queueNavigation({ playUci: pendingAutoMove.uci });
+    queueNavigation({ type: "play", uci: pendingAutoMove.uci });
   }, [navigation, pendingAutoMove, queueNavigation, recordTriedMove]);
 
   useEffect(() => {
@@ -588,19 +588,19 @@ export const PracticePage = () => {
       setUsingGeneralFallback(false);
       setHoveredMoveUci(null);
       recordTriedMove(currentFen, uci);
-      queueNavigation({ playUci: uci });
+      queueNavigation({ type: "play", uci });
     },
     [currentFen, queueNavigation, recordTriedMove],
   );
 
   const requestNavigation = useCallback(
-    (command: NonNullable<SolutionNavigation["command"]>): void => {
+    (command: PlaybackCommand): void => {
       lastAutoFenRef.current = "";
       setPendingAutoMove(null);
       setForceAutoMove(false);
       setExhaustedFen(null);
       setUsingGeneralFallback(false);
-      queueNavigation({ command });
+      queueNavigation({ type: "command", command });
     },
     [queueNavigation],
   );
@@ -612,7 +612,7 @@ export const PracticePage = () => {
       setForceAutoMove(false);
       setExhaustedFen(null);
       setUsingGeneralFallback(false);
-      queueNavigation({ useHistory: true, plyIndex });
+      queueNavigation({ type: "history", ply: plyIndex });
     },
     [queueNavigation],
   );
@@ -631,7 +631,7 @@ export const PracticePage = () => {
     setExhaustedFen(null);
     setUsingGeneralFallback(false);
     clearTriedMoves();
-    queueNavigation({ resetFen: STARTING_FEN });
+    queueNavigation({ type: "reset", fen: STARTING_FEN });
   }, [clearTriedMoves, queueNavigation]);
 
   const flipPracticeSide = useCallback((): void => {
@@ -798,7 +798,7 @@ export const PracticePage = () => {
     setForceAutoMove(true);
 
     if (currentTurn !== opponentSide && canStepBack) {
-      queueNavigation({ command: "previous" });
+      queueNavigation({ type: "command", command: "previous" });
     }
   }, [canStepBack, currentTurn, opponentSide, queueNavigation]);
 

@@ -2,10 +2,12 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { SolutionNavigation } from "../../types/chessboard";
+
 const mocks = vi.hoisted(() => ({
   chessboardProps: [] as Array<{
     showSolution?: boolean;
-    solutionNavigation?: { lineIndex?: number; plyIndex?: number } | null;
+    solutionNavigation?: SolutionNavigation | null;
     onStateChange?: (state: unknown) => void;
   }>,
   attemptedPuzzleIds: new Set(["1369"]),
@@ -81,15 +83,15 @@ vi.mock("../../components/Chessboard/Chessboard", async () => {
     Chessboard: (props: {
       fen: string;
       showSolution?: boolean;
-      solutionNavigation?: { lineIndex?: number; plyIndex?: number } | null;
+      solutionNavigation?: SolutionNavigation | null;
       onStateChange?: (state: unknown) => void;
     }) => {
       mocks.chessboardProps.push(props);
       const { fen, onStateChange, showSolution, solutionNavigation } = props;
 
       React.useEffect(() => {
-        const lineIndex = solutionNavigation?.lineIndex ?? 0;
-        const lineIndexPly = solutionNavigation?.plyIndex ?? 0;
+        const lineIndex = solutionNavigation?.type === "solution" ? solutionNavigation.line : 0;
+        const lineIndexPly = solutionNavigation?.type === "solution" ? solutionNavigation.ply : 0;
         const lineMoves = solutionLines[lineIndex] ?? solutionLines[0] ?? [];
 
         onStateChange?.({
@@ -98,7 +100,6 @@ vi.mock("../../components/Chessboard/Chessboard", async () => {
           status: "black to move",
           winner: undefined,
           error: "",
-          line: lineMoves.slice(0, lineIndexPly).join(" "),
           lineMoves,
           solutionLines,
           solutionLineIndex: lineIndex,
@@ -149,8 +150,9 @@ describe("PuzzleSolverPage solution options", () => {
 
     await waitFor(() => {
       expect(mocks.chessboardProps.at(-1)?.solutionNavigation).toEqual({
-        lineIndex,
-        plyIndex: 1,
+        type: "solution",
+        line: lineIndex,
+        ply: 1,
       });
     });
   });

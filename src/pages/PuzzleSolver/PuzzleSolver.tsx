@@ -15,16 +15,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Chessboard } from "../../components/Chessboard/Chessboard";
 import { PlaybackButtons } from "../../components/PlaybackButtons/PlaybackButtons";
 import { Seo } from "../../components/Seo/Seo";
+import {
+  activeLineIndex,
+  matchingLineIndexes,
+  sortMatchingLineIndexes,
+  variationOptions,
+  VariationTree,
+} from "../../components/VariationTree/VariationTree";
 import { useAuth } from "../../context/AuthContext";
 import { loadPuzzleLibrary } from "../../lib/puzzles/puzzleLibrary";
-import {
-  buildSolutionMoveTree,
-  compareMoves,
-  findMainChild,
-  movePrefix,
-  orderedChildren,
-  serializeSanLinesToPgn,
-} from "../../lib/puzzles/solutionPgn";
+import { movePrefix, serializeSanLinesToPgn } from "../../lib/puzzles/solutionPgn";
 import {
   fetchAttemptedPuzzleIds,
   fetchPuzzleAttemptsForPuzzle,
@@ -32,6 +32,12 @@ import {
   recordPuzzleProgress,
 } from "../../lib/supabase/supabasePuzzleProgress";
 import { isRegisteredSiteUser } from "../../lib/supabase/supabaseUsers";
+import type {
+  AttemptResolved,
+  ChessboardState,
+  PlaybackCommand,
+  SolutionNavigation,
+} from "../../types/chessboard";
 import { formatLocalDateTime } from "../../utils/formatters";
 
 const lichessAnalysisUrl = (fen: string | null | undefined): string => {
@@ -110,123 +116,13 @@ const shuffleIndexes = (indexes: number[]): number[] => {
   return shuffled;
 };
 
-type MoveTreeNode = import("../../lib/puzzles/solutionPgn").SolutionMoveNode<{
-  lineIndexes: Set<number>;
-}>;
-
-const createMoveTree = (lines: string[][]): MoveTreeNode => {
-  const tree = buildSolutionMoveTree(lines, () => ({ lineIndexes: new Set<number>() }));
-
-  for (const [lineIndex, line] of lines.entries()) {
-    let node: MoveTreeNode = tree;
-    node.lineIndexes.add(lineIndex);
-
-    for (const move of line) {
-      const next = node.children.get(move);
-      if (!next) break;
-      node = next;
-      node.lineIndexes.add(lineIndex);
-    }
-  }
-
-  return tree;
-};
-
-const lineStartsWithMoves = (line: string[], moves: string[]): boolean =>
-  moves.every((move, moveIndex) => line[moveIndex] === move);
-
-const getMatchingSolutionLineIndexes = (
-  solutionLines: string[][] | undefined = [],
-  currentAnalysisMoves: string[] | undefined = [],
-): number[] =>
-  (solutionLines ?? []).reduce<number[]>((matches, line, index) => {
-    if (lineStartsWithMoves(line, currentAnalysisMoves ?? [])) {
-      matches.push(index);
-    }
-    return matches;
-  }, []);
-
-const sortMatchingSolutionLineIndexes = ({
-  solutionLines,
-  currentPly = 0,
-  matchingLineIndexes,
-}: {
-  solutionLines?: string[][] | undefined;
-  currentPly?: number | undefined;
-  matchingLineIndexes?: number[] | undefined;
-}): number[] => {
-  const lines = solutionLines ?? [];
-  return [...(matchingLineIndexes ?? [])].sort((a, b) =>
-    compareMoves(lines[a]?.[currentPly] ?? "", lines[b]?.[currentPly] ?? "", a, b),
-  );
-};
-
-const getActiveSolutionLineIndex = ({
-  sortedMatchingLineIndexes,
-  pinnedSolutionLineIndex,
-  fallbackLineIndex = 0,
-}: {
-  sortedMatchingLineIndexes?: number[] | undefined;
-  pinnedSolutionLineIndex?: number | null | undefined;
-  fallbackLineIndex?: number | undefined;
-}): number => {
-  const matched = sortedMatchingLineIndexes ?? [];
-  if (!matched.length) return fallbackLineIndex ?? 0;
-  if (
-    pinnedSolutionLineIndex !== null &&
-    pinnedSolutionLineIndex !== undefined &&
-    matched.includes(pinnedSolutionLineIndex)
-  ) {
-    return pinnedSolutionLineIndex;
-  }
-  return matched[0] ?? fallbackLineIndex ?? 0;
-};
-
-type SolutionOption = { move: string; lineIndex: number; plyIndex: number };
 type CompletionFeedback = {
   type: string;
   icon: string;
   title: string;
 };
-type PlaybackCommand = NonNullable<import("../../types/chessboard").SolutionNavigation["command"]>;
-
-const buildSolutionOptions = ({
-  solutionLines,
-  currentPly = 0,
-  matchingLineIndexes,
-}: {
-  solutionLines?: string[][] | undefined;
-  currentPly?: number | undefined;
-  matchingLineIndexes?: number[] | undefined;
-}): SolutionOption[] => {
-  const lines = solutionLines ?? [];
-  const lineIndexes = matchingLineIndexes ?? [];
-  if (!lines.length || !lineIndexes.length) return [];
-
-  const groupedOptions = new Map<string, SolutionOption>();
-
-  lineIndexes.forEach((lineIndex) => {
-    const line = lines[lineIndex];
-    if (!line) return;
-    const move = line[currentPly];
-    if (!move) return;
-
-    if (!groupedOptions.has(move)) {
-      groupedOptions.set(move, {
-        move,
-        lineIndex,
-        plyIndex: currentPly,
-      });
-    }
-  });
-
-  return [...groupedOptions.values()].sort((a, b) =>
-    compareMoves(a.move, b.move, a.lineIndex, b.lineIndex),
-  );
-};
-
 const buildCompletionFeedback = (
-  nextBoardState: import("../../types/chessboard").ChessboardState,
+  nextBoardState: ChessboardState,
   hadWrongAttempt: boolean,
 ): CompletionFeedback | null => {
   if (nextBoardState.solved) {
@@ -262,12 +158,11 @@ const buildCompletionFeedback = (
   return null;
 };
 
-const createInitialBoardState = (): import("../../types/chessboard").ChessboardState => ({
+const createInitialBoardState = (): ChessboardState => ({
   fen: "",
   turn: "",
   status: "Loading puzzles...",
   error: "",
-  line: "",
   lineMoves: [] as string[],
   solutionLines: [] as string[][],
   solutionLineIndex: 0,
@@ -339,9 +234,7 @@ export const PuzzleSolverPage = () => {
     fading: boolean;
   } | null>(null);
   const [activePuzzleInfoTab, setActivePuzzleInfoTab] = useState<PuzzleInfoTab | null>(null);
-  const [solutionNavigation, setSolutionNavigation] = useState<
-    import("../../types/chessboard").SolutionNavigation | null
-  >(null);
+  const [solutionNavigation, setSolutionNavigation] = useState<SolutionNavigation | null>(null);
   const [interactionMode, setInteractionMode] = useState(SOLVE_MODE);
   const [completionFeedback, setCompletionFeedback] = useState<{
     type: string;
@@ -365,7 +258,7 @@ export const PuzzleSolverPage = () => {
   const hadWrongAttemptRef = useRef(false);
   const lockedCompletionFeedbackRef = useRef<CompletionFeedback | null>(null);
   const mobileFeedbackIdRef = useRef(0);
-  const activeSolutionOptionRef = useRef<HTMLButtonElement | null>(null);
+  const activeVariationOptionRef = useRef<HTMLButtonElement | null>(null);
   const upcomingPuzzleIndexesRef = useRef<number[]>([]);
   const progressWriteQueueRef = useRef(Promise.resolve());
   const attemptedPuzzleIdsRef = useRef<Set<string>>(new Set());
@@ -609,7 +502,7 @@ export const PuzzleSolverPage = () => {
   );
 
   const handleAttemptResolved = useCallback(
-    ({ puzzleId, puzzleCorrect }: import("../../types/chessboard").AttemptResolved): void => {
+    ({ puzzleId, puzzleCorrect }: AttemptResolved): void => {
       const normalizedPuzzleId = toPuzzleKey(puzzleId);
       setResolvedAttemptedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
 
@@ -772,7 +665,7 @@ export const PuzzleSolverPage = () => {
   }, []);
 
   const handleBoardStateChange = useCallback(
-    (nextBoardState: import("../../types/chessboard").ChessboardState): void => {
+    (nextBoardState: ChessboardState): void => {
       const previousBoardSnapshot = previousBoardSnapshotRef.current;
       const boardPositionChanged =
         previousBoardSnapshot.fen !== nextBoardState.fen ||
@@ -856,20 +749,36 @@ export const PuzzleSolverPage = () => {
   const handleMoveClick = useCallback((lineIndex: number, moveIndex: number): void => {
     setPinnedSolutionLineIndex(lineIndex);
     setSolutionNavigation({
-      lineIndex,
-      plyIndex: moveIndex + 1,
+      type: "solution",
+      line: lineIndex,
+      ply: moveIndex + 1,
     });
   }, []);
 
-  const handleAnalysisMoveClick = useCallback((moveIndex: number): void => {
-    setSolutionNavigation({
-      plyIndex: moveIndex + 1,
-      useHistory: true,
-    });
-  }, []);
+  const solutionLineCount = boardState.solutionLines?.length ?? 0;
+  const allVariationLines = useMemo(
+    () => [...(boardState.solutionLines ?? []), ...(boardState.customLines ?? [])],
+    [boardState.customLines, boardState.solutionLines],
+  );
+
+  const handleVariationMoveClick = useCallback(
+    (lineIndex: number, moveIndex: number): void => {
+      if (lineIndex < solutionLineCount) {
+        handleMoveClick(lineIndex, moveIndex);
+        return;
+      }
+
+      setSolutionNavigation({
+        type: "custom",
+        line: lineIndex - solutionLineCount,
+        ply: moveIndex + 1,
+      });
+    },
+    [handleMoveClick, solutionLineCount],
+  );
 
   const handlePlaybackCommand = useCallback((command: PlaybackCommand): void => {
-    setSolutionNavigation({ command });
+    setSolutionNavigation({ type: "command", command });
   }, []);
 
   const currentAnalysisMoves = useMemo(
@@ -878,27 +787,27 @@ export const PuzzleSolverPage = () => {
   );
 
   const matchingSolutionLineIndexes = useMemo(
-    () => getMatchingSolutionLineIndexes(boardState.solutionLines, currentAnalysisMoves),
+    () => matchingLineIndexes(boardState.solutionLines, currentAnalysisMoves),
     [boardState.solutionLines, currentAnalysisMoves],
   );
 
   const sortedMatchingSolutionLineIndexes = useMemo(
     () =>
-      sortMatchingSolutionLineIndexes({
-        solutionLines: boardState.solutionLines,
-        currentPly: currentAnalysisMoves.length,
-        matchingLineIndexes: matchingSolutionLineIndexes,
-      }),
+      sortMatchingLineIndexes(
+        boardState.solutionLines ?? [],
+        currentAnalysisMoves.length,
+        matchingSolutionLineIndexes,
+      ),
     [boardState.solutionLines, currentAnalysisMoves.length, matchingSolutionLineIndexes],
   );
 
   const activeSolutionLineIndex = useMemo(
     () =>
-      getActiveSolutionLineIndex({
-        sortedMatchingLineIndexes: sortedMatchingSolutionLineIndexes,
+      activeLineIndex(
+        sortedMatchingSolutionLineIndexes,
         pinnedSolutionLineIndex,
-        fallbackLineIndex: boardState.solutionLineIndex,
-      }),
+        boardState.solutionLineIndex,
+      ),
     [boardState.solutionLineIndex, pinnedSolutionLineIndex, sortedMatchingSolutionLineIndexes],
   );
   const activeSolutionLine = boardState.solutionLines?.[activeSolutionLineIndex] ?? [];
@@ -906,6 +815,9 @@ export const PuzzleSolverPage = () => {
   const isOnSolutionPath =
     matchingSolutionLineIndexes.length > 0 &&
     activeSolutionLine.length >= currentAnalysisMoves.length;
+  const activeVariationLineIndex = boardState.viewingSolution
+    ? activeSolutionLineIndex
+    : solutionLineCount + (boardState.customLineIndex ?? 0);
 
   useEffect(() => {
     if (!isAnalysisMode || !showSolution || !isOnSolutionPath) return;
@@ -913,8 +825,9 @@ export const PuzzleSolverPage = () => {
     if (boardState.solutionLineIndex === activeSolutionLineIndex) return;
 
     setSolutionNavigation({
-      lineIndex: activeSolutionLineIndex,
-      plyIndex: currentAnalysisMoves.length,
+      type: "solution",
+      line: activeSolutionLineIndex,
+      ply: currentAnalysisMoves.length,
     });
   }, [
     activeSolutionLineIndex,
@@ -926,128 +839,40 @@ export const PuzzleSolverPage = () => {
     solutionNavigation,
   ]);
 
-  const solutionOptions = useMemo(
+  const variationOptionList = useMemo(
     () =>
-      buildSolutionOptions({
-        solutionLines: boardState.solutionLines,
-        currentPly: currentAnalysisMoves.length,
-        matchingLineIndexes: matchingSolutionLineIndexes,
-      }),
-    [boardState.solutionLines, currentAnalysisMoves.length, matchingSolutionLineIndexes],
+      variationOptions(
+        allVariationLines,
+        currentAnalysisMoves.length,
+        matchingLineIndexes(allVariationLines, currentAnalysisMoves),
+      ),
+    [allVariationLines, currentAnalysisMoves],
   );
 
-  const hasSolutionOptions = solutionOptions.length > 1;
-  const activeSolutionOption =
-    solutionOptions.find((option) => option.lineIndex === activeSolutionLineIndex)?.move ??
-    solutionOptions[0]?.move;
+  const hasVariationOptions = variationOptionList.length > 1;
+  const activeVariationOption =
+    variationOptionList.find((option) => option.lineIndex === activeVariationLineIndex)?.move ??
+    variationOptionList[0]?.move;
 
   useEffect(() => {
-    activeSolutionOptionRef.current?.scrollIntoView({
+    activeVariationOptionRef.current?.scrollIntoView({
       block: "nearest",
       inline: "nearest",
     });
-  }, [activeSolutionOption]);
+  }, [activeVariationOption]);
 
-  const inlineSolutionMoves = useMemo(() => {
-    if (!boardState.solutionLines?.length) return null;
-
-    const tree = createMoveTree(boardState.solutionLines);
-
-    const renderNode = (
-      node: MoveTreeNode,
-      plyIndex: number,
-      keyPrefix: string,
-      forceMoveNumber: boolean = false,
-    ): React.ReactNode[] => {
-      const availableLineIndexes = [...node.lineIndexes.values()].sort((a, b) => a - b);
-      const targetLineIndex = node.lineIndexes.has(activeSolutionLineIndex)
-        ? activeSolutionLineIndex
-        : (availableLineIndexes[0] ?? 0);
-
-      const isActiveMove =
-        isOnSolutionPath &&
-        node.lineIndexes.has(activeSolutionLineIndex) &&
-        currentAnalysisMoves.length === plyIndex + 1;
-
-      const content: React.ReactNode[] = [
-        <button
-          key={`${keyPrefix}-move-${plyIndex}-${node.move}`}
-          type="button"
-          className={`moveChip ${isActiveMove ? "active" : ""}`}
-          onClick={() => handleMoveClick(targetLineIndex, plyIndex)}
-        >
-          {movePrefix(plyIndex, forceMoveNumber)}
-          {node.move}
-        </button>,
-      ];
-
-      const children = orderedChildren(node);
-      if (children.length === 0) return content;
-
-      const main = findMainChild(children);
-      const variations = children.filter((child) => child !== main);
-
-      variations.forEach((variation, variationIndex) => {
-        const variationKey = `${keyPrefix}-variation-${plyIndex}-${variationIndex}`;
-        content.push(
-          <span key={`${variationKey}-open`} className="variationParen">
-            (
-          </span>,
-        );
-        content.push(
-          ...renderNode(variation, plyIndex + 1, variationKey, (plyIndex + 1) % 2 === 1),
-        );
-        content.push(
-          <span key={`${variationKey}-close`} className="variationParen">
-            )
-          </span>,
-        );
-      });
-
-      if (main) {
-        content.push(...renderNode(main, plyIndex + 1, `${keyPrefix}-main`));
-      }
-      return content;
-    };
-
-    const rootChildren = orderedChildren(tree);
-    if (rootChildren.length === 0) return null;
-
-    // Keep the displayed PGN structure stable when the user switches between
-    // sibling solution options. The active option should highlight/navigation-target
-    // a branch, but it should not reshuffle which root variation is rendered first.
-    const rootMain = findMainChild(rootChildren);
-    const rootVariations = rootChildren.filter((child) => child !== rootMain);
-
-    const content: React.ReactNode[] = rootMain ? [...renderNode(rootMain, 0, "root-main")] : [];
-
-    rootVariations.forEach((variation, index) => {
-      const variationKey = `root-variation-${index}`;
-      content.push(
-        <span key={`${variationKey}-open`} className="variationParen">
-          (
-        </span>,
-      );
-      content.push(...renderNode(variation, 0, variationKey));
-      content.push(
-        <span key={`${variationKey}-close`} className="variationParen">
-          )
-        </span>,
-      );
-    });
-
-    return content;
-  }, [
-    boardState.solutionLines,
-    activeSolutionLineIndex,
-    handleMoveClick,
-    currentAnalysisMoves.length,
-    isOnSolutionPath,
-  ]);
+  const inlineVariationMoves = (
+    <VariationTree
+      lines={allVariationLines}
+      activeLine={activeVariationLineIndex}
+      currentPly={currentAnalysisMoves.length}
+      onMoveClick={handleVariationMoveClick}
+    />
+  );
 
   const moveLinePgn = useMemo(() => {
-    if (boardState.solutionLines?.length && isOnSolutionPath) {
-      return serializeSanLinesToPgn(fen, boardState.solutionLines);
+    if (allVariationLines.length) {
+      return serializeSanLinesToPgn(fen, allVariationLines);
     }
 
     if (!boardState.lineMoves?.length) return "";
@@ -1055,7 +880,7 @@ export const PuzzleSolverPage = () => {
     return boardState.lineMoves
       .map((move, index) => `${movePrefix(index, index % 2 === 1)}${move}`.trim())
       .join(" ");
-  }, [boardState.lineMoves, boardState.solutionLines, fen, isOnSolutionPath]);
+  }, [allVariationLines, boardState.lineMoves, fen]);
 
   const handleCopyPgn = useCallback(async () => {
     if (!moveLinePgn) return;
@@ -1130,19 +955,19 @@ export const PuzzleSolverPage = () => {
       </div>
       {boardState.solutionLines?.length ? (
         <>
-          {hasSolutionOptions ? (
+          {hasVariationOptions ? (
             <div className="solutionOptions">
               <span className="solutionOptionsLabel">
-                {solutionOptions.length} options from here
+                {variationOptionList.length} options from here
               </span>
               <div className="solutionOptionList" role="list" aria-label="Solution options">
-                {solutionOptions.map((option) => (
+                {variationOptionList.map((option) => (
                   <button
                     key={`${option.lineIndex}-${option.plyIndex}-${option.move}`}
                     type="button"
-                    className={`solutionOption ${option.move === activeSolutionOption ? "active" : ""}`}
-                    ref={option.move === activeSolutionOption ? activeSolutionOptionRef : null}
-                    onClick={() => handleMoveClick(option.lineIndex, option.plyIndex)}
+                    className={`solutionOption ${option.move === activeVariationOption ? "active" : ""}`}
+                    ref={option.move === activeVariationOption ? activeVariationOptionRef : null}
+                    onClick={() => handleVariationMoveClick(option.lineIndex, option.plyIndex)}
                   >
                     {movePrefix(currentAnalysisMoves.length, currentAnalysisMoves.length % 2 === 1)}
                     {option.move}
@@ -1151,27 +976,13 @@ export const PuzzleSolverPage = () => {
               </div>
             </div>
           ) : null}
-          {isOnSolutionPath ? (
+          {allVariationLines.length ? (
             <div
               className="moveList inlineSolutionTree"
               role="list"
               aria-label="Solution variations"
             >
-              {inlineSolutionMoves}
-            </div>
-          ) : boardState.lineMoves?.length ? (
-            <div className="moveList" role="list" aria-label="Analysis line">
-              {boardState.lineMoves.map((move, index) => (
-                <button
-                  key={`${move}-${index}`}
-                  type="button"
-                  className={`moveChip ${boardState.lineIndex === index + 1 ? "active" : ""}`}
-                  onClick={() => handleAnalysisMoveClick(index)}
-                >
-                  {index % 2 === 0 ? `${Math.floor(index / 2) + 1}.` : ""}
-                  {move}
-                </button>
-              ))}
+              {inlineVariationMoves}
             </div>
           ) : null}
         </>

@@ -288,13 +288,14 @@ const LeaderboardView = () => {
     () => selectedModeData.players.filter((player) => isEligibleForRankings(player, selectedMode)),
     [selectedMode, selectedModeData.players],
   );
+  const activeModeOpeningFilter = selectedMode === "wolfrandom" ? "" : activeOpeningFilter;
   const filteredPlayers = useMemo(() => {
-    if (!activeOpeningFilter) return players;
+    if (!activeModeOpeningFilter) return players;
 
     return players.filter((player) =>
-      getOpeningsForPlayer(aliasesLookup, player.username).includes(activeOpeningFilter),
+      getOpeningsForPlayer(aliasesLookup, player.username).includes(activeModeOpeningFilter),
     );
-  }, [activeOpeningFilter, aliasesLookup, players]);
+  }, [activeModeOpeningFilter, aliasesLookup, players]);
 
   const selectMonthKey = (monthKey: string): void => {
     const monthDate = monthDateFromMonthKey(monthKey);
@@ -428,7 +429,7 @@ const LeaderboardView = () => {
           </div>
           <div className="rankingsMetaDetails">
             <span className="rankedCount">
-              {activeOpeningFilter
+              {activeModeOpeningFilter
                 ? `${filteredPlayers.length} of ${players.length} ranked`
                 : `${players.length} ranked`}
               <Link className="rankingsMetaLink" to="/users">
@@ -456,8 +457,8 @@ const LeaderboardView = () => {
 
         {filteredPlayers.length === 0 ? (
           <div className="emptyRankings">
-            {activeOpeningFilter
-              ? `No ranked players found for ${getOpeningDisplayLabel(activeOpeningFilter)}.`
+            {activeModeOpeningFilter
+              ? `No ranked players found for ${getOpeningDisplayLabel(activeModeOpeningFilter)}.`
               : "No leaderboard entries available for this month."}
           </div>
         ) : (
@@ -491,28 +492,30 @@ const LeaderboardView = () => {
                         >
                           {player.username}
                         </Link>
-                        <div
-                          className="rankingOpeningTags"
-                          aria-label={`${player.username} openings`}
-                        >
-                          {getOpeningsForPlayer(aliasesLookup, player.username).map((opening) => (
-                            <button
-                              type="button"
-                              key={`${player.username}-${opening}`}
-                              className={`rankingOpeningTag${
-                                activeOpeningFilter === opening ? " active" : ""
-                              }`}
-                              aria-pressed={activeOpeningFilter === opening}
-                              onClick={() =>
-                                setActiveOpeningFilter((current) =>
-                                  current === opening ? "" : opening,
-                                )
-                              }
-                            >
-                              {getOpeningDisplayLabel(opening)}
-                            </button>
-                          ))}
-                        </div>
+                        {selectedMode !== "wolfrandom" ? (
+                          <div
+                            className="rankingOpeningTags"
+                            aria-label={`${player.username} openings`}
+                          >
+                            {getOpeningsForPlayer(aliasesLookup, player.username).map((opening) => (
+                              <button
+                                type="button"
+                                key={`${player.username}-${opening}`}
+                                className={`rankingOpeningTag${
+                                  activeOpeningFilter === opening ? " active" : ""
+                                }`}
+                                aria-pressed={activeOpeningFilter === opening}
+                                onClick={() =>
+                                  setActiveOpeningFilter((current) =>
+                                    current === opening ? "" : opening,
+                                  )
+                                }
+                              >
+                                {getOpeningDisplayLabel(opening)}
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
                       </div>
                     </td>
                     <td>{player.score}</td>

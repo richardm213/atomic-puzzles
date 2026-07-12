@@ -6,26 +6,62 @@ import {
   RouterProvider,
   useParams,
 } from "@tanstack/react-router";
+import { lazy, Suspense } from "react";
 
 import { App } from "./App/App";
-import { AnalysisPage } from "./pages/Analysis/Analysis";
 import { AuthCallbackPage } from "./pages/AuthCallback/AuthCallback";
-import { H2HPage } from "./pages/H2H/H2H";
 import { HomePage } from "./pages/Home/Home";
-import { MatchPage } from "./pages/Match/MatchPage";
-import { PlayerProfilePage } from "./pages/PlayerProfile/PlayerProfile";
-import { PracticePage } from "./pages/Practice/Practice";
-import { PuzzleDashboardPage } from "./pages/PuzzleDashboard/PuzzleDashboard";
-import { PuzzleLeaderboardPage } from "./pages/PuzzleLeaderboard/PuzzleLeaderboard";
-import { PuzzleSetsPage } from "./pages/PuzzleSets/PuzzleSets";
-import { PuzzleSolverPage } from "./pages/PuzzleSolver/PuzzleSolver";
-import { RankingsPage } from "./pages/Rankings/Rankings";
-import { RankingsMethodologyPage } from "./pages/Rankings/RankingsMethodology";
-import { RecentMatchesPage } from "./pages/RecentMatches/RecentMatches";
-import { TournamentPage } from "./pages/Tournament/TournamentPage";
-import { TournamentsPage } from "./pages/Tournaments/Tournaments";
-import { BannedUsersPage } from "./pages/Users/BannedUsers";
-import { UsersPage } from "./pages/Users/Users";
+
+const AnalysisPage = lazy(() =>
+  import("./pages/Analysis/Analysis").then((m) => ({ default: m.AnalysisPage })),
+);
+const H2HPage = lazy(() => import("./pages/H2H/H2H").then((m) => ({ default: m.H2HPage })));
+const MatchPage = lazy(() =>
+  import("./pages/Match/MatchPage").then((m) => ({ default: m.MatchPage })),
+);
+const PlayerProfilePage = lazy(() =>
+  import("./pages/PlayerProfile/PlayerProfile").then((m) => ({ default: m.PlayerProfilePage })),
+);
+const PracticePage = lazy(() =>
+  import("./pages/Practice/Practice").then((m) => ({ default: m.PracticePage })),
+);
+const PuzzleDashboardPage = lazy(() =>
+  import("./pages/PuzzleDashboard/PuzzleDashboard").then((m) => ({
+    default: m.PuzzleDashboardPage,
+  })),
+);
+const PuzzleLeaderboardPage = lazy(() =>
+  import("./pages/PuzzleLeaderboard/PuzzleLeaderboard").then((m) => ({
+    default: m.PuzzleLeaderboardPage,
+  })),
+);
+const PuzzleSetsPage = lazy(() =>
+  import("./pages/PuzzleSets/PuzzleSets").then((m) => ({ default: m.PuzzleSetsPage })),
+);
+const PuzzleSolverPage = lazy(() =>
+  import("./pages/PuzzleSolver/PuzzleSolver").then((m) => ({ default: m.PuzzleSolverPage })),
+);
+const RankingsPage = lazy(() =>
+  import("./pages/Rankings/Rankings").then((m) => ({ default: m.RankingsPage })),
+);
+const RankingsMethodologyPage = lazy(() =>
+  import("./pages/Rankings/RankingsMethodology").then((m) => ({
+    default: m.RankingsMethodologyPage,
+  })),
+);
+const RecentMatchesPage = lazy(() =>
+  import("./pages/RecentMatches/RecentMatches").then((m) => ({ default: m.RecentMatchesPage })),
+);
+const TournamentPage = lazy(() =>
+  import("./pages/Tournament/TournamentPage").then((m) => ({ default: m.TournamentPage })),
+);
+const TournamentsPage = lazy(() =>
+  import("./pages/Tournaments/Tournaments").then((m) => ({ default: m.TournamentsPage })),
+);
+const BannedUsersPage = lazy(() =>
+  import("./pages/Users/BannedUsers").then((m) => ({ default: m.BannedUsersPage })),
+);
+const UsersPage = lazy(() => import("./pages/Users/Users").then((m) => ({ default: m.UsersPage })));
 
 const appBasePath = (() => {
   const baseUrl = import.meta.env.BASE_URL || "/";
@@ -239,4 +275,8 @@ const router = createRouter({
   basepath: appBasePath,
 });
 
-export const AppRouterProvider = () => <RouterProvider router={router} />;
+export const AppRouterProvider = () => (
+  <Suspense fallback={null}>
+    <RouterProvider router={router} />
+  </Suspense>
+);

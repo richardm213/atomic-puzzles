@@ -1,13 +1,12 @@
 import "./Chessboard.css";
 
-import { Chessground } from "@lichess-org/chessground";
 import type { Api } from "@lichess-org/chessground/api";
 import type { DrawShape } from "@lichess-org/chessground/draw";
 import type { Key } from "@lichess-org/chessground/types";
 import type { Color, Role } from "chessops";
 import { chessgroundDests } from "chessops/compat";
 import { makeFen } from "chessops/fen";
-import { makeSan, parseSan } from "chessops/san";
+import { makeSan } from "chessops/san";
 import { makeUci, parseSquare } from "chessops/util";
 import type { Atomic } from "chessops/variant";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -21,8 +20,24 @@ import {
   type UciSolutionEntry,
   type UciSolutionLine,
 } from "../../lib/puzzles/solutionPgn";
-import type { AttemptResolved, ChessboardState, SolutionNavigation } from "../../types/chessboard";
+import type {
+  AttemptResolved,
+  ChessboardState,
+  PlaybackCommand,
+  SolutionNavigation,
+} from "../../types/chessboard";
+import {
+  appendBoardMove,
+  assertBoardHistory,
+  type BoardHistory,
+  cloneBoardHistory,
+  createBoardHistory,
+  historyMoveKeys,
+  historyMoveSans,
+} from "./boardHistory";
+import { useBoardShortcuts } from "./boardShortcuts";
 import { buildBoardStyle, buildPieceStyle } from "./boardStyle";
+import { buildPgnHistory } from "./pgnHistory";
 import {
   createPendingPromotion,
   getPromotionChoices,
@@ -37,20 +52,25 @@ import {
   recomputeTrainingState,
   tryCreateAtomicPosition,
 } from "./puzzlePlayback";
-
-type BoardHistory = {
-  fens: string[];
-  lastMoves: Array<[Key, Key] | undefined>;
-  moveUcis: string[];
-  moveKeys: string[];
-  moveSans: string[];
-  index: number;
-};
+import { useChessground } from "./useChessground";
+import { usePuzzleTraining } from "./usePuzzleTraining";
+import {
+  createVariationHistory,
+  saveVariation,
+  variationHistories,
+  variationHistoryAt,
+} from "./variationHistory";
 
 type DisplaySolutionEntry = {
   moveEntries: UciSolutionLine;
   sanLine: string[];
+  history: BoardHistory;
 };
+
+type ActiveLine =
+  | { source: "history" }
+  | { source: "solution"; index: number }
+  | { source: "custom"; index: number };
 
 export type ChessboardProps = {
   puzzleId: string | number | null | undefined;
@@ -106,45 +126,11 @@ const promotionRoleByUci: Partial<Record<string, Role>> = {
   n: "knight",
 };
 
-const stripPgnVariations = (value: string): string => {
-  let depth = 0;
-  let stripped = "";
-
-  for (const character of value) {
-    if (character === "(") {
-      depth += 1;
-      stripped += " ";
-      continue;
-    }
-
-    if (character === ")") {
-      depth = Math.max(0, depth - 1);
-      stripped += " ";
-      continue;
-    }
-
-    if (depth === 0) {
-      stripped += character;
-    }
-  }
-
-  return stripped;
+const useLatestRef = <T,>(value: T) => {
+  const ref = useRef(value);
+  ref.current = value;
+  return ref;
 };
-
-const tokenizeMainlinePgn = (value: string): string[] =>
-  stripPgnVariations(value)
-    .replace(/\[[^\]]*\]/g, " ")
-    .replace(/\{[^}]*\}/g, " ")
-    .replace(/;[^\n\r]*/g, " ")
-    .replace(/\$\d+/g, " ")
-    .split(/\s+/)
-    .map((token) =>
-      token
-        .replace(/^\d+\.(\.\.)?/, "")
-        .replace(/[!?]+$/g, "")
-        .trim(),
-    )
-    .filter((token) => Boolean(token) && !["*", "1-0", "0-1", "1/2-1/2"].includes(token));
 
 export const Chessboard = ({
   puzzleId,
@@ -174,36 +160,39 @@ export const Chessboard = ({
   const positionRef = useRef<Atomic | null>(null);
   const pendingPromotionRef = useRef<PendingPromotion | null>(null);
   const [pendingPromotion, setPendingPromotion] = useState<PendingPromotion | null>(null);
-  const historyRef = useRef<BoardHistory>({
-    fens: [],
-    lastMoves: [],
-    moveUcis: [],
-    moveKeys: [],
-    moveSans: [],
-    index: 0,
-  });
-  const moveLockRef = useRef(false);
-  const moveEvaluationTimerRef = useRef<number | null>(null);
-  const puzzleSolvedRef = useRef(false);
-  const candidateLinesRef = useRef<UciSolutionLine[]>([]);
-  const progressRef = useRef(0);
-  const orientationRef = useRef(orientation);
-  const coordinatesRef = useRef(coordinates);
-  const showSolutionRef = useRef(showSolution);
-  const analysisModeRef = useRef(analysisMode);
-  const fenRef = useRef(fen);
-  const puzzleIdRef = useRef(puzzleId);
-  const solverColorRef = useRef<Color>(colorFromFen(fen));
-  const onStateChangeRef = useRef(onStateChange);
-  const onAttemptResolvedRef = useRef(onAttemptResolved);
+  const historyRef = useRef<BoardHistory>(createBoardHistory());
+  const {
+    boardStatusRef,
+    candidateLinesRef,
+    progressRef,
+    evaluationTimerRef,
+    cancelEvaluation: clearMoveEvaluationTimer,
+    resetTraining,
+  } = usePuzzleTraining();
+  const orientationRef = useLatestRef(orientation);
+  const coordinatesRef = useLatestRef(coordinates);
+  const showSolutionRef = useLatestRef(showSolution);
+  const analysisModeRef = useLatestRef(analysisMode);
+  const fenRef = useLatestRef(fen);
+  const puzzleIdRef = useLatestRef(puzzleId);
+  const solverColorRef = useLatestRef<Color>(colorFromFen(fen));
+  const onStateChangeRef = useLatestRef(onStateChange);
+  const onAttemptResolvedRef = useLatestRef(onAttemptResolved);
 
   const solutionUciLines = useMemo(() => parseSolutionUciLines(fen, solution), [fen, solution]);
-
-  const solutionLinesRef = useRef<UciSolutionLine[]>([]);
-  const trainingEnabledRef = useRef(false);
-  const displaySolutionEntriesRef = useRef<DisplaySolutionEntry[]>([]);
-  const displaySolutionLinesRef = useRef<string[][]>([]);
-  const activeSolutionLineRef = useRef(0);
+  const solutionEntries = useMemo(
+    () =>
+      solutionUciLines.flatMap((line): DisplaySolutionEntry[] => {
+        const sanLine = convertUciLineToSan(fen, line);
+        const history = buildSolutionHistory(fen, line);
+        return sanLine.length && history ? [{ moveEntries: line, sanLine, history }] : [];
+      }),
+    [fen, solutionUciLines],
+  );
+  const solutionEntriesRef = useRef(solutionEntries);
+  solutionEntriesRef.current = solutionEntries;
+  const activeLineRef = useRef<ActiveLine>({ source: "history" });
+  const customVariationsRef = useRef(createVariationHistory());
   const pieceStyle = useMemo(() => buildPieceStyle(pieceSet), [pieceSet]);
   const boardStyle = useMemo(
     () =>
@@ -225,61 +214,18 @@ export const Chessboard = ({
     ],
   );
 
-  useEffect(() => {
-    solutionLinesRef.current = solutionUciLines;
-    trainingEnabledRef.current = solutionUciLines.length > 0;
-    displaySolutionEntriesRef.current = solutionUciLines
-      .map((line): DisplaySolutionEntry | null => {
-        const sanLine = convertUciLineToSan(fen, line);
-        if (sanLine.length === 0) return null;
-        return {
-          moveEntries: line,
-          sanLine,
-        };
-      })
-      .filter((entry): entry is DisplaySolutionEntry => entry !== null);
-    displaySolutionLinesRef.current = displaySolutionEntriesRef.current.map(
-      (entry) => entry.sanLine,
-    );
-    activeSolutionLineRef.current = 0;
-  }, [fen, solutionUciLines]);
-
-  useEffect(() => {
-    orientationRef.current = orientation;
-    coordinatesRef.current = coordinates;
-  }, [orientation, coordinates]);
-
-  useEffect(() => {
-    showSolutionRef.current = showSolution;
-  }, [showSolution]);
-
-  useEffect(() => {
-    analysisModeRef.current = analysisMode;
-  }, [analysisMode]);
-
-  useEffect(() => {
-    fenRef.current = fen;
-    solverColorRef.current = colorFromFen(fen);
-  }, [fen]);
-
-  useEffect(() => {
-    puzzleIdRef.current = puzzleId;
-  }, [puzzleId]);
-
-  useEffect(() => {
-    onStateChangeRef.current = onStateChange;
-    onAttemptResolvedRef.current = onAttemptResolved;
-  }, [onStateChange, onAttemptResolved]);
-
-  const isAnalysisModeActive = useCallback((): boolean => analysisModeRef.current, []);
+  const isAnalysisModeActive = useCallback(
+    (): boolean => analysisModeRef.current,
+    [analysisModeRef],
+  );
   const isSolutionPlaybackLocked = useCallback(
     (): boolean => showSolutionRef.current && !isAnalysisModeActive(),
-    [isAnalysisModeActive],
+    [isAnalysisModeActive, showSolutionRef],
   );
 
   const getDisplayTurn = useCallback(
     (position: Atomic, nextState?: Partial<ChessboardState> | undefined): Color => {
-      if (!trainingEnabledRef.current || isAnalysisModeActive() || showSolutionRef.current) {
+      if (!solutionEntriesRef.current.length || isAnalysisModeActive() || showSolutionRef.current) {
         return position.turn;
       }
 
@@ -289,7 +235,7 @@ export const Chessboard = ({
 
       return solverColorRef.current ?? position.turn;
     },
-    [isAnalysisModeActive],
+    [isAnalysisModeActive, showSolutionRef, solverColorRef],
   );
 
   const emitState = useCallback(
@@ -304,30 +250,47 @@ export const Chessboard = ({
           (displayTurn === position.turn ? getStatus(position) : `${displayTurn} to move`),
         winner: position.outcome()?.winner,
         error: "",
-        line: history.moveSans.join(" "),
-        lineMoves: history.moveSans,
-        solutionLines: displaySolutionLinesRef.current,
-        solutionLineIndex: activeSolutionLineRef.current,
+        lineMoves: historyMoveSans(history),
+        solutionLines: solutionEntriesRef.current.map((entry) => [...entry.sanLine]),
+        customLines: variationHistories(customVariationsRef.current).map(historyMoveSans),
+        solutionLineIndex:
+          activeLineRef.current.source === "solution" ? activeLineRef.current.index : 0,
+        ...(activeLineRef.current.source === "custom"
+          ? { customLineIndex: activeLineRef.current.index }
+          : {}),
         lineIndex: history.index,
-        viewingSolution: showSolutionRef.current,
+        viewingSolution: showSolutionRef.current && activeLineRef.current.source === "solution",
         showWrongMove: false,
         showRetryMove: false,
-        solved: puzzleSolvedRef.current,
+        solved: boardStatusRef.current.solved,
         ...(next ?? {}),
       };
 
       onStateChangeRef.current?.(state);
       return state;
     },
-    [getDisplayTurn],
+    [boardStatusRef, getDisplayTurn, onStateChangeRef, showSolutionRef],
   );
 
-  const clearMoveEvaluationTimer = useCallback((): void => {
-    if (moveEvaluationTimerRef.current === null) return;
-
-    window.clearTimeout(moveEvaluationTimerRef.current);
-    moveEvaluationTimerRef.current = null;
-  }, []);
+  const resetSession = useCallback(
+    ({
+      history,
+      locked = false,
+      candidates = [],
+      solved = false,
+    }: {
+      history: BoardHistory;
+      locked?: boolean;
+      candidates?: UciSolutionLine[];
+      solved?: boolean;
+    }): void => {
+      historyRef.current = history;
+      activeLineRef.current = { source: "history" };
+      customVariationsRef.current = createVariationHistory();
+      resetTraining({ mode: locked ? "solution" : "training", locked, candidates, solved });
+    },
+    [resetTraining],
+  );
 
   type MovableConfig = {
     color?: Color;
@@ -335,21 +298,24 @@ export const Chessboard = ({
     free: boolean;
   };
 
-  const getMovableConfig = useCallback((position: Atomic): MovableConfig => {
-    if (moveLockRef.current) {
+  const getMovableConfig = useCallback(
+    (position: Atomic): MovableConfig => {
+      if (boardStatusRef.current.locked) {
+        return {
+          dests: new Map(),
+          free: false,
+        };
+      }
+
+      const outcome = position.outcome();
       return {
-        dests: new Map(),
+        ...(outcome ? {} : { color: position.turn }),
+        dests: chessgroundDests(position),
         free: false,
       };
-    }
-
-    const outcome = position.outcome();
-    return {
-      ...(outcome ? {} : { color: position.turn }),
-      dests: chessgroundDests(position),
-      free: false,
-    };
-  }, []);
+    },
+    [boardStatusRef],
+  );
 
   const saveMove = useCallback(
     (
@@ -359,25 +325,31 @@ export const Chessboard = ({
       moveKey: string,
       moveSan: string,
     ): void => {
+      const previousActiveLine = activeLineRef.current;
       const history = historyRef.current;
       const nextFen = makeFen(position.toSetup());
 
-      if (history.index < history.moveUcis.length) {
-        history.fens = history.fens.slice(0, history.index + 1);
-        history.lastMoves = history.lastMoves.slice(0, history.index + 1);
-        history.moveUcis = history.moveUcis.slice(0, history.index);
-        history.moveKeys = history.moveKeys.slice(0, history.index);
-        history.moveSans = history.moveSans.slice(0, history.index);
-      }
+      appendBoardMove(history, {
+        fen: nextFen,
+        lastMove,
+        uci: moveUci,
+        key: moveKey,
+        san: moveSan,
+      });
 
-      history.fens.push(nextFen);
-      history.lastMoves.push(lastMove);
-      history.moveUcis.push(moveUci);
-      history.moveKeys.push(moveKey);
-      history.moveSans.push(moveSan);
-      history.index += 1;
+      if (isAnalysisModeActive()) {
+        if (previousActiveLine.source !== "custom") {
+          const index = saveVariation(customVariationsRef.current, history);
+          activeLineRef.current = { source: "custom", index };
+        } else {
+          saveVariation(customVariationsRef.current, history, previousActiveLine.index);
+          activeLineRef.current = previousActiveLine;
+        }
+      } else {
+        activeLineRef.current = { source: "history" };
+      }
     },
-    [],
+    [isAnalysisModeActive],
   );
 
   const syncBoard = useCallback(
@@ -398,104 +370,197 @@ export const Chessboard = ({
         orientation: orientationRef.current,
         coordinates: coordinatesRef.current,
         turnColor: displayTurn,
-        ...(lastMove !== undefined ? { lastMove } : {}),
+        lastMove: lastMove ?? [],
         check: displayCheck,
         movable,
       });
 
       emitState(position, nextState);
     },
-    [emitState, getDisplayTurn, getMovableConfig],
+    [coordinatesRef, emitState, getDisplayTurn, getMovableConfig, orientationRef],
   );
 
   const recomputeTrainingFromHistory = useCallback(
     (targetIndex: number): void => {
       const nextState = recomputeTrainingState({
-        isTrainingEnabled: trainingEnabledRef.current,
+        isTrainingEnabled: solutionEntriesRef.current.length > 0,
         isAnalysisMode: isAnalysisModeActive(),
-        playedMoveKeys: historyRef.current.moveKeys.slice(0, targetIndex),
-        solutionLines: solutionLinesRef.current,
+        playedMoveKeys: historyMoveKeys(historyRef.current, targetIndex),
+        solutionLines: solutionEntriesRef.current.map((entry) => entry.moveEntries),
       });
 
       candidateLinesRef.current = nextState.candidates;
       progressRef.current = nextState.progress;
-      puzzleSolvedRef.current = nextState.solved;
+      boardStatusRef.current.solved = nextState.solved;
     },
-    [isAnalysisModeActive],
+    [boardStatusRef, candidateLinesRef, isAnalysisModeActive, progressRef],
   );
 
   const navigateTo = useCallback(
     (targetIndex: number): void => {
       const history = historyRef.current;
-      if (targetIndex < 0 || targetIndex >= history.fens.length) return;
+      assertBoardHistory(history);
+      if (targetIndex < 0 || targetIndex >= history.plies.length) return;
 
       clearMoveEvaluationTimer();
 
-      const targetFen = history.fens[targetIndex];
+      const targetFen = history.plies[targetIndex]?.fen;
       if (targetFen === undefined) return;
       const { position } = tryCreateAtomicPosition(targetFen);
       if (!position) return;
 
       history.index = targetIndex;
-      moveLockRef.current = isSolutionPlaybackLocked();
+      boardStatusRef.current.locked = isSolutionPlaybackLocked();
       recomputeTrainingFromHistory(targetIndex);
 
-      syncBoard(position, history.lastMoves[targetIndex]);
+      syncBoard(position, history.plies[targetIndex]?.lastMove);
     },
-    [clearMoveEvaluationTimer, isSolutionPlaybackLocked, recomputeTrainingFromHistory, syncBoard],
+    [
+      boardStatusRef,
+      clearMoveEvaluationTimer,
+      isSolutionPlaybackLocked,
+      recomputeTrainingFromHistory,
+      syncBoard,
+    ],
+  );
+
+  const activateHistory = useCallback(
+    ({
+      history,
+      ply,
+      activeLine,
+      locked,
+      state,
+    }: {
+      history: BoardHistory;
+      ply?: number | undefined;
+      activeLine: ActiveLine;
+      locked: boolean;
+      state?: Partial<ChessboardState>;
+    }): void => {
+      history.index = Math.max(
+        0,
+        Math.min(ply ?? history.plies.length - 1, history.plies.length - 1),
+      );
+      assertBoardHistory(history);
+      const step = history.plies[history.index];
+      if (!step) return;
+      const { position } = tryCreateAtomicPosition(step.fen);
+      if (!position) return;
+
+      clearMoveEvaluationTimer();
+      historyRef.current = history;
+      activeLineRef.current = activeLine;
+      boardStatusRef.current = {
+        ...boardStatusRef.current,
+        mode: activeLine.source === "solution" ? "solution" : "analysis",
+        locked,
+      };
+      syncBoard(position, step.lastMove, state);
+    },
+    [boardStatusRef, clearMoveEvaluationTimer, syncBoard],
   );
 
   const showSolutionLine = useCallback(
     (lineIndex: number, targetPly?: number): void => {
-      const solutionEntry = displaySolutionEntriesRef.current[lineIndex];
+      const solutionEntry = solutionEntriesRef.current[lineIndex];
       if (!solutionEntry?.moveEntries?.length) return;
 
-      clearMoveEvaluationTimer();
-
-      const solutionHistory = buildSolutionHistory(fenRef.current, solutionEntry.moveEntries);
-      if (!solutionHistory) return;
-
-      const clampedIndex = Math.max(
-        0,
-        Math.min(targetPly ?? solutionHistory.moveUcis.length, solutionHistory.moveUcis.length),
-      );
-
-      historyRef.current = {
-        ...solutionHistory,
-        index: clampedIndex,
-      };
-      activeSolutionLineRef.current = lineIndex;
-      moveLockRef.current = !isAnalysisModeActive();
       candidateLinesRef.current = [];
       progressRef.current = 0;
-      const solvedBeforeSolution = puzzleSolvedRef.current;
-
-      const stepFen = solutionHistory.fens[clampedIndex];
-      if (stepFen === undefined) return;
-      const { position } = tryCreateAtomicPosition(stepFen);
-      if (!position) return;
-
-      syncBoard(position, solutionHistory.lastMoves[clampedIndex], {
-        solved: solvedBeforeSolution,
-        viewingSolution: true,
-        solutionLineIndex: lineIndex,
-        solutionLines: displaySolutionLinesRef.current,
+      activateHistory({
+        history: cloneBoardHistory(solutionEntry.history),
+        ply: targetPly,
+        activeLine: { source: "solution", index: lineIndex },
+        locked: !isAnalysisModeActive(),
+        state: {
+          solved: boardStatusRef.current.solved,
+          viewingSolution: true,
+          solutionLineIndex: lineIndex,
+          solutionLines: solutionEntriesRef.current.map((entry) => entry.sanLine),
+        },
       });
     },
-    [clearMoveEvaluationTimer, isAnalysisModeActive, syncBoard],
+    [activateHistory, boardStatusRef, candidateLinesRef, isAnalysisModeActive, progressRef],
+  );
+
+  const showCustomLine = useCallback(
+    (lineIndex: number, targetPly?: number): void => {
+      const storedHistory = variationHistoryAt(customVariationsRef.current, lineIndex);
+      if (!storedHistory) return;
+
+      activateHistory({
+        history: cloneBoardHistory(storedHistory),
+        ply: targetPly,
+        activeLine: { source: "custom", index: lineIndex },
+        locked: false,
+        state: { viewingSolution: false },
+      });
+    },
+    [activateHistory],
   );
 
   const navigatePlayback = useCallback(
-    (command: NonNullable<SolutionNavigation["command"]>): void => {
+    (command: PlaybackCommand): void => {
       const history = historyRef.current;
 
-      if (showSolutionRef.current) {
-        const activeLineIndex = activeSolutionLineRef.current;
+      if (command === "previousOption" || command === "nextOption") {
+        const playedMoveKeys = historyMoveKeys(history);
+        const options: Array<{ source: "solution" | "custom"; lineIndex: number; key: string }> =
+          [];
+        const seenMoves = new Set<string>();
+        const addOption = (
+          source: "solution" | "custom",
+          lineIndex: number,
+          moveKeys: string[],
+        ): void => {
+          const matches = playedMoveKeys.every((key, index) => moveKeys[index] === key);
+          const nextKey = moveKeys[history.index];
+          if (!matches || !nextKey || seenMoves.has(nextKey)) return;
+          seenMoves.add(nextKey);
+          options.push({ source, lineIndex, key: nextKey });
+        };
+
+        solutionEntriesRef.current.forEach((entry, lineIndex) =>
+          addOption(
+            "solution",
+            lineIndex,
+            entry.moveEntries.map((move) => move.key),
+          ),
+        );
+        variationHistories(customVariationsRef.current).forEach((line, lineIndex) =>
+          addOption("custom", lineIndex, historyMoveKeys(line, line.plies.length - 1)),
+        );
+        if (options.length < 2) return;
+
+        const activeLine = activeLineRef.current;
+        const currentIndex =
+          activeLine.source === "history"
+            ? -1
+            : options.findIndex(
+                (option) =>
+                  option.source === activeLine.source && option.lineIndex === activeLine.index,
+              );
+        const delta = command === "nextOption" ? 1 : -1;
+        const nextIndex =
+          ((currentIndex < 0 ? 0 : currentIndex) + delta + options.length) % options.length;
+        const nextOption = options[nextIndex]!;
+        if (nextOption.source === "solution") {
+          showSolutionLine(nextOption.lineIndex, history.index);
+        } else {
+          showCustomLine(nextOption.lineIndex, history.index);
+        }
+        return;
+      }
+
+      if (showSolutionRef.current && activeLineRef.current.source === "solution") {
+        const activeLineIndex = activeLineRef.current.index;
+
         const mainLineIndex = 0;
         const targetLineIndex = command === "end" ? mainLineIndex : activeLineIndex;
         const targetLine =
-          displaySolutionEntriesRef.current[targetLineIndex]?.moveEntries ??
-          displaySolutionEntriesRef.current[activeLineIndex]?.moveEntries;
+          solutionEntriesRef.current[targetLineIndex]?.moveEntries ??
+          solutionEntriesRef.current[activeLineIndex]?.moveEntries;
         const targetLineLength = targetLine?.length ?? 0;
 
         if (command === "start") {
@@ -519,13 +584,13 @@ export const Chessboard = ({
       }
 
       if (command === "end") {
-        navigateTo(history.fens.length - 1);
+        navigateTo(history.plies.length - 1);
         return;
       }
 
       navigateTo(history.index + (command === "next" ? 1 : -1));
     },
-    [navigateTo, showSolutionLine],
+    [navigateTo, showCustomLine, showSolutionLine, showSolutionRef],
   );
 
   const autoplayOpponentMove = useCallback(
@@ -535,13 +600,13 @@ export const Chessboard = ({
       const nextEntry: UciSolutionEntry | undefined = candidates[0]?.[progress];
 
       if (!nextEntry) {
-        puzzleSolvedRef.current = true;
+        boardStatusRef.current.solved = true;
         return false;
       }
 
       const move = moveFromUci(position, nextEntry.uci);
       if (!move) {
-        puzzleSolvedRef.current = true;
+        boardStatusRef.current.solved = true;
         return false;
       }
 
@@ -559,11 +624,14 @@ export const Chessboard = ({
         (line) => line[progress]?.uci === nextEntry.uci,
       );
       progressRef.current = progress + 1;
-      puzzleSolvedRef.current = !hasExpectedMoveAt(candidateLinesRef.current, progressRef.current);
+      boardStatusRef.current.solved = !hasExpectedMoveAt(
+        candidateLinesRef.current,
+        progressRef.current,
+      );
 
       return true;
     },
-    [saveMove],
+    [boardStatusRef, candidateLinesRef, progressRef, saveMove],
   );
 
   const clearPendingPromotion = useCallback((): void => {
@@ -574,7 +642,7 @@ export const Chessboard = ({
   const playUserMove = useCallback(
     (orig: string, dest: string, promotion?: Role | undefined): void => {
       const position = positionRef.current;
-      if (!position || moveLockRef.current || isSolutionPlaybackLocked()) {
+      if (!position || boardStatusRef.current.locked || isSolutionPlaybackLocked()) {
         return;
       }
 
@@ -603,13 +671,13 @@ export const Chessboard = ({
         return;
       }
 
-      const trainingEnabled = trainingEnabledRef.current && !isAnalysisModeActive();
+      const trainingEnabled = solutionEntriesRef.current.length > 0 && !isAnalysisModeActive();
 
-      if (!trainingEnabled || puzzleSolvedRef.current) {
+      if (!trainingEnabled || boardStatusRef.current.solved) {
         position.play(move);
         saveMove(position, keyPair(orig, dest), userMoveText, userMoveKey, userMoveSan);
         syncBoard(position, keyPair(orig, dest), {
-          solved: puzzleSolvedRef.current,
+          solved: boardStatusRef.current.solved,
         });
         return;
       }
@@ -622,7 +690,7 @@ export const Chessboard = ({
         moveKey: userMoveKey,
       });
 
-      moveLockRef.current = true;
+      boardStatusRef.current = { ...boardStatusRef.current, mode: "evaluating", locked: true };
       cgRef.current?.set({
         lastMove: keyPair(orig, dest),
         movable: {
@@ -637,8 +705,8 @@ export const Chessboard = ({
       const scheduledHistoryIndex = historyRef.current.index;
       const scheduledProgress = progressRef.current;
 
-      moveEvaluationTimerRef.current = window.setTimeout(() => {
-        moveEvaluationTimerRef.current = null;
+      evaluationTimerRef.current = window.setTimeout(() => {
+        evaluationTimerRef.current = null;
 
         if (
           puzzleIdRef.current !== scheduledPuzzleId ||
@@ -653,7 +721,7 @@ export const Chessboard = ({
         if (!activePos) return;
 
         if (moveEvaluation === "retry") {
-          moveLockRef.current = false;
+          boardStatusRef.current = { ...boardStatusRef.current, mode: "training", locked: false };
           syncBoard(activePos, undefined, {
             showRetryMove: true,
             solved: false,
@@ -663,7 +731,7 @@ export const Chessboard = ({
         }
 
         if (moveEvaluation === "wrong") {
-          moveLockRef.current = false;
+          boardStatusRef.current = { ...boardStatusRef.current, mode: "training", locked: false };
           onAttemptResolvedRef.current?.({ puzzleId: puzzleIdRef.current, puzzleCorrect: false });
           syncBoard(activePos, undefined, {
             showWrongMove: true,
@@ -681,8 +749,7 @@ export const Chessboard = ({
         progressRef.current = progress + 1;
 
         if (!hasExpectedMoveAt(nextCandidates, progressRef.current)) {
-          moveLockRef.current = false;
-          puzzleSolvedRef.current = true;
+          boardStatusRef.current = { mode: "training", locked: false, solved: true };
           onAttemptResolvedRef.current?.({ puzzleId: puzzleIdRef.current, puzzleCorrect: true });
           syncBoard(activePos, keyPair(orig, dest), {
             solved: true,
@@ -692,30 +759,37 @@ export const Chessboard = ({
         }
 
         const playedOpponent = autoplayOpponentMove(activePos);
-        moveLockRef.current = false;
+        boardStatusRef.current.locked = false;
 
-        if (puzzleSolvedRef.current) {
+        if (boardStatusRef.current.solved) {
           onAttemptResolvedRef.current?.({ puzzleId: puzzleIdRef.current, puzzleCorrect: true });
         }
 
-        const lastUci = historyRef.current.moveUcis[historyRef.current.index - 1];
+        const lastUci = historyRef.current.plies[historyRef.current.index]?.uci;
         syncBoard(
           activePos,
           playedOpponent && lastUci !== undefined
             ? keyPair(lastUci.slice(0, 2), lastUci.slice(2, 4))
             : undefined,
           {
-            solved: puzzleSolvedRef.current,
-            status: puzzleSolvedRef.current ? "Correct" : getStatus(activePos),
+            solved: boardStatusRef.current.solved,
+            status: boardStatusRef.current.solved ? "Correct" : getStatus(activePos),
           },
         );
       }, MOVE_EVALUATION_DELAY_MS);
     },
     [
       autoplayOpponentMove,
+      boardStatusRef,
+      candidateLinesRef,
       clearMoveEvaluationTimer,
+      fenRef,
       isAnalysisModeActive,
       isSolutionPlaybackLocked,
+      evaluationTimerRef,
+      onAttemptResolvedRef,
+      puzzleIdRef,
+      progressRef,
       saveMove,
       syncBoard,
     ],
@@ -777,26 +851,22 @@ export const Chessboard = ({
         return;
       }
 
-      historyRef.current = {
-        fens: [nextFen],
-        lastMoves: [undefined],
-        moveUcis: [],
-        moveKeys: [],
-        moveSans: [],
-        index: 0,
-      };
-      activeSolutionLineRef.current = 0;
-      moveLockRef.current = false;
-      candidateLinesRef.current = [];
-      progressRef.current = 0;
-      puzzleSolvedRef.current = false;
+      resetSession({ history: createBoardHistory(nextFen) });
 
       syncBoard(position, undefined, {
         solved: false,
         viewingSolution: false,
       });
     },
-    [clearMoveEvaluationTimer, clearPendingPromotion, syncBoard],
+    [
+      clearMoveEvaluationTimer,
+      clearPendingPromotion,
+      coordinatesRef,
+      onStateChangeRef,
+      orientationRef,
+      resetSession,
+      syncBoard,
+    ],
   );
 
   const loadPgnMainline = useCallback(
@@ -804,157 +874,77 @@ export const Chessboard = ({
       clearMoveEvaluationTimer();
       clearPendingPromotion();
 
-      const { position, error } = tryCreateAtomicPosition(initialFen);
-      if (!position) {
-        onStateChangeRef.current?.({
-          fen: initialFen,
-          turn: "",
-          status: "Invalid position",
-          winner: undefined,
-          error,
-          showWrongMove: false,
-          showRetryMove: false,
-          solved: false,
-        });
-        return;
-      }
-
-      const tokens = tokenizeMainlinePgn(pgn);
-      const nextHistory: BoardHistory = {
-        fens: [initialFen],
-        lastMoves: [undefined],
-        moveUcis: [],
-        moveKeys: [],
-        moveSans: [],
-        index: 0,
-      };
-
-      try {
-        for (const token of tokens) {
-          const sanMove = parseSan(position, token);
-          const uciMove = sanMove ?? moveFromUci(position, token.toLowerCase());
-
-          if (!uciMove || !position.isLegal(uciMove)) {
-            throw new Error(`Invalid PGN move: ${token}`);
-          }
-
-          const uci = makeUci(uciMove).toLowerCase();
-          const moveKey = toComparableUci(position, uci, uciMove);
-          const moveSan = makeSan(position, uciMove);
-          position.play(uciMove);
-
-          nextHistory.fens.push(makeFen(position.toSetup()));
-          nextHistory.lastMoves.push(keyPair(uci.slice(0, 2), uci.slice(2, 4)));
-          nextHistory.moveUcis.push(uci);
-          nextHistory.moveKeys.push(moveKey);
-          nextHistory.moveSans.push(moveSan);
-          nextHistory.index += 1;
-        }
-      } catch (loadError) {
+      const result = buildPgnHistory(initialFen, pgn);
+      if (!result.ok) {
         const currentPosition = positionRef.current;
         if (currentPosition) {
           emitState(currentPosition, {
-            status: "Invalid PGN",
-            error: loadError instanceof Error ? loadError.message : "Invalid PGN",
+            status: result.kind === "fen" ? "Invalid position" : "Invalid PGN",
+            error: result.error,
           });
         }
         return;
       }
 
-      historyRef.current = nextHistory;
-      activeSolutionLineRef.current = 0;
-      moveLockRef.current = false;
-      candidateLinesRef.current = [];
-      progressRef.current = 0;
-      puzzleSolvedRef.current = false;
+      resetSession({ history: result.history });
 
-      syncBoard(position, nextHistory.lastMoves[nextHistory.index], {
+      syncBoard(result.position, result.history.plies[result.history.index]?.lastMove, {
         solved: false,
         viewingSolution: false,
       });
     },
-    [clearMoveEvaluationTimer, clearPendingPromotion, emitState, syncBoard],
+    [clearMoveEvaluationTimer, clearPendingPromotion, emitState, resetSession, syncBoard],
   );
 
-  useEffect(() => {
-    if (!elementRef.current) return;
+  const handleBoardMove = useCallback(
+    (orig: string, dest: string): void => {
+      const position = positionRef.current;
+      if (
+        !position ||
+        boardStatusRef.current.locked ||
+        isSolutionPlaybackLocked() ||
+        pendingPromotionRef.current
+      ) {
+        return;
+      }
+      const from = parseSquare(orig);
+      const to = parseSquare(dest);
+      if (from === undefined || to === undefined) return;
+      const piece = position.board.get(from);
+      const choices = getPromotionChoices({ position, from, to, piece });
+      if (choices.length > 1 && piece) {
+        const pending = createPendingPromotion({
+          orig,
+          dest,
+          color: piece.color,
+          choices,
+          orientation: orientationRef.current,
+        });
+        pendingPromotionRef.current = pending;
+        setPendingPromotion(pending);
+        syncBoard(position, undefined);
+        return;
+      }
+      playUserMove(orig, dest, choices[0] as Role | undefined);
+    },
+    [boardStatusRef, isSolutionPlaybackLocked, orientationRef, playUserMove, syncBoard],
+  );
 
-    cgRef.current = Chessground(elementRef.current, {
-      fen,
-      orientation: orientationRef.current,
-      coordinates: coordinatesRef.current,
-      movable: {
-        free: false,
-        color: "white",
-        dests: new Map(),
-        showDests: true,
-        events: {
-          after: (orig: string, dest: string) => {
-            const position = positionRef.current;
-            if (
-              !position ||
-              moveLockRef.current ||
-              isSolutionPlaybackLocked() ||
-              pendingPromotionRef.current
-            ) {
-              return;
-            }
+  const cleanupBoard = useCallback(() => {
+    clearMoveEvaluationTimer();
+    positionRef.current = null;
+    clearPendingPromotion();
+  }, [clearMoveEvaluationTimer, clearPendingPromotion]);
 
-            const from = parseSquare(orig);
-            const to = parseSquare(dest);
-            if (from === undefined || to === undefined) return;
-
-            const piece = position.board.get(from);
-            const promotionChoices = getPromotionChoices({
-              position,
-              from,
-              to,
-              piece,
-            });
-
-            if (promotionChoices.length > 1 && piece) {
-              const pending = createPendingPromotion({
-                orig,
-                dest,
-                color: piece.color,
-                choices: promotionChoices,
-                orientation: orientationRef.current,
-              });
-              pendingPromotionRef.current = pending;
-              setPendingPromotion(pending);
-              syncBoard(position, undefined);
-              return;
-            }
-
-            playUserMove(orig, dest, promotionChoices[0] as Role | undefined);
-          },
-        },
-      },
-      draggable: {
-        enabled: true,
-      },
-      selectable: {
-        enabled: true,
-      },
-      drawable: {
-        visible: true,
-      },
-    });
-
-    return () => {
-      clearMoveEvaluationTimer();
-      cgRef.current = null;
-      positionRef.current = null;
-      clearPendingPromotion();
-    };
-  }, [
-    clearMoveEvaluationTimer,
-    clearPendingPromotion,
+  useChessground({
+    elementRef,
+    apiRef: cgRef,
     fen,
-    isSolutionPlaybackLocked,
-    playUserMove,
-    syncBoard,
-  ]);
+    orientation,
+    coordinates,
+    onAfterMove: handleBoardMove,
+    onCleanup: cleanupBoard,
+  });
 
   useEffect(() => {
     cgRef.current?.setAutoShapes(previewMoveShape(previewMove));
@@ -964,8 +954,8 @@ export const Chessboard = ({
     if (!showSolution) return;
     const currentHistory = historyRef.current;
     const currentPly = currentHistory.index;
-    const playedMoveKeys = currentHistory.moveKeys.slice(0, currentPly);
-    const matchingLineIndex = displaySolutionEntriesRef.current.findIndex((entry) =>
+    const playedMoveKeys = historyMoveKeys(currentHistory, currentPly);
+    const matchingLineIndex = solutionEntriesRef.current.findIndex((entry) =>
       playedMoveKeys.every((moveKey, index) => entry.moveEntries[index]?.key === moveKey),
     );
 
@@ -975,28 +965,34 @@ export const Chessboard = ({
   useEffect(() => {
     if (!solutionNavigation) return;
 
-    if (solutionNavigation.resetFen) {
-      resetToFen(solutionNavigation.resetFen);
-    } else if (solutionNavigation.loadPgn !== undefined) {
-      loadPgnMainline(solutionNavigation.loadPgnFen ?? fenRef.current, solutionNavigation.loadPgn);
-    } else if (solutionNavigation.playUci) {
-      playUciMove(solutionNavigation.playUci);
-    } else if (solutionNavigation.command) {
-      navigatePlayback(solutionNavigation.command);
-    } else if (solutionNavigation.useHistory && solutionNavigation.plyIndex !== undefined) {
-      navigateTo(solutionNavigation.plyIndex);
-    } else if (showSolutionRef.current) {
-      showSolutionLine(
-        solutionNavigation.lineIndex ?? activeSolutionLineRef.current,
-        solutionNavigation.plyIndex,
-      );
-    } else if (solutionNavigation.plyIndex !== undefined) {
-      navigateTo(solutionNavigation.plyIndex);
+    switch (solutionNavigation.type) {
+      case "reset":
+        resetToFen(solutionNavigation.fen);
+        break;
+      case "loadPgn":
+        loadPgnMainline(solutionNavigation.fen ?? fenRef.current, solutionNavigation.pgn);
+        break;
+      case "play":
+        playUciMove(solutionNavigation.uci);
+        break;
+      case "command":
+        navigatePlayback(solutionNavigation.command);
+        break;
+      case "custom":
+        showCustomLine(solutionNavigation.line, solutionNavigation.ply);
+        break;
+      case "solution":
+        showSolutionLine(solutionNavigation.line, solutionNavigation.ply);
+        break;
+      case "history":
+        navigateTo(solutionNavigation.ply);
+        break;
     }
 
     onNavigateHandled?.();
   }, [
     solutionNavigation,
+    fenRef,
     onNavigateHandled,
     navigatePlayback,
     navigateTo,
@@ -1004,6 +1000,7 @@ export const Chessboard = ({
     playUciMove,
     resetToFen,
     showSolutionLine,
+    showCustomLine,
   ]);
 
   useEffect(() => {
@@ -1014,48 +1011,32 @@ export const Chessboard = ({
 
     clearMoveEvaluationTimer();
     clearPendingPromotion();
-    moveLockRef.current = false;
+    boardStatusRef.current = {
+      mode: "analysis",
+      locked: false,
+      solved: boardStatusRef.current.solved,
+    };
     candidateLinesRef.current = [];
     progressRef.current = 0;
 
-    syncBoard(position, historyRef.current.lastMoves[historyRef.current.index], {
-      solved: puzzleSolvedRef.current,
-      status: puzzleSolvedRef.current ? "Correct" : getStatus(position),
+    syncBoard(position, historyRef.current.plies[historyRef.current.index]?.lastMove, {
+      solved: boardStatusRef.current.solved,
+      status: boardStatusRef.current.solved ? "Correct" : getStatus(position),
     });
-  }, [analysisMode, clearMoveEvaluationTimer, clearPendingPromotion, syncBoard]);
+  }, [
+    analysisMode,
+    boardStatusRef,
+    candidateLinesRef,
+    clearMoveEvaluationTimer,
+    clearPendingPromotion,
+    progressRef,
+    syncBoard,
+  ]);
+
+  useBoardShortcuts(navigatePlayback, pendingPromotion !== null);
 
   useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent): void => {
-      const isInputTarget =
-        event.target instanceof HTMLElement &&
-        (event.target.tagName === "INPUT" ||
-          event.target.tagName === "TEXTAREA" ||
-          event.target.isContentEditable);
-      if (isInputTarget) return;
-
-      if (
-        event.key === "ArrowLeft" ||
-        event.key === "ArrowRight" ||
-        event.key === "ArrowUp" ||
-        event.key === "ArrowDown"
-      ) {
-        event.preventDefault();
-        const commandByKey: Record<string, NonNullable<SolutionNavigation["command"]>> = {
-          ArrowLeft: "previous",
-          ArrowRight: "next",
-          ArrowUp: "start",
-          ArrowDown: "end",
-        };
-        navigatePlayback(commandByKey[event.key]!);
-      }
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [navigatePlayback]);
-
-  useEffect(() => {
-    if (showSolution && displaySolutionLinesRef.current.length > 0) return;
+    if (showSolution && solutionEntriesRef.current.length > 0) return;
 
     clearMoveEvaluationTimer();
 
@@ -1083,20 +1064,13 @@ export const Chessboard = ({
       return;
     }
 
-    historyRef.current = {
-      fens: [fen],
-      lastMoves: [undefined],
-      moveUcis: [],
-      moveKeys: [],
-      moveSans: [],
-      index: 0,
-    };
     clearPendingPromotion();
-    activeSolutionLineRef.current = 0;
-    moveLockRef.current = showSolution && !isAnalysisModeActive();
-    candidateLinesRef.current = solutionUciLines;
-    progressRef.current = 0;
-    puzzleSolvedRef.current = trainingEnabledRef.current && !hasExpectedMoveAt(solutionUciLines, 0);
+    resetSession({
+      history: createBoardHistory(fen),
+      locked: showSolution && !isAnalysisModeActive(),
+      candidates: solutionUciLines,
+      solved: solutionUciLines.length > 0 && !hasExpectedMoveAt(solutionUciLines, 0),
+    });
 
     syncBoard(position, undefined, {
       solved: false,
@@ -1107,7 +1081,11 @@ export const Chessboard = ({
     solutionUciLines,
     clearMoveEvaluationTimer,
     clearPendingPromotion,
+    coordinatesRef,
     isAnalysisModeActive,
+    onStateChangeRef,
+    orientationRef,
+    resetSession,
     showSolution,
     syncBoard,
   ]);
@@ -1115,7 +1093,7 @@ export const Chessboard = ({
   useEffect(() => {
     let position = positionRef.current;
     if (!position) {
-      const fallbackFen = historyRef.current.fens[historyRef.current.index] ?? fenRef.current;
+      const fallbackFen = historyRef.current.plies[historyRef.current.index]?.fen ?? fenRef.current;
       position = tryCreateAtomicPosition(fallbackFen).position;
     }
     if (!position) return;
@@ -1127,16 +1105,16 @@ export const Chessboard = ({
     const displayCheck =
       displayTurn === position.turn && position.isCheck() ? position.turn : false;
 
-    const lastMove = history.lastMoves[history.index];
+    const lastMove = history.plies[history.index]?.lastMove;
     cgRef.current?.set({
       orientation,
       coordinates,
       movable,
       turnColor: displayTurn,
-      ...(lastMove !== undefined ? { lastMove } : {}),
+      lastMove: lastMove ?? [],
       check: displayCheck,
     });
-  }, [orientation, coordinates, getDisplayTurn, getMovableConfig]);
+  }, [orientation, coordinates, fenRef, getDisplayTurn, getMovableConfig]);
 
   return (
     <div className="cg-boardShell cg-pieceTheme" style={{ ...pieceStyle, ...boardStyle }}>

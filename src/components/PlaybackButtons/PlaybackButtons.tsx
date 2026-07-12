@@ -6,9 +6,9 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import type { SolutionNavigation } from "../../types/chessboard";
+import type { PlaybackCommand as NavigationCommand } from "../../types/chessboard";
 
-type PlaybackCommand = NonNullable<SolutionNavigation["command"]>;
+type PlaybackCommand = Extract<NavigationCommand, "start" | "previous" | "next" | "end">;
 
 const BUTTONS: Array<{
   command: PlaybackCommand;

@@ -309,8 +309,7 @@ body:has(.puzzlePage),
 .puzzleActions button:focus-visible,
 .puzzleInfoTab:focus-visible,
 .fenAnalyzeButton:focus-visible,
-.playbackButton:focus-visible,
-.moveChip:focus-visible {
+.playbackButton:focus-visible {
   outline: 3px solid var(--color-primary-ring);
   outline-offset: 2px;
 }
@@ -431,12 +430,11 @@ body:has(.puzzlePage),
 
 .puzzleInfoTab.active {
   border-color: color-mix(in srgb, var(--color-cyan-bright) 42%, var(--color-primary));
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--color-surface-elevated-strong) 92%, var(--color-primary) 8%),
-      color-mix(in srgb, var(--color-panel-strong) 80%, var(--color-primary) 20%)
-    );
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-surface-elevated-strong) 92%, var(--color-primary) 8%),
+    color-mix(in srgb, var(--color-panel-strong) 80%, var(--color-primary) 20%)
+  );
   color: var(--color-heading);
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, white 8%, transparent),
@@ -459,12 +457,11 @@ body:has(.puzzlePage),
   display: grid;
   gap: 10px;
   padding: 10px;
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--color-panel-strong) 46%, transparent),
-      color-mix(in srgb, var(--color-panel-deep) 8%, transparent)
-    );
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-panel-strong) 46%, transparent),
+    color-mix(in srgb, var(--color-panel-deep) 8%, transparent)
+  );
 }
 
 .puzzleOtherAttemptsPanel {
@@ -561,12 +558,11 @@ body:has(.puzzlePage),
   padding: 7px 10px;
   border-radius: calc(var(--radius-ui) - 1px);
   border: 1px solid color-mix(in srgb, var(--color-accent-soft-border) 42%, var(--color-border));
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--color-surface-elevated-strong) 82%, var(--color-primary) 8%),
-      color-mix(in srgb, var(--color-panel-strong) 86%, transparent)
-    );
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-surface-elevated-strong) 82%, var(--color-primary) 8%),
+    color-mix(in srgb, var(--color-panel-strong) 86%, transparent)
+  );
   color: var(--color-text);
   font-size: 12px;
   font-weight: 800;
@@ -627,12 +623,11 @@ body:has(.puzzlePage),
   width: 30px;
   height: 30px;
   border-radius: 8px;
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--color-primary) 28%, transparent),
-      color-mix(in srgb, var(--color-cyan-bright) 12%, transparent)
-    );
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-primary) 28%, transparent),
+    color-mix(in srgb, var(--color-cyan-bright) 12%, transparent)
+  );
   color: var(--color-primary-pale);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary-soft) 22%, transparent) inset;
   font-size: 12px;
@@ -679,12 +674,11 @@ body:has(.puzzlePage),
   margin-top: 0;
   padding: 0;
   border-color: color-mix(in srgb, var(--color-border-strong) 72%, transparent);
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--color-panel-strong) 88%, transparent),
-      color-mix(in srgb, var(--color-surface-soft) 88%, transparent)
-    );
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-panel-strong) 88%, transparent),
+    color-mix(in srgb, var(--color-surface-soft) 88%, transparent)
+  );
 }
 
 .lineHeader {
@@ -794,37 +788,6 @@ body:has(.puzzlePage),
 
 .inlineSolutionTree {
   align-items: center;
-}
-
-.variationParen {
-  color: var(--color-subtle);
-  line-height: 30px;
-}
-
-.moveChip {
-  min-height: 32px;
-  border: 1px solid var(--color-border);
-  background: var(--color-panel-strong);
-  color: var(--color-muted);
-  border-radius: var(--radius-ui);
-  padding: 5px 9px;
-  cursor: pointer;
-  font-weight: 700;
-  transition:
-    background-color 140ms ease,
-    border-color 140ms ease,
-    color 140ms ease;
-}
-
-.moveChip:hover {
-  border-color: var(--color-accent-soft-border);
-  color: var(--color-heading);
-}
-
-.moveChip.active {
-  border-color: var(--color-cyan-bright);
-  background: var(--color-accent-soft-bg-strong);
-  color: var(--color-accent-soft-text);
 }
 
 .boardWrap {

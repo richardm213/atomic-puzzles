@@ -411,5 +411,20 @@ const openingExplorerPlugin = () => {
 
 export default defineConfig({
   base: "/",
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return undefined;
+          if (id.includes("react")) return "vendor-react";
+          if (id.includes("@tanstack")) return "vendor-router";
+          if (id.includes("chessops") || id.includes("chessground")) return "vendor-chess";
+          if (id.includes("fortawesome")) return "vendor-icons";
+          if (id.includes("supabase") || id.includes("libsql")) return "vendor-data";
+          return undefined;
+        },
+      },
+    },
+  },
   plugins: [react(), openingExplorerPlugin()],
 });

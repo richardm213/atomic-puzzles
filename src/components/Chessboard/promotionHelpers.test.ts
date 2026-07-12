@@ -100,12 +100,6 @@ describe("getPromotionSquareStyle", () => {
   });
 
   it("returns {} when destination square is unparseable", () => {
-    expect(
-      getPromotionSquareStyle(
-        { ...pending, dest: "??" },
-        0,
-        "white",
-      ),
-    ).toEqual({});
+    expect(getPromotionSquareStyle({ ...pending, dest: "??" }, 0, "white")).toEqual({});
   });
 });

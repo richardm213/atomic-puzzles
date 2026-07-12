@@ -1,4 +1,3 @@
-import type { Key } from "@lichess-org/chessground/types";
 import { makeFen } from "chessops/fen";
 import { makeSan } from "chessops/san";
 import type { Atomic } from "chessops/variant";
@@ -9,14 +8,7 @@ import {
   type UciSolutionEntry,
   type UciSolutionLine,
 } from "../../lib/puzzles/solutionPgn";
-
-export type SolutionHistory = {
-  fens: string[];
-  lastMoves: Array<[Key, Key] | undefined>;
-  moveUcis: string[];
-  moveKeys: string[];
-  moveSans: string[];
-};
+import { appendBoardMove, type BoardHistory, createBoardHistory } from "./boardHistory";
 
 export type TrainingState = {
   candidates: UciSolutionLine[];
@@ -115,15 +107,11 @@ export const recomputeTrainingState = ({
 export const buildSolutionHistory = (
   initialFen: string,
   line: UciSolutionLine,
-): SolutionHistory | null => {
+): BoardHistory | null => {
   const { position } = tryCreateAtomicPosition(initialFen);
   if (!position) return null;
 
-  const fens: string[] = [initialFen];
-  const lastMoves: Array<[Key, Key] | undefined> = [undefined];
-  const moveUcis: string[] = [];
-  const moveSans: string[] = [];
-  const moveKeys: string[] = [];
+  const history = createBoardHistory(initialFen);
 
   for (const entry of line as UciSolutionEntry[]) {
     const uci = entry.uci;
@@ -132,12 +120,15 @@ export const buildSolutionHistory = (
 
     const san = makeSan(position, move);
     position.play(move);
-    fens.push(makeFen(position.toSetup()));
-    lastMoves.push([uci.slice(0, 2) as Key, uci.slice(2, 4) as Key]);
-    moveUcis.push(uci);
-    moveKeys.push(entry.key);
-    moveSans.push(san);
+    appendBoardMove(history, {
+      fen: makeFen(position.toSetup()),
+      lastMove: [uci.slice(0, 2) as Key, uci.slice(2, 4) as Key],
+      uci,
+      key: entry.key,
+      san,
+    });
   }
 
-  return { fens, lastMoves, moveUcis, moveKeys, moveSans };
+  return history;
 };
+import type { Key } from "@lichess-org/chessground/types";
