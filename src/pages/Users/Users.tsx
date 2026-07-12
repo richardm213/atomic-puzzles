@@ -25,6 +25,7 @@ type UserRow = {
   blitz: RatingCells;
   bullet: RatingCells;
   hyperbullet: RatingCells;
+  wolfrandom: RatingCells;
   aliasCount: number;
   aliases: string[];
   openings: string[];
@@ -55,6 +56,10 @@ const getUserColumns = (
   { key: "blitz", label: `Blitz ${ratingDisplayMode === "peak" ? "Peak" : "Rating"}` },
   { key: "bullet", label: `Bullet ${ratingDisplayMode === "peak" ? "Peak" : "Rating"}` },
   { key: "hyperbullet", label: `Hyper ${ratingDisplayMode === "peak" ? "Peak" : "Rating"}` },
+  {
+    key: "wolfrandom",
+    label: `Wolfrandom ${ratingDisplayMode === "peak" ? "Peak" : "Rating"}`,
+  },
   { key: "openings", label: "Openings" },
   { key: "aliasCount", label: "Number of Aliases" },
 ];
@@ -130,6 +135,7 @@ const buildUserRows = (ratingRows: PlayerRatingRow[], aliasesLookup: AliasLookup
       blitz: emptyRatingCells,
       bullet: emptyRatingCells,
       hyperbullet: emptyRatingCells,
+      wolfrandom: emptyRatingCells,
       aliasCount: aliasesLookup.get(username)?.aliases?.length ?? 0,
       aliases: aliasesLookup.get(username)?.aliases ?? [],
       openings: aliasesLookup.get(username)?.openings ?? [],
@@ -151,8 +157,9 @@ const UsersTablePage = () => {
   const [loading, setLoading] = useState(true);
   const [sortKey, setSortKey] = useState<UserSortKey>("blitz");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
-  const [ratingDisplayMode, setRatingDisplayMode] =
-    useState<RatingDisplayMode>(getStoredRatingDisplayMode);
+  const [ratingDisplayMode, setRatingDisplayMode] = useState<RatingDisplayMode>(
+    getStoredRatingDisplayMode,
+  );
   const [activeOpeningFilter, setActiveOpeningFilter] = useState("");
 
   useEffect(() => {

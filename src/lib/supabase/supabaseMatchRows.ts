@@ -37,6 +37,7 @@ export const MATCH_TABLE_BY_MODE: Record<Mode, string> = {
   blitz: "blitz_matches",
   bullet: "bullet_matches",
   hyperbullet: "hyper_matches",
+  wolfrandom: "wolfrandom_matches",
 };
 
 const MATCH_SELECT_COLUMNS = [
@@ -129,11 +130,10 @@ const normalizeMatchFilters = (filters: MatchFilters = {}): NormalizedFilters =>
   };
 };
 
-type MatchQuery = ReturnType<
-  ReturnType<typeof getSupabaseClient>["from"]
-> extends never
-  ? never
-  : ReturnType<ReturnType<typeof getSupabaseClient>["from"]>;
+type MatchQuery =
+  ReturnType<ReturnType<typeof getSupabaseClient>["from"]> extends never
+    ? never
+    : ReturnType<ReturnType<typeof getSupabaseClient>["from"]>;
 
 const applyPlayerFilters = (
   query: MatchQuery,

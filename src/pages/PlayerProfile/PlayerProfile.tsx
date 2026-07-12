@@ -85,8 +85,6 @@ const favoriteOpponentMatchLimitStorageKey = "atomic-puzzles:profile-favorite-op
 const favoriteOpponentSortStorageKey = "atomic-puzzles:profile-favorite-opponent-sort";
 const favoriteOpponentSortDirectionStorageKey =
   "atomic-puzzles:profile-favorite-opponent-sort-direction";
-const rankHistoryModeOptions: RankHistoryMode[] = ["all", ...modeOptions];
-const favoriteOpponentModeOptions: RankHistoryMode[] = ["all", ...modeOptions];
 const favoriteOpponentDefaultMatchLimit = 500;
 const favoriteOpponentAllModeMatchLimitOptions = [250, 500, 1000, 1500, 2000];
 const favoriteOpponentSingleModeMatchLimitOptions = [250, 500, 1000, 1500, 2000, 5000];
@@ -763,6 +761,7 @@ const getRankingTrophies = (
   monthRanks: import("../../hooks/usePlayerProfileData").MonthRank[],
 ): ProfileTrophy[] =>
   monthRanks.flatMap((monthRank) => {
+    if (monthRank.mode === "wolfrandom") return [];
     const level = rankingTrophyLevels.find(({ maxRank }) => monthRank.rank <= maxRank);
     if (!level) return [];
 
@@ -1005,7 +1004,39 @@ export const PlayerProfilePage = ({
   const isBanned = Boolean(profileAliasEntry?.banned);
   const profileDataUsername = aliasesLoaded ? canonicalUsername : "";
   const ratingsSnapshotByMode = useRatingsSnapshotByMode(profileDataUsername);
+  const ratingDisplayByMode = useMemo(
+    () => getRatingDisplayByMode(ratingsSnapshotByMode, canonicalUsername),
+    [ratingsSnapshotByMode, canonicalUsername],
+  );
+  const profileModeOptions = useMemo(
+    () =>
+      modeOptions.filter(
+        (mode) => mode !== "wolfrandom" || ratingDisplayByMode.wolfrandom.gamesPlayed > 0,
+      ),
+    [ratingDisplayByMode.wolfrandom.gamesPlayed],
+  );
+  const rankHistoryModeOptions: RankHistoryMode[] = ["all", ...profileModeOptions];
+  const favoriteOpponentModeOptions: RankHistoryMode[] = ["all", ...profileModeOptions];
+  useEffect(() => {
+    if (profileModeOptions.includes("wolfrandom")) return;
+    if (favoriteOpponentMode === "wolfrandom") setFavoriteOpponentMode("all");
+    if (rankHistoryMode === "wolfrandom") setRankHistoryMode("all");
+    if (bestWinMode === "wolfrandom") setBestWinMode(defaultMode);
+    if (bestRankMode === "wolfrandom") setBestRankMode(defaultMode);
+    if (matchHistoryMode === "wolfrandom") setMatchHistoryMode(defaultMode);
+  }, [
+    bestRankMode,
+    bestWinMode,
+    favoriteOpponentMode,
+    matchHistoryMode,
+    profileModeOptions,
+    rankHistoryMode,
+  ]);
   const monthRanks = useMonthRanks(profileDataUsername);
+  const visibleMonthRanks = useMemo(
+    () => monthRanks.filter((rank) => profileModeOptions.includes(rank.mode)),
+    [monthRanks, profileModeOptions],
+  );
   const monthRankPlayerCounts = useMonthRankPlayerCounts(monthRanks);
   const [bestMonthRankCount, setBestMonthRankCount] = useState(5);
   const [recentMonthRankCount, setRecentMonthRankCount] = useState(5);
@@ -1183,7 +1214,8 @@ export const PlayerProfilePage = ({
     setFavoriteOpponentsError("");
 
     try {
-      const modesToLoad = favoriteOpponentMode === "all" ? modeOptions : [favoriteOpponentMode];
+      const modesToLoad =
+        favoriteOpponentMode === "all" ? profileModeOptions : [favoriteOpponentMode];
       const matchesByMode = await Promise.all(
         modesToLoad.map(async (mode): Promise<FavoriteOpponentMatch[]> => {
           const modeMatches: import("../../lib/matches/matchData").ParsedMatch[] = [];
@@ -1232,6 +1264,7 @@ export const PlayerProfilePage = ({
     favoriteOpponentMatchLimit,
     favoriteOpponentMode,
     favoriteOpponentQueryKey,
+    profileModeOptions,
   ]);
 
   useEffect(() => {
@@ -1353,17 +1386,13 @@ export const PlayerProfilePage = ({
     }
   }, [currentPage, isBanned, page]);
 
-  const ratingDisplayByMode = useMemo(
-    () => getRatingDisplayByMode(ratingsSnapshotByMode, canonicalUsername),
-    [ratingsSnapshotByMode, canonicalUsername],
-  );
   const bestWins = useMemo(
     () => getBestWinsForMode(ratingDisplayByMode, bestWinMode, bestWinCount),
     [bestWinCount, bestWinMode, ratingDisplayByMode],
   );
   const bestRankMonthRanks = useMemo(
-    () => getMonthRanksForMode(monthRanks, bestRankMode),
-    [bestRankMode, monthRanks],
+    () => getMonthRanksForMode(visibleMonthRanks, bestRankMode),
+    [bestRankMode, visibleMonthRanks],
   );
   const bestMonthRanks = useMemo(
     () =>
@@ -1373,12 +1402,13 @@ export const PlayerProfilePage = ({
   );
   const recentMonthRanks = useMemo(
     () =>
-      getMonthRankHighlights(monthRanks, bestMonthRankCount, recentMonthRankCount).recentMonthRanks,
-    [bestMonthRankCount, monthRanks, recentMonthRankCount],
+      getMonthRankHighlights(visibleMonthRanks, bestMonthRankCount, recentMonthRankCount)
+        .recentMonthRanks,
+    [bestMonthRankCount, recentMonthRankCount, visibleMonthRanks],
   );
   const rankHistoryRows = useMemo(
     () =>
-      getMonthRanksForMode(monthRanks, rankHistoryMode)
+      getMonthRanksForMode(visibleMonthRanks, rankHistoryMode)
         .map((monthRank) => ({
           ...monthRank,
           playerCount: monthRankPlayerCounts[`${monthRank.monthValue}|${monthRank.mode}`] ?? null,
@@ -1388,7 +1418,7 @@ export const PlayerProfilePage = ({
           if (dateDifference !== 0) return dateDifference;
           return modeOptions.indexOf(a.mode) - modeOptions.indexOf(b.mode);
         }),
-    [monthRankPlayerCounts, monthRanks, rankHistoryMode],
+    [monthRankPlayerCounts, rankHistoryMode, visibleMonthRanks],
   );
   const sortedFavoriteOpponentRows = useMemo(
     () =>
@@ -1457,7 +1487,7 @@ export const PlayerProfilePage = ({
   }, [canonicalUsername, profileAliasEntry]);
   const latestMonthKeyByMode = useMemo(
     () =>
-      monthRanks.reduce<
+      visibleMonthRanks.reduce<
         Partial<
           Record<
             import("../../constants/matches").Mode,
@@ -1471,7 +1501,7 @@ export const PlayerProfilePage = ({
         }
         return acc;
       }, {}),
-    [monthRanks],
+    [visibleMonthRanks],
   );
   const profileMetricRows = useMemo(
     () =>
@@ -1483,8 +1513,8 @@ export const PlayerProfilePage = ({
             monthRank?.monthKey ?? "",
           ]),
         ),
-      ),
-    [latestMonthKeyByMode, ratingDisplayByMode],
+      ).filter((row) => row.key !== "wolfrandom-row" || profileModeOptions.includes("wolfrandom")),
+    [latestMonthKeyByMode, profileModeOptions, ratingDisplayByMode],
   );
   const rankingTrophies = useMemo(() => getRankingTrophies(monthRanks), [monthRanks]);
   const championshipTrophies = useMemo(
@@ -1704,12 +1734,12 @@ export const PlayerProfilePage = ({
                         value={bestWinMode}
                         onChange={(event) => {
                           const v = event.target.value;
-                          if ((modeOptions as readonly string[]).includes(v)) {
+                          if ((profileModeOptions as readonly string[]).includes(v)) {
                             setBestWinMode(v as import("../../constants/matches").Mode);
                           }
                         }}
                       >
-                        {modeOptions.map((mode) => (
+                        {profileModeOptions.map((mode) => (
                           <option key={mode} value={mode}>
                             {modeLabels[mode] ?? mode}
                           </option>
@@ -1833,12 +1863,12 @@ export const PlayerProfilePage = ({
                       value={bestRankMode}
                       onChange={(event) => {
                         const v = event.target.value;
-                        if ((modeOptions as readonly string[]).includes(v)) {
+                        if ((profileModeOptions as readonly string[]).includes(v)) {
                           setBestRankMode(v as import("../../constants/matches").Mode);
                         }
                       }}
                     >
-                      {modeOptions.map((mode) => (
+                      {profileModeOptions.map((mode) => (
                         <option key={mode} value={mode}>
                           {modeLabels[mode] ?? mode}
                         </option>
@@ -2073,12 +2103,12 @@ export const PlayerProfilePage = ({
                         value={matchHistoryMode}
                         onChange={(event) => {
                           const v = event.target.value;
-                          if ((modeOptions as readonly string[]).includes(v)) {
+                          if ((profileModeOptions as readonly string[]).includes(v)) {
                             handleModeChange(v as import("../../constants/matches").Mode);
                           }
                         }}
                       >
-                        {modeOptions.map((mode) => (
+                        {profileModeOptions.map((mode) => (
                           <option key={mode} value={mode}>
                             {modeLabels[mode] ?? mode}
                           </option>
@@ -2269,7 +2299,10 @@ export const PlayerProfilePage = ({
                         value={rankHistoryMode}
                         onChange={(event) => {
                           const v = event.target.value;
-                          if (v === "all" || (modeOptions as readonly string[]).includes(v)) {
+                          if (
+                            v === "all" ||
+                            (profileModeOptions as readonly string[]).includes(v)
+                          ) {
                             setRankHistoryMode(v as RankHistoryMode);
                           }
                         }}

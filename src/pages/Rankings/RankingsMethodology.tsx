@@ -30,7 +30,7 @@ const ratingFaq = [
   {
     title: "How are time controls separated?",
     body: [
-      "The pools are split by time control. Blitz games feed the blitz leaderboard, bullet games feed the bullet leaderboard, and hyperbullet games feed the hyperbullet leaderboard.",
+      "The pools are split by category. Blitz games feed the blitz leaderboard, bullet games feed the bullet leaderboard, and hyperbullet games feed the hyperbullet leaderboard. Starting July 2026, eligible casual blitz games between players in the Wolfrandom pool feed a separate Wolfrandom leaderboard instead of blitz.",
       "This separation matters because hyperbullet, bullet, and blitz reward different skills. Mixing them into one pool blurs the meaning of each rating.",
     ],
   },
@@ -52,14 +52,15 @@ const ratingFaq = [
 
 const eligibilityNotes = Object.entries(rankingEligibilityByMode).map(([mode, requirements]) => {
   const label = modeLabels[mode as keyof typeof modeLabels] ?? mode;
-  return `A player needs at least ${requirements.minGames} ${mode} games in that month and an RD below ${requirements.maxRd} to appear in the monthly ${label.toLowerCase()} rankings.`;
+  const rdRequirement = requirements.maxRd === null ? "" : ` and an RD below ${requirements.maxRd}`;
+  return `A player needs at least ${requirements.minGames} ${mode} games in that month${rdRequirement} to appear in the monthly ${label.toLowerCase()} rankings.`;
 });
 
 export const RankingsMethodologyPage = () => (
   <div className="rankingsPage">
     <Seo
       title="How Atomic Ratings Work"
-      description="Learn how the atomic rankings are built, which games count, how aliases are merged, and how blitz, bullet, and hyperbullet pools are separated."
+      description="Learn how the atomic rankings are built, which games count, how aliases are merged, and how the rating pools are separated."
       path="/rankings/how-ratings-work"
     />
     <div className="panel rankingsPanel methodologyPanel">

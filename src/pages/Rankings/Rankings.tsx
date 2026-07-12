@@ -96,10 +96,17 @@ const isEligibleForRankings = (
 
   const games = Number(player?.games);
   const rd = Number(player?.rd);
-  return games >= requirement.minGames && rd < requirement.maxRd;
+  const meetsRdRequirement = requirement.maxRd === null || rd < requirement.maxRd;
+  return games >= requirement.minGames && meetsRdRequirement;
 };
 
 const earliestLeaderboardMonth = new Date(Date.UTC(2021, 8, 1));
+const earliestWolfrandomLeaderboardMonth = new Date(Date.UTC(2026, 6, 1));
+
+const supportsWolfrandomLeaderboard = (monthKey: string): boolean => {
+  const month = monthDateFromMonthKey(monthKey);
+  return Boolean(month && month >= earliestWolfrandomLeaderboardMonth);
+};
 
 const allLeaderboardMonths = (): string[] => {
   const months: string[] = [];
@@ -186,6 +193,13 @@ const LeaderboardView = () => {
     if (!selectedMonthName || !selectedYear) return "";
     return `${selectedMonthName} ${selectedYear}`;
   }, [selectedMonthName, selectedYear]);
+  const availableModeOptions = useMemo(
+    () =>
+      modeOptions.filter(
+        (mode) => mode !== "wolfrandom" || supportsWolfrandomLeaderboard(selectedMonth),
+      ),
+    [selectedMonth],
+  );
 
   const { rankingsByMonth, error } = useRankingsByMonth(selectedMonth);
 
@@ -252,6 +266,11 @@ const LeaderboardView = () => {
     if (availableMonthsForYear.includes(selectedMonthName)) return;
     setSelectedMonthName(availableMonthsForYear[0] ?? monthNames[0] ?? "");
   }, [availableMonthsForYear, selectedMonthName, selectedYear]);
+
+  useEffect(() => {
+    if (availableModeOptions.includes(selectedMode)) return;
+    setSelectedMode(defaultMode);
+  }, [availableModeOptions, selectedMode]);
 
   useEffect(() => {
     updateRankingsUrl(selectedYear, selectedMonthName, selectedMode);
@@ -372,7 +391,7 @@ const LeaderboardView = () => {
                 if (isMode(event.target.value)) setSelectedMode(event.target.value);
               }}
             >
-              {modeOptions.map((mode) => (
+              {availableModeOptions.map((mode) => (
                 <option key={mode} value={mode}>
                   {modeLabels[mode] ?? mode}
                 </option>
@@ -426,7 +445,10 @@ const LeaderboardView = () => {
                 aria-label={`${modeLabels[selectedMode]} eligibility`}
               >
                 Note: {modeLabels[selectedMode]} requires {eligibilityRequirement.minGames}+ games
-                this month and RD &lt; {eligibilityRequirement.maxRd}.
+                this month
+                {eligibilityRequirement.maxRd === null
+                  ? "."
+                  : ` and RD < ${eligibilityRequirement.maxRd}.`}
               </p>
             ) : null}
           </div>

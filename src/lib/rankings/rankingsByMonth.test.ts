@@ -1,9 +1,8 @@
-import { afterEach,beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../supabase/supabaseLb", async () => {
-  const actual = await vi.importActual<typeof import("../supabase/supabaseLb")>(
-    "../supabase/supabaseLb",
-  );
+  const actual =
+    await vi.importActual<typeof import("../supabase/supabaseLb")>("../supabase/supabaseLb");
   return {
     ...actual,
     fetchLbRows: vi.fn(),
@@ -29,6 +28,7 @@ describe("loadRankingsForMonth", () => {
       { username: "alice", tc: "blitz", rank: 5, rating: 1900, rd: 50, games: 30 },
       { username: "bob", tc: "blitz", rank: 1, rating: 2000, rd: 45, games: 40 },
       { username: "carol", tc: "bullet", rank: 1, rating: 2100, rd: 40, games: 50 },
+      { username: "wolf", tc: "wolfrandom", rank: 1, rating: 2050, rd: 45, games: 20 },
       { username: "dave", tc: "irrelevant", rank: 1, rating: 9999, rd: 0, games: 0 },
     ]);
 
@@ -42,6 +42,7 @@ describe("loadRankingsForMonth", () => {
 
     expect(result.bullet.players).toHaveLength(1);
     expect(result.bullet.players[0]?.username).toBe("carol");
+    expect(result.wolfrandom.players[0]?.username).toBe("wolf");
 
     // unknown modes are dropped
     expect(result.hyperbullet.players).toEqual([]);

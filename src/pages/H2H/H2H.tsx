@@ -118,6 +118,7 @@ const defaultH2HModeFilters: Record<Mode, boolean> = {
   blitz: true,
   bullet: true,
   hyperbullet: true,
+  wolfrandom: true,
 };
 
 const readStoredH2HModeFilters = (): Record<Mode, boolean> => {
@@ -221,10 +222,20 @@ export const H2HPage = () => {
 
   const startDateTs = useMemo(() => parseDateInputBoundary(filters.startDate, "start"), [filters]);
   const endDateTs = useMemo(() => parseDateInputBoundary(filters.endDate, "end"), [filters]);
+  const visibleModeOptions = useMemo(() => {
+    const firstSnapshots = playerSnapshots[loadedPlayer1.toLowerCase()] ?? {};
+    const secondSnapshots = playerSnapshots[loadedPlayer2.toLowerCase()] ?? {};
+    const hasWolfrandomGames =
+      Number(firstSnapshots.wolfrandom?.games ?? 0) > 0 ||
+      Number(secondSnapshots.wolfrandom?.games ?? 0) > 0;
+
+    return modeOptions.filter((mode) => mode !== "wolfrandom" || hasWolfrandomGames);
+  }, [loadedPlayer1, loadedPlayer2, playerSnapshots]);
 
   const filteredMatches = useMemo(
     () =>
       matches.filter((match) => {
+        if (!visibleModeOptions.includes(match.mode)) return false;
         if (match.startTs < startDateTs || match.startTs > endDateTs) return false;
         if (!filters.modes[match.mode]) return false;
         if (filters.timeControl !== "all" && match.timeControl !== filters.timeControl)
@@ -232,7 +243,7 @@ export const H2HPage = () => {
 
         return isSourceAllowedByFilters(match.source, filters.sources);
       }),
-    [endDateTs, filters, matches, startDateTs],
+    [endDateTs, filters, matches, startDateTs, visibleModeOptions],
   );
 
   const { initialOptions, incrementOptions } = useMemo(
@@ -251,19 +262,25 @@ export const H2HPage = () => {
   const scoresByMode = useMemo(
     () =>
       Object.fromEntries(
-        modeOptions.map((mode) => [
+        visibleModeOptions.map((mode) => [
           mode,
           computeGameScore(filteredMatches.filter((match) => match.mode === mode)),
         ]),
       ),
-    [filteredMatches],
+    [filteredMatches, visibleModeOptions],
   );
   const combinedScore = useMemo(
     () => ({
-      playerA: modeOptions.reduce((sum, mode) => sum + (scoresByMode[mode]?.playerA ?? 0), 0),
-      playerB: modeOptions.reduce((sum, mode) => sum + (scoresByMode[mode]?.playerB ?? 0), 0),
+      playerA: visibleModeOptions.reduce(
+        (sum, mode) => sum + (scoresByMode[mode]?.playerA ?? 0),
+        0,
+      ),
+      playerB: visibleModeOptions.reduce(
+        (sum, mode) => sum + (scoresByMode[mode]?.playerB ?? 0),
+        0,
+      ),
     }),
-    [scoresByMode],
+    [scoresByMode, visibleModeOptions],
   );
 
   const performSearch = useCallback(async (first: string, second: string): Promise<void> => {
@@ -550,7 +567,7 @@ export const H2HPage = () => {
                   </div>
 
                   <div className="h2hModeGrid">
-                    {modeOptions.map((mode) => (
+                    {visibleModeOptions.map((mode) => (
                       <div key={mode} className="h2hModeCard">
                         <div className="h2hModeCardBody">
                           <div className="h2hModeStatsGroup">
@@ -628,7 +645,7 @@ export const H2HPage = () => {
                   <div className="opponentRatingFilter sourceFilterGroup h2hModeFilterGroup">
                     <span className="statusLabel">Time control</span>
                     <div className="sourceFilterChecks h2hModeFilterChecks">
-                      {modeOptions.map((mode) => (
+                      {visibleModeOptions.map((mode) => (
                         <label key={mode} className="sourceFilterCheck h2hModeFilterCheck">
                           <input
                             type="checkbox"

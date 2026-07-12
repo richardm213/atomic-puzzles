@@ -89,6 +89,7 @@ export type Database = {
       blitz_matches: TableDef<MatchRow>;
       bullet_matches: TableDef<MatchRow>;
       hyper_matches: TableDef<MatchRow>;
+      wolfrandom_matches: TableDef<MatchRow>;
       lb: TableDef<LbRow>;
       player_ratings: TableDef<PlayerRatingRow>;
       puzzle_progress: TableDef<

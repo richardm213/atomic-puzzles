@@ -1,4 +1,4 @@
-export const modeOptions = ["blitz", "bullet", "hyperbullet"] as const;
+export const modeOptions = ["blitz", "bullet", "hyperbullet", "wolfrandom"] as const;
 export type Mode = (typeof modeOptions)[number];
 
 export const defaultMode: Mode = modeOptions[0];
@@ -7,17 +7,19 @@ export const modeLabels: Record<Mode, string> = {
   blitz: "Blitz",
   bullet: "Bullet",
   hyperbullet: "Hyper",
+  wolfrandom: "Wolfrandom",
 };
 
 export const modeDescriptions: Record<Mode, string> = {
   blitz: "",
   bullet: "",
   hyperbullet: "",
+  wolfrandom: "",
 };
 
 export type RankingEligibility = {
   minGames: number;
-  maxRd: number;
+  maxRd: number | null;
 };
 
 export const rankingEligibilityByMode: Record<Mode, RankingEligibility> = {
@@ -32,6 +34,10 @@ export const rankingEligibilityByMode: Record<Mode, RankingEligibility> = {
   hyperbullet: {
     minGames: 25,
     maxRd: 60,
+  },
+  wolfrandom: {
+    minGames: 10,
+    maxRd: null,
   },
 };
 

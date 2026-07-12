@@ -13,7 +13,12 @@ import {
 describe("createModeRecord", () => {
   it("creates an object keyed by every mode", () => {
     const record = createModeRecord((mode) => mode.toUpperCase());
-    expect(record).toEqual({ blitz: "BLITZ", bullet: "BULLET", hyperbullet: "HYPERBULLET" });
+    expect(record).toEqual({
+      blitz: "BLITZ",
+      bullet: "BULLET",
+      hyperbullet: "HYPERBULLET",
+      wolfrandom: "WOLFRANDOM",
+    });
   });
 });
 
