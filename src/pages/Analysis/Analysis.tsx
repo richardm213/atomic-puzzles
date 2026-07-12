@@ -1376,6 +1376,7 @@ export const AnalysisPage = () => {
             solution=""
             showSolution={false}
             analysisMode
+            captureNavigationShortcuts
             solutionNavigation={navigation}
             previewMove={hoveredExplorerMoveUci}
             onNavigateHandled={() => setNavigation(null)}

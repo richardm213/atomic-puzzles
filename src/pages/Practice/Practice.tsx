@@ -315,7 +315,7 @@ export const PracticePage = () => {
   const [forceAutoMove, setForceAutoMove] = useState(false);
   const [exhaustedFen, setExhaustedFen] = useState<string | null>(null);
   const [usingGeneralFallback, setUsingGeneralFallback] = useState(false);
-  const [movesOpen, setMovesOpen] = useState(false);
+  const [movesOpen, setMovesOpen] = useState(true);
   const [practiceMoves, setPracticeMoves] = useState<PracticeMove[]>([]);
   const [recentGames, setRecentGames] = useState<PracticeGame[]>([]);
   const [status, setStatus] = useState<PracticeStatus>("idle");
@@ -623,16 +623,6 @@ export const PracticePage = () => {
     canStepForward,
     onNavigate: requestNavigation,
   });
-
-  const resetPractice = useCallback((): void => {
-    lastAutoFenRef.current = "";
-    setPendingAutoMove(null);
-    setForceAutoMove(false);
-    setExhaustedFen(null);
-    setUsingGeneralFallback(false);
-    clearTriedMoves();
-    queueNavigation({ type: "reset", fen: STARTING_FEN });
-  }, [clearTriedMoves, queueNavigation]);
 
   const flipPracticeSide = useCallback((): void => {
     lastAutoFenRef.current = "";
@@ -1174,12 +1164,20 @@ export const PracticePage = () => {
         <div className="analysisBottomToolbar practiceToolbar" aria-label="Practice navigation">
           <button
             type="button"
-            className="analysisToolbarButton"
-            aria-label="Reset practice"
-            title="Reset practice"
-            onClick={resetPractice}
+            className={`analysisToolbarButton ${!movesOpen && !settingsOpen ? "active" : ""}`}
+            aria-label={movesOpen || settingsOpen ? "Show database moves" : "Show played moves"}
+            title={movesOpen || settingsOpen ? "Show database moves (E)" : "Show played moves (E)"}
+            aria-pressed={!movesOpen && !settingsOpen}
+            onClick={() => {
+              if (settingsOpen || movesOpen) {
+                setSettingsOpen(false);
+                setMovesOpen(false);
+              } else {
+                setMovesOpen(true);
+              }
+            }}
           >
-            <FontAwesomeIcon icon={faArrowsRotate} />
+            <FontAwesomeIcon icon={faBookOpen} />
           </button>
           <PlaybackButtons
             buttonClassName="analysisToolbarButton"
@@ -1218,6 +1216,7 @@ export const PracticePage = () => {
             solution=""
             showSolution={false}
             analysisMode
+            captureNavigationShortcuts
             solutionNavigation={navigation}
             previewMove={hoveredMoveUci}
             onNavigateHandled={() => {

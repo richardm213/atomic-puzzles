@@ -165,7 +165,8 @@ describe("PuzzleSolverPage solution options", () => {
     await waitFor(() => expect(solutionTab).toBeEnabled());
 
     fireEvent.wheel(boardFrame, { deltaY: 12 });
-    expect(mocks.chessboardProps.at(-1)?.solutionNavigation == null).toBe(true);
+    const navigationBeforeReveal = mocks.chessboardProps.at(-1)?.solutionNavigation;
+    expect(navigationBeforeReveal === null || navigationBeforeReveal === undefined).toBe(true);
 
     await user.click(solutionTab);
     fireEvent.wheel(boardFrame, { deltaY: 12 });
@@ -189,6 +190,23 @@ describe("PuzzleSolverPage solution options", () => {
     expect(within(attempts).getByText("Correct")).toBeInTheDocument();
     expect(within(attempts).getByRole("link", { name: "beta" })).toBeInTheDocument();
     expect(within(attempts).getByText("Incorrect")).toBeInTheDocument();
+  });
+
+  it("keeps the current solution position when opening other attempts", async () => {
+    const user = userEvent.setup();
+    render(<PuzzleSolverPage />);
+
+    const solutionTab = await screen.findByRole("tab", { name: "Solution" });
+    await waitFor(() => expect(solutionTab).toBeEnabled());
+    await user.click(solutionTab);
+    const options = await screen.findByRole("list", { name: "Solution options" });
+    await user.click(within(options).getByRole("button", { name: "1. Rf8" }));
+    await waitFor(() => expect(mocks.chessboardProps.at(-1)?.showSolution).toBe(true));
+
+    await user.click(screen.getByRole("tab", { name: "Other attempts" }));
+
+    expect(mocks.chessboardProps.at(-1)?.showSolution).toBe(true);
+    expect(mocks.chessboardProps.at(-1)?.solutionNavigation).toBeNull();
   });
 
   it("locks other attempts until the current user has attempted the puzzle", async () => {

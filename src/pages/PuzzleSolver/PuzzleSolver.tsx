@@ -235,6 +235,7 @@ export const PuzzleSolverPage = () => {
     fading: boolean;
   } | null>(null);
   const [activePuzzleInfoTab, setActivePuzzleInfoTab] = useState<PuzzleInfoTab | null>(null);
+  const [solutionRevealed, setSolutionRevealed] = useState(false);
   const [solutionNavigation, setSolutionNavigation] = useState<SolutionNavigation | null>(null);
   const [interactionMode, setInteractionMode] = useState(SOLVE_MODE);
   const [completionFeedback, setCompletionFeedback] = useState<{
@@ -468,6 +469,7 @@ export const PuzzleSolverPage = () => {
   const hasAttemptedActivePuzzle = hasPersistedAttempt || hasResolvedAttempt;
   const showSolution = activePuzzleInfoTab === "solution";
   const otherPuzzleAttemptsOpen = activePuzzleInfoTab === "attempts";
+  const boardShowsSolution = isAnalysisMode && solutionRevealed;
 
   useEffect(() => {
     activePuzzleKeyRef.current = activePuzzleKey;
@@ -518,6 +520,7 @@ export const PuzzleSolverPage = () => {
 
   const resetPuzzleUiState = useCallback(() => {
     setActivePuzzleInfoTab(null);
+    setSolutionRevealed(false);
     setSolutionNavigation(null);
     setInteractionMode(SOLVE_MODE);
     setCompletionFeedback(null);
@@ -621,6 +624,7 @@ export const PuzzleSolverPage = () => {
     if (!canRevealSolution) return;
 
     setInteractionMode(ANALYSIS_MODE);
+    setSolutionRevealed(true);
     setActivePuzzleInfoTab("solution");
     setSolutionNavigation(null);
   };
@@ -629,7 +633,6 @@ export const PuzzleSolverPage = () => {
     if (!hasAttemptedActivePuzzle) return;
 
     setActivePuzzleInfoTab("attempts");
-    setInteractionMode(SOLVE_MODE);
     setSolutionNavigation(null);
     if (!activePuzzleKey || otherPuzzleAttemptsStatus === "loaded") return;
 
@@ -727,7 +730,7 @@ export const PuzzleSolverPage = () => {
 
       if (
         interactionModeRef.current === ANALYSIS_MODE &&
-        showSolution &&
+        boardShowsSolution &&
         previousBoardSnapshot.viewingSolution &&
         previousBoardSnapshot.solutionLineIndex !== nextBoardState.solutionLineIndex
       ) {
@@ -745,7 +748,7 @@ export const PuzzleSolverPage = () => {
         setSolutionNavigation(null);
       }
     },
-    [isMobileLayout, showMobileFeedback, showSolution],
+    [boardShowsSolution, isMobileLayout, showMobileFeedback],
   );
 
   const handleMoveClick = useCallback((lineIndex: number, moveIndex: number): void => {
@@ -822,7 +825,7 @@ export const PuzzleSolverPage = () => {
     : solutionLineCount + (boardState.customLineIndex ?? 0);
 
   useEffect(() => {
-    if (!isAnalysisMode || !showSolution || !isOnSolutionPath) return;
+    if (!boardShowsSolution || !isOnSolutionPath) return;
     if (solutionNavigation) return;
     if (boardState.solutionLineIndex === activeSolutionLineIndex) return;
 
@@ -835,9 +838,8 @@ export const PuzzleSolverPage = () => {
     activeSolutionLineIndex,
     boardState.solutionLineIndex,
     currentAnalysisMoves.length,
-    isAnalysisMode,
+    boardShowsSolution,
     isOnSolutionPath,
-    showSolution,
     solutionNavigation,
   ]);
 
@@ -896,12 +898,12 @@ export const PuzzleSolverPage = () => {
   }, [moveLinePgn]);
 
   const currentLineLength =
-    showSolution && canRevealSolution
+    boardShowsSolution && canRevealSolution
       ? activeSolutionLine.length
       : (boardState.lineMoves?.length ?? 0);
   const currentPly = boardState.lineIndex ?? 0;
   const isAtMainSolutionEnd =
-    showSolution &&
+    boardShowsSolution &&
     canRevealSolution &&
     (boardState.solutionLineIndex ?? 0) === 0 &&
     currentPly >= mainSolutionLine.length;
@@ -909,12 +911,12 @@ export const PuzzleSolverPage = () => {
   const canPlaybackPrevious = currentPly > 0;
   const canPlaybackNext = currentPly < currentLineLength;
   const canPlaybackEnd =
-    showSolution && canRevealSolution ? !isAtMainSolutionEnd : currentPly < currentLineLength;
+    boardShowsSolution && canRevealSolution ? !isAtMainSolutionEnd : currentPly < currentLineLength;
 
   useBoardWheelNavigation({
     boardPanelRef,
-    canStepBack: isAnalysisMode && showSolution && canRevealSolution && canPlaybackPrevious,
-    canStepForward: isAnalysisMode && showSolution && canRevealSolution && canPlaybackNext,
+    canStepBack: boardShowsSolution && canRevealSolution && canPlaybackPrevious,
+    canStepForward: boardShowsSolution && canRevealSolution && canPlaybackNext,
     onNavigate: handlePlaybackCommand,
   });
 
@@ -1259,7 +1261,7 @@ export const PuzzleSolverPage = () => {
                 orientation={orientation}
                 coordinates
                 solution={activePuzzle?.solution ?? ""}
-                showSolution={isAnalysisMode && showSolution}
+                showSolution={boardShowsSolution}
                 analysisMode={isAnalysisMode}
                 captureNavigationShortcuts
                 solutionNavigation={solutionNavigation}
