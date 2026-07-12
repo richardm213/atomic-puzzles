@@ -2,12 +2,8 @@ import "./PuzzleSolver.css";
 
 import {
   faArrowUpRightFromSquare,
-  faBackward,
-  faBackwardStep,
   faCheck,
   faClockRotateLeft,
-  faForward,
-  faForwardStep,
   faMagnifyingGlassChart,
   faUsers,
   faXmark,
@@ -17,6 +13,7 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Chessboard } from "../../components/Chessboard/Chessboard";
+import { PlaybackButtons } from "../../components/PlaybackButtons/PlaybackButtons";
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
 import { loadPuzzleLibrary } from "../../lib/puzzles/puzzleLibrary";
@@ -1089,46 +1086,26 @@ export const PuzzleSolverPage = () => {
 
   const renderPlaybackControls = () => (
     <div className="playbackControls" aria-label="Line playback">
-      <button
-        type="button"
-        className="playbackButton"
-        onClick={() => handlePlaybackCommand("start")}
-        disabled={!fen || !canPlaybackStart}
-        aria-label="Go to start of line"
-        title="Start (Arrow Up)"
-      >
-        <FontAwesomeIcon icon={faBackwardStep} />
-      </button>
-      <button
-        type="button"
-        className="playbackButton"
-        onClick={() => handlePlaybackCommand("previous")}
-        disabled={!fen || !canPlaybackPrevious}
-        aria-label="Go to previous move"
-        title="Previous (Arrow Left)"
-      >
-        <FontAwesomeIcon icon={faBackward} />
-      </button>
-      <button
-        type="button"
-        className="playbackButton"
-        onClick={() => handlePlaybackCommand("next")}
-        disabled={!fen || !canPlaybackNext}
-        aria-label="Go to next move"
-        title="Next (Arrow Right)"
-      >
-        <FontAwesomeIcon icon={faForward} />
-      </button>
-      <button
-        type="button"
-        className="playbackButton"
-        onClick={() => handlePlaybackCommand("end")}
-        disabled={!fen || !canPlaybackEnd}
-        aria-label="Go to end of main line"
-        title="End of main line (Arrow Down)"
-      >
-        <FontAwesomeIcon icon={faForwardStep} />
-      </button>
+      <PlaybackButtons
+        buttonClassName="playbackButton"
+        canStart={Boolean(fen) && canPlaybackStart}
+        canPrevious={Boolean(fen) && canPlaybackPrevious}
+        canNext={Boolean(fen) && canPlaybackNext}
+        canEnd={Boolean(fen) && canPlaybackEnd}
+        onNavigate={handlePlaybackCommand}
+        labels={{
+          start: "Go to start of line",
+          previous: "Go to previous move",
+          next: "Go to next move",
+          end: "Go to end of main line",
+        }}
+        titles={{
+          start: "Start (Arrow Up)",
+          previous: "Previous (Arrow Left)",
+          next: "Next (Arrow Right)",
+          end: "End of main line (Arrow Down)",
+        }}
+      />
     </div>
   );
 
@@ -1517,9 +1494,7 @@ export const PuzzleSolverPage = () => {
 
       {isMobileLayout ? (
         <div className="mobileWorkflowPanel">
-          <div className="mobileActionCard">
-            {renderPuzzleInfoSection(true)}
-          </div>
+          <div className="mobileActionCard">{renderPuzzleInfoSection(true)}</div>
         </div>
       ) : null}
 

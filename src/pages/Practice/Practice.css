@@ -230,6 +230,10 @@
   gap: 8px;
 }
 
+.practicePlayerChooserRow.single {
+  grid-template-columns: minmax(0, 220px);
+}
+
 .practicePlayerChooserRow .analysisOpponentClearButton {
   min-height: 36px;
 }
@@ -307,6 +311,14 @@
   margin: 0;
   accent-color: var(--color-primary);
   cursor: pointer;
+}
+
+.practiceAutomoveToggle {
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 76%, transparent);
+  border-radius: var(--radius-ui);
+  background: color-mix(in srgb, var(--color-panel-strong) 52%, transparent);
 }
 
 .practiceMovesPanel {

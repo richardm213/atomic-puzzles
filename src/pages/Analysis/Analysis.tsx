@@ -2,12 +2,8 @@ import "./Analysis.css";
 
 import {
   faArrowsRotate,
-  faBackward,
-  faBackwardStep,
   faBookOpen,
   faExternalLinkAlt,
-  faForward,
-  faForwardStep,
   faGear,
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
@@ -20,18 +16,23 @@ import type {
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Chessboard } from "../../components/Chessboard/Chessboard";
+import {
+  OpeningDatabaseDisplay,
+  type OpeningDatabaseGame,
+  type OpeningDatabaseMove,
+} from "../../components/OpeningDatabaseDisplay/OpeningDatabaseDisplay";
+import { PlaybackButtons } from "../../components/PlaybackButtons/PlaybackButtons";
+import { pairPlayedMoves, PlayedMoves } from "../../components/PlayedMoves/PlayedMoves";
 import { Seo } from "../../components/Seo/Seo";
 import { UsernamePickerModal } from "../../components/UsernamePickerModal/UsernamePickerModal";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
 import { createAtomicPosition } from "../../lib/puzzles/solutionPgn";
 import type { ChessboardState, SolutionNavigation } from "../../types/chessboard";
 import { appAssetPath } from "../../utils/appAssetPath";
-import { sanFromUci } from "../../utils/chessNotation";
 import { formatGameCount } from "../../utils/formatters";
 import { lichessAtomicAnalysisUrl } from "../../utils/lichess";
-import { buildLichessGameUrl } from "../../utils/matchRoutes";
+import { toOpeningDatabaseGame, toOpeningDatabaseMove } from "../../utils/openingDatabaseDisplay";
 import {
-  type ExplorerApiGame,
   type ExplorerApiMove,
   type ExplorerApiPositionLeader,
   type ExplorerApiPositionLeaders,
@@ -50,33 +51,9 @@ const MIN_MOVE_PANEL_HEIGHT = 86;
 const MIN_EXPLORER_PANEL_HEIGHT = 220;
 const EXPLORER_RESIZE_STEP = 24;
 
-type ExplorerMove = {
-  uci: string;
-  move: string;
-  games: number;
-  gamesLabel: string;
-  whiteWins: number;
-  draws: number;
-  blackWins: number;
-  white: number;
-  draw: number;
-  black: number;
-  avgOpponentRating: number | null;
-  performanceRating: number | null;
-};
+type ExplorerMove = OpeningDatabaseMove;
 
-type ExplorerGame = {
-  uci: string;
-  move: string;
-  gameId: string;
-  playedOn: string;
-  whiteName: string;
-  blackName: string;
-  whiteRating: number | null;
-  blackRating: number | null;
-  result: string;
-  resultClass: "white" | "draw" | "black";
-};
+type ExplorerGame = OpeningDatabaseGame;
 
 type ExplorerPositionLeader = ExplorerApiPositionLeader & {
   share: number;
@@ -106,7 +83,6 @@ type ExplorerRequestOptions = {
   opponent: string;
 };
 
-const WIN_RATE_LABEL_MIN_PERCENT = 14;
 const EXPLORER_REQUEST_TIMEOUT_MS = 15_000;
 const MONTH_FILTER_PATTERN = /^\d{4}-\d{2}$/;
 const EXPLORER_SETTINGS_STORAGE_KEY = "atomic-puzzles.analysis.explorer-settings";
@@ -372,9 +348,6 @@ const SpeedFilterIcon = ({ speed }: { speed: ExplorerSpeed }) => {
   );
 };
 
-const visibleWinRateLabel = (rate: number): string =>
-  rate >= WIN_RATE_LABEL_MIN_PERCENT ? `${rate}%` : "";
-
 const formatWholePercent = (value: number): string => `${Math.round(value)}%`;
 
 const sideLabelFromColor = (color: number): "White" | "Black" | null => {
@@ -383,80 +356,15 @@ const sideLabelFromColor = (color: number): "White" | "Black" | null => {
   return null;
 };
 
-const formatEncodedDate = (date: number): string => {
-  const raw = String(date);
-  if (!/^\d{8}$/.test(raw)) return raw;
-  return `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`;
-};
-
-const resultFromWinner = (winner: ExplorerApiGame["winner"]): string => {
-  if (winner === 1) return "1-0";
-  if (winner === 2) return "0-1";
-  return "1/2-1/2";
-};
-
-const resultClassFromWinner = (winner: ExplorerApiGame["winner"]): ExplorerGame["resultClass"] => {
-  if (winner === 1) return "white";
-  if (winner === 2) return "black";
-  return "draw";
-};
-
-const performanceFromScore = (
-  avgOpponentRating: number | null,
-  score: number,
-  games: number,
-): number | null => {
-  if (!avgOpponentRating || games <= 0) return null;
-
-  const scoreRate = Math.min(0.99, Math.max(0.01, score / games));
-  const ratingDiff = -400 * Math.log10(1 / scoreRate - 1);
-  return Math.round(avgOpponentRating + ratingDiff);
-};
-
 const toExplorerMove = (
   row: ExplorerApiMove,
   fen: string,
   options: { scope: ExplorerScope; playerColor: "white" | "black" },
-): ExplorerMove => {
-  const totalResults = row.whiteWins + row.draws + row.blackWins;
-  const total = totalResults > 0 ? totalResults : row.games;
-  const white = total > 0 ? Math.round((row.whiteWins / total) * 100) : 0;
-  const draw = total > 0 ? Math.round((row.draws / total) * 100) : 0;
-  const black = total > 0 ? Math.round((row.blackWins / total) * 100) : 0;
-  const playerScore =
-    options.playerColor === "white" ? row.whiteWins + row.draws / 2 : row.blackWins + row.draws / 2;
-
-  return {
-    uci: row.uci,
-    move: sanFromUci(fen, row.uci),
-    games: row.games,
-    gamesLabel: formatGameCount(row.games),
-    whiteWins: row.whiteWins,
-    draws: row.draws,
-    blackWins: row.blackWins,
-    white,
-    draw,
-    black,
-    avgOpponentRating: row.avgOpponentRating,
-    performanceRating:
-      options.scope === "player"
-        ? performanceFromScore(row.avgOpponentRating, playerScore, total)
-        : null,
-  };
-};
-
-const toExplorerGame = (row: ExplorerApiGame, fen: string): ExplorerGame => ({
-  uci: row.uci,
-  move: sanFromUci(fen, row.uci),
-  gameId: row.gameId,
-  playedOn: formatEncodedDate(row.playedOn),
-  whiteName: row.white ?? "?",
-  blackName: row.black ?? "?",
-  whiteRating: row.whiteRating,
-  blackRating: row.blackRating,
-  result: resultFromWinner(row.winner),
-  resultClass: resultClassFromWinner(row.winner),
-});
+): ExplorerMove =>
+  toOpeningDatabaseMove(row, fen, {
+    showPerformance: options.scope === "player",
+    playerColor: options.playerColor,
+  });
 
 const toExplorerPositionLeaders = (
   value: ExplorerApiPositionLeaders | null | undefined,
@@ -554,50 +462,14 @@ export const AnalysisPage = () => {
   const canStepBack = currentPly > 0;
   const canStepForward = currentPly < moveList.length;
   const showExplorerResults = !filtersOpen;
-  const explorerColumnCount = explorerScope === "player" ? 4 : 3;
   const playerRatingValue = clampRating(minRating);
   const activeStartDate = explorerScope === "player" ? playerStartDate : generalStartDate;
-  const explorerSummary = explorerMoves.reduce(
-    (summary, row) => ({
-      games: summary.games + row.games,
-      whiteWins: summary.whiteWins + row.whiteWins,
-      draws: summary.draws + row.draws,
-      blackWins: summary.blackWins + row.blackWins,
-    }),
-    { games: 0, whiteWins: 0, draws: 0, blackWins: 0 },
-  );
-  const explorerSummaryWhite =
-    explorerSummary.games > 0
-      ? Math.round((explorerSummary.whiteWins / explorerSummary.games) * 100)
-      : 0;
-  const explorerSummaryDraw =
-    explorerSummary.games > 0
-      ? Math.round((explorerSummary.draws / explorerSummary.games) * 100)
-      : 0;
-  const explorerSummaryBlack =
-    explorerSummary.games > 0 ? Math.max(0, 100 - explorerSummaryWhite - explorerSummaryDraw) : 0;
   const rightPanelStyle =
     explorerOpen && movePanelHeight !== null
       ? ({ "--analysis-move-panel-height": `${movePanelHeight}px` } as CSSProperties)
       : undefined;
 
-  const movePairs: Array<{
-    number: number;
-    white: string | undefined;
-    black: string | undefined;
-    whitePly: number;
-    blackPly: number;
-  }> = [];
-
-  for (let index = 0; index < moveList.length; index += 2) {
-    movePairs.push({
-      number: Math.floor(index / 2) + 1,
-      white: moveList[index],
-      black: moveList[index + 1],
-      whitePly: index + 1,
-      blackPly: index + 2,
-    });
-  }
+  const movePairs = pairPlayedMoves(moveList);
 
   const pgnText = movePairs.length
     ? `${movePairs
@@ -942,50 +814,12 @@ export const AnalysisPage = () => {
     });
   };
 
-  const renderExplorerGameSection = (title: string, games: ExplorerGame[], ariaLabel: string) =>
-    games.length > 0 ? (
-      <div className="analysisRecentGames" aria-label={ariaLabel}>
-        <span>{title}</span>
-        <ol>
-          {games.map((game) => (
-            <li key={`${ariaLabel}-${game.gameId}`}>
-              <a
-                href={buildLichessGameUrl(game.gameId, {
-                  orientation,
-                  ply: currentPly + (game.uci ? 1 : 0),
-                })}
-                target="_blank"
-                rel="noreferrer"
-                title={`${game.whiteName} vs ${game.blackName}`}
-                onPointerEnter={() => setHoveredExplorerMoveUci(game.uci || null)}
-                onPointerLeave={() => setHoveredExplorerMoveUci(null)}
-                onFocus={() => setHoveredExplorerMoveUci(game.uci || null)}
-                onBlur={() => setHoveredExplorerMoveUci(null)}
-              >
-                <span className="analysisRecentRatings">
-                  <span>{game.whiteRating ?? "-"}</span>
-                  <span>{game.blackRating ?? "-"}</span>
-                </span>
-                <span className="analysisRecentPlayers">
-                  <span>{game.whiteName}</span>
-                  <span>{game.blackName}</span>
-                </span>
-                <span className={`analysisRecentResult ${game.resultClass}`}>{game.result}</span>
-                <span className="analysisRecentDate">{game.playedOn.slice(0, 7)}</span>
-                <span className="analysisRecentMove">{game.move}</span>
-              </a>
-            </li>
-          ))}
-        </ol>
-      </div>
-    ) : null;
-
   const applyExplorerResponse = useCallback(
     (data: ExplorerApiResponse, fen: string, scope: ExplorerScope, color: "white" | "black") => {
       setExplorerMoves(
         data.moves.map((row) => toExplorerMove(row, fen, { scope, playerColor: color })),
       );
-      setRecentGames(data.recentGames.map((row) => toExplorerGame(row, fen)));
+      setRecentGames(data.recentGames.map((row) => toOpeningDatabaseGame(row, fen)));
       setPositionLeaders(
         scope === "general" && showPositionLeaders
           ? toExplorerPositionLeaders(data.positionLeaders)
@@ -1229,35 +1063,7 @@ export const AnalysisPage = () => {
               ) : null}
             </div>
           </div>
-          <ol className="analysisMoveList" aria-label="Played moves" aria-live="polite">
-            {movePairs.map((pair) => (
-              <li key={pair.number}>
-                <span className="analysisMoveNumber">{pair.number}.</span>
-                {pair.white ? (
-                  <button
-                    type="button"
-                    className={currentPly === pair.whitePly ? "active" : ""}
-                    onClick={() => navigateToPly(pair.whitePly)}
-                  >
-                    {pair.white}
-                  </button>
-                ) : (
-                  <span />
-                )}
-                {pair.black ? (
-                  <button
-                    type="button"
-                    className={currentPly === pair.blackPly ? "active" : ""}
-                    onClick={() => navigateToPly(pair.blackPly)}
-                  >
-                    {pair.black}
-                  </button>
-                ) : (
-                  <span />
-                )}
-              </li>
-            ))}
-          </ol>
+          <PlayedMoves moves={moveList} currentPly={currentPly} onNavigate={navigateToPly} />
         </div>
 
         {explorerOpen ? (
@@ -1496,162 +1302,22 @@ export const AnalysisPage = () => {
                     </ol>
                   </section>
                 ) : null}
-                <table className="analysisExplorerTable">
-                  <thead>
-                    <tr>
-                      <th>Move</th>
-                      <th>Games</th>
-                      {explorerScope === "player" ? <th>Perf</th> : null}
-                      <th>Win rate</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {explorerStatus === "loading" ? (
-                      <tr>
-                        <td colSpan={explorerColumnCount} className="analysisExplorerState">
-                          Loading database moves...
-                        </td>
-                      </tr>
-                    ) : null}
-                    {explorerStatus === "error" ? (
-                      <tr>
-                        <td colSpan={explorerColumnCount} className="analysisExplorerState">
-                          {explorerError}
-                        </td>
-                      </tr>
-                    ) : null}
-                    {explorerStatus === "ready" && explorerMoves.length === 0 ? (
-                      <tr>
-                        <td colSpan={explorerColumnCount} className="analysisExplorerState">
-                          {explorerScope === "player" && !username.trim()
-                            ? "Enter a username for player explorer."
-                            : "No database games for this position."}
-                        </td>
-                      </tr>
-                    ) : null}
-                    {explorerMoves.map((row) => (
-                      <tr
-                        key={row.uci}
-                        className="analysisExplorerRow"
-                        role="button"
-                        tabIndex={0}
-                        aria-label={`Play ${row.move}`}
-                        onPointerEnter={() => setHoveredExplorerMoveUci(row.uci)}
-                        onPointerLeave={() => setHoveredExplorerMoveUci(null)}
-                        onFocus={() => setHoveredExplorerMoveUci(row.uci)}
-                        onBlur={() => setHoveredExplorerMoveUci(null)}
-                        onClick={() => playExplorerMove(row.uci)}
-                        onKeyDown={(event) => {
-                          if (event.key !== "Enter" && event.key !== " ") return;
-                          event.preventDefault();
-                          playExplorerMove(row.uci);
-                        }}
-                      >
-                        <td>
-                          <span className="analysisExplorerMove">{row.move}</span>
-                        </td>
-                        <td>{row.gamesLabel}</td>
-                        {explorerScope === "player" ? (
-                          <td
-                            className="analysisPerformanceCell"
-                            title={
-                              row.performanceRating
-                                ? `Performance rating estimate: ${row.performanceRating}`
-                                : "Performance rating unavailable"
-                            }
-                          >
-                            {row.performanceRating ?? "-"}
-                          </td>
-                        ) : null}
-                        <td>
-                          <div
-                            className="analysisWinRateBar"
-                            title={
-                              row.avgOpponentRating
-                                ? `Average opponent rating: ${row.avgOpponentRating}`
-                                : "Average opponent rating unavailable"
-                            }
-                            style={
-                              {
-                                "--white-rate": `${row.white}%`,
-                                "--draw-rate": `${row.draw}%`,
-                                "--black-rate": `${row.black}%`,
-                              } as CSSProperties
-                            }
-                            aria-label={`White ${row.white}%, draw ${row.draw}%, black ${row.black}%, average opponent rating ${row.avgOpponentRating ?? "unavailable"}`}
-                          >
-                            <span
-                              className="white"
-                              aria-hidden={row.white < WIN_RATE_LABEL_MIN_PERCENT}
-                            >
-                              {visibleWinRateLabel(row.white)}
-                            </span>
-                            <span
-                              className="draw"
-                              aria-hidden={row.draw < WIN_RATE_LABEL_MIN_PERCENT}
-                            >
-                              {visibleWinRateLabel(row.draw)}
-                            </span>
-                            <span
-                              className="black"
-                              aria-hidden={row.black < WIN_RATE_LABEL_MIN_PERCENT}
-                            >
-                              {visibleWinRateLabel(row.black)}
-                            </span>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  {explorerStatus === "ready" && explorerMoves.length > 0 ? (
-                    <tfoot>
-                      <tr className="analysisExplorerSummaryRow">
-                        <td>
-                          <span className="analysisExplorerSummaryMove">Σ</span>
-                        </td>
-                        <td>{formatGameCount(explorerSummary.games)}</td>
-                        {explorerScope === "player" ? <td>-</td> : null}
-                        <td>
-                          <div
-                            className="analysisWinRateBar analysisSummaryWinRateBar"
-                            title={`Shown moves: ${explorerSummaryWhite}% white, ${explorerSummaryDraw}% draw, ${explorerSummaryBlack}% black`}
-                            style={
-                              {
-                                "--white-rate": `${explorerSummaryWhite}%`,
-                                "--draw-rate": `${explorerSummaryDraw}%`,
-                                "--black-rate": `${explorerSummaryBlack}%`,
-                              } as CSSProperties
-                            }
-                            aria-label={`Shown moves: white ${explorerSummaryWhite}%, draw ${explorerSummaryDraw}%, black ${explorerSummaryBlack}%`}
-                          >
-                            <span
-                              className="white"
-                              aria-hidden={explorerSummaryWhite < WIN_RATE_LABEL_MIN_PERCENT}
-                            >
-                              {visibleWinRateLabel(explorerSummaryWhite)}
-                            </span>
-                            <span
-                              className="draw"
-                              aria-hidden={explorerSummaryDraw < WIN_RATE_LABEL_MIN_PERCENT}
-                            >
-                              {visibleWinRateLabel(explorerSummaryDraw)}
-                            </span>
-                            <span
-                              className="black"
-                              aria-hidden={explorerSummaryBlack < WIN_RATE_LABEL_MIN_PERCENT}
-                            >
-                              {visibleWinRateLabel(explorerSummaryBlack)}
-                            </span>
-                          </div>
-                        </td>
-                      </tr>
-                    </tfoot>
-                  ) : null}
-                </table>
-
-                {explorerStatus === "ready"
-                  ? renderExplorerGameSection("Recent games", recentGames, "Recent games")
-                  : null}
+                <OpeningDatabaseDisplay
+                  moves={explorerMoves}
+                  recentGames={recentGames}
+                  status={explorerStatus}
+                  error={explorerError}
+                  emptyMessage={
+                    explorerScope === "player" && !username.trim()
+                      ? "Enter a username for player explorer."
+                      : "No database games for this position."
+                  }
+                  showPerformance={explorerScope === "player"}
+                  orientation={orientation}
+                  currentPly={currentPly}
+                  onPlayMove={playExplorerMove}
+                  onHoverMove={setHoveredExplorerMoveUci}
+                />
               </div>
             ) : null}
           </section>
@@ -1668,46 +1334,14 @@ export const AnalysisPage = () => {
           >
             <FontAwesomeIcon icon={faBookOpen} />
           </button>
-          <button
-            type="button"
-            className="analysisToolbarButton"
-            aria-label="Go to start"
-            title="Go to start"
-            disabled={!canStepBack}
-            onClick={() => requestNavigation("start")}
-          >
-            <FontAwesomeIcon icon={faBackwardStep} />
-          </button>
-          <button
-            type="button"
-            className="analysisToolbarButton"
-            aria-label="Previous move"
-            title="Previous move"
-            disabled={!canStepBack}
-            onClick={() => requestNavigation("previous")}
-          >
-            <FontAwesomeIcon icon={faBackward} />
-          </button>
-          <button
-            type="button"
-            className="analysisToolbarButton"
-            aria-label="Next move"
-            title="Next move"
-            disabled={!canStepForward}
-            onClick={() => requestNavigation("next")}
-          >
-            <FontAwesomeIcon icon={faForward} />
-          </button>
-          <button
-            type="button"
-            className="analysisToolbarButton"
-            aria-label="Go to latest move"
-            title="Go to latest move"
-            disabled={!canStepForward}
-            onClick={() => requestNavigation("end")}
-          >
-            <FontAwesomeIcon icon={faForwardStep} />
-          </button>
+          <PlaybackButtons
+            buttonClassName="analysisToolbarButton"
+            canStart={canStepBack}
+            canPrevious={canStepBack}
+            canNext={canStepForward}
+            canEnd={canStepForward}
+            onNavigate={requestNavigation}
+          />
         </div>
       </aside>
 

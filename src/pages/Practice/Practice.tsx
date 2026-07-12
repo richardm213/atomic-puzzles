@@ -3,12 +3,8 @@ import "./Practice.css";
 
 import {
   faArrowsRotate,
-  faBackward,
-  faBackwardStep,
   faBookOpen,
   faCheck,
-  faForward,
-  faForwardStep,
   faGear,
   faShuffle,
   faXmark,
@@ -18,17 +14,23 @@ import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Chessboard } from "../../components/Chessboard/Chessboard";
+import {
+  OpeningDatabaseDisplay,
+  type OpeningDatabaseGame,
+  type OpeningDatabaseMove,
+} from "../../components/OpeningDatabaseDisplay/OpeningDatabaseDisplay";
+import { PlaybackButtons } from "../../components/PlaybackButtons/PlaybackButtons";
+import { PlayedMoves } from "../../components/PlayedMoves/PlayedMoves";
 import { Seo } from "../../components/Seo/Seo";
 import { UsernamePickerModal } from "../../components/UsernamePickerModal/UsernamePickerModal";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
 import { movePrefix } from "../../lib/puzzles/solutionPgn";
 import type { ChessboardState, SolutionNavigation } from "../../types/chessboard";
 import { appAssetPath } from "../../utils/appAssetPath";
-import { sanFromUci } from "../../utils/chessNotation";
 import { formatGameCount } from "../../utils/formatters";
 import { lichessAtomicAnalysisUrl } from "../../utils/lichess";
+import { toOpeningDatabaseGame, toOpeningDatabaseMove } from "../../utils/openingDatabaseDisplay";
 import {
-  type ExplorerApiMove,
   type ExplorerApiResponse,
   fetchExplorerApiResponse,
   mergeExplorerApiResponses,
@@ -46,11 +48,9 @@ const PRACTICE_AUTOMOVE_MIN_THINK_MS = 520;
 const PLAYER_MIN_RATING = 1700;
 const PRACTICE_SETTINGS_STORAGE_KEY = "atomic-puzzles.practice.settings";
 const MAX_PRACTICE_PLAYERS = 8;
+type PracticeMove = OpeningDatabaseMove;
 
-type PracticeMove = ExplorerApiMove & {
-  san: string;
-  share: number;
-};
+type PracticeGame = OpeningDatabaseGame;
 
 type PracticeStatus = "idle" | "loading" | "ready" | "error";
 type PracticeSide = "white" | "black";
@@ -312,16 +312,18 @@ export const PracticePage = () => {
     initialSettings.continueWithGeneralDb,
   );
   const [forceAutoMove, setForceAutoMove] = useState(false);
-  const [databaseExhausted, setDatabaseExhausted] = useState(false);
+  const [exhaustedFen, setExhaustedFen] = useState<string | null>(null);
   const [usingGeneralFallback, setUsingGeneralFallback] = useState(false);
-  const [dbMovesOpen, setDbMovesOpen] = useState(true);
+  const [movesOpen, setMovesOpen] = useState(false);
   const [practiceMoves, setPracticeMoves] = useState<PracticeMove[]>([]);
+  const [recentGames, setRecentGames] = useState<PracticeGame[]>([]);
   const [status, setStatus] = useState<PracticeStatus>("idle");
   const [error, setError] = useState("");
   const [hoveredMoveUci, setHoveredMoveUci] = useState<string | null>(null);
   const [copyPgnLabel, setCopyPgnLabel] = useState("Copy PGN");
 
   const currentFen = boardState?.fen || STARTING_FEN;
+  const databaseExhausted = exhaustedFen === currentFen;
   const currentLichessAnalysisUrl = lichessAtomicAnalysisUrl(currentFen);
   const currentTurn = boardState?.turn || "white";
   const opponentSide = oppositeSide(side);
@@ -438,6 +440,7 @@ export const PracticePage = () => {
   useEffect(() => {
     if (!canUsePlayerSource) {
       setPracticeMoves([]);
+      setRecentGames([]);
       setStatus("ready");
       setError("");
       setUsingGeneralFallback(false);
@@ -455,6 +458,7 @@ export const PracticePage = () => {
       requestTimedOut = true;
       if (!requestCancelled) {
         setPracticeMoves([]);
+        setRecentGames([]);
         setStatus("error");
         setError("Opening explorer took too long to respond.");
       }
@@ -463,6 +467,7 @@ export const PracticePage = () => {
     setStatus("loading");
     setError("");
     setPracticeMoves([]);
+    setRecentGames([]);
     setUsingGeneralFallback(false);
 
     fetchPracticeExplorerResponse({
@@ -475,14 +480,15 @@ export const PracticePage = () => {
       .then(({ response: data, usedGeneralFallback }) => {
         if (requestCancelled || requestTimedOut || requestId !== requestIdRef.current) return;
 
-        const games = data.moves.reduce((sum, move) => sum + Math.max(0, move.games), 0);
-        const nextPracticeMoves = data.moves.map((move) => ({
-          ...move,
-          san: sanFromUci(currentFen, move.uci),
-          share: games > 0 ? (move.games / games) * 100 : 0,
-        }));
+        const nextPracticeMoves = data.moves.map((move) =>
+          toOpeningDatabaseMove(move, currentFen, {
+            showPerformance: opponentSource === "player",
+            playerColor: opponentSide,
+          }),
+        );
 
         setPracticeMoves(nextPracticeMoves);
+        setRecentGames(data.recentGames.map((game) => toOpeningDatabaseGame(game, currentFen)));
         setUsingGeneralFallback(usedGeneralFallback);
         setStatus("ready");
 
@@ -497,7 +503,7 @@ export const PracticePage = () => {
             opponentMode,
           );
           if (!autoMove) {
-            setDatabaseExhausted(true);
+            setExhaustedFen(currentFen);
             setForceAutoMove(false);
             return;
           }
@@ -522,6 +528,7 @@ export const PracticePage = () => {
       .catch((fetchError) => {
         if (requestCancelled || requestTimedOut) return;
         setPracticeMoves([]);
+        setRecentGames([]);
         setUsingGeneralFallback(false);
         setStatus("error");
         setError(fetchError instanceof Error ? fetchError.message : "Opening explorer failed");
@@ -574,7 +581,7 @@ export const PracticePage = () => {
       lastAutoFenRef.current = "";
       setPendingAutoMove(null);
       setForceAutoMove(false);
-      setDatabaseExhausted(false);
+      setExhaustedFen(null);
       setUsingGeneralFallback(false);
       setHoveredMoveUci(null);
       recordTriedMove(currentFen, uci);
@@ -588,9 +595,21 @@ export const PracticePage = () => {
       lastAutoFenRef.current = "";
       setPendingAutoMove(null);
       setForceAutoMove(false);
-      setDatabaseExhausted(false);
+      setExhaustedFen(null);
       setUsingGeneralFallback(false);
       queueNavigation({ command });
+    },
+    [queueNavigation],
+  );
+
+  const navigateToPly = useCallback(
+    (plyIndex: number): void => {
+      lastAutoFenRef.current = "";
+      setPendingAutoMove(null);
+      setForceAutoMove(false);
+      setExhaustedFen(null);
+      setUsingGeneralFallback(false);
+      queueNavigation({ useHistory: true, plyIndex });
     },
     [queueNavigation],
   );
@@ -606,7 +625,7 @@ export const PracticePage = () => {
     lastAutoFenRef.current = "";
     setPendingAutoMove(null);
     setForceAutoMove(false);
-    setDatabaseExhausted(false);
+    setExhaustedFen(null);
     setUsingGeneralFallback(false);
     clearTriedMoves();
     queueNavigation({ resetFen: STARTING_FEN });
@@ -616,7 +635,7 @@ export const PracticePage = () => {
     lastAutoFenRef.current = "";
     setPendingAutoMove(null);
     setForceAutoMove(false);
-    setDatabaseExhausted(false);
+    setExhaustedFen(null);
     setUsingGeneralFallback(false);
     clearTriedMoves();
     setSide((currentSide) => oppositeSide(currentSide));
@@ -647,7 +666,7 @@ export const PracticePage = () => {
           : [trimmedUsername],
       );
       setOpponentSource("player");
-      setDatabaseExhausted(false);
+      setExhaustedFen(null);
       setUsingGeneralFallback(false);
       setPendingAutoMove(null);
       setForceAutoMove(false);
@@ -678,7 +697,7 @@ export const PracticePage = () => {
   const clearSelectedPlayers = (): void => {
     setOpponentUsernames([]);
     setOpponentSource("player");
-    setDatabaseExhausted(false);
+    setExhaustedFen(null);
     setUsingGeneralFallback(false);
     setPendingAutoMove(null);
     setForceAutoMove(false);
@@ -693,7 +712,7 @@ export const PracticePage = () => {
           (username) => username.toLowerCase() !== usernameToRemove.toLowerCase(),
         ),
       );
-      setDatabaseExhausted(false);
+      setExhaustedFen(null);
       setUsingGeneralFallback(false);
       setPendingAutoMove(null);
       setForceAutoMove(false);
@@ -705,7 +724,7 @@ export const PracticePage = () => {
 
   const updateAllowMultiplePlayers = (allowMultiple: boolean): void => {
     setAllowMultiplePlayers(allowMultiple);
-    setDatabaseExhausted(false);
+    setExhaustedFen(null);
     setUsingGeneralFallback(false);
     setPendingAutoMove(null);
     setForceAutoMove(false);
@@ -719,7 +738,7 @@ export const PracticePage = () => {
 
   const showGeneralOpponent = (): void => {
     setOpponentSource("general");
-    setDatabaseExhausted(false);
+    setExhaustedFen(null);
     setUsingGeneralFallback(false);
     setPendingAutoMove(null);
     setForceAutoMove(false);
@@ -729,7 +748,7 @@ export const PracticePage = () => {
 
   const showPlayerOpponent = (): void => {
     setOpponentSource("player");
-    setDatabaseExhausted(false);
+    setExhaustedFen(null);
     setUsingGeneralFallback(false);
     setPendingAutoMove(null);
     setForceAutoMove(false);
@@ -744,7 +763,7 @@ export const PracticePage = () => {
   const requestAlternateAutoMove = useCallback((): void => {
     lastAutoFenRef.current = "";
     setPendingAutoMove(null);
-    setDatabaseExhausted(false);
+    setExhaustedFen(null);
     setUsingGeneralFallback(false);
     setForceAutoMove(true);
 
@@ -789,7 +808,7 @@ export const PracticePage = () => {
       if (isTypingTarget) return;
 
       if (isMoveShortcut) {
-        if (!dbMovesOpen || status !== "ready") return;
+        if (movesOpen || settingsOpen || status !== "ready") return;
 
         const move = practiceMoves[shortcutIndex];
         if (!move) return;
@@ -801,7 +820,8 @@ export const PracticePage = () => {
 
       event.preventDefault();
       if (key === "e") {
-        setDbMovesOpen((open) => !open);
+        setMovesOpen((open) => !open);
+        setSettingsOpen(false);
       } else if (key === "a") {
         lastAutoFenRef.current = "";
         setAutomove((current) => !current);
@@ -815,11 +835,12 @@ export const PracticePage = () => {
     window.addEventListener("keydown", handlePracticeShortcut, { capture: true });
     return () => window.removeEventListener("keydown", handlePracticeShortcut, { capture: true });
   }, [
-    dbMovesOpen,
     flipPracticeSide,
+    movesOpen,
     playPracticeMove,
     practiceMoves,
     requestAlternateAutoMove,
+    settingsOpen,
     status,
     usernamePickerOpen,
   ]);
@@ -861,7 +882,7 @@ export const PracticePage = () => {
       />
 
       <aside
-        className={`analysisPanel practicePanel ${dbMovesOpen ? "" : "dbMovesCollapsed"}`}
+        className={`analysisPanel practicePanel ${settingsOpen ? "dbMovesCollapsed" : ""}`}
         aria-label="Practice controls"
       >
         <div className="practiceHeader">
@@ -943,12 +964,26 @@ export const PracticePage = () => {
             </button>
           </div>
 
+          <label className="practiceCheckbox practiceAutomoveToggle">
+            <span>Automove</span>
+            <input
+              type="checkbox"
+              checked={automove}
+              onChange={(event) => {
+                lastAutoFenRef.current = "";
+                setAutomove(event.target.checked);
+              }}
+            />
+          </label>
+
           {settingsOpen ? (
             <div className="analysisFilterPanel practiceSettingsPanel" id="practice-settings-panel">
               {opponentSource === "player" ? (
                 <div className="analysisPlayerSettings practicePlayerSettings">
                   <span>{allowMultiplePlayers ? "Players" : "Player"}</span>
-                  <div className="practicePlayerChooserRow">
+                  <div
+                    className={`practicePlayerChooserRow ${allowMultiplePlayers ? "multiple" : "single"}`}
+                  >
                     <button
                       type="button"
                       className="analysisPlayerNameButton"
@@ -958,24 +993,22 @@ export const PracticePage = () => {
                       {canChoosePracticePlayer
                         ? allowMultiplePlayers
                           ? "Add player"
-                          : opponentUsernames.length
-                            ? "Change player"
-                            : "Choose player"
+                          : opponentUsernames[0] || "Choose player"
                         : "Player limit reached"}
                     </button>
-                    {opponentUsernames.length ? (
+                    {allowMultiplePlayers && opponentUsernames.length ? (
                       <button
                         type="button"
                         className="analysisOpponentClearButton"
-                        aria-label="Clear players"
-                        title="Clear players"
+                        aria-label={allowMultiplePlayers ? "Clear players" : "Clear player"}
+                        title={allowMultiplePlayers ? "Clear players" : "Clear player"}
                         onClick={clearSelectedPlayers}
                       >
                         <FontAwesomeIcon icon={faXmark} />
                       </button>
                     ) : null}
                   </div>
-                  {opponentUsernames.length ? (
+                  {allowMultiplePlayers && opponentUsernames.length ? (
                     <div className="practicePlayerChipList" aria-label="Selected players">
                       {opponentUsernames.map((opponentUsername) => (
                         <span className="practicePlayerChip" key={opponentUsername}>
@@ -1026,18 +1059,6 @@ export const PracticePage = () => {
               </div>
 
               <label className="practiceCheckbox">
-                <span>Automove</span>
-                <input
-                  type="checkbox"
-                  checked={automove}
-                  onChange={(event) => {
-                    lastAutoFenRef.current = "";
-                    setAutomove(event.target.checked);
-                  }}
-                />
-              </label>
-
-              <label className="practiceCheckbox">
                 <span>Allow multiple players</span>
                 <input
                   type="checkbox"
@@ -1053,7 +1074,7 @@ export const PracticePage = () => {
                   checked={continueWithGeneralDb}
                   onChange={(event) => {
                     setContinueWithGeneralDb(event.target.checked);
-                    setDatabaseExhausted(false);
+                    setExhaustedFen(null);
                     setUsingGeneralFallback(false);
                     setPendingAutoMove(null);
                     setForceAutoMove(false);
@@ -1066,71 +1087,41 @@ export const PracticePage = () => {
           ) : null}
         </section>
 
-        {dbMovesOpen ? (
+        {movesOpen && !settingsOpen ? (
+          <section className="analysisMovePanel practicePlayedMovesPanel" aria-label="Played moves">
+            <div className="analysisSectionTitle">
+              <span>Moves</span>
+              <small>
+                {currentPly}/{moveList.length}
+              </small>
+            </div>
+            <PlayedMoves moves={moveList} currentPly={currentPly} onNavigate={navigateToPly} />
+          </section>
+        ) : null}
+
+        {!movesOpen && !settingsOpen ? (
           <section className="practiceMovesPanel" aria-label="Database moves">
             <div className="analysisSectionTitle">
               <span>Database moves</span>
               <small>{opponentSide}</small>
             </div>
             <div className="practiceMoveTableWrap">
-              <table className="practiceMoveTable">
-                <thead>
-                  <tr>
-                    <th>Move</th>
-                    <th>Games</th>
-                    <th>Share</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {status === "loading" ? (
-                    <tr>
-                      <td colSpan={3}>Loading...</td>
-                    </tr>
-                  ) : null}
-                  {status === "error" ? (
-                    <tr>
-                      <td colSpan={3}>{error}</td>
-                    </tr>
-                  ) : null}
-                  {status === "ready" && practiceMoves.length === 0 ? (
-                    <tr>
-                      <td colSpan={3}>
-                        {opponentSource === "player" && opponentUsernames.length === 0
-                          ? "Choose a player or use the general database."
-                          : "No database continuation."}
-                      </td>
-                    </tr>
-                  ) : null}
-                  {practiceMoves.map((move) => (
-                    <tr
-                      key={move.uci}
-                      role="button"
-                      tabIndex={0}
-                      onPointerEnter={() => setHoveredMoveUci(move.uci)}
-                      onPointerLeave={() => setHoveredMoveUci(null)}
-                      onFocus={() => setHoveredMoveUci(move.uci)}
-                      onBlur={() => setHoveredMoveUci(null)}
-                      onClick={() => playPracticeMove(move.uci)}
-                      onKeyDown={(event) => {
-                        if (event.key !== "Enter" && event.key !== " ") return;
-                        event.preventDefault();
-                        playPracticeMove(move.uci);
-                      }}
-                    >
-                      <td>{move.san}</td>
-                      <td>{formatGameCount(move.games)}</td>
-                      <td>
-                        <span
-                          className="practiceShareBar"
-                          style={{ "--practice-share": `${move.share}%` } as CSSProperties}
-                        >
-                          <span />
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <OpeningDatabaseDisplay
+                moves={practiceMoves}
+                recentGames={recentGames}
+                status={status}
+                error={error}
+                emptyMessage={
+                  opponentSource === "player" && opponentUsernames.length === 0
+                    ? "Choose a player or use the general database."
+                    : "No database continuation."
+                }
+                showPerformance={opponentSource === "player"}
+                orientation={side}
+                currentPly={currentPly}
+                onPlayMove={playPracticeMove}
+                onHoverMove={setHoveredMoveUci}
+              />
             </div>
           </section>
         ) : null}
@@ -1145,46 +1136,14 @@ export const PracticePage = () => {
           >
             <FontAwesomeIcon icon={faArrowsRotate} />
           </button>
-          <button
-            type="button"
-            className="analysisToolbarButton"
-            aria-label="Go to start"
-            title="Go to start"
-            disabled={!canStepBack}
-            onClick={() => requestNavigation("start")}
-          >
-            <FontAwesomeIcon icon={faBackwardStep} />
-          </button>
-          <button
-            type="button"
-            className="analysisToolbarButton"
-            aria-label="Previous move"
-            title="Previous move"
-            disabled={!canStepBack}
-            onClick={() => requestNavigation("previous")}
-          >
-            <FontAwesomeIcon icon={faBackward} />
-          </button>
-          <button
-            type="button"
-            className="analysisToolbarButton"
-            aria-label="Next move"
-            title="Next move"
-            disabled={!canStepForward}
-            onClick={() => requestNavigation("next")}
-          >
-            <FontAwesomeIcon icon={faForward} />
-          </button>
-          <button
-            type="button"
-            className="analysisToolbarButton"
-            aria-label="Go to latest move"
-            title="Go to latest move"
-            disabled={!canStepForward}
-            onClick={() => requestNavigation("end")}
-          >
-            <FontAwesomeIcon icon={faForwardStep} />
-          </button>
+          <PlaybackButtons
+            buttonClassName="analysisToolbarButton"
+            canStart={canStepBack}
+            canPrevious={canStepBack}
+            canNext={canStepForward}
+            canEnd={canStepForward}
+            onNavigate={requestNavigation}
+          />
         </div>
       </aside>
 
