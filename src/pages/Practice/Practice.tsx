@@ -289,7 +289,6 @@ export const PracticePage = () => {
   const boardPanelRef = useRef<HTMLDivElement | null>(null);
   const requestIdRef = useRef(0);
   const lastAutoFenRef = useRef("");
-  const previousBoardPlyRef = useRef(0);
   const navigationRef = useRef<SolutionNavigation | null>(null);
   const triedMoveUcisByFenRef = useRef<Map<string, Set<string>>>(new Map());
   const [boardState, setBoardState] = useState<ChessboardState | null>(null);
@@ -621,9 +620,6 @@ export const PracticePage = () => {
   );
 
   const handleBoardStateChange = useCallback((nextState: ChessboardState): void => {
-    const nextPly = nextState.lineIndex ?? 0;
-    if (nextPly < previousBoardPlyRef.current) setAutomove(false);
-    previousBoardPlyRef.current = nextPly;
     setBoardState(nextState);
   }, []);
 
@@ -660,7 +656,6 @@ export const PracticePage = () => {
 
   const resetBoardForOpponent = useCallback((): void => {
     lastAutoFenRef.current = "";
-    previousBoardPlyRef.current = 0;
     setPendingAutoMove(null);
     setForceAutoMove(false);
     setExhaustedFen(null);

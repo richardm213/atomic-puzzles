@@ -4,8 +4,10 @@ import {
   faBars,
   faChevronDown,
   faMagnifyingGlass,
+  faMoon,
   faRightFromBracket,
   faRightToBracket,
+  faSun,
   faUser,
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
@@ -855,16 +857,26 @@ export const TopNav = () => {
                   <button
                     type="button"
                     className={theme === "dark" ? "active" : ""}
+                    aria-pressed={theme === "dark"}
                     onClick={() => setTheme("dark")}
                   >
-                    Dark
+                    <span className="navThemeIcon navThemeIconDark" aria-hidden="true">
+                      <FontAwesomeIcon icon={faMoon} />
+                    </span>
+                    <span>Dark</span>
+                    <span className="navThemeStatus" aria-hidden="true" />
                   </button>
                   <button
                     type="button"
                     className={theme === "light" ? "active" : ""}
+                    aria-pressed={theme === "light"}
                     onClick={() => setTheme("light")}
                   >
-                    Light
+                    <span className="navThemeIcon navThemeIconLight" aria-hidden="true">
+                      <FontAwesomeIcon icon={faSun} />
+                    </span>
+                    <span>Light</span>
+                    <span className="navThemeStatus" aria-hidden="true" />
                   </button>
                 </div>
               </div>
