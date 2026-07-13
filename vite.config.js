@@ -410,6 +410,12 @@ const openingExplorerPlugin = () => {
 };
 
 export default defineConfig({
+  server: {
+    headers: {
+      "Cross-Origin-Opener-Policy": "same-origin",
+      "Cross-Origin-Embedder-Policy": "credentialless",
+    },
+  },
   base: "/",
   build: {
     rollupOptions: {

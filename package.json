@@ -26,6 +26,7 @@
     "@supabase/supabase-js": "^2.100.1",
     "@tanstack/react-router": "^1.168.3",
     "chessops": "^0.15.0",
+    "fairy-stockfish-nnue.wasm": "^1.1.11",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

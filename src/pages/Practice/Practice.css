@@ -15,7 +15,15 @@
 }
 
 .practicePanel.dbMovesCollapsed {
-  grid-template-rows: auto auto auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+}
+
+.practicePanel.clockDisabled {
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+}
+
+.practicePanel.dbMovesCollapsed.clockDisabled {
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
 }
 
 .practiceHeader {
@@ -286,7 +294,21 @@
 }
 
 .practiceSettingsPanel {
+  min-height: 0;
   padding: 0 2px 2px;
+}
+
+.practicePanel.dbMovesCollapsed .practiceSettings {
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.practicePanel.dbMovesCollapsed .practiceSettingsPanel {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding-right: 6px;
 }
 
 .practiceExplorerPlayerLabel {
@@ -325,40 +347,73 @@
 }
 
 .practiceTimeControl {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  justify-self: start;
+  display: inline-grid;
+  grid-template-columns: 76px 18px 76px;
   align-items: end;
-  gap: 8px;
+  gap: 7px;
 }
 
 .practiceTimeControl > span {
-  padding-bottom: 8px;
-  color: var(--color-subtle);
-  font-weight: 900;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  color: color-mix(in srgb, var(--color-subtle) 82%, transparent);
+  font-size: 16px;
+  font-weight: 850;
 }
 
 .practiceTimeControl label {
   display: grid;
-  gap: 4px;
+  gap: 5px;
 }
 
-.practiceTimeControl label span,
-.practiceTimeControlHint {
+.practiceTimeControl label span {
   color: var(--color-subtle);
-  font-size: 10px;
-  font-weight: 750;
+  font-size: 9px;
+  font-weight: 780;
+  letter-spacing: 0.06em;
+  text-align: center;
+  text-transform: uppercase;
 }
 
 .practiceTimeControl input {
-  width: 100%;
+  width: 76px;
+  height: 40px;
   min-width: 0;
-  padding: 7px 8px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-ui);
-  background: var(--color-panel-strong);
+  padding: 5px 10px;
+  border: 1px solid color-mix(in srgb, var(--color-border-strong) 78%, transparent);
+  border-radius: calc(var(--radius-ui) + 2px);
+  appearance: textfield;
+  background: color-mix(in srgb, var(--color-panel-deep) 56%, var(--color-panel-strong));
   color: var(--color-heading);
   font: inherit;
+  font-size: 16px;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
+  text-align: center;
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    background 140ms ease;
+}
+
+.practiceTimeControl input::-webkit-inner-spin-button,
+.practiceTimeControl input::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+.practiceTimeControl input:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 42%, var(--color-border-strong));
+  background: color-mix(in srgb, var(--color-panel-deep) 42%, var(--color-panel-strong));
+}
+
+.practiceTimeControl input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  background: var(--color-panel-deep);
+  box-shadow: 0 0 0 3px var(--color-primary-ring);
 }
 
 .practiceSegmented,
@@ -550,6 +605,12 @@
   color: var(--color-heading);
 }
 
+.practiceEngineToggle.active {
+  border-color: color-mix(in srgb, var(--color-primary) 62%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 24%, var(--color-panel-strong));
+  color: var(--color-primary-pale);
+}
+
 .practiceAlternateMoveButton:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -719,6 +780,22 @@
     height: auto;
     max-height: none;
     grid-template-rows: none;
+  }
+
+  .practicePanel.dbMovesCollapsed,
+  .practicePanel.clockDisabled,
+  .practicePanel.dbMovesCollapsed.clockDisabled {
+    grid-template-rows: none;
+  }
+
+  .practicePanel.dbMovesCollapsed .practiceSettings {
+    grid-template-rows: none;
+    overflow: visible;
+  }
+
+  .practicePanel.dbMovesCollapsed .practiceSettingsPanel {
+    overflow-y: visible;
+    padding-right: 2px;
   }
 }
 
