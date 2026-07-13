@@ -55,12 +55,17 @@ export const chooseEngineCandidate = (
   if (!bestCandidate) return null;
 
   if (bestCandidate.scoreType === "mate") {
+    const availableCandidates = rankedCandidates.filter(
+      (candidate) => !excludedMoves.has(candidate.move),
+    );
+
+    if (rankedCandidates.every((candidate) => candidate.scoreType === "mate")) {
+      return availableCandidates[0] ?? null;
+    }
+
     return (
-      rankedCandidates.find(
-        (candidate) =>
-          candidate.scoreType === "mate" &&
-          candidate.score > 0 &&
-          !excludedMoves.has(candidate.move),
+      availableCandidates.find(
+        (candidate) => candidate.scoreType === "mate" && candidate.score > 0,
       ) ?? null
     );
   }

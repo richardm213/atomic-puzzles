@@ -76,4 +76,15 @@ describe("chooseEngineCandidate", () => {
     expect(chooseEngineCandidate(candidates, () => 0.99, new Set(["move1"]))?.move).toBe("move2");
     expect(chooseEngineCandidate(candidates, () => 0.99, new Set(["move1", "move2"]))).toBeNull();
   });
+
+  it("still plays an available move when every top move gets mated", () => {
+    const candidates = [
+      candidate(1, -7, "mate"),
+      candidate(2, -5, "mate"),
+      candidate(3, -3, "mate"),
+    ];
+
+    expect(chooseEngineCandidate(candidates, () => 0.99)?.move).toBe("move1");
+    expect(chooseEngineCandidate(candidates, () => 0.99, new Set(["move1"]))?.move).toBe("move2");
+  });
 });

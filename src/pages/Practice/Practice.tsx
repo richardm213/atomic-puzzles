@@ -257,6 +257,15 @@ const fetchPracticeExplorerResponse = async ({
     };
   }
 
+  // Start the optional fallback alongside the player lookup. Positions outside a
+  // player's repertoire otherwise pay for two full network/database round trips.
+  const generalFallbackPromise = continueWithGeneralDb
+    ? fetchGeneralPracticeExplorerResponse({ fen, opponentSide }).then(
+        (response) => ({ response, error: null }),
+        (error: unknown) => ({ response: null, error }),
+      )
+    : null;
+
   const playerResponse = await Promise.all(
     opponentUsernames.map((opponentUsername) =>
       fetchExplorerApiResponse(
@@ -267,8 +276,11 @@ const fetchPracticeExplorerResponse = async ({
   ).then(mergeExplorerApiResponses);
 
   if (continueWithGeneralDb && playerResponse.moves.length === 0) {
+    const generalFallback = await generalFallbackPromise;
+    if (!generalFallback?.response) throw generalFallback?.error;
+
     return {
-      response: await fetchGeneralPracticeExplorerResponse({ fen, opponentSide }),
+      response: generalFallback.response,
       source: "general",
       usedGeneralFallback: true,
     };
