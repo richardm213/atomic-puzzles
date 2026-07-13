@@ -371,8 +371,7 @@ export const PracticePage = () => {
 
   const currentFen = boardState?.fen || STARTING_FEN;
   const databaseExhausted = exhaustedFen === currentFen;
-  const databaseFirstMode = opponentSource === "player";
-  const useEngineForOpponentMove = databaseExhausted || (engineEnabled && !databaseFirstMode);
+  const useEngineForOpponentMove = engineEnabled || databaseExhausted;
   const currentLichessAnalysisUrl = lichessAtomicAnalysisUrl(currentFen);
   const currentTurn = boardState?.turn || "white";
   const gameFinished = Boolean(boardState?.winner);
@@ -615,7 +614,7 @@ export const PracticePage = () => {
         setStatus("ready");
 
         if (
-          (!engineEnabled || databaseFirstMode) &&
+          !engineEnabled &&
           !gamePaused &&
           currentTurn === opponentSide &&
           !databaseExhausted &&
@@ -670,7 +669,6 @@ export const PracticePage = () => {
     currentFen,
     currentTurn,
     databaseExhausted,
-    databaseFirstMode,
     engineEnabled,
     gamePaused,
     getUntriedMoves,

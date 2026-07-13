@@ -31,7 +31,7 @@ let scriptPromise: Promise<void> | null = null;
 const candidatesByFen = new Map<string, EngineCandidate[]>();
 const MIN_THINK_TIME_MS = 500;
 const MAX_THINK_TIME_MS = 3_000;
-const ENGINE_RESPONSE_TIMEOUT_MS = 8_000;
+const ENGINE_RESPONSE_TIMEOUT_MS = 15_000;
 const ENGINE_SEARCH_TIMEOUT_MS = MAX_THINK_TIME_MS + 2_000;
 const MAX_CANDIDATE_SCORE_GAP_CP = 150;
 const MULTIPV_COUNT = 5;
@@ -237,29 +237,43 @@ export const findFairyStockfishMove = async (
     return chooseEngineCandidate(cachedCandidates, Math.random, excludedMoves)?.move ?? null;
   }
 
-  const engine = await getEngine();
-  if (signal?.aborted) throw new DOMException("Engine search cancelled", "AbortError");
+  let lastFailure: unknown = new Error("Fairy-Stockfish failed");
 
-  try {
-    const engineReady = waitForLine(engine, (line) => line === "readyok", signal);
-    engine.postMessage("isready");
-    await engineReady;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    let engine: StockfishModule | null = null;
 
-    engine.postMessage("ucinewgame");
-    engine.postMessage(`position fen ${fen}`);
-    const bestMoveResult = waitForBestMove(engine, signal);
-    engine.postMessage(`go movetime ${randomThinkTimeMs()}`);
-    const { bestMoveLine, candidates } = await bestMoveResult;
-    const fallbackMove = bestMoveLine.match(/^bestmove\s+(\S+)/)?.[1] ?? "";
-    candidatesByFen.set(fen, candidates);
-    const move =
-      chooseEngineCandidate(candidates, Math.random, excludedMoves)?.move ?? fallbackMove;
-    return move && move !== "(none)" ? move : null;
-  } catch (error) {
-    if (!(error instanceof DOMException && error.name === "AbortError")) {
-      engine.postMessage("quit");
+    try {
+      engine = await getEngine();
+      if (signal?.aborted) throw new DOMException("Engine search cancelled", "AbortError");
+
+      const engineReady = waitForLine(engine, (line) => line === "readyok", signal);
+      engine.postMessage("isready");
+      await engineReady;
+
+      engine.postMessage("ucinewgame");
+      engine.postMessage(`position fen ${fen}`);
+      const bestMoveResult = waitForBestMove(engine, signal);
+      engine.postMessage(`go movetime ${randomThinkTimeMs()}`);
+      const { bestMoveLine, candidates } = await bestMoveResult;
+      const fallbackMove = bestMoveLine.match(/^bestmove\s+(\S+)/)?.[1] ?? "";
+      candidatesByFen.set(fen, candidates);
+      const move =
+        chooseEngineCandidate(candidates, Math.random, excludedMoves)?.move ?? fallbackMove;
+      return move && move !== "(none)" ? move : null;
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") throw error;
+
+      engine?.postMessage("quit");
       enginePromise = null;
+      lastFailure = error;
+
+      const recoverable =
+        error instanceof Error &&
+        (error.message === "Fairy-Stockfish stopped responding" ||
+          error.message === "Fairy-Stockfish search took too long");
+      if (!recoverable || attempt > 0) throw error;
     }
-    throw error;
   }
+
+  throw lastFailure;
 };
