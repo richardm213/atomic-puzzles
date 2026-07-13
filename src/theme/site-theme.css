@@ -59,22 +59,24 @@
   --shadow-strong: 0 28px 80px rgba(0, 0, 0, 0.42);
   --page-shell-min-height: calc(100vh - 58px);
   --page-shell-min-height-dynamic: calc(100svh - 58px);
-  --page-shell-padding:
-    max(var(--page-gutter), env(safe-area-inset-top))
+  --page-shell-padding: max(var(--page-gutter), env(safe-area-inset-top))
     max(var(--page-gutter), env(safe-area-inset-right))
     max(calc(var(--page-gutter) + 2px), env(safe-area-inset-bottom))
     max(var(--page-gutter), env(safe-area-inset-left));
   --page-background:
-    radial-gradient(circle at 14% 10%, rgba(29, 78, 216, 0.18), transparent 28%),
-    radial-gradient(circle at 82% 4%, rgba(14, 116, 144, 0.16), transparent 25%),
+    radial-gradient(ellipse 72% 42% at 14% 10%, rgba(29, 78, 216, 0.18), transparent 100%),
+    radial-gradient(ellipse 68% 40% at 82% 4%, rgba(14, 116, 144, 0.16), transparent 100%),
     linear-gradient(180deg, var(--color-page-top) 0%, var(--color-page-bottom) 100%);
   --site-background: var(--page-background);
   --site-background-size: auto;
   --brand-wordmark-gradient: linear-gradient(180deg, #ffffff 0%, var(--color-primary-pale) 100%);
   --brand-wordmark-color: var(--color-heading);
   --brand-wordmark-shadow: 0 0 18px rgba(147, 197, 253, 0.18);
-  --brand-mark-bg:
-    linear-gradient(145deg, color-mix(in srgb, var(--color-primary) 18%, var(--color-panel-deep)), var(--color-panel-deep));
+  --brand-mark-bg: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--color-primary) 18%, var(--color-panel-deep)),
+    var(--color-panel-deep)
+  );
   --brand-mark-border: color-mix(in srgb, var(--color-primary-soft) 58%, transparent);
   --brand-mark-shadow:
     0 0 0 1px color-mix(in srgb, white 8%, transparent) inset,
@@ -132,28 +134,20 @@
   --color-modal-bg: rgba(255, 250, 245, 0.74);
   --color-glass-border: rgba(105, 123, 150, 0.18);
   --color-primary-ring: rgba(42, 91, 215, 0.18);
-  --shadow-panel:
-    0 22px 60px rgba(133, 153, 184, 0.18),
-    0 2px 0 rgba(255, 255, 255, 0.6) inset;
+  --shadow-panel: 0 22px 60px rgba(133, 153, 184, 0.18), 0 2px 0 rgba(255, 255, 255, 0.6) inset;
   --shadow-soft: 0 14px 28px rgba(139, 157, 184, 0.18);
   --shadow-strong: 0 30px 80px rgba(139, 157, 184, 0.26);
   --page-background:
-    radial-gradient(circle at 8% 10%, rgba(236, 179, 92, 0.2), transparent 24%),
-    radial-gradient(circle at 82% 2%, rgba(42, 91, 215, 0.13), transparent 28%),
-    radial-gradient(circle at 58% 22%, rgba(15, 142, 163, 0.1), transparent 24%),
+    radial-gradient(ellipse 72% 42% at 8% 10%, rgba(236, 179, 92, 0.2), transparent 100%),
+    radial-gradient(ellipse 68% 40% at 82% 2%, rgba(42, 91, 215, 0.13), transparent 100%),
+    radial-gradient(ellipse 64% 38% at 58% 22%, rgba(15, 142, 163, 0.1), transparent 100%),
     linear-gradient(180deg, var(--color-page-top) 0%, var(--color-page-bottom) 100%);
   --site-background: var(--page-background);
   --site-background-size: auto;
-  --brand-wordmark-gradient: linear-gradient(
-    180deg,
-    #07111f 0%,
-    #123177 62%,
-    #0b5264 100%
-  );
+  --brand-wordmark-gradient: linear-gradient(180deg, #07111f 0%, #123177 62%, #0b5264 100%);
   --brand-wordmark-color: #10265d;
   --brand-wordmark-shadow: none;
-  --brand-mark-bg:
-    linear-gradient(145deg, #1d4ed8 0%, #2563eb 58%, #0e7490 100%);
+  --brand-mark-bg: linear-gradient(145deg, #1d4ed8 0%, #2563eb 58%, #0e7490 100%);
   --brand-mark-border: color-mix(in srgb, var(--color-primary) 64%, white);
   --brand-mark-shadow:
     0 0 0 1px color-mix(in srgb, white 32%, transparent) inset,

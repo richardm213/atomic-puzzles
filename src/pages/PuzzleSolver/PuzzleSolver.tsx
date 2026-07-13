@@ -22,6 +22,7 @@ import {
   variationOptions,
   VariationTree,
 } from "../../components/VariationTree/VariationTree";
+import { useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
 import { loadPuzzleLibrary } from "../../lib/puzzles/puzzleLibrary";
@@ -63,6 +64,13 @@ const toPuzzleKey = (puzzleId: unknown): string =>
 
 const ATTEMPTED_PUZZLE_BADGE_LABEL = "You've already attempted this puzzle before";
 const OTHER_PUZZLE_ATTEMPTS_LIMIT = 30;
+
+const formatElapsedTime = (milliseconds: number): string => {
+  const totalSeconds = Math.floor(Math.max(0, milliseconds) / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+};
 
 type PuzzleInfoTab = "solution" | "attempts";
 
@@ -217,6 +225,7 @@ export const PuzzleSolverPage = () => {
   const navigate = useNavigate();
   const { puzzleId: routePuzzleId = "" } = useParams({ strict: false });
   const { isAuthenticated, user } = useAuth();
+  const { showPuzzleTimer } = useAppSettings();
   const [canViewHistory, setCanViewHistory] = useState(false);
   const [puzzles, setPuzzles] = useState<import("../../lib/puzzles/puzzleLibrary").Puzzle[]>([]);
   const [attemptedPuzzleIds, setAttemptedPuzzleIds] = useState<Set<string>>(() => new Set());
@@ -266,6 +275,9 @@ export const PuzzleSolverPage = () => {
   const progressWriteQueueRef = useRef(Promise.resolve());
   const attemptedPuzzleIdsRef = useRef<Set<string>>(new Set());
   const activePuzzleKeyRef = useRef("");
+  const elapsedTimeMsRef = useRef(0);
+  const [elapsedTimeMs, setElapsedTimeMs] = useState(0);
+  const [elapsedTimerRunning, setElapsedTimerRunning] = useState(false);
 
   useEffect(() => {
     let isCurrent = true;
@@ -507,6 +519,7 @@ export const PuzzleSolverPage = () => {
 
   const handleAttemptResolved = useCallback(
     ({ puzzleId, puzzleCorrect }: AttemptResolved): void => {
+      setElapsedTimerRunning(false);
       const normalizedPuzzleId = toPuzzleKey(puzzleId);
       setResolvedAttemptedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
 
@@ -544,12 +557,33 @@ export const PuzzleSolverPage = () => {
 
   useEffect(() => {
     resetPuzzleUiState();
+    elapsedTimeMsRef.current = 0;
+    setElapsedTimeMs(0);
+    setElapsedTimerRunning(Boolean(activePuzzleId));
     setMobileFeedback(null);
     setCopyPgnLabel("Copy PGN");
     setOtherPuzzleAttemptsStatus("idle");
     setOtherPuzzleAttempts([]);
     previousBoardSnapshotRef.current = createInitialBoardSnapshot();
   }, [activePuzzleId, resetPuzzleUiState]);
+
+  useEffect(() => {
+    if (!elapsedTimerRunning) return;
+
+    let lastTick = window.performance.now();
+    const updateElapsedTime = (): void => {
+      const now = window.performance.now();
+      elapsedTimeMsRef.current += now - lastTick;
+      lastTick = now;
+      setElapsedTimeMs(elapsedTimeMsRef.current);
+    };
+    const interval = window.setInterval(updateElapsedTime, 250);
+
+    return () => {
+      updateElapsedTime();
+      window.clearInterval(interval);
+    };
+  }, [elapsedTimerRunning]);
 
   useEffect(() => {
     if (!mobileFeedback) return undefined;
@@ -1241,6 +1275,15 @@ export const PuzzleSolverPage = () => {
           ref={boardPanelRef}
           className={`boardFrame ${feedback ? `hasFeedback ${feedback.type}` : ""}`}
         >
+          {showPuzzleTimer ? (
+            <div
+              className="puzzleElapsedTimer"
+              aria-label={`Elapsed time ${formatElapsedTime(elapsedTimeMs)}`}
+            >
+              <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
+              <span>{formatElapsedTime(elapsedTimeMs)}</span>
+            </div>
+          ) : null}
           {!isMobileLayout && feedback ? (
             <div
               className={`feedbackBadge ${feedback.type}`}

@@ -36,6 +36,10 @@ vi.mock("../../context/AuthContext", () => ({
   useAuth: () => ({ isAuthenticated: true, user: { username: "solver" } }),
 }));
 
+vi.mock("../../context/AppSettings", () => ({
+  useAppSettings: () => ({ showPuzzleTimer: true }),
+}));
+
 vi.mock("../../lib/puzzles/puzzleLibrary", () => ({
   loadPuzzleLibrary: vi.fn(async () => [
     {

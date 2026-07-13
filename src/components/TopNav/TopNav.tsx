@@ -204,6 +204,8 @@ export const TopNav = () => {
     resetDisplaySettings,
     hideRankingsOpenings,
     setHideRankingsOpenings,
+    showPuzzleTimer,
+    setShowPuzzleTimer,
   } = useAppSettings();
   const trimmedSearchQuery = searchQuery.trim();
   const normalizedAuthUsername = normalizeUsername(user?.username);
@@ -215,6 +217,12 @@ export const TopNav = () => {
     pathname.startsWith("/solve/") ||
     pathname === "/analysis" ||
     pathname.startsWith("/analysis/");
+  const showPuzzleTimerSetting =
+    pathname === "/solve" ||
+    (/^\/solve\/[^/]+$/.test(pathname) &&
+      pathname !== "/solve/sets" &&
+      pathname !== "/solve/leaderboard" &&
+      pathname !== "/solve/history");
   const activeBoardColors = getBoardThemeColors(
     boardTheme,
     customLightSquare,
@@ -894,6 +902,18 @@ export const TopNav = () => {
               ) : null}
               {showBoardSettings ? (
                 <>
+                  {showPuzzleTimerSetting ? (
+                    <div className="navSettingsSection">
+                      <label className="navSettingsCheckbox">
+                        <span>Show puzzle timer</span>
+                        <input
+                          type="checkbox"
+                          checked={showPuzzleTimer}
+                          onChange={(event) => setShowPuzzleTimer(event.target.checked)}
+                        />
+                      </label>
+                    </div>
+                  ) : null}
                   <div className="navSettingsSection">
                     <label className="navSettingsLabel" htmlFor="piece-set-select">
                       Piece set

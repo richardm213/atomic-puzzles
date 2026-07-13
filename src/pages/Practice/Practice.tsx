@@ -49,6 +49,8 @@ const PRACTICE_AUTOMOVE_MIN_THINK_MS = 520;
 const PLAYER_MIN_RATING = 1700;
 const PRACTICE_SETTINGS_STORAGE_KEY = "atomic-puzzles.practice.settings";
 const MAX_PRACTICE_PLAYERS = 8;
+const DEFAULT_CLOCK_MINUTES = 3;
+const DEFAULT_CLOCK_INCREMENT_SECONDS = 0;
 type PracticeMove = OpeningDatabaseMove;
 
 type PracticeGame = OpeningDatabaseGame;
@@ -76,6 +78,8 @@ type StoredPracticeSettings = {
   automove: boolean;
   allowMultiplePlayers: boolean;
   continueWithGeneralDb: boolean;
+  clockMinutes: number;
+  clockIncrementSeconds: number;
 };
 
 const DEFAULT_SETTINGS: StoredPracticeSettings = {
@@ -86,6 +90,22 @@ const DEFAULT_SETTINGS: StoredPracticeSettings = {
   automove: true,
   allowMultiplePlayers: false,
   continueWithGeneralDb: false,
+  clockMinutes: DEFAULT_CLOCK_MINUTES,
+  clockIncrementSeconds: DEFAULT_CLOCK_INCREMENT_SECONDS,
+};
+
+const normalizeClockValue = (value: unknown, fallback: number, maximum: number): number => {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return fallback;
+  return Math.min(maximum, Math.max(0, Math.floor(numericValue)));
+};
+
+const formatClockTime = (milliseconds: number): string => {
+  const safeMilliseconds = Math.max(0, milliseconds);
+  const totalSeconds = Math.ceil(safeMilliseconds / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
 };
 
 const normalizePracticeUsernames = (value: unknown): string[] => {
@@ -129,6 +149,12 @@ const loadPracticeSettings = (): StoredPracticeSettings => {
       automove: value.automove !== false,
       allowMultiplePlayers,
       continueWithGeneralDb: value.continueWithGeneralDb === true,
+      clockMinutes: normalizeClockValue(value.clockMinutes, DEFAULT_CLOCK_MINUTES, 180),
+      clockIncrementSeconds: normalizeClockValue(
+        value.clockIncrementSeconds,
+        DEFAULT_CLOCK_INCREMENT_SECONDS,
+        60,
+      ),
     };
   } catch {
     return DEFAULT_SETTINGS;
@@ -288,6 +314,7 @@ export const PracticePage = () => {
   const [initialSettings] = useState(loadPracticeSettings);
   const boardPanelRef = useRef<HTMLDivElement | null>(null);
   const requestIdRef = useRef(0);
+  const remainingClockMsRef = useRef(initialSettings.clockMinutes * 60_000);
   const lastAutoFenRef = useRef("");
   const navigationRef = useRef<SolutionNavigation | null>(null);
   const triedMoveUcisByFenRef = useRef<Map<string, Set<string>>>(new Map());
@@ -324,6 +351,13 @@ export const PracticePage = () => {
   const [copyPgnLabel, setCopyPgnLabel] = useState("Copy PGN");
   const [randomPlayerLoading, setRandomPlayerLoading] = useState(false);
   const [randomPlayerError, setRandomPlayerError] = useState("");
+  const [clockMinutes, setClockMinutes] = useState(initialSettings.clockMinutes);
+  const [clockIncrementSeconds, setClockIncrementSeconds] = useState(
+    initialSettings.clockIncrementSeconds,
+  );
+  const [remainingClockMs, setRemainingClockMs] = useState(initialSettings.clockMinutes * 60_000);
+  const [clockExpired, setClockExpired] = useState(false);
+  const [clockPaused, setClockPaused] = useState(false);
 
   const currentFen = boardState?.fen || STARTING_FEN;
   const databaseExhausted = exhaustedFen === currentFen;
@@ -429,16 +463,69 @@ export const PracticePage = () => {
       automove,
       allowMultiplePlayers,
       continueWithGeneralDb,
+      clockMinutes,
+      clockIncrementSeconds,
     });
   }, [
     allowMultiplePlayers,
     automove,
     continueWithGeneralDb,
+    clockIncrementSeconds,
+    clockMinutes,
     opponentMode,
     opponentSource,
     opponentUsernames,
     side,
   ]);
+
+  const resetPracticeClock = useCallback(
+    (minutes = clockMinutes): void => {
+      const nextMilliseconds = minutes * 60_000;
+      remainingClockMsRef.current = nextMilliseconds;
+      setRemainingClockMs(nextMilliseconds);
+      setClockExpired(nextMilliseconds <= 0);
+      setClockPaused(false);
+    },
+    [clockMinutes],
+  );
+
+  const addPracticeIncrement = useCallback((): void => {
+    if (clockExpired) return;
+    const nextMilliseconds = remainingClockMsRef.current + clockIncrementSeconds * 1000;
+    remainingClockMsRef.current = nextMilliseconds;
+    setRemainingClockMs(nextMilliseconds);
+  }, [clockExpired, clockIncrementSeconds]);
+
+  const clockRunning =
+    !clockExpired &&
+    !clockPaused &&
+    status === "ready" &&
+    currentTurn === side &&
+    currentPly === moveList.length &&
+    !navigation &&
+    !pendingAutoMove &&
+    !databaseExhausted;
+
+  useEffect(() => {
+    if (!clockRunning) return;
+
+    let lastTick = window.performance.now();
+    const updateClock = (): void => {
+      const now = window.performance.now();
+      const elapsed = now - lastTick;
+      lastTick = now;
+      const nextMilliseconds = Math.max(0, remainingClockMsRef.current - elapsed);
+      remainingClockMsRef.current = nextMilliseconds;
+      setRemainingClockMs(nextMilliseconds);
+      if (nextMilliseconds <= 0) setClockExpired(true);
+    };
+    const interval = window.setInterval(updateClock, 100);
+
+    return () => {
+      updateClock();
+      window.clearInterval(interval);
+    };
+  }, [clockRunning]);
 
   useEffect(() => {
     if (!canUsePlayerSource) {
@@ -581,6 +668,7 @@ export const PracticePage = () => {
 
   const playPracticeMove = useCallback(
     (uci: string): void => {
+      if (currentTurn === side) addPracticeIncrement();
       lastAutoFenRef.current = "";
       setPendingAutoMove(null);
       setForceAutoMove(false);
@@ -590,7 +678,7 @@ export const PracticePage = () => {
       recordTriedMove(currentFen, uci);
       queueNavigation({ type: "play", uci });
     },
-    [currentFen, queueNavigation, recordTriedMove],
+    [addPracticeIncrement, currentFen, currentTurn, queueNavigation, recordTriedMove, side],
   );
 
   const requestNavigation = useCallback(
@@ -619,9 +707,20 @@ export const PracticePage = () => {
     [currentPly, queueNavigation],
   );
 
-  const handleBoardStateChange = useCallback((nextState: ChessboardState): void => {
-    setBoardState(nextState);
-  }, []);
+  const handleBoardStateChange = useCallback(
+    (nextState: ChessboardState): void => {
+      if (
+        navigationRef.current === null &&
+        boardState?.turn === side &&
+        nextState.turn === opponentSide &&
+        (nextState.lineIndex ?? 0) > (boardState.lineIndex ?? 0)
+      ) {
+        addPracticeIncrement();
+      }
+      setBoardState(nextState);
+    },
+    [addPracticeIncrement, boardState, opponentSide, side],
+  );
 
   useBoardWheelNavigation({
     boardPanelRef,
@@ -637,8 +736,9 @@ export const PracticePage = () => {
     setExhaustedFen(null);
     setUsingGeneralFallback(false);
     clearTriedMoves();
+    resetPracticeClock();
     setSide((currentSide) => oppositeSide(currentSide));
-  }, [clearTriedMoves]);
+  }, [clearTriedMoves, resetPracticeClock]);
 
   const saveRecentUsernames = useCallback((nextUsernames: string[]): void => {
     setRecentUsernames(nextUsernames);
@@ -662,8 +762,9 @@ export const PracticePage = () => {
     setUsingGeneralFallback(false);
     setHoveredMoveUci(null);
     clearTriedMoves();
+    resetPracticeClock();
     queueNavigation({ type: "reset", fen: STARTING_FEN });
-  }, [clearTriedMoves, queueNavigation]);
+  }, [clearTriedMoves, queueNavigation, resetPracticeClock]);
 
   const commitUsername = useCallback(
     (nextUsername: string): void => {
@@ -958,6 +1059,29 @@ export const PracticePage = () => {
           <strong>{totalGames ? `${formatGameCount(totalGames)} games` : "0 games"}</strong>
         </div>
 
+        <div
+          className={`practiceClock ${clockRunning ? "running" : ""} ${clockExpired ? "expired" : ""}`}
+          aria-label={`Your clock: ${formatClockTime(remainingClockMs)}`}
+        >
+          <div>
+            <span>Your clock</span>
+            <small>
+              {clockMinutes}+{clockIncrementSeconds}
+            </small>
+          </div>
+          <strong aria-live="off">{formatClockTime(remainingClockMs)}</strong>
+          <button
+            type="button"
+            onClick={() => setClockPaused((paused) => !paused)}
+            disabled={clockExpired}
+          >
+            {clockPaused ? "Resume" : "Pause"}
+          </button>
+          <button type="button" onClick={() => resetPracticeClock()}>
+            Reset
+          </button>
+        </div>
+
         <section className="practiceSettings" aria-label="Opponent settings">
           <div className="practiceExplorerHeader">
             <div
@@ -1122,6 +1246,44 @@ export const PracticePage = () => {
                     Popular
                   </button>
                 </div>
+              </div>
+
+              <div className="practiceSettingGroup">
+                <span>Time control</span>
+                <div className="practiceTimeControl" aria-label="Practice time control">
+                  <label>
+                    <span>Minutes</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="180"
+                      step="1"
+                      value={clockMinutes}
+                      onChange={(event) => {
+                        const nextMinutes = normalizeClockValue(event.target.value, 0, 180);
+                        setClockMinutes(nextMinutes);
+                        resetPracticeClock(nextMinutes);
+                      }}
+                    />
+                  </label>
+                  <span aria-hidden="true">+</span>
+                  <label>
+                    <span>Increment</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="60"
+                      step="1"
+                      value={clockIncrementSeconds}
+                      onChange={(event) =>
+                        setClockIncrementSeconds(normalizeClockValue(event.target.value, 0, 60))
+                      }
+                    />
+                  </label>
+                </div>
+                <small className="practiceTimeControlHint">
+                  Your clock pauses while database moves load.
+                </small>
               </div>
 
               <label className="practiceCheckbox">

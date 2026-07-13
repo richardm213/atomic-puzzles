@@ -20,6 +20,7 @@ const STORAGE_KEYS = {
   boardOverrideLightSquare: "atomic-puzzles.board-override-light-square",
   boardOverrideDarkSquare: "atomic-puzzles.board-override-dark-square",
   hideRankingsOpenings: "atomic-puzzles.rankings.hide-openings",
+  showPuzzleTimer: "atomic-puzzles.puzzles.show-timer",
 };
 
 const THEMES = ["dark", "light"] as const;
@@ -155,6 +156,8 @@ export type AppSettingsContextValue = {
   resetDisplaySettings: () => void;
   hideRankingsOpenings: boolean;
   setHideRankingsOpenings: Dispatch<SetStateAction<boolean>>;
+  showPuzzleTimer: boolean;
+  setShowPuzzleTimer: Dispatch<SetStateAction<boolean>>;
 };
 
 const AppSettingsContext = createContext<AppSettingsContextValue | null>(null);
@@ -284,6 +287,10 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     STORAGE_KEYS.hideRankingsOpenings,
     false,
   );
+  const [showPuzzleTimer, setShowPuzzleTimer] = usePersistedBoolean(
+    STORAGE_KEYS.showPuzzleTimer,
+    true,
+  );
 
   const resetDisplaySettings = useCallback(() => {
     setTheme(DEFAULT_THEME);
@@ -333,6 +340,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       resetDisplaySettings,
       hideRankingsOpenings,
       setHideRankingsOpenings,
+      showPuzzleTimer,
+      setShowPuzzleTimer,
     }),
     [
       theme,
@@ -354,6 +363,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       resetDisplaySettings,
       hideRankingsOpenings,
       setHideRankingsOpenings,
+      showPuzzleTimer,
+      setShowPuzzleTimer,
     ],
   );
 
