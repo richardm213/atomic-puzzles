@@ -523,32 +523,24 @@
   cursor: pointer;
 }
 
-.practiceAutomoveToggle {
-  flex: 1;
-  min-height: 36px;
-  padding: 0 10px;
-  border: 1px solid color-mix(in srgb, var(--color-border) 76%, transparent);
-  border-radius: var(--radius-ui);
-  background: color-mix(in srgb, var(--color-panel-strong) 52%, transparent);
-}
-
-.practiceAutomoveRow {
-  display: flex;
-  align-items: stretch;
+.practiceExplorerActions {
+  display: inline-flex;
+  align-items: center;
   gap: 8px;
 }
 
 .practiceAlternateMoveButton {
-  min-height: 36px;
+  width: 34px;
+  height: 34px;
+  padding: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  padding: 0 11px;
   border: 1px solid color-mix(in srgb, var(--color-border) 76%, transparent);
   border-radius: var(--radius-ui);
   background: color-mix(in srgb, var(--color-panel-strong) 52%, transparent);
   color: var(--color-muted);
+  font: inherit;
   font-weight: 760;
   cursor: pointer;
 }

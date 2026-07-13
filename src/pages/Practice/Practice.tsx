@@ -315,6 +315,8 @@ export const PracticePage = () => {
   const boardPanelRef = useRef<HTMLDivElement | null>(null);
   const requestIdRef = useRef(0);
   const remainingClockMsRef = useRef(initialSettings.clockMinutes * 60_000);
+  const seenRandomPlayersRef = useRef<Set<string>>(new Set());
+  const randomPlayerPoolRef = useRef<string[] | null>(null);
   const lastAutoFenRef = useRef("");
   const navigationRef = useRef<SolutionNavigation | null>(null);
   const triedMoveUcisByFenRef = useRef<Map<string, Set<string>>>(new Map());
@@ -332,7 +334,7 @@ export const PracticePage = () => {
   const [usernamePickerOpen, setUsernamePickerOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [recentUsernames, setRecentUsernames] = useState<string[]>(loadRecentUsernames);
-  const [automove, setAutomove] = useState(initialSettings.automove);
+  const [automove, setAutomove] = useState(false);
   const [allowMultiplePlayers, setAllowMultiplePlayers] = useState(
     initialSettings.allowMultiplePlayers,
   );
@@ -485,6 +487,7 @@ export const PracticePage = () => {
       setRemainingClockMs(nextMilliseconds);
       setClockExpired(nextMilliseconds <= 0);
       setClockPaused(true);
+      setAutomove(false);
     },
     [clockMinutes],
   );
@@ -584,6 +587,7 @@ export const PracticePage = () => {
 
         if (
           (automove || forceAutoMove) &&
+          !clockPaused &&
           currentTurn === opponentSide &&
           !databaseExhausted &&
           lastAutoFenRef.current !== currentFen
@@ -637,6 +641,7 @@ export const PracticePage = () => {
   }, [
     automove,
     canUsePlayerSource,
+    clockPaused,
     continueWithGeneralDb,
     currentFen,
     currentTurn,
@@ -680,6 +685,21 @@ export const PracticePage = () => {
     },
     [addPracticeIncrement, currentFen, currentTurn, queueNavigation, recordTriedMove, side],
   );
+
+  const togglePracticeClock = useCallback((): void => {
+    if (clockPaused) {
+      lastAutoFenRef.current = "";
+      setAutomove(true);
+      setClockPaused(false);
+      return;
+    }
+
+    lastAutoFenRef.current = "";
+    setPendingAutoMove(null);
+    setForceAutoMove(false);
+    setAutomove(false);
+    setClockPaused(true);
+  }, [clockPaused]);
 
   const requestNavigation = useCallback(
     (command: PlaybackCommand): void => {
@@ -800,15 +820,35 @@ export const PracticePage = () => {
     setRandomPlayerError("");
 
     try {
-      const response = await fetch(`${appAssetPath("/api/opening-explorer")}?randomPlayer=1`, {
-        headers: { "X-Explorer-Intent": "visible" },
-      });
-      const data = (await response.json()) as { username?: string; error?: string };
-      const username = data.username?.trim() ?? "";
+      opponentUsernames.forEach((username) =>
+        seenRandomPlayersRef.current.add(username.toLowerCase()),
+      );
 
-      if (!response.ok || !username) {
-        throw new Error(data.error || "Could not select a random player");
+      if (randomPlayerPoolRef.current === null) {
+        const response = await fetch(`${appAssetPath("/api/opening-explorer")}?players=1`, {
+          headers: { "X-Explorer-Intent": "visible" },
+        });
+        const data = (await response.json()) as { players?: string[]; error?: string };
+
+        if (!response.ok) {
+          throw new Error(data.error || "Could not select a random player");
+        }
+
+        randomPlayerPoolRef.current = (data.players ?? [])
+          .map((username) => username.trim())
+          .filter(Boolean);
       }
+
+      const availablePlayers = randomPlayerPoolRef.current.filter(
+        (username) => !seenRandomPlayersRef.current.has(username.toLowerCase()),
+      );
+      if (availablePlayers.length === 0) {
+        throw new Error("No new random players are available");
+      }
+
+      const username =
+        availablePlayers[Math.floor(Math.random() * availablePlayers.length)]?.trim() ?? "";
+      seenRandomPlayersRef.current.add(username.toLowerCase());
 
       commitUsername(username);
     } catch (randomError) {
@@ -818,7 +858,7 @@ export const PracticePage = () => {
     } finally {
       setRandomPlayerLoading(false);
     }
-  }, [canChoosePracticePlayer, commitUsername, randomPlayerLoading]);
+  }, [canChoosePracticePlayer, commitUsername, opponentUsernames, randomPlayerLoading]);
 
   const removeRecentUsername = useCallback(
     (usernameToRemove: string): void => {
@@ -956,8 +996,7 @@ export const PracticePage = () => {
         setMovesOpen((open) => !open);
         setSettingsOpen(false);
       } else if (key === "a") {
-        lastAutoFenRef.current = "";
-        setAutomove((current) => !current);
+        togglePracticeClock();
       } else if (key === "q") {
         requestAlternateAutoMove();
       } else {
@@ -975,6 +1014,7 @@ export const PracticePage = () => {
     requestAlternateAutoMove,
     settingsOpen,
     status,
+    togglePracticeClock,
     usernamePickerOpen,
   ]);
 
@@ -1072,8 +1112,9 @@ export const PracticePage = () => {
           <strong aria-live="off">{formatClockTime(remainingClockMs)}</strong>
           <button
             type="button"
-            onClick={() => setClockPaused((paused) => !paused)}
+            onClick={togglePracticeClock}
             disabled={clockExpired}
+            title={clockPaused ? "Start or resume clock (A)" : "Pause clock (A)"}
           >
             {clockPaused
               ? remainingClockMs === clockMinutes * 60_000
@@ -1118,41 +1159,29 @@ export const PracticePage = () => {
                 </span>
               </button>
             </div>
-            <button
-              type="button"
-              className={`analysisFilterToggle ${settingsOpen ? "open" : ""}`}
-              aria-label={settingsOpen ? "Close practice settings" : "Open practice settings"}
-              aria-controls="practice-settings-panel"
-              aria-expanded={settingsOpen}
-              title={settingsOpen ? "Close settings" : "Settings"}
-              onClick={() => setSettingsOpen((open) => !open)}
-            >
-              <FontAwesomeIcon icon={settingsOpen ? faXmark : faGear} />
-            </button>
-          </div>
-
-          <div className="practiceAutomoveRow">
-            <label className="practiceCheckbox practiceAutomoveToggle">
-              <span>Automove</span>
-              <input
-                type="checkbox"
-                checked={automove}
-                onChange={(event) => {
-                  lastAutoFenRef.current = "";
-                  setAutomove(event.target.checked);
-                }}
-              />
-            </label>
-            <button
-              type="button"
-              className="practiceAlternateMoveButton"
-              onClick={requestAlternateAutoMove}
-              disabled={status !== "ready"}
-              title="Undo the opponent move and choose a different one (Q)"
-            >
-              <FontAwesomeIcon icon={faShuffle} />
-              <span>Different move</span>
-            </button>
+            <div className="practiceExplorerActions">
+              <button
+                type="button"
+                className="practiceAlternateMoveButton"
+                onClick={requestAlternateAutoMove}
+                disabled={status !== "ready"}
+                aria-label="Choose a different opponent move"
+                title="Undo the opponent move and choose a different one (Q)"
+              >
+                <FontAwesomeIcon icon={faShuffle} />
+              </button>
+              <button
+                type="button"
+                className={`analysisFilterToggle ${settingsOpen ? "open" : ""}`}
+                aria-label={settingsOpen ? "Close practice settings" : "Open practice settings"}
+                aria-controls="practice-settings-panel"
+                aria-expanded={settingsOpen}
+                title={settingsOpen ? "Close settings" : "Settings"}
+                onClick={() => setSettingsOpen((open) => !open)}
+              >
+                <FontAwesomeIcon icon={settingsOpen ? faXmark : faGear} />
+              </button>
+            </div>
           </div>
 
           {settingsOpen ? (
