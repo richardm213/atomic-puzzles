@@ -14,6 +14,8 @@ export type PuzzleLeaderboardRow = {
   attempted: number;
 };
 
+export type PuzzleLeaderboardPeriod = "all" | "30days" | "90days";
+
 type PuzzleLeaderboardAccumulator = Omit<PuzzleLeaderboardRow, "rank">;
 
 export const calculatePuzzleScore = (correct: number, attempted: number): number => {
@@ -30,6 +32,23 @@ export const calculatePuzzleCorrectPercent = (correct: number, attempted: number
   if (normalizedAttempted === 0) return 0;
 
   return Math.round((normalizedCorrect / normalizedAttempted) * 100);
+};
+
+export const filterPuzzleProgressRowsByPeriod = (
+  progressRows: PuzzleProgressWithUsernameRow[],
+  period: PuzzleLeaderboardPeriod,
+  now = new Date(),
+): PuzzleProgressWithUsernameRow[] => {
+  if (period === "all") return progressRows;
+
+  const nowTime = now.getTime();
+  const windowDays = period === "30days" ? 30 : 90;
+  const windowStart = nowTime - windowDays * 24 * 60 * 60 * 1000;
+
+  return progressRows.filter((row) => {
+    const attemptedAt = Date.parse(row?.first_attempt_at ?? "");
+    return Number.isFinite(attemptedAt) && attemptedAt >= windowStart && attemptedAt <= nowTime;
+  });
 };
 
 const rankPuzzleLeaderboardRows = (

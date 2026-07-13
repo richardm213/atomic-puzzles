@@ -9,11 +9,14 @@ import { useEffect, useMemo, useState } from "react";
 import { Seo } from "../../components/Seo/Seo";
 import {
   buildPuzzleLeaderboardRows,
+  filterPuzzleProgressRowsByPeriod,
   PUZZLE_CORRECT_POINTS,
   PUZZLE_INCORRECT_POINTS,
+  type PuzzleLeaderboardPeriod,
   type PuzzleLeaderboardRow,
 } from "../../lib/puzzles/puzzleLeaderboard";
 import { fetchAllPuzzleProgressRows } from "../../lib/supabase/supabasePuzzleProgress";
+import type { PuzzleProgressWithUsernameRow } from "../../types/supabase";
 
 type PuzzleLeaderboardSortKey = keyof Pick<
   PuzzleLeaderboardRow,
@@ -29,6 +32,12 @@ const puzzleLeaderboardColumns: Array<{ key: PuzzleLeaderboardSortKey; label: st
   { key: "percentCorrect", label: "% correct" },
 ];
 
+const puzzleLeaderboardPeriodLabels: Record<PuzzleLeaderboardPeriod, string> = {
+  all: "All time",
+  "30days": "Last 30 days",
+  "90days": "Last 90 days",
+};
+
 const sortIndicator = (
   sortKey: PuzzleLeaderboardSortKey,
   sortDirection: "asc" | "desc",
@@ -39,9 +48,10 @@ const sortIndicator = (
 };
 
 const PuzzleLeaderboard = () => {
-  const [rows, setRows] = useState<PuzzleLeaderboardRow[]>([]);
+  const [progressRows, setProgressRows] = useState<PuzzleProgressWithUsernameRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [period, setPeriod] = useState<PuzzleLeaderboardPeriod>("all");
   const [sortKey, setSortKey] = useState<PuzzleLeaderboardSortKey>("score");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
@@ -56,10 +66,10 @@ const PuzzleLeaderboard = () => {
         const progressRows = await fetchAllPuzzleProgressRows();
         if (!isCurrent) return;
 
-        setRows(buildPuzzleLeaderboardRows(progressRows));
+        setProgressRows(progressRows);
       } catch (loadError) {
         if (!isCurrent) return;
-        setRows([]);
+        setProgressRows([]);
         setError(
           loadError instanceof Error ? loadError.message : "Failed to load puzzle leaderboard.",
         );
@@ -74,6 +84,11 @@ const PuzzleLeaderboard = () => {
       isCurrent = false;
     };
   }, []);
+
+  const rows = useMemo(
+    () => buildPuzzleLeaderboardRows(filterPuzzleProgressRowsByPeriod(progressRows, period)),
+    [period, progressRows],
+  );
 
   const handleSort = (nextKey: PuzzleLeaderboardSortKey): void => {
     if (sortKey === nextKey) {
@@ -90,8 +105,7 @@ const PuzzleLeaderboard = () => {
 
     return [...rows].sort((left, right) => {
       if (sortKey === "username") {
-        const usernameCompare =
-          directionMultiplier * left.username.localeCompare(right.username);
+        const usernameCompare = directionMultiplier * left.username.localeCompare(right.username);
         if (usernameCompare !== 0) return usernameCompare;
         return left.rank - right.rank;
       }
@@ -137,13 +151,40 @@ const PuzzleLeaderboard = () => {
           </span>
         </div>
 
+        <div className="puzzleLeaderboardPeriod" role="group" aria-label="Leaderboard period">
+          <button
+            type="button"
+            className={period === "all" ? "active" : ""}
+            aria-pressed={period === "all"}
+            onClick={() => setPeriod("all")}
+          >
+            All time
+          </button>
+          <button
+            type="button"
+            className={period === "30days" ? "active" : ""}
+            aria-pressed={period === "30days"}
+            onClick={() => setPeriod("30days")}
+          >
+            Last 30 days
+          </button>
+          <button
+            type="button"
+            className={period === "90days" ? "active" : ""}
+            aria-pressed={period === "90days"}
+            onClick={() => setPeriod("90days")}
+          >
+            Last 90 days
+          </button>
+        </div>
+
         {error ? <div className="errorText">{error}</div> : null}
 
         <div className="rankingsMeta puzzleLeaderboardMeta">
           <span>
             {loading
               ? "Loading puzzle leaderboard..."
-              : `${rows.length} users, ${attemptedCount} recorded attempts`}
+              : `${period === "all" ? "" : `${puzzleLeaderboardPeriodLabels[period]}: `}${rows.length} users, ${attemptedCount} recorded attempts`}
           </span>
           <span className="rankedCount">
             <Link className="rankingsMetaLink" to="/solve">
@@ -160,7 +201,11 @@ const PuzzleLeaderboard = () => {
         ) : null}
 
         {!error && !loading && rows.length === 0 ? (
-          <div className="emptyRankings">No users have recorded puzzle attempts yet.</div>
+          <div className="emptyRankings">
+            {period === "all"
+              ? "No users have recorded puzzle attempts yet."
+              : `No users have recorded puzzle attempts in the ${puzzleLeaderboardPeriodLabels[period].toLowerCase()}.`}
+          </div>
         ) : null}
 
         {!error && !loading && rows.length > 0 ? (
