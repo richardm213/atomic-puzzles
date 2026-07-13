@@ -120,7 +120,29 @@ vi.mock("../../components/Chessboard/Chessboard", async () => {
   };
 });
 
+import { castlingRightsFromFen } from "./castlingRights";
 import { PuzzleSolverPage } from "./PuzzleSolver";
+
+describe("castlingRightsFromFen", () => {
+  it("formats king- and queenside rights for both colors", () => {
+    expect(castlingRightsFromFen("8/8/8/8/8/8/8/8 w KQkq - 0 1")).toEqual({
+      white: ["O-O", "O-O-O"],
+      black: ["O-O", "O-O-O"],
+    });
+    expect(castlingRightsFromFen("8/8/8/8/8/8/8/8 w Kq - 0 1")).toEqual({
+      white: ["O-O"],
+      black: ["O-O-O"],
+    });
+  });
+
+  it("returns no rights for an empty or incomplete FEN", () => {
+    expect(castlingRightsFromFen("8/8/8/8/8/8/8/8 w - - 0 1")).toEqual({
+      white: [],
+      black: [],
+    });
+    expect(castlingRightsFromFen(undefined)).toEqual({ white: [], black: [] });
+  });
+});
 
 describe("PuzzleSolverPage solution options", () => {
   beforeEach(() => {

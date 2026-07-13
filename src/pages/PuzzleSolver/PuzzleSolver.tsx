@@ -41,6 +41,7 @@ import type {
   SolutionNavigation,
 } from "../../types/chessboard";
 import { formatLocalDateTime } from "../../utils/formatters";
+import { castlingRightsFromFen } from "./castlingRights";
 
 const lichessAnalysisUrl = (fen: string | null | undefined): string => {
   if (!fen) return "https://lichess.org/analysis/atomic";
@@ -470,6 +471,8 @@ export const PuzzleSolverPage = () => {
   const event = String(activePuzzle?.["event"] ?? "").trim();
   const orientation = orientationFromFen(fen);
   const currentFen = boardState.fen || fen;
+  const castlingRights = castlingRightsFromFen(currentFen);
+  const hasCastlingRights = castlingRights.white.length > 0 || castlingRights.black.length > 0;
   const startAnalysisUrl = lichessAnalysisUrl(fen);
   const currentAnalysisUrl = lichessAnalysisUrl(currentFen);
   const puzzleOrdinal = activePuzzleIndex >= 0 ? activePuzzleIndex + 1 : null;
@@ -1193,6 +1196,25 @@ export const PuzzleSolverPage = () => {
     );
   };
 
+  const renderCastlingRights = () =>
+    hasCastlingRights ? (
+      <div
+        className="castlingRightsBar"
+        aria-label={`Castling rights. White: ${castlingRights.white.join(", ") || "none"}. Black: ${castlingRights.black.join(", ") || "none"}.`}
+        title="Castling rights; a listed right may not be a legal move in the current position"
+      >
+        <span className="castlingRightsLabel">Castling</span>
+        <span className="castlingRightsSide white">
+          <span aria-hidden="true">White</span>
+          <strong>{castlingRights.white.join(" · ") || "—"}</strong>
+        </span>
+        <span className="castlingRightsSide black">
+          <span aria-hidden="true">Black</span>
+          <strong>{castlingRights.black.join(" · ") || "—"}</strong>
+        </span>
+      </div>
+    ) : null;
+
   return (
     <div className="page puzzlePage">
       <Seo
@@ -1257,6 +1279,7 @@ export const PuzzleSolverPage = () => {
 
         {!isMobileLayout ? (
           <div className="puzzleDetails">
+            {renderCastlingRights()}
             {event ? (
               <div className="puzzleMetaRow">
                 <div className="metaChip" title={event}>
@@ -1335,30 +1358,35 @@ export const PuzzleSolverPage = () => {
       </div>
 
       {isMobileLayout ? (
-        <div className="mobilePuzzleStatus" aria-label="Puzzle details">
-          <Link className="puzzleDashboardLink" to="/solve/sets">
-            <span>Sets</span>
-          </Link>
-          <div className="puzzleCount" aria-label="Puzzle count">
-            <span>{puzzleOrdinal ?? "-"}</span>
-            <small>of {puzzles.length || "-"}</small>
-          </div>
-          {hasPersistedAttempt ? (
-            <span
-              className="puzzleAttemptedBadge"
-              role="img"
-              tabIndex={0}
-              title={ATTEMPTED_PUZZLE_BADGE_LABEL}
-              aria-label={ATTEMPTED_PUZZLE_BADGE_LABEL}
-              data-tooltip={ATTEMPTED_PUZZLE_BADGE_LABEL}
-            >
-              <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
+        <>
+          <div className="mobilePuzzleStatus" aria-label="Puzzle details">
+            <Link className="puzzleDashboardLink" to="/solve/sets">
+              <span>Sets</span>
+            </Link>
+            <div className="puzzleCount" aria-label="Puzzle count">
+              <span>{puzzleOrdinal ?? "-"}</span>
+              <small>of {puzzles.length || "-"}</small>
+            </div>
+            {hasPersistedAttempt ? (
+              <span
+                className="puzzleAttemptedBadge"
+                role="img"
+                tabIndex={0}
+                title={ATTEMPTED_PUZZLE_BADGE_LABEL}
+                aria-label={ATTEMPTED_PUZZLE_BADGE_LABEL}
+                data-tooltip={ATTEMPTED_PUZZLE_BADGE_LABEL}
+              >
+                <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
+              </span>
+            ) : null}
+            <span className="mobilePuzzleAuthor" title={author}>
+              {author}
             </span>
+          </div>
+          {hasCastlingRights ? (
+            <div className="mobileCastlingRights">{renderCastlingRights()}</div>
           ) : null}
-          <span className="mobilePuzzleAuthor" title={author}>
-            {author}
-          </span>
-        </div>
+        </>
       ) : null}
 
       {isMobileLayout ? (
