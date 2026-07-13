@@ -26,6 +26,7 @@ describe("puzzleLeaderboard", () => {
         puzzle_id: "1",
         first_attempt_at: "2026-01-01T00:00:00.000Z",
         puzzle_correct: true,
+        incorrect_move: null,
       },
     ]);
 
@@ -49,18 +50,21 @@ describe("puzzleLeaderboard", () => {
         puzzle_id: "1",
         first_attempt_at: "2026-01-01T00:00:00.000Z",
         puzzle_correct: true,
+        incorrect_move: null,
       },
       {
         username: "first",
         puzzle_id: "2",
         first_attempt_at: "2026-01-01T00:01:00.000Z",
         puzzle_correct: true,
+        incorrect_move: null,
       },
       {
         username: "third",
         puzzle_id: "3",
         first_attempt_at: "2026-01-01T00:02:00.000Z",
         puzzle_correct: false,
+        incorrect_move: "2. Nf3+",
       },
     ]);
 

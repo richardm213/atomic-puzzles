@@ -525,9 +525,11 @@ export const PuzzleSolverPage = () => {
     ({
       puzzleId,
       puzzleCorrect,
+      incorrectMove,
     }: {
       puzzleId: string | number | null | undefined;
       puzzleCorrect: boolean;
+      incorrectMove: string | null;
     }): void => {
       const normalizedPuzzleId = toPuzzleKey(puzzleId);
       if (!normalizedPuzzleId || !user?.username) return;
@@ -540,6 +542,7 @@ export const PuzzleSolverPage = () => {
             username: user.username,
             puzzleId: normalizedPuzzleId,
             puzzleCorrect,
+            incorrectMove,
           }).then(() => {
             setAttemptedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
           }),
@@ -552,7 +555,7 @@ export const PuzzleSolverPage = () => {
   );
 
   const handleAttemptResolved = useCallback(
-    ({ puzzleId, puzzleCorrect }: AttemptResolved): void => {
+    ({ puzzleId, puzzleCorrect, incorrectMove }: AttemptResolved): void => {
       setElapsedTimerRunning(false);
       const normalizedPuzzleId = toPuzzleKey(puzzleId);
       setResolvedAttemptedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
@@ -560,6 +563,7 @@ export const PuzzleSolverPage = () => {
       enqueuePuzzleProgressWrite({
         puzzleId: normalizedPuzzleId,
         puzzleCorrect,
+        incorrectMove,
       });
     },
     [enqueuePuzzleProgressWrite],
@@ -1165,6 +1169,14 @@ export const PuzzleSolverPage = () => {
                   aria-hidden="true"
                 />
                 <span>{attempt.puzzle_correct ? "Correct" : "Incorrect"}</span>
+                {!attempt.puzzle_correct && attempt.incorrect_move ? (
+                  <span
+                    className="puzzleOtherAttemptMove"
+                    aria-label={`Played ${attempt.incorrect_move}`}
+                  >
+                    {attempt.incorrect_move}
+                  </span>
+                ) : null}
               </span>
               <time className="puzzleOtherAttemptTime" dateTime={attempt.first_attempt_at}>
                 {formatLocalDateTime(attempt.first_attempt_at)}

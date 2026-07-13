@@ -45,6 +45,7 @@ export type PuzzleProgressRow = {
   puzzle_id: string;
   first_attempt_at: string;
   puzzle_correct: boolean;
+  incorrect_move: string | null;
 };
 
 export type PuzzleProgressWithUsernameRow = PuzzleProgressRow & {
@@ -55,6 +56,7 @@ export type PuzzleProgressRpcRow = {
   puzzle_id?: string | number | null;
   first_attempt_at?: string | null;
   puzzle_correct?: boolean | null;
+  incorrect_move?: string | null;
   total_count?: number | null;
 };
 
@@ -115,6 +117,7 @@ export type Database = {
           p_username: string;
           p_puzzle_id: string;
           p_puzzle_correct: boolean;
+          p_incorrect_move?: string | null;
           p_first_attempt_at?: string | null;
         };
         Returns: null;

@@ -60,6 +60,10 @@ const readLocalPuzzleProgress = (username: string): PuzzleProgressRow[] => {
           puzzle_id: normalizePuzzleId(row?.puzzle_id),
           first_attempt_at: typeof row?.first_attempt_at === "string" ? row.first_attempt_at : "",
           puzzle_correct: Boolean(row?.puzzle_correct),
+          incorrect_move:
+            typeof row?.incorrect_move === "string" && row.incorrect_move.trim()
+              ? row.incorrect_move.trim()
+              : null,
         };
       })
       .filter((row) => row.puzzle_id && row.first_attempt_at);
@@ -96,6 +100,10 @@ const mergePuzzleProgressRows = (
       puzzle_id: puzzleId,
       first_attempt_at: firstAttemptAt,
       puzzle_correct: Boolean(row?.puzzle_correct),
+      incorrect_move:
+        typeof row?.incorrect_move === "string" && row.incorrect_move.trim()
+          ? row.incorrect_move.trim()
+          : null,
     };
     const existingRow = rowsByPuzzleId.get(puzzleId);
 
@@ -153,6 +161,10 @@ const upsertLocalPuzzleProgressRow = (username: string, row: PuzzleProgressRow):
       puzzle_id: puzzleId,
       first_attempt_at: firstAttemptAt,
       puzzle_correct: Boolean(row?.puzzle_correct),
+      incorrect_move:
+        typeof row?.incorrect_move === "string" && row.incorrect_move.trim()
+          ? row.incorrect_move.trim()
+          : null,
     },
   ]);
 
@@ -181,6 +193,10 @@ const loadPuzzleProgressPageFromRpc = async (
       puzzle_id: normalizePuzzleId(row?.puzzle_id),
       first_attempt_at: typeof row?.first_attempt_at === "string" ? row.first_attempt_at : "",
       puzzle_correct: Boolean(row?.puzzle_correct),
+      incorrect_move:
+        typeof row?.incorrect_move === "string" && row.incorrect_move.trim()
+          ? row.incorrect_move.trim()
+          : null,
       total_count: Number.isFinite(Number(row?.total_count)) ? Number(row.total_count) : null,
     }))
     .filter((row) => row.puzzle_id && row.first_attempt_at);
@@ -245,6 +261,7 @@ export type RecordPuzzleProgressInput = {
   username: string;
   puzzleId: string | number;
   puzzleCorrect: boolean;
+  incorrectMove: string | null;
 };
 
 export type FetchPuzzleAttemptsForPuzzleOptions = {
@@ -256,9 +273,14 @@ export const recordPuzzleProgress = async ({
   username,
   puzzleId,
   puzzleCorrect,
+  incorrectMove,
 }: RecordPuzzleProgressInput): Promise<void> => {
   const normalizedUsername = normalizeUsername(username);
   const normalizedPuzzleId = normalizePuzzleId(puzzleId);
+  const normalizedIncorrectMove = puzzleCorrect
+    ? null
+    : String(incorrectMove ?? "")
+        .trim() || null;
 
   if (!normalizedUsername || !normalizedPuzzleId) return;
 
@@ -275,6 +297,7 @@ export const recordPuzzleProgress = async ({
       p_username: normalizedUsername,
       p_puzzle_id: normalizedPuzzleId,
       p_puzzle_correct: Boolean(puzzleCorrect),
+      p_incorrect_move: normalizedIncorrectMove,
     });
 
     if (error) {
@@ -285,6 +308,7 @@ export const recordPuzzleProgress = async ({
       puzzle_id: normalizedPuzzleId,
       first_attempt_at: firstAttemptAt,
       puzzle_correct: Boolean(puzzleCorrect),
+      incorrect_move: normalizedIncorrectMove,
     });
   })().finally(() => {
     if (puzzleProgressWriteRequests.get(requestKey) === request) {
@@ -337,7 +361,7 @@ export const fetchPuzzleProgressPage = async (
         serverRows = await fetchAllSupabaseRows<PuzzleProgressRow>(PUZZLE_PROGRESS_TABLE, () =>
           supabase
             .from(PUZZLE_PROGRESS_TABLE)
-            .select("puzzle_id,first_attempt_at,puzzle_correct")
+            .select("puzzle_id,first_attempt_at,puzzle_correct,incorrect_move")
             .eq("username", normalizedUsername)
             .order("first_attempt_at", { ascending: false }),
         );
@@ -347,7 +371,7 @@ export const fetchPuzzleProgressPage = async (
           PUZZLE_PROGRESS_TABLE,
           supabase
             .from(PUZZLE_PROGRESS_TABLE)
-            .select("puzzle_id,first_attempt_at,puzzle_correct", { count: "exact" })
+            .select("puzzle_id,first_attempt_at,puzzle_correct,incorrect_move", { count: "exact" })
             .eq("username", normalizedUsername)
             .order("first_attempt_at", { ascending: false })
             .range(0, Math.max(from + boundedPageSize - 1, boundedPageSize - 1)),
@@ -406,7 +430,7 @@ export const fetchPuzzleProgressSummary = async (
       serverRows = await fetchAllSupabaseRows<PuzzleProgressRow>(PUZZLE_PROGRESS_TABLE, () =>
         supabase
           .from(PUZZLE_PROGRESS_TABLE)
-          .select("puzzle_id,first_attempt_at,puzzle_correct")
+          .select("puzzle_id,first_attempt_at,puzzle_correct,incorrect_move")
           .eq("username", normalizedUsername)
           .order("first_attempt_at", { ascending: false }),
       );
@@ -434,7 +458,7 @@ export const fetchAllPuzzleProgressRows = async (): Promise<PuzzleProgressWithUs
   return fetchAllSupabaseRows<PuzzleProgressWithUsernameRow>(PUZZLE_PROGRESS_TABLE, () =>
     supabase
       .from(PUZZLE_PROGRESS_TABLE)
-      .select("username,puzzle_id,first_attempt_at,puzzle_correct")
+      .select("username,puzzle_id,first_attempt_at,puzzle_correct,incorrect_move")
       .order("first_attempt_at", { ascending: false }),
   );
 };
@@ -451,7 +475,7 @@ export const fetchPuzzleAttemptsForPuzzle = async (
   const supabase = getSupabaseClient();
   let query = supabase
     .from(PUZZLE_PROGRESS_TABLE)
-    .select("username,puzzle_id,first_attempt_at,puzzle_correct")
+    .select("username,puzzle_id,first_attempt_at,puzzle_correct,incorrect_move")
     .eq("puzzle_id", normalizedPuzzleId)
     .order("first_attempt_at", { ascending: false })
     .limit(boundedLimit);
@@ -468,6 +492,10 @@ export const fetchPuzzleAttemptsForPuzzle = async (
       puzzle_id: normalizePuzzleId(row?.puzzle_id),
       first_attempt_at: typeof row?.first_attempt_at === "string" ? row.first_attempt_at : "",
       puzzle_correct: Boolean(row?.puzzle_correct),
+      incorrect_move:
+        typeof row?.incorrect_move === "string" && row.incorrect_move.trim()
+          ? row.incorrect_move.trim()
+          : null,
     }))
     .filter((row) => row.username && row.puzzle_id && row.first_attempt_at);
 };

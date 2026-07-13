@@ -654,6 +654,23 @@ body:has(.puzzlePage),
   color: var(--color-danger);
 }
 
+.puzzleOtherAttemptMove {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: none;
+}
+
+.puzzleOtherAttemptMove::before {
+  width: 1px;
+  height: 12px;
+  background: currentColor;
+  content: "";
+  opacity: 0.35;
+}
+
 .puzzleOtherAttemptTime {
   grid-column: 1 / -1;
   color: var(--color-subtle);

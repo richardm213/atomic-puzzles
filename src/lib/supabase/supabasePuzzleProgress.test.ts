@@ -10,7 +10,7 @@ vi.mock("./supabaseClient", () => ({
   }),
 }));
 
-import { fetchPuzzleProgressPage } from "./supabasePuzzleProgress";
+import { fetchPuzzleProgressPage, recordPuzzleProgress } from "./supabasePuzzleProgress";
 
 describe("fetchPuzzleProgressPage", () => {
   beforeEach(() => {
@@ -46,6 +46,24 @@ describe("fetchPuzzleProgressPage", () => {
     });
     expect(page.total).toBe(27);
     expect(page.rows.map((row) => row.puzzle_id)).toEqual(["21", "22"]);
+  });
+
+  it("records an incorrect move without changing its SAN notation", async () => {
+    rpcMock.mockResolvedValue({ data: null, error: null });
+
+    await recordPuzzleProgress({
+      username: "Solver",
+      puzzleId: "42",
+      puzzleCorrect: false,
+      incorrectMove: "2. Nf3+",
+    });
+
+    expect(rpcMock).toHaveBeenCalledWith("record_first_puzzle_attempt", {
+      p_username: "solver",
+      p_puzzle_id: "42",
+      p_puzzle_correct: false,
+      p_incorrect_move: "2. Nf3+",
+    });
   });
 
   it("filters rows and totals by a since date", async () => {

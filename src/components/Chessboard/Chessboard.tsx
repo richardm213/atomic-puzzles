@@ -734,7 +734,11 @@ export const Chessboard = ({
 
         if (moveEvaluation === "wrong") {
           boardStatusRef.current = { ...boardStatusRef.current, mode: "training", locked: false };
-          onAttemptResolvedRef.current?.({ puzzleId: puzzleIdRef.current, puzzleCorrect: false });
+          onAttemptResolvedRef.current?.({
+            puzzleId: puzzleIdRef.current,
+            puzzleCorrect: false,
+            incorrectMove: `${Math.floor(progress / 2) + 1}. ${userMoveSan}`,
+          });
           syncBoard(activePos, undefined, {
             showWrongMove: true,
             solved: false,
@@ -752,7 +756,11 @@ export const Chessboard = ({
 
         if (!hasExpectedMoveAt(nextCandidates, progressRef.current)) {
           boardStatusRef.current = { mode: "training", locked: false, solved: true };
-          onAttemptResolvedRef.current?.({ puzzleId: puzzleIdRef.current, puzzleCorrect: true });
+          onAttemptResolvedRef.current?.({
+            puzzleId: puzzleIdRef.current,
+            puzzleCorrect: true,
+            incorrectMove: null,
+          });
           syncBoard(activePos, keyPair(orig, dest), {
             solved: true,
             status: "Correct",
@@ -764,7 +772,11 @@ export const Chessboard = ({
         boardStatusRef.current.locked = false;
 
         if (boardStatusRef.current.solved) {
-          onAttemptResolvedRef.current?.({ puzzleId: puzzleIdRef.current, puzzleCorrect: true });
+          onAttemptResolvedRef.current?.({
+            puzzleId: puzzleIdRef.current,
+            puzzleCorrect: true,
+            incorrectMove: null,
+          });
         }
 
         const lastUci = historyRef.current.plies[historyRef.current.index]?.uci;

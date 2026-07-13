@@ -79,6 +79,28 @@ describe("Chessboard orchestration", () => {
     expect(states.at(-1)?.lineMoves).toEqual(["e4"]);
   });
 
+  it("reports an incorrect move in SAN notation", () => {
+    vi.useFakeTimers();
+    const onAttemptResolved = vi.fn();
+    renderBoard({
+      analysisMode: false,
+      solution: "1. e4",
+      onAttemptResolved,
+    });
+
+    play("d2", "d4");
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+
+    expect(onAttemptResolved).toHaveBeenCalledWith({
+      puzzleId: "test",
+      puzzleCorrect: false,
+      incorrectMove: "1. d4",
+    });
+    vi.useRealTimers();
+  });
+
   it("clears the last-move highlight when navigating to the initial position", () => {
     renderBoard();
     play("e2", "e4");

@@ -63,12 +63,14 @@ vi.mock("../../lib/supabase/supabasePuzzleProgress", () => ({
       puzzle_id: "1369",
       first_attempt_at: "2026-07-09T07:00:00.000Z",
       puzzle_correct: true,
+      incorrect_move: null,
     },
     {
       username: "beta",
       puzzle_id: "1369",
       first_attempt_at: "2026-07-09T07:10:00.000Z",
       puzzle_correct: false,
+      incorrect_move: "2. Nf3+",
     },
   ]),
   recordPuzzleProgress: vi.fn(async () => undefined),
@@ -219,6 +221,8 @@ describe("PuzzleSolverPage solution options", () => {
     expect(within(attempts).getByText("Correct")).toBeInTheDocument();
     expect(within(attempts).getByRole("link", { name: "beta" })).toBeInTheDocument();
     expect(within(attempts).getByText("Incorrect")).toBeInTheDocument();
+    const wrongMove = within(attempts).getByLabelText("Played 2. Nf3+");
+    expect(wrongMove).toHaveTextContent("2. Nf3+");
   });
 
   it("keeps the current solution position when opening other attempts", async () => {
