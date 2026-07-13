@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Seo } from "../../components/Seo/Seo";
 import { loadPuzzleLibrary } from "../../lib/puzzles/puzzleLibrary";
-import { groupPuzzlesByEvent } from "../../lib/puzzles/puzzleSets";
+import { getPuzzleEventKey, groupPuzzlesByEvent } from "../../lib/puzzles/puzzleSets";
 import { getOpeningDisplayLabel } from "../../utils/openings";
 
 const EVENT_FILTERS = [
@@ -59,19 +59,26 @@ const matchesEventFilter = (
 
 const readEventKeyFromHash = (): string => {
   if (typeof window === "undefined") return "";
-  const hashValue = window.location.hash.replace(/^#/, "").trim();
+  let hashValue = window.location.hash.replace(/^#/, "").trim();
+  if (!hashValue) return "";
 
-  try {
-    return decodeURIComponent(hashValue);
-  } catch {
-    return hashValue;
+  for (let pass = 0; pass < 2; pass += 1) {
+    try {
+      const decodedValue = decodeURIComponent(hashValue);
+      if (decodedValue === hashValue) break;
+      hashValue = decodedValue;
+    } catch {
+      break;
+    }
   }
+
+  return getPuzzleEventKey(hashValue);
 };
 
 const updateEventKeyHash = (eventKey: string): void => {
   if (typeof window === "undefined") return;
 
-  const nextHash = eventKey ? `#${encodeURIComponent(eventKey)}` : "";
+  const nextHash = eventKey ? `#${eventKey}` : "";
   if (window.location.hash === nextHash) return;
 
   window.history.pushState(
@@ -151,11 +158,6 @@ export const PuzzleSetsPage = () => {
     [puzzleGroups],
   );
   const totalSetCount = puzzleGroups.length;
-  const emptySelectionMessage =
-    filteredPuzzleGroups.length > 0
-      ? "The puzzle list will appear here after you choose a set."
-      : `No sets are visible for the ${EVENT_FILTERS.find((filter) => filter.id === activeFilterId)?.label ?? "active"} filter.`;
-
   const handleSetSelection = (eventKey: string): void => {
     shouldScrollToSelectionRef.current = true;
     setSelectedEventKey(eventKey);
@@ -184,10 +186,6 @@ export const PuzzleSetsPage = () => {
           <div className="puzzleSetsHeroCopy">
             <p className="puzzleSetsEyebrow">Atomic tactics</p>
             <h1>Puzzle sets</h1>
-            <p className="puzzleSetsIntro">
-              Browse every event in the puzzle library, then open the full set to jump straight into
-              any position.
-            </p>
           </div>
           <div className="puzzleSetsHeroActions">
             <div className="puzzleSetsSummaryCard">
@@ -208,9 +206,6 @@ export const PuzzleSetsPage = () => {
             <div className="puzzleSetsSectionCopy">
               <p className="puzzleSetsSectionEyebrow">Events</p>
               <h2>Choose a puzzle set</h2>
-              <p className="puzzleSetsSectionIntro">
-                Select a card to reveal every puzzle from that event.
-              </p>
             </div>
             <div className="puzzleSetsFilterBar" role="toolbar" aria-label="Filter puzzle sets">
               {EVENT_FILTERS.map((filter) => {
@@ -241,25 +236,41 @@ export const PuzzleSetsPage = () => {
                 const isSelected = selectedGroup?.eventKey === group.eventKey;
 
                 return (
-                  <button
+                  <article
                     key={group.eventKey}
-                    type="button"
                     className={`puzzleSetCard ${isSelected ? "selected" : ""}`}
-                    onClick={() => handleSetSelection(group.eventKey)}
+                    role="listitem"
                   >
-                    <span className="puzzleSetsMiniLabel">Event</span>
-                    <strong>{group.event}</strong>
-                    <div className="puzzleSetCardMeta">
-                      <span>{group.puzzles.length} puzzles</span>
-                      <span>
-                        #{firstPuzzleId}
-                        {firstPuzzleId !== lastPuzzleId ? `-${lastPuzzleId}` : ""}
+                    <button
+                      type="button"
+                      className="puzzleSetCardSelect"
+                      onClick={() => handleSetSelection(group.eventKey)}
+                    >
+                      <span className="puzzleSetsMiniLabel">Event</span>
+                      <strong>{group.event}</strong>
+                      <div className="puzzleSetCardMeta">
+                        <span>{group.puzzles.length} puzzles</span>
+                        <span>
+                          #{firstPuzzleId}
+                          {firstPuzzleId !== lastPuzzleId ? `-${lastPuzzleId}` : ""}
+                        </span>
+                      </div>
+                      <span className="puzzleSetCardAuthors">
+                        {group.authors.length} author{group.authors.length === 1 ? "" : "s"}
                       </span>
-                    </div>
-                    <span className="puzzleSetCardAuthors">
-                      {group.authors.length} author{group.authors.length === 1 ? "" : "s"}
-                    </span>
-                  </button>
+                    </button>
+                    <Link
+                      className="puzzleSetCardStartLink"
+                      to="/solve/set/$setKey/$puzzleId"
+                      params={{
+                        setKey: group.event,
+                        puzzleId: String(group.puzzles[0]?.puzzleId ?? ""),
+                      }}
+                    >
+                      Start set
+                      <span aria-hidden="true">→</span>
+                    </Link>
+                  </article>
                 );
               })}
             </div>
@@ -272,39 +283,28 @@ export const PuzzleSetsPage = () => {
           )}
         </section>
 
-        <section
-          className="puzzleSetsSection puzzleSetsSelectedSection"
-          ref={selectedSetSectionRef}
-        >
-          <div className="puzzleSetsSectionHeader">
-            <div className="puzzleSetsSectionCopy">
-              <p className="puzzleSetsSectionEyebrow">Selected set</p>
-              <h2>{selectedGroup ? selectedGroup.event : "Pick an event to view its puzzles"}</h2>
-              {selectedGroup ? null : (
-                <p className="puzzleSetsSectionIntro">{emptySelectionMessage}</p>
-              )}
-              {selectedGroup ? (
-                <p className="puzzleSetsSectionIntro">
-                  Solve every puzzle in order, including puzzles you have attempted before.
-                </p>
-              ) : null}
-            </div>
-            {selectedGroup?.puzzles[0] ? (
+        {selectedGroup ? (
+          <section
+            className="puzzleSetsSection puzzleSetsSelectedSection"
+            ref={selectedSetSectionRef}
+          >
+            <div className="puzzleSetsSectionHeader">
+              <div className="puzzleSetsSectionCopy">
+                <p className="puzzleSetsSectionEyebrow">Selected set</p>
+                <h2>{selectedGroup.event}</h2>
+              </div>
               <Link
                 className="puzzleSetStartLink"
                 to="/solve/set/$setKey/$puzzleId"
                 params={{
                   setKey: selectedGroup.event,
-                  puzzleId: String(selectedGroup.puzzles[0].puzzleId),
+                  puzzleId: String(selectedGroup.puzzles[0]?.puzzleId ?? ""),
                 }}
               >
                 Solve set from the start
                 <span aria-hidden="true">→</span>
               </Link>
-            ) : null}
-          </div>
-
-          {selectedGroup ? (
+            </div>
             <div
               className="puzzleSetPuzzleList"
               role="list"
@@ -351,12 +351,8 @@ export const PuzzleSetsPage = () => {
                 );
               })}
             </div>
-          ) : (
-            <div className="puzzleSetsStateCard">
-              Choose a set above to see all of its puzzle links in one place.
-            </div>
-          )}
-        </section>
+          </section>
+        ) : null}
       </div>
     </div>
   );
