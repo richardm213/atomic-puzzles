@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   }>,
   attemptedPuzzleIds: new Set(["1369"]),
   navigate: vi.fn(),
+  routeParams: { puzzleId: "1369", setKey: "" },
 }));
 
 vi.mock("@tanstack/react-router", async () => {
@@ -28,7 +29,7 @@ vi.mock("@tanstack/react-router", async () => {
       to?: string;
     }) => React.createElement("a", { className, href: to ?? "#" }, children),
     useNavigate: () => mocks.navigate,
-    useParams: () => ({ puzzleId: "1369" }),
+    useParams: () => mocks.routeParams,
   };
 });
 
@@ -49,6 +50,7 @@ vi.mock("../../lib/puzzles/puzzleLibrary", () => ({
         "12... O-O (12... Rf8 13. O-O-O Rf2 (13... Ba3) 14. Be2 Ba3) 13. O-O-O Rf2 (13... Ba3) 14. Be2 Ba3",
       puzzleId: 1369,
       author: "admin",
+      event: "ACL 2024",
     },
   ]),
 }));
@@ -149,6 +151,7 @@ describe("PuzzleSolverPage solution options", () => {
     mocks.chessboardProps.length = 0;
     mocks.attemptedPuzzleIds = new Set(["1369"]);
     mocks.navigate.mockReset();
+    mocks.routeParams = { puzzleId: "1369", setKey: "" };
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
       value: vi.fn(() => ({
@@ -242,5 +245,35 @@ describe("PuzzleSolverPage solution options", () => {
 
     const otherAttemptsTab = await screen.findByRole("tab", { name: "Other attempts" });
     await waitFor(() => expect(otherAttemptsTab).toBeDisabled());
+  });
+
+  it("offers exits when the final puzzle in an ordered set is solved", async () => {
+    mocks.routeParams = {
+      puzzleId: "1369",
+      setKey: "ACL 2024",
+    };
+    render(<PuzzleSolverPage />);
+
+    await screen.findByTestId("mock-board");
+    act(() => {
+      mocks.chessboardProps.at(-1)?.onStateChange?.({
+        fen: "8/8/8/8/8/8/8/8 w - - 0 1",
+        turn: "white",
+        status: "Solved",
+        error: "",
+        lineMoves: [],
+        solutionLines: [],
+        solutionLineIndex: 0,
+        lineIndex: 0,
+        viewingSolution: false,
+        showWrongMove: false,
+        showRetryMove: false,
+        solved: true,
+      });
+    });
+
+    expect(await screen.findByRole("heading", { name: "Puzzle set complete" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Continue with regular puzzles" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Back to puzzle sets" })).toBeInTheDocument();
   });
 });

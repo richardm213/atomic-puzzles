@@ -68,6 +68,82 @@ body:has(.puzzlePage),
   backdrop-filter: blur(16px);
 }
 
+.puzzleSetComplete {
+  display: grid;
+  gap: 14px;
+  margin: 12px 0;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--color-success) 58%, var(--color-border));
+  border-radius: var(--radius-ui);
+  background:
+    radial-gradient(
+      circle at top right,
+      color-mix(in srgb, var(--color-success) 20%, transparent),
+      transparent 52%
+    ),
+    var(--color-panel-strong);
+}
+
+.puzzleSetCompleteCopy {
+  display: grid;
+  gap: 5px;
+}
+
+.puzzleSetCompleteCopy > span {
+  color: var(--color-success);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.puzzleSetCompleteCopy h2,
+.puzzleSetCompleteCopy p {
+  margin: 0;
+}
+
+.puzzleSetCompleteCopy h2 {
+  color: var(--color-heading);
+  font-size: 19px;
+}
+
+.puzzleSetCompleteCopy p {
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.puzzleSetCompleteActions {
+  display: grid;
+  gap: 8px;
+}
+
+.puzzleSetCompleteLink {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-ui);
+  background: var(--color-surface-elevated);
+  color: var(--color-heading);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+  text-decoration: none;
+}
+
+.puzzleSetCompleteLink.primary {
+  border-color: color-mix(in srgb, var(--color-primary) 68%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 20%, var(--color-panel-strong));
+}
+
+.puzzleSetCompleteLink:hover {
+  border-color: var(--color-primary);
+  background: var(--color-surface-elevated-strong);
+}
+
 .puzzleHeader {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(150px, 0.62fr);

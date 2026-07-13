@@ -283,7 +283,25 @@ export const PuzzleSetsPage = () => {
               {selectedGroup ? null : (
                 <p className="puzzleSetsSectionIntro">{emptySelectionMessage}</p>
               )}
+              {selectedGroup ? (
+                <p className="puzzleSetsSectionIntro">
+                  Solve every puzzle in order, including puzzles you have attempted before.
+                </p>
+              ) : null}
             </div>
+            {selectedGroup?.puzzles[0] ? (
+              <Link
+                className="puzzleSetStartLink"
+                to="/solve/set/$setKey/$puzzleId"
+                params={{
+                  setKey: selectedGroup.event,
+                  puzzleId: String(selectedGroup.puzzles[0].puzzleId),
+                }}
+              >
+                Solve set from the start
+                <span aria-hidden="true">→</span>
+              </Link>
+            ) : null}
           </div>
 
           {selectedGroup ? (

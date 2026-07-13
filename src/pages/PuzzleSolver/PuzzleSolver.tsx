@@ -26,6 +26,7 @@ import { useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
 import { loadPuzzleLibrary } from "../../lib/puzzles/puzzleLibrary";
+import { getOrderedPuzzleIndexesForEvent } from "../../lib/puzzles/puzzleSets";
 import { movePrefix, serializeSanLinesToPgn } from "../../lib/puzzles/solutionPgn";
 import {
   fetchAttemptedPuzzleIds,
@@ -224,7 +225,9 @@ const copyTextToClipboard = async (value: string): Promise<boolean> => {
 
 export const PuzzleSolverPage = () => {
   const navigate = useNavigate();
-  const { puzzleId: routePuzzleId = "" } = useParams({ strict: false });
+  const { puzzleId: routePuzzleId = "", setKey: routeSetKey = "" } = useParams({
+    strict: false,
+  });
   const { isAuthenticated, user } = useAuth();
   const { showPuzzleTimer } = useAppSettings();
   const [canViewHistory, setCanViewHistory] = useState(false);
@@ -279,6 +282,11 @@ export const PuzzleSolverPage = () => {
   const elapsedTimeMsRef = useRef(0);
   const [elapsedTimeMs, setElapsedTimeMs] = useState(0);
   const [elapsedTimerRunning, setElapsedTimerRunning] = useState(false);
+  const orderedSetPuzzleIndexes = useMemo(
+    () => getOrderedPuzzleIndexesForEvent(puzzles, routeSetKey),
+    [puzzles, routeSetKey],
+  );
+  const isSetSolveMode = Boolean(routeSetKey && orderedSetPuzzleIndexes.length > 0);
 
   useEffect(() => {
     let isCurrent = true;
@@ -329,13 +337,21 @@ export const PuzzleSolverPage = () => {
 
   const replaceUrlWithPuzzle = useCallback(
     (puzzleId: string | number): void => {
-      void navigate({
-        to: "/solve/$puzzleId",
-        params: { puzzleId: String(puzzleId) },
-        replace: true,
-      });
+      if (isSetSolveMode) {
+        void navigate({
+          to: "/solve/set/$setKey/$puzzleId",
+          params: { setKey: routeSetKey, puzzleId: String(puzzleId) },
+          replace: true,
+        });
+      } else {
+        void navigate({
+          to: "/solve/$puzzleId",
+          params: { puzzleId: String(puzzleId) },
+          replace: true,
+        });
+      }
     },
-    [navigate],
+    [isSetSolveMode, navigate, routeSetKey],
   );
 
   useEffect(() => {
@@ -475,7 +491,22 @@ export const PuzzleSolverPage = () => {
   const hasCastlingRights = castlingRights.white.length > 0 || castlingRights.black.length > 0;
   const startAnalysisUrl = lichessAnalysisUrl(fen);
   const currentAnalysisUrl = lichessAnalysisUrl(currentFen);
-  const puzzleOrdinal = activePuzzleIndex >= 0 ? activePuzzleIndex + 1 : null;
+  const activeSetPuzzlePosition = isSetSolveMode
+    ? orderedSetPuzzleIndexes.indexOf(activePuzzleIndex)
+    : -1;
+  const puzzleOrdinal = isSetSolveMode
+    ? activeSetPuzzlePosition >= 0
+      ? activeSetPuzzlePosition + 1
+      : null
+    : activePuzzleIndex >= 0
+      ? activePuzzleIndex + 1
+      : null;
+  const puzzleCount = isSetSolveMode ? orderedSetPuzzleIndexes.length : puzzles.length;
+  const canGoToPreviousPuzzle = isSetSolveMode ? activeSetPuzzlePosition > 0 : historyIndex > 0;
+  const canGoToNextPuzzle = isSetSolveMode
+    ? activeSetPuzzlePosition >= 0 && activeSetPuzzlePosition < orderedSetPuzzleIndexes.length - 1
+    : puzzles.length > 0;
+  const hasCompletedPuzzleSet = isSetSolveMode && !canGoToNextPuzzle && boardState.solved;
   const isAnalysisMode = interactionMode === ANALYSIS_MODE;
   const hasPersistedAttempt = activePuzzleKey ? attemptedPuzzleIds.has(activePuzzleKey) : false;
   const hasResolvedAttempt = activePuzzleKey
@@ -627,6 +658,13 @@ export const PuzzleSolverPage = () => {
     if (puzzles.length === 0) return;
     resetPuzzleUiState();
 
+    if (isSetSolveMode) {
+      const nextIndex = orderedSetPuzzleIndexes[activeSetPuzzlePosition + 1];
+      const nextPuzzle = nextIndex !== undefined ? puzzles[nextIndex] : undefined;
+      if (nextPuzzle) replaceUrlWithPuzzle(nextPuzzle.puzzleId);
+      return;
+    }
+
     if (historyIndex < history.length - 1) {
       const nextHistoryIndex = historyIndex + 1;
       setHistoryIndex(nextHistoryIndex);
@@ -647,8 +685,16 @@ export const PuzzleSolverPage = () => {
   };
 
   const handlePreviousPuzzle = () => {
-    if (historyIndex <= 0) return;
+    if (!canGoToPreviousPuzzle) return;
     resetPuzzleUiState();
+
+    if (isSetSolveMode) {
+      const previousIndex = orderedSetPuzzleIndexes[activeSetPuzzlePosition - 1];
+      const previousPuzzle = previousIndex !== undefined ? puzzles[previousIndex] : undefined;
+      if (previousPuzzle) replaceUrlWithPuzzle(previousPuzzle.puzzleId);
+      return;
+    }
+
     const previousHistoryIndex = historyIndex - 1;
     setHistoryIndex(previousHistoryIndex);
     const previousPuzzleIndex = history[previousHistoryIndex];
@@ -1224,7 +1270,13 @@ export const PuzzleSolverPage = () => {
             ? `Solve atomic chess puzzle ${activePuzzleId} and play through the full forcing line.`
             : "Solve atomic chess puzzles drawn from real games and community analysis."
         }
-        path={activePuzzleId ? `/solve/${activePuzzleId}` : "/solve"}
+        path={
+          activePuzzleId
+            ? isSetSolveMode
+              ? `/solve/set/${encodeURIComponent(routeSetKey)}/${activePuzzleId}`
+              : `/solve/${activePuzzleId}`
+            : "/solve"
+        }
       />
       <div className="panel puzzlePanel">
         <div className="puzzleHeader">
@@ -1255,7 +1307,7 @@ export const PuzzleSolverPage = () => {
             ) : null}
             <div className="puzzleCount" aria-label="Puzzle count">
               <span>{puzzleOrdinal ?? "-"}</span>
-              <small>of {puzzles.length || "-"}</small>
+              <small>of {puzzleCount || "-"}</small>
             </div>
           </div>
           <div className="puzzleHeaderMeta" title={author}>
@@ -1264,10 +1316,14 @@ export const PuzzleSolverPage = () => {
           </div>
           {!isMobileLayout ? (
             <div className="buttonRow puzzleActions">
-              <button type="button" onClick={handlePreviousPuzzle} disabled={historyIndex <= 0}>
+              <button
+                type="button"
+                onClick={handlePreviousPuzzle}
+                disabled={!canGoToPreviousPuzzle}
+              >
                 Prev
               </button>
-              <button type="button" onClick={handleNextPuzzle} disabled={puzzles.length === 0}>
+              <button type="button" onClick={handleNextPuzzle} disabled={!canGoToNextPuzzle}>
                 Next
               </button>
             </div>
@@ -1276,6 +1332,25 @@ export const PuzzleSolverPage = () => {
 
         {boardState.error ? <div className="errorText">{boardState.error}</div> : null}
         {loadingError ? <div className="errorText">{loadingError}</div> : null}
+        {hasCompletedPuzzleSet ? (
+          <section className="puzzleSetComplete" role="status" aria-live="polite">
+            <div className="puzzleSetCompleteCopy">
+              <span>Set complete</span>
+              <h2>Puzzle set complete</h2>
+              <p>
+                You finished all {puzzleCount} puzzles{event ? ` in ${event}` : ""}.
+              </p>
+            </div>
+            <div className="puzzleSetCompleteActions">
+              <Link className="puzzleSetCompleteLink primary" to="/solve">
+                Continue with regular puzzles
+              </Link>
+              <Link className="puzzleSetCompleteLink" to="/solve/sets">
+                Back to puzzle sets
+              </Link>
+            </div>
+          </section>
+        ) : null}
 
         {!isMobileLayout ? (
           <div className="puzzleDetails">
@@ -1397,10 +1472,10 @@ export const PuzzleSolverPage = () => {
 
       {isMobileLayout ? (
         <div className="mobileBottomNav" aria-label="Puzzle navigation">
-          <button type="button" onClick={handlePreviousPuzzle} disabled={historyIndex <= 0}>
+          <button type="button" onClick={handlePreviousPuzzle} disabled={!canGoToPreviousPuzzle}>
             Prev
           </button>
-          <button type="button" onClick={handleNextPuzzle} disabled={puzzles.length === 0}>
+          <button type="button" onClick={handleNextPuzzle} disabled={!canGoToNextPuzzle}>
             Next
           </button>
         </div>

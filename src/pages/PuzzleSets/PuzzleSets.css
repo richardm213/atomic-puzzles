@@ -2,9 +2,7 @@
   --puzzle-sets-panel-padding: clamp(18px, 2.2vw, 24px);
   --puzzle-sets-pill-radius: 999px;
   --puzzle-sets-transition:
-    transform 140ms ease,
-    border-color 140ms ease,
-    background-color 140ms ease;
+    transform 140ms ease, border-color 140ms ease, background-color 140ms ease;
   min-height: var(--page-shell-min-height);
   min-height: var(--page-shell-min-height-dynamic);
   background: var(--site-background);
@@ -26,7 +24,11 @@
   border: 1px solid var(--color-border);
   border-radius: calc(var(--radius-ui) + 6px);
   background:
-    radial-gradient(circle at top left, color-mix(in srgb, var(--color-primary) 16%, transparent), transparent 32%),
+    radial-gradient(
+      circle at top left,
+      color-mix(in srgb, var(--color-primary) 16%, transparent),
+      transparent 32%
+    ),
     linear-gradient(180deg, color-mix(in srgb, var(--color-panel) 84%, transparent), transparent),
     var(--color-panel);
   box-shadow: var(--shadow-panel);
@@ -140,12 +142,14 @@
 }
 
 .puzzleSetsBackLink,
+.puzzleSetStartLink,
 .puzzleSetPuzzleLink,
 .puzzleSetOpenLink {
   text-decoration: none;
 }
 
 .puzzleSetsBackLink,
+.puzzleSetStartLink,
 .puzzleSetOpenLink {
   min-height: 40px;
   display: inline-flex;
@@ -162,6 +166,7 @@
 }
 
 .puzzleSetsBackLink:hover,
+.puzzleSetStartLink:hover,
 .puzzleSetOpenLink:hover {
   transform: translateY(-1px);
   border-color: var(--color-primary);
@@ -180,7 +185,9 @@
   font: inherit;
   font-weight: 700;
   cursor: pointer;
-  transition: var(--puzzle-sets-transition), color 140ms ease;
+  transition:
+    var(--puzzle-sets-transition),
+    color 140ms ease;
 }
 
 .puzzleSetsFilterButton:hover,
@@ -221,7 +228,11 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-ui);
   background:
-    radial-gradient(circle at top right, color-mix(in srgb, var(--color-primary) 10%, transparent), transparent 38%),
+    radial-gradient(
+      circle at top right,
+      color-mix(in srgb, var(--color-primary) 10%, transparent),
+      transparent 38%
+    ),
     var(--color-surface-soft);
   color: inherit;
   cursor: pointer;
@@ -234,7 +245,11 @@
   transform: translateY(-2px);
   border-color: color-mix(in srgb, var(--color-primary) 60%, var(--color-border));
   background:
-    radial-gradient(circle at top right, color-mix(in srgb, var(--color-primary) 18%, transparent), transparent 42%),
+    radial-gradient(
+      circle at top right,
+      color-mix(in srgb, var(--color-primary) 18%, transparent),
+      transparent 42%
+    ),
     color-mix(in srgb, var(--color-panel-strong) 88%, transparent);
 }
 
@@ -259,8 +274,18 @@
 }
 
 .puzzleSetsSelectedSection .puzzleSetsSectionHeader {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
   gap: 18px;
   margin-bottom: 10px;
+}
+
+.puzzleSetStartLink {
+  min-height: 46px;
+  padding-inline: 18px;
+  border-color: color-mix(in srgb, var(--color-primary) 72%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 22%, var(--color-panel-strong));
+  white-space: nowrap;
 }
 
 .puzzleSetsSelectedSection .puzzleSetsSectionCopy {
@@ -304,6 +329,7 @@
 
 @media (max-width: 900px) {
   .puzzleSetsHero,
+  .puzzleSetsSelectedSection .puzzleSetsSectionHeader,
   .puzzleSetPuzzleRow {
     grid-template-columns: 1fr;
   }
@@ -313,6 +339,7 @@
   }
 
   .puzzleSetOpenLink,
+  .puzzleSetStartLink,
   .puzzleSetsBackLink {
     width: 100%;
   }

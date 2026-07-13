@@ -16,7 +16,7 @@ export const normalizePuzzleEventName = (value: unknown): string => {
   return trimmed || UNKNOWN_PUZZLE_EVENT_LABEL;
 };
 
-const getPuzzleEventKey = (value: string): string => {
+export const getPuzzleEventKey = (value: string): string => {
   const normalizedEvent = normalizePuzzleEventName(value);
 
   if (normalizedEvent === UNKNOWN_PUZZLE_EVENT_LABEL) {
@@ -24,6 +24,29 @@ const getPuzzleEventKey = (value: string): string => {
   }
 
   return encodeURIComponent(normalizedEvent.toLocaleLowerCase());
+};
+
+export const getOrderedPuzzleIndexesForEvent = (
+  puzzles: Puzzle[] = [],
+  eventNameOrKey: string,
+): number[] => {
+  if (!eventNameOrKey) return [];
+
+  let decodedEventName = eventNameOrKey;
+  try {
+    decodedEventName = decodeURIComponent(eventNameOrKey);
+  } catch {
+    // Keep the original value when it is not URI encoded.
+  }
+  const eventKey = getPuzzleEventKey(decodedEventName);
+
+  return puzzles
+    .map((puzzle, index) => ({ puzzle, index }))
+    .filter(
+      ({ puzzle }) => getPuzzleEventKey(normalizePuzzleEventName(puzzle?.["event"])) === eventKey,
+    )
+    .sort(({ puzzle: left }, { puzzle: right }) => left.puzzleId - right.puzzleId)
+    .map(({ index }) => index);
 };
 
 const sortGroups = (left: PuzzleEventGroup, right: PuzzleEventGroup): number => {
@@ -68,18 +91,20 @@ export const groupPuzzlesByEvent = (puzzles: Puzzle[] = []): PuzzleEventGroup[] 
   });
 
   return [...groups.values()]
-    .map((group): PuzzleEventGroup => ({
-      event: group.event,
-      eventKey: group.eventKey,
-      puzzles: [...group.puzzles].sort((left, right) => {
-        const leftId = Number(left?.puzzleId ?? 0);
-        const rightId = Number(right?.puzzleId ?? 0);
-        return leftId - rightId;
+    .map(
+      (group): PuzzleEventGroup => ({
+        event: group.event,
+        eventKey: group.eventKey,
+        puzzles: [...group.puzzles].sort((left, right) => {
+          const leftId = Number(left?.puzzleId ?? 0);
+          const rightId = Number(right?.puzzleId ?? 0);
+          return leftId - rightId;
+        }),
+        authors: [...group.authors].sort((left, right) =>
+          left.localeCompare(right, undefined, { sensitivity: "base" }),
+        ),
       }),
-      authors: [...group.authors].sort((left, right) =>
-        left.localeCompare(right, undefined, { sensitivity: "base" }),
-      ),
-    }))
+    )
     .sort(sortGroups);
 };
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { Puzzle } from "./puzzleLibrary";
 import {
+  getOrderedPuzzleIndexesForEvent,
   groupPuzzlesByEvent,
   normalizePuzzleEventName,
   UNKNOWN_PUZZLE_EVENT_LABEL,
@@ -45,9 +46,7 @@ describe("groupPuzzlesByEvent", () => {
   });
 
   it("uses 'Unknown' for puzzles missing an author", () => {
-    const groups = groupPuzzlesByEvent([
-      makePuzzle({ puzzleId: 1, event: "ACL 2024" }),
-    ]);
+    const groups = groupPuzzlesByEvent([makePuzzle({ puzzleId: 1, event: "ACL 2024" })]);
     expect(groups[0]?.authors).toEqual(["Unknown"]);
   });
 
@@ -62,5 +61,25 @@ describe("groupPuzzlesByEvent", () => {
 
   it("handles empty input", () => {
     expect(groupPuzzlesByEvent([])).toEqual([]);
+  });
+});
+
+describe("getOrderedPuzzleIndexesForEvent", () => {
+  it("returns every puzzle in the selected event in puzzle-id order", () => {
+    const puzzles = [
+      makePuzzle({ puzzleId: 8, event: "ACL 2024" }),
+      makePuzzle({ puzzleId: 2, event: "AWC 2025" }),
+      makePuzzle({ puzzleId: 3, event: "ACL 2024" }),
+    ];
+
+    expect(getOrderedPuzzleIndexesForEvent(puzzles, encodeURIComponent("acl 2024"))).toEqual([
+      2, 0,
+    ]);
+  });
+
+  it("returns an empty list for an unknown event", () => {
+    expect(
+      getOrderedPuzzleIndexesForEvent([makePuzzle({ puzzleId: 1, event: "ACL 2024" })], "missing"),
+    ).toEqual([]);
   });
 });
