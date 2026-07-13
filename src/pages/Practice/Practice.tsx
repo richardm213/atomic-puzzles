@@ -63,6 +63,7 @@ type PracticeEngineStatus = "idle" | "thinking" | "error";
 type PracticeSide = "white" | "black";
 type OpponentMode = "frequency" | "random" | "popular";
 type OpponentSource = "general" | "player";
+type PlayerContinuation = "general" | "stockfish";
 type PendingAutoMove = {
   fen: string;
   uci: string;
@@ -80,7 +81,8 @@ type StoredPracticeSettings = {
   opponentUsernames: string[];
   opponentUsername?: string;
   allowMultiplePlayers: boolean;
-  continueWithGeneralDb: boolean;
+  playerContinuation: PlayerContinuation;
+  continueWithGeneralDb?: boolean;
   clockMinutes: number;
   clockIncrementSeconds: number;
   clockEnabled: boolean;
@@ -93,7 +95,7 @@ const DEFAULT_SETTINGS: StoredPracticeSettings = {
   opponentSource: "general",
   opponentUsernames: [],
   allowMultiplePlayers: false,
-  continueWithGeneralDb: false,
+  playerContinuation: "stockfish",
   clockMinutes: DEFAULT_CLOCK_MINUTES,
   clockIncrementSeconds: DEFAULT_CLOCK_INCREMENT_SECONDS,
   clockEnabled: true,
@@ -153,7 +155,10 @@ const loadPracticeSettings = (): StoredPracticeSettings => {
       opponentSource: value.opponentSource === "player" ? "player" : "general",
       opponentUsernames: allowMultiplePlayers ? opponentUsernames : opponentUsernames.slice(0, 1),
       allowMultiplePlayers,
-      continueWithGeneralDb: value.continueWithGeneralDb === true,
+      playerContinuation:
+        value.playerContinuation === "general" || value.continueWithGeneralDb === true
+          ? "general"
+          : "stockfish",
       clockMinutes: normalizeClockValue(value.clockMinutes, DEFAULT_CLOCK_MINUTES, 180),
       clockIncrementSeconds: normalizeClockValue(
         value.clockIncrementSeconds,
@@ -242,13 +247,13 @@ const fetchPracticeExplorerResponse = async ({
   opponentSource,
   opponentUsernames,
   opponentSide,
-  continueWithGeneralDb,
+  playerContinuation,
 }: {
   fen: string;
   opponentSource: OpponentSource;
   opponentUsernames: string[];
   opponentSide: PracticeSide;
-  continueWithGeneralDb: boolean;
+  playerContinuation: PlayerContinuation;
 }): Promise<PracticeExplorerResult> => {
   if (opponentSource === "general") {
     return {
@@ -267,7 +272,7 @@ const fetchPracticeExplorerResponse = async ({
     ),
   ).then(mergeExplorerApiResponses);
 
-  if (continueWithGeneralDb && playerResponse.moves.length === 0) {
+  if (playerContinuation === "general" && playerResponse.moves.length === 0) {
     return {
       response: await fetchGeneralPracticeExplorerResponse({ fen, opponentSide }),
       source: "general",
@@ -339,9 +344,7 @@ export const PracticePage = () => {
   const [allowMultiplePlayers, setAllowMultiplePlayers] = useState(
     initialSettings.allowMultiplePlayers,
   );
-  const [continueWithGeneralDb, setContinueWithGeneralDb] = useState(
-    initialSettings.continueWithGeneralDb,
-  );
+  const [playerContinuation, setPlayerContinuation] = useState(initialSettings.playerContinuation);
   const [exhaustedFen, setExhaustedFen] = useState<string | null>(null);
   const [usingGeneralFallback, setUsingGeneralFallback] = useState(false);
   const [movesOpen, setMovesOpen] = useState(true);
@@ -363,13 +366,16 @@ export const PracticePage = () => {
   const [clockEnabled, setClockEnabled] = useState(initialSettings.clockEnabled);
   const [remainingClockMs, setRemainingClockMs] = useState(initialSettings.clockMinutes * 60_000);
   const [clockExpired, setClockExpired] = useState(false);
-  const [gamePaused, setGamePaused] = useState(initialSettings.clockEnabled);
+  const [gamePaused, setGamePaused] = useState(true);
+  const [sessionStarted, setSessionStarted] = useState(false);
 
   const currentFen = boardState?.fen || STARTING_FEN;
   const databaseExhausted = exhaustedFen === currentFen;
-  const useEngineForOpponentMove = engineEnabled || databaseExhausted;
+  const databaseFirstMode = opponentSource === "player";
+  const useEngineForOpponentMove = databaseExhausted || (engineEnabled && !databaseFirstMode);
   const currentLichessAnalysisUrl = lichessAtomicAnalysisUrl(currentFen);
   const currentTurn = boardState?.turn || "white";
+  const gameFinished = Boolean(boardState?.winner);
   const opponentSide = oppositeSide(side);
   const selectedPlayerSummary =
     opponentUsernames.length === 0
@@ -416,6 +422,7 @@ export const PracticePage = () => {
   const canStepForward = currentPly < moveList.length;
   const totalGames = practiceMoves.reduce((total, move) => total + move.games, 0);
   const canUsePlayerSource = opponentSource === "general" || opponentUsernames.length > 0;
+  const canRunPractice = canUsePlayerSource && !gameFinished && !(clockEnabled && clockExpired);
   const maxPracticePlayers = allowMultiplePlayers ? MAX_PRACTICE_PLAYERS : 1;
   const canAddPracticePlayer = opponentUsernames.length < maxPracticePlayers;
   const canChoosePracticePlayer = allowMultiplePlayers ? canAddPracticePlayer : true;
@@ -480,7 +487,7 @@ export const PracticePage = () => {
       opponentSource,
       opponentUsernames,
       allowMultiplePlayers,
-      continueWithGeneralDb,
+      playerContinuation,
       clockMinutes,
       clockIncrementSeconds,
       clockEnabled,
@@ -488,7 +495,6 @@ export const PracticePage = () => {
     });
   }, [
     allowMultiplePlayers,
-    continueWithGeneralDb,
     clockIncrementSeconds,
     clockEnabled,
     clockMinutes,
@@ -496,16 +502,17 @@ export const PracticePage = () => {
     opponentMode,
     opponentSource,
     opponentUsernames,
+    playerContinuation,
     side,
   ]);
 
   const resetPracticeClock = useCallback(
-    (minutes = clockMinutes): void => {
+    (minutes = clockMinutes, pauseGame = true): void => {
       const nextMilliseconds = minutes * 60_000;
       remainingClockMsRef.current = nextMilliseconds;
       setRemainingClockMs(nextMilliseconds);
       setClockExpired(nextMilliseconds <= 0);
-      setGamePaused(true);
+      if (pauseGame) setGamePaused(true);
     },
     [clockMinutes],
   );
@@ -539,7 +546,10 @@ export const PracticePage = () => {
       const nextMilliseconds = Math.max(0, remainingClockMsRef.current - elapsed);
       remainingClockMsRef.current = nextMilliseconds;
       setRemainingClockMs(nextMilliseconds);
-      if (nextMilliseconds <= 0) setClockExpired(true);
+      if (nextMilliseconds <= 0) {
+        setClockExpired(true);
+        setGamePaused(true);
+      }
     };
     const interval = window.setInterval(updateClock, 100);
 
@@ -587,7 +597,7 @@ export const PracticePage = () => {
       opponentSource,
       opponentUsernames,
       opponentSide,
-      continueWithGeneralDb,
+      playerContinuation,
     })
       .then(({ response: data, usedGeneralFallback }) => {
         if (requestCancelled || requestTimedOut || requestId !== requestIdRef.current) return;
@@ -605,7 +615,7 @@ export const PracticePage = () => {
         setStatus("ready");
 
         if (
-          !engineEnabled &&
+          (!engineEnabled || databaseFirstMode) &&
           !gamePaused &&
           currentTurn === opponentSide &&
           !databaseExhausted &&
@@ -657,10 +667,10 @@ export const PracticePage = () => {
     };
   }, [
     canUsePlayerSource,
-    continueWithGeneralDb,
     currentFen,
     currentTurn,
     databaseExhausted,
+    databaseFirstMode,
     engineEnabled,
     gamePaused,
     getUntriedMoves,
@@ -668,6 +678,7 @@ export const PracticePage = () => {
     opponentSide,
     opponentSource,
     opponentUsernames,
+    playerContinuation,
   ]);
 
   useEffect(() => {
@@ -685,7 +696,7 @@ export const PracticePage = () => {
       navigation ||
       lastAutoFenRef.current === currentFen
     ) {
-      if (!useEngineForOpponentMove || currentTurn !== opponentSide) {
+      if (!useEngineForOpponentMove || currentTurn !== opponentSide || gamePaused || navigation) {
         setEngineStatus("idle");
         setEngineError("");
       }
@@ -760,8 +771,11 @@ export const PracticePage = () => {
   );
 
   const toggleGamePaused = useCallback((): void => {
+    if (!canRunPractice) return;
+
     if (gamePaused) {
       lastAutoFenRef.current = "";
+      setSessionStarted(true);
       setGamePaused(false);
       return;
     }
@@ -769,20 +783,23 @@ export const PracticePage = () => {
     lastAutoFenRef.current = "";
     setPendingAutoMove(null);
     setGamePaused(true);
-  }, [gamePaused]);
+  }, [canRunPractice, gamePaused]);
+
+  useEffect(() => {
+    if (!gameFinished) return;
+
+    setPendingAutoMove(null);
+    setGamePaused(true);
+  }, [gameFinished]);
 
   const updateClockEnabled = useCallback(
     (enabled: boolean): void => {
       setClockEnabled(enabled);
       if (enabled) {
-        resetPracticeClock();
-        return;
+        resetPracticeClock(clockMinutes, false);
       }
-
-      setGamePaused(false);
-      lastAutoFenRef.current = "";
     },
-    [resetPracticeClock],
+    [clockMinutes, resetPracticeClock],
   );
 
   const requestNavigation = useCallback(
@@ -853,9 +870,18 @@ export const PracticePage = () => {
     resetOpponentMoveChoices();
     setHoveredMoveUci(null);
     resetPracticeClock();
+    setSessionStarted(false);
     setPracticeRootFen(STARTING_FEN);
     queueNavigation({ type: "reset", fen: STARTING_FEN });
   }, [queueNavigation, resetOpponentMoveChoices, resetPracticeClock]);
+
+  const restartPracticeGame = useCallback((): void => {
+    resetOpponentMoveChoices();
+    setHoveredMoveUci(null);
+    resetPracticeClock();
+    setSessionStarted(false);
+    queueNavigation({ type: "reset", fen: practiceRootFen });
+  }, [practiceRootFen, queueNavigation, resetOpponentMoveChoices, resetPracticeClock]);
 
   const loadPracticeFen = useCallback(
     (draft = fenDraft): void => {
@@ -870,6 +896,7 @@ export const PracticePage = () => {
       resetOpponentMoveChoices();
       setHoveredMoveUci(null);
       resetPracticeClock();
+      setSessionStarted(false);
       setPracticeRootFen(nextFen);
       setFenDraft(nextFen);
       setFenError("");
@@ -1099,13 +1126,14 @@ export const PracticePage = () => {
     if (boardState?.winner === "white") return "White wins";
     if (boardState?.winner === "black") return "Black wins";
     if (opponentSource === "player" && opponentUsernames.length === 0) return "Choose player";
+    if (clockEnabled && clockExpired) return "Time expired";
+    if (gamePaused) return "Paused";
     if (engineStatus === "thinking") return "Fairy-Stockfish is thinking";
     if (engineStatus === "error") return engineError;
     if (status === "loading") return "Loading database moves";
     if (status === "error") return error;
     if (usingGeneralFallback) return "Using general database";
     if (databaseExhausted) return "Database line ended";
-    if (gamePaused) return "Paused";
     if (currentTurn === side) return `Your move as ${side}`;
     return `Database to move as ${opponentSide}`;
   })();
@@ -1123,7 +1151,7 @@ export const PracticePage = () => {
       />
 
       <aside
-        className={`analysisPanel practicePanel ${settingsOpen ? "dbMovesCollapsed" : ""} ${clockEnabled ? "" : "clockDisabled"}`}
+        className={`analysisPanel practicePanel ${settingsOpen ? "dbMovesCollapsed" : ""}`}
         aria-label="Practice controls"
       >
         <div className="practiceHeader">
@@ -1158,35 +1186,35 @@ export const PracticePage = () => {
           ) : null}
         </div>
 
-        {clockEnabled ? (
-          <div
-            className={`practiceClock ${clockRunning ? "running" : ""} ${clockExpired ? "expired" : ""}`}
-            aria-label={`Your clock: ${formatClockTime(remainingClockMs)}`}
-          >
-            <div>
-              <span>Your clock</span>
-              <small>
-                {clockMinutes}+{clockIncrementSeconds}
-              </small>
-            </div>
-            <strong aria-live="off">{formatClockTime(remainingClockMs)}</strong>
-            <button
-              type="button"
-              onClick={toggleGamePaused}
-              disabled={clockExpired}
-              title={gamePaused ? "Start or resume game (A)" : "Pause game (A)"}
-            >
-              {gamePaused
-                ? remainingClockMs === clockMinutes * 60_000
-                  ? "Start"
-                  : "Resume"
-                : "Pause"}
-            </button>
-            <button type="button" onClick={() => resetPracticeClock()}>
-              Reset
-            </button>
+        <div
+          className={`practiceClock ${clockRunning ? "running" : ""} ${clockExpired ? "expired" : ""} ${clockEnabled ? "" : "off"}`}
+          aria-label={
+            clockEnabled ? `Your clock: ${formatClockTime(remainingClockMs)}` : "Practice controls"
+          }
+        >
+          <div>
+            <span>{clockEnabled ? "Your clock" : "Practice session"}</span>
+            <small>{clockEnabled ? `${clockMinutes}+${clockIncrementSeconds}` : "Clock off"}</small>
           </div>
-        ) : null}
+          <strong aria-live="off">
+            {clockEnabled ? formatClockTime(remainingClockMs) : "Untimed"}
+          </strong>
+          <button
+            type="button"
+            onClick={toggleGamePaused}
+            disabled={!canRunPractice}
+            title={gamePaused ? "Start or resume game (A)" : "Pause game (A)"}
+          >
+            {gamePaused ? (sessionStarted ? "Resume" : "Start") : "Pause"}
+          </button>
+          <button
+            type="button"
+            onClick={restartPracticeGame}
+            title="Restart from the initial position"
+          >
+            Restart
+          </button>
+        </div>
 
         <section className="practiceSettings" aria-label="Opponent settings">
           <div className="practiceExplorerHeader">
@@ -1409,17 +1437,36 @@ export const PracticePage = () => {
                 />
               </label>
 
-              <label className="practiceCheckbox">
-                <span>Continue with general DB</span>
-                <input
-                  type="checkbox"
-                  checked={continueWithGeneralDb}
-                  onChange={(event) => {
-                    setContinueWithGeneralDb(event.target.checked);
-                    resetOpponentMoveChoices();
-                  }}
-                />
-              </label>
+              {opponentSource === "player" ? (
+                <div className="practiceSettingGroup">
+                  <span>Continue with</span>
+                  <div className="practiceSegmented" role="group" aria-label="Player continuation">
+                    <button
+                      type="button"
+                      className={playerContinuation === "general" ? "active" : ""}
+                      aria-pressed={playerContinuation === "general"}
+                      onClick={() => {
+                        setPlayerContinuation("general");
+                        resetOpponentMoveChoices();
+                      }}
+                    >
+                      General DB
+                    </button>
+                    <button
+                      type="button"
+                      className={playerContinuation === "stockfish" ? "active" : ""}
+                      aria-pressed={playerContinuation === "stockfish"}
+                      onClick={() => {
+                        setPlayerContinuation("stockfish");
+                        resetOpponentMoveChoices();
+                      }}
+                    >
+                      <FontAwesomeIcon icon={faRobot} />
+                      <span>Stockfish</span>
+                    </button>
+                  </div>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </section>
