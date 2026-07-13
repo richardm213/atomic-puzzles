@@ -357,7 +357,7 @@ export const PracticePage = () => {
   );
   const [remainingClockMs, setRemainingClockMs] = useState(initialSettings.clockMinutes * 60_000);
   const [clockExpired, setClockExpired] = useState(false);
-  const [clockPaused, setClockPaused] = useState(false);
+  const [clockPaused, setClockPaused] = useState(true);
 
   const currentFen = boardState?.fen || STARTING_FEN;
   const databaseExhausted = exhaustedFen === currentFen;
@@ -484,7 +484,7 @@ export const PracticePage = () => {
       remainingClockMsRef.current = nextMilliseconds;
       setRemainingClockMs(nextMilliseconds);
       setClockExpired(nextMilliseconds <= 0);
-      setClockPaused(false);
+      setClockPaused(true);
     },
     [clockMinutes],
   );
@@ -1075,7 +1075,11 @@ export const PracticePage = () => {
             onClick={() => setClockPaused((paused) => !paused)}
             disabled={clockExpired}
           >
-            {clockPaused ? "Resume" : "Pause"}
+            {clockPaused
+              ? remainingClockMs === clockMinutes * 60_000
+                ? "Start"
+                : "Resume"
+              : "Pause"}
           </button>
           <button type="button" onClick={() => resetPracticeClock()}>
             Reset
