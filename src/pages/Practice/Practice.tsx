@@ -6,6 +6,7 @@ import {
   faBookOpen,
   faCheck,
   faDice,
+  faExternalLinkAlt,
   faGear,
   faRobot,
   faShuffle,
@@ -257,15 +258,6 @@ const fetchPracticeExplorerResponse = async ({
     };
   }
 
-  // Start the optional fallback alongside the player lookup. Positions outside a
-  // player's repertoire otherwise pay for two full network/database round trips.
-  const generalFallbackPromise = continueWithGeneralDb
-    ? fetchGeneralPracticeExplorerResponse({ fen, opponentSide }).then(
-        (response) => ({ response, error: null }),
-        (error: unknown) => ({ response: null, error }),
-      )
-    : null;
-
   const playerResponse = await Promise.all(
     opponentUsernames.map((opponentUsername) =>
       fetchExplorerApiResponse(
@@ -276,11 +268,8 @@ const fetchPracticeExplorerResponse = async ({
   ).then(mergeExplorerApiResponses);
 
   if (continueWithGeneralDb && playerResponse.moves.length === 0) {
-    const generalFallback = await generalFallbackPromise;
-    if (!generalFallback?.response) throw generalFallback?.error;
-
     return {
-      response: generalFallback.response,
+      response: await fetchGeneralPracticeExplorerResponse({ fen, opponentSide }),
       source: "general",
       usedGeneralFallback: true,
     };
@@ -318,15 +307,6 @@ const chooseOpponentMove = (moves: PracticeMove[], mode: OpponentMode): Practice
 
   return moves.at(-1) ?? firstMove;
 };
-
-const PracticeLichessIcon = () => (
-  <svg viewBox="0 0 50 50" aria-hidden="true" focusable="false">
-    <path
-      d="M38.956.5c-3.53.418-6.452.902-9.286 2.984C5.534 1.786-.692 18.533.68 29.364 3.493 50.214 31.918 55.785 41.329 41.7c-7.444 7.696-19.276 8.752-28.323 3.084S-.506 27.392 4.683 17.567C9.873 7.742 18.996 4.535 29.03 6.405c2.43-1.418 5.225-3.22 7.655-3.187l-1.694 4.86 12.752 21.37c-.439 5.654-5.459 6.112-5.459 6.112-.574-1.47-1.634-2.942-4.842-6.036-3.207-3.094-17.465-10.177-15.788-16.207-2.001 6.967 10.311 14.152 14.04 17.663 3.73 3.51 5.426 6.04 5.795 6.756 0 0 9.392-2.504 7.838-8.927L37.4 7.171z"
-      fill="currentColor"
-    />
-  </svg>
-);
 
 export const PracticePage = () => {
   const [initialSettings] = useState(loadPracticeSettings);
@@ -1148,20 +1128,9 @@ export const PracticePage = () => {
       >
         <div className="practiceHeader">
           <div>
-            <p className="analysisEyebrow">Practice</p>
             <h1>Play the database</h1>
           </div>
           <div className="practiceHeaderActions">
-            <a
-              className="practiceLichessButton"
-              href={currentLichessAnalysisUrl}
-              target="_blank"
-              rel="noreferrer"
-              aria-label="View current position on Lichess"
-              title="View on Lichess"
-            >
-              <PracticeLichessIcon />
-            </a>
             <button
               type="button"
               className="practiceSideButton"
@@ -1184,7 +1153,9 @@ export const PracticePage = () => {
 
         <div className="practiceStatus" aria-live="polite">
           <span>{statusText}</span>
-          <strong>{totalGames ? `${formatGameCount(totalGames)} games` : "0 games"}</strong>
+          {engineStatus !== "thinking" ? (
+            <strong>{totalGames ? `${formatGameCount(totalGames)} games` : "0 games"}</strong>
+          ) : null}
         </div>
 
         {clockEnabled ? (
@@ -1558,6 +1529,27 @@ export const PracticePage = () => {
           />
         </div>
         <div className="analysisBoardTextPanel">
+          <div className="practiceBoardActions">
+            <a
+              className="analysisLichessLink"
+              href={currentLichessAnalysisUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <FontAwesomeIcon icon={faExternalLinkAlt} />
+              <span>View on Lichess</span>
+            </a>
+            <button type="button" className="practiceCopyPgnButton" onClick={handleCopyPgn}>
+              {copyPgnLabel === "Copied" ? (
+                <FontAwesomeIcon
+                  className="practiceCopyPgnCheck"
+                  icon={faCheck}
+                  aria-hidden="true"
+                />
+              ) : null}
+              {copyPgnLabel}
+            </button>
+          </div>
           <div className="analysisFenBox analysisTextBox">
             <span>FEN</span>
             <textarea
@@ -1585,14 +1577,6 @@ export const PracticePage = () => {
             />
             {fenError ? <small className="analysisTextBoxError">{fenError}</small> : null}
           </div>
-        </div>
-        <div className="practiceBoardActions">
-          <button type="button" className="practiceCopyPgnButton" onClick={handleCopyPgn}>
-            {copyPgnLabel === "Copied" ? (
-              <FontAwesomeIcon className="practiceCopyPgnCheck" icon={faCheck} aria-hidden="true" />
-            ) : null}
-            {copyPgnLabel}
-          </button>
         </div>
       </div>
     </section>

@@ -31,6 +31,8 @@ let scriptPromise: Promise<void> | null = null;
 const candidatesByFen = new Map<string, EngineCandidate[]>();
 const MIN_THINK_TIME_MS = 500;
 const MAX_THINK_TIME_MS = 3_000;
+const ENGINE_RESPONSE_TIMEOUT_MS = 8_000;
+const ENGINE_SEARCH_TIMEOUT_MS = MAX_THINK_TIME_MS + 2_000;
 const MAX_CANDIDATE_SCORE_GAP_CP = 150;
 const MULTIPV_COUNT = 5;
 const CANDIDATE_WEIGHTS = [0.4, 0.25, 0.15, 0.12, 0.08] as const;
@@ -109,9 +111,15 @@ const waitForLine = (
   engine: StockfishModule,
   matches: (line: string) => boolean,
   signal?: AbortSignal,
+  timeoutMs = ENGINE_RESPONSE_TIMEOUT_MS,
 ): Promise<string> =>
   new Promise((resolve, reject) => {
+    const timeout = window.setTimeout(() => {
+      cleanup();
+      reject(new Error("Fairy-Stockfish stopped responding"));
+    }, timeoutMs);
     const cleanup = (): void => {
+      window.clearTimeout(timeout);
       engine.removeMessageListener(handleLine);
       signal?.removeEventListener("abort", handleAbort);
     };
@@ -160,7 +168,10 @@ const initializeEngine = async (): Promise<StockfishModule> => {
 };
 
 const getEngine = (): Promise<StockfishModule> => {
-  enginePromise ??= initializeEngine();
+  enginePromise ??= initializeEngine().catch((error) => {
+    enginePromise = null;
+    throw error;
+  });
   return enginePromise;
 };
 
@@ -169,9 +180,14 @@ const waitForBestMove = (
   signal?: AbortSignal,
 ): Promise<{ bestMoveLine: string; candidates: EngineCandidate[] }> =>
   new Promise((resolve, reject) => {
-    let cancelled = false;
     const candidatesByRank = new Map<number, EngineCandidate>();
+    const timeout = window.setTimeout(() => {
+      engine.postMessage("stop");
+      cleanup();
+      reject(new Error("Fairy-Stockfish search took too long"));
+    }, ENGINE_SEARCH_TIMEOUT_MS);
     const cleanup = (): void => {
+      window.clearTimeout(timeout);
       engine.removeMessageListener(handleLine);
       signal?.removeEventListener("abort", handleAbort);
     };
@@ -198,15 +214,12 @@ const waitForBestMove = (
       }
       if (!line.startsWith("bestmove ")) return;
       cleanup();
-      if (cancelled) {
-        reject(new DOMException("Engine search cancelled", "AbortError"));
-      } else {
-        resolve({ bestMoveLine: line, candidates: [...candidatesByRank.values()] });
-      }
+      resolve({ bestMoveLine: line, candidates: [...candidatesByRank.values()] });
     };
     const handleAbort = (): void => {
-      cancelled = true;
       engine.postMessage("stop");
+      cleanup();
+      reject(new DOMException("Engine search cancelled", "AbortError"));
     };
 
     engine.addMessageListener(handleLine);
@@ -227,13 +240,26 @@ export const findFairyStockfishMove = async (
   const engine = await getEngine();
   if (signal?.aborted) throw new DOMException("Engine search cancelled", "AbortError");
 
-  engine.postMessage("ucinewgame");
-  engine.postMessage(`position fen ${fen}`);
-  const bestMoveResult = waitForBestMove(engine, signal);
-  engine.postMessage(`go movetime ${randomThinkTimeMs()}`);
-  const { bestMoveLine, candidates } = await bestMoveResult;
-  const fallbackMove = bestMoveLine.match(/^bestmove\s+(\S+)/)?.[1] ?? "";
-  candidatesByFen.set(fen, candidates);
-  const move = chooseEngineCandidate(candidates, Math.random, excludedMoves)?.move ?? fallbackMove;
-  return move && move !== "(none)" ? move : null;
+  try {
+    const engineReady = waitForLine(engine, (line) => line === "readyok", signal);
+    engine.postMessage("isready");
+    await engineReady;
+
+    engine.postMessage("ucinewgame");
+    engine.postMessage(`position fen ${fen}`);
+    const bestMoveResult = waitForBestMove(engine, signal);
+    engine.postMessage(`go movetime ${randomThinkTimeMs()}`);
+    const { bestMoveLine, candidates } = await bestMoveResult;
+    const fallbackMove = bestMoveLine.match(/^bestmove\s+(\S+)/)?.[1] ?? "";
+    candidatesByFen.set(fen, candidates);
+    const move =
+      chooseEngineCandidate(candidates, Math.random, excludedMoves)?.move ?? fallbackMove;
+    return move && move !== "(none)" ? move : null;
+  } catch (error) {
+    if (!(error instanceof DOMException && error.name === "AbortError")) {
+      engine.postMessage("quit");
+      enginePromise = null;
+    }
+    throw error;
+  }
 };
