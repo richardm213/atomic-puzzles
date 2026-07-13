@@ -724,16 +724,10 @@ export const PuzzleSolverPage = () => {
     if (!activePuzzleKey || otherPuzzleAttemptsStatus === "loaded") return;
 
     const puzzleKeyForRequest = activePuzzleKey;
-    const fetchOptions: {
-      excludeUsername?: string;
-      limit: number;
-    } = { limit: OTHER_PUZZLE_ATTEMPTS_LIMIT };
-    if (user?.username) {
-      fetchOptions.excludeUsername = user.username;
-    }
-
     setOtherPuzzleAttemptsStatus("loading");
-    void fetchPuzzleAttemptsForPuzzle(puzzleKeyForRequest, fetchOptions)
+    void fetchPuzzleAttemptsForPuzzle(puzzleKeyForRequest, {
+      limit: OTHER_PUZZLE_ATTEMPTS_LIMIT,
+    })
       .then((rows) => {
         if (activePuzzleKeyRef.current !== puzzleKeyForRequest) return;
         setOtherPuzzleAttempts(rows);

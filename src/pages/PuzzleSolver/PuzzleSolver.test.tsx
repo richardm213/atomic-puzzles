@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
     onStateChange?: (state: unknown) => void;
   }>,
   attemptedPuzzleIds: new Set(["1369"]),
+  fetchPuzzleAttemptsForPuzzle: vi.fn(),
   navigate: vi.fn(),
   routeParams: { puzzleId: "1369", setKey: "" },
 }));
@@ -57,22 +58,7 @@ vi.mock("../../lib/puzzles/puzzleLibrary", () => ({
 
 vi.mock("../../lib/supabase/supabasePuzzleProgress", () => ({
   fetchAttemptedPuzzleIds: vi.fn(async () => new Set(mocks.attemptedPuzzleIds)),
-  fetchPuzzleAttemptsForPuzzle: vi.fn(async () => [
-    {
-      username: "alpha",
-      puzzle_id: "1369",
-      first_attempt_at: "2026-07-09T07:00:00.000Z",
-      puzzle_correct: true,
-      incorrect_move: null,
-    },
-    {
-      username: "beta",
-      puzzle_id: "1369",
-      first_attempt_at: "2026-07-09T07:10:00.000Z",
-      puzzle_correct: false,
-      incorrect_move: "2. Nf3+",
-    },
-  ]),
+  fetchPuzzleAttemptsForPuzzle: mocks.fetchPuzzleAttemptsForPuzzle,
   recordPuzzleProgress: vi.fn(async () => undefined),
 }));
 
@@ -152,6 +138,29 @@ describe("PuzzleSolverPage solution options", () => {
   beforeEach(() => {
     mocks.chessboardProps.length = 0;
     mocks.attemptedPuzzleIds = new Set(["1369"]);
+    mocks.fetchPuzzleAttemptsForPuzzle.mockReset().mockResolvedValue([
+      {
+        username: "solver",
+        puzzle_id: "1369",
+        first_attempt_at: "2026-07-09T06:50:00.000Z",
+        puzzle_correct: true,
+        incorrect_move: null,
+      },
+      {
+        username: "alpha",
+        puzzle_id: "1369",
+        first_attempt_at: "2026-07-09T07:00:00.000Z",
+        puzzle_correct: true,
+        incorrect_move: null,
+      },
+      {
+        username: "beta",
+        puzzle_id: "1369",
+        first_attempt_at: "2026-07-09T07:10:00.000Z",
+        puzzle_correct: false,
+        incorrect_move: "2. Nf3+",
+      },
+    ]);
     mocks.navigate.mockReset();
     mocks.routeParams = { puzzleId: "1369", setKey: "" };
     Object.defineProperty(window, "matchMedia", {
@@ -210,19 +219,21 @@ describe("PuzzleSolverPage solution options", () => {
     );
   });
 
-  it("shows other players who attempted the puzzle", async () => {
+  it("shows all players who attempted the puzzle, including the current user", async () => {
     const user = userEvent.setup();
     render(<PuzzleSolverPage />);
 
     await user.click(await screen.findByRole("tab", { name: "Other attempts" }));
 
     const attempts = await screen.findByRole("list", { name: "Other puzzle attempts" });
+    expect(within(attempts).getByRole("link", { name: "solver" })).toBeInTheDocument();
     expect(within(attempts).getByRole("link", { name: "alpha" })).toBeInTheDocument();
-    expect(within(attempts).getByText("Correct")).toBeInTheDocument();
+    expect(within(attempts).getAllByText("Correct")).toHaveLength(2);
     expect(within(attempts).getByRole("link", { name: "beta" })).toBeInTheDocument();
     expect(within(attempts).getByText("Incorrect")).toBeInTheDocument();
     const wrongMove = within(attempts).getByLabelText("Played 2. Nf3+");
     expect(wrongMove).toHaveTextContent("2. Nf3+");
+    expect(mocks.fetchPuzzleAttemptsForPuzzle).toHaveBeenCalledWith("1369", { limit: 30 });
   });
 
   it("keeps the current solution position when opening other attempts", async () => {
