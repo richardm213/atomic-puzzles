@@ -28,6 +28,7 @@ declare global {
 
 let enginePromise: Promise<StockfishModule> | null = null;
 let scriptPromise: Promise<void> | null = null;
+let engineSearchQueue: Promise<void> = Promise.resolve();
 const candidatesByFen = new Map<string, EngineCandidate[]>();
 const MIN_THINK_TIME_MS = 500;
 const MAX_THINK_TIME_MS = 3_000;
@@ -181,6 +182,7 @@ const waitForBestMove = (
 ): Promise<{ bestMoveLine: string; candidates: EngineCandidate[] }> =>
   new Promise((resolve, reject) => {
     const candidatesByRank = new Map<number, EngineCandidate>();
+    let abortRequested = false;
     const timeout = window.setTimeout(() => {
       engine.postMessage("stop");
       cleanup();
@@ -214,12 +216,19 @@ const waitForBestMove = (
       }
       if (!line.startsWith("bestmove ")) return;
       cleanup();
+      if (abortRequested) {
+        reject(new DOMException("Engine search cancelled", "AbortError"));
+        return;
+      }
       resolve({ bestMoveLine: line, candidates: [...candidatesByRank.values()] });
     };
     const handleAbort = (): void => {
+      if (abortRequested) return;
+      abortRequested = true;
       engine.postMessage("stop");
-      cleanup();
-      reject(new DOMException("Engine search cancelled", "AbortError"));
+      // Keep listening until the matching bestmove arrives. Starting another
+      // search before this response is drained can make its stale bestmove look
+      // like the result of the new position and can leave isready blocked.
     };
 
     engine.addMessageListener(handleLine);
@@ -227,7 +236,7 @@ const waitForBestMove = (
     if (signal?.aborted) handleAbort();
   });
 
-export const findFairyStockfishMove = async (
+const runFairyStockfishSearch = async (
   fen: string,
   signal?: AbortSignal,
   excludedMoves: ReadonlySet<string> = new Set(),
@@ -246,9 +255,12 @@ export const findFairyStockfishMove = async (
       engine = await getEngine();
       if (signal?.aborted) throw new DOMException("Engine search cancelled", "AbortError");
 
-      const engineReady = waitForLine(engine, (line) => line === "readyok", signal);
+      // Finish the readiness handshake even if this request is cancelled. If
+      // readyok is left unread, it can be mistaken for the next request's reply.
+      const engineReady = waitForLine(engine, (line) => line === "readyok");
       engine.postMessage("isready");
       await engineReady;
+      if (signal?.aborted) throw new DOMException("Engine search cancelled", "AbortError");
 
       engine.postMessage("ucinewgame");
       engine.postMessage(`position fen ${fen}`);
@@ -276,4 +288,21 @@ export const findFairyStockfishMove = async (
   }
 
   throw lastFailure;
+};
+
+export const findFairyStockfishMove = (
+  fen: string,
+  signal?: AbortSignal,
+  excludedMoves: ReadonlySet<string> = new Set(),
+): Promise<string | null> => {
+  // Fairy-Stockfish uses one shared UCI worker. Serialize every interaction so
+  // rapid React effect cleanup/restarts cannot interleave stop/isready/go.
+  const search = engineSearchQueue.then(() =>
+    runFairyStockfishSearch(fen, signal, excludedMoves),
+  );
+  engineSearchQueue = search.then(
+    () => undefined,
+    () => undefined,
+  );
+  return search;
 };
