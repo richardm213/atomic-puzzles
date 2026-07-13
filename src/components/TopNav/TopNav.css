@@ -357,7 +357,7 @@
   position: relative;
   min-width: 0;
   min-height: 48px;
-  padding: 7px 22px 7px 8px;
+  padding: 7px 8px;
   border: 1px solid transparent;
   border-radius: 9px;
   background: transparent;
@@ -419,30 +419,6 @@
 .navThemeIconLight {
   color: #b7791f;
   background: rgba(245, 158, 11, 0.16);
-}
-
-.navThemeStatus {
-  position: absolute;
-  top: 50%;
-  right: 9px;
-  width: 7px;
-  height: 7px;
-  border: 2px solid var(--color-subtle);
-  border-radius: 50%;
-  opacity: 0.45;
-  transform: translateY(-50%);
-  transition:
-    opacity 140ms ease,
-    border-color 140ms ease,
-    background 140ms ease,
-    box-shadow 140ms ease;
-}
-
-.navThemeToggle button.active .navThemeStatus {
-  border-color: var(--color-primary);
-  background: var(--color-primary);
-  opacity: 1;
-  box-shadow: 0 0 0 3px var(--color-primary-ring);
 }
 
 .navSettingsMenu select {

@@ -872,7 +872,6 @@ export const TopNav = () => {
                       <FontAwesomeIcon icon={faMoon} />
                     </span>
                     <span>Dark</span>
-                    <span className="navThemeStatus" aria-hidden="true" />
                   </button>
                   <button
                     type="button"
@@ -884,7 +883,6 @@ export const TopNav = () => {
                       <FontAwesomeIcon icon={faSun} />
                     </span>
                     <span>Light</span>
-                    <span className="navThemeStatus" aria-hidden="true" />
                   </button>
                 </div>
               </div>
