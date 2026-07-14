@@ -8,7 +8,7 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
     css: false,
-    include: ["src/**/*.{test,spec}.{ts,tsx}", "netlify/functions/*.{test,spec}.ts"],
+    include: ["src/**/*.{test,spec}.{ts,tsx}", "netlify/tests/*.{test,spec}.ts"],
     exclude: ["node_modules", "dist", ".claude"],
   },
 });

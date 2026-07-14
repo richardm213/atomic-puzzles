@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { handler } from "./puzzle-community";
+import { handler } from "../functions/puzzle-community";
 
 describe("puzzle-community function", () => {
   it("only accepts POST requests", async () => {

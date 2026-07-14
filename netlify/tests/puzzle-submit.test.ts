@@ -8,7 +8,7 @@ vi.mock("@supabase/supabase-js", () => ({
   createClient: mocks.createClient,
 }));
 
-import { handler } from "./puzzle-submit";
+import { handler } from "../functions/puzzle-submit";
 
 describe("puzzle-submit function", () => {
   beforeEach(() => {

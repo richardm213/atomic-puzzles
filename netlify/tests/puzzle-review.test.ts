@@ -8,7 +8,7 @@ vi.mock("@supabase/supabase-js", () => ({
   createClient: mocks.createClient,
 }));
 
-import { handler } from "./puzzle-review";
+import { handler } from "../functions/puzzle-review";
 
 const reviewerAccount = (username: string) =>
   new Response(JSON.stringify({ username }), {

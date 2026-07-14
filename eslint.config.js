@@ -137,7 +137,12 @@ export default [
       parserOptions: {
         ecmaFeatures: { jsx: true },
         projectService: {
-          allowDefaultProject: ["vitest.config.ts", "netlify/functions/*.ts", "netlify/lib/*.ts"],
+          allowDefaultProject: [
+            "vitest.config.ts",
+            "netlify/functions/*.ts",
+            "netlify/lib/*.ts",
+            "netlify/tests/*.ts",
+          ],
           maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING: 16,
         },
         tsconfigRootDir,

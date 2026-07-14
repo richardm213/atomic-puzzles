@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { handler } from "./notifications";
+import { handler } from "../functions/notifications";
 
 describe("notifications function", () => {
   it("only accepts POST requests", async () => {
