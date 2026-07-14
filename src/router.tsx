@@ -19,6 +19,11 @@ const H2HPage = lazy(() => import("./pages/H2H/H2H").then((m) => ({ default: m.H
 const MatchPage = lazy(() =>
   import("./pages/Match/MatchPage").then((m) => ({ default: m.MatchPage })),
 );
+const NotificationsPage = lazy(() =>
+  import("./pages/Notifications/Notifications").then((m) => ({
+    default: m.NotificationsPage,
+  })),
+);
 const PlayerProfilePage = lazy(() =>
   import("./pages/PlayerProfile/PlayerProfile").then((m) => ({ default: m.PlayerProfilePage })),
 );
@@ -216,6 +221,12 @@ const puzzleReviewRoute = createRoute({
   component: PuzzleReviewPage,
 });
 
+const notificationsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/notifications",
+  component: NotificationsPage,
+});
+
 const profilePuzzleDashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/@/$username/puzzles",
@@ -292,6 +303,7 @@ const routeTree = rootRoute.addChildren([
   puzzleLeaderboardRoute,
   puzzleSubmissionRoute,
   puzzleReviewRoute,
+  notificationsRoute,
   solveSetWithIdRoute,
   solveWithIdRoute,
   profileHistoryRoute,

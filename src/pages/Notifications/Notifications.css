@@ -1,0 +1,202 @@
+.notificationsPage {
+  grid-template-columns: minmax(0, 1fr);
+  width: min(100%, 820px);
+  align-items: start;
+  padding-block: clamp(18px, 3vw, 38px);
+}
+
+.notificationsPanel {
+  width: 100%;
+  padding: clamp(16px, 3vw, 26px);
+}
+
+.notificationsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.notificationsHeader > div {
+  display: grid;
+  gap: 3px;
+}
+
+.notificationsHeader > div > span {
+  color: var(--color-primary-soft);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.notificationsHeader h1 {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: clamp(24px, 4vw, 34px);
+}
+
+.notificationsHeader button,
+.notificationsSignIn button {
+  min-height: 36px;
+  padding: 0 13px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 65%, var(--color-border));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--color-primary) 20%, var(--color-panel-strong));
+  color: var(--color-heading);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.notificationsHeader button svg {
+  margin-right: 6px;
+}
+
+.notificationsHeader button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.notificationList {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.notificationList li > button {
+  position: relative;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 66px;
+  padding: 10px 16px 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--color-panel-strong) 72%, transparent);
+  color: var(--color-text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.notificationList li > button.unread {
+  border-color: color-mix(in srgb, var(--color-primary) 46%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-panel-strong));
+}
+
+.notificationList li > button:hover {
+  border-color: var(--color-primary);
+  background: var(--color-surface-elevated-strong);
+}
+
+.notificationItemIcon {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-primary) 18%, var(--color-panel-deep));
+  color: var(--color-primary-soft);
+}
+
+.notificationItemCopy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.notificationItemCopy strong {
+  overflow: hidden;
+  color: var(--color-heading);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notificationItemCopy > span,
+.notificationList time {
+  color: var(--color-subtle);
+  font-size: 11px;
+}
+
+.notificationList time {
+  white-space: nowrap;
+}
+
+.notificationUnreadDot {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-primary-soft);
+  box-shadow: 0 0 0 3px var(--color-primary-ring);
+}
+
+.notificationsStatus,
+.notificationsError {
+  margin: 0;
+  padding: 12px;
+  border-radius: 9px;
+  background: var(--color-panel-strong);
+  color: var(--color-muted);
+}
+
+.notificationsError {
+  color: var(--color-danger);
+}
+
+.notificationsEmpty,
+.notificationsSignIn {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 42px 18px;
+  color: var(--color-muted);
+  text-align: center;
+}
+
+.notificationsEmpty > svg,
+.notificationsSignIn > svg {
+  color: var(--color-primary-soft);
+  font-size: 28px;
+}
+
+.notificationsEmpty h2,
+.notificationsSignIn h2,
+.notificationsEmpty p,
+.notificationsSignIn p {
+  margin: 0;
+}
+
+.notificationsEmpty h2,
+.notificationsSignIn h2 {
+  color: var(--color-heading);
+  font-size: 18px;
+}
+
+.notificationsEmpty p,
+.notificationsSignIn p {
+  font-size: 13px;
+}
+
+@media (max-width: 600px) {
+  .notificationsHeader {
+    align-items: flex-start;
+  }
+
+  .notificationList li > button {
+    grid-template-columns: 32px minmax(0, 1fr);
+  }
+
+  .notificationList time {
+    grid-column: 2;
+  }
+}

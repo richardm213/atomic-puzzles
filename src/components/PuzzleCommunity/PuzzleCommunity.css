@@ -1,0 +1,474 @@
+.puzzleCommunity {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  padding: clamp(16px, 2vw, 22px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel);
+  box-shadow: var(--shadow-panel);
+}
+
+.puzzleCommunityHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.puzzleCommunityHeader > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.puzzleCommunityHeader > div:first-child > span {
+  color: var(--color-primary-soft);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.puzzleCommunityHeader h2 {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: clamp(19px, 2vw, 23px);
+}
+
+.puzzleVotePrompt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.puzzleVoteControls {
+  display: inline-flex;
+  gap: 7px;
+}
+
+.puzzleVoteControls button {
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 70px;
+  min-height: 34px;
+  padding: 0 13px;
+  border: 1px solid color-mix(in srgb, var(--color-border-strong) 86%, transparent);
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, white 5%, transparent), transparent),
+    color-mix(in srgb, var(--color-panel-deep) 78%, transparent);
+  color: var(--color-muted);
+  cursor: pointer;
+  box-shadow:
+    0 4px 10px color-mix(in srgb, var(--color-panel-deep) 18%, transparent),
+    0 1px 0 color-mix(in srgb, white 5%, transparent) inset;
+  transition:
+    transform 120ms ease,
+    border-color 140ms ease,
+    background 140ms ease,
+    color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.puzzleVoteControls button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--color-primary) 48%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 9%, var(--color-panel-strong));
+  color: var(--color-heading);
+  box-shadow: 0 7px 14px color-mix(in srgb, var(--color-panel-deep) 24%, transparent);
+}
+
+.puzzleVoteControls button.active.upvote {
+  border-color: color-mix(in srgb, var(--color-success) 58%, var(--color-border));
+  background: color-mix(in srgb, var(--color-success) 15%, var(--color-panel-strong));
+  color: var(--color-success);
+  box-shadow:
+    0 5px 14px color-mix(in srgb, var(--color-success) 12%, transparent),
+    0 0 16px color-mix(in srgb, var(--color-success) 7%, transparent) inset;
+}
+
+.puzzleVoteControls button.active.downvote {
+  border-color: color-mix(in srgb, var(--color-danger) 58%, var(--color-border));
+  background: color-mix(in srgb, var(--color-danger) 13%, var(--color-panel-strong));
+  color: var(--color-danger);
+  box-shadow:
+    0 5px 14px color-mix(in srgb, var(--color-danger) 11%, transparent),
+    0 0 16px color-mix(in srgb, var(--color-danger) 7%, transparent) inset;
+}
+
+.puzzleVoteControls button:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
+.puzzleVoteControls strong {
+  color: currentColor;
+  font-size: 12px;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+}
+
+.puzzleCommentComposer {
+  display: grid;
+  gap: 9px;
+  padding: 13px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-panel-strong) 78%, transparent);
+}
+
+.commentComposerHeading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.commentComposerHeading strong {
+  color: var(--color-heading);
+}
+
+.commentComposerHeading button {
+  margin-left: auto;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-primary-soft);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+
+.puzzleCommentComposer textarea {
+  width: 100%;
+  min-height: 76px;
+  resize: vertical;
+  padding: 10px 11px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 9px;
+  background: var(--color-panel-deep);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.puzzleCommentComposer textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-ring);
+}
+
+.commentComposerActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.commentComposerActions > span {
+  color: var(--color-subtle);
+  font-size: 12px;
+}
+
+.commentComposerActions button,
+.commentLoginButton {
+  min-height: 34px;
+  padding: 0 13px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 70%, var(--color-border));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--color-primary) 22%, var(--color-panel-strong));
+  color: var(--color-heading);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.commentComposerActions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.commentLoginButton {
+  justify-self: start;
+}
+
+.puzzleCommentList,
+.puzzleCommentReplies {
+  display: grid;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.puzzleCommentReplies {
+  margin-top: 8px;
+  margin-left: min(24px, calc(8px + var(--comment-depth, 0) * 2px));
+  padding-left: 12px;
+  border-left: 2px solid color-mix(in srgb, var(--color-primary) 30%, var(--color-border));
+}
+
+.puzzleCommentCard {
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-panel-strong) 72%, transparent);
+}
+
+.puzzleCommentCard.collapsed {
+  padding: 4px 7px;
+  background: color-mix(in srgb, var(--color-panel-strong) 48%, transparent);
+}
+
+.collapsedCommentSummary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  min-height: 28px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--color-subtle);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  font-size: 11px;
+}
+
+.collapsedCommentSummary:hover {
+  background: var(--color-panel-deep);
+  color: var(--color-muted);
+}
+
+.collapsedCommentSummary > svg {
+  width: 10px;
+  flex: 0 0 10px;
+  color: var(--color-primary-soft);
+}
+
+.collapsedCommentSummary > strong {
+  overflow: hidden;
+  color: var(--color-heading);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.collapsedCommentSummary > time {
+  white-space: nowrap;
+}
+
+.collapsedCommentReplies {
+  margin-left: auto;
+  color: var(--color-primary-soft);
+  white-space: nowrap;
+}
+
+.puzzleCommentLayout {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+}
+
+.commentVoteRail {
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+  padding: 2px 0;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-panel-deep) 58%, transparent);
+}
+
+.commentVoteRail button {
+  display: inline-grid;
+  place-items: center;
+  width: 27px;
+  height: 25px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.commentVoteRail button:hover:not(:disabled),
+.commentVoteRail button.active.upvote {
+  background: color-mix(in srgb, var(--color-success) 15%, transparent);
+  color: var(--color-success);
+}
+
+.commentVoteRail button.downvote:hover:not(:disabled),
+.commentVoteRail button.active.downvote {
+  background: color-mix(in srgb, var(--color-danger) 14%, transparent);
+  color: var(--color-danger);
+}
+
+.commentVoteRail button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.commentVoteRail > strong {
+  color: var(--color-heading);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 18px;
+}
+
+.puzzleCommentBody {
+  min-width: 0;
+  padding: 3px 4px 3px 0;
+}
+
+.puzzleCommentMeta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  color: var(--color-subtle);
+  font-size: 11px;
+}
+
+.puzzleCommentMeta strong {
+  overflow: hidden;
+  color: var(--color-heading);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.puzzleCommentMeta time {
+  white-space: nowrap;
+}
+
+.commentCollapseButton {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+}
+
+.commentCollapseButton {
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.commentCollapseButton:hover {
+  background: var(--color-panel-deep);
+  color: var(--color-heading);
+}
+
+.puzzleCommentBody > p {
+  margin: 7px 0 8px 27px;
+  color: var(--color-text);
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.commentReplyButton {
+  min-height: 26px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.commentReplyButton {
+  margin-left: 22px;
+}
+
+.commentReplyButton svg {
+  margin-right: 5px;
+}
+
+.commentReplyButton:hover {
+  background: var(--color-panel-deep);
+  color: var(--color-heading);
+}
+
+.puzzleCommunityError,
+.puzzleCommunityEmpty {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 9px;
+  color: var(--color-muted);
+  background: color-mix(in srgb, var(--color-panel-strong) 70%, transparent);
+  font-size: 13px;
+}
+
+.puzzleCommunityError {
+  color: var(--color-danger);
+  border: 1px solid color-mix(in srgb, var(--color-danger) 40%, var(--color-border));
+}
+
+@media (max-width: 680px) {
+  .puzzleCommunity {
+    gap: 13px;
+    padding: 13px;
+  }
+
+  .puzzleCommunityHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .puzzleVotePrompt {
+    padding: 0;
+  }
+
+  .puzzleVoteControls {
+    display: inline-flex;
+  }
+
+  .puzzleVotePrompt .puzzleVoteControls {
+    flex: 0 0 auto;
+  }
+
+  .puzzleVoteControls button {
+    flex: 0 0 auto;
+    min-width: 70px;
+    padding-inline: 11px;
+  }
+
+  .puzzleCommentReplies {
+    margin-left: 7px;
+    padding-left: 7px;
+  }
+
+  .puzzleCommentBody > p {
+    margin-left: 0;
+  }
+
+  .commentReplyButton {
+    margin-left: 0;
+  }
+
+  .collapsedCommentSummary > time {
+    display: none;
+  }
+}

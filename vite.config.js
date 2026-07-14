@@ -60,6 +60,8 @@ const localPuzzleFunctionsPlugin = () => {
   const functions = new Map([
     ["/api/puzzles/submit", "/netlify/functions/puzzle-submit.ts"],
     ["/api/puzzles/review", "/netlify/functions/puzzle-review.ts"],
+    ["/api/puzzles/community", "/netlify/functions/puzzle-community.ts"],
+    ["/api/notifications", "/netlify/functions/notifications.ts"],
   ]);
 
   return {

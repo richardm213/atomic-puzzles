@@ -2,6 +2,7 @@ import "./TopNav.css";
 
 import {
   faBars,
+  faBell,
   faChartLine,
   faChevronDown,
   faMagnifyingGlass,
@@ -26,6 +27,7 @@ import {
 
 import { getBoardThemeColors, useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
+import { fetchUnreadNotificationCount } from "../../lib/community/notifications";
 import { resolveProfileUsernameFromAliases } from "../../lib/supabase/supabaseAliases";
 import {
   searchUsernameSuggestions,
@@ -181,6 +183,7 @@ export const TopNav = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [openNavDropdown, setOpenNavDropdown] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const searchSuggestionsRequestIdRef = useRef(0);
   const topNavRef = useRef<HTMLElement | null>(null);
@@ -190,7 +193,7 @@ export const TopNav = () => {
   const settingsRef = useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const { isAuthenticated, isLoading, user, login, logout } = useAuth();
+  const { accessToken, isAuthenticated, isLoading, user, login, logout } = useAuth();
   const {
     theme,
     setTheme,
@@ -241,6 +244,35 @@ export const TopNav = () => {
     boardOverrideDarkSquare,
   );
   const currentLocation = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+  useEffect(() => {
+    if (!accessToken) {
+      setUnreadNotificationCount(0);
+      return undefined;
+    }
+
+    let current = true;
+    const refreshCount = () => {
+      void fetchUnreadNotificationCount(accessToken)
+        .then((count) => {
+          if (current) setUnreadNotificationCount(count);
+        })
+        .catch(() => {
+          // Keep navigation resilient if the notification service is unavailable.
+        });
+    };
+
+    refreshCount();
+    const interval = window.setInterval(refreshCount, 60_000);
+    window.addEventListener("focus", refreshCount);
+    window.addEventListener("atomic-notifications-updated", refreshCount);
+    return () => {
+      current = false;
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshCount);
+      window.removeEventListener("atomic-notifications-updated", refreshCount);
+    };
+  }, [accessToken, pathname]);
 
   useEffect(() => {
     if (!normalizedAuthUsername) {
@@ -793,6 +825,27 @@ export const TopNav = () => {
             ) : null}
           </form>
         </div>
+        {isAuthenticated ? (
+          <Link
+            className={`navNotificationsButton ${pathname === "/notifications" ? "active" : ""}`}
+            to="/notifications"
+            aria-label={
+              unreadNotificationCount > 0
+                ? `${unreadNotificationCount} unread notifications`
+                : "Notifications"
+            }
+            onClick={() => {
+              setMobileMenuOpen(false);
+              setProfileMenuOpen(false);
+              setSettingsOpen(false);
+            }}
+          >
+            <FontAwesomeIcon icon={faBell} />
+            {unreadNotificationCount > 0 ? (
+              <span>{unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}</span>
+            ) : null}
+          </Link>
+        ) : null}
         <div className="navAuth" aria-live="polite">
           {isAuthenticated && user ? (
             <div className="navProfileMenu" ref={profileMenuRef}>

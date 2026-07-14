@@ -138,6 +138,7 @@ export default [
         ecmaFeatures: { jsx: true },
         projectService: {
           allowDefaultProject: ["vitest.config.ts", "netlify/functions/*.ts", "netlify/lib/*.ts"],
+          maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING: 16,
         },
         tsconfigRootDir,
       },

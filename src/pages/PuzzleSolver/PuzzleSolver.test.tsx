@@ -241,6 +241,7 @@ describe("PuzzleSolverPage solution options", () => {
   });
 
   it("unlocks and opens the explanation tab after a wrong move", async () => {
+    mocks.attemptedPuzzleIds = new Set();
     render(<PuzzleSolverPage />);
 
     const explanationTab = await screen.findByRole("tab", { name: "Explanation" });
@@ -266,6 +267,22 @@ describe("PuzzleSolverPage solution options", () => {
 
     expect(explanationTab).toBeEnabled();
     expect(explanationTab).toHaveAttribute("aria-selected", "true");
+    expect(
+      screen.getByText(
+        "Castling avoids the atomic mating net and creates the decisive rook threat.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("unlocks the explanation when the puzzle was attempted before", async () => {
+    const user = userEvent.setup();
+    render(<PuzzleSolverPage />);
+
+    const explanationTab = await screen.findByRole("tab", { name: "Explanation" });
+    await waitFor(() => expect(explanationTab).toBeEnabled());
+    expect(explanationTab).toHaveAttribute("aria-selected", "false");
+
+    await user.click(explanationTab);
     expect(
       screen.getByText(
         "Castling avoids the atomic mating net and creates the decisive rook threat.",

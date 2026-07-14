@@ -727,6 +727,44 @@
   min-width: 0;
 }
 
+.navNotificationsButton {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: var(--color-muted);
+  text-decoration: none;
+}
+
+.navNotificationsButton:hover,
+.navNotificationsButton.active {
+  background: var(--color-panel-strong);
+  color: var(--color-heading);
+  text-decoration: none;
+}
+
+.navNotificationsButton > span {
+  position: absolute;
+  top: -4px;
+  right: -5px;
+  display: inline-grid;
+  place-items: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border: 2px solid var(--color-nav);
+  border-radius: 999px;
+  background: var(--color-danger);
+  color: white;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
 .navProfileMenu {
   position: relative;
   display: inline-flex;

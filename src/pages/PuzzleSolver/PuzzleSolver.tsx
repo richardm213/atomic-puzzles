@@ -14,6 +14,7 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Chessboard } from "../../components/Chessboard/Chessboard";
+import { PuzzleCommunity } from "../../components/PuzzleCommunity/PuzzleCommunity";
 import { Seo } from "../../components/Seo/Seo";
 import {
   continuationOptionsAt,
@@ -37,7 +38,6 @@ import {
   type PuzzleProgressWithUsernameRow,
   recordPuzzleProgress,
 } from "../../lib/supabase/supabasePuzzleProgress";
-import { isRegisteredSiteUser } from "../../lib/supabase/supabaseUsers";
 import type {
   AttemptResolved,
   ChessboardState,
@@ -204,9 +204,8 @@ export const PuzzleSolverPage = () => {
   const { puzzleId: routePuzzleId = "", setKey: routeSetKey = "" } = useParams({
     strict: false,
   });
-  const { isAuthenticated, user } = useAuth();
+  const { user } = useAuth();
   const { showPuzzleTimer } = useAppSettings();
-  const [canViewHistory, setCanViewHistory] = useState(false);
   const [puzzles, setPuzzles] = useState<import("../../lib/puzzles/puzzleLibrary").Puzzle[]>([]);
   const [attemptedPuzzleIds, setAttemptedPuzzleIds] = useState<Set<string>>(() => new Set());
   const [resolvedAttemptedPuzzleIds, setResolvedAttemptedPuzzleIds] = useState<Set<string>>(
@@ -233,7 +232,7 @@ export const PuzzleSolverPage = () => {
     title: string;
   } | null>(null);
   const [feedbackBadgeId, setFeedbackBadgeId] = useState(0);
-  const [explanationRevealed, setExplanationRevealed] = useState(false);
+  const [explanationUnlockedByWrongMove, setExplanationUnlockedByWrongMove] = useState(false);
   const [pinnedSolutionLineIndex, setPinnedSolutionLineIndex] = useState<number | null>(null);
   const [copyPgnLabel, setCopyPgnLabel] = useState("Copy PGN");
   const [otherPuzzleAttemptsStatus, setOtherPuzzleAttemptsStatus] = useState<
@@ -263,32 +262,6 @@ export const PuzzleSolverPage = () => {
     [puzzles, routeSetKey],
   );
   const isSetSolveMode = Boolean(routeSetKey && orderedSetPuzzleIndexes.length > 0);
-
-  useEffect(() => {
-    let isCurrent = true;
-
-    const loadHistoryAccess = async () => {
-      if (!isAuthenticated || !user?.username) {
-        setCanViewHistory(false);
-        return;
-      }
-
-      try {
-        const isRegistered = await isRegisteredSiteUser(user.username);
-        if (!isCurrent) return;
-        setCanViewHistory(isRegistered);
-      } catch {
-        if (!isCurrent) return;
-        setCanViewHistory(false);
-      }
-    };
-
-    void loadHistoryAccess();
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [isAuthenticated, user?.username]);
 
   const getNextShuffledPuzzleIndex = useCallback(
     (currentIndex: number): number => {
@@ -491,6 +464,8 @@ export const PuzzleSolverPage = () => {
     ? resolvedAttemptedPuzzleIds.has(activePuzzleKey)
     : false;
   const hasAttemptedActivePuzzle = hasPersistedAttempt || hasResolvedAttempt;
+  const canViewExplanation =
+    hasExplanation && (hasAttemptedActivePuzzle || explanationUnlockedByWrongMove);
   const showSolution = activePuzzleInfoTab === "solution";
   const showExplanation = activePuzzleInfoTab === "explanation";
   const otherPuzzleAttemptsOpen = activePuzzleInfoTab === "attempts";
@@ -555,7 +530,7 @@ export const PuzzleSolverPage = () => {
     setInteractionMode(SOLVE_MODE);
     setCompletionFeedback(null);
     setFeedbackBadgeId(0);
-    setExplanationRevealed(false);
+    setExplanationUnlockedByWrongMove(false);
     lockedCompletionFeedbackRef.current = null;
     setPinnedSolutionLineIndex(null);
     hadWrongAttemptRef.current = false;
@@ -722,7 +697,7 @@ export const PuzzleSolverPage = () => {
   };
 
   const handleSelectExplanationTab = () => {
-    if (!explanationRevealed || !hasExplanation) return;
+    if (!canViewExplanation) return;
     setActivePuzzleInfoTab("explanation");
     setSolutionNavigation(null);
   };
@@ -773,7 +748,7 @@ export const PuzzleSolverPage = () => {
       if (nextBoardState.showWrongMove) {
         hadWrongAttemptRef.current = true;
         if (hasExplanation) {
-          setExplanationRevealed(true);
+          setExplanationUnlockedByWrongMove(true);
           setActivePuzzleInfoTab("explanation");
         }
       }
@@ -1128,10 +1103,10 @@ export const PuzzleSolverPage = () => {
           role="tab"
           className={`puzzleInfoTab ${showExplanation ? "active" : ""}`}
           onClick={handleSelectExplanationTab}
-          disabled={!explanationRevealed}
+          disabled={!canViewExplanation}
           aria-selected={showExplanation}
           title={
-            explanationRevealed
+            canViewExplanation
               ? "View the puzzle explanation"
               : "Make a wrong move to unlock the explanation."
           }
@@ -1176,7 +1151,7 @@ export const PuzzleSolverPage = () => {
       return <div className="puzzleInfoPanel">{renderOtherPuzzleAttemptsPanel()}</div>;
     }
 
-    if (showExplanation && explanationRevealed && hasExplanation) {
+    if (showExplanation && canViewExplanation) {
       return (
         <div className="puzzleInfoPanel">
           <section className="puzzleExplanation" aria-live="polite">
@@ -1238,56 +1213,71 @@ export const PuzzleSolverPage = () => {
         }
       />
       <div className="panel puzzlePanel">
-        <div className="puzzleHeader">
+        <header className="puzzleHeader">
+          <div className="puzzleHeaderTopline">
+            <span className="puzzleHeaderEyebrow">Atomic puzzle</span>
+            <div className="puzzleHeaderStatus">
+              {hasPersistedAttempt ? (
+                <span
+                  className="puzzleAttemptedBadge"
+                  role="img"
+                  tabIndex={0}
+                  title={ATTEMPTED_PUZZLE_BADGE_LABEL}
+                  aria-label={ATTEMPTED_PUZZLE_BADGE_LABEL}
+                  data-tooltip={ATTEMPTED_PUZZLE_BADGE_LABEL}
+                >
+                  <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
+                </span>
+              ) : null}
+              <div className="puzzleCount" aria-label="Puzzle count">
+                <span>{puzzleOrdinal ?? "-"}</span>
+                <small>of {puzzleCount || "-"}</small>
+              </div>
+            </div>
+          </div>
+
           <div className="puzzleHeaderTitle">
             <h1>Find the best move</h1>
           </div>
-          <div className="puzzleHeaderAside">
-            <Link className="puzzleDashboardLink" to="/solve/sets">
-              <span>Sets</span>
-            </Link>
-            {canViewHistory ? (
-              <Link className="puzzleDashboardLink" to="/dashboard">
-                <FontAwesomeIcon icon={faClockRotateLeft} />
-                <span>Dashboard</span>
-              </Link>
-            ) : null}
-            {hasPersistedAttempt ? (
-              <span
-                className="puzzleAttemptedBadge"
-                role="img"
-                tabIndex={0}
-                title={ATTEMPTED_PUZZLE_BADGE_LABEL}
-                aria-label={ATTEMPTED_PUZZLE_BADGE_LABEL}
-                data-tooltip={ATTEMPTED_PUZZLE_BADGE_LABEL}
-              >
-                <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
-              </span>
-            ) : null}
-            <div className="puzzleCount" aria-label="Puzzle count">
-              <span>{puzzleOrdinal ?? "-"}</span>
-              <small>of {puzzleCount || "-"}</small>
+
+          <div className="puzzleHeaderMetadata">
+            <div className="puzzleHeaderMeta" title={author}>
+              <span>Created by</span>
+              <strong>{author}</strong>
             </div>
+            {event ? (
+              <div className="puzzleHeaderMeta" title={event}>
+                <span>Event</span>
+                <strong>{event}</strong>
+              </div>
+            ) : null}
           </div>
-          <div className="puzzleHeaderMeta" title={author}>
-            <span>Author</span>
-            <strong>{author}</strong>
-          </div>
+
           {!isMobileLayout ? (
-            <div className="buttonRow puzzleActions">
+            <nav className="puzzleActions" aria-label="Puzzle navigation">
               <button
                 type="button"
                 onClick={handlePreviousPuzzle}
                 disabled={!canGoToPreviousPuzzle}
               >
-                Prev
+                <span className="puzzleActionArrow" aria-hidden="true">
+                  ‹
+                </span>
+                Previous
               </button>
               <button type="button" onClick={handleNextPuzzle} disabled={!canGoToNextPuzzle}>
                 Next
+                <span className="puzzleActionArrow" aria-hidden="true">
+                  ›
+                </span>
               </button>
-            </div>
+            </nav>
           ) : null}
-        </div>
+        </header>
+
+        {!isMobileLayout && hasAttemptedActivePuzzle ? (
+          <div id="desktop-puzzle-vote-slot" className="puzzleVoteSlot" />
+        ) : null}
 
         {boardState.error ? <div className="errorText">{boardState.error}</div> : null}
         {loadingError ? <div className="errorText">{loadingError}</div> : null}
@@ -1314,14 +1304,6 @@ export const PuzzleSolverPage = () => {
         {!isMobileLayout ? (
           <div className="puzzleDetails">
             {renderCastlingRights()}
-            {event ? (
-              <div className="puzzleMetaRow">
-                <div className="metaChip" title={event}>
-                  <span className="metaChipLabel">Event</span>
-                  <span className="metaChipValue">{event}</span>
-                </div>
-              </div>
-            ) : null}
             {renderPuzzleInfoSection()}
           </div>
         ) : null}
@@ -1394,9 +1376,6 @@ export const PuzzleSolverPage = () => {
       {isMobileLayout ? (
         <>
           <div className="mobilePuzzleStatus" aria-label="Puzzle details">
-            <Link className="puzzleDashboardLink" to="/solve/sets">
-              <span>Sets</span>
-            </Link>
             <div className="puzzleCount" aria-label="Puzzle count">
               <span>{puzzleOrdinal ?? "-"}</span>
               <small>of {puzzles.length || "-"}</small>
@@ -1417,6 +1396,9 @@ export const PuzzleSolverPage = () => {
               {author}
             </span>
           </div>
+          {hasAttemptedActivePuzzle ? (
+            <div id="mobile-puzzle-vote-slot" className="mobilePuzzleVoteSlot" />
+          ) : null}
           {hasCastlingRights ? (
             <div className="mobileCastlingRights">{renderCastlingRights()}</div>
           ) : null}
@@ -1438,6 +1420,13 @@ export const PuzzleSolverPage = () => {
             Next
           </button>
         </div>
+      ) : null}
+
+      {hasAttemptedActivePuzzle ? (
+        <PuzzleCommunity
+          puzzleId={activePuzzleId}
+          voteTargetId={isMobileLayout ? "mobile-puzzle-vote-slot" : "desktop-puzzle-vote-slot"}
+        />
       ) : null}
     </div>
   );

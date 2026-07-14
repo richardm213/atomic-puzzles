@@ -83,6 +83,43 @@ export type PuzzleReviewQueueRow = PuzzleQueueRow & {
   next_puzzle_id: number;
 };
 
+export type PuzzleVoteRow = {
+  puzzle_id: number;
+  username: string;
+  vote: -1 | 1;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PuzzleCommentRow = {
+  id: number;
+  puzzle_id: number;
+  username: string;
+  parent_id: number | null;
+  body: string;
+  created_at: string;
+};
+
+export type PuzzleCommentVoteRow = {
+  comment_id: number;
+  puzzle_id: number;
+  username: string;
+  vote: -1 | 1;
+  created_at: string;
+  updated_at: string;
+};
+
+export type NotificationRow = {
+  id: number;
+  recipient_username: string;
+  actor_username: string | null;
+  notification_type: "puzzle_comment" | "comment_reply" | "puzzle_approved";
+  puzzle_id: number;
+  comment_id: number | null;
+  created_at: string;
+  read_at: string | null;
+};
+
 export type Aliases2TableRow = {
   alias: string | null;
   username: string | null;
@@ -119,6 +156,22 @@ export type Database = {
         Pick<PuzzleQueueRow, "fen" | "solution" | "event" | "explanation" | "submitted_by">,
         Partial<Pick<PuzzleQueueRow, "fen" | "solution" | "event" | "explanation">>
       >;
+      puzzle_votes: TableDef<
+        PuzzleVoteRow,
+        Pick<PuzzleVoteRow, "puzzle_id" | "username" | "vote">,
+        Pick<PuzzleVoteRow, "vote">
+      >;
+      puzzle_comments: TableDef<
+        PuzzleCommentRow,
+        Pick<PuzzleCommentRow, "puzzle_id" | "username" | "parent_id" | "body">,
+        never
+      >;
+      puzzle_comment_votes: TableDef<
+        PuzzleCommentVoteRow,
+        Pick<PuzzleCommentVoteRow, "comment_id" | "puzzle_id" | "username" | "vote">,
+        Pick<PuzzleCommentVoteRow, "vote">
+      >;
+      notifications: TableDef<NotificationRow, never, Pick<NotificationRow, "read_at">>;
       users: TableDef<{ username: string; created_at: string | null }, { username: string }>;
     };
     Views: Record<string, never>;
