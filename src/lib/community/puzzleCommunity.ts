@@ -26,6 +26,29 @@ export type PuzzleCommunity = {
   viewerVote: -1 | 0 | 1;
 };
 
+export type ProfilePuzzleComment = {
+  id: number;
+  puzzle_id: number;
+  body: string | null;
+  created_at: string;
+  upvotes: number;
+  content_hidden: boolean;
+};
+
+export type ProfilePuzzleCommentsPage = {
+  comments: ProfilePuzzleComment[];
+  total: number;
+  page: number;
+  pageSize: number;
+  sort: ProfileCommentSort;
+};
+
+export type ProfileCommentSort = "recent" | "top";
+
+export type ProfileCommentKarma = {
+  karma: number;
+};
+
 const communityRequest = async (
   body: Record<string, unknown>,
   accessToken = "",
@@ -74,3 +97,51 @@ export const postPuzzleComment = (
   accessToken: string,
 ): Promise<PuzzleCommunity> =>
   communityRequest({ action: "comment", puzzleId, body, parentId }, accessToken);
+
+export const fetchProfilePuzzleComments = async (
+  username: string,
+  options: {
+    page?: number;
+    pageSize?: number;
+    accessToken?: string;
+    sort?: ProfileCommentSort;
+  } = {},
+): Promise<ProfilePuzzleCommentsPage> => {
+  const { page = 1, pageSize = 25, accessToken = "", sort = "recent" } = options;
+  const response = await fetch(appAssetPath("/api/puzzles/community"), {
+    method: "POST",
+    headers: {
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ action: "profileComments", username, page, pageSize, sort }),
+  });
+  const result = (await response.json().catch(() => null)) as
+    | (ProfilePuzzleCommentsPage & { error?: string })
+    | null;
+
+  if (!response.ok) throw new Error(result?.error || "Unable to load comment history.");
+  if (!result || !Array.isArray(result.comments)) {
+    throw new Error("The comment history service returned incomplete data.");
+  }
+
+  return result;
+};
+
+export const fetchProfileCommentKarma = async (username: string): Promise<number> => {
+  const response = await fetch(appAssetPath("/api/puzzles/community"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "profileKarma", username }),
+  });
+  const result = (await response.json().catch(() => null)) as
+    | (ProfileCommentKarma & { error?: string })
+    | null;
+
+  if (!response.ok) throw new Error(result?.error || "Unable to load comment karma.");
+  if (!result || !Number.isFinite(Number(result.karma))) {
+    throw new Error("The comment karma service returned incomplete data.");
+  }
+
+  return Number(result.karma);
+};

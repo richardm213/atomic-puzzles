@@ -11,6 +11,10 @@ type NetlifyEvent = {
 type CommunityBody = {
   action?: unknown;
   puzzleId?: unknown;
+  username?: unknown;
+  page?: unknown;
+  pageSize?: unknown;
+  sort?: unknown;
   vote?: unknown;
   commentId?: unknown;
   parentId?: unknown;
@@ -42,6 +46,185 @@ const parseBody = (event: NetlifyEvent): CommunityBody | null => {
 const readPositiveInteger = (value: unknown): number | null => {
   const number = typeof value === "number" ? value : Number(value);
   return Number.isSafeInteger(number) && number > 0 ? number : null;
+};
+
+const readProfileUsername = (value: unknown): string =>
+  typeof value === "string" && value.trim().length <= 100 ? value.trim().toLowerCase() : "";
+
+export const buildProfileCommentRows = (
+  comments: Array<{
+    id: number | string;
+    puzzle_id: number | string;
+    body: string | null;
+    created_at: string | null;
+  }>,
+  commentCounts: Array<{ comment_id: number | string; upvotes: number | string | null }>,
+  solvedPuzzles: Array<{ puzzle_id: number | string }>,
+) => {
+  const upvotesByCommentId = new Map(
+    commentCounts.map((row) => [Number(row.comment_id), Number(row.upvotes)]),
+  );
+  const solvedPuzzleIds = new Set(solvedPuzzles.map((row) => String(row.puzzle_id)));
+
+  return comments.map((comment) => {
+    const contentHidden = !solvedPuzzleIds.has(String(comment.puzzle_id));
+    return {
+      id: Number(comment.id),
+      puzzle_id: Number(comment.puzzle_id),
+      body: contentHidden ? null : String(comment.body ?? ""),
+      created_at: String(comment.created_at ?? ""),
+      upvotes: upvotesByCommentId.get(Number(comment.id)) ?? 0,
+      content_hidden: contentHidden,
+    };
+  });
+};
+
+type ProfileCommentRecord = {
+  id: number | string;
+  puzzle_id: number | string;
+  body: string | null;
+  created_at: string | null;
+};
+
+type ProfileCommentCountRecord = {
+  comment_id: number | string;
+  upvotes: number | string | null;
+  score?: number | string | null;
+};
+
+export const sortProfileCommentRecords = (
+  comments: ProfileCommentRecord[],
+  commentCounts: ProfileCommentCountRecord[],
+  sort: "recent" | "top",
+): ProfileCommentRecord[] => {
+  const scoreByCommentId = new Map(
+    commentCounts.map((row) => [Number(row.comment_id), Number(row.score ?? 0)]),
+  );
+  const compareRecent = (left: ProfileCommentRecord, right: ProfileCommentRecord): number => {
+    const timeDifference =
+      new Date(String(right.created_at ?? "")).getTime() -
+      new Date(String(left.created_at ?? "")).getTime();
+    return timeDifference || Number(right.id) - Number(left.id);
+  };
+
+  return [...comments].sort((left, right) => {
+    if (sort === "top") {
+      const scoreDifference =
+        (scoreByCommentId.get(Number(right.id)) ?? 0) -
+        (scoreByCommentId.get(Number(left.id)) ?? 0);
+      if (scoreDifference) return scoreDifference;
+    }
+    return compareRecent(left, right);
+  });
+};
+
+export const sumCommentKarma = (votes: Array<{ vote: unknown }>): number =>
+  votes.reduce((karma, row) => {
+    const vote = Number(row.vote);
+    return karma + (vote === 1 || vote === -1 ? vote : 0);
+  }, 0);
+
+const loadProfileCommentKarma = async (
+  supabase: ReturnType<typeof getSupabase>,
+  profileUsername: string,
+) => {
+  const pageSize = 1_000;
+  let from = 0;
+  let karma = 0;
+
+  while (true) {
+    const result = await supabase
+      .from("puzzle_comment_votes")
+      .select("vote, comment:puzzle_comments!puzzle_comment_votes_comment_fk!inner(username)")
+      .eq("comment.username", profileUsername)
+      .range(from, from + pageSize - 1);
+
+    if (result.error) {
+      throw new Error(`Unable to load comment karma: ${result.error.message}`);
+    }
+
+    const votes = result.data ?? [];
+    karma += sumCommentKarma(votes);
+    if (votes.length < pageSize) break;
+    from += pageSize;
+  }
+
+  return { karma };
+};
+
+const loadProfileComments = async (
+  supabase: ReturnType<typeof getSupabase>,
+  profileUsername: string,
+  viewerUsername: string | null,
+  page: number,
+  pageSize: number,
+  sort: "recent" | "top",
+) => {
+  const databasePageSize = 1_000;
+  const allComments: ProfileCommentRecord[] = [];
+  let databaseFrom = 0;
+
+  while (true) {
+    const commentsResult = await supabase
+      .from("puzzle_comments")
+      .select("id, puzzle_id, body, created_at")
+      .eq("username", profileUsername)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(databaseFrom, databaseFrom + databasePageSize - 1);
+
+    if (commentsResult.error) {
+      throw new Error(`Unable to load comment history: ${commentsResult.error.message}`);
+    }
+
+    const rows = commentsResult.data ?? [];
+    allComments.push(...rows);
+    if (rows.length < databasePageSize) break;
+    databaseFrom += databasePageSize;
+  }
+
+  const allCommentCounts: ProfileCommentCountRecord[] = [];
+  const allCommentIds = allComments.map((comment) => Number(comment.id));
+  const countBatchSize = 200;
+  for (let index = 0; index < allCommentIds.length; index += countBatchSize) {
+    const commentCountsResult = await supabase
+      .from("puzzle_comment_vote_counts")
+      .select("comment_id, upvotes, score")
+      .in("comment_id", allCommentIds.slice(index, index + countBatchSize));
+
+    if (commentCountsResult.error) {
+      throw new Error(`Unable to load comment votes: ${commentCountsResult.error.message}`);
+    }
+    allCommentCounts.push(...(commentCountsResult.data ?? []));
+  }
+
+  const from = (page - 1) * pageSize;
+  const comments = sortProfileCommentRecords(allComments, allCommentCounts, sort).slice(
+    from,
+    from + pageSize,
+  );
+  const puzzleIds = [...new Set(comments.map((comment) => Number(comment.puzzle_id)))];
+  const solvedPuzzlesResult =
+    viewerUsername && puzzleIds.length
+      ? await supabase
+          .from("puzzle_progress")
+          .select("puzzle_id")
+          .eq("username", viewerUsername)
+          .eq("puzzle_correct", true)
+          .in("puzzle_id", puzzleIds.map(String))
+      : { data: [], error: null };
+
+  if (solvedPuzzlesResult.error) {
+    throw new Error(`Unable to check solved puzzles: ${solvedPuzzlesResult.error.message}`);
+  }
+
+  return {
+    comments: buildProfileCommentRows(comments, allCommentCounts, solvedPuzzlesResult.data ?? []),
+    total: allComments.length,
+    page,
+    pageSize,
+    sort,
+  };
 };
 
 const getSupabase = () => {
@@ -150,8 +333,16 @@ export const handler = async (event: NetlifyEvent) => {
 
   const input = parseBody(event);
   const action = input?.action;
+  const isProfileAction = action === "profileComments" || action === "profileKarma";
   const puzzleId = readPositiveInteger(input?.puzzleId);
-  if (!input || !["load", "vote", "comment", "commentVote"].includes(String(action)) || !puzzleId) {
+  const profileUsername = readProfileUsername(input?.username);
+  if (
+    !input ||
+    !["load", "vote", "comment", "commentVote", "profileComments", "profileKarma"].includes(
+      String(action),
+    ) ||
+    (isProfileAction ? !profileUsername : !puzzleId)
+  ) {
     return jsonResponse(400, { error: "Invalid puzzle community request." });
   }
 
@@ -165,14 +356,29 @@ export const handler = async (event: NetlifyEvent) => {
         return jsonResponse(401, { error: "Your Lichess login is no longer valid." });
       }
       username = account.username.trim().toLowerCase();
-    } else if (action !== "load") {
+    } else if (action !== "load" && !isProfileAction) {
       return jsonResponse(401, { error: "Log in with Lichess to participate." });
     }
 
     const supabase = getSupabase();
 
+    if (action === "profileKarma") {
+      return jsonResponse(200, await loadProfileCommentKarma(supabase, profileUsername));
+    }
+
+    if (action === "profileComments") {
+      const page = readPositiveInteger(input.page) ?? 1;
+      const requestedPageSize = readPositiveInteger(input.pageSize) ?? 25;
+      const pageSize = Math.min(100, requestedPageSize);
+      const sort = input.sort === "top" ? "top" : "recent";
+      return jsonResponse(
+        200,
+        await loadProfileComments(supabase, profileUsername, username, page, pageSize, sort),
+      );
+    }
+
     if (action === "load") {
-      return jsonResponse(200, await loadCommunity(supabase, puzzleId, username));
+      return jsonResponse(200, await loadCommunity(supabase, puzzleId!, username));
     }
 
     if (!username) {
@@ -194,17 +400,17 @@ export const handler = async (event: NetlifyEvent) => {
         const { error } = await supabase
           .from("puzzle_votes")
           .delete()
-          .eq("puzzle_id", puzzleId)
+          .eq("puzzle_id", puzzleId!)
           .eq("username", username);
         if (error) throw new Error(`Unable to remove vote: ${error.message}`);
       } else {
         const { error } = await supabase
           .from("puzzle_votes")
-          .upsert({ puzzle_id: puzzleId, username, vote }, { onConflict: "puzzle_id,username" });
+          .upsert({ puzzle_id: puzzleId!, username, vote }, { onConflict: "puzzle_id,username" });
         if (error) throw new Error(`Unable to save vote: ${error.message}`);
       }
 
-      return jsonResponse(200, await loadCommunity(supabase, puzzleId, username));
+      return jsonResponse(200, await loadCommunity(supabase, puzzleId!, username));
     }
 
     if (action === "commentVote") {
@@ -225,7 +431,7 @@ export const handler = async (event: NetlifyEvent) => {
         const { error } = await supabase
           .from("puzzle_comment_votes")
           .upsert(
-            { comment_id: commentId, puzzle_id: puzzleId, username, vote },
+            { comment_id: commentId, puzzle_id: puzzleId!, username, vote },
             { onConflict: "comment_id,username" },
           );
         if (error) {
@@ -238,7 +444,7 @@ export const handler = async (event: NetlifyEvent) => {
         }
       }
 
-      return jsonResponse(200, await loadCommunity(supabase, puzzleId, username));
+      return jsonResponse(200, await loadCommunity(supabase, puzzleId!, username));
     }
 
     const commentBody = typeof input.body === "string" ? input.body.trim() : "";
@@ -256,7 +462,7 @@ export const handler = async (event: NetlifyEvent) => {
     }
 
     const { error } = await supabase.from("puzzle_comments").insert({
-      puzzle_id: puzzleId,
+      puzzle_id: puzzleId!,
       username,
       parent_id: parentId,
       body: commentBody,
@@ -276,7 +482,7 @@ export const handler = async (event: NetlifyEvent) => {
       });
     }
 
-    return jsonResponse(201, await loadCommunity(supabase, puzzleId, username));
+    return jsonResponse(201, await loadCommunity(supabase, puzzleId!, username));
   } catch (error) {
     return jsonResponse(500, {
       error: error instanceof Error ? error.message : "Unable to update puzzle community.",

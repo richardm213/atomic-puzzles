@@ -23,6 +23,7 @@ import {
   opponentRatingSliderMin,
   pageSizeOptions,
 } from "../../constants/matches";
+import { useAuth } from "../../context/AuthContext";
 import {
   buildRankingsLocation,
   filterMatches,
@@ -35,6 +36,12 @@ import {
   useMonthRanks,
   useRatingsSnapshotByMode,
 } from "../../hooks/usePlayerProfileData";
+import {
+  fetchProfileCommentKarma,
+  fetchProfilePuzzleComments,
+  type ProfileCommentSort,
+  type ProfilePuzzleComment,
+} from "../../lib/community/puzzleCommunity";
 import { loadRawMatchesByMode, normalizeMatches } from "../../lib/matches/matchData";
 import {
   type AliasAccount,
@@ -66,7 +73,7 @@ import { isToggleActionKey } from "../../utils/toggleActionKey";
 
 const countOptions = [5, 10, 20];
 type RankHistoryMode = import("../../constants/matches").Mode | "all";
-const profileHistoryTabOptions = ["matches", "ranks", "trophies", "opponents"] as const;
+const profileHistoryTabOptions = ["matches", "ranks", "trophies", "comments", "opponents"] as const;
 type ProfileHistoryTab = (typeof profileHistoryTabOptions)[number];
 type TrophyCaseSort = "prestige" | "date";
 type FavoriteOpponentSort =
@@ -89,6 +96,7 @@ const favoriteOpponentDefaultMatchLimit = 500;
 const favoriteOpponentAllModeMatchLimitOptions = [250, 500, 1000, 1500, 2000];
 const favoriteOpponentSingleModeMatchLimitOptions = [250, 500, 1000, 1500, 2000, 5000];
 const favoriteOpponentPageSize = 200;
+const profileCommentsPageSize = 25;
 const favoriteOpponentDisplayCountOptions = [25, 50, 100];
 const favoriteOpponentSortLabels = {
   opponent: "Opponent",
@@ -946,6 +954,7 @@ export const PlayerProfilePage = ({
   username?: string;
   historyOnly?: boolean;
 }) => {
+  const { accessToken } = useAuth();
   const normalizedUsername = useMemo(() => normalizeUsername(username), [username]);
   const [matchHistoryMode, setMatchHistoryMode] =
     useState<import("../../constants/matches").Mode>(defaultMode);
@@ -994,6 +1003,13 @@ export const PlayerProfilePage = ({
   const [favoriteOpponentLoadKey, setFavoriteOpponentLoadKey] = useState("");
   const [loadingFavoriteOpponents, setLoadingFavoriteOpponents] = useState(false);
   const [favoriteOpponentsError, setFavoriteOpponentsError] = useState("");
+  const [profileComments, setProfileComments] = useState<ProfilePuzzleComment[]>([]);
+  const [profileCommentsPage, setProfileCommentsPage] = useState(1);
+  const [profileCommentsTotal, setProfileCommentsTotal] = useState(0);
+  const [profileCommentsLoading, setProfileCommentsLoading] = useState(false);
+  const [profileCommentsError, setProfileCommentsError] = useState("");
+  const [profileCommentsSort, setProfileCommentsSort] = useState<ProfileCommentSort>("recent");
+  const [profileCommentKarma, setProfileCommentKarma] = useState<number | null>(null);
   const matchRequestIdRef = useRef(0);
   const favoriteOpponentsRequestIdRef = useRef(0);
   const searchSubmitInFlightRef = useRef(false);
@@ -1054,6 +1070,13 @@ export const PlayerProfilePage = ({
     setPage(1);
     setError("");
     setFavoriteOpponentsError("");
+    setProfileComments([]);
+    setProfileCommentsPage(1);
+    setProfileCommentsTotal(0);
+    setProfileCommentsLoading(false);
+    setProfileCommentsError("");
+    setProfileCommentsSort("recent");
+    setProfileCommentKarma(null);
     setLoadingMatches(false);
     setLoadingFavoriteOpponents(false);
     setExpandedMatchKeys([]);
@@ -1148,6 +1171,77 @@ export const PlayerProfilePage = ({
       isCurrent = false;
     };
   }, [aliasesLoaded, canonicalUsername]);
+
+  useEffect(() => {
+    if (!aliasesLoaded || !canonicalUsername) {
+      setProfileCommentKarma(null);
+      return;
+    }
+
+    let isCurrent = true;
+
+    const loadKarma = async (): Promise<void> => {
+      try {
+        const karma = await fetchProfileCommentKarma(canonicalUsername);
+        if (isCurrent) setProfileCommentKarma(karma);
+      } catch {
+        if (isCurrent) setProfileCommentKarma(null);
+      }
+    };
+
+    void loadKarma();
+    return () => {
+      isCurrent = false;
+    };
+  }, [aliasesLoaded, canonicalUsername]);
+
+  useEffect(() => {
+    if (!aliasesLoaded || !canonicalUsername || isBanned || profileHistoryTab !== "comments") {
+      return;
+    }
+
+    let isCurrent = true;
+
+    const loadComments = async (): Promise<void> => {
+      setProfileCommentsLoading(true);
+      setProfileCommentsError("");
+
+      try {
+        const result = await fetchProfilePuzzleComments(canonicalUsername, {
+          page: profileCommentsPage,
+          pageSize: profileCommentsPageSize,
+          accessToken,
+          sort: profileCommentsSort,
+        });
+        if (!isCurrent) return;
+        setProfileComments(result.comments);
+        setProfileCommentsTotal(result.total);
+      } catch (loadError) {
+        if (!isCurrent) return;
+        setProfileComments([]);
+        setProfileCommentsTotal(0);
+        setProfileCommentsError(
+          loadError instanceof Error ? loadError.message : "Unable to load comment history.",
+        );
+      } finally {
+        if (isCurrent) setProfileCommentsLoading(false);
+      }
+    };
+
+    void loadComments();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [
+    accessToken,
+    aliasesLoaded,
+    canonicalUsername,
+    isBanned,
+    profileCommentsPage,
+    profileCommentsSort,
+    profileHistoryTab,
+  ]);
 
   const runMatchSearch = useCallback(
     async (
@@ -1990,6 +2084,17 @@ export const PlayerProfilePage = ({
                   Trophy Case
                 </button>
                 <button
+                  id="profile-comment-history-tab"
+                  type="button"
+                  role="tab"
+                  aria-selected={profileHistoryTab === "comments"}
+                  aria-controls="profile-comment-history-panel"
+                  className={profileHistoryTab === "comments" ? "active" : ""}
+                  onClick={() => handleProfileHistoryTabChange("comments")}
+                >
+                  Comments
+                </button>
+                <button
                   id="profile-favorite-opponents-tab"
                   type="button"
                   role="tab"
@@ -2279,6 +2384,100 @@ export const PlayerProfilePage = ({
                   formatLabel={(current, total) => `Page ${current} / ${total}`}
                   disabled={loadingMatches}
                 />
+              </section>
+
+              <section
+                id="profile-comment-history-panel"
+                className="profileHistorySection"
+                role="tabpanel"
+                aria-labelledby="profile-comment-history-tab"
+                hidden={profileHistoryTab !== "comments"}
+              >
+                <div className="rankingsMeta profileHistoryMeta">
+                  <div className="profileHistoryTitleControl">
+                    <label htmlFor="profile-comments-sort-select">
+                      <span>Sort</span>
+                      <select
+                        id="profile-comments-sort-select"
+                        aria-label="Comment history sort"
+                        value={profileCommentsSort}
+                        disabled={profileCommentsLoading}
+                        onChange={(event) => {
+                          const nextSort = event.target.value;
+                          if (nextSort === "recent" || nextSort === "top") {
+                            setProfileCommentsSort(nextSort);
+                            setProfileCommentsPage(1);
+                          }
+                        }}
+                      >
+                        <option value="recent">Most recent</option>
+                        <option value="top">Top comments</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div className="profileCommentsSummary">
+                    <span>{profileCommentsTotal} comments</span>
+                    <span
+                      className="profileKarmaBadge"
+                      title="Net comment karma: upvotes minus downvotes"
+                      aria-label={`${profileCommentKarma ?? "Loading"} comment karma`}
+                    >
+                      <i className="fa-solid fa-arrow-up" aria-hidden="true" />
+                      <strong>{profileCommentKarma?.toLocaleString("en-US") ?? "…"}</strong>
+                      <span>karma</span>
+                    </span>
+                  </div>
+                </div>
+
+                {profileCommentsError ? (
+                  <div className="errorText">{profileCommentsError}</div>
+                ) : null}
+                {profileCommentsLoading ? (
+                  <div className="emptyRankings">Loading comments...</div>
+                ) : profileComments.length ? (
+                  <div className="profileCommentHistoryList">
+                    {profileComments.map((comment) => (
+                      <article key={comment.id} className="profileCommentHistoryCard">
+                        <div className="profileCommentHistoryMeta">
+                          <Link
+                            className="profileCommentPuzzleLink"
+                            to="/solve/$puzzleId"
+                            params={{ puzzleId: String(comment.puzzle_id) }}
+                          >
+                            Puzzle #{comment.puzzle_id}
+                          </Link>
+                          <span>{formatLocalDateTime(comment.created_at)}</span>
+                          <span aria-label={`${comment.upvotes} upvotes`}>
+                            <i className="fa-solid fa-arrow-up" aria-hidden="true" />
+                            {comment.upvotes}
+                          </span>
+                        </div>
+                        {comment.content_hidden ? (
+                          <p className="profileCommentHidden">
+                            Comment hidden until you solve this puzzle.
+                          </p>
+                        ) : (
+                          <p className="profileCommentBody">{comment.body}</p>
+                        )}
+                      </article>
+                    ))}
+                  </div>
+                ) : !profileCommentsError ? (
+                  <div className="emptyRankings">No puzzle comments yet.</div>
+                ) : null}
+
+                {profileCommentsTotal > profileCommentsPageSize ? (
+                  <PaginationRow
+                    currentPage={profileCommentsPage}
+                    totalPages={Math.max(
+                      1,
+                      Math.ceil(profileCommentsTotal / profileCommentsPageSize),
+                    )}
+                    onPageChange={setProfileCommentsPage}
+                    formatLabel={(current, total) => `Page ${current} / ${total}`}
+                    disabled={profileCommentsLoading}
+                  />
+                ) : null}
               </section>
 
               <section
