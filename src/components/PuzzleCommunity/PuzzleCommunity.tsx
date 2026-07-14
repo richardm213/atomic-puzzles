@@ -9,7 +9,7 @@ import {
   faReply,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { useAuth } from "../../context/AuthContext";
@@ -46,6 +46,7 @@ export const PuzzleCommunity = ({ puzzleId, voteTargetId }: PuzzleCommunityProps
   const [collapsed, setCollapsed] = useState<Set<number>>(() => new Set());
   const [error, setError] = useState("");
   const [voteTarget, setVoteTarget] = useState<HTMLElement | null>(null);
+  const commentInputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     setVoteTarget(document.getElementById(voteTargetId));
@@ -102,6 +103,11 @@ export const PuzzleCommunity = ({ puzzleId, voteTargetId }: PuzzleCommunityProps
       document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "center" });
     });
   }, [community]);
+
+  useEffect(() => {
+    if (!replyingTo) return;
+    commentInputRef.current?.focus();
+  }, [replyingTo]);
 
   const requireLogin = (): boolean => {
     if (isAuthenticated && accessToken) return true;
@@ -170,6 +176,48 @@ export const PuzzleCommunity = ({ puzzleId, voteTargetId }: PuzzleCommunityProps
     const directReplies = childrenByParent.get(commentId) ?? [];
     return directReplies.reduce((total, reply) => total + 1 + countDescendants(reply.id), 0);
   };
+
+  const renderCommentComposer = (isReply: boolean) => (
+    <div className={`puzzleCommentComposer ${isReply ? "replyComposer" : ""}`}>
+      <div className="commentComposerHeading">
+        <FontAwesomeIcon icon={isReply ? faReply : faComment} />
+        <strong>{replyingTo ? `Replying to ${replyingTo.username}` : "Join the discussion"}</strong>
+        {replyingTo ? (
+          <button type="button" onClick={() => setReplyingTo(null)}>
+            Cancel reply
+          </button>
+        ) : null}
+      </div>
+      {isAuthenticated ? (
+        <>
+          <textarea
+            id="puzzle-comment-input"
+            ref={commentInputRef}
+            aria-label={replyingTo ? `Reply to ${replyingTo.username}` : "Add a comment"}
+            value={commentBody}
+            maxLength={10_000}
+            rows={3}
+            placeholder={replyingTo ? `Reply to ${replyingTo.username}…` : "Add a comment…"}
+            onChange={(event) => setCommentBody(event.target.value)}
+          />
+          <div className="commentComposerActions">
+            <span>Posting as {user?.username}</span>
+            <button
+              type="button"
+              disabled={!commentBody.trim() || postingComment}
+              onClick={() => void handlePostComment()}
+            >
+              {postingComment ? "Posting…" : replyingTo ? "Post reply" : "Post comment"}
+            </button>
+          </div>
+        </>
+      ) : (
+        <button className="commentLoginButton" type="button" onClick={() => requireLogin()}>
+          Log in with Lichess to comment
+        </button>
+      )}
+    </div>
+  );
 
   const renderComment = (comment: PuzzleComment, depth: number) => {
     const replies = childrenByParent.get(comment.id) ?? [];
@@ -251,7 +299,6 @@ export const PuzzleCommunity = ({ puzzleId, voteTargetId }: PuzzleCommunityProps
                   onClick={() => {
                     if (!requireLogin()) return;
                     setReplyingTo(comment);
-                    document.querySelector<HTMLTextAreaElement>("#puzzle-comment-input")?.focus();
                   }}
                 >
                   <FontAwesomeIcon icon={faReply} />
@@ -261,6 +308,7 @@ export const PuzzleCommunity = ({ puzzleId, voteTargetId }: PuzzleCommunityProps
             </div>
           )}
         </article>
+        {replyingTo?.id === comment.id ? renderCommentComposer(true) : null}
         {!isCollapsed && replies.length > 0 ? (
           <ol className="puzzleCommentReplies">
             {replies.map((reply) => renderComment(reply, depth + 1))}
@@ -315,45 +363,7 @@ export const PuzzleCommunity = ({ puzzleId, voteTargetId }: PuzzleCommunityProps
           </div>
         </div>
 
-        <div className="puzzleCommentComposer">
-          <div className="commentComposerHeading">
-            <FontAwesomeIcon icon={faComment} />
-            <strong>
-              {replyingTo ? `Replying to ${replyingTo.username}` : "Join the discussion"}
-            </strong>
-            {replyingTo ? (
-              <button type="button" onClick={() => setReplyingTo(null)}>
-                Cancel reply
-              </button>
-            ) : null}
-          </div>
-          {isAuthenticated ? (
-            <>
-              <textarea
-                id="puzzle-comment-input"
-                value={commentBody}
-                maxLength={10_000}
-                rows={3}
-                placeholder={replyingTo ? `Reply to ${replyingTo.username}…` : "Add a comment…"}
-                onChange={(event) => setCommentBody(event.target.value)}
-              />
-              <div className="commentComposerActions">
-                <span>Posting as {user?.username}</span>
-                <button
-                  type="button"
-                  disabled={!commentBody.trim() || postingComment}
-                  onClick={() => void handlePostComment()}
-                >
-                  {postingComment ? "Posting…" : replyingTo ? "Post reply" : "Post comment"}
-                </button>
-              </div>
-            </>
-          ) : (
-            <button className="commentLoginButton" type="button" onClick={() => requireLogin()}>
-              Log in with Lichess to comment
-            </button>
-          )}
-        </div>
+        {!replyingTo ? renderCommentComposer(false) : null}
 
         {error ? <p className="puzzleCommunityError">{error}</p> : null}
         {loading && !community ? <p className="puzzleCommunityEmpty">Loading discussion…</p> : null}
