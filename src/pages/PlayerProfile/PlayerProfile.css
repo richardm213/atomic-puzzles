@@ -1805,7 +1805,13 @@
     grid-template-columns: 1fr;
   }
 
+  .profileMatchTableWrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .profileMatchTable {
+    min-width: 680px;
     font-size: 12px;
   }
 
