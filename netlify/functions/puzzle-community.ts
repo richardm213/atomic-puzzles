@@ -51,26 +51,31 @@ const readPositiveInteger = (value: unknown): number | null => {
 const readProfileUsername = (value: unknown): string =>
   typeof value === "string" && value.trim().length <= 100 ? value.trim().toLowerCase() : "";
 
+export const isPublicCommunityReadAction = (action: unknown): boolean =>
+  ["load", "profileComments", "profileKarma", "siteComments"].includes(String(action));
+
 export const buildProfileCommentRows = (
   comments: Array<{
     id: number | string;
     puzzle_id: number | string;
+    username?: string | null;
     body: string | null;
     created_at: string | null;
   }>,
   commentCounts: Array<{ comment_id: number | string; upvotes: number | string | null }>,
-  solvedPuzzles: Array<{ puzzle_id: number | string }>,
+  attemptedPuzzles: Array<{ puzzle_id: number | string }>,
 ) => {
   const upvotesByCommentId = new Map(
     commentCounts.map((row) => [Number(row.comment_id), Number(row.upvotes)]),
   );
-  const solvedPuzzleIds = new Set(solvedPuzzles.map((row) => String(row.puzzle_id)));
+  const attemptedPuzzleIds = new Set(attemptedPuzzles.map((row) => String(row.puzzle_id)));
 
   return comments.map((comment) => {
-    const contentHidden = !solvedPuzzleIds.has(String(comment.puzzle_id));
+    const contentHidden = !attemptedPuzzleIds.has(String(comment.puzzle_id));
     return {
       id: Number(comment.id),
       puzzle_id: Number(comment.puzzle_id),
+      username: String(comment.username ?? ""),
       body: contentHidden ? null : String(comment.body ?? ""),
       created_at: String(comment.created_at ?? ""),
       upvotes: upvotesByCommentId.get(Number(comment.id)) ?? 0,
@@ -82,6 +87,7 @@ export const buildProfileCommentRows = (
 type ProfileCommentRecord = {
   id: number | string;
   puzzle_id: number | string;
+  username?: string | null;
   body: string | null;
   created_at: string | null;
 };
@@ -154,7 +160,7 @@ const loadProfileCommentKarma = async (
 
 const loadProfileComments = async (
   supabase: ReturnType<typeof getSupabase>,
-  profileUsername: string,
+  profileUsername: string | null,
   viewerUsername: string | null,
   page: number,
   pageSize: number,
@@ -165,13 +171,16 @@ const loadProfileComments = async (
   let databaseFrom = 0;
 
   while (true) {
-    const commentsResult = await supabase
+    let commentsQuery = supabase
       .from("puzzle_comments")
-      .select("id, puzzle_id, body, created_at")
-      .eq("username", profileUsername)
+      .select("id, puzzle_id, username, body, created_at")
       .order("created_at", { ascending: false })
-      .order("id", { ascending: false })
-      .range(databaseFrom, databaseFrom + databasePageSize - 1);
+      .order("id", { ascending: false });
+    if (profileUsername) commentsQuery = commentsQuery.eq("username", profileUsername);
+    const commentsResult = await commentsQuery.range(
+      databaseFrom,
+      databaseFrom + databasePageSize - 1,
+    );
 
     if (commentsResult.error) {
       throw new Error(`Unable to load comment history: ${commentsResult.error.message}`);
@@ -204,22 +213,25 @@ const loadProfileComments = async (
     from + pageSize,
   );
   const puzzleIds = [...new Set(comments.map((comment) => Number(comment.puzzle_id)))];
-  const solvedPuzzlesResult =
+  const attemptedPuzzlesResult =
     viewerUsername && puzzleIds.length
       ? await supabase
           .from("puzzle_progress")
           .select("puzzle_id")
           .eq("username", viewerUsername)
-          .eq("puzzle_correct", true)
           .in("puzzle_id", puzzleIds.map(String))
       : { data: [], error: null };
 
-  if (solvedPuzzlesResult.error) {
-    throw new Error(`Unable to check solved puzzles: ${solvedPuzzlesResult.error.message}`);
+  if (attemptedPuzzlesResult.error) {
+    throw new Error(`Unable to check attempted puzzles: ${attemptedPuzzlesResult.error.message}`);
   }
 
   return {
-    comments: buildProfileCommentRows(comments, allCommentCounts, solvedPuzzlesResult.data ?? []),
+    comments: buildProfileCommentRows(
+      comments,
+      allCommentCounts,
+      attemptedPuzzlesResult.data ?? [],
+    ),
     total: allComments.length,
     page,
     pageSize,
@@ -334,14 +346,23 @@ export const handler = async (event: NetlifyEvent) => {
   const input = parseBody(event);
   const action = input?.action;
   const isProfileAction = action === "profileComments" || action === "profileKarma";
+  const isPuzzleAction = ["load", "vote", "comment", "commentVote"].includes(String(action));
+  const isPublicReadAction = isPublicCommunityReadAction(action);
   const puzzleId = readPositiveInteger(input?.puzzleId);
   const profileUsername = readProfileUsername(input?.username);
   if (
     !input ||
-    !["load", "vote", "comment", "commentVote", "profileComments", "profileKarma"].includes(
-      String(action),
-    ) ||
-    (isProfileAction ? !profileUsername : !puzzleId)
+    ![
+      "load",
+      "vote",
+      "comment",
+      "commentVote",
+      "profileComments",
+      "profileKarma",
+      "siteComments",
+    ].includes(String(action)) ||
+    (isProfileAction && !profileUsername) ||
+    (isPuzzleAction && !puzzleId)
   ) {
     return jsonResponse(400, { error: "Invalid puzzle community request." });
   }
@@ -351,12 +372,17 @@ export const handler = async (event: NetlifyEvent) => {
     let username: string | null = null;
 
     if (accessToken) {
-      const account = await verifyLichessAccount(accessToken);
-      if (!account?.username) {
-        return jsonResponse(401, { error: "Your Lichess login is no longer valid." });
+      try {
+        const account = await verifyLichessAccount(accessToken);
+        if (account?.username) {
+          username = account.username.trim().toLowerCase();
+        } else if (!isPublicReadAction) {
+          return jsonResponse(401, { error: "Your Lichess login is no longer valid." });
+        }
+      } catch (verificationError) {
+        if (!isPublicReadAction) throw verificationError;
       }
-      username = account.username.trim().toLowerCase();
-    } else if (action !== "load" && !isProfileAction) {
+    } else if (!isPublicReadAction) {
       return jsonResponse(401, { error: "Log in with Lichess to participate." });
     }
 
@@ -374,6 +400,17 @@ export const handler = async (event: NetlifyEvent) => {
       return jsonResponse(
         200,
         await loadProfileComments(supabase, profileUsername, username, page, pageSize, sort),
+      );
+    }
+
+    if (action === "siteComments") {
+      const page = readPositiveInteger(input.page) ?? 1;
+      const requestedPageSize = readPositiveInteger(input.pageSize) ?? 25;
+      const pageSize = Math.min(100, requestedPageSize);
+      const sort = input.sort === "top" ? "top" : "recent";
+      return jsonResponse(
+        200,
+        await loadProfileComments(supabase, null, username, page, pageSize, sort),
       );
     }
 

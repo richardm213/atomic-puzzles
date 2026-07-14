@@ -1,0 +1,231 @@
+.commentsPage {
+  grid-template-columns: minmax(0, 1fr);
+  width: min(100%, 860px);
+  align-items: start;
+  padding-block: clamp(18px, 3vw, 38px);
+}
+
+.commentsPanel {
+  width: 100%;
+  padding: clamp(16px, 3vw, 26px);
+}
+
+.commentsHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.commentsHeader > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.commentsHeader > div:first-child > span {
+  color: var(--color-primary-soft);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.commentsHeader h1,
+.commentsHeader p {
+  margin: 0;
+}
+
+.commentsHeader h1 {
+  color: var(--color-heading);
+  font-size: clamp(26px, 4vw, 36px);
+}
+
+.commentsHeader p {
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.commentsSort {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-panel-strong);
+}
+
+.commentsSort button {
+  min-height: 34px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.commentsSort button.active {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  box-shadow: 0 5px 14px color-mix(in srgb, var(--color-primary) 24%, transparent);
+}
+
+.commentsSort button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.commentsSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  color: var(--color-subtle);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.siteCommentList {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.siteCommentCard {
+  display: grid;
+  gap: 11px;
+  padding: 15px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-panel-strong) 74%, transparent);
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease;
+}
+
+.siteCommentCard:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 38%, var(--color-border));
+  background: var(--color-surface-elevated-strong);
+}
+
+.siteCommentMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-subtle);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.siteCommentMeta a {
+  color: var(--color-cyan-bright);
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.siteCommentMeta a:hover,
+.siteCommentMeta a:focus-visible {
+  text-decoration: underline;
+}
+
+.siteCommentMeta time {
+  margin-left: 6px;
+}
+
+.siteCommentUpvotes {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.siteCommentUpvotes i {
+  color: #ff5700;
+}
+
+.siteCommentBody,
+.siteCommentHidden {
+  margin: 0;
+  line-height: 1.58;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.siteCommentHidden {
+  padding: 12px;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--color-border) 35%, transparent);
+  color: var(--color-muted);
+  font-style: italic;
+}
+
+.siteCommentList + .paginationRow {
+  margin-top: 16px;
+}
+
+.commentsStatus,
+.commentsError {
+  margin: 0;
+  padding: 14px;
+  border-radius: 9px;
+  background: var(--color-panel-strong);
+  color: var(--color-muted);
+}
+
+.commentsError {
+  color: var(--color-danger);
+}
+
+.commentsEmpty {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 48px 18px;
+  color: var(--color-muted);
+  text-align: center;
+}
+
+.commentsEmpty h2,
+.commentsEmpty p {
+  margin: 0;
+}
+
+.commentsEmpty h2 {
+  color: var(--color-heading);
+  font-size: 18px;
+}
+
+.commentsEmpty p {
+  font-size: 13px;
+}
+
+@media (max-width: 620px) {
+  .commentsHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .commentsSort {
+    align-self: flex-start;
+  }
+
+  .commentsSummary {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .siteCommentMeta time,
+  .siteCommentUpvotes {
+    margin-left: 0;
+  }
+
+  .siteCommentMeta time {
+    flex-basis: 100%;
+  }
+}

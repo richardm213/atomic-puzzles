@@ -3,11 +3,19 @@ import { describe, expect, it } from "vitest";
 import {
   buildProfileCommentRows,
   handler,
+  isPublicCommunityReadAction,
   sortProfileCommentRecords,
   sumCommentKarma,
 } from "../functions/puzzle-community";
 
 describe("profile comment history", () => {
+  it("keeps public comment reads available without a valid login", () => {
+    expect(isPublicCommunityReadAction("siteComments")).toBe(true);
+    expect(isPublicCommunityReadAction("profileComments")).toBe(true);
+    expect(isPublicCommunityReadAction("comment")).toBe(false);
+    expect(isPublicCommunityReadAction("commentVote")).toBe(false);
+  });
+
   it("calculates Reddit-style net comment karma", () => {
     expect(sumCommentKarma([{ vote: 1 }, { vote: 1 }, { vote: -1 }, { vote: 0 }])).toBe(1);
   });
@@ -32,9 +40,15 @@ describe("profile comment history", () => {
     ).toEqual([3, 2, 1]);
   });
 
-  it("redacts comment bodies until the viewer has solved the puzzle", () => {
+  it("redacts comment bodies until the viewer has attempted the puzzle", () => {
     const comments = [
-      { id: 1, puzzle_id: 10, body: "Visible solution detail", created_at: "2026-01-01" },
+      {
+        id: 1,
+        puzzle_id: 10,
+        username: "commenter",
+        body: "Visible solution detail",
+        created_at: "2026-01-01",
+      },
       { id: 2, puzzle_id: 20, body: "Hidden solution detail", created_at: "2026-01-02" },
     ];
 
@@ -50,6 +64,7 @@ describe("profile comment history", () => {
     expect(rows).toEqual([
       expect.objectContaining({
         id: 1,
+        username: "commenter",
         body: "Visible solution detail",
         upvotes: 4,
         content_hidden: false,

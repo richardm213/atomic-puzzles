@@ -2454,7 +2454,7 @@ export const PlayerProfilePage = ({
                         </div>
                         {comment.content_hidden ? (
                           <p className="profileCommentHidden">
-                            Comment hidden until you solve this puzzle.
+                            Comment hidden until you attempt this puzzle.
                           </p>
                         ) : (
                           <p className="profileCommentBody">{comment.body}</p>

@@ -60,6 +60,7 @@ const navItems: NavItem[] = [
       pathname === "/solve" ||
       pathname.startsWith("/solve/") ||
       pathname.startsWith("/puzzles/") ||
+      pathname === "/comments" ||
       pathname === "/dashboard",
     children: [
       {
@@ -86,6 +87,11 @@ const navItems: NavItem[] = [
         to: "/solve/sets",
         label: "Puzzle sets",
         isActive: (pathname) => pathname === "/solve/sets",
+      },
+      {
+        to: "/comments",
+        label: "Comments",
+        isActive: (pathname) => pathname === "/comments",
       },
       {
         to: "/puzzles/submit",
