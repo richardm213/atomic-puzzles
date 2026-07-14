@@ -2,6 +2,9 @@ import { boardShortcutCommand } from "./boardShortcuts";
 
 describe("boardShortcutCommand", () => {
   it("maps board navigation keys", () => {
+    expect(boardShortcutCommand(new KeyboardEvent("keydown", { key: "ArrowUp" }))).toBe(
+      "previousOption",
+    );
     expect(boardShortcutCommand(new KeyboardEvent("keydown", { key: "ArrowDown" }))).toBe(
       "nextOption",
     );

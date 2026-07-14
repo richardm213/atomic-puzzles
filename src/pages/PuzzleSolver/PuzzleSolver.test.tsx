@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   attemptedPuzzleIds: new Set(["1369"]),
   fetchPuzzleAttemptsForPuzzle: vi.fn(),
   navigate: vi.fn(),
+  puzzleExplanation: "Castling avoids the atomic mating net and creates the decisive rook threat.",
   routeParams: { puzzleId: "1369", setKey: "" },
 }));
 
@@ -52,6 +53,7 @@ vi.mock("../../lib/puzzles/puzzleLibrary", () => ({
       puzzleId: 1369,
       author: "admin",
       event: "ACL 2024",
+      explanation: mocks.puzzleExplanation,
     },
   ]),
 }));
@@ -162,6 +164,8 @@ describe("PuzzleSolverPage solution options", () => {
       },
     ]);
     mocks.navigate.mockReset();
+    mocks.puzzleExplanation =
+      "Castling avoids the atomic mating net and creates the decisive rook threat.";
     mocks.routeParams = { puzzleId: "1369", setKey: "" };
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
@@ -234,6 +238,47 @@ describe("PuzzleSolverPage solution options", () => {
     const wrongMove = within(attempts).getByLabelText("Played 2. Nf3+");
     expect(wrongMove).toHaveTextContent("2. Nf3+");
     expect(mocks.fetchPuzzleAttemptsForPuzzle).toHaveBeenCalledWith("1369", { limit: 30 });
+  });
+
+  it("unlocks and opens the explanation tab after a wrong move", async () => {
+    render(<PuzzleSolverPage />);
+
+    const explanationTab = await screen.findByRole("tab", { name: "Explanation" });
+    expect(explanationTab).toBeDisabled();
+
+    await waitFor(() => expect(mocks.chessboardProps.at(-1)?.onStateChange).toBeTypeOf("function"));
+    act(() => {
+      mocks.chessboardProps.at(-1)?.onStateChange?.({
+        fen: "rn2k2r/pp5p/1qpp2p1/2Q5/1b2P3/2N5/PPP3PP/R3KB1R b KQkq - 1 12",
+        turn: "black",
+        status: "Incorrect",
+        error: "",
+        lineMoves: ["Kd7"],
+        solutionLines: [],
+        solutionLineIndex: 0,
+        lineIndex: 1,
+        viewingSolution: false,
+        showWrongMove: true,
+        showRetryMove: false,
+        solved: false,
+      });
+    });
+
+    expect(explanationTab).toBeEnabled();
+    expect(explanationTab).toHaveAttribute("aria-selected", "true");
+    expect(
+      screen.getByText(
+        "Castling avoids the atomic mating net and creates the decisive rook threat.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("does not show the explanation tab when the puzzle has no explanation", async () => {
+    mocks.puzzleExplanation = "";
+    render(<PuzzleSolverPage />);
+
+    await screen.findByRole("tab", { name: "Solution" });
+    expect(screen.queryByRole("tab", { name: "Explanation" })).not.toBeInTheDocument();
   });
 
   it("keeps the current solution position when opening other attempts", async () => {

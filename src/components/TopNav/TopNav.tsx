@@ -2,6 +2,7 @@ import "./TopNav.css";
 
 import {
   faBars,
+  faChartLine,
   faChevronDown,
   faMagnifyingGlass,
   faMoon,
@@ -54,7 +55,10 @@ const navItems: NavItem[] = [
     to: "/solve",
     label: "Puzzles",
     isActive: (pathname) =>
-      pathname === "/solve" || pathname.startsWith("/solve/") || pathname === "/dashboard",
+      pathname === "/solve" ||
+      pathname.startsWith("/solve/") ||
+      pathname.startsWith("/puzzles/") ||
+      pathname === "/dashboard",
     children: [
       {
         to: "/solve",
@@ -80,6 +84,11 @@ const navItems: NavItem[] = [
         to: "/solve/sets",
         label: "Puzzle sets",
         isActive: (pathname) => pathname === "/solve/sets",
+      },
+      {
+        to: "/puzzles/submit",
+        label: "Submit puzzles",
+        isActive: (pathname) => pathname === "/puzzles/submit",
       },
     ],
   },
@@ -817,6 +826,30 @@ export const TopNav = () => {
                     </span>
                     View profile
                   </Link>
+                  <Link
+                    className="navProfileDropdownItem"
+                    to="/dashboard"
+                    role="menuitem"
+                    onClick={() => setProfileMenuOpen(false)}
+                  >
+                    <span className="navProfileDropdownIcon" aria-hidden="true">
+                      <FontAwesomeIcon icon={faChartLine} />
+                    </span>
+                    Puzzle dashboard
+                  </Link>
+                  {normalizedAuthUsername === "seaside_tiramisu" ? (
+                    <Link
+                      className="navProfileDropdownItem"
+                      to="/puzzles/review"
+                      role="menuitem"
+                      onClick={() => setProfileMenuOpen(false)}
+                    >
+                      <span className="navProfileDropdownIcon" aria-hidden="true">
+                        <FontAwesomeIcon icon={faUser} />
+                      </span>
+                      Review puzzles
+                    </Link>
+                  ) : null}
                   <button
                     className="navProfileDropdownItem"
                     type="button"

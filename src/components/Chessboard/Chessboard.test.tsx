@@ -79,6 +79,65 @@ describe("Chessboard orchestration", () => {
     expect(states.at(-1)?.lineMoves).toEqual(["e4"]);
   });
 
+  it("configures legal destinations for an analysis board", () => {
+    renderBoard();
+
+    const movableCalls = mocks.set.mock.calls
+      .map(([config]) => config?.movable)
+      .filter(Boolean);
+    const movable = movableCalls.at(-1);
+
+    expect(movable?.color).toBe("white");
+    expect(movable?.dests.get("e2")).toEqual(expect.arrayContaining(["e3", "e4"]));
+  });
+
+  it("only accepts continuations contained in the solution when restricted", () => {
+    const states = renderBoard({
+      solution: "1. e4 e5",
+      restrictMovesToSolution: true,
+    });
+
+    const movableCalls = mocks.set.mock.calls
+      .map(([config]) => config?.movable)
+      .filter(Boolean);
+    expect(movableCalls.at(-1)?.dests.get("e2")).toEqual(["e4"]);
+    expect(movableCalls.at(-1)?.dests.has("d2")).toBe(false);
+
+    play("d2", "d4");
+    expect(states.at(-1)?.lineMoves).toEqual([]);
+
+    play("e2", "e4");
+    expect(states.at(-1)?.lineMoves).toEqual(["e4"]);
+
+    play("e7", "e6");
+    expect(states.at(-1)?.lineMoves).toEqual(["e4"]);
+
+    play("e7", "e5");
+    expect(states.at(-1)?.lineMoves).toEqual(["e4", "e5"]);
+  });
+
+  it("does not reset an analysis move requested through navigation", () => {
+    const states: ChessboardState[] = [];
+    const boardProps: ComponentProps<typeof Chessboard> = {
+      puzzleId: "practice",
+      fen: STARTING_FEN,
+      orientation: "white",
+      coordinates: true,
+      solution: "",
+      showSolution: false,
+      analysisMode: true,
+      onStateChange: (state) => states.push(state),
+    };
+    const { rerender } = render(<Chessboard {...boardProps} />);
+
+    rerender(
+      <Chessboard {...boardProps} solutionNavigation={{ type: "play", uci: "e2e4" }} />,
+    );
+
+    expect(states.at(-1)?.lineMoves).toEqual(["e4"]);
+    expect(states.at(-1)?.fen).toContain("4P3");
+  });
+
   it("reports an incorrect move in SAN notation", () => {
     vi.useFakeTimers();
     const onAttemptResolved = vi.fn();
@@ -132,19 +191,47 @@ describe("Chessboard orchestration", () => {
     expect(states.at(-1)?.lineMoves).toEqual(["e4", "e5"]);
   });
 
-  it("cycles sibling solution moves before advancing the selected option", () => {
-    const states = renderBoard({ solution: "1. e4 (1. d4)", showSolution: true });
-    const initialLineIndex = states.at(-1)?.solutionLineIndex;
+  it("uses Down and Up to navigate to the end and start of a solution", () => {
+    const states = renderBoard({ solution: "1. e4 e5 2. Nf3", showSolution: true });
 
     fireEvent.keyDown(window, { key: "ArrowDown" });
-    const selectedState = states.at(-1)!;
-    expect(selectedState.solutionLineIndex).not.toBe(initialLineIndex);
-    fireEvent.keyDown(window, { key: "ArrowRight" });
+    expect(states.at(-1)?.lineIndex).toBe(3);
 
-    expect(states.at(-1)?.lineIndex).toBe(1);
-    expect(states.at(-1)?.lineMoves?.[0]).toBe(
-      selectedState.solutionLines?.[selectedState.solutionLineIndex ?? 0]?.[0],
-    );
+    fireEvent.keyDown(window, { key: "ArrowUp" });
+    expect(states.at(-1)?.lineIndex).toBe(0);
+    expect(states.at(-1)?.viewingSolution).toBe(true);
+  });
+
+  it("does not expose hidden solution variations when navigating to the current line end", () => {
+    const states = renderBoard({ solution: "1. e4 (1. d4)", showSolution: false });
+
+    fireEvent.keyDown(window, { key: "ArrowDown" });
+
+    expect(states.at(-1)).toMatchObject({
+      lineIndex: 0,
+      lineMoves: [],
+      viewingSolution: false,
+    });
+  });
+
+  it("uses Down and Up to cycle editor options when continuations are available", () => {
+    const states = renderBoard({
+      solution: "1. e4 (1. d4)",
+      showSolution: false,
+      analysisMode: true,
+      preserveAnalysisHistoryOnSolutionChange: true,
+      solutionNavigation: { type: "solution", line: 1, ply: 0 },
+    });
+
+    fireEvent.keyDown(window, { key: "ArrowDown" });
+    expect(states.at(-1)).toMatchObject({
+      lineIndex: 0,
+      solutionLineIndex: 0,
+      viewingSolution: true,
+    });
+
+    fireEvent.keyDown(window, { key: "ArrowUp" });
+    expect(states.at(-1)).toMatchObject({ lineIndex: 0, solutionLineIndex: 1 });
   });
 
   it("keeps forward navigation on a custom branch after Backspace", () => {
@@ -161,7 +248,7 @@ describe("Chessboard orchestration", () => {
     expect(states.at(-1)?.viewingSolution).toBe(false);
   });
 
-  it("preserves a custom branch while switching between it and solution options", () => {
+  it("preserves a custom branch while cycling between continuation options", () => {
     const states = renderBoard({ solution: "1. e4 e5 2. Nf3", showSolution: true });
 
     fireEvent.keyDown(window, { key: "ArrowRight" });
@@ -171,12 +258,14 @@ describe("Chessboard orchestration", () => {
     fireEvent.keyDown(window, { key: "ArrowUp" });
 
     expect(states.at(-1)?.viewingSolution).toBe(true);
+    expect(states.at(-1)?.lineIndex).toBe(2);
     expect(states.at(-1)?.solutionLines?.[0]?.[2]).toBe("Nf3");
     expect(states.at(-1)?.customLines?.[0]?.[2]).toBe("Bc4");
 
     fireEvent.keyDown(window, { key: "ArrowDown" });
     fireEvent.keyDown(window, { key: "ArrowRight" });
 
+    expect(states.at(-1)?.lineIndex).toBe(3);
     expect(states.at(-1)?.lineMoves?.[2]).toBe("Bc4");
     expect(states.at(-1)?.viewingSolution).toBe(false);
   });

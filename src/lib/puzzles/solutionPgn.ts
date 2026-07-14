@@ -125,12 +125,7 @@ const startingPlyFromFen = (fen: string): number => {
 
 const isQuestionableMoveLabel = (move = ""): boolean => move.includes("?");
 
-export const compareMoves = (
-  moveA = "",
-  moveB = "",
-  fallbackA = 0,
-  fallbackB = 0,
-): number => {
+export const compareMoves = (moveA = "", moveB = "", fallbackA = 0, fallbackB = 0): number => {
   const questionableDiff =
     Number(isQuestionableMoveLabel(moveA)) - Number(isQuestionableMoveLabel(moveB));
   if (questionableDiff !== 0) return questionableDiff;
@@ -243,26 +238,44 @@ export const parseSolutionUciLines = (fen: string, solution: unknown): UciSoluti
   const tokens = tokenizeSolution(solution);
   if (!tokens) return [];
 
-  const uciLines: UciSolutionLine[] = [];
+  const parsedLines: Array<{ line: UciSolutionLine; order: number[] }> = [];
   let parseFailed = false;
 
-  const walk = (startIndex: number, startPosition: Position, line: UciSolutionLine): number => {
+  const walk = (
+    startIndex: number,
+    startPosition: Position,
+    line: UciSolutionLine,
+    order: number[],
+    insideVariation: boolean,
+  ): number => {
     let index = startIndex;
     const currentPosition = startPosition.clone();
     const currentLine: UciSolutionLine = [...line];
     let sawMove = false;
+    let variationIndex = 0;
     let lastBranchPosition = currentPosition.clone();
     let lastBranchLine: UciSolutionLine = [...currentLine];
 
     while (index < tokens.length) {
       const token = tokens[index];
       if (token === ")") {
-        if (sawMove) uciLines.push(currentLine);
+        if (!insideVariation) {
+          parseFailed = true;
+          return tokens.length;
+        }
+        if (sawMove) parsedLines.push({ line: currentLine, order });
         return index + 1;
       }
 
       if (token === "(") {
-        index = walk(index + 1, lastBranchPosition, lastBranchLine);
+        index = walk(
+          index + 1,
+          lastBranchPosition,
+          lastBranchLine,
+          [...order, variationIndex],
+          true,
+        );
+        variationIndex += 1;
         if (parseFailed) return tokens.length;
         continue;
       }
@@ -293,16 +306,32 @@ export const parseSolutionUciLines = (fen: string, solution: unknown): UciSoluti
       index += 1;
     }
 
-    if (sawMove) uciLines.push(currentLine);
+    if (insideVariation) {
+      parseFailed = true;
+      return tokens.length;
+    }
+    if (sawMove) parsedLines.push({ line: currentLine, order });
     return index;
   };
 
-  walk(0, position, []);
+  walk(0, position, [], [], false);
   if (parseFailed) return [];
+
+  parsedLines.sort((left, right) => {
+    const length = Math.max(left.order.length, right.order.length);
+    for (let index = 0; index < length; index += 1) {
+      const leftPart = left.order[index];
+      const rightPart = right.order[index];
+      if (leftPart === undefined) return -1;
+      if (rightPart === undefined) return 1;
+      if (leftPart !== rightPart) return leftPart - rightPart;
+    }
+    return 0;
+  });
 
   const unique: UciSolutionLine[] = [];
   const seen = new Set<string>();
-  for (const line of uciLines) {
+  for (const { line } of parsedLines) {
     if (line.length === 0) continue;
     const key = line.map((entry) => `${entry.uci}:${entry.questionable ? "q" : "s"}`).join(" ");
     if (seen.has(key)) continue;

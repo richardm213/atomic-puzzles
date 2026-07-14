@@ -1,4 +1,4 @@
-import { afterEach,beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../supabase/supabasePuzzles", () => ({
   fetchPuzzleRowsFromSupabase: vi.fn(),
@@ -20,6 +20,7 @@ describe("loadPuzzleLibrary", () => {
         id: 2,
         fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
         solution: "1. e4 e5",
+        explanation: "  Controls the center.  ",
       },
       {
         id: 3,
@@ -32,6 +33,7 @@ describe("loadPuzzleLibrary", () => {
     expect(puzzles).toHaveLength(1);
     expect(puzzles[0]?.puzzleId).toBe(2);
     expect(puzzles[0]?.solution).toContain("e4");
+    expect(puzzles[0]?.explanation).toBe("Controls the center.");
   });
 
   it("falls back to index+1 for puzzleId when the row id is not numeric", async () => {

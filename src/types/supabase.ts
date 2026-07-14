@@ -69,6 +69,20 @@ export type SupabaseUser = {
   created_at: string;
 };
 
+export type PuzzleQueueRow = {
+  id: number;
+  fen: string;
+  solution: string;
+  event: string;
+  explanation: string;
+  submitted_by: string;
+  created_at: string;
+};
+
+export type PuzzleReviewQueueRow = PuzzleQueueRow & {
+  next_puzzle_id: number;
+};
+
 export type Aliases2TableRow = {
   alias: string | null;
   username: string | null;
@@ -100,6 +114,11 @@ export type Database = {
         Partial<PuzzleProgressWithUsernameRow>
       >;
       puzzles: TableDef<RawPuzzleRow>;
+      puzzles_queue: TableDef<
+        PuzzleQueueRow,
+        Pick<PuzzleQueueRow, "fen" | "solution" | "event" | "explanation" | "submitted_by">,
+        Partial<Pick<PuzzleQueueRow, "fen" | "solution" | "event" | "explanation">>
+      >;
       users: TableDef<{ username: string; created_at: string | null }, { username: string }>;
     };
     Views: Record<string, never>;
@@ -121,6 +140,20 @@ export type Database = {
           p_first_attempt_at?: string | null;
         };
         Returns: null;
+      };
+      approve_queued_puzzle: {
+        Args: { p_queue_id: number; p_reviewer: string };
+        Returns: number;
+      };
+      enqueue_puzzle_submission: {
+        Args: {
+          p_fen: string;
+          p_solution: string;
+          p_event: string;
+          p_explanation: string;
+          p_submitted_by: string;
+        };
+        Returns: PuzzleQueueRow;
       };
     };
     Enums: Record<string, never>;

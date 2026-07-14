@@ -1,0 +1,106 @@
+.solutionPlaybackControls {
+  display: grid;
+  grid-template-columns: repeat(4, 38px);
+  gap: 7px;
+  justify-content: center;
+  width: 100%;
+}
+
+.solutionPlaybackButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 32px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+  color: var(--color-muted);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+
+.solutionPlaybackButton:hover:not(:disabled) {
+  border-color: var(--color-accent-soft-border);
+  background: var(--color-surface-elevated-strong);
+  color: var(--color-heading);
+}
+
+.solutionPlaybackButton:disabled {
+  color: var(--color-subtle);
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.solutionPlaybackButton:focus-visible,
+.solutionOption:focus-visible {
+  outline: 3px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+.solutionOptions {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 10px;
+  border: 1px solid var(--color-accent-soft-border);
+  border-radius: var(--radius-ui);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
+.solutionOptionsLabel {
+  color: var(--color-primary-pale);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.solutionOptionsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.solutionOptionsHint {
+  color: var(--color-muted);
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.solutionOptionList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.solutionOption {
+  min-height: 32px;
+  padding: 5px 10px;
+  border: 1px solid var(--color-accent-soft-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+  color: var(--color-primary-pale);
+  cursor: pointer;
+  font-weight: 800;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+
+.solutionOption:hover {
+  border-color: var(--color-primary);
+  color: var(--color-heading);
+}
+
+.solutionOption.active {
+  border-color: var(--color-cyan-bright);
+  background: var(--color-accent-soft-bg-strong);
+  color: var(--color-accent-soft-text);
+}

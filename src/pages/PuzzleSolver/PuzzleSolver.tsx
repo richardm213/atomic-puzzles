@@ -3,6 +3,7 @@ import "./PuzzleSolver.css";
 import {
   faArrowUpRightFromSquare,
   faCheck,
+  faCircleInfo,
   faClockRotateLeft,
   faMagnifyingGlassChart,
   faUsers,
@@ -13,14 +14,16 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Chessboard } from "../../components/Chessboard/Chessboard";
-import { PlaybackButtons } from "../../components/PlaybackButtons/PlaybackButtons";
 import { Seo } from "../../components/Seo/Seo";
+import {
+  continuationOptionsAt,
+  SolutionMoveTree,
+  SolutionPlaybackControls,
+} from "../../components/SolutionMoveNavigation/SolutionMoveNavigation";
 import {
   activeLineIndex,
   matchingLineIndexes,
   sortMatchingLineIndexes,
-  variationOptions,
-  VariationTree,
 } from "../../components/VariationTree/VariationTree";
 import { useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
@@ -41,6 +44,7 @@ import type {
   PlaybackCommand,
   SolutionNavigation,
 } from "../../types/chessboard";
+import { copyTextToClipboard } from "../../utils/clipboard";
 import { formatLocalDateTime } from "../../utils/formatters";
 import { castlingRightsFromFen } from "./castlingRights";
 
@@ -74,7 +78,7 @@ const formatElapsedTime = (milliseconds: number): string => {
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 };
 
-type PuzzleInfoTab = "solution" | "attempts";
+type PuzzleInfoTab = "solution" | "explanation" | "attempts";
 
 const addValueToSet = (currentSet: Set<string>, value: string): Set<string> => {
   if (!value) return currentSet;
@@ -195,34 +199,6 @@ const SOLVE_MODE = "solve";
 const ANALYSIS_MODE = "analysis";
 const SOLUTION_UNLOCK_HINT = "Make at least one attempt before viewing the solution.";
 
-const copyTextToClipboard = async (value: string): Promise<boolean> => {
-  if (!value) return false;
-
-  if (navigator?.clipboard?.writeText) {
-    try {
-      await navigator.clipboard.writeText(value);
-      return true;
-    } catch {
-      // Fall through to the textarea fallback.
-    }
-  }
-
-  try {
-    const textArea = document.createElement("textarea");
-    textArea.value = value;
-    textArea.setAttribute("readonly", "");
-    textArea.style.position = "fixed";
-    textArea.style.opacity = "0";
-    document.body.append(textArea);
-    textArea.select();
-    const copied = document.execCommand("copy");
-    textArea.remove();
-    return copied;
-  } catch {
-    return false;
-  }
-};
-
 export const PuzzleSolverPage = () => {
   const navigate = useNavigate();
   const { puzzleId: routePuzzleId = "", setKey: routeSetKey = "" } = useParams({
@@ -257,6 +233,7 @@ export const PuzzleSolverPage = () => {
     title: string;
   } | null>(null);
   const [feedbackBadgeId, setFeedbackBadgeId] = useState(0);
+  const [explanationRevealed, setExplanationRevealed] = useState(false);
   const [pinnedSolutionLineIndex, setPinnedSolutionLineIndex] = useState<number | null>(null);
   const [copyPgnLabel, setCopyPgnLabel] = useState("Copy PGN");
   const [otherPuzzleAttemptsStatus, setOtherPuzzleAttemptsStatus] = useState<
@@ -273,7 +250,6 @@ export const PuzzleSolverPage = () => {
   const hadWrongAttemptRef = useRef(false);
   const lockedCompletionFeedbackRef = useRef<CompletionFeedback | null>(null);
   const mobileFeedbackIdRef = useRef(0);
-  const activeVariationOptionRef = useRef<HTMLButtonElement | null>(null);
   const boardPanelRef = useRef<HTMLDivElement | null>(null);
   const upcomingPuzzleIndexesRef = useRef<number[]>([]);
   const progressWriteQueueRef = useRef(Promise.resolve());
@@ -485,6 +461,8 @@ export const PuzzleSolverPage = () => {
   const fen = activePuzzle?.fen ?? "";
   const author = String(activePuzzle?.["author"] ?? "").trim() || "Unknown";
   const event = String(activePuzzle?.["event"] ?? "").trim();
+  const explanation = activePuzzle?.explanation ?? "";
+  const hasExplanation = explanation.trim().length > 0;
   const orientation = orientationFromFen(fen);
   const currentFen = boardState.fen || fen;
   const castlingRights = castlingRightsFromFen(currentFen);
@@ -514,6 +492,7 @@ export const PuzzleSolverPage = () => {
     : false;
   const hasAttemptedActivePuzzle = hasPersistedAttempt || hasResolvedAttempt;
   const showSolution = activePuzzleInfoTab === "solution";
+  const showExplanation = activePuzzleInfoTab === "explanation";
   const otherPuzzleAttemptsOpen = activePuzzleInfoTab === "attempts";
   const boardShowsSolution = isAnalysisMode && solutionRevealed;
 
@@ -576,6 +555,7 @@ export const PuzzleSolverPage = () => {
     setInteractionMode(SOLVE_MODE);
     setCompletionFeedback(null);
     setFeedbackBadgeId(0);
+    setExplanationRevealed(false);
     lockedCompletionFeedbackRef.current = null;
     setPinnedSolutionLineIndex(null);
     hadWrongAttemptRef.current = false;
@@ -741,6 +721,12 @@ export const PuzzleSolverPage = () => {
       });
   };
 
+  const handleSelectExplanationTab = () => {
+    if (!explanationRevealed || !hasExplanation) return;
+    setActivePuzzleInfoTab("explanation");
+    setSolutionNavigation(null);
+  };
+
   const showMobileFeedback = useCallback((nextFeedback: CompletionFeedback): void => {
     mobileFeedbackIdRef.current += 1;
     setMobileFeedback({
@@ -786,6 +772,10 @@ export const PuzzleSolverPage = () => {
 
       if (nextBoardState.showWrongMove) {
         hadWrongAttemptRef.current = true;
+        if (hasExplanation) {
+          setExplanationRevealed(true);
+          setActivePuzzleInfoTab("explanation");
+        }
       }
 
       if (shouldShowTransientFeedback) {
@@ -829,7 +819,7 @@ export const PuzzleSolverPage = () => {
         setSolutionNavigation(null);
       }
     },
-    [boardShowsSolution, isMobileLayout, showMobileFeedback],
+    [boardShowsSolution, hasExplanation, isMobileLayout, showMobileFeedback],
   );
 
   const handleMoveClick = useCallback((lineIndex: number, moveIndex: number): void => {
@@ -925,34 +915,8 @@ export const PuzzleSolverPage = () => {
   ]);
 
   const variationOptionList = useMemo(
-    () =>
-      variationOptions(
-        allVariationLines,
-        currentAnalysisMoves.length,
-        matchingLineIndexes(allVariationLines, currentAnalysisMoves),
-      ),
+    () => continuationOptionsAt(allVariationLines, currentAnalysisMoves),
     [allVariationLines, currentAnalysisMoves],
-  );
-
-  const hasVariationOptions = variationOptionList.length > 1;
-  const activeVariationOption =
-    variationOptionList.find((option) => option.lineIndex === activeVariationLineIndex)?.move ??
-    variationOptionList[0]?.move;
-
-  useEffect(() => {
-    activeVariationOptionRef.current?.scrollIntoView({
-      block: "nearest",
-      inline: "nearest",
-    });
-  }, [activeVariationOption]);
-
-  const inlineVariationMoves = (
-    <VariationTree
-      lines={allVariationLines}
-      activeLine={activeVariationLineIndex}
-      currentPly={currentAnalysisMoves.length}
-      onMoveClick={handleVariationMoveClick}
-    />
   );
 
   const moveLinePgn = useMemo(() => {
@@ -1002,28 +966,13 @@ export const PuzzleSolverPage = () => {
   });
 
   const renderPlaybackControls = () => (
-    <div className="playbackControls" aria-label="Line playback">
-      <PlaybackButtons
-        buttonClassName="playbackButton"
-        canStart={Boolean(fen) && canPlaybackStart}
-        canPrevious={Boolean(fen) && canPlaybackPrevious}
-        canNext={Boolean(fen) && canPlaybackNext}
-        canEnd={Boolean(fen) && canPlaybackEnd}
-        onNavigate={handlePlaybackCommand}
-        labels={{
-          start: "Go to start of line",
-          previous: "Go to previous move",
-          next: "Go to next move",
-          end: "Go to end of main line",
-        }}
-        titles={{
-          start: "Start (Arrow Up)",
-          previous: "Previous (Arrow Left)",
-          next: "Next (Arrow Right)",
-          end: "End of main line (Arrow Down)",
-        }}
-      />
-    </div>
+    <SolutionPlaybackControls
+      canStart={Boolean(fen) && canPlaybackStart}
+      canPrevious={Boolean(fen) && canPlaybackPrevious}
+      canNext={Boolean(fen) && canPlaybackNext}
+      canEnd={Boolean(fen) && canPlaybackEnd}
+      onNavigate={handlePlaybackCommand}
+    />
   );
 
   const renderMoveLine = (className = "lineBox") => (
@@ -1046,38 +995,13 @@ export const PuzzleSolverPage = () => {
         </div>
       </div>
       {boardState.solutionLines?.length ? (
-        <>
-          {hasVariationOptions ? (
-            <div className="solutionOptions">
-              <span className="solutionOptionsLabel">
-                {variationOptionList.length} options from here
-              </span>
-              <div className="solutionOptionList" role="list" aria-label="Solution options">
-                {variationOptionList.map((option) => (
-                  <button
-                    key={`${option.lineIndex}-${option.plyIndex}-${option.move}`}
-                    type="button"
-                    className={`solutionOption ${option.move === activeVariationOption ? "active" : ""}`}
-                    ref={option.move === activeVariationOption ? activeVariationOptionRef : null}
-                    onClick={() => handleVariationMoveClick(option.lineIndex, option.plyIndex)}
-                  >
-                    {movePrefix(currentAnalysisMoves.length, currentAnalysisMoves.length % 2 === 1)}
-                    {option.move}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : null}
-          {allVariationLines.length ? (
-            <div
-              className="moveList inlineSolutionTree"
-              role="list"
-              aria-label="Solution variations"
-            >
-              {inlineVariationMoves}
-            </div>
-          ) : null}
-        </>
+        <SolutionMoveTree
+          lines={allVariationLines}
+          options={variationOptionList}
+          currentPly={currentAnalysisMoves.length}
+          activeLineIndex={activeVariationLineIndex}
+          onSelect={handleVariationMoveClick}
+        />
       ) : (
         <code>No solution available</code>
       )}
@@ -1198,6 +1122,24 @@ export const PuzzleSolverPage = () => {
         <FontAwesomeIcon icon={faMagnifyingGlassChart} aria-hidden="true" />
         <span>Solution</span>
       </button>
+      {hasExplanation ? (
+        <button
+          type="button"
+          role="tab"
+          className={`puzzleInfoTab ${showExplanation ? "active" : ""}`}
+          onClick={handleSelectExplanationTab}
+          disabled={!explanationRevealed}
+          aria-selected={showExplanation}
+          title={
+            explanationRevealed
+              ? "View the puzzle explanation"
+              : "Make a wrong move to unlock the explanation."
+          }
+        >
+          <FontAwesomeIcon icon={faCircleInfo} aria-hidden="true" />
+          <span>Explanation</span>
+        </button>
+      ) : null}
       <button
         type="button"
         role="tab"
@@ -1232,6 +1174,17 @@ export const PuzzleSolverPage = () => {
 
     if (otherPuzzleAttemptsOpen && hasAttemptedActivePuzzle) {
       return <div className="puzzleInfoPanel">{renderOtherPuzzleAttemptsPanel()}</div>;
+    }
+
+    if (showExplanation && explanationRevealed && hasExplanation) {
+      return (
+        <div className="puzzleInfoPanel">
+          <section className="puzzleExplanation" aria-live="polite">
+            <strong>Explanation</strong>
+            <p>{explanation}</p>
+          </section>
+        </div>
+      );
     }
 
     return null;

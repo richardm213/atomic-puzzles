@@ -41,6 +41,16 @@ const PuzzleSetsPage = lazy(() =>
 const PuzzleSolverPage = lazy(() =>
   import("./pages/PuzzleSolver/PuzzleSolver").then((m) => ({ default: m.PuzzleSolverPage })),
 );
+const PuzzleSubmissionPage = lazy(() =>
+  import("./pages/PuzzleSubmission/PuzzleSubmission").then((m) => ({
+    default: m.PuzzleSubmissionPage,
+  })),
+);
+const PuzzleReviewPage = lazy(() =>
+  import("./pages/PuzzleSubmission/PuzzleSubmission").then((m) => ({
+    default: m.PuzzleReviewPage,
+  })),
+);
 const RankingsPage = lazy(() =>
   import("./pages/Rankings/Rankings").then((m) => ({ default: m.RankingsPage })),
 );
@@ -194,6 +204,18 @@ const puzzleLeaderboardRoute = createRoute({
   component: PuzzleLeaderboardPage,
 });
 
+const puzzleSubmissionRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/puzzles/submit",
+  component: PuzzleSubmissionPage,
+});
+
+const puzzleReviewRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/puzzles/review",
+  component: PuzzleReviewPage,
+});
+
 const profilePuzzleDashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/@/$username/puzzles",
@@ -268,6 +290,8 @@ const routeTree = rootRoute.addChildren([
   legacyPuzzleHistoryRoute,
   solveSetsRoute,
   puzzleLeaderboardRoute,
+  puzzleSubmissionRoute,
+  puzzleReviewRoute,
   solveSetWithIdRoute,
   solveWithIdRoute,
   profileHistoryRoute,

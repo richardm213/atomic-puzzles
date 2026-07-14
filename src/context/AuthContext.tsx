@@ -32,6 +32,7 @@ export type AuthContextValue = {
   isAuthenticated: boolean;
   isLoading: boolean;
   user: LichessAccount | null;
+  accessToken: string;
   error: string;
   login: (returnTo: string) => Promise<void>;
   finishLogin: (search: string) => Promise<string>;
@@ -63,9 +64,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         clearStoredLichessSession();
         setSession(null);
         setStatus("anonymous");
-        setError(
-          restoreError instanceof Error ? restoreError.message : "Unable to restore login.",
-        );
+        setError(restoreError instanceof Error ? restoreError.message : "Unable to restore login.");
       }
     };
 
@@ -103,8 +102,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       clearStoredLichessSession();
       setSession(null);
       setStatus("anonymous");
-      const message =
-        loginError instanceof Error ? loginError.message : "Unable to finish login.";
+      const message = loginError instanceof Error ? loginError.message : "Unable to finish login.";
       setError(message);
       throw loginError;
     }
@@ -131,6 +129,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       isAuthenticated: status === "authenticated" && Boolean(session?.me),
       isLoading: status === "loading",
       user: session?.me ?? null,
+      accessToken: session?.accessToken ?? "",
       error,
       login,
       finishLogin,

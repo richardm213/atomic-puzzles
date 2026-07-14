@@ -8,14 +8,14 @@ import { Seo } from "../../components/Seo/Seo";
 import { modeLabels } from "../../constants/matches";
 import { loadRawMatchesByMode } from "../../lib/matches/matchData";
 import {
-  getTournamentMatchLocation,
-  type TournamentMatchLocation,
-} from "../../lib/matches/tournaments";
-import {
   ratingsForPlayers,
   sourceValueFromMatch,
   summarizeMatchGames,
 } from "../../lib/matches/matchSummaries";
+import {
+  getTournamentMatchLocation,
+  type TournamentMatchLocation,
+} from "../../lib/matches/tournaments";
 import type { MatchCardData } from "../../types/matchCard";
 import type { RawMatchLike } from "../../types/matchRaw";
 import { formatLocalDateTime, formatScore } from "../../utils/formatters";

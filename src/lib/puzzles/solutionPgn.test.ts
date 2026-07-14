@@ -15,10 +15,8 @@ import {
 } from "./solutionPgn";
 
 const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-const BLACK_TO_MOVE_FEN =
-  "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
-const BLACK_TO_MOVE_LONG_FEN =
-  "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 37";
+const BLACK_TO_MOVE_FEN = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+const BLACK_TO_MOVE_LONG_FEN = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 37";
 
 describe("squareName", () => {
   it("translates file/rank into algebraic coordinates", () => {
@@ -104,9 +102,26 @@ describe("parseSolutionUciLines", () => {
   it("expands variations into multiple lines", () => {
     const lines = parseSolutionUciLines(STARTING_FEN, "1. e4 e5 (1... c5)");
     expect(lines).toHaveLength(2);
-    const uciLines = lines.map((line) => line.map((entry) => entry.uci));
-    expect(uciLines).toContainEqual(["e2e4", "e7e5"]);
-    expect(uciLines).toContainEqual(["e2e4", "c7c5"]);
+    expect(lines.map((line) => line.map((entry) => entry.uci))).toEqual([
+      ["e2e4", "e7e5"],
+      ["e2e4", "c7c5"],
+    ]);
+  });
+
+  it("expands multiple sibling alternatives at several branch points", () => {
+    const lines = parseSolutionUciLines(
+      STARTING_FEN,
+      "1. e4 (1. d4 d5) (1. c4 e5) e5 (1... c5) (1... d5)",
+    );
+    expect(lines.map((line) => line.map((entry) => entry.uci))).toEqual(
+      expect.arrayContaining([
+        ["e2e4", "e7e5"],
+        ["d2d4", "d7d5"],
+        ["c2c4", "e7e5"],
+        ["e2e4", "c7c5"],
+        ["e2e4", "d7d5"],
+      ]),
+    );
   });
 
   it("parses solutions that start with black's elided move number", () => {
@@ -156,6 +171,11 @@ describe("parseSolutionUciLines", () => {
 
   it("returns [] when a SAN move is illegal in the position", () => {
     expect(parseSolutionUciLines(STARTING_FEN, "1. Bxh8")).toEqual([]);
+  });
+
+  it("rejects unbalanced variation parentheses", () => {
+    expect(parseSolutionUciLines(STARTING_FEN, "1. e4 (1. d4")).toEqual([]);
+    expect(parseSolutionUciLines(STARTING_FEN, "1. e4) 1. d4")).toEqual([]);
   });
 });
 

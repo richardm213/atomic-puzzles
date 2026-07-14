@@ -155,7 +155,7 @@ describe("recomputeTrainingState", () => {
     });
 
     expect(result.progress).toBe(4);
-    expect(result.candidates[0]?.[4]?.uci).toBe("b2b3");
+    expect(result.candidates.some((line) => line[4]?.uci === "b2b3")).toBe(true);
     expect(result.solved).toBe(false);
   });
 });
