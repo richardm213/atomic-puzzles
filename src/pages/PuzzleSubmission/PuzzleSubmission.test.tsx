@@ -153,7 +153,7 @@ describe("PuzzleEditor move tree", () => {
     expect(screen.getByRole("textbox", { name: "Solution PGN" })).toBeRequired();
     expect(screen.getByRole("textbox", { name: "Event" })).toHaveAttribute(
       "placeholder",
-      "Only for special tournament events or matches",
+      "Only for special tournament events or matches; otherwise leave empty",
     );
     expect(screen.getByRole("textbox", { name: "Explanation" })).not.toBeRequired();
     expect(screen.queryByRole("button", { name: "Load moves on board" })).toBeNull();

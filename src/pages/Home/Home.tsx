@@ -1,61 +1,11 @@
 import "./Home.css";
 
-import { Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 
 import { Seo } from "../../components/Seo/Seo";
-import { resolveUsernameInputs } from "../../lib/users/usernameSearch";
 import { appAssetPath } from "../../utils/appAssetPath";
-import { matchupToSlug } from "../../utils/h2hRoutes";
-
-const featureLinks = [
-  {
-    to: "/recent",
-    eyebrow: "Scout",
-    title: "Recent matches",
-    body: "Scores, ratings, dates, and sources.",
-  },
-  {
-    to: "/solve/sets",
-    eyebrow: "Train",
-    title: "Puzzle sets",
-    body: "Curated runs for focused training.",
-  },
-  {
-    to: "/users",
-    eyebrow: "Browse",
-    title: "Player index",
-    body: "Tracked players, ratings, and aliases.",
-  },
-];
 
 export const HomePage = () => {
-  const [comparePlayerOneQuery, setComparePlayerOneQuery] = useState("");
-  const [comparePlayerTwoQuery, setComparePlayerTwoQuery] = useState("");
-  const navigate = useNavigate();
-  const trimmedComparePlayerOneQuery = comparePlayerOneQuery.trim();
-  const trimmedComparePlayerTwoQuery = comparePlayerTwoQuery.trim();
-
-  const handleCompareSearch = async (
-    event: import("react").FormEvent<HTMLFormElement>,
-  ): Promise<void> => {
-    event.preventDefault();
-    if (!trimmedComparePlayerOneQuery || !trimmedComparePlayerTwoQuery) return;
-
-    const [resolvedPlayerOne, resolvedPlayerTwo] = await resolveUsernameInputs([
-      trimmedComparePlayerOneQuery,
-      trimmedComparePlayerTwoQuery,
-    ]);
-    if (!resolvedPlayerOne || !resolvedPlayerTwo) return;
-
-    void navigate({
-      to: "/h2h/$matchup",
-      params: {
-        matchup: matchupToSlug(resolvedPlayerOne, resolvedPlayerTwo),
-      },
-    });
-  };
-
   return (
     <div className="homePage">
       <Seo
@@ -88,47 +38,38 @@ export const HomePage = () => {
           </div>
         </div>
 
-        <div className="homeHeroForms">
-          <form className="homeCompareSearch" onSubmit={handleCompareSearch}>
-            <label htmlFor="home-compare-player-one">Compare two players</label>
-            <div className="homeCompareGrid">
-              <input
-                id="home-compare-player-one"
-                type="text"
-                value={comparePlayerOneQuery}
-                placeholder="player one"
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                onChange={(event) => setComparePlayerOneQuery(event.target.value)}
-              />
-              <input
-                id="home-compare-player-two"
-                type="text"
-                value={comparePlayerTwoQuery}
-                placeholder="player two"
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                onChange={(event) => setComparePlayerTwoQuery(event.target.value)}
-              />
-              <button
-                type="submit"
-                disabled={!trimmedComparePlayerOneQuery || !trimmedComparePlayerTwoQuery}
-              >
-                View H2H
-              </button>
-            </div>
-          </form>
-        </div>
       </section>
 
       <section className="homeSpotlightSection" aria-label="Atomic chess shortcuts">
         <div className="homeSpotlightGrid">
+          <Link
+            className="homeSpotlightCard homeSubmitPuzzleShortcut"
+            to="/puzzles/submit"
+          >
+            <span>Build the library</span>
+            <h2>Submit a puzzle</h2>
+            <p>Found a brilliant atomic position? Share it with the community.</p>
+            <strong>
+              Send a puzzle <span aria-hidden="true">→</span>
+            </strong>
+          </Link>
+
           <Link className="homeSpotlightCard homePuzzleLeaderboardShortcut" to="/solve/leaderboard">
             <span>Puzzles</span>
             <h2>Puzzle leaderboard</h2>
             <p>Points, correct solves, misses, and total attempts.</p>
+          </Link>
+
+          <Link
+            className="homeSpotlightCard homePracticeShortcut"
+            to="/practice"
+          >
+            <span>Opening trainer</span>
+            <h2>Practice against the database</h2>
+            <p>
+              Sharpen your opening theory by playing against the database of any top-100
+              player in atomic history.
+            </p>
           </Link>
 
           <Link
@@ -138,7 +79,10 @@ export const HomePage = () => {
           >
             <span>Championship</span>
             <h2>Atomic Hyper Championship</h2>
-            <p>Follow the 2026 bracket, match paths, and championship run.</p>
+            <p>
+              Who will be crowned the Atomic Hyper Champion? Will it be max, jsf, trk, or
+              someone else?
+            </p>
             <img
               src={appAssetPath("/images/awc-trophies/atomic-hyper-championship.png")}
               alt=""
@@ -150,7 +94,7 @@ export const HomePage = () => {
           </Link>
 
           <Link
-            className="homeSpotlightCard homeTrophyShortcut"
+            className="homeSpotlightCard homeTrophyShortcut homeChesscomShortcut"
             to="/tournaments/$tournamentId"
             params={{ tournamentId: "ccac2026" }}
           >
@@ -168,32 +112,37 @@ export const HomePage = () => {
           </Link>
 
           <Link
-            className="homeSpotlightCard homeH2HShortcut"
-            to="/matches/$mode/$matchId"
-            params={{ mode: "blitz", matchId: "MPme5e0a" }}
+            className="homeSpotlightCard homeTrophyShortcut homeAwcShortcut"
+            to="/tournaments/$tournamentId"
+            params={{ tournamentId: "awc2025" }}
           >
-            <span>Blockbuster match</span>
-            <h2>maxwellssilvrhammer vs wolfram_ep</h2>
-            <p>Top two ranked blitz players collide in a marquee atomic showdown.</p>
+            <span>Tournament</span>
+            <h2>AWC 2025</h2>
+            <p>Bracket from last year's controversial World Championship.</p>
+            <img
+              src={appAssetPath("/images/awc-trophies/awc.png")}
+              alt=""
+              width="140"
+              height="140"
+              loading="lazy"
+              decoding="async"
+            />
+          </Link>
+
+          <Link className="homeSpotlightCard homeRecentMatchesShortcut" to="/recent">
+            <span>Latest games</span>
+            <h2>Recent matches</h2>
+            <p>See who's playing, who won, and how the ratings moved.</p>
+          </Link>
+
+          <Link className="homeSpotlightCard homePuzzleSetsShortcut" to="/solve/sets">
+            <span>Focused training</span>
+            <h2>Puzzle sets</h2>
+            <p>Choose a match and play through the puzzles that came from it.</p>
           </Link>
         </div>
       </section>
 
-      <section className="homeQuickLinksSection" aria-label="More atomic chess tools">
-        <div className="homeQuickLinksHeader">
-          <span className="homeSectionLabel">More</span>
-          <h2>Database tools</h2>
-        </div>
-        <div className="homeFeatureGrid" aria-label="Primary tools">
-          {featureLinks.map((feature) => (
-            <Link key={feature.to} className="homeFeatureCard" to={feature.to}>
-              <span>{feature.eyebrow}</span>
-              <h2>{feature.title}</h2>
-              <p>{feature.body}</p>
-            </Link>
-          ))}
-        </div>
-      </section>
     </div>
   );
 };

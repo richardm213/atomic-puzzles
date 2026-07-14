@@ -331,7 +331,7 @@ Mark try-again moves with ?, for example Nf3?`}
           <input
             type="text"
             value={value.event}
-            placeholder="Only for special tournament events or matches"
+            placeholder="Only for special tournament events or matches; otherwise leave empty"
             onChange={(event) => onChange({ ...value, event: event.target.value })}
           />
         </label>
