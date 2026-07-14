@@ -1,5 +1,6 @@
 import type { PuzzleQueueRow, PuzzleReviewQueueRow } from "../../types/supabase";
 import { appAssetPath } from "../../utils/appAssetPath";
+import { invalidateLichessSessionForResponse } from "../auth/lichessAuth";
 
 const reviewRequest = async <T>(accessToken: string, body: Record<string, unknown>): Promise<T> => {
   if (!accessToken) throw new Error("Log in with Lichess to review puzzles.");
@@ -12,6 +13,7 @@ const reviewRequest = async <T>(accessToken: string, body: Record<string, unknow
     },
     body: JSON.stringify(body),
   });
+  invalidateLichessSessionForResponse(response, accessToken);
   const result = (await response.json().catch(() => null)) as (T & { error?: string }) | null;
   if (!response.ok) throw new Error(result?.error || "Unable to review puzzle.");
   if (!result) throw new Error("Unable to review puzzle: the server returned no data.");
@@ -40,6 +42,7 @@ export const submitPuzzleToQueue = async (input: {
       explanation: input.explanation.trim(),
     }),
   });
+  invalidateLichessSessionForResponse(response, input.accessToken);
   const responseText = await response.text();
   let body: { puzzle?: PuzzleQueueRow; error?: string } | null = null;
   try {

@@ -51,7 +51,7 @@ export const handler = async (event: NetlifyEvent) => {
 
   const input = parseBody(event);
   const action = input?.action;
-  if (!input || !["list", "count", "markRead"].includes(String(action))) {
+  if (!input || !["list", "count", "markRead", "delete"].includes(String(action))) {
     return jsonResponse(400, { error: "Invalid notification request." });
   }
 
@@ -85,6 +85,22 @@ export const handler = async (event: NetlifyEvent) => {
       if (ids.length > 0) query = query.in("id", ids);
       const { error } = await query;
       if (error) throw new Error(`Unable to mark notifications read: ${error.message}`);
+    }
+
+    if (action === "delete") {
+      const ids = Array.isArray(input.ids)
+        ? input.ids.filter((id): id is number => Number.isSafeInteger(id) && Number(id) > 0)
+        : [];
+      if (ids.length === 0) {
+        return jsonResponse(400, { error: "Select at least one notification to delete." });
+      }
+
+      const { error } = await supabase
+        .from("notifications")
+        .delete()
+        .eq("recipient_username", username)
+        .in("id", ids);
+      if (error) throw new Error(`Unable to delete notification: ${error.message}`);
     }
 
     const { data, error } = await supabase

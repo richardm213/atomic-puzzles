@@ -1,9 +1,12 @@
 const LICHESS_HOST = "https://lichess.org";
 
+export const LICHESS_SESSION_INVALID_EVENT = "atomic-puzzles:lichess-session-invalid";
+export const LICHESS_SESSION_STORAGE_KEY = "atomic-puzzles.lichess-session";
+
 const STORAGE_KEYS = {
   pendingAuth: "atomic-puzzles.lichess-pending-auth",
   postLoginRedirect: "atomic-puzzles.post-login-redirect",
-  session: "atomic-puzzles.lichess-session",
+  session: LICHESS_SESSION_STORAGE_KEY,
 };
 
 export type LichessAccount = {
@@ -120,6 +123,15 @@ const getStoredLichessSession = (): LichessSession | null =>
 
 export const clearStoredLichessSession = (): void => {
   window.localStorage.removeItem(STORAGE_KEYS.session);
+};
+
+export const invalidateLichessSessionForResponse = (
+  response: Response,
+  accessToken: string,
+): void => {
+  if (!accessToken || response.status !== 401) return;
+  clearStoredLichessSession();
+  window.dispatchEvent(new Event(LICHESS_SESSION_INVALID_EVENT));
 };
 
 export const startLichessLogin = async (returnTo?: string): Promise<void> => {

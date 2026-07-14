@@ -137,23 +137,25 @@ export const NotificationsPage = () => {
           <ol className="notificationList">
             {notifications.map((notification) => (
               <li key={notification.id}>
-                <button
-                  className={notification.read_at ? "read" : "unread"}
-                  type="button"
-                  onClick={() => void openNotification(notification)}
-                >
-                  <span className="notificationItemIcon" aria-hidden="true">
-                    <FontAwesomeIcon icon={notificationIcon(notification)} />
-                  </span>
-                  <span className="notificationItemCopy">
-                    <strong>{notificationCopy(notification)}</strong>
-                    <span>Puzzle #{notification.puzzle_id}</span>
-                  </span>
-                  <time dateTime={notification.created_at}>
-                    {formatLocalDateTime(notification.created_at)}
-                  </time>
-                  {!notification.read_at ? <span className="notificationUnreadDot" /> : null}
-                </button>
+                <div className={`notificationItem ${notification.read_at ? "read" : "unread"}`}>
+                  <button
+                    className="notificationOpenButton"
+                    type="button"
+                    onClick={() => void openNotification(notification)}
+                  >
+                    <span className="notificationItemIcon" aria-hidden="true">
+                      <FontAwesomeIcon icon={notificationIcon(notification)} />
+                    </span>
+                    <span className="notificationItemCopy">
+                      <strong>{notificationCopy(notification)}</strong>
+                      <span>Puzzle #{notification.puzzle_id}</span>
+                    </span>
+                    <time dateTime={notification.created_at}>
+                      {formatLocalDateTime(notification.created_at)}
+                    </time>
+                    {!notification.read_at ? <span className="notificationUnreadDot" /> : null}
+                  </button>
+                </div>
               </li>
             ))}
           </ol>

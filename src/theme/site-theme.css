@@ -82,7 +82,7 @@
     0 0 0 1px color-mix(in srgb, white 8%, transparent) inset,
     0 8px 18px color-mix(in srgb, var(--color-primary) 24%, transparent);
   --nav-shadow: none;
-  --dropdown-panel-bg: var(--color-panel);
+  --dropdown-panel-bg: var(--color-panel-strong);
 }
 
 :root[data-theme="light"] {
@@ -154,11 +154,5 @@
     0 10px 20px color-mix(in srgb, var(--color-primary) 18%, transparent),
     0 2px 5px color-mix(in srgb, var(--color-panel-deep) 12%, transparent);
   --nav-shadow: 0 10px 30px color-mix(in srgb, var(--color-muted) 8%, transparent);
-  --dropdown-panel-bg:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--color-panel-strong) 90%, transparent),
-      color-mix(in srgb, var(--color-page-top) 82%, transparent)
-    ),
-    var(--color-panel);
+  --dropdown-panel-bg: var(--color-panel-strong);
 }

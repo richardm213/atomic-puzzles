@@ -4,9 +4,12 @@ import {
   faBars,
   faBell,
   faChartLine,
+  faCheck,
   faChevronDown,
+  faComment,
   faMagnifyingGlass,
   faMoon,
+  faReply,
   faRightFromBracket,
   faRightToBracket,
   faSun,
@@ -27,13 +30,19 @@ import {
 
 import { getBoardThemeColors, useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
-import { fetchUnreadNotificationCount } from "../../lib/community/notifications";
+import {
+  fetchNotifications,
+  fetchUnreadNotificationCount,
+  markNotificationsRead,
+  type UserNotification,
+} from "../../lib/community/notifications";
 import { resolveProfileUsernameFromAliases } from "../../lib/supabase/supabaseAliases";
 import {
   searchUsernameSuggestions,
   type UsernameSearchSuggestion,
 } from "../../lib/users/usernameSearch";
 import { appAssetPath } from "../../utils/appAssetPath";
+import { formatLocalDateTime } from "../../utils/formatters";
 import { normalizeUsername } from "../../utils/playerNames";
 
 type NavItem = {
@@ -157,6 +166,22 @@ const SEARCH_SUGGESTION_MIN_LENGTH = 3;
 const SEARCH_SUGGESTION_DELAY_MS = 150;
 const NAV_DROPDOWN_CLOSE_DELAY_MS = 180;
 
+const notificationCopy = (notification: UserNotification): string => {
+  if (notification.notification_type === "puzzle_approved") {
+    return `Your puzzle #${notification.puzzle_id} was approved.`;
+  }
+  if (notification.notification_type === "comment_reply") {
+    return `${notification.actor_username ?? "Someone"} replied to your comment.`;
+  }
+  return `${notification.actor_username ?? "Someone"} commented on your puzzle.`;
+};
+
+const notificationIcon = (notification: UserNotification) => {
+  if (notification.notification_type === "puzzle_approved") return faCheck;
+  if (notification.notification_type === "comment_reply") return faReply;
+  return faComment;
+};
+
 const getStoredProfileUsername = (username: string | null | undefined): string => {
   const normalizedUsername = normalizeUsername(username);
   if (!normalizedUsername || typeof window === "undefined") return "";
@@ -190,6 +215,11 @@ export const TopNav = () => {
   const [openNavDropdown, setOpenNavDropdown] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<UserNotification[]>([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [notificationsUpdating, setNotificationsUpdating] = useState(false);
+  const [notificationsError, setNotificationsError] = useState("");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const searchSuggestionsRequestIdRef = useRef(0);
   const topNavRef = useRef<HTMLElement | null>(null);
@@ -197,6 +227,7 @@ export const TopNav = () => {
   const navDropdownCloseTimeoutRef = useRef<number | null>(null);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const settingsRef = useRef<HTMLDivElement | null>(null);
+  const notificationsRef = useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { accessToken, isAuthenticated, isLoading, user, login, logout } = useAuth();
@@ -279,6 +310,33 @@ export const TopNav = () => {
       window.removeEventListener("atomic-notifications-updated", refreshCount);
     };
   }, [accessToken, pathname]);
+
+  useEffect(() => {
+    if (!notificationsOpen || !accessToken) return undefined;
+
+    let current = true;
+    setNotificationsLoading(true);
+    setNotificationsError("");
+    void fetchNotifications(accessToken)
+      .then((result) => {
+        if (!current) return;
+        setNotifications(result.notifications);
+        setUnreadNotificationCount(result.unreadCount);
+      })
+      .catch((loadError) => {
+        if (!current) return;
+        setNotificationsError(
+          loadError instanceof Error ? loadError.message : "Unable to load notifications.",
+        );
+      })
+      .finally(() => {
+        if (current) setNotificationsLoading(false);
+      });
+
+    return () => {
+      current = false;
+    };
+  }, [accessToken, notificationsOpen]);
 
   useEffect(() => {
     if (!normalizedAuthUsername) {
@@ -425,7 +483,27 @@ export const TopNav = () => {
     closeNavDropdown();
     setProfileMenuOpen(false);
     setSettingsOpen(false);
+    setNotificationsOpen(false);
   }, [closeNavDropdown, pathname]);
+
+  useEffect(() => {
+    if (!notificationsOpen) return undefined;
+
+    const handlePointerDown = (event: MouseEvent): void => {
+      if (notificationsRef.current?.contains(event.target as Node)) return;
+      setNotificationsOpen(false);
+    };
+    const handleEscape = (event: KeyboardEvent): void => {
+      if (event.key === "Escape") setNotificationsOpen(false);
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [notificationsOpen]);
 
   useEffect(() => {
     if (!mobileMenuOpen) return undefined;
@@ -634,6 +712,34 @@ export const TopNav = () => {
     searchInputRef.current?.blur();
   };
 
+  const markPopupNotificationsRead = async (ids: number[] = []): Promise<void> => {
+    if (!accessToken || notificationsUpdating) return;
+    setNotificationsUpdating(true);
+    setNotificationsError("");
+    try {
+      const result = await markNotificationsRead(accessToken, ids);
+      setNotifications(result.notifications);
+      setUnreadNotificationCount(result.unreadCount);
+      window.dispatchEvent(new Event("atomic-notifications-updated"));
+    } catch (updateError) {
+      setNotificationsError(
+        updateError instanceof Error ? updateError.message : "Unable to update notifications.",
+      );
+    } finally {
+      setNotificationsUpdating(false);
+    }
+  };
+
+  const openPopupNotification = async (notification: UserNotification): Promise<void> => {
+    if (!notification.read_at) await markPopupNotificationsRead([notification.id]);
+    setNotificationsOpen(false);
+    void navigate({
+      to: "/solve/$puzzleId",
+      params: { puzzleId: String(notification.puzzle_id) },
+      ...(notification.comment_id ? { hash: `comment-${notification.comment_id}` } : {}),
+    });
+  };
+
   return (
     <header className={`topNav ${mobileMenuOpen ? "mobileMenuOpen" : ""}`} ref={topNavRef}>
       <Link
@@ -832,25 +938,104 @@ export const TopNav = () => {
           </form>
         </div>
         {isAuthenticated ? (
-          <Link
-            className={`navNotificationsButton ${pathname === "/notifications" ? "active" : ""}`}
-            to="/notifications"
-            aria-label={
-              unreadNotificationCount > 0
-                ? `${unreadNotificationCount} unread notifications`
-                : "Notifications"
-            }
-            onClick={() => {
-              setMobileMenuOpen(false);
-              setProfileMenuOpen(false);
-              setSettingsOpen(false);
-            }}
-          >
-            <FontAwesomeIcon icon={faBell} />
-            {unreadNotificationCount > 0 ? (
-              <span>{unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}</span>
+          <div className="navNotifications" ref={notificationsRef}>
+            <button
+              className={`navNotificationsButton ${notificationsOpen ? "active" : ""}`}
+              type="button"
+              aria-label={
+                unreadNotificationCount > 0
+                  ? `${unreadNotificationCount} unread notifications`
+                  : "Notifications"
+              }
+              aria-haspopup="dialog"
+              aria-expanded={notificationsOpen}
+              onClick={() => {
+                setNotificationsOpen((open) => !open);
+                setMobileMenuOpen(false);
+                closeNavDropdown();
+                setProfileMenuOpen(false);
+                setSettingsOpen(false);
+              }}
+            >
+              <FontAwesomeIcon icon={faBell} />
+              {unreadNotificationCount > 0 ? (
+                <span>{unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}</span>
+              ) : null}
+            </button>
+            {notificationsOpen ? (
+              <section
+                className="navNotificationsPopup"
+                role="dialog"
+                aria-modal="false"
+                aria-labelledby="nav-notifications-title"
+              >
+                <header className="navNotificationsHeader">
+                  <div>
+                    <span>Inbox</span>
+                    <h2 id="nav-notifications-title">Notifications</h2>
+                  </div>
+                  {unreadNotificationCount > 0 ? (
+                    <button
+                      type="button"
+                      disabled={notificationsUpdating}
+                      onClick={() => void markPopupNotificationsRead()}
+                    >
+                      <FontAwesomeIcon icon={faCheck} />
+                      Mark all read
+                    </button>
+                  ) : null}
+                </header>
+                {notificationsLoading ? (
+                  <p className="navNotificationsStatus">Loading notifications…</p>
+                ) : null}
+                {notificationsError ? (
+                  <p className="navNotificationsError">{notificationsError}</p>
+                ) : null}
+                {!notificationsLoading && !notificationsError && notifications.length === 0 ? (
+                  <div className="navNotificationsEmpty">
+                    <FontAwesomeIcon icon={faBell} />
+                    <strong>You’re all caught up</strong>
+                  </div>
+                ) : null}
+                {notifications.length > 0 ? (
+                  <ol className="navNotificationList">
+                    {notifications.slice(0, 8).map((notification) => (
+                      <li key={notification.id}>
+                        <div
+                          className={`navNotificationRow ${notification.read_at ? "read" : "unread"}`}
+                        >
+                          <button
+                            type="button"
+                            className="navNotificationOpenButton"
+                            disabled={notificationsUpdating}
+                            onClick={() => void openPopupNotification(notification)}
+                          >
+                            <span className="navNotificationIcon" aria-hidden="true">
+                              <FontAwesomeIcon icon={notificationIcon(notification)} />
+                            </span>
+                            <span className="navNotificationCopy">
+                              <strong>{notificationCopy(notification)}</strong>
+                              <span>
+                                Puzzle #{notification.puzzle_id} · {formatLocalDateTime(notification.created_at)}
+                              </span>
+                            </span>
+                            {!notification.read_at ? <span className="navNotificationDot" /> : null}
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                ) : null}
+                <Link
+                  className="navNotificationsSeeAll"
+                  to="/notifications"
+                  onClick={() => setNotificationsOpen(false)}
+                >
+                  See all notifications
+                </Link>
+              </section>
             ) : null}
-          </Link>
+          </div>
         ) : null}
         <div className="navAuth" aria-live="polite">
           {isAuthenticated && user ? (

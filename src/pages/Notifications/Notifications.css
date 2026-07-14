@@ -1,4 +1,6 @@
 .notificationsPage {
+  --notification-accent: color-mix(in srgb, var(--color-primary) 72%, var(--color-cyan-bright));
+  --notification-accent-soft: color-mix(in srgb, var(--notification-accent) 14%, transparent);
   grid-template-columns: minmax(0, 1fr);
   width: min(100%, 820px);
   align-items: start;
@@ -24,7 +26,7 @@
 }
 
 .notificationsHeader > div > span {
-  color: var(--color-primary-soft);
+  color: var(--notification-accent);
   font-size: 11px;
   font-weight: 850;
   letter-spacing: 0.11em;
@@ -41,9 +43,9 @@
 .notificationsSignIn button {
   min-height: 36px;
   padding: 0 13px;
-  border: 1px solid color-mix(in srgb, var(--color-primary) 65%, var(--color-border));
+  border: 1px solid color-mix(in srgb, var(--notification-accent) 46%, var(--color-border));
   border-radius: 9px;
-  background: color-mix(in srgb, var(--color-primary) 20%, var(--color-panel-strong));
+  background: color-mix(in srgb, var(--notification-accent) 12%, var(--color-panel-strong));
   color: var(--color-heading);
   cursor: pointer;
   font: inherit;
@@ -68,31 +70,58 @@
   list-style: none;
 }
 
-.notificationList li > button {
+.notificationItem {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  width: 100%;
+  min-height: 66px;
+  border: 1px solid var(--color-border);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--color-panel-strong) 72%, transparent);
+  color: var(--color-text);
+  overflow: hidden;
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease,
+    box-shadow 150ms ease,
+    transform 150ms ease;
+}
+
+.notificationItem.unread {
+  border-color: color-mix(in srgb, var(--notification-accent) 34%, var(--color-border));
+  background: color-mix(in srgb, var(--notification-accent) 7%, var(--color-panel-strong));
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--notification-accent) 72%, transparent);
+}
+
+.notificationItem:hover {
+  border-color: color-mix(in srgb, var(--notification-accent) 52%, var(--color-border));
+  background: var(--color-surface-elevated-strong);
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--color-panel-deep) 12%, transparent);
+  transform: translateY(-1px);
+}
+
+.notificationOpenButton {
   position: relative;
   display: grid;
   grid-template-columns: 36px minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
-  width: 100%;
-  min-height: 66px;
-  padding: 10px 16px 10px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: 11px;
-  background: color-mix(in srgb, var(--color-panel-strong) 72%, transparent);
-  color: var(--color-text);
+  min-width: 0;
+  min-height: 64px;
+  padding: 10px 12px;
+  border: 0;
+  background: transparent;
+  color: inherit;
   cursor: pointer;
+  font: inherit;
   text-align: left;
 }
 
-.notificationList li > button.unread {
-  border-color: color-mix(in srgb, var(--color-primary) 46%, var(--color-border));
-  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-panel-strong));
-}
-
-.notificationList li > button:hover {
-  border-color: var(--color-primary);
-  background: var(--color-surface-elevated-strong);
+.notificationOpenButton:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--notification-accent);
 }
 
 .notificationItemIcon {
@@ -101,8 +130,9 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--color-primary) 18%, var(--color-panel-deep));
-  color: var(--color-primary-soft);
+  border: 1px solid color-mix(in srgb, var(--notification-accent) 22%, transparent);
+  background: var(--notification-accent-soft);
+  color: var(--notification-accent);
 }
 
 .notificationItemCopy {
@@ -136,8 +166,8 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--color-primary-soft);
-  box-shadow: 0 0 0 3px var(--color-primary-ring);
+  background: var(--notification-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--notification-accent) 16%, transparent);
 }
 
 .notificationsStatus,
@@ -165,7 +195,7 @@
 
 .notificationsEmpty > svg,
 .notificationsSignIn > svg {
-  color: var(--color-primary-soft);
+  color: var(--notification-accent);
   font-size: 28px;
 }
 
@@ -192,7 +222,7 @@
     align-items: flex-start;
   }
 
-  .notificationList li > button {
+  .notificationOpenButton {
     grid-template-columns: 32px minmax(0, 1fr);
   }
 

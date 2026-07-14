@@ -14,6 +14,8 @@ import {
   completeLichessLogin,
   getLichessAuthDebugSnapshot,
   getStoredPostLoginRedirect,
+  LICHESS_SESSION_INVALID_EVENT,
+  LICHESS_SESSION_STORAGE_KEY,
   type LichessAccount,
   type LichessSession,
   restoreLichessSession,
@@ -72,6 +74,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     return () => {
       cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const clearInvalidSession = (): void => {
+      clearStoredLichessSession();
+      setSession(null);
+      setStatus("anonymous");
+      setError("Your Lichess login is no longer valid. Please log in again.");
+    };
+    const handleStorage = (event: StorageEvent): void => {
+      if (event.key === LICHESS_SESSION_STORAGE_KEY && event.newValue === null) {
+        clearInvalidSession();
+      }
+    };
+
+    window.addEventListener(LICHESS_SESSION_INVALID_EVENT, clearInvalidSession);
+    window.addEventListener("storage", handleStorage);
+    return () => {
+      window.removeEventListener(LICHESS_SESSION_INVALID_EVENT, clearInvalidSession);
+      window.removeEventListener("storage", handleStorage);
     };
   }, []);
 

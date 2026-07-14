@@ -1,4 +1,5 @@
 import { appAssetPath } from "../../utils/appAssetPath";
+import { invalidateLichessSessionForResponse } from "../auth/lichessAuth";
 
 export type PuzzleVoteCounts = {
   puzzle_id: number;
@@ -62,6 +63,7 @@ const communityRequest = async (
     },
     body: JSON.stringify(body),
   });
+  invalidateLichessSessionForResponse(response, accessToken);
   const result = (await response.json().catch(() => null)) as
     | (PuzzleCommunity & { error?: string })
     | null;
@@ -117,6 +119,7 @@ export const fetchProfilePuzzleComments = async (
     },
     body: JSON.stringify({ action: "profileComments", username, page, pageSize, sort }),
   });
+  invalidateLichessSessionForResponse(response, accessToken);
   const result = (await response.json().catch(() => null)) as
     | (ProfilePuzzleCommentsPage & { error?: string })
     | null;
@@ -146,6 +149,7 @@ export const fetchSitePuzzleComments = async (
     },
     body: JSON.stringify({ action: "siteComments", page, pageSize, sort }),
   });
+  invalidateLichessSessionForResponse(response, accessToken);
   const result = (await response.json().catch(() => null)) as
     | (ProfilePuzzleCommentsPage & { error?: string })
     | null;

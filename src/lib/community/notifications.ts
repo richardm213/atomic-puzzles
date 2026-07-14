@@ -1,4 +1,5 @@
 import { appAssetPath } from "../../utils/appAssetPath";
+import { invalidateLichessSessionForResponse } from "../auth/lichessAuth";
 
 export type NotificationType = "puzzle_comment" | "comment_reply" | "puzzle_approved";
 
@@ -31,6 +32,7 @@ const notificationRequest = async <T>(
     },
     body: JSON.stringify(body),
   });
+  invalidateLichessSessionForResponse(response, accessToken);
   const result = (await response.json().catch(() => null)) as (T & { error?: string }) | null;
   if (!response.ok) throw new Error(result?.error || "Unable to load notifications.");
   if (!result) throw new Error("The notification service returned no data.");
@@ -51,3 +53,8 @@ export const markNotificationsRead = (
   accessToken: string,
   ids: number[] = [],
 ): Promise<NotificationResult> => notificationRequest(accessToken, { action: "markRead", ids });
+
+export const deleteNotifications = (
+  accessToken: string,
+  ids: number[],
+): Promise<NotificationResult> => notificationRequest(accessToken, { action: "delete", ids });
