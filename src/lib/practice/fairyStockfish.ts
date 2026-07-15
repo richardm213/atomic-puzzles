@@ -34,12 +34,36 @@ const MIN_THINK_TIME_MS = 500;
 const MAX_THINK_TIME_MS = 3_000;
 const ENGINE_RESPONSE_TIMEOUT_MS = 15_000;
 const ENGINE_SEARCH_TIMEOUT_MS = MAX_THINK_TIME_MS + 2_000;
+const ENGINE_REQUEST_TIMEOUT_MS = 20_000;
 const MAX_CANDIDATE_SCORE_GAP_CP = 150;
 const MULTIPV_COUNT = 5;
 const CANDIDATE_WEIGHTS = [0.4, 0.25, 0.15, 0.12, 0.08] as const;
 
 const randomThinkTimeMs = (): number =>
   Math.floor(Math.random() * (MAX_THINK_TIME_MS - MIN_THINK_TIME_MS + 1)) + MIN_THINK_TIME_MS;
+
+export const withEngineRequestTimeout = <T>(
+  request: Promise<T>,
+  onTimeout: () => void,
+  timeoutMs = ENGINE_REQUEST_TIMEOUT_MS,
+): Promise<T> =>
+  new Promise((resolve, reject) => {
+    const timeout = window.setTimeout(() => {
+      onTimeout();
+      reject(new Error("Fairy-Stockfish stopped responding"));
+    }, timeoutMs);
+
+    request.then(
+      (value) => {
+        window.clearTimeout(timeout);
+        resolve(value);
+      },
+      (error: unknown) => {
+        window.clearTimeout(timeout);
+        reject(error);
+      },
+    );
+  });
 
 const comparableScore = (candidate: EngineCandidate): number => {
   if (candidate.scoreType === "cp") return candidate.score;
@@ -295,14 +319,20 @@ export const findFairyStockfishMove = (
   signal?: AbortSignal,
   excludedMoves: ReadonlySet<string> = new Set(),
 ): Promise<string | null> => {
+  const requestController = new AbortController();
+  const handleAbort = (): void => requestController.abort();
+  signal?.addEventListener("abort", handleAbort, { once: true });
+  if (signal?.aborted) handleAbort();
+
   // Fairy-Stockfish uses one shared UCI worker. Serialize every interaction so
   // rapid React effect cleanup/restarts cannot interleave stop/isready/go.
-  const search = engineSearchQueue.then(() =>
-    runFairyStockfishSearch(fen, signal, excludedMoves),
+  const queuedSearch = engineSearchQueue.then(() =>
+    runFairyStockfishSearch(fen, requestController.signal, excludedMoves),
   );
-  engineSearchQueue = search.then(
+  engineSearchQueue = queuedSearch.then(
     () => undefined,
     () => undefined,
   );
-  return search;
+  const search = withEngineRequestTimeout(queuedSearch, () => requestController.abort());
+  return search.finally(() => signal?.removeEventListener("abort", handleAbort));
 };

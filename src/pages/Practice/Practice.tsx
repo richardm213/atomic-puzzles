@@ -55,6 +55,13 @@ const PRACTICE_SETTINGS_STORAGE_KEY = "atomic-puzzles.practice.settings";
 const MAX_PRACTICE_PLAYERS = 8;
 const DEFAULT_CLOCK_MINUTES = 3;
 const DEFAULT_CLOCK_INCREMENT_SECONDS = 0;
+const buildPracticePgn = (rootFen: string, moveText = ""): string =>
+  [
+    '[Variant "Atomic"]',
+    '[SetUp "1"]',
+    `[FEN "${rootFen}"]`,
+    ...(moveText ? ["", moveText] : []),
+  ].join("\n");
 type PracticeMove = OpeningDatabaseMove;
 
 type PracticeGame = OpeningDatabaseGame;
@@ -71,7 +78,6 @@ type PendingAutoMove = {
 };
 type PracticeExplorerResult = {
   response: ExplorerApiResponse;
-  source: OpponentSource;
   usedGeneralFallback: boolean;
 };
 
@@ -231,7 +237,6 @@ const fetchPracticeExplorerResponse = async ({
   if (opponentSource === "general") {
     return {
       response: await fetchGeneralPracticeExplorerResponse({ fen, opponentSide }),
-      source: "general",
       usedGeneralFallback: false,
     };
   }
@@ -248,14 +253,12 @@ const fetchPracticeExplorerResponse = async ({
   if (playerContinuation === "general" && playerResponse.moves.length === 0) {
     return {
       response: await fetchGeneralPracticeExplorerResponse({ fen, opponentSide }),
-      source: "general",
       usedGeneralFallback: true,
     };
   }
 
   return {
     response: playerResponse,
-    source: "player",
     usedGeneralFallback: false,
   };
 };
@@ -289,7 +292,6 @@ const chooseOpponentMove = (moves: PracticeMove[], mode: OpponentMode): Practice
 export const PracticePage = () => {
   const [initialSettings] = useState(loadPracticeSettings);
   const boardPanelRef = useRef<HTMLDivElement | null>(null);
-  const requestIdRef = useRef(0);
   const remainingClockMsRef = useRef(initialSettings.clockMinutes * 60_000);
   const seenRandomPlayersRef = useRef<Set<string>>(new Set());
   const randomPlayerPoolRef = useRef<string[] | null>(null);
@@ -297,10 +299,14 @@ export const PracticePage = () => {
   const navigationRef = useRef<SolutionNavigation | null>(null);
   const triedMoveUcisByFenRef = useRef<Map<string, Set<string>>>(new Map());
   const fenDraftDirtyRef = useRef(false);
+  const pgnDraftDirtyRef = useRef(false);
+  const pgnFocusedRef = useRef(false);
   const [boardState, setBoardState] = useState<ChessboardState | null>(null);
   const [practiceRootFen, setPracticeRootFen] = useState(STARTING_FEN);
   const [fenDraft, setFenDraft] = useState(STARTING_FEN);
   const [fenError, setFenError] = useState("");
+  const [pgnDraft, setPgnDraft] = useState(() => buildPracticePgn(STARTING_FEN));
+  const [pgnError, setPgnError] = useState("");
   const [navigation, setNavigation] = useState<SolutionNavigation | null>(null);
   const [pendingAutoMove, setPendingAutoMove] = useState<PendingAutoMove | null>(null);
   const [side, setSide] = useState<PracticeSide>(initialSettings.side);
@@ -344,7 +350,7 @@ export const PracticePage = () => {
 
   const currentFen = boardState?.fen || STARTING_FEN;
   const databaseExhausted = exhaustedFen === currentFen;
-  const useEngineForOpponentMove = engineEnabled || databaseExhausted;
+  const engineFallbackReady = engineEnabled && databaseExhausted && status === "ready";
   const currentLichessAnalysisUrl = lichessAtomicAnalysisUrl(currentFen);
   const currentTurn = boardState?.turn || "white";
   const gameFinished = Boolean(boardState?.winner);
@@ -379,15 +385,7 @@ export const PracticePage = () => {
     [currentPly, moveList],
   );
   const currentPracticePgn = useMemo(
-    () =>
-      [
-        '[Variant "Atomic"]',
-        '[SetUp "1"]',
-        `[FEN "${practiceRootFen}"]`,
-        '[Result "*"]',
-        "",
-        currentMoveText ? `${currentMoveText} *` : "*",
-      ].join("\n"),
+    () => buildPracticePgn(practiceRootFen, currentMoveText),
     [currentMoveText, practiceRootFen],
   );
   const canStepBack = currentPly > 0;
@@ -398,6 +396,19 @@ export const PracticePage = () => {
   const maxPracticePlayers = allowMultiplePlayers ? MAX_PRACTICE_PLAYERS : 1;
   const canAddPracticePlayer = opponentUsernames.length < maxPracticePlayers;
   const canChoosePracticePlayer = allowMultiplePlayers ? canAddPracticePlayer : true;
+
+  useEffect(() => {
+    if (!pgnFocusedRef.current) setPgnDraft(currentPracticePgn);
+  }, [currentPracticePgn]);
+
+  useEffect(() => {
+    if (boardState?.status === "Invalid PGN" && boardState.error) {
+      setPgnError(boardState.error);
+      return;
+    }
+
+    if (boardState?.status !== "Invalid PGN") setPgnError("");
+  }, [boardState?.error, boardState?.status]);
 
   const handleCopyPgn = useCallback(async (): Promise<void> => {
     const copied = await copyTextToClipboard(currentPracticePgn);
@@ -538,24 +549,18 @@ export const PracticePage = () => {
       setStatus("ready");
       setError("");
       setUsingGeneralFallback(false);
+      setExhaustedFen(null);
       return;
     }
 
-    const requestId = requestIdRef.current + 1;
-    requestIdRef.current = requestId;
-
-    let requestCancelled = false;
-    let requestTimedOut = false;
-    let autoMoveDelayTimeout: number | null = null;
-    const requestStartedAt = window.performance.now();
+    let active = true;
     const requestTimeout = window.setTimeout(() => {
-      requestTimedOut = true;
-      if (!requestCancelled) {
-        setPracticeMoves([]);
-        setRecentGames([]);
-        setStatus("error");
-        setError("Opening explorer took too long to respond.");
-      }
+      if (!active) return;
+      active = false;
+      setPracticeMoves([]);
+      setRecentGames([]);
+      setStatus("error");
+      setError("Opening explorer took too long to respond.");
     }, EXPLORER_REQUEST_TIMEOUT_MS);
 
     setStatus("loading");
@@ -563,6 +568,7 @@ export const PracticePage = () => {
     setPracticeMoves([]);
     setRecentGames([]);
     setUsingGeneralFallback(false);
+    setExhaustedFen(null);
 
     fetchPracticeExplorerResponse({
       fen: currentFen,
@@ -572,7 +578,7 @@ export const PracticePage = () => {
       playerContinuation,
     })
       .then(({ response: data, usedGeneralFallback }) => {
-        if (requestCancelled || requestTimedOut || requestId !== requestIdRef.current) return;
+        if (!active) return;
 
         const nextPracticeMoves = data.moves.map((move) =>
           toOpeningDatabaseMove(move, currentFen, {
@@ -585,41 +591,9 @@ export const PracticePage = () => {
         setRecentGames(data.recentGames.map((game) => toOpeningDatabaseGame(game, currentFen)));
         setUsingGeneralFallback(usedGeneralFallback);
         setStatus("ready");
-
-        if (
-          !engineEnabled &&
-          !gamePaused &&
-          currentTurn === opponentSide &&
-          !databaseExhausted &&
-          lastAutoFenRef.current !== currentFen
-        ) {
-          const autoMove = chooseOpponentMove(
-            getUntriedMoves(currentFen, nextPracticeMoves),
-            opponentMode,
-          );
-          if (!autoMove) {
-            setExhaustedFen(currentFen);
-            return;
-          }
-
-          lastAutoFenRef.current = currentFen;
-          const elapsed = window.performance.now() - requestStartedAt;
-          const remainingThinkTime = Math.max(0, PRACTICE_AUTOMOVE_MIN_THINK_MS - elapsed);
-          const queueAutoMove = (): void => {
-            if (requestCancelled || requestTimedOut || requestId !== requestIdRef.current) return;
-
-            setPendingAutoMove({ fen: currentFen, uci: autoMove.uci });
-          };
-
-          if (remainingThinkTime > 0) {
-            autoMoveDelayTimeout = window.setTimeout(queueAutoMove, remainingThinkTime);
-          } else {
-            queueAutoMove();
-          }
-        }
       })
       .catch((fetchError) => {
-        if (requestCancelled || requestTimedOut) return;
+        if (!active) return;
         setPracticeMoves([]);
         setRecentGames([]);
         setUsingGeneralFallback(false);
@@ -631,25 +605,58 @@ export const PracticePage = () => {
       });
 
     return () => {
-      requestCancelled = true;
+      active = false;
       window.clearTimeout(requestTimeout);
-      if (autoMoveDelayTimeout !== null) {
-        window.clearTimeout(autoMoveDelayTimeout);
-      }
     };
+  }, [
+    canUsePlayerSource,
+    currentFen,
+    opponentSide,
+    opponentSource,
+    opponentUsernames,
+    playerContinuation,
+  ]);
+
+  useEffect(() => {
+    if (
+      !canUsePlayerSource ||
+      status !== "ready" ||
+      databaseExhausted ||
+      gamePaused ||
+      currentTurn !== opponentSide ||
+      navigation ||
+      pendingAutoMove ||
+      lastAutoFenRef.current === currentFen
+    ) {
+      return;
+    }
+
+    const autoMove = chooseOpponentMove(getUntriedMoves(currentFen, practiceMoves), opponentMode);
+    if (!autoMove) {
+      // The selected player -> optional general database chain is complete.
+      setExhaustedFen(currentFen);
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      lastAutoFenRef.current = currentFen;
+      setPendingAutoMove({ fen: currentFen, uci: autoMove.uci });
+    }, PRACTICE_AUTOMOVE_MIN_THINK_MS);
+
+    return () => window.clearTimeout(timeout);
   }, [
     canUsePlayerSource,
     currentFen,
     currentTurn,
     databaseExhausted,
-    engineEnabled,
     gamePaused,
     getUntriedMoves,
+    navigation,
     opponentMode,
     opponentSide,
-    opponentSource,
-    opponentUsernames,
-    playerContinuation,
+    pendingAutoMove,
+    practiceMoves,
+    status,
   ]);
 
   useEffect(() => {
@@ -661,13 +668,13 @@ export const PracticePage = () => {
 
   useEffect(() => {
     if (
-      !useEngineForOpponentMove ||
+      !engineFallbackReady ||
       currentTurn !== opponentSide ||
       gamePaused ||
       navigation ||
       lastAutoFenRef.current === currentFen
     ) {
-      if (!useEngineForOpponentMove || currentTurn !== opponentSide || gamePaused || navigation) {
+      if (!engineFallbackReady || currentTurn !== opponentSide || gamePaused || navigation) {
         setEngineStatus("idle");
         setEngineError("");
       }
@@ -706,7 +713,7 @@ export const PracticePage = () => {
       });
 
     return () => controller.abort();
-  }, [currentFen, currentTurn, gamePaused, navigation, opponentSide, useEngineForOpponentMove]);
+  }, [currentFen, currentTurn, engineFallbackReady, gamePaused, navigation, opponentSide]);
 
   useEffect(() => {
     if (!pendingAutoMove || navigation) return;
@@ -871,10 +878,27 @@ export const PracticePage = () => {
       setPracticeRootFen(nextFen);
       setFenDraft(nextFen);
       setFenError("");
+      setPgnError("");
       fenDraftDirtyRef.current = false;
+      pgnDraftDirtyRef.current = false;
       queueNavigation({ type: "reset", fen: nextFen });
     },
     [fenDraft, queueNavigation, resetOpponentMoveChoices, resetPracticeClock],
+  );
+
+  const loadPracticePgn = useCallback(
+    (draft = pgnDraft): void => {
+      resetOpponentMoveChoices();
+      setHoveredMoveUci(null);
+      resetPracticeClock();
+      setSessionStarted(false);
+      setPgnDraft(draft);
+      setPgnError("");
+      pgnDraftDirtyRef.current = false;
+      pgnFocusedRef.current = false;
+      queueNavigation({ type: "loadPgn", pgn: draft, fen: practiceRootFen });
+    },
+    [pgnDraft, practiceRootFen, queueNavigation, resetOpponentMoveChoices, resetPracticeClock],
   );
 
   const commitUsername = useCallback(
@@ -1233,10 +1257,16 @@ export const PracticePage = () => {
               <button
                 type="button"
                 className={`practiceAlternateMoveButton practiceEngineToggle ${engineEnabled ? "active" : ""}`}
-                aria-label={engineEnabled ? "Disable engine moves" : "Enable engine moves"}
+                aria-label={
+                  engineEnabled
+                    ? "Disable Fairy-Stockfish fallback"
+                    : "Enable Fairy-Stockfish fallback"
+                }
                 aria-pressed={engineEnabled}
                 title={
-                  engineEnabled ? "Disable Fairy-Stockfish moves" : "Enable Fairy-Stockfish moves"
+                  engineEnabled
+                    ? "Disable Fairy-Stockfish after databases end"
+                    : "Enable Fairy-Stockfish after databases end"
                 }
                 onClick={() => setEngineEnabled((enabled) => !enabled)}
               >
@@ -1594,6 +1624,35 @@ export const PracticePage = () => {
               }}
             />
             {fenError ? <small className="analysisTextBoxError">{fenError}</small> : null}
+          </div>
+          <div className="analysisPgnBox analysisTextBox" aria-label="PGN">
+            <span>PGN</span>
+            <textarea
+              value={pgnDraft}
+              rows={3}
+              spellCheck={false}
+              aria-label="PGN"
+              aria-invalid={Boolean(pgnError)}
+              onFocus={() => {
+                pgnDraftDirtyRef.current = false;
+                pgnFocusedRef.current = true;
+              }}
+              onBlur={(event) => {
+                pgnFocusedRef.current = false;
+                if (pgnDraftDirtyRef.current) loadPracticePgn(event.currentTarget.value);
+              }}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter" || event.shiftKey) return;
+                event.preventDefault();
+                loadPracticePgn(event.currentTarget.value);
+              }}
+              onChange={(event) => {
+                pgnDraftDirtyRef.current = true;
+                setPgnDraft(event.target.value);
+                setPgnError("");
+              }}
+            />
+            {pgnError ? <small className="analysisTextBoxError">{pgnError}</small> : null}
           </div>
         </div>
       </div>

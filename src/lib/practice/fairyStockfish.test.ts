@@ -1,6 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { chooseEngineCandidate, type EngineCandidate } from "./fairyStockfish";
+import {
+  chooseEngineCandidate,
+  type EngineCandidate,
+  withEngineRequestTimeout,
+} from "./fairyStockfish";
 
 const candidate = (
   multipv: number,
@@ -86,5 +90,33 @@ describe("chooseEngineCandidate", () => {
 
     expect(chooseEngineCandidate(candidates, () => 0.99)?.move).toBe("move1");
     expect(chooseEngineCandidate(candidates, () => 0.99, new Set(["move1"]))?.move).toBe("move2");
+  });
+});
+
+describe("withEngineRequestTimeout", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("cancels a request that never settles", async () => {
+    vi.useFakeTimers();
+    const onTimeout = vi.fn();
+    const request = withEngineRequestTimeout(new Promise<never>(() => undefined), onTimeout, 20);
+
+    const rejection = expect(request).rejects.toThrow("Fairy-Stockfish stopped responding");
+    await vi.advanceTimersByTimeAsync(20);
+
+    await rejection;
+    expect(onTimeout).toHaveBeenCalledOnce();
+  });
+
+  it("clears the watchdog when the request settles", async () => {
+    vi.useFakeTimers();
+    const onTimeout = vi.fn();
+
+    await expect(withEngineRequestTimeout(Promise.resolve("d1h5"), onTimeout, 20)).resolves.toBe(
+      "d1h5",
+    );
+    await vi.advanceTimersByTimeAsync(20);
+
+    expect(onTimeout).not.toHaveBeenCalled();
   });
 });
