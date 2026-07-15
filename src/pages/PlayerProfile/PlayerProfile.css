@@ -1168,15 +1168,17 @@
 
 .profileMatchTableWrap {
   margin-top: 0;
-  overflow-x: hidden;
+  max-width: 100%;
+  overflow-x: auto;
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: var(--color-surface-soft);
+  -webkit-overflow-scrolling: touch;
 }
 
 .profileMatchTable {
   width: 100%;
-  min-width: 0;
+  min-width: 680px;
   table-layout: fixed;
   border: 0;
   border-radius: 0;
@@ -1202,31 +1204,48 @@
   vertical-align: middle;
 }
 
-.profileMatchTable :is(th, td):nth-child(1) {
+.profileMatchDateColumn {
   width: 19%;
 }
 
-.profileMatchTable :is(th, td):nth-child(2) {
+.profileMatchOpponentColumn {
   width: 24%;
 }
 
-.profileMatchTable :is(th, td):nth-child(3) {
+.profileMatchTimeControlColumn {
   width: 8%;
 }
 
-.profileMatchTable :is(th, td):nth-child(4) {
+.profileMatchScoreColumn {
   width: 13%;
 }
 
-.profileMatchTable :is(th, td):nth-child(5),
-.profileMatchTable :is(th, td):nth-child(6) {
+.profileMatchRatingColumn,
+.profileMatchRdColumn {
   width: 14%;
+}
+
+.profileMatchLinkColumn {
+  width: 8%;
 }
 
 .profileMatchTable th:last-child,
 .profileMatchTable td:last-child {
-  width: 8%;
   white-space: nowrap;
+}
+
+.profileMatchTable .scoreCell {
+  min-width: 0;
+}
+
+.profileMatchTable td:nth-child(2) .rankingLink {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.profileMatchTable .matchDetailsRow > td {
+  width: auto;
 }
 
 .profileMatchTable th + th {
@@ -1450,6 +1469,14 @@
   font-variant-numeric: tabular-nums;
 }
 
+.profileMetricPair {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  max-width: 100%;
+  white-space: nowrap;
+}
+
 .profileScoreValue {
   min-width: 18px;
   text-align: center;
@@ -1469,7 +1496,6 @@
 }
 
 .profileDelta {
-  margin-left: 4px;
   color: var(--color-subtle);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
@@ -1478,10 +1504,6 @@
 .profileMetricValue,
 .profileDelta {
   white-space: nowrap;
-}
-
-.profileMatchTable td > :is(.profileMetricValue, .profileDelta) {
-  display: inline;
 }
 
 .matchDetailsRow td {
@@ -1702,13 +1724,7 @@
     grid-template-columns: 1fr;
   }
 
-  .profileMatchTableWrap {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
   .profileMatchTable {
-    min-width: 680px;
     font-size: 12px;
   }
 

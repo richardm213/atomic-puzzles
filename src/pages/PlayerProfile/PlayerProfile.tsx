@@ -2191,6 +2191,15 @@ export const PlayerProfilePage = ({
 
                 <div className="rankingsTableWrap profileMatchTableWrap">
                   <table className="rankingsTable profileMatchTable">
+                    <colgroup>
+                      <col className="profileMatchDateColumn" />
+                      <col className="profileMatchOpponentColumn" />
+                      <col className="profileMatchTimeControlColumn" />
+                      <col className="profileMatchScoreColumn" />
+                      <col className="profileMatchRatingColumn" />
+                      <col className="profileMatchRdColumn" />
+                      <col className="profileMatchLinkColumn" />
+                    </colgroup>
                     <thead>
                       <tr>
                         <th>Date / Time</th>
@@ -2262,15 +2271,19 @@ export const PlayerProfilePage = ({
                                 </span>
                               </td>
                               <td>
-                                <span className="profileMetricValue">{match.beforeRating}</span>
-                                <span className="profileDelta">
-                                  {formatSignedDecimal(match.ratingChange)}
+                                <span className="profileMetricPair">
+                                  <span className="profileMetricValue">{match.beforeRating}</span>
+                                  <span className="profileDelta">
+                                    {formatSignedDecimal(match.ratingChange)}
+                                  </span>
                                 </span>
                               </td>
                               <td>
-                                <span className="profileMetricValue">{match.beforeRd}</span>
-                                <span className="profileDelta">
-                                  {formatSignedDecimal(match.rdChange)}
+                                <span className="profileMetricPair">
+                                  <span className="profileMetricValue">{match.beforeRd}</span>
+                                  <span className="profileDelta">
+                                    {formatSignedDecimal(match.rdChange)}
+                                  </span>
                                 </span>
                               </td>
                               <td>
