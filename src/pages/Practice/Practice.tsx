@@ -71,7 +71,7 @@ type PracticeEngineStatus = "idle" | "thinking" | "error";
 type PracticeSide = "white" | "black";
 type OpponentMode = "frequency" | "random" | "popular";
 type OpponentSource = "general" | "player";
-type PlayerContinuation = "general" | "stockfish";
+type PlayerContinuation = "general" | "stockfish" | "manual";
 type PendingAutoMove = {
   fen: string;
   uci: string;
@@ -93,7 +93,6 @@ type StoredPracticeSettings = {
   clockMinutes: number;
   clockIncrementSeconds: number;
   clockEnabled: boolean;
-  engineEnabled: boolean;
 };
 
 const DEFAULT_SETTINGS: StoredPracticeSettings = {
@@ -106,7 +105,6 @@ const DEFAULT_SETTINGS: StoredPracticeSettings = {
   clockMinutes: DEFAULT_CLOCK_MINUTES,
   clockIncrementSeconds: DEFAULT_CLOCK_INCREMENT_SECONDS,
   clockEnabled: true,
-  engineEnabled: true,
 };
 
 const normalizeClockValue = (value: unknown, fallback: number, maximum: number): number => {
@@ -163,9 +161,11 @@ const loadPracticeSettings = (): StoredPracticeSettings => {
       opponentUsernames: allowMultiplePlayers ? opponentUsernames : opponentUsernames.slice(0, 1),
       allowMultiplePlayers,
       playerContinuation:
-        value.playerContinuation === "general" || value.continueWithGeneralDb === true
-          ? "general"
-          : "stockfish",
+        value.playerContinuation === "manual"
+          ? "manual"
+          : value.playerContinuation === "general" || value.continueWithGeneralDb === true
+            ? "general"
+            : "stockfish",
       clockMinutes: normalizeClockValue(value.clockMinutes, DEFAULT_CLOCK_MINUTES, 180),
       clockIncrementSeconds: normalizeClockValue(
         value.clockIncrementSeconds,
@@ -173,7 +173,6 @@ const loadPracticeSettings = (): StoredPracticeSettings => {
         60,
       ),
       clockEnabled: value.clockEnabled !== false,
-      engineEnabled: value.engineEnabled !== false,
     };
   } catch {
     return DEFAULT_SETTINGS;
@@ -326,6 +325,7 @@ export const PracticePage = () => {
   const [playerContinuation, setPlayerContinuation] = useState(initialSettings.playerContinuation);
   const [exhaustedFen, setExhaustedFen] = useState<string | null>(null);
   const [usingGeneralFallback, setUsingGeneralFallback] = useState(false);
+  const [manualContinuationActive, setManualContinuationActive] = useState(false);
   const [movesOpen, setMovesOpen] = useState(true);
   const [practiceMoves, setPracticeMoves] = useState<PracticeMove[]>([]);
   const [recentGames, setRecentGames] = useState<PracticeGame[]>([]);
@@ -337,7 +337,6 @@ export const PracticePage = () => {
   const [randomPlayerError, setRandomPlayerError] = useState("");
   const [engineStatus, setEngineStatus] = useState<PracticeEngineStatus>("idle");
   const [engineError, setEngineError] = useState("");
-  const [engineEnabled, setEngineEnabled] = useState(initialSettings.engineEnabled);
   const [clockMinutes, setClockMinutes] = useState(initialSettings.clockMinutes);
   const [clockIncrementSeconds, setClockIncrementSeconds] = useState(
     initialSettings.clockIncrementSeconds,
@@ -350,7 +349,7 @@ export const PracticePage = () => {
 
   const currentFen = boardState?.fen || STARTING_FEN;
   const databaseExhausted = exhaustedFen === currentFen;
-  const engineFallbackReady = engineEnabled && databaseExhausted && status === "ready";
+  const engineFallbackReady = databaseExhausted && !manualContinuationActive && status === "ready";
   const currentLichessAnalysisUrl = lichessAtomicAnalysisUrl(currentFen);
   const currentTurn = boardState?.turn || "white";
   const gameFinished = Boolean(boardState?.winner);
@@ -461,6 +460,7 @@ export const PracticePage = () => {
   const resetOpponentMoveChoices = useCallback((): void => {
     clearAutoMoveState();
     clearTriedMoves();
+    setManualContinuationActive(false);
   }, [clearAutoMoveState, clearTriedMoves]);
 
   useEffect(() => {
@@ -474,14 +474,12 @@ export const PracticePage = () => {
       clockMinutes,
       clockIncrementSeconds,
       clockEnabled,
-      engineEnabled,
     });
   }, [
     allowMultiplePlayers,
     clockIncrementSeconds,
     clockEnabled,
     clockMinutes,
-    engineEnabled,
     opponentMode,
     opponentSource,
     opponentUsernames,
@@ -516,7 +514,7 @@ export const PracticePage = () => {
     currentPly === moveList.length &&
     !navigation &&
     !pendingAutoMove &&
-    !databaseExhausted;
+    (!databaseExhausted || manualContinuationActive);
 
   useEffect(() => {
     if (!clockRunning) return;
@@ -543,6 +541,15 @@ export const PracticePage = () => {
   }, [clockRunning]);
 
   useEffect(() => {
+    if (manualContinuationActive) {
+      setPracticeMoves([]);
+      setRecentGames([]);
+      setStatus("ready");
+      setError("");
+      setUsingGeneralFallback(false);
+      return;
+    }
+
     if (!canUsePlayerSource) {
       setPracticeMoves([]);
       setRecentGames([]);
@@ -611,6 +618,7 @@ export const PracticePage = () => {
   }, [
     canUsePlayerSource,
     currentFen,
+    manualContinuationActive,
     opponentSide,
     opponentSource,
     opponentUsernames,
@@ -620,6 +628,7 @@ export const PracticePage = () => {
   useEffect(() => {
     if (
       !canUsePlayerSource ||
+      manualContinuationActive ||
       status !== "ready" ||
       databaseExhausted ||
       gamePaused ||
@@ -635,6 +644,9 @@ export const PracticePage = () => {
     if (!autoMove) {
       // The selected player -> optional general database chain is complete.
       setExhaustedFen(currentFen);
+      if (opponentSource === "player" && playerContinuation === "manual") {
+        setManualContinuationActive(true);
+      }
       return;
     }
 
@@ -651,11 +663,14 @@ export const PracticePage = () => {
     databaseExhausted,
     gamePaused,
     getUntriedMoves,
+    manualContinuationActive,
     navigation,
     opponentMode,
     opponentSide,
+    opponentSource,
     pendingAutoMove,
     practiceMoves,
+    playerContinuation,
     status,
   ]);
 
@@ -783,6 +798,7 @@ export const PracticePage = () => {
   const requestNavigation = useCallback(
     (command: PlaybackCommand): void => {
       clearAutoMoveState();
+      setManualContinuationActive(false);
       if (command === "previous" || command === "start") {
         setGamePaused(true);
       }
@@ -794,6 +810,7 @@ export const PracticePage = () => {
   const navigateToPly = useCallback(
     (plyIndex: number): void => {
       clearAutoMoveState();
+      setManualContinuationActive(false);
       if (plyIndex < currentPly) {
         setGamePaused(true);
       }
@@ -1128,6 +1145,7 @@ export const PracticePage = () => {
     if (status === "loading") return "Loading database moves";
     if (status === "error") return error;
     if (usingGeneralFallback) return "Using general database";
+    if (manualContinuationActive) return "Continue with your moves";
     if (databaseExhausted) return "Database line ended";
     if (currentTurn === side) return `Your move as ${side}`;
     return `Database to move as ${opponentSide}`;
@@ -1253,24 +1271,6 @@ export const PracticePage = () => {
                 title="Undo the opponent move and choose a different one (Q)"
               >
                 <FontAwesomeIcon icon={faShuffle} />
-              </button>
-              <button
-                type="button"
-                className={`practiceAlternateMoveButton practiceEngineToggle ${engineEnabled ? "active" : ""}`}
-                aria-label={
-                  engineEnabled
-                    ? "Disable Fairy-Stockfish fallback"
-                    : "Enable Fairy-Stockfish fallback"
-                }
-                aria-pressed={engineEnabled}
-                title={
-                  engineEnabled
-                    ? "Disable Fairy-Stockfish after databases end"
-                    : "Enable Fairy-Stockfish after databases end"
-                }
-                onClick={() => setEngineEnabled((enabled) => !enabled)}
-              >
-                <FontAwesomeIcon icon={faRobot} />
               </button>
               <button
                 type="button"
@@ -1452,6 +1452,17 @@ export const PracticePage = () => {
                       }}
                     >
                       General DB
+                    </button>
+                    <button
+                      type="button"
+                      className={playerContinuation === "manual" ? "active" : ""}
+                      aria-pressed={playerContinuation === "manual"}
+                      onClick={() => {
+                        setPlayerContinuation("manual");
+                        resetOpponentMoveChoices();
+                      }}
+                    >
+                      Manual
                     </button>
                     <button
                       type="button"

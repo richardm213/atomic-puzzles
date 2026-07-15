@@ -576,12 +576,6 @@
   color: var(--color-heading);
 }
 
-.practiceEngineToggle.active {
-  border-color: color-mix(in srgb, var(--color-primary) 62%, var(--color-border));
-  background: color-mix(in srgb, var(--color-primary) 24%, var(--color-panel-strong));
-  color: var(--color-primary-pale);
-}
-
 .practiceAlternateMoveButton:disabled {
   opacity: 0.5;
   cursor: not-allowed;
