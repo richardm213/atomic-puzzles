@@ -91,9 +91,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setError("Your Lichess login is no longer valid. Please log in again.");
     };
     const handleStorage = (event: StorageEvent): void => {
-      if (event.key === LICHESS_SESSION_STORAGE_KEY && event.newValue === null) {
-        clearInvalidSession();
+      if (event.key !== LICHESS_SESSION_STORAGE_KEY) return;
+
+      if (event.newValue === null) {
+        clearStoredLichessSession();
+        applySession(null);
+        setError("");
+        return;
       }
+
+      void restoreLichessSession()
+        .then((restoredSession) => {
+          applySession(restoredSession);
+          setError("");
+        })
+        .catch(() => {
+          clearInvalidSession();
+        });
     };
 
     window.addEventListener(LICHESS_SESSION_INVALID_EVENT, clearInvalidSession);

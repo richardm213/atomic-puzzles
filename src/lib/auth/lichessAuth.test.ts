@@ -87,6 +87,10 @@ describe("Lichess OAuth callback", () => {
       expiresAt: null,
       me: { username: "Viewer" },
     });
+    expect(
+      JSON.parse(window.localStorage.getItem(LICHESS_SESSION_STORAGE_KEY) ?? "{}"),
+    ).toMatchObject(result.session);
+    expect(window.sessionStorage.getItem(LICHESS_SESSION_STORAGE_KEY)).toBeNull();
     expect(await restoreLichessSession()).toEqual(result.session);
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
@@ -176,9 +180,9 @@ describe("Lichess OAuth callback", () => {
       me: { username: "ActualTokenOwner" },
     });
     expect(
-      JSON.parse(window.sessionStorage.getItem(LICHESS_SESSION_STORAGE_KEY) ?? "{}"),
+      JSON.parse(window.localStorage.getItem(LICHESS_SESSION_STORAGE_KEY) ?? "{}"),
     ).toMatchObject({ me: { username: "ActualTokenOwner" } });
-    expect(window.localStorage.getItem(LICHESS_SESSION_STORAGE_KEY)).toBeNull();
+    expect(window.sessionStorage.getItem(LICHESS_SESSION_STORAGE_KEY)).toBeNull();
   });
 
   it("rejects a state-substitution attempt without exchanging its code", async () => {

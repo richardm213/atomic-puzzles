@@ -181,17 +181,21 @@ export const clearStoredPostLoginRedirect = (): void => {
 };
 
 const getStoredLichessSession = (): LichessSession | null => {
-  const current = parseStoredJson<LichessSession>(window.sessionStorage, STORAGE_KEYS.session);
+  const current = parseStoredJson<LichessSession>(window.localStorage, STORAGE_KEYS.session);
   if (current) return current;
 
-  // Migrate existing persistent sessions once, then keep bearer tokens scoped
-  // to the current browser tab instead of leaving them in persistent storage.
-  const legacy = parseStoredJson<LichessSession>(window.localStorage, STORAGE_KEYS.session);
+  // Preserve sessions created by the previous tab-scoped implementation.
+  const legacy = parseStoredJson<LichessSession>(window.sessionStorage, STORAGE_KEYS.session);
   if (legacy) {
-    window.sessionStorage.setItem(STORAGE_KEYS.session, JSON.stringify(legacy));
-    window.localStorage.removeItem(STORAGE_KEYS.session);
+    window.localStorage.setItem(STORAGE_KEYS.session, JSON.stringify(legacy));
+    window.sessionStorage.removeItem(STORAGE_KEYS.session);
   }
   return legacy;
+};
+
+const storeLichessSession = (session: LichessSession): void => {
+  window.localStorage.setItem(STORAGE_KEYS.session, JSON.stringify(session));
+  window.sessionStorage.removeItem(STORAGE_KEYS.session);
 };
 
 export const clearStoredLichessSession = (): void => {
@@ -292,7 +296,7 @@ export const restoreLichessSession = async (): Promise<LichessSession | null> =>
   try {
     const me = await fetchLichessAccount(session.accessToken);
     const verifiedSession = { ...session, me };
-    window.sessionStorage.setItem(STORAGE_KEYS.session, JSON.stringify(verifiedSession));
+    storeLichessSession(verifiedSession);
     return verifiedSession;
   } catch {
     clearStoredLichessSession();
@@ -457,7 +461,7 @@ export const completeLichessLogin = async (
     expiresAt,
     me,
   };
-  window.sessionStorage.setItem(STORAGE_KEYS.session, JSON.stringify(session));
+  storeLichessSession(session);
   clearPendingAuthState();
 
   return { session, returnTo };
