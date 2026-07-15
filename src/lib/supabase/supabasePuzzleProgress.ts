@@ -5,7 +5,9 @@ import type {
   PuzzleProgressRpcRow,
   PuzzleProgressWithUsernameRow,
 } from "../../types/supabase";
+import { appAssetPath } from "../../utils/appAssetPath";
 import { normalizeUsername } from "../../utils/playerNames";
+import { invalidateLichessSessionForResponse } from "../auth/lichessAuth";
 import { getSupabaseClient } from "./supabaseClient";
 import { fetchAllSupabaseRows, loadSupabasePage, loadSupabaseRows } from "./supabaseRows";
 
@@ -20,9 +22,6 @@ export type PuzzleProgressSummary = {
 
 type SupabaseClient = ReturnType<typeof getSupabaseClient>;
 
-const PUZZLE_PROGRESS_RPC =
-  (import.meta.env.VITE_SUPABASE_PUZZLE_PROGRESS_RPC?.trim() ??
-    "record_first_puzzle_attempt") as keyof Database["public"]["Functions"];
 const PUZZLE_PROGRESS_TABLE =
   import.meta.env.VITE_SUPABASE_PUZZLE_PROGRESS_TABLE?.trim() ?? "puzzle_progress";
 const PUZZLE_PROGRESS_PAGE_RPC =
@@ -258,6 +257,7 @@ const loadAttemptedPuzzleIdsFromRpc = async (
 };
 
 export type RecordPuzzleProgressInput = {
+  accessToken: string;
   username: string;
   puzzleId: string | number;
   puzzleCorrect: boolean;
@@ -270,6 +270,7 @@ export type FetchPuzzleAttemptsForPuzzleOptions = {
 };
 
 export const recordPuzzleProgress = async ({
+  accessToken,
   username,
   puzzleId,
   puzzleCorrect,
@@ -282,7 +283,7 @@ export const recordPuzzleProgress = async ({
     : String(incorrectMove ?? "")
         .trim() || null;
 
-  if (!normalizedUsername || !normalizedPuzzleId) return;
+  if (!accessToken || !normalizedUsername || !normalizedPuzzleId) return;
 
   const requestKey = `${normalizedUsername}:${normalizedPuzzleId}`;
   const existingRequest = puzzleProgressWriteRequests.get(requestKey);
@@ -292,17 +293,20 @@ export const recordPuzzleProgress = async ({
 
   const request = (async (): Promise<void> => {
     const firstAttemptAt = new Date().toISOString();
-    const supabase = getSupabaseClient();
-    const { error } = await supabase.rpc(PUZZLE_PROGRESS_RPC, {
-      p_username: normalizedUsername,
-      p_puzzle_id: normalizedPuzzleId,
-      p_puzzle_correct: Boolean(puzzleCorrect),
-      p_incorrect_move: normalizedIncorrectMove,
+    const response = await fetch(appAssetPath("/api/puzzles/progress"), {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        puzzleId: normalizedPuzzleId,
+        puzzleCorrect: Boolean(puzzleCorrect),
+        incorrectMove: normalizedIncorrectMove,
+      }),
     });
-
-    if (error) {
-      throw new Error(`Unable to record puzzle progress: ${error.message}`);
-    }
+    invalidateLichessSessionForResponse(response, accessToken);
+    if (!response.ok) throw new Error("Unable to record puzzle progress.");
 
     upsertLocalPuzzleProgressRow(normalizedUsername, {
       puzzle_id: normalizedPuzzleId,

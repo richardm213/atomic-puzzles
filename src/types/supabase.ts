@@ -91,18 +91,19 @@ export type PuzzleVoteRow = {
   updated_at: string;
 };
 
-export type PuzzleCommentRow = {
+export type CommunityCommentRow = {
   id: number;
-  puzzle_id: number;
+  target_type: "puzzle" | "profile" | "match";
+  target_id: string;
+  target_context: string;
   username: string;
   parent_id: number | null;
   body: string;
   created_at: string;
 };
 
-export type PuzzleCommentVoteRow = {
+export type CommunityCommentVoteRow = {
   comment_id: number;
-  puzzle_id: number;
   username: string;
   vote: -1 | 1;
   created_at: string;
@@ -161,15 +162,18 @@ export type Database = {
         Pick<PuzzleVoteRow, "puzzle_id" | "username" | "vote">,
         Pick<PuzzleVoteRow, "vote">
       >;
-      puzzle_comments: TableDef<
-        PuzzleCommentRow,
-        Pick<PuzzleCommentRow, "puzzle_id" | "username" | "parent_id" | "body">,
+      community_comments: TableDef<
+        CommunityCommentRow,
+        Pick<
+          CommunityCommentRow,
+          "target_type" | "target_id" | "target_context" | "username" | "parent_id" | "body"
+        >,
         never
       >;
-      puzzle_comment_votes: TableDef<
-        PuzzleCommentVoteRow,
-        Pick<PuzzleCommentVoteRow, "comment_id" | "puzzle_id" | "username" | "vote">,
-        Pick<PuzzleCommentVoteRow, "vote">
+      community_comment_votes: TableDef<
+        CommunityCommentVoteRow,
+        Pick<CommunityCommentVoteRow, "comment_id" | "username" | "vote">,
+        Pick<CommunityCommentVoteRow, "vote">
       >;
       notifications: TableDef<NotificationRow, never, Pick<NotificationRow, "read_at">>;
       users: TableDef<{ username: string; created_at: string | null }, { username: string }>;

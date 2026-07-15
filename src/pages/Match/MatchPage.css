@@ -23,7 +23,8 @@
 }
 
 .matchPageHeader,
-.matchPageContent {
+.matchPageContent,
+.matchPagePanel > .puzzleCommunity {
   width: min(660px, 100%);
   margin-inline: auto;
 }

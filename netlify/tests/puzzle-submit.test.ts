@@ -41,7 +41,7 @@ describe("puzzle-submit function", () => {
   it("rejects malformed submissions before contacting external services", async () => {
     const response = await handler({
       httpMethod: "POST",
-      headers: { authorization: "Bearer test-token" },
+      headers: { authorization: "Bearer test_token" },
       body: "{}",
     });
     expect(response.statusCode).toBe(400);
@@ -50,7 +50,7 @@ describe("puzzle-submit function", () => {
   it("rejects unnumbered move text before verifying the access token", async () => {
     const response = await handler({
       httpMethod: "POST",
-      headers: { authorization: "Bearer test-token" },
+      headers: { authorization: "Bearer test_token" },
       body: JSON.stringify({
         fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
         solution: "e4 e5",
@@ -83,7 +83,7 @@ describe("puzzle-submit function", () => {
 
     const response = await handler({
       httpMethod: "POST",
-      headers: { authorization: "Bearer test-token" },
+      headers: { authorization: "Bearer test_token" },
       body: JSON.stringify({
         fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
         solution: "1. e4",
@@ -119,7 +119,7 @@ describe("puzzle-submit function", () => {
 
     const response = await handler({
       httpMethod: "POST",
-      headers: { authorization: "Bearer test-token" },
+      headers: { authorization: "Bearer test_token" },
       body: JSON.stringify({
         fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
         solution: "1. e4",

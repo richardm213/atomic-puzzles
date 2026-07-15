@@ -14,11 +14,13 @@ import { createPortal } from "react-dom";
 
 import { useAuth } from "../../context/AuthContext";
 import {
+  type CommunityDiscussion as CommunityDiscussionData,
+  type CommunityTarget,
+  fetchCommunityDiscussion,
   fetchPuzzleCommunity,
-  postPuzzleComment,
+  postCommunityComment,
   type PuzzleComment,
-  type PuzzleCommunity as PuzzleCommunityData,
-  savePuzzleCommentVote,
+  saveCommunityCommentVote,
   savePuzzleVote,
 } from "../../lib/community/puzzleCommunity";
 import { formatLocalDateTime } from "../../utils/formatters";
@@ -28,15 +30,34 @@ type PuzzleCommunityProps = {
   voteTargetId: string;
 };
 
-const emptyCommunity = (puzzleId: number): PuzzleCommunityData => ({
-  counts: { puzzle_id: puzzleId, upvotes: 0, downvotes: 0, score: 0 },
+type CommunityDiscussionProps = {
+  target: CommunityTarget;
+  voteTargetId?: string;
+  eyebrow?: string;
+  heading?: string;
+};
+
+const emptyCommunity = (target: CommunityTarget): CommunityDiscussionData => ({
+  ...(target.type === "puzzle"
+    ? {
+        counts: { puzzle_id: Number(target.id), upvotes: 0, downvotes: 0, score: 0 },
+        viewerVote: 0 as const,
+      }
+    : {}),
   comments: [],
-  viewerVote: 0,
 });
 
-export const PuzzleCommunity = ({ puzzleId, voteTargetId }: PuzzleCommunityProps) => {
-  const { accessToken, isAuthenticated, login, user } = useAuth();
-  const [community, setCommunity] = useState<PuzzleCommunityData | null>(null);
+export const CommunityDiscussion = ({
+  target,
+  voteTargetId,
+  eyebrow = "Community",
+  heading = "Discussion",
+}: CommunityDiscussionProps) => {
+  const targetType = target.type;
+  const targetId = target.id;
+  const targetContext = target.context;
+  const { accessToken, getAccessToken, isAuthenticated, login, user } = useAuth();
+  const [community, setCommunity] = useState<CommunityDiscussionData | null>(null);
   const [loading, setLoading] = useState(false);
   const [pendingVote, setPendingVote] = useState(false);
   const [pendingCommentVotes, setPendingCommentVotes] = useState<Set<number>>(() => new Set());
@@ -49,24 +70,33 @@ export const PuzzleCommunity = ({ puzzleId, voteTargetId }: PuzzleCommunityProps
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    setVoteTarget(document.getElementById(voteTargetId));
+    setVoteTarget(voteTargetId ? document.getElementById(voteTargetId) : null);
   }, [voteTargetId]);
 
   useEffect(() => {
-    if (!puzzleId) return;
+    if (!targetId) return;
+    const currentTarget: CommunityTarget = {
+      type: targetType,
+      id: targetId,
+      context: targetContext ?? "",
+    };
     let current = true;
     setLoading(true);
     setError("");
     setCollapsed(new Set());
     setReplyingTo(null);
     setCommentBody("");
-    void fetchPuzzleCommunity(puzzleId, accessToken)
+    const loadRequest =
+      targetType === "puzzle"
+        ? fetchPuzzleCommunity(Number(targetId), accessToken)
+        : fetchCommunityDiscussion(currentTarget, accessToken);
+    void loadRequest
       .then((result) => {
         if (current) setCommunity(result);
       })
       .catch((loadError) => {
         if (!current) return;
-        setCommunity(emptyCommunity(puzzleId));
+        setCommunity(emptyCommunity(currentTarget));
         setError(loadError instanceof Error ? loadError.message : "Unable to load discussion.");
       })
       .finally(() => {
@@ -75,7 +105,7 @@ export const PuzzleCommunity = ({ puzzleId, voteTargetId }: PuzzleCommunityProps
     return () => {
       current = false;
     };
-  }, [accessToken, puzzleId]);
+  }, [accessToken, targetContext, targetId, targetType]);
 
   const childrenByParent = useMemo(() => {
     const children = new Map<number | null, PuzzleComment[]>();
@@ -109,19 +139,22 @@ export const PuzzleCommunity = ({ puzzleId, voteTargetId }: PuzzleCommunityProps
     commentInputRef.current?.focus();
   }, [replyingTo]);
 
-  const requireLogin = (): boolean => {
-    if (isAuthenticated && accessToken) return true;
+  const requireLogin = (): string => {
+    const currentAccessToken = getAccessToken();
+    if (isAuthenticated && currentAccessToken) return currentAccessToken;
     void login(`${window.location.pathname}${window.location.search}${window.location.hash}`);
-    return false;
+    return "";
   };
 
   const handleVote = async (vote: -1 | 1) => {
-    if (!puzzleId || pendingVote || !requireLogin()) return;
+    if (target.type !== "puzzle" || pendingVote) return;
+    const currentAccessToken = requireLogin();
+    if (!currentAccessToken) return;
     const nextVote = community?.viewerVote === vote ? 0 : vote;
     setPendingVote(true);
     setError("");
     try {
-      setCommunity(await savePuzzleVote(puzzleId, nextVote, accessToken));
+      setCommunity(await savePuzzleVote(Number(target.id), nextVote, currentAccessToken));
     } catch (voteError) {
       setError(voteError instanceof Error ? voteError.message : "Unable to save vote.");
     } finally {
@@ -131,11 +164,15 @@ export const PuzzleCommunity = ({ puzzleId, voteTargetId }: PuzzleCommunityProps
 
   const handlePostComment = async () => {
     const body = commentBody.trim();
-    if (!puzzleId || !body || postingComment || !requireLogin()) return;
+    if (!target.id || !body || postingComment) return;
+    const currentAccessToken = requireLogin();
+    if (!currentAccessToken) return;
     setPostingComment(true);
     setError("");
     try {
-      setCommunity(await postPuzzleComment(puzzleId, body, replyingTo?.id ?? null, accessToken));
+      setCommunity(
+        await postCommunityComment(target, body, replyingTo?.id ?? null, currentAccessToken),
+      );
       setCommentBody("");
       setReplyingTo(null);
     } catch (commentError) {
@@ -146,12 +183,14 @@ export const PuzzleCommunity = ({ puzzleId, voteTargetId }: PuzzleCommunityProps
   };
 
   const handleCommentVote = async (comment: PuzzleComment, vote: -1 | 1) => {
-    if (!puzzleId || pendingCommentVotes.has(comment.id) || !requireLogin()) return;
+    if (!target.id || pendingCommentVotes.has(comment.id)) return;
+    const currentAccessToken = requireLogin();
+    if (!currentAccessToken) return;
     const nextVote = comment.viewer_vote === vote ? 0 : vote;
     setPendingCommentVotes((current) => new Set(current).add(comment.id));
     setError("");
     try {
-      setCommunity(await savePuzzleCommentVote(puzzleId, comment.id, nextVote, accessToken));
+      setCommunity(await saveCommunityCommentVote(target, comment.id, nextVote, currentAccessToken));
     } catch (voteError) {
       setError(voteError instanceof Error ? voteError.message : "Unable to save comment vote.");
     } finally {
@@ -191,7 +230,7 @@ export const PuzzleCommunity = ({ puzzleId, voteTargetId }: PuzzleCommunityProps
       {isAuthenticated ? (
         <>
           <textarea
-            id="puzzle-comment-input"
+            id={`${target.type}-comment-input`}
             ref={commentInputRef}
             aria-label={replyingTo ? `Reply to ${replyingTo.username}` : "Add a comment"}
             value={commentBody}
@@ -318,48 +357,51 @@ export const PuzzleCommunity = ({ puzzleId, voteTargetId }: PuzzleCommunityProps
     );
   };
 
-  if (!puzzleId) return null;
-  const data = community ?? emptyCommunity(puzzleId);
+  if (!target.id) return null;
+  const data = community ?? emptyCommunity(target);
   const rootComments = childrenByParent.get(null) ?? [];
-  const puzzleVoteControls = (
-    <div className="puzzleVotePrompt">
-      <div className="puzzleVoteControls" aria-label="Vote on this puzzle">
-        <button
-          type="button"
-          className={data.viewerVote === 1 ? "active upvote" : ""}
-          aria-label={`Upvote this puzzle. ${data.counts.upvotes} upvotes`}
-          aria-pressed={data.viewerVote === 1}
-          disabled={pendingVote}
-          onClick={() => void handleVote(1)}
-          title={`${data.counts.upvotes} upvotes`}
-        >
-          <FontAwesomeIcon icon={faArrowUp} />
-          <strong>{data.counts.upvotes}</strong>
-        </button>
-        <button
-          type="button"
-          className={data.viewerVote === -1 ? "active downvote" : ""}
-          aria-label={`Downvote this puzzle. ${data.counts.downvotes} downvotes`}
-          aria-pressed={data.viewerVote === -1}
-          disabled={pendingVote}
-          onClick={() => void handleVote(-1)}
-          title={`${data.counts.downvotes} downvotes`}
-        >
-          <FontAwesomeIcon icon={faArrowDown} />
-          <strong>{data.counts.downvotes}</strong>
-        </button>
+  const puzzleVoteControls =
+    target.type === "puzzle" && data.counts ? (
+      <div className="puzzleVotePrompt">
+        <div className="puzzleVoteControls" aria-label="Vote on this puzzle">
+          <button
+            type="button"
+            className={data.viewerVote === 1 ? "active upvote" : ""}
+            aria-label={`Upvote this puzzle. ${data.counts.upvotes} upvotes`}
+            aria-pressed={data.viewerVote === 1}
+            disabled={pendingVote}
+            onClick={() => void handleVote(1)}
+            title={`${data.counts.upvotes} upvotes`}
+          >
+            <FontAwesomeIcon icon={faArrowUp} />
+            <strong>{data.counts.upvotes}</strong>
+          </button>
+          <button
+            type="button"
+            className={data.viewerVote === -1 ? "active downvote" : ""}
+            aria-label={`Downvote this puzzle. ${data.counts.downvotes} downvotes`}
+            aria-pressed={data.viewerVote === -1}
+            disabled={pendingVote}
+            onClick={() => void handleVote(-1)}
+            title={`${data.counts.downvotes} downvotes`}
+          >
+            <FontAwesomeIcon icon={faArrowDown} />
+            <strong>{data.counts.downvotes}</strong>
+          </button>
+        </div>
       </div>
-    </div>
-  );
+    ) : null;
+
+  const headingId = `${target.type}-community-heading`;
 
   return (
     <>
-      {voteTarget ? createPortal(puzzleVoteControls, voteTarget) : null}
-      <section className="puzzleCommunity" aria-labelledby="puzzle-community-heading">
+      {voteTarget && puzzleVoteControls ? createPortal(puzzleVoteControls, voteTarget) : null}
+      <section className="puzzleCommunity" aria-labelledby={headingId}>
         <div className="puzzleCommunityHeader">
           <div>
-            <span>Community</span>
-            <h2 id="puzzle-community-heading">Discussion</h2>
+            <span>{eyebrow}</span>
+            <h2 id={headingId}>{heading}</h2>
           </div>
         </div>
 
@@ -379,3 +421,11 @@ export const PuzzleCommunity = ({ puzzleId, voteTargetId }: PuzzleCommunityProps
     </>
   );
 };
+
+export const PuzzleCommunity = ({ puzzleId, voteTargetId }: PuzzleCommunityProps) =>
+  puzzleId ? (
+    <CommunityDiscussion
+      target={{ type: "puzzle", id: String(puzzleId) }}
+      voteTargetId={voteTargetId}
+    />
+  ) : null;

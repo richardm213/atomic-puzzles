@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -23,7 +24,7 @@ import {
   setStoredPostLoginRedirect,
   startLichessLogin,
 } from "../lib/auth/lichessAuth";
-import { ensureSupabaseUser } from "../lib/supabase/supabaseUsers";
+import { registerAuthenticatedSiteUser } from "../lib/auth/siteSession";
 
 type AuthStatus = "loading" | "authenticated" | "anonymous";
 
@@ -40,6 +41,7 @@ export type AuthContextValue = {
   finishLogin: (search: string) => Promise<string>;
   logout: () => Promise<void>;
   clearError: () => void;
+  getAccessToken: () => string;
   getDebugSnapshot: () => AuthDebugSnapshot;
   getPostLoginRedirect: () => string;
   clearPostLoginRedirect: () => void;
@@ -51,6 +53,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [status, setStatus] = useState<AuthStatus>("loading");
   const [session, setSession] = useState<LichessSession | null>(null);
   const [error, setError] = useState("");
+  const sessionRef = useRef<LichessSession | null>(null);
+
+  const applySession = useCallback((nextSession: LichessSession | null): void => {
+    sessionRef.current = nextSession;
+    setSession(nextSession);
+    setStatus(nextSession ? "authenticated" : "anonymous");
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -59,13 +68,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       try {
         const restoredSession = await restoreLichessSession();
         if (cancelled) return;
-        setSession(restoredSession);
-        setStatus(restoredSession ? "authenticated" : "anonymous");
+        applySession(restoredSession);
       } catch (restoreError) {
         if (cancelled) return;
         clearStoredLichessSession();
-        setSession(null);
-        setStatus("anonymous");
+        applySession(null);
         setError(restoreError instanceof Error ? restoreError.message : "Unable to restore login.");
       }
     };
@@ -75,13 +82,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [applySession]);
 
   useEffect(() => {
     const clearInvalidSession = (): void => {
       clearStoredLichessSession();
-      setSession(null);
-      setStatus("anonymous");
+      applySession(null);
       setError("Your Lichess login is no longer valid. Please log in again.");
     };
     const handleStorage = (event: StorageEvent): void => {
@@ -96,7 +102,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       window.removeEventListener(LICHESS_SESSION_INVALID_EVENT, clearInvalidSession);
       window.removeEventListener("storage", handleStorage);
     };
-  }, []);
+  }, [applySession]);
 
   const clearError = useCallback(() => {
     setError("");
@@ -113,36 +119,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError("");
     try {
       const result = await completeLichessLogin(search);
-      if (result.session?.me?.username) {
-        await ensureSupabaseUser(result.session.me.username);
-      }
-      setSession(result.session);
-      setStatus("authenticated");
+      applySession(result.session);
+      // Site registration is verified again server-side from the bearer token.
+      // The browser never gets to choose which username is registered.
+      void registerAuthenticatedSiteUser(result.session.accessToken).catch(() => undefined);
       const redirectPath = result.returnTo || getStoredPostLoginRedirect();
       setStoredPostLoginRedirect(redirectPath);
       return redirectPath;
     } catch (loginError) {
-      clearStoredLichessSession();
-      setSession(null);
-      setStatus("anonymous");
+      const existingSession = sessionRef.current;
+      if (existingSession) {
+        applySession(existingSession);
+      } else {
+        clearStoredLichessSession();
+        applySession(null);
+      }
       const message = loginError instanceof Error ? loginError.message : "Unable to finish login.";
       setError(message);
       throw loginError;
     }
-  }, []);
+  }, [applySession]);
 
   const logout = useCallback(async (): Promise<void> => {
-    const accessToken = session?.accessToken ?? "";
+    const accessToken = sessionRef.current?.accessToken ?? "";
     clearStoredLichessSession();
-    setSession(null);
-    setStatus("anonymous");
+    applySession(null);
     setError("");
     try {
       await revokeLichessSession(accessToken);
     } catch {
       // Keep logout resilient even if token revocation fails.
     }
-  }, [session?.accessToken]);
+  }, [applySession]);
+
+  const getAccessToken = useCallback((): string => sessionRef.current?.accessToken ?? "", []);
 
   const getDebugSnapshot = useCallback(() => getLichessAuthDebugSnapshot(), []);
 
@@ -158,11 +168,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       finishLogin,
       logout,
       clearError,
+      getAccessToken,
       getDebugSnapshot,
       getPostLoginRedirect: getStoredPostLoginRedirect,
       clearPostLoginRedirect: clearStoredPostLoginRedirect,
     }),
-    [clearError, error, finishLogin, getDebugSnapshot, login, logout, session, status],
+    [clearError, error, finishLogin, getAccessToken, getDebugSnapshot, login, logout, session, status],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

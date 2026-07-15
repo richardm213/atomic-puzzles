@@ -12,6 +12,7 @@ describe("profile comment history", () => {
   it("keeps public comment reads available without a valid login", () => {
     expect(isPublicCommunityReadAction("siteComments")).toBe(true);
     expect(isPublicCommunityReadAction("profileComments")).toBe(true);
+    expect(isPublicCommunityReadAction("loadDiscussion")).toBe(true);
     expect(isPublicCommunityReadAction("comment")).toBe(false);
     expect(isPublicCommunityReadAction("commentVote")).toBe(false);
   });
@@ -22,9 +23,30 @@ describe("profile comment history", () => {
 
   it("sorts top comments by net score and uses recency as the tie-breaker", () => {
     const comments = [
-      { id: 1, puzzle_id: 10, body: "Older", created_at: "2026-01-01" },
-      { id: 2, puzzle_id: 20, body: "Top", created_at: "2026-01-02" },
-      { id: 3, puzzle_id: 30, body: "Newest tie", created_at: "2026-01-03" },
+      {
+        id: 1,
+        target_type: "puzzle" as const,
+        target_id: "10",
+        target_context: "",
+        body: "Older",
+        created_at: "2026-01-01",
+      },
+      {
+        id: 2,
+        target_type: "profile" as const,
+        target_id: "alice",
+        target_context: "",
+        body: "Top",
+        created_at: "2026-01-02",
+      },
+      {
+        id: 3,
+        target_type: "match" as const,
+        target_id: "match-3",
+        target_context: "bullet",
+        body: "Newest tie",
+        created_at: "2026-01-03",
+      },
     ];
     const counts = [
       { comment_id: 1, upvotes: 10, score: 2 },
@@ -99,6 +121,31 @@ describe("puzzle-community function", () => {
       body: JSON.stringify({ action: "comment", puzzleId: 1, body: "Nice puzzle" }),
     });
     expect(response.statusCode).toBe(401);
+  });
+
+  it("requires login for profile commenting", async () => {
+    const response = await handler({
+      httpMethod: "POST",
+      body: JSON.stringify({
+        action: "comment",
+        targetType: "profile",
+        targetId: "alice",
+        body: "Great profile",
+      }),
+    });
+    expect(response.statusCode).toBe(401);
+  });
+
+  it("rejects a match discussion without its mode context", async () => {
+    const response = await handler({
+      httpMethod: "POST",
+      body: JSON.stringify({
+        action: "loadDiscussion",
+        targetType: "match",
+        targetId: "match-123",
+      }),
+    });
+    expect(response.statusCode).toBe(400);
   });
 
   it("requires login for comment voting", async () => {

@@ -9,6 +9,7 @@ import { MatchDetails } from "../../components/MatchDetails/MatchDetails";
 import { MatchPageLink } from "../../components/MatchPageLink/MatchPageLink";
 import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { ProfileMetricCard } from "../../components/ProfileMetricCard/ProfileMetricCard";
+import { CommunityDiscussion } from "../../components/PuzzleCommunity/PuzzleCommunity";
 import { Seo } from "../../components/Seo/Seo";
 import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFilterChecks";
 import { TimeControlFields } from "../../components/TimeControlFields/TimeControlFields";
@@ -23,7 +24,6 @@ import {
   opponentRatingSliderMin,
   pageSizeOptions,
 } from "../../constants/matches";
-import { useAuth } from "../../context/AuthContext";
 import {
   buildRankingsLocation,
   filterMatches,
@@ -36,12 +36,7 @@ import {
   useMonthRanks,
   useRatingsSnapshotByMode,
 } from "../../hooks/usePlayerProfileData";
-import {
-  fetchProfileCommentKarma,
-  fetchProfilePuzzleComments,
-  type ProfileCommentSort,
-  type ProfilePuzzleComment,
-} from "../../lib/community/puzzleCommunity";
+import { fetchCommunityDiscussion } from "../../lib/community/puzzleCommunity";
 import { loadRawMatchesByMode, normalizeMatches } from "../../lib/matches/matchData";
 import {
   type AliasAccount,
@@ -73,8 +68,9 @@ import { isToggleActionKey } from "../../utils/toggleActionKey";
 
 const countOptions = [5, 10, 20];
 type RankHistoryMode = import("../../constants/matches").Mode | "all";
-const profileHistoryTabOptions = ["matches", "ranks", "trophies", "comments", "opponents"] as const;
+const profileHistoryTabOptions = ["matches", "ranks", "opponents", "comments"] as const;
 type ProfileHistoryTab = (typeof profileHistoryTabOptions)[number];
+type RankHistoryView = "history" | "trophies";
 type TrophyCaseSort = "prestige" | "date";
 type FavoriteOpponentSort =
   | "opponent"
@@ -96,7 +92,6 @@ const favoriteOpponentDefaultMatchLimit = 500;
 const favoriteOpponentAllModeMatchLimitOptions = [250, 500, 1000, 1500, 2000];
 const favoriteOpponentSingleModeMatchLimitOptions = [250, 500, 1000, 1500, 2000, 5000];
 const favoriteOpponentPageSize = 200;
-const profileCommentsPageSize = 25;
 const favoriteOpponentDisplayCountOptions = [25, 50, 100];
 const favoriteOpponentSortLabels = {
   opponent: "Opponent",
@@ -176,12 +171,21 @@ const isProfileHistoryTab = (value: string): value is ProfileHistoryTab =>
 
 const getProfileHistoryTabFromSearch = (search: string): ProfileHistoryTab => {
   const requestedTab = new URLSearchParams(search).get("tab") ?? "";
+  if (requestedTab === "trophies") return "ranks";
   return isProfileHistoryTab(requestedTab) ? requestedTab : "matches";
 };
 
 const getProfileHistoryTabFromLocation = (): ProfileHistoryTab => {
   if (typeof window === "undefined") return "matches";
   return getProfileHistoryTabFromSearch(window.location.search);
+};
+
+const getRankHistoryViewFromLocation = (): RankHistoryView => {
+  if (typeof window === "undefined") return "history";
+  const searchParams = new URLSearchParams(window.location.search);
+  return searchParams.get("tab") === "trophies" || searchParams.get("view") === "trophies"
+    ? "trophies"
+    : "history";
 };
 
 const isTrophyCaseSort = (value: string): value is TrophyCaseSort =>
@@ -954,7 +958,6 @@ export const PlayerProfilePage = ({
   username?: string;
   historyOnly?: boolean;
 }) => {
-  const { accessToken } = useAuth();
   const normalizedUsername = useMemo(() => normalizeUsername(username), [username]);
   const [matchHistoryMode, setMatchHistoryMode] =
     useState<import("../../constants/matches").Mode>(defaultMode);
@@ -963,6 +966,8 @@ export const PlayerProfilePage = ({
   const [bestRankMode, setBestRankMode] =
     useState<import("../../constants/matches").Mode>(defaultMode);
   const [rankHistoryMode, setRankHistoryMode] = useState<RankHistoryMode>("all");
+  const [rankHistoryView, setRankHistoryView] =
+    useState<RankHistoryView>(getRankHistoryViewFromLocation);
   const [trophyCaseSort, setTrophyCaseSort] = useState<TrophyCaseSort>(getStoredTrophyCaseSort);
   const [profileHistoryTab, setProfileHistoryTab] = useState<ProfileHistoryTab>(() =>
     getProfileHistoryTabFromLocation(),
@@ -985,6 +990,7 @@ export const PlayerProfilePage = ({
   const [timeControlInitialFilter, setTimeControlInitialFilter] = useState("all");
   const [timeControlIncrementFilter, setTimeControlIncrementFilter] = useState("all");
   const [isHistoryAvailable, setIsHistoryAvailable] = useState(false);
+  const [hasProfileComments, setHasProfileComments] = useState(false);
   const [loadingMatches, setLoadingMatches] = useState(false);
   const [favoriteOpponentRows, setFavoriteOpponentRows] = useState<FavoriteOpponentRow[]>([]);
   const [favoriteOpponentMode, setFavoriteOpponentMode] = useState<RankHistoryMode>(
@@ -1003,13 +1009,6 @@ export const PlayerProfilePage = ({
   const [favoriteOpponentLoadKey, setFavoriteOpponentLoadKey] = useState("");
   const [loadingFavoriteOpponents, setLoadingFavoriteOpponents] = useState(false);
   const [favoriteOpponentsError, setFavoriteOpponentsError] = useState("");
-  const [profileComments, setProfileComments] = useState<ProfilePuzzleComment[]>([]);
-  const [profileCommentsPage, setProfileCommentsPage] = useState(1);
-  const [profileCommentsTotal, setProfileCommentsTotal] = useState(0);
-  const [profileCommentsLoading, setProfileCommentsLoading] = useState(false);
-  const [profileCommentsError, setProfileCommentsError] = useState("");
-  const [profileCommentsSort, setProfileCommentsSort] = useState<ProfileCommentSort>("recent");
-  const [profileCommentKarma, setProfileCommentKarma] = useState<number | null>(null);
   const matchRequestIdRef = useRef(0);
   const favoriteOpponentsRequestIdRef = useRef(0);
   const searchSubmitInFlightRef = useRef(false);
@@ -1069,14 +1068,8 @@ export const PlayerProfilePage = ({
     setProfileHistoryTab(getProfileHistoryTabFromLocation());
     setPage(1);
     setError("");
+    setHasProfileComments(false);
     setFavoriteOpponentsError("");
-    setProfileComments([]);
-    setProfileCommentsPage(1);
-    setProfileCommentsTotal(0);
-    setProfileCommentsLoading(false);
-    setProfileCommentsError("");
-    setProfileCommentsSort("recent");
-    setProfileCommentKarma(null);
     setLoadingMatches(false);
     setLoadingFavoriteOpponents(false);
     setExpandedMatchKeys([]);
@@ -1173,75 +1166,31 @@ export const PlayerProfilePage = ({
   }, [aliasesLoaded, canonicalUsername]);
 
   useEffect(() => {
-    if (!aliasesLoaded || !canonicalUsername) {
-      setProfileCommentKarma(null);
-      return;
-    }
-
     let isCurrent = true;
 
-    const loadKarma = async (): Promise<void> => {
+    const loadProfileCommentAvailability = async () => {
+      if (!aliasesLoaded || !canonicalUsername) {
+        setHasProfileComments(false);
+        return;
+      }
+
       try {
-        const karma = await fetchProfileCommentKarma(canonicalUsername);
-        if (isCurrent) setProfileCommentKarma(karma);
+        const discussion = await fetchCommunityDiscussion({
+          type: "profile",
+          id: canonicalUsername,
+        });
+        if (isCurrent) setHasProfileComments(discussion.comments.length > 0);
       } catch {
-        if (isCurrent) setProfileCommentKarma(null);
+        if (isCurrent) setHasProfileComments(false);
       }
     };
 
-    void loadKarma();
+    void loadProfileCommentAvailability();
+
     return () => {
       isCurrent = false;
     };
   }, [aliasesLoaded, canonicalUsername]);
-
-  useEffect(() => {
-    if (!aliasesLoaded || !canonicalUsername || isBanned || profileHistoryTab !== "comments") {
-      return;
-    }
-
-    let isCurrent = true;
-
-    const loadComments = async (): Promise<void> => {
-      setProfileCommentsLoading(true);
-      setProfileCommentsError("");
-
-      try {
-        const result = await fetchProfilePuzzleComments(canonicalUsername, {
-          page: profileCommentsPage,
-          pageSize: profileCommentsPageSize,
-          accessToken,
-          sort: profileCommentsSort,
-        });
-        if (!isCurrent) return;
-        setProfileComments(result.comments);
-        setProfileCommentsTotal(result.total);
-      } catch (loadError) {
-        if (!isCurrent) return;
-        setProfileComments([]);
-        setProfileCommentsTotal(0);
-        setProfileCommentsError(
-          loadError instanceof Error ? loadError.message : "Unable to load comment history.",
-        );
-      } finally {
-        if (isCurrent) setProfileCommentsLoading(false);
-      }
-    };
-
-    void loadComments();
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [
-    accessToken,
-    aliasesLoaded,
-    canonicalUsername,
-    isBanned,
-    profileCommentsPage,
-    profileCommentsSort,
-    profileHistoryTab,
-  ]);
 
   const runMatchSearch = useCallback(
     async (
@@ -1468,6 +1417,22 @@ export const PlayerProfilePage = ({
     if (typeof window === "undefined") return;
     const nextUrl = new URL(window.location.href);
     nextUrl.searchParams.set("tab", nextTab);
+    window.history.pushState({}, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+  };
+
+  const handleRankHistoryViewChange = (nextView: RankHistoryView): void => {
+    if (rankHistoryView === nextView) return;
+
+    setRankHistoryView(nextView);
+
+    if (typeof window === "undefined") return;
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.set("tab", "ranks");
+    if (nextView === "trophies") {
+      nextUrl.searchParams.set("view", "trophies");
+    } else {
+      nextUrl.searchParams.delete("view");
+    }
     window.history.pushState({}, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
   };
 
@@ -1794,6 +1759,16 @@ export const PlayerProfilePage = ({
 
         {!isBanned && !historyOnly ? (
           <div className="profileActionRow">
+            {hasProfileComments ? (
+              <Link
+                className="profilePuzzleDashboardLink"
+                to="/@/$username/history"
+                params={{ username: canonicalUsername }}
+                search={{ tab: "comments" }}
+              >
+                View comments
+              </Link>
+            ) : null}
             {isHistoryAvailable ? (
               <Link
                 className="profilePuzzleDashboardLink"
@@ -2073,28 +2048,6 @@ export const PlayerProfilePage = ({
                   Rank History
                 </button>
                 <button
-                  id="profile-trophy-case-tab"
-                  type="button"
-                  role="tab"
-                  aria-selected={profileHistoryTab === "trophies"}
-                  aria-controls="profile-trophy-case-panel"
-                  className={profileHistoryTab === "trophies" ? "active" : ""}
-                  onClick={() => handleProfileHistoryTabChange("trophies")}
-                >
-                  Trophy Case
-                </button>
-                <button
-                  id="profile-comment-history-tab"
-                  type="button"
-                  role="tab"
-                  aria-selected={profileHistoryTab === "comments"}
-                  aria-controls="profile-comment-history-panel"
-                  className={profileHistoryTab === "comments" ? "active" : ""}
-                  onClick={() => handleProfileHistoryTabChange("comments")}
-                >
-                  Comments
-                </button>
-                <button
                   id="profile-favorite-opponents-tab"
                   type="button"
                   role="tab"
@@ -2104,6 +2057,17 @@ export const PlayerProfilePage = ({
                   onClick={() => handleProfileHistoryTabChange("opponents")}
                 >
                   Favorite Opponents
+                </button>
+                <button
+                  id="profile-comments-tab"
+                  type="button"
+                  role="tab"
+                  aria-selected={profileHistoryTab === "comments"}
+                  aria-controls="profile-comments-panel"
+                  className={profileHistoryTab === "comments" ? "active" : ""}
+                  onClick={() => handleProfileHistoryTabChange("comments")}
+                >
+                  Comments
                 </button>
               </div>
 
@@ -2387,100 +2351,6 @@ export const PlayerProfilePage = ({
               </section>
 
               <section
-                id="profile-comment-history-panel"
-                className="profileHistorySection"
-                role="tabpanel"
-                aria-labelledby="profile-comment-history-tab"
-                hidden={profileHistoryTab !== "comments"}
-              >
-                <div className="rankingsMeta profileHistoryMeta">
-                  <div className="profileHistoryTitleControl">
-                    <label htmlFor="profile-comments-sort-select">
-                      <span>Sort</span>
-                      <select
-                        id="profile-comments-sort-select"
-                        aria-label="Comment history sort"
-                        value={profileCommentsSort}
-                        disabled={profileCommentsLoading}
-                        onChange={(event) => {
-                          const nextSort = event.target.value;
-                          if (nextSort === "recent" || nextSort === "top") {
-                            setProfileCommentsSort(nextSort);
-                            setProfileCommentsPage(1);
-                          }
-                        }}
-                      >
-                        <option value="recent">Most recent</option>
-                        <option value="top">Top comments</option>
-                      </select>
-                    </label>
-                  </div>
-                  <div className="profileCommentsSummary">
-                    <span>{profileCommentsTotal} comments</span>
-                    <span
-                      className="profileKarmaBadge"
-                      title="Net comment karma: upvotes minus downvotes"
-                      aria-label={`${profileCommentKarma ?? "Loading"} comment karma`}
-                    >
-                      <i className="fa-solid fa-arrow-up" aria-hidden="true" />
-                      <strong>{profileCommentKarma?.toLocaleString("en-US") ?? "…"}</strong>
-                      <span>karma</span>
-                    </span>
-                  </div>
-                </div>
-
-                {profileCommentsError ? (
-                  <div className="errorText">{profileCommentsError}</div>
-                ) : null}
-                {profileCommentsLoading ? (
-                  <div className="emptyRankings">Loading comments...</div>
-                ) : profileComments.length ? (
-                  <div className="profileCommentHistoryList">
-                    {profileComments.map((comment) => (
-                      <article key={comment.id} className="profileCommentHistoryCard">
-                        <div className="profileCommentHistoryMeta">
-                          <Link
-                            className="profileCommentPuzzleLink"
-                            to="/solve/$puzzleId"
-                            params={{ puzzleId: String(comment.puzzle_id) }}
-                          >
-                            Puzzle #{comment.puzzle_id}
-                          </Link>
-                          <span>{formatLocalDateTime(comment.created_at)}</span>
-                          <span aria-label={`${comment.upvotes} upvotes`}>
-                            <i className="fa-solid fa-arrow-up" aria-hidden="true" />
-                            {comment.upvotes}
-                          </span>
-                        </div>
-                        {comment.content_hidden ? (
-                          <p className="profileCommentHidden">
-                            Comment hidden until you attempt this puzzle.
-                          </p>
-                        ) : (
-                          <p className="profileCommentBody">{comment.body}</p>
-                        )}
-                      </article>
-                    ))}
-                  </div>
-                ) : !profileCommentsError ? (
-                  <div className="emptyRankings">No puzzle comments yet.</div>
-                ) : null}
-
-                {profileCommentsTotal > profileCommentsPageSize ? (
-                  <PaginationRow
-                    currentPage={profileCommentsPage}
-                    totalPages={Math.max(
-                      1,
-                      Math.ceil(profileCommentsTotal / profileCommentsPageSize),
-                    )}
-                    onPageChange={setProfileCommentsPage}
-                    formatLabel={(current, total) => `Page ${current} / ${total}`}
-                    disabled={profileCommentsLoading}
-                  />
-                ) : null}
-              </section>
-
-              <section
                 id="profile-rank-history-panel"
                 className="profileHistorySection"
                 role="tabpanel"
@@ -2489,109 +2359,119 @@ export const PlayerProfilePage = ({
               >
                 <div className="rankingsMeta profileHistoryMeta">
                   <div className="profileHistoryTitleControl">
-                    <label htmlFor="profile-rank-history-mode-select">
-                      <span>Mode</span>
+                    <label htmlFor="profile-rank-history-view-select">
+                      <span>View</span>
                       <select
-                        id="profile-rank-history-mode-select"
-                        aria-label="Rank history mode"
-                        value={rankHistoryMode}
+                        id="profile-rank-history-view-select"
+                        aria-label="Rank history view"
+                        value={rankHistoryView}
                         onChange={(event) => {
-                          const v = event.target.value;
-                          if (
-                            v === "all" ||
-                            (profileModeOptions as readonly string[]).includes(v)
-                          ) {
-                            setRankHistoryMode(v as RankHistoryMode);
+                          const nextView = event.target.value;
+                          if (nextView === "history" || nextView === "trophies") {
+                            handleRankHistoryViewChange(nextView);
                           }
                         }}
                       >
-                        {rankHistoryModeOptions.map((mode) => (
-                          <option key={mode} value={mode}>
-                            {mode === "all" ? "All" : (modeLabels[mode] ?? mode)}
-                          </option>
-                        ))}
+                        <option value="history">History</option>
+                        <option value="trophies">Trophy Case</option>
                       </select>
                     </label>
+                    {rankHistoryView === "history" ? (
+                      <label htmlFor="profile-rank-history-mode-select">
+                        <span>Mode</span>
+                        <select
+                          id="profile-rank-history-mode-select"
+                          aria-label="Rank history mode"
+                          value={rankHistoryMode}
+                          onChange={(event) => {
+                            const v = event.target.value;
+                            if (
+                              v === "all" ||
+                              (profileModeOptions as readonly string[]).includes(v)
+                            ) {
+                              setRankHistoryMode(v as RankHistoryMode);
+                            }
+                          }}
+                        >
+                          {rankHistoryModeOptions.map((mode) => (
+                            <option key={mode} value={mode}>
+                              {mode === "all" ? "All" : (modeLabels[mode] ?? mode)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ) : (
+                      <label htmlFor="profile-trophy-case-sort-select">
+                        <span>Sort</span>
+                        <select
+                          id="profile-trophy-case-sort-select"
+                          aria-label="Trophy case sort"
+                          value={trophyCaseSort}
+                          onChange={(event) => {
+                            const nextSort = event.target.value;
+                            if (isTrophyCaseSort(nextSort)) {
+                              setTrophyCaseSort(nextSort);
+                              setStoredTrophyCaseSort(nextSort);
+                            }
+                          }}
+                        >
+                          <option value="prestige">Prestige</option>
+                          <option value="date">Date</option>
+                        </select>
+                      </label>
+                    )}
                   </div>
-                  <span>{rankHistoryRows.length} months</span>
+                  <span>
+                    {rankHistoryView === "history"
+                      ? `${rankHistoryRows.length} months`
+                      : `${trophyCaseTrophies.length} trophies`}
+                  </span>
                 </div>
 
-                <div className="rankingsTableWrap profileRankHistoryTableWrap">
-                  <table className="rankingsTable profileRankHistoryTable">
-                    <thead>
-                      <tr>
-                        <th>Month</th>
-                        <th>Mode</th>
-                        <th>Rank</th>
-                        <th>Players</th>
-                        <th>Rating</th>
-                        <th>RD</th>
-                        <th>Games</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rankHistoryRows.map((monthRank) => (
-                        <tr key={`rank-history-${monthRank.mode}-${monthRank.monthKey}`}>
-                          <td>
-                            <a
-                              className="rankingLink"
-                              href={buildRankingsLocation(monthRank.monthKey, monthRank.mode)}
-                            >
-                              {monthRank.monthLabel}
-                            </a>
-                          </td>
-                          <td>{modeLabels[monthRank.mode] ?? monthRank.mode}</td>
-                          <td>#{monthRank.rank}</td>
-                          <td>{monthRank.playerCount ?? "..."}</td>
-                          <td>{monthRank.rating ?? "—"}</td>
-                          <td>{monthRank.rd ?? "—"}</td>
-                          <td>{monthRank.games ?? "—"}</td>
-                        </tr>
-                      ))}
-                      {rankHistoryRows.length === 0 ? (
+                {rankHistoryView === "history" ? (
+                  <div className="rankingsTableWrap profileRankHistoryTableWrap">
+                    <table className="rankingsTable profileRankHistoryTable">
+                      <thead>
                         <tr>
-                          <td colSpan={7} className="emptyRankings">
-                            No rank history available.
-                          </td>
+                          <th>Month</th>
+                          <th>Mode</th>
+                          <th>Rank</th>
+                          <th>Players</th>
+                          <th>Rating</th>
+                          <th>RD</th>
+                          <th>Games</th>
                         </tr>
-                      ) : null}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-
-              <section
-                id="profile-trophy-case-panel"
-                className="profileHistorySection"
-                role="tabpanel"
-                aria-labelledby="profile-trophy-case-tab"
-                hidden={profileHistoryTab !== "trophies"}
-              >
-                <div className="rankingsMeta profileHistoryMeta">
-                  <div className="profileHistoryTitleControl">
-                    <label htmlFor="profile-trophy-case-sort-select">
-                      <span>Sort</span>
-                      <select
-                        id="profile-trophy-case-sort-select"
-                        aria-label="Trophy case sort"
-                        value={trophyCaseSort}
-                        onChange={(event) => {
-                          const nextSort = event.target.value;
-                          if (isTrophyCaseSort(nextSort)) {
-                            setTrophyCaseSort(nextSort);
-                            setStoredTrophyCaseSort(nextSort);
-                          }
-                        }}
-                      >
-                        <option value="prestige">Prestige</option>
-                        <option value="date">Date</option>
-                      </select>
-                    </label>
+                      </thead>
+                      <tbody>
+                        {rankHistoryRows.map((monthRank) => (
+                          <tr key={`rank-history-${monthRank.mode}-${monthRank.monthKey}`}>
+                            <td>
+                              <a
+                                className="rankingLink"
+                                href={buildRankingsLocation(monthRank.monthKey, monthRank.mode)}
+                              >
+                                {monthRank.monthLabel}
+                              </a>
+                            </td>
+                            <td>{modeLabels[monthRank.mode] ?? monthRank.mode}</td>
+                            <td>#{monthRank.rank}</td>
+                            <td>{monthRank.playerCount ?? "..."}</td>
+                            <td>{monthRank.rating ?? "—"}</td>
+                            <td>{monthRank.rd ?? "—"}</td>
+                            <td>{monthRank.games ?? "—"}</td>
+                          </tr>
+                        ))}
+                        {rankHistoryRows.length === 0 ? (
+                          <tr>
+                            <td colSpan={7} className="emptyRankings">
+                              No rank history available.
+                            </td>
+                          </tr>
+                        ) : null}
+                      </tbody>
+                    </table>
                   </div>
-                  <span>{trophyCaseTrophies.length} trophies</span>
-                </div>
-
-                {trophyCaseTrophies.length ? (
+                ) : trophyCaseTrophies.length ? (
                   <div className="profileTrophyCaseGrid" aria-label="Trophy case">
                     {trophyCaseTrophies.map((trophy) => (
                       <ProfileTrophyCaseCard key={`case-${trophy.key}`} trophy={trophy} />
@@ -2991,8 +2871,53 @@ export const PlayerProfilePage = ({
                   />
                 ) : null}
               </section>
+
+              <section
+                id="profile-comments-panel"
+                className="profileHistorySection"
+                role="tabpanel"
+                aria-labelledby="profile-comments-tab"
+                hidden={profileHistoryTab !== "comments"}
+              >
+                {aliasesLoaded && canonicalUsername ? (
+                  <CommunityDiscussion
+                    target={{ type: "profile", id: canonicalUsername }}
+                    eyebrow="Profile community"
+                    heading={`Comments on ${profileDisplayUsername}`}
+                  />
+                ) : null}
+              </section>
             </div>
           </>
+        ) : null}
+
+        {isBanned && aliasesLoaded && canonicalUsername ? (
+          <div className="profileHistoryArea">
+            <div className="profileHistoryTabs" role="tablist" aria-label="Profile history">
+              <button
+                id="profile-comments-tab"
+                type="button"
+                role="tab"
+                aria-selected="true"
+                aria-controls="profile-comments-panel"
+                className="active"
+              >
+                Comments
+              </button>
+            </div>
+            <section
+              id="profile-comments-panel"
+              className="profileHistorySection"
+              role="tabpanel"
+              aria-labelledby="profile-comments-tab"
+            >
+              <CommunityDiscussion
+                target={{ type: "profile", id: canonicalUsername }}
+                eyebrow="Profile community"
+                heading={`Comments on ${profileDisplayUsername}`}
+              />
+            </section>
+          </div>
         ) : null}
       </div>
     </div>

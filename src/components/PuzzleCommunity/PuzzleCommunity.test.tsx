@@ -2,15 +2,17 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { PuzzleCommunity } from "./PuzzleCommunity";
+import { CommunityDiscussion, PuzzleCommunity } from "./PuzzleCommunity";
 
 const mocks = vi.hoisted(() => ({
+  fetchCommunityDiscussion: vi.fn(),
   fetchPuzzleCommunity: vi.fn(),
 }));
 
 vi.mock("../../context/AuthContext", () => ({
   useAuth: () => ({
     accessToken: "token",
+    getAccessToken: () => "token",
     isAuthenticated: true,
     login: vi.fn(),
     user: { username: "viewer" },
@@ -19,11 +21,16 @@ vi.mock("../../context/AuthContext", () => ({
 
 vi.mock("../../lib/community/puzzleCommunity", async (importOriginal) => {
   const original = await importOriginal<typeof import("../../lib/community/puzzleCommunity")>();
-  return { ...original, fetchPuzzleCommunity: mocks.fetchPuzzleCommunity };
+  return {
+    ...original,
+    fetchCommunityDiscussion: mocks.fetchCommunityDiscussion,
+    fetchPuzzleCommunity: mocks.fetchPuzzleCommunity,
+  };
 });
 
 describe("PuzzleCommunity", () => {
   beforeEach(() => {
+    mocks.fetchCommunityDiscussion.mockResolvedValue({ comments: [] });
     mocks.fetchPuzzleCommunity.mockResolvedValue({
       counts: { puzzle_id: 42, upvotes: 0, downvotes: 0, score: 0 },
       comments: [
@@ -63,5 +70,18 @@ describe("PuzzleCommunity", () => {
     await waitFor(() => {
       expect(screen.getByRole("textbox", { name: "Add a comment" }).closest("li")).toBeNull();
     });
+  });
+
+  it("loads the same threaded discussion UI for a profile target", async () => {
+    render(
+      <CommunityDiscussion target={{ type: "profile", id: "alice" }} heading="Comments on Alice" />,
+    );
+
+    expect(await screen.findByRole("heading", { name: "Comments on Alice" })).toBeVisible();
+    expect(mocks.fetchCommunityDiscussion).toHaveBeenCalledWith(
+      { type: "profile", id: "alice", context: "" },
+      "token",
+    );
+    expect(screen.queryByRole("group", { name: "Vote on this puzzle" })).not.toBeInTheDocument();
   });
 });

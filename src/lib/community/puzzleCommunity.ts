@@ -10,7 +10,10 @@ export type PuzzleVoteCounts = {
 
 export type PuzzleComment = {
   id: number;
-  puzzle_id: number;
+  puzzle_id?: number;
+  target_type?: CommunityTargetType;
+  target_id?: string;
+  target_context?: string;
   username: string;
   parent_id: number | null;
   body: string;
@@ -21,15 +24,32 @@ export type PuzzleComment = {
   viewer_vote: -1 | 0 | 1;
 };
 
+export type CommunityTargetType = "puzzle" | "profile" | "match";
+
+export type CommunityTarget = {
+  type: CommunityTargetType;
+  id: string;
+  context?: string;
+};
+
+export type CommunityDiscussion = {
+  comments: PuzzleComment[];
+  counts?: PuzzleVoteCounts;
+  viewerVote?: -1 | 0 | 1;
+};
+
 export type PuzzleCommunity = {
   counts: PuzzleVoteCounts;
   comments: PuzzleComment[];
   viewerVote: -1 | 0 | 1;
 };
 
-export type ProfilePuzzleComment = {
+export type CommunityHistoryComment = {
   id: number;
-  puzzle_id: number;
+  target_type: CommunityTargetType;
+  target_id: string;
+  target_context: string;
+  puzzle_id: number | null;
   username: string;
   body: string | null;
   created_at: string;
@@ -37,8 +57,8 @@ export type ProfilePuzzleComment = {
   content_hidden: boolean;
 };
 
-export type ProfilePuzzleCommentsPage = {
-  comments: ProfilePuzzleComment[];
+export type CommunityCommentsPage = {
+  comments: CommunityHistoryComment[];
   total: number;
   page: number;
   pageSize: number;
@@ -46,6 +66,7 @@ export type ProfilePuzzleCommentsPage = {
 };
 
 export type ProfileCommentSort = "recent" | "top";
+export type CommunityCommentTargetFilter = CommunityTargetType | "all";
 
 export type ProfileCommentKarma = {
   karma: number;
@@ -54,7 +75,7 @@ export type ProfileCommentKarma = {
 const communityRequest = async (
   body: Record<string, unknown>,
   accessToken = "",
-): Promise<PuzzleCommunity> => {
+): Promise<CommunityDiscussion> => {
   const response = await fetch(appAssetPath("/api/puzzles/community"), {
     method: "POST",
     headers: {
@@ -65,11 +86,11 @@ const communityRequest = async (
   });
   invalidateLichessSessionForResponse(response, accessToken);
   const result = (await response.json().catch(() => null)) as
-    | (PuzzleCommunity & { error?: string })
+    | (CommunityDiscussion & { error?: string })
     | null;
-  if (!response.ok) throw new Error(result?.error || "Unable to load puzzle discussion.");
-  if (!result?.counts || !Array.isArray(result.comments)) {
-    throw new Error("The puzzle discussion service returned incomplete data.");
+  if (!response.ok) throw new Error(result?.error || "Unable to load community discussion.");
+  if (!result || !Array.isArray(result.comments)) {
+    throw new Error("The discussion service returned incomplete data.");
   }
   return result;
 };
@@ -77,31 +98,58 @@ const communityRequest = async (
 export const fetchPuzzleCommunity = (
   puzzleId: number,
   accessToken = "",
-): Promise<PuzzleCommunity> => communityRequest({ action: "load", puzzleId }, accessToken);
+): Promise<PuzzleCommunity> =>
+  communityRequest({ action: "load", puzzleId }, accessToken).then((result) => {
+    if (!result.counts || result.viewerVote === undefined) {
+      throw new Error("The puzzle discussion service returned incomplete data.");
+    }
+    return result as PuzzleCommunity;
+  });
+
+const targetRequestBody = (target: CommunityTarget): Record<string, unknown> => ({
+  targetType: target.type,
+  targetId: target.id,
+  targetContext: target.context ?? "",
+});
+
+export const fetchCommunityDiscussion = (
+  target: CommunityTarget,
+  accessToken = "",
+): Promise<CommunityDiscussion> =>
+  communityRequest({ action: "loadDiscussion", ...targetRequestBody(target) }, accessToken);
+
+export const saveCommunityCommentVote = (
+  target: CommunityTarget,
+  commentId: number,
+  vote: -1 | 0 | 1,
+  accessToken: string,
+): Promise<CommunityDiscussion> =>
+  communityRequest(
+    { action: "commentVote", ...targetRequestBody(target), commentId, vote },
+    accessToken,
+  );
+
+export const postCommunityComment = (
+  target: CommunityTarget,
+  body: string,
+  parentId: number | null,
+  accessToken: string,
+): Promise<CommunityDiscussion> =>
+  communityRequest(
+    { action: "comment", ...targetRequestBody(target), body, parentId },
+    accessToken,
+  );
 
 export const savePuzzleVote = (
   puzzleId: number,
   vote: -1 | 0 | 1,
   accessToken: string,
-): Promise<PuzzleCommunity> => communityRequest({ action: "vote", puzzleId, vote }, accessToken);
-
-export const savePuzzleCommentVote = (
-  puzzleId: number,
-  commentId: number,
-  vote: -1 | 0 | 1,
-  accessToken: string,
 ): Promise<PuzzleCommunity> =>
-  communityRequest({ action: "commentVote", puzzleId, commentId, vote }, accessToken);
+  communityRequest({ action: "vote", puzzleId, vote }, accessToken).then(
+    (result) => result as PuzzleCommunity,
+  );
 
-export const postPuzzleComment = (
-  puzzleId: number,
-  body: string,
-  parentId: number | null,
-  accessToken: string,
-): Promise<PuzzleCommunity> =>
-  communityRequest({ action: "comment", puzzleId, body, parentId }, accessToken);
-
-export const fetchProfilePuzzleComments = async (
+export const fetchProfileCommunityComments = async (
   username: string,
   options: {
     page?: number;
@@ -109,7 +157,7 @@ export const fetchProfilePuzzleComments = async (
     accessToken?: string;
     sort?: ProfileCommentSort;
   } = {},
-): Promise<ProfilePuzzleCommentsPage> => {
+): Promise<CommunityCommentsPage> => {
   const { page = 1, pageSize = 25, accessToken = "", sort = "recent" } = options;
   const response = await fetch(appAssetPath("/api/puzzles/community"), {
     method: "POST",
@@ -121,7 +169,7 @@ export const fetchProfilePuzzleComments = async (
   });
   invalidateLichessSessionForResponse(response, accessToken);
   const result = (await response.json().catch(() => null)) as
-    | (ProfilePuzzleCommentsPage & { error?: string })
+    | (CommunityCommentsPage & { error?: string })
     | null;
 
   if (!response.ok) throw new Error(result?.error || "Unable to load comment history.");
@@ -132,26 +180,33 @@ export const fetchProfilePuzzleComments = async (
   return result;
 };
 
-export const fetchSitePuzzleComments = async (
+export const fetchSiteCommunityComments = async (
   options: {
     page?: number;
     pageSize?: number;
     accessToken?: string;
     sort?: ProfileCommentSort;
+    targetFilter?: CommunityCommentTargetFilter;
   } = {},
-): Promise<ProfilePuzzleCommentsPage> => {
-  const { page = 1, pageSize = 25, accessToken = "", sort = "recent" } = options;
+): Promise<CommunityCommentsPage> => {
+  const {
+    page = 1,
+    pageSize = 25,
+    accessToken = "",
+    sort = "recent",
+    targetFilter = "all",
+  } = options;
   const response = await fetch(appAssetPath("/api/puzzles/community"), {
     method: "POST",
     headers: {
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ action: "siteComments", page, pageSize, sort }),
+    body: JSON.stringify({ action: "siteComments", page, pageSize, sort, targetFilter }),
   });
   invalidateLichessSessionForResponse(response, accessToken);
   const result = (await response.json().catch(() => null)) as
-    | (ProfilePuzzleCommentsPage & { error?: string })
+    | (CommunityCommentsPage & { error?: string })
     | null;
 
   if (!response.ok) throw new Error(result?.error || "Unable to load comments.");

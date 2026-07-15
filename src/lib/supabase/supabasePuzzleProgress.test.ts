@@ -14,6 +14,7 @@ import { fetchPuzzleProgressPage, recordPuzzleProgress } from "./supabasePuzzleP
 
 describe("fetchPuzzleProgressPage", () => {
   beforeEach(() => {
+    vi.restoreAllMocks();
     rpcMock.mockReset();
     window.localStorage.clear();
   });
@@ -49,21 +50,33 @@ describe("fetchPuzzleProgressPage", () => {
   });
 
   it("records an incorrect move without changing its SAN notation", async () => {
-    rpcMock.mockResolvedValue({ data: null, error: null });
+    const fetchMock = vi.spyOn(window, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ recorded: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
 
     await recordPuzzleProgress({
+      accessToken: "token",
       username: "Solver",
       puzzleId: "42",
       puzzleCorrect: false,
       incorrectMove: "2. Nf3+",
     });
 
-    expect(rpcMock).toHaveBeenCalledWith("record_first_puzzle_attempt", {
-      p_username: "solver",
-      p_puzzle_id: "42",
-      p_puzzle_correct: false,
-      p_incorrect_move: "2. Nf3+",
-    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/puzzles/progress",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({ Authorization: "Bearer token" }),
+        body: JSON.stringify({
+          puzzleId: "42",
+          puzzleCorrect: false,
+          incorrectMove: "2. Nf3+",
+        }),
+      }),
+    );
   });
 
   it("filters rows and totals by a since date", async () => {

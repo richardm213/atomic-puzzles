@@ -54,24 +54,6 @@ export const HomePage = () => {
             </strong>
           </Link>
 
-          <Link className="homeSpotlightCard homePuzzleLeaderboardShortcut" to="/solve/leaderboard">
-            <span>Puzzles</span>
-            <h2>Puzzle leaderboard</h2>
-            <p>Points, correct solves, misses, and total attempts.</p>
-          </Link>
-
-          <Link
-            className="homeSpotlightCard homePracticeShortcut"
-            to="/practice"
-          >
-            <span>Opening trainer</span>
-            <h2>Practice against the database</h2>
-            <p>
-              Sharpen your opening theory by playing against the database of any top-100
-              player in atomic history.
-            </p>
-          </Link>
-
           <Link
             className="homeSpotlightCard homeTrophyShortcut homeAtomicHyperShortcut"
             to="/tournaments/$tournamentId"
@@ -91,6 +73,24 @@ export const HomePage = () => {
               loading="lazy"
               decoding="async"
             />
+          </Link>
+
+          <Link
+            className="homeSpotlightCard homePracticeShortcut"
+            to="/practice"
+          >
+            <span>Opening trainer</span>
+            <h2>Practice against the database</h2>
+            <p>
+              Sharpen your opening theory by playing against the database of any top-100
+              player in atomic history.
+            </p>
+          </Link>
+
+          <Link className="homeSpotlightCard homePuzzleLeaderboardShortcut" to="/solve/leaderboard">
+            <span>Puzzles</span>
+            <h2>Puzzle leaderboard</h2>
+            <p>Points, correct solves, misses, and total attempts.</p>
           </Link>
 
           <Link
@@ -129,10 +129,26 @@ export const HomePage = () => {
             />
           </Link>
 
+          <Link
+            className="homeSpotlightCard homeH2HShortcut"
+            to="/matches/$mode/$matchId"
+            params={{ mode: "blitz", matchId: "MPme5e0a" }}
+          >
+            <span>Blockbuster match</span>
+            <h2>maxwellssilvrhammer vs wolfram_ep</h2>
+            <p>Top two ranked blitz players collide in a marquee atomic showdown.</p>
+          </Link>
+
           <Link className="homeSpotlightCard homeRecentMatchesShortcut" to="/recent">
             <span>Latest games</span>
             <h2>Recent matches</h2>
             <p>See who's playing, who won, and how the ratings moved.</p>
+          </Link>
+
+          <Link className="homeSpotlightCard homeCommentsShortcut" to="/comments">
+            <span>Community discussion</span>
+            <h2>Comments from across the site</h2>
+            <p>Follow conversations on puzzles, player profiles, and match pages in one feed.</p>
           </Link>
 
           <Link className="homeSpotlightCard homePuzzleSetsShortcut" to="/solve/sets">

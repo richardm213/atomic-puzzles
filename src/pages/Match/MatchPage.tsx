@@ -4,6 +4,7 @@ import { Link, useParams } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
 import { MatchDetails } from "../../components/MatchDetails/MatchDetails";
+import { CommunityDiscussion } from "../../components/PuzzleCommunity/PuzzleCommunity";
 import { Seo } from "../../components/Seo/Seo";
 import { modeLabels } from "../../constants/matches";
 import { loadRawMatchesByMode } from "../../lib/matches/matchData";
@@ -220,6 +221,15 @@ export const MatchPage = () => {
                   />
                 </div>
               </section>
+
+              <CommunityDiscussion
+                target={{
+                  type: "match",
+                  id: match.matchId || decodedMatchId,
+                  context: mode,
+                }}
+                heading="Match discussion"
+              />
             </>
           ) : null}
         </div>

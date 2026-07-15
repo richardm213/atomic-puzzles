@@ -54,6 +54,12 @@
   background: var(--color-panel-strong);
 }
 
+.commentsControls {
+  display: grid;
+  justify-items: end;
+  gap: 7px;
+}
+
 .commentsSort button {
   min-height: 34px;
   padding: 0 14px;
@@ -212,6 +218,11 @@
 
   .commentsSort {
     align-self: flex-start;
+  }
+
+  .commentsControls {
+    justify-items: start;
+    overflow-x: auto;
   }
 
   .commentsSummary {

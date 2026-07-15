@@ -3,22 +3,31 @@ import "./Comments.css";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
+import { CommunityCommentTargetLink } from "../../components/CommunityCommentTargetLink/CommunityCommentTargetLink";
 import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
 import {
-  fetchSitePuzzleComments,
+  type CommunityCommentTargetFilter,
+  type CommunityHistoryComment,
+  fetchSiteCommunityComments,
   type ProfileCommentSort,
-  type ProfilePuzzleComment,
 } from "../../lib/community/puzzleCommunity";
 import { formatLocalDateTime } from "../../utils/formatters";
 
 const pageSize = 25;
+const targetFilterOptions: Array<{ value: CommunityCommentTargetFilter; label: string }> = [
+  { value: "all", label: "All" },
+  { value: "puzzle", label: "Puzzles" },
+  { value: "match", label: "Matches" },
+  { value: "profile", label: "Profiles" },
+];
 
 export const CommentsPage = () => {
   const { accessToken } = useAuth();
-  const [comments, setComments] = useState<ProfilePuzzleComment[]>([]);
+  const [comments, setComments] = useState<CommunityHistoryComment[]>([]);
   const [sort, setSort] = useState<ProfileCommentSort>("recent");
+  const [targetFilter, setTargetFilter] = useState<CommunityCommentTargetFilter>("all");
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -29,7 +38,7 @@ export const CommentsPage = () => {
     setLoading(true);
     setError("");
 
-    void fetchSitePuzzleComments({ page, pageSize, sort, accessToken })
+    void fetchSiteCommunityComments({ page, pageSize, sort, targetFilter, accessToken })
       .then((result) => {
         if (!current) return;
         setComments(result.comments);
@@ -48,10 +57,14 @@ export const CommentsPage = () => {
     return () => {
       current = false;
     };
-  }, [accessToken, page, sort]);
+  }, [accessToken, page, sort, targetFilter]);
 
   const changeSort = (nextSort: ProfileCommentSort): void => {
     setSort(nextSort);
+    setPage(1);
+  };
+  const changeTargetFilter = (nextFilter: CommunityCommentTargetFilter): void => {
+    setTargetFilter(nextFilter);
     setPage(1);
   };
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -59,7 +72,7 @@ export const CommentsPage = () => {
   return (
     <div className="page commentsPage">
       <Seo
-        title="Puzzle Comments"
+        title="Community Comments"
         description="See the newest and top-rated Atomic Puzzles community comments."
         path="/comments"
       />
@@ -69,30 +82,48 @@ export const CommentsPage = () => {
             <span>Community</span>
             <h1>Comments</h1>
           </div>
-          <div className="commentsSort" role="group" aria-label="Sort comments">
-            <button
-              type="button"
-              className={sort === "recent" ? "active" : ""}
-              aria-pressed={sort === "recent"}
-              disabled={loading}
-              onClick={() => changeSort("recent")}
-            >
-              Recent
-            </button>
-            <button
-              type="button"
-              className={sort === "top" ? "active" : ""}
-              aria-pressed={sort === "top"}
-              disabled={loading}
-              onClick={() => changeSort("top")}
-            >
-              Top
-            </button>
+          <div className="commentsControls">
+            <div className="commentsSort" role="group" aria-label="Filter comments by type">
+              {targetFilterOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={targetFilter === option.value ? "active" : ""}
+                  aria-pressed={targetFilter === option.value}
+                  disabled={loading}
+                  onClick={() => changeTargetFilter(option.value)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <div className="commentsSort" role="group" aria-label="Sort comments">
+              <button
+                type="button"
+                className={sort === "recent" ? "active" : ""}
+                aria-pressed={sort === "recent"}
+                disabled={loading}
+                onClick={() => changeSort("recent")}
+              >
+                Recent
+              </button>
+              <button
+                type="button"
+                className={sort === "top" ? "active" : ""}
+                aria-pressed={sort === "top"}
+                disabled={loading}
+                onClick={() => changeSort("top")}
+              >
+                Top
+              </button>
+            </div>
           </div>
         </header>
 
         <div className="commentsSummary">
-          <span>{total.toLocaleString("en-US")} comments</span>
+          <span>
+            {total.toLocaleString("en-US")} {total === 1 ? "comment" : "comments"}
+          </span>
           <span>{sort === "top" ? "Highest net score first" : "Newest first"}</span>
         </div>
 
@@ -101,7 +132,7 @@ export const CommentsPage = () => {
         {!loading && !error && comments.length === 0 ? (
           <div className="commentsEmpty">
             <h2>No comments yet</h2>
-            <p>Puzzle discussion will appear here as the community joins in.</p>
+            <p>Discussions will appear here as the community joins in.</p>
           </div>
         ) : null}
 
@@ -115,9 +146,7 @@ export const CommentsPage = () => {
                       {comment.username}
                     </Link>
                     <span aria-hidden="true">·</span>
-                    <Link to="/solve/$puzzleId" params={{ puzzleId: String(comment.puzzle_id) }}>
-                      Puzzle #{comment.puzzle_id}
-                    </Link>
+                    <CommunityCommentTargetLink {...comment} />
                     <time dateTime={comment.created_at}>
                       {formatLocalDateTime(comment.created_at)}
                     </time>

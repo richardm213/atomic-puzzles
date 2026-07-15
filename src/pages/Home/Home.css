@@ -549,6 +549,74 @@
     var(--color-surface-elevated-strong);
 }
 
+.homeH2HShortcut {
+  --home-card-accent: var(--color-danger);
+
+  padding-right: 142px;
+  background:
+    conic-gradient(
+      from 218deg at 86% 18%,
+      color-mix(in srgb, var(--color-danger) 18%, transparent),
+      transparent 24%,
+      color-mix(in srgb, var(--color-primary) 10%, transparent) 44%,
+      transparent 66%,
+      color-mix(in srgb, var(--color-danger) 12%, transparent) 84%,
+      transparent
+    ),
+    linear-gradient(
+      142deg,
+      color-mix(in srgb, var(--color-danger) 9%, transparent),
+      transparent 58%
+    ),
+    var(--color-panel);
+}
+
+.homeH2HShortcut::after {
+  content: "VS";
+  position: absolute;
+  right: 27px;
+  top: 50%;
+  width: 82px;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--color-danger) 48%, var(--color-border));
+  border-radius: 50%;
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--color-danger) 28%, var(--color-panel)),
+      color-mix(in srgb, var(--color-primary) 26%, var(--color-panel))
+    );
+  color: var(--color-heading);
+  font-size: 23px;
+  font-weight: 950;
+  letter-spacing: -0.05em;
+  box-shadow:
+    0 16px 28px color-mix(in srgb, var(--color-panel-deep) 42%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 12%, transparent);
+  transform: translateY(-50%) rotate(-7deg);
+}
+
+.homeH2HShortcut:hover {
+  background:
+    conic-gradient(
+      from 218deg at 86% 18%,
+      color-mix(in srgb, var(--color-danger) 24%, transparent),
+      transparent 24%,
+      color-mix(in srgb, var(--color-primary) 14%, transparent) 44%,
+      transparent 66%,
+      color-mix(in srgb, var(--color-danger) 16%, transparent) 84%,
+      transparent
+    ),
+    linear-gradient(
+      142deg,
+      color-mix(in srgb, var(--color-danger) 13%, transparent),
+      transparent 58%
+    ),
+    var(--color-surface-elevated-strong);
+}
+
 .homeRecentMatchesShortcut {
   --home-card-accent: var(--color-danger);
 
@@ -615,6 +683,78 @@
     linear-gradient(
       145deg,
       color-mix(in srgb, var(--color-danger) 13%, transparent),
+      transparent 56%
+    ),
+    var(--color-surface-elevated-strong);
+}
+
+.homeCommentsShortcut {
+  --home-card-accent: var(--color-primary-pale);
+
+  padding-right: 154px;
+  background:
+    radial-gradient(
+      circle at 84% 26%,
+      color-mix(in srgb, var(--color-primary) 20%, transparent),
+      transparent 34%
+    ),
+    linear-gradient(
+      138deg,
+      color-mix(in srgb, var(--color-cyan) 9%, transparent),
+      transparent 56%
+    ),
+    var(--color-panel);
+}
+
+.homeCommentsShortcut::before,
+.homeCommentsShortcut::after {
+  content: "";
+  position: absolute;
+  border: 1px solid color-mix(in srgb, var(--color-primary-pale) 34%, var(--color-border));
+  background: color-mix(in srgb, var(--color-panel-strong) 92%, transparent);
+  box-shadow: 0 14px 24px color-mix(in srgb, var(--color-panel-deep) 38%, transparent);
+}
+
+.homeCommentsShortcut::before {
+  right: 24px;
+  top: 43px;
+  width: 100px;
+  height: 65px;
+  border-radius: 14px 14px 4px 14px;
+  background:
+    linear-gradient(color-mix(in srgb, var(--color-primary-pale) 54%, transparent) 0 0) 15px 18px /
+      63px 3px no-repeat,
+    linear-gradient(color-mix(in srgb, var(--color-cyan) 34%, transparent) 0 0) 15px 31px / 48px
+      3px no-repeat,
+    color-mix(in srgb, var(--color-panel-strong) 92%, transparent);
+  transform: rotate(3deg);
+}
+
+.homeCommentsShortcut::after {
+  right: 50px;
+  top: 113px;
+  width: 75px;
+  height: 49px;
+  border-radius: 12px 12px 12px 4px;
+  background:
+    linear-gradient(color-mix(in srgb, var(--color-primary-pale) 38%, transparent) 0 0) 13px 15px /
+      45px 3px no-repeat,
+    linear-gradient(color-mix(in srgb, var(--color-cyan) 28%, transparent) 0 0) 13px 27px / 34px
+      3px no-repeat,
+    color-mix(in srgb, var(--color-panel-strong) 94%, transparent);
+  transform: rotate(-4deg);
+}
+
+.homeCommentsShortcut:hover {
+  background:
+    radial-gradient(
+      circle at 84% 26%,
+      color-mix(in srgb, var(--color-primary) 27%, transparent),
+      transparent 34%
+    ),
+    linear-gradient(
+      138deg,
+      color-mix(in srgb, var(--color-cyan) 13%, transparent),
       transparent 56%
     ),
     var(--color-surface-elevated-strong);
@@ -729,7 +869,9 @@
     padding-right: 112px;
   }
 
+  .homeH2HShortcut,
   .homeRecentMatchesShortcut,
+  .homeCommentsShortcut,
   .homePuzzleSetsShortcut {
     min-height: 196px;
     padding-right: 116px;
@@ -752,6 +894,21 @@
   .homePuzzleSetsShortcut::after {
     right: 10px;
     top: 18px;
+  }
+
+  .homeH2HShortcut::after {
+    right: 15px;
+    width: 74px;
+  }
+
+  .homeCommentsShortcut::before {
+    right: 14px;
+    width: 78px;
+  }
+
+  .homeCommentsShortcut::after {
+    right: 34px;
+    width: 62px;
   }
 
   .homeSubmitPuzzleShortcut {

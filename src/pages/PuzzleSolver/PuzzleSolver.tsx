@@ -204,7 +204,7 @@ export const PuzzleSolverPage = () => {
   const { puzzleId: routePuzzleId = "", setKey: routeSetKey = "" } = useParams({
     strict: false,
   });
-  const { user } = useAuth();
+  const { getAccessToken, user } = useAuth();
   const { showPuzzleTimer } = useAppSettings();
   const [puzzles, setPuzzles] = useState<import("../../lib/puzzles/puzzleLibrary").Puzzle[]>([]);
   const [attemptedPuzzleIds, setAttemptedPuzzleIds] = useState<Set<string>>(() => new Set());
@@ -493,6 +493,7 @@ export const PuzzleSolverPage = () => {
         .catch(() => {})
         .then(() =>
           recordPuzzleProgress({
+            accessToken: getAccessToken(),
             username: user.username,
             puzzleId: normalizedPuzzleId,
             puzzleCorrect,
@@ -505,7 +506,7 @@ export const PuzzleSolverPage = () => {
           globalThis.console?.error(error);
         });
     },
-    [user?.username],
+    [getAccessToken, user?.username],
   );
 
   const handleAttemptResolved = useCallback(

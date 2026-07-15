@@ -4,5 +4,7 @@
 /api/puzzles/submit    /.netlify/functions/puzzle-submit    200
 /api/puzzles/review    /.netlify/functions/puzzle-review    200
 /api/puzzles/community    /.netlify/functions/puzzle-community    200
+/api/puzzles/progress    /.netlify/functions/puzzle-progress    200
+/api/auth/session    /.netlify/functions/auth-session    200
 /api/notifications    /.netlify/functions/notifications    200
 /*    /index.html   200
