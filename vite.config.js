@@ -491,6 +491,7 @@ export default defineConfig(({ mode }) => {
     },
     base: "/",
     build: {
+      assetsInlineLimit: 0,
       rollupOptions: {
         output: {
           manualChunks(id) {
