@@ -333,6 +333,7 @@ const setStoredFavoriteOpponentSortDirection = (direction: FavoriteOpponentSortD
 const openingToneClasses: Record<string, string> = {
   "nf3 e3": "openingToneNf3E3",
   "nf3 e4": "openingToneNf3E4",
+  "nf3 na3": "openingToneNf3Na3",
   e4: "openingToneE4",
   e5: "openingToneE5",
   d4: "openingToneD4",

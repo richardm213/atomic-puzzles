@@ -1,6 +1,7 @@
 const openingDisplayLabels: Record<string, string> = {
   "nf3 e3": "Nf3 e3",
   "nf3 e4": "Nf3 e4",
+  "nf3 na3": "Nf3 Na3",
   e4: "e4",
   e5: "e5",
   d4: "d4",

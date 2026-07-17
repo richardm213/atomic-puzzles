@@ -95,6 +95,12 @@
   --opening-text: #ddffe8;
 }
 
+.openingToneNf3Na3 {
+  --opening-bg: rgba(249, 115, 22, 0.16);
+  --opening-border: rgba(251, 146, 60, 0.42);
+  --opening-text: #ffe9d8;
+}
+
 .openingToneE4 {
   --opening-bg: rgba(239, 68, 68, 0.15);
   --opening-border: rgba(248, 113, 113, 0.38);
@@ -847,6 +853,12 @@
   --opening-bg: #dcf8e4;
   --opening-border: #7bcf91;
   --opening-text: #155b2b;
+}
+
+:root[data-theme="light"] .openingToneNf3Na3 {
+  --opening-bg: #ffe8d7;
+  --opening-border: #efaa75;
+  --opening-text: #88400e;
 }
 
 :root[data-theme="light"] .openingToneE4 {
