@@ -2,84 +2,76 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  lazyRouteComponent,
   redirect,
   RouterProvider,
   useParams,
 } from "@tanstack/react-router";
-import { lazy, Suspense } from "react";
 
 import { App } from "./App/App";
+import { RouteLoadingFallback } from "./components/RouteLoadingFallback/RouteLoadingFallback";
 import { AuthCallbackPage } from "./pages/AuthCallback/AuthCallback";
 import { HomePage } from "./pages/Home/Home";
 
-const AnalysisPage = lazy(() =>
-  import("./pages/Analysis/Analysis").then((m) => ({ default: m.AnalysisPage })),
+const AnalysisPage = lazyRouteComponent(() => import("./pages/Analysis/Analysis"), "AnalysisPage");
+const CommentsPage = lazyRouteComponent(() => import("./pages/Comments/Comments"), "CommentsPage");
+const H2HPage = lazyRouteComponent(() => import("./pages/H2H/H2H"), "H2HPage");
+const MatchPage = lazyRouteComponent(() => import("./pages/Match/MatchPage"), "MatchPage");
+const NotificationsPage = lazyRouteComponent(
+  () => import("./pages/Notifications/Notifications"),
+  "NotificationsPage",
 );
-const CommentsPage = lazy(() =>
-  import("./pages/Comments/Comments").then((m) => ({ default: m.CommentsPage })),
+const PlayerProfilePage = lazyRouteComponent(
+  () => import("./pages/PlayerProfile/PlayerProfile"),
+  "PlayerProfilePage",
 );
-const H2HPage = lazy(() => import("./pages/H2H/H2H").then((m) => ({ default: m.H2HPage })));
-const MatchPage = lazy(() =>
-  import("./pages/Match/MatchPage").then((m) => ({ default: m.MatchPage })),
+const PracticePage = lazyRouteComponent(() => import("./pages/Practice/Practice"), "PracticePage");
+const PuzzleDashboardPage = lazyRouteComponent(
+  () => import("./pages/PuzzleDashboard/PuzzleDashboard"),
+  "PuzzleDashboardPage",
 );
-const NotificationsPage = lazy(() =>
-  import("./pages/Notifications/Notifications").then((m) => ({
-    default: m.NotificationsPage,
-  })),
+const PuzzleLeaderboardPage = lazyRouteComponent(
+  () => import("./pages/PuzzleLeaderboard/PuzzleLeaderboard"),
+  "PuzzleLeaderboardPage",
 );
-const PlayerProfilePage = lazy(() =>
-  import("./pages/PlayerProfile/PlayerProfile").then((m) => ({ default: m.PlayerProfilePage })),
+const PuzzleSetsPage = lazyRouteComponent(
+  () => import("./pages/PuzzleSets/PuzzleSets"),
+  "PuzzleSetsPage",
 );
-const PracticePage = lazy(() =>
-  import("./pages/Practice/Practice").then((m) => ({ default: m.PracticePage })),
+const PuzzleSolverPage = lazyRouteComponent(
+  () => import("./pages/PuzzleSolver/PuzzleSolver"),
+  "PuzzleSolverPage",
 );
-const PuzzleDashboardPage = lazy(() =>
-  import("./pages/PuzzleDashboard/PuzzleDashboard").then((m) => ({
-    default: m.PuzzleDashboardPage,
-  })),
+const PuzzleSubmissionPage = lazyRouteComponent(
+  () => import("./pages/PuzzleSubmission/PuzzleSubmission"),
+  "PuzzleSubmissionPage",
 );
-const PuzzleLeaderboardPage = lazy(() =>
-  import("./pages/PuzzleLeaderboard/PuzzleLeaderboard").then((m) => ({
-    default: m.PuzzleLeaderboardPage,
-  })),
+const PuzzleReviewPage = lazyRouteComponent(
+  () => import("./pages/PuzzleSubmission/PuzzleSubmission"),
+  "PuzzleReviewPage",
 );
-const PuzzleSetsPage = lazy(() =>
-  import("./pages/PuzzleSets/PuzzleSets").then((m) => ({ default: m.PuzzleSetsPage })),
+const RankingsPage = lazyRouteComponent(() => import("./pages/Rankings/Rankings"), "RankingsPage");
+const RankingsMethodologyPage = lazyRouteComponent(
+  () => import("./pages/Rankings/RankingsMethodology"),
+  "RankingsMethodologyPage",
 );
-const PuzzleSolverPage = lazy(() =>
-  import("./pages/PuzzleSolver/PuzzleSolver").then((m) => ({ default: m.PuzzleSolverPage })),
+const RecentMatchesPage = lazyRouteComponent(
+  () => import("./pages/RecentMatches/RecentMatches"),
+  "RecentMatchesPage",
 );
-const PuzzleSubmissionPage = lazy(() =>
-  import("./pages/PuzzleSubmission/PuzzleSubmission").then((m) => ({
-    default: m.PuzzleSubmissionPage,
-  })),
+const TournamentPage = lazyRouteComponent(
+  () => import("./pages/Tournament/TournamentPage"),
+  "TournamentPage",
 );
-const PuzzleReviewPage = lazy(() =>
-  import("./pages/PuzzleSubmission/PuzzleSubmission").then((m) => ({
-    default: m.PuzzleReviewPage,
-  })),
+const TournamentsPage = lazyRouteComponent(
+  () => import("./pages/Tournaments/Tournaments"),
+  "TournamentsPage",
 );
-const RankingsPage = lazy(() =>
-  import("./pages/Rankings/Rankings").then((m) => ({ default: m.RankingsPage })),
+const BannedUsersPage = lazyRouteComponent(
+  () => import("./pages/Users/BannedUsers"),
+  "BannedUsersPage",
 );
-const RankingsMethodologyPage = lazy(() =>
-  import("./pages/Rankings/RankingsMethodology").then((m) => ({
-    default: m.RankingsMethodologyPage,
-  })),
-);
-const RecentMatchesPage = lazy(() =>
-  import("./pages/RecentMatches/RecentMatches").then((m) => ({ default: m.RecentMatchesPage })),
-);
-const TournamentPage = lazy(() =>
-  import("./pages/Tournament/TournamentPage").then((m) => ({ default: m.TournamentPage })),
-);
-const TournamentsPage = lazy(() =>
-  import("./pages/Tournaments/Tournaments").then((m) => ({ default: m.TournamentsPage })),
-);
-const BannedUsersPage = lazy(() =>
-  import("./pages/Users/BannedUsers").then((m) => ({ default: m.BannedUsersPage })),
-);
-const UsersPage = lazy(() => import("./pages/Users/Users").then((m) => ({ default: m.UsersPage })));
+const UsersPage = lazyRouteComponent(() => import("./pages/Users/Users"), "UsersPage");
 
 const appBasePath = (() => {
   const baseUrl = import.meta.env.BASE_URL || "/";
@@ -326,10 +318,8 @@ const routeTree = rootRoute.addChildren([
 const router = createRouter({
   routeTree,
   basepath: appBasePath,
+  defaultPendingComponent: RouteLoadingFallback,
+  defaultPreload: "intent",
 });
 
-export const AppRouterProvider = () => (
-  <Suspense fallback={null}>
-    <RouterProvider router={router} />
-  </Suspense>
-);
+export const AppRouterProvider = () => <RouterProvider router={router} />;
