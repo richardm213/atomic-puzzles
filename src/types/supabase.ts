@@ -186,6 +186,10 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      get_profile_identity: {
+        Args: { p_username: string };
+        Returns: Aliases2TableRow[];
+      };
       get_lb_player_counts: {
         Args: { p_pairs: Array<{ month: string; mode: string }> };
         Returns: LbPlayerCountRow[];

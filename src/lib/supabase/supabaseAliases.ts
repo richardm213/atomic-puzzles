@@ -391,8 +391,8 @@ const resolveCanonicalProfileUsername = async (value: string): Promise<string> =
     const username = normalizeUsername(value);
     if (!username) return "";
 
-    const aliasMatch = await fetchCanonicalUsernameForAlias(username);
-    return aliasMatch || username;
+    const identityRow = await fetchProfileAliasRow(username);
+    return identityRow?.username || username;
   });
 
 export const resolveProfileUsernameFromAliases = async (value: string): Promise<string> =>
@@ -400,10 +400,21 @@ export const resolveProfileUsernameFromAliases = async (value: string): Promise<
 
 export const fetchProfileAliasRow = async (value: string): Promise<AliasIdentityRow | null> =>
   cachedRequest(profileAliasEntryCache, ["profile-alias-entry", value], async () => {
-    const canonicalUsername = await resolveCanonicalProfileUsername(value);
-    if (!canonicalUsername) return null;
+    const username = normalizeUsername(value);
+    if (!username) return null;
 
-    return fetchAliasIdentityRowForUsername(canonicalUsername);
+    try {
+      const supabase = getSupabaseClient();
+      const { data, error } = await supabase.rpc("get_profile_identity", {
+        p_username: username,
+      });
+      if (error) throw error;
+      return getFirstAliasIdentityRow(Array.isArray(data) ? data : []);
+    } catch {
+      // Keep profile lookup functional while the RPC migration rolls out.
+      const canonicalUsername = (await fetchCanonicalUsernameForAlias(username)) || username;
+      return fetchAliasIdentityRowForUsername(canonicalUsername);
+    }
   });
 
 export const fetchAliasRows = async (): Promise<AliasIdentityRow[]> =>

@@ -1,9 +1,9 @@
 import type { PostgrestError } from "@supabase/supabase-js";
 
-const MIN_SUPABASE_REQUEST_INTERVAL_MS = 125;
+const MAX_CONCURRENT_SUPABASE_REQUESTS = 4;
 
-let supabaseRequestQueue: Promise<unknown> = Promise.resolve();
-let lastSupabaseRequestStart = 0;
+let activeSupabaseRequests = 0;
+const waitingSupabaseRequests: Array<() => void> = [];
 
 type SupabaseQueryResult<TRow> = {
   data: TRow[] | null;
@@ -17,39 +17,43 @@ type RangeableQuery<TRow> = SupabaseQuery<TRow> & {
   range: (from: number, to: number) => SupabaseQuery<TRow>;
 };
 
-const sleep = (durationMs: number): Promise<void> =>
-  new Promise((resolve) => {
-    globalThis.setTimeout(resolve, durationMs);
-  });
-
-const runQueuedSupabaseRequest = async <TRow>(
-  query: SupabaseQuery<TRow>,
-): Promise<SupabaseQueryResult<TRow>> => {
-  const elapsed = Date.now() - lastSupabaseRequestStart;
-  const waitMs = Math.max(0, MIN_SUPABASE_REQUEST_INTERVAL_MS - elapsed);
-  if (waitMs > 0) {
-    await sleep(waitMs);
+const acquireSupabaseRequestSlot = async (): Promise<void> => {
+  if (activeSupabaseRequests < MAX_CONCURRENT_SUPABASE_REQUESTS) {
+    activeSupabaseRequests += 1;
+    return;
   }
 
-  lastSupabaseRequestStart = Date.now();
-  return query;
+  await new Promise<void>((resolve) => {
+    waitingSupabaseRequests.push(resolve);
+  });
 };
 
-const queueSupabaseQuery = <TRow>(
+const releaseSupabaseRequestSlot = (): void => {
+  const nextRequest = waitingSupabaseRequests.shift();
+  if (nextRequest) {
+    nextRequest();
+    return;
+  }
+
+  activeSupabaseRequests = Math.max(0, activeSupabaseRequests - 1);
+};
+
+const runLimitedSupabaseQuery = async <TRow>(
   query: SupabaseQuery<TRow>,
 ): Promise<SupabaseQueryResult<TRow>> => {
-  const run = async (): Promise<SupabaseQueryResult<TRow>> => runQueuedSupabaseRequest(query);
-
-  const queuedRequest = supabaseRequestQueue.then(run, run);
-  supabaseRequestQueue = queuedRequest.catch(() => {});
-  return queuedRequest;
+  await acquireSupabaseRequestSlot();
+  try {
+    return await query;
+  } finally {
+    releaseSupabaseRequestSlot();
+  }
 };
 
 export const loadSupabaseRows = async <TRow>(
   tableName: string,
   query: SupabaseQuery<TRow>,
 ): Promise<TRow[]> => {
-  const { data, error } = await queueSupabaseQuery(query);
+  const { data, error } = await runLimitedSupabaseQuery(query);
   if (error) {
     throw new Error(`Failed loading Supabase table "${tableName}": ${error.message}`);
   }
@@ -60,7 +64,7 @@ export const loadSupabasePage = async <TRow>(
   tableName: string,
   query: SupabaseQuery<TRow>,
 ): Promise<{ rows: TRow[]; count: number | null | undefined }> => {
-  const { data, error, count } = await queueSupabaseQuery(query);
+  const { data, error, count } = await runLimitedSupabaseQuery(query);
   if (error) {
     throw new Error(`Failed loading Supabase table "${tableName}": ${error.message}`);
   }
