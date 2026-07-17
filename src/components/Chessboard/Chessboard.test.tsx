@@ -82,9 +82,7 @@ describe("Chessboard orchestration", () => {
   it("configures legal destinations for an analysis board", () => {
     renderBoard();
 
-    const movableCalls = mocks.set.mock.calls
-      .map(([config]) => config?.movable)
-      .filter(Boolean);
+    const movableCalls = mocks.set.mock.calls.map(([config]) => config?.movable).filter(Boolean);
     const movable = movableCalls.at(-1);
 
     expect(movable?.color).toBe("white");
@@ -97,9 +95,7 @@ describe("Chessboard orchestration", () => {
       restrictMovesToSolution: true,
     });
 
-    const movableCalls = mocks.set.mock.calls
-      .map(([config]) => config?.movable)
-      .filter(Boolean);
+    const movableCalls = mocks.set.mock.calls.map(([config]) => config?.movable).filter(Boolean);
     expect(movableCalls.at(-1)?.dests.get("e2")).toEqual(["e4"]);
     expect(movableCalls.at(-1)?.dests.has("d2")).toBe(false);
 
@@ -130,9 +126,7 @@ describe("Chessboard orchestration", () => {
     };
     const { rerender } = render(<Chessboard {...boardProps} />);
 
-    rerender(
-      <Chessboard {...boardProps} solutionNavigation={{ type: "play", uci: "e2e4" }} />,
-    );
+    rerender(<Chessboard {...boardProps} solutionNavigation={{ type: "play", uci: "e2e4" }} />);
 
     expect(states.at(-1)?.lineMoves).toEqual(["e4"]);
     expect(states.at(-1)?.fen).toContain("4P3");

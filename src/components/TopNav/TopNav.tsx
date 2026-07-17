@@ -604,7 +604,7 @@ export const TopNav = () => {
     };
   }, [settingsOpen]);
 
-  const handleSearchSubmit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+  const handleSearchSubmit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
     if (!trimmedSearchQuery || searchPending) return;
 
@@ -626,9 +626,7 @@ export const TopNav = () => {
     }
   };
 
-  const handleSearchSuggestionSelect = async (
-    suggestion: UsernameSearchSuggestion,
-  ): Promise<void> => {
+  const handleSearchSuggestionSelect = (suggestion: UsernameSearchSuggestion): void => {
     if (searchPending) return;
 
     setSearchPending(true);
@@ -871,6 +869,7 @@ export const TopNav = () => {
             <input
               ref={searchInputRef}
               type="text"
+              role="combobox"
               value={searchQuery}
               placeholder="Search player"
               aria-label="Search player username"

@@ -37,15 +37,11 @@ export const HomePage = () => {
             </Link>
           </div>
         </div>
-
       </section>
 
       <section className="homeSpotlightSection" aria-label="Atomic chess shortcuts">
         <div className="homeSpotlightGrid">
-          <Link
-            className="homeSpotlightCard homeSubmitPuzzleShortcut"
-            to="/puzzles/submit"
-          >
+          <Link className="homeSpotlightCard homeSubmitPuzzleShortcut" to="/puzzles/submit">
             <span>Build the library</span>
             <h2>Submit a puzzle</h2>
             <p>Found a brilliant atomic position? Share it with the community.</p>
@@ -62,8 +58,8 @@ export const HomePage = () => {
             <span>Championship</span>
             <h2>Atomic Hyper Championship</h2>
             <p>
-              Who will be crowned the Atomic Hyper Champion? Will it be max, jsf, trk, or
-              someone else?
+              Who will be crowned the Atomic Hyper Champion? Will it be max, jsf, trk, or someone
+              else?
             </p>
             <img
               src={appAssetPath("/images/awc-trophies/atomic-hyper-championship.png")}
@@ -75,15 +71,12 @@ export const HomePage = () => {
             />
           </Link>
 
-          <Link
-            className="homeSpotlightCard homePracticeShortcut"
-            to="/practice"
-          >
+          <Link className="homeSpotlightCard homePracticeShortcut" to="/practice">
             <span>Opening trainer</span>
             <h2>Practice against the database</h2>
             <p>
-              Sharpen your opening theory by playing against the database of any top-100
-              player in atomic history.
+              Sharpen your opening theory by playing against the database of any top-100 player in
+              atomic history.
             </p>
           </Link>
 
@@ -158,7 +151,6 @@ export const HomePage = () => {
           </Link>
         </div>
       </section>
-
     </div>
   );
 };

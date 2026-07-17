@@ -60,7 +60,7 @@ export const withEngineRequestTimeout = <T>(
       },
       (error: unknown) => {
         window.clearTimeout(timeout);
-        reject(error);
+        reject(error instanceof Error ? error : new Error(String(error)));
       },
     );
   });

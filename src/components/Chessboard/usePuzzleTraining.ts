@@ -5,7 +5,7 @@ import type { UciSolutionLine } from "../../lib/puzzles/solutionPgn";
 export type BoardMode = "training" | "evaluating" | "solution" | "analysis";
 
 export const usePuzzleTraining = () => {
-  const boardStatusRef = useRef({ mode: "training" as BoardMode, locked: false, solved: false });
+  const boardStatusRef = useRef({ mode: "training", locked: false, solved: false });
   const candidateLinesRef = useRef<UciSolutionLine[]>([]);
   const progressRef = useRef(0);
   const evaluationTimerRef = useRef<number | null>(null);

@@ -688,13 +688,11 @@ export const getTournamentBracket = async (
     const byId = new Map<string, TournamentMatch>(matches.map((match) => [match.id, match]));
     const championshipMatches = matches
       .filter((match) => match.bracket === "grand_final")
-      .map(
-        (match): TournamentMatch => ({
-          ...match,
-          bracket: "main",
-          round: match.round === "Set 1" ? "Grand Final" : "Grand Final Reset",
-        }),
-      );
+      .map((match): TournamentMatch => ({
+        ...match,
+        bracket: "main",
+        round: match.round === "Set 1" ? "Grand Final" : "Grand Final Reset",
+      }));
 
     const bracketKeys = Array.from(new Set(matches.map((match) => match.bracket))).sort(
       (left, right) => bracketPriority(left) - bracketPriority(right) || left.localeCompare(right),

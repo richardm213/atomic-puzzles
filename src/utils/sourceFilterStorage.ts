@@ -1,8 +1,4 @@
-import {
-  defaultSourceFilters,
-  knownSourceKeys,
-  type SourceFilters,
-} from "../constants/matches";
+import { defaultSourceFilters, knownSourceKeys, type SourceFilters } from "../constants/matches";
 
 const sourceFiltersStorageKey = "atomic-puzzles:source-filters";
 

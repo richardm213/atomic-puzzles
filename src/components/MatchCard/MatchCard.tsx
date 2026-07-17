@@ -29,7 +29,7 @@ export const MatchCard = ({
   showH2HLink = true,
   showRunningScore = false,
 }: MatchCardProps) => (
-  <article
+  <div
     key={matchKey}
     className={`matchCard${isExpanded ? " expanded" : ""}`}
     onClick={onToggle}
@@ -95,5 +95,5 @@ export const MatchCard = ({
         />
       </div>
     ) : null}
-  </article>
+  </div>
 );

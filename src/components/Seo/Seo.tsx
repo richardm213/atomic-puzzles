@@ -52,9 +52,7 @@ const ensureLinkTag = (relValue: string): HTMLLinkElement => {
 };
 
 const ensureJsonLdScript = (): HTMLScriptElement => {
-  let element = document.head.querySelector<HTMLScriptElement>(
-    'script[data-seo-json-ld="true"]',
-  );
+  let element = document.head.querySelector<HTMLScriptElement>('script[data-seo-json-ld="true"]');
 
   if (!element) {
     element = document.createElement("script");

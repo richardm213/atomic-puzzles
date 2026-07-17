@@ -34,8 +34,8 @@ export const winnerToFullWord = (winner: unknown): WinnerWord => {
 };
 
 export const normalizedPlayersFromMatch = (match: RawMatchLike | null | undefined): string[] => {
-  if (Array.isArray(match?.players)) return match.players as string[];
-  if (Array.isArray(match?.p)) return match.p as string[];
+  if (Array.isArray(match?.players)) return match.players;
+  if (Array.isArray(match?.p)) return match.p;
   return [];
 };
 
@@ -118,9 +118,9 @@ export const normalizedRatingsFromMatch = (
 ): RatingsByPlayer => {
   const ratings: RatingsByPlayer =
     match?.ratings && typeof match.ratings === "object"
-      ? (match.ratings as RatingsByPlayer)
+      ? match.ratings
       : match?.ra && typeof match.ra === "object"
-        ? (match.ra as RatingsByPlayer)
+        ? match.ra
         : {};
   const ratingsCompact = match?.ratings_compact ?? match?.u;
   return {

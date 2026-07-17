@@ -156,5 +156,5 @@ export const buildPieceStyle = (pieceSet: string): BoardCssVars => {
       `url("https://lichess1.org/assets/piece/${pieceSet}/b${code}.svg")`;
   }
 
-  return pieceStyle as BoardCssVars;
+  return pieceStyle;
 };

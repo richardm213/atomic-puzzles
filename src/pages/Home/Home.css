@@ -202,15 +202,14 @@
   aspect-ratio: 1;
   border: 1px solid color-mix(in srgb, var(--color-accent-warm) 48%, var(--color-border));
   border-radius: 12px;
-  background:
-    conic-gradient(
-        from 90deg,
-        color-mix(in srgb, var(--color-accent-warm) 38%, var(--color-panel)) 0 25%,
-        color-mix(in srgb, var(--color-panel-strong) 94%, transparent) 0 50%,
-        color-mix(in srgb, var(--color-accent-warm) 38%, var(--color-panel)) 0 75%,
-        color-mix(in srgb, var(--color-panel-strong) 94%, transparent) 0
-      )
-      0 0 / 50% 50%;
+  background: conic-gradient(
+      from 90deg,
+      color-mix(in srgb, var(--color-accent-warm) 38%, var(--color-panel)) 0 25%,
+      color-mix(in srgb, var(--color-panel-strong) 94%, transparent) 0 50%,
+      color-mix(in srgb, var(--color-accent-warm) 38%, var(--color-panel)) 0 75%,
+      color-mix(in srgb, var(--color-panel-strong) 94%, transparent) 0
+    )
+    0 0 / 50% 50%;
   box-shadow:
     10px 12px 0 color-mix(in srgb, var(--color-cyan) 10%, transparent),
     0 20px 34px color-mix(in srgb, var(--color-panel-deep) 42%, transparent);
@@ -512,11 +511,7 @@
       color-mix(in srgb, var(--color-cyan) 12%, transparent) 84%,
       transparent
     ),
-    linear-gradient(
-      142deg,
-      color-mix(in srgb, var(--color-cyan) 9%, transparent),
-      transparent 58%
-    ),
+    linear-gradient(142deg, color-mix(in srgb, var(--color-cyan) 9%, transparent), transparent 58%),
     var(--color-panel);
 }
 
@@ -572,12 +567,11 @@
   place-items: center;
   border: 1px solid color-mix(in srgb, var(--color-danger) 48%, var(--color-border));
   border-radius: 50%;
-  background:
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--color-danger) 28%, var(--color-panel)),
-      color-mix(in srgb, var(--color-primary) 26%, var(--color-panel))
-    );
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-danger) 28%, var(--color-panel)),
+    color-mix(in srgb, var(--color-primary) 26%, var(--color-panel))
+  );
   color: var(--color-heading);
   font-size: 23px;
   font-weight: 950;
@@ -688,11 +682,7 @@
       color-mix(in srgb, var(--color-primary) 20%, transparent),
       transparent 34%
     ),
-    linear-gradient(
-      138deg,
-      color-mix(in srgb, var(--color-cyan) 9%, transparent),
-      transparent 56%
-    ),
+    linear-gradient(138deg, color-mix(in srgb, var(--color-cyan) 9%, transparent), transparent 56%),
     var(--color-panel);
 }
 
@@ -714,8 +704,8 @@
   background:
     linear-gradient(color-mix(in srgb, var(--color-primary-pale) 54%, transparent) 0 0) 15px 18px /
       63px 3px no-repeat,
-    linear-gradient(color-mix(in srgb, var(--color-cyan) 34%, transparent) 0 0) 15px 31px / 48px
-      3px no-repeat,
+    linear-gradient(color-mix(in srgb, var(--color-cyan) 34%, transparent) 0 0) 15px 31px / 48px 3px
+      no-repeat,
     color-mix(in srgb, var(--color-panel-strong) 92%, transparent);
   transform: rotate(3deg);
 }
@@ -729,8 +719,8 @@
   background:
     linear-gradient(color-mix(in srgb, var(--color-primary-pale) 38%, transparent) 0 0) 13px 15px /
       45px 3px no-repeat,
-    linear-gradient(color-mix(in srgb, var(--color-cyan) 28%, transparent) 0 0) 13px 27px / 34px
-      3px no-repeat,
+    linear-gradient(color-mix(in srgb, var(--color-cyan) 28%, transparent) 0 0) 13px 27px / 34px 3px
+      no-repeat,
     color-mix(in srgb, var(--color-panel-strong) 94%, transparent);
   transform: rotate(-4deg);
 }
@@ -773,15 +763,14 @@
   aspect-ratio: 1;
   border: 1px solid color-mix(in srgb, #7ac48c 42%, var(--color-border));
   border-radius: 9px;
-  background:
-    conic-gradient(
-        from 90deg,
-        color-mix(in srgb, #7ac48c 30%, var(--color-panel)) 0 25%,
-        var(--color-panel-strong) 0 50%,
-        color-mix(in srgb, #7ac48c 30%, var(--color-panel)) 0 75%,
-        var(--color-panel-strong) 0
-      )
-      0 0 / 50% 50%;
+  background: conic-gradient(
+      from 90deg,
+      color-mix(in srgb, #7ac48c 30%, var(--color-panel)) 0 25%,
+      var(--color-panel-strong) 0 50%,
+      color-mix(in srgb, #7ac48c 30%, var(--color-panel)) 0 75%,
+      var(--color-panel-strong) 0
+    )
+    0 0 / 50% 50%;
   box-shadow:
     -8px 8px 0 color-mix(in srgb, var(--color-primary) 14%, var(--color-panel)),
     -15px 15px 0 color-mix(in srgb, #7ac48c 12%, var(--color-panel)),

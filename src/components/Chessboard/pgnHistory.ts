@@ -5,7 +5,7 @@ import { makeUci } from "chessops/util";
 import type { Atomic } from "chessops/variant";
 
 import { moveFromUci, toComparableUci } from "../../lib/puzzles/solutionPgn";
-import { appendBoardMove, type BoardHistory,createBoardHistory } from "./boardHistory";
+import { appendBoardMove, type BoardHistory, createBoardHistory } from "./boardHistory";
 import { tryCreateAtomicPosition } from "./puzzlePlayback";
 
 const mainlineTokens = (pgn: string): string[] => {

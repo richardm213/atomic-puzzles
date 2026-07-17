@@ -77,11 +77,16 @@ const react = {
   },
 };
 
+import jsxA11y from "eslint-plugin-jsx-a11y";
 import reactHooks from "eslint-plugin-react-hooks";
 import simpleImportSort from "eslint-plugin-simple-import-sort";
 import tseslint from "typescript-eslint";
 
 const tsconfigRootDir = import.meta.dirname;
+const recommendedTypeCheckedRules = Object.assign(
+  {},
+  ...tseslint.configs.recommendedTypeChecked.map((config) => config.rules ?? {}),
+);
 
 export default [
   {
@@ -106,11 +111,15 @@ export default [
       },
     },
     plugins: {
+      "jsx-a11y": jsxA11y,
       react,
       "react-hooks": reactHooks,
       "simple-import-sort": simpleImportSort,
     },
     rules: {
+      ...jsxA11y.flatConfigs.recommended.rules,
+      "jsx-a11y/no-autofocus": "off",
+      "jsx-a11y/no-noninteractive-tabindex": "off",
       "no-undef": "error",
       "no-unused-vars": ["error", { varsIgnorePattern: "^React$|^[A-Z]" }],
       "prefer-const": "error",
@@ -152,8 +161,17 @@ export default [
       "@typescript-eslint": tseslint.plugin,
     },
     rules: {
+      ...recommendedTypeCheckedRules,
       "no-undef": "off",
       "no-unused-vars": "off",
+      "@typescript-eslint/no-base-to-string": "off",
+      "@typescript-eslint/no-duplicate-type-constituents": "off",
+      "@typescript-eslint/no-redundant-type-constituents": "off",
+      "@typescript-eslint/no-unsafe-argument": "off",
+      "@typescript-eslint/no-unsafe-assignment": "off",
+      "@typescript-eslint/no-unsafe-call": "off",
+      "@typescript-eslint/no-unsafe-member-access": "off",
+      "@typescript-eslint/no-unsafe-return": "off",
       "@typescript-eslint/no-unused-vars": [
         "error",
         { varsIgnorePattern: "^React$|^[A-Z]", argsIgnorePattern: "^_" },
@@ -171,6 +189,19 @@ export default [
           },
         },
       ],
+    },
+  },
+  {
+    files: ["**/*.{test,spec}.{ts,tsx}", "netlify/tests/*.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-unnecessary-type-assertion": "off",
+      "@typescript-eslint/require-await": "off",
+    },
+  },
+  {
+    files: ["src/router.tsx"],
+    rules: {
+      "@typescript-eslint/only-throw-error": "off",
     },
   },
   {

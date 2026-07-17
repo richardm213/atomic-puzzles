@@ -1,10 +1,4 @@
-export type JsonLdValue =
-  | string
-  | number
-  | boolean
-  | null
-  | JsonLdObject
-  | JsonLdValue[];
+export type JsonLdValue = string | number | boolean | null | JsonLdObject | JsonLdValue[];
 
 export type JsonLdObject = {
   "@context"?: string | string[];

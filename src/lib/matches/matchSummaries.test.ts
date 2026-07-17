@@ -42,9 +42,7 @@ describe("summarizeMatchGames", () => {
 
 describe("sourceValueFromMatch / sourceKeyFromMatch", () => {
   it("prefers values from the first game over the match", () => {
-    expect(
-      sourceValueFromMatch({ source: "Lobby" }, { source: "Friend" }),
-    ).toBe("Friend");
+    expect(sourceValueFromMatch({ source: "Lobby" }, { source: "Friend" })).toBe("Friend");
   });
 
   it("normalizes a source key to a known bucket", () => {

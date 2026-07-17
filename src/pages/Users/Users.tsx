@@ -116,7 +116,7 @@ const compareNullableNumbers = (
   if (aMissing) return 1;
   if (bMissing) return -1;
   if (a === b) return 0;
-  return directionMultiplier * ((a as number) - (b as number));
+  return directionMultiplier * (a - b);
 };
 
 const buildUserRows = (ratingRows: PlayerRatingRow[], aliasesLookup: AliasLookup): UserRow[] => {

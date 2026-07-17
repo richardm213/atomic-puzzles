@@ -1,4 +1,4 @@
-import { type Mode,modeOptions } from "../../constants/matches";
+import { type Mode, modeOptions } from "../../constants/matches";
 import type {
   RawDbCompactGame,
   RawMatchLike,
@@ -95,7 +95,9 @@ const parseGamesCompact = (gamesValue: unknown): RawDbCompactGame[] => {
 
   try {
     const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((entry): entry is RawDbCompactGame => typeof entry === "string") : [];
+    return Array.isArray(parsed)
+      ? parsed.filter((entry): entry is RawDbCompactGame => typeof entry === "string")
+      : [];
   } catch {
     return [];
   }
@@ -109,9 +111,9 @@ const parseMatchRows = (rows: MatchRow[]): ParsedMatch[] => {
     const p2 = String(row.player_2 ?? "Unknown");
     const games = parseGamesCompact(row.games)
       .map((entry, gameOffset): ParsedMatchGame => {
-        const [gameId, winnerCodeRaw, winnerPlayerRaw, whitePlayerRaw] = String(
-          entry ?? "",
-        ).split(",");
+        const [gameId, winnerCodeRaw, winnerPlayerRaw, whitePlayerRaw] = String(entry ?? "").split(
+          ",",
+        );
         const winnerCode = String(winnerCodeRaw ?? "")
           .trim()
           .toLowerCase();

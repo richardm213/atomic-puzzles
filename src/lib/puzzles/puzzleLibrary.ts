@@ -51,9 +51,8 @@ const hasPlayableSolution = (puzzle: Puzzle): boolean =>
 
 const normalizePuzzleRow = (item: PuzzleRow, index: number): Puzzle => {
   const parsedId = Number.parseInt(String(item?.["id"] ?? ""), 10);
-  const fen = typeof item?.["fen"] === "string" ? (item["fen"] as string).trim() : "";
-  const explanation =
-    typeof item?.["explanation"] === "string" ? (item["explanation"] as string).trim() : "";
+  const fen = typeof item?.["fen"] === "string" ? item["fen"].trim() : "";
+  const explanation = typeof item?.["explanation"] === "string" ? item["explanation"].trim() : "";
 
   return {
     ...item,

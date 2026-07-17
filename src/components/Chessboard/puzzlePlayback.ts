@@ -113,7 +113,7 @@ export const buildSolutionHistory = (
 
   const history = createBoardHistory(initialFen);
 
-  for (const entry of line as UciSolutionEntry[]) {
+  for (const entry of line) {
     const uci = entry.uci;
     const move = moveFromUci(position, uci);
     if (!move) return null;

@@ -311,7 +311,7 @@ const establishSiteSession = async (accessToken: string): Promise<LichessAccount
   return body.user;
 };
 
-export const restoreLichessSession = async (): Promise<LichessSession | null> => {
+export const restoreLichessSession = (): Promise<LichessSession | null> => {
   const session = getStoredLichessSession();
   if (
     !session?.accessToken ||
@@ -319,19 +319,19 @@ export const restoreLichessSession = async (): Promise<LichessSession | null> =>
     !session.me?.username
   ) {
     clearStoredLichessSession();
-    return null;
+    return Promise.resolve(null);
   }
 
   if (typeof session.expiresAt === "number" && Date.now() >= session.expiresAt) {
     clearStoredLichessSession();
-    return null;
+    return Promise.resolve(null);
   }
 
   // Restoring a saved login must not depend on Lichess being reachable. Site
   // APIs validate the signed first-party session, with a one-time bearer-token
   // migration for older sessions. Revalidating here caused transient Lichess
   // failures to delete otherwise valid sessions.
-  return session;
+  return Promise.resolve(session);
 };
 
 export const completeLichessLogin = async (

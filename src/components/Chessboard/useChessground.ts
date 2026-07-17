@@ -1,7 +1,7 @@
 import { Chessground } from "@lichess-org/chessground";
 import type { Api } from "@lichess-org/chessground/api";
 import type { Color } from "chessops";
-import { type MutableRefObject, type RefObject,useEffect } from "react";
+import { type MutableRefObject, type RefObject, useEffect } from "react";
 
 export const useChessground = ({
   elementRef,

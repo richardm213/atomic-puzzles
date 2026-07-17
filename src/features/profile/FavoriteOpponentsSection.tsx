@@ -3,7 +3,7 @@ import { Fragment, type KeyboardEvent } from "react";
 
 import { MatchPageLink } from "../../components/MatchPageLink/MatchPageLink";
 import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
-import { type Mode, modeLabels } from "../../constants/matches";
+import { modeLabels } from "../../constants/matches";
 import { formatLocalDateTime, formatScore, formatSignedDecimal } from "../../utils/formatters";
 import { matchupToSlug } from "../../utils/h2hRoutes";
 import {
@@ -294,7 +294,7 @@ export const FavoriteOpponentsSection = ({
                                   ...match,
                                   playerA: canonicalUsername,
                                   playerB: row.opponent,
-                                  mode: match.mode as Mode,
+                                  mode: match.mode,
                                 };
                                 const singleGameUrl = buildSingleGameMatchUrl(matchLinkMatch);
                                 const shouldLinkToMatchPage =

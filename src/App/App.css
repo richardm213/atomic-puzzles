@@ -48,8 +48,16 @@
   inset: 58px 0 auto;
   height: min(40vh, 360px);
   background:
-    radial-gradient(circle at 18% 8%, color-mix(in srgb, var(--color-primary) 12%, transparent), transparent 34%),
-    radial-gradient(circle at 82% 10%, color-mix(in srgb, var(--color-cyan) 10%, transparent), transparent 32%);
+    radial-gradient(
+      circle at 18% 8%,
+      color-mix(in srgb, var(--color-primary) 12%, transparent),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at 82% 10%,
+      color-mix(in srgb, var(--color-cyan) 10%, transparent),
+      transparent 32%
+    );
 }
 
 .topNav,

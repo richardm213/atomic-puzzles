@@ -190,7 +190,9 @@ export const CommunityDiscussion = ({
     setPendingCommentVotes((current) => new Set(current).add(comment.id));
     setError("");
     try {
-      setCommunity(await saveCommunityCommentVote(target, comment.id, nextVote, currentAccessToken));
+      setCommunity(
+        await saveCommunityCommentVote(target, comment.id, nextVote, currentAccessToken),
+      );
     } catch (voteError) {
       setError(voteError instanceof Error ? voteError.message : "Unable to save comment vote.");
     } finally {

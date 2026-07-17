@@ -123,7 +123,8 @@ export const useBoardDocument = ({
     onChange: (event: ChangeEvent<HTMLTextAreaElement>) => {
       dirtyRef.current[kind] = true;
       setValue(event.target.value);
-      kind === "fen" ? setFenError("") : setPgnError("");
+      if (kind === "fen") setFenError("");
+      else setPgnError("");
     },
   });
 

@@ -91,20 +91,18 @@ export const groupPuzzlesByEvent = (puzzles: Puzzle[] = []): PuzzleEventGroup[] 
   });
 
   return [...groups.values()]
-    .map(
-      (group): PuzzleEventGroup => ({
-        event: group.event,
-        eventKey: group.eventKey,
-        puzzles: [...group.puzzles].sort((left, right) => {
-          const leftId = Number(left?.puzzleId ?? 0);
-          const rightId = Number(right?.puzzleId ?? 0);
-          return leftId - rightId;
-        }),
-        authors: [...group.authors].sort((left, right) =>
-          left.localeCompare(right, undefined, { sensitivity: "base" }),
-        ),
+    .map((group): PuzzleEventGroup => ({
+      event: group.event,
+      eventKey: group.eventKey,
+      puzzles: [...group.puzzles].sort((left, right) => {
+        const leftId = Number(left?.puzzleId ?? 0);
+        const rightId = Number(right?.puzzleId ?? 0);
+        return leftId - rightId;
       }),
-    )
+      authors: [...group.authors].sort((left, right) =>
+        left.localeCompare(right, undefined, { sensitivity: "base" }),
+      ),
+    }))
     .sort(sortGroups);
 };
 

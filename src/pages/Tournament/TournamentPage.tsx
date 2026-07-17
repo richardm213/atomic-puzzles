@@ -151,7 +151,7 @@ const readSavedTournamentView = (tournamentId: string): SavedTournamentView | nu
       return null;
     }
 
-    return parsedValue as SavedTournamentView;
+    return parsedValue;
   } catch {
     window.sessionStorage.removeItem(getTournamentViewStorageKey(tournamentId));
     return null;

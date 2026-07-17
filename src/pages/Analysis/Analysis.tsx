@@ -625,7 +625,7 @@ export const AnalysisPage = () => {
     [clampMovePanelHeight, movePanelHeight],
   );
 
-  const handleExplorerResizePointerDown = (event: ReactPointerEvent<HTMLButtonElement>): void => {
+  const handleExplorerResizePointerDown = (event: ReactPointerEvent<HTMLDivElement>): void => {
     if (!rightPanelRef.current) return;
 
     event.preventDefault();
@@ -658,7 +658,7 @@ export const AnalysisPage = () => {
     ownerDocument.addEventListener("pointercancel", handlePointerUp);
   };
 
-  const handleExplorerResizeKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>): void => {
+  const handleExplorerResizeKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>): void => {
     if (event.key === "ArrowUp") {
       event.preventDefault();
       adjustExplorerSplit(-EXPLORER_RESIZE_STEP);
@@ -979,10 +979,11 @@ export const AnalysisPage = () => {
 
         {explorerOpen ? (
           <section className="analysisExplorerPanel" aria-label="Opening explorer">
-            <button
-              type="button"
+            {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- a focusable separator is the resize control */}
+            <div
               className="analysisExplorerResizeHandle"
               role="separator"
+              tabIndex={0}
               aria-orientation="horizontal"
               aria-label="Resize moves and opening explorer"
               title="Resize moves and opening explorer"

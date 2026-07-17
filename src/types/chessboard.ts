@@ -27,12 +27,7 @@ export type TrainingState = {
 export type ChessboardState = PositionState & VariationState & TrainingState;
 
 export type PlaybackCommand =
-  | "start"
-  | "previous"
-  | "next"
-  | "end"
-  | "previousOption"
-  | "nextOption";
+  "start" | "previous" | "next" | "end" | "previousOption" | "nextOption";
 
 export type SolutionNavigation =
   | { type: "command"; command: PlaybackCommand }

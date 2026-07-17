@@ -39,7 +39,11 @@
 
 .matchCard.expanded {
   border-color: var(--color-cyan-bright);
-  background: linear-gradient(180deg, var(--color-surface-elevated-strong), var(--color-panel-strong));
+  background: linear-gradient(
+    180deg,
+    var(--color-surface-elevated-strong),
+    var(--color-panel-strong)
+  );
 }
 
 .matchCard.expanded::before {

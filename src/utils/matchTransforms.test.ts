@@ -126,21 +126,21 @@ describe("findRatingDataForPlayer", () => {
 
 describe("parseWinnerFromPerspective", () => {
   it("returns 'win' when the user played white and won", () => {
-    expect(
-      parseWinnerFromPerspective({ white: "Alice", black: "Bob", winner: "w" }, "alice"),
-    ).toBe("win");
+    expect(parseWinnerFromPerspective({ white: "Alice", black: "Bob", winner: "w" }, "alice")).toBe(
+      "win",
+    );
   });
 
   it("returns 'loss' when the user lost as black", () => {
-    expect(
-      parseWinnerFromPerspective({ white: "Alice", black: "Bob", winner: "w" }, "bob"),
-    ).toBe("loss");
+    expect(parseWinnerFromPerspective({ white: "Alice", black: "Bob", winner: "w" }, "bob")).toBe(
+      "loss",
+    );
   });
 
   it("returns 'draw' for a drawn game", () => {
-    expect(
-      parseWinnerFromPerspective({ white: "Alice", black: "Bob", winner: "d" }, "alice"),
-    ).toBe("draw");
+    expect(parseWinnerFromPerspective({ white: "Alice", black: "Bob", winner: "d" }, "alice")).toBe(
+      "draw",
+    );
   });
 });
 

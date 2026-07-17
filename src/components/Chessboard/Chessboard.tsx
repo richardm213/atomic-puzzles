@@ -876,7 +876,7 @@ export const Chessboard = ({
       if (!pending) return;
 
       clearPendingPromotion();
-      playUserMove(pending.orig, pending.dest, role as Role);
+      playUserMove(pending.orig, pending.dest, role);
     },
     [clearPendingPromotion, playUserMove],
   );
@@ -1000,7 +1000,7 @@ export const Chessboard = ({
         syncBoard(position, undefined);
         return;
       }
-      playUserMove(orig, dest, choices[0] as Role | undefined);
+      playUserMove(orig, dest, choices[0]);
     },
     [boardStatusRef, isSolutionPlaybackLocked, orientationRef, playUserMove, syncBoard],
   );

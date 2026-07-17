@@ -87,8 +87,7 @@ const communityRequest = async (
   });
   invalidateLichessSessionForResponse(response, accessToken);
   const result = (await response.json().catch(() => null)) as
-    | (CommunityDiscussion & { error?: string })
-    | null;
+    (CommunityDiscussion & { error?: string }) | null;
   if (!response.ok) throw new Error(result?.error || "Unable to load community discussion.");
   if (!result || !Array.isArray(result.comments)) {
     throw new Error("The discussion service returned incomplete data.");
@@ -171,8 +170,7 @@ export const fetchProfileCommunityComments = async (
   });
   invalidateLichessSessionForResponse(response, accessToken);
   const result = (await response.json().catch(() => null)) as
-    | (CommunityCommentsPage & { error?: string })
-    | null;
+    (CommunityCommentsPage & { error?: string }) | null;
 
   if (!response.ok) throw new Error(result?.error || "Unable to load comment history.");
   if (!result || !Array.isArray(result.comments)) {
@@ -209,8 +207,7 @@ export const fetchSiteCommunityComments = async (
   });
   invalidateLichessSessionForResponse(response, accessToken);
   const result = (await response.json().catch(() => null)) as
-    | (CommunityCommentsPage & { error?: string })
-    | null;
+    (CommunityCommentsPage & { error?: string }) | null;
 
   if (!response.ok) throw new Error(result?.error || "Unable to load comments.");
   if (!result || !Array.isArray(result.comments)) {
@@ -228,8 +225,7 @@ export const fetchProfileCommentKarma = async (username: string): Promise<number
     body: JSON.stringify({ action: "profileKarma", username }),
   });
   const result = (await response.json().catch(() => null)) as
-    | (ProfileCommentKarma & { error?: string })
-    | null;
+    (ProfileCommentKarma & { error?: string }) | null;
 
   if (!response.ok) throw new Error(result?.error || "Unable to load comment karma.");
   if (!result || !Number.isFinite(Number(result.karma))) {

@@ -1,9 +1,6 @@
 import "./PuzzleDashboard.css";
 
-import {
-  faArrowUpRightFromSquare,
-  faClockRotateLeft,
-} from "@fortawesome/free-solid-svg-icons";
+import { faArrowUpRightFromSquare, faClockRotateLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
@@ -350,11 +347,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
                 <FontAwesomeIcon icon={faArrowUpRightFromSquare} aria-hidden="true" />
                 <span>Puzzle sets</span>
               </Link>
-              <Link
-                className="puzzleDashboardActionLink"
-                to={backLinkTo}
-                params={backLinkParams}
-              >
+              <Link className="puzzleDashboardActionLink" to={backLinkTo} params={backLinkParams}>
                 <FontAwesomeIcon icon={faArrowUpRightFromSquare} aria-hidden="true" />
                 <span>{backLinkLabel}</span>
               </Link>
