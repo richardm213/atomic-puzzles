@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => ({
   }>,
   attemptedPuzzleIds: new Set(["1369"]),
   fetchPuzzleAttemptsForPuzzle: vi.fn(),
+  loadPuzzleCatalog: vi.fn(),
+  loadPuzzlesById: vi.fn(),
   navigate: vi.fn(),
   puzzleExplanation: "Castling avoids the atomic mating net and creates the decisive rook threat.",
   routeParams: { puzzleId: "1369", setKey: "" },
@@ -48,18 +50,8 @@ vi.mock("../../context/AppSettings", () => ({
 }));
 
 vi.mock("../../lib/puzzles/puzzleLibrary", () => ({
-  loadPuzzleLibrary: vi.fn(async () => [
-    {
-      id: 1369,
-      fen: "rn2k2r/pp5p/1qpp2p1/2Q5/1b2P3/2N5/PPP3PP/R3KB1R b KQkq - 1 12",
-      solution:
-        "12... O-O (12... Rf8 13. O-O-O Rf2 (13... Ba3) 14. Be2 Ba3) 13. O-O-O Rf2 (13... Ba3) 14. Be2 Ba3",
-      puzzleId: 1369,
-      author: "admin",
-      event: "ACL 2024",
-      explanation: mocks.puzzleExplanation,
-    },
-  ]),
+  loadPuzzleCatalog: mocks.loadPuzzleCatalog,
+  loadPuzzlesById: mocks.loadPuzzlesById,
 }));
 
 vi.mock("../../lib/supabase/supabasePuzzleProgress", () => ({
@@ -168,6 +160,29 @@ describe("PuzzleSolverPage solution options", () => {
       },
     ]);
     mocks.navigate.mockReset();
+    mocks.loadPuzzleCatalog.mockReset().mockResolvedValue([
+      {
+        id: 1369,
+        fen: "",
+        solution: "",
+        puzzleId: 1369,
+        author: "admin",
+        event: "ACL 2024",
+        explanation: "",
+      },
+    ]);
+    mocks.loadPuzzlesById.mockReset().mockImplementation(async (puzzleIds: number[]) =>
+      puzzleIds.map((puzzleId) => ({
+        id: puzzleId,
+        fen: "rn2k2r/pp5p/1qpp2p1/2Q5/1b2P3/2N5/PPP3PP/R3KB1R b KQkq - 1 12",
+        solution:
+          "12... O-O (12... Rf8 13. O-O-O Rf2 (13... Ba3) 14. Be2 Ba3) 13. O-O-O Rf2 (13... Ba3) 14. Be2 Ba3",
+        puzzleId,
+        author: "admin",
+        event: "ACL 2024",
+        explanation: mocks.puzzleExplanation,
+      })),
+    );
     mocks.puzzleExplanation =
       "Castling avoids the atomic mating net and creates the decisive rook threat.";
     mocks.routeParams = { puzzleId: "1369", setKey: "" };
@@ -180,6 +195,32 @@ describe("PuzzleSolverPage solution options", () => {
       })),
     });
     Element.prototype.scrollIntoView = vi.fn();
+  });
+
+  it("loads only the active puzzle and a three-puzzle lookahead from the catalog", async () => {
+    mocks.routeParams = { puzzleId: "", setKey: "" };
+    mocks.attemptedPuzzleIds = new Set();
+    mocks.loadPuzzleCatalog.mockResolvedValueOnce(
+      Array.from({ length: 8 }, (_, index) => ({
+        id: index + 1,
+        fen: "",
+        solution: "",
+        puzzleId: index + 1,
+        author: "admin",
+        event: "ACL 2024",
+        explanation: "",
+      })),
+    );
+
+    render(<PuzzleSolverPage />);
+
+    await waitFor(() => expect(screen.getByTestId("mock-board")).toBeInTheDocument());
+    expect(mocks.loadPuzzleCatalog).toHaveBeenCalledOnce();
+    expect(mocks.loadPuzzlesById).toHaveBeenCalled();
+    expect(mocks.loadPuzzlesById.mock.calls[0]?.[0]).toHaveLength(4);
+    for (const [puzzleIds] of mocks.loadPuzzlesById.mock.calls) {
+      expect(puzzleIds.length).toBeLessThanOrEqual(4);
+    }
   });
 
   it.each([

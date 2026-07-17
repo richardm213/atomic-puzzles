@@ -1125,9 +1125,6 @@ export const PlayerProfilePage = ({
                       </select>
                     </label>
                   </div>
-                  <span>
-                    {filteredMatches.length} filtered / {matches.length} total
-                  </span>
                 </div>
 
                 <div className="rankingsTableWrap profileMatchTableWrap">

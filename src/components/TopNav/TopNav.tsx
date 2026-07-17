@@ -37,11 +37,7 @@ import {
   markNotificationsRead,
   type UserNotification,
 } from "../../lib/community/notifications";
-import { resolveProfileUsernameFromAliases } from "../../lib/supabase/supabaseAliases";
-import {
-  searchUsernameSuggestions,
-  type UsernameSearchSuggestion,
-} from "../../lib/users/usernameSearch";
+import type { UsernameSearchSuggestion } from "../../lib/users/usernameSearch";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { formatLocalDateTime } from "../../utils/formatters";
 import { normalizeUsername } from "../../utils/playerNames";
@@ -340,8 +336,8 @@ export const TopNav = () => {
   }, [accessToken, notificationsOpen]);
 
   useEffect(() => {
-    if (!normalizedAuthUsername) {
-      setProfileUsername("");
+    if (!normalizedAuthUsername || !profileMenuOpen) {
+      if (!normalizedAuthUsername) setProfileUsername("");
       return;
     }
 
@@ -352,6 +348,8 @@ export const TopNav = () => {
 
     const loadProfileUsername = async () => {
       try {
+        const { resolveProfileUsernameFromAliases } =
+          await import("../../lib/supabase/supabaseAliases");
         const resolvedProfileUsername =
           (await resolveProfileUsernameFromAliases(normalizedAuthUsername)) ||
           normalizedAuthUsername;
@@ -370,7 +368,7 @@ export const TopNav = () => {
     return () => {
       cancelled = true;
     };
-  }, [normalizedAuthUsername]);
+  }, [normalizedAuthUsername, profileMenuOpen]);
 
   const resolvedProfileUsername = profileUsername || normalizedAuthUsername;
   const searchExpanded = searchOpen;
@@ -437,6 +435,7 @@ export const TopNav = () => {
   useEffect(() => {
     if (!searchOpen) return;
     searchInputRef.current?.focus();
+    void import("../../lib/users/usernameSearch");
   }, [searchOpen]);
 
   useEffect(() => clearNavDropdownCloseTimeout, [clearNavDropdownCloseTimeout]);
@@ -456,7 +455,8 @@ export const TopNav = () => {
     const timeoutId = window.setTimeout(() => {
       setSearchSuggestionsPending(true);
 
-      void searchUsernameSuggestions(trimmedSearchQuery)
+      void import("../../lib/users/usernameSearch")
+        .then(({ searchUsernameSuggestions }) => searchUsernameSuggestions(trimmedSearchQuery))
         .then((suggestions) => {
           if (requestId !== searchSuggestionsRequestIdRef.current) return;
           setSearchSuggestions(suggestions);

@@ -4,7 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Seo } from "../../components/Seo/Seo";
-import { loadPuzzleLibrary } from "../../lib/puzzles/puzzleLibrary";
+import { loadPuzzleCatalog } from "../../lib/puzzles/puzzleLibrary";
 import { getPuzzleEventKey, groupPuzzlesByEvent } from "../../lib/puzzles/puzzleSets";
 import { getOpeningDisplayLabel } from "../../utils/openings";
 
@@ -105,7 +105,7 @@ export const PuzzleSetsPage = () => {
       setError("");
 
       try {
-        const loadedPuzzles = await loadPuzzleLibrary();
+        const loadedPuzzles = await loadPuzzleCatalog();
         if (!isCurrent) return;
         setPuzzles(Array.isArray(loadedPuzzles) ? loadedPuzzles : []);
       } catch (loadError) {

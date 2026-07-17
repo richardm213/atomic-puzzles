@@ -29,7 +29,7 @@ import {
 import { useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
-import { loadPuzzleLibrary } from "../../lib/puzzles/puzzleLibrary";
+import { loadPuzzleCatalog, loadPuzzlesById, type Puzzle } from "../../lib/puzzles/puzzleLibrary";
 import { getOrderedPuzzleIndexesForEvent } from "../../lib/puzzles/puzzleSets";
 import { movePrefix, serializeSanLinesToPgn } from "../../lib/puzzles/solutionPgn";
 import {
@@ -70,6 +70,7 @@ const toPuzzleKey = (puzzleId: unknown): string =>
 
 const ATTEMPTED_PUZZLE_BADGE_LABEL = "You've already attempted this puzzle before";
 const OTHER_PUZZLE_ATTEMPTS_LIMIT = 30;
+const PUZZLE_PREFETCH_COUNT = 3;
 
 const formatElapsedTime = (milliseconds: number): string => {
   const totalSeconds = Math.floor(Math.max(0, milliseconds) / 1000);
@@ -206,7 +207,7 @@ export const PuzzleSolverPage = () => {
   });
   const { getAccessToken, user } = useAuth();
   const { showPuzzleTimer } = useAppSettings();
-  const [puzzles, setPuzzles] = useState<import("../../lib/puzzles/puzzleLibrary").Puzzle[]>([]);
+  const [puzzles, setPuzzles] = useState<Puzzle[]>([]);
   const [attemptedPuzzleIds, setAttemptedPuzzleIds] = useState<Set<string>>(() => new Set());
   const [resolvedAttemptedPuzzleIds, setResolvedAttemptedPuzzleIds] = useState<Set<string>>(
     () => new Set(),
@@ -251,6 +252,8 @@ export const PuzzleSolverPage = () => {
   const mobileFeedbackIdRef = useRef(0);
   const boardPanelRef = useRef<HTMLDivElement | null>(null);
   const upcomingPuzzleIndexesRef = useRef<number[]>([]);
+  const loadingPuzzleIdsRef = useRef<Set<string>>(new Set());
+  const initialRoutePuzzleIdRef = useRef(parsePuzzleId(routePuzzleId));
   const progressWriteQueueRef = useRef(Promise.resolve());
   const attemptedPuzzleIdsRef = useRef<Set<string>>(new Set());
   const activePuzzleKeyRef = useRef("");
@@ -263,11 +266,8 @@ export const PuzzleSolverPage = () => {
   );
   const isSetSolveMode = Boolean(routeSetKey && orderedSetPuzzleIndexes.length > 0);
 
-  const getNextShuffledPuzzleIndex = useCallback(
+  const ensureUpcomingPuzzleIndexes = useCallback(
     (currentIndex: number): number => {
-      if (puzzles.length === 0) return -1;
-      if (puzzles.length === 1) return 0;
-
       if (upcomingPuzzleIndexesRef.current.length === 0) {
         const candidateIndexes = puzzles
           .map((_, index) => index)
@@ -279,10 +279,32 @@ export const PuzzleSolverPage = () => {
         upcomingPuzzleIndexesRef.current = shuffleIndexes(candidateIndexes);
       }
 
-      return upcomingPuzzleIndexesRef.current.pop() ?? -1;
+      return upcomingPuzzleIndexesRef.current.length;
     },
     [attemptedPuzzleIds, puzzles],
   );
+
+  const getNextShuffledPuzzleIndex = useCallback(
+    (currentIndex: number): number => {
+      if (puzzles.length === 0) return -1;
+      if (puzzles.length === 1) return 0;
+
+      ensureUpcomingPuzzleIndexes(currentIndex);
+      return upcomingPuzzleIndexesRef.current.pop() ?? -1;
+    },
+    [ensureUpcomingPuzzleIndexes, puzzles.length],
+  );
+
+  const mergeLoadedPuzzles = useCallback((loadedPuzzles: Puzzle[]): void => {
+    if (loadedPuzzles.length === 0) return;
+
+    const loadedById = new Map(
+      loadedPuzzles.map((puzzle) => [String(puzzle.puzzleId), puzzle] as const),
+    );
+    setPuzzles((current) =>
+      current.map((puzzle) => loadedById.get(String(puzzle.puzzleId)) ?? puzzle),
+    );
+  }, []);
 
   const replaceUrlWithPuzzle = useCallback(
     (puzzleId: string | number): void => {
@@ -320,8 +342,19 @@ export const PuzzleSolverPage = () => {
     const loadPuzzles = async () => {
       try {
         setLoadingError("");
-        const loadedPuzzles = await loadPuzzleLibrary();
-        if (isCurrent) setPuzzles(loadedPuzzles);
+        const initialPuzzleId = initialRoutePuzzleIdRef.current;
+        const [catalog, initialPuzzles] = await Promise.all([
+          loadPuzzleCatalog(),
+          initialPuzzleId === null ? Promise.resolve([]) : loadPuzzlesById([initialPuzzleId]),
+        ]);
+        if (!isCurrent) return;
+
+        const initialPuzzlesById = new Map(
+          initialPuzzles.map((puzzle) => [String(puzzle.puzzleId), puzzle] as const),
+        );
+        setPuzzles(
+          catalog.map((puzzle) => initialPuzzlesById.get(String(puzzle.puzzleId)) ?? puzzle),
+        );
       } catch (error) {
         if (!isCurrent) return;
         setPuzzles([]);
@@ -472,6 +505,69 @@ export const PuzzleSolverPage = () => {
   const boardShowsSolution = isAnalysisMode && solutionRevealed;
 
   useEffect(() => {
+    if (activePuzzleIndex < 0 || !activePuzzleId) return undefined;
+
+    let candidateIndexes: number[];
+    if (isSetSolveMode) {
+      candidateIndexes = orderedSetPuzzleIndexes.slice(
+        activeSetPuzzlePosition + 1,
+        activeSetPuzzlePosition + 1 + PUZZLE_PREFETCH_COUNT,
+      );
+    } else {
+      ensureUpcomingPuzzleIndexes(activePuzzleIndex);
+      candidateIndexes = upcomingPuzzleIndexesRef.current.slice(-PUZZLE_PREFETCH_COUNT).reverse();
+    }
+
+    const candidateIds = [
+      activePuzzleId,
+      ...candidateIndexes.flatMap((index) => {
+        const puzzleId = puzzles[index]?.puzzleId;
+        return puzzleId === undefined ? [] : [puzzleId];
+      }),
+    ];
+    const missingIds = candidateIds.filter((puzzleId) => {
+      const key = String(puzzleId);
+      const puzzle = puzzles.find((entry) => entry.puzzleId === puzzleId);
+      return !puzzle?.fen && !loadingPuzzleIdsRef.current.has(key);
+    });
+    if (missingIds.length === 0) return undefined;
+
+    missingIds.forEach((puzzleId) => loadingPuzzleIdsRef.current.add(String(puzzleId)));
+    let isCurrent = true;
+    void loadPuzzlesById(missingIds)
+      .then((loadedPuzzles) => {
+        if (!isCurrent) return;
+        mergeLoadedPuzzles(loadedPuzzles);
+        if (
+          missingIds.some((puzzleId) => puzzleId === activePuzzleId) &&
+          !loadedPuzzles.some((puzzle) => puzzle.puzzleId === activePuzzleId)
+        ) {
+          setLoadingError(`Puzzle #${activePuzzleId} is unavailable or has no playable solution.`);
+        }
+      })
+      .catch((error) => {
+        if (!isCurrent) return;
+        setLoadingError(error instanceof Error ? error.message : "Failed to load puzzle data");
+      })
+      .finally(() => {
+        missingIds.forEach((puzzleId) => loadingPuzzleIdsRef.current.delete(String(puzzleId)));
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [
+    activePuzzleId,
+    activePuzzleIndex,
+    activeSetPuzzlePosition,
+    ensureUpcomingPuzzleIndexes,
+    isSetSolveMode,
+    mergeLoadedPuzzles,
+    orderedSetPuzzleIndexes,
+    puzzles,
+  ]);
+
+  useEffect(() => {
     activePuzzleKeyRef.current = activePuzzleKey;
   }, [activePuzzleKey]);
 
@@ -553,13 +649,13 @@ export const PuzzleSolverPage = () => {
     resetPuzzleUiState();
     elapsedTimeMsRef.current = 0;
     setElapsedTimeMs(0);
-    setElapsedTimerRunning(Boolean(activePuzzleId));
+    setElapsedTimerRunning(Boolean(activePuzzleId && fen));
     setMobileFeedback(null);
     setCopyPgnLabel("Copy PGN");
     setOtherPuzzleAttemptsStatus("idle");
     setOtherPuzzleAttempts([]);
     previousBoardSnapshotRef.current = createInitialBoardSnapshot();
-  }, [activePuzzleId, resetPuzzleUiState]);
+  }, [activePuzzleId, fen, resetPuzzleUiState]);
 
   useEffect(() => {
     if (!elapsedTimerRunning) return;

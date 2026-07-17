@@ -11,7 +11,7 @@ import { useEffect, useMemo, useState } from "react";
 import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
-import { loadPuzzleLibrary } from "../../lib/puzzles/puzzleLibrary";
+import { loadPuzzleCatalog } from "../../lib/puzzles/puzzleLibrary";
 import { normalizePuzzleEventName } from "../../lib/puzzles/puzzleSets";
 import {
   fetchPuzzleProgressPage,
@@ -134,7 +134,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
       setArePuzzlesLoading(true);
 
       try {
-        const puzzles = await loadPuzzleLibrary();
+        const puzzles = await loadPuzzleCatalog();
         if (!isCurrent) return;
 
         setPuzzlesById(

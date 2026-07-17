@@ -1,3 +1,6 @@
+import "@lichess-org/chessground/assets/chessground.base.css";
+import "../../theme/chessground.blue.css";
+import "../../theme/chessground.pieces.css";
 import "./Chessboard.css";
 
 import type { Api } from "@lichess-org/chessground/api";

@@ -504,7 +504,6 @@ export const RecentMatchesPage = () => {
             {filteredMatches.length === 0
               ? "0 shown"
               : `${(currentPage - 1) * pageSize + 1}-${Math.min(currentPage * pageSize, filteredMatches.length)} shown`}
-            · {filteredMatches.length} filtered / {matches.length} total
           </span>
         </div>
 
