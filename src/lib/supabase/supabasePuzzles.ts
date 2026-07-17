@@ -12,10 +12,17 @@ const MAX_PUZZLE_BATCH_SIZE = 12;
 const puzzleCatalogCache = new Map<string, Promise<PuzzleRow[]>>();
 const puzzleDetailsCache = new Map<string, Promise<PuzzleRow[]>>();
 
+const onlyRowsWithSolutions = <TQuery extends {
+  not: (column: string, operator: "is", value: null) => TQuery;
+  neq: (column: string, value: string) => TQuery;
+}>(
+  query: TQuery,
+): TQuery => query.not("solution", "is", null).neq("solution", "");
+
 const fetchUncachedPuzzleCatalogFromSupabase = async (): Promise<PuzzleRow[]> => {
   const supabase = getSupabaseClient();
   return fetchAllSupabaseRows<PuzzleRow>(PUZZLES_TABLE, () =>
-    supabase.from(PUZZLES_TABLE).select(PUZZLE_CATALOG_COLUMNS).order("id"),
+    onlyRowsWithSolutions(supabase.from(PUZZLES_TABLE).select(PUZZLE_CATALOG_COLUMNS)).order("id"),
   );
 };
 
@@ -41,7 +48,10 @@ const fetchUncachedPuzzleRowsByIdFromSupabase = async (puzzleIds: number[]) => {
   const supabase = getSupabaseClient();
   return loadSupabaseRows<PuzzleRow>(
     PUZZLES_TABLE,
-    supabase.from(PUZZLES_TABLE).select(PUZZLE_DETAIL_COLUMNS).in("id", puzzleIds),
+    onlyRowsWithSolutions(supabase.from(PUZZLES_TABLE).select(PUZZLE_DETAIL_COLUMNS)).in(
+      "id",
+      puzzleIds,
+    ),
   );
 };
 
