@@ -1,0 +1,16 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "exactOptionalPropertyTypes": false,
+    "types": ["node", "vitest/globals"]
+  },
+  "include": [
+    "auth/**/*.ts",
+    "database/**/*.ts",
+    "features/**/*.ts",
+    "functions/**/*.ts",
+    "http/**/*.ts",
+    "lib/**/*.ts",
+    "../src/lib/community/schemas.ts"
+  ]
+}

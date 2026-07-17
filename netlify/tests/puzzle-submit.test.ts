@@ -9,12 +9,21 @@ vi.mock("@supabase/supabase-js", () => ({
 }));
 
 import { handler } from "../functions/puzzle-submit";
+import { createSiteSessionCookie } from "../lib/siteSession";
+
+const authHeaders = () => ({
+  cookie: createSiteSessionCookie("submitter", {}).split(";")[0],
+});
 
 describe("puzzle-submit function", () => {
   beforeEach(() => {
     mocks.createClient.mockReset();
     vi.stubEnv("SUPABASE_URL", "https://example.supabase.co");
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "service-role-key");
+    vi.stubEnv(
+      "SITE_SESSION_SECRET",
+      "test-session-secret-that-is-longer-than-thirty-two-characters",
+    );
   });
 
   afterEach(() => {
@@ -27,7 +36,7 @@ describe("puzzle-submit function", () => {
     expect(response.statusCode).toBe(405);
   });
 
-  it("requires a Lichess access token", async () => {
+  it("requires a signed site session", async () => {
     const response = await handler({
       httpMethod: "POST",
       body: JSON.stringify({ fen: "fen", solution: "move", explanation: "" }),
@@ -41,7 +50,7 @@ describe("puzzle-submit function", () => {
   it("rejects malformed submissions before contacting external services", async () => {
     const response = await handler({
       httpMethod: "POST",
-      headers: { authorization: "Bearer test_token" },
+      headers: authHeaders(),
       body: "{}",
     });
     expect(response.statusCode).toBe(400);
@@ -50,7 +59,7 @@ describe("puzzle-submit function", () => {
   it("rejects unnumbered move text before verifying the access token", async () => {
     const response = await handler({
       httpMethod: "POST",
-      headers: { authorization: "Bearer test_token" },
+      headers: authHeaders(),
       body: JSON.stringify({
         fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
         solution: "e4 e5",
@@ -83,7 +92,7 @@ describe("puzzle-submit function", () => {
 
     const response = await handler({
       httpMethod: "POST",
-      headers: { authorization: "Bearer test_token" },
+      headers: authHeaders(),
       body: JSON.stringify({
         fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
         solution: "1. e4",
@@ -119,7 +128,7 @@ describe("puzzle-submit function", () => {
 
     const response = await handler({
       httpMethod: "POST",
-      headers: { authorization: "Bearer test_token" },
+      headers: authHeaders(),
       body: JSON.stringify({
         fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
         solution: "1. e4",

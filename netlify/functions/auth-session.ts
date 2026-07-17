@@ -1,14 +1,15 @@
 import { createClient } from "@supabase/supabase-js";
 
 import {
+  getRequestHeader,
   LichessVerificationError,
-  parseBearerToken,
   verifyLichessAccount,
 } from "../lib/lichessAccount";
 import {
   clearSiteSessionCookie,
   createSiteSessionCookie,
   isSameOriginRequest,
+  readSiteSession,
 } from "../lib/siteSession";
 
 type NetlifyEvent = {
@@ -39,7 +40,86 @@ const getSupabase = () => {
   return createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
 };
 
+const OAUTH_VALUE_PATTERN = /^[A-Za-z0-9_-]+$/;
+
+const parseOauthExchange = (
+  event: NetlifyEvent,
+): { code: string; codeVerifier: string; clientId: string; redirectUri: string } | null => {
+  try {
+    const input = JSON.parse(event.body ?? "") as Record<string, unknown>;
+    const code = String(input.code ?? "").trim();
+    const codeVerifier = String(input.codeVerifier ?? "").trim();
+    const clientId = String(input.clientId ?? "").trim();
+    const redirectUri = String(input.redirectUri ?? "").trim();
+    const host = (
+      getRequestHeader(event.headers, "x-forwarded-host") || getRequestHeader(event.headers, "host")
+    )
+      .split(",")[0]
+      ?.trim()
+      .toLowerCase();
+    const expectedClientId =
+      process.env.LICHESS_CLIENT_ID?.trim() ||
+      process.env.VITE_LICHESS_CLIENT_ID?.trim() ||
+      host ||
+      "";
+    const redirect = new URL(redirectUri);
+    if (
+      !OAUTH_VALUE_PATTERN.test(code) ||
+      code.length > 512 ||
+      !OAUTH_VALUE_PATTERN.test(codeVerifier) ||
+      codeVerifier.length < 43 ||
+      codeVerifier.length > 128 ||
+      !clientId ||
+      clientId !== expectedClientId ||
+      !host ||
+      redirect.host.toLowerCase() !== host ||
+      !redirect.pathname.endsWith("/auth/lichess/callback")
+    ) {
+      return null;
+    }
+    return { code, codeVerifier, clientId, redirectUri: redirect.toString() };
+  } catch {
+    return null;
+  }
+};
+
+const exchangeLichessCode = async (
+  input: NonNullable<ReturnType<typeof parseOauthExchange>>,
+): Promise<string> => {
+  const response = await fetch("https://lichess.org/api/token", {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({
+      grant_type: "authorization_code",
+      code: input.code,
+      code_verifier: input.codeVerifier,
+      redirect_uri: input.redirectUri,
+      client_id: input.clientId,
+    }),
+  });
+  const body = (await response.json().catch(() => null)) as {
+    access_token?: unknown;
+    error?: unknown;
+    error_description?: unknown;
+  } | null;
+  const accessToken = String(body?.access_token ?? "").trim();
+  if (!response.ok || !OAUTH_VALUE_PATTERN.test(accessToken) || accessToken.length > 512) {
+    const description = String(body?.error_description ?? body?.error ?? "").trim();
+    throw new Error(description || "Lichess rejected the authorization code.");
+  }
+  return accessToken;
+};
+
 export const handler = async (event: NetlifyEvent) => {
+  if (event.httpMethod === "GET") {
+    const session = readSiteSession(event.headers);
+    return session
+      ? jsonResponse(200, { user: { username: session.username } })
+      : jsonResponse(401, { error: "No authenticated site session." });
+  }
   if (event.httpMethod === "DELETE") {
     if (!isSameOriginRequest(event.headers)) {
       return jsonResponse(403, { error: "Cross-site session requests are not allowed." });
@@ -55,13 +135,28 @@ export const handler = async (event: NetlifyEvent) => {
     return jsonResponse(403, { error: "Cross-site session requests are not allowed." });
   }
 
-  const accessToken = parseBearerToken(event.headers);
-  if (!accessToken) return jsonResponse(401, { error: "Log in with Lichess first." });
+  const oauthExchange = parseOauthExchange(event);
+  if (!oauthExchange) return jsonResponse(400, { error: "Invalid Lichess login exchange." });
 
   try {
-    // The username is always derived from Lichess. No browser-supplied
-    // username is accepted at this trust boundary.
-    const account = await verifyLichessAccount(accessToken);
+    const accessToken = await exchangeLichessCode(oauthExchange);
+    let account;
+    try {
+      // The username is always derived from Lichess. No browser-supplied
+      // username is accepted at this trust boundary.
+      account = await verifyLichessAccount(accessToken);
+    } finally {
+      // The token is needed only to prove identity. Revoke it even when account
+      // verification fails; the browser never receives it.
+      try {
+        await fetch("https://lichess.org/api/token", {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+      } catch {
+        // Revocation is best effort, and the token is never persisted locally.
+      }
+    }
     const username = account?.username?.trim().toLowerCase() ?? "";
     if (!username || username.length > 100) {
       return jsonResponse(401, { error: "Your Lichess login is no longer valid." });

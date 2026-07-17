@@ -5,7 +5,7 @@ import {
   type PuzzleSubmissionValue,
   validatePuzzleSubmission,
 } from "../../src/lib/puzzles/puzzleSubmission";
-import { parseBearerToken, verifyLichessAccount } from "../lib/lichessAccount";
+import { isSameOriginRequest, resolveSiteIdentity } from "../lib/siteSession";
 
 type NetlifyEvent = {
   httpMethod?: string;
@@ -64,10 +64,8 @@ export const handler = async (event: NetlifyEvent) => {
   if (event.httpMethod !== "POST") {
     return jsonResponse(405, { error: "Method not allowed." });
   }
-
-  const accessToken = parseBearerToken(event.headers);
-  if (!accessToken) {
-    return jsonResponse(401, { error: "Log in with Lichess to review puzzles." });
+  if (!isSameOriginRequest(event.headers)) {
+    return jsonResponse(403, { error: "Cross-site puzzle reviews are not allowed." });
   }
 
   const body = parseBody(event);
@@ -77,11 +75,11 @@ export const handler = async (event: NetlifyEvent) => {
   const { action } = body;
 
   try {
-    const account = await verifyLichessAccount(accessToken);
-    if (!account?.username) {
-      return jsonResponse(401, { error: "Your Lichess login is no longer valid." });
+    const identity = await resolveSiteIdentity(event.headers);
+    if (!identity.username) {
+      return jsonResponse(401, { error: "Log in with Lichess to review puzzles." });
     }
-    if (account.username.trim().toLowerCase() !== REVIEWER) {
+    if (identity.username !== REVIEWER) {
       return jsonResponse(403, { error: "This review queue is restricted." });
     }
 

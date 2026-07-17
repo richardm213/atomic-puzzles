@@ -9,18 +9,21 @@ vi.mock("@supabase/supabase-js", () => ({
 }));
 
 import { handler } from "../functions/puzzle-review";
+import { createSiteSessionCookie } from "../lib/siteSession";
 
-const reviewerAccount = (username: string) =>
-  new Response(JSON.stringify({ username }), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
+const authHeaders = (username = "seaside_tiramisu") => ({
+  cookie: createSiteSessionCookie(username, {}).split(";")[0],
+});
 
 describe("puzzle-review function", () => {
   beforeEach(() => {
     mocks.createClient.mockReset();
     vi.stubEnv("SUPABASE_URL", "https://example.supabase.co");
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "service-role-key");
+    vi.stubEnv(
+      "SITE_SESSION_SECRET",
+      "test-session-secret-that-is-longer-than-thirty-two-characters",
+    );
   });
 
   afterEach(() => {
@@ -33,7 +36,7 @@ describe("puzzle-review function", () => {
     expect(response.statusCode).toBe(405);
   });
 
-  it("requires a Lichess access token", async () => {
+  it("requires a signed site session", async () => {
     const response = await handler({
       httpMethod: "POST",
       body: JSON.stringify({ action: "list" }),
@@ -46,7 +49,7 @@ describe("puzzle-review function", () => {
     vi.stubGlobal("fetch", fetchMock);
     const response = await handler({
       httpMethod: "POST",
-      headers: { authorization: "Bearer token" },
+      headers: authHeaders(),
       body: JSON.stringify({ action: "delete" }),
     });
     expect(response.statusCode).toBe(400);
@@ -58,7 +61,7 @@ describe("puzzle-review function", () => {
     vi.stubGlobal("fetch", fetchMock);
     const response = await handler({
       httpMethod: "POST",
-      headers: { authorization: "Bearer token" },
+      headers: authHeaders(),
       body: JSON.stringify({ action: "approve", id: "4" }),
     });
 
@@ -67,13 +70,9 @@ describe("puzzle-review function", () => {
   });
 
   it("rejects a valid Lichess account that is not the reviewer", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => reviewerAccount("someone_else")),
-    );
     const response = await handler({
       httpMethod: "POST",
-      headers: { authorization: "Bearer token" },
+      headers: authHeaders("someone_else"),
       body: JSON.stringify({ action: "list" }),
     });
     expect(response.statusCode).toBe(403);
@@ -81,13 +80,9 @@ describe("puzzle-review function", () => {
   });
 
   it("validates edits before opening a database connection", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => reviewerAccount("seaside_tiramisu")),
-    );
     const response = await handler({
       httpMethod: "POST",
-      headers: { authorization: "Bearer token" },
+      headers: authHeaders(),
       body: JSON.stringify({
         action: "update",
         id: 4,
@@ -101,10 +96,6 @@ describe("puzzle-review function", () => {
   });
 
   it("loads the queue only after verifying the reviewer", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => reviewerAccount("Seaside_Tiramisu")),
-    );
     const queueOrder = vi.fn(async () => ({ data: [{ id: 7 }], error: null }));
     const queueSelect = vi.fn(() => ({ order: queueOrder }));
     const latestLimit = vi.fn(async () => ({ data: [{ id: 1797 }], error: null }));
@@ -117,7 +108,7 @@ describe("puzzle-review function", () => {
 
     const response = await handler({
       httpMethod: "POST",
-      headers: { authorization: "Bearer token" },
+      headers: authHeaders(),
       body: JSON.stringify({ action: "list" }),
     });
 
@@ -130,10 +121,6 @@ describe("puzzle-review function", () => {
   });
 
   it("does not query puzzle ids when the review queue is empty", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => reviewerAccount("seaside_tiramisu")),
-    );
     const order = vi.fn(async () => ({ data: [], error: null }));
     const select = vi.fn(() => ({ order }));
     const from = vi.fn(() => ({ select }));
@@ -141,7 +128,7 @@ describe("puzzle-review function", () => {
 
     const response = await handler({
       httpMethod: "POST",
-      headers: { authorization: "Bearer token" },
+      headers: authHeaders(),
       body: JSON.stringify({ action: "list" }),
     });
 
@@ -152,10 +139,6 @@ describe("puzzle-review function", () => {
   });
 
   it("validates and updates a pending puzzle through the service role", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => reviewerAccount("seaside_tiramisu")),
-    );
     const saved = { id: 4, fen: "saved", solution: "1. e4", explanation: "idea" };
     const single = vi.fn(async () => ({ data: saved, error: null }));
     const select = vi.fn(() => ({ single }));
@@ -166,7 +149,7 @@ describe("puzzle-review function", () => {
 
     const response = await handler({
       httpMethod: "POST",
-      headers: { authorization: "Bearer token" },
+      headers: authHeaders(),
       body: JSON.stringify({
         action: "update",
         id: 4,
@@ -185,16 +168,12 @@ describe("puzzle-review function", () => {
   });
 
   it("approves through the protected database function", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => reviewerAccount("seaside_tiramisu")),
-    );
     const rpc = vi.fn(async () => ({ data: 42, error: null }));
     mocks.createClient.mockReturnValue({ rpc });
 
     const response = await handler({
       httpMethod: "POST",
-      headers: { authorization: "Bearer token" },
+      headers: authHeaders(),
       body: JSON.stringify({ action: "approve", id: 4 }),
     });
 
@@ -207,10 +186,6 @@ describe("puzzle-review function", () => {
   });
 
   it("returns a clear conflict when the reserved puzzle id already exists", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => reviewerAccount("seaside_tiramisu")),
-    );
     const rpc = vi.fn(async () => ({
       data: null,
       error: { message: "Puzzle ID 42 already exists" },
@@ -219,7 +194,7 @@ describe("puzzle-review function", () => {
 
     const response = await handler({
       httpMethod: "POST",
-      headers: { authorization: "Bearer token" },
+      headers: authHeaders(),
       body: JSON.stringify({ action: "approve", id: 4 }),
     });
 
@@ -228,10 +203,6 @@ describe("puzzle-review function", () => {
   });
 
   it("explains when the approval database function has not been installed", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => reviewerAccount("seaside_tiramisu")),
-    );
     const rpc = vi.fn(async () => ({
       data: null,
       error: {
@@ -243,7 +214,7 @@ describe("puzzle-review function", () => {
 
     const response = await handler({
       httpMethod: "POST",
-      headers: { authorization: "Bearer token" },
+      headers: authHeaders(),
       body: JSON.stringify({ action: "approve", id: 4 }),
     });
 
@@ -254,10 +225,6 @@ describe("puzzle-review function", () => {
   });
 
   it("rejects by deleting the puzzle from the queue", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => reviewerAccount("seaside_tiramisu")),
-    );
     const eq = vi.fn(async () => ({ error: null }));
     const deleteRow = vi.fn(() => ({ eq }));
     const from = vi.fn(() => ({ delete: deleteRow }));
@@ -265,7 +232,7 @@ describe("puzzle-review function", () => {
 
     const response = await handler({
       httpMethod: "POST",
-      headers: { authorization: "Bearer token" },
+      headers: authHeaders(),
       body: JSON.stringify({ action: "reject", id: 4 }),
     });
 

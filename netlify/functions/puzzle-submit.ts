@@ -7,7 +7,7 @@ import {
   normalizeSolutionPgn,
   parseSolutionUciLines,
 } from "../../src/lib/puzzles/solutionPgn";
-import { parseBearerToken, verifyLichessAccount } from "../lib/lichessAccount";
+import { isSameOriginRequest, resolveSiteIdentity } from "../lib/siteSession";
 
 type NetlifyEvent = {
   httpMethod?: string;
@@ -49,10 +49,8 @@ export const handler = async (event: NetlifyEvent) => {
   if (event.httpMethod !== "POST") {
     return jsonResponse(405, { error: "Method not allowed." });
   }
-
-  const accessToken = parseBearerToken(event.headers);
-  if (!accessToken) {
-    return jsonResponse(401, { error: "Log in with Lichess to submit a puzzle." });
+  if (!isSameOriginRequest(event.headers)) {
+    return jsonResponse(403, { error: "Cross-site puzzle submissions are not allowed." });
   }
 
   const input = parseBody(event);
@@ -62,6 +60,10 @@ export const handler = async (event: NetlifyEvent) => {
   const { fen: submittedFen, solution: submittedPgn, event: submittedEvent, explanation } = input;
 
   try {
+    const identity = await resolveSiteIdentity(event.headers);
+    if (!identity.username) {
+      return jsonResponse(401, { error: "Log in with Lichess to submit a puzzle." });
+    }
     const parsedPgn = parsePuzzlePgnInput(submittedPgn, submittedFen);
     const fen = parsedPgn.fen;
     const solution = parsedPgn.solution;
@@ -71,11 +73,6 @@ export const handler = async (event: NetlifyEvent) => {
       return jsonResponse(400, { error: "The moves are not legal from this atomic position." });
     }
 
-    const account = await verifyLichessAccount(accessToken);
-    if (!account?.username) {
-      return jsonResponse(401, { error: "Your Lichess login is no longer valid." });
-    }
-
     const supabaseUrl =
       process.env.SUPABASE_URL?.trim() || process.env.VITE_SUPABASE_URL?.trim() || "";
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ?? "";
@@ -83,7 +80,7 @@ export const handler = async (event: NetlifyEvent) => {
       throw new Error("Puzzle submission service is not configured.");
     }
 
-    const username = account.username.trim().toLowerCase();
+    const username = identity.username;
     const supabase = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false },
     });
