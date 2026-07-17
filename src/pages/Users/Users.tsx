@@ -1,5 +1,7 @@
 import "./Users.css";
 
+import { faChevronDown, faCircleInfo } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
@@ -323,7 +325,7 @@ const UsersTablePage = () => {
               className="usersHelpButton"
               aria-label="How to get added to the rating system"
             >
-              <i className="fa-solid fa-circle-info" aria-hidden="true" />
+              <FontAwesomeIcon icon={faCircleInfo} aria-hidden="true" />
             </button>
             <span className="usersHelpTooltipBubble" role="tooltip">
               Message <strong>seaside_tiramisu</strong> on Lichess to be added to the rating system.
@@ -419,7 +421,7 @@ const UsersTablePage = () => {
                             aria-controls={`user-aliases-${row.username}`}
                           >
                             <span>{row.aliasCount}</span>
-                            <i className="fa-solid fa-chevron-down" aria-hidden="true" />
+                            <FontAwesomeIcon icon={faChevronDown} aria-hidden="true" />
                           </span>
                           <div id={`user-aliases-${row.username}`} className="usersAliasList">
                             {row.aliases.map((alias) => (

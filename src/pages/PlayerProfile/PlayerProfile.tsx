@@ -1,5 +1,7 @@
 import "./PlayerProfile.css";
 
+import { faShieldHalved } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -654,7 +656,7 @@ export const PlayerProfilePage = ({
         {isBanned ? (
           <section className="profileBanNotice" aria-labelledby="profile-ban-notice-title">
             <span className="profileBanIcon" aria-hidden="true">
-              <i className="fa-solid fa-shield-halved" />
+              <FontAwesomeIcon icon={faShieldHalved} aria-hidden="true" />
             </span>
             <div className="profileBanNoticeContent">
               <span className="profileBanEyebrow">Fair play status</span>

@@ -1,5 +1,7 @@
 import "./Comments.css";
 
+import { faArrowUp } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
@@ -151,7 +153,7 @@ export const CommentsPage = () => {
                       {formatLocalDateTime(comment.created_at)}
                     </time>
                     <span className="siteCommentUpvotes" aria-label={`${comment.upvotes} upvotes`}>
-                      <i className="fa-solid fa-arrow-up" aria-hidden="true" /> {comment.upvotes}
+                      <FontAwesomeIcon icon={faArrowUp} aria-hidden="true" /> {comment.upvotes}
                     </span>
                   </div>
                   {comment.content_hidden ? (

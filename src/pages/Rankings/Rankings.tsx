@@ -1,3 +1,5 @@
+import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -438,7 +440,7 @@ const LeaderboardView = () => {
                   : `${players.length} ranked`}
                 {selectedMode !== "wolfrandom" ? (
                   <Link className="rankingsMetaLink" to="/rankings/how-ratings-work">
-                    <i className="fa-solid fa-circle-info" aria-hidden="true" />
+                    <FontAwesomeIcon icon={faCircleInfo} aria-hidden="true" />
                     How are ratings calculated?
                   </Link>
                 ) : null}
@@ -446,7 +448,7 @@ const LeaderboardView = () => {
               {selectedMode === "wolfrandom" ? (
                 <span className="rankingsWolfrandomHelp">
                   <button type="button" className="rankingsWolfrandomTrigger">
-                    <i className="fa-solid fa-circle-info" aria-hidden="true" />
+                    <FontAwesomeIcon icon={faCircleInfo} aria-hidden="true" />
                     What is Wolfrandom?
                   </button>
                   <span className="rankingsWolfrandomTooltip" role="tooltip">

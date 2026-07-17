@@ -1,5 +1,7 @@
 import "./Users.css";
 
+import { faCircleInfo, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
@@ -119,7 +121,7 @@ export const BannedUsersPage = () => {
 
         <div className="bannedUsersHero">
           <span className="bannedUsersHeroIcon" aria-hidden="true">
-            <i className="fa-solid fa-shield-halved" />
+            <FontAwesomeIcon icon={faShieldHalved} aria-hidden="true" />
           </span>
           <div className="bannedUsersHeroCopy">
             <span className="bannedUsersEyebrow">Fair play exclusions</span>
@@ -151,7 +153,7 @@ export const BannedUsersPage = () => {
               className="usersHelpButton"
               aria-label="Why excluded users are omitted"
             >
-              <i className="fa-solid fa-circle-info" aria-hidden="true" />
+              <FontAwesomeIcon icon={faCircleInfo} aria-hidden="true" />
             </button>
             <span className="usersHelpTooltipBubble" role="tooltip">
               It&apos;s nothing personal. If your account was banned by Lichess or deemed highly

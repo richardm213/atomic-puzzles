@@ -7,6 +7,7 @@ import {
   faCheck,
   faChevronDown,
   faComment,
+  faGear,
   faMagnifyingGlass,
   faMoon,
   faReply,
@@ -1016,7 +1017,7 @@ export const TopNav = () => {
                             <span className="navNotificationCopy">
                               <strong>{notificationCopy(notification)}</strong>
                               <span>
-                                Puzzle #{notification.puzzle_id} · {formatLocalDateTime(notification.created_at)}
+                                {`Puzzle #${notification.puzzle_id} · ${formatLocalDateTime(notification.created_at)}`}
                               </span>
                             </span>
                             {!notification.read_at ? <span className="navNotificationDot" /> : null}
@@ -1132,7 +1133,7 @@ export const TopNav = () => {
             aria-expanded={settingsOpen}
             onClick={() => setSettingsOpen((open) => !open)}
           >
-            <i className="fa-solid fa-gear" aria-hidden="true" />
+            <FontAwesomeIcon icon={faGear} aria-hidden="true" />
           </button>
           {settingsOpen ? (
             <div className="navSettingsMenu" role="menu" aria-label="Site settings">
