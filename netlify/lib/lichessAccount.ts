@@ -1,11 +1,20 @@
 import { createHash } from "node:crypto";
 
+import { z } from "zod";
+
 export type RequestHeaders = Record<string, string | undefined>;
 
 export type LichessAccount = {
   username?: string;
   id?: string;
 };
+
+const lichessAccountSchema = z
+  .object({
+    username: z.string().trim().min(1).max(100),
+    id: z.string().optional(),
+  })
+  .passthrough();
 
 export class LichessVerificationError extends Error {
   readonly status: number;
@@ -67,8 +76,8 @@ export const verifyLichessAccount = async (accessToken: string): Promise<Lichess
     );
   }
 
-  const account = (await response.json()) as LichessAccount;
-  return account?.username ? account : null;
+  const account = lichessAccountSchema.safeParse(await response.json());
+  return account.success ? account.data : null;
 };
 
 export const verifyCachedLichessAccount = async (

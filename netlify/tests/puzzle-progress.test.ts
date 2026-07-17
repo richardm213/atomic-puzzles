@@ -36,6 +36,16 @@ describe("puzzle-progress function", () => {
     expect(response.statusCode).toBe(401);
   });
 
+  it("rejects malformed progress values before reading the session", async () => {
+    const response = await handler({
+      httpMethod: "POST",
+      body: JSON.stringify({ puzzleId: "42", puzzleCorrect: "yes" }),
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(mocks.createClient).not.toHaveBeenCalled();
+  });
+
   it("takes the progress owner from the signed session, never the request body", async () => {
     const rpc = vi.fn(async () => ({ error: null }));
     mocks.createClient.mockReturnValue({ rpc });

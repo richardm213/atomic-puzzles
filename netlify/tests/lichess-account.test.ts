@@ -80,4 +80,15 @@ describe("legacy bearer-session migration", () => {
     );
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
+
+  it("rejects a successful response whose account payload has the wrong shape", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ username: 42 }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    await expect(verifyLichessAccount("valid-token")).resolves.toBeNull();
+  });
 });

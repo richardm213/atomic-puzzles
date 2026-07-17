@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import { appAssetPath } from "../../utils/appAssetPath";
 
 const LICHESS_HOST = "https://lichess.org";
@@ -59,12 +61,20 @@ export class LichessAuthError extends Error {
   }
 }
 
-type LichessTokenResponse = {
-  access_token?: string;
-  expires_in?: number;
-  error?: string;
-  error_description?: string;
-};
+const lichessAccountSchema = z
+  .object({ username: z.string().trim().min(1).max(100) })
+  .passthrough();
+const lichessTokenResponseSchema = z.object({
+  access_token: z.string().optional(),
+  expires_in: z.number().optional(),
+  error: z.string().optional(),
+  error_description: z.string().optional(),
+});
+const siteSessionResponseSchema = z.object({
+  user: lichessAccountSchema.optional(),
+  error: z.string().optional(),
+});
+type LichessTokenResponse = z.infer<typeof lichessTokenResponseSchema>;
 
 const textEncoder = new window.TextEncoder();
 const PENDING_AUTH_MAX_AGE_MS = 15 * 60 * 1000;
@@ -237,14 +247,14 @@ export const startLichessLogin = async (returnTo?: string): Promise<void> => {
   window.location.assign(`${LICHESS_HOST}/oauth?${params.toString()}`);
 };
 
-const fetchJson = async <TBody = unknown>(
+const fetchJson = async (
   input: RequestInfo,
   init?: RequestInit,
   timeoutMessage = "Request timed out.",
-): Promise<{ response: Response; body: TBody | null }> => {
+): Promise<{ response: Response; body: unknown | null }> => {
   const response = await withTimeout(window.fetch(input, init), 15000, timeoutMessage);
   const contentType = response.headers.get("content-type") ?? "";
-  const body = contentType.includes("application/json") ? ((await response.json()) as TBody) : null;
+  const body = contentType.includes("application/json") ? await response.json() : null;
   return { response, body };
 };
 
@@ -262,7 +272,7 @@ const readRetryAfterMs = (response: Response): number => {
 };
 
 const establishSiteSession = async (accessToken: string): Promise<LichessAccount> => {
-  const { response, body } = await fetchJson<{ user?: LichessAccount; error?: string }>(
+  const { response, body: rawBody } = await fetchJson(
     appAssetPath("/api/auth/session"),
     {
       method: "POST",
@@ -274,6 +284,8 @@ const establishSiteSession = async (accessToken: string): Promise<LichessAccount
     },
     "Timed out while establishing your site session.",
   );
+  const bodyResult = siteSessionResponseSchema.safeParse(rawBody);
+  const body = bodyResult.success ? bodyResult.data : null;
 
   if (!response.ok) {
     if (response.status === 401) {
@@ -401,9 +413,9 @@ export const completeLichessLogin = async (
       redirect_uri: getRedirectUri(),
       client_id: getClientId(),
     });
-    let tokenResult: { response: Response; body: LichessTokenResponse | null };
+    let tokenResult: { response: Response; body: unknown | null };
     try {
-      tokenResult = await fetchJson<LichessTokenResponse>(
+      tokenResult = await fetchJson(
         `${LICHESS_HOST}/api/token`,
         {
           method: "POST",
@@ -425,7 +437,11 @@ export const completeLichessLogin = async (
       );
     }
 
-    const { response, body: tokenBody } = tokenResult;
+    const { response, body: rawTokenBody } = tokenResult;
+    const tokenBodyResult = lichessTokenResponseSchema.safeParse(rawTokenBody);
+    const tokenBody: LichessTokenResponse | null = tokenBodyResult.success
+      ? tokenBodyResult.data
+      : null;
     if (
       !response.ok ||
       !tokenBody?.access_token ||

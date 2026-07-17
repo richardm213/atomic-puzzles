@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { z } from "zod";
 
 import {
   type PuzzleSubmissionValue,
@@ -10,15 +11,6 @@ type NetlifyEvent = {
   httpMethod?: string;
   headers?: Record<string, string | undefined>;
   body?: string | null;
-};
-
-type ReviewBody = {
-  action?: unknown;
-  id?: unknown;
-  fen?: unknown;
-  solution?: unknown;
-  event?: unknown;
-  explanation?: unknown;
 };
 
 const REVIEWER = "seaside_tiramisu";
@@ -36,35 +28,36 @@ const jsonResponse = (statusCode: number, body: Record<string, unknown>) => ({
   body: JSON.stringify(body),
 });
 
+const puzzleFieldsSchema = z.object({
+  fen: z.string().trim().min(1).max(MAX_FEN_LENGTH),
+  solution: z.string().trim().min(1).max(MAX_SOLUTION_LENGTH),
+  event: z.string().trim().max(MAX_EVENT_LENGTH).default(""),
+  explanation: z.string().trim().max(MAX_EXPLANATION_LENGTH),
+});
+const reviewBodySchema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("list") }),
+  z.object({ action: z.enum(["approve", "reject"]), id: z.number().int().positive() }),
+  puzzleFieldsSchema.extend({ action: z.literal("update"), id: z.number().int().positive() }),
+]);
+type ReviewBody = z.infer<typeof reviewBodySchema>;
+
 const parseBody = (event: NetlifyEvent): ReviewBody | null => {
   try {
-    const parsed = JSON.parse(event.body ?? "");
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-      ? (parsed as ReviewBody)
-      : null;
+    const result = reviewBodySchema.safeParse(JSON.parse(event.body ?? ""));
+    return result.success ? result.data : null;
   } catch {
     return null;
   }
 };
 
-const readString = (value: unknown, maxLength: number): string | null => {
-  if (typeof value !== "string") return null;
-  const normalized = value.trim();
-  return normalized.length <= maxLength ? normalized : null;
-};
-
-const readId = (value: unknown): number | null => {
-  const id = typeof value === "number" ? value : Number.NaN;
-  return Number.isSafeInteger(id) && id > 0 ? id : null;
-};
-
 const readPuzzle = (body: ReviewBody): PuzzleSubmissionValue | null => {
-  const fen = readString(body.fen, MAX_FEN_LENGTH);
-  const solution = readString(body.solution, MAX_SOLUTION_LENGTH);
-  const event = readString(body.event ?? "", MAX_EVENT_LENGTH);
-  const explanation = readString(body.explanation, MAX_EXPLANATION_LENGTH);
-  if (!fen || !solution || event === null || explanation === null) return null;
-  return { fen, solution, event, explanation };
+  if (body.action !== "update") return null;
+  return {
+    fen: body.fen,
+    solution: body.solution,
+    event: body.event,
+    explanation: body.explanation,
+  };
 };
 
 export const handler = async (event: NetlifyEvent) => {
@@ -78,10 +71,10 @@ export const handler = async (event: NetlifyEvent) => {
   }
 
   const body = parseBody(event);
-  const action = body?.action;
-  if (action !== "list" && action !== "update" && action !== "approve" && action !== "reject") {
+  if (!body) {
     return jsonResponse(400, { error: "Invalid review action." });
   }
+  const { action } = body;
 
   try {
     const account = await verifyLichessAccount(accessToken);
@@ -95,13 +88,10 @@ export const handler = async (event: NetlifyEvent) => {
     let queuedPuzzleId: number | null = null;
     let normalizedPuzzle: PuzzleSubmissionValue | null = null;
     if (action !== "list") {
-      queuedPuzzleId = readId(body?.id);
-      if (queuedPuzzleId === null) {
-        return jsonResponse(400, { error: "Invalid queued puzzle id." });
-      }
+      queuedPuzzleId = body.id;
     }
     if (action === "update") {
-      const submittedPuzzle = body ? readPuzzle(body) : null;
+      const submittedPuzzle = readPuzzle(body);
       if (!submittedPuzzle) {
         return jsonResponse(400, { error: "Invalid queued puzzle." });
       }

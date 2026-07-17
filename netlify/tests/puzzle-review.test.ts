@@ -53,6 +53,19 @@ describe("puzzle-review function", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("rejects malformed review ids before contacting external services", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const response = await handler({
+      httpMethod: "POST",
+      headers: { authorization: "Bearer token" },
+      body: JSON.stringify({ action: "approve", id: "4" }),
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("rejects a valid Lichess account that is not the reviewer", async () => {
     vi.stubGlobal(
       "fetch",

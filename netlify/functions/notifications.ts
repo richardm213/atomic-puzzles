@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { z } from "zod";
 
 import { isSameOriginRequest, resolveSiteIdentity } from "../lib/siteSession";
 
@@ -6,11 +7,6 @@ type NetlifyEvent = {
   httpMethod?: string;
   headers?: Record<string, string | undefined>;
   body?: string | null;
-};
-
-type NotificationBody = {
-  action?: unknown;
-  ids?: unknown;
 };
 
 const jsonResponse = (
@@ -27,12 +23,15 @@ const jsonResponse = (
   body: JSON.stringify(body),
 });
 
-const parseBody = (event: NetlifyEvent): NotificationBody | null => {
+const notificationBodySchema = z.object({
+  action: z.enum(["list", "count", "markRead", "delete"]),
+  ids: z.array(z.number().int().positive()).optional(),
+});
+
+const parseBody = (event: NetlifyEvent): z.infer<typeof notificationBodySchema> | null => {
   try {
-    const parsed = JSON.parse(event.body ?? "");
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-      ? (parsed as NotificationBody)
-      : null;
+    const result = notificationBodySchema.safeParse(JSON.parse(event.body ?? ""));
+    return result.success ? result.data : null;
   } catch {
     return null;
   }
@@ -53,7 +52,7 @@ export const handler = async (event: NetlifyEvent) => {
 
   const input = parseBody(event);
   const action = input?.action;
-  if (!input || !["list", "count", "markRead", "delete"].includes(String(action))) {
+  if (!input) {
     return jsonResponse(400, { error: "Invalid notification request." });
   }
   if (["markRead", "delete"].includes(String(action)) && !isSameOriginRequest(event.headers)) {
@@ -85,9 +84,7 @@ export const handler = async (event: NetlifyEvent) => {
     }
 
     if (action === "markRead") {
-      const ids = Array.isArray(input.ids)
-        ? input.ids.filter((id): id is number => Number.isSafeInteger(id) && Number(id) > 0)
-        : [];
+      const ids = input.ids ?? [];
       let query = supabase
         .from("notifications")
         .update({ read_at: new Date().toISOString() })
@@ -99,9 +96,7 @@ export const handler = async (event: NetlifyEvent) => {
     }
 
     if (action === "delete") {
-      const ids = Array.isArray(input.ids)
-        ? input.ids.filter((id): id is number => Number.isSafeInteger(id) && Number(id) > 0)
-        : [];
+      const ids = input.ids ?? [];
       if (ids.length === 0) {
         return respond(400, { error: "Select at least one notification to delete." });
       }

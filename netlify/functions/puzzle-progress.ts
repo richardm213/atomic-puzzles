@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { z } from "zod";
 
 import { isSameOriginRequest, resolveSiteIdentity } from "../lib/siteSession";
 
@@ -6,12 +7,6 @@ type NetlifyEvent = {
   httpMethod?: string;
   headers?: Record<string, string | undefined>;
   body?: string | null;
-};
-
-type ProgressBody = {
-  puzzleId?: unknown;
-  puzzleCorrect?: unknown;
-  incorrectMove?: unknown;
 };
 
 const jsonResponse = (
@@ -28,12 +23,19 @@ const jsonResponse = (
   body: JSON.stringify(body),
 });
 
-const parseBody = (event: NetlifyEvent): ProgressBody | null => {
+const progressBodySchema = z.object({
+  puzzleId: z
+    .union([z.string(), z.number()])
+    .transform(String)
+    .pipe(z.string().regex(/^\d{1,20}$/)),
+  puzzleCorrect: z.boolean(),
+  incorrectMove: z.string().trim().max(100).nullable().optional(),
+});
+
+const parseBody = (event: NetlifyEvent): z.infer<typeof progressBodySchema> | null => {
   try {
-    const parsed = JSON.parse(event.body ?? "");
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-      ? (parsed as ProgressBody)
-      : null;
+    const result = progressBodySchema.safeParse(JSON.parse(event.body ?? ""));
+    return result.success ? result.data : null;
   } catch {
     return null;
   }
@@ -55,15 +57,11 @@ export const handler = async (event: NetlifyEvent) => {
   }
 
   const input = parseBody(event);
-  const puzzleId = String(input?.puzzleId ?? "").trim();
-  const puzzleCorrect = input?.puzzleCorrect;
-  const incorrectMove =
-    typeof input?.incorrectMove === "string"
-      ? input.incorrectMove.trim().slice(0, 100) || null
-      : null;
-  if (!/^\d{1,20}$/.test(puzzleId) || typeof puzzleCorrect !== "boolean") {
+  if (!input) {
     return jsonResponse(400, { error: "Invalid puzzle progress request." });
   }
+  const { puzzleId, puzzleCorrect } = input;
+  const incorrectMove = input.incorrectMove || null;
 
   try {
     const identity = await resolveSiteIdentity(event.headers);

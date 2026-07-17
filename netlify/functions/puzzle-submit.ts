@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { z } from "zod";
 
 import { parsePuzzlePgnInput } from "../../src/lib/puzzles/puzzleSubmission";
 import {
@@ -12,13 +13,6 @@ type NetlifyEvent = {
   httpMethod?: string;
   headers?: Record<string, string | undefined>;
   body?: string | null;
-};
-
-type SubmissionBody = {
-  fen?: unknown;
-  solution?: unknown;
-  event?: unknown;
-  explanation?: unknown;
 };
 
 const MAX_FEN_LENGTH = 200;
@@ -35,21 +29,20 @@ const jsonResponse = (statusCode: number, body: Record<string, unknown>) => ({
   body: JSON.stringify(body),
 });
 
-const parseBody = (event: NetlifyEvent): SubmissionBody | null => {
+const submissionBodySchema = z.object({
+  fen: z.string().trim().min(1).max(MAX_FEN_LENGTH),
+  solution: z.string().trim().min(1).max(MAX_SOLUTION_LENGTH),
+  event: z.string().trim().max(MAX_EVENT_LENGTH).default(""),
+  explanation: z.string().trim().max(MAX_EXPLANATION_LENGTH),
+});
+
+const parseBody = (event: NetlifyEvent): z.infer<typeof submissionBodySchema> | null => {
   try {
-    const parsed = JSON.parse(event.body ?? "");
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-      ? (parsed as SubmissionBody)
-      : null;
+    const result = submissionBodySchema.safeParse(JSON.parse(event.body ?? ""));
+    return result.success ? result.data : null;
   } catch {
     return null;
   }
-};
-
-const readString = (value: unknown, maxLength: number): string | null => {
-  if (typeof value !== "string") return null;
-  const normalized = value.trim();
-  return normalized.length <= maxLength ? normalized : null;
 };
 
 export const handler = async (event: NetlifyEvent) => {
@@ -63,13 +56,10 @@ export const handler = async (event: NetlifyEvent) => {
   }
 
   const input = parseBody(event);
-  const submittedFen = readString(input?.fen, MAX_FEN_LENGTH);
-  const submittedPgn = readString(input?.solution, MAX_SOLUTION_LENGTH);
-  const submittedEvent = readString(input?.event ?? "", MAX_EVENT_LENGTH);
-  const explanation = readString(input?.explanation, MAX_EXPLANATION_LENGTH);
-  if (!submittedFen || !submittedPgn || submittedEvent === null || explanation === null) {
+  if (!input) {
     return jsonResponse(400, { error: "Invalid puzzle submission." });
   }
+  const { fen: submittedFen, solution: submittedPgn, event: submittedEvent, explanation } = input;
 
   try {
     const parsedPgn = parsePuzzlePgnInput(submittedPgn, submittedFen);

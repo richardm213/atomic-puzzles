@@ -41,6 +41,16 @@ describe("notifications function", () => {
     expect(response.statusCode).toBe(401);
   });
 
+  it("rejects malformed notification ids before reading the session", async () => {
+    const response = await handler({
+      httpMethod: "POST",
+      body: JSON.stringify({ action: "markRead", ids: [1, "2"] }),
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(mocks.createClient).not.toHaveBeenCalled();
+  });
+
   it("loads private data from the signed session without contacting Lichess", async () => {
     const is = vi.fn(async () => ({ count: 3, error: null }));
     const eq = vi.fn(() => ({ is }));
