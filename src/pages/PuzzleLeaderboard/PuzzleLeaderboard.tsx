@@ -37,6 +37,20 @@ const puzzleLeaderboardPeriodLabels: Record<PuzzleLeaderboardPeriod, string> = {
   "30days": "Last 30 days",
   "90days": "Last 90 days",
 };
+const puzzleLeaderboardPeriodStorageKey = "atomic-puzzles.puzzle-leaderboard-period";
+
+const readStoredPuzzleLeaderboardPeriod = (): PuzzleLeaderboardPeriod => {
+  if (typeof window === "undefined") return "30days";
+
+  try {
+    const storedPeriod = window.localStorage.getItem(puzzleLeaderboardPeriodStorageKey);
+    return storedPeriod === "all" || storedPeriod === "30days" || storedPeriod === "90days"
+      ? storedPeriod
+      : "30days";
+  } catch {
+    return "30days";
+  }
+};
 
 const sortIndicator = (
   sortKey: PuzzleLeaderboardSortKey,
@@ -51,7 +65,7 @@ const PuzzleLeaderboard = () => {
   const [progressRows, setProgressRows] = useState<PuzzleProgressWithUsernameRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [period, setPeriod] = useState<PuzzleLeaderboardPeriod>("all");
+  const [period, setPeriod] = useState<PuzzleLeaderboardPeriod>(readStoredPuzzleLeaderboardPeriod);
   const [sortKey, setSortKey] = useState<PuzzleLeaderboardSortKey>("score");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
@@ -84,6 +98,14 @@ const PuzzleLeaderboard = () => {
       isCurrent = false;
     };
   }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(puzzleLeaderboardPeriodStorageKey, period);
+    } catch {
+      // Keep the leaderboard usable if browser storage is unavailable.
+    }
+  }, [period]);
 
   const rows = useMemo(
     () => buildPuzzleLeaderboardRows(filterPuzzleProgressRowsByPeriod(progressRows, period)),
