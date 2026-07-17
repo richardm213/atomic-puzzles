@@ -24,21 +24,22 @@ const ratingDisplayModeSchema = z.enum(ratingDisplayOptions);
 
 type RatingCell = { display: string | number; sortValue: number | null };
 type RatingCells = { current: RatingCell; peak: RatingCell };
+type UserRatingMode = Exclude<Mode, "wolfrandom">;
 
 type UserRow = {
   username: string;
   blitz: RatingCells;
   bullet: RatingCells;
   hyperbullet: RatingCells;
-  wolfrandom: RatingCells;
   aliasCount: number;
   aliases: string[];
   openings: string[];
 };
 
-type UserSortKey = "username" | "openings" | "aliasCount" | Mode;
+type UserSortKey = "username" | "openings" | "aliasCount" | UserRatingMode;
 
 const isMode = (value: string): value is Mode => (modeOptions as readonly string[]).includes(value);
+const isUserRatingMode = (mode: Mode): mode is UserRatingMode => mode !== "wolfrandom";
 
 const getUserColumns = (
   ratingDisplayMode: RatingDisplayMode,
@@ -47,10 +48,6 @@ const getUserColumns = (
   { key: "blitz", label: `Blitz ${ratingDisplayMode === "peak" ? "Peak" : "Rating"}` },
   { key: "bullet", label: `Bullet ${ratingDisplayMode === "peak" ? "Peak" : "Rating"}` },
   { key: "hyperbullet", label: `Hyper ${ratingDisplayMode === "peak" ? "Peak" : "Rating"}` },
-  {
-    key: "wolfrandom",
-    label: `Wolfrandom ${ratingDisplayMode === "peak" ? "Peak" : "Rating"}`,
-  },
   { key: "openings", label: "Openings" },
   { key: "aliasCount", label: "Number of Aliases" },
 ];
@@ -126,13 +123,12 @@ const buildUserRows = (ratingRows: PlayerRatingRow[], aliasesLookup: AliasLookup
       blitz: emptyRatingCells,
       bullet: emptyRatingCells,
       hyperbullet: emptyRatingCells,
-      wolfrandom: emptyRatingCells,
       aliasCount: aliasesLookup.get(username)?.aliases?.length ?? 0,
       aliases: aliasesLookup.get(username)?.aliases ?? [],
       openings: aliasesLookup.get(username)?.openings ?? [],
     };
 
-    existing[mode] = normalizeRatingCells(row);
+    if (isUserRatingMode(mode)) existing[mode] = normalizeRatingCells(row);
     existing.aliasCount = aliasesLookup.get(username)?.aliases?.length ?? existing.aliasCount ?? 0;
     existing.aliases = aliasesLookup.get(username)?.aliases ?? existing.aliases ?? [];
     existing.openings = aliasesLookup.get(username)?.openings ?? existing.openings ?? [];

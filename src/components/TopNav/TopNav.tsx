@@ -46,6 +46,7 @@ type NavItem = {
   to: string;
   label: string;
   isActive: (pathname: string) => boolean;
+  linkToPage?: boolean;
   children?: {
     to: string;
     label: string;
@@ -62,6 +63,7 @@ const navItems: NavItem[] = [
   {
     to: "/solve",
     label: "Puzzles",
+    linkToPage: true,
     isActive: (pathname) =>
       pathname === "/solve" ||
       pathname.startsWith("/solve/") ||
@@ -789,23 +791,40 @@ export const TopNav = () => {
                   onMouseEnter={() => openNavDropdownFor(item.to)}
                   onMouseLeave={scheduleNavDropdownClose}
                 >
-                  <button
-                    className="navDropdownTrigger"
-                    type="button"
-                    aria-haspopup="menu"
-                    aria-expanded={dropdownOpen}
-                    aria-current={active ? "page" : undefined}
-                    onClick={() => {
-                      clearNavDropdownCloseTimeout();
-                      setOpenNavDropdown((openDropdown) =>
-                        openDropdown === item.to ? null : item.to,
-                      );
-                      setProfileMenuOpen(false);
-                      setSettingsOpen(false);
-                    }}
-                  >
-                    {item.label}
-                  </button>
+                  {item.linkToPage ? (
+                    <Link
+                      className="navDropdownTrigger"
+                      to={item.to}
+                      aria-current={active ? "page" : undefined}
+                      onFocus={() => openNavDropdownFor(item.to)}
+                      onClick={() => {
+                        closeNavDropdown();
+                        setMobileMenuOpen(false);
+                        setProfileMenuOpen(false);
+                        setSettingsOpen(false);
+                      }}
+                    >
+                      {item.label}
+                    </Link>
+                  ) : (
+                    <button
+                      className="navDropdownTrigger"
+                      type="button"
+                      aria-haspopup="menu"
+                      aria-expanded={dropdownOpen}
+                      aria-current={active ? "page" : undefined}
+                      onClick={() => {
+                        clearNavDropdownCloseTimeout();
+                        setOpenNavDropdown((openDropdown) =>
+                          openDropdown === item.to ? null : item.to,
+                        );
+                        setProfileMenuOpen(false);
+                        setSettingsOpen(false);
+                      }}
+                    >
+                      {item.label}
+                    </button>
+                  )}
                   {dropdownOpen ? (
                     <div
                       className="navDropdownMenu"
