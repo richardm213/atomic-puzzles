@@ -253,6 +253,7 @@ export const PuzzleSolverPage = () => {
   const boardPanelRef = useRef<HTMLDivElement | null>(null);
   const upcomingPuzzleIndexesRef = useRef<number[]>([]);
   const loadingPuzzleIdsRef = useRef<Set<string>>(new Set());
+  const isMountedRef = useRef(true);
   const initialRoutePuzzleIdRef = useRef(parsePuzzleId(routePuzzleId));
   const progressWriteQueueRef = useRef(Promise.resolve());
   const attemptedPuzzleIdsRef = useRef<Set<string>>(new Set());
@@ -265,6 +266,13 @@ export const PuzzleSolverPage = () => {
     [puzzles, routeSetKey],
   );
   const isSetSolveMode = Boolean(routeSetKey && orderedSetPuzzleIndexes.length > 0);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const ensureUpcomingPuzzleIndexes = useCallback(
     (currentIndex: number): number => {
@@ -533,29 +541,35 @@ export const PuzzleSolverPage = () => {
     if (missingIds.length === 0) return undefined;
 
     missingIds.forEach((puzzleId) => loadingPuzzleIdsRef.current.add(String(puzzleId)));
-    let isCurrent = true;
     void loadPuzzlesById(missingIds)
       .then((loadedPuzzles) => {
-        if (!isCurrent) return;
+        if (!isMountedRef.current) return;
         mergeLoadedPuzzles(loadedPuzzles);
-        if (
-          missingIds.some((puzzleId) => puzzleId === activePuzzleId) &&
-          !loadedPuzzles.some((puzzle) => puzzle.puzzleId === activePuzzleId)
-        ) {
-          setLoadingError(`Puzzle #${activePuzzleId} is unavailable or has no playable solution.`);
+
+        const loadedIds = new Set(loadedPuzzles.map((puzzle) => String(puzzle.puzzleId)));
+        const activeRequestedId = missingIds.find(
+          (puzzleId) => String(puzzleId) === activePuzzleKeyRef.current,
+        );
+        if (activeRequestedId !== undefined && !loadedIds.has(String(activeRequestedId))) {
+          setLoadingError(
+            `Puzzle #${activeRequestedId} is unavailable or has no playable solution.`,
+          );
         }
       })
       .catch((error) => {
-        if (!isCurrent) return;
-        setLoadingError(error instanceof Error ? error.message : "Failed to load puzzle data");
+        if (!isMountedRef.current) return;
+        const requestIncludesActivePuzzle = missingIds.some(
+          (puzzleId) => String(puzzleId) === activePuzzleKeyRef.current,
+        );
+        if (requestIncludesActivePuzzle) {
+          setLoadingError(error instanceof Error ? error.message : "Failed to load puzzle data");
+        } else {
+          globalThis.console?.error(error);
+        }
       })
       .finally(() => {
         missingIds.forEach((puzzleId) => loadingPuzzleIdsRef.current.delete(String(puzzleId)));
       });
-
-    return () => {
-      isCurrent = false;
-    };
   }, [
     activePuzzleId,
     activePuzzleIndex,

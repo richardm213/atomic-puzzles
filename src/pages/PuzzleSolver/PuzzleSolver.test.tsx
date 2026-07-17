@@ -222,6 +222,64 @@ describe("PuzzleSolverPage solution options", () => {
     }
   });
 
+  it("uses an in-flight prefetch when Next selects that puzzle", async () => {
+    mocks.routeParams = { puzzleId: "1", setKey: "" };
+    mocks.attemptedPuzzleIds = new Set();
+    mocks.loadPuzzleCatalog.mockResolvedValueOnce(
+      Array.from({ length: 4 }, (_, index) => ({
+        id: index + 1,
+        fen: "",
+        solution: "",
+        puzzleId: index + 1,
+        author: "admin",
+        event: "ACL 2024",
+        explanation: "",
+      })),
+    );
+
+    const puzzleDetails = (puzzleId: number) => ({
+      id: puzzleId,
+      fen: "rn2k2r/pp5p/1qpp2p1/2Q5/1b2P3/2N5/PPP3PP/R3KB1R b KQkq - 1 12",
+      solution: "12... O-O 13. O-O-O Rf2 14. Be2 Ba3",
+      puzzleId,
+      author: "admin",
+      event: "ACL 2024",
+      explanation: "",
+    });
+    let prefetchedIds: number[] = [];
+    let resolvePrefetch: (puzzles: ReturnType<typeof puzzleDetails>[]) => void = () => undefined;
+    mocks.loadPuzzlesById.mockImplementation((puzzleIds: number[]) => {
+      if (puzzleIds.length === 1 && puzzleIds[0] === 1) {
+        return Promise.resolve([puzzleDetails(1)]);
+      }
+
+      prefetchedIds = puzzleIds;
+      return new Promise((resolve) => {
+        resolvePrefetch = resolve;
+      });
+    });
+    mocks.navigate.mockImplementation((options: { params?: { puzzleId?: string } }) => {
+      if (options.params?.puzzleId) {
+        mocks.routeParams = { ...mocks.routeParams, puzzleId: options.params.puzzleId };
+      }
+    });
+
+    const user = userEvent.setup();
+    render(<PuzzleSolverPage />);
+
+    await screen.findByTestId("mock-board");
+    await waitFor(() => expect(prefetchedIds).toHaveLength(3));
+
+    const nextButton = screen.getAllByRole("button", { name: "Next" })[0]!;
+    await user.click(nextButton);
+    expect(screen.getByText("Waiting for puzzle data...")).toBeInTheDocument();
+
+    resolvePrefetch(prefetchedIds.map(puzzleDetails));
+
+    await waitFor(() => expect(screen.getByTestId("mock-board")).toBeInTheDocument());
+    expect(screen.queryByText("Waiting for puzzle data...")).not.toBeInTheDocument();
+  });
+
   it.each([
     ["1. O-O", 0],
     ["1. Rf8", 1],
