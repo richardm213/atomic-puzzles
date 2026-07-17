@@ -14,11 +14,9 @@ import {
   completeLichessLogin,
   getStoredPostLoginRedirect,
   LICHESS_SESSION_INVALID_EVENT,
-  LICHESS_SESSION_STORAGE_KEY,
   type LichessAccount,
   type LichessSession,
   restoreLichessSession,
-  revokeLichessSession,
   setStoredPostLoginRedirect,
   startLichessLogin,
 } from "../lib/auth/lichessAuth";
@@ -31,11 +29,9 @@ export type AuthContextValue = {
   isAuthenticated: boolean;
   isLoading: boolean;
   user: LichessAccount | null;
-  accessToken: string;
   login: (returnTo: string) => Promise<void>;
   finishLogin: (search: string) => Promise<string>;
   logout: () => Promise<void>;
-  getAccessToken: () => string;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -78,29 +74,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       clearStoredLichessSession();
       applySession(null);
     };
-    const handleStorage = (event: StorageEvent): void => {
-      if (event.key !== LICHESS_SESSION_STORAGE_KEY) return;
-
-      if (event.newValue === null) {
-        clearStoredLichessSession();
-        applySession(null);
-        return;
-      }
-
-      void restoreLichessSession()
-        .then((restoredSession) => {
-          applySession(restoredSession);
-        })
-        .catch(() => {
-          clearInvalidSession();
-        });
-    };
-
     window.addEventListener(LICHESS_SESSION_INVALID_EVENT, clearInvalidSession);
-    window.addEventListener("storage", handleStorage);
     return () => {
       window.removeEventListener(LICHESS_SESSION_INVALID_EVENT, clearInvalidSession);
-      window.removeEventListener("storage", handleStorage);
     };
   }, [applySession]);
 
@@ -133,13 +109,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const logout = useCallback(async (): Promise<void> => {
-    const accessToken = sessionRef.current?.accessToken ?? "";
     clearStoredLichessSession();
     applySession(null);
-    await Promise.allSettled([revokeLichessSession(accessToken), clearAuthenticatedSiteSession()]);
+    await clearAuthenticatedSiteSession();
   }, [applySession]);
-
-  const getAccessToken = useCallback((): string => sessionRef.current?.accessToken ?? "", []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -147,13 +120,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       isAuthenticated: status === "authenticated" && Boolean(session?.me),
       isLoading: status === "loading",
       user: session?.me ?? null,
-      accessToken: session?.accessToken ?? "",
       login,
       finishLogin,
       logout,
-      getAccessToken,
     }),
-    [finishLogin, getAccessToken, login, logout, session, status],
+    [finishLogin, login, logout, session, status],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

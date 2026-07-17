@@ -44,6 +44,7 @@ import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { Seo } from "../../components/Seo/Seo";
 import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFilterChecks";
 import { TimeControlFields } from "../../components/TimeControlFields/TimeControlFields";
+import { useMatchSearch } from "../../hooks/useMatchSearch";
 import { loadRawMatchesByMode } from "../../lib/matches/matchData";
 import {
   ratingsForPlayers,
@@ -115,7 +116,7 @@ export const RecentMatchesPage = () => {
   const [totalMatches, setTotalMatches] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(defaultPageSize);
-  const [error, setError] = useState("");
+  const { error, loading: loadingMatches, run: runMatchSearch } = useMatchSearch();
   const [expandedMatchKeys, setExpandedMatchKeys] = useState<string[]>([]);
   const [ratingFilterType, setRatingFilterType] = useState("both");
   const [ratingMin, setRatingMin] = useState(defaultRatingMin);
@@ -127,9 +128,6 @@ export const RecentMatchesPage = () => {
   const [endDateFilter, setEndDateFilter] = useState("");
   const [timeControlInitialFilter, setTimeControlInitialFilter] = useState("all");
   const [timeControlIncrementFilter, setTimeControlIncrementFilter] = useState("all");
-  const [loadingMatches, setLoadingMatches] = useState(false);
-  const searchInFlightRef = useRef(false);
-  const pageLoadIdRef = useRef(0);
   const skipNextPageLoadKeyRef = useRef("");
   const [appliedFilters, setAppliedFilters] = useState<AppliedFilters>({
     selectedMode: defaultMode,
@@ -268,8 +266,23 @@ export const RecentMatchesPage = () => {
     [buildSupabaseFilters, pageSize],
   );
 
+  const fetchPage = useCallback(
+    async (filters: AppliedFilters, page: number) => {
+      const loaded = await loadRawMatchesByMode(filters.selectedMode, {
+        filters: buildSupabaseFilters(filters),
+        page,
+        pageSize,
+      });
+      return {
+        matches: normalizeRecentMatches(loaded.matches, filters.selectedMode),
+        total: loaded.total,
+      };
+    },
+    [buildSupabaseFilters, pageSize],
+  );
+
   const handleSearch = async () => {
-    if (searchInFlightRef.current || loadingMatches) return;
+    if (loadingMatches) return;
 
     const nextAppliedFilters = {
       selectedMode,
@@ -285,38 +298,23 @@ export const RecentMatchesPage = () => {
       timeControlIncrementFilter,
     };
 
-    searchInFlightRef.current = true;
-    const requestId = pageLoadIdRef.current + 1;
-    pageLoadIdRef.current = requestId;
-    setLoadingMatches(true);
-    setError("");
-    try {
-      const resolvedAppliedFilters = await resolveSearchFilters(nextAppliedFilters);
-      if (requestId !== pageLoadIdRef.current) return;
-
-      const loaded = await loadRawMatchesByMode(selectedMode, {
-        filters: buildSupabaseFilters(resolvedAppliedFilters),
-        page: 1,
-        pageSize,
-      });
-      if (requestId !== pageLoadIdRef.current) return;
-      setMatches(normalizeRecentMatches(loaded.matches, selectedMode));
-      setTotalMatches(loaded.total);
-      skipNextPageLoadKeyRef.current = pageRequestKey(resolvedAppliedFilters, 1);
-      setAppliedFilters(resolvedAppliedFilters);
-      setCurrentPage(1);
-    } catch (loadError) {
-      if (requestId !== pageLoadIdRef.current) return;
-      setMatches([]);
-      setTotalMatches(0);
-      setError(String(loadError));
-      setCurrentPage(1);
-    } finally {
-      searchInFlightRef.current = false;
-      if (requestId === pageLoadIdRef.current) {
-        setLoadingMatches(false);
-      }
-    }
+    const result = await runMatchSearch(
+      async () => {
+        const filters = await resolveSearchFilters(nextAppliedFilters);
+        return { filters, ...(await fetchPage(filters, 1)) };
+      },
+      () => {
+        setMatches([]);
+        setTotalMatches(0);
+        setCurrentPage(1);
+      },
+    );
+    if (!result) return;
+    setMatches(result.matches);
+    setTotalMatches(result.total);
+    skipNextPageLoadKeyRef.current = pageRequestKey(result.filters, 1);
+    setAppliedFilters(result.filters);
+    setCurrentPage(1);
   };
 
   useEffect(() => {
@@ -331,33 +329,20 @@ export const RecentMatchesPage = () => {
         return;
       }
 
-      const requestId = pageLoadIdRef.current + 1;
-      pageLoadIdRef.current = requestId;
-      setLoadingMatches(true);
-      setError("");
-      try {
-        const loaded = await loadRawMatchesByMode(appliedFilters.selectedMode, {
-          filters: buildSupabaseFilters(appliedFilters),
-          page: currentPage,
-          pageSize,
-        });
-        if (requestId !== pageLoadIdRef.current) return;
-        setMatches(normalizeRecentMatches(loaded.matches, appliedFilters.selectedMode));
-        setTotalMatches(loaded.total);
-      } catch (loadError) {
-        if (requestId !== pageLoadIdRef.current) return;
-        setMatches([]);
-        setTotalMatches(0);
-        setError(String(loadError));
-      } finally {
-        if (requestId === pageLoadIdRef.current) {
-          setLoadingMatches(false);
-        }
-      }
+      const result = await runMatchSearch(
+        () => fetchPage(appliedFilters, currentPage),
+        () => {
+          setMatches([]);
+          setTotalMatches(0);
+        },
+      );
+      if (!result) return;
+      setMatches(result.matches);
+      setTotalMatches(result.total);
     };
 
     void loadPage();
-  }, [currentPage, pageSize, appliedFilters, buildSupabaseFilters, pageRequestKey]);
+  }, [appliedFilters, currentPage, fetchPage, pageRequestKey, runMatchSearch]);
 
   const paginatedMatches = filteredMatches;
   const setSourceFilter = (source: keyof SourceFilters, checked: boolean): void => {

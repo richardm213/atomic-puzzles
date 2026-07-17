@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   approveQueuedPuzzle,
-  fetchPendingPuzzleQueue,
   rejectQueuedPuzzle,
   submitPuzzleToQueue,
   updateQueuedPuzzle,
@@ -19,13 +18,6 @@ describe("puzzle queue review client", () => {
     vi.unstubAllGlobals();
   });
 
-  it("requires an access token before making review requests", async () => {
-    const fetchMock = vi.fn();
-    vi.stubGlobal("fetch", fetchMock);
-    await expect(fetchPendingPuzzleQueue("")).rejects.toThrow(/Log in/);
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
   it("sends queue edits to the verified review endpoint", async () => {
     const puzzle = {
       id: 4,
@@ -39,11 +31,12 @@ describe("puzzle queue review client", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(
-      updateQueuedPuzzle(
-        4,
-        { fen: " fen ", solution: " 1. e4 ", event: " match ", explanation: " idea " },
-        "token",
-      ),
+      updateQueuedPuzzle(4, {
+        fen: " fen ",
+        solution: " 1. e4 ",
+        event: " match ",
+        explanation: " idea ",
+      }),
     ).resolves.toEqual(puzzle);
 
     expect(fetchMock).toHaveBeenCalledOnce();
@@ -56,7 +49,8 @@ describe("puzzle queue review client", () => {
       event: "match",
       explanation: "idea",
     });
-    expect(request?.headers).toMatchObject({ Authorization: "Bearer token" });
+    expect(request?.credentials).toBe("same-origin");
+    expect(request?.headers).not.toHaveProperty("Authorization");
   });
 
   it("reports the submission service status when it returns a non-JSON error", async () => {
@@ -71,7 +65,6 @@ describe("puzzle queue review client", () => {
         solution: "1. e4",
         event: "",
         explanation: "",
-        accessToken: "token",
       }),
     ).rejects.toThrow(/HTTP 404/);
   });
@@ -82,7 +75,7 @@ describe("puzzle queue review client", () => {
       vi.fn(async () => jsonResponse({ puzzleId: 42 })),
     );
     const fetchMock = vi.mocked(fetch);
-    await expect(approveQueuedPuzzle(4, "token")).resolves.toBe(42);
+    await expect(approveQueuedPuzzle(4)).resolves.toBe(42);
     const [, request] = fetchMock.mock.calls[0] ?? [];
     expect(JSON.parse(String(request?.body))).toEqual({ action: "approve", id: 4 });
   });
@@ -93,7 +86,7 @@ describe("puzzle queue review client", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(rejectQueuedPuzzle(4, "token")).resolves.toBeUndefined();
+    await expect(rejectQueuedPuzzle(4)).resolves.toBeUndefined();
     const [, request] = fetchMock.mock.calls[0] ?? [];
     expect(JSON.parse(String(request?.body))).toEqual({ action: "reject", id: 4 });
   });

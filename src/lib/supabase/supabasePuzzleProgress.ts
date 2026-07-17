@@ -5,9 +5,8 @@ import type {
   PuzzleProgressRpcRow,
   PuzzleProgressWithUsernameRow,
 } from "../../types/supabase";
-import { appAssetPath } from "../../utils/appAssetPath";
 import { normalizeUsername } from "../../utils/playerNames";
-import { invalidateLichessSessionForResponse } from "../auth/lichessAuth";
+import { postApi } from "../api/postApi";
 import { getSupabaseClient } from "./supabaseClient";
 import { fetchAllSupabaseRows, loadSupabasePage, loadSupabaseRows } from "./supabaseRows";
 
@@ -255,7 +254,6 @@ const loadAttemptedPuzzleIdsFromRpc = async (
 };
 
 export type RecordPuzzleProgressInput = {
-  accessToken: string;
   username: string;
   puzzleId: string | number;
   puzzleCorrect: boolean;
@@ -268,7 +266,6 @@ export type FetchPuzzleAttemptsForPuzzleOptions = {
 };
 
 export const recordPuzzleProgress = async ({
-  accessToken,
   username,
   puzzleId,
   puzzleCorrect,
@@ -278,7 +275,7 @@ export const recordPuzzleProgress = async ({
   const normalizedPuzzleId = normalizePuzzleId(puzzleId);
   const normalizedIncorrectMove = puzzleCorrect ? null : String(incorrectMove ?? "").trim() || null;
 
-  if (!accessToken || !normalizedUsername || !normalizedPuzzleId) return;
+  if (!normalizedUsername || !normalizedPuzzleId) return;
 
   const requestKey = `${normalizedUsername}:${normalizedPuzzleId}`;
   const existingRequest = puzzleProgressWriteRequests.get(requestKey);
@@ -288,21 +285,15 @@ export const recordPuzzleProgress = async ({
 
   const request = (async (): Promise<void> => {
     const firstAttemptAt = new Date().toISOString();
-    const response = await fetch(appAssetPath("/api/puzzles/progress"), {
-      method: "POST",
-      credentials: "same-origin",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
+    await postApi(
+      "/api/puzzles/progress",
+      {
         puzzleId: normalizedPuzzleId,
         puzzleCorrect: Boolean(puzzleCorrect),
         incorrectMove: normalizedIncorrectMove,
-      }),
-    });
-    invalidateLichessSessionForResponse(response, accessToken);
-    if (!response.ok) throw new Error("Unable to record puzzle progress.");
+      },
+      { errorMessage: "Unable to record puzzle progress." },
+    );
 
     upsertLocalPuzzleProgressRow(normalizedUsername, {
       puzzle_id: normalizedPuzzleId,

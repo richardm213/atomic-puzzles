@@ -1,72 +1,40 @@
 import type { PuzzleQueueRow, PuzzleReviewQueueRow } from "../../types/supabase";
-import { appAssetPath } from "../../utils/appAssetPath";
-import { invalidateLichessSessionForResponse } from "../auth/lichessAuth";
+import { postApi } from "../api/postApi";
 
-const reviewRequest = async <T>(accessToken: string, body: Record<string, unknown>): Promise<T> => {
-  if (!accessToken) throw new Error("Log in with Lichess to review puzzles.");
-
-  const response = await fetch(appAssetPath("/api/puzzles/review"), {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
+const reviewRequest = <T>(body: Record<string, unknown>): Promise<T> =>
+  postApi("/api/puzzles/review", body, {
+    errorMessage: "Unable to review puzzle.",
+    invalidMessage: "Unable to review puzzle: the server returned no data.",
   });
-  invalidateLichessSessionForResponse(response, accessToken);
-  const result = (await response.json().catch(() => null)) as (T & { error?: string }) | null;
-  if (!response.ok) throw new Error(result?.error || "Unable to review puzzle.");
-  if (!result) throw new Error("Unable to review puzzle: the server returned no data.");
-  return result;
-};
 
 export const submitPuzzleToQueue = async (input: {
   fen: string;
   solution: string;
   event: string;
   explanation: string;
-  accessToken: string;
 }): Promise<PuzzleQueueRow> => {
-  if (!input.accessToken) throw new Error("Log in with Lichess to submit a puzzle.");
-
-  const response = await fetch(appAssetPath("/api/puzzles/submit"), {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${input.accessToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
+  const body = await postApi<{ puzzle?: PuzzleQueueRow }>(
+    "/api/puzzles/submit",
+    {
       fen: input.fen.trim(),
       solution: input.solution.trim(),
       event: input.event.trim(),
       explanation: input.explanation.trim(),
-    }),
-  });
-  invalidateLichessSessionForResponse(response, input.accessToken);
-  const responseText = await response.text();
-  let body: { puzzle?: PuzzleQueueRow; error?: string } | null = null;
-  try {
-    body = JSON.parse(responseText) as { puzzle?: PuzzleQueueRow; error?: string };
-  } catch {
-    body = null;
-  }
-
-  if (!response.ok) {
-    throw new Error(
-      body?.error ||
+    },
+    {
+      errorMessage: (response) =>
         `Unable to submit puzzle: submission service returned HTTP ${response.status}.`,
-    );
-  }
-  if (!body?.puzzle) {
+      invalidMessage: "Unable to submit puzzle: the submission service returned no data.",
+    },
+  );
+  if (!body.puzzle) {
     throw new Error("Unable to submit puzzle: the submission service returned no puzzle data.");
   }
   return body.puzzle;
 };
 
-export const fetchPendingPuzzleQueue = async (
-  accessToken: string,
-): Promise<PuzzleReviewQueueRow[]> => {
-  const result = await reviewRequest<{ puzzles: PuzzleReviewQueueRow[] }>(accessToken, {
+export const fetchPendingPuzzleQueue = async (): Promise<PuzzleReviewQueueRow[]> => {
+  const result = await reviewRequest<{ puzzles: PuzzleReviewQueueRow[] }>({
     action: "list",
   });
   if (!Array.isArray(result.puzzles)) {
@@ -78,9 +46,8 @@ export const fetchPendingPuzzleQueue = async (
 export const updateQueuedPuzzle = async (
   id: number,
   input: { fen: string; solution: string; event: string; explanation: string },
-  accessToken: string,
 ): Promise<PuzzleQueueRow> => {
-  const result = await reviewRequest<{ puzzle: PuzzleQueueRow }>(accessToken, {
+  const result = await reviewRequest<{ puzzle: PuzzleQueueRow }>({
     action: "update",
     id,
     fen: input.fen.trim(),
@@ -94,8 +61,8 @@ export const updateQueuedPuzzle = async (
   return result.puzzle;
 };
 
-export const approveQueuedPuzzle = async (id: number, accessToken: string): Promise<number> => {
-  const result = await reviewRequest<{ puzzleId: number }>(accessToken, {
+export const approveQueuedPuzzle = async (id: number): Promise<number> => {
+  const result = await reviewRequest<{ puzzleId: number }>({
     action: "approve",
     id,
   });
@@ -105,8 +72,8 @@ export const approveQueuedPuzzle = async (id: number, accessToken: string): Prom
   return result.puzzleId;
 };
 
-export const rejectQueuedPuzzle = async (id: number, accessToken: string): Promise<void> => {
-  const result = await reviewRequest<{ rejected: boolean }>(accessToken, {
+export const rejectQueuedPuzzle = async (id: number): Promise<void> => {
+  const result = await reviewRequest<{ rejected: boolean }>({
     action: "reject",
     id,
   });

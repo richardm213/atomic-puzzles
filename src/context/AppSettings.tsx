@@ -7,8 +7,10 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useState,
 } from "react";
+import { z } from "zod";
+
+import { usePersistedState } from "../hooks/usePersistedState";
 
 const STORAGE_KEYS = {
   theme: "atomic-puzzles.theme",
@@ -162,8 +164,6 @@ export type AppSettingsContextValue = {
 
 const AppSettingsContext = createContext<AppSettingsContextValue | null>(null);
 
-const isValidTheme = (value: unknown): value is Theme =>
-  typeof value === "string" && (THEMES as readonly string[]).includes(value);
 const isValidPieceSet = (value: unknown): value is string =>
   typeof value === "string" && LICHESS_PIECE_SETS.some((entry) => entry.value === value);
 const isValidBoardTheme = (value: unknown): value is string =>
@@ -171,54 +171,11 @@ const isValidBoardTheme = (value: unknown): value is string =>
 const isValidHexColor = (value: unknown): value is string =>
   typeof value === "string" && /^#([0-9a-f]{6})$/i.test(value);
 const isImageBoardTheme = (value: string): boolean => IMAGE_BOARD_THEMES.includes(value);
-const isValidBoardColorOverrideTheme = (value: unknown): value is string =>
-  isValidBoardTheme(value) && value !== "custom" && !isImageBoardTheme(value);
-
-const readStoredValue = <T extends string>(
-  key: string,
-  validator: (value: unknown) => value is T,
-  fallback: T,
-): T => {
-  if (typeof window === "undefined") return fallback;
-  const storedValue = window.localStorage.getItem(key);
-  return validator(storedValue) ? storedValue : fallback;
-};
-
-const usePersistedState = <T extends string>(
-  key: string,
-  validator: (value: unknown) => value is T,
-  fallback: T,
-): [T, Dispatch<SetStateAction<T>>] => {
-  const [value, setValue] = useState<T>(() => readStoredValue(key, validator, fallback));
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(key, value);
-  }, [key, value]);
-
-  return [value, setValue];
-};
-
-const usePersistedBoolean = (
-  key: string,
-  fallback: boolean,
-): [boolean, Dispatch<SetStateAction<boolean>>] => {
-  const [value, setValue] = useState(() => {
-    if (typeof window === "undefined") return fallback;
-    const stored = window.localStorage.getItem(key);
-    return stored === null ? fallback : stored === "true";
-  });
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(key, String(value));
-  }, [key, value]);
-
-  return [value, setValue];
-};
-
-const isOptionalString = (value: unknown): value is string =>
-  value === "" || (typeof value === "string" && value.length > 0);
+const themeSchema = z.enum(THEMES);
+const pieceSetSchema = z.string().refine(isValidPieceSet);
+const boardThemeSchema = z.string().refine(isValidBoardTheme);
+const hexColorSchema = z.string().refine(isValidHexColor);
+const boardColorOverrideSchema = z.string();
 
 export const getBoardThemeColors = (
   boardTheme: string,
@@ -245,50 +202,52 @@ export const getBoardThemeColors = (
 export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
   const [theme, setTheme] = usePersistedState<Theme>(
     STORAGE_KEYS.theme,
-    isValidTheme,
+    themeSchema,
     DEFAULT_THEME,
   );
   const [pieceSet, setPieceSet] = usePersistedState<string>(
     STORAGE_KEYS.pieceSet,
-    isValidPieceSet,
+    pieceSetSchema,
     DEFAULT_PIECE_SET,
   );
   const [boardTheme, setBoardTheme] = usePersistedState<string>(
     STORAGE_KEYS.boardTheme,
-    isValidBoardTheme,
+    boardThemeSchema,
     DEFAULT_BOARD_THEME,
   );
   const [customLightSquare, setCustomLightSquare] = usePersistedState<string>(
     STORAGE_KEYS.customLightSquare,
-    isValidHexColor,
+    hexColorSchema,
     DEFAULT_CUSTOM_LIGHT_SQUARE,
   );
   const [customDarkSquare, setCustomDarkSquare] = usePersistedState<string>(
     STORAGE_KEYS.customDarkSquare,
-    isValidHexColor,
+    hexColorSchema,
     DEFAULT_CUSTOM_DARK_SQUARE,
   );
   const [boardColorOverrideTheme, setBoardColorOverrideTheme] = usePersistedState<string>(
     STORAGE_KEYS.boardColorOverrideTheme,
-    (value): value is string => isValidBoardColorOverrideTheme(value) || isOptionalString(value),
+    boardColorOverrideSchema,
     "",
   );
   const [boardOverrideLightSquare, setBoardOverrideLightSquare] = usePersistedState<string>(
     STORAGE_KEYS.boardOverrideLightSquare,
-    isValidHexColor,
+    hexColorSchema,
     DEFAULT_CUSTOM_LIGHT_SQUARE,
   );
   const [boardOverrideDarkSquare, setBoardOverrideDarkSquare] = usePersistedState<string>(
     STORAGE_KEYS.boardOverrideDarkSquare,
-    isValidHexColor,
+    hexColorSchema,
     DEFAULT_CUSTOM_DARK_SQUARE,
   );
-  const [hideRankingsOpenings, setHideRankingsOpenings] = usePersistedBoolean(
+  const [hideRankingsOpenings, setHideRankingsOpenings] = usePersistedState(
     STORAGE_KEYS.hideRankingsOpenings,
+    z.boolean(),
     false,
   );
-  const [showPuzzleTimer, setShowPuzzleTimer] = usePersistedBoolean(
+  const [showPuzzleTimer, setShowPuzzleTimer] = usePersistedState(
     STORAGE_KEYS.showPuzzleTimer,
+    z.boolean(),
     true,
   );
 

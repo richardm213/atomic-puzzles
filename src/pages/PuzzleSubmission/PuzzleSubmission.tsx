@@ -356,7 +356,7 @@ Mark try-again moves with ?, for example Nf3?`}
 };
 
 export const PuzzleSubmissionPage = () => {
-  const { accessToken, isAuthenticated, isLoading, user, login } = useAuth();
+  const { isAuthenticated, isLoading, user, login } = useAuth();
   const [value, setValue] = useState<PuzzleSubmissionValue>(emptyPuzzleSubmission);
   const [submitting, setSubmitting] = useState(false);
   const [editorVersion, setEditorVersion] = useState(0);
@@ -370,7 +370,7 @@ export const PuzzleSubmissionPage = () => {
     setError("");
     try {
       const normalized = validatePuzzleSubmission(value);
-      await submitPuzzleToQueue({ ...normalized, accessToken });
+      await submitPuzzleToQueue(normalized);
       setValue(emptyPuzzleSubmission());
       setEditorVersion((version) => version + 1);
       setMessage("Puzzle submitted for review. Thank you!");
@@ -443,7 +443,7 @@ export const PuzzleSubmissionPage = () => {
 };
 
 export const PuzzleReviewPage = () => {
-  const { accessToken, isAuthenticated, isLoading, user, login } = useAuth();
+  const { isAuthenticated, isLoading, user, login } = useAuth();
   const [queue, setQueue] = useState<PuzzleReviewQueueRow[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [value, setValue] = useState<PuzzleSubmissionValue>(emptyPuzzleSubmission);
@@ -459,7 +459,7 @@ export const PuzzleReviewPage = () => {
     let cancelled = false;
     setLoadingQueue(true);
     setError("");
-    void fetchPendingPuzzleQueue(accessToken)
+    void fetchPendingPuzzleQueue()
       .then((rows) => {
         if (cancelled) return;
         const first = rows[0] ?? null;
@@ -479,11 +479,11 @@ export const PuzzleReviewPage = () => {
     return () => {
       cancelled = true;
     };
-  }, [accessToken, isReviewer]);
+  }, [isReviewer]);
 
   const saveBeforeApproval = async (queueId: number): Promise<void> => {
     const normalized = validatePuzzleSubmission(value);
-    const saved = await updateQueuedPuzzle(queueId, normalized, accessToken);
+    const saved = await updateQueuedPuzzle(queueId, normalized);
     setQueue((rows) =>
       rows.map((row) =>
         row.id === saved.id ? { ...saved, next_puzzle_id: row.next_puzzle_id } : row,
@@ -499,7 +499,7 @@ export const PuzzleReviewPage = () => {
     setError("");
     try {
       await saveBeforeApproval(selectedId);
-      const puzzleId = await approveQueuedPuzzle(selectedId, accessToken);
+      const puzzleId = await approveQueuedPuzzle(selectedId);
       const nextQueue = queue
         .filter((row) => row.id !== selectedId)
         .map((row) => ({ ...row, next_puzzle_id: puzzleId + 1 }));
@@ -524,7 +524,7 @@ export const PuzzleReviewPage = () => {
     setMessage("");
     setError("");
     try {
-      await rejectQueuedPuzzle(selectedId, accessToken);
+      await rejectQueuedPuzzle(selectedId);
       const nextQueue = queue.filter((row) => row.id !== selectedId);
       setQueue(nextQueue);
       setSelectedId(nextQueue[0]?.id ?? null);

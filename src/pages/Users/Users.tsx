@@ -4,9 +4,11 @@ import { faChevronDown, faCircleInfo } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { z } from "zod";
 
 import { Seo } from "../../components/Seo/Seo";
 import { type Mode, modeOptions } from "../../constants/matches";
+import { usePersistedState } from "../../hooks/usePersistedState";
 import {
   fetchPlayerRatingsRows,
   type PlayerRatingRow,
@@ -18,6 +20,7 @@ const HIGH_RD_THRESHOLD = 100;
 const RATING_DISPLAY_STORAGE_KEY = "atomic-users-rating-display-mode";
 const ratingDisplayOptions = ["current", "peak"] as const;
 type RatingDisplayMode = (typeof ratingDisplayOptions)[number];
+const ratingDisplayModeSchema = z.enum(ratingDisplayOptions);
 
 type RatingCell = { display: string | number; sortValue: number | null };
 type RatingCells = { current: RatingCell; peak: RatingCell };
@@ -36,20 +39,6 @@ type UserRow = {
 type UserSortKey = "username" | "openings" | "aliasCount" | Mode;
 
 const isMode = (value: string): value is Mode => (modeOptions as readonly string[]).includes(value);
-
-const isRatingDisplayMode = (value: string | null): value is RatingDisplayMode =>
-  value === "current" || value === "peak";
-
-const getStoredRatingDisplayMode = (): RatingDisplayMode => {
-  if (typeof window === "undefined") return "current";
-
-  try {
-    const storedMode = window.localStorage.getItem(RATING_DISPLAY_STORAGE_KEY);
-    return isRatingDisplayMode(storedMode) ? storedMode : "current";
-  } catch {
-    return "current";
-  }
-};
 
 const getUserColumns = (
   ratingDisplayMode: RatingDisplayMode,
@@ -159,8 +148,10 @@ const UsersTablePage = () => {
   const [loading, setLoading] = useState(true);
   const [sortKey, setSortKey] = useState<UserSortKey>("blitz");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
-  const [ratingDisplayMode, setRatingDisplayMode] = useState<RatingDisplayMode>(
-    getStoredRatingDisplayMode,
+  const [ratingDisplayMode, setRatingDisplayMode] = usePersistedState<RatingDisplayMode>(
+    RATING_DISPLAY_STORAGE_KEY,
+    ratingDisplayModeSchema,
+    "current",
   );
   const [activeOpeningFilter, setActiveOpeningFilter] = useState("");
 
@@ -194,14 +185,6 @@ const UsersTablePage = () => {
       isCurrent = false;
     };
   }, []);
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(RATING_DISPLAY_STORAGE_KEY, ratingDisplayMode);
-    } catch {
-      // Ignore storage failures; the selected mode still applies for the current session.
-    }
-  }, [ratingDisplayMode]);
 
   const handleSort = (nextKey: UserSortKey): void => {
     if (sortKey === nextKey) {

@@ -1,7 +1,8 @@
 import "./H2H.css";
 
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { z } from "zod";
 
 import { type Mode, modeLabels, modeOptions, type SourceFilters } from "../../constants/matches";
 import type { PlayerRatingRow } from "../../lib/supabase/supabasePlayerRatings";
@@ -21,6 +22,8 @@ import { MatchDetails } from "../../components/MatchDetails/MatchDetails";
 import { MatchPageLink } from "../../components/MatchPageLink/MatchPageLink";
 import { Seo } from "../../components/Seo/Seo";
 import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFilterChecks";
+import { useMatchSearch } from "../../hooks/useMatchSearch";
+import { usePersistedState } from "../../hooks/usePersistedState";
 import { loadRawMatchesByMode } from "../../lib/matches/matchData";
 import {
   ratingsForPlayers,
@@ -121,41 +124,26 @@ const defaultH2HModeFilters: Record<Mode, boolean> = {
   wolfrandom: true,
 };
 
-const readStoredH2HModeFilters = (): Record<Mode, boolean> => {
-  if (typeof window === "undefined") return defaultH2HModeFilters;
-
-  try {
-    const saved = window.localStorage.getItem(h2hModeFiltersStorageKey);
-    if (!saved) return defaultH2HModeFilters;
-
-    const parsed = JSON.parse(saved) as unknown;
-    if (Array.isArray(parsed)) {
+const h2hModeFiltersSchema = z
+  .union([z.array(z.string()), z.record(z.string(), z.unknown())])
+  .transform((value): Record<Mode, boolean> => {
+    if (Array.isArray(value)) {
       return {
         ...defaultH2HModeFilters,
-        ...Object.fromEntries(modeOptions.map((mode) => [mode, parsed.includes(mode)])),
+        ...Object.fromEntries(modeOptions.map((mode) => [mode, value.includes(mode)])),
       };
     }
 
-    if (parsed && typeof parsed === "object") {
-      const parsedRecord = parsed as Record<string, unknown>;
-      return {
-        ...defaultH2HModeFilters,
-        ...Object.fromEntries(
-          modeOptions.map((mode) => [
-            mode,
-            typeof parsedRecord[mode] === "boolean"
-              ? Boolean(parsedRecord[mode])
-              : defaultH2HModeFilters[mode],
-          ]),
-        ),
-      };
-    }
-  } catch {
-    // Local storage is a convenience only; defaults still provide the full view.
-  }
-
-  return defaultH2HModeFilters;
-};
+    return {
+      ...defaultH2HModeFilters,
+      ...Object.fromEntries(
+        modeOptions.map((mode) => [
+          mode,
+          typeof value[mode] === "boolean" ? value[mode] : defaultH2HModeFilters[mode],
+        ]),
+      ),
+    };
+  });
 
 const storeLastSearch = (player1: string, player2: string): void => {
   try {
@@ -196,17 +184,20 @@ export const H2HPage = () => {
   const { matchup } = useParams({ strict: false });
   const [player1Input, setPlayer1Input] = useState("");
   const [player2Input, setPlayer2Input] = useState("");
+  const [modeFilters, setModeFilters] = usePersistedState(
+    h2hModeFiltersStorageKey,
+    h2hModeFiltersSchema,
+    defaultH2HModeFilters,
+  );
   const [filters, setFilters] = useState<{
     startDate: string;
     endDate: string;
     timeControl: string;
-    modes: Record<Mode, boolean>;
     sources: SourceFilters;
   }>({
     startDate: "",
     endDate: "",
     timeControl: "all",
-    modes: readStoredH2HModeFilters(),
     sources: readStoredSourceFilters(),
   });
   const [loadedPlayer1, setLoadedPlayer1] = useState("");
@@ -215,10 +206,7 @@ export const H2HPage = () => {
   const [matches, setMatches] = useState<H2HMatch[]>([]);
   const [expandedMatchKeys, setExpandedMatchKeys] = useState<string[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const searchRequestIdRef = useRef(0);
-  const searchSubmitInFlightRef = useRef(false);
+  const { error, loading, reset: resetSearch, run: runMatchSearch, setError } = useMatchSearch();
 
   const startDateTs = useMemo(() => parseDateInputBoundary(filters.startDate, "start"), [filters]);
   const endDateTs = useMemo(() => parseDateInputBoundary(filters.endDate, "end"), [filters]);
@@ -237,13 +225,13 @@ export const H2HPage = () => {
       matches.filter((match) => {
         if (!visibleModeOptions.includes(match.mode)) return false;
         if (match.startTs < startDateTs || match.startTs > endDateTs) return false;
-        if (!filters.modes[match.mode]) return false;
+        if (!modeFilters[match.mode]) return false;
         if (filters.timeControl !== "all" && match.timeControl !== filters.timeControl)
           return false;
 
         return isSourceAllowedByFilters(match.source, filters.sources);
       }),
-    [endDateTs, filters, matches, startDateTs, visibleModeOptions],
+    [endDateTs, filters, matches, modeFilters, startDateTs, visibleModeOptions],
   );
 
   const { initialOptions, incrementOptions } = useMemo(
@@ -283,89 +271,69 @@ export const H2HPage = () => {
     [scoresByMode, visibleModeOptions],
   );
 
-  const performSearch = useCallback(async (first: string, second: string): Promise<void> => {
-    const requestId = searchRequestIdRef.current + 1;
-    searchRequestIdRef.current = requestId;
-
-    if (!first || !second) {
-      setError("Enter both usernames to search head-to-head.");
-      setHasSearched(true);
-      setMatches([]);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setHasSearched(true);
-    setExpandedMatchKeys([]);
-    setError("");
-
-    try {
-      const [resolvedFirst, resolvedSecond] = await resolveUsernameInputs([first, second]);
-      if (requestId !== searchRequestIdRef.current) return;
-
-      const loadModeMatches = async (mode: Mode) =>
-        loadRawMatchesByMode(mode, {
-          filters: { usernamePair: [resolvedFirst ?? "", resolvedSecond ?? ""] },
-        });
-      const loadPlayerSnapshot = async (username: string) => fetchPlayerRatingsRows({ username });
-
-      const [modeResults, firstRatings, secondRatings] = await Promise.all([
-        Promise.all(modeOptions.map((mode) => loadModeMatches(mode))),
-        loadPlayerSnapshot(resolvedFirst ?? ""),
-        loadPlayerSnapshot(resolvedSecond ?? ""),
-      ]);
-      if (requestId !== searchRequestIdRef.current) return;
-
-      const merged = modeResults
-        .flatMap((rawMatches, index) => {
-          const mode = modeOptions[index];
-          if (!mode) return [];
-          return normalizeH2HMatches(rawMatches, mode, resolvedFirst ?? "", resolvedSecond ?? "");
-        })
-        .sort((a, b) => b.startTs - a.startTs);
-
-      setLoadedPlayer1(resolvedFirst ?? "");
-      setLoadedPlayer2(resolvedSecond ?? "");
-      setMatches(merged);
-      setPlayerSnapshots({
-        [(resolvedFirst ?? "").toLowerCase()]: indexRatingsRowsByTimeControl(firstRatings),
-        [(resolvedSecond ?? "").toLowerCase()]: indexRatingsRowsByTimeControl(secondRatings),
-      });
-      if (!merged.length) {
-        setError("No head-to-head matches found for the selected players.");
-      }
-    } catch (loadError) {
-      if (requestId !== searchRequestIdRef.current) return;
-      setMatches([]);
-      setError(String(loadError));
-    } finally {
-      if (requestId === searchRequestIdRef.current) {
-        setLoading(false);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(h2hModeFiltersStorageKey, JSON.stringify(filters.modes));
-    } catch {
-      // Ignore storage failures; the active filters still apply for this page view.
-    }
-  }, [filters.modes]);
-
-  const handleSearch = async () => {
-    if (searchSubmitInFlightRef.current || loading) return;
-
-    const first = player1Input.trim();
-    const second = player2Input.trim();
-    searchSubmitInFlightRef.current = true;
-    try {
+  const performSearch = useCallback(
+    async (first: string, second: string): Promise<void> => {
       if (!first || !second) {
-        await performSearch(first, second);
+        resetSearch();
+        setError("Enter both usernames to search head-to-head.");
+        setHasSearched(true);
+        setMatches([]);
         return;
       }
 
+      setHasSearched(true);
+      setExpandedMatchKeys([]);
+      const result = await runMatchSearch(
+        async () => {
+          const [resolvedFirst = "", resolvedSecond = ""] = await resolveUsernameInputs([
+            first,
+            second,
+          ]);
+          const loadModeMatches = (mode: Mode) =>
+            loadRawMatchesByMode(mode, {
+              filters: { usernamePair: [resolvedFirst, resolvedSecond] },
+            });
+          const [modeResults, firstRatings, secondRatings] = await Promise.all([
+            Promise.all(modeOptions.map(loadModeMatches)),
+            fetchPlayerRatingsRows({ username: resolvedFirst }),
+            fetchPlayerRatingsRows({ username: resolvedSecond }),
+          ]);
+          const merged = modeResults
+            .flatMap((rawMatches, index) => {
+              const mode = modeOptions[index];
+              return mode
+                ? normalizeH2HMatches(rawMatches, mode, resolvedFirst, resolvedSecond)
+                : [];
+            })
+            .sort((a, b) => b.startTs - a.startTs);
+          return { firstRatings, merged, resolvedFirst, resolvedSecond, secondRatings };
+        },
+        () => setMatches([]),
+      );
+      if (!result) return;
+      const { firstRatings, merged, resolvedFirst, resolvedSecond, secondRatings } = result;
+      setLoadedPlayer1(resolvedFirst);
+      setLoadedPlayer2(resolvedSecond);
+      setMatches(merged);
+      setPlayerSnapshots({
+        [resolvedFirst.toLowerCase()]: indexRatingsRowsByTimeControl(firstRatings),
+        [resolvedSecond.toLowerCase()]: indexRatingsRowsByTimeControl(secondRatings),
+      });
+      if (!merged.length) setError("No head-to-head matches found for the selected players.");
+    },
+    [resetSearch, runMatchSearch, setError],
+  );
+
+  const handleSearch = async () => {
+    if (loading) return;
+    const first = player1Input.trim();
+    const second = player2Input.trim();
+    if (!first || !second) {
+      await performSearch(first, second);
+      return;
+    }
+
+    await runMatchSearch(async () => {
       const [resolvedFirst, resolvedSecond] = await resolveUsernameInputs([first, second]);
       if (!resolvedFirst || !resolvedSecond) return;
 
@@ -376,9 +344,7 @@ export const H2HPage = () => {
           matchup: matchupToSlug(resolvedFirst, resolvedSecond),
         },
       });
-    } finally {
-      searchSubmitInFlightRef.current = false;
-    }
+    });
   };
 
   useEffect(() => {
@@ -386,8 +352,7 @@ export const H2HPage = () => {
     if (!parsedMatchup) {
       const savedSearch = readLastSearch();
       setHasSearched(false);
-      setLoading(false);
-      setError("");
+      resetSearch();
       if (savedSearch) {
         setPlayer1Input(savedSearch.player1);
         setPlayer2Input(savedSearch.player2);
@@ -399,7 +364,7 @@ export const H2HPage = () => {
     setPlayer1Input(player1);
     setPlayer2Input(player2);
     void performSearch(player1.trim(), player2.trim());
-  }, [matchup, performSearch]);
+  }, [matchup, performSearch, resetSearch]);
 
   const handleChangePlayers = () => {
     if (loadedPlayer1 || loadedPlayer2) {
@@ -423,10 +388,7 @@ export const H2HPage = () => {
     });
   };
   const setModeFilter = (mode: Mode, checked: boolean): void => {
-    setFilters((current) => ({
-      ...current,
-      modes: { ...current.modes, [mode]: checked },
-    }));
+    setModeFilters((current) => ({ ...current, [mode]: checked }));
   };
 
   const renderModeStats = (modeData: PlayerRatingRow | Record<string, never>) => (
@@ -653,7 +615,7 @@ export const H2HPage = () => {
                         <label key={mode} className="sourceFilterCheck h2hModeFilterCheck">
                           <input
                             type="checkbox"
-                            checked={filters.modes[mode]}
+                            checked={modeFilters[mode]}
                             onChange={(event) => setModeFilter(mode, event.target.checked)}
                           />
                           <span>{modeLabels[mode]}</span>

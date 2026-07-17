@@ -5,12 +5,13 @@ import { appAssetPath } from "../../utils/appAssetPath";
 const LICHESS_HOST = "https://lichess.org";
 
 export const LICHESS_SESSION_INVALID_EVENT = "atomic-puzzles:lichess-session-invalid";
+// Kept only so new releases can delete credentials persisted by older releases.
 export const LICHESS_SESSION_STORAGE_KEY = "atomic-puzzles.lichess-session";
 
 const STORAGE_KEYS = {
   pendingAuth: "atomic-puzzles.lichess-pending-auth",
   postLoginRedirect: "atomic-puzzles.post-login-redirect",
-  session: LICHESS_SESSION_STORAGE_KEY,
+  legacySession: LICHESS_SESSION_STORAGE_KEY,
 };
 
 export type LichessAccount = {
@@ -18,19 +19,13 @@ export type LichessAccount = {
   [key: string]: unknown;
 };
 
-export type LichessSession = {
-  accessToken: string;
-  expiresAt: number | null;
-  me: LichessAccount;
-};
+export type LichessSession = { me: LichessAccount };
 
 type PendingAuthState = {
   state: string;
   codeVerifier: string;
   returnTo: string;
   createdAt?: number;
-  exchangedAccessToken?: string;
-  exchangedExpiresAt?: number | null;
 };
 
 export type LichessAuthErrorCode =
@@ -64,17 +59,10 @@ export class LichessAuthError extends Error {
 const lichessAccountSchema = z
   .object({ username: z.string().trim().min(1).max(100) })
   .passthrough();
-const lichessTokenResponseSchema = z.object({
-  access_token: z.string().optional(),
-  expires_in: z.number().optional(),
-  error: z.string().optional(),
-  error_description: z.string().optional(),
-});
 const siteSessionResponseSchema = z.object({
   user: lichessAccountSchema.optional(),
   error: z.string().optional(),
 });
-type LichessTokenResponse = z.infer<typeof lichessTokenResponseSchema>;
 
 const textEncoder = new window.TextEncoder();
 const PENDING_AUTH_MAX_AGE_MS = 15 * 60 * 1000;
@@ -94,7 +82,6 @@ const getBasePath = (): string => {
 
 const getClientId = (): string =>
   import.meta.env.VITE_LICHESS_CLIENT_ID?.trim() || window.location.host;
-
 const getRedirectUri = (): string =>
   `${window.location.origin}${getBasePath()}/auth/lichess/callback`;
 const getHomePath = (): string => `${getBasePath()}/`;
@@ -102,7 +89,6 @@ const getHomePath = (): string => `${getBasePath()}/`;
 const getSafeReturnTo = (value: string | null | undefined): string => {
   const requestedPath = String(value || "").trim();
   if (!requestedPath.startsWith("/") || requestedPath.startsWith("//")) return getHomePath();
-
   try {
     const requestedUrl = new URL(requestedPath, window.location.origin);
     if (requestedUrl.origin !== window.location.origin) return getHomePath();
@@ -120,18 +106,26 @@ const withTimeout = async <T>(
 ): Promise<T> => {
   let timeoutId: number | null = null;
   const timeoutPromise = new Promise<never>((_, reject) => {
-    timeoutId = window.setTimeout(() => {
-      reject(new Error(timeoutMessage));
-    }, timeoutMs);
+    timeoutId = window.setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
   });
-
   try {
     return await Promise.race([promise, timeoutPromise]);
   } finally {
-    if (timeoutId !== null) {
-      window.clearTimeout(timeoutId);
-    }
+    if (timeoutId !== null) window.clearTimeout(timeoutId);
   }
+};
+
+const fetchJson = async (
+  input: RequestInfo,
+  init?: RequestInit,
+  timeoutMessage = "Request timed out.",
+): Promise<{ response: Response; body: unknown | null }> => {
+  const response = await withTimeout(window.fetch(input, init), 15_000, timeoutMessage);
+  const contentType = response.headers.get("content-type") ?? "";
+  return {
+    response,
+    body: contentType.includes("application/json") ? await response.json() : null,
+  };
 };
 
 const toBase64Url = (value: string): string =>
@@ -143,14 +137,11 @@ const randomString = (byteLength = 64): string => {
   return toBase64Url(Array.from(bytes, (byte) => String.fromCharCode(byte)).join(""));
 };
 
-const sha256 = async (value: string): Promise<Uint8Array> => {
-  const digest = await window.crypto.subtle.digest("SHA-256", textEncoder.encode(value));
-  return new Uint8Array(digest);
-};
-
 const createCodeChallenge = async (codeVerifier: string): Promise<string> => {
-  const digest = await sha256(codeVerifier);
-  return toBase64Url(Array.from(digest, (byte) => String.fromCharCode(byte)).join(""));
+  const digest = await window.crypto.subtle.digest("SHA-256", textEncoder.encode(codeVerifier));
+  return toBase64Url(
+    Array.from(new Uint8Array(digest), (byte) => String.fromCharCode(byte)).join(""),
+  );
 };
 
 const parseStoredJson = <T>(storage: Storage, key: string): T | null => {
@@ -164,17 +155,14 @@ const parseStoredJson = <T>(storage: Storage, key: string): T | null => {
 
 const clearPendingAuthState = (): void => {
   window.sessionStorage.removeItem(STORAGE_KEYS.pendingAuth);
-  // Clean up attempts created by releases that used persistent storage.
   window.localStorage.removeItem(STORAGE_KEYS.pendingAuth);
 };
 
 const getPendingAuthState = (): PendingAuthState | null =>
   parseStoredJson<PendingAuthState>(window.sessionStorage, STORAGE_KEYS.pendingAuth);
 
-export const getStoredPostLoginRedirect = (): string => {
-  const storedValue = window.sessionStorage.getItem(STORAGE_KEYS.postLoginRedirect);
-  return getSafeReturnTo(storedValue);
-};
+export const getStoredPostLoginRedirect = (): string =>
+  getSafeReturnTo(window.sessionStorage.getItem(STORAGE_KEYS.postLoginRedirect));
 
 export const setStoredPostLoginRedirect = (path: string): void => {
   window.sessionStorage.setItem(STORAGE_KEYS.postLoginRedirect, getSafeReturnTo(path));
@@ -186,34 +174,16 @@ export const clearStoredPostLoginRedirect = (): void => {
   window.localStorage.removeItem(STORAGE_KEYS.postLoginRedirect);
 };
 
-const getStoredLichessSession = (): LichessSession | null => {
-  const current = parseStoredJson<LichessSession>(window.localStorage, STORAGE_KEYS.session);
-  if (current) return current;
-
-  // Preserve sessions created by the previous tab-scoped implementation.
-  const legacy = parseStoredJson<LichessSession>(window.sessionStorage, STORAGE_KEYS.session);
-  if (legacy) {
-    window.localStorage.setItem(STORAGE_KEYS.session, JSON.stringify(legacy));
-    window.sessionStorage.removeItem(STORAGE_KEYS.session);
-  }
-  return legacy;
-};
-
-const storeLichessSession = (session: LichessSession): void => {
-  window.localStorage.setItem(STORAGE_KEYS.session, JSON.stringify(session));
-  window.sessionStorage.removeItem(STORAGE_KEYS.session);
-};
-
 export const clearStoredLichessSession = (): void => {
-  window.sessionStorage.removeItem(STORAGE_KEYS.session);
-  window.localStorage.removeItem(STORAGE_KEYS.session);
+  window.sessionStorage.removeItem(STORAGE_KEYS.legacySession);
+  window.localStorage.removeItem(STORAGE_KEYS.legacySession);
 };
 
 export const invalidateLichessSessionForResponse = (
   response: Response,
-  accessToken: string,
+  _legacyAccessToken = "",
 ): void => {
-  if (!accessToken || response.status !== 401) return;
+  if (response.status !== 401) return;
   clearStoredLichessSession();
   window.dispatchEvent(new Event(LICHESS_SESSION_INVALID_EVENT));
 };
@@ -235,103 +205,63 @@ export const startLichessLogin = async (returnTo?: string): Promise<void> => {
   });
   window.sessionStorage.setItem(
     STORAGE_KEYS.pendingAuth,
-    JSON.stringify({
-      state,
-      codeVerifier,
-      returnTo: nextReturnTo,
-      createdAt: Date.now(),
-    }),
+    JSON.stringify({ state, codeVerifier, returnTo: nextReturnTo, createdAt: Date.now() }),
   );
   setStoredPostLoginRedirect(nextReturnTo);
-
   window.location.assign(`${LICHESS_HOST}/oauth?${params.toString()}`);
 };
 
-const fetchJson = async (
-  input: RequestInfo,
-  init?: RequestInit,
-  timeoutMessage = "Request timed out.",
-): Promise<{ response: Response; body: unknown | null }> => {
-  const response = await withTimeout(window.fetch(input, init), 15000, timeoutMessage);
-  const contentType = response.headers.get("content-type") ?? "";
-  const body = contentType.includes("application/json") ? await response.json() : null;
-  return { response, body };
+const readSessionResponse = (rawBody: unknown): LichessAccount | null => {
+  const result = siteSessionResponseSchema.safeParse(rawBody);
+  return result.success && result.data.user?.username ? result.data.user : null;
 };
 
-const readRetryAfterMs = (response: Response): number => {
-  const retryAfter = response.headers.get("retry-after")?.trim() ?? "";
-  const retryAfterSeconds = Number(retryAfter);
-  const retryAfterDate = Date.parse(retryAfter);
-  const retryAfterMs =
-    Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
-      ? retryAfterSeconds * 1000
-      : Number.isFinite(retryAfterDate)
-        ? retryAfterDate - Date.now()
-        : 60_000;
-  return Math.min(5 * 60_000, Math.max(10_000, retryAfterMs));
+export const restoreLichessSession = async (): Promise<LichessSession | null> => {
+  clearStoredLichessSession();
+  const { response, body } = await fetchJson(
+    appAssetPath("/api/auth/session"),
+    { method: "GET", credentials: "same-origin" },
+    "Timed out while restoring your site session.",
+  );
+  if (response.status === 401) return null;
+  if (!response.ok) throw new Error("Unable to restore your site session.");
+  const me = readSessionResponse(body);
+  if (!me) throw new Error("The site session service returned incomplete account information.");
+  return { me };
 };
 
-const establishSiteSession = async (accessToken: string): Promise<LichessAccount> => {
+const establishSiteSession = async (
+  code: string,
+  codeVerifier: string,
+): Promise<LichessAccount> => {
   const { response, body: rawBody } = await fetchJson(
     appAssetPath("/api/auth/session"),
     {
       method: "POST",
       credentials: "same-origin",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        code,
+        codeVerifier,
+        clientId: getClientId(),
+        redirectUri: getRedirectUri(),
+      }),
     },
     "Timed out while establishing your site session.",
   );
-  const bodyResult = siteSessionResponseSchema.safeParse(rawBody);
-  const body = bodyResult.success ? bodyResult.data : null;
-
+  const parsedBody = siteSessionResponseSchema.safeParse(rawBody);
+  const errorMessage = parsedBody.success ? parsedBody.data.error : undefined;
   if (!response.ok) {
-    if (response.status === 401) {
-      throw new LichessAuthError(
-        "code_rejected",
-        "Lichess rejected the new access token. Start a fresh login.",
-      );
-    }
-    if (response.status === 429) {
-      throw new LichessAuthError(
-        "account_rate_limited",
-        "Lichess is temporarily limiting login checks. Your authorization succeeded; wait a moment, then retry once.",
-        true,
-        readRetryAfterMs(response),
-      );
-    }
-    throw new Error(body?.error ?? "Unable to establish your site session.");
+    const code = response.status === 429 ? "account_rate_limited" : "code_rejected";
+    throw new LichessAuthError(
+      code,
+      errorMessage ?? "Unable to establish your site session. Start a fresh login.",
+      false,
+    );
   }
-
-  if (!body?.user?.username) {
-    throw new Error("The site session service returned incomplete account information.");
-  }
-  return body.user;
-};
-
-export const restoreLichessSession = (): Promise<LichessSession | null> => {
-  const session = getStoredLichessSession();
-  if (
-    !session?.accessToken ||
-    !isValidLichessCredential(session.accessToken) ||
-    !session.me?.username
-  ) {
-    clearStoredLichessSession();
-    return Promise.resolve(null);
-  }
-
-  if (typeof session.expiresAt === "number" && Date.now() >= session.expiresAt) {
-    clearStoredLichessSession();
-    return Promise.resolve(null);
-  }
-
-  // Restoring a saved login must not depend on Lichess being reachable. Site
-  // APIs validate the signed first-party session, with a one-time bearer-token
-  // migration for older sessions. Revalidating here caused transient Lichess
-  // failures to delete otherwise valid sessions.
-  return Promise.resolve(session);
+  const me = readSessionResponse(rawBody);
+  if (!me) throw new Error("The site session service returned incomplete account information.");
+  return me;
 };
 
 export const completeLichessLogin = async (
@@ -343,18 +273,15 @@ export const completeLichessLogin = async (
   const error = params.get("error") ?? "";
   const errorDescription = params.get("error_description") ?? "";
   const pendingAuth = getPendingAuthState();
-  const expectedState = pendingAuth?.state ?? "";
-  const codeVerifier = pendingAuth?.codeVerifier ?? "";
   const returnTo = getSafeReturnTo(pendingAuth?.returnTo);
 
-  if (!pendingAuth || !expectedState || !codeVerifier) {
+  if (!pendingAuth?.state || !pendingAuth.codeVerifier) {
     clearPendingAuthState();
     throw new LichessAuthError(
       "stale_callback",
       "This login link is stale or has already been used. Start a new Lichess login.",
     );
   }
-
   if (
     typeof pendingAuth.createdAt === "number" &&
     Date.now() - pendingAuth.createdAt > PENDING_AUTH_MAX_AGE_MS
@@ -365,21 +292,12 @@ export const completeLichessLogin = async (
       "This login attempt expired. Start a new Lichess login.",
     );
   }
-
-  if (!returnedState) {
-    throw new LichessAuthError(
-      "invalid_callback",
-      "The Lichess callback is missing required information. Start a new login.",
-    );
-  }
-
-  if (returnedState !== expectedState) {
+  if (!returnedState || returnedState !== pendingAuth.state) {
     throw new LichessAuthError(
       "invalid_callback",
       "This login response does not match the login that was started in this browser.",
     );
   }
-
   if (error) {
     clearPendingAuthState();
     throw new LichessAuthError(
@@ -387,14 +305,6 @@ export const completeLichessLogin = async (
       errorDescription || "Lichess authorization was cancelled.",
     );
   }
-
-  if (!code) {
-    throw new LichessAuthError(
-      "invalid_callback",
-      "The Lichess callback is missing its authorization code. Start a new login.",
-    );
-  }
-
   if (!isValidLichessCredential(code)) {
     throw new LichessAuthError(
       "invalid_callback",
@@ -402,114 +312,21 @@ export const completeLichessLogin = async (
     );
   }
 
-  let accessToken = pendingAuth.exchangedAccessToken ?? "";
-  let expiresAt = pendingAuth.exchangedExpiresAt ?? null;
-
-  if (!accessToken) {
-    const body = new window.URLSearchParams({
-      grant_type: "authorization_code",
-      code,
-      code_verifier: codeVerifier,
-      redirect_uri: getRedirectUri(),
-      client_id: getClientId(),
-    });
-    let tokenResult: { response: Response; body: unknown | null };
-    try {
-      tokenResult = await fetchJson(
-        `${LICHESS_HOST}/api/token`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            Accept: "application/json",
-          },
-          body,
-        },
-        "Timed out while exchanging the Lichess authorization code.",
-      );
-    } catch (exchangeError) {
-      throw new LichessAuthError(
-        "token_exchange_failed",
-        exchangeError instanceof Error
-          ? exchangeError.message
-          : "Unable to contact Lichess while finishing login.",
-        true,
-      );
-    }
-
-    const { response, body: rawTokenBody } = tokenResult;
-    const tokenBodyResult = lichessTokenResponseSchema.safeParse(rawTokenBody);
-    const tokenBody: LichessTokenResponse | null = tokenBodyResult.success
-      ? tokenBodyResult.data
-      : null;
-    if (
-      !response.ok ||
-      !tokenBody?.access_token ||
-      !isValidLichessCredential(tokenBody.access_token)
-    ) {
-      clearPendingAuthState();
-      const rejectedCode = tokenBody?.error === "invalid_grant";
-      throw new LichessAuthError(
-        rejectedCode ? "code_rejected" : "token_exchange_failed",
-        rejectedCode
-          ? "This Lichess login code is stale or has already been used. Start a new login."
-          : (tokenBody?.error_description ?? tokenBody?.error ?? "Lichess login failed."),
-      );
-    }
-
-    accessToken = tokenBody.access_token;
-    const expiresInSeconds = Number(tokenBody.expires_in);
-    expiresAt =
-      Number.isFinite(expiresInSeconds) && expiresInSeconds > 0
-        ? Date.now() + expiresInSeconds * 1000
-        : null;
-    window.sessionStorage.setItem(
-      STORAGE_KEYS.pendingAuth,
-      JSON.stringify({
-        ...pendingAuth,
-        exchangedAccessToken: accessToken,
-        exchangedExpiresAt: expiresAt,
-      }),
-    );
-  }
-
-  let me: LichessAccount;
   try {
-    me = await establishSiteSession(accessToken);
-  } catch (accountError) {
-    if (accountError instanceof LichessAuthError) {
-      if (!accountError.canRetryCallback) clearPendingAuthState();
-      throw accountError;
-    }
+    const me = await establishSiteSession(code, pendingAuth.codeVerifier);
+    clearPendingAuthState();
+    clearStoredLichessSession();
+    return { session: { me }, returnTo };
+  } catch (loginError) {
+    clearPendingAuthState();
+    if (loginError instanceof LichessAuthError) throw loginError;
     throw new LichessAuthError(
       "account_load_failed",
-      accountError instanceof Error
-        ? accountError.message
-        : "Unable to load your Lichess account after login.",
-      true,
+      loginError instanceof Error ? loginError.message : "Unable to finish Lichess login.",
     );
   }
-
-  const session: LichessSession = {
-    accessToken,
-    expiresAt,
-    me,
-  };
-  storeLichessSession(session);
-  clearPendingAuthState();
-
-  return { session, returnTo };
 };
 
-export const revokeLichessSession = async (
-  accessToken: string | null | undefined,
-): Promise<void> => {
-  if (!accessToken) return;
-
-  await window.fetch(`${LICHESS_HOST}/api/token`, {
-    method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-};
+// Older callers may still invoke this during a rolling deployment. The OAuth
+// token is now revoked server-side before the browser receives a session.
+export const revokeLichessSession = async (): Promise<void> => Promise.resolve();

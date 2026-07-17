@@ -5,7 +5,6 @@ const authMocks = vi.hoisted(() => ({
   clearStoredLichessSession: vi.fn(),
   completeLichessLogin: vi.fn(),
   restoreLichessSession: vi.fn(),
-  revokeLichessSession: vi.fn(),
   clearAuthenticatedSiteSession: vi.fn(),
 }));
 
@@ -16,7 +15,6 @@ vi.mock("../lib/auth/lichessAuth", async (importOriginal) => {
     clearStoredLichessSession: authMocks.clearStoredLichessSession,
     completeLichessLogin: authMocks.completeLichessLogin,
     restoreLichessSession: authMocks.restoreLichessSession,
-    revokeLichessSession: authMocks.revokeLichessSession,
   };
 });
 
@@ -24,16 +22,10 @@ vi.mock("../lib/auth/siteSession", () => ({
   clearAuthenticatedSiteSession: authMocks.clearAuthenticatedSiteSession,
 }));
 
-import {
-  LICHESS_SESSION_INVALID_EVENT,
-  LICHESS_SESSION_STORAGE_KEY,
-  type LichessSession,
-} from "../lib/auth/lichessAuth";
+import { LICHESS_SESSION_INVALID_EVENT, type LichessSession } from "../lib/auth/lichessAuth";
 import { AuthProvider, useAuth } from "./AuthContext";
 
 const savedSession: LichessSession = {
-  accessToken: "saved_token",
-  expiresAt: null,
   me: { username: "SavedViewer" },
 };
 
@@ -64,7 +56,6 @@ describe("AuthProvider session resilience", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     authMocks.restoreLichessSession.mockResolvedValue(null);
-    authMocks.revokeLichessSession.mockResolvedValue(undefined);
     authMocks.clearAuthenticatedSiteSession.mockResolvedValue(undefined);
   });
 
@@ -106,56 +97,6 @@ describe("AuthProvider session resilience", () => {
     expect(screen.getByTestId("status")).toHaveTextContent("authenticated");
   });
 
-  it("adopts a login created in another browser tab", async () => {
-    renderAuth();
-    await waitFor(() => expect(screen.getByTestId("status")).toHaveTextContent("anonymous"));
-    authMocks.restoreLichessSession.mockResolvedValue(savedSession);
-
-    act(() => {
-      window.dispatchEvent(
-        new StorageEvent("storage", {
-          key: LICHESS_SESSION_STORAGE_KEY,
-          newValue: JSON.stringify(savedSession),
-        }),
-      );
-    });
-
-    expect(await screen.findByText("SavedViewer")).toBeVisible();
-    expect(screen.getByTestId("status")).toHaveTextContent("authenticated");
-  });
-
-  it("synchronizes an intentional logout from another tab without an invalid-session warning", async () => {
-    authMocks.restoreLichessSession.mockResolvedValue(savedSession);
-    renderAuth();
-    await screen.findByText("SavedViewer");
-
-    act(() => {
-      window.dispatchEvent(
-        new StorageEvent("storage", { key: LICHESS_SESSION_STORAGE_KEY, newValue: null }),
-      );
-    });
-
-    expect(screen.getByTestId("status")).toHaveTextContent("anonymous");
-    expect(screen.getByTestId("username")).toHaveTextContent("none");
-  });
-
-  it("ignores unrelated local-storage changes", async () => {
-    authMocks.restoreLichessSession.mockResolvedValue(savedSession);
-    renderAuth();
-    await screen.findByText("SavedViewer");
-    authMocks.restoreLichessSession.mockClear();
-
-    act(() => {
-      window.dispatchEvent(
-        new StorageEvent("storage", { key: "unrelated-setting", newValue: "1" }),
-      );
-    });
-
-    expect(screen.getByTestId("status")).toHaveTextContent("authenticated");
-    expect(screen.getByTestId("username")).toHaveTextContent("SavedViewer");
-    expect(authMocks.restoreLichessSession).not.toHaveBeenCalled();
-  });
-
   it("logs out when an authenticated request explicitly announces an invalid session", async () => {
     authMocks.restoreLichessSession.mockResolvedValue(savedSession);
     renderAuth();
@@ -169,9 +110,8 @@ describe("AuthProvider session resilience", () => {
     expect(authMocks.clearStoredLichessSession).toHaveBeenCalled();
   });
 
-  it("stays logged out even if remote token revocation is unavailable", async () => {
+  it("clears the first-party session on logout", async () => {
     authMocks.restoreLichessSession.mockResolvedValue(savedSession);
-    authMocks.revokeLichessSession.mockRejectedValue(new Error("network unavailable"));
     renderAuth();
     await screen.findByText("SavedViewer");
 

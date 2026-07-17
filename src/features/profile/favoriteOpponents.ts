@@ -34,13 +34,6 @@ export type FavoriteOpponentRow = {
   matches: FavoriteOpponentMatch[];
 };
 
-const STORAGE_KEYS = {
-  mode: "atomic-puzzles:profile-favorite-opponent-mode",
-  matchLimit: "atomic-puzzles:profile-favorite-opponent-match-limit",
-  sort: "atomic-puzzles:profile-favorite-opponent-sort",
-  sortDirection: "atomic-puzzles:profile-favorite-opponent-sort-direction",
-} as const;
-
 const DEFAULT_MATCH_LIMIT = 500;
 const ALL_MODE_MATCH_LIMIT_OPTIONS = [250, 500, 1000, 1500, 2000];
 const SINGLE_MODE_MATCH_LIMIT_OPTIONS = [250, 500, 1000, 1500, 2000, 5000];
@@ -69,9 +62,6 @@ export const favoriteOpponentSortOptions = Object.keys(
 export const isFavoriteOpponentSort = (value: string): value is FavoriteOpponentSort =>
   (favoriteOpponentSortOptions as readonly string[]).includes(value);
 
-const isFavoriteOpponentSortDirection = (value: string): value is FavoriteOpponentSortDirection =>
-  value === "asc" || value === "desc";
-
 export const getFavoriteOpponentDefaultSortDirection = (
   sort: FavoriteOpponentSort,
 ): FavoriteOpponentSortDirection => (sort === "opponent" ? "asc" : "desc");
@@ -90,72 +80,6 @@ export const getFavoriteOpponentAllowedMatchLimit = (
   if (options.includes(requestedMatchLimit)) return requestedMatchLimit;
   return options.filter((option) => option <= requestedMatchLimit).at(-1) ?? DEFAULT_MATCH_LIMIT;
 };
-
-export const getStoredFavoriteOpponentMode = (): RankHistoryMode => {
-  if (typeof window === "undefined") return "all";
-  try {
-    const storedMode = window.localStorage.getItem(STORAGE_KEYS.mode) ?? "";
-    return isFavoriteOpponentMode(storedMode) ? storedMode : "all";
-  } catch {
-    return "all";
-  }
-};
-
-export const getStoredFavoriteOpponentMatchLimit = (
-  mode: RankHistoryMode = getStoredFavoriteOpponentMode(),
-): number => {
-  if (typeof window === "undefined") return DEFAULT_MATCH_LIMIT;
-  try {
-    return getFavoriteOpponentAllowedMatchLimit(
-      mode,
-      Number(window.localStorage.getItem(STORAGE_KEYS.matchLimit)),
-    );
-  } catch {
-    return DEFAULT_MATCH_LIMIT;
-  }
-};
-
-export const getStoredFavoriteOpponentSort = (): FavoriteOpponentSort => {
-  if (typeof window === "undefined") return "matches";
-  try {
-    const storedSort = window.localStorage.getItem(STORAGE_KEYS.sort) ?? "";
-    return isFavoriteOpponentSort(storedSort) ? storedSort : "matches";
-  } catch {
-    return "matches";
-  }
-};
-
-export const getStoredFavoriteOpponentSortDirection = (): FavoriteOpponentSortDirection => {
-  if (typeof window === "undefined") return "desc";
-  try {
-    const storedDirection = window.localStorage.getItem(STORAGE_KEYS.sortDirection) ?? "";
-    return isFavoriteOpponentSortDirection(storedDirection) ? storedDirection : "desc";
-  } catch {
-    return "desc";
-  }
-};
-
-const storePreference = (key: string, value: string): void => {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(key, value);
-  } catch {
-    // The in-memory selection still applies when storage is unavailable.
-  }
-};
-
-export const setStoredFavoriteOpponentMode = (mode: RankHistoryMode): void =>
-  storePreference(STORAGE_KEYS.mode, mode);
-
-export const setStoredFavoriteOpponentMatchLimit = (matchLimit: number): void =>
-  storePreference(STORAGE_KEYS.matchLimit, String(matchLimit));
-
-export const setStoredFavoriteOpponentSort = (sort: FavoriteOpponentSort): void =>
-  storePreference(STORAGE_KEYS.sort, sort);
-
-export const setStoredFavoriteOpponentSortDirection = (
-  direction: FavoriteOpponentSortDirection,
-): void => storePreference(STORAGE_KEYS.sortDirection, direction);
 
 const favoriteTimeControlFromCounts = (
   counts: Map<string, { gameCount: number; latestTs: number }>,

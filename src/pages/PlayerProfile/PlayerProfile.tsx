@@ -4,6 +4,7 @@ import { faShieldHalved } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { z } from "zod";
 
 import { DualRangeSlider } from "../../components/DualRangeSlider/DualRangeSlider";
 import { LichessGameLink } from "../../components/LichessGameLink/LichessGameLink";
@@ -53,15 +54,16 @@ import {
   getChampionshipTrophies,
   getCurrentMonthKey,
   getRankingTrophies,
-  getStoredTrophyCaseSort,
   isTrophyCaseSort,
   ProfileTrophyCaseCard,
   ProfileTrophyLink,
-  setStoredTrophyCaseSort,
   sortProfileTrophies,
   type TrophyCaseSort,
+  trophyCaseSortStorageKey,
 } from "../../features/profile/profileTrophies";
 import { useFavoriteOpponentsModel } from "../../features/profile/useFavoriteOpponentsModel";
+import { useMatchSearch } from "../../hooks/useMatchSearch";
+import { usePersistedState } from "../../hooks/usePersistedState";
 import {
   buildRankingsLocation,
   filterMatches,
@@ -143,7 +145,11 @@ export const PlayerProfilePage = ({
   const [rankHistoryView, setRankHistoryView] = useState<RankHistoryView>(
     getRankHistoryViewFromLocation,
   );
-  const [trophyCaseSort, setTrophyCaseSort] = useState<TrophyCaseSort>(getStoredTrophyCaseSort);
+  const [trophyCaseSort, setTrophyCaseSort] = usePersistedState<TrophyCaseSort>(
+    trophyCaseSortStorageKey,
+    z.enum(["prestige", "date"]),
+    "date",
+  );
   const [profileHistoryTab, setProfileHistoryTab] = useState<ProfileHistoryTab>(() =>
     getProfileHistoryTabFromLocation(),
   );
@@ -151,7 +157,12 @@ export const PlayerProfilePage = ({
   const [aliasesLoaded, setAliasesLoaded] = useState(false);
   const [matchesByMode, setMatchesByMode] = useState(() => createModeRecord(() => []));
   const [totalMatchesByMode, setTotalMatchesByMode] = useState(() => createModeRecord(() => 0));
-  const [error, setError] = useState("");
+  const {
+    error,
+    loading: loadingMatches,
+    reset: resetMatchSearch,
+    run: runLatestMatchSearch,
+  } = useMatchSearch();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [expandedMatchKeys, setExpandedMatchKeys] = useState<string[]>([]);
@@ -164,11 +175,8 @@ export const PlayerProfilePage = ({
   const [timeControlInitialFilter, setTimeControlInitialFilter] = useState("all");
   const [timeControlIncrementFilter, setTimeControlIncrementFilter] = useState("all");
   const [isHistoryAvailable, setIsHistoryAvailable] = useState(false);
-  const [loadingMatches, setLoadingMatches] = useState(false);
   const [lastCompletedMatchSearchKey, setLastCompletedMatchSearchKey] = useState("");
-  const matchRequestIdRef = useRef(0);
   const prefetchedMatchSearchKeysRef = useRef(new Set<string>());
-  const searchSubmitInFlightRef = useRef(false);
   const canonicalUsername = profileAliasEntry?.username ?? normalizedUsername;
   const profileDisplayUsername = String(username || "").trim() || canonicalUsername;
   const isBanned = Boolean(profileAliasEntry?.banned);
@@ -239,16 +247,13 @@ export const PlayerProfilePage = ({
 
   useEffect(() => {
     const defaultFilters = createDefaultProfileFilters();
-    matchRequestIdRef.current += 1;
-    searchSubmitInFlightRef.current = false;
+    resetMatchSearch();
     setMatchHistoryMode(defaultMode);
     setBestWinMode(defaultMode);
     setBestRankMode(defaultMode);
     setRankHistoryMode("all");
     setProfileHistoryTab(getProfileHistoryTabFromLocation());
     setPage(1);
-    setError("");
-    setLoadingMatches(false);
     setLastCompletedMatchSearchKey("");
     prefetchedMatchSearchKeysRef.current.clear();
     setExpandedMatchKeys([]);
@@ -263,7 +268,7 @@ export const PlayerProfilePage = ({
     setTimeControlInitialFilter(defaultFilters.timeControlInitialFilter);
     setTimeControlIncrementFilter(defaultFilters.timeControlIncrementFilter);
     setAppliedFilters(defaultFilters);
-  }, [normalizedUsername]);
+  }, [normalizedUsername, resetMatchSearch]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
@@ -340,58 +345,42 @@ export const PlayerProfilePage = ({
       nextAppliedFilters: ProfileFilters,
       nextPage: number = 1,
     ): Promise<void> => {
-      const requestId = matchRequestIdRef.current + 1;
-      matchRequestIdRef.current = requestId;
-      setLoadingMatches(true);
-      setError("");
-      try {
-        const filters = buildMatchFilters(canonicalUsername, nextAppliedFilters);
-        const shouldClientPageResults = isClientSidePagedSearch(nextAppliedFilters);
-        const rawMatches: import("../../lib/matches/matchData").ParsedMatch[] = [];
-        let totalForServerPaging = 0;
-        if (shouldClientPageResults) {
-          const result = await loadRawMatchesByMode(mode, { filters });
-          if (requestId !== matchRequestIdRef.current) return;
-          rawMatches.push(...result);
-          totalForServerPaging = result.length;
-        } else {
-          const result = await loadRawMatchesByMode(mode, { filters, page: nextPage, pageSize });
-          if (requestId !== matchRequestIdRef.current) return;
-          rawMatches.push(...result.matches);
-          totalForServerPaging = result.total;
-        }
-        const normalizedMatchesForMode = normalizeMatches(rawMatches, canonicalUsername);
-        setMatchesByMode((current) => ({
-          ...current,
-          [mode]: normalizedMatchesForMode,
-        }));
-        setTotalMatchesByMode((current) => ({
-          ...current,
-          [mode]: shouldClientPageResults ? normalizedMatchesForMode.length : totalForServerPaging,
-        }));
-        setAppliedFilters(nextAppliedFilters);
-        setPage(nextPage);
-        setLastCompletedMatchSearchKey(
-          getMatchSearchKey(canonicalUsername, mode, nextAppliedFilters, nextPage, pageSize),
-        );
-      } catch (loadError) {
-        if (requestId !== matchRequestIdRef.current) return;
-        setMatchesByMode((current) => ({
-          ...current,
-          [mode]: [],
-        }));
-        setTotalMatchesByMode((current) => ({
-          ...current,
-          [mode]: 0,
-        }));
-        setError(String(loadError));
-      } finally {
-        if (requestId === matchRequestIdRef.current) {
-          setLoadingMatches(false);
-        }
-      }
+      const result = await runLatestMatchSearch(
+        async () => {
+          const filters = buildMatchFilters(canonicalUsername, nextAppliedFilters);
+          const shouldClientPageResults = isClientSidePagedSearch(nextAppliedFilters);
+          const rawMatches: import("../../lib/matches/matchData").ParsedMatch[] = [];
+          let totalForServerPaging = 0;
+          if (shouldClientPageResults) {
+            const result = await loadRawMatchesByMode(mode, { filters });
+            rawMatches.push(...result);
+            totalForServerPaging = result.length;
+          } else {
+            const result = await loadRawMatchesByMode(mode, { filters, page: nextPage, pageSize });
+            rawMatches.push(...result.matches);
+            totalForServerPaging = result.total;
+          }
+          const normalizedMatchesForMode = normalizeMatches(rawMatches, canonicalUsername);
+          return {
+            matches: normalizedMatchesForMode,
+            total: shouldClientPageResults ? normalizedMatchesForMode.length : totalForServerPaging,
+          };
+        },
+        () => {
+          setMatchesByMode((current) => ({ ...current, [mode]: [] }));
+          setTotalMatchesByMode((current) => ({ ...current, [mode]: 0 }));
+        },
+      );
+      if (!result) return;
+      setMatchesByMode((current) => ({ ...current, [mode]: result.matches }));
+      setTotalMatchesByMode((current) => ({ ...current, [mode]: result.total }));
+      setAppliedFilters(nextAppliedFilters);
+      setPage(nextPage);
+      setLastCompletedMatchSearchKey(
+        getMatchSearchKey(canonicalUsername, mode, nextAppliedFilters, nextPage, pageSize),
+      );
     },
-    [canonicalUsername, pageSize],
+    [canonicalUsername, pageSize, runLatestMatchSearch],
   );
 
   useEffect(() => {
@@ -522,8 +511,7 @@ export const PlayerProfilePage = ({
   ]);
 
   const handleSearchClick = () => {
-    if (searchSubmitInFlightRef.current || loadingMatches) return;
-    searchSubmitInFlightRef.current = true;
+    if (loadingMatches) return;
     setPage(1);
     setAppliedFilters({
       opponentRatingMin,
@@ -535,7 +523,6 @@ export const PlayerProfilePage = ({
       timeControlInitialFilter,
       timeControlIncrementFilter,
     });
-    searchSubmitInFlightRef.current = false;
   };
   const setSourceFilter = (
     source: keyof import("../../constants/matches").SourceFilters,
@@ -1496,7 +1483,6 @@ export const PlayerProfilePage = ({
                                 const nextSort = event.target.value;
                                 if (isTrophyCaseSort(nextSort)) {
                                   setTrophyCaseSort(nextSort);
-                                  setStoredTrophyCaseSort(nextSort);
                                 }
                               }}
                             >

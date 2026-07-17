@@ -56,7 +56,7 @@ export const CommunityDiscussion = ({
   const targetType = target.type;
   const targetId = target.id;
   const targetContext = target.context;
-  const { accessToken, getAccessToken, isAuthenticated, login, user } = useAuth();
+  const { isAuthenticated, login, user } = useAuth();
   const [community, setCommunity] = useState<CommunityDiscussionData | null>(null);
   const [loading, setLoading] = useState(false);
   const [pendingVote, setPendingVote] = useState(false);
@@ -88,8 +88,8 @@ export const CommunityDiscussion = ({
     setCommentBody("");
     const loadRequest =
       targetType === "puzzle"
-        ? fetchPuzzleCommunity(Number(targetId), accessToken)
-        : fetchCommunityDiscussion(currentTarget, accessToken);
+        ? fetchPuzzleCommunity(Number(targetId))
+        : fetchCommunityDiscussion(currentTarget);
     void loadRequest
       .then((result) => {
         if (current) setCommunity(result);
@@ -105,7 +105,7 @@ export const CommunityDiscussion = ({
     return () => {
       current = false;
     };
-  }, [accessToken, targetContext, targetId, targetType]);
+  }, [isAuthenticated, targetContext, targetId, targetType]);
 
   const childrenByParent = useMemo(() => {
     const children = new Map<number | null, PuzzleComment[]>();
@@ -139,22 +139,20 @@ export const CommunityDiscussion = ({
     commentInputRef.current?.focus();
   }, [replyingTo]);
 
-  const requireLogin = (): string => {
-    const currentAccessToken = getAccessToken();
-    if (isAuthenticated && currentAccessToken) return currentAccessToken;
+  const requireLogin = (): boolean => {
+    if (isAuthenticated) return true;
     void login(`${window.location.pathname}${window.location.search}${window.location.hash}`);
-    return "";
+    return false;
   };
 
   const handleVote = async (vote: -1 | 1) => {
     if (target.type !== "puzzle" || pendingVote) return;
-    const currentAccessToken = requireLogin();
-    if (!currentAccessToken) return;
+    if (!requireLogin()) return;
     const nextVote = community?.viewerVote === vote ? 0 : vote;
     setPendingVote(true);
     setError("");
     try {
-      setCommunity(await savePuzzleVote(Number(target.id), nextVote, currentAccessToken));
+      setCommunity(await savePuzzleVote(Number(target.id), nextVote));
     } catch (voteError) {
       setError(voteError instanceof Error ? voteError.message : "Unable to save vote.");
     } finally {
@@ -165,14 +163,11 @@ export const CommunityDiscussion = ({
   const handlePostComment = async () => {
     const body = commentBody.trim();
     if (!target.id || !body || postingComment) return;
-    const currentAccessToken = requireLogin();
-    if (!currentAccessToken) return;
+    if (!requireLogin()) return;
     setPostingComment(true);
     setError("");
     try {
-      setCommunity(
-        await postCommunityComment(target, body, replyingTo?.id ?? null, currentAccessToken),
-      );
+      setCommunity(await postCommunityComment(target, body, replyingTo?.id ?? null));
       setCommentBody("");
       setReplyingTo(null);
     } catch (commentError) {
@@ -184,15 +179,12 @@ export const CommunityDiscussion = ({
 
   const handleCommentVote = async (comment: PuzzleComment, vote: -1 | 1) => {
     if (!target.id || pendingCommentVotes.has(comment.id)) return;
-    const currentAccessToken = requireLogin();
-    if (!currentAccessToken) return;
+    if (!requireLogin()) return;
     const nextVote = comment.viewer_vote === vote ? 0 : vote;
     setPendingCommentVotes((current) => new Set(current).add(comment.id));
     setError("");
     try {
-      setCommunity(
-        await saveCommunityCommentVote(target, comment.id, nextVote, currentAccessToken),
-      );
+      setCommunity(await saveCommunityCommentVote(target, comment.id, nextVote));
     } catch (voteError) {
       setError(voteError instanceof Error ? voteError.message : "Unable to save comment vote.");
     } finally {

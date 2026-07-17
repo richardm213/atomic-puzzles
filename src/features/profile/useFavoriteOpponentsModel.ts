@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { z } from "zod";
 
-import { type Mode, modeLabels } from "../../constants/matches";
+import { type Mode, modeLabels, modeOptions } from "../../constants/matches";
+import { usePersistedState } from "../../hooks/usePersistedState";
 import { loadRawMatchesByMode, normalizeMatches } from "../../lib/matches/matchData";
 import {
   compareFavoriteOpponentRows,
@@ -9,16 +11,33 @@ import {
   type FavoriteOpponentRow,
   type FavoriteOpponentSort,
   type FavoriteOpponentSortDirection,
+  getFavoriteOpponentAllowedMatchLimit,
   getFavoriteOpponentDefaultSortDirection,
   getFavoriteOpponentRows,
-  getStoredFavoriteOpponentMatchLimit,
-  getStoredFavoriteOpponentMode,
-  getStoredFavoriteOpponentSort,
-  getStoredFavoriteOpponentSortDirection,
+  isFavoriteOpponentSort,
   type RankHistoryMode,
-  setStoredFavoriteOpponentSort,
-  setStoredFavoriteOpponentSortDirection,
 } from "./favoriteOpponents";
+
+const preferenceKeys = {
+  mode: "atomic-puzzles:profile-favorite-opponent-mode",
+  matchLimit: "atomic-puzzles:profile-favorite-opponent-match-limit",
+  sort: "atomic-puzzles:profile-favorite-opponent-sort",
+  sortDirection: "atomic-puzzles:profile-favorite-opponent-sort-direction",
+} as const;
+const modeSchema = z.union([z.literal("all"), z.enum(modeOptions)]);
+const matchLimitSchema = z.union([
+  z.literal(250),
+  z.literal(500),
+  z.literal(1000),
+  z.literal(1500),
+  z.literal(2000),
+  z.literal(5000),
+]);
+const sortSchema = z
+  .string()
+  .refine(isFavoriteOpponentSort)
+  .transform((value): FavoriteOpponentSort => value);
+const sortDirectionSchema = z.enum(["asc", "desc"]);
 
 type FavoriteOpponentsModelOptions = {
   canonicalUsername: string;
@@ -34,15 +53,27 @@ export const useFavoriteOpponentsModel = ({
   resetKey,
 }: FavoriteOpponentsModelOptions) => {
   const [rows, setRows] = useState<FavoriteOpponentRow[]>([]);
-  const [mode, setMode] = useState<RankHistoryMode>(getStoredFavoriteOpponentMode);
-  const [matchLimit, setMatchLimit] = useState(() =>
-    getStoredFavoriteOpponentMatchLimit(getStoredFavoriteOpponentMode()),
+  const [mode, setMode] = usePersistedState<RankHistoryMode>(
+    preferenceKeys.mode,
+    modeSchema,
+    "all",
+  );
+  const [matchLimit, setMatchLimit] = usePersistedState<number>(
+    preferenceKeys.matchLimit,
+    matchLimitSchema,
+    500,
   );
   const [page, setPage] = useState(1);
   const [displayCount, setDisplayCount] = useState(25);
-  const [sort, setSort] = useState<FavoriteOpponentSort>(getStoredFavoriteOpponentSort);
-  const [sortDirection, setSortDirection] = useState<FavoriteOpponentSortDirection>(
-    getStoredFavoriteOpponentSortDirection,
+  const [sort, setSort] = usePersistedState<FavoriteOpponentSort>(
+    preferenceKeys.sort,
+    sortSchema,
+    "matches",
+  );
+  const [sortDirection, setSortDirection] = usePersistedState<FavoriteOpponentSortDirection>(
+    preferenceKeys.sortDirection,
+    sortDirectionSchema,
+    "desc",
   );
   const [expandedKeys, setExpandedKeys] = useState<string[]>([]);
   const [loadedQueryKey, setLoadedQueryKey] = useState("");
@@ -53,14 +84,9 @@ export const useFavoriteOpponentsModel = ({
 
   useEffect(() => {
     requestIdRef.current += 1;
-    const storedMode = getStoredFavoriteOpponentMode();
     setRows([]);
-    setMode(storedMode);
-    setMatchLimit(getStoredFavoriteOpponentMatchLimit(storedMode));
     setPage(1);
     setDisplayCount(25);
-    setSort(getStoredFavoriteOpponentSort());
-    setSortDirection(getStoredFavoriteOpponentSortDirection());
     setExpandedKeys([]);
     setLoadedQueryKey("");
     setLoading(false);
@@ -69,7 +95,12 @@ export const useFavoriteOpponentsModel = ({
 
   useEffect(() => {
     if (!availableModes.includes("wolfrandom") && mode === "wolfrandom") setMode("all");
-  }, [availableModes, mode]);
+  }, [availableModes, mode, setMode]);
+
+  useEffect(() => {
+    const allowedLimit = getFavoriteOpponentAllowedMatchLimit(mode, matchLimit);
+    if (allowedLimit !== matchLimit) setMatchLimit(allowedLimit);
+  }, [matchLimit, mode, setMatchLimit]);
 
   const load = useCallback(async (): Promise<void> => {
     const requestId = requestIdRef.current + 1;
@@ -148,8 +179,6 @@ export const useFavoriteOpponentsModel = ({
     setSort(nextSort);
     setSortDirection(direction);
     setPage(1);
-    setStoredFavoriteOpponentSort(nextSort);
-    setStoredFavoriteOpponentSortDirection(direction);
   };
 
   const toggleOpponent = (key: string): void =>

@@ -4,10 +4,12 @@ import { faArrowUpRightFromSquare, faClockRotateLeft } from "@fortawesome/free-s
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { z } from "zod";
 
 import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
+import { usePersistedState } from "../../hooks/usePersistedState";
 import { loadPuzzleCatalog } from "../../lib/puzzles/puzzleLibrary";
 import { normalizePuzzleEventName } from "../../lib/puzzles/puzzleSets";
 import {
@@ -23,23 +25,9 @@ const PAGE_SIZE_STORAGE_KEY = "atomic-puzzles.puzzle-dashboard-page-size";
 const UNKNOWN_EVENT_LABEL = "Unknown event";
 
 type PuzzleDashboardPageSize = (typeof PAGE_SIZE_OPTIONS)[number];
-
+const pageSizeSchema = z.union([z.literal(20), z.literal(50), z.literal(100)]);
 const isPuzzleDashboardPageSize = (value: number): value is PuzzleDashboardPageSize =>
   PAGE_SIZE_OPTIONS.includes(value as PuzzleDashboardPageSize);
-
-const readStoredPageSize = (): PuzzleDashboardPageSize => {
-  if (typeof window === "undefined") return DEFAULT_PAGE_SIZE;
-
-  try {
-    const storedValue = Number.parseInt(
-      window.localStorage.getItem(PAGE_SIZE_STORAGE_KEY) ?? "",
-      10,
-    );
-    return isPuzzleDashboardPageSize(storedValue) ? storedValue : DEFAULT_PAGE_SIZE;
-  } catch {
-    return DEFAULT_PAGE_SIZE;
-  }
-};
 
 const formatDateTime = (value: string | number | Date | null | undefined): string => {
   if (!value) return "—";
@@ -90,7 +78,11 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
   const viewingOwnDashboard = !routeUsername;
   const targetUsername = viewingOwnDashboard ? normalizeUsername(user?.username) : routeUsername;
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState<PuzzleDashboardPageSize>(readStoredPageSize);
+  const [pageSize, setPageSize] = usePersistedState<PuzzleDashboardPageSize>(
+    PAGE_SIZE_STORAGE_KEY,
+    pageSizeSchema,
+    DEFAULT_PAGE_SIZE,
+  );
   const [sinceDate, setSinceDate] = useState("");
   const [progressRows, setProgressRows] = useState<
     import("../../lib/supabase/supabasePuzzleProgress").PuzzleProgressRow[]
@@ -114,15 +106,6 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
   useEffect(() => {
     setCurrentPage(1);
   }, [pageSize, sinceDate, targetUsername]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      window.localStorage.setItem(PAGE_SIZE_STORAGE_KEY, String(pageSize));
-    } catch {
-      // Keep the dashboard usable if browser storage is unavailable.
-    }
-  }, [pageSize]);
 
   useEffect(() => {
     let isCurrent = true;

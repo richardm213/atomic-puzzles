@@ -25,8 +25,6 @@ import {
   isFavoriteOpponentMode,
   isFavoriteOpponentSort,
   type RankHistoryMode,
-  setStoredFavoriteOpponentMatchLimit,
-  setStoredFavoriteOpponentMode,
 } from "./favoriteOpponents";
 
 type FavoriteOpponentsSectionProps = {
@@ -112,10 +110,8 @@ export const FavoriteOpponentsSection = ({
                 if (!isFavoriteOpponentMode(value)) return;
                 const nextLimit = getFavoriteOpponentAllowedMatchLimit(value, matchLimit);
                 onModeChange(value);
-                setStoredFavoriteOpponentMode(value);
                 if (nextLimit !== matchLimit) {
                   onMatchLimitChange(nextLimit);
-                  setStoredFavoriteOpponentMatchLimit(nextLimit);
                 }
               }}
             >
@@ -136,7 +132,6 @@ export const FavoriteOpponentsSection = ({
               onChange={(event) => {
                 const nextLimit = Number(event.target.value);
                 onMatchLimitChange(nextLimit);
-                setStoredFavoriteOpponentMatchLimit(nextLimit);
               }}
             >
               {getFavoriteOpponentMatchLimitOptions(mode).map((count) => (

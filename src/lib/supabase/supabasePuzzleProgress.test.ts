@@ -58,7 +58,6 @@ describe("fetchPuzzleProgressPage", () => {
     );
 
     await recordPuzzleProgress({
-      accessToken: "token",
       username: "Solver",
       puzzleId: "42",
       puzzleCorrect: false,
@@ -69,7 +68,8 @@ describe("fetchPuzzleProgressPage", () => {
       "/api/puzzles/progress",
       expect.objectContaining({
         method: "POST",
-        headers: expect.objectContaining({ Authorization: "Bearer token" }),
+        credentials: "same-origin",
+        headers: expect.not.objectContaining({ Authorization: expect.anything() }),
         body: JSON.stringify({
           puzzleId: "42",
           puzzleCorrect: false,

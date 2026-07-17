@@ -20,7 +20,7 @@ export type ProfileTrophy = {
   prestige: number;
 };
 
-const TROPHY_SORT_STORAGE_KEY = "atomic-puzzles:profile-trophy-case-sort";
+export const trophyCaseSortStorageKey = "atomic-puzzles:profile-trophy-case-sort";
 const rankingTrophyAssets = {
   top1: appAssetPath("/images/lichess-trophies/gold-cup-2.png"),
   secondPlace: appAssetPath("/images/lichess-trophies/red-cup-2.png"),
@@ -141,25 +141,6 @@ const rankingTrophyLevels = [
 
 export const isTrophyCaseSort = (value: string): value is TrophyCaseSort =>
   value === "prestige" || value === "date";
-
-export const getStoredTrophyCaseSort = (): TrophyCaseSort => {
-  if (typeof window === "undefined") return "date";
-  try {
-    const storedSort = window.localStorage.getItem(TROPHY_SORT_STORAGE_KEY) ?? "";
-    return isTrophyCaseSort(storedSort) ? storedSort : "date";
-  } catch {
-    return "date";
-  }
-};
-
-export const setStoredTrophyCaseSort = (sort: TrophyCaseSort): void => {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(TROPHY_SORT_STORAGE_KEY, sort);
-  } catch {
-    // The in-memory selection still applies when storage is unavailable.
-  }
-};
 
 export const getCurrentMonthKey = (): string =>
   monthKeyFromMonthValue(new Date().toISOString().slice(0, 10));

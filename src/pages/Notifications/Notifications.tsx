@@ -32,21 +32,21 @@ const notificationIcon = (notification: UserNotification) => {
 
 export const NotificationsPage = () => {
   const navigate = useNavigate();
-  const { accessToken, isAuthenticated, isLoading, login } = useAuth();
+  const { isAuthenticated, isLoading, login } = useAuth();
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
   const [loading, setLoading] = useState(false);
   const [marking, setMarking] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!accessToken) {
+    if (!isAuthenticated) {
       setNotifications([]);
       return;
     }
     let current = true;
     setLoading(true);
     setError("");
-    void fetchNotifications(accessToken)
+    void fetchNotifications()
       .then((result) => {
         if (current) setNotifications(result.notifications);
       })
@@ -63,16 +63,16 @@ export const NotificationsPage = () => {
     return () => {
       current = false;
     };
-  }, [accessToken]);
+  }, [isAuthenticated]);
 
   const unreadNotifications = notifications.filter((notification) => !notification.read_at);
 
   const markRead = async (ids: number[]) => {
-    if (!accessToken || marking) return;
+    if (!isAuthenticated || marking) return;
     setMarking(true);
     setError("");
     try {
-      const result = await markNotificationsRead(accessToken, ids);
+      const result = await markNotificationsRead(ids);
       setNotifications(result.notifications);
       window.dispatchEvent(new Event("atomic-notifications-updated"));
     } catch (markError) {

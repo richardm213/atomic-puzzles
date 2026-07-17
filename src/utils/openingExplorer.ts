@@ -1,3 +1,5 @@
+import { appAssetPath } from "./appAssetPath";
+
 export type ExplorerApiMove = {
   uci: string;
   games: number;
@@ -34,6 +36,42 @@ export type ExplorerApiResponse = {
   positionLeaders?: ExplorerApiPositionLeaders | null;
   moves: ExplorerApiMove[];
   recentGames: ExplorerApiGame[];
+};
+
+export type OpeningExplorerUrlOptions = {
+  fen: string;
+  speeds: readonly number[];
+  startDate?: string;
+  endDate?: string;
+  username?: string;
+  color?: "white" | "black";
+  minRating?: number;
+  opponent?: string;
+};
+
+export const buildOpeningExplorerUrl = ({
+  fen,
+  speeds,
+  startDate = "",
+  endDate = "",
+  username = "",
+  color,
+  minRating,
+  opponent = "",
+}: OpeningExplorerUrlOptions): string => {
+  const params = new URLSearchParams({ fen, speeds: speeds.join(",") });
+  if (/^\d{4}-\d{2}$/.test(startDate)) params.set("startDate", startDate);
+  if (/^\d{4}-\d{2}$/.test(endDate)) params.set("endDate", endDate);
+
+  const player = username.trim();
+  if (player) {
+    params.set("username", player);
+    if (color) params.set("color", color);
+    if (Number.isFinite(minRating)) params.set("minRating", String(minRating));
+    if (opponent.trim()) params.set("opponent", opponent.trim());
+  }
+
+  return `${appAssetPath("/api/opening-explorer")}?${params.toString()}`;
 };
 
 const inFlightExplorerRequests = new Map<string, Promise<ExplorerApiResponse>>();

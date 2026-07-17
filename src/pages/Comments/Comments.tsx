@@ -26,7 +26,7 @@ const targetFilterOptions: Array<{ value: CommunityCommentTargetFilter; label: s
 ];
 
 export const CommentsPage = () => {
-  const { accessToken } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [comments, setComments] = useState<CommunityHistoryComment[]>([]);
   const [sort, setSort] = useState<ProfileCommentSort>("recent");
   const [targetFilter, setTargetFilter] = useState<CommunityCommentTargetFilter>("all");
@@ -40,7 +40,7 @@ export const CommentsPage = () => {
     setLoading(true);
     setError("");
 
-    void fetchSiteCommunityComments({ page, pageSize, sort, targetFilter, accessToken })
+    void fetchSiteCommunityComments({ page, pageSize, sort, targetFilter })
       .then((result) => {
         if (!current) return;
         setComments(result.comments);
@@ -59,7 +59,7 @@ export const CommentsPage = () => {
     return () => {
       current = false;
     };
-  }, [accessToken, page, sort, targetFilter]);
+  }, [isAuthenticated, page, sort, targetFilter]);
 
   const changeSort = (nextSort: ProfileCommentSort): void => {
     setSort(nextSort);

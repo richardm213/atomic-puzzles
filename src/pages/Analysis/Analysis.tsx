@@ -7,31 +7,27 @@ import type {
   KeyboardEvent as ReactKeyboardEvent,
   PointerEvent as ReactPointerEvent,
 } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { z } from "zod";
 
 import { BoardWorkspace } from "../../components/BoardWorkspace/BoardWorkspace";
-import {
-  OpeningDatabaseDisplay,
-  type OpeningDatabaseGame,
-  type OpeningDatabaseMove,
-} from "../../components/OpeningDatabaseDisplay/OpeningDatabaseDisplay";
+import { OpeningDatabaseDisplay } from "../../components/OpeningDatabaseDisplay/OpeningDatabaseDisplay";
 import { PlaybackButtons } from "../../components/PlaybackButtons/PlaybackButtons";
 import { pairPlayedMoves, PlayedMoves } from "../../components/PlayedMoves/PlayedMoves";
 import { Seo } from "../../components/Seo/Seo";
 import { UsernamePickerModal } from "../../components/UsernamePickerModal/UsernamePickerModal";
 import { useBoardDocument } from "../../hooks/useBoardDocument";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
+import { useOpeningExplorer } from "../../hooks/useOpeningExplorer";
+import { usePersistedState } from "../../hooks/usePersistedState";
 import { useUsernamePicker } from "../../hooks/useUsernamePicker";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
-import { appAssetPath } from "../../utils/appAssetPath";
 import { formatGameCount } from "../../utils/formatters";
 import { lichessAtomicAnalysisUrl } from "../../utils/lichess";
-import { toOpeningDatabaseGame, toOpeningDatabaseMove } from "../../utils/openingDatabaseDisplay";
 import {
-  type ExplorerApiMove,
+  buildOpeningExplorerUrl,
   type ExplorerApiPositionLeader,
   type ExplorerApiPositionLeaders,
-  type ExplorerApiResponse,
   fetchExplorerApiResponse,
 } from "../../utils/openingExplorer";
 
@@ -39,10 +35,6 @@ const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const MIN_MOVE_PANEL_HEIGHT = 86;
 const MIN_EXPLORER_PANEL_HEIGHT = 220;
 const EXPLORER_RESIZE_STEP = 24;
-
-type ExplorerMove = OpeningDatabaseMove;
-
-type ExplorerGame = OpeningDatabaseGame;
 
 type ExplorerPositionLeader = ExplorerApiPositionLeader & {
   share: number;
@@ -55,24 +47,10 @@ type ExplorerPositionLeaders = {
   leaders: ExplorerPositionLeader[];
 };
 
-type ExplorerStatus = "idle" | "loading" | "ready" | "error";
 type ExplorerScope = "general" | "player";
 type ExplorerSpeed = "bullet" | "blitz" | "hyperbullet";
 type ExplorerSpeedValue = 0 | 1 | 2;
 type UsernamePickerTarget = "player" | "opponent";
-type ExplorerRequestOptions = {
-  fen: string;
-  playerMinRating: number;
-  selectedSpeeds: ExplorerSpeed[];
-  startDate: string;
-  endDate: string;
-  scope: ExplorerScope;
-  playerColor: "white" | "black";
-  username: string;
-  opponent: string;
-};
-
-const EXPLORER_REQUEST_TIMEOUT_MS = 15_000;
 const MONTH_FILTER_PATTERN = /^\d{4}-\d{2}$/;
 const EXPLORER_SETTINGS_STORAGE_KEY = "atomic-puzzles.analysis.explorer-settings";
 const BOARD_SIZE_STORAGE_KEY = "atomic-puzzles.analysis.board-size";
@@ -140,6 +118,11 @@ const getMaxAnalysisBoardSize = (): number => {
   );
 };
 
+const boardSizeSchema = z.coerce
+  .number()
+  .positive()
+  .transform((size) => clampAnalysisBoardSize(size, getMaxAnalysisBoardSize()));
+
 const validMonthFilter = (value: unknown): string => {
   const monthValue = String(value ?? "").trim();
   return MONTH_FILTER_PATTERN.test(monthValue) ? monthValue : "";
@@ -168,21 +151,12 @@ const normalizeStoredSpeeds = (value: unknown, speedFilterVersion: unknown): Exp
   return uniqueSpeeds.length ? uniqueSpeeds : DEFAULT_EXPLORER_SETTINGS.selectedSpeeds;
 };
 
-const loadExplorerSettings = (): StoredExplorerSettings => {
-  if (typeof window === "undefined") return DEFAULT_EXPLORER_SETTINGS;
-
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(EXPLORER_SETTINGS_STORAGE_KEY) ?? "{}");
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      return DEFAULT_EXPLORER_SETTINGS;
-    }
-
-    const rawSettings = parsed as Partial<StoredExplorerSettings>;
+const explorerSettingsSchema = z
+  .record(z.string(), z.unknown())
+  .transform((rawSettings): StoredExplorerSettings => {
     const explorerScope = rawSettings.explorerScope === "player" ? "player" : "general";
     const playerColor = rawSettings.playerColor === "black" ? "black" : "white";
-    const legacyStartDate = validMonthFilter(
-      (rawSettings as Partial<StoredExplorerSettings> & { startDate?: unknown }).startDate,
-    );
+    const legacyStartDate = validMonthFilter(rawSettings.startDate);
     const generalStartDate =
       validMonthFilter(rawSettings.generalStartDate) ||
       (explorerScope === "general" ? legacyStartDate : "");
@@ -207,74 +181,7 @@ const loadExplorerSettings = (): StoredExplorerSettings => {
       opponent: String(rawSettings.opponent ?? "").trim(),
       showPositionLeaders: rawSettings.showPositionLeaders !== false,
     };
-  } catch {
-    return DEFAULT_EXPLORER_SETTINGS;
-  }
-};
-
-const storeExplorerSettings = (settings: StoredExplorerSettings): void => {
-  if (typeof window === "undefined") return;
-
-  window.localStorage.setItem(EXPLORER_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
-};
-
-const loadBoardSize = (): number => {
-  if (typeof window === "undefined") return DEFAULT_ANALYSIS_BOARD_SIZE;
-
-  const storedSize = Number(window.localStorage.getItem(BOARD_SIZE_STORAGE_KEY));
-  return clampAnalysisBoardSize(
-    Number.isFinite(storedSize) && storedSize > 0 ? storedSize : DEFAULT_ANALYSIS_BOARD_SIZE,
-    getMaxAnalysisBoardSize(),
-  );
-};
-
-const storeBoardSize = (size: number): void => {
-  if (typeof window === "undefined") return;
-
-  window.localStorage.setItem(BOARD_SIZE_STORAGE_KEY, String(size));
-};
-
-const buildExplorerApiUrl = ({
-  fen,
-  playerMinRating,
-  selectedSpeeds,
-  startDate,
-  endDate,
-  scope,
-  playerColor,
-  username,
-  opponent,
-}: ExplorerRequestOptions): string => {
-  const selectedSpeedValues = SPEED_FILTERS.filter((speed) =>
-    selectedSpeeds.includes(speed.key),
-  ).map((speed) => speed.value);
-  const params = new URLSearchParams({
-    fen,
-    speeds: selectedSpeedValues.join(","),
   });
-
-  if (MONTH_FILTER_PATTERN.test(startDate)) {
-    params.set("startDate", startDate);
-  }
-
-  if (MONTH_FILTER_PATTERN.test(endDate)) {
-    params.set("endDate", endDate);
-  }
-
-  const trimmedUsername = username.trim();
-  if (scope === "player" && trimmedUsername) {
-    params.set("color", playerColor);
-    params.set("minRating", String(playerMinRating));
-    params.set("username", trimmedUsername);
-
-    const trimmedOpponent = opponent.trim();
-    if (trimmedOpponent) {
-      params.set("opponent", trimmedOpponent);
-    }
-  }
-
-  return `${appAssetPath("/api/opening-explorer")}?${params.toString()}`;
-};
 
 const SpeedFilterIcon = ({ speed }: { speed: ExplorerSpeed }) => {
   if (speed === "bullet") {
@@ -345,16 +252,6 @@ const sideLabelFromColor = (color: number): "White" | "Black" | null => {
   return null;
 };
 
-const toExplorerMove = (
-  row: ExplorerApiMove,
-  fen: string,
-  options: { scope: ExplorerScope; playerColor: "white" | "black" },
-): ExplorerMove =>
-  toOpeningDatabaseMove(row, fen, {
-    showPerformance: options.scope === "player",
-    playerColor: options.playerColor,
-  });
-
 const toExplorerPositionLeaders = (
   value: ExplorerApiPositionLeaders | null | undefined,
 ): ExplorerPositionLeaders | null => {
@@ -388,14 +285,16 @@ const toExplorerPositionLeaders = (
 };
 
 export const AnalysisPage = () => {
-  const [initialExplorerSettings] = useState(loadExplorerSettings);
   const boardPanelRef = useRef<HTMLDivElement | null>(null);
   const rightPanelRef = useRef<HTMLElement | null>(null);
   const movePanelRef = useRef<HTMLDivElement | null>(null);
   const moveSettingsRef = useRef<HTMLDivElement | null>(null);
-  const explorerRequestIdRef = useRef(0);
   const [boardState, setBoardState] = useState<ChessboardState | null>(null);
-  const [boardSize, setBoardSize] = useState(loadBoardSize);
+  const [boardSize, setBoardSize] = usePersistedState(
+    BOARD_SIZE_STORAGE_KEY,
+    boardSizeSchema,
+    DEFAULT_ANALYSIS_BOARD_SIZE,
+  );
   const [rootFen, setRootFen] = useState(STARTING_FEN);
   const [orientation, setOrientation] = useState<"white" | "black">("white");
   const [navigation, setNavigation] = useState<SolutionNavigation | null>(null);
@@ -404,25 +303,27 @@ export const AnalysisPage = () => {
   const [explorerOpen, setExplorerOpen] = useState(true);
   const [movePanelHeight, setMovePanelHeight] = useState<number | null>(null);
   const [explorerResizing, setExplorerResizing] = useState(false);
-  const [explorerScope, setExplorerScope] = useState<ExplorerScope>(
-    initialExplorerSettings.explorerScope,
+  const [explorerSettings, setExplorerSettings] = usePersistedState<StoredExplorerSettings>(
+    EXPLORER_SETTINGS_STORAGE_KEY,
+    explorerSettingsSchema,
+    DEFAULT_EXPLORER_SETTINGS,
   );
-  const [playerColor, setPlayerColor] = useState<"white" | "black">(
-    initialExplorerSettings.playerColor,
-  );
-  const [selectedSpeeds, setSelectedSpeeds] = useState<ExplorerSpeed[]>(
-    initialExplorerSettings.selectedSpeeds,
-  );
-  const [minRating, setMinRating] = useState(initialExplorerSettings.minRating);
-  const [generalStartDate, setGeneralStartDate] = useState(
-    initialExplorerSettings.generalStartDate,
-  );
-  const [playerStartDate, setPlayerStartDate] = useState(initialExplorerSettings.playerStartDate);
-  const [endDate, setEndDate] = useState(initialExplorerSettings.endDate);
-  const [username, setUsername] = useState(initialExplorerSettings.username);
-  const [opponent, setOpponent] = useState(initialExplorerSettings.opponent);
-  const [showPositionLeaders, setShowPositionLeaders] = useState(
-    initialExplorerSettings.showPositionLeaders,
+  const {
+    explorerScope,
+    playerColor,
+    selectedSpeeds,
+    minRating,
+    generalStartDate,
+    playerStartDate,
+    endDate,
+    username,
+    opponent,
+    showPositionLeaders,
+  } = explorerSettings;
+  const updateExplorerSettings = useCallback(
+    (patch: Partial<StoredExplorerSettings>): void =>
+      setExplorerSettings((current) => ({ ...current, ...patch })),
+    [setExplorerSettings],
   );
   const {
     isOpen: usernamePickerOpen,
@@ -433,11 +334,6 @@ export const AnalysisPage = () => {
     remember: rememberUsername,
     removeRecent: removeRecentUsername,
   } = useUsernamePicker<UsernamePickerTarget>("player");
-  const [explorerMoves, setExplorerMoves] = useState<ExplorerMove[]>([]);
-  const [recentGames, setRecentGames] = useState<ExplorerGame[]>([]);
-  const [positionLeaders, setPositionLeaders] = useState<ExplorerPositionLeaders | null>(null);
-  const [explorerStatus, setExplorerStatus] = useState<ExplorerStatus>("idle");
-  const [explorerError, setExplorerError] = useState("");
   const [hoveredExplorerMoveUci, setHoveredExplorerMoveUci] = useState<string | null>(null);
 
   const moveList = boardState?.lineMoves ?? [];
@@ -528,10 +424,6 @@ export const AnalysisPage = () => {
   });
 
   useEffect(() => {
-    storeBoardSize(boardSize);
-  }, [boardSize]);
-
-  useEffect(() => {
     const handleWindowResize = (): void => {
       setBoardSize((currentSize) => clampAnalysisBoardSize(currentSize, getMaxAnalysisBoardSize()));
     };
@@ -539,7 +431,7 @@ export const AnalysisPage = () => {
     handleWindowResize();
     window.addEventListener("resize", handleWindowResize);
     return () => window.removeEventListener("resize", handleWindowResize);
-  }, []);
+  }, [setBoardSize]);
 
   const handleBoardResizePointerDown = (event: ReactPointerEvent<HTMLButtonElement>): void => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
@@ -591,15 +483,12 @@ export const AnalysisPage = () => {
     setNavigation({ type: "play", uci });
   };
 
-  const clearExplorerResults = useCallback((): void => {
-    setExplorerMoves([]);
-    setRecentGames([]);
-    setPositionLeaders(null);
-  }, []);
-
   const ensurePlayerStartDate = useCallback((): void => {
-    setPlayerStartDate(getPlayerStartDate);
-  }, []);
+    setExplorerSettings((current) => ({
+      ...current,
+      playerStartDate: getPlayerStartDate(current.playerStartDate),
+    }));
+  }, [setExplorerSettings]);
 
   const clampMovePanelHeight = useCallback((nextHeight: number): number | null => {
     const panel = rightPanelRef.current;
@@ -680,12 +569,12 @@ export const AnalysisPage = () => {
     if (!trimmedUsername) return;
 
     if (usernamePickerTarget === "opponent") {
-      setOpponent(trimmedUsername);
+      updateExplorerSettings({ opponent: trimmedUsername });
     } else {
-      setUsername(trimmedUsername);
+      updateExplorerSettings({ username: trimmedUsername });
     }
 
-    setExplorerScope("player");
+    updateExplorerSettings({ explorerScope: "player" });
     ensurePlayerStartDate();
     setFiltersOpen(false);
     rememberUsername(trimmedUsername);
@@ -693,7 +582,10 @@ export const AnalysisPage = () => {
   };
 
   const switchPlayerColor = (): void => {
-    setPlayerColor((currentColor) => (currentColor === "white" ? "black" : "white"));
+    setExplorerSettings((current) => ({
+      ...current,
+      playerColor: current.playerColor === "white" ? "black" : "white",
+    }));
   };
 
   const showPlayerExplorer = (playerTabWasSelected: boolean): void => {
@@ -703,7 +595,7 @@ export const AnalysisPage = () => {
       return;
     }
 
-    setExplorerScope("player");
+    updateExplorerSettings({ explorerScope: "player" });
     ensurePlayerStartDate();
     if (username.trim()) {
       setFiltersOpen(false);
@@ -714,137 +606,69 @@ export const AnalysisPage = () => {
   };
 
   const toggleSpeed = (speed: ExplorerSpeed): void => {
-    setSelectedSpeeds((currentSpeeds) => {
+    setExplorerSettings((current) => {
+      const currentSpeeds = current.selectedSpeeds;
       if (currentSpeeds.includes(speed)) {
-        return currentSpeeds.length > 1
-          ? currentSpeeds.filter((currentSpeed) => currentSpeed !== speed)
-          : currentSpeeds;
+        return {
+          ...current,
+          selectedSpeeds:
+            currentSpeeds.length > 1
+              ? currentSpeeds.filter((currentSpeed) => currentSpeed !== speed)
+              : currentSpeeds,
+        };
       }
 
-      return [...currentSpeeds, speed];
+      return { ...current, selectedSpeeds: [...currentSpeeds, speed] };
     });
   };
 
-  const applyExplorerResponse = useCallback(
-    (data: ExplorerApiResponse, fen: string, scope: ExplorerScope, color: "white" | "black") => {
-      setExplorerMoves(
-        data.moves.map((row) => toExplorerMove(row, fen, { scope, playerColor: color })),
-      );
-      setRecentGames(data.recentGames.map((row) => toOpeningDatabaseGame(row, fen)));
-      setPositionLeaders(
-        scope === "general" && showPositionLeaders
-          ? toExplorerPositionLeaders(data.positionLeaders)
-          : null,
-      );
-      setExplorerStatus("ready");
-    },
-    [showPositionLeaders],
-  );
-
-  useEffect(() => {
-    storeExplorerSettings({
-      speedFilterVersion: EXPLORER_SPEED_FILTER_VERSION,
-      explorerScope,
-      playerColor,
-      selectedSpeeds,
-      minRating,
-      generalStartDate,
-      playerStartDate,
-      endDate,
-      username,
-      opponent,
-      showPositionLeaders,
-    });
-  }, [
-    endDate,
-    explorerScope,
-    generalStartDate,
-    minRating,
-    opponent,
-    playerColor,
-    playerStartDate,
-    selectedSpeeds,
-    showPositionLeaders,
-    username,
-  ]);
-
-  useEffect(() => {
-    if (!explorerOpen) return;
-
-    const requestId = explorerRequestIdRef.current + 1;
-    explorerRequestIdRef.current = requestId;
-
-    if (explorerScope === "player" && !username.trim()) {
-      clearExplorerResults();
-      setExplorerStatus("ready");
-      setExplorerError("");
-      return;
-    }
-
-    const explorerApiUrl = buildExplorerApiUrl({
+  const requestExplorer = useCallback(() => {
+    if (explorerScope === "player" && !username.trim()) return null;
+    const speeds = SPEED_FILTERS.filter(({ key }) => selectedSpeeds.includes(key)).map(
+      ({ value }) => value,
+    );
+    const url = buildOpeningExplorerUrl({
       fen: currentFen,
-      playerMinRating: playerRatingValue,
-      selectedSpeeds,
+      speeds,
       startDate: activeStartDate,
       endDate,
-      scope: explorerScope,
-      playerColor,
-      username,
-      opponent,
+      ...(explorerScope === "player"
+        ? { username, opponent, color: playerColor, minRating: playerRatingValue }
+        : {}),
     });
-
-    let requestCancelled = false;
-    let requestTimedOut = false;
-    const requestTimeout = window.setTimeout(() => {
-      requestTimedOut = true;
-      if (!requestCancelled) {
-        clearExplorerResults();
-        setExplorerStatus("error");
-        setExplorerError(
-          "Opening explorer took too long to respond. Try fewer filters or refresh.",
-        );
-      }
-    }, EXPLORER_REQUEST_TIMEOUT_MS);
-
-    setExplorerStatus("loading");
-    setExplorerError("");
-    clearExplorerResults();
-
-    fetchExplorerApiResponse(explorerApiUrl, "visible")
-      .then((data) => {
-        if (requestCancelled || requestTimedOut || requestId !== explorerRequestIdRef.current) {
-          return;
-        }
-        applyExplorerResponse(data, currentFen, explorerScope, playerColor);
-      })
-      .catch((error) => {
-        if (requestCancelled || requestTimedOut) return;
-        clearExplorerResults();
-        setExplorerStatus("error");
-        setExplorerError(error instanceof Error ? error.message : "Opening explorer failed");
-      })
-      .finally(() => {
-        window.clearTimeout(requestTimeout);
-      });
-
-    return () => {
-      requestCancelled = true;
-      window.clearTimeout(requestTimeout);
-    };
+    return fetchExplorerApiResponse(url, "visible").then((response) => ({ response }));
   }, [
-    applyExplorerResponse,
-    clearExplorerResults,
+    activeStartDate,
     currentFen,
     endDate,
-    explorerOpen,
     explorerScope,
-    activeStartDate,
-    playerRatingValue,
     opponent,
     playerColor,
+    playerRatingValue,
     selectedSpeeds,
     username,
   ]);
+  const {
+    moves: explorerMoves,
+    recentGames,
+    response: explorerResponse,
+    status: explorerStatus,
+    error: explorerError,
+  } = useOpeningExplorer({
+    enabled: explorerOpen,
+    fen: currentFen,
+    playerColor,
+    showPerformance: explorerScope === "player",
+    request: requestExplorer,
+    timeoutMessage: "Opening explorer took too long to respond. Try fewer filters or refresh.",
+  });
+  const positionLeaders = useMemo(
+    () =>
+      explorerScope === "general" && showPositionLeaders
+        ? toExplorerPositionLeaders(explorerResponse?.positionLeaders)
+        : null,
+    [explorerResponse, explorerScope, showPositionLeaders],
+  );
 
   useEffect(() => {
     setHoveredExplorerMoveUci(null);
@@ -1002,7 +826,7 @@ export const AnalysisPage = () => {
                   className={explorerScope === "general" ? "active" : ""}
                   aria-selected={explorerScope === "general"}
                   onClick={() => {
-                    setExplorerScope("general");
+                    updateExplorerSettings({ explorerScope: "general" });
                     setFiltersOpen(false);
                   }}
                 >
@@ -1044,7 +868,6 @@ export const AnalysisPage = () => {
                 <FontAwesomeIcon icon={filtersOpen ? faXmark : faGear} />
               </button>
             </div>
-
             {filtersOpen ? (
               <div className="analysisFilterPanel" id="analysis-explorer-filters">
                 {explorerScope === "player" ? (
@@ -1085,7 +908,7 @@ export const AnalysisPage = () => {
                             className="analysisOpponentClearButton"
                             aria-label="Clear opponent"
                             title="Clear opponent"
-                            onClick={() => setOpponent("")}
+                            onClick={() => updateExplorerSettings({ opponent: "" })}
                           >
                             <FontAwesomeIcon icon={faXmark} />
                           </button>
@@ -1118,7 +941,9 @@ export const AnalysisPage = () => {
                     <input
                       type="checkbox"
                       checked={showPositionLeaders}
-                      onChange={(event) => setShowPositionLeaders(event.target.checked)}
+                      onChange={(event) =>
+                        updateExplorerSettings({ showPositionLeaders: event.target.checked })
+                      }
                     />
                   </label>
                 ) : null}
@@ -1132,7 +957,9 @@ export const AnalysisPage = () => {
                       max={MAX_EXPLORER_RATING}
                       step={PLAYER_RATING_STEP}
                       value={playerRatingValue}
-                      onChange={(event) => setMinRating(Number(event.target.value))}
+                      onChange={(event) =>
+                        updateExplorerSettings({ minRating: Number(event.target.value) })
+                      }
                     />
                   </label>
                 ) : null}
@@ -1149,9 +976,9 @@ export const AnalysisPage = () => {
                       onChange={(event) => {
                         const nextStartDate = event.target.value;
                         if (explorerScope === "player") {
-                          setPlayerStartDate(nextStartDate);
+                          updateExplorerSettings({ playerStartDate: nextStartDate });
                         } else {
-                          setGeneralStartDate(nextStartDate);
+                          updateExplorerSettings({ generalStartDate: nextStartDate });
                         }
                       }}
                     />
@@ -1165,7 +992,7 @@ export const AnalysisPage = () => {
                       maxLength={7}
                       pattern="\d{4}-\d{2}"
                       placeholder="YYYY-MM"
-                      onChange={(event) => setEndDate(event.target.value)}
+                      onChange={(event) => updateExplorerSettings({ endDate: event.target.value })}
                     />
                   </label>
                 </div>

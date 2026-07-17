@@ -14,11 +14,11 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { z } from "zod";
 
 import { BoardWorkspace } from "../../components/BoardWorkspace/BoardWorkspace";
 import {
   OpeningDatabaseDisplay,
-  type OpeningDatabaseGame,
   type OpeningDatabaseMove,
 } from "../../components/OpeningDatabaseDisplay/OpeningDatabaseDisplay";
 import { PlaybackButtons } from "../../components/PlaybackButtons/PlaybackButtons";
@@ -27,6 +27,8 @@ import { Seo } from "../../components/Seo/Seo";
 import { UsernamePickerModal } from "../../components/UsernamePickerModal/UsernamePickerModal";
 import { useBoardDocument } from "../../hooks/useBoardDocument";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
+import { type OpeningExplorerRequest, useOpeningExplorer } from "../../hooks/useOpeningExplorer";
+import { usePersistedState } from "../../hooks/usePersistedState";
 import { useUsernamePicker } from "../../hooks/useUsernamePicker";
 import { findFairyStockfishMove } from "../../lib/practice/fairyStockfish";
 import { movePrefix } from "../../lib/puzzles/solutionPgn";
@@ -35,15 +37,13 @@ import { appAssetPath } from "../../utils/appAssetPath";
 import { copyTextToClipboard } from "../../utils/clipboard";
 import { formatGameCount } from "../../utils/formatters";
 import { lichessAtomicAnalysisUrl } from "../../utils/lichess";
-import { toOpeningDatabaseGame, toOpeningDatabaseMove } from "../../utils/openingDatabaseDisplay";
 import {
-  type ExplorerApiResponse,
+  buildOpeningExplorerUrl,
   fetchExplorerApiResponse,
   mergeExplorerApiResponses,
 } from "../../utils/openingExplorer";
 
 const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-const EXPLORER_REQUEST_TIMEOUT_MS = 15_000;
 const PRACTICE_AUTOMOVE_MIN_THINK_MS = 520;
 const PLAYER_MIN_RATING = 1700;
 const PRACTICE_SETTINGS_STORAGE_KEY = "atomic-puzzles.practice.settings";
@@ -59,9 +59,6 @@ const buildPracticePgn = (rootFen: string, moveText = ""): string =>
   ].join("\n");
 type PracticeMove = OpeningDatabaseMove;
 
-type PracticeGame = OpeningDatabaseGame;
-
-type PracticeStatus = "idle" | "loading" | "ready" | "error";
 type PracticeEngineStatus = "idle" | "thinking" | "error";
 type PracticeSide = "white" | "black";
 type OpponentMode = "frequency" | "random" | "popular";
@@ -71,11 +68,6 @@ type PendingAutoMove = {
   fen: string;
   uci: string;
 };
-type PracticeExplorerResult = {
-  response: ExplorerApiResponse;
-  usedGeneralFallback: boolean;
-};
-
 type StoredPracticeSettings = {
   side: PracticeSide;
   opponentMode: OpponentMode;
@@ -134,16 +126,14 @@ const normalizePracticeUsernames = (value: unknown): string[] => {
     .slice(0, MAX_PRACTICE_PLAYERS);
 };
 
-const loadPracticeSettings = (): StoredPracticeSettings => {
-  if (typeof window === "undefined") return DEFAULT_SETTINGS;
-
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(PRACTICE_SETTINGS_STORAGE_KEY) ?? "{}");
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return DEFAULT_SETTINGS;
-    const value = parsed as Partial<StoredPracticeSettings>;
+const practiceSettingsSchema = z
+  .record(z.string(), z.unknown())
+  .transform((value): StoredPracticeSettings => {
     const allowMultiplePlayers = value.allowMultiplePlayers === true;
     const opponentUsernames = normalizePracticeUsernames(
-      value.opponentUsernames?.length ? value.opponentUsernames : value.opponentUsername,
+      Array.isArray(value.opponentUsernames) && value.opponentUsernames.length
+        ? value.opponentUsernames
+        : value.opponentUsername,
     );
 
     return {
@@ -169,51 +159,12 @@ const loadPracticeSettings = (): StoredPracticeSettings => {
       ),
       clockEnabled: value.clockEnabled !== false,
     };
-  } catch {
-    return DEFAULT_SETTINGS;
-  }
-};
-
-const storePracticeSettings = (settings: StoredPracticeSettings): void => {
-  if (typeof window === "undefined") return;
-
-  window.localStorage.setItem(PRACTICE_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
-};
+  });
 
 const oppositeSide = (side: PracticeSide): PracticeSide => (side === "white" ? "black" : "white");
 
-const buildPracticeExplorerUrl = ({
-  fen,
-  opponentUsername = "",
-  opponentSide,
-}: {
-  fen: string;
-  opponentUsername?: string;
-  opponentSide: PracticeSide;
-}): string => {
-  const params = new URLSearchParams({
-    fen,
-    speeds: "0,1",
-  });
-
-  const username = opponentUsername.trim();
-  if (username) {
-    params.set("username", username);
-    params.set("color", opponentSide);
-    params.set("minRating", String(PLAYER_MIN_RATING));
-  }
-
-  return `${appAssetPath("/api/opening-explorer")}?${params.toString()}`;
-};
-
-const fetchGeneralPracticeExplorerResponse = ({
-  fen,
-  opponentSide,
-}: {
-  fen: string;
-  opponentSide: PracticeSide;
-}): Promise<ExplorerApiResponse> =>
-  fetchExplorerApiResponse(buildPracticeExplorerUrl({ fen, opponentSide }), "practice");
+const fetchGeneralPracticeExplorerResponse = (fen: string) =>
+  fetchExplorerApiResponse(buildOpeningExplorerUrl({ fen, speeds: [0, 1] }), "practice");
 
 const fetchPracticeExplorerResponse = async ({
   fen,
@@ -227,10 +178,10 @@ const fetchPracticeExplorerResponse = async ({
   opponentUsernames: string[];
   opponentSide: PracticeSide;
   playerContinuation: PlayerContinuation;
-}): Promise<PracticeExplorerResult> => {
+}): Promise<OpeningExplorerRequest> => {
   if (opponentSource === "general") {
     return {
-      response: await fetchGeneralPracticeExplorerResponse({ fen, opponentSide }),
+      response: await fetchGeneralPracticeExplorerResponse(fen),
       usedGeneralFallback: false,
     };
   }
@@ -238,7 +189,13 @@ const fetchPracticeExplorerResponse = async ({
   const playerResponse = await Promise.all(
     opponentUsernames.map((opponentUsername) =>
       fetchExplorerApiResponse(
-        buildPracticeExplorerUrl({ fen, opponentUsername, opponentSide }),
+        buildOpeningExplorerUrl({
+          fen,
+          speeds: [0, 1],
+          username: opponentUsername,
+          color: opponentSide,
+          minRating: PLAYER_MIN_RATING,
+        }),
         "practice",
       ),
     ),
@@ -246,7 +203,7 @@ const fetchPracticeExplorerResponse = async ({
 
   if (playerContinuation === "general" && playerResponse.moves.length === 0) {
     return {
-      response: await fetchGeneralPracticeExplorerResponse({ fen, opponentSide }),
+      response: await fetchGeneralPracticeExplorerResponse(fen),
       usedGeneralFallback: true,
     };
   }
@@ -284,9 +241,29 @@ const chooseOpponentMove = (moves: PracticeMove[], mode: OpponentMode): Practice
 };
 
 export const PracticePage = () => {
-  const [initialSettings] = useState(loadPracticeSettings);
+  const [settings, setSettings] = usePersistedState<StoredPracticeSettings>(
+    PRACTICE_SETTINGS_STORAGE_KEY,
+    practiceSettingsSchema,
+    DEFAULT_SETTINGS,
+  );
+  const {
+    side,
+    opponentMode,
+    opponentSource,
+    opponentUsernames,
+    allowMultiplePlayers,
+    playerContinuation,
+    clockMinutes,
+    clockIncrementSeconds,
+    clockEnabled,
+  } = settings;
+  const updateSettings = useCallback(
+    (patch: Partial<StoredPracticeSettings>): void =>
+      setSettings((current) => ({ ...current, ...patch })),
+    [setSettings],
+  );
   const boardPanelRef = useRef<HTMLDivElement | null>(null);
-  const remainingClockMsRef = useRef(initialSettings.clockMinutes * 60_000);
+  const remainingClockMsRef = useRef(clockMinutes * 60_000);
   const seenRandomPlayersRef = useRef<Set<string>>(new Set());
   const randomPlayerPoolRef = useRef<string[] | null>(null);
   const lastAutoFenRef = useRef("");
@@ -296,14 +273,6 @@ export const PracticePage = () => {
   const [practiceRootFen, setPracticeRootFen] = useState(STARTING_FEN);
   const [navigation, setNavigation] = useState<SolutionNavigation | null>(null);
   const [pendingAutoMove, setPendingAutoMove] = useState<PendingAutoMove | null>(null);
-  const [side, setSide] = useState<PracticeSide>(initialSettings.side);
-  const [opponentMode, setOpponentMode] = useState<OpponentMode>(initialSettings.opponentMode);
-  const [opponentSource, setOpponentSource] = useState<OpponentSource>(
-    initialSettings.opponentSource,
-  );
-  const [opponentUsernames, setOpponentUsernames] = useState<string[]>(
-    initialSettings.opponentUsernames,
-  );
   const {
     isOpen: usernamePickerOpen,
     recentUsernames,
@@ -313,41 +282,64 @@ export const PracticePage = () => {
     removeRecent: removeRecentUsername,
   } = useUsernamePicker("player");
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [allowMultiplePlayers, setAllowMultiplePlayers] = useState(
-    initialSettings.allowMultiplePlayers,
-  );
-  const [playerContinuation, setPlayerContinuation] = useState(initialSettings.playerContinuation);
   const [exhaustedFen, setExhaustedFen] = useState<string | null>(null);
-  const [usingGeneralFallback, setUsingGeneralFallback] = useState(false);
   const [manualContinuationActive, setManualContinuationActive] = useState(false);
   const [movesOpen, setMovesOpen] = useState(true);
-  const [practiceMoves, setPracticeMoves] = useState<PracticeMove[]>([]);
-  const [recentGames, setRecentGames] = useState<PracticeGame[]>([]);
-  const [status, setStatus] = useState<PracticeStatus>("idle");
-  const [error, setError] = useState("");
   const [hoveredMoveUci, setHoveredMoveUci] = useState<string | null>(null);
   const [copyPgnLabel, setCopyPgnLabel] = useState("Copy PGN");
   const [randomPlayerLoading, setRandomPlayerLoading] = useState(false);
   const [randomPlayerError, setRandomPlayerError] = useState("");
   const [engineStatus, setEngineStatus] = useState<PracticeEngineStatus>("idle");
   const [engineError, setEngineError] = useState("");
-  const [clockMinutes, setClockMinutes] = useState(initialSettings.clockMinutes);
-  const [clockIncrementSeconds, setClockIncrementSeconds] = useState(
-    initialSettings.clockIncrementSeconds,
-  );
-  const [clockEnabled, setClockEnabled] = useState(initialSettings.clockEnabled);
-  const [remainingClockMs, setRemainingClockMs] = useState(initialSettings.clockMinutes * 60_000);
+  const [remainingClockMs, setRemainingClockMs] = useState(clockMinutes * 60_000);
   const [clockExpired, setClockExpired] = useState(false);
   const [gamePaused, setGamePaused] = useState(true);
   const [sessionStarted, setSessionStarted] = useState(false);
 
   const currentFen = boardState?.fen || STARTING_FEN;
-  const databaseExhausted = exhaustedFen === currentFen;
-  const engineFallbackReady = databaseExhausted && !manualContinuationActive && status === "ready";
   const currentLichessAnalysisUrl = lichessAtomicAnalysisUrl(currentFen);
   const currentTurn = boardState?.turn || "white";
   const gameFinished = Boolean(boardState?.winner);
   const opponentSide = oppositeSide(side);
+  const canUsePlayerSource = opponentSource === "general" || opponentUsernames.length > 0;
+  const requestExplorer = useCallback(() => {
+    if (manualContinuationActive) return null;
+    if (!canUsePlayerSource) {
+      setExhaustedFen(null);
+      return null;
+    }
+
+    setExhaustedFen(null);
+    return fetchPracticeExplorerResponse({
+      fen: currentFen,
+      opponentSource,
+      opponentUsernames,
+      opponentSide,
+      playerContinuation,
+    });
+  }, [
+    canUsePlayerSource,
+    currentFen,
+    manualContinuationActive,
+    opponentSide,
+    opponentSource,
+    opponentUsernames,
+    playerContinuation,
+  ]);
+  const {
+    moves: practiceMoves,
+    recentGames,
+    status,
+    error,
+    usedGeneralFallback: usingGeneralFallback,
+  } = useOpeningExplorer({
+    fen: currentFen,
+    playerColor: opponentSide,
+    showPerformance: opponentSource === "player",
+    request: requestExplorer,
+  });
+  const databaseExhausted = exhaustedFen === currentFen;
+  const engineFallbackReady = databaseExhausted && !manualContinuationActive && status === "ready";
   const selectedPlayerSummary =
     opponentUsernames.length === 0
       ? "Player"
@@ -384,7 +376,6 @@ export const PracticePage = () => {
   const canStepBack = currentPly > 0;
   const canStepForward = currentPly < moveList.length;
   const totalGames = practiceMoves.reduce((total, move) => total + move.games, 0);
-  const canUsePlayerSource = opponentSource === "general" || opponentUsernames.length > 0;
   const canRunPractice = canUsePlayerSource && !gameFinished && !(clockEnabled && clockExpired);
   const maxPracticePlayers = allowMultiplePlayers ? MAX_PRACTICE_PLAYERS : 1;
   const canAddPracticePlayer = opponentUsernames.length < maxPracticePlayers;
@@ -435,7 +426,6 @@ export const PracticePage = () => {
     lastAutoFenRef.current = "";
     setPendingAutoMove(null);
     setExhaustedFen(null);
-    setUsingGeneralFallback(false);
   }, []);
 
   const resetOpponentMoveChoices = useCallback((): void => {
@@ -443,30 +433,6 @@ export const PracticePage = () => {
     clearTriedMoves();
     setManualContinuationActive(false);
   }, [clearAutoMoveState, clearTriedMoves]);
-
-  useEffect(() => {
-    storePracticeSettings({
-      side,
-      opponentMode,
-      opponentSource,
-      opponentUsernames,
-      allowMultiplePlayers,
-      playerContinuation,
-      clockMinutes,
-      clockIncrementSeconds,
-      clockEnabled,
-    });
-  }, [
-    allowMultiplePlayers,
-    clockIncrementSeconds,
-    clockEnabled,
-    clockMinutes,
-    opponentMode,
-    opponentSource,
-    opponentUsernames,
-    playerContinuation,
-    side,
-  ]);
 
   const resetPracticeClock = useCallback(
     (minutes = clockMinutes, pauseGame = true): void => {
@@ -520,91 +486,6 @@ export const PracticePage = () => {
       window.clearInterval(interval);
     };
   }, [clockRunning]);
-
-  useEffect(() => {
-    if (manualContinuationActive) {
-      setPracticeMoves([]);
-      setRecentGames([]);
-      setStatus("ready");
-      setError("");
-      setUsingGeneralFallback(false);
-      return;
-    }
-
-    if (!canUsePlayerSource) {
-      setPracticeMoves([]);
-      setRecentGames([]);
-      setStatus("ready");
-      setError("");
-      setUsingGeneralFallback(false);
-      setExhaustedFen(null);
-      return;
-    }
-
-    let active = true;
-    const requestTimeout = window.setTimeout(() => {
-      if (!active) return;
-      active = false;
-      setPracticeMoves([]);
-      setRecentGames([]);
-      setStatus("error");
-      setError("Opening explorer took too long to respond.");
-    }, EXPLORER_REQUEST_TIMEOUT_MS);
-
-    setStatus("loading");
-    setError("");
-    setPracticeMoves([]);
-    setRecentGames([]);
-    setUsingGeneralFallback(false);
-    setExhaustedFen(null);
-
-    fetchPracticeExplorerResponse({
-      fen: currentFen,
-      opponentSource,
-      opponentUsernames,
-      opponentSide,
-      playerContinuation,
-    })
-      .then(({ response: data, usedGeneralFallback }) => {
-        if (!active) return;
-
-        const nextPracticeMoves = data.moves.map((move) =>
-          toOpeningDatabaseMove(move, currentFen, {
-            showPerformance: opponentSource === "player",
-            playerColor: opponentSide,
-          }),
-        );
-
-        setPracticeMoves(nextPracticeMoves);
-        setRecentGames(data.recentGames.map((game) => toOpeningDatabaseGame(game, currentFen)));
-        setUsingGeneralFallback(usedGeneralFallback);
-        setStatus("ready");
-      })
-      .catch((fetchError) => {
-        if (!active) return;
-        setPracticeMoves([]);
-        setRecentGames([]);
-        setUsingGeneralFallback(false);
-        setStatus("error");
-        setError(fetchError instanceof Error ? fetchError.message : "Opening explorer failed");
-      })
-      .finally(() => {
-        window.clearTimeout(requestTimeout);
-      });
-
-    return () => {
-      active = false;
-      window.clearTimeout(requestTimeout);
-    };
-  }, [
-    canUsePlayerSource,
-    currentFen,
-    manualContinuationActive,
-    opponentSide,
-    opponentSource,
-    opponentUsernames,
-    playerContinuation,
-  ]);
 
   useEffect(() => {
     if (
@@ -765,12 +646,12 @@ export const PracticePage = () => {
 
   const updateClockEnabled = useCallback(
     (enabled: boolean): void => {
-      setClockEnabled(enabled);
+      updateSettings({ clockEnabled: enabled });
       if (enabled) {
         resetPracticeClock(clockMinutes, false);
       }
     },
-    [clockMinutes, resetPracticeClock],
+    [clockMinutes, resetPracticeClock, updateSettings],
   );
 
   const requestNavigation = useCallback(
@@ -822,13 +703,13 @@ export const PracticePage = () => {
   const flipPracticeSide = useCallback((): void => {
     resetOpponentMoveChoices();
     resetPracticeClock();
-    setSide((currentSide) => oppositeSide(currentSide));
-  }, [resetOpponentMoveChoices, resetPracticeClock]);
+    setSettings((current) => ({ ...current, side: oppositeSide(current.side) }));
+  }, [resetOpponentMoveChoices, resetPracticeClock, setSettings]);
 
   const openUsernamePicker = useCallback((): void => {
-    setOpponentSource("player");
+    updateSettings({ opponentSource: "player" });
     openPicker();
-  }, [openPicker]);
+  }, [openPicker, updateSettings]);
 
   const resetBoardForOpponent = useCallback((): void => {
     resetOpponentMoveChoices();
@@ -874,12 +755,13 @@ export const PracticePage = () => {
       const trimmedUsername = nextUsername.trim();
       if (!trimmedUsername) return;
 
-      setOpponentUsernames((currentUsernames) =>
-        allowMultiplePlayers
-          ? normalizePracticeUsernames([...currentUsernames, trimmedUsername])
+      setSettings((current) => ({
+        ...current,
+        opponentUsernames: current.allowMultiplePlayers
+          ? normalizePracticeUsernames([...current.opponentUsernames, trimmedUsername])
           : [trimmedUsername],
-      );
-      setOpponentSource("player");
+        opponentSource: "player",
+      }));
       resetBoardForOpponent();
       rememberUsername(trimmedUsername);
 
@@ -887,7 +769,13 @@ export const PracticePage = () => {
         closeUsernamePicker();
       }
     },
-    [allowMultiplePlayers, closeUsernamePicker, rememberUsername, resetBoardForOpponent],
+    [
+      allowMultiplePlayers,
+      closeUsernamePicker,
+      rememberUsername,
+      resetBoardForOpponent,
+      setSettings,
+    ],
   );
 
   const selectRandomPlayer = useCallback(async (): Promise<void> => {
@@ -938,39 +826,42 @@ export const PracticePage = () => {
   }, [canChoosePracticePlayer, commitUsername, opponentUsernames, randomPlayerLoading]);
 
   const clearSelectedPlayers = (): void => {
-    setOpponentUsernames([]);
-    setOpponentSource("player");
+    updateSettings({ opponentUsernames: [], opponentSource: "player" });
     resetOpponentMoveChoices();
   };
 
   const removeOpponentUsername = useCallback(
     (usernameToRemove: string): void => {
-      setOpponentUsernames((currentUsernames) =>
-        currentUsernames.filter(
+      setSettings((current) => ({
+        ...current,
+        opponentUsernames: current.opponentUsernames.filter(
           (username) => username.toLowerCase() !== usernameToRemove.toLowerCase(),
         ),
-      );
+      }));
       resetOpponentMoveChoices();
     },
-    [resetOpponentMoveChoices],
+    [resetOpponentMoveChoices, setSettings],
   );
 
   const updateAllowMultiplePlayers = (allowMultiple: boolean): void => {
-    setAllowMultiplePlayers(allowMultiple);
+    updateSettings({ allowMultiplePlayers: allowMultiple });
     resetOpponentMoveChoices();
 
     if (!allowMultiple) {
-      setOpponentUsernames((currentUsernames) => currentUsernames.slice(0, 1));
+      setSettings((current) => ({
+        ...current,
+        opponentUsernames: current.opponentUsernames.slice(0, 1),
+      }));
     }
   };
 
   const showGeneralOpponent = (): void => {
-    setOpponentSource("general");
+    updateSettings({ opponentSource: "general" });
     resetOpponentMoveChoices();
   };
 
   const showPlayerOpponent = (): void => {
-    setOpponentSource("player");
+    updateSettings({ opponentSource: "player" });
     resetOpponentMoveChoices();
 
     if (opponentUsernames.length === 0) {
@@ -1223,7 +1114,6 @@ export const PracticePage = () => {
               </button>
             </div>
           </div>
-
           {settingsOpen ? (
             <div className="analysisFilterPanel practiceSettingsPanel" id="practice-settings-panel">
               {opponentSource === "player" ? (
@@ -1297,7 +1187,7 @@ export const PracticePage = () => {
                     type="button"
                     className={opponentMode === "frequency" ? "active" : ""}
                     aria-pressed={opponentMode === "frequency"}
-                    onClick={() => setOpponentMode("frequency")}
+                    onClick={() => updateSettings({ opponentMode: "frequency" })}
                   >
                     Frequency
                   </button>
@@ -1305,7 +1195,7 @@ export const PracticePage = () => {
                     type="button"
                     className={opponentMode === "random" ? "active" : ""}
                     aria-pressed={opponentMode === "random"}
-                    onClick={() => setOpponentMode("random")}
+                    onClick={() => updateSettings({ opponentMode: "random" })}
                   >
                     <FontAwesomeIcon icon={faShuffle} />
                     <span>Random</span>
@@ -1314,7 +1204,7 @@ export const PracticePage = () => {
                     type="button"
                     className={opponentMode === "popular" ? "active" : ""}
                     aria-pressed={opponentMode === "popular"}
-                    onClick={() => setOpponentMode("popular")}
+                    onClick={() => updateSettings({ opponentMode: "popular" })}
                   >
                     Popular
                   </button>
@@ -1344,7 +1234,7 @@ export const PracticePage = () => {
                         value={clockMinutes}
                         onChange={(event) => {
                           const nextMinutes = normalizeClockValue(event.target.value, 0, 180);
-                          setClockMinutes(nextMinutes);
+                          updateSettings({ clockMinutes: nextMinutes });
                           resetPracticeClock(nextMinutes);
                         }}
                       />
@@ -1359,7 +1249,9 @@ export const PracticePage = () => {
                         step="1"
                         value={clockIncrementSeconds}
                         onChange={(event) =>
-                          setClockIncrementSeconds(normalizeClockValue(event.target.value, 0, 60))
+                          updateSettings({
+                            clockIncrementSeconds: normalizeClockValue(event.target.value, 0, 60),
+                          })
                         }
                       />
                     </label>
@@ -1385,7 +1277,7 @@ export const PracticePage = () => {
                       className={playerContinuation === "general" ? "active" : ""}
                       aria-pressed={playerContinuation === "general"}
                       onClick={() => {
-                        setPlayerContinuation("general");
+                        updateSettings({ playerContinuation: "general" });
                         resetOpponentMoveChoices();
                       }}
                     >
@@ -1396,7 +1288,7 @@ export const PracticePage = () => {
                       className={playerContinuation === "manual" ? "active" : ""}
                       aria-pressed={playerContinuation === "manual"}
                       onClick={() => {
-                        setPlayerContinuation("manual");
+                        updateSettings({ playerContinuation: "manual" });
                         resetOpponentMoveChoices();
                       }}
                     >
@@ -1407,7 +1299,7 @@ export const PracticePage = () => {
                       className={playerContinuation === "stockfish" ? "active" : ""}
                       aria-pressed={playerContinuation === "stockfish"}
                       onClick={() => {
-                        setPlayerContinuation("stockfish");
+                        updateSettings({ playerContinuation: "stockfish" });
                         resetOpponentMoveChoices();
                       }}
                     >

@@ -1,5 +1,4 @@
-import { appAssetPath } from "../../utils/appAssetPath";
-import { invalidateLichessSessionForResponse } from "../auth/lichessAuth";
+import { postApi } from "../api/postApi";
 
 export type NotificationType = "puzzle_comment" | "comment_reply" | "puzzle_approved";
 
@@ -19,43 +18,24 @@ type NotificationResult = {
   unreadCount: number;
 };
 
-const notificationRequest = async <T>(
-  accessToken: string,
-  body: Record<string, unknown>,
-): Promise<T> => {
-  if (!accessToken) throw new Error("Log in to view notifications.");
-  const response = await fetch(appAssetPath("/api/notifications"), {
-    method: "POST",
-    credentials: "same-origin",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
+const notificationRequest = <T>(body: Record<string, unknown>): Promise<T> =>
+  postApi("/api/notifications", body, {
+    errorMessage: "Unable to load notifications.",
+    invalidMessage: "The notification service returned no data.",
   });
-  invalidateLichessSessionForResponse(response, accessToken);
-  const result = (await response.json().catch(() => null)) as (T & { error?: string }) | null;
-  if (!response.ok) throw new Error(result?.error || "Unable to load notifications.");
-  if (!result) throw new Error("The notification service returned no data.");
-  return result;
-};
 
-export const fetchNotifications = (accessToken: string): Promise<NotificationResult> =>
-  notificationRequest(accessToken, { action: "list" });
+export const fetchNotifications = (): Promise<NotificationResult> =>
+  notificationRequest({ action: "list" });
 
-export const fetchUnreadNotificationCount = async (accessToken: string): Promise<number> => {
-  const result = await notificationRequest<{ unreadCount: number }>(accessToken, {
+export const fetchUnreadNotificationCount = async (): Promise<number> => {
+  const result = await notificationRequest<{ unreadCount: number }>({
     action: "count",
   });
   return Number(result.unreadCount) || 0;
 };
 
-export const markNotificationsRead = (
-  accessToken: string,
-  ids: number[] = [],
-): Promise<NotificationResult> => notificationRequest(accessToken, { action: "markRead", ids });
+export const markNotificationsRead = (ids: number[] = []): Promise<NotificationResult> =>
+  notificationRequest({ action: "markRead", ids });
 
-export const deleteNotifications = (
-  accessToken: string,
-  ids: number[],
-): Promise<NotificationResult> => notificationRequest(accessToken, { action: "delete", ids });
+export const deleteNotifications = (ids: number[]): Promise<NotificationResult> =>
+  notificationRequest({ action: "delete", ids });

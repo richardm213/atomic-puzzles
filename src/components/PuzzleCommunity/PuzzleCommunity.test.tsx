@@ -11,8 +11,6 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("../../context/AuthContext", () => ({
   useAuth: () => ({
-    accessToken: "token",
-    getAccessToken: () => "token",
     isAuthenticated: true,
     login: vi.fn(),
     user: { username: "viewer" },
@@ -78,10 +76,11 @@ describe("PuzzleCommunity", () => {
     );
 
     expect(await screen.findByRole("heading", { name: "Comments on Alice" })).toBeVisible();
-    expect(mocks.fetchCommunityDiscussion).toHaveBeenCalledWith(
-      { type: "profile", id: "alice", context: "" },
-      "token",
-    );
+    expect(mocks.fetchCommunityDiscussion).toHaveBeenCalledWith({
+      type: "profile",
+      id: "alice",
+      context: "",
+    });
     expect(screen.queryByRole("group", { name: "Vote on this puzzle" })).not.toBeInTheDocument();
   });
 });
