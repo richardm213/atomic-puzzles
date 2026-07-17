@@ -94,6 +94,32 @@ import { readStoredSourceFilters, writeStoredSourceFilters } from "../../utils/s
 import { isToggleActionKey } from "../../utils/toggleActionKey";
 
 const countOptions = [5, 10, 20];
+const matchPrefetchDelayMs = 750;
+
+type NavigatorWithConnection = Navigator & {
+  connection?: {
+    effectiveType?: string;
+    saveData?: boolean;
+  };
+};
+
+const shouldSkipMatchPrefetch = (): boolean => {
+  const connection = (navigator as NavigatorWithConnection).connection;
+  return Boolean(
+    connection?.saveData ||
+    connection?.effectiveType === "slow-2g" ||
+    connection?.effectiveType === "2g",
+  );
+};
+
+const getMatchSearchKey = (
+  username: string,
+  mode: import("../../constants/matches").Mode,
+  filters: ProfileFilters,
+  page: number,
+  pageSize: number,
+): string => JSON.stringify([username, mode, filters, page, pageSize]);
+
 const CommunityDiscussion = lazy(async () => {
   const module = await import("../../components/PuzzleCommunity/PuzzleCommunity");
   return { default: module.CommunityDiscussion };
@@ -139,7 +165,9 @@ export const PlayerProfilePage = ({
   const [timeControlIncrementFilter, setTimeControlIncrementFilter] = useState("all");
   const [isHistoryAvailable, setIsHistoryAvailable] = useState(false);
   const [loadingMatches, setLoadingMatches] = useState(false);
+  const [lastCompletedMatchSearchKey, setLastCompletedMatchSearchKey] = useState("");
   const matchRequestIdRef = useRef(0);
+  const prefetchedMatchSearchKeysRef = useRef(new Set<string>());
   const searchSubmitInFlightRef = useRef(false);
   const canonicalUsername = profileAliasEntry?.username ?? normalizedUsername;
   const profileDisplayUsername = String(username || "").trim() || canonicalUsername;
@@ -221,6 +249,8 @@ export const PlayerProfilePage = ({
     setPage(1);
     setError("");
     setLoadingMatches(false);
+    setLastCompletedMatchSearchKey("");
+    prefetchedMatchSearchKeysRef.current.clear();
     setExpandedMatchKeys([]);
     setMatchesByMode(createModeRecord(() => []));
     setTotalMatchesByMode(createModeRecord(() => 0));
@@ -341,6 +371,9 @@ export const PlayerProfilePage = ({
         }));
         setAppliedFilters(nextAppliedFilters);
         setPage(nextPage);
+        setLastCompletedMatchSearchKey(
+          getMatchSearchKey(canonicalUsername, mode, nextAppliedFilters, nextPage, pageSize),
+        );
       } catch (loadError) {
         if (requestId !== matchRequestIdRef.current) return;
         setMatchesByMode((current) => ({
@@ -406,6 +439,86 @@ export const PlayerProfilePage = ({
     profileHistoryTab,
     requestedServerPage,
     runMatchSearch,
+  ]);
+
+  useEffect(() => {
+    if (
+      loadingMatches ||
+      !aliasesLoaded ||
+      isBanned ||
+      profileHistoryTab !== "matches" ||
+      isClientPagedResults ||
+      profileModeOptions.length < 2 ||
+      shouldSkipMatchPrefetch()
+    ) {
+      return;
+    }
+
+    const activeSearchKey = getMatchSearchKey(
+      canonicalUsername,
+      matchHistoryMode,
+      appliedFilters,
+      requestedServerPage,
+      pageSize,
+    );
+    if (lastCompletedMatchSearchKey !== activeSearchKey) return;
+
+    const currentModeIndex = profileModeOptions.indexOf(matchHistoryMode);
+    const nextMode = profileModeOptions[(currentModeIndex + 1) % profileModeOptions.length];
+    if (!nextMode || nextMode === matchHistoryMode) return;
+
+    const prefetchKey = getMatchSearchKey(
+      canonicalUsername,
+      nextMode,
+      appliedFilters,
+      requestedServerPage,
+      pageSize,
+    );
+    if (prefetchedMatchSearchKeysRef.current.has(prefetchKey)) return;
+
+    let cancelled = false;
+    const prefetch = (): void => {
+      if (cancelled) return;
+      prefetchedMatchSearchKeysRef.current.add(prefetchKey);
+      const filters = buildMatchFilters(canonicalUsername, appliedFilters);
+      void loadRawMatchesByMode(nextMode, {
+        filters,
+        page: requestedServerPage,
+        pageSize,
+      }).catch(() => {
+        prefetchedMatchSearchKeysRef.current.delete(prefetchKey);
+      });
+    };
+
+    let idleCallbackId: number | undefined;
+    const delayId = window.setTimeout(() => {
+      if ("requestIdleCallback" in window) {
+        idleCallbackId = window.requestIdleCallback(prefetch, { timeout: 2_000 });
+      } else {
+        prefetch();
+      }
+    }, matchPrefetchDelayMs);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(delayId);
+      if (idleCallbackId !== undefined && "cancelIdleCallback" in window) {
+        window.cancelIdleCallback(idleCallbackId);
+      }
+    };
+  }, [
+    aliasesLoaded,
+    appliedFilters,
+    canonicalUsername,
+    isBanned,
+    isClientPagedResults,
+    lastCompletedMatchSearchKey,
+    loadingMatches,
+    matchHistoryMode,
+    pageSize,
+    profileHistoryTab,
+    profileModeOptions,
+    requestedServerPage,
   ]);
 
   const handleSearchClick = () => {
