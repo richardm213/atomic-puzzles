@@ -9,20 +9,26 @@ vi.mock("@supabase/supabase-js", () => ({
 }));
 
 import { handler } from "../functions/puzzle-progress";
+import { createSiteSessionCookie } from "../lib/siteSession";
 
 describe("puzzle-progress function", () => {
   beforeEach(() => {
     mocks.createClient.mockReset();
     vi.stubEnv("SUPABASE_URL", "https://example.supabase.co");
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "service-role-key");
+    vi.stubEnv(
+      "SITE_SESSION_SECRET",
+      "test-session-secret-that-is-longer-than-thirty-two-characters",
+    );
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
   });
 
-  it("requires a valid bearer token", async () => {
+  it("requires a signed site session", async () => {
     const response = await handler({
       httpMethod: "POST",
       body: JSON.stringify({ puzzleId: "42", puzzleCorrect: true }),
@@ -30,22 +36,16 @@ describe("puzzle-progress function", () => {
     expect(response.statusCode).toBe(401);
   });
 
-  it("records progress only for the owner of the token", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        new Response(JSON.stringify({ username: "Actual_Solver" }), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
-      ),
-    );
+  it("takes the progress owner from the signed session, never the request body", async () => {
     const rpc = vi.fn(async () => ({ error: null }));
     mocks.createClient.mockReturnValue({ rpc });
+    const cookie = createSiteSessionCookie("Actual_Solver", {});
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
 
     const response = await handler({
       httpMethod: "POST",
-      headers: { authorization: "Bearer real_token" },
+      headers: { cookie: cookie.split(";")[0] },
       body: JSON.stringify({
         username: "impersonated-victim",
         puzzleId: "42",
@@ -61,18 +61,32 @@ describe("puzzle-progress function", () => {
       p_puzzle_correct: false,
       p_incorrect_move: "2. Nf3+",
     });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("does not write progress for a forged token", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 401 })));
+  it("does not write progress for a tampered site cookie", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
 
     const response = await handler({
       httpMethod: "POST",
-      headers: { authorization: "Bearer forged_token" },
+      headers: { cookie: "atomic_session=tampered" },
       body: JSON.stringify({ puzzleId: "42", puzzleCorrect: true }),
     });
 
     expect(response.statusCode).toBe(401);
+    expect(mocks.createClient).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects cross-site progress mutations before reading the session", async () => {
+    const response = await handler({
+      httpMethod: "POST",
+      headers: { host: "atomic.example", origin: "https://evil.example" },
+      body: JSON.stringify({ puzzleId: "42", puzzleCorrect: true }),
+    });
+
+    expect(response.statusCode).toBe(403);
     expect(mocks.createClient).not.toHaveBeenCalled();
   });
 });

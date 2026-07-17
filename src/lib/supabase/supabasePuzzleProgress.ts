@@ -24,12 +24,10 @@ type SupabaseClient = ReturnType<typeof getSupabaseClient>;
 
 const PUZZLE_PROGRESS_TABLE =
   import.meta.env.VITE_SUPABASE_PUZZLE_PROGRESS_TABLE?.trim() ?? "puzzle_progress";
-const PUZZLE_PROGRESS_PAGE_RPC =
-  (import.meta.env.VITE_SUPABASE_PUZZLE_PROGRESS_PAGE_RPC?.trim() ??
-    "get_puzzle_progress_page") as keyof Database["public"]["Functions"];
-const ATTEMPTED_PUZZLE_IDS_RPC =
-  (import.meta.env.VITE_SUPABASE_ATTEMPTED_PUZZLE_IDS_RPC?.trim() ??
-    "get_attempted_puzzle_ids") as keyof Database["public"]["Functions"];
+const PUZZLE_PROGRESS_PAGE_RPC = (import.meta.env.VITE_SUPABASE_PUZZLE_PROGRESS_PAGE_RPC?.trim() ??
+  "get_puzzle_progress_page") as keyof Database["public"]["Functions"];
+const ATTEMPTED_PUZZLE_IDS_RPC = (import.meta.env.VITE_SUPABASE_ATTEMPTED_PUZZLE_IDS_RPC?.trim() ??
+  "get_attempted_puzzle_ids") as keyof Database["public"]["Functions"];
 const puzzleProgressWriteRequests = new Map<string, Promise<void>>();
 
 const normalizePuzzleId = (puzzleId: unknown): string => {
@@ -278,10 +276,7 @@ export const recordPuzzleProgress = async ({
 }: RecordPuzzleProgressInput): Promise<void> => {
   const normalizedUsername = normalizeUsername(username);
   const normalizedPuzzleId = normalizePuzzleId(puzzleId);
-  const normalizedIncorrectMove = puzzleCorrect
-    ? null
-    : String(incorrectMove ?? "")
-        .trim() || null;
+  const normalizedIncorrectMove = puzzleCorrect ? null : String(incorrectMove ?? "").trim() || null;
 
   if (!accessToken || !normalizedUsername || !normalizedPuzzleId) return;
 
@@ -295,6 +290,7 @@ export const recordPuzzleProgress = async ({
     const firstAttemptAt = new Date().toISOString();
     const response = await fetch(appAssetPath("/api/puzzles/progress"), {
       method: "POST",
+      credentials: "same-origin",
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",

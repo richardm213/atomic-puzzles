@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 
-import { parseBearerToken, verifyCachedLichessAccount } from "../lib/lichessAccount";
+import { isSameOriginRequest, resolveSiteIdentity } from "../lib/siteSession";
 
 type NetlifyEvent = {
   httpMethod?: string;
@@ -33,11 +33,16 @@ type CommunityTarget = {
 
 const MAX_COMMENT_LENGTH = 10_000;
 
-const jsonResponse = (statusCode: number, body: Record<string, unknown>) => ({
+const jsonResponse = (
+  statusCode: number,
+  body: Record<string, unknown>,
+  headers: Record<string, string> = {},
+) => ({
   statusCode,
   headers: {
     "Content-Type": "application/json",
     "Cache-Control": "no-store",
+    ...headers,
   },
   body: JSON.stringify(body),
 });
@@ -481,6 +486,7 @@ export const handler = async (event: NetlifyEvent) => {
     String(action),
   );
   const isPublicReadAction = isPublicCommunityReadAction(action);
+  const isMutationAction = ["vote", "comment", "commentVote"].includes(String(action));
   const profileUsername = readProfileUsername(input?.username);
   let target = input && isDiscussionAction ? readCommunityTarget(input) : null;
 
@@ -502,30 +508,38 @@ export const handler = async (event: NetlifyEvent) => {
   ) {
     return jsonResponse(400, { error: "Invalid community request." });
   }
+  if (isMutationAction && !isSameOriginRequest(event.headers)) {
+    return jsonResponse(403, { error: "Cross-site community requests are not allowed." });
+  }
 
   try {
-    const accessToken = parseBearerToken(event.headers);
+    let siteSessionCookie = "";
+    const respond = (statusCode: number, body: Record<string, unknown>) =>
+      jsonResponse(statusCode, body, siteSessionCookie ? { "Set-Cookie": siteSessionCookie } : {});
     let username: string | null = null;
+    let hadBearerToken = false;
+    try {
+      const identity = await resolveSiteIdentity(event.headers);
+      username = identity.username;
+      hadBearerToken = identity.hadBearerToken;
+      siteSessionCookie = identity.setCookie;
+    } catch (verificationError) {
+      if (!isPublicReadAction) throw verificationError;
+    }
 
-    if (accessToken) {
-      try {
-        const account = await verifyCachedLichessAccount(accessToken);
-        if (account?.username) username = account.username.trim().toLowerCase();
-        else if (!isPublicReadAction) {
-          return jsonResponse(401, { error: "Your Lichess login is no longer valid." });
-        }
-      } catch (verificationError) {
-        if (!isPublicReadAction) throw verificationError;
+    if (!username && hadBearerToken) {
+      if (!isPublicReadAction) {
+        return respond(401, { error: "Your Lichess login is no longer valid." });
       }
-    } else if (!isPublicReadAction) {
-      return jsonResponse(401, { error: "Log in with Lichess to participate." });
+    } else if (!username && !isPublicReadAction) {
+      return respond(401, { error: "Log in with Lichess to participate." });
     }
 
     const supabase = getSupabase();
     if (target) target = await resolveCanonicalCommunityTarget(supabase, target);
 
     if (action === "profileKarma") {
-      return jsonResponse(200, await loadProfileCommentKarma(supabase, profileUsername));
+      return respond(200, await loadProfileCommentKarma(supabase, profileUsername));
     }
 
     if (action === "profileComments" || action === "siteComments") {
@@ -541,9 +555,9 @@ export const handler = async (event: NetlifyEvent) => {
         input.targetFilter !== "all" &&
         !targetFilter
       ) {
-        return jsonResponse(400, { error: "Invalid comment target filter." });
+        return respond(400, { error: "Invalid comment target filter." });
       }
-      return jsonResponse(
+      return respond(
         200,
         await loadProfileComments(
           supabase,
@@ -558,10 +572,10 @@ export const handler = async (event: NetlifyEvent) => {
     }
 
     if (action === "load" || action === "loadDiscussion") {
-      return jsonResponse(200, await loadTargetCommunity(supabase, target!, username));
+      return respond(200, await loadTargetCommunity(supabase, target!, username));
     }
 
-    if (!username) return jsonResponse(401, { error: "Log in with Lichess to participate." });
+    if (!username) return respond(401, { error: "Log in with Lichess to participate." });
 
     const { error: userError } = await supabase
       .from("users")
@@ -572,7 +586,7 @@ export const handler = async (event: NetlifyEvent) => {
       const puzzleId = readPositiveInteger(input.puzzleId)!;
       const vote = input.vote;
       if (vote !== -1 && vote !== 0 && vote !== 1) {
-        return jsonResponse(400, { error: "Vote must be -1, 0, or 1." });
+        return respond(400, { error: "Vote must be -1, 0, or 1." });
       }
 
       if (vote === 0) {
@@ -589,7 +603,7 @@ export const handler = async (event: NetlifyEvent) => {
         if (error) throw new Error(`Unable to save vote: ${error.message}`);
       }
 
-      return jsonResponse(
+      return respond(
         200,
         await loadTargetCommunity(
           supabase,
@@ -603,10 +617,10 @@ export const handler = async (event: NetlifyEvent) => {
       const commentId = readPositiveInteger(input.commentId);
       const vote = input.vote;
       if (!commentId || (vote !== -1 && vote !== 0 && vote !== 1)) {
-        return jsonResponse(400, { error: "Invalid comment vote." });
+        return respond(400, { error: "Invalid comment vote." });
       }
       if (!(await commentBelongsToTarget(supabase, commentId, target!))) {
-        return jsonResponse(400, { error: "That comment does not belong to this discussion." });
+        return respond(400, { error: "That comment does not belong to this discussion." });
       }
 
       if (vote === 0) {
@@ -623,12 +637,12 @@ export const handler = async (event: NetlifyEvent) => {
         if (error) throw new Error(`Unable to save comment vote: ${error.message}`);
       }
 
-      return jsonResponse(200, await loadTargetCommunity(supabase, target!, username));
+      return respond(200, await loadTargetCommunity(supabase, target!, username));
     }
 
     const commentBody = typeof input.body === "string" ? input.body.trim() : "";
     if (!commentBody || commentBody.length > MAX_COMMENT_LENGTH) {
-      return jsonResponse(400, {
+      return respond(400, {
         error: `Comment must be between 1 and ${MAX_COMMENT_LENGTH.toLocaleString()} characters.`,
       });
     }
@@ -637,7 +651,7 @@ export const handler = async (event: NetlifyEvent) => {
         ? null
         : readPositiveInteger(input.parentId);
     if (input.parentId !== null && input.parentId !== undefined && parentId === null) {
-      return jsonResponse(400, { error: "Invalid parent comment." });
+      return respond(400, { error: "Invalid parent comment." });
     }
 
     const commentResult = await supabase
@@ -658,7 +672,7 @@ export const handler = async (event: NetlifyEvent) => {
         /wait 15 seconds before commenting|at most 5 comments.*every 10 minutes/i.test(
           commentResult.error.message,
         );
-      return jsonResponse(rateLimited ? 429 : invalidParent ? 400 : 500, {
+      return respond(rateLimited ? 429 : invalidParent ? 400 : 500, {
         error: rateLimited
           ? commentResult.error.message
           : invalidParent
@@ -694,7 +708,7 @@ export const handler = async (event: NetlifyEvent) => {
       );
     }
 
-    return jsonResponse(201, await loadTargetCommunity(supabase, target!, username));
+    return respond(201, await loadTargetCommunity(supabase, target!, username));
   } catch (error) {
     return jsonResponse(500, {
       error: error instanceof Error ? error.message : "Unable to update community discussion.",

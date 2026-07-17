@@ -1,0 +1,7 @@
+.authCallbackPanel {
+  width: min(44rem, 100%);
+}
+
+.authCallbackActions {
+  align-items: center;
+}

@@ -40,10 +40,18 @@ describe("invalidateLichessSessionForResponse", () => {
     window.removeEventListener(LICHESS_SESSION_INVALID_EVENT, listener);
   });
 
-  it("keeps the login for non-authentication errors", () => {
+  it.each([200, 400, 403, 429, 500, 503])("does not clear a valid login for HTTP %s", (status) => {
     window.localStorage.setItem(LICHESS_SESSION_STORAGE_KEY, '{"accessToken":"valid"}');
 
-    invalidateLichessSessionForResponse(new Response(null, { status: 500 }), "valid");
+    invalidateLichessSessionForResponse(new Response(null, { status }), "valid");
+
+    expect(window.localStorage.getItem(LICHESS_SESSION_STORAGE_KEY)).not.toBeNull();
+  });
+
+  it("ignores an anonymous 401 that has no authenticated token", () => {
+    window.localStorage.setItem(LICHESS_SESSION_STORAGE_KEY, '{"accessToken":"valid"}');
+
+    invalidateLichessSessionForResponse(new Response(null, { status: 401 }), "");
 
     expect(window.localStorage.getItem(LICHESS_SESSION_STORAGE_KEY)).not.toBeNull();
   });
@@ -67,13 +75,7 @@ describe("Lichess OAuth callback", () => {
         }),
       )
       .mockResolvedValueOnce(
-        new Response(JSON.stringify({ username: "Viewer" }), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ username: "Viewer" }), {
+        new Response(JSON.stringify({ user: { username: "Viewer" } }), {
           status: 200,
           headers: { "Content-Type": "application/json" },
         }),
@@ -92,19 +94,35 @@ describe("Lichess OAuth callback", () => {
     ).toMatchObject(result.session);
     expect(window.sessionStorage.getItem(LICHESS_SESSION_STORAGE_KEY)).toBeNull();
     expect(await restoreLichessSession()).toEqual(result.session);
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("reports a callback with no pending PKCE state as stale", async () => {
-    await expect(
-      completeLichessLogin("?code=used_code&state=old-state"),
-    ).rejects.toMatchObject({
+    await expect(completeLichessLogin("?code=used_code&state=old-state")).rejects.toMatchObject({
       code: "stale_callback",
       canRetryCallback: false,
     });
   });
 
-  it("reuses an exchanged token when loading the account temporarily fails", async () => {
+  it("does not revive obsolete OAuth attempts from persistent local storage", async () => {
+    window.localStorage.setItem(
+      pendingAuthStorageKey,
+      JSON.stringify({
+        state: "old-state",
+        codeVerifier: "old-verifier",
+        returnTo: "/comments",
+      }),
+    );
+    const fetchMock = vi.spyOn(window, "fetch");
+
+    await expect(completeLichessLogin("?code=old_code&state=old-state")).rejects.toMatchObject({
+      code: "stale_callback",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(window.localStorage.getItem(pendingAuthStorageKey)).toBeNull();
+  });
+
+  it("reuses an exchanged token when establishing the site session temporarily fails", async () => {
     storePendingAuth();
     const fetchMock = vi
       .spyOn(window, "fetch")
@@ -121,7 +139,7 @@ describe("Lichess OAuth callback", () => {
         }),
       )
       .mockResolvedValueOnce(
-        new Response(JSON.stringify({ username: "RecoveredViewer" }), {
+        new Response(JSON.stringify({ user: { username: "RecoveredViewer" } }), {
           status: 200,
           headers: { "Content-Type": "application/json" },
         }),
@@ -138,7 +156,46 @@ describe("Lichess OAuth callback", () => {
 
     expect(result.session.me.username).toBe("RecoveredViewer");
     expect(fetchMock).toHaveBeenCalledTimes(3);
-    expect(String(fetchMock.mock.calls[2]?.[0])).toBe("https://lichess.org/api/account");
+    expect(String(fetchMock.mock.calls[2]?.[0])).toBe("/api/auth/session");
+  });
+
+  it("turns Lichess anti-poll responses into a delayed retry without losing the token", async () => {
+    storePendingAuth();
+    const fetchMock = vi
+      .spyOn(window, "fetch")
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ access_token: "rate_limited_token" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "Lichess is temporarily limiting account checks." }), {
+          status: 429,
+          headers: { "Content-Type": "application/json", "Retry-After": "30" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ user: { username: "RecoveredViewer" } }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+
+    await expect(
+      completeLichessLogin("?code=fresh_code&state=expected-state"),
+    ).rejects.toMatchObject({
+      code: "account_rate_limited",
+      canRetryCallback: true,
+      retryAfterMs: 30_000,
+      message: expect.not.stringContaining("poll this endpoint"),
+    });
+
+    await expect(
+      completeLichessLogin("?code=fresh_code&state=expected-state"),
+    ).resolves.toMatchObject({ session: { me: { username: "RecoveredViewer" } } });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(String(fetchMock.mock.calls[2]?.[0])).toBe("/api/auth/session");
   });
 
   it("clears a rejected single-use code and asks for a fresh login", async () => {
@@ -159,30 +216,79 @@ describe("Lichess OAuth callback", () => {
     expect(window.sessionStorage.getItem(pendingAuthStorageKey)).toBeNull();
   });
 
-  it("never trusts a username edited into browser storage", async () => {
+  it("restores a saved login without depending on Lichess availability", async () => {
     window.localStorage.setItem(
       LICHESS_SESSION_STORAGE_KEY,
       JSON.stringify({
         accessToken: "real_token",
         expiresAt: null,
-        me: { username: "ImpersonatedVictim" },
+        me: { username: "SavedViewer" },
       }),
     );
-    vi.spyOn(window, "fetch").mockResolvedValueOnce(
-      new Response(JSON.stringify({ username: "ActualTokenOwner" }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
+    const fetchMock = vi.spyOn(window, "fetch");
 
     await expect(restoreLichessSession()).resolves.toMatchObject({
       accessToken: "real_token",
-      me: { username: "ActualTokenOwner" },
+      me: { username: "SavedViewer" },
     });
-    expect(
-      JSON.parse(window.localStorage.getItem(LICHESS_SESSION_STORAGE_KEY) ?? "{}"),
-    ).toMatchObject({ me: { username: "ActualTokenOwner" } });
+    expect(fetchMock).not.toHaveBeenCalled();
     expect(window.sessionStorage.getItem(LICHESS_SESSION_STORAGE_KEY)).toBeNull();
+  });
+
+  it("restores a saved login that has not expired without a network request", async () => {
+    const session = {
+      accessToken: "future_token",
+      expiresAt: Date.now() + 60_000,
+      me: { username: "FutureViewer" },
+    };
+    window.localStorage.setItem(LICHESS_SESSION_STORAGE_KEY, JSON.stringify(session));
+    const fetchMock = vi.spyOn(window, "fetch");
+
+    await expect(restoreLichessSession()).resolves.toEqual(session);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("migrates a tab-scoped session to persistent storage without reauthentication", async () => {
+    const session = {
+      accessToken: "legacy_token",
+      expiresAt: null,
+      me: { username: "LegacyViewer" },
+    };
+    window.sessionStorage.setItem(LICHESS_SESSION_STORAGE_KEY, JSON.stringify(session));
+    const fetchMock = vi.spyOn(window, "fetch");
+
+    await expect(restoreLichessSession()).resolves.toEqual(session);
+    expect(JSON.parse(window.localStorage.getItem(LICHESS_SESSION_STORAGE_KEY) ?? "null")).toEqual(
+      session,
+    );
+    expect(window.sessionStorage.getItem(LICHESS_SESSION_STORAGE_KEY)).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("clears a genuinely expired saved login without contacting Lichess", async () => {
+    window.localStorage.setItem(
+      LICHESS_SESSION_STORAGE_KEY,
+      JSON.stringify({
+        accessToken: "expired_token",
+        expiresAt: Date.now() - 1,
+        me: { username: "ExpiredViewer" },
+      }),
+    );
+    const fetchMock = vi.spyOn(window, "fetch");
+
+    await expect(restoreLichessSession()).resolves.toBeNull();
+    expect(window.localStorage.getItem(LICHESS_SESSION_STORAGE_KEY)).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("clears a malformed saved login", async () => {
+    window.localStorage.setItem(
+      LICHESS_SESSION_STORAGE_KEY,
+      JSON.stringify({ accessToken: "real_token", expiresAt: null, me: {} }),
+    );
+
+    await expect(restoreLichessSession()).resolves.toBeNull();
+    expect(window.localStorage.getItem(LICHESS_SESSION_STORAGE_KEY)).toBeNull();
   });
 
   it("rejects a state-substitution attempt without exchanging its code", async () => {

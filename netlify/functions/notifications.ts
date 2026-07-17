@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 
-import { parseBearerToken, verifyLichessAccount } from "../lib/lichessAccount";
+import { isSameOriginRequest, resolveSiteIdentity } from "../lib/siteSession";
 
 type NetlifyEvent = {
   httpMethod?: string;
@@ -13,11 +13,16 @@ type NotificationBody = {
   ids?: unknown;
 };
 
-const jsonResponse = (statusCode: number, body: Record<string, unknown>) => ({
+const jsonResponse = (
+  statusCode: number,
+  body: Record<string, unknown>,
+  headers: Record<string, string> = {},
+) => ({
   statusCode,
   headers: {
     "Content-Type": "application/json",
     "Cache-Control": "no-store",
+    ...headers,
   },
   body: JSON.stringify(body),
 });
@@ -46,21 +51,27 @@ export const handler = async (event: NetlifyEvent) => {
     return jsonResponse(405, { error: "Method not allowed." });
   }
 
-  const accessToken = parseBearerToken(event.headers);
-  if (!accessToken) return jsonResponse(401, { error: "Log in to view notifications." });
-
   const input = parseBody(event);
   const action = input?.action;
   if (!input || !["list", "count", "markRead", "delete"].includes(String(action))) {
     return jsonResponse(400, { error: "Invalid notification request." });
   }
+  if (["markRead", "delete"].includes(String(action)) && !isSameOriginRequest(event.headers)) {
+    return jsonResponse(403, { error: "Cross-site notification requests are not allowed." });
+  }
 
   try {
-    const account = await verifyLichessAccount(accessToken);
-    if (!account?.username) {
+    const identity = await resolveSiteIdentity(event.headers);
+    if (!identity.username) {
       return jsonResponse(401, { error: "Your Lichess login is no longer valid." });
     }
-    const username = account.username.trim().toLowerCase();
+    const username = identity.username;
+    const respond = (statusCode: number, body: Record<string, unknown>) =>
+      jsonResponse(
+        statusCode,
+        body,
+        identity.setCookie ? { "Set-Cookie": identity.setCookie } : {},
+      );
     const supabase = getSupabase();
 
     if (action === "count") {
@@ -70,7 +81,7 @@ export const handler = async (event: NetlifyEvent) => {
         .eq("recipient_username", username)
         .is("read_at", null);
       if (error) throw new Error(`Unable to count notifications: ${error.message}`);
-      return jsonResponse(200, { unreadCount: count ?? 0 });
+      return respond(200, { unreadCount: count ?? 0 });
     }
 
     if (action === "markRead") {
@@ -92,7 +103,7 @@ export const handler = async (event: NetlifyEvent) => {
         ? input.ids.filter((id): id is number => Number.isSafeInteger(id) && Number(id) > 0)
         : [];
       if (ids.length === 0) {
-        return jsonResponse(400, { error: "Select at least one notification to delete." });
+        return respond(400, { error: "Select at least one notification to delete." });
       }
 
       const { error } = await supabase
@@ -116,7 +127,7 @@ export const handler = async (event: NetlifyEvent) => {
 
     const notifications = data ?? [];
     const unreadCount = notifications.filter((notification) => !notification.read_at).length;
-    return jsonResponse(200, { notifications, unreadCount });
+    return respond(200, { notifications, unreadCount });
   } catch (error) {
     return jsonResponse(500, {
       error: error instanceof Error ? error.message : "Unable to load notifications.",

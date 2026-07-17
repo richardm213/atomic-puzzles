@@ -155,4 +155,14 @@ describe("puzzle-community function", () => {
     });
     expect(response.statusCode).toBe(401);
   });
+
+  it("rejects cross-site comment and vote mutations", async () => {
+    const response = await handler({
+      httpMethod: "POST",
+      headers: { host: "atomic.example", origin: "https://evil.example" },
+      body: JSON.stringify({ action: "vote", puzzleId: 1, vote: 1 }),
+    });
+
+    expect(response.statusCode).toBe(403);
+  });
 });

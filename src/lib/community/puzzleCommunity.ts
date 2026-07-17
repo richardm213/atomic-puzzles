@@ -78,6 +78,7 @@ const communityRequest = async (
 ): Promise<CommunityDiscussion> => {
   const response = await fetch(appAssetPath("/api/puzzles/community"), {
     method: "POST",
+    credentials: "same-origin",
     headers: {
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       "Content-Type": "application/json",
@@ -161,6 +162,7 @@ export const fetchProfileCommunityComments = async (
   const { page = 1, pageSize = 25, accessToken = "", sort = "recent" } = options;
   const response = await fetch(appAssetPath("/api/puzzles/community"), {
     method: "POST",
+    credentials: "same-origin",
     headers: {
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       "Content-Type": "application/json",
@@ -198,6 +200,7 @@ export const fetchSiteCommunityComments = async (
   } = options;
   const response = await fetch(appAssetPath("/api/puzzles/community"), {
     method: "POST",
+    credentials: "same-origin",
     headers: {
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       "Content-Type": "application/json",
@@ -220,6 +223,7 @@ export const fetchSiteCommunityComments = async (
 export const fetchProfileCommentKarma = async (username: string): Promise<number> => {
   const response = await fetch(appAssetPath("/api/puzzles/community"), {
     method: "POST",
+    credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "profileKarma", username }),
   });

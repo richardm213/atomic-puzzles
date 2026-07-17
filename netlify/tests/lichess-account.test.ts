@@ -2,8 +2,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   clearLichessAccountVerificationCache,
+  LichessVerificationError,
   parseBearerToken,
   verifyCachedLichessAccount,
+  verifyLichessAccount,
 } from "../lib/lichessAccount";
 
 describe("parseBearerToken", () => {
@@ -17,13 +19,13 @@ describe("parseBearerToken", () => {
   });
 });
 
-describe("verifyCachedLichessAccount", () => {
+describe("legacy bearer-session migration", () => {
   afterEach(() => {
     clearLichessAccountVerificationCache();
     vi.restoreAllMocks();
   });
 
-  it("caches a verified identity for repeated authenticated actions", async () => {
+  it("caches the identity while concurrent pre-release sessions migrate", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(JSON.stringify({ username: "Viewer" }), {
         status: 200,
@@ -64,5 +66,18 @@ describe("verifyCachedLichessAccount", () => {
       { username: "Viewer" },
     ]);
     expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("distinguishes a rejected token from temporary Lichess failures", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(new Response(null, { status: 503 }));
+
+    await expect(verifyLichessAccount("rejected-token")).resolves.toBeNull();
+    await expect(verifyLichessAccount("valid-token")).rejects.toBeInstanceOf(
+      LichessVerificationError,
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

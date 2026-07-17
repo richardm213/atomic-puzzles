@@ -1,3 +1,5 @@
+import { appAssetPath } from "../../utils/appAssetPath";
+
 const LICHESS_HOST = "https://lichess.org";
 
 export const LICHESS_SESSION_INVALID_EVENT = "atomic-puzzles:lichess-session-invalid";
@@ -35,17 +37,25 @@ export type LichessAuthErrorCode =
   | "stale_callback"
   | "code_rejected"
   | "token_exchange_failed"
+  | "account_rate_limited"
   | "account_load_failed";
 
 export class LichessAuthError extends Error {
   readonly code: LichessAuthErrorCode;
   readonly canRetryCallback: boolean;
+  readonly retryAfterMs: number;
 
-  constructor(code: LichessAuthErrorCode, message: string, canRetryCallback = false) {
+  constructor(
+    code: LichessAuthErrorCode,
+    message: string,
+    canRetryCallback = false,
+    retryAfterMs = 0,
+  ) {
     super(message);
     this.name = "LichessAuthError";
     this.code = code;
     this.canRetryCallback = canRetryCallback;
+    this.retryAfterMs = retryAfterMs;
   }
 }
 
@@ -75,7 +85,8 @@ const getBasePath = (): string => {
 const getClientId = (): string =>
   import.meta.env.VITE_LICHESS_CLIENT_ID?.trim() || window.location.host;
 
-const getRedirectUri = (): string => `${window.location.origin}${getBasePath()}/auth/lichess/callback`;
+const getRedirectUri = (): string =>
+  `${window.location.origin}${getBasePath()}/auth/lichess/callback`;
 const getHomePath = (): string => `${getBasePath()}/`;
 
 const getSafeReturnTo = (value: string | null | undefined): string => {
@@ -143,30 +154,15 @@ const parseStoredJson = <T>(storage: Storage, key: string): T | null => {
 
 const clearPendingAuthState = (): void => {
   window.sessionStorage.removeItem(STORAGE_KEYS.pendingAuth);
+  // Clean up attempts created by releases that used persistent storage.
   window.localStorage.removeItem(STORAGE_KEYS.pendingAuth);
 };
 
-const getPendingAuthState = (): PendingAuthState | null => {
-  const current = parseStoredJson<PendingAuthState>(
-    window.sessionStorage,
-    STORAGE_KEYS.pendingAuth,
-  );
-  if (current) return current;
-
-  // One-time compatibility for OAuth attempts started before pending PKCE
-  // secrets moved from persistent local storage to tab-scoped session storage.
-  const legacy = parseStoredJson<PendingAuthState>(window.localStorage, STORAGE_KEYS.pendingAuth);
-  if (legacy) {
-    window.sessionStorage.setItem(STORAGE_KEYS.pendingAuth, JSON.stringify(legacy));
-    window.localStorage.removeItem(STORAGE_KEYS.pendingAuth);
-  }
-  return legacy;
-};
+const getPendingAuthState = (): PendingAuthState | null =>
+  parseStoredJson<PendingAuthState>(window.sessionStorage, STORAGE_KEYS.pendingAuth);
 
 export const getStoredPostLoginRedirect = (): string => {
-  const storedValue =
-    window.sessionStorage.getItem(STORAGE_KEYS.postLoginRedirect) ??
-    window.localStorage.getItem(STORAGE_KEYS.postLoginRedirect);
+  const storedValue = window.sessionStorage.getItem(STORAGE_KEYS.postLoginRedirect);
   return getSafeReturnTo(storedValue);
 };
 
@@ -213,10 +209,9 @@ export const invalidateLichessSessionForResponse = (
 };
 
 export const startLichessLogin = async (returnTo?: string): Promise<void> => {
-  const nextReturnTo =
-    getSafeReturnTo(
-      returnTo || `${window.location.pathname}${window.location.search}${window.location.hash}`,
-    );
+  const nextReturnTo = getSafeReturnTo(
+    returnTo || `${window.location.pathname}${window.location.search}${window.location.hash}`,
+  );
   const state = randomString(24);
   const codeVerifier = randomString(64);
   const codeChallenge = await createCodeChallenge(codeVerifier);
@@ -253,16 +248,31 @@ const fetchJson = async <TBody = unknown>(
   return { response, body };
 };
 
-const fetchLichessAccount = async (accessToken: string): Promise<LichessAccount> => {
-  const { response, body } = await fetchJson<LichessAccount & { error?: string }>(
-    `${LICHESS_HOST}/api/account`,
+const readRetryAfterMs = (response: Response): number => {
+  const retryAfter = response.headers.get("retry-after")?.trim() ?? "";
+  const retryAfterSeconds = Number(retryAfter);
+  const retryAfterDate = Date.parse(retryAfter);
+  const retryAfterMs =
+    Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+      ? retryAfterSeconds * 1000
+      : Number.isFinite(retryAfterDate)
+        ? retryAfterDate - Date.now()
+        : 60_000;
+  return Math.min(5 * 60_000, Math.max(10_000, retryAfterMs));
+};
+
+const establishSiteSession = async (accessToken: string): Promise<LichessAccount> => {
+  const { response, body } = await fetchJson<{ user?: LichessAccount; error?: string }>(
+    appAssetPath("/api/auth/session"),
     {
+      method: "POST",
+      credentials: "same-origin",
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        Accept: "application/json",
+        "Content-Type": "application/json",
       },
     },
-    "Timed out while loading your Lichess profile.",
+    "Timed out while establishing your site session.",
   );
 
   if (!response.ok) {
@@ -272,18 +282,30 @@ const fetchLichessAccount = async (accessToken: string): Promise<LichessAccount>
         "Lichess rejected the new access token. Start a fresh login.",
       );
     }
-    throw new Error(body?.error ?? "Unable to load Lichess account.");
+    if (response.status === 429) {
+      throw new LichessAuthError(
+        "account_rate_limited",
+        "Lichess is temporarily limiting login checks. Your authorization succeeded; wait a moment, then retry once.",
+        true,
+        readRetryAfterMs(response),
+      );
+    }
+    throw new Error(body?.error ?? "Unable to establish your site session.");
   }
 
-  if (!body) {
-    throw new Error("Unable to load Lichess account.");
+  if (!body?.user?.username) {
+    throw new Error("The site session service returned incomplete account information.");
   }
-  return body;
+  return body.user;
 };
 
 export const restoreLichessSession = async (): Promise<LichessSession | null> => {
   const session = getStoredLichessSession();
-  if (!session?.accessToken || !isValidLichessCredential(session.accessToken)) {
+  if (
+    !session?.accessToken ||
+    !isValidLichessCredential(session.accessToken) ||
+    !session.me?.username
+  ) {
     clearStoredLichessSession();
     return null;
   }
@@ -293,15 +315,11 @@ export const restoreLichessSession = async (): Promise<LichessSession | null> =>
     return null;
   }
 
-  try {
-    const me = await fetchLichessAccount(session.accessToken);
-    const verifiedSession = { ...session, me };
-    storeLichessSession(verifiedSession);
-    return verifiedSession;
-  } catch {
-    clearStoredLichessSession();
-    return null;
-  }
+  // Restoring a saved login must not depend on Lichess being reachable. Site
+  // APIs validate the signed first-party session, with a one-time bearer-token
+  // migration for older sessions. Revalidating here caused transient Lichess
+  // failures to delete otherwise valid sessions.
+  return session;
 };
 
 export const completeLichessLogin = async (
@@ -441,10 +459,10 @@ export const completeLichessLogin = async (
 
   let me: LichessAccount;
   try {
-    me = await fetchLichessAccount(accessToken);
+    me = await establishSiteSession(accessToken);
   } catch (accountError) {
     if (accountError instanceof LichessAuthError) {
-      clearPendingAuthState();
+      if (!accountError.canRetryCallback) clearPendingAuthState();
       throw accountError;
     }
     throw new LichessAuthError(
@@ -467,25 +485,9 @@ export const completeLichessLogin = async (
   return { session, returnTo };
 };
 
-export const getLichessAuthDebugSnapshot = (): {
-  hasPendingAuth: boolean;
-  pendingReturnTo: string;
-  hasSession: boolean;
-  redirectUri: string;
-  clientId: string;
-} => {
-  const pendingAuth = getPendingAuthState();
-  const session = getStoredLichessSession();
-  return {
-    hasPendingAuth: Boolean(pendingAuth),
-    pendingReturnTo: pendingAuth?.returnTo ?? "",
-    hasSession: Boolean(session?.accessToken),
-    redirectUri: getRedirectUri(),
-    clientId: getClientId(),
-  };
-};
-
-export const revokeLichessSession = async (accessToken: string | null | undefined): Promise<void> => {
+export const revokeLichessSession = async (
+  accessToken: string | null | undefined,
+): Promise<void> => {
   if (!accessToken) return;
 
   await window.fetch(`${LICHESS_HOST}/api/token`, {

@@ -8,15 +8,12 @@ import { AuthCallbackPage } from "./AuthCallback";
 const authMocks = vi.hoisted(() => ({
   finishLogin: vi.fn(),
   login: vi.fn(),
-  clearPostLoginRedirect: vi.fn(),
 }));
 
 vi.mock("../../context/AuthContext", () => ({
   useAuth: () => ({
     finishLogin: authMocks.finishLogin,
     login: authMocks.login,
-    getPostLoginRedirect: () => "/comments",
-    clearPostLoginRedirect: authMocks.clearPostLoginRedirect,
   }),
 }));
 
@@ -24,7 +21,6 @@ describe("AuthCallbackPage", () => {
   beforeEach(() => {
     authMocks.finishLogin.mockReset();
     authMocks.login.mockReset();
-    authMocks.clearPostLoginRedirect.mockReset();
     window.history.replaceState({}, "", "/auth/lichess/callback?code=stale&state=old");
   });
 
@@ -46,5 +42,23 @@ describe("AuthCallbackPage", () => {
     expect(screen.getByRole("button", { name: "Start a new Lichess login" })).toBeVisible();
     expect(window.location.search).toBe("");
     expect(authMocks.finishLogin).toHaveBeenCalledOnce();
+  });
+
+  it("does not encourage immediate polling when Lichess limits account checks", async () => {
+    authMocks.finishLogin.mockRejectedValue(
+      new LichessAuthError(
+        "account_rate_limited",
+        "Lichess is temporarily limiting login checks. Your authorization succeeded; wait a moment, then retry once.",
+        true,
+        60_000,
+      ),
+    );
+
+    render(<AuthCallbackPage />);
+
+    expect(await screen.findByRole("button", { name: "Retry in 60s" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Return to Atomic Puzzles" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Start a new Lichess login" })).toBeNull();
+    expect(screen.queryByText(/poll this endpoint/i)).toBeNull();
   });
 });

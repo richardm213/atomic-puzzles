@@ -170,6 +170,15 @@ environment variables in Netlify:
 - `TURSO_DATABASE_URL`, from `turso db show --url openings2`
 - `TURSO_AUTH_TOKEN`, from `turso db tokens create openings2 --read-only`
 
+Authenticated community actions use a signed, 30-day first-party session cookie. Configure:
+
+- `SITE_SESSION_SECRET`, a random secret of at least 32 characters (for example,
+  `openssl rand -base64 48`)
+- `SITE_SESSION_PREVIOUS_SECRETS`, optional comma-separated prior secrets during key rotation
+
+If `SITE_SESSION_SECRET` is temporarily absent, the server falls back to the existing Supabase
+service-role key so deployments remain compatible, but a dedicated secret is recommended.
+
 Netlify deep-link support is handled through [`public/_redirects`](public/_redirects):
 
 ```text
@@ -197,7 +206,8 @@ If you plan to contribute:
 2. Run `npm run dev`.
 3. Run `npm run lint` and `npm run format` before opening a PR.
 
-The repository currently does not include an automated test suite, so manual verification is important for route changes, puzzle solving, auth flow, and Supabase-backed pages.
+Run `npm test` for the automated suite. Manual verification remains useful for visual route
+changes, puzzle solving, and production OAuth redirects.
 
 ## License
 

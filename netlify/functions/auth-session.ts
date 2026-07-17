@@ -1,6 +1,15 @@
 import { createClient } from "@supabase/supabase-js";
 
-import { parseBearerToken, verifyLichessAccount } from "../lib/lichessAccount";
+import {
+  LichessVerificationError,
+  parseBearerToken,
+  verifyLichessAccount,
+} from "../lib/lichessAccount";
+import {
+  clearSiteSessionCookie,
+  createSiteSessionCookie,
+  isSameOriginRequest,
+} from "../lib/siteSession";
 
 type NetlifyEvent = {
   httpMethod?: string;
@@ -8,11 +17,16 @@ type NetlifyEvent = {
   body?: string | null;
 };
 
-const jsonResponse = (statusCode: number, body: Record<string, unknown>) => ({
+const jsonResponse = (
+  statusCode: number,
+  body: Record<string, unknown>,
+  headers: Record<string, string> = {},
+) => ({
   statusCode,
   headers: {
     "Content-Type": "application/json",
     "Cache-Control": "no-store",
+    ...headers,
   },
   body: JSON.stringify(body),
 });
@@ -26,7 +40,20 @@ const getSupabase = () => {
 };
 
 export const handler = async (event: NetlifyEvent) => {
+  if (event.httpMethod === "DELETE") {
+    if (!isSameOriginRequest(event.headers)) {
+      return jsonResponse(403, { error: "Cross-site session requests are not allowed." });
+    }
+    return jsonResponse(
+      200,
+      { cleared: true },
+      { "Set-Cookie": clearSiteSessionCookie(event.headers) },
+    );
+  }
   if (event.httpMethod !== "POST") return jsonResponse(405, { error: "Method not allowed." });
+  if (!isSameOriginRequest(event.headers)) {
+    return jsonResponse(403, { error: "Cross-site session requests are not allowed." });
+  }
 
   const accessToken = parseBearerToken(event.headers);
   if (!accessToken) return jsonResponse(401, { error: "Log in with Lichess first." });
@@ -40,13 +67,32 @@ export const handler = async (event: NetlifyEvent) => {
       return jsonResponse(401, { error: "Your Lichess login is no longer valid." });
     }
 
-    const { error } = await getSupabase()
-      .from("users")
-      .upsert({ username }, { onConflict: "username", ignoreDuplicates: true });
-    if (error) throw new Error(`Unable to register authenticated user: ${error.message}`);
+    // Registration is useful for discovery pages, but a temporary database
+    // issue must not invalidate an identity that Lichess already verified.
+    try {
+      const { error } = await getSupabase()
+        .from("users")
+        .upsert({ username }, { onConflict: "username", ignoreDuplicates: true });
+      if (error) {
+        globalThis.console?.error(`Unable to register authenticated user: ${error.message}`);
+      }
+    } catch (registrationError) {
+      globalThis.console?.error(registrationError);
+    }
 
-    return jsonResponse(200, { user: { username } });
+    return jsonResponse(
+      200,
+      { user: { username } },
+      { "Set-Cookie": createSiteSessionCookie(username, event.headers) },
+    );
   } catch (error) {
+    if (error instanceof LichessVerificationError) {
+      return jsonResponse(
+        error.status === 429 ? 429 : 503,
+        { error: error.message },
+        error.retryAfter ? { "Retry-After": error.retryAfter } : {},
+      );
+    }
     return jsonResponse(500, {
       error: error instanceof Error ? error.message : "Unable to register authenticated user.",
     });

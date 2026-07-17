@@ -26,6 +26,7 @@ const notificationRequest = async <T>(
   if (!accessToken) throw new Error("Log in to view notifications.");
   const response = await fetch(appAssetPath("/api/notifications"), {
     method: "POST",
+    credentials: "same-origin",
     headers: {
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",

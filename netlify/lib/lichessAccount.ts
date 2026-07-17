@@ -7,6 +7,18 @@ export type LichessAccount = {
   id?: string;
 };
 
+export class LichessVerificationError extends Error {
+  readonly status: number;
+  readonly retryAfter: string;
+
+  constructor(status: number, message: string, retryAfter = "") {
+    super(message);
+    this.name = "LichessVerificationError";
+    this.status = status;
+    this.retryAfter = retryAfter;
+  }
+}
+
 type CachedAccount = {
   account: LichessAccount | null;
   expiresAt: number;
@@ -44,7 +56,16 @@ export const verifyLichessAccount = async (accessToken: string): Promise<Lichess
     },
     signal: AbortSignal.timeout(10_000),
   });
-  if (!response.ok) return null;
+  if (response.status === 401) return null;
+  if (!response.ok) {
+    throw new LichessVerificationError(
+      response.status,
+      response.status === 429
+        ? "Lichess is temporarily limiting account checks."
+        : "Lichess account verification is temporarily unavailable.",
+      response.headers.get("retry-after") ?? "",
+    );
+  }
 
   const account = (await response.json()) as LichessAccount;
   return account?.username ? account : null;
