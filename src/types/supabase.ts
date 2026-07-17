@@ -29,6 +29,12 @@ export type LbRow = {
   tc: string | null;
 };
 
+export type LbPlayerCountRow = {
+  month_value: string;
+  mode: string;
+  player_count: number;
+};
+
 export type PlayerRatingRow = {
   username: string;
   rating: number | null;
@@ -180,6 +186,10 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      get_lb_player_counts: {
+        Args: { p_pairs: Array<{ month: string; mode: string }> };
+        Returns: LbPlayerCountRow[];
+      };
       get_attempted_puzzle_ids: {
         Args: { p_username: string };
         Returns: AttemptedPuzzleIdRow[];

@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   isoMonthStartFromMonthKey,
+  lbPlayerCountKey,
   monthDateFromMonthKey,
   monthKeyFromMonthValue,
+  parseLbPlayerCountRows,
 } from "./supabaseLb";
 
 describe("monthKeyFromMonthValue", () => {
@@ -39,5 +41,29 @@ describe("isoMonthStartFromMonthKey", () => {
 
   it("returns '' on bad input", () => {
     expect(isoMonthStartFromMonthKey("garbage")).toBe("");
+  });
+});
+
+describe("parseLbPlayerCountRows", () => {
+  it("converts a batched RPC response into profile lookup keys", () => {
+    expect(
+      parseLbPlayerCountRows([
+        { month_value: "2024-03-01", mode: "blitz", player_count: 123 },
+        { month_value: "2024-03-01T00:00:00Z", mode: "BULLET", player_count: 45 },
+      ]),
+    ).toEqual({
+      [lbPlayerCountKey("2024-03-01", "blitz")]: 123,
+      [lbPlayerCountKey("2024-03-01", "bullet")]: 45,
+    });
+  });
+
+  it("ignores malformed rows", () => {
+    expect(
+      parseLbPlayerCountRows([
+        { month_value: "", mode: "blitz", player_count: 10 },
+        { month_value: "2024-03-01", mode: "", player_count: 10 },
+        { month_value: "2024-03-01", mode: "blitz", player_count: Number.NaN },
+      ]),
+    ).toEqual({});
   });
 });

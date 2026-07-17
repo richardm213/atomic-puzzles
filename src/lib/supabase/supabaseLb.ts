@@ -1,4 +1,4 @@
-import type { LbRow } from "../../types/supabase";
+import type { LbPlayerCountRow, LbRow } from "../../types/supabase";
 import { normalizeUsername } from "../../utils/playerNames";
 import { cachedRequest } from "../../utils/requestCache";
 import { getSupabaseClient } from "./supabaseClient";
@@ -17,6 +17,7 @@ const LB_TABLE = import.meta.env.VITE_SUPABASE_LB_TABLE?.trim() ?? "lb";
 const LB_SELECT_COLUMNS = "username,month,rank,rating,rd,games,tc";
 const lbRowsCache = new Map<string, Promise<LbRow[]>>();
 const lbCountCache = new Map<string, Promise<number>>();
+const lbCountsCache = new Map<string, Promise<Record<string, number>>>();
 const MONTH_INDEX_BY_NAME: Record<string, number> = {
   Jan: 0,
   Feb: 1,
@@ -94,3 +95,58 @@ export const fetchLbPlayerCount = async (month: string, mode: string): Promise<n
   cachedRequest(lbCountCache, ["leaderboard-count", month, mode], () =>
     fetchUncachedLbPlayerCount(month, mode),
   );
+
+export type LbPlayerCountPair = {
+  month: string;
+  mode: string;
+};
+
+export const lbPlayerCountKey = (month: string, mode: string): string => `${month}|${mode}`;
+
+export const parseLbPlayerCountRows = (rows: LbPlayerCountRow[]): Record<string, number> =>
+  Object.fromEntries(
+    rows
+      .map((row): [string, number] | null => {
+        const month = String(row?.month_value ?? "").slice(0, 10);
+        const mode = String(row?.mode ?? "")
+          .trim()
+          .toLowerCase();
+        const count = Number(row?.player_count);
+        if (!month || !mode || !Number.isFinite(count)) return null;
+        return [lbPlayerCountKey(month, mode), count];
+      })
+      .filter((entry): entry is [string, number] => entry !== null),
+  );
+
+export const fetchLbPlayerCounts = async (
+  pairs: LbPlayerCountPair[],
+): Promise<Record<string, number>> => {
+  const normalizedPairs = [
+    ...new Map(
+      pairs
+        .map((pair) => ({
+          month: String(pair?.month ?? "").slice(0, 10),
+          mode: String(pair?.mode ?? "")
+            .trim()
+            .toLowerCase(),
+        }))
+        .filter((pair) => pair.month && pair.mode)
+        .map((pair) => [lbPlayerCountKey(pair.month, pair.mode), pair]),
+    ).values(),
+  ].sort((left, right) =>
+    lbPlayerCountKey(left.month, left.mode).localeCompare(
+      lbPlayerCountKey(right.month, right.mode),
+    ),
+  );
+
+  if (normalizedPairs.length === 0) return {};
+
+  return cachedRequest(lbCountsCache, ["leaderboard-counts", normalizedPairs], async () => {
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase.rpc("get_lb_player_counts", {
+      p_pairs: normalizedPairs,
+    });
+    if (error) throw new Error(`Failed loading leaderboard player counts: ${error.message}`);
+    return parseLbPlayerCountRows(Array.isArray(data) ? data : []);
+  });
+};

@@ -3,7 +3,7 @@ import "./PlayerProfile.css";
 import { faShieldHalved } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { DualRangeSlider } from "../../components/DualRangeSlider/DualRangeSlider";
 import { LichessGameLink } from "../../components/LichessGameLink/LichessGameLink";
@@ -11,7 +11,6 @@ import { MatchDetails } from "../../components/MatchDetails/MatchDetails";
 import { MatchPageLink } from "../../components/MatchPageLink/MatchPageLink";
 import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { ProfileMetricCard } from "../../components/ProfileMetricCard/ProfileMetricCard";
-import { CommunityDiscussion } from "../../components/PuzzleCommunity/PuzzleCommunity";
 import { Seo } from "../../components/Seo/Seo";
 import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFilterChecks";
 import { TimeControlFields } from "../../components/TimeControlFields/TimeControlFields";
@@ -95,6 +94,10 @@ import { readStoredSourceFilters, writeStoredSourceFilters } from "../../utils/s
 import { isToggleActionKey } from "../../utils/toggleActionKey";
 
 const countOptions = [5, 10, 20];
+const CommunityDiscussion = lazy(async () => {
+  const module = await import("../../components/PuzzleCommunity/PuzzleCommunity");
+  return { default: module.CommunityDiscussion };
+});
 
 export const PlayerProfilePage = ({
   username,
@@ -189,12 +192,18 @@ export const PlayerProfilePage = ({
     if (bestRankMode === "wolfrandom") setBestRankMode(defaultMode);
     if (matchHistoryMode === "wolfrandom") setMatchHistoryMode(defaultMode);
   }, [bestRankMode, bestWinMode, matchHistoryMode, profileModeOptions, rankHistoryMode]);
-  const monthRanks = useMonthRanks(profileDataUsername);
+  const monthRanks = useMonthRanks(
+    profileDataUsername,
+    !historyOnly || profileHistoryTab === "ranks",
+  );
   const visibleMonthRanks = useMemo(
     () => monthRanks.filter((rank) => profileModeOptions.includes(rank.mode)),
     [monthRanks, profileModeOptions],
   );
-  const monthRankPlayerCounts = useMonthRankPlayerCounts(monthRanks);
+  const monthRankPlayerCounts = useMonthRankPlayerCounts(
+    monthRanks,
+    profileHistoryTab === "ranks" && rankHistoryView === "history",
+  );
   const [bestMonthRankCount, setBestMonthRankCount] = useState(5);
   const [recentMonthRankCount, setRecentMonthRankCount] = useState(5);
   const [bestWinCount, setBestWinCount] = useState(5);
@@ -273,7 +282,7 @@ export const PlayerProfilePage = ({
     let isCurrent = true;
 
     const loadHistoryAvailability = async () => {
-      if (!aliasesLoaded || !canonicalUsername) {
+      if (historyOnly || !aliasesLoaded || !canonicalUsername) {
         setIsHistoryAvailable(false);
         return;
       }
@@ -293,7 +302,7 @@ export const PlayerProfilePage = ({
     return () => {
       isCurrent = false;
     };
-  }, [aliasesLoaded, canonicalUsername]);
+  }, [aliasesLoaded, canonicalUsername, historyOnly]);
 
   const runMatchSearch = useCallback(
     async (
@@ -387,13 +396,14 @@ export const PlayerProfilePage = ({
   const requestedServerPage = isClientPagedResults ? 1 : currentPage;
 
   useEffect(() => {
-    if (!aliasesLoaded || isBanned) return;
+    if (!aliasesLoaded || isBanned || profileHistoryTab !== "matches") return;
     void runMatchSearch(matchHistoryMode, appliedFilters, requestedServerPage);
   }, [
     aliasesLoaded,
     appliedFilters,
     isBanned,
     matchHistoryMode,
+    profileHistoryTab,
     requestedServerPage,
     runMatchSearch,
   ]);
@@ -1019,286 +1029,295 @@ export const PlayerProfilePage = ({
                 aria-labelledby="profile-match-history-tab"
                 hidden={profileHistoryTab !== "matches"}
               >
-                <form
-                  className="matchFilterPanel profileMatchFilters"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    handleSearchClick();
-                  }}
-                >
-                  <div className="matchFilterGrid">
-                    <label htmlFor="profile-page-size-select">
-                      Page size
-                      <select
-                        id="profile-page-size-select"
-                        value={pageSize}
-                        onChange={(event) => {
-                          setPageSize(Number(event.target.value));
-                          setPage(1);
-                        }}
-                      >
-                        {pageSizeOptions.map((value) => (
-                          <option key={value} value={value}>
-                            {value}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <TimeControlFields
-                      initialId="profile-time-initial-select"
-                      incrementId="profile-time-increment-select"
-                      initialValue={timeControlInitialFilter}
-                      incrementValue={timeControlIncrementFilter}
-                      initialOptions={initialOptions}
-                      incrementOptions={incrementOptions}
-                      onInitialChange={setTimeControlInitialFilter}
-                      onIncrementChange={setTimeControlIncrementFilter}
-                      startDateId="profile-start-date-filter"
-                      endDateId="profile-end-date-filter"
-                      startDateValue={startDateFilter}
-                      endDateValue={endDateFilter}
-                      onStartDateChange={setStartDateFilter}
-                      onEndDateChange={setEndDateFilter}
-                    />
-                    <label htmlFor="profile-opponent-filter" className="profileOpponentFilterField">
-                      Opponent
-                      <input
-                        id="profile-opponent-filter"
-                        type="text"
-                        value={opponentFilter}
-                        onChange={(event) => setOpponentFilter(event.target.value)}
-                        placeholder="username"
-                      />
-                    </label>
-                  </div>
+                {profileHistoryTab === "matches" ? (
+                  <>
+                    <form
+                      className="matchFilterPanel profileMatchFilters"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        handleSearchClick();
+                      }}
+                    >
+                      <div className="matchFilterGrid">
+                        <label htmlFor="profile-page-size-select">
+                          Page size
+                          <select
+                            id="profile-page-size-select"
+                            value={pageSize}
+                            onChange={(event) => {
+                              setPageSize(Number(event.target.value));
+                              setPage(1);
+                            }}
+                          >
+                            {pageSizeOptions.map((value) => (
+                              <option key={value} value={value}>
+                                {value}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <TimeControlFields
+                          initialId="profile-time-initial-select"
+                          incrementId="profile-time-increment-select"
+                          initialValue={timeControlInitialFilter}
+                          incrementValue={timeControlIncrementFilter}
+                          initialOptions={initialOptions}
+                          incrementOptions={incrementOptions}
+                          onInitialChange={setTimeControlInitialFilter}
+                          onIncrementChange={setTimeControlIncrementFilter}
+                          startDateId="profile-start-date-filter"
+                          endDateId="profile-end-date-filter"
+                          startDateValue={startDateFilter}
+                          endDateValue={endDateFilter}
+                          onStartDateChange={setStartDateFilter}
+                          onEndDateChange={setEndDateFilter}
+                        />
+                        <label
+                          htmlFor="profile-opponent-filter"
+                          className="profileOpponentFilterField"
+                        >
+                          Opponent
+                          <input
+                            id="profile-opponent-filter"
+                            type="text"
+                            value={opponentFilter}
+                            onChange={(event) => setOpponentFilter(event.target.value)}
+                            placeholder="username"
+                          />
+                        </label>
+                      </div>
 
-                  <div className="matchFilterRanges">
-                    <DualRangeSlider
-                      id="opponent-rating-min"
-                      label={`Opponent rating range: ${opponentRatingMin} - ${opponentRatingMax}`}
-                      min={opponentRatingSliderMin}
-                      max={opponentRatingSliderMax}
-                      step={10}
-                      lowerValue={opponentRatingMin}
-                      upperValue={opponentRatingMax}
-                      onLowerChange={setOpponentRatingMin}
-                      onUpperChange={setOpponentRatingMax}
-                    />
-                  </div>
+                      <div className="matchFilterRanges">
+                        <DualRangeSlider
+                          id="opponent-rating-min"
+                          label={`Opponent rating range: ${opponentRatingMin} - ${opponentRatingMax}`}
+                          min={opponentRatingSliderMin}
+                          max={opponentRatingSliderMax}
+                          step={10}
+                          lowerValue={opponentRatingMin}
+                          upperValue={opponentRatingMax}
+                          onLowerChange={setOpponentRatingMin}
+                          onUpperChange={setOpponentRatingMax}
+                        />
+                      </div>
 
-                  <div className="matchFilterFooter profileMatchFilterFooter">
-                    <SourceFilterChecks values={sourceFilters} onChange={setSourceFilter} />
-                    <div className="matchFilterActions">
-                      <button
-                        className="analyzeButton matchFilterSearch"
-                        type="submit"
-                        disabled={loadingMatches}
-                      >
-                        {loadingMatches ? "Searching..." : "Search"}
-                      </button>
+                      <div className="matchFilterFooter profileMatchFilterFooter">
+                        <SourceFilterChecks values={sourceFilters} onChange={setSourceFilter} />
+                        <div className="matchFilterActions">
+                          <button
+                            className="analyzeButton matchFilterSearch"
+                            type="submit"
+                            disabled={loadingMatches}
+                          >
+                            {loadingMatches ? "Searching..." : "Search"}
+                          </button>
+                        </div>
+                      </div>
+                    </form>
+
+                    {error ? <div className="errorText">{error}</div> : null}
+
+                    <div className="rankingsMeta profileHistoryMeta">
+                      <div className="profileHistoryTitleControl">
+                        <label htmlFor="profile-match-history-mode-select">
+                          <span>Mode</span>
+                          <select
+                            id="profile-match-history-mode-select"
+                            aria-label="Match history mode"
+                            value={matchHistoryMode}
+                            onChange={(event) => {
+                              const v = event.target.value;
+                              if ((profileModeOptions as readonly string[]).includes(v)) {
+                                handleModeChange(v as import("../../constants/matches").Mode);
+                              }
+                            }}
+                          >
+                            {profileModeOptions.map((mode) => (
+                              <option key={mode} value={mode}>
+                                {modeLabels[mode] ?? mode}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
                     </div>
-                  </div>
-                </form>
 
-                {error ? <div className="errorText">{error}</div> : null}
-
-                <div className="rankingsMeta profileHistoryMeta">
-                  <div className="profileHistoryTitleControl">
-                    <label htmlFor="profile-match-history-mode-select">
-                      <span>Mode</span>
-                      <select
-                        id="profile-match-history-mode-select"
-                        aria-label="Match history mode"
-                        value={matchHistoryMode}
-                        onChange={(event) => {
-                          const v = event.target.value;
-                          if ((profileModeOptions as readonly string[]).includes(v)) {
-                            handleModeChange(v as import("../../constants/matches").Mode);
-                          }
-                        }}
-                      >
-                        {profileModeOptions.map((mode) => (
-                          <option key={mode} value={mode}>
-                            {modeLabels[mode] ?? mode}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
-                </div>
-
-                <div className="rankingsTableWrap profileMatchTableWrap">
-                  <table className="rankingsTable profileMatchTable">
-                    <colgroup>
-                      <col className="profileMatchDateColumn" />
-                      <col className="profileMatchOpponentColumn" />
-                      <col className="profileMatchTimeControlColumn" />
-                      <col className="profileMatchScoreColumn" />
-                      <col className="profileMatchRatingColumn" />
-                      <col className="profileMatchRdColumn" />
-                      <col className="profileMatchLinkColumn" />
-                    </colgroup>
-                    <thead>
-                      <tr>
-                        <th>Date / Time</th>
-                        <th>Opponent</th>
-                        <th>TC</th>
-                        <th>Score</th>
-                        <th>Rating (Δ)</th>
-                        <th>RD (Δ)</th>
-                        <th aria-label="Open match page" />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {visibleMatches.map((match) => {
-                        const matchKey = `${match.startTs}-${match.firstGameId}`;
-                        const isExpanded = expandedMatchKeys.includes(matchKey);
-                        return (
-                          <Fragment key={matchKey}>
-                            <tr
-                              className={`expandableMatchRow${isExpanded ? " expanded" : ""}`}
-                              onClick={() => toggleMatchKey(matchKey)}
-                              onKeyDown={(event) => {
-                                if (!isToggleActionKey(event)) return;
-                                event.preventDefault();
-                                toggleMatchKey(matchKey);
-                              }}
-                              role="button"
-                              tabIndex={0}
-                              aria-expanded={isExpanded}
-                            >
-                              <td>
-                                <LichessGameLink
-                                  gameId={match.firstGameId}
-                                  source={match.sourceValue}
-                                  onClick={(event) => event.stopPropagation()}
-                                >
-                                  {formatLocalDateTime(match.startTs)}
-                                </LichessGameLink>
-                              </td>
-                              <td>
-                                <Link
-                                  className="rankingLink"
-                                  to="/@/$username"
-                                  params={{ username: match.opponent }}
-                                  onClick={(event) => event.stopPropagation()}
-                                >
-                                  {formatOpponentWithRating(
-                                    match.opponent,
-                                    match.opponentAfterRating,
-                                  )}
-                                </Link>
-                              </td>
-                              <td>
-                                <span className="profileTablePill">{match.timeControl}</span>
-                              </td>
-                              <td className="scoreCell">
-                                <span className="profileScoreBox">
-                                  <span
-                                    className={`profileScoreValue${profileResultToneClass(
-                                      match.playerScore,
-                                      match.opponentScore,
-                                    )}`}
-                                  >
-                                    {formatScore(match.playerScore)}
-                                  </span>
-                                  <span className="scoreDash">-</span>
-                                  <span className="profileScoreValue">
-                                    {formatScore(match.opponentScore)}
-                                  </span>
-                                </span>
-                              </td>
-                              <td>
-                                <span className="profileMetricPair">
-                                  <span className="profileMetricValue">{match.beforeRating}</span>
-                                  <span className="profileDelta">
-                                    {formatSignedDecimal(match.ratingChange)}
-                                  </span>
-                                </span>
-                              </td>
-                              <td>
-                                <span className="profileMetricPair">
-                                  <span className="profileMetricValue">{match.beforeRd}</span>
-                                  <span className="profileDelta">
-                                    {formatSignedDecimal(match.rdChange)}
-                                  </span>
-                                </span>
-                              </td>
-                              <td>
-                                <MatchPageLink
-                                  match={{
-                                    ...match,
-                                    playerA: canonicalUsername,
-                                    playerB: match.opponent,
-                                    mode: matchHistoryMode,
+                    <div className="rankingsTableWrap profileMatchTableWrap">
+                      <table className="rankingsTable profileMatchTable">
+                        <colgroup>
+                          <col className="profileMatchDateColumn" />
+                          <col className="profileMatchOpponentColumn" />
+                          <col className="profileMatchTimeControlColumn" />
+                          <col className="profileMatchScoreColumn" />
+                          <col className="profileMatchRatingColumn" />
+                          <col className="profileMatchRdColumn" />
+                          <col className="profileMatchLinkColumn" />
+                        </colgroup>
+                        <thead>
+                          <tr>
+                            <th>Date / Time</th>
+                            <th>Opponent</th>
+                            <th>TC</th>
+                            <th>Score</th>
+                            <th>Rating (Δ)</th>
+                            <th>RD (Δ)</th>
+                            <th aria-label="Open match page" />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {visibleMatches.map((match) => {
+                            const matchKey = `${match.startTs}-${match.firstGameId}`;
+                            const isExpanded = expandedMatchKeys.includes(matchKey);
+                            return (
+                              <Fragment key={matchKey}>
+                                <tr
+                                  className={`expandableMatchRow${isExpanded ? " expanded" : ""}`}
+                                  onClick={() => toggleMatchKey(matchKey)}
+                                  onKeyDown={(event) => {
+                                    if (!isToggleActionKey(event)) return;
+                                    event.preventDefault();
+                                    toggleMatchKey(matchKey);
                                   }}
-                                  onClick={(event) => event.stopPropagation()}
-                                  title="Open match page in new tab"
-                                />
-                              </td>
-                            </tr>
-                            {isExpanded ? (
-                              <tr className="matchDetailsRow">
-                                <td colSpan={7}>
-                                  <div className="matchDetailsInner">
-                                    <MatchDetails
+                                  role="button"
+                                  tabIndex={0}
+                                  aria-expanded={isExpanded}
+                                >
+                                  <td>
+                                    <LichessGameLink
+                                      gameId={match.firstGameId}
+                                      source={match.sourceValue}
+                                      onClick={(event) => event.stopPropagation()}
+                                    >
+                                      {formatLocalDateTime(match.startTs)}
+                                    </LichessGameLink>
+                                  </td>
+                                  <td>
+                                    <Link
+                                      className="rankingLink"
+                                      to="/@/$username"
+                                      params={{ username: match.opponent }}
+                                      onClick={(event) => event.stopPropagation()}
+                                    >
+                                      {formatOpponentWithRating(
+                                        match.opponent,
+                                        match.opponentAfterRating,
+                                      )}
+                                    </Link>
+                                  </td>
+                                  <td>
+                                    <span className="profileTablePill">{match.timeControl}</span>
+                                  </td>
+                                  <td className="scoreCell">
+                                    <span className="profileScoreBox">
+                                      <span
+                                        className={`profileScoreValue${profileResultToneClass(
+                                          match.playerScore,
+                                          match.opponentScore,
+                                        )}`}
+                                      >
+                                        {formatScore(match.playerScore)}
+                                      </span>
+                                      <span className="scoreDash">-</span>
+                                      <span className="profileScoreValue">
+                                        {formatScore(match.opponentScore)}
+                                      </span>
+                                    </span>
+                                  </td>
+                                  <td>
+                                    <span className="profileMetricPair">
+                                      <span className="profileMetricValue">
+                                        {match.beforeRating}
+                                      </span>
+                                      <span className="profileDelta">
+                                        {formatSignedDecimal(match.ratingChange)}
+                                      </span>
+                                    </span>
+                                  </td>
+                                  <td>
+                                    <span className="profileMetricPair">
+                                      <span className="profileMetricValue">{match.beforeRd}</span>
+                                      <span className="profileDelta">
+                                        {formatSignedDecimal(match.rdChange)}
+                                      </span>
+                                    </span>
+                                  </td>
+                                  <td>
+                                    <MatchPageLink
                                       match={{
-                                        matchId: match.matchId,
-                                        mode: matchHistoryMode,
+                                        ...match,
                                         playerA: canonicalUsername,
                                         playerB: match.opponent,
-                                        startTs: match.startTs,
-                                        timeControl: match.timeControl,
-                                        sourceValue: match.sourceValue,
-                                        firstGameId: match.firstGameId,
-                                        scoreA: match.playerScore,
-                                        scoreB: match.opponentScore,
-                                        playerABeforeRating: match.beforeRating,
-                                        playerAAfterRating: match.afterRating,
-                                        playerABeforeRd: match.beforeRd,
-                                        playerAAfterRd: match.afterRd,
-                                        playerBBeforeRating: match.opponentBeforeRating,
-                                        playerBAfterRating: match.opponentAfterRating,
-                                        playerBBeforeRd: match.opponentBeforeRd,
-                                        playerBAfterRd: match.opponentAfterRd,
-                                        games: match.games.map((game, index) => ({
-                                          id: game.id,
-                                          index,
-                                          resultLabel: game.winner,
-                                          scoreAAfter: game.playerScoreAfter,
-                                          scoreBAfter: game.opponentScoreAfter,
-                                        })),
+                                        mode: matchHistoryMode,
                                       }}
-                                      matchKey={matchKey}
-                                      showH2HLink
-                                      showRunningScore
-                                      stopPropagation={(event) => event.stopPropagation()}
+                                      onClick={(event) => event.stopPropagation()}
+                                      title="Open match page in new tab"
                                     />
-                                  </div>
-                                </td>
-                              </tr>
-                            ) : null}
-                          </Fragment>
-                        );
-                      })}
-                      {visibleMatches.length === 0 ? (
-                        <tr>
-                          <td colSpan={7} className="emptyRankings">
-                            {`No matches found for this player with current filters in ${modeLabels[matchHistoryMode]}.`}
-                          </td>
-                        </tr>
-                      ) : null}
-                    </tbody>
-                  </table>
-                </div>
+                                  </td>
+                                </tr>
+                                {isExpanded ? (
+                                  <tr className="matchDetailsRow">
+                                    <td colSpan={7}>
+                                      <div className="matchDetailsInner">
+                                        <MatchDetails
+                                          match={{
+                                            matchId: match.matchId,
+                                            mode: matchHistoryMode,
+                                            playerA: canonicalUsername,
+                                            playerB: match.opponent,
+                                            startTs: match.startTs,
+                                            timeControl: match.timeControl,
+                                            sourceValue: match.sourceValue,
+                                            firstGameId: match.firstGameId,
+                                            scoreA: match.playerScore,
+                                            scoreB: match.opponentScore,
+                                            playerABeforeRating: match.beforeRating,
+                                            playerAAfterRating: match.afterRating,
+                                            playerABeforeRd: match.beforeRd,
+                                            playerAAfterRd: match.afterRd,
+                                            playerBBeforeRating: match.opponentBeforeRating,
+                                            playerBAfterRating: match.opponentAfterRating,
+                                            playerBBeforeRd: match.opponentBeforeRd,
+                                            playerBAfterRd: match.opponentAfterRd,
+                                            games: match.games.map((game, index) => ({
+                                              id: game.id,
+                                              index,
+                                              resultLabel: game.winner,
+                                              scoreAAfter: game.playerScoreAfter,
+                                              scoreBAfter: game.opponentScoreAfter,
+                                            })),
+                                          }}
+                                          matchKey={matchKey}
+                                          showH2HLink
+                                          showRunningScore
+                                          stopPropagation={(event) => event.stopPropagation()}
+                                        />
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ) : null}
+                              </Fragment>
+                            );
+                          })}
+                          {visibleMatches.length === 0 ? (
+                            <tr>
+                              <td colSpan={7} className="emptyRankings">
+                                {`No matches found for this player with current filters in ${modeLabels[matchHistoryMode]}.`}
+                              </td>
+                            </tr>
+                          ) : null}
+                        </tbody>
+                      </table>
+                    </div>
 
-                <PaginationRow
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={setPage}
-                  formatLabel={(current, total) => `Page ${current} / ${total}`}
-                  disabled={loadingMatches}
-                />
+                    <PaginationRow
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      onPageChange={setPage}
+                      formatLabel={(current, total) => `Page ${current} / ${total}`}
+                      disabled={loadingMatches}
+                    />
+                  </>
+                ) : null}
               </section>
 
               <section
@@ -1308,166 +1327,180 @@ export const PlayerProfilePage = ({
                 aria-labelledby="profile-rank-history-tab"
                 hidden={profileHistoryTab !== "ranks"}
               >
-                <div className="rankingsMeta profileHistoryMeta">
-                  <div className="profileHistoryTitleControl">
-                    <label htmlFor="profile-rank-history-view-select">
-                      <span>View</span>
-                      <select
-                        id="profile-rank-history-view-select"
-                        aria-label="Rank history view"
-                        value={rankHistoryView}
-                        onChange={(event) => {
-                          const nextView = event.target.value;
-                          if (nextView === "history" || nextView === "trophies") {
-                            handleRankHistoryViewChange(nextView);
-                          }
-                        }}
-                      >
-                        <option value="history">History</option>
-                        <option value="trophies">Trophy Case</option>
-                      </select>
-                    </label>
-                    {rankHistoryView === "history" ? (
-                      <label htmlFor="profile-rank-history-mode-select">
-                        <span>Mode</span>
-                        <select
-                          id="profile-rank-history-mode-select"
-                          aria-label="Rank history mode"
-                          value={rankHistoryMode}
-                          onChange={(event) => {
-                            const v = event.target.value;
-                            if (
-                              v === "all" ||
-                              (profileModeOptions as readonly string[]).includes(v)
-                            ) {
-                              setRankHistoryMode(v as RankHistoryMode);
-                            }
-                          }}
-                        >
-                          {rankHistoryModeOptions.map((mode) => (
-                            <option key={mode} value={mode}>
-                              {mode === "all" ? "All" : (modeLabels[mode] ?? mode)}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    ) : (
-                      <label htmlFor="profile-trophy-case-sort-select">
-                        <span>Sort</span>
-                        <select
-                          id="profile-trophy-case-sort-select"
-                          aria-label="Trophy case sort"
-                          value={trophyCaseSort}
-                          onChange={(event) => {
-                            const nextSort = event.target.value;
-                            if (isTrophyCaseSort(nextSort)) {
-                              setTrophyCaseSort(nextSort);
-                              setStoredTrophyCaseSort(nextSort);
-                            }
-                          }}
-                        >
-                          <option value="prestige">Prestige</option>
-                          <option value="date">Date</option>
-                        </select>
-                      </label>
-                    )}
-                  </div>
-                  <span>
-                    {rankHistoryView === "history"
-                      ? `${rankHistoryRows.length} months`
-                      : `${trophyCaseTrophies.length} trophies`}
-                  </span>
-                </div>
+                {profileHistoryTab === "ranks" ? (
+                  <>
+                    <div className="rankingsMeta profileHistoryMeta">
+                      <div className="profileHistoryTitleControl">
+                        <label htmlFor="profile-rank-history-view-select">
+                          <span>View</span>
+                          <select
+                            id="profile-rank-history-view-select"
+                            aria-label="Rank history view"
+                            value={rankHistoryView}
+                            onChange={(event) => {
+                              const nextView = event.target.value;
+                              if (nextView === "history" || nextView === "trophies") {
+                                handleRankHistoryViewChange(nextView);
+                              }
+                            }}
+                          >
+                            <option value="history">History</option>
+                            <option value="trophies">Trophy Case</option>
+                          </select>
+                        </label>
+                        {rankHistoryView === "history" ? (
+                          <label htmlFor="profile-rank-history-mode-select">
+                            <span>Mode</span>
+                            <select
+                              id="profile-rank-history-mode-select"
+                              aria-label="Rank history mode"
+                              value={rankHistoryMode}
+                              onChange={(event) => {
+                                const v = event.target.value;
+                                if (
+                                  v === "all" ||
+                                  (profileModeOptions as readonly string[]).includes(v)
+                                ) {
+                                  setRankHistoryMode(v as RankHistoryMode);
+                                }
+                              }}
+                            >
+                              {rankHistoryModeOptions.map((mode) => (
+                                <option key={mode} value={mode}>
+                                  {mode === "all" ? "All" : (modeLabels[mode] ?? mode)}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        ) : (
+                          <label htmlFor="profile-trophy-case-sort-select">
+                            <span>Sort</span>
+                            <select
+                              id="profile-trophy-case-sort-select"
+                              aria-label="Trophy case sort"
+                              value={trophyCaseSort}
+                              onChange={(event) => {
+                                const nextSort = event.target.value;
+                                if (isTrophyCaseSort(nextSort)) {
+                                  setTrophyCaseSort(nextSort);
+                                  setStoredTrophyCaseSort(nextSort);
+                                }
+                              }}
+                            >
+                              <option value="prestige">Prestige</option>
+                              <option value="date">Date</option>
+                            </select>
+                          </label>
+                        )}
+                      </div>
+                      <span>
+                        {rankHistoryView === "history"
+                          ? `${rankHistoryRows.length} months`
+                          : `${trophyCaseTrophies.length} trophies`}
+                      </span>
+                    </div>
 
-                {rankHistoryView === "history" ? (
-                  <div className="rankingsTableWrap profileRankHistoryTableWrap">
-                    <table className="rankingsTable profileRankHistoryTable">
-                      <thead>
-                        <tr>
-                          <th>Month</th>
-                          <th>Mode</th>
-                          <th>Rank</th>
-                          <th>Players</th>
-                          <th>Rating</th>
-                          <th>RD</th>
-                          <th>Games</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {rankHistoryRows.map((monthRank) => (
-                          <tr key={`rank-history-${monthRank.mode}-${monthRank.monthKey}`}>
-                            <td>
-                              <a
-                                className="rankingLink"
-                                href={buildRankingsLocation(monthRank.monthKey, monthRank.mode)}
-                              >
-                                {monthRank.monthLabel}
-                              </a>
-                            </td>
-                            <td>{modeLabels[monthRank.mode] ?? monthRank.mode}</td>
-                            <td>#{monthRank.rank}</td>
-                            <td>{monthRank.playerCount ?? "..."}</td>
-                            <td>{monthRank.rating ?? "—"}</td>
-                            <td>{monthRank.rd ?? "—"}</td>
-                            <td>{monthRank.games ?? "—"}</td>
-                          </tr>
+                    {rankHistoryView === "history" ? (
+                      <div className="rankingsTableWrap profileRankHistoryTableWrap">
+                        <table className="rankingsTable profileRankHistoryTable">
+                          <thead>
+                            <tr>
+                              <th>Month</th>
+                              <th>Mode</th>
+                              <th>Rank</th>
+                              <th>Players</th>
+                              <th>Rating</th>
+                              <th>RD</th>
+                              <th>Games</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {rankHistoryRows.map((monthRank) => (
+                              <tr key={`rank-history-${monthRank.mode}-${monthRank.monthKey}`}>
+                                <td>
+                                  <a
+                                    className="rankingLink"
+                                    href={buildRankingsLocation(monthRank.monthKey, monthRank.mode)}
+                                  >
+                                    {monthRank.monthLabel}
+                                  </a>
+                                </td>
+                                <td>{modeLabels[monthRank.mode] ?? monthRank.mode}</td>
+                                <td>#{monthRank.rank}</td>
+                                <td>{monthRank.playerCount ?? "..."}</td>
+                                <td>{monthRank.rating ?? "—"}</td>
+                                <td>{monthRank.rd ?? "—"}</td>
+                                <td>{monthRank.games ?? "—"}</td>
+                              </tr>
+                            ))}
+                            {rankHistoryRows.length === 0 ? (
+                              <tr>
+                                <td colSpan={7} className="emptyRankings">
+                                  No rank history available.
+                                </td>
+                              </tr>
+                            ) : null}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : trophyCaseTrophies.length ? (
+                      <div className="profileTrophyCaseGrid" aria-label="Trophy case">
+                        {trophyCaseTrophies.map((trophy) => (
+                          <ProfileTrophyCaseCard key={`case-${trophy.key}`} trophy={trophy} />
                         ))}
-                        {rankHistoryRows.length === 0 ? (
-                          <tr>
-                            <td colSpan={7} className="emptyRankings">
-                              No rank history available.
-                            </td>
-                          </tr>
-                        ) : null}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : trophyCaseTrophies.length ? (
-                  <div className="profileTrophyCaseGrid" aria-label="Trophy case">
-                    {trophyCaseTrophies.map((trophy) => (
-                      <ProfileTrophyCaseCard key={`case-${trophy.key}`} trophy={trophy} />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="emptyRankings">
-                    No top 10, AWC, or Chess.com championship trophies yet.
-                  </div>
-                )}
+                      </div>
+                    ) : (
+                      <div className="emptyRankings">
+                        No top 10, AWC, or Chess.com championship trophies yet.
+                      </div>
+                    )}
+                  </>
+                ) : null}
               </section>
 
-              <FavoriteOpponentsSection
-                hidden={profileHistoryTab !== "opponents"}
-                canonicalUsername={canonicalUsername}
-                modeOptions={favoriteOpponentModeOptions}
-                mode={favoriteOpponentMode}
-                matchLimit={favoriteOpponentMatchLimit}
-                displayCount={favoriteOpponentDisplayCount}
-                sort={favoriteOpponentSort}
-                sortDirection={favoriteOpponentSortDirection}
-                rows={favoriteOpponentRows}
-                visibleRows={visibleFavoriteOpponentRows}
-                expandedOpponentKeys={expandedFavoriteOpponentKeys}
-                loading={loadingFavoriteOpponents}
-                error={favoriteOpponentsError}
-                scopeLabel={favoriteOpponentScopeLabel}
-                currentPage={currentFavoriteOpponentPage}
-                totalPages={favoriteOpponentTotalPages}
-                onModeChange={(nextMode) => {
-                  setFavoriteOpponentMode(nextMode);
-                  setFavoriteOpponentPage(1);
-                }}
-                onMatchLimitChange={(nextLimit) => {
-                  setFavoriteOpponentMatchLimit(nextLimit);
-                  setFavoriteOpponentPage(1);
-                }}
-                onDisplayCountChange={(nextCount) => {
-                  setFavoriteOpponentDisplayCount(nextCount);
-                  setFavoriteOpponentPage(1);
-                }}
-                onSortChange={applyFavoriteOpponentSort}
-                onPageChange={setFavoriteOpponentPage}
-                onToggleOpponent={toggleFavoriteOpponentKey}
-              />
+              {profileHistoryTab === "opponents" ? (
+                <FavoriteOpponentsSection
+                  hidden={false}
+                  canonicalUsername={canonicalUsername}
+                  modeOptions={favoriteOpponentModeOptions}
+                  mode={favoriteOpponentMode}
+                  matchLimit={favoriteOpponentMatchLimit}
+                  displayCount={favoriteOpponentDisplayCount}
+                  sort={favoriteOpponentSort}
+                  sortDirection={favoriteOpponentSortDirection}
+                  rows={favoriteOpponentRows}
+                  visibleRows={visibleFavoriteOpponentRows}
+                  expandedOpponentKeys={expandedFavoriteOpponentKeys}
+                  loading={loadingFavoriteOpponents}
+                  error={favoriteOpponentsError}
+                  scopeLabel={favoriteOpponentScopeLabel}
+                  currentPage={currentFavoriteOpponentPage}
+                  totalPages={favoriteOpponentTotalPages}
+                  onModeChange={(nextMode) => {
+                    setFavoriteOpponentMode(nextMode);
+                    setFavoriteOpponentPage(1);
+                  }}
+                  onMatchLimitChange={(nextLimit) => {
+                    setFavoriteOpponentMatchLimit(nextLimit);
+                    setFavoriteOpponentPage(1);
+                  }}
+                  onDisplayCountChange={(nextCount) => {
+                    setFavoriteOpponentDisplayCount(nextCount);
+                    setFavoriteOpponentPage(1);
+                  }}
+                  onSortChange={applyFavoriteOpponentSort}
+                  onPageChange={setFavoriteOpponentPage}
+                  onToggleOpponent={toggleFavoriteOpponentKey}
+                />
+              ) : (
+                <section
+                  id="profile-favorite-opponents-panel"
+                  className="profileHistorySection"
+                  role="tabpanel"
+                  aria-labelledby="profile-favorite-opponents-tab"
+                  hidden
+                />
+              )}
 
               <section
                 id="profile-comments-panel"
@@ -1476,12 +1509,14 @@ export const PlayerProfilePage = ({
                 aria-labelledby="profile-comments-tab"
                 hidden={profileHistoryTab !== "comments"}
               >
-                {aliasesLoaded && canonicalUsername ? (
-                  <CommunityDiscussion
-                    target={{ type: "profile", id: canonicalUsername }}
-                    eyebrow="Profile community"
-                    heading={`Comments on ${profileDisplayUsername}`}
-                  />
+                {profileHistoryTab === "comments" && aliasesLoaded && canonicalUsername ? (
+                  <Suspense fallback={<div className="emptyRankings">Loading comments...</div>}>
+                    <CommunityDiscussion
+                      target={{ type: "profile", id: canonicalUsername }}
+                      eyebrow="Profile community"
+                      heading={`Comments on ${profileDisplayUsername}`}
+                    />
+                  </Suspense>
                 ) : null}
               </section>
             </div>
@@ -1508,11 +1543,13 @@ export const PlayerProfilePage = ({
               role="tabpanel"
               aria-labelledby="profile-comments-tab"
             >
-              <CommunityDiscussion
-                target={{ type: "profile", id: canonicalUsername }}
-                eyebrow="Profile community"
-                heading={`Comments on ${profileDisplayUsername}`}
-              />
+              <Suspense fallback={<div className="emptyRankings">Loading comments...</div>}>
+                <CommunityDiscussion
+                  target={{ type: "profile", id: canonicalUsername }}
+                  eyebrow="Profile community"
+                  heading={`Comments on ${profileDisplayUsername}`}
+                />
+              </Suspense>
             </section>
           </div>
         ) : null}

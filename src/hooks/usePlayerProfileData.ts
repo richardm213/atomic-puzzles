@@ -10,7 +10,9 @@ import {
 import type { NormalizedMatch } from "../lib/matches/matchData";
 import {
   fetchLbPlayerCount,
+  fetchLbPlayerCounts,
   fetchLbRows,
+  lbPlayerCountKey,
   monthKeyFromMonthValue,
 } from "../lib/supabase/supabaseLb";
 import { fetchPlayerRatingsRows } from "../lib/supabase/supabasePlayerRatings";
@@ -213,11 +215,11 @@ export const buildRankingsLocation = (
   return `/rankings?${params.join("&")}`;
 };
 
-export const useMonthRanks = (username: string): MonthRank[] => {
+export const useMonthRanks = (username: string, enabled = true): MonthRank[] => {
   const [monthRanks, setMonthRanks] = useState<MonthRank[]>([]);
 
   useEffect(() => {
-    if (!username) {
+    if (!username || !enabled) {
       setMonthRanks([]);
       return;
     }
@@ -240,15 +242,20 @@ export const useMonthRanks = (username: string): MonthRank[] => {
     return () => {
       isCurrent = false;
     };
-  }, [username]);
+  }, [enabled, username]);
 
   return monthRanks;
 };
 
-export const useMonthRankPlayerCounts = (monthRanks: MonthRank[]): Record<string, number> => {
+export const useMonthRankPlayerCounts = (
+  monthRanks: MonthRank[],
+  enabled = true,
+): Record<string, number> => {
   const [playerCounts, setPlayerCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
+    if (!enabled) return;
+
     const keys = [
       ...new Set(
         monthRanks
@@ -262,21 +269,30 @@ export const useMonthRankPlayerCounts = (monthRanks: MonthRank[]): Record<string
     let isCurrent = true;
 
     const loadPlayerCounts = async (): Promise<void> => {
-      const entries = await Promise.all(
-        keys.map(async (key): Promise<[string, number]> => {
-          const [monthValue, mode] = key.split("|");
-          if (!monthValue || !isMode(mode)) return [key, 0];
+      const pairs = keys.flatMap((key) => {
+        const [month, mode] = key.split("|");
+        return month && isMode(mode) ? [{ month, mode }] : [];
+      });
 
-          try {
-            return [key, await fetchLbPlayerCount(monthValue, mode)];
-          } catch {
-            return [key, 0];
-          }
-        }),
-      );
+      let nextPlayerCounts: Record<string, number>;
+      try {
+        nextPlayerCounts = await fetchLbPlayerCounts(pairs);
+      } catch {
+        // Keep profiles functional while the database migration rolls out.
+        const entries = await Promise.all(
+          pairs.map(async ({ month, mode }): Promise<[string, number]> => {
+            try {
+              return [lbPlayerCountKey(month, mode), await fetchLbPlayerCount(month, mode)];
+            } catch {
+              return [lbPlayerCountKey(month, mode), 0];
+            }
+          }),
+        );
+        nextPlayerCounts = Object.fromEntries(entries);
+      }
 
       if (!isCurrent) return;
-      setPlayerCounts((current) => ({ ...current, ...Object.fromEntries(entries) }));
+      setPlayerCounts((current) => ({ ...current, ...nextPlayerCounts }));
     };
 
     void loadPlayerCounts();
@@ -284,7 +300,7 @@ export const useMonthRankPlayerCounts = (monthRanks: MonthRank[]): Record<string
     return () => {
       isCurrent = false;
     };
-  }, [monthRanks, playerCounts]);
+  }, [enabled, monthRanks, playerCounts]);
 
   return playerCounts;
 };
