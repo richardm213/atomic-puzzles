@@ -56,30 +56,6 @@
   color: var(--color-muted);
 }
 
-.matchFilterGrid select,
-.matchFilterGrid input[type="text"],
-.matchFilterGrid input[type="date"] {
-  width: 100%;
-  min-width: 0;
-  min-height: 42px;
-  border: 1px solid var(--color-input-border);
-  border-radius: 8px;
-  background: var(--color-surface-elevated-strong);
-  color: var(--color-text);
-  font-size: 16px;
-  padding: 10px 12px;
-}
-
-.matchFilterSearch,
-.recentMatchesPanel .analyzeButton {
-  min-height: 42px;
-  border-radius: 8px;
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: var(--color-on-primary);
-  font-weight: 800;
-}
-
 .recentMatchesPanel .analyzeButton:hover:not(:disabled) {
   background: var(--color-primary-hover);
 }
@@ -239,15 +215,6 @@
   background: var(--color-surface-soft);
 }
 
-.rangeFilter > label,
-.sourceFilterGroup > .statusLabel {
-  color: var(--color-subtle);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
 .dualRangeSlider {
   position: relative;
   height: 24px;
@@ -338,12 +305,6 @@
   accent-color: var(--color-primary);
 }
 
-.sourceFilterSourceCheck {
-  border: 0;
-  background: transparent;
-  padding: 0 4px;
-}
-
 .paginationRow {
   margin-top: 16px;
   display: flex;
@@ -371,12 +332,6 @@
 
 .paginationJumpForm {
   margin: 0;
-}
-
-.paginationJumpLabel {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
 }
 
 .paginationJumpInput {

@@ -12,11 +12,7 @@
 }
 
 .h2hTitleRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   gap: 16px;
-  min-width: 0;
 }
 
 .h2hTitleRow h1 {
@@ -79,20 +75,6 @@
   text-transform: uppercase;
 }
 
-.h2hSearchGrid input,
-.h2hFilterGrid input,
-.h2hFilterGrid select {
-  width: 100%;
-  min-width: 0;
-  min-height: 42px;
-  border: 1px solid var(--color-input-border);
-  border-radius: 8px;
-  background: var(--color-surface-elevated-strong);
-  color: var(--color-text);
-  font-size: 16px;
-  padding: 10px 12px;
-}
-
 .h2hSearchButton {
   min-width: 160px;
 }
@@ -114,12 +96,6 @@
 }
 
 .h2hFilterPanel .sourceFilterSourceCheck {
-  border: 0;
-  background: transparent;
-}
-
-.h2hModeFilterGroup {
-  padding: 0;
   border: 0;
   background: transparent;
 }
@@ -394,20 +370,6 @@
   white-space: normal;
 }
 
-.h2hMatchTableRow {
-  cursor: pointer;
-  transition:
-    background 140ms ease,
-    box-shadow 140ms ease;
-}
-
-.h2hMatchTableRow:hover,
-.h2hMatchTableRow:focus-visible {
-  background: var(--color-accent-soft-bg);
-  box-shadow: inset 3px 0 0 var(--color-cyan-bright);
-  outline: none;
-}
-
 .h2hMatchTableRow.expanded {
   background: var(--color-accent-soft-bg-strong);
   box-shadow: inset 3px 0 0 var(--color-cyan-bright);
@@ -446,13 +408,6 @@
 
 .h2hMatchDetails {
   padding: 4px 0 2px;
-}
-
-.h2hMatchDetails .matchCardPlayerStats > div {
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  padding: 0;
 }
 
 @media (max-width: 820px) {

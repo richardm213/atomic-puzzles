@@ -99,12 +99,6 @@
   color: var(--color-heading);
 }
 
-.methodologyIconHeading {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .methodologyIntroCard > p,
 .methodologySection > p,
 .methodologyEligibility li {

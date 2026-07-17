@@ -46,9 +46,7 @@
   border-radius: 999px;
   background: var(--color-panel-strong);
   color: var(--color-text);
-  font: inherit;
   font-weight: 600;
-  cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -132,8 +130,6 @@
   border: 0;
   background: transparent;
   color: inherit;
-  font: inherit;
-  cursor: pointer;
   padding: 0;
   min-height: 24px;
 }
@@ -288,8 +284,6 @@
   border-radius: 999px;
   background: var(--color-panel-soft);
   color: var(--color-heading);
-  cursor: pointer;
-  font: inherit;
   font-size: 11px;
   font-weight: 800;
   line-height: 1.2;
@@ -298,14 +292,6 @@
     background-color 120ms ease,
     border-color 120ms ease,
     color 120ms ease;
-}
-
-.rankingOpeningTag:hover,
-.rankingOpeningTag:focus-visible,
-.rankingOpeningTag.active {
-  border-color: var(--color-primary-soft);
-  background: var(--color-panel-strong);
-  color: var(--color-primary-pale);
 }
 
 .rankingOpeningTag:focus-visible {

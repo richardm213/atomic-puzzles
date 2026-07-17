@@ -1,0 +1,334 @@
+/* Shared visual recipes. Page styles should keep layout and intentional variants local. */
+
+.analysisPanel,
+.puzzleQueueGate,
+.puzzleEditor,
+.puzzleQueueList,
+.puzzleReviewEditor {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel);
+  box-shadow: var(--shadow-panel);
+  backdrop-filter: blur(16px);
+}
+
+.solutionOptionsHeader,
+.profileBestMonthRanksHeader,
+.puzzleEditorFields .puzzleEditorFieldHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.analysisPanelHeader,
+.analysisFilterGroup,
+.analysisUsernameField,
+.analysisPlayerSettings,
+.analysisOpponentField,
+.analysisDateFilters label,
+.analysisToggleSetting,
+.analysisRatingSlider,
+.practiceSettingGroup {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.methodologyIconHeading,
+.paginationJumpLabel,
+.practiceExplorerActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.usernamePickerSelectedHeader span,
+.usernamePickerSelectedHeader small,
+.usernamePickerSelectedChip > span,
+.practiceStatus span,
+.practiceStatus strong,
+.practiceExplorerPlayerLabel > span,
+.practiceExplorerPlayerLabel > small,
+.practicePlayerChip > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.usernamePickerSelectedUsers,
+.practicePlayerChipList {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.usernamePickerSelectedChip,
+.practicePlayerChip {
+  max-width: 100%;
+  min-height: 28px;
+  padding: 0 4px 0 9px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 34%, var(--color-border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-primary) 16%, var(--color-panel-strong));
+  color: var(--color-heading);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 820;
+}
+
+.usernamePickerSelectedChip button,
+.practicePlayerChip button {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: color-mix(in srgb, var(--color-heading) 72%, transparent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.h2hSearchGrid input,
+.h2hFilterGrid input,
+.h2hFilterGrid select,
+.matchFilterGrid select,
+.matchFilterGrid input[type="text"],
+.matchFilterGrid input[type="date"] {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  border: 1px solid var(--color-input-border);
+  border-radius: 8px;
+  background: var(--color-surface-elevated-strong);
+  color: var(--color-text);
+  font-size: 16px;
+  padding: 10px 12px;
+}
+
+.analysisToggleSetting input,
+.practiceCheckbox input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+.copyPgnCheck,
+.practiceCopyPgnCheck {
+  color: #49d17d;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.puzzleDashboardShell,
+.puzzleSetsShell {
+  width: min(720px, 100%);
+  margin: 0 auto;
+  display: grid;
+  gap: 16px;
+}
+
+.puzzleEditorPlayback,
+.puzzleQueueSubmitRow,
+.puzzleReviewActions,
+.puzzleReviewMeta,
+.dashboardAttemptsTitleRow,
+.dashboardAttemptsPager {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.puzzleCommunityHeader > div:first-child > span,
+.commentsHeader > div:first-child > span {
+  color: var(--color-primary-soft);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.matchVersus,
+.rangeFilter > label,
+.sourceFilterGroup > .statusLabel {
+  color: var(--color-subtle);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.solutionOptionList,
+.moveList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.h2hModeFilterGroup,
+.profileMatchFilters .rangeFilter,
+.profileMatchFilters .sourceFilterGroup {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.h2hMatchTableRow,
+.expandableMatchRow {
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.h2hMatchTableRow:hover,
+.h2hMatchTableRow:focus-visible,
+.profileFavoriteOpponentsTable .profileFavoriteOpponentRow:hover,
+.profileFavoriteOpponentsTable .profileFavoriteOpponentRow:focus-visible {
+  background: var(--color-accent-soft-bg);
+  box-shadow: inset 3px 0 0 var(--color-cyan-bright);
+  outline: none;
+}
+
+.h2hMatchDetails .matchCardPlayerStats > div,
+.matchDetailsInner .matchCardPlayerStats > div {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.homePrimaryCta,
+.analysisPrimaryButton {
+  border: 1px solid var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.playerProfilePanel .analyzeButton,
+.matchFilterSearch,
+.recentMatchesPanel .analyzeButton {
+  min-height: 42px;
+  border-radius: 8px;
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-on-primary);
+  font-weight: 800;
+}
+
+.profileMatchFilterFooter .sourceFilterSourceCheck,
+.sourceFilterSourceCheck {
+  border: 0;
+  background: transparent;
+  padding: 0 4px;
+}
+
+.dashboardAttemptRow:hover,
+.puzzleSetPuzzleRow:hover {
+  transform: translateY(-1px);
+  border-color: var(--color-accent-soft-border);
+  background: color-mix(in srgb, var(--color-surface-elevated) 72%, transparent);
+}
+
+.rankingOpeningTag:hover,
+.rankingOpeningTag:focus-visible,
+.rankingOpeningTag.active,
+.usersOpeningTag:hover,
+.usersOpeningTag:focus-visible,
+.usersOpeningTag.active {
+  border-color: var(--color-primary-soft);
+  background: var(--color-panel-strong);
+  color: var(--color-primary-pale);
+}
+
+.puzzleCommentList,
+.puzzleCommentReplies,
+.matchGamesList,
+.siteCommentList,
+.puzzleOtherAttemptsList,
+.analysisMoveList,
+.analysisRecentGames ol,
+.analysisPositionLeaders ol,
+.notificationList {
+  display: grid;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.homePrimaryCta,
+.homeSecondaryCta,
+.puzzleSetCompleteLink,
+.puzzleActions .puzzlePrimaryAction,
+.mobileActionCard .puzzlePrimaryAction,
+.fenAnalyzeButton,
+.analysisLichessLink,
+.analysisFilterToggle,
+.analysisSpeedToggles button,
+.analysisColorToggles button,
+.analysisPrimaryButton,
+.analysisSecondaryButton,
+.matchPageH2HLink,
+.profilePuzzleDashboardLink,
+.profileBanActions a,
+.profileScoreBox,
+.profileFavoriteOpponentH2HButton,
+.puzzleDashboardActionLink,
+.dashboardReplayLink,
+.puzzleSetsBackLink,
+.puzzleSetStartLink,
+.puzzleSetOpenLink,
+.puzzleSetCardStartLink,
+.tournamentYearNavCurrent,
+.tournamentCardLink,
+.tournamentCardDisabled,
+.navAuthButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+}
+
+.usernamePickerDatabaseList button,
+.navSearchResultName,
+.navSearchResultMeta,
+.metaChipValue,
+.puzzleOtherAttemptUser,
+.feedbackBadge strong,
+.analysisMoveList button,
+.analysisExplorerTabs button,
+.analysisPlayerNameButton,
+.analysisPositionLeaderName,
+.matchPageHeaderPlayer,
+.practiceSegmented button,
+.practiceModeGrid button {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.usernamePickerSelectedHeader,
+.h2hTitleRow,
+.puzzleHeaderTopline,
+.analysisExplorerCompactHeader,
+.profileAliasRow,
+.practiceHeader,
+.practiceStatus,
+.practiceCheckbox {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}

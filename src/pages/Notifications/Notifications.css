@@ -47,8 +47,6 @@
   border-radius: 9px;
   background: color-mix(in srgb, var(--notification-accent) 12%, var(--color-panel-strong));
   color: var(--color-heading);
-  cursor: pointer;
-  font: inherit;
   font-size: 12px;
   font-weight: 800;
 }
@@ -63,11 +61,7 @@
 }
 
 .notificationList {
-  display: grid;
   gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
 }
 
 .notificationItem {
@@ -114,8 +108,6 @@
   border: 0;
   background: transparent;
   color: inherit;
-  cursor: pointer;
-  font: inherit;
   text-align: left;
 }
 

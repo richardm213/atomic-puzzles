@@ -81,14 +81,6 @@
   text-decoration: underline;
 }
 
-.matchVersus {
-  color: var(--color-subtle);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
 .matchCardMeta {
   margin-top: 8px;
   display: flex;
@@ -248,13 +240,6 @@
   padding: 9px 10px;
   text-transform: uppercase;
   background: var(--color-table-head);
-}
-
-.matchGamesList {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
 }
 
 .matchGameRow {

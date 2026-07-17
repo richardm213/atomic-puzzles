@@ -24,24 +24,10 @@ body:has(.analysisPage),
 }
 
 .analysisPanel {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-ui);
-  background: var(--color-panel);
-  box-shadow: var(--shadow-panel);
-  backdrop-filter: blur(16px);
-}
-
-.analysisPanel {
   min-width: 0;
   padding: 8px;
   display: grid;
   gap: 8px;
-}
-
-.analysisPanelHeader {
-  min-width: 0;
-  display: grid;
-  gap: 4px;
 }
 
 .analysisEyebrow {
@@ -135,7 +121,6 @@ body:has(.analysisPage),
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
   transition:
     background 140ms ease,
     border-color 140ms ease,
@@ -244,7 +229,6 @@ body:has(.analysisPage),
   align-items: center;
   justify-content: center;
   font-size: 14px;
-  cursor: pointer;
   transition:
     background 140ms ease,
     color 140ms ease;
@@ -280,12 +264,10 @@ body:has(.analysisPage),
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font: inherit;
   font-size: 13px;
   font-weight: 780;
   text-align: left;
   white-space: nowrap;
-  cursor: pointer;
 }
 
 .analysisMoveSettingsMenu button:hover {
@@ -296,13 +278,9 @@ body:has(.analysisPage),
 .analysisMoveList {
   min-height: 0;
   max-height: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
   align-content: start;
   gap: 1px;
   overflow: auto;
-  list-style: none;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -330,20 +308,15 @@ body:has(.analysisPage),
 }
 
 .analysisMoveList button {
-  min-width: 0;
   min-height: 26px;
   padding: 0 6px;
   border: 0;
   border-radius: 4px;
   background: transparent;
   color: var(--color-text);
-  font: inherit;
   font-size: 13px;
   font-weight: 700;
   text-align: left;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .analysisMoveList button:hover {
@@ -489,12 +462,8 @@ body:has(.analysisPage),
   border-radius: var(--radius-ui);
   background: color-mix(in srgb, var(--color-panel-strong) 82%, transparent);
   color: var(--color-text);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   gap: 7px;
   font-size: 12px;
-  font-weight: 800;
   text-decoration: none;
   white-space: nowrap;
 }
@@ -552,12 +521,8 @@ body:has(.analysisPage),
 }
 
 .analysisExplorerCompactHeader {
-  min-width: 0;
   min-height: 38px;
   padding: 0 4px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   gap: 8px;
   margin: 0;
   border-bottom: 1px solid var(--color-border);
@@ -577,7 +542,6 @@ body:has(.analysisPage),
 
 .analysisExplorerTabs button {
   position: relative;
-  min-width: 0;
   min-height: 38px;
   padding: 0 10px;
   border: 0;
@@ -587,13 +551,8 @@ body:has(.analysisPage),
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font: inherit;
   font-size: 14px;
   font-weight: 680;
-  cursor: pointer;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   opacity: 0.74;
   transition:
     background 140ms ease,
@@ -658,20 +617,15 @@ body:has(.analysisPage),
   min-height: 32px;
   width: 34px;
   padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   border: 0;
   border-radius: 6px;
   background: transparent;
   color: color-mix(in srgb, var(--color-heading) 82%, var(--color-primary) 18%);
   font-size: 16px;
-  font-weight: 800;
 }
 
 .analysisFilterToggle {
   flex: 0 0 auto;
-  cursor: pointer;
   transition:
     background 140ms ease,
     border-color 140ms ease,
@@ -693,18 +647,6 @@ body:has(.analysisPage),
   border-radius: 0;
   background: transparent;
   box-shadow: none;
-}
-
-.analysisFilterGroup,
-.analysisUsernameField,
-.analysisPlayerSettings,
-.analysisOpponentField,
-.analysisDateFilters label,
-.analysisToggleSetting,
-.analysisRatingSlider {
-  min-width: 0;
-  display: grid;
-  gap: 4px;
 }
 
 .analysisFilterGroup > span,
@@ -729,14 +671,6 @@ body:has(.analysisPage),
   cursor: pointer;
 }
 
-.analysisToggleSetting input {
-  width: 18px;
-  height: 18px;
-  margin: 0;
-  accent-color: var(--color-primary);
-  cursor: pointer;
-}
-
 .analysisPlayerSettingsRow {
   min-width: 0;
   display: grid;
@@ -746,7 +680,6 @@ body:has(.analysisPage),
 }
 
 .analysisPlayerNameButton {
-  min-width: 0;
   min-height: 36px;
   padding: 0 14px;
   border: 1px solid color-mix(in srgb, var(--color-primary) 68%, var(--color-border) 32%);
@@ -757,15 +690,10 @@ body:has(.analysisPage),
     color-mix(in srgb, var(--color-primary) 82%, var(--color-panel-deep) 18%)
   );
   color: #ffffff;
-  font: inherit;
   font-size: 15px;
   font-weight: 900;
   text-align: left;
   text-shadow: 0 1px 1px color-mix(in srgb, black 48%, transparent);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  cursor: pointer;
   box-shadow: 0 1px 0 color-mix(in srgb, white 16%, transparent) inset;
 }
 
@@ -782,11 +710,9 @@ body:has(.analysisPage),
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font: inherit;
   font-size: 14px;
   font-weight: 780;
   white-space: nowrap;
-  cursor: pointer;
 }
 
 .analysisPlayerSideButton svg {
@@ -821,7 +747,6 @@ body:has(.analysisPage),
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
 }
 
 .analysisOpponentClearButton:hover {
@@ -919,13 +844,7 @@ body:has(.analysisPage),
   border-radius: 4px;
   background: color-mix(in srgb, var(--color-panel-deep) 20%, transparent);
   color: color-mix(in srgb, var(--color-muted) 82%, transparent);
-  font: inherit;
   font-size: 13px;
-  font-weight: 800;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   gap: 7px;
   transition:
     background 140ms ease,
@@ -1054,20 +973,9 @@ body:has(.analysisPage),
   min-width: 0;
   padding: 0 11px;
   border-radius: var(--radius-ui);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   gap: 8px;
-  font: inherit;
   font-size: 13px;
-  font-weight: 800;
   white-space: nowrap;
-}
-
-.analysisPrimaryButton {
-  border: 1px solid var(--color-primary);
-  background: var(--color-primary);
-  color: var(--color-on-primary);
 }
 
 .analysisSecondaryButton {
@@ -1139,10 +1047,6 @@ body:has(.analysisPage),
 .analysisRecentGames ol {
   min-width: 0;
   min-height: 0;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  list-style: none;
 }
 
 .analysisRecentGames a {
@@ -1256,7 +1160,6 @@ body:has(.analysisPage),
   align-items: center;
   justify-content: center;
   font-size: 20px;
-  cursor: pointer;
   transition:
     background 140ms ease,
     color 140ms ease,
@@ -1336,11 +1239,7 @@ body:has(.analysisPage),
 
 .analysisPositionLeaders ol {
   min-width: 0;
-  margin: 0;
-  padding: 0;
-  display: grid;
   gap: 5px;
-  list-style: none;
 }
 
 .analysisPositionLeaders li {
@@ -1368,12 +1267,8 @@ body:has(.analysisPage),
 }
 
 .analysisPositionLeaderName {
-  min-width: 0;
-  overflow: hidden;
   color: var(--color-heading);
   font-weight: 820;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .analysisPositionLeaderGames,

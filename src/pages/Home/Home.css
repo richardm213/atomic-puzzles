@@ -73,19 +73,9 @@
 .homePrimaryCta,
 .homeSecondaryCta {
   min-height: 46px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   border-radius: var(--radius-ui);
   padding: 12px 18px;
-  font-weight: 800;
   text-decoration: none;
-}
-
-.homePrimaryCta {
-  border: 1px solid var(--color-primary);
-  background: var(--color-primary);
-  color: var(--color-on-primary);
 }
 
 .homeSecondaryCta {

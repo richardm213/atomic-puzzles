@@ -37,8 +37,6 @@
   border-radius: 999px;
   background: transparent;
   color: var(--color-subtle);
-  cursor: pointer;
-  font: inherit;
   font-size: 14px;
   font-weight: 600;
   padding: 8px 14px;
@@ -164,8 +162,6 @@
   border-radius: 999px;
   background: var(--color-panel-soft);
   color: var(--color-heading);
-  cursor: pointer;
-  font: inherit;
   font-size: 12px;
   font-weight: 800;
   line-height: 1.2;
@@ -174,14 +170,6 @@
     background-color 120ms ease,
     border-color 120ms ease,
     color 120ms ease;
-}
-
-.usersOpeningTag:hover,
-.usersOpeningTag:focus-visible,
-.usersOpeningTag.active {
-  border-color: var(--color-primary-soft);
-  background: var(--color-panel-strong);
-  color: var(--color-primary-pale);
 }
 
 .usersOpeningTag:focus-visible {

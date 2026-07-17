@@ -22,14 +22,6 @@
   gap: 3px;
 }
 
-.puzzleCommunityHeader > div:first-child > span {
-  color: var(--color-primary-soft);
-  font-size: 11px;
-  font-weight: 850;
-  letter-spacing: 0.11em;
-  text-transform: uppercase;
-}
-
 .puzzleCommunityHeader h2 {
   margin: 0;
   color: var(--color-heading);
@@ -62,7 +54,6 @@
     linear-gradient(180deg, color-mix(in srgb, white 5%, transparent), transparent),
     color-mix(in srgb, var(--color-panel-deep) 78%, transparent);
   color: var(--color-muted);
-  cursor: pointer;
   box-shadow:
     0 4px 10px color-mix(in srgb, var(--color-panel-deep) 18%, transparent),
     0 1px 0 color-mix(in srgb, white 5%, transparent) inset;
@@ -145,8 +136,6 @@
   border: 0;
   background: transparent;
   color: var(--color-primary-soft);
-  cursor: pointer;
-  font: inherit;
   font-size: 12px;
 }
 
@@ -159,7 +148,6 @@
   border-radius: 9px;
   background: var(--color-panel-deep);
   color: var(--color-text);
-  font: inherit;
   font-size: 14px;
   line-height: 1.45;
 }
@@ -190,8 +178,6 @@
   border-radius: 9px;
   background: color-mix(in srgb, var(--color-primary) 22%, var(--color-panel-strong));
   color: var(--color-heading);
-  cursor: pointer;
-  font: inherit;
   font-size: 12px;
   font-weight: 800;
 }
@@ -207,11 +193,7 @@
 
 .puzzleCommentList,
 .puzzleCommentReplies {
-  display: grid;
   gap: 9px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
 }
 
 .puzzleCommentReplies {
@@ -245,9 +227,7 @@
   border-radius: 7px;
   background: transparent;
   color: var(--color-subtle);
-  cursor: pointer;
   text-align: left;
-  font: inherit;
   font-size: 11px;
 }
 
@@ -306,7 +286,6 @@
   border-radius: 6px;
   background: transparent;
   color: var(--color-muted);
-  cursor: pointer;
   font-size: 12px;
 }
 
@@ -374,7 +353,6 @@
   border-radius: 5px;
   background: transparent;
   color: var(--color-muted);
-  cursor: pointer;
 }
 
 .commentCollapseButton:hover {
@@ -398,8 +376,6 @@
   border-radius: 6px;
   background: transparent;
   color: var(--color-muted);
-  cursor: pointer;
-  font: inherit;
   font-size: 11px;
   font-weight: 750;
 }

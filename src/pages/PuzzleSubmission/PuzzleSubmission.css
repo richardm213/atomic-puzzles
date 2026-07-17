@@ -35,17 +35,6 @@
   text-transform: uppercase;
 }
 
-.puzzleQueueGate,
-.puzzleEditor,
-.puzzleQueueList,
-.puzzleReviewEditor {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-ui);
-  background: var(--color-panel);
-  box-shadow: var(--shadow-panel);
-  backdrop-filter: blur(16px);
-}
-
 .puzzleQueueGate {
   padding: clamp(20px, 4vw, 36px);
   display: grid;
@@ -63,16 +52,6 @@
 .puzzleEditorBoard,
 .puzzleEditorFields {
   min-width: 0;
-}
-
-.puzzleEditorPlayback,
-.puzzleQueueSubmitRow,
-.puzzleReviewActions,
-.puzzleReviewMeta {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
 }
 
 .puzzleEditorPlayback {
@@ -158,13 +137,6 @@
   gap: 7px;
 }
 
-.puzzleEditorFields .puzzleEditorFieldHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
 .puzzleCopyPgnButton {
   min-height: 30px;
   padding: 5px 9px;
@@ -177,7 +149,6 @@
   gap: 6px;
   font-size: 11px;
   font-weight: 800;
-  cursor: pointer;
 }
 
 .puzzleCopyPgnButton:hover {
@@ -330,7 +301,6 @@
   border: 1px solid var(--color-input-border);
   border-radius: var(--radius-ui);
   font-weight: 800;
-  cursor: pointer;
 }
 
 .queuePrimaryButton {
@@ -468,7 +438,6 @@
   display: grid;
   gap: 2px 8px;
   text-align: left;
-  cursor: pointer;
 }
 
 .puzzleQueueList button.active {

@@ -102,13 +102,9 @@
 }
 
 .tournamentYearNavCurrent {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   min-width: 72px;
   color: var(--color-heading);
   font-size: 1rem;
-  font-weight: 800;
   letter-spacing: 0.02em;
 }
 
@@ -294,7 +290,6 @@
   color: var(--color-muted);
   font-size: 0.95rem;
   font-weight: 800;
-  cursor: pointer;
   transition:
     background 160ms ease,
     color 160ms ease,
@@ -381,10 +376,8 @@
   border-radius: 999px;
   background: transparent;
   color: var(--color-muted);
-  font: inherit;
   font-size: 13px;
   font-weight: 800;
-  cursor: pointer;
   transition:
     background 140ms ease,
     color 140ms ease,

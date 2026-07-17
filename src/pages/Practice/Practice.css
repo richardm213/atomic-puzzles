@@ -19,10 +19,6 @@
 }
 
 .practiceHeader {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   gap: 12px;
 }
 
@@ -54,8 +50,6 @@
   display: inline-flex;
   align-items: center;
   gap: 9px;
-  font: inherit;
-  cursor: pointer;
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, white 8%, transparent),
     0 6px 16px color-mix(in srgb, var(--color-primary) 10%, transparent);
@@ -137,24 +131,12 @@
 }
 
 .practiceStatus {
-  min-width: 0;
   min-height: 38px;
   padding: 0 10px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-ui);
   background: color-mix(in srgb, var(--color-panel-strong) 70%, transparent);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   gap: 12px;
-}
-
-.practiceStatus span,
-.practiceStatus strong {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .practiceClock {
@@ -213,10 +195,8 @@
   border-radius: var(--radius-ui);
   background: transparent;
   color: var(--color-muted);
-  font: inherit;
   font-size: 11px;
   font-weight: 800;
-  cursor: pointer;
 }
 
 .practiceClock button:hover {
@@ -289,24 +269,10 @@
   line-height: 1.08;
 }
 
-.practiceExplorerPlayerLabel > span,
-.practiceExplorerPlayerLabel > small {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .practiceExplorerPlayerLabel > small {
   color: color-mix(in srgb, currentColor 68%, transparent);
   font-size: 11px;
   font-weight: 680;
-}
-
-.practiceSettingGroup {
-  min-width: 0;
-  display: grid;
-  gap: 4px;
 }
 
 .practiceSettingGroup > span {
@@ -358,7 +324,6 @@
   appearance: textfield;
   background: color-mix(in srgb, var(--color-panel-deep) 56%, var(--color-panel-strong));
   color: var(--color-heading);
-  font: inherit;
   font-size: 16px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
@@ -403,7 +368,6 @@
 
 .practiceSegmented button,
 .practiceModeGrid button {
-  min-width: 0;
   min-height: 34px;
   padding: 0 8px;
   border: 0;
@@ -414,13 +378,8 @@
   align-items: center;
   justify-content: center;
   gap: 7px;
-  font: inherit;
   font-size: 13px;
   font-weight: 820;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  cursor: pointer;
 }
 
 .practiceSegmented button.active,
@@ -453,10 +412,8 @@
   align-items: center;
   justify-content: center;
   gap: 7px;
-  font: inherit;
   font-size: 12px;
   font-weight: 820;
-  cursor: pointer;
 }
 
 .practiceRandomPlayerButton:disabled {
@@ -480,79 +437,18 @@
   opacity: 0.62;
 }
 
-.practicePlayerChipList {
-  min-width: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.practicePlayerChip {
-  max-width: 100%;
-  min-height: 28px;
-  padding: 0 4px 0 9px;
-  border: 1px solid color-mix(in srgb, var(--color-primary) 34%, var(--color-border));
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--color-primary) 16%, var(--color-panel-strong));
-  color: var(--color-heading);
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 820;
-}
-
-.practicePlayerChip > span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.practicePlayerChip button {
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: color-mix(in srgb, var(--color-heading) 72%, transparent);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
 .practicePlayerChip button:hover {
   background: color-mix(in srgb, var(--color-primary) 22%, transparent);
   color: var(--color-heading);
 }
 
 .practiceCheckbox {
-  min-width: 0;
   min-height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   gap: 12px;
   color: var(--color-heading);
   font-size: 13px;
   font-weight: 820;
   cursor: pointer;
-}
-
-.practiceCheckbox input {
-  width: 18px;
-  height: 18px;
-  margin: 0;
-  accent-color: var(--color-primary);
-  cursor: pointer;
-}
-
-.practiceExplorerActions {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
 }
 
 .practiceAlternateMoveButton {
@@ -566,9 +462,7 @@
   border-radius: var(--radius-ui);
   background: color-mix(in srgb, var(--color-panel-strong) 52%, transparent);
   color: var(--color-muted);
-  font: inherit;
   font-weight: 760;
-  cursor: pointer;
 }
 
 .practiceAlternateMoveButton:hover:not(:disabled) {
@@ -692,10 +586,8 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  font: inherit;
   font-size: 12px;
   font-weight: 850;
-  cursor: pointer;
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, var(--color-heading) 5%, transparent),
     0 8px 18px color-mix(in srgb, var(--color-panel-deep) 14%, transparent);
@@ -719,13 +611,6 @@
 .practiceCopyPgnButton:disabled {
   cursor: not-allowed;
   opacity: 0.55;
-}
-
-.practiceCopyPgnCheck {
-  color: #49d17d;
-  font-size: 14px;
-  font-weight: 900;
-  line-height: 1;
 }
 
 .practiceSideButton:focus-visible,

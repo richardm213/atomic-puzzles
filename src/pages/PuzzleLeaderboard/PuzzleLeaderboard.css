@@ -91,10 +91,8 @@
   border-radius: calc(var(--radius-ui) - 2px);
   background: transparent;
   color: var(--color-muted);
-  font: inherit;
   font-size: 13px;
   font-weight: 750;
-  cursor: pointer;
 }
 
 .puzzleLeaderboardPeriod button:hover {

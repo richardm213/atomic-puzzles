@@ -1,5 +1,6 @@
 import "./theme/site-theme.css";
 import "./theme/site-typography.css";
+import "./theme/site-primitives.css";
 import "./index.css";
 import "@lichess-org/chessground/assets/chessground.base.css";
 import "./theme/chessground.blue.css";
