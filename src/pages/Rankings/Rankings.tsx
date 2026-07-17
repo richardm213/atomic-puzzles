@@ -98,9 +98,7 @@ const isEligibleForRankings = (
   if (!requirement) return true;
 
   const games = Number(player?.games);
-  const rd = Number(player?.rd);
-  const meetsRdRequirement = requirement.maxRd === null || rd < requirement.maxRd;
-  return games >= requirement.minGames && meetsRdRequirement;
+  return games >= requirement.minGames;
 };
 
 const earliestLeaderboardMonth = new Date(Date.UTC(2021, 8, 1));
@@ -471,10 +469,7 @@ const LeaderboardView = () => {
                 className="rankingsEligibilityNote"
                 aria-label={`${modeLabels[selectedMode]} eligibility`}
               >
-                Requirements: {eligibilityRequirement.minGames}+ games this month
-                {eligibilityRequirement.maxRd === null
-                  ? "."
-                  : ` and RD < ${eligibilityRequirement.maxRd}.`}
+                Requirements: {eligibilityRequirement.minGames}+ games this month.
               </p>
             ) : null}
           </div>
