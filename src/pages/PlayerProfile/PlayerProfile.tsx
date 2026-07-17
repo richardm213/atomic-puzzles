@@ -24,6 +24,43 @@ import {
   opponentRatingSliderMin,
   pageSizeOptions,
 } from "../../constants/matches";
+import type { RankHistoryMode } from "../../features/profile/favoriteOpponents";
+import { FavoriteOpponentsSection } from "../../features/profile/FavoriteOpponentsSection";
+import {
+  buildMatchFilters,
+  createDefaultProfileFilters,
+  isClientSidePagedSearch,
+  type ProfileFilters,
+} from "../../features/profile/profileFilters";
+import {
+  getProfileHistoryTabFromLocation,
+  getRankHistoryViewFromLocation,
+  type ProfileHistoryTab,
+  pushProfileHistoryLocation,
+  type RankHistoryView,
+} from "../../features/profile/profileNavigation";
+import {
+  ChessComProfileIcon,
+  getAliasProfileHref,
+  getAliasProfileSourceLabel,
+  getOpeningToneClass,
+  LichessProfileIcon,
+  NON_COUNTED_ALIAS_MESSAGE,
+  profileResultToneClass,
+} from "../../features/profile/profilePresentation";
+import {
+  getChampionshipTrophies,
+  getCurrentMonthKey,
+  getRankingTrophies,
+  getStoredTrophyCaseSort,
+  isTrophyCaseSort,
+  ProfileTrophyCaseCard,
+  ProfileTrophyLink,
+  setStoredTrophyCaseSort,
+  sortProfileTrophies,
+  type TrophyCaseSort,
+} from "../../features/profile/profileTrophies";
+import { useFavoriteOpponentsModel } from "../../features/profile/useFavoriteOpponentsModel";
 import {
   buildRankingsLocation,
   filterMatches,
@@ -39,917 +76,23 @@ import {
 import { loadRawMatchesByMode, normalizeMatches } from "../../lib/matches/matchData";
 import {
   type AliasAccount,
-  type AliasAccountSource,
   type AliasIdentityRow,
   fetchProfileAliasRow,
 } from "../../lib/supabase/supabaseAliases";
-import { monthKeyFromMonthValue } from "../../lib/supabase/supabaseLb";
 import { isRegisteredSiteUser } from "../../lib/supabase/supabaseUsers";
-import { appAssetPath } from "../../utils/appAssetPath";
 import {
   formatLocalDateTime,
   formatOpponentWithRating,
   formatScore,
   formatSignedDecimal,
 } from "../../utils/formatters";
-import { matchupToSlug } from "../../utils/h2hRoutes";
 import { getTimeControlOptions } from "../../utils/matchCollection";
-import { parseDateInputBoundary } from "../../utils/matchFilters";
-import {
-  buildMatchRouteParams,
-  buildSingleGameMatchUrl,
-  hasMatchRouteParams,
-} from "../../utils/matchRoutes";
 import { getOpeningDisplayLabel } from "../../utils/openings";
 import { normalizeUsername } from "../../utils/playerNames";
 import { readStoredSourceFilters, writeStoredSourceFilters } from "../../utils/sourceFilterStorage";
 import { isToggleActionKey } from "../../utils/toggleActionKey";
 
 const countOptions = [5, 10, 20];
-type RankHistoryMode = import("../../constants/matches").Mode | "all";
-const profileHistoryTabOptions = ["matches", "ranks", "opponents", "comments"] as const;
-type ProfileHistoryTab = (typeof profileHistoryTabOptions)[number];
-type RankHistoryView = "history" | "trophies";
-type TrophyCaseSort = "prestige" | "date";
-type FavoriteOpponentSort =
-  | "opponent"
-  | "matches"
-  | "score"
-  | "games"
-  | "ratingGain"
-  | "performance"
-  | "recent"
-  | "timeControl";
-type FavoriteOpponentSortDirection = "asc" | "desc";
-const trophyCaseSortStorageKey = "atomic-puzzles:profile-trophy-case-sort";
-const favoriteOpponentModeStorageKey = "atomic-puzzles:profile-favorite-opponent-mode";
-const favoriteOpponentMatchLimitStorageKey = "atomic-puzzles:profile-favorite-opponent-match-limit";
-const favoriteOpponentSortStorageKey = "atomic-puzzles:profile-favorite-opponent-sort";
-const favoriteOpponentSortDirectionStorageKey =
-  "atomic-puzzles:profile-favorite-opponent-sort-direction";
-const favoriteOpponentDefaultMatchLimit = 500;
-const favoriteOpponentAllModeMatchLimitOptions = [250, 500, 1000, 1500, 2000];
-const favoriteOpponentSingleModeMatchLimitOptions = [250, 500, 1000, 1500, 2000, 5000];
-const favoriteOpponentPageSize = 200;
-const favoriteOpponentDisplayCountOptions = [25, 50, 100];
-const favoriteOpponentSortLabels = {
-  opponent: "Opponent",
-  matches: "Most matches",
-  score: "Best score",
-  games: "Most games",
-  ratingGain: "Most rating gain",
-  performance: "Best performance",
-  recent: "Most recent",
-  timeControl: "Most played TC",
-} satisfies Record<FavoriteOpponentSort, string>;
-const favoriteOpponentSortOptions = Object.keys(
-  favoriteOpponentSortLabels,
-) as FavoriteOpponentSort[];
-const favoriteOpponentScoreConfidenceZ = 1.281551565545;
-const favoriteOpponentPerformanceScoreRateMin = 0.01;
-const favoriteOpponentPerformanceScoreRateMax = 0.99;
-const favoriteOpponentPerformanceConfidenceScale = 400;
-const favoriteOpponentMaxCountedRatingChangeRd = 90;
-
-type ProfileFilters = {
-  opponentRatingMin: number;
-  opponentRatingMax: number;
-  opponentFilter: string;
-  startDateFilter: string;
-  endDateFilter: string;
-  sourceFilters: import("../../constants/matches").SourceFilters;
-  timeControlInitialFilter: string;
-  timeControlIncrementFilter: string;
-};
-
-type FavoriteOpponentMatch = import("../../lib/matches/matchData").NormalizedMatch & {
-  mode: import("../../constants/matches").Mode;
-};
-
-type FavoriteOpponentRow = {
-  opponent: string;
-  matchCount: number;
-  gameCount: number;
-  playerScore: number;
-  opponentScore: number;
-  ratingChange: number;
-  ratedMatchCount: number;
-  performanceScore: number | null;
-  performanceSortScore: number | null;
-  mostRecentTs: number;
-  favoriteTimeControl: string;
-  favoriteTimeControlCount: number;
-  matches: FavoriteOpponentMatch[];
-};
-
-type ProfileTrophy = {
-  key: string;
-  label: string;
-  title: string;
-  imageSrc: string;
-  href: string;
-  dateLabel: string;
-  dateValue: string;
-  placementLabel: string;
-  prestige: number;
-};
-
-const lichessProfileUrl = (username: string): string =>
-  `https://lichess.org/@/${encodeURIComponent(String(username || "").trim())}`;
-
-const chessComProfileUrl = (username: string): string =>
-  `https://www.chess.com/member/${encodeURIComponent(String(username || "").trim())}`;
-
-const isExternalHref = (href: string): boolean => /^https?:\/\//i.test(String(href || "").trim());
-
-const NON_COUNTED_ALIAS_MESSAGE =
-  "This account is marked as a drunk account and is not included in the rating system.";
-
-const isProfileHistoryTab = (value: string): value is ProfileHistoryTab =>
-  (profileHistoryTabOptions as readonly string[]).includes(value);
-
-const getProfileHistoryTabFromSearch = (search: string): ProfileHistoryTab => {
-  const requestedTab = new URLSearchParams(search).get("tab") ?? "";
-  if (requestedTab === "trophies") return "ranks";
-  return isProfileHistoryTab(requestedTab) ? requestedTab : "matches";
-};
-
-const getProfileHistoryTabFromLocation = (): ProfileHistoryTab => {
-  if (typeof window === "undefined") return "matches";
-  return getProfileHistoryTabFromSearch(window.location.search);
-};
-
-const getRankHistoryViewFromLocation = (): RankHistoryView => {
-  if (typeof window === "undefined") return "history";
-  const searchParams = new URLSearchParams(window.location.search);
-  return searchParams.get("tab") === "trophies" || searchParams.get("view") === "trophies"
-    ? "trophies"
-    : "history";
-};
-
-const isTrophyCaseSort = (value: string): value is TrophyCaseSort =>
-  value === "prestige" || value === "date";
-
-const isFavoriteOpponentSort = (value: string): value is FavoriteOpponentSort =>
-  (favoriteOpponentSortOptions as readonly string[]).includes(value);
-
-const isFavoriteOpponentSortDirection = (value: string): value is FavoriteOpponentSortDirection =>
-  value === "asc" || value === "desc";
-
-const getFavoriteOpponentDefaultSortDirection = (
-  sort: FavoriteOpponentSort,
-): FavoriteOpponentSortDirection => (sort === "opponent" ? "asc" : "desc");
-
-const isFavoriteOpponentMode = (value: string): value is RankHistoryMode =>
-  value === "all" || (modeOptions as readonly string[]).includes(value);
-
-const getFavoriteOpponentMatchLimitOptions = (mode: RankHistoryMode): number[] =>
-  mode === "all"
-    ? favoriteOpponentAllModeMatchLimitOptions
-    : favoriteOpponentSingleModeMatchLimitOptions;
-
-const getFavoriteOpponentAllowedMatchLimit = (
-  mode: RankHistoryMode,
-  requestedMatchLimit: number,
-): number => {
-  const options = getFavoriteOpponentMatchLimitOptions(mode);
-  if (options.includes(requestedMatchLimit)) return requestedMatchLimit;
-
-  return (
-    options.filter((option) => option <= requestedMatchLimit).at(-1) ??
-    favoriteOpponentDefaultMatchLimit
-  );
-};
-
-const getStoredTrophyCaseSort = (): TrophyCaseSort => {
-  if (typeof window === "undefined") return "date";
-
-  try {
-    const storedSort = window.localStorage.getItem(trophyCaseSortStorageKey) ?? "";
-    return isTrophyCaseSort(storedSort) ? storedSort : "date";
-  } catch {
-    return "date";
-  }
-};
-
-const setStoredTrophyCaseSort = (sort: TrophyCaseSort): void => {
-  if (typeof window === "undefined") return;
-
-  try {
-    window.localStorage.setItem(trophyCaseSortStorageKey, sort);
-  } catch {
-    // Ignore storage failures; the in-memory choice still applies.
-  }
-};
-
-const getStoredFavoriteOpponentMode = (): RankHistoryMode => {
-  if (typeof window === "undefined") return "all";
-
-  try {
-    const storedMode = window.localStorage.getItem(favoriteOpponentModeStorageKey) ?? "";
-    return isFavoriteOpponentMode(storedMode) ? storedMode : "all";
-  } catch {
-    return "all";
-  }
-};
-
-const getStoredFavoriteOpponentMatchLimit = (
-  mode: RankHistoryMode = getStoredFavoriteOpponentMode(),
-): number => {
-  if (typeof window === "undefined") return favoriteOpponentDefaultMatchLimit;
-
-  try {
-    const storedLimit = Number(window.localStorage.getItem(favoriteOpponentMatchLimitStorageKey));
-    return getFavoriteOpponentAllowedMatchLimit(mode, storedLimit);
-  } catch {
-    return favoriteOpponentDefaultMatchLimit;
-  }
-};
-
-const getStoredFavoriteOpponentSort = (): FavoriteOpponentSort => {
-  if (typeof window === "undefined") return "matches";
-
-  try {
-    const storedSort = window.localStorage.getItem(favoriteOpponentSortStorageKey) ?? "";
-    return isFavoriteOpponentSort(storedSort) ? storedSort : "matches";
-  } catch {
-    return "matches";
-  }
-};
-
-const getStoredFavoriteOpponentSortDirection = (): FavoriteOpponentSortDirection => {
-  if (typeof window === "undefined") return "desc";
-
-  try {
-    const storedDirection =
-      window.localStorage.getItem(favoriteOpponentSortDirectionStorageKey) ?? "";
-    return isFavoriteOpponentSortDirection(storedDirection) ? storedDirection : "desc";
-  } catch {
-    return "desc";
-  }
-};
-
-const setStoredFavoriteOpponentMode = (mode: RankHistoryMode): void => {
-  if (typeof window === "undefined") return;
-
-  try {
-    window.localStorage.setItem(favoriteOpponentModeStorageKey, mode);
-  } catch {
-    // Ignore storage failures; the in-memory choice still applies.
-  }
-};
-
-const setStoredFavoriteOpponentMatchLimit = (matchLimit: number): void => {
-  if (typeof window === "undefined") return;
-
-  try {
-    window.localStorage.setItem(favoriteOpponentMatchLimitStorageKey, String(matchLimit));
-  } catch {
-    // Ignore storage failures; the in-memory choice still applies.
-  }
-};
-
-const setStoredFavoriteOpponentSort = (sort: FavoriteOpponentSort): void => {
-  if (typeof window === "undefined") return;
-
-  try {
-    window.localStorage.setItem(favoriteOpponentSortStorageKey, sort);
-  } catch {
-    // Ignore storage failures; the in-memory choice still applies.
-  }
-};
-
-const setStoredFavoriteOpponentSortDirection = (direction: FavoriteOpponentSortDirection): void => {
-  if (typeof window === "undefined") return;
-
-  try {
-    window.localStorage.setItem(favoriteOpponentSortDirectionStorageKey, direction);
-  } catch {
-    // Ignore storage failures; the in-memory choice still applies.
-  }
-};
-
-const openingToneClasses: Record<string, string> = {
-  "nf3 e3": "openingToneNf3E3",
-  "nf3 e4": "openingToneNf3E4",
-  "nf3 na3": "openingToneNf3Na3",
-  e4: "openingToneE4",
-  e5: "openingToneE5",
-  d4: "openingToneD4",
-  d6: "openingToneD6",
-  "2n": "openingTone2n",
-  "2n h3": "openingTone2nH3",
-  "nh3 d4": "openingToneNh3D4",
-  "nh3 e4": "openingToneNh3E4",
-  "nh3 e3": "openingToneNh3E3",
-  "nh3 na3": "openingToneNh3Na3",
-  nc3: "openingToneNc3",
-  na3: "openingToneNa3",
-  "nf3 d4": "openingToneNf3D4",
-  "nf3 nd4": "openingToneNf3Nd4",
-  "nf3 c3": "openingToneNf3C3",
-  "e3 nc3": "openingToneE3Nc3",
-  "e3 qh5": "openingToneE3Qh5",
-  "e3 qf3": "openingToneE3Qf3",
-  "e3 f4": "openingToneE3F4",
-  "e3 b4": "openingToneE3B4",
-  "nh3 nc3": "openingToneNh3Nc3",
-  variety: "openingToneVariety",
-};
-
-const getOpeningToneClass = (opening: string): string =>
-  openingToneClasses[
-    String(opening || "")
-      .trim()
-      .toLowerCase()
-  ] ?? "openingToneDefault";
-
-const rankingTrophyAssets = {
-  top1: appAssetPath("/images/lichess-trophies/gold-cup-2.png"),
-  secondPlace: appAssetPath("/images/lichess-trophies/red-cup-2.png"),
-  top10: appAssetPath("/images/lichess-trophies/silver-cup-2.png"),
-};
-
-const championshipTrophyAssets = {
-  awc: appAssetPath("/images/awc-trophies/awc.png"),
-  chesscomAtomic: appAssetPath("/images/awc-trophies/chesscomatomic.png"),
-};
-
-const championshipTrophiesByUsername: Record<string, ProfileTrophy[]> = {
-  "fast-tsunami": [
-    {
-      key: "awc-2021",
-      label: "AWC 2021",
-      title: "Atomic World Champion 2021",
-      imageSrc: championshipTrophyAssets.awc,
-      href: appAssetPath("/tournaments/awc2021"),
-      dateLabel: "Dec 2021",
-      dateValue: "2021-12-01",
-      placementLabel: "Champion",
-      prestige: 1000,
-    },
-  ],
-  natso: [
-    {
-      key: "awc-2024",
-      label: "AWC 2024",
-      title: "Atomic World Champion 2024",
-      imageSrc: championshipTrophyAssets.awc,
-      href: appAssetPath("/tournaments/awc2024"),
-      dateLabel: "Dec 2024",
-      dateValue: "2024-12-01",
-      placementLabel: "Champion",
-      prestige: 1000,
-    },
-  ],
-  sutcunuri: [
-    {
-      key: "awc-2022",
-      label: "AWC 2022",
-      title: "Atomic World Champion 2022",
-      imageSrc: championshipTrophyAssets.awc,
-      href: appAssetPath("/tournaments/awc2022"),
-      dateLabel: "Dec 2022",
-      dateValue: "2022-12-01",
-      placementLabel: "Champion",
-      prestige: 1000,
-    },
-  ],
-  vlad_00: [
-    {
-      key: "awc-2023",
-      label: "AWC 2023",
-      title: "Atomic World Champion 2023",
-      imageSrc: championshipTrophyAssets.awc,
-      href: appAssetPath("/tournaments/awc2023"),
-      dateLabel: "Dec 2023",
-      dateValue: "2023-12-01",
-      placementLabel: "Champion",
-      prestige: 1000,
-    },
-  ],
-  jakestatefarm: [
-    {
-      key: "chesscom-atomic-2025",
-      label: "Chess.com",
-      title: "2025 Chess.com Atomic Champion",
-      imageSrc: championshipTrophyAssets.chesscomAtomic,
-      href: appAssetPath("/tournaments/awc2025"),
-      dateLabel: "Mar 2025",
-      dateValue: "2025-03-01",
-      placementLabel: "Champion",
-      prestige: 980,
-    },
-  ],
-  wolfram_ep: [
-    {
-      key: "chesscom-atomic-2026",
-      label: "Chess.com",
-      title: "2026 Chess.com Atomic Champion",
-      imageSrc: championshipTrophyAssets.chesscomAtomic,
-      href: appAssetPath("/tournaments/ccac2026"),
-      dateLabel: "Mar 2026",
-      dateValue: "2026-03-01",
-      placementLabel: "Champion",
-      prestige: 980,
-    },
-  ],
-};
-
-const getCurrentMonthKey = () => monthKeyFromMonthValue(new Date().toISOString().slice(0, 10));
-
-const profileResultToneClass = (playerScore: number, opponentScore: number): string => {
-  if (playerScore > opponentScore) return " winner";
-  if (playerScore < opponentScore) return " loser";
-  return "";
-};
-
-const favoriteTimeControlFromCounts = (
-  counts: Map<string, { gameCount: number; latestTs: number }>,
-): { favoriteTimeControl: string; favoriteTimeControlCount: number } => {
-  const favorite = [...counts.entries()].sort((left, right) => {
-    const countDifference = right[1].gameCount - left[1].gameCount;
-    if (countDifference !== 0) return countDifference;
-    return right[1].latestTs - left[1].latestTs;
-  })[0];
-
-  return {
-    favoriteTimeControl: favorite?.[0] ?? "—",
-    favoriteTimeControlCount: favorite?.[1].gameCount ?? 0,
-  };
-};
-
-const getMatchPerformanceScore = ({
-  opponentRating,
-  playerScore,
-  opponentScore,
-}: {
-  opponentRating: number;
-  playerScore: number;
-  opponentScore: number;
-}): number | null => {
-  const scoreTotal = playerScore + opponentScore;
-  if (!Number.isFinite(opponentRating) || scoreTotal <= 0) return null;
-
-  const scoreRate = Math.min(
-    favoriteOpponentPerformanceScoreRateMax,
-    Math.max(favoriteOpponentPerformanceScoreRateMin, playerScore / scoreTotal),
-  );
-  const performanceDelta = 400 * Math.log10(scoreRate / (1 - scoreRate));
-
-  return opponentRating + performanceDelta;
-};
-
-const shouldCountFavoriteOpponentRatingChange = (match: FavoriteOpponentMatch): boolean =>
-  Number.isFinite(match.ratingChange) &&
-  Number.isFinite(match.beforeRd) &&
-  match.beforeRd < favoriteOpponentMaxCountedRatingChangeRd;
-
-const getFavoriteOpponentPerformanceSortScore = (
-  performanceScore: number | null,
-  performanceGameCount: number,
-): number | null => {
-  if (performanceScore === null || performanceGameCount <= 0) return null;
-
-  const confidencePenalty =
-    (favoriteOpponentScoreConfidenceZ * favoriteOpponentPerformanceConfidenceScale) /
-    Math.sqrt(performanceGameCount);
-
-  return performanceScore - confidencePenalty;
-};
-
-const getFavoriteOpponentRows = (matches: FavoriteOpponentMatch[]): FavoriteOpponentRow[] => {
-  const rowsByOpponent = new Map<
-    string,
-    {
-      opponent: string;
-      matchCount: number;
-      gameCount: number;
-      playerScore: number;
-      opponentScore: number;
-      ratingChange: number;
-      ratedMatchCount: number;
-      performanceScoreTotal: number;
-      performanceScoreGameCount: number;
-      mostRecentTs: number;
-      timeControlCounts: Map<string, { gameCount: number; latestTs: number }>;
-      matches: FavoriteOpponentMatch[];
-    }
-  >();
-
-  matches.forEach((match) => {
-    const opponentKey = normalizeUsername(match.opponent);
-    if (!opponentKey) return;
-
-    const existing =
-      rowsByOpponent.get(opponentKey) ??
-      ({
-        opponent: match.opponent,
-        matchCount: 0,
-        gameCount: 0,
-        playerScore: 0,
-        opponentScore: 0,
-        ratingChange: 0,
-        ratedMatchCount: 0,
-        performanceScoreTotal: 0,
-        performanceScoreGameCount: 0,
-        mostRecentTs: Number.NEGATIVE_INFINITY,
-        timeControlCounts: new Map<string, { gameCount: number; latestTs: number }>(),
-        matches: [],
-      } satisfies {
-        opponent: string;
-        matchCount: number;
-        gameCount: number;
-        playerScore: number;
-        opponentScore: number;
-        ratingChange: number;
-        ratedMatchCount: number;
-        performanceScoreTotal: number;
-        performanceScoreGameCount: number;
-        mostRecentTs: number;
-        timeControlCounts: Map<string, { gameCount: number; latestTs: number }>;
-        matches: FavoriteOpponentMatch[];
-      });
-
-    const matchGameCount =
-      Number.isFinite(match.gameCount) && match.gameCount > 0
-        ? match.gameCount
-        : match.playerScore + match.opponentScore;
-
-    existing.matchCount += 1;
-    existing.playerScore += match.playerScore;
-    existing.opponentScore += match.opponentScore;
-    existing.gameCount += matchGameCount;
-    if (shouldCountFavoriteOpponentRatingChange(match)) {
-      existing.ratingChange += match.ratingChange;
-      existing.ratedMatchCount += 1;
-    }
-    const opponentRating = Number.isFinite(match.opponentBeforeRating)
-      ? match.opponentBeforeRating
-      : match.opponentAfterRating;
-    const matchPerformanceScore = getMatchPerformanceScore({
-      opponentRating,
-      playerScore: match.playerScore,
-      opponentScore: match.opponentScore,
-    });
-    if (matchPerformanceScore !== null) {
-      existing.performanceScoreTotal += matchPerformanceScore * matchGameCount;
-      existing.performanceScoreGameCount += matchGameCount;
-    }
-    existing.mostRecentTs = Math.max(existing.mostRecentTs, match.startTs);
-    existing.matches.push(match);
-
-    const timeControl = match.timeControl || "—";
-    const timeControlEntry = existing.timeControlCounts.get(timeControl) ?? {
-      gameCount: 0,
-      latestTs: Number.NEGATIVE_INFINITY,
-    };
-    timeControlEntry.gameCount += matchGameCount;
-    timeControlEntry.latestTs = Math.max(timeControlEntry.latestTs, match.startTs);
-    existing.timeControlCounts.set(timeControl, timeControlEntry);
-
-    rowsByOpponent.set(opponentKey, existing);
-  });
-
-  return [...rowsByOpponent.values()]
-    .map(({ performanceScoreTotal, performanceScoreGameCount, timeControlCounts, ...row }) => {
-      const performanceScore =
-        performanceScoreGameCount > 0
-          ? Math.round(performanceScoreTotal / performanceScoreGameCount)
-          : null;
-
-      return {
-        ...row,
-        performanceScore,
-        performanceSortScore: getFavoriteOpponentPerformanceSortScore(
-          performanceScore,
-          performanceScoreGameCount,
-        ),
-        matches: [...row.matches].sort((left, right) => right.startTs - left.startTs),
-        ...favoriteTimeControlFromCounts(timeControlCounts),
-      };
-    })
-    .sort((left, right) => {
-      const matchDifference = right.matchCount - left.matchCount;
-      if (matchDifference !== 0) return matchDifference;
-      const recencyDifference = right.mostRecentTs - left.mostRecentTs;
-      if (recencyDifference !== 0) return recencyDifference;
-      return left.opponent.localeCompare(right.opponent);
-    });
-};
-
-const getFavoriteOpponentBestScoreValue = (row: FavoriteOpponentRow): number => {
-  if (row.gameCount <= 0) return Number.NEGATIVE_INFINITY;
-
-  const scoreRate = row.playerScore / row.gameCount;
-  const zSquared = favoriteOpponentScoreConfidenceZ * favoriteOpponentScoreConfidenceZ;
-  const confidencePenalty =
-    favoriteOpponentScoreConfidenceZ *
-    Math.sqrt((scoreRate * (1 - scoreRate) + zSquared / (4 * row.gameCount)) / row.gameCount);
-
-  return (
-    (scoreRate + zSquared / (2 * row.gameCount) - confidencePenalty) /
-    (1 + zSquared / row.gameCount)
-  );
-};
-
-const getFavoriteOpponentRatingGainSortValue = (row: FavoriteOpponentRow): number => {
-  if (row.ratedMatchCount <= 0) return 0;
-  return Math.max(0, row.ratingChange);
-};
-
-const compareFavoriteOpponentRowsByPrimarySort = (
-  left: FavoriteOpponentRow,
-  right: FavoriteOpponentRow,
-  sort: FavoriteOpponentSort,
-): number => {
-  if (sort === "opponent") {
-    return left.opponent.localeCompare(right.opponent);
-  }
-
-  if (sort === "score") {
-    const scoreDifference =
-      getFavoriteOpponentBestScoreValue(left) - getFavoriteOpponentBestScoreValue(right);
-    if (scoreDifference !== 0) return scoreDifference;
-    const scoreMarginDifference =
-      left.playerScore - left.opponentScore - (right.playerScore - right.opponentScore);
-    if (scoreMarginDifference !== 0) return scoreMarginDifference;
-  }
-
-  if (sort === "games") {
-    const gameDifference = left.gameCount - right.gameCount;
-    if (gameDifference !== 0) return gameDifference;
-  }
-
-  if (sort === "ratingGain") {
-    const ratedMatchDifference =
-      Number(left.ratedMatchCount > 0) - Number(right.ratedMatchCount > 0);
-    if (ratedMatchDifference !== 0) return ratedMatchDifference;
-    const ratingDifference =
-      getFavoriteOpponentRatingGainSortValue(left) - getFavoriteOpponentRatingGainSortValue(right);
-    if (ratingDifference !== 0) return ratingDifference;
-  }
-
-  if (sort === "performance") {
-    const performanceAvailabilityDifference =
-      Number(left.performanceSortScore !== null) - Number(right.performanceSortScore !== null);
-    if (performanceAvailabilityDifference !== 0) return performanceAvailabilityDifference;
-    const performanceDifference =
-      (left.performanceSortScore ?? 0) - (right.performanceSortScore ?? 0);
-    if (performanceDifference !== 0) return performanceDifference;
-  }
-
-  if (sort === "recent") {
-    const recencyDifference = left.mostRecentTs - right.mostRecentTs;
-    if (recencyDifference !== 0) return recencyDifference;
-  }
-
-  if (sort === "timeControl") {
-    const favoriteTimeControlDifference =
-      left.favoriteTimeControlCount - right.favoriteTimeControlCount;
-    if (favoriteTimeControlDifference !== 0) return favoriteTimeControlDifference;
-    return left.favoriteTimeControl.localeCompare(right.favoriteTimeControl);
-  }
-
-  const matchDifference = left.matchCount - right.matchCount;
-  if (matchDifference !== 0) return matchDifference;
-
-  return 0;
-};
-
-const compareFavoriteOpponentRows = (
-  left: FavoriteOpponentRow,
-  right: FavoriteOpponentRow,
-  sort: FavoriteOpponentSort,
-  direction: FavoriteOpponentSortDirection,
-): number => {
-  const primaryDifference = compareFavoriteOpponentRowsByPrimarySort(left, right, sort);
-  if (primaryDifference !== 0) {
-    return direction === "asc" ? primaryDifference : -primaryDifference;
-  }
-
-  const matchDifference = right.matchCount - left.matchCount;
-  if (matchDifference !== 0) return matchDifference;
-
-  if (sort !== "games") {
-    const gameDifference = right.gameCount - left.gameCount;
-    if (gameDifference !== 0) return gameDifference;
-  }
-
-  const recencyDifference = right.mostRecentTs - left.mostRecentTs;
-  if (recencyDifference !== 0) return recencyDifference;
-  return left.opponent.localeCompare(right.opponent);
-};
-
-const rankingTrophyLevels = [
-  {
-    maxRank: 1,
-    key: "top1",
-    imageSrc: rankingTrophyAssets.top1,
-    suffix: "Atomic 1st place",
-    placementLabel: "1st place",
-    prestige: 900,
-  },
-  {
-    maxRank: 2,
-    key: "top2",
-    imageSrc: rankingTrophyAssets.secondPlace,
-    suffix: "Atomic 2nd place",
-    placementLabel: "2nd place",
-    prestige: 800,
-  },
-  {
-    maxRank: 10,
-    key: "top10",
-    imageSrc: rankingTrophyAssets.top10,
-    suffix: "Atomic Top 10",
-    placementLabel: "Top 10",
-    prestige: 700,
-  },
-];
-
-const getRankingTrophies = (
-  monthRanks: import("../../hooks/usePlayerProfileData").MonthRank[],
-): ProfileTrophy[] =>
-  monthRanks.flatMap((monthRank) => {
-    if (monthRank.mode === "wolfrandom") return [];
-    const level = rankingTrophyLevels.find(({ maxRank }) => monthRank.rank <= maxRank);
-    if (!level) return [];
-
-    const modeLabel = modeLabels[monthRank.mode] ?? monthRank.mode;
-    return [
-      {
-        key: `${monthRank.mode}-${monthRank.monthValue}-${level.key}`,
-        label: modeLabel,
-        title: `${modeLabel} ${level.suffix}`,
-        imageSrc: level.imageSrc,
-        href: buildRankingsLocation(monthRank.monthLabel, monthRank.mode),
-        dateLabel: monthRank.monthLabel,
-        dateValue: monthRank.monthValue,
-        placementLabel: level.placementLabel,
-        prestige: level.prestige,
-      },
-    ];
-  });
-
-const getChampionshipTrophies = (username: string): ProfileTrophy[] =>
-  championshipTrophiesByUsername[normalizeUsername(username)] ?? [];
-
-const sortProfileTrophies = (trophies: ProfileTrophy[], sort: TrophyCaseSort): ProfileTrophy[] =>
-  [...trophies].sort((left, right) => {
-    if (sort === "prestige") {
-      const prestigeDifference = right.prestige - left.prestige;
-      if (prestigeDifference !== 0) return prestigeDifference;
-    }
-
-    const dateDifference =
-      new Date(`${right.dateValue}T00:00:00Z`).getTime() -
-      new Date(`${left.dateValue}T00:00:00Z`).getTime();
-    if (dateDifference !== 0) return dateDifference;
-    return left.title.localeCompare(right.title);
-  });
-
-const getTrophyHoverLabel = (trophy: ProfileTrophy): string =>
-  `${trophy.title} · ${trophy.dateLabel}`;
-
-const ProfileTrophyLink = ({ trophy }: { trophy: ProfileTrophy }) =>
-  isExternalHref(trophy.href) ? (
-    <a
-      className="profileTrophy"
-      title={trophy.title}
-      aria-label={trophy.title}
-      href={trophy.href}
-      target="_blank"
-      rel="noreferrer"
-    >
-      <img src={trophy.imageSrc} alt="" aria-hidden="true" />
-      <span className="profileTrophyLabel">{trophy.label}</span>
-    </a>
-  ) : (
-    <Link className="profileTrophy" title={trophy.title} aria-label={trophy.title} to={trophy.href}>
-      <img src={trophy.imageSrc} alt="" aria-hidden="true" />
-      <span className="profileTrophyLabel">{trophy.label}</span>
-    </Link>
-  );
-
-const ProfileTrophyCaseCard = ({ trophy }: { trophy: ProfileTrophy }) => {
-  const content = (
-    <>
-      <img src={trophy.imageSrc} alt="" aria-hidden="true" />
-      <span className="profileTrophyCaseDetails">
-        <strong>{trophy.title}</strong>
-        <span>
-          {trophy.placementLabel} · {trophy.dateLabel}
-        </span>
-      </span>
-    </>
-  );
-
-  return isExternalHref(trophy.href) ? (
-    <a
-      className="profileTrophyCaseCard"
-      title={getTrophyHoverLabel(trophy)}
-      aria-label={getTrophyHoverLabel(trophy)}
-      href={trophy.href}
-      target="_blank"
-      rel="noreferrer"
-    >
-      {content}
-    </a>
-  ) : (
-    <Link
-      className="profileTrophyCaseCard"
-      title={getTrophyHoverLabel(trophy)}
-      aria-label={getTrophyHoverLabel(trophy)}
-      to={trophy.href}
-    >
-      {content}
-    </Link>
-  );
-};
-
-const LichessProfileIcon = () => (
-  <svg viewBox="0 0 50 50" aria-hidden="true" focusable="false">
-    <path
-      d="M38.956.5c-3.53.418-6.452.902-9.286 2.984C5.534 1.786-.692 18.533.68 29.364 3.493 50.214 31.918 55.785 41.329 41.7c-7.444 7.696-19.276 8.752-28.323 3.084S-.506 27.392 4.683 17.567C9.873 7.742 18.996 4.535 29.03 6.405c2.43-1.418 5.225-3.22 7.655-3.187l-1.694 4.86 12.752 21.37c-.439 5.654-5.459 6.112-5.459 6.112-.574-1.47-1.634-2.942-4.842-6.036-3.207-3.094-17.465-10.177-15.788-16.207-2.001 6.967 10.311 14.152 14.04 17.663 3.73 3.51 5.426 6.04 5.795 6.756 0 0 9.392-2.504 7.838-8.927L37.4 7.171z"
-      fill="currentColor"
-    />
-  </svg>
-);
-
-const ChessComProfileIcon = () => (
-  <svg className="chessComProfileIcon" viewBox="-2 0 82 110" aria-hidden="true" focusable="false">
-    <path
-      className="chessComIconShadow"
-      d="M46.3 4.6C55.1 7.4 61.5 15.7 61.5 25.7c0 6.7-2.8 12.6-7.3 16.7l10.6 8c-.4 5.5-2.1 9.7-5.2 12.6h-9.3c.9 8 5.4 14.1 13.4 19.4 7.1 4.6 10.8 10 11 16.3-5.6 2.9-17.5 4.3-35.7 4.3-18.5 0-30.5-1.4-36.1-4.3.2-6.3 3.9-11.7 11-16.3 8-5.3 12.5-11.4 13.4-19.4H18c-3.1-2.9-4.8-7.1-5.2-12.6l10.6-8c-4.5-4.1-7.3-10-7.3-16.7C16.1 13.5 26 3.7 38.2 3.7c2.8 0 5.5.3 8.1.9z"
-    />
-    <path
-      className="chessComIconBody"
-      d="M38.2 3.7c12.2 0 22.2 9.8 22.2 22 0 6.7-2.9 12.6-7.3 16.7l10.6 8c-.4 5.5-2.1 9.7-5.2 12.6h-9.3c.9 8 5.4 14.1 13.4 19.4 7.1 4.6 10.8 10 11 16.3-5.6 2.9-17.6 4.3-36 4.3S7.3 101.6 1.7 98.7c.2-6.3 3.9-11.7 11-16.3 8-5.3 12.5-11.4 13.4-19.4h-9.3c-3.1-2.9-4.8-7.1-5.2-12.6l10.6-8c-4.4-4.1-7.3-10-7.3-16.7 0-12.2 10-22 22.2-22h1.1z"
-    />
-    <path
-      className="chessComIconFront"
-      d="M35.7 5.5C24.9 6.8 16.4 16.1 16.4 27.4c0 6.1 2.4 11.4 6.3 15.4l-9.9 7.6c.5 3.7 1.7 6.4 3.7 8.2h16.2c.3 12.5-4.7 22.2-14.9 29-5.4 3.6-8.8 7.2-10.3 10.6 5.2 1.8 14.3 2.7 27.2 2.7 2.8 0 5.3 0 7.7-.1 7.7-5.1 12-13.3 12.9-24.4.7-7.6-.8-13-4.6-16.1-3.2-2.6-8.4-3.9-15.7-3.9h-5.8L34.5 40 24.4 25.4C34.9 22 40.5 15.2 41 5c-1.7-.4-3.5-.6-5.3-.6z"
-    />
-    <ellipse
-      className="chessComIconHighlight"
-      cx="33.5"
-      cy="16.8"
-      rx="9.2"
-      ry="4.9"
-      transform="rotate(-35 33.5 16.8)"
-    />
-  </svg>
-);
-
-const getAliasProfileHref = (source: AliasAccountSource, alias: string): string =>
-  source === "chesscom" ? chessComProfileUrl(alias) : lichessProfileUrl(alias);
-
-const getAliasProfileSourceLabel = (source: AliasAccountSource): string =>
-  source === "chesscom" ? "Chess.com" : "Lichess";
-
-const buildMatchFilters = (
-  username: string,
-  filters: ProfileFilters,
-): import("../../lib/supabase/supabaseMatchRows").MatchFilters => {
-  const queryFilters: import("../../lib/supabase/supabaseMatchRows").MatchFilters = { username };
-  const { timeControlInitialFilter, timeControlIncrementFilter } = filters;
-  const timeControl =
-    timeControlInitialFilter !== "all" && timeControlIncrementFilter !== "all"
-      ? `${timeControlInitialFilter}+${timeControlIncrementFilter}`
-      : "";
-
-  if (timeControl) queryFilters.timeControl = timeControl;
-  if (
-    filters.opponentRatingMin !== defaultRatingMin ||
-    filters.opponentRatingMax !== defaultRatingMax
-  ) {
-    queryFilters.opponentRatingMin = filters.opponentRatingMin;
-    queryFilters.opponentRatingMax = filters.opponentRatingMax;
-  }
-  if (filters.startDateFilter) {
-    queryFilters.startTs = parseDateInputBoundary(filters.startDateFilter, "start");
-  }
-  if (filters.endDateFilter) {
-    queryFilters.endTs = parseDateInputBoundary(filters.endDateFilter, "end");
-  }
-  queryFilters.sourceFilters = filters.sourceFilters;
-  return queryFilters;
-};
-
-const isClientSidePagedSearch = (filters: { opponentFilter?: string }): boolean =>
-  Boolean(String(filters?.opponentFilter || "").trim());
-
-const createDefaultProfileFilters = (): ProfileFilters => ({
-  opponentRatingMin: defaultRatingMin,
-  opponentRatingMax: defaultRatingMax,
-  opponentFilter: "",
-  startDateFilter: "",
-  endDateFilter: "",
-  sourceFilters: readStoredSourceFilters(),
-  timeControlInitialFilter: "all",
-  timeControlIncrementFilter: "all",
-});
 
 export const PlayerProfilePage = ({
   username,
@@ -966,8 +109,9 @@ export const PlayerProfilePage = ({
   const [bestRankMode, setBestRankMode] =
     useState<import("../../constants/matches").Mode>(defaultMode);
   const [rankHistoryMode, setRankHistoryMode] = useState<RankHistoryMode>("all");
-  const [rankHistoryView, setRankHistoryView] =
-    useState<RankHistoryView>(getRankHistoryViewFromLocation);
+  const [rankHistoryView, setRankHistoryView] = useState<RankHistoryView>(
+    getRankHistoryViewFromLocation,
+  );
   const [trophyCaseSort, setTrophyCaseSort] = useState<TrophyCaseSort>(getStoredTrophyCaseSort);
   const [profileHistoryTab, setProfileHistoryTab] = useState<ProfileHistoryTab>(() =>
     getProfileHistoryTabFromLocation(),
@@ -980,7 +124,6 @@ export const PlayerProfilePage = ({
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [expandedMatchKeys, setExpandedMatchKeys] = useState<string[]>([]);
-  const [expandedFavoriteOpponentKeys, setExpandedFavoriteOpponentKeys] = useState<string[]>([]);
   const [opponentRatingMin, setOpponentRatingMin] = useState(defaultRatingMin);
   const [opponentRatingMax, setOpponentRatingMax] = useState(defaultRatingMax);
   const [opponentFilter, setOpponentFilter] = useState("");
@@ -991,29 +134,10 @@ export const PlayerProfilePage = ({
   const [timeControlIncrementFilter, setTimeControlIncrementFilter] = useState("all");
   const [isHistoryAvailable, setIsHistoryAvailable] = useState(false);
   const [loadingMatches, setLoadingMatches] = useState(false);
-  const [favoriteOpponentRows, setFavoriteOpponentRows] = useState<FavoriteOpponentRow[]>([]);
-  const [favoriteOpponentMode, setFavoriteOpponentMode] = useState<RankHistoryMode>(
-    getStoredFavoriteOpponentMode,
-  );
-  const [favoriteOpponentMatchLimit, setFavoriteOpponentMatchLimit] = useState(() =>
-    getStoredFavoriteOpponentMatchLimit(getStoredFavoriteOpponentMode()),
-  );
-  const [favoriteOpponentPage, setFavoriteOpponentPage] = useState(1);
-  const [favoriteOpponentDisplayCount, setFavoriteOpponentDisplayCount] = useState(25);
-  const [favoriteOpponentSort, setFavoriteOpponentSort] = useState<FavoriteOpponentSort>(
-    getStoredFavoriteOpponentSort,
-  );
-  const [favoriteOpponentSortDirection, setFavoriteOpponentSortDirection] =
-    useState<FavoriteOpponentSortDirection>(getStoredFavoriteOpponentSortDirection);
-  const [favoriteOpponentLoadKey, setFavoriteOpponentLoadKey] = useState("");
-  const [loadingFavoriteOpponents, setLoadingFavoriteOpponents] = useState(false);
-  const [favoriteOpponentsError, setFavoriteOpponentsError] = useState("");
   const matchRequestIdRef = useRef(0);
-  const favoriteOpponentsRequestIdRef = useRef(0);
   const searchSubmitInFlightRef = useRef(false);
   const canonicalUsername = profileAliasEntry?.username ?? normalizedUsername;
   const profileDisplayUsername = String(username || "").trim() || canonicalUsername;
-  const favoriteOpponentQueryKey = `${canonicalUsername}|${favoriteOpponentMode}|${favoriteOpponentMatchLimit}`;
   const isBanned = Boolean(profileAliasEntry?.banned);
   const profileDataUsername = aliasesLoaded ? canonicalUsername : "";
   const ratingsSnapshotByMode = useRatingsSnapshotByMode(profileDataUsername);
@@ -1030,21 +154,39 @@ export const PlayerProfilePage = ({
   );
   const rankHistoryModeOptions: RankHistoryMode[] = ["all", ...profileModeOptions];
   const favoriteOpponentModeOptions: RankHistoryMode[] = ["all", ...profileModeOptions];
+  const {
+    rows: favoriteOpponentRows,
+    mode: favoriteOpponentMode,
+    matchLimit: favoriteOpponentMatchLimit,
+    displayCount: favoriteOpponentDisplayCount,
+    sort: favoriteOpponentSort,
+    sortDirection: favoriteOpponentSortDirection,
+    expandedKeys: expandedFavoriteOpponentKeys,
+    loading: loadingFavoriteOpponents,
+    error: favoriteOpponentsError,
+    visibleRows: visibleFavoriteOpponentRows,
+    currentPage: currentFavoriteOpponentPage,
+    totalPages: favoriteOpponentTotalPages,
+    scopeLabel: favoriteOpponentScopeLabel,
+    setMode: setFavoriteOpponentMode,
+    setMatchLimit: setFavoriteOpponentMatchLimit,
+    setPage: setFavoriteOpponentPage,
+    setDisplayCount: setFavoriteOpponentDisplayCount,
+    applySort: applyFavoriteOpponentSort,
+    toggleOpponent: toggleFavoriteOpponentKey,
+  } = useFavoriteOpponentsModel({
+    canonicalUsername,
+    availableModes: profileModeOptions,
+    enabled: aliasesLoaded && !isBanned && profileHistoryTab === "opponents",
+    resetKey: normalizedUsername,
+  });
   useEffect(() => {
     if (profileModeOptions.includes("wolfrandom")) return;
-    if (favoriteOpponentMode === "wolfrandom") setFavoriteOpponentMode("all");
     if (rankHistoryMode === "wolfrandom") setRankHistoryMode("all");
     if (bestWinMode === "wolfrandom") setBestWinMode(defaultMode);
     if (bestRankMode === "wolfrandom") setBestRankMode(defaultMode);
     if (matchHistoryMode === "wolfrandom") setMatchHistoryMode(defaultMode);
-  }, [
-    bestRankMode,
-    bestWinMode,
-    favoriteOpponentMode,
-    matchHistoryMode,
-    profileModeOptions,
-    rankHistoryMode,
-  ]);
+  }, [bestRankMode, bestWinMode, matchHistoryMode, profileModeOptions, rankHistoryMode]);
   const monthRanks = useMonthRanks(profileDataUsername);
   const visibleMonthRanks = useMemo(
     () => monthRanks.filter((rank) => profileModeOptions.includes(rank.mode)),
@@ -1067,22 +209,10 @@ export const PlayerProfilePage = ({
     setProfileHistoryTab(getProfileHistoryTabFromLocation());
     setPage(1);
     setError("");
-    setFavoriteOpponentsError("");
     setLoadingMatches(false);
-    setLoadingFavoriteOpponents(false);
     setExpandedMatchKeys([]);
-    setExpandedFavoriteOpponentKeys([]);
     setMatchesByMode(createModeRecord(() => []));
     setTotalMatchesByMode(createModeRecord(() => 0));
-    setFavoriteOpponentRows([]);
-    const storedFavoriteOpponentMode = getStoredFavoriteOpponentMode();
-    setFavoriteOpponentMode(storedFavoriteOpponentMode);
-    setFavoriteOpponentMatchLimit(getStoredFavoriteOpponentMatchLimit(storedFavoriteOpponentMode));
-    setFavoriteOpponentPage(1);
-    setFavoriteOpponentDisplayCount(25);
-    setFavoriteOpponentSort(getStoredFavoriteOpponentSort());
-    setFavoriteOpponentSortDirection(getStoredFavoriteOpponentSortDirection());
-    setFavoriteOpponentLoadKey("");
     setOpponentRatingMin(defaultFilters.opponentRatingMin);
     setOpponentRatingMax(defaultFilters.opponentRatingMax);
     setOpponentFilter(defaultFilters.opponentFilter);
@@ -1220,66 +350,6 @@ export const PlayerProfilePage = ({
     [canonicalUsername, pageSize],
   );
 
-  const loadFavoriteOpponents = useCallback(async (): Promise<void> => {
-    const requestId = favoriteOpponentsRequestIdRef.current + 1;
-    favoriteOpponentsRequestIdRef.current = requestId;
-    setLoadingFavoriteOpponents(true);
-    setFavoriteOpponentsError("");
-
-    try {
-      const modesToLoad =
-        favoriteOpponentMode === "all" ? profileModeOptions : [favoriteOpponentMode];
-      const matchesByMode = await Promise.all(
-        modesToLoad.map(async (mode): Promise<FavoriteOpponentMatch[]> => {
-          const modeMatches: import("../../lib/matches/matchData").ParsedMatch[] = [];
-          const maxPages = Math.ceil(favoriteOpponentMatchLimit / favoriteOpponentPageSize);
-
-          for (let pageNumber = 1; pageNumber <= maxPages; pageNumber += 1) {
-            const result = await loadRawMatchesByMode(mode, {
-              filters: { username: canonicalUsername },
-              page: pageNumber,
-              pageSize: favoriteOpponentPageSize,
-            });
-            modeMatches.push(...result.matches);
-            if (result.matches.length < favoriteOpponentPageSize) break;
-          }
-
-          return normalizeMatches(modeMatches, canonicalUsername).map((match) => ({
-            ...match,
-            mode,
-          }));
-        }),
-      );
-
-      if (requestId !== favoriteOpponentsRequestIdRef.current) return;
-
-      const recentMatches = matchesByMode
-        .flat()
-        .sort((left, right) => right.startTs - left.startTs)
-        .slice(0, favoriteOpponentMatchLimit);
-
-      setFavoriteOpponentRows(getFavoriteOpponentRows(recentMatches));
-      setFavoriteOpponentPage(1);
-      setExpandedFavoriteOpponentKeys([]);
-      setFavoriteOpponentLoadKey(favoriteOpponentQueryKey);
-    } catch (loadError) {
-      if (requestId !== favoriteOpponentsRequestIdRef.current) return;
-      setFavoriteOpponentRows([]);
-      setFavoriteOpponentLoadKey("");
-      setFavoriteOpponentsError(String(loadError));
-    } finally {
-      if (requestId === favoriteOpponentsRequestIdRef.current) {
-        setLoadingFavoriteOpponents(false);
-      }
-    }
-  }, [
-    canonicalUsername,
-    favoriteOpponentMatchLimit,
-    favoriteOpponentMode,
-    favoriteOpponentQueryKey,
-    profileModeOptions,
-  ]);
-
   useEffect(() => {
     setExpandedMatchKeys([]);
   }, [page, matchHistoryMode, appliedFilters, canonicalUsername]);
@@ -1326,21 +396,6 @@ export const PlayerProfilePage = ({
     runMatchSearch,
   ]);
 
-  useEffect(() => {
-    if (!aliasesLoaded || isBanned || profileHistoryTab !== "opponents") return;
-    if (favoriteOpponentLoadKey === favoriteOpponentQueryKey || loadingFavoriteOpponents) return;
-    void loadFavoriteOpponents();
-  }, [
-    aliasesLoaded,
-    canonicalUsername,
-    favoriteOpponentLoadKey,
-    favoriteOpponentQueryKey,
-    isBanned,
-    loadFavoriteOpponents,
-    loadingFavoriteOpponents,
-    profileHistoryTab,
-  ]);
-
   const handleSearchClick = () => {
     if (searchSubmitInFlightRef.current || loadingMatches) return;
     searchSubmitInFlightRef.current = true;
@@ -1382,29 +437,14 @@ export const PlayerProfilePage = ({
   };
   const handleProfileHistoryTabChange = (nextTab: ProfileHistoryTab): void => {
     if (profileHistoryTab === nextTab) return;
-
     setProfileHistoryTab(nextTab);
-
-    if (typeof window === "undefined") return;
-    const nextUrl = new URL(window.location.href);
-    nextUrl.searchParams.set("tab", nextTab);
-    window.history.pushState({}, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+    pushProfileHistoryLocation(nextTab);
   };
 
   const handleRankHistoryViewChange = (nextView: RankHistoryView): void => {
     if (rankHistoryView === nextView) return;
-
     setRankHistoryView(nextView);
-
-    if (typeof window === "undefined") return;
-    const nextUrl = new URL(window.location.href);
-    nextUrl.searchParams.set("tab", "ranks");
-    if (nextView === "trophies") {
-      nextUrl.searchParams.set("view", "trophies");
-    } else {
-      nextUrl.searchParams.delete("view");
-    }
-    window.history.pushState({}, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+    pushProfileHistoryLocation("ranks", nextView);
   };
 
   useEffect(() => {
@@ -1449,36 +489,6 @@ export const PlayerProfilePage = ({
         }),
     [monthRankPlayerCounts, rankHistoryMode, visibleMonthRanks],
   );
-  const sortedFavoriteOpponentRows = useMemo(
-    () =>
-      [...favoriteOpponentRows].sort((left, right) =>
-        compareFavoriteOpponentRows(
-          left,
-          right,
-          favoriteOpponentSort,
-          favoriteOpponentSortDirection,
-        ),
-      ),
-    [favoriteOpponentRows, favoriteOpponentSort, favoriteOpponentSortDirection],
-  );
-  const favoriteOpponentTotalPages = Math.max(
-    1,
-    Math.ceil(sortedFavoriteOpponentRows.length / Math.max(1, favoriteOpponentDisplayCount)),
-  );
-  const currentFavoriteOpponentPage = Math.min(favoriteOpponentPage, favoriteOpponentTotalPages);
-  const visibleFavoriteOpponentRows = useMemo(() => {
-    const pageStart = (currentFavoriteOpponentPage - 1) * favoriteOpponentDisplayCount;
-    return sortedFavoriteOpponentRows.slice(pageStart, pageStart + favoriteOpponentDisplayCount);
-  }, [currentFavoriteOpponentPage, favoriteOpponentDisplayCount, sortedFavoriteOpponentRows]);
-  useEffect(() => {
-    if (currentFavoriteOpponentPage !== favoriteOpponentPage) {
-      setFavoriteOpponentPage(currentFavoriteOpponentPage);
-    }
-  }, [currentFavoriteOpponentPage, favoriteOpponentPage]);
-  const favoriteOpponentScopeLabel =
-    favoriteOpponentMode === "all"
-      ? "matches overall"
-      : `${modeLabels[favoriteOpponentMode] ?? favoriteOpponentMode} matches`;
   const profileOpenings = useMemo(() => {
     if (!aliasesLoaded) return [];
 
@@ -1577,51 +587,10 @@ export const PlayerProfilePage = ({
       current.includes(key) ? current.filter((k) => k !== key) : [...current, key],
     );
   };
-  const toggleFavoriteOpponentKey = (key: string): void => {
-    setExpandedFavoriteOpponentKeys((current) =>
-      current.includes(key) ? current.filter((k) => k !== key) : [...current, key],
-    );
-  };
-  const applyFavoriteOpponentSort = (
-    sort: FavoriteOpponentSort,
-    direction: FavoriteOpponentSortDirection = favoriteOpponentSort === sort
-      ? favoriteOpponentSortDirection
-      : getFavoriteOpponentDefaultSortDirection(sort),
-  ): void => {
-    setFavoriteOpponentSort(sort);
-    setFavoriteOpponentSortDirection(direction);
-    setFavoriteOpponentPage(1);
-    setStoredFavoriteOpponentSort(sort);
-    setStoredFavoriteOpponentSortDirection(direction);
-  };
-  const handleFavoriteOpponentHeaderSort = (sort: FavoriteOpponentSort): void => {
-    const nextDirection =
-      favoriteOpponentSort === sort
-        ? favoriteOpponentSortDirection === "desc"
-          ? "asc"
-          : "desc"
-        : getFavoriteOpponentDefaultSortDirection(sort);
-    applyFavoriteOpponentSort(sort, nextDirection);
-  };
-  const favoriteOpponentHeaderSort = (
-    sort: FavoriteOpponentSort,
-  ): "ascending" | "descending" | "none" =>
-    favoriteOpponentSort === sort
-      ? favoriteOpponentSortDirection === "asc"
-        ? "ascending"
-        : "descending"
-      : "none";
-  const favoriteOpponentSortGlyph = (sort: FavoriteOpponentSort): string =>
-    favoriteOpponentSort === sort ? (favoriteOpponentSortDirection === "asc" ? "↑" : "↓") : "";
-
   return (
     <div className="rankingsPage">
       <Seo
-        title={
-          historyOnly
-            ? `${canonicalUsername} games`
-            : `${canonicalUsername} : Activity`
-        }
+        title={historyOnly ? `${canonicalUsername} games` : `${canonicalUsername} : Activity`}
         description={
           historyOnly
             ? `View ${canonicalUsername}'s atomic chess match history, rank history, and favorite opponents.`
@@ -1646,7 +615,8 @@ export const PlayerProfilePage = ({
                   params={{ username: canonicalUsername }}
                 >
                   {profileDisplayUsername}
-                </Link> Match History
+                </Link>
+                <span> Match History</span>
               </h1>
             </div>
           </div>
@@ -2466,393 +1436,39 @@ export const PlayerProfilePage = ({
                 )}
               </section>
 
-              <section
-                id="profile-favorite-opponents-panel"
-                className="profileHistorySection"
-                role="tabpanel"
-                aria-labelledby="profile-favorite-opponents-tab"
+              <FavoriteOpponentsSection
                 hidden={profileHistoryTab !== "opponents"}
-              >
-                <div className="rankingsMeta profileHistoryMeta profileFavoriteOpponentsMeta">
-                  <div className="profileFavoriteOpponentsControls">
-                    <label htmlFor="profile-favorite-opponents-mode-select">
-                      <span>Mode</span>
-                      <select
-                        id="profile-favorite-opponents-mode-select"
-                        aria-label="Favorite opponents mode"
-                        value={favoriteOpponentMode}
-                        disabled={loadingFavoriteOpponents}
-                        onChange={(event) => {
-                          const v = event.target.value;
-                          if (isFavoriteOpponentMode(v)) {
-                            const nextMatchLimit = getFavoriteOpponentAllowedMatchLimit(
-                              v,
-                              favoriteOpponentMatchLimit,
-                            );
-                            setFavoriteOpponentMode(v);
-                            setStoredFavoriteOpponentMode(v);
-                            setFavoriteOpponentPage(1);
-                            if (nextMatchLimit !== favoriteOpponentMatchLimit) {
-                              setFavoriteOpponentMatchLimit(nextMatchLimit);
-                              setStoredFavoriteOpponentMatchLimit(nextMatchLimit);
-                            }
-                          }
-                        }}
-                      >
-                        {favoriteOpponentModeOptions.map((mode) => (
-                          <option key={mode} value={mode}>
-                            {mode === "all" ? "All" : (modeLabels[mode] ?? mode)}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label htmlFor="profile-favorite-opponents-match-limit-select">
-                      <span>Last</span>
-                      <select
-                        id="profile-favorite-opponents-match-limit-select"
-                        aria-label="Favorite opponents last matches sample"
-                        value={favoriteOpponentMatchLimit}
-                        disabled={loadingFavoriteOpponents}
-                        onChange={(event) => {
-                          const nextMatchLimit = Number(event.target.value);
-                          setFavoriteOpponentMatchLimit(nextMatchLimit);
-                          setStoredFavoriteOpponentMatchLimit(nextMatchLimit);
-                          setFavoriteOpponentPage(1);
-                        }}
-                      >
-                        {getFavoriteOpponentMatchLimitOptions(favoriteOpponentMode).map((count) => (
-                          <option key={count} value={count}>
-                            {count.toLocaleString("en-US")} matches
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label htmlFor="profile-favorite-opponents-count-select">
-                      <span>Show</span>
-                      <select
-                        id="profile-favorite-opponents-count-select"
-                        aria-label="Favorite opponents shown"
-                        value={favoriteOpponentDisplayCount}
-                        onChange={(event) => {
-                          setFavoriteOpponentDisplayCount(Number(event.target.value));
-                          setFavoriteOpponentPage(1);
-                        }}
-                      >
-                        {favoriteOpponentDisplayCountOptions.map((count) => (
-                          <option key={count} value={count}>
-                            {count}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label htmlFor="profile-favorite-opponents-sort-select">
-                      <span>Sort</span>
-                      <select
-                        id="profile-favorite-opponents-sort-select"
-                        aria-label="Favorite opponents sort"
-                        value={favoriteOpponentSort}
-                        onChange={(event) => {
-                          const v = event.target.value;
-                          if (isFavoriteOpponentSort(v)) {
-                            applyFavoriteOpponentSort(v);
-                          }
-                        }}
-                      >
-                        {favoriteOpponentSortOptions.map((sort) => (
-                          <option key={sort} value={sort}>
-                            {favoriteOpponentSortLabels[sort]}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <button
-                      className="profileFavoriteOpponentsDirectionButton"
-                      type="button"
-                      aria-label={`Sort ${
-                        favoriteOpponentSortDirection === "asc" ? "ascending" : "descending"
-                      }`}
-                      onClick={() =>
-                        applyFavoriteOpponentSort(
-                          favoriteOpponentSort,
-                          favoriteOpponentSortDirection === "asc" ? "desc" : "asc",
-                        )
-                      }
-                    >
-                      <span aria-hidden="true">
-                        {favoriteOpponentSortDirection === "asc" ? "↑" : "↓"}
-                      </span>
-                      {favoriteOpponentSortDirection === "asc" ? "Asc" : "Desc"}
-                    </button>
-                  </div>
-                </div>
-
-                {favoriteOpponentsError ? (
-                  <div className="errorText">{favoriteOpponentsError}</div>
-                ) : null}
-
-                <div className="rankingsTableWrap profileFavoriteOpponentsTableWrap">
-                  <table className="rankingsTable profileFavoriteOpponentsTable">
-                    <thead>
-                      <tr>
-                        <th aria-sort={favoriteOpponentHeaderSort("opponent")}>
-                          <button
-                            className="profileFavoriteOpponentsSortButton"
-                            type="button"
-                            onClick={() => handleFavoriteOpponentHeaderSort("opponent")}
-                          >
-                            Opponent
-                            <span aria-hidden="true">{favoriteOpponentSortGlyph("opponent")}</span>
-                          </button>
-                        </th>
-                        <th aria-sort={favoriteOpponentHeaderSort("score")}>
-                          <button
-                            className="profileFavoriteOpponentsSortButton"
-                            type="button"
-                            onClick={() => handleFavoriteOpponentHeaderSort("score")}
-                          >
-                            H2H Score
-                            <span aria-hidden="true">{favoriteOpponentSortGlyph("score")}</span>
-                          </button>
-                        </th>
-                        <th aria-sort={favoriteOpponentHeaderSort("performance")}>
-                          <button
-                            className="profileFavoriteOpponentsSortButton"
-                            type="button"
-                            onClick={() => handleFavoriteOpponentHeaderSort("performance")}
-                          >
-                            Perf
-                            <span aria-hidden="true">
-                              {favoriteOpponentSortGlyph("performance")}
-                            </span>
-                          </button>
-                        </th>
-                        <th aria-sort={favoriteOpponentHeaderSort("ratingGain")}>
-                          <button
-                            className="profileFavoriteOpponentsSortButton"
-                            type="button"
-                            onClick={() => handleFavoriteOpponentHeaderSort("ratingGain")}
-                          >
-                            Rating Δ
-                            <span aria-hidden="true">
-                              {favoriteOpponentSortGlyph("ratingGain")}
-                            </span>
-                          </button>
-                        </th>
-                        <th aria-sort={favoriteOpponentHeaderSort("recent")}>
-                          <button
-                            className="profileFavoriteOpponentsSortButton"
-                            type="button"
-                            onClick={() => handleFavoriteOpponentHeaderSort("recent")}
-                          >
-                            Most Recent
-                            <span aria-hidden="true">{favoriteOpponentSortGlyph("recent")}</span>
-                          </button>
-                        </th>
-                        <th aria-sort={favoriteOpponentHeaderSort("timeControl")}>
-                          <button
-                            className="profileFavoriteOpponentsSortButton"
-                            type="button"
-                            onClick={() => handleFavoriteOpponentHeaderSort("timeControl")}
-                          >
-                            Most Played TC
-                            <span aria-hidden="true">
-                              {favoriteOpponentSortGlyph("timeControl")}
-                            </span>
-                          </button>
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {visibleFavoriteOpponentRows.map((row) => {
-                        const opponentKey = normalizeUsername(row.opponent);
-                        const isExpanded = expandedFavoriteOpponentKeys.includes(opponentKey);
-
-                        return (
-                          <Fragment key={`favorite-opponent-${opponentKey}`}>
-                            <tr
-                              className={`expandableMatchRow profileFavoriteOpponentRow${
-                                isExpanded ? " expanded" : ""
-                              }`}
-                              onClick={() => toggleFavoriteOpponentKey(opponentKey)}
-                              onKeyDown={(event) => {
-                                if (!isToggleActionKey(event)) return;
-                                event.preventDefault();
-                                toggleFavoriteOpponentKey(opponentKey);
-                              }}
-                              role="button"
-                              tabIndex={0}
-                              aria-expanded={isExpanded}
-                            >
-                              <td>
-                                <Link
-                                  className="rankingLink"
-                                  to="/@/$username"
-                                  params={{ username: row.opponent }}
-                                  onClick={(event) => event.stopPropagation()}
-                                >
-                                  {row.opponent}
-                                </Link>
-                              </td>
-                              <td>
-                                {formatScore(row.playerScore)} - {formatScore(row.opponentScore)}
-                              </td>
-                              <td>{row.performanceScore ?? "—"}</td>
-                              <td>
-                                {row.ratedMatchCount > 0 ? (
-                                  <span className="profileDelta">
-                                    {formatSignedDecimal(row.ratingChange)}
-                                  </span>
-                                ) : (
-                                  "—"
-                                )}
-                              </td>
-                              <td>{formatLocalDateTime(row.mostRecentTs)}</td>
-                              <td>
-                                {row.favoriteTimeControl}
-                                {row.favoriteTimeControlCount > 0
-                                  ? ` (${row.favoriteTimeControlCount})`
-                                  : ""}
-                              </td>
-                            </tr>
-                            {isExpanded ? (
-                              <tr className="favoriteOpponentMatchesRow">
-                                <td colSpan={6}>
-                                  <div className="favoriteOpponentMatchesInner">
-                                    <div className="favoriteOpponentMatchesHeader">
-                                      <span>{`${row.matches.length.toLocaleString(
-                                        "en-US",
-                                      )} matches vs ${row.opponent}`}</span>
-                                      <Link
-                                        className="profileFavoriteOpponentH2HButton"
-                                        to="/h2h/$matchup"
-                                        params={{
-                                          matchup: matchupToSlug(canonicalUsername, row.opponent),
-                                        }}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        onClick={(event) => event.stopPropagation()}
-                                      >
-                                        H2H
-                                      </Link>
-                                    </div>
-                                    <table className="favoriteOpponentMatchesTable">
-                                      <thead>
-                                        <tr>
-                                          <th>Date / Time</th>
-                                          <th>Match ID</th>
-                                          <th>TC</th>
-                                          <th>Score</th>
-                                          <th>Rating Δ</th>
-                                          <th aria-label="Open match page" />
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {row.matches.map((match) => {
-                                          const favoriteMatchKey = `${opponentKey}-${match.startTs}-${match.firstGameId}-${match.matchId}`;
-                                          const matchLinkMatch = {
-                                            ...match,
-                                            playerA: canonicalUsername,
-                                            playerB: row.opponent,
-                                            mode: match.mode,
-                                          };
-                                          const singleGameUrl =
-                                            buildSingleGameMatchUrl(matchLinkMatch);
-                                          const shouldLinkToMatchPage =
-                                            match.gameCount > 1 &&
-                                            hasMatchRouteParams(matchLinkMatch);
-
-                                          return (
-                                            <tr key={favoriteMatchKey}>
-                                              <td>{formatLocalDateTime(match.startTs)}</td>
-                                              <td>
-                                                {shouldLinkToMatchPage ? (
-                                                  <Link
-                                                    className="rankingLink"
-                                                    to="/matches/$mode/$matchId"
-                                                    params={buildMatchRouteParams(matchLinkMatch)}
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                    onClick={(event) => event.stopPropagation()}
-                                                  >
-                                                    {match.matchId || match.firstGameId}
-                                                  </Link>
-                                                ) : singleGameUrl ? (
-                                                  <a
-                                                    className="rankingLink"
-                                                    href={singleGameUrl}
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                    onClick={(event) => event.stopPropagation()}
-                                                  >
-                                                    {match.firstGameId}
-                                                  </a>
-                                                ) : (
-                                                  match.firstGameId
-                                                )}
-                                              </td>
-                                              <td>
-                                                <span className="profileTablePill">
-                                                  {match.timeControl}
-                                                </span>
-                                              </td>
-                                              <td>{`${formatScore(match.playerScore)} - ${formatScore(
-                                                match.opponentScore,
-                                              )}`}</td>
-                                              <td>
-                                                {Number.isFinite(match.ratingChange) ? (
-                                                  <span className="profileDelta">
-                                                    {formatSignedDecimal(match.ratingChange)}
-                                                  </span>
-                                                ) : (
-                                                  "—"
-                                                )}
-                                              </td>
-                                              <td>
-                                                <MatchPageLink
-                                                  match={matchLinkMatch}
-                                                  onClick={(event) => event.stopPropagation()}
-                                                  title="Open match page in new tab"
-                                                />
-                                              </td>
-                                            </tr>
-                                          );
-                                        })}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                </td>
-                              </tr>
-                            ) : null}
-                          </Fragment>
-                        );
-                      })}
-                      {loadingFavoriteOpponents ? (
-                        <tr>
-                          <td colSpan={6} className="emptyRankings">
-                            {`Loading favorite opponents from the last ${favoriteOpponentMatchLimit.toLocaleString("en-US")} ${favoriteOpponentScopeLabel}...`}
-                          </td>
-                        </tr>
-                      ) : null}
-                      {!loadingFavoriteOpponents && favoriteOpponentRows.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} className="emptyRankings">
-                            {`No favorite opponents found in the last ${favoriteOpponentMatchLimit.toLocaleString("en-US")} ${favoriteOpponentScopeLabel}.`}
-                          </td>
-                        </tr>
-                      ) : null}
-                    </tbody>
-                  </table>
-                </div>
-                {favoriteOpponentRows.length > favoriteOpponentDisplayCount ? (
-                  <PaginationRow
-                    currentPage={currentFavoriteOpponentPage}
-                    totalPages={favoriteOpponentTotalPages}
-                    onPageChange={setFavoriteOpponentPage}
-                    formatLabel={(current, total) => `Page ${current} / ${total}`}
-                    disabled={loadingFavoriteOpponents}
-                  />
-                ) : null}
-              </section>
+                canonicalUsername={canonicalUsername}
+                modeOptions={favoriteOpponentModeOptions}
+                mode={favoriteOpponentMode}
+                matchLimit={favoriteOpponentMatchLimit}
+                displayCount={favoriteOpponentDisplayCount}
+                sort={favoriteOpponentSort}
+                sortDirection={favoriteOpponentSortDirection}
+                rows={favoriteOpponentRows}
+                visibleRows={visibleFavoriteOpponentRows}
+                expandedOpponentKeys={expandedFavoriteOpponentKeys}
+                loading={loadingFavoriteOpponents}
+                error={favoriteOpponentsError}
+                scopeLabel={favoriteOpponentScopeLabel}
+                currentPage={currentFavoriteOpponentPage}
+                totalPages={favoriteOpponentTotalPages}
+                onModeChange={(nextMode) => {
+                  setFavoriteOpponentMode(nextMode);
+                  setFavoriteOpponentPage(1);
+                }}
+                onMatchLimitChange={(nextLimit) => {
+                  setFavoriteOpponentMatchLimit(nextLimit);
+                  setFavoriteOpponentPage(1);
+                }}
+                onDisplayCountChange={(nextCount) => {
+                  setFavoriteOpponentDisplayCount(nextCount);
+                  setFavoriteOpponentPage(1);
+                }}
+                onSortChange={applyFavoriteOpponentSort}
+                onPageChange={setFavoriteOpponentPage}
+                onToggleOpponent={toggleFavoriteOpponentKey}
+              />
 
               <section
                 id="profile-comments-panel"
