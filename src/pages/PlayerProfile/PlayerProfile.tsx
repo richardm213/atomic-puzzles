@@ -36,7 +36,6 @@ import {
   useMonthRanks,
   useRatingsSnapshotByMode,
 } from "../../hooks/usePlayerProfileData";
-import { fetchCommunityDiscussion } from "../../lib/community/puzzleCommunity";
 import { loadRawMatchesByMode, normalizeMatches } from "../../lib/matches/matchData";
 import {
   type AliasAccount,
@@ -991,7 +990,6 @@ export const PlayerProfilePage = ({
   const [timeControlInitialFilter, setTimeControlInitialFilter] = useState("all");
   const [timeControlIncrementFilter, setTimeControlIncrementFilter] = useState("all");
   const [isHistoryAvailable, setIsHistoryAvailable] = useState(false);
-  const [hasProfileComments, setHasProfileComments] = useState(false);
   const [loadingMatches, setLoadingMatches] = useState(false);
   const [favoriteOpponentRows, setFavoriteOpponentRows] = useState<FavoriteOpponentRow[]>([]);
   const [favoriteOpponentMode, setFavoriteOpponentMode] = useState<RankHistoryMode>(
@@ -1069,7 +1067,6 @@ export const PlayerProfilePage = ({
     setProfileHistoryTab(getProfileHistoryTabFromLocation());
     setPage(1);
     setError("");
-    setHasProfileComments(false);
     setFavoriteOpponentsError("");
     setLoadingMatches(false);
     setLoadingFavoriteOpponents(false);
@@ -1160,33 +1157,6 @@ export const PlayerProfilePage = ({
     };
 
     void loadHistoryAvailability();
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [aliasesLoaded, canonicalUsername]);
-
-  useEffect(() => {
-    let isCurrent = true;
-
-    const loadProfileCommentAvailability = async () => {
-      if (!aliasesLoaded || !canonicalUsername) {
-        setHasProfileComments(false);
-        return;
-      }
-
-      try {
-        const discussion = await fetchCommunityDiscussion({
-          type: "profile",
-          id: canonicalUsername,
-        });
-        if (isCurrent) setHasProfileComments(discussion.comments.length > 0);
-      } catch {
-        if (isCurrent) setHasProfileComments(false);
-      }
-    };
-
-    void loadProfileCommentAvailability();
 
     return () => {
       isCurrent = false;
@@ -1760,16 +1730,14 @@ export const PlayerProfilePage = ({
 
         {!isBanned && !historyOnly ? (
           <div className="profileActionRow">
-            {hasProfileComments ? (
-              <Link
-                className="profilePuzzleDashboardLink"
-                to="/@/$username/history"
-                params={{ username: canonicalUsername }}
-                search={{ tab: "comments" }}
-              >
-                View comments
-              </Link>
-            ) : null}
+            <Link
+              className="profilePuzzleDashboardLink"
+              to="/@/$username/history"
+              params={{ username: canonicalUsername }}
+              search={{ tab: "comments" }}
+            >
+              View comments
+            </Link>
             {isHistoryAvailable ? (
               <Link
                 className="profilePuzzleDashboardLink"
