@@ -1199,7 +1199,7 @@ export const PuzzleSolverPage = () => {
   return (
     <div className="page puzzlePage">
       <Seo
-        title={activePuzzleId ? `Atomic Chess Puzzle ${activePuzzleId}` : "Atomic Chess Puzzles"}
+        title={activePuzzleId ? `Puzzle #${activePuzzleId}` : "Solve a Puzzle"}
         description={
           activePuzzleId
             ? `Solve atomic chess puzzle ${activePuzzleId} and play through the full forcing line.`
@@ -1238,7 +1238,7 @@ export const PuzzleSolverPage = () => {
           </div>
 
           <div className="puzzleHeaderTitle">
-            <h1>Find the best move</h1>
+            <h1>Solve the Atomic Tactic</h1>
           </div>
 
           <div className="puzzleHeaderMetadata">

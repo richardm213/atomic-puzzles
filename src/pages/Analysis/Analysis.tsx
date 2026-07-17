@@ -1013,7 +1013,7 @@ export const AnalysisPage = () => {
   return (
     <section className="analysisPage" style={analysisPageStyle}>
       <Seo
-        title="Analysis"
+        title="Analysis board"
         description="Analyze atomic chess positions and browse opening explorer filters."
         path="/analysis"
       />

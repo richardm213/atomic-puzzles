@@ -301,7 +301,9 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
   const isPageLoading = isDashboardLoading || arePuzzlesLoading;
   const areStatsLoading = isSummaryLoading || isDashboardLoading;
   const firstRowNumber = totalProgressRows === 0 ? 0 : (currentPage - 1) * pageSize + 1;
-  const seoTitle = viewingOwnDashboard ? "Puzzle Dashboard" : `${targetUsername} Puzzle Dashboard`;
+  const seoTitle = viewingOwnDashboard
+    ? "Puzzle Dashboard"
+    : `${targetUsername} : Puzzle Dashboard`;
   const seoDescription = viewingOwnDashboard
     ? "Review your first recorded puzzle attempts, stats, and links back into every puzzle."
     : `Review ${targetUsername}'s recorded puzzle attempts, stats, and links back into every puzzle.`;
@@ -326,7 +328,9 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
   const loadingMessage = viewingOwnDashboard
     ? "Checking your puzzle dashboard access…"
     : "Checking puzzle dashboard access…";
-  const heroTitle = viewingOwnDashboard ? "Puzzle dashboard" : `${targetUsername}'s puzzle dashboard`;
+  const heroTitle = viewingOwnDashboard
+    ? "My Puzzle Dashboard"
+    : `${targetUsername}'s Puzzle Dashboard`;
 
   return (
     <div className="puzzleDashboardPage">

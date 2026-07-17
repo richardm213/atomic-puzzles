@@ -129,12 +129,12 @@ const PuzzleLeaderboard = () => {
   return (
     <div className="rankingsPage">
       <Seo
-        title="Atomic Puzzle Leaderboard"
+        title="Puzzle Points Leaderboard"
         description="Rank Atomic Puzzles users with recorded puzzle attempts by puzzle points, correct puzzle solves, and total attempts."
         path="/solve/leaderboard"
       />
       <div className="panel rankingsPanel puzzleLeaderboardPanel">
-        <h1>Puzzle Leaderboard</h1>
+        <h1>Puzzle Points Leaderboard</h1>
 
         <div className="puzzleLeaderboardScoring" aria-label="Puzzle leaderboard scoring">
           <span className="puzzleLeaderboardScoringLabel">Scoring</span>

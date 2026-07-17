@@ -371,12 +371,12 @@ export const RecentMatchesPage = () => {
   return (
     <div className="rankingsPage">
       <Seo
-        title="Recent Atomic Chess Matches"
+        title="Recent Match Archive"
         description="Filter recent atomic chess matches by player, rating, source, date, time control, and match length across blitz, bullet, and hyperbullet."
         path="/recent"
       />
       <div className="panel rankingsPanel recentMatchesPanel">
-        <h1>Recent Matches</h1>
+        <h1>Recent Match Archive</h1>
         <form
           className="matchFilterPanel"
           onSubmit={(event) => {

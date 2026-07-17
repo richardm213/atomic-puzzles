@@ -59,7 +59,7 @@ const eligibilityNotes = Object.entries(rankingEligibilityByMode).map(([mode, re
 export const RankingsMethodologyPage = () => (
   <div className="rankingsPage">
     <Seo
-      title="How Atomic Ratings Work"
+      title="Ranking Methodology"
       description="Learn how the atomic rankings are built, which games count, how aliases are merged, and how the rating pools are separated."
       path="/rankings/how-ratings-work"
     />
@@ -68,7 +68,7 @@ export const RankingsMethodologyPage = () => (
         <Link className="methodologyBackLink" to="/rankings">
           Back to rankings
         </Link>
-        <h1>How Atomic Ratings Work</h1>
+        <h1>Ranking Methodology</h1>
         <p>
           These rankings are designed to measure strength inside a cleaner competitive pool, not to
           mirror every atomic result on Lichess. The aim is to build a more reliable field and

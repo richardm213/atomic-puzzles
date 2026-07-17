@@ -1172,11 +1172,12 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
   }
 
   const heading = tournamentHeading(bracket);
+  const seoTitle = bracket.id.startsWith("ahc") ? `${heading} Bracket` : heading;
 
   return (
     <div className="tournamentPage">
       <Seo
-        title={`${bracket.title} Bracket`}
+        title={seoTitle}
         description={`View the ${bracket.title} tournament bracket and match archive.`}
         path={`/tournaments/${bracket.id}`}
       />

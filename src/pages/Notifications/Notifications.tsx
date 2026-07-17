@@ -102,7 +102,7 @@ export const NotificationsPage = () => {
         <header className="notificationsHeader">
           <div>
             <span>Inbox</span>
-            <h1>Notifications</h1>
+            <h1>Community Notifications</h1>
           </div>
           {unreadNotifications.length > 0 ? (
             <button type="button" disabled={marking} onClick={() => void markRead([])}>

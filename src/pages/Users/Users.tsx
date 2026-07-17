@@ -265,12 +265,12 @@ const UsersTablePage = () => {
   return (
     <div className="rankingsPage">
       <Seo
-        title="Atomic Player List"
+        title="Players"
         description="Browse the full atomic player list with blitz, bullet, hyperbullet, openings, and alias counts."
         path="/users"
       />
       <div className="panel rankingsPanel usersPanel">
-        <h1>Full Player List</h1>
+        <h1>Player Directory</h1>
 
         {error ? <div className="errorText">{error}</div> : null}
 

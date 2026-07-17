@@ -448,8 +448,8 @@ export const H2HPage = () => {
     loadedPlayer1 && loadedPlayer2 ? `/h2h/${matchupToSlug(loadedPlayer1, loadedPlayer2)}` : "/h2h";
   const seoTitle =
     loadedPlayer1 && loadedPlayer2
-      ? `${loadedPlayer1} vs ${loadedPlayer2} Atomic Chess Head-to-Head`
-      : "Atomic Chess Head-to-Head";
+      ? `${loadedPlayer1} vs ${loadedPlayer2} Head-to-Head`
+      : "Player Head-to-Head";
   const seoDescription =
     loadedPlayer1 && loadedPlayer2
       ? `Compare ${loadedPlayer1} and ${loadedPlayer2} across atomic chess matches, scores, and blitz, bullet, and hyperbullet splits.`
@@ -462,7 +462,7 @@ export const H2HPage = () => {
       <div className="panel rankingsPanel h2hPanel">
         {isSearchPage ? (
           <>
-            <h1>Compare two players</h1>
+            <h1>Compare Player Records</h1>
             <p>
               Search two atomic players to open their head-to-head record, scores, and match
               history.
@@ -515,7 +515,11 @@ export const H2HPage = () => {
           <>
             <div className="h2hTitleRow">
               <div>
-                <h1>H2H</h1>
+                <h1>
+                  {loadedPlayer1 && loadedPlayer2
+                    ? `${loadedPlayer1} vs ${loadedPlayer2}`
+                    : "Head-to-Head Record"}
+                </h1>
               </div>
               <button
                 className="analyzeButton h2hChangePlayersButton"

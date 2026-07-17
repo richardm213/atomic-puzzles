@@ -177,7 +177,7 @@ export const PuzzleSetsPage = () => {
   return (
     <div className="puzzleSetsPage">
       <Seo
-        title="Puzzle Sets"
+        title="Puzzle Event Sets"
         description="Browse atomic puzzle events and open every puzzle from a selected set."
         path="/solve/sets"
       />
@@ -185,7 +185,7 @@ export const PuzzleSetsPage = () => {
         <header className="puzzleSetsHero">
           <div className="puzzleSetsHeroCopy">
             <p className="puzzleSetsEyebrow">Atomic tactics</p>
-            <h1>Puzzle sets</h1>
+            <h1>Puzzle Event Sets</h1>
           </div>
           <div className="puzzleSetsHeroActions">
             <div className="puzzleSetsSummaryCard">

@@ -1158,7 +1158,7 @@ export const PracticePage = () => {
   return (
     <section className="analysisPage practicePage" style={pageStyle}>
       <Seo
-        title="Practice"
+        title="Opening Database Practice"
         description="Practice atomic openings against the general database or a selected player's games."
         path="/practice"
       />
@@ -1169,7 +1169,7 @@ export const PracticePage = () => {
       >
         <div className="practiceHeader">
           <div>
-            <h1>Play the database</h1>
+            <h1>Opening Database Practice</h1>
           </div>
           <div className="practiceHeaderActions">
             <button

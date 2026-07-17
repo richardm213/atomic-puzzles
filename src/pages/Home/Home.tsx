@@ -9,7 +9,7 @@ export const HomePage = () => {
   return (
     <div className="homePage">
       <Seo
-        title="Atomic Chess Puzzles, Rankings, and Match Tracker"
+        title="Puzzles, Rankings & Matches"
         description="Train with atomic chess puzzles, browse monthly rankings, track recent matches, and look up player profiles in one place."
         path="/"
         structuredData={{
@@ -23,7 +23,7 @@ export const HomePage = () => {
       />
       <section className="homeHero" aria-labelledby="home-title">
         <div className="homeHeroLead">
-          <h1 id="home-title">The best place to train and follow atomic chess</h1>
+          <h1 id="home-title">Atomic chess puzzles, rankings, and matches</h1>
 
           <div className="homeHeroActions">
             <Link className="homePrimaryCta" to="/solve">

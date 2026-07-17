@@ -385,10 +385,10 @@ export const PuzzleSubmissionPage = () => {
 
   return (
     <section className="puzzleQueuePage">
-      <Seo title="Submit puzzles" description="Submit an atomic chess puzzle for review." />
+      <Seo title="Submit a Puzzle" description="Submit an atomic chess puzzle for review." />
       <header className="puzzleQueueHeader">
         <p className="puzzleQueueEyebrow">Community puzzles</p>
-        <h1>Submit puzzles</h1>
+        <h1>Submit a Puzzle</h1>
       </header>
 
       {!isAuthenticated ? (

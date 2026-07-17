@@ -108,12 +108,12 @@ export const BannedUsersPage = () => {
   return (
     <div className="rankingsPage">
       <Seo
-        title="Banned User List"
+        title="Banned Accounts"
         description="Browse canonical users with banned account rows."
         path="/users/banned"
       />
       <div className="panel rankingsPanel usersPanel bannedUsersPanel">
-        <h1>Banned User List</h1>
+        <h1>Banned Accounts</h1>
 
         {error ? <div className="errorText">{error}</div> : null}
 

@@ -133,8 +133,8 @@ export const MatchPage = () => {
   }, [decodedMatchId, mode]);
 
   const title = useMemo(() => {
-    if (!match) return "Match | Atomic Puzzles";
-    return `${match.playerA} vs ${match.playerB} | Atomic Puzzles`;
+    if (!match) return "Match";
+    return `${match.playerA} vs ${match.playerB}`;
   }, [match]);
 
   const description = useMemo(() => {

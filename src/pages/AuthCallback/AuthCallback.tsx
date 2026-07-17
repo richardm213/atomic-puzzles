@@ -84,7 +84,7 @@ export const AuthCallbackPage = () => {
   return (
     <div className="rankingsPage">
       <Seo
-        title="Lichess Login"
+        title="Sign in"
         description="Finish Lichess login for Atomic Puzzles."
         path="/auth/lichess/callback"
         robots="noindex,nofollow"

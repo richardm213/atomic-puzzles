@@ -75,7 +75,7 @@ export const Seo = ({
   structuredData,
 }: SeoProps) => {
   useEffect(() => {
-    const pageTitle = title ? `${title} | ${SITE_NAME}` : SITE_NAME;
+    const pageTitle = title || SITE_NAME;
     const canonicalUrl = absoluteUrl(path);
     const ogImageUrl = absoluteUrl("/favicon.ico");
 

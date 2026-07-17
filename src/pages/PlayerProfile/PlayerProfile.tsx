@@ -1619,8 +1619,8 @@ export const PlayerProfilePage = ({
       <Seo
         title={
           historyOnly
-            ? `${canonicalUsername} Atomic Chess History`
-            : `${canonicalUsername} Atomic Chess Profile`
+            ? `${canonicalUsername} games`
+            : `${canonicalUsername} : Activity`
         }
         description={
           historyOnly
@@ -1646,7 +1646,7 @@ export const PlayerProfilePage = ({
                   params={{ username: canonicalUsername }}
                 >
                   {profileDisplayUsername}
-                </Link>
+                </Link> Match History
               </h1>
             </div>
           </div>

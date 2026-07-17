@@ -349,12 +349,12 @@ const LeaderboardView = () => {
   return (
     <div className="rankingsPage">
       <Seo
-        title="Atomic Chess Rankings"
+        title="Atomic rankings"
         description="Browse monthly atomic chess rankings for blitz, bullet, and hyperbullet, with merged aliases and rating eligibility rules."
         path="/rankings"
       />
       <div className="panel rankingsPanel">
-        <h1>Atomic Monthly Leaderboards</h1>
+        <h1>Monthly Player Rankings</h1>
         <div className="controls rankingsControls">
           <label htmlFor="year-select">
             Year

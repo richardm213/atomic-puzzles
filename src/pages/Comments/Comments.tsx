@@ -80,7 +80,7 @@ export const CommentsPage = () => {
         <header className="commentsHeader">
           <div>
             <span>Community</span>
-            <h1>Comments</h1>
+            <h1>Community Comments</h1>
           </div>
           <div className="commentsControls">
             <div className="commentsSort" role="group" aria-label="Filter comments by type">
