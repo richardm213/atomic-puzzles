@@ -6,7 +6,6 @@ import {
   faBookOpen,
   faCheck,
   faDice,
-  faExternalLinkAlt,
   faGear,
   faRobot,
   faShuffle,
@@ -16,7 +15,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { Chessboard } from "../../components/Chessboard/Chessboard";
+import { BoardWorkspace } from "../../components/BoardWorkspace/BoardWorkspace";
 import {
   OpeningDatabaseDisplay,
   type OpeningDatabaseGame,
@@ -26,9 +25,11 @@ import { PlaybackButtons } from "../../components/PlaybackButtons/PlaybackButton
 import { PlayedMoves } from "../../components/PlayedMoves/PlayedMoves";
 import { Seo } from "../../components/Seo/Seo";
 import { UsernamePickerModal } from "../../components/UsernamePickerModal/UsernamePickerModal";
+import { useBoardDocument } from "../../hooks/useBoardDocument";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
+import { useUsernamePicker } from "../../hooks/useUsernamePicker";
 import { findFairyStockfishMove } from "../../lib/practice/fairyStockfish";
-import { createAtomicPosition, movePrefix } from "../../lib/puzzles/solutionPgn";
+import { movePrefix } from "../../lib/puzzles/solutionPgn";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { copyTextToClipboard } from "../../utils/clipboard";
@@ -40,12 +41,6 @@ import {
   fetchExplorerApiResponse,
   mergeExplorerApiResponses,
 } from "../../utils/openingExplorer";
-import {
-  addRecentUsername,
-  loadRecentUsernames,
-  removeRecentUsername as removeRecentUsernameFromList,
-  storeRecentUsernames,
-} from "../../utils/recentUsernames";
 
 const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const EXPLORER_REQUEST_TIMEOUT_MS = 15_000;
@@ -297,15 +292,8 @@ export const PracticePage = () => {
   const lastAutoFenRef = useRef("");
   const navigationRef = useRef<SolutionNavigation | null>(null);
   const triedMoveUcisByFenRef = useRef<Map<string, Set<string>>>(new Map());
-  const fenDraftDirtyRef = useRef(false);
-  const pgnDraftDirtyRef = useRef(false);
-  const pgnFocusedRef = useRef(false);
   const [boardState, setBoardState] = useState<ChessboardState | null>(null);
   const [practiceRootFen, setPracticeRootFen] = useState(STARTING_FEN);
-  const [fenDraft, setFenDraft] = useState(STARTING_FEN);
-  const [fenError, setFenError] = useState("");
-  const [pgnDraft, setPgnDraft] = useState(() => buildPracticePgn(STARTING_FEN));
-  const [pgnError, setPgnError] = useState("");
   const [navigation, setNavigation] = useState<SolutionNavigation | null>(null);
   const [pendingAutoMove, setPendingAutoMove] = useState<PendingAutoMove | null>(null);
   const [side, setSide] = useState<PracticeSide>(initialSettings.side);
@@ -316,9 +304,15 @@ export const PracticePage = () => {
   const [opponentUsernames, setOpponentUsernames] = useState<string[]>(
     initialSettings.opponentUsernames,
   );
-  const [usernamePickerOpen, setUsernamePickerOpen] = useState(false);
+  const {
+    isOpen: usernamePickerOpen,
+    recentUsernames,
+    open: openPicker,
+    close: closeUsernamePicker,
+    remember: rememberUsername,
+    removeRecent: removeRecentUsername,
+  } = useUsernamePicker("player");
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [recentUsernames, setRecentUsernames] = useState<string[]>(loadRecentUsernames);
   const [allowMultiplePlayers, setAllowMultiplePlayers] = useState(
     initialSettings.allowMultiplePlayers,
   );
@@ -395,19 +389,6 @@ export const PracticePage = () => {
   const maxPracticePlayers = allowMultiplePlayers ? MAX_PRACTICE_PLAYERS : 1;
   const canAddPracticePlayer = opponentUsernames.length < maxPracticePlayers;
   const canChoosePracticePlayer = allowMultiplePlayers ? canAddPracticePlayer : true;
-
-  useEffect(() => {
-    if (!pgnFocusedRef.current) setPgnDraft(currentPracticePgn);
-  }, [currentPracticePgn]);
-
-  useEffect(() => {
-    if (boardState?.status === "Invalid PGN" && boardState.error) {
-      setPgnError(boardState.error);
-      return;
-    }
-
-    if (boardState?.status !== "Invalid PGN") setPgnError("");
-  }, [boardState?.error, boardState?.status]);
 
   const handleCopyPgn = useCallback(async (): Promise<void> => {
     const copied = await copyTextToClipboard(currentPracticePgn);
@@ -676,9 +657,6 @@ export const PracticePage = () => {
 
   useEffect(() => {
     setHoveredMoveUci(null);
-    setFenDraft(currentFen);
-    setFenError("");
-    fenDraftDirtyRef.current = false;
   }, [currentFen]);
 
   useEffect(() => {
@@ -847,19 +825,10 @@ export const PracticePage = () => {
     setSide((currentSide) => oppositeSide(currentSide));
   }, [resetOpponentMoveChoices, resetPracticeClock]);
 
-  const saveRecentUsernames = useCallback((nextUsernames: string[]): void => {
-    setRecentUsernames(nextUsernames);
-    storeRecentUsernames(nextUsernames);
-  }, []);
-
-  const closeUsernamePicker = useCallback((): void => {
-    setUsernamePickerOpen(false);
-  }, []);
-
   const openUsernamePicker = useCallback((): void => {
     setOpponentSource("player");
-    setUsernamePickerOpen(true);
-  }, []);
+    openPicker();
+  }, [openPicker]);
 
   const resetBoardForOpponent = useCallback((): void => {
     resetOpponentMoveChoices();
@@ -878,45 +847,27 @@ export const PracticePage = () => {
     queueNavigation({ type: "reset", fen: practiceRootFen });
   }, [practiceRootFen, queueNavigation, resetOpponentMoveChoices, resetPracticeClock]);
 
-  const loadPracticeFen = useCallback(
-    (draft = fenDraft): void => {
-      const nextFen = draft.trim();
-      try {
-        createAtomicPosition(nextFen);
-      } catch (fenFailure) {
-        setFenError(fenFailure instanceof Error ? fenFailure.message : "Invalid FEN");
-        return;
-      }
-
+  const boardDocument = useBoardDocument({
+    fen: currentFen,
+    pgn: currentPracticePgn,
+    boardState,
+    pgnAfterFenCommit: (nextFen) => buildPracticePgn(nextFen),
+    onCommitFen: (nextFen) => {
       resetOpponentMoveChoices();
       setHoveredMoveUci(null);
       resetPracticeClock();
       setSessionStarted(false);
       setPracticeRootFen(nextFen);
-      setFenDraft(nextFen);
-      setFenError("");
-      setPgnError("");
-      fenDraftDirtyRef.current = false;
-      pgnDraftDirtyRef.current = false;
       queueNavigation({ type: "reset", fen: nextFen });
     },
-    [fenDraft, queueNavigation, resetOpponentMoveChoices, resetPracticeClock],
-  );
-
-  const loadPracticePgn = useCallback(
-    (draft = pgnDraft): void => {
+    onCommitPgn: (draft) => {
       resetOpponentMoveChoices();
       setHoveredMoveUci(null);
       resetPracticeClock();
       setSessionStarted(false);
-      setPgnDraft(draft);
-      setPgnError("");
-      pgnDraftDirtyRef.current = false;
-      pgnFocusedRef.current = false;
       queueNavigation({ type: "loadPgn", pgn: draft, fen: practiceRootFen });
     },
-    [pgnDraft, practiceRootFen, queueNavigation, resetOpponentMoveChoices, resetPracticeClock],
-  );
+  });
 
   const commitUsername = useCallback(
     (nextUsername: string): void => {
@@ -930,19 +881,13 @@ export const PracticePage = () => {
       );
       setOpponentSource("player");
       resetBoardForOpponent();
-      saveRecentUsernames(addRecentUsername(recentUsernames, trimmedUsername));
+      rememberUsername(trimmedUsername);
 
       if (!allowMultiplePlayers) {
         closeUsernamePicker();
       }
     },
-    [
-      allowMultiplePlayers,
-      closeUsernamePicker,
-      recentUsernames,
-      resetBoardForOpponent,
-      saveRecentUsernames,
-    ],
+    [allowMultiplePlayers, closeUsernamePicker, rememberUsername, resetBoardForOpponent],
   );
 
   const selectRandomPlayer = useCallback(async (): Promise<void> => {
@@ -991,13 +936,6 @@ export const PracticePage = () => {
       setRandomPlayerLoading(false);
     }
   }, [canChoosePracticePlayer, commitUsername, opponentUsernames, randomPlayerLoading]);
-
-  const removeRecentUsername = useCallback(
-    (usernameToRemove: string): void => {
-      saveRecentUsernames(removeRecentUsernameFromList(recentUsernames, usernameToRemove));
-    },
-    [recentUsernames, saveRecentUsernames],
-  );
 
   const clearSelectedPlayers = (): void => {
     setOpponentUsernames([]);
@@ -1567,106 +1505,39 @@ export const PracticePage = () => {
         />
       ) : null}
 
-      <div className="analysisBoardColumn practiceBoardColumn">
-        <div ref={boardPanelRef} className="analysisBoardPanel" aria-label="Atomic practice board">
-          <Chessboard
-            puzzleId="practice"
-            fen={practiceRootFen}
-            orientation={side}
-            coordinates
-            solution=""
-            showSolution={false}
-            analysisMode
-            captureNavigationShortcuts
-            solutionNavigation={navigation}
-            previewMove={hoveredMoveUci}
-            onNavigateHandled={() => {
-              const handledNavigation = navigation;
-              clearHandledNavigation(handledNavigation);
-            }}
-            onStateChange={handleBoardStateChange}
-          />
-        </div>
-        <div className="analysisBoardTextPanel">
-          <div className="practiceBoardActions">
-            <a
-              className="analysisLichessLink"
-              href={currentLichessAnalysisUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <FontAwesomeIcon icon={faExternalLinkAlt} />
-              <span>View on Lichess</span>
-            </a>
-            <button type="button" className="practiceCopyPgnButton" onClick={handleCopyPgn}>
-              {copyPgnLabel === "Copied" ? (
-                <FontAwesomeIcon
-                  className="practiceCopyPgnCheck"
-                  icon={faCheck}
-                  aria-hidden="true"
-                />
-              ) : null}
-              {copyPgnLabel}
-            </button>
-          </div>
-          <div className="analysisFenBox analysisTextBox">
-            <span>FEN</span>
-            <textarea
-              value={fenDraft}
-              rows={2}
-              spellCheck={false}
-              aria-label="FEN"
-              aria-invalid={Boolean(fenError)}
-              onFocus={() => {
-                fenDraftDirtyRef.current = false;
-              }}
-              onBlur={(event) => {
-                if (fenDraftDirtyRef.current) loadPracticeFen(event.currentTarget.value);
-              }}
-              onKeyDown={(event) => {
-                if (event.key !== "Enter" || event.shiftKey) return;
-                event.preventDefault();
-                loadPracticeFen(event.currentTarget.value);
-              }}
-              onChange={(event) => {
-                fenDraftDirtyRef.current = true;
-                setFenDraft(event.target.value);
-                setFenError("");
-              }}
-            />
-            {fenError ? <small className="analysisTextBoxError">{fenError}</small> : null}
-          </div>
-          <div className="analysisPgnBox analysisTextBox" aria-label="PGN">
-            <span>PGN</span>
-            <textarea
-              value={pgnDraft}
-              rows={3}
-              spellCheck={false}
-              aria-label="PGN"
-              aria-invalid={Boolean(pgnError)}
-              onFocus={() => {
-                pgnDraftDirtyRef.current = false;
-                pgnFocusedRef.current = true;
-              }}
-              onBlur={(event) => {
-                pgnFocusedRef.current = false;
-                if (pgnDraftDirtyRef.current) loadPracticePgn(event.currentTarget.value);
-              }}
-              onKeyDown={(event) => {
-                if (event.key !== "Enter" || event.shiftKey) return;
-                event.preventDefault();
-                loadPracticePgn(event.currentTarget.value);
-              }}
-              onChange={(event) => {
-                pgnDraftDirtyRef.current = true;
-                setPgnDraft(event.target.value);
-                setPgnError("");
-              }}
-            />
-            {pgnError ? <small className="analysisTextBoxError">{pgnError}</small> : null}
-          </div>
-        </div>
-      </div>
+      <BoardWorkspace
+        className="practiceBoardColumn"
+        boardPanelRef={boardPanelRef}
+        boardAriaLabel="Atomic practice board"
+        chessboardProps={{
+          puzzleId: "practice",
+          fen: practiceRootFen,
+          orientation: side,
+          coordinates: true,
+          solution: "",
+          showSolution: false,
+          analysisMode: true,
+          captureNavigationShortcuts: true,
+          solutionNavigation: navigation,
+          previewMove: hoveredMoveUci,
+          onNavigateHandled: () => {
+            const handledNavigation = navigation;
+            clearHandledNavigation(handledNavigation);
+          },
+          onStateChange: handleBoardStateChange,
+        }}
+        lichessHref={currentLichessAnalysisUrl}
+        actionClassName="practiceBoardActions"
+        secondaryAction={
+          <button type="button" className="practiceCopyPgnButton" onClick={handleCopyPgn}>
+            {copyPgnLabel === "Copied" ? (
+              <FontAwesomeIcon className="practiceCopyPgnCheck" icon={faCheck} aria-hidden="true" />
+            ) : null}
+            {copyPgnLabel}
+          </button>
+        }
+        document={boardDocument}
+      />
     </section>
   );
 };

@@ -1,12 +1,6 @@
 import "./Analysis.css";
 
-import {
-  faArrowsRotate,
-  faBookOpen,
-  faExternalLinkAlt,
-  faGear,
-  faXmark,
-} from "@fortawesome/free-solid-svg-icons";
+import { faArrowsRotate, faBookOpen, faGear, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type {
   CSSProperties,
@@ -15,7 +9,7 @@ import type {
 } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { Chessboard } from "../../components/Chessboard/Chessboard";
+import { BoardWorkspace } from "../../components/BoardWorkspace/BoardWorkspace";
 import {
   OpeningDatabaseDisplay,
   type OpeningDatabaseGame,
@@ -25,8 +19,9 @@ import { PlaybackButtons } from "../../components/PlaybackButtons/PlaybackButton
 import { pairPlayedMoves, PlayedMoves } from "../../components/PlayedMoves/PlayedMoves";
 import { Seo } from "../../components/Seo/Seo";
 import { UsernamePickerModal } from "../../components/UsernamePickerModal/UsernamePickerModal";
+import { useBoardDocument } from "../../hooks/useBoardDocument";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
-import { createAtomicPosition } from "../../lib/puzzles/solutionPgn";
+import { useUsernamePicker } from "../../hooks/useUsernamePicker";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { formatGameCount } from "../../utils/formatters";
@@ -39,12 +34,6 @@ import {
   type ExplorerApiResponse,
   fetchExplorerApiResponse,
 } from "../../utils/openingExplorer";
-import {
-  addRecentUsername,
-  loadRecentUsernames,
-  removeRecentUsername as removeRecentUsernameFromList,
-  storeRecentUsernames,
-} from "../../utils/recentUsernames";
 
 const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const MIN_MOVE_PANEL_HEIGHT = 86;
@@ -404,17 +393,10 @@ export const AnalysisPage = () => {
   const rightPanelRef = useRef<HTMLElement | null>(null);
   const movePanelRef = useRef<HTMLDivElement | null>(null);
   const moveSettingsRef = useRef<HTMLDivElement | null>(null);
-  const fenDraftDirtyRef = useRef(false);
-  const pgnDraftDirtyRef = useRef(false);
   const explorerRequestIdRef = useRef(0);
   const [boardState, setBoardState] = useState<ChessboardState | null>(null);
   const [boardSize, setBoardSize] = useState(loadBoardSize);
   const [rootFen, setRootFen] = useState(STARTING_FEN);
-  const [fenDraft, setFenDraft] = useState(STARTING_FEN);
-  const [pgnDraft, setPgnDraft] = useState("*");
-  const [activeTextEditor, setActiveTextEditor] = useState<"fen" | "pgn" | null>(null);
-  const [fenError, setFenError] = useState("");
-  const [pgnError, setPgnError] = useState("");
   const [orientation, setOrientation] = useState<"white" | "black">("white");
   const [navigation, setNavigation] = useState<SolutionNavigation | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -442,9 +424,15 @@ export const AnalysisPage = () => {
   const [showPositionLeaders, setShowPositionLeaders] = useState(
     initialExplorerSettings.showPositionLeaders,
   );
-  const [usernamePickerOpen, setUsernamePickerOpen] = useState(false);
-  const [usernamePickerTarget, setUsernamePickerTarget] = useState<UsernamePickerTarget>("player");
-  const [recentUsernames, setRecentUsernames] = useState<string[]>(loadRecentUsernames);
+  const {
+    isOpen: usernamePickerOpen,
+    target: usernamePickerTarget,
+    recentUsernames,
+    open: openPicker,
+    close: closeUsernamePicker,
+    remember: rememberUsername,
+    removeRecent: removeRecentUsername,
+  } = useUsernamePicker<UsernamePickerTarget>("player");
   const [explorerMoves, setExplorerMoves] = useState<ExplorerMove[]>([]);
   const [recentGames, setRecentGames] = useState<ExplorerGame[]>([]);
   const [positionLeaders, setPositionLeaders] = useState<ExplorerPositionLeaders | null>(null);
@@ -481,29 +469,19 @@ export const AnalysisPage = () => {
         })
         .join(" ")} *`
     : "*";
-
-  useEffect(() => {
-    if (activeTextEditor !== "fen") {
-      setFenDraft(currentFen);
-    }
-  }, [activeTextEditor, currentFen]);
-
-  useEffect(() => {
-    if (activeTextEditor !== "pgn") {
-      setPgnDraft(pgnText);
-    }
-  }, [activeTextEditor, pgnText]);
-
-  useEffect(() => {
-    if (boardState?.status === "Invalid PGN" && boardState.error) {
-      setPgnError(boardState.error);
-      return;
-    }
-
-    if (boardState?.status !== "Invalid PGN") {
-      setPgnError("");
-    }
-  }, [boardState?.error, boardState?.status]);
+  const boardDocument = useBoardDocument({
+    fen: currentFen,
+    pgn: pgnText,
+    boardState,
+    pgnAfterFenCommit: () => "*",
+    onCommitFen: (nextFen) => {
+      setRootFen(nextFen);
+      setNavigation({ type: "reset", fen: nextFen });
+    },
+    onCommitPgn: (nextPgn) => {
+      setNavigation({ type: "loadPgn", pgn: nextPgn, fen: rootFen });
+    },
+  });
 
   const requestNavigation = (command: PlaybackCommand): void => {
     setNavigation({ type: "command", command });
@@ -623,59 +601,6 @@ export const AnalysisPage = () => {
     setPlayerStartDate(getPlayerStartDate);
   }, []);
 
-  const commitFenDraft = (draft = fenDraft, force = false): void => {
-    if (!force && !fenDraftDirtyRef.current) {
-      setFenError("");
-      setActiveTextEditor(null);
-      return;
-    }
-
-    const nextFen = draft.trim();
-    try {
-      createAtomicPosition(nextFen);
-    } catch (error) {
-      setFenError(error instanceof Error ? error.message : "Invalid FEN");
-      return;
-    }
-
-    setRootFen(nextFen);
-    setFenDraft(nextFen);
-    setPgnDraft("*");
-    fenDraftDirtyRef.current = false;
-    pgnDraftDirtyRef.current = false;
-    setActiveTextEditor(null);
-    setFenError("");
-    setPgnError("");
-    setNavigation({ type: "reset", fen: nextFen });
-  };
-
-  const commitPgnDraft = (draft = pgnDraft, force = false): void => {
-    if (!force && !pgnDraftDirtyRef.current) {
-      setPgnError("");
-      setActiveTextEditor(null);
-      return;
-    }
-
-    setPgnError("");
-    setNavigation({ type: "loadPgn", pgn: draft, fen: rootFen });
-    pgnDraftDirtyRef.current = false;
-    setActiveTextEditor(null);
-  };
-
-  const handleFenKeyDown = (event: ReactKeyboardEvent<HTMLTextAreaElement>): void => {
-    if (event.key !== "Enter" || event.shiftKey) return;
-
-    event.preventDefault();
-    commitFenDraft(event.currentTarget.value, true);
-  };
-
-  const handlePgnKeyDown = (event: ReactKeyboardEvent<HTMLTextAreaElement>): void => {
-    if (event.key !== "Enter" || event.shiftKey) return;
-
-    event.preventDefault();
-    commitPgnDraft(event.currentTarget.value, true);
-  };
-
   const clampMovePanelHeight = useCallback((nextHeight: number): number | null => {
     const panel = rightPanelRef.current;
     if (!panel) return null;
@@ -746,18 +671,8 @@ export const AnalysisPage = () => {
     }
   };
 
-  const saveRecentUsernames = (nextUsernames: string[]): void => {
-    setRecentUsernames(nextUsernames);
-    storeRecentUsernames(nextUsernames);
-  };
-
-  const closeUsernamePicker = (): void => {
-    setUsernamePickerOpen(false);
-  };
-
   const openUsernamePicker = (target: UsernamePickerTarget): void => {
-    setUsernamePickerTarget(target);
-    setUsernamePickerOpen(true);
+    openPicker(target);
   };
 
   const commitUsername = (nextUsername: string): void => {
@@ -773,12 +688,8 @@ export const AnalysisPage = () => {
     setExplorerScope("player");
     ensurePlayerStartDate();
     setFiltersOpen(false);
-    saveRecentUsernames(addRecentUsername(recentUsernames, trimmedUsername));
+    rememberUsername(trimmedUsername);
     closeUsernamePicker();
-  };
-
-  const removeRecentUsername = (usernameToRemove: string): void => {
-    saveRecentUsernames(removeRecentUsernameFromList(recentUsernames, usernameToRemove));
   };
 
   const switchPlayerColor = (): void => {
@@ -1008,7 +919,7 @@ export const AnalysisPage = () => {
 
     window.addEventListener("keydown", handlePickerShortcut);
     return () => window.removeEventListener("keydown", handlePickerShortcut);
-  }, [usernamePickerOpen]);
+  }, [closeUsernamePicker, usernamePickerOpen]);
 
   return (
     <section className="analysisPage" style={analysisPageStyle}>
@@ -1361,27 +1272,25 @@ export const AnalysisPage = () => {
         />
       ) : null}
 
-      <div className="analysisBoardColumn">
-        <div
-          ref={boardPanelRef}
-          className="analysisBoardPanel"
-          aria-label="Atomic chess board"
-          tabIndex={0}
-        >
-          <Chessboard
-            puzzleId="analysis"
-            fen={rootFen}
-            orientation={orientation}
-            coordinates
-            solution=""
-            showSolution={false}
-            analysisMode
-            captureNavigationShortcuts
-            solutionNavigation={navigation}
-            previewMove={hoveredExplorerMoveUci}
-            onNavigateHandled={() => setNavigation(null)}
-            onStateChange={setBoardState}
-          />
+      <BoardWorkspace
+        boardPanelRef={boardPanelRef}
+        boardAriaLabel="Atomic chess board"
+        boardTabIndex={0}
+        chessboardProps={{
+          puzzleId: "analysis",
+          fen: rootFen,
+          orientation,
+          coordinates: true,
+          solution: "",
+          showSolution: false,
+          analysisMode: true,
+          captureNavigationShortcuts: true,
+          solutionNavigation: navigation,
+          previewMove: hoveredExplorerMoveUci,
+          onNavigateHandled: () => setNavigation(null),
+          onStateChange: setBoardState,
+        }}
+        boardOverlay={
           <button
             type="button"
             className="analysisBoardResizeHandle"
@@ -1389,61 +1298,10 @@ export const AnalysisPage = () => {
             title="Resize board"
             onPointerDown={handleBoardResizePointerDown}
           />
-        </div>
-        <div className="analysisBoardTextPanel">
-          <a
-            className="analysisLichessLink"
-            href={currentLichessAnalysisUrl}
-            target="_blank"
-            rel="noreferrer"
-          >
-            <FontAwesomeIcon icon={faExternalLinkAlt} />
-            <span>View on Lichess</span>
-          </a>
-          <div className="analysisFenBox analysisTextBox">
-            <span>FEN</span>
-            <textarea
-              value={fenDraft}
-              rows={2}
-              spellCheck={false}
-              aria-label="FEN"
-              aria-invalid={Boolean(fenError)}
-              onFocus={() => {
-                fenDraftDirtyRef.current = false;
-                setActiveTextEditor("fen");
-              }}
-              onBlur={(event) => commitFenDraft(event.currentTarget.value)}
-              onKeyDown={handleFenKeyDown}
-              onChange={(event) => {
-                fenDraftDirtyRef.current = true;
-                setFenDraft(event.target.value);
-              }}
-            />
-            {fenError ? <small className="analysisTextBoxError">{fenError}</small> : null}
-          </div>
-          <div className="analysisPgnBox analysisTextBox" aria-label="PGN">
-            <span>PGN</span>
-            <textarea
-              value={pgnDraft}
-              rows={3}
-              spellCheck={false}
-              aria-label="PGN"
-              aria-invalid={Boolean(pgnError)}
-              onFocus={() => {
-                pgnDraftDirtyRef.current = false;
-                setActiveTextEditor("pgn");
-              }}
-              onBlur={(event) => commitPgnDraft(event.currentTarget.value)}
-              onKeyDown={handlePgnKeyDown}
-              onChange={(event) => {
-                pgnDraftDirtyRef.current = true;
-                setPgnDraft(event.target.value);
-              }}
-            />
-            {pgnError ? <small className="analysisTextBoxError">{pgnError}</small> : null}
-          </div>
-        </div>
-      </div>
+        }
+        lichessHref={currentLichessAnalysisUrl}
+        document={boardDocument}
+      />
     </section>
   );
 };
