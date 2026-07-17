@@ -41,6 +41,46 @@ describe("auth-session function", () => {
     expect(response.statusCode).toBe(400);
   });
 
+  it("leaves client-id and redirect binding to Lichess", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/api/token") && init?.method === "POST") {
+        expect(String(init.body)).toContain("client_id=registered-client");
+        expect(String(init.body)).toContain(
+          "redirect_uri=https%3A%2F%2Flogin.example%2Fauth%2Flichess%2Fcallback",
+        );
+        return new Response(JSON.stringify({ access_token: "bound-token" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (url.endsWith("/api/account")) {
+        return new Response(JSON.stringify({ username: "Bound_User" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response(null, { status: 204 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    mocks.createClient.mockReturnValue({
+      from: () => ({ upsert: vi.fn(async () => ({ error: null })) }),
+    });
+
+    const response = await handler({
+      ...loginEvent,
+      body: JSON.stringify({
+        code: "fresh_code",
+        codeVerifier: verifier,
+        clientId: "registered-client",
+        redirectUri: "https://login.example/auth/lichess/callback",
+      }),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body)).toEqual({ user: { username: "bound_user" } });
+  });
+
   it("exchanges the code server-side, verifies Lichess, revokes the token, and issues a signed cookie", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
@@ -89,6 +129,33 @@ describe("auth-session function", () => {
       { username: "actual_owner" },
       { onConflict: "username", ignoreDuplicates: true },
     );
+  });
+
+  it("accepts the bearer-token callback used by the deployed browser bundle", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      expect(String(input)).toBe("https://lichess.org/api/account");
+      return new Response(JSON.stringify({ username: "Cached_Client" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const upsert = vi.fn(async () => ({ error: null }));
+    mocks.createClient.mockReturnValue({ from: () => ({ upsert }) });
+
+    const response = await handler({
+      httpMethod: "POST",
+      headers: {
+        host: "atomic.example",
+        origin: "https://atomic.example",
+        authorization: "Bearer deployed_browser_token",
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body)).toEqual({ user: { username: "cached_client" } });
+    expect(response.headers["Set-Cookie"]).toContain("atomic_session=");
+    expect(fetchMock).toHaveBeenCalledOnce();
   });
 
   it("hydrates browser identity only from the signed cookie", async () => {

@@ -1,8 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 
 import {
-  getRequestHeader,
   LichessVerificationError,
+  parseBearerToken,
   verifyLichessAccount,
 } from "../lib/lichessAccount";
 import {
@@ -51,18 +51,9 @@ const parseOauthExchange = (
     const codeVerifier = String(input.codeVerifier ?? "").trim();
     const clientId = String(input.clientId ?? "").trim();
     const redirectUri = String(input.redirectUri ?? "").trim();
-    const host = (
-      getRequestHeader(event.headers, "x-forwarded-host") || getRequestHeader(event.headers, "host")
-    )
-      .split(",")[0]
-      ?.trim()
-      .toLowerCase();
-    const expectedClientId =
-      process.env.LICHESS_CLIENT_ID?.trim() ||
-      process.env.VITE_LICHESS_CLIENT_ID?.trim() ||
-      host ||
-      "";
     const redirect = new URL(redirectUri);
+    // Lichess binds the code to its client ID, redirect URI, and PKCE verifier.
+    // Repeating host comparisons here breaks valid proxy and custom-domain setups.
     if (
       !OAUTH_VALUE_PATTERN.test(code) ||
       code.length > 512 ||
@@ -70,10 +61,9 @@ const parseOauthExchange = (
       codeVerifier.length < 43 ||
       codeVerifier.length > 128 ||
       !clientId ||
-      clientId !== expectedClientId ||
-      !host ||
-      redirect.host.toLowerCase() !== host ||
-      !redirect.pathname.endsWith("/auth/lichess/callback")
+      clientId.length > 512 ||
+      redirectUri.length > 2_048 ||
+      !["http:", "https:"].includes(redirect.protocol)
     ) {
       return null;
     }
@@ -136,25 +126,35 @@ export const handler = async (event: NetlifyEvent) => {
   }
 
   const oauthExchange = parseOauthExchange(event);
-  if (!oauthExchange) return jsonResponse(400, { error: "Invalid Lichess login exchange." });
+  // Keep accepting the bearer-token request used by the currently deployed
+  // browser bundle during the migration to server-side code exchange. Cached
+  // clients can continue using this path after the new bundle is deployed.
+  const legacyAccessToken = parseBearerToken(event.headers);
+  if (!oauthExchange && !legacyAccessToken) {
+    return jsonResponse(400, { error: "Invalid Lichess login exchange." });
+  }
 
   try {
-    const accessToken = await exchangeLichessCode(oauthExchange);
+    const accessToken = oauthExchange
+      ? await exchangeLichessCode(oauthExchange)
+      : legacyAccessToken;
     let account;
     try {
       // The username is always derived from Lichess. No browser-supplied
       // username is accepted at this trust boundary.
       account = await verifyLichessAccount(accessToken);
     } finally {
-      // The token is needed only to prove identity. Revoke it even when account
-      // verification fails; the browser never receives it.
-      try {
-        await fetch("https://lichess.org/api/token", {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
-      } catch {
-        // Revocation is best effort, and the token is never persisted locally.
+      if (oauthExchange) {
+        // A server-exchanged token is needed only to prove identity. Revoke it
+        // even when account verification fails; the browser never receives it.
+        try {
+          await fetch("https://lichess.org/api/token", {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+        } catch {
+          // Revocation is best effort, and the token is never persisted locally.
+        }
       }
     }
     const username = account?.username?.trim().toLowerCase() ?? "";

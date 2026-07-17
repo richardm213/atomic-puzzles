@@ -227,7 +227,7 @@ export const TopNav = () => {
   const notificationsRef = useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const { accessToken, isAuthenticated, isLoading, user, login, logout } = useAuth();
+  const { isAuthenticated, isLoading, user, login, logout } = useAuth();
   const {
     theme,
     setTheme,
@@ -280,14 +280,14 @@ export const TopNav = () => {
   const currentLocation = `${window.location.pathname}${window.location.search}${window.location.hash}`;
 
   useEffect(() => {
-    if (!accessToken) {
+    if (!isAuthenticated) {
       setUnreadNotificationCount(0);
       return undefined;
     }
 
     let current = true;
     const refreshCount = () => {
-      void fetchUnreadNotificationCount(accessToken)
+      void fetchUnreadNotificationCount()
         .then((count) => {
           if (current) setUnreadNotificationCount(count);
         })
@@ -297,24 +297,22 @@ export const TopNav = () => {
     };
 
     refreshCount();
-    const interval = window.setInterval(refreshCount, 60_000);
     window.addEventListener("focus", refreshCount);
     window.addEventListener("atomic-notifications-updated", refreshCount);
     return () => {
       current = false;
-      window.clearInterval(interval);
       window.removeEventListener("focus", refreshCount);
       window.removeEventListener("atomic-notifications-updated", refreshCount);
     };
-  }, [accessToken, pathname]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
-    if (!notificationsOpen || !accessToken) return undefined;
+    if (!notificationsOpen || !isAuthenticated) return undefined;
 
     let current = true;
     setNotificationsLoading(true);
     setNotificationsError("");
-    void fetchNotifications(accessToken)
+    void fetchNotifications()
       .then((result) => {
         if (!current) return;
         setNotifications(result.notifications);
@@ -333,7 +331,7 @@ export const TopNav = () => {
     return () => {
       current = false;
     };
-  }, [accessToken, notificationsOpen]);
+  }, [isAuthenticated, notificationsOpen]);
 
   useEffect(() => {
     if (!normalizedAuthUsername || !profileMenuOpen) {
@@ -712,11 +710,11 @@ export const TopNav = () => {
   };
 
   const markPopupNotificationsRead = async (ids: number[] = []): Promise<void> => {
-    if (!accessToken || notificationsUpdating) return;
+    if (!isAuthenticated || notificationsUpdating) return;
     setNotificationsUpdating(true);
     setNotificationsError("");
     try {
-      const result = await markNotificationsRead(accessToken, ids);
+      const result = await markNotificationsRead(ids);
       setNotifications(result.notifications);
       setUnreadNotificationCount(result.unreadCount);
       window.dispatchEvent(new Event("atomic-notifications-updated"));
