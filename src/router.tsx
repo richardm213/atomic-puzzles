@@ -15,6 +15,10 @@ import { HomePage } from "./pages/Home/Home";
 
 const AnalysisPage = lazyRouteComponent(() => import("./pages/Analysis/Analysis"), "AnalysisPage");
 const CommentsPage = lazyRouteComponent(() => import("./pages/Comments/Comments"), "CommentsPage");
+const CommunityUsersPage = lazyRouteComponent(
+  () => import("./pages/Community/CommunityUsers"),
+  "CommunityUsersPage",
+);
 const H2HPage = lazyRouteComponent(() => import("./pages/H2H/H2H"), "H2HPage");
 const MatchPage = lazyRouteComponent(() => import("./pages/Match/MatchPage"), "MatchPage");
 const NotificationsPage = lazyRouteComponent(
@@ -29,6 +33,10 @@ const PracticePage = lazyRouteComponent(() => import("./pages/Practice/Practice"
 const PuzzleDashboardPage = lazyRouteComponent(
   () => import("./pages/PuzzleDashboard/PuzzleDashboard"),
   "PuzzleDashboardPage",
+);
+const PuzzleVoteRankingsPage = lazyRouteComponent(
+  () => import("./pages/Community/PuzzleVoteRankings"),
+  "PuzzleVoteRankingsPage",
 );
 const PuzzleLeaderboardPage = lazyRouteComponent(
   () => import("./pages/PuzzleLeaderboard/PuzzleLeaderboard"),
@@ -228,6 +236,26 @@ const commentsRoute = createRoute({
   component: CommentsPage,
 });
 
+const communityRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/community",
+  beforeLoad: () => {
+    throw redirect({ to: "/community/puzzles" });
+  },
+});
+
+const communityPuzzlesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/community/puzzles",
+  component: PuzzleVoteRankingsPage,
+});
+
+const communityUsersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/community/users",
+  component: CommunityUsersPage,
+});
+
 const profilePuzzleDashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/@/$username/puzzles",
@@ -306,6 +334,9 @@ const routeTree = rootRoute.addChildren([
   puzzleReviewRoute,
   notificationsRoute,
   commentsRoute,
+  communityRoute,
+  communityPuzzlesRoute,
+  communityUsersRoute,
   solveSetWithIdRoute,
   solveWithIdRoute,
   profileHistoryRoute,

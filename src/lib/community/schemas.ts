@@ -22,6 +22,8 @@ export const communityRequestSchema = z
       "profileComments",
       "profileKarma",
       "siteComments",
+      "puzzleRankings",
+      "communityUsers",
     ]),
     puzzleId: positiveIntegerSchema.optional(),
     targetType: communityTargetTypeSchema.optional(),
@@ -71,6 +73,11 @@ export const puzzleVoteCountsSchema = z.object({
   upvotes: z.coerce.number(),
   downvotes: z.coerce.number(),
   score: z.coerce.number(),
+});
+
+export const puzzleVoteRankingRowSchema = puzzleVoteCountsSchema.extend({
+  attempts: z.coerce.number(),
+  solve_rate: z.coerce.number().nullable(),
 });
 
 export const communityCommentSchema = z.object({
@@ -123,6 +130,22 @@ export const communityCommentsPageSchema = z.object({
 
 export const profileCommentKarmaSchema = z.object({ karma: z.coerce.number() });
 
+export const puzzleRankingsSchema = z.object({
+  puzzles: z.array(puzzleVoteRankingRowSchema),
+});
+
+export const communityUserStatsSchema = z.object({
+  username: z.string(),
+  puzzles_upvoted: z.coerce.number(),
+  puzzles_downvoted: z.coerce.number(),
+  comment_karma: z.coerce.number(),
+  comments_left: z.coerce.number(),
+});
+
+export const communityUsersSchema = z.object({
+  users: z.array(communityUserStatsSchema),
+});
+
 export type PuzzleVoteCounts = z.infer<typeof puzzleVoteCountsSchema>;
 export type PuzzleComment = z.infer<typeof communityCommentSchema>;
 export type CommunityDiscussion = z.infer<typeof communityDiscussionSchema>;
@@ -130,3 +153,6 @@ export type PuzzleCommunity = z.infer<typeof puzzleCommunitySchema>;
 export type CommunityHistoryComment = z.infer<typeof communityHistoryCommentSchema>;
 export type CommunityCommentsPage = z.infer<typeof communityCommentsPageSchema>;
 export type ProfileCommentKarma = z.infer<typeof profileCommentKarmaSchema>;
+export type PuzzleRankings = z.infer<typeof puzzleRankingsSchema>;
+export type PuzzleVoteRankingRow = z.infer<typeof puzzleVoteRankingRowSchema>;
+export type CommunityUserStats = z.infer<typeof communityUserStatsSchema>;

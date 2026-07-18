@@ -19,6 +19,19 @@ export type ProfileCommentCountRecord = {
   score?: number | string | null;
 };
 
+export type CommunityUsernameRecord = { username?: string | null };
+export type CommunityPuzzleVoteRecord = CommunityUsernameRecord & { vote: number | string | null };
+export type CommunityCommentVoteRecord = {
+  username?: string | null;
+  vote: number | string | null;
+  comment?: CommunityUsernameRecord | CommunityUsernameRecord[] | null;
+};
+export type PuzzleAttemptRecord = {
+  username?: string | null;
+  puzzle_id?: number | string | null;
+  puzzle_correct?: boolean | null;
+};
+
 export class CommunityRepository {
   constructor(private readonly supabase: SupabaseClient) {}
 
@@ -40,8 +53,82 @@ export class CommunityRepository {
   async listCommentVotes(username: string, from: number, pageSize: number) {
     const result = await this.supabase
       .from("community_comment_votes")
-      .select("vote, comment:community_comments!community_comment_votes_comment_fk!inner(username)")
+      .select(
+        "username, vote, comment:community_comments!community_comment_votes_comment_fk!inner(username)",
+      )
       .eq("comment.username", username)
+      .range(from, from + pageSize - 1);
+    if (result.error) throw new Error(`Unable to load comment karma: ${result.error.message}`);
+    return result.data ?? [];
+  }
+
+  async listPuzzleVoteCounts(from: number, pageSize: number) {
+    const result = await this.supabase
+      .from("puzzle_vote_counts")
+      .select("puzzle_id, upvotes, downvotes, score")
+      .or("upvotes.gt.0,downvotes.gt.0")
+      .order("puzzle_id", { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (result.error) throw new Error(`Unable to load puzzle rankings: ${result.error.message}`);
+    return result.data ?? [];
+  }
+
+  async listPuzzleAttempts(from: number, pageSize: number): Promise<PuzzleAttemptRecord[]> {
+    const result = await this.supabase
+      .from("puzzle_progress")
+      .select("username, puzzle_id, puzzle_correct")
+      .order("username", { ascending: true })
+      .order("puzzle_id", { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (result.error) throw new Error(`Unable to load puzzle attempts: ${result.error.message}`);
+    return result.data ?? [];
+  }
+
+  async listCommunityUsernames(from: number, pageSize: number): Promise<CommunityUsernameRecord[]> {
+    const result = await this.supabase
+      .from("users")
+      .select("username")
+      .order("username", { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (result.error) throw new Error(`Unable to load community users: ${result.error.message}`);
+    return result.data ?? [];
+  }
+
+  async listAllPuzzleVotes(from: number, pageSize: number): Promise<CommunityPuzzleVoteRecord[]> {
+    const result = await this.supabase
+      .from("puzzle_votes")
+      .select("username, vote")
+      .order("username", { ascending: true })
+      .order("puzzle_id", { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (result.error) throw new Error(`Unable to load puzzle votes: ${result.error.message}`);
+    return result.data ?? [];
+  }
+
+  async listCommunityCommentAuthors(
+    from: number,
+    pageSize: number,
+  ): Promise<CommunityUsernameRecord[]> {
+    const result = await this.supabase
+      .from("community_comments")
+      .select("username")
+      .order("id", { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (result.error) throw new Error(`Unable to load comment totals: ${result.error.message}`);
+    return result.data ?? [];
+  }
+
+  async listAllCommunityCommentVotes(
+    from: number,
+    pageSize: number,
+  ): Promise<CommunityCommentVoteRecord[]> {
+    const result = await this.supabase
+      .from("community_comment_votes")
+      .select(
+        "username, vote, comment:community_comments!community_comment_votes_comment_fk!inner(username)",
+      )
+      .order("username", { ascending: true })
+      .order("comment_id", { ascending: true })
       .range(from, from + pageSize - 1);
     if (result.error) throw new Error(`Unable to load comment karma: ${result.error.message}`);
     return result.data ?? [];

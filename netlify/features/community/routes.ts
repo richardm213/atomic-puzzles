@@ -39,6 +39,14 @@ export const communityRoute = async (event: NetlifyEvent) => {
     return respond(200, await service.loadProfileCommentKarma(input.username!));
   }
 
+  if (input.action === "puzzleRankings") {
+    return respond(200, await service.loadPuzzleRankings());
+  }
+
+  if (input.action === "communityUsers") {
+    return respond(200, await service.loadCommunityUsers());
+  }
+
   if (input.action === "profileComments" || input.action === "siteComments") {
     return respond(
       200,

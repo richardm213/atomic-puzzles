@@ -1,7 +1,14 @@
 import type { CommunityRequest, CommunityTargetType } from "../../../src/lib/community/schemas";
 import { HttpError } from "../../http/errors";
 import type { CommunityRepository } from "./repository";
-import { type ProfileCommentCountRecord, type ProfileCommentRecord } from "./repository";
+import {
+  type CommunityCommentVoteRecord,
+  type CommunityPuzzleVoteRecord,
+  type CommunityUsernameRecord,
+  type ProfileCommentCountRecord,
+  type ProfileCommentRecord,
+  type PuzzleAttemptRecord,
+} from "./repository";
 
 export type CommunityTarget = {
   type: CommunityTargetType;
@@ -12,15 +19,125 @@ export type CommunityTarget = {
 const MAX_COMMENT_LENGTH = 10_000;
 
 export const isPublicCommunityReadAction = (action: unknown): boolean =>
-  ["load", "loadDiscussion", "profileComments", "profileKarma", "siteComments"].includes(
-    String(action),
-  );
+  [
+    "load",
+    "loadDiscussion",
+    "profileComments",
+    "profileKarma",
+    "siteComments",
+    "puzzleRankings",
+    "communityUsers",
+  ].includes(String(action));
 
-export const sumCommentKarma = (votes: Array<{ vote: unknown }>): number =>
+const commentVoteAuthor = (vote: CommunityCommentVoteRecord): string => {
+  const comment = Array.isArray(vote.comment) ? vote.comment[0] : vote.comment;
+  return String(comment?.username ?? "")
+    .trim()
+    .toLowerCase();
+};
+
+export const sumCommentKarma = (votes: CommunityCommentVoteRecord[]): number =>
   votes.reduce((karma, row) => {
+    const voter = String(row.username ?? "")
+      .trim()
+      .toLowerCase();
+    if (voter && voter === commentVoteAuthor(row)) return karma;
     const vote = Number(row.vote);
     return karma + (vote === 1 || vote === -1 ? vote : 0);
   }, 0);
+
+export type CommunityUserStatRow = {
+  username: string;
+  puzzles_upvoted: number;
+  puzzles_downvoted: number;
+  comment_karma: number;
+  comments_left: number;
+};
+
+export const buildCommunityUserStats = (
+  users: CommunityUsernameRecord[],
+  puzzleVotes: CommunityPuzzleVoteRecord[],
+  comments: CommunityUsernameRecord[],
+  commentVotes: CommunityCommentVoteRecord[],
+): CommunityUserStatRow[] => {
+  const stats = new Map<string, CommunityUserStatRow>();
+  const rowFor = (rawUsername: unknown): CommunityUserStatRow | null => {
+    const username = String(rawUsername ?? "")
+      .trim()
+      .toLowerCase();
+    if (!username) return null;
+    const existing = stats.get(username);
+    if (existing) return existing;
+    const row = {
+      username,
+      puzzles_upvoted: 0,
+      puzzles_downvoted: 0,
+      comment_karma: 0,
+      comments_left: 0,
+    };
+    stats.set(username, row);
+    return row;
+  };
+
+  users.forEach((user) => rowFor(user.username));
+  puzzleVotes.forEach((vote) => {
+    const row = rowFor(vote.username);
+    if (!row) return;
+    if (Number(vote.vote) === 1) row.puzzles_upvoted += 1;
+    if (Number(vote.vote) === -1) row.puzzles_downvoted += 1;
+  });
+  comments.forEach((comment) => {
+    const row = rowFor(comment.username);
+    if (row) row.comments_left += 1;
+  });
+  commentVotes.forEach((commentVote) => {
+    const author = commentVoteAuthor(commentVote);
+    const voter = String(commentVote.username ?? "")
+      .trim()
+      .toLowerCase();
+    const row = rowFor(author);
+    const vote = Number(commentVote.vote);
+    if (row && voter !== author && (vote === 1 || vote === -1)) row.comment_karma += vote;
+  });
+
+  return [...stats.values()]
+    .filter(
+      (row) =>
+        row.puzzles_upvoted !== 0 ||
+        row.puzzles_downvoted !== 0 ||
+        row.comment_karma !== 0 ||
+        row.comments_left !== 0,
+    )
+    .sort(
+      (left, right) =>
+        right.comments_left - left.comments_left || left.username.localeCompare(right.username),
+    );
+};
+
+export const addPuzzleAttemptStats = <
+  T extends { puzzle_id: number | string; upvotes: unknown; downvotes: unknown; score: unknown },
+>(
+  puzzles: T[],
+  attempts: PuzzleAttemptRecord[],
+) => {
+  const attemptsByPuzzle = new Map<string, { attempts: number; solved: number }>();
+  attempts.forEach((attempt) => {
+    const puzzleId = String(attempt.puzzle_id ?? "").trim();
+    if (!puzzleId) return;
+    const stats = attemptsByPuzzle.get(puzzleId) ?? { attempts: 0, solved: 0 };
+    stats.attempts += 1;
+    if (attempt.puzzle_correct) stats.solved += 1;
+    attemptsByPuzzle.set(puzzleId, stats);
+  });
+  return puzzles.map((puzzle) => {
+    const stats = attemptsByPuzzle.get(String(puzzle.puzzle_id)) ?? { attempts: 0, solved: 0 };
+    return {
+      ...puzzle,
+      attempts: stats.attempts,
+      solve_rate: stats.attempts ? Math.round((stats.solved / stats.attempts) * 100) : null,
+    };
+  });
+};
 
 export const sortProfileCommentRecords = (
   comments: ProfileCommentRecord[],
@@ -146,6 +263,42 @@ export class CommunityService {
       from += pageSize;
     }
     return { karma };
+  }
+
+  async loadPuzzleRankings() {
+    const pageSize = 1_000;
+    const loadAll = async <T>(loader: (from: number, pageSize: number) => Promise<T[]>) => {
+      const rows: T[] = [];
+      for (let from = 0; ; from += pageSize) {
+        const page = await loader(from, pageSize);
+        rows.push(...page);
+        if (page.length < pageSize) return rows;
+      }
+    };
+    const [puzzles, attempts] = await Promise.all([
+      loadAll((from, size) => this.repository.listPuzzleVoteCounts(from, size)),
+      loadAll((from, size) => this.repository.listPuzzleAttempts(from, size)),
+    ]);
+    return { puzzles: addPuzzleAttemptStats(puzzles, attempts) };
+  }
+
+  async loadCommunityUsers() {
+    const pageSize = 1_000;
+    const loadAll = async <T>(loader: (from: number, pageSize: number) => Promise<T[]>) => {
+      const rows: T[] = [];
+      for (let from = 0; ; from += pageSize) {
+        const page = await loader(from, pageSize);
+        rows.push(...page);
+        if (page.length < pageSize) return rows;
+      }
+    };
+    const [users, puzzleVotes, comments, commentVotes] = await Promise.all([
+      loadAll((from, size) => this.repository.listCommunityUsernames(from, size)),
+      loadAll((from, size) => this.repository.listAllPuzzleVotes(from, size)),
+      loadAll((from, size) => this.repository.listCommunityCommentAuthors(from, size)),
+      loadAll((from, size) => this.repository.listAllCommunityCommentVotes(from, size)),
+    ]);
+    return { users: buildCommunityUserStats(users, puzzleVotes, comments, commentVotes) };
   }
 
   async loadProfileComments(options: {

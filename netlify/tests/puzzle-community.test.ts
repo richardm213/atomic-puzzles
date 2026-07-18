@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  addPuzzleAttemptStats,
+  buildCommunityUserStats,
   buildProfileCommentRows,
   handler,
   isPublicCommunityReadAction,
@@ -9,16 +11,78 @@ import {
 } from "../functions/puzzle-community";
 
 describe("profile comment history", () => {
+  it("adds attempt totals and whole-number solve rates to puzzle vote rows", () => {
+    expect(
+      addPuzzleAttemptStats(
+        [
+          { puzzle_id: 10, upvotes: 3, downvotes: 1, score: 2 },
+          { puzzle_id: 20, upvotes: 1, downvotes: 0, score: 1 },
+        ],
+        [
+          { username: "alice", puzzle_id: "10", puzzle_correct: true },
+          { username: "bob", puzzle_id: "10", puzzle_correct: false },
+          { username: "carol", puzzle_id: "10", puzzle_correct: true },
+        ],
+      ),
+    ).toEqual([
+      expect.objectContaining({ puzzle_id: 10, attempts: 3, solve_rate: 67 }),
+      expect.objectContaining({ puzzle_id: 20, attempts: 0, solve_rate: null }),
+    ]);
+  });
+
   it("keeps public comment reads available without a valid login", () => {
     expect(isPublicCommunityReadAction("siteComments")).toBe(true);
     expect(isPublicCommunityReadAction("profileComments")).toBe(true);
     expect(isPublicCommunityReadAction("loadDiscussion")).toBe(true);
+    expect(isPublicCommunityReadAction("puzzleRankings")).toBe(true);
+    expect(isPublicCommunityReadAction("communityUsers")).toBe(true);
     expect(isPublicCommunityReadAction("comment")).toBe(false);
     expect(isPublicCommunityReadAction("commentVote")).toBe(false);
   });
 
+  it("aggregates activity and omits users with no community participation", () => {
+    expect(
+      buildCommunityUserStats(
+        [{ username: "Alice" }, { username: "quiet_user" }],
+        [
+          { username: "alice", vote: 1 },
+          { username: "alice", vote: -1 },
+          { username: "bob", vote: 1 },
+        ],
+        [{ username: "alice" }, { username: "alice" }, { username: "bob" }],
+        [
+          { username: "alice", vote: 1, comment: { username: "alice" } },
+          { username: "bob", vote: -1, comment: [{ username: "alice" }] },
+          { username: "alice", vote: 1, comment: { username: "bob" } },
+        ],
+      ),
+    ).toEqual([
+      {
+        username: "alice",
+        puzzles_upvoted: 1,
+        puzzles_downvoted: 1,
+        comment_karma: -1,
+        comments_left: 2,
+      },
+      {
+        username: "bob",
+        puzzles_upvoted: 1,
+        puzzles_downvoted: 0,
+        comment_karma: 1,
+        comments_left: 1,
+      },
+    ]);
+  });
+
   it("calculates Reddit-style net comment karma", () => {
     expect(sumCommentKarma([{ vote: 1 }, { vote: 1 }, { vote: -1 }, { vote: 0 }])).toBe(1);
+    expect(
+      sumCommentKarma([
+        { username: "alice", vote: 1, comment: { username: "alice" } },
+        { username: "bob", vote: 1, comment: { username: "alice" } },
+        { username: "carol", vote: -1, comment: { username: "alice" } },
+      ]),
+    ).toBe(0);
   });
 
   it("sorts top comments by net score and uses recency as the tie-breaker", () => {

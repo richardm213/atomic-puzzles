@@ -49,7 +49,24 @@
 .commentsControls {
   display: grid;
   justify-items: end;
-  gap: 7px;
+  gap: 8px;
+}
+
+.commentsControlRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+}
+
+.commentsControlRow > span {
+  width: 30px;
+  color: var(--color-subtle);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-align: right;
+  text-transform: uppercase;
 }
 
 .commentsSort button {
@@ -79,26 +96,60 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--color-panel-strong) 72%, transparent);
   color: var(--color-subtle);
   font-size: 12px;
   font-weight: 700;
 }
 
 .siteCommentList {
-  gap: 10px;
+  gap: 11px;
 }
 
 .siteCommentCard {
   display: grid;
-  gap: 11px;
-  padding: 15px 16px;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 14px;
+  padding: 14px 16px 14px 12px;
   border: 1px solid var(--color-border);
   border-radius: 10px;
   background: color-mix(in srgb, var(--color-panel-strong) 74%, transparent);
   transition:
     border-color 140ms ease,
     background-color 140ms ease;
+}
+
+.siteCommentScore {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 3px;
+  min-height: 42px;
+  padding-top: 3px;
+  color: var(--color-subtle);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.siteCommentScore svg {
+  color: #ff5700;
+  font-size: 14px;
+}
+
+.siteCommentScore strong {
+  color: var(--color-heading);
+  font-weight: 850;
+}
+
+.siteCommentContent {
+  display: grid;
+  gap: 11px;
+  min-width: 0;
 }
 
 .siteCommentCard:hover {
@@ -110,34 +161,60 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   color: var(--color-subtle);
   font-size: 12px;
   font-weight: 700;
 }
 
-.siteCommentMeta a {
+.siteCommentMeta .siteCommentAuthor {
   color: var(--color-cyan-bright);
+  font-size: 13px;
   font-weight: 850;
   text-decoration: none;
 }
 
-.siteCommentMeta a:hover,
-.siteCommentMeta a:focus-visible {
+.siteCommentMeta .siteCommentAuthor:hover,
+.siteCommentMeta .siteCommentAuthor:focus-visible {
   text-decoration: underline;
 }
 
 .siteCommentMeta time {
-  margin-left: 6px;
-}
-
-.siteCommentUpvotes {
   margin-left: auto;
+  color: var(--color-subtle);
+  font-weight: 650;
   white-space: nowrap;
 }
 
-.siteCommentUpvotes i {
-  color: #ff5700;
+.siteCommentTarget {
+  display: inline-flex;
+  align-items: center;
+  min-height: 25px;
+  padding: 3px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-primary) 7%, var(--color-panel-strong));
+}
+
+.siteCommentTarget a {
+  color: var(--color-primary-soft);
+  font-size: 11px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.siteCommentTarget a:hover,
+.siteCommentTarget a:focus-visible {
+  color: var(--color-heading);
+  text-decoration: none;
+}
+
+.siteCommentTarget.profile {
+  background: color-mix(in srgb, var(--color-cyan-bright) 7%, var(--color-panel-strong));
+}
+
+.siteCommentTarget.match {
+  background: color-mix(in srgb, var(--color-success) 7%, var(--color-panel-strong));
 }
 
 .siteCommentBody,
@@ -148,12 +225,28 @@
   white-space: pre-wrap;
 }
 
+.siteCommentBody {
+  color: var(--color-text);
+  font-size: 14px;
+}
+
 .siteCommentHidden {
-  padding: 12px;
-  border-radius: 7px;
-  background: color-mix(in srgb, var(--color-border) 35%, transparent);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 12px;
+  border-left: 3px solid color-mix(in srgb, var(--color-muted) 55%, transparent);
+  border-radius: 0 7px 7px 0;
+  background: color-mix(in srgb, var(--color-border) 23%, transparent);
   color: var(--color-muted);
   font-style: italic;
+  text-align: left;
+}
+
+.siteCommentHidden svg {
+  flex: 0 0 auto;
+  color: var(--color-subtle);
+  font-size: 12px;
 }
 
 .siteCommentList + .paginationRow {
@@ -208,7 +301,16 @@
 
   .commentsControls {
     justify-items: start;
-    overflow-x: auto;
+  }
+
+  .commentsControlRow {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .commentsControlRow > span {
+    flex: 0 0 30px;
+    text-align: left;
   }
 
   .commentsSummary {
@@ -217,12 +319,25 @@
     gap: 4px;
   }
 
-  .siteCommentMeta time,
-  .siteCommentUpvotes {
+  .siteCommentMeta time {
     margin-left: 0;
+    flex-basis: 100%;
+  }
+}
+
+@media (max-width: 430px) {
+  .commentsSort {
+    max-width: calc(100vw - 88px);
+    overflow-x: auto;
   }
 
-  .siteCommentMeta time {
-    flex-basis: 100%;
+  .commentsSort button {
+    padding-inline: 11px;
+  }
+
+  .siteCommentCard {
+    grid-template-columns: 30px minmax(0, 1fr);
+    gap: 10px;
+    padding-inline: 9px 12px;
   }
 }

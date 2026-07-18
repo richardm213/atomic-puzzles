@@ -1,6 +1,6 @@
 import "./Comments.css";
 
-import { faArrowUp } from "@fortawesome/free-solid-svg-icons";
+import { faArrowUp, faLock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -85,39 +85,45 @@ export const CommentsPage = () => {
             <h1>Community Comments</h1>
           </div>
           <div className="commentsControls">
-            <div className="commentsSort" role="group" aria-label="Filter comments by type">
-              {targetFilterOptions.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  className={targetFilter === option.value ? "active" : ""}
-                  aria-pressed={targetFilter === option.value}
-                  disabled={loading}
-                  onClick={() => changeTargetFilter(option.value)}
-                >
-                  {option.label}
-                </button>
-              ))}
+            <div className="commentsControlRow">
+              <span>Show</span>
+              <div className="commentsSort" role="group" aria-label="Filter comments by type">
+                {targetFilterOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={targetFilter === option.value ? "active" : ""}
+                    aria-pressed={targetFilter === option.value}
+                    disabled={loading}
+                    onClick={() => changeTargetFilter(option.value)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="commentsSort" role="group" aria-label="Sort comments">
-              <button
-                type="button"
-                className={sort === "recent" ? "active" : ""}
-                aria-pressed={sort === "recent"}
-                disabled={loading}
-                onClick={() => changeSort("recent")}
-              >
-                Recent
-              </button>
-              <button
-                type="button"
-                className={sort === "top" ? "active" : ""}
-                aria-pressed={sort === "top"}
-                disabled={loading}
-                onClick={() => changeSort("top")}
-              >
-                Top
-              </button>
+            <div className="commentsControlRow">
+              <span>Sort</span>
+              <div className="commentsSort" role="group" aria-label="Sort comments">
+                <button
+                  type="button"
+                  className={sort === "recent" ? "active" : ""}
+                  aria-pressed={sort === "recent"}
+                  disabled={loading}
+                  onClick={() => changeSort("recent")}
+                >
+                  Recent
+                </button>
+                <button
+                  type="button"
+                  className={sort === "top" ? "active" : ""}
+                  aria-pressed={sort === "top"}
+                  disabled={loading}
+                  onClick={() => changeSort("top")}
+                >
+                  Top
+                </button>
+              </div>
             </div>
           </div>
         </header>
@@ -143,26 +149,35 @@ export const CommentsPage = () => {
             {comments.map((comment) => (
               <li key={comment.id}>
                 <article className="siteCommentCard">
-                  <div className="siteCommentMeta">
-                    <Link to="/@/$username" params={{ username: comment.username }}>
-                      {comment.username}
-                    </Link>
-                    <span aria-hidden="true">·</span>
-                    <CommunityCommentTargetLink {...comment} />
-                    <time dateTime={comment.created_at}>
-                      {formatLocalDateTime(comment.created_at)}
-                    </time>
-                    <span className="siteCommentUpvotes" aria-label={`${comment.upvotes} upvotes`}>
-                      <FontAwesomeIcon icon={faArrowUp} aria-hidden="true" /> {comment.upvotes}
-                    </span>
+                  <div className="siteCommentScore" aria-label={`${comment.upvotes} upvotes`}>
+                    <FontAwesomeIcon icon={faArrowUp} aria-hidden="true" />
+                    <strong>{comment.upvotes}</strong>
                   </div>
-                  {comment.content_hidden ? (
-                    <p className="siteCommentHidden">
-                      Comment hidden until you attempt this puzzle.
-                    </p>
-                  ) : (
-                    <p className="siteCommentBody">{comment.body}</p>
-                  )}
+                  <div className="siteCommentContent">
+                    <div className="siteCommentMeta">
+                      <Link
+                        className="siteCommentAuthor"
+                        to="/@/$username"
+                        params={{ username: comment.username }}
+                      >
+                        {comment.username}
+                      </Link>
+                      <span className={`siteCommentTarget ${comment.target_type}`}>
+                        <CommunityCommentTargetLink {...comment} />
+                      </span>
+                      <time dateTime={comment.created_at}>
+                        {formatLocalDateTime(comment.created_at)}
+                      </time>
+                    </div>
+                    {comment.content_hidden ? (
+                      <p className="siteCommentHidden">
+                        <FontAwesomeIcon icon={faLock} aria-hidden="true" />
+                        <span>Comment hidden until you attempt this puzzle.</span>
+                      </p>
+                    ) : (
+                      <p className="siteCommentBody">{comment.body}</p>
+                    )}
+                  </div>
                 </article>
               </li>
             ))}

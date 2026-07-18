@@ -68,7 +68,6 @@ const navItems: NavItem[] = [
       pathname === "/solve" ||
       pathname.startsWith("/solve/") ||
       pathname.startsWith("/puzzles/") ||
-      pathname === "/comments" ||
       pathname === "/dashboard",
     children: [
       {
@@ -97,11 +96,6 @@ const navItems: NavItem[] = [
         isActive: (pathname) => pathname === "/solve/sets",
       },
       {
-        to: "/comments",
-        label: "Comments",
-        isActive: (pathname) => pathname === "/comments",
-      },
-      {
         to: "/puzzles/submit",
         label: "Submit puzzles",
         isActive: (pathname) => pathname === "/puzzles/submit",
@@ -116,7 +110,9 @@ const navItems: NavItem[] = [
       pathname === "/matches" ||
       pathname.startsWith("/matches/") ||
       pathname === "/tournaments" ||
-      pathname.startsWith("/tournaments/"),
+      pathname.startsWith("/tournaments/") ||
+      pathname === "/h2h" ||
+      pathname.startsWith("/h2h/"),
     children: [
       {
         to: "/recent",
@@ -129,17 +125,43 @@ const navItems: NavItem[] = [
         label: "Tournaments",
         isActive: (pathname) => pathname === "/tournaments" || pathname.startsWith("/tournaments/"),
       },
+      {
+        to: "/h2h",
+        label: "H2H",
+        isActive: (pathname) => pathname === "/h2h" || pathname.startsWith("/h2h/"),
+      },
     ],
   },
   {
-    to: "/h2h",
-    label: "H2H",
-    isActive: (pathname) => pathname === "/h2h" || pathname.startsWith("/h2h/"),
-  },
-  {
-    to: "/users",
-    label: "Players",
-    isActive: (pathname) => pathname === "/users" || pathname.startsWith("/users/"),
+    to: "/community",
+    label: "Community",
+    isActive: (pathname) =>
+      pathname.startsWith("/community/") ||
+      pathname === "/comments" ||
+      pathname === "/users" ||
+      pathname.startsWith("/users/"),
+    children: [
+      {
+        to: "/users",
+        label: "Players",
+        isActive: (pathname) => pathname === "/users" || pathname.startsWith("/users/"),
+      },
+      {
+        to: "/community/puzzles",
+        label: "Puzzle votes",
+        isActive: (pathname) => pathname === "/community/puzzles",
+      },
+      {
+        to: "/community/users",
+        label: "User activity",
+        isActive: (pathname) => pathname === "/community/users",
+      },
+      {
+        to: "/comments",
+        label: "Comments",
+        isActive: (pathname) => pathname === "/comments",
+      },
+    ],
   },
   {
     to: "/analysis",

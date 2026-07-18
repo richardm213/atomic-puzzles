@@ -6,12 +6,17 @@ import {
   communityDiscussionSchema,
   type CommunityHistoryComment,
   type CommunityTargetType,
+  communityUsersSchema,
+  type CommunityUserStats,
   type ProfileCommentKarma,
   profileCommentKarmaSchema,
   type PuzzleComment,
   type PuzzleCommunity,
   puzzleCommunitySchema,
+  type PuzzleRankings,
+  puzzleRankingsSchema,
   type PuzzleVoteCounts,
+  type PuzzleVoteRankingRow,
 } from "./schemas";
 
 export type {
@@ -19,10 +24,13 @@ export type {
   CommunityDiscussion,
   CommunityHistoryComment,
   CommunityTargetType,
+  CommunityUserStats,
   ProfileCommentKarma,
   PuzzleComment,
   PuzzleCommunity,
+  PuzzleRankings,
   PuzzleVoteCounts,
+  PuzzleVoteRankingRow,
 };
 
 export type CommunityTarget = {
@@ -131,4 +139,28 @@ export const fetchProfileCommentKarma = async (username: string): Promise<number
     },
   );
   return result.karma;
+};
+
+export const fetchPuzzleRankings = (): Promise<PuzzleRankings> =>
+  postApi(
+    "/api/puzzles/community",
+    { action: "puzzleRankings" },
+    {
+      errorMessage: "Unable to load puzzle vote rankings.",
+      invalidMessage: "The puzzle rankings service returned incomplete data.",
+      schema: puzzleRankingsSchema,
+    },
+  );
+
+export const fetchCommunityUsers = async (): Promise<CommunityUserStats[]> => {
+  const result = await postApi(
+    "/api/puzzles/community",
+    { action: "communityUsers" },
+    {
+      errorMessage: "Unable to load community user activity.",
+      invalidMessage: "The community user service returned incomplete data.",
+      schema: communityUsersSchema,
+    },
+  );
+  return result.users;
 };

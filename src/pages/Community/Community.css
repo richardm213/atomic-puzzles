@@ -1,0 +1,558 @@
+.communityPage {
+  grid-template-columns: minmax(0, 1fr);
+  width: min(100%, 1080px);
+  align-items: start;
+  padding-block: clamp(18px, 3vw, 38px);
+}
+
+.communityUsersPage,
+.communityVotesPage {
+  width: min(100%, 860px);
+}
+
+.communityPanel {
+  width: 100%;
+  padding: clamp(16px, 3vw, 26px);
+}
+
+.communityHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.communityHeader > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.communityHeader span {
+  color: var(--color-primary-soft);
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.communityHeader h1,
+.communityHeader p {
+  margin: 0;
+}
+
+.communityHeader h1 {
+  color: var(--color-heading);
+  font-size: clamp(26px, 4vw, 36px);
+}
+
+.communityHeader p {
+  max-width: 580px;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.communityRankingsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.communityRankingSection {
+  min-width: 0;
+}
+
+.communityRankingSection h2 {
+  margin: 0 0 10px;
+  color: var(--color-heading);
+  font-size: 18px;
+}
+
+.communityTableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-panel-strong);
+}
+
+.communityTable {
+  width: 100%;
+  min-width: 420px;
+  border-collapse: collapse;
+}
+
+.communityTable th,
+.communityTable td {
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
+  text-align: left;
+}
+
+.communityTable th {
+  background: var(--color-table-head);
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.communityTable tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.communityTable tbody tr:hover {
+  background: var(--color-table-hover);
+}
+
+.communityTable a {
+  color: var(--color-cyan-bright);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.communityTable a:hover,
+.communityTable a:focus-visible {
+  text-decoration: underline;
+}
+
+.communityTable .communityNumericCell {
+  width: 1%;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.communityTable th.communityNumericCell {
+  text-align: right;
+}
+
+.communityRank {
+  width: 1%;
+  color: var(--color-subtle);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.communityPositive {
+  color: var(--color-success);
+  font-weight: 800;
+}
+
+.communityNegative {
+  color: var(--color-danger);
+  font-weight: 800;
+}
+
+.communityVoteToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.communityVoteSort {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-panel-strong);
+}
+
+.communityVoteSort button,
+.communityVoteDirection {
+  min-height: 34px;
+  border: 0;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.communityVoteSort button {
+  padding: 0 14px;
+  background: transparent;
+  color: var(--color-muted);
+}
+
+.communityVoteSort button.active {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  box-shadow: 0 5px 14px color-mix(in srgb, var(--color-primary) 24%, transparent);
+}
+
+.communityVoteDirection {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-panel-strong);
+  color: var(--color-muted);
+}
+
+.communityVoteDirection:hover,
+.communityVoteDirection:focus-visible {
+  color: var(--color-heading);
+}
+
+.communityVoteSummaryValue {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.communityVoteSummaryValue.upvote svg {
+  color: var(--color-success);
+}
+
+.communityVoteSummaryValue.downvote svg {
+  color: var(--color-danger);
+}
+
+.communityVoteTable th button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+
+.communityVoteTable th button:hover,
+.communityVoteTable th button:focus-visible {
+  color: var(--color-heading);
+}
+
+.communityVoteTable {
+  min-width: 680px;
+}
+
+.communityStatus,
+.communityError,
+.communityEmpty {
+  margin: 0;
+  padding: 18px;
+  border-radius: 9px;
+  background: var(--color-panel-strong);
+  color: var(--color-muted);
+  text-align: center;
+}
+
+.communityError {
+  color: var(--color-danger);
+}
+
+.communityToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.communityToolbar label {
+  flex: 1;
+  max-width: 360px;
+}
+
+.communityToolbar input {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-panel-strong);
+  color: var(--color-text);
+}
+
+.communityToolbar input:focus {
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 1px;
+}
+
+.communityToolbar > span {
+  color: var(--color-subtle);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.communityActivitySummary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 16px;
+}
+
+.communityActivitySummary > div {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--color-primary) 8%, var(--color-panel-strong)),
+    var(--color-panel-strong)
+  );
+}
+
+.communityActivitySummary dt {
+  color: var(--color-subtle);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.communityActivitySummary dd {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: 20px;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+}
+
+.communityLeaderboard {
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-panel-strong) 78%, transparent);
+}
+
+.communityLeaderboardHeader,
+.communityActivityRow {
+  display: grid;
+  grid-template-columns: 34px minmax(150px, 1.5fr) repeat(4, minmax(78px, 0.72fr));
+  align-items: center;
+  gap: 10px;
+}
+
+.communityLeaderboardHeader {
+  min-height: 42px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-table-head);
+}
+
+.communityLeaderboardHeader > span,
+.communityLeaderboardHeader button {
+  color: var(--color-subtle);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.communityLeaderboardHeader button {
+  min-width: 0;
+  padding: 7px 0;
+  border: 0;
+  background: transparent;
+  white-space: nowrap;
+}
+
+.communityLeaderboardHeader button:not(:first-of-type) {
+  text-align: right;
+}
+
+.communityLeaderboardHeader button:hover,
+.communityLeaderboardHeader button:focus-visible,
+.communityLeaderboardHeader button.active {
+  color: var(--color-heading);
+}
+
+.communityUserList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.communityUserList li + li {
+  border-top: 1px solid var(--color-border);
+}
+
+.communityActivityRow {
+  min-height: 58px;
+  padding: 9px 14px;
+  transition: background-color 140ms ease;
+}
+
+.communityActivityRow:hover {
+  background: var(--color-table-hover);
+}
+
+.communityActivityRank {
+  color: var(--color-subtle);
+  font-size: 12px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+.communityActivityUser {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-cyan-bright);
+  font-size: 14px;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.communityActivityUser:hover,
+.communityActivityUser:focus-visible {
+  text-decoration: underline;
+}
+
+.communityActivityMetric {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.communityActivityMetric > span {
+  display: none;
+  color: var(--color-subtle);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.communityActivityMetric strong {
+  color: var(--color-heading);
+  font-size: 14px;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+}
+
+.communityKarmaValue {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.communityKarmaValue svg {
+  color: #ff5700;
+  font-size: 13px;
+}
+
+@media (max-width: 760px) {
+  .communityRankingsGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .communityHeader,
+  .communityToolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .communityToolbar label {
+    max-width: none;
+  }
+
+  .communityActivitySummary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .communityVoteToolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .communityVoteSort {
+    align-self: flex-start;
+  }
+
+  .communityVoteDirection {
+    align-self: flex-start;
+  }
+
+  .communityLeaderboardHeader {
+    display: none;
+  }
+
+  .communityLeaderboard {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+  }
+
+  .communityUserList {
+    display: grid;
+    gap: 10px;
+  }
+
+  .communityUserList li + li {
+    border-top: 0;
+  }
+
+  .communityActivityRow {
+    grid-template-columns: 28px minmax(0, 1fr) repeat(2, minmax(76px, 0.6fr));
+    gap: 10px;
+    padding: 13px 14px;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--color-panel-strong) 78%, transparent);
+  }
+
+  .communityActivityRank {
+    grid-row: span 3;
+    align-self: start;
+    padding-top: 3px;
+  }
+
+  .communityActivityUser {
+    grid-column: 2 / -1;
+  }
+
+  .communityActivityMetric {
+    display: grid;
+    justify-content: stretch;
+    gap: 3px;
+    padding: 8px 9px;
+    border-radius: 7px;
+    background: color-mix(in srgb, var(--color-border) 28%, transparent);
+  }
+
+  .communityActivityMetric:nth-of-type(odd) {
+    grid-column: 2;
+  }
+
+  .communityActivityMetric:nth-of-type(even) {
+    grid-column: 3;
+  }
+
+  .communityActivityMetric > span {
+    display: block;
+  }
+}
+
+@media (max-width: 420px) {
+  .communityActivityRow {
+    grid-template-columns: 24px repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .communityVoteTable {
+    min-width: 350px;
+  }
+
+  .communityVoteTable th,
+  .communityVoteTable td {
+    padding-inline: 5px;
+  }
+
+  .communityVoteTable :is(th, td):nth-child(1),
+  .communityVoteTable :is(th, td):nth-child(5) {
+    display: none;
+  }
+}

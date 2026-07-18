@@ -1,5 +1,7 @@
 import { communityRoute } from "../features/community/routes";
 import {
+  addPuzzleAttemptStats,
+  buildCommunityUserStats,
   buildProfileCommentRows,
   isPublicCommunityReadAction,
   sortProfileCommentRecords,
@@ -8,6 +10,8 @@ import {
 import { postJsonHandler } from "../http/handler";
 
 export {
+  addPuzzleAttemptStats,
+  buildCommunityUserStats,
   buildProfileCommentRows,
   isPublicCommunityReadAction,
   sortProfileCommentRecords,
