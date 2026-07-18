@@ -6,6 +6,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import type { PointerEvent as ReactPointerEvent, UIEvent as ReactUIEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import {
   getAdjacentTournamentMetas,
@@ -1063,10 +1064,10 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
 
       void navigate({
         to: "/matches/$mode/$matchId",
-        params: { mode: "blitz", matchId },
+        params: { mode: bracket?.matchMode ?? "blitz", matchId },
       });
     },
-    [navigate],
+    [bracket?.matchMode, navigate],
   );
 
   const shouldSuppressMatchClick = (): boolean => {
@@ -1153,9 +1154,7 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
   };
 
   if (bracketLoading) {
-    return (
-      <TournamentStateMessage title="Loading bracket…" message="Preparing the tournament draw." />
-    );
+    return <RouteLoadingFallback />;
   }
 
   if (bracketError) {

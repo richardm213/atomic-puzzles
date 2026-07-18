@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
+import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { type AliasIdentityRow, fetchAliasRows } from "../../lib/supabase/supabaseAliases";
 
@@ -107,6 +108,8 @@ export const BannedUsersPage = () => {
     [rows],
   );
 
+  if (loading && rows.length === 0) return <RouteLoadingFallback />;
+
   return (
     <div className="rankingsPage">
       <Seo
@@ -161,10 +164,6 @@ export const BannedUsersPage = () => {
             </span>
           </span>
         </div>
-
-        {!error && loading ? (
-          <div className="emptyRankings">Loading banned user list...</div>
-        ) : null}
 
         {!error && !loading && rows.length === 0 ? (
           <div className="emptyRankings">No banned users available.</div>

@@ -3,6 +3,7 @@ import "./PuzzleSets.css";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { loadPuzzleCatalog } from "../../lib/puzzles/puzzleLibrary";
 import { getPuzzleEventKey, groupPuzzlesByEvent } from "../../lib/puzzles/puzzleSets";
@@ -92,7 +93,7 @@ export const PuzzleSetsPage = () => {
   const [puzzles, setPuzzles] = useState<import("../../lib/puzzles/puzzleLibrary").Puzzle[]>([]);
   const [selectedEventKey, setSelectedEventKey] = useState(() => readEventKeyFromHash());
   const [activeFilterId, setActiveFilterId] = useState("all");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const selectedSetSectionRef = useRef<HTMLElement | null>(null);
   const shouldScrollToSelectionRef = useRef(false);
@@ -174,6 +175,8 @@ export const PuzzleSetsPage = () => {
     shouldScrollToSelectionRef.current = false;
   }, [selectedGroup]);
 
+  if (isLoading && puzzles.length === 0) return <RouteLoadingFallback />;
+
   return (
     <div className="puzzleSetsPage">
       <Seo
@@ -226,9 +229,7 @@ export const PuzzleSetsPage = () => {
             </div>
           </div>
 
-          {isLoading ? (
-            <div className="puzzleSetsStateCard">Loading puzzle sets…</div>
-          ) : filteredPuzzleGroups.length > 0 ? (
+          {filteredPuzzleGroups.length > 0 ? (
             <div className="puzzleSetGrid" role="list" aria-label="Puzzle events">
               {filteredPuzzleGroups.map((group) => {
                 const firstPuzzleId = group.puzzles[0]?.puzzleId ?? "—";

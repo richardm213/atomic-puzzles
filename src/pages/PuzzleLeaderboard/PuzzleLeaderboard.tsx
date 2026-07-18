@@ -7,6 +7,7 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 
+import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import {
@@ -134,6 +135,8 @@ const PuzzleLeaderboard = () => {
     [rows],
   );
 
+  if (loading && progressRows.length === 0) return <RouteLoadingFallback />;
+
   return (
     <div className="rankingsPage">
       <Seo
@@ -203,10 +206,6 @@ const PuzzleLeaderboard = () => {
             </Link>
           </span>
         </div>
-
-        {!error && loading ? (
-          <div className="emptyRankings">Loading puzzle leaderboard...</div>
-        ) : null}
 
         {!error && !loading && rows.length === 0 ? (
           <div className="emptyRankings">

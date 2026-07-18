@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 
 import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
+import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
 import { usePersistedState } from "../../hooks/usePersistedState";
@@ -305,12 +306,13 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
   const unavailableMessage = viewingOwnDashboard
     ? "The puzzle dashboard is only available for registered site users."
     : `${targetUsername} does not have a registered site account yet, so the puzzle dashboard is hidden.`;
-  const loadingMessage = viewingOwnDashboard
-    ? "Checking your puzzle dashboard access…"
-    : "Checking puzzle dashboard access…";
   const heroTitle = viewingOwnDashboard
     ? "My Puzzle Dashboard"
     : `${targetUsername}'s Puzzle Dashboard`;
+
+  if (isCheckingAccess || (isRegisteredViewer && isPageLoading && dashboardEntries.length === 0)) {
+    return <RouteLoadingFallback />;
+  }
 
   return (
     <div className="puzzleDashboardPage">
@@ -338,7 +340,6 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
           </div>
         </header>
 
-        {isCheckingAccess ? <div className="dashboardStateCard">{loadingMessage}</div> : null}
         {needsLoginForOwnDashboard ? (
           <div className="dashboardStateCard">
             <p>Log in with Lichess to view your puzzle dashboard.</p>
@@ -427,9 +428,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
                 </div>
               </div>
 
-              {isPageLoading && dashboardEntries.length === 0 ? (
-                <div className="dashboardStateCard">Loading your puzzle dashboard…</div>
-              ) : dashboardEntries.length > 0 ? (
+              {dashboardEntries.length > 0 ? (
                 <div className="dashboardAttemptRows" role="list" aria-label="Puzzle dashboard">
                   {dashboardEntries.map((entry, index) => (
                     <article

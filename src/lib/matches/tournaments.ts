@@ -1,3 +1,4 @@
+import type { Mode } from "../../constants/matches";
 import { cachedRequest } from "../../utils/requestCache";
 import { getSupabaseClient } from "../supabase/supabaseClient";
 import { fetchAllSupabaseRows, loadSupabaseRows } from "../supabase/supabaseRows";
@@ -8,6 +9,7 @@ export type TournamentMeta = {
   headingTitle?: string;
   year: number;
   status: "available" | "pending";
+  matchMode?: Mode;
   hideStartRoundControls?: boolean;
   completeMainBracketFromRound?: string;
   trophyAssetPath?: string;
@@ -117,6 +119,7 @@ const tournaments: TournamentMeta[] = [
     title: "AHC 2026",
     headingTitle: "Atomic Hyper Championship 2026",
     year: 2026,
+    matchMode: "hyperbullet",
     hideStartRoundControls: true,
     completeMainBracketFromRound: "Round of 32",
     trophyAssetPath: trophyAssetPaths.ahc,

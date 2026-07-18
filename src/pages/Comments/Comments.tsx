@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 
 import { CommunityCommentTargetLink } from "../../components/CommunityCommentTargetLink/CommunityCommentTargetLink";
 import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
+import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
 import {
@@ -32,7 +33,7 @@ export const CommentsPage = () => {
   const [targetFilter, setTargetFilter] = useState<CommunityCommentTargetFilter>("all");
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -70,6 +71,8 @@ export const CommentsPage = () => {
     setPage(1);
   };
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  if (loading && comments.length === 0) return <RouteLoadingFallback />;
 
   return (
     <div className="page commentsPage">
@@ -136,7 +139,6 @@ export const CommentsPage = () => {
         </div>
 
         {error ? <p className="commentsError">{error}</p> : null}
-        {loading ? <p className="commentsStatus">Loading comments…</p> : null}
         {!loading && !error && comments.length === 0 ? (
           <div className="commentsEmpty">
             <h2>No comments yet</h2>

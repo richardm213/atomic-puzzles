@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { MatchDetails } from "../../components/MatchDetails/MatchDetails";
 import { CommunityDiscussion } from "../../components/PuzzleCommunity/PuzzleCommunity";
+import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { modeLabels } from "../../constants/matches";
 import { loadRawMatchesByMode } from "../../lib/matches/matchData";
@@ -142,12 +143,13 @@ export const MatchPage = () => {
     return `View the full ${(match.mode && modeLabels[match.mode]) || match.mode} atomic chess match between ${match.playerA} and ${match.playerB}.`;
   }, [match]);
 
+  if (loading && !match) return <RouteLoadingFallback />;
+
   return (
     <>
       <Seo title={title} description={description} />
       <div className="rankingsPage">
         <div className="panel matchPagePanel">
-          {loading ? <div className="emptyRankings">Loading match...</div> : null}
           {!loading && error ? <div className="errorText">{error}</div> : null}
           {!loading && !error && match ? (
             <>

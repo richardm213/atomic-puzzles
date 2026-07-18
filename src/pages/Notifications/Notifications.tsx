@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
+import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
 import {
@@ -91,6 +92,10 @@ export const NotificationsPage = () => {
     });
   };
 
+  if (isLoading || (isAuthenticated && loading && notifications.length === 0)) {
+    return <RouteLoadingFallback />;
+  }
+
   return (
     <div className="page notificationsPage">
       <Seo
@@ -123,7 +128,6 @@ export const NotificationsPage = () => {
           </div>
         ) : null}
 
-        {loading ? <p className="notificationsStatus">Loading notifications…</p> : null}
         {error ? <p className="notificationsError">{error}</p> : null}
         {!loading && isAuthenticated && notifications.length === 0 ? (
           <div className="notificationsEmpty">

@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
+import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import {
   fetchPuzzleRankings,
@@ -74,6 +75,8 @@ export const PuzzleVoteRankingsPage = () => {
     if (key !== sortKey) return "";
     return sortDirection === "asc" ? " ↑" : " ↓";
   };
+
+  if (loading && !rankings) return <RouteLoadingFallback />;
 
   return (
     <div className="page communityPage communityVotesPage">
@@ -146,7 +149,6 @@ export const PuzzleVoteRankingsPage = () => {
             {sortDirection === "desc" ? "Highest first" : "Lowest first"}
           </button>
         </div>
-        {loading ? <p className="communityStatus">Loading puzzle votes…</p> : null}
         {error ? <p className="communityError">{error}</p> : null}
         {!loading && !error && sortedPuzzles.length === 0 ? (
           <p className="communityEmpty">No puzzle votes yet.</p>

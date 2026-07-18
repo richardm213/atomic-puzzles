@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { Chessboard } from "../../components/Chessboard/Chessboard";
+import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import {
   continuationOptionsAt,
@@ -383,6 +384,8 @@ export const PuzzleSubmissionPage = () => {
 
   const currentLocation = `${window.location.pathname}${window.location.search}`;
 
+  if (isLoading) return <RouteLoadingFallback />;
+
   return (
     <section className="puzzleQueuePage">
       <Seo title="Submit a Puzzle" description="Submit an atomic chess puzzle for review." />
@@ -393,16 +396,14 @@ export const PuzzleSubmissionPage = () => {
 
       {!isAuthenticated ? (
         <div className="puzzleQueueGate">
-          <p>{isLoading ? "Checking your login…" : "Log in with Lichess to submit a puzzle."}</p>
-          {!isLoading ? (
-            <button
-              type="button"
-              className="queuePrimaryButton"
-              onClick={() => login(currentLocation)}
-            >
-              Log in with Lichess
-            </button>
-          ) : null}
+          <p>Log in with Lichess to submit a puzzle.</p>
+          <button
+            type="button"
+            className="queuePrimaryButton"
+            onClick={() => login(currentLocation)}
+          >
+            Log in with Lichess
+          </button>
         </div>
       ) : (
         <>
@@ -447,7 +448,7 @@ export const PuzzleReviewPage = () => {
   const [queue, setQueue] = useState<PuzzleReviewQueueRow[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [value, setValue] = useState<PuzzleSubmissionValue>(emptyPuzzleSubmission);
-  const [loadingQueue, setLoadingQueue] = useState(false);
+  const [loadingQueue, setLoadingQueue] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -538,6 +539,9 @@ export const PuzzleReviewPage = () => {
   };
 
   const currentLocation = `${window.location.pathname}${window.location.search}`;
+  if (isLoading || (isReviewer && loadingQueue && queue.length === 0)) {
+    return <RouteLoadingFallback />;
+  }
   if (!isLoading && (!isAuthenticated || !isReviewer)) {
     return (
       <section className="puzzleQueuePage compact">

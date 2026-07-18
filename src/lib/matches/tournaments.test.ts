@@ -3,8 +3,16 @@ import { describe, expect, it } from "vitest";
 import {
   getTournamentChampion,
   getTournamentDecisiveMatch,
+  getTournamentMeta,
   type TournamentMatch,
 } from "./tournaments";
+
+describe("tournament match modes", () => {
+  it("routes Atomic Hyper Championship matches through the hyper viewer", () => {
+    expect(getTournamentMeta("ahc2026")?.matchMode).toBe("hyperbullet");
+    expect(getTournamentMeta("awc2025")?.matchMode).toBeUndefined();
+  });
+});
 
 const match = (overrides: Partial<TournamentMatch>): TournamentMatch => ({
   tournament: "test",

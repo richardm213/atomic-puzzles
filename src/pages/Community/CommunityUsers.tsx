@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
+import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { type CommunityUserStats, fetchCommunityUsers } from "../../lib/community/puzzleCommunity";
 
@@ -88,6 +89,8 @@ export const CommunityUsersPage = () => {
     return sortDirection === "asc" ? " ↑" : " ↓";
   };
 
+  if (loading && users.length === 0) return <RouteLoadingFallback />;
+
   return (
     <div className="page communityPage communityUsersPage">
       <Seo
@@ -137,7 +140,6 @@ export const CommunityUsersPage = () => {
           </label>
           <span>{`${visibleUsers.length.toLocaleString("en-US")} of ${users.length.toLocaleString("en-US")} users`}</span>
         </div>
-        {loading ? <p className="communityStatus">Loading user activity…</p> : null}
         {error ? <p className="communityError">{error}</p> : null}
         {!loading && !error && visibleUsers.length === 0 ? (
           <p className="communityEmpty">No users match this filter.</p>

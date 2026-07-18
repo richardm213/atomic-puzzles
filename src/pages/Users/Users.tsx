@@ -6,6 +6,7 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 
+import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { type Mode, modeOptions } from "../../constants/matches";
 import { usePersistedState } from "../../hooks/usePersistedState";
@@ -243,6 +244,8 @@ const UsersTablePage = () => {
 
   const userColumns = useMemo(() => getUserColumns(ratingDisplayMode), [ratingDisplayMode]);
 
+  if (loading && rows.length === 0) return <RouteLoadingFallback />;
+
   return (
     <div className="rankingsPage">
       <Seo
@@ -314,8 +317,6 @@ const UsersTablePage = () => {
             </span>
           </span>
         </div>
-
-        {!error && loading ? <div className="emptyRankings">Loading player list...</div> : null}
 
         {!error && !loading && rows.length === 0 ? (
           <div className="emptyRankings">No players available.</div>
