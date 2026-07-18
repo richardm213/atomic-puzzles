@@ -13,6 +13,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { buildPieceStyle } from "../../components/Chessboard/boardStyle";
 import { Chessboard } from "../../components/Chessboard/Chessboard";
 import { PuzzleCommunity } from "../../components/PuzzleCommunity/PuzzleCommunity";
 import { Seo } from "../../components/Seo/Seo";
@@ -47,6 +48,7 @@ import type {
 import { copyTextToClipboard } from "../../utils/clipboard";
 import { formatLocalDateTime } from "../../utils/formatters";
 import { castlingRightsFromFen } from "./castlingRights";
+import { materialCountFromFen, type MaterialPieceRole } from "./materialCount";
 
 const lichessAnalysisUrl = (fen: string | null | undefined): string => {
   if (!fen) return "https://lichess.org/analysis/atomic";
@@ -206,7 +208,7 @@ export const PuzzleSolverPage = () => {
     strict: false,
   });
   const { user } = useAuth();
-  const { showPuzzleTimer } = useAppSettings();
+  const { pieceSet, showPuzzleTimer } = useAppSettings();
   const [puzzles, setPuzzles] = useState<Puzzle[]>([]);
   const [attemptedPuzzleIds, setAttemptedPuzzleIds] = useState<Set<string>>(() => new Set());
   const [resolvedAttemptedPuzzleIds, setResolvedAttemptedPuzzleIds] = useState<Set<string>>(
@@ -479,6 +481,8 @@ export const PuzzleSolverPage = () => {
   const hasExplanation = explanation.trim().length > 0;
   const orientation = orientationFromFen(fen);
   const currentFen = boardState.fen || fen;
+  const materialCount = useMemo(() => materialCountFromFen(currentFen), [currentFen]);
+  const materialPieceStyle = useMemo(() => buildPieceStyle(pieceSet || "cburnett"), [pieceSet]);
   const castlingRights = castlingRightsFromFen(currentFen);
   const hasCastlingRights = castlingRights.white.length > 0 || castlingRights.black.length > 0;
   const startAnalysisUrl = lichessAnalysisUrl(fen);
@@ -1305,8 +1309,35 @@ export const PuzzleSolverPage = () => {
       </div>
     ) : null;
 
+  const renderMaterialDifference = (side: "white" | "black") => {
+    const label = side === "white" ? "White" : "Black";
+    const pieces = side === "white" ? materialCount.whitePieces : materialCount.blackPieces;
+    const status = pieces.length
+      ? `${label} material difference: ${pieces.join(", ")}`
+      : `${label} has no extra pieces`;
+
+    return (
+      <div className={`materialDifference ${side}`} aria-label={status} title={status}>
+        <span className="materialDifferenceSide">{label}</span>
+        <span className="materialDifferencePieces" aria-live="polite">
+          {pieces.map((role: MaterialPieceRole, index: number) => (
+            <span
+              className={`materialDifferencePiece ${role}`}
+              style={{
+                maskImage: `var(--cg-piece-white-${role})`,
+                WebkitMaskImage: `var(--cg-piece-white-${role})`,
+              }}
+              aria-hidden="true"
+              key={`${role}-${index}`}
+            />
+          ))}
+        </span>
+      </div>
+    );
+  };
+
   return (
-    <div className="page puzzlePage">
+    <div className="page puzzlePage" style={materialPieceStyle}>
       <Seo
         title={activePuzzleId ? `Puzzle #${activePuzzleId}` : "Solve a Puzzle"}
         description={
@@ -1414,6 +1445,13 @@ export const PuzzleSolverPage = () => {
         {!isMobileLayout ? (
           <div className="puzzleDetails">
             {renderCastlingRights()}
+            {currentFen && materialCount.advantage ? (
+              <div className="materialDifferencePanel" aria-label="Material difference">
+                <span className="materialDifferenceLabel">Material</span>
+                {renderMaterialDifference("white")}
+                {renderMaterialDifference("black")}
+              </div>
+            ) : null}
             {renderPuzzleInfoSection()}
           </div>
         ) : null}
@@ -1511,6 +1549,15 @@ export const PuzzleSolverPage = () => {
           ) : null}
           {hasCastlingRights ? (
             <div className="mobileCastlingRights">{renderCastlingRights()}</div>
+          ) : null}
+          {currentFen && materialCount.advantage ? (
+            <div className="mobileMaterialDifference">
+              <div className="materialDifferencePanel" aria-label="Material difference">
+                <span className="materialDifferenceLabel">Material</span>
+                {renderMaterialDifference("white")}
+                {renderMaterialDifference("black")}
+              </div>
+            </div>
           ) : null}
         </>
       ) : null}

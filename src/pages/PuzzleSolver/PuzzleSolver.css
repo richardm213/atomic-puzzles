@@ -14,6 +14,7 @@
   position: absolute;
   z-index: 8;
   top: 0;
+  right: auto;
   left: calc(100% + 8px);
   min-width: 54px;
   padding: 4px 7px;
@@ -868,6 +869,72 @@ body:has(.puzzlePage),
   width: 100%;
 }
 
+.materialDifferencePanel {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 7px;
+  max-width: 100%;
+  min-height: 26px;
+  padding: 3px 7px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 82%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-panel-deep) 84%, transparent);
+}
+
+.materialDifference {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  color: var(--color-muted);
+  font-size: 9px;
+  line-height: 1;
+}
+
+.materialDifference + .materialDifference {
+  padding-left: 7px;
+  border-left: 1px solid color-mix(in srgb, var(--color-border) 74%, transparent);
+}
+
+.materialDifferenceSide {
+  font-weight: 700;
+}
+
+.materialDifferenceLabel {
+  color: var(--color-subtle);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.materialDifferencePieces {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  min-width: 18px;
+  min-height: 18px;
+}
+
+.materialDifferencePiece {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  margin-left: -3px;
+  background-color: color-mix(in srgb, var(--color-muted) 84%, var(--color-heading));
+  mask-position: center;
+  mask-repeat: no-repeat;
+  mask-size: contain;
+  -webkit-mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+}
+
+.materialDifferencePiece:first-child {
+  margin-left: 0;
+}
+
 .mobileWorkflowPanel {
   display: none;
 }
@@ -1252,7 +1319,8 @@ body:has(.puzzlePage),
     margin: 0 auto;
   }
 
-  .mobileCastlingRights {
+  .mobileCastlingRights,
+  .mobileMaterialDifference {
     display: flex;
     justify-content: flex-start;
     width: min(100%, 548px);
