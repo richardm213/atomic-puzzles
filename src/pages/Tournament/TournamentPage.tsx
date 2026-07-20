@@ -1,11 +1,16 @@
 import "./TournamentPage.css";
 
-import { faCheck, faRobot } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faComment, faRobot } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate } from "@tanstack/react-router";
-import type { PointerEvent as ReactPointerEvent, UIEvent as ReactUIEvent } from "react";
+import type {
+  MouseEvent as ReactMouseEvent,
+  PointerEvent as ReactPointerEvent,
+  UIEvent as ReactUIEvent,
+} from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { CommunityDiscussion } from "../../components/PuzzleCommunity/PuzzleCommunity";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import {
@@ -1052,6 +1057,20 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
     syncRoundHeaderTrack(stageKey, event.currentTarget.scrollLeft);
   };
 
+  const scrollToComments = (event: ReactMouseEvent<HTMLAnchorElement>): void => {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+      return;
+    const commentsSection = document.getElementById("tournament-comments");
+    if (!commentsSection) return;
+
+    event.preventDefault();
+    window.history.replaceState(null, "", "#tournament-comments");
+    commentsSection.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      block: "start",
+    });
+  };
+
   const openMatchPage = useCallback(
     (match: TournamentMatch): void => {
       const matchId = String(match.match_id || "").trim();
@@ -1231,22 +1250,33 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
         ) : null}
       </section>
 
-      <div className="tournamentStageToggle" role="tablist" aria-label="Bracket type">
-        {bracket.stages.map((stage) => {
-          const isActive = stage.key === activeStageKey;
-          return (
-            <button
-              key={`${stage.key}-toggle`}
-              type="button"
-              role="tab"
-              aria-selected={isActive}
-              className={`tournamentStageToggleButton${isActive ? " isActive" : ""}`}
-              onClick={() => setActiveStageKey(stage.key)}
-            >
-              {stage.label}
-            </button>
-          );
-        })}
+      <div className="tournamentBracketToolbar">
+        <div className="tournamentStageToggle" role="tablist" aria-label="Bracket type">
+          {bracket.stages.map((stage) => {
+            const isActive = stage.key === activeStageKey;
+            return (
+              <button
+                key={`${stage.key}-toggle`}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                className={`tournamentStageToggleButton${isActive ? " isActive" : ""}`}
+                onClick={() => setActiveStageKey(stage.key)}
+              >
+                {stage.label}
+              </button>
+            );
+          })}
+        </div>
+        <a
+          className="tournamentCommentsLink"
+          href="#tournament-comments"
+          aria-label={`Jump to comments for ${bracket.title}`}
+          onClick={scrollToComments}
+        >
+          <FontAwesomeIcon icon={faComment} aria-hidden="true" />
+          <span>Comments</span>
+        </a>
       </div>
 
       <div className="tournamentStages">
@@ -1282,6 +1312,14 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
             />
           );
         })}
+      </div>
+
+      <div id="tournament-comments" className="tournamentCommentsSection">
+        <CommunityDiscussion
+          target={{ type: "tournament", id: bracket.id }}
+          eyebrow="Tournament community"
+          heading={`${bracket.title} discussion`}
+        />
       </div>
     </div>
   );

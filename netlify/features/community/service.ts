@@ -242,6 +242,10 @@ export const readCommunityTarget = (input: CommunityRequest): CommunityTarget | 
       ? { type: "match", id, context }
       : null;
   }
+  if (targetType === "tournament") {
+    const id = typeof rawTargetId === "string" ? rawTargetId.trim().toLowerCase() : "";
+    return id && id.length <= 100 ? { type: "tournament", id, context: "" } : null;
+  }
   return null;
 };
 

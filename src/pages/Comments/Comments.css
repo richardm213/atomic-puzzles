@@ -217,6 +217,10 @@
   background: color-mix(in srgb, var(--color-success) 7%, var(--color-panel-strong));
 }
 
+.siteCommentTarget.tournament {
+  background: color-mix(in srgb, var(--color-accent-warm) 9%, var(--color-panel-strong));
+}
+
 .siteCommentBody,
 .siteCommentHidden {
   margin: 0;

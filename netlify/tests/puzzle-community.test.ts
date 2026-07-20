@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { readCommunityTarget } from "../features/community/service";
 import {
   addPuzzleAttemptStats,
   buildCommunityUserStats,
@@ -157,6 +158,16 @@ describe("profile comment history", () => {
       }),
       expect.objectContaining({ id: 2, body: null, upvotes: 7, content_hidden: true }),
     ]);
+  });
+
+  it("normalizes tournament discussion targets", () => {
+    expect(
+      readCommunityTarget({
+        action: "loadDiscussion",
+        targetType: "tournament",
+        targetId: " AHC2026 ",
+      }),
+    ).toEqual({ type: "tournament", id: "ahc2026", context: "" });
   });
 });
 

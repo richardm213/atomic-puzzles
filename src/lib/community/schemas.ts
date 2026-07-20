@@ -8,7 +8,7 @@ const usernameSchema = z
   .max(100)
   .transform((value) => value.toLowerCase());
 
-export const communityTargetTypeSchema = z.enum(["puzzle", "profile", "match"]);
+export const communityTargetTypeSchema = z.enum(["puzzle", "profile", "match", "tournament"]);
 export type CommunityTargetType = z.infer<typeof communityTargetTypeSchema>;
 
 export const communityRequestSchema = z

@@ -23,6 +23,7 @@ const targetFilterOptions: Array<{ value: CommunityCommentTargetFilter; label: s
   { value: "all", label: "All" },
   { value: "puzzle", label: "Puzzles" },
   { value: "match", label: "Matches" },
+  { value: "tournament", label: "Tournaments" },
   { value: "profile", label: "Profiles" },
 ];
 

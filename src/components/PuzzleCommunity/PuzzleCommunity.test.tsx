@@ -83,4 +83,20 @@ describe("PuzzleCommunity", () => {
     });
     expect(screen.queryByRole("group", { name: "Vote on this puzzle" })).not.toBeInTheDocument();
   });
+
+  it("loads the shared discussion UI for a tournament target", async () => {
+    render(
+      <CommunityDiscussion
+        target={{ type: "tournament", id: "ahc2026" }}
+        heading="AHC 2026 discussion"
+      />,
+    );
+
+    expect(await screen.findByRole("heading", { name: "AHC 2026 discussion" })).toBeVisible();
+    expect(mocks.fetchCommunityDiscussion).toHaveBeenCalledWith({
+      type: "tournament",
+      id: "ahc2026",
+      context: "",
+    });
+  });
 });
