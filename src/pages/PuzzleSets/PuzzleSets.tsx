@@ -6,7 +6,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { loadPuzzleCatalog } from "../../lib/puzzles/puzzleLibrary";
-import { getPuzzleEventKey, groupPuzzlesByEvent } from "../../lib/puzzles/puzzleSets";
+import {
+  getPuzzleEventKey,
+  groupPuzzlesByEvent,
+  isEndgamePuzzleEvent,
+  type PuzzleEventGroup,
+} from "../../lib/puzzles/puzzleSets";
 import { getOpeningDisplayLabel } from "../../utils/openings";
 
 const EVENT_FILTERS = [
@@ -141,18 +146,27 @@ export const PuzzleSetsPage = () => {
   }, []);
 
   const puzzleGroups = useMemo(() => groupPuzzlesByEvent(puzzles), [puzzles]);
+  const endgamePuzzleGroups = useMemo(
+    () => puzzleGroups.filter((group) => isEndgamePuzzleEvent(group.event)),
+    [puzzleGroups],
+  );
+  const eventPuzzleGroups = useMemo(
+    () => puzzleGroups.filter((group) => !isEndgamePuzzleEvent(group.event)),
+    [puzzleGroups],
+  );
   const filteredPuzzleGroups = useMemo(
-    () => puzzleGroups.filter((group) => matchesEventFilter(group, activeFilterId)),
-    [activeFilterId, puzzleGroups],
+    () => eventPuzzleGroups.filter((group) => matchesEventFilter(group, activeFilterId)),
+    [activeFilterId, eventPuzzleGroups],
   );
   const selectedGroup = useMemo(() => {
-    if (!filteredPuzzleGroups.length) return null;
+    const visiblePuzzleGroups = [...filteredPuzzleGroups, ...endgamePuzzleGroups];
+    if (!visiblePuzzleGroups.length) return null;
 
-    const fromHash = filteredPuzzleGroups.find((group) => group.eventKey === selectedEventKey);
+    const fromHash = visiblePuzzleGroups.find((group) => group.eventKey === selectedEventKey);
     if (fromHash) return fromHash;
 
     return null;
-  }, [filteredPuzzleGroups, selectedEventKey]);
+  }, [endgamePuzzleGroups, filteredPuzzleGroups, selectedEventKey]);
 
   const totalPuzzleCount = useMemo(
     () => puzzleGroups.reduce((count, group) => count + group.puzzles.length, 0),
@@ -164,6 +178,54 @@ export const PuzzleSetsPage = () => {
     setSelectedEventKey(eventKey);
     updateEventKeyHash(eventKey);
   };
+
+  const renderPuzzleSetGrid = (groups: PuzzleEventGroup[], ariaLabel: string) => (
+    <div className="puzzleSetGrid" role="list" aria-label={ariaLabel}>
+      {groups.map((group) => {
+        const firstPuzzleId = group.puzzles[0]?.puzzleId ?? "—";
+        const lastPuzzleId = group.puzzles[group.puzzles.length - 1]?.puzzleId ?? "—";
+        const isSelected = selectedGroup?.eventKey === group.eventKey;
+
+        return (
+          <article
+            key={group.eventKey}
+            className={`puzzleSetCard ${isSelected ? "selected" : ""}`}
+            role="listitem"
+          >
+            <button
+              type="button"
+              className="puzzleSetCardSelect"
+              onClick={() => handleSetSelection(group.eventKey)}
+            >
+              <span className="puzzleSetsMiniLabel">Set</span>
+              <strong>{group.event}</strong>
+              <div className="puzzleSetCardMeta">
+                <span>{group.puzzles.length} puzzles</span>
+                <span>
+                  #{firstPuzzleId}
+                  {firstPuzzleId !== lastPuzzleId ? `-${lastPuzzleId}` : ""}
+                </span>
+              </div>
+              <span className="puzzleSetCardAuthors">
+                {group.authors.length} author{group.authors.length === 1 ? "" : "s"}
+              </span>
+            </button>
+            <Link
+              className="puzzleSetCardStartLink"
+              to="/solve/set/$setKey/$puzzleId"
+              params={{
+                setKey: group.event,
+                puzzleId: String(group.puzzles[0]?.puzzleId ?? ""),
+              }}
+            >
+              Start set
+              <span aria-hidden="true">→</span>
+            </Link>
+          </article>
+        );
+      })}
+    </div>
+  );
 
   useEffect(() => {
     if (!selectedGroup || !shouldScrollToSelectionRef.current) return;
@@ -230,51 +292,7 @@ export const PuzzleSetsPage = () => {
           </div>
 
           {filteredPuzzleGroups.length > 0 ? (
-            <div className="puzzleSetGrid" role="list" aria-label="Puzzle events">
-              {filteredPuzzleGroups.map((group) => {
-                const firstPuzzleId = group.puzzles[0]?.puzzleId ?? "—";
-                const lastPuzzleId = group.puzzles[group.puzzles.length - 1]?.puzzleId ?? "—";
-                const isSelected = selectedGroup?.eventKey === group.eventKey;
-
-                return (
-                  <article
-                    key={group.eventKey}
-                    className={`puzzleSetCard ${isSelected ? "selected" : ""}`}
-                    role="listitem"
-                  >
-                    <button
-                      type="button"
-                      className="puzzleSetCardSelect"
-                      onClick={() => handleSetSelection(group.eventKey)}
-                    >
-                      <span className="puzzleSetsMiniLabel">Event</span>
-                      <strong>{group.event}</strong>
-                      <div className="puzzleSetCardMeta">
-                        <span>{group.puzzles.length} puzzles</span>
-                        <span>
-                          #{firstPuzzleId}
-                          {firstPuzzleId !== lastPuzzleId ? `-${lastPuzzleId}` : ""}
-                        </span>
-                      </div>
-                      <span className="puzzleSetCardAuthors">
-                        {group.authors.length} author{group.authors.length === 1 ? "" : "s"}
-                      </span>
-                    </button>
-                    <Link
-                      className="puzzleSetCardStartLink"
-                      to="/solve/set/$setKey/$puzzleId"
-                      params={{
-                        setKey: group.event,
-                        puzzleId: String(group.puzzles[0]?.puzzleId ?? ""),
-                      }}
-                    >
-                      Start set
-                      <span aria-hidden="true">→</span>
-                    </Link>
-                  </article>
-                );
-              })}
-            </div>
+            renderPuzzleSetGrid(filteredPuzzleGroups, "Puzzle events")
           ) : (
             <div className="puzzleSetsStateCard">
               {puzzleGroups.length > 0
@@ -283,6 +301,21 @@ export const PuzzleSetsPage = () => {
             </div>
           )}
         </section>
+
+        {endgamePuzzleGroups.length > 0 ? (
+          <section className="puzzleSetsSection puzzleSetsEndgameSection">
+            <div className="puzzleSetsSectionHeader">
+              <div className="puzzleSetsSectionCopy">
+                <p className="puzzleSetsSectionEyebrow">Endgames</p>
+                <h2>Endgame puzzle sets</h2>
+                <p className="puzzleSetsSectionIntro">
+                  Explore puzzle sets dedicated to atomic endgames.
+                </p>
+              </div>
+            </div>
+            {renderPuzzleSetGrid(endgamePuzzleGroups, "Endgame puzzle sets")}
+          </section>
+        ) : null}
 
         {selectedGroup ? (
           <section

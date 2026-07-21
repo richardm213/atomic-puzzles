@@ -399,7 +399,7 @@ const emptyTournamentMatch = (
   loser_to: "",
 });
 
-const addEmptyMainBracketRounds = (
+export const addEmptyMainBracketRounds = (
   matches: TournamentMatch[],
   startRoundName: string | undefined,
 ): TournamentMatch[] => {
@@ -424,21 +424,22 @@ const addEmptyMainBracketRounds = (
       .filter((match) => match.bracket === "main" && match.round === nextRoundName)
       .sort((left, right) => left.order - right.order);
 
-    while (nextRoundMatches.length < expectedNextMatchCount) {
-      const sourceMatch = roundMatches[nextRoundMatches.length * 2] ?? roundMatches[0];
+    const nextRoundMatchesByOrder = new Map(nextRoundMatches.map((match) => [match.order, match]));
+
+    for (let order = 1; order <= expectedNextMatchCount; order += 1) {
+      if (nextRoundMatchesByOrder.has(order)) continue;
+
+      const sourceMatch = roundMatches[(order - 1) * 2] ?? roundMatches[0];
       if (!sourceMatch) break;
 
-      const nextMatch = emptyTournamentMatch(
-        sourceMatch,
-        nextRoundName,
-        nextRoundMatches.length + 1,
-      );
+      const nextMatch = emptyTournamentMatch(sourceMatch, nextRoundName, order);
       nextRoundMatches.push(nextMatch);
+      nextRoundMatchesByOrder.set(order, nextMatch);
       augmented.push(nextMatch);
     }
 
     roundMatches.forEach((match, matchIndex) => {
-      const nextMatch = nextRoundMatches[Math.floor(matchIndex / 2)];
+      const nextMatch = nextRoundMatchesByOrder.get(Math.floor(matchIndex / 2) + 1);
       if (!nextMatch) return;
 
       if (!match.winner_to) {

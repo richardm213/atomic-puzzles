@@ -11,6 +11,11 @@
   padding: var(--page-shell-padding);
 }
 
+.puzzleSetsShell {
+  display: grid;
+  gap: 18px;
+}
+
 .puzzleSetsHero,
 .puzzleSetsSection {
   padding: var(--puzzle-sets-panel-padding);
@@ -53,6 +58,10 @@
   align-items: center;
   justify-content: flex-start;
   align-self: start;
+}
+
+.puzzleSetsEndgameSection .puzzleSetsSectionHeader {
+  margin-bottom: 14px;
 }
 
 .puzzleSetsEyebrow,

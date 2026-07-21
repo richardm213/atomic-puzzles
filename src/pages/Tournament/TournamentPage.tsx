@@ -1151,7 +1151,6 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
       moved: false,
     };
     setDraggingStage(stageKey);
-    currentTarget.setPointerCapture?.(event.pointerId);
   };
 
   const handleScrollerPointerMove = (event: ReactPointerEvent<HTMLDivElement>): void => {
@@ -1160,7 +1159,11 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
 
     const deltaX = event.clientX - dragState.startX;
     const deltaY = event.clientY - dragState.startY;
-    if (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4) dragState.moved = true;
+    if (!dragState.moved) {
+      if (Math.abs(deltaX) <= 4 && Math.abs(deltaY) <= 4) return;
+      dragState.moved = true;
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+    }
 
     event.currentTarget.scrollLeft = dragState.startScrollLeft - deltaX;
     const targetScrollTop = dragState.startScrollTop - deltaY;

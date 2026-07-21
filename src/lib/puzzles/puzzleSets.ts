@@ -26,6 +26,9 @@ export const getPuzzleEventKey = (value: string): string => {
   return encodeURIComponent(normalizedEvent.toLocaleLowerCase());
 };
 
+export const isEndgamePuzzleEvent = (value: unknown): boolean =>
+  normalizePuzzleEventName(value).toLocaleLowerCase().includes("endgame");
+
 export const getOrderedPuzzleIndexesForEvent = (
   puzzles: Puzzle[] = [],
   eventNameOrKey: string,

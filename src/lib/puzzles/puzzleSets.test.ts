@@ -4,6 +4,7 @@ import type { Puzzle } from "./puzzleLibrary";
 import {
   getOrderedPuzzleIndexesForEvent,
   groupPuzzlesByEvent,
+  isEndgamePuzzleEvent,
   normalizePuzzleEventName,
   UNKNOWN_PUZZLE_EVENT_LABEL,
 } from "./puzzleSets";
@@ -25,6 +26,18 @@ describe("normalizePuzzleEventName", () => {
     expect(normalizePuzzleEventName(null)).toBe(UNKNOWN_PUZZLE_EVENT_LABEL);
     expect(normalizePuzzleEventName("")).toBe(UNKNOWN_PUZZLE_EVENT_LABEL);
     expect(normalizePuzzleEventName(undefined)).toBe(UNKNOWN_PUZZLE_EVENT_LABEL);
+  });
+});
+
+describe("isEndgamePuzzleEvent", () => {
+  it("recognizes endgame sets without depending on capitalization", () => {
+    expect(isEndgamePuzzleEvent("Tipau Endgames")).toBe(true);
+    expect(isEndgamePuzzleEvent("ATOMIC ENDGAME STUDIES")).toBe(true);
+  });
+
+  it("does not classify regular event sets as endgames", () => {
+    expect(isEndgamePuzzleEvent("AWC 2025: Wolfram vs Randoom")).toBe(false);
+    expect(isEndgamePuzzleEvent(null)).toBe(false);
   });
 });
 
