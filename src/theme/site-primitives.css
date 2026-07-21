@@ -197,7 +197,6 @@
 .profileFavoriteOpponentsTable .profileFavoriteOpponentRow:hover,
 .profileFavoriteOpponentsTable .profileFavoriteOpponentRow:focus-visible {
   background: var(--color-accent-soft-bg);
-  box-shadow: inset 3px 0 0 var(--color-cyan-bright);
   outline: none;
 }
 

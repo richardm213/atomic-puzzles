@@ -227,10 +227,18 @@
 
 .tournamentSeedBadge {
   display: inline-block;
-  margin-left: 4px;
+  inline-size: 2ch;
+  margin-right: 4px;
   color: var(--color-primary-pale);
   font-size: 0.9em;
   font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-align: left;
+}
+
+.tournamentSeedBadge.isSingleDigit {
+  inline-size: 1.5ch;
 }
 
 .tournamentFairPlayFlag {
@@ -622,6 +630,13 @@
   filter: drop-shadow(0 16px 18px color-mix(in srgb, black 42%, transparent));
 }
 
+.tournamentMatchCardTree.hasSideTrophy .tournamentMatchTrophy {
+  top: 50%;
+  right: -116px;
+  left: auto;
+  transform: translateY(-50%);
+}
+
 .tournamentMatchPlayers {
   display: grid;
   gap: 0;
@@ -636,7 +651,7 @@
   column-gap: 8px;
   min-width: 0;
   min-height: 38px;
-  padding: 4px 8px 4px 6px;
+  padding: 4px 8px 4px 4px;
   border-radius: 2px;
 }
 

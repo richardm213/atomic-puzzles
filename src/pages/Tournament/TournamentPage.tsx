@@ -426,8 +426,16 @@ const getBracketDisplayName = (playerName: string): string => {
   return lastDelimiterIndex > 0 ? name.slice(0, lastDelimiterIndex) : name;
 };
 
-const SeedBadge = ({ seed }: { seed?: number | null | undefined }) =>
-  seed ? <span className="tournamentSeedBadge">({seed})</span> : null;
+const SeedBadge = ({ seed, seedCount }: { seed?: number | null | undefined; seedCount: number }) =>
+  seedCount ? (
+    <span
+      className={`tournamentSeedBadge${seedCount <= 8 ? " isSingleDigit" : ""}`}
+      aria-label={seed ? `Seed ${seed}` : undefined}
+      aria-hidden={seed ? undefined : true}
+    >
+      {seed || null}
+    </span>
+  ) : null;
 
 const FAIR_PLAY_FLAGGED_PLAYERS = new Set(["neverofzero", "taisthuban", "jasos12"]);
 const FAIR_PLAY_FLAG_LABEL =
@@ -479,17 +487,20 @@ const isInteractivePointerTarget = (target: EventTarget | null): boolean => {
 const PlayerLabel = ({
   playerName,
   seed,
+  seedCount,
   isWinner,
   countryCode,
   shouldSuppressClick,
 }: {
   playerName: string;
   seed?: number | null | undefined;
+  seedCount: number;
   isWinner: boolean;
   countryCode?: string | null | undefined;
   shouldSuppressClick: () => boolean;
 }) => (
   <span className="tournamentPlayerLabel">
+    <SeedBadge seed={seed} seedCount={seedCount} />
     {!isByePlayer(playerName) && !isEmptyPlayer(playerName) ? (
       <img
         className="tournamentPlayerFlag"
@@ -520,7 +531,6 @@ const PlayerLabel = ({
         {getBracketDisplayName(playerName)}
       </Link>
     )}
-    <SeedBadge seed={seed} />
     <FairPlayFlagBadge playerName={playerName} />
     {isWinner ? <AdvanceCheck /> : null}
   </span>
@@ -539,17 +549,21 @@ const TournamentStateMessage = ({ title, message }: { title: string; message: st
 const TournamentMatchCard = ({
   match,
   topSeedMap,
+  seedCount,
   countryMap,
   trophyAssetPath,
   showTrophy,
+  placeTrophyOnSide,
   shouldSuppressClick,
   onOpenMatch,
 }: {
   match: PositionedMatch;
   topSeedMap: Map<string, number>;
+  seedCount: number;
   countryMap: Map<string, string>;
   trophyAssetPath: string | undefined;
   showTrophy: boolean;
+  placeTrophyOnSide: boolean;
   shouldSuppressClick: () => boolean;
   onOpenMatch: (match: TournamentMatch) => void;
 }) => {
@@ -560,7 +574,7 @@ const TournamentMatchCard = ({
 
   return (
     <div
-      className={`tournamentMatchCard tournamentMatchCardTree${hasMatchPage ? " isClickable" : ""}${shouldShowTrophy ? " hasTrophy" : ""}`}
+      className={`tournamentMatchCard tournamentMatchCardTree${hasMatchPage ? " isClickable" : ""}${shouldShowTrophy ? " hasTrophy" : ""}${shouldShowTrophy && placeTrophyOnSide ? " hasSideTrophy" : ""}`}
       style={{
         left: `${match.x}px`,
         top: `${match.y}px`,
@@ -609,6 +623,7 @@ const TournamentMatchCard = ({
             <PlayerLabel
               playerName={match.p1}
               seed={topSeedMap.get(match.p1)}
+              seedCount={seedCount}
               isWinner={matchWinner === match.p1}
               countryCode={countryMap.get(match.p1)}
               shouldSuppressClick={shouldSuppressClick}
@@ -623,6 +638,7 @@ const TournamentMatchCard = ({
             <PlayerLabel
               playerName={match.p2}
               seed={topSeedMap.get(match.p2)}
+              seedCount={seedCount}
               isWinner={matchWinner === match.p2}
               countryCode={countryMap.get(match.p2)}
               shouldSuppressClick={shouldSuppressClick}
@@ -644,6 +660,7 @@ const TournamentStageSection = ({
   isDragging,
   startRoundName,
   topSeedMap,
+  seedCount,
   countryMap,
   trophyAssetPath,
   decisiveMatchId,
@@ -667,6 +684,7 @@ const TournamentStageSection = ({
   isDragging: boolean;
   startRoundName: string;
   topSeedMap: Map<string, number>;
+  seedCount: number;
   countryMap: Map<string, string>;
   trophyAssetPath: string | undefined;
   decisiveMatchId: string;
@@ -826,9 +844,13 @@ const TournamentStageSection = ({
                     key={match.id}
                     match={match}
                     topSeedMap={topSeedMap}
+                    seedCount={seedCount}
                     countryMap={countryMap}
                     trophyAssetPath={trophyAssetPath}
                     showTrophy={match.id === trophyMatchId}
+                    placeTrophyOnSide={
+                      startRoundName === "Semifinals" || startRoundName === "Finals"
+                    }
                     shouldSuppressClick={shouldSuppressMatchClick}
                     onOpenMatch={onOpenMatch}
                   />
@@ -1251,23 +1273,25 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
       </section>
 
       <div className="tournamentBracketToolbar">
-        <div className="tournamentStageToggle" role="tablist" aria-label="Bracket type">
-          {bracket.stages.map((stage) => {
-            const isActive = stage.key === activeStageKey;
-            return (
-              <button
-                key={`${stage.key}-toggle`}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                className={`tournamentStageToggleButton${isActive ? " isActive" : ""}`}
-                onClick={() => setActiveStageKey(stage.key)}
-              >
-                {stage.label}
-              </button>
-            );
-          })}
-        </div>
+        {bracket.stages.length > 1 ? (
+          <div className="tournamentStageToggle" role="tablist" aria-label="Bracket type">
+            {bracket.stages.map((stage) => {
+              const isActive = stage.key === activeStageKey;
+              return (
+                <button
+                  key={`${stage.key}-toggle`}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  className={`tournamentStageToggleButton${isActive ? " isActive" : ""}`}
+                  onClick={() => setActiveStageKey(stage.key)}
+                >
+                  {stage.label}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
         <a
           className="tournamentCommentsLink"
           href="#tournament-comments"
@@ -1293,6 +1317,7 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
               isDragging={draggingStage === stage.key}
               startRoundName={startRoundName}
               topSeedMap={topSeedMap}
+              seedCount={topSeedMap.size}
               countryMap={countryMap}
               trophyAssetPath={bracket.trophyAssetPath}
               decisiveMatchId={decisiveMatchId}

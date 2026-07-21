@@ -490,6 +490,13 @@ export default defineConfig(({ mode }) => {
       },
     },
     base: "/",
+    css: {
+      preprocessorOptions: {
+        scss: {
+          api: "modern-compiler",
+        },
+      },
+    },
     build: {
       assetsInlineLimit: 0,
       rollupOptions: {

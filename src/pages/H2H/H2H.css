@@ -372,7 +372,6 @@
 
 .h2hMatchTableRow.expanded {
   background: var(--color-accent-soft-bg-strong);
-  box-shadow: inset 3px 0 0 var(--color-cyan-bright);
 }
 
 .h2hMatchTableType {

@@ -1149,6 +1149,7 @@
   width: 100%;
   min-width: 680px;
   table-layout: fixed;
+  border-collapse: collapse;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -1215,10 +1216,6 @@
 
 .profileMatchTable .matchDetailsRow > td {
   width: auto;
-}
-
-.profileMatchTable th + th {
-  border-left: 0;
 }
 
 .profileMatchTable tbody tr:last-child td {
@@ -1376,7 +1373,6 @@
 
 .expandableMatchRow.expanded {
   background: var(--color-accent-soft-bg-strong);
-  box-shadow: inset 3px 0 0 var(--color-cyan-bright);
 }
 
 @media (max-width: 1180px) {

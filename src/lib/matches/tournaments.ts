@@ -120,7 +120,6 @@ const tournaments: TournamentMeta[] = [
     headingTitle: "Atomic Hyper Championship 2026",
     year: 2026,
     matchMode: "hyperbullet",
-    hideStartRoundControls: true,
     completeMainBracketFromRound: "Round of 32",
     trophyAssetPath: trophyAssetPaths.ahc,
   }),
