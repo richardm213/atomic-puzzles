@@ -105,7 +105,7 @@ describe("puzzle-submit function", () => {
     );
   });
 
-  it("returns a clear conflict when the FEN already exists", async () => {
+  it("returns a clear conflict when the FEN and moves already exist", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(
@@ -119,7 +119,7 @@ describe("puzzle-submit function", () => {
     const upsert = vi.fn(async () => ({ error: null }));
     const single = vi.fn(async () => ({
       data: null,
-      error: { message: "Puzzle FEN already exists" },
+      error: { message: "Puzzle moves already exist for FEN" },
     }));
     const rpc = vi.fn(() => ({ single }));
     const from = vi.fn(() => ({ upsert }));
@@ -137,11 +137,11 @@ describe("puzzle-submit function", () => {
 
     expect(response.statusCode).toBe(409);
     expect(JSON.parse(response.body)).toEqual({
-      error: "A puzzle with this FEN already exists.",
+      error: "A puzzle with this FEN and the same moves already exists.",
     });
   });
 
-  it("returns a clear conflict when the FEN is already in the review queue", async () => {
+  it("returns a clear conflict when the FEN and moves are already in the review queue", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(
@@ -155,7 +155,7 @@ describe("puzzle-submit function", () => {
     const upsert = vi.fn(async () => ({ error: null }));
     const single = vi.fn(async () => ({
       data: null,
-      error: { message: "Puzzle FEN already exists in queue" },
+      error: { message: "Puzzle moves already exist for FEN in queue" },
     }));
     const rpc = vi.fn(() => ({ single }));
     const from = vi.fn(() => ({ upsert }));
@@ -173,7 +173,7 @@ describe("puzzle-submit function", () => {
 
     expect(response.statusCode).toBe(409);
     expect(JSON.parse(response.body)).toEqual({
-      error: "A puzzle with this FEN is already pending review.",
+      error: "A puzzle with this FEN and the same moves is already pending review.",
     });
   });
 });

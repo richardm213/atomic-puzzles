@@ -98,11 +98,15 @@ export const handler = async (event: NetlifyEvent) => {
         p_submitted_by: username,
       })
       .single();
-    if (error?.message.includes("Puzzle FEN already exists in queue")) {
-      return jsonResponse(409, { error: "A puzzle with this FEN is already pending review." });
+    if (error?.message.includes("Puzzle moves already exist for FEN in queue")) {
+      return jsonResponse(409, {
+        error: "A puzzle with this FEN and the same moves is already pending review.",
+      });
     }
-    if (error?.message.includes("Puzzle FEN already exists")) {
-      return jsonResponse(409, { error: "A puzzle with this FEN already exists." });
+    if (error?.message.includes("Puzzle moves already exist for FEN")) {
+      return jsonResponse(409, {
+        error: "A puzzle with this FEN and the same moves already exists.",
+      });
     }
     if (error) throw new Error(`Unable to submit puzzle: ${error.message}`);
 

@@ -47,6 +47,12 @@ as $$
 declare
   normalized_username text := lower(btrim(coalesce(p_submitted_by, '')));
   normalized_fen text := btrim(coalesce(p_fen, ''));
+  normalized_solution text := regexp_replace(
+    btrim(coalesce(p_solution, '')),
+    '[[:space:]]+',
+    ' ',
+    'g'
+  );
   queued public.puzzles_queue%rowtype;
 begin
   if normalized_username = '' then
@@ -57,19 +63,32 @@ begin
     raise exception 'A FEN is required';
   end if;
 
-  -- Serialize equal-FEN submissions so concurrent requests cannot both pass.
-  perform pg_advisory_xact_lock(hashtextextended(normalized_fen, 0));
+  if normalized_solution = '' then
+    raise exception 'A solution is required';
+  end if;
+
+  -- Serialize equal FEN-and-move submissions so concurrent requests cannot
+  -- both pass, while allowing different puzzles from the same position.
+  perform pg_advisory_xact_lock(
+    hashtextextended(jsonb_build_array(normalized_fen, normalized_solution)::text, 0)
+  );
 
   if exists (
-    select 1 from public.puzzles where btrim(fen) = normalized_fen
+    select 1
+    from public.puzzles
+    where btrim(fen) = normalized_fen
+      and regexp_replace(btrim(solution), '[[:space:]]+', ' ', 'g') = normalized_solution
   ) then
-    raise exception 'Puzzle FEN already exists';
+    raise exception 'Puzzle moves already exist for FEN';
   end if;
 
   if exists (
-    select 1 from public.puzzles_queue where btrim(fen) = normalized_fen
+    select 1
+    from public.puzzles_queue
+    where btrim(fen) = normalized_fen
+      and regexp_replace(btrim(solution), '[[:space:]]+', ' ', 'g') = normalized_solution
   ) then
-    raise exception 'Puzzle FEN already exists in queue';
+    raise exception 'Puzzle moves already exist for FEN in queue';
   end if;
 
   insert into public.puzzles_queue (
@@ -81,7 +100,7 @@ begin
   )
   values (
     normalized_fen,
-    btrim(p_solution),
+    normalized_solution,
     btrim(coalesce(p_event, '')),
     btrim(coalesce(p_explanation, '')),
     normalized_username
