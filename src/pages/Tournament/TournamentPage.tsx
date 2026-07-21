@@ -103,7 +103,7 @@ const CARD_HEIGHT = 102;
 const COLUMN_GAP = 78;
 const LEAF_GAP = 26;
 const BOARD_PADDING = 18;
-const BOARD_BOTTOM_PADDING = 12;
+const BOARD_BOTTOM_PADDING = 4;
 const HEADER_SPACE = 64;
 const CARD_CENTER_ANCHOR_OFFSET = CARD_HEIGHT / 2;
 const DEFAULT_STAGE_ZOOM = 0.85;
@@ -477,10 +477,10 @@ const countryCodeToFlagUrl = (countryCode: string | null | undefined): string =>
 
 const isInteractivePointerTarget = (target: EventTarget | null): boolean => {
   if (!(target instanceof Element)) return false;
+  if (target.closest(".tournamentMatchCardTree")) return false;
+
   return Boolean(
-    target.closest(
-      "a, button, input, select, textarea, [role='button'], [role='link'], .tournamentMatchCardTree.isClickable",
-    ),
+    target.closest("a, button, input, select, textarea, [role='button'], [role='link']"),
   );
 };
 
@@ -804,6 +804,7 @@ const TournamentStageSection = ({
           onPointerMove={onPointerMove}
           onPointerUp={onPointerEnd}
           onPointerCancel={onPointerEnd}
+          onLostPointerCapture={onPointerEnd}
           onScroll={(event) => onScrollerScroll(stage.key, event)}
         >
           {!layout ? null : (
@@ -1183,7 +1184,9 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
     const dragState = dragStateRef.current;
     if (!dragState || dragState.pointerId !== event.pointerId) return;
 
-    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+      event.currentTarget.releasePointerCapture?.(event.pointerId);
+    }
     suppressNextMatchClickRef.current = dragState.moved;
     if (dragState.moved && typeof window !== "undefined") {
       window.setTimeout(() => {
