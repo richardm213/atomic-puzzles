@@ -1,5 +1,10 @@
 import { appendBoardMove, createBoardHistory } from "./boardHistory";
-import { createVariationHistory, saveVariation, variationHistories } from "./variationHistory";
+import {
+  createVariationHistory,
+  saveVariation,
+  variationMoveKeys,
+  variationMoveSans,
+} from "./variationHistory";
 
 const line = (...moves: string[]) => {
   const history = createBoardHistory("root");
@@ -23,9 +28,11 @@ describe("variation history", () => {
     saveVariation(tree, line("e4", "e5", "Nf3"), first);
 
     expect([first, second]).toEqual([0, 1]);
-    expect(
-      variationHistories(tree).map((history) => history.plies.slice(1).map((ply) => ply.san)),
-    ).toEqual([
+    expect(variationMoveSans(tree)).toEqual([
+      ["e4", "e5", "Nf3"],
+      ["e4", "c5"],
+    ]);
+    expect(variationMoveKeys(tree)).toEqual([
       ["e4", "e5", "Nf3"],
       ["e4", "c5"],
     ]);

@@ -185,6 +185,24 @@ describe("Chessboard orchestration", () => {
     expect(states.at(-1)?.lineMoves).toEqual(["e4", "e5"]);
   });
 
+  it("allows a new variation to be played from the middle of a solution line", () => {
+    const states = renderBoard({
+      solution: "1. e4 e5 2. Nf3",
+      analysisMode: true,
+      preserveAnalysisHistoryOnSolutionChange: true,
+      solutionNavigation: { type: "solution", line: 0, ply: 1 },
+    });
+
+    play("d7", "d5");
+
+    expect(states.at(-1)).toMatchObject({
+      lineIndex: 2,
+      lineMoves: ["e4", "d5"],
+      customLineIndex: 0,
+      viewingSolution: false,
+    });
+  });
+
   it("uses Down and Up to navigate to the end and start of a solution", () => {
     const states = renderBoard({ solution: "1. e4 e5 2. Nf3", showSolution: true });
 

@@ -303,6 +303,42 @@ describe("PuzzleSolverPage solution options", () => {
     });
   });
 
+  it("keeps original solution lines when board analysis adds a variation", async () => {
+    const user = userEvent.setup();
+    render(<PuzzleSolverPage />);
+
+    const solutionTab = await screen.findByRole("tab", { name: "Solution" });
+    await waitFor(() => expect(solutionTab).toBeEnabled());
+    await user.click(solutionTab);
+
+    act(() => {
+      mocks.chessboardProps.at(-1)?.onStateChange?.({
+        fen: "rn2k2r/pp5p/1qpp2p1/2Q5/1b2P3/2N5/PPP3PP/R3KB1R b KQkq - 1 12",
+        turn: "black",
+        status: "black to move",
+        error: "",
+        lineMoves: ["O-O", "Kd7"],
+        solutionLines: [
+          ["O-O", "O-O-O", "Rf2", "Be2", "Ba3"],
+          ["Rf8", "O-O-O", "Rf2", "Be2", "Ba3"],
+        ],
+        customLines: [["O-O", "Kd7"]],
+        solutionLineIndex: 0,
+        customLineIndex: 0,
+        lineIndex: 2,
+        viewingSolution: false,
+        showWrongMove: false,
+        showRetryMove: false,
+        solved: false,
+      });
+    });
+
+    const variations = await screen.findByRole("list", { name: "Solution variations" });
+    expect(within(variations).getByRole("button", { name: "1. O-O" })).toBeVisible();
+    expect(within(variations).getByRole("button", { name: "1. Rf8" })).toBeVisible();
+    expect(within(variations).getByRole("button", { name: "1... Kd7" })).toBeVisible();
+  });
+
   it("uses the mouse wheel for moves only after the solution is open", async () => {
     const user = userEvent.setup();
     const { container } = render(<PuzzleSolverPage />);

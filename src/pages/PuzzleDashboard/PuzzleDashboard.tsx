@@ -279,8 +279,15 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
     dashboardSummary.total > 0
       ? Math.round((dashboardSummary.correct / dashboardSummary.total) * 100)
       : 0;
+  const puzzlesCreated = useMemo(
+    () =>
+      [...puzzlesById.values()].filter(
+        (puzzle) => normalizeUsername(puzzle?.["author"]) === targetUsername,
+      ).length,
+    [puzzlesById, targetUsername],
+  );
   const isPageLoading = isDashboardLoading || arePuzzlesLoading;
-  const areStatsLoading = isSummaryLoading || isDashboardLoading;
+  const areStatsLoading = isSummaryLoading || isDashboardLoading || arePuzzlesLoading;
   const firstRowNumber = totalProgressRows === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const seoTitle = viewingOwnDashboard
     ? "Puzzle Dashboard"
@@ -380,6 +387,10 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
               <div className="dashboardStatCard dashboardStatCardAccuracy">
                 <span className="dashboardStatLabel">Accuracy</span>
                 <strong>{areStatsLoading ? "…" : `${accuracy}%`}</strong>
+              </div>
+              <div className="dashboardStatCard dashboardStatCardCreated">
+                <span className="dashboardStatLabel">Puzzles created</span>
+                <strong>{areStatsLoading ? "…" : puzzlesCreated}</strong>
               </div>
             </section>
 

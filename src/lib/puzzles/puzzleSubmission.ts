@@ -1,4 +1,4 @@
-import { createAtomicPosition, normalizeSolutionPgn, parseSolutionUciLines } from "./solutionPgn";
+import { createAtomicPosition, parseSolutionUciLines, serializeUciLinesToPgn } from "./solutionPgn";
 
 export type PuzzleSubmissionValue = {
   fen: string;
@@ -19,6 +19,35 @@ const PGN_TAG_PATTERN = /^\s*\[([A-Za-z0-9_]+)\s+"((?:\\.|[^"\\])*)"\]\s*$/;
 const PGN_MOVETEXT_PATTERN = /^\d+\.(?:\.\.)?\s*\S/;
 
 const unescapePgnTagValue = (value: string): string => value.replace(/\\(["\\])/g, "$1");
+
+export const compactPuzzleSolution = (solution: string): string =>
+  solution
+    .replace(/\\r\\n|\\n|\\r|[\r\n]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+export const splitPuzzlePgnBatch = (input: string): string[] => {
+  const games: string[] = [];
+  let currentLines: string[] = [];
+  let hasMovetext = false;
+
+  const flush = (): void => {
+    const game = currentLines.join("\n").trim();
+    if (game) games.push(game);
+    currentLines = [];
+    hasMovetext = false;
+  };
+
+  for (const line of input.replace(/\r\n?/g, "\n").split("\n")) {
+    const isHeader = PGN_TAG_PATTERN.test(line);
+    if (isHeader && hasMovetext) flush();
+    currentLines.push(line);
+    if (!isHeader && line.trim()) hasMovetext = true;
+  }
+  flush();
+
+  return games;
+};
 
 export const ensurePuzzlePgnHeaders = (headerText: string, fen: string): string => {
   const headerLines = headerText.replace(/\r\n?/g, "\n").split("\n").filter(Boolean);
@@ -74,31 +103,10 @@ export const parsePuzzlePgnInput = (input: string, fallbackFen: string): ParsedP
   };
 };
 
-export const mergeSolutionLine = (lines: string[][], nextLine: string[]): string[][] => {
-  if (!nextLine.length) return lines;
-  const sameMove = (left: string, right: string): boolean => left === right;
-  if (
-    lines.some(
-      (line) =>
-        line.length === nextLine.length &&
-        line.every((move, index) => sameMove(move, nextLine[index] ?? "")),
-    )
-  ) {
-    return lines;
-  }
-
-  const extendedLineIndex = lines.findIndex(
-    (line) =>
-      line.length < nextLine.length &&
-      line.every((move, index) => sameMove(move, nextLine[index] ?? "")),
-  );
-  if (extendedLineIndex < 0) return [...lines, nextLine];
-
-  return lines.map((line, index) => (index === extendedLineIndex ? nextLine : line));
-};
-
-export const validatePuzzleSubmission = (value: PuzzleSubmissionValue): PuzzleSubmissionValue => {
-  const parsedPgn = parsePuzzlePgnInput(value.solution, value.fen);
+export const validateParsedPuzzleSubmission = (
+  value: PuzzleSubmissionValue,
+  parsedPgn: ParsedPuzzlePgn,
+): PuzzleSubmissionValue => {
   const fen = parsedPgn.fen;
   const solution = parsedPgn.solution;
   const explanation = value.explanation.trim();
@@ -107,9 +115,16 @@ export const validatePuzzleSubmission = (value: PuzzleSubmissionValue): PuzzleSu
   if (!fen) throw new Error("Enter a FEN.");
   createAtomicPosition(fen);
   if (!solution) throw new Error("Enter at least one move.");
-  if (parseSolutionUciLines(fen, solution).length === 0) {
+  const solutionLines = parseSolutionUciLines(fen, solution);
+  if (solutionLines.length === 0) {
     throw new Error("The moves are not a legal atomic line from this FEN.");
   }
 
-  return { fen, solution: normalizeSolutionPgn(fen, solution), event, explanation };
+  const normalizedSolution = /[()]/.test(solution)
+    ? solution.trim()
+    : serializeUciLinesToPgn(fen, solutionLines) || solution.trim();
+  return { fen, solution: normalizedSolution, event, explanation };
 };
+
+export const validatePuzzleSubmission = (value: PuzzleSubmissionValue): PuzzleSubmissionValue =>
+  validateParsedPuzzleSubmission(value, parsePuzzlePgnInput(value.solution, value.fen));

@@ -36,8 +36,20 @@ export const appendBoardMove = (history: BoardHistory, ply: Required<HistoryPly>
   history.index += 1;
 };
 
-export const historyMoveKeys = (history: BoardHistory, end = history.index): string[] =>
-  history.plies.slice(1, end + 1).flatMap((ply) => (ply.key ? [ply.key] : []));
+export const historyMoveKeys = (history: BoardHistory, end = history.index): string[] => {
+  const keys: string[] = [];
+  for (let index = 1; index <= end; index += 1) {
+    const key = history.plies[index]?.key;
+    if (key) keys.push(key);
+  }
+  return keys;
+};
 
-export const historyMoveSans = (history: BoardHistory): string[] =>
-  history.plies.slice(1).flatMap((ply) => (ply.san ? [ply.san] : []));
+export const historyMoveSans = (history: BoardHistory): string[] => {
+  const moves: string[] = [];
+  for (let index = 1; index < history.plies.length; index += 1) {
+    const san = history.plies[index]?.san;
+    if (san) moves.push(san);
+  }
+  return moves;
+};

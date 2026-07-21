@@ -92,11 +92,14 @@ begin
 end;
 $$;
 
--- Atomically assigns MAX(puzzles.id) + 1, copies the reviewed row into
--- public.puzzles, then removes it from the queue.
+-- Inserts the reviewed row with the reviewer-selected puzzle ID, then removes
+-- it from the queue. The review service suggests MAX(puzzles.id) + 1.
+drop function if exists public.approve_queued_puzzle(bigint, text);
+
 create or replace function public.approve_queued_puzzle(
   p_queue_id bigint,
-  p_reviewer text
+  p_reviewer text,
+  p_puzzle_id bigint
 )
 returns bigint
 language plpgsql
@@ -105,11 +108,15 @@ set search_path = public
 as $$
 declare
   queued public.puzzles_queue%rowtype;
-  next_puzzle_id bigint;
   puzzle_id_sequence text;
+  highest_puzzle_id bigint;
 begin
   if lower(btrim(coalesce(p_reviewer, ''))) <> 'seaside_tiramisu' then
     raise exception 'Only seaside_tiramisu can approve puzzle submissions';
+  end if;
+
+  if p_puzzle_id is null or p_puzzle_id < 1 then
+    raise exception 'Puzzle ID must be a positive integer';
   end if;
 
   select * into queued
@@ -124,14 +131,10 @@ begin
   -- Serialize ID allocation and insertion with other approvals.
   lock table public.puzzles in share row exclusive mode;
 
-  select coalesce(max(id), 0) + 1
-  into next_puzzle_id
-  from public.puzzles;
-
   begin
     insert into public.puzzles (id, fen, solution, event, explanation, author)
     values (
-      next_puzzle_id,
+      p_puzzle_id,
       btrim(queued.fen),
       btrim(queued.solution),
       btrim(queued.event),
@@ -140,7 +143,7 @@ begin
     );
   exception
     when unique_violation then
-      raise exception 'Puzzle ID % already exists', next_puzzle_id;
+      raise exception 'Puzzle ID % already exists', p_puzzle_id;
   end;
 
   -- Explicit identity values do not advance PostgreSQL's backing sequence.
@@ -149,9 +152,13 @@ begin
   into puzzle_id_sequence;
 
   if puzzle_id_sequence is not null then
+    select coalesce(max(id), 0)
+    into highest_puzzle_id
+    from public.puzzles;
+
     perform setval(
       puzzle_id_sequence::regclass,
-      next_puzzle_id,
+      highest_puzzle_id,
       true
     );
   end if;
@@ -159,7 +166,7 @@ begin
   delete from public.puzzles_queue
   where id = p_queue_id;
 
-  return next_puzzle_id;
+  return p_puzzle_id;
 end;
 $$;
 
@@ -177,8 +184,8 @@ revoke all on public.puzzles_queue from anon, authenticated;
 revoke usage, select on sequence public.puzzles_queue_id_seq from anon, authenticated;
 revoke all on function public.enqueue_puzzle_submission(text, text, text, text, text) from public;
 grant execute on function public.enqueue_puzzle_submission(text, text, text, text, text) to service_role;
-revoke all on function public.approve_queued_puzzle(bigint, text) from public;
-grant execute on function public.approve_queued_puzzle(bigint, text) to service_role;
+revoke all on function public.approve_queued_puzzle(bigint, text, bigint) from public;
+grant execute on function public.approve_queued_puzzle(bigint, text, bigint) to service_role;
 
 -- Make newly created RPC functions available to PostgREST immediately.
 notify pgrst, 'reload schema';

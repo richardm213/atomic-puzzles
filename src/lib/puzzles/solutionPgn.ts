@@ -16,6 +16,12 @@ export type UciSolutionEntry = {
 
 export type UciSolutionLine = UciSolutionEntry[];
 
+export type AdditiveSolutionLineMerge = {
+  lines: string[][];
+  lineIndex: number;
+  changed: boolean;
+};
+
 type FirstOccurrence = { lineIndex: number; moveIndex: number } | null;
 
 export type SolutionMoveNode<TExtras = Record<string, unknown>> = TExtras & {
@@ -132,6 +138,51 @@ export const compareMoves = (moveA = "", moveB = "", fallbackA = 0, fallbackB = 
   return fallbackA - fallbackB;
 };
 
+export const mergeAdditiveSolutionLine = (
+  lines: string[][],
+  nextLine: string[],
+  sourceLineIndex?: number,
+  movesEqual: (existingMove: string, nextMove: string | undefined) => boolean = (
+    existingMove,
+    nextMove,
+  ) => existingMove === nextMove,
+): AdditiveSolutionLineMerge => {
+  const fallbackLineIndex =
+    sourceLineIndex !== undefined && lines[sourceLineIndex] ? sourceLineIndex : 0;
+  if (nextLine.length === 0) {
+    return { lines, lineIndex: fallbackLineIndex, changed: false };
+  }
+
+  const existingLineIndex = lines.findIndex(
+    (line) =>
+      line.length === nextLine.length &&
+      line.every((move, moveIndex) => movesEqual(move, nextLine[moveIndex])),
+  );
+  if (existingLineIndex >= 0) {
+    return { lines, lineIndex: existingLineIndex, changed: false };
+  }
+
+  const sourceLine = sourceLineIndex === undefined ? undefined : lines[sourceLineIndex];
+  const extendsSourceLine = Boolean(
+    sourceLine &&
+    nextLine.length > sourceLine.length &&
+    sourceLine.every((move, moveIndex) => movesEqual(move, nextLine[moveIndex])),
+  );
+  if (extendsSourceLine && sourceLineIndex !== undefined) {
+    return {
+      lines: lines.map((line, lineIndex) => (lineIndex === sourceLineIndex ? nextLine : line)),
+      lineIndex: sourceLineIndex,
+      changed: true,
+    };
+  }
+
+  return {
+    lines: [...lines, nextLine],
+    lineIndex: lines.length,
+    changed: true,
+  };
+};
+
 export const buildSolutionMoveTree = <TExtras extends Record<string, unknown>>(
   lines: string[][],
   createNodeExtras: (lineIndex?: number) => TExtras = () => ({}) as TExtras,
@@ -213,10 +264,13 @@ const serializeSolutionLines = (sanLines: string[][], initialPly = 0): string =>
 
   const [main, ...variations] = rootChildren;
   if (!main) return "";
-  const tokens = [...serializeSolutionBranch(main, initialPly, initialPly % 2 === 1)];
+  const mainTokens = serializeSolutionBranch(main, initialPly, initialPly % 2 === 1);
+  const [mainHead, ...mainTail] = mainTokens;
+  const tokens = mainHead ? [mainHead] : [];
   variations.forEach((variation) => {
     tokens.push(`(${serializeSolutionBranch(variation, initialPly, true).join(" ")})`);
   });
+  tokens.push(...mainTail);
   return tokens.join(" ");
 };
 

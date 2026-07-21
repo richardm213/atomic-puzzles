@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
-import { parsePuzzlePgnInput } from "../../src/lib/puzzles/puzzleSubmission";
+import { compactPuzzleSolution, parsePuzzlePgnInput } from "../../src/lib/puzzles/puzzleSubmission";
 import {
   createAtomicPosition,
   normalizeSolutionPgn,
@@ -66,7 +66,7 @@ export const handler = async (event: NetlifyEvent) => {
     }
     const parsedPgn = parsePuzzlePgnInput(submittedPgn, submittedFen);
     const fen = parsedPgn.fen;
-    const solution = parsedPgn.solution;
+    const solution = compactPuzzleSolution(parsedPgn.solution);
     const eventName = parsedPgn.event || submittedEvent;
     createAtomicPosition(fen);
     if (parseSolutionUciLines(fen, solution).length === 0) {
@@ -92,7 +92,7 @@ export const handler = async (event: NetlifyEvent) => {
     const { data, error } = await supabase
       .rpc("enqueue_puzzle_submission", {
         p_fen: fen,
-        p_solution: normalizeSolutionPgn(fen, solution),
+        p_solution: compactPuzzleSolution(normalizeSolutionPgn(fen, solution)),
         p_event: eventName,
         p_explanation: explanation,
         p_submitted_by: username,

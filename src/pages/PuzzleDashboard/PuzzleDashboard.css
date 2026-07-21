@@ -97,7 +97,7 @@
 
 .dashboardStatsStrip {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -136,6 +136,10 @@
 
 .dashboardStatCardAccuracy::before {
   background: var(--color-accent-warm);
+}
+
+.dashboardStatCardCreated::before {
+  background: var(--color-primary-pale);
 }
 
 .dashboardStatCard strong {

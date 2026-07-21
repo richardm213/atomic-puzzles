@@ -1,5 +1,6 @@
 import type { PuzzleQueueRow, PuzzleReviewQueueRow } from "../../types/supabase";
 import { postApi } from "../api/postApi";
+import { compactPuzzleSolution } from "../puzzles/puzzleSubmission";
 
 const reviewRequest = <T>(body: Record<string, unknown>): Promise<T> =>
   postApi("/api/puzzles/review", body, {
@@ -17,7 +18,7 @@ export const submitPuzzleToQueue = async (input: {
     "/api/puzzles/submit",
     {
       fen: input.fen.trim(),
-      solution: input.solution.trim(),
+      solution: compactPuzzleSolution(input.solution),
       event: input.event.trim(),
       explanation: input.explanation.trim(),
     },
@@ -45,15 +46,22 @@ export const fetchPendingPuzzleQueue = async (): Promise<PuzzleReviewQueueRow[]>
 
 export const updateQueuedPuzzle = async (
   id: number,
-  input: { fen: string; solution: string; event: string; explanation: string },
+  input: {
+    fen: string;
+    solution: string;
+    event: string;
+    explanation: string;
+    author: string;
+  },
 ): Promise<PuzzleQueueRow> => {
   const result = await reviewRequest<{ puzzle: PuzzleQueueRow }>({
     action: "update",
     id,
     fen: input.fen.trim(),
-    solution: input.solution.trim(),
+    solution: compactPuzzleSolution(input.solution),
     event: input.event.trim(),
     explanation: input.explanation.trim(),
+    author: input.author.trim(),
   });
   if (!result.puzzle) {
     throw new Error("Unable to save queued puzzle: no queue row was returned.");
@@ -61,10 +69,11 @@ export const updateQueuedPuzzle = async (
   return result.puzzle;
 };
 
-export const approveQueuedPuzzle = async (id: number): Promise<number> => {
+export const approveQueuedPuzzle = async (id: number, puzzleId: number): Promise<number> => {
   const result = await reviewRequest<{ puzzleId: number }>({
     action: "approve",
     id,
+    puzzleId,
   });
   if (!Number.isFinite(result.puzzleId)) {
     throw new Error("Unable to approve puzzle: no puzzle id was returned.");

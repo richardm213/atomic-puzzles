@@ -33,9 +33,10 @@ describe("puzzle queue review client", () => {
     await expect(
       updateQueuedPuzzle(4, {
         fen: " fen ",
-        solution: " 1. e4 ",
+        solution: " 1. e4\n  e5\\n2. Nf3 ",
         event: " match ",
         explanation: " idea ",
+        author: " edited_author ",
       }),
     ).resolves.toEqual(puzzle);
 
@@ -45,9 +46,10 @@ describe("puzzle queue review client", () => {
       action: "update",
       id: 4,
       fen: "fen",
-      solution: "1. e4",
+      solution: "1. e4 e5 2. Nf3",
       event: "match",
       explanation: "idea",
+      author: "edited_author",
     });
     expect(request?.credentials).toBe("same-origin");
     expect(request?.headers).not.toHaveProperty("Authorization");
@@ -75,9 +77,9 @@ describe("puzzle queue review client", () => {
       vi.fn(async () => jsonResponse({ puzzleId: 42 })),
     );
     const fetchMock = vi.mocked(fetch);
-    await expect(approveQueuedPuzzle(4)).resolves.toBe(42);
+    await expect(approveQueuedPuzzle(4, 42)).resolves.toBe(42);
     const [, request] = fetchMock.mock.calls[0] ?? [];
-    expect(JSON.parse(String(request?.body))).toEqual({ action: "approve", id: 4 });
+    expect(JSON.parse(String(request?.body))).toEqual({ action: "approve", id: 4, puzzleId: 42 });
   });
 
   it("sends rejection to the verified review endpoint", async () => {

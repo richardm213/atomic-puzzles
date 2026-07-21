@@ -89,6 +89,7 @@ describe("puzzle-review function", () => {
         fen: "bad fen",
         solution: "1. e4",
         explanation: "",
+        author: "author",
       }),
     });
     expect(response.statusCode).toBe(400);
@@ -156,13 +157,18 @@ describe("puzzle-review function", () => {
         fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
         solution: "1. e4",
         explanation: " idea ",
+        author: "edited_author",
       }),
     });
 
     expect(response.statusCode).toBe(200);
     expect(JSON.parse(response.body)).toEqual({ puzzle: saved });
     expect(update).toHaveBeenCalledWith(
-      expect.objectContaining({ solution: "1. e4", explanation: "idea" }),
+      expect.objectContaining({
+        solution: "1. e4",
+        explanation: "idea",
+        submitted_by: "edited_author",
+      }),
     );
     expect(firstEq).toHaveBeenCalledWith("id", 4);
   });
@@ -174,7 +180,7 @@ describe("puzzle-review function", () => {
     const response = await handler({
       httpMethod: "POST",
       headers: authHeaders(),
-      body: JSON.stringify({ action: "approve", id: 4 }),
+      body: JSON.stringify({ action: "approve", id: 4, puzzleId: 42 }),
     });
 
     expect(response.statusCode).toBe(200);
@@ -182,6 +188,7 @@ describe("puzzle-review function", () => {
     expect(rpc).toHaveBeenCalledWith("approve_queued_puzzle", {
       p_queue_id: 4,
       p_reviewer: "seaside_tiramisu",
+      p_puzzle_id: 42,
     });
   });
 
@@ -195,7 +202,7 @@ describe("puzzle-review function", () => {
     const response = await handler({
       httpMethod: "POST",
       headers: authHeaders(),
-      body: JSON.stringify({ action: "approve", id: 4 }),
+      body: JSON.stringify({ action: "approve", id: 4, puzzleId: 42 }),
     });
 
     expect(response.statusCode).toBe(409);
@@ -215,7 +222,7 @@ describe("puzzle-review function", () => {
     const response = await handler({
       httpMethod: "POST",
       headers: authHeaders(),
-      body: JSON.stringify({ action: "approve", id: 4 }),
+      body: JSON.stringify({ action: "approve", id: 4, puzzleId: 42 }),
     });
 
     expect(response.statusCode).toBe(503);

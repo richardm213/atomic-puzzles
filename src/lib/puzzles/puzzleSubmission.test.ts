@@ -1,13 +1,20 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  mergeSolutionLine,
+  compactPuzzleSolution,
   parsePuzzlePgnInput,
+  splitPuzzlePgnBatch,
   validatePuzzleSubmission,
 } from "./puzzleSubmission";
 import { parseSolutionUciLines } from "./solutionPgn";
 
 const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+describe("compactPuzzleSolution", () => {
+  it("replaces real and escaped line breaks with readable spaces", () => {
+    expect(compactPuzzleSolution("1. e4\n  e5\\n2. Nf3\r\nNc6")).toBe("1. e4 e5 2. Nf3 Nc6");
+  });
+});
 
 describe("validatePuzzleSubmission", () => {
   it("normalizes a legal submission", () => {
@@ -92,25 +99,25 @@ describe("validatePuzzleSubmission", () => {
     );
   });
 
-  it("adds a board-created branch without discarding existing lines", () => {
-    expect(
-      mergeSolutionLine(
-        [
-          ["Qh5+", "g6", "Qd5"],
-          ["Qh5+", "Kf7"],
-        ],
-        ["Qh5+", "g6", "Qf3"],
-      ),
-    ).toEqual([
-      ["Qh5+", "g6", "Qd5"],
-      ["Qh5+", "Kf7"],
-      ["Qh5+", "g6", "Qf3"],
+  it("splits consecutive PGNs into a submission batch", () => {
+    const batch = `[Variant "Atomic"]
+[FEN "${STARTING_FEN}"]
+
+1. e4 e5
+
+[Event "Second puzzle"]
+[Variant "Atomic"]
+[FEN "${STARTING_FEN}"]
+
+1. d4 d5`;
+
+    expect(splitPuzzlePgnBatch(batch)).toEqual([
+      `[Variant "Atomic"]\n[FEN "${STARTING_FEN}"]\n\n1. e4 e5`,
+      `[Event "Second puzzle"]\n[Variant "Atomic"]\n[FEN "${STARTING_FEN}"]\n\n1. d4 d5`,
     ]);
   });
 
-  it("extends an existing line instead of retaining its shorter duplicate", () => {
-    expect(mergeSolutionLine([["Qh5+", "g6"]], ["Qh5+", "g6", "Qd5"])).toEqual([
-      ["Qh5+", "g6", "Qd5"],
-    ]);
+  it("keeps a single headerless movetext submission intact", () => {
+    expect(splitPuzzlePgnBatch("\n1. e4 e5\n")).toEqual(["1. e4 e5"]);
   });
 });

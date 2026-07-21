@@ -32,7 +32,11 @@ import { useAuth } from "../../context/AuthContext";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
 import { loadPuzzleCatalog, loadPuzzlesById, type Puzzle } from "../../lib/puzzles/puzzleLibrary";
 import { getOrderedPuzzleIndexesForEvent } from "../../lib/puzzles/puzzleSets";
-import { movePrefix, serializeSanLinesToPgn } from "../../lib/puzzles/solutionPgn";
+import {
+  mergeAdditiveSolutionLine,
+  movePrefix,
+  serializeSanLinesToPgn,
+} from "../../lib/puzzles/solutionPgn";
 import {
   fetchAttemptedPuzzleIds,
   fetchPuzzleAttemptsForPuzzle,
@@ -922,7 +926,11 @@ export const PuzzleSolverPage = () => {
 
   const solutionLineCount = boardState.solutionLines?.length ?? 0;
   const allVariationLines = useMemo(
-    () => [...(boardState.solutionLines ?? []), ...(boardState.customLines ?? [])],
+    () =>
+      (boardState.customLines ?? []).reduce(
+        (lines, customLine) => mergeAdditiveSolutionLine(lines, customLine).lines,
+        boardState.solutionLines ?? [],
+      ),
     [boardState.customLines, boardState.solutionLines],
   );
 

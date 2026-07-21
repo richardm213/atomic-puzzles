@@ -25,7 +25,8 @@ export const saveVariation = (
   if (!tree.root) tree.root = { ply: { ...rootPly }, parent: null, children: new Map() };
 
   let node = tree.root;
-  for (const ply of history.plies.slice(1)) {
+  for (let index = 1; index < history.plies.length; index += 1) {
+    const ply = history.plies[index]!;
     const key = nodeKey(ply);
     let child = node.children.get(key);
     if (!child) {
@@ -55,8 +56,23 @@ export const variationHistoryAt = (tree: VariationHistory, index: number): Board
   return { plies, index: plies.length - 1 };
 };
 
-export const variationHistories = (tree: VariationHistory): BoardHistory[] =>
-  tree.leaves.flatMap((_, index) => {
-    const history = variationHistoryAt(tree, index);
-    return history ? [history] : [];
-  });
+const variationValues = (
+  leaf: VariationNode,
+  valueFromPly: (ply: HistoryPly) => string | undefined,
+): string[] => {
+  const values: string[] = [];
+  let node: VariationNode | null = leaf;
+  while (node) {
+    const value = valueFromPly(node.ply);
+    if (value) values.push(value);
+    node = node.parent;
+  }
+  values.reverse();
+  return values;
+};
+
+export const variationMoveKeys = (tree: VariationHistory): string[][] =>
+  tree.leaves.map((leaf) => variationValues(leaf, (ply) => ply.key));
+
+export const variationMoveSans = (tree: VariationHistory): string[][] =>
+  tree.leaves.map((leaf) => variationValues(leaf, (ply) => ply.san));

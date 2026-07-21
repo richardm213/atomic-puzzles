@@ -55,7 +55,7 @@ const PuzzleSubmissionPage = lazyRouteComponent(
   "PuzzleSubmissionPage",
 );
 const PuzzleReviewPage = lazyRouteComponent(
-  () => import("./pages/PuzzleSubmission/PuzzleSubmission"),
+  () => import("./pages/PuzzleReview/PuzzleReview"),
   "PuzzleReviewPage",
 );
 const RankingsPage = lazyRouteComponent(() => import("./pages/Rankings/Rankings"), "RankingsPage");

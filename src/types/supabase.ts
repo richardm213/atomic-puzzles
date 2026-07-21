@@ -161,7 +161,7 @@ export type Database = {
       puzzles_queue: TableDef<
         PuzzleQueueRow,
         Pick<PuzzleQueueRow, "fen" | "solution" | "event" | "explanation" | "submitted_by">,
-        Partial<Pick<PuzzleQueueRow, "fen" | "solution" | "event" | "explanation">>
+        Partial<Pick<PuzzleQueueRow, "fen" | "solution" | "event" | "explanation" | "submitted_by">>
       >;
       puzzle_votes: TableDef<
         PuzzleVoteRow,

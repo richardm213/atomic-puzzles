@@ -4,6 +4,7 @@ import {
   compareMoves,
   convertUciLineToSan,
   createAtomicPosition,
+  mergeAdditiveSolutionLine,
   moveFromUci,
   movePrefix,
   normalizeSolutionPgn,
@@ -52,6 +53,36 @@ describe("compareMoves", () => {
     expect(compareMoves("e4", "d4", 0, 1)).toBeLessThan(0);
     expect(compareMoves("e4", "d4", 5, 1)).toBeGreaterThan(0);
     expect(compareMoves("e4", "d4", 2, 2)).toBe(0);
+  });
+});
+
+describe("mergeAdditiveSolutionLine", () => {
+  const lines = [
+    ["e4", "e5", "Nf3"],
+    ["e4", "c5", "Nf3"],
+  ];
+
+  it("adds a deviation without replacing existing lines", () => {
+    expect(mergeAdditiveSolutionLine(lines, ["e4", "c6"], 1)).toEqual({
+      lines: [...lines, ["e4", "c6"]],
+      lineIndex: 2,
+      changed: true,
+    });
+  });
+
+  it("extends only the selected line when continuing from its end", () => {
+    expect(mergeAdditiveSolutionLine(lines, ["e4", "c5", "Nf3", "d6"], 1)).toEqual({
+      lines: [lines[0], ["e4", "c5", "Nf3", "d6"]],
+      lineIndex: 1,
+      changed: true,
+    });
+  });
+
+  it("selects an identical existing line without duplicating it", () => {
+    const result = mergeAdditiveSolutionLine(lines, ["e4", "e5", "Nf3"], 1);
+
+    expect(result).toEqual({ lines, lineIndex: 0, changed: false });
+    expect(result.lines).toBe(lines);
   });
 });
 
@@ -213,6 +244,16 @@ describe("serializeSanLinesToPgn", () => {
       ["e4", "c5"],
     ]);
     expect(pgn).toContain("(1... c5)");
+  });
+
+  it("places a first-move variation where it remains legal PGN", () => {
+    const pgn = serializeSanLinesToPgn(STARTING_FEN, [
+      ["e4", "e5"],
+      ["d4", "d5"],
+    ]);
+
+    expect(pgn).toBe("1. e4 (1. d4 d5) e5");
+    expect(parseSolutionUciLines(STARTING_FEN, pgn)).toHaveLength(2);
   });
 
   it("starts serialized black-to-move lines with an ellipsis", () => {

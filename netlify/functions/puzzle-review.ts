@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
 import {
+  compactPuzzleSolution,
   type PuzzleSubmissionValue,
   validatePuzzleSubmission,
 } from "../../src/lib/puzzles/puzzleSubmission";
@@ -18,6 +19,7 @@ const MAX_FEN_LENGTH = 200;
 const MAX_SOLUTION_LENGTH = 10_000;
 const MAX_EVENT_LENGTH = 200;
 const MAX_EXPLANATION_LENGTH = 5_000;
+const MAX_AUTHOR_LENGTH = 200;
 
 const jsonResponse = (statusCode: number, body: Record<string, unknown>) => ({
   statusCode,
@@ -33,10 +35,16 @@ const puzzleFieldsSchema = z.object({
   solution: z.string().trim().min(1).max(MAX_SOLUTION_LENGTH),
   event: z.string().trim().max(MAX_EVENT_LENGTH).default(""),
   explanation: z.string().trim().max(MAX_EXPLANATION_LENGTH),
+  author: z.string().trim().min(1).max(MAX_AUTHOR_LENGTH),
 });
 const reviewBodySchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("list") }),
-  z.object({ action: z.enum(["approve", "reject"]), id: z.number().int().positive() }),
+  z.object({ action: z.literal("reject"), id: z.number().int().positive() }),
+  z.object({
+    action: z.literal("approve"),
+    id: z.number().int().positive(),
+    puzzleId: z.number().int().positive(),
+  }),
   puzzleFieldsSchema.extend({ action: z.literal("update"), id: z.number().int().positive() }),
 ]);
 type ReviewBody = z.infer<typeof reviewBodySchema>;
@@ -48,16 +56,6 @@ const parseBody = (event: NetlifyEvent): ReviewBody | null => {
   } catch {
     return null;
   }
-};
-
-const readPuzzle = (body: ReviewBody): PuzzleSubmissionValue | null => {
-  if (body.action !== "update") return null;
-  return {
-    fen: body.fen,
-    solution: body.solution,
-    event: body.event,
-    explanation: body.explanation,
-  };
 };
 
 export const handler = async (event: NetlifyEvent) => {
@@ -84,16 +82,23 @@ export const handler = async (event: NetlifyEvent) => {
     }
 
     let queuedPuzzleId: number | null = null;
-    let normalizedPuzzle: PuzzleSubmissionValue | null = null;
-    if (action !== "list") {
+    let normalizedPuzzle: (PuzzleSubmissionValue & { submitted_by: string }) | null = null;
+    if (["approve", "reject", "update"].includes(action)) {
+      if (!("id" in body)) throw new Error("Unable to review puzzle: no queue id was provided.");
       queuedPuzzleId = body.id;
     }
     if (action === "update") {
-      const submittedPuzzle = readPuzzle(body);
-      if (!submittedPuzzle) {
-        return jsonResponse(400, { error: "Invalid queued puzzle." });
-      }
-      normalizedPuzzle = validatePuzzleSubmission(submittedPuzzle);
+      const validatedPuzzle = validatePuzzleSubmission({
+        fen: body.fen,
+        solution: compactPuzzleSolution(body.solution),
+        event: body.event,
+        explanation: body.explanation,
+      });
+      normalizedPuzzle = {
+        ...validatedPuzzle,
+        solution: compactPuzzleSolution(validatedPuzzle.solution),
+        submitted_by: body.author,
+      };
     }
     const supabaseUrl =
       process.env.SUPABASE_URL?.trim() || process.env.VITE_SUPABASE_URL?.trim() || "";
@@ -106,14 +111,7 @@ export const handler = async (event: NetlifyEvent) => {
       auth: { persistSession: false },
     });
 
-    if (action === "list") {
-      const { data, error } = await supabase
-        .from("puzzles_queue")
-        .select("*")
-        .order("created_at", { ascending: true });
-      if (error) throw new Error(`Unable to load puzzle queue: ${error.message}`);
-      if (!data?.length) return jsonResponse(200, { puzzles: [] });
-
+    const fetchNextPuzzleId = async (): Promise<number> => {
       const { data: latestPuzzles, error: latestPuzzleError } = await supabase
         .from("puzzles")
         .select("id")
@@ -126,7 +124,18 @@ export const handler = async (event: NetlifyEvent) => {
       if (!Number.isSafeInteger(highestPuzzleId) || highestPuzzleId < 0) {
         throw new Error("Unable to determine the next puzzle id.");
       }
-      const nextPuzzleId = highestPuzzleId + 1;
+      return highestPuzzleId + 1;
+    };
+
+    if (action === "list") {
+      const { data, error } = await supabase
+        .from("puzzles_queue")
+        .select("*")
+        .order("created_at", { ascending: true });
+      if (error) throw new Error(`Unable to load puzzle queue: ${error.message}`);
+      if (!data?.length) return jsonResponse(200, { puzzles: [] });
+
+      const nextPuzzleId = await fetchNextPuzzleId();
       const puzzles = data.map((row) => ({ ...row, next_puzzle_id: nextPuzzleId }));
       return jsonResponse(200, { puzzles });
     }
@@ -159,6 +168,7 @@ export const handler = async (event: NetlifyEvent) => {
     const { data, error } = await supabase.rpc("approve_queued_puzzle", {
       p_queue_id: queuedPuzzleId,
       p_reviewer: REVIEWER,
+      p_puzzle_id: body.action === "approve" ? body.puzzleId : null,
     });
     if (error) {
       const missingApprovalFunction = /could not find the function.*approve_queued_puzzle/i.test(
