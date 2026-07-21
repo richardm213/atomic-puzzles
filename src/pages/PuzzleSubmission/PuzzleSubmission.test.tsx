@@ -11,6 +11,7 @@ import {
 } from "../../lib/puzzles/solutionPgn";
 import type { ChessboardState, SolutionNavigation } from "../../types/chessboard";
 import { PuzzleEditor } from "./PuzzleEditor";
+import { PuzzleSubmissionPage } from "./PuzzleSubmission";
 
 const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -149,6 +150,15 @@ vi.mock("../../components/Chessboard/Chessboard", async () => {
   };
 });
 
+vi.mock("../../context/AuthContext", () => ({
+  useAuth: () => ({
+    isAuthenticated: true,
+    isLoading: false,
+    user: { username: "submitter" },
+    login: vi.fn(),
+  }),
+}));
+
 const startingLines = [
   ["e4", "e5", "Nf3"],
   ["e4", "c5", "Nf3"],
@@ -195,6 +205,21 @@ const EditorHarness = ({
     </>
   );
 };
+
+describe("PuzzleSubmissionPage fields", () => {
+  it("shows the explanation for a single puzzle but not a puzzle batch", async () => {
+    const user = userEvent.setup();
+    render(<PuzzleSubmissionPage />);
+
+    expect(screen.getByRole("textbox", { name: "Explanation" })).toBeVisible();
+
+    await user.click(screen.getByRole("button", { name: "Puzzle batch" }));
+    expect(screen.queryByRole("textbox", { name: "Explanation" })).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Single puzzle" }));
+    expect(screen.getByRole("textbox", { name: "Explanation" })).toBeVisible();
+  });
+});
 
 describe("PuzzleEditor move tree", () => {
   beforeEach(() => {

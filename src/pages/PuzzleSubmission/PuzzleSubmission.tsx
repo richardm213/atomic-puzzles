@@ -193,7 +193,7 @@ export const PuzzleSubmissionPage = () => {
             value={value}
             onChange={updateValue}
             resetKey={`${editorVersion}-${activeBatchIndex}`}
-            showExplanation={false}
+            showExplanation={!batchMode}
             batchMode={batchMode}
             allowSolutionEditing={!batchMode}
             {...(batchValues.length > 1
