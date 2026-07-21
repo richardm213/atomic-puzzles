@@ -142,6 +142,7 @@ describe("PuzzleSolverPage solution options", () => {
         first_attempt_at: "2026-07-09T06:50:00.000Z",
         puzzle_correct: true,
         incorrect_move: null,
+        correct_move: null,
       },
       {
         username: "alpha",
@@ -149,6 +150,7 @@ describe("PuzzleSolverPage solution options", () => {
         first_attempt_at: "2026-07-09T07:00:00.000Z",
         puzzle_correct: true,
         incorrect_move: null,
+        correct_move: "1. Rf8",
       },
       {
         username: "beta",
@@ -156,6 +158,7 @@ describe("PuzzleSolverPage solution options", () => {
         first_attempt_at: "2026-07-09T07:10:00.000Z",
         puzzle_correct: false,
         incorrect_move: "2. Nf3+",
+        correct_move: null,
       },
     ]);
     mocks.navigate.mockReset();
@@ -371,6 +374,7 @@ describe("PuzzleSolverPage solution options", () => {
     expect(within(attempts).getByRole("link", { name: "solver" })).toBeInTheDocument();
     expect(within(attempts).getByRole("link", { name: "alpha" })).toBeInTheDocument();
     expect(within(attempts).getAllByText("Correct")).toHaveLength(2);
+    expect(within(attempts).getByLabelText("Played 1. Rf8")).toHaveTextContent("1. Rf8");
     expect(within(attempts).getByRole("link", { name: "beta" })).toBeInTheDocument();
     expect(within(attempts).getByText("Incorrect")).toBeInTheDocument();
     const wrongMove = within(attempts).getByLabelText("Played 2. Nf3+");

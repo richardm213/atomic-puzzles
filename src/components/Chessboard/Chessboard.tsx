@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppSettings } from "../../context/AppSettings";
 import {
   moveFromUci,
+  movePrefix,
   parseSolutionUciLines,
   toComparableUci,
   type UciSolutionEntry,
@@ -235,6 +236,27 @@ export const Chessboard = ({
     (): boolean => showSolutionRef.current && !analysisModeRef.current,
     [analysisModeRef, showSolutionRef],
   );
+
+  const getCorrectLineMove = useCallback((): string | null => {
+    const mainLine = solutionEntriesRef.current[0]?.moveEntries;
+    if (!mainLine || solutionEntriesRef.current.length < 2) return null;
+
+    const playedMoveKeys = historyMoveKeys(historyRef.current);
+    const playedDivergenceIndex = playedMoveKeys.findIndex(
+      (moveKey, moveIndex) => moveKey !== mainLine[moveIndex]?.key,
+    );
+    const mainLineDivergenceIndex = mainLine.findIndex((mainMove, moveIndex) =>
+      solutionEntriesRef.current
+        .slice(1)
+        .some((alternateLine) => alternateLine.moveEntries[moveIndex]?.key !== mainMove.key),
+    );
+    const displayedMoveIndex =
+      playedDivergenceIndex < 0 ? mainLineDivergenceIndex : playedDivergenceIndex;
+    if (displayedMoveIndex < 0) return null;
+
+    const playedSan = historyMoveSans(historyRef.current)[displayedMoveIndex];
+    return playedSan ? `${movePrefix(displayedMoveIndex, true)}${playedSan}` : null;
+  }, []);
 
   const getDisplayTurn = useCallback(
     (position: Atomic, nextState?: Partial<ChessboardState> | undefined): Color => {
@@ -803,6 +825,7 @@ export const Chessboard = ({
             puzzleId: puzzleIdRef.current,
             puzzleCorrect: false,
             incorrectMove: `${Math.floor(progress / 2) + 1}. ${userMoveSan}`,
+            correctMove: null,
           });
           syncBoard(activePos, undefined, {
             showWrongMove: true,
@@ -825,6 +848,7 @@ export const Chessboard = ({
             puzzleId: puzzleIdRef.current,
             puzzleCorrect: true,
             incorrectMove: null,
+            correctMove: getCorrectLineMove(),
           });
           syncBoard(activePos, keyPair(orig, dest), {
             solved: true,
@@ -841,6 +865,7 @@ export const Chessboard = ({
             puzzleId: puzzleIdRef.current,
             puzzleCorrect: true,
             incorrectMove: null,
+            correctMove: getCorrectLineMove(),
           });
         }
 
@@ -867,6 +892,7 @@ export const Chessboard = ({
       analysisModeRef,
       isSolutionPlaybackLocked,
       evaluationTimerRef,
+      getCorrectLineMove,
       onAttemptResolvedRef,
       puzzleIdRef,
       progressRef,

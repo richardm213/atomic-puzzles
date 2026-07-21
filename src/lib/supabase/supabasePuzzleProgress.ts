@@ -60,6 +60,10 @@ const readLocalPuzzleProgress = (username: string): PuzzleProgressRow[] => {
             typeof row?.incorrect_move === "string" && row.incorrect_move.trim()
               ? row.incorrect_move.trim()
               : null,
+          correct_move:
+            typeof row?.correct_move === "string" && row.correct_move.trim()
+              ? row.correct_move.trim()
+              : null,
         };
       })
       .filter((row) => row.puzzle_id && row.first_attempt_at);
@@ -99,6 +103,10 @@ const mergePuzzleProgressRows = (
       incorrect_move:
         typeof row?.incorrect_move === "string" && row.incorrect_move.trim()
           ? row.incorrect_move.trim()
+          : null,
+      correct_move:
+        typeof row?.correct_move === "string" && row.correct_move.trim()
+          ? row.correct_move.trim()
           : null,
     };
     const existingRow = rowsByPuzzleId.get(puzzleId);
@@ -161,6 +169,10 @@ const upsertLocalPuzzleProgressRow = (username: string, row: PuzzleProgressRow):
         typeof row?.incorrect_move === "string" && row.incorrect_move.trim()
           ? row.incorrect_move.trim()
           : null,
+      correct_move:
+        typeof row?.correct_move === "string" && row.correct_move.trim()
+          ? row.correct_move.trim()
+          : null,
     },
   ]);
 
@@ -192,6 +204,10 @@ const loadPuzzleProgressPageFromRpc = async (
       incorrect_move:
         typeof row?.incorrect_move === "string" && row.incorrect_move.trim()
           ? row.incorrect_move.trim()
+          : null,
+      correct_move:
+        typeof row?.correct_move === "string" && row.correct_move.trim()
+          ? row.correct_move.trim()
           : null,
       total_count: Number.isFinite(Number(row?.total_count)) ? Number(row.total_count) : null,
     }))
@@ -258,6 +274,7 @@ export type RecordPuzzleProgressInput = {
   puzzleId: string | number;
   puzzleCorrect: boolean;
   incorrectMove: string | null;
+  correctMove: string | null;
 };
 
 export type FetchPuzzleAttemptsForPuzzleOptions = {
@@ -270,10 +287,12 @@ export const recordPuzzleProgress = async ({
   puzzleId,
   puzzleCorrect,
   incorrectMove,
+  correctMove,
 }: RecordPuzzleProgressInput): Promise<void> => {
   const normalizedUsername = normalizeUsername(username);
   const normalizedPuzzleId = normalizePuzzleId(puzzleId);
   const normalizedIncorrectMove = puzzleCorrect ? null : String(incorrectMove ?? "").trim() || null;
+  const normalizedCorrectMove = puzzleCorrect ? String(correctMove ?? "").trim() || null : null;
 
   if (!normalizedUsername || !normalizedPuzzleId) return;
 
@@ -291,6 +310,7 @@ export const recordPuzzleProgress = async ({
         puzzleId: normalizedPuzzleId,
         puzzleCorrect: Boolean(puzzleCorrect),
         incorrectMove: normalizedIncorrectMove,
+        correctMove: normalizedCorrectMove,
       },
       { errorMessage: "Unable to record puzzle progress." },
     );
@@ -300,6 +320,7 @@ export const recordPuzzleProgress = async ({
       first_attempt_at: firstAttemptAt,
       puzzle_correct: Boolean(puzzleCorrect),
       incorrect_move: normalizedIncorrectMove,
+      correct_move: normalizedCorrectMove,
     });
   })().finally(() => {
     if (puzzleProgressWriteRequests.get(requestKey) === request) {
@@ -352,7 +373,7 @@ export const fetchPuzzleProgressPage = async (
         serverRows = await fetchAllSupabaseRows<PuzzleProgressRow>(PUZZLE_PROGRESS_TABLE, () =>
           supabase
             .from(PUZZLE_PROGRESS_TABLE)
-            .select("puzzle_id,first_attempt_at,puzzle_correct,incorrect_move")
+            .select("puzzle_id,first_attempt_at,puzzle_correct,incorrect_move,correct_move")
             .eq("username", normalizedUsername)
             .order("first_attempt_at", { ascending: false }),
         );
@@ -362,7 +383,9 @@ export const fetchPuzzleProgressPage = async (
           PUZZLE_PROGRESS_TABLE,
           supabase
             .from(PUZZLE_PROGRESS_TABLE)
-            .select("puzzle_id,first_attempt_at,puzzle_correct,incorrect_move", { count: "exact" })
+            .select("puzzle_id,first_attempt_at,puzzle_correct,incorrect_move,correct_move", {
+              count: "exact",
+            })
             .eq("username", normalizedUsername)
             .order("first_attempt_at", { ascending: false })
             .range(0, Math.max(from + boundedPageSize - 1, boundedPageSize - 1)),
@@ -421,7 +444,7 @@ export const fetchPuzzleProgressSummary = async (
       serverRows = await fetchAllSupabaseRows<PuzzleProgressRow>(PUZZLE_PROGRESS_TABLE, () =>
         supabase
           .from(PUZZLE_PROGRESS_TABLE)
-          .select("puzzle_id,first_attempt_at,puzzle_correct,incorrect_move")
+          .select("puzzle_id,first_attempt_at,puzzle_correct,incorrect_move,correct_move")
           .eq("username", normalizedUsername)
           .order("first_attempt_at", { ascending: false }),
       );
@@ -449,7 +472,7 @@ export const fetchAllPuzzleProgressRows = async (): Promise<PuzzleProgressWithUs
   return fetchAllSupabaseRows<PuzzleProgressWithUsernameRow>(PUZZLE_PROGRESS_TABLE, () =>
     supabase
       .from(PUZZLE_PROGRESS_TABLE)
-      .select("username,puzzle_id,first_attempt_at,puzzle_correct,incorrect_move")
+      .select("username,puzzle_id,first_attempt_at,puzzle_correct,incorrect_move,correct_move")
       .order("first_attempt_at", { ascending: false }),
   );
 };
@@ -466,7 +489,7 @@ export const fetchPuzzleAttemptsForPuzzle = async (
   const supabase = getSupabaseClient();
   let query = supabase
     .from(PUZZLE_PROGRESS_TABLE)
-    .select("username,puzzle_id,first_attempt_at,puzzle_correct,incorrect_move")
+    .select("username,puzzle_id,first_attempt_at,puzzle_correct,incorrect_move,correct_move")
     .eq("puzzle_id", normalizedPuzzleId)
     .order("first_attempt_at", { ascending: false })
     .limit(boundedLimit);
@@ -486,6 +509,10 @@ export const fetchPuzzleAttemptsForPuzzle = async (
       incorrect_move:
         typeof row?.incorrect_move === "string" && row.incorrect_move.trim()
           ? row.incorrect_move.trim()
+          : null,
+      correct_move:
+        typeof row?.correct_move === "string" && row.correct_move.trim()
+          ? row.correct_move.trim()
           : null,
     }))
     .filter((row) => row.username && row.puzzle_id && row.first_attempt_at);

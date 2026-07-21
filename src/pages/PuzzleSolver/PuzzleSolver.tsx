@@ -598,10 +598,12 @@ export const PuzzleSolverPage = () => {
       puzzleId,
       puzzleCorrect,
       incorrectMove,
+      correctMove,
     }: {
       puzzleId: string | number | null | undefined;
       puzzleCorrect: boolean;
       incorrectMove: string | null;
+      correctMove: string | null;
     }): void => {
       const normalizedPuzzleId = toPuzzleKey(puzzleId);
       if (!normalizedPuzzleId || !user?.username) return;
@@ -615,6 +617,7 @@ export const PuzzleSolverPage = () => {
             puzzleId: normalizedPuzzleId,
             puzzleCorrect,
             incorrectMove,
+            correctMove,
           }).then(() => {
             setAttemptedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
           }),
@@ -627,7 +630,7 @@ export const PuzzleSolverPage = () => {
   );
 
   const handleAttemptResolved = useCallback(
-    ({ puzzleId, puzzleCorrect, incorrectMove }: AttemptResolved): void => {
+    ({ puzzleId, puzzleCorrect, incorrectMove, correctMove }: AttemptResolved): void => {
       setElapsedTimerRunning(false);
       const normalizedPuzzleId = toPuzzleKey(puzzleId);
       setResolvedAttemptedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
@@ -636,6 +639,7 @@ export const PuzzleSolverPage = () => {
         puzzleId: normalizedPuzzleId,
         puzzleCorrect,
         incorrectMove,
+        correctMove,
       });
     },
     [enqueuePuzzleProgressWrite],
@@ -1184,6 +1188,14 @@ export const PuzzleSolverPage = () => {
                   aria-hidden="true"
                 />
                 <span>{attempt.puzzle_correct ? "Correct" : "Incorrect"}</span>
+                {attempt.puzzle_correct && attempt.correct_move ? (
+                  <span
+                    className="puzzleOtherAttemptMove"
+                    aria-label={`Played ${attempt.correct_move}`}
+                  >
+                    {attempt.correct_move}
+                  </span>
+                ) : null}
                 {!attempt.puzzle_correct && attempt.incorrect_move ? (
                   <span
                     className="puzzleOtherAttemptMove"

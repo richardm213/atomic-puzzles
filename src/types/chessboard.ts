@@ -42,4 +42,5 @@ export type AttemptResolved = {
   puzzleId: string | number | null | undefined;
   puzzleCorrect: boolean;
   incorrectMove: string | null;
+  correctMove: string | null;
 };

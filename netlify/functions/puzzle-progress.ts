@@ -30,6 +30,7 @@ const progressBodySchema = z.object({
     .pipe(z.string().regex(/^\d{1,20}$/)),
   puzzleCorrect: z.boolean(),
   incorrectMove: z.string().trim().max(100).nullable().optional(),
+  correctMove: z.string().trim().max(100).nullable().optional(),
 });
 
 const parseBody = (event: NetlifyEvent): z.infer<typeof progressBodySchema> | null => {
@@ -62,17 +63,19 @@ export const handler = async (event: NetlifyEvent) => {
   }
   const { puzzleId, puzzleCorrect } = input;
   const incorrectMove = input.incorrectMove || null;
+  const correctMove = input.correctMove || null;
 
   try {
     const identity = await resolveSiteIdentity(event.headers);
     const username = identity.username ?? "";
     if (!username) return jsonResponse(401, { error: "Your Lichess login is no longer valid." });
 
-    const { error } = await getSupabase().rpc("record_first_puzzle_attempt", {
+    const { error } = await getSupabase().rpc("record_first_puzzle_attempt_v2", {
       p_username: username,
       p_puzzle_id: puzzleId,
       p_puzzle_correct: puzzleCorrect,
       p_incorrect_move: puzzleCorrect ? null : incorrectMove,
+      p_correct_move: puzzleCorrect ? correctMove : null,
     });
     if (error) throw new Error(`Unable to record puzzle progress: ${error.message}`);
 

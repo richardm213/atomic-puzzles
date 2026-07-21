@@ -150,6 +150,138 @@ describe("Chessboard orchestration", () => {
       puzzleId: "test",
       puzzleCorrect: false,
       incorrectMove: "1. d4",
+      correctMove: null,
+    });
+    vi.useRealTimers();
+  });
+
+  it("reports only the first divergent move for a correct alternate solution", () => {
+    vi.useFakeTimers();
+    const onAttemptResolved = vi.fn();
+    renderBoard({
+      analysisMode: false,
+      solution: "1. e4 (1. d4)",
+      onAttemptResolved,
+    });
+
+    play("d2", "d4");
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+
+    expect(onAttemptResolved).toHaveBeenCalledWith({
+      puzzleId: "test",
+      puzzleCorrect: true,
+      incorrectMove: null,
+      correctMove: "1. d4",
+    });
+    vi.useRealTimers();
+  });
+
+  it("reports the first move when the main solution is played", () => {
+    vi.useFakeTimers();
+    const onAttemptResolved = vi.fn();
+    renderBoard({
+      analysisMode: false,
+      solution: "1. e4 (1. d4)",
+      onAttemptResolved,
+    });
+
+    play("e2", "e4");
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+
+    expect(onAttemptResolved).toHaveBeenCalledWith({
+      puzzleId: "test",
+      puzzleCorrect: true,
+      incorrectMove: null,
+      correctMove: "1. e4",
+    });
+    vi.useRealTimers();
+  });
+
+  it("does not report a line move when the puzzle has only one solution", () => {
+    vi.useFakeTimers();
+    const onAttemptResolved = vi.fn();
+    renderBoard({
+      analysisMode: false,
+      solution: "1. e4",
+      onAttemptResolved,
+    });
+
+    play("e2", "e4");
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+
+    expect(onAttemptResolved).toHaveBeenCalledWith({
+      puzzleId: "test",
+      puzzleCorrect: true,
+      incorrectMove: null,
+      correctMove: null,
+    });
+    vi.useRealTimers();
+  });
+
+  it("numbers a later correct divergence from its actual solution ply", () => {
+    vi.useFakeTimers();
+    const onAttemptResolved = vi.fn();
+    renderBoard({
+      analysisMode: false,
+      solution: "1. e4 e5 2. Nf3 Nc6 3. Bb5 (3. Bc4)",
+      onAttemptResolved,
+    });
+
+    play("e2", "e4");
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    play("g1", "f3");
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    play("f1", "c4");
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+
+    expect(onAttemptResolved).toHaveBeenLastCalledWith({
+      puzzleId: "test",
+      puzzleCorrect: true,
+      incorrectMove: null,
+      correctMove: "3. Bc4",
+    });
+    vi.useRealTimers();
+  });
+
+  it("reports the main-line move at a later solution branch", () => {
+    vi.useFakeTimers();
+    const onAttemptResolved = vi.fn();
+    renderBoard({
+      analysisMode: false,
+      solution: "1. e4 e5 2. Nf3 Nc6 3. Bb5 (3. Bc4)",
+      onAttemptResolved,
+    });
+
+    play("e2", "e4");
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    play("g1", "f3");
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    play("f1", "b5");
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+
+    expect(onAttemptResolved).toHaveBeenLastCalledWith({
+      puzzleId: "test",
+      puzzleCorrect: true,
+      incorrectMove: null,
+      correctMove: "3. Bb5",
     });
     vi.useRealTimers();
   });

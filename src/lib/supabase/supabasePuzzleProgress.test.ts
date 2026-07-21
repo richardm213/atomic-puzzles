@@ -62,6 +62,7 @@ describe("fetchPuzzleProgressPage", () => {
       puzzleId: "42",
       puzzleCorrect: false,
       incorrectMove: "2. Nf3+",
+      correctMove: null,
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -74,6 +75,36 @@ describe("fetchPuzzleProgressPage", () => {
           puzzleId: "42",
           puzzleCorrect: false,
           incorrectMove: "2. Nf3+",
+          correctMove: null,
+        }),
+      }),
+    );
+  });
+
+  it("records the first divergent move for a correct alternate solution", async () => {
+    const fetchMock = vi.spyOn(window, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ recorded: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    await recordPuzzleProgress({
+      username: "Solver",
+      puzzleId: "43",
+      puzzleCorrect: true,
+      incorrectMove: null,
+      correctMove: "3. Qg5",
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/puzzles/progress",
+      expect.objectContaining({
+        body: JSON.stringify({
+          puzzleId: "43",
+          puzzleCorrect: true,
+          incorrectMove: null,
+          correctMove: "3. Qg5",
         }),
       }),
     );

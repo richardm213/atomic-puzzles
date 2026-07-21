@@ -65,13 +65,39 @@ describe("puzzle-progress function", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(rpc).toHaveBeenCalledWith("record_first_puzzle_attempt", {
+    expect(rpc).toHaveBeenCalledWith("record_first_puzzle_attempt_v2", {
       p_username: "actual_solver",
       p_puzzle_id: "42",
       p_puzzle_correct: false,
       p_incorrect_move: "2. Nf3+",
+      p_correct_move: null,
     });
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("records a correct alternate solution move", async () => {
+    const rpc = vi.fn(async () => ({ error: null }));
+    mocks.createClient.mockReturnValue({ rpc });
+    const cookie = createSiteSessionCookie("Solver", {});
+
+    const response = await handler({
+      httpMethod: "POST",
+      headers: { cookie: cookie.split(";")[0] },
+      body: JSON.stringify({
+        puzzleId: "43",
+        puzzleCorrect: true,
+        correctMove: "3. Qg5",
+      }),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(rpc).toHaveBeenCalledWith("record_first_puzzle_attempt_v2", {
+      p_username: "solver",
+      p_puzzle_id: "43",
+      p_puzzle_correct: true,
+      p_incorrect_move: null,
+      p_correct_move: "3. Qg5",
+    });
   });
 
   it("does not write progress for a tampered site cookie", async () => {

@@ -52,6 +52,7 @@ export type PuzzleProgressRow = {
   first_attempt_at: string;
   puzzle_correct: boolean;
   incorrect_move: string | null;
+  correct_move?: string | null;
 };
 
 export type PuzzleProgressWithUsernameRow = PuzzleProgressRow & {
@@ -63,6 +64,7 @@ export type PuzzleProgressRpcRow = {
   first_attempt_at?: string | null;
   puzzle_correct?: boolean | null;
   incorrect_move?: string | null;
+  correct_move?: string | null;
   total_count?: number | null;
 };
 
@@ -209,6 +211,16 @@ export type Database = {
           p_puzzle_correct: boolean;
           p_incorrect_move?: string | null;
           p_first_attempt_at?: string | null;
+        };
+        Returns: null;
+      };
+      record_first_puzzle_attempt_v2: {
+        Args: {
+          p_username: string;
+          p_puzzle_id: string;
+          p_puzzle_correct: boolean;
+          p_incorrect_move: string | null;
+          p_correct_move: string | null;
         };
         Returns: null;
       };
