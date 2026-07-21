@@ -367,6 +367,29 @@ describe("PuzzleEditor move tree", () => {
     expect(screen.queryByRole("button", { name: "Delete current line" })).toBeNull();
   });
 
+  it("makes every puzzle field and board move read-only for public review", () => {
+    render(
+      <PuzzleEditor
+        value={{
+          fen: STARTING_FEN,
+          solution: serializeSanLinesToPgn(STARTING_FEN, startingLines),
+          event: "Public event",
+          explanation: "Public explanation",
+        }}
+        onChange={vi.fn()}
+        resetKey="public-review"
+        allowSolutionEditing
+        readOnly
+      />,
+    );
+
+    expect(screen.getByRole("textbox", { name: "Solution PGN" })).toHaveAttribute("readonly");
+    expect(screen.getByRole("textbox", { name: "Event" })).toHaveAttribute("readonly");
+    expect(screen.getByRole("textbox", { name: "Explanation" })).toHaveAttribute("readonly");
+    expect(screen.getByTestId("board-restrictions")).toHaveTextContent("true");
+    expect(screen.queryByRole("button", { name: "Delete current line" })).toBeNull();
+  });
+
   it("lets single-puzzle editors replace the movetext and any number of lines", async () => {
     const user = userEvent.setup();
     render(<EditorHarness allowSolutionEditing />);

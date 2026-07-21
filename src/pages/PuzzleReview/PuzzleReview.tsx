@@ -45,7 +45,7 @@ const queueRowValue = (row: PuzzleQueueRow): PuzzleSubmissionValue => ({
 });
 
 export const PuzzleReviewPage = () => {
-  const { isAuthenticated, isLoading, user, login } = useAuth();
+  const { isLoading, user } = useAuth();
   const [queue, setQueue] = useState<PuzzleReviewQueueRow[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [value, setValue] = useState<PuzzleSubmissionValue>(emptyPuzzleSubmission);
@@ -58,8 +58,6 @@ export const PuzzleReviewPage = () => {
   const isReviewer = normalizeUsername(user?.username) === REVIEWER;
 
   useEffect(() => {
-    if (!isReviewer) return;
-
     let cancelled = false;
     setLoadingQueue(true);
     setError("");
@@ -87,7 +85,7 @@ export const PuzzleReviewPage = () => {
     return () => {
       cancelled = true;
     };
-  }, [isReviewer]);
+  }, []);
 
   const selectQueuedPuzzle = (row: PuzzleReviewQueueRow): void => {
     setValue(queueRowValue(row));
@@ -175,29 +173,8 @@ export const PuzzleReviewPage = () => {
     }
   };
 
-  const currentLocation = `${window.location.pathname}${window.location.search}`;
-  if (isLoading || (isReviewer && loadingQueue && queue.length === 0)) {
+  if (isLoading || (loadingQueue && queue.length === 0)) {
     return <RouteLoadingFallback />;
-  }
-  if (!isLoading && (!isAuthenticated || !isReviewer)) {
-    return (
-      <section className="puzzleQueuePage compact">
-        <Seo title="Puzzle review queue" description="Review submitted atomic chess puzzles." />
-        <div className="puzzleQueueGate">
-          <h1>Puzzle review queue</h1>
-          {isAuthenticated ? <p>This page is available to seaside_tiramisu.</p> : null}
-          {!isAuthenticated ? (
-            <button
-              type="button"
-              className="queuePrimaryButton"
-              onClick={() => login(currentLocation)}
-            >
-              Log in with Lichess
-            </button>
-          ) : null}
-        </div>
-      </section>
-    );
   }
 
   const selected = queue.find((row) => row.id === selectedId) ?? null;
@@ -234,56 +211,66 @@ export const PuzzleReviewPage = () => {
               <div className="puzzleReviewMeta">
                 <span>{new Date(selected.created_at).toLocaleString()}</span>
               </div>
-              <div className="puzzleReviewFields">
-                <label className="puzzleReviewField">
-                  <span>Author</span>
-                  <input
-                    type="text"
-                    value={authorInput}
-                    disabled={saving}
-                    onChange={(event) => setAuthorInput(event.target.value)}
-                  />
-                </label>
-                <label className="puzzleReviewField">
-                  <span>Puzzle ID</span>
-                  <input
-                    type="number"
-                    min={1}
-                    step={1}
-                    value={puzzleIdInput}
-                    disabled={saving}
-                    onChange={(event) => setPuzzleIdInput(event.target.value)}
-                  />
-                </label>
-              </div>
+              {isReviewer ? (
+                <div className="puzzleReviewFields">
+                  <label className="puzzleReviewField">
+                    <span>Author</span>
+                    <input
+                      type="text"
+                      value={authorInput}
+                      disabled={saving}
+                      onChange={(event) => setAuthorInput(event.target.value)}
+                    />
+                  </label>
+                  <label className="puzzleReviewField">
+                    <span>Puzzle ID</span>
+                    <input
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={puzzleIdInput}
+                      disabled={saving}
+                      onChange={(event) => setPuzzleIdInput(event.target.value)}
+                    />
+                  </label>
+                </div>
+              ) : (
+                <div className="puzzleReviewMeta">
+                  <span>Author: {selected.submitted_by}</span>
+                  <span>Puzzle ID: {selected.next_puzzle_id}</span>
+                </div>
+              )}
               <PuzzleEditor
                 value={value}
                 onChange={setValue}
                 resetKey={selected.id}
                 showCopyPgn
                 allowSolutionEditing
+                readOnly={!isReviewer}
               />
               {error ? <p className="queueMessage error">{error}</p> : null}
-              <div className="puzzleReviewActions">
-                <button
-                  type="button"
-                  className="queueDangerButton puzzleReviewRejectButton"
-                  disabled={saving}
-                  onClick={() => void reject()}
-                >
-                  <FontAwesomeIcon icon={faXmark} aria-hidden="true" />
-                  Reject
-                </button>
-                <button
-                  type="button"
-                  className="queuePrimaryButton puzzleReviewApproveButton"
-                  disabled={saving}
-                  onClick={() => void approve()}
-                >
-                  <FontAwesomeIcon icon={faCheck} aria-hidden="true" />
-                  {saving ? "Working…" : "Approve"}
-                </button>
-              </div>
+              {isReviewer ? (
+                <div className="puzzleReviewActions">
+                  <button
+                    type="button"
+                    className="queueDangerButton puzzleReviewRejectButton"
+                    disabled={saving}
+                    onClick={() => void reject()}
+                  >
+                    <FontAwesomeIcon icon={faXmark} aria-hidden="true" />
+                    Reject
+                  </button>
+                  <button
+                    type="button"
+                    className="queuePrimaryButton puzzleReviewApproveButton"
+                    disabled={saving}
+                    onClick={() => void approve()}
+                  >
+                    <FontAwesomeIcon icon={faCheck} aria-hidden="true" />
+                    {saving ? "Working…" : "Approve"}
+                  </button>
+                </div>
+              ) : null}
             </>
           ) : null}
           {!selected && error ? <p className="queueMessage error">{error}</p> : null}

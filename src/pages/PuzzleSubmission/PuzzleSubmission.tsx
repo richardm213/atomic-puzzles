@@ -206,7 +206,20 @@ export const PuzzleSubmissionPage = () => {
               error
                 ? { tone: "error", text: error }
                 : message
-                  ? { tone: "success", text: message }
+                  ? {
+                      tone: "success",
+                      text: message.includes("submitted for review") ? (
+                        <>
+                          {message} You can view your submission in the queue at{" "}
+                          <a href="https://atomicpuzzles.org/puzzles/review">
+                            atomicpuzzles.org/puzzles/review
+                          </a>
+                          .
+                        </>
+                      ) : (
+                        message
+                      ),
+                    }
                   : undefined
             }
             actions={

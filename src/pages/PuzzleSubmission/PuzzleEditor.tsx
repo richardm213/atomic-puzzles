@@ -69,7 +69,7 @@ const editorPgnState = (solution: string, fallbackFen: string) => {
 
 type PuzzleEditorFeedback = {
   tone: "error" | "success";
-  text: string;
+  text: ReactNode;
 };
 
 type PuzzleEditorProps = {
@@ -80,6 +80,7 @@ type PuzzleEditorProps = {
   feedback?: PuzzleEditorFeedback | undefined;
   showCopyPgn?: boolean;
   allowSolutionEditing?: boolean;
+  readOnly?: boolean;
   showExplanation?: boolean;
   batchMode?: boolean;
   batchPosition?: { current: number; total: number };
@@ -96,6 +97,7 @@ export const PuzzleEditor = ({
   feedback,
   showCopyPgn = false,
   allowSolutionEditing = false,
+  readOnly = false,
   showExplanation = true,
   batchMode = false,
   batchPosition,
@@ -120,7 +122,8 @@ export const PuzzleEditor = ({
   const savedBoardLineRef = useRef("");
   const fixedFenRef = useRef<string | null>(value.solution.trim() ? initialPgnState.fen : null);
   const solutionInputId = useId();
-  const solutionLocked = Boolean(value.solution.trim()) && !allowSolutionEditing;
+  const canEditSolution = allowSolutionEditing && !readOnly;
+  const solutionLocked = readOnly || (Boolean(value.solution.trim()) && !canEditSolution);
 
   const solutionMovetext = useMemo(() => {
     try {
@@ -203,14 +206,14 @@ export const PuzzleEditor = ({
       const nextFen = parsed.fen || appliedFen;
       const nextHeaders = ensurePuzzlePgnHeaders(parsed.headerText, nextFen);
 
-      if (allowSolutionEditing && fixedFenRef.current !== null && nextFen !== fixedFenRef.current) {
+      if (canEditSolution && fixedFenRef.current !== null && nextFen !== fixedFenRef.current) {
         throw new Error(
           "The puzzle FEN and initial position cannot be changed after the solution is loaded.",
         );
       }
 
       if (!parsed.solution) {
-        if (allowSolutionEditing) {
+        if (canEditSolution) {
           throw new Error("Enter at least one move.");
         }
         onChange({ ...value, fen: nextFen, solution: "" });
@@ -222,7 +225,7 @@ export const PuzzleEditor = ({
       }
 
       const normalized = validateParsedPuzzleSubmission(value, parsed);
-      if (allowSolutionEditing && fixedFenRef.current === null) {
+      if (canEditSolution && fixedFenRef.current === null) {
         fixedFenRef.current = normalized.fen;
       }
       onChange(normalized);
@@ -244,7 +247,7 @@ export const PuzzleEditor = ({
     setSolutionDraft(solution);
     setEditorError("");
 
-    if (!allowSolutionEditing) return;
+    if (!canEditSolution) return;
 
     try {
       const parsed = parsePuzzlePgnInput(solution, appliedFen);
@@ -331,7 +334,7 @@ export const PuzzleEditor = ({
   };
 
   const deleteCurrentLine = (): void => {
-    if (!allowSolutionEditing || !solutionLines[activeLineIndex]) return;
+    if (!canEditSolution || !solutionLines[activeLineIndex]) return;
 
     try {
       commitSolutionLines(
@@ -350,7 +353,7 @@ export const PuzzleEditor = ({
       setEditorError(state.error);
     }
 
-    if (!allowSolutionEditing || state.viewingSolution || state.customLineIndex === undefined) {
+    if (!canEditSolution || state.viewingSolution || state.customLineIndex === undefined) {
       return;
     }
 
@@ -416,11 +419,11 @@ export const PuzzleEditor = ({
           coordinates
           solution={value.solution}
           solutionUciLines={solutionUciLines}
-          showSolution={false}
-          analysisMode
+          showSolution={readOnly}
+          analysisMode={!readOnly}
           captureNavigationShortcuts
           preserveAnalysisHistoryOnSolutionChange
-          restrictMovesToSolution={!allowSolutionEditing}
+          restrictMovesToSolution={!canEditSolution}
           solutionNavigation={navigation}
           onNavigateHandled={() => {
             setNavigation(null);
@@ -456,7 +459,7 @@ export const PuzzleEditor = ({
                 </span>
               </div>
               <div className="puzzleEditorPlayback">
-                {allowSolutionEditing ? (
+                {canEditSolution ? (
                   <button
                     type="button"
                     className="puzzleDeleteLineButton"
@@ -523,6 +526,7 @@ export const PuzzleEditor = ({
             aria-label="Event"
             value={value.event}
             placeholder="Optional event name"
+            readOnly={readOnly}
             onChange={(event) => onChange({ ...value, event: event.target.value })}
           />
         </label>
@@ -534,6 +538,7 @@ export const PuzzleEditor = ({
               value={value.explanation}
               rows={5}
               spellCheck
+              readOnly={readOnly}
               onChange={(event) => onChange({ ...value, explanation: event.target.value })}
             />
           </label>

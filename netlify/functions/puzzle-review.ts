@@ -73,20 +73,19 @@ export const handler = async (event: NetlifyEvent) => {
   const { action } = body;
 
   try {
-    const identity = await resolveSiteIdentity(event.headers);
-    if (!identity.username) {
-      return jsonResponse(401, { error: "Log in with Lichess to review puzzles." });
-    }
-    if (identity.username !== REVIEWER) {
-      return jsonResponse(403, { error: "This review queue is restricted." });
+    if (action !== "list") {
+      const identity = await resolveSiteIdentity(event.headers);
+      if (!identity.username) {
+        return jsonResponse(401, { error: "Log in with Lichess to review puzzles." });
+      }
+      if (identity.username !== REVIEWER) {
+        return jsonResponse(403, { error: "This review queue is restricted." });
+      }
     }
 
     let queuedPuzzleId: number | null = null;
     let normalizedPuzzle: (PuzzleSubmissionValue & { submitted_by: string }) | null = null;
-    if (["approve", "reject", "update"].includes(action)) {
-      if (!("id" in body)) throw new Error("Unable to review puzzle: no queue id was provided.");
-      queuedPuzzleId = body.id;
-    }
+    if (action !== "list") queuedPuzzleId = body.id;
     if (action === "update") {
       const validatedPuzzle = validatePuzzleSubmission({
         fen: body.fen,
@@ -100,13 +99,13 @@ export const handler = async (event: NetlifyEvent) => {
         submitted_by: body.author,
       };
     }
+
     const supabaseUrl =
       process.env.SUPABASE_URL?.trim() || process.env.VITE_SUPABASE_URL?.trim() || "";
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ?? "";
     if (!supabaseUrl || !serviceRoleKey) {
       throw new Error("Puzzle review service is not configured.");
     }
-
     const supabase = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false },
     });
