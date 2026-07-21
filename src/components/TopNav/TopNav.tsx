@@ -1150,15 +1150,10 @@ export const TopNav = () => {
                 </div>
               ) : null}
             </div>
-          ) : (
-            <button
-              className="navAuthButton"
-              type="button"
-              onClick={() => login(currentLocation)}
-              disabled={isLoading}
-            >
+          ) : isLoading ? null : (
+            <button className="navAuthButton" type="button" onClick={() => login(currentLocation)}>
               <FontAwesomeIcon icon={faRightToBracket} aria-hidden="true" />
-              <span>{isLoading ? "Checking..." : "Login"}</span>
+              <span>Login</span>
             </button>
           )}
         </div>

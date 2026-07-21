@@ -106,13 +106,6 @@ const awcTournament = (year: number): TournamentMeta =>
     trophyAssetPath: trophyAssetPaths.awc,
   });
 
-const pendingAwcTournament = (year: number): TournamentMeta => ({
-  id: `awc${year}`,
-  title: `AWC ${year}`,
-  year,
-  status: "pending",
-});
-
 const tournaments: TournamentMeta[] = [
   availableTournament({
     id: "ahc2026",
@@ -132,7 +125,6 @@ const tournaments: TournamentMeta[] = [
     trophyAssetPath: trophyAssetPaths.ccac,
   }),
   ...[2025, 2024, 2023, 2022, 2021].map(awcTournament),
-  ...[2020, 2019, 2018, 2017, 2016].map(pendingAwcTournament),
 ];
 
 const roundDisplayOrder: Record<string, string[]> = {

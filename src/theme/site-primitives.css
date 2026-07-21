@@ -226,6 +226,77 @@
   font-weight: 800;
 }
 
+.primaryActionButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 42px;
+  padding: 10px 16px;
+  border: 1px solid color-mix(in srgb, var(--color-primary-soft) 34%, var(--color-primary));
+  border-radius: var(--radius-ui);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, white 11%, transparent), transparent 58%),
+    linear-gradient(
+      135deg,
+      var(--color-primary),
+      color-mix(in srgb, var(--color-primary) 80%, var(--color-cyan))
+    );
+  color: var(--color-on-primary);
+  font-size: var(--text-control);
+  font-weight: 800;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow:
+    0 1px 0 color-mix(in srgb, white 18%, transparent) inset,
+    0 8px 18px color-mix(in srgb, var(--color-primary) 18%, transparent);
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    transform 90ms ease;
+}
+
+.primaryActionButton:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-primary-soft) 52%, var(--color-primary));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, white 15%, transparent), transparent 58%),
+    linear-gradient(
+      135deg,
+      var(--color-primary-hover),
+      color-mix(in srgb, var(--color-primary) 68%, var(--color-cyan-bright))
+    );
+  transform: translateY(-1px);
+  box-shadow:
+    0 1px 0 color-mix(in srgb, white 22%, transparent) inset,
+    0 11px 22px color-mix(in srgb, var(--color-primary) 24%, transparent);
+}
+
+.primaryActionButton:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 1px 0 color-mix(in srgb, white 14%, transparent) inset;
+}
+
+.primaryActionButton:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px var(--color-primary-ring),
+    0 8px 18px color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+.primaryActionButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.primaryActionButton svg {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+}
+
 .profileMatchFilterFooter .sourceFilterSourceCheck,
 .sourceFilterSourceCheck {
   border: 0;

@@ -1,6 +1,6 @@
 import "./PlayerProfile.css";
 
-import { faShieldHalved } from "@fortawesome/free-solid-svg-icons";
+import { faMagnifyingGlass, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -1205,10 +1205,11 @@ export const PlayerProfilePage = ({
                         <SourceFilterChecks values={sourceFilters} onChange={setSourceFilter} />
                         <div className="matchFilterActions">
                           <button
-                            className="analyzeButton matchFilterSearch"
+                            className="primaryActionButton matchFilterSearch"
                             type="submit"
                             disabled={loadingMatches}
                           >
+                            <FontAwesomeIcon icon={faMagnifyingGlass} aria-hidden="true" />
                             {loadingMatches ? "Searching..." : "Search"}
                           </button>
                         </div>
