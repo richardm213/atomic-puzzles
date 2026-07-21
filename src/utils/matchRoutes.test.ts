@@ -8,6 +8,7 @@ import {
   hasMatchRouteParams,
   isSingleGameMatch,
   normalizeMatchMode,
+  shouldUseInternalMatchPage,
 } from "./matchRoutes";
 
 describe("normalizeMatchMode", () => {
@@ -15,6 +16,7 @@ describe("normalizeMatchMode", () => {
     expect(normalizeMatchMode("blitz")).toBe("blitz");
     expect(normalizeMatchMode("BULLET")).toBe("bullet");
     expect(normalizeMatchMode("Hyperbullet")).toBe("hyperbullet");
+    expect(normalizeMatchMode("Wolfrandom")).toBe("wolfrandom");
   });
 
   it("returns '' for unknown modes", () => {
@@ -41,6 +43,7 @@ describe("buildMatchRouteParams", () => {
 describe("hasMatchRouteParams", () => {
   it("returns true only when both mode and matchId are present", () => {
     expect(hasMatchRouteParams({ mode: "blitz", matchId: "abc" })).toBe(true);
+    expect(hasMatchRouteParams({ mode: "wolfrandom", matchId: "wolf-123" })).toBe(true);
     expect(hasMatchRouteParams({ mode: "blitz", matchId: " " })).toBe(false);
     expect(hasMatchRouteParams({ mode: "", matchId: "abc" })).toBe(false);
     expect(hasMatchRouteParams(null)).toBe(false);
@@ -58,6 +61,30 @@ describe("isSingleGameMatch", () => {
     expect(isSingleGameMatch({ games: [{ id: "abc" }, { id: "def" }], gameCount: 1 })).toBe(false);
     expect(isSingleGameMatch({ gameCount: 2 })).toBe(false);
     expect(isSingleGameMatch(null)).toBe(false);
+  });
+});
+
+describe("shouldUseInternalMatchPage", () => {
+  it("uses internal pages for multi-game matches", () => {
+    expect(shouldUseInternalMatchPage({ mode: "blitz", matchId: "match-id", gameCount: 2 })).toBe(
+      true,
+    );
+  });
+
+  it("uses internal pages for single-game Wolfrandom matches", () => {
+    expect(
+      shouldUseInternalMatchPage({
+        mode: "wolfrandom",
+        matchId: "wolf-match",
+        gameCount: 1,
+      }),
+    ).toBe(true);
+  });
+
+  it("keeps other single-game matches on their external game pages", () => {
+    expect(shouldUseInternalMatchPage({ mode: "blitz", matchId: "game-id", gameCount: 1 })).toBe(
+      false,
+    );
   });
 });
 

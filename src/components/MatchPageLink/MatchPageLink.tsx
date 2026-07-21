@@ -8,7 +8,7 @@ import type { MouseEventHandler } from "react";
 import {
   buildMatchRouteParams,
   buildSingleGameMatchUrl,
-  hasMatchRouteParams,
+  shouldUseInternalMatchPage,
 } from "../../utils/matchRoutes";
 
 export type MatchPageLinkMatch = Parameters<typeof buildMatchRouteParams>[0];
@@ -26,6 +26,23 @@ export const MatchPageLink = ({
   onClick,
   title = "Open match page",
 }: MatchPageLinkProps) => {
+  if (shouldUseInternalMatchPage(match)) {
+    return (
+      <Link
+        className={`matchPageLink ${className}`.trim()}
+        to="/matches/$mode/$matchId"
+        params={buildMatchRouteParams(match)}
+        target="_blank"
+        rel="noreferrer"
+        title={title}
+        aria-label={title}
+        onClick={onClick}
+      >
+        <FontAwesomeIcon icon={faUpRightFromSquare} />
+      </Link>
+    );
+  }
+
   const singleGameUrl = buildSingleGameMatchUrl(match);
   if (singleGameUrl) {
     return (
@@ -43,20 +60,5 @@ export const MatchPageLink = ({
     );
   }
 
-  if (!hasMatchRouteParams(match)) return null;
-
-  return (
-    <Link
-      className={`matchPageLink ${className}`.trim()}
-      to="/matches/$mode/$matchId"
-      params={buildMatchRouteParams(match)}
-      target="_blank"
-      rel="noreferrer"
-      title={title}
-      aria-label={title}
-      onClick={onClick}
-    >
-      <FontAwesomeIcon icon={faUpRightFromSquare} />
-    </Link>
-  );
+  return null;
 };

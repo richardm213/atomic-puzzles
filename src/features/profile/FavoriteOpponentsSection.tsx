@@ -9,7 +9,7 @@ import { matchupToSlug } from "../../utils/h2hRoutes";
 import {
   buildMatchRouteParams,
   buildSingleGameMatchUrl,
-  hasMatchRouteParams,
+  shouldUseInternalMatchPage,
 } from "../../utils/matchRoutes";
 import { normalizeUsername } from "../../utils/playerNames";
 import { isToggleActionKey } from "../../utils/toggleActionKey";
@@ -293,7 +293,7 @@ export const FavoriteOpponentsSection = ({
                                 };
                                 const singleGameUrl = buildSingleGameMatchUrl(matchLinkMatch);
                                 const shouldLinkToMatchPage =
-                                  match.gameCount > 1 && hasMatchRouteParams(matchLinkMatch);
+                                  shouldUseInternalMatchPage(matchLinkMatch);
                                 return (
                                   <tr
                                     key={`${opponentKey}-${match.startTs}-${match.firstGameId}-${match.matchId}`}

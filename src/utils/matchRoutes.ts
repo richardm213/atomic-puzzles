@@ -11,7 +11,14 @@ type MatchRouteInput = {
 
 export const normalizeMatchMode = (mode: unknown): Mode | "" => {
   const value = String(mode ?? "").toLowerCase();
-  if (value === "blitz" || value === "bullet" || value === "hyperbullet") return value;
+  if (
+    value === "blitz" ||
+    value === "bullet" ||
+    value === "hyperbullet" ||
+    value === "wolfrandom"
+  ) {
+    return value;
+  }
   return "";
 };
 
@@ -24,6 +31,10 @@ export const buildMatchRouteParams = (
 
 export const hasMatchRouteParams = (match: MatchRouteInput | null | undefined): boolean =>
   Boolean(normalizeMatchMode(match?.mode) && String(match?.matchId ?? "").trim());
+
+export const shouldUseInternalMatchPage = (match: MatchRouteInput | null | undefined): boolean =>
+  hasMatchRouteParams(match) &&
+  (normalizeMatchMode(match?.mode) === "wolfrandom" || !isSingleGameMatch(match));
 
 export const isSingleGameMatch = (match: MatchRouteInput | null | undefined): boolean => {
   if (Array.isArray(match?.games)) return match.games.length === 1;
