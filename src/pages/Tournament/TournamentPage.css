@@ -526,6 +526,11 @@
   cursor: grabbing;
 }
 
+.tournamentRoundsScroller.isDragging .tournamentMatchCardTree,
+.tournamentRoundsScroller.isDragging .tournamentMatchCardTree * {
+  cursor: grabbing;
+}
+
 .tournamentRoundsScroller.isMainBracket {
   align-items: start;
 }
