@@ -55,6 +55,11 @@ const getOpeningsForPlayer = (aliasesLookup: AliasLookup, username: string): str
   ];
 };
 
+const getFirstChessComAlias = (aliasesLookup: AliasLookup, username: string): string => {
+  const entry = aliasesLookup.get(username) ?? aliasesLookup.get(normalizeUsername(username));
+  return entry?.chessComAliases[0] ?? "";
+};
+
 const monthLabelFromDate = (date: Date): string =>
   date.toLocaleString("en-US", {
     month: "long",
@@ -176,7 +181,7 @@ const updateRankingsUrl = (
 };
 
 const LeaderboardView = () => {
-  const { hideRankingsOpenings } = useAppSettings();
+  const { hideRankingsOpenings, showChessComRankings } = useAppSettings();
   const initialFilters = useMemo(() => getInitialRankingsFilters(), []);
   const [selectedYear, setSelectedYear] = useState(initialFilters.selectedYear);
   const [selectedMonthName, setSelectedMonthName] = useState(initialFilters.selectedMonthName);
@@ -185,6 +190,7 @@ const LeaderboardView = () => {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [activeOpeningFilter, setActiveOpeningFilter] = useState("");
   const [aliasesLookup, setAliasesLookup] = useState<AliasLookup>(() => new Map());
+  const [aliasesLoaded, setAliasesLoaded] = useState(false);
   const hasInitializedFiltersRef = useRef(false);
 
   const allMonthKeys = useMemo(() => allLeaderboardMonths(), []);
@@ -216,6 +222,8 @@ const LeaderboardView = () => {
         if (isCurrent) setAliasesLookup(lookup);
       } catch {
         if (isCurrent) setAliasesLookup(new Map());
+      } finally {
+        if (isCurrent) setAliasesLoaded(true);
       }
     };
 
@@ -293,12 +301,19 @@ const LeaderboardView = () => {
   const activeModeOpeningFilter =
     selectedMode === "wolfrandom" || hideRankingsOpenings ? "" : activeOpeningFilter;
   const filteredPlayers = useMemo(() => {
-    if (!activeModeOpeningFilter) return players;
+    return players.filter((player) => {
+      if (
+        activeModeOpeningFilter &&
+        !getOpeningsForPlayer(aliasesLookup, player.username).includes(activeModeOpeningFilter)
+      ) {
+        return false;
+      }
 
-    return players.filter((player) =>
-      getOpeningsForPlayer(aliasesLookup, player.username).includes(activeModeOpeningFilter),
-    );
-  }, [activeModeOpeningFilter, aliasesLookup, players]);
+      return (
+        !showChessComRankings || Boolean(getFirstChessComAlias(aliasesLookup, player.username))
+      );
+    });
+  }, [activeModeOpeningFilter, aliasesLookup, players, showChessComRankings]);
 
   const selectMonthKey = (monthKey: string): void => {
     const monthDate = monthDateFromMonthKey(monthKey);
@@ -332,7 +347,13 @@ const LeaderboardView = () => {
     const directionMultiplier = sortDirection === "asc" ? 1 : -1;
     const sorted = [...filteredPlayers].sort((a, b) => {
       if (sortKey === "username") {
-        return directionMultiplier * a.username.localeCompare(b.username);
+        const aUsername = showChessComRankings
+          ? getFirstChessComAlias(aliasesLookup, a.username)
+          : a.username;
+        const bUsername = showChessComRankings
+          ? getFirstChessComAlias(aliasesLookup, b.username)
+          : b.username;
+        return directionMultiplier * aUsername.localeCompare(bUsername);
       }
 
       const aValue = (a as unknown as Record<string, number | null>)[sortKey] ?? 0;
@@ -344,7 +365,7 @@ const LeaderboardView = () => {
     });
 
     return sorted;
-  }, [filteredPlayers, sortDirection, sortKey]);
+  }, [aliasesLookup, filteredPlayers, showChessComRankings, sortDirection, sortKey]);
 
   return (
     <div className="rankingsPage">
@@ -433,7 +454,7 @@ const LeaderboardView = () => {
           <div className="rankingsMetaDetails">
             <div className="rankingsMetaSummary">
               <span className="rankedCount">
-                {activeModeOpeningFilter
+                {activeModeOpeningFilter || showChessComRankings
                   ? `${filteredPlayers.length} of ${players.length} ranked`
                   : `${players.length} ranked`}
                 {selectedMode !== "wolfrandom" ? (
@@ -475,11 +496,15 @@ const LeaderboardView = () => {
           </div>
         </div>
 
-        {filteredPlayers.length === 0 ? (
+        {showChessComRankings && !aliasesLoaded ? (
+          <div className="emptyRankings">Loading Chess.com aliases...</div>
+        ) : filteredPlayers.length === 0 ? (
           <div className="emptyRankings">
             {activeModeOpeningFilter
               ? `No ranked players found for ${getOpeningDisplayLabel(activeModeOpeningFilter)}.`
-              : "No leaderboard entries available for this month."}
+              : showChessComRankings
+                ? "No ranked players with a Chess.com alias were found."
+                : "No leaderboard entries available for this month."}
           </div>
         ) : (
           <div className="rankingsTableWrap">
@@ -500,49 +525,57 @@ const LeaderboardView = () => {
                 </tr>
               </thead>
               <tbody>
-                {sortedPlayers.map((player) => (
-                  <tr key={`${selectedMonth}-${player.rank}-${player.username}`}>
-                    <td>{player.rank}</td>
-                    <td>
-                      <div className="rankingPlayerCell">
-                        <Link
-                          className="rankingLink"
-                          to="/@/$username"
-                          params={{ username: player.username }}
-                        >
-                          {player.username}
-                        </Link>
-                        {selectedMode !== "wolfrandom" && !hideRankingsOpenings ? (
-                          <div
-                            className="rankingOpeningTags"
-                            aria-label={`${player.username} openings`}
+                {sortedPlayers.map((player) => {
+                  const displayUsername = showChessComRankings
+                    ? getFirstChessComAlias(aliasesLookup, player.username)
+                    : player.username;
+
+                  return (
+                    <tr key={`${selectedMonth}-${player.rank}-${player.username}`}>
+                      <td>{player.rank}</td>
+                      <td>
+                        <div className="rankingPlayerCell">
+                          <Link
+                            className="rankingLink"
+                            to="/@/$username"
+                            params={{ username: player.username }}
                           >
-                            {getOpeningsForPlayer(aliasesLookup, player.username).map((opening) => (
-                              <button
-                                type="button"
-                                key={`${player.username}-${opening}`}
-                                className={`rankingOpeningTag${
-                                  activeOpeningFilter === opening ? " active" : ""
-                                }`}
-                                aria-pressed={activeOpeningFilter === opening}
-                                onClick={() =>
-                                  setActiveOpeningFilter((current) =>
-                                    current === opening ? "" : opening,
-                                  )
-                                }
-                              >
-                                {getOpeningDisplayLabel(opening)}
-                              </button>
-                            ))}
-                          </div>
-                        ) : null}
-                      </div>
-                    </td>
-                    <td>{player.score}</td>
-                    <td>{player.rd}</td>
-                    <td>{player.games ?? "—"}</td>
-                  </tr>
-                ))}
+                            {displayUsername}
+                          </Link>
+                          {selectedMode !== "wolfrandom" && !hideRankingsOpenings ? (
+                            <div
+                              className="rankingOpeningTags"
+                              aria-label={`${displayUsername} openings`}
+                            >
+                              {getOpeningsForPlayer(aliasesLookup, player.username).map(
+                                (opening) => (
+                                  <button
+                                    type="button"
+                                    key={`${player.username}-${opening}`}
+                                    className={`rankingOpeningTag${
+                                      activeOpeningFilter === opening ? " active" : ""
+                                    }`}
+                                    aria-pressed={activeOpeningFilter === opening}
+                                    onClick={() =>
+                                      setActiveOpeningFilter((current) =>
+                                        current === opening ? "" : opening,
+                                      )
+                                    }
+                                  >
+                                    {getOpeningDisplayLabel(opening)}
+                                  </button>
+                                ),
+                              )}
+                            </div>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td>{player.score}</td>
+                      <td>{player.rd}</td>
+                      <td>{player.games ?? "—"}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

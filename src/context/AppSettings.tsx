@@ -22,6 +22,7 @@ const STORAGE_KEYS = {
   boardOverrideLightSquare: "atomic-puzzles.board-override-light-square",
   boardOverrideDarkSquare: "atomic-puzzles.board-override-dark-square",
   hideRankingsOpenings: "atomic-puzzles.rankings.hide-openings",
+  showChessComRankings: "atomic-puzzles.rankings.show-chesscom-users",
   showPuzzleTimer: "atomic-puzzles.puzzles.show-timer",
 };
 
@@ -158,6 +159,8 @@ export type AppSettingsContextValue = {
   resetDisplaySettings: () => void;
   hideRankingsOpenings: boolean;
   setHideRankingsOpenings: Dispatch<SetStateAction<boolean>>;
+  showChessComRankings: boolean;
+  setShowChessComRankings: Dispatch<SetStateAction<boolean>>;
   showPuzzleTimer: boolean;
   setShowPuzzleTimer: Dispatch<SetStateAction<boolean>>;
 };
@@ -245,6 +248,11 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     z.boolean(),
     false,
   );
+  const [showChessComRankings, setShowChessComRankings] = usePersistedState(
+    STORAGE_KEYS.showChessComRankings,
+    z.boolean(),
+    false,
+  );
   const [showPuzzleTimer, setShowPuzzleTimer] = usePersistedState(
     STORAGE_KEYS.showPuzzleTimer,
     z.boolean(),
@@ -299,6 +307,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       resetDisplaySettings,
       hideRankingsOpenings,
       setHideRankingsOpenings,
+      showChessComRankings,
+      setShowChessComRankings,
       showPuzzleTimer,
       setShowPuzzleTimer,
     }),
@@ -322,6 +332,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       resetDisplaySettings,
       hideRankingsOpenings,
       setHideRankingsOpenings,
+      showChessComRankings,
+      setShowChessComRankings,
       showPuzzleTimer,
       setShowPuzzleTimer,
     ],

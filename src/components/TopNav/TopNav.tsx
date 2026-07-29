@@ -274,6 +274,8 @@ export const TopNav = () => {
     resetDisplaySettings,
     hideRankingsOpenings,
     setHideRankingsOpenings,
+    showChessComRankings,
+    setShowChessComRankings,
     showPuzzleTimer,
     setShowPuzzleTimer,
   } = useAppSettings();
@@ -1205,6 +1207,14 @@ export const TopNav = () => {
                       type="checkbox"
                       checked={hideRankingsOpenings}
                       onChange={(event) => setHideRankingsOpenings(event.target.checked)}
+                    />
+                  </label>
+                  <label className="navSettingsCheckbox">
+                    <span>Show Chess.com users only</span>
+                    <input
+                      type="checkbox"
+                      checked={showChessComRankings}
+                      onChange={(event) => setShowChessComRankings(event.target.checked)}
                     />
                   </label>
                 </div>
