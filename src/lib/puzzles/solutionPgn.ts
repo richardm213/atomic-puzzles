@@ -11,7 +11,8 @@ const isNormalMove = (move: Move): move is NormalMove => "from" in move;
 export type UciSolutionEntry = {
   uci: string;
   key: string;
-  questionable: boolean;
+  annotation: string;
+  retry: boolean;
 };
 
 export type UciSolutionLine = UciSolutionEntry[];
@@ -23,6 +24,7 @@ export type AdditiveSolutionLineMerge = {
 };
 
 type FirstOccurrence = { lineIndex: number; moveIndex: number } | null;
+type ParsedSolutionLine = { line: UciSolutionLine; order: number[] };
 
 export type SolutionMoveNode<TExtras = Record<string, unknown>> = TExtras & {
   move?: string;
@@ -90,28 +92,69 @@ export const toComparableUci = (position: Position, uci: string, move?: Move | n
   return `${squareName(fromFile, fromRank)}${squareName(castledKingFile, fromRank)}`;
 };
 
-type ParsedSolutionToken = { san: string; questionable: boolean };
-
-const tokenFromSolution = (token: string): ParsedSolutionToken | null => {
-  const strippedMoveNumber = token.replace(/^\d+\.(\.\.)?/, "");
-  const questionable = /[!?]*\?[!?]*$/.test(strippedMoveNumber);
-  const strippedAnnotation = strippedMoveNumber.replace(/[!?]+$/g, "");
-  if (!strippedAnnotation) return null;
-  if (strippedAnnotation === "...") return null;
-  if (["*", "1-0", "0-1", "1/2-1/2"].includes(strippedAnnotation)) {
-    return null;
-  }
-  return {
-    san: strippedAnnotation,
-    questionable,
-  };
+export type AnnotatedSolutionMove = {
+  san: string;
+  annotation: string;
+  retry: boolean;
 };
 
-const tokenizeSolution = (solution: string): RegExpMatchArray | null =>
+const MOVE_ANNOTATION_SUFFIX = /[!?]+$/;
+const MOVE_NUMBER_PREFIX = /^\d+\.(\.\.)?/;
+const NON_MOVE_TOKENS = new Set(["", "...", "*", "1-0", "0-1", "1/2-1/2"]);
+
+export const splitSolutionMove = (move = ""): AnnotatedSolutionMove => {
+  const annotation = move.match(MOVE_ANNOTATION_SUFFIX)?.[0] ?? "";
+  const san = annotation ? move.slice(0, -annotation.length) : move;
+  return { san, annotation, retry: annotation.includes("?") };
+};
+
+export const stripSolutionMoveAnnotation = (move = ""): string => splitSolutionMove(move).san;
+
+export const sameSolutionMove = (left = "", right = ""): boolean =>
+  stripSolutionMoveAnnotation(left) === stripSolutionMoveAnnotation(right);
+
+export const formatSolutionMove = (san: string, annotation = ""): string => `${san}${annotation}`;
+
+const parseSolutionToken = (token: string): AnnotatedSolutionMove | null => {
+  const moveText = token.replace(MOVE_NUMBER_PREFIX, "");
+  const parsedMove = splitSolutionMove(moveText);
+  return NON_MOVE_TOKENS.has(parsedMove.san) ? null : parsedMove;
+};
+
+const tokenizeSolution = (solution: string): string[] =>
   solution
-    .replace(/\{[^}]*\}/g, " ")
+    .replace(/\[[^\]]*\]/gs, " ")
+    .replace(/\{[^}]*\}/gs, " ")
+    .replace(/;[^\r\n]*/g, " ")
     .replace(/\$\d+/g, " ")
-    .match(/\(|\)|[^\s()]+/g);
+    .match(/\(|\)|[^\s()]+/g) ?? [];
+
+const compareVariationOrder = (left: ParsedSolutionLine, right: ParsedSolutionLine): number => {
+  const length = Math.max(left.order.length, right.order.length);
+  for (let index = 0; index < length; index += 1) {
+    const leftPart = left.order[index];
+    const rightPart = right.order[index];
+    if (leftPart === undefined) return -1;
+    if (rightPart === undefined) return 1;
+    if (leftPart !== rightPart) return leftPart - rightPart;
+  }
+  return 0;
+};
+
+const deduplicateSolutionLines = (parsedLines: ParsedSolutionLine[]): UciSolutionLine[] => {
+  const unique: UciSolutionLine[] = [];
+  const seen = new Set<string>();
+
+  for (const { line } of parsedLines) {
+    if (line.length === 0) continue;
+    const identity = line.map((entry) => `${entry.uci}:${entry.annotation}`).join(" ");
+    if (seen.has(identity)) continue;
+    seen.add(identity);
+    unique.push(line);
+  }
+
+  return unique;
+};
 
 export const movePrefix = (plyIndex: number, force = false): string => {
   if (plyIndex % 2 === 0) return `${Math.floor(plyIndex / 2) + 1}. `;
@@ -129,12 +172,9 @@ const startingPlyFromFen = (fen: string): number => {
   return turn === "b" ? basePly + 1 : basePly;
 };
 
-const isQuestionableMoveLabel = (move = ""): boolean => move.includes("?");
-
 export const compareMoves = (moveA = "", moveB = "", fallbackA = 0, fallbackB = 0): number => {
-  const questionableDiff =
-    Number(isQuestionableMoveLabel(moveA)) - Number(isQuestionableMoveLabel(moveB));
-  if (questionableDiff !== 0) return questionableDiff;
+  const retryDiff = Number(splitSolutionMove(moveA).retry) - Number(splitSolutionMove(moveB).retry);
+  if (retryDiff !== 0) return retryDiff;
   return fallbackA - fallbackB;
 };
 
@@ -280,6 +320,7 @@ export const serializeSanLinesToPgn = (fen: string, sanLines: string[][] = []): 
 };
 
 export const parseSolutionUciLines = (fen: string, solution: unknown): UciSolutionLine[] => {
+  // 1. Validate the raw inputs and starting position.
   if (typeof solution !== "string" || solution.trim().length === 0) return [];
 
   let position: Position;
@@ -289,13 +330,17 @@ export const parseSolutionUciLines = (fen: string, solution: unknown): UciSoluti
     return [];
   }
 
+  // 2. Remove PGN metadata/comments and split moves from variation parentheses.
   const tokens = tokenizeSolution(solution);
-  if (!tokens) return [];
+  if (tokens.length === 0) return [];
 
-  const parsedLines: Array<{ line: UciSolutionLine; order: number[] }> = [];
+  // 3. Walk every branch from the position where its parent move began.
+  // Each accepted token is parsed as SAN, checked for legality, and stored with
+  // its exact annotation plus the derived retry flag.
+  const parsedLines: ParsedSolutionLine[] = [];
   let parseFailed = false;
 
-  const walk = (
+  const parseBranch = (
     startIndex: number,
     startPosition: Position,
     line: UciSolutionLine,
@@ -317,12 +362,16 @@ export const parseSolutionUciLines = (fen: string, solution: unknown): UciSoluti
           parseFailed = true;
           return tokens.length;
         }
-        if (sawMove) parsedLines.push({ line: currentLine, order });
+        if (!sawMove) {
+          parseFailed = true;
+          return tokens.length;
+        }
+        parsedLines.push({ line: currentLine, order });
         return index + 1;
       }
 
       if (token === "(") {
-        index = walk(
+        index = parseBranch(
           index + 1,
           lastBranchPosition,
           lastBranchLine,
@@ -334,7 +383,7 @@ export const parseSolutionUciLines = (fen: string, solution: unknown): UciSoluti
         continue;
       }
 
-      const parsedToken = token !== undefined ? tokenFromSolution(token) : null;
+      const parsedToken = token !== undefined ? parseSolutionToken(token) : null;
       if (!parsedToken) {
         index += 1;
         continue;
@@ -353,7 +402,8 @@ export const parseSolutionUciLines = (fen: string, solution: unknown): UciSoluti
       currentLine.push({
         uci,
         key: toComparableUci(currentPosition, uci, move),
-        questionable: parsedToken.questionable,
+        annotation: parsedToken.annotation,
+        retry: parsedToken.retry,
       });
       currentPosition.play(move);
       sawMove = true;
@@ -368,32 +418,12 @@ export const parseSolutionUciLines = (fen: string, solution: unknown): UciSoluti
     return index;
   };
 
-  walk(0, position, [], [], false);
+  parseBranch(0, position, [], [], false);
   if (parseFailed) return [];
 
-  parsedLines.sort((left, right) => {
-    const length = Math.max(left.order.length, right.order.length);
-    for (let index = 0; index < length; index += 1) {
-      const leftPart = left.order[index];
-      const rightPart = right.order[index];
-      if (leftPart === undefined) return -1;
-      if (rightPart === undefined) return 1;
-      if (leftPart !== rightPart) return leftPart - rightPart;
-    }
-    return 0;
-  });
-
-  const unique: UciSolutionLine[] = [];
-  const seen = new Set<string>();
-  for (const { line } of parsedLines) {
-    if (line.length === 0) continue;
-    const key = line.map((entry) => `${entry.uci}:${entry.questionable ? "q" : "s"}`).join(" ");
-    if (seen.has(key)) continue;
-    seen.add(key);
-    unique.push(line);
-  }
-
-  return unique;
+  // 4. Restore PGN branch order, then remove exact duplicate lines.
+  parsedLines.sort(compareVariationOrder);
+  return deduplicateSolutionLines(parsedLines);
 };
 
 export const convertUciLineToSan = (initialFen: string, uciLine: UciSolutionLine): string[] => {
@@ -410,7 +440,7 @@ export const convertUciLineToSan = (initialFen: string, uciLine: UciSolutionLine
     if (!move) break;
 
     const san = makeSan(position, move);
-    sanLine.push(entry.questionable ? `${san}?` : san);
+    sanLine.push(formatSolutionMove(san, entry.annotation));
     position.play(move);
   }
 

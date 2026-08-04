@@ -79,6 +79,12 @@ describe("Chessboard orchestration", () => {
     expect(states.at(-1)?.lineMoves).toEqual(["e4"]);
   });
 
+  it("keeps ? annotations visible in displayed solution lines", () => {
+    const states = renderBoard({ solution: "1. e4 (1. d4?)" });
+
+    expect(states.at(-1)?.solutionLines).toEqual(expect.arrayContaining([["e4"], ["d4?"]]));
+  });
+
   it("configures legal destinations for an analysis board", () => {
     renderBoard();
 

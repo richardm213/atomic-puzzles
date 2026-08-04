@@ -4,7 +4,8 @@ import { parseSolutionUciLines } from "../../lib/puzzles/solutionPgn";
 import {
   buildSolutionHistory,
   evaluateTrainingMove,
-  hasExpectedMoveAt,
+  hasAcceptedMoveAt,
+  isSolutionCompleteAt,
   recomputeTrainingState,
   tryCreateAtomicPosition,
 } from "./puzzlePlayback";
@@ -29,25 +30,41 @@ describe("tryCreateAtomicPosition", () => {
   });
 });
 
-describe("hasExpectedMoveAt", () => {
+describe("hasAcceptedMoveAt", () => {
   const lines = parseSolutionUciLines(STARTING_FEN, "1. e4 e5? 2. Nf3");
 
   it("returns true when at least one line has a non-questionable move", () => {
-    expect(hasExpectedMoveAt(lines, 0)).toBe(true);
+    expect(hasAcceptedMoveAt(lines, 0)).toBe(true);
   });
 
   it("returns true when a ply has both retry and accepted alternatives", () => {
     const mixedLines = parseSolutionUciLines(STARTING_FEN, "1. e4 (1. d4?)");
-    expect(hasExpectedMoveAt(mixedLines, 0)).toBe(true);
+    expect(hasAcceptedMoveAt(mixedLines, 0)).toBe(true);
   });
 
   it("returns false when only questionable moves are available at the ply", () => {
     const onlyQuestionable = parseSolutionUciLines(STARTING_FEN, "1. e4 e5?");
-    expect(hasExpectedMoveAt(onlyQuestionable, 1)).toBe(false);
+    expect(hasAcceptedMoveAt(onlyQuestionable, 1)).toBe(false);
   });
 
   it("returns false past the end of every line", () => {
-    expect(hasExpectedMoveAt(lines, 99)).toBe(false);
+    expect(hasAcceptedMoveAt(lines, 99)).toBe(false);
+  });
+});
+
+describe("isSolutionCompleteAt", () => {
+  it("requires an exhausted branch rather than merely having no accepted move", () => {
+    const retryOnly = parseSolutionUciLines(STARTING_FEN, "1. e4?");
+    const completed = parseSolutionUciLines(STARTING_FEN, "1. e4");
+
+    expect(isSolutionCompleteAt(retryOnly, 0)).toBe(false);
+    expect(isSolutionCompleteAt(completed, 0)).toBe(false);
+    expect(isSolutionCompleteAt(completed, 1)).toBe(true);
+  });
+
+  it("allows a completed accepted branch to ignore a longer retry-only duplicate", () => {
+    const lines = parseSolutionUciLines(STARTING_FEN, "1. e4 (1. e4 e5?)");
+    expect(isSolutionCompleteAt(lines, 1)).toBe(true);
   });
 });
 
@@ -146,7 +163,7 @@ describe("recomputeTrainingState", () => {
     const b3Line = lines.find((line) => line.some((entry) => entry.uci === "b2b3"));
     const playedKeysBeforeB3 = (b3Line ?? []).slice(0, 4).map((entry) => entry.key);
 
-    expect(b3Line?.[4]).toMatchObject({ uci: "b2b3", questionable: true });
+    expect(b3Line?.[4]).toMatchObject({ uci: "b2b3", annotation: "?", retry: true });
 
     const result = recomputeTrainingState({
       isTrainingEnabled: true,
@@ -175,6 +192,20 @@ describe("evaluateTrainingMove", () => {
     expect(evaluate(lines, e4Key)).toBe("accepted");
   });
 
+  it("returns the complete next state for an accepted move", () => {
+    const lines = parseSolutionUciLines(STARTING_FEN, "1. e4 e5 (1... c5)");
+    const e4Key = lines[0]?.[0]?.key ?? "";
+    const result = evaluateTrainingMove({
+      solutionLines: lines,
+      playedMoveKeys: [],
+      moveKey: e4Key,
+    });
+
+    expect(result.evaluation).toBe("accepted");
+    expect(result.acceptedState).toMatchObject({ progress: 1, solved: false });
+    expect(result.acceptedState?.candidates).toHaveLength(2);
+  });
+
   it("prefers accepted when the same move is listed as both correct and retry", () => {
     const lines = parseSolutionUciLines(STARTING_FEN, "1. e4 (1. e4?)");
     const e4Key = lines[0]?.[0]?.key ?? "";
@@ -186,19 +217,25 @@ describe("evaluateTrainingMove", () => {
     const lines = parseSolutionUciLines(PUZZLE_506_FEN, PUZZLE_506_SOLUTION);
     const b3Entry = lines.flat().find((entry) => entry.uci === "b2b3");
 
-    expect(b3Entry).toMatchObject({ questionable: true });
+    expect(b3Entry).toMatchObject({ annotation: "?", retry: true });
     const playedMoveKeys = (lines.find((line) => line[4]?.key === b3Entry?.key) ?? [])
       .slice(0, 4)
       .map((entry) => entry.key);
 
-    expect(evaluate(lines, b3Entry?.key ?? "", playedMoveKeys)).toBe("retry");
+    const result = evaluateTrainingMove({
+      solutionLines: lines,
+      playedMoveKeys,
+      moveKey: b3Entry?.key ?? "",
+    });
+    expect(result.evaluation).toBe("retry");
+    expect(result.acceptedState).toBeNull();
   });
 
   it("accepts every unmarked alternative in puzzle 1327", () => {
     const lines = parseSolutionUciLines(PUZZLE_1327_FEN, "8. Bc4 (8. Bb5+) (8. d5)");
     const firstMoves = lines.map((line) => line[0]);
 
-    expect(firstMoves.map((entry) => entry?.questionable)).toEqual([false, false, false]);
+    expect(firstMoves.map((entry) => entry?.retry)).toEqual([false, false, false]);
     firstMoves.forEach((entry) => {
       expect(evaluate(lines, entry?.key ?? "")).toBe("accepted");
     });

@@ -42,4 +42,14 @@ describe("VariationTree", () => {
     expect(variationOptions(lines, 1, matches).map((option) => option.move)).toEqual(["e5", "c5"]);
     expect(activeLineIndex(matches, 1)).toBe(1);
   });
+
+  it("displays ? annotations without letting them break line matching", () => {
+    const annotatedLines = [["e4", "e5?"], ["d4?"]];
+    render(
+      <VariationTree lines={annotatedLines} activeLine={1} currentPly={1} onMoveClick={vi.fn()} />,
+    );
+
+    expect(screen.getByRole("button", { name: "1. d4?" })).toBeVisible();
+    expect(matchingLineIndexes(annotatedLines, ["d4"])).toEqual([1]);
+  });
 });

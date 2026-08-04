@@ -28,6 +28,7 @@ import {
   convertUciLineToSan,
   mergeAdditiveSolutionLine,
   parseSolutionUciLines,
+  sameSolutionMove,
   serializeSanLinesToPgn,
 } from "../../lib/puzzles/solutionPgn";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
@@ -46,9 +47,6 @@ const multilineSolutionPgn = (pgn: string): string =>
     .map((line) => line.trim())
     .filter(Boolean)
     .join("\n");
-
-const sameBoardMove = (solutionMove: string, boardMove: string | undefined): boolean =>
-  solutionMove.replace(/[!?]+$/g, "") === boardMove;
 
 const orientationFromFen = (fen: string): "white" | "black" =>
   fen.split(" ")[1] === "b" ? "black" : "white";
@@ -367,14 +365,14 @@ export const PuzzleEditor = ({
 
     try {
       const editedLine = nextLine.map((move, moveIndex) =>
-        currentLine?.[moveIndex] && sameBoardMove(currentLine[moveIndex], move)
+        currentLine?.[moveIndex] && sameSolutionMove(currentLine[moveIndex], move)
           ? currentLine[moveIndex]
           : move,
       );
       const followsCurrentLineFromMiddle = Boolean(
         currentLine &&
         editedLine.length < currentLine.length &&
-        editedLine.every((move, moveIndex) => sameBoardMove(currentLine[moveIndex]!, move)),
+        editedLine.every((move, moveIndex) => sameSolutionMove(currentLine[moveIndex], move)),
       );
       if (followsCurrentLineFromMiddle) {
         return;
@@ -384,7 +382,7 @@ export const PuzzleEditor = ({
         solutionLines,
         editedLine,
         currentLine ? activeLineIndex : undefined,
-        sameBoardMove,
+        sameSolutionMove,
       );
       if (!mergedLine.changed) {
         setActiveLineIndex(mergedLine.lineIndex);

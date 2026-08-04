@@ -8,6 +8,7 @@ import {
   findMainChild,
   movePrefix,
   orderedChildren,
+  sameSolutionMove,
 } from "../../lib/puzzles/solutionPgn";
 
 type MoveTreeNode = import("../../lib/puzzles/solutionPgn").SolutionMoveNode<{
@@ -18,7 +19,7 @@ export type VariationOption = { move: string; lineIndex: number; plyIndex: numbe
 
 export const matchingLineIndexes = (lines: string[][] = [], moves: string[] = []): number[] =>
   lines.flatMap((line, index) =>
-    moves.every((move, moveIndex) => line[moveIndex] === move) ? [index] : [],
+    moves.every((move, moveIndex) => sameSolutionMove(line[moveIndex], move)) ? [index] : [],
   );
 
 export const sortMatchingLineIndexes = (

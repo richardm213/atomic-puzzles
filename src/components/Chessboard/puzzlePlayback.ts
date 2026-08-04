@@ -19,13 +19,17 @@ export type TrainingMoveEvaluation = "accepted" | "retry" | "wrong";
 
 export type TrainingMoveResult = TrainingState & {
   evaluation: TrainingMoveEvaluation;
+  acceptedState: TrainingState | null;
 };
 
-export const hasExpectedMoveAt = (lines: UciSolutionLine[], progress: number): boolean =>
+export const hasAcceptedMoveAt = (lines: UciSolutionLine[], progress: number): boolean =>
   lines.some((line) => {
     const entry = line[progress];
-    return entry !== undefined && !entry.questionable;
+    return entry !== undefined && !entry.retry;
   });
+
+export const isSolutionCompleteAt = (lines: UciSolutionLine[], progress: number): boolean =>
+  lines.some((line) => line.length === progress) && !hasAcceptedMoveAt(lines, progress);
 
 export const tryCreateAtomicPosition = (
   fen: string,
@@ -74,7 +78,7 @@ export const recomputeTrainingState = ({
 
     candidates = matching;
     progress += 1;
-    solved = !hasExpectedMoveAt(candidates, progress);
+    solved = isSolutionCompleteAt(candidates, progress);
   }
 
   return { candidates, progress, solved };
@@ -99,13 +103,25 @@ export const evaluateTrainingMove = ({
     .map((line) => line[state.progress])
     .flatMap((entry) => (entry?.key === moveKey ? [entry] : []));
 
-  if (matchingMoves.some((entry) => !entry.questionable)) {
-    return { ...state, evaluation: "accepted" };
+  if (matchingMoves.some((entry) => !entry.retry)) {
+    const acceptedCandidates = state.candidates.filter(
+      (line) => line[state.progress]?.key === moveKey,
+    );
+    const acceptedProgress = state.progress + 1;
+    return {
+      ...state,
+      evaluation: "accepted",
+      acceptedState: {
+        candidates: acceptedCandidates,
+        progress: acceptedProgress,
+        solved: isSolutionCompleteAt(acceptedCandidates, acceptedProgress),
+      },
+    };
   }
   if (matchingMoves.length > 0) {
-    return { ...state, evaluation: "retry" };
+    return { ...state, evaluation: "retry", acceptedState: null };
   }
-  return { ...state, evaluation: "wrong" };
+  return { ...state, evaluation: "wrong", acceptedState: null };
 };
 
 export const buildSolutionHistory = (

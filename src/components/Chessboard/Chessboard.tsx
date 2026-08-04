@@ -16,6 +16,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useAppSettings } from "../../context/AppSettings";
 import {
+  convertUciLineToSan,
   moveFromUci,
   movePrefix,
   parseSolutionUciLines,
@@ -51,7 +52,7 @@ import {
 import {
   buildSolutionHistory,
   evaluateTrainingMove,
-  hasExpectedMoveAt,
+  isSolutionCompleteAt,
   recomputeTrainingState,
   tryCreateAtomicPosition,
 } from "./puzzlePlayback";
@@ -202,7 +203,9 @@ export const Chessboard = ({
     () =>
       solutionUciLines.flatMap((line): DisplaySolutionEntry[] => {
         const history = buildSolutionHistory(fen, line);
-        return history ? [{ moveEntries: line, sanLine: historyMoveSans(history), history }] : [];
+        return history
+          ? [{ moveEntries: line, sanLine: convertUciLineToSan(fen, line), history }]
+          : [];
       }),
     [fen, solutionUciLines],
   );
@@ -678,7 +681,9 @@ export const Chessboard = ({
     (position: Atomic): boolean => {
       const candidates = candidateLinesRef.current;
       const progress = progressRef.current;
-      const nextEntry: UciSolutionEntry | undefined = candidates[0]?.[progress];
+      const nextEntry: UciSolutionEntry | undefined =
+        candidates.map((line) => line[progress]).find((entry) => entry && !entry.retry) ??
+        candidates[0]?.[progress];
 
       if (!nextEntry) {
         boardStatusRef.current.solved = true;
@@ -705,7 +710,7 @@ export const Chessboard = ({
         (line) => line[progress]?.uci === nextEntry.uci,
       );
       progressRef.current = progress + 1;
-      boardStatusRef.current.solved = !hasExpectedMoveAt(
+      boardStatusRef.current.solved = isSolutionCompleteAt(
         candidateLinesRef.current,
         progressRef.current,
       );
@@ -839,11 +844,12 @@ export const Chessboard = ({
         activePos.play(move);
         saveMove(activePos, keyPair(orig, dest), userMoveText, userMoveKey, userMoveSan);
 
-        const nextCandidates = candidates.filter((line) => line[progress]?.key === userMoveKey);
-        candidateLinesRef.current = nextCandidates;
-        progressRef.current = progress + 1;
+        const acceptedState = moveResult.acceptedState;
+        if (!acceptedState) return;
+        candidateLinesRef.current = acceptedState.candidates;
+        progressRef.current = acceptedState.progress;
 
-        if (!hasExpectedMoveAt(nextCandidates, progressRef.current)) {
+        if (acceptedState.solved) {
           boardStatusRef.current = { mode: "training", locked: false, solved: true };
           onAttemptResolvedRef.current?.({
             puzzleId: puzzleIdRef.current,
@@ -1188,7 +1194,7 @@ export const Chessboard = ({
       history: createBoardHistory(fen),
       locked: showSolution && !analysisModeRef.current,
       candidates: solutionUciLines,
-      solved: solutionUciLines.length > 0 && !hasExpectedMoveAt(solutionUciLines, 0),
+      solved: isSolutionCompleteAt(solutionUciLines, 0),
     });
 
     syncBoard(position, undefined, {
