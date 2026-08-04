@@ -5,6 +5,7 @@ import {
   faCheck,
   faCircleInfo,
   faClockRotateLeft,
+  faComment,
   faMagnifyingGlassChart,
   faUsers,
   faXmark,
@@ -85,7 +86,7 @@ const formatElapsedTime = (milliseconds: number): string => {
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 };
 
-type PuzzleInfoTab = "solution" | "explanation" | "attempts";
+type PuzzleInfoTab = "solution" | "explanation" | "attempts" | "comments";
 
 const addValueToSet = (currentSet: Set<string>, value: string): Set<string> => {
   if (!value) return currentSet;
@@ -518,6 +519,7 @@ export const PuzzleSolverPage = () => {
   const showSolution = activePuzzleInfoTab === "solution";
   const showExplanation = activePuzzleInfoTab === "explanation";
   const otherPuzzleAttemptsOpen = activePuzzleInfoTab === "attempts";
+  const commentsSelected = activePuzzleInfoTab === "comments";
   const boardShowsSolution = isAnalysisMode && solutionRevealed;
 
   useEffect(() => {
@@ -787,17 +789,39 @@ export const PuzzleSolverPage = () => {
   const handleSelectSolutionTab = () => {
     if (!canRevealSolution) return;
 
+    if (showSolution) {
+      setActivePuzzleInfoTab(null);
+      setSolutionNavigation(null);
+      return;
+    }
+
     setInteractionMode(ANALYSIS_MODE);
     setSolutionRevealed(true);
     setActivePuzzleInfoTab("solution");
     setSolutionNavigation(null);
+    if (isMobileLayout) {
+      window.requestAnimationFrame(() => {
+        boardPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
   };
 
   const handleSelectOtherPuzzleAttemptsTab = () => {
     if (!hasAttemptedActivePuzzle) return;
 
+    if (otherPuzzleAttemptsOpen) {
+      setActivePuzzleInfoTab(null);
+      setSolutionNavigation(null);
+      return;
+    }
+
     setActivePuzzleInfoTab("attempts");
     setSolutionNavigation(null);
+    if (isMobileLayout) {
+      window.requestAnimationFrame(() => {
+        boardPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
     if (!activePuzzleKey || otherPuzzleAttemptsStatus === "loaded") return;
 
     const puzzleKeyForRequest = activePuzzleKey;
@@ -820,8 +844,32 @@ export const PuzzleSolverPage = () => {
 
   const handleSelectExplanationTab = () => {
     if (!canViewExplanation) return;
+
+    if (showExplanation) {
+      setActivePuzzleInfoTab(null);
+      setSolutionNavigation(null);
+      return;
+    }
+
     setActivePuzzleInfoTab("explanation");
     setSolutionNavigation(null);
+    if (isMobileLayout) {
+      window.requestAnimationFrame(() => {
+        boardPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+  };
+
+  const handleSelectCommentsTab = () => {
+    if (!hasAttemptedActivePuzzle) return;
+
+    setActivePuzzleInfoTab("comments");
+    setSolutionNavigation(null);
+    window.requestAnimationFrame(() => {
+      document
+        .getElementById("puzzle-community")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   };
 
   const showMobileFeedback = useCallback((nextFeedback: CompletionFeedback): void => {
@@ -1217,7 +1265,7 @@ export const PuzzleSolverPage = () => {
     </div>
   );
 
-  const renderPuzzleInfoTabs = () => (
+  const renderPuzzleInfoTabs = (mobile = false) => (
     <div className="puzzleInfoTabs" role="tablist" aria-label="Puzzle details">
       <button
         type="button"
@@ -1226,10 +1274,16 @@ export const PuzzleSolverPage = () => {
         onClick={handleSelectSolutionTab}
         disabled={!canRevealSolution}
         aria-selected={showSolution}
-        title={solutionButtonTitle}
+        aria-expanded={showSolution}
+        title={showSolution ? "Hide the solution panel" : solutionButtonTitle}
       >
         <FontAwesomeIcon icon={faMagnifyingGlassChart} aria-hidden="true" />
         <span>Solution</span>
+        {mobile && showSolution ? (
+          <span className="puzzleInfoTabToggle" aria-hidden="true">
+            ⌃
+          </span>
+        ) : null}
       </button>
       {hasExplanation ? (
         <button
@@ -1238,15 +1292,23 @@ export const PuzzleSolverPage = () => {
           className={`puzzleInfoTab ${showExplanation ? "active" : ""}`}
           onClick={handleSelectExplanationTab}
           disabled={!canViewExplanation}
+          aria-expanded={showExplanation}
           aria-selected={showExplanation}
           title={
-            canViewExplanation
-              ? "View the puzzle explanation"
-              : "Make a wrong move to unlock the explanation."
+            showExplanation
+              ? "Hide the puzzle explanation"
+              : canViewExplanation
+                ? "View the puzzle explanation"
+                : "Make a wrong move to unlock the explanation."
           }
         >
           <FontAwesomeIcon icon={faCircleInfo} aria-hidden="true" />
-          <span>Explanation</span>
+          <span>{mobile ? "Explain" : "Explanation"}</span>
+          {mobile && showExplanation ? (
+            <span className="puzzleInfoTabToggle" aria-hidden="true">
+              ⌃
+            </span>
+          ) : null}
         </button>
       ) : null}
       <button
@@ -1260,14 +1322,39 @@ export const PuzzleSolverPage = () => {
         aria-expanded={otherPuzzleAttemptsOpen}
         aria-selected={otherPuzzleAttemptsOpen}
         title={
-          hasAttemptedActivePuzzle
-            ? "View other attempts for this puzzle"
-            : "Attempt this puzzle before viewing other attempts."
+          otherPuzzleAttemptsOpen
+            ? "Hide other attempts"
+            : hasAttemptedActivePuzzle
+              ? "View other attempts for this puzzle"
+              : "Attempt this puzzle before viewing other attempts."
         }
       >
         <FontAwesomeIcon icon={faUsers} aria-hidden="true" />
-        <span>Other attempts</span>
+        <span>{mobile ? "Attempts" : "Other attempts"}</span>
+        {mobile && otherPuzzleAttemptsOpen ? (
+          <span className="puzzleInfoTabToggle" aria-hidden="true">
+            ⌃
+          </span>
+        ) : null}
       </button>
+      {mobile ? (
+        <button
+          type="button"
+          role="tab"
+          className={`puzzleInfoTab ${commentsSelected ? "active" : ""}`}
+          onClick={handleSelectCommentsTab}
+          disabled={!hasAttemptedActivePuzzle}
+          aria-selected={commentsSelected}
+          title={
+            hasAttemptedActivePuzzle
+              ? "Jump to the puzzle discussion"
+              : "Attempt this puzzle before viewing comments."
+          }
+        >
+          <FontAwesomeIcon icon={faComment} aria-hidden="true" />
+          <span>Comments</span>
+        </button>
+      ) : null}
     </div>
   );
 
@@ -1304,7 +1391,7 @@ export const PuzzleSolverPage = () => {
 
     return (
       <div className={`puzzleInfoStack ${panel ? "hasContent" : ""}`}>
-        {renderPuzzleInfoTabs()}
+        {renderPuzzleInfoTabs(mobile)}
         {panel}
       </div>
     );

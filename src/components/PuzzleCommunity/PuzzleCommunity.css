@@ -412,6 +412,9 @@
   .puzzleCommunity {
     gap: 13px;
     padding: 13px;
+    margin-top: 5px;
+    margin-bottom: 12px;
+    scroll-margin-top: 72px;
   }
 
   .puzzleCommunityHeader {
@@ -442,6 +445,11 @@
     padding-left: 7px;
   }
 
+  .puzzleCommentReplies .puzzleCommentReplies {
+    margin-left: 2px;
+    padding-left: 5px;
+  }
+
   .puzzleCommentComposer.replyComposer {
     margin-left: 0;
   }
@@ -450,8 +458,36 @@
     margin-left: 0;
   }
 
+  .puzzleCommentLayout {
+    grid-template-columns: 36px minmax(0, 1fr);
+  }
+
+  .commentVoteRail button {
+    width: 34px;
+    height: 32px;
+    font-size: 13px;
+  }
+
+  .commentCollapseButton {
+    width: 32px;
+    height: 32px;
+    flex-basis: 32px;
+    margin: -6px 0 -6px -6px;
+  }
+
   .commentReplyButton {
     margin-left: 0;
+    min-height: 34px;
+    padding-inline: 9px;
+  }
+
+  .commentComposerActions {
+    flex-wrap: wrap;
+  }
+
+  .commentComposerActions button,
+  .commentLoginButton {
+    min-height: 40px;
   }
 
   .collapsedCommentSummary > time {

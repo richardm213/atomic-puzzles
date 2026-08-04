@@ -391,7 +391,11 @@ export const CommunityDiscussion = ({
   return (
     <>
       {voteTarget && puzzleVoteControls ? createPortal(puzzleVoteControls, voteTarget) : null}
-      <section className="puzzleCommunity" aria-labelledby={headingId}>
+      <section
+        id={`${target.type}-community`}
+        className="puzzleCommunity"
+        aria-labelledby={headingId}
+      >
         <div className="puzzleCommunityHeader">
           <div>
             <span>{eyebrow}</span>

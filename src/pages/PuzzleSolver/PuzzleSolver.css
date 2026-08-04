@@ -1301,12 +1301,108 @@ body:has(.puzzlePage),
     z-index: 21;
     display: grid;
     gap: 6px;
+    pointer-events: none;
+  }
+
+  .mobileActionCard {
+    width: min(100%, 548px);
+    min-width: 0;
+    margin: 0 auto;
+    pointer-events: auto;
+  }
+
+  .mobileActionCard .puzzleInfoStack {
+    grid-template-rows: auto minmax(0, 1fr);
+    max-height: min(48svh, 390px);
+    border-color: color-mix(in srgb, var(--color-border-strong) 88%, transparent);
+    box-shadow:
+      0 18px 42px color-mix(in srgb, var(--color-panel-deep) 38%, transparent),
+      inset 0 1px 0 color-mix(in srgb, var(--color-heading) 7%, transparent);
+    backdrop-filter: blur(18px);
+  }
+
+  .mobileActionCard .puzzleInfoTabs {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    position: relative;
+    z-index: 1;
   }
 
   .puzzleInfoTab {
+    position: relative;
     gap: 4px;
+    min-height: 42px;
     padding-inline: 4px;
     font-size: 10.5px;
+  }
+
+  .puzzleInfoTabToggle {
+    position: absolute;
+    top: 2px;
+    right: 3px;
+    display: inline-grid;
+    place-items: center;
+    color: var(--color-primary-soft);
+    font-size: 11px;
+    line-height: 1;
+  }
+
+  .mobileActionCard .puzzleInfoPanel {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 8px;
+    scrollbar-width: thin;
+  }
+
+  .mobileActionCard .mobileAnalyzeActions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .mobileActionCard .mobileAnalyzeActions .fenAnalyzeButton {
+    min-height: 44px;
+    padding: 7px 8px;
+  }
+
+  .mobileActionCard .mobileAnalyzeActions .fenAnalyzeIcon {
+    width: 27px;
+    height: 27px;
+  }
+
+  .mobileActionCard .puzzleInfoPanel .lineHeader {
+    align-items: center;
+    flex-direction: row;
+    padding: 8px;
+  }
+
+  .mobileActionCard .solutionHeaderActions {
+    width: auto;
+  }
+
+  .mobileActionCard .solutionHeaderActions .solutionPlaybackControls {
+    width: auto;
+  }
+
+  .mobileActionCard .lineHeader .fenAnalyzeButton {
+    min-height: 32px;
+    padding: 5px 8px;
+  }
+
+  .mobileActionCard .puzzleOtherAttemptRow {
+    padding: 8px;
+  }
+
+  .mobileActionCard .puzzleOtherAttemptResult {
+    grid-column: 1 / -1;
+    justify-self: start;
+    max-width: 100%;
+  }
+
+  .mobileActionCard .puzzleOtherAttemptMove {
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 
   .mobilePuzzleStatus {
@@ -1423,6 +1519,11 @@ body:has(.puzzlePage),
     cursor: not-allowed;
     box-shadow: none;
     opacity: 0.62;
+  }
+
+  body:has(.puzzleCommentComposer textarea:focus) .mobileWorkflowPanel,
+  body:has(.puzzleCommentComposer textarea:focus) .mobileBottomNav {
+    display: none;
   }
 
   .lineBox {
@@ -1570,7 +1671,7 @@ body:has(.puzzlePage),
     gap: 8px;
   }
 
-  .lineHeader {
+  .lineHeader:not(.mobileActionCard .lineHeader) {
     align-items: flex-start;
     flex-direction: column;
   }

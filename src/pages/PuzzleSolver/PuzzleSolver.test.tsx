@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   puzzleExplanation: "Castling avoids the atomic mating net and creates the decisive rook threat.",
   routeParams: { puzzleId: "1369", setKey: "" },
+  scrollIntoView: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", async () => {
@@ -196,7 +197,8 @@ describe("PuzzleSolverPage solution options", () => {
         removeEventListener: vi.fn(),
       })),
     });
-    Element.prototype.scrollIntoView = vi.fn();
+    mocks.scrollIntoView.mockReset();
+    Element.prototype.scrollIntoView = mocks.scrollIntoView;
   });
 
   it("loads only the active puzzle and a three-puzzle lookahead from the catalog", async () => {
@@ -380,6 +382,54 @@ describe("PuzzleSolverPage solution options", () => {
     const wrongMove = within(attempts).getByLabelText("Played 2. Nf3+");
     expect(wrongMove).toHaveTextContent("2. Nf3+");
     expect(mocks.fetchPuzzleAttemptsForPuzzle).toHaveBeenCalledWith("1369", { limit: 30 });
+  });
+
+  it("collapses solution and attempts panels when their active tab is selected again", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<PuzzleSolverPage />);
+
+    const solutionTab = await screen.findByRole("tab", { name: "Solution" });
+    await waitFor(() => expect(solutionTab).toBeEnabled());
+    await user.click(solutionTab);
+    expect(screen.getByRole("list", { name: "Solution variations" })).toBeInTheDocument();
+
+    await user.click(solutionTab);
+    expect(screen.queryByRole("list", { name: "Solution variations" })).not.toBeInTheDocument();
+    expect(container.querySelector(".puzzleInfoStack")).not.toHaveClass("hasContent");
+
+    const attemptsTab = screen.getByRole("tab", { name: "Other attempts" });
+    await user.click(attemptsTab);
+    expect(await screen.findByRole("list", { name: "Other puzzle attempts" })).toBeInTheDocument();
+
+    await user.click(attemptsTab);
+    expect(screen.queryByRole("list", { name: "Other puzzle attempts" })).not.toBeInTheDocument();
+    expect(mocks.fetchPuzzleAttemptsForPuzzle).toHaveBeenCalledTimes(1);
+  });
+
+  it("lets mobile users jump between comments and the board tools", async () => {
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: vi.fn(() => ({
+        addEventListener: vi.fn(),
+        matches: true,
+        removeEventListener: vi.fn(),
+      })),
+    });
+    const user = userEvent.setup();
+    render(<PuzzleSolverPage />);
+
+    const commentsTab = await screen.findByRole("tab", { name: "Comments" });
+    await waitFor(() => expect(commentsTab).toBeEnabled());
+    await user.click(commentsTab);
+
+    expect(commentsTab).toHaveAttribute("aria-selected", "true");
+    expect(document.getElementById("puzzle-community")).toBeInTheDocument();
+    await waitFor(() => expect(mocks.scrollIntoView).toHaveBeenCalled());
+
+    const solutionTab = screen.getByRole("tab", { name: "Solution" });
+    await user.click(solutionTab);
+    expect(await screen.findByRole("list", { name: "Solution variations" })).toBeInTheDocument();
+    expect(solutionTab).toHaveAttribute("aria-selected", "true");
   });
 
   it("unlocks and opens the explanation tab after a wrong move", async () => {
