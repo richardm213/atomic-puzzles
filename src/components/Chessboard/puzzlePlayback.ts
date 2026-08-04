@@ -5,7 +5,6 @@ import type { Atomic } from "chessops/variant";
 import {
   createAtomicPosition,
   moveFromUci,
-  type UciSolutionEntry,
   type UciSolutionLine,
 } from "../../lib/puzzles/solutionPgn";
 import { appendBoardMove, type BoardHistory, createBoardHistory } from "./boardHistory";
@@ -18,32 +17,15 @@ export type TrainingState = {
 
 export type TrainingMoveEvaluation = "accepted" | "retry" | "wrong";
 
+export type TrainingMoveResult = TrainingState & {
+  evaluation: TrainingMoveEvaluation;
+};
+
 export const hasExpectedMoveAt = (lines: UciSolutionLine[], progress: number): boolean =>
   lines.some((line) => {
     const entry = line[progress];
     return entry !== undefined && !entry.questionable;
   });
-
-export const evaluateTrainingMove = ({
-  candidates,
-  progress,
-  moveKey,
-}: {
-  candidates: UciSolutionLine[];
-  progress: number;
-  moveKey: string;
-}): TrainingMoveEvaluation => {
-  let sawRetryMove = false;
-
-  for (const line of candidates) {
-    const entry = line[progress];
-    if (!entry || entry.key !== moveKey) continue;
-    if (!entry.questionable) return "accepted";
-    sawRetryMove = true;
-  }
-
-  return sawRetryMove ? "retry" : "wrong";
-};
 
 export const tryCreateAtomicPosition = (
   fen: string,
@@ -87,21 +69,43 @@ export const recomputeTrainingState = ({
   for (const moveKey of playedMoveKeys) {
     if (solved) break;
 
-    let matchedEntry: UciSolutionEntry | undefined;
-    const matching = candidates.filter((line) => {
-      const entry = line[progress];
-      const matches = entry?.key === moveKey;
-      if (matches && !matchedEntry) matchedEntry = entry;
-      return matches;
-    });
+    const matching = candidates.filter((line) => line[progress]?.key === moveKey);
     if (matching.length === 0) break;
 
     candidates = matching;
     progress += 1;
-    solved = !matchedEntry?.questionable && !hasExpectedMoveAt(candidates, progress);
+    solved = !hasExpectedMoveAt(candidates, progress);
   }
 
   return { candidates, progress, solved };
+};
+
+export const evaluateTrainingMove = ({
+  solutionLines,
+  playedMoveKeys,
+  moveKey,
+}: {
+  solutionLines: UciSolutionLine[];
+  playedMoveKeys: string[];
+  moveKey: string;
+}): TrainingMoveResult => {
+  const state = recomputeTrainingState({
+    isTrainingEnabled: true,
+    isAnalysisMode: false,
+    playedMoveKeys,
+    solutionLines,
+  });
+  const matchingMoves = state.candidates
+    .map((line) => line[state.progress])
+    .flatMap((entry) => (entry?.key === moveKey ? [entry] : []));
+
+  if (matchingMoves.some((entry) => !entry.questionable)) {
+    return { ...state, evaluation: "accepted" };
+  }
+  if (matchingMoves.length > 0) {
+    return { ...state, evaluation: "retry" };
+  }
+  return { ...state, evaluation: "wrong" };
 };
 
 export const buildSolutionHistory = (

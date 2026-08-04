@@ -178,6 +178,49 @@ describe("Chessboard orchestration", () => {
     vi.useRealTimers();
   });
 
+  it("accepts an unmarked alternative alongside a questionable alternative", () => {
+    vi.useFakeTimers();
+    const onAttemptResolved = vi.fn();
+    const states = renderBoard({
+      analysisMode: false,
+      solution: "1. e4 (1. d4) (1. c4?)",
+      onAttemptResolved,
+    });
+
+    play("d2", "d4");
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+
+    expect(states.at(-1)).toMatchObject({ solved: true, showRetryMove: false });
+    expect(onAttemptResolved).toHaveBeenCalledWith({
+      puzzleId: "test",
+      puzzleCorrect: true,
+      incorrectMove: null,
+      correctMove: "1. d4",
+    });
+    vi.useRealTimers();
+  });
+
+  it("reserves try-again feedback for an alternative marked with ?", () => {
+    vi.useFakeTimers();
+    const onAttemptResolved = vi.fn();
+    const states = renderBoard({
+      analysisMode: false,
+      solution: "1. e4 (1. d4) (1. c4?)",
+      onAttemptResolved,
+    });
+
+    play("c2", "c4");
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+
+    expect(states.at(-1)).toMatchObject({ solved: false, showRetryMove: true });
+    expect(onAttemptResolved).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
   it("reports the first move when the main solution is played", () => {
     vi.useFakeTimers();
     const onAttemptResolved = vi.fn();

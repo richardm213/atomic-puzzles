@@ -771,13 +771,14 @@ export const Chessboard = ({
         return;
       }
 
-      const progress = progressRef.current;
-      const candidates = candidateLinesRef.current;
-      const moveEvaluation = evaluateTrainingMove({
-        candidates,
-        progress,
+      const moveResult = evaluateTrainingMove({
+        playedMoveKeys: historyMoveKeys(historyRef.current),
+        solutionLines: solutionUciLinesRef.current,
         moveKey: userMoveKey,
       });
+      const { candidates, progress, evaluation: moveEvaluation } = moveResult;
+      candidateLinesRef.current = candidates;
+      progressRef.current = progress;
 
       boardStatusRef.current = { ...boardStatusRef.current, mode: "evaluating", locked: true };
       cgRef.current?.set({
@@ -898,6 +899,7 @@ export const Chessboard = ({
       progressRef,
       restrictMovesToSolutionRef,
       saveMove,
+      solutionUciLinesRef,
       syncBoard,
     ],
   );
