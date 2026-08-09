@@ -26,14 +26,20 @@ describe("puzzleLibrary", () => {
 
   it("loads a lightweight catalog without parsing solutions", async () => {
     fetchCatalogMock.mockResolvedValueOnce([
-      { id: 7, author: "alice", event: "ACL 2026" },
+      { id: 7, author: "alice", event: "ACL 2026", tags: ["fork", "not_a_motif"] },
       { id: "not-a-number", author: "bob", event: "AWC 2026" },
     ]);
 
     const puzzles = await loadPuzzleCatalog();
 
     expect(puzzles).toEqual([
-      expect.objectContaining({ puzzleId: 7, fen: "", solution: "", author: "alice" }),
+      expect.objectContaining({
+        puzzleId: 7,
+        fen: "",
+        solution: "",
+        author: "alice",
+        tags: ["fork"],
+      }),
       expect.objectContaining({ puzzleId: 2, fen: "", solution: "", author: "bob" }),
     ]);
   });

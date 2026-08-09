@@ -74,7 +74,7 @@ const normalizePuzzleCatalogRow = (item: PuzzleRow, index: number): Puzzle => {
     fen: "",
     solution: "",
     explanation: "",
-    tags: [],
+    tags: normalizePuzzleMotifTags(item?.["tags"]),
     puzzleId: parsedId || index + 1,
   };
 };

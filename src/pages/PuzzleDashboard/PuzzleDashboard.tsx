@@ -17,6 +17,8 @@ import { normalizePuzzleEventName } from "../../lib/puzzles/puzzleSets";
 import { fetchPuzzleProgressRowsForUsername } from "../../lib/supabase/supabasePuzzleProgress";
 import { isRegisteredSiteUser } from "../../lib/supabase/supabaseUsers";
 import { normalizeUsername } from "../../utils/playerNames";
+import { DashboardTagFilter, getPuzzleTagName } from "./DashboardTagFilter";
+import { entryMatchesSelectedTags } from "./puzzleDashboardTags";
 
 const DEFAULT_PAGE_SIZE = 20;
 const PAGE_SIZE_OPTIONS = [20, 50, 100] as const;
@@ -49,6 +51,7 @@ const buildDashboardEntries = (
   linkedPuzzleId: string | number;
   author: string;
   event: string;
+  tags: string[];
   puzzleCorrect: boolean;
   firstAttemptAt: string;
 }> =>
@@ -63,6 +66,7 @@ const buildDashboardEntries = (
       linkedPuzzleId,
       author,
       event,
+      tags: puzzle?.tags ?? [],
       puzzleCorrect: Boolean(row?.puzzle_correct),
       firstAttemptAt: row?.first_attempt_at || "",
     };
@@ -90,6 +94,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
   const [eventFilter, setEventFilter] = useState("");
   const [authorFilter, setAuthorFilter] = useState("");
   const [searchFilter, setSearchFilter] = useState("");
+  const [tagFilters, setTagFilters] = useState<string[]>([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [progressRows, setProgressRows] = useState<
     import("../../lib/supabase/supabasePuzzleProgress").PuzzleProgressRow[]
@@ -112,6 +117,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
     resultFilter,
     searchFilter,
     sinceDate,
+    tagFilters,
     targetUsername,
     untilDate,
   ]);
@@ -243,14 +249,16 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
       if (resultFilter === "incorrect" && entry.puzzleCorrect) return false;
       if (eventFilter && entry.event !== eventFilter) return false;
       if (authorFilter && entry.author !== authorFilter) return false;
+      if (!entryMatchesSelectedTags(entry.tags, tagFilters)) return false;
 
       const attemptTimestamp = new Date(entry.firstAttemptAt).getTime();
       if (sinceTimestamp !== null && attemptTimestamp < sinceTimestamp) return false;
       if (untilTimestamp !== null && attemptTimestamp > untilTimestamp) return false;
 
       if (normalizedSearch) {
+        const tagSearchText = entry.tags.map((tag) => `${tag} ${getPuzzleTagName(tag)}`).join(" ");
         const searchableText =
-          `${entry.puzzleId} ${entry.author} ${entry.event}`.toLocaleLowerCase();
+          `${entry.puzzleId} ${entry.author} ${entry.event} ${tagSearchText}`.toLocaleLowerCase();
         if (!searchableText.includes(normalizedSearch)) return false;
       }
 
@@ -263,6 +271,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
     resultFilter,
     searchFilter,
     sinceDate,
+    tagFilters,
     untilDate,
   ]);
   const dashboardSummary = useMemo(() => {
@@ -326,7 +335,8 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
     resultFilter !== "all" ||
     eventFilter ||
     authorFilter ||
-    searchFilter.trim(),
+    searchFilter.trim() ||
+    tagFilters.length > 0,
   );
   const clearFilters = (): void => {
     setSinceDate("");
@@ -335,6 +345,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
     setEventFilter("");
     setAuthorFilter("");
     setSearchFilter("");
+    setTagFilters([]);
   };
   const handleStartFilteredSet = (): void => {
     const customSet = createCustomPuzzleSet(
@@ -468,12 +479,17 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
                       <span>Search</span>
                       <input
                         type="search"
-                        placeholder="Puzzle, author, or event"
+                        placeholder="Puzzle, author, event, or tag"
                         value={searchFilter}
                         onChange={(event) => setSearchFilter(event.target.value)}
                         disabled={isPageLoading}
                       />
                     </label>
+                    <DashboardTagFilter
+                      disabled={isPageLoading}
+                      selectedTags={tagFilters}
+                      onChange={setTagFilters}
+                    />
                     <label className="dashboardFilterField">
                       <span>Result</span>
                       <select
@@ -603,6 +619,13 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
                             <span className="dashboardPuzzleAuthor">{entry.author}</span>
                             {isKnownEvent(entry.event) ? (
                               <span className="dashboardPuzzleEvent">{entry.event}</span>
+                            ) : null}
+                            {entry.tags.length > 0 ? (
+                              <span className="dashboardPuzzleTags" aria-label="Puzzle tags">
+                                {entry.tags.map((tag) => (
+                                  <span key={tag}>{getPuzzleTagName(tag)}</span>
+                                ))}
+                              </span>
                             ) : null}
                           </div>
                         </div>
