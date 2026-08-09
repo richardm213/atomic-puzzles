@@ -7,15 +7,17 @@ export type PuzzleRow = RawPuzzleRow;
 
 const PUZZLES_TABLE = import.meta.env.VITE_SUPABASE_PUZZLES_TABLE?.trim() ?? "puzzles";
 const PUZZLE_CATALOG_COLUMNS = "id,author,event";
-const PUZZLE_DETAIL_COLUMNS = "id,fen,solution,author,event,explanation";
+const PUZZLE_DETAIL_COLUMNS = "id,fen,solution,author,event,explanation,tags";
 const MAX_PUZZLE_BATCH_SIZE = 12;
 const puzzleCatalogCache = new Map<string, Promise<PuzzleRow[]>>();
 const puzzleDetailsCache = new Map<string, Promise<PuzzleRow[]>>();
 
-const onlyRowsWithSolutions = <TQuery extends {
-  not: (column: string, operator: "is", value: null) => TQuery;
-  neq: (column: string, value: string) => TQuery;
-}>(
+const onlyRowsWithSolutions = <
+  TQuery extends {
+    not: (column: string, operator: "is", value: null) => TQuery;
+    neq: (column: string, value: string) => TQuery;
+  },
+>(
   query: TQuery,
 ): TQuery => query.not("solution", "is", null).neq("solution", "");
 

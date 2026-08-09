@@ -32,7 +32,13 @@ import { useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
 import { loadPuzzleCatalog, loadPuzzlesById, type Puzzle } from "../../lib/puzzles/puzzleLibrary";
+import {
+  normalizePuzzleMotifTags,
+  puzzleMotifCategories,
+  puzzleMotifs,
+} from "../../lib/puzzles/puzzleMotifs";
 import { getOrderedPuzzleIndexesForEvent } from "../../lib/puzzles/puzzleSets";
+import { updatePuzzleTags } from "../../lib/puzzles/puzzleTags";
 import {
   mergeAdditiveSolutionLine,
   movePrefix,
@@ -78,6 +84,7 @@ const toPuzzleKey = (puzzleId: unknown): string =>
 const ATTEMPTED_PUZZLE_BADGE_LABEL = "You've already attempted this puzzle before";
 const OTHER_PUZZLE_ATTEMPTS_LIMIT = 30;
 const PUZZLE_PREFETCH_COUNT = 3;
+const PUZZLE_TAG_EDITOR = "seaside_tiramisu";
 
 const formatElapsedTime = (milliseconds: number): string => {
   const totalSeconds = Math.floor(Math.max(0, milliseconds) / 1000);
@@ -249,6 +256,13 @@ export const PuzzleSolverPage = () => {
   const [otherPuzzleAttempts, setOtherPuzzleAttempts] = useState<PuzzleProgressWithUsernameRow[]>(
     [],
   );
+  const [motifEditorOpen, setMotifEditorOpen] = useState(false);
+  const [motifSaveStatus, setMotifSaveStatus] = useState<
+    | { state: "idle" }
+    | { state: "saving" }
+    | { state: "saved" }
+    | { state: "error"; message: string }
+  >({ state: "idle" });
   const [boardState, setBoardState] = useState(createInitialBoardState);
   const previousBoardSnapshotRef = useRef<ReturnType<typeof createInitialBoardSnapshot>>(
     createInitialBoardSnapshot(),
@@ -483,6 +497,11 @@ export const PuzzleSolverPage = () => {
   const author = String(activePuzzle?.["author"] ?? "").trim() || "Unknown";
   const event = String(activePuzzle?.["event"] ?? "").trim();
   const explanation = activePuzzle?.explanation ?? "";
+  const activePuzzleTags = useMemo(
+    () => normalizePuzzleMotifTags(activePuzzle?.tags),
+    [activePuzzle?.tags],
+  );
+  const canManagePuzzleTags = user?.username?.trim().toLowerCase() === PUZZLE_TAG_EDITOR;
   const hasExplanation = explanation.trim().length > 0;
   const orientation = orientationFromFen(fen);
   const currentFen = boardState.fen || fen;
@@ -521,6 +540,11 @@ export const PuzzleSolverPage = () => {
   const otherPuzzleAttemptsOpen = activePuzzleInfoTab === "attempts";
   const commentsSelected = activePuzzleInfoTab === "comments";
   const boardShowsSolution = isAnalysisMode && solutionRevealed;
+
+  useEffect(() => {
+    setMotifEditorOpen(false);
+    setMotifSaveStatus({ state: "idle" });
+  }, [activePuzzleId]);
 
   useEffect(() => {
     if (activePuzzleIndex < 0 || !activePuzzleId) return undefined;
@@ -1091,6 +1115,26 @@ export const PuzzleSolverPage = () => {
     }, 1800);
   }, [moveLinePgn]);
 
+  const handleUpdateMotifs = async (nextTags: string[]): Promise<void> => {
+    if (!canManagePuzzleTags || !activePuzzleId || motifSaveStatus.state === "saving") return;
+    setMotifSaveStatus({ state: "saving" });
+
+    try {
+      const savedTags = await updatePuzzleTags(activePuzzleId, nextTags);
+      setPuzzles((current) =>
+        current.map((puzzle) =>
+          puzzle.puzzleId === activePuzzleId ? { ...puzzle, tags: savedTags } : puzzle,
+        ),
+      );
+      setMotifSaveStatus({ state: "saved" });
+    } catch (error) {
+      setMotifSaveStatus({
+        state: "error",
+        message: error instanceof Error ? error.message : "Unable to update puzzle motifs.",
+      });
+    }
+  };
+
   const currentLineLength =
     boardShowsSolution && canRevealSolution
       ? activeSolutionLine.length
@@ -1416,6 +1460,125 @@ export const PuzzleSolverPage = () => {
       </div>
     ) : null;
 
+  const renderPuzzleMotifs = () => {
+    if (!hasAttemptedActivePuzzle) return null;
+    const savingMotifs = motifSaveStatus.state === "saving";
+    const availableMotifs = puzzleMotifs.filter((motif) => !activePuzzleTags.includes(motif.tag));
+
+    return (
+      <section className="puzzleMotifsPanel" aria-label="Puzzle motifs">
+        <div className="puzzleMotifsHeader">
+          <div>
+            <span>Motifs</span>
+          </div>
+        </div>
+
+        <div
+          className="puzzleMotifAppliedList"
+          aria-label="Tags on this puzzle"
+          aria-busy={savingMotifs}
+        >
+          {activePuzzleTags.length > 0 ? (
+            activePuzzleTags.map((tag) => (
+              <div className="puzzleMotifAppliedTag" key={tag}>
+                <span>#{tag}</span>
+                {canManagePuzzleTags ? (
+                  <button
+                    type="button"
+                    aria-label={`Remove #${tag}`}
+                    title={`Remove #${tag}`}
+                    disabled={savingMotifs}
+                    onClick={() =>
+                      void handleUpdateMotifs(activePuzzleTags.filter((entry) => entry !== tag))
+                    }
+                  >
+                    <span aria-hidden="true">−</span>
+                  </button>
+                ) : null}
+              </div>
+            ))
+          ) : (
+            <em>No motifs tagged yet.</em>
+          )}
+        </div>
+
+        {canManagePuzzleTags ? (
+          <button
+            type="button"
+            className="puzzleMotifsAddButton"
+            aria-expanded={motifEditorOpen}
+            disabled={savingMotifs || availableMotifs.length === 0}
+            onClick={() => {
+              setMotifEditorOpen((open) => !open);
+              setMotifSaveStatus({ state: "idle" });
+            }}
+          >
+            <span aria-hidden="true">{motifEditorOpen ? "−" : "+"}</span>
+            {motifEditorOpen ? "Close motif picker" : "Add motif"}
+          </button>
+        ) : null}
+
+        {motifEditorOpen && canManagePuzzleTags ? (
+          <div className="puzzleMotifPicker" role="region" aria-label="Add puzzle motif">
+            <div className="puzzleMotifPickerHeading">
+              <strong>Add motif</strong>
+              <span>{availableMotifs.length} available</span>
+            </div>
+            <div className="puzzleMotifPickerGroups">
+              {puzzleMotifCategories.map((category) => {
+                const categoryMotifs = availableMotifs.filter(
+                  (motif) => motif.category === category,
+                );
+                if (categoryMotifs.length === 0) return null;
+
+                return (
+                  <details key={category} open>
+                    <summary>
+                      <span>{category}</span>
+                      <small>{categoryMotifs.length}</small>
+                    </summary>
+                    <div className="puzzleMotifPickerOptions">
+                      {categoryMotifs.map((motif) => (
+                        <button
+                          key={motif.tag}
+                          type="button"
+                          aria-label={`Add #${motif.tag}`}
+                          title={motif.description}
+                          disabled={savingMotifs}
+                          onClick={() => void handleUpdateMotifs([...activePuzzleTags, motif.tag])}
+                        >
+                          <span>#{motif.tag}</span>
+                          <strong aria-hidden="true">+</strong>
+                        </button>
+                      ))}
+                    </div>
+                  </details>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+
+        {motifSaveStatus.state === "saving" ? (
+          <p className="puzzleMotifsMessage" role="status">
+            Updating motifs…
+          </p>
+        ) : null}
+
+        {motifSaveStatus.state === "saved" ? (
+          <p className="puzzleMotifsMessage success" role="status">
+            Motifs updated.
+          </p>
+        ) : null}
+        {motifSaveStatus.state === "error" ? (
+          <p className="puzzleMotifsMessage error" role="alert">
+            {motifSaveStatus.message}
+          </p>
+        ) : null}
+      </section>
+    );
+  };
+
   const renderMaterialDifference = (side: "white" | "black") => {
     const label = side === "white" ? "White" : "Black";
     const pieces = side === "white" ? materialCount.whitePieces : materialCount.blackPieces;
@@ -1522,6 +1685,8 @@ export const PuzzleSolverPage = () => {
             </nav>
           ) : null}
         </header>
+
+        {renderPuzzleMotifs()}
 
         {!isMobileLayout && hasAttemptedActivePuzzle ? (
           <div id="desktop-puzzle-vote-slot" className="puzzleVoteSlot" />

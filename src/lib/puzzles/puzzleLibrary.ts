@@ -4,12 +4,14 @@ import {
   fetchPuzzleRowsByIdFromSupabase,
   type PuzzleRow,
 } from "../supabase/supabasePuzzles";
+import { normalizePuzzleMotifTags } from "./puzzleMotifs";
 import { normalizeSolutionPgn, parseSolutionUciLines } from "./solutionPgn";
 
 export type Puzzle = PuzzleRow & {
   fen: string;
   solution: string;
   explanation: string;
+  tags: string[];
   puzzleId: number;
 };
 
@@ -58,6 +60,7 @@ const normalizePuzzleRow = (item: PuzzleRow, index: number): Puzzle => {
     ...item,
     fen,
     explanation,
+    tags: normalizePuzzleMotifTags(item?.["tags"]),
     solution: normalizeSolutionPgn(fen, extractSolutionFromRow(item)),
     puzzleId: parsedId || index + 1,
   };
@@ -71,6 +74,7 @@ const normalizePuzzleCatalogRow = (item: PuzzleRow, index: number): Puzzle => {
     fen: "",
     solution: "",
     explanation: "",
+    tags: [],
     puzzleId: parsedId || index + 1,
   };
 };

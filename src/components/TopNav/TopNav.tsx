@@ -63,7 +63,6 @@ const navItems: NavItem[] = [
   {
     to: "/solve",
     label: "Puzzles",
-    linkToPage: true,
     isActive: (pathname) =>
       pathname === "/solve" ||
       pathname.startsWith("/solve/") ||
@@ -94,6 +93,11 @@ const navItems: NavItem[] = [
         to: "/solve/sets",
         label: "Puzzle sets",
         isActive: (pathname) => pathname === "/solve/sets",
+      },
+      {
+        to: "/puzzles/motifs",
+        label: "Tactical motifs",
+        isActive: (pathname) => pathname === "/puzzles/motifs",
       },
       {
         to: "/puzzles/submit",

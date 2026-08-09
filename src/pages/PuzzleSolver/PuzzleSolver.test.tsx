@@ -18,6 +18,8 @@ const mocks = vi.hoisted(() => ({
   puzzleExplanation: "Castling avoids the atomic mating net and creates the decisive rook threat.",
   routeParams: { puzzleId: "1369", setKey: "" },
   scrollIntoView: vi.fn(),
+  updatePuzzleTags: vi.fn(),
+  username: "solver",
 }));
 
 vi.mock("@tanstack/react-router", async () => {
@@ -41,7 +43,7 @@ vi.mock("@tanstack/react-router", async () => {
 vi.mock("../../context/AuthContext", () => ({
   useAuth: () => ({
     isAuthenticated: true,
-    user: { username: "solver" },
+    user: { username: mocks.username },
   }),
 }));
 
@@ -52,6 +54,10 @@ vi.mock("../../context/AppSettings", () => ({
 vi.mock("../../lib/puzzles/puzzleLibrary", () => ({
   loadPuzzleCatalog: mocks.loadPuzzleCatalog,
   loadPuzzlesById: mocks.loadPuzzlesById,
+}));
+
+vi.mock("../../lib/puzzles/puzzleTags", () => ({
+  updatePuzzleTags: mocks.updatePuzzleTags,
 }));
 
 vi.mock("../../lib/supabase/supabasePuzzleProgress", () => ({
@@ -163,6 +169,10 @@ describe("PuzzleSolverPage solution options", () => {
       },
     ]);
     mocks.navigate.mockReset();
+    mocks.username = "solver";
+    mocks.updatePuzzleTags
+      .mockReset()
+      .mockImplementation(async (_puzzleId: number, tags: string[]) => tags);
     mocks.loadPuzzleCatalog.mockReset().mockResolvedValue([
       {
         id: 1369,
@@ -184,6 +194,7 @@ describe("PuzzleSolverPage solution options", () => {
         author: "admin",
         event: "ACL 2024",
         explanation: mocks.puzzleExplanation,
+        tags: ["fork"],
       })),
     );
     mocks.puzzleExplanation =
@@ -382,6 +393,56 @@ describe("PuzzleSolverPage solution options", () => {
     const wrongMove = within(attempts).getByLabelText("Played 2. Nf3+");
     expect(wrongMove).toHaveTextContent("2. Nf3+");
     expect(mocks.fetchPuzzleAttemptsForPuzzle).toHaveBeenCalledWith("1369", { limit: 30 });
+  });
+
+  it("shows puzzle motifs after the puzzle has been attempted", async () => {
+    render(<PuzzleSolverPage />);
+
+    const motifList = await screen.findByLabelText("Tags on this puzzle");
+    expect(within(motifList).getByText("#fork")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add motif" })).not.toBeInTheDocument();
+  });
+
+  it("keeps puzzle motifs hidden before a regular user attempts the puzzle", async () => {
+    mocks.attemptedPuzzleIds = new Set();
+    render(<PuzzleSolverPage />);
+
+    await screen.findByTestId("mock-board");
+    expect(screen.queryByLabelText("Puzzle motifs")).not.toBeInTheDocument();
+  });
+
+  it("lets seaside_tiramisu add and remove any number of motifs", async () => {
+    mocks.username = "seaside_tiramisu";
+    const user = userEvent.setup();
+    render(<PuzzleSolverPage />);
+
+    await user.click(await screen.findByRole("button", { name: "Add motif" }));
+    await user.click(screen.getByRole("button", { name: "Add #pin" }));
+    await waitFor(() =>
+      expect(mocks.updatePuzzleTags).toHaveBeenLastCalledWith(1369, ["fork", "pin"]),
+    );
+
+    await user.click(screen.getByRole("button", { name: "Add #tempo" }));
+    await waitFor(() =>
+      expect(mocks.updatePuzzleTags).toHaveBeenLastCalledWith(1369, ["fork", "pin", "tempo"]),
+    );
+
+    await user.click(screen.getByRole("button", { name: "Remove #fork" }));
+
+    await waitFor(() =>
+      expect(mocks.updatePuzzleTags).toHaveBeenLastCalledWith(1369, ["pin", "tempo"]),
+    );
+    expect(await screen.findByText("Motifs updated.")).toBeInTheDocument();
+  });
+
+  it("keeps the motif editor hidden from seaside_tiramisu until the puzzle is attempted", async () => {
+    mocks.username = "seaside_tiramisu";
+    mocks.attemptedPuzzleIds = new Set();
+    render(<PuzzleSolverPage />);
+
+    await screen.findByTestId("mock-board");
+    expect(screen.queryByLabelText("Puzzle motifs")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add motif" })).not.toBeInTheDocument();
   });
 
   it("collapses solution and attempts panels when their active tab is selected again", async () => {

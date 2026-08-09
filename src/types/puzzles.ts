@@ -4,6 +4,7 @@ export type RawPuzzleRow = {
   id?: string | number | null;
   fen?: string | null;
   explanation?: string | null;
+  tags?: string[] | null;
   solution?: string | string[] | null;
   moves?: string | string[] | null;
   line?: string | string[] | null;

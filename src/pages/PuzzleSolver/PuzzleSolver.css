@@ -446,6 +446,267 @@ body:has(.puzzlePage),
   margin-bottom: 10px;
 }
 
+.puzzleMotifsPanel {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--color-cyan-bright) 24%, var(--color-border));
+  border-radius: var(--radius-ui);
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--color-accent-soft-bg) 74%, transparent),
+    color-mix(in srgb, var(--color-surface-soft) 88%, transparent)
+  );
+}
+
+.puzzleMotifsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.puzzleMotifsHeader > div {
+  display: grid;
+  gap: 2px;
+}
+
+.puzzleMotifsHeader span {
+  color: var(--color-heading);
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.puzzleMotifsHeader small {
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.puzzleMotifAppliedList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.puzzleMotifAppliedList em {
+  color: var(--color-subtle);
+  font-size: 12px;
+}
+
+.puzzleMotifAppliedTag {
+  display: inline-flex;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--color-accent-soft-border);
+  border-radius: 6px;
+  background: var(--color-accent-soft-bg);
+}
+
+.puzzleMotifAppliedTag > span {
+  padding: 6px 9px;
+  color: var(--color-accent-soft-text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.puzzleMotifAppliedTag > button {
+  width: 30px;
+  border: 0;
+  border-left: 1px solid var(--color-accent-soft-border);
+  background: color-mix(in srgb, var(--color-danger-soft-bg) 68%, transparent);
+  color: var(--color-danger);
+  font: inherit;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.puzzleMotifAppliedTag > button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-danger) 20%, transparent);
+}
+
+.puzzleMotifAppliedTag > button:disabled,
+.puzzleMotifsAddButton:disabled,
+.puzzleMotifPickerOptions button:disabled {
+  cursor: wait;
+  opacity: 0.52;
+}
+
+.puzzleMotifsAddButton {
+  width: fit-content;
+  min-height: 31px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  border: 1px solid var(--color-accent-soft-border);
+  border-radius: 6px;
+  background: var(--color-surface-elevated);
+  color: var(--color-heading);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.puzzleMotifsAddButton > span {
+  color: var(--color-success);
+  font-size: 17px;
+  line-height: 1;
+}
+
+.puzzleMotifsAddButton:hover:not(:disabled) {
+  border-color: var(--color-primary-soft);
+  background: var(--color-accent-soft-bg-strong);
+}
+
+.puzzleMotifPicker {
+  display: grid;
+  gap: 9px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--color-panel-strong) 86%, transparent);
+}
+
+.puzzleMotifPickerHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 11px 0;
+}
+
+.puzzleMotifPickerHeading strong {
+  color: var(--color-heading);
+  font-size: 12px;
+}
+
+.puzzleMotifPickerHeading span {
+  color: var(--color-subtle);
+  font-size: 10.5px;
+  font-weight: 750;
+}
+
+.puzzleMotifPickerGroups {
+  max-height: 330px;
+  overflow-y: auto;
+  padding: 0 8px 8px;
+}
+
+.puzzleMotifPickerGroups details {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.puzzleMotifPickerGroups details:last-child {
+  border-bottom: 0;
+}
+
+.puzzleMotifPickerGroups summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 4px;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.puzzleMotifPickerGroups summary::before {
+  content: "▸";
+  color: var(--color-subtle);
+  font-size: 10px;
+  transition: transform 120ms ease;
+}
+
+.puzzleMotifPickerGroups details[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.puzzleMotifPickerGroups summary > span {
+  margin-right: auto;
+}
+
+.puzzleMotifPickerGroups summary small {
+  min-width: 23px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--color-surface-inset-strong);
+  color: var(--color-subtle);
+  text-align: center;
+}
+
+.puzzleMotifPickerOptions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  padding: 0 0 8px;
+}
+
+.puzzleMotifPickerOptions button {
+  min-width: 0;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+  background: var(--color-surface-soft);
+  color: var(--color-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.puzzleMotifPickerOptions button > span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.puzzleMotifPickerOptions button > strong {
+  flex: 0 0 auto;
+  color: var(--color-success);
+  font-size: 16px;
+}
+
+.puzzleMotifPickerOptions button:hover:not(:disabled) {
+  border-color: var(--color-primary-soft);
+  background: var(--color-accent-soft-bg);
+}
+
+.puzzleMotifsMessage {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.puzzleMotifsMessage.success {
+  color: var(--color-success);
+}
+
+.puzzleMotifsMessage.error {
+  color: var(--color-danger);
+}
+
+@media (max-width: 680px) {
+  .puzzleMotifPickerOptions {
+    grid-template-columns: 1fr;
+  }
+}
+
 .puzzleMetaRow {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
