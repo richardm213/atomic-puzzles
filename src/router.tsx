@@ -296,6 +296,12 @@ const solveSetWithIdRoute = createRoute({
   component: PuzzleSolverPage,
 });
 
+const solveCustomSetWithIdRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/solve/custom/$setId/$puzzleId",
+  component: PuzzleSolverPage,
+});
+
 const profileRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/@/$username",
@@ -349,6 +355,7 @@ const routeTree = rootRoute.addChildren([
   communityPuzzlesRoute,
   communityUsersRoute,
   solveSetWithIdRoute,
+  solveCustomSetWithIdRoute,
   solveWithIdRoute,
   profileHistoryRoute,
   profileRoute,

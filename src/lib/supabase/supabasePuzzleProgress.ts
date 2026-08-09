@@ -467,6 +467,35 @@ export const fetchPuzzleProgressSummary = async (
   };
 };
 
+export const fetchPuzzleProgressRowsForUsername = async (
+  username: string,
+): Promise<PuzzleProgressRow[]> => {
+  const normalizedUsername = normalizeUsername(username);
+  if (!normalizedUsername) return [];
+
+  const localRows = readLocalPuzzleProgress(normalizedUsername);
+  let serverRows: PuzzleProgressRow[] = [];
+
+  try {
+    const supabase = getSupabaseClient();
+    try {
+      serverRows = await loadAllPuzzleProgressRowsFromRpc(supabase, normalizedUsername);
+    } catch {
+      serverRows = await fetchAllSupabaseRows<PuzzleProgressRow>(PUZZLE_PROGRESS_TABLE, () =>
+        supabase
+          .from(PUZZLE_PROGRESS_TABLE)
+          .select("puzzle_id,first_attempt_at,puzzle_correct,incorrect_move,correct_move")
+          .eq("username", normalizedUsername)
+          .order("first_attempt_at", { ascending: false }),
+      );
+    }
+  } catch {
+    serverRows = [];
+  }
+
+  return mergePuzzleProgressRows(serverRows, localRows);
+};
+
 export const fetchAllPuzzleProgressRows = async (): Promise<PuzzleProgressWithUsernameRow[]> => {
   const supabase = getSupabaseClient();
   return fetchAllSupabaseRows<PuzzleProgressWithUsernameRow>(PUZZLE_PROGRESS_TABLE, () =>

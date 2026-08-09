@@ -31,6 +31,10 @@ import {
 import { useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
+import {
+  getOrderedPuzzleIndexesForCustomSet,
+  readCustomPuzzleSet,
+} from "../../lib/puzzles/customPuzzleSets";
 import { loadPuzzleCatalog, loadPuzzlesById, type Puzzle } from "../../lib/puzzles/puzzleLibrary";
 import {
   normalizePuzzleMotifTags,
@@ -216,9 +220,11 @@ const SOLUTION_UNLOCK_HINT = "Make at least one attempt before viewing the solut
 
 export const PuzzleSolverPage = () => {
   const navigate = useNavigate();
-  const { puzzleId: routePuzzleId = "", setKey: routeSetKey = "" } = useParams({
-    strict: false,
-  });
+  const {
+    puzzleId: routePuzzleId = "",
+    setKey: routeSetKey = "",
+    setId: routeCustomSetId = "",
+  } = useParams({ strict: false });
   const { user } = useAuth();
   const { pieceSet, showPuzzleTimer } = useAppSettings();
   const [puzzles, setPuzzles] = useState<Puzzle[]>([]);
@@ -282,11 +288,18 @@ export const PuzzleSolverPage = () => {
   const elapsedTimeMsRef = useRef(0);
   const [elapsedTimeMs, setElapsedTimeMs] = useState(0);
   const [elapsedTimerRunning, setElapsedTimerRunning] = useState(false);
+  const customPuzzleSet = useMemo(() => readCustomPuzzleSet(routeCustomSetId), [routeCustomSetId]);
   const orderedSetPuzzleIndexes = useMemo(
-    () => getOrderedPuzzleIndexesForEvent(puzzles, routeSetKey),
-    [puzzles, routeSetKey],
+    () =>
+      customPuzzleSet
+        ? getOrderedPuzzleIndexesForCustomSet(puzzles, customPuzzleSet)
+        : getOrderedPuzzleIndexesForEvent(puzzles, routeSetKey),
+    [customPuzzleSet, puzzles, routeSetKey],
   );
-  const isSetSolveMode = Boolean(routeSetKey && orderedSetPuzzleIndexes.length > 0);
+  const isCustomSetSolveMode = Boolean(routeCustomSetId && customPuzzleSet);
+  const isSetSolveMode = Boolean(
+    orderedSetPuzzleIndexes.length > 0 && (routeSetKey || isCustomSetSolveMode),
+  );
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -337,7 +350,13 @@ export const PuzzleSolverPage = () => {
 
   const replaceUrlWithPuzzle = useCallback(
     (puzzleId: string | number): void => {
-      if (isSetSolveMode) {
+      if (isCustomSetSolveMode) {
+        void navigate({
+          to: "/solve/custom/$setId/$puzzleId",
+          params: { setId: routeCustomSetId, puzzleId: String(puzzleId) },
+          replace: true,
+        });
+      } else if (isSetSolveMode) {
         void navigate({
           to: "/solve/set/$setKey/$puzzleId",
           params: { setKey: routeSetKey, puzzleId: String(puzzleId) },
@@ -351,7 +370,7 @@ export const PuzzleSolverPage = () => {
         });
       }
     },
-    [isSetSolveMode, navigate, routeSetKey],
+    [isCustomSetSolveMode, isSetSolveMode, navigate, routeCustomSetId, routeSetKey],
   );
 
   useEffect(() => {
@@ -1617,9 +1636,11 @@ export const PuzzleSolverPage = () => {
         }
         path={
           activePuzzleId
-            ? isSetSolveMode
-              ? `/solve/set/${encodeURIComponent(routeSetKey)}/${activePuzzleId}`
-              : `/solve/${activePuzzleId}`
+            ? isCustomSetSolveMode
+              ? `/solve/custom/${encodeURIComponent(routeCustomSetId)}/${activePuzzleId}`
+              : isSetSolveMode
+                ? `/solve/set/${encodeURIComponent(routeSetKey)}/${activePuzzleId}`
+                : `/solve/${activePuzzleId}`
             : "/solve"
         }
       />
@@ -1700,15 +1721,24 @@ export const PuzzleSolverPage = () => {
               <span>Set complete</span>
               <h2>Puzzle set complete</h2>
               <p>
-                You finished all {puzzleCount} puzzles{event ? ` in ${event}` : ""}.
+                You finished all {puzzleCount} puzzles
+                {isCustomSetSolveMode
+                  ? ` in ${customPuzzleSet?.label ?? "this dashboard set"}`
+                  : event
+                    ? ` in ${event}`
+                    : ""}
+                .
               </p>
             </div>
             <div className="puzzleSetCompleteActions">
               <Link className="puzzleSetCompleteLink primary" to="/solve">
                 Continue with regular puzzles
               </Link>
-              <Link className="puzzleSetCompleteLink" to="/solve/sets">
-                Back to puzzle sets
+              <Link
+                className="puzzleSetCompleteLink"
+                to={isCustomSetSolveMode ? "/dashboard" : "/solve/sets"}
+              >
+                {isCustomSetSolveMode ? "Back to dashboard" : "Back to puzzle sets"}
               </Link>
             </div>
           </section>

@@ -64,8 +64,7 @@
   max-width: none;
 }
 
-.puzzleDashboardActionLink,
-.dashboardReplayLink {
+.puzzleDashboardActionLink {
   min-height: 40px;
   gap: 8px;
   padding: 0 14px;
@@ -84,8 +83,7 @@
   color: var(--color-on-primary);
 }
 
-.puzzleDashboardActionLink:hover,
-.dashboardReplayLink:hover {
+.puzzleDashboardActionLink:hover {
   transform: translateY(-1px);
   border-color: color-mix(in srgb, var(--color-primary) 72%, var(--color-border));
   background: var(--color-surface-elevated-strong);
@@ -173,6 +171,121 @@
   justify-content: space-between;
 }
 
+.dashboardAttemptsTitleRow,
+.dashboardAttemptsPager {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.dashboardAttemptsCount {
+  margin: 4px 0 0;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.dashboardAttemptsActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dashboardStartSetButton {
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+}
+
+.dashboardStartSetButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.dashboardFilters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  align-items: end;
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: color-mix(in srgb, var(--color-surface-inset) 78%, transparent);
+}
+
+.dashboardFilterSearch,
+.dashboardClearFilters {
+  grid-column: 1 / -1;
+}
+
+.dashboardFilterField {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.dashboardFilterField > input,
+.dashboardFilterField > select {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--color-input-border);
+  border-radius: calc(var(--radius-ui) - 2px);
+  background: var(--color-surface-elevated-strong);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 650;
+}
+
+.dashboardFilterField > input:focus-visible,
+.dashboardFilterField > select:focus-visible,
+.dashboardClearFilters:focus-visible,
+.dashboardFilterToggle:focus-visible,
+.dashboardStartSetButton:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-primary) 68%, white);
+  outline-offset: 2px;
+}
+
+.dashboardFilterField > input:disabled,
+.dashboardFilterField > select:disabled {
+  opacity: 0.65;
+}
+
+.dashboardClearFilters,
+.dashboardFilterToggle {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  border-radius: calc(var(--radius-ui) - 2px);
+  background: transparent;
+  color: var(--color-heading);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+  transition: var(--dashboard-transition);
+}
+
+.dashboardClearFilters:hover:not(:disabled),
+.dashboardFilterToggle:hover:not(:disabled) {
+  border-color: var(--color-accent-soft-border);
+  background: var(--color-surface-elevated-strong);
+}
+
+.dashboardClearFilters:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .dashboardAttemptsPager {
   justify-content: flex-start;
   text-align: left;
@@ -195,6 +308,7 @@
 }
 
 .dashboardAttemptRow {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 14px;
@@ -205,6 +319,11 @@
   border-radius: var(--radius-ui);
   background: color-mix(in srgb, var(--color-surface-soft) 86%, transparent);
   transition: var(--dashboard-transition);
+}
+
+.dashboardAttemptRow:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 54%, var(--color-border));
+  background: var(--color-surface-elevated-strong);
 }
 
 .dashboardAttemptPrimary {
@@ -246,6 +365,22 @@
   text-decoration: underline;
 }
 
+.dashboardPuzzleLink::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-ui);
+}
+
+.dashboardPuzzleLink:focus-visible {
+  outline: none;
+}
+
+.dashboardPuzzleLink:focus-visible::after {
+  outline: 2px solid color-mix(in srgb, var(--color-primary) 68%, white);
+  outline-offset: 2px;
+}
+
 .dashboardPuzzleSubline {
   display: grid;
   justify-items: start;
@@ -272,7 +407,7 @@
 
 .dashboardAttemptMeta {
   display: grid;
-  grid-template-columns: auto auto auto;
+  grid-template-columns: auto auto;
   gap: 8px;
   align-items: center;
   justify-content: end;
@@ -311,11 +446,6 @@
   background: var(--color-danger-soft-bg);
   color: var(--color-danger);
   border: 1px solid color-mix(in srgb, var(--color-danger) 34%, transparent);
-}
-
-.dashboardReplayLink {
-  min-height: 32px;
-  padding: 0 10px;
 }
 
 .dashboardStateCard,
@@ -450,6 +580,24 @@
     display: grid;
   }
 
+  .dashboardAttemptsActions {
+    display: grid;
+    justify-content: stretch;
+  }
+
+  .dashboardFilterToggle {
+    width: 100%;
+  }
+
+  .dashboardFilters {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboardFilterSearch,
+  .dashboardClearFilters {
+    grid-column: auto;
+  }
+
   .dashboardAttemptsPager .paginationRow {
     margin-left: 0;
   }
@@ -484,7 +632,6 @@
   }
 
   .puzzleDashboardActionLink,
-  .dashboardReplayLink,
   .dashboardFilterLabel,
   .puzzleDashboardPage .paginationRow button,
   .puzzleDashboardPage .paginationJumpForm,

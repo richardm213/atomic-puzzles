@@ -2,7 +2,7 @@ import "./PuzzleDashboard.css";
 
 import { faArrowUpRightFromSquare, faClockRotateLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 
@@ -11,12 +11,10 @@ import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/Rout
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
 import { usePersistedState } from "../../hooks/usePersistedState";
+import { createCustomPuzzleSet } from "../../lib/puzzles/customPuzzleSets";
 import { loadPuzzleCatalog } from "../../lib/puzzles/puzzleLibrary";
 import { normalizePuzzleEventName } from "../../lib/puzzles/puzzleSets";
-import {
-  fetchPuzzleProgressPage,
-  fetchPuzzleProgressSummary,
-} from "../../lib/supabase/supabasePuzzleProgress";
+import { fetchPuzzleProgressRowsForUsername } from "../../lib/supabase/supabasePuzzleProgress";
 import { isRegisteredSiteUser } from "../../lib/supabase/supabaseUsers";
 import { normalizeUsername } from "../../utils/playerNames";
 
@@ -24,6 +22,7 @@ const DEFAULT_PAGE_SIZE = 20;
 const PAGE_SIZE_OPTIONS = [20, 50, 100] as const;
 const PAGE_SIZE_STORAGE_KEY = "atomic-puzzles.puzzle-dashboard-page-size";
 const UNKNOWN_EVENT_LABEL = "Unknown event";
+type DashboardResultFilter = "all" | "correct" | "incorrect";
 
 type PuzzleDashboardPageSize = (typeof PAGE_SIZE_OPTIONS)[number];
 const pageSizeSchema = z.union([z.literal(20), z.literal(50), z.literal(100)]);
@@ -74,6 +73,7 @@ const resultLabel = (isCorrect: boolean): string => (isCorrect ? "Correct" : "In
 const isKnownEvent = (event: string): boolean => event.trim() !== UNKNOWN_EVENT_LABEL;
 
 export const PuzzleDashboardPage = ({ username = "" }: { username?: string | undefined }) => {
+  const navigate = useNavigate();
   const { isAuthenticated, isLoading, user } = useAuth();
   const routeUsername = useMemo(() => normalizeUsername(username), [username]);
   const viewingOwnDashboard = !routeUsername;
@@ -85,20 +85,19 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
     DEFAULT_PAGE_SIZE,
   );
   const [sinceDate, setSinceDate] = useState("");
+  const [untilDate, setUntilDate] = useState("");
+  const [resultFilter, setResultFilter] = useState<DashboardResultFilter>("all");
+  const [eventFilter, setEventFilter] = useState("");
+  const [authorFilter, setAuthorFilter] = useState("");
+  const [searchFilter, setSearchFilter] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [progressRows, setProgressRows] = useState<
     import("../../lib/supabase/supabasePuzzleProgress").PuzzleProgressRow[]
   >([]);
-  const [totalProgressRows, setTotalProgressRows] = useState(0);
-  const [dashboardSummary, setDashboardSummary] = useState({
-    total: 0,
-    correct: 0,
-    incorrect: 0,
-  });
   const [puzzlesById, setPuzzlesById] = useState<
     Map<string, import("../../lib/puzzles/puzzleLibrary").Puzzle>
   >(new Map());
   const [isDashboardLoading, setIsDashboardLoading] = useState(false);
-  const [isSummaryLoading, setIsSummaryLoading] = useState(false);
   const [arePuzzlesLoading, setArePuzzlesLoading] = useState(false);
   const [isAccessCheckLoading, setIsAccessCheckLoading] = useState(false);
   const [canViewDashboard, setCanViewDashboard] = useState(false);
@@ -106,7 +105,16 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [pageSize, sinceDate, targetUsername]);
+  }, [
+    authorFilter,
+    eventFilter,
+    pageSize,
+    resultFilter,
+    searchFilter,
+    sinceDate,
+    targetUsername,
+    untilDate,
+  ]);
 
   useEffect(() => {
     let isCurrent = true;
@@ -139,12 +147,6 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
   useEffect(() => {
     if (!targetUsername || !canViewDashboard) {
       setProgressRows([]);
-      setTotalProgressRows(0);
-      setDashboardSummary({
-        total: 0,
-        correct: 0,
-        incorrect: 0,
-      });
       return;
     }
 
@@ -155,19 +157,13 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
       setError("");
 
       try {
-        const { rows, total } = await fetchPuzzleProgressPage(targetUsername, {
-          page: currentPage,
-          pageSize,
-          sinceDate,
-        });
+        const rows = await fetchPuzzleProgressRowsForUsername(targetUsername);
         if (!isCurrent) return;
 
         setProgressRows(Array.isArray(rows) ? rows : []);
-        setTotalProgressRows(total);
       } catch (loadError) {
         if (!isCurrent) return;
         setProgressRows([]);
-        setTotalProgressRows(0);
         setError(
           loadError instanceof Error ? loadError.message : "Failed to load the puzzle dashboard.",
         );
@@ -181,55 +177,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
     return () => {
       isCurrent = false;
     };
-  }, [canViewDashboard, currentPage, pageSize, sinceDate, targetUsername]);
-
-  useEffect(() => {
-    if (!targetUsername || !canViewDashboard) {
-      setDashboardSummary({
-        total: 0,
-        correct: 0,
-        incorrect: 0,
-      });
-      return;
-    }
-
-    let isCurrent = true;
-
-    const loadDashboardSummary = async () => {
-      setIsSummaryLoading(true);
-
-      try {
-        const summary = await fetchPuzzleProgressSummary(targetUsername, { sinceDate });
-        if (!isCurrent) return;
-
-        setDashboardSummary({
-          total: Number(summary?.total) || 0,
-          correct: Number(summary?.correct) || 0,
-          incorrect: Number(summary?.incorrect) || 0,
-        });
-      } catch (loadError) {
-        if (!isCurrent) return;
-        setDashboardSummary({
-          total: 0,
-          correct: 0,
-          incorrect: 0,
-        });
-        setError(
-          loadError instanceof Error
-            ? loadError.message
-            : "Failed to load puzzle dashboard totals.",
-        );
-      } finally {
-        if (isCurrent) setIsSummaryLoading(false);
-      }
-    };
-
-    void loadDashboardSummary();
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [canViewDashboard, sinceDate, targetUsername]);
+  }, [canViewDashboard, targetUsername]);
 
   useEffect(() => {
     if (!targetUsername) {
@@ -267,13 +215,69 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
     };
   }, [targetUsername]);
 
-  const dashboardEntries = useMemo(
+  const allDashboardEntries = useMemo(
     () => buildDashboardEntries(progressRows, puzzlesById),
     [progressRows, puzzlesById],
   );
-  const totalPages = Math.max(
-    1,
-    Math.ceil(Math.max(totalProgressRows, dashboardSummary.total) / pageSize),
+  const eventOptions = useMemo(
+    () =>
+      [...new Set(allDashboardEntries.map((entry) => entry.event).filter(isKnownEvent))].sort(
+        (left, right) => left.localeCompare(right, undefined, { numeric: true }),
+      ),
+    [allDashboardEntries],
+  );
+  const authorOptions = useMemo(
+    () =>
+      [...new Set(allDashboardEntries.map((entry) => entry.author))].sort((left, right) =>
+        left.localeCompare(right, undefined, { sensitivity: "base" }),
+      ),
+    [allDashboardEntries],
+  );
+  const filteredDashboardEntries = useMemo(() => {
+    const normalizedSearch = searchFilter.trim().toLocaleLowerCase();
+    const sinceTimestamp = sinceDate ? new Date(`${sinceDate}T00:00:00`).getTime() : null;
+    const untilTimestamp = untilDate ? new Date(`${untilDate}T23:59:59.999`).getTime() : null;
+
+    return allDashboardEntries.filter((entry) => {
+      if (resultFilter === "correct" && !entry.puzzleCorrect) return false;
+      if (resultFilter === "incorrect" && entry.puzzleCorrect) return false;
+      if (eventFilter && entry.event !== eventFilter) return false;
+      if (authorFilter && entry.author !== authorFilter) return false;
+
+      const attemptTimestamp = new Date(entry.firstAttemptAt).getTime();
+      if (sinceTimestamp !== null && attemptTimestamp < sinceTimestamp) return false;
+      if (untilTimestamp !== null && attemptTimestamp > untilTimestamp) return false;
+
+      if (normalizedSearch) {
+        const searchableText =
+          `${entry.puzzleId} ${entry.author} ${entry.event}`.toLocaleLowerCase();
+        if (!searchableText.includes(normalizedSearch)) return false;
+      }
+
+      return true;
+    });
+  }, [
+    allDashboardEntries,
+    authorFilter,
+    eventFilter,
+    resultFilter,
+    searchFilter,
+    sinceDate,
+    untilDate,
+  ]);
+  const dashboardSummary = useMemo(() => {
+    const correct = filteredDashboardEntries.filter((entry) => entry.puzzleCorrect).length;
+    return {
+      total: filteredDashboardEntries.length,
+      correct,
+      incorrect: filteredDashboardEntries.length - correct,
+    };
+  }, [filteredDashboardEntries]);
+  const totalProgressRows = filteredDashboardEntries.length;
+  const totalPages = Math.max(1, Math.ceil(totalProgressRows / pageSize));
+  const dashboardEntries = useMemo(
+    () => filteredDashboardEntries.slice((currentPage - 1) * pageSize, currentPage * pageSize),
+    [currentPage, filteredDashboardEntries, pageSize],
   );
   const accuracy =
     dashboardSummary.total > 0
@@ -287,7 +291,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
     [puzzlesById, targetUsername],
   );
   const isPageLoading = isDashboardLoading || arePuzzlesLoading;
-  const areStatsLoading = isSummaryLoading || isDashboardLoading || arePuzzlesLoading;
+  const areStatsLoading = isDashboardLoading || arePuzzlesLoading;
   const firstRowNumber = totalProgressRows === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const seoTitle = viewingOwnDashboard
     ? "Puzzle Dashboard"
@@ -316,6 +320,35 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
   const heroTitle = viewingOwnDashboard
     ? "My Puzzle Dashboard"
     : `${targetUsername}'s Puzzle Dashboard`;
+  const hasActiveFilters = Boolean(
+    sinceDate ||
+    untilDate ||
+    resultFilter !== "all" ||
+    eventFilter ||
+    authorFilter ||
+    searchFilter.trim(),
+  );
+  const clearFilters = (): void => {
+    setSinceDate("");
+    setUntilDate("");
+    setResultFilter("all");
+    setEventFilter("");
+    setAuthorFilter("");
+    setSearchFilter("");
+  };
+  const handleStartFilteredSet = (): void => {
+    const customSet = createCustomPuzzleSet(
+      filteredDashboardEntries.map((entry) => entry.linkedPuzzleId),
+      resultFilter === "incorrect" ? "Missed puzzle review" : "Dashboard attempt review",
+    );
+    const firstPuzzleId = customSet?.puzzleIds[0];
+    if (!customSet || firstPuzzleId === undefined) return;
+
+    void navigate({
+      to: "/solve/custom/$setId/$puzzleId",
+      params: { setId: customSet.id, puzzleId: String(firstPuzzleId) },
+    });
+  };
 
   if (isCheckingAccess || (isRegisteredViewer && isPageLoading && dashboardEntries.length === 0)) {
     return <RouteLoadingFallback />;
@@ -397,18 +430,124 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
             <section className="dashboardAttempts">
               <div className="dashboardAttemptsHeader">
                 <div className="dashboardAttemptsTitleRow">
-                  <h2>Puzzle attempts</h2>
-                  <label className="dashboardFilterLabel">
-                    <span>Since</span>
-                    <input
-                      type="date"
-                      value={sinceDate}
-                      onChange={(event) => setSinceDate(event.target.value)}
-                      onInput={(event) => setSinceDate(event.currentTarget.value)}
-                      disabled={isPageLoading}
-                    />
-                  </label>
+                  <div>
+                    <h2>Puzzle attempts</h2>
+                    <p className="dashboardAttemptsCount" aria-live="polite">
+                      {dashboardSummary.total} matching attempt
+                      {dashboardSummary.total === 1 ? "" : "s"}
+                    </p>
+                  </div>
+                  <div className="dashboardAttemptsActions">
+                    <button
+                      type="button"
+                      className="dashboardFilterToggle"
+                      onClick={() => setFiltersOpen((isOpen) => !isOpen)}
+                      aria-expanded={filtersOpen}
+                      aria-controls="dashboard-attempt-filters"
+                    >
+                      {filtersOpen ? "Hide filters" : "Show filters"}
+                    </button>
+                    <button
+                      type="button"
+                      className="puzzleDashboardActionLink primary dashboardStartSetButton"
+                      onClick={handleStartFilteredSet}
+                      disabled={isPageLoading || filteredDashboardEntries.length === 0}
+                    >
+                      <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
+                      Solve filtered set
+                    </button>
+                  </div>
                 </div>
+                {filtersOpen ? (
+                  <div
+                    id="dashboard-attempt-filters"
+                    className="dashboardFilters"
+                    aria-label="Filter puzzle attempts"
+                  >
+                    <label className="dashboardFilterField dashboardFilterSearch">
+                      <span>Search</span>
+                      <input
+                        type="search"
+                        placeholder="Puzzle, author, or event"
+                        value={searchFilter}
+                        onChange={(event) => setSearchFilter(event.target.value)}
+                        disabled={isPageLoading}
+                      />
+                    </label>
+                    <label className="dashboardFilterField">
+                      <span>Result</span>
+                      <select
+                        value={resultFilter}
+                        onChange={(event) =>
+                          setResultFilter(event.target.value as DashboardResultFilter)
+                        }
+                        disabled={isPageLoading}
+                      >
+                        <option value="all">Correct + incorrect</option>
+                        <option value="correct">Correct only</option>
+                        <option value="incorrect">Incorrect only</option>
+                      </select>
+                    </label>
+                    <label className="dashboardFilterField">
+                      <span>Event</span>
+                      <select
+                        value={eventFilter}
+                        onChange={(event) => setEventFilter(event.target.value)}
+                        disabled={isPageLoading}
+                      >
+                        <option value="">All events</option>
+                        {eventOptions.map((eventName) => (
+                          <option key={eventName} value={eventName}>
+                            {eventName}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="dashboardFilterField">
+                      <span>Author</span>
+                      <select
+                        value={authorFilter}
+                        onChange={(event) => setAuthorFilter(event.target.value)}
+                        disabled={isPageLoading}
+                      >
+                        <option value="">All authors</option>
+                        {authorOptions.map((authorName) => (
+                          <option key={authorName} value={authorName}>
+                            {authorName}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="dashboardFilterField">
+                      <span>From</span>
+                      <input
+                        type="date"
+                        value={sinceDate}
+                        max={untilDate || undefined}
+                        onChange={(event) => setSinceDate(event.target.value)}
+                        disabled={isPageLoading}
+                      />
+                    </label>
+                    <label className="dashboardFilterField">
+                      <span>To</span>
+                      <input
+                        type="date"
+                        value={untilDate}
+                        min={sinceDate || undefined}
+                        onChange={(event) => setUntilDate(event.target.value)}
+                        disabled={isPageLoading}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className="dashboardClearFilters"
+                      onClick={clearFilters}
+                      disabled={!hasActiveFilters || isPageLoading}
+                    >
+                      Clear filters
+                    </button>
+                  </div>
+                ) : null}
                 <div className="dashboardAttemptsPager">
                   <label className="dashboardFilterLabel">
                     <span>Rows</span>
@@ -480,29 +619,27 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
                         <span className="dashboardMetaValue">
                           {formatDateTime(entry.firstAttemptAt)}
                         </span>
-                        <Link
-                          className="dashboardReplayLink"
-                          to="/solve/$puzzleId"
-                          params={{ puzzleId: String(entry.linkedPuzzleId) }}
-                        >
-                          <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
-                          <span>Replay</span>
-                        </Link>
                       </div>
                     </article>
                   ))}
                 </div>
               ) : (
                 <div className="dashboardStateCard">
-                  <p>{emptyText}</p>
-                  <Link
-                    className="puzzleDashboardActionLink primary"
-                    to={backLinkTo}
-                    params={backLinkParams}
-                  >
-                    <FontAwesomeIcon icon={faArrowUpRightFromSquare} aria-hidden="true" />
-                    {emptyLinkLabel}
-                  </Link>
+                  <p>{hasActiveFilters ? "No puzzle attempts match these filters." : emptyText}</p>
+                  {hasActiveFilters ? (
+                    <button type="button" className="dashboardClearFilters" onClick={clearFilters}>
+                      Clear filters
+                    </button>
+                  ) : (
+                    <Link
+                      className="puzzleDashboardActionLink primary"
+                      to={backLinkTo}
+                      params={backLinkParams}
+                    >
+                      <FontAwesomeIcon icon={faArrowUpRightFromSquare} aria-hidden="true" />
+                      {emptyLinkLabel}
+                    </Link>
+                  )}
                 </div>
               )}
 
