@@ -14,245 +14,245 @@ export const puzzleMotifs: PuzzleMotif[] = [
     name: "Advanced pawn",
     category: "Position and endgame",
     description:
-      "A tactic in which a pawn advanced into the opponent's position creates a decisive threat through promotion, control of key squares, or a capture near the king.",
+      "An advanced pawn creates a decisive threat through promotion, control of key squares, or a capture near the king.",
   },
   {
     tag: "queen_angles",
     name: "Queen angles",
     category: "Attack and mate",
     description:
-      "A tactic in which the queen changes files, ranks, or diagonals to attack a target from a new angle and bypass its current defense.",
+      "The queen maneuvers across files, ranks, or diagonals to attack a target from a new direction and bypass its current defense.",
   },
   {
     tag: "coercion",
     name: "Coercion",
     category: "Clearance and control",
     description:
-      "A tactic in which a forcing move drives an opposing piece to a square where it will later be attacked or captured.",
+      "A forcing move drives an opposing piece to a square where it can later be attacked or captured.",
   },
   {
     tag: "diagonal_clearance",
     name: "Diagonal clearance",
     category: "Clearance and control",
     description:
-      "A tactic in which a piece is removed from a diagonal so that a bishop or queen can use the opened line. The clearance may result from the player's move or a forced opposing capture.",
+      "A piece is removed from a diagonal, allowing a bishop or queen to use the cleared line. The player's move or a forced opposing capture may provide the clearance.",
   },
   {
     tag: "file_clearance",
     name: "File clearance",
     category: "Clearance and control",
     description:
-      "A tactic in which a piece is removed from a file so that a rook or queen can use the opened line. The clearance may result from the player's move or a forced opposing capture.",
+      "A piece is removed from a file, allowing a rook or queen to use the cleared line. The player's move or a forced opposing capture may provide the clearance.",
   },
   {
     tag: "square_clearance",
     name: "Square clearance",
     category: "Clearance and control",
     description:
-      "A tactic in which an occupied, controlled, or explosion-vulnerable square is cleared so that another piece can use it. The clearance is usually achieved by a capture or forcing move.",
+      "An occupied, controlled, or explosion-threatened square is cleared so another piece can use it. A capture or forcing move usually provides the clearance.",
   },
   {
     tag: "fork",
     name: "Fork",
     category: "Attack and mate",
     description:
-      "A tactic in which one piece attacks two or more targets at the same time, leaving the opponent unable to answer every threat.",
+      "One piece attacks two or more targets at the same time, leaving the opponent unable to answer every threat.",
   },
   {
     tag: "zwischenzug",
     name: "Zwischenzug",
     category: "Clearance and control",
     description:
-      "A tactic in which an intermediate forcing move is played before the expected reply, escaping a bind or threat with tempo and making the intended continuation possible.",
+      "An intermediate forcing move is played before the expected reply, escaping a bind or threat with tempo and making the intended continuation possible.",
   },
   {
     tag: "knight_invasion",
     name: "Knight invasion",
     category: "Attack and mate",
     description:
-      "A tactic in which a knight enters the opponent's position on a key square and creates a decisive mating, fork, or material threat.",
+      "A knight enters the opposing position on a key square, forcing the king to move, disrupting the defense, or establishing a difficult-to-remove attacker.",
   },
   {
     tag: "bishop_invasion",
     name: "Bishop invasion",
     category: "Attack and mate",
     description:
-      "A tactic in which a bishop enters the opponent's position on a key diagonal and creates a decisive mating, explosion, or restriction threat.",
+      "A bishop enters the opposing position on a key diagonal, forcing the king to move, restricting the defense, or establishing persistent pressure.",
   },
   {
     tag: "rook_invasion",
     name: "Rook invasion",
     category: "Attack and mate",
     description:
-      "A tactic in which a rook enters the opponent's position on a key rank or file and creates a decisive mating, explosion, or material threat.",
+      "A rook enters the opposing position on a key rank or file, forcing the king to move, disrupting the defense, or establishing persistent pressure.",
   },
   {
     tag: "castling_rook_invasion",
     name: "Castling rook invasion",
     category: "Attack and mate",
     description:
-      "A tactic in which castling places a rook on the rank or file from which it can invade the opponent's position or create a decisive threat.",
+      "Castling places a rook directly into an invasion, forcing the king to move, disrupting the defense, or establishing persistent pressure.",
   },
   {
     tag: "trident",
     name: "Trident",
     category: "Attack and mate",
     description:
-      "A tactic in which a bishop or queen pierces two pieces on the same diagonal. A capture can open additional files and diagonals, while greater separation can produce a mating threat.",
+      "A bishop or queen attacks through one piece toward a second piece on the same diagonal. Capturing the nearer piece opens additional lines, while a distant alignment can produce mate.",
   },
   {
     tag: "sacrifice",
     name: "Sacrifice",
     category: "Attack and mate",
     description:
-      "A tactic in which a rook or queen is deliberately given up to obtain a stronger result, such as mate, invasion, clearance, or a decisive material gain.",
+      "A rook or queen is deliberately given up to obtain mate, an invasion, a clearance, or a decisive material gain.",
   },
   {
     tag: "defensive",
     name: "Defensive",
     category: "Defense and survival",
     description:
-      "A tactic in which the opponent threatens mate or an invasion and an accurate defensive move is required. Other natural responses fail.",
+      "The opponent threatens mate or an invasion, and an accurate defensive move is required. Other natural responses fail.",
   },
   {
     tag: "material",
     name: "Material",
     category: "Attack and mate",
     description:
-      "A tactic whose principal result is winning material or preventing a material loss rather than delivering mate.",
+      "Winning material or preventing a material loss is the principal point of the solution rather than delivering mate.",
   },
   {
     tag: "draw",
     name: "Draw",
     category: "Defense and survival",
     description:
-      "A tactic in which a precise sequence secures a draw from a position that would otherwise be lost or clearly worse.",
+      "A precise sequence secures a draw from a position that would otherwise be lost or clearly worse.",
   },
   {
     tag: "blocking",
     name: "Blocking",
     category: "Defense and survival",
     description:
-      "A tactic in which a piece is placed on a file or diagonal to prevent an opposing piece from invading or using that line.",
+      "A piece is placed on a file or diagonal to prevent an opposing piece from invading or using that line.",
   },
   {
     tag: "king_walk",
     name: "King walk",
     category: "Defense and survival",
     description:
-      "A defensive tactic in which the king escapes danger through a precise sequence of king moves while avoiding controlled and explosion-vulnerable squares.",
+      "The king escapes danger through a precise sequence of king moves while avoiding controlled and explosion-threatened squares.",
   },
   {
     tag: "avoiding_perpetual",
     name: "Avoiding perpetual",
     category: "Defense and survival",
     description:
-      "A defensive tactic in which a repeating sequence of checks or mating threats is prevented while the winning advantage is preserved.",
+      "A repeating sequence of checks or mating threats is prevented while the winning advantage is preserved.",
   },
   {
     tag: "pin",
     name: "Pin",
     category: "Clearance and control",
     description:
-      "A tactic in which a piece cannot move without exposing the king or a more valuable piece to a decisive attack.",
+      "An attacked piece cannot move without exposing the king or a more valuable piece behind it to attack.",
   },
   {
     tag: "unpinning",
     name: "Unpinning",
     category: "Clearance and control",
     description:
-      "A tactic in which a pin is removed so that the formerly pinned piece can move or capture and create a decisive threat.",
+      "A pin is removed, allowing the formerly pinned piece to move or capture and create a decisive threat.",
   },
   {
     tag: "tempo",
     name: "Tempo",
     category: "Clearance and control",
     description:
-      "A tactic in which a forcing or waiting move makes the opponent move first, producing a favorable move order or forcing a concession.",
+      "A forcing or waiting move makes the opponent move first, producing a favorable move order or forcing a concession.",
   },
   {
     tag: "discovered_mate",
     name: "Discovered mate",
     category: "Attack and mate",
     description:
-      "A tactic in which one piece moves away from a line and uncovers a mating attack by the bishop, rook, or queen behind it.",
+      "One piece moves away from a line and uncovers a mating attack by the bishop, rook, or queen behind it.",
   },
   {
     tag: "rook_mate",
     name: "Rook mate",
     category: "Attack and mate",
     description:
-      "A mating tactic in which a rook delivers mate or creates an unavoidable mating threat along a rank or file.",
+      "A rook delivers mate or creates an unavoidable mating threat along a rank or file.",
   },
   {
     tag: "king_blockade",
     name: "King blockade",
     category: "Clearance and control",
     description:
-      "A tactic in which the king occupies or controls key squares to prevent the opposing king from approaching, escaping, or supporting another piece.",
+      "The king occupies or controls key squares, preventing the opposing king from approaching, escaping, or supporting another piece.",
   },
   {
     tag: "square",
     name: "Square",
     category: "Clearance and control",
     description:
-      "A tactic in which gaining, controlling, denying, or exploiting one specific square is the essential idea.",
+      "Gaining, controlling, denying, or exploiting one specific square is the essential idea of the solution.",
   },
   {
     tag: "explosion_mate_threat",
     name: "Explosion mate threat",
     category: "Attack and mate",
     description:
-      "A tactic in which the threat to capture a piece next to the king is used to force a concession, enable an invasion, or win material.",
+      "The threat to capture a piece next to the king forces a concession, enables an invasion, or wins material.",
   },
   {
     tag: "explosion_defense",
     name: "Explosion defense",
     category: "Defense and survival",
     description:
-      "A defensive tactic in which an explosion or explosion threat removes an attacker, interrupts an attacking line, or creates a safe square for the king.",
+      "An explosion or explosion threat removes an attacker, interrupts an attacking line, or creates a safe square for the king.",
   },
   {
     tag: "development",
     name: "Development",
     category: "Position and endgame",
     description:
-      "A tactic in which a piece must be developed to the correct square and in the correct move order to meet a threat or create active play.",
+      "A piece must be developed to the correct square and in the correct move order to meet a threat or create active play.",
   },
   {
     tag: "stuck_pawn",
     name: "Stuck pawn",
     category: "Position and endgame",
     description:
-      "A tactic in which a pawn with no useful advance or capture becomes a weakness, an obstruction, or a target that can be exploited.",
+      "A pawn with no useful advance or capture becomes a weakness, an obstruction, or a target that can be exploited.",
   },
   {
     tag: "stuck_piece",
     name: "Stuck piece",
     category: "Position and endgame",
     description:
-      "A tactic in which a piece with no useful or safe move becomes trapped, attacked, or used as an explosion target.",
+      "A piece with no useful or safe move becomes trapped, attacked, or used as an explosion target.",
   },
   {
     tag: "equal",
     name: "Equal",
     category: "Defense and survival",
     description:
-      "A tactic in which an accurate move preserves an equal position while other natural moves concede a clear advantage.",
+      "An accurate move preserves an equal position while other natural moves concede a clear advantage.",
   },
   {
     tag: "endgame",
     name: "Endgame",
     category: "Position and endgame",
     description:
-      "A tactic in a reduced-material position whose solution depends on endgame technique, such as a promotion race, king activity, or precise piece placement.",
+      "The solution depends on endgame technique in a reduced-material position, such as a promotion race, king activity, or precise piece placement.",
   },
   {
     tag: "endgame_draw",
     name: "Endgame draw",
     category: "Position and endgame",
     description:
-      "A tactic in a reduced-material position in which precise play secures a draw through a fortress, perpetual threat, promotion tactic, or other defensive resource.",
+      "Precise play secures a draw in a reduced-material position through a fortress, perpetual threat, promotion sequence, or other defensive resource.",
   },
 ];
 

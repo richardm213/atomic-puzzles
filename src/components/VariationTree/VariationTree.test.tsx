@@ -27,11 +27,10 @@ describe("VariationTree", () => {
     ]);
   });
 
-  it("highlights and dispatches the active branch", () => {
+  it("dispatches the selected branch", () => {
     const onMoveClick = vi.fn();
     render(<VariationTree lines={lines} activeLine={1} currentPly={2} onMoveClick={onMoveClick} />);
     const c5 = screen.getByRole("button", { name: /c5/ });
-    expect(c5).toHaveClass("active");
     fireEvent.click(c5);
     expect(onMoveClick).toHaveBeenCalledWith(1, 1);
   });

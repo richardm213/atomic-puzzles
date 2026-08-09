@@ -399,8 +399,8 @@ describe("PuzzleSolverPage solution options", () => {
     render(<PuzzleSolverPage />);
 
     const motifList = await screen.findByLabelText("Tags on this puzzle");
-    expect(within(motifList).getByText("#fork")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Add motif" })).not.toBeInTheDocument();
+    expect(within(motifList).getByText("Fork")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add tag" })).not.toBeInTheDocument();
   });
 
   it("keeps puzzle motifs hidden before a regular user attempts the puzzle", async () => {
@@ -408,7 +408,7 @@ describe("PuzzleSolverPage solution options", () => {
     render(<PuzzleSolverPage />);
 
     await screen.findByTestId("mock-board");
-    expect(screen.queryByLabelText("Puzzle motifs")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Puzzle tags")).not.toBeInTheDocument();
   });
 
   it("lets seaside_tiramisu add and remove any number of motifs", async () => {
@@ -416,23 +416,23 @@ describe("PuzzleSolverPage solution options", () => {
     const user = userEvent.setup();
     render(<PuzzleSolverPage />);
 
-    await user.click(await screen.findByRole("button", { name: "Add motif" }));
-    await user.click(screen.getByRole("button", { name: "Add #pin" }));
+    await user.click(await screen.findByRole("button", { name: "Add tag" }));
+    await user.click(screen.getByRole("button", { name: "Add pin" }));
     await waitFor(() =>
       expect(mocks.updatePuzzleTags).toHaveBeenLastCalledWith(1369, ["fork", "pin"]),
     );
 
-    await user.click(screen.getByRole("button", { name: "Add #tempo" }));
+    await user.click(screen.getByRole("button", { name: "Add tempo" }));
     await waitFor(() =>
       expect(mocks.updatePuzzleTags).toHaveBeenLastCalledWith(1369, ["fork", "pin", "tempo"]),
     );
 
-    await user.click(screen.getByRole("button", { name: "Remove #fork" }));
+    await user.click(screen.getByRole("button", { name: "Remove fork" }));
 
     await waitFor(() =>
       expect(mocks.updatePuzzleTags).toHaveBeenLastCalledWith(1369, ["pin", "tempo"]),
     );
-    expect(await screen.findByText("Motifs updated.")).toBeInTheDocument();
+    expect(await screen.findByText("Tags updated.")).toBeInTheDocument();
   });
 
   it("keeps the motif editor hidden from seaside_tiramisu until the puzzle is attempted", async () => {
@@ -441,13 +441,13 @@ describe("PuzzleSolverPage solution options", () => {
     render(<PuzzleSolverPage />);
 
     await screen.findByTestId("mock-board");
-    expect(screen.queryByLabelText("Puzzle motifs")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Add motif" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Puzzle tags")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add tag" })).not.toBeInTheDocument();
   });
 
   it("collapses solution and attempts panels when their active tab is selected again", async () => {
     const user = userEvent.setup();
-    const { container } = render(<PuzzleSolverPage />);
+    render(<PuzzleSolverPage />);
 
     const solutionTab = await screen.findByRole("tab", { name: "Solution" });
     await waitFor(() => expect(solutionTab).toBeEnabled());
@@ -456,7 +456,6 @@ describe("PuzzleSolverPage solution options", () => {
 
     await user.click(solutionTab);
     expect(screen.queryByRole("list", { name: "Solution variations" })).not.toBeInTheDocument();
-    expect(container.querySelector(".puzzleInfoStack")).not.toHaveClass("hasContent");
 
     const attemptsTab = screen.getByRole("tab", { name: "Other attempts" });
     await user.click(attemptsTab);

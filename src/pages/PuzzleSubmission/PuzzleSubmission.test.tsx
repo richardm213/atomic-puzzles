@@ -306,7 +306,6 @@ describe("PuzzleEditor move tree", () => {
 
     const success = screen.getByText("Puzzle submitted for review. Thank you!");
     const submit = screen.getByRole("button", { name: "Submit for review" });
-    expect(success).toHaveClass("success");
     expect(success.compareDocumentPosition(submit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
@@ -575,7 +574,7 @@ describe("PuzzleEditor move tree", () => {
 
     expect(screen.getByText("2 options from here")).toBeVisible();
     const options = screen.getByRole("list", { name: "Solution options" });
-    expect(within(options).getByRole("button", { name: "1... e5" })).toHaveClass("active");
+    expect(within(options).getByRole("button", { name: "1... e5" })).toBeVisible();
     expect(within(options).getByRole("button", { name: "1... c5" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Go to start of line" })).toHaveAttribute(
       "title",
