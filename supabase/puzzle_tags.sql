@@ -7,6 +7,19 @@ alter table public.puzzles
 alter table public.puzzles
   drop constraint if exists puzzles_tags_valid;
 
+update public.puzzles
+set tags = (
+  select coalesce(array_agg(normalized.tag order by normalized.first_position), '{}'::text[])
+  from (
+    select
+      case when value in ('equal', 'endgame_draw') then 'draw' else value end as tag,
+      min(position) as first_position
+    from unnest(tags) with ordinality as existing(value, position)
+    group by case when value in ('equal', 'endgame_draw') then 'draw' else value end
+  ) as normalized
+)
+where 'equal' = any(tags) or 'endgame_draw' = any(tags);
+
 alter table public.puzzles
   add constraint puzzles_tags_valid check (
     array_position(tags, null) is null
@@ -18,6 +31,7 @@ alter table public.puzzles
       'file_clearance',
       'square_clearance',
       'fork',
+      'epaulette_fork',
       'zwischenzug',
       'knight_invasion',
       'bishop_invasion',
@@ -39,13 +53,12 @@ alter table public.puzzles
       'king_blockade',
       'square',
       'explosion_mate_threat',
+      'exposed_king',
       'explosion_defense',
       'development',
       'stuck_pawn',
       'stuck_piece',
-      'equal',
-      'endgame',
-      'endgame_draw'
+      'endgame'
     ]::text[]
   );
 

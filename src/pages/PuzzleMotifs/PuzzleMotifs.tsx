@@ -5,52 +5,30 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMemo, useState } from "react";
 
 import { Seo } from "../../components/Seo/Seo";
-import {
-  getPuzzleMotifAnchor,
-  puzzleMotifCategories,
-  type PuzzleMotifCategory,
-  puzzleMotifs,
-} from "../../lib/puzzles/puzzleMotifs";
-
-const categoryDetails: Record<
-  PuzzleMotifCategory,
-  { index: string; description: string; slug: string }
-> = {
-  "Attack and mate": {
-    index: "01",
-    description: "Forcing ideas that create decisive threats.",
-    slug: "attack-and-mate",
-  },
-  "Clearance and control": {
-    index: "02",
-    description: "Lines, squares, move order, and restriction.",
-    slug: "clearance-and-control",
-  },
-  "Defense and survival": {
-    index: "03",
-    description: "Accurate resources that resist or escape threats.",
-    slug: "defense-and-survival",
-  },
-  "Position and endgame": {
-    index: "04",
-    description: "Piece placement and reduced-material play.",
-    slug: "position-and-endgame",
-  },
-};
+import { getPuzzleMotifAnchor, puzzleMotifs } from "../../lib/puzzles/puzzleMotifs";
 
 export const PuzzleMotifsPage = () => {
   const [query, setQuery] = useState("");
   const normalizedQuery = query.trim().toLowerCase().replace(/^#/, "");
-  const filteredMotifs = useMemo(
+  const matchingMotifs = useMemo(
     () =>
       puzzleMotifs.filter((motif) => {
         if (!normalizedQuery) return true;
-        return [motif.tag, motif.name, motif.category, motif.description].some((value) =>
+        return [motif.tag, motif.name, motif.description].some((value) =>
           value.toLowerCase().includes(normalizedQuery),
         );
       }),
     [normalizedQuery],
   );
+  const visibleMotifs = useMemo(() => {
+    if (!normalizedQuery) return puzzleMotifs;
+    const visibleTags = new Set(matchingMotifs.map((motif) => motif.tag));
+    matchingMotifs.forEach((motif) => {
+      if (motif.parentTag) visibleTags.add(motif.parentTag);
+    });
+    return puzzleMotifs.filter((motif) => visibleTags.has(motif.tag));
+  }, [matchingMotifs, normalizedQuery]);
+  const rootMotifs = visibleMotifs.filter((motif) => !motif.parentTag);
 
   return (
     <div className="motifsPage">
@@ -68,14 +46,10 @@ export const PuzzleMotifsPage = () => {
             <p>Browse the patterns used to classify Atomic Puzzles.</p>
           </div>
 
-          <div className="motifsHeroStats" aria-label="Motif totals">
+          <div className="motifsHeroStats" aria-label="Motif total">
             <div>
               <strong>{puzzleMotifs.length}</strong>
               <span>motifs</span>
-            </div>
-            <div>
-              <strong>{puzzleMotifCategories.length}</strong>
-              <span>categories</span>
             </div>
           </div>
 
@@ -98,100 +72,84 @@ export const PuzzleMotifsPage = () => {
           </label>
         </header>
 
-        <div className="motifsBrowser">
-          <aside className="motifsDirectory">
-            <div className="motifsDirectoryInner">
-              <p className="motifsEyebrow">Browse</p>
-              <h2>Categories</h2>
-              <nav aria-label="Motif categories">
-                {puzzleMotifCategories.map((category) => {
-                  const details = categoryDetails[category];
-                  const count = puzzleMotifs.filter((motif) => motif.category === category).length;
-                  return (
-                    <a key={category} href={`#${details.slug}`} data-category={details.slug}>
-                      <span className="motifsDirectoryMarker" aria-hidden="true" />
-                      <span>
-                        <strong>{category}</strong>
-                        <small>{count} motifs</small>
-                      </span>
-                    </a>
+        <main className="motifsContent">
+          <div className="motifsResultsHeading" aria-live="polite">
+            <p>
+              {normalizedQuery ? "Search results" : "All motifs"}
+              <span>{matchingMotifs.length}</span>
+            </p>
+            {normalizedQuery ? <small>Matching “{query.trim()}”</small> : null}
+          </div>
+
+          {matchingMotifs.length > 0 ? (
+            <section className="motifsIndexSection" aria-label="Motif definitions">
+              <div className="motifsGrid">
+                {rootMotifs.map((motif) => {
+                  const childMotifs = visibleMotifs.filter(
+                    (candidate) => candidate.parentTag === motif.tag,
                   );
-                })}
-              </nav>
-            </div>
-          </aside>
-
-          <main className="motifsContent">
-            <div className="motifsResultsHeading" aria-live="polite">
-              <p>
-                {normalizedQuery ? "Search results" : "All motifs"}
-                <span>{filteredMotifs.length}</span>
-              </p>
-              {normalizedQuery ? <small>Matching “{query.trim()}”</small> : null}
-            </div>
-
-            {filteredMotifs.length > 0 ? (
-              <div className="motifsCategories">
-                {puzzleMotifCategories.map((category) => {
-                  const categoryMotifs = filteredMotifs.filter(
-                    (motif) => motif.category === category,
-                  );
-                  if (categoryMotifs.length === 0) return null;
-
-                  const details = categoryDetails[category];
                   return (
-                    <section
-                      key={category}
-                      id={details.slug}
-                      className="motifsCategory"
-                      data-category={details.slug}
+                    <div
+                      className={`motifFamily ${childMotifs.length > 0 ? "hasChildren" : ""}`}
+                      key={motif.tag}
                     >
-                      <div className="motifsCategoryHeading">
-                        <span className="motifsCategoryIndex">{details.index}</span>
-                        <div>
-                          <h2>{category}</h2>
-                          <p>{details.description}</p>
-                        </div>
-                        <span className="motifsCategoryCount">{categoryMotifs.length}</span>
-                      </div>
-
-                      <div className="motifsGrid">
-                        {categoryMotifs.map((motif) => (
-                          <article
-                            key={motif.tag}
-                            id={getPuzzleMotifAnchor(motif.tag)}
-                            className="motifCard"
+                      <article
+                        id={getPuzzleMotifAnchor(motif.tag)}
+                        className="motifCard motifCardParent"
+                      >
+                        <div className="motifCardHeading">
+                          <h2>{motif.name}</h2>
+                          <a
+                            className="motifTag"
+                            href={`#${getPuzzleMotifAnchor(motif.tag)}`}
+                            aria-label={`Link to ${motif.name}`}
                           >
-                            <div className="motifCardHeading">
-                              <h3>{motif.name}</h3>
-                              <a
-                                className="motifTag"
-                                href={`#${getPuzzleMotifAnchor(motif.tag)}`}
-                                aria-label={`Link to ${motif.name}`}
-                              >
-                                #{motif.tag}
-                              </a>
-                            </div>
-                            <p>{motif.description}</p>
-                          </article>
-                        ))}
-                      </div>
-                    </section>
+                            #{motif.tag}
+                          </a>
+                        </div>
+                        <p>{motif.description}</p>
+                      </article>
+
+                      {childMotifs.length > 0 ? (
+                        <div className="motifChildren" aria-label={`${motif.name} submotifs`}>
+                          {childMotifs.map((child) => (
+                            <article
+                              key={child.tag}
+                              id={getPuzzleMotifAnchor(child.tag)}
+                              className="motifCard motifCardChild"
+                            >
+                              <span className="motifParentLabel">Under {motif.name}</span>
+                              <div className="motifCardHeading">
+                                <h2>{child.name}</h2>
+                                <a
+                                  className="motifTag"
+                                  href={`#${getPuzzleMotifAnchor(child.tag)}`}
+                                  aria-label={`Link to ${child.name}`}
+                                >
+                                  #{child.tag}
+                                </a>
+                              </div>
+                              <p>{child.description}</p>
+                            </article>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
                   );
                 })}
               </div>
-            ) : (
-              <div className="motifsEmpty">
-                <span aria-hidden="true">#</span>
-                <h2>No motifs found</h2>
-                <p>Try a piece, pattern, or tactical idea.</p>
-                <button type="button" onClick={() => setQuery("")}>
-                  Clear search
-                </button>
-              </div>
-            )}
-          </main>
-        </div>
+            </section>
+          ) : (
+            <div className="motifsEmpty">
+              <span aria-hidden="true">#</span>
+              <h2>No motifs found</h2>
+              <p>Try a piece, pattern, or tactical idea.</p>
+              <button type="button" onClick={() => setQuery("")}>
+                Clear search
+              </button>
+            </div>
+          )}
+        </main>
       </div>
     </div>
   );

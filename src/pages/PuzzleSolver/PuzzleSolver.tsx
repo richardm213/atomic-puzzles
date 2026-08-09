@@ -37,8 +37,8 @@ import {
 } from "../../lib/puzzles/customPuzzleSets";
 import { loadPuzzleCatalog, loadPuzzlesById, type Puzzle } from "../../lib/puzzles/puzzleLibrary";
 import {
+  getPuzzleMotifParent,
   normalizePuzzleMotifTags,
-  puzzleMotifCategories,
   puzzleMotifs,
 } from "../../lib/puzzles/puzzleMotifs";
 import { getOrderedPuzzleIndexesForEvent } from "../../lib/puzzles/puzzleSets";
@@ -1512,6 +1512,13 @@ export const PuzzleSolverPage = () => {
     if (!hasAttemptedActivePuzzle) return null;
     const savingMotifs = motifSaveStatus.state === "saving";
     const availableMotifs = puzzleMotifs.filter((motif) => !activePuzzleTags.includes(motif.tag));
+    const availableTagSet = new Set(availableMotifs.map((motif) => motif.tag));
+    const orderedAvailableMotifs = availableMotifs
+      .filter((motif) => !motif.parentTag || !availableTagSet.has(motif.parentTag))
+      .flatMap((motif) => [
+        motif,
+        ...availableMotifs.filter((candidate) => candidate.parentTag === motif.tag),
+      ]);
 
     return (
       <section className="puzzleMotifsPanel" aria-label="Puzzle tags">
@@ -1529,6 +1536,7 @@ export const PuzzleSolverPage = () => {
           {activePuzzleTags.length > 0 ? (
             activePuzzleTags.map((tag) => {
               const motif = puzzleMotifs.find((entry) => entry.tag === tag);
+              const parentMotif = motif ? getPuzzleMotifParent(motif) : undefined;
 
               return (
                 <div className="puzzleMotifAppliedTag" key={tag}>
@@ -1538,6 +1546,9 @@ export const PuzzleSolverPage = () => {
                     onClick={() => setSelectedMotifTag(tag)}
                     aria-label={`View definition for ${motif?.name ?? tag}`}
                   >
+                    {parentMotif ? (
+                      <small className="puzzleMotifAppliedParent">{parentMotif.name} ›</small>
+                    ) : null}
                     {motif?.name ?? tag}
                   </button>
                   {canManagePuzzleTags ? (
@@ -1584,35 +1595,25 @@ export const PuzzleSolverPage = () => {
               <strong>Add tag</strong>
               <span>{availableMotifs.length} available</span>
             </div>
-            <div className="puzzleMotifPickerGroups">
-              {puzzleMotifCategories.map((category) => {
-                const categoryMotifs = availableMotifs.filter(
-                  (motif) => motif.category === category,
-                );
-                if (categoryMotifs.length === 0) return null;
-
+            <div className="puzzleMotifPickerOptions puzzleMotifPickerOptionsFlat">
+              {orderedAvailableMotifs.map((motif) => {
+                const parentMotif = getPuzzleMotifParent(motif);
                 return (
-                  <details key={category} open>
-                    <summary>
-                      <span>{category}</span>
-                      <small>{categoryMotifs.length}</small>
-                    </summary>
-                    <div className="puzzleMotifPickerOptions">
-                      {categoryMotifs.map((motif) => (
-                        <button
-                          key={motif.tag}
-                          type="button"
-                          aria-label={`Add ${motif.tag}`}
-                          title={motif.description}
-                          disabled={savingMotifs}
-                          onClick={() => void handleUpdateMotifs([...activePuzzleTags, motif.tag])}
-                        >
-                          <span>{motif.name}</span>
-                          <strong aria-hidden="true">+</strong>
-                        </button>
-                      ))}
-                    </div>
-                  </details>
+                  <button
+                    key={motif.tag}
+                    type="button"
+                    className={parentMotif ? "puzzleMotifChildOption" : undefined}
+                    aria-label={`Add ${motif.tag}`}
+                    title={motif.description}
+                    disabled={savingMotifs}
+                    onClick={() => void handleUpdateMotifs([...activePuzzleTags, motif.tag])}
+                  >
+                    <span className="puzzleMotifPickerOptionLabel">
+                      {parentMotif ? <small>{parentMotif.name} ›</small> : null}
+                      <span>{motif.name}</span>
+                    </span>
+                    <strong aria-hidden="true">+</strong>
+                  </button>
                 );
               })}
             </div>
@@ -1653,7 +1654,10 @@ export const PuzzleSolverPage = () => {
         <div className="puzzleMotifDefinitionCard">
           <div className="puzzleMotifDefinitionHeading">
             <div>
-              <span>{selectedMotif.category}</span>
+              <span>
+                {getPuzzleMotifParent(selectedMotif)?.name ?? "Atomic motif"}
+                {selectedMotif.parentTag ? " submotif" : ""}
+              </span>
               <h2 id="puzzle-motif-dialog-title">{selectedMotif.name}</h2>
             </div>
             <button

@@ -12,11 +12,18 @@ describe("puzzle motifs", () => {
   });
 
   it("normalizes stored tags to unique known motifs", () => {
-    expect(normalizePuzzleMotifTags(["fork", "unknown", "fork", "pin", "tempo"])).toEqual([
-      "fork",
-      "pin",
-      "tempo",
-    ]);
+    expect(
+      normalizePuzzleMotifTags([
+        "fork",
+        "unknown",
+        "fork",
+        "pin",
+        "tempo",
+        "equal",
+        "endgame_draw",
+        "draw",
+      ]),
+    ).toEqual(["fork", "pin", "tempo", "draw"]);
     expect(normalizePuzzleMotifTags("fork")).toEqual([]);
   });
 });

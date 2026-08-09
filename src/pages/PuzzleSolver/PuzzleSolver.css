@@ -505,6 +505,9 @@ body:has(.puzzlePage),
 }
 
 .puzzleMotifDefinitionButton {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
   padding: 4px 7px;
   border: 0;
   background: transparent;
@@ -516,6 +519,12 @@ body:has(.puzzlePage),
   transition:
     background 160ms ease,
     color 160ms ease;
+}
+
+.puzzleMotifAppliedParent {
+  color: var(--color-subtle);
+  font-size: 9px;
+  font-weight: 750;
 }
 
 .puzzleMotifDefinitionButton:hover {
@@ -765,6 +774,12 @@ body:has(.puzzlePage),
   padding: 0 0 8px;
 }
 
+.puzzleMotifPickerOptionsFlat {
+  max-height: 330px;
+  overflow-y: auto;
+  padding: 0 8px 8px;
+}
+
 .puzzleMotifPickerOptions button {
   min-width: 0;
   min-height: 32px;
@@ -781,13 +796,46 @@ body:has(.puzzlePage),
   cursor: pointer;
 }
 
-.puzzleMotifPickerOptions button > span {
+.puzzleMotifPickerOptions button.puzzleMotifChildOption {
+  position: relative;
+  margin-left: 13px;
+  width: calc(100% - 13px);
+  border-left-color: var(--color-primary-soft);
+}
+
+.puzzleMotifPickerOptions button.puzzleMotifChildOption::before {
+  position: absolute;
+  top: 50%;
+  right: 100%;
+  width: 9px;
+  height: 1px;
+  background: var(--color-primary-soft);
+  content: "";
+}
+
+.puzzleMotifPickerOptionLabel {
   min-width: 0;
+  display: grid;
+  gap: 1px;
+  overflow: hidden;
+  text-align: left;
+}
+
+.puzzleMotifPickerOptionLabel > span {
   overflow: hidden;
   color: var(--color-text);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 10.5px;
   font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.puzzleMotifPickerOptionLabel > small {
+  overflow: hidden;
+  color: var(--color-subtle);
+  font-size: 8.5px;
+  font-weight: 750;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

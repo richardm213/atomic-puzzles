@@ -179,83 +179,9 @@
   color: var(--color-heading);
 }
 
-.motifsBrowser {
-  display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
-  gap: 34px;
-  align-items: start;
-  margin-top: 34px;
-}
-
-.motifsDirectory {
-  position: sticky;
-  top: 86px;
-}
-
-.motifsDirectoryInner {
-  padding: 21px;
-  border: 1px solid var(--color-border);
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--color-panel-strong) 90%, transparent);
-  box-shadow: var(--shadow-soft);
-}
-
-.motifsDirectory h2 {
-  margin: 6px 0 18px;
-  color: var(--color-heading);
-  font-size: 19px;
-}
-
-.motifsDirectory nav {
-  display: grid;
-  gap: 6px;
-}
-
-.motifsDirectory a {
-  display: grid;
-  grid-template-columns: 8px minmax(0, 1fr);
-  gap: 11px;
-  align-items: center;
-  padding: 11px 10px;
-  border-radius: 10px;
-  color: var(--color-muted);
-  text-decoration: none;
-  transition:
-    background 140ms ease,
-    color 140ms ease;
-}
-
-.motifsDirectory a:hover,
-.motifsDirectory a:focus-visible {
-  background: var(--color-surface-inset-strong);
-  color: var(--color-heading);
-}
-
-.motifsDirectoryMarker {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--motif-accent, var(--color-primary-soft));
-  box-shadow: 0 0 10px
-    color-mix(in srgb, var(--motif-accent, var(--color-primary-soft)) 55%, transparent);
-}
-
-.motifsDirectory a > span:last-child {
-  display: grid;
-  gap: 2px;
-}
-
-.motifsDirectory strong {
-  font-size: 13px;
-}
-
-.motifsDirectory small {
-  color: var(--color-subtle);
-  font-size: 11px;
-}
-
 .motifsContent {
   min-width: 0;
+  margin-top: 34px;
 }
 
 .motifsResultsHeading {
@@ -296,79 +222,33 @@
   white-space: nowrap;
 }
 
-.motifsCategories {
-  display: grid;
-  gap: 56px;
+.motifsIndexSection {
   padding: 34px 0 54px;
-}
-
-.motifsCategory {
-  scroll-margin-top: 86px;
   --motif-accent: var(--color-cyan-bright);
-}
-
-[data-category="attack-and-mate"] {
-  --motif-accent: #ff7a90;
-}
-
-[data-category="clearance-and-control"] {
-  --motif-accent: #6cc8ff;
-}
-
-[data-category="defense-and-survival"] {
-  --motif-accent: #76d7b1;
-}
-
-[data-category="position-and-endgame"] {
-  --motif-accent: #c59aff;
-}
-
-.motifsCategoryHeading {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 15px;
-  align-items: start;
-  margin-bottom: 16px;
-}
-
-.motifsCategoryIndex {
-  padding-top: 4px;
-  color: var(--motif-accent);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.motifsCategoryHeading h2 {
-  margin: 0;
-  color: var(--color-heading);
-  font-size: 23px;
-  letter-spacing: -0.025em;
-}
-
-.motifsCategoryHeading p {
-  margin: 5px 0 0;
-  color: var(--color-subtle);
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.motifsCategoryCount {
-  min-width: 30px;
-  padding: 5px 8px;
-  border: 1px solid color-mix(in srgb, var(--motif-accent) 25%, transparent);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--motif-accent) 8%, transparent);
-  color: var(--motif-accent);
-  font-size: 11px;
-  font-weight: 800;
-  text-align: center;
 }
 
 .motifsGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 11px;
+  align-items: start;
+}
+
+.motifFamily {
+  min-width: 0;
+}
+
+.motifFamily.hasChildren {
+  grid-column: 1 / -1;
+}
+
+.motifChildren {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+  margin: 8px 0 0 17px;
+  padding-left: 12px;
+  border-left: 1px solid color-mix(in srgb, var(--motif-accent) 38%, var(--color-border));
 }
 
 .motifCard {
@@ -396,6 +276,26 @@
   opacity: 0.55;
 }
 
+.motifCardChild::before {
+  top: 22px;
+  bottom: auto;
+  left: -13px;
+  width: 12px;
+  height: 1px;
+  border-radius: 0;
+  opacity: 0.7;
+}
+
+.motifParentLabel {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--color-subtle);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .motifCard:hover {
   transform: translateY(-2px);
   border-color: color-mix(in srgb, var(--motif-accent) 35%, var(--color-border));
@@ -415,6 +315,7 @@
   gap: 7px 12px;
 }
 
+.motifCard h2,
 .motifCard h3 {
   margin: 0;
   color: var(--color-heading);
@@ -501,43 +402,6 @@
   .motifsSearch {
     grid-column: 1;
   }
-
-  .motifsBrowser {
-    grid-template-columns: 1fr;
-    gap: 22px;
-  }
-
-  .motifsDirectory {
-    position: static;
-  }
-
-  .motifsDirectoryInner {
-    padding: 16px;
-  }
-
-  .motifsDirectory h2 {
-    margin-bottom: 12px;
-  }
-
-  .motifsDirectory nav {
-    display: flex;
-    gap: 7px;
-    overflow-x: auto;
-    padding-bottom: 2px;
-    scrollbar-width: none;
-  }
-
-  .motifsDirectory nav::-webkit-scrollbar {
-    display: none;
-  }
-
-  .motifsDirectory a {
-    flex: 0 0 auto;
-  }
-
-  .motifsDirectory small {
-    display: none;
-  }
 }
 
 @media (max-width: 680px) {
@@ -563,30 +427,8 @@
     gap: 24px;
   }
 
-  .motifsBrowser {
-    margin-top: 20px;
-  }
-
-  .motifsDirectoryInner {
-    border-radius: 14px;
-  }
-
   .motifsGrid {
     grid-template-columns: 1fr;
-  }
-
-  .motifsCategories {
-    gap: 44px;
-    padding-top: 28px;
-  }
-
-  .motifsCategoryHeading {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    gap: 10px;
-  }
-
-  .motifsCategoryHeading h2 {
-    font-size: 20px;
   }
 
   .motifCard {
