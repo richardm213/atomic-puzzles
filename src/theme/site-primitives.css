@@ -1,12 +1,41 @@
 /* Shared visual recipes. Page styles should keep layout and intentional variants local. */
 
+:where(button, input, select, textarea, a):focus-visible {
+  outline: 3px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+:where(input, select, textarea) {
+  accent-color: var(--color-primary);
+}
+
+:where(input, select, textarea)::placeholder {
+  color: var(--color-subtle);
+  opacity: 0.9;
+}
+
+:where(button, a, input, select, textarea) {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 .analysisPanel,
 .puzzleQueueGate,
 .puzzleEditor,
 .puzzleQueueList,
 .puzzleReviewEditor {
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-ui);
+  border-radius: var(--radius-lg);
   background: var(--color-panel);
   box-shadow: var(--shadow-panel);
   backdrop-filter: blur(16px);

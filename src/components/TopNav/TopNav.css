@@ -1,5 +1,6 @@
 .topNav {
-  position: relative;
+  position: sticky;
+  top: 0;
   z-index: 30;
   display: flex;
   align-items: center;
@@ -7,12 +8,15 @@
   gap: 12px;
   width: 100%;
   max-width: 100vw;
+  min-height: var(--nav-height);
   overflow: visible;
-  padding: max(12px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) 12px
-    max(18px, env(safe-area-inset-left));
+  padding: max(10px, env(safe-area-inset-top))
+    max(clamp(16px, 2.4vw, 30px), env(safe-area-inset-right)) 10px
+    max(clamp(16px, 2.4vw, 30px), env(safe-area-inset-left));
   border-bottom: 1px solid var(--color-border);
   background: var(--color-nav);
-  backdrop-filter: blur(18px);
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--color-panel-deep) 18%, transparent);
+  backdrop-filter: blur(20px) saturate(1.12);
 }
 
 .mobileMenuButton {
@@ -47,7 +51,7 @@
   gap: 10px;
   position: relative;
   z-index: 31;
-  margin-right: 22px;
+  margin-right: 12px;
   color: var(--color-heading);
   font-family: var(--font-brand);
   font-size: 20px;
@@ -104,7 +108,7 @@
   margin-left: auto;
   display: inline-flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   min-width: 0;
   max-width: 100%;
 }
@@ -112,7 +116,7 @@
 .topNavLinks {
   flex: 1 1 0;
   display: inline-flex;
-  gap: 14px;
+  gap: 2px;
   position: relative;
   z-index: 2;
   min-width: 0;
@@ -125,11 +129,35 @@
   font-size: 15px;
   text-decoration: none;
   white-space: nowrap;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease;
+}
+
+.topNavLinks > a,
+.navDropdownTrigger {
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
 }
 
 .topNavLinks a:hover,
 .navDropdownTrigger:hover {
   color: var(--color-heading);
+}
+
+.topNavLinks > a:hover,
+.navDropdownTrigger:hover {
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
+.topNavLinks > a.isActive,
+.navDropdown.isActive > .navDropdownTrigger {
+  background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+  color: var(--color-heading);
+  box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--color-primary-soft) 74%, transparent);
 }
 
 .navDropdown {
@@ -151,7 +179,7 @@
 .navDropdownTrigger {
   border: 0;
   background: transparent;
-  padding: 0;
+  padding-inline: 10px;
   font-family: inherit;
   line-height: inherit;
   display: inline-flex;
@@ -1234,19 +1262,30 @@
   }
 
   .homeBrand {
-    display: none;
+    display: inline-flex;
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+    margin: 0;
+  }
+
+  .homeBrand img {
+    width: 30px;
+    height: 30px;
+    flex-basis: 30px;
   }
 
   .mobileMenuButton {
     display: inline-flex;
     flex: 0 0 36px;
+    order: -1;
   }
 
   .topNavCenter {
     position: static;
     flex: 0 1 auto;
     width: auto;
-    max-width: calc(100vw - 112px);
+    max-width: calc(100vw - 116px);
     margin-left: auto;
     display: inline-flex;
     align-items: center;

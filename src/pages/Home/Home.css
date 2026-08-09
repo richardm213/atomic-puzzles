@@ -5,7 +5,7 @@
   background: var(--site-background);
   background-size: var(--site-background-size);
   display: grid;
-  gap: clamp(18px, 2.8vw, 30px);
+  gap: clamp(22px, 3vw, 34px);
   align-content: start;
   padding: max(var(--page-gutter), env(safe-area-inset-top))
     max(clamp(22px, 4vw, 48px), env(safe-area-inset-right))
@@ -15,7 +15,7 @@
 
 .homeHero,
 .homeSpotlightSection {
-  width: min(980px, 100%);
+  width: min(1120px, 100%);
   margin: 0 auto;
 }
 
@@ -24,7 +24,8 @@
   grid-template-columns: 1fr;
   gap: 18px;
   align-items: start;
-  padding-block: clamp(18px, 5vh, 56px) clamp(10px, 2vh, 22px);
+  padding-block: clamp(24px, 6vh, 72px) clamp(14px, 2vh, 24px);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
 }
 
 .homeHeroLead {
@@ -38,7 +39,7 @@
 }
 
 .homeHeroLead > h1 {
-  max-width: 22ch;
+  max-width: 19ch;
   margin: 0;
   color: var(--color-heading);
   font-size: clamp(29px, 3vw, 43px);
@@ -58,7 +59,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  margin-top: 4px;
+  margin-top: 8px;
 }
 
 .homePrimaryCta,
@@ -72,9 +73,9 @@
 
 .homePrimaryCta,
 .homeSecondaryCta {
-  min-height: 46px;
+  min-height: 48px;
   border-radius: var(--radius-ui);
-  padding: 12px 18px;
+  padding: 12px 19px;
   text-decoration: none;
 }
 
@@ -113,7 +114,7 @@
 .homeSpotlightGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: 18px;
 }
 
 .homeSpotlightCard {
@@ -121,12 +122,13 @@
 
   position: relative;
   min-width: 0;
-  min-height: 220px;
+  min-height: 210px;
   display: grid;
   align-content: start;
   gap: 12px;
   color: inherit;
-  padding: 22px;
+  padding: 24px;
+  border-radius: var(--radius-lg);
   border-color: color-mix(in srgb, var(--home-card-accent) 24%, var(--color-border));
   overflow: hidden;
   text-decoration: none;
@@ -955,7 +957,11 @@
 @media (max-width: 680px) {
   .homeHeroActions {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .homePrimaryCta {
+    grid-column: 1 / -1;
   }
 
   .homePrimaryCta,

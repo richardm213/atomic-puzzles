@@ -78,6 +78,10 @@
   margin-top: 14px;
   overflow-x: auto;
   max-width: 100%;
+  border-radius: var(--radius-ui);
+  overscroll-behavior-inline: contain;
+  scrollbar-color: color-mix(in srgb, var(--color-primary-soft) 48%, transparent) transparent;
+  scrollbar-width: thin;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -310,8 +314,12 @@
   }
 
   .rankingsControls {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     justify-content: stretch;
+  }
+
+  .rankingsControls label:nth-child(3) {
+    grid-column: 1 / -1;
   }
 
   .rankingsControls label {
@@ -320,7 +328,12 @@
 
   .monthStepControls {
     width: 100%;
-    justify-content: flex-start;
+    justify-content: space-between;
+  }
+
+  .monthStepButton {
+    width: 44px;
+    height: 44px;
   }
 
   .currentMonthLabel {

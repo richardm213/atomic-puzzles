@@ -2,6 +2,7 @@
   min-height: 100vh;
   position: relative;
   isolation: isolate;
+  background: var(--site-background);
 }
 
 .appMain {
@@ -9,6 +10,7 @@
   min-height: var(--page-shell-min-height-dynamic);
   background: var(--site-background);
   background-size: var(--site-background-size);
+  scroll-margin-top: var(--nav-height);
 }
 
 .skipLink {
@@ -45,19 +47,26 @@
 }
 
 .appShell::after {
-  inset: 58px 0 auto;
-  height: min(40vh, 360px);
+  inset: var(--nav-height) 0 auto;
+  height: min(42vh, 420px);
   background:
     radial-gradient(
       circle at 18% 8%,
-      color-mix(in srgb, var(--color-primary) 12%, transparent),
+      color-mix(in srgb, var(--color-primary) 10%, transparent),
       transparent 34%
     ),
     radial-gradient(
       circle at 82% 10%,
-      color-mix(in srgb, var(--color-cyan) 10%, transparent),
+      color-mix(in srgb, var(--color-cyan) 8%, transparent),
       transparent 32%
+    ),
+    linear-gradient(
+      90deg,
+      transparent 0 49.9%,
+      color-mix(in srgb, var(--color-border) 18%, transparent) 50%,
+      transparent 50.1%
     );
+  mask-image: linear-gradient(to bottom, black, transparent);
 }
 
 .topNav,

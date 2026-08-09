@@ -21,7 +21,7 @@
   overflow: hidden;
   padding: clamp(22px, 3.5vw, 34px);
   border: 1px solid color-mix(in srgb, var(--color-primary) 22%, var(--color-border));
-  border-radius: 28px;
+  border-radius: var(--radius-lg);
   background:
     radial-gradient(
       circle at 86% 0%,
@@ -170,7 +170,7 @@
   overflow: hidden;
   padding: 20px;
   border: 1px solid color-mix(in srgb, var(--color-primary) 12%, var(--color-border));
-  border-radius: 20px;
+  border-radius: var(--radius-lg);
   background:
     radial-gradient(
       circle at 100% 0%,
@@ -341,7 +341,7 @@
 
   .tournamentsHero {
     padding: 24px;
-    border-radius: 22px;
+    border-radius: var(--radius-lg);
   }
 
   .tournamentsHeroStats > div {
