@@ -775,7 +775,24 @@ export const TopNav = () => {
         aria-label="Go to Atomic Puzzles home page"
         aria-current={pathname === "/" ? "page" : undefined}
       >
-        <img src={appAssetPath("/favicon.ico")} alt="Atomic Puzzles" width="24" height="24" />
+        <img
+          className="brandMarkDark"
+          src={appAssetPath("/favicon.ico")}
+          alt=""
+          width="30"
+          height="30"
+          aria-hidden="true"
+        />
+        <span className="brandMark brandMarkLight" aria-hidden="true">
+          <svg viewBox="0 0 48 48" focusable="false">
+            <ellipse cx="24" cy="24" rx="21" ry="8.5" transform="rotate(45 24 24)" />
+            <ellipse cx="24" cy="24" rx="21" ry="8.5" transform="rotate(-45 24 24)" />
+            <circle className="brandMarkNucleus" cx="24" cy="24" r="5.5" />
+            <circle className="brandMarkElectron" cx="8" cy="7" r="2.4" />
+            <circle className="brandMarkElectron" cx="39" cy="15" r="2.4" />
+            <circle className="brandMarkElectron" cx="29" cy="40" r="2.4" />
+          </svg>
+        </span>
         <span>Atomic Puzzles</span>
       </Link>
       <button
@@ -1177,7 +1194,7 @@ export const TopNav = () => {
           {settingsOpen ? (
             <div className="navSettingsMenu" role="menu" aria-label="Site settings">
               <div className="navSettingsSection">
-                <span className="navSettingsLabel">Theme</span>
+                <span className="navSettingsLabel">Appearance</span>
                 <div className="navThemeToggle" role="group" aria-label="Color theme">
                   <button
                     type="button"
@@ -1189,6 +1206,7 @@ export const TopNav = () => {
                       <FontAwesomeIcon icon={faMoon} />
                     </span>
                     <span>Dark</span>
+                    <FontAwesomeIcon className="navThemeCheck" icon={faCheck} aria-hidden="true" />
                   </button>
                   <button
                     type="button"
@@ -1200,6 +1218,7 @@ export const TopNav = () => {
                       <FontAwesomeIcon icon={faSun} />
                     </span>
                     <span>Light</span>
+                    <FontAwesomeIcon className="navThemeCheck" icon={faCheck} aria-hidden="true" />
                   </button>
                 </div>
               </div>

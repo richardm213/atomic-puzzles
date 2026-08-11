@@ -278,6 +278,12 @@
   transition: transform 0.2s;
 }
 
+.profileTrophy img[src*="atomic-openings-championship"],
+.profileTrophyCaseCard img[src*="atomic-openings-championship"] {
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+}
+
 .profileTrophy:hover img,
 .profileTrophy:focus-within img {
   transform: translateY(-3px);

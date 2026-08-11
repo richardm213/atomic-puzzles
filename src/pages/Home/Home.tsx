@@ -80,10 +80,22 @@ export const HomePage = () => {
             </p>
           </Link>
 
-          <Link className="homeSpotlightCard homePuzzleLeaderboardShortcut" to="/solve/leaderboard">
-            <span>Puzzles</span>
-            <h2>Puzzle leaderboard</h2>
-            <p>Points, correct solves, misses, and total attempts.</p>
+          <Link
+            className="homeSpotlightCard homeTrophyShortcut homeAocShortcut"
+            to="/tournaments/$tournamentId"
+            params={{ tournamentId: "aoc2026" }}
+          >
+            <span>Championship</span>
+            <h2>Atomic Openings Championship</h2>
+            <p>jakestatefarm won the 2026 Atomic Openings Championship.</p>
+            <img
+              src={appAssetPath("/images/awc-trophies/atomic-openings-championship.png")}
+              alt=""
+              width="140"
+              height="210"
+              loading="lazy"
+              decoding="async"
+            />
           </Link>
 
           <Link
@@ -104,22 +116,10 @@ export const HomePage = () => {
             />
           </Link>
 
-          <Link
-            className="homeSpotlightCard homeTrophyShortcut homeAwcShortcut"
-            to="/tournaments/$tournamentId"
-            params={{ tournamentId: "awc2025" }}
-          >
-            <span>Tournament</span>
-            <h2>AWC 2025</h2>
-            <p>Bracket from last year's controversial World Championship.</p>
-            <img
-              src={appAssetPath("/images/awc-trophies/awc.png")}
-              alt=""
-              width="140"
-              height="140"
-              loading="lazy"
-              decoding="async"
-            />
+          <Link className="homeSpotlightCard homePuzzleLeaderboardShortcut" to="/solve/leaderboard">
+            <span>Puzzles</span>
+            <h2>Puzzle leaderboard</h2>
+            <p>Points, correct solves, misses, and total attempts.</p>
           </Link>
 
           <Link

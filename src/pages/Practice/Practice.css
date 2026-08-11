@@ -180,7 +180,7 @@
 }
 
 .practiceClock.expired strong {
-  color: #ff7272;
+  color: var(--color-danger);
 }
 
 .practiceClock.off strong {
@@ -422,7 +422,7 @@
 }
 
 .practiceRandomPlayerError {
-  color: #fca5a5;
+  color: var(--color-danger);
   font-size: 11px;
   font-weight: 700;
 }

@@ -13,6 +13,16 @@ describe("tournament match modes", () => {
     expect(getTournamentMeta("ahc2026")?.matchMode).toBe("hyperbullet");
     expect(getTournamentMeta("awc2025")?.matchMode).toBeUndefined();
   });
+
+  it("publishes the 2026 Atomic Openings Championship with its own trophy", () => {
+    expect(getTournamentMeta("aoc2026")).toEqual(
+      expect.objectContaining({
+        title: "AOC 2026",
+        headingTitle: "Atomic Openings Championship 2026",
+        trophyAssetPath: "/images/awc-trophies/atomic-openings-championship.png",
+      }),
+    );
+  });
 });
 
 const match = (overrides: Partial<TournamentMatch>): TournamentMatch => ({

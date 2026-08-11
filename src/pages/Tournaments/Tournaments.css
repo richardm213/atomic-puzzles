@@ -224,6 +224,11 @@
   filter: drop-shadow(0 10px 12px color-mix(in srgb, black 30%, transparent));
 }
 
+.tournamentCardArt img[src*="atomic-openings-championship"] {
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+}
+
 .tournamentCard.isSpotlight .tournamentCardArt {
   top: 24px;
   right: 24px;

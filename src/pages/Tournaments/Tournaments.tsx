@@ -17,6 +17,7 @@ import { normalizeUsername } from "../../utils/playerNames";
 
 const tournamentSeriesName = (tournament: TournamentMeta): string => {
   if (tournament.id.startsWith("ahc")) return "Atomic Hyper Championship";
+  if (tournament.id.startsWith("aoc")) return "Atomic Openings Championship";
   if (tournament.id.startsWith("ccac")) return "Chess.com Atomic Championship";
   return "Atomic World Championship";
 };

@@ -466,18 +466,12 @@
 .homeAtomicHyperShortcut {
   --home-card-accent: #f8c85a;
 
-  padding-right: 156px;
+  padding-right: 182px;
   background:
     radial-gradient(
-      circle at 88% 48%,
-      color-mix(in srgb, #f8c85a 25%, transparent),
-      transparent 29%
-    ),
-    radial-gradient(
-      circle at 88% 48%,
-      transparent 0 32%,
-      color-mix(in srgb, #f8c85a 9%, transparent) 32.5% 33%,
-      transparent 33.5%
+      ellipse at 88% 52%,
+      color-mix(in srgb, #f8c85a 22%, transparent),
+      transparent 38%
     ),
     linear-gradient(128deg, color-mix(in srgb, #f8c85a 11%, transparent), transparent 50%),
     linear-gradient(
@@ -509,23 +503,21 @@
 }
 
 .homeAtomicHyperShortcut > img {
-  width: min(34%, 112px);
-  max-width: min(34%, 112px);
-  max-height: calc(100% - 22px);
+  right: 20px;
+  top: 50%;
+  bottom: auto;
+  width: min(34%, 132px);
+  max-width: min(34%, 132px);
+  max-height: calc(100% - 20px);
+  transform: translateY(-50%);
 }
 
 .homeAtomicHyperShortcut:hover {
   background:
     radial-gradient(
-      circle at 88% 48%,
-      color-mix(in srgb, #f8c85a 31%, transparent),
-      transparent 29%
-    ),
-    radial-gradient(
-      circle at 88% 48%,
-      transparent 0 32%,
-      color-mix(in srgb, #f8c85a 13%, transparent) 32.5% 33%,
-      transparent 33.5%
+      ellipse at 88% 52%,
+      color-mix(in srgb, #f8c85a 28%, transparent),
+      transparent 38%
     ),
     linear-gradient(128deg, color-mix(in srgb, #f8c85a 15%, transparent), transparent 50%),
     linear-gradient(
@@ -536,7 +528,11 @@
     var(--color-surface-elevated-strong);
 }
 
-.homeAwcShortcut {
+.homeAtomicHyperShortcut:hover > img {
+  transform: translateY(calc(-50% - 4px)) rotate(1deg);
+}
+
+.homeAocShortcut {
   --home-card-accent: #e7a93d;
 
   background:
@@ -549,7 +545,15 @@
     var(--color-panel);
 }
 
-.homeAwcShortcut:hover {
+.homeAocShortcut > img {
+  width: min(34%, 112px);
+  height: calc(100% - 24px);
+  max-width: min(34%, 112px);
+  max-height: calc(100% - 24px);
+  object-fit: cover;
+}
+
+.homeAocShortcut:hover {
   background:
     radial-gradient(
       circle at 87% 20%,
@@ -1037,16 +1041,18 @@
 
   .homeAtomicHyperShortcut {
     min-height: 220px;
-    padding-right: 116px;
+    padding-right: 164px;
   }
 
   .homeAtomicHyperShortcut > img {
     position: absolute;
-    right: 14px;
-    bottom: 14px;
-    width: 76px;
-    max-width: 76px;
-    max-height: calc(100% - 28px);
+    right: 16px;
+    top: 50%;
+    bottom: auto;
+    width: 124px;
+    max-width: 124px;
+    max-height: calc(100% - 20px);
+    transform: translateY(-50%);
   }
 }
 

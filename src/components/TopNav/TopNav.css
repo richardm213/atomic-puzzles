@@ -61,7 +61,24 @@
   white-space: nowrap;
 }
 
-.homeBrand img {
+.brandMark {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  border: 1px solid var(--brand-mark-border);
+  border-radius: 9px;
+  background: var(--brand-mark-bg);
+  color: var(--brand-mark-color);
+  box-shadow: var(--brand-mark-shadow);
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+.brandMarkDark {
   width: 30px;
   height: 30px;
   flex: 0 0 30px;
@@ -69,8 +86,41 @@
   transition: filter 140ms ease;
 }
 
-.homeBrand:hover img,
-.homeBrand:focus-visible img {
+.brandMarkLight {
+  display: none;
+}
+
+:root[data-theme="light"] .brandMarkDark {
+  display: none;
+}
+
+:root[data-theme="light"] .brandMarkLight {
+  display: inline-grid;
+}
+
+.brandMark svg {
+  width: 26px;
+  height: 26px;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.25;
+  stroke-linecap: round;
+}
+
+.brandMarkNucleus,
+.brandMarkElectron {
+  fill: currentColor;
+  stroke: none;
+}
+
+.homeBrand:hover .brandMark,
+.homeBrand:focus-visible .brandMark {
+  transform: translateY(-1px);
+}
+
+.homeBrand:hover .brandMarkDark,
+.homeBrand:focus-visible .brandMarkDark {
   filter: brightness(1.12) saturate(1.08);
 }
 
@@ -319,9 +369,9 @@
   top: calc(100% + 10px);
   right: 0;
   z-index: 41;
-  min-width: 220px;
-  padding: 14px;
-  border-radius: 14px;
+  min-width: 232px;
+  padding: 10px;
+  border-radius: 12px;
 }
 
 .navSettingsSection + .navSettingsSection {
@@ -332,10 +382,10 @@
 
 .navSettingsLabel {
   display: block;
-  margin-bottom: 8px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  margin: 2px 4px 8px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--color-subtle);
 }
@@ -361,10 +411,10 @@
 .navThemeToggle {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-  padding: 4px;
+  gap: 4px;
+  padding: 3px;
   border: 1px solid var(--color-border);
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--color-surface-inset);
 }
 
@@ -380,17 +430,17 @@
 .navThemeToggle button {
   position: relative;
   min-width: 0;
-  min-height: 48px;
-  padding: 7px 8px;
+  min-height: 40px;
+  padding: 0 9px;
   border: 1px solid transparent;
-  border-radius: 9px;
+  border-radius: 7px;
   background: transparent;
   color: var(--color-muted);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 780;
   transition:
     color 140ms ease,
     background 140ms ease,
@@ -401,7 +451,7 @@
 
 .navThemeToggle button:hover {
   color: var(--color-heading);
-  background: color-mix(in srgb, var(--color-panel-strong) 68%, transparent);
+  background: color-mix(in srgb, var(--color-panel-strong) 74%, transparent);
 }
 
 .navThemeToggle button:active {
@@ -414,33 +464,45 @@
 }
 
 .navThemeToggle button.active {
-  background: var(--color-panel-strong);
-  border-color: color-mix(in srgb, var(--color-primary) 48%, var(--color-border-strong));
+  background: color-mix(in srgb, var(--color-primary) 14%, var(--color-panel-strong));
+  border-color: color-mix(in srgb, var(--color-primary) 44%, var(--color-border));
   color: var(--color-heading);
-  box-shadow:
-    0 1px 2px color-mix(in srgb, var(--color-panel-deep) 18%, transparent),
-    0 5px 14px color-mix(in srgb, var(--color-primary) 12%, transparent);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--color-panel-deep) 14%, transparent);
 }
 
 .navThemeIcon {
-  width: 27px;
-  height: 27px;
-  flex: 0 0 27px;
-  border-radius: 8px;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .navThemeIconDark {
-  color: #a5b4fc;
-  background: rgba(79, 70, 229, 0.16);
+  color: color-mix(in srgb, var(--color-primary-soft) 82%, var(--color-heading));
 }
 
 .navThemeIconLight {
-  color: #b7791f;
-  background: rgba(245, 158, 11, 0.16);
+  color: var(--color-accent-warm-strong);
+}
+
+.navThemeCheck {
+  width: 10px;
+  margin-left: auto;
+  color: var(--color-primary);
+  font-size: 10px;
+  opacity: 0;
+  transform: scale(0.72);
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease;
+}
+
+.navThemeToggle button.active .navThemeCheck {
+  opacity: 1;
+  transform: scale(1);
 }
 
 .navSettingsMenu select {

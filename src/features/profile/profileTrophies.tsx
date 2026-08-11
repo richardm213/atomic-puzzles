@@ -27,6 +27,7 @@ const rankingTrophyAssets = {
   top10: appAssetPath("/images/lichess-trophies/silver-cup-2.png"),
 };
 const championshipTrophyAssets = {
+  atomicOpenings: appAssetPath("/images/awc-trophies/atomic-openings-championship.png"),
   awc: appAssetPath("/images/awc-trophies/awc.png"),
   chesscomAtomic: appAssetPath("/images/awc-trophies/chesscomatomic.png"),
 };
@@ -85,6 +86,17 @@ const championshipTrophiesByUsername: Record<string, ProfileTrophy[]> = {
     },
   ],
   jakestatefarm: [
+    {
+      key: "atomic-openings-2026",
+      label: "AOC 2026",
+      title: "2026 Atomic Openings Champion",
+      imageSrc: championshipTrophyAssets.atomicOpenings,
+      href: appAssetPath("/tournaments/aoc2026"),
+      dateLabel: "Jul 2026",
+      dateValue: "2026-07-31",
+      placementLabel: "Champion",
+      prestige: 970,
+    },
     {
       key: "chesscom-atomic-2025",
       label: "Chess.com",
@@ -183,6 +195,45 @@ export const sortProfileTrophies = (
       new Date(`${left.dateValue}T00:00:00Z`).getTime();
     return dateDifference !== 0 ? dateDifference : left.title.localeCompare(right.title);
   });
+
+const sortChampionshipTrophiesForHeader = (trophies: ProfileTrophy[]): ProfileTrophy[] =>
+  [...trophies].sort((left, right) => {
+    const leftIsAwc = left.key.startsWith("awc-");
+    const rightIsAwc = right.key.startsWith("awc-");
+    if (leftIsAwc !== rightIsAwc) return leftIsAwc ? -1 : 1;
+
+    const dateDifference =
+      new Date(`${right.dateValue}T00:00:00Z`).getTime() -
+      new Date(`${left.dateValue}T00:00:00Z`).getTime();
+    return dateDifference !== 0 ? dateDifference : left.title.localeCompare(right.title);
+  });
+
+export const getProfileHeaderTrophies = ({
+  championshipTrophies,
+  rankingTrophies,
+  currentMonthKey,
+  limit = 3,
+}: {
+  championshipTrophies: ProfileTrophy[];
+  rankingTrophies: ProfileTrophy[];
+  currentMonthKey: string;
+  limit?: number;
+}): ProfileTrophy[] => {
+  const currentRankingTrophies = rankingTrophies.filter(
+    (trophy) => trophy.dateLabel === currentMonthKey,
+  );
+  const orderedChampionshipTrophies = sortChampionshipTrophiesForHeader(championshipTrophies);
+
+  if (!currentRankingTrophies.length) {
+    return orderedChampionshipTrophies.slice(0, limit);
+  }
+
+  const primaryChampionship = orderedChampionshipTrophies.slice(0, 1);
+  return sortProfileTrophies([...primaryChampionship, ...currentRankingTrophies], "prestige").slice(
+    0,
+    limit,
+  );
+};
 
 const isExternalHref = (href: string): boolean => /^https?:\/\//i.test(String(href || "").trim());
 const getTrophyHoverLabel = (trophy: ProfileTrophy): string =>

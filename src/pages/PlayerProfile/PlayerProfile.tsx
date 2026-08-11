@@ -53,6 +53,7 @@ import {
 import {
   getChampionshipTrophies,
   getCurrentMonthKey,
+  getProfileHeaderTrophies,
   getRankingTrophies,
   isTrophyCaseSort,
   ProfileTrophyCaseCard,
@@ -683,13 +684,11 @@ export const PlayerProfilePage = ({
   const currentMonthKey = getCurrentMonthKey();
   const visibleProfileTrophies = useMemo(
     () =>
-      sortProfileTrophies(
-        [
-          ...championshipTrophies,
-          ...rankingTrophies.filter((trophy) => trophy.dateLabel === currentMonthKey),
-        ],
-        "prestige",
-      ).slice(0, 3),
+      getProfileHeaderTrophies({
+        championshipTrophies,
+        rankingTrophies,
+        currentMonthKey,
+      }),
     [championshipTrophies, currentMonthKey, rankingTrophies],
   );
   const hasVisibleProfileTrophies = visibleProfileTrophies.length > 0;

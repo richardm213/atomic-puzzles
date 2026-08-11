@@ -89,6 +89,7 @@ type CsvRow = Record<string, string>;
 
 const trophyAssetPaths = {
   ahc: "/images/awc-trophies/atomic-hyper-championship.png",
+  aoc: "/images/awc-trophies/atomic-openings-championship.png",
   awc: "/images/awc-trophies/awc.png",
   ccac: "/images/awc-trophies/chesscomatomic.png",
 } as const;
@@ -107,6 +108,13 @@ const awcTournament = (year: number): TournamentMeta =>
   });
 
 const tournaments: TournamentMeta[] = [
+  availableTournament({
+    id: "aoc2026",
+    title: "AOC 2026",
+    headingTitle: "Atomic Openings Championship 2026",
+    year: 2026,
+    trophyAssetPath: trophyAssetPaths.aoc,
+  }),
   availableTournament({
     id: "ahc2026",
     title: "AHC 2026",

@@ -55,6 +55,12 @@
   pointer-events: none;
 }
 
+.tournamentPageTrophy[src*="atomic-openings-championship"],
+.tournamentMatchTrophy[src*="atomic-openings-championship"] {
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+}
+
 .tournamentBackLink {
   width: fit-content;
   color: var(--color-muted);

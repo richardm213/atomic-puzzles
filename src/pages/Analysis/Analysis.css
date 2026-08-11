@@ -1367,9 +1367,9 @@ body:has(.analysisPage),
 }
 
 .analysisExplorerMove {
-  color: #ffffff;
+  color: var(--color-heading);
   font: inherit;
-  font-weight: inherit;
+  font-weight: 850;
 }
 
 .analysisPerformanceCell {
@@ -1402,21 +1402,22 @@ body:has(.analysisPage),
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  color: var(--color-panel-deep);
+  color: #17305d;
   font-size: 11px;
   font-weight: 900;
   line-height: 1;
-  text-shadow: 0 1px 0 color-mix(in srgb, white 18%, transparent);
+  text-shadow: none;
   white-space: nowrap;
 }
 
 .analysisWinRateBar .white {
   background: #dbeafe;
+  color: #17305d;
 }
 
 .analysisWinRateBar .draw {
   background: #94a3b8;
-  color: #0f172a;
+  color: #10233f;
 }
 
 .analysisWinRateBar .black {
