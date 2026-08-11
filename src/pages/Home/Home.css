@@ -114,7 +114,7 @@
 .homeSpotlightGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
+  gap: 16px;
 }
 
 .homeSpotlightCard {
@@ -122,49 +122,96 @@
 
   position: relative;
   min-width: 0;
-  min-height: 210px;
+  min-height: 224px;
   display: grid;
   align-content: start;
-  gap: 12px;
+  gap: 11px;
   color: inherit;
-  padding: 24px;
-  border-radius: var(--radius-lg);
-  border-color: color-mix(in srgb, var(--home-card-accent) 24%, var(--color-border));
+  padding: 27px;
+  border-radius: 18px;
+  border-color: color-mix(in srgb, var(--home-card-accent) 20%, var(--color-border));
   overflow: hidden;
   text-decoration: none;
   box-shadow:
-    inset 0 3px 0 color-mix(in srgb, var(--home-card-accent) 48%, transparent),
-    var(--shadow-soft);
+    inset 0 1px 0 color-mix(in srgb, white 7%, transparent),
+    0 1px 0 color-mix(in srgb, var(--home-card-accent) 22%, transparent),
+    0 14px 34px color-mix(in srgb, var(--color-panel-deep) 30%, transparent);
   transition:
-    border-color 160ms ease,
-    box-shadow 160ms ease,
-    transform 160ms ease,
-    background 160ms ease;
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    transform 220ms ease,
+    background 220ms ease;
 }
 
 .homeSpotlightCard:hover {
-  transform: translateY(-2px);
-  border-color: color-mix(in srgb, var(--home-card-accent) 48%, var(--color-border));
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--home-card-accent) 42%, var(--color-border));
   box-shadow:
-    inset 0 3px 0 color-mix(in srgb, var(--home-card-accent) 72%, transparent),
-    0 18px 38px color-mix(in srgb, var(--home-card-accent) 12%, transparent),
-    var(--shadow-soft);
+    inset 0 1px 0 color-mix(in srgb, white 11%, transparent),
+    0 1px 0 color-mix(in srgb, var(--home-card-accent) 32%, transparent),
+    0 22px 48px color-mix(in srgb, var(--home-card-accent) 12%, transparent),
+    0 18px 40px color-mix(in srgb, var(--color-panel-deep) 34%, transparent);
 }
 
 .homeSpotlightCard > span {
   color: color-mix(in srgb, var(--home-card-accent) 76%, var(--color-heading));
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.1em;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.13em;
   text-transform: uppercase;
 }
 
 .homeSpotlightCard > h2 {
   margin: 0;
   color: var(--color-heading);
-  font-size: clamp(20px, 2vw, 28px);
-  line-height: 1.12;
+  max-width: 19ch;
+  font-size: clamp(21px, 2vw, 27px);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
   overflow-wrap: anywhere;
+}
+
+.homeSpotlightCard > p {
+  max-width: 48ch;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.homeSpotlightCard:nth-child(-n + 2) {
+  min-height: 242px;
+}
+
+.homeSubmitPuzzleShortcut::before,
+.homePuzzleLeaderboardShortcut::before,
+.homePracticeShortcut::before,
+.homeH2HShortcut::after,
+.homeRecentMatchesShortcut::before,
+.homeCommentsShortcut::before,
+.homeCommentsShortcut::after,
+.homePuzzleSetsShortcut::before {
+  transition:
+    transform 240ms ease,
+    box-shadow 240ms ease;
+}
+
+.homeSubmitPuzzleShortcut:hover::before,
+.homePuzzleLeaderboardShortcut:hover::before,
+.homePracticeShortcut:hover::before,
+.homeRecentMatchesShortcut:hover::before,
+.homePuzzleSetsShortcut:hover::before {
+  transform: translateY(-3px) rotate(0deg);
+}
+
+.homeH2HShortcut:hover::after {
+  transform: translateY(calc(-50% - 3px)) rotate(-2deg);
+}
+
+.homeCommentsShortcut:hover::before {
+  transform: translateY(-3px) rotate(1deg);
+}
+
+.homeCommentsShortcut:hover::after {
+  transform: translateY(-1px) rotate(-2deg);
 }
 
 .homeSubmitPuzzleShortcut {
@@ -198,9 +245,9 @@
 .homeSubmitPuzzleShortcut::before {
   content: "";
   position: absolute;
-  right: 24px;
-  top: 29px;
-  width: 102px;
+  right: 29px;
+  top: 44px;
+  width: 100px;
   aspect-ratio: 1;
   border: 1px solid color-mix(in srgb, var(--color-accent-warm) 48%, var(--color-border));
   border-radius: 12px;
@@ -213,7 +260,7 @@
     )
     0 0 / 50% 50%;
   box-shadow:
-    10px 12px 0 color-mix(in srgb, var(--color-cyan) 10%, transparent),
+    9px 10px 0 color-mix(in srgb, var(--color-cyan) 11%, var(--color-panel)),
     0 20px 34px color-mix(in srgb, var(--color-panel-deep) 42%, transparent);
   transform: rotate(5deg);
 }
@@ -221,8 +268,8 @@
 .homeSubmitPuzzleShortcut::after {
   content: "+";
   position: absolute;
-  right: 13px;
-  top: 17px;
+  right: 18px;
+  top: 31px;
   width: 38px;
   height: 38px;
   display: grid;
@@ -291,18 +338,18 @@
   background:
     linear-gradient(
       135deg,
-      color-mix(in srgb, var(--color-primary) 24%, transparent),
+      color-mix(in srgb, var(--color-primary) 18%, transparent),
       transparent 52%
     ),
     repeating-linear-gradient(
       90deg,
       transparent 0 18px,
-      color-mix(in srgb, var(--color-cyan) 8%, transparent) 18px 19px
+      color-mix(in srgb, var(--color-cyan) 5%, transparent) 18px 19px
     ),
     repeating-linear-gradient(
       0deg,
       transparent 0 18px,
-      color-mix(in srgb, var(--color-primary) 8%, transparent) 18px 19px
+      color-mix(in srgb, var(--color-primary) 5%, transparent) 18px 19px
     ),
     var(--color-panel);
 }
@@ -419,35 +466,46 @@
 .homeAtomicHyperShortcut {
   --home-card-accent: #f8c85a;
 
+  padding-right: 156px;
   background:
-    conic-gradient(
-      from 232deg at 88% 24%,
-      color-mix(in srgb, #f8c85a 28%, transparent),
-      transparent 18%,
-      color-mix(in srgb, var(--color-cyan) 16%, transparent) 35%,
-      transparent 52%,
-      color-mix(in srgb, #f8c85a 18%, transparent) 72%,
-      transparent
+    radial-gradient(
+      circle at 88% 48%,
+      color-mix(in srgb, #f8c85a 25%, transparent),
+      transparent 29%
     ),
-    linear-gradient(112deg, color-mix(in srgb, #f8c85a 14%, transparent), transparent 42%),
+    radial-gradient(
+      circle at 88% 48%,
+      transparent 0 32%,
+      color-mix(in srgb, #f8c85a 9%, transparent) 32.5% 33%,
+      transparent 33.5%
+    ),
+    linear-gradient(128deg, color-mix(in srgb, #f8c85a 11%, transparent), transparent 50%),
     linear-gradient(
-      162deg,
-      transparent 45%,
-      color-mix(in srgb, var(--color-primary) 14%, transparent)
+      320deg,
+      color-mix(in srgb, var(--color-primary) 11%, transparent),
+      transparent 47%
     ),
     var(--color-panel);
 }
 
 .homeTrophyShortcut > img {
   position: absolute;
-  right: 18px;
-  bottom: 14px;
+  right: 22px;
+  bottom: 18px;
   width: auto;
   max-width: min(28%, 126px);
   height: auto;
   max-height: calc(100% - 32px);
   object-fit: contain;
-  filter: drop-shadow(0 18px 22px color-mix(in srgb, black 26%, transparent));
+  filter: drop-shadow(0 18px 24px color-mix(in srgb, black 30%, transparent));
+  transition:
+    transform 260ms ease,
+    filter 260ms ease;
+}
+
+.homeTrophyShortcut:hover > img {
+  filter: drop-shadow(0 23px 28px color-mix(in srgb, black 34%, transparent));
+  transform: translateY(-4px) rotate(1deg);
 }
 
 .homeAtomicHyperShortcut > img {
@@ -458,20 +516,22 @@
 
 .homeAtomicHyperShortcut:hover {
   background:
-    conic-gradient(
-      from 232deg at 88% 24%,
-      color-mix(in srgb, #f8c85a 34%, transparent),
-      transparent 18%,
-      color-mix(in srgb, var(--color-cyan) 20%, transparent) 35%,
-      transparent 52%,
-      color-mix(in srgb, #f8c85a 22%, transparent) 72%,
-      transparent
+    radial-gradient(
+      circle at 88% 48%,
+      color-mix(in srgb, #f8c85a 31%, transparent),
+      transparent 29%
     ),
-    linear-gradient(112deg, color-mix(in srgb, #f8c85a 18%, transparent), transparent 42%),
+    radial-gradient(
+      circle at 88% 48%,
+      transparent 0 32%,
+      color-mix(in srgb, #f8c85a 13%, transparent) 32.5% 33%,
+      transparent 33.5%
+    ),
+    linear-gradient(128deg, color-mix(in srgb, #f8c85a 15%, transparent), transparent 50%),
     linear-gradient(
-      162deg,
-      transparent 45%,
-      color-mix(in srgb, var(--color-primary) 18%, transparent)
+      320deg,
+      color-mix(in srgb, var(--color-primary) 15%, transparent),
+      transparent 47%
     ),
     var(--color-surface-elevated-strong);
 }
@@ -503,34 +563,70 @@
 .homePracticeShortcut {
   --home-card-accent: var(--color-cyan);
 
+  padding-right: 158px;
   background:
-    conic-gradient(
-      from 218deg at 86% 18%,
-      color-mix(in srgb, var(--color-cyan) 18%, transparent),
-      transparent 24%,
-      color-mix(in srgb, var(--color-primary) 14%, transparent) 44%,
-      transparent 66%,
-      color-mix(in srgb, var(--color-cyan) 12%, transparent) 84%,
-      transparent
+    radial-gradient(
+      circle at 84% 48%,
+      color-mix(in srgb, var(--color-cyan) 20%, transparent),
+      transparent 31%
     ),
-    linear-gradient(142deg, color-mix(in srgb, var(--color-cyan) 9%, transparent), transparent 58%),
+    linear-gradient(
+      142deg,
+      color-mix(in srgb, var(--color-cyan) 10%, transparent),
+      transparent 58%
+    ),
     var(--color-panel);
+}
+
+.homePracticeShortcut::before {
+  content: "";
+  position: absolute;
+  right: 28px;
+  top: 47px;
+  width: 96px;
+  height: 116px;
+  border: 1px solid color-mix(in srgb, var(--color-cyan) 42%, var(--color-border));
+  border-radius: 9px 16px 16px 9px;
+  background:
+    radial-gradient(circle, var(--color-cyan-bright) 0 3px, transparent 3.5px) 20px 19px / 100% 27px
+      repeat-y,
+    linear-gradient(color-mix(in srgb, var(--color-primary-pale) 30%, transparent) 0 0) 34px 20px /
+      42px 2px repeat-y,
+    color-mix(in srgb, var(--color-panel-strong) 92%, transparent);
+  box-shadow:
+    -9px 8px 0 color-mix(in srgb, var(--color-primary) 12%, var(--color-panel)),
+    0 19px 30px color-mix(in srgb, var(--color-panel-deep) 40%, transparent);
+  transform: rotate(4deg);
+}
+
+.homePracticeShortcut::after {
+  content: "100";
+  position: absolute;
+  right: 17px;
+  top: 32px;
+  min-width: 34px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--color-panel);
+  border-radius: 999px;
+  background: var(--color-cyan);
+  color: white;
+  font-size: 10px;
+  font-weight: 900;
+  box-shadow: 0 8px 18px color-mix(in srgb, black 24%, transparent);
 }
 
 .homePracticeShortcut:hover {
   background:
-    conic-gradient(
-      from 218deg at 86% 18%,
-      color-mix(in srgb, var(--color-cyan) 24%, transparent),
-      transparent 24%,
-      color-mix(in srgb, var(--color-primary) 18%, transparent) 44%,
-      transparent 66%,
-      color-mix(in srgb, var(--color-cyan) 16%, transparent) 84%,
-      transparent
+    radial-gradient(
+      circle at 84% 48%,
+      color-mix(in srgb, var(--color-cyan) 27%, transparent),
+      transparent 31%
     ),
     linear-gradient(
       142deg,
-      color-mix(in srgb, var(--color-cyan) 13%, transparent),
+      color-mix(in srgb, var(--color-cyan) 15%, transparent),
       transparent 58%
     ),
     var(--color-surface-elevated-strong);
