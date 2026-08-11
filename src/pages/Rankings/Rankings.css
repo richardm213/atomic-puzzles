@@ -303,6 +303,102 @@
   outline-offset: 2px;
 }
 
+/* A restrained polish pass for the rankings route only. Shared rankings styles
+   remain unchanged for profiles, users, leaderboards, and H2H pages. */
+.rankingsLeaderboardPanel .rankingsControls {
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-surface-soft);
+}
+
+.rankingsLeaderboardPanel .rankingsControls select {
+  background: var(--color-surface-elevated-strong);
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.rankingsLeaderboardPanel .rankingsControls select:hover {
+  border-color: color-mix(in srgb, var(--color-primary-soft) 42%, var(--color-input-border));
+}
+
+.rankingsLeaderboardPanel .monthStepButton {
+  background: var(--color-surface-soft);
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 100ms ease;
+}
+
+.rankingsLeaderboardPanel .monthStepButton:hover:not(:disabled) {
+  background: var(--color-surface-inset-strong);
+}
+
+.rankingsLeaderboardPanel .monthStepButton:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.rankingsLeaderboardPanel .currentMonthLabel {
+  color: var(--color-heading);
+  font-weight: 800;
+}
+
+.rankingsLeaderboardPanel .rankingsTableWrap {
+  border: 1px solid var(--color-border);
+  background: var(--color-panel-strong);
+}
+
+.rankingsLeaderboardPanel .rankingsTable {
+  border: 0;
+}
+
+.rankingsLeaderboardPanel .rankingsTable th,
+.rankingsLeaderboardPanel .rankingsTable td {
+  padding-block: 11px;
+}
+
+.rankingsLeaderboardPanel .rankingsTable tbody tr {
+  transition: background-color 150ms ease;
+}
+
+.rankingsLeaderboardPanel .rankingsTable tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.rankingsLeaderboardPanel .rankingsTable :is(th, td):nth-child(n + 3) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.rankingsLeaderboardPanel .sortButton {
+  color: inherit;
+  font-weight: inherit;
+  transition: color 150ms ease;
+}
+
+.rankingsLeaderboardPanel .sortButton.active {
+  color: var(--color-heading);
+}
+
+.rankingsLeaderboardPanel .rankingLink {
+  font-weight: 700;
+  text-underline-offset: 3px;
+}
+
+.rankingsLeaderboardPanel .rankingOpeningTag:hover {
+  border-color: color-mix(in srgb, var(--color-primary-soft) 44%, var(--color-border));
+  background: var(--color-surface-inset-strong);
+}
+
+.rankingsLeaderboardPanel .rankingOpeningTag.active {
+  border-color: color-mix(in srgb, var(--color-primary-soft) 60%, var(--color-border));
+  background: var(--color-accent-soft-bg-strong);
+  color: var(--color-primary-pale);
+}
+
 @media (max-width: 640px) {
   .rankingsPage {
     padding: max(16px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right))
@@ -366,5 +462,9 @@
   .rankingsWolfrandomTooltip {
     right: auto;
     left: 0;
+  }
+
+  .rankingsLeaderboardPanel .rankingsControls {
+    padding: 12px;
   }
 }

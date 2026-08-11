@@ -157,7 +157,6 @@
 .navDropdown.isActive > .navDropdownTrigger {
   background: color-mix(in srgb, var(--color-primary) 15%, transparent);
   color: var(--color-heading);
-  box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--color-primary-soft) 74%, transparent);
 }
 
 .navDropdown {

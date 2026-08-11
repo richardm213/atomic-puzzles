@@ -374,7 +374,7 @@ const LeaderboardView = () => {
         description="Browse monthly atomic chess rankings for blitz, bullet, and hyperbullet, with merged aliases and rating eligibility rules."
         path="/rankings"
       />
-      <div className="panel rankingsPanel">
+      <div className="panel rankingsPanel rankingsLeaderboardPanel">
         <h1>Monthly Player Rankings</h1>
         <div className="controls rankingsControls">
           <label htmlFor="year-select">
@@ -512,10 +512,19 @@ const LeaderboardView = () => {
               <thead>
                 <tr>
                   {rankingColumns.map((column) => (
-                    <th key={column.key}>
+                    <th
+                      key={column.key}
+                      aria-sort={
+                        sortKey === column.key
+                          ? sortDirection === "asc"
+                            ? "ascending"
+                            : "descending"
+                          : "none"
+                      }
+                    >
                       <button
                         type="button"
-                        className="sortButton"
+                        className={`sortButton${sortKey === column.key ? " active" : ""}`}
                         onClick={() => handleSort(column.key)}
                       >
                         {column.label} {sortIndicator(sortKey, sortDirection, column.key)}
@@ -570,8 +579,8 @@ const LeaderboardView = () => {
                           ) : null}
                         </div>
                       </td>
-                      <td>{player.score}</td>
-                      <td>{player.rd}</td>
+                      <td>{player.score.toFixed(1)}</td>
+                      <td>{player.rd.toFixed(1)}</td>
                       <td>{player.games ?? "—"}</td>
                     </tr>
                   );

@@ -1,5 +1,19 @@
 # Repository Instructions
 
+## How instructions are organized
+
+- Keep this root `AGENTS.md` limited to rules that apply broadly or must always be discovered.
+- Put detailed, reusable playbooks in `docs/` and link them from the relevant trigger here.
+- Use a nested `AGENTS.md` only when a stable rule applies exclusively to one directory subtree.
+- Keep one-off task requirements in the task description or working notes, not in permanent repository instructions.
+- Keep implementation-specific rationale near the code only when future maintainers need it to understand the implementation.
+
+## UI design protocol
+
+- Before any meaningful UI design or redesign, read and follow `docs/design-protocol.md`.
+- Never add eyebrow labels or mini-titles above page headings.
+- Never add descriptive subtitles that merely restate the page title or visible controls.
+
 ## Tournament bracket result updates
 
 Follow this playbook whenever a user asks to copy tournament results from a forum or announcement into a bracket and link the matches.
