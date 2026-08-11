@@ -1,27 +1,32 @@
 .puzzlePage {
-  grid-template-columns: minmax(280px, 23rem) minmax(0, 31.5rem);
-  gap: clamp(14px, 2vw, 24px);
+  --puzzle-gold: color-mix(in srgb, var(--color-accent-warm) 76%, var(--color-heading));
+  grid-template-columns: minmax(300px, 24rem) minmax(0, 32rem);
+  gap: clamp(18px, 2.4vw, 28px);
   align-items: start;
   background: var(--site-background);
   background-size: var(--site-background-size);
   min-height: var(--page-shell-min-height);
   min-height: var(--page-shell-min-height-dynamic);
-  width: min(100%, 980px);
-  padding-block: clamp(10px, 1.4vw, 16px) clamp(10px, 1.4vw, 18px);
+  width: min(100%, 1024px);
+  padding-block: clamp(16px, 2vw, 24px) clamp(18px, 2vw, 28px);
+}
+
+:root[data-theme="light"] .puzzlePage {
+  --puzzle-gold: var(--color-gold);
 }
 
 .puzzleElapsedTimer {
   position: absolute;
   z-index: 8;
-  top: 0;
-  right: auto;
-  left: calc(100% + 8px);
+  top: 10px;
+  right: 10px;
+  left: auto;
   min-width: 54px;
   padding: 4px 7px;
   border: 1px solid color-mix(in srgb, var(--color-border) 82%, transparent);
   border-radius: 6px;
-  background: color-mix(in srgb, var(--color-panel-deep) 84%, transparent);
-  color: color-mix(in srgb, var(--color-heading) 88%, transparent);
+  background: color-mix(in srgb, var(--color-panel) 92%, transparent);
+  color: var(--color-heading);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -31,7 +36,8 @@
   font-variant-numeric: tabular-nums;
   line-height: 1;
   pointer-events: none;
-  backdrop-filter: blur(5px);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(10px);
 }
 
 .puzzleElapsedTimer svg {
@@ -61,12 +67,11 @@ body:has(.puzzlePage),
   min-width: 0;
   overflow: visible;
   overscroll-behavior: contain;
-  border-radius: var(--radius-ui);
-  padding: 14px;
-  background: var(--color-modal-bg);
-  border: 1px solid var(--color-glass-border);
-  box-shadow: var(--shadow-strong);
-  backdrop-filter: blur(16px);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-soft);
 }
 
 .puzzleVoteSlot {
@@ -151,8 +156,8 @@ body:has(.puzzlePage),
 
 .puzzleHeader {
   display: grid;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: 16px;
+  margin-bottom: 16px;
 }
 
 .puzzleHeaderTopline {
@@ -160,7 +165,7 @@ body:has(.puzzlePage),
 }
 
 .puzzleHeaderEyebrow {
-  color: var(--color-subtle);
+  color: var(--puzzle-gold);
   font-size: 10px;
   font-weight: 850;
   letter-spacing: 0.15em;
@@ -183,9 +188,9 @@ body:has(.puzzlePage),
 .puzzlePanel h1 {
   margin: 0;
   color: var(--color-heading);
-  font-size: clamp(23px, 2vw, 27px);
-  line-height: 1.08;
-  letter-spacing: -0.025em;
+  font-size: clamp(25px, 2.2vw, 30px);
+  line-height: 1.04;
+  letter-spacing: -0.035em;
 }
 
 .puzzleHeaderMetadata {
@@ -193,9 +198,10 @@ body:has(.puzzlePage),
   align-items: center;
   gap: 0;
   min-width: 0;
-  padding: 9px 0;
-  border-top: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
-  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  background: var(--color-panel-strong);
 }
 
 .puzzleHeaderMeta {
@@ -223,7 +229,7 @@ body:has(.puzzlePage),
 }
 
 .puzzleHeaderMeta span {
-  color: var(--color-subtle);
+  color: var(--color-muted);
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.13em;
@@ -248,13 +254,13 @@ body:has(.puzzlePage),
   min-height: 30px;
   padding: 0 9px;
   border-radius: 6px;
-  background: color-mix(in srgb, var(--color-panel-deep) 84%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-border) 82%, transparent);
+  background: var(--color-panel-strong);
+  border: 1px solid var(--color-border);
   text-align: center;
 }
 
 .puzzleCount span {
-  color: var(--color-primary-soft);
+  color: var(--color-heading);
   font-size: 14px;
   font-weight: 800;
   line-height: 1;
@@ -262,7 +268,7 @@ body:has(.puzzlePage),
 }
 
 .puzzleCount small {
-  color: var(--color-subtle);
+  color: var(--color-muted);
   font-size: 11px;
   font-weight: 700;
   line-height: 1;
@@ -327,9 +333,9 @@ body:has(.puzzlePage),
   gap: 4px;
   margin-bottom: 0;
   padding: 4px;
-  border: 1px solid color-mix(in srgb, var(--color-border-strong) 72%, transparent);
-  border-radius: var(--radius-ui);
-  background: color-mix(in srgb, var(--color-panel-deep) 10%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-panel-strong);
 }
 
 .puzzleActionArrow {
@@ -347,7 +353,7 @@ body:has(.puzzlePage),
 .mobileActionCard .puzzlePrimaryAction {
   width: 100%;
   grid-column: 1 / -1;
-  min-height: 42px;
+  min-height: 44px;
   padding: 10px 12px;
   border: 1px solid color-mix(in srgb, var(--color-primary-soft) 28%, var(--color-primary));
   border-radius: var(--radius-ui);
@@ -394,7 +400,7 @@ body:has(.puzzlePage),
   gap: 7px;
   min-height: 36px;
   padding: 8px 12px;
-  border-radius: calc(var(--radius-ui) - 2px);
+  border-radius: 5px;
   border: 1px solid transparent;
   background: transparent;
   color: var(--color-muted);
@@ -412,8 +418,8 @@ body:has(.puzzlePage),
 
 .puzzleActions button:not(.puzzlePrimaryAction):hover:not(:disabled) {
   transform: none;
-  border-color: color-mix(in srgb, var(--color-cyan-bright) 26%, var(--color-border));
-  background: color-mix(in srgb, var(--color-panel-strong) 82%, var(--color-primary) 18%);
+  border-color: color-mix(in srgb, var(--color-primary) 26%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 9%, var(--color-panel));
   color: var(--color-heading);
   box-shadow: none;
 }
@@ -452,10 +458,10 @@ body:has(.puzzlePage),
   align-items: center;
   gap: 8px;
   margin-bottom: 10px;
-  padding: 8px 0;
-  border-top: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
-  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
-  background: transparent;
+  padding: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  background: var(--color-panel-strong);
 }
 
 .puzzleMotifsHeader {
@@ -910,18 +916,9 @@ body:has(.puzzlePage),
   display: grid;
   min-width: 0;
   overflow: hidden;
-  border-radius: var(--radius-ui);
-  border: 1px solid color-mix(in srgb, var(--color-border-strong) 72%, transparent);
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--color-panel-strong) 94%, var(--color-primary) 6%),
-      color-mix(in srgb, var(--color-panel-strong) 82%, transparent)
-    ),
-    var(--color-surface-soft);
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--color-heading) 6%, transparent),
-    0 10px 22px color-mix(in srgb, var(--color-panel-deep) 12%, transparent);
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-panel-strong);
 }
 
 .puzzleInfoTabs {
@@ -929,7 +926,7 @@ body:has(.puzzlePage),
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 4px;
   padding: 4px;
-  background: color-mix(in srgb, var(--color-panel-deep) 10%, transparent);
+  background: var(--color-panel-strong);
 }
 
 .puzzleInfoStack.hasContent .puzzleInfoTabs {
@@ -944,7 +941,7 @@ body:has(.puzzlePage),
   min-width: 0;
   min-height: 38px;
   padding: 0 12px;
-  border-radius: calc(var(--radius-ui) - 2px);
+  border-radius: 5px;
   border: 1px solid transparent;
   background: transparent;
   color: var(--color-muted);
@@ -960,21 +957,15 @@ body:has(.puzzlePage),
 }
 
 .puzzleInfoTab.active {
-  border-color: color-mix(in srgb, var(--color-cyan-bright) 42%, var(--color-primary));
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--color-surface-elevated-strong) 92%, var(--color-primary) 8%),
-    color-mix(in srgb, var(--color-panel-strong) 80%, var(--color-primary) 20%)
-  );
+  border-color: color-mix(in srgb, var(--color-primary) 34%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-panel));
   color: var(--color-heading);
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, white 8%, transparent),
-    0 8px 18px color-mix(in srgb, var(--color-cyan-bright) 10%, transparent);
 }
 
 .puzzleInfoTab:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-panel));
   color: var(--color-heading);
-  transform: translateY(-1px);
+  transform: none;
 }
 
 .puzzleInfoTab:disabled {
@@ -988,11 +979,7 @@ body:has(.puzzlePage),
   display: grid;
   gap: 10px;
   padding: 10px;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--color-panel-strong) 46%, transparent),
-    color-mix(in srgb, var(--color-panel-deep) 8%, transparent)
-  );
+  background: var(--color-panel);
 }
 
 .puzzleExplanation {
@@ -1115,17 +1102,11 @@ body:has(.puzzlePage),
   padding: 7px 10px;
   border-radius: calc(var(--radius-ui) - 1px);
   border: 1px solid color-mix(in srgb, var(--color-accent-soft-border) 42%, var(--color-border));
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--color-surface-elevated-strong) 82%, var(--color-primary) 8%),
-    color-mix(in srgb, var(--color-panel-strong) 86%, transparent)
-  );
+  background: var(--color-panel-strong);
   color: var(--color-text);
   font-size: 12px;
   text-decoration: none;
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--color-heading) 5%, transparent),
-    0 8px 18px color-mix(in srgb, var(--color-panel-deep) 14%, transparent);
+  box-shadow: none;
   transition:
     transform 140ms ease,
     border-color 140ms ease,
@@ -1136,14 +1117,14 @@ body:has(.puzzlePage),
 }
 
 .fenAnalyzeButton:hover:not(.disabled) {
-  transform: translateY(-1px);
+  transform: none;
   border-color: color-mix(in srgb, var(--color-cyan-bright) 46%, var(--color-primary));
   background: color-mix(
     in srgb,
     var(--color-surface-elevated-strong) 82%,
     var(--color-primary) 18%
   );
-  box-shadow: 0 14px 28px color-mix(in srgb, var(--color-cyan-bright) 12%, transparent);
+  box-shadow: var(--shadow-soft);
   color: var(--color-heading);
 }
 
@@ -1172,11 +1153,7 @@ body:has(.puzzlePage),
   width: 30px;
   height: 30px;
   border-radius: 8px;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--color-primary) 28%, transparent),
-    color-mix(in srgb, var(--color-cyan-bright) 12%, transparent)
-  );
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-panel));
   color: var(--color-primary-pale);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary-soft) 22%, transparent) inset;
   font-size: 12px;
@@ -1223,11 +1200,7 @@ body:has(.puzzlePage),
   margin-top: 0;
   padding: 0;
   border-color: color-mix(in srgb, var(--color-border-strong) 72%, transparent);
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--color-panel-strong) 88%, transparent),
-    color-mix(in srgb, var(--color-surface-soft) 88%, transparent)
-  );
+  background: var(--color-panel-strong);
 }
 
 .lineHeader {
@@ -1304,7 +1277,7 @@ body:has(.puzzlePage),
   padding: 3px 7px;
   border: 1px solid color-mix(in srgb, var(--color-border) 82%, transparent);
   border-radius: 6px;
-  background: color-mix(in srgb, var(--color-panel-deep) 84%, transparent);
+  background: var(--color-panel-strong);
 }
 
 .materialDifference {
@@ -1375,7 +1348,7 @@ body:has(.puzzlePage),
 
 .mobileAnalyzeButton {
   width: 100%;
-  min-height: 42px;
+  min-height: 44px;
 }
 
 .boardFrame {
@@ -1386,12 +1359,12 @@ body:has(.puzzlePage),
   place-items: center;
   gap: 9px;
   width: 100%;
-  max-width: 498px;
-  padding: 8px;
-  border-radius: var(--radius-ui);
-  background: var(--color-modal-bg);
-  border: 1px solid var(--color-glass-border);
-  box-shadow: var(--shadow-strong);
+  max-width: 500px;
+  padding: 6px;
+  border-radius: var(--radius-lg);
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-soft);
   transition:
     border-color 180ms ease,
     box-shadow 180ms ease,
@@ -1407,7 +1380,7 @@ body:has(.puzzlePage),
   padding: 4px 7px;
   border: 1px solid color-mix(in srgb, var(--color-border) 82%, transparent);
   border-radius: 6px;
-  background: color-mix(in srgb, var(--color-panel-deep) 84%, transparent);
+  background: var(--color-panel-strong);
   color: var(--color-text);
   font-size: 10px;
   line-height: 1;
@@ -1454,8 +1427,8 @@ body:has(.puzzlePage),
   position: relative;
   display: grid;
   place-items: center;
-  width: min(100%, 480px, calc(100svh - 126px));
-  max-width: 480px;
+  width: min(100%, 488px, calc(100svh - 126px));
+  max-width: 488px;
   aspect-ratio: 1 / 1;
 }
 
@@ -1475,35 +1448,35 @@ body:has(.puzzlePage),
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 480px;
+  max-width: 488px;
 }
 
 .boardFrame.correct {
   --board-feedback-color: var(--color-cyan-bright);
   box-shadow:
     0 16px 40px color-mix(in srgb, var(--color-cyan-bright) 12%, transparent),
-    var(--shadow-strong);
+    var(--shadow-soft);
 }
 
 .boardFrame.retrySuccess {
   --board-feedback-color: var(--color-primary);
   box-shadow:
     0 16px 40px color-mix(in srgb, var(--color-primary) 12%, transparent),
-    var(--shadow-strong);
+    var(--shadow-soft);
 }
 
 .boardFrame.wrong {
   --board-feedback-color: var(--color-danger);
   box-shadow:
     0 16px 40px color-mix(in srgb, var(--color-danger) 12%, transparent),
-    var(--shadow-strong);
+    var(--shadow-soft);
 }
 
 .boardFrame.retry {
   --board-feedback-color: var(--color-primary);
   box-shadow:
     0 16px 40px color-mix(in srgb, var(--color-primary) 11%, transparent),
-    var(--shadow-strong);
+    var(--shadow-soft);
 }
 
 .solutionHeaderActions .solutionPlaybackControls {
@@ -1525,22 +1498,13 @@ body:has(.puzzlePage),
   max-width: calc(100% - 28px);
   padding: 6px 13px 6px 8px;
   border-radius: 999px;
-  background:
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--feedback-tone) 20%, transparent),
-      transparent 58%
-    ),
-    color-mix(in srgb, var(--color-panel-deep) 86%, transparent);
+  background: color-mix(in srgb, var(--feedback-tone) 14%, var(--color-panel));
   border: 1px solid color-mix(in srgb, var(--feedback-tone) 58%, transparent);
   color: var(--feedback-text);
-  box-shadow:
-    0 16px 34px rgba(2, 6, 23, 0.34),
-    0 0 0 1px color-mix(in srgb, white 7%, transparent) inset,
-    0 8px 26px color-mix(in srgb, var(--feedback-tone) 18%, transparent);
+  box-shadow: var(--shadow-soft);
   pointer-events: none;
   transform: translateX(-50%);
-  backdrop-filter: blur(14px) saturate(1.2);
+  backdrop-filter: blur(10px);
   animation: feedbackBadgeFade 2400ms ease forwards;
 }
 
@@ -1571,13 +1535,9 @@ body:has(.puzzlePage),
   place-items: center;
   flex: 0 0 auto;
   border-radius: 50%;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, white 16%, transparent), transparent),
-    color-mix(in srgb, var(--feedback-tone) 28%, transparent);
+  background: color-mix(in srgb, var(--feedback-tone) 24%, var(--color-panel));
   color: var(--feedback-text);
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--feedback-tone) 34%, transparent) inset,
-    0 5px 12px color-mix(in srgb, var(--feedback-tone) 18%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--feedback-tone) 34%, transparent) inset;
   font-size: 12px;
   font-weight: 900;
   line-height: 1;
@@ -1628,7 +1588,7 @@ body:has(.puzzlePage),
   }
 
   .puzzlePanel {
-    padding: 10px;
+    padding: 16px;
   }
 
   .puzzleHeader {
@@ -1677,20 +1637,20 @@ body:has(.puzzlePage),
 
   .boardFrame {
     --board-feedback-gap: 6px;
-    max-width: 486px;
-    padding: 7px;
+    max-width: 492px;
+    padding: 6px;
   }
 
   .boardStage {
-    width: min(100%, 472px, calc(100svh - 112px));
-    max-width: 472px;
+    width: min(100%, 480px, calc(100svh - 112px));
+    max-width: 480px;
   }
 
   .boardFrame .cg-boardShell,
   .boardFrame .cg-board,
   .boardFrame .emptyBoard {
     width: 100%;
-    max-width: 472px;
+    max-width: 480px;
   }
 }
 
@@ -1740,10 +1700,9 @@ body:has(.puzzlePage),
     grid-template-rows: auto minmax(0, 1fr);
     max-height: min(48svh, 390px);
     border-color: color-mix(in srgb, var(--color-border-strong) 88%, transparent);
-    box-shadow:
-      0 18px 42px color-mix(in srgb, var(--color-panel-deep) 38%, transparent),
-      inset 0 1px 0 color-mix(in srgb, var(--color-heading) 7%, transparent);
-    backdrop-filter: blur(18px);
+    background: color-mix(in srgb, var(--color-panel) 94%, transparent);
+    box-shadow: var(--shadow-panel);
+    backdrop-filter: blur(14px);
   }
 
   .mobileActionCard .puzzleInfoTabs {
@@ -1757,7 +1716,7 @@ body:has(.puzzlePage),
   .puzzleInfoTab {
     position: relative;
     gap: 4px;
-    min-height: 42px;
+    min-height: 44px;
     padding-inline: 4px;
     font-size: 10.5px;
   }
@@ -1886,7 +1845,7 @@ body:has(.puzzlePage),
 
   .puzzlePrimaryAction,
   .mobileBottomNav button {
-    min-height: 42px;
+    min-height: 44px;
     font-size: 13px;
   }
 
@@ -1919,7 +1878,7 @@ body:has(.puzzlePage),
     background: color-mix(in srgb, var(--color-panel-strong) 94%, var(--color-primary) 6%);
     color: var(--color-text);
     font-weight: 800;
-    box-shadow: 0 10px 22px color-mix(in srgb, var(--color-panel-deep) 20%, transparent);
+    box-shadow: var(--shadow-soft);
     transition:
       transform 140ms ease,
       border-color 140ms ease,
@@ -1936,7 +1895,7 @@ body:has(.puzzlePage),
       var(--color-surface-elevated-strong) 90%,
       var(--color-primary) 10%
     );
-    box-shadow: 0 13px 24px color-mix(in srgb, var(--color-cyan-bright) 10%, transparent);
+    box-shadow: var(--shadow-panel);
   }
 
   .mobileBottomNav button:disabled {
@@ -2008,21 +1967,12 @@ body:has(.puzzlePage),
     max-width: calc(100% - 24px);
     padding: 6px 13px 6px 8px;
     border-radius: 999px;
-    background:
-      linear-gradient(
-        135deg,
-        color-mix(in srgb, var(--feedback-tone) 20%, transparent),
-        transparent 58%
-      ),
-      color-mix(in srgb, var(--color-panel-deep) 86%, transparent);
+    background: color-mix(in srgb, var(--feedback-tone) 14%, var(--color-panel));
     border: 1px solid color-mix(in srgb, var(--feedback-tone) 58%, transparent);
-    box-shadow:
-      0 16px 34px rgba(2, 6, 23, 0.34),
-      0 0 0 1px color-mix(in srgb, white 7%, transparent) inset,
-      0 8px 26px color-mix(in srgb, var(--feedback-tone) 18%, transparent);
+    box-shadow: var(--shadow-soft);
     color: var(--feedback-text);
     pointer-events: none;
-    backdrop-filter: blur(14px) saturate(1.2);
+    backdrop-filter: blur(10px);
     opacity: 1;
     transform: translate(-50%, 0);
     transition:
@@ -2062,13 +2012,9 @@ body:has(.puzzlePage),
     width: 22px;
     height: 22px;
     border-radius: 50%;
-    background:
-      linear-gradient(180deg, color-mix(in srgb, white 16%, transparent), transparent),
-      color-mix(in srgb, var(--feedback-tone) 28%, transparent);
+    background: color-mix(in srgb, var(--feedback-tone) 24%, var(--color-panel));
     color: var(--feedback-text);
-    box-shadow:
-      0 0 0 1px color-mix(in srgb, var(--feedback-tone) 34%, transparent) inset,
-      0 5px 12px color-mix(in srgb, var(--feedback-tone) 18%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--feedback-tone) 34%, transparent) inset;
     font-size: 12px;
     font-weight: 900;
     line-height: 1;
@@ -2130,5 +2076,63 @@ body:has(.puzzlePage),
 
   .feedbackBadge {
     top: 14px;
+  }
+}
+
+@media (max-width: 680px) and (max-height: 500px) and (orientation: landscape) {
+  .page.puzzlePage {
+    grid-template-columns: minmax(0, calc(100svh - 82px)) minmax(0, 1fr);
+    gap: 10px;
+    min-height: calc(100svh - var(--header-height, 64px));
+    padding: 8px;
+  }
+
+  .boardWrap {
+    grid-column: 1;
+    width: 100%;
+  }
+
+  .boardFrame,
+  .boardStage,
+  .boardFrame .cg-boardShell,
+  .boardFrame .cg-board,
+  .boardFrame .emptyBoard {
+    width: 100%;
+    max-width: none;
+  }
+
+  .mobilePuzzleStatus,
+  .mobileWorkflowPanel,
+  .mobileBottomNav {
+    left: calc(100svh - 64px);
+    right: max(8px, env(safe-area-inset-right));
+    width: auto;
+  }
+
+  .mobilePuzzleStatus {
+    position: fixed;
+    top: 74px;
+    z-index: 20;
+    justify-content: flex-start;
+  }
+
+  .mobileWorkflowPanel {
+    top: 110px;
+    bottom: auto;
+  }
+
+  .mobileActionCard {
+    width: 100%;
+  }
+
+  .mobileActionCard .puzzleInfoStack {
+    max-height: min(48svh, 180px);
+  }
+
+  .mobileBottomNav {
+    bottom: max(8px, env(safe-area-inset-bottom));
+    padding-block: 6px 0;
+    background: transparent;
+    backdrop-filter: none;
   }
 }

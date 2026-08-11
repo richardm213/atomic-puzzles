@@ -1725,7 +1725,9 @@ export const PuzzleSolverPage = () => {
       <div className="panel puzzlePanel">
         <header className="puzzleHeader">
           <div className="puzzleHeaderTopline">
-            <span className="puzzleHeaderEyebrow">Atomic puzzle</span>
+            <span className="puzzleHeaderEyebrow">
+              {activePuzzleId ? `Atomic puzzle ${activePuzzleId}` : "Atomic puzzle"}
+            </span>
             <div className="puzzleHeaderStatus">
               {hasPersistedAttempt ? (
                 <span
