@@ -1729,6 +1729,15 @@ export const PuzzleSolverPage = () => {
               {activePuzzleId ? `Atomic puzzle ${activePuzzleId}` : "Atomic puzzle"}
             </span>
             <div className="puzzleHeaderStatus">
+              {showPuzzleTimer ? (
+                <div
+                  className="puzzleElapsedTimer desktop"
+                  aria-label={`Elapsed time ${formatElapsedTime(elapsedTimeMs)}`}
+                >
+                  <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
+                  <span>{formatElapsedTime(elapsedTimeMs)}</span>
+                </div>
+              ) : null}
               {hasPersistedAttempt ? (
                 <span
                   className="puzzleAttemptedBadge"
@@ -1844,7 +1853,7 @@ export const PuzzleSolverPage = () => {
           ref={boardPanelRef}
           className={`boardFrame ${feedback ? `hasFeedback ${feedback.type}` : ""}`}
         >
-          {showPuzzleTimer ? (
+          {isMobileLayout && showPuzzleTimer ? (
             <div
               className="puzzleElapsedTimer"
               aria-label={`Elapsed time ${formatElapsedTime(elapsedTimeMs)}`}

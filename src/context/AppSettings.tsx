@@ -256,7 +256,7 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
   const [showPuzzleTimer, setShowPuzzleTimer] = usePersistedState(
     STORAGE_KEYS.showPuzzleTimer,
     z.boolean(),
-    true,
+    false,
   );
 
   const resetDisplaySettings = useCallback(() => {

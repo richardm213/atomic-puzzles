@@ -46,6 +46,14 @@
   color: var(--color-subtle);
 }
 
+.puzzleElapsedTimer.desktop {
+  position: static;
+  min-height: 30px;
+  background: var(--color-panel-strong);
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
 @media (max-width: 1100px) {
   .puzzleElapsedTimer {
     top: 7px;
