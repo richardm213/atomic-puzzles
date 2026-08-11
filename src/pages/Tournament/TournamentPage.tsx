@@ -57,7 +57,6 @@ type DragState = {
   startY: number;
   startScrollLeft: number;
   startScrollTop: number;
-  startWindowScrollY: number;
   moved: boolean;
 };
 
@@ -1135,7 +1134,9 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
     stageKey: string,
     event: ReactPointerEvent<HTMLDivElement>,
   ): void => {
-    if (event.pointerType === "mouse" && event.button !== 0) return;
+    // Touch scrolling is deliberately left to the browser so mobile gets native
+    // momentum, gesture arbitration, and compositor-thread scrolling.
+    if (event.pointerType !== "mouse" || event.button !== 0) return;
     if (isInteractivePointerTarget(event.target)) return;
     if (isPointerOnNativeScrollbar(event.currentTarget, event)) return;
 
@@ -1147,7 +1148,6 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
       startY: event.clientY,
       startScrollLeft: currentTarget.scrollLeft,
       startScrollTop: currentTarget.scrollTop,
-      startWindowScrollY: typeof window !== "undefined" ? window.scrollY : 0,
       moved: false,
     };
     setDraggingStage(stageKey);
@@ -1173,14 +1173,6 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
     );
     const clampedScrollTop = Math.min(maxInternalScrollTop, Math.max(0, targetScrollTop));
     event.currentTarget.scrollTop = clampedScrollTop;
-
-    if (typeof window !== "undefined" && maxInternalScrollTop <= 1) {
-      window.scrollTo({
-        top: Math.max(0, dragState.startWindowScrollY - deltaY),
-        left: window.scrollX,
-        behavior: "auto",
-      });
-    }
   };
 
   const endScrollerDrag = (event: ReactPointerEvent<HTMLDivElement>): void => {

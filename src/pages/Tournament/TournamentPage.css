@@ -490,7 +490,9 @@
   user-select: none;
   -webkit-user-select: none;
   scrollbar-width: thin;
-  touch-action: none;
+  touch-action: pan-x pan-y;
+  overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
   mask-image: linear-gradient(
     90deg,
     transparent 0,
