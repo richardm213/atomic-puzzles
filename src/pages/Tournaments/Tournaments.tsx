@@ -18,11 +18,8 @@ import { normalizeUsername } from "../../utils/playerNames";
 const tournamentSeriesName = (tournament: TournamentMeta): string => {
   if (tournament.id.startsWith("ahc")) return "Atomic Hyper Championship";
   if (tournament.id.startsWith("ccac")) return "Chess.com Atomic Championship";
-  return "World Championship";
+  return "Atomic World Championship";
 };
-
-const tournamentCardTitle = (tournament: TournamentMeta): string =>
-  tournament.id.startsWith("awc") ? String(tournament.year) : tournamentSeriesName(tournament);
 
 const TournamentArchiveCard = ({
   tournament,
@@ -37,6 +34,10 @@ const TournamentArchiveCard = ({
 
   return (
     <article className={`tournamentCard${spotlight ? " isSpotlight" : ""}`}>
+      <div className="tournamentCardEdition">
+        <span>{tournament.year}</span>
+      </div>
+
       <div className="tournamentCardArt" aria-hidden="true">
         {tournament.trophyAssetPath ? (
           <img
@@ -51,7 +52,7 @@ const TournamentArchiveCard = ({
       </div>
 
       <div className="tournamentCardCopy">
-        <h3>{tournamentCardTitle(tournament)}</h3>
+        <h3>{tournamentSeriesName(tournament)}</h3>
         {showWinner ? (
           <div className="tournamentCardChampion hasWinner">
             <span>Champion</span>
@@ -63,13 +64,16 @@ const TournamentArchiveCard = ({
               {champion}
             </Link>
           </div>
-        ) : null}
+        ) : (
+          <span className="tournamentCardPublished">Bracket published</span>
+        )}
       </div>
 
       <Link
-        className="primaryActionButton tournamentCardLink"
+        className="tournamentCardLink"
         to="/tournaments/$tournamentId"
         params={{ tournamentId: tournament.id }}
+        aria-label={`Open ${tournamentSeriesName(tournament)} ${tournament.year} bracket`}
       >
         <span>Open bracket</span>
         <FontAwesomeIcon icon={faArrowRight} aria-hidden="true" />
@@ -132,8 +136,8 @@ export const TournamentsPage = () => {
 
       <section className="tournamentsHero">
         <div className="tournamentsHeroCopy">
-          <span className="tournamentsEyebrow">Tournament history</span>
-          <h1>Championship brackets</h1>
+          <span className="tournamentsEyebrow">Championship history</span>
+          <h1>Tournament archive</h1>
         </div>
         <div className="tournamentsHeroStats" aria-label="Archive summary">
           <div>
@@ -152,7 +156,7 @@ export const TournamentsPage = () => {
       <section className="tournamentArchiveSection" aria-labelledby="current-tournaments-heading">
         <div className="tournamentArchiveHeading">
           <span>Current season</span>
-          <h2 id="current-tournaments-heading">{latestYear} tournaments</h2>
+          <h2 id="current-tournaments-heading">{latestYear} championships</h2>
         </div>
         <div className="tournamentsSpotlightGrid">
           {spotlightTournaments.map((tournament) => (
@@ -169,7 +173,7 @@ export const TournamentsPage = () => {
       <section className="tournamentArchiveSection" aria-labelledby="past-tournaments-heading">
         <div className="tournamentArchiveHeading">
           <span>Past editions</span>
-          <h2 id="past-tournaments-heading">World championship history</h2>
+          <h2 id="past-tournaments-heading">Previous championships</h2>
         </div>
         <div className="tournamentsGrid">
           {archiveTournaments.map((tournament) => (

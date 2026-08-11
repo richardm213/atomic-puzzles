@@ -1,4 +1,9 @@
 .tournamentPage {
+  --tournament-gold: color-mix(
+    in srgb,
+    var(--color-accent-warm) 76%,
+    var(--color-heading)
+  );
   min-height: var(--page-shell-min-height);
   min-height: var(--page-shell-min-height-dynamic);
   width: min(1180px, 100%);
@@ -9,18 +14,11 @@
     max(calc(var(--page-gutter) + 2px), env(safe-area-inset-bottom))
     max(clamp(18px, 3vw, 28px), env(safe-area-inset-left));
   display: grid;
-  gap: 18px;
-  background:
-    radial-gradient(
-      circle at 0% 4%,
-      color-mix(in srgb, var(--color-primary) 9%, transparent),
-      transparent 26%
-    ),
-    radial-gradient(
-      circle at 100% 0%,
-      color-mix(in srgb, var(--color-accent-warm) 7%, transparent),
-      transparent 24%
-    );
+  gap: 20px;
+}
+
+:root[data-theme="light"] .tournamentPage {
+  --tournament-gold: var(--color-gold);
 }
 
 .tournamentPageHero {
@@ -38,32 +36,20 @@
 
 .tournamentPageHeroCopy {
   display: grid;
-  gap: 10px;
-  padding: clamp(20px, 3.5vw, 28px);
-  padding-right: clamp(20px, 20vw, 210px);
-  background:
-    radial-gradient(
-      circle at top right,
-      color-mix(in srgb, var(--color-primary) 26%, transparent),
-      transparent 30%
-    ),
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--color-primary-hover) 24%, var(--color-panel)),
-      var(--color-panel)
-    );
-  border-color: color-mix(in srgb, var(--color-primary) 28%, var(--color-border));
-  box-shadow:
-    0 20px 50px color-mix(in srgb, var(--color-panel-deep) 70%, transparent),
-    inset 0 1px 0 color-mix(in srgb, white 6%, transparent);
+  gap: 14px;
+  padding: clamp(22px, 3.5vw, 30px);
+  padding-right: clamp(20px, 18vw, 190px);
+  border-color: color-mix(in srgb, var(--tournament-gold) 24%, var(--color-border));
+  background: color-mix(in srgb, var(--color-panel) 94%, var(--color-panel-strong));
+  box-shadow: var(--shadow-soft);
 }
 
 .tournamentPageTrophy {
   position: absolute;
   right: clamp(22px, 4vw, 42px);
   bottom: clamp(14px, 2.4vw, 24px);
-  inline-size: clamp(82px, 10vw, 112px);
-  block-size: clamp(82px, 10vw, 112px);
+  inline-size: clamp(76px, 9vw, 104px);
+  block-size: clamp(76px, 9vw, 104px);
   object-fit: contain;
   filter: drop-shadow(0 18px 28px color-mix(in srgb, var(--color-panel-deep) 56%, transparent));
   pointer-events: none;
@@ -71,13 +57,17 @@
 
 .tournamentBackLink {
   width: fit-content;
-  color: var(--color-primary-pale);
+  color: var(--color-muted);
   font-weight: 700;
   text-decoration: none;
 }
 
-.tournamentBackLink:hover {
+.tournamentBackLink:hover,
+.tournamentBackLink:focus-visible {
+  color: var(--color-heading);
+  outline: none;
   text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .tournamentHeroTopRow {
@@ -109,10 +99,11 @@
 
 .tournamentCommentsLink:hover,
 .tournamentCommentsLink:focus-visible {
-  border-color: var(--color-border);
-  background: color-mix(in srgb, var(--color-panel-strong) 72%, transparent);
+  border-color: color-mix(in srgb, var(--tournament-gold) 26%, var(--color-border));
+  background: var(--color-panel-strong);
   color: var(--color-heading);
-  outline: none;
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 2px;
 }
 
 .tournamentCommentsLink svg {
@@ -149,10 +140,10 @@
   align-items: center;
   justify-content: center;
   padding: 8px 12px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--color-primary) 18%, var(--color-border));
-  background: color-mix(in srgb, var(--color-panel-strong) 76%, transparent);
-  color: var(--color-primary-pale);
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: var(--color-panel-strong);
+  color: var(--color-muted);
   font-size: 0.95rem;
   font-weight: 700;
   text-decoration: none;
@@ -164,10 +155,11 @@
 
 .tournamentYearNavLink:hover,
 .tournamentYearNavLink:focus-visible {
-  border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-border));
-  background: color-mix(in srgb, var(--color-primary) 18%, var(--color-panel-strong));
-  color: var(--color-on-primary);
-  outline: none;
+  border-color: color-mix(in srgb, var(--tournament-gold) 34%, var(--color-border));
+  background: color-mix(in srgb, var(--tournament-gold) 7%, var(--color-panel-strong));
+  color: var(--color-heading);
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 2px;
 }
 
 .tournamentPageHeroCopy h1,
@@ -177,9 +169,9 @@
 }
 
 .tournamentPageHeroCopy h1 {
-  font-size: clamp(1.75rem, 3.2vw, 2.7rem);
-  line-height: 0.94;
-  letter-spacing: -0.04em;
+  font-size: clamp(1.8rem, 3.2vw, 2.65rem);
+  line-height: 1;
+  letter-spacing: -0.035em;
 }
 
 @media (max-width: 640px) {
@@ -312,30 +304,26 @@
 .tournamentBracketToolbar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
 }
 
 .tournamentStageToggle {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px;
+  gap: 4px;
+  padding: 4px;
   width: fit-content;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--color-primary) 18%, var(--color-border));
-  background: color-mix(
-    in srgb,
-    var(--color-surface-elevated-strong) 70%,
-    var(--color-panel-strong)
-  );
-  box-shadow: var(--shadow-soft);
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-panel-strong);
 }
 
 .tournamentStageToggleButton {
   border: 0;
-  border-radius: 999px;
+  border-radius: 5px;
   min-height: 40px;
   padding: 8px 16px;
   background: transparent;
@@ -349,32 +337,28 @@
 }
 
 .tournamentStageToggleButton.isActive {
-  background: color-mix(in srgb, var(--color-primary) 16%, var(--color-panel-strong));
+  background: color-mix(in srgb, var(--color-primary) 14%, var(--color-panel));
   color: var(--color-heading);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent);
 }
 
 .tournamentStageToggleButton:hover,
 .tournamentStageToggleButton:focus-visible {
+  background: color-mix(in srgb, var(--color-primary) 9%, var(--color-panel));
   color: var(--color-heading);
-  outline: none;
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 1px;
 }
 
 .tournamentStageSection {
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  padding: 18px 20px 12px;
+  padding: 20px 20px 12px;
   overflow: visible;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--color-surface-elevated-strong) 32%, var(--color-panel)),
-    var(--color-panel)
-  );
-  border-color: color-mix(in srgb, var(--color-primary) 12%, var(--color-border));
-  box-shadow:
-    0 14px 30px color-mix(in srgb, var(--color-panel-deep) 48%, transparent),
-    inset 0 1px 0 color-mix(in srgb, white 5%, transparent);
+  border-color: var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-panel);
+  box-shadow: var(--shadow-soft);
 }
 
 .tournamentStageHeader {
@@ -410,13 +394,8 @@
   overflow-x: auto;
   scrollbar-width: thin;
   border: 1px solid color-mix(in srgb, var(--color-primary) 16%, var(--color-border));
-  border-radius: 999px;
-  background: color-mix(
-    in srgb,
-    var(--color-surface-elevated-strong) 70%,
-    var(--color-panel-strong)
-  );
-  box-shadow: inset 0 1px 0 color-mix(in srgb, white 5%, transparent);
+  border-radius: 8px;
+  background: var(--color-panel-strong);
 }
 
 .tournamentRoundTab {
@@ -425,7 +404,7 @@
   min-height: 34px;
   padding: 7px 12px;
   border: 0;
-  border-radius: 999px;
+  border-radius: 5px;
   background: transparent;
   color: var(--color-muted);
   font-size: 13px;
@@ -437,16 +416,16 @@
 }
 
 .tournamentRoundTab.isActive {
-  background: color-mix(in srgb, var(--color-primary) 18%, var(--color-panel-strong));
+  background: color-mix(in srgb, var(--color-primary) 15%, var(--color-panel));
   color: var(--color-heading);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 18%, transparent);
 }
 
 .tournamentRoundTab:hover,
 .tournamentRoundTab:focus-visible {
-  background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-panel));
   color: var(--color-heading);
-  outline: none;
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 1px;
 }
 
 .tournamentRoundTab.isActive:hover,
@@ -463,20 +442,15 @@
   align-items: center;
   gap: 6px;
   padding: 4px;
-  border-radius: 999px;
-  background: color-mix(
-    in srgb,
-    var(--color-surface-elevated-strong) 72%,
-    var(--color-panel-strong)
-  );
-  border: 1px solid color-mix(in srgb, var(--color-primary) 16%, var(--color-border));
-  box-shadow: inset 0 1px 0 color-mix(in srgb, white 5%, transparent);
+  border-radius: 8px;
+  background: var(--color-panel-strong);
+  border: 1px solid var(--color-border);
 }
 
 .tournamentZoomButton,
 .tournamentZoomValue {
   border: 0;
-  border-radius: 999px;
+  border-radius: 5px;
   min-height: 32px;
   padding: 6px 12px;
   background: transparent;
@@ -492,14 +466,18 @@
 }
 
 .tournamentZoomValue {
-  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-panel-strong));
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-panel));
   color: var(--color-primary-pale);
   min-width: 86px;
 }
 
 .tournamentZoomButton:hover,
-.tournamentZoomValue:hover {
+.tournamentZoomValue:hover,
+.tournamentZoomButton:focus-visible,
+.tournamentZoomValue:focus-visible {
   background: color-mix(in srgb, var(--color-primary) 18%, var(--color-surface-elevated-strong));
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 1px;
 }
 
 .tournamentRoundsScroller {
@@ -542,13 +520,9 @@
   max-width: 100%;
   overflow: hidden;
   pointer-events: none;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--color-panel) 98%, transparent),
-    color-mix(in srgb, var(--color-panel) 92%, transparent)
-  );
+  background: color-mix(in srgb, var(--color-panel) 96%, transparent);
   border-bottom: 1px solid color-mix(in srgb, var(--color-primary-soft) 18%, transparent);
-  box-shadow: 0 10px 18px color-mix(in srgb, var(--color-panel-deep) 22%, transparent);
+  box-shadow: 0 8px 14px color-mix(in srgb, var(--color-panel-deep) 16%, transparent);
   backdrop-filter: blur(14px);
 }
 
@@ -579,13 +553,9 @@
 }
 
 .tournamentMatchCard {
-  border: 1px solid color-mix(in srgb, var(--color-primary-soft) 16%, var(--color-border));
-  border-left: 2px solid
-    color-mix(in srgb, var(--color-primary-soft) 56%, var(--color-accent-warm) 10%);
-  border-radius: 4px;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, white 5%, transparent), transparent),
-    var(--color-panel-strong);
+  border: 1px solid color-mix(in srgb, var(--color-primary-soft) 14%, var(--color-border));
+  border-radius: 6px;
+  background: var(--color-panel-strong);
   color: inherit;
   padding: 8px;
   text-align: left;
@@ -615,11 +585,18 @@
 }
 
 .tournamentMatchCardTree.isClickable:hover {
-  border-color: color-mix(in srgb, var(--color-primary) 38%, var(--color-border));
-  border-left-color: color-mix(in srgb, var(--color-accent-warm) 54%, var(--color-primary));
+  border-color: color-mix(in srgb, var(--tournament-gold) 40%, var(--color-border));
+  background: color-mix(in srgb, var(--color-panel-strong) 90%, var(--color-panel));
   box-shadow:
-    0 10px 22px color-mix(in srgb, var(--color-panel-deep) 42%, transparent),
-    inset 0 1px 0 color-mix(in srgb, white 7%, transparent);
+    0 10px 22px color-mix(in srgb, var(--color-panel-deep) 34%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 5%, transparent);
+  transform: translateY(-1px);
+}
+
+.tournamentMatchCardTree.isClickable:focus-visible {
+  border-color: color-mix(in srgb, var(--tournament-gold) 44%, var(--color-border));
+  outline: 3px solid var(--color-primary-ring);
+  outline-offset: 3px;
 }
 
 .tournamentMatchTrophy {
@@ -657,7 +634,7 @@
   min-width: 0;
   min-height: 38px;
   padding: 4px 8px 4px 4px;
-  border-radius: 2px;
+  border-radius: 4px;
 }
 
 .tournamentPlayerRow + .tournamentPlayerRow {
@@ -665,13 +642,7 @@
 }
 
 .tournamentPlayerRow.isWinner {
-  background:
-    linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--color-primary) 13%, transparent),
-      transparent 88%
-    ),
-    color-mix(in srgb, var(--color-primary) 7%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
   color: var(--color-heading);
 }
 
@@ -720,8 +691,8 @@
 
 .tournamentTreeLines line {
   fill: none;
-  stroke: color-mix(in srgb, var(--color-primary-soft) 52%, var(--color-border-strong) 48%);
-  stroke-width: 1.75;
+  stroke: color-mix(in srgb, var(--tournament-gold) 32%, var(--color-border-strong));
+  stroke-width: 1.5;
   stroke-linecap: square;
 }
 
@@ -729,25 +700,9 @@
   stroke: color-mix(in srgb, var(--color-gold) 62%, var(--color-primary) 28%);
 }
 
-:root[data-theme="light"] .tournamentPage {
-  background:
-    radial-gradient(
-      circle at top left,
-      color-mix(in srgb, var(--color-primary) 10%, transparent),
-      transparent 24%
-    ),
-    radial-gradient(
-      circle at top right,
-      color-mix(in srgb, var(--color-accent-warm) 8%, transparent),
-      transparent 22%
-    );
-}
-
 :root[data-theme="light"] .tournamentStageSection,
 :root[data-theme="light"] .tournamentPageHeroCopy {
-  box-shadow:
-    0 18px 34px color-mix(in srgb, var(--color-muted) 12%, transparent),
-    inset 0 1px 0 color-mix(in srgb, white 35%, transparent);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--color-muted) 10%, transparent);
 }
 
 .tournamentPageMissing {
@@ -775,11 +730,42 @@
 }
 
 @media (max-width: 720px) {
+  .tournamentPage {
+    gap: 16px;
+    padding: max(16px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right))
+      max(22px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  }
+
+  .tournamentBracketToolbar {
+    flex-wrap: wrap;
+  }
+
+  .tournamentCommentsLink {
+    min-height: 44px;
+  }
+
+  .tournamentStageSection {
+    padding: 16px 12px 10px;
+  }
+
+  .tournamentStageHeader {
+    gap: 12px;
+  }
+
   .tournamentRoundNavigator {
     margin-bottom: 12px;
   }
 
   .tournamentRoundTabs {
     width: 100%;
+  }
+
+  .tournamentRoundTab {
+    min-height: 40px;
+  }
+
+  .tournamentZoomButton,
+  .tournamentZoomValue {
+    min-height: 40px;
   }
 }
