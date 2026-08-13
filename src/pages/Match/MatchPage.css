@@ -281,7 +281,6 @@
   .matchPageDetailsCard .matchGameRow {
     grid-template-columns: 68px minmax(0, 1fr);
     gap: 8px;
-    min-width: 0;
   }
 
   .matchPageDetailsCard .matchGamesHeader > *,

@@ -8,6 +8,7 @@ import {
   faTrashCan,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
 import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { Chessboard } from "../../components/Chessboard/Chessboard";
@@ -16,6 +17,7 @@ import {
   SolutionMoveTree,
   SolutionPlaybackControls,
 } from "../../components/SolutionMoveNavigation/SolutionMoveNavigation";
+import { useCopyFeedback } from "../../hooks/useCopyFeedback";
 import {
   ensurePuzzlePgnHeaders,
   parsePuzzlePgnInput,
@@ -32,9 +34,6 @@ import {
   serializeSanLinesToPgn,
 } from "../../lib/puzzles/solutionPgn";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
-import { copyTextToClipboard } from "../../utils/clipboard";
-
-const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 const combinePgnHeadersAndMoves = (headers: string, moves: string): string =>
   headers && moves ? `${headers}\n\n${moves}` : headers || moves;
@@ -115,8 +114,11 @@ export const PuzzleEditor = ({
   const [boardState, setBoardState] = useState<ChessboardState | null>(null);
   const [editorError, setEditorError] = useState("");
   const [activeLineIndex, setActiveLineIndex] = useState(0);
-  const [copyPgnLabel, setCopyPgnLabel] = useState("Copy PGN");
-  const copyResetTimerRef = useRef<number | null>(null);
+  const {
+    copy: copyToClipboard,
+    copyLabel: copyPgnLabel,
+    resetCopyFeedback,
+  } = useCopyFeedback(1_500);
   const savedBoardLineRef = useRef("");
   const fixedFenRef = useRef<string | null>(value.solution.trim() ? initialPgnState.fen : null);
   const solutionInputId = useId();
@@ -145,11 +147,7 @@ export const PuzzleEditor = ({
   );
 
   useEffect(() => {
-    if (copyResetTimerRef.current !== null) {
-      window.clearTimeout(copyResetTimerRef.current);
-      copyResetTimerRef.current = null;
-    }
-    setCopyPgnLabel("Copy PGN");
+    resetCopyFeedback();
     const nextPgnState = editorPgnState(value.solution, value.fen || STARTING_FEN);
     const nextFen = nextPgnState.fen;
     setAppliedFen(nextFen);
@@ -171,15 +169,6 @@ export const PuzzleEditor = ({
     // resetKey intentionally identifies a newly selected puzzle.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetKey]);
-
-  useEffect(
-    () => () => {
-      if (copyResetTimerRef.current !== null) {
-        window.clearTimeout(copyResetTimerRef.current);
-      }
-    },
-    [],
-  );
 
   const applySolutionDraft = (): void => {
     try {
@@ -272,15 +261,7 @@ export const PuzzleEditor = ({
   };
 
   const copyPgn = async (): Promise<void> => {
-    const copied = await copyTextToClipboard(solutionDraft);
-    setCopyPgnLabel(copied ? "Copied" : "Copy failed");
-    if (copyResetTimerRef.current !== null) {
-      window.clearTimeout(copyResetTimerRef.current);
-    }
-    copyResetTimerRef.current = window.setTimeout(() => {
-      setCopyPgnLabel("Copy PGN");
-      copyResetTimerRef.current = null;
-    }, 1_500);
+    await copyToClipboard(solutionDraft);
   };
 
   const navigate = (command: PlaybackCommand): void => {

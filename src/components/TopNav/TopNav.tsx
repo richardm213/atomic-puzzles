@@ -55,6 +55,12 @@ type NavItem = {
   }[];
 };
 
+type OpenPanel =
+  | { type: "navDropdown"; navItemTo: string }
+  | { type: "notifications" }
+  | { type: "profile" }
+  | { type: "settings" };
+
 const navItems: NavItem[] = [
   {
     to: "/rankings",
@@ -236,11 +242,8 @@ export const TopNav = () => {
   const [searchSuggestionsSearched, setSearchSuggestionsSearched] = useState(false);
   const [searchSuggestions, setSearchSuggestions] = useState<UsernameSearchSuggestion[]>([]);
   const [activeSearchSuggestionIndex, setActiveSearchSuggestionIndex] = useState(-1);
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [openNavDropdown, setOpenNavDropdown] = useState<string | null>(null);
+  const [openPanel, setOpenPanel] = useState<OpenPanel | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const searchSuggestionsRequestIdRef = useRef(0);
   const topNavRef = useRef<HTMLElement | null>(null);
@@ -249,6 +252,9 @@ export const TopNav = () => {
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const settingsRef = useRef<HTMLDivElement | null>(null);
   const notificationsRef = useRef<HTMLDivElement | null>(null);
+  const notificationsOpen = openPanel?.type === "notifications";
+  const profileMenuOpen = openPanel?.type === "profile";
+  const settingsOpen = openPanel?.type === "settings";
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { isAuthenticated, isLoading, user, login, logout } = useAuth();
@@ -385,24 +391,38 @@ export const TopNav = () => {
     navDropdownCloseTimeoutRef.current = null;
   }, []);
 
+  const togglePanel = useCallback(
+    (panel: OpenPanel): void => {
+      clearNavDropdownCloseTimeout();
+      setOpenPanel((currentPanel) => {
+        if (currentPanel?.type !== panel.type) return panel;
+        if (panel.type !== "navDropdown") return null;
+        return currentPanel.type === "navDropdown" && currentPanel.navItemTo === panel.navItemTo
+          ? null
+          : panel;
+      });
+    },
+    [clearNavDropdownCloseTimeout],
+  );
+
   const openNavDropdownFor = useCallback(
     (navItemTo: string): void => {
       clearNavDropdownCloseTimeout();
-      setOpenNavDropdown(navItemTo);
+      setOpenPanel({ type: "navDropdown", navItemTo });
     },
     [clearNavDropdownCloseTimeout],
   );
 
   const closeNavDropdown = useCallback((): void => {
     clearNavDropdownCloseTimeout();
-    setOpenNavDropdown(null);
+    setOpenPanel((currentPanel) => (currentPanel?.type === "navDropdown" ? null : currentPanel));
   }, [clearNavDropdownCloseTimeout]);
 
   const scheduleNavDropdownClose = useCallback((): void => {
     clearNavDropdownCloseTimeout();
     navDropdownCloseTimeoutRef.current = window.setTimeout(() => {
       navDropdownCloseTimeoutRef.current = null;
-      setOpenNavDropdown(null);
+      setOpenPanel((currentPanel) => (currentPanel?.type === "navDropdown" ? null : currentPanel));
     }, NAV_DROPDOWN_CLOSE_DELAY_MS);
   }, [clearNavDropdownCloseTimeout]);
 
@@ -482,21 +502,28 @@ export const TopNav = () => {
 
   useEffect(() => {
     setMobileMenuOpen(false);
-    closeNavDropdown();
-    setProfileMenuOpen(false);
-    setSettingsOpen(false);
-    setNotificationsOpen(false);
-  }, [closeNavDropdown, pathname]);
+    clearNavDropdownCloseTimeout();
+    setOpenPanel(null);
+  }, [clearNavDropdownCloseTimeout, pathname]);
 
   useEffect(() => {
-    if (!notificationsOpen) return undefined;
+    if (!openPanel) return undefined;
 
     const handlePointerDown = (event: MouseEvent): void => {
-      if (notificationsRef.current?.contains(event.target as Node)) return;
-      setNotificationsOpen(false);
+      const panelElement =
+        openPanel.type === "navDropdown"
+          ? navDropdownRefs.current[openPanel.navItemTo]
+          : openPanel.type === "notifications"
+            ? notificationsRef.current
+            : openPanel.type === "profile"
+              ? profileMenuRef.current
+              : settingsRef.current;
+
+      if (panelElement?.contains(event.target as Node)) return;
+      setOpenPanel(null);
     };
     const handleEscape = (event: KeyboardEvent): void => {
-      if (event.key === "Escape") setNotificationsOpen(false);
+      if (event.key === "Escape") setOpenPanel(null);
     };
 
     document.addEventListener("mousedown", handlePointerDown);
@@ -505,7 +532,7 @@ export const TopNav = () => {
       document.removeEventListener("mousedown", handlePointerDown);
       window.removeEventListener("keydown", handleEscape);
     };
-  }, [notificationsOpen]);
+  }, [openPanel]);
 
   useEffect(() => {
     if (!mobileMenuOpen) return undefined;
@@ -513,17 +540,15 @@ export const TopNav = () => {
     const handlePointerDown = (event: MouseEvent): void => {
       if (topNavRef.current?.contains(event.target as Node)) return;
       setMobileMenuOpen(false);
-      closeNavDropdown();
-      setProfileMenuOpen(false);
-      setSettingsOpen(false);
+      clearNavDropdownCloseTimeout();
+      setOpenPanel(null);
     };
 
     const handleEscape = (event: KeyboardEvent): void => {
       if (event.key === "Escape") {
         setMobileMenuOpen(false);
-        closeNavDropdown();
-        setProfileMenuOpen(false);
-        setSettingsOpen(false);
+        clearNavDropdownCloseTimeout();
+        setOpenPanel(null);
       }
     };
 
@@ -534,76 +559,7 @@ export const TopNav = () => {
       document.removeEventListener("mousedown", handlePointerDown);
       window.removeEventListener("keydown", handleEscape);
     };
-  }, [closeNavDropdown, mobileMenuOpen]);
-
-  useEffect(() => {
-    if (!openNavDropdown) return undefined;
-
-    const handlePointerDown = (event: MouseEvent): void => {
-      if (navDropdownRefs.current[openNavDropdown]?.contains(event.target as Node)) return;
-      closeNavDropdown();
-    };
-
-    const handleEscape = (event: KeyboardEvent): void => {
-      if (event.key === "Escape") {
-        closeNavDropdown();
-      }
-    };
-
-    document.addEventListener("mousedown", handlePointerDown);
-    window.addEventListener("keydown", handleEscape);
-
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      window.removeEventListener("keydown", handleEscape);
-    };
-  }, [closeNavDropdown, openNavDropdown]);
-
-  useEffect(() => {
-    if (!profileMenuOpen) return undefined;
-
-    const handlePointerDown = (event: MouseEvent): void => {
-      if (profileMenuRef.current?.contains(event.target as Node)) return;
-      setProfileMenuOpen(false);
-    };
-
-    const handleEscape = (event: KeyboardEvent): void => {
-      if (event.key === "Escape") {
-        setProfileMenuOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handlePointerDown);
-    window.addEventListener("keydown", handleEscape);
-
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      window.removeEventListener("keydown", handleEscape);
-    };
-  }, [profileMenuOpen]);
-
-  useEffect(() => {
-    if (!settingsOpen) return undefined;
-
-    const handlePointerDown = (event: MouseEvent): void => {
-      if (settingsRef.current?.contains(event.target as Node)) return;
-      setSettingsOpen(false);
-    };
-
-    const handleEscape = (event: KeyboardEvent): void => {
-      if (event.key === "Escape") {
-        setSettingsOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handlePointerDown);
-    window.addEventListener("keydown", handleEscape);
-
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      window.removeEventListener("keydown", handleEscape);
-    };
-  }, [settingsOpen]);
+  }, [clearNavDropdownCloseTimeout, mobileMenuOpen]);
 
   const handleSearchSubmit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
@@ -723,7 +679,7 @@ export const TopNav = () => {
 
   const openPopupNotification = async (notification: UserNotification): Promise<void> => {
     if (!notification.read_at) await markPopupNotificationsRead([notification.id]);
-    setNotificationsOpen(false);
+    setOpenPanel(null);
     void navigate({
       to: "/solve/$puzzleId",
       params: { puzzleId: String(notification.puzzle_id) },
@@ -767,9 +723,8 @@ export const TopNav = () => {
         aria-controls="top-nav-menu"
         onClick={() => {
           setMobileMenuOpen((open) => !open);
-          closeNavDropdown();
-          setProfileMenuOpen(false);
-          setSettingsOpen(false);
+          clearNavDropdownCloseTimeout();
+          setOpenPanel(null);
         }}
       >
         <FontAwesomeIcon icon={mobileMenuOpen ? faXmark : faBars} />
@@ -787,7 +742,8 @@ export const TopNav = () => {
           {navItems.map((item) => {
             const active = item.isActive(pathname);
             if (item.children) {
-              const dropdownOpen = openNavDropdown === item.to;
+              const dropdownOpen =
+                openPanel?.type === "navDropdown" && openPanel.navItemTo === item.to;
               return (
                 <div
                   className={`navDropdown ${active ? "isActive" : ""} ${
@@ -809,8 +765,6 @@ export const TopNav = () => {
                       onClick={() => {
                         closeNavDropdown();
                         setMobileMenuOpen(false);
-                        setProfileMenuOpen(false);
-                        setSettingsOpen(false);
                       }}
                     >
                       {item.label}
@@ -822,14 +776,7 @@ export const TopNav = () => {
                       aria-haspopup="menu"
                       aria-expanded={dropdownOpen}
                       aria-current={active ? "page" : undefined}
-                      onClick={() => {
-                        clearNavDropdownCloseTimeout();
-                        setOpenNavDropdown((openDropdown) =>
-                          openDropdown === item.to ? null : item.to,
-                        );
-                        setProfileMenuOpen(false);
-                        setSettingsOpen(false);
-                      }}
+                      onClick={() => togglePanel({ type: "navDropdown", navItemTo: item.to })}
                     >
                       {item.label}
                     </button>
@@ -976,11 +923,8 @@ export const TopNav = () => {
               aria-haspopup="dialog"
               aria-expanded={notificationsOpen}
               onClick={() => {
-                setNotificationsOpen((open) => !open);
                 setMobileMenuOpen(false);
-                closeNavDropdown();
-                setProfileMenuOpen(false);
-                setSettingsOpen(false);
+                togglePanel({ type: "notifications" });
               }}
             >
               <FontAwesomeIcon icon={faBell} />
@@ -1055,7 +999,7 @@ export const TopNav = () => {
                 <Link
                   className="navNotificationsSeeAll"
                   to="/notifications"
-                  onClick={() => setNotificationsOpen(false)}
+                  onClick={() => setOpenPanel(null)}
                 >
                   See all notifications
                 </Link>
@@ -1072,7 +1016,7 @@ export const TopNav = () => {
                 aria-label={`Open account menu for ${resolvedProfileUsername}`}
                 aria-haspopup="menu"
                 aria-expanded={profileMenuOpen}
-                onClick={() => setProfileMenuOpen((open) => !open)}
+                onClick={() => togglePanel({ type: "profile" })}
               >
                 <span className="navAuthProfileIcon" aria-hidden="true">
                   <FontAwesomeIcon icon={faUser} />
@@ -1089,7 +1033,7 @@ export const TopNav = () => {
                     to="/@/$username"
                     params={{ username: resolvedProfileUsername }}
                     role="menuitem"
-                    onClick={() => setProfileMenuOpen(false)}
+                    onClick={() => setOpenPanel(null)}
                   >
                     <span className="navProfileDropdownIcon" aria-hidden="true">
                       <FontAwesomeIcon icon={faUser} />
@@ -1100,7 +1044,7 @@ export const TopNav = () => {
                     className="navProfileDropdownItem"
                     to="/dashboard"
                     role="menuitem"
-                    onClick={() => setProfileMenuOpen(false)}
+                    onClick={() => setOpenPanel(null)}
                   >
                     <span className="navProfileDropdownIcon" aria-hidden="true">
                       <FontAwesomeIcon icon={faChartLine} />
@@ -1112,7 +1056,7 @@ export const TopNav = () => {
                       className="navProfileDropdownItem"
                       to="/puzzles/review"
                       role="menuitem"
-                      onClick={() => setProfileMenuOpen(false)}
+                      onClick={() => setOpenPanel(null)}
                     >
                       <span className="navProfileDropdownIcon" aria-hidden="true">
                         <FontAwesomeIcon icon={faUser} />
@@ -1125,7 +1069,7 @@ export const TopNav = () => {
                     type="button"
                     role="menuitem"
                     onClick={() => {
-                      setProfileMenuOpen(false);
+                      setOpenPanel(null);
                       void logout();
                     }}
                   >
@@ -1151,7 +1095,7 @@ export const TopNav = () => {
             aria-label="Open settings"
             aria-haspopup="menu"
             aria-expanded={settingsOpen}
-            onClick={() => setSettingsOpen((open) => !open)}
+            onClick={() => togglePanel({ type: "settings" })}
           >
             <FontAwesomeIcon icon={faGear} aria-hidden="true" />
           </button>

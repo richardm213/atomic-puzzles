@@ -1,4 +1,4 @@
-import { type Mode, modeOptions } from "../../constants/matches";
+import { isMode, type Mode } from "../../constants/matches";
 import type { NormalizedMatch } from "../../lib/matches/matchData";
 import { normalizeUsername } from "../../utils/playerNames";
 
@@ -67,7 +67,7 @@ export const getFavoriteOpponentDefaultSortDirection = (
 ): FavoriteOpponentSortDirection => (sort === "opponent" ? "asc" : "desc");
 
 export const isFavoriteOpponentMode = (value: string): value is RankHistoryMode =>
-  value === "all" || (modeOptions as readonly string[]).includes(value);
+  value === "all" || isMode(value);
 
 export const getFavoriteOpponentMatchLimitOptions = (mode: RankHistoryMode): number[] =>
   mode === "all" ? ALL_MODE_MATCH_LIMIT_OPTIONS : SINGLE_MODE_MATCH_LIMIT_OPTIONS;

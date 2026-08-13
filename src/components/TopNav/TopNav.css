@@ -509,13 +509,6 @@
   width: 100%;
 }
 
-.navSettingsHint {
-  margin: 10px 0 0;
-  font-size: 12px;
-  line-height: 1.45;
-  color: var(--color-muted);
-}
-
 .navColorInputs {
   margin-top: 12px;
   display: grid;
@@ -1323,7 +1316,6 @@
   }
 
   .homeBrand {
-    display: inline-flex;
     width: 36px;
     height: 36px;
     flex: 0 0 36px;
@@ -1348,8 +1340,6 @@
     width: auto;
     max-width: calc(100vw - 116px);
     margin-left: auto;
-    display: inline-flex;
-    align-items: center;
     justify-content: flex-end;
     gap: 8px;
     flex-wrap: nowrap;
@@ -1385,7 +1375,6 @@
     align-items: stretch;
     justify-content: stretch;
     grid-template-columns: 1fr;
-    gap: 2px;
     overflow: visible;
   }
 
@@ -1401,9 +1390,7 @@
     padding: 0 12px;
     border-radius: var(--radius-ui);
     color: var(--color-text);
-    font-size: 15px;
     font-weight: 700;
-    text-decoration: none;
   }
 
   .navDropdown {
@@ -1426,7 +1413,6 @@
     min-width: 0;
     margin: 0 0 4px;
     padding: 2px 0 2px 10px;
-    border-radius: var(--radius-ui);
     border: 0;
     background: transparent;
     box-shadow: none;
@@ -1436,8 +1422,6 @@
   .topNavLinks .navDropdownMenu a {
     min-height: 36px;
     padding-left: 14px;
-    font-size: 14px;
-    color: var(--color-muted);
   }
 
   .topNavLinks .mobileHomeLink {
@@ -1447,37 +1431,17 @@
   .topNavLinks a:hover,
   .navDropdownTrigger:hover {
     background: var(--color-panel-strong);
-    color: var(--color-heading);
     text-decoration: none;
   }
 
   .navSearchSlot {
     flex: 0 0 32px;
-    width: 32px;
-    height: 32px;
-  }
-
-  .navSearch {
-    position: absolute;
-    width: 32px;
-    height: 32px;
-    right: 0;
-    justify-content: flex-end;
   }
 
   .navSearch.open,
   .navSearch.open input,
   .navSearchResults {
     width: min(240px, calc(100vw - 32px));
-  }
-
-  .navSearch input,
-  .navSearch button {
-    height: 32px;
-  }
-
-  .navSearchIcon {
-    left: 0;
   }
 
   .navAuth {
@@ -1511,35 +1475,20 @@
   }
 
   .navAuthButton {
-    min-height: 32px;
-    font-size: 13px;
     font-weight: 600;
   }
 
   .navProfileDropdown {
-    position: absolute;
     width: auto;
-    min-width: 160px;
     margin-top: 0;
-    transform-origin: top right;
   }
 
   .navSettings {
     flex: 0 0 32px;
     width: 32px;
-    display: inline-flex;
-  }
-
-  .navSettingsButton {
-    width: 32px;
-    height: 32px;
-    border: 0;
-    border-radius: 50%;
-    background: transparent;
   }
 
   .navSettingsMenu {
-    position: absolute;
     width: min(280px, calc(100vw - 32px));
     min-width: 220px;
     margin-top: 0;

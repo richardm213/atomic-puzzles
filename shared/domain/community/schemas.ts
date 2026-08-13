@@ -128,8 +128,6 @@ export const communityCommentsPageSchema = z.object({
   sort: z.enum(["recent", "top"]),
 });
 
-export const profileCommentKarmaSchema = z.object({ karma: z.coerce.number() });
-
 export const puzzleRankingsSchema = z.object({
   puzzles: z.array(puzzleVoteRankingRowSchema),
 });
@@ -152,7 +150,6 @@ export type CommunityDiscussion = z.infer<typeof communityDiscussionSchema>;
 export type PuzzleCommunity = z.infer<typeof puzzleCommunitySchema>;
 export type CommunityHistoryComment = z.infer<typeof communityHistoryCommentSchema>;
 export type CommunityCommentsPage = z.infer<typeof communityCommentsPageSchema>;
-export type ProfileCommentKarma = z.infer<typeof profileCommentKarmaSchema>;
 export type PuzzleRankings = z.infer<typeof puzzleRankingsSchema>;
 export type PuzzleVoteRankingRow = z.infer<typeof puzzleVoteRankingRowSchema>;
 export type CommunityUserStats = z.infer<typeof communityUserStatsSchema>;

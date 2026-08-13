@@ -2,9 +2,7 @@ import { parseBearerToken } from "../../lib/lichessAccount";
 import { clearSiteSessionCookie, readSiteSession } from "../../lib/siteSession";
 import { requireSameOrigin } from "../../platform/authentication";
 import { type FunctionEvent, jsonResponse } from "../../platform/defineFunction";
-import { createServerSupabase } from "../../platform/environment";
 import { HttpError } from "../../platform/errors";
-import { IdentityRepository } from "./repository";
 import { IdentityService, parseOauthExchange } from "./service";
 
 export const authSessionRoute = async (event: FunctionEvent) => {
@@ -28,9 +26,7 @@ export const authSessionRoute = async (event: FunctionEvent) => {
   if (!oauthExchange && !legacyAccessToken) {
     throw new HttpError(400, "Invalid Lichess login exchange.");
   }
-  const service = new IdentityService(
-    () => new IdentityRepository(createServerSupabase("Auth session service")),
-  );
+  const service = new IdentityService();
   const login = await service.logIn(oauthExchange, legacyAccessToken, event.headers);
   return jsonResponse(200, { user: { username: login.username } }, { "Set-Cookie": login.cookie });
 };

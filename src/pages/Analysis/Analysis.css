@@ -30,15 +30,6 @@ body:has(.analysisPage),
   gap: 8px;
 }
 
-.analysisEyebrow {
-  margin: 0;
-  color: var(--color-subtle);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
-}
-
 .analysisPanel h1,
 .analysisPanel h2 {
   margin: 0;
@@ -75,14 +66,8 @@ body:has(.analysisPage),
   min-width: 0;
   max-height: 58px;
   overflow: auto;
-  color: var(--color-heading);
-  font-size: 12px;
-  line-height: 1.35;
   white-space: normal;
   overflow-wrap: anywhere;
-}
-
-.analysisTextBox textarea {
   width: 100%;
   min-height: 34px;
   padding: 5px 7px;
@@ -104,54 +89,18 @@ body:has(.analysisPage),
   line-height: 1.3;
 }
 
-.analysisToolGrid {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 4px;
-}
-
-.analysisIconButton {
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  min-height: 32px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-ui);
-  background: color-mix(in srgb, var(--color-panel-strong) 92%, var(--color-primary) 8%);
-  color: var(--color-text);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition:
-    background 140ms ease,
-    border-color 140ms ease,
-    color 140ms ease,
-    transform 140ms ease;
-}
-
-.analysisIconButton:hover:not(:disabled) {
-  transform: translateY(-1px);
-  border-color: var(--color-accent-soft-border);
-  background: color-mix(in srgb, var(--color-panel-strong) 82%, var(--color-primary) 18%);
-  color: var(--color-heading);
-}
-
-.analysisIconButton:disabled,
-.analysisPrimaryButton:disabled,
-.analysisSecondaryButton:disabled {
+.analysisPrimaryButton:disabled {
   cursor: not-allowed;
   opacity: 0.52;
 }
 
-.analysisIconButton:focus-visible,
 .analysisPrimaryButton:focus-visible,
-.analysisSecondaryButton:focus-visible,
 .analysisFilterToggle:focus-visible,
 .analysisMoveSettingsButton:focus-visible,
 .analysisMoveSettingsMenu button:focus-visible,
 .analysisToolbarButton:focus-visible,
 .analysisExplorerTabs button:focus-visible,
 .analysisSpeedToggles button:focus-visible,
-.analysisColorToggles button:focus-visible,
 .analysisPlayerNameButton:focus-visible,
 .analysisPlayerSideButton:focus-visible,
 .analysisOpponentClearButton:focus-visible,
@@ -346,20 +295,6 @@ body:has(.analysisPage),
   text-transform: uppercase;
 }
 
-.analysisEmptyState,
-.analysisEmptyExplorer {
-  min-height: 104px;
-  padding: 14px;
-  border: 1px dashed var(--color-border-strong);
-  border-radius: var(--radius-ui);
-  background: color-mix(in srgb, var(--color-surface-soft) 58%, transparent);
-  color: var(--color-muted);
-  display: grid;
-  place-items: center;
-  text-align: center;
-  line-height: 1.45;
-}
-
 .analysisBoardColumn {
   grid-column: 1;
   grid-row: 1 / span 2;
@@ -372,7 +307,6 @@ body:has(.analysisPage),
 
 .analysisBoardPanel {
   position: relative;
-  box-sizing: border-box;
   width: 100%;
   padding: 0;
   border: 0;
@@ -650,7 +584,6 @@ body:has(.analysisPage),
 }
 
 .analysisFilterGroup > span,
-.analysisUsernameField > span,
 .analysisPlayerSettings > span,
 .analysisOpponentField > span,
 .analysisDateFilters span,
@@ -671,7 +604,8 @@ body:has(.analysisPage),
   cursor: pointer;
 }
 
-.analysisPlayerSettingsRow {
+.analysisPlayerSettingsRow,
+.analysisOpponentFieldRow {
   min-width: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(112px, auto);
@@ -728,14 +662,6 @@ body:has(.analysisPage),
   margin-top: 2px;
 }
 
-.analysisOpponentFieldRow {
-  min-width: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(112px, auto);
-  align-items: center;
-  gap: 8px;
-}
-
 .analysisOpponentClearButton {
   width: 32px;
   min-height: 32px;
@@ -752,21 +678,6 @@ body:has(.analysisPage),
 .analysisOpponentClearButton:hover {
   background: color-mix(in srgb, var(--color-primary) 20%, transparent);
   color: var(--color-heading);
-}
-
-.analysisUsernameField input {
-  width: 100%;
-  min-width: 0;
-  min-height: 30px;
-  padding: 0 9px;
-  border: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--color-panel-deep) 24%, transparent);
-  color: var(--color-heading);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 750;
-  outline: none;
 }
 
 .analysisDateFilters {
@@ -809,17 +720,7 @@ body:has(.analysisPage),
   opacity: 1;
 }
 
-.analysisUsernameField input::placeholder {
-  color: var(--color-muted);
-}
-
-.analysisUsernameField input:focus {
-  border-color: var(--color-accent-soft-border);
-  box-shadow: 0 0 0 3px var(--color-primary-ring);
-}
-
-.analysisSpeedToggles,
-.analysisColorToggles {
+.analysisSpeedToggles {
   display: grid;
   gap: 3px;
   padding: 0;
@@ -832,12 +733,7 @@ body:has(.analysisPage),
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.analysisColorToggles {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.analysisSpeedToggles button,
-.analysisColorToggles button {
+.analysisSpeedToggles button {
   width: 100%;
   min-height: 29px;
   border: 0;
@@ -909,15 +805,13 @@ body:has(.analysisPage),
   opacity: 1;
 }
 
-.analysisSpeedToggles button.active,
-.analysisColorToggles button.active {
+.analysisSpeedToggles button.active {
   background: color-mix(in srgb, var(--color-primary) 28%, var(--color-panel-strong) 72%);
   color: var(--color-heading);
   box-shadow: none;
 }
 
-.analysisSpeedToggles button:hover,
-.analysisColorToggles button:hover {
+.analysisSpeedToggles button:hover {
   color: var(--color-heading);
 }
 
@@ -967,8 +861,7 @@ body:has(.analysisPage),
   box-shadow: none;
 }
 
-.analysisPrimaryButton,
-.analysisSecondaryButton {
+.analysisPrimaryButton {
   min-height: 32px;
   min-width: 0;
   padding: 0 11px;
@@ -976,12 +869,6 @@ body:has(.analysisPage),
   gap: 8px;
   font-size: 13px;
   white-space: nowrap;
-}
-
-.analysisSecondaryButton {
-  border: 1px solid var(--color-border-strong);
-  background: color-mix(in srgb, var(--color-panel-strong) 92%, var(--color-primary) 8%);
-  color: var(--color-text);
 }
 
 .analysisExplorerTableWrap {
@@ -1466,7 +1353,6 @@ body:has(.analysisPage),
 @media (max-width: 780px) {
   .analysisPage {
     --analysis-side-panel-height: auto;
-    grid-template-columns: 1fr;
     padding-inline: max(10px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-right));
   }
 
@@ -1489,17 +1375,9 @@ body:has(.analysisPage),
   }
 
   .analysisBoardColumn {
-    order: -1;
     width: min(100%, var(--analysis-board-size, 520px));
   }
 
-  .analysisBoardPanel {
-    width: 100%;
-  }
-
-  .analysisToolGrid {
-    grid-template-columns: repeat(6, minmax(38px, 1fr));
-  }
 }
 
 @media (max-width: 480px) {

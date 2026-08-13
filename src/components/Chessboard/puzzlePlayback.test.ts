@@ -1,3 +1,4 @@
+import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
 import { describe, expect, it } from "vitest";
 
 import { parseSolutionUciLines } from "../../lib/puzzles/solutionPgn";
@@ -10,7 +11,6 @@ import {
   tryCreateAtomicPosition,
 } from "./puzzlePlayback";
 
-const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const PUZZLE_506_FEN = "rnbqkbnr/5pp1/p3p2p/3p4/3PP2P/1p3P1N/PPP3P1/R1BQKB1R w KQkq - 0 9";
 const PUZZLE_506_SOLUTION =
   "9. c3 Bd7 10. axb3 Ba4 11. Rxa4 (11. b3?) 11... Qd7 12. Qb3 (12. Qc2?)";

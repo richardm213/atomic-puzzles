@@ -15,9 +15,7 @@ stylesheet.
 `src/theme/site-layout.css` provides low-specificity classes that are safe to combine with a
 feature class:
 
-- `sitePage`, `siteStack`, and `siteCluster` for composition
-- `sitePanel` for the standard panel surface
-- `controlField`, `controlLabel`, `controlInput`, and `controlButton` for controls and states
+- `sitePage` for the shared page shell
 
 Override their documented custom properties from the feature class rather than increasing selector
 specificity. `TournamentsPage` is the first incremental page adoption example.

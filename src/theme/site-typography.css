@@ -1,15 +1,12 @@
 :root {
   --font-sans: Inter, Arial, sans-serif;
   --font-brand: "Arial Rounded MT Bold", "Trebuchet MS", "Avenir Next", system-ui, sans-serif;
-  --text-xs: 11px;
   --text-sm: 12px;
-  --text-ui: 13px;
   --text-body: 14px;
   --text-control: 16px;
   --text-page-title: 29px;
   --text-page-title-mobile: 26px;
   --line-body: 1.55;
-  --line-heading: 1.1;
   --link-color: var(--color-primary-soft);
   --link-hover-color: var(--color-primary-pale);
   font-family: var(--font-sans);

@@ -1,4 +1,5 @@
 import { type Mode, modeOptions } from "../../constants/matches";
+import type { MatchCardData } from "../../types/matchCard";
 import type {
   RawDbCompactGame,
   RawMatchLike,
@@ -24,6 +25,12 @@ import {
   type MatchFilters,
   type MatchRow,
 } from "../supabase/supabaseMatchRows";
+import {
+  ratingsForPlayers,
+  sourceKeyFromMatch,
+  sourceValueFromMatch,
+  summarizeMatchGames,
+} from "./matchSummaries";
 
 export type ParsedMatchGame = {
   id: string;
@@ -86,6 +93,36 @@ export type NormalizedMatch = {
   games: NormalizedMatchGame[];
   sourceValue: string;
   sourceKey: MatchSource;
+};
+
+export type NormalizedMatchCard = MatchCardData & { sourceKey: MatchSource };
+
+export const toMatchCardData = (match: RawMatchLike, mode: Mode | ""): NormalizedMatchCard => {
+  const rawPlayers = normalizedPlayersFromMatch(match);
+  const players = rawPlayers.length
+    ? rawPlayers.slice(0, 2).map((player) => String(player || "Unknown"))
+    : ["Unknown", "Unknown"];
+  const playerA = players[0] ?? "Unknown";
+  const playerB = players[1] ?? "Unknown";
+  const games = normalizedGamesFromMatch(match, players);
+  const firstGame = games[0];
+  const { mappedGames, ...summary } = summarizeMatchGames(games, playerA, playerB);
+
+  return {
+    matchId: String(match.match_id ?? ""),
+    mode,
+    startTs: Number(match.start_ts ?? match.s),
+    timeControl: String(match.time_control ?? match.t ?? "—"),
+    playerA,
+    playerB,
+    ...summary,
+    ...ratingsForPlayers(match, players, playerA, playerB),
+    gameCount: games.length,
+    firstGameId: String(firstGame?.id || "—"),
+    games: mappedGames,
+    sourceValue: sourceValueFromMatch(match, firstGame),
+    sourceKey: sourceKeyFromMatch(match, firstGame),
+  };
 };
 
 const parseGamesCompact = (gamesValue: unknown): RawDbCompactGame[] => {

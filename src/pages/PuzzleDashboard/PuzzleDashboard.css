@@ -731,7 +731,6 @@
 
   .dashboardAttemptsPager {
     justify-items: stretch;
-    text-align: left;
   }
 
   .dashboardAttemptsTitleRow,
@@ -786,7 +785,6 @@
   }
 
   .dashboardPuzzleSubline {
-    display: grid;
     gap: 4px;
   }
 

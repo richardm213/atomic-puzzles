@@ -1,6 +1,6 @@
-import { buildPgnHistory } from "./pgnHistory";
+import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
 
-const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+import { buildPgnHistory } from "./pgnHistory";
 
 describe("buildPgnHistory", () => {
   it("loads only the PGN mainline", () => {

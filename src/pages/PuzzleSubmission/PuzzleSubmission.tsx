@@ -2,6 +2,7 @@ import "./PuzzleSubmission.css";
 
 import { faPaperPlane } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
 import { useState } from "react";
 
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
@@ -15,7 +16,6 @@ import { submitPuzzleToQueue } from "../../lib/supabase/supabasePuzzleQueue";
 import { PuzzleAnalysisInstructions } from "./PuzzleAnalysisInstructions";
 import { PuzzleEditor } from "./PuzzleEditor";
 
-const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const SUBMISSION_STEPS = [
   "Set up the position on the Lichess analysis board",
   "Write the complete solution there",

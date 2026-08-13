@@ -58,7 +58,6 @@
   .puzzleElapsedTimer {
     top: 7px;
     right: 7px;
-    left: auto;
   }
 }
 
@@ -731,56 +730,6 @@ body:has(.puzzlePage),
   font-weight: 750;
 }
 
-.puzzleMotifPickerGroups {
-  max-height: 330px;
-  overflow-y: auto;
-  padding: 0 8px 8px;
-}
-
-.puzzleMotifPickerGroups details {
-  border-bottom: 1px solid var(--color-border);
-}
-
-.puzzleMotifPickerGroups details:last-child {
-  border-bottom: 0;
-}
-
-.puzzleMotifPickerGroups summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 9px 4px;
-  color: var(--color-muted);
-  font-size: 11px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.puzzleMotifPickerGroups summary::before {
-  content: "▸";
-  color: var(--color-subtle);
-  font-size: 10px;
-  transition: transform 120ms ease;
-}
-
-.puzzleMotifPickerGroups details[open] summary::before {
-  transform: rotate(90deg);
-}
-
-.puzzleMotifPickerGroups summary > span {
-  margin-right: auto;
-}
-
-.puzzleMotifPickerGroups summary small {
-  min-width: 23px;
-  padding: 2px 6px;
-  border-radius: 999px;
-  background: var(--color-surface-inset-strong);
-  color: var(--color-subtle);
-  text-align: center;
-}
-
 .puzzleMotifPickerOptions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -885,39 +834,10 @@ body:has(.puzzlePage),
   }
 }
 
-.puzzleMetaRow {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 8px;
-}
-
 .lineBox {
   border-radius: var(--radius-ui);
   background: var(--color-surface-soft);
   border: 1px solid var(--color-border);
-}
-
-.metaChip {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 7px;
-  min-width: 0;
-  padding: 0 2px;
-}
-
-.metaChipLabel {
-  color: var(--color-subtle);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.metaChipValue {
-  color: var(--color-text);
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1.25;
 }
 
 .puzzleInfoStack {
@@ -1536,7 +1456,8 @@ body:has(.puzzlePage),
   --feedback-text: color-mix(in srgb, var(--color-primary-soft) 42%, white);
 }
 
-.feedbackIcon {
+.feedbackIcon,
+.mobileFeedbackIcon {
   width: 22px;
   height: 22px;
   display: inline-grid;
@@ -1646,7 +1567,6 @@ body:has(.puzzlePage),
   .boardFrame {
     --board-feedback-gap: 6px;
     max-width: 492px;
-    padding: 6px;
   }
 
   .boardStage {
@@ -1657,7 +1577,6 @@ body:has(.puzzlePage),
   .boardFrame .cg-boardShell,
   .boardFrame .cg-board,
   .boardFrame .emptyBoard {
-    width: 100%;
     max-width: 480px;
   }
 }
@@ -1665,14 +1584,12 @@ body:has(.puzzlePage),
 @media (max-width: 680px) {
   .page.puzzlePage {
     grid-template-columns: 1fr;
-    align-items: start;
     align-content: start;
     gap: 7px;
     width: 100%;
     max-width: 740px;
     min-height: var(--page-shell-min-height);
     min-height: var(--page-shell-min-height-dynamic);
-    overflow: visible;
     padding-inline: max(8px, env(safe-area-inset-left)) max(8px, env(safe-area-inset-right));
     padding-block: 10px calc(106px + env(safe-area-inset-bottom, 0px));
   }
@@ -1955,7 +1872,6 @@ body:has(.puzzlePage),
   .boardFrame .cg-boardShell,
   .boardFrame .cg-board,
   .boardFrame .emptyBoard {
-    width: 100%;
     max-width: 538px;
   }
 
@@ -2013,21 +1929,6 @@ body:has(.puzzlePage),
     --feedback-text: color-mix(in srgb, var(--color-primary-soft) 42%, white);
   }
 
-  .mobileFeedbackIcon {
-    display: inline-grid;
-    place-items: center;
-    flex: 0 0 auto;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    background: color-mix(in srgb, var(--feedback-tone) 24%, var(--color-panel));
-    color: var(--feedback-text);
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--feedback-tone) 34%, transparent) inset;
-    font-size: 12px;
-    font-weight: 900;
-    line-height: 1;
-  }
-
   .mobileFeedbackText {
     min-width: 0;
     overflow: hidden;
@@ -2061,25 +1962,6 @@ body:has(.puzzlePage),
 
   .inlineSolutionTree {
     align-items: flex-start;
-  }
-
-  .boardFrame {
-    --board-feedback-gap: 5px;
-    width: min(100%, 548px, calc(100svh - 210px));
-    max-width: 548px;
-    padding: 5px;
-  }
-
-  .boardStage {
-    width: min(100%, 538px, calc(100svh - 220px));
-    max-width: 538px;
-  }
-
-  .boardFrame .cg-boardShell,
-  .boardFrame .cg-board,
-  .boardFrame .emptyBoard {
-    width: 100%;
-    max-width: 538px;
   }
 
   .feedbackBadge {

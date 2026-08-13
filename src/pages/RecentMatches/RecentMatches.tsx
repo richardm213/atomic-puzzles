@@ -7,6 +7,7 @@ import {
   defaultMode,
   defaultRatingMax,
   defaultRatingMin,
+  isMode,
   type Mode,
   modeDescriptions,
   modeLabels,
@@ -38,28 +39,18 @@ type AppliedFilters = {
   timeControlIncrementFilter: string;
 };
 
-const isMode = (value: string): value is Mode => (modeOptions as readonly string[]).includes(value);
 import { DualRangeSlider } from "../../components/DualRangeSlider/DualRangeSlider";
 import { MatchCard } from "../../components/MatchCard/MatchCard";
 import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { Seo } from "../../components/Seo/Seo";
 import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFilterChecks";
 import { TimeControlFields } from "../../components/TimeControlFields/TimeControlFields";
+import { toMatchCardData } from "../../lib/matches/matchData";
 import { recentMatchesPageQueryOptions } from "../../lib/matches/matchQueries";
-import {
-  ratingsForPlayers,
-  sourceKeyFromMatch,
-  sourceValueFromMatch,
-  summarizeMatchGames,
-} from "../../lib/matches/matchSummaries";
 import { resolveUsernameInputs } from "../../lib/users/usernameSearch";
 import { getTimeControlOptions } from "../../utils/matchCollection";
 import { isSourceAllowedByFilters, parseDateInputBoundary } from "../../utils/matchFilters";
-import {
-  normalizedGamesFromMatch,
-  normalizedPlayersFromMatch,
-  parseTimeControlParts,
-} from "../../utils/matchTransforms";
+import { parseTimeControlParts } from "../../utils/matchTransforms";
 import { readStoredSourceFilters, writeStoredSourceFilters } from "../../utils/sourceFilterStorage";
 
 const recentModeOptions = modeOptions;
@@ -72,41 +63,7 @@ const normalizeRecentMatches = (
 ): RecentMatch[] =>
   (Array.isArray(matches) ? matches : [])
     .map((match): RecentMatch => {
-      const rawPlayers = normalizedPlayersFromMatch(match);
-      const players: string[] =
-        rawPlayers.length > 0
-          ? rawPlayers.slice(0, 2).map((player) => String(player || "Unknown"))
-          : ["Unknown", "Unknown"];
-      const playerA = players[0] ?? "Unknown";
-      const playerB = players[1] ?? "Unknown";
-      const games = normalizedGamesFromMatch(match, players);
-      const { scoreA, scoreB, playerAWins, playerBWins, draws, mappedGames } = summarizeMatchGames(
-        games,
-        playerA,
-        playerB,
-      );
-      const ratings = ratingsForPlayers(match, players, playerA, playerB);
-
-      const firstGame = games[0];
-      return {
-        matchId: String(match?.["match_id"] ?? ""),
-        startTs: Number(match?.["start_ts"] ?? match?.["s"]),
-        timeControl: String(match?.["time_control"] ?? match?.["t"] ?? "—"),
-        mode,
-        playerA,
-        playerB,
-        scoreA,
-        scoreB,
-        playerAWins,
-        playerBWins,
-        draws,
-        ...ratings,
-        gameCount: games.length,
-        firstGameId: String(games[0]?.id || "—"),
-        games: mappedGames,
-        sourceValue: sourceValueFromMatch(match, firstGame),
-        sourceKey: sourceKeyFromMatch(match, firstGame),
-      };
+      return toMatchCardData(match, mode);
     })
     .sort((a, b) => b.startTs - a.startTs);
 
@@ -120,10 +77,7 @@ const buildSupabaseFilters = (filters: AppliedFilters): SupabaseMatchFilters => 
   if (filters.endDateFilter) {
     queryFilters.endTs = parseDateInputBoundary(filters.endDateFilter, "end");
   }
-  if (
-    filters.timeControlInitialFilter !== "all" &&
-    filters.timeControlIncrementFilter !== "all"
-  ) {
+  if (filters.timeControlInitialFilter !== "all" && filters.timeControlIncrementFilter !== "all") {
     queryFilters.timeControl = `${filters.timeControlInitialFilter}+${filters.timeControlIncrementFilter}`;
   }
   const isDefaultRatingRange =
@@ -195,10 +149,7 @@ export const RecentMatchesPage = () => {
       setCurrentPage(1);
     },
   });
-  const matches = useMemo(
-    () => matchesQuery.data?.matches ?? [],
-    [matchesQuery.data?.matches],
-  );
+  const matches = useMemo(() => matchesQuery.data?.matches ?? [], [matchesQuery.data?.matches]);
   const totalMatches = matchesQuery.data?.total ?? 0;
   const loadingMatches = matchesQuery.isFetching || applyFiltersMutation.isPending;
   const queryError = matchesQuery.error ?? applyFiltersMutation.error;

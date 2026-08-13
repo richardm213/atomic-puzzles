@@ -36,6 +36,3 @@ export const fetchUnreadNotificationCount = async (): Promise<number> => {
 
 export const markNotificationsRead = (ids: number[] = []): Promise<NotificationResult> =>
   notificationRequest({ action: "markRead", ids });
-
-export const deleteNotifications = (ids: number[]): Promise<NotificationResult> =>
-  notificationRequest({ action: "delete", ids });

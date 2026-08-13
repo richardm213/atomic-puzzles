@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
 import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -12,8 +13,6 @@ import {
 import type { ChessboardState, SolutionNavigation } from "../../types/chessboard";
 import { PuzzleEditor } from "./PuzzleEditor";
 import { PuzzleSubmissionPage } from "./PuzzleSubmission";
-
-const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 const chessboardMocks = vi.hoisted(() => ({
   navigations: [] as SolutionNavigation[],

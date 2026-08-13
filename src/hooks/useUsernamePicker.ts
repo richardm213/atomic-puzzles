@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import {
   addRecentUsername,
@@ -22,6 +22,18 @@ export const useUsernamePicker = <Target extends string>(initialTarget: Target) 
     setIsOpen(true);
   }, []);
   const close = useCallback((): void => setIsOpen(false), []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const closeOnEscape = (event: KeyboardEvent): void => {
+      if (event.key === "Escape") close();
+    };
+
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [close, isOpen]);
+
   const remember = useCallback(
     (username: string): void => {
       saveRecentUsernames(addRecentUsername(recentUsernames, username));

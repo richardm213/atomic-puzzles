@@ -32,6 +32,7 @@ import {
 import { useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
+import { useCopyFeedback } from "../../hooks/useCopyFeedback";
 import {
   getOrderedPuzzleIndexesForCustomSet,
   readCustomPuzzleSet,
@@ -62,7 +63,6 @@ import type {
   PlaybackCommand,
   SolutionNavigation,
 } from "../../types/chessboard";
-import { copyTextToClipboard } from "../../utils/clipboard";
 import { formatLocalDateTime } from "../../utils/formatters";
 import { castlingRightsFromFen } from "./castlingRights";
 import { materialCountFromFen, type MaterialPieceRole } from "./materialCount";
@@ -258,7 +258,7 @@ export const PuzzleSolverPage = () => {
   const [feedbackBadgeId, setFeedbackBadgeId] = useState(0);
   const [explanationUnlockedByWrongMove, setExplanationUnlockedByWrongMove] = useState(false);
   const [pinnedSolutionLineIndex, setPinnedSolutionLineIndex] = useState<number | null>(null);
-  const [copyPgnLabel, setCopyPgnLabel] = useState("Copy PGN");
+  const { copy: copyPgn, copyLabel: copyPgnLabel, resetCopyFeedback } = useCopyFeedback();
   const [otherPuzzleAttemptsStatus, setOtherPuzzleAttemptsStatus] = useState<
     "idle" | "loading" | "loaded" | "error"
   >("idle");
@@ -754,11 +754,11 @@ export const PuzzleSolverPage = () => {
     setElapsedTimeMs(0);
     setElapsedTimerRunning(Boolean(activePuzzleId && fen));
     setMobileFeedback(null);
-    setCopyPgnLabel("Copy PGN");
+    resetCopyFeedback();
     setOtherPuzzleAttemptsStatus("idle");
     setOtherPuzzleAttempts([]);
     previousBoardSnapshotRef.current = createInitialBoardSnapshot();
-  }, [activePuzzleId, fen, resetPuzzleUiState]);
+  }, [activePuzzleId, fen, resetCopyFeedback, resetPuzzleUiState]);
 
   useEffect(() => {
     if (!elapsedTimerRunning) return;
@@ -1159,13 +1159,8 @@ export const PuzzleSolverPage = () => {
   const handleCopyPgn = useCallback(async () => {
     if (!moveLinePgn) return;
 
-    const copied = await copyTextToClipboard(moveLinePgn);
-    setCopyPgnLabel(copied ? "Copied" : "Copy failed");
-
-    window.setTimeout(() => {
-      setCopyPgnLabel("Copy PGN");
-    }, 1800);
-  }, [moveLinePgn]);
+    await copyPgn(moveLinePgn);
+  }, [copyPgn, moveLinePgn]);
 
   const handleUpdateMotifs = async (nextTags: string[]): Promise<void> => {
     if (!canManagePuzzleTags || !activePuzzleId || motifSaveStatus.state === "saving") return;

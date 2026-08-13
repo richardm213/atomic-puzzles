@@ -19,10 +19,3 @@ export const errorResponse = (error: unknown, fallbackMessage: string): Function
   globalThis.console?.error(error);
   return jsonResponse(500, { error: fallbackMessage });
 };
-
-export const publicError = (error: unknown, pattern: RegExp): never => {
-  if (error instanceof Error && pattern.test(error.message)) {
-    throw new HttpError(400, error.message);
-  }
-  throw error;
-};

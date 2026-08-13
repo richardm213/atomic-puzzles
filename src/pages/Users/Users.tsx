@@ -9,7 +9,7 @@ import { z } from "zod";
 
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
-import { type Mode, modeOptions } from "../../constants/matches";
+import { isMode, type Mode } from "../../constants/matches";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import type { PlayerRatingRow } from "../../lib/supabase/supabasePlayerRatings";
 import type { AliasLookup } from "../../lib/users/aliasesLookup";
@@ -39,7 +39,6 @@ type UserRow = {
 
 type UserSortKey = "username" | "openings" | "aliasCount" | UserRatingMode;
 
-const isMode = (value: string): value is Mode => (modeOptions as readonly string[]).includes(value);
 const isUserRatingMode = (mode: Mode): mode is UserRatingMode => mode !== "wolfrandom";
 
 const getUserColumns = (

@@ -15,6 +15,28 @@ const commandByKey: Partial<Record<string, BoardShortcutCommand>> = {
 const interactiveSelector =
   "a, button, input, textarea, select, summary, [contenteditable='true'], [role='button'], [role='menuitem'], [role='option'], [role='slider'], [role='tab']";
 
+export const shortcutIndexFromKeyboardEvent = (
+  event: Pick<KeyboardEvent, "key" | "code">,
+): number | null => {
+  const key = event.key.toLowerCase();
+  if (key === " " || key === "spacebar") return 0;
+  if (/^[1-9]$/.test(key)) return Number(key) - 1;
+
+  const code = event.code.toLowerCase();
+  if (/^(digit|numpad)[1-9]$/.test(code)) return Number(code.slice(-1)) - 1;
+  return null;
+};
+
+export const isTextEntryTarget = (target: EventTarget | null): boolean =>
+  target instanceof HTMLElement &&
+  Boolean(
+    target.tagName === "INPUT" ||
+    target.tagName === "TEXTAREA" ||
+    target.tagName === "SELECT" ||
+    target.isContentEditable ||
+    target.contentEditable === "true",
+  );
+
 export const boardShortcutCommand = (
   event: Pick<KeyboardEvent, "key" | "target" | "metaKey" | "ctrlKey" | "altKey">,
   captureInteractive = false,

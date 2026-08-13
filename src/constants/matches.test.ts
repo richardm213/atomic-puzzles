@@ -2,12 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   createModeRecord,
-  defaultMatchLengthMax,
-  defaultMatchLengthMin,
   isMatchLengthWithinBounds,
   knownSourceKeys,
-  matchLengthBoundsByMode,
-  modeOptions,
   rankingEligibilityByMode,
 } from "./matches";
 
@@ -26,17 +22,6 @@ describe("createModeRecord", () => {
 describe("rankingEligibilityByMode", () => {
   it("requires Wolfrandom RD below 80", () => {
     expect(rankingEligibilityByMode.wolfrandom).toEqual({ minGames: 10, maxRd: 80 });
-  });
-});
-
-describe("matchLengthBoundsByMode", () => {
-  it("provides default bounds for every mode", () => {
-    modeOptions.forEach((mode) => {
-      expect(matchLengthBoundsByMode[mode]).toEqual({
-        min: defaultMatchLengthMin,
-        max: defaultMatchLengthMax,
-      });
-    });
   });
 });
 

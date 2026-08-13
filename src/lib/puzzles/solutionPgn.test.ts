@@ -1,3 +1,4 @@
+import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -18,7 +19,6 @@ import {
   toComparableUci,
 } from "./solutionPgn";
 
-const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const BLACK_TO_MOVE_FEN = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
 const BLACK_TO_MOVE_LONG_FEN = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 37";
 

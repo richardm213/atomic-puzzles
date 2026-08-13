@@ -9,18 +9,11 @@ import { CommunityDiscussion } from "../../components/PuzzleCommunity/PuzzleComm
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { modeLabels } from "../../constants/matches";
+import { toMatchCardData } from "../../lib/matches/matchData";
 import { matchDetailQueryOptions } from "../../lib/matches/matchQueries";
-import {
-  ratingsForPlayers,
-  sourceValueFromMatch,
-  summarizeMatchGames,
-} from "../../lib/matches/matchSummaries";
-import type { MatchCardData } from "../../types/matchCard";
-import type { RawMatchLike } from "../../types/matchRaw";
 import { formatLocalDateTime, formatScore } from "../../utils/formatters";
 import { matchupToSlug } from "../../utils/h2hRoutes";
 import { normalizeMatchMode } from "../../utils/matchRoutes";
-import { normalizedGamesFromMatch, normalizedPlayersFromMatch } from "../../utils/matchTransforms";
 
 const decodeParam = (value: unknown): string => {
   try {
@@ -28,45 +21,6 @@ const decodeParam = (value: unknown): string => {
   } catch {
     return String(value || "");
   }
-};
-
-const normalizeStandaloneMatch = (
-  match: RawMatchLike,
-  mode: import("../../constants/matches").Mode | "",
-): MatchCardData => {
-  const rawPlayers = normalizedPlayersFromMatch(match);
-  const players =
-    rawPlayers.length > 0
-      ? rawPlayers.slice(0, 2).map((player) => String(player || "Unknown"))
-      : ["Unknown", "Unknown"];
-  const playerA = players[0] ?? "Unknown";
-  const playerB = players[1] ?? "Unknown";
-  const games = normalizedGamesFromMatch(match, players);
-  const { scoreA, scoreB, playerAWins, playerBWins, draws, mappedGames } = summarizeMatchGames(
-    games,
-    playerA,
-    playerB,
-  );
-  const ratings = ratingsForPlayers(match, players, playerA, playerB);
-  const firstGame = games[0];
-  return {
-    matchId: String(match.match_id ?? ""),
-    mode,
-    startTs: Number(match.start_ts ?? match.s),
-    timeControl: String(match.time_control ?? match.t ?? "—"),
-    playerA,
-    playerB,
-    scoreA,
-    scoreB,
-    playerAWins,
-    playerBWins,
-    draws,
-    ...ratings,
-    gameCount: games.length,
-    firstGameId: String(firstGame?.id || "—"),
-    games: mappedGames,
-    sourceValue: sourceValueFromMatch(match, firstGame),
-  };
 };
 
 export const MatchPage = () => {
@@ -78,9 +32,7 @@ export const MatchPage = () => {
     ...matchDetailQueryOptions(mode, decodedMatchId),
     enabled: hasValidMatchKey,
   });
-  const match = matchQuery.data?.match
-    ? normalizeStandaloneMatch(matchQuery.data.match, mode)
-    : null;
+  const match = matchQuery.data?.match ? toMatchCardData(matchQuery.data.match, mode) : null;
   const tournamentLocation = matchQuery.data?.tournamentLocation ?? null;
   const loading = hasValidMatchKey && matchQuery.isPending;
   const error = !hasValidMatchKey

@@ -1,22 +1,20 @@
+import "./Rankings.css";
+
 import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { Seo } from "../../components/Seo/Seo";
 import {
   defaultMode,
+  isMode,
   type Mode,
   modeLabels,
   modeOptions,
   rankingEligibilityByMode,
 } from "../../constants/matches";
-
-const isMode = (value: unknown): value is Mode =>
-  typeof value === "string" && (modeOptions as readonly string[]).includes(value);
-import "./Rankings.css";
-
-import { Seo } from "../../components/Seo/Seo";
 import { useAppSettings } from "../../context/AppSettings";
 import { useRankingsByMonth } from "../../hooks/useRankingsByMonth";
 import { monthDateFromMonthKey } from "../../lib/supabase/supabaseLb";

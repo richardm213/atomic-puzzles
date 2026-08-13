@@ -456,10 +456,6 @@
     width: 24%;
   }
 
-  .h2hMatchesTable th:nth-child(4),
-  .h2hMatchesTable td:nth-child(4) {
-    width: 18%;
-  }
 }
 
 @media (max-width: 640px) {
@@ -516,15 +512,10 @@
 
 @media (max-width: 380px) {
   .h2hPlayerPanelTop {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-areas:
-      "player-one player-two"
-      "overall-score overall-score";
     gap: 8px 10px;
   }
 
   .h2hScoreBlockHero {
-    justify-self: center;
     padding: 2px 0 0;
   }
 

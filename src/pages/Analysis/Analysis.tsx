@@ -2,6 +2,7 @@ import "./Analysis.css";
 
 import { faArrowsRotate, faBookOpen, faGear, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
 import type {
   CSSProperties,
   KeyboardEvent as ReactKeyboardEvent,
@@ -11,6 +12,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
 import { BoardWorkspace } from "../../components/BoardWorkspace/BoardWorkspace";
+import {
+  isTextEntryTarget,
+  shortcutIndexFromKeyboardEvent,
+} from "../../components/Chessboard/boardShortcuts";
 import { OpeningDatabaseDisplay } from "../../components/OpeningDatabaseDisplay/OpeningDatabaseDisplay";
 import { PlaybackButtons } from "../../components/PlaybackButtons/PlaybackButtons";
 import { pairPlayedMoves, PlayedMoves } from "../../components/PlayedMoves/PlayedMoves";
@@ -31,7 +36,6 @@ import {
   fetchExplorerApiResponse,
 } from "../../utils/openingExplorer";
 
-const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const MIN_MOVE_PANEL_HEIGHT = 86;
 const MIN_EXPLORER_PANEL_HEIGHT = 220;
 const EXPLORER_RESIZE_STEP = 24;
@@ -677,16 +681,7 @@ export const AnalysisPage = () => {
   useEffect(() => {
     const handleAnalysisShortcut = (event: KeyboardEvent): void => {
       const key = event.key.toLowerCase();
-      const shortcutIndex =
-        key === " " || key === "spacebar"
-          ? 0
-          : /^[1-9]$/.test(key)
-            ? Number(key) - 1
-            : /^digit[1-9]$/.test(event.code.toLowerCase())
-              ? Number(event.code.slice(-1)) - 1
-              : /^numpad[1-9]$/.test(event.code.toLowerCase())
-                ? Number(event.code.slice(-1)) - 1
-                : null;
+      const shortcutIndex = shortcutIndexFromKeyboardEvent(event);
       const isExplorerMoveShortcut = shortcutIndex !== null;
 
       if (
@@ -698,15 +693,7 @@ export const AnalysisPage = () => {
         return;
       }
 
-      const target = event.target;
-      const isTypingTarget =
-        target instanceof HTMLElement &&
-        (target.tagName === "INPUT" ||
-          target.tagName === "TEXTAREA" ||
-          target.tagName === "SELECT" ||
-          target.isContentEditable);
-
-      if (isTypingTarget) return;
+      if (isTextEntryTarget(event.target)) return;
 
       if (isExplorerMoveShortcut) {
         if (usernamePickerOpen || filtersOpen || !explorerOpen || explorerStatus !== "ready") {
@@ -731,19 +718,6 @@ export const AnalysisPage = () => {
     window.addEventListener("keydown", handleAnalysisShortcut, { capture: true });
     return () => window.removeEventListener("keydown", handleAnalysisShortcut, { capture: true });
   }, [explorerMoves, explorerOpen, explorerStatus, filtersOpen, flipBoard, usernamePickerOpen]);
-
-  useEffect(() => {
-    if (!usernamePickerOpen) return;
-
-    const handlePickerShortcut = (event: KeyboardEvent): void => {
-      if (event.key === "Escape") {
-        closeUsernamePicker();
-      }
-    };
-
-    window.addEventListener("keydown", handlePickerShortcut);
-    return () => window.removeEventListener("keydown", handlePickerShortcut);
-  }, [closeUsernamePicker, usernamePickerOpen]);
 
   return (
     <section className="analysisPage" style={analysisPageStyle}>

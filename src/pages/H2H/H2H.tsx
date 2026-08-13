@@ -5,7 +5,13 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 
-import { type Mode, modeLabels, modeOptions, type SourceFilters } from "../../constants/matches";
+import {
+  isMode,
+  type Mode,
+  modeLabels,
+  modeOptions,
+  type SourceFilters,
+} from "../../constants/matches";
 import type { PlayerRatingRow } from "../../lib/supabase/supabasePlayerRatings";
 import type { MatchCardData } from "../../types/matchCard";
 import type { RawMatchLike } from "../../types/matchRaw";
@@ -171,8 +177,8 @@ const indexRatingsRowsByTimeControl = (rows: PlayerRatingRow[]): PlayerSnapshots
 
   (Array.isArray(rows) ? rows : []).forEach((row) => {
     const timeControl = String(row?.tc ?? "").toLowerCase();
-    if (!timeControl || !(modeOptions as readonly string[]).includes(timeControl)) return;
-    snapshots[timeControl as Mode] = row;
+    if (!isMode(timeControl)) return;
+    snapshots[timeControl] = row;
   });
 
   return snapshots;
@@ -250,10 +256,7 @@ export const H2HPage = () => {
     () => matchupQuery.data?.playerSnapshots ?? {},
     [matchupQuery.data?.playerSnapshots],
   );
-  const matches = useMemo(
-    () => matchupQuery.data?.matches ?? [],
-    [matchupQuery.data?.matches],
-  );
+  const matches = useMemo(() => matchupQuery.data?.matches ?? [], [matchupQuery.data?.matches]);
   const hasSearched = Boolean(parsedRouteMatchup);
   const loading = matchupQuery.isFetching || searchMutation.isPending;
   const queryError = searchMutation.error ?? matchupQuery.error;

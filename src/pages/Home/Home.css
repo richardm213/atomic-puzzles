@@ -47,14 +47,6 @@
   letter-spacing: 0;
 }
 
-.homeIntro {
-  max-width: 62ch;
-  margin: 0;
-  color: var(--color-muted);
-  font-size: clamp(15px, 1.1vw, 17px);
-  line-height: 1.58;
-}
-
 .homeHeroActions {
   display: flex;
   flex-wrap: wrap;
@@ -101,14 +93,12 @@
 
 .homeSpotlightCard {
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-ui);
   background: var(--color-panel);
 }
 
 .homeSpotlightCard > p {
   margin: 0;
   color: var(--color-muted);
-  line-height: 1.55;
 }
 
 .homeSpotlightGrid {
@@ -941,10 +931,6 @@
     gap: 16px;
   }
 
-  .homeIntro {
-    font-size: 16px;
-  }
-
   .homePuzzleLeaderboardShortcut {
     min-height: 196px;
     padding-right: 112px;
@@ -1030,8 +1016,6 @@
   }
 
   .homeTrophyShortcut > img {
-    position: absolute;
-    width: auto;
     max-width: 86px;
     max-height: calc(100% - 28px);
     right: 14px;
@@ -1047,12 +1031,8 @@
   .homeAtomicHyperShortcut > img {
     position: absolute;
     right: 16px;
-    top: 50%;
-    bottom: auto;
     width: 124px;
     max-width: 124px;
-    max-height: calc(100% - 20px);
-    transform: translateY(-50%);
   }
 }
 
@@ -1069,24 +1049,5 @@
   .homePrimaryCta,
   .homeSecondaryCta {
     width: 100%;
-  }
-}
-
-@media (max-width: 390px) {
-  .homeHeroLead {
-    gap: 16px;
-  }
-
-  .homeHeroLead > h1 {
-    font-size: 30px;
-  }
-
-  .homeIntro {
-    line-height: 1.5;
-  }
-
-  .homePrimaryCta,
-  .homeSecondaryCta {
-    min-height: 48px;
   }
 }

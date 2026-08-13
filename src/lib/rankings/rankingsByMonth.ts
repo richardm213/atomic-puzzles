@@ -1,4 +1,4 @@
-import { createModeRecord, type Mode, modeOptions } from "../../constants/matches";
+import { createModeRecord, isMode, type Mode, modeOptions } from "../../constants/matches";
 import type { LbRow } from "../../types/supabase";
 import { fetchLbRows, isoMonthStartFromMonthKey } from "../supabase/supabaseLb";
 
@@ -28,7 +28,7 @@ const toPlayers = (players: RankingPlayer[]): RankingPlayer[] => {
 
 const parseModeFromTimeControl = (timeControl: unknown): Mode | null => {
   const mode = String(timeControl ?? "").toLowerCase();
-  return (modeOptions as readonly string[]).includes(mode) ? (mode as Mode) : null;
+  return isMode(mode) ? mode : null;
 };
 
 const normalizeLbRowsForMonth = (rows: LbRow[]): RankingsByMode => {

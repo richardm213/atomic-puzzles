@@ -189,16 +189,6 @@
   font-weight: 650;
 }
 
-.profileControls {
-  margin-top: 18px;
-  grid-template-columns: repeat(auto-fit, minmax(140px, max-content));
-  justify-content: flex-start;
-}
-
-.profileControls label {
-  justify-items: start;
-}
-
 .opponentRatingFilter {
   padding: 12px;
   border-radius: 8px;
@@ -322,10 +312,6 @@
   padding: 8px 10px;
 }
 
-.paginationRow button {
-  cursor: pointer;
-}
-
 .paginationPageButton {
   font-weight: 700;
 }
@@ -341,7 +327,6 @@
   border-radius: 6px;
   background: var(--color-surface-elevated-strong);
   color: var(--color-text);
-  font: inherit;
   padding: 6px 8px;
 }
 
@@ -399,7 +384,6 @@
 
   .recentMatchesPanel .sourceFilterCheck {
     flex: 0 0 calc((100% - 20px) / 3);
-    box-sizing: border-box;
     justify-content: center;
     padding: 0 8px;
   }
@@ -448,22 +432,12 @@
     width: 100%;
   }
 
-  .profileControls {
-    grid-template-columns: 1fr;
-    justify-content: stretch;
-  }
-
-  .profileControls label {
-    justify-items: stretch;
-  }
-
   .opponentRatingFilter {
     border-radius: 10px;
     padding: 10px;
   }
 
   .dualRangeSlider {
-    width: 100%;
     min-width: 0;
     max-width: none;
     height: 34px;

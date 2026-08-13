@@ -7,7 +7,6 @@
   min-height: var(--page-shell-min-height);
   min-height: var(--page-shell-min-height-dynamic);
   width: min(1180px, 100%);
-  box-sizing: border-box;
   margin: 0 auto;
   padding: max(var(--page-gutter), env(safe-area-inset-top))
     max(clamp(18px, 3vw, 28px), env(safe-area-inset-right))
@@ -358,7 +357,6 @@
 .tournamentStageSection {
   width: 100%;
   min-width: 0;
-  box-sizing: border-box;
   padding: 20px 20px 12px;
   overflow: visible;
   border-color: var(--color-border);
@@ -489,7 +487,6 @@
 .tournamentRoundsScroller {
   width: 100%;
   max-width: 100%;
-  box-sizing: border-box;
   overflow: auto;
   padding: 0 clamp(28px, 5vw, 64px) 0 0;
   cursor: grab;
@@ -556,7 +553,6 @@
   display: flex;
   align-items: center;
   height: 100%;
-  box-sizing: border-box;
   padding: 6px 0 10px 12px;
 }
 
@@ -579,7 +575,6 @@
   position: absolute;
   z-index: 3;
   height: 102px;
-  box-sizing: border-box;
   align-content: center;
 }
 

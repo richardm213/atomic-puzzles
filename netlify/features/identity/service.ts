@@ -1,8 +1,8 @@
 import { LichessVerificationError, verifyLichessAccount } from "../../lib/lichessAccount";
 import { createSiteSessionCookie } from "../../lib/siteSession";
 import type { FunctionEvent } from "../../platform/defineFunction";
+import { createServerSupabase } from "../../platform/environment";
 import { HttpError } from "../../platform/errors";
-import type { IdentityRepository } from "./repository";
 
 export type OauthExchange = {
   code: string;
@@ -66,8 +66,6 @@ const exchangeLichessCode = async (input: OauthExchange): Promise<string> => {
 };
 
 export class IdentityService {
-  constructor(private readonly repository: () => IdentityRepository) {}
-
   async logIn(
     oauthExchange: OauthExchange | null,
     legacyAccessToken: string,
@@ -84,7 +82,10 @@ export class IdentityService {
       }
 
       try {
-        await this.repository().register(username);
+        const { error } = await createServerSupabase("Auth session service")
+          .from("users")
+          .upsert({ username }, { onConflict: "username", ignoreDuplicates: true });
+        if (error) throw new Error(`Unable to register authenticated user: ${error.message}`);
       } catch (error) {
         globalThis.console?.error(error);
       }

@@ -1,6 +1,9 @@
 import { z } from "zod";
 
-import { isPuzzleMotifTag } from "../../../../shared/domain/puzzles/puzzleMotifs";
+import {
+  isPuzzleMotifTag,
+  normalizePuzzleMotifTags,
+} from "../../../../shared/domain/puzzles/puzzleMotifs";
 import {
   authenticateRequest,
   requireSameOrigin,
@@ -10,8 +13,6 @@ import { type FunctionEvent, jsonResponse } from "../../../platform/defineFuncti
 import { createServerSupabase } from "../../../platform/environment";
 import { HttpError } from "../../../platform/errors";
 import { parseJsonBody } from "../../../platform/validation";
-import { PuzzleTagRepository } from "./repository";
-import { PuzzleTagService } from "./service";
 
 const TAG_EDITOR = "seaside_tiramisu";
 const updateTagsSchema = z
@@ -29,8 +30,17 @@ export const puzzleTagRoute = async (event: FunctionEvent) => {
   if (username !== TAG_EDITOR) {
     throw new HttpError(403, "Only seaside_tiramisu can edit puzzle motifs.");
   }
-  const service = new PuzzleTagService(
-    new PuzzleTagRepository(createServerSupabase("Puzzle motif service")),
-  );
-  return jsonResponse(200, await service.update(input.puzzleId, input.tags));
+  const tags = normalizePuzzleMotifTags(input.tags);
+  const { data, error } = await createServerSupabase("Puzzle motif service")
+    .from("puzzles")
+    .update({ tags })
+    .eq("id", input.puzzleId)
+    .select("id,tags")
+    .single();
+  if (error) throw new Error(`Unable to update puzzle motifs: ${error.message}`);
+  if (!data) throw new HttpError(404, "Puzzle not found.");
+  return jsonResponse(200, {
+    puzzleId: Number(data.id),
+    tags: normalizePuzzleMotifTags(data.tags),
+  });
 };

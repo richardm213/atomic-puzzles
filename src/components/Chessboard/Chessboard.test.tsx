@@ -1,4 +1,5 @@
 import { act, fireEvent, render } from "@testing-library/react";
+import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
 import type { ComponentProps } from "react";
 
 import type { ChessboardState } from "../../types/chessboard";
@@ -36,8 +37,6 @@ vi.mock("../../context/AppSettings", async (importOriginal) => {
     }),
   };
 });
-
-const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 const renderBoard = (
   overrides: Partial<ComponentProps<typeof Chessboard>> = {},

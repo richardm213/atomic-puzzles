@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeMatches } from "./matchData";
+import { normalizeMatches, toMatchCardData } from "./matchData";
 
 const baseMatch = {
   match_id: "abcdef1234",
@@ -90,5 +90,22 @@ describe("normalizeMatches", () => {
   it("handles non-array input by returning []", () => {
     expect(normalizeMatches(null, "alice")).toEqual([]);
     expect(normalizeMatches(undefined, "alice")).toEqual([]);
+  });
+});
+
+describe("toMatchCardData", () => {
+  it("normalizes the shared match-card representation", () => {
+    expect(toMatchCardData(baseMatch, "blitz")).toMatchObject({
+      matchId: "abcdef1234",
+      mode: "blitz",
+      playerA: "alice",
+      playerB: "bob",
+      scoreA: 1.5,
+      scoreB: 1.5,
+      gameCount: 3,
+      firstGameId: "g1",
+      sourceValue: "arena",
+      sourceKey: "arena",
+    });
   });
 });

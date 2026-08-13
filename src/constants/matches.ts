@@ -1,6 +1,9 @@
 export const modeOptions = ["blitz", "bullet", "hyperbullet", "wolfrandom"] as const;
 export type Mode = (typeof modeOptions)[number];
 
+export const isMode = (value: unknown): value is Mode =>
+  typeof value === "string" && modeOptions.some((mode) => mode === value);
+
 export const defaultMode: Mode = modeOptions[0];
 
 export const modeLabels: Record<Mode, string> = {
@@ -66,15 +69,6 @@ export const opponentRatingSliderMin = 1000;
 export const opponentRatingSliderMax = 2500;
 export const defaultRatingMin = 1000;
 export const defaultRatingMax = 2500;
-
-export const defaultMatchLengthMin = 1;
-export const defaultMatchLengthMax = 50;
-
-export type MatchLengthBounds = { min: number; max: number };
-export const matchLengthBoundsByMode: Record<Mode, MatchLengthBounds> = createModeRecord(() => ({
-  min: 1,
-  max: 50,
-}));
 
 export const isMatchLengthWithinBounds = (
   gameCount: number,

@@ -50,9 +50,7 @@
   gap: 10px;
 }
 
-.analysisPanelHeader,
 .analysisFilterGroup,
-.analysisUsernameField,
 .analysisPlayerSettings,
 .analysisOpponentField,
 .analysisDateFilters label,
@@ -122,7 +120,6 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
 }
 
 .h2hSearchGrid input,
@@ -375,23 +372,18 @@
 .analysisLichessLink,
 .analysisFilterToggle,
 .analysisSpeedToggles button,
-.analysisColorToggles button,
 .analysisPrimaryButton,
-.analysisSecondaryButton,
 .matchPageH2HLink,
 .profilePuzzleDashboardLink,
 .profileBanActions a,
 .profileScoreBox,
 .profileFavoriteOpponentH2HButton,
 .puzzleDashboardActionLink,
-.dashboardReplayLink,
 .puzzleSetsBackLink,
 .puzzleSetStartLink,
 .puzzleSetOpenLink,
 .puzzleSetCardStartLink,
 .tournamentYearNavCurrent,
-.tournamentCardLink,
-.tournamentCardDisabled,
 .navAuthButton {
   display: inline-flex;
   align-items: center;
@@ -402,7 +394,6 @@
 .usernamePickerDatabaseList button,
 .navSearchResultName,
 .navSearchResultMeta,
-.metaChipValue,
 .puzzleOtherAttemptUser,
 .feedbackBadge strong,
 .analysisMoveList button,

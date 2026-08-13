@@ -2,15 +2,13 @@ import { useQuery } from "@tanstack/react-query";
 
 import {
   createModeRecord,
+  isMode,
   type Mode,
   modeLabels,
   modeOptions,
   type SourceFilters,
 } from "../constants/matches";
-import {
-  profileQueryKeys,
-  uniqueMonthRankPairs,
-} from "../features/profile/profileQueries";
+import { profileQueryKeys, uniqueMonthRankPairs } from "../features/profile/profileQueries";
 import type { NormalizedMatch } from "../lib/matches/matchData";
 import {
   fetchLbPlayerCount,
@@ -84,9 +82,6 @@ export type ProfileMetricCardRow = {
 const emptyRatingsSnapshotByMode: RatingsSnapshotByMode = createModeRecord(
   () => new Map<string, RatingSnapshot>(),
 );
-
-const isMode = (value: unknown): value is Mode =>
-  (modeOptions as readonly string[]).includes(String(value));
 
 const parseMonthRanksFromLbRows = (rows: unknown): MonthRank[] => {
   return (Array.isArray(rows) ? rows : [])

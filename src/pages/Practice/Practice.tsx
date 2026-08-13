@@ -12,11 +12,16 @@ import {
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
 import { BoardWorkspace } from "../../components/BoardWorkspace/BoardWorkspace";
+import {
+  isTextEntryTarget,
+  shortcutIndexFromKeyboardEvent,
+} from "../../components/Chessboard/boardShortcuts";
 import {
   OpeningDatabaseDisplay,
   type OpeningDatabaseMove,
@@ -27,6 +32,7 @@ import { Seo } from "../../components/Seo/Seo";
 import { UsernamePickerModal } from "../../components/UsernamePickerModal/UsernamePickerModal";
 import { useBoardDocument } from "../../hooks/useBoardDocument";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
+import { useCopyFeedback } from "../../hooks/useCopyFeedback";
 import { type OpeningExplorerRequest, useOpeningExplorer } from "../../hooks/useOpeningExplorer";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import { useUsernamePicker } from "../../hooks/useUsernamePicker";
@@ -34,7 +40,6 @@ import { findFairyStockfishMove } from "../../lib/practice/fairyStockfish";
 import { movePrefix } from "../../lib/puzzles/solutionPgn";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
 import { appAssetPath } from "../../utils/appAssetPath";
-import { copyTextToClipboard } from "../../utils/clipboard";
 import { formatGameCount } from "../../utils/formatters";
 import { lichessAtomicAnalysisUrl } from "../../utils/lichess";
 import {
@@ -43,7 +48,6 @@ import {
   mergeExplorerApiResponses,
 } from "../../utils/openingExplorer";
 
-const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const PRACTICE_AUTOMOVE_MIN_THINK_MS = 520;
 const PLAYER_MIN_RATING = 1700;
 const PRACTICE_SETTINGS_STORAGE_KEY = "atomic-puzzles.practice.settings";
@@ -286,7 +290,7 @@ export const PracticePage = () => {
   const [manualContinuationActive, setManualContinuationActive] = useState(false);
   const [movesOpen, setMovesOpen] = useState(true);
   const [hoveredMoveUci, setHoveredMoveUci] = useState<string | null>(null);
-  const [copyPgnLabel, setCopyPgnLabel] = useState("Copy PGN");
+  const { copy: copyPgn, copyLabel: copyPgnLabel } = useCopyFeedback();
   const [randomPlayerLoading, setRandomPlayerLoading] = useState(false);
   const [randomPlayerError, setRandomPlayerError] = useState("");
   const [engineStatus, setEngineStatus] = useState<PracticeEngineStatus>("idle");
@@ -382,13 +386,8 @@ export const PracticePage = () => {
   const canChoosePracticePlayer = allowMultiplePlayers ? canAddPracticePlayer : true;
 
   const handleCopyPgn = useCallback(async (): Promise<void> => {
-    const copied = await copyTextToClipboard(currentPracticePgn);
-    setCopyPgnLabel(copied ? "Copied" : "Copy failed");
-
-    window.setTimeout(() => {
-      setCopyPgnLabel("Copy PGN");
-    }, 1800);
-  }, [currentPracticePgn]);
+    await copyPgn(currentPracticePgn);
+  }, [copyPgn, currentPracticePgn]);
 
   const queueNavigation = useCallback((nextNavigation: SolutionNavigation): void => {
     navigationRef.current = nextNavigation;
@@ -880,16 +879,7 @@ export const PracticePage = () => {
   useEffect(() => {
     const handlePracticeShortcut = (event: KeyboardEvent): void => {
       const key = event.key.toLowerCase();
-      const shortcutIndex =
-        key === " " || key === "spacebar"
-          ? 0
-          : /^[1-9]$/.test(key)
-            ? Number(key) - 1
-            : /^digit[1-9]$/.test(event.code.toLowerCase())
-              ? Number(event.code.slice(-1)) - 1
-              : /^numpad[1-9]$/.test(event.code.toLowerCase())
-                ? Number(event.code.slice(-1)) - 1
-                : null;
+      const shortcutIndex = shortcutIndexFromKeyboardEvent(event);
       const isMoveShortcut = shortcutIndex !== null;
 
       if (
@@ -902,15 +892,7 @@ export const PracticePage = () => {
         return;
       }
 
-      const target = event.target;
-      const isTypingTarget =
-        target instanceof HTMLElement &&
-        (target.tagName === "INPUT" ||
-          target.tagName === "TEXTAREA" ||
-          target.tagName === "SELECT" ||
-          target.isContentEditable);
-
-      if (isTypingTarget) return;
+      if (isTextEntryTarget(event.target)) return;
 
       if (isMoveShortcut) {
         if (movesOpen || settingsOpen || status !== "ready") return;
@@ -949,19 +931,6 @@ export const PracticePage = () => {
     toggleGamePaused,
     usernamePickerOpen,
   ]);
-
-  useEffect(() => {
-    if (!usernamePickerOpen) return;
-
-    const handlePickerShortcut = (event: KeyboardEvent): void => {
-      if (event.key === "Escape") {
-        closeUsernamePicker();
-      }
-    };
-
-    window.addEventListener("keydown", handlePickerShortcut);
-    return () => window.removeEventListener("keydown", handlePickerShortcut);
-  }, [closeUsernamePicker, usernamePickerOpen]);
 
   const statusText = (() => {
     if (boardState?.winner === "white") return "White wins";

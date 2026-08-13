@@ -13,12 +13,6 @@ import { fetchAllSupabaseRows, loadSupabasePage, loadSupabaseRows } from "./supa
 export type { PuzzleProgressRow } from "../../types/supabase";
 export type { PuzzleProgressWithUsernameRow } from "../../types/supabase";
 
-export type PuzzleProgressSummary = {
-  total: number;
-  correct: number;
-  incorrect: number;
-};
-
 type SupabaseClient = ReturnType<typeof getSupabaseClient>;
 
 const PUZZLE_PROGRESS_TABLE =
@@ -416,54 +410,6 @@ export const fetchPuzzleProgressPage = async (
   return {
     rows: pagedRows,
     total: hasSinceFilter ? mergedRows.length : Math.max(serverCount, mergedRows.length),
-  };
-};
-
-export const fetchPuzzleProgressSummary = async (
-  username: string,
-  options: { sinceDate?: string } = {},
-): Promise<PuzzleProgressSummary> => {
-  const { sinceDate = "" } = options;
-  const normalizedUsername = normalizeUsername(username);
-  if (!normalizedUsername) {
-    return {
-      total: 0,
-      correct: 0,
-      incorrect: 0,
-    };
-  }
-
-  const localRows = readLocalPuzzleProgress(normalizedUsername);
-  let serverRows: PuzzleProgressRow[] = [];
-
-  try {
-    const supabase = getSupabaseClient();
-    try {
-      serverRows = await loadAllPuzzleProgressRowsFromRpc(supabase, normalizedUsername);
-    } catch {
-      serverRows = await fetchAllSupabaseRows<PuzzleProgressRow>(PUZZLE_PROGRESS_TABLE, () =>
-        supabase
-          .from(PUZZLE_PROGRESS_TABLE)
-          .select("puzzle_id,first_attempt_at,puzzle_correct,incorrect_move,correct_move")
-          .eq("username", normalizedUsername)
-          .order("first_attempt_at", { ascending: false }),
-      );
-    }
-  } catch {
-    serverRows = [];
-  }
-
-  const mergedRows = filterPuzzleProgressRowsSince(
-    mergePuzzleProgressRows(serverRows, localRows),
-    sinceDate,
-  );
-  const correct = mergedRows.filter((row) => Boolean(row?.puzzle_correct)).length;
-  const total = mergedRows.length;
-
-  return {
-    total,
-    correct,
-    incorrect: total - correct,
   };
 };
 

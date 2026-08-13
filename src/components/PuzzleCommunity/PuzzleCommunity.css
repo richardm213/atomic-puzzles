@@ -426,17 +426,12 @@
     padding: 0;
   }
 
-  .puzzleVoteControls {
-    display: inline-flex;
-  }
-
   .puzzleVotePrompt .puzzleVoteControls {
     flex: 0 0 auto;
   }
 
   .puzzleVoteControls button {
     flex: 0 0 auto;
-    min-width: 70px;
     padding-inline: 11px;
   }
 

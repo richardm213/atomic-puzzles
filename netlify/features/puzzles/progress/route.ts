@@ -9,8 +9,6 @@ import {
 import type { FunctionEvent } from "../../../platform/defineFunction";
 import { createServerSupabase } from "../../../platform/environment";
 import { parseJsonBody } from "../../../platform/validation";
-import { PuzzleProgressRepository } from "./repository";
-import { PuzzleProgressService } from "./service";
 
 const progressBodySchema = z.object({
   puzzleId: z
@@ -27,17 +25,16 @@ export const puzzleProgressRoute = async (event: FunctionEvent) => {
   const input = parseJsonBody(event, progressBodySchema, "Invalid puzzle progress request.");
   const identity = await authenticateRequest(event.headers);
   const username = requireUsername(identity, "Your Lichess login is no longer valid.");
-  const service = new PuzzleProgressService(
-    new PuzzleProgressRepository(createServerSupabase("Puzzle progress service")),
+  const { error } = await createServerSupabase("Puzzle progress service").rpc(
+    "record_first_puzzle_attempt_v2",
+    {
+      p_username: username,
+      p_puzzle_id: input.puzzleId,
+      p_puzzle_correct: input.puzzleCorrect,
+      p_incorrect_move: input.puzzleCorrect ? null : input.incorrectMove || null,
+      p_correct_move: input.puzzleCorrect ? input.correctMove || null : null,
+    },
   );
-  return identityResponse(
-    identity,
-    200,
-    await service.record(username, {
-      puzzleId: input.puzzleId,
-      puzzleCorrect: input.puzzleCorrect,
-      incorrectMove: input.incorrectMove || null,
-      correctMove: input.correctMove || null,
-    }),
-  );
+  if (error) throw new Error(`Unable to record puzzle progress: ${error.message}`);
+  return identityResponse(identity, 200, { recorded: true, username });
 };

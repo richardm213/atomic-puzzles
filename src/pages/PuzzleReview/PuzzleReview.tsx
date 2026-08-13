@@ -2,6 +2,7 @@ import "../PuzzleSubmission/PuzzleSubmission.css";
 
 import { faCheck, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
 import { useEffect, useState } from "react";
 
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
@@ -22,7 +23,6 @@ import { normalizeUsername } from "../../utils/playerNames";
 import { PuzzleAnalysisInstructions } from "../PuzzleSubmission/PuzzleAnalysisInstructions";
 import { PuzzleEditor } from "../PuzzleSubmission/PuzzleEditor";
 
-const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const REVIEWER = "seaside_tiramisu";
 const REVIEW_STEPS = [
   "Copy and paste the PGN into the Atomic analysis board",

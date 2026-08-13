@@ -326,7 +326,3 @@ export const completeLichessLogin = async (
     );
   }
 };
-
-// Older callers may still invoke this during a rolling deployment. The OAuth
-// token is now revoked server-side before the browser receives a session.
-export const revokeLichessSession = async (): Promise<void> => Promise.resolve();

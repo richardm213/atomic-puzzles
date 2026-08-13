@@ -224,7 +224,6 @@ canvas {
   }
 
   .panel {
-    border-radius: var(--radius-lg);
     padding: 16px;
   }
 

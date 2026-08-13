@@ -1,3 +1,4 @@
+import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -7,8 +8,6 @@ import {
   validatePuzzleSubmission,
 } from "./puzzleSubmission";
 import { parseSolutionUciLines } from "./solutionPgn";
-
-const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 describe("compactPuzzleSolution", () => {
   it("replaces real and escaped line breaks with readable spaces", () => {
