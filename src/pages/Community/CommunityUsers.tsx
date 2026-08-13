@@ -2,12 +2,14 @@ import "./Community.css";
 
 import { faArrowUp } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
-import { type CommunityUserStats, fetchCommunityUsers } from "../../lib/community/puzzleCommunity";
+import { communityUsersQueryOptions } from "../../lib/community/communityQueries";
+import type { CommunityUserStats } from "../../lib/community/puzzleCommunity";
 
 type SortKey = keyof CommunityUserStats;
 
@@ -18,33 +20,20 @@ const columns: Array<{ key: SortKey; label: string; shortLabel?: string }> = [
   { key: "comment_karma", label: "Karma", shortLabel: "Comment karma" },
   { key: "comments_left", label: "Comments", shortLabel: "Comments left" },
 ];
+const emptyCommunityUsers: CommunityUserStats[] = [];
 
 export const CommunityUsersPage = () => {
-  const [users, setUsers] = useState<CommunityUserStats[]>([]);
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("comments_left");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    let current = true;
-    void fetchCommunityUsers()
-      .then((result) => {
-        if (current) setUsers(result);
-      })
-      .catch((loadError) => {
-        if (current) {
-          setError(loadError instanceof Error ? loadError.message : "Unable to load users.");
-        }
-      })
-      .finally(() => {
-        if (current) setLoading(false);
-      });
-    return () => {
-      current = false;
-    };
-  }, []);
+  const usersQuery = useQuery(communityUsersQueryOptions());
+  const users = usersQuery.data ?? emptyCommunityUsers;
+  const loading = usersQuery.isPending;
+  const error = usersQuery.error
+    ? usersQuery.error instanceof Error
+      ? usersQuery.error.message
+      : "Unable to load users."
+    : "";
 
   const visibleUsers = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();

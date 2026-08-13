@@ -3,8 +3,9 @@ import "./PuzzleLeaderboard.css";
 
 import { faArrowUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { z } from "zod";
 
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
@@ -18,7 +19,7 @@ import {
   type PuzzleLeaderboardPeriod,
   type PuzzleLeaderboardRow,
 } from "../../lib/puzzles/puzzleLeaderboard";
-import { fetchAllPuzzleProgressRows } from "../../lib/supabase/supabasePuzzleProgress";
+import { puzzleLeaderboardProgressQueryOptions } from "../../lib/puzzles/puzzleQueries";
 import type { PuzzleProgressWithUsernameRow } from "../../types/supabase";
 
 type PuzzleLeaderboardSortKey = keyof Pick<
@@ -42,6 +43,7 @@ const puzzleLeaderboardPeriodLabels: Record<PuzzleLeaderboardPeriod, string> = {
 };
 const puzzleLeaderboardPeriodStorageKey = "atomic-puzzles.puzzle-leaderboard-period";
 const puzzleLeaderboardPeriodSchema = z.enum(["all", "30days", "90days"]);
+const emptyPuzzleProgressRows: PuzzleProgressWithUsernameRow[] = [];
 
 const sortIndicator = (
   sortKey: PuzzleLeaderboardSortKey,
@@ -53,9 +55,6 @@ const sortIndicator = (
 };
 
 const PuzzleLeaderboard = () => {
-  const [progressRows, setProgressRows] = useState<PuzzleProgressWithUsernameRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [period, setPeriod] = usePersistedState<PuzzleLeaderboardPeriod>(
     puzzleLeaderboardPeriodStorageKey,
     puzzleLeaderboardPeriodSchema,
@@ -63,36 +62,14 @@ const PuzzleLeaderboard = () => {
   );
   const [sortKey, setSortKey] = useState<PuzzleLeaderboardSortKey>("score");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
-
-  useEffect(() => {
-    let isCurrent = true;
-
-    const loadLeaderboard = async () => {
-      setLoading(true);
-      setError("");
-
-      try {
-        const progressRows = await fetchAllPuzzleProgressRows();
-        if (!isCurrent) return;
-
-        setProgressRows(progressRows);
-      } catch (loadError) {
-        if (!isCurrent) return;
-        setProgressRows([]);
-        setError(
-          loadError instanceof Error ? loadError.message : "Failed to load puzzle leaderboard.",
-        );
-      } finally {
-        if (isCurrent) setLoading(false);
-      }
-    };
-
-    void loadLeaderboard();
-
-    return () => {
-      isCurrent = false;
-    };
-  }, []);
+  const progressQuery = useQuery(puzzleLeaderboardProgressQueryOptions());
+  const progressRows = progressQuery.data ?? emptyPuzzleProgressRows;
+  const loading = progressQuery.isPending;
+  const error = progressQuery.error
+    ? progressQuery.error instanceof Error
+      ? progressQuery.error.message
+      : "Failed to load puzzle leaderboard."
+    : "";
 
   const rows = useMemo(
     () => buildPuzzleLeaderboardRows(filterPuzzleProgressRowsByPeriod(progressRows, period)),

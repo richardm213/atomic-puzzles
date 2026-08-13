@@ -2,8 +2,9 @@ import "./Users.css";
 
 import { faCircleInfo, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
@@ -13,6 +14,8 @@ const bannedUserColumns = [
   { key: "username", label: "Username" },
   { key: "accounts", label: "Banned Accounts" },
 ];
+type BannedUserRow = { username: string; accounts: string[] };
+const emptyBannedUserRows: BannedUserRow[] = [];
 
 const sortIndicator = (
   sortKey: string,
@@ -23,9 +26,7 @@ const sortIndicator = (
   return sortDirection === "asc" ? "↑" : "↓";
 };
 
-const buildBannedRows = (
-  aliasRows: AliasIdentityRow[],
-): Array<{ username: string; accounts: string[] }> =>
+const buildBannedRows = (aliasRows: AliasIdentityRow[]): BannedUserRow[] =>
   aliasRows
     .map((row) => {
       const username = String(row?.username || "").trim();
@@ -43,38 +44,20 @@ const buildBannedRows = (
     .filter((row) => row.username && row.accounts.length > 0);
 
 export const BannedUsersPage = () => {
-  const [rows, setRows] = useState<Array<{ username: string; accounts: string[] }>>([]);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
   const [sortKey, setSortKey] = useState("username");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-
-  useEffect(() => {
-    let isCurrent = true;
-
-    const loadBannedUsers = async () => {
-      setLoading(true);
-      setError("");
-
-      try {
-        const aliasRows = await fetchAliasRows();
-        if (!isCurrent) return;
-        setRows(buildBannedRows(aliasRows));
-      } catch (loadError) {
-        if (!isCurrent) return;
-        setError(loadError instanceof Error ? loadError.message : "Failed to load banned users.");
-        setRows([]);
-      } finally {
-        if (isCurrent) setLoading(false);
-      }
-    };
-
-    void loadBannedUsers();
-
-    return () => {
-      isCurrent = false;
-    };
-  }, []);
+  const bannedUsersQuery = useQuery({
+    queryKey: ["aliases", "banned-users"],
+    queryFn: async () => buildBannedRows(await fetchAliasRows()),
+    staleTime: 5 * 60 * 1_000,
+  });
+  const rows = bannedUsersQuery.data ?? emptyBannedUserRows;
+  const loading = bannedUsersQuery.isPending;
+  const error = bannedUsersQuery.error
+    ? bannedUsersQuery.error instanceof Error
+      ? bannedUsersQuery.error.message
+      : "Failed to load banned users."
+    : "";
 
   const handleSort = (nextKey: string): void => {
     if (sortKey === nextKey) {

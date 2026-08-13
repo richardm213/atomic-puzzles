@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 import {
   createModeRecord,
@@ -216,67 +216,33 @@ export const buildRankingsLocation = (
 };
 
 export const useMonthRanks = (username: string, enabled = true): MonthRank[] => {
-  const [monthRanks, setMonthRanks] = useState<MonthRank[]>([]);
+  const monthRanksQuery = useQuery({
+    queryKey: ["profile", username, "month-ranks"],
+    queryFn: async () => parseMonthRanksFromLbRows(await fetchLbRows({ username })),
+    enabled: Boolean(username) && enabled,
+    staleTime: 5 * 60 * 1_000,
+  });
 
-  useEffect(() => {
-    if (!username || !enabled) {
-      setMonthRanks([]);
-      return;
-    }
-
-    let isCurrent = true;
-
-    const loadMonthRanks = async (): Promise<void> => {
-      try {
-        const rows = await fetchLbRows({ username });
-        if (!isCurrent) return;
-        setMonthRanks(parseMonthRanksFromLbRows(rows));
-      } catch {
-        if (!isCurrent) return;
-        setMonthRanks([]);
-      }
-    };
-
-    void loadMonthRanks();
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [enabled, username]);
-
-  return monthRanks;
+  return enabled ? (monthRanksQuery.data ?? []) : [];
 };
 
 export const useMonthRankPlayerCounts = (
   monthRanks: MonthRank[],
   enabled = true,
 ): Record<string, number> => {
-  const [playerCounts, setPlayerCounts] = useState<Record<string, number>>({});
-
-  useEffect(() => {
-    if (!enabled) return;
-
-    const keys = [
-      ...new Set(
-        monthRanks
-          .map((monthRank) => `${monthRank.monthValue}|${monthRank.mode}`)
-          .filter((key) => !playerCounts[key]),
-      ),
-    ];
-
-    if (keys.length === 0) return;
-
-    let isCurrent = true;
-
-    const loadPlayerCounts = async (): Promise<void> => {
-      const pairs = keys.flatMap((key) => {
-        const [month, mode] = key.split("|");
-        return month && isMode(mode) ? [{ month, mode }] : [];
-      });
-
-      let nextPlayerCounts: Record<string, number>;
+  const pairs = [
+    ...new Map(
+      monthRanks.map((monthRank) => [
+        `${monthRank.monthValue}|${monthRank.mode}`,
+        { month: monthRank.monthValue, mode: monthRank.mode },
+      ]),
+    ).values(),
+  ];
+  const playerCountsQuery = useQuery({
+    queryKey: ["profile", "month-rank-player-counts", pairs],
+    queryFn: async () => {
       try {
-        nextPlayerCounts = await fetchLbPlayerCounts(pairs);
+        return await fetchLbPlayerCounts(pairs);
       } catch {
         // Keep profiles functional while the database migration rolls out.
         const entries = await Promise.all(
@@ -288,55 +254,25 @@ export const useMonthRankPlayerCounts = (
             }
           }),
         );
-        nextPlayerCounts = Object.fromEntries(entries);
+        return Object.fromEntries(entries);
       }
+    },
+    enabled: enabled && pairs.length > 0,
+    staleTime: 30 * 60 * 1_000,
+  });
 
-      if (!isCurrent) return;
-      setPlayerCounts((current) => ({ ...current, ...nextPlayerCounts }));
-    };
-
-    void loadPlayerCounts();
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [enabled, monthRanks, playerCounts]);
-
-  return playerCounts;
+  return enabled ? (playerCountsQuery.data ?? {}) : {};
 };
 
 export const useRatingsSnapshotByMode = (username: string): RatingsSnapshotByMode => {
-  const [ratingsSnapshotByMode, setRatingsSnapshotByMode] = useState<RatingsSnapshotByMode>(
-    emptyRatingsSnapshotByMode,
-  );
+  const ratingsQuery = useQuery({
+    queryKey: ["profile", username, "ratings-snapshot"],
+    queryFn: async () => parseCurrentRatingsFromRows(await fetchPlayerRatingsRows({ username })),
+    enabled: Boolean(username),
+    staleTime: 5 * 60 * 1_000,
+  });
 
-  useEffect(() => {
-    if (!username) {
-      setRatingsSnapshotByMode(emptyRatingsSnapshotByMode);
-      return;
-    }
-
-    let isCurrent = true;
-
-    const loadRatingsSnapshot = async (): Promise<void> => {
-      try {
-        const rows = await fetchPlayerRatingsRows({ username });
-        if (!isCurrent) return;
-        setRatingsSnapshotByMode(parseCurrentRatingsFromRows(rows));
-      } catch {
-        if (!isCurrent) return;
-        setRatingsSnapshotByMode(emptyRatingsSnapshotByMode);
-      }
-    };
-
-    void loadRatingsSnapshot();
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [username]);
-
-  return ratingsSnapshotByMode;
+  return username ? (ratingsQuery.data ?? emptyRatingsSnapshotByMode) : emptyRatingsSnapshotByMode;
 };
 
 export const getRatingDisplayByMode = (

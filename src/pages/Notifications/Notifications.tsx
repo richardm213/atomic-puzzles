@@ -2,17 +2,17 @@ import "./Notifications.css";
 
 import { faBell, faCheck, faComment, faReply } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
 
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
 import {
-  fetchNotifications,
-  markNotificationsRead,
-  type UserNotification,
-} from "../../lib/community/notifications";
+  notificationQueryKeys,
+  notificationsQueryOptions,
+} from "../../lib/community/notificationQueries";
+import { markNotificationsRead, type UserNotification } from "../../lib/community/notifications";
 import { formatLocalDateTime } from "../../utils/formatters";
 
 const notificationCopy = (notification: UserNotification): string => {
@@ -33,53 +33,38 @@ const notificationIcon = (notification: UserNotification) => {
 
 export const NotificationsPage = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, isLoading, login } = useAuth();
-  const [notifications, setNotifications] = useState<UserNotification[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [marking, setMarking] = useState(false);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      setNotifications([]);
-      return;
-    }
-    let current = true;
-    setLoading(true);
-    setError("");
-    void fetchNotifications()
-      .then((result) => {
-        if (current) setNotifications(result.notifications);
-      })
-      .catch((loadError) => {
-        if (current) {
-          setError(
-            loadError instanceof Error ? loadError.message : "Unable to load notifications.",
-          );
-        }
-      })
-      .finally(() => {
-        if (current) setLoading(false);
-      });
-    return () => {
-      current = false;
-    };
-  }, [isAuthenticated]);
+  const { isAuthenticated, isLoading, login, user } = useAuth();
+  const queryClient = useQueryClient();
+  const viewerKey = isAuthenticated ? (user?.username ?? "authenticated") : "anonymous";
+  const notificationsQuery = useQuery({
+    ...notificationsQueryOptions(viewerKey),
+    enabled: isAuthenticated,
+  });
+  const markReadMutation = useMutation({
+    mutationFn: markNotificationsRead,
+    onSuccess: (result) => {
+      queryClient.setQueryData(notificationQueryKeys.list(viewerKey), result);
+      queryClient.setQueryData(notificationQueryKeys.unreadCount(viewerKey), result.unreadCount);
+    },
+  });
+  const notifications = notificationsQuery.data?.notifications ?? [];
+  const loading = notificationsQuery.isFetching;
+  const marking = markReadMutation.isPending;
+  const errorValue = notificationsQuery.error ?? markReadMutation.error;
+  const error = errorValue
+    ? errorValue instanceof Error
+      ? errorValue.message
+      : "Unable to update notifications."
+    : "";
 
   const unreadNotifications = notifications.filter((notification) => !notification.read_at);
 
   const markRead = async (ids: number[]) => {
     if (!isAuthenticated || marking) return;
-    setMarking(true);
-    setError("");
     try {
-      const result = await markNotificationsRead(ids);
-      setNotifications(result.notifications);
-      window.dispatchEvent(new Event("atomic-notifications-updated"));
-    } catch (markError) {
-      setError(markError instanceof Error ? markError.message : "Unable to update notifications.");
-    } finally {
-      setMarking(false);
+      await markReadMutation.mutateAsync(ids);
+    } catch {
+      // The mutation error is rendered inline.
     }
   };
 

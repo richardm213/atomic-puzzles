@@ -2,6 +2,7 @@ import "./PuzzleDashboard.css";
 
 import { faArrowUpRightFromSquare, faClockRotateLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
@@ -12,9 +13,11 @@ import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import { createCustomPuzzleSet } from "../../lib/puzzles/customPuzzleSets";
-import { loadPuzzleCatalog } from "../../lib/puzzles/puzzleLibrary";
+import {
+  puzzleCatalogQueryOptions,
+  puzzleProgressForUserQueryOptions,
+} from "../../lib/puzzles/puzzleQueries";
 import { normalizePuzzleEventName } from "../../lib/puzzles/puzzleSets";
-import { fetchPuzzleProgressRowsForUsername } from "../../lib/supabase/supabasePuzzleProgress";
 import { isRegisteredSiteUser } from "../../lib/supabase/supabaseUsers";
 import { normalizeUsername } from "../../utils/playerNames";
 import { DashboardTagFilter, getPuzzleTagName } from "./DashboardTagFilter";
@@ -24,6 +27,8 @@ const DEFAULT_PAGE_SIZE = 20;
 const PAGE_SIZE_OPTIONS = [20, 50, 100] as const;
 const PAGE_SIZE_STORAGE_KEY = "atomic-puzzles.puzzle-dashboard-page-size";
 const UNKNOWN_EVENT_LABEL = "Unknown event";
+const emptyPuzzleProgressRows: import("../../lib/supabase/supabasePuzzleProgress").PuzzleProgressRow[] =
+  [];
 type DashboardResultFilter = "all" | "correct" | "incorrect";
 
 type PuzzleDashboardPageSize = (typeof PAGE_SIZE_OPTIONS)[number];
@@ -96,17 +101,38 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
   const [searchFilter, setSearchFilter] = useState("");
   const [tagFilters, setTagFilters] = useState<string[]>([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [progressRows, setProgressRows] = useState<
-    import("../../lib/supabase/supabasePuzzleProgress").PuzzleProgressRow[]
-  >([]);
-  const [puzzlesById, setPuzzlesById] = useState<
-    Map<string, import("../../lib/puzzles/puzzleLibrary").Puzzle>
-  >(new Map());
-  const [isDashboardLoading, setIsDashboardLoading] = useState(false);
-  const [arePuzzlesLoading, setArePuzzlesLoading] = useState(false);
-  const [isAccessCheckLoading, setIsAccessCheckLoading] = useState(false);
-  const [canViewDashboard, setCanViewDashboard] = useState(false);
-  const [error, setError] = useState("");
+  const accessQuery = useQuery({
+    queryKey: ["users", targetUsername, "registered"],
+    queryFn: () => isRegisteredSiteUser(targetUsername),
+    enabled: Boolean(targetUsername),
+    staleTime: 5 * 60 * 1_000,
+  });
+  const canViewDashboard = accessQuery.data ?? false;
+  const puzzleCatalogQuery = useQuery(puzzleCatalogQueryOptions());
+  const progressQuery = useQuery({
+    ...puzzleProgressForUserQueryOptions(targetUsername),
+    enabled: Boolean(targetUsername) && canViewDashboard,
+  });
+  const progressRows = progressQuery.data ?? emptyPuzzleProgressRows;
+  const puzzlesById = useMemo(
+    () =>
+      new Map(
+        (puzzleCatalogQuery.data ?? []).map((puzzle) => [
+          String(puzzle?.puzzleId ?? "").trim(),
+          puzzle,
+        ]),
+      ),
+    [puzzleCatalogQuery.data],
+  );
+  const isDashboardLoading = progressQuery.isFetching;
+  const arePuzzlesLoading = puzzleCatalogQuery.isFetching;
+  const isAccessCheckLoading = Boolean(targetUsername) && accessQuery.isPending;
+  const queryError = accessQuery.error ?? puzzleCatalogQuery.error ?? progressQuery.error;
+  const error = queryError
+    ? queryError instanceof Error
+      ? queryError.message
+      : "Failed to load the puzzle dashboard."
+    : "";
 
   useEffect(() => {
     setCurrentPage(1);
@@ -121,105 +147,6 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
     targetUsername,
     untilDate,
   ]);
-
-  useEffect(() => {
-    let isCurrent = true;
-
-    const loadPuzzles = async () => {
-      setArePuzzlesLoading(true);
-
-      try {
-        const puzzles = await loadPuzzleCatalog();
-        if (!isCurrent) return;
-
-        setPuzzlesById(
-          new Map(puzzles.map((puzzle) => [String(puzzle?.puzzleId ?? "").trim(), puzzle])),
-        );
-      } catch (loadError) {
-        if (!isCurrent) return;
-        setError(loadError instanceof Error ? loadError.message : "Failed to load puzzles.");
-      } finally {
-        if (isCurrent) setArePuzzlesLoading(false);
-      }
-    };
-
-    void loadPuzzles();
-
-    return () => {
-      isCurrent = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!targetUsername || !canViewDashboard) {
-      setProgressRows([]);
-      return;
-    }
-
-    let isCurrent = true;
-
-    const loadDashboardEntries = async () => {
-      setIsDashboardLoading(true);
-      setError("");
-
-      try {
-        const rows = await fetchPuzzleProgressRowsForUsername(targetUsername);
-        if (!isCurrent) return;
-
-        setProgressRows(Array.isArray(rows) ? rows : []);
-      } catch (loadError) {
-        if (!isCurrent) return;
-        setProgressRows([]);
-        setError(
-          loadError instanceof Error ? loadError.message : "Failed to load the puzzle dashboard.",
-        );
-      } finally {
-        if (isCurrent) setIsDashboardLoading(false);
-      }
-    };
-
-    void loadDashboardEntries();
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [canViewDashboard, targetUsername]);
-
-  useEffect(() => {
-    if (!targetUsername) {
-      setCanViewDashboard(false);
-      return;
-    }
-
-    let isCurrent = true;
-
-    const verifyDashboardAccess = async () => {
-      setCanViewDashboard(false);
-      setIsAccessCheckLoading(true);
-
-      try {
-        const isRegistered = await isRegisteredSiteUser(targetUsername);
-        if (!isCurrent) return;
-        setCanViewDashboard(isRegistered);
-      } catch (loadError) {
-        if (!isCurrent) return;
-        setCanViewDashboard(false);
-        setError(
-          loadError instanceof Error
-            ? loadError.message
-            : "Failed to verify puzzle dashboard access.",
-        );
-      } finally {
-        if (isCurrent) setIsAccessCheckLoading(false);
-      }
-    };
-
-    void verifyDashboardAccess();
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [targetUsername]);
 
   const allDashboardEntries = useMemo(
     () => buildDashboardEntries(progressRows, puzzlesById),

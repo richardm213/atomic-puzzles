@@ -13,7 +13,7 @@ export type UserNotification = {
   read_at: string | null;
 };
 
-type NotificationResult = {
+export type NotificationResult = {
   notifications: UserNotification[];
   unreadCount: number;
 };

@@ -1,5 +1,14 @@
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  act,
+  fireEvent,
+  render as testingLibraryRender,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { SolutionNavigation } from "../../types/chessboard";
@@ -116,6 +125,15 @@ vi.mock("../../components/Chessboard/Chessboard", async () => {
 
 import { castlingRightsFromFen } from "./castlingRights";
 import { PuzzleSolverPage } from "./PuzzleSolver";
+
+const render = (element: ReactElement) => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return testingLibraryRender(
+    <QueryClientProvider client={queryClient}>{element}</QueryClientProvider>,
+  );
+};
 
 describe("castlingRightsFromFen", () => {
   it("formats king- and queenside rights for both colors", () => {

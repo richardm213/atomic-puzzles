@@ -1,7 +1,8 @@
 import "./MatchPage.css";
 
+import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { MatchDetails } from "../../components/MatchDetails/MatchDetails";
 import { CommunityDiscussion } from "../../components/PuzzleCommunity/PuzzleCommunity";
@@ -14,10 +15,7 @@ import {
   sourceValueFromMatch,
   summarizeMatchGames,
 } from "../../lib/matches/matchSummaries";
-import {
-  getTournamentMatchLocation,
-  type TournamentMatchLocation,
-} from "../../lib/matches/tournaments";
+import { getTournamentMatchLocation } from "../../lib/matches/tournaments";
 import type { MatchCardData } from "../../types/matchCard";
 import type { RawMatchLike } from "../../types/matchRaw";
 import { formatLocalDateTime, formatScore } from "../../utils/formatters";
@@ -76,62 +74,35 @@ export const MatchPage = () => {
   const { mode: modeParam, matchId: matchIdParam } = useParams({ strict: false });
   const mode = normalizeMatchMode(modeParam);
   const decodedMatchId = decodeParam(matchIdParam);
-  const [match, setMatch] = useState<MatchCardData | null>(null);
-  const [tournamentLocation, setTournamentLocation] = useState<TournamentMatchLocation | null>(
-    null,
-  );
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadMatch = async () => {
-      if (!mode || !decodedMatchId) {
-        setMatch(null);
-        setTournamentLocation(null);
-        setError("This match link is missing a valid mode or match id.");
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      setError("");
-      setTournamentLocation(null);
-
-      try {
-        const [matches, resolvedTournamentLocation] = await Promise.all([
-          loadRawMatchesByMode(mode, { filters: { matchId: decodedMatchId } }),
-          getTournamentMatchLocation(decodedMatchId).catch(() => null),
-        ]);
-        if (cancelled) return;
-
-        const resolvedMatch = Array.isArray(matches) ? matches[0] : null;
-        if (!resolvedMatch) {
-          setMatch(null);
-          setTournamentLocation(null);
-          setError("Match not found.");
-          return;
-        }
-
-        setMatch(normalizeStandaloneMatch(resolvedMatch, mode));
-        setTournamentLocation(resolvedTournamentLocation);
-      } catch (loadError) {
-        if (cancelled) return;
-        setMatch(null);
-        setTournamentLocation(null);
-        setError(String(loadError));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-
-    void loadMatch();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [decodedMatchId, mode]);
+  const hasValidMatchKey = Boolean(mode && decodedMatchId);
+  const matchQuery = useQuery({
+    queryKey: ["matches", mode, decodedMatchId],
+    queryFn: async () => {
+      if (!mode || !decodedMatchId) throw new Error("Invalid match key.");
+      const [matches, tournamentLocation] = await Promise.all([
+        loadRawMatchesByMode(mode, { filters: { matchId: decodedMatchId } }),
+        getTournamentMatchLocation(decodedMatchId).catch(() => null),
+      ]);
+      const resolvedMatch = Array.isArray(matches) ? matches[0] : null;
+      if (!resolvedMatch) throw new Error("Match not found.");
+      return {
+        match: normalizeStandaloneMatch(resolvedMatch, mode),
+        tournamentLocation,
+      };
+    },
+    enabled: hasValidMatchKey,
+    staleTime: 10 * 60 * 1_000,
+  });
+  const match = matchQuery.data?.match ?? null;
+  const tournamentLocation = matchQuery.data?.tournamentLocation ?? null;
+  const loading = hasValidMatchKey && matchQuery.isPending;
+  const error = !hasValidMatchKey
+    ? "This match link is missing a valid mode or match id."
+    : matchQuery.error instanceof Error
+      ? matchQuery.error.message
+      : matchQuery.error
+        ? String(matchQuery.error)
+        : "";
 
   const title = useMemo(() => {
     if (!match) return "Match";

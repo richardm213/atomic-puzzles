@@ -11,6 +11,7 @@ import {
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -41,6 +42,7 @@ import {
   normalizePuzzleMotifTags,
   puzzleMotifs,
 } from "../../lib/puzzles/puzzleMotifs";
+import { puzzleQueryKeys } from "../../lib/puzzles/puzzleQueries";
 import { getOrderedPuzzleIndexesForEvent } from "../../lib/puzzles/puzzleSets";
 import { updatePuzzleTags } from "../../lib/puzzles/puzzleTags";
 import {
@@ -220,6 +222,7 @@ const SOLUTION_UNLOCK_HINT = "Make at least one attempt before viewing the solut
 
 export const PuzzleSolverPage = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const {
     puzzleId: routePuzzleId = "",
     setKey: routeSetKey = "",
@@ -694,13 +697,14 @@ export const PuzzleSolverPage = () => {
             correctMove,
           }).then(() => {
             setAttemptedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
+            void queryClient.invalidateQueries({ queryKey: puzzleQueryKeys.progress });
           }),
         )
         .catch((error) => {
           globalThis.console?.error(error);
         });
     },
-    [user?.username],
+    [queryClient, user?.username],
   );
 
   const handleAttemptResolved = useCallback(

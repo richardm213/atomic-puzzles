@@ -2,8 +2,9 @@ import "./Users.css";
 
 import { faChevronDown, faCircleInfo } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { z } from "zod";
 
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
@@ -140,9 +141,6 @@ const buildUserRows = (ratingRows: PlayerRatingRow[], aliasesLookup: AliasLookup
 };
 
 const UsersTablePage = () => {
-  const [rows, setRows] = useState<UserRow[]>([]);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
   const [sortKey, setSortKey] = useState<UserSortKey>("blitz");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [ratingDisplayMode, setRatingDisplayMode] = usePersistedState<RatingDisplayMode>(
@@ -151,37 +149,27 @@ const UsersTablePage = () => {
     "current",
   );
   const [activeOpeningFilter, setActiveOpeningFilter] = useState("");
-
-  useEffect(() => {
-    let isCurrent = true;
-
-    const loadUsers = async () => {
-      setLoading(true);
-      setError("");
-
-      try {
-        const [ratingRows, aliasesLookup] = await Promise.all([
-          fetchPlayerRatingsRows(),
-          loadAliasesLookup(),
-        ]);
-        if (!isCurrent) return;
-
-        setRows(buildUserRows(ratingRows, aliasesLookup));
-      } catch (loadError) {
-        if (!isCurrent) return;
-        setError(loadError instanceof Error ? loadError.message : "Failed to load users.");
-        setRows([]);
-      } finally {
-        if (isCurrent) setLoading(false);
-      }
-    };
-
-    void loadUsers();
-
-    return () => {
-      isCurrent = false;
-    };
-  }, []);
+  const ratingsQuery = useQuery({
+    queryKey: ["users", "ratings"],
+    queryFn: () => fetchPlayerRatingsRows(),
+    staleTime: 5 * 60 * 1_000,
+  });
+  const aliasesQuery = useQuery({
+    queryKey: ["aliases", "lookup"],
+    queryFn: loadAliasesLookup,
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+  const rows = useMemo(
+    () => buildUserRows(ratingsQuery.data ?? [], aliasesQuery.data ?? new Map()),
+    [aliasesQuery.data, ratingsQuery.data],
+  );
+  const loading = ratingsQuery.isPending || aliasesQuery.isPending;
+  const queryError = ratingsQuery.error ?? aliasesQuery.error;
+  const error = queryError
+    ? queryError instanceof Error
+      ? queryError.message
+      : "Failed to load users."
+    : "";
 
   const handleSort = (nextKey: UserSortKey): void => {
     if (sortKey === nextKey) {

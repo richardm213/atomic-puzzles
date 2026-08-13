@@ -2,6 +2,7 @@ import "./TournamentPage.css";
 
 import { faCheck, faComment, faRobot } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import type {
   MouseEvent as ReactMouseEvent,
@@ -870,9 +871,19 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
     () => getAdjacentTournamentMetas(tournamentId),
     [tournamentId],
   );
-  const [bracket, setBracket] = useState<TournamentBracket | null>(null);
-  const [bracketLoading, setBracketLoading] = useState(true);
-  const [bracketError, setBracketError] = useState("");
+  const bracketQuery = useQuery({
+    queryKey: ["tournaments", tournamentId, "bracket"],
+    queryFn: () => getTournamentBracket(tournamentId),
+    enabled: Boolean(tournamentId),
+    staleTime: 5 * 60 * 1_000,
+  });
+  const bracket: TournamentBracket | null = bracketQuery.data ?? null;
+  const bracketLoading = bracketQuery.isPending;
+  const bracketError = bracketQuery.error
+    ? bracketQuery.error instanceof Error
+      ? bracketQuery.error.message
+      : "Unable to load tournament"
+    : "";
   const [startRounds, setStartRounds] = useState<Record<string, string>>({});
   const [zoomLevels, setZoomLevels] = useState<Record<string, number>>({});
   const [activeStageKey, setActiveStageKey] = useState<string>("main");
@@ -913,33 +924,6 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
       }),
     );
   }, [activeStageKey, bracket, startRounds, zoomLevels]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    setBracketLoading(true);
-    setBracketError("");
-
-    getTournamentBracket(tournamentId)
-      .then((data) => {
-        if (cancelled) return;
-        setBracket(data);
-      })
-      .catch((error) => {
-        if (cancelled) return;
-        setBracket(null);
-        setBracketError(error?.message || "Unable to load tournament");
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setBracketLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [tournamentId]);
 
   useEffect(() => {
     if (!bracket) return;

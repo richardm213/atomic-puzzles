@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 
-import { loadRankingsForMonth, type RankingsByMode } from "../lib/rankings/rankingsByMonth";
+import type { RankingsByMode } from "../lib/rankings/rankingsByMonth";
+import { rankingsForMonthQueryOptions } from "../lib/rankings/rankingsQueries";
 
 export const useRankingsByMonth = (
   selectedMonth: string | null | undefined,
@@ -8,42 +10,25 @@ export const useRankingsByMonth = (
   rankingsByMonth: Map<string, RankingsByMode>;
   error: string;
 } => {
-  const [rankingsByMonth, setRankingsByMonth] = useState<Map<string, RankingsByMode>>(
-    () => new Map(),
-  );
-  const [error, setError] = useState("");
-  const cachedMonth = selectedMonth ? rankingsByMonth.get(selectedMonth) : null;
+  const normalizedMonth = selectedMonth ?? "";
+  const rankingsQuery = useQuery({
+    ...rankingsForMonthQueryOptions(normalizedMonth),
+    enabled: Boolean(normalizedMonth),
+  });
 
-  useEffect(() => {
-    if (!selectedMonth || cachedMonth) return;
+  const rankingsByMonth = useMemo(() => {
+    const rankings = new Map<string, RankingsByMode>();
+    if (normalizedMonth && rankingsQuery.data) {
+      rankings.set(normalizedMonth, rankingsQuery.data);
+    }
+    return rankings;
+  }, [normalizedMonth, rankingsQuery.data]);
 
-    let isCurrent = true;
-
-    const loadRankings = async (): Promise<void> => {
-      try {
-        setError("");
-        const monthData = await loadRankingsForMonth(selectedMonth);
-        if (!isCurrent) return;
-
-        setRankingsByMonth((previous) => {
-          const next = new Map(previous);
-          next.set(selectedMonth, monthData);
-          return next;
-        });
-      } catch (loadError) {
-        if (!isCurrent) return;
-        const message =
-          loadError instanceof Error ? loadError.message : "Failed to load leaderboard data";
-        setError(message);
-      }
-    };
-
-    void loadRankings();
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [cachedMonth, selectedMonth]);
+  const error = rankingsQuery.error
+    ? rankingsQuery.error instanceof Error
+      ? rankingsQuery.error.message
+      : "Failed to load leaderboard data"
+    : "";
 
   return {
     rankingsByMonth,

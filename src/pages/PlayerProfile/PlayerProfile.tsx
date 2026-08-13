@@ -2,6 +2,7 @@ import "./PlayerProfile.css";
 
 import { faMagnifyingGlass, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
@@ -154,8 +155,6 @@ export const PlayerProfilePage = ({
   const [profileHistoryTab, setProfileHistoryTab] = useState<ProfileHistoryTab>(() =>
     getProfileHistoryTabFromLocation(),
   );
-  const [profileAliasEntry, setProfileAliasEntry] = useState<AliasIdentityRow | null>(null);
-  const [aliasesLoaded, setAliasesLoaded] = useState(false);
   const [matchesByMode, setMatchesByMode] = useState(() => createModeRecord(() => []));
   const [totalMatchesByMode, setTotalMatchesByMode] = useState(() => createModeRecord(() => 0));
   const {
@@ -175,10 +174,24 @@ export const PlayerProfilePage = ({
   const [sourceFilters, setSourceFilters] = useState(readStoredSourceFilters);
   const [timeControlInitialFilter, setTimeControlInitialFilter] = useState("all");
   const [timeControlIncrementFilter, setTimeControlIncrementFilter] = useState("all");
-  const [isHistoryAvailable, setIsHistoryAvailable] = useState(false);
   const [lastCompletedMatchSearchKey, setLastCompletedMatchSearchKey] = useState("");
   const prefetchedMatchSearchKeysRef = useRef(new Set<string>());
+  const profileAliasQuery = useQuery({
+    queryKey: ["profile", normalizedUsername, "alias-identity"],
+    queryFn: () => fetchProfileAliasRow(normalizedUsername),
+    enabled: Boolean(normalizedUsername),
+    staleTime: 5 * 60 * 1_000,
+  });
+  const profileAliasEntry: AliasIdentityRow | null = profileAliasQuery.data ?? null;
+  const aliasesLoaded = Boolean(normalizedUsername) && !profileAliasQuery.isPending;
   const canonicalUsername = profileAliasEntry?.username ?? normalizedUsername;
+  const historyAvailabilityQuery = useQuery({
+    queryKey: ["profile", canonicalUsername, "history-availability"],
+    queryFn: () => isRegisteredSiteUser(canonicalUsername),
+    enabled: !historyOnly && aliasesLoaded && Boolean(canonicalUsername),
+    staleTime: 5 * 60 * 1_000,
+  });
+  const isHistoryAvailable = historyAvailabilityQuery.data ?? false;
   const profileDisplayUsername = String(username || "").trim() || canonicalUsername;
   const isBanned = Boolean(profileAliasEntry?.banned);
   const profileDataUsername = aliasesLoaded ? canonicalUsername : "";
@@ -283,62 +296,6 @@ export const PlayerProfilePage = ({
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
-
-  useEffect(() => {
-    let isCurrent = true;
-
-    const loadProfileAliasEntry = async () => {
-      if (isCurrent) {
-        setAliasesLoaded(false);
-        setProfileAliasEntry(null);
-      }
-
-      try {
-        const nextProfileAliasEntry = await fetchProfileAliasRow(normalizedUsername);
-        if (isCurrent) {
-          setProfileAliasEntry(nextProfileAliasEntry);
-          setAliasesLoaded(true);
-        }
-      } catch {
-        if (isCurrent) {
-          setProfileAliasEntry(null);
-          setAliasesLoaded(true);
-        }
-      }
-    };
-
-    void loadProfileAliasEntry();
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [normalizedUsername]);
-
-  useEffect(() => {
-    let isCurrent = true;
-
-    const loadHistoryAvailability = async () => {
-      if (historyOnly || !aliasesLoaded || !canonicalUsername) {
-        setIsHistoryAvailable(false);
-        return;
-      }
-
-      try {
-        const isRegistered = await isRegisteredSiteUser(canonicalUsername);
-        if (!isCurrent) return;
-        setIsHistoryAvailable(isRegistered);
-      } catch {
-        if (!isCurrent) return;
-        setIsHistoryAvailable(false);
-      }
-    };
-
-    void loadHistoryAvailability();
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [aliasesLoaded, canonicalUsername, historyOnly]);
 
   const runMatchSearch = useCallback(
     async (

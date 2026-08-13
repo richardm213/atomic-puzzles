@@ -2,8 +2,8 @@ import "./Tournaments.css";
 
 import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
 
 import { Seo } from "../../components/Seo/Seo";
 import {
@@ -84,7 +84,6 @@ const TournamentArchiveCard = ({
 };
 
 export const TournamentsPage = () => {
-  const [championsById, setChampionsById] = useState<Record<string, string>>({});
   const publishedTournaments = tournamentCatalog.filter(
     (tournament) => tournament.status === "available",
   );
@@ -96,11 +95,9 @@ export const TournamentsPage = () => {
   const archiveTournaments = publishedTournaments.filter(
     (tournament) => tournament.year !== latestYear,
   );
-
-  useEffect(() => {
-    let isCancelled = false;
-
-    const loadChampions = async () => {
+  const championsQuery = useQuery({
+    queryKey: ["tournaments", "champions"],
+    queryFn: async () => {
       const availableTournaments = tournamentCatalog.filter(
         (tournament) => tournament.status === "available",
       );
@@ -109,23 +106,17 @@ export const TournamentsPage = () => {
         availableTournaments.map(async (tournament) => {
           try {
             const bracket = await getTournamentBracket(tournament.id);
-            return [tournament.id, getTournamentChampion(bracket)];
+            return [tournament.id, getTournamentChampion(bracket)] as const;
           } catch {
-            return [tournament.id, ""];
+            return [tournament.id, ""] as const;
           }
         }),
       );
-
-      if (isCancelled) return;
-      setChampionsById(Object.fromEntries(championEntries.filter(([, champion]) => champion)));
-    };
-
-    void loadChampions();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, []);
+      return Object.fromEntries(championEntries.filter(([, champion]) => champion));
+    },
+    staleTime: 10 * 60 * 1_000,
+  });
+  const championsById: Record<string, string> = championsQuery.data ?? {};
 
   return (
     <div className="tournamentsPage">

@@ -2,44 +2,28 @@ import "./Community.css";
 
 import { faArrowDown, faArrowUp } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
-import {
-  fetchPuzzleRankings,
-  type PuzzleRankings,
-  type PuzzleVoteRankingRow,
-} from "../../lib/community/puzzleCommunity";
+import { puzzleRankingsQueryOptions } from "../../lib/community/communityQueries";
+import type { PuzzleVoteRankingRow } from "../../lib/community/puzzleCommunity";
 
 type VoteSortKey = "upvotes" | "downvotes";
 
 export const PuzzleVoteRankingsPage = () => {
-  const [rankings, setRankings] = useState<PuzzleRankings | null>(null);
   const [sortKey, setSortKey] = useState<VoteSortKey>("upvotes");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    let current = true;
-    void fetchPuzzleRankings()
-      .then((result) => {
-        if (current) setRankings(result);
-      })
-      .catch((loadError) => {
-        if (current) {
-          setError(loadError instanceof Error ? loadError.message : "Unable to load rankings.");
-        }
-      })
-      .finally(() => {
-        if (current) setLoading(false);
-      });
-    return () => {
-      current = false;
-    };
-  }, []);
+  const rankingsQuery = useQuery(puzzleRankingsQueryOptions());
+  const rankings = rankingsQuery.data ?? null;
+  const loading = rankingsQuery.isPending;
+  const error = rankingsQuery.error
+    ? rankingsQuery.error instanceof Error
+      ? rankingsQuery.error.message
+      : "Unable to load rankings."
+    : "";
 
   const sortedPuzzles = useMemo(() => {
     const multiplier = sortDirection === "asc" ? 1 : -1;

@@ -1,11 +1,13 @@
 import "./PuzzleSets.css";
 
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
-import { loadPuzzleCatalog } from "../../lib/puzzles/puzzleLibrary";
+import type { Puzzle } from "../../lib/puzzles/puzzleLibrary";
+import { puzzleCatalogQueryOptions } from "../../lib/puzzles/puzzleQueries";
 import {
   getPuzzleEventKey,
   groupPuzzlesByEvent,
@@ -23,6 +25,7 @@ const EVENT_FILTERS = [
   { id: "practiceMatch", label: "Practice" },
   { id: "wolfrandom", label: "WolframRandom" },
 ];
+const emptyPuzzles: Puzzle[] = [];
 
 const matchesEventFilter = (
   group: { event?: string | null | undefined },
@@ -95,40 +98,18 @@ const updateEventKeyHash = (eventKey: string): void => {
 };
 
 export const PuzzleSetsPage = () => {
-  const [puzzles, setPuzzles] = useState<import("../../lib/puzzles/puzzleLibrary").Puzzle[]>([]);
   const [selectedEventKey, setSelectedEventKey] = useState(() => readEventKeyFromHash());
   const [activeFilterId, setActiveFilterId] = useState("all");
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
   const selectedSetSectionRef = useRef<HTMLElement | null>(null);
   const shouldScrollToSelectionRef = useRef(false);
-
-  useEffect(() => {
-    let isCurrent = true;
-
-    const loadPuzzles = async () => {
-      setIsLoading(true);
-      setError("");
-
-      try {
-        const loadedPuzzles = await loadPuzzleCatalog();
-        if (!isCurrent) return;
-        setPuzzles(Array.isArray(loadedPuzzles) ? loadedPuzzles : []);
-      } catch (loadError) {
-        if (!isCurrent) return;
-        setPuzzles([]);
-        setError(loadError instanceof Error ? loadError.message : "Failed to load puzzle sets.");
-      } finally {
-        if (isCurrent) setIsLoading(false);
-      }
-    };
-
-    void loadPuzzles();
-
-    return () => {
-      isCurrent = false;
-    };
-  }, []);
+  const puzzleCatalogQuery = useQuery(puzzleCatalogQueryOptions());
+  const puzzles = puzzleCatalogQuery.data ?? emptyPuzzles;
+  const isLoading = puzzleCatalogQuery.isPending;
+  const error = puzzleCatalogQuery.error
+    ? puzzleCatalogQuery.error instanceof Error
+      ? puzzleCatalogQuery.error.message
+      : "Failed to load puzzle sets."
+    : "";
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;

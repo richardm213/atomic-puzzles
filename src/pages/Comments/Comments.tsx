@@ -2,18 +2,18 @@ import "./Comments.css";
 
 import { faArrowUp, faLock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { CommunityCommentTargetLink } from "../../components/CommunityCommentTargetLink/CommunityCommentTargetLink";
 import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
+import { siteCommunityCommentsQueryOptions } from "../../lib/community/communityQueries";
 import {
   type CommunityCommentTargetFilter,
-  type CommunityHistoryComment,
-  fetchSiteCommunityComments,
   type ProfileCommentSort,
 } from "../../lib/community/puzzleCommunity";
 import { formatLocalDateTime } from "../../utils/formatters";
@@ -28,40 +28,23 @@ const targetFilterOptions: Array<{ value: CommunityCommentTargetFilter; label: s
 ];
 
 export const CommentsPage = () => {
-  const { isAuthenticated } = useAuth();
-  const [comments, setComments] = useState<CommunityHistoryComment[]>([]);
+  const { isAuthenticated, user } = useAuth();
   const [sort, setSort] = useState<ProfileCommentSort>("recent");
   const [targetFilter, setTargetFilter] = useState<CommunityCommentTargetFilter>("all");
   const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    let current = true;
-    setLoading(true);
-    setError("");
-
-    void fetchSiteCommunityComments({ page, pageSize, sort, targetFilter })
-      .then((result) => {
-        if (!current) return;
-        setComments(result.comments);
-        setTotal(result.total);
-      })
-      .catch((loadError) => {
-        if (!current) return;
-        setComments([]);
-        setTotal(0);
-        setError(loadError instanceof Error ? loadError.message : "Unable to load comments.");
-      })
-      .finally(() => {
-        if (current) setLoading(false);
-      });
-
-    return () => {
-      current = false;
-    };
-  }, [isAuthenticated, page, sort, targetFilter]);
+  const viewerKey = isAuthenticated ? (user?.username ?? "authenticated") : "anonymous";
+  const commentsQuery = useQuery({
+    ...siteCommunityCommentsQueryOptions({ page, pageSize, sort, targetFilter, viewerKey }),
+    placeholderData: keepPreviousData,
+  });
+  const comments = commentsQuery.data?.comments ?? [];
+  const total = commentsQuery.data?.total ?? 0;
+  const loading = commentsQuery.isFetching;
+  const error = commentsQuery.error
+    ? commentsQuery.error instanceof Error
+      ? commentsQuery.error.message
+      : "Unable to load comments."
+    : "";
 
   const changeSort = (nextSort: ProfileCommentSort): void => {
     setSort(nextSort);
@@ -73,7 +56,7 @@ export const CommentsPage = () => {
   };
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-  if (loading && comments.length === 0) return <RouteLoadingFallback />;
+  if (commentsQuery.isPending && comments.length === 0) return <RouteLoadingFallback />;
 
   return (
     <div className="page commentsPage">

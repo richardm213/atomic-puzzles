@@ -18,6 +18,7 @@ import {
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   type ChangeEvent,
@@ -32,11 +33,11 @@ import {
 import { getBoardThemeColors, useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
 import {
-  fetchNotifications,
-  fetchUnreadNotificationCount,
-  markNotificationsRead,
-  type UserNotification,
-} from "../../lib/community/notifications";
+  notificationQueryKeys,
+  notificationsQueryOptions,
+  unreadNotificationCountQueryOptions,
+} from "../../lib/community/notificationQueries";
+import { markNotificationsRead, type UserNotification } from "../../lib/community/notifications";
 import type { UsernameSearchSuggestion } from "../../lib/users/usernameSearch";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { formatLocalDateTime } from "../../utils/formatters";
@@ -239,12 +240,7 @@ export const TopNav = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [openNavDropdown, setOpenNavDropdown] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [notifications, setNotifications] = useState<UserNotification[]>([]);
-  const [notificationsLoading, setNotificationsLoading] = useState(false);
-  const [notificationsUpdating, setNotificationsUpdating] = useState(false);
-  const [notificationsError, setNotificationsError] = useState("");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const searchSuggestionsRequestIdRef = useRef(0);
   const topNavRef = useRef<HTMLElement | null>(null);
@@ -256,6 +252,37 @@ export const TopNav = () => {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { isAuthenticated, isLoading, user, login, logout } = useAuth();
+  const queryClient = useQueryClient();
+  const notificationViewerKey = isAuthenticated ? (user?.username ?? "authenticated") : "anonymous";
+  const notificationListQuery = useQuery({
+    ...notificationsQueryOptions(notificationViewerKey),
+    enabled: isAuthenticated && notificationsOpen,
+  });
+  const unreadCountQuery = useQuery({
+    ...unreadNotificationCountQueryOptions(notificationViewerKey),
+    enabled: isAuthenticated,
+  });
+  const markNotificationsMutation = useMutation({
+    mutationFn: markNotificationsRead,
+    onSuccess: (result) => {
+      queryClient.setQueryData(notificationQueryKeys.list(notificationViewerKey), result);
+      queryClient.setQueryData(
+        notificationQueryKeys.unreadCount(notificationViewerKey),
+        result.unreadCount,
+      );
+    },
+  });
+  const notifications = notificationListQuery.data?.notifications ?? [];
+  const unreadNotificationCount =
+    unreadCountQuery.data ?? notificationListQuery.data?.unreadCount ?? 0;
+  const notificationsLoading = notificationListQuery.isFetching;
+  const notificationsUpdating = markNotificationsMutation.isPending;
+  const notificationErrorValue = notificationListQuery.error ?? markNotificationsMutation.error;
+  const notificationsError = notificationErrorValue
+    ? notificationErrorValue instanceof Error
+      ? notificationErrorValue.message
+      : "Unable to update notifications."
+    : "";
   const {
     theme,
     setTheme,
@@ -308,60 +335,6 @@ export const TopNav = () => {
     boardOverrideDarkSquare,
   );
   const currentLocation = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      setUnreadNotificationCount(0);
-      return undefined;
-    }
-
-    let current = true;
-    const refreshCount = () => {
-      void fetchUnreadNotificationCount()
-        .then((count) => {
-          if (current) setUnreadNotificationCount(count);
-        })
-        .catch(() => {
-          // Keep navigation resilient if the notification service is unavailable.
-        });
-    };
-
-    refreshCount();
-    window.addEventListener("focus", refreshCount);
-    window.addEventListener("atomic-notifications-updated", refreshCount);
-    return () => {
-      current = false;
-      window.removeEventListener("focus", refreshCount);
-      window.removeEventListener("atomic-notifications-updated", refreshCount);
-    };
-  }, [isAuthenticated]);
-
-  useEffect(() => {
-    if (!notificationsOpen || !isAuthenticated) return undefined;
-
-    let current = true;
-    setNotificationsLoading(true);
-    setNotificationsError("");
-    void fetchNotifications()
-      .then((result) => {
-        if (!current) return;
-        setNotifications(result.notifications);
-        setUnreadNotificationCount(result.unreadCount);
-      })
-      .catch((loadError) => {
-        if (!current) return;
-        setNotificationsError(
-          loadError instanceof Error ? loadError.message : "Unable to load notifications.",
-        );
-      })
-      .finally(() => {
-        if (current) setNotificationsLoading(false);
-      });
-
-    return () => {
-      current = false;
-    };
-  }, [isAuthenticated, notificationsOpen]);
 
   useEffect(() => {
     if (!normalizedAuthUsername || !profileMenuOpen) {
@@ -741,19 +714,10 @@ export const TopNav = () => {
 
   const markPopupNotificationsRead = async (ids: number[] = []): Promise<void> => {
     if (!isAuthenticated || notificationsUpdating) return;
-    setNotificationsUpdating(true);
-    setNotificationsError("");
     try {
-      const result = await markNotificationsRead(ids);
-      setNotifications(result.notifications);
-      setUnreadNotificationCount(result.unreadCount);
-      window.dispatchEvent(new Event("atomic-notifications-updated"));
-    } catch (updateError) {
-      setNotificationsError(
-        updateError instanceof Error ? updateError.message : "Unable to update notifications.",
-      );
-    } finally {
-      setNotificationsUpdating(false);
+      await markNotificationsMutation.mutateAsync(ids);
+    } catch {
+      // The mutation error is rendered in the notification panel.
     }
   };
 

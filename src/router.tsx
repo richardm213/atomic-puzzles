@@ -1,5 +1,7 @@
+import type { QueryClient } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import {
-  createRootRoute,
+  createRootRouteWithContext,
   createRoute,
   createRouter,
   lazyRouteComponent,
@@ -10,6 +12,7 @@ import {
 
 import { App } from "./App/App";
 import { RouteLoadingFallback } from "./components/RouteLoadingFallback/RouteLoadingFallback";
+import { queryClient } from "./lib/query/queryClient";
 import { AuthCallbackPage } from "./pages/AuthCallback/AuthCallback";
 import { HomePage } from "./pages/Home/Home";
 
@@ -91,7 +94,11 @@ const appBasePath = (() => {
   return baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
 })();
 
-const rootRoute = createRootRoute({
+type AppRouterContext = {
+  queryClient: QueryClient;
+};
+
+const rootRoute = createRootRouteWithContext<AppRouterContext>()({
   component: App,
 });
 
@@ -367,8 +374,13 @@ const routeTree = rootRoute.addChildren([
 const router = createRouter({
   routeTree,
   basepath: appBasePath,
+  context: { queryClient },
   defaultPendingComponent: RouteLoadingFallback,
   defaultPreload: "intent",
 });
 
-export const AppRouterProvider = () => <RouterProvider router={router} />;
+export const AppRouterProvider = () => (
+  <QueryClientProvider client={queryClient}>
+    <RouterProvider router={router} />
+  </QueryClientProvider>
+);

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 
 import { type Mode, modeLabels, modeOptions } from "../../constants/matches";
@@ -38,6 +39,7 @@ const sortSchema = z
   .refine(isFavoriteOpponentSort)
   .transform((value): FavoriteOpponentSort => value);
 const sortDirectionSchema = z.enum(["asc", "desc"]);
+const emptyFavoriteOpponentRows: FavoriteOpponentRow[] = [];
 
 type FavoriteOpponentsModelOptions = {
   canonicalUsername: string;
@@ -52,7 +54,6 @@ export const useFavoriteOpponentsModel = ({
   enabled,
   resetKey,
 }: FavoriteOpponentsModelOptions) => {
-  const [rows, setRows] = useState<FavoriteOpponentRow[]>([]);
   const [mode, setMode] = usePersistedState<RankHistoryMode>(
     preferenceKeys.mode,
     modeSchema,
@@ -76,21 +77,11 @@ export const useFavoriteOpponentsModel = ({
     "desc",
   );
   const [expandedKeys, setExpandedKeys] = useState<string[]>([]);
-  const [loadedQueryKey, setLoadedQueryKey] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const requestIdRef = useRef(0);
-  const queryKey = `${canonicalUsername}|${mode}|${matchLimit}`;
 
   useEffect(() => {
-    requestIdRef.current += 1;
-    setRows([]);
     setPage(1);
     setDisplayCount(25);
     setExpandedKeys([]);
-    setLoadedQueryKey("");
-    setLoading(false);
-    setError("");
   }, [resetKey]);
 
   useEffect(() => {
@@ -102,12 +93,16 @@ export const useFavoriteOpponentsModel = ({
     if (allowedLimit !== matchLimit) setMatchLimit(allowedLimit);
   }, [matchLimit, mode, setMatchLimit]);
 
-  const load = useCallback(async (): Promise<void> => {
-    const requestId = requestIdRef.current + 1;
-    requestIdRef.current = requestId;
-    setLoading(true);
-    setError("");
-    try {
+  const favoriteOpponentsQuery = useQuery({
+    queryKey: [
+      "profile",
+      canonicalUsername,
+      "favorite-opponents",
+      mode,
+      matchLimit,
+      availableModes,
+    ],
+    queryFn: async () => {
       const modesToLoad = mode === "all" ? availableModes : [mode];
       const matchesByMode = await Promise.all(
         modesToLoad.map(async (matchMode): Promise<FavoriteOpponentMatch[]> => {
@@ -128,29 +123,23 @@ export const useFavoriteOpponentsModel = ({
           }));
         }),
       );
-      if (requestId !== requestIdRef.current) return;
       const recentMatches = matchesByMode
         .flat()
         .sort((left, right) => right.startTs - left.startTs)
         .slice(0, matchLimit);
-      setRows(getFavoriteOpponentRows(recentMatches));
-      setPage(1);
-      setExpandedKeys([]);
-      setLoadedQueryKey(queryKey);
-    } catch (loadError) {
-      if (requestId !== requestIdRef.current) return;
-      setRows([]);
-      setLoadedQueryKey("");
-      setError(String(loadError));
-    } finally {
-      if (requestId === requestIdRef.current) setLoading(false);
-    }
-  }, [availableModes, canonicalUsername, matchLimit, mode, queryKey]);
+      return getFavoriteOpponentRows(recentMatches);
+    },
+    enabled: enabled && Boolean(canonicalUsername) && availableModes.length > 0,
+    staleTime: 5 * 60 * 1_000,
+  });
+  const rows = favoriteOpponentsQuery.data ?? emptyFavoriteOpponentRows;
+  const loading = favoriteOpponentsQuery.isFetching;
+  const error = favoriteOpponentsQuery.error ? String(favoriteOpponentsQuery.error) : "";
 
   useEffect(() => {
-    if (!enabled || loadedQueryKey === queryKey || loading) return;
-    void load();
-  }, [enabled, load, loadedQueryKey, loading, queryKey]);
+    setPage(1);
+    setExpandedKeys([]);
+  }, [canonicalUsername, matchLimit, mode]);
 
   const sortedRows = useMemo(
     () =>

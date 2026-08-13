@@ -1,5 +1,6 @@
 import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -45,6 +46,7 @@ const rankingColumns = [
   { key: "rd", label: "RD" },
   { key: "games", label: "Games" },
 ];
+const emptyAliasLookup: AliasLookup = new Map();
 
 const getOpeningsForPlayer = (aliasesLookup: AliasLookup, username: string): string[] => {
   const entry = aliasesLookup.get(username) ?? aliasesLookup.get(normalizeUsername(username));
@@ -189,8 +191,6 @@ const LeaderboardView = () => {
   const [sortKey, setSortKey] = useState("rank");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [activeOpeningFilter, setActiveOpeningFilter] = useState("");
-  const [aliasesLookup, setAliasesLookup] = useState<AliasLookup>(() => new Map());
-  const [aliasesLoaded, setAliasesLoaded] = useState(false);
   const hasInitializedFiltersRef = useRef(false);
 
   const allMonthKeys = useMemo(() => allLeaderboardMonths(), []);
@@ -210,29 +210,13 @@ const LeaderboardView = () => {
   );
 
   const { rankingsByMonth, error } = useRankingsByMonth(selectedMonth);
-
-  useEffect(() => {
-    if (aliasesLookup.size > 0) return;
-
-    let isCurrent = true;
-
-    const loadOpenings = async () => {
-      try {
-        const lookup = await loadAliasesLookup();
-        if (isCurrent) setAliasesLookup(lookup);
-      } catch {
-        if (isCurrent) setAliasesLookup(new Map());
-      } finally {
-        if (isCurrent) setAliasesLoaded(true);
-      }
-    };
-
-    void loadOpenings();
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [aliasesLookup.size]);
+  const aliasesQuery = useQuery({
+    queryKey: ["aliases", "lookup"],
+    queryFn: loadAliasesLookup,
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+  const aliasesLookup = aliasesQuery.data ?? emptyAliasLookup;
+  const aliasesLoaded = !aliasesQuery.isPending;
 
   useEffect(() => {
     const firstWithData =

@@ -9,15 +9,18 @@ import {
   faReply,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { useAuth } from "../../context/AuthContext";
 import {
+  communityDiscussionQueryOptions,
+  communityQueryKeys,
+} from "../../lib/community/communityQueries";
+import {
   type CommunityDiscussion as CommunityDiscussionData,
   type CommunityTarget,
-  fetchCommunityDiscussion,
-  fetchPuzzleCommunity,
   postCommunityComment,
   type PuzzleComment,
   saveCommunityCommentVote,
@@ -57,55 +60,77 @@ export const CommunityDiscussion = ({
   const targetId = target.id;
   const targetContext = target.context;
   const { isAuthenticated, login, user } = useAuth();
-  const [community, setCommunity] = useState<CommunityDiscussionData | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [pendingVote, setPendingVote] = useState(false);
   const [pendingCommentVotes, setPendingCommentVotes] = useState<Set<number>>(() => new Set());
   const [commentBody, setCommentBody] = useState("");
   const [replyingTo, setReplyingTo] = useState<PuzzleComment | null>(null);
-  const [postingComment, setPostingComment] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<number>>(() => new Set());
-  const [error, setError] = useState("");
+  const [actionError, setActionError] = useState("");
   const [voteTarget, setVoteTarget] = useState<HTMLElement | null>(null);
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
+  const queryClient = useQueryClient();
+  const currentTarget = useMemo<CommunityTarget>(
+    () => ({ type: targetType, id: targetId, context: targetContext ?? "" }),
+    [targetContext, targetId, targetType],
+  );
+  const viewerKey = isAuthenticated ? (user?.username ?? "authenticated") : "anonymous";
+  const discussionOptions = communityDiscussionQueryOptions(currentTarget, viewerKey);
+  const discussionQuery = useQuery({
+    ...discussionOptions,
+    enabled: Boolean(targetId),
+  });
+  const community = discussionQuery.data ?? null;
+  const loading = discussionQuery.isPending;
+  const queryError = discussionQuery.error
+    ? discussionQuery.error instanceof Error
+      ? discussionQuery.error.message
+      : "Unable to load discussion."
+    : "";
+  const error = actionError || queryError;
+
+  const updateDiscussion = (result: CommunityDiscussionData): void => {
+    queryClient.setQueryData(discussionOptions.queryKey, result);
+  };
+
+  const voteMutation = useMutation({
+    mutationFn: ({ puzzleId, vote }: { puzzleId: number; vote: -1 | 0 | 1 }) =>
+      savePuzzleVote(puzzleId, vote),
+    onSuccess: (result) => {
+      updateDiscussion(result);
+      void queryClient.invalidateQueries({ queryKey: communityQueryKeys.puzzleRankings });
+      void queryClient.invalidateQueries({ queryKey: communityQueryKeys.users });
+    },
+  });
+  const postCommentMutation = useMutation({
+    mutationFn: ({ body, parentId }: { body: string; parentId: number | null }) =>
+      postCommunityComment(currentTarget, body, parentId),
+    onSuccess: (result) => {
+      updateDiscussion(result);
+      void queryClient.invalidateQueries({ queryKey: communityQueryKeys.siteComments });
+      void queryClient.invalidateQueries({ queryKey: communityQueryKeys.users });
+    },
+  });
+  const commentVoteMutation = useMutation({
+    mutationFn: ({ commentId, vote }: { commentId: number; vote: -1 | 0 | 1 }) =>
+      saveCommunityCommentVote(currentTarget, commentId, vote),
+    onSuccess: (result) => {
+      updateDiscussion(result);
+      void queryClient.invalidateQueries({ queryKey: communityQueryKeys.siteComments });
+      void queryClient.invalidateQueries({ queryKey: communityQueryKeys.users });
+    },
+  });
+  const pendingVote = voteMutation.isPending;
+  const postingComment = postCommentMutation.isPending;
 
   useEffect(() => {
     setVoteTarget(voteTargetId ? document.getElementById(voteTargetId) : null);
   }, [voteTargetId]);
 
   useEffect(() => {
-    if (!targetId) return;
-    const currentTarget: CommunityTarget = {
-      type: targetType,
-      id: targetId,
-      context: targetContext ?? "",
-    };
-    let current = true;
-    setLoading(true);
-    setError("");
     setCollapsed(new Set());
     setReplyingTo(null);
     setCommentBody("");
-    const loadRequest =
-      targetType === "puzzle"
-        ? fetchPuzzleCommunity(Number(targetId))
-        : fetchCommunityDiscussion(currentTarget);
-    void loadRequest
-      .then((result) => {
-        if (current) setCommunity(result);
-      })
-      .catch((loadError) => {
-        if (!current) return;
-        setCommunity(emptyCommunity(currentTarget));
-        setError(loadError instanceof Error ? loadError.message : "Unable to load discussion.");
-      })
-      .finally(() => {
-        if (current) setLoading(false);
-      });
-    return () => {
-      current = false;
-    };
-  }, [isAuthenticated, targetContext, targetId, targetType]);
+    setActionError("");
+  }, [targetContext, targetId, targetType]);
 
   const childrenByParent = useMemo(() => {
     const children = new Map<number | null, PuzzleComment[]>();
@@ -149,14 +174,11 @@ export const CommunityDiscussion = ({
     if (target.type !== "puzzle" || pendingVote) return;
     if (!requireLogin()) return;
     const nextVote = community?.viewerVote === vote ? 0 : vote;
-    setPendingVote(true);
-    setError("");
+    setActionError("");
     try {
-      setCommunity(await savePuzzleVote(Number(target.id), nextVote));
+      await voteMutation.mutateAsync({ puzzleId: Number(target.id), vote: nextVote });
     } catch (voteError) {
-      setError(voteError instanceof Error ? voteError.message : "Unable to save vote.");
-    } finally {
-      setPendingVote(false);
+      setActionError(voteError instanceof Error ? voteError.message : "Unable to save vote.");
     }
   };
 
@@ -164,16 +186,15 @@ export const CommunityDiscussion = ({
     const body = commentBody.trim();
     if (!target.id || !body || postingComment) return;
     if (!requireLogin()) return;
-    setPostingComment(true);
-    setError("");
+    setActionError("");
     try {
-      setCommunity(await postCommunityComment(target, body, replyingTo?.id ?? null));
+      await postCommentMutation.mutateAsync({ body, parentId: replyingTo?.id ?? null });
       setCommentBody("");
       setReplyingTo(null);
     } catch (commentError) {
-      setError(commentError instanceof Error ? commentError.message : "Unable to post comment.");
-    } finally {
-      setPostingComment(false);
+      setActionError(
+        commentError instanceof Error ? commentError.message : "Unable to post comment.",
+      );
     }
   };
 
@@ -182,11 +203,13 @@ export const CommunityDiscussion = ({
     if (!requireLogin()) return;
     const nextVote = comment.viewer_vote === vote ? 0 : vote;
     setPendingCommentVotes((current) => new Set(current).add(comment.id));
-    setError("");
+    setActionError("");
     try {
-      setCommunity(await saveCommunityCommentVote(target, comment.id, nextVote));
+      await commentVoteMutation.mutateAsync({ commentId: comment.id, vote: nextVote });
     } catch (voteError) {
-      setError(voteError instanceof Error ? voteError.message : "Unable to save comment vote.");
+      setActionError(
+        voteError instanceof Error ? voteError.message : "Unable to save comment vote.",
+      );
     } finally {
       setPendingCommentVotes((current) => {
         const next = new Set(current);
