@@ -1,7 +1,8 @@
 import "./H2H.css";
 
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 
 import { type Mode, modeLabels, modeOptions, type SourceFilters } from "../../constants/matches";
@@ -22,16 +23,14 @@ import { MatchDetails } from "../../components/MatchDetails/MatchDetails";
 import { MatchPageLink } from "../../components/MatchPageLink/MatchPageLink";
 import { Seo } from "../../components/Seo/Seo";
 import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFilterChecks";
-import { useMatchSearch } from "../../hooks/useMatchSearch";
 import { usePersistedState } from "../../hooks/usePersistedState";
-import { loadRawMatchesByMode } from "../../lib/matches/matchData";
+import { h2hMatchupQueryOptions } from "../../lib/matches/matchQueries";
 import {
   ratingsForPlayers,
   sourceKeyFromMatch,
   sourceValueFromMatch,
   summarizeMatchGames,
 } from "../../lib/matches/matchSummaries";
-import { fetchPlayerRatingsRows } from "../../lib/supabase/supabasePlayerRatings";
 import { resolveUsernameInputs } from "../../lib/users/usernameSearch";
 import { formatLocalDateTime, formatScore } from "../../utils/formatters";
 import { matchupToSlug, parseMatchupSlug } from "../../utils/h2hRoutes";
@@ -200,13 +199,71 @@ export const H2HPage = () => {
     timeControl: "all",
     sources: readStoredSourceFilters(),
   });
-  const [loadedPlayer1, setLoadedPlayer1] = useState("");
-  const [loadedPlayer2, setLoadedPlayer2] = useState("");
-  const [playerSnapshots, setPlayerSnapshots] = useState<Record<string, PlayerSnapshotsByMode>>({});
-  const [matches, setMatches] = useState<H2HMatch[]>([]);
   const [expandedMatchKeys, setExpandedMatchKeys] = useState<string[]>([]);
-  const [hasSearched, setHasSearched] = useState(false);
-  const { error, loading, reset: resetSearch, run: runMatchSearch, setError } = useMatchSearch();
+  const parsedRouteMatchup = useMemo(() => parseMatchupSlug(matchup), [matchup]);
+  const routePlayer1 = parsedRouteMatchup?.player1.trim() ?? "";
+  const routePlayer2 = parsedRouteMatchup?.player2.trim() ?? "";
+  const matchupQuery = useQuery({
+    ...h2hMatchupQueryOptions(routePlayer1, routePlayer2),
+    select: ({
+      matchesByMode,
+      player1Ratings,
+      player2Ratings,
+      resolvedPlayer1,
+      resolvedPlayer2,
+    }) => {
+      const matches = matchesByMode
+        .flatMap((rawMatches, index) => {
+          const mode = modeOptions[index];
+          return mode
+            ? normalizeH2HMatches(rawMatches, mode, resolvedPlayer1, resolvedPlayer2)
+            : [];
+        })
+        .sort((a, b) => b.startTs - a.startTs);
+      return {
+        loadedPlayer1: resolvedPlayer1,
+        loadedPlayer2: resolvedPlayer2,
+        matches,
+        playerSnapshots: {
+          [resolvedPlayer1.toLowerCase()]: indexRatingsRowsByTimeControl(player1Ratings),
+          [resolvedPlayer2.toLowerCase()]: indexRatingsRowsByTimeControl(player2Ratings),
+        },
+      };
+    },
+    enabled: Boolean(routePlayer1 && routePlayer2),
+  });
+  const searchMutation = useMutation({
+    mutationFn: async ({ first, second }: { first: string; second: string }) => {
+      if (!first || !second) throw new Error("Enter both usernames to search head-to-head.");
+      const [resolvedFirst, resolvedSecond] = await resolveUsernameInputs([first, second]);
+      if (!resolvedFirst || !resolvedSecond) throw new Error("Could not resolve both usernames.");
+      storeLastSearch(resolvedFirst, resolvedSecond);
+      await navigate({
+        to: "/h2h/$matchup",
+        params: { matchup: matchupToSlug(resolvedFirst, resolvedSecond) },
+      });
+    },
+  });
+  const loadedPlayer1 = matchupQuery.data?.loadedPlayer1 ?? routePlayer1;
+  const loadedPlayer2 = matchupQuery.data?.loadedPlayer2 ?? routePlayer2;
+  const playerSnapshots = useMemo(
+    () => matchupQuery.data?.playerSnapshots ?? {},
+    [matchupQuery.data?.playerSnapshots],
+  );
+  const matches = useMemo(
+    () => matchupQuery.data?.matches ?? [],
+    [matchupQuery.data?.matches],
+  );
+  const hasSearched = Boolean(parsedRouteMatchup);
+  const loading = matchupQuery.isFetching || searchMutation.isPending;
+  const queryError = searchMutation.error ?? matchupQuery.error;
+  const error = queryError
+    ? queryError instanceof Error
+      ? queryError.message
+      : String(queryError)
+    : hasSearched && !loading && matchupQuery.data && matches.length === 0
+      ? "No head-to-head matches found for the selected players."
+      : "";
 
   const startDateTs = useMemo(() => parseDateInputBoundary(filters.startDate, "start"), [filters]);
   const endDateTs = useMemo(() => parseDateInputBoundary(filters.endDate, "end"), [filters]);
@@ -271,88 +328,16 @@ export const H2HPage = () => {
     [scoresByMode, visibleModeOptions],
   );
 
-  const performSearch = useCallback(
-    async (first: string, second: string): Promise<void> => {
-      if (!first || !second) {
-        resetSearch();
-        setError("Enter both usernames to search head-to-head.");
-        setHasSearched(true);
-        setMatches([]);
-        return;
-      }
-
-      setHasSearched(true);
-      setExpandedMatchKeys([]);
-      const result = await runMatchSearch(
-        async () => {
-          const [resolvedFirst = "", resolvedSecond = ""] = await resolveUsernameInputs([
-            first,
-            second,
-          ]);
-          const loadModeMatches = (mode: Mode) =>
-            loadRawMatchesByMode(mode, {
-              filters: { usernamePair: [resolvedFirst, resolvedSecond] },
-            });
-          const [modeResults, firstRatings, secondRatings] = await Promise.all([
-            Promise.all(modeOptions.map(loadModeMatches)),
-            fetchPlayerRatingsRows({ username: resolvedFirst }),
-            fetchPlayerRatingsRows({ username: resolvedSecond }),
-          ]);
-          const merged = modeResults
-            .flatMap((rawMatches, index) => {
-              const mode = modeOptions[index];
-              return mode
-                ? normalizeH2HMatches(rawMatches, mode, resolvedFirst, resolvedSecond)
-                : [];
-            })
-            .sort((a, b) => b.startTs - a.startTs);
-          return { firstRatings, merged, resolvedFirst, resolvedSecond, secondRatings };
-        },
-        () => setMatches([]),
-      );
-      if (!result) return;
-      const { firstRatings, merged, resolvedFirst, resolvedSecond, secondRatings } = result;
-      setLoadedPlayer1(resolvedFirst);
-      setLoadedPlayer2(resolvedSecond);
-      setMatches(merged);
-      setPlayerSnapshots({
-        [resolvedFirst.toLowerCase()]: indexRatingsRowsByTimeControl(firstRatings),
-        [resolvedSecond.toLowerCase()]: indexRatingsRowsByTimeControl(secondRatings),
-      });
-      if (!merged.length) setError("No head-to-head matches found for the selected players.");
-    },
-    [resetSearch, runMatchSearch, setError],
-  );
-
-  const handleSearch = async () => {
+  const handleSearch = () => {
     if (loading) return;
     const first = player1Input.trim();
     const second = player2Input.trim();
-    if (!first || !second) {
-      await performSearch(first, second);
-      return;
-    }
-
-    await runMatchSearch(async () => {
-      const [resolvedFirst, resolvedSecond] = await resolveUsernameInputs([first, second]);
-      if (!resolvedFirst || !resolvedSecond) return;
-
-      storeLastSearch(resolvedFirst, resolvedSecond);
-      await navigate({
-        to: "/h2h/$matchup",
-        params: {
-          matchup: matchupToSlug(resolvedFirst, resolvedSecond),
-        },
-      });
-    });
+    searchMutation.mutate({ first, second });
   };
 
   useEffect(() => {
-    const parsedMatchup = parseMatchupSlug(matchup);
-    if (!parsedMatchup) {
+    if (!parsedRouteMatchup) {
       const savedSearch = readLastSearch();
-      setHasSearched(false);
-      resetSearch();
       if (savedSearch) {
         setPlayer1Input(savedSearch.player1);
         setPlayer2Input(savedSearch.player2);
@@ -360,11 +345,11 @@ export const H2HPage = () => {
       return;
     }
 
-    const { player1, player2 } = parsedMatchup;
+    const { player1, player2 } = parsedRouteMatchup;
     setPlayer1Input(player1);
     setPlayer2Input(player2);
-    void performSearch(player1.trim(), player2.trim());
-  }, [matchup, performSearch, resetSearch]);
+    setExpandedMatchKeys([]);
+  }, [parsedRouteMatchup]);
 
   const handleChangePlayers = () => {
     if (loadedPlayer1 || loadedPlayer2) {
@@ -416,7 +401,6 @@ export const H2HPage = () => {
     loadedPlayer1 && loadedPlayer2
       ? `Compare ${loadedPlayer1} and ${loadedPlayer2} across atomic chess matches, scores, and blitz, bullet, and hyperbullet splits.`
       : "Compare two atomic chess players side by side across recent results, total score, and time-control splits.";
-  const parsedRouteMatchup = parseMatchupSlug(matchup);
   const isSearchPage = !parsedRouteMatchup;
   return (
     <div className="rankingsPage">
@@ -434,7 +418,7 @@ export const H2HPage = () => {
               className="matchFilterPanel h2hSearchForm"
               onSubmit={(event) => {
                 event.preventDefault();
-                void handleSearch();
+                handleSearch();
               }}
             >
               <div className="h2hSearchGrid">

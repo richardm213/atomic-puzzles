@@ -2,9 +2,9 @@ import "./PlayerProfile.css";
 
 import { faMagnifyingGlass, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 
 import { DualRangeSlider } from "../../components/DualRangeSlider/DualRangeSlider";
@@ -17,7 +17,6 @@ import { Seo } from "../../components/Seo/Seo";
 import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFilterChecks";
 import { TimeControlFields } from "../../components/TimeControlFields/TimeControlFields";
 import {
-  createModeRecord,
   defaultMode,
   defaultRatingMax,
   defaultRatingMin,
@@ -30,10 +29,8 @@ import {
 import type { RankHistoryMode } from "../../features/profile/favoriteOpponents";
 import { FavoriteOpponentsSection } from "../../features/profile/FavoriteOpponentsSection";
 import {
-  buildMatchFilters,
   createDefaultProfileFilters,
   isClientSidePagedSearch,
-  type ProfileFilters,
 } from "../../features/profile/profileFilters";
 import {
   getProfileHistoryTabFromLocation,
@@ -51,6 +48,7 @@ import {
   NON_COUNTED_ALIAS_MESSAGE,
   profileResultToneClass,
 } from "../../features/profile/profilePresentation";
+import { profileMatchHistoryQueryOptions } from "../../features/profile/profileQueries";
 import {
   getChampionshipTrophies,
   getCurrentMonthKey,
@@ -64,7 +62,6 @@ import {
   trophyCaseSortStorageKey,
 } from "../../features/profile/profileTrophies";
 import { useFavoriteOpponentsModel } from "../../features/profile/useFavoriteOpponentsModel";
-import { useMatchSearch } from "../../hooks/useMatchSearch";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import {
   buildRankingsLocation,
@@ -78,13 +75,12 @@ import {
   useMonthRanks,
   useRatingsSnapshotByMode,
 } from "../../hooks/usePlayerProfileData";
-import { loadRawMatchesByMode, normalizeMatches } from "../../lib/matches/matchData";
 import {
   type AliasAccount,
   type AliasIdentityRow,
-  fetchProfileAliasRow,
 } from "../../lib/supabase/supabaseAliases";
-import { isRegisteredSiteUser } from "../../lib/supabase/supabaseUsers";
+import { profileAliasQueryOptions } from "../../lib/users/aliasQueries";
+import { siteUserRegistrationQueryOptions } from "../../lib/users/userQueries";
 import {
   formatLocalDateTime,
   formatOpponentWithRating,
@@ -116,14 +112,6 @@ const shouldSkipMatchPrefetch = (): boolean => {
   );
 };
 
-const getMatchSearchKey = (
-  username: string,
-  mode: import("../../constants/matches").Mode,
-  filters: ProfileFilters,
-  page: number,
-  pageSize: number,
-): string => JSON.stringify([username, mode, filters, page, pageSize]);
-
 const CommunityDiscussion = lazy(async () => {
   const module = await import("../../components/PuzzleCommunity/PuzzleCommunity");
   return { default: module.CommunityDiscussion };
@@ -136,6 +124,7 @@ export const PlayerProfilePage = ({
   username?: string;
   historyOnly?: boolean;
 }) => {
+  const queryClient = useQueryClient();
   const normalizedUsername = useMemo(() => normalizeUsername(username), [username]);
   const [matchHistoryMode, setMatchHistoryMode] =
     useState<import("../../constants/matches").Mode>(defaultMode);
@@ -155,14 +144,6 @@ export const PlayerProfilePage = ({
   const [profileHistoryTab, setProfileHistoryTab] = useState<ProfileHistoryTab>(() =>
     getProfileHistoryTabFromLocation(),
   );
-  const [matchesByMode, setMatchesByMode] = useState(() => createModeRecord(() => []));
-  const [totalMatchesByMode, setTotalMatchesByMode] = useState(() => createModeRecord(() => 0));
-  const {
-    error,
-    loading: loadingMatches,
-    reset: resetMatchSearch,
-    run: runLatestMatchSearch,
-  } = useMatchSearch();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [expandedMatchKeys, setExpandedMatchKeys] = useState<string[]>([]);
@@ -174,22 +155,16 @@ export const PlayerProfilePage = ({
   const [sourceFilters, setSourceFilters] = useState(readStoredSourceFilters);
   const [timeControlInitialFilter, setTimeControlInitialFilter] = useState("all");
   const [timeControlIncrementFilter, setTimeControlIncrementFilter] = useState("all");
-  const [lastCompletedMatchSearchKey, setLastCompletedMatchSearchKey] = useState("");
-  const prefetchedMatchSearchKeysRef = useRef(new Set<string>());
   const profileAliasQuery = useQuery({
-    queryKey: ["profile", normalizedUsername, "alias-identity"],
-    queryFn: () => fetchProfileAliasRow(normalizedUsername),
+    ...profileAliasQueryOptions(normalizedUsername),
     enabled: Boolean(normalizedUsername),
-    staleTime: 5 * 60 * 1_000,
   });
   const profileAliasEntry: AliasIdentityRow | null = profileAliasQuery.data ?? null;
   const aliasesLoaded = Boolean(normalizedUsername) && !profileAliasQuery.isPending;
   const canonicalUsername = profileAliasEntry?.username ?? normalizedUsername;
   const historyAvailabilityQuery = useQuery({
-    queryKey: ["profile", canonicalUsername, "history-availability"],
-    queryFn: () => isRegisteredSiteUser(canonicalUsername),
+    ...siteUserRegistrationQueryOptions(canonicalUsername),
     enabled: !historyOnly && aliasesLoaded && Boolean(canonicalUsername),
-    staleTime: 5 * 60 * 1_000,
   });
   const isHistoryAvailable = historyAvailabilityQuery.data ?? false;
   const profileDisplayUsername = String(username || "").trim() || canonicalUsername;
@@ -261,18 +236,13 @@ export const PlayerProfilePage = ({
 
   useEffect(() => {
     const defaultFilters = createDefaultProfileFilters();
-    resetMatchSearch();
     setMatchHistoryMode(defaultMode);
     setBestWinMode(defaultMode);
     setBestRankMode(defaultMode);
     setRankHistoryMode("all");
     setProfileHistoryTab(getProfileHistoryTabFromLocation());
     setPage(1);
-    setLastCompletedMatchSearchKey("");
-    prefetchedMatchSearchKeysRef.current.clear();
     setExpandedMatchKeys([]);
-    setMatchesByMode(createModeRecord(() => []));
-    setTotalMatchesByMode(createModeRecord(() => 0));
     setOpponentRatingMin(defaultFilters.opponentRatingMin);
     setOpponentRatingMax(defaultFilters.opponentRatingMax);
     setOpponentFilter(defaultFilters.opponentFilter);
@@ -282,7 +252,7 @@ export const PlayerProfilePage = ({
     setTimeControlInitialFilter(defaultFilters.timeControlInitialFilter);
     setTimeControlIncrementFilter(defaultFilters.timeControlIncrementFilter);
     setAppliedFilters(defaultFilters);
-  }, [normalizedUsername, resetMatchSearch]);
+  }, [normalizedUsername]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
@@ -297,58 +267,32 @@ export const PlayerProfilePage = ({
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
-  const runMatchSearch = useCallback(
-    async (
-      mode: import("../../constants/matches").Mode,
-      nextAppliedFilters: ProfileFilters,
-      nextPage: number = 1,
-    ): Promise<void> => {
-      const result = await runLatestMatchSearch(
-        async () => {
-          const filters = buildMatchFilters(canonicalUsername, nextAppliedFilters);
-          const shouldClientPageResults = isClientSidePagedSearch(nextAppliedFilters);
-          const rawMatches: import("../../lib/matches/matchData").ParsedMatch[] = [];
-          let totalForServerPaging = 0;
-          if (shouldClientPageResults) {
-            const result = await loadRawMatchesByMode(mode, { filters });
-            rawMatches.push(...result);
-            totalForServerPaging = result.length;
-          } else {
-            const result = await loadRawMatchesByMode(mode, { filters, page: nextPage, pageSize });
-            rawMatches.push(...result.matches);
-            totalForServerPaging = result.total;
-          }
-          const normalizedMatchesForMode = normalizeMatches(rawMatches, canonicalUsername);
-          return {
-            matches: normalizedMatchesForMode,
-            total: shouldClientPageResults ? normalizedMatchesForMode.length : totalForServerPaging,
-          };
-        },
-        () => {
-          setMatchesByMode((current) => ({ ...current, [mode]: [] }));
-          setTotalMatchesByMode((current) => ({ ...current, [mode]: 0 }));
-        },
-      );
-      if (!result) return;
-      setMatchesByMode((current) => ({ ...current, [mode]: result.matches }));
-      setTotalMatchesByMode((current) => ({ ...current, [mode]: result.total }));
-      setAppliedFilters(nextAppliedFilters);
-      setPage(nextPage);
-      setLastCompletedMatchSearchKey(
-        getMatchSearchKey(canonicalUsername, mode, nextAppliedFilters, nextPage, pageSize),
-      );
-    },
-    [canonicalUsername, pageSize, runLatestMatchSearch],
-  );
-
   useEffect(() => {
     setExpandedMatchKeys([]);
   }, [page, matchHistoryMode, appliedFilters, canonicalUsername]);
 
+  const isClientPagedResults = isClientSidePagedSearch(appliedFilters);
+  const matchHistoryQuery = useQuery({
+    ...profileMatchHistoryQueryOptions(
+      canonicalUsername,
+      matchHistoryMode,
+      appliedFilters,
+      isClientPagedResults ? 1 : page,
+      pageSize,
+    ),
+    enabled:
+      aliasesLoaded && !isBanned && profileHistoryTab === "matches" && Boolean(canonicalUsername),
+  });
   const matches = useMemo(
-    () => matchesByMode[matchHistoryMode] ?? [],
-    [matchHistoryMode, matchesByMode],
+    () => matchHistoryQuery.data?.matches ?? [],
+    [matchHistoryQuery.data?.matches],
   );
+  const loadingMatches = matchHistoryQuery.isFetching;
+  const error = matchHistoryQuery.error
+    ? matchHistoryQuery.error instanceof Error
+      ? matchHistoryQuery.error.message
+      : String(matchHistoryQuery.error)
+    : "";
 
   const { initialOptions, incrementOptions } = useMemo(
     () => getTimeControlOptions(matches),
@@ -358,13 +302,12 @@ export const PlayerProfilePage = ({
     () => filterMatches(matches, appliedFilters),
     [matches, appliedFilters],
   );
-  const isClientPagedResults = isClientSidePagedSearch(appliedFilters);
   const totalPages = Math.max(
     1,
     Math.ceil(
       (isClientPagedResults
         ? filteredMatches.length
-        : (totalMatchesByMode[matchHistoryMode] ?? 0)) / Math.max(1, pageSize),
+        : (matchHistoryQuery.data?.total ?? 0)) / Math.max(1, pageSize),
     ),
   );
   const currentPage = Math.min(page, totalPages);
@@ -376,21 +319,8 @@ export const PlayerProfilePage = ({
   const requestedServerPage = isClientPagedResults ? 1 : currentPage;
 
   useEffect(() => {
-    if (!aliasesLoaded || isBanned || profileHistoryTab !== "matches") return;
-    void runMatchSearch(matchHistoryMode, appliedFilters, requestedServerPage);
-  }, [
-    aliasesLoaded,
-    appliedFilters,
-    isBanned,
-    matchHistoryMode,
-    profileHistoryTab,
-    requestedServerPage,
-    runMatchSearch,
-  ]);
-
-  useEffect(() => {
     if (
-      loadingMatches ||
+      matchHistoryQuery.isPending ||
       !aliasesLoaded ||
       isBanned ||
       profileHistoryTab !== "matches" ||
@@ -401,40 +331,22 @@ export const PlayerProfilePage = ({
       return;
     }
 
-    const activeSearchKey = getMatchSearchKey(
-      canonicalUsername,
-      matchHistoryMode,
-      appliedFilters,
-      requestedServerPage,
-      pageSize,
-    );
-    if (lastCompletedMatchSearchKey !== activeSearchKey) return;
-
     const currentModeIndex = profileModeOptions.indexOf(matchHistoryMode);
     const nextMode = profileModeOptions[(currentModeIndex + 1) % profileModeOptions.length];
     if (!nextMode || nextMode === matchHistoryMode) return;
 
-    const prefetchKey = getMatchSearchKey(
-      canonicalUsername,
-      nextMode,
-      appliedFilters,
-      requestedServerPage,
-      pageSize,
-    );
-    if (prefetchedMatchSearchKeysRef.current.has(prefetchKey)) return;
-
     let cancelled = false;
     const prefetch = (): void => {
       if (cancelled) return;
-      prefetchedMatchSearchKeysRef.current.add(prefetchKey);
-      const filters = buildMatchFilters(canonicalUsername, appliedFilters);
-      void loadRawMatchesByMode(nextMode, {
-        filters,
-        page: requestedServerPage,
-        pageSize,
-      }).catch(() => {
-        prefetchedMatchSearchKeysRef.current.delete(prefetchKey);
-      });
+      void queryClient.prefetchQuery(
+        profileMatchHistoryQueryOptions(
+          canonicalUsername,
+          nextMode,
+          appliedFilters,
+          requestedServerPage,
+          pageSize,
+        ),
+      );
     };
 
     let idleCallbackId: number | undefined;
@@ -459,12 +371,12 @@ export const PlayerProfilePage = ({
     canonicalUsername,
     isBanned,
     isClientPagedResults,
-    lastCompletedMatchSearchKey,
-    loadingMatches,
+    matchHistoryQuery.isPending,
     matchHistoryMode,
     pageSize,
     profileHistoryTab,
     profileModeOptions,
+    queryClient,
     requestedServerPage,
   ]);
 

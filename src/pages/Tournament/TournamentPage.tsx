@@ -14,9 +14,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CommunityDiscussion } from "../../components/PuzzleCommunity/PuzzleCommunity";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
+import { tournamentBracketQueryOptions } from "../../lib/matches/tournamentQueries";
 import {
   getAdjacentTournamentMetas,
-  getTournamentBracket,
   getTournamentDecisiveMatch,
   type TournamentBracket,
   type TournamentBracketStage,
@@ -872,10 +872,8 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
     [tournamentId],
   );
   const bracketQuery = useQuery({
-    queryKey: ["tournaments", tournamentId, "bracket"],
-    queryFn: () => getTournamentBracket(tournamentId),
+    ...tournamentBracketQueryOptions(tournamentId),
     enabled: Boolean(tournamentId),
-    staleTime: 5 * 60 * 1_000,
   });
   const bracket: TournamentBracket | null = bracketQuery.data ?? null;
   const bracketLoading = bracketQuery.isPending;

@@ -6,9 +6,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
 import { Seo } from "../../components/Seo/Seo";
+import { tournamentChampionsQueryOptions } from "../../lib/matches/tournamentQueries";
 import {
-  getTournamentBracket,
-  getTournamentChampion,
   tournamentCatalog,
   type TournamentMeta,
 } from "../../lib/matches/tournaments";
@@ -95,27 +94,7 @@ export const TournamentsPage = () => {
   const archiveTournaments = publishedTournaments.filter(
     (tournament) => tournament.year !== latestYear,
   );
-  const championsQuery = useQuery({
-    queryKey: ["tournaments", "champions"],
-    queryFn: async () => {
-      const availableTournaments = tournamentCatalog.filter(
-        (tournament) => tournament.status === "available",
-      );
-
-      const championEntries = await Promise.all(
-        availableTournaments.map(async (tournament) => {
-          try {
-            const bracket = await getTournamentBracket(tournament.id);
-            return [tournament.id, getTournamentChampion(bracket)] as const;
-          } catch {
-            return [tournament.id, ""] as const;
-          }
-        }),
-      );
-      return Object.fromEntries(championEntries.filter(([, champion]) => champion));
-    },
-    staleTime: 10 * 60 * 1_000,
-  });
+  const championsQuery = useQuery(tournamentChampionsQueryOptions());
   const championsById: Record<string, string> = championsQuery.data ?? {};
 
   return (

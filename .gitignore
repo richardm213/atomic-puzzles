@@ -9,3 +9,6 @@ data/**/*.csv
 data/tournaments/visible-tournament-matches.csv
 data/tournaments/player-countries.csv
 data/tournaments/tournament-seeds.csv
+playwright-report/
+test-results/
+.playwright/

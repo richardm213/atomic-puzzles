@@ -15,17 +15,16 @@ describe("getTimeControlOptions", () => {
     expect(result.incrementOptions).toEqual(["0", "1"]);
   });
 
-  it("returns empty option lists for empty / nullish input", () => {
-    expect(getTimeControlOptions([])).toEqual({ initialOptions: [], incrementOptions: [] });
-    expect(getTimeControlOptions(null)).toEqual({ initialOptions: [], incrementOptions: [] });
-  });
+  it("ignores absent and malformed time controls instead of offering bogus filters", () => {
+    expect(
+      getTimeControlOptions([
+        { timeControl: null },
+        { timeControl: "" },
+        { timeControl: "60" },
+        { timeControl: "60+0" },
+      ]),
+    ).toEqual({ initialOptions: ["60"], incrementOptions: ["0"] });
 
-  it("treats blank time controls as initial=0 / increment=NaN (parser default)", () => {
-    // parseTimeControlParts of "" returns { initial: "0", increment: "NaN" }
-    // (both stringified). Both strings are truthy, so both get added; the
-    // numeric sort floats NaN to the front of the increment list.
-    const result = getTimeControlOptions([{ timeControl: "" }, { timeControl: "60+0" }]);
-    expect(result.initialOptions).toEqual(["0", "60"]);
-    expect(result.incrementOptions).toEqual(["NaN", "0"]);
+    expect(getTimeControlOptions(null)).toEqual({ initialOptions: [], incrementOptions: [] });
   });
 });

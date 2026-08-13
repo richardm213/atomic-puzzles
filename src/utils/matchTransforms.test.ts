@@ -150,8 +150,14 @@ describe("parseTimeControlParts", () => {
     expect(parseTimeControlParts("60+1")).toEqual({ initial: "60", increment: "1" });
   });
 
-  it("returns NaN for the increment when only an initial number is given", () => {
-    // Empty string splits to [""], so initial=Number("")=0 and increment=NaN.
-    expect(parseTimeControlParts(undefined)).toEqual({ initial: "0", increment: "NaN" });
+  it.each([undefined, null, "", "60", "60+", "fast+1"])(
+    "rejects an absent or malformed time control (%s)",
+    (value) => {
+      expect(parseTimeControlParts(value)).toEqual({ initial: "", increment: "" });
+    },
+  );
+
+  it("normalizes numeric parts without leaking padded values into filters", () => {
+    expect(parseTimeControlParts("060+01")).toEqual({ initial: "60", increment: "1" });
   });
 });

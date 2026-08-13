@@ -11,11 +11,10 @@ import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/Rout
 import { Seo } from "../../components/Seo/Seo";
 import { type Mode, modeOptions } from "../../constants/matches";
 import { usePersistedState } from "../../hooks/usePersistedState";
-import {
-  fetchPlayerRatingsRows,
-  type PlayerRatingRow,
-} from "../../lib/supabase/supabasePlayerRatings";
-import { type AliasLookup, loadAliasesLookup } from "../../lib/users/aliasesLookup";
+import type { PlayerRatingRow } from "../../lib/supabase/supabasePlayerRatings";
+import type { AliasLookup } from "../../lib/users/aliasesLookup";
+import { aliasesLookupQueryOptions } from "../../lib/users/aliasQueries";
+import { userRatingsQueryOptions } from "../../lib/users/userQueries";
 import { getOpeningDisplayLabel, normalizeOpeningKey } from "../../utils/openings";
 
 const HIGH_RD_THRESHOLD = 100;
@@ -149,16 +148,8 @@ const UsersTablePage = () => {
     "current",
   );
   const [activeOpeningFilter, setActiveOpeningFilter] = useState("");
-  const ratingsQuery = useQuery({
-    queryKey: ["users", "ratings"],
-    queryFn: () => fetchPlayerRatingsRows(),
-    staleTime: 5 * 60 * 1_000,
-  });
-  const aliasesQuery = useQuery({
-    queryKey: ["aliases", "lookup"],
-    queryFn: loadAliasesLookup,
-    staleTime: Number.POSITIVE_INFINITY,
-  });
+  const ratingsQuery = useQuery(userRatingsQueryOptions());
+  const aliasesQuery = useQuery(aliasesLookupQueryOptions());
   const rows = useMemo(
     () => buildUserRows(ratingsQuery.data ?? [], aliasesQuery.data ?? new Map()),
     [aliasesQuery.data, ratingsQuery.data],

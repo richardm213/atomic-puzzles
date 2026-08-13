@@ -160,11 +160,8 @@ export const findRatingDataForPlayer = (
 export const parseTimeControlParts = (
   timeControl: string | null | undefined,
 ): { initial: string; increment: string } => {
-  const [initialRaw, incrementRaw] = String(timeControl ?? "").split("+");
-  const initialSeconds = Number(initialRaw);
-  const incrementSeconds = Number(incrementRaw);
-  return {
-    initial: String(initialSeconds),
-    increment: String(incrementSeconds),
-  };
+  const match = /^(\d+)\+(\d+)$/.exec(String(timeControl ?? "").trim());
+  if (!match) return { initial: "", increment: "" };
+
+  return { initial: String(Number(match[1])), increment: String(Number(match[2])) };
 };

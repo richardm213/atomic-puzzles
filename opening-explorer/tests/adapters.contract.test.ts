@@ -1,5 +1,5 @@
 import type { Client } from "@libsql/client";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { createSqliteRepository } from "../adapters/sqliteRepository.js";
 import { createTursoRepository } from "../adapters/tursoRepository.js";
@@ -22,70 +22,91 @@ const fixtureRows = (sql: string): JsonRow[] => {
   return [];
 };
 
-const createServices = () => {
-  const sqlite = createOpeningExplorerService(
-    createSqliteRepository("data/openings.sqlite", async (sql) => fixtureRows(sql)),
-  );
-  const client = {
-    execute: async (statement: string | { sql: string }) => ({
-      rows: fixtureRows(typeof statement === "string" ? statement : statement.sql),
-    }),
-  } as unknown as Client;
-  const turso = createOpeningExplorerService(
-    createTursoRepository({ url: "libsql://contract.test", authToken: "test", client }),
-  );
-  return [sqlite, turso] as const;
-};
+const serviceFactories = [
+  [
+    "SQLite",
+    () =>
+      createOpeningExplorerService(
+        createSqliteRepository("data/openings.sqlite", async (sql) => fixtureRows(sql)),
+      ),
+  ],
+  [
+    "Turso",
+    () => {
+      const client = {
+        execute: async (statement: string | { sql: string }) => ({
+          rows: fixtureRows(typeof statement === "string" ? statement : statement.sql),
+        }),
+      } as unknown as Client;
+      return createOpeningExplorerService(
+        createTursoRepository({ url: "libsql://contract.test", authToken: "test", client }),
+      );
+    },
+  ],
+] as const;
 
-const toParams = (values: object) =>
-  new URLSearchParams(
-    Object.entries(values).filter(
-      (entry): entry is [string, string] => typeof entry[1] === "string",
-    ),
-  );
+describe.each(serviceFactories)("%s Opening Explorer adapter", (_name, createService) => {
+  it("returns the public player-list payload", async () => {
+    const response = await createService().handle({
+      method: "GET",
+      path: "/api/opening-players",
+      params: new URLSearchParams(),
+    });
 
-const responseShape = (
-  response: Awaited<ReturnType<ReturnType<typeof createOpeningExplorerService>["handle"]>>,
-) => ({
-  statusCode: response.statusCode,
-  contentType: response.headers["Content-Type"],
-  cacheControl: response.headers["Cache-Control"],
-  body: JSON.parse(response.body),
-});
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["Content-Type"]).toBe("application/json");
+    expect(JSON.parse(response.body)).toEqual({ players: ["canonical"] });
+  });
 
-describe("Opening Explorer repository adapter contract", () => {
-  it.each([
-    ["players", "/api/opening-players", {}],
-    ["random player", "/api/opening-explorer", { randomPlayer: "1" }],
-    ["general explorer", "/api/opening-explorer", { fen: FEN }],
-    [
-      "aliased player explorer",
-      "/api/opening-explorer",
-      { fen: FEN, username: "alias", color: "white", speeds: "0,1" },
-    ],
-  ])("returns the same %s response shape", async (_label, path, values) => {
-    const [sqlite, turso] = createServices();
-    const params = toParams(values);
-    const [sqliteResponse, tursoResponse] = await Promise.all([
-      sqlite.handle({ method: "GET", path, params }),
-      turso.handle({ method: "GET", path, params }),
-    ]);
-    expect(responseShape(sqliteResponse)).toEqual(responseShape(tursoResponse));
+  it("returns the public explorer payload and resolves aliases", async () => {
+    const response = await createService().handle({
+      method: "GET",
+      path: "/api/opening-explorer",
+      params: new URLSearchParams({
+        fen: FEN,
+        username: "alias",
+        color: "white",
+        speeds: "0,1",
+      }),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["Cache-Control"]).toBe("no-store");
+    expect(JSON.parse(response.body)).toMatchObject({
+      positionLeaders: null,
+      moves: [{ uci: "a1a2", games: 1200, whiteWins: 500, draws: 300, blackWins: 400 }],
+      recentGames: [{ gameId: "fixture-game", uci: "a1a2", white: "canonical", black: "opponent" }],
+    });
   });
 
   it.each([
-    { fen: "invalid" },
-    { fen: FEN, color: "green" },
-    { fen: FEN, speeds: "9" },
-    { fen: FEN, unexpected: "1" },
-  ])("applies identical request validation for $params", async (values) => {
-    const [sqlite, turso] = createServices();
-    const params = toParams(values);
-    const [sqliteResponse, tursoResponse] = await Promise.all([
-      sqlite.handle({ path: "/api/opening-explorer", params }),
-      turso.handle({ path: "/api/opening-explorer", params }),
+    [{ fen: "invalid" }, "Invalid fen query parameter"],
+    [{ fen: FEN, color: "green" }, "Invalid color query parameter"],
+    [{ fen: FEN, speeds: "9" }, "Invalid speeds query parameter"],
+    [{ fen: FEN, unexpected: "1" }, "Unexpected query parameter: unexpected"],
+  ])("returns the expected validation error for %#", async (values, error) => {
+    const response = await createService().handle({
+      path: "/api/opening-explorer",
+      params: new URLSearchParams(values),
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.headers["Cache-Control"]).toBe("no-store");
+    expect(JSON.parse(response.body)).toEqual({ error });
+  });
+});
+
+describe("Turso row normalization", () => {
+  it("converts libSQL bigint values into JSON-safe numbers", async () => {
+    const execute = vi.fn().mockResolvedValue({ rows: [{ games: 1200n, username: "alice" }] });
+    const repository = createTursoRepository({
+      url: "libsql://contract.test",
+      authToken: "test",
+      client: { execute } as unknown as Client,
+    });
+
+    await expect(repository.query("select fixture", { value: 1 })).resolves.toEqual([
+      { games: 1200, username: "alice" },
     ]);
-    expect(responseShape(sqliteResponse)).toEqual(responseShape(tursoResponse));
-    expect(sqliteResponse.statusCode).toBe(400);
   });
 });

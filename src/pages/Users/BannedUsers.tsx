@@ -8,7 +8,8 @@ import { useMemo, useState } from "react";
 
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
-import { type AliasIdentityRow, fetchAliasRows } from "../../lib/supabase/supabaseAliases";
+import type { AliasIdentityRow } from "../../lib/supabase/supabaseAliases";
+import { aliasRowsQueryOptions } from "../../lib/users/aliasQueries";
 
 const bannedUserColumns = [
   { key: "username", label: "Username" },
@@ -46,12 +47,10 @@ const buildBannedRows = (aliasRows: AliasIdentityRow[]): BannedUserRow[] =>
 export const BannedUsersPage = () => {
   const [sortKey, setSortKey] = useState("username");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-  const bannedUsersQuery = useQuery({
-    queryKey: ["aliases", "banned-users"],
-    queryFn: async () => buildBannedRows(await fetchAliasRows()),
-    staleTime: 5 * 60 * 1_000,
-  });
-  const rows = bannedUsersQuery.data ?? emptyBannedUserRows;
+  const bannedUsersQuery = useQuery(aliasRowsQueryOptions());
+  const rows = bannedUsersQuery.data
+    ? buildBannedRows(bannedUsersQuery.data)
+    : emptyBannedUserRows;
   const loading = bannedUsersQuery.isPending;
   const error = bannedUsersQuery.error
     ? bannedUsersQuery.error instanceof Error

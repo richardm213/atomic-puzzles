@@ -1,6 +1,7 @@
 import "./RecentMatches.css";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   defaultMode,
@@ -44,8 +45,7 @@ import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { Seo } from "../../components/Seo/Seo";
 import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFilterChecks";
 import { TimeControlFields } from "../../components/TimeControlFields/TimeControlFields";
-import { useMatchSearch } from "../../hooks/useMatchSearch";
-import { loadRawMatchesByMode } from "../../lib/matches/matchData";
+import { recentMatchesPageQueryOptions } from "../../lib/matches/matchQueries";
 import {
   ratingsForPlayers,
   sourceKeyFromMatch,
@@ -110,13 +110,45 @@ const normalizeRecentMatches = (
     })
     .sort((a, b) => b.startTs - a.startTs);
 
+const buildSupabaseFilters = (filters: AppliedFilters): SupabaseMatchFilters => {
+  const queryFilters: SupabaseMatchFilters = {};
+  const username = String(filters.player1Filter || filters.player2Filter || "").trim();
+  if (username) queryFilters.username = username;
+  if (filters.startDateFilter) {
+    queryFilters.startTs = parseDateInputBoundary(filters.startDateFilter, "start");
+  }
+  if (filters.endDateFilter) {
+    queryFilters.endTs = parseDateInputBoundary(filters.endDateFilter, "end");
+  }
+  if (
+    filters.timeControlInitialFilter !== "all" &&
+    filters.timeControlIncrementFilter !== "all"
+  ) {
+    queryFilters.timeControl = `${filters.timeControlInitialFilter}+${filters.timeControlIncrementFilter}`;
+  }
+  const isDefaultRatingRange =
+    filters.ratingMin === defaultRatingMin && filters.ratingMax === defaultRatingMax;
+  if (!isDefaultRatingRange) {
+    queryFilters.ratingFilterType = filters.ratingFilterType;
+    queryFilters.ratingMin = filters.ratingMin;
+    queryFilters.ratingMax = filters.ratingMax;
+  }
+  queryFilters.sourceFilters = filters.sourceFilters;
+  return queryFilters;
+};
+
+const resolveSearchFilters = async (filters: AppliedFilters): Promise<AppliedFilters> => {
+  const [player1Filter, player2Filter] = await resolveUsernameInputs([
+    filters.player1Filter,
+    filters.player2Filter,
+  ]);
+  return { ...filters, player1Filter: player1Filter ?? "", player2Filter: player2Filter ?? "" };
+};
+
 export const RecentMatchesPage = () => {
   const [selectedMode, setSelectedMode] = useState<Mode>(defaultMode);
-  const [matches, setMatches] = useState<RecentMatch[]>([]);
-  const [totalMatches, setTotalMatches] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(defaultPageSize);
-  const { error, loading: loadingMatches, run: runMatchSearch } = useMatchSearch();
   const [expandedMatchKeys, setExpandedMatchKeys] = useState<string[]>([]);
   const [ratingFilterType, setRatingFilterType] = useState("both");
   const [ratingMin, setRatingMin] = useState(defaultRatingMin);
@@ -128,7 +160,6 @@ export const RecentMatchesPage = () => {
   const [endDateFilter, setEndDateFilter] = useState("");
   const [timeControlInitialFilter, setTimeControlInitialFilter] = useState("all");
   const [timeControlIncrementFilter, setTimeControlIncrementFilter] = useState("all");
-  const skipNextPageLoadKeyRef = useRef("");
   const [appliedFilters, setAppliedFilters] = useState<AppliedFilters>({
     selectedMode: defaultMode,
     ratingFilterType: "both",
@@ -142,6 +173,40 @@ export const RecentMatchesPage = () => {
     timeControlInitialFilter: "all",
     timeControlIncrementFilter: "all",
   });
+  const supabaseFilters = useMemo(() => buildSupabaseFilters(appliedFilters), [appliedFilters]);
+  const matchesQuery = useQuery({
+    ...recentMatchesPageQueryOptions(
+      appliedFilters.selectedMode,
+      supabaseFilters,
+      currentPage,
+      pageSize,
+    ),
+    select: (loaded) =>
+      ({
+        matches: normalizeRecentMatches(loaded.matches, appliedFilters.selectedMode),
+        total: loaded.total,
+      }) satisfies { matches: RecentMatch[]; total: number },
+    placeholderData: keepPreviousData,
+  });
+  const applyFiltersMutation = useMutation({
+    mutationFn: resolveSearchFilters,
+    onSuccess: (filters) => {
+      setAppliedFilters(filters);
+      setCurrentPage(1);
+    },
+  });
+  const matches = useMemo(
+    () => matchesQuery.data?.matches ?? [],
+    [matchesQuery.data?.matches],
+  );
+  const totalMatches = matchesQuery.data?.total ?? 0;
+  const loadingMatches = matchesQuery.isFetching || applyFiltersMutation.isPending;
+  const queryError = matchesQuery.error ?? applyFiltersMutation.error;
+  const error = queryError
+    ? queryError instanceof Error
+      ? queryError.message
+      : String(queryError)
+    : "";
 
   useEffect(() => {
     setExpandedMatchKeys([]);
@@ -206,82 +271,7 @@ export const RecentMatchesPage = () => {
   );
   const totalPages = Math.max(1, Math.ceil(totalMatches / Math.max(1, pageSize)));
 
-  const buildSupabaseFilters = useCallback((nextFilters: AppliedFilters): SupabaseMatchFilters => {
-    const queryFilters: SupabaseMatchFilters = {};
-    const username = String(nextFilters.player1Filter || nextFilters.player2Filter || "").trim();
-    if (username) {
-      queryFilters.username = username;
-    }
-    if (nextFilters.startDateFilter) {
-      queryFilters.startTs = parseDateInputBoundary(nextFilters.startDateFilter, "start");
-    }
-    if (nextFilters.endDateFilter) {
-      queryFilters.endTs = parseDateInputBoundary(nextFilters.endDateFilter, "end");
-    }
-    if (
-      nextFilters.timeControlInitialFilter !== "all" &&
-      nextFilters.timeControlIncrementFilter !== "all"
-    ) {
-      queryFilters.timeControl = `${nextFilters.timeControlInitialFilter}+${nextFilters.timeControlIncrementFilter}`;
-    }
-    const isDefaultRatingRange =
-      nextFilters.ratingMin === defaultRatingMin && nextFilters.ratingMax === defaultRatingMax;
-    if (!isDefaultRatingRange) {
-      queryFilters.ratingFilterType = nextFilters.ratingFilterType;
-      queryFilters.ratingMin = nextFilters.ratingMin;
-      queryFilters.ratingMax = nextFilters.ratingMax;
-    }
-    queryFilters.sourceFilters = nextFilters.sourceFilters;
-    return queryFilters;
-  }, []);
-
-  const resolveSearchFilters = useCallback(
-    async (nextFilters: AppliedFilters): Promise<AppliedFilters> => {
-      const [resolvedPlayer1Filter, resolvedPlayer2Filter] = await resolveUsernameInputs([
-        nextFilters.player1Filter,
-        nextFilters.player2Filter,
-      ]);
-
-      return {
-        ...nextFilters,
-        player1Filter: resolvedPlayer1Filter ?? "",
-        player2Filter: resolvedPlayer2Filter ?? "",
-      };
-    },
-    [],
-  );
-
-  const pageRequestKey = useCallback(
-    (
-      nextAppliedFilters: AppliedFilters,
-      nextPage: number,
-      nextPageSize: number = pageSize,
-    ): string =>
-      JSON.stringify({
-        filters: buildSupabaseFilters(nextAppliedFilters),
-        mode: nextAppliedFilters.selectedMode,
-        page: nextPage,
-        pageSize: nextPageSize,
-      }),
-    [buildSupabaseFilters, pageSize],
-  );
-
-  const fetchPage = useCallback(
-    async (filters: AppliedFilters, page: number) => {
-      const loaded = await loadRawMatchesByMode(filters.selectedMode, {
-        filters: buildSupabaseFilters(filters),
-        page,
-        pageSize,
-      });
-      return {
-        matches: normalizeRecentMatches(loaded.matches, filters.selectedMode),
-        total: loaded.total,
-      };
-    },
-    [buildSupabaseFilters, pageSize],
-  );
-
-  const handleSearch = async () => {
+  const handleSearch = () => {
     if (loadingMatches) return;
 
     const nextAppliedFilters = {
@@ -298,51 +288,12 @@ export const RecentMatchesPage = () => {
       timeControlIncrementFilter,
     };
 
-    const result = await runMatchSearch(
-      async () => {
-        const filters = await resolveSearchFilters(nextAppliedFilters);
-        return { filters, ...(await fetchPage(filters, 1)) };
-      },
-      () => {
-        setMatches([]);
-        setTotalMatches(0);
-        setCurrentPage(1);
-      },
-    );
-    if (!result) return;
-    setMatches(result.matches);
-    setTotalMatches(result.total);
-    skipNextPageLoadKeyRef.current = pageRequestKey(result.filters, 1);
-    setAppliedFilters(result.filters);
-    setCurrentPage(1);
+    applyFiltersMutation.mutate(nextAppliedFilters);
   };
 
   useEffect(() => {
     setCurrentPage((current) => Math.min(current, totalPages));
   }, [totalPages]);
-
-  useEffect(() => {
-    const loadPage = async () => {
-      const requestKey = pageRequestKey(appliedFilters, currentPage);
-      if (skipNextPageLoadKeyRef.current === requestKey) {
-        skipNextPageLoadKeyRef.current = "";
-        return;
-      }
-
-      const result = await runMatchSearch(
-        () => fetchPage(appliedFilters, currentPage),
-        () => {
-          setMatches([]);
-          setTotalMatches(0);
-        },
-      );
-      if (!result) return;
-      setMatches(result.matches);
-      setTotalMatches(result.total);
-    };
-
-    void loadPage();
-  }, [appliedFilters, currentPage, fetchPage, pageRequestKey, runMatchSearch]);
 
   const paginatedMatches = filteredMatches;
   const setSourceFilter = (source: keyof SourceFilters, checked: boolean): void => {
@@ -366,7 +317,7 @@ export const RecentMatchesPage = () => {
           className="matchFilterPanel"
           onSubmit={(event) => {
             event.preventDefault();
-            void handleSearch();
+            handleSearch();
           }}
         >
           <div className="matchFilterGrid">

@@ -9,13 +9,12 @@ import { CommunityDiscussion } from "../../components/PuzzleCommunity/PuzzleComm
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { modeLabels } from "../../constants/matches";
-import { loadRawMatchesByMode } from "../../lib/matches/matchData";
+import { matchDetailQueryOptions } from "../../lib/matches/matchQueries";
 import {
   ratingsForPlayers,
   sourceValueFromMatch,
   summarizeMatchGames,
 } from "../../lib/matches/matchSummaries";
-import { getTournamentMatchLocation } from "../../lib/matches/tournaments";
 import type { MatchCardData } from "../../types/matchCard";
 import type { RawMatchLike } from "../../types/matchRaw";
 import { formatLocalDateTime, formatScore } from "../../utils/formatters";
@@ -76,24 +75,12 @@ export const MatchPage = () => {
   const decodedMatchId = decodeParam(matchIdParam);
   const hasValidMatchKey = Boolean(mode && decodedMatchId);
   const matchQuery = useQuery({
-    queryKey: ["matches", mode, decodedMatchId],
-    queryFn: async () => {
-      if (!mode || !decodedMatchId) throw new Error("Invalid match key.");
-      const [matches, tournamentLocation] = await Promise.all([
-        loadRawMatchesByMode(mode, { filters: { matchId: decodedMatchId } }),
-        getTournamentMatchLocation(decodedMatchId).catch(() => null),
-      ]);
-      const resolvedMatch = Array.isArray(matches) ? matches[0] : null;
-      if (!resolvedMatch) throw new Error("Match not found.");
-      return {
-        match: normalizeStandaloneMatch(resolvedMatch, mode),
-        tournamentLocation,
-      };
-    },
+    ...matchDetailQueryOptions(mode, decodedMatchId),
     enabled: hasValidMatchKey,
-    staleTime: 10 * 60 * 1_000,
   });
-  const match = matchQuery.data?.match ?? null;
+  const match = matchQuery.data?.match
+    ? normalizeStandaloneMatch(matchQuery.data.match, mode)
+    : null;
   const tournamentLocation = matchQuery.data?.tournamentLocation ?? null;
   const loading = hasValidMatchKey && matchQuery.isPending;
   const error = !hasValidMatchKey

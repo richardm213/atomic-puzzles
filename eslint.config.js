@@ -90,7 +90,14 @@ const recommendedTypeCheckedRules = Object.assign(
 
 export default [
   {
-    ignores: [".claude/**", "dist/**", "node_modules/**"],
+    ignores: [
+      ".claude/**",
+      ".playwright/**",
+      "dist/**",
+      "node_modules/**",
+      "playwright-report/**",
+      "test-results/**",
+    ],
   },
   {
     files: ["**/*.{js,jsx,ts,tsx}"],

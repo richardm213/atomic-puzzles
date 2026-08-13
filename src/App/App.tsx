@@ -14,7 +14,7 @@ export const App = () => (
           Skip to content
         </a>
         <TopNav />
-        <main id="main-content" className="appMain">
+        <main id="main-content" className="appMain" tabIndex={-1}>
           <Outlet />
         </main>
       </div>

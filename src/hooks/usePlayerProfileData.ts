@@ -7,6 +7,10 @@ import {
   modeOptions,
   type SourceFilters,
 } from "../constants/matches";
+import {
+  profileQueryKeys,
+  uniqueMonthRankPairs,
+} from "../features/profile/profileQueries";
 import type { NormalizedMatch } from "../lib/matches/matchData";
 import {
   fetchLbPlayerCount,
@@ -217,7 +221,7 @@ export const buildRankingsLocation = (
 
 export const useMonthRanks = (username: string, enabled = true): MonthRank[] => {
   const monthRanksQuery = useQuery({
-    queryKey: ["profile", username, "month-ranks"],
+    queryKey: profileQueryKeys.monthRanks(username),
     queryFn: async () => parseMonthRanksFromLbRows(await fetchLbRows({ username })),
     enabled: Boolean(username) && enabled,
     staleTime: 5 * 60 * 1_000,
@@ -230,16 +234,9 @@ export const useMonthRankPlayerCounts = (
   monthRanks: MonthRank[],
   enabled = true,
 ): Record<string, number> => {
-  const pairs = [
-    ...new Map(
-      monthRanks.map((monthRank) => [
-        `${monthRank.monthValue}|${monthRank.mode}`,
-        { month: monthRank.monthValue, mode: monthRank.mode },
-      ]),
-    ).values(),
-  ];
+  const pairs = uniqueMonthRankPairs(monthRanks);
   const playerCountsQuery = useQuery({
-    queryKey: ["profile", "month-rank-player-counts", pairs],
+    queryKey: profileQueryKeys.monthRankPlayerCounts(pairs),
     queryFn: async () => {
       try {
         return await fetchLbPlayerCounts(pairs);
@@ -266,7 +263,7 @@ export const useMonthRankPlayerCounts = (
 
 export const useRatingsSnapshotByMode = (username: string): RatingsSnapshotByMode => {
   const ratingsQuery = useQuery({
-    queryKey: ["profile", username, "ratings-snapshot"],
+    queryKey: profileQueryKeys.ratingsSnapshot(username),
     queryFn: async () => parseCurrentRatingsFromRows(await fetchPlayerRatingsRows({ username })),
     enabled: Boolean(username),
     staleTime: 5 * 60 * 1_000,

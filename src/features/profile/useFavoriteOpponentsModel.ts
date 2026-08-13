@@ -4,20 +4,17 @@ import { z } from "zod";
 
 import { type Mode, modeLabels, modeOptions } from "../../constants/matches";
 import { usePersistedState } from "../../hooks/usePersistedState";
-import { loadRawMatchesByMode, normalizeMatches } from "../../lib/matches/matchData";
 import {
   compareFavoriteOpponentRows,
-  type FavoriteOpponentMatch,
-  favoriteOpponentPageSize,
   type FavoriteOpponentRow,
   type FavoriteOpponentSort,
   type FavoriteOpponentSortDirection,
   getFavoriteOpponentAllowedMatchLimit,
   getFavoriteOpponentDefaultSortDirection,
-  getFavoriteOpponentRows,
   isFavoriteOpponentSort,
   type RankHistoryMode,
 } from "./favoriteOpponents";
+import { favoriteOpponentsQueryOptions } from "./profileQueries";
 
 const preferenceKeys = {
   mode: "atomic-puzzles:profile-favorite-opponent-mode",
@@ -94,43 +91,8 @@ export const useFavoriteOpponentsModel = ({
   }, [matchLimit, mode, setMatchLimit]);
 
   const favoriteOpponentsQuery = useQuery({
-    queryKey: [
-      "profile",
-      canonicalUsername,
-      "favorite-opponents",
-      mode,
-      matchLimit,
-      availableModes,
-    ],
-    queryFn: async () => {
-      const modesToLoad = mode === "all" ? availableModes : [mode];
-      const matchesByMode = await Promise.all(
-        modesToLoad.map(async (matchMode): Promise<FavoriteOpponentMatch[]> => {
-          const matches: import("../../lib/matches/matchData").ParsedMatch[] = [];
-          const maxPages = Math.ceil(matchLimit / favoriteOpponentPageSize);
-          for (let pageNumber = 1; pageNumber <= maxPages; pageNumber += 1) {
-            const result = await loadRawMatchesByMode(matchMode, {
-              filters: { username: canonicalUsername },
-              page: pageNumber,
-              pageSize: favoriteOpponentPageSize,
-            });
-            matches.push(...result.matches);
-            if (result.matches.length < favoriteOpponentPageSize) break;
-          }
-          return normalizeMatches(matches, canonicalUsername).map((match) => ({
-            ...match,
-            mode: matchMode,
-          }));
-        }),
-      );
-      const recentMatches = matchesByMode
-        .flat()
-        .sort((left, right) => right.startTs - left.startTs)
-        .slice(0, matchLimit);
-      return getFavoriteOpponentRows(recentMatches);
-    },
+    ...favoriteOpponentsQueryOptions(canonicalUsername, mode, matchLimit, availableModes),
     enabled: enabled && Boolean(canonicalUsername) && availableModes.length > 0,
-    staleTime: 5 * 60 * 1_000,
   });
   const rows = favoriteOpponentsQuery.data ?? emptyFavoriteOpponentRows;
   const loading = favoriteOpponentsQuery.isFetching;

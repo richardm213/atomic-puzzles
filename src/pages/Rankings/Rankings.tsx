@@ -20,7 +20,8 @@ import { Seo } from "../../components/Seo/Seo";
 import { useAppSettings } from "../../context/AppSettings";
 import { useRankingsByMonth } from "../../hooks/useRankingsByMonth";
 import { monthDateFromMonthKey } from "../../lib/supabase/supabaseLb";
-import { type AliasLookup, loadAliasesLookup } from "../../lib/users/aliasesLookup";
+import type { AliasLookup } from "../../lib/users/aliasesLookup";
+import { aliasesLookupQueryOptions } from "../../lib/users/aliasQueries";
 import { getOpeningDisplayLabel, normalizeOpeningKey } from "../../utils/openings";
 import { normalizeUsername } from "../../utils/playerNames";
 
@@ -210,11 +211,7 @@ const LeaderboardView = () => {
   );
 
   const { rankingsByMonth, error } = useRankingsByMonth(selectedMonth);
-  const aliasesQuery = useQuery({
-    queryKey: ["aliases", "lookup"],
-    queryFn: loadAliasesLookup,
-    staleTime: Number.POSITIVE_INFINITY,
-  });
+  const aliasesQuery = useQuery(aliasesLookupQueryOptions());
   const aliasesLookup = aliasesQuery.data ?? emptyAliasLookup;
   const aliasesLoaded = !aliasesQuery.isPending;
 

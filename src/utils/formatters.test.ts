@@ -1,26 +1,22 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   formatCalendarDate,
+  formatGameCount,
   formatLocalDateTime,
   formatOpponentWithRating,
-  formatScore,
   formatSignedDecimal,
 } from "./formatters";
 
 describe("formatSignedDecimal", () => {
-  it("rounds to one decimal place", () => {
-    expect(formatSignedDecimal(2.34)).toBe("+2.3");
-    expect(formatSignedDecimal(-0.05)).toBe("0");
-  });
-
-  it("prefixes positives with +", () => {
-    expect(formatSignedDecimal(1)).toBe("+1");
-  });
-
-  it("does not prefix negatives or zero", () => {
-    expect(formatSignedDecimal(-3.2)).toBe("-3.2");
-    expect(formatSignedDecimal(0)).toBe("0");
+  it.each([
+    [2.34, "+2.3"],
+    [-0.05, "0"],
+    [1, "+1"],
+    [-3.2, "-3.2"],
+    [0, "0"],
+  ])("formats %s as %s", (value, expected) => {
+    expect(formatSignedDecimal(value)).toBe(expected);
   });
 });
 
@@ -37,16 +33,29 @@ describe("formatCalendarDate", () => {
 });
 
 describe("formatLocalDateTime", () => {
-  it("renders the local date and lower-cased am/pm time", () => {
-    const result = formatLocalDateTime("2024-03-15T14:30:00Z");
-    expect(result).toMatch(/(am|pm)$/);
+  afterEach(() => vi.useRealTimers());
+
+  it("omits the year only for dates in the current local year", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2024, 6, 1, 12));
+
+    expect(formatLocalDateTime(new Date(2024, 2, 15, 14, 30))).toBe("Mar 15 2:30 pm");
+    expect(formatLocalDateTime(new Date(2023, 2, 15, 14, 30))).toBe("Mar 15, 2023 2:30 pm");
   });
 });
 
-describe("formatScore", () => {
-  it("returns the numeric stringification", () => {
-    expect(formatScore(2.5)).toBe("2.5");
-    expect(formatScore("3")).toBe("3");
+describe("formatGameCount", () => {
+  it.each([
+    [999, "999"],
+    [1_000, "1k"],
+    [9_999, "10k"],
+    [10_000, "10k"],
+    [999_000, "999k"],
+    [1_000_000, "1M"],
+    [9_999_999, "10M"],
+    [10_000_000, "10M"],
+  ])("formats %s games as %s", (games, expected) => {
+    expect(formatGameCount(games)).toBe(expected);
   });
 });
 

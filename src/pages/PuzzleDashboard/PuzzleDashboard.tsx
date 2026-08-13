@@ -18,7 +18,7 @@ import {
   puzzleProgressForUserQueryOptions,
 } from "../../lib/puzzles/puzzleQueries";
 import { normalizePuzzleEventName } from "../../lib/puzzles/puzzleSets";
-import { isRegisteredSiteUser } from "../../lib/supabase/supabaseUsers";
+import { siteUserRegistrationQueryOptions } from "../../lib/users/userQueries";
 import { normalizeUsername } from "../../utils/playerNames";
 import { DashboardTagFilter, getPuzzleTagName } from "./DashboardTagFilter";
 import { entryMatchesSelectedTags } from "./puzzleDashboardTags";
@@ -102,10 +102,8 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
   const [tagFilters, setTagFilters] = useState<string[]>([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const accessQuery = useQuery({
-    queryKey: ["users", targetUsername, "registered"],
-    queryFn: () => isRegisteredSiteUser(targetUsername),
+    ...siteUserRegistrationQueryOptions(targetUsername),
     enabled: Boolean(targetUsername),
-    staleTime: 5 * 60 * 1_000,
   });
   const canViewDashboard = accessQuery.data ?? false;
   const puzzleCatalogQuery = useQuery(puzzleCatalogQueryOptions());
