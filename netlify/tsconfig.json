@@ -11,6 +11,7 @@
     "functions/**/*.ts",
     "http/**/*.ts",
     "lib/**/*.ts",
+    "../opening-explorer/**/*.ts",
     "../src/lib/community/schemas.ts"
   ]
 }
