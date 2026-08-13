@@ -1,17 +1,17 @@
-import { communityRequestSchema } from "../../../src/lib/community/schemas";
-import { authenticateRequest } from "../../auth/identity";
-import { createServerSupabase } from "../../database/supabase";
-import { HttpError } from "../../http/errors";
-import type { NetlifyEvent } from "../../http/handler";
-import { jsonResponse } from "../../http/responses";
-import { parseJsonBody } from "../../http/validation";
+import { communityRequestSchema } from "../../../shared/domain/community/schemas";
 import { isSameOriginRequest } from "../../lib/siteSession";
+import { authenticateRequest } from "../../platform/authentication";
+import type { FunctionEvent } from "../../platform/defineFunction";
+import { jsonResponse } from "../../platform/defineFunction";
+import { createServerSupabase } from "../../platform/environment";
+import { HttpError } from "../../platform/errors";
+import { parseJsonBody } from "../../platform/validation";
 import { CommunityRepository } from "./repository";
 import { CommunityService, isPublicCommunityReadAction, readCommunityTarget } from "./service";
 
 const mutationActions = new Set(["vote", "comment", "commentVote"]);
 
-export const communityRoute = async (event: NetlifyEvent) => {
+export const communityRoute = async (event: FunctionEvent) => {
   const input = parseJsonBody(event, communityRequestSchema, "Invalid community request.");
   const publicRead = isPublicCommunityReadAction(input.action);
   if (mutationActions.has(input.action) && !isSameOriginRequest(event.headers)) {

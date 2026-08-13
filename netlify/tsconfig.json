@@ -5,13 +5,11 @@
     "types": ["node", "vitest/globals"]
   },
   "include": [
-    "auth/**/*.ts",
-    "database/**/*.ts",
     "features/**/*.ts",
     "functions/**/*.ts",
-    "http/**/*.ts",
     "lib/**/*.ts",
     "../opening-explorer/**/*.ts",
-    "../src/lib/community/schemas.ts"
+    "platform/**/*.ts",
+    "../shared/domain/**/*.ts"
   ]
 }

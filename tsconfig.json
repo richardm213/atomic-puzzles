@@ -25,6 +25,6 @@
     "useDefineForClassFields": true,
     "types": ["vite/client", "vitest/globals", "@testing-library/jest-dom/vitest", "node"]
   },
-  "include": ["src", "opening-explorer", "e2e", "playwright.config.ts"],
+  "include": ["src", "opening-explorer", "e2e", "playwright.config.ts", "shared"],
   "exclude": ["node_modules", "dist"]
 }

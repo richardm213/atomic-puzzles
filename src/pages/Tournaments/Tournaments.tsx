@@ -1,86 +1,11 @@
 import "./Tournaments.css";
 
-import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
 
 import { Seo } from "../../components/Seo/Seo";
 import { tournamentChampionsQueryOptions } from "../../lib/matches/tournamentQueries";
-import {
-  tournamentCatalog,
-  type TournamentMeta,
-} from "../../lib/matches/tournaments";
-import { appAssetPath } from "../../utils/appAssetPath";
-import { normalizeUsername } from "../../utils/playerNames";
-
-const tournamentSeriesName = (tournament: TournamentMeta): string => {
-  if (tournament.id.startsWith("ahc")) return "Atomic Hyper Championship";
-  if (tournament.id.startsWith("aoc")) return "Atomic Openings Championship";
-  if (tournament.id.startsWith("ccac")) return "Chess.com Atomic Championship";
-  return "Atomic World Championship";
-};
-
-const TournamentArchiveCard = ({
-  tournament,
-  champion,
-  spotlight = false,
-}: {
-  tournament: TournamentMeta;
-  champion: string;
-  spotlight?: boolean;
-}) => {
-  const showWinner = Boolean(champion) && tournament.id !== "awc2025";
-
-  return (
-    <article className={`tournamentCard${spotlight ? " isSpotlight" : ""}`}>
-      <div className="tournamentCardEdition">
-        <span>{tournament.year}</span>
-      </div>
-
-      <div className="tournamentCardArt" aria-hidden="true">
-        {tournament.trophyAssetPath ? (
-          <img
-            src={appAssetPath(tournament.trophyAssetPath)}
-            alt=""
-            width="112"
-            height="112"
-            loading={spotlight ? "eager" : "lazy"}
-            decoding="async"
-          />
-        ) : null}
-      </div>
-
-      <div className="tournamentCardCopy">
-        <h3>{tournamentSeriesName(tournament)}</h3>
-        {showWinner ? (
-          <div className="tournamentCardChampion hasWinner">
-            <span>Champion</span>
-            <Link
-              className="tournamentCardWinnerLink"
-              to="/@/$username"
-              params={{ username: normalizeUsername(champion) }}
-            >
-              {champion}
-            </Link>
-          </div>
-        ) : (
-          <span className="tournamentCardPublished">Bracket published</span>
-        )}
-      </div>
-
-      <Link
-        className="tournamentCardLink"
-        to="/tournaments/$tournamentId"
-        params={{ tournamentId: tournament.id }}
-        aria-label={`Open ${tournamentSeriesName(tournament)} ${tournament.year} bracket`}
-      >
-        <span>Open bracket</span>
-        <FontAwesomeIcon icon={faArrowRight} aria-hidden="true" />
-      </Link>
-    </article>
-  );
-};
+import { tournamentCatalog } from "../../lib/matches/tournaments";
+import { TournamentArchiveCard } from "./TournamentArchiveCard";
 
 export const TournamentsPage = () => {
   const publishedTournaments = tournamentCatalog.filter(
@@ -98,7 +23,7 @@ export const TournamentsPage = () => {
   const championsById: Record<string, string> = championsQuery.data ?? {};
 
   return (
-    <div className="tournamentsPage">
+    <div className="sitePage tournamentsPage">
       <Seo
         title="Tournament history"
         description="Browse atomic tournament brackets and archives."

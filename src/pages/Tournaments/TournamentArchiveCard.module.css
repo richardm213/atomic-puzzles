@@ -1,0 +1,245 @@
+.card {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  min-width: 0;
+  min-height: 172px;
+  overflow: hidden;
+  padding: var(--space-5);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 10%, var(--color-border));
+  border-radius: var(--radius-lg);
+  background: var(--color-panel);
+  box-shadow: var(--shadow-soft);
+  transition:
+    border-color 200ms ease,
+    background-color 200ms ease,
+    box-shadow 200ms ease,
+    transform 200ms ease;
+}
+
+.spotlight {
+  min-height: 216px;
+  padding: var(--space-6);
+  border-color: color-mix(in srgb, var(--tournament-gold) 24%, var(--color-border));
+  background: color-mix(in srgb, var(--color-panel) 92%, var(--color-panel-strong));
+}
+
+.card:hover,
+.card:has(.cardLink:focus-visible) {
+  border-color: color-mix(in srgb, var(--tournament-gold) 44%, var(--color-border));
+  background: color-mix(in srgb, var(--color-panel) 86%, var(--color-panel-strong));
+  box-shadow: 0 16px 32px color-mix(in srgb, var(--color-panel-deep) 34%, transparent);
+  transform: translateY(-2px);
+}
+
+.card:has(.cardLink:focus-visible) {
+  outline: 3px solid var(--color-primary-ring);
+  outline-offset: 3px;
+}
+
+.edition {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: fit-content;
+  color: var(--tournament-gold);
+  font-size: 0.78rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.art {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  z-index: 0;
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--tournament-gold) 7%, transparent);
+  opacity: 0.82;
+  pointer-events: none;
+}
+
+.art img {
+  width: 62px;
+  height: 62px;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 12px color-mix(in srgb, black 30%, transparent));
+}
+
+.art img[src*="atomic-openings-championship"] {
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+}
+
+.spotlight .art {
+  top: var(--space-6);
+  right: var(--space-6);
+  width: 104px;
+  height: 104px;
+  opacity: 1;
+}
+
+.spotlight .art img {
+  width: 92px;
+  height: 92px;
+}
+
+.copy {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  min-width: 0;
+  padding-right: var(--space-16);
+  pointer-events: none;
+}
+
+.spotlight .copy {
+  padding-right: 112px;
+}
+
+.copy h3 {
+  max-width: 19ch;
+  margin: 0;
+  color: var(--color-heading);
+  font-size: clamp(1.22rem, 2vw, 1.55rem);
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+}
+
+.spotlight .copy h3 {
+  max-width: 16ch;
+  font-size: clamp(1.65rem, 3vw, 2.15rem);
+}
+
+.champion {
+  display: grid;
+  gap: 2px;
+  width: fit-content;
+  min-width: 0;
+  pointer-events: auto;
+}
+
+.champion > span,
+.published {
+  color: var(--color-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.winnerLink {
+  position: relative;
+  z-index: 4;
+  width: fit-content;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--color-heading);
+  font-size: 0.9rem;
+  font-weight: 750;
+  text-decoration-color: color-mix(in srgb, var(--tournament-gold) 44%, transparent);
+  text-overflow: ellipsis;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+
+.winnerLink:hover {
+  color: var(--link-hover-color);
+  text-decoration-color: currentcolor;
+}
+
+.winnerLink:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 3px;
+}
+
+.cardLink {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-5);
+  color: var(--color-primary-pale);
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.spotlight .cardLink {
+  padding: var(--space-6);
+}
+
+.cardLink svg {
+  transition: transform 200ms ease;
+}
+
+.card:hover .cardLink svg,
+.cardLink:focus-visible svg {
+  transform: translateX(3px);
+}
+
+.cardLink:focus-visible {
+  outline: none;
+}
+
+@media (max-width: 640px) {
+  .card,
+  .spotlight {
+    min-height: 184px;
+    padding: var(--space-5);
+  }
+
+  .spotlight .cardLink {
+    padding: var(--space-5);
+  }
+
+  .spotlight .art {
+    top: var(--space-4);
+    right: var(--space-4);
+    width: 72px;
+    height: 72px;
+  }
+
+  .spotlight .art img {
+    width: 64px;
+    height: 64px;
+  }
+
+  .copy,
+  .spotlight .copy {
+    padding-right: var(--space-16);
+  }
+
+  .copy h3,
+  .spotlight .copy h3 {
+    max-width: 18ch;
+    font-size: clamp(1.35rem, 7vw, 1.7rem);
+  }
+
+  .cardLink {
+    min-height: var(--control-height-touch);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .cardLink svg {
+    transition-duration: 0.01ms;
+  }
+}

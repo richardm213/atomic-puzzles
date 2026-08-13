@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { readCommunityTarget } from "../features/community/service";
 import {
   addPuzzleAttemptStats,
   buildCommunityUserStats,
   buildProfileCommentRows,
-  handler,
   isPublicCommunityReadAction,
+  readCommunityTarget,
   sortProfileCommentRecords,
   sumCommentKarma,
-} from "../functions/puzzle-community";
+} from "../features/community/service";
+import { handler } from "../functions/puzzle-community";
 
 describe("profile comment history", () => {
   it("adds attempt totals and whole-number solve rates to puzzle vote rows", () => {

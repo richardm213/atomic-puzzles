@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { HttpError } from "../../http/errors";
+import { HttpError } from "../../platform/errors";
 import type { CommunityTarget } from "./service";
 
 export type ProfileCommentRecord = {
@@ -332,14 +332,11 @@ export class CommunityRepository {
         /wait 15 seconds before commenting|at most 5 comments.*every 10 minutes/i.test(
           commentResult.error.message,
         );
-      throw new HttpError(
-        rateLimited ? 429 : invalidParent ? 400 : 500,
-        rateLimited
-          ? commentResult.error.message
-          : invalidParent
-            ? "That reply target no longer exists in this discussion."
-            : `Unable to post comment: ${commentResult.error.message}`,
-      );
+      if (rateLimited) throw new HttpError(429, commentResult.error.message);
+      if (invalidParent) {
+        throw new HttpError(400, "That reply target no longer exists in this discussion.");
+      }
+      throw new Error(`Unable to post comment: ${commentResult.error.message}`);
     }
     const commentId = Number(commentResult.data?.id);
     if (!Number.isSafeInteger(commentId) || commentId <= 0) {

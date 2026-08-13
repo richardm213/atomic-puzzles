@@ -1,5 +1,8 @@
-import type { CommunityRequest, CommunityTargetType } from "../../../src/lib/community/schemas";
-import { HttpError } from "../../http/errors";
+import type {
+  CommunityRequest,
+  CommunityTargetType,
+} from "../../../shared/domain/community/schemas";
+import { HttpError } from "../../platform/errors";
 import type { CommunityRepository } from "./repository";
 import {
   type CommunityCommentVoteRecord,
