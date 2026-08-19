@@ -57,10 +57,7 @@ export const HomePage = () => {
           >
             <span>Championship</span>
             <h2>Atomic Hyper Championship</h2>
-            <p>
-              Who will be crowned the Atomic Hyper Champion? Will it be max, jsf, trk, or someone
-              else?
-            </p>
+            <p>rkrounit won the 2026 Atomic Hyper Championship.</p>
             <img
               src={appAssetPath("/images/awc-trophies/atomic-hyper-championship.png")}
               alt=""
