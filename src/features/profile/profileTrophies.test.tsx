@@ -7,6 +7,18 @@ import {
 } from "./profileTrophies";
 
 describe("championship profile trophies", () => {
+  it("shows the AHC 2026 trophy on RKROUNIT's profile", () => {
+    expect(getChampionshipTrophies("RKROUNIT")).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "atomic-hyper-2026",
+          href: "/tournaments/ahc2026",
+          title: "2026 Atomic Hyper Champion",
+        }),
+      ]),
+    );
+  });
+
   it("shows the AOC 2026 trophy on JakeStateFarm's profile", () => {
     expect(getChampionshipTrophies("JakeStateFarm")).toEqual(
       expect.arrayContaining([

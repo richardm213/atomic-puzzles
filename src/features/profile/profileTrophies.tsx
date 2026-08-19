@@ -27,6 +27,7 @@ const rankingTrophyAssets = {
   top10: appAssetPath("/images/lichess-trophies/silver-cup-2.png"),
 };
 const championshipTrophyAssets = {
+  atomicHyper: appAssetPath("/images/awc-trophies/atomic-hyper-championship.png"),
   atomicOpenings: appAssetPath("/images/awc-trophies/atomic-openings-championship.png"),
   awc: appAssetPath("/images/awc-trophies/awc.png"),
   chesscomAtomic: appAssetPath("/images/awc-trophies/chesscomatomic.png"),
@@ -57,6 +58,19 @@ const championshipTrophiesByUsername: Record<string, ProfileTrophy[]> = {
       dateValue: "2024-12-01",
       placementLabel: "Champion",
       prestige: 1000,
+    },
+  ],
+  rkrounit: [
+    {
+      key: "atomic-hyper-2026",
+      label: "AHC 2026",
+      title: "2026 Atomic Hyper Champion",
+      imageSrc: championshipTrophyAssets.atomicHyper,
+      href: appAssetPath("/tournaments/ahc2026"),
+      dateLabel: "Aug 2026",
+      dateValue: "2026-08-19",
+      placementLabel: "Champion",
+      prestige: 970,
     },
   ],
   sutcunuri: [

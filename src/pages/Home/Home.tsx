@@ -57,7 +57,7 @@ export const HomePage = () => {
           >
             <span>Championship</span>
             <h2>Atomic Hyper Championship</h2>
-            <p>rkrounit won the 2026 Atomic Hyper Championship.</p>
+            <p>rkrounit won the 2026 Atomic Hyper Championship!</p>
             <img
               src={appAssetPath("/images/awc-trophies/atomic-hyper-championship.png")}
               alt=""
