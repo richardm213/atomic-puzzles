@@ -355,8 +355,7 @@ export const TopNav = () => {
 
     const loadProfileUsername = async () => {
       try {
-        const { resolveProfileUsernameFromAliases } =
-          await import("../../lib/supabase/supabaseAliases");
+        const { resolveProfileUsernameFromAliases } = await import("../../lib/archive/aliases");
         const resolvedProfileUsername =
           (await resolveProfileUsernameFromAliases(normalizedAuthUsername)) ||
           normalizedAuthUsername;

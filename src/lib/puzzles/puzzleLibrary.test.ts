@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../supabase/supabasePuzzles", () => ({
+vi.mock("../supabase/puzzles", () => ({
   fetchPuzzleCatalogFromSupabase: vi.fn(),
   fetchPuzzleRowsByIdFromSupabase: vi.fn(),
 }));
@@ -8,7 +8,7 @@ vi.mock("../supabase/supabasePuzzles", () => ({
 import {
   fetchPuzzleCatalogFromSupabase,
   fetchPuzzleRowsByIdFromSupabase,
-} from "../supabase/supabasePuzzles";
+} from "../supabase/puzzles";
 import { loadPuzzleCatalog, loadPuzzlesById } from "./puzzleLibrary";
 
 const fetchCatalogMock = fetchPuzzleCatalogFromSupabase as unknown as ReturnType<typeof vi.fn>;

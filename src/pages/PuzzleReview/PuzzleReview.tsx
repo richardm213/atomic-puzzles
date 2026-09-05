@@ -17,8 +17,8 @@ import {
   fetchPendingPuzzleQueue,
   rejectQueuedPuzzle,
   updateQueuedPuzzle,
-} from "../../lib/supabase/supabasePuzzleQueue";
-import type { PuzzleQueueRow, PuzzleReviewQueueRow } from "../../types/supabase";
+} from "../../lib/supabase/puzzleQueue";
+import type { PuzzleQueueRow, PuzzleReviewQueueRow } from "../../lib/supabase/types";
 import { normalizeUsername } from "../../utils/playerNames";
 import { PuzzleAnalysisInstructions } from "../PuzzleSubmission/PuzzleAnalysisInstructions";
 import { PuzzleEditor } from "../PuzzleSubmission/PuzzleEditor";

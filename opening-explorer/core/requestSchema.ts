@@ -1,4 +1,4 @@
-import { sqlMonthBounds } from "../../opening-explorer-sql.js";
+import { sqlMonthBounds } from "./sql.js";
 
 export const PLAYER_MIN_RATING = 1700;
 export const MAX_EXPLORER_RATING = 2200;

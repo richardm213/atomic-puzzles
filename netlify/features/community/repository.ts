@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { getArchiveClient } from "../../archive/client";
 import { HttpError } from "../../platform/errors";
 import type { CommunityTarget } from "./service";
 
@@ -37,14 +38,12 @@ export class CommunityRepository {
 
   async resolveCanonicalTarget(target: CommunityTarget): Promise<CommunityTarget> {
     if (target.type !== "profile") return target;
-    const result = await this.supabase
-      .from("aliases2")
-      .select("username")
-      .eq("alias", target.id)
-      .limit(1)
-      .maybeSingle();
-    if (result.error) throw new Error(`Unable to resolve profile aliases: ${result.error.message}`);
-    const canonical = String(result.data?.username ?? "")
+    const result = await getArchiveClient().execute({
+      sql: `select p.username from aliases a
+        join players p on p.id=a.player_id where a.alias=? limit 1`,
+      args: [target.id],
+    });
+    const canonical = String(result.rows[0]?.username ?? "")
       .trim()
       .toLowerCase();
     return canonical && canonical.length <= 100 ? { ...target, id: canonical } : target;

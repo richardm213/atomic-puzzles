@@ -3,7 +3,7 @@ import {
   fetchPuzzleCatalogFromSupabase,
   fetchPuzzleRowsByIdFromSupabase,
   type PuzzleRow,
-} from "../supabase/supabasePuzzles";
+} from "../supabase/puzzles";
 import { normalizePuzzleMotifTags } from "./puzzleMotifs";
 import { normalizeSolutionPgn, parseSolutionUciLines } from "./solutionPgn";
 

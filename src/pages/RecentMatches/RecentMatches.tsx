@@ -17,9 +17,9 @@ import {
   pageSizeOptions,
   type SourceFilters,
 } from "../../constants/matches";
-import type { MatchFilters as SupabaseMatchFilters } from "../../lib/supabase/supabaseMatchRows";
-import type { MatchCardData } from "../../types/matchCard";
-import type { RawMatchLike } from "../../types/matchRaw";
+import type { MatchFilters as ArchiveMatchFilters } from "../../lib/archive/matches";
+import type { MatchCardData } from "../../lib/matches/types";
+import type { RawMatchLike } from "../../lib/matches/types";
 
 type RecentMatch = MatchCardData & {
   sourceKey: string;
@@ -45,13 +45,16 @@ import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { Seo } from "../../components/Seo/Seo";
 import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFilterChecks";
 import { TimeControlFields } from "../../components/TimeControlFields/TimeControlFields";
-import { toMatchCardData } from "../../lib/matches/matchData";
-import { recentMatchesPageQueryOptions } from "../../lib/matches/matchQueries";
+import { getTimeControlOptions } from "../../lib/matches/collection";
+import { toMatchCardData } from "../../lib/matches/data";
+import { isSourceAllowedByFilters, parseDateInputBoundary } from "../../lib/matches/filters";
+import { recentMatchesPageQueryOptions } from "../../lib/matches/queries";
+import {
+  readStoredSourceFilters,
+  writeStoredSourceFilters,
+} from "../../lib/matches/sourceFilterStorage";
+import { parseTimeControlParts } from "../../lib/matches/transforms";
 import { resolveUsernameInputs } from "../../lib/users/usernameSearch";
-import { getTimeControlOptions } from "../../utils/matchCollection";
-import { isSourceAllowedByFilters, parseDateInputBoundary } from "../../utils/matchFilters";
-import { parseTimeControlParts } from "../../utils/matchTransforms";
-import { readStoredSourceFilters, writeStoredSourceFilters } from "../../utils/sourceFilterStorage";
 
 const recentModeOptions = modeOptions;
 const ratingFilterTypeOptions = ["both", "average"];
@@ -67,8 +70,8 @@ const normalizeRecentMatches = (
     })
     .sort((a, b) => b.startTs - a.startTs);
 
-const buildSupabaseFilters = (filters: AppliedFilters): SupabaseMatchFilters => {
-  const queryFilters: SupabaseMatchFilters = {};
+const buildArchiveFilters = (filters: AppliedFilters): ArchiveMatchFilters => {
+  const queryFilters: ArchiveMatchFilters = {};
   const username = String(filters.player1Filter || filters.player2Filter || "").trim();
   if (username) queryFilters.username = username;
   if (filters.startDateFilter) {
@@ -127,11 +130,11 @@ export const RecentMatchesPage = () => {
     timeControlInitialFilter: "all",
     timeControlIncrementFilter: "all",
   });
-  const supabaseFilters = useMemo(() => buildSupabaseFilters(appliedFilters), [appliedFilters]);
+  const archiveFilters = useMemo(() => buildArchiveFilters(appliedFilters), [appliedFilters]);
   const matchesQuery = useQuery({
     ...recentMatchesPageQueryOptions(
       appliedFilters.selectedMode,
-      supabaseFilters,
+      archiveFilters,
       currentPage,
       pageSize,
     ),

@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import type { MouseEventHandler } from "react";
 
-import { matchupToSlug } from "../../utils/h2hRoutes";
+import { matchupToSlug } from "../../lib/matches/h2hRoutes";
 
 type MatchH2HLinkProps = {
   playerA: string;

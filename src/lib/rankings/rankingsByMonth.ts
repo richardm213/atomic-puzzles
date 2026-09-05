@@ -1,6 +1,6 @@
 import { createModeRecord, isMode, type Mode, modeOptions } from "../../constants/matches";
-import type { LbRow } from "../../types/supabase";
-import { fetchLbRows, isoMonthStartFromMonthKey } from "../supabase/supabaseLb";
+import { fetchLeaderboardRows, isoMonthStartFromMonthKey } from "../archive/leaderboard";
+import type { LeaderboardRow } from "../archive/types";
 
 export type RankingPlayer = {
   rank: number;
@@ -31,7 +31,7 @@ const parseModeFromTimeControl = (timeControl: unknown): Mode | null => {
   return isMode(mode) ? mode : null;
 };
 
-const normalizeLbRowsForMonth = (rows: LbRow[]): RankingsByMode => {
+const normalizeLeaderboardRowsForMonth = (rows: LeaderboardRow[]): RankingsByMode => {
   const modes: RankingsByMode = createModeRecord(() => ({ players: [] }));
 
   rows.forEach((row) => {
@@ -59,6 +59,6 @@ export const loadRankingsForMonth = async (monthKey: string): Promise<RankingsBy
     throw new Error(`Invalid month selected: ${monthKey}`);
   }
 
-  const rows = await fetchLbRows({ month });
-  return normalizeLbRowsForMonth(rows);
+  const rows = await fetchLeaderboardRows({ month });
+  return normalizeLeaderboardRowsForMonth(rows);
 };

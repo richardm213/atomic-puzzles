@@ -55,6 +55,7 @@ export type SourceFilters = {
   lobby: boolean;
   swiss: boolean;
   chesscom: boolean;
+  unknown: boolean;
 };
 export const defaultSourceFilters: SourceFilters = {
   arena: true,
@@ -62,6 +63,7 @@ export const defaultSourceFilters: SourceFilters = {
   lobby: true,
   swiss: true,
   chesscom: true,
+  unknown: true,
 };
 export const knownSourceKeys = Object.keys(defaultSourceFilters) as Array<keyof SourceFilters>;
 

@@ -5,7 +5,7 @@ import {
   loadRecentUsernames,
   removeRecentUsername,
   storeRecentUsernames,
-} from "../utils/recentUsernames";
+} from "../lib/users/recentUsernames";
 
 export const useUsernamePicker = <Target extends string>(initialTarget: Target) => {
   const [isOpen, setIsOpen] = useState(false);

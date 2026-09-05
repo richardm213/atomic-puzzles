@@ -6,7 +6,7 @@ import {
   normalizeMatches,
   type PaginatedMatches,
   type ParsedMatch,
-} from "../../lib/matches/matchData";
+} from "../../lib/matches/data";
 import {
   type FavoriteOpponentMatch,
   favoriteOpponentPageSize,
@@ -102,7 +102,10 @@ export const favoriteOpponentsQueryOptions = (
             matches.push(...result.matches);
             if (result.matches.length < favoriteOpponentPageSize) break;
           }
-          return normalizeMatches(matches, username).map((match) => ({ ...match, mode: matchMode }));
+          return normalizeMatches(matches, username).map((match) => ({
+            ...match,
+            mode: matchMode,
+          }));
         }),
       );
       return getFavoriteOpponentRows(

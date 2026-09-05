@@ -1,6 +1,6 @@
 import type { MouseEventHandler, ReactNode } from "react";
 
-import { buildExternalGameUrl } from "../../utils/matchRoutes";
+import { buildExternalGameUrl } from "../../lib/matches/routes";
 
 export type LichessGameLinkProps = {
   gameId: string | number;

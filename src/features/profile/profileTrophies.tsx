@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 
 import { modeLabels } from "../../constants/matches";
 import { buildRankingsLocation, type MonthRank } from "../../hooks/usePlayerProfileData";
-import { monthKeyFromMonthValue } from "../../lib/supabase/supabaseLb";
+import { monthKeyFromMonthValue } from "../../lib/archive/leaderboard";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { normalizeUsername } from "../../utils/playerNames";
 

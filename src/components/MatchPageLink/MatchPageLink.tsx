@@ -9,7 +9,7 @@ import {
   buildMatchRouteParams,
   buildSingleGameMatchUrl,
   shouldUseInternalMatchPage,
-} from "../../utils/matchRoutes";
+} from "../../lib/matches/routes";
 
 export type MatchPageLinkMatch = Parameters<typeof buildMatchRouteParams>[0];
 

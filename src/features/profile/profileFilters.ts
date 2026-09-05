@@ -1,7 +1,7 @@
 import { defaultRatingMax, defaultRatingMin, type SourceFilters } from "../../constants/matches";
-import type { MatchFilters } from "../../lib/supabase/supabaseMatchRows";
-import { parseDateInputBoundary } from "../../utils/matchFilters";
-import { readStoredSourceFilters } from "../../utils/sourceFilterStorage";
+import type { MatchFilters } from "../../lib/archive/matches";
+import { parseDateInputBoundary } from "../../lib/matches/filters";
+import { readStoredSourceFilters } from "../../lib/matches/sourceFilterStorage";
 
 export type ProfileFilters = {
   opponentRatingMin: number;

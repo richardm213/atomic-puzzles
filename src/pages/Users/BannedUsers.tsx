@@ -8,7 +8,7 @@ import { useMemo, useState } from "react";
 
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
-import type { AliasIdentityRow } from "../../lib/supabase/supabaseAliases";
+import type { AliasIdentityRow } from "../../lib/archive/aliases";
 import { aliasRowsQueryOptions } from "../../lib/users/aliasQueries";
 
 const bannedUserColumns = [
@@ -48,9 +48,7 @@ export const BannedUsersPage = () => {
   const [sortKey, setSortKey] = useState("username");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const bannedUsersQuery = useQuery(aliasRowsQueryOptions());
-  const rows = bannedUsersQuery.data
-    ? buildBannedRows(bannedUsersQuery.data)
-    : emptyBannedUserRows;
+  const rows = bannedUsersQuery.data ? buildBannedRows(bannedUsersQuery.data) : emptyBannedUserRows;
   const loading = bannedUsersQuery.isPending;
   const error = bannedUsersQuery.error
     ? bannedUsersQuery.error instanceof Error

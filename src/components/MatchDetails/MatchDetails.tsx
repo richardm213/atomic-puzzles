@@ -2,7 +2,7 @@ import "../MatchCard/MatchCard.css";
 
 import type { MouseEventHandler } from "react";
 
-import type { MatchCardData } from "../../types/matchCard";
+import type { MatchCardData } from "../../lib/matches/types";
 import { formatScore, formatSignedDecimal } from "../../utils/formatters";
 import { LichessGameLink } from "../LichessGameLink/LichessGameLink";
 import { MatchH2HLink } from "../MatchH2HLink/MatchH2HLink";

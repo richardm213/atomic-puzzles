@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { defaultSourceFilters } from "../../constants/matches";
-import type { ParsedMatch } from "../../lib/matches/matchData";
+import type { ParsedMatch } from "../../lib/matches/data";
 import type { ProfileFilters } from "./profileFilters";
 
 const loadRawMatchesByMode = vi.hoisted(() => vi.fn());
 
-vi.mock("../../lib/matches/matchData", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../../lib/matches/matchData")>()),
+vi.mock("../../lib/matches/data", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../lib/matches/data")>()),
   loadRawMatchesByMode,
 }));
 

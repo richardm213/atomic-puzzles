@@ -1,5 +1,5 @@
 import { isMode, type Mode } from "../../constants/matches";
-import type { NormalizedMatch } from "../../lib/matches/matchData";
+import type { NormalizedMatch } from "../../lib/matches/data";
 import { normalizeUsername } from "../../utils/playerNames";
 
 export type RankHistoryMode = Mode | "all";

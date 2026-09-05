@@ -1,5 +1,5 @@
-import type { PuzzleProgressWithUsernameRow } from "../../types/supabase";
 import { normalizeUsername } from "../../utils/playerNames";
+import type { PuzzleProgressWithUsernameRow } from "../supabase/types";
 
 export const PUZZLE_CORRECT_POINTS = 5;
 export const PUZZLE_INCORRECT_POINTS = -3;

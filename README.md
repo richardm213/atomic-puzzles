@@ -12,7 +12,7 @@ Live site: [atomicpuzzles.org](https://atomicpuzzles.org)
 - [Features](#features)
 - [Tech stack](#tech-stack)
 - [Getting started](#getting-started)
-- [Supabase data model](#supabase-data-model)
+- [Data services](#data-services)
 - [Available scripts](#available-scripts)
 - [Project structure](#project-structure)
 - [Deployment notes](#deployment-notes)
@@ -54,7 +54,8 @@ Atomic chess has a strong community, but the tools around it are usually fragmen
 ### Product details
 
 - Lichess OAuth login using PKCE.
-- Supabase-backed data access.
+- Server-only Turso archive access through Netlify Functions.
+- Supabase-backed authentication and mutable puzzle/community data.
 - Client-side routing with deep-link support.
 - SEO metadata for major pages.
 - Theme and board customization stored locally.
@@ -64,6 +65,7 @@ Atomic chess has a strong community, but the tools around it are usually fragmen
 - [React 18](https://react.dev/)
 - [Vite](https://vitejs.dev/)
 - [TanStack Router](https://tanstack.com/router)
+- [Turso/libSQL](https://docs.turso.tech/sdk/ts/quickstart)
 - [Supabase JavaScript client](https://supabase.com/docs/reference/javascript/introduction)
 - [@lichess-org/chessground](https://www.npmjs.com/package/@lichess-org/chessground)
 - [chessops](https://github.com/niklasf/chessops)
@@ -79,9 +81,12 @@ npm run dev
 
 The dev server will print a local URL, usually `http://localhost:5173`.
 
-## Supabase data model
+## Data services
 
-This app assumes Supabase already contains community data. It is a frontend for an existing dataset, not a schema-migration project.
+### Supabase mutable data
+
+Supabase stores authentication-related records and mutable puzzle/community data. This app is a
+frontend for an existing dataset, not a schema-migration project.
 
 ### Minimum puzzle row shape
 
@@ -107,9 +112,28 @@ Depending on which pages you open, the frontend reads from or writes to:
 
 - `puzzles`
 - `users`
-- `lb`
 - `puzzle_progress`
-- additional community tables referenced by profile, rating, alias, match, and tournament pages
+- additional mutable community tables referenced by puzzle, profile, and tournament pages
+
+Historical matches, aliases, ratings, and leaderboards are not read from Supabase. Those reads go
+through the server-only Turso archive API described below.
+
+### Turso archive data
+
+Turso stores the complete read-only match archive, normalized aliases, rating history, and
+leaderboard history. Browser code accesses it only through `/api/archive-data`; direct client-side
+database connections are prohibited.
+
+The normalized archive schema uses `players` and `time_controls` as lookup tables. `aliases`,
+`matches`, `player_ratings`, and `lb` reference player IDs; `matches` also references a time-control
+ID. The database intentionally has no declared foreign-key constraints, so readers must preserve
+those logical joins.
+
+Archive mode IDs are `0` hyperbullet, `1` bullet, `2` blitz, `3` wolfrandom, and `4` atomic960.
+Match source IDs are `0` lobby, `1` arena, `2` friend, `3` swiss, `4` Chess.com, and `5`
+unknown/other. Ratings and RDs are stored at ten times their display value and are scaled back in
+the Netlify function. The function also expands the pipe-separated compact `matches.games` value
+into an array before returning it to the browser.
 
 Puzzle progress also uses these RPCs by default:
 
@@ -143,15 +167,23 @@ npm run format:write
 ```text
 .
 ├── public/                    # Static assets, icons, redirects, puzzle images
+├── netlify/
+│   ├── archive/               # Server-only Turso client and archive queries
+│   ├── features/              # Mutable server-side application features
+│   └── functions/             # Thin Netlify function entry points
 ├── src/
 │   ├── App/                   # App shell
 │   ├── components/            # Shared UI components
 │   ├── context/               # Auth and app settings providers
 │   ├── hooks/                 # Data and UI hooks
-│   ├── lib/                   # Supabase, auth, puzzle, and tournament logic
+│   ├── lib/
+│   │   ├── archive/           # Browser archive API modules and response types
+│   │   ├── matches/           # Match parsing, filters, routes, and queries
+│   │   ├── supabase/          # Mutable Supabase client, readers, and data types
+│   │   └── users/             # Username, alias, and recent-user logic
 │   ├── pages/                 # Route-level pages
 │   ├── theme/                 # Chessground theme styles
-│   └── utils/                 # Formatting, routing, transforms, caching helpers
+│   └── utils/                 # Cross-domain formatting and utility helpers
 ├── index.html
 ├── vite.config.js
 └── README.md
@@ -170,6 +202,15 @@ environment variables in Netlify:
 - `TURSO_DATABASE_URL`, from `turso db show --url openings2`
 - `TURSO_AUTH_TOKEN`, from `turso db tokens create openings2 --read-only`
 
+The complete match, alias, rating, and leaderboard archive uses a separate Turso database. Configure:
+
+- `TURSO_MATCHES_DATABASE_URL`, from `turso db show matches --url`
+- `TURSO_MATCHES_AUTH_TOKEN`, from `turso db tokens create matches --read-only`
+
+The browser reads this database only through `/api/archive-data`; the token must never use a
+`VITE_` prefix or be exposed to client code. Supabase remains responsible for Auth and mutable
+community data.
+
 Authenticated community actions use a signed, 30-day first-party session cookie. Configure:
 
 - `SITE_SESSION_SECRET`, a random secret of at least 32 characters (for example,
@@ -184,6 +225,7 @@ Netlify deep-link support is handled through [`public/_redirects`](public/_redir
 ```text
 /api/opening-explorer/health    /.netlify/functions/opening-explorer    200
 /api/opening-explorer    /.netlify/functions/opening-explorer    200
+/api/archive-data    /.netlify/functions/archive-data    200
 /*    /index.html   200
 ```
 
@@ -211,4 +253,5 @@ changes, puzzle solving, and production OAuth redirects.
 
 ## License
 
-This project is licensed under the GNU General Public License v3.0 or later (`GPL-3.0-or-later`). See [LICENSE](/Users/ymeng/Desktop/chess/atomic-puzzles/LICENSE) for the full text.
+This project is licensed under the GNU General Public License v3.0 or later (`GPL-3.0-or-later`). See
+[LICENSE](LICENSE) for the full text.

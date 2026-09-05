@@ -2,6 +2,14 @@ import type { SourceFilters } from "../../constants/matches";
 import { knownSourceKeys } from "../../constants/matches";
 
 const sources: Array<keyof SourceFilters> = knownSourceKeys;
+const sourceLabels: Record<keyof SourceFilters, string> = {
+  arena: "Arena",
+  friend: "Friend",
+  lobby: "Lobby",
+  swiss: "Swiss",
+  chesscom: "Chess.com",
+  unknown: "Other",
+};
 
 export type SourceFilterChecksProps = {
   values: SourceFilters;
@@ -19,7 +27,7 @@ export const SourceFilterChecks = ({ values, onChange }: SourceFilterChecksProps
             checked={values[source]}
             onChange={(event) => onChange(source, event.target.checked)}
           />
-          <span>{source}</span>
+          <span>{sourceLabels[source]}</span>
         </label>
       ))}
     </div>

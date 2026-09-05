@@ -12,7 +12,7 @@ import {
   type PuzzleSubmissionValue,
   validatePuzzleSubmission,
 } from "../../lib/puzzles/puzzleSubmission";
-import { submitPuzzleToQueue } from "../../lib/supabase/supabasePuzzleQueue";
+import { submitPuzzleToQueue } from "../../lib/supabase/puzzleQueue";
 import { PuzzleAnalysisInstructions } from "./PuzzleAnalysisInstructions";
 import { PuzzleEditor } from "./PuzzleEditor";
 

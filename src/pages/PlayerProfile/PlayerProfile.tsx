@@ -75,10 +75,12 @@ import {
   useMonthRanks,
   useRatingsSnapshotByMode,
 } from "../../hooks/usePlayerProfileData";
+import { type AliasAccount, type AliasIdentityRow } from "../../lib/archive/aliases";
+import { getTimeControlOptions } from "../../lib/matches/collection";
 import {
-  type AliasAccount,
-  type AliasIdentityRow,
-} from "../../lib/supabase/supabaseAliases";
+  readStoredSourceFilters,
+  writeStoredSourceFilters,
+} from "../../lib/matches/sourceFilterStorage";
 import { profileAliasQueryOptions } from "../../lib/users/aliasQueries";
 import { siteUserRegistrationQueryOptions } from "../../lib/users/userQueries";
 import {
@@ -87,10 +89,8 @@ import {
   formatScore,
   formatSignedDecimal,
 } from "../../utils/formatters";
-import { getTimeControlOptions } from "../../utils/matchCollection";
 import { getOpeningDisplayLabel } from "../../utils/openings";
 import { normalizeUsername } from "../../utils/playerNames";
-import { readStoredSourceFilters, writeStoredSourceFilters } from "../../utils/sourceFilterStorage";
 import { isToggleActionKey } from "../../utils/toggleActionKey";
 
 const countOptions = [5, 10, 20];
@@ -305,9 +305,8 @@ export const PlayerProfilePage = ({
   const totalPages = Math.max(
     1,
     Math.ceil(
-      (isClientPagedResults
-        ? filteredMatches.length
-        : (matchHistoryQuery.data?.total ?? 0)) / Math.max(1, pageSize),
+      (isClientPagedResults ? filteredMatches.length : (matchHistoryQuery.data?.total ?? 0)) /
+        Math.max(1, pageSize),
     ),
   );
   const currentPage = Math.min(page, totalPages);

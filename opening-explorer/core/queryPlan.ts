@@ -1,3 +1,4 @@
+import { type ExplorerColor, PLAYER_MIN_RATING } from "./requestSchema.js";
 import {
   buildGeneralSavedStatusSql,
   buildOpeningExplorerSql,
@@ -5,8 +6,7 @@ import {
   OPENING_EXPLORER_RESPONSE_SCHEMA,
   positionKeyHex,
   selectGeneralExplorerSources,
-} from "../../opening-explorer-sql.js";
-import { type ExplorerColor,PLAYER_MIN_RATING } from "./requestSchema.js";
+} from "./sql.js";
 
 export type ExplorerQueryPlan = {
   cacheKey: string;

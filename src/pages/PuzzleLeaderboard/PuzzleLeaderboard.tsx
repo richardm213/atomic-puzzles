@@ -20,7 +20,7 @@ import {
   type PuzzleLeaderboardRow,
 } from "../../lib/puzzles/puzzleLeaderboard";
 import { puzzleLeaderboardProgressQueryOptions } from "../../lib/puzzles/puzzleQueries";
-import type { PuzzleProgressWithUsernameRow } from "../../types/supabase";
+import type { PuzzleProgressWithUsernameRow } from "../../lib/supabase/types";
 
 type PuzzleLeaderboardSortKey = keyof Pick<
   PuzzleLeaderboardRow,

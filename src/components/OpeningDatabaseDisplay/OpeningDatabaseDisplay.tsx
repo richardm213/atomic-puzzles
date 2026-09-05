@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 
+import { buildLichessGameUrl } from "../../lib/matches/routes";
 import { formatGameCount } from "../../utils/formatters";
-import { buildLichessGameUrl } from "../../utils/matchRoutes";
 
 const WIN_RATE_LABEL_MIN_PERCENT = 14;
 

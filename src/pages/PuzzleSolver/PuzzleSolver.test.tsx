@@ -69,13 +69,13 @@ vi.mock("../../lib/puzzles/puzzleTags", () => ({
   updatePuzzleTags: mocks.updatePuzzleTags,
 }));
 
-vi.mock("../../lib/supabase/supabasePuzzleProgress", () => ({
+vi.mock("../../lib/supabase/puzzleProgress", () => ({
   fetchAttemptedPuzzleIds: vi.fn(async () => new Set(mocks.attemptedPuzzleIds)),
   fetchPuzzleAttemptsForPuzzle: mocks.fetchPuzzleAttemptsForPuzzle,
   recordPuzzleProgress: vi.fn(async () => undefined),
 }));
 
-vi.mock("../../lib/supabase/supabaseUsers", () => ({
+vi.mock("../../lib/supabase/users", () => ({
   isRegisteredSiteUser: vi.fn(async () => false),
 }));
 

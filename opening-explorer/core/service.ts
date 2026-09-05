@@ -1,7 +1,11 @@
+import { rememberCacheEntry, shouldCacheExplorerResponse } from "./cachePolicy.js";
 import {
-  createPriorityFactory,
-  OpeningExplorerQueueError,
-} from "../../opening-explorer-request-queue.js";
+  buildExplorerQueries,
+  buildSavedStatusQuery,
+  createExplorerQueryPlan,
+} from "./queryPlan.js";
+import { createPriorityFactory, OpeningExplorerQueueError } from "./requestQueue.js";
+import { parseExplorerRequest } from "./requestSchema.js";
 import {
   buildOpeningPlayersSql,
   buildPositionPlayerLeaderBandsSql,
@@ -9,14 +13,7 @@ import {
   buildRandomOpeningPlayerSql,
   OPENING_EXPLORER_RESPONSE_SCHEMA,
   toPositionPlayerLeadersPayload,
-} from "../../opening-explorer-sql.js";
-import { rememberCacheEntry, shouldCacheExplorerResponse } from "./cachePolicy.js";
-import {
-  buildExplorerQueries,
-  buildSavedStatusQuery,
-  createExplorerQueryPlan,
-} from "./queryPlan.js";
-import { parseExplorerRequest } from "./requestSchema.js";
+} from "./sql.js";
 
 export type PriorityRef = { value: number };
 export type JsonRow = Record<string, unknown>;

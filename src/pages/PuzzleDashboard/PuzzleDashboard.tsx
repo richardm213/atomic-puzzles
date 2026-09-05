@@ -27,8 +27,7 @@ const DEFAULT_PAGE_SIZE = 20;
 const PAGE_SIZE_OPTIONS = [20, 50, 100] as const;
 const PAGE_SIZE_STORAGE_KEY = "atomic-puzzles.puzzle-dashboard-page-size";
 const UNKNOWN_EVENT_LABEL = "Unknown event";
-const emptyPuzzleProgressRows: import("../../lib/supabase/supabasePuzzleProgress").PuzzleProgressRow[] =
-  [];
+const emptyPuzzleProgressRows: import("../../lib/supabase/puzzleProgress").PuzzleProgressRow[] = [];
 type DashboardResultFilter = "all" | "correct" | "incorrect";
 
 type PuzzleDashboardPageSize = (typeof PAGE_SIZE_OPTIONS)[number];
@@ -49,7 +48,7 @@ const formatDateTime = (value: string | number | Date | null | undefined): strin
 };
 
 const buildDashboardEntries = (
-  progressRows: import("../../lib/supabase/supabasePuzzleProgress").PuzzleProgressRow[],
+  progressRows: import("../../lib/supabase/puzzleProgress").PuzzleProgressRow[],
   puzzlesById: Map<string, import("../../lib/puzzles/puzzleLibrary").Puzzle>,
 ): Array<{
   puzzleId: string;

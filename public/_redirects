@@ -1,6 +1,7 @@
 /api/opening-explorer/health    /.netlify/functions/opening-explorer    200
 /api/opening-players    /.netlify/functions/opening-explorer    200
 /api/opening-explorer    /.netlify/functions/opening-explorer    200
+/api/archive-data    /.netlify/functions/archive-data    200
 /api/puzzles/submit    /.netlify/functions/puzzle-submit    200
 /api/puzzles/review    /.netlify/functions/puzzle-review    200
 /api/puzzles/tags    /.netlify/functions/puzzle-tags    200

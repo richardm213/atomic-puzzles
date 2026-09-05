@@ -4,13 +4,13 @@ import { Fragment, type KeyboardEvent } from "react";
 import { MatchPageLink } from "../../components/MatchPageLink/MatchPageLink";
 import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { modeLabels } from "../../constants/matches";
-import { formatLocalDateTime, formatScore, formatSignedDecimal } from "../../utils/formatters";
-import { matchupToSlug } from "../../utils/h2hRoutes";
+import { matchupToSlug } from "../../lib/matches/h2hRoutes";
 import {
   buildMatchRouteParams,
   buildSingleGameMatchUrl,
   shouldUseInternalMatchPage,
-} from "../../utils/matchRoutes";
+} from "../../lib/matches/routes";
+import { formatLocalDateTime, formatScore, formatSignedDecimal } from "../../utils/formatters";
 import { normalizeUsername } from "../../utils/playerNames";
 import { isToggleActionKey } from "../../utils/toggleActionKey";
 import {

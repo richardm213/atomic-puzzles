@@ -11,7 +11,7 @@ import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/Rout
 import { Seo } from "../../components/Seo/Seo";
 import { isMode, type Mode } from "../../constants/matches";
 import { usePersistedState } from "../../hooks/usePersistedState";
-import type { PlayerRatingRow } from "../../lib/supabase/supabasePlayerRatings";
+import type { PlayerRatingRow } from "../../lib/archive/ratings";
 import type { AliasLookup } from "../../lib/users/aliasesLookup";
 import { aliasesLookupQueryOptions } from "../../lib/users/aliasQueries";
 import { userRatingsQueryOptions } from "../../lib/users/userQueries";

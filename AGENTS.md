@@ -23,7 +23,7 @@ Follow this playbook whenever a user asks to copy tournament results from a foru
 - Production brackets read from the Supabase `tournament_matches` table.
 - Development brackets read from `data/tournaments/tournament_matches.csv`.
 - The tournament catalog and bracket-generation rules live in `src/lib/matches/tournaments.ts`.
-- Match pages read archived matches from `blitz_matches`, `bullet_matches`, `hyper_matches`, or `wolfrandom_matches`, depending on the tournament's `matchMode`.
+- Match pages read archived matches through the server-only Turso archive API, filtered by the tournament's `matchMode`.
 - Tournament CSV files are intentionally gitignored. Update them for local parity, but do not mistake a clean `git status` for a failed edit.
 
 ### Fast workflow
@@ -39,7 +39,7 @@ Follow this playbook whenever a user asks to copy tournament results from a foru
 
 3. **Resolve each result to the archived match**
    - A forum's “last game” URL is usually a game ID, not the bracket's `match_id`.
-   - Query the correct match table by both players and the relevant date range.
+   - Query the Turso archive API's normalized `matches` resource by mode, both players, and the relevant date range.
    - Select the archive row whose `games` array contains the forum game ID.
    - Store that row's `match_id` in `tournament_matches.match_id`; this makes the bracket card open the complete match.
    - Account for canonical aliases already used by the site. Prefer the names in tournament seeds, existing bracket rows, and archived match rows over display-name variations in forum posts.
@@ -63,7 +63,7 @@ Follow this playbook whenever a user asks to copy tournament results from a foru
 
 6. **Verify before finishing**
    - Read the published rows back through the anon key.
-   - Confirm every non-empty `match_id` exists in the expected archived match table and has the correct players.
+   - Confirm every non-empty `match_id` exists in the Turso archive's normalized `matches` resource for the expected mode and has the correct players.
    - Run the focused tournament tests, TypeScript typecheck, and production build.
    - Render the tournament route locally and verify:
      - score and winner,

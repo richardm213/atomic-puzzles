@@ -43,6 +43,13 @@ describe("isMatchLengthWithinBounds", () => {
 
 describe("knownSourceKeys", () => {
   it("matches the keys of defaultSourceFilters", () => {
-    expect(knownSourceKeys.sort()).toEqual(["arena", "chesscom", "friend", "lobby", "swiss"]);
+    expect(knownSourceKeys.sort()).toEqual([
+      "arena",
+      "chesscom",
+      "friend",
+      "lobby",
+      "swiss",
+      "unknown",
+    ]);
   });
 });

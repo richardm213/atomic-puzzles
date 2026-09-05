@@ -56,7 +56,7 @@ import {
   fetchPuzzleAttemptsForPuzzle,
   type PuzzleProgressWithUsernameRow,
   recordPuzzleProgress,
-} from "../../lib/supabase/supabasePuzzleProgress";
+} from "../../lib/supabase/puzzleProgress";
 import type {
   AttemptResolved,
   ChessboardState,

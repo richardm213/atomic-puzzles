@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { OpeningExplorerQueueError } from "../../opening-explorer-request-queue.js";
+import { OpeningExplorerQueueError } from "../core/requestQueue.js";
 import {
   createOpeningExplorerService,
   type JsonRow,

@@ -17,7 +17,7 @@ import {
 } from "../../constants/matches";
 import { useAppSettings } from "../../context/AppSettings";
 import { useRankingsByMonth } from "../../hooks/useRankingsByMonth";
-import { monthDateFromMonthKey } from "../../lib/supabase/supabaseLb";
+import { monthDateFromMonthKey } from "../../lib/archive/leaderboard";
 import type { AliasLookup } from "../../lib/users/aliasesLookup";
 import { aliasesLookupQueryOptions } from "../../lib/users/aliasQueries";
 import { getOpeningDisplayLabel, normalizeOpeningKey } from "../../utils/openings";

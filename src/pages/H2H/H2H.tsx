@@ -12,14 +12,14 @@ import {
   modeOptions,
   type SourceFilters,
 } from "../../constants/matches";
-import type { PlayerRatingRow } from "../../lib/supabase/supabasePlayerRatings";
-import type { MatchCardData } from "../../types/matchCard";
-import type { RawMatchLike } from "../../types/matchRaw";
+import type { PlayerRatingRow } from "../../lib/archive/ratings";
+import type { MatchCardData } from "../../lib/matches/types";
+import type { RawMatchLike } from "../../lib/matches/types";
 
 type H2HMatch = MatchCardData & {
   key: string;
   mode: Mode;
-  source: import("../../utils/matchFilters").MatchSource;
+  source: import("../../lib/matches/filters").MatchSource;
   winner: string;
 };
 
@@ -30,20 +30,23 @@ import { MatchPageLink } from "../../components/MatchPageLink/MatchPageLink";
 import { Seo } from "../../components/Seo/Seo";
 import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFilterChecks";
 import { usePersistedState } from "../../hooks/usePersistedState";
-import { h2hMatchupQueryOptions } from "../../lib/matches/matchQueries";
+import { getTimeControlOptions } from "../../lib/matches/collection";
+import { isSourceAllowedByFilters, parseDateInputBoundary } from "../../lib/matches/filters";
+import { matchupToSlug, parseMatchupSlug } from "../../lib/matches/h2hRoutes";
+import { h2hMatchupQueryOptions } from "../../lib/matches/queries";
+import {
+  readStoredSourceFilters,
+  writeStoredSourceFilters,
+} from "../../lib/matches/sourceFilterStorage";
 import {
   ratingsForPlayers,
   sourceKeyFromMatch,
   sourceValueFromMatch,
   summarizeMatchGames,
-} from "../../lib/matches/matchSummaries";
+} from "../../lib/matches/summaries";
+import { normalizedGamesFromMatch, normalizedPlayersFromMatch } from "../../lib/matches/transforms";
 import { resolveUsernameInputs } from "../../lib/users/usernameSearch";
 import { formatLocalDateTime, formatScore } from "../../utils/formatters";
-import { matchupToSlug, parseMatchupSlug } from "../../utils/h2hRoutes";
-import { getTimeControlOptions } from "../../utils/matchCollection";
-import { isSourceAllowedByFilters, parseDateInputBoundary } from "../../utils/matchFilters";
-import { normalizedGamesFromMatch, normalizedPlayersFromMatch } from "../../utils/matchTransforms";
-import { readStoredSourceFilters, writeStoredSourceFilters } from "../../utils/sourceFilterStorage";
 import { isToggleActionKey } from "../../utils/toggleActionKey";
 
 const normalizeH2HMatches = (
@@ -67,20 +70,19 @@ const normalizeH2HMatches = (
         players.find((player) => String(player).toLowerCase() === playerALower) || playerA;
       const resolvedB =
         players.find((player) => String(player).toLowerCase() === playerBLower) || playerB;
-      const games = normalizedGamesFromMatch(match, players);
+      const games = normalizedGamesFromMatch(match);
       const { scoreA, scoreB, mappedGames } = summarizeMatchGames(games, resolvedA, resolvedB);
       const winner = scoreA === scoreB ? "Draw" : scoreA > scoreB ? resolvedA : resolvedB;
       const firstGameId = String(games[0]?.id || "—");
-      const firstGame = games[0];
 
       return {
         key: `${mode}-${String(match.match_id ?? match.start_ts ?? "")}-${firstGameId}-${resolvedA}-${resolvedB}`,
         matchId: String(match.match_id ?? ""),
         mode,
-        startTs: Number(match.start_ts ?? match.s),
-        timeControl: String(match.time_control ?? match.t ?? "—"),
-        sourceValue: sourceValueFromMatch(match, firstGame),
-        source: sourceKeyFromMatch(match, firstGame),
+        startTs: Number(match.start_ts),
+        timeControl: String(match.time_control ?? "—"),
+        sourceValue: sourceValueFromMatch(match),
+        source: sourceKeyFromMatch(match),
         firstGameId,
         playerA: resolvedA,
         playerB: resolvedB,
@@ -88,7 +90,7 @@ const normalizeH2HMatches = (
         scoreB,
         winner,
         games: mappedGames,
-        ...ratingsForPlayers(match, players, resolvedA, resolvedB),
+        ...ratingsForPlayers(match, resolvedA, resolvedB),
       };
     })
     .filter((entry): entry is H2HMatch => entry !== null)

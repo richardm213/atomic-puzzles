@@ -4,7 +4,7 @@ import {
   createOpeningExplorerQueue,
   createPriorityFactory,
   OpeningExplorerQueueError,
-} from "../../opening-explorer-request-queue.js";
+} from "../../opening-explorer/core/requestQueue.js";
 
 const deferred = <T = string>() => {
   let resolve!: (value: T) => void;

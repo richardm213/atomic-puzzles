@@ -3,7 +3,7 @@ import { queryOptions } from "@tanstack/react-query";
 import {
   fetchAllPuzzleProgressRows,
   fetchPuzzleProgressRowsForUsername,
-} from "../supabase/supabasePuzzleProgress";
+} from "../supabase/puzzleProgress";
 import { loadPuzzleCatalog } from "./puzzleLibrary";
 
 export const puzzleQueryKeys = {

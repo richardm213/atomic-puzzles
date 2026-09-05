@@ -1,4 +1,4 @@
-import type { AliasAccountSource } from "../../lib/supabase/supabaseAliases";
+import type { AliasAccountSource } from "../../lib/archive/aliases";
 
 const lichessProfileUrl = (username: string): string =>
   `https://lichess.org/@/${encodeURIComponent(String(username || "").trim())}`;

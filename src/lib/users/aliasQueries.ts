@@ -1,10 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 
-import {
-  type AliasIdentityRow,
-  fetchAliasRows,
-  fetchProfileAliasRow,
-} from "../supabase/supabaseAliases";
+import { type AliasIdentityRow, fetchAliasRows, fetchProfileAliasRow } from "../archive/aliases";
 import { loadAliasesLookup } from "./aliasesLookup";
 
 const ALIASES_STALE_TIME_MS = 5 * 60 * 1_000;

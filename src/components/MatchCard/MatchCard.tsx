@@ -3,7 +3,7 @@ import "./MatchCard.css";
 import { Link } from "@tanstack/react-router";
 import type { MouseEventHandler } from "react";
 
-import type { MatchCardData } from "../../types/matchCard";
+import type { MatchCardData } from "../../lib/matches/types";
 import { formatLocalDateTime, formatScore } from "../../utils/formatters";
 import { isToggleActionKey } from "../../utils/toggleActionKey";
 import { LichessGameLink } from "../LichessGameLink/LichessGameLink";

@@ -7,28 +7,31 @@ describe("profile query keys", () => {
   it("keeps all profile server state under one invalidation prefix", () => {
     expect(profileQueryKeys.monthRanks("alice").slice(0, 2)).toEqual(["profile", "alice"]);
     expect(
-      profileQueryKeys.matchHistory(
-        "alice",
-        "blitz",
-        {
-          opponentRatingMin: 0,
-          opponentRatingMax: 3000,
-          opponentFilter: "",
-          startDateFilter: "",
-          endDateFilter: "",
-          sourceFilters: {
-            arena: true,
-            friend: true,
-            lobby: true,
-            swiss: true,
-            chesscom: true,
+      profileQueryKeys
+        .matchHistory(
+          "alice",
+          "blitz",
+          {
+            opponentRatingMin: 0,
+            opponentRatingMax: 3000,
+            opponentFilter: "",
+            startDateFilter: "",
+            endDateFilter: "",
+            sourceFilters: {
+              arena: true,
+              friend: true,
+              lobby: true,
+              swiss: true,
+              chesscom: true,
+              unknown: true,
+            },
+            timeControlInitialFilter: "all",
+            timeControlIncrementFilter: "all",
           },
-          timeControlInitialFilter: "all",
-          timeControlIncrementFilter: "all",
-        },
-        1,
-        25,
-      ).slice(0, 3),
+          1,
+          25,
+        )
+        .slice(0, 3),
     ).toEqual(["profile", "alice", "match-history"]);
   });
 

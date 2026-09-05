@@ -9,11 +9,11 @@ import { CommunityDiscussion } from "../../components/PuzzleCommunity/PuzzleComm
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { modeLabels } from "../../constants/matches";
-import { toMatchCardData } from "../../lib/matches/matchData";
-import { matchDetailQueryOptions } from "../../lib/matches/matchQueries";
+import { toMatchCardData } from "../../lib/matches/data";
+import { matchupToSlug } from "../../lib/matches/h2hRoutes";
+import { matchDetailQueryOptions } from "../../lib/matches/queries";
+import { normalizeMatchMode } from "../../lib/matches/routes";
 import { formatLocalDateTime, formatScore } from "../../utils/formatters";
-import { matchupToSlug } from "../../utils/h2hRoutes";
-import { normalizeMatchMode } from "../../utils/matchRoutes";
 
 const decodeParam = (value: unknown): string => {
   try {

@@ -9,18 +9,16 @@ import {
   type SourceFilters,
 } from "../constants/matches";
 import { profileQueryKeys, uniqueMonthRankPairs } from "../features/profile/profileQueries";
-import type { NormalizedMatch } from "../lib/matches/matchData";
 import {
-  fetchLbPlayerCount,
-  fetchLbPlayerCounts,
-  fetchLbRows,
-  lbPlayerCountKey,
+  fetchLeaderboardPlayerCounts,
+  fetchLeaderboardRows,
   monthKeyFromMonthValue,
-} from "../lib/supabase/supabaseLb";
-import { fetchPlayerRatingsRows } from "../lib/supabase/supabasePlayerRatings";
+} from "../lib/archive/leaderboard";
+import { fetchPlayerRatingsRows } from "../lib/archive/ratings";
+import type { NormalizedMatch } from "../lib/matches/data";
+import { isSourceAllowedByFilters, parseDateInputBoundary } from "../lib/matches/filters";
+import { parseTimeControlParts } from "../lib/matches/transforms";
 import { formatCalendarDate } from "../utils/formatters";
-import { isSourceAllowedByFilters, parseDateInputBoundary } from "../utils/matchFilters";
-import { parseTimeControlParts } from "../utils/matchTransforms";
 
 export type MonthRank = {
   monthKey: string;
@@ -83,7 +81,7 @@ const emptyRatingsSnapshotByMode: RatingsSnapshotByMode = createModeRecord(
   () => new Map<string, RatingSnapshot>(),
 );
 
-const parseMonthRanksFromLbRows = (rows: unknown): MonthRank[] => {
+const parseMonthRanksFromLeaderboardRows = (rows: unknown): MonthRank[] => {
   return (Array.isArray(rows) ? rows : [])
     .map((row): MonthRank | null => {
       const r = row as Record<string, unknown>;
@@ -217,7 +215,8 @@ export const buildRankingsLocation = (
 export const useMonthRanks = (username: string, enabled = true): MonthRank[] => {
   const monthRanksQuery = useQuery({
     queryKey: profileQueryKeys.monthRanks(username),
-    queryFn: async () => parseMonthRanksFromLbRows(await fetchLbRows({ username })),
+    queryFn: async () =>
+      parseMonthRanksFromLeaderboardRows(await fetchLeaderboardRows({ username })),
     enabled: Boolean(username) && enabled,
     staleTime: 5 * 60 * 1_000,
   });
@@ -232,23 +231,7 @@ export const useMonthRankPlayerCounts = (
   const pairs = uniqueMonthRankPairs(monthRanks);
   const playerCountsQuery = useQuery({
     queryKey: profileQueryKeys.monthRankPlayerCounts(pairs),
-    queryFn: async () => {
-      try {
-        return await fetchLbPlayerCounts(pairs);
-      } catch {
-        // Keep profiles functional while the database migration rolls out.
-        const entries = await Promise.all(
-          pairs.map(async ({ month, mode }): Promise<[string, number]> => {
-            try {
-              return [lbPlayerCountKey(month, mode), await fetchLbPlayerCount(month, mode)];
-            } catch {
-              return [lbPlayerCountKey(month, mode), 0];
-            }
-          }),
-        );
-        return Object.fromEntries(entries);
-      }
-    },
+    queryFn: () => fetchLeaderboardPlayerCounts(pairs),
     enabled: enabled && pairs.length > 0,
     staleTime: 30 * 60 * 1_000,
   });

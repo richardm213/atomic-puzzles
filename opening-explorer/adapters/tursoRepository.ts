@@ -1,6 +1,6 @@
-import { type Client,createClient } from "@libsql/client/web";
+import { type Client, createClient } from "@libsql/client/web";
 
-import { createOpeningExplorerQueue } from "../../opening-explorer-request-queue.js";
+import { createOpeningExplorerQueue } from "../core/requestQueue.js";
 import type { JsonRow, OpeningExplorerRepository, PriorityRef } from "../core/service.js";
 
 const normalizeValue = (value: unknown): unknown =>

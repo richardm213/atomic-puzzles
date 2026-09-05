@@ -35,6 +35,7 @@ const localPuzzleFunctionsPlugin = () => {
     ["/api/puzzles/community", "/netlify/functions/puzzle-community.ts"],
     ["/api/puzzles/progress", "/netlify/functions/puzzle-progress.ts"],
     ["/api/notifications", "/netlify/functions/notifications.ts"],
+    ["/api/archive-data", "/netlify/functions/archive-data.ts"],
   ]);
 
   return {
@@ -45,10 +46,12 @@ const localPuzzleFunctionsPlugin = () => {
         server.middlewares.use(route, async (req, res) => {
           try {
             const module = await server.ssrLoadModule(modulePath);
+            const requestUrl = new URL(req.url ?? "/", "http://localhost");
             const response = await module.handler({
               httpMethod: req.method,
               headers: requestHeaders(req.headers),
               body: await readRequestBody(req),
+              queryStringParameters: Object.fromEntries(requestUrl.searchParams),
             });
             res.statusCode = response.statusCode;
             for (const [name, value] of Object.entries(response.headers ?? {})) {
@@ -75,6 +78,8 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   process.env.SUPABASE_URL ||= env.SUPABASE_URL || env.VITE_SUPABASE_URL;
   process.env.SUPABASE_SERVICE_ROLE_KEY ||= env.SUPABASE_SERVICE_ROLE_KEY;
+  process.env.TURSO_MATCHES_DATABASE_URL ||= env.TURSO_MATCHES_DATABASE_URL;
+  process.env.TURSO_MATCHES_AUTH_TOKEN ||= env.TURSO_MATCHES_AUTH_TOKEN;
 
   return {
     server: {
@@ -95,7 +100,7 @@ export default defineConfig(({ mode }) => {
             if (id.includes("@tanstack")) return "vendor-router";
             if (id.includes("chessops") || id.includes("chessground")) return "vendor-chess";
             if (id.includes("fortawesome")) return "vendor-icons";
-            if (id.includes("supabase") || id.includes("libsql")) return "vendor-data";
+            if (id.includes("supabase")) return "vendor-data";
             return undefined;
           },
         },

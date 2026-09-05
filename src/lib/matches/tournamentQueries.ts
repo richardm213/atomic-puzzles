@@ -1,10 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 
-import {
-  getTournamentBracket,
-  getTournamentChampion,
-  tournamentCatalog,
-} from "./tournaments";
+import { getTournamentBracket, getTournamentChampion, tournamentCatalog } from "./tournaments";
 
 export const tournamentQueryKeys = {
   all: ["tournaments"] as const,

@@ -1,7 +1,7 @@
 import type { Mode } from "../../constants/matches";
 import { cachedRequest } from "../../utils/requestCache";
-import { getSupabaseClient } from "../supabase/supabaseClient";
-import { fetchAllSupabaseRows, loadSupabaseRows } from "../supabase/supabaseRows";
+import { getSupabaseClient } from "../supabase/client";
+import { fetchAllSupabaseRows, loadSupabaseRows } from "../supabase/rows";
 
 export type TournamentMeta = {
   id: string;

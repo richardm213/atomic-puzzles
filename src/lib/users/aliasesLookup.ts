@@ -1,4 +1,4 @@
-import { type AliasIdentityRow, fetchAliasRows } from "../supabase/supabaseAliases";
+import { type AliasIdentityRow, fetchAliasRows } from "../archive/aliases";
 
 export type AliasLookupEntry = {
   primary: string;

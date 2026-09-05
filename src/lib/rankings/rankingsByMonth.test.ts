@@ -1,30 +1,31 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../supabase/supabaseLb", async () => {
-  const actual =
-    await vi.importActual<typeof import("../supabase/supabaseLb")>("../supabase/supabaseLb");
+vi.mock("../archive/leaderboard", async () => {
+  const actual = await vi.importActual<typeof import("../archive/leaderboard")>(
+    "../archive/leaderboard",
+  );
   return {
     ...actual,
-    fetchLbRows: vi.fn(),
+    fetchLeaderboardRows: vi.fn(),
   };
 });
 
-import { fetchLbRows } from "../supabase/supabaseLb";
+import { fetchLeaderboardRows } from "../archive/leaderboard";
 import { loadRankingsForMonth } from "./rankingsByMonth";
 
-const fetchLbRowsMock = fetchLbRows as unknown as ReturnType<typeof vi.fn>;
+const fetchLeaderboardRowsMock = fetchLeaderboardRows as unknown as ReturnType<typeof vi.fn>;
 
 describe("loadRankingsForMonth", () => {
   beforeEach(() => {
-    fetchLbRowsMock.mockReset();
+    fetchLeaderboardRowsMock.mockReset();
   });
 
   afterEach(() => {
-    fetchLbRowsMock.mockReset();
+    fetchLeaderboardRowsMock.mockReset();
   });
 
   it("groups players by mode and reranks them by score", async () => {
-    fetchLbRowsMock.mockResolvedValueOnce([
+    fetchLeaderboardRowsMock.mockResolvedValueOnce([
       { username: "alice", tc: "blitz", rank: 5, rating: 1900, rd: 50, games: 30 },
       { username: "bob", tc: "blitz", rank: 1, rating: 2000, rd: 45, games: 40 },
       { username: "carol", tc: "bullet", rank: 1, rating: 2100, rd: 40, games: 50 },
@@ -49,7 +50,7 @@ describe("loadRankingsForMonth", () => {
   });
 
   it("rounds scores and RD to one decimal place", async () => {
-    fetchLbRowsMock.mockResolvedValueOnce([
+    fetchLeaderboardRowsMock.mockResolvedValueOnce([
       { username: "alice", tc: "blitz", rank: 1, rating: 1899.456, rd: 47.91, games: 25 },
     ]);
     const result = await loadRankingsForMonth("Mar 2024");

@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { existsSync, statSync } from "node:fs";
 import { promisify } from "node:util";
 
-import { createOpeningExplorerQueue } from "../../opening-explorer-request-queue.js";
+import { createOpeningExplorerQueue } from "../core/requestQueue.js";
 import type { JsonRow, OpeningExplorerRepository, PriorityRef } from "../core/service.js";
 
 const execFileAsync = promisify(execFile);
