@@ -18,6 +18,8 @@ import {
 import { useAppSettings } from "../../context/AppSettings";
 import { useRankingsByMonth } from "../../hooks/useRankingsByMonth";
 import { monthDateFromMonthKey } from "../../lib/archive/leaderboard";
+import { formatRankingUpdatedAt } from "../../lib/rankings/formatRankingUpdatedAt";
+import { latestRankingMatchQueryOptions } from "../../lib/rankings/rankingsQueries";
 import type { AliasLookup } from "../../lib/users/aliasesLookup";
 import { aliasesLookupQueryOptions } from "../../lib/users/aliasQueries";
 import { getOpeningDisplayLabel, normalizeOpeningKey } from "../../utils/openings";
@@ -209,6 +211,9 @@ const LeaderboardView = () => {
   );
 
   const { rankingsByMonth, error } = useRankingsByMonth(selectedMonth);
+  const latestMatchQuery = useQuery(latestRankingMatchQueryOptions());
+  const latestMatchTimestamp = latestMatchQuery.data?.start_ts;
+  const updatedAtLabel = formatRankingUpdatedAt(latestMatchTimestamp);
   const aliasesQuery = useQuery(aliasesLookupQueryOptions());
   const aliasesLookup = aliasesQuery.data ?? emptyAliasLookup;
   const aliasesLoaded = !aliasesQuery.isPending;
@@ -355,6 +360,12 @@ const LeaderboardView = () => {
       />
       <div className="panel rankingsPanel rankingsLeaderboardPanel">
         <h1>Monthly Player Rankings</h1>
+        {updatedAtLabel && typeof latestMatchTimestamp === "number" ? (
+          <p className="rankingsUpdatedAt">
+            Last updated{" "}
+            <time dateTime={new Date(latestMatchTimestamp).toISOString()}>{updatedAtLabel}</time>
+          </p>
+        ) : null}
         <div className="controls rankingsControls">
           <label htmlFor="year-select">
             Year

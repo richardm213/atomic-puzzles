@@ -76,6 +76,20 @@ describe("archive-data function", () => {
     expect(invalidResponse.headers["Cache-Control"]).toBe("no-store");
   });
 
+  it.each([1726177800000, null])(
+    "returns the latest match timestamp, including an empty archive (%s)",
+    async (timestamp) => {
+      mocks.execute.mockResolvedValueOnce({ rows: [{ start_ts: timestamp }] });
+      const { handler } = await import("../functions/archive-data");
+      const response = await handler({
+        queryStringParameters: { resource: "latest_match" },
+      });
+      expect(response.statusCode).toBe(200);
+      expect(mocks.execute).toHaveBeenCalledWith("select max(start_ts) as start_ts from matches");
+      expect(JSON.parse(response.body)).toEqual({ start_ts: timestamp });
+    },
+  );
+
   it("serves leaderboard history from the archive table", async () => {
     mocks.execute.mockResolvedValueOnce({
       rows: [{ username: "alice", month: "2026-08-01", rank: 1, tc: "blitz" }],

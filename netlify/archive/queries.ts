@@ -280,6 +280,13 @@ const queryUsernames = async (params: URLSearchParams) => {
 export const queryArchiveResource = async (params: URLSearchParams): Promise<unknown> => {
   const resource = params.get("resource");
   if (resource === "matches") return queryMatches(params);
+  if (resource === "latest_match") {
+    const result = await getArchiveClient().execute(
+      "select max(start_ts) as start_ts from matches",
+    );
+    const timestamp = result.rows[0]?.start_ts;
+    return { start_ts: timestamp === null || timestamp === undefined ? null : Number(timestamp) };
+  }
   if (resource === "aliases") return queryAliases(params);
   if (resource === "ratings") return queryRatings(params);
   if (resource === "leaderboard") return queryLeaderboard(params);
