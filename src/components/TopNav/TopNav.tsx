@@ -120,8 +120,6 @@ const navItems: NavItem[] = [
       pathname === "/recent" ||
       pathname === "/matches" ||
       pathname.startsWith("/matches/") ||
-      pathname === "/tournaments" ||
-      pathname.startsWith("/tournaments/") ||
       pathname === "/h2h" ||
       pathname.startsWith("/h2h/"),
     children: [
@@ -132,16 +130,16 @@ const navItems: NavItem[] = [
           pathname === "/recent" || pathname === "/matches" || pathname.startsWith("/matches/"),
       },
       {
-        to: "/tournaments",
-        label: "Tournaments",
-        isActive: (pathname) => pathname === "/tournaments" || pathname.startsWith("/tournaments/"),
-      },
-      {
         to: "/h2h",
         label: "H2H",
         isActive: (pathname) => pathname === "/h2h" || pathname.startsWith("/h2h/"),
       },
     ],
+  },
+  {
+    to: "/tournaments",
+    label: "Tournaments",
+    isActive: (pathname) => pathname === "/tournaments" || pathname.startsWith("/tournaments/"),
   },
   {
     to: "/community",
@@ -730,14 +728,6 @@ export const TopNav = () => {
       </button>
       <div className="topNavCenter">
         <nav className="topNavLinks" id="top-nav-menu" aria-label="Main navigation">
-          <Link
-            className={`mobileHomeLink ${pathname === "/" ? "isActive" : ""}`}
-            to="/"
-            aria-current={pathname === "/" ? "page" : undefined}
-            onClick={() => setMobileMenuOpen(false)}
-          >
-            Home
-          </Link>
           {navItems.map((item) => {
             const active = item.isActive(pathname);
             if (item.children) {

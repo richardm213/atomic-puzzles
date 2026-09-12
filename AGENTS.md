@@ -14,6 +14,11 @@
 - Never add eyebrow labels or mini-titles above page headings.
 - Never add descriptive subtitles that merely restate the page title or visible controls.
 
+## Matches database token renewal
+
+- “Refresh matches token” is the saved shorthand for issuing a new read-only matches token, updating Netlify production, redeploying, and verifying live database reads. Follow `docs/rotate-matches-token.md`. Also recognize “Rotate the matches token and redeploy” and requests to renew the Turso matches token in Netlify.
+- This is an on-demand workflow, not a scheduled task. Redeploy only when the user requests it.
+
 ## Tournament bracket result updates
 
 Follow this playbook whenever a user asks to copy tournament results from a forum or announcement into a bracket and link the matches.

@@ -320,9 +320,6 @@
   }
 }
 
-.mobileHomeLink {
-  display: none;
-}
 
 :root[data-theme="light"] .topNav {
   box-shadow: var(--nav-shadow);
@@ -1424,9 +1421,6 @@
     padding-left: 14px;
   }
 
-  .topNavLinks .mobileHomeLink {
-    display: flex;
-  }
 
   .topNavLinks a:hover,
   .navDropdownTrigger:hover {

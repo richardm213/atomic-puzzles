@@ -60,3 +60,29 @@ test("tournament archive cards open a bracket", async ({ page }) => {
   await expect(page).toHaveURL(/\/tournaments\/[a-z0-9-]+$/);
   await expect(page.getByRole("main")).toBeVisible();
 });
+
+for (const width of [1280, 390]) {
+  test(`tournaments is a separate navigation tab at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/");
+    if (width < 700) {
+      await page.getByRole("button", { name: "Open navigation menu" }).click();
+    }
+    const nav = page.getByRole("navigation", { name: "Main navigation" });
+    const tournaments = nav.getByRole("link", { name: "Tournaments", exact: true });
+    await expect(tournaments).toBeVisible();
+    await tournaments.click();
+    await expect(page).toHaveURL(/\/tournaments$/);
+    if (width < 700) {
+      await page.getByRole("button", { name: "Open navigation menu" }).click();
+    }
+    await expect(tournaments).toHaveAttribute("aria-current", "page");
+    const games = nav.getByRole("button", { name: "Games", exact: true });
+    await expect(games).not.toHaveAttribute("aria-current", "page");
+    await games.click();
+    const menu = page.getByRole("menu", { name: "Games navigation" });
+    await expect(menu.getByRole("menuitem")).toHaveCount(2);
+    await expect(menu.getByRole("menuitem", { name: "Tournaments" })).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  });
+}

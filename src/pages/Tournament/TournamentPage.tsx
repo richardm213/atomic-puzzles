@@ -1192,7 +1192,7 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
   }
 
   const heading = tournamentHeading(bracket);
-  const seoTitle = bracket.id.startsWith("ahc") ? `${heading} Bracket` : heading;
+  const seoTitle = bracket.title;
 
   return (
     <div className="tournamentPage">

@@ -333,14 +333,6 @@ const fetchAliasIdentityRowForUsername = async (
   }
 };
 
-const fetchUncachedAliasRows = async (): Promise<AliasIdentityRow[]> => {
-  try {
-    return buildAliasIdentityRowsFromArchiveRows(await fetchRawAliasRows());
-  } catch {
-    return [];
-  }
-};
-
 const resolveCanonicalProfileUsername = async (value: string): Promise<string> =>
   cachedRequest(canonicalProfileUsernameCache, ["canonical-profile-username", value], async () => {
     const username = normalizeUsername(value);
@@ -363,4 +355,8 @@ export const fetchProfileAliasRow = async (value: string): Promise<AliasIdentity
   });
 
 export const fetchAliasRows = async (): Promise<AliasIdentityRow[]> =>
-  cachedRequest(aliasRowsCache, ["aliases"], async () => fetchUncachedAliasRows());
+  // Let failed archive reads reject so neither cache retains an empty success
+  // and React Query can retry after a temporary Turso/API failure.
+  cachedRequest(aliasRowsCache, ["aliases"], async () =>
+    buildAliasIdentityRowsFromArchiveRows(await fetchRawAliasRows()),
+  );

@@ -486,7 +486,11 @@ const LeaderboardView = () => {
           </div>
         </div>
 
-        {showChessComRankings && !aliasesLoaded ? (
+        {showChessComRankings && aliasesQuery.isError ? (
+          <div className="errorText" role="alert">
+            Unable to load Chess.com aliases. Please reload to try again.
+          </div>
+        ) : showChessComRankings && !aliasesLoaded ? (
           <div className="emptyRankings">Loading Chess.com aliases...</div>
         ) : filteredPlayers.length === 0 ? (
           <div className="emptyRankings">
