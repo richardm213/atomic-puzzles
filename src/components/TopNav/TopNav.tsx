@@ -1146,7 +1146,7 @@ export const TopNav = () => {
               ) : null}
               {/^\/@\/[^/]+\/ratings\/?$/.test(pathname) ? (
                 <div className="navSettingsSection">
-                  {(["blitz", "hyperbullet", "bullet"] as const).map((mode) => (
+                  {(["blitz", "bullet", "hyperbullet"] as const).map((mode) => (
                     <label className="navSettingsCheckbox" key={mode}>
                       <span>{modeLabels[mode]}</span>
                       <input

@@ -277,6 +277,56 @@ describe("monthly rating graph", () => {
     fireEvent.blur(screen.getByRole("slider"));
     expectNormal();
   });
+  it("orders tooltip ratings as Blitz, Bullet, Hyper", () => {
+    render(
+      <RatingChart
+        rows={[
+          row("2026-01"),
+          row("2026-02", "hyperbullet", 2100),
+          row("2026-02", "blitz", 2300),
+          row("2026-02", "bullet", 2200),
+        ]}
+      />,
+    );
+    fireEvent.focus(screen.getByRole("slider"));
+    expect(
+      Array.from(
+        screen.getByRole("tooltip").querySelectorAll(".ratingTooltipRow > span"),
+        (label) => label.textContent,
+      ),
+    ).toEqual(["Blitz", "Bullet", "Hyper"]);
+  });
+  it("only shows recorded, enabled ratings for the inspected month without missing-value rows", () => {
+    render(
+      <RatingChart
+        rows={[
+          row("2026-01", "blitz", 2376),
+          row("2026-01", "bullet", 2240.2),
+          row("2026-01", "hyperbullet", null),
+          row("2026-03", "hyperbullet", 2100),
+        ]}
+      />,
+    );
+    const slider = screen.getByRole("slider");
+    fireEvent.change(slider, { target: { value: 2026 * 12 } });
+    let tooltip = screen.getByRole("tooltip");
+    expect(tooltip).toHaveTextContent("Blitz");
+    expect(tooltip).toHaveTextContent("2,376");
+    expect(tooltip).toHaveTextContent("Bullet");
+    expect(tooltip).toHaveTextContent("2,240.2");
+    expect(tooltip).not.toHaveTextContent("Hyper");
+    expect(tooltip).not.toHaveTextContent("—");
+    fireEvent.click(screen.getByRole("button", { name: "Bullet" }));
+    expect(screen.getByRole("tooltip")).not.toHaveTextContent("Bullet");
+    fireEvent.change(slider, { target: { value: 2026 * 12 + 1 } });
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    fireEvent.change(slider, { target: { value: 2026 * 12 + 2 } });
+    tooltip = screen.getByRole("tooltip");
+    expect(tooltip).toHaveTextContent("Hyper");
+    expect(tooltip).not.toHaveTextContent("Blitz");
+    expect(tooltip).not.toHaveTextContent("Bullet");
+    expect(tooltip).not.toHaveTextContent("—");
+  });
   it("shows in-chart values for keyboard inspection and dismisses with Escape", () => {
     render(<RatingChart rows={[row("2026-01"), row("2026-02", "blitz", 1900)]} />);
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();

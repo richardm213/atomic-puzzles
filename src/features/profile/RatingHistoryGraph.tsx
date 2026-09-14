@@ -8,7 +8,7 @@ import { useAppSettings } from "../../context/AppSettings";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import { type MonthRank, useMonthRanksQuery } from "../../hooks/usePlayerProfileData";
 
-const modes = ["blitz", "hyperbullet", "bullet"] as const;
+const modes = ["blitz", "bullet", "hyperbullet"] as const;
 const periods = ["1M", "3M", "6M", "YTD", "1Y", "2Y", "5Y", "All"] as const;
 export type RatingPeriod = (typeof periods)[number];
 const monthIndex = (date: Date) => date.getUTCFullYear() * 12 + date.getUTCMonth();
@@ -133,6 +133,12 @@ export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
       monthIndex(row.monthDate) <= to &&
       !hidden.includes(row.mode),
   );
+  const inspectedRatings = modes.flatMap((mode) => {
+    const row = visible.find(
+      (entry) => entry.mode === mode && monthIndex(entry.monthDate) === selected,
+    );
+    return row ? [row] : [];
+  });
   const ratings = visible.map((row) => row.rating as number);
   const { low, high, ticks: ratingTicks } = ratingGraphScale(ratings);
   const left = 48,
@@ -302,7 +308,7 @@ export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
               );
             })}
         </svg>
-        {tooltipVisible && visible.length > 0 ? (
+        {tooltipVisible && inspectedRatings.length > 0 ? (
           <div
             className="ratingGraphTooltip"
             role="tooltip"
@@ -315,21 +321,15 @@ export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
             }}
           >
             <strong>{monthLabel(selected)}</strong>
-            {modes
-              .filter((mode) => !hidden.includes(mode))
-              .map((mode) => (
-                <div key={mode} className={`ratingTooltipRow ratingSeries ${mode}`}>
-                  <span>
-                    <i aria-hidden="true" />
-                    {modeLabels[mode]}
-                  </span>
-                  <b>
-                    {data
-                      .find((row) => row.mode === mode && monthIndex(row.monthDate) === selected)
-                      ?.rating?.toLocaleString("en-US", { maximumFractionDigits: 1 }) ?? "—"}
-                  </b>
-                </div>
-              ))}
+            {inspectedRatings.map((row) => (
+              <div key={row.mode} className={`ratingTooltipRow ratingSeries ${row.mode}`}>
+                <span>
+                  <i aria-hidden="true" />
+                  {modeLabels[row.mode]}
+                </span>
+                <b>{row.rating?.toLocaleString("en-US", { maximumFractionDigits: 1 })}</b>
+              </div>
+            ))}
           </div>
         ) : null}
         {!visible.length ? (
