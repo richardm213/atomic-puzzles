@@ -302,8 +302,10 @@ export const PlayerProfilePage = ({
     () => filterMatches(matches, appliedFilters),
     [matches, appliedFilters],
   );
+  // A new page has no query data while loading (or after a failed request).
+  // Only clamp pagination once the requested result supplies a real total.
   const totalPages = Math.max(
-    1,
+    matchHistoryQuery.data === undefined ? page : 1,
     Math.ceil(
       (isClientPagedResults ? filteredMatches.length : (matchHistoryQuery.data?.total ?? 0)) /
         Math.max(1, pageSize),
