@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
 import { modeLabels } from "../../constants/matches";
+import { useAppSettings } from "../../context/AppSettings";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import { type MonthRank, useMonthRanksQuery } from "../../hooks/usePlayerProfileData";
 
@@ -42,6 +43,24 @@ export const ratingGraphRows = (rows: MonthRank[]) =>
     )
     .sort((a, b) => a.monthDate.getTime() - b.monthDate.getTime());
 
+// Fit the visible observations, rather than padding out a fixed number of intervals.
+export const ratingGraphScale = (ratings: number[]) => {
+  if (!ratings.length) return { low: 0, high: 100, ticks: [0, 20, 40, 60, 80, 100] };
+  const min = Math.min(...ratings);
+  const max = Math.max(...ratings);
+  const padding = Math.max(20, (max - min) * 0.05);
+  const step = Math.max(50, Math.ceil((max - min + padding * 2) / 5 / 50) * 50);
+  const low = Math.floor((min - padding) / step) * step;
+  // Grid intervals must not inflate the ceiling; each selected range gets only
+  // its own small margin above the highest visible observation.
+  const high = max + padding;
+  const ticks = Array.from(
+    { length: Math.floor((high - low) / step) + 1 },
+    (_, i) => low + i * step,
+  );
+  return { low, high, ticks };
+};
+
 export const RatingHistoryGraph = ({ username }: { username: string }) => {
   const query = useMonthRanksQuery(username);
   return (
@@ -76,12 +95,11 @@ export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
     z.tuple([z.number().int(), z.number().int()]),
     [first, last],
   );
-  const [showLines, setShowLines] = usePersistedState(
-    "profile.ratingGraph.showLines",
-    z.boolean(),
-    true,
-  );
-  const [hidden, setHidden] = useState<string[]>([]);
+  const {
+    showRatingGraphLines: showLines,
+    hiddenRatingGraphModes: hidden,
+    setHiddenRatingGraphModes: setHidden,
+  } = useAppSettings();
   const [inspected, setInspected] = useState<number | null>(null);
   const [tooltipVisible, setTooltipVisible] = useState(false);
   useEffect(() => {
@@ -116,11 +134,7 @@ export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
       !hidden.includes(row.mode),
   );
   const ratings = visible.map((row) => row.rating as number);
-  const low = ratings.length ? Math.floor((Math.min(...ratings) - 40) / 100) * 100 : 0;
-  const step = ratings.length
-    ? Math.max(50, Math.ceil((Math.max(...ratings) + 40 - low) / 5 / 50) * 50)
-    : 20;
-  const high = low + step * 5;
+  const { low, high, ticks: ratingTicks } = ratingGraphScale(ratings);
   const left = 48,
     right = width - 16,
     top = 20,
@@ -203,14 +217,6 @@ export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
             </button>
           ))}
         </div>
-        <label className="ratingLinesToggle">
-          <input
-            type="checkbox"
-            checked={showLines}
-            onChange={(event) => setShowLines(event.target.checked)}
-          />
-          Show lines
-        </label>
       </div>
       <div ref={frame} className="ratingGraphPlot" onPointerLeave={() => setTooltipVisible(false)}>
         <svg
@@ -218,25 +224,26 @@ export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
           role="img"
           aria-label={`Monthly leaderboard ratings, ${monthLabel(from)} to ${monthLabel(to)}. Use the month slider below to read exact values.`}
           onPointerMove={(event) => {
-            setTooltipVisible(true);
             const bounds = event.currentTarget.getBoundingClientRect();
-            setInspected(
-              Math.round(
-                from +
-                  Math.max(
-                    0,
-                    Math.min(
-                      1,
-                      (((event.clientX - bounds.left) * width) / bounds.width - left) /
-                        (right - left),
-                    ),
-                  ) *
-                    (to - from),
-              ),
-            );
+            const pointerX = ((event.clientX - bounds.left) * width) / bounds.width;
+            const pointerY = ((event.clientY - bounds.top) * (bottom + 40)) / bounds.height;
+            if (pointerX < left || pointerX > right || pointerY < top || pointerY > bottom) {
+              setTooltipVisible(false);
+              return;
+            }
+            setTooltipVisible(true);
+            setInspected(Math.round(from + ((pointerX - left) / (right - left)) * (to - from)));
           }}
         >
-          {Array.from({ length: 6 }, (_, i) => low + ((high - low) * i) / 5).map((rating) => (
+          <rect
+            className="ratingPlotSurface"
+            x={left}
+            y={top}
+            width={right - left}
+            height={bottom - top}
+            rx={8}
+          />
+          {ratingTicks.map((rating) => (
             <g key={rating}>
               <line className="ratingGrid" x1={left} x2={right} y1={y(rating)} y2={y(rating)} />
               <text x={left - 8} y={y(rating) + 4} textAnchor="end">
@@ -254,6 +261,9 @@ export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
               {monthLabel(month)}
             </text>
           ))}
+          {tooltipVisible ? (
+            <line className="ratingCursor" x1={x(selected)} x2={x(selected)} y1={top} y2={bottom} />
+          ) : null}
           {modes
             .filter((mode) => !hidden.includes(mode))
             .map((mode) => {
@@ -274,9 +284,14 @@ export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
                   {points.map((row) => (
                     <circle
                       key={row.monthKey}
+                      className={
+                        tooltipVisible && monthIndex(row.monthDate) === selected
+                          ? "isSelected"
+                          : undefined
+                      }
                       cx={x(monthIndex(row.monthDate))}
                       cy={y(row.rating as number)}
-                      r={monthIndex(row.monthDate) === selected ? 6 : 4}
+                      r={tooltipVisible && monthIndex(row.monthDate) === selected ? 5 : 3}
                     >
                       <title>
                         {monthLabel(monthIndex(row.monthDate))}: {modeLabels[mode]} {row.rating}
@@ -286,12 +301,12 @@ export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
                 </g>
               );
             })}
-          <line className="ratingCursor" x1={x(selected)} x2={x(selected)} y1={top} y2={bottom} />
         </svg>
         {tooltipVisible && visible.length > 0 ? (
           <div
             className="ratingGraphTooltip"
             role="tooltip"
+            aria-live="polite"
             style={{
               left: Math.max(
                 8,
@@ -345,21 +360,6 @@ export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
           }}
         />
       </label>
-      <div className="ratingGraphReadout" aria-live="polite">
-        <strong>{monthLabel(selected)}</strong>
-        {modes
-          .filter((mode) => !hidden.includes(mode))
-          .map((mode) => (
-            <span key={mode} className={`ratingSeries ${mode}`}>
-              {modeLabels[mode]}
-              <b>
-                {data
-                  .find((row) => row.mode === mode && monthIndex(row.monthDate) === selected)
-                  ?.rating?.toLocaleString("en-US", { maximumFractionDigits: 1 }) ?? "—"}
-              </b>
-            </span>
-          ))}
-      </div>
     </>
   );
 };

@@ -30,6 +30,7 @@ import {
   useState,
 } from "react";
 
+import { modeLabels } from "../../constants/matches";
 import { getBoardThemeColors, useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
 import {
@@ -311,6 +312,10 @@ export const TopNav = () => {
     setHideRankingsOpenings,
     showChessComRankings,
     setShowChessComRankings,
+    hiddenRatingGraphModes,
+    setHiddenRatingGraphModes,
+    showRatingGraphLines,
+    setShowRatingGraphLines,
     showPuzzleTimer,
     setShowPuzzleTimer,
   } = useAppSettings();
@@ -1135,6 +1140,35 @@ export const TopNav = () => {
                       type="checkbox"
                       checked={showChessComRankings}
                       onChange={(event) => setShowChessComRankings(event.target.checked)}
+                    />
+                  </label>
+                </div>
+              ) : null}
+              {/^\/@\/[^/]+\/ratings\/?$/.test(pathname) ? (
+                <div className="navSettingsSection">
+                  {(["blitz", "hyperbullet", "bullet"] as const).map((mode) => (
+                    <label className="navSettingsCheckbox" key={mode}>
+                      <span>{modeLabels[mode]}</span>
+                      <input
+                        type="checkbox"
+                        checked={!hiddenRatingGraphModes.includes(mode)}
+                        onChange={(event) => {
+                          const visible = event.target.checked;
+                          setHiddenRatingGraphModes((current) =>
+                            visible
+                              ? current.filter((value) => value !== mode)
+                              : [...new Set([...current, mode])],
+                          );
+                        }}
+                      />
+                    </label>
+                  ))}
+                  <label className="navSettingsCheckbox">
+                    <span>Show lines</span>
+                    <input
+                      type="checkbox"
+                      checked={showRatingGraphLines}
+                      onChange={(event) => setShowRatingGraphLines(event.target.checked)}
                     />
                   </label>
                 </div>

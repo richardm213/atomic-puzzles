@@ -24,6 +24,8 @@ const STORAGE_KEYS = {
   hideRankingsOpenings: "atomic-puzzles.rankings.hide-openings",
   showChessComRankings: "atomic-puzzles.rankings.show-chesscom-users",
   showPuzzleTimer: "atomic-puzzles.puzzles.show-timer",
+  showRatingGraphLines: "profile.ratingGraph.showLines",
+  hiddenRatingGraphModes: "profile.ratingGraph.hiddenModes",
 };
 
 const THEMES = ["dark", "light"] as const;
@@ -161,6 +163,10 @@ export type AppSettingsContextValue = {
   setHideRankingsOpenings: Dispatch<SetStateAction<boolean>>;
   showChessComRankings: boolean;
   setShowChessComRankings: Dispatch<SetStateAction<boolean>>;
+  hiddenRatingGraphModes: string[];
+  setHiddenRatingGraphModes: Dispatch<SetStateAction<string[]>>;
+  showRatingGraphLines: boolean;
+  setShowRatingGraphLines: Dispatch<SetStateAction<boolean>>;
   showPuzzleTimer: boolean;
   setShowPuzzleTimer: Dispatch<SetStateAction<boolean>>;
 };
@@ -259,6 +265,18 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     false,
   );
 
+  const [showRatingGraphLines, setShowRatingGraphLines] = usePersistedState(
+    STORAGE_KEYS.showRatingGraphLines,
+    z.boolean(),
+    true,
+  );
+
+  const [hiddenRatingGraphModes, setHiddenRatingGraphModes] = usePersistedState<string[]>(
+    STORAGE_KEYS.hiddenRatingGraphModes,
+    z.array(z.enum(["blitz", "hyperbullet", "bullet"])),
+    [],
+  );
+
   const resetDisplaySettings = useCallback(() => {
     setTheme(DEFAULT_THEME);
     setPieceSet(DEFAULT_PIECE_SET);
@@ -309,6 +327,10 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setHideRankingsOpenings,
       showChessComRankings,
       setShowChessComRankings,
+      hiddenRatingGraphModes,
+      setHiddenRatingGraphModes,
+      showRatingGraphLines,
+      setShowRatingGraphLines,
       showPuzzleTimer,
       setShowPuzzleTimer,
     }),
@@ -334,6 +356,10 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setHideRankingsOpenings,
       showChessComRankings,
       setShowChessComRankings,
+      hiddenRatingGraphModes,
+      setHiddenRatingGraphModes,
+      showRatingGraphLines,
+      setShowRatingGraphLines,
       showPuzzleTimer,
       setShowPuzzleTimer,
     ],
