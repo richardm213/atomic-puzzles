@@ -56,3 +56,12 @@ export type AliasRow = {
   count_games: "y" | "n" | "c" | "o";
   openings: string;
 };
+
+export type WeeklyRatingRow = {
+  username: string;
+  week: string;
+  rating: number | null;
+  rd: number | null;
+  games: number;
+  tc: ArchiveMode;
+};

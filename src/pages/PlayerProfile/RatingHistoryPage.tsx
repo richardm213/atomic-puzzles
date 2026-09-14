@@ -14,7 +14,7 @@ export const RatingHistoryPage = ({ username }: { username: string }) => {
     <div className="rankingsPage">
       <Seo
         title={`${canonical} · Rating history`}
-        description={`Monthly leaderboard rating history for ${canonical}.`}
+        description={`Weekly and monthly rating history for ${canonical}.`}
         path={`/@/${encodeURIComponent(canonical)}/ratings`}
       />
       <div className="panel rankingsPanel ratingHistoryPage">

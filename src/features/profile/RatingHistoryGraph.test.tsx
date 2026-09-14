@@ -9,6 +9,8 @@ import {
   ratingGraphRows,
   ratingGraphScale,
   ratingPeriodStart,
+  weekIndex,
+  weeklyPeriodStart,
 } from "./RatingHistoryGraph";
 
 const SettingsControl = () => {
@@ -450,5 +452,59 @@ describe("monthly rating graph", () => {
     screen.getAllByRole("slider").forEach((handle) => expect(handle).toBeDisabled());
     rerender(<RatingChart rows={[]} />);
     expect(screen.getByText("No monthly leaderboard ratings available.")).toBeInTheDocument();
+  });
+});
+
+describe("weekly rating graph", () => {
+  it("uses Monday–Sunday UTC weeks including the incomplete week", () => {
+    const monday = weekIndex(new Date("2026-09-14T00:00:00Z"));
+    expect(weekIndex(new Date("2026-09-20T23:59:59Z"))).toBe(monday);
+    expect(weekIndex(new Date("2026-09-13T23:59:59Z"))).toBe(monday - 1);
+    expect(weekIndex(new Date("2026-09-21T00:00:00Z"))).toBe(monday + 1);
+    expect(weeklyPeriodStart("1M", monday - 30, monday)).toBe(
+      weekIndex(new Date("2026-08-20T00:00:00Z")),
+    );
+  });
+
+  const week = (date: string, rating: number | null = 1800): MonthRank => ({
+    ...row("2026-09", "blitz", rating),
+    monthKey: date,
+    monthDate: new Date(date + "T00:00:00Z"),
+  });
+
+  it("breaks the line across missing weeks and shows dots only during inspection", () => {
+    const { container } = render(
+      <RatingChart
+        frequency="weekly"
+        rows={[week("2026-08-23"), week("2026-08-30", 1850), week("2026-09-13", 1900)]}
+      />,
+    );
+    const path = container.querySelector(".blitz .ratingLine")!.getAttribute("d")!;
+    expect(path.match(/M/g)).toHaveLength(2);
+    expect(path.match(/L/g)).toHaveLength(1);
+    expect(container.querySelectorAll("circle")).toHaveLength(0);
+    const graph = screen.getByRole("img");
+    fireEvent.focus(graph);
+    fireEvent.keyDown(graph, { key: "Home" });
+    expect(container.querySelectorAll("circle")).toHaveLength(1);
+    expect(screen.getByRole("tooltip")).toHaveTextContent("Aug 23, 2026");
+    fireEvent.keyDown(graph, { key: "ArrowRight" });
+    expect(screen.getByRole("tooltip")).toHaveTextContent("1,850");
+    fireEvent.keyDown(graph, { key: "ArrowRight" });
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    expect(container.querySelectorAll("circle")).toHaveLength(0);
+    fireEvent.blur(graph);
+    expect(container.querySelectorAll("circle")).toHaveLength(0);
+  });
+
+  it("retains a single qualifying observation and date-based range inputs", () => {
+    const { container } = render(<RatingChart frequency="weekly" rows={[week("2026-09-13")]} />);
+    expect(screen.getByLabelText("From week")).toHaveAttribute("type", "date");
+    fireEvent.focus(screen.getByRole("img"));
+    fireEvent.keyDown(screen.getByRole("img"), { key: "Home" });
+    expect(screen.getByRole("tooltip")).toHaveTextContent("1,800");
+    expect(container.querySelectorAll("circle")).toHaveLength(1);
+    fireEvent.keyDown(screen.getByRole("img"), { key: "Escape" });
+    expect(container.querySelectorAll("circle")).toHaveLength(0);
   });
 });

@@ -216,6 +216,24 @@ const queryRatings = async (params: URLSearchParams) => {
   return normalizedRows(result.rows);
 };
 
+// Weekly aggregates are maintained by the matches pipeline, not recomputed here.
+// Include the incomplete week and retain missing weeks as missing observations.
+const queryWeeklyRatings = async (params: URLSearchParams) => {
+  const username = String(params.get("username") ?? "")
+    .trim()
+    .toLowerCase();
+  if (!username) throw new ArchiveRequestError("Weekly ratings require a username");
+  const mode = enumIdParam(params, "mode", MODE_IDS);
+  const result = await getArchiveClient().execute({
+    sql: `select p.username,r.week,r.rating/10.0 rating,r.rd/10.0 rd,r.games,
+      ${modeNameSql("r.mode")} tc from weekly_ratings r
+      join players p on p.id=r.username_id
+      where p.username=?${mode !== null ? " and r.mode=?" : ""} order by r.week,r.mode`,
+    args: mode !== null ? [username, mode] : [username],
+  });
+  return normalizedRows(result.rows);
+};
+
 const queryLeaderboard = async (params: URLSearchParams) => {
   const clauses: string[] = [];
   const args: Array<string | number> = [];
@@ -288,6 +306,7 @@ export const queryArchiveResource = async (params: URLSearchParams): Promise<unk
     return { start_ts: timestamp === null || timestamp === undefined ? null : Number(timestamp) };
   }
   if (resource === "aliases") return queryAliases(params);
+  if (resource === "weekly_ratings") return queryWeeklyRatings(params);
   if (resource === "ratings") return queryRatings(params);
   if (resource === "leaderboard") return queryLeaderboard(params);
   if (resource === "leaderboard_counts") return queryLeaderboardCounts();

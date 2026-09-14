@@ -9,12 +9,14 @@ import {
   type SourceFilters,
 } from "../constants/matches";
 import { profileQueryKeys, uniqueMonthRankPairs } from "../features/profile/profileQueries";
+import { fetchArchiveJson } from "../lib/archive/client";
 import {
   fetchLeaderboardPlayerCounts,
   fetchLeaderboardRows,
   monthKeyFromMonthValue,
 } from "../lib/archive/leaderboard";
 import { fetchPlayerRatingsRows } from "../lib/archive/ratings";
+import type { WeeklyRatingRow } from "../lib/archive/types";
 import type { NormalizedMatch } from "../lib/matches/data";
 import { isSourceAllowedByFilters, parseDateInputBoundary } from "../lib/matches/filters";
 import { parseTimeControlParts } from "../lib/matches/transforms";
@@ -214,6 +216,21 @@ export const buildRankingsLocation = (
   ];
   return `/rankings?${params.join("&")}`;
 };
+
+export const useWeeklyRatingsQuery = (username: string, enabled = true) =>
+  useQuery({
+    queryKey: ["profile", "weeklyRatings", username],
+    queryFn: () =>
+      fetchArchiveJson<WeeklyRatingRow[]>(
+        new URLSearchParams({
+          resource: "weekly_ratings",
+          username,
+        }),
+      ),
+    enabled: Boolean(username) && enabled,
+    staleTime: 5 * 60 * 1_000,
+    refetchInterval: 5 * 60 * 1_000,
+  });
 
 export const useMonthRanksQuery = (username: string, enabled = true) =>
   useQuery({

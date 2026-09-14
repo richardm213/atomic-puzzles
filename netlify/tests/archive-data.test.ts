@@ -14,6 +14,28 @@ describe("archive-data function", () => {
     process.env.TURSO_MATCHES_AUTH_TOKEN = "read-only-test-token";
   });
 
+  it("serves scaled weekly aggregates without monthly eligibility or completed-week filters", async () => {
+    mocks.execute.mockResolvedValueOnce({
+      rows: [
+        { username: "alice", week: "2026-09-20", rating: 1800.5, rd: 59.9, games: 1, tc: "blitz" },
+      ],
+    });
+    const { handler } = await import("../functions/archive-data");
+    const response = await handler({
+      queryStringParameters: { resource: "weekly_ratings", username: " Alice ", mode: "blitz" },
+    });
+    expect(response.statusCode).toBe(200);
+    const query = mocks.execute.mock.calls[0]![0];
+    expect(query.args).toEqual(["alice", 2]);
+    expect(query.sql).toContain("weekly_ratings");
+    expect(query.sql).toContain("r.rating/10.0");
+    expect(query.sql).toContain("r.rd/10.0");
+    expect(query.sql).not.toMatch(/r.games\s*[><=]|r.week\s*[><=]/);
+    expect(JSON.parse(response.body)).toEqual([
+      { username: "alice", week: "2026-09-20", rating: 1800.5, rd: 59.9, games: 1, tc: "blitz" },
+    ]);
+  });
+
   it("queries a match page without inventing missing numeric filters", async () => {
     mocks.execute.mockResolvedValueOnce({ rows: [{ total: 1 }] }).mockResolvedValueOnce({
       rows: [

@@ -3,12 +3,47 @@ import "./RatingHistoryGraph.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
-import { modeLabels } from "../../constants/matches";
+import { isMode, modeLabels } from "../../constants/matches";
 import { useAppSettings } from "../../context/AppSettings";
 import { usePersistedState } from "../../hooks/usePersistedState";
-import { type MonthRank, useMonthRanksQuery } from "../../hooks/usePlayerProfileData";
+import {
+  type MonthRank,
+  useMonthRanksQuery,
+  useWeeklyRatingsQuery,
+} from "../../hooks/usePlayerProfileData";
 import { RatingRangeSlider } from "./RatingRangeSlider";
 
+type GraphRow = Pick<MonthRank, "monthDate" | "monthKey" | "mode" | "rating">;
+const WEEK = 7 * 24 * 60 * 60 * 1000;
+const SUNDAY = Date.UTC(1970, 0, 4);
+export const weekIndex = (date: Date) =>
+  Math.ceil(
+    (Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) - SUNDAY) / WEEK,
+  );
+const weekDate = (index: number) => new Date(SUNDAY + index * WEEK);
+const weekValue = (index: number) => weekDate(index).toISOString().slice(0, 10);
+const weekLabel = (index: number) =>
+  weekDate(index).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+export const weeklyPeriodStart = (period: RatingPeriod, first: number, last: number) => {
+  if (period === "All") return first;
+  const end = weekDate(last);
+  const start =
+    period === "YTD"
+      ? new Date(Date.UTC(end.getUTCFullYear(), 0, 1))
+      : new Date(
+          Date.UTC(
+            end.getUTCFullYear(),
+            end.getUTCMonth() - { "1M": 1, "3M": 3, "6M": 6, "1Y": 12, "2Y": 24, "5Y": 60 }[period],
+            end.getUTCDate(),
+          ),
+        );
+  return Math.max(first, weekIndex(start));
+};
 const modes = ["blitz", "bullet", "hyperbullet"] as const;
 const periods = ["1M", "3M", "6M", "YTD", "1Y", "2Y", "5Y", "All"] as const;
 export type RatingPeriod = (typeof periods)[number];
@@ -33,7 +68,7 @@ export const ratingPeriodStart = (period: RatingPeriod, first: number, last: num
         : last - { "1M": 1, "3M": 3, "6M": 6, "1Y": 12, "2Y": 24, "5Y": 60 }[period],
   );
 
-export const ratingGraphRows = (rows: MonthRank[]) =>
+export const ratingGraphRows = (rows: GraphRow[]) =>
   rows
     .filter(
       (row) =>
@@ -63,11 +98,33 @@ export const ratingGraphScale = (ratings: number[]) => {
 };
 
 export const RatingHistoryGraph = ({ username }: { username: string }) => {
-  const query = useMonthRanksQuery(username);
+  const { ratingGraphFrequency: frequency } = useAppSettings();
+  const monthly = useMonthRanksQuery(username, frequency === "monthly");
+  const weekly = useWeeklyRatingsQuery(username, frequency === "weekly");
+  const query = frequency === "weekly" ? weekly : monthly;
+  const rows: GraphRow[] =
+    frequency === "weekly"
+      ? (weekly.data ?? []).flatMap((row) =>
+          row.games > 0 && isMode(row.tc)
+            ? [
+                {
+                  monthDate: new Date(row.week + "T00:00:00Z"),
+                  monthKey: row.week,
+                  mode: row.tc,
+                  rating: row.rating,
+                },
+              ]
+            : [],
+        )
+      : (monthly.data ?? []);
   return (
-    <section id="profile-rating-graph" className="ratingHistory" aria-label="Monthly rating graph">
+    <section
+      id="profile-rating-graph"
+      className="ratingHistory"
+      aria-label={frequency === "weekly" ? "Weekly rating graph" : "Monthly rating graph"}
+    >
       {query.isPending ? (
-        <p role="status">Loading monthly ratings…</p>
+        <p role="status">Loading {frequency} ratings…</p>
       ) : query.isError ? (
         <div role="alert">
           <p>Could not load rating history.</p>
@@ -76,23 +133,35 @@ export const RatingHistoryGraph = ({ username }: { username: string }) => {
           </button>
         </div>
       ) : (
-        <RatingChart rows={query.data ?? []} />
+        <RatingChart key={frequency} rows={rows} frequency={frequency} />
       )}
     </section>
   );
 };
 
-export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
+export const RatingChart = ({
+  rows,
+  frequency = "monthly",
+}: {
+  rows: GraphRow[];
+  frequency?: "weekly" | "monthly";
+}) => {
+  const weekly = frequency === "weekly";
+  const dateIndex = weekly ? weekIndex : monthIndex;
+  const dateLabel = weekly ? weekLabel : monthLabel;
+  const dateValue = weekly ? weekValue : monthValue;
   const data = useMemo(() => ratingGraphRows(rows), [rows]);
-  const first = data.length ? monthIndex(data[0]!.monthDate) : 0;
-  const last = data.length ? monthIndex(data[data.length - 1]!.monthDate) : 0;
+  const first = data.length ? dateIndex(data[0]!.monthDate) : 0;
+  const last = data.length
+    ? Math.max(dateIndex(data[data.length - 1]!.monthDate), weekly ? weekIndex(new Date()) : 0)
+    : 0;
   const [period, setPeriod] = usePersistedState<RatingPeriod | "Custom">(
     "profile.ratingGraph.period",
     z.enum([...periods, "Custom"]),
     "All",
   );
   const [custom, setCustom] = usePersistedState<[number, number]>(
-    "profile.ratingGraph.range",
+    weekly ? "profile.ratingGraph.weeklyRange" : "profile.ratingGraph.range",
     z.tuple([z.number().int(), z.number().int()]),
     [first, last],
   );
@@ -121,22 +190,25 @@ export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
     observer.observe(frame.current);
     return () => observer.disconnect();
   }, [data.length]);
-  if (!data.length) return <p>No monthly leaderboard ratings available.</p>;
+  if (!data.length)
+    return (
+      <p>{weekly ? "No weekly ratings available." : "No monthly leaderboard ratings available."}</p>
+    );
   const from =
     period === "Custom"
       ? Math.max(first, Math.min(custom[0], last))
-      : ratingPeriodStart(period, first, last);
+      : (weekly ? weeklyPeriodStart : ratingPeriodStart)(period, first, last);
   const to = period === "Custom" ? Math.max(from, Math.min(custom[1], last)) : last;
   const selected = Math.max(from, Math.min(inspected ?? to, to));
   const visible = data.filter(
     (row) =>
-      monthIndex(row.monthDate) >= from &&
-      monthIndex(row.monthDate) <= to &&
+      dateIndex(row.monthDate) >= from &&
+      dateIndex(row.monthDate) <= to &&
       !hidden.includes(row.mode),
   );
   const inspectedRatings = modes.flatMap((mode) => {
     const row = visible.find(
-      (entry) => entry.mode === mode && monthIndex(entry.monthDate) === selected,
+      (entry) => entry.mode === mode && dateIndex(entry.monthDate) === selected,
     );
     return row ? [row] : [];
   });
@@ -163,8 +235,9 @@ export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
     setTooltipVisible(false);
   };
   const changeRange = (value: string, edge: 0 | 1) => {
-    if (!/^\d{4}-\d{2}$/.test(value)) return;
-    changeRangeMonth(monthIndex(new Date(`${value}-01T00:00:00Z`)), edge);
+    if (!(weekly ? /^\d{4}-\d{2}-\d{2}$/ : /^\d{4}-\d{2}$/).test(value)) return;
+    const date = new Date(`${value}${weekly ? "" : "-01"}T00:00:00Z`);
+    if (Number.isFinite(date.getTime())) changeRangeMonth(dateIndex(date), edge);
   };
   return (
     <>
@@ -185,22 +258,22 @@ export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
           <label>
             From
             <input
-              type="month"
-              aria-label="From month"
-              min={monthValue(first)}
-              max={monthValue(to)}
-              value={monthValue(from)}
+              type={weekly ? "date" : "month"}
+              aria-label={weekly ? "From week" : "From month"}
+              min={dateValue(first)}
+              max={dateValue(to)}
+              value={dateValue(from)}
               onChange={(event) => changeRange(event.target.value, 0)}
             />
           </label>
           <label>
             To
             <input
-              type="month"
-              aria-label="To month"
-              min={monthValue(from)}
-              max={monthValue(last)}
-              value={monthValue(to)}
+              type={weekly ? "date" : "month"}
+              aria-label={weekly ? "To week" : "To month"}
+              min={dateValue(from)}
+              max={dateValue(last)}
+              value={dateValue(to)}
               onChange={(event) => changeRange(event.target.value, 1)}
             />
           </label>
@@ -249,7 +322,7 @@ export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
               setTooltipVisible(true);
             }
           }}
-          aria-label={`Monthly leaderboard ratings, ${monthLabel(from)} to ${monthLabel(to)}. Focus the graph and use Left and Right arrow keys to read exact values.`}
+          aria-label={`${weekly ? "Weekly ratings" : "Monthly leaderboard ratings"}, ${dateLabel(from)} to ${dateLabel(to)}. Focus the graph and use Left and Right arrow keys to read exact values.`}
           onPointerMove={(event) => {
             const bounds = event.currentTarget.getBoundingClientRect();
             const pointerX = ((event.clientX - bounds.left) * width) / bounds.width;
@@ -285,7 +358,7 @@ export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
               y={bottom + 28}
               textAnchor={month === from ? "start" : month === to ? "end" : "middle"}
             >
-              {monthLabel(month)}
+              {dateLabel(month)}
             </text>
           ))}
           {tooltipVisible ? (
@@ -297,34 +370,38 @@ export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
               const points = visible.filter((row) => row.mode === mode);
               return (
                 <g key={mode} className={`ratingSeries ${mode}`}>
-                  {showLines ? (
+                  {weekly || showLines ? (
                     <path
                       className="ratingLine"
                       d={points
                         .map(
                           (row, i) =>
-                            `${i ? "L" : "M"}${x(monthIndex(row.monthDate))},${y(row.rating as number)}`,
+                            `${i && (!weekly || dateIndex(row.monthDate) - dateIndex(points[i - 1]!.monthDate) === 1) ? "L" : "M"}${x(dateIndex(row.monthDate))},${y(row.rating as number)}`,
                         )
                         .join(" ")}
                     />
                   ) : null}
-                  {points.map((row) => (
-                    <circle
-                      key={row.monthKey}
-                      className={
-                        tooltipVisible && monthIndex(row.monthDate) === selected
-                          ? "isSelected"
-                          : undefined
-                      }
-                      cx={x(monthIndex(row.monthDate))}
-                      cy={y(row.rating as number)}
-                      r={tooltipVisible && monthIndex(row.monthDate) === selected ? 6 : 4}
-                    >
-                      <title>
-                        {monthLabel(monthIndex(row.monthDate))}: {modeLabels[mode]} {row.rating}
-                      </title>
-                    </circle>
-                  ))}
+                  {points
+                    .filter(
+                      (row) => !weekly || (tooltipVisible && dateIndex(row.monthDate) === selected),
+                    )
+                    .map((row) => (
+                      <circle
+                        key={row.monthKey}
+                        className={
+                          tooltipVisible && dateIndex(row.monthDate) === selected
+                            ? "isSelected"
+                            : undefined
+                        }
+                        cx={x(dateIndex(row.monthDate))}
+                        cy={y(row.rating as number)}
+                        r={tooltipVisible && dateIndex(row.monthDate) === selected ? 6 : 4}
+                      >
+                        <title>
+                          {dateLabel(dateIndex(row.monthDate))}: {modeLabels[mode]} {row.rating}
+                        </title>
+                      </circle>
+                    ))}
                 </g>
               );
             })}
@@ -341,7 +418,7 @@ export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
               ),
             }}
           >
-            <strong>{monthLabel(selected)}</strong>
+            <strong>{dateLabel(selected)}</strong>
             {inspectedRatings.map((row) => (
               <div key={row.mode} className={`ratingTooltipRow ratingSeries ${row.mode}`}>
                 <span>
@@ -357,7 +434,7 @@ export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
           <p className="ratingGraphEmpty">
             {hidden.length === modes.length
               ? "Select a time control to show its ratings."
-              : "No monthly ratings in this range."}
+              : `No ${frequency} ratings in this range.`}
           </p>
         ) : null}
       </div>
@@ -366,7 +443,7 @@ export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
         max={last}
         from={from}
         to={to}
-        formatMonth={monthLabel}
+        formatMonth={dateLabel}
         onChange={changeRangeMonth}
       />
     </>

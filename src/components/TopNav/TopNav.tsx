@@ -314,6 +314,8 @@ export const TopNav = () => {
     setShowChessComRankings,
     hiddenRatingGraphModes,
     setHiddenRatingGraphModes,
+    ratingGraphFrequency,
+    setRatingGraphFrequency,
     showRatingGraphLines,
     setShowRatingGraphLines,
     showPuzzleTimer,
@@ -1146,6 +1148,19 @@ export const TopNav = () => {
               ) : null}
               {/^\/@\/[^/]+\/ratings\/?$/.test(pathname) ? (
                 <div className="navSettingsSection">
+                  <label className="navSettingsLabel" htmlFor="rating-frequency">
+                    Rating frequency
+                  </label>
+                  <select
+                    id="rating-frequency"
+                    value={ratingGraphFrequency}
+                    onChange={(event) =>
+                      setRatingGraphFrequency(event.target.value as "weekly" | "monthly")
+                    }
+                  >
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                  </select>
                   {(["blitz", "bullet", "hyperbullet"] as const).map((mode) => (
                     <label className="navSettingsCheckbox" key={mode}>
                       <span>{modeLabels[mode]}</span>
@@ -1167,7 +1182,8 @@ export const TopNav = () => {
                     <span>Show lines</span>
                     <input
                       type="checkbox"
-                      checked={showRatingGraphLines}
+                      disabled={ratingGraphFrequency === "weekly"}
+                      checked={ratingGraphFrequency === "weekly" || showRatingGraphLines}
                       onChange={(event) => setShowRatingGraphLines(event.target.checked)}
                     />
                   </label>

@@ -165,6 +165,8 @@ export type AppSettingsContextValue = {
   setShowChessComRankings: Dispatch<SetStateAction<boolean>>;
   hiddenRatingGraphModes: string[];
   setHiddenRatingGraphModes: Dispatch<SetStateAction<string[]>>;
+  ratingGraphFrequency: "weekly" | "monthly";
+  setRatingGraphFrequency: Dispatch<SetStateAction<"weekly" | "monthly">>;
   showRatingGraphLines: boolean;
   setShowRatingGraphLines: Dispatch<SetStateAction<boolean>>;
   showPuzzleTimer: boolean;
@@ -265,6 +267,12 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     false,
   );
 
+  const [ratingGraphFrequency, setRatingGraphFrequency] = usePersistedState<"weekly" | "monthly">(
+    "profile.ratingGraph.frequency",
+    z.enum(["weekly", "monthly"]),
+    "weekly",
+  );
+
   const [showRatingGraphLines, setShowRatingGraphLines] = usePersistedState(
     STORAGE_KEYS.showRatingGraphLines,
     z.boolean(),
@@ -329,6 +337,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setShowChessComRankings,
       hiddenRatingGraphModes,
       setHiddenRatingGraphModes,
+      ratingGraphFrequency,
+      setRatingGraphFrequency,
       showRatingGraphLines,
       setShowRatingGraphLines,
       showPuzzleTimer,
@@ -358,6 +368,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setShowChessComRankings,
       hiddenRatingGraphModes,
       setHiddenRatingGraphModes,
+      ratingGraphFrequency,
+      setRatingGraphFrequency,
       showRatingGraphLines,
       setShowRatingGraphLines,
       showPuzzleTimer,
