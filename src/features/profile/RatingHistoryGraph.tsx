@@ -291,7 +291,7 @@ export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
                       }
                       cx={x(monthIndex(row.monthDate))}
                       cy={y(row.rating as number)}
-                      r={tooltipVisible && monthIndex(row.monthDate) === selected ? 5 : 3}
+                      r={tooltipVisible && monthIndex(row.monthDate) === selected ? 6 : 4}
                     >
                       <title>
                         {monthLabel(monthIndex(row.monthDate))}: {modeLabels[mode]} {row.rating}

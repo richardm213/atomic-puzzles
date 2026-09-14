@@ -254,7 +254,7 @@ describe("monthly rating graph", () => {
     const expectNormal = () => {
       expect(container.querySelector(".isSelected")).toBeNull();
       expect(container.querySelector(".ratingCursor")).toBeNull();
-      container.querySelectorAll("circle").forEach((dot) => expect(dot).toHaveAttribute("r", "3"));
+      container.querySelectorAll("circle").forEach((dot) => expect(dot).toHaveAttribute("r", "4"));
       expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
     };
     expectNormal();
@@ -265,7 +265,7 @@ describe("monthly rating graph", () => {
       [795, 100],
     ] as const) {
       move(400, 100);
-      expect(container.querySelector(".isSelected")).toHaveAttribute("r", "5");
+      expect(container.querySelector(".isSelected")).toHaveAttribute("r", "6");
       move(x, y);
       expectNormal();
     }
@@ -273,7 +273,7 @@ describe("monthly rating graph", () => {
     fireEvent.pointerLeave(container.querySelector(".ratingGraphPlot")!);
     expectNormal();
     fireEvent.focus(screen.getByRole("slider"));
-    expect(container.querySelector(".isSelected")).toHaveAttribute("r", "5");
+    expect(container.querySelector(".isSelected")).toHaveAttribute("r", "6");
     fireEvent.blur(screen.getByRole("slider"));
     expectNormal();
   });

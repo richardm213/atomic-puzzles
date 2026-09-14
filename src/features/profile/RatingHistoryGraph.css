@@ -74,13 +74,13 @@
   margin-top: 0;
 }
 .ratingSeries.blitz {
-  --series-color: var(--color-danger);
+  --series-color: var(--color-rating-blitz);
 }
 .ratingSeries.hyperbullet {
-  --series-color: var(--color-primary-soft);
+  --series-color: var(--color-rating-hyper);
 }
 .ratingSeries.bullet {
-  --series-color: var(--color-cyan-bright);
+  --series-color: var(--color-rating-bullet);
 }
 .ratingGraphLegend button {
   display: inline-flex;
@@ -121,20 +121,13 @@
 .ratingLine {
   fill: none;
   stroke: var(--series-color);
-  stroke-width: 2.5;
+  stroke-width: 2;
   stroke-linejoin: round;
   stroke-linecap: round;
 }
 .ratingSeries circle {
   fill: var(--series-color);
-  stroke: var(--color-panel-strong);
-  stroke-width: 1.5;
-}
-.ratingSeries circle.isSelected {
-  fill: var(--color-panel-strong);
-  stroke: var(--series-color);
-  stroke-width: 3;
-  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--series-color) 45%, transparent));
+  stroke: none;
 }
 .ratingCursor {
   stroke: var(--color-primary-soft);
