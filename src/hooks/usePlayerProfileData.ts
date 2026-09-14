@@ -91,7 +91,10 @@ const parseMonthRanksFromLeaderboardRows = (rows: unknown): MonthRank[] => {
       const monthDate = new Date(`${monthValue}T00:00:00Z`);
       const mode = String(r?.["tc"] ?? "").toLowerCase();
       const rank = Number(r?.["rank"]);
-      const rating = Number(r?.["rating"]);
+      const rating =
+        r?.["rating"] === null || r?.["rating"] === undefined || r?.["rating"] === ""
+          ? NaN
+          : Number(r["rating"]);
       const rd = Number(r?.["rd"]);
       const games = Number(r?.["games"]);
       if (!isMode(mode) || rank <= 0) return null;
@@ -212,8 +215,8 @@ export const buildRankingsLocation = (
   return `/rankings?${params.join("&")}`;
 };
 
-export const useMonthRanks = (username: string, enabled = true): MonthRank[] => {
-  const monthRanksQuery = useQuery({
+export const useMonthRanksQuery = (username: string, enabled = true) =>
+  useQuery({
     queryKey: profileQueryKeys.monthRanks(username),
     queryFn: async () =>
       parseMonthRanksFromLeaderboardRows(await fetchLeaderboardRows({ username })),
@@ -221,6 +224,8 @@ export const useMonthRanks = (username: string, enabled = true): MonthRank[] => 
     staleTime: 5 * 60 * 1_000,
   });
 
+export const useMonthRanks = (username: string, enabled = true): MonthRank[] => {
+  const monthRanksQuery = useMonthRanksQuery(username, enabled);
   return enabled ? (monthRanksQuery.data ?? []) : [];
 };
 
