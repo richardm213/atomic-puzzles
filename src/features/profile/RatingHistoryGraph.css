@@ -239,7 +239,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-top: 24px;
+  margin-top: 12px;
 }
 .ratingLinesToggle {
   display: inline-flex;
@@ -257,10 +257,10 @@
 }
 .ratingGraphPeriods {
   gap: 0;
-  padding: 4px;
-  background: var(--color-panel-strong);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
 }
 .ratingGraphPeriods button {
   border-color: transparent;
@@ -279,7 +279,7 @@
 }
 .ratingGraphReadout {
   margin-top: 8px;
-  padding: 16px 0;
+  padding: 8px 0;
   border-top: 1px solid var(--color-border);
 }
 .ratingGraphReadout .ratingSeries {
@@ -311,5 +311,66 @@
   }
   .ratingGraphOptions {
     gap: 8px;
+  }
+}
+
+.ratingGraphTooltip {
+  position: absolute;
+  top: 12px;
+  width: 168px;
+  padding: 12px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 4px;
+  background: var(--color-panel-strong);
+  color: var(--color-text);
+  box-shadow: 0 4px 16px var(--color-panel-deep);
+  font-size: 13px;
+  pointer-events: none;
+  z-index: 1;
+}
+.ratingGraphTooltip > strong {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--color-heading);
+}
+.ratingTooltipRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  line-height: 1.7;
+  font-variant-numeric: tabular-nums;
+}
+.ratingTooltipRow i {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--series-color);
+  margin-right: 8px;
+}
+@media (width > 600px) {
+  .ratingGraphPeriods button,
+  .ratingGraphLegend button {
+    min-height: 32px;
+    padding: 0 10px;
+    border-radius: 3px;
+  }
+  .ratingGraphDates input {
+    min-height: 32px;
+    border-radius: 3px;
+  }
+  .ratingGraphPlot {
+    margin-top: 8px;
+  }
+  .ratingPageHeader {
+    margin-bottom: 24px;
+  }
+}
+
+@media (width <= 600px) {
+  .ratingGraphPeriods {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    width: 100%;
   }
 }

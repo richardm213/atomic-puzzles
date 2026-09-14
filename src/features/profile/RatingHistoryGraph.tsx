@@ -8,7 +8,7 @@ import { usePersistedState } from "../../hooks/usePersistedState";
 import { type MonthRank, useMonthRanksQuery } from "../../hooks/usePlayerProfileData";
 
 const modes = ["blitz", "hyperbullet", "bullet"] as const;
-const periods = ["1M", "3M", "6M", "YTD", "1Y", "All"] as const;
+const periods = ["1M", "3M", "6M", "YTD", "1Y", "2Y", "5Y", "All"] as const;
 export type RatingPeriod = (typeof periods)[number];
 const monthIndex = (date: Date) => date.getUTCFullYear() * 12 + date.getUTCMonth();
 const monthDate = (index: number) => new Date(Date.UTC(Math.floor(index / 12), index % 12, 1));
@@ -28,7 +28,7 @@ export const ratingPeriodStart = (period: RatingPeriod, first: number, last: num
       ? first
       : period === "YTD"
         ? Math.floor(last / 12) * 12
-        : last - { "1M": 1, "3M": 3, "6M": 6, "1Y": 12 }[period],
+        : last - { "1M": 1, "3M": 3, "6M": 6, "1Y": 12, "2Y": 24, "5Y": 60 }[period],
   );
 
 export const ratingGraphRows = (rows: MonthRank[]) =>
@@ -83,6 +83,15 @@ export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
   );
   const [hidden, setHidden] = useState<string[]>([]);
   const [inspected, setInspected] = useState<number | null>(null);
+  const [tooltipVisible, setTooltipVisible] = useState(false);
+  useEffect(() => {
+    if (!tooltipVisible) return;
+    const dismiss = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setTooltipVisible(false);
+    };
+    window.addEventListener("keydown", dismiss);
+    return () => window.removeEventListener("keydown", dismiss);
+  }, [tooltipVisible]);
   const frame = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(800);
   useEffect(() => {
@@ -115,7 +124,7 @@ export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
   const left = 48,
     right = width - 16,
     top = 20,
-    bottom = width < 500 ? 300 : 360;
+    bottom = width < 500 ? 220 : 240;
   const x = (month: number) =>
     from === to ? (left + right) / 2 : left + ((month - from) / (to - from)) * (right - left);
   const y = (rating: number) => bottom - ((rating - low) / (high - low)) * (bottom - top);
@@ -203,17 +212,25 @@ export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
           Show lines
         </label>
       </div>
-      <div ref={frame} className="ratingGraphPlot">
+      <div ref={frame} className="ratingGraphPlot" onPointerLeave={() => setTooltipVisible(false)}>
         <svg
           viewBox={`0 0 ${width} ${bottom + 40}`}
           role="img"
           aria-label={`Monthly leaderboard ratings, ${monthLabel(from)} to ${monthLabel(to)}. Use the month slider below to read exact values.`}
           onPointerMove={(event) => {
+            setTooltipVisible(true);
             const bounds = event.currentTarget.getBoundingClientRect();
             setInspected(
               Math.round(
                 from +
-                  Math.max(0, Math.min(1, (event.clientX - bounds.left - left) / (right - left))) *
+                  Math.max(
+                    0,
+                    Math.min(
+                      1,
+                      (((event.clientX - bounds.left) * width) / bounds.width - left) /
+                        (right - left),
+                    ),
+                  ) *
                     (to - from),
               ),
             );
@@ -259,7 +276,7 @@ export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
                       key={row.monthKey}
                       cx={x(monthIndex(row.monthDate))}
                       cy={y(row.rating as number)}
-                      r={monthIndex(row.monthDate) === selected ? 5 : showLines ? 2 : 3.5}
+                      r={monthIndex(row.monthDate) === selected ? 6 : 4}
                     >
                       <title>
                         {monthLabel(monthIndex(row.monthDate))}: {modeLabels[mode]} {row.rating}
@@ -271,6 +288,35 @@ export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
             })}
           <line className="ratingCursor" x1={x(selected)} x2={x(selected)} y1={top} y2={bottom} />
         </svg>
+        {tooltipVisible && visible.length > 0 ? (
+          <div
+            className="ratingGraphTooltip"
+            role="tooltip"
+            style={{
+              left: Math.max(
+                8,
+                Math.min(width - 184, x(selected) + (x(selected) > width / 2 ? -184 : 16)),
+              ),
+            }}
+          >
+            <strong>{monthLabel(selected)}</strong>
+            {modes
+              .filter((mode) => !hidden.includes(mode))
+              .map((mode) => (
+                <div key={mode} className={`ratingTooltipRow ratingSeries ${mode}`}>
+                  <span>
+                    <i aria-hidden="true" />
+                    {modeLabels[mode]}
+                  </span>
+                  <b>
+                    {data
+                      .find((row) => row.mode === mode && monthIndex(row.monthDate) === selected)
+                      ?.rating?.toLocaleString("en-US", { maximumFractionDigits: 1 }) ?? "—"}
+                  </b>
+                </div>
+              ))}
+          </div>
+        ) : null}
         {!visible.length ? (
           <p className="ratingGraphEmpty">
             {hidden.length === modes.length
@@ -280,15 +326,23 @@ export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
         ) : null}
       </div>
       <label className="ratingMonthScrubber">
-        Inspect month
         <input
+          aria-label="Inspect month"
           type="range"
           min={from}
           max={to}
           value={selected}
           disabled={from === to}
           aria-valuetext={monthLabel(selected)}
-          onChange={(event) => setInspected(Number(event.target.value))}
+          onFocus={() => setTooltipVisible(true)}
+          onBlur={() => setTooltipVisible(false)}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") setTooltipVisible(false);
+          }}
+          onChange={(event) => {
+            setInspected(Number(event.target.value));
+            setTooltipVisible(true);
+          }}
         />
       </label>
       <div className="ratingGraphReadout" aria-live="polite">

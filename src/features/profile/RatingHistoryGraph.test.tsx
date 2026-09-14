@@ -48,12 +48,12 @@ describe("monthly rating graph", () => {
   });
   it("supports every time frame, clipping to available history", () => {
     const last = 2026 * 12 + 8,
-      first = 2024 * 12;
+      first = 2020 * 12;
     expect(
-      ["1M", "3M", "6M", "YTD", "1Y", "All"].map((period) =>
+      ["1M", "3M", "6M", "YTD", "1Y", "2Y", "5Y", "All"].map((period) =>
         ratingPeriodStart(period as Parameters<typeof ratingPeriodStart>[0], first, last),
       ),
-    ).toEqual([last - 1, last - 3, last - 6, 2026 * 12, last - 12, first]);
+    ).toEqual([last - 1, last - 3, last - 6, 2026 * 12, last - 12, last - 24, last - 60, first]);
     expect(ratingPeriodStart("1Y", last - 2, last)).toBe(last - 2);
   });
   it("filters dates, toggles lines and exposes keyboard-readable monthly values", () => {
@@ -70,11 +70,20 @@ describe("monthly rating graph", () => {
     fireEvent.click(screen.getByRole("button", { name: "1M" }));
     expect(screen.getByLabelText("From month")).toHaveValue("2026-01");
     fireEvent.change(screen.getByRole("slider"), { target: { value: 2026 * 12 } });
-    expect(screen.getByText("1,800")).toBeInTheDocument();
+    expect(screen.getByRole("tooltip")).toHaveTextContent("1,800");
     fireEvent.click(screen.getByRole("button", { name: "Blitz" }));
     expect(screen.getByRole("button", { name: "Blitz" })).toHaveAttribute("aria-pressed", "false");
     fireEvent.change(screen.getByLabelText("From month"), { target: { value: "2025-01" } });
     expect(screen.getByRole("button", { name: "1M" })).toHaveAttribute("aria-pressed", "false");
+  });
+  it("shows in-chart values for keyboard inspection and dismisses with Escape", () => {
+    render(<RatingChart rows={[row("2026-01"), row("2026-02", "blitz", 1900)]} />);
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    fireEvent.focus(screen.getByRole("slider"));
+    expect(screen.getByRole("tooltip")).toHaveTextContent("Feb 2026");
+    expect(screen.getByRole("tooltip")).toHaveTextContent("1,900");
+    fireEvent.keyDown(screen.getByRole("slider"), { key: "Escape" });
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
   it("connects recorded months, supports dots only, and handles single-point and empty histories", () => {
     const { container, rerender } = render(<RatingChart rows={[row("2026-01"), row("2026-03")]} />);
