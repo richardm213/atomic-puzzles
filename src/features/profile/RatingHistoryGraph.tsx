@@ -7,6 +7,7 @@ import { modeLabels } from "../../constants/matches";
 import { useAppSettings } from "../../context/AppSettings";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import { type MonthRank, useMonthRanksQuery } from "../../hooks/usePlayerProfileData";
+import { RatingRangeSlider } from "./RatingRangeSlider";
 
 const modes = ["blitz", "bullet", "hyperbullet"] as const;
 const periods = ["1M", "3M", "6M", "YTD", "1Y", "2Y", "5Y", "All"] as const;
@@ -155,12 +156,15 @@ export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
       ),
     ),
   ];
-  const changeRange = (value: string, edge: 0 | 1) => {
-    if (!/^\d{4}-\d{2}$/.test(value)) return;
-    const month = monthIndex(new Date(`${value}-01T00:00:00Z`));
+  const changeRangeMonth = (month: number, edge: 0 | 1) => {
     const bounded = Math.max(first, Math.min(last, month));
     setCustom(edge === 0 ? [Math.min(bounded, to), to] : [from, Math.max(bounded, from)]);
     setPeriod("Custom");
+    setTooltipVisible(false);
+  };
+  const changeRange = (value: string, edge: 0 | 1) => {
+    if (!/^\d{4}-\d{2}$/.test(value)) return;
+    changeRangeMonth(monthIndex(new Date(`${value}-01T00:00:00Z`)), edge);
   };
   return (
     <>
@@ -228,7 +232,24 @@ export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
         <svg
           viewBox={`0 0 ${width} ${bottom + 40}`}
           role="img"
-          aria-label={`Monthly leaderboard ratings, ${monthLabel(from)} to ${monthLabel(to)}. Use the month slider below to read exact values.`}
+          tabIndex={0}
+          onFocus={() => setTooltipVisible(true)}
+          onBlur={() => setTooltipVisible(false)}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              setTooltipVisible(false);
+              return;
+            }
+            const next = { ArrowLeft: selected - 1, ArrowRight: selected + 1, Home: from, End: to }[
+              event.key
+            ];
+            if (next !== undefined) {
+              event.preventDefault();
+              setInspected(Math.max(from, Math.min(to, next)));
+              setTooltipVisible(true);
+            }
+          }}
+          aria-label={`Monthly leaderboard ratings, ${monthLabel(from)} to ${monthLabel(to)}. Focus the graph and use Left and Right arrow keys to read exact values.`}
           onPointerMove={(event) => {
             const bounds = event.currentTarget.getBoundingClientRect();
             const pointerX = ((event.clientX - bounds.left) * width) / bounds.width;
@@ -340,26 +361,14 @@ export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
           </p>
         ) : null}
       </div>
-      <label className="ratingMonthScrubber">
-        <input
-          aria-label="Inspect month"
-          type="range"
-          min={from}
-          max={to}
-          value={selected}
-          disabled={from === to}
-          aria-valuetext={monthLabel(selected)}
-          onFocus={() => setTooltipVisible(true)}
-          onBlur={() => setTooltipVisible(false)}
-          onKeyDown={(event) => {
-            if (event.key === "Escape") setTooltipVisible(false);
-          }}
-          onChange={(event) => {
-            setInspected(Number(event.target.value));
-            setTooltipVisible(true);
-          }}
-        />
-      </label>
+      <RatingRangeSlider
+        min={first}
+        max={last}
+        from={from}
+        to={to}
+        formatMonth={monthLabel}
+        onChange={changeRangeMonth}
+      />
     </>
   );
 };
