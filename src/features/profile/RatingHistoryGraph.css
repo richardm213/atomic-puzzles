@@ -1,13 +1,29 @@
-.ratingHistory {
-  margin-top: 24px;
-  padding: 24px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-panel-strong);
+.ratingHistoryPage {
+  width: 100%;
 }
-
-.ratingHistory h2 {
-  margin: 0 0 24px;
+.ratingPageHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+.ratingPageHeader h1 {
+  margin: 0;
+}
+.ratingProfileLink {
+  color: var(--color-primary-soft);
+  text-decoration: none;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+.ratingProfileLink:hover {
+  text-decoration: underline;
+}
+.ratingHistory {
+  padding: 0;
 }
 .ratingGraphToolbar,
 .ratingGraphDates,
@@ -56,7 +72,7 @@
   outline-offset: 3px;
 }
 .ratingGraphLegend {
-  margin-top: 16px;
+  margin-top: 0;
 }
 .ratingSeries.blitz {
   --series-color: var(--color-danger);
@@ -104,8 +120,7 @@
 }
 .ratingSeries circle {
   fill: var(--series-color);
-  stroke: var(--color-panel-strong);
-  stroke-width: 1.5;
+  stroke: none;
 }
 .ratingCursor {
   stroke: var(--color-muted);
@@ -150,14 +165,9 @@
   margin-left: 8px;
   font-variant-numeric: tabular-nums;
 }
-.ratingGraphNote {
-  margin: 8px 0 0;
-  color: var(--color-muted);
-  font-size: 14px;
-}
 @media (width <= 600px) {
   .ratingHistory {
-    padding: 16px 8px;
+    padding: 0;
   }
   .ratingGraphDates {
     align-items: stretch;
@@ -220,5 +230,86 @@
 @media (width <= 600px) {
   .ratingGraphPeriods button {
     padding: 0 8px;
+  }
+}
+
+.ratingGraphOptions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 24px;
+}
+.ratingLinesToggle {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 44px;
+  color: var(--color-muted);
+  font-size: 14px;
+  cursor: pointer;
+}
+.ratingLinesToggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-primary);
+}
+.ratingGraphPeriods {
+  gap: 0;
+  padding: 4px;
+  background: var(--color-panel-strong);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+.ratingGraphPeriods button {
+  border-color: transparent;
+  background: transparent;
+}
+.ratingGraphLegend button,
+.ratingGraphLegend button[aria-pressed="true"] {
+  border-color: transparent;
+  background: transparent;
+}
+.ratingGraphLegend button:hover {
+  border-color: var(--color-border);
+}
+.ratingGraphLegend button[aria-pressed="false"] span {
+  opacity: 0.35;
+}
+.ratingGraphReadout {
+  margin-top: 8px;
+  padding: 16px 0;
+  border-top: 1px solid var(--color-border);
+}
+.ratingGraphReadout .ratingSeries {
+  border-bottom: 0;
+  padding: 0;
+}
+.ratingGraphReadout .ratingSeries::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--series-color);
+  margin-right: 8px;
+}
+.ratingLine {
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+@media (width <= 600px) {
+  .ratingGraphDates input {
+    font-size: 16px;
+  }
+  .ratingGraphToolbar {
+    gap: 16px;
+  }
+  .ratingPageHeader {
+    margin-bottom: 24px;
+  }
+  .ratingGraphOptions {
+    gap: 8px;
   }
 }

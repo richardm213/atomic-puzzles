@@ -20,7 +20,7 @@ const monthLabel = (index: number) =>
     timeZone: "UTC",
   });
 
-// Monthly snapshots, not live ratings. Missing months remain gaps, never zeroes.
+// Only recorded monthly snapshots are plotted; lines connect observations, not invented ratings.
 export const ratingPeriodStart = (period: RatingPeriod, first: number, last: number) =>
   Math.max(
     first,
@@ -45,12 +45,7 @@ export const ratingGraphRows = (rows: MonthRank[]) =>
 export const RatingHistoryGraph = ({ username }: { username: string }) => {
   const query = useMonthRanksQuery(username);
   return (
-    <section
-      id="profile-rating-graph"
-      className="ratingHistory"
-      aria-labelledby="rating-history-title"
-    >
-      <h2 id="rating-history-title">Rating history</h2>
+    <section id="profile-rating-graph" className="ratingHistory" aria-label="Monthly rating graph">
       {query.isPending ? (
         <p role="status">Loading monthly ratings…</p>
       ) : query.isError ? (
@@ -81,6 +76,11 @@ export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
     z.tuple([z.number().int(), z.number().int()]),
     [first, last],
   );
+  const [showLines, setShowLines] = usePersistedState(
+    "profile.ratingGraph.showLines",
+    z.boolean(),
+    true,
+  );
   const [hidden, setHidden] = useState<string[]>([]);
   const [inspected, setInspected] = useState<number | null>(null);
   const frame = useRef<HTMLDivElement>(null);
@@ -108,11 +108,14 @@ export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
   );
   const ratings = visible.map((row) => row.rating as number);
   const low = ratings.length ? Math.floor((Math.min(...ratings) - 40) / 100) * 100 : 0;
-  const high = ratings.length ? Math.ceil((Math.max(...ratings) + 40) / 100) * 100 : 100;
+  const step = ratings.length
+    ? Math.max(50, Math.ceil((Math.max(...ratings) + 40 - low) / 5 / 50) * 50)
+    : 20;
+  const high = low + step * 5;
   const left = 48,
     right = width - 16,
     top = 20,
-    bottom = 270;
+    bottom = width < 500 ? 300 : 360;
   const x = (month: number) =>
     from === to ? (left + right) / 2 : left + ((month - from) / (to - from)) * (right - left);
   const y = (rating: number) => bottom - ((rating - low) / (high - low)) * (bottom - top);
@@ -170,29 +173,39 @@ export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
           </label>
         </div>
       </div>
-      <div className="ratingGraphLegend" aria-label="Rating series">
-        {modes.map((mode) => (
-          <button
-            type="button"
-            key={mode}
-            className={`ratingSeries ${mode}`}
-            aria-pressed={!hidden.includes(mode)}
-            onClick={() =>
-              setHidden((current) =>
-                current.includes(mode)
-                  ? current.filter((value) => value !== mode)
-                  : [...current, mode],
-              )
-            }
-          >
-            <span aria-hidden="true" />
-            {modeLabels[mode]}
-          </button>
-        ))}
+      <div className="ratingGraphOptions">
+        <div className="ratingGraphLegend" aria-label="Rating series">
+          {modes.map((mode) => (
+            <button
+              type="button"
+              key={mode}
+              className={`ratingSeries ${mode}`}
+              aria-pressed={!hidden.includes(mode)}
+              onClick={() =>
+                setHidden((current) =>
+                  current.includes(mode)
+                    ? current.filter((value) => value !== mode)
+                    : [...current, mode],
+                )
+              }
+            >
+              <span aria-hidden="true" />
+              {modeLabels[mode]}
+            </button>
+          ))}
+        </div>
+        <label className="ratingLinesToggle">
+          <input
+            type="checkbox"
+            checked={showLines}
+            onChange={(event) => setShowLines(event.target.checked)}
+          />
+          Show lines
+        </label>
       </div>
       <div ref={frame} className="ratingGraphPlot">
         <svg
-          viewBox={`0 0 ${width} 310`}
+          viewBox={`0 0 ${width} ${bottom + 40}`}
           role="img"
           aria-label={`Monthly leaderboard ratings, ${monthLabel(from)} to ${monthLabel(to)}. Use the month slider below to read exact values.`}
           onPointerMove={(event) => {
@@ -218,7 +231,7 @@ export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
             <text
               key={month}
               x={x(month)}
-              y={298}
+              y={bottom + 28}
               textAnchor={month === from ? "start" : month === to ? "end" : "middle"}
             >
               {monthLabel(month)}
@@ -230,21 +243,23 @@ export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
               const points = visible.filter((row) => row.mode === mode);
               return (
                 <g key={mode} className={`ratingSeries ${mode}`}>
-                  <path
-                    className="ratingLine"
-                    d={points
-                      .map(
-                        (row, i) =>
-                          `${i && monthIndex(row.monthDate) === monthIndex(points[i - 1]!.monthDate) + 1 ? "L" : "M"}${x(monthIndex(row.monthDate))},${y(row.rating as number)}`,
-                      )
-                      .join(" ")}
-                  />
+                  {showLines ? (
+                    <path
+                      className="ratingLine"
+                      d={points
+                        .map(
+                          (row, i) =>
+                            `${i ? "L" : "M"}${x(monthIndex(row.monthDate))},${y(row.rating as number)}`,
+                        )
+                        .join(" ")}
+                    />
+                  ) : null}
                   {points.map((row) => (
                     <circle
                       key={row.monthKey}
                       cx={x(monthIndex(row.monthDate))}
                       cy={y(row.rating as number)}
-                      r={monthIndex(row.monthDate) === selected ? 5 : 3}
+                      r={monthIndex(row.monthDate) === selected ? 5 : showLines ? 2 : 3.5}
                     >
                       <title>
                         {monthLabel(monthIndex(row.monthDate))}: {modeLabels[mode]} {row.rating}
@@ -291,9 +306,6 @@ export const RatingChart = ({ rows }: { rows: MonthRank[] }) => {
             </span>
           ))}
       </div>
-      <p className="ratingGraphNote">
-        Monthly leaderboard ratings · Missing months are shown as gaps.
-      </p>
     </>
   );
 };

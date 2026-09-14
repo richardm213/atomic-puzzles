@@ -76,9 +76,13 @@ describe("monthly rating graph", () => {
     fireEvent.change(screen.getByLabelText("From month"), { target: { value: "2025-01" } });
     expect(screen.getByRole("button", { name: "1M" })).toHaveAttribute("aria-pressed", "false");
   });
-  it("keeps missing months as gaps and handles single-point and empty histories", () => {
+  it("connects recorded months, supports dots only, and handles single-point and empty histories", () => {
     const { container, rerender } = render(<RatingChart rows={[row("2026-01"), row("2026-03")]} />);
-    expect(container.querySelector(".ratingLine")?.getAttribute("d")).not.toContain("L");
+    expect(container.querySelector(".ratingLine")?.getAttribute("d")).toContain("L");
+    fireEvent.click(screen.getByRole("checkbox", { name: "Show lines" }));
+    expect(container.querySelector(".ratingLine")).toBeNull();
+    expect(container.querySelectorAll("circle")).toHaveLength(2);
+    expect(window.localStorage.getItem("profile.ratingGraph.showLines")).toBe("false");
     rerender(<RatingChart rows={[row("2026-01")]} />);
     expect(screen.getByRole("slider")).toBeDisabled();
     rerender(<RatingChart rows={[]} />);

@@ -32,6 +32,10 @@ const PlayerProfilePage = lazyRouteComponent(
   () => import("./pages/PlayerProfile/PlayerProfile"),
   "PlayerProfilePage",
 );
+const RatingHistoryPage = lazyRouteComponent(
+  () => import("./pages/PlayerProfile/RatingHistoryPage"),
+  "RatingHistoryPage",
+);
 const PracticePage = lazyRouteComponent(() => import("./pages/Practice/Practice"), "PracticePage");
 const PuzzleDashboardPage = lazyRouteComponent(
   () => import("./pages/PuzzleDashboard/PuzzleDashboard"),
@@ -318,6 +322,15 @@ const profileRoute = createRoute({
   },
 });
 
+const profileRatingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/@/$username/ratings",
+  component: function ProfileRatingsRoute() {
+    const { username } = useParams({ strict: false });
+    return <RatingHistoryPage username={username ?? ""} />;
+  },
+});
+
 const profileHistoryRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/@/$username/history",
@@ -364,6 +377,7 @@ const routeTree = rootRoute.addChildren([
   solveSetWithIdRoute,
   solveCustomSetWithIdRoute,
   solveWithIdRoute,
+  profileRatingsRoute,
   profileHistoryRoute,
   profileRoute,
   profilePuzzleDashboardRoute,

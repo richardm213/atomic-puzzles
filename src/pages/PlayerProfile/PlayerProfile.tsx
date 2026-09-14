@@ -61,7 +61,6 @@ import {
   type TrophyCaseSort,
   trophyCaseSortStorageKey,
 } from "../../features/profile/profileTrophies";
-import { RatingHistoryGraph } from "../../features/profile/RatingHistoryGraph";
 import { useFavoriteOpponentsModel } from "../../features/profile/useFavoriteOpponentsModel";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import {
@@ -145,7 +144,6 @@ export const PlayerProfilePage = ({
   const [profileHistoryTab, setProfileHistoryTab] = useState<ProfileHistoryTab>(() =>
     getProfileHistoryTabFromLocation(),
   );
-  const [showRatingGraph, setShowRatingGraph] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [expandedMatchKeys, setExpandedMatchKeys] = useState<string[]>([]);
@@ -691,15 +689,13 @@ export const PlayerProfilePage = ({
             >
               View comments
             </Link>
-            <button
-              type="button"
+            <Link
               className="profilePuzzleDashboardLink"
-              aria-expanded={showRatingGraph}
-              aria-controls="profile-rating-graph"
-              onClick={() => setShowRatingGraph((visible) => !visible)}
+              to="/@/$username/ratings"
+              params={{ username: canonicalUsername }}
             >
-              {showRatingGraph ? "Hide rating graph" : "View rating graph"}
-            </button>
+              View rating graph
+            </Link>
             {isHistoryAvailable ? (
               <Link
                 className="profilePuzzleDashboardLink"
@@ -717,10 +713,6 @@ export const PlayerProfilePage = ({
               View history
             </Link>
           </div>
-        ) : null}
-
-        {!isBanned && !historyOnly && showRatingGraph ? (
-          <RatingHistoryGraph key={canonicalUsername} username={profileDataUsername} />
         ) : null}
 
         {!historyOnly ? (
