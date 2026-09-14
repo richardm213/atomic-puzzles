@@ -109,7 +109,7 @@ const isEligibleForRankings = (
   return games >= requirement.minGames;
 };
 
-const earliestLeaderboardMonth = new Date(Date.UTC(2021, 8, 1));
+const earliestLeaderboardMonth = new Date(Date.UTC(2016, 0, 1));
 const earliestWolfrandomLeaderboardMonth = new Date(Date.UTC(2026, 6, 1));
 
 const supportsWolfrandomLeaderboard = (monthKey: string): boolean => {
