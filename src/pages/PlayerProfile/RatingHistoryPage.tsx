@@ -17,7 +17,7 @@ export const RatingHistoryPage = ({ username }: { username: string }) => {
         description={`Weekly and monthly rating history for ${canonical}.`}
         path={`/@/${encodeURIComponent(canonical)}/ratings`}
       />
-      <div className="panel rankingsPanel ratingHistoryPage">
+      <div className="panel ratingHistoryPage">
         <header className="ratingPageHeader">
           <h1>Rating history</h1>
           <Link to="/@/$username" params={{ username: canonical }} className="ratingProfileLink">

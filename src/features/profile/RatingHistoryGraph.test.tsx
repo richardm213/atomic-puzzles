@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render as testingRender, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render as testingRender, screen } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -15,6 +15,8 @@ import {
 
 const SettingsControl = () => {
   const {
+    ratingGraphDots,
+    setRatingGraphDots,
     showRatingGraphLines,
     setShowRatingGraphLines,
     hiddenRatingGraphModes,
@@ -22,6 +24,17 @@ const SettingsControl = () => {
   } = useAppSettings();
   return (
     <>
+      <label>
+        Dots
+        <select
+          value={ratingGraphDots}
+          onChange={(event) => setRatingGraphDots(event.target.value as "auto" | "show" | "hide")}
+        >
+          <option value="auto">Auto</option>
+          <option value="show">Show</option>
+          <option value="hide">Hide</option>
+        </select>
+      </label>
       <button onClick={() => setShowRatingGraphLines(!showRatingGraphLines)}>
         Toggle lines in settings
       </button>
@@ -456,6 +469,12 @@ describe("monthly rating graph", () => {
 });
 
 describe("weekly rating graph", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-14T12:00:00Z"));
+  });
+  afterEach(() => vi.useRealTimers());
+
   it("uses Monday–Sunday UTC weeks including the incomplete week", () => {
     const monday = weekIndex(new Date("2026-09-14T00:00:00Z"));
     expect(weekIndex(new Date("2026-09-20T23:59:59Z"))).toBe(monday);
@@ -472,7 +491,7 @@ describe("weekly rating graph", () => {
     monthDate: new Date(date + "T00:00:00Z"),
   });
 
-  it("breaks the line across missing weeks and shows dots only during inspection", () => {
+  it("connects recorded weeks across missing weeks without inventing values", () => {
     const { container } = render(
       <RatingChart
         frequency="weekly"
@@ -480,21 +499,21 @@ describe("weekly rating graph", () => {
       />,
     );
     const path = container.querySelector(".blitz .ratingLine")!.getAttribute("d")!;
-    expect(path.match(/M/g)).toHaveLength(2);
-    expect(path.match(/L/g)).toHaveLength(1);
-    expect(container.querySelectorAll("circle")).toHaveLength(0);
+    expect(path.match(/M/g)).toHaveLength(1);
+    expect(path.match(/L/g)).toHaveLength(2);
+    expect(container.querySelectorAll("circle")).toHaveLength(3);
     const graph = screen.getByRole("img");
     fireEvent.focus(graph);
     fireEvent.keyDown(graph, { key: "Home" });
-    expect(container.querySelectorAll("circle")).toHaveLength(1);
+    expect(container.querySelectorAll("circle")).toHaveLength(3);
     expect(screen.getByRole("tooltip")).toHaveTextContent("Aug 23, 2026");
     fireEvent.keyDown(graph, { key: "ArrowRight" });
     expect(screen.getByRole("tooltip")).toHaveTextContent("1,850");
     fireEvent.keyDown(graph, { key: "ArrowRight" });
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
-    expect(container.querySelectorAll("circle")).toHaveLength(0);
+    expect(container.querySelectorAll("circle")).toHaveLength(3);
     fireEvent.blur(graph);
-    expect(container.querySelectorAll("circle")).toHaveLength(0);
+    expect(container.querySelectorAll("circle")).toHaveLength(3);
   });
 
   it("retains a single qualifying observation and date-based range inputs", () => {
@@ -505,6 +524,74 @@ describe("weekly rating graph", () => {
     expect(screen.getByRole("tooltip")).toHaveTextContent("1,800");
     expect(container.querySelectorAll("circle")).toHaveLength(1);
     fireEvent.keyDown(screen.getByRole("img"), { key: "Escape" });
+    expect(container.querySelectorAll("circle")).toHaveLength(1);
+  });
+  it("reveals dots on shorter ranges and hides them again on dense ranges", () => {
+    const rows = Array.from({ length: 105 }, (_, i) => {
+      const date = new Date(Date.UTC(2024, 8, 22 + i * 7));
+      return week(date.toISOString().slice(0, 10), 1800 + i);
+    });
+    const { container } = render(<RatingChart frequency="weekly" rows={rows} />);
     expect(container.querySelectorAll("circle")).toHaveLength(0);
+    fireEvent.focus(screen.getByRole("img"));
+    expect(container.querySelectorAll("circle")).toHaveLength(1);
+    fireEvent.blur(screen.getByRole("img"));
+    expect(container.querySelectorAll("circle")).toHaveLength(0);
+    fireEvent.click(screen.getByRole("button", { name: "1M" }));
+    expect(container.querySelectorAll("circle").length).toBeGreaterThan(1);
+    fireEvent.click(screen.getByRole("button", { name: "All" }));
+    expect(container.querySelectorAll("circle")).toHaveLength(0);
+  });
+
+  it("adapts dot visibility to the available plot width", () => {
+    let resize: (entries: { contentRect: { width: number } }[]) => void = () => {};
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        constructor(callback: typeof resize) {
+          resize = callback;
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
+    const rows = Array.from({ length: 20 }, (_, i) =>
+      week(new Date(Date.UTC(2026, 4, 10 + i * 7)).toISOString().slice(0, 10)),
+    );
+    const { container } = render(<RatingChart frequency="weekly" rows={rows} />);
+    expect(container.querySelectorAll("circle")).toHaveLength(20);
+    act(() => resize([{ contentRect: { width: 330 } }]));
+    expect(container.querySelectorAll("circle")).toHaveLength(0);
+    fireEvent.click(screen.getByRole("button", { name: "1M" }));
+    expect(container.querySelectorAll("circle").length).toBeGreaterThan(1);
+  });
+  it("persists Show and Hide overrides while keeping tooltip values accessible", () => {
+    const rows = [week("2024-09-22"), week("2026-09-20", 1900)];
+    const { container, unmount } = render(<RatingChart frequency="weekly" rows={rows} />);
+    expect(container.querySelectorAll("circle")).toHaveLength(0);
+    fireEvent.change(screen.getByLabelText("Dots"), { target: { value: "show" } });
+    expect(container.querySelectorAll("circle")).toHaveLength(2);
+    fireEvent.change(screen.getByLabelText("Dots"), { target: { value: "hide" } });
+    fireEvent.focus(screen.getByRole("img"));
+    expect(container.querySelectorAll("circle")).toHaveLength(0);
+    expect(screen.getByRole("tooltip")).toHaveTextContent("1,900");
+    unmount();
+    const next = render(<RatingChart frequency="monthly" rows={[row("2026-09")]} />);
+    expect(screen.getByLabelText("Dots")).toHaveValue("hide");
+    expect(next.container.querySelectorAll("circle")).toHaveLength(0);
+    fireEvent.change(screen.getByLabelText("Dots"), { target: { value: "auto" } });
+    expect(next.container.querySelectorAll("circle")).toHaveLength(1);
+  });
+  it("lets weekly lines be switched off and back on independently of dots", () => {
+    const { container } = render(
+      <RatingChart frequency="weekly" rows={[week("2026-09-13"), week("2026-09-20")]} />,
+    );
+    expect(container.querySelector(".ratingLine")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Toggle lines in settings" }));
+    expect(container.querySelector(".ratingLine")).not.toBeInTheDocument();
+    expect(container.querySelectorAll("circle")).toHaveLength(2);
+    expect(localStorage.getItem("profile.ratingGraph.showLines")).toBe("false");
+    fireEvent.click(screen.getByRole("button", { name: "Toggle lines in settings" }));
+    expect(container.querySelector(".ratingLine")).toBeInTheDocument();
   });
 });

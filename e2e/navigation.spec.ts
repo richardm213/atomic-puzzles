@@ -86,3 +86,49 @@ for (const width of [1280, 390]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
 }
+
+for (const width of [1280, 390]) {
+  test(`rating graph keeps its size when Rankings is preloaded at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.route("**/api/archive-data?**", (route) =>
+      route.fulfill({
+        json:
+          new URL(route.request().url()).searchParams.get("resource") === "weekly_ratings"
+            ? [
+                { week: "2026-09-06", tc: "blitz", games: 10, rating: 1800 },
+                { week: "2026-09-13", tc: "blitz", games: 10, rating: 1810 },
+              ]
+            : [],
+      }),
+    );
+    await page.goto("/@/e2e-player/ratings");
+    const graph = page.locator(".ratingGraphPlot svg");
+    await expect(graph).toBeVisible();
+    if (width < 700) {
+      await page.getByRole("button", { name: "Open navigation menu" }).click();
+    }
+    const before = await graph.boundingBox();
+    const headingBefore = await page.getByRole("heading", { name: "Rating history" }).boundingBox();
+    const rankingsStyles = page.waitForResponse((response) =>
+      /\/Rankings-[^/]+\.css$/.test(new URL(response.url()).pathname),
+    );
+    await page.getByRole("link", { name: "Rankings", exact: true }).hover();
+    await rankingsStyles;
+    // Wait for the preloaded stylesheet to be applied, not only downloaded.
+    await page.waitForFunction(() =>
+      Array.from(document.styleSheets).some((sheet) =>
+        Array.from(sheet.cssRules).some(
+          (rule) => rule instanceof CSSStyleRule && rule.selectorText === ".rankingsPanel",
+        ),
+      ),
+    );
+    expect(await graph.boundingBox()).toEqual(before);
+    expect(await page.getByRole("heading", { name: "Rating history" }).boundingBox()).toEqual(
+      headingBefore,
+    );
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
+    await expect(page).toHaveURL(/\/@\/e2e-player\/ratings$/);
+  });
+}

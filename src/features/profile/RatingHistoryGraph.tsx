@@ -57,7 +57,7 @@ const monthLabel = (index: number) =>
     timeZone: "UTC",
   });
 
-// Only recorded monthly snapshots are plotted; lines connect observations, not invented ratings.
+// Lines connect recorded observations; missing periods do not get invented ratings.
 export const ratingPeriodStart = (period: RatingPeriod, first: number, last: number) =>
   Math.max(
     first,
@@ -166,6 +166,7 @@ export const RatingChart = ({
     [first, last],
   );
   const {
+    ratingGraphDots,
     showRatingGraphLines: showLines,
     hiddenRatingGraphModes: hidden,
     setHiddenRatingGraphModes: setHidden,
@@ -218,6 +219,11 @@ export const RatingChart = ({
     right = width - 16,
     top = 20,
     bottom = width < 500 ? 220 : 240;
+  // Keep 8px markers separated by at least 16px; zoom and viewport width
+  // both affect density, so a short mobile range can differ from desktop.
+  const showDots =
+    ratingGraphDots === "show" ||
+    (ratingGraphDots === "auto" && (!weekly || (right - left) / Math.max(1, to - from) >= 24));
   const x = (month: number) =>
     from === to ? (left + right) / 2 : left + ((month - from) / (to - from)) * (right - left);
   const y = (rating: number) => bottom - ((rating - low) / (high - low)) * (bottom - top);
@@ -370,20 +376,22 @@ export const RatingChart = ({
               const points = visible.filter((row) => row.mode === mode);
               return (
                 <g key={mode} className={`ratingSeries ${mode}`}>
-                  {weekly || showLines ? (
+                  {showLines ? (
                     <path
                       className="ratingLine"
                       d={points
                         .map(
                           (row, i) =>
-                            `${i && (!weekly || dateIndex(row.monthDate) - dateIndex(points[i - 1]!.monthDate) === 1) ? "L" : "M"}${x(dateIndex(row.monthDate))},${y(row.rating as number)}`,
+                            `${i ? "L" : "M"}${x(dateIndex(row.monthDate))},${y(row.rating as number)}`,
                         )
                         .join(" ")}
                     />
                   ) : null}
                   {points
                     .filter(
-                      (row) => !weekly || (tooltipVisible && dateIndex(row.monthDate) === selected),
+                      (row) =>
+                        ratingGraphDots !== "hide" &&
+                        (showDots || (tooltipVisible && dateIndex(row.monthDate) === selected)),
                     )
                     .map((row) => (
                       <circle

@@ -165,6 +165,8 @@ export type AppSettingsContextValue = {
   setShowChessComRankings: Dispatch<SetStateAction<boolean>>;
   hiddenRatingGraphModes: string[];
   setHiddenRatingGraphModes: Dispatch<SetStateAction<string[]>>;
+  ratingGraphDots: "auto" | "show" | "hide";
+  setRatingGraphDots: Dispatch<SetStateAction<"auto" | "show" | "hide">>;
   ratingGraphFrequency: "weekly" | "monthly";
   setRatingGraphFrequency: Dispatch<SetStateAction<"weekly" | "monthly">>;
   showRatingGraphLines: boolean;
@@ -267,6 +269,12 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     false,
   );
 
+  const [ratingGraphDots, setRatingGraphDots] = usePersistedState<"auto" | "show" | "hide">(
+    "profile.ratingGraph.dots",
+    z.enum(["auto", "show", "hide"]),
+    "auto",
+  );
+
   const [ratingGraphFrequency, setRatingGraphFrequency] = usePersistedState<"weekly" | "monthly">(
     "profile.ratingGraph.frequency",
     z.enum(["weekly", "monthly"]),
@@ -337,6 +345,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setShowChessComRankings,
       hiddenRatingGraphModes,
       setHiddenRatingGraphModes,
+      ratingGraphDots,
+      setRatingGraphDots,
       ratingGraphFrequency,
       setRatingGraphFrequency,
       showRatingGraphLines,
@@ -368,6 +378,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setShowChessComRankings,
       hiddenRatingGraphModes,
       setHiddenRatingGraphModes,
+      ratingGraphDots,
+      setRatingGraphDots,
       ratingGraphFrequency,
       setRatingGraphFrequency,
       showRatingGraphLines,
