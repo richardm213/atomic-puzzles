@@ -18,6 +18,8 @@ const arena: Arena = {
   starts_at: "2026-09-05T19:00:00+00:00",
   url: "https://lichess.org/tournament/JKxPyDUa",
   winner: "k1ll-shot",
+  second_place: "runner-up",
+  third_place: null,
   score: 195,
   players: 364,
 };
@@ -38,7 +40,9 @@ describe("arena archive", () => {
     range
       .mockResolvedValueOnce({ data: Array(500).fill(arena), error: null })
       .mockResolvedValueOnce({ data: [arena], error: null });
-    expect(await getArenas()).toHaveLength(501);
+    const rows = await getArenas();
+    expect(rows).toHaveLength(501);
+    expect(rows[0]).toMatchObject({ second_place: "runner-up", third_place: null });
     expect(range).toHaveBeenCalledWith(0, 499);
     expect(range).toHaveBeenCalledWith(500, 999);
     expect(from).toHaveBeenCalledWith("lichess_atomic_arenas");

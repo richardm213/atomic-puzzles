@@ -1053,12 +1053,85 @@
 }
 
 .homeArenaShortcut {
-  --home-card-accent: var(--color-primary-soft);
-  background: var(--color-panel);
+  --home-card-accent: var(--color-accent-warm);
+
+  padding-right: 164px;
+  background:
+    radial-gradient(
+      ellipse at 88% 40%,
+      color-mix(in srgb, var(--color-accent-warm) 24%, transparent),
+      transparent 54%
+    ),
+    linear-gradient(
+      125deg,
+      color-mix(in srgb, var(--color-primary) 24%, transparent),
+      transparent 70%
+    ),
+    var(--color-panel);
+}
+
+.homeArenaArtwork {
+  position: absolute;
+  right: 28px;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  width: 112px;
+  height: 128px;
+  border: 1px solid color-mix(in srgb, var(--color-accent-warm) 48%, var(--color-border));
+  border-radius: var(--radius-lg);
+  background: linear-gradient(
+    150deg,
+    color-mix(in srgb, var(--color-accent-warm) 20%, var(--color-panel-strong)),
+    var(--color-panel-strong)
+  );
+  color: var(--color-accent-warm);
+  box-shadow:
+    0 16px 28px color-mix(in srgb, var(--color-panel-deep) 40%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--color-accent-warm) 28%, transparent);
+  transform: translateY(-50%) rotate(7deg);
+  transition:
+    transform 240ms ease,
+    box-shadow 240ms ease;
+  pointer-events: none;
+}
+
+.homeArenaArtwork svg {
+  width: 64px;
+  height: 64px;
+}
+
+.homeArenaShortcut:hover .homeArenaArtwork {
+  transform: translateY(calc(-50% - 4px)) rotate(2deg);
+  box-shadow: 0 20px 32px color-mix(in srgb, var(--color-panel-deep) 48%, transparent);
+}
+
+.homeArenaShortcut:active {
+  transform: translateY(-1px);
 }
 
 .homeArenaShortcut > strong {
-  margin-top: auto;
-  color: var(--color-primary-soft);
-  font-size: 16px;
+  width: fit-content;
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--color-accent-warm) 42%, transparent);
+  border-radius: var(--radius-ui);
+  background: color-mix(in srgb, var(--color-accent-warm) 13%, transparent);
+  color: var(--color-heading);
+  font-size: 14px;
+}
+
+@media (max-width: 720px) {
+  .homeArenaShortcut {
+    padding-right: 124px;
+  }
+  .homeArenaArtwork {
+    right: 18px;
+    width: 84px;
+    height: 104px;
+  }
+  .homeArenaArtwork svg {
+    width: 48px;
+    height: 48px;
+  }
 }

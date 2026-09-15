@@ -1,5 +1,7 @@
 import "./Home.css";
 
+import { faTrophy } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 
 import { Seo } from "../../components/Seo/Seo";
@@ -43,6 +45,9 @@ export const HomePage = () => {
         <div className="homeSpotlightGrid">
           <Link className="homeSpotlightCard homeArenaShortcut" to="/arenas">
             <h2>Arena archive</h2>
+            <div className="homeArenaArtwork" aria-hidden="true">
+              <FontAwesomeIcon icon={faTrophy} />
+            </div>
             <p>
               Monthly, Shield, and Yearly Atomic arenas. Browse the winners and revisit each event
               on Lichess.

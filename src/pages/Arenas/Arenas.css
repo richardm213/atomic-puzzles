@@ -14,14 +14,15 @@
   justify-content: space-between;
   gap: var(--space-4);
 }
-
+.arenasHeader {
+  padding-block: var(--space-4);
+}
 .arenasHeader h1 {
   margin: 0;
   color: var(--color-heading);
   font-size: clamp(2rem, 4vw, 3rem);
   letter-spacing: -0.04em;
 }
-
 .arenaViewControl,
 .arenaSearch {
   display: flex;
@@ -30,12 +31,11 @@
   color: var(--color-muted);
   font-size: 14px;
 }
-
 .arenasPage :is(button, input, select) {
   min-height: 44px;
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--color-input-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-ui);
   background: var(--color-panel-strong);
   color: var(--color-text);
   font: inherit;
@@ -43,7 +43,6 @@
     background 0.2s ease,
     border-color 0.2s ease;
 }
-
 .arenasPage :is(button, select) {
   cursor: pointer;
 }
@@ -62,9 +61,23 @@
   border-color: var(--color-primary);
   color: var(--color-on-primary);
 }
+.arenasPage button[data-frequency="shield"][aria-pressed="true"] {
+  background: var(--color-warning-soft-bg);
+  border-color: var(--color-gold);
+  color: var(--color-gold);
+}
+.arenasPage button[data-frequency="yearly"][aria-pressed="true"] {
+  background: var(--color-danger-soft-bg);
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
 .arenaFilters {
   display: flex;
   gap: var(--space-2);
+}
+.arenaToolbar {
+  padding-bottom: var(--space-6);
+  border-bottom: 1px solid var(--color-border);
 }
 .arenaSearch input {
   width: 240px;
@@ -74,23 +87,19 @@
   font-size: 14px;
 }
 .arenaList {
-  overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-ui);
-  background: var(--color-panel);
+  display: grid;
+  gap: var(--space-3);
 }
-
 .arenaColumns,
 .arenaEntry {
   display: grid;
-  grid-template-columns: 116px minmax(0, 1.5fr) minmax(0, 1fr) 64px 64px 20px;
+  grid-template-columns: minmax(184px, 1fr) 116px minmax(0, 1.2fr) 64px 64px 20px;
   align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-4);
+  gap: var(--space-6);
+  padding: var(--space-4) var(--space-6);
 }
-
 .arenaColumns {
-  background: var(--color-table-head);
+  padding-block: 0 var(--space-2);
   font-size: 14px;
   color: var(--color-muted);
 }
@@ -99,55 +108,139 @@
   text-align: right;
 }
 .arenaEntry {
+  --arena-accent: var(--color-heading);
   color: var(--color-text);
   text-decoration: none;
   font-size: 16px;
-  transition: background 0.2s ease;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
-.arenaEntry + .arenaEntry {
-  border-top: 1px solid var(--color-border);
+.arenaEntry-shield {
+  --arena-accent: var(--color-gold);
+  --arena-light: var(--color-accent-warm-strong);
+}
+.arenaEntry-yearly {
+  --arena-accent: var(--color-danger);
+  --arena-light: var(--color-rating-blitz);
 }
 .arenaEntry:hover {
-  background: var(--color-table-hover);
+  border-color: color-mix(in srgb, var(--arena-accent) 55%, var(--color-border));
+  background: var(--color-panel-strong);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--arena-accent) 8%, transparent);
 }
 .arenaEntry:active {
-  background: var(--color-surface-inset-strong);
+  background: var(--color-panel-strong);
 }
 .arenaEntry:focus-visible {
-  outline-offset: -3px;
+  outline-offset: 2px;
 }
 .arenaEntry time {
   color: var(--color-muted);
   font-size: 14px;
 }
 .arenaIdentity {
-  display: grid;
-  gap: var(--space-1);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
 }
 .arenaIdentity strong {
-  color: var(--color-heading);
-  font-weight: 650;
+  color: var(--arena-accent);
+  font-weight: 700;
+  font-size: 21px;
+  letter-spacing: -0.025em;
+}
+.arenaEmblem {
+  display: grid;
+  place-items: center;
+  flex: 0 0 64px;
+  width: 64px;
+  height: 64px;
+  color: var(--arena-accent);
+}
+.arenaEmblem img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+}
+.arenaEmblem svg {
+  width: 28px;
+  height: 28px;
+}
+.arenaEntry:is(.arenaEntry-shield, .arenaEntry-yearly) {
+  border-color: color-mix(in srgb, var(--arena-light) 65%, var(--color-border));
+  box-shadow:
+    inset 0 0 16px color-mix(in srgb, var(--arena-light) 9%, transparent),
+    0 0 4px color-mix(in srgb, var(--arena-light) 24%, transparent),
+    0 0 20px color-mix(in srgb, var(--arena-light) 12%, transparent);
+}
+.arenaEntry:is(.arenaEntry-shield, .arenaEntry-yearly):hover {
+  border-color: var(--arena-accent);
+  box-shadow:
+    inset 0 0 20px color-mix(in srgb, var(--arena-light) 14%, transparent),
+    0 0 6px color-mix(in srgb, var(--arena-light) 40%, transparent),
+    0 0 28px color-mix(in srgb, var(--arena-light) 20%, transparent);
+}
+.arenaEntry:is(.arenaEntry-shield, .arenaEntry-yearly) .arenaIdentity strong {
+  text-shadow:
+    0 0 8px color-mix(in srgb, var(--arena-light) 55%, transparent),
+    0 0 24px color-mix(in srgb, var(--arena-light) 28%, transparent);
+}
+.arenaEntry:is(.arenaEntry-shield, .arenaEntry-yearly) .arenaEmblem {
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--arena-light) 45%, transparent));
+}
+:root[data-theme="light"]
+  .arenaEntry:is(.arenaEntry-shield, .arenaEntry-yearly)
+  .arenaIdentity
+  strong {
+  text-shadow: 0 0 12px color-mix(in srgb, var(--arena-light) 18%, transparent);
 }
 .arenaIdentity,
 .arenaWinner {
   min-width: 0;
   overflow-wrap: anywhere;
 }
-.arenaWinner strong {
-  font-weight: 500;
+.arenaWinner {
+  display: grid;
+  gap: var(--space-2);
 }
-.arenaFrequency {
-  text-transform: capitalize;
-  font-size: 14px;
+.arenaPlacing {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--space-2);
+}
+.arenaPlaceLabel {
   color: var(--color-muted);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.arenaWinner strong {
+  font-weight: 400;
+  color: var(--color-muted);
+}
+.arenaPlacing:first-child strong {
+  font-weight: 650;
+  color: var(--color-heading);
+}
+.arenaPlacing:first-child .arenaPlaceLabel {
+  color: var(--arena-accent);
 }
 .arenaNumber {
   text-align: right;
   font-variant-numeric: tabular-nums;
+  font-size: 18px;
 }
 .arenaExternal {
-  color: var(--color-primary-soft);
+  color: var(--color-muted);
   font-size: 20px;
+}
+.arenaEntry:hover .arenaExternal {
+  color: var(--arena-accent);
 }
 .arenaMobileLabel {
   display: none;
@@ -162,53 +255,41 @@
 }
 .arenaYear {
   display: grid;
-  grid-template-columns: 88px minmax(0, 1fr);
   gap: var(--space-4);
+}
+.arenaYear + .arenaYear {
+  margin-top: var(--space-6);
 }
 .arenaYear h2 {
-  margin: var(--space-4) 0;
+  margin: 0;
   color: var(--color-heading);
   font-size: 28px;
-}
-.arenasView-years .arenaColumns,
-.arenasView-years .arenaEntry {
-  grid-template-columns: 108px minmax(0, 1.4fr) minmax(0, 1fr) 52px 52px 16px;
-  gap: var(--space-3);
+  letter-spacing: -0.04em;
 }
 .arenasView-cards .arenaList {
-  display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-4);
-  border: 0;
-  border-radius: 0;
-  background: transparent;
 }
 .arenasView-cards .arenaEntry {
   position: relative;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-4);
   padding: var(--space-6);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-ui);
-  background: var(--color-panel);
 }
-.arenasView-cards .arenaEntry:hover {
-  background: var(--color-table-hover);
-}
-.arenasView-cards .arenaEntry time {
-  grid-column: 1 / -1;
-}
-.arenasView-cards .arenaIdentity {
-  grid-column: 1 / -1;
-  min-height: 68px;
-  align-content: start;
-}
-.arenasView-cards .arenaIdentity strong {
-  font-size: 21px;
-  line-height: 1.3;
-}
+.arenasView-cards .arenaIdentity,
+.arenasView-cards .arenaEntry time,
 .arenasView-cards .arenaWinner {
   grid-column: 1 / -1;
+}
+.arenasView-cards .arenaEntry time {
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+.arenasView-cards .arenaIdentity {
+  padding-right: var(--space-4);
+}
+.arenasView-cards .arenaIdentity strong {
+  font-size: 28px;
 }
 .arenasView-cards .arenaMobileLabel {
   display: block;
@@ -218,27 +299,35 @@
 }
 .arenasView-cards .arenaNumber {
   text-align: left;
+  margin-top: var(--space-2);
 }
 .arenasView-cards .arenaExternal {
   position: absolute;
-  top: var(--space-5);
+  top: var(--space-6);
   right: var(--space-5);
 }
-
 @media (max-width: 1000px) {
+  .arenaColumns,
+  .arenaEntry {
+    gap: var(--space-3);
+    padding-inline: var(--space-4);
+    grid-template-columns: minmax(160px, 1fr) 108px minmax(0, 1.2fr) 56px 56px 16px;
+  }
+  .arenaIdentity {
+    gap: var(--space-2);
+  }
   .arenasView-cards .arenaList {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .arenaYear {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
-
 @media (max-width: 760px) {
   .arenasHeader,
   .arenaToolbar {
     align-items: stretch;
     flex-direction: column;
+  }
+  .arenasHeader {
+    padding-block: 0;
   }
   .arenaViewControl {
     align-self: flex-start;
@@ -265,19 +354,29 @@
   .arenaColumns {
     display: none;
   }
-  .arenaEntry,
-  .arenasView-years .arenaEntry {
+  .arenaEntry {
     position: relative;
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-4);
     padding: var(--space-4);
   }
-  .arenaEntry time {
-    grid-column: 1 / -1;
-  }
+  .arenaEntry time,
+  .arenaWinner,
   .arenaIdentity {
     grid-column: 1 / -1;
+  }
+  .arenaEntry time {
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+  }
+  .arenaNumber {
+    text-align: left;
+  }
+  .arenaIdentity {
     padding-right: var(--space-6);
+  }
+  .arenaIdentity strong {
+    font-size: 26px;
   }
   .arenaMobileLabel {
     display: block;
@@ -287,13 +386,10 @@
   }
   .arenaExternal {
     position: absolute;
-    top: var(--space-4);
+    top: var(--space-6);
     right: var(--space-4);
   }
   .arenasView-cards .arenaList {
     grid-template-columns: minmax(0, 1fr);
-  }
-  .arenasView-cards .arenaIdentity {
-    min-height: 0;
   }
 }

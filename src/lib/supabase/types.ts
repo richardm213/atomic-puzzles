@@ -97,6 +97,8 @@ export type AtomicArenaRow = {
   starts_at: string;
   url: string;
   winner: string;
+  second_place: string | null;
+  third_place: string | null;
   score: number;
   winner_rating: number | null;
   winner_performance: number | null;

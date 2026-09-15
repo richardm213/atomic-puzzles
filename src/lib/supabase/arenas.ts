@@ -5,7 +5,16 @@ import type { AtomicArenaRow } from "./types";
 
 export type Arena = Pick<
   AtomicArenaRow,
-  "arena_id" | "name" | "frequency" | "starts_at" | "url" | "winner" | "score" | "players"
+  | "arena_id"
+  | "name"
+  | "frequency"
+  | "starts_at"
+  | "url"
+  | "winner"
+  | "second_place"
+  | "third_place"
+  | "score"
+  | "players"
 >;
 
 export const getArenas = async (): Promise<Arena[]> => {
@@ -15,7 +24,7 @@ export const getArenas = async (): Promise<Arena[]> => {
   for (let offset = 0; ; offset += pageSize) {
     const { data, error } = await getSupabaseClient()
       .from("lichess_atomic_arenas")
-      .select("arena_id,name,frequency,starts_at,url,winner,score,players")
+      .select("arena_id,name,frequency,starts_at,url,winner,second_place,third_place,score,players")
       .order("starts_at", { ascending: false })
       .order("arena_id", { ascending: true })
       .range(offset, offset + pageSize - 1);
