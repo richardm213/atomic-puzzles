@@ -1,0 +1,299 @@
+.arenasPage {
+  --site-page-max-width: 1160px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  color: var(--color-text);
+}
+
+.arenasHeader,
+.arenaToolbar,
+.arenaResultsMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.arenasHeader h1 {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: clamp(2rem, 4vw, 3rem);
+  letter-spacing: -0.04em;
+}
+
+.arenaViewControl,
+.arenaSearch {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-muted);
+  font-size: 14px;
+}
+
+.arenasPage :is(button, input, select) {
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-panel-strong);
+  color: var(--color-text);
+  font: inherit;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.arenasPage :is(button, select) {
+  cursor: pointer;
+}
+.arenasPage :is(button, select):hover {
+  background: var(--color-surface-inset-strong);
+}
+.arenasPage button:active {
+  background: var(--color-table-hover);
+}
+.arenasPage button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+.arenasPage button[aria-pressed="true"] {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-on-primary);
+}
+.arenaFilters {
+  display: flex;
+  gap: var(--space-2);
+}
+.arenaSearch input {
+  width: 240px;
+}
+.arenaResultsMeta {
+  color: var(--color-muted);
+  font-size: 14px;
+}
+.arenaList {
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel);
+}
+
+.arenaColumns,
+.arenaEntry {
+  display: grid;
+  grid-template-columns: 116px minmax(0, 1.5fr) minmax(0, 1fr) 64px 64px 20px;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+
+.arenaColumns {
+  background: var(--color-table-head);
+  font-size: 14px;
+  color: var(--color-muted);
+}
+.arenaColumns > :nth-child(4),
+.arenaColumns > :nth-child(5) {
+  text-align: right;
+}
+.arenaEntry {
+  color: var(--color-text);
+  text-decoration: none;
+  font-size: 16px;
+  transition: background 0.2s ease;
+}
+.arenaEntry + .arenaEntry {
+  border-top: 1px solid var(--color-border);
+}
+.arenaEntry:hover {
+  background: var(--color-table-hover);
+}
+.arenaEntry:active {
+  background: var(--color-surface-inset-strong);
+}
+.arenaEntry:focus-visible {
+  outline-offset: -3px;
+}
+.arenaEntry time {
+  color: var(--color-muted);
+  font-size: 14px;
+}
+.arenaIdentity {
+  display: grid;
+  gap: var(--space-1);
+}
+.arenaIdentity strong {
+  color: var(--color-heading);
+  font-weight: 650;
+}
+.arenaIdentity,
+.arenaWinner {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.arenaWinner strong {
+  font-weight: 500;
+}
+.arenaFrequency {
+  text-transform: capitalize;
+  font-size: 14px;
+  color: var(--color-muted);
+}
+.arenaNumber {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.arenaExternal {
+  color: var(--color-primary-soft);
+  font-size: 20px;
+}
+.arenaMobileLabel {
+  display: none;
+}
+.arenaMessage {
+  padding: var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+}
+.arenaMessage p {
+  margin: 0 0 var(--space-4);
+}
+.arenaYear {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: var(--space-4);
+}
+.arenaYear h2 {
+  margin: var(--space-4) 0;
+  color: var(--color-heading);
+  font-size: 28px;
+}
+.arenasView-years .arenaColumns,
+.arenasView-years .arenaEntry {
+  grid-template-columns: 108px minmax(0, 1.4fr) minmax(0, 1fr) 52px 52px 16px;
+  gap: var(--space-3);
+}
+.arenasView-cards .arenaList {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.arenasView-cards .arenaEntry {
+  position: relative;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel);
+}
+.arenasView-cards .arenaEntry:hover {
+  background: var(--color-table-hover);
+}
+.arenasView-cards .arenaEntry time {
+  grid-column: 1 / -1;
+}
+.arenasView-cards .arenaIdentity {
+  grid-column: 1 / -1;
+  min-height: 68px;
+  align-content: start;
+}
+.arenasView-cards .arenaIdentity strong {
+  font-size: 21px;
+  line-height: 1.3;
+}
+.arenasView-cards .arenaWinner {
+  grid-column: 1 / -1;
+}
+.arenasView-cards .arenaMobileLabel {
+  display: block;
+  margin-bottom: var(--space-1);
+  color: var(--color-muted);
+  font-size: 14px;
+}
+.arenasView-cards .arenaNumber {
+  text-align: left;
+}
+.arenasView-cards .arenaExternal {
+  position: absolute;
+  top: var(--space-5);
+  right: var(--space-5);
+}
+
+@media (max-width: 1000px) {
+  .arenasView-cards .arenaList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .arenaYear {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .arenasHeader,
+  .arenaToolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .arenaViewControl {
+    align-self: flex-start;
+  }
+  .arenaSearch {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .arenaSearch input {
+    width: 100%;
+  }
+  .arenaFilters {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .arenaFilters button {
+    padding-inline: var(--space-2);
+  }
+  .arenaResultsMeta {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+  .arenaColumns {
+    display: none;
+  }
+  .arenaEntry,
+  .arenasView-years .arenaEntry {
+    position: relative;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: var(--space-4);
+    padding: var(--space-4);
+  }
+  .arenaEntry time {
+    grid-column: 1 / -1;
+  }
+  .arenaIdentity {
+    grid-column: 1 / -1;
+    padding-right: var(--space-6);
+  }
+  .arenaMobileLabel {
+    display: block;
+    margin-bottom: var(--space-1);
+    font-size: 14px;
+    color: var(--color-muted);
+  }
+  .arenaExternal {
+    position: absolute;
+    top: var(--space-4);
+    right: var(--space-4);
+  }
+  .arenasView-cards .arenaList {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .arenasView-cards .arenaIdentity {
+    min-height: 0;
+  }
+}

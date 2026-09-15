@@ -41,12 +41,14 @@ export const HomePage = () => {
 
       <section className="homeSpotlightSection" aria-label="Atomic chess shortcuts">
         <div className="homeSpotlightGrid">
-          <Link className="homeSpotlightCard homeSubmitPuzzleShortcut" to="/puzzles/submit">
-            <span>Build the library</span>
-            <h2>Submit a puzzle</h2>
-            <p>Found a brilliant atomic position? Share it with the community.</p>
+          <Link className="homeSpotlightCard homeArenaShortcut" to="/arenas">
+            <h2>Arena archive</h2>
+            <p>
+              Monthly, Shield, and Yearly Atomic arenas. Browse the winners and revisit each event
+              on Lichess.
+            </p>
             <strong>
-              Send a puzzle <span aria-hidden="true">→</span>
+              Browse arenas <span aria-hidden="true">→</span>
             </strong>
           </Link>
 

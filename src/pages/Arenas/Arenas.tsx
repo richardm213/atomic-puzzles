@@ -1,0 +1,197 @@
+import "./Arenas.css";
+
+import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+
+import { Seo } from "../../components/Seo/Seo";
+import { type Arena, arenaHref, arenasQueryOptions, filterArenas } from "../../lib/supabase/arenas";
+
+const frequencies = ["all", "monthly", "shield", "yearly"] as const;
+const views = ["results", "cards", "years"] as const;
+type View = (typeof views)[number];
+const dateFormat = new Intl.DateTimeFormat("en", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  timeZone: "UTC",
+});
+const readPreferences = () => {
+  try {
+    return JSON.parse(localStorage.getItem("arena-archive-preferences") || "{}");
+  } catch {
+    return {};
+  }
+};
+
+const ArenaEntry = ({ arena }: { arena: Arena }) => {
+  return (
+    <a
+      className="arenaEntry"
+      href={arenaHref(arena)}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={`${arena.name}, ${dateFormat.format(new Date(arena.starts_at))}, winner ${arena.winner}, ${arena.score} points, ${arena.players} players. Open on Lichess in a new tab`}
+    >
+      <time dateTime={arena.starts_at}>{dateFormat.format(new Date(arena.starts_at))}</time>
+      <div className="arenaIdentity">
+        <strong>{arena.name}</strong>
+        <span className="arenaFrequency">{arena.frequency}</span>
+      </div>
+      <div className="arenaWinner">
+        <span className="arenaMobileLabel">Winner</span>
+        <strong>{arena.winner || "—"}</strong>
+      </div>
+      <div className="arenaNumber">
+        <span className="arenaMobileLabel">Points</span>
+        {arena.score.toLocaleString()}
+      </div>
+      <div className="arenaNumber">
+        <span className="arenaMobileLabel">Players</span>
+        {arena.players.toLocaleString()}
+      </div>
+      <span className="arenaExternal" aria-hidden="true">
+        ↗
+      </span>
+    </a>
+  );
+};
+
+export const ArenasPage = () => {
+  const [preferences] = useState(readPreferences);
+  const [view, setView] = useState<View>(
+    views.includes(preferences?.view) ? preferences.view : "results",
+  );
+  const [frequency, setFrequency] = useState<string>(
+    frequencies.includes(preferences?.frequency) ? preferences.frequency : "all",
+  );
+  const [search, setSearch] = useState(
+    typeof preferences?.search === "string" ? preferences.search : "",
+  );
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "arena-archive-preferences",
+        JSON.stringify({ view, frequency, search }),
+      );
+    } catch {
+      /* Storage may be disabled. */
+    }
+  }, [view, frequency, search]);
+  const query = useQuery(arenasQueryOptions());
+  const arenas = filterArenas(query.data ?? [], frequency, search);
+  const years = [...new Set(arenas.map((arena) => arena.starts_at.slice(0, 4)))];
+  const list = (entries: Arena[]) => (
+    <div className="arenaList">
+      {view !== "cards" && (
+        <div className="arenaColumns" aria-hidden="true">
+          <span>Date (UTC)</span>
+          <span>Tournament</span>
+          <span>Winner</span>
+          <span>Points</span>
+          <span>Players</span>
+          <span></span>
+        </div>
+      )}
+      {entries.map((arena) => (
+        <ArenaEntry key={arena.arena_id} arena={arena} />
+      ))}
+    </div>
+  );
+  return (
+    <div className={`sitePage arenasPage arenasView-${view}`}>
+      <Seo
+        title="Arena archive"
+        description="Results from official Monthly, Shield, and Yearly Lichess Atomic arenas."
+        path="/arenas"
+      />
+      <header className="arenasHeader">
+        <h1>Arena archive</h1>
+        <label className="arenaViewControl">
+          View
+          <select
+            aria-label="View"
+            value={view}
+            onChange={(event) => setView(event.target.value as View)}
+          >
+            {views.map((option) => (
+              <option key={option} value={option}>
+                {option === "results" ? "Results" : option === "cards" ? "Event cards" : "By year"}
+              </option>
+            ))}
+          </select>
+        </label>
+      </header>
+      <div className="arenaToolbar">
+        <div className="arenaFilters" role="group" aria-label="Arena frequency">
+          {frequencies.map((option) => (
+            <button
+              key={option}
+              type="button"
+              aria-pressed={frequency === option}
+              onClick={() => setFrequency(option)}
+            >
+              {option === "all" ? "All" : option.charAt(0).toUpperCase() + option.slice(1)}
+            </button>
+          ))}
+        </div>
+        <label className="arenaSearch">
+          Search
+          <input
+            type="search"
+            placeholder="Tournament or winner"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        </label>
+      </div>
+      {query.isPending ? (
+        <p role="status">Loading arenas…</p>
+      ) : query.isError ? (
+        <div role="alert" className="arenaMessage">
+          <p>Unable to load the arena archive.</p>
+          <button type="button" disabled={query.isFetching} onClick={() => void query.refetch()}>
+            {query.isFetching ? "Retrying…" : "Try again"}
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="arenaResultsMeta">
+            <span role="status">
+              {arenas.length} {arenas.length === 1 ? "arena" : "arenas"}
+            </span>
+            <span>Newest first · Links open in a new tab</span>
+          </div>
+          {arenas.length === 0 ? (
+            <div className="arenaMessage">
+              <p>
+                {query.data?.length
+                  ? "No arenas match your filters."
+                  : "No arenas have been added yet."}
+              </p>
+              {(search || frequency !== "all") && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch("");
+                    setFrequency("all");
+                  }}
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+          ) : view === "years" ? (
+            years.map((year) => (
+              <section className="arenaYear" key={year} aria-labelledby={`year-${year}`}>
+                <h2 id={`year-${year}`}>{year}</h2>
+                {list(arenas.filter((arena) => arena.starts_at.startsWith(year)))}
+              </section>
+            ))
+          ) : (
+            list(arenas)
+          )}
+        </>
+      )}
+    </div>
+  );
+};

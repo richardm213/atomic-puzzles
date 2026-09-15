@@ -89,9 +89,26 @@ type TableDef<Row, Insert = Partial<Row>, Update = Partial<Row>> = {
   Relationships: [];
 };
 
+export type AtomicArenaRow = {
+  arena_id: string;
+  name: string;
+  frequency: "monthly" | "shield" | "yearly";
+  category: string;
+  starts_at: string;
+  url: string;
+  winner: string;
+  score: number;
+  winner_rating: number | null;
+  winner_performance: number | null;
+  time_control: string;
+  minutes: number;
+  players: number;
+};
+
 export type Database = {
   public: {
     Tables: {
+      lichess_atomic_arenas: TableDef<AtomicArenaRow, never, never>;
       puzzle_progress: TableDef<
         PuzzleProgressWithUsernameRow,
         PuzzleProgressWithUsernameRow,

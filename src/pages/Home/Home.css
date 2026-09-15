@@ -1051,3 +1051,14 @@
     width: 100%;
   }
 }
+
+.homeArenaShortcut {
+  --home-card-accent: var(--color-primary-soft);
+  background: var(--color-panel);
+}
+
+.homeArenaShortcut > strong {
+  margin-top: auto;
+  color: var(--color-primary-soft);
+  font-size: 16px;
+}
