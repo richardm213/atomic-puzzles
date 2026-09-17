@@ -298,6 +298,25 @@ const queryUsernames = async (params: URLSearchParams) => {
 export const queryArchiveResource = async (params: URLSearchParams): Promise<unknown> => {
   const resource = params.get("resource");
   if (resource === "matches") return queryMatches(params);
+  if (resource === "player_game_counts") {
+    const username = String(params.get("username") ?? "")
+      .trim()
+      .toLowerCase();
+    if (!username) throw new ArchiveRequestError("Username is required");
+    const result = await getArchiveClient().execute({
+      sql: `select ${modeNameSql("m.mode")} mode,
+        sum(case when trim(coalesce(m.games, ''), '|') = '' then 0
+          else length(trim(m.games, '|')) - length(replace(trim(m.games, '|'), '|', '')) + 1 end) games
+        from matches m
+        where (m.player_1_id = (select id from players where username = ?)
+          or m.player_2_id = (select id from players where username = ?))
+          and m.mode in (0, 1, 2)
+        group by m.mode`,
+      args: [username, username],
+    });
+    return normalizedRows(result.rows);
+  }
+
   if (resource === "latest_match") {
     const result = await getArchiveClient().execute(
       "select max(start_ts) as start_ts from matches",

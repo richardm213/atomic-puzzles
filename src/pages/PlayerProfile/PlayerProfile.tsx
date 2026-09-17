@@ -76,6 +76,7 @@ import {
   useRatingsSnapshotByMode,
 } from "../../hooks/usePlayerProfileData";
 import { type AliasAccount, type AliasIdentityRow } from "../../lib/archive/aliases";
+import { fetchArchiveJson } from "../../lib/archive/client";
 import { getTimeControlOptions } from "../../lib/matches/collection";
 import {
   readStoredSourceFilters,
@@ -169,6 +170,16 @@ export const PlayerProfilePage = ({
   const isHistoryAvailable = historyAvailabilityQuery.data ?? false;
   const profileDisplayUsername = String(username || "").trim() || canonicalUsername;
   const isBanned = Boolean(profileAliasEntry?.banned);
+  const bannedGameCounts = useQuery({
+    queryKey: ["profile", canonicalUsername, "archived-game-counts"],
+    queryFn: () =>
+      fetchArchiveJson<Array<{ mode: string; games: number }>>(
+        new URLSearchParams({ resource: "player_game_counts", username: canonicalUsername }),
+      ),
+    enabled: aliasesLoaded && isBanned && Boolean(canonicalUsername),
+    staleTime: 5 * 60 * 1_000,
+  });
+
   useEffect(() => {
     if (isBanned && (profileHistoryTab === "ranks" || profileHistoryTab === "opponents")) {
       setProfileHistoryTab("matches");
@@ -487,6 +498,10 @@ export const PlayerProfilePage = ({
       ),
     ];
   }, [aliasesLoaded, profileAliasEntry]);
+  const [aliasesExpanded, setAliasesExpanded] = useState(false);
+  useEffect(() => {
+    setAliasesExpanded(false);
+  }, [canonicalUsername]);
   const aliasDisplayRows = useMemo(() => {
     const canonicalAlias = normalizeUsername(canonicalUsername);
     const isCanonicalAlias = (account: Pick<AliasAccount, "alias" | "displayAlias">): boolean =>
@@ -680,6 +695,23 @@ export const PlayerProfilePage = ({
           </div>
         ) : null}
 
+        {isBanned ? (
+          <dl className="profileBannedGameCounts" aria-label="Games played">
+            {(["blitz", "bullet", "hyperbullet"] as const).map((mode) => (
+              <div key={mode}>
+                <dt>{modeLabels[mode]} games</dt>
+                <dd>
+                  {bannedGameCounts.isPending || bannedGameCounts.isError
+                    ? "—"
+                    : (
+                        bannedGameCounts.data?.find((row) => row.mode === mode)?.games ?? 0
+                      ).toLocaleString()}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        ) : null}
+
         {!isBanned && !historyOnly ? (
           <div className="profileActionRow">
             <Link
@@ -794,54 +826,71 @@ export const PlayerProfilePage = ({
               ) : aliasDisplayRows.length === 0 ? (
                 <div className="emptyRankings">No aliases listed.</div>
               ) : (
-                <div className="profileAliasesList">
-                  {aliasDisplayRows.map(({ alias, displayAlias, source, isCounted }) => {
-                    const sourceLabel = getAliasProfileSourceLabel(source);
-                    const externalAlias = displayAlias || alias;
-                    return (
-                      <div key={`alias-${source}-${alias}`} className="profileAliasRow">
-                        <span className="profileAliasName">
-                          <span>{externalAlias}</span>
-                          {source === "lichess" && !isCounted ? (
-                            <span
-                              className="profileAliasStatus"
-                              aria-label={NON_COUNTED_ALIAS_MESSAGE}
-                              tabIndex={0}
-                            >
-                              <span aria-hidden="true">🍺</span>
-                              <span className="profileAliasTooltip" role="tooltip">
-                                {NON_COUNTED_ALIAS_MESSAGE} For more info,
-                                <Link
-                                  className="profileAliasTooltipLink"
-                                  to="/rankings/how-ratings-work"
-                                  hash="drunk-accounts"
-                                >
-                                  click here
-                                </Link>
-                                .
+                <div className="profileAliasesList" id="profile-aliases-list">
+                  {(aliasesExpanded ? aliasDisplayRows : aliasDisplayRows.slice(0, 8)).map(
+                    ({ alias, displayAlias, source, isCounted }) => {
+                      const sourceLabel = getAliasProfileSourceLabel(source);
+                      const externalAlias = displayAlias || alias;
+                      return (
+                        <div key={`alias-${source}-${alias}`} className="profileAliasRow">
+                          <span className="profileAliasName">
+                            <span>{externalAlias}</span>
+                            {source === "lichess" && !isCounted ? (
+                              <span
+                                className="profileAliasStatus"
+                                aria-label={NON_COUNTED_ALIAS_MESSAGE}
+                                tabIndex={0}
+                              >
+                                <span aria-hidden="true">🍺</span>
+                                <span className="profileAliasTooltip" role="tooltip">
+                                  {NON_COUNTED_ALIAS_MESSAGE} For more info,
+                                  <Link
+                                    className="profileAliasTooltipLink"
+                                    to="/rankings/how-ratings-work"
+                                    hash="drunk-accounts"
+                                  >
+                                    click here
+                                  </Link>
+                                  .
+                                </span>
                               </span>
-                            </span>
-                          ) : null}
-                        </span>
-                        <a
-                          className={`profileAliasAccountLink ${
-                            source === "chesscom"
-                              ? "profileAliasChessComLink"
-                              : "profileAliasLichessLink"
-                          }`}
-                          href={getAliasProfileHref(source, externalAlias)}
-                          target="_blank"
-                          rel="noreferrer"
-                          aria-label={`Open ${externalAlias} on ${sourceLabel}`}
-                          title={`Open ${externalAlias} on ${sourceLabel}`}
-                        >
-                          {source === "chesscom" ? <ChessComProfileIcon /> : <LichessProfileIcon />}
-                        </a>
-                      </div>
-                    );
-                  })}
+                            ) : null}
+                          </span>
+                          <a
+                            className={`profileAliasAccountLink ${
+                              source === "chesscom"
+                                ? "profileAliasChessComLink"
+                                : "profileAliasLichessLink"
+                            }`}
+                            href={getAliasProfileHref(source, externalAlias)}
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-label={`Open ${externalAlias} on ${sourceLabel}`}
+                            title={`Open ${externalAlias} on ${sourceLabel}`}
+                          >
+                            {source === "chesscom" ? (
+                              <ChessComProfileIcon />
+                            ) : (
+                              <LichessProfileIcon />
+                            )}
+                          </a>
+                        </div>
+                      );
+                    },
+                  )}
                 </div>
               )}
+              {aliasDisplayRows.length > 8 ? (
+                <button
+                  type="button"
+                  className="profileAliasesToggle"
+                  aria-expanded={aliasesExpanded}
+                  aria-controls="profile-aliases-list"
+                  onClick={() => setAliasesExpanded((expanded) => !expanded)}
+                >
+                  {aliasesExpanded ? "Show less" : "Show more"}
+                </button>
+              ) : null}
             </div>
           </div>
         ) : null}

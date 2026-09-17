@@ -342,6 +342,26 @@
   background: var(--color-surface-elevated-strong);
 }
 
+.profileBannedGameCounts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin: var(--space-6) 0;
+}
+
+.profileBannedGameCounts dt {
+  color: var(--color-muted);
+  font-size: 14px;
+}
+
+.profileBannedGameCounts dd {
+  margin: var(--space-1) 0 0;
+  color: var(--color-heading);
+  font-size: 24px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
 .profileBanNotice {
   display: grid;
   grid-template-columns: 20px minmax(0, 1fr);
@@ -349,9 +369,9 @@
   gap: 12px;
   margin-top: 12px;
   padding: 16px;
-  border: 1px solid var(--color-border);
+  border: 1px solid color-mix(in srgb, var(--color-danger) 45%, var(--color-panel-strong));
   border-radius: var(--radius-sm);
-  background: var(--color-panel-strong);
+  background: color-mix(in srgb, var(--color-danger) 22%, var(--color-panel-strong));
 }
 
 .profileBanIcon {
@@ -518,6 +538,32 @@
   display: grid;
   gap: 6px;
   overflow-wrap: anywhere;
+}
+
+.profileAliasesToggle {
+  display: block;
+  min-height: 44px;
+  margin-top: var(--space-2);
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-primary-soft);
+  font-size: 14px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.profileAliasesToggle:hover,
+.profileAliasesToggle:active {
+  background: var(--color-surface-elevated);
+  color: var(--color-heading);
+}
+
+.profileAliasesToggle:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 .profileAliasRow {
