@@ -81,3 +81,29 @@ describe("favorite opponent model", () => {
     expect(getFavoriteOpponentAllowedMatchLimit("bullet", Number.NaN)).toBe(500);
   });
 });
+
+it("keeps unrated results without changing rating or performance statistics", () => {
+  const rated = match("Bob");
+  const unrated = match("Bob", {
+    beforeRating: null,
+    afterRating: null,
+    beforeRd: null,
+    afterRd: null,
+    opponentBeforeRating: null,
+    opponentAfterRating: null,
+    opponentBeforeRd: null,
+    opponentAfterRd: null,
+    ratingChange: null,
+    rdChange: null,
+  });
+  const [before] = getFavoriteOpponentRows([rated]);
+  const [after] = getFavoriteOpponentRows([rated, unrated]);
+  expect(after).toMatchObject({
+    gameCount: 6,
+    matchCount: 2,
+    ratedMatchCount: 1,
+    ratingChange: before?.ratingChange,
+    performanceScore: before?.performanceScore,
+    performanceSortScore: before?.performanceSortScore,
+  });
+});

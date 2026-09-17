@@ -99,12 +99,12 @@ const getMatchPerformanceScore = ({
   playerScore,
   opponentScore,
 }: {
-  opponentRating: number;
+  opponentRating: number | null;
   playerScore: number;
   opponentScore: number;
 }): number | null => {
   const scoreTotal = playerScore + opponentScore;
-  if (!Number.isFinite(opponentRating) || scoreTotal <= 0) return null;
+  if (opponentRating === null || !Number.isFinite(opponentRating) || scoreTotal <= 0) return null;
   const scoreRate = Math.min(
     PERFORMANCE_SCORE_RATE_MAX,
     Math.max(PERFORMANCE_SCORE_RATE_MIN, playerScore / scoreTotal),
@@ -113,7 +113,9 @@ const getMatchPerformanceScore = ({
 };
 
 const shouldCountRatingChange = (match: FavoriteOpponentMatch): boolean =>
+  match.ratingChange !== null &&
   Number.isFinite(match.ratingChange) &&
+  match.beforeRd !== null &&
   Number.isFinite(match.beforeRd) &&
   match.beforeRd < MAX_COUNTED_RATING_CHANGE_RD;
 
@@ -169,7 +171,7 @@ export const getFavoriteOpponentRows = (
     row.playerScore += match.playerScore;
     row.opponentScore += match.opponentScore;
     row.gameCount += matchGameCount;
-    if (shouldCountRatingChange(match)) {
+    if (match.ratingChange !== null && shouldCountRatingChange(match)) {
       row.ratingChange += match.ratingChange;
       row.ratedMatchCount += 1;
     }

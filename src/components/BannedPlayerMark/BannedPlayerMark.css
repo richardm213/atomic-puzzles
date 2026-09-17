@@ -1,0 +1,8 @@
+.bannedPlayerMark {
+  display: inline-flex;
+  align-items: center;
+  margin-inline-start: var(--space-1);
+  color: var(--color-danger);
+  font-size: 0.8em;
+  vertical-align: baseline;
+}

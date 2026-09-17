@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -83,5 +83,55 @@ describe("profile match pagination", () => {
       ),
     );
     await screen.findByText("Page 1 / 3");
+  });
+});
+
+describe("unrated match history", () => {
+  const ratings = { before_rating: null, after_rating: null, before_rd: null, after_rd: null };
+  beforeEach(() => {
+    window.history.replaceState(null, "", "/@/alice");
+    loadRawMatchesByMode.mockResolvedValue({
+      total: 1,
+      matches: [
+        {
+          match_id: "unrated-match",
+          players: ["alice", "bob"],
+          start_ts: 1700000000000,
+          time_control: "3+0",
+          source: "arena",
+          games: [{ id: "game1234", white: "alice", black: "bob", winner: "white" }],
+          ratings: { alice: ratings, bob: ratings },
+        },
+      ],
+    });
+  });
+
+  it.each([false, true])("shows unrated matches with banned=%s", async (banned) => {
+    client.setQueryData(aliasQueryKeys.identity("alice"), {
+      username: "alice",
+      banned,
+      accounts: [],
+    });
+    renderProfile();
+    await screen.findByText("bob");
+    const table = screen.getByRole("table");
+    const rows = within(table).getAllByRole("row");
+    expect(within(rows[0]!).getAllByRole("columnheader")).toHaveLength(banned ? 5 : 7);
+    const matchRow = table.querySelector("tbody tr")!;
+    const cells = matchRow.querySelectorAll("td");
+    expect(cells).toHaveLength(banned ? 5 : 7);
+    if (!banned) {
+      expect(cells[4]).toHaveTextContent("");
+      expect(cells[5]).toHaveTextContent("");
+      expect(cells[4]?.textContent).toBe("");
+      expect(cells[5]?.textContent).toBe("");
+    }
+    fireEvent.click(matchRow);
+    expect(await screen.findAllByText("Unrated")).toHaveLength(2);
+    expect(screen.getByRole("link", { name: "game1234" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("game1234"),
+    );
+    expect(screen.queryByText(/NaN|Rating 0/)).not.toBeInTheDocument();
   });
 });

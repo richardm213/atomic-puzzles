@@ -109,3 +109,47 @@ describe("toMatchCardData", () => {
     });
   });
 });
+
+describe("unrated matches", () => {
+  const emptyRatings = { before_rating: null, after_rating: null, before_rd: null, after_rd: null };
+  const unrated = { ...baseMatch, ratings: { alice: emptyRatings, bob: emptyRatings } };
+
+  it.each(["alice", "bob"])("retains results and games for %s without rating deltas", (player) => {
+    const [match] = normalizeMatches([unrated], player);
+    expect(match).toMatchObject({
+      matchId: baseMatch.match_id,
+      gameCount: 3,
+      playerScore: 1.5,
+      opponentScore: 1.5,
+      beforeRating: null,
+      afterRating: null,
+      beforeRd: null,
+      afterRd: null,
+      opponentBeforeRating: null,
+      opponentAfterRating: null,
+      opponentBeforeRd: null,
+      opponentAfterRd: null,
+      ratingChange: null,
+      rdChange: null,
+    });
+    expect(match?.games.map((game) => game.id)).toEqual(["g1", "g2", "g3"]);
+    expect(toMatchCardData(unrated, "blitz").playerABeforeRating).toBeNull();
+  });
+
+  it("does not calculate deltas from a missing endpoint", () => {
+    const [match] = normalizeMatches(
+      [
+        {
+          ...baseMatch,
+          ratings: {
+            ...baseMatch.ratings,
+            alice: { ...baseMatch.ratings.alice, after_rating: null, before_rd: null },
+          },
+        },
+      ],
+      "alice",
+    );
+    expect(match?.ratingChange).toBeNull();
+    expect(match?.rdChange).toBeNull();
+  });
+});

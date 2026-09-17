@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 import { useMemo } from "react";
 
+import { BannedPlayerMark } from "../../components/BannedPlayerMark/BannedPlayerMark";
 import { MatchDetails } from "../../components/MatchDetails/MatchDetails";
 import { CommunityDiscussion } from "../../components/PuzzleCommunity/PuzzleCommunity";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
@@ -75,6 +76,7 @@ export const MatchPage = () => {
                     title={match.playerA}
                   >
                     {match.playerA}
+                    <BannedPlayerMark username={match.playerA} />
                   </Link>
                   <div
                     className="matchPageHeaderScore"
@@ -91,6 +93,7 @@ export const MatchPage = () => {
                     title={match.playerB}
                   >
                     {match.playerB}
+                    <BannedPlayerMark username={match.playerB} />
                   </Link>
                 </div>
                 <div className="matchPageHeaderMeta">

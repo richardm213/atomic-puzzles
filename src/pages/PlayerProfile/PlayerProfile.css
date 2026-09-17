@@ -344,95 +344,69 @@
 
 .profileBanNotice {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: 20px minmax(0, 1fr);
   align-items: start;
-  gap: 16px;
+  gap: 12px;
   margin-top: 12px;
-  padding: 18px;
-  border-radius: 8px;
-  border: 1px solid rgba(252, 165, 165, 0.3);
-  background:
-    linear-gradient(135deg, rgba(127, 29, 29, 0.34), rgba(180, 83, 9, 0.13)),
-    var(--color-surface-elevated);
-  box-shadow: 0 18px 36px rgba(2, 6, 23, 0.24);
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-panel-strong);
 }
 
 .profileBanIcon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 52px;
-  height: 52px;
-  border: 1px solid rgba(252, 165, 165, 0.32);
-  border-radius: 8px;
-  background: rgba(127, 29, 29, 0.28);
+  height: 24px;
   color: var(--color-danger);
-  font-size: 23px;
+  font-size: 16px;
 }
 
 .profileBanNoticeContent {
   min-width: 0;
 }
 
-.profileBanEyebrow {
-  display: block;
-  margin-bottom: 6px;
-  color: var(--color-danger);
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.profileBanNoticeHeader {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
 .profileBanNoticeHeader h2 {
   margin: 0;
   color: var(--color-heading);
-  font-size: 21px;
-  line-height: 1.2;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 24px;
 }
 
 .profileBanNotice p {
-  margin: 10px 0 0;
+  margin: 4px 0 0;
   max-width: 72ch;
   color: var(--color-muted);
+  font-size: 14px;
   line-height: 1.5;
 }
 
 .profileBanActions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  margin-top: 14px;
+  margin-top: 8px;
 }
 
 .profileBanActions a {
-  min-height: 38px;
-  padding: 8px 12px;
-  border: 1px solid rgba(252, 165, 165, 0.24);
-  border-radius: 8px;
-  background: rgba(2, 6, 23, 0.18);
-  color: var(--color-primary-pale);
-  text-decoration: none;
-  transition:
-    background-color 140ms ease,
-    border-color 140ms ease,
-    color 140ms ease,
-    transform 140ms ease;
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  color: var(--color-muted);
+  font-size: 14px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.2s ease;
 }
 
 .profileBanActions a:hover,
-.profileBanActions a:focus-visible {
-  transform: translateY(-1px);
-  border-color: rgba(252, 165, 165, 0.42);
-  background: rgba(127, 29, 29, 0.18);
+.profileBanActions a:active {
   color: var(--color-heading);
+}
+
+.profileBanActions a:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 4px;
+  border-radius: 2px;
 }
 
 .profileHighlights {
@@ -1548,12 +1522,13 @@
     gap: 8px 10px;
   }
 
-  .profileBanNotice {
-    grid-template-columns: 1fr;
+  .profileBanNotice p {
+    font-size: 16px;
   }
 
   .profileBanActions a {
-    width: 100%;
+    min-height: 44px;
+    font-size: 16px;
   }
 
   .profileMetricRowCards {

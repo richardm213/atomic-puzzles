@@ -76,9 +76,9 @@ describe("ratingsForPlayers", () => {
     });
   });
 
-  it("returns NaN-laden numbers when ratings are missing", () => {
+  it("returns null when ratings are missing", () => {
     const result = ratingsForPlayers({}, "alice", "bob");
-    expect(Number.isNaN(result.playerABeforeRating)).toBe(true);
-    expect(Number.isNaN(result.playerBAfterRd)).toBe(true);
+    expect(result.playerABeforeRating).toBeNull();
+    expect(result.playerBAfterRd).toBeNull();
   });
 });

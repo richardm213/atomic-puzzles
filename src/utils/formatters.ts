@@ -1,4 +1,5 @@
-export const formatSignedDecimal = (value: number): string => {
+export const formatSignedDecimal = (value: number | null): string => {
+  if (value === null || !Number.isFinite(value)) return "";
   const rounded = Math.round(value * 10) / 10;
   if (rounded > 0) return `+${rounded}`;
   return String(rounded);
@@ -55,7 +56,13 @@ export const formatScore = (value: number | string): string => {
 
 export const formatOpponentWithRating = (
   opponent: string,
-  opponentRating: number | string,
+  opponentRating: number | string | null,
 ): string => {
+  if (
+    opponentRating === null ||
+    String(opponentRating).trim() === "" ||
+    !Number.isFinite(Number(opponentRating))
+  )
+    return opponent;
   return `${opponent} (${opponentRating})`;
 };

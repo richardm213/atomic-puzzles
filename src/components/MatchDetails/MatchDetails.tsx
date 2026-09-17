@@ -4,6 +4,7 @@ import type { MouseEventHandler } from "react";
 
 import type { MatchCardData } from "../../lib/matches/types";
 import { formatScore, formatSignedDecimal } from "../../utils/formatters";
+import { BannedPlayerMark } from "../BannedPlayerMark/BannedPlayerMark";
 import { LichessGameLink } from "../LichessGameLink/LichessGameLink";
 import { MatchH2HLink } from "../MatchH2HLink/MatchH2HLink";
 
@@ -30,30 +31,32 @@ export const MatchDetails = ({
   <>
     <div className={`matchCardPlayerStats${showH2HLink ? " matchCardPlayerStatsWithH2H" : ""}`}>
       <div>
-        <strong>{match.playerA}</strong>
+        <strong>
+          {match.playerA}
+          <BannedPlayerMark username={match.playerA} />
+        </strong>
         <span>
-          {`Rating ${match.playerABeforeRating} (${formatSignedDecimal(
-            match.playerAAfterRating - match.playerABeforeRating,
-          )})`}
+          {match.playerABeforeRating === null
+            ? "Unrated"
+            : `Rating ${match.playerABeforeRating}${match.playerAAfterRating === null ? "" : ` (${formatSignedDecimal(match.playerAAfterRating - match.playerABeforeRating)})`}`}
         </span>
-        <span>
-          {`RD ${match.playerABeforeRd} (${formatSignedDecimal(
-            match.playerAAfterRd - match.playerABeforeRd,
-          )})`}
-        </span>
+        {match.playerABeforeRd !== null ? (
+          <span>{`RD ${match.playerABeforeRd}${match.playerAAfterRd === null ? "" : ` (${formatSignedDecimal(match.playerAAfterRd - match.playerABeforeRd)})`}`}</span>
+        ) : null}
       </div>
       <div>
-        <strong>{match.playerB}</strong>
+        <strong>
+          {match.playerB}
+          <BannedPlayerMark username={match.playerB} />
+        </strong>
         <span>
-          {`Rating ${match.playerBBeforeRating} (${formatSignedDecimal(
-            match.playerBAfterRating - match.playerBBeforeRating,
-          )})`}
+          {match.playerBBeforeRating === null
+            ? "Unrated"
+            : `Rating ${match.playerBBeforeRating}${match.playerBAfterRating === null ? "" : ` (${formatSignedDecimal(match.playerBAfterRating - match.playerBBeforeRating)})`}`}
         </span>
-        <span>
-          {`RD ${match.playerBBeforeRd} (${formatSignedDecimal(
-            match.playerBAfterRd - match.playerBBeforeRd,
-          )})`}
-        </span>
+        {match.playerBBeforeRd !== null ? (
+          <span>{`RD ${match.playerBBeforeRd}${match.playerBAfterRd === null ? "" : ` (${formatSignedDecimal(match.playerBAfterRd - match.playerBBeforeRd)})`}`}</span>
+        ) : null}
       </div>
       {showH2HLink ? (
         <div className="matchH2HSlot">

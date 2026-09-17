@@ -135,3 +135,13 @@ describe("parseTimeControlParts", () => {
     expect(parseTimeControlParts("060+01")).toEqual({ initial: "60", increment: "1" });
   });
 });
+
+describe("optional rating values", () => {
+  it("keeps empty CSV fields and null database fields unavailable", async () => {
+    const { optionalRatingNumber } = await import("./transforms");
+    for (const value of [null, undefined, "", " ", NaN])
+      expect(optionalRatingNumber(value)).toBeNull();
+    expect(optionalRatingNumber(0)).toBe(0);
+    expect(optionalRatingNumber("1500")).toBe(1500);
+  });
+});

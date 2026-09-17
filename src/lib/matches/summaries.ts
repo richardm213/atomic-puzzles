@@ -3,6 +3,7 @@ import {
   findRatingDataForPlayer,
   type NormalizedGame,
   normalizedRatingsFromMatch,
+  optionalRatingNumber,
   winnerToFullWord,
 } from "./transforms";
 import type { MappedGameSummary, RawMatchLike, RawMatchSourceFields } from "./types";
@@ -19,14 +20,14 @@ export type MatchGameSummary = {
 };
 
 export type PlayerRatingsForMatch = {
-  playerABeforeRating: number;
-  playerAAfterRating: number;
-  playerABeforeRd: number;
-  playerAAfterRd: number;
-  playerBBeforeRating: number;
-  playerBAfterRating: number;
-  playerBBeforeRd: number;
-  playerBAfterRd: number;
+  playerABeforeRating: number | null;
+  playerAAfterRating: number | null;
+  playerABeforeRd: number | null;
+  playerAAfterRd: number | null;
+  playerBBeforeRating: number | null;
+  playerBAfterRating: number | null;
+  playerBBeforeRd: number | null;
+  playerBAfterRd: number | null;
 };
 
 export const sourceValueFromMatch = (match: RawMatchSourceFields | null | undefined): string =>
@@ -108,13 +109,13 @@ export const ratingsForPlayers = (
   const playerBRatingData = findRatingDataForPlayer(ratings, playerB);
 
   return {
-    playerABeforeRating: Number(playerARatingData?.before_rating),
-    playerAAfterRating: Number(playerARatingData?.after_rating),
-    playerABeforeRd: Number(playerARatingData?.before_rd),
-    playerAAfterRd: Number(playerARatingData?.after_rd),
-    playerBBeforeRating: Number(playerBRatingData?.before_rating),
-    playerBAfterRating: Number(playerBRatingData?.after_rating),
-    playerBBeforeRd: Number(playerBRatingData?.before_rd),
-    playerBAfterRd: Number(playerBRatingData?.after_rd),
+    playerABeforeRating: optionalRatingNumber(playerARatingData?.before_rating),
+    playerAAfterRating: optionalRatingNumber(playerARatingData?.after_rating),
+    playerABeforeRd: optionalRatingNumber(playerARatingData?.before_rd),
+    playerAAfterRd: optionalRatingNumber(playerARatingData?.after_rd),
+    playerBBeforeRating: optionalRatingNumber(playerBRatingData?.before_rating),
+    playerBAfterRating: optionalRatingNumber(playerBRatingData?.after_rating),
+    playerBBeforeRd: optionalRatingNumber(playerBRatingData?.before_rd),
+    playerBAfterRd: optionalRatingNumber(playerBRatingData?.after_rd),
   };
 };

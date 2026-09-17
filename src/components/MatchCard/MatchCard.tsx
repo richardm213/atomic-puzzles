@@ -6,6 +6,7 @@ import type { MouseEventHandler } from "react";
 import type { MatchCardData } from "../../lib/matches/types";
 import { formatLocalDateTime, formatScore } from "../../utils/formatters";
 import { isToggleActionKey } from "../../utils/toggleActionKey";
+import { BannedPlayerMark } from "../BannedPlayerMark/BannedPlayerMark";
 import { LichessGameLink } from "../LichessGameLink/LichessGameLink";
 import { MatchDetails } from "../MatchDetails/MatchDetails";
 import { MatchPageLink } from "../MatchPageLink/MatchPageLink";
@@ -52,6 +53,7 @@ export const MatchCard = ({
             onClick={stopPropagation}
           >
             {match.playerA}
+            <BannedPlayerMark username={match.playerA} />
           </Link>
           <span className="matchVersus">vs</span>
           <Link
@@ -61,6 +63,7 @@ export const MatchCard = ({
             onClick={stopPropagation}
           >
             {match.playerB}
+            <BannedPlayerMark username={match.playerB} />
           </Link>
         </div>
         <div className="matchCardMeta">

@@ -169,6 +169,12 @@ export const PlayerProfilePage = ({
   const isHistoryAvailable = historyAvailabilityQuery.data ?? false;
   const profileDisplayUsername = String(username || "").trim() || canonicalUsername;
   const isBanned = Boolean(profileAliasEntry?.banned);
+  useEffect(() => {
+    if (isBanned && (profileHistoryTab === "ranks" || profileHistoryTab === "opponents")) {
+      setProfileHistoryTab("matches");
+    }
+  }, [isBanned, profileHistoryTab]);
+
   const profileDataUsername = aliasesLoaded ? canonicalUsername : "";
   const ratingsSnapshotByMode = useRatingsSnapshotByMode(profileDataUsername);
   const ratingDisplayByMode = useMemo(
@@ -178,9 +184,10 @@ export const PlayerProfilePage = ({
   const profileModeOptions = useMemo(
     () =>
       modeOptions.filter(
-        (mode) => mode !== "wolfrandom" || ratingDisplayByMode.wolfrandom.gamesPlayed > 0,
+        (mode) =>
+          isBanned || mode !== "wolfrandom" || ratingDisplayByMode.wolfrandom.gamesPlayed > 0,
       ),
-    [ratingDisplayByMode.wolfrandom.gamesPlayed],
+    [isBanned, ratingDisplayByMode.wolfrandom.gamesPlayed],
   );
   const rankHistoryModeOptions: RankHistoryMode[] = ["all", ...profileModeOptions];
   const favoriteOpponentModeOptions: RankHistoryMode[] = ["all", ...profileModeOptions];
@@ -280,8 +287,7 @@ export const PlayerProfilePage = ({
       isClientPagedResults ? 1 : page,
       pageSize,
     ),
-    enabled:
-      aliasesLoaded && !isBanned && profileHistoryTab === "matches" && Boolean(canonicalUsername),
+    enabled: aliasesLoaded && profileHistoryTab === "matches" && Boolean(canonicalUsername),
   });
   const matches = useMemo(
     () => matchHistoryQuery.data?.matches ?? [],
@@ -431,12 +437,10 @@ export const PlayerProfilePage = ({
   };
 
   useEffect(() => {
-    if (isBanned) return;
-
     if (currentPage !== page) {
       setPage(currentPage);
     }
-  }, [currentPage, isBanned, page]);
+  }, [currentPage, page]);
 
   const bestWins = useMemo(
     () => getBestWinsForMode(ratingDisplayByMode, bestWinMode, bestWinCount),
@@ -638,11 +642,8 @@ export const PlayerProfilePage = ({
               <FontAwesomeIcon icon={faShieldHalved} aria-hidden="true" />
             </span>
             <div className="profileBanNoticeContent">
-              <span className="profileBanEyebrow">Fair play status</span>
               <div className="profileBanNoticeHeader">
-                <h2 id="profile-ban-notice-title">
-                  This player is not included in Atomic Puzzles ratings.
-                </h2>
+                <h2 id="profile-ban-notice-title">Banned</h2>
               </div>
               <p>
                 This player was banned by Lichess or deemed highly suspicious, so we do not include
@@ -948,7 +949,7 @@ export const PlayerProfilePage = ({
           </div>
         ) : null}
 
-        {!isBanned ? (
+        {aliasesLoaded ? (
           <>
             <div className="profileHistoryArea">
               <div className="profileHistoryTabs" role="tablist" aria-label="Profile history">
@@ -963,28 +964,32 @@ export const PlayerProfilePage = ({
                 >
                   Match History
                 </button>
-                <button
-                  id="profile-rank-history-tab"
-                  type="button"
-                  role="tab"
-                  aria-selected={profileHistoryTab === "ranks"}
-                  aria-controls="profile-rank-history-panel"
-                  className={profileHistoryTab === "ranks" ? "active" : ""}
-                  onClick={() => handleProfileHistoryTabChange("ranks")}
-                >
-                  Rank History
-                </button>
-                <button
-                  id="profile-favorite-opponents-tab"
-                  type="button"
-                  role="tab"
-                  aria-selected={profileHistoryTab === "opponents"}
-                  aria-controls="profile-favorite-opponents-panel"
-                  className={profileHistoryTab === "opponents" ? "active" : ""}
-                  onClick={() => handleProfileHistoryTabChange("opponents")}
-                >
-                  Favorite Opponents
-                </button>
+                {!isBanned ? (
+                  <>
+                    <button
+                      id="profile-rank-history-tab"
+                      type="button"
+                      role="tab"
+                      aria-selected={profileHistoryTab === "ranks"}
+                      aria-controls="profile-rank-history-panel"
+                      className={profileHistoryTab === "ranks" ? "active" : ""}
+                      onClick={() => handleProfileHistoryTabChange("ranks")}
+                    >
+                      Rank History
+                    </button>
+                    <button
+                      id="profile-favorite-opponents-tab"
+                      type="button"
+                      role="tab"
+                      aria-selected={profileHistoryTab === "opponents"}
+                      aria-controls="profile-favorite-opponents-panel"
+                      className={profileHistoryTab === "opponents" ? "active" : ""}
+                      onClick={() => handleProfileHistoryTabChange("opponents")}
+                    >
+                      Favorite Opponents
+                    </button>
+                  </>
+                ) : null}
                 <button
                   id="profile-comments-tab"
                   type="button"
@@ -1063,19 +1068,21 @@ export const PlayerProfilePage = ({
                         </label>
                       </div>
 
-                      <div className="matchFilterRanges">
-                        <DualRangeSlider
-                          id="opponent-rating-min"
-                          label={`Opponent rating range: ${opponentRatingMin} - ${opponentRatingMax}`}
-                          min={opponentRatingSliderMin}
-                          max={opponentRatingSliderMax}
-                          step={10}
-                          lowerValue={opponentRatingMin}
-                          upperValue={opponentRatingMax}
-                          onLowerChange={setOpponentRatingMin}
-                          onUpperChange={setOpponentRatingMax}
-                        />
-                      </div>
+                      {!isBanned ? (
+                        <div className="matchFilterRanges">
+                          <DualRangeSlider
+                            id="opponent-rating-min"
+                            label={`Opponent rating range: ${opponentRatingMin} - ${opponentRatingMax}`}
+                            min={opponentRatingSliderMin}
+                            max={opponentRatingSliderMax}
+                            step={10}
+                            lowerValue={opponentRatingMin}
+                            upperValue={opponentRatingMax}
+                            onLowerChange={setOpponentRatingMin}
+                            onUpperChange={setOpponentRatingMax}
+                          />
+                        </div>
+                      ) : null}
 
                       <div className="matchFilterFooter profileMatchFilterFooter">
                         <SourceFilterChecks values={sourceFilters} onChange={setSourceFilter} />
@@ -1126,8 +1133,12 @@ export const PlayerProfilePage = ({
                           <col className="profileMatchOpponentColumn" />
                           <col className="profileMatchTimeControlColumn" />
                           <col className="profileMatchScoreColumn" />
-                          <col className="profileMatchRatingColumn" />
-                          <col className="profileMatchRdColumn" />
+                          {!isBanned ? (
+                            <>
+                              <col className="profileMatchRatingColumn" />
+                              <col className="profileMatchRdColumn" />
+                            </>
+                          ) : null}
                           <col className="profileMatchLinkColumn" />
                         </colgroup>
                         <thead>
@@ -1136,8 +1147,12 @@ export const PlayerProfilePage = ({
                             <th>Opponent</th>
                             <th>TC</th>
                             <th>Score</th>
-                            <th>Rating (Δ)</th>
-                            <th>RD (Δ)</th>
+                            {!isBanned ? (
+                              <>
+                                <th>Rating (Δ)</th>
+                                <th>RD (Δ)</th>
+                              </>
+                            ) : null}
                             <th aria-label="Open match page" />
                           </tr>
                         </thead>
@@ -1200,24 +1215,30 @@ export const PlayerProfilePage = ({
                                       </span>
                                     </span>
                                   </td>
-                                  <td>
-                                    <span className="profileMetricPair">
-                                      <span className="profileMetricValue">
-                                        {match.beforeRating}
-                                      </span>
-                                      <span className="profileDelta">
-                                        {formatSignedDecimal(match.ratingChange)}
-                                      </span>
-                                    </span>
-                                  </td>
-                                  <td>
-                                    <span className="profileMetricPair">
-                                      <span className="profileMetricValue">{match.beforeRd}</span>
-                                      <span className="profileDelta">
-                                        {formatSignedDecimal(match.rdChange)}
-                                      </span>
-                                    </span>
-                                  </td>
+                                  {!isBanned ? (
+                                    <>
+                                      <td>
+                                        <span className="profileMetricPair">
+                                          <span className="profileMetricValue">
+                                            {match.beforeRating}
+                                          </span>
+                                          <span className="profileDelta">
+                                            {formatSignedDecimal(match.ratingChange)}
+                                          </span>
+                                        </span>
+                                      </td>
+                                      <td>
+                                        <span className="profileMetricPair">
+                                          <span className="profileMetricValue">
+                                            {match.beforeRd}
+                                          </span>
+                                          <span className="profileDelta">
+                                            {formatSignedDecimal(match.rdChange)}
+                                          </span>
+                                        </span>
+                                      </td>
+                                    </>
+                                  ) : null}
                                   <td>
                                     <MatchPageLink
                                       match={{
@@ -1233,7 +1254,7 @@ export const PlayerProfilePage = ({
                                 </tr>
                                 {isExpanded ? (
                                   <tr className="matchDetailsRow">
-                                    <td colSpan={7}>
+                                    <td colSpan={isBanned ? 5 : 7}>
                                       <div className="matchDetailsInner">
                                         <MatchDetails
                                           match={{
@@ -1277,7 +1298,7 @@ export const PlayerProfilePage = ({
                           })}
                           {visibleMatches.length === 0 ? (
                             <tr>
-                              <td colSpan={7} className="emptyRankings">
+                              <td colSpan={isBanned ? 5 : 7} className="emptyRankings">
                                 {`No matches found for this player with current filters in ${modeLabels[matchHistoryMode]}.`}
                               </td>
                             </tr>
@@ -1497,37 +1518,6 @@ export const PlayerProfilePage = ({
               </section>
             </div>
           </>
-        ) : null}
-
-        {isBanned && aliasesLoaded && canonicalUsername ? (
-          <div className="profileHistoryArea">
-            <div className="profileHistoryTabs" role="tablist" aria-label="Profile history">
-              <button
-                id="profile-comments-tab"
-                type="button"
-                role="tab"
-                aria-selected="true"
-                aria-controls="profile-comments-panel"
-                className="active"
-              >
-                Comments
-              </button>
-            </div>
-            <section
-              id="profile-comments-panel"
-              className="profileHistorySection"
-              role="tabpanel"
-              aria-labelledby="profile-comments-tab"
-            >
-              <Suspense fallback={<div className="emptyRankings">Loading comments...</div>}>
-                <CommunityDiscussion
-                  target={{ type: "profile", id: canonicalUsername }}
-                  eyebrow="Profile community"
-                  heading={`Comments on ${profileDisplayUsername}`}
-                />
-              </Suspense>
-            </section>
-          </div>
         ) : null}
       </div>
     </div>

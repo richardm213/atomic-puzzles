@@ -9,11 +9,14 @@ import {
   summarizeMatchGames,
 } from "./summaries";
 import {
+  findRatingDataForPlayer,
   type NormalizedGame,
   normalizedGamesFromMatch,
   normalizedPlayersFromMatch,
   normalizedRatingsFromMatch,
+  optionalRatingNumber,
   parseWinnerFromPerspective,
+  ratingDelta,
   winnerToFullWord,
 } from "./transforms";
 import type { MatchCardData, RawMatchLike, RawRatingsByPlayer, WinnerCode } from "./types";
@@ -63,16 +66,16 @@ export type NormalizedMatch = {
   score: string;
   playerScore: number;
   opponentScore: number;
-  ratingChange: number;
-  rdChange: number;
-  beforeRating: number;
-  beforeRd: number;
-  afterRating: number;
-  afterRd: number;
-  opponentBeforeRating: number;
-  opponentAfterRating: number;
-  opponentBeforeRd: number;
-  opponentAfterRd: number;
+  ratingChange: number | null;
+  rdChange: number | null;
+  beforeRating: number | null;
+  beforeRd: number | null;
+  afterRating: number | null;
+  afterRd: number | null;
+  opponentBeforeRating: number | null;
+  opponentAfterRating: number | null;
+  opponentBeforeRd: number | null;
+  opponentAfterRd: number | null;
   gameCount: number;
   firstGameId: string;
   clinchingGameId: string;
@@ -288,17 +291,16 @@ export const normalizeMatches = (
       });
 
       const ratings = normalizedRatingsFromMatch(match);
-      const ratingData = ratings?.[normalizedUsername] ?? null;
-      const opponentLower = String(opponent).toLowerCase();
-      const opponentRatingData = ratings?.[opponent] ?? ratings?.[opponentLower] ?? null;
-      const beforeRating = Number(ratingData?.before_rating);
-      const afterRating = Number(ratingData?.after_rating);
-      const beforeRd = Number(ratingData?.before_rd);
-      const afterRd = Number(ratingData?.after_rd);
-      const opponentBeforeRating = Number(opponentRatingData?.before_rating);
-      const opponentAfterRating = Number(opponentRatingData?.after_rating);
-      const opponentBeforeRd = Number(opponentRatingData?.before_rd);
-      const opponentAfterRd = Number(opponentRatingData?.after_rd);
+      const ratingData = findRatingDataForPlayer(ratings, username);
+      const opponentRatingData = findRatingDataForPlayer(ratings, opponent);
+      const beforeRating = optionalRatingNumber(ratingData?.before_rating);
+      const afterRating = optionalRatingNumber(ratingData?.after_rating);
+      const beforeRd = optionalRatingNumber(ratingData?.before_rd);
+      const afterRd = optionalRatingNumber(ratingData?.after_rd);
+      const opponentBeforeRating = optionalRatingNumber(opponentRatingData?.before_rating);
+      const opponentAfterRating = optionalRatingNumber(opponentRatingData?.after_rating);
+      const opponentBeforeRd = optionalRatingNumber(opponentRatingData?.before_rd);
+      const opponentAfterRd = optionalRatingNumber(opponentRatingData?.after_rd);
       const clinchingGame = matchGames.find((game, index) => {
         const remainingGames = matchGames.length - index - 1;
         return game.playerScoreAfter > game.opponentScoreAfter + remainingGames;
@@ -311,8 +313,8 @@ export const normalizeMatches = (
         score: `${score.player}-${score.opponent}`,
         playerScore: score.player,
         opponentScore: score.opponent,
-        ratingChange: afterRating - beforeRating,
-        rdChange: afterRd - beforeRd,
+        ratingChange: ratingDelta(beforeRating, afterRating),
+        rdChange: ratingDelta(beforeRd, afterRd),
         beforeRating,
         beforeRd,
         afterRating,

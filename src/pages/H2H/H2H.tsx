@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 
+import { BannedPlayerMark } from "../../components/BannedPlayerMark/BannedPlayerMark";
 import {
   isMode,
   type Mode,
@@ -277,10 +278,11 @@ export const H2HPage = () => {
     const secondSnapshots = playerSnapshots[loadedPlayer2.toLowerCase()] ?? {};
     const hasWolfrandomGames =
       Number(firstSnapshots.wolfrandom?.games ?? 0) > 0 ||
-      Number(secondSnapshots.wolfrandom?.games ?? 0) > 0;
+      Number(secondSnapshots.wolfrandom?.games ?? 0) > 0 ||
+      matches.some((match) => match.mode === "wolfrandom");
 
     return modeOptions.filter((mode) => mode !== "wolfrandom" || hasWolfrandomGames);
-  }, [loadedPlayer1, loadedPlayer2, playerSnapshots]);
+  }, [loadedPlayer1, loadedPlayer2, matches, playerSnapshots]);
 
   const filteredMatches = useMemo(
     () =>
@@ -498,6 +500,7 @@ export const H2HPage = () => {
                           params={{ username: loadedPlayer1 }}
                         >
                           {loadedPlayer1}
+                          <BannedPlayerMark username={loadedPlayer1} />
                         </Link>
                       </h2>
                     </div>
@@ -516,6 +519,7 @@ export const H2HPage = () => {
                           params={{ username: loadedPlayer2 }}
                         >
                           {loadedPlayer2}
+                          <BannedPlayerMark username={loadedPlayer2} />
                         </Link>
                       </h2>
                     </div>
@@ -681,6 +685,7 @@ export const H2HPage = () => {
                                     onClick={(event) => event.stopPropagation()}
                                   >
                                     {match.winner}
+                                    <BannedPlayerMark username={match.winner} />
                                   </Link>
                                 )}
                               </td>

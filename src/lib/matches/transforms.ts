@@ -87,3 +87,13 @@ export const parseTimeControlParts = (
 
   return { initial: String(Number(match[1])), increment: String(Number(match[2])) };
 };
+
+// Missing archive/CSV values are unavailable, never zero.
+export const optionalRatingNumber = (value: unknown): number | null => {
+  if (value === null || value === undefined || String(value).trim() === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+};
+
+export const ratingDelta = (before: number | null, after: number | null): number | null =>
+  before !== null && after !== null ? after - before : null;
