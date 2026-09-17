@@ -369,9 +369,9 @@
   gap: 12px;
   margin-top: 12px;
   padding: 16px;
-  border: 1px solid color-mix(in srgb, var(--color-danger) 45%, var(--color-panel-strong));
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--color-danger) 22%, var(--color-panel-strong));
+  background: var(--color-panel-strong);
 }
 
 .profileBanIcon {
