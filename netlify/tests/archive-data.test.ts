@@ -76,7 +76,14 @@ describe("archive-data function", () => {
     });
 
     expect(mocks.execute.mock.calls[0]?.[0]).toMatchObject({ args: ["alice"] });
-    expect(mocks.execute.mock.calls[1]?.[0].args).toEqual([1, 42, 42]);
+    expect(mocks.execute.mock.calls[1]?.[0]).toMatchObject({
+      args: [1, 42, 1, 42, 42],
+      sql: expect.stringContaining("union all"),
+    });
+    expect(mocks.execute.mock.calls[2]?.[0]).toMatchObject({
+      args: [1, 42, 1, 42, 42, 100, 0],
+      sql: expect.stringContaining("order by start_ts desc"),
+    });
   });
 
   it("maps the complete source enum without treating invalid values as lobby", async () => {

@@ -78,11 +78,10 @@ const queryMatches = async (params: URLSearchParams) => {
     .trim()
     .toLowerCase();
   const matchId = String(params.get("matchId") ?? "").trim();
+  let usernamePlayerId: number | null = null;
   if (username) {
-    const playerId = await resolvePlayerId(username);
-    if (playerId === null) return { rows: [], total: 0 };
-    clauses.push("(m.player_1_id = ? or m.player_2_id = ?)");
-    args.push(playerId, playerId);
+    usernamePlayerId = await resolvePlayerId(username);
+    if (usernamePlayerId === null) return { rows: [], total: 0 };
   }
   if (pairA && pairB) {
     const [playerAId, playerBId] = await Promise.all([
@@ -146,20 +145,46 @@ const queryMatches = async (params: URLSearchParams) => {
     Math.max(1, Math.floor(numberParam(params, "pageSize") ?? 100)),
   );
   const where = clauses.join(" and ");
-  const countResult = await archive.execute({
-    sql: `select count(*) as total from matches m join players p1 on p1.id=m.player_1_id join players p2 on p2.id=m.player_2_id join time_controls tc on tc.id=m.time_control_id where ${where}`,
-    args,
-  });
-  const result = await archive.execute({
-    sql: `select m.match_id,p1.username player_1,p2.username player_2,m.start_ts,tc.value time_control,
+  const selectMatch = `select m.match_id,p1.username player_1,p2.username player_2,m.start_ts,tc.value time_control,
       case m.source when 0 then 'lobby' when 1 then 'arena' when 2 then 'friend' when 3 then 'swiss' when 4 then 'chesscom' else 'unknown' end source,
       m.tournament_id,m.games,m.p1_before_rating/10.0 p1_before_rating,m.p1_after_rating/10.0 p1_after_rating,
       m.p1_before_rd/10.0 p1_before_rd,m.p1_after_rd/10.0 p1_after_rd,m.p2_before_rating/10.0 p2_before_rating,
       m.p2_after_rating/10.0 p2_after_rating,m.p2_before_rd/10.0 p2_before_rd,m.p2_after_rd/10.0 p2_after_rd
       from matches m join players p1 on p1.id=m.player_1_id join players p2 on p2.id=m.player_2_id
-      join time_controls tc on tc.id=m.time_control_id where ${where} order by m.start_ts desc limit ? offset ?`,
-    args: [...args, pageSize, (page - 1) * pageSize],
-  });
+      join time_controls tc on tc.id=m.time_control_id`;
+  let countResult;
+  let result;
+  if (usernamePlayerId !== null) {
+    const playerOneWhere = `${where} and m.player_1_id = ?`;
+    // The extra player_1 predicate preserves OR semantics for the unlikely self-match case.
+    const playerTwoWhere = `${where} and m.player_2_id = ? and m.player_1_id <> ?`;
+    const playerOneArgs = [...args, usernamePlayerId];
+    const playerTwoArgs = [...args, usernamePlayerId, usernamePlayerId];
+    countResult = await archive.execute({
+      sql: `select sum(total) as total from (
+        select count(*) as total from matches m join time_controls tc on tc.id=m.time_control_id where ${playerOneWhere}
+        union all
+        select count(*) as total from matches m join time_controls tc on tc.id=m.time_control_id where ${playerTwoWhere})`,
+      args: [...playerOneArgs, ...playerTwoArgs],
+    });
+    result = await archive.execute({
+      sql: `select * from (
+        ${selectMatch} where ${playerOneWhere}
+        union all
+        ${selectMatch} where ${playerTwoWhere}
+      ) order by start_ts desc limit ? offset ?`,
+      args: [...playerOneArgs, ...playerTwoArgs, pageSize, (page - 1) * pageSize],
+    });
+  } else {
+    countResult = await archive.execute({
+      sql: `select count(*) as total from matches m join time_controls tc on tc.id=m.time_control_id where ${where}`,
+      args,
+    });
+    result = await archive.execute({
+      sql: `${selectMatch} where ${where} order by m.start_ts desc limit ? offset ?`,
+      args: [...args, pageSize, (page - 1) * pageSize],
+    });
+  }
   const rows = normalizedRows(result.rows).map((row) => ({
     ...row,
     games: String(row.games ?? "")
