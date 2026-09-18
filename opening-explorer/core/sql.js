@@ -48,12 +48,24 @@ export const buildPositionPlayerLeaderBandsSql = () => `
   limit 1;
 `;
 
+// Every standard atomic game in the explorer passes through the initial position. Restricting
+// player discovery to that position lets the database use its position-key index instead of
+// scanning the full daily edge table (which grows once for every player, position, and day).
+const STANDARD_START_POSITION_KEY_HEX = positionKeyHex(
+  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+);
+
+const openingPlayerIdsSql = () => `
+  select distinct canonical_player_id
+  from opening_edges_daily
+  where position_key = X'${STANDARD_START_POSITION_KEY_HEX}'
+`;
+
 export const buildRandomOpeningPlayerSql = () => `
   select n.name as username
   from opening_names n
   join (
-    select distinct canonical_player_id
-    from opening_edges_daily
+    ${openingPlayerIdsSql()}
   ) players
     on players.canonical_player_id = n.name_id
   order by random()
@@ -64,8 +76,7 @@ export const buildOpeningPlayersSql = () => `
   select n.name as username
   from opening_names n
   join (
-    select distinct canonical_player_id
-    from opening_edges_daily
+    ${openingPlayerIdsSql()}
   ) players
     on players.canonical_player_id = n.name_id
   order by lower(n.name), n.name;

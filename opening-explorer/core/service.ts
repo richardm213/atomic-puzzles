@@ -187,7 +187,7 @@ export const createOpeningExplorerService = (repository: OpeningExplorerReposito
           (await repository.query(buildRandomOpeningPlayerSql(), priorityRef))[0]?.username ?? "",
         ).trim();
         return username
-          ? jsonResponse(200, { username })
+          ? jsonResponse(200, { username }, false)
           : jsonResponse(404, { error: "No opening database players are available" }, false);
       }
 

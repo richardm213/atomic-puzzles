@@ -268,8 +268,6 @@ export const PracticePage = () => {
   );
   const boardPanelRef = useRef<HTMLDivElement | null>(null);
   const remainingClockMsRef = useRef(clockMinutes * 60_000);
-  const seenRandomPlayersRef = useRef<Set<string>>(new Set());
-  const randomPlayerPoolRef = useRef<string[] | null>(null);
   const lastAutoFenRef = useRef("");
   const navigationRef = useRef<SolutionNavigation | null>(null);
   const triedMoveUcisByFenRef = useRef<Map<string, Set<string>>>(new Map());
@@ -784,35 +782,16 @@ export const PracticePage = () => {
     setRandomPlayerError("");
 
     try {
-      opponentUsernames.forEach((username) =>
-        seenRandomPlayersRef.current.add(username.toLowerCase()),
-      );
-
-      if (randomPlayerPoolRef.current === null) {
-        const response = await fetch(`${appAssetPath("/api/opening-explorer")}?players=1`, {
-          headers: { "X-Explorer-Intent": "visible" },
-        });
-        const data = (await response.json()) as { players?: string[]; error?: string };
-
-        if (!response.ok) {
-          throw new Error(data.error || "Could not select a random player");
-        }
-
-        randomPlayerPoolRef.current = (data.players ?? [])
-          .map((username) => username.trim())
-          .filter(Boolean);
+      const response = await fetch(`${appAssetPath("/api/opening-explorer")}?randomPlayer=1`, {
+        headers: { "X-Explorer-Intent": "visible" },
+      });
+      const data = (await response.json()) as { username?: string; error?: string };
+      if (!response.ok) {
+        throw new Error(data.error || "Could not select a random player");
       }
 
-      const availablePlayers = randomPlayerPoolRef.current.filter(
-        (username) => !seenRandomPlayersRef.current.has(username.toLowerCase()),
-      );
-      if (availablePlayers.length === 0) {
-        throw new Error("No new random players are available");
-      }
-
-      const username =
-        availablePlayers[Math.floor(Math.random() * availablePlayers.length)]?.trim() ?? "";
-      seenRandomPlayersRef.current.add(username.toLowerCase());
+      const username = data.username?.trim() ?? "";
+      if (!username) throw new Error("No random player is available");
 
       commitUsername(username);
     } catch (randomError) {
@@ -822,7 +801,7 @@ export const PracticePage = () => {
     } finally {
       setRandomPlayerLoading(false);
     }
-  }, [canChoosePracticePlayer, commitUsername, opponentUsernames, randomPlayerLoading]);
+  }, [canChoosePracticePlayer, commitUsername, randomPlayerLoading]);
 
   const clearSelectedPlayers = (): void => {
     updateSettings({ opponentUsernames: [], opponentSource: "player" });
