@@ -1,9 +1,5 @@
-import { rememberCacheEntry, shouldCacheExplorerResponse } from "./cachePolicy.js";
-import {
-  buildExplorerQueries,
-  buildSavedStatusQuery,
-  createExplorerQueryPlan,
-} from "./queryPlan.js";
+import { EXPLORER_CACHE_TTL_MS, MAX_CACHE_ENTRIES } from "./cachePolicy.js";
+import { buildExplorerQueries, createExplorerQueryPlan } from "./queryPlan.js";
 import { createPriorityFactory, OpeningExplorerQueueError } from "./requestQueue.js";
 import { parseExplorerRequest } from "./requestSchema.js";
 import {
@@ -23,6 +19,7 @@ export interface OpeningExplorerRepository {
   availability(): { available: boolean; message: string };
   signature(): string;
   query(sql: string, priorityRef: PriorityRef): Promise<JsonRow[]>;
+  queryBatch?(sql: string[], priorityRef: PriorityRef): Promise<JsonRow[][]>;
 }
 
 export type ExplorerServiceRequest = {
@@ -84,32 +81,41 @@ const aliasesFromRows = (rows: JsonRow[]): Map<string, string> => {
 };
 
 export const createOpeningExplorerService = (repository: OpeningExplorerRepository) => {
-  const cache = new Map<string, string>();
+  const cache = new Map<string, { body: string; expiresAt: number; shouldCache: boolean }>();
   const pendingCache = new Map<string, PendingRequest>();
-  const aliasCache = new Map<string, Map<string, string>>();
+  // Short TTLs keep warm function instances current after an index refresh.
+  const cacheTtlMs = EXPLORER_CACHE_TTL_MS;
+  const metadataCache = new Map<string, { promise: Promise<JsonRow[]>; expiresAt: number }>();
+  const metadata = (sql: string, priorityRef: PriorityRef): Promise<JsonRow[]> => {
+    const key = `${repository.signature()}:${sql}`;
+    const cached = metadataCache.get(key);
+    if (cached && cached.expiresAt > Date.now()) return cached.promise;
+    const promise = repository.query(sql, priorityRef).catch((error: unknown) => {
+      if (metadataCache.get(key)?.promise === promise) metadataCache.delete(key);
+      throw error;
+    });
+    if (metadataCache.size >= 16) metadataCache.clear();
+    metadataCache.set(key, { promise, expiresAt: Date.now() + cacheTtlMs });
+    return promise;
+  };
   const nextPriority = createPriorityFactory();
 
   const resolveCanonicalUsername = async (
     username: string,
-    signature: string,
     priorityRef: PriorityRef,
   ): Promise<string> => {
     if (!username) return "";
-    let aliases = aliasCache.get(signature);
-    if (!aliases) {
-      try {
-        aliases = aliasesFromRows(
-          await repository.query(
-            "select value from opening_index_meta where key = 'aliases' limit 1;",
-            priorityRef,
-          ),
-        );
-      } catch {
-        aliases = new Map();
-      }
-      aliasCache.set(signature, aliases);
+    try {
+      const aliases = aliasesFromRows(
+        await metadata(
+          "select value from opening_index_meta where key = 'aliases' limit 1;",
+          priorityRef,
+        ),
+      );
+      return aliases.get(username) ?? username;
+    } catch {
+      return username;
     }
-    return aliases.get(username) ?? username;
   };
 
   const fetchPositionPlayerLeaders = async (
@@ -121,7 +127,7 @@ export const createOpeningExplorerService = (repository: OpeningExplorerReposito
     try {
       const [leaders, bands] = await Promise.all([
         repository.query(buildPositionPlayerLeadersSql(keyHex, lastMoveColor), priorityRef),
-        repository.query(buildPositionPlayerLeaderBandsSql(), priorityRef),
+        metadata(buildPositionPlayerLeaderBandsSql(), priorityRef),
       ]);
       return toPositionPlayerLeadersPayload(leaders, bands[0]?.value);
     } catch {
@@ -167,11 +173,10 @@ export const createOpeningExplorerService = (repository: OpeningExplorerReposito
       const signature = repository.signature();
       const username = await resolveCanonicalUsername(
         parsed.request.requestedUsername,
-        signature,
         priorityRef,
       );
       const opponent = username
-        ? await resolveCanonicalUsername(parsed.request.requestedOpponent, signature, priorityRef)
+        ? await resolveCanonicalUsername(parsed.request.requestedOpponent, priorityRef)
         : "";
       const plan = createExplorerQueryPlan({
         databaseSignature: signature,
@@ -181,7 +186,12 @@ export const createOpeningExplorerService = (repository: OpeningExplorerReposito
       });
 
       const cached = cache.get(plan.cacheKey);
-      if (cached) return successResponse(cached, true);
+      if (cached && cached.expiresAt > Date.now()) {
+        cache.delete(plan.cacheKey);
+        cache.set(plan.cacheKey, cached);
+        return successResponse(cached.body, cached.shouldCache);
+      }
+      cache.delete(plan.cacheKey);
       const pending = pendingCache.get(plan.cacheKey);
       if (pending) {
         try {
@@ -197,21 +207,18 @@ export const createOpeningExplorerService = (repository: OpeningExplorerReposito
         const extrasPromise = plan.includePositionExtras
           ? fetchPositionPlayerLeaders(plan.keyHex, plan.lastMoveColor, priorityRef)
           : Promise.resolve(null);
-        const savedSql = buildSavedStatusQuery(plan);
-        const savedStatus = savedSql
-          ? ((await repository.query(savedSql, priorityRef))[0] ?? {})
-          : {};
-        const { gamesSql, movesSql } = buildExplorerQueries(plan, savedStatus);
-        const [moves, recentGames, positionLeaders] = await Promise.all([
-          repository.query(movesSql, priorityRef),
-          repository.query(gamesSql, priorityRef),
-          extrasPromise,
-        ]);
-        const shouldCache = shouldCacheExplorerResponse({
-          moves,
-          opponent: plan.opponent,
-          username: plan.username,
-        });
+        const { gamesSql, movesSql } = buildExplorerQueries(plan);
+        const results = repository.queryBatch
+          ? repository.queryBatch([movesSql, gamesSql], priorityRef)
+          : Promise.all([
+              repository.query(movesSql, priorityRef),
+              repository.query(gamesSql, priorityRef),
+            ]);
+        const [rows, positionLeaders] = await Promise.all([results, extrasPromise]);
+        const [moves = [], recentGames = []] = rows;
+        // Personalized results are cached internally by every filter, but never
+        // advertised as publicly cacheable to a browser/CDN.
+        const shouldCache = !plan.username && !plan.opponent;
         return {
           body: JSON.stringify({
             positionKey: plan.keyHex,
@@ -226,7 +233,11 @@ export const createOpeningExplorerService = (repository: OpeningExplorerReposito
       pendingCache.set(plan.cacheKey, { promise: bodyPromise, priorityRef });
       try {
         const result = await bodyPromise;
-        if (result.shouldCache) rememberCacheEntry(cache, plan.cacheKey, result.body);
+        if (cache.size >= MAX_CACHE_ENTRIES) {
+          const oldest = cache.keys().next().value;
+          if (oldest !== undefined) cache.delete(oldest);
+        }
+        cache.set(plan.cacheKey, { ...result, expiresAt: Date.now() + cacheTtlMs });
         return successResponse(result.body, result.shouldCache);
       } finally {
         pendingCache.delete(plan.cacheKey);

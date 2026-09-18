@@ -98,7 +98,7 @@ describe("createOpeningExplorerService", () => {
     expect(explorerSql.every((sql) => !sql.includes("'alias'"))).toBe(true);
   });
 
-  it("caches only sufficiently large anonymous responses", async () => {
+  it("caches general and personalized responses without making personalized data public", async () => {
     const query = vi.fn(fixtureQuery);
     const service = createOpeningExplorerService(createRepository(query));
 
@@ -112,8 +112,50 @@ describe("createOpeningExplorerService", () => {
     await service.handle(explorerRequest({ username: "alice" }));
     const callsAfterPersonalized = query.mock.calls.length;
     const personalized = await service.handle(explorerRequest({ username: "alice" }));
-    expect(query.mock.calls.length).toBeGreaterThan(callsAfterPersonalized);
+    expect(query.mock.calls.length).toBe(callsAfterPersonalized);
     expect(personalized.headers["Cache-Control"]).toBe("no-store");
+  });
+
+  it("caches small and empty results, isolates filters, and expires entries", async () => {
+    let now = 1000;
+    const clock = vi.spyOn(Date, "now").mockImplementation(() => now);
+    try {
+      const query = vi.fn(async (sql: string) =>
+        sql.includes("limit 12") ? [] : fixtureQuery(sql),
+      );
+      const service = createOpeningExplorerService(createRepository(query));
+      await service.handle(explorerRequest({ speeds: "0" }));
+      const firstCalls = query.mock.calls.length;
+      await service.handle(explorerRequest({ speeds: "0" }));
+      expect(query).toHaveBeenCalledTimes(firstCalls);
+      await service.handle(explorerRequest({ speeds: "1" }));
+      expect(query.mock.calls.length).toBeGreaterThan(firstCalls);
+      expect(
+        query.mock.calls.filter(([sql]) => sql.includes("position_player_leader_bands")),
+      ).toHaveLength(1);
+      const beforeExpiry = query.mock.calls.length;
+      now += 60_001;
+      await service.handle(explorerRequest({ speeds: "0" }));
+      expect(query.mock.calls.length).toBeGreaterThan(beforeExpiry);
+      expect(
+        query.mock.calls.filter(([sql]) => sql.includes("position_player_leader_bands")),
+      ).toHaveLength(2);
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
+  it("batches the two main reads with no saved-status round trip", async () => {
+    const query = vi.fn(fixtureQuery);
+    const queryBatch = vi.fn(async (statements: string[]) =>
+      Promise.all(statements.map(fixtureQuery)),
+    );
+    const service = createOpeningExplorerService({ ...createRepository(query), queryBatch });
+    const response = await service.handle(explorerRequest());
+    expect(response.statusCode).toBe(200);
+    expect(queryBatch).toHaveBeenCalledTimes(1);
+    expect(queryBatch.mock.calls[0]![0]).toHaveLength(2);
+    expect(query.mock.calls.every(([sql]) => !sql.includes("savedGames"))).toBe(true);
   });
 
   it("coalesces duplicate in-flight requests and retries after a failure", async () => {

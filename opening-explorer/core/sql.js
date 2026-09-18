@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-export const OPENING_EXPLORER_RESPONSE_SCHEMA = "compact-position-extras-v8";
+export const OPENING_EXPLORER_RESPONSE_SCHEMA = "speed-bucket-coverage-v9";
 
 export const sqlString = (value) => `'${value.replaceAll("'", "''")}'`;
 
@@ -164,317 +164,99 @@ export const toPositionPlayerLeadersPayload = (rows, rawBandsValue) => {
   };
 };
 
-const hasDefaultGeneralSpeeds = (speeds) =>
-  speeds.length === 2 && speeds.includes(0) && speeds.includes(1);
-
-const SAVED_GENERAL_MIN_GAMES = 1_000;
-
-export const selectGeneralExplorerSources = ({
-  endDate,
-  savedGames,
-  savedRecentGames,
-  speeds,
-  startDate,
-}) => {
-  const hasDateFilter = Boolean(startDate || endDate);
-  const canUseSavedMoves =
-    savedGames > 0 &&
-    (hasDateFilter || !hasDefaultGeneralSpeeds(speeds) || savedGames >= SAVED_GENERAL_MIN_GAMES);
-
-  return {
-    generalMovesSource: canUseSavedMoves ? "saved" : "raw",
-    generalGamesSource: canUseSavedMoves && savedRecentGames > 0 ? "saved" : "raw",
-  };
-};
-
-const buildAggregateMovesCte = ({ generalMovesMonthSql, keyHex, speedSql }) => `
-  aggregate_moves as (
-    select
-      next_uci as uci,
-      sum(games) as games,
-      sum(white_wins) as whiteWins,
-      sum(draws) as draws,
-      sum(black_wins) as blackWins,
-      case
-        when sum(rated_games) > 0
-        then round(sum(rating_pair_sum) * 1.0 / (sum(rated_games) * 2))
-      end as avgOpponentRating
-    from opening_position_moves_monthly
-    where position_key = X'${keyHex}'
-      and speed in (${speedSql})
-      ${generalMovesMonthSql}
-    group by next_uci
-  )
-`;
-
-export const buildGeneralSavedStatusSql = ({ endDate, keyHex, speeds, startDate }) => {
-  const speedSql = speeds.join(",");
-  const startMonth = monthKeyFromDateKey(startDate);
-  const endMonth = monthKeyFromDateKey(endDate);
-  const generalMovesMonthSql = `
-    ${startMonth ? `and played_month >= ${startMonth}` : ""}
-    ${endMonth ? `and played_month <= ${endMonth}` : ""}
-  `;
-  const generalGamesDateSql = `
-    ${startDate ? `and played_on >= ${startDate}` : ""}
-    ${endDate ? `and played_on <= ${endDate}` : ""}
-  `;
-
-  return `
-    select
-      coalesce((
-        select sum(games)
-        from opening_position_moves_monthly
-        where position_key = X'${keyHex}'
-          and speed in (${speedSql})
-          ${generalMovesMonthSql}
-      ), 0) as savedGames,
-      coalesce((
-        select count(*)
-        from opening_position_recent_games
-        where position_key = X'${keyHex}'
-          and speed in (${speedSql})
-          ${generalGamesDateSql}
-      ), 0) as savedRecentGames;
-  `;
-};
-
-const buildRawGeneralGamesCte = ({ fallbackBlockerCte = "", gamesWhere }) => `
-  raw_general_games as (
-    select
-      g.game_id,
-      max(g.next_uci) as next_uci,
-      max(g.played_at) as played_at,
-      max(g.played_on) as played_on,
-      max(g.white_id) as white_id,
-      max(g.black_id) as black_id,
-      max(g.white_rating) as white_rating,
-      max(g.black_rating) as black_rating,
-      max(g.winner) as winner
-    from opening_position_games g
-    where ${gamesWhere}
-      ${fallbackBlockerCte ? `and not exists (select 1 from ${fallbackBlockerCte})` : ""}
-    group by g.game_id
-  )
-`;
-
-const rawMovesCte = () => `
-  raw_moves as (
-    select
-      next_uci as uci,
-      count(*) as games,
-      sum(case when winner = 1 then 1 else 0 end) as whiteWins,
-      sum(case when winner = 0 then 1 else 0 end) as draws,
-      sum(case when winner = 2 then 1 else 0 end) as blackWins,
-      round(avg(
-        case
-          when white_rating is not null and black_rating is not null
-          then (white_rating + black_rating) / 2.0
-        end
-      )) as avgOpponentRating
-    from raw_general_games
-    group by next_uci
-  )
-`;
-
-const rawRecentGamesCte = () => `
-  raw_recent_games as (
-    select
-      g.next_uci as uci,
-      g.game_id as gameId,
-      g.played_at as playedAt,
-      g.played_on as playedOn,
-      white_name.name as white,
-      black_name.name as black,
-      g.white_rating as whiteRating,
-      g.black_rating as blackRating,
-      g.winner as winner
-    from raw_general_games g
-    left join opening_names white_name on white_name.name_id = g.white_id
-    left join opening_names black_name on black_name.name_id = g.black_id
-    order by g.played_at desc
-    limit 8
-  )
-`;
-
-const buildAggregateGeneralMovesSql = ({ aggregateMovesCte, rawGeneralGamesCte }) => `
-  with
-    ${aggregateMovesCte},
-    ${rawGeneralGamesCte},
-    ${rawMovesCte()}
-  select *
-  from aggregate_moves
-  union all
-  select *
-  from raw_moves
-  where not exists (select 1 from aggregate_moves)
-  order by games desc
-  limit 12;
-`;
-
-const buildSavedGeneralMovesSql = ({ aggregateMovesCte }) => `
-  with
-    ${aggregateMovesCte}
-  select *
-  from aggregate_moves
-  order by games desc
-  limit 12;
-`;
-
-const buildRawGeneralMovesSql = ({ rawGeneralGamesCte }) => `
-  with
-    ${rawGeneralGamesCte},
-    ${rawMovesCte()}
-  select *
-  from raw_moves
-  order by games desc
-  limit 12;
-`;
-
-const buildHighVolumeGeneralMovesSql = ({ aggregateMovesCte, rawGeneralGamesCte }) => `
-  with
-    ${aggregateMovesCte},
-    aggregate_total as (
-      select coalesce(sum(games), 0) as games
-      from aggregate_moves
+// Coverage is per position/speed, not per request. Check the whole bucket before
+// applying dates: a covered bucket with no games in the date range is truly empty.
+// CROSS JOIN keeps the tiny coverage table outermost, so covered buckets never
+// walk the raw index. Without statistics SQLite otherwise chooses raw rows first.
+const buildGeneralBucketQueries = ({ keyHex, speeds, startDate, endDate }) => {
+  const coverage = `
+    selected_speeds(speed) as (values ${speeds.map((speed) => `(${speed})`).join(",")}),
+    coverage as materialized (
+      select speed,
+        exists(select 1 from opening_position_moves_monthly m
+          where m.position_key = X'${keyHex}' and m.speed = s.speed) as saved
+      from selected_speeds s
+    )`;
+  const rawWhere = `g.position_key = X'${keyHex}'
+    ${startDate ? `and g.played_on >= ${startDate}` : ""}
+    ${endDate ? `and g.played_on <= ${endDate}` : ""}`;
+  const movesSql = `with ${coverage},
+    raw_games as (
+      select g.game_id, max(g.next_uci) as uci, max(g.winner) as winner,
+        max(g.white_rating) as white_rating, max(g.black_rating) as black_rating
+      from coverage c cross join opening_position_games g
+      where not c.saved and g.speed = c.speed and ${rawWhere}
+      group by g.game_id
     ),
-    ${rawGeneralGamesCte},
-    ${rawMovesCte()}
-  select *
-  from aggregate_moves
-  where exists (select 1 from aggregate_total where games >= ${SAVED_GENERAL_MIN_GAMES})
-  union all
-  select *
-  from raw_moves
-  where not exists (select 1 from aggregate_total where games >= ${SAVED_GENERAL_MIN_GAMES})
-  order by games desc
-  limit 12;
-`;
-
-const buildAggregateGeneralRecentGamesSql = ({ rawGeneralGamesCte, recentGamesCte }) => `
-  with
-    ${recentGamesCte},
-    ${rawGeneralGamesCte},
-    ${rawRecentGamesCte()}
-  select *
-  from recent_games
-  union all
-  select *
-  from raw_recent_games
-  where not exists (select 1 from recent_games)
-  order by playedAt desc
-  limit 8;
-`;
-
-const buildSavedGeneralRecentGamesSql = ({ recentGamesCte }) => `
-  with
-    ${recentGamesCte}
-  select *
-  from recent_games
-  order by playedAt desc
-  limit 8;
-`;
-
-const buildRawGeneralRecentGamesSql = ({ rawGeneralGamesCte }) => `
-  with
-    ${rawGeneralGamesCte},
-    ${rawRecentGamesCte()}
-  select *
-  from raw_recent_games
-  order by playedAt desc
-  limit 8;
-`;
-
-const buildHighVolumeGeneralRecentGamesSql = ({
-  aggregateMovesCte,
-  rawGeneralGamesCte,
-  recentGamesCte,
-}) => `
-  with
-    ${aggregateMovesCte},
-    aggregate_total as (
-      select coalesce(sum(games), 0) as games
-      from aggregate_moves
+    buckets as (
+      select m.next_uci as uci, sum(m.games) as games,
+        sum(m.white_wins) as whiteWins, sum(m.draws) as draws,
+        sum(m.black_wins) as blackWins, sum(m.rated_games) as ratedGames,
+        sum(m.rating_pair_sum) as ratingSum
+      from coverage c join opening_position_moves_monthly m
+        on m.position_key = X'${keyHex}' and m.speed = c.speed
+      where c.saved
+        ${startDate ? `and m.played_month >= ${monthKeyFromDateKey(startDate)}` : ""}
+        ${endDate ? `and m.played_month <= ${monthKeyFromDateKey(endDate)}` : ""}
+      group by m.next_uci
+      union all
+      select uci, count(*), sum(winner = 1), sum(winner = 0), sum(winner = 2),
+        sum(white_rating is not null and black_rating is not null),
+        sum(coalesce(white_rating + black_rating, 0))
+      from raw_games group by uci
+    )
+    select uci, sum(games) as games, sum(whiteWins) as whiteWins,
+      sum(draws) as draws, sum(blackWins) as blackWins,
+      round(sum(ratingSum) * 1.0 / nullif(sum(ratedGames) * 2, 0)) as avgOpponentRating
+    from buckets group by uci order by games desc limit 12;`;
+  // Each speed contributes at most eight candidates before the final merge.
+  // Saved recent rows use the position/speed/time index; no count of the bucket.
+  const candidates = speeds
+    .map(
+      (speed) => `
+    select * from (
+      select rg.next_uci as uci, rg.game_id as gameId, rg.played_at as playedAt,
+        rg.played_on as playedOn, rg.white_id, rg.black_id,
+        rg.white_rating as whiteRating, rg.black_rating as blackRating, rg.winner
+      from opening_position_recent_games rg
+      where rg.position_key = X'${keyHex}' and rg.speed = ${speed}
+        ${startDate ? `and rg.played_on >= ${startDate}` : ""}
+        ${endDate ? `and rg.played_on <= ${endDate}` : ""}
+      order by rg.played_at desc limit 8
+    )
+    union all
+    select * from (
+      select max(g.next_uci), g.game_id, max(g.played_at) as playedAt,
+        max(g.played_on), max(g.white_id), max(g.black_id),
+        max(g.white_rating), max(g.black_rating), max(g.winner)
+      from recent_coverage c cross join opening_position_games g
+      where c.speed = ${speed} and not c.saved
+        and ${rawWhere} and g.speed = ${speed}
+      group by g.game_id order by playedAt desc limit 8
+    )`,
+    )
+    .join(" union all ");
+  const gamesSql = `with
+    selected_speeds(speed) as (values ${speeds.map((speed) => `(${speed})`).join(",")}),
+    recent_coverage as materialized (
+      select speed, exists(select 1 from opening_position_recent_games rg
+        where rg.position_key = X'${keyHex}' and rg.speed = s.speed) as saved
+      from selected_speeds s
     ),
-    ${recentGamesCte},
-    ${rawGeneralGamesCte},
-    ${rawRecentGamesCte()}
-  select *
-  from recent_games
-  where exists (
-    select 1
-    from aggregate_total
-    where games >= ${SAVED_GENERAL_MIN_GAMES}
-      and exists (select 1 from recent_games)
-  )
-  union all
-  select *
-  from raw_recent_games
-  where not exists (
-    select 1
-    from aggregate_total
-    where games >= ${SAVED_GENERAL_MIN_GAMES}
-      and exists (select 1 from recent_games)
-  )
-  order by playedAt desc
-  limit 8;
-`;
-
-const buildGeneralMovesSql = ({
-  aggregateMovesCte,
-  generalMovesSource,
-  isDefaultGeneralRequest,
-  rawGeneralGamesCte,
-}) => {
-  if (generalMovesSource === "saved") return buildSavedGeneralMovesSql({ aggregateMovesCte });
-  if (generalMovesSource === "raw") {
-    return buildRawGeneralMovesSql({ rawGeneralGamesCte: rawGeneralGamesCte() });
-  }
-
-  return isDefaultGeneralRequest
-    ? buildHighVolumeGeneralMovesSql({
-        aggregateMovesCte,
-        rawGeneralGamesCte: rawGeneralGamesCte(
-          `aggregate_total where games >= ${SAVED_GENERAL_MIN_GAMES}`,
-        ),
-      })
-    : buildAggregateGeneralMovesSql({
-        aggregateMovesCte,
-        rawGeneralGamesCte: rawGeneralGamesCte("aggregate_moves"),
-      });
-};
-
-const buildGeneralGamesSql = ({
-  aggregateMovesCte,
-  generalGamesSource,
-  isDefaultGeneralRequest,
-  rawGeneralGamesCte,
-  recentGamesCte,
-}) => {
-  if (generalGamesSource === "saved") return buildSavedGeneralRecentGamesSql({ recentGamesCte });
-  if (generalGamesSource === "raw") {
-    return buildRawGeneralRecentGamesSql({ rawGeneralGamesCte: rawGeneralGamesCte() });
-  }
-
-  return isDefaultGeneralRequest
-    ? buildHighVolumeGeneralRecentGamesSql({
-        aggregateMovesCte,
-        rawGeneralGamesCte: rawGeneralGamesCte(
-          `aggregate_total where games >= ${SAVED_GENERAL_MIN_GAMES} and exists (select 1 from recent_games)`,
-        ),
-        recentGamesCte,
-      })
-    : buildAggregateGeneralRecentGamesSql({
-        rawGeneralGamesCte: rawGeneralGamesCte("recent_games"),
-        recentGamesCte,
-      });
+    candidates as (${candidates}),
+    recent as (select * from candidates order by playedAt desc limit 8)
+    select r.uci, r.gameId, r.playedAt, r.playedOn,
+      w.name as white, b.name as black, r.whiteRating, r.blackRating, r.winner
+    from recent r
+    left join opening_names w on w.name_id = r.white_id
+    left join opening_names b on b.name_id = r.black_id
+    order by r.playedAt desc limit 8;`;
+  return { movesSql, gamesSql };
 };
 
 export const buildOpeningExplorerSql = ({
   color,
   endDate,
-  generalGamesSource = "auto",
-  generalMovesSource = "auto",
   keyHex,
   opponent,
   playerMinRating,
@@ -482,11 +264,13 @@ export const buildOpeningExplorerSql = ({
   startDate,
   username,
 }) => {
+  if (!username && !opponent)
+    return buildGeneralBucketQueries({ keyHex, speeds, startDate, endDate });
   const playerIdSql = username
-    ? `(select name_id from opening_names where lower(name) = ${sqlString(username)} limit 1)`
+    ? `coalesce((select name_id from opening_names where name = ${sqlString(username)} limit 1), (select name_id from opening_names where lower(name) = ${sqlString(username)} limit 1))`
     : "";
   const opponentIdSql = opponent
-    ? `(select name_id from opening_names where lower(name) = ${sqlString(opponent)} limit 1)`
+    ? `coalesce((select name_id from opening_names where name = ${sqlString(opponent)} limit 1), (select name_id from opening_names where lower(name) = ${sqlString(opponent)} limit 1))`
     : "";
   const opponentIdColumn = color === 0 ? "black_id" : "white_id";
   const edgesPlayerSql = username ? `and canonical_player_id = ${playerIdSql}` : "";
@@ -495,8 +279,6 @@ export const buildOpeningExplorerSql = ({
   const edgesColorSql = color === "all" ? "" : `and player_color = ${color}`;
   const gamesColorSql = color === "all" ? "" : `and g.player_color = ${color}`;
   const speedSql = speeds.join(",");
-  const startMonth = monthKeyFromDateKey(startDate);
-  const endMonth = monthKeyFromDateKey(endDate);
   const edgesDateSql = `
     ${startDate ? `and played_on >= ${startDate}` : ""}
     ${endDate ? `and played_on <= ${endDate}` : ""}
@@ -505,41 +287,6 @@ export const buildOpeningExplorerSql = ({
     ${startDate ? `and g.played_on >= ${startDate}` : ""}
     ${endDate ? `and g.played_on <= ${endDate}` : ""}
   `;
-  const generalMovesMonthSql = `
-    ${startMonth ? `and played_month >= ${startMonth}` : ""}
-    ${endMonth ? `and played_month <= ${endMonth}` : ""}
-  `;
-  const generalGamesDateSql = `
-    ${startDate ? `and rg.played_on >= ${startDate}` : ""}
-    ${endDate ? `and rg.played_on <= ${endDate}` : ""}
-  `;
-  const generalRecentGameSelects = speeds
-    .map(
-      (speed) => `
-        select *
-        from (
-          select
-            rg.next_uci as uci,
-            rg.game_id as gameId,
-            rg.played_at as playedAt,
-            rg.played_on as playedOn,
-            white_name.name as white,
-            black_name.name as black,
-            rg.white_rating as whiteRating,
-            rg.black_rating as blackRating,
-            rg.winner as winner
-          from opening_position_recent_games rg
-          left join opening_names white_name on white_name.name_id = rg.white_id
-          left join opening_names black_name on black_name.name_id = rg.black_id
-          where rg.position_key = X'${keyHex}'
-            and rg.speed = ${speed}
-            ${generalGamesDateSql}
-          order by rg.played_at desc
-          limit 8
-        )
-      `,
-    )
-    .join("\n      union all\n");
   const edgesWhere = `
     position_key = X'${keyHex}'
     ${edgesColorSql}
@@ -555,19 +302,6 @@ export const buildOpeningExplorerSql = ({
     ${gamesOpponentSql}
     ${gamesDateSql}
   `;
-  const isDefaultGeneralRequest = !startDate && !endDate && hasDefaultGeneralSpeeds(speeds);
-  const aggregateMovesCte = buildAggregateMovesCte({
-    generalMovesMonthSql,
-    keyHex,
-    speedSql,
-  });
-  const recentGamesCte = `
-    recent_games as (
-      ${generalRecentGameSelects}
-    )
-  `;
-  const rawGeneralGamesCte = (fallbackBlockerCte = "") =>
-    buildRawGeneralGamesCte({ fallbackBlockerCte, gamesWhere });
   const opponentRatingColumn = color === 0 ? "g.black_rating" : "g.white_rating";
   const playerDetailsRatingFilter = `and ${opponentRatingColumn} >= ${playerMinRating}`;
 
@@ -587,8 +321,7 @@ export const buildOpeningExplorerSql = ({
       order by games desc
       limit 12;
     `
-    : username
-      ? `
+    : `
       select
         next_uci as uci,
         sum(games) as games,
@@ -602,17 +335,9 @@ export const buildOpeningExplorerSql = ({
       group by next_uci
       order by games desc
       limit 12;
-    `
-      : buildGeneralMovesSql({
-          aggregateMovesCte,
-          generalMovesSource,
-          isDefaultGeneralRequest,
-          rawGeneralGamesCte,
-        });
+    `;
 
-  const gamesSql =
-    username || opponent
-      ? `
+  const gamesSql = `
     select
       g.next_uci as uci,
       g.game_id as gameId,
@@ -631,14 +356,7 @@ export const buildOpeningExplorerSql = ({
     ${username ? "" : "group by g.game_id, g.next_uci"}
     order by g.played_at desc
     limit 8;
-  `
-      : buildGeneralGamesSql({
-          aggregateMovesCte,
-          generalGamesSource,
-          isDefaultGeneralRequest,
-          rawGeneralGamesCte,
-          recentGamesCte,
-        });
+  `;
 
   return { gamesSql, movesSql };
 };

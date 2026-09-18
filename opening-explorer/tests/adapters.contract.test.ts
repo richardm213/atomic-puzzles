@@ -27,13 +27,15 @@ const serviceFactories = [
     "SQLite",
     () =>
       createOpeningExplorerService(
-        createSqliteRepository("data/openings.sqlite", async (sql) => fixtureRows(sql)),
+        createSqliteRepository("package.json", async (sql) => fixtureRows(sql)),
       ),
   ],
   [
     "Turso",
     () => {
       const client = {
+        batch: async (statements: string[]) =>
+          statements.map((sql) => ({ rows: fixtureRows(sql) })),
         execute: async (statement: string | { sql: string }) => ({
           rows: fixtureRows(typeof statement === "string" ? statement : statement.sql),
         }),

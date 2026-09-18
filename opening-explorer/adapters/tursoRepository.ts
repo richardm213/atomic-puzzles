@@ -25,6 +25,11 @@ export const createTursoRepository = (
       message: "Opening explorer Turso credentials are not configured",
     }),
     signature: () => `turso:${url}`,
+    queryBatch: (sql: string[], priorityRef: PriorityRef) =>
+      queue.enqueue(async () => {
+        if (!client) throw new Error("Opening explorer Turso credentials are not configured");
+        return (await client.batch(sql, "read")).map((result) => normalizeRows(result.rows));
+      }, priorityRef),
     query: (sql: string, priorityRef: PriorityRef) =>
       queue.enqueue(async () => {
         if (!client) throw new Error("Opening explorer Turso credentials are not configured");

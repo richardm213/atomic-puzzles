@@ -118,7 +118,16 @@ const parseExplorerApiResponse = async (
 export const fetchExplorerApiResponse = (
   explorerApiUrl: string,
   intent: "practice" | "visible",
+  signal?: AbortSignal,
 ): Promise<ExplorerApiResponse> => {
+  // Cancellable requests belong to their caller: never share their lifetime with
+  // another consumer (including a remount after React StrictMode cleanup).
+  if (signal) {
+    return fetch(explorerApiUrl, {
+      headers: { "X-Explorer-Intent": intent },
+      signal,
+    }).then((response) => parseExplorerApiResponse(response, explorerApiUrl));
+  }
   const cacheKey = `${intent}:${explorerApiUrl}`;
   const existingRequest = inFlightExplorerRequests.get(cacheKey);
   if (existingRequest) return existingRequest;

@@ -1,11 +1,9 @@
 import { type ExplorerColor, PLAYER_MIN_RATING } from "./requestSchema.js";
 import {
-  buildGeneralSavedStatusSql,
   buildOpeningExplorerSql,
   lastMoveColorFromFen,
   OPENING_EXPLORER_RESPONSE_SCHEMA,
   positionKeyHex,
-  selectGeneralExplorerSources,
 } from "./sql.js";
 
 export type ExplorerQueryPlan = {
@@ -73,32 +71,8 @@ export const createExplorerQueryPlan = (input: {
   };
 };
 
-export const buildSavedStatusQuery = (plan: ExplorerQueryPlan): string | null =>
-  !plan.username && !plan.opponent
-    ? buildGeneralSavedStatusSql({
-        endDate: plan.endDate,
-        keyHex: plan.keyHex,
-        speeds: plan.speeds,
-        startDate: plan.startDate,
-      })
-    : null;
-
-export const buildExplorerQueries = (
-  plan: ExplorerQueryPlan,
-  savedStatus: Record<string, unknown>,
-) => {
-  const generalSources =
-    !plan.username && !plan.opponent
-      ? selectGeneralExplorerSources({
-          endDate: plan.endDate,
-          savedGames: Number(savedStatus.savedGames ?? 0),
-          savedRecentGames: Number(savedStatus.savedRecentGames ?? 0),
-          speeds: plan.speeds,
-          startDate: plan.startDate,
-        })
-      : {};
-
-  return buildOpeningExplorerSql({
+export const buildExplorerQueries = (plan: ExplorerQueryPlan) =>
+  buildOpeningExplorerSql({
     color: plan.color,
     endDate: plan.endDate,
     keyHex: plan.keyHex,
@@ -107,6 +81,4 @@ export const buildExplorerQueries = (
     speeds: plan.speeds,
     startDate: plan.startDate,
     username: plan.username,
-    ...generalSources,
   });
-};

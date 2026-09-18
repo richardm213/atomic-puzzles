@@ -87,6 +87,36 @@ describe("fetchExplorerApiResponse", () => {
     });
   });
 
+  it("passes cancellation through to fetch without sharing another caller's signal", async () => {
+    const fetchMock = vi.fn(
+      (_url: string, options: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          options.signal?.addEventListener(
+            "abort",
+            () => reject(new DOMException("Aborted", "AbortError")),
+            { once: true },
+          );
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const a = new AbortController();
+    const b = new AbortController();
+    const first = fetchExplorerApiResponse("/api/opening-explorer?case=abort", "visible", a.signal);
+    const second = fetchExplorerApiResponse(
+      "/api/opening-explorer?case=abort",
+      "visible",
+      b.signal,
+    );
+    const rejectedFirst = expect(first).rejects.toMatchObject({ name: "AbortError" });
+    const rejectedSecond = expect(second).rejects.toMatchObject({ name: "AbortError" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    a.abort();
+    await rejectedFirst;
+    expect(b.signal.aborted).toBe(false);
+    b.abort();
+    await rejectedSecond;
+  });
+
   it("evicts rejected requests so a transient failure can be retried", async () => {
     const fetchMock = vi
       .fn()

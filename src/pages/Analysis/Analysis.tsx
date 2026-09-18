@@ -626,12 +626,12 @@ export const AnalysisPage = () => {
     });
   };
 
-  const requestExplorer = useCallback(() => {
+  const explorerUrl = useMemo(() => {
     if (explorerScope === "player" && !username.trim()) return null;
     const speeds = SPEED_FILTERS.filter(({ key }) => selectedSpeeds.includes(key)).map(
       ({ value }) => value,
     );
-    const url = buildOpeningExplorerUrl({
+    return buildOpeningExplorerUrl({
       fen: currentFen,
       speeds,
       startDate: activeStartDate,
@@ -640,7 +640,6 @@ export const AnalysisPage = () => {
         ? { username, opponent, color: playerColor, minRating: playerRatingValue }
         : {}),
     });
-    return fetchExplorerApiResponse(url, "visible").then((response) => ({ response }));
   }, [
     activeStartDate,
     currentFen,
@@ -652,6 +651,15 @@ export const AnalysisPage = () => {
     selectedSpeeds,
     username,
   ]);
+  const requestExplorer = useCallback(
+    (signal: AbortSignal) =>
+      explorerUrl
+        ? fetchExplorerApiResponse(explorerUrl, "visible", signal).then((response) => ({
+            response,
+          }))
+        : null,
+    [explorerUrl],
+  );
   const {
     moves: explorerMoves,
     recentGames,
@@ -660,6 +668,8 @@ export const AnalysisPage = () => {
     error: explorerError,
   } = useOpeningExplorer({
     enabled: explorerOpen,
+    cacheKey: explorerUrl ?? undefined,
+    debounceMs: 250,
     fen: currentFen,
     playerColor,
     showPerformance: explorerScope === "player",
