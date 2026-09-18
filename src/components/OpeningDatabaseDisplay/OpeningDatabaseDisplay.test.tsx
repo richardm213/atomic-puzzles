@@ -23,7 +23,7 @@ describe("OpeningDatabaseDisplay recent-game links", () => {
       <OpeningDatabaseDisplay
         moves={[]}
         recentGames={[
-          game({ gameId: "123456789", whiteName: "ChessCom White" }),
+          game({ gameId: "chesscom:108184353", whiteName: "ChessCom White" }),
           game({ gameId: "ab12CD34", whiteName: "Lichess White" }),
         ]}
         status="ready"
@@ -39,7 +39,7 @@ describe("OpeningDatabaseDisplay recent-game links", () => {
 
     expect(screen.getByTitle("ChessCom White vs Black")).toHaveAttribute(
       "href",
-      "https://www.chess.com/variants/atomic/game/123456789",
+      "https://www.chess.com/variants/atomic/game/108184353",
     );
     expect(screen.getByTitle("Lichess White vs Black")).toHaveAttribute(
       "href",

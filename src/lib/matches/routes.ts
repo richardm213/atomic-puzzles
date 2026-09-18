@@ -74,11 +74,13 @@ export const isChessComSource = (source: unknown): boolean => {
  */
 export const inferExternalGameSource = (gameId: unknown): "chesscom" | undefined => {
   const normalizedGameId = String(gameId ?? "").trim();
-  return /^\d+$/.test(normalizedGameId) ? "chesscom" : undefined;
+  return /^(?:chesscom:)?\d+$/i.test(normalizedGameId) ? "chesscom" : undefined;
 };
 
 export const buildChessComGameUrl = (gameId: string | number | null | undefined): string => {
-  const normalizedGameId = String(gameId ?? "").trim();
+  const normalizedGameId = String(gameId ?? "")
+    .trim()
+    .replace(/^chesscom:/i, "");
   if (!normalizedGameId || normalizedGameId === "—") return "";
   return `https://www.chess.com/variants/atomic/game/${encodeURIComponent(normalizedGameId)}`;
 };

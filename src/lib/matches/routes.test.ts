@@ -117,6 +117,9 @@ describe("buildExternalGameUrl", () => {
     expect(buildExternalGameUrl("123456789", { source: "chesscom" })).toBe(
       "https://www.chess.com/variants/atomic/game/123456789",
     );
+    expect(buildExternalGameUrl("chesscom:108184353", { source: "chesscom" })).toBe(
+      "https://www.chess.com/variants/atomic/game/108184353",
+    );
   });
 
   it("does not infer Chess.com from source-less numeric game ids", () => {
@@ -134,6 +137,7 @@ describe("inferExternalGameSource", () => {
   it("identifies numeric Chess.com ids in aggregates without source metadata", () => {
     expect(inferExternalGameSource("123456789")).toBe("chesscom");
     expect(inferExternalGameSource(123456789)).toBe("chesscom");
+    expect(inferExternalGameSource("chesscom:108184353")).toBe("chesscom");
   });
 
   it("leaves normal Lichess ids and missing ids unspecified", () => {
