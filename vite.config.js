@@ -85,7 +85,8 @@ export default defineConfig(({ mode }) => {
     server: {
       headers: {
         "Cross-Origin-Opener-Policy": "same-origin",
-        "Cross-Origin-Embedder-Policy": "credentialless",
+        // credentialless is not supported by Safari; the threaded engine needs isolation there too.
+        "Cross-Origin-Embedder-Policy": "require-corp",
       },
     },
     base: "/",

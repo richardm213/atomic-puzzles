@@ -504,6 +504,7 @@ const PlayerLabel = ({
     {!isByePlayer(playerName) && !isEmptyPlayer(playerName) ? (
       <img
         className="tournamentPlayerFlag"
+        crossOrigin="anonymous"
         src={countryCodeToFlagUrl(countryCode)}
         alt=""
         loading="lazy"
