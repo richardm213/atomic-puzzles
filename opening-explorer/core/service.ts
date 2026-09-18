@@ -234,13 +234,23 @@ export const createOpeningExplorerService = (repository: OpeningExplorerReposito
         const extrasPromise = plan.includePositionExtras
           ? fetchPositionPlayerLeaders(plan.keyHex, plan.lastMoveColor, priorityRef)
           : Promise.resolve(null);
-        const { gamesSql, movesSql } = buildExplorerQueries(plan);
-        const results = repository.queryBatch
-          ? repository.queryBatch([movesSql, gamesSql], priorityRef)
-          : Promise.all([
-              repository.query(movesSql, priorityRef),
-              repository.query(gamesSql, priorityRef),
-            ]);
+        const { gamesSql, movesSql, combinedSql } = buildExplorerQueries(plan);
+        const results = combinedSql
+          ? repository.query(combinedSql, priorityRef).then((rows) => {
+              const row = rows[0];
+              const moves: unknown = JSON.parse(String(row?.movesJson ?? "null"));
+              const games: unknown = JSON.parse(String(row?.recentGamesJson ?? "null"));
+              if (!Array.isArray(moves) || !Array.isArray(games)) {
+                throw new Error("Opening explorer returned invalid combined results");
+              }
+              return [moves as JsonRow[], games as JsonRow[]];
+            })
+          : repository.queryBatch
+            ? repository.queryBatch([movesSql, gamesSql], priorityRef)
+            : Promise.all([
+                repository.query(movesSql, priorityRef),
+                repository.query(gamesSql, priorityRef),
+              ]);
         const [rows, positionLeaders] = await Promise.all([results, extrasPromise]);
         const [moves = [], recentGames = []] = rows;
         // Personalized results are cached internally by every filter, but never

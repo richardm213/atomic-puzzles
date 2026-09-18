@@ -23,6 +23,13 @@ const createRepository = (
 });
 
 const fixtureQuery = async (sql: string): Promise<JsonRow[]> => {
+  if (sql.includes("as movesJson"))
+    return [
+      {
+        movesJson: JSON.stringify(await fixtureQuery("select fixture limit 12")),
+        recentGamesJson: JSON.stringify(await fixtureQuery("select fixture limit 8")),
+      },
+    ];
   if (sql.includes("key = 'aliases'")) return [{ value: '{"alias":"canonical"}' }];
   if (sql.includes("opening_position_player_leaders")) return [];
   if (sql.includes("position_player_leader_bands")) return [];
@@ -121,7 +128,11 @@ describe("createOpeningExplorerService", () => {
     const clock = vi.spyOn(Date, "now").mockImplementation(() => now);
     try {
       const query = vi.fn(async (sql: string) =>
-        sql.includes("limit 12") ? [] : fixtureQuery(sql),
+        sql.includes("as movesJson")
+          ? [{ movesJson: "[]", recentGamesJson: "[]" }]
+          : sql.includes("limit 12")
+            ? []
+            : fixtureQuery(sql),
       );
       const service = createOpeningExplorerService(createRepository(query));
       await service.handle(explorerRequest({ speeds: "0" }));
@@ -145,13 +156,30 @@ describe("createOpeningExplorerService", () => {
     }
   });
 
-  it("batches the two main reads with no saved-status round trip", async () => {
+  it("loads general moves and recent games with one combined query", async () => {
+    const query = vi.fn(fixtureQuery);
+    const queryBatch = vi.fn();
+    const service = createOpeningExplorerService({ ...createRepository(query), queryBatch });
+    const response = await service.handle(explorerRequest());
+    expect(response.statusCode).toBe(200);
+    expect(responseBody(response)).toMatchObject({
+      moves: [{ uci: "a1a2", games: 1000 }],
+      recentGames: [{ gameId: "g1" }],
+    });
+    expect(query.mock.calls.filter(([sql]) => sql.includes("as movesJson"))).toHaveLength(1);
+    expect(queryBatch).not.toHaveBeenCalled();
+    const calls = query.mock.calls.length;
+    await service.handle(explorerRequest());
+    expect(query).toHaveBeenCalledTimes(calls);
+  });
+
+  it("batches the two player reads with no saved-status round trip", async () => {
     const query = vi.fn(fixtureQuery);
     const queryBatch = vi.fn(async (statements: string[]) =>
       Promise.all(statements.map(fixtureQuery)),
     );
     const service = createOpeningExplorerService({ ...createRepository(query), queryBatch });
-    const response = await service.handle(explorerRequest());
+    const response = await service.handle(explorerRequest({ username: "alice" }));
     expect(response.statusCode).toBe(200);
     expect(queryBatch).toHaveBeenCalledTimes(1);
     expect(queryBatch.mock.calls[0]![0]).toHaveLength(2);
@@ -240,17 +268,17 @@ describe("createOpeningExplorerService", () => {
         }, priority),
     });
     const first = service.handle({
-      ...explorerRequest({ speeds: "0" }),
+      ...explorerRequest({ username: "alice", speeds: "0" }),
       navigation: { session: "tab-a", sequence: 1 },
     });
     await vi.waitFor(() => expect(queue.stats().queued).toBe(1));
     const latest = service.handle({
-      ...explorerRequest({ speeds: "1" }),
+      ...explorerRequest({ username: "alice", speeds: "1" }),
       navigation: { session: "tab-a", sequence: 2 },
     });
     expect((await first).statusCode).toBe(409);
     const other = service.handle({
-      ...explorerRequest({ speeds: "1" }),
+      ...explorerRequest({ username: "alice", speeds: "1" }),
       navigation: { session: "tab-b", sequence: 1 },
     });
     await vi.waitFor(() => expect(queue.stats().queued).toBe(2));
@@ -260,7 +288,7 @@ describe("createOpeningExplorerService", () => {
     expect((await other).statusCode).toBe(200);
     expect(runs).toBe(2);
     const late = await service.handle({
-      ...explorerRequest({ speeds: "0" }),
+      ...explorerRequest({ username: "alice", speeds: "0" }),
       navigation: { session: "tab-a", sequence: 1 },
     });
     expect(late.statusCode).toBe(409);
@@ -277,13 +305,16 @@ describe("createOpeningExplorerService", () => {
     );
     const service = createOpeningExplorerService({ ...createRepository(fixtureQuery), queryBatch });
     const controller = new AbortController();
-    const first = service.handle({ ...explorerRequest(), signal: controller.signal });
+    const first = service.handle({
+      ...explorerRequest({ username: "alice" }),
+      signal: controller.signal,
+    });
     await vi.waitFor(() => expect(queryBatch).toHaveBeenCalledTimes(1));
     controller.abort();
     expect((await first).statusCode).toBe(499);
     resolve([[], []]);
     await Promise.resolve();
-    const retry = service.handle(explorerRequest());
+    const retry = service.handle(explorerRequest({ username: "alice" }));
     await vi.waitFor(() => expect(queryBatch).toHaveBeenCalledTimes(2));
     resolve([[], []]);
     expect((await retry).statusCode).toBe(200);

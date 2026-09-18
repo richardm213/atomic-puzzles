@@ -8,6 +8,13 @@ import { createOpeningExplorerService, type JsonRow } from "../core/service.js";
 const FEN = "8/8/8/8/8/8/8/K6k w - - 0 1";
 
 const fixtureRows = (sql: string): JsonRow[] => {
+  if (sql.includes("as movesJson"))
+    return [
+      {
+        movesJson: JSON.stringify(fixtureRows("select fixture limit 12")),
+        recentGamesJson: JSON.stringify(fixtureRows("select fixture limit 8")),
+      },
+    ];
   if (sql.includes("key = 'aliases'")) return [{ value: '{"alias":"canonical"}' }];
   if (sql.includes("opening_position_player_leaders")) return [];
   if (sql.includes("position_player_leader_bands")) return [];

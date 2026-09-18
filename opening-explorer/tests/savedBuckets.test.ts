@@ -22,6 +22,7 @@ const setup = () => {
       played_at int, played_on int, white_id int, black_id int,
       white_rating int, black_rating int, winner int
     );
+    create index raw_lookup on opening_position_games(position_key,speed,played_at desc);
     create table opening_position_recent_games as select * from opening_position_games where 0;
     create index recent_lookup on opening_position_recent_games(position_key,speed,played_at desc);
     create table opening_names (name_id integer primary key, name text unique);
@@ -75,7 +76,33 @@ describe("saved speed buckets", () => {
       expect(recent[0]?.gameId).toBe("blitz");
       expect(new Set(recent.map((row) => row.gameId)).size).toBe(8);
       expect(recent[1]?.gameId).toBe("bullet11");
-      expect(gamesSql).not.toMatch(/count\(\*\)/i);
+      expect(gamesSql).toContain("exists(select 1 from opening_position_recent_games");
+    } finally {
+      db.close();
+    }
+  });
+
+  it("reads raw entries once when neither speed has saved data", () => {
+    const db = setup();
+    try {
+      db.exec(`delete from opening_position_moves_monthly;
+        delete from opening_position_recent_games;
+        insert into opening_position_games values
+          (1,X'${keyHex}',1,'d2d4','blitz1',100,20250202,1,2,1800,2200,1),
+          (2,X'${keyHex}',1,'d2d4','blitz1',100,20250202,1,2,1800,2200,1),
+          (1,X'${keyHex}',1,'d2d4','blitz2',101,20250202,1,2,1800,2200,1);`);
+      const sql = queries().combinedSql!;
+      const combined = db.prepare(sql).get()!;
+      const moves = JSON.parse(String(combined.movesJson)) as Array<{ games: number }>;
+      const recent = JSON.parse(String(combined.recentGamesJson)) as Array<{ gameId: string }>;
+      expect(moves.reduce((total, move) => total + move.games, 0)).toBe(14);
+      expect(recent).toHaveLength(8);
+      expect(recent[0]?.gameId).toBe("blitz2");
+      expect(new Set(recent.map((game) => game.gameId)).size).toBe(8);
+      const plan = db.prepare("explain query plan " + sql).all();
+      expect(
+        plan.filter((row) => String(row.detail).includes("USING INDEX raw_lookup")),
+      ).toHaveLength(1);
     } finally {
       db.close();
     }
@@ -129,10 +156,14 @@ describe("saved speed buckets", () => {
         queries({ startDate: 20260301 }),
       ];
       const read = () =>
-        cases.map(({ movesSql, gamesSql }) => ({
-          moves: db.prepare(movesSql).all(),
-          games: db.prepare(gamesSql).all(),
-        }));
+        cases.map(({ movesSql, gamesSql, combinedSql }) => {
+          const moves = db.prepare(movesSql).all();
+          const games = db.prepare(gamesSql).all();
+          const combined = db.prepare(combinedSql!).get()!;
+          expect(JSON.parse(String(combined.movesJson))).toEqual(moves);
+          expect(JSON.parse(String(combined.recentGamesJson))).toEqual(games);
+          return { moves, games };
+        });
       const before = read();
       // Representative fixture for the published view contract, not a database migration.
       db.exec(`

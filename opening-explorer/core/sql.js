@@ -174,44 +174,12 @@ const buildGeneralBucketQueries = ({ keyHex, speeds, startDate, endDate }) => {
     coverage as materialized (
       select speed,
         exists(select 1 from opening_position_moves_monthly m
-          where m.position_key = X'${keyHex}' and m.speed = s.speed) as saved
+          where m.position_key = X'${keyHex}' and m.speed = s.speed) as savedMoves,
+        exists(select 1 from opening_position_recent_games rg
+          where rg.position_key = X'${keyHex}' and rg.speed = s.speed) as savedRecent
       from selected_speeds s
     )`;
-  const rawWhere = `g.position_key = X'${keyHex}'
-    ${startDate ? `and g.played_on >= ${startDate}` : ""}
-    ${endDate ? `and g.played_on <= ${endDate}` : ""}`;
-  const movesSql = `with ${coverage},
-    raw_games as (
-      select g.game_id, max(g.next_uci) as uci, max(g.winner) as winner,
-        max(g.white_rating) as white_rating, max(g.black_rating) as black_rating
-      from coverage c cross join opening_position_games g
-      where not c.saved and g.speed = c.speed and ${rawWhere}
-      group by g.game_id
-    ),
-    buckets as (
-      select m.next_uci as uci, sum(m.games) as games,
-        sum(m.white_wins) as whiteWins, sum(m.draws) as draws,
-        sum(m.black_wins) as blackWins, sum(m.rated_games) as ratedGames,
-        sum(m.rating_pair_sum) as ratingSum
-      from coverage c join opening_position_moves_monthly m
-        on m.position_key = X'${keyHex}' and m.speed = c.speed
-      where c.saved
-        ${startDate ? `and m.played_month >= ${monthKeyFromDateKey(startDate)}` : ""}
-        ${endDate ? `and m.played_month <= ${monthKeyFromDateKey(endDate)}` : ""}
-      group by m.next_uci
-      union all
-      select uci, count(*), sum(winner = 1), sum(winner = 0), sum(winner = 2),
-        sum(white_rating is not null and black_rating is not null),
-        sum(coalesce(white_rating + black_rating, 0))
-      from raw_games group by uci
-    )
-    select uci, sum(games) as games, sum(whiteWins) as whiteWins,
-      sum(draws) as draws, sum(blackWins) as blackWins,
-      round(sum(ratingSum) * 1.0 / nullif(sum(ratedGames) * 2, 0)) as avgOpponentRating
-    from buckets group by uci order by games desc limit 12;`;
-  // Each speed contributes at most eight candidates before the final merge.
-  // Saved recent rows use the position/speed/time index; no count of the bucket.
-  const candidates = speeds
+  const savedRecent = speeds
     .map(
       (speed) => `
     select * from (
@@ -223,35 +191,82 @@ const buildGeneralBucketQueries = ({ keyHex, speeds, startDate, endDate }) => {
         ${startDate ? `and rg.played_on >= ${startDate}` : ""}
         ${endDate ? `and rg.played_on <= ${endDate}` : ""}
       order by rg.played_at desc limit 8
-    )
-    union all
-    select * from (
-      select max(g.next_uci), g.game_id, max(g.played_at) as playedAt,
-        max(g.played_on), max(g.white_id), max(g.black_id),
-        max(g.white_rating), max(g.black_rating), max(g.winner)
-      from recent_coverage c cross join opening_position_games g
-      where c.speed = ${speed} and not c.saved
-        and ${rawWhere} and g.speed = ${speed}
-      group by g.game_id order by playedAt desc limit 8
     )`,
     )
     .join(" union all ");
-  const gamesSql = `with
-    selected_speeds(speed) as (values ${speeds.map((speed) => `(${speed})`).join(",")}),
-    recent_coverage as materialized (
-      select speed, exists(select 1 from opening_position_recent_games rg
-        where rg.position_key = X'${keyHex}' and rg.speed = s.speed) as saved
-      from selected_speeds s
+  // Materialize once: statistics and recent games consume the same deduplicated
+  // rows. This also prevents repeated metadata joins when games is a SQL view.
+  const common = `with ${coverage},
+    raw_games as materialized (
+      select g.speed, g.game_id as gameId, max(g.next_uci) as uci,
+        max(g.played_at) as playedAt, max(g.played_on) as playedOn,
+        max(g.white_id) as white_id, max(g.black_id) as black_id,
+        max(g.white_rating) as whiteRating, max(g.black_rating) as blackRating,
+        max(g.winner) as winner
+      from coverage c cross join opening_position_games g
+      where (not c.savedMoves or not c.savedRecent)
+        and g.speed = c.speed and g.position_key = X'${keyHex}'
+        ${startDate ? `and g.played_on >= ${startDate}` : ""}
+        ${endDate ? `and g.played_on <= ${endDate}` : ""}
+      group by g.speed, g.game_id
     ),
-    candidates as (${candidates}),
-    recent as (select * from candidates order by playedAt desc limit 8)
-    select r.uci, r.gameId, r.playedAt, r.playedOn,
-      w.name as white, b.name as black, r.whiteRating, r.blackRating, r.winner
-    from recent r
-    left join opening_names w on w.name_id = r.white_id
-    left join opening_names b on b.name_id = r.black_id
-    order by r.playedAt desc limit 8;`;
-  return { movesSql, gamesSql };
+    buckets as (
+      select m.next_uci as uci, sum(m.games) as games,
+        sum(m.white_wins) as whiteWins, sum(m.draws) as draws,
+        sum(m.black_wins) as blackWins, sum(m.rated_games) as ratedGames,
+        sum(m.rating_pair_sum) as ratingSum
+      from coverage c join opening_position_moves_monthly m
+        on m.position_key = X'${keyHex}' and m.speed = c.speed
+      where c.savedMoves
+        ${startDate ? `and m.played_month >= ${monthKeyFromDateKey(startDate)}` : ""}
+        ${endDate ? `and m.played_month <= ${monthKeyFromDateKey(endDate)}` : ""}
+      group by m.next_uci
+      union all
+      select g.uci, count(*), sum(g.winner = 1), sum(g.winner = 0), sum(g.winner = 2),
+        sum(g.whiteRating is not null and g.blackRating is not null),
+        sum(coalesce(g.whiteRating + g.blackRating, 0))
+      from coverage c join raw_games g on g.speed = c.speed
+      where not c.savedMoves group by g.uci
+    ),
+    moves as (
+      select uci, sum(games) as games, sum(whiteWins) as whiteWins,
+        sum(draws) as draws, sum(blackWins) as blackWins,
+        round(sum(ratingSum) * 1.0 / nullif(sum(ratedGames) * 2, 0)) as avgOpponentRating
+      from buckets group by uci order by games desc limit 12
+    ),
+    candidates as (
+      ${savedRecent}
+      union all
+      select * from (
+        select g.uci, g.gameId, g.playedAt, g.playedOn, g.white_id, g.black_id,
+          g.whiteRating, g.blackRating, g.winner
+        from coverage c join raw_games g on g.speed = c.speed
+        where not c.savedRecent order by g.playedAt desc limit 8
+      )
+    ),
+    recent as (select * from candidates order by playedAt desc limit 8),
+    recent_games as (
+      select r.uci, r.gameId, r.playedAt, r.playedOn,
+        w.name as white, b.name as black, r.whiteRating, r.blackRating, r.winner
+      from recent r
+      left join opening_names w on w.name_id = r.white_id
+      left join opening_names b on b.name_id = r.black_id
+      order by r.playedAt desc limit 8
+    )`;
+  return {
+    movesSql: `${common} select * from moves;`,
+    gamesSql: `${common} select * from recent_games;`,
+    combinedSql: `${common} select
+      (select json_group_array(json_object(
+        'uci',uci,'games',games,'whiteWins',whiteWins,'draws',draws,
+        'blackWins',blackWins,'avgOpponentRating',avgOpponentRating
+      )) from moves) as movesJson,
+      (select json_group_array(json_object(
+        'uci',uci,'gameId',gameId,'playedAt',playedAt,'playedOn',playedOn,
+        'white',white,'black',black,'whiteRating',whiteRating,
+        'blackRating',blackRating,'winner',winner
+      )) from recent_games) as recentGamesJson;`,
+  };
 };
 
 export const buildOpeningExplorerSql = ({
@@ -358,5 +373,5 @@ export const buildOpeningExplorerSql = ({
     limit 8;
   `;
 
-  return { gamesSql, movesSql };
+  return { gamesSql, movesSql, combinedSql: undefined };
 };
