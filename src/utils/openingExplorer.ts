@@ -115,16 +115,27 @@ const parseExplorerApiResponse = async (
   };
 };
 
+export type ExplorerRequestNavigation = { session: string; sequence: number };
+
 export const fetchExplorerApiResponse = (
   explorerApiUrl: string,
   intent: "practice" | "visible",
   signal?: AbortSignal,
+  navigation?: ExplorerRequestNavigation,
 ): Promise<ExplorerApiResponse> => {
   // Cancellable requests belong to their caller: never share their lifetime with
   // another consumer (including a remount after React StrictMode cleanup).
   if (signal) {
     return fetch(explorerApiUrl, {
-      headers: { "X-Explorer-Intent": intent },
+      headers: {
+        "X-Explorer-Intent": intent,
+        ...(navigation
+          ? {
+              "X-Explorer-Session": navigation.session,
+              "X-Explorer-Sequence": String(navigation.sequence),
+            }
+          : {}),
+      },
       signal,
     }).then((response) => parseExplorerApiResponse(response, explorerApiUrl));
   }

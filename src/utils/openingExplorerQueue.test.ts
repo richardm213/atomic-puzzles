@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   createOpeningExplorerQueue,
@@ -71,7 +71,7 @@ describe("opening explorer request queue", () => {
       return "visible";
     }, nextPriority("visible"));
 
-    boostedPriority.value = Math.max(boostedPriority.value, nextPriority("visible").value);
+    Object.assign(boostedPriority, nextPriority("visible"));
     active.resolve("active");
 
     await expect(activePromise).resolves.toBe("active");
@@ -106,5 +106,77 @@ describe("opening explorer request queue", () => {
     await expect(visiblePromise).resolves.toBe("visible");
     await flushMicrotasks();
     expect(runOrder).toEqual(["active", "visible"]);
+  });
+  it("prioritizes visible work even over a newer prefetch", async () => {
+    const queue = createOpeningExplorerQueue({ maxConcurrent: 1, maxQueued: 4 });
+    const next = createPriorityFactory();
+    const gate = deferred();
+    const active = queue.enqueue(() => gate.promise, next("visible"));
+    const order: string[] = [];
+    const visible = queue.enqueue(async () => {
+      order.push("visible");
+    }, next("visible"));
+    const prefetch = queue.enqueue(async () => {
+      order.push("prefetch");
+    }, next("prefetch"));
+    gate.resolve("done");
+    await Promise.all([active, visible, prefetch]);
+    expect(order).toEqual(["visible", "prefetch"]);
+  });
+
+  it("removes aborted queued work immediately without running it", async () => {
+    const queue = createOpeningExplorerQueue({ maxConcurrent: 1, maxQueued: 4 });
+    const gate = deferred();
+    const active = queue.enqueue(() => gate.promise, { value: 1 });
+    const controller = new AbortController();
+    const run = vi.fn(async () => "obsolete");
+    const obsolete = queue.enqueue(run, { value: 2, signal: controller.signal });
+    const rejected = expect(obsolete).rejects.toMatchObject({ name: "AbortError" });
+    controller.abort();
+    await rejected;
+    expect(queue.stats()).toEqual({ active: 1, queued: 0 });
+    gate.resolve("done");
+    await active;
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it("does not free an aborted active slot until the underlying work finishes", async () => {
+    const queue = createOpeningExplorerQueue({ maxConcurrent: 1, maxQueued: 4 });
+    const gate = deferred();
+    const controller = new AbortController();
+    const active = queue.enqueue(() => gate.promise, { value: 1, signal: controller.signal });
+    const rejected = expect(active).rejects.toMatchObject({ name: "AbortError" });
+    controller.abort();
+    await rejected;
+    const run = vi.fn(async () => "latest");
+    const latest = queue.enqueue(run, { value: 2 });
+    expect(queue.stats()).toEqual({ active: 1, queued: 1 });
+    expect(run).not.toHaveBeenCalled();
+    gate.resolve("ignored");
+    await expect(latest).resolves.toBe("latest");
+    await flushMicrotasks();
+    expect(queue.stats()).toEqual({ active: 0, queued: 0 });
+  });
+
+  it("rejects pre-aborted jobs and recovers capacity after a synchronous throw", async () => {
+    const queue = createOpeningExplorerQueue({ maxConcurrent: 1, maxQueued: 4 });
+    const controller = new AbortController();
+    controller.abort();
+    const run = vi.fn(async () => "never");
+    await expect(queue.enqueue(run, { value: 1, signal: controller.signal })).rejects.toMatchObject(
+      { name: "AbortError" },
+    );
+    expect(run).not.toHaveBeenCalled();
+    await expect(
+      queue.enqueue(
+        () => {
+          throw new Error("sync");
+        },
+        { value: 2 },
+      ),
+    ).rejects.toThrow("sync");
+    await expect(queue.enqueue(async () => "ok", { value: 3 })).resolves.toBe("ok");
+    await flushMicrotasks();
+    expect(queue.stats()).toEqual({ active: 0, queued: 0 });
   });
 });

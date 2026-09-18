@@ -1,3 +1,4 @@
+import { parseExplorerNavigation } from "../core/requestLifecycle.js";
 import { createOpeningExplorerService, type ExplorerServiceResponse } from "../core/service.js";
 import { createTursoRepository } from "./tursoRepository.js";
 
@@ -95,11 +96,18 @@ export const createNetlifyOpeningExplorerHandler =
     for (const [key, value] of Object.entries(event.queryStringParameters ?? {})) {
       if (typeof value === "string") params.set(key, value);
     }
+    const navigation = parseExplorerNavigation(
+      getHeader(event, "x-explorer-session"),
+      getHeader(event, "x-explorer-sequence"),
+    );
     return explorerService.handle({
       method,
       path: event.path ?? "/api/opening-explorer",
       params,
       intent: getHeader(event, "x-explorer-intent"),
+      ...(navigation
+        ? { navigation: { ...navigation, session: `${getClientIp(event)}:${navigation.session}` } }
+        : {}),
     });
   };
 

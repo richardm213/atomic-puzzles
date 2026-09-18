@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { OpeningExplorerQueueError } from "../core/requestQueue.js";
+import { createOpeningExplorerQueue, OpeningExplorerQueueError } from "../core/requestQueue.js";
 import {
   createOpeningExplorerService,
   type JsonRow,
@@ -219,5 +219,73 @@ describe("createOpeningExplorerService", () => {
     });
     expect(failure.statusCode).toBe(500);
     expect(responseBody(failure)).toEqual({ error: "Opening explorer query failed" });
+  });
+  it("drops superseded navigation jobs without cancelling another tab", async () => {
+    const queue = createOpeningExplorerQueue({ maxConcurrent: 1, maxQueued: 10 });
+    let unblock!: () => void;
+    const blocker = queue.enqueue(
+      () =>
+        new Promise<void>((resolve) => {
+          unblock = resolve;
+        }),
+      { value: 0 },
+    );
+    let runs = 0;
+    const service = createOpeningExplorerService({
+      ...createRepository(fixtureQuery),
+      queryBatch: (statements, priority) =>
+        queue.enqueue(async () => {
+          runs += 1;
+          return Promise.all(statements.map(fixtureQuery));
+        }, priority),
+    });
+    const first = service.handle({
+      ...explorerRequest({ speeds: "0" }),
+      navigation: { session: "tab-a", sequence: 1 },
+    });
+    await vi.waitFor(() => expect(queue.stats().queued).toBe(1));
+    const latest = service.handle({
+      ...explorerRequest({ speeds: "1" }),
+      navigation: { session: "tab-a", sequence: 2 },
+    });
+    expect((await first).statusCode).toBe(409);
+    const other = service.handle({
+      ...explorerRequest({ speeds: "1" }),
+      navigation: { session: "tab-b", sequence: 1 },
+    });
+    await vi.waitFor(() => expect(queue.stats().queued).toBe(2));
+    unblock();
+    await blocker;
+    expect((await latest).statusCode).toBe(200);
+    expect((await other).statusCode).toBe(200);
+    expect(runs).toBe(2);
+    const late = await service.handle({
+      ...explorerRequest({ speeds: "0" }),
+      navigation: { session: "tab-a", sequence: 1 },
+    });
+    expect(late.statusCode).toBe(409);
+    expect(runs).toBe(2);
+  });
+
+  it("does not cache a late result from a disconnected request", async () => {
+    let resolve!: (rows: JsonRow[][]) => void;
+    const queryBatch = vi.fn(
+      () =>
+        new Promise<JsonRow[][]>((r) => {
+          resolve = r;
+        }),
+    );
+    const service = createOpeningExplorerService({ ...createRepository(fixtureQuery), queryBatch });
+    const controller = new AbortController();
+    const first = service.handle({ ...explorerRequest(), signal: controller.signal });
+    await vi.waitFor(() => expect(queryBatch).toHaveBeenCalledTimes(1));
+    controller.abort();
+    expect((await first).statusCode).toBe(499);
+    resolve([[], []]);
+    await Promise.resolve();
+    const retry = service.handle(explorerRequest());
+    await vi.waitFor(() => expect(queryBatch).toHaveBeenCalledTimes(2));
+    resolve([[], []]);
+    expect((await retry).statusCode).toBe(200);
   });
 });

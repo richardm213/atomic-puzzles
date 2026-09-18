@@ -1,5 +1,10 @@
 import { EXPLORER_CACHE_TTL_MS, MAX_CACHE_ENTRIES } from "./cachePolicy.js";
 import { buildExplorerQueries, createExplorerQueryPlan } from "./queryPlan.js";
+import {
+  awaitExplorerRequest,
+  createExplorerRequestLifecycle,
+  type ExplorerNavigation,
+} from "./requestLifecycle.js";
 import { createPriorityFactory, OpeningExplorerQueueError } from "./requestQueue.js";
 import { parseExplorerRequest } from "./requestSchema.js";
 import {
@@ -11,7 +16,7 @@ import {
   toPositionPlayerLeadersPayload,
 } from "./sql.js";
 
-export type PriorityRef = { value: number };
+export type PriorityRef = { value: number; lane?: number; signal?: AbortSignal };
 export type JsonRow = Record<string, unknown>;
 
 export interface OpeningExplorerRepository {
@@ -27,6 +32,8 @@ export type ExplorerServiceRequest = {
   path: string;
   params: URLSearchParams;
   intent?: string;
+  navigation?: ExplorerNavigation | undefined;
+  signal?: AbortSignal;
 };
 
 export type ExplorerServiceResponse = {
@@ -90,15 +97,18 @@ export const createOpeningExplorerService = (repository: OpeningExplorerReposito
     const key = `${repository.signature()}:${sql}`;
     const cached = metadataCache.get(key);
     if (cached && cached.expiresAt > Date.now()) return cached.promise;
-    const promise = repository.query(sql, priorityRef).catch((error: unknown) => {
-      if (metadataCache.get(key)?.promise === promise) metadataCache.delete(key);
-      throw error;
-    });
+    const promise = repository
+      .query(sql, { value: priorityRef.value, lane: priorityRef.lane ?? 1 })
+      .catch((error: unknown) => {
+        if (metadataCache.get(key)?.promise === promise) metadataCache.delete(key);
+        throw error;
+      });
     if (metadataCache.size >= 16) metadataCache.clear();
     metadataCache.set(key, { promise, expiresAt: Date.now() + cacheTtlMs });
     return promise;
   };
   const nextPriority = createPriorityFactory();
+  const beginRequest = createExplorerRequestLifecycle();
 
   const resolveCanonicalUsername = async (
     username: string,
@@ -107,13 +117,17 @@ export const createOpeningExplorerService = (repository: OpeningExplorerReposito
     if (!username) return "";
     try {
       const aliases = aliasesFromRows(
-        await metadata(
-          "select value from opening_index_meta where key = 'aliases' limit 1;",
-          priorityRef,
+        await awaitExplorerRequest(
+          metadata(
+            "select value from opening_index_meta where key = 'aliases' limit 1;",
+            priorityRef,
+          ),
+          priorityRef.signal,
         ),
       );
       return aliases.get(username) ?? username;
     } catch {
+      priorityRef.signal?.throwIfAborted();
       return username;
     }
   };
@@ -153,8 +167,15 @@ export const createOpeningExplorerService = (repository: OpeningExplorerReposito
     }
     if (!availability.available) return jsonResponse(503, { error: availability.message }, false);
 
-    const priorityRef = nextPriority(request.intent?.toLowerCase() ?? "");
+    const priorityRef: PriorityRef = nextPriority(request.intent?.toLowerCase() ?? "");
+    let lifecycle: ReturnType<typeof beginRequest> | undefined;
     try {
+      lifecycle = beginRequest(
+        parsed.request.kind === "explorer" ? request.navigation : undefined,
+        request.signal,
+      );
+      priorityRef.signal = lifecycle.signal;
+      priorityRef.signal.throwIfAborted();
       if (parsed.request.kind === "players") {
         const players = (await repository.query(buildOpeningPlayersSql(), priorityRef))
           .map((row) => String(row.username ?? "").trim())
@@ -178,6 +199,7 @@ export const createOpeningExplorerService = (repository: OpeningExplorerReposito
       const opponent = username
         ? await resolveCanonicalUsername(parsed.request.requestedOpponent, priorityRef)
         : "";
+      priorityRef.signal.throwIfAborted();
       const plan = createExplorerQueryPlan({
         databaseSignature: signature,
         ...parsed.request,
@@ -192,13 +214,18 @@ export const createOpeningExplorerService = (repository: OpeningExplorerReposito
         return successResponse(cached.body, cached.shouldCache);
       }
       cache.delete(plan.cacheKey);
-      const pending = pendingCache.get(plan.cacheKey);
+      // Navigation-scoped work must not share cancellation with another visitor.
+      // Legacy unscoped callers can still coalesce identical in-flight work.
+      const pendingKey = request.navigation || request.signal ? null : plan.cacheKey;
+      const pending = pendingKey ? pendingCache.get(pendingKey) : undefined;
       if (pending) {
         try {
           pending.priorityRef.value = Math.max(pending.priorityRef.value, priorityRef.value);
-          const result = await pending.promise;
+          pending.priorityRef.lane = Math.max(pending.priorityRef.lane ?? 1, priorityRef.lane ?? 1);
+          const result = await awaitExplorerRequest(pending.promise, priorityRef.signal);
           return successResponse(result.body, result.shouldCache);
         } catch {
+          priorityRef.signal.throwIfAborted();
           // Retry below when the shared request failed.
         }
       }
@@ -230,9 +257,10 @@ export const createOpeningExplorerService = (repository: OpeningExplorerReposito
         };
       })();
 
-      pendingCache.set(plan.cacheKey, { promise: bodyPromise, priorityRef });
+      if (pendingKey) pendingCache.set(pendingKey, { promise: bodyPromise, priorityRef });
       try {
-        const result = await bodyPromise;
+        const result = await awaitExplorerRequest(bodyPromise, priorityRef.signal);
+        priorityRef.signal.throwIfAborted();
         if (cache.size >= MAX_CACHE_ENTRIES) {
           const oldest = cache.keys().next().value;
           if (oldest !== undefined) cache.delete(oldest);
@@ -240,7 +268,8 @@ export const createOpeningExplorerService = (repository: OpeningExplorerReposito
         cache.set(plan.cacheKey, { ...result, expiresAt: Date.now() + cacheTtlMs });
         return successResponse(result.body, result.shouldCache);
       } finally {
-        pendingCache.delete(plan.cacheKey);
+        if (pendingKey && pendingCache.get(pendingKey)?.promise === bodyPromise)
+          pendingCache.delete(pendingKey);
       }
     } catch (error) {
       const statusCode = error instanceof OpeningExplorerQueueError ? error.statusCode : 500;
@@ -249,6 +278,8 @@ export const createOpeningExplorerService = (repository: OpeningExplorerReposito
         { error: error instanceof Error ? error.message : "Opening explorer query failed" },
         false,
       );
+    } finally {
+      lifecycle?.release();
     }
   };
 

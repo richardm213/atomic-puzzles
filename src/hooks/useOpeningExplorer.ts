@@ -5,7 +5,7 @@ import type {
   OpeningDatabaseMove,
 } from "../components/OpeningDatabaseDisplay/OpeningDatabaseDisplay";
 import { toOpeningDatabaseGame, toOpeningDatabaseMove } from "../utils/openingDatabaseDisplay";
-import type { ExplorerApiResponse } from "../utils/openingExplorer";
+import type { ExplorerApiResponse, ExplorerRequestNavigation } from "../utils/openingExplorer";
 
 export type OpeningExplorerStatus = "idle" | "loading" | "ready" | "error";
 
@@ -28,7 +28,10 @@ type UseOpeningExplorerOptions = {
   fen: string;
   playerColor: "white" | "black";
   showPerformance: boolean;
-  request: (signal: AbortSignal) => Promise<OpeningExplorerRequest> | null;
+  request: (
+    signal: AbortSignal,
+    navigation: ExplorerRequestNavigation,
+  ) => Promise<OpeningExplorerRequest> | null;
   // Must include the position and every request filter, not just the FEN.
   cacheKey?: string | undefined;
   debounceMs?: number;
@@ -63,6 +66,7 @@ export const useOpeningExplorer = ({
 }: UseOpeningExplorerOptions): OpeningExplorerState => {
   const cacheRef = useRef(new Map<string, { result: OpeningExplorerRequest; expiresAt: number }>());
   const lastChangeAtRef = useRef<number | null>(null);
+  const navigationRef = useRef<ExplorerRequestNavigation | null>(null);
   const [state, setState] = useState<OpeningExplorerState>(() => emptyState("idle"));
 
   useEffect(() => {
@@ -106,7 +110,9 @@ export const useOpeningExplorer = ({
 
     const run = async () => {
       try {
-        const pendingRequest = request(controller.signal);
+        navigationRef.current ??= { session: crypto.randomUUID(), sequence: 0 };
+        navigationRef.current.sequence += 1;
+        const pendingRequest = request(controller.signal, { ...navigationRef.current });
         if (!pendingRequest) {
           setState(emptyState("ready"));
           return;

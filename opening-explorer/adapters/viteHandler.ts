@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 
 import type { Connect, Plugin, PreviewServer, ViteDevServer } from "vite";
 
+import { parseExplorerNavigation } from "../core/requestLifecycle.js";
 import { createOpeningExplorerService } from "../core/service.js";
 import { createSqliteRepository } from "./sqliteRepository.js";
 
@@ -30,6 +31,11 @@ export const createOpeningExplorerVitePlugin = (): Plugin => {
         next();
         return;
       }
+      const controller = new AbortController();
+      const onClose = () => {
+        if (!res.writableEnded) controller.abort();
+      };
+      res.once("close", onClose);
       void (async () => {
         const servicePath =
           path === "/api/opening-explorer" && url.pathname !== "/"
@@ -37,25 +43,45 @@ export const createOpeningExplorerVitePlugin = (): Plugin => {
             : path;
         const intentHeader = req.headers["x-explorer-intent"];
         const intent = Array.isArray(intentHeader) ? intentHeader[0] : intentHeader;
+        const header = (name: string) => {
+          const value = req.headers[name];
+          return Array.isArray(value) ? value[0] : value;
+        };
+        const navigation = parseExplorerNavigation(
+          header("x-explorer-session"),
+          header("x-explorer-sequence"),
+        );
         const response = await service.handle({
           path: servicePath,
           params: url.searchParams,
+          signal: controller.signal,
+          ...(navigation
+            ? {
+                navigation: {
+                  ...navigation,
+                  session: `${req.socket.remoteAddress}:${navigation.session}`,
+                },
+              }
+            : {}),
           ...(req.method ? { method: req.method } : {}),
           ...(intent ? { intent } : {}),
         });
-        applyResponse(response, res);
-      })().catch((error: unknown) => {
-        applyResponse(
-          {
-            statusCode: 500,
-            headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
-            body: JSON.stringify({
-              error: error instanceof Error ? error.message : "Opening explorer request failed",
-            }),
-          },
-          res,
-        );
-      });
+        if (!res.destroyed) applyResponse(response, res);
+      })()
+        .catch((error: unknown) => {
+          if (res.destroyed) return;
+          applyResponse(
+            {
+              statusCode: 500,
+              headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+              body: JSON.stringify({
+                error: error instanceof Error ? error.message : "Opening explorer request failed",
+              }),
+            },
+            res,
+          );
+        })
+        .finally(() => res.removeListener("close", onClose));
     };
 
   const configure = (server: ViteDevServer | PreviewServer) => {

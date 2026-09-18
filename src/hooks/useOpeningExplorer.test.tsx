@@ -82,4 +82,39 @@ describe("opening explorer navigation", () => {
     unmount();
     expect(request.mock.calls[1]![0].aborted).toBe(true);
   });
+  it("cancels a scheduled fetch when navigating back to a cached position", async () => {
+    const request = vi.fn(async (_signal: AbortSignal) => response);
+    const { result, rerender } = renderHook(
+      ({ cacheKey }) => useOpeningExplorer({ ...options, request, cacheKey }),
+      { initialProps: { cacheKey: "A" } },
+    );
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    rerender({ cacheKey: "B" });
+    expect(result.current.status).toBe("loading");
+    rerender({ cacheKey: "A" });
+    expect(result.current.status).toBe("ready");
+    await act(() => vi.advanceTimersByTimeAsync(1000));
+    expect(request).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps one ordering session per explorer and sequences only actual requests", async () => {
+    const request = vi.fn(
+      async (_signal: AbortSignal, _navigation: { session: string; sequence: number }) => response,
+    );
+    const { rerender } = renderHook(
+      ({ cacheKey }) => useOpeningExplorer({ ...options, request, cacheKey }),
+      { initialProps: { cacheKey: "A" } },
+    );
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    rerender({ cacheKey: "B" });
+    await act(() => vi.advanceTimersByTimeAsync(100));
+    rerender({ cacheKey: "C" });
+    await act(() => vi.advanceTimersByTimeAsync(250));
+    const first = request.mock.calls[0]![1];
+    const second = request.mock.calls[1]![1];
+    expect(first.sequence).toBe(1);
+    expect(second).toEqual({ session: first.session, sequence: 2 });
+    expect(first.session).toMatch(/^[a-f0-9-]{36}$/);
+    expect(request).toHaveBeenCalledTimes(2);
+  });
 });

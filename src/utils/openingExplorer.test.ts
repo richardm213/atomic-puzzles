@@ -117,6 +117,26 @@ describe("fetchExplorerApiResponse", () => {
     await rejectedSecond;
   });
 
+  it("sends navigation ordering in headers without changing the position cache URL", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ moves: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+    const controller = new AbortController();
+    await fetchExplorerApiResponse(
+      "/api/opening-explorer?case=ordering",
+      "visible",
+      controller.signal,
+      { session: "7df5aa4d-e7c6-4caf-b1fc-5b1474e9891a", sequence: 2 },
+    );
+    expect(fetchMock).toHaveBeenCalledWith("/api/opening-explorer?case=ordering", {
+      signal: controller.signal,
+      headers: {
+        "X-Explorer-Intent": "visible",
+        "X-Explorer-Session": "7df5aa4d-e7c6-4caf-b1fc-5b1474e9891a",
+        "X-Explorer-Sequence": "2",
+      },
+    });
+  });
+
   it("evicts rejected requests so a transient failure can be retried", async () => {
     const fetchMock = vi
       .fn()

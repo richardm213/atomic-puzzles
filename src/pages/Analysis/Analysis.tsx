@@ -33,6 +33,7 @@ import {
   buildOpeningExplorerUrl,
   type ExplorerApiPositionLeader,
   type ExplorerApiPositionLeaders,
+  type ExplorerRequestNavigation,
   fetchExplorerApiResponse,
 } from "../../utils/openingExplorer";
 
@@ -652,9 +653,9 @@ export const AnalysisPage = () => {
     username,
   ]);
   const requestExplorer = useCallback(
-    (signal: AbortSignal) =>
+    (signal: AbortSignal, navigation: ExplorerRequestNavigation) =>
       explorerUrl
-        ? fetchExplorerApiResponse(explorerUrl, "visible", signal).then((response) => ({
+        ? fetchExplorerApiResponse(explorerUrl, "visible", signal, navigation).then((response) => ({
             response,
           }))
         : null,

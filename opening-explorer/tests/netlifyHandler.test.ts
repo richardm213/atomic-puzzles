@@ -86,4 +86,28 @@ describe("Netlify Opening Explorer boundary", () => {
     expect(Number(limited.headers["Retry-After"])).toBeGreaterThan(0);
     expect(handle).toHaveBeenCalledTimes(90);
   });
+  it("forwards per-tab ordering scoped to the requesting client", async () => {
+    const handle = vi.fn().mockResolvedValue(success);
+    const handler = createNetlifyOpeningExplorerHandler({ handle });
+    const session = "7df5aa4d-e7c6-4caf-b1fc-5b1474e9891a";
+    for (const ip of ["198.51.100.20", "198.51.100.21"]) {
+      await handler({
+        headers: {
+          "X-Explorer-Session": session,
+          "X-Explorer-Sequence": "7",
+          "X-NF-Client-Connection-IP": ip,
+        },
+      });
+    }
+    expect(handle.mock.calls[0]![0].navigation).toEqual({
+      session: `198.51.100.20:${session}`,
+      sequence: 7,
+    });
+    expect(handle.mock.calls[1]![0].navigation).toEqual({
+      session: `198.51.100.21:${session}`,
+      sequence: 7,
+    });
+    await handler({ headers: { "X-Explorer-Session": session, "X-Explorer-Sequence": "bad" } });
+    expect(handle.mock.calls[2]![0].navigation).toBeUndefined();
+  });
 });
