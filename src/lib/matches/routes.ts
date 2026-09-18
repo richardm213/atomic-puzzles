@@ -66,6 +66,17 @@ export const isChessComSource = (source: unknown): boolean => {
   );
 };
 
+/**
+ * Some legacy aggregates (including opening-explorer games and top wins) only
+ * store the game id. In those archives, Chess.com ids are numeric and Lichess
+ * ids are stored in their alphanumeric form. Keep this fallback explicit so
+ * callers that do have source metadata never need to guess.
+ */
+export const inferExternalGameSource = (gameId: unknown): "chesscom" | undefined => {
+  const normalizedGameId = String(gameId ?? "").trim();
+  return /^\d+$/.test(normalizedGameId) ? "chesscom" : undefined;
+};
+
 export const buildChessComGameUrl = (gameId: string | number | null | undefined): string => {
   const normalizedGameId = String(gameId ?? "").trim();
   if (!normalizedGameId || normalizedGameId === "—") return "";

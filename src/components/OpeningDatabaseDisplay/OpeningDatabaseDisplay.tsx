@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 
-import { buildLichessGameUrl } from "../../lib/matches/routes";
+import { buildExternalGameUrl, inferExternalGameSource } from "../../lib/matches/routes";
 import { formatGameCount } from "../../utils/formatters";
 
 const WIN_RATE_LABEL_MIN_PERCENT = 14;
@@ -223,7 +223,8 @@ export const OpeningDatabaseDisplay = ({
             {recentGames.map((game) => (
               <li key={game.gameId}>
                 <a
-                  href={buildLichessGameUrl(game.gameId, {
+                  href={buildExternalGameUrl(game.gameId, {
+                    source: inferExternalGameSource(game.gameId),
                     orientation,
                     ply: currentPly + (game.uci ? 1 : 0),
                   })}

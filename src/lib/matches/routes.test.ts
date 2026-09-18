@@ -6,6 +6,7 @@ import {
   buildMatchRouteParams,
   buildSingleGameMatchUrl,
   hasMatchRouteParams,
+  inferExternalGameSource,
   isSingleGameMatch,
   normalizeMatchMode,
   shouldUseInternalMatchPage,
@@ -126,6 +127,19 @@ describe("buildExternalGameUrl", () => {
     expect(buildExternalGameUrl("abc123", { source: "arena", orientation: "white", ply: 4 })).toBe(
       "https://lichess.org/abc123/white#4",
     );
+  });
+});
+
+describe("inferExternalGameSource", () => {
+  it("identifies numeric Chess.com ids in aggregates without source metadata", () => {
+    expect(inferExternalGameSource("123456789")).toBe("chesscom");
+    expect(inferExternalGameSource(123456789)).toBe("chesscom");
+  });
+
+  it("leaves normal Lichess ids and missing ids unspecified", () => {
+    expect(inferExternalGameSource("ab12CD34")).toBeUndefined();
+    expect(inferExternalGameSource("—")).toBeUndefined();
+    expect(inferExternalGameSource(null)).toBeUndefined();
   });
 });
 

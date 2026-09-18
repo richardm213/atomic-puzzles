@@ -78,6 +78,7 @@ import {
 import { type AliasAccount, type AliasIdentityRow } from "../../lib/archive/aliases";
 import { fetchArchiveJson } from "../../lib/archive/client";
 import { getTimeControlOptions } from "../../lib/matches/collection";
+import { inferExternalGameSource } from "../../lib/matches/routes";
 import {
   readStoredSourceFilters,
   writeStoredSourceFilters,
@@ -808,7 +809,10 @@ export const PlayerProfilePage = ({
                           </Link>
                         </span>
                         <span className="profileBestWinDate">
-                          <LichessGameLink gameId={win.gameId}>
+                          <LichessGameLink
+                            gameId={win.gameId}
+                            source={inferExternalGameSource(win.gameId)}
+                          >
                             {formatLocalDateTime(win.startTs)}
                           </LichessGameLink>
                         </span>
