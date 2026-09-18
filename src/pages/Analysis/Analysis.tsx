@@ -24,6 +24,7 @@ import { UsernamePickerModal } from "../../components/UsernamePickerModal/Userna
 import { useBoardDocument } from "../../hooks/useBoardDocument";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
 import { useOpeningExplorer } from "../../hooks/useOpeningExplorer";
+import { useOpeningPositionLeaders } from "../../hooks/useOpeningPositionLeaders";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import { useUsernamePicker } from "../../hooks/useUsernamePicker";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
@@ -664,7 +665,6 @@ export const AnalysisPage = () => {
   const {
     moves: explorerMoves,
     recentGames,
-    response: explorerResponse,
     status: explorerStatus,
     error: explorerError,
   } = useOpeningExplorer({
@@ -677,12 +677,16 @@ export const AnalysisPage = () => {
     request: requestExplorer,
     timeoutMessage: "Opening explorer took too long to respond. Try fewer filters or refresh.",
   });
+  const leadersResponse = useOpeningPositionLeaders(
+    currentFen,
+    explorerOpen && explorerScope === "general" && showPositionLeaders,
+  );
   const positionLeaders = useMemo(
     () =>
       explorerScope === "general" && showPositionLeaders
-        ? toExplorerPositionLeaders(explorerResponse?.positionLeaders)
+        ? toExplorerPositionLeaders(leadersResponse)
         : null,
-    [explorerResponse, explorerScope, showPositionLeaders],
+    [leadersResponse, explorerScope, showPositionLeaders],
   );
 
   useEffect(() => {
@@ -995,7 +999,7 @@ export const AnalysisPage = () => {
 
             {showExplorerResults ? (
               <div className="analysisExplorerTableWrap">
-                {explorerScope === "general" && explorerStatus === "ready" && positionLeaders ? (
+                {explorerScope === "general" && positionLeaders ? (
                   <section className="analysisPositionLeaders" aria-label="Position leaders">
                     <div className="analysisPositionLeadersHeader">
                       <span>Position leaders</span>

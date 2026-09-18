@@ -231,9 +231,23 @@ export const createOpeningExplorerService = (repository: OpeningExplorerReposito
       }
 
       const bodyPromise = (async () => {
-        const extrasPromise = plan.includePositionExtras
-          ? fetchPositionPlayerLeaders(plan.keyHex, plan.lastMoveColor, priorityRef)
-          : Promise.resolve(null);
+        // Leaders are explicitly opt-in and have their own request/cache lifecycle.
+        // Never hold the move list behind this optional query.
+        if (plan.part === "leaders") {
+          priorityRef.lane = 0;
+          const positionLeaders = plan.username
+            ? null
+            : await fetchPositionPlayerLeaders(plan.keyHex, plan.lastMoveColor, priorityRef);
+          return {
+            body: JSON.stringify({
+              positionKey: plan.keyHex,
+              positionLeaders,
+              moves: [],
+              recentGames: [],
+            }),
+            shouldCache: !plan.username && !plan.opponent,
+          };
+        }
         const { gamesSql, movesSql, combinedSql } = buildExplorerQueries(plan);
         const results = combinedSql
           ? repository.query(combinedSql, priorityRef).then((rows) => {
@@ -251,7 +265,7 @@ export const createOpeningExplorerService = (repository: OpeningExplorerReposito
                 repository.query(movesSql, priorityRef),
                 repository.query(gamesSql, priorityRef),
               ]);
-        const [rows, positionLeaders] = await Promise.all([results, extrasPromise]);
+        const rows = await results;
         const [moves = [], recentGames = []] = rows;
         // Personalized results are cached internally by every filter, but never
         // advertised as publicly cacheable to a browser/CDN.
@@ -259,7 +273,6 @@ export const createOpeningExplorerService = (repository: OpeningExplorerReposito
         return {
           body: JSON.stringify({
             positionKey: plan.keyHex,
-            positionLeaders,
             moves,
             recentGames,
           }),

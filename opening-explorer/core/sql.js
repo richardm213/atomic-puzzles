@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-export const OPENING_EXPLORER_RESPONSE_SCHEMA = "speed-bucket-coverage-v9";
+export const OPENING_EXPLORER_RESPONSE_SCHEMA = "independent-leaders-v10";
 
 export const sqlString = (value) => `'${value.replaceAll("'", "''")}'`;
 

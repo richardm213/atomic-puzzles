@@ -11,7 +11,7 @@ export type ExplorerQueryPlan = {
   color: ExplorerColor;
   endDate: number | null;
   fen: string;
-  includePositionExtras: boolean;
+  part: "moves" | "leaders";
   keyHex: string;
   lastMoveColor: number | null;
   opponent: string;
@@ -24,6 +24,7 @@ export type ExplorerQueryPlan = {
 
 export const createExplorerQueryPlan = (input: {
   databaseSignature: string;
+  part?: "moves" | "leaders";
   fen: string;
   requestedColor: ExplorerColor;
   requestedUsername: string;
@@ -41,7 +42,7 @@ export const createExplorerQueryPlan = (input: {
     color,
     endDate: input.endDate,
     fen: input.fen,
-    includePositionExtras: !input.username,
+    part: input.part ?? "moves",
     keyHex,
     lastMoveColor: lastMoveColorFromFen(input.fen),
     opponent: input.opponent,
@@ -55,6 +56,7 @@ export const createExplorerQueryPlan = (input: {
   return {
     ...plan,
     cacheKey: JSON.stringify({
+      part: input.part ?? "moves",
       responseSchema: OPENING_EXPLORER_RESPONSE_SCHEMA,
       databaseSignature: input.databaseSignature,
       fen: input.fen,

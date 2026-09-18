@@ -7,6 +7,7 @@ const MAX_FEN_LENGTH = 120;
 const MAX_USERNAME_LENGTH = 40;
 const ALLOWED_QUERY_PARAMS = new Set([
   "fen",
+  "part",
   "color",
   "minRating",
   "speeds",
@@ -26,6 +27,7 @@ export type ParsedExplorerRequest =
   | { kind: "randomPlayer" }
   | {
       kind: "explorer";
+      part: "moves" | "leaders";
       fen: string;
       requestedColor: ExplorerColor;
       requestedUsername: string;
@@ -115,6 +117,9 @@ export const parseExplorerRequest = (path: string, params: URLSearchParams): Par
   if (!fen) return invalid("Missing fen query parameter");
   if (!isValidFen(fen)) return invalid("Invalid fen query parameter");
 
+  const part = params.get("part") ?? "moves";
+  if (part !== "moves" && part !== "leaders") return invalid("Invalid part query parameter");
+
   const requestedUsername = parseUsername(params.get("username"));
   if (requestedUsername === null) return invalid("Invalid username query parameter");
   const requestedOpponent = parseUsername(params.get("opponent"));
@@ -137,6 +142,7 @@ export const parseExplorerRequest = (path: string, params: URLSearchParams): Par
     ok: true,
     request: {
       kind: "explorer",
+      part,
       fen,
       requestedColor,
       requestedUsername,

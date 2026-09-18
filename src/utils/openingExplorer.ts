@@ -39,6 +39,7 @@ export type ExplorerApiResponse = {
 };
 
 export type OpeningExplorerUrlOptions = {
+  part?: "moves" | "leaders";
   fen: string;
   speeds: readonly number[];
   startDate?: string;
@@ -50,6 +51,7 @@ export type OpeningExplorerUrlOptions = {
 };
 
 export const buildOpeningExplorerUrl = ({
+  part,
   fen,
   speeds,
   startDate = "",
@@ -60,6 +62,7 @@ export const buildOpeningExplorerUrl = ({
   opponent = "",
 }: OpeningExplorerUrlOptions): string => {
   const params = new URLSearchParams({ fen, speeds: speeds.join(",") });
+  if (part) params.set("part", part);
   if (/^\d{4}-\d{2}$/.test(startDate)) params.set("startDate", startDate);
   if (/^\d{4}-\d{2}$/.test(endDate)) params.set("endDate", endDate);
 

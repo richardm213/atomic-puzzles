@@ -82,7 +82,6 @@ describe.each(serviceFactories)("%s Opening Explorer adapter", (_name, createSer
     expect(response.statusCode).toBe(200);
     expect(response.headers["Cache-Control"]).toBe("no-store");
     expect(JSON.parse(response.body)).toMatchObject({
-      positionLeaders: null,
       moves: [{ uci: "a1a2", games: 1200, whiteWins: 500, draws: 300, blackWins: 400 }],
       recentGames: [{ gameId: "fixture-game", uci: "a1a2", white: "canonical", black: "opponent" }],
     });
