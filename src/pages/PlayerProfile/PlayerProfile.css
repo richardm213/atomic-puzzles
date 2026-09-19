@@ -2,11 +2,11 @@
 @import "../../components/MatchCard/MatchCard.css";
 
 .playerProfilePanel {
-  width: min(740px, 100%);
+  width: min(820px, 100%);
 }
 
 .playerProfilePanel > .puzzleCommunity {
-  margin-top: 24px;
+  margin-top: var(--space-6);
 }
 
 .profileIdentityRow {
@@ -14,11 +14,11 @@
   flex-wrap: nowrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-4);
 }
 
 .profileIdentityRow.noTrophies {
-  margin-bottom: 22px;
+  margin-bottom: var(--space-6);
 }
 
 .playerProfilePanel .profileIdentityTitle h1 {
@@ -218,7 +218,7 @@
   flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-end;
-  gap: 10px;
+  gap: var(--space-3);
   flex: 0 0 auto;
   margin-left: auto;
 }
@@ -278,16 +278,17 @@
 
 .profileTopBar {
   display: grid;
-  gap: 14px;
+  gap: var(--space-4);
 }
 
 .profileRatingView {
-  margin-top: 8px;
+  min-width: 0;
+  margin-top: var(--space-2);
 }
 
 .profileMetricRow {
   display: grid;
-  gap: 10px;
+  gap: var(--space-2);
 }
 
 .profileMetricRowTitle {
@@ -298,15 +299,15 @@
 .profileMetricRowCards {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
+  gap: var(--space-3);
 }
 
 .profileActionRow {
-  margin-top: 14px;
+  margin-top: var(--space-4);
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 10px;
+  gap: var(--space-3);
 }
 
 .playerProfilePanel .matchFilterGrid {
@@ -325,9 +326,9 @@
 }
 
 .profilePuzzleDashboardLink {
-  min-height: 42px;
-  padding: 0 14px;
-  border-radius: 8px;
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--color-accent-soft-border);
   background: var(--color-panel-strong);
   color: var(--color-heading);
@@ -458,10 +459,10 @@
 }
 
 .profileHighlights {
-  margin-top: 14px;
+  margin-top: var(--space-4);
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-  gap: 14px;
+  gap: var(--space-4);
   align-items: start;
 }
 
@@ -473,7 +474,7 @@
 .profileBestMonthRanks,
 .profileAliases {
   min-width: 0;
-  padding: 12px;
+  padding: var(--space-4);
   border-radius: var(--radius-ui);
   background: var(--color-panel-strong);
   border: 1px solid var(--color-border);
@@ -488,10 +489,10 @@
 
 .profileBestWins ol,
 .profileBestMonthRanks ol {
-  margin: 10px 0 0 18px;
+  margin: var(--space-3) 0 0 18px;
   padding: 0;
   display: grid;
-  gap: 6px;
+  gap: var(--space-2);
 }
 
 .profileBestWins li,
@@ -580,7 +581,9 @@
   font-size: 14px;
   text-decoration: underline;
   text-underline-offset: 3px;
-  transition: color 0.2s ease, background-color 0.2s ease;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease;
 }
 
 .profileAliasesToggle:hover,
@@ -992,7 +995,7 @@
 }
 
 .profileHistoryArea {
-  margin-top: 18px;
+  margin-top: var(--space-6);
   min-width: 0;
 }
 
@@ -1001,15 +1004,15 @@
   flex-wrap: wrap;
   align-items: flex-end;
   gap: 2px;
-  margin-bottom: 14px;
+  margin-bottom: var(--space-4);
   border-bottom: 1px solid var(--color-border);
 }
 
 .profileHistoryTabs button {
   position: relative;
-  min-height: 42px;
+  min-height: 44px;
   margin-bottom: -1px;
-  padding: 0 18px;
+  padding: 0 var(--space-4);
   border: 1px solid transparent;
   border-bottom: 0;
   border-radius: 8px 8px 0 0;
@@ -1046,15 +1049,15 @@
 
 .profileHistoryArea .profileMatchFilters {
   margin-top: 0;
-  gap: 14px;
-  padding: 14px;
+  gap: var(--space-4);
+  padding: var(--space-4);
   border-color: color-mix(in srgb, var(--color-border) 76%, transparent);
   background: color-mix(in srgb, var(--color-panel-strong) 55%, transparent);
 }
 
 .profileMatchFilters + .profileHistoryMeta,
 .profileMatchFilters + .errorText + .profileHistoryMeta {
-  margin-top: 14px;
+  margin-top: var(--space-4);
 }
 
 .profileMatchFilters .matchFilterGrid label {
@@ -1543,7 +1546,6 @@
   .profileHighlightsBottomRow {
     grid-template-columns: 1fr;
   }
-
 }
 
 @media (max-width: 720px) {
@@ -1566,6 +1568,8 @@
   .profileTrophyRow {
     flex-wrap: wrap;
     justify-content: flex-start;
+    width: 100%;
+    gap: var(--space-2);
   }
 
   .profileMetricRowCards {
@@ -1573,28 +1577,54 @@
   }
 
   .profileTrophy {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: none;
     min-height: 54px;
-    padding-right: 14px;
+    padding: 6px var(--space-2);
+    gap: var(--space-1);
+    justify-content: center;
+  }
+
+  .profileTrophy img {
+    width: 28px;
+    height: 44px;
   }
 
   .profileTrophyLabel {
-    font-size: 14px;
+    min-width: 0;
+    font-size: 13px;
   }
 
   .profileActionRow {
-    justify-content: stretch;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 44px;
+    align-items: stretch;
   }
 
   .profilePuzzleDashboardLink {
     width: 100%;
   }
 
+  .profileActionRow > :nth-child(n + 3) {
+    grid-column: 1 / -1;
+  }
+
   .profileRatingGraphToggle {
     width: 44px;
     flex: 0 0 44px;
-    margin-left: auto;
+    margin-left: 0;
   }
 
+  .profileHistoryTabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .profileHistoryTabs button {
+    flex: 0 0 auto;
+  }
 }
 
 @media (max-width: 640px) {
@@ -1609,10 +1639,6 @@
   .profileBanActions a {
     min-height: 44px;
     font-size: 16px;
-  }
-
-  .profileMetricRowCards {
-    grid-template-columns: 1fr;
   }
 
   .profileBestMonthRanksHeader {

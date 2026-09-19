@@ -227,10 +227,11 @@ export const RatingChart = ({
   const x = (month: number) =>
     from === to ? (left + right) / 2 : left + ((month - from) / (to - from)) * (right - left);
   const y = (rating: number) => bottom - ((rating - low) / (high - low)) * (bottom - top);
+  const tickCount = width < 500 ? 3 : width < 760 ? 4 : 6;
   const ticks = [
     ...new Set(
-      Array.from({ length: width < 500 ? 3 : 6 }, (_, i) =>
-        Math.round(from + ((to - from) * i) / (width < 500 ? 2 : 5)),
+      Array.from({ length: tickCount }, (_, i) =>
+        Math.round(from + ((to - from) * i) / Math.max(1, tickCount - 1)),
       ),
     ),
   ];

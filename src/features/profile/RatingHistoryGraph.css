@@ -23,7 +23,10 @@
   text-decoration: underline;
 }
 .ratingHistory {
+  --rating-plot-left: 48px;
+  --rating-plot-right: 16px;
   padding: 0;
+  min-width: 0;
 }
 .ratingGraphToolbar,
 .ratingGraphDates,
@@ -147,7 +150,7 @@
 }
 .ratingRange {
   height: var(--control-height-touch);
-  padding-inline: 22px;
+  padding: 0 var(--rating-plot-right) 0 var(--rating-plot-left);
   display: flex;
   align-items: center;
   touch-action: none;
@@ -388,6 +391,9 @@
   }
   .ratingGraphPlot {
     margin-top: 8px;
+  }
+  .ratingRange {
+    height: 36px;
   }
   .ratingPageHeader {
     margin-bottom: 24px;
