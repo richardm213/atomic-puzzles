@@ -13,7 +13,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
@@ -42,6 +42,7 @@ export const CustomPuzzleSetsPage = () => {
   const { isAuthenticated, isLoading: isAuthLoading, login, user } = useAuth();
   const username = normalizeUsername(user?.username);
   const manageDialogRef = useRef<HTMLDialogElement | null>(null);
+  const initializedAuthorsForRef = useRef("");
   const [name, setName] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [untaggedOnly, setUntaggedOnly] = useState(false);
@@ -93,6 +94,17 @@ export const CustomPuzzleSetsPage = () => {
       ].sort((left, right) => left.localeCompare(right, undefined, { sensitivity: "base" })),
     [attemptedPuzzles],
   );
+  useEffect(() => {
+    if (!username) {
+      initializedAuthorsForRef.current = "";
+      setSelectedAuthors([]);
+      return;
+    }
+    if (authors.length > 0 && initializedAuthorsForRef.current !== username) {
+      initializedAuthorsForRef.current = username;
+      setSelectedAuthors(authors);
+    }
+  }, [authors, username]);
   const matchingPuzzles = useMemo(
     () =>
       attemptedPuzzles.filter((puzzle) => {
@@ -128,13 +140,13 @@ export const CustomPuzzleSetsPage = () => {
         name,
         tags: selectedTags,
         untaggedOnly,
-        authors: selectedAuthors,
+        authors: selectedAuthors.length === authors.length ? [] : selectedAuthors,
         resultFilter,
       });
       setName("");
       setSelectedTags([]);
       setUntaggedOnly(false);
-      setSelectedAuthors([]);
+      setSelectedAuthors(authors);
       setResultFilter("all");
       setSubmitState("saved");
       await refreshSets();
@@ -291,7 +303,9 @@ export const CustomPuzzleSetsPage = () => {
                             setSelectedAuthors((current) =>
                               event.target.checked
                                 ? [...current, authorName]
-                                : current.filter((item) => item !== authorName),
+                                : current.length === 1
+                                  ? current
+                                  : current.filter((item) => item !== authorName),
                             )
                           }
                         />
@@ -299,9 +313,9 @@ export const CustomPuzzleSetsPage = () => {
                       </label>
                     ))}
                   </div>
-                  {selectedAuthors.length ? (
-                    <button type="button" onClick={() => setSelectedAuthors([])}>
-                      Clear authors
+                  {selectedAuthors.length < authors.length ? (
+                    <button type="button" onClick={() => setSelectedAuthors(authors)}>
+                      Select all authors
                     </button>
                   ) : null}
                 </fieldset>

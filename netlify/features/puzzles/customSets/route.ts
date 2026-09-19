@@ -44,12 +44,53 @@ type SetRow = {
   id: string;
   name: string;
   tag_filters: string[] | null;
-  untagged_only: boolean | null;
-  author_filters: string[] | null;
   author_filter: string | null;
-  result_filter: "all" | "correct" | "incorrect" | null;
   created_at: string;
   updated_at: string;
+};
+
+const FILTER_META_PREFIX = "__custom_set_filter__:";
+const authorMetaPrefix = `${FILTER_META_PREFIX}author:`;
+const resultMetaPrefix = `${FILTER_META_PREFIX}result:`;
+const untaggedMeta = `${FILTER_META_PREFIX}untagged`;
+const baseSetSelect = "id,name,tag_filters,author_filter,created_at,updated_at";
+
+const encodeFilterMetadata = (
+  tags: string[],
+  authors: string[],
+  untaggedOnly: boolean,
+  resultFilter: "all" | "correct" | "incorrect",
+): string[] => [
+  ...tags,
+  ...(untaggedOnly ? [untaggedMeta] : []),
+  ...(resultFilter === "all" ? [] : [`${resultMetaPrefix}${resultFilter}`]),
+  ...authors.map((author) => `${authorMetaPrefix}${encodeURIComponent(author)}`),
+];
+
+const decodeFilterMetadata = (set: SetRow) => {
+  const storedFilters = set.tag_filters ?? [];
+  const encodedAuthors = storedFilters
+    .filter((value) => value.startsWith(authorMetaPrefix))
+    .map((value) => {
+      try {
+        return decodeURIComponent(value.slice(authorMetaPrefix.length));
+      } catch {
+        return "";
+      }
+    })
+    .filter(Boolean);
+  const encodedResult = storedFilters
+    .find((value) => value.startsWith(resultMetaPrefix))
+    ?.slice(resultMetaPrefix.length);
+  const resultFilter =
+    encodedResult === "correct" || encodedResult === "incorrect" ? encodedResult : "all";
+
+  return {
+    tags: storedFilters.filter((value) => !value.startsWith(FILTER_META_PREFIX)),
+    untaggedOnly: storedFilters.includes(untaggedMeta),
+    authors: encodedAuthors.length ? encodedAuthors : set.author_filter ? [set.author_filter] : [],
+    resultFilter,
+  };
 };
 
 type ItemRow = {
@@ -83,20 +124,14 @@ const serializeSet = (set: SetRow, items: ItemRow[]) => {
     .filter((item) => item.set_id === set.id)
     .sort((left, right) => left.position - right.position);
   const completed = orderedItems.filter((item) => item.completed_at);
+  const filters = decodeFilterMetadata(set);
   return {
     id: set.id,
     label: set.name,
     puzzleIds: orderedItems.map((item) => Number(item.puzzle_id)).filter(Number.isSafeInteger),
     createdAt: set.created_at,
     updatedAt: set.updated_at,
-    tags: set.tag_filters ?? [],
-    untaggedOnly: Boolean(set.untagged_only),
-    authors: set.author_filters?.length
-      ? set.author_filters
-      : set.author_filter
-        ? [set.author_filter]
-        : [],
-    resultFilter: set.result_filter ?? "all",
+    ...filters,
     completedCount: completed.length,
     correctCount: completed.filter((item) => item.last_result === true).length,
     incorrectCount: completed.filter((item) => item.last_result === false).length,
@@ -120,9 +155,7 @@ export const puzzleSetsRoute = async (event: FunctionEvent) => {
   const loadOwnedSet = async (id: string): Promise<SetRow> => {
     const result = await supabase
       .from("custom_puzzle_sets")
-      .select(
-        "id,name,tag_filters,untagged_only,author_filters,author_filter,result_filter,created_at,updated_at",
-      )
+      .select(baseSetSelect)
       .eq("id", id)
       .eq("username", username)
       .maybeSingle();
@@ -146,9 +179,7 @@ export const puzzleSetsRoute = async (event: FunctionEvent) => {
   if (input.action === "list") {
     const result = await supabase
       .from("custom_puzzle_sets")
-      .select(
-        "id,name,tag_filters,untagged_only,author_filters,author_filter,result_filter,created_at,updated_at",
-      )
+      .select(baseSetSelect)
       .eq("username", username)
       .order("updated_at", { ascending: false });
     if (result.error) throw new Error(result.error.message);
@@ -235,15 +266,15 @@ export const puzzleSetsRoute = async (event: FunctionEvent) => {
       .insert({
         username,
         name: input.name,
-        tag_filters: selectedTags,
-        untagged_only: input.untaggedOnly,
-        author_filters: [...new Set(input.authors)],
-        author_filter: null,
-        result_filter: input.resultFilter,
+        tag_filters: encodeFilterMetadata(
+          selectedTags,
+          [...new Set(input.authors)],
+          input.untaggedOnly,
+          input.resultFilter,
+        ),
+        author_filter: input.authors.length === 1 ? input.authors[0] : null,
       })
-      .select(
-        "id,name,tag_filters,untagged_only,author_filters,author_filter,result_filter,created_at,updated_at",
-      )
+      .select(baseSetSelect)
       .single();
     if (insertResult.error) {
       if (insertResult.error.code === "23505")
@@ -276,9 +307,7 @@ export const puzzleSetsRoute = async (event: FunctionEvent) => {
       .update({ name: input.name, updated_at: new Date().toISOString() })
       .eq("id", set.id)
       .eq("username", username)
-      .select(
-        "id,name,tag_filters,untagged_only,author_filters,author_filter,result_filter,created_at,updated_at",
-      )
+      .select(baseSetSelect)
       .single();
     if (result.error) {
       if (result.error.code === "23505")
