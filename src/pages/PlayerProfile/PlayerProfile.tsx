@@ -1,6 +1,10 @@
 import "./PlayerProfile.css";
 
-import { faMagnifyingGlass, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
+import {
+  faChartLine,
+  faMagnifyingGlass,
+  faShieldHalved,
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -119,6 +123,11 @@ const CommunityDiscussion = lazy(async () => {
   return { default: module.CommunityDiscussion };
 });
 
+const RatingHistoryGraph = lazy(async () => {
+  const module = await import("../../features/profile/RatingHistoryGraph");
+  return { default: module.RatingHistoryGraph };
+});
+
 export const PlayerProfilePage = ({
   username,
   historyOnly = false,
@@ -146,6 +155,7 @@ export const PlayerProfilePage = ({
   const [profileHistoryTab, setProfileHistoryTab] = useState<ProfileHistoryTab>(() =>
     getProfileHistoryTabFromLocation(),
   );
+  const [showRatingGraph, setShowRatingGraph] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [expandedMatchKeys, setExpandedMatchKeys] = useState<string[]>([]);
@@ -671,28 +681,36 @@ export const PlayerProfilePage = ({
             </div>
           </section>
         ) : !historyOnly ? (
-          <div className="profileTopBar">
-            {profileMetricRows.map((row) => (
-              <section
-                key={row.key}
-                className="profileMetricRow"
-                aria-label={`${row.label} ratings`}
-              >
-                <h2 className="profileMetricRowTitle">{row.label}</h2>
-                <div className="profileMetricRowCards">
-                  {row.cards.map((card) => (
-                    <ProfileMetricCard
-                      key={card.key}
-                      label={card.label}
-                      value={card.value}
-                      valueSuffix={card.valueSuffix}
-                      valueLink={card.valueLink}
-                      subtext={card.subtext}
-                    />
-                  ))}
-                </div>
-              </section>
-            ))}
+          <div id="profile-rating-view" className="profileRatingView">
+            {showRatingGraph ? (
+              <Suspense fallback={<p role="status">Loading rating graph…</p>}>
+                <RatingHistoryGraph key={canonicalUsername} username={canonicalUsername} />
+              </Suspense>
+            ) : (
+              <div className="profileTopBar">
+                {profileMetricRows.map((row) => (
+                  <section
+                    key={row.key}
+                    className="profileMetricRow"
+                    aria-label={`${row.label} ratings`}
+                  >
+                    <h2 className="profileMetricRowTitle">{row.label}</h2>
+                    <div className="profileMetricRowCards">
+                      {row.cards.map((card) => (
+                        <ProfileMetricCard
+                          key={card.key}
+                          label={card.label}
+                          value={card.value}
+                          valueSuffix={card.valueSuffix}
+                          valueLink={card.valueLink}
+                          subtext={card.subtext}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                ))}
+              </div>
+            )}
           </div>
         ) : null}
 
@@ -723,13 +741,17 @@ export const PlayerProfilePage = ({
             >
               View comments
             </Link>
-            <Link
-              className="profilePuzzleDashboardLink"
-              to="/@/$username/ratings"
-              params={{ username: canonicalUsername }}
+            <button
+              className="profilePuzzleDashboardLink profileRatingGraphToggle"
+              type="button"
+              aria-label={showRatingGraph ? "Show rating summary" : "Show rating graph"}
+              aria-controls="profile-rating-view"
+              aria-pressed={showRatingGraph}
+              title={showRatingGraph ? "Show rating summary" : "Show rating graph"}
+              onClick={() => setShowRatingGraph((current) => !current)}
             >
-              View rating graph
-            </Link>
+              <FontAwesomeIcon icon={faChartLine} aria-hidden="true" />
+            </button>
             {isHistoryAvailable ? (
               <Link
                 className="profilePuzzleDashboardLink"
