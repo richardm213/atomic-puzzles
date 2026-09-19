@@ -1,7 +1,7 @@
 import { normalizeUsername } from "../../utils/playerNames";
 import { cachedRequest } from "../../utils/requestCache";
 import { appendArchiveParam, fetchArchiveJson } from "./client";
-import type { LeaderboardPlayerCountRow, LeaderboardRow } from "./types";
+import type { LeaderboardPlayerCountRow, LeaderboardRow, YearlyLeaderboardRow } from "./types";
 
 type LeaderboardFilters = {
   month?: string;
@@ -12,6 +12,7 @@ type LeaderboardFilters = {
 
 const leaderboardRowsCache = new Map<string, Promise<LeaderboardRow[]>>();
 const leaderboardCountsCache = new Map<string, Promise<Record<string, number>>>();
+const yearlyLeaderboardRowsCache = new Map<string, Promise<YearlyLeaderboardRow[]>>();
 const MONTH_INDEX_BY_NAME: Record<string, number> = {
   Jan: 0,
   Feb: 1,
@@ -74,6 +75,12 @@ export const fetchLeaderboardRows = async (
   cachedRequest(leaderboardRowsCache, ["leaderboard", filters], () =>
     fetchUncachedLeaderboardRows(filters),
   );
+
+export const fetchYearlyLeaderboardRows = async (year: number): Promise<YearlyLeaderboardRow[]> =>
+  cachedRequest(yearlyLeaderboardRowsCache, ["yearly-leaderboard", year], () => {
+    const params = new URLSearchParams({ resource: "yearly_leaderboard", year: String(year) });
+    return fetchArchiveJson<YearlyLeaderboardRow[]>(params);
+  });
 
 type LeaderboardPlayerCountPair = {
   month: string;

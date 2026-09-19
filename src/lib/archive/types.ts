@@ -37,6 +37,15 @@ export type LeaderboardPlayerCountRow = {
   player_count: number;
 };
 
+export type YearlyLeaderboardRow = {
+  username: string;
+  year: number;
+  rank: number;
+  rating: number | null;
+  games: number;
+  tc: ArchiveMode;
+};
+
 export type PlayerRatingRow = {
   username: string;
   rating: number | null;

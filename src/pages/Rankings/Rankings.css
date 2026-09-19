@@ -9,7 +9,7 @@
 }
 
 .rankingsControls {
-  grid-template-columns: repeat(3, minmax(140px, max-content));
+  grid-template-columns: repeat(3, minmax(120px, max-content));
   justify-content: start;
   align-items: end;
   gap: 12px 14px;
@@ -410,7 +410,7 @@
     justify-content: stretch;
   }
 
-  .rankingsControls label:nth-child(3) {
+  .rankingsControls.monthly .rankingsModeControl {
     grid-column: 1 / -1;
   }
 
@@ -465,6 +465,8 @@
 }
 
 .rankingsUpdatedAt {
+  display: flex;
+  gap: 0.3em;
   margin: calc(-1 * var(--space-2)) 0 var(--space-5);
   color: var(--color-muted);
   font-size: 14px;

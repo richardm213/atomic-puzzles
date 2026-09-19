@@ -145,6 +145,28 @@ describe("archive-data function", () => {
     ]);
   });
 
+  it("serves yearly rankings without RD", async () => {
+    mocks.execute.mockResolvedValueOnce({
+      rows: [{ username: "alice", year: 2026, rank: 1, rating: 2100, games: 151, tc: "blitz" }],
+    });
+    const { handler } = await import("../functions/archive-data");
+    const response = await handler({
+      queryStringParameters: { resource: "yearly_leaderboard", year: "2026", mode: "blitz" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(mocks.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sql: expect.stringContaining("from yearly_lb l"),
+        args: [2026, 2],
+      }),
+    );
+    expect(mocks.execute.mock.calls[0]![0].sql).not.toContain("l.rd");
+    expect(JSON.parse(response.body)).toEqual([
+      { username: "alice", year: 2026, rank: 1, rating: 2100, games: 151, tc: "blitz" },
+    ]);
+  });
+
   it("supports the normalized atomic960 mode id for rating reads", async () => {
     mocks.execute.mockResolvedValueOnce({ rows: [] });
     const { handler } = await import("../functions/archive-data");

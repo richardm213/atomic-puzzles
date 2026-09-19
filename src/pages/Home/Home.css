@@ -173,7 +173,7 @@
 
 .homeSubmitPuzzleShortcut::before,
 .homePuzzleLeaderboardShortcut::before,
-.homePracticeShortcut::before,
+.homeYearlyRankingsShortcut::before,
 .homeH2HShortcut::after,
 .homeRecentMatchesShortcut::before,
 .homeCommentsShortcut::before,
@@ -186,7 +186,7 @@
 
 .homeSubmitPuzzleShortcut:hover::before,
 .homePuzzleLeaderboardShortcut:hover::before,
-.homePracticeShortcut:hover::before,
+.homeYearlyRankingsShortcut:hover::before,
 .homeRecentMatchesShortcut:hover::before,
 .homePuzzleSetsShortcut:hover::before {
   transform: translateY(-3px) rotate(0deg);
@@ -552,7 +552,7 @@
     var(--color-surface-elevated-strong);
 }
 
-.homePracticeShortcut {
+.homeYearlyRankingsShortcut {
   --home-card-accent: var(--color-cyan);
 
   padding-right: 158px;
@@ -570,7 +570,7 @@
     var(--color-panel);
 }
 
-.homePracticeShortcut::before {
+.homeYearlyRankingsShortcut::before {
   content: "";
   position: absolute;
   right: 28px;
@@ -591,8 +591,8 @@
   transform: rotate(4deg);
 }
 
-.homePracticeShortcut::after {
-  content: "100";
+.homeYearlyRankingsShortcut::after {
+  content: "YEAR";
   position: absolute;
   right: 17px;
   top: 32px;
@@ -609,7 +609,7 @@
   box-shadow: 0 8px 18px color-mix(in srgb, black 24%, transparent);
 }
 
-.homePracticeShortcut:hover {
+.homeYearlyRankingsShortcut:hover {
   background:
     radial-gradient(
       circle at 84% 48%,

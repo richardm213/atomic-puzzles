@@ -67,6 +67,18 @@ const navItems: NavItem[] = [
     to: "/rankings",
     label: "Rankings",
     isActive: (pathname) => pathname === "/rankings" || pathname.startsWith("/rankings/"),
+    children: [
+      {
+        to: "/rankings",
+        label: "Monthly rankings",
+        isActive: (pathname) => pathname === "/rankings",
+      },
+      {
+        to: "/rankings/yearly",
+        label: "Yearly rankings",
+        isActive: (pathname) => pathname === "/rankings/yearly",
+      },
+    ],
   },
   {
     to: "/solve",

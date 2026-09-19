@@ -3,7 +3,11 @@ import "./RankingsMethodology.css";
 import { Link } from "@tanstack/react-router";
 
 import { Seo } from "../../components/Seo/Seo";
-import { modeLabels, rankingEligibilityByMode } from "../../constants/matches";
+import {
+  modeLabels,
+  rankingEligibilityByMode,
+  yearlyRankingEligibilityByMode,
+} from "../../constants/matches";
 
 const ratingFaq = [
   {
@@ -55,6 +59,13 @@ const eligibilityNotes = Object.entries(rankingEligibilityByMode).map(([mode, re
   const rdRequirement = requirements.maxRd === null ? "" : ` and an RD below ${requirements.maxRd}`;
   return `A player needs at least ${requirements.minGames} ${mode} games in that month${rdRequirement} to appear in the monthly ${label.toLowerCase()} rankings.`;
 });
+
+const yearlyEligibilityNotes = Object.entries(yearlyRankingEligibilityByMode).map(
+  ([mode, minGames]) => {
+    const label = modeLabels[mode as keyof typeof modeLabels] ?? mode;
+    return `${label}: at least ${minGames} games with post-game RD below 60 during the calendar year.`;
+  },
+);
 
 export const RankingsMethodologyPage = () => (
   <div className="rankingsPage">
@@ -124,6 +135,24 @@ export const RankingsMethodologyPage = () => (
         </p>
         <ul>
           {eligibilityNotes.map((note) => (
+            <li key={note}>{note}</li>
+          ))}
+        </ul>
+      </section>
+
+      <section
+        id="yearly-rankings"
+        className="methodologySection methodologyEligibility"
+        tabIndex={-1}
+      >
+        <h2>Yearly leaderboard</h2>
+        <p>
+          A player&apos;s yearly rating is the average of every post-game rating recorded while
+          their RD was below 60 during that UTC calendar year. Players are ordered by that average,
+          then by username when averages are equal.
+        </p>
+        <ul>
+          {yearlyEligibilityNotes.map((note) => (
             <li key={note}>{note}</li>
           ))}
         </ul>

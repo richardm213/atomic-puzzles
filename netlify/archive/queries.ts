@@ -297,6 +297,30 @@ const queryLeaderboardCounts = async () => {
   return normalizedRows(result.rows);
 };
 
+const queryYearlyLeaderboard = async (params: URLSearchParams) => {
+  const clauses: string[] = [];
+  const args: Array<string | number> = [];
+  const year = Math.floor(numberParam(params, "year") ?? 0);
+  if (year) {
+    clauses.push("l.year=?");
+    args.push(year);
+  }
+  const mode = enumIdParam(params, "mode", MODE_IDS);
+  if (mode !== null) {
+    if (mode > MODE_IDS.blitz) throw new ArchiveRequestError("Unsupported yearly leaderboard mode");
+    clauses.push("l.mode=?");
+    args.push(mode);
+  }
+  const where = clauses.length ? `where ${clauses.join(" and ")}` : "";
+  const result = await getArchiveClient().execute({
+    sql: `select p.username,l.year,l.rank,l.rating/10.0 rating,l.games,
+      ${modeNameSql("l.mode")} tc from yearly_lb l join players p on p.id=l.username_id
+      ${where} order by l.year,l.mode,l.rank`,
+    args,
+  });
+  return normalizedRows(result.rows);
+};
+
 const queryUsernames = async (params: URLSearchParams) => {
   const query = String(params.get("query") ?? "")
     .trim()
@@ -353,6 +377,7 @@ export const queryArchiveResource = async (params: URLSearchParams): Promise<unk
   if (resource === "weekly_ratings") return queryWeeklyRatings(params);
   if (resource === "ratings") return queryRatings(params);
   if (resource === "leaderboard") return queryLeaderboard(params);
+  if (resource === "yearly_leaderboard") return queryYearlyLeaderboard(params);
   if (resource === "leaderboard_counts") return queryLeaderboardCounts();
   if (resource === "usernames") return queryUsernames(params);
   if (resource === "health") {

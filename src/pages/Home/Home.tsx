@@ -12,7 +12,7 @@ export const HomePage = () => {
     <div className="homePage">
       <Seo
         title="Puzzles, Rankings & Matches"
-        description="Train with atomic chess puzzles, browse monthly rankings, track recent matches, and look up player profiles in one place."
+        description="Train with atomic chess puzzles, browse monthly and yearly rankings, track recent matches, and look up player profiles in one place."
         path="/"
         structuredData={{
           "@context": "https://schema.org",
@@ -79,13 +79,10 @@ export const HomePage = () => {
             />
           </Link>
 
-          <Link className="homeSpotlightCard homePracticeShortcut" to="/practice">
-            <span>Opening trainer</span>
-            <h2>Practice against the database</h2>
-            <p>
-              Sharpen your opening theory by playing against the database of any top-100 player in
-              atomic history.
-            </p>
+          <Link className="homeSpotlightCard homeYearlyRankingsShortcut" to="/rankings/yearly">
+            <span>Rankings</span>
+            <h2>Yearly rankings</h2>
+            <p>Compare the strongest average ratings across each calendar year.</p>
           </Link>
 
           <Link className="homeSpotlightCard homeArenaShortcut" to="/arenas">

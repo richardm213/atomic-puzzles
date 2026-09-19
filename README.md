@@ -125,9 +125,9 @@ leaderboard history. Browser code accesses it only through `/api/archive-data`; 
 database connections are prohibited.
 
 The normalized archive schema uses `players` and `time_controls` as lookup tables. `aliases`,
-`matches`, `player_ratings`, and `lb` reference player IDs; `matches` also references a time-control
-ID. The database intentionally has no declared foreign-key constraints, so readers must preserve
-those logical joins.
+`matches`, `player_ratings`, `lb`, and `yearly_lb` reference player IDs; `matches` also references a
+time-control ID. The database intentionally has no declared foreign-key constraints, so readers
+must preserve those logical joins.
 
 Archive mode IDs are `0` hyperbullet, `1` bullet, `2` blitz, `3` wolfrandom, and `4` atomic960.
 Match source IDs are `0` lobby, `1` arena, `2` friend, `3` swiss, `4` Chess.com, and `5`

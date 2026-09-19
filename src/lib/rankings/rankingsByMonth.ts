@@ -6,7 +6,7 @@ export type RankingPlayer = {
   rank: number;
   username: string;
   score: number;
-  rd: number;
+  rd: number | null;
   games: number | null;
 };
 

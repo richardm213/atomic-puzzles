@@ -44,6 +44,12 @@ export const rankingEligibilityByMode: Record<Mode, RankingEligibility> = {
   },
 };
 
+export const yearlyRankingEligibilityByMode: Partial<Record<Mode, number>> = {
+  blitz: 150,
+  bullet: 250,
+  hyperbullet: 350,
+};
+
 export const createModeRecord = <T>(valueFactory: (mode: Mode) => T): Record<Mode, T> =>
   Object.fromEntries(modeOptions.map((mode) => [mode, valueFactory(mode)])) as Record<Mode, T>;
 

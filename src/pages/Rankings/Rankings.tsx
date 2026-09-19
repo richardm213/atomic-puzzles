@@ -14,12 +14,16 @@ import {
   modeLabels,
   modeOptions,
   rankingEligibilityByMode,
+  yearlyRankingEligibilityByMode,
 } from "../../constants/matches";
 import { useAppSettings } from "../../context/AppSettings";
 import { useRankingsByMonth } from "../../hooks/useRankingsByMonth";
 import { monthDateFromMonthKey } from "../../lib/archive/leaderboard";
 import { formatRankingUpdatedAt } from "../../lib/rankings/formatRankingUpdatedAt";
-import { latestRankingMatchQueryOptions } from "../../lib/rankings/rankingsQueries";
+import {
+  latestRankingMatchQueryOptions,
+  rankingsForYearQueryOptions,
+} from "../../lib/rankings/rankingsQueries";
 import type { AliasLookup } from "../../lib/users/aliasesLookup";
 import { aliasesLookupQueryOptions } from "../../lib/users/aliasQueries";
 import { getOpeningDisplayLabel, normalizeOpeningKey } from "../../utils/openings";
@@ -40,13 +44,15 @@ const monthNames = [
   "Dec",
 ];
 
-const rankingColumns = [
+const monthlyRankingColumns = [
   { key: "rank", label: "#" },
   { key: "username", label: "Player" },
   { key: "score", label: "Rating" },
   { key: "rd", label: "RD" },
   { key: "games", label: "Games" },
 ];
+const yearlyRankingColumns = monthlyRankingColumns.filter((column) => column.key !== "rd");
+type RankingPeriod = "monthly" | "yearly";
 const emptyAliasLookup: AliasLookup = new Map();
 
 const getOpeningsForPlayer = (aliasesLookup: AliasLookup, username: string): string[] => {
@@ -144,12 +150,13 @@ const allLeaderboardYears = (): string[] => {
   return years;
 };
 
-const getInitialRankingsFilters = () => {
+const getInitialRankingsFilters = (selectedPeriod: RankingPeriod) => {
   if (typeof window === "undefined") {
     return {
       selectedYear: "",
       selectedMonthName: "",
       selectedMode: defaultMode,
+      selectedPeriod,
     };
   }
 
@@ -159,11 +166,11 @@ const getInitialRankingsFilters = () => {
   const requestedMode = String(searchParams.get("mode") || "")
     .trim()
     .toLowerCase();
-
   return {
     selectedYear,
     selectedMonthName,
     selectedMode: isMode(requestedMode) ? requestedMode : defaultMode,
+    selectedPeriod,
   };
 };
 
@@ -171,21 +178,27 @@ const updateRankingsUrl = (
   selectedYear: string,
   selectedMonthName: string,
   selectedMode: string,
+  selectedPeriod: RankingPeriod,
 ): void => {
-  if (typeof window === "undefined" || !selectedYear || !selectedMonthName || !selectedMode) return;
+  if (typeof window === "undefined" || !selectedYear || !selectedMode) return;
 
   const searchParams = new window.URLSearchParams(window.location.search);
   searchParams.set("year", selectedYear);
-  searchParams.set("month", selectedMonthName);
+  if (selectedPeriod === "monthly" && selectedMonthName) {
+    searchParams.set("month", selectedMonthName);
+  } else {
+    searchParams.delete("month");
+  }
   searchParams.set("mode", selectedMode);
+  searchParams.delete("period");
   const nextSearch = searchParams.toString();
   const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ""}`;
   window.history.replaceState({}, "", nextUrl);
 };
 
-const LeaderboardView = () => {
+const LeaderboardView = ({ selectedPeriod }: { selectedPeriod: RankingPeriod }) => {
   const { hideRankingsOpenings, showChessComRankings } = useAppSettings();
-  const initialFilters = useMemo(() => getInitialRankingsFilters(), []);
+  const initialFilters = useMemo(() => getInitialRankingsFilters(selectedPeriod), [selectedPeriod]);
   const [selectedYear, setSelectedYear] = useState(initialFilters.selectedYear);
   const [selectedMonthName, setSelectedMonthName] = useState(initialFilters.selectedMonthName);
   const [selectedMode, setSelectedMode] = useState<Mode>(initialFilters.selectedMode);
@@ -204,13 +217,30 @@ const LeaderboardView = () => {
   }, [selectedMonthName, selectedYear]);
   const availableModeOptions = useMemo(
     () =>
-      modeOptions.filter(
-        (mode) => mode !== "wolfrandom" || supportsWolfrandomLeaderboard(selectedMonth),
+      modeOptions.filter((mode) =>
+        selectedPeriod === "yearly"
+          ? mode !== "wolfrandom"
+          : mode !== "wolfrandom" || supportsWolfrandomLeaderboard(selectedMonth),
       ),
-    [selectedMonth],
+    [selectedMonth, selectedPeriod],
   );
 
-  const { rankingsByMonth, error } = useRankingsByMonth(selectedMonth);
+  const { rankingsByMonth, error: monthlyError } = useRankingsByMonth(
+    selectedPeriod === "monthly" ? selectedMonth : "",
+  );
+  const numericYear = Number(selectedYear);
+  const yearlyRankingsQuery = useQuery({
+    ...rankingsForYearQueryOptions(numericYear),
+    enabled: selectedPeriod === "yearly" && Number.isInteger(numericYear),
+  });
+  const error =
+    selectedPeriod === "monthly"
+      ? monthlyError
+      : yearlyRankingsQuery.error instanceof Error
+        ? yearlyRankingsQuery.error.message
+        : yearlyRankingsQuery.error
+          ? "Failed to load yearly leaderboard data"
+          : "";
   const latestMatchQuery = useQuery(latestRankingMatchQueryOptions());
   const latestMatchTimestamp = latestMatchQuery.data?.start_ts;
   const updatedAtLabel = formatRankingUpdatedAt(latestMatchTimestamp);
@@ -219,6 +249,15 @@ const LeaderboardView = () => {
   const aliasesLoaded = !aliasesQuery.isPending;
 
   useEffect(() => {
+    if (initialFilters.selectedPeriod === "yearly") {
+      const requestedYear = Number(initialFilters.selectedYear);
+      if (Number.isInteger(requestedYear) && requestedYear >= 2016) {
+        setSelectedYear(String(requestedYear));
+        setSelectedMonthName(monthNames[0] ?? "Jan");
+        hasInitializedFiltersRef.current = true;
+        return;
+      }
+    }
     const firstWithData =
       monthOptions.find((month) => rankingsByMonth.has(month)) || monthOptions[0] || "";
     const firstDate = monthDateFromMonthKey(firstWithData);
@@ -239,6 +278,7 @@ const LeaderboardView = () => {
     hasInitializedFiltersRef.current = true;
   }, [
     initialFilters.selectedMonthName,
+    initialFilters.selectedPeriod,
     initialFilters.selectedYear,
     monthOptions,
     rankingsByMonth,
@@ -267,20 +307,27 @@ const LeaderboardView = () => {
   }, [availableModeOptions, selectedMode]);
 
   useEffect(() => {
-    updateRankingsUrl(selectedYear, selectedMonthName, selectedMode);
-  }, [selectedMonthName, selectedMode, selectedYear]);
+    updateRankingsUrl(selectedYear, selectedMonthName, selectedMode, selectedPeriod);
+  }, [selectedMonthName, selectedMode, selectedPeriod, selectedYear]);
 
-  const selectedMonthData = rankingsByMonth.get(selectedMonth);
-  const selectedModeData = selectedMonthData?.[selectedMode] ?? {
+  const selectedPeriodData =
+    selectedPeriod === "monthly" ? rankingsByMonth.get(selectedMonth) : yearlyRankingsQuery.data;
+  const selectedModeData = selectedPeriodData?.[selectedMode] ?? {
     players: [] as import("../../lib/rankings/rankingsByMonth").RankingPlayer[],
   };
   const selectedMonthIndex = allMonthKeys.indexOf(selectedMonth);
   const hasPreviousMonth = selectedMonthIndex > 0;
   const hasNextMonth = selectedMonthIndex >= 0 && selectedMonthIndex < allMonthKeys.length - 1;
-  const eligibilityRequirement = rankingEligibilityByMode[selectedMode];
+  const eligibilityMinimum =
+    selectedPeriod === "yearly"
+      ? yearlyRankingEligibilityByMode[selectedMode]
+      : rankingEligibilityByMode[selectedMode]?.minGames;
   const players = useMemo(
-    () => selectedModeData.players.filter((player) => isEligibleForRankings(player, selectedMode)),
-    [selectedMode, selectedModeData.players],
+    () =>
+      selectedPeriod === "yearly"
+        ? selectedModeData.players
+        : selectedModeData.players.filter((player) => isEligibleForRankings(player, selectedMode)),
+    [selectedMode, selectedModeData.players, selectedPeriod],
   );
   const activeModeOpeningFilter =
     selectedMode === "wolfrandom" || hideRankingsOpenings ? "" : activeOpeningFilter;
@@ -318,6 +365,16 @@ const LeaderboardView = () => {
     if (next) selectMonthKey(next);
   };
 
+  const selectedYearIndex = yearOptions.indexOf(selectedYear);
+  const hasPreviousYear = selectedYearIndex >= 0 && selectedYearIndex < yearOptions.length - 1;
+  const hasNextYear = selectedYearIndex > 0;
+  const handlePreviousYear = () => {
+    if (hasPreviousYear) setSelectedYear(yearOptions[selectedYearIndex + 1] ?? selectedYear);
+  };
+  const handleNextYear = () => {
+    if (hasNextYear) setSelectedYear(yearOptions[selectedYearIndex - 1] ?? selectedYear);
+  };
+
   const handleSort = (nextKey: string): void => {
     if (sortKey === nextKey) {
       setSortDirection((direction) => (direction === "asc" ? "desc" : "asc"));
@@ -350,23 +407,28 @@ const LeaderboardView = () => {
 
     return sorted;
   }, [aliasesLookup, filteredPlayers, showChessComRankings, sortDirection, sortKey]);
+  const rankingColumns = selectedPeriod === "yearly" ? yearlyRankingColumns : monthlyRankingColumns;
 
   return (
     <div className="rankingsPage">
       <Seo
-        title="Atomic rankings"
-        description="Browse monthly atomic chess rankings for blitz, bullet, and hyperbullet, with merged aliases and rating eligibility rules."
-        path="/rankings"
+        title={selectedPeriod === "yearly" ? "Yearly atomic rankings" : "Monthly atomic rankings"}
+        description={
+          selectedPeriod === "yearly"
+            ? "Browse yearly atomic chess rankings based on average qualifying post-game rating for blitz, bullet, and hyperbullet."
+            : "Browse monthly atomic chess rankings for blitz, bullet, hyperbullet, and Wolfrandom, with merged aliases and rating eligibility rules."
+        }
+        path={selectedPeriod === "yearly" ? "/rankings/yearly" : "/rankings"}
       />
       <div className="panel rankingsPanel rankingsLeaderboardPanel">
-        <h1>Monthly Player Rankings</h1>
+        <h1>{selectedPeriod === "yearly" ? "Yearly" : "Monthly"} Player Rankings</h1>
         {updatedAtLabel && typeof latestMatchTimestamp === "number" ? (
           <p className="rankingsUpdatedAt">
-            Last updated{" "}
+            <span>Last updated</span>
             <time dateTime={new Date(latestMatchTimestamp).toISOString()}>{updatedAtLabel}</time>
           </p>
         ) : null}
-        <div className="controls rankingsControls">
+        <div className={`controls rankingsControls ${selectedPeriod}`}>
           <label htmlFor="year-select">
             Year
             <select
@@ -382,22 +444,24 @@ const LeaderboardView = () => {
             </select>
           </label>
 
-          <label htmlFor="month-select">
-            Month
-            <select
-              id="month-select"
-              value={selectedMonthName}
-              onChange={(event) => setSelectedMonthName(event.target.value)}
-            >
-              {availableMonthsForYear.map((monthName) => (
-                <option key={monthName} value={monthName}>
-                  {monthName}
-                </option>
-              ))}
-            </select>
-          </label>
+          {selectedPeriod === "monthly" ? (
+            <label htmlFor="month-select">
+              Month
+              <select
+                id="month-select"
+                value={selectedMonthName}
+                onChange={(event) => setSelectedMonthName(event.target.value)}
+              >
+                {availableMonthsForYear.map((monthName) => (
+                  <option key={monthName} value={monthName}>
+                    {monthName}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
 
-          <label htmlFor="mode-select">
+          <label className="rankingsModeControl" htmlFor="mode-select">
             Mode
             <select
               id="mode-select"
@@ -418,25 +482,30 @@ const LeaderboardView = () => {
         {error ? <div className="errorText">{error}</div> : null}
 
         <div className="rankingsMeta">
-          <div className="monthStepControls" aria-label="Month navigation">
+          <div
+            className="monthStepControls"
+            aria-label={selectedPeriod === "yearly" ? "Year navigation" : "Month navigation"}
+          >
             <button
               type="button"
               className="monthStepButton"
-              aria-label="Previous month"
-              onClick={handlePreviousMonth}
-              disabled={!hasPreviousMonth}
+              aria-label={selectedPeriod === "yearly" ? "Previous year" : "Previous month"}
+              onClick={selectedPeriod === "yearly" ? handlePreviousYear : handlePreviousMonth}
+              disabled={selectedPeriod === "yearly" ? !hasPreviousYear : !hasPreviousMonth}
             >
               <span aria-hidden="true">←</span>
             </button>
             <span className="currentMonthLabel">
-              {readableMonthLabel(selectedMonth || monthOptions[0] || "")}
+              {selectedPeriod === "yearly"
+                ? selectedYear
+                : readableMonthLabel(selectedMonth || monthOptions[0] || "")}
             </span>
             <button
               type="button"
               className="monthStepButton"
-              aria-label="Next month"
-              onClick={handleNextMonth}
-              disabled={!hasNextMonth}
+              aria-label={selectedPeriod === "yearly" ? "Next year" : "Next month"}
+              onClick={selectedPeriod === "yearly" ? handleNextYear : handleNextMonth}
+              disabled={selectedPeriod === "yearly" ? !hasNextYear : !hasNextMonth}
             >
               <span aria-hidden="true">→</span>
             </button>
@@ -451,6 +520,16 @@ const LeaderboardView = () => {
                   <Link className="rankingsMetaLink" to="/rankings/how-ratings-work">
                     <FontAwesomeIcon icon={faCircleInfo} aria-hidden="true" />
                     How are ratings calculated?
+                  </Link>
+                ) : null}
+                {selectedPeriod === "yearly" ? (
+                  <Link
+                    className="rankingsMetaLink"
+                    to="/rankings/how-ratings-work"
+                    hash="yearly-rankings"
+                  >
+                    <FontAwesomeIcon icon={faCircleInfo} aria-hidden="true" />
+                    How are yearly ratings determined?
                   </Link>
                 ) : null}
               </span>
@@ -475,12 +554,14 @@ const LeaderboardView = () => {
                 </span>
               ) : null}
             </div>
-            {eligibilityRequirement ? (
+            {eligibilityMinimum ? (
               <p
                 className="rankingsEligibilityNote"
                 aria-label={`${modeLabels[selectedMode]} eligibility`}
               >
-                Requirements: {eligibilityRequirement.minGames}+ games this month.
+                {selectedPeriod === "yearly"
+                  ? `Minimum requirement: ${eligibilityMinimum}+ games with post-game RD below 60 this year.`
+                  : `Requirements: ${eligibilityMinimum}+ games this month.`}
               </p>
             ) : null}
           </div>
@@ -498,7 +579,7 @@ const LeaderboardView = () => {
               ? `No ranked players found for ${getOpeningDisplayLabel(activeModeOpeningFilter)}.`
               : showChessComRankings
                 ? "No ranked players with a Chess.com alias were found."
-                : "No leaderboard entries available for this month."}
+                : `No leaderboard entries available for this ${selectedPeriod === "yearly" ? "year" : "month"}.`}
           </div>
         ) : (
           <div className="rankingsTableWrap">
@@ -534,7 +615,9 @@ const LeaderboardView = () => {
                     : player.username;
 
                   return (
-                    <tr key={`${selectedMonth}-${player.rank}-${player.username}`}>
+                    <tr
+                      key={`${selectedPeriod}-${selectedYear}-${selectedMonth}-${player.rank}-${player.username}`}
+                    >
                       <td>{player.rank}</td>
                       <td>
                         <div className="rankingPlayerCell">
@@ -574,7 +657,9 @@ const LeaderboardView = () => {
                         </div>
                       </td>
                       <td>{player.score.toFixed(1)}</td>
-                      <td>{player.rd.toFixed(1)}</td>
+                      {selectedPeriod === "monthly" ? (
+                        <td>{player.rd?.toFixed(1) ?? "—"}</td>
+                      ) : null}
                       <td>{player.games ?? "—"}</td>
                     </tr>
                   );
@@ -588,4 +673,6 @@ const LeaderboardView = () => {
   );
 };
 
-export const RankingsPage = () => <LeaderboardView />;
+export const RankingsPage = () => <LeaderboardView selectedPeriod="monthly" />;
+
+export const YearlyRankingsPage = () => <LeaderboardView selectedPeriod="yearly" />;

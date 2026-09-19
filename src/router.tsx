@@ -71,6 +71,10 @@ const PuzzleReviewPage = lazyRouteComponent(
   "PuzzleReviewPage",
 );
 const RankingsPage = lazyRouteComponent(() => import("./pages/Rankings/Rankings"), "RankingsPage");
+const YearlyRankingsPage = lazyRouteComponent(
+  () => import("./pages/Rankings/Rankings"),
+  "YearlyRankingsPage",
+);
 const RankingsMethodologyPage = lazyRouteComponent(
   () => import("./pages/Rankings/RankingsMethodology"),
   "RankingsMethodologyPage",
@@ -117,6 +121,12 @@ const rankingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/rankings",
   component: RankingsPage,
+});
+
+const yearlyRankingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/rankings/yearly",
+  component: YearlyRankingsPage,
 });
 
 const usersRoute = createRoute({
@@ -356,6 +366,7 @@ const lichessAuthCallbackRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   rankingsRoute,
+  yearlyRankingsRoute,
   usersRoute,
   bannedUsersRoute,
   rankingsMethodologyRoute,
