@@ -56,22 +56,23 @@ test("yearly rankings use yearly eligibility and omit RD", async ({ page }) => {
   await page.goto("/rankings/yearly?year=2016&mode=bullet");
   await request;
 
-  await expect(page.getByRole("heading", { name: "Yearly Player Rankings" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Yearly Rankings" })).toBeVisible();
   await expect(page.getByRole("combobox", { name: "Month" })).toHaveCount(0);
   await expect(page.getByRole("columnheader", { name: /RD/ })).toHaveCount(0);
   await expect(page.getByLabel("Bullet eligibility")).toHaveText(
-    /Minimum requirement: 250\+ games with post-game RD below 60 this year/,
+    /Requirement: 250\+ games with RD less than 60 this year/,
   );
   await page.getByRole("combobox", { name: "Mode", exact: true }).selectOption("blitz");
   await expect(page.getByLabel("Blitz eligibility")).toHaveText(
-    /Minimum requirement: 150\+ games with post-game RD below 60 this year/,
+    /Requirement: 150\+ games with RD less than 60 this year/,
   );
   await page.getByRole("combobox", { name: "Mode", exact: true }).selectOption("hyperbullet");
   await expect(page.getByLabel("Hyper eligibility")).toHaveText(
-    /Minimum requirement: 350\+ games with post-game RD below 60 this year/,
+    /Requirement: 350\+ games with RD less than 60 this year/,
   );
   await expect(page.getByRole("option", { name: "Wolfrandom", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Previous year" })).toBeDisabled();
+  await expect(page.getByRole("link", { name: "How are ratings calculated?" })).toHaveCount(0);
 
   await page.getByRole("link", { name: "How are yearly ratings determined?" }).click();
   await expect(page).toHaveURL(/\/rankings\/how-ratings-work#yearly-rankings$/);

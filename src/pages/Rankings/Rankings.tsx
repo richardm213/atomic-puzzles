@@ -421,7 +421,7 @@ const LeaderboardView = ({ selectedPeriod }: { selectedPeriod: RankingPeriod }) 
         path={selectedPeriod === "yearly" ? "/rankings/yearly" : "/rankings"}
       />
       <div className="panel rankingsPanel rankingsLeaderboardPanel">
-        <h1>{selectedPeriod === "yearly" ? "Yearly" : "Monthly"} Player Rankings</h1>
+        <h1>{selectedPeriod === "yearly" ? "Yearly" : "Monthly"} Rankings</h1>
         {updatedAtLabel && typeof latestMatchTimestamp === "number" ? (
           <p className="rankingsUpdatedAt">
             <span>Last updated</span>
@@ -516,7 +516,7 @@ const LeaderboardView = ({ selectedPeriod }: { selectedPeriod: RankingPeriod }) 
                 {activeModeOpeningFilter || showChessComRankings
                   ? `${filteredPlayers.length} of ${players.length} ranked`
                   : `${players.length} ranked`}
-                {selectedMode !== "wolfrandom" ? (
+                {selectedPeriod === "monthly" && selectedMode !== "wolfrandom" ? (
                   <Link className="rankingsMetaLink" to="/rankings/how-ratings-work">
                     <FontAwesomeIcon icon={faCircleInfo} aria-hidden="true" />
                     How are ratings calculated?
@@ -560,7 +560,7 @@ const LeaderboardView = ({ selectedPeriod }: { selectedPeriod: RankingPeriod }) 
                 aria-label={`${modeLabels[selectedMode]} eligibility`}
               >
                 {selectedPeriod === "yearly"
-                  ? `Minimum requirement: ${eligibilityMinimum}+ games with post-game RD below 60 this year.`
+                  ? `Requirement: ${eligibilityMinimum}+ games with RD less than 60 this year.`
                   : `Requirements: ${eligibilityMinimum}+ games this month.`}
               </p>
             ) : null}

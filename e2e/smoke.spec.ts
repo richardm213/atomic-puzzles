@@ -8,7 +8,7 @@ const pages = [
   },
   { path: "/solve/101", title: /Puzzle #101/, heading: "Solve the Atomic Tactic" },
   { path: "/practice", title: /Opening Database Practice/, heading: "Opening Database Practice" },
-  { path: "/rankings", title: /Atomic rankings/, heading: "Monthly Player Rankings" },
+  { path: "/rankings", title: /Atomic rankings/, heading: "Monthly Rankings" },
   { path: "/recent", title: /Recent Match Archive/, heading: "Recent Match Archive" },
   { path: "/tournaments", title: /Tournament history/, heading: "Tournament archive" },
   { path: "/h2h", title: /Player Head-to-Head/, heading: "Compare Player Records" },

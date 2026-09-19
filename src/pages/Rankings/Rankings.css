@@ -152,7 +152,8 @@
 .rankedCount {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
+  column-gap: 16px;
+  row-gap: 8px;
   flex-wrap: wrap;
   color: var(--color-subtle);
 }
@@ -161,14 +162,14 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 6px;
+  gap: 8px;
 }
 
 .rankingsMetaSummary {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 12px;
+  gap: 16px;
   flex-wrap: wrap;
 }
 
@@ -405,6 +406,10 @@
       max(18px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
   }
 
+  .rankingsMeta {
+    gap: 14px;
+  }
+
   .rankingsControls {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     justify-content: stretch;
@@ -451,7 +456,12 @@
   }
 
   .rankingsMetaDetails {
+    width: 100%;
     align-items: flex-start;
+  }
+
+  .rankingsMetaSummary {
+    justify-content: flex-start;
   }
 
   .rankingsWolfrandomTooltip {
