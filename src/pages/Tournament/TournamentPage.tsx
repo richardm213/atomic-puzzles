@@ -120,8 +120,20 @@ type SavedTournamentView = {
   pageScrollY?: number;
 };
 
-const buildStartRoundState = (stages: TournamentBracketStage[] = []): Record<string, string> =>
-  Object.fromEntries(stages.map((stage) => [stage.key, stage.rounds[0]?.roundName || ""]));
+const buildStartRoundState = (
+  stages: TournamentBracketStage[] = [],
+  defaultMainBracketStartRound = "",
+): Record<string, string> =>
+  Object.fromEntries(
+    stages.map((stage) => {
+      const configuredRound =
+        stage.key === "main" &&
+        stage.rounds.some((round) => round.roundName === defaultMainBracketStartRound)
+          ? defaultMainBracketStartRound
+          : "";
+      return [stage.key, configuredRound || stage.rounds[0]?.roundName || ""];
+    }),
+  );
 
 const buildZoomState = (
   stages: TournamentBracketStage[],
@@ -402,6 +414,10 @@ const scoreSlotDisplay = (match: TournamentMatch, playerName: string): string =>
     return "";
   }
 
+  if (!match.match_id && match.s1 === 0 && match.s2 === 0) {
+    return "";
+  }
+
   if (isByeMatch(match)) {
     return "";
   }
@@ -516,6 +532,8 @@ const PlayerLabel = ({
       <span className="tournamentPlayerEmpty" aria-hidden="true">
         &nbsp;
       </span>
+    ) : isByePlayer(playerName) ? (
+      <span className="tournamentPlayerBye">bye</span>
     ) : (
       <Link
         className="tournamentPlayerLink"
@@ -927,7 +945,10 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
   useEffect(() => {
     if (!bracket) return;
 
-    const defaultStartRounds = buildStartRoundState(bracket.stages || []);
+    const defaultStartRounds = buildStartRoundState(
+      bracket.stages || [],
+      bracket.defaultMainBracketStartRound,
+    );
     const savedView = readSavedTournamentView(bracket.id);
     const availableStageKeys = new Set((bracket.stages || []).map((stage) => stage.key));
     const defaultActiveStageKey = availableStageKeys.has("main")

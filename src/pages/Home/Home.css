@@ -522,7 +522,7 @@
   transform: translateY(calc(-50% - 4px)) rotate(1deg);
 }
 
-.homeAocShortcut {
+.homeAwcShortcut {
   --home-card-accent: #e7a93d;
 
   background:
@@ -535,15 +535,13 @@
     var(--color-panel);
 }
 
-.homeAocShortcut > img {
+.homeAwcShortcut > img {
   width: min(34%, 112px);
-  height: calc(100% - 24px);
   max-width: min(34%, 112px);
-  max-height: calc(100% - 24px);
-  object-fit: cover;
+  object-fit: contain;
 }
 
-.homeAocShortcut:hover {
+.homeAwcShortcut:hover {
   background:
     radial-gradient(
       circle at 87% 20%,

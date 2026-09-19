@@ -11,6 +11,7 @@ export type TournamentMeta = {
   status: "available" | "pending";
   matchMode?: Mode;
   hideStartRoundControls?: boolean;
+  defaultMainBracketStartRound?: string;
   completeMainBracketFromRound?: string;
   trophyAssetPath?: string;
 };
@@ -109,6 +110,14 @@ const awcTournament = (year: number): TournamentMeta =>
 
 const tournaments: TournamentMeta[] = [
   availableTournament({
+    id: "awc2026",
+    title: "AWC 2026",
+    year: 2026,
+    defaultMainBracketStartRound: "Round of 64",
+    completeMainBracketFromRound: "Round of 16",
+    trophyAssetPath: trophyAssetPaths.awc,
+  }),
+  availableTournament({
     id: "aoc2026",
     title: "AOC 2026",
     headingTitle: "Atomic Openings Championship 2026",
@@ -137,6 +146,7 @@ const tournaments: TournamentMeta[] = [
 
 const roundDisplayOrder: Record<string, string[]> = {
   main: [
+    "Round of 128",
     "Round of 64",
     "Round of 32",
     "Round of 16",

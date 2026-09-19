@@ -23,6 +23,17 @@ describe("tournament match modes", () => {
       }),
     );
   });
+
+  it("publishes the 2026 Atomic World Championship with its qualifying bracket", () => {
+    expect(getTournamentMeta("awc2026")).toEqual(
+      expect.objectContaining({
+        title: "AWC 2026",
+        defaultMainBracketStartRound: "Round of 64",
+        completeMainBracketFromRound: "Round of 16",
+        trophyAssetPath: "/images/awc-trophies/awc.png",
+      }),
+    );
+  });
 });
 
 const match = (overrides: Partial<TournamentMatch>): TournamentMatch => ({

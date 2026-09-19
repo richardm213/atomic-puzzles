@@ -43,18 +43,22 @@ export const HomePage = () => {
 
       <section className="homeSpotlightSection" aria-label="Atomic chess shortcuts">
         <div className="homeSpotlightGrid">
-          <Link className="homeSpotlightCard homeArenaShortcut" to="/arenas">
-            <h2>Arena archive</h2>
-            <div className="homeArenaArtwork" aria-hidden="true">
-              <FontAwesomeIcon icon={faTrophy} />
-            </div>
-            <p>
-              Monthly, Shield, and Yearly Atomic arenas. Browse the winners and revisit each event
-              on Lichess.
-            </p>
-            <strong>
-              Browse arenas <span aria-hidden="true">→</span>
-            </strong>
+          <Link
+            className="homeSpotlightCard homeTrophyShortcut homeAwcShortcut"
+            to="/tournaments/$tournamentId"
+            params={{ tournamentId: "awc2026" }}
+          >
+            <span>Championship</span>
+            <h2>Atomic World Championship 2026</h2>
+            <p>Follow the seeded field and 2026 championship bracket.</p>
+            <img
+              src={appAssetPath("/images/awc-trophies/awc.png")}
+              alt=""
+              width="140"
+              height="140"
+              loading="lazy"
+              decoding="async"
+            />
           </Link>
 
           <Link
@@ -84,22 +88,18 @@ export const HomePage = () => {
             </p>
           </Link>
 
-          <Link
-            className="homeSpotlightCard homeTrophyShortcut homeAocShortcut"
-            to="/tournaments/$tournamentId"
-            params={{ tournamentId: "aoc2026" }}
-          >
-            <span>Championship</span>
-            <h2>Atomic Openings Championship</h2>
-            <p>jakestatefarm won the 2026 Atomic Openings Championship.</p>
-            <img
-              src={appAssetPath("/images/awc-trophies/atomic-openings-championship.png")}
-              alt=""
-              width="140"
-              height="210"
-              loading="lazy"
-              decoding="async"
-            />
+          <Link className="homeSpotlightCard homeArenaShortcut" to="/arenas">
+            <h2>Arena archive</h2>
+            <div className="homeArenaArtwork" aria-hidden="true">
+              <FontAwesomeIcon icon={faTrophy} />
+            </div>
+            <p>
+              Monthly, Shield, and Yearly Atomic arenas. Browse the winners and revisit each event
+              on Lichess.
+            </p>
+            <strong>
+              Browse arenas <span aria-hidden="true">→</span>
+            </strong>
           </Link>
 
           <Link

@@ -1,9 +1,5 @@
 .tournamentPage {
-  --tournament-gold: color-mix(
-    in srgb,
-    var(--color-accent-warm) 76%,
-    var(--color-heading)
-  );
+  --tournament-gold: color-mix(in srgb, var(--color-accent-warm) 76%, var(--color-heading));
   min-height: var(--page-shell-min-height);
   min-height: var(--page-shell-min-height-dynamic);
   width: min(1180px, 100%);
@@ -249,7 +245,8 @@
   cursor: help;
 }
 
-.tournamentPlayerLink {
+.tournamentPlayerLink,
+.tournamentPlayerBye {
   display: block;
   flex: 0 1 auto;
   min-inline-size: 0;
@@ -259,10 +256,17 @@
   white-space: nowrap;
   color: inherit;
   text-decoration: none;
+}
+
+.tournamentPlayerLink {
   border-bottom: 1px solid transparent;
   transition:
     color 160ms ease,
     border-color 160ms ease;
+}
+
+.tournamentPlayerBye {
+  color: var(--color-muted);
 }
 
 .tournamentPlayerEmpty {
