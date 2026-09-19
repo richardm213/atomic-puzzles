@@ -111,6 +111,7 @@ const MIN_STAGE_ZOOM = 0.55;
 const MAX_STAGE_ZOOM = 1.35;
 const STAGE_ZOOM_STEP = 0.15;
 const TOURNAMENT_VIEW_STORAGE_KEY = "tournament-view:v3:";
+const AWC_2026_VIEW_STORAGE_KEY = "tournament-view:v4:awc2026";
 
 type SavedTournamentView = {
   startRounds?: Record<string, string>;
@@ -155,7 +156,9 @@ const zoomDisplayPercent = (zoomLevel: number): number =>
   Math.round((zoomLevel / DEFAULT_STAGE_ZOOM) * 100);
 
 const getTournamentViewStorageKey = (tournamentId: string): string =>
-  `${TOURNAMENT_VIEW_STORAGE_KEY}${tournamentId}`;
+  tournamentId === "awc2026"
+    ? AWC_2026_VIEW_STORAGE_KEY
+    : `${TOURNAMENT_VIEW_STORAGE_KEY}${tournamentId}`;
 
 const readSavedTournamentView = (tournamentId: string): SavedTournamentView | null => {
   if (typeof window === "undefined") return null;
