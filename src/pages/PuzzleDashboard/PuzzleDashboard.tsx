@@ -13,6 +13,10 @@ import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import {
+  fetchCustomPuzzleSetAttempts,
+  listCustomPuzzleSets,
+} from "../../lib/puzzles/customPuzzleSets";
+import {
   puzzleCatalogQueryOptions,
   puzzleProgressForUserQueryOptions,
 } from "../../lib/puzzles/puzzleQueries";
@@ -97,6 +101,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
   const [authorFilter, setAuthorFilter] = useState("");
   const [searchFilter, setSearchFilter] = useState("");
   const [tagFilters, setTagFilters] = useState<string[]>([]);
+  const [attemptSource, setAttemptSource] = useState("first");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const accessQuery = useQuery({
     ...siteUserRegistrationQueryOptions(targetUsername),
@@ -108,7 +113,28 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
     ...puzzleProgressForUserQueryOptions(targetUsername),
     enabled: Boolean(targetUsername) && canViewDashboard,
   });
-  const progressRows = progressQuery.data ?? emptyPuzzleProgressRows;
+  const customSetsQuery = useQuery({
+    queryKey: ["custom-puzzle-sets"],
+    queryFn: listCustomPuzzleSets,
+    enabled: viewingOwnDashboard && isAuthenticated && canViewDashboard,
+  });
+  const selectedCustomSetId = attemptSource === "first" ? "" : attemptSource;
+  const customSetAttemptsQuery = useQuery({
+    queryKey: ["custom-puzzle-sets", selectedCustomSetId, "attempts"],
+    queryFn: () => fetchCustomPuzzleSetAttempts(selectedCustomSetId),
+    enabled: Boolean(
+      viewingOwnDashboard && isAuthenticated && canViewDashboard && selectedCustomSetId,
+    ),
+  });
+  const progressRows = selectedCustomSetId
+    ? (customSetAttemptsQuery.data ?? []).map((attempt) => ({
+        puzzle_id: attempt.puzzleId,
+        first_attempt_at: attempt.attemptedAt,
+        puzzle_correct: attempt.puzzleCorrect,
+        incorrect_move: null,
+        correct_move: null,
+      }))
+    : (progressQuery.data ?? emptyPuzzleProgressRows);
   const puzzlesById = useMemo(
     () =>
       new Map(
@@ -119,10 +145,17 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
       ),
     [puzzleCatalogQuery.data],
   );
-  const isDashboardLoading = progressQuery.isFetching;
+  const isDashboardLoading = selectedCustomSetId
+    ? customSetAttemptsQuery.isFetching
+    : progressQuery.isFetching;
   const arePuzzlesLoading = puzzleCatalogQuery.isFetching;
   const isAccessCheckLoading = Boolean(targetUsername) && accessQuery.isPending;
-  const queryError = accessQuery.error ?? puzzleCatalogQuery.error ?? progressQuery.error;
+  const queryError =
+    accessQuery.error ??
+    puzzleCatalogQuery.error ??
+    progressQuery.error ??
+    customSetsQuery.error ??
+    customSetAttemptsQuery.error;
   const error = queryError
     ? queryError instanceof Error
       ? queryError.message
@@ -133,6 +166,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
     setCurrentPage(1);
   }, [
     authorFilter,
+    attemptSource,
     eventFilter,
     pageSize,
     resultFilter,
@@ -142,6 +176,10 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
     targetUsername,
     untilDate,
   ]);
+
+  useEffect(() => {
+    if (!viewingOwnDashboard) setAttemptSource("first");
+  }, [viewingOwnDashboard]);
 
   const allDashboardEntries = useMemo(
     () => buildDashboardEntries(progressRows, puzzlesById),
@@ -252,6 +290,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
     ? "My Puzzle Dashboard"
     : `${targetUsername}'s Puzzle Dashboard`;
   const hasActiveFilters = Boolean(
+    attemptSource !== "first" ||
     sinceDate ||
     untilDate ||
     resultFilter !== "all" ||
@@ -261,6 +300,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
     tagFilters.length > 0,
   );
   const clearFilters = (): void => {
+    setAttemptSource("first");
     setSinceDate("");
     setUntilDate("");
     setResultFilter("all");
@@ -374,6 +414,23 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
                     className="dashboardFilters"
                     aria-label="Filter puzzle attempts"
                   >
+                    {viewingOwnDashboard ? (
+                      <label className="dashboardFilterField dashboardFilterSearch">
+                        <span>Attempts from</span>
+                        <select
+                          value={attemptSource}
+                          onChange={(event) => setAttemptSource(event.target.value)}
+                          disabled={isPageLoading || customSetsQuery.isFetching}
+                        >
+                          <option value="first">First attempts</option>
+                          {(customSetsQuery.data ?? []).map((set) => (
+                            <option key={set.id} value={set.id}>
+                              {set.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ) : null}
                     <label className="dashboardFilterField dashboardFilterSearch">
                       <span>Search</span>
                       <input

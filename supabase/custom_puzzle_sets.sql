@@ -8,10 +8,36 @@ create table if not exists public.custom_puzzle_sets (
   username text not null,
   name text not null check (char_length(btrim(name)) between 1 and 80),
   tag_filters text[] not null default '{}',
+  untagged_only boolean not null default false,
+  author_filters text[] not null default '{}',
   author_filter text,
+  result_filter text not null default 'all'
+    check (result_filter in ('all', 'correct', 'incorrect')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.custom_puzzle_sets
+  add column if not exists untagged_only boolean not null default false;
+
+alter table public.custom_puzzle_sets
+  add column if not exists author_filters text[] not null default '{}';
+
+update public.custom_puzzle_sets
+set author_filters = array[author_filter]
+where author_filter is not null
+  and btrim(author_filter) <> ''
+  and cardinality(author_filters) = 0;
+
+alter table public.custom_puzzle_sets
+  add column if not exists result_filter text not null default 'all';
+
+alter table public.custom_puzzle_sets
+  drop constraint if exists custom_puzzle_sets_result_filter_check;
+
+alter table public.custom_puzzle_sets
+  add constraint custom_puzzle_sets_result_filter_check
+  check (result_filter in ('all', 'correct', 'incorrect'));
 
 create unique index if not exists custom_puzzle_sets_username_name_unique
   on public.custom_puzzle_sets (lower(username), lower(name));

@@ -141,6 +141,126 @@
   gap: 6px;
   min-width: 0;
 }
+.customSetsAuthors {
+  grid-column: 1 / -1;
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-surface-inset);
+}
+.customSetsResultFilter {
+  min-width: 0;
+  margin: 0;
+  padding: 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-surface-inset);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+.customSetsResultFilter legend {
+  padding: 0 6px;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+.customSetsResultFilter label {
+  position: relative;
+  min-width: 0;
+  cursor: pointer;
+}
+.customSetsResultFilter input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.customSetsResultFilter span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--color-muted);
+  font-size: 13px;
+  font-weight: 750;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+.customSetsResultFilter label:hover span {
+  background: var(--color-surface-inset-strong);
+}
+.customSetsResultFilter input:checked + span {
+  border-color: color-mix(in srgb, var(--color-primary) 54%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 18%, var(--color-panel-strong));
+  color: var(--color-heading);
+}
+.customSetsResultFilter input:focus-visible + span {
+  outline: 3px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+.customSetsAuthors legend {
+  padding: 0 6px;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+.customSetsAuthors > p {
+  margin: 0 0 var(--space-2);
+  color: var(--color-muted);
+  font-size: 12px;
+}
+.customSetsAuthorOptions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+.customSetsAuthorOptions > label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  min-height: 38px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-size: 13px;
+  cursor: pointer;
+}
+.customSetsAuthorOptions > label:hover {
+  background: var(--color-surface-inset-strong);
+}
+.customSetsAuthorOptions input {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+.customSetsAuthorOptions span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.customSetsAuthors > button {
+  min-height: 36px;
+  margin-top: var(--space-2);
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-primary-soft);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
 .customSetsField > span,
 .customSetsBuilder .dashboardTagFilterLabel {
   color: var(--color-muted);
@@ -164,6 +284,32 @@
 .customSetsBuilder .dashboardTagFilter {
   grid-column: 1 / -1;
   position: relative;
+}
+.customSetsUntaggedToggle {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-surface-inset);
+  cursor: pointer;
+}
+.customSetsUntaggedToggle > input {
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+}
+.customSetsUntaggedToggle > span {
+  display: grid;
+  gap: 2px;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.customSetsUntaggedToggle strong {
+  color: var(--color-heading);
 }
 .customSetsBuilder .dashboardTagSearchControl {
   position: relative;
@@ -254,6 +400,7 @@
 }
 .customSetsCreateRow {
   grid-column: 1 / -1;
+  justify-content: flex-end;
   margin-top: var(--space-1);
 }
 
@@ -500,6 +647,9 @@
   .customSetsBuilder form,
   .customSetsGrid {
     grid-template-columns: 1fr;
+  }
+  .customSetsAuthorOptions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .customSetsCreateRow {
     align-items: stretch;

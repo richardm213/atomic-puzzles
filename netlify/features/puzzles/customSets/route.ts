@@ -17,11 +17,14 @@ const tagSchema = z.string().trim().min(1).max(80);
 const bodySchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("list") }),
   z.object({ action: z.literal("get"), id: idSchema }),
+  z.object({ action: z.literal("attempts"), id: idSchema }),
   z.object({
     action: z.literal("create"),
     name: nameSchema,
     tags: z.array(tagSchema).max(20).default([]),
-    author: z.string().trim().max(100).default(""),
+    untaggedOnly: z.boolean().default(false),
+    authors: z.array(z.string().trim().min(1).max(100)).max(50).default([]),
+    resultFilter: z.enum(["all", "correct", "incorrect"]).default("all"),
   }),
   z.object({ action: z.literal("rename"), id: idSchema, name: nameSchema }),
   z.object({ action: z.literal("reset"), id: idSchema }),
@@ -41,7 +44,10 @@ type SetRow = {
   id: string;
   name: string;
   tag_filters: string[] | null;
+  untagged_only: boolean | null;
+  author_filters: string[] | null;
   author_filter: string | null;
+  result_filter: "all" | "correct" | "incorrect" | null;
   created_at: string;
   updated_at: string;
 };
@@ -84,7 +90,13 @@ const serializeSet = (set: SetRow, items: ItemRow[]) => {
     createdAt: set.created_at,
     updatedAt: set.updated_at,
     tags: set.tag_filters ?? [],
-    author: set.author_filter ?? "",
+    untaggedOnly: Boolean(set.untagged_only),
+    authors: set.author_filters?.length
+      ? set.author_filters
+      : set.author_filter
+        ? [set.author_filter]
+        : [],
+    resultFilter: set.result_filter ?? "all",
     completedCount: completed.length,
     correctCount: completed.filter((item) => item.last_result === true).length,
     incorrectCount: completed.filter((item) => item.last_result === false).length,
@@ -98,7 +110,7 @@ const serializeSet = (set: SetRow, items: ItemRow[]) => {
 
 export const puzzleSetsRoute = async (event: FunctionEvent) => {
   const input = parseJsonBody(event, bodySchema, "Invalid custom puzzle set request.");
-  if (input.action !== "list" && input.action !== "get") {
+  if (input.action !== "list" && input.action !== "get" && input.action !== "attempts") {
     requireSameOrigin(event.headers, "Cross-site custom-set requests are not allowed.");
   }
   const identity = await authenticateRequest(event.headers);
@@ -108,7 +120,9 @@ export const puzzleSetsRoute = async (event: FunctionEvent) => {
   const loadOwnedSet = async (id: string): Promise<SetRow> => {
     const result = await supabase
       .from("custom_puzzle_sets")
-      .select("id,name,tag_filters,author_filter,created_at,updated_at")
+      .select(
+        "id,name,tag_filters,untagged_only,author_filters,author_filter,result_filter,created_at,updated_at",
+      )
       .eq("id", id)
       .eq("username", username)
       .maybeSingle();
@@ -132,7 +146,9 @@ export const puzzleSetsRoute = async (event: FunctionEvent) => {
   if (input.action === "list") {
     const result = await supabase
       .from("custom_puzzle_sets")
-      .select("id,name,tag_filters,author_filter,created_at,updated_at")
+      .select(
+        "id,name,tag_filters,untagged_only,author_filters,author_filter,result_filter,created_at,updated_at",
+      )
       .eq("username", username)
       .order("updated_at", { ascending: false });
     if (result.error) throw new Error(result.error.message);
@@ -146,16 +162,34 @@ export const puzzleSetsRoute = async (event: FunctionEvent) => {
     return identityResponse(identity, 200, { set: serializeSet(set, await loadItems([set.id])) });
   }
 
+  if (input.action === "attempts") {
+    const set = await loadOwnedSet(input.id);
+    const items = await loadItems([set.id]);
+    return identityResponse(identity, 200, {
+      attempts: items
+        .filter((item) => item.completed_at && item.last_result !== null)
+        .map((item) => ({
+          puzzleId: item.puzzle_id,
+          attemptedAt: String(item.completed_at),
+          puzzleCorrect: Boolean(item.last_result),
+        }))
+        .sort((left, right) => right.attemptedAt.localeCompare(left.attemptedAt)),
+    });
+  }
+
   if (input.action === "create") {
-    const progressRows = await loadAll<{ puzzle_id: string }>((from, to) =>
+    const progressRows = await loadAll<{ puzzle_id: string; puzzle_correct: boolean }>((from, to) =>
       supabase
         .from("puzzle_progress")
-        .select("puzzle_id")
+        .select("puzzle_id,puzzle_correct")
         .eq("username", username)
         .order("first_attempt_at", { ascending: true })
         .range(from, to),
     );
     const attemptedIds = [...new Set(progressRows.map((row) => String(row.puzzle_id)))];
+    const resultByPuzzleId = new Map(
+      progressRows.map((row) => [String(row.puzzle_id), Boolean(row.puzzle_correct)]),
+    );
     if (!attemptedIds.length) {
       throw new HttpError(400, "Complete at least one puzzle before creating a custom set.");
     }
@@ -171,18 +205,24 @@ export const puzzleSetsRoute = async (event: FunctionEvent) => {
       puzzles.push(...((result.data ?? []) as typeof puzzles));
     }
 
-    const normalizedAuthor = input.author.toLocaleLowerCase();
+    const normalizedAuthors = new Set(input.authors.map((author) => author.toLocaleLowerCase()));
     const selectedTags = [...new Set(input.tags)];
     const matchingPuzzleIds = puzzles
       .filter((puzzle) => {
+        const wasCorrect = resultByPuzzleId.get(String(puzzle.id));
+        if (input.resultFilter === "correct" && wasCorrect !== true) return false;
+        if (input.resultFilter === "incorrect" && wasCorrect !== false) return false;
         if (
-          normalizedAuthor &&
-          String(puzzle.author ?? "")
-            .trim()
-            .toLocaleLowerCase() !== normalizedAuthor
+          normalizedAuthors.size > 0 &&
+          !normalizedAuthors.has(
+            String(puzzle.author ?? "")
+              .trim()
+              .toLocaleLowerCase(),
+          )
         )
           return false;
         const tags = new Set(Array.isArray(puzzle.tags) ? puzzle.tags : []);
+        if (input.untaggedOnly) return tags.size === 0;
         return selectedTags.every((tag) => tags.has(tag));
       })
       .map((puzzle) => String(puzzle.id));
@@ -196,9 +236,14 @@ export const puzzleSetsRoute = async (event: FunctionEvent) => {
         username,
         name: input.name,
         tag_filters: selectedTags,
-        author_filter: input.author || null,
+        untagged_only: input.untaggedOnly,
+        author_filters: [...new Set(input.authors)],
+        author_filter: null,
+        result_filter: input.resultFilter,
       })
-      .select("id,name,tag_filters,author_filter,created_at,updated_at")
+      .select(
+        "id,name,tag_filters,untagged_only,author_filters,author_filter,result_filter,created_at,updated_at",
+      )
       .single();
     if (insertResult.error) {
       if (insertResult.error.code === "23505")
@@ -231,7 +276,9 @@ export const puzzleSetsRoute = async (event: FunctionEvent) => {
       .update({ name: input.name, updated_at: new Date().toISOString() })
       .eq("id", set.id)
       .eq("username", username)
-      .select("id,name,tag_filters,author_filter,created_at,updated_at")
+      .select(
+        "id,name,tag_filters,untagged_only,author_filters,author_filter,result_filter,created_at,updated_at",
+      )
       .single();
     if (result.error) {
       if (result.error.code === "23505")

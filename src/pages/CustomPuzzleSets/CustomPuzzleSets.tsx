@@ -35,6 +35,7 @@ import { DashboardTagFilter, getPuzzleTagName } from "../PuzzleDashboard/Dashboa
 
 const customSetQueryKey = ["custom-puzzle-sets"] as const;
 const emptySets: CustomPuzzleSet[] = [];
+type ResultFilter = "all" | "correct" | "incorrect";
 
 export const CustomPuzzleSetsPage = () => {
   const queryClient = useQueryClient();
@@ -43,7 +44,9 @@ export const CustomPuzzleSetsPage = () => {
   const manageDialogRef = useRef<HTMLDialogElement | null>(null);
   const [name, setName] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [author, setAuthor] = useState("");
+  const [untaggedOnly, setUntaggedOnly] = useState(false);
+  const [selectedAuthors, setSelectedAuthors] = useState<string[]>([]);
+  const [resultFilter, setResultFilter] = useState<ResultFilter>("all");
   const [submitState, setSubmitState] = useState<"idle" | "saving" | "saved">("idle");
   const [message, setMessage] = useState("");
   const [editingId, setEditingId] = useState("");
@@ -67,6 +70,16 @@ export const CustomPuzzleSetsPage = () => {
     () => new Set((progressQuery.data ?? []).map((row) => String(row.puzzle_id))),
     [progressQuery.data],
   );
+  const resultByPuzzleId = useMemo(
+    () =>
+      new Map(
+        (progressQuery.data ?? []).map((row) => [
+          String(row.puzzle_id),
+          Boolean(row.puzzle_correct),
+        ]),
+      ),
+    [progressQuery.data],
+  );
   const attemptedPuzzles = useMemo(
     () => (catalogQuery.data ?? []).filter((puzzle) => attemptedIds.has(String(puzzle.puzzleId))),
     [attemptedIds, catalogQuery.data],
@@ -83,11 +96,19 @@ export const CustomPuzzleSetsPage = () => {
   const matchingPuzzles = useMemo(
     () =>
       attemptedPuzzles.filter((puzzle) => {
-        if (author && String(puzzle.author ?? "").trim() !== author) return false;
+        const wasCorrect = resultByPuzzleId.get(String(puzzle.puzzleId));
+        if (resultFilter === "correct" && wasCorrect !== true) return false;
+        if (resultFilter === "incorrect" && wasCorrect !== false) return false;
+        if (
+          selectedAuthors.length > 0 &&
+          !selectedAuthors.includes(String(puzzle.author ?? "").trim())
+        )
+          return false;
         const tags = new Set(puzzle.tags ?? []);
+        if (untaggedOnly) return tags.size === 0;
         return selectedTags.every((tag) => tags.has(tag));
       }),
-    [attemptedPuzzles, author, selectedTags],
+    [attemptedPuzzles, resultByPuzzleId, resultFilter, selectedAuthors, selectedTags, untaggedOnly],
   );
   const pageLoading =
     isAuthLoading || catalogQuery.isPending || (Boolean(username) && progressQuery.isPending);
@@ -103,10 +124,18 @@ export const CustomPuzzleSetsPage = () => {
     setMessage("");
     setSubmitState("saving");
     try {
-      await createCustomPuzzleSet({ name, tags: selectedTags, author });
+      await createCustomPuzzleSet({
+        name,
+        tags: selectedTags,
+        untaggedOnly,
+        authors: selectedAuthors,
+        resultFilter,
+      });
       setName("");
       setSelectedTags([]);
-      setAuthor("");
+      setUntaggedOnly(false);
+      setSelectedAuthors([]);
+      setResultFilter("all");
       setSubmitState("saved");
       await refreshSets();
       window.setTimeout(() => setSubmitState("idle"), 2500);
@@ -131,8 +160,17 @@ export const CustomPuzzleSetsPage = () => {
 
   const formatFilters = (set: CustomPuzzleSet): string => {
     const parts = [
-      set.author ? `Author: ${set.author}` : "All authors",
-      set.tags.length ? set.tags.map(getPuzzleTagName).join(" + ") : "All tags",
+      set.authors.length ? `Authors: ${set.authors.join(", ")}` : "All authors",
+      set.resultFilter === "correct"
+        ? "Correct only"
+        : set.resultFilter === "incorrect"
+          ? "Incorrect only"
+          : "All results",
+      set.untaggedOnly
+        ? "No tags"
+        : set.tags.length
+          ? set.tags.map(getPuzzleTagName).join(" + ")
+          : "All tags",
     ];
     return parts.join(" · ");
   };
@@ -168,7 +206,7 @@ export const CustomPuzzleSetsPage = () => {
               type="button"
               className="customSetsButton secondary"
               onClick={() => manageDialogRef.current?.showModal()}
-              disabled={!isAuthenticated}
+              disabled={!isAuthenticated || setsQuery.isPending || sets.length === 0}
             >
               <FontAwesomeIcon icon={faSliders} aria-hidden="true" />
               Manage sets
@@ -182,7 +220,6 @@ export const CustomPuzzleSetsPage = () => {
         {!isAuthenticated && !isAuthLoading ? (
           <section className="customSetsState">
             <h2>Log in to build custom sets</h2>
-            <p>Your sets and their progress are saved to your account.</p>
             <button
               type="button"
               className="customSetsButton primary"
@@ -218,28 +255,78 @@ export const CustomPuzzleSetsPage = () => {
                     disabled={submitState === "saving"}
                   />
                 </label>
-                <label className="customSetsField">
-                  <span>Author</span>
-                  <select
-                    value={author}
-                    onChange={(event) => setAuthor(event.target.value)}
-                    disabled={submitState === "saving"}
-                  >
-                    <option value="">All authors</option>
+                <fieldset className="customSetsResultFilter" disabled={submitState === "saving"}>
+                  <legend>Attempt result</legend>
+                  {(
+                    [
+                      ["all", "All"],
+                      ["correct", "Correct"],
+                      ["incorrect", "Incorrect"],
+                    ] as const
+                  ).map(([value, label]) => (
+                    <label key={value}>
+                      <input
+                        type="radio"
+                        name="custom-set-result"
+                        value={value}
+                        checked={resultFilter === value}
+                        onChange={() => setResultFilter(value)}
+                      />
+                      <span>{label}</span>
+                    </label>
+                  ))}
+                </fieldset>
+                <fieldset className="customSetsAuthors" disabled={submitState === "saving"}>
+                  <legend>Authors</legend>
+                  <p>
+                    {selectedAuthors.length ? `${selectedAuthors.length} selected` : "All authors"}
+                  </p>
+                  <div className="customSetsAuthorOptions">
                     {authors.map((authorName) => (
-                      <option key={authorName} value={authorName}>
-                        {authorName}
-                      </option>
+                      <label key={authorName}>
+                        <input
+                          type="checkbox"
+                          checked={selectedAuthors.includes(authorName)}
+                          onChange={(event) =>
+                            setSelectedAuthors((current) =>
+                              event.target.checked
+                                ? [...current, authorName]
+                                : current.filter((item) => item !== authorName),
+                            )
+                          }
+                        />
+                        <span>{authorName}</span>
+                      </label>
                     ))}
-                  </select>
-                </label>
+                  </div>
+                  {selectedAuthors.length ? (
+                    <button type="button" onClick={() => setSelectedAuthors([])}>
+                      Clear authors
+                    </button>
+                  ) : null}
+                </fieldset>
                 <DashboardTagFilter
-                  disabled={submitState === "saving"}
+                  disabled={submitState === "saving" || untaggedOnly}
                   selectedTags={selectedTags}
                   onChange={setSelectedTags}
                 />
+                <label className="customSetsUntaggedToggle">
+                  <input
+                    type="checkbox"
+                    checked={untaggedOnly}
+                    onChange={(event) => {
+                      const checked = event.target.checked;
+                      setUntaggedOnly(checked);
+                      if (checked) setSelectedTags([]);
+                    }}
+                    disabled={submitState === "saving"}
+                  />
+                  <span>
+                    <strong>No tags</strong>
+                    Only include attempted puzzles that do not have any tags.
+                  </span>
+                </label>
                 <div className="customSetsCreateRow">
-                  <p aria-live="polite">Only previously completed puzzles are considered.</p>
                   <button
                     type="submit"
                     className="customSetsButton primary"
@@ -330,11 +417,7 @@ export const CustomPuzzleSetsPage = () => {
                     );
                   })}
                 </div>
-              ) : (
-                <div className="customSetsState compact">
-                  Your custom sets will appear here after you create one.
-                </div>
-              )}
+              ) : null}
             </section>
           </>
         ) : null}
@@ -345,7 +428,6 @@ export const CustomPuzzleSetsPage = () => {
           <header>
             <div>
               <h2>Manage custom sets</h2>
-              <p>Rename, reset progress, or delete a set.</p>
             </div>
             <button
               type="button"
@@ -362,123 +444,121 @@ export const CustomPuzzleSetsPage = () => {
                 {message}
               </div>
             ) : null}
-            {sets.length ? (
-              sets.map((set) => (
-                <article key={set.id} className="customSetsManageRow">
-                  <div className="customSetsManageName">
-                    {editingId === set.id ? (
-                      <form
-                        onSubmit={(event) => {
-                          event.preventDefault();
-                          void runSetAction(`rename-${set.id}`, async () => {
-                            await renameCustomPuzzleSet(set.id, editingName);
-                            setEditingId("");
-                          });
-                        }}
-                      >
-                        <label>
-                          <span className="srOnly">New name for {set.label}</span>
-                          <input
-                            autoFocus
-                            value={editingName}
-                            maxLength={80}
-                            onChange={(event) => setEditingName(event.target.value)}
-                          />
-                        </label>
-                        <button
-                          type="submit"
-                          disabled={!editingName.trim() || Boolean(pendingAction)}
+            {sets.length
+              ? sets.map((set) => (
+                  <article key={set.id} className="customSetsManageRow">
+                    <div className="customSetsManageName">
+                      {editingId === set.id ? (
+                        <form
+                          onSubmit={(event) => {
+                            event.preventDefault();
+                            void runSetAction(`rename-${set.id}`, async () => {
+                              await renameCustomPuzzleSet(set.id, editingName);
+                              setEditingId("");
+                            });
+                          }}
                         >
-                          Save
-                        </button>
-                        <button type="button" onClick={() => setEditingId("")}>
-                          Cancel
-                        </button>
-                      </form>
-                    ) : (
-                      <>
-                        <strong>{set.label}</strong>
-                        <span>
-                          {set.completedCount} / {set.puzzleIds.length} completed
-                        </span>
-                      </>
-                    )}
-                  </div>
-                  {editingId !== set.id ? (
-                    <div className="customSetsManageActions">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingId(set.id);
-                          setEditingName(set.label);
-                        }}
-                        disabled={Boolean(pendingAction)}
-                      >
-                        <FontAwesomeIcon icon={faPen} aria-hidden="true" /> Rename
-                      </button>
-                      {confirmResetId === set.id ? (
-                        <span className="customSetsDeleteConfirm">
-                          Reset all progress?
+                          <label>
+                            <span className="srOnly">New name for {set.label}</span>
+                            <input
+                              autoFocus
+                              value={editingName}
+                              maxLength={80}
+                              onChange={(event) => setEditingName(event.target.value)}
+                            />
+                          </label>
                           <button
-                            type="button"
-                            onClick={() =>
-                              void runSetAction(`reset-${set.id}`, async () => {
-                                await resetCustomPuzzleSetProgress(set.id);
-                                setConfirmResetId("");
-                              })
-                            }
+                            type="submit"
+                            disabled={!editingName.trim() || Boolean(pendingAction)}
                           >
-                            Reset
+                            Save
                           </button>
-                          <button type="button" onClick={() => setConfirmResetId("")}>
+                          <button type="button" onClick={() => setEditingId("")}>
                             Cancel
                           </button>
-                        </span>
+                        </form>
                       ) : (
+                        <>
+                          <strong>{set.label}</strong>
+                          <span>
+                            {set.completedCount} / {set.puzzleIds.length} completed
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    {editingId !== set.id ? (
+                      <div className="customSetsManageActions">
                         <button
                           type="button"
-                          onClick={() => setConfirmResetId(set.id)}
-                          disabled={Boolean(pendingAction) || set.completedCount === 0}
+                          onClick={() => {
+                            setEditingId(set.id);
+                            setEditingName(set.label);
+                          }}
+                          disabled={Boolean(pendingAction)}
                         >
-                          <FontAwesomeIcon icon={faRotateLeft} aria-hidden="true" /> Reset
+                          <FontAwesomeIcon icon={faPen} aria-hidden="true" /> Rename
                         </button>
-                      )}
-                      {confirmDeleteId === set.id ? (
-                        <span className="customSetsDeleteConfirm">
-                          Delete permanently?
+                        {confirmResetId === set.id ? (
+                          <span className="customSetsDeleteConfirm">
+                            Reset all progress?
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void runSetAction(`reset-${set.id}`, async () => {
+                                  await resetCustomPuzzleSetProgress(set.id);
+                                  setConfirmResetId("");
+                                })
+                              }
+                            >
+                              Reset
+                            </button>
+                            <button type="button" onClick={() => setConfirmResetId("")}>
+                              Cancel
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setConfirmResetId(set.id)}
+                            disabled={Boolean(pendingAction) || set.completedCount === 0}
+                          >
+                            <FontAwesomeIcon icon={faRotateLeft} aria-hidden="true" /> Reset
+                          </button>
+                        )}
+                        {confirmDeleteId === set.id ? (
+                          <span className="customSetsDeleteConfirm">
+                            Delete permanently?
+                            <button
+                              type="button"
+                              className="danger"
+                              onClick={() =>
+                                void runSetAction(`delete-${set.id}`, async () => {
+                                  await deleteCustomPuzzleSet(set.id);
+                                  setConfirmDeleteId("");
+                                })
+                              }
+                            >
+                              Delete
+                            </button>
+                            <button type="button" onClick={() => setConfirmDeleteId("")}>
+                              Cancel
+                            </button>
+                          </span>
+                        ) : (
                           <button
                             type="button"
                             className="danger"
-                            onClick={() =>
-                              void runSetAction(`delete-${set.id}`, async () => {
-                                await deleteCustomPuzzleSet(set.id);
-                                setConfirmDeleteId("");
-                              })
-                            }
+                            onClick={() => setConfirmDeleteId(set.id)}
+                            disabled={Boolean(pendingAction)}
                           >
-                            Delete
+                            <FontAwesomeIcon icon={faTrash} aria-hidden="true" /> Delete
                           </button>
-                          <button type="button" onClick={() => setConfirmDeleteId("")}>
-                            Cancel
-                          </button>
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          className="danger"
-                          onClick={() => setConfirmDeleteId(set.id)}
-                          disabled={Boolean(pendingAction)}
-                        >
-                          <FontAwesomeIcon icon={faTrash} aria-hidden="true" /> Delete
-                        </button>
-                      )}
-                    </div>
-                  ) : null}
-                </article>
-              ))
-            ) : (
-              <div className="customSetsState compact">No custom sets to manage.</div>
-            )}
+                        )}
+                      </div>
+                    ) : null}
+                  </article>
+                ))
+              : null}
           </div>
         </div>
       </dialog>

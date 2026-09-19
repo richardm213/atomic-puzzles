@@ -2,8 +2,6 @@ import { z } from "zod";
 
 import { postApi } from "../api/postApi";
 
-const CUSTOM_PUZZLE_SET_STORAGE_PREFIX = "atomic-puzzles.custom-puzzle-set.";
-
 export type CustomPuzzleSet = {
   id: string;
   label: string;
@@ -11,11 +9,19 @@ export type CustomPuzzleSet = {
   createdAt: string;
   updatedAt: string;
   tags: string[];
-  author: string;
+  untaggedOnly: boolean;
+  authors: string[];
+  resultFilter: "all" | "correct" | "incorrect";
   completedCount: number;
   correctCount: number;
   incorrectCount: number;
   nextPuzzleId: number | null;
+};
+
+export type CustomPuzzleSetAttempt = {
+  puzzleId: string;
+  attemptedAt: string;
+  puzzleCorrect: boolean;
 };
 
 const customPuzzleSetSchema = z.object({
@@ -25,7 +31,9 @@ const customPuzzleSetSchema = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
   tags: z.array(z.string()),
-  author: z.string(),
+  untaggedOnly: z.boolean(),
+  authors: z.array(z.string()),
+  resultFilter: z.enum(["all", "correct", "incorrect"]),
   completedCount: z.number().int().nonnegative(),
   correctCount: z.number().int().nonnegative(),
   incorrectCount: z.number().int().nonnegative(),
@@ -35,50 +43,15 @@ const customPuzzleSetSchema = z.object({
 const setResponseSchema = z.object({ set: customPuzzleSetSchema });
 const setsResponseSchema = z.object({ sets: z.array(customPuzzleSetSchema) });
 const successResponseSchema = z.object({ success: z.literal(true) });
-
-const normalizePuzzleIds = (puzzleIds: Array<string | number>): number[] => {
-  const seen = new Set<number>();
-  return puzzleIds.flatMap((value) => {
-    const puzzleId = Number.parseInt(String(value), 10);
-    if (!Number.isFinite(puzzleId) || puzzleId <= 0 || seen.has(puzzleId)) return [];
-    seen.add(puzzleId);
-    return [puzzleId];
-  });
-};
-
-const storageKey = (setId: string): string =>
-  `${CUSTOM_PUZZLE_SET_STORAGE_PREFIX}${String(setId ?? "").trim()}`;
-
-/** Reads pre-Supabase dashboard sets so existing links keep working. */
-export const readLegacyCustomPuzzleSet = (setId: string): CustomPuzzleSet | null => {
-  if (typeof window === "undefined") return null;
-
-  try {
-    const rawValue = window.localStorage.getItem(storageKey(setId));
-    if (!rawValue) return null;
-    const parsedValue: unknown = JSON.parse(rawValue);
-    if (!parsedValue || typeof parsedValue !== "object") return null;
-    const record = parsedValue as { label?: unknown; puzzleIds?: unknown; createdAt?: unknown };
-    const puzzleIds = normalizePuzzleIds(Array.isArray(record.puzzleIds) ? record.puzzleIds : []);
-    if (puzzleIds.length === 0) return null;
-    const createdAt = String(record.createdAt ?? "");
-    return {
-      id: setId,
-      label: String(record.label ?? "Dashboard review").trim() || "Dashboard review",
-      puzzleIds,
-      createdAt,
-      updatedAt: createdAt,
-      tags: [],
-      author: "",
-      completedCount: 0,
-      correctCount: 0,
-      incorrectCount: 0,
-      nextPuzzleId: puzzleIds[0] ?? null,
-    };
-  } catch {
-    return null;
-  }
-};
+const attemptsResponseSchema = z.object({
+  attempts: z.array(
+    z.object({
+      puzzleId: z.string(),
+      attemptedAt: z.string(),
+      puzzleCorrect: z.boolean(),
+    }),
+  ),
+});
 
 export const listCustomPuzzleSets = async (): Promise<CustomPuzzleSet[]> => {
   const result = await postApi(
@@ -106,10 +79,27 @@ export const fetchCustomPuzzleSet = async (id: string): Promise<CustomPuzzleSet>
   return result.set;
 };
 
+export const fetchCustomPuzzleSetAttempts = async (
+  id: string,
+): Promise<CustomPuzzleSetAttempt[]> => {
+  const result = await postApi(
+    "/api/puzzle-sets",
+    { action: "attempts", id },
+    {
+      errorMessage: "Unable to load custom set attempts.",
+      invalidMessage: "The server returned invalid custom set attempts.",
+      schema: attemptsResponseSchema,
+    },
+  );
+  return result.attempts;
+};
+
 export const createCustomPuzzleSet = async (input: {
   name: string;
   tags: string[];
-  author: string;
+  untaggedOnly: boolean;
+  authors: string[];
+  resultFilter: "all" | "correct" | "incorrect";
 }): Promise<CustomPuzzleSet> => {
   const result = await postApi(
     "/api/puzzle-sets",

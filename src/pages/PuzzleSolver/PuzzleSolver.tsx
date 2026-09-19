@@ -36,7 +36,6 @@ import { useCopyFeedback } from "../../hooks/useCopyFeedback";
 import {
   fetchCustomPuzzleSet,
   getOrderedPuzzleIndexesForCustomSet,
-  readLegacyCustomPuzzleSet,
   recordCustomPuzzleSetProgress,
 } from "../../lib/puzzles/customPuzzleSets";
 import { loadPuzzleCatalog, loadPuzzlesById, type Puzzle } from "../../lib/puzzles/puzzleLibrary";
@@ -297,21 +296,13 @@ export const PuzzleSolverPage = () => {
   const elapsedTimeMsRef = useRef(0);
   const [elapsedTimeMs, setElapsedTimeMs] = useState(0);
   const [elapsedTimerRunning, setElapsedTimerRunning] = useState(false);
-  const legacyCustomPuzzleSet = useMemo(
-    () => readLegacyCustomPuzzleSet(routeCustomSetId),
-    [routeCustomSetId],
-  );
   const customPuzzleSetQuery = useQuery({
     queryKey: ["custom-puzzle-sets", routeCustomSetId],
     queryFn: () => fetchCustomPuzzleSet(routeCustomSetId),
-    enabled: Boolean(
-      SERVER_CUSTOM_SET_ID_PATTERN.test(routeCustomSetId) &&
-      user?.username &&
-      !legacyCustomPuzzleSet,
-    ),
+    enabled: Boolean(SERVER_CUSTOM_SET_ID_PATTERN.test(routeCustomSetId) && user?.username),
     retry: false,
   });
-  const customPuzzleSet = customPuzzleSetQuery.data ?? legacyCustomPuzzleSet;
+  const customPuzzleSet = customPuzzleSetQuery.data;
   const orderedSetPuzzleIndexes = useMemo(
     () =>
       customPuzzleSet
