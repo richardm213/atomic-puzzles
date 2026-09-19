@@ -96,6 +96,7 @@ const navItems: NavItem[] = [
           pathname === "/solve" ||
           (/^\/solve\/[^/]+$/.test(pathname) &&
             pathname !== "/solve/sets" &&
+            pathname !== "/solve/custom-sets" &&
             pathname !== "/solve/leaderboard" &&
             pathname !== "/solve/history"),
       },
@@ -113,6 +114,11 @@ const navItems: NavItem[] = [
         to: "/solve/sets",
         label: "Puzzle sets",
         isActive: (pathname) => pathname === "/solve/sets",
+      },
+      {
+        to: "/solve/custom-sets",
+        label: "Custom sets",
+        isActive: (pathname) => pathname === "/solve/custom-sets",
       },
       {
         to: "/puzzles/motifs",
@@ -349,6 +355,7 @@ export const TopNav = () => {
     pathname === "/solve" ||
     (/^\/solve\/[^/]+$/.test(pathname) &&
       pathname !== "/solve/sets" &&
+      pathname !== "/solve/custom-sets" &&
       pathname !== "/solve/leaderboard" &&
       pathname !== "/solve/history");
   const activeBoardColors = getBoardThemeColors(

@@ -34,6 +34,7 @@ const localPuzzleFunctionsPlugin = () => {
     ["/api/puzzles/tags", "/netlify/functions/puzzle-tags.ts"],
     ["/api/puzzles/community", "/netlify/functions/puzzle-community.ts"],
     ["/api/puzzles/progress", "/netlify/functions/puzzle-progress.ts"],
+    ["/api/puzzle-sets", "/netlify/functions/puzzle-sets.ts"],
     ["/api/notifications", "/netlify/functions/notifications.ts"],
     ["/api/archive-data", "/netlify/functions/archive-data.ts"],
   ]);

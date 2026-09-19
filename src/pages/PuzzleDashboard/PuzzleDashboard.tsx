@@ -3,7 +3,7 @@ import "./PuzzleDashboard.css";
 import { faArrowUpRightFromSquare, faClockRotateLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 
@@ -12,7 +12,6 @@ import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/Rout
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
 import { usePersistedState } from "../../hooks/usePersistedState";
-import { createCustomPuzzleSet } from "../../lib/puzzles/customPuzzleSets";
 import {
   puzzleCatalogQueryOptions,
   puzzleProgressForUserQueryOptions,
@@ -81,7 +80,6 @@ const resultLabel = (isCorrect: boolean): string => (isCorrect ? "Correct" : "In
 const isKnownEvent = (event: string): boolean => event.trim() !== UNKNOWN_EVENT_LABEL;
 
 export const PuzzleDashboardPage = ({ username = "" }: { username?: string | undefined }) => {
-  const navigate = useNavigate();
   const { isAuthenticated, isLoading, user } = useAuth();
   const routeUsername = useMemo(() => normalizeUsername(username), [username]);
   const viewingOwnDashboard = !routeUsername;
@@ -271,20 +269,6 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
     setSearchFilter("");
     setTagFilters([]);
   };
-  const handleStartFilteredSet = (): void => {
-    const customSet = createCustomPuzzleSet(
-      filteredDashboardEntries.map((entry) => entry.linkedPuzzleId),
-      resultFilter === "incorrect" ? "Missed puzzle review" : "Dashboard attempt review",
-    );
-    const firstPuzzleId = customSet?.puzzleIds[0];
-    if (!customSet || firstPuzzleId === undefined) return;
-
-    void navigate({
-      to: "/solve/custom/$setId/$puzzleId",
-      params: { setId: customSet.id, puzzleId: String(firstPuzzleId) },
-    });
-  };
-
   if (isCheckingAccess || (isRegisteredViewer && isPageLoading && dashboardEntries.length === 0)) {
     return <RouteLoadingFallback />;
   }
@@ -303,9 +287,9 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
                 <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
                 <span>Solve puzzles</span>
               </Link>
-              <Link className="puzzleDashboardActionLink" to="/solve/sets">
+              <Link className="puzzleDashboardActionLink" to="/solve/custom-sets">
                 <FontAwesomeIcon icon={faArrowUpRightFromSquare} aria-hidden="true" />
-                <span>Puzzle sets</span>
+                <span>Custom sets</span>
               </Link>
               <Link className="puzzleDashboardActionLink" to={backLinkTo} params={backLinkParams}>
                 <FontAwesomeIcon icon={faArrowUpRightFromSquare} aria-hidden="true" />
@@ -381,15 +365,6 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
                       aria-controls="dashboard-attempt-filters"
                     >
                       {filtersOpen ? "Hide filters" : "Show filters"}
-                    </button>
-                    <button
-                      type="button"
-                      className="puzzleDashboardActionLink primary dashboardStartSetButton"
-                      onClick={handleStartFilteredSet}
-                      disabled={isPageLoading || filteredDashboardEntries.length === 0}
-                    >
-                      <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
-                      Solve filtered set
                     </button>
                   </div>
                 </div>

@@ -11,7 +11,7 @@ import {
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -34,8 +34,10 @@ import { useAuth } from "../../context/AuthContext";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
 import { useCopyFeedback } from "../../hooks/useCopyFeedback";
 import {
+  fetchCustomPuzzleSet,
   getOrderedPuzzleIndexesForCustomSet,
-  readCustomPuzzleSet,
+  readLegacyCustomPuzzleSet,
+  recordCustomPuzzleSetProgress,
 } from "../../lib/puzzles/customPuzzleSets";
 import { loadPuzzleCatalog, loadPuzzlesById, type Puzzle } from "../../lib/puzzles/puzzleLibrary";
 import {
@@ -219,6 +221,8 @@ const createInitialBoardSnapshot = () => ({
 const SOLVE_MODE = "solve";
 const ANALYSIS_MODE = "analysis";
 const SOLUTION_UNLOCK_HINT = "Make at least one attempt before viewing the solution.";
+const SERVER_CUSTOM_SET_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export const PuzzleSolverPage = () => {
   const navigate = useNavigate();
@@ -293,7 +297,21 @@ export const PuzzleSolverPage = () => {
   const elapsedTimeMsRef = useRef(0);
   const [elapsedTimeMs, setElapsedTimeMs] = useState(0);
   const [elapsedTimerRunning, setElapsedTimerRunning] = useState(false);
-  const customPuzzleSet = useMemo(() => readCustomPuzzleSet(routeCustomSetId), [routeCustomSetId]);
+  const legacyCustomPuzzleSet = useMemo(
+    () => readLegacyCustomPuzzleSet(routeCustomSetId),
+    [routeCustomSetId],
+  );
+  const customPuzzleSetQuery = useQuery({
+    queryKey: ["custom-puzzle-sets", routeCustomSetId],
+    queryFn: () => fetchCustomPuzzleSet(routeCustomSetId),
+    enabled: Boolean(
+      SERVER_CUSTOM_SET_ID_PATTERN.test(routeCustomSetId) &&
+      user?.username &&
+      !legacyCustomPuzzleSet,
+    ),
+    retry: false,
+  });
+  const customPuzzleSet = customPuzzleSetQuery.data ?? legacyCustomPuzzleSet;
   const orderedSetPuzzleIndexes = useMemo(
     () =>
       customPuzzleSet
@@ -719,8 +737,17 @@ export const PuzzleSolverPage = () => {
         incorrectMove,
         correctMove,
       });
+      if (SERVER_CUSTOM_SET_ID_PATTERN.test(routeCustomSetId)) {
+        void recordCustomPuzzleSetProgress(routeCustomSetId, normalizedPuzzleId, puzzleCorrect)
+          .then(() =>
+            queryClient.invalidateQueries({
+              queryKey: ["custom-puzzle-sets"],
+            }),
+          )
+          .catch((error) => globalThis.console?.error(error));
+      }
     },
-    [enqueuePuzzleProgressWrite],
+    [enqueuePuzzleProgressWrite, queryClient, routeCustomSetId],
   );
 
   const resetPuzzleUiState = useCallback(() => {
@@ -1824,9 +1851,9 @@ export const PuzzleSolverPage = () => {
               </Link>
               <Link
                 className="puzzleSetCompleteLink"
-                to={isCustomSetSolveMode ? "/dashboard" : "/solve/sets"}
+                to={isCustomSetSolveMode ? "/solve/custom-sets" : "/solve/sets"}
               >
-                {isCustomSetSolveMode ? "Back to dashboard" : "Back to puzzle sets"}
+                {isCustomSetSolveMode ? "Back to custom sets" : "Back to puzzle sets"}
               </Link>
             </div>
           </section>

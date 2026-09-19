@@ -1,26 +1,26 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
-import {
-  createCustomPuzzleSet,
-  getOrderedPuzzleIndexesForCustomSet,
-  readCustomPuzzleSet,
-} from "./customPuzzleSets";
+import { getOrderedPuzzleIndexesForCustomSet, readLegacyCustomPuzzleSet } from "./customPuzzleSets";
 
 describe("custom puzzle sets", () => {
-  beforeEach(() => {
-    window.localStorage.clear();
-    vi.restoreAllMocks();
-  });
+  beforeEach(() => window.localStorage.clear());
 
-  it("persists a unique, normalized list of puzzle ids", () => {
-    vi.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
-    vi.spyOn(Math, "random").mockReturnValue(0.123456);
+  it("keeps pre-Supabase local sets readable", () => {
+    window.localStorage.setItem(
+      "atomic-puzzles.custom-puzzle-set.review",
+      JSON.stringify({
+        id: "review",
+        label: "Missed puzzles",
+        puzzleIds: [8, 4, 8, "invalid", 2],
+        createdAt: "2026-08-08T00:00:00.000Z",
+      }),
+    );
 
-    const customSet = createCustomPuzzleSet(["8", 4, 8, "invalid", 2], "Missed puzzles");
-
-    expect(customSet?.puzzleIds).toEqual([8, 4, 2]);
-    expect(customSet?.label).toBe("Missed puzzles");
-    expect(readCustomPuzzleSet(customSet?.id ?? "")).toEqual(customSet);
+    expect(readLegacyCustomPuzzleSet("review")).toMatchObject({
+      label: "Missed puzzles",
+      puzzleIds: [8, 4, 2],
+      nextPuzzleId: 8,
+    });
   });
 
   it("maps saved ids to catalog indexes while preserving the saved order", () => {
@@ -31,6 +31,13 @@ describe("custom puzzle sets", () => {
         label: "Review",
         puzzleIds: [8, 2, 99, 4],
         createdAt: "2026-08-08T00:00:00.000Z",
+        updatedAt: "2026-08-08T00:00:00.000Z",
+        tags: [],
+        author: "",
+        completedCount: 0,
+        correctCount: 0,
+        incorrectCount: 0,
+        nextPuzzleId: 8,
       },
     );
 
