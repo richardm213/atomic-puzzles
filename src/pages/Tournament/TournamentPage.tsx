@@ -61,6 +61,11 @@ type DragState = {
   moved: boolean;
 };
 
+type TournamentSeedEntry = {
+  playerName: string;
+  seed: number;
+};
+
 const hiddenStartRoundsByStage: Record<string, Set<string>> = {
   main: new Set(["Grand Final", "Grand Final Reset"]),
 };
@@ -112,6 +117,7 @@ const MAX_STAGE_ZOOM = 1.35;
 const STAGE_ZOOM_STEP = 0.15;
 const TOURNAMENT_VIEW_STORAGE_KEY = "tournament-view:v3:";
 const AWC_2026_VIEW_STORAGE_KEY = "tournament-view:v4:awc2026";
+const SEEDS_STAGE_KEY = "seeds";
 
 type SavedTournamentView = {
   startRounds?: Record<string, string>;
@@ -568,6 +574,46 @@ const TournamentStateMessage = ({ title, message }: { title: string; message: st
   </div>
 );
 
+const TournamentSeeds = ({
+  seeds,
+  countryMap,
+}: {
+  seeds: TournamentSeedEntry[];
+  countryMap: Map<string, string>;
+}) => (
+  <section className="tournamentSeedsSection" aria-labelledby="tournament-seeds-heading">
+    <h2 id="tournament-seeds-heading">Seeds</h2>
+    <ol className="tournamentSeedsList">
+      {seeds.map(({ playerName, seed }) => (
+        <li key={`${seed}-${playerName}`} value={seed}>
+          <span className="tournamentSeedsNumber" aria-label={`Seed ${seed}`}>
+            {seed}
+          </span>
+          <img
+            className="tournamentPlayerFlag"
+            crossOrigin="anonymous"
+            src={countryCodeToFlagUrl(
+              countryMap.get(normalizeUsername(playerName)) ?? countryMap.get(playerName),
+            )}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            aria-hidden="true"
+          />
+          <Link
+            className="tournamentSeedsPlayerLink"
+            to="/@/$username"
+            params={{ username: normalizeUsername(playerName) }}
+          >
+            {playerName}
+          </Link>
+          <FairPlayFlagBadge playerName={playerName} />
+        </li>
+      ))}
+    </ol>
+  </section>
+);
+
 const TournamentMatchCard = ({
   match,
   topSeedMap,
@@ -954,6 +1000,9 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
     );
     const savedView = readSavedTournamentView(bracket.id);
     const availableStageKeys = new Set((bracket.stages || []).map((stage) => stage.key));
+    if (Object.keys(bracket.seedMap || {}).length) {
+      availableStageKeys.add(SEEDS_STAGE_KEY);
+    }
     const defaultActiveStageKey = availableStageKeys.has("main")
       ? "main"
       : bracket.stages[0]?.key || "";
@@ -1020,6 +1069,29 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
 
   const topSeedMap = useMemo(() => new Map(Object.entries(bracket?.seedMap || {})), [bracket]);
   const countryMap = useMemo(() => new Map(Object.entries(bracket?.countryMap || {})), [bracket]);
+  const seedEntries = useMemo<TournamentSeedEntry[]>(() => {
+    if (!bracket) return [];
+
+    const displayNamesByUsername = new Map<string, string>();
+    bracket.matches.forEach((match) => {
+      [match.p1, match.p2].forEach((playerName) => {
+        if (isEmptyPlayer(playerName) || isByePlayer(playerName)) return;
+        const username = normalizeUsername(playerName);
+        if (username && !displayNamesByUsername.has(username)) {
+          displayNamesByUsername.set(username, playerName);
+        }
+      });
+    });
+
+    return Object.entries(bracket.seedMap || {})
+      .map(([playerName, seed]) => ({
+        playerName: displayNamesByUsername.get(normalizeUsername(playerName)) || playerName,
+        seed,
+      }))
+      .sort(
+        (left, right) => left.seed - right.seed || left.playerName.localeCompare(right.playerName),
+      );
+  }, [bracket]);
   const decisiveMatchId = useMemo(() => getTournamentDecisiveMatch(bracket)?.id || "", [bracket]);
   const visibleStages = useMemo(
     () => bracket?.stages?.filter((stage) => stage.key === activeStageKey) || [],
@@ -1064,6 +1136,21 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
       ...current,
       [stageKey]: DEFAULT_STAGE_ZOOM,
     }));
+  };
+
+  const selectTournamentTab = (stageKey: string): void => {
+    setActiveStageKey(stageKey);
+    if (!bracket || typeof window === "undefined") return;
+
+    // The view-state effect cleans up after the tab change; persist afterward so its
+    // previous active key cannot overwrite the new selection.
+    window.setTimeout(() => {
+      const savedView = readSavedTournamentView(bracket.id) || {};
+      window.sessionStorage.setItem(
+        getTournamentViewStorageKey(bracket.id),
+        JSON.stringify({ ...savedView, activeStageKey: stageKey }),
+      );
+    }, 0);
   };
 
   const setStageStartRound = (stageKey: string, roundName: string): void => {
@@ -1278,7 +1365,7 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
       </section>
 
       <div className="tournamentBracketToolbar">
-        {bracket.stages.length > 1 ? (
+        {bracket.stages.length > 1 || seedEntries.length ? (
           <div className="tournamentStageToggle" role="tablist" aria-label="Bracket type">
             {bracket.stages.map((stage) => {
               const isActive = stage.key === activeStageKey;
@@ -1289,12 +1376,23 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
                   role="tab"
                   aria-selected={isActive}
                   className={`tournamentStageToggleButton${isActive ? " isActive" : ""}`}
-                  onClick={() => setActiveStageKey(stage.key)}
+                  onClick={() => selectTournamentTab(stage.key)}
                 >
                   {stage.label}
                 </button>
               );
             })}
+            {seedEntries.length ? (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeStageKey === SEEDS_STAGE_KEY}
+                className={`tournamentStageToggleButton${activeStageKey === SEEDS_STAGE_KEY ? " isActive" : ""}`}
+                onClick={() => selectTournamentTab(SEEDS_STAGE_KEY)}
+              >
+                Seeds
+              </button>
+            ) : null}
           </div>
         ) : null}
         <a
@@ -1342,6 +1440,9 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
             />
           );
         })}
+        {activeStageKey === SEEDS_STAGE_KEY && seedEntries.length ? (
+          <TournamentSeeds seeds={seedEntries} countryMap={countryMap} />
+        ) : null}
       </div>
 
       <div id="tournament-comments" className="tournamentCommentsSection">

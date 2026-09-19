@@ -2,36 +2,49 @@
   position: relative;
   isolation: isolate;
   display: grid;
-  align-content: start;
+  grid-template-columns: 64px 48px minmax(0, 1fr);
+  align-items: center;
   gap: var(--space-4);
   min-width: 0;
-  min-height: 172px;
-  overflow: hidden;
-  padding: var(--space-5);
-  border: 1px solid color-mix(in srgb, var(--color-primary) 10%, var(--color-border));
-  border-radius: var(--radius-lg);
+  min-height: 92px;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
   background: var(--color-panel);
-  box-shadow: var(--shadow-soft);
   transition:
-    border-color 200ms ease,
-    background-color 200ms ease,
-    box-shadow 200ms ease,
-    transform 200ms ease;
+    background-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.card:last-child {
+  border-bottom: 0;
 }
 
 .spotlight {
-  min-height: 216px;
+  grid-template-columns: minmax(0, 1fr) 112px;
+  grid-template-rows: auto 1fr auto;
+  align-items: start;
+  gap: var(--space-4) var(--space-6);
+  min-height: 238px;
+  overflow: hidden;
   padding: var(--space-6);
-  border-color: color-mix(in srgb, var(--tournament-gold) 24%, var(--color-border));
-  background: color-mix(in srgb, var(--color-panel) 92%, var(--color-panel-strong));
+  border: 1px solid color-mix(in srgb, var(--tournament-gold) 24%, var(--color-border));
+  border-radius: var(--radius-lg);
+  background: var(--color-panel);
+  box-shadow: var(--shadow-soft);
 }
 
 .card:hover,
 .card:has(.cardLink:focus-visible) {
-  border-color: color-mix(in srgb, var(--tournament-gold) 44%, var(--color-border));
-  background: color-mix(in srgb, var(--color-panel) 86%, var(--color-panel-strong));
-  box-shadow: 0 16px 32px color-mix(in srgb, var(--color-panel-deep) 34%, transparent);
-  transform: translateY(-2px);
+  background: color-mix(in srgb, var(--color-panel) 84%, var(--color-panel-strong));
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--tournament-gold) 78%, transparent);
+}
+
+.spotlight:hover,
+.spotlight:has(.cardLink:focus-visible) {
+  border-color: color-mix(in srgb, var(--tournament-gold) 52%, var(--color-border));
+  box-shadow:
+    var(--shadow-soft),
+    inset 0 -3px 0 color-mix(in srgb, var(--tournament-gold) 72%, transparent);
 }
 
 .card:has(.cardLink:focus-visible) {
@@ -42,38 +55,41 @@
 .edition {
   position: relative;
   z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  width: fit-content;
   color: var(--tournament-gold);
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   font-weight: 850;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
   pointer-events: none;
 }
 
+.spotlight .edition {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: start;
+  width: fit-content;
+  padding: 5px 8px;
+  border: 1px solid color-mix(in srgb, var(--tournament-gold) 28%, var(--color-border));
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--tournament-gold) 7%, var(--color-panel));
+  font-size: 0.74rem;
+  letter-spacing: 0.04em;
+}
+
 .art {
-  position: absolute;
-  top: var(--space-4);
-  right: var(--space-4);
-  z-index: 0;
+  position: relative;
+  z-index: 2;
   display: grid;
   place-items: center;
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--tournament-gold) 7%, transparent);
-  opacity: 0.82;
+  width: 48px;
+  height: 56px;
   pointer-events: none;
 }
 
 .art img {
-  width: 62px;
-  height: 62px;
+  width: 48px;
+  height: 56px;
   object-fit: contain;
-  filter: drop-shadow(0 10px 12px color-mix(in srgb, black 30%, transparent));
+  filter: drop-shadow(0 9px 10px color-mix(in srgb, black 28%, transparent));
 }
 
 .art img[src*="atomic-openings-championship"] {
@@ -82,61 +98,87 @@
 }
 
 .spotlight .art {
-  top: var(--space-6);
-  right: var(--space-6);
-  width: 104px;
-  height: 104px;
-  opacity: 1;
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  width: 112px;
+  height: 128px;
+}
+
+.spotlight .art::before {
+  position: absolute;
+  inset: 8px 0 auto;
+  z-index: -1;
+  height: 96px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--tournament-gold) 8%, var(--color-panel-strong));
+  content: "";
 }
 
 .spotlight .art img {
-  width: 92px;
-  height: 92px;
+  width: 96px;
+  height: 112px;
 }
 
 .copy {
   position: relative;
   z-index: 2;
   display: grid;
-  align-content: start;
-  gap: var(--space-3);
+  align-content: center;
+  gap: var(--space-2);
   min-width: 0;
-  padding-right: var(--space-16);
   pointer-events: none;
 }
 
+.card:not(.spotlight) .copy {
+  padding-right: 116px;
+}
+
 .spotlight .copy {
-  padding-right: 112px;
+  grid-column: 1;
+  grid-row: 2;
+  align-content: start;
 }
 
 .copy h3 {
-  max-width: 19ch;
   margin: 0;
+  overflow: hidden;
   color: var(--color-heading);
-  font-size: clamp(1.22rem, 2vw, 1.55rem);
-  line-height: 1.08;
-  letter-spacing: -0.025em;
+  font-size: 1rem;
+  line-height: 1.15;
+  letter-spacing: -0.018em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .spotlight .copy h3 {
-  max-width: 16ch;
-  font-size: clamp(1.65rem, 3vw, 2.15rem);
+  max-width: 17ch;
+  overflow: visible;
+  font-size: clamp(1.6rem, 3vw, 2rem);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+  white-space: normal;
 }
 
 .champion {
-  display: grid;
-  gap: 2px;
-  width: fit-content;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
   min-width: 0;
   pointer-events: auto;
 }
 
+.spotlight .champion {
+  display: grid;
+  gap: 2px;
+  width: fit-content;
+}
+
 .champion > span,
 .published {
-  color: var(--color-muted);
+  color: var(--color-subtle);
   font-size: 0.68rem;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -147,7 +189,7 @@
   max-width: 100%;
   overflow: hidden;
   color: var(--color-heading);
-  font-size: 0.9rem;
+  font-size: 0.84rem;
   font-weight: 750;
   text-decoration-color: color-mix(in srgb, var(--tournament-gold) 44%, transparent);
   text-overflow: ellipsis;
@@ -171,22 +213,23 @@
   inset: 0;
   z-index: 1;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: flex-end;
   gap: var(--space-2);
-  padding: var(--space-5);
+  padding: var(--space-4) var(--space-5);
   color: var(--color-primary-pale);
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-weight: 800;
   text-decoration: none;
 }
 
 .spotlight .cardLink {
+  align-items: flex-end;
   padding: var(--space-6);
 }
 
 .cardLink svg {
-  transition: transform 200ms ease;
+  transition: transform 180ms ease;
 }
 
 .card:hover .cardLink svg,
@@ -198,42 +241,92 @@
   outline: none;
 }
 
-@media (max-width: 640px) {
-  .card,
+@media (max-width: 760px) {
   .spotlight {
-    min-height: 184px;
+    min-height: 210px;
+  }
+}
+
+@media (max-width: 640px) {
+  .card {
+    grid-template-columns: 52px minmax(0, 1fr);
+    gap: var(--space-3);
+    min-height: 88px;
+    padding: var(--space-4);
+  }
+
+  .card .art {
+    display: none;
+  }
+
+  .card .champion,
+  .card .published {
+    display: none;
+  }
+
+  .card:not(.spotlight) .copy {
+    padding-right: var(--space-6);
+  }
+
+  .cardLink {
+    min-height: var(--control-height-touch);
+    padding: var(--space-4);
+  }
+
+  .cardLink span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .spotlight {
+    grid-template-columns: minmax(0, 1fr) 88px;
+    grid-template-rows: auto 1fr auto;
+    min-height: 196px;
     padding: var(--space-5);
+  }
+
+  .spotlight .art {
+    display: grid;
+    width: 88px;
+    height: 104px;
+  }
+
+  .spotlight .art::before {
+    inset: 6px 0 auto;
+    height: 78px;
+  }
+
+  .spotlight .art img {
+    width: 76px;
+    height: 88px;
+  }
+
+  .spotlight .copy h3 {
+    font-size: clamp(1.4rem, 7vw, 1.7rem);
+  }
+
+  .spotlight .champion,
+  .spotlight .published {
+    display: grid;
   }
 
   .spotlight .cardLink {
     padding: var(--space-5);
   }
 
-  .spotlight .art {
-    top: var(--space-4);
-    right: var(--space-4);
-    width: 72px;
-    height: 72px;
-  }
-
-  .spotlight .art img {
-    width: 64px;
-    height: 64px;
-  }
-
-  .copy,
-  .spotlight .copy {
-    padding-right: var(--space-16);
-  }
-
-  .copy h3,
-  .spotlight .copy h3 {
-    max-width: 18ch;
-    font-size: clamp(1.35rem, 7vw, 1.7rem);
-  }
-
-  .cardLink {
-    min-height: var(--control-height-touch);
+  .spotlight .cardLink span {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+    clip-path: none;
+    white-space: normal;
   }
 }
 

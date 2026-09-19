@@ -30,29 +30,21 @@ export const TournamentsPage = () => {
         path="/tournaments"
       />
 
-      <section className="tournamentsHero">
-        <div className="tournamentsHeroCopy">
-          <span className="tournamentsEyebrow">Championship history</span>
-          <h1>Tournament archive</h1>
-        </div>
-        <div className="tournamentsHeroStats" aria-label="Archive summary">
-          <div>
-            <strong>{publishedTournaments.length}</strong>
-            <span>Published brackets</span>
-          </div>
-          <div>
-            <strong>
-              {earliestYear}–{latestYear}
-            </strong>
-            <span>Championship seasons</span>
-          </div>
-        </div>
-      </section>
+      <header className="tournamentsHeader">
+        <h1>Tournament archive</h1>
+        <p aria-label="Archive summary">
+          <span>{publishedTournaments.length} brackets</span>
+          <span aria-hidden="true">/</span>
+          <span>
+            {earliestYear}–{latestYear}
+          </span>
+        </p>
+      </header>
 
       <section className="tournamentArchiveSection" aria-labelledby="current-tournaments-heading">
         <div className="tournamentArchiveHeading">
-          <span>Current season</span>
           <h2 id="current-tournaments-heading">{latestYear} championships</h2>
+          <span>{spotlightTournaments.length} brackets</span>
         </div>
         <div className="tournamentsSpotlightGrid">
           {spotlightTournaments.map((tournament) => (
@@ -68,8 +60,8 @@ export const TournamentsPage = () => {
 
       <section className="tournamentArchiveSection" aria-labelledby="past-tournaments-heading">
         <div className="tournamentArchiveHeading">
-          <span>Past editions</span>
-          <h2 id="past-tournaments-heading">Previous championships</h2>
+          <h2 id="past-tournaments-heading">Past championships</h2>
+          <span>{archiveTournaments.length} brackets</span>
         </div>
         <div className="tournamentsGrid">
           {archiveTournaments.map((tournament) => (

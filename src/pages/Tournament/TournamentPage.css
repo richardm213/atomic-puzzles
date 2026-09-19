@@ -22,7 +22,8 @@
 }
 
 .tournamentPageHeroCopy,
-.tournamentStageSection {
+.tournamentStageSection,
+.tournamentSeedsSection {
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: var(--color-panel);
@@ -308,6 +309,79 @@
   display: grid;
   gap: 18px;
   min-width: 0;
+}
+
+.tournamentSeedsSection {
+  min-width: 0;
+  padding: 20px;
+  border-radius: var(--radius-lg);
+}
+
+.tournamentSeedsSection h2 {
+  margin: 0 0 12px;
+  color: var(--color-heading);
+  font-size: clamp(1.2rem, 2vw, 1.65rem);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.tournamentSeedsList {
+  display: grid;
+  grid-template-rows: repeat(8, minmax(48px, auto));
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  column-gap: var(--space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tournamentSeedsList li {
+  display: grid;
+  grid-template-columns: 2.5ch 20px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0 var(--space-2);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
+}
+
+.tournamentSeedsList li:nth-child(8),
+.tournamentSeedsList li:last-child {
+  border-bottom: 0;
+}
+
+.tournamentSeedsNumber {
+  color: var(--color-primary-pale);
+  font-size: 0.9rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.tournamentSeedsList .tournamentPlayerFlag {
+  margin-right: 0;
+}
+
+.tournamentSeedsPlayerLink {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-heading);
+  font-weight: 600;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tournamentSeedsPlayerLink:hover,
+.tournamentSeedsPlayerLink:focus-visible {
+  color: var(--link-hover-color);
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 3px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .tournamentBracketToolbar {
@@ -708,7 +782,8 @@
 }
 
 :root[data-theme="light"] .tournamentStageSection,
-:root[data-theme="light"] .tournamentPageHeroCopy {
+:root[data-theme="light"] .tournamentPageHeroCopy,
+:root[data-theme="light"] .tournamentSeedsSection {
   box-shadow: 0 12px 28px color-mix(in srgb, var(--color-muted) 10%, transparent);
 }
 
@@ -753,6 +828,19 @@
 
   .tournamentStageSection {
     padding: 16px 12px 10px;
+  }
+
+  .tournamentSeedsSection {
+    padding: 16px 14px;
+  }
+
+  .tournamentSeedsList {
+    column-gap: var(--space-3);
+  }
+
+  .tournamentSeedsList li {
+    gap: 6px;
+    padding-inline: 0;
   }
 
   .tournamentStageHeader {
