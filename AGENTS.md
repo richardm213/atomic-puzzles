@@ -23,6 +23,8 @@
 
 Follow this playbook whenever a user asks to copy tournament results from a forum or announcement into a bracket and link the matches.
 
+For creating or reseeding a knockout bracket, follow `docs/tournament-bracket-seeding.md`. In particular, preserve the mirrored bottom-half seed orientation used by AWC 2024/2025/2026 rather than laying every seed at the top of its section.
+
 ### Source of truth
 
 - Production brackets read from the Supabase `tournament_matches` table.

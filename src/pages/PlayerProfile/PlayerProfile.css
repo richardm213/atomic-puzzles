@@ -2,7 +2,7 @@
 @import "../../components/MatchCard/MatchCard.css";
 
 .playerProfilePanel {
-  width: min(820px, 100%);
+  width: min(768px, 100%);
 }
 
 .playerProfilePanel > .puzzleCommunity {
