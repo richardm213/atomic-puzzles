@@ -21,6 +21,36 @@ const RankingsOpeningSetting = () => {
   );
 };
 
+const PuzzleTimerSetting = () => {
+  const { showPuzzleTimer } = useAppSettings();
+  return <span>{showPuzzleTimer ? "Timer shown" : "Timer hidden"}</span>;
+};
+
+describe("puzzle timer preference", () => {
+  beforeEach(() => window.localStorage.clear());
+
+  it("hides the timer by default", () => {
+    render(
+      <AppSettingsProvider>
+        <PuzzleTimerSetting />
+      </AppSettingsProvider>,
+    );
+
+    expect(screen.getByText("Timer hidden")).toBeInTheDocument();
+  });
+
+  it("respects an existing preference to show the timer", () => {
+    window.localStorage.setItem("atomic-puzzles.puzzles.show-timer", "true");
+    render(
+      <AppSettingsProvider>
+        <PuzzleTimerSetting />
+      </AppSettingsProvider>,
+    );
+
+    expect(screen.getByText("Timer shown")).toBeInTheDocument();
+  });
+});
+
 describe("rankings opening preference", () => {
   it("loads and persists the hide-openings setting", async () => {
     window.localStorage.setItem("atomic-puzzles.rankings.hide-openings", "true");
