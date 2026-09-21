@@ -428,7 +428,13 @@ export class CommunityService {
       );
     }
     await this.repository.ensureUser(username);
-    await this.repository.createComment(target, username, commentBody, parentId);
+    const commentId = await this.repository.createComment(target, username, commentBody, parentId);
+    if (target.type === "puzzle") {
+      // Notification delivery should not turn a successfully saved comment into a failed post.
+      await this.repository
+        .notifyPriorPuzzleCommenters(Number(target.id), commentId, username, parentId)
+        .catch(() => undefined);
+    }
     return this.loadTargetCommunity(target, username);
   }
 }

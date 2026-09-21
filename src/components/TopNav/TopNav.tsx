@@ -38,7 +38,11 @@ import {
   notificationsQueryOptions,
   unreadNotificationCountQueryOptions,
 } from "../../lib/community/notificationQueries";
-import { markNotificationsRead, type UserNotification } from "../../lib/community/notifications";
+import {
+  markNotificationsRead,
+  notificationCopy,
+  type UserNotification,
+} from "../../lib/community/notifications";
 import type { UsernameSearchSuggestion } from "../../lib/users/usernameSearch";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { formatLocalDateTime } from "../../utils/formatters";
@@ -214,16 +218,6 @@ const PROFILE_USERNAME_STORAGE_PREFIX = "atomic-puzzles.profile-username";
 const SEARCH_SUGGESTION_MIN_LENGTH = 3;
 const SEARCH_SUGGESTION_DELAY_MS = 150;
 const NAV_DROPDOWN_CLOSE_DELAY_MS = 180;
-
-const notificationCopy = (notification: UserNotification): string => {
-  if (notification.notification_type === "puzzle_approved") {
-    return `Your puzzle #${notification.puzzle_id} was approved.`;
-  }
-  if (notification.notification_type === "comment_reply") {
-    return `${notification.actor_username ?? "Someone"} replied to your comment.`;
-  }
-  return `${notification.actor_username ?? "Someone"} commented on your puzzle.`;
-};
 
 const notificationIcon = (notification: UserNotification) => {
   if (notification.notification_type === "puzzle_approved") return faCheck;

@@ -33,6 +33,32 @@ export type PuzzleAttemptRecord = {
   puzzle_correct?: boolean | null;
 };
 
+export const getPuzzleCommentParticipantRecipients = (
+  priorCommenters: Array<{ username?: string | null }>,
+  excludedUsernames: Array<string | null | undefined>,
+): string[] => {
+  const excluded = new Set(
+    excludedUsernames
+      .map((username) =>
+        String(username ?? "")
+          .trim()
+          .toLowerCase(),
+      )
+      .filter(Boolean),
+  );
+  return [
+    ...new Set(
+      priorCommenters
+        .map((commenter) =>
+          String(commenter.username ?? "")
+            .trim()
+            .toLowerCase(),
+        )
+        .filter((username) => username && !excluded.has(username)),
+    ),
+  ];
+};
+
 export class CommunityRepository {
   constructor(private readonly supabase: SupabaseClient) {}
 
@@ -312,7 +338,7 @@ export class CommunityRepository {
     username: string,
     body: string,
     parentId: number | null,
-  ): Promise<void> {
+  ): Promise<number> {
     const commentResult = await this.supabase
       .from("community_comments")
       .insert({
@@ -344,7 +370,7 @@ export class CommunityRepository {
     const authorVoteResult = await this.supabase
       .from("community_comment_votes")
       .upsert({ comment_id: commentId, username, vote: 1 }, { onConflict: "comment_id,username" });
-    if (!authorVoteResult.error) return;
+    if (!authorVoteResult.error) return commentId;
 
     const rollbackResult = await this.supabase
       .from("community_comments")
@@ -357,5 +383,62 @@ export class CommunityRepository {
     throw new Error(
       `Unable to add the author's upvote: ${authorVoteResult.error.message}${rollbackSuffix}`,
     );
+  }
+
+  async notifyPriorPuzzleCommenters(
+    puzzleId: number,
+    commentId: number,
+    actorUsername: string,
+    parentId: number | null,
+  ): Promise<void> {
+    const priorCommentersQuery = this.supabase
+      .from("community_comments")
+      .select("username")
+      .eq("target_type", "puzzle")
+      .eq("target_id", String(puzzleId))
+      .eq("target_context", "")
+      .neq("id", commentId);
+    const puzzleAuthorQuery = this.supabase
+      .from("puzzles")
+      .select("author")
+      .eq("id", puzzleId)
+      .maybeSingle();
+    const parentAuthorQuery = parentId
+      ? this.supabase.from("community_comments").select("username").eq("id", parentId).maybeSingle()
+      : Promise.resolve({ data: null, error: null });
+    const [priorCommentersResult, puzzleAuthorResult, parentAuthorResult] = await Promise.all([
+      priorCommentersQuery,
+      puzzleAuthorQuery,
+      parentAuthorQuery,
+    ]);
+    if (priorCommentersResult.error) {
+      throw new Error(`Unable to find puzzle participants: ${priorCommentersResult.error.message}`);
+    }
+    if (puzzleAuthorResult.error) {
+      throw new Error(`Unable to find the puzzle author: ${puzzleAuthorResult.error.message}`);
+    }
+    if (parentAuthorResult.error) {
+      throw new Error(`Unable to find the reply recipient: ${parentAuthorResult.error.message}`);
+    }
+
+    const recipients = getPuzzleCommentParticipantRecipients(priorCommentersResult.data ?? [], [
+      actorUsername,
+      puzzleAuthorResult.data?.author,
+      parentAuthorResult.data?.username,
+    ]);
+    if (!recipients.length) return;
+
+    const result = await this.supabase.from("notifications").insert(
+      recipients.map((recipientUsername) => ({
+        recipient_username: recipientUsername,
+        actor_username: actorUsername,
+        notification_type: "puzzle_comment",
+        puzzle_id: puzzleId,
+        comment_id: commentId,
+      })),
+    );
+    if (result.error) {
+      throw new Error(`Unable to notify puzzle participants: ${result.error.message}`);
+    }
   }
 }

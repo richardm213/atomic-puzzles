@@ -12,18 +12,12 @@ import {
   notificationQueryKeys,
   notificationsQueryOptions,
 } from "../../lib/community/notificationQueries";
-import { markNotificationsRead, type UserNotification } from "../../lib/community/notifications";
+import {
+  markNotificationsRead,
+  notificationCopy,
+  type UserNotification,
+} from "../../lib/community/notifications";
 import { formatLocalDateTime } from "../../utils/formatters";
-
-const notificationCopy = (notification: UserNotification): string => {
-  if (notification.notification_type === "puzzle_approved") {
-    return `Your puzzle #${notification.puzzle_id} was approved.`;
-  }
-  if (notification.notification_type === "comment_reply") {
-    return `${notification.actor_username ?? "Someone"} replied to your comment.`;
-  }
-  return `${notification.actor_username ?? "Someone"} commented on your puzzle.`;
-};
 
 const notificationIcon = (notification: UserNotification) => {
   if (notification.notification_type === "puzzle_approved") return faCheck;

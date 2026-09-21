@@ -1,9 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
+import { getPuzzleCommentParticipantRecipients } from "../features/community/repository";
 import {
   addPuzzleAttemptStats,
   buildCommunityUserStats,
   buildProfileCommentRows,
+  CommunityService,
   isPublicCommunityReadAction,
   readCommunityTarget,
   sortProfileCommentRecords,
@@ -12,6 +14,49 @@ import {
 import { handler } from "../functions/puzzle-community";
 
 describe("profile comment history", () => {
+  it("notifies each prior puzzle commenter once while excluding existing notification recipients", () => {
+    expect(
+      getPuzzleCommentParticipantRecipients(
+        [
+          { username: "Alice" },
+          { username: "alice" },
+          { username: "Bob" },
+          { username: "Puzzle_Author" },
+          { username: "Reply_Target" },
+          { username: "New_Commenter" },
+          { username: " " },
+        ],
+        ["new_commenter", "puzzle_author", "reply_target"],
+      ),
+    ).toEqual(["alice", "bob"]);
+  });
+
+  it("notifies prior commenters after a puzzle comment without failing the saved comment", async () => {
+    const repository = {
+      createComment: vi.fn().mockResolvedValue(77),
+      ensureUser: vi.fn().mockResolvedValue(undefined),
+      loadDiscussionRows: vi.fn().mockResolvedValue({ comments: [], counts: [], viewerVotes: [] }),
+      loadPuzzleVoteRows: vi.fn().mockResolvedValue({ counts: null, viewerVote: null }),
+      notifyPriorPuzzleCommenters: vi.fn().mockRejectedValue(new Error("Notification unavailable")),
+    };
+    const service = new CommunityService(repository as never);
+
+    await expect(
+      service.createComment(
+        { type: "puzzle", id: "42", context: "" },
+        "new_commenter",
+        "A new thought",
+        12,
+      ),
+    ).resolves.toEqual(expect.objectContaining({ comments: [] }));
+    expect(repository.notifyPriorPuzzleCommenters).toHaveBeenCalledWith(
+      42,
+      77,
+      "new_commenter",
+      12,
+    );
+  });
+
   it("adds attempt totals and whole-number solve rates to puzzle vote rows", () => {
     expect(
       addPuzzleAttemptStats(

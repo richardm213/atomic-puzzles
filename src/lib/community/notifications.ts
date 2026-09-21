@@ -18,6 +18,16 @@ export type NotificationResult = {
   unreadCount: number;
 };
 
+export const notificationCopy = (notification: UserNotification): string => {
+  if (notification.notification_type === "puzzle_approved") {
+    return `Your puzzle #${notification.puzzle_id} was approved.`;
+  }
+  if (notification.notification_type === "comment_reply") {
+    return `${notification.actor_username ?? "Someone"} replied to your comment.`;
+  }
+  return `${notification.actor_username ?? "Someone"} commented on a puzzle you follow.`;
+};
+
 const notificationRequest = <T>(body: Record<string, unknown>): Promise<T> =>
   postApi("/api/notifications", body, {
     errorMessage: "Unable to load notifications.",
