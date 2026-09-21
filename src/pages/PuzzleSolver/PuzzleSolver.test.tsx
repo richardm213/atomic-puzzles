@@ -11,21 +11,29 @@ import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { SolutionNavigation } from "../../types/chessboard";
+import type { AttemptResolved, SolutionNavigation } from "../../types/chessboard";
 
 const mocks = vi.hoisted(() => ({
   chessboardProps: [] as Array<{
     showSolution?: boolean;
     solutionNavigation?: SolutionNavigation | null;
+    onAttemptResolved?: (attempt: AttemptResolved) => void;
     onStateChange?: (state: unknown) => void;
   }>,
   attemptedPuzzleIds: new Set(["1369"]),
+  fetchCustomPuzzleSet: vi.fn(),
   fetchPuzzleAttemptsForPuzzle: vi.fn(),
   loadPuzzleCatalog: vi.fn(),
   loadPuzzlesById: vi.fn(),
   navigate: vi.fn(),
   puzzleExplanation: "Castling avoids the atomic mating net and creates the decisive rook threat.",
-  routeParams: { puzzleId: "1369", setKey: "" },
+  recordCustomPuzzleSetProgress: vi.fn(),
+  recordPuzzleProgress: vi.fn(),
+  routeParams: { puzzleId: "1369", setKey: "", setId: "" } as {
+    puzzleId: string;
+    setKey?: string;
+    setId?: string;
+  },
   scrollIntoView: vi.fn(),
   updatePuzzleTags: vi.fn(),
   username: "solver",
@@ -65,6 +73,21 @@ vi.mock("../../lib/puzzles/puzzleLibrary", () => ({
   loadPuzzlesById: mocks.loadPuzzlesById,
 }));
 
+vi.mock("../../lib/puzzles/customPuzzleSets", () => ({
+  fetchCustomPuzzleSet: mocks.fetchCustomPuzzleSet,
+  getOrderedPuzzleIndexesForCustomSet: (
+    puzzles: Array<{ puzzleId: number }>,
+    customSet: { puzzleIds: number[] } | null,
+  ) =>
+    customSet
+      ? customSet.puzzleIds.flatMap((puzzleId) => {
+          const index = puzzles.findIndex((puzzle) => puzzle.puzzleId === puzzleId);
+          return index < 0 ? [] : [index];
+        })
+      : [],
+  recordCustomPuzzleSetProgress: mocks.recordCustomPuzzleSetProgress,
+}));
+
 vi.mock("../../lib/puzzles/puzzleTags", () => ({
   updatePuzzleTags: mocks.updatePuzzleTags,
 }));
@@ -72,7 +95,7 @@ vi.mock("../../lib/puzzles/puzzleTags", () => ({
 vi.mock("../../lib/supabase/puzzleProgress", () => ({
   fetchAttemptedPuzzleIds: vi.fn(async () => new Set(mocks.attemptedPuzzleIds)),
   fetchPuzzleAttemptsForPuzzle: mocks.fetchPuzzleAttemptsForPuzzle,
-  recordPuzzleProgress: vi.fn(async () => undefined),
+  recordPuzzleProgress: mocks.recordPuzzleProgress,
 }));
 
 vi.mock("../../lib/supabase/users", () => ({
@@ -91,6 +114,7 @@ vi.mock("../../components/Chessboard/Chessboard", async () => {
       fen: string;
       showSolution?: boolean;
       solutionNavigation?: SolutionNavigation | null;
+      onAttemptResolved?: (attempt: AttemptResolved) => void;
       onStateChange?: (state: unknown) => void;
     }) => {
       mocks.chessboardProps.push(props);
@@ -186,6 +210,23 @@ describe("PuzzleSolverPage solution options", () => {
         correct_move: null,
       },
     ]);
+    mocks.fetchCustomPuzzleSet.mockReset().mockResolvedValue({
+      id: "4b648b2a-e2bf-49dc-aaed-235c05615d1b",
+      label: "Review set",
+      puzzleIds: [1369],
+      createdAt: "2026-09-21T00:00:00.000Z",
+      updatedAt: "2026-09-21T00:00:00.000Z",
+      tags: [],
+      untaggedOnly: false,
+      authors: [],
+      resultFilter: "all",
+      completedCount: 0,
+      correctCount: 0,
+      incorrectCount: 0,
+      nextPuzzleId: 1369,
+    });
+    mocks.recordCustomPuzzleSetProgress.mockReset().mockResolvedValue(undefined);
+    mocks.recordPuzzleProgress.mockReset().mockResolvedValue(undefined);
     mocks.navigate.mockReset();
     mocks.username = "solver";
     mocks.updatePuzzleTags
@@ -217,7 +258,7 @@ describe("PuzzleSolverPage solution options", () => {
     );
     mocks.puzzleExplanation =
       "Castling avoids the atomic mating net and creates the decisive rook threat.";
-    mocks.routeParams = { puzzleId: "1369", setKey: "" };
+    mocks.routeParams = { puzzleId: "1369", setKey: "", setId: "" };
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
       value: vi.fn(() => ({
@@ -592,6 +633,85 @@ describe("PuzzleSolverPage solution options", () => {
 
     const otherAttemptsTab = await screen.findByRole("tab", { name: "Other attempts" });
     await waitFor(() => expect(otherAttemptsTab).toBeDisabled());
+  });
+
+  it("treats a custom-set puzzle as fresh while preserving the solved-before badge", async () => {
+    mocks.routeParams = {
+      puzzleId: "1369",
+      setId: "4b648b2a-e2bf-49dc-aaed-235c05615d1b",
+    };
+
+    render(<PuzzleSolverPage />);
+
+    await screen.findByTestId("mock-board");
+    expect(
+      screen.getByRole("img", { name: "You've solved this puzzle before" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Solution" })).toBeDisabled();
+    expect(screen.getByRole("tab", { name: "Explanation" })).toBeDisabled();
+    expect(screen.getByRole("tab", { name: "Other attempts" })).toBeDisabled();
+    expect(screen.queryByLabelText("Puzzle tags")).not.toBeInTheDocument();
+
+    act(() => {
+      mocks.chessboardProps.at(-1)?.onAttemptResolved?.({
+        puzzleId: 1369,
+        puzzleCorrect: true,
+        incorrectMove: null,
+        correctMove: "1. O-O",
+      });
+    });
+
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Solution" })).toBeEnabled());
+    expect(screen.getByRole("tab", { name: "Explanation" })).toBeEnabled();
+    expect(screen.getByRole("tab", { name: "Other attempts" })).toBeEnabled();
+    expect(screen.getByLabelText("Puzzle tags")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(mocks.recordCustomPuzzleSetProgress).toHaveBeenCalledWith(
+        "4b648b2a-e2bf-49dc-aaed-235c05615d1b",
+        "1369",
+        true,
+      ),
+    );
+    expect(mocks.recordPuzzleProgress).not.toHaveBeenCalled();
+  });
+
+  it("records both progress sources when a custom-set solve is the first attempt", async () => {
+    mocks.attemptedPuzzleIds = new Set();
+    mocks.routeParams = {
+      puzzleId: "1369",
+      setId: "4b648b2a-e2bf-49dc-aaed-235c05615d1b",
+    };
+
+    render(<PuzzleSolverPage />);
+
+    await screen.findByTestId("mock-board");
+    expect(
+      screen.queryByRole("img", { name: "You've solved this puzzle before" }),
+    ).not.toBeInTheDocument();
+
+    act(() => {
+      mocks.chessboardProps.at(-1)?.onAttemptResolved?.({
+        puzzleId: 1369,
+        puzzleCorrect: false,
+        incorrectMove: "1... Kd7",
+        correctMove: null,
+      });
+    });
+
+    await waitFor(() =>
+      expect(mocks.recordPuzzleProgress).toHaveBeenCalledWith({
+        username: "solver",
+        puzzleId: "1369",
+        puzzleCorrect: false,
+        incorrectMove: "1... Kd7",
+        correctMove: null,
+      }),
+    );
+    expect(mocks.recordCustomPuzzleSetProgress).toHaveBeenCalledWith(
+      "4b648b2a-e2bf-49dc-aaed-235c05615d1b",
+      "1369",
+      false,
+    );
   });
 
   it("offers exits when the final puzzle in an ordered set is solved", async () => {

@@ -89,6 +89,7 @@ const toPuzzleKey = (puzzleId: unknown): string =>
   puzzleId === undefined || puzzleId === null ? "" : String(puzzleId).trim();
 
 const ATTEMPTED_PUZZLE_BADGE_LABEL = "You've already attempted this puzzle before";
+const SOLVED_BEFORE_BADGE_LABEL = "You've solved this puzzle before";
 const OTHER_PUZZLE_ATTEMPTS_LIMIT = 30;
 const PUZZLE_PREFETCH_COUNT = 3;
 const PUZZLE_TAG_EDITOR = "seaside_tiramisu";
@@ -303,6 +304,7 @@ export const PuzzleSolverPage = () => {
     retry: false,
   });
   const customPuzzleSet = customPuzzleSetQuery.data;
+  const isCustomSetRoute = Boolean(routeCustomSetId);
   const orderedSetPuzzleIndexes = useMemo(
     () =>
       customPuzzleSet
@@ -569,7 +571,14 @@ export const PuzzleSolverPage = () => {
   const hasResolvedAttempt = activePuzzleKey
     ? resolvedAttemptedPuzzleIds.has(activePuzzleKey)
     : false;
-  const hasAttemptedActivePuzzle = hasPersistedAttempt || hasResolvedAttempt;
+  // A custom set is a fresh solving pass. A historical attempt may still be
+  // acknowledged by the badge, but it must not reveal post-attempt UI before
+  // the solver finishes this pass through the puzzle.
+  const hasAttemptedActivePuzzle =
+    hasResolvedAttempt || (!isCustomSetRoute && hasPersistedAttempt);
+  const attemptedPuzzleBadgeLabel = isCustomSetRoute
+    ? SOLVED_BEFORE_BADGE_LABEL
+    : ATTEMPTED_PUZZLE_BADGE_LABEL;
   const canViewExplanation =
     hasExplanation && (hasAttemptedActivePuzzle || explanationUnlockedByWrongMove);
   const showSolution = activePuzzleInfoTab === "solution";
@@ -1760,9 +1769,9 @@ export const PuzzleSolverPage = () => {
                   className="puzzleAttemptedBadge"
                   role="img"
                   tabIndex={0}
-                  title={ATTEMPTED_PUZZLE_BADGE_LABEL}
-                  aria-label={ATTEMPTED_PUZZLE_BADGE_LABEL}
-                  data-tooltip={ATTEMPTED_PUZZLE_BADGE_LABEL}
+                  title={attemptedPuzzleBadgeLabel}
+                  aria-label={attemptedPuzzleBadgeLabel}
+                  data-tooltip={attemptedPuzzleBadgeLabel}
                 >
                   <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
                 </span>
@@ -1941,9 +1950,9 @@ export const PuzzleSolverPage = () => {
                 className="puzzleAttemptedBadge"
                 role="img"
                 tabIndex={0}
-                title={ATTEMPTED_PUZZLE_BADGE_LABEL}
-                aria-label={ATTEMPTED_PUZZLE_BADGE_LABEL}
-                data-tooltip={ATTEMPTED_PUZZLE_BADGE_LABEL}
+                title={attemptedPuzzleBadgeLabel}
+                aria-label={attemptedPuzzleBadgeLabel}
+                data-tooltip={attemptedPuzzleBadgeLabel}
               >
                 <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
               </span>

@@ -341,15 +341,19 @@ export const puzzleSetsRoute = async (event: FunctionEvent) => {
   const currentItems = await loadItems([set.id]);
   const item = currentItems.find((candidate) => candidate.puzzle_id === input.puzzleId);
   if (!item) throw new HttpError(400, "That puzzle is not part of this custom set.");
+  if (item.completed_at) {
+    return identityResponse(identity, 200, { success: true });
+  }
   const result = await supabase
     .from("custom_puzzle_set_items")
     .update({
       completed_at: new Date().toISOString(),
       last_result: input.puzzleCorrect,
-      attempt_count: (item.attempt_count ?? 0) + 1,
+      attempt_count: 1,
     })
     .eq("set_id", set.id)
-    .eq("puzzle_id", input.puzzleId);
+    .eq("puzzle_id", input.puzzleId)
+    .is("completed_at", null);
   if (result.error) throw new Error(result.error.message);
   return identityResponse(identity, 200, { success: true });
 };
