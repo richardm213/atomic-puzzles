@@ -1,0 +1,163 @@
+.puzzleIssuesPage {
+  grid-template-columns: minmax(0, 1fr);
+  width: min(100%, 820px);
+  align-items: start;
+}
+
+.puzzleIssuesPanel {
+  overflow: hidden;
+  padding: 0;
+}
+
+.puzzleIssuesHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 22px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.puzzleIssuesHeader h1 {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: clamp(24px, 4vw, 32px);
+}
+
+.puzzleIssuesHeader > span,
+.puzzleIssueStatus {
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 4px 9px;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
+.puzzleIssuesList {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.puzzleIssueRow {
+  display: grid;
+  gap: 9px;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.puzzleIssueRow:last-child {
+  border-bottom: 0;
+}
+
+.puzzleIssueRow.resolved,
+.puzzleIssueRow.dismissed {
+  background: color-mix(in srgb, var(--color-panel-strong) 54%, transparent);
+  opacity: 0.76;
+}
+
+.puzzleIssueRowTopline,
+.puzzleIssueMeta,
+.puzzleIssueActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.puzzleIssueRowTopline a {
+  color: var(--color-primary-soft);
+  font-size: 13px;
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.puzzleIssueRow > strong {
+  color: var(--color-heading);
+  font-size: 16px;
+}
+
+.puzzleIssueRow > p {
+  margin: 0;
+  color: var(--color-text);
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.puzzleIssueMeta {
+  justify-content: flex-start;
+  color: var(--color-subtle);
+  font-size: 12px;
+}
+
+.puzzleIssueActions {
+  justify-content: flex-end;
+}
+
+.puzzleIssueActions button,
+.puzzleIssueReopen {
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.puzzleIssueActions button.primary {
+  border-color: color-mix(in srgb, var(--color-primary) 60%, var(--color-border));
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.puzzleIssueReopen {
+  justify-self: end;
+}
+
+.puzzleIssueActions button:hover:not(:disabled),
+.puzzleIssueReopen:hover:not(:disabled) {
+  border-color: var(--color-primary);
+}
+
+.puzzleIssueActions button:focus-visible,
+.puzzleIssueReopen:focus-visible,
+.puzzleIssueRowTopline a:focus-visible {
+  outline: 3px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+.puzzleIssueActions button:disabled,
+.puzzleIssueReopen:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.puzzleIssuesError,
+.puzzleIssuesEmpty,
+.puzzleIssuesAccess {
+  margin: 0;
+  padding: 24px 22px;
+}
+
+.puzzleIssuesError {
+  color: var(--color-danger);
+}
+
+@media (max-width: 560px) {
+  .puzzleIssuesHeader,
+  .puzzleIssueRow {
+    padding-inline: 16px;
+  }
+
+  .puzzleIssueActions button {
+    min-height: 44px;
+  }
+}

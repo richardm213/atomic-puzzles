@@ -623,6 +623,215 @@ body:has(.puzzlePage),
   backdrop-filter: blur(3px);
 }
 
+.puzzleIssuePrompt {
+  grid-column: 1 / -1;
+  margin: -4px 0 0;
+  color: var(--color-subtle);
+  font-size: 11px;
+  text-align: center;
+}
+
+.puzzleIssuePrompt button {
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-muted);
+  font: inherit;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.puzzleIssuePrompt button:hover {
+  color: var(--color-heading);
+}
+
+.puzzleIssuePrompt button:focus-visible {
+  outline: 3px solid var(--color-primary-ring);
+  outline-offset: 3px;
+}
+
+.puzzleIssueDialog {
+  width: min(520px, calc(100% - 32px));
+  max-width: none;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 28%, var(--color-border));
+  border-radius: calc(var(--radius-ui) + 4px);
+  background: var(--color-panel-strong);
+  color: var(--color-text);
+  box-shadow: 0 24px 80px color-mix(in srgb, #020617 72%, transparent);
+}
+
+.puzzleIssueDialog::backdrop {
+  background: color-mix(in srgb, #020617 72%, transparent);
+  backdrop-filter: blur(3px);
+}
+
+.puzzleIssueDialogCard {
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+}
+
+.puzzleIssueDialogHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.puzzleIssueDialogHeading h2 {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: 24px;
+}
+
+.puzzleIssueDialogHeading button {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel);
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.puzzleIssueForm {
+  display: grid;
+  gap: 16px;
+}
+
+.puzzleIssueForm fieldset {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.puzzleIssueForm legend,
+.puzzleIssueDetailsField > span {
+  margin-bottom: 8px;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.puzzleIssueForm fieldset label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel);
+  cursor: pointer;
+}
+
+.puzzleIssueForm fieldset label:has(input:checked) {
+  border-color: color-mix(in srgb, var(--color-primary) 62%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-panel));
+  color: var(--color-heading);
+}
+
+.puzzleIssueForm input[type="radio"] {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--color-primary);
+}
+
+.puzzleIssueDetailsField {
+  display: grid;
+}
+
+.puzzleIssueDetailsField textarea {
+  width: 100%;
+  resize: vertical;
+  padding: 11px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel);
+  color: var(--color-text);
+  font: inherit;
+  line-height: 1.5;
+}
+
+.puzzleIssueDetailsField textarea:focus,
+.puzzleIssueForm input:focus-visible,
+.puzzleIssueDialog button:focus-visible {
+  outline: 3px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+.puzzleIssueFormActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.puzzleIssueFormActions button,
+.puzzleIssueSuccess button,
+.puzzleIssueLogin button {
+  min-height: 42px;
+  padding: 9px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.puzzleIssueFormActions button.primary,
+.puzzleIssueSuccess button,
+.puzzleIssueLogin button {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.puzzleIssueFormActions button:hover:not(:disabled),
+.puzzleIssueSuccess button:hover,
+.puzzleIssueLogin button:hover,
+.puzzleIssueDialogHeading button:hover {
+  filter: brightness(1.08);
+}
+
+.puzzleIssueFormActions button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.puzzleIssueFormError {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: 13px;
+}
+
+.puzzleIssueSuccess,
+.puzzleIssueLogin {
+  display: grid;
+  gap: 10px;
+}
+
+.puzzleIssueSuccess strong {
+  color: var(--color-heading);
+  font-size: 18px;
+}
+
+.puzzleIssueSuccess p,
+.puzzleIssueLogin p {
+  margin: 0;
+}
+
+.puzzleIssueSuccess button,
+.puzzleIssueLogin button {
+  justify-self: end;
+}
+
 .puzzleMotifDefinitionCard {
   display: grid;
   gap: 16px;
@@ -1618,6 +1827,21 @@ body:has(.puzzlePage),
 
   .puzzlePanel {
     display: none;
+  }
+
+  .puzzleIssuePrompt button {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  .puzzleIssueDialog {
+    max-height: calc(100svh - 24px);
+    overflow-y: auto;
+  }
+
+  .puzzleIssueDialogCard {
+    padding: 18px;
   }
 
   .boardWrap {

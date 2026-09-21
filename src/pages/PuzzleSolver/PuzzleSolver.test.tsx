@@ -25,10 +25,12 @@ const mocks = vi.hoisted(() => ({
   fetchPuzzleAttemptsForPuzzle: vi.fn(),
   loadPuzzleCatalog: vi.fn(),
   loadPuzzlesById: vi.fn(),
+  login: vi.fn(),
   navigate: vi.fn(),
   puzzleExplanation: "Castling avoids the atomic mating net and creates the decisive rook threat.",
   recordCustomPuzzleSetProgress: vi.fn(),
   recordPuzzleProgress: vi.fn(),
+  reportPuzzleIssue: vi.fn(),
   refreshCustomPuzzleSet: vi.fn(),
   routeParams: { puzzleId: "1369", setKey: "", setId: "" } as {
     puzzleId: string;
@@ -61,6 +63,7 @@ vi.mock("@tanstack/react-router", async () => {
 vi.mock("../../context/AuthContext", () => ({
   useAuth: () => ({
     isAuthenticated: true,
+    login: mocks.login,
     user: { username: mocks.username },
   }),
 }));
@@ -92,6 +95,10 @@ vi.mock("../../lib/puzzles/customPuzzleSets", () => ({
 
 vi.mock("../../lib/puzzles/puzzleTags", () => ({
   updatePuzzleTags: mocks.updatePuzzleTags,
+}));
+
+vi.mock("../../lib/puzzles/puzzleIssues", () => ({
+  reportPuzzleIssue: mocks.reportPuzzleIssue,
 }));
 
 vi.mock("../../lib/supabase/puzzleProgress", () => ({
@@ -228,6 +235,7 @@ describe("PuzzleSolverPage solution options", () => {
       nextPuzzleId: 1369,
     });
     mocks.recordCustomPuzzleSetProgress.mockReset().mockResolvedValue(undefined);
+    mocks.reportPuzzleIssue.mockReset().mockResolvedValue({ issue: { id: 1 } });
     mocks.recordPuzzleProgress.mockReset().mockResolvedValue(undefined);
     mocks.refreshCustomPuzzleSet.mockReset().mockResolvedValue({
       set: {
@@ -289,6 +297,12 @@ describe("PuzzleSolverPage solution options", () => {
     });
     mocks.scrollIntoView.mockReset();
     Element.prototype.scrollIntoView = mocks.scrollIntoView;
+    HTMLDialogElement.prototype.showModal = function showModal() {
+      this.setAttribute("open", "");
+    };
+    HTMLDialogElement.prototype.close = function close() {
+      this.removeAttribute("open");
+    };
   });
 
   it("loads only the active puzzle and a three-puzzle lookahead from the catalog", async () => {
@@ -480,6 +494,37 @@ describe("PuzzleSolverPage solution options", () => {
     const motifList = await screen.findByLabelText("Tags on this puzzle");
     expect(within(motifList).getByText("Fork")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Add tag" })).not.toBeInTheDocument();
+  });
+
+  it("shows the issue report only after an attempt and submits the selected category", async () => {
+    const user = userEvent.setup();
+    render(<PuzzleSolverPage />);
+
+    await user.click(await screen.findByRole("button", { name: "Report issue" }));
+    const dialog = screen.getByRole("dialog", { name: "Report puzzle issue" });
+    await user.click(within(dialog).getByRole("radio", { name: "Incorrect solution" }));
+    await user.type(
+      within(dialog).getByRole("textbox", { name: /Details/ }),
+      "Line fails after Qf7",
+    );
+    await user.click(within(dialog).getByRole("button", { name: "Send report" }));
+
+    await waitFor(() =>
+      expect(mocks.reportPuzzleIssue).toHaveBeenCalledWith(
+        1369,
+        "incorrect_solution",
+        "Line fails after Qf7",
+      ),
+    );
+    expect(await within(dialog).findByText("Report sent")).toBeInTheDocument();
+  });
+
+  it("hides the issue report before the puzzle has been attempted", async () => {
+    mocks.attemptedPuzzleIds = new Set();
+    render(<PuzzleSolverPage />);
+
+    await screen.findByTestId("mock-board");
+    expect(screen.queryByRole("button", { name: "Report issue" })).not.toBeInTheDocument();
   });
 
   it("keeps puzzle motifs hidden before a regular user attempts the puzzle", async () => {

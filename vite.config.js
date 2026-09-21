@@ -31,6 +31,7 @@ const localPuzzleFunctionsPlugin = () => {
     ["/api/auth/session", "/netlify/functions/auth-session.ts"],
     ["/api/puzzles/submit", "/netlify/functions/puzzle-submit.ts"],
     ["/api/puzzles/review", "/netlify/functions/puzzle-review.ts"],
+    ["/api/puzzles/issues", "/netlify/functions/puzzle-issues.ts"],
     ["/api/puzzles/tags", "/netlify/functions/puzzle-tags.ts"],
     ["/api/puzzles/community", "/netlify/functions/puzzle-community.ts"],
     ["/api/puzzles/progress", "/netlify/functions/puzzle-progress.ts"],

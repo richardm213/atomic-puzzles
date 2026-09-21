@@ -14,6 +14,7 @@ import {
   faRightFromBracket,
   faRightToBracket,
   faSun,
+  faTriangleExclamation,
   faUser,
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
@@ -1063,17 +1064,30 @@ export const TopNav = () => {
                     Puzzle dashboard
                   </Link>
                   {normalizedAuthUsername === "seaside_tiramisu" ? (
-                    <Link
-                      className="navProfileDropdownItem"
-                      to="/puzzles/review"
-                      role="menuitem"
-                      onClick={() => setOpenPanel(null)}
-                    >
-                      <span className="navProfileDropdownIcon" aria-hidden="true">
-                        <FontAwesomeIcon icon={faUser} />
-                      </span>
-                      Review puzzles
-                    </Link>
+                    <>
+                      <Link
+                        className="navProfileDropdownItem"
+                        to="/puzzles/review"
+                        role="menuitem"
+                        onClick={() => setOpenPanel(null)}
+                      >
+                        <span className="navProfileDropdownIcon" aria-hidden="true">
+                          <FontAwesomeIcon icon={faUser} />
+                        </span>
+                        Review puzzles
+                      </Link>
+                      <Link
+                        className="navProfileDropdownItem"
+                        to="/puzzles/issues"
+                        role="menuitem"
+                        onClick={() => setOpenPanel(null)}
+                      >
+                        <span className="navProfileDropdownIcon" aria-hidden="true">
+                          <FontAwesomeIcon icon={faTriangleExclamation} />
+                        </span>
+                        Puzzle issues
+                      </Link>
+                    </>
                   ) : null}
                   <button
                     className="navProfileDropdownItem"

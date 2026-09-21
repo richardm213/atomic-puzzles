@@ -82,6 +82,19 @@ export type NotificationRow = {
   read_at: string | null;
 };
 
+export type PuzzleIssueRow = {
+  id: number;
+  puzzle_id: number;
+  reporter_username: string;
+  category: "missing_alternate_solution" | "incorrect_solution" | "other";
+  details: string;
+  status: "open" | "resolved" | "dismissed";
+  created_at: string;
+  updated_at: string;
+  resolved_at: string | null;
+  resolved_by: string | null;
+};
+
 type TableDef<Row, Insert = Partial<Row>, Update = Partial<Row>> = {
   Row: Row;
   Insert: Insert;
@@ -141,6 +154,11 @@ export type Database = {
         Pick<CommunityCommentVoteRow, "vote">
       >;
       notifications: TableDef<NotificationRow, never, Pick<NotificationRow, "read_at">>;
+      puzzle_issues: TableDef<
+        PuzzleIssueRow,
+        Pick<PuzzleIssueRow, "puzzle_id" | "reporter_username" | "category" | "details">,
+        Pick<PuzzleIssueRow, "status" | "updated_at" | "resolved_at" | "resolved_by">
+      >;
       users: TableDef<{ username: string; created_at: string | null }, { username: string }>;
     };
     Views: Record<string, never>;
