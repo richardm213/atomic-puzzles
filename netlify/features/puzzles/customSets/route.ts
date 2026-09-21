@@ -27,6 +27,15 @@ const bodySchema = z.discriminatedUnion("action", [
     resultFilter: z.enum(["all", "correct", "incorrect"]).default("all"),
   }),
   z.object({ action: z.literal("rename"), id: idSchema, name: nameSchema }),
+  z.object({ action: z.literal("refresh"), id: idSchema }),
+  z.object({
+    action: z.literal("remove-item"),
+    id: idSchema,
+    puzzleId: z
+      .union([z.string(), z.number()])
+      .transform(String)
+      .pipe(z.string().regex(/^\d{1,20}$/)),
+  }),
   z.object({ action: z.literal("reset"), id: idSchema }),
   z.object({ action: z.literal("delete"), id: idSchema }),
   z.object({
@@ -100,7 +109,10 @@ type ItemRow = {
   completed_at: string | null;
   last_result: boolean | null;
   attempt_count: number | null;
+  removed_at: string | null;
 };
+
+type SetFilters = ReturnType<typeof decodeFilterMetadata>;
 
 const loadAll = async <T>(
   loadPage: (
@@ -121,7 +133,7 @@ const loadAll = async <T>(
 
 const serializeSet = (set: SetRow, items: ItemRow[]) => {
   const orderedItems = items
-    .filter((item) => item.set_id === set.id)
+    .filter((item) => item.set_id === set.id && !item.removed_at)
     .sort((left, right) => left.position - right.position);
   const completed = orderedItems.filter((item) => item.completed_at);
   const filters = decodeFilterMetadata(set);
@@ -169,11 +181,61 @@ export const puzzleSetsRoute = async (event: FunctionEvent) => {
     return loadAll<ItemRow>((from, to) =>
       supabase
         .from("custom_puzzle_set_items")
-        .select("set_id,puzzle_id,position,completed_at,last_result,attempt_count")
+        .select("set_id,puzzle_id,position,completed_at,last_result,attempt_count,removed_at")
         .in("set_id", setIds)
         .order("position", { ascending: true })
         .range(from, to),
     );
+  };
+
+  const loadMatchingPuzzleIds = async (filters: SetFilters): Promise<string[]> => {
+    const progressRows = await loadAll<{ puzzle_id: string; puzzle_correct: boolean }>((from, to) =>
+      supabase
+        .from("puzzle_progress")
+        .select("puzzle_id,puzzle_correct")
+        .eq("username", username)
+        .order("first_attempt_at", { ascending: true })
+        .range(from, to),
+    );
+    const attemptedIds = [...new Set(progressRows.map((row) => String(row.puzzle_id)))];
+    const resultByPuzzleId = new Map(
+      progressRows.map((row) => [String(row.puzzle_id), Boolean(row.puzzle_correct)]),
+    );
+    if (!attemptedIds.length) return [];
+
+    const puzzles: Array<{ id: number | string; author: string | null; tags: string[] | null }> =
+      [];
+    for (let index = 0; index < attemptedIds.length; index += 500) {
+      const result = await supabase
+        .from("puzzles")
+        .select("id,author,tags")
+        .in("id", attemptedIds.slice(index, index + 500));
+      if (result.error) throw new Error(result.error.message);
+      puzzles.push(...((result.data ?? []) as typeof puzzles));
+    }
+
+    const normalizedAuthors = new Set(filters.authors.map((author) => author.toLocaleLowerCase()));
+    const puzzlesById = new Map(puzzles.map((puzzle) => [String(puzzle.id), puzzle]));
+    return attemptedIds.filter((puzzleId) => {
+      const puzzle = puzzlesById.get(puzzleId);
+      if (!puzzle) return false;
+      const wasCorrect = resultByPuzzleId.get(puzzleId);
+      if (filters.resultFilter === "correct" && wasCorrect !== true) return false;
+      if (filters.resultFilter === "incorrect" && wasCorrect !== false) return false;
+      if (
+        normalizedAuthors.size > 0 &&
+        !normalizedAuthors.has(
+          String(puzzle.author ?? "")
+            .trim()
+            .toLocaleLowerCase(),
+        )
+      ) {
+        return false;
+      }
+      const tags = new Set(Array.isArray(puzzle.tags) ? puzzle.tags : []);
+      if (filters.untaggedOnly) return tags.size === 0;
+      return filters.tags.every((tag) => tags.has(tag));
+    });
   };
 
   if (input.action === "list") {
@@ -209,54 +271,13 @@ export const puzzleSetsRoute = async (event: FunctionEvent) => {
   }
 
   if (input.action === "create") {
-    const progressRows = await loadAll<{ puzzle_id: string; puzzle_correct: boolean }>((from, to) =>
-      supabase
-        .from("puzzle_progress")
-        .select("puzzle_id,puzzle_correct")
-        .eq("username", username)
-        .order("first_attempt_at", { ascending: true })
-        .range(from, to),
-    );
-    const attemptedIds = [...new Set(progressRows.map((row) => String(row.puzzle_id)))];
-    const resultByPuzzleId = new Map(
-      progressRows.map((row) => [String(row.puzzle_id), Boolean(row.puzzle_correct)]),
-    );
-    if (!attemptedIds.length) {
-      throw new HttpError(400, "Complete at least one puzzle before creating a custom set.");
-    }
-
-    const puzzles: Array<{ id: number | string; author: string | null; tags: string[] | null }> =
-      [];
-    for (let index = 0; index < attemptedIds.length; index += 500) {
-      const result = await supabase
-        .from("puzzles")
-        .select("id,author,tags")
-        .in("id", attemptedIds.slice(index, index + 500));
-      if (result.error) throw new Error(result.error.message);
-      puzzles.push(...((result.data ?? []) as typeof puzzles));
-    }
-
-    const normalizedAuthors = new Set(input.authors.map((author) => author.toLocaleLowerCase()));
     const selectedTags = [...new Set(input.tags)];
-    const matchingPuzzleIds = puzzles
-      .filter((puzzle) => {
-        const wasCorrect = resultByPuzzleId.get(String(puzzle.id));
-        if (input.resultFilter === "correct" && wasCorrect !== true) return false;
-        if (input.resultFilter === "incorrect" && wasCorrect !== false) return false;
-        if (
-          normalizedAuthors.size > 0 &&
-          !normalizedAuthors.has(
-            String(puzzle.author ?? "")
-              .trim()
-              .toLocaleLowerCase(),
-          )
-        )
-          return false;
-        const tags = new Set(Array.isArray(puzzle.tags) ? puzzle.tags : []);
-        if (input.untaggedOnly) return tags.size === 0;
-        return selectedTags.every((tag) => tags.has(tag));
-      })
-      .map((puzzle) => String(puzzle.id));
+    const matchingPuzzleIds = await loadMatchingPuzzleIds({
+      tags: selectedTags,
+      untaggedOnly: input.untaggedOnly,
+      authors: [...new Set(input.authors)],
+      resultFilter: input.resultFilter,
+    });
     if (!matchingPuzzleIds.length) {
       throw new HttpError(400, "No completed puzzles match those filters.");
     }
@@ -295,12 +316,122 @@ export const puzzleSetsRoute = async (event: FunctionEvent) => {
     return identityResponse(identity, 201, {
       set: serializeSet(
         set,
-        items.map((item) => ({ ...item, completed_at: null, last_result: null, attempt_count: 0 })),
+        items.map((item) => ({
+          ...item,
+          completed_at: null,
+          last_result: null,
+          attempt_count: 0,
+          removed_at: null,
+        })),
       ),
     });
   }
 
   const set = await loadOwnedSet(input.id);
+  if (input.action === "refresh") {
+    const currentItems = await loadItems([set.id]);
+    const filters = decodeFilterMetadata(set);
+    const activePuzzleIds = new Set(
+      currentItems.filter((item) => !item.removed_at).map((item) => item.puzzle_id),
+    );
+    const addedPuzzleIds = filters.tags.length
+      ? (
+          await loadMatchingPuzzleIds({
+            tags: filters.tags,
+            untaggedOnly: false,
+            authors: [],
+            resultFilter: "all",
+          })
+        ).filter((puzzleId) => !activePuzzleIds.has(puzzleId))
+      : [];
+    if (!addedPuzzleIds.length) {
+      return identityResponse(identity, 200, {
+        set: serializeSet(set, currentItems),
+        addedPuzzleIds: [],
+      });
+    }
+
+    const firstPosition = currentItems.reduce(
+      (highest, item) => Math.max(highest, item.position + 1),
+      0,
+    );
+    const removedItemsByPuzzleId = new Map(
+      currentItems.filter((item) => item.removed_at).map((item) => [item.puzzle_id, item] as const),
+    );
+    const restoredItems = addedPuzzleIds
+      .map((puzzleId) => removedItemsByPuzzleId.get(puzzleId))
+      .filter((item): item is ItemRow => Boolean(item));
+    for (const item of restoredItems) {
+      const restoreResult = await supabase
+        .from("custom_puzzle_set_items")
+        .update({ removed_at: null })
+        .eq("set_id", set.id)
+        .eq("puzzle_id", item.puzzle_id);
+      if (restoreResult.error) throw new Error(restoreResult.error.message);
+    }
+
+    const restoredPuzzleIds = new Set(restoredItems.map((item) => item.puzzle_id));
+    const newPuzzleIds = addedPuzzleIds.filter((puzzleId) => !restoredPuzzleIds.has(puzzleId));
+    const addedItems = newPuzzleIds.map((puzzleId, index) => ({
+      set_id: set.id,
+      puzzle_id: puzzleId,
+      position: firstPosition + index,
+    }));
+    if (addedItems.length) {
+      const itemsResult = await supabase.from("custom_puzzle_set_items").insert(addedItems);
+      if (itemsResult.error) throw new Error(itemsResult.error.message);
+    }
+
+    const updatedSetResult = await supabase
+      .from("custom_puzzle_sets")
+      .update({ updated_at: new Date().toISOString() })
+      .eq("id", set.id)
+      .eq("username", username)
+      .select(baseSetSelect)
+      .single();
+    if (updatedSetResult.error) throw new Error(updatedSetResult.error.message);
+
+    return identityResponse(identity, 200, {
+      set: serializeSet(updatedSetResult.data, [
+        ...currentItems,
+        ...restoredItems.map((item) => ({ ...item, removed_at: null })),
+        ...addedItems.map((item) => ({
+          ...item,
+          completed_at: null,
+          last_result: null,
+          attempt_count: 0,
+          removed_at: null,
+        })),
+      ]),
+      addedPuzzleIds: addedPuzzleIds.map(Number).filter(Number.isSafeInteger),
+    });
+  }
+
+  if (input.action === "remove-item") {
+    const currentItems = await loadItems([set.id]);
+    const item = currentItems.find(
+      (candidate) => candidate.puzzle_id === input.puzzleId && !candidate.removed_at,
+    );
+    if (!item) throw new HttpError(400, "That puzzle is not part of this custom set.");
+    const result = await supabase
+      .from("custom_puzzle_set_items")
+      .update({ removed_at: new Date().toISOString() })
+      .eq("set_id", set.id)
+      .eq("puzzle_id", input.puzzleId)
+      .is("removed_at", null);
+    if (result.error) throw new Error(result.error.message);
+    return identityResponse(identity, 200, {
+      set: serializeSet(
+        set,
+        currentItems.map((candidate) =>
+          candidate.puzzle_id === input.puzzleId
+            ? { ...candidate, removed_at: new Date().toISOString() }
+            : candidate,
+        ),
+      ),
+    });
+  }
+
   if (input.action === "rename") {
     const result = await supabase
       .from("custom_puzzle_sets")
@@ -339,7 +470,9 @@ export const puzzleSetsRoute = async (event: FunctionEvent) => {
   }
 
   const currentItems = await loadItems([set.id]);
-  const item = currentItems.find((candidate) => candidate.puzzle_id === input.puzzleId);
+  const item = currentItems.find(
+    (candidate) => candidate.puzzle_id === input.puzzleId && !candidate.removed_at,
+  );
   if (!item) throw new HttpError(400, "That puzzle is not part of this custom set.");
   if (item.completed_at) {
     return identityResponse(identity, 200, { success: true });

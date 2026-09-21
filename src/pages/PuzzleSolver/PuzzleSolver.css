@@ -140,6 +140,9 @@ body:has(.puzzlePage),
 }
 
 .puzzleSetCompleteLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-height: 38px;
   padding: 0 12px;
   border: 1px solid var(--color-border-strong);
@@ -147,8 +150,11 @@ body:has(.puzzlePage),
   background: var(--color-surface-elevated);
   color: var(--color-heading);
   font-size: 12px;
+  font-family: inherit;
+  font-weight: 750;
   text-align: center;
   text-decoration: none;
+  cursor: pointer;
 }
 
 .puzzleSetCompleteLink.primary {
@@ -159,6 +165,22 @@ body:has(.puzzlePage),
 .puzzleSetCompleteLink:hover {
   border-color: var(--color-primary);
   background: var(--color-surface-elevated-strong);
+}
+
+.puzzleSetCompleteLink:disabled {
+  opacity: 0.62;
+  cursor: wait;
+}
+
+.puzzleSetRefreshMessage {
+  margin: 2px 0 0;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.puzzleSetRefreshMessage.error {
+  color: var(--color-danger);
 }
 
 .puzzleHeader {

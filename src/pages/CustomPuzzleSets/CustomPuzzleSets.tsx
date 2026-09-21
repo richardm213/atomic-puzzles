@@ -502,6 +502,13 @@ export const CustomPuzzleSetsPage = () => {
                     </div>
                     {editingId !== set.id ? (
                       <div className="customSetsManageActions">
+                        <Link
+                          to="/solve/custom-sets/$setId/edit"
+                          params={{ setId: set.id }}
+                          onClick={() => manageDialogRef.current?.close()}
+                        >
+                          <FontAwesomeIcon icon={faPen} aria-hidden="true" /> Edit
+                        </Link>
                         <button
                           type="button"
                           onClick={() => {

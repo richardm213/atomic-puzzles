@@ -37,6 +37,7 @@ import {
   fetchCustomPuzzleSet,
   getOrderedPuzzleIndexesForCustomSet,
   recordCustomPuzzleSetProgress,
+  refreshCustomPuzzleSet,
 } from "../../lib/puzzles/customPuzzleSets";
 import { loadPuzzleCatalog, loadPuzzlesById, type Puzzle } from "../../lib/puzzles/puzzleLibrary";
 import {
@@ -297,6 +298,12 @@ export const PuzzleSolverPage = () => {
   const elapsedTimeMsRef = useRef(0);
   const [elapsedTimeMs, setElapsedTimeMs] = useState(0);
   const [elapsedTimerRunning, setElapsedTimerRunning] = useState(false);
+  const [customSetRefreshState, setCustomSetRefreshState] = useState<
+    | { status: "idle" }
+    | { status: "loading" }
+    | { status: "empty"; message: string }
+    | { status: "error"; message: string }
+  >({ status: "idle" });
   const customPuzzleSetQuery = useQuery({
     queryKey: ["custom-puzzle-sets", routeCustomSetId],
     queryFn: () => fetchCustomPuzzleSet(routeCustomSetId),
@@ -574,8 +581,7 @@ export const PuzzleSolverPage = () => {
   // A custom set is a fresh solving pass. A historical attempt may still be
   // acknowledged by the badge, but it must not reveal post-attempt UI before
   // the solver finishes this pass through the puzzle.
-  const hasAttemptedActivePuzzle =
-    hasResolvedAttempt || (!isCustomSetRoute && hasPersistedAttempt);
+  const hasAttemptedActivePuzzle = hasResolvedAttempt || (!isCustomSetRoute && hasPersistedAttempt);
   const attemptedPuzzleBadgeLabel = isCustomSetRoute
     ? SOLVED_BEFORE_BADGE_LABEL
     : ATTEMPTED_PUZZLE_BADGE_LABEL;
@@ -760,6 +766,7 @@ export const PuzzleSolverPage = () => {
     setExplanationUnlockedByWrongMove(false);
     lockedCompletionFeedbackRef.current = null;
     setPinnedSolutionLineIndex(null);
+    setCustomSetRefreshState({ status: "idle" });
     hadWrongAttemptRef.current = false;
   }, []);
 
@@ -839,6 +846,30 @@ export const PuzzleSolverPage = () => {
       ? "View the solution"
       : SOLUTION_UNLOCK_HINT;
   const feedback = completionFeedback;
+
+  const handleRefreshCustomSet = async (): Promise<void> => {
+    if (!isCustomSetSolveMode || !customPuzzleSet) return;
+    setCustomSetRefreshState({ status: "loading" });
+    try {
+      const result = await refreshCustomPuzzleSet(customPuzzleSet.id);
+      queryClient.setQueryData(["custom-puzzle-sets", customPuzzleSet.id], result.set);
+      void queryClient.invalidateQueries({ queryKey: ["custom-puzzle-sets"] });
+      const firstAddedPuzzleId = result.addedPuzzleIds[0];
+      if (firstAddedPuzzleId) {
+        replaceUrlWithPuzzle(firstAddedPuzzleId);
+        return;
+      }
+      setCustomSetRefreshState({
+        status: "empty",
+        message: "No new puzzles match this set’s filters.",
+      });
+    } catch (error) {
+      setCustomSetRefreshState({
+        status: "error",
+        message: error instanceof Error ? error.message : "Unable to add newly matching puzzles.",
+      });
+    }
+  };
 
   const handleNextPuzzle = () => {
     if (puzzles.length === 0) return;
@@ -1846,7 +1877,24 @@ export const PuzzleSolverPage = () => {
               </p>
             </div>
             <div className="puzzleSetCompleteActions">
-              <Link className="puzzleSetCompleteLink primary" to="/solve">
+              {isCustomSetSolveMode && customPuzzleSet?.tags.length ? (
+                <button
+                  type="button"
+                  className="puzzleSetCompleteLink primary"
+                  onClick={() => void handleRefreshCustomSet()}
+                  disabled={customSetRefreshState.status === "loading"}
+                >
+                  {customSetRefreshState.status === "loading"
+                    ? "Checking for new puzzles…"
+                    : "Add new matching puzzles"}
+                </button>
+              ) : null}
+              <Link
+                className={`puzzleSetCompleteLink ${
+                  isCustomSetSolveMode && customPuzzleSet?.tags.length ? "" : "primary"
+                }`.trim()}
+                to="/solve"
+              >
                 Continue with regular puzzles
               </Link>
               <Link
@@ -1855,6 +1903,15 @@ export const PuzzleSolverPage = () => {
               >
                 {isCustomSetSolveMode ? "Back to custom sets" : "Back to puzzle sets"}
               </Link>
+              {customSetRefreshState.status === "empty" ||
+              customSetRefreshState.status === "error" ? (
+                <p
+                  className={`puzzleSetRefreshMessage ${customSetRefreshState.status}`}
+                  role={customSetRefreshState.status === "error" ? "alert" : "status"}
+                >
+                  {customSetRefreshState.message}
+                </p>
+              ) : null}
             </div>
           </section>
         ) : null}

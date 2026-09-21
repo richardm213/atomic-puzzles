@@ -46,6 +46,10 @@ const CustomPuzzleSetsPage = lazyRouteComponent(
   () => import("./pages/CustomPuzzleSets/CustomPuzzleSets"),
   "CustomPuzzleSetsPage",
 );
+const CustomPuzzleSetEditPage = lazyRouteComponent(
+  () => import("./pages/CustomPuzzleSets/CustomPuzzleSetEdit"),
+  "CustomPuzzleSetEditPage",
+);
 const PuzzleVoteRankingsPage = lazyRouteComponent(
   () => import("./pages/Community/PuzzleVoteRankings"),
   "PuzzleVoteRankingsPage",
@@ -248,6 +252,12 @@ const customPuzzleSetsRoute = createRoute({
   component: CustomPuzzleSetsPage,
 });
 
+const customPuzzleSetEditRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/solve/custom-sets/$setId/edit",
+  component: CustomPuzzleSetEditPage,
+});
+
 const puzzleLeaderboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/solve/leaderboard",
@@ -395,6 +405,7 @@ const routeTree = rootRoute.addChildren([
   legacyPuzzleHistoryRoute,
   solveSetsRoute,
   customPuzzleSetsRoute,
+  customPuzzleSetEditRoute,
   puzzleLeaderboardRoute,
   puzzleMotifsRoute,
   puzzleSubmissionRoute,

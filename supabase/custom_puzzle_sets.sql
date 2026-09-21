@@ -51,9 +51,13 @@ create table if not exists public.custom_puzzle_set_items (
   completed_at timestamptz,
   last_result boolean,
   attempt_count integer not null default 0 check (attempt_count >= 0),
+  removed_at timestamptz,
   primary key (set_id, puzzle_id),
   unique (set_id, position)
 );
+
+alter table public.custom_puzzle_set_items
+  add column if not exists removed_at timestamptz;
 
 create index if not exists custom_puzzle_set_items_progress_idx
   on public.custom_puzzle_set_items (set_id, completed_at, position);

@@ -41,6 +41,10 @@ const customPuzzleSetSchema = z.object({
 });
 
 const setResponseSchema = z.object({ set: customPuzzleSetSchema });
+const refreshSetResponseSchema = z.object({
+  set: customPuzzleSetSchema,
+  addedPuzzleIds: z.array(z.number().int().positive()),
+});
 const setsResponseSchema = z.object({ sets: z.array(customPuzzleSetSchema) });
 const successResponseSchema = z.object({ success: z.literal(true) });
 const attemptsResponseSchema = z.object({
@@ -128,6 +132,35 @@ export const resetCustomPuzzleSetProgress = async (id: string): Promise<void> =>
     { action: "reset", id },
     { errorMessage: "Unable to reset set progress.", schema: successResponseSchema },
   );
+};
+
+export const refreshCustomPuzzleSet = async (
+  id: string,
+): Promise<{ set: CustomPuzzleSet; addedPuzzleIds: number[] }> =>
+  postApi(
+    "/api/puzzle-sets",
+    { action: "refresh", id },
+    {
+      errorMessage: "Unable to add newly matching puzzles.",
+      invalidMessage: "The server returned an invalid refreshed custom puzzle set.",
+      schema: refreshSetResponseSchema,
+    },
+  );
+
+export const removePuzzleFromCustomSet = async (
+  id: string,
+  puzzleId: string | number,
+): Promise<CustomPuzzleSet> => {
+  const result = await postApi(
+    "/api/puzzle-sets",
+    { action: "remove-item", id, puzzleId },
+    {
+      errorMessage: "Unable to remove this puzzle from the set.",
+      invalidMessage: "The server returned an invalid custom puzzle set.",
+      schema: setResponseSchema,
+    },
+  );
+  return result.set;
 };
 
 export const deleteCustomPuzzleSet = async (id: string): Promise<void> => {
