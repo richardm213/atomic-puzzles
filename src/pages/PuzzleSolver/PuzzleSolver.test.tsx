@@ -412,6 +412,28 @@ describe("PuzzleSolverPage solution options", () => {
     });
   });
 
+  it("copies the puzzle PGN with Atomic variant and starting FEN headers", async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+    render(<PuzzleSolverPage />);
+
+    const solutionTab = await screen.findByRole("tab", { name: "Solution" });
+    await waitFor(() => expect(solutionTab).toBeEnabled());
+    await user.click(solutionTab);
+    await user.click(await screen.findByRole("button", { name: "Copy PGN" }));
+
+    expect(writeText).toHaveBeenCalledOnce();
+    expect(writeText).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /^\[Variant "Atomic"\]\n\[FEN "rn2k2r\/pp5p\/1qpp2p1\/2Q5\/1b2P3\/2N5\/PPP3PP\/R3KB1R b KQkq - 1 12"\]\n\n12\.\.\./,
+      ),
+    );
+  });
+
   it("keeps original solution lines when board analysis adds a variation", async () => {
     const user = userEvent.setup();
     render(<PuzzleSolverPage />);

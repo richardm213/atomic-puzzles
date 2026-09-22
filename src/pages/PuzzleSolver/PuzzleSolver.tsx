@@ -48,6 +48,7 @@ import {
 } from "../../lib/puzzles/puzzleMotifs";
 import { puzzleQueryKeys } from "../../lib/puzzles/puzzleQueries";
 import { getOrderedPuzzleIndexesForEvent } from "../../lib/puzzles/puzzleSets";
+import { ensurePuzzlePgnHeaders } from "../../lib/puzzles/puzzleSubmission";
 import { updatePuzzleTags } from "../../lib/puzzles/puzzleTags";
 import {
   mergeAdditiveSolutionLine,
@@ -1237,11 +1238,19 @@ export const PuzzleSolverPage = () => {
       .join(" ");
   }, [allVariationLines, boardState.lineMoves, fen]);
 
-  const handleCopyPgn = useCallback(async () => {
-    if (!moveLinePgn) return;
+  const puzzlePgn = useMemo(
+    () =>
+      moveLinePgn && fen
+        ? `${ensurePuzzlePgnHeaders("", fen)}\n\n${moveLinePgn}`
+        : "",
+    [fen, moveLinePgn],
+  );
 
-    await copyPgn(moveLinePgn);
-  }, [copyPgn, moveLinePgn]);
+  const handleCopyPgn = useCallback(async () => {
+    if (!puzzlePgn) return;
+
+    await copyPgn(puzzlePgn);
+  }, [copyPgn, puzzlePgn]);
 
   const handleUpdateMotifs = async (nextTags: string[]): Promise<void> => {
     if (!canManagePuzzleTags || !activePuzzleId || motifSaveStatus.state === "saving") return;
