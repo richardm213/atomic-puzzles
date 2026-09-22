@@ -421,7 +421,7 @@
   padding-right: 150px;
 }
 
-.homeChesscomShortcut {
+.homeTrophyShortcut[data-series="ccac"] {
   --home-card-accent: #f2c14e;
 
   background:
@@ -438,7 +438,7 @@
     var(--color-panel);
 }
 
-.homeChesscomShortcut:hover {
+.homeTrophyShortcut[data-series="ccac"]:hover {
   background:
     radial-gradient(
       circle at 88% 25%,
@@ -453,7 +453,7 @@
     var(--color-surface-elevated-strong);
 }
 
-.homeAtomicHyperShortcut {
+.homeTrophyShortcut[data-series="ahc"] {
   --home-card-accent: #f8c85a;
 
   padding-right: 182px;
@@ -492,7 +492,7 @@
   transform: translateY(-4px) rotate(1deg);
 }
 
-.homeAtomicHyperShortcut > img {
+.homeTrophyShortcut[data-series="ahc"] > img {
   right: 20px;
   top: 50%;
   bottom: auto;
@@ -502,7 +502,7 @@
   transform: translateY(-50%);
 }
 
-.homeAtomicHyperShortcut:hover {
+.homeTrophyShortcut[data-series="ahc"]:hover {
   background:
     radial-gradient(
       ellipse at 88% 52%,
@@ -518,11 +518,11 @@
     var(--color-surface-elevated-strong);
 }
 
-.homeAtomicHyperShortcut:hover > img {
+.homeTrophyShortcut[data-series="ahc"]:hover > img {
   transform: translateY(calc(-50% - 4px)) rotate(1deg);
 }
 
-.homeAwcShortcut {
+.homeTrophyShortcut[data-series="awc"] {
   --home-card-accent: #e7a93d;
 
   background:
@@ -535,13 +535,13 @@
     var(--color-panel);
 }
 
-.homeAwcShortcut > img {
+.homeTrophyShortcut[data-series="awc"] > img {
   width: min(34%, 112px);
   max-width: min(34%, 112px);
   object-fit: contain;
 }
 
-.homeAwcShortcut:hover {
+.homeTrophyShortcut[data-series="awc"]:hover {
   background:
     radial-gradient(
       circle at 87% 20%,
@@ -1021,12 +1021,12 @@
     margin-top: 0;
   }
 
-  .homeAtomicHyperShortcut {
+  .homeTrophyShortcut[data-series="ahc"] {
     min-height: 220px;
     padding-right: 164px;
   }
 
-  .homeAtomicHyperShortcut > img {
+  .homeTrophyShortcut[data-series="ahc"] > img {
     position: absolute;
     right: 16px;
     width: 124px;

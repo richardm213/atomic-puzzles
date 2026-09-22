@@ -3,14 +3,29 @@ import "./Tournaments.css";
 import { useQuery } from "@tanstack/react-query";
 
 import { Seo } from "../../components/Seo/Seo";
-import { tournamentChampionsQueryOptions } from "../../lib/matches/tournamentQueries";
-import { tournamentCatalog } from "../../lib/matches/tournaments";
+import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
+import {
+  tournamentCatalogQueryOptions,
+  tournamentChampionsQueryOptions,
+} from "../../lib/matches/tournamentQueries";
 import { TournamentArchiveCard } from "./TournamentArchiveCard";
 
 export const TournamentsPage = () => {
-  const publishedTournaments = tournamentCatalog.filter(
+  const catalogQuery = useQuery(tournamentCatalogQueryOptions());
+  const championsQuery = useQuery(tournamentChampionsQueryOptions());
+  if (catalogQuery.isPending) return <RouteLoadingFallback />;
+
+  const publishedTournaments = (catalogQuery.data ?? []).filter(
     (tournament) => tournament.status === "available",
   );
+  if (!publishedTournaments.length) {
+    return (
+      <main className="sitePage tournamentsPage">
+        <h1>Tournament archive unavailable</h1>
+        <p>Please try again shortly.</p>
+      </main>
+    );
+  }
   const latestYear = Math.max(...publishedTournaments.map((tournament) => tournament.year));
   const earliestYear = Math.min(...publishedTournaments.map((tournament) => tournament.year));
   const spotlightTournaments = publishedTournaments.filter(
@@ -19,7 +34,6 @@ export const TournamentsPage = () => {
   const archiveTournaments = publishedTournaments.filter(
     (tournament) => tournament.year !== latestYear,
   );
-  const championsQuery = useQuery(tournamentChampionsQueryOptions());
   const championsById: Record<string, string> = championsQuery.data ?? {};
 
   return (

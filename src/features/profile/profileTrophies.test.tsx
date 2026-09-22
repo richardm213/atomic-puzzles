@@ -1,31 +1,63 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const { loadSupabaseRowsMock } = vi.hoisted(() => ({
+  loadSupabaseRowsMock: vi.fn(),
+}));
+
+const query = {
+  select: vi.fn(() => query),
+  eq: vi.fn(() => query),
+  order: vi.fn(() => query),
+};
+
+vi.mock("../../lib/supabase/client", () => ({
+  getSupabaseClient: () => ({ from: () => query }),
+}));
+
+vi.mock("../../lib/supabase/rows", () => ({
+  loadSupabaseRows: loadSupabaseRowsMock,
+}));
 
 import {
-  getChampionshipTrophies,
+  fetchChampionshipTrophies,
   getProfileHeaderTrophies,
   type ProfileTrophy,
 } from "./profileTrophies";
 
 describe("championship profile trophies", () => {
-  it("shows the AHC 2026 trophy on RKROUNIT's profile", () => {
-    expect(getChampionshipTrophies("RKROUNIT")).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          key: "atomic-hyper-2026",
-          href: "/tournaments/ahc2026",
-          title: "2026 Atomic Hyper Champion",
-        }),
-      ]),
-    );
+  beforeEach(() => {
+    loadSupabaseRowsMock.mockReset();
   });
 
-  it("shows the AOC 2026 trophy on JakeStateFarm's profile", () => {
-    expect(getChampionshipTrophies("JakeStateFarm")).toEqual(
+  it.each([
+    ["tipau", "awc-2016", "/tournaments/awc2016"],
+    ["Arka50", "awc-2017", "/tournaments/awc2017"],
+    ["Arka50", "awc-2018", "/tournaments/awc2018"],
+    ["onubense", "awc-2019", "/tournaments/awc2019"],
+    ["Arka50", "awc-2020", "/tournaments/awc2020"],
+    ["RKROUNIT", "atomic-hyper-2026", "/tournaments/ahc2026"],
+    ["JakeStateFarm", "atomic-openings-2026", "/tournaments/aoc2026"],
+  ])("loads %s's %s trophy from Supabase", async (username, key, href) => {
+    loadSupabaseRowsMock.mockResolvedValue([
+      {
+        award_key: key,
+        label: key,
+        title: `${key} title`,
+        asset_path: "/images/awc-trophies/awc.png",
+        href,
+        date_label: "Dec 2020",
+        date_value: "2020-12-01",
+        placement_label: "Champion",
+        prestige: 1000,
+      },
+    ]);
+
+    await expect(fetchChampionshipTrophies(username)).resolves.toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          key: "atomic-openings-2026",
-          href: "/tournaments/aoc2026",
-          title: "2026 Atomic Openings Champion",
+          key,
+          href,
+          prestige: 1000,
         }),
       ]),
     );
@@ -50,7 +82,7 @@ const trophy = (
 });
 
 describe("profile header trophies", () => {
-  it("shows the most recent championship when current ranking trophies are available", () => {
+  it("shows the highest-prestige championship when current ranking trophies are available", () => {
     const visible = getProfileHeaderTrophies({
       championshipTrophies: [
         trophy("chesscom-2025", 980, "Mar 2025", "2025-03-01"),
@@ -60,10 +92,10 @@ describe("profile header trophies", () => {
       currentMonthKey: "Aug 2026",
     });
 
-    expect(visible.map(({ key }) => key)).toEqual(["aoc-2026", "blitz-rank", "hyper-rank"]);
+    expect(visible.map(({ key }) => key)).toEqual(["chesscom-2025", "blitz-rank", "hyper-rank"]);
   });
 
-  it("prioritizes an AWC win over a more recent tournament win", () => {
+  it("prioritizes a higher-prestige championship over a more recent one", () => {
     const visible = getProfileHeaderTrophies({
       championshipTrophies: [
         trophy("awc-2024", 1000, "Dec 2024", "2024-12-01"),
@@ -87,6 +119,6 @@ describe("profile header trophies", () => {
       currentMonthKey: "Aug 2026",
     });
 
-    expect(visible.map(({ key }) => key)).toEqual(["awc-2024", "aoc-2026", "chesscom-2025"]);
+    expect(visible.map(({ key }) => key)).toEqual(["awc-2024", "chesscom-2025", "aoc-2026"]);
   });
 });

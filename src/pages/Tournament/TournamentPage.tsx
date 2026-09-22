@@ -14,7 +14,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CommunityDiscussion } from "../../components/PuzzleCommunity/PuzzleCommunity";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
-import { tournamentBracketQueryOptions } from "../../lib/matches/tournamentQueries";
+import {
+  tournamentBracketQueryOptions,
+  tournamentCatalogQueryOptions,
+} from "../../lib/matches/tournamentQueries";
 import {
   getAdjacentTournamentMetas,
   getTournamentDecisiveMatch,
@@ -99,9 +102,7 @@ const getRoundShortLabel = (roundName: string): string =>
 
 const tournamentHeading = (bracket: TournamentBracket): string => {
   if (bracket.headingTitle) return bracket.headingTitle;
-  return bracket.title.startsWith("AWC ")
-    ? `Atomic World Championship ${bracket.year}`
-    : bracket.title;
+  return `${bracket.seriesName} ${bracket.year}`;
 };
 const CARD_WIDTH = 260;
 const CARD_HEIGHT = 102;
@@ -115,8 +116,7 @@ const DEFAULT_STAGE_ZOOM = 0.85;
 const MIN_STAGE_ZOOM = 0.55;
 const MAX_STAGE_ZOOM = 1.35;
 const STAGE_ZOOM_STEP = 0.15;
-const TOURNAMENT_VIEW_STORAGE_KEY = "tournament-view:v3:";
-const AWC_2026_VIEW_STORAGE_KEY = "tournament-view:v4:awc2026";
+const TOURNAMENT_VIEW_STORAGE_KEY = "tournament-view:v4:";
 const SEEDS_STAGE_KEY = "seeds";
 
 type SavedTournamentView = {
@@ -162,9 +162,7 @@ const zoomDisplayPercent = (zoomLevel: number): number =>
   Math.round((zoomLevel / DEFAULT_STAGE_ZOOM) * 100);
 
 const getTournamentViewStorageKey = (tournamentId: string): string =>
-  tournamentId === "awc2026"
-    ? AWC_2026_VIEW_STORAGE_KEY
-    : `${TOURNAMENT_VIEW_STORAGE_KEY}${tournamentId}`;
+  `${TOURNAMENT_VIEW_STORAGE_KEY}${tournamentId}`;
 
 const readSavedTournamentView = (tournamentId: string): SavedTournamentView | null => {
   if (typeof window === "undefined") return null;
@@ -935,9 +933,10 @@ const TournamentStageSection = ({
 
 export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
   const navigate = useNavigate();
+  const catalogQuery = useQuery(tournamentCatalogQueryOptions());
   const adjacentTournaments = useMemo(
-    () => getAdjacentTournamentMetas(tournamentId),
-    [tournamentId],
+    () => getAdjacentTournamentMetas(tournamentId, catalogQuery.data ?? []),
+    [catalogQuery.data, tournamentId],
   );
   const bracketQuery = useQuery({
     ...tournamentBracketQueryOptions(tournamentId),

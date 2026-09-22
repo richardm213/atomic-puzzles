@@ -3,6 +3,8 @@ import { Link } from "@tanstack/react-router";
 import { modeLabels } from "../../constants/matches";
 import { buildRankingsLocation, type MonthRank } from "../../hooks/usePlayerProfileData";
 import { monthKeyFromMonthValue } from "../../lib/archive/leaderboard";
+import { getSupabaseClient } from "../../lib/supabase/client";
+import { loadSupabaseRows } from "../../lib/supabase/rows";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { normalizeUsername } from "../../utils/playerNames";
 
@@ -26,116 +28,16 @@ const rankingTrophyAssets = {
   secondPlace: appAssetPath("/images/lichess-trophies/red-cup-2.png"),
   top10: appAssetPath("/images/lichess-trophies/silver-cup-2.png"),
 };
-const championshipTrophyAssets = {
-  atomicHyper: appAssetPath("/images/awc-trophies/atomic-hyper-championship.png"),
-  atomicOpenings: appAssetPath("/images/awc-trophies/atomic-openings-championship.png"),
-  awc: appAssetPath("/images/awc-trophies/awc.png"),
-  chesscomAtomic: appAssetPath("/images/awc-trophies/chesscomatomic.png"),
-};
-
-const championshipTrophiesByUsername: Record<string, ProfileTrophy[]> = {
-  "fast-tsunami": [
-    {
-      key: "awc-2021",
-      label: "AWC 2021",
-      title: "Atomic World Champion 2021",
-      imageSrc: championshipTrophyAssets.awc,
-      href: appAssetPath("/tournaments/awc2021"),
-      dateLabel: "Dec 2021",
-      dateValue: "2021-12-01",
-      placementLabel: "Champion",
-      prestige: 1000,
-    },
-  ],
-  natso: [
-    {
-      key: "awc-2024",
-      label: "AWC 2024",
-      title: "Atomic World Champion 2024",
-      imageSrc: championshipTrophyAssets.awc,
-      href: appAssetPath("/tournaments/awc2024"),
-      dateLabel: "Dec 2024",
-      dateValue: "2024-12-01",
-      placementLabel: "Champion",
-      prestige: 1000,
-    },
-  ],
-  rkrounit: [
-    {
-      key: "atomic-hyper-2026",
-      label: "AHC 2026",
-      title: "2026 Atomic Hyper Champion",
-      imageSrc: championshipTrophyAssets.atomicHyper,
-      href: appAssetPath("/tournaments/ahc2026"),
-      dateLabel: "Aug 2026",
-      dateValue: "2026-08-19",
-      placementLabel: "Champion",
-      prestige: 970,
-    },
-  ],
-  sutcunuri: [
-    {
-      key: "awc-2022",
-      label: "AWC 2022",
-      title: "Atomic World Champion 2022",
-      imageSrc: championshipTrophyAssets.awc,
-      href: appAssetPath("/tournaments/awc2022"),
-      dateLabel: "Dec 2022",
-      dateValue: "2022-12-01",
-      placementLabel: "Champion",
-      prestige: 1000,
-    },
-  ],
-  vlad_00: [
-    {
-      key: "awc-2023",
-      label: "AWC 2023",
-      title: "Atomic World Champion 2023",
-      imageSrc: championshipTrophyAssets.awc,
-      href: appAssetPath("/tournaments/awc2023"),
-      dateLabel: "Dec 2023",
-      dateValue: "2023-12-01",
-      placementLabel: "Champion",
-      prestige: 1000,
-    },
-  ],
-  jakestatefarm: [
-    {
-      key: "atomic-openings-2026",
-      label: "AOC 2026",
-      title: "2026 Atomic Openings Champion",
-      imageSrc: championshipTrophyAssets.atomicOpenings,
-      href: appAssetPath("/tournaments/aoc2026"),
-      dateLabel: "Jul 2026",
-      dateValue: "2026-07-31",
-      placementLabel: "Champion",
-      prestige: 970,
-    },
-    {
-      key: "chesscom-atomic-2025",
-      label: "Chess.com",
-      title: "2025 Chess.com Atomic Champion",
-      imageSrc: championshipTrophyAssets.chesscomAtomic,
-      href: appAssetPath("/tournaments/awc2025"),
-      dateLabel: "Mar 2025",
-      dateValue: "2025-03-01",
-      placementLabel: "Champion",
-      prestige: 980,
-    },
-  ],
-  wolfram_ep: [
-    {
-      key: "chesscom-atomic-2026",
-      label: "Chess.com",
-      title: "2026 Chess.com Atomic Champion",
-      imageSrc: championshipTrophyAssets.chesscomAtomic,
-      href: appAssetPath("/tournaments/ccac2026"),
-      dateLabel: "Mar 2026",
-      dateValue: "2026-03-01",
-      placementLabel: "Champion",
-      prestige: 980,
-    },
-  ],
+type TournamentProfileTrophyRow = {
+  award_key?: string | null;
+  label?: string | null;
+  title?: string | null;
+  asset_path?: string | null;
+  href?: string | null;
+  date_label?: string | null;
+  date_value?: string | null;
+  placement_label?: string | null;
+  prestige?: number | string | null;
 };
 
 const rankingTrophyLevels = [
@@ -192,8 +94,60 @@ export const getRankingTrophies = (monthRanks: MonthRank[]): ProfileTrophy[] =>
     ];
   });
 
-export const getChampionshipTrophies = (username: string): ProfileTrophy[] =>
-  championshipTrophiesByUsername[normalizeUsername(username)] ?? [];
+export const fetchChampionshipTrophies = async (username: string): Promise<ProfileTrophy[]> => {
+  const normalizedUsername = normalizeUsername(username);
+  if (!normalizedUsername) return [];
+
+  const rows = await loadSupabaseRows<TournamentProfileTrophyRow>(
+    "tournament_profile_trophies",
+    getSupabaseClient()
+      .from("tournament_profile_trophies")
+      .select(
+        "award_key,label,title,asset_path,href,date_label,date_value,placement_label,prestige",
+      )
+      .eq("player_name", normalizedUsername)
+      .order("date_value", { ascending: false }),
+  );
+
+  return rows
+    .map((row): ProfileTrophy | null => {
+      const key = String(row?.award_key ?? "").trim();
+      const label = String(row?.label ?? "").trim();
+      const title = String(row?.title ?? "").trim();
+      const assetPath = String(row?.asset_path ?? "").trim();
+      const href = String(row?.href ?? "").trim();
+      const dateLabel = String(row?.date_label ?? "").trim();
+      const dateValue = String(row?.date_value ?? "").slice(0, 10);
+      const placementLabel = String(row?.placement_label ?? "").trim();
+      const prestige = Number(row?.prestige);
+      if (
+        !key ||
+        !label ||
+        !title ||
+        !assetPath ||
+        !href ||
+        !dateLabel ||
+        !dateValue ||
+        !placementLabel ||
+        !Number.isFinite(prestige)
+      ) {
+        return null;
+      }
+
+      return {
+        key,
+        label,
+        title,
+        imageSrc: appAssetPath(assetPath),
+        href: appAssetPath(href),
+        dateLabel,
+        dateValue,
+        placementLabel,
+        prestige,
+      };
+    })
+    .filter((trophy): trophy is ProfileTrophy => trophy !== null);
+};
 
 export const sortProfileTrophies = (
   trophies: ProfileTrophy[],
@@ -212,9 +166,8 @@ export const sortProfileTrophies = (
 
 const sortChampionshipTrophiesForHeader = (trophies: ProfileTrophy[]): ProfileTrophy[] =>
   [...trophies].sort((left, right) => {
-    const leftIsAwc = left.key.startsWith("awc-");
-    const rightIsAwc = right.key.startsWith("awc-");
-    if (leftIsAwc !== rightIsAwc) return leftIsAwc ? -1 : 1;
+    const prestigeDifference = right.prestige - left.prestige;
+    if (prestigeDifference !== 0) return prestigeDifference;
 
     const dateDifference =
       new Date(`${right.dateValue}T00:00:00Z`).getTime() -

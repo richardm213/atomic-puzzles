@@ -4,33 +4,37 @@ import {
   addEmptyMainBracketRounds,
   getTournamentChampion,
   getTournamentDecisiveMatch,
-  getTournamentMeta,
+  normalizeTournamentMetaRow,
   type TournamentMatch,
 } from "./tournaments";
 
-describe("tournament match modes", () => {
-  it("routes Atomic Hyper Championship matches through the hyper viewer", () => {
-    expect(getTournamentMeta("ahc2026")?.matchMode).toBe("hyperbullet");
-    expect(getTournamentMeta("awc2025")?.matchMode).toBeUndefined();
-  });
-
-  it("publishes the 2026 Atomic Openings Championship with its own trophy", () => {
-    expect(getTournamentMeta("aoc2026")).toEqual(
-      expect.objectContaining({
-        title: "AOC 2026",
-        headingTitle: "Atomic Openings Championship 2026",
-        trophyAssetPath: "/images/awc-trophies/atomic-openings-championship.png",
+describe("tournament catalog rows", () => {
+  it("normalizes database-backed tournament metadata", () => {
+    expect(
+      normalizeTournamentMetaRow({
+        id: "ahc2026",
+        series_key: "ahc",
+        series_name: "Atomic Hyper Championship",
+        title: "AHC 2026",
+        heading_title: "Atomic Hyper Championship 2026",
+        year: 2026,
+        status: "available",
+        match_mode: "hyperbullet",
+        complete_main_bracket_from_round: "Round of 32",
+        trophy_asset_path: "/images/awc-trophies/atomic-hyper-championship.png",
+        show_champion: true,
+        display_order: 30,
+        home_feature_order: 20,
       }),
-    );
-  });
-
-  it("publishes the 2026 Atomic World Championship with its qualifying bracket", () => {
-    expect(getTournamentMeta("awc2026")).toEqual(
+    ).toEqual(
       expect.objectContaining({
-        title: "AWC 2026",
-        defaultMainBracketStartRound: "Round of 64",
-        completeMainBracketFromRound: "Round of 16",
-        trophyAssetPath: "/images/awc-trophies/awc.png",
+        id: "ahc2026",
+        seriesKey: "ahc",
+        seriesName: "Atomic Hyper Championship",
+        matchMode: "hyperbullet",
+        completeMainBracketFromRound: "Round of 32",
+        showChampion: true,
+        homeFeatureOrder: 20,
       }),
     );
   });

@@ -2,12 +2,61 @@ import "./Home.css";
 
 import { faTrophy } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
 import { Seo } from "../../components/Seo/Seo";
+import {
+  tournamentCatalogQueryOptions,
+  tournamentChampionsQueryOptions,
+} from "../../lib/matches/tournamentQueries";
+import type { TournamentMeta } from "../../lib/matches/tournaments";
 import { appAssetPath } from "../../utils/appAssetPath";
 
+const TournamentSpotlightCard = ({
+  tournament,
+  champion,
+}: {
+  tournament: TournamentMeta;
+  champion: string;
+}) => (
+  <Link
+    className="homeSpotlightCard homeTrophyShortcut"
+    data-series={tournament.seriesKey}
+    to="/tournaments/$tournamentId"
+    params={{ tournamentId: tournament.id }}
+  >
+    <span>Championship</span>
+    <h2>{tournament.headingTitle || `${tournament.seriesName} ${tournament.year}`}</h2>
+    <p>
+      {champion
+        ? `${champion} won the ${tournament.year} ${tournament.seriesName}.`
+        : `Follow the seeded field and ${tournament.year} championship bracket.`}
+    </p>
+    {tournament.trophyAssetPath ? (
+      <img
+        src={appAssetPath(tournament.trophyAssetPath)}
+        alt=""
+        width="140"
+        height="140"
+        loading="lazy"
+        decoding="async"
+      />
+    ) : null}
+  </Link>
+);
+
 export const HomePage = () => {
+  const catalogQuery = useQuery(tournamentCatalogQueryOptions());
+  const championsQuery = useQuery(tournamentChampionsQueryOptions());
+  const champions = championsQuery.data ?? {};
+  const featuredTournaments = (catalogQuery.data ?? [])
+    .filter(
+      (tournament) =>
+        tournament.status === "available" && tournament.homeFeatureOrder !== undefined,
+    )
+    .sort((left, right) => Number(left.homeFeatureOrder) - Number(right.homeFeatureOrder));
+
   return (
     <div className="homePage">
       <Seo
@@ -43,41 +92,13 @@ export const HomePage = () => {
 
       <section className="homeSpotlightSection" aria-label="Atomic chess shortcuts">
         <div className="homeSpotlightGrid">
-          <Link
-            className="homeSpotlightCard homeTrophyShortcut homeAwcShortcut"
-            to="/tournaments/$tournamentId"
-            params={{ tournamentId: "awc2026" }}
-          >
-            <span>Championship</span>
-            <h2>Atomic World Championship 2026</h2>
-            <p>Follow the seeded field and 2026 championship bracket.</p>
-            <img
-              src={appAssetPath("/images/awc-trophies/awc.png")}
-              alt=""
-              width="140"
-              height="140"
-              loading="lazy"
-              decoding="async"
+          {featuredTournaments.slice(0, 2).map((tournament) => (
+            <TournamentSpotlightCard
+              key={tournament.id}
+              tournament={tournament}
+              champion={champions[tournament.id] || ""}
             />
-          </Link>
-
-          <Link
-            className="homeSpotlightCard homeTrophyShortcut homeAtomicHyperShortcut"
-            to="/tournaments/$tournamentId"
-            params={{ tournamentId: "ahc2026" }}
-          >
-            <span>Championship</span>
-            <h2>Atomic Hyper Championship</h2>
-            <p>rkrounit won the 2026 Atomic Hyper Championship!</p>
-            <img
-              src={appAssetPath("/images/awc-trophies/atomic-hyper-championship.png")}
-              alt=""
-              width="140"
-              height="250"
-              loading="lazy"
-              decoding="async"
-            />
-          </Link>
+          ))}
 
           <Link className="homeSpotlightCard homeYearlyRankingsShortcut" to="/rankings/yearly">
             <span>Rankings</span>
@@ -99,23 +120,13 @@ export const HomePage = () => {
             </strong>
           </Link>
 
-          <Link
-            className="homeSpotlightCard homeTrophyShortcut homeChesscomShortcut"
-            to="/tournaments/$tournamentId"
-            params={{ tournamentId: "ccac2026" }}
-          >
-            <span>Championship</span>
-            <h2>Chess.com Atomic 2026</h2>
-            <p>wolfram_ep won the 2026 Chess.com atomic championship.</p>
-            <img
-              src={appAssetPath("/images/awc-trophies/chesscomatomic.png")}
-              alt=""
-              width="140"
-              height="140"
-              loading="lazy"
-              decoding="async"
+          {featuredTournaments.slice(2).map((tournament) => (
+            <TournamentSpotlightCard
+              key={tournament.id}
+              tournament={tournament}
+              champion={champions[tournament.id] || ""}
             />
-          </Link>
+          ))}
 
           <Link className="homeSpotlightCard homePuzzleLeaderboardShortcut" to="/solve/leaderboard">
             <span>Puzzles</span>

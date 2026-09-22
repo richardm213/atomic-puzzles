@@ -1,10 +1,6 @@
 import "./PlayerProfile.css";
 
-import {
-  faChartLine,
-  faMagnifyingGlass,
-  faShieldHalved,
-} from "@fortawesome/free-solid-svg-icons";
+import { faChartLine, faMagnifyingGlass, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -54,7 +50,7 @@ import {
 } from "../../features/profile/profilePresentation";
 import { profileMatchHistoryQueryOptions } from "../../features/profile/profileQueries";
 import {
-  getChampionshipTrophies,
+  fetchChampionshipTrophies,
   getCurrentMonthKey,
   getProfileHeaderTrophies,
   getRankingTrophies,
@@ -174,6 +170,12 @@ export const PlayerProfilePage = ({
   const profileAliasEntry: AliasIdentityRow | null = profileAliasQuery.data ?? null;
   const aliasesLoaded = Boolean(normalizedUsername) && !profileAliasQuery.isPending;
   const canonicalUsername = profileAliasEntry?.username ?? normalizedUsername;
+  const championshipTrophiesQuery = useQuery({
+    queryKey: ["profile", canonicalUsername, "tournament-trophies"],
+    queryFn: () => fetchChampionshipTrophies(canonicalUsername),
+    enabled: aliasesLoaded && Boolean(canonicalUsername),
+    staleTime: 10 * 60 * 1_000,
+  });
   const historyAvailabilityQuery = useQuery({
     ...siteUserRegistrationQueryOptions(canonicalUsername),
     enabled: !historyOnly && aliasesLoaded && Boolean(canonicalUsername),
@@ -569,10 +571,7 @@ export const PlayerProfilePage = ({
     [latestMonthKeyByMode, profileModeOptions, ratingDisplayByMode],
   );
   const rankingTrophies = useMemo(() => getRankingTrophies(monthRanks), [monthRanks]);
-  const championshipTrophies = useMemo(
-    () => getChampionshipTrophies(canonicalUsername),
-    [canonicalUsername],
-  );
+  const championshipTrophies = championshipTrophiesQuery.data ?? [];
   const profileTrophies = useMemo(
     () => sortProfileTrophies([...championshipTrophies, ...rankingTrophies], "prestige"),
     [championshipTrophies, rankingTrophies],
@@ -1522,9 +1521,7 @@ export const PlayerProfilePage = ({
                         ))}
                       </div>
                     ) : (
-                      <div className="emptyRankings">
-                        No top 10, AWC, or Chess.com championship trophies yet.
-                      </div>
+                      <div className="emptyRankings">No top 10 or championship trophies yet.</div>
                     )}
                   </>
                 ) : null}

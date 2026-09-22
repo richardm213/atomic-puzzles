@@ -7,13 +7,6 @@ import { appAssetPath } from "../../utils/appAssetPath";
 import { normalizeUsername } from "../../utils/playerNames";
 import styles from "./TournamentArchiveCard.module.css";
 
-const tournamentSeriesName = (tournament: TournamentMeta): string => {
-  if (tournament.id.startsWith("ahc")) return "Atomic Hyper Championship";
-  if (tournament.id.startsWith("aoc")) return "Atomic Openings Championship";
-  if (tournament.id.startsWith("ccac")) return "Chess.com Atomic Championship";
-  return "Atomic World Championship";
-};
-
 type TournamentArchiveCardProps = {
   tournament: TournamentMeta;
   champion: string;
@@ -25,7 +18,7 @@ export const TournamentArchiveCard = ({
   champion,
   spotlight = false,
 }: TournamentArchiveCardProps) => {
-  const showWinner = Boolean(champion) && tournament.id !== "awc2025";
+  const showWinner = Boolean(champion) && tournament.showChampion;
   const cardClassName = spotlight ? `${styles.card} ${styles.spotlight}` : styles.card;
 
   return (
@@ -48,7 +41,7 @@ export const TournamentArchiveCard = ({
       </div>
 
       <div className={styles.copy}>
-        <h3>{tournamentSeriesName(tournament)}</h3>
+        <h3>{tournament.seriesName}</h3>
         {showWinner ? (
           <div className={styles.champion}>
             <span>Champion</span>
@@ -69,7 +62,7 @@ export const TournamentArchiveCard = ({
         className={styles.cardLink}
         to="/tournaments/$tournamentId"
         params={{ tournamentId: tournament.id }}
-        aria-label={`Open ${tournamentSeriesName(tournament)} ${tournament.year} bracket`}
+        aria-label={`Open ${tournament.seriesName} ${tournament.year} bracket`}
       >
         <span>Open bracket</span>
         <FontAwesomeIcon icon={faArrowRight} aria-hidden="true" />

@@ -1,10 +1,12 @@
-import type { Mode } from "../../constants/matches";
+import { isMode, type Mode } from "../../constants/matches";
 import { cachedRequest } from "../../utils/requestCache";
 import { getSupabaseClient } from "../supabase/client";
 import { fetchAllSupabaseRows, loadSupabaseRows } from "../supabase/rows";
 
 export type TournamentMeta = {
   id: string;
+  seriesKey: string;
+  seriesName: string;
   title: string;
   headingTitle?: string;
   year: number;
@@ -14,6 +16,9 @@ export type TournamentMeta = {
   defaultMainBracketStartRound?: string;
   completeMainBracketFromRound?: string;
   trophyAssetPath?: string;
+  showChampion: boolean;
+  displayOrder: number;
+  homeFeatureOrder?: number;
 };
 
 export type TournamentMatch = {
@@ -71,78 +76,44 @@ type TournamentMatchRowFromDb = {
   loser_to?: string | null;
 };
 
+type TournamentMetaRowFromDb = {
+  id?: string | null;
+  series_key?: string | null;
+  series_name?: string | null;
+  title?: string | null;
+  heading_title?: string | null;
+  year?: number | string | null;
+  status?: string | null;
+  match_mode?: string | null;
+  hide_start_round_controls?: boolean | null;
+  default_main_bracket_start_round?: string | null;
+  complete_main_bracket_from_round?: string | null;
+  trophy_asset_path?: string | null;
+  show_champion?: boolean | null;
+  display_order?: number | string | null;
+  home_feature_order?: number | string | null;
+};
+
 const TOURNAMENT_MATCHES_TABLE = "tournament_matches";
 const PLAYER_COUNTRIES_TABLE = "player_countries";
 const TOURNAMENT_SEEDS_TABLE = "tournament_seeds";
+const TOURNAMENT_CATALOG_TABLE = "tournament_catalog";
 
 const TOURNAMENT_MATCHES_SELECT_COLUMNS =
   "tournament,bracket,round,order,id,match_id,p1,p2,s1,s2,winner_to,loser_to";
 const PLAYER_COUNTRIES_SELECT_COLUMNS = "player_name,country_code";
 const TOURNAMENT_SEEDS_SELECT_COLUMNS = "tournament,player_name,seed";
+const TOURNAMENT_CATALOG_SELECT_COLUMNS =
+  "id,series_key,series_name,title,heading_title,year,status,match_mode,hide_start_round_controls,default_main_bracket_start_round,complete_main_bracket_from_round,trophy_asset_path,show_champion,display_order,home_feature_order";
 
 const tournamentMatchesCache = new Map<string, Promise<TournamentMatch[]>>();
 const tournamentMatchLocationCache = new Map<string, Promise<TournamentMatchLocation | null>>();
 const playerCountriesCache = new Map<string, Promise<Record<string, string>>>();
 const tournamentSeedsCache = new Map<string, Promise<Record<string, number>>>();
 const tournamentBracketCache = new Map<string, Promise<TournamentBracket | null>>();
+const tournamentCatalogCache = new Map<string, Promise<TournamentMeta[]>>();
 
 type CsvRow = Record<string, string>;
-
-const trophyAssetPaths = {
-  ahc: "/images/awc-trophies/atomic-hyper-championship.png",
-  aoc: "/images/awc-trophies/atomic-openings-championship.png",
-  awc: "/images/awc-trophies/awc.png",
-  ccac: "/images/awc-trophies/chesscomatomic.png",
-} as const;
-
-const availableTournament = (meta: Omit<TournamentMeta, "status">): TournamentMeta => ({
-  ...meta,
-  status: "available",
-});
-
-const awcTournament = (year: number): TournamentMeta =>
-  availableTournament({
-    id: `awc${year}`,
-    title: `AWC ${year}`,
-    year,
-    trophyAssetPath: trophyAssetPaths.awc,
-  });
-
-const tournaments: TournamentMeta[] = [
-  availableTournament({
-    id: "awc2026",
-    title: "AWC 2026",
-    year: 2026,
-    defaultMainBracketStartRound: "Round of 64",
-    completeMainBracketFromRound: "Round of 16",
-    trophyAssetPath: trophyAssetPaths.awc,
-  }),
-  availableTournament({
-    id: "aoc2026",
-    title: "AOC 2026",
-    headingTitle: "Atomic Openings Championship 2026",
-    year: 2026,
-    trophyAssetPath: trophyAssetPaths.aoc,
-  }),
-  availableTournament({
-    id: "ahc2026",
-    title: "AHC 2026",
-    headingTitle: "Atomic Hyper Championship 2026",
-    year: 2026,
-    matchMode: "hyperbullet",
-    completeMainBracketFromRound: "Round of 32",
-    trophyAssetPath: trophyAssetPaths.ahc,
-  }),
-  availableTournament({
-    id: "ccac2026",
-    title: "CCAC 2026",
-    headingTitle: "Chess.com Atomic Championship 2026",
-    year: 2026,
-    hideStartRoundControls: true,
-    trophyAssetPath: trophyAssetPaths.ccac,
-  }),
-  ...[2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016].map(awcTournament),
-];
 
 const roundDisplayOrder: Record<string, string[]> = {
   main: [
@@ -225,6 +196,55 @@ const normalizeMatchRow = (row: TournamentMatchRowFromDb): TournamentMatch => ({
   winner_to: String(row?.winner_to ?? "").trim(),
   loser_to: String(row?.loser_to ?? "").trim(),
 });
+
+export const normalizeTournamentMetaRow = (row: TournamentMetaRowFromDb): TournamentMeta | null => {
+  const id = String(row?.id ?? "").trim();
+  const seriesKey = String(row?.series_key ?? "").trim();
+  const seriesName = String(row?.series_name ?? "").trim();
+  const title = String(row?.title ?? "").trim();
+  const year = Number(row?.year);
+  const status = String(row?.status ?? "").trim();
+  const mode = String(row?.match_mode ?? "blitz")
+    .trim()
+    .toLowerCase();
+  if (
+    !id ||
+    !seriesKey ||
+    !seriesName ||
+    !title ||
+    !Number.isInteger(year) ||
+    (status !== "available" && status !== "pending") ||
+    !isMode(mode)
+  ) {
+    return null;
+  }
+
+  const homeFeatureOrder =
+    row?.home_feature_order === null || row?.home_feature_order === undefined
+      ? NaN
+      : Number(row.home_feature_order);
+  const headingTitle = String(row?.heading_title ?? "").trim();
+  const defaultMainBracketStartRound = String(row?.default_main_bracket_start_round ?? "").trim();
+  const completeMainBracketFromRound = String(row?.complete_main_bracket_from_round ?? "").trim();
+  const trophyAssetPath = String(row?.trophy_asset_path ?? "").trim();
+  return {
+    id,
+    seriesKey,
+    seriesName,
+    title,
+    year,
+    status,
+    matchMode: mode,
+    hideStartRoundControls: Boolean(row?.hide_start_round_controls),
+    showChampion: row?.show_champion !== false,
+    displayOrder: Number(row?.display_order) || 0,
+    ...(headingTitle ? { headingTitle } : {}),
+    ...(defaultMainBracketStartRound ? { defaultMainBracketStartRound } : {}),
+    ...(completeMainBracketFromRound ? { completeMainBracketFromRound } : {}),
+    ...(trophyAssetPath ? { trophyAssetPath } : {}),
+    ...(Number.isFinite(homeFeatureOrder) ? { homeFeatureOrder } : {}),
+  };
+};
 
 const parseCsvLine = (line: string): string[] => {
   const values: string[] = [];
@@ -329,7 +349,7 @@ const fetchLocalTournamentSeedMap = async (
         .trim()
         .toLowerCase();
       const seed = Number(row.seed);
-      if (!playerName || !Number.isFinite(seed)) return accumulator;
+      if (!playerName || !Number.isInteger(seed) || seed < 1 || seed > 16) return accumulator;
       accumulator[playerName] = seed;
       return accumulator;
     }, {});
@@ -539,7 +559,9 @@ const fetchTournamentSeedMap = async (tournamentId: string): Promise<Record<stri
       supabase
         .from(TOURNAMENT_SEEDS_TABLE)
         .select(TOURNAMENT_SEEDS_SELECT_COLUMNS)
-        .eq("tournament", tournamentId);
+        .eq("tournament", tournamentId)
+        .gte("seed", 1)
+        .lte("seed", 16);
 
     const rows = await fetchAllSupabaseRows<{
       player_name?: string | null;
@@ -550,18 +572,39 @@ const fetchTournamentSeedMap = async (tournamentId: string): Promise<Record<stri
         .trim()
         .toLowerCase();
       const seed = Number(row?.seed);
-      if (!playerName || !Number.isFinite(seed)) return accumulator;
+      if (!playerName || !Number.isInteger(seed) || seed < 1 || seed > 16) return accumulator;
       accumulator[playerName] = seed;
       return accumulator;
     }, {});
   });
 
-export const tournamentCatalog: readonly TournamentMeta[] = tournaments;
+export const fetchTournamentCatalog = async (): Promise<TournamentMeta[]> =>
+  cachedRequest(tournamentCatalogCache, ["tournamentCatalog"], async () => {
+    const rows = await loadSupabaseRows<TournamentMetaRowFromDb>(
+      TOURNAMENT_CATALOG_TABLE,
+      getSupabaseClient()
+        .from(TOURNAMENT_CATALOG_TABLE)
+        .select(TOURNAMENT_CATALOG_SELECT_COLUMNS)
+        .order("year", { ascending: false })
+        .order("display_order", { ascending: true })
+        .order("id", { ascending: true }),
+    );
+
+    return rows
+      .map(normalizeTournamentMetaRow)
+      .filter((tournament): tournament is TournamentMeta => tournament !== null);
+  });
 
 export const getAdjacentTournamentMetas = (
   tournamentId: string,
+  catalog: readonly TournamentMeta[],
 ): { previous: TournamentMeta | null; next: TournamentMeta | null } => {
-  const ordered = [...tournaments].sort((left, right) => right.year - left.year);
+  const ordered = [...catalog].sort(
+    (left, right) =>
+      right.year - left.year ||
+      left.displayOrder - right.displayOrder ||
+      left.id.localeCompare(right.id),
+  );
   const index = ordered.findIndex((entry) => entry.id === tournamentId);
 
   if (index < 0) {
@@ -577,8 +620,8 @@ export const getAdjacentTournamentMetas = (
   };
 };
 
-export const getTournamentMeta = (tournamentId: string): TournamentMeta | null =>
-  tournaments.find((entry) => entry.id === tournamentId) ?? null;
+export const getTournamentMeta = async (tournamentId: string): Promise<TournamentMeta | null> =>
+  (await fetchTournamentCatalog()).find((entry) => entry.id === tournamentId) ?? null;
 
 const getTournamentRoundLabel = (match: TournamentMatch): string => {
   if (match.bracket === "grand_final") {
@@ -626,7 +669,7 @@ export const getTournamentMatchLocation = async (
           .sort(compareTournamentMatchesByBracketOrder)[0] ?? null;
       if (!match) return null;
 
-      const tournament = getTournamentMeta(match.tournament);
+      const tournament = await getTournamentMeta(match.tournament);
       if (!tournament) return null;
 
       return {
@@ -681,7 +724,7 @@ export const getTournamentBracket = async (
   tournamentId: string,
 ): Promise<TournamentBracket | null> =>
   cachedRequest(tournamentBracketCache, ["tournamentBracket", tournamentId], async () => {
-    const meta = getTournamentMeta(tournamentId);
+    const meta = await getTournamentMeta(tournamentId);
     if (!meta) return null;
 
     const [rawMatches, countryMap, seedMap] = await Promise.all([

@@ -1,12 +1,22 @@
 import { queryOptions } from "@tanstack/react-query";
 
-import { getTournamentBracket, getTournamentChampion, tournamentCatalog } from "./tournaments";
+import { getSupabaseClient } from "../supabase/client";
+import { loadSupabaseRows } from "../supabase/rows";
+import { fetchTournamentCatalog, getTournamentBracket } from "./tournaments";
 
 export const tournamentQueryKeys = {
   all: ["tournaments"] as const,
+  catalog: () => ["tournaments", "catalog"] as const,
   bracket: (tournamentId: string) => ["tournaments", "bracket", tournamentId] as const,
   champions: () => ["tournaments", "champions"] as const,
 };
+
+export const tournamentCatalogQueryOptions = () =>
+  queryOptions({
+    queryKey: tournamentQueryKeys.catalog(),
+    queryFn: fetchTournamentCatalog,
+    staleTime: 10 * 60 * 1_000,
+  });
 
 export const tournamentBracketQueryOptions = (tournamentId: string) =>
   queryOptions({
@@ -19,20 +29,21 @@ export const tournamentChampionsQueryOptions = () =>
   queryOptions({
     queryKey: tournamentQueryKeys.champions(),
     queryFn: async () => {
-      const availableTournaments = tournamentCatalog.filter(
-        (tournament) => tournament.status === "available",
+      const rows = await loadSupabaseRows<{
+        tournament_id?: string | null;
+        player_name?: string | null;
+      }>(
+        "tournament_winners",
+        getSupabaseClient().from("tournament_winners").select("tournament_id,player_name"),
       );
-      const championEntries = await Promise.all(
-        availableTournaments.map(async (tournament) => {
-          try {
-            const bracket = await getTournamentBracket(tournament.id);
-            return [tournament.id, getTournamentChampion(bracket)] as const;
-          } catch {
-            return [tournament.id, ""] as const;
-          }
-        }),
+      return Object.fromEntries(
+        rows
+          .map((row) => [
+            String(row?.tournament_id ?? "").trim(),
+            String(row?.player_name ?? "").trim(),
+          ])
+          .filter(([tournamentId, champion]) => tournamentId && champion),
       );
-      return Object.fromEntries(championEntries.filter(([, champion]) => champion));
     },
     staleTime: 10 * 60 * 1_000,
   });
