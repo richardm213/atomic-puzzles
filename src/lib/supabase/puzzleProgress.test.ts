@@ -10,7 +10,11 @@ vi.mock("./client", () => ({
   }),
 }));
 
-import { fetchPuzzleProgressPage, recordPuzzleProgress } from "./puzzleProgress";
+import {
+  fetchAttemptedPuzzleIds,
+  fetchPuzzleProgressPage,
+  recordPuzzleProgress,
+} from "./puzzleProgress";
 
 describe("fetchPuzzleProgressPage", () => {
   beforeEach(() => {
@@ -79,6 +83,29 @@ describe("fetchPuzzleProgressPage", () => {
         }),
       }),
     );
+    expect(window.localStorage.getItem("atomic-puzzles.puzzle-progress.solver")).toBeNull();
+  });
+
+  it("uses Supabase as the sole source of attempted puzzle ids", async () => {
+    window.localStorage.setItem(
+      "atomic-puzzles.puzzle-progress.whooooami",
+      JSON.stringify([
+        {
+          puzzle_id: "79",
+          first_attempt_at: "2026-09-21T00:00:00.000Z",
+          puzzle_correct: true,
+          incorrect_move: null,
+        },
+      ]),
+    );
+    rpcMock.mockResolvedValue({ data: [], error: null });
+
+    const attemptedIds = await fetchAttemptedPuzzleIds("whooooami");
+
+    expect(attemptedIds).toEqual(new Set());
+    expect(rpcMock).toHaveBeenCalledWith("get_attempted_puzzle_ids", {
+      p_username: "whooooami",
+    });
   });
 
   it("records the first divergent move for a correct alternate solution", async () => {

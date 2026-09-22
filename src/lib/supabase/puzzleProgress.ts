@@ -28,64 +28,10 @@ const normalizePuzzleId = (puzzleId: unknown): string => {
   return String(puzzleId).trim();
 };
 
-const getLocalProgressStorageKey = (username: string): string =>
-  `atomic-puzzles.puzzle-progress.${normalizeUsername(username)}`;
-
-const readLocalPuzzleProgress = (username: string): PuzzleProgressRow[] => {
-  if (typeof window === "undefined") return [];
-
-  const storageKey = getLocalProgressStorageKey(username);
-  if (!storageKey) return [];
-
-  try {
-    const rawValue = window.localStorage.getItem(storageKey);
-    if (!rawValue) return [];
-
-    const parsedValue: unknown = JSON.parse(rawValue);
-    if (!Array.isArray(parsedValue)) return [];
-
-    return parsedValue
-      .map((row): PuzzleProgressRow => {
-        return {
-          puzzle_id: normalizePuzzleId(row?.puzzle_id),
-          first_attempt_at: typeof row?.first_attempt_at === "string" ? row.first_attempt_at : "",
-          puzzle_correct: Boolean(row?.puzzle_correct),
-          incorrect_move:
-            typeof row?.incorrect_move === "string" && row.incorrect_move.trim()
-              ? row.incorrect_move.trim()
-              : null,
-          correct_move:
-            typeof row?.correct_move === "string" && row.correct_move.trim()
-              ? row.correct_move.trim()
-              : null,
-        };
-      })
-      .filter((row) => row.puzzle_id && row.first_attempt_at);
-  } catch {
-    return [];
-  }
-};
-
-const writeLocalPuzzleProgress = (username: string, rows: PuzzleProgressRow[]): void => {
-  if (typeof window === "undefined") return;
-
-  const storageKey = getLocalProgressStorageKey(username);
-  if (!storageKey) return;
-
-  try {
-    window.localStorage.setItem(storageKey, JSON.stringify(rows));
-  } catch {
-    // Keep puzzle progress resilient if local storage is unavailable.
-  }
-};
-
-const mergePuzzleProgressRows = (
-  serverRows: PuzzleProgressRow[],
-  localRows: PuzzleProgressRow[],
-): PuzzleProgressRow[] => {
+const normalizePuzzleProgressRows = (rows: PuzzleProgressRow[]): PuzzleProgressRow[] => {
   const rowsByPuzzleId = new Map<string, PuzzleProgressRow>();
 
-  [...serverRows, ...localRows].forEach((row) => {
+  rows.forEach((row) => {
     const puzzleId = normalizePuzzleId(row?.puzzle_id);
     const firstAttemptAt = typeof row?.first_attempt_at === "string" ? row.first_attempt_at : "";
     if (!puzzleId || !firstAttemptAt) return;
@@ -147,30 +93,6 @@ const filterPuzzleProgressRowsSince = (
     const attemptTimestamp = new Date(row?.first_attempt_at ?? "").getTime();
     return !Number.isNaN(attemptTimestamp) && attemptTimestamp >= sinceTimestamp;
   });
-};
-
-const upsertLocalPuzzleProgressRow = (username: string, row: PuzzleProgressRow): void => {
-  const puzzleId = normalizePuzzleId(row?.puzzle_id);
-  const firstAttemptAt = typeof row?.first_attempt_at === "string" ? row.first_attempt_at : "";
-  if (!puzzleId || !firstAttemptAt) return;
-
-  const mergedRows = mergePuzzleProgressRows(readLocalPuzzleProgress(username), [
-    {
-      puzzle_id: puzzleId,
-      first_attempt_at: firstAttemptAt,
-      puzzle_correct: Boolean(row?.puzzle_correct),
-      incorrect_move:
-        typeof row?.incorrect_move === "string" && row.incorrect_move.trim()
-          ? row.incorrect_move.trim()
-          : null,
-      correct_move:
-        typeof row?.correct_move === "string" && row.correct_move.trim()
-          ? row.correct_move.trim()
-          : null,
-    },
-  ]);
-
-  writeLocalPuzzleProgress(username, mergedRows);
 };
 
 const loadPuzzleProgressPageFromRpc = async (
@@ -297,7 +219,6 @@ export const recordPuzzleProgress = async ({
   }
 
   const request = (async (): Promise<void> => {
-    const firstAttemptAt = new Date().toISOString();
     await postApi(
       "/api/puzzles/progress",
       {
@@ -308,14 +229,6 @@ export const recordPuzzleProgress = async ({
       },
       { errorMessage: "Unable to record puzzle progress." },
     );
-
-    upsertLocalPuzzleProgressRow(normalizedUsername, {
-      puzzle_id: normalizedPuzzleId,
-      first_attempt_at: firstAttemptAt,
-      puzzle_correct: Boolean(puzzleCorrect),
-      incorrect_move: normalizedIncorrectMove,
-      correct_move: normalizedCorrectMove,
-    });
   })().finally(() => {
     if (puzzleProgressWriteRequests.get(requestKey) === request) {
       puzzleProgressWriteRequests.delete(requestKey);
@@ -340,7 +253,6 @@ export const fetchPuzzleProgressPage = async (
   const boundedPageSize = Math.max(1, Math.floor(Number(pageSize)) || 20);
   const from = (boundedPage - 1) * boundedPageSize;
   const hasSinceFilter = getSinceTimestamp(sinceDate) !== null;
-  const localRows = readLocalPuzzleProgress(normalizedUsername);
   let serverRows: PuzzleProgressRow[] = [];
   let serverCount = 0;
   let serverRowsArePaged = false;
@@ -348,7 +260,7 @@ export const fetchPuzzleProgressPage = async (
   try {
     const supabase = getSupabaseClient();
     try {
-      if (hasSinceFilter || localRows.length > 0) {
+      if (hasSinceFilter) {
         serverRows = await loadAllPuzzleProgressRowsFromRpc(supabase, normalizedUsername);
         serverCount = serverRows.length;
       } else {
@@ -401,15 +313,12 @@ export const fetchPuzzleProgressPage = async (
     };
   }
 
-  const mergedRows = filterPuzzleProgressRowsSince(
-    mergePuzzleProgressRows(serverRows, localRows),
-    sinceDate,
-  );
-  const pagedRows = mergedRows.slice(from, from + boundedPageSize);
+  const filteredRows = filterPuzzleProgressRowsSince(serverRows, sinceDate);
+  const pagedRows = filteredRows.slice(from, from + boundedPageSize);
 
   return {
     rows: pagedRows,
-    total: hasSinceFilter ? mergedRows.length : Math.max(serverCount, mergedRows.length),
+    total: hasSinceFilter ? filteredRows.length : Math.max(serverCount, filteredRows.length),
   };
 };
 
@@ -419,7 +328,6 @@ export const fetchPuzzleProgressRowsForUsername = async (
   const normalizedUsername = normalizeUsername(username);
   if (!normalizedUsername) return [];
 
-  const localRows = readLocalPuzzleProgress(normalizedUsername);
   let serverRows: PuzzleProgressRow[] = [];
 
   try {
@@ -439,7 +347,7 @@ export const fetchPuzzleProgressRowsForUsername = async (
     serverRows = [];
   }
 
-  return mergePuzzleProgressRows(serverRows, localRows);
+  return normalizePuzzleProgressRows(serverRows);
 };
 
 export const fetchAllPuzzleProgressRows = async (): Promise<PuzzleProgressWithUsernameRow[]> => {
@@ -496,7 +404,6 @@ export const fetchPuzzleAttemptsForPuzzle = async (
 export const fetchAttemptedPuzzleIds = async (username: string): Promise<Set<string>> => {
   const normalizedUsername = normalizeUsername(username);
   if (!normalizedUsername) return new Set();
-  const localRows = readLocalPuzzleProgress(normalizedUsername);
   let serverRows: Array<{ puzzle_id?: unknown }> = [];
 
   try {
@@ -513,7 +420,5 @@ export const fetchAttemptedPuzzleIds = async (username: string): Promise<Set<str
     serverRows = [];
   }
 
-  return new Set(
-    [...serverRows, ...localRows].map((row) => normalizePuzzleId(row?.puzzle_id)).filter(Boolean),
-  );
+  return new Set(serverRows.map((row) => normalizePuzzleId(row?.puzzle_id)).filter(Boolean));
 };
