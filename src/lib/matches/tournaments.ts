@@ -141,7 +141,7 @@ const tournaments: TournamentMeta[] = [
     hideStartRoundControls: true,
     trophyAssetPath: trophyAssetPaths.ccac,
   }),
-  ...[2025, 2024, 2023, 2022, 2021].map(awcTournament),
+  ...[2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016].map(awcTournament),
 ];
 
 const roundDisplayOrder: Record<string, string[]> = {
@@ -164,6 +164,10 @@ const roundDisplayOrder: Record<string, string[]> = {
     "Round 3",
     "Round 4",
     "Round 5",
+    "Round 6",
+    "Round 7",
+    "Round 8",
+    "Round 9",
     "Final",
   ],
   grand_final: ["Set 1", "Reset"],
