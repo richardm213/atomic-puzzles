@@ -1945,11 +1945,9 @@ export const PuzzleSolverPage = () => {
       <div className="panel puzzlePanel">
         <header className="puzzleHeader">
           <div className="puzzleHeaderTopline">
-            <span className="puzzleHeaderEyebrow">
-              {activePuzzleId ? `Atomic puzzle ${activePuzzleId}` : "Atomic puzzle"}
-            </span>
+            <h1>{activePuzzleId ? `Puzzle ${activePuzzleId}` : "Puzzle"}</h1>
             <div className="puzzleHeaderStatus">
-              {showPuzzleTimer ? (
+              {!isMobileLayout && showPuzzleTimer ? (
                 <div
                   className="puzzleElapsedTimer desktop"
                   aria-label={`Elapsed time ${formatElapsedTime(elapsedTimeMs)}`}
@@ -1977,19 +1975,14 @@ export const PuzzleSolverPage = () => {
             </div>
           </div>
 
-          <div className="puzzleHeaderTitle">
-            <h1>Solve the Atomic Tactic</h1>
-          </div>
-
           <div className="puzzleHeaderMetadata">
             <div className="puzzleHeaderMeta" title={author}>
               <span>Created by</span>
               <strong>{author}</strong>
             </div>
             {event ? (
-              <div className="puzzleHeaderMeta" title={event}>
-                <span>Event</span>
-                <strong>{event}</strong>
+              <div className="puzzleHeaderEvent" title={event}>
+                {event}
               </div>
             ) : null}
           </div>
@@ -2081,12 +2074,16 @@ export const PuzzleSolverPage = () => {
 
         {!isMobileLayout ? (
           <div className="puzzleDetails">
-            {renderCastlingRights()}
-            {currentFen && materialCount.advantage ? (
-              <div className="materialDifferencePanel" aria-label="Material difference">
-                <span className="materialDifferenceLabel">Material</span>
-                {renderMaterialDifference("white")}
-                {renderMaterialDifference("black")}
+            {hasCastlingRights || (currentFen && materialCount.advantage) ? (
+              <div className="puzzlePositionSummary">
+                {renderCastlingRights()}
+                {currentFen && materialCount.advantage ? (
+                  <div className="materialDifferencePanel" aria-label="Material difference">
+                    <span className="materialDifferenceLabel">Material</span>
+                    {renderMaterialDifference("white")}
+                    {renderMaterialDifference("black")}
+                  </div>
+                ) : null}
               </div>
             ) : null}
             {renderPuzzleInfoSection()}
@@ -2099,15 +2096,6 @@ export const PuzzleSolverPage = () => {
           ref={boardPanelRef}
           className={`boardFrame ${feedback ? `hasFeedback ${feedback.type}` : ""}`}
         >
-          {isMobileLayout && showPuzzleTimer ? (
-            <div
-              className="puzzleElapsedTimer"
-              aria-label={`Elapsed time ${formatElapsedTime(elapsedTimeMs)}`}
-            >
-              <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
-              <span>{formatElapsedTime(elapsedTimeMs)}</span>
-            </div>
-          ) : null}
           {!isMobileLayout && feedback ? (
             <div
               className={`feedbackBadge ${feedback.type}`}

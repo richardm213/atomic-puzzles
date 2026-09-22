@@ -625,6 +625,9 @@ describe("PuzzleSolverPage solution options", () => {
     render(<PuzzleSolverPage />);
 
     const commentsTab = await screen.findByRole("tab", { name: "Comments" });
+    await waitFor(() =>
+      expect(screen.queryByLabelText(/^Elapsed time /)).not.toBeInTheDocument(),
+    );
     await waitFor(() => expect(commentsTab).toBeEnabled());
     await user.click(commentsTab);
 

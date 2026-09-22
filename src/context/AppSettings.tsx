@@ -23,7 +23,9 @@ const STORAGE_KEYS = {
   boardOverrideDarkSquare: "atomic-puzzles.board-override-dark-square",
   hideRankingsOpenings: "atomic-puzzles.rankings.hide-openings",
   showChessComRankings: "atomic-puzzles.rankings.show-chesscom-users",
-  showPuzzleTimer: "atomic-puzzles.puzzles.show-timer",
+  // The original key was written as `true` for users before the timer became opt-in.
+  // Start from a clean preference so unchecked is the effective default for everyone.
+  showPuzzleTimer: "atomic-puzzles.puzzles.show-timer-v2",
   showRatingGraphLines: "profile.ratingGraph.showLines",
   hiddenRatingGraphModes: "profile.ratingGraph.hiddenModes",
 };

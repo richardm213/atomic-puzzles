@@ -1305,6 +1305,10 @@
 }
 
 @media (max-width: 700px) {
+  .puzzleTimerSettingsSection {
+    display: none;
+  }
+
   .topNav {
     flex-wrap: nowrap;
     gap: 10px;

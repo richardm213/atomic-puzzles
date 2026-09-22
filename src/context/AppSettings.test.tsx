@@ -40,7 +40,7 @@ describe("puzzle timer preference", () => {
   });
 
   it("respects an existing preference to show the timer", () => {
-    window.localStorage.setItem("atomic-puzzles.puzzles.show-timer", "true");
+    window.localStorage.setItem("atomic-puzzles.puzzles.show-timer-v2", "true");
     render(
       <AppSettingsProvider>
         <PuzzleTimerSetting />
@@ -48,6 +48,17 @@ describe("puzzle timer preference", () => {
     );
 
     expect(screen.getByText("Timer shown")).toBeInTheDocument();
+  });
+
+  it("does not carry forward the old opt-out default", () => {
+    window.localStorage.setItem("atomic-puzzles.puzzles.show-timer", "true");
+    render(
+      <AppSettingsProvider>
+        <PuzzleTimerSetting />
+      </AppSettingsProvider>,
+    );
+
+    expect(screen.getByText("Timer hidden")).toBeInTheDocument();
   });
 });
 

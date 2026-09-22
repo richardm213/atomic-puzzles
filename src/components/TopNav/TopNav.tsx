@@ -1234,7 +1234,7 @@ export const TopNav = () => {
               {showBoardSettings ? (
                 <>
                   {showPuzzleTimerSetting ? (
-                    <div className="navSettingsSection">
+                    <div className="navSettingsSection puzzleTimerSettingsSection">
                       <label className="navSettingsCheckbox">
                         <span>Show puzzle timer</span>
                         <input
