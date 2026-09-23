@@ -72,8 +72,8 @@ describe("puzzle-explanation function", () => {
     expect(update).toHaveBeenCalledWith({ explanation: "Saved explanation" });
   });
 
-  it("lets seaside_tiramisu edit any puzzle explanation, including clearing it", async () => {
-    const { update } = mockPuzzleUpdate("someone_else", "");
+  it("lets seaside_tiramisu edit legacy puzzles authored by admin, including clearing them", async () => {
+    const { update } = mockPuzzleUpdate("admin", "");
     const response = await handler({
       httpMethod: "POST",
       headers: authHeaders("seaside_tiramisu"),
@@ -82,6 +82,19 @@ describe("puzzle-explanation function", () => {
 
     expect(response.statusCode).toBe(200);
     expect(update).toHaveBeenCalledWith({ explanation: "" });
+  });
+
+  it("does not let seaside_tiramisu edit puzzles by other authors", async () => {
+    const { from, update } = mockPuzzleUpdate("randoomplayer");
+    const response = await handler({
+      httpMethod: "POST",
+      headers: authHeaders("seaside_tiramisu"),
+      body: JSON.stringify({ puzzleId: 42, explanation: "Not allowed" }),
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(from).toHaveBeenCalledTimes(1);
+    expect(update).not.toHaveBeenCalled();
   });
 
   it("rejects a logged-in user who is neither the author nor seaside_tiramisu", async () => {

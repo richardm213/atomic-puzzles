@@ -98,7 +98,8 @@ const SOLVED_BEFORE_BADGE_LABEL = "You've solved this puzzle before";
 const OTHER_PUZZLE_ATTEMPTS_LIMIT = 30;
 const PUZZLE_PREFETCH_COUNT = 3;
 const PUZZLE_TAG_EDITOR = "seaside_tiramisu";
-const PUZZLE_EXPLANATION_ADMIN = "seaside_tiramisu";
+const PUZZLE_EXPLANATION_LEGACY_AUTHOR = "admin";
+const PUZZLE_EXPLANATION_LEGACY_EDITOR = "seaside_tiramisu";
 
 const formatElapsedTime = (milliseconds: number): string => {
   const totalSeconds = Math.floor(Math.max(0, milliseconds) / 1000);
@@ -574,10 +575,12 @@ export const PuzzleSolverPage = () => {
   );
   const canManagePuzzleTags = user?.username?.trim().toLowerCase() === PUZZLE_TAG_EDITOR;
   const normalizedUsername = normalizeUsername(user?.username);
+  const normalizedAuthor = normalizeUsername(author);
   const canManagePuzzleExplanation =
     Boolean(normalizedUsername) &&
-    (normalizedUsername === normalizeUsername(author) ||
-      normalizedUsername === PUZZLE_EXPLANATION_ADMIN);
+    (normalizedUsername === normalizedAuthor ||
+      (normalizedUsername === PUZZLE_EXPLANATION_LEGACY_EDITOR &&
+        normalizedAuthor === PUZZLE_EXPLANATION_LEGACY_AUTHOR));
   const hasExplanation = explanation.trim().length > 0;
   const orientation = orientationFromFen(fen);
   const currentFen = boardState.fen || fen;
@@ -1304,10 +1307,7 @@ export const PuzzleSolverPage = () => {
   }, [allVariationLines, boardState.lineMoves, fen]);
 
   const puzzlePgn = useMemo(
-    () =>
-      moveLinePgn && fen
-        ? `${ensurePuzzlePgnHeaders("", fen)}\n\n${moveLinePgn}`
-        : "",
+    () => (moveLinePgn && fen ? `${ensurePuzzlePgnHeaders("", fen)}\n\n${moveLinePgn}` : ""),
     [fen, moveLinePgn],
   );
 

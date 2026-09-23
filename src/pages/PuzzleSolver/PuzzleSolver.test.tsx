@@ -27,6 +27,7 @@ const mocks = vi.hoisted(() => ({
   loadPuzzlesById: vi.fn(),
   login: vi.fn(),
   navigate: vi.fn(),
+  puzzleAuthor: "admin",
   puzzleExplanation: "Castling avoids the atomic mating net and creates the decisive rook threat.",
   recordCustomPuzzleSetProgress: vi.fn(),
   recordPuzzleProgress: vi.fn(),
@@ -268,13 +269,14 @@ describe("PuzzleSolverPage solution options", () => {
     mocks.updatePuzzleExplanation
       .mockReset()
       .mockImplementation(async (_puzzleId: number, explanation: string) => explanation.trim());
+    mocks.puzzleAuthor = "admin";
     mocks.loadPuzzleCatalog.mockReset().mockResolvedValue([
       {
         id: 1369,
         fen: "",
         solution: "",
         puzzleId: 1369,
-        author: "admin",
+        author: mocks.puzzleAuthor,
         event: "ACL 2024",
         explanation: "",
       },
@@ -286,7 +288,7 @@ describe("PuzzleSolverPage solution options", () => {
         solution:
           "12... O-O (12... Rf8 13. O-O-O Rf2 (13... Ba3) 14. Be2 Ba3) 13. O-O-O Rf2 (13... Ba3) 14. Be2 Ba3",
         puzzleId,
-        author: "admin",
+        author: mocks.puzzleAuthor,
         event: "ACL 2024",
         explanation: mocks.puzzleExplanation,
         tags: ["fork"],
@@ -322,7 +324,7 @@ describe("PuzzleSolverPage solution options", () => {
         fen: "",
         solution: "",
         puzzleId: index + 1,
-        author: "admin",
+        author: mocks.puzzleAuthor,
         event: "ACL 2024",
         explanation: "",
       })),
@@ -743,7 +745,7 @@ describe("PuzzleSolverPage solution options", () => {
     expect(screen.getByText("The king move escapes the atomic threat.")).toBeInTheDocument();
   });
 
-  it("lets seaside_tiramisu edit another author's explanation", async () => {
+  it("lets seaside_tiramisu edit explanations on legacy admin puzzles", async () => {
     mocks.username = "seaside_tiramisu";
     const user = userEvent.setup();
     render(<PuzzleSolverPage />);
@@ -761,6 +763,18 @@ describe("PuzzleSolverPage solution options", () => {
         "Updated by the puzzle admin.",
       ),
     );
+  });
+
+  it("does not let seaside_tiramisu edit another player's explanation", async () => {
+    mocks.username = "seaside_tiramisu";
+    mocks.puzzleAuthor = "randoomplayer";
+    const user = userEvent.setup();
+    render(<PuzzleSolverPage />);
+
+    await user.click(await screen.findByRole("tab", { name: "Explanation" }));
+    expect(screen.getByText(mocks.puzzleExplanation)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add explanation" })).not.toBeInTheDocument();
   });
 
   it("keeps the current solution position when opening other attempts", async () => {

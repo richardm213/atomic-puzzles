@@ -10,7 +10,8 @@ import { createServerSupabase } from "../../../platform/environment";
 import { HttpError } from "../../../platform/errors";
 import { parseJsonBody } from "../../../platform/validation";
 
-const EXPLANATION_ADMIN = "seaside_tiramisu";
+const LEGACY_PUZZLE_AUTHOR = "admin";
+const LEGACY_PUZZLE_EDITOR = "seaside_tiramisu";
 const updateExplanationSchema = z.object({
   puzzleId: z.number().int().positive(),
   explanation: z.string().trim().max(5_000),
@@ -36,12 +37,11 @@ export const puzzleExplanationRoute = async (event: FunctionEvent) => {
   if (lookupError || !puzzle) throw new HttpError(404, "Puzzle not found.");
 
   const normalizedUsername = normalizeUsername(username);
-  const isAuthor = normalizedUsername === normalizeUsername(puzzle.author);
-  if (!isAuthor && normalizedUsername !== EXPLANATION_ADMIN) {
-    throw new HttpError(
-      403,
-      "Only the puzzle author or seaside_tiramisu can edit this explanation.",
-    );
+  const normalizedAuthor = normalizeUsername(puzzle.author);
+  const canEditLegacyPuzzle =
+    normalizedUsername === LEGACY_PUZZLE_EDITOR && normalizedAuthor === LEGACY_PUZZLE_AUTHOR;
+  if (normalizedUsername !== normalizedAuthor && !canEditLegacyPuzzle) {
+    throw new HttpError(403, "Only the puzzle author can edit this explanation.");
   }
 
   const { data: attempt, error: attemptError } = await supabase
