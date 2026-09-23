@@ -2148,6 +2148,20 @@ body:has(.puzzlePage),
   }
 }
 
+:root[data-theme="light"] .feedbackBadge.correct,
+:root[data-theme="light"] .feedbackBadge.retrySuccess,
+:root[data-theme="light"] .mobileFeedbackOverlay.correct,
+:root[data-theme="light"] .mobileFeedbackOverlay.retrySuccess {
+  --feedback-text: color-mix(in srgb, var(--color-success) 80%, var(--color-heading));
+}
+
+:root[data-theme="light"] .feedbackBadge.correct strong,
+:root[data-theme="light"] .feedbackBadge.retrySuccess strong,
+:root[data-theme="light"] .mobileFeedbackOverlay.correct .mobileFeedbackText,
+:root[data-theme="light"] .mobileFeedbackOverlay.retrySuccess .mobileFeedbackText {
+  text-shadow: none;
+}
+
 @media (max-width: 640px) {
   .puzzlePage {
     gap: 7px;
