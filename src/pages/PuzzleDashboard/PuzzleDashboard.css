@@ -99,6 +99,49 @@
   gap: 8px;
 }
 
+.dashboardTabs {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.dashboardTabs > button {
+  position: relative;
+  min-height: 44px;
+  margin-bottom: -1px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-bottom-color: var(--color-border);
+  border-radius: var(--radius-ui) var(--radius-ui) 0 0;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  transition: var(--dashboard-transition);
+}
+
+.dashboardTabs > button:hover {
+  background: color-mix(in srgb, var(--color-panel-strong) 58%, transparent);
+  color: var(--color-heading);
+}
+
+.dashboardTabs > button:focus-visible {
+  z-index: 1;
+  outline: 2px solid color-mix(in srgb, var(--color-primary) 68%, white);
+  outline-offset: 2px;
+}
+
+.dashboardTabs > button.active {
+  border-color: var(--color-border);
+  border-bottom-color: var(--color-panel);
+  background: color-mix(in srgb, var(--color-panel-strong) 92%, transparent);
+  color: var(--color-heading);
+  box-shadow: inset 0 3px 0 var(--color-primary);
+}
+
 .dashboardStatCard {
   position: relative;
   display: grid;
@@ -151,6 +194,10 @@
   display: grid;
   gap: 14px;
   padding: var(--dashboard-panel-padding);
+}
+
+.dashboardAttempts[hidden] {
+  display: none;
 }
 
 .dashboardAttemptsHeader {
@@ -749,6 +796,15 @@
 
   .dashboardFilters {
     grid-template-columns: 1fr;
+  }
+
+  .dashboardTabs {
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .dashboardTabs > button {
+    flex: 0 0 auto;
   }
 
   .dashboardFilterSearch,

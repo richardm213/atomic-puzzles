@@ -33,6 +33,7 @@ const FILTERS_STORAGE_KEY = "atomic-puzzles.puzzle-dashboard-filters.v1";
 const UNKNOWN_EVENT_LABEL = "Unknown event";
 const emptyPuzzleProgressRows: import("../../lib/supabase/puzzleProgress").PuzzleProgressRow[] = [];
 type DashboardResultFilter = "all" | "correct" | "incorrect";
+type DashboardTab = "attempts" | "created";
 
 const dashboardFiltersSchema = z.object({
   sinceDate: z.string(),
@@ -113,6 +114,9 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
   const routeUsername = useMemo(() => normalizeUsername(username), [username]);
   const viewingOwnDashboard = !routeUsername;
   const targetUsername = viewingOwnDashboard ? normalizeUsername(user?.username) : routeUsername;
+  const isOwnPuzzleHistory =
+    isAuthenticated && normalizeUsername(user?.username) === targetUsername;
+  const [activeTab, setActiveTab] = useState<DashboardTab>("attempts");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = usePersistedState<PuzzleDashboardPageSize>(
     PAGE_SIZE_STORAGE_KEY,
@@ -208,6 +212,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
   useEffect(() => {
     setCurrentPage(1);
   }, [
+    activeTab,
     authorFilter,
     activeAttemptSource,
     eventFilter,
@@ -266,14 +271,16 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
       if (resultFilter === "incorrect" && entry.puzzleCorrect) return false;
       if (eventFilter && entry.event !== eventFilter) return false;
       if (authorFilter && entry.author !== authorFilter) return false;
-      if (!entryMatchesSelectedTags(entry.tags, tagFilters)) return false;
+      if (isOwnPuzzleHistory && !entryMatchesSelectedTags(entry.tags, tagFilters)) return false;
 
       const attemptTimestamp = new Date(entry.firstAttemptAt).getTime();
       if (sinceTimestamp !== null && attemptTimestamp < sinceTimestamp) return false;
       if (untilTimestamp !== null && attemptTimestamp > untilTimestamp) return false;
 
       if (normalizedSearch) {
-        const tagSearchText = entry.tags.map((tag) => `${tag} ${getPuzzleTagName(tag)}`).join(" ");
+        const tagSearchText = isOwnPuzzleHistory
+          ? entry.tags.map((tag) => `${tag} ${getPuzzleTagName(tag)}`).join(" ")
+          : "";
         const searchableText =
           `${entry.puzzleId} ${entry.author} ${entry.event} ${tagSearchText}`.toLocaleLowerCase();
         if (!searchableText.includes(normalizedSearch)) return false;
@@ -285,6 +292,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
     allDashboardEntries,
     authorFilter,
     eventFilter,
+    isOwnPuzzleHistory,
     resultFilter,
     searchFilter,
     sinceDate,
@@ -300,7 +308,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
     };
   }, [filteredDashboardEntries]);
   const totalProgressRows = filteredDashboardEntries.length;
-  const totalPages = Math.max(1, Math.ceil(totalProgressRows / pageSize));
+  const attemptTotalPages = Math.max(1, Math.ceil(totalProgressRows / pageSize));
   const dashboardEntries = useMemo(
     () => filteredDashboardEntries.slice((currentPage - 1) * pageSize, currentPage * pageSize),
     [currentPage, filteredDashboardEntries, pageSize],
@@ -309,12 +317,18 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
     dashboardSummary.total > 0
       ? Math.round((dashboardSummary.correct / dashboardSummary.total) * 100)
       : 0;
-  const puzzlesCreated = useMemo(
+  const createdPuzzles = useMemo(
     () =>
-      [...puzzlesById.values()].filter(
-        (puzzle) => normalizeUsername(puzzle?.["author"]) === targetUsername,
-      ).length,
+      [...puzzlesById.values()]
+        .filter((puzzle) => normalizeUsername(puzzle?.["author"]) === targetUsername)
+        .sort((left, right) => right.puzzleId - left.puzzleId),
     [puzzlesById, targetUsername],
+  );
+  const puzzlesCreated = createdPuzzles.length;
+  const createdTotalPages = Math.max(1, Math.ceil(puzzlesCreated / pageSize));
+  const createdPuzzleEntries = useMemo(
+    () => createdPuzzles.slice((currentPage - 1) * pageSize, currentPage * pageSize),
+    [createdPuzzles, currentPage, pageSize],
   );
   const isPageLoading = isDashboardLoading || arePuzzlesLoading;
   const areStatsLoading = isDashboardLoading || arePuzzlesLoading;
@@ -354,7 +368,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
     eventFilter ||
     authorFilter ||
     searchFilter.trim() ||
-    tagFilters.length > 0,
+    (isOwnPuzzleHistory && tagFilters.length > 0),
   );
   const clearFilters = (): void => {
     setDashboardFilters((current) => ({
@@ -439,7 +453,38 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
               </div>
             </section>
 
-            <section className="dashboardAttempts">
+            <div className="dashboardTabs" role="tablist" aria-label="Puzzle dashboard views">
+              <button
+                id="dashboard-attempts-tab"
+                type="button"
+                role="tab"
+                aria-selected={activeTab === "attempts"}
+                aria-controls="dashboard-attempts-panel"
+                className={activeTab === "attempts" ? "active" : ""}
+                onClick={() => setActiveTab("attempts")}
+              >
+                Puzzle attempts
+              </button>
+              <button
+                id="dashboard-created-tab"
+                type="button"
+                role="tab"
+                aria-selected={activeTab === "created"}
+                aria-controls="dashboard-created-panel"
+                className={activeTab === "created" ? "active" : ""}
+                onClick={() => setActiveTab("created")}
+              >
+                Puzzles created
+              </button>
+            </div>
+
+            <section
+              id="dashboard-attempts-panel"
+              className="dashboardAttempts"
+              role="tabpanel"
+              aria-labelledby="dashboard-attempts-tab"
+              hidden={activeTab !== "attempts"}
+            >
               <div className="dashboardAttemptsHeader">
                 <div className="dashboardAttemptsTitleRow">
                   <div>
@@ -490,7 +535,11 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
                       <span>Search</span>
                       <input
                         type="search"
-                        placeholder="Puzzle, author, event, or tag"
+                        placeholder={
+                          isOwnPuzzleHistory
+                            ? "Puzzle, author, event, or tag"
+                            : "Puzzle, author, or event"
+                        }
                         value={searchFilter}
                         onChange={(event) =>
                           updateDashboardFilter("searchFilter", event.target.value)
@@ -498,11 +547,13 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
                         disabled={isPageLoading}
                       />
                     </label>
-                    <DashboardTagFilter
-                      disabled={isPageLoading}
-                      selectedTags={tagFilters}
-                      onChange={(tags) => updateDashboardFilter("tagFilters", tags)}
-                    />
+                    {isOwnPuzzleHistory ? (
+                      <DashboardTagFilter
+                        disabled={isPageLoading}
+                        selectedTags={tagFilters}
+                        onChange={(tags) => updateDashboardFilter("tagFilters", tags)}
+                      />
+                    ) : null}
                     <label className="dashboardFilterField">
                       <span>Result</span>
                       <select
@@ -606,7 +657,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
                   </label>
                   <PaginationRow
                     currentPage={currentPage}
-                    totalPages={totalPages}
+                    totalPages={attemptTotalPages}
                     onPageChange={setCurrentPage}
                     formatLabel={(current, total) => `Page ${current} / ${total}`}
                     disabled={isPageLoading}
@@ -640,7 +691,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
                             {isKnownEvent(entry.event) ? (
                               <span className="dashboardPuzzleEvent">{entry.event}</span>
                             ) : null}
-                            {entry.tags.length > 0 ? (
+                            {isOwnPuzzleHistory && entry.tags.length > 0 ? (
                               <span className="dashboardPuzzleTags" aria-label="Puzzle tags">
                                 {entry.tags.map((tag) => (
                                   <span key={tag}>{getPuzzleTagName(tag)}</span>
@@ -690,7 +741,93 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
                 <div className="dashboardAttemptsFooter">
                   <PaginationRow
                     currentPage={currentPage}
-                    totalPages={totalPages}
+                    totalPages={attemptTotalPages}
+                    onPageChange={setCurrentPage}
+                    formatLabel={(current, total) => `Page ${current} / ${total}`}
+                    disabled={isPageLoading}
+                  />
+                </div>
+              ) : null}
+            </section>
+
+            <section
+              id="dashboard-created-panel"
+              className="dashboardAttempts"
+              role="tabpanel"
+              aria-labelledby="dashboard-created-tab"
+              hidden={activeTab !== "created"}
+            >
+              <div className="dashboardAttemptsHeader">
+                <div className="dashboardAttemptsTitleRow">
+                  <div>
+                    <h2>Puzzles created</h2>
+                    <p className="dashboardAttemptsCount" aria-live="polite">
+                      {puzzlesCreated} puzzle{puzzlesCreated === 1 ? "" : "s"}
+                    </p>
+                  </div>
+                </div>
+                {createdPuzzleEntries.length > 0 ? (
+                  <div className="dashboardAttemptsPager">
+                    <label className="dashboardFilterLabel">
+                      <span>Rows</span>
+                      <select
+                        value={pageSize}
+                        onChange={(event) => {
+                          const nextPageSize = Number.parseInt(event.target.value, 10);
+                          if (isPuzzleDashboardPageSize(nextPageSize)) {
+                            setPageSize(nextPageSize);
+                          }
+                        }}
+                        disabled={isPageLoading}
+                      >
+                        {PAGE_SIZE_OPTIONS.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <PaginationRow
+                      currentPage={currentPage}
+                      totalPages={createdTotalPages}
+                      onPageChange={setCurrentPage}
+                      formatLabel={(current, total) => `Page ${current} / ${total}`}
+                      disabled={isPageLoading}
+                    />
+                  </div>
+                ) : null}
+              </div>
+
+              {createdPuzzleEntries.length > 0 ? (
+                <div className="dashboardAttemptRows" role="list" aria-label="Puzzles created">
+                  {createdPuzzleEntries.map((puzzle, index) => (
+                    <article key={puzzle.puzzleId} className="dashboardAttemptRow">
+                      <div className="dashboardAttemptPrimary">
+                        <span className="dashboardRowNumber" aria-hidden="true">
+                          {(currentPage - 1) * pageSize + index + 1}
+                        </span>
+                        <Link
+                          className="dashboardPuzzleLink"
+                          to="/solve/$puzzleId"
+                          params={{ puzzleId: String(puzzle.puzzleId) }}
+                        >
+                          Puzzle {puzzle.puzzleId}
+                        </Link>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="dashboardStateCard">
+                  <p>No puzzles created yet.</p>
+                </div>
+              )}
+
+              {createdPuzzleEntries.length > 0 ? (
+                <div className="dashboardAttemptsFooter">
+                  <PaginationRow
+                    currentPage={currentPage}
+                    totalPages={createdTotalPages}
                     onPageChange={setCurrentPage}
                     formatLabel={(current, total) => `Page ${current} / ${total}`}
                     disabled={isPageLoading}
