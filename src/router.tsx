@@ -17,6 +17,7 @@ import { AuthCallbackPage } from "./pages/AuthCallback/AuthCallback";
 import { HomePage } from "./pages/Home/Home";
 
 const ArenasPage = lazyRouteComponent(() => import("./pages/Arenas/Arenas"), "ArenasPage");
+const CalendarPage = lazyRouteComponent(() => import("./pages/Calendar/Calendar"), "CalendarPage");
 const AnalysisPage = lazyRouteComponent(() => import("./pages/Analysis/Analysis"), "AnalysisPage");
 const CommentsPage = lazyRouteComponent(() => import("./pages/Comments/Comments"), "CommentsPage");
 const CommunityUsersPage = lazyRouteComponent(
@@ -181,6 +182,12 @@ const arenasRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/arenas",
   component: ArenasPage,
+});
+
+const calendarRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/calendar",
+  component: CalendarPage,
 });
 
 const tournamentsRoute = createRoute({
@@ -413,6 +420,7 @@ const routeTree = rootRoute.addChildren([
   recentRoute,
   tournamentsRoute,
   arenasRoute,
+  calendarRoute,
   tournamentRoute,
   h2hRoute,
   h2hMatchupRoute,

@@ -163,7 +163,29 @@ const navItems: NavItem[] = [
   {
     to: "/tournaments",
     label: "Tournaments",
-    isActive: (pathname) => pathname === "/tournaments" || pathname.startsWith("/tournaments/"),
+    isActive: (pathname) =>
+      pathname === "/tournaments" ||
+      pathname.startsWith("/tournaments/") ||
+      pathname === "/arenas" ||
+      pathname === "/calendar",
+    children: [
+      {
+        to: "/tournaments",
+        label: "Championships",
+        isActive: (pathname) =>
+          pathname === "/tournaments" || pathname.startsWith("/tournaments/"),
+      },
+      {
+        to: "/arenas",
+        label: "Arena archive",
+        isActive: (pathname) => pathname === "/arenas",
+      },
+      {
+        to: "/calendar",
+        label: "Arena calendar",
+        isActive: (pathname) => pathname === "/calendar",
+      },
+    ],
   },
   {
     to: "/community",
