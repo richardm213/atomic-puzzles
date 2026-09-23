@@ -9,6 +9,31 @@
   accent-color: var(--color-primary);
 }
 
+/* Safari otherwise renders selects with its glossy native bevel. Keep the native
+   menu and keyboard behavior, but make the closed control match the site UI. */
+:where(select:not([multiple])) {
+  -webkit-appearance: none;
+  appearance: none;
+  color-scheme: var(--control-color-scheme);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--color-subtle) 50%),
+    linear-gradient(135deg, var(--color-subtle) 50%, transparent 50%) !important;
+  background-position:
+    calc(100% - 13px) 50%,
+    calc(100% - 8px) 50% !important;
+  background-repeat: no-repeat !important;
+  background-size: 5px 5px !important;
+  padding-inline-end: 30px !important;
+}
+
+:where(select:not([multiple]):not(:disabled)) {
+  cursor: pointer;
+}
+
+:where(select:disabled) {
+  cursor: not-allowed;
+}
+
 :where(input, select, textarea)::placeholder {
   color: var(--color-subtle);
   opacity: 0.9;

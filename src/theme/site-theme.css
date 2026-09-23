@@ -1,4 +1,5 @@
 :root {
+  --control-color-scheme: dark;
   /* Shared spacing scale. Prefer semantic component tokens below when one exists. */
   --space-1: 4px;
   --space-2: 8px;
@@ -104,6 +105,7 @@
 }
 
 :root[data-theme="light"] {
+  --control-color-scheme: light;
   --color-page-top: #f7f3ed;
   --color-page-bottom: #e7eef8;
   --color-panel: rgba(255, 255, 255, 0.82);

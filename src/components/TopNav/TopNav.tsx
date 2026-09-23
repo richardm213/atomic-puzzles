@@ -1155,7 +1155,7 @@ export const TopNav = () => {
                   </button>
                 </div>
               </div>
-              {pathname === "/rankings" ? (
+              {pathname === "/rankings" || pathname === "/rankings/yearly" ? (
                 <div className="navSettingsSection">
                   <label className="navSettingsCheckbox">
                     <span>Hide openings</span>
