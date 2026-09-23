@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   approveQueuedPuzzle,
   rejectQueuedPuzzle,
+  submitPuzzle,
   submitPuzzleToQueue,
   updateQueuedPuzzle,
 } from "./puzzleQueue";
@@ -69,6 +70,17 @@ describe("puzzle queue review client", () => {
         explanation: "",
       }),
     ).rejects.toThrow(/HTTP 404/);
+  });
+
+  it("returns a directly published puzzle id", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse({ destination: "published", puzzleId: 1801 }, 201)),
+    );
+
+    await expect(
+      submitPuzzle({ fen: "fen", solution: "1. e4", event: "", explanation: "" }),
+    ).resolves.toEqual({ destination: "published", puzzleId: 1801 });
   });
 
   it("returns the approved puzzle id from the review endpoint", async () => {

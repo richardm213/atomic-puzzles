@@ -1,3 +1,4 @@
+import { isApprovedPuzzleCreator } from "../../../../shared/domain/puzzles/approvedPuzzleCreators";
 import {
   compactPuzzleSolution,
   parsePuzzlePgnInput,
@@ -31,13 +32,22 @@ export class PuzzleSubmissionService {
       if (parseSolutionUciLines(fen, solution).length === 0) {
         throw new HttpError(400, "The moves are not legal from this atomic position.");
       }
-      const puzzle = await this.repository.enqueue(username, {
+      const normalizedPuzzle = {
         fen,
         solution: compactPuzzleSolution(normalizeSolutionPgn(fen, solution)),
         event: parsedPgn.event || input.event,
         explanation: input.explanation,
-      });
-      return { puzzle };
+      };
+      if (isApprovedPuzzleCreator(username)) {
+        return {
+          destination: "published" as const,
+          puzzleId: await this.repository.publish(username, normalizedPuzzle),
+        };
+      }
+      return {
+        destination: "review" as const,
+        puzzle: await this.repository.enqueue(username, normalizedPuzzle),
+      };
     } catch (error) {
       if (error instanceof HttpError) throw error;
       if (error instanceof Error && PUBLIC_DOMAIN_ERROR.test(error.message)) {

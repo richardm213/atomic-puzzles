@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
 import { useState } from "react";
 
+import { isApprovedPuzzleCreator } from "../../../shared/domain/puzzles/approvedPuzzleCreators";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
@@ -12,7 +13,7 @@ import {
   type PuzzleSubmissionValue,
   validatePuzzleSubmission,
 } from "../../lib/puzzles/puzzleSubmission";
-import { submitPuzzleToQueue } from "../../lib/supabase/puzzleQueue";
+import { submitPuzzle } from "../../lib/supabase/puzzleQueue";
 import { PuzzleAnalysisInstructions } from "./PuzzleAnalysisInstructions";
 import { PuzzleEditor } from "./PuzzleEditor";
 
@@ -34,6 +35,15 @@ const emptyPuzzleSubmission = (): PuzzleSubmissionValue => ({
   explanation: "",
 });
 
+export const formatCreatedPuzzleIds = (puzzleIds: number[]): string => {
+  const firstId = puzzleIds[0];
+  const lastId = puzzleIds.at(-1);
+  if (firstId === undefined || lastId === undefined) return "";
+  return puzzleIds.length > 1
+    ? `Puzzles ${firstId}–${lastId} created.`
+    : `Puzzle ${firstId} created.`;
+};
+
 export const PuzzleSubmissionPage = () => {
   const { isAuthenticated, isLoading, user, login } = useAuth();
   const [value, setValue] = useState<PuzzleSubmissionValue>(emptyPuzzleSubmission);
@@ -44,6 +54,7 @@ export const PuzzleSubmissionPage = () => {
   const [editorVersion, setEditorVersion] = useState(0);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const publishesDirectly = isApprovedPuzzleCreator(user?.username ?? "");
 
   const submit = async (): Promise<void> => {
     if (!user?.username) return;
@@ -51,6 +62,7 @@ export const PuzzleSubmissionPage = () => {
     setMessage("");
     setError("");
     let submittedCount = 0;
+    const createdPuzzleIds: number[] = [];
     try {
       const submissions = batchMode && batchValues.length > 1 ? batchValues : [value];
       const normalizedSubmissions = submissions.map((submission, index) => {
@@ -63,18 +75,23 @@ export const PuzzleSubmissionPage = () => {
         }
       });
       for (const normalized of normalizedSubmissions) {
-        await submitPuzzleToQueue(normalized);
+        const result = await submitPuzzle(normalized);
+        if (result.destination === "published") createdPuzzleIds.push(result.puzzleId);
         submittedCount += 1;
       }
       setValue(emptyPuzzleSubmission());
       setBatchValues([]);
       setActiveBatchIndex(0);
       setEditorVersion((version) => version + 1);
-      setMessage(
-        submittedCount > 1
-          ? `${submittedCount} puzzles submitted for review. They will be reviewed as a set.`
-          : "Puzzle submitted for review. Thank you!",
-      );
+      if (publishesDirectly) {
+        setMessage(formatCreatedPuzzleIds(createdPuzzleIds));
+      } else {
+        setMessage(
+          submittedCount > 1
+            ? `${submittedCount} puzzles submitted for review. They will be reviewed as a set.`
+            : "Puzzle submitted for review. Thank you!",
+        );
+      }
     } catch (submitError) {
       const detail =
         submitError instanceof Error ? submitError.message : "Unable to submit puzzle.";
@@ -87,7 +104,9 @@ export const PuzzleSubmissionPage = () => {
       }
       setError(
         submittedCount > 0
-          ? `${submittedCount} puzzle${submittedCount === 1 ? " was" : "s were"} submitted before an error: ${detail}`
+          ? publishesDirectly
+            ? `${formatCreatedPuzzleIds(createdPuzzleIds).replace(/\.$/, "")} before an error: ${detail}`
+            : `${submittedCount} puzzle${submittedCount === 1 ? " was" : "s were"} submitted before an error: ${detail}`
           : detail,
       );
     } finally {
@@ -234,10 +253,16 @@ export const PuzzleSubmissionPage = () => {
                   <FontAwesomeIcon icon={faPaperPlane} aria-hidden="true" />
                   <span>
                     {submitting
-                      ? "Submitting…"
+                      ? publishesDirectly
+                        ? "Creating…"
+                        : "Submitting…"
                       : batchValues.length > 1
-                        ? `Submit ${batchValues.length} puzzles for review`
-                        : "Submit for review"}
+                        ? publishesDirectly
+                          ? `Create ${batchValues.length} puzzles`
+                          : `Submit ${batchValues.length} puzzles for review`
+                        : publishesDirectly
+                          ? "Create puzzle"
+                          : "Submit for review"}
                   </span>
                 </button>
               </div>

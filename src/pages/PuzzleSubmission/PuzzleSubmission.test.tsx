@@ -12,11 +12,12 @@ import {
 } from "../../lib/puzzles/solutionPgn";
 import type { ChessboardState, SolutionNavigation } from "../../types/chessboard";
 import { PuzzleEditor } from "./PuzzleEditor";
-import { PuzzleSubmissionPage } from "./PuzzleSubmission";
+import { formatCreatedPuzzleIds, PuzzleSubmissionPage } from "./PuzzleSubmission";
 
 const chessboardMocks = vi.hoisted(() => ({
   navigations: [] as SolutionNavigation[],
 }));
+const authMocks = vi.hoisted(() => ({ username: "submitter" }));
 
 type MockChessboardProps = {
   solution?: string;
@@ -153,7 +154,7 @@ vi.mock("../../context/AuthContext", () => ({
   useAuth: () => ({
     isAuthenticated: true,
     isLoading: false,
-    user: { username: "submitter" },
+    user: { username: authMocks.username },
     login: vi.fn(),
   }),
 }));
@@ -206,6 +207,10 @@ const EditorHarness = ({
 };
 
 describe("PuzzleSubmissionPage fields", () => {
+  beforeEach(() => {
+    authMocks.username = "submitter";
+  });
+
   it("shows the explanation for a single puzzle but not a puzzle batch", async () => {
     const user = userEvent.setup();
     render(<PuzzleSubmissionPage />);
@@ -217,6 +222,23 @@ describe("PuzzleSubmissionPage fields", () => {
 
     await user.click(screen.getByRole("button", { name: "Single puzzle" }));
     expect(screen.getByRole("textbox", { name: "Explanation" })).toBeVisible();
+  });
+
+  it("uses direct-creation actions only for approved puzzle creators", async () => {
+    authMocks.username = "wolfram_ep";
+    const user = userEvent.setup();
+    render(<PuzzleSubmissionPage />);
+
+    expect(screen.getByRole("button", { name: "Create puzzle" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Submit for review" })).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Puzzle batch" }));
+    expect(screen.getByRole("button", { name: "Create puzzle" })).toBeVisible();
+  });
+
+  it("shows one id for a single creation and an id range for a batch", () => {
+    expect(formatCreatedPuzzleIds([1801])).toBe("Puzzle 1801 created.");
+    expect(formatCreatedPuzzleIds([1802, 1803, 1804])).toBe("Puzzles 1802–1804 created.");
   });
 });
 

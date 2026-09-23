@@ -8,13 +8,17 @@ const reviewRequest = <T>(body: Record<string, unknown>): Promise<T> =>
     invalidMessage: "Unable to review puzzle: the server returned no data.",
   });
 
-export const submitPuzzleToQueue = async (input: {
+export type PuzzleSubmissionResult =
+  | { destination: "review"; puzzle: PuzzleQueueRow }
+  | { destination: "published"; puzzleId: number };
+
+export const submitPuzzle = async (input: {
   fen: string;
   solution: string;
   event: string;
   explanation: string;
-}): Promise<PuzzleQueueRow> => {
-  const body = await postApi<{ puzzle?: PuzzleQueueRow }>(
+}): Promise<PuzzleSubmissionResult> => {
+  const body = await postApi<Partial<PuzzleSubmissionResult>>(
     "/api/puzzles/submit",
     {
       fen: input.fen.trim(),
@@ -28,10 +32,24 @@ export const submitPuzzleToQueue = async (input: {
       invalidMessage: "Unable to submit puzzle: the submission service returned no data.",
     },
   );
-  if (!body.puzzle) {
-    throw new Error("Unable to submit puzzle: the submission service returned no puzzle data.");
+  if (body.destination === "published" && Number.isSafeInteger(body.puzzleId)) {
+    return { destination: "published", puzzleId: body.puzzleId as number };
   }
-  return body.puzzle;
+  if (body.destination === "review" && body.puzzle) {
+    return { destination: "review", puzzle: body.puzzle };
+  }
+  throw new Error("Unable to submit puzzle: the submission service returned no puzzle data.");
+};
+
+/** @deprecated Prefer submitPuzzle, which also represents direct publication. */
+export const submitPuzzleToQueue = async (
+  input: Parameters<typeof submitPuzzle>[0],
+): Promise<PuzzleQueueRow> => {
+  const result = await submitPuzzle(input);
+  if (result.destination !== "review") {
+    throw new Error("The puzzle was published directly instead of entering the review queue.");
+  }
+  return result.puzzle;
 };
 
 export const fetchPendingPuzzleQueue = async (): Promise<PuzzleReviewQueueRow[]> => {

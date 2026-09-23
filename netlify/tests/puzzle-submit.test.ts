@@ -11,8 +11,8 @@ vi.mock("@supabase/supabase-js", () => ({
 import { handler } from "../functions/puzzle-submit";
 import { createSiteSessionCookie } from "../lib/siteSession";
 
-const authHeaders = () => ({
-  cookie: createSiteSessionCookie("submitter", {}).split(";")[0],
+const authHeaders = (username = "submitter") => ({
+  cookie: createSiteSessionCookie(username, {}).split(";")[0],
 });
 
 describe("puzzle-submit function", () => {
@@ -103,6 +103,74 @@ describe("puzzle-submit function", () => {
       "enqueue_puzzle_submission",
       expect.objectContaining({ p_solution: "1. e4 (1. d4 d5) e5" }),
     );
+  });
+
+  it.each(["seaside_tiramisu", "wolfram_ep", "randoomplayer"])(
+    "publishes approved creator %s directly and returns the new puzzle id",
+    async (username) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(
+          async () =>
+            new Response(JSON.stringify({ username }), {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            }),
+        ),
+      );
+      const upsert = vi.fn(async () => ({ error: null }));
+      const rpc = vi.fn(async () => ({ data: 1801, error: null }));
+      const from = vi.fn(() => ({ upsert }));
+      mocks.createClient.mockReturnValue({ from, rpc });
+
+      const response = await handler({
+        httpMethod: "POST",
+        headers: authHeaders(username),
+        body: JSON.stringify({
+          fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+          solution: "1. e4",
+          explanation: "",
+        }),
+      });
+
+      expect(response.statusCode).toBe(201);
+      expect(JSON.parse(response.body)).toEqual({
+        destination: "published",
+        puzzleId: 1801,
+      });
+      expect(rpc).toHaveBeenCalledWith(
+        "publish_approved_puzzle_submission",
+        expect.objectContaining({ p_submitted_by: username }),
+      );
+      expect(rpc).not.toHaveBeenCalledWith("enqueue_puzzle_submission", expect.anything());
+    },
+  );
+
+  it("does not let an ordinary signed-in user impersonate an approved creator in the body", async () => {
+    const upsert = vi.fn(async () => ({ error: null }));
+    const single = vi.fn(async () => ({ data: { id: 4 }, error: null }));
+    const rpc = vi.fn(() => ({ single }));
+    const from = vi.fn(() => ({ upsert }));
+    mocks.createClient.mockReturnValue({ from, rpc });
+
+    const response = await handler({
+      httpMethod: "POST",
+      headers: authHeaders("submitter"),
+      body: JSON.stringify({
+        fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        solution: "1. e4",
+        explanation: "",
+        username: "wolfram_ep",
+        submitted_by: "wolfram_ep",
+      }),
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(rpc).toHaveBeenCalledWith(
+      "enqueue_puzzle_submission",
+      expect.objectContaining({ p_submitted_by: "submitter" }),
+    );
+    expect(rpc).not.toHaveBeenCalledWith("publish_approved_puzzle_submission", expect.anything());
   });
 
   it("returns a clear conflict when the FEN and moves already exist", async () => {
