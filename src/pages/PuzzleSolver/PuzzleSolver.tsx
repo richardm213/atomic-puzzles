@@ -39,6 +39,7 @@ import {
   recordCustomPuzzleSetProgress,
   refreshCustomPuzzleSet,
 } from "../../lib/puzzles/customPuzzleSets";
+import { updatePuzzleExplanation } from "../../lib/puzzles/puzzleExplanation";
 import { type PuzzleIssueCategory, reportPuzzleIssue } from "../../lib/puzzles/puzzleIssues";
 import { loadPuzzleCatalog, loadPuzzlesById, type Puzzle } from "../../lib/puzzles/puzzleLibrary";
 import {
@@ -68,6 +69,7 @@ import type {
   SolutionNavigation,
 } from "../../types/chessboard";
 import { formatLocalDateTime } from "../../utils/formatters";
+import { normalizeUsername } from "../../utils/playerNames";
 import { castlingRightsFromFen } from "./castlingRights";
 import { materialCountFromFen, type MaterialPieceRole } from "./materialCount";
 
@@ -96,6 +98,7 @@ const SOLVED_BEFORE_BADGE_LABEL = "You've solved this puzzle before";
 const OTHER_PUZZLE_ATTEMPTS_LIMIT = 30;
 const PUZZLE_PREFETCH_COUNT = 3;
 const PUZZLE_TAG_EDITOR = "seaside_tiramisu";
+const PUZZLE_EXPLANATION_ADMIN = "seaside_tiramisu";
 
 const formatElapsedTime = (milliseconds: number): string => {
   const totalSeconds = Math.floor(Math.max(0, milliseconds) / 1000);
@@ -264,6 +267,14 @@ export const PuzzleSolverPage = () => {
   } | null>(null);
   const [feedbackBadgeId, setFeedbackBadgeId] = useState(0);
   const [explanationUnlockedByWrongMove, setExplanationUnlockedByWrongMove] = useState(false);
+  const [explanationEditorOpen, setExplanationEditorOpen] = useState(false);
+  const [explanationDraft, setExplanationDraft] = useState("");
+  const [explanationSaveStatus, setExplanationSaveStatus] = useState<
+    | { state: "idle" }
+    | { state: "saving" }
+    | { state: "saved" }
+    | { state: "error"; message: string }
+  >({ state: "idle" });
   const [pinnedSolutionLineIndex, setPinnedSolutionLineIndex] = useState<number | null>(null);
   const { copy: copyPgn, copyLabel: copyPgnLabel, resetCopyFeedback } = useCopyFeedback();
   const [otherPuzzleAttemptsStatus, setOtherPuzzleAttemptsStatus] = useState<
@@ -562,6 +573,11 @@ export const PuzzleSolverPage = () => {
     [selectedMotifTag],
   );
   const canManagePuzzleTags = user?.username?.trim().toLowerCase() === PUZZLE_TAG_EDITOR;
+  const normalizedUsername = normalizeUsername(user?.username);
+  const canManagePuzzleExplanation =
+    Boolean(normalizedUsername) &&
+    (normalizedUsername === normalizeUsername(author) ||
+      normalizedUsername === PUZZLE_EXPLANATION_ADMIN);
   const hasExplanation = explanation.trim().length > 0;
   const orientation = orientationFromFen(fen);
   const currentFen = boardState.fen || fen;
@@ -600,7 +616,8 @@ export const PuzzleSolverPage = () => {
     ? SOLVED_BEFORE_BADGE_LABEL
     : ATTEMPTED_PUZZLE_BADGE_LABEL;
   const canViewExplanation =
-    hasExplanation && (hasAttemptedActivePuzzle || explanationUnlockedByWrongMove);
+    (hasExplanation || canManagePuzzleExplanation) &&
+    (hasAttemptedActivePuzzle || explanationUnlockedByWrongMove);
   const showSolution = activePuzzleInfoTab === "solution";
   const showExplanation = activePuzzleInfoTab === "explanation";
   const otherPuzzleAttemptsOpen = activePuzzleInfoTab === "attempts";
@@ -611,6 +628,9 @@ export const PuzzleSolverPage = () => {
     setMotifEditorOpen(false);
     setSelectedMotifTag(null);
     setMotifSaveStatus({ state: "idle" });
+    setExplanationEditorOpen(false);
+    setExplanationDraft("");
+    setExplanationSaveStatus({ state: "idle" });
     setReportIssueOpen(false);
     setReportIssueCategory("missing_alternate_solution");
     setReportIssueDetails("");
@@ -1014,6 +1034,51 @@ export const PuzzleSolverPage = () => {
     if (isMobileLayout) {
       window.requestAnimationFrame(() => {
         boardPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+  };
+
+  const handleOpenExplanationEditor = () => {
+    if (!canManagePuzzleExplanation) return;
+    setExplanationDraft(explanation);
+    setExplanationSaveStatus({ state: "idle" });
+    setExplanationEditorOpen(true);
+  };
+
+  const handleCancelExplanationEdit = () => {
+    setExplanationEditorOpen(false);
+    setExplanationDraft(explanation);
+    setExplanationSaveStatus({ state: "idle" });
+  };
+
+  const handleSaveExplanation = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+    event.preventDefault();
+    if (
+      !canManagePuzzleExplanation ||
+      !activePuzzleId ||
+      explanationSaveStatus.state === "saving"
+    ) {
+      return;
+    }
+
+    setExplanationSaveStatus({ state: "saving" });
+    try {
+      await progressWriteQueueRef.current.catch(() => undefined);
+      const savedExplanation = await updatePuzzleExplanation(activePuzzleId, explanationDraft);
+      setPuzzles((current) =>
+        current.map((puzzle) =>
+          puzzle.puzzleId === activePuzzleId
+            ? { ...puzzle, explanation: savedExplanation }
+            : puzzle,
+        ),
+      );
+      setExplanationDraft(savedExplanation);
+      setExplanationEditorOpen(false);
+      setExplanationSaveStatus({ state: "saved" });
+    } catch (error) {
+      setExplanationSaveStatus({
+        state: "error",
+        message: error instanceof Error ? error.message : "Unable to update puzzle explanation.",
       });
     }
   };
@@ -1466,7 +1531,7 @@ export const PuzzleSolverPage = () => {
           </span>
         ) : null}
       </button>
-      {hasExplanation ? (
+      {hasExplanation || canManagePuzzleExplanation ? (
         <button
           type="button"
           role="tab"
@@ -1478,9 +1543,13 @@ export const PuzzleSolverPage = () => {
           title={
             showExplanation
               ? "Hide the puzzle explanation"
-              : canViewExplanation
-                ? "View the puzzle explanation"
-                : "Make a wrong move to unlock the explanation."
+              : !canViewExplanation
+                ? "Attempt this puzzle before viewing or editing the explanation."
+                : canManagePuzzleExplanation
+                  ? hasExplanation
+                    ? "View or edit the puzzle explanation"
+                    : "Add a puzzle explanation"
+                  : "View the puzzle explanation"
           }
         >
           <FontAwesomeIcon icon={faCircleInfo} aria-hidden="true" />
@@ -1557,8 +1626,55 @@ export const PuzzleSolverPage = () => {
       return (
         <div className="puzzleInfoPanel">
           <section className="puzzleExplanation" aria-live="polite">
-            <strong>Explanation</strong>
-            <p>{explanation}</p>
+            <div className="puzzleExplanationHeader">
+              <strong>Explanation</strong>
+              {canManagePuzzleExplanation && !explanationEditorOpen ? (
+                <button
+                  type="button"
+                  className="puzzleExplanationEditButton"
+                  onClick={handleOpenExplanationEditor}
+                >
+                  {hasExplanation ? "Edit" : "Add explanation"}
+                </button>
+              ) : null}
+            </div>
+            {explanationEditorOpen ? (
+              <form className="puzzleExplanationForm" onSubmit={handleSaveExplanation}>
+                <label htmlFor={`puzzle-explanation-${activePuzzleId}`}>Puzzle explanation</label>
+                <textarea
+                  id={`puzzle-explanation-${activePuzzleId}`}
+                  value={explanationDraft}
+                  maxLength={5000}
+                  rows={5}
+                  onChange={(event) => setExplanationDraft(event.target.value)}
+                  disabled={explanationSaveStatus.state === "saving"}
+                />
+                <div className="puzzleExplanationFormActions">
+                  <button
+                    type="button"
+                    onClick={handleCancelExplanationEdit}
+                    disabled={explanationSaveStatus.state === "saving"}
+                  >
+                    Cancel
+                  </button>
+                  <button type="submit" disabled={explanationSaveStatus.state === "saving"}>
+                    {explanationSaveStatus.state === "saving" ? "Saving…" : "Save explanation"}
+                  </button>
+                </div>
+              </form>
+            ) : hasExplanation ? (
+              <p>{explanation}</p>
+            ) : (
+              <p className="puzzleExplanationEmpty">No explanation has been added yet.</p>
+            )}
+            {explanationSaveStatus.state === "saved" ? (
+              <span className="puzzleExplanationMessage success">Explanation saved.</span>
+            ) : null}
+            {explanationSaveStatus.state === "error" ? (
+              <span className="puzzleExplanationMessage error" role="alert">
+                {explanationSaveStatus.message}
+              </span>
+            ) : null}
           </section>
         </div>
       );

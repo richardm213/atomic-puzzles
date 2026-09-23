@@ -1118,23 +1118,128 @@ body:has(.puzzlePage),
 }
 
 .puzzleExplanation {
+  display: grid;
+  gap: 10px;
   padding: 12px;
   border: 1px solid color-mix(in srgb, var(--color-primary) 34%, var(--color-border));
   border-radius: var(--radius-ui);
   background: color-mix(in srgb, var(--color-primary) 8%, var(--color-panel-strong));
 }
 
-.puzzleExplanation strong {
+.puzzleExplanationHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.puzzleExplanationHeader strong {
   color: var(--color-heading);
   font-size: 13px;
 }
 
 .puzzleExplanation p {
-  margin: 7px 0 0;
+  margin: 0;
   color: var(--color-text);
   font-size: 13px;
   line-height: 1.55;
   white-space: pre-line;
+}
+
+.puzzleExplanation .puzzleExplanationEmpty {
+  color: var(--color-muted);
+}
+
+.puzzleExplanationEditButton,
+.puzzleExplanationFormActions button {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-elevated);
+  color: var(--color-heading);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    color 180ms ease;
+}
+
+.puzzleExplanationEditButton:hover,
+.puzzleExplanationFormActions button:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-primary) 50%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-panel-strong));
+}
+
+.puzzleExplanationEditButton:focus-visible,
+.puzzleExplanationForm textarea:focus-visible,
+.puzzleExplanationFormActions button:focus-visible {
+  outline: 3px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+.puzzleExplanationForm {
+  display: grid;
+  gap: 8px;
+}
+
+.puzzleExplanationForm label {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.puzzleExplanationForm textarea {
+  width: 100%;
+  min-height: 116px;
+  resize: vertical;
+  padding: 10px;
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-elevated);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.puzzleExplanationForm textarea:disabled,
+.puzzleExplanationFormActions button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.puzzleExplanationFormActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.puzzleExplanationFormActions button[type="submit"] {
+  border-color: color-mix(in srgb, var(--color-primary) 68%, var(--color-border));
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.puzzleExplanationFormActions button[type="submit"]:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.puzzleExplanationMessage {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.puzzleExplanationMessage.success {
+  color: var(--color-success);
+}
+
+.puzzleExplanationMessage.error {
+  color: var(--color-danger);
 }
 
 .puzzleOtherAttemptsPanel {
@@ -2155,10 +2260,24 @@ body:has(.puzzlePage),
   --feedback-text: color-mix(in srgb, var(--color-success) 80%, var(--color-heading));
 }
 
+:root[data-theme="light"] .feedbackBadge.wrong,
+:root[data-theme="light"] .mobileFeedbackOverlay.wrong {
+  --feedback-text: color-mix(in srgb, var(--color-danger) 80%, var(--color-heading));
+}
+
+:root[data-theme="light"] .feedbackBadge.retry,
+:root[data-theme="light"] .mobileFeedbackOverlay.retry {
+  --feedback-text: color-mix(in srgb, var(--color-primary) 80%, var(--color-heading));
+}
+
 :root[data-theme="light"] .feedbackBadge.correct strong,
 :root[data-theme="light"] .feedbackBadge.retrySuccess strong,
+:root[data-theme="light"] .feedbackBadge.wrong strong,
+:root[data-theme="light"] .feedbackBadge.retry strong,
 :root[data-theme="light"] .mobileFeedbackOverlay.correct .mobileFeedbackText,
-:root[data-theme="light"] .mobileFeedbackOverlay.retrySuccess .mobileFeedbackText {
+:root[data-theme="light"] .mobileFeedbackOverlay.retrySuccess .mobileFeedbackText,
+:root[data-theme="light"] .mobileFeedbackOverlay.wrong .mobileFeedbackText,
+:root[data-theme="light"] .mobileFeedbackOverlay.retry .mobileFeedbackText {
   text-shadow: none;
 }
 

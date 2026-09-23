@@ -6,6 +6,7 @@
 /api/puzzles/review    /.netlify/functions/puzzle-review    200
 /api/puzzles/issues    /.netlify/functions/puzzle-issues    200
 /api/puzzles/tags    /.netlify/functions/puzzle-tags    200
+/api/puzzles/explanation    /.netlify/functions/puzzle-explanation    200
 /api/puzzles/community    /.netlify/functions/puzzle-community    200
 /api/puzzles/progress    /.netlify/functions/puzzle-progress    200
 /api/puzzle-sets    /.netlify/functions/puzzle-sets    200

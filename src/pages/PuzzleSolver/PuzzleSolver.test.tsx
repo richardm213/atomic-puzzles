@@ -39,6 +39,7 @@ const mocks = vi.hoisted(() => ({
   },
   scrollIntoView: vi.fn(),
   updatePuzzleTags: vi.fn(),
+  updatePuzzleExplanation: vi.fn(),
   username: "solver",
 }));
 
@@ -95,6 +96,10 @@ vi.mock("../../lib/puzzles/customPuzzleSets", () => ({
 
 vi.mock("../../lib/puzzles/puzzleTags", () => ({
   updatePuzzleTags: mocks.updatePuzzleTags,
+}));
+
+vi.mock("../../lib/puzzles/puzzleExplanation", () => ({
+  updatePuzzleExplanation: mocks.updatePuzzleExplanation,
 }));
 
 vi.mock("../../lib/puzzles/puzzleIssues", () => ({
@@ -260,6 +265,9 @@ describe("PuzzleSolverPage solution options", () => {
     mocks.updatePuzzleTags
       .mockReset()
       .mockImplementation(async (_puzzleId: number, tags: string[]) => tags);
+    mocks.updatePuzzleExplanation
+      .mockReset()
+      .mockImplementation(async (_puzzleId: number, explanation: string) => explanation.trim());
     mocks.loadPuzzleCatalog.mockReset().mockResolvedValue([
       {
         id: 1369,
@@ -625,9 +633,7 @@ describe("PuzzleSolverPage solution options", () => {
     render(<PuzzleSolverPage />);
 
     const commentsTab = await screen.findByRole("tab", { name: "Comments" });
-    await waitFor(() =>
-      expect(screen.queryByLabelText(/^Elapsed time /)).not.toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.queryByLabelText(/^Elapsed time /)).not.toBeInTheDocument());
     await waitFor(() => expect(commentsTab).toBeEnabled());
     await user.click(commentsTab);
 
@@ -697,6 +703,64 @@ describe("PuzzleSolverPage solution options", () => {
 
     await screen.findByRole("tab", { name: "Solution" });
     expect(screen.queryByRole("tab", { name: "Explanation" })).not.toBeInTheDocument();
+  });
+
+  it("shows the author an explanation editor only after attempting the puzzle", async () => {
+    mocks.username = "admin";
+    mocks.attemptedPuzzleIds = new Set();
+    mocks.puzzleExplanation = "";
+    const user = userEvent.setup();
+    render(<PuzzleSolverPage />);
+
+    const explanationTab = await screen.findByRole("tab", { name: "Explanation" });
+    expect(explanationTab).toBeDisabled();
+
+    act(() => {
+      mocks.chessboardProps.at(-1)?.onAttemptResolved?.({
+        puzzleId: 1369,
+        puzzleCorrect: false,
+        incorrectMove: "1... Kd7",
+        correctMove: null,
+      });
+    });
+
+    await waitFor(() => expect(explanationTab).toBeEnabled());
+    await user.click(explanationTab);
+    await user.click(screen.getByRole("button", { name: "Add explanation" }));
+    await user.type(
+      screen.getByRole("textbox", { name: "Puzzle explanation" }),
+      "The king move escapes the atomic threat.",
+    );
+    await user.click(screen.getByRole("button", { name: "Save explanation" }));
+
+    await waitFor(() =>
+      expect(mocks.updatePuzzleExplanation).toHaveBeenCalledWith(
+        1369,
+        "The king move escapes the atomic threat.",
+      ),
+    );
+    expect(await screen.findByText("Explanation saved.")).toBeInTheDocument();
+    expect(screen.getByText("The king move escapes the atomic threat.")).toBeInTheDocument();
+  });
+
+  it("lets seaside_tiramisu edit another author's explanation", async () => {
+    mocks.username = "seaside_tiramisu";
+    const user = userEvent.setup();
+    render(<PuzzleSolverPage />);
+
+    await user.click(await screen.findByRole("tab", { name: "Explanation" }));
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    const explanationInput = screen.getByRole("textbox", { name: "Puzzle explanation" });
+    await user.clear(explanationInput);
+    await user.type(explanationInput, "Updated by the puzzle admin.");
+    await user.click(screen.getByRole("button", { name: "Save explanation" }));
+
+    await waitFor(() =>
+      expect(mocks.updatePuzzleExplanation).toHaveBeenCalledWith(
+        1369,
+        "Updated by the puzzle admin.",
+      ),
+    );
   });
 
   it("keeps the current solution position when opening other attempts", async () => {
