@@ -23,30 +23,39 @@ const PUBLIC_DOMAIN_ERROR = /^(Invalid (FEN|atomic position|PGN)|Enter PGN|The P
 export class PuzzleSubmissionService {
   constructor(private readonly repository: PuzzleSubmissionRepository) {}
 
-  async submit(username: string, input: PuzzleSubmissionInput) {
+  private normalize(input: PuzzleSubmissionInput) {
+    const parsedPgn = parsePuzzlePgnInput(input.solution, input.fen);
+    const fen = parsedPgn.fen;
+    const solution = compactPuzzleSolution(parsedPgn.solution);
+    createAtomicPosition(fen);
+    if (parseSolutionUciLines(fen, solution).length === 0) {
+      throw new HttpError(400, "The moves are not legal from this atomic position.");
+    }
+    return {
+      fen,
+      solution: compactPuzzleSolution(normalizeSolutionPgn(fen, solution)),
+      event: parsedPgn.event || input.event,
+      explanation: input.explanation,
+    };
+  }
+
+  async submitBatch(username: string, inputs: PuzzleSubmissionInput[]) {
     try {
-      const parsedPgn = parsePuzzlePgnInput(input.solution, input.fen);
-      const fen = parsedPgn.fen;
-      const solution = compactPuzzleSolution(parsedPgn.solution);
-      createAtomicPosition(fen);
-      if (parseSolutionUciLines(fen, solution).length === 0) {
-        throw new HttpError(400, "The moves are not legal from this atomic position.");
-      }
-      const normalizedPuzzle = {
-        fen,
-        solution: compactPuzzleSolution(normalizeSolutionPgn(fen, solution)),
-        event: parsedPgn.event || input.event,
-        explanation: input.explanation,
-      };
+      // Validate every puzzle before performing the first write.
+      const normalizedPuzzles = inputs.map((input) => this.normalize(input));
       if (isApprovedPuzzleCreator(username)) {
         return {
           destination: "published" as const,
-          puzzleId: await this.repository.publish(username, normalizedPuzzle),
+          puzzleIds: await this.repository.publishBatch(username, normalizedPuzzles),
         };
+      }
+      const puzzles = [];
+      for (const normalizedPuzzle of normalizedPuzzles) {
+        puzzles.push(await this.repository.enqueue(username, normalizedPuzzle));
       }
       return {
         destination: "review" as const,
-        puzzle: await this.repository.enqueue(username, normalizedPuzzle),
+        puzzles,
       };
     } catch (error) {
       if (error instanceof HttpError) throw error;
@@ -55,5 +64,12 @@ export class PuzzleSubmissionService {
       }
       throw error;
     }
+  }
+
+  async submit(username: string, input: PuzzleSubmissionInput) {
+    const result = await this.submitBatch(username, [input]);
+    return result.destination === "published"
+      ? { destination: result.destination, puzzleId: result.puzzleIds[0] }
+      : { destination: result.destination, puzzle: result.puzzles[0] };
   }
 }

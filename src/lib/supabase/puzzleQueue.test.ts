@@ -4,6 +4,7 @@ import {
   approveQueuedPuzzle,
   rejectQueuedPuzzle,
   submitPuzzle,
+  submitPuzzleBatch,
   submitPuzzleToQueue,
   updateQueuedPuzzle,
 } from "./puzzleQueue";
@@ -81,6 +82,27 @@ describe("puzzle queue review client", () => {
     await expect(
       submitPuzzle({ fen: "fen", solution: "1. e4", event: "", explanation: "" }),
     ).resolves.toEqual({ destination: "published", puzzleId: 1801 });
+  });
+
+  it("submits a direct-publication batch in one request and returns its ids", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
+      jsonResponse({ destination: "published", puzzleIds: [1801, 1802] }, 201),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      submitPuzzleBatch([
+        { fen: "fen 1", solution: "1. e4", event: "event", explanation: "" },
+        { fen: "fen 2", solution: "1. d4", event: "event", explanation: "" },
+      ]),
+    ).resolves.toEqual({ destination: "published", puzzleIds: [1801, 1802] });
+    const [, request] = fetchMock.mock.calls[0] ?? [];
+    expect(JSON.parse(String(request?.body))).toEqual({
+      submissions: [
+        { fen: "fen 1", solution: "1. e4", event: "event", explanation: "" },
+        { fen: "fen 2", solution: "1. d4", event: "event", explanation: "" },
+      ],
+    });
   });
 
   it("returns the approved puzzle id from the review endpoint", async () => {

@@ -13,7 +13,7 @@ import {
   type PuzzleSubmissionValue,
   validatePuzzleSubmission,
 } from "../../lib/puzzles/puzzleSubmission";
-import { submitPuzzle } from "../../lib/supabase/puzzleQueue";
+import { submitPuzzle, submitPuzzleBatch } from "../../lib/supabase/puzzleQueue";
 import { PuzzleAnalysisInstructions } from "./PuzzleAnalysisInstructions";
 import { PuzzleEditor } from "./PuzzleEditor";
 
@@ -74,10 +74,18 @@ export const PuzzleSubmissionPage = () => {
           throw new Error(submissions.length > 1 ? `Puzzle ${index + 1}: ${detail}` : detail);
         }
       });
-      for (const normalized of normalizedSubmissions) {
-        const result = await submitPuzzle(normalized);
-        if (result.destination === "published") createdPuzzleIds.push(result.puzzleId);
-        submittedCount += 1;
+      if (publishesDirectly) {
+        const result = await submitPuzzleBatch(normalizedSubmissions);
+        if (result.destination !== "published") {
+          throw new Error("Approved creator submission did not publish directly.");
+        }
+        createdPuzzleIds.push(...result.puzzleIds);
+        submittedCount = result.puzzleIds.length;
+      } else {
+        for (const normalized of normalizedSubmissions) {
+          await submitPuzzle(normalized);
+          submittedCount += 1;
+        }
       }
       setValue(emptyPuzzleSubmission());
       setBatchValues([]);

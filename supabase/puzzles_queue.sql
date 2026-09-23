@@ -201,6 +201,140 @@ begin
 end;
 $$;
 
+-- Publishes a complete approved-creator batch atomically. The table lock keeps
+-- ID allocation contiguous across concurrent creators, while deterministically
+-- ordered advisory locks serialize duplicates against normal queue submissions.
+create or replace function public.publish_approved_puzzle_batch(
+  p_puzzles jsonb,
+  p_submitted_by text
+)
+returns bigint[]
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  normalized_username text := lower(btrim(coalesce(p_submitted_by, '')));
+  item jsonb;
+  normalized_fen text;
+  normalized_solution text;
+  next_puzzle_id bigint;
+  puzzle_ids bigint[] := array[]::bigint[];
+  duplicate_lock_key bigint;
+  puzzle_id_sequence text;
+begin
+  if normalized_username not in ('seaside_tiramisu', 'wolfram_ep', 'randoomplayer') then
+    raise exception 'Only approved puzzle creators can publish directly';
+  end if;
+
+  if p_puzzles is null or jsonb_typeof(p_puzzles) <> 'array' then
+    raise exception 'Puzzles must be supplied as an array';
+  end if;
+
+  if jsonb_array_length(p_puzzles) < 1 or jsonb_array_length(p_puzzles) > 100 then
+    raise exception 'A batch must contain between 1 and 100 puzzles';
+  end if;
+
+  for duplicate_lock_key in
+    select distinct hashtextextended(
+      jsonb_build_array(
+        btrim(coalesce(value->>'fen', '')),
+        regexp_replace(btrim(coalesce(value->>'solution', '')), '[[:space:]]+', ' ', 'g')
+      )::text,
+      0
+    )
+    from jsonb_array_elements(p_puzzles)
+    order by 1
+  loop
+    perform pg_advisory_xact_lock(duplicate_lock_key);
+  end loop;
+
+  lock table public.puzzles in share row exclusive mode;
+
+  if exists (
+    select 1
+    from (
+      select
+        btrim(coalesce(value->>'fen', '')) as fen,
+        regexp_replace(
+          btrim(coalesce(value->>'solution', '')),
+          '[[:space:]]+',
+          ' ',
+          'g'
+        ) as solution
+      from jsonb_array_elements(p_puzzles)
+    ) normalized
+    group by normalized.fen, normalized.solution
+    having count(*) > 1
+  ) then
+    raise exception 'Puzzle moves are duplicated within this batch';
+  end if;
+
+  select coalesce(max(id), 0) + 1
+  into next_puzzle_id
+  from public.puzzles;
+
+  for item in select value from jsonb_array_elements(p_puzzles)
+  loop
+    normalized_fen := btrim(coalesce(item->>'fen', ''));
+    normalized_solution := regexp_replace(
+      btrim(coalesce(item->>'solution', '')),
+      '[[:space:]]+',
+      ' ',
+      'g'
+    );
+
+    if normalized_fen = '' then
+      raise exception 'A FEN is required';
+    end if;
+
+    if normalized_solution = '' then
+      raise exception 'A solution is required';
+    end if;
+
+    if exists (
+      select 1
+      from public.puzzles
+      where btrim(fen) = normalized_fen
+        and regexp_replace(btrim(solution), '[[:space:]]+', ' ', 'g') = normalized_solution
+    ) then
+      raise exception 'Puzzle moves already exist for FEN';
+    end if;
+
+    if exists (
+      select 1
+      from public.puzzles_queue
+      where btrim(fen) = normalized_fen
+        and regexp_replace(btrim(solution), '[[:space:]]+', ' ', 'g') = normalized_solution
+    ) then
+      raise exception 'Puzzle moves already exist for FEN in queue';
+    end if;
+
+    insert into public.puzzles (id, fen, solution, event, explanation, author)
+    values (
+      next_puzzle_id,
+      normalized_fen,
+      normalized_solution,
+      btrim(coalesce(item->>'event', '')),
+      btrim(coalesce(item->>'explanation', '')),
+      normalized_username
+    );
+
+    puzzle_ids := array_append(puzzle_ids, next_puzzle_id);
+    next_puzzle_id := next_puzzle_id + 1;
+  end loop;
+
+  select pg_get_serial_sequence('public.puzzles', 'id')
+  into puzzle_id_sequence;
+
+  if puzzle_id_sequence is not null then
+    perform setval(puzzle_id_sequence::regclass, next_puzzle_id - 1, true);
+  end if;
+
+  return puzzle_ids;
+end;
+$$;
+
 -- Inserts the reviewed row with the reviewer-selected puzzle ID, then removes
 -- it from the queue. The review service suggests MAX(puzzles.id) + 1.
 drop function if exists public.approve_queued_puzzle(bigint, text);
@@ -295,6 +429,8 @@ revoke all on function public.enqueue_puzzle_submission(text, text, text, text, 
 grant execute on function public.enqueue_puzzle_submission(text, text, text, text, text) to service_role;
 revoke all on function public.publish_approved_puzzle_submission(text, text, text, text, text) from public;
 grant execute on function public.publish_approved_puzzle_submission(text, text, text, text, text) to service_role;
+revoke all on function public.publish_approved_puzzle_batch(jsonb, text) from public;
+grant execute on function public.publish_approved_puzzle_batch(jsonb, text) to service_role;
 revoke all on function public.approve_queued_puzzle(bigint, text, bigint) from public;
 grant execute on function public.approve_queued_puzzle(bigint, text, bigint) to service_role;
 

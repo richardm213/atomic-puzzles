@@ -119,7 +119,7 @@ describe("puzzle-submit function", () => {
         ),
       );
       const upsert = vi.fn(async () => ({ error: null }));
-      const rpc = vi.fn(async () => ({ data: 1801, error: null }));
+      const rpc = vi.fn(async () => ({ data: [1801], error: null }));
       const from = vi.fn(() => ({ upsert }));
       mocks.createClient.mockReturnValue({ from, rpc });
 
@@ -139,12 +139,58 @@ describe("puzzle-submit function", () => {
         puzzleId: 1801,
       });
       expect(rpc).toHaveBeenCalledWith(
-        "publish_approved_puzzle_submission",
-        expect.objectContaining({ p_submitted_by: username }),
+        "publish_approved_puzzle_batch",
+        expect.objectContaining({
+          p_submitted_by: username,
+          p_puzzles: [expect.objectContaining({ solution: "1. e4" })],
+        }),
       );
       expect(rpc).not.toHaveBeenCalledWith("enqueue_puzzle_submission", expect.anything());
     },
   );
+
+  it("publishes an approved creator batch in one database transaction", async () => {
+    const upsert = vi.fn(async () => ({ error: null }));
+    const rpc = vi.fn(async () => ({ data: [1801, 1802], error: null }));
+    const from = vi.fn(() => ({ upsert }));
+    mocks.createClient.mockReturnValue({ from, rpc });
+
+    const response = await handler({
+      httpMethod: "POST",
+      headers: authHeaders("wolfram_ep"),
+      body: JSON.stringify({
+        submissions: [
+          {
+            fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+            solution: "1. e4",
+            explanation: "",
+          },
+          {
+            fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+            solution: "1. d4",
+            explanation: "",
+          },
+        ],
+      }),
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(JSON.parse(response.body)).toEqual({
+      destination: "published",
+      puzzleIds: [1801, 1802],
+    });
+    expect(rpc).toHaveBeenCalledOnce();
+    expect(rpc).toHaveBeenCalledWith(
+      "publish_approved_puzzle_batch",
+      expect.objectContaining({
+        p_submitted_by: "wolfram_ep",
+        p_puzzles: [
+          expect.objectContaining({ solution: "1. e4" }),
+          expect.objectContaining({ solution: "1. d4" }),
+        ],
+      }),
+    );
+  });
 
   it("does not let an ordinary signed-in user impersonate an approved creator in the body", async () => {
     const upsert = vi.fn(async () => ({ error: null }));
@@ -170,7 +216,7 @@ describe("puzzle-submit function", () => {
       "enqueue_puzzle_submission",
       expect.objectContaining({ p_submitted_by: "submitter" }),
     );
-    expect(rpc).not.toHaveBeenCalledWith("publish_approved_puzzle_submission", expect.anything());
+    expect(rpc).not.toHaveBeenCalledWith("publish_approved_puzzle_batch", expect.anything());
   });
 
   it("returns a clear conflict when the FEN and moves already exist", async () => {

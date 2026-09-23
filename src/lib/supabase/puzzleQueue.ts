@@ -12,12 +12,20 @@ export type PuzzleSubmissionResult =
   | { destination: "review"; puzzle: PuzzleQueueRow }
   | { destination: "published"; puzzleId: number };
 
-export const submitPuzzle = async (input: {
+export type PuzzleBatchSubmissionResult =
+  | { destination: "review"; puzzles: PuzzleQueueRow[] }
+  | { destination: "published"; puzzleIds: number[] };
+
+type PuzzleSubmissionInput = {
   fen: string;
   solution: string;
   event: string;
   explanation: string;
-}): Promise<PuzzleSubmissionResult> => {
+};
+
+export const submitPuzzle = async (
+  input: PuzzleSubmissionInput,
+): Promise<PuzzleSubmissionResult> => {
   const body = await postApi<Partial<PuzzleSubmissionResult>>(
     "/api/puzzles/submit",
     {
@@ -39,6 +47,38 @@ export const submitPuzzle = async (input: {
     return { destination: "review", puzzle: body.puzzle };
   }
   throw new Error("Unable to submit puzzle: the submission service returned no puzzle data.");
+};
+
+export const submitPuzzleBatch = async (
+  inputs: PuzzleSubmissionInput[],
+): Promise<PuzzleBatchSubmissionResult> => {
+  const body = await postApi<Partial<PuzzleBatchSubmissionResult>>(
+    "/api/puzzles/submit",
+    {
+      submissions: inputs.map((input) => ({
+        fen: input.fen.trim(),
+        solution: compactPuzzleSolution(input.solution),
+        event: input.event.trim(),
+        explanation: input.explanation.trim(),
+      })),
+    },
+    {
+      errorMessage: (response) =>
+        `Unable to submit puzzles: submission service returned HTTP ${response.status}.`,
+      invalidMessage: "Unable to submit puzzles: the submission service returned no data.",
+    },
+  );
+  if (
+    body.destination === "published" &&
+    Array.isArray(body.puzzleIds) &&
+    body.puzzleIds.every((id) => Number.isSafeInteger(id))
+  ) {
+    return { destination: "published", puzzleIds: body.puzzleIds };
+  }
+  if (body.destination === "review" && Array.isArray(body.puzzles)) {
+    return { destination: "review", puzzles: body.puzzles };
+  }
+  throw new Error("Unable to submit puzzles: the submission service returned no puzzle data.");
 };
 
 /** @deprecated Prefer submitPuzzle, which also represents direct publication. */

@@ -11,12 +11,17 @@ import { parseJsonBody } from "../../../platform/validation";
 import { PuzzleSubmissionRepository } from "./repository";
 import { PuzzleSubmissionService } from "./service";
 
-const submissionBodySchema = z.object({
+const singleSubmissionSchema = z.object({
   fen: z.string().trim().min(1).max(200),
   solution: z.string().trim().min(1).max(10_000),
   event: z.string().trim().max(200).default(""),
   explanation: z.string().trim().max(5_000),
 });
+
+const submissionBodySchema = z.union([
+  singleSubmissionSchema,
+  z.object({ submissions: z.array(singleSubmissionSchema).min(1).max(100) }),
+]);
 
 export const puzzleSubmissionRoute = async (event: FunctionEvent) => {
   requireSameOrigin(event.headers, "Cross-site puzzle submissions are not allowed.");
@@ -26,5 +31,10 @@ export const puzzleSubmissionRoute = async (event: FunctionEvent) => {
   const service = new PuzzleSubmissionService(
     new PuzzleSubmissionRepository(createServerSupabase("Puzzle submission service")),
   );
-  return jsonResponse(201, await service.submit(username, input));
+  return jsonResponse(
+    201,
+    "submissions" in input
+      ? await service.submitBatch(username, input.submissions)
+      : await service.submit(username, input),
+  );
 };
