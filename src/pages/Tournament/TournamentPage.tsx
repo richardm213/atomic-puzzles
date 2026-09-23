@@ -1197,11 +1197,11 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
       }
 
       void navigate({
-        to: "/matches/$mode/$matchId",
-        params: { mode: bracket?.matchMode ?? "blitz", matchId },
+        to: "/matches/$matchId",
+        params: { matchId },
       });
     },
-    [bracket?.matchMode, navigate],
+    [navigate],
   );
 
   const shouldSuppressMatchClick = (): boolean => {
@@ -1445,11 +1445,7 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
       </div>
 
       <div id="tournament-comments" className="tournamentCommentsSection">
-        <CommunityDiscussion
-          target={{ type: "tournament", id: bracket.id }}
-          eyebrow="Tournament community"
-          heading={`${bracket.title} discussion`}
-        />
+        <CommunityDiscussion target={{ type: "tournament", id: bracket.id }} />
       </div>
     </div>
   );

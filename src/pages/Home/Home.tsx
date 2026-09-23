@@ -29,9 +29,11 @@ const TournamentSpotlightCard = ({
     <span>Championship</span>
     <h2>{tournament.headingTitle || `${tournament.seriesName} ${tournament.year}`}</h2>
     <p>
-      {champion
-        ? `${champion} won the ${tournament.year} ${tournament.seriesName}.`
-        : `Follow the seeded field and ${tournament.year} championship bracket.`}
+      {tournament.seriesKey === "awc" && tournament.year === 2026
+        ? "Will natso defend his title, or will rechesster, JSF, or max stop him?"
+        : champion
+          ? `${champion} won the ${tournament.year} ${tournament.seriesName}.`
+          : `Follow the seeded field and ${tournament.year} championship bracket.`}
     </p>
     {tournament.trophyAssetPath ? (
       <img
@@ -92,13 +94,23 @@ export const HomePage = () => {
 
       <section className="homeSpotlightSection" aria-label="Atomic chess shortcuts">
         <div className="homeSpotlightGrid">
-          {featuredTournaments.slice(0, 2).map((tournament) => (
+          {featuredTournaments.slice(0, 1).map((tournament) => (
             <TournamentSpotlightCard
               key={tournament.id}
               tournament={tournament}
               champion={champions[tournament.id] || ""}
             />
           ))}
+
+          <Link
+            className="homeSpotlightCard homeH2HShortcut"
+            to="/matches/$matchId"
+            params={{ matchId: "Yr9V8s5R" }}
+          >
+            <span>Blockbuster match</span>
+            <h2>onubense vs tipau</h2>
+            <p>Two giants of the past face off in 2018 AWC finals.</p>
+          </Link>
 
           <Link className="homeSpotlightCard homeYearlyRankingsShortcut" to="/rankings/yearly">
             <span>Rankings</span>
@@ -120,7 +132,7 @@ export const HomePage = () => {
             </strong>
           </Link>
 
-          {featuredTournaments.slice(2).map((tournament) => (
+          {featuredTournaments.slice(1).map((tournament) => (
             <TournamentSpotlightCard
               key={tournament.id}
               tournament={tournament}
@@ -132,16 +144,6 @@ export const HomePage = () => {
             <span>Puzzles</span>
             <h2>Puzzle leaderboard</h2>
             <p>Points, correct solves, misses, and total attempts.</p>
-          </Link>
-
-          <Link
-            className="homeSpotlightCard homeH2HShortcut"
-            to="/matches/$mode/$matchId"
-            params={{ mode: "blitz", matchId: "MPme5e0a" }}
-          >
-            <span>Blockbuster match</span>
-            <h2>maxwellssilvrhammer vs wolfram_ep</h2>
-            <p>Top two ranked blitz players collide in a marquee atomic showdown.</p>
           </Link>
 
           <Link className="homeSpotlightCard homeRecentMatchesShortcut" to="/recent">

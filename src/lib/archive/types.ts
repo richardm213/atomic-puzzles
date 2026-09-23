@@ -4,6 +4,7 @@ export type ArchiveMatchSource = "lobby" | "arena" | "friend" | "swiss" | "chess
 
 export type MatchRow = {
   match_id: string;
+  mode: ArchiveMode;
   player_1: string;
   player_2: string;
   start_ts: number;

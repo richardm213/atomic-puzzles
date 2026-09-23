@@ -303,7 +303,7 @@ export const FavoriteOpponentsSection = ({
                                       {shouldLinkToMatchPage ? (
                                         <Link
                                           className="rankingLink"
-                                          to="/matches/$mode/$matchId"
+                                          to="/matches/$matchId"
                                           params={buildMatchRouteParams(matchLinkMatch)}
                                           target="_blank"
                                           rel="noreferrer"

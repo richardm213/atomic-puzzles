@@ -28,25 +28,24 @@ describe("normalizeMatchMode", () => {
 });
 
 describe("buildMatchRouteParams", () => {
-  it("normalizes mode and stringifies matchId", () => {
+  it("stringifies the match id without putting the mode in the route", () => {
     expect(buildMatchRouteParams({ mode: "blitz", matchId: "abc123" })).toEqual({
-      mode: "blitz",
       matchId: "abc123",
     });
   });
 
   it("returns blanks when fields are missing", () => {
-    expect(buildMatchRouteParams({})).toEqual({ mode: "", matchId: "" });
-    expect(buildMatchRouteParams(null)).toEqual({ mode: "", matchId: "" });
+    expect(buildMatchRouteParams({})).toEqual({ matchId: "" });
+    expect(buildMatchRouteParams(null)).toEqual({ matchId: "" });
   });
 });
 
 describe("hasMatchRouteParams", () => {
-  it("returns true only when both mode and matchId are present", () => {
+  it("returns true when a match id is present, regardless of mode", () => {
     expect(hasMatchRouteParams({ mode: "blitz", matchId: "abc" })).toBe(true);
     expect(hasMatchRouteParams({ mode: "wolfrandom", matchId: "wolf-123" })).toBe(true);
     expect(hasMatchRouteParams({ mode: "blitz", matchId: " " })).toBe(false);
-    expect(hasMatchRouteParams({ mode: "", matchId: "abc" })).toBe(false);
+    expect(hasMatchRouteParams({ mode: "", matchId: "abc" })).toBe(true);
     expect(hasMatchRouteParams(null)).toBe(false);
   });
 });

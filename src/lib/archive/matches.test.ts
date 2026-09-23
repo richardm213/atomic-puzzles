@@ -53,4 +53,12 @@ describe("fetchMatchRowsFromArchive", () => {
     const params = fetchArchiveJson.mock.calls[0]?.[0] as URLSearchParams;
     expect(params.get("mode")).toBe("atomic960");
   });
+
+  it("can look up a globally unique match id without a mode", async () => {
+    await fetchMatchRowsFromArchive(undefined, { matchId: "Yr9V8s5R" }, { pageSize: 1 });
+
+    const params = fetchArchiveJson.mock.calls[0]?.[0] as URLSearchParams;
+    expect(params.has("mode")).toBe(false);
+    expect(params.get("matchId")).toBe("Yr9V8s5R");
+  });
 });

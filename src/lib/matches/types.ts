@@ -20,6 +20,7 @@ export type RawGameObject = {
 
 export type RawMatchLike = {
   match_id?: string | null;
+  mode?: string | null;
   start_ts?: number | string | null;
   time_control?: string | null;
   source?: string | null;

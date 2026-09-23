@@ -31,6 +31,7 @@ export type ParsedMatchGame = {
 
 export type ParsedMatch = {
   match_id: string;
+  mode: Mode | "";
   players: [string, string];
   start_ts: number;
   time_control: string | null;
@@ -156,6 +157,7 @@ const parseMatchRows = (rows: MatchRow[]): ParsedMatch[] => {
 
     return {
       match_id: row.match_id,
+      mode: modeOptions.includes(row.mode as Mode) ? (row.mode as Mode) : "",
       players: [p1, p2],
       start_ts: row.start_ts,
       time_control: row.time_control,
@@ -178,6 +180,20 @@ const parseMatchRows = (rows: MatchRow[]): ParsedMatch[] => {
       },
     };
   });
+};
+
+export const loadRawMatchById = async (matchId: string): Promise<ParsedMatch | null> => {
+  const normalizedMatchId = String(matchId || "").trim();
+  if (!normalizedMatchId) return null;
+  const result = await fetchMatchRowsFromArchive(
+    undefined,
+    { matchId: normalizedMatchId },
+    {
+      page: 1,
+      pageSize: 1,
+    },
+  );
+  return parseMatchRows(Array.isArray(result?.rows) ? result.rows : [])[0] ?? null;
 };
 
 export async function loadRawMatchesByMode(

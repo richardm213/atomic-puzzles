@@ -56,9 +56,12 @@ const normalizedRows = (rows: Iterable<Record<string, unknown>>): JsonRow[] =>
 
 const queryMatches = async (params: URLSearchParams) => {
   const mode = enumIdParam(params, "mode", MODE_IDS);
-  if (mode === null) throw new ArchiveRequestError("Match mode is required");
-  const clauses = ["m.mode = ?"];
-  const args: Array<string | number> = [mode];
+  const clauses: string[] = [];
+  const args: Array<string | number> = [];
+  if (mode !== null) {
+    clauses.push("m.mode = ?");
+    args.push(mode);
+  }
   const archive = getArchiveClient();
   const resolvePlayerId = async (username: string): Promise<number | null> => {
     const result = await archive.execute({
@@ -144,8 +147,8 @@ const queryMatches = async (params: URLSearchParams) => {
     MAX_PAGE_SIZE,
     Math.max(1, Math.floor(numberParam(params, "pageSize") ?? 100)),
   );
-  const where = clauses.join(" and ");
-  const selectMatch = `select m.match_id,p1.username player_1,p2.username player_2,m.start_ts,tc.value time_control,
+  const where = clauses.length ? clauses.join(" and ") : "1 = 1";
+  const selectMatch = `select m.match_id,${modeNameSql("m.mode")} mode,p1.username player_1,p2.username player_2,m.start_ts,tc.value time_control,
       case m.source when 0 then 'lobby' when 1 then 'arena' when 2 then 'friend' when 3 then 'swiss' when 4 then 'chesscom' else 'unknown' end source,
       m.tournament_id,m.games,m.p1_before_rating/10.0 p1_before_rating,m.p1_after_rating/10.0 p1_after_rating,
       m.p1_before_rd/10.0 p1_before_rd,m.p1_after_rd/10.0 p1_after_rd,m.p2_before_rating/10.0 p2_before_rating,

@@ -27,6 +27,7 @@ const filters = (overrides: Partial<ProfileFilters> = {}): ProfileFilters => ({
 
 const match = (id: string, startTs: number, opponent = "bob", player = "alice"): ParsedMatch => ({
   match_id: id,
+  mode: "blitz",
   players: [player, opponent],
   start_ts: startTs,
   time_control: "60+0",

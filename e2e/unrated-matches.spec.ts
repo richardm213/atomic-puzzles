@@ -115,7 +115,7 @@ for (const width of [1280, 390]) {
         view === "recent"
           ? "/recent"
           : view === "detail"
-            ? "/matches/blitz/unrated-match"
+            ? "/matches/unrated-match"
             : "/h2h/alice-vs-bob",
       );
       if (view === "recent") {

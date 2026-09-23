@@ -41,17 +41,17 @@ const finiteNumber = (value: unknown): number | null => {
 };
 
 const buildParams = (
-  mode: ArchiveMode,
+  mode: ArchiveMode | undefined,
   filters: MatchFilters,
   page: number,
   pageSize: number,
 ): URLSearchParams => {
   const params = new URLSearchParams({
     resource: "matches",
-    mode,
     page: String(page),
     pageSize: String(pageSize),
   });
+  appendArchiveParam(params, "mode", mode);
   appendArchiveParam(params, "username", normalizeUsername(filters.username));
   appendArchiveParam(params, "pairA", normalizeUsername(filters.usernamePair?.[0]));
   appendArchiveParam(params, "pairB", normalizeUsername(filters.usernamePair?.[1]));
@@ -82,11 +82,13 @@ const buildParams = (
 };
 
 const fetchUncachedMatchRows = async (
-  mode: ArchiveMode,
+  mode: ArchiveMode | undefined,
   filters: MatchFilters,
   options: MatchPageOptions,
 ): Promise<{ rows: MatchRow[]; total: number }> => {
-  if (!ARCHIVE_MATCH_MODES.has(mode)) throw new Error(`Unsupported match mode "${mode}"`);
+  if (mode !== undefined && !ARCHIVE_MATCH_MODES.has(mode)) {
+    throw new Error(`Unsupported match mode "${mode}"`);
+  }
   const requestedSize = Math.floor(Number(options.pageSize));
   const singlePage = Number.isFinite(requestedSize) && requestedSize > 0;
   const pageSize = singlePage ? Math.min(MAX_MATCH_PAGE_SIZE, requestedSize) : MAX_MATCH_PAGE_SIZE;
@@ -105,7 +107,7 @@ const fetchUncachedMatchRows = async (
 };
 
 export const fetchMatchRowsFromArchive = async (
-  mode: ArchiveMode,
+  mode: ArchiveMode | undefined,
   filters: MatchFilters = {},
   pageOptions: MatchPageOptions = {},
 ): Promise<{ rows: MatchRow[]; total: number }> =>

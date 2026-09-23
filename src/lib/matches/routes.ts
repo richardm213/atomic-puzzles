@@ -24,13 +24,12 @@ export const normalizeMatchMode = (mode: unknown): Mode | "" => {
 
 export const buildMatchRouteParams = (
   match: MatchRouteInput | null | undefined,
-): { mode: Mode | ""; matchId: string } => ({
-  mode: normalizeMatchMode(match?.mode),
+): { matchId: string } => ({
   matchId: String(match?.matchId ?? ""),
 });
 
 export const hasMatchRouteParams = (match: MatchRouteInput | null | undefined): boolean =>
-  Boolean(normalizeMatchMode(match?.mode) && String(match?.matchId ?? "").trim());
+  Boolean(String(match?.matchId ?? "").trim());
 
 export const shouldUseInternalMatchPage = (match: MatchRouteInput | null | undefined): boolean =>
   hasMatchRouteParams(match) &&

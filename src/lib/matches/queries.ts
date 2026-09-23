@@ -4,29 +4,29 @@ import { type Mode, modeOptions } from "../../constants/matches";
 import type { MatchFilters } from "../archive/matches";
 import { fetchPlayerRatingsRows } from "../archive/ratings";
 import { resolveUsernameInputs } from "../users/usernameSearch";
-import { loadRawMatchesByMode } from "./data";
+import { loadRawMatchById, loadRawMatchesByMode } from "./data";
 import { getTournamentMatchLocation } from "./tournaments";
 
 const MATCH_STALE_TIME_MS = 5 * 60 * 1_000;
 
 export const matchQueryKeys = {
   all: ["matches"] as const,
-  detail: (mode: Mode | "", matchId: string) => ["matches", "detail", mode, matchId] as const,
+  detail: (matchId: string) => ["matches", "detail", matchId] as const,
   recent: (mode: Mode, filters: MatchFilters, page: number, pageSize: number) =>
     ["matches", "recent", mode, filters, page, pageSize] as const,
   h2h: (player1: string, player2: string) => ["matches", "h2h", player1, player2] as const,
 };
 
-export const matchDetailQueryOptions = (mode: Mode | "", matchId: string) =>
+export const matchDetailQueryOptions = (matchId: string) =>
   queryOptions({
-    queryKey: matchQueryKeys.detail(mode, matchId),
+    queryKey: matchQueryKeys.detail(matchId),
     queryFn: async () => {
-      if (!mode || !matchId) throw new Error("Invalid match key.");
+      if (!matchId) throw new Error("Invalid match key.");
       const [matches, tournamentLocation] = await Promise.all([
-        loadRawMatchesByMode(mode, { filters: { matchId } }),
+        loadRawMatchById(matchId),
         getTournamentMatchLocation(matchId).catch(() => null),
       ]);
-      const match = matches[0];
+      const match = matches;
       if (!match) throw new Error("Match not found.");
       return { match, tournamentLocation };
     },

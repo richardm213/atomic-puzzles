@@ -220,8 +220,16 @@ const matchesAliasRoute = createRoute({
 
 const matchRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/matches/$mode/$matchId",
+  path: "/matches/$matchId",
   component: MatchPage,
+});
+
+const legacyMatchRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/matches/$mode/$matchId",
+  beforeLoad: ({ params }) => {
+    throw redirect({ to: "/matches/$matchId", params: { matchId: params.matchId } });
+  },
 });
 
 const solveRoute = createRoute({
@@ -409,6 +417,7 @@ const routeTree = rootRoute.addChildren([
   h2hRoute,
   h2hMatchupRoute,
   matchRoute,
+  legacyMatchRoute,
   matchesAliasRoute,
   solveRoute,
   dashboardRoute,

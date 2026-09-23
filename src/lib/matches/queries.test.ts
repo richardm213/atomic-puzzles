@@ -3,12 +3,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   fetchPlayerRatingsRows: vi.fn(),
   getTournamentMatchLocation: vi.fn(),
+  loadRawMatchById: vi.fn(),
   loadRawMatchesByMode: vi.fn(),
   resolveUsernameInputs: vi.fn(),
 }));
 
 vi.mock("./data", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./data")>()),
+  loadRawMatchById: mocks.loadRawMatchById,
   loadRawMatchesByMode: mocks.loadRawMatchesByMode,
 }));
 vi.mock("./tournaments", async (importOriginal) => ({
@@ -38,22 +40,20 @@ beforeEach(() => {
 describe("match query behavior", () => {
   it("returns match data even when optional tournament lookup fails", async () => {
     const rawMatch = { match_id: "m1" };
-    mocks.loadRawMatchesByMode.mockResolvedValue([rawMatch]);
+    mocks.loadRawMatchById.mockResolvedValue(rawMatch);
     mocks.getTournamentMatchLocation.mockRejectedValue(new Error("catalog unavailable"));
 
-    await expect(run(matchDetailQueryOptions("blitz", "m1"))).resolves.toEqual({
+    await expect(run(matchDetailQueryOptions("m1"))).resolves.toEqual({
       match: rawMatch,
       tournamentLocation: null,
     });
   });
 
   it("rejects a missing match instead of returning an empty detail shell", async () => {
-    mocks.loadRawMatchesByMode.mockResolvedValue([]);
+    mocks.loadRawMatchById.mockResolvedValue(null);
     mocks.getTournamentMatchLocation.mockResolvedValue(null);
 
-    await expect(run(matchDetailQueryOptions("bullet", "missing"))).rejects.toThrow(
-      "Match not found.",
-    );
+    await expect(run(matchDetailQueryOptions("missing"))).rejects.toThrow("Match not found.");
   });
 
   it("forwards recent-match paging and filters without client-side reinterpretation", async () => {

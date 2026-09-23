@@ -65,6 +65,32 @@ describe("archive-data function", () => {
     });
   });
 
+  it("looks up a match id across the unified table when mode is omitted", async () => {
+    mocks.execute.mockResolvedValueOnce({ rows: [{ total: 1 }] }).mockResolvedValueOnce({
+      rows: [
+        {
+          match_id: "Yr9V8s5R",
+          mode: "blitz",
+          player_1: "onubense",
+          player_2: "tipau",
+          games: "Yr9V8s5R,d,0,2",
+        },
+      ],
+    });
+    const { handler } = await import("../functions/archive-data");
+    const response = await handler({
+      httpMethod: "GET",
+      queryStringParameters: { resource: "matches", matchId: "Yr9V8s5R", pageSize: "1" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(mocks.execute.mock.calls[0]?.[0].args).toEqual(["Yr9V8s5R"]);
+    expect(mocks.execute.mock.calls[1]?.[0].sql).toContain("when 2 then 'blitz'");
+    expect(JSON.parse(response.body)).toMatchObject({
+      rows: [{ match_id: "Yr9V8s5R", mode: "blitz" }],
+    });
+  });
+
   it("resolves usernames to player ids before querying the large match table", async () => {
     mocks.execute
       .mockResolvedValueOnce({ rows: [{ id: 42 }] })

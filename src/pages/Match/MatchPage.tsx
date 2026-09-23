@@ -25,19 +25,19 @@ const decodeParam = (value: unknown): string => {
 };
 
 export const MatchPage = () => {
-  const { mode: modeParam, matchId: matchIdParam } = useParams({ strict: false });
-  const mode = normalizeMatchMode(modeParam);
+  const { matchId: matchIdParam } = useParams({ strict: false });
   const decodedMatchId = decodeParam(matchIdParam);
-  const hasValidMatchKey = Boolean(mode && decodedMatchId);
+  const hasValidMatchKey = Boolean(decodedMatchId);
   const matchQuery = useQuery({
-    ...matchDetailQueryOptions(mode, decodedMatchId),
+    ...matchDetailQueryOptions(decodedMatchId),
     enabled: hasValidMatchKey,
   });
+  const mode = normalizeMatchMode(matchQuery.data?.match?.mode);
   const match = matchQuery.data?.match ? toMatchCardData(matchQuery.data.match, mode) : null;
   const tournamentLocation = matchQuery.data?.tournamentLocation ?? null;
   const loading = hasValidMatchKey && matchQuery.isPending;
   const error = !hasValidMatchKey
-    ? "This match link is missing a valid mode or match id."
+    ? "This match link is missing a valid match id."
     : matchQuery.error instanceof Error
       ? matchQuery.error.message
       : matchQuery.error
@@ -143,7 +143,6 @@ export const MatchPage = () => {
                   id: match.matchId || decodedMatchId,
                   context: mode,
                 }}
-                heading="Match discussion"
               />
             </>
           ) : null}
