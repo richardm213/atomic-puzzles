@@ -258,7 +258,7 @@
   padding: 0 14px;
   border: 1px solid color-mix(in srgb, var(--color-primary) 68%, var(--color-border));
   border-radius: var(--puzzle-sets-pill-radius);
-  background: color-mix(in srgb, var(--color-primary) 80%, var(--color-panel-strong));
+  background: var(--color-primary);
   color: var(--color-on-primary);
   text-decoration: none;
   transition: var(--puzzle-sets-transition);

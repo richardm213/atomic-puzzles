@@ -106,25 +106,25 @@
 
 :root[data-theme="light"] {
   --control-color-scheme: light;
-  --color-page-top: #f7f3ed;
-  --color-page-bottom: #e7eef8;
-  --color-panel: rgba(255, 255, 255, 0.82);
+  --color-page-top: #f7f9fc;
+  --color-page-bottom: #edf2f8;
+  --color-panel: rgba(255, 255, 255, 0.9);
   --color-panel-strong: #ffffff;
   --color-panel-deep: #d4deec;
-  --color-nav: rgba(255, 252, 247, 0.78);
-  --color-border: rgba(76, 94, 122, 0.16);
-  --color-border-strong: rgba(76, 94, 122, 0.2);
-  --color-input-border: rgba(76, 94, 122, 0.24);
+  --color-nav: rgba(249, 251, 255, 0.9);
+  --color-border: rgba(60, 82, 116, 0.18);
+  --color-border-strong: rgba(60, 82, 116, 0.24);
+  --color-input-border: rgba(60, 82, 116, 0.28);
   --color-text: #1c2a41;
   --color-heading: #111d31;
   --color-muted: #465a78;
-  --color-subtle: #667b9b;
+  --color-subtle: #5e728f;
   --color-primary: #2c58d8;
   --color-primary-hover: #2048bc;
-  --color-primary-soft: #1e429f;
-  --color-primary-pale: #214bc0;
+  --color-primary-soft: #315fd6;
+  --color-primary-pale: #244fbf;
   --color-cyan: #0e7c79;
-  --color-cyan-bright: #0f8ea3;
+  --color-cyan-bright: #08788e;
   --color-success: #15803d;
   --color-warning: #a86d00;
   --color-danger: #dc2626;
@@ -161,9 +161,7 @@
   --shadow-soft: 0 14px 28px rgba(139, 157, 184, 0.18);
   --shadow-strong: 0 30px 80px rgba(139, 157, 184, 0.26);
   --page-background:
-    radial-gradient(ellipse 72% 42% at 8% 10%, rgba(236, 179, 92, 0.2), transparent 100%),
-    radial-gradient(ellipse 68% 40% at 82% 2%, rgba(42, 91, 215, 0.13), transparent 100%),
-    radial-gradient(ellipse 64% 38% at 58% 22%, rgba(15, 142, 163, 0.1), transparent 100%),
+    radial-gradient(ellipse 70% 42% at 14% 0%, rgba(49, 95, 214, 0.08), transparent 78%),
     linear-gradient(180deg, var(--color-page-top) 0%, var(--color-page-bottom) 100%);
   --site-background: var(--page-background);
   --site-background-size: auto;
