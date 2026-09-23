@@ -18,11 +18,12 @@ const render = (element: ReactElement) => {
 const mocks = vi.hoisted(() => ({
   fetchCommunityDiscussion: vi.fn(),
   fetchPuzzleCommunity: vi.fn(),
+  isAuthenticated: true,
 }));
 
 vi.mock("../../context/AuthContext", () => ({
   useAuth: () => ({
-    isAuthenticated: true,
+    isAuthenticated: mocks.isAuthenticated,
     login: vi.fn(),
     user: { username: "viewer" },
   }),
@@ -39,6 +40,7 @@ vi.mock("../../lib/community/puzzleCommunity", async (importOriginal) => {
 
 describe("PuzzleCommunity", () => {
   beforeEach(() => {
+    mocks.isAuthenticated = true;
     mocks.fetchCommunityDiscussion.mockResolvedValue({ comments: [] });
     mocks.fetchPuzzleCommunity.mockResolvedValue({
       counts: { puzzle_id: 42, upvotes: 0, downvotes: 0, score: 0 },
@@ -58,6 +60,19 @@ describe("PuzzleCommunity", () => {
       ],
       viewerVote: 0,
     });
+  });
+
+  it("shows only the login action and empty state when signed out with no comments", async () => {
+    mocks.isAuthenticated = false;
+
+    render(<CommunityDiscussion target={{ type: "match", id: "match-1" }} />);
+
+    expect(
+      await screen.findByRole("button", { name: "Log in with Lichess to comment" }),
+    ).toBeVisible();
+    expect(await screen.findByText("No comments yet.")).toBeVisible();
+    expect(screen.queryByText("Join the discussion")).not.toBeInTheDocument();
+    expect(screen.queryByText(/start the conversation/i)).not.toBeInTheDocument();
   });
 
   it("moves the composer directly under the comment being replied to", async () => {
@@ -82,11 +97,9 @@ describe("PuzzleCommunity", () => {
   });
 
   it("loads the same threaded discussion UI for a profile target", async () => {
-    render(
-      <CommunityDiscussion target={{ type: "profile", id: "alice" }} heading="Comments on Alice" />,
-    );
+    render(<CommunityDiscussion target={{ type: "profile", id: "alice" }} />);
 
-    expect(await screen.findByRole("heading", { name: "Comments on Alice" })).toBeVisible();
+    expect(await screen.findByRole("region", { name: "Comments" })).toBeVisible();
     expect(mocks.fetchCommunityDiscussion).toHaveBeenCalledWith({
       type: "profile",
       id: "alice",
@@ -96,14 +109,9 @@ describe("PuzzleCommunity", () => {
   });
 
   it("loads the shared discussion UI for a tournament target", async () => {
-    render(
-      <CommunityDiscussion
-        target={{ type: "tournament", id: "ahc2026" }}
-        heading="AHC 2026 discussion"
-      />,
-    );
+    render(<CommunityDiscussion target={{ type: "tournament", id: "ahc2026" }} />);
 
-    expect(await screen.findByRole("heading", { name: "AHC 2026 discussion" })).toBeVisible();
+    expect(await screen.findByRole("region", { name: "Comments" })).toBeVisible();
     expect(mocks.fetchCommunityDiscussion).toHaveBeenCalledWith({
       type: "tournament",
       id: "ahc2026",

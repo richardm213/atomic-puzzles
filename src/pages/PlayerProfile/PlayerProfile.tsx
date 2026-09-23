@@ -1580,11 +1580,7 @@ export const PlayerProfilePage = ({
               >
                 {profileHistoryTab === "comments" && aliasesLoaded && canonicalUsername ? (
                   <Suspense fallback={<div className="emptyRankings">Loading comments...</div>}>
-                    <CommunityDiscussion
-                      target={{ type: "profile", id: canonicalUsername }}
-                      eyebrow="Profile community"
-                      heading={`Comments on ${profileDisplayUsername}`}
-                    />
+                    <CommunityDiscussion target={{ type: "profile", id: canonicalUsername }} />
                   </Suspense>
                 ) : null}
               </section>

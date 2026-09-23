@@ -5,7 +5,6 @@ import {
   faArrowUp,
   faChevronDown,
   faChevronRight,
-  faComment,
   faReply,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -36,8 +35,6 @@ type PuzzleCommunityProps = {
 type CommunityDiscussionProps = {
   target: CommunityTarget;
   voteTargetId?: string;
-  eyebrow?: string;
-  heading?: string;
 };
 
 const emptyCommunity = (target: CommunityTarget): CommunityDiscussionData => ({
@@ -50,12 +47,7 @@ const emptyCommunity = (target: CommunityTarget): CommunityDiscussionData => ({
   comments: [],
 });
 
-export const CommunityDiscussion = ({
-  target,
-  voteTargetId,
-  eyebrow = "Community",
-  heading = "Discussion",
-}: CommunityDiscussionProps) => {
+export const CommunityDiscussion = ({ target, voteTargetId }: CommunityDiscussionProps) => {
   const targetType = target.type;
   const targetId = target.id;
   const targetContext = target.context;
@@ -233,47 +225,47 @@ export const CommunityDiscussion = ({
     return directReplies.reduce((total, reply) => total + 1 + countDescendants(reply.id), 0);
   };
 
-  const renderCommentComposer = (isReply: boolean) => (
-    <div className={`puzzleCommentComposer ${isReply ? "replyComposer" : ""}`}>
-      <div className="commentComposerHeading">
-        <FontAwesomeIcon icon={isReply ? faReply : faComment} />
-        <strong>{replyingTo ? `Replying to ${replyingTo.username}` : "Join the discussion"}</strong>
-        {replyingTo ? (
-          <button type="button" onClick={() => setReplyingTo(null)}>
-            Cancel reply
-          </button>
-        ) : null}
-      </div>
-      {isAuthenticated ? (
-        <>
-          <textarea
-            id={`${target.type}-comment-input`}
-            ref={commentInputRef}
-            aria-label={replyingTo ? `Reply to ${replyingTo.username}` : "Add a comment"}
-            value={commentBody}
-            maxLength={10_000}
-            rows={3}
-            placeholder={replyingTo ? `Reply to ${replyingTo.username}…` : "Add a comment…"}
-            onChange={(event) => setCommentBody(event.target.value)}
-          />
-          <div className="commentComposerActions">
-            <span>Posting as {user?.username}</span>
-            <button
-              type="button"
-              disabled={!commentBody.trim() || postingComment}
-              onClick={() => void handlePostComment()}
-            >
-              {postingComment ? "Posting…" : replyingTo ? "Post reply" : "Post comment"}
-            </button>
-          </div>
-        </>
-      ) : (
+  const renderCommentComposer = (isReply: boolean) => {
+    if (!isAuthenticated) {
+      return (
         <button className="commentLoginButton" type="button" onClick={() => requireLogin()}>
           Log in with Lichess to comment
         </button>
-      )}
-    </div>
-  );
+      );
+    }
+
+    return (
+      <div className={`puzzleCommentComposer ${isReply ? "replyComposer" : ""}`}>
+        {replyingTo ? (
+          <div className="commentComposerHeading">
+            <strong>{`Replying to ${replyingTo.username}`}</strong>
+            <button type="button" onClick={() => setReplyingTo(null)}>
+              Cancel reply
+            </button>
+          </div>
+        ) : null}
+        <textarea
+          id={`${target.type}-comment-input`}
+          ref={commentInputRef}
+          aria-label={replyingTo ? `Reply to ${replyingTo.username}` : "Add a comment"}
+          value={commentBody}
+          maxLength={10_000}
+          rows={3}
+          placeholder={replyingTo ? `Reply to ${replyingTo.username}…` : "Add a comment…"}
+          onChange={(event) => setCommentBody(event.target.value)}
+        />
+        <div className="commentComposerActions">
+          <button
+            type="button"
+            disabled={!commentBody.trim() || postingComment}
+            onClick={() => void handlePostComment()}
+          >
+            {postingComment ? "Posting…" : replyingTo ? "Post reply" : "Post comment"}
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   const renderComment = (comment: PuzzleComment, depth: number) => {
     const replies = childrenByParent.get(comment.id) ?? [];
@@ -409,29 +401,16 @@ export const CommunityDiscussion = ({
       </div>
     ) : null;
 
-  const headingId = `${target.type}-community-heading`;
-
   return (
     <>
       {voteTarget && puzzleVoteControls ? createPortal(puzzleVoteControls, voteTarget) : null}
-      <section
-        id={`${target.type}-community`}
-        className="puzzleCommunity"
-        aria-labelledby={headingId}
-      >
-        <div className="puzzleCommunityHeader">
-          <div>
-            <span>{eyebrow}</span>
-            <h2 id={headingId}>{heading}</h2>
-          </div>
-        </div>
-
+      <section id={`${target.type}-community`} className="puzzleCommunity" aria-label="Comments">
         {!replyingTo ? renderCommentComposer(false) : null}
 
         {error ? <p className="puzzleCommunityError">{error}</p> : null}
         {loading && !community ? <p className="puzzleCommunityEmpty">Loading discussion…</p> : null}
         {!loading && data.comments.length === 0 ? (
-          <p className="puzzleCommunityEmpty">No comments yet. Start the conversation.</p>
+          <p className="puzzleCommunityEmpty">No comments yet.</p>
         ) : null}
         {rootComments.length > 0 ? (
           <ol className="puzzleCommentList">

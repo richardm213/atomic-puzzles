@@ -10,24 +10,6 @@
   box-shadow: var(--shadow-panel);
 }
 
-.puzzleCommunityHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-}
-
-.puzzleCommunityHeader > div:first-child {
-  display: grid;
-  gap: 3px;
-}
-
-.puzzleCommunityHeader h2 {
-  margin: 0;
-  color: var(--color-heading);
-  font-size: clamp(19px, 2vw, 23px);
-}
-
 .puzzleVotePrompt {
   display: flex;
   align-items: center;
@@ -161,13 +143,8 @@
 .commentComposerActions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 12px;
-}
-
-.commentComposerActions > span {
-  color: var(--color-subtle);
-  font-size: 12px;
 }
 
 .commentComposerActions button,
@@ -189,6 +166,7 @@
 
 .commentLoginButton {
   justify-self: start;
+  min-height: 44px;
 }
 
 .puzzleCommentList,
@@ -396,16 +374,16 @@
 .puzzleCommunityError,
 .puzzleCommunityEmpty {
   margin: 0;
-  padding: 10px 12px;
-  border-radius: 9px;
   color: var(--color-muted);
-  background: color-mix(in srgb, var(--color-panel-strong) 70%, transparent);
   font-size: 13px;
 }
 
 .puzzleCommunityError {
-  color: var(--color-danger);
+  padding: 10px 12px;
   border: 1px solid color-mix(in srgb, var(--color-danger) 40%, var(--color-border));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--color-panel-strong) 70%, transparent);
+  color: var(--color-danger);
 }
 
 @media (max-width: 680px) {
@@ -415,11 +393,6 @@
     margin-top: 5px;
     margin-bottom: 12px;
     scroll-margin-top: 72px;
-  }
-
-  .puzzleCommunityHeader {
-    align-items: stretch;
-    flex-direction: column;
   }
 
   .puzzleVotePrompt {

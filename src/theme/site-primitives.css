@@ -201,7 +201,6 @@
   flex-wrap: wrap;
 }
 
-.puzzleCommunityHeader > div:first-child > span,
 .commentsHeader > div:first-child > span {
   color: var(--color-primary-soft);
   font-size: 11px;
