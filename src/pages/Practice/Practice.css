@@ -223,12 +223,6 @@
   cursor: not-allowed;
 }
 
-.practiceStatus span {
-  color: var(--color-heading);
-  font-size: 13px;
-  font-weight: 800;
-}
-
 .practiceStatus strong {
   color: var(--color-muted);
   font-size: 12px;

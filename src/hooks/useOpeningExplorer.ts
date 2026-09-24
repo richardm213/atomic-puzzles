@@ -11,7 +11,6 @@ export type OpeningExplorerStatus = "idle" | "loading" | "ready" | "error";
 
 export type OpeningExplorerRequest = {
   response: ExplorerApiResponse;
-  usedGeneralFallback?: boolean;
 };
 
 type OpeningExplorerState = {
@@ -20,7 +19,6 @@ type OpeningExplorerState = {
   response: ExplorerApiResponse | null;
   status: OpeningExplorerStatus;
   error: string;
-  usedGeneralFallback: boolean;
 };
 
 type UseOpeningExplorerOptions = {
@@ -49,7 +47,6 @@ const emptyState = (status: OpeningExplorerStatus): OpeningExplorerState => ({
   response: null,
   status,
   error: "",
-  usedGeneralFallback: false,
 });
 
 export const useOpeningExplorer = ({
@@ -84,7 +81,7 @@ export const useOpeningExplorer = ({
       lastChangeAtRef.current !== null && now - lastChangeAtRef.current < debounceMs;
     lastChangeAtRef.current = now;
 
-    const showResult = ({ response, usedGeneralFallback = false }: OpeningExplorerRequest) => {
+    const showResult = ({ response }: OpeningExplorerRequest) => {
       setState({
         moves: response.moves.map((move) =>
           toOpeningDatabaseMove(move, fen, { showPerformance, playerColor }),
@@ -93,7 +90,6 @@ export const useOpeningExplorer = ({
         response,
         status: "ready",
         error: "",
-        usedGeneralFallback,
       });
     };
 

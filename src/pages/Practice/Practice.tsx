@@ -190,7 +190,6 @@ const fetchPracticeExplorerResponse = async ({
   if (opponentSource === "general") {
     return {
       response: await fetchGeneralPracticeExplorerResponse(fen),
-      usedGeneralFallback: false,
     };
   }
 
@@ -212,13 +211,11 @@ const fetchPracticeExplorerResponse = async ({
   if (playerContinuation === "general" && playerResponse.moves.length === 0) {
     return {
       response: await fetchGeneralPracticeExplorerResponse(fen),
-      usedGeneralFallback: true,
     };
   }
 
   return {
     response: playerResponse,
-    usedGeneralFallback: false,
   };
 };
 
@@ -338,7 +335,6 @@ export const PracticePage = () => {
     recentGames,
     status,
     error,
-    usedGeneralFallback: usingGeneralFallback,
   } = useOpeningExplorer({
     fen: currentFen,
     playerColor: opponentSide,
@@ -926,23 +922,6 @@ export const PracticePage = () => {
     usernamePickerOpen,
   ]);
 
-  const statusText = (() => {
-    if (boardState?.winner === "white") return "White wins";
-    if (boardState?.winner === "black") return "Black wins";
-    if (opponentSource === "player" && opponentUsernames.length === 0) return "Choose player";
-    if (clockEnabled && clockExpired) return "Time expired";
-    if (gamePaused) return "";
-    if (engineStatus === "thinking") return "Fairy-Stockfish is thinking";
-    if (engineStatus === "error") return "";
-    if (status === "loading") return "";
-    if (status === "error") return "";
-    if (usingGeneralFallback) return "Using general database";
-    if (manualContinuationActive) return "Continue with your moves";
-    if (databaseExhausted) return "Database line ended";
-    if (currentTurn === side) return "";
-    return `Database to move as ${opponentSide}`;
-  })();
-
   const pageStyle = {
     "--analysis-board-size": "516px",
   } as CSSProperties;
@@ -964,14 +943,11 @@ export const PracticePage = () => {
             <h1>Opening Database Practice</h1>
           </div>
           <div className="practiceStatus" aria-live="polite">
-            {statusText ? <span>{statusText}</span> : null}
-            {engineStatus !== "thinking" ? (
-              <strong>{totalGames ? `${formatGameCount(totalGames)} games` : "0 games"}</strong>
-            ) : null}
+            <strong>{totalGames ? `${formatGameCount(totalGames)} games` : "0 games"}</strong>
           </div>
 
           <div
-            className={`practiceClock ${clockRunning ? "running" : ""} ${clockExpired ? "expired" : ""} ${clockEnabled ? "" : "off"}`}
+            className={`practiceClock ${clockExpired ? "expired" : ""} ${clockEnabled ? "" : "off"}`}
             aria-label={
               clockEnabled
                 ? `Your clock: ${formatClockTime(remainingClockMs)}`
@@ -1308,7 +1284,7 @@ export const PracticePage = () => {
                 currentPly={currentPly}
                 onPlayMove={playPracticeMove}
                 onHoverMove={setHoveredMoveUci}
-                showInlineStatus={false}
+                showInlineError={false}
               />
             </div>
           </section>

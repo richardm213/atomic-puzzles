@@ -79,7 +79,6 @@
 .analysisPlayerSettings,
 .analysisOpponentField,
 .analysisDateFilters label,
-.analysisToggleSetting,
 .analysisRatingSlider,
 .practiceSettingGroup {
   min-width: 0;
@@ -98,7 +97,6 @@
 .usernamePickerSelectedHeader span,
 .usernamePickerSelectedHeader small,
 .usernamePickerSelectedChip > span,
-.practiceStatus span,
 .practiceStatus strong,
 .practiceExplorerPlayerLabel > span,
 .practiceExplorerPlayerLabel > small,
@@ -164,7 +162,6 @@
   padding: 10px 12px;
 }
 
-.analysisToggleSetting input,
 .practiceCheckbox input {
   width: 18px;
   height: 18px;
@@ -436,7 +433,6 @@
 .puzzleHeaderTopline,
 .analysisExplorerCompactHeader,
 .profileAliasRow,
-.practiceHeader,
 .practiceStatus,
 .practiceCheckbox {
   min-width: 0;

@@ -104,7 +104,6 @@ body:has(.analysisPage),
 .analysisPlayerNameButton:focus-visible,
 .analysisPlayerSideButton:focus-visible,
 .analysisOpponentClearButton:focus-visible,
-.analysisToggleSetting input:focus-visible,
 .analysisUsernamePickerClose:focus-visible,
 .analysisUsernamePickerForm input:focus-visible,
 .analysisUsernamePickerSubmit:focus-visible,
@@ -587,21 +586,12 @@ body:has(.analysisPage),
 .analysisPlayerSettings > span,
 .analysisOpponentField > span,
 .analysisDateFilters span,
-.analysisToggleSetting > span,
 .analysisRatingSlider > span {
   color: color-mix(in srgb, var(--color-muted) 70%, var(--color-panel-deep) 30%);
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-}
-
-.analysisToggleSetting {
-  min-height: 30px;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
 }
 
 .analysisPlayerSettingsRow,

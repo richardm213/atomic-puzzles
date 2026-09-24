@@ -47,7 +47,7 @@ describe("OpeningDatabaseDisplay recent-game links", () => {
     );
   });
 
-  it("can suppress inline loading and error placeholders", () => {
+  it("omits loading placeholders and can suppress inline errors", () => {
     const { rerender } = render(
       <OpeningDatabaseDisplay
         moves={[]}
@@ -60,7 +60,6 @@ describe("OpeningDatabaseDisplay recent-game links", () => {
         currentPly={0}
         onPlayMove={vi.fn()}
         onHoverMove={vi.fn()}
-        showInlineStatus={false}
       />,
     );
 
@@ -78,7 +77,7 @@ describe("OpeningDatabaseDisplay recent-game links", () => {
         currentPly={0}
         onPlayMove={vi.fn()}
         onHoverMove={vi.fn()}
-        showInlineStatus={false}
+        showInlineError={false}
       />,
     );
 
