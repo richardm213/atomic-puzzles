@@ -219,7 +219,7 @@ describe("puzzle-submit function", () => {
     expect(rpc).not.toHaveBeenCalledWith("publish_approved_puzzle_batch", expect.anything());
   });
 
-  it("returns a clear conflict when the FEN and moves already exist", async () => {
+  it("returns a clear conflict when the FEN and starting move already exist", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(
@@ -251,7 +251,7 @@ describe("puzzle-submit function", () => {
 
     expect(response.statusCode).toBe(409);
     expect(JSON.parse(response.body)).toEqual({
-      error: "A puzzle with this FEN and the same moves already exists.",
+      error: "A puzzle with this FEN and starting move already exists.",
     });
   });
 
@@ -287,7 +287,65 @@ describe("puzzle-submit function", () => {
 
     expect(response.statusCode).toBe(409);
     expect(JSON.parse(response.body)).toEqual({
-      error: "A puzzle with this FEN and the same moves is already pending review.",
+      error: "A puzzle with this FEN and starting move is already pending review.",
     });
+  });
+
+  it("asks before queueing a different starting move from the same FEN", async () => {
+    const upsert = vi.fn(async () => ({ error: null }));
+    const single = vi.fn(async () => ({
+      data: null,
+      error: { message: "Puzzle FEN exists with different start move" },
+    }));
+    const rpc = vi.fn(() => ({ single }));
+    const from = vi.fn(() => ({ upsert }));
+    mocks.createClient.mockReturnValue({ from, rpc });
+
+    const response = await handler({
+      httpMethod: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({
+        fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        solution: "1. d4",
+        explanation: "",
+      }),
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(JSON.parse(response.body).error).toMatch(/Send this puzzle to the review queue/);
+    expect(rpc).toHaveBeenCalledWith(
+      "enqueue_puzzle_submission",
+      expect.objectContaining({ p_allow_different_start_move: false }),
+    );
+  });
+
+  it("routes a confirmed different starting move to review for an approved creator", async () => {
+    const upsert = vi.fn(async () => ({ error: null }));
+    const single = vi.fn(async () => ({ data: { id: 9 }, error: null }));
+    const rpc = vi.fn(() => ({ single }));
+    const from = vi.fn(() => ({ upsert }));
+    mocks.createClient.mockReturnValue({ from, rpc });
+
+    const response = await handler({
+      httpMethod: "POST",
+      headers: authHeaders("wolfram_ep"),
+      body: JSON.stringify({
+        fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        solution: "1. d4",
+        explanation: "",
+        allowDifferentStartMove: true,
+      }),
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(JSON.parse(response.body)).toEqual({
+      destination: "review",
+      puzzle: { id: 9 },
+    });
+    expect(rpc).toHaveBeenCalledWith(
+      "enqueue_puzzle_submission",
+      expect.objectContaining({ p_allow_different_start_move: true }),
+    );
+    expect(rpc).not.toHaveBeenCalledWith("publish_approved_puzzle_batch", expect.anything());
   });
 });

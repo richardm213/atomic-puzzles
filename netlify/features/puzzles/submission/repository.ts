@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { DIFFERENT_START_MOVE_CONFIRMATION } from "../../../../shared/domain/puzzles/submissionDuplicates";
 import { HttpError } from "../../../platform/errors";
 
 export type QueuedPuzzleSubmission = {
@@ -12,7 +13,7 @@ export type QueuedPuzzleSubmission = {
 export class PuzzleSubmissionRepository {
   constructor(private readonly supabase: SupabaseClient) {}
 
-  async enqueue(username: string, puzzle: QueuedPuzzleSubmission) {
+  async enqueue(username: string, puzzle: QueuedPuzzleSubmission, allowDifferentStartMove = false) {
     const { error: userError } = await this.supabase
       .from("users")
       .upsert({ username }, { onConflict: "username", ignoreDuplicates: true });
@@ -25,16 +26,26 @@ export class PuzzleSubmissionRepository {
         p_event: puzzle.event,
         p_explanation: puzzle.explanation,
         p_submitted_by: username,
+        p_allow_different_start_move: allowDifferentStartMove,
       })
       .single();
-    if (error?.message.includes("Puzzle moves already exist for FEN in queue")) {
+    if (
+      error?.message.includes("Puzzle start move already exists for FEN in queue") ||
+      error?.message.includes("Puzzle moves already exist for FEN in queue")
+    ) {
       throw new HttpError(
         409,
-        "A puzzle with this FEN and the same moves is already pending review.",
+        "A puzzle with this FEN and starting move is already pending review.",
       );
     }
-    if (error?.message.includes("Puzzle moves already exist for FEN")) {
-      throw new HttpError(409, "A puzzle with this FEN and the same moves already exists.");
+    if (
+      error?.message.includes("Puzzle start move already exists for FEN") ||
+      error?.message.includes("Puzzle moves already exist for FEN")
+    ) {
+      throw new HttpError(409, "A puzzle with this FEN and starting move already exists.");
+    }
+    if (error?.message.includes("Puzzle FEN exists with different start move")) {
+      throw new HttpError(409, DIFFERENT_START_MOVE_CONFIRMATION);
     }
     if (error) throw new Error(`Unable to submit puzzle: ${error.message}`);
     return data;
@@ -50,14 +61,26 @@ export class PuzzleSubmissionRepository {
       p_puzzles: puzzles,
       p_submitted_by: username,
     });
-    if (error?.message.includes("Puzzle moves already exist for FEN in queue")) {
+    if (
+      error?.message.includes("Puzzle start move already exists for FEN in queue") ||
+      error?.message.includes("Puzzle moves already exist for FEN in queue")
+    ) {
       throw new HttpError(
         409,
-        "A puzzle with this FEN and the same moves is already pending review.",
+        "A puzzle with this FEN and starting move is already pending review.",
       );
     }
-    if (error?.message.includes("Puzzle moves already exist for FEN")) {
-      throw new HttpError(409, "A puzzle with this FEN and the same moves already exists.");
+    if (
+      error?.message.includes("Puzzle start move already exists for FEN") ||
+      error?.message.includes("Puzzle moves already exist for FEN")
+    ) {
+      throw new HttpError(409, "A puzzle with this FEN and starting move already exists.");
+    }
+    if (error?.message.includes("Puzzle start move is duplicated within this batch")) {
+      throw new HttpError(409, "This batch repeats a FEN with the same starting move.");
+    }
+    if (error?.message.includes("Puzzle FEN exists with different start move")) {
+      throw new HttpError(409, DIFFERENT_START_MOVE_CONFIRMATION);
     }
     if (/only approved puzzle creators/i.test(error?.message ?? "")) {
       throw new HttpError(403, "This account is not approved to publish puzzles directly.");

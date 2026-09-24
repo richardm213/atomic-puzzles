@@ -39,11 +39,15 @@ export class PuzzleSubmissionService {
     };
   }
 
-  async submitBatch(username: string, inputs: PuzzleSubmissionInput[]) {
+  async submitBatch(
+    username: string,
+    inputs: PuzzleSubmissionInput[],
+    allowDifferentStartMove = false,
+  ) {
     try {
       // Validate every puzzle before performing the first write.
       const normalizedPuzzles = inputs.map((input) => this.normalize(input));
-      if (isApprovedPuzzleCreator(username)) {
+      if (isApprovedPuzzleCreator(username) && !allowDifferentStartMove) {
         return {
           destination: "published" as const,
           puzzleIds: await this.repository.publishBatch(username, normalizedPuzzles),
@@ -51,7 +55,9 @@ export class PuzzleSubmissionService {
       }
       const puzzles = [];
       for (const normalizedPuzzle of normalizedPuzzles) {
-        puzzles.push(await this.repository.enqueue(username, normalizedPuzzle));
+        puzzles.push(
+          await this.repository.enqueue(username, normalizedPuzzle, allowDifferentStartMove),
+        );
       }
       return {
         destination: "review" as const,
@@ -66,8 +72,8 @@ export class PuzzleSubmissionService {
     }
   }
 
-  async submit(username: string, input: PuzzleSubmissionInput) {
-    const result = await this.submitBatch(username, [input]);
+  async submit(username: string, input: PuzzleSubmissionInput, allowDifferentStartMove = false) {
+    const result = await this.submitBatch(username, [input], allowDifferentStartMove);
     return result.destination === "published"
       ? { destination: result.destination, puzzleId: result.puzzleIds[0] }
       : { destination: result.destination, puzzle: result.puzzles[0] };

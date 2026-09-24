@@ -396,6 +396,7 @@
 }
 
 .queuePrimaryButton,
+.queueSecondaryButton,
 .queueDangerButton {
   width: fit-content;
   padding: 9px 14px;
@@ -408,6 +409,24 @@
   border-color: var(--color-primary);
   background: var(--color-primary);
   color: white;
+}
+
+.queueSecondaryButton {
+  background: var(--color-panel-strong);
+  color: var(--color-text);
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    transform 160ms ease;
+}
+
+.queueSecondaryButton:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-panel-strong));
+}
+
+.queueSecondaryButton:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 .queueDangerButton {
@@ -482,6 +501,7 @@
 }
 
 .queuePrimaryButton:disabled,
+.queueSecondaryButton:disabled,
 .queueDangerButton:disabled {
   cursor: not-allowed;
   opacity: 0.55;
@@ -515,6 +535,12 @@
 .queueMessage.error {
   background: var(--color-danger-soft-bg);
   color: var(--color-danger);
+}
+
+.queueMessage.warning {
+  border: 1px solid var(--color-warning-soft-border);
+  background: var(--color-warning-soft-bg);
+  color: var(--color-text);
 }
 
 .puzzleReviewLayout {
@@ -622,6 +648,7 @@
 }
 
 .queuePrimaryButton:focus-visible,
+.queueSecondaryButton:focus-visible,
 .queueDangerButton:focus-visible,
 .puzzleCopyPgnButton:focus-visible,
 .puzzleDeleteLineButton:focus-visible,

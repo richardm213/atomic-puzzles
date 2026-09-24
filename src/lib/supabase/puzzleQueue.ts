@@ -2,6 +2,8 @@ import { postApi } from "../api/postApi";
 import { compactPuzzleSolution } from "../puzzles/puzzleSubmission";
 import type { PuzzleQueueRow, PuzzleReviewQueueRow } from "./types";
 
+export { DIFFERENT_START_MOVE_CONFIRMATION } from "../../../shared/domain/puzzles/submissionDuplicates";
+
 const reviewRequest = <T>(body: Record<string, unknown>): Promise<T> =>
   postApi("/api/puzzles/review", body, {
     errorMessage: "Unable to review puzzle.",
@@ -23,8 +25,13 @@ type PuzzleSubmissionInput = {
   explanation: string;
 };
 
+type PuzzleSubmissionOptions = {
+  allowDifferentStartMove?: boolean;
+};
+
 export const submitPuzzle = async (
   input: PuzzleSubmissionInput,
+  options: PuzzleSubmissionOptions = {},
 ): Promise<PuzzleSubmissionResult> => {
   const body = await postApi<Partial<PuzzleSubmissionResult>>(
     "/api/puzzles/submit",
@@ -33,6 +40,7 @@ export const submitPuzzle = async (
       solution: compactPuzzleSolution(input.solution),
       event: input.event.trim(),
       explanation: input.explanation.trim(),
+      allowDifferentStartMove: options.allowDifferentStartMove ?? false,
     },
     {
       errorMessage: (response) =>
@@ -51,6 +59,7 @@ export const submitPuzzle = async (
 
 export const submitPuzzleBatch = async (
   inputs: PuzzleSubmissionInput[],
+  options: PuzzleSubmissionOptions = {},
 ): Promise<PuzzleBatchSubmissionResult> => {
   const body = await postApi<Partial<PuzzleBatchSubmissionResult>>(
     "/api/puzzles/submit",
@@ -61,6 +70,7 @@ export const submitPuzzleBatch = async (
         event: input.event.trim(),
         explanation: input.explanation.trim(),
       })),
+      allowDifferentStartMove: options.allowDifferentStartMove ?? false,
     },
     {
       errorMessage: (response) =>

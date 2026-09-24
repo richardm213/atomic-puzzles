@@ -19,8 +19,11 @@ const singleSubmissionSchema = z.object({
 });
 
 const submissionBodySchema = z.union([
-  singleSubmissionSchema,
-  z.object({ submissions: z.array(singleSubmissionSchema).min(1).max(100) }),
+  singleSubmissionSchema.extend({ allowDifferentStartMove: z.boolean().optional() }),
+  z.object({
+    submissions: z.array(singleSubmissionSchema).min(1).max(100),
+    allowDifferentStartMove: z.boolean().optional(),
+  }),
 ]);
 
 export const puzzleSubmissionRoute = async (event: FunctionEvent) => {
@@ -34,7 +37,11 @@ export const puzzleSubmissionRoute = async (event: FunctionEvent) => {
   return jsonResponse(
     201,
     "submissions" in input
-      ? await service.submitBatch(username, input.submissions)
-      : await service.submit(username, input),
+      ? await service.submitBatch(
+          username,
+          input.submissions,
+          input.allowDifferentStartMove ?? false,
+        )
+      : await service.submit(username, input, input.allowDifferentStartMove ?? false),
   );
 };

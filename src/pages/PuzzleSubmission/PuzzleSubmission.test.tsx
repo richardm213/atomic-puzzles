@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import userEvent from "@testing-library/user-event";
 import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
 import { useState } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PuzzleSubmissionValue } from "../../lib/puzzles/puzzleSubmission";
 import {
@@ -10,6 +10,7 @@ import {
   parseSolutionUciLines,
   serializeSanLinesToPgn,
 } from "../../lib/puzzles/solutionPgn";
+import { DIFFERENT_START_MOVE_CONFIRMATION } from "../../lib/supabase/puzzleQueue";
 import type { ChessboardState, SolutionNavigation } from "../../types/chessboard";
 import { PuzzleEditor } from "./PuzzleEditor";
 import { formatCreatedPuzzleIds, PuzzleSubmissionPage } from "./PuzzleSubmission";
@@ -211,6 +212,10 @@ describe("PuzzleSubmissionPage fields", () => {
     authMocks.username = "submitter";
   });
 
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("shows the explanation for a single puzzle but not a puzzle batch", async () => {
     const user = userEvent.setup();
     render(<PuzzleSubmissionPage />);
@@ -239,6 +244,41 @@ describe("PuzzleSubmissionPage fields", () => {
   it("shows one id for a single creation and an id range for a batch", () => {
     expect(formatCreatedPuzzleIds([1801])).toBe("Puzzle 1801 created.");
     expect(formatCreatedPuzzleIds([1802, 1803, 1804])).toBe("Puzzles 1802–1804 created.");
+  });
+
+  it("asks before sending an alternate starting move to the review queue", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: DIFFERENT_START_MOVE_CONFIRMATION }), {
+          status: 409,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ destination: "review", puzzle: { id: 12 } }), {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    render(<PuzzleSubmissionPage />);
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Solution PGN" }), {
+      target: { value: `1. e4` },
+    });
+    await user.click(screen.getByRole("button", { name: "Submit for review" }));
+
+    expect(await screen.findByText(DIFFERENT_START_MOVE_CONFIRMATION)).toBeVisible();
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Send to review" }));
+
+    expect(await screen.findByText(/Puzzle submitted for review/)).toBeVisible();
+    const [, secondRequest] = fetchMock.mock.calls[1] ?? [];
+    expect(JSON.parse(String(secondRequest?.body))).toEqual(
+      expect.objectContaining({ allowDifferentStartMove: true }),
+    );
   });
 });
 

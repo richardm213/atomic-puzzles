@@ -65,7 +65,7 @@ const editorPgnState = (solution: string, fallbackFen: string) => {
 };
 
 type PuzzleEditorFeedback = {
-  tone: "error" | "success";
+  tone: "error" | "success" | "warning";
   text: ReactNode;
 };
 
@@ -524,7 +524,12 @@ export const PuzzleEditor = ({
         ) : null}
         {editorError ? <p className="queueMessage error">{editorError}</p> : null}
         {!editorError && feedback ? (
-          <p className={`queueMessage ${feedback.tone}`}>{feedback.text}</p>
+          <div
+            className={`queueMessage ${feedback.tone}`}
+            role={feedback.tone === "error" ? "alert" : "status"}
+          >
+            {feedback.text}
+          </div>
         ) : null}
         {actions}
       </div>
