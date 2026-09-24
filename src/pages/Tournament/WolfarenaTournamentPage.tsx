@@ -20,7 +20,6 @@ import { tournamentCatalogQueryOptions } from "../../lib/matches/tournamentQueri
 import {
   formatWolfarenaPoints,
   type WolfarenaMatch,
-  wolfarenaRoundSourceUrl,
   type WolfarenaTournament,
 } from "../../lib/matches/wolfarena";
 import { wolfarenaTournamentQueryOptions } from "../../lib/matches/wolfarenaQueries";
@@ -28,6 +27,7 @@ import { appAssetPath } from "../../utils/appAssetPath";
 import { normalizeUsername } from "../../utils/playerNames";
 
 const STORAGE_KEY = "tournament-view:wr-arena2026:round";
+const WOLFARENA_FORUM_URL = "https://lichess.org/forum/team-wolfrandom-atomic-game/wolfarena-2026";
 
 const formatDate = (date: string): string =>
   new Intl.DateTimeFormat("en", { month: "short", day: "numeric", timeZone: "UTC" }).format(
@@ -85,11 +85,13 @@ const MatchContent = ({ match }: { match: WolfarenaMatch }) => {
   const player2Won = Number(match.score2) > Number(match.score1);
   return (
     <>
-      <div className="wolfarenaMatchTopline">
-        <span className={`wolfarenaMatchStatus is${match.status}`}>
-          {matchStatusLabel(match.status)}
-        </span>
-      </div>
+      {match.status !== "played" ? (
+        <div className="wolfarenaMatchTopline">
+          <span className={`wolfarenaMatchStatus is${match.status}`}>
+            {matchStatusLabel(match.status)}
+          </span>
+        </div>
+      ) : null}
       <div className={`wolfarenaPlayerRow${player1Won ? " isWinner" : ""}`}>
         <PlayerLink player={match.player1} />
         <span className="wolfarenaPlayerOutcome">
@@ -204,7 +206,8 @@ const WolfarenaTournamentArchive = ({
           </Link>
           <h1>{wolfarena2026.title}</h1>
           <p className="wolfarenaWinnerSummary">
-            <span>Champion:</span>
+            <span>Champion</span>
+            <span aria-hidden="true">·</span>
             <PlayerLink player={wolfarena2026.champion} />
             <span aria-hidden="true">·</span>
             <span>128 points</span>
@@ -263,12 +266,8 @@ const WolfarenaTournamentArchive = ({
             </p>
           </div>
           <div className="wolfarenaRoundActions">
-            <a
-              href={wolfarenaRoundSourceUrl(wolfarena2026, selectedRound)}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Source post
+            <a href={WOLFARENA_FORUM_URL} target="_blank" rel="noreferrer">
+              Arena forum
               <FontAwesomeIcon icon={faArrowUpRightFromSquare} aria-hidden="true" />
             </a>
             <a href="#tournament-comments">

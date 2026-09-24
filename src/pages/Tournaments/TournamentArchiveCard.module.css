@@ -2,77 +2,41 @@
   position: relative;
   isolation: isolate;
   display: grid;
-  grid-template-columns: 64px 48px minmax(0, 1fr);
+  grid-template-columns: 44px 44px minmax(0, 1fr) 150px;
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-3);
   min-width: 0;
-  min-height: 92px;
-  padding: var(--space-4) var(--space-5);
+  min-height: 72px;
+  padding: 10px var(--space-4);
   border-bottom: 1px solid var(--color-border);
-  background: var(--color-panel);
+  background: var(--color-panel-strong);
   transition:
-    background-color 180ms ease,
-    box-shadow 180ms ease;
+    background-color 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .card:last-child {
   border-bottom: 0;
 }
 
-.spotlight {
-  grid-template-columns: minmax(0, 1fr) 112px;
-  grid-template-rows: auto 1fr auto;
-  align-items: start;
-  gap: var(--space-4) var(--space-6);
-  min-height: 238px;
-  overflow: hidden;
-  padding: var(--space-6);
-  border: 1px solid color-mix(in srgb, var(--tournament-gold) 24%, var(--color-border));
-  border-radius: var(--radius-lg);
-  background: var(--color-panel);
-  box-shadow: var(--shadow-soft);
-}
-
 .card:hover,
 .card:has(.cardLink:focus-visible) {
-  background: color-mix(in srgb, var(--color-panel) 84%, var(--color-panel-strong));
-  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--tournament-gold) 78%, transparent);
-}
-
-.spotlight:hover,
-.spotlight:has(.cardLink:focus-visible) {
-  border-color: color-mix(in srgb, var(--tournament-gold) 52%, var(--color-border));
-  box-shadow:
-    var(--shadow-soft),
-    inset 0 -3px 0 color-mix(in srgb, var(--tournament-gold) 72%, transparent);
+  background: var(--color-surface-elevated-strong);
+  box-shadow: inset 3px 0 0 var(--color-primary-soft);
 }
 
 .card:has(.cardLink:focus-visible) {
   outline: 3px solid var(--color-primary-ring);
-  outline-offset: 3px;
+  outline-offset: -3px;
 }
 
 .edition {
   position: relative;
   z-index: 2;
-  color: var(--tournament-gold);
-  font-size: 0.82rem;
-  font-weight: 850;
+  color: var(--color-muted);
+  font-size: 0.86rem;
   font-variant-numeric: tabular-nums;
   pointer-events: none;
-}
-
-.spotlight .edition {
-  grid-column: 1;
-  grid-row: 1;
-  align-self: start;
-  width: fit-content;
-  padding: 5px 8px;
-  border: 1px solid color-mix(in srgb, var(--tournament-gold) 28%, var(--color-border));
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--tournament-gold) 7%, var(--color-panel));
-  font-size: 0.74rem;
-  letter-spacing: 0.04em;
 }
 
 .art {
@@ -80,16 +44,16 @@
   z-index: 2;
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 56px;
+  width: 44px;
+  height: 48px;
   pointer-events: none;
 }
 
 .art img {
-  width: 48px;
-  height: 56px;
+  width: 40px;
+  height: 44px;
   object-fit: contain;
-  filter: drop-shadow(0 9px 10px color-mix(in srgb, black 28%, transparent));
+  filter: drop-shadow(0 5px 7px color-mix(in srgb, black 24%, transparent));
 }
 
 .art img[src*="atomic-openings-championship"] {
@@ -97,46 +61,13 @@
   object-fit: cover;
 }
 
-.spotlight .art {
-  grid-column: 2;
-  grid-row: 1 / span 2;
-  width: 112px;
-  height: 128px;
-}
-
-.spotlight .art::before {
-  position: absolute;
-  inset: 8px 0 auto;
-  z-index: -1;
-  height: 96px;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--tournament-gold) 8%, var(--color-panel-strong));
-  content: "";
-}
-
-.spotlight .art img {
-  width: 96px;
-  height: 112px;
-}
-
 .copy {
   position: relative;
   z-index: 2;
   display: grid;
-  align-content: center;
-  gap: var(--space-2);
+  gap: var(--space-1);
   min-width: 0;
   pointer-events: none;
-}
-
-.card:not(.spotlight) .copy {
-  padding-right: 116px;
-}
-
-.spotlight .copy {
-  grid-column: 1;
-  grid-row: 2;
-  align-content: start;
 }
 
 .copy h3 {
@@ -144,42 +75,19 @@
   overflow: hidden;
   color: var(--color-heading);
   font-size: 1rem;
-  line-height: 1.15;
-  letter-spacing: -0.018em;
+  line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.spotlight .copy h3 {
-  max-width: 17ch;
-  overflow: visible;
-  font-size: clamp(1.6rem, 3vw, 2rem);
-  line-height: 1.02;
-  letter-spacing: -0.04em;
-  white-space: normal;
-}
-
 .champion {
+  position: relative;
+  z-index: 2;
   display: flex;
   align-items: baseline;
-  gap: var(--space-2);
   min-width: 0;
+  font-size: 0.86rem;
   pointer-events: auto;
-}
-
-.spotlight .champion {
-  display: grid;
-  gap: 2px;
-  width: fit-content;
-}
-
-.champion > span,
-.published {
-  color: var(--color-subtle);
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
 }
 
 .winnerLink {
@@ -188,10 +96,9 @@
   width: fit-content;
   max-width: 100%;
   overflow: hidden;
-  color: var(--color-heading);
-  font-size: 0.84rem;
-  font-weight: 750;
-  text-decoration-color: color-mix(in srgb, var(--tournament-gold) 44%, transparent);
+  color: var(--link-color);
+  font-weight: 650;
+  text-decoration: none;
   text-overflow: ellipsis;
   text-underline-offset: 3px;
   white-space: nowrap;
@@ -199,7 +106,7 @@
 
 .winnerLink:hover {
   color: var(--link-hover-color);
-  text-decoration-color: currentcolor;
+  text-decoration: underline;
 }
 
 .winnerLink:focus-visible {
@@ -212,127 +119,53 @@
   position: absolute;
   inset: 0;
   z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-2);
-  padding: var(--space-4) var(--space-5);
-  color: var(--color-primary-pale);
-  font-size: 0.78rem;
-  font-weight: 800;
+  min-height: 44px;
   text-decoration: none;
-}
-
-.spotlight .cardLink {
-  align-items: flex-end;
-  padding: var(--space-6);
-}
-
-.cardLink svg {
-  transition: transform 180ms ease;
-}
-
-.card:hover .cardLink svg,
-.cardLink:focus-visible svg {
-  transform: translateX(3px);
 }
 
 .cardLink:focus-visible {
   outline: none;
 }
 
-@media (max-width: 760px) {
-  .spotlight {
-    min-height: 210px;
-  }
-}
-
 @media (max-width: 640px) {
   .card {
-    grid-template-columns: 52px minmax(0, 1fr);
+    grid-template-columns: 42px minmax(0, 1fr);
     gap: var(--space-3);
-    min-height: 88px;
-    padding: var(--space-4);
+    min-height: 72px;
+    padding: var(--space-3);
   }
 
-  .card .art {
+  .art {
     display: none;
   }
 
-  .card .champion,
-  .card .published {
-    display: none;
+  .edition {
+    grid-column: 1;
+    grid-row: 1 / span 2;
   }
 
-  .card:not(.spotlight) .copy {
-    padding-right: var(--space-6);
+  .copy {
+    grid-column: 2;
+    grid-row: 1;
   }
 
-  .cardLink {
-    min-height: var(--control-height-touch);
-    padding: var(--space-4);
-  }
-
-  .cardLink span {
-    position: absolute;
-    width: 1px;
-    height: 1px;
+  .copy h3 {
+    display: -webkit-box;
     overflow: hidden;
-    clip: rect(0 0 0 0);
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-
-  .spotlight {
-    grid-template-columns: minmax(0, 1fr) 88px;
-    grid-template-rows: auto 1fr auto;
-    min-height: 196px;
-    padding: var(--space-5);
-  }
-
-  .spotlight .art {
-    display: grid;
-    width: 88px;
-    height: 104px;
-  }
-
-  .spotlight .art::before {
-    inset: 6px 0 auto;
-    height: 78px;
-  }
-
-  .spotlight .art img {
-    width: 76px;
-    height: 88px;
-  }
-
-  .spotlight .copy h3 {
-    font-size: clamp(1.4rem, 7vw, 1.7rem);
-  }
-
-  .spotlight .champion,
-  .spotlight .published {
-    display: grid;
-  }
-
-  .spotlight .cardLink {
-    padding: var(--space-5);
-  }
-
-  .spotlight .cardLink span {
-    position: static;
-    width: auto;
-    height: auto;
-    overflow: visible;
-    clip: auto;
-    clip-path: none;
+    text-overflow: clip;
     white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .champion {
+    grid-column: 2;
+    grid-row: 2;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .card,
-  .cardLink svg {
+  .card {
     transition-duration: 0.01ms;
   }
 }
