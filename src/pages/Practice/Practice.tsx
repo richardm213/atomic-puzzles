@@ -7,7 +7,10 @@ import {
   faCheck,
   faDice,
   faGear,
+  faPause,
+  faPlay,
   faRobot,
+  faRotateLeft,
   faShuffle,
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
@@ -916,7 +919,7 @@ export const PracticePage = () => {
     if (boardState?.winner === "black") return "Black wins";
     if (opponentSource === "player" && opponentUsernames.length === 0) return "Choose player";
     if (clockEnabled && clockExpired) return "Time expired";
-    if (gamePaused) return "Paused";
+    if (gamePaused) return "";
     if (engineStatus === "thinking") return "Fairy-Stockfish is thinking";
     if (engineStatus === "error") return engineError;
     if (status === "loading") return "Loading database moves";
@@ -944,10 +947,51 @@ export const PracticePage = () => {
         className={`analysisPanel practicePanel ${settingsOpen ? "dbMovesCollapsed" : ""}`}
         aria-label="Practice controls"
       >
-        <div className="practiceHeader">
-          <div>
+        <div className="practiceSessionControls" role="group" aria-label="Practice session">
+          <div className="practiceHeaderTitle">
             <h1>Opening Database Practice</h1>
           </div>
+          <div className="practiceStatus" aria-live="polite">
+            {statusText ? <span>{statusText}</span> : null}
+            {engineStatus !== "thinking" ? (
+              <strong>{totalGames ? `${formatGameCount(totalGames)} games` : "0 games"}</strong>
+            ) : null}
+          </div>
+
+          <div
+            className={`practiceClock ${clockRunning ? "running" : ""} ${clockExpired ? "expired" : ""} ${clockEnabled ? "" : "off"}`}
+            aria-label={
+              clockEnabled
+                ? `Your clock: ${formatClockTime(remainingClockMs)}`
+                : "Practice controls"
+            }
+          >
+            {clockEnabled ? (
+              <strong aria-live="off">{formatClockTime(remainingClockMs)}</strong>
+            ) : null}
+            <div className="practiceClockActions">
+              <button
+                type="button"
+                onClick={toggleGamePaused}
+                disabled={!canRunPractice}
+                aria-label={
+                  gamePaused ? (sessionStarted ? "Resume game" : "Start game") : "Pause game"
+                }
+                title={gamePaused ? "Start or resume game (A)" : "Pause game (A)"}
+              >
+                <FontAwesomeIcon icon={gamePaused ? faPlay : faPause} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                onClick={restartPracticeGame}
+                aria-label="Restart game"
+                title="Restart from the initial position"
+              >
+                <FontAwesomeIcon icon={faRotateLeft} aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+
           <div className="practiceHeaderActions">
             <button
               type="button"
@@ -959,7 +1003,6 @@ export const PracticePage = () => {
             >
               <span className="practiceSideColor" aria-hidden="true" />
               <span className="practiceSideCopy">
-                <small>Playing as</small>
                 <strong>{side}</strong>
               </span>
               <span className="practiceSideFlip" aria-hidden="true">
@@ -967,43 +1010,6 @@ export const PracticePage = () => {
               </span>
             </button>
           </div>
-        </div>
-
-        <div className="practiceStatus" aria-live="polite">
-          <span>{statusText}</span>
-          {engineStatus !== "thinking" ? (
-            <strong>{totalGames ? `${formatGameCount(totalGames)} games` : "0 games"}</strong>
-          ) : null}
-        </div>
-
-        <div
-          className={`practiceClock ${clockRunning ? "running" : ""} ${clockExpired ? "expired" : ""} ${clockEnabled ? "" : "off"}`}
-          aria-label={
-            clockEnabled ? `Your clock: ${formatClockTime(remainingClockMs)}` : "Practice controls"
-          }
-        >
-          <div>
-            <span>{clockEnabled ? "Your clock" : "Practice session"}</span>
-            <small>{clockEnabled ? `${clockMinutes}+${clockIncrementSeconds}` : "Clock off"}</small>
-          </div>
-          <strong aria-live="off">
-            {clockEnabled ? formatClockTime(remainingClockMs) : "Untimed"}
-          </strong>
-          <button
-            type="button"
-            onClick={toggleGamePaused}
-            disabled={!canRunPractice}
-            title={gamePaused ? "Start or resume game (A)" : "Pause game (A)"}
-          >
-            {gamePaused ? (sessionStarted ? "Resume" : "Start") : "Pause"}
-          </button>
-          <button
-            type="button"
-            onClick={restartPracticeGame}
-            title="Restart from the initial position"
-          >
-            Restart
-          </button>
         </div>
 
         <section className="practiceSettings" aria-label="Opponent settings">

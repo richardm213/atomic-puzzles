@@ -7,7 +7,12 @@ const pages = [
     heading: "Atomic chess puzzles, rankings, and matches",
   },
   { path: "/solve/101", title: /Puzzle #101/, heading: "Solve the Atomic Tactic" },
-  { path: "/practice", title: /Opening Database Practice/, heading: "Opening Database Practice" },
+  {
+    path: "/practice",
+    title: /Opening Database Practice/,
+    heading: "Opening Database Practice",
+    visuallyHiddenHeading: true,
+  },
   { path: "/rankings", title: /Atomic rankings/, heading: "Monthly Rankings" },
   { path: "/recent", title: /Recent Match Archive/, heading: "Recent Match Archive" },
   { path: "/tournaments", title: /Tournament history/, heading: "Tournament archive" },
@@ -32,7 +37,11 @@ for (const appPage of pages) {
 
     await expect(page).toHaveTitle(appPage.title);
     await expect(page.locator("#main-content")).toBeVisible();
-    await expect(page.getByRole("heading", { level: 1, name: appPage.heading })).toBeVisible();
+    if ("visuallyHiddenHeading" in appPage && appPage.visuallyHiddenHeading) {
+      await expect(page.locator("h1", { hasText: appPage.heading })).toBeAttached();
+    } else {
+      await expect(page.getByRole("heading", { level: 1, name: appPage.heading })).toBeVisible();
+    }
   });
 }
 
