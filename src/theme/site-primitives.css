@@ -379,7 +379,6 @@
 .puzzleOtherAttemptsList,
 .analysisMoveList,
 .analysisRecentGames ol,
-.analysisPositionLeaders ol,
 .notificationList {
   display: grid;
   list-style: none;
@@ -423,7 +422,6 @@
 .analysisMoveList button,
 .analysisExplorerTabs button,
 .analysisPlayerNameButton,
-.analysisPositionLeaderName,
 .matchPageHeaderPlayer,
 .practiceSegmented button,
 .practiceModeGrid button {

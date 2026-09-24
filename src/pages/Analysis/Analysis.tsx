@@ -24,16 +24,12 @@ import { UsernamePickerModal } from "../../components/UsernamePickerModal/Userna
 import { useBoardDocument } from "../../hooks/useBoardDocument";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
 import { useOpeningExplorer } from "../../hooks/useOpeningExplorer";
-import { useOpeningPositionLeaders } from "../../hooks/useOpeningPositionLeaders";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import { useUsernamePicker } from "../../hooks/useUsernamePicker";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
-import { formatGameCount } from "../../utils/formatters";
 import { lichessAtomicAnalysisUrl } from "../../utils/lichess";
 import {
   buildOpeningExplorerUrl,
-  type ExplorerApiPositionLeader,
-  type ExplorerApiPositionLeaders,
   type ExplorerRequestNavigation,
   fetchExplorerApiResponse,
 } from "../../utils/openingExplorer";
@@ -41,17 +37,6 @@ import {
 const MIN_MOVE_PANEL_HEIGHT = 86;
 const MIN_EXPLORER_PANEL_HEIGHT = 220;
 const EXPLORER_RESIZE_STEP = 24;
-
-type ExplorerPositionLeader = ExplorerApiPositionLeader & {
-  share: number;
-  gamesLabel: string;
-};
-
-type ExplorerPositionLeaders = {
-  sideLabel: "White" | "Black";
-  totalGamesLabel: string;
-  leaders: ExplorerPositionLeader[];
-};
 
 type ExplorerScope = "general" | "player";
 type ExplorerSpeed = "bullet" | "blitz" | "hyperbullet";
@@ -87,7 +72,6 @@ const DEFAULT_EXPLORER_SETTINGS = {
   endDate: "",
   username: "",
   opponent: "",
-  showPositionLeaders: true,
 };
 
 type StoredExplorerSettings = typeof DEFAULT_EXPLORER_SETTINGS;
@@ -185,7 +169,6 @@ const explorerSettingsSchema = z
       endDate: validMonthFilter(rawSettings.endDate),
       username: String(rawSettings.username ?? "").trim(),
       opponent: String(rawSettings.opponent ?? "").trim(),
-      showPositionLeaders: rawSettings.showPositionLeaders !== false,
     };
   });
 
@@ -250,46 +233,6 @@ const SpeedFilterIcon = ({ speed }: { speed: ExplorerSpeed }) => {
   );
 };
 
-const formatWholePercent = (value: number): string => `${Math.round(value)}%`;
-
-const sideLabelFromColor = (color: number): "White" | "Black" | null => {
-  if (color === 0) return "White";
-  if (color === 1) return "Black";
-  return null;
-};
-
-const toExplorerPositionLeaders = (
-  value: ExplorerApiPositionLeaders | null | undefined,
-): ExplorerPositionLeaders | null => {
-  if (!value || !Number.isFinite(value.totalGames) || value.totalGames <= 0) return null;
-  if (!Array.isArray(value.leaders) || value.leaders.length === 0) return null;
-  const sideLabel = sideLabelFromColor(Number(value.lastMoveColor));
-  if (!sideLabel) return null;
-
-  const leaders = value.leaders
-    .map((leader) => {
-      const username = String(leader.username ?? "").trim();
-      const games = Number(leader.games);
-      if (!username || !Number.isFinite(games) || games <= 0) return null;
-
-      return {
-        username,
-        games,
-        gamesLabel: formatGameCount(games),
-        share: Math.max(0, Math.min(100, (games / value.totalGames) * 100)),
-      };
-    })
-    .filter((leader): leader is ExplorerPositionLeader => leader !== null);
-
-  if (!leaders.length) return null;
-
-  return {
-    sideLabel,
-    totalGamesLabel: formatGameCount(value.totalGames),
-    leaders,
-  };
-};
-
 export const AnalysisPage = () => {
   const boardPanelRef = useRef<HTMLDivElement | null>(null);
   const rightPanelRef = useRef<HTMLElement | null>(null);
@@ -324,7 +267,6 @@ export const AnalysisPage = () => {
     endDate,
     username,
     opponent,
-    showPositionLeaders,
   } = explorerSettings;
   const updateExplorerSettings = useCallback(
     (patch: Partial<StoredExplorerSettings>): void =>
@@ -677,18 +619,6 @@ export const AnalysisPage = () => {
     request: requestExplorer,
     timeoutMessage: "Opening explorer took too long to respond. Try fewer filters or refresh.",
   });
-  const leadersResponse = useOpeningPositionLeaders(
-    currentFen,
-    explorerOpen && explorerScope === "general" && showPositionLeaders,
-  );
-  const positionLeaders = useMemo(
-    () =>
-      explorerScope === "general" && showPositionLeaders
-        ? toExplorerPositionLeaders(leadersResponse)
-        : null,
-    [leadersResponse, explorerScope, showPositionLeaders],
-  );
-
   useEffect(() => {
     setHoveredExplorerMoveUci(null);
   }, [currentFen, explorerOpen, explorerStatus, filtersOpen]);
@@ -924,18 +854,6 @@ export const AnalysisPage = () => {
                     ))}
                   </div>
                 </div>
-                {explorerScope === "general" ? (
-                  <label className="analysisToggleSetting">
-                    <span>Position leaders</span>
-                    <input
-                      type="checkbox"
-                      checked={showPositionLeaders}
-                      onChange={(event) =>
-                        updateExplorerSettings({ showPositionLeaders: event.target.checked })
-                      }
-                    />
-                  </label>
-                ) : null}
                 {explorerScope === "player" ? (
                   <label className="analysisRatingSlider">
                     <span>Min opponent rating</span>
@@ -999,37 +917,6 @@ export const AnalysisPage = () => {
 
             {showExplorerResults ? (
               <div className="analysisExplorerTableWrap">
-                {explorerScope === "general" && positionLeaders ? (
-                  <section className="analysisPositionLeaders" aria-label="Position leaders">
-                    <div className="analysisPositionLeadersHeader">
-                      <span>Position leaders</span>
-                      <small>{positionLeaders.sideLabel}</small>
-                      <strong>{positionLeaders.totalGamesLabel} games</strong>
-                    </div>
-                    <ol>
-                      {positionLeaders.leaders.map((leader, index) => (
-                        <li key={`position-leader-${index}-${leader.username}`}>
-                          <span className="analysisPositionLeaderRank">{index + 1}</span>
-                          <span className="analysisPositionLeaderName">{leader.username}</span>
-                          <span className="analysisPositionLeaderGames">{leader.gamesLabel}</span>
-                          <span
-                            className="analysisPositionLeaderBar"
-                            aria-label={`${leader.username}: ${leader.gamesLabel} games, ${formatWholePercent(
-                              leader.share,
-                            )} of games reaching this position`}
-                          >
-                            <span
-                              style={{ "--leader-share": `${leader.share}%` } as CSSProperties}
-                            />
-                          </span>
-                          <span className="analysisPositionLeaderShare">
-                            {formatWholePercent(leader.share)}
-                          </span>
-                        </li>
-                      ))}
-                    </ol>
-                  </section>
-                ) : null}
                 <OpeningDatabaseDisplay
                   moves={explorerMoves}
                   recentGames={recentGames}

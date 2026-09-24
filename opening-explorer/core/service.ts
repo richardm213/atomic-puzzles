@@ -9,11 +9,8 @@ import { createPriorityFactory, OpeningExplorerQueueError } from "./requestQueue
 import { parseExplorerRequest } from "./requestSchema.js";
 import {
   buildOpeningPlayersSql,
-  buildPositionPlayerLeaderBandsSql,
-  buildPositionPlayerLeadersSql,
   buildRandomOpeningPlayerSql,
   OPENING_EXPLORER_RESPONSE_SCHEMA,
-  toPositionPlayerLeadersPayload,
 } from "./sql.js";
 
 export type PriorityRef = { value: number; lane?: number; signal?: AbortSignal };
@@ -132,23 +129,6 @@ export const createOpeningExplorerService = (repository: OpeningExplorerReposito
     }
   };
 
-  const fetchPositionPlayerLeaders = async (
-    keyHex: string,
-    lastMoveColor: number | null,
-    priorityRef: PriorityRef,
-  ) => {
-    if (lastMoveColor !== 0 && lastMoveColor !== 1) return null;
-    try {
-      const [leaders, bands] = await Promise.all([
-        repository.query(buildPositionPlayerLeadersSql(keyHex, lastMoveColor), priorityRef),
-        metadata(buildPositionPlayerLeaderBandsSql(), priorityRef),
-      ]);
-      return toPositionPlayerLeadersPayload(leaders, bands[0]?.value);
-    } catch {
-      return null;
-    }
-  };
-
   const handle = async (request: ExplorerServiceRequest): Promise<ExplorerServiceResponse> => {
     const method = request.method ?? "GET";
     if (method !== "GET") return jsonResponse(405, { error: "Method not allowed" }, false);
@@ -231,23 +211,6 @@ export const createOpeningExplorerService = (repository: OpeningExplorerReposito
       }
 
       const bodyPromise = (async () => {
-        // Leaders are explicitly opt-in and have their own request/cache lifecycle.
-        // Never hold the move list behind this optional query.
-        if (plan.part === "leaders") {
-          priorityRef.lane = 0;
-          const positionLeaders = plan.username
-            ? null
-            : await fetchPositionPlayerLeaders(plan.keyHex, plan.lastMoveColor, priorityRef);
-          return {
-            body: JSON.stringify({
-              positionKey: plan.keyHex,
-              positionLeaders,
-              moves: [],
-              recentGames: [],
-            }),
-            shouldCache: !plan.username && !plan.opponent,
-          };
-        }
         const { gamesSql, movesSql, combinedSql } = buildExplorerQueries(plan);
         const results = combinedSql
           ? repository.query(combinedSql, priorityRef).then((rows) => {

@@ -31,8 +31,6 @@ const fixtureQuery = async (sql: string): Promise<JsonRow[]> => {
       },
     ];
   if (sql.includes("key = 'aliases'")) return [{ value: '{"alias":"canonical"}' }];
-  if (sql.includes("opening_position_player_leaders")) return [];
-  if (sql.includes("position_player_leader_bands")) return [];
   if (sql.includes("savedGames")) return [{ savedGames: 0, savedRecentGames: 0 }];
   if (sql.includes("select n.name as username")) return [{ username: "alice" }, { username: "" }];
   if (sql.includes("order by random")) return [{ username: "random-user" }];
@@ -141,16 +139,10 @@ describe("createOpeningExplorerService", () => {
       expect(query).toHaveBeenCalledTimes(firstCalls);
       await service.handle(explorerRequest({ speeds: "1" }));
       expect(query.mock.calls.length).toBeGreaterThan(firstCalls);
-      expect(
-        query.mock.calls.filter(([sql]) => sql.includes("position_player_leader_bands")),
-      ).toHaveLength(0);
       const beforeExpiry = query.mock.calls.length;
       now += 60_001;
       await service.handle(explorerRequest({ speeds: "0" }));
       expect(query.mock.calls.length).toBeGreaterThan(beforeExpiry);
-      expect(
-        query.mock.calls.filter(([sql]) => sql.includes("position_player_leader_bands")),
-      ).toHaveLength(0);
     } finally {
       clock.mockRestore();
     }
@@ -171,58 +163,6 @@ describe("createOpeningExplorerService", () => {
     const calls = query.mock.calls.length;
     await service.handle(explorerRequest());
     expect(query).toHaveBeenCalledTimes(calls);
-  });
-
-  it.each(["moves", "leaders"] as const)(
-    "serves %s without waiting for the other part",
-    async (firstPart) => {
-      let release!: () => void;
-      const gate = new Promise<void>((resolve) => {
-        release = resolve;
-      });
-      const query = vi.fn(async (sql: string) => {
-        const isLeaders = sql.includes("opening_position_player_leaders");
-        const isMoves = sql.includes("as movesJson");
-        if ((firstPart === "moves" && isLeaders) || (firstPart === "leaders" && isMoves))
-          await gate;
-        return fixtureQuery(sql);
-      });
-      const service = createOpeningExplorerService(createRepository(query));
-      let otherFinished = false;
-      const otherPart = firstPart === "moves" ? "leaders" : "moves";
-      const other = service.handle(explorerRequest({ part: otherPart })).then((response) => {
-        otherFinished = true;
-        return response;
-      });
-      try {
-        const first = await service.handle(explorerRequest({ part: firstPart }));
-        expect(first.statusCode).toBe(200);
-        expect(otherFinished).toBe(false);
-        const calls = query.mock.calls.length;
-        expect((await service.handle(explorerRequest({ part: firstPart }))).body).toBe(first.body);
-        expect(query).toHaveBeenCalledTimes(calls);
-      } finally {
-        release();
-        expect((await other).statusCode).toBe(200);
-      }
-    },
-  );
-
-  it("never queries leaders unless requested and never queries moves for leaders", async () => {
-    const query = vi.fn(fixtureQuery);
-    const service = createOpeningExplorerService(createRepository(query));
-    await service.handle(explorerRequest());
-    expect(query.mock.calls).toHaveLength(1);
-    expect(query.mock.calls[0]![0]).toContain("as movesJson");
-    query.mockClear();
-    const leaders = await service.handle(explorerRequest({ part: "leaders" }));
-    expect(responseBody(leaders)).toMatchObject({
-      positionLeaders: null,
-      moves: [],
-      recentGames: [],
-    });
-    expect(query.mock.calls).toHaveLength(2);
-    expect(query.mock.calls.every(([sql]) => !sql.includes("as movesJson"))).toBe(true);
   });
 
   it("batches the two player reads with no saved-status round trip", async () => {

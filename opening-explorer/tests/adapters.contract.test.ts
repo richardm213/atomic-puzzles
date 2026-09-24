@@ -16,8 +16,6 @@ const fixtureRows = (sql: string): JsonRow[] => {
       },
     ];
   if (sql.includes("key = 'aliases'")) return [{ value: '{"alias":"canonical"}' }];
-  if (sql.includes("opening_position_player_leaders")) return [];
-  if (sql.includes("position_player_leader_bands")) return [];
   if (sql.includes("savedGames")) return [{ savedGames: 0, savedRecentGames: 0 }];
   if (sql.includes("select n.name as username")) return [{ username: "canonical" }];
   if (sql.includes("limit 12")) {

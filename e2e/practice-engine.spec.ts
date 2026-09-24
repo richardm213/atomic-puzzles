@@ -9,7 +9,7 @@ test("practice plays a real engine move when the opening database is exhausted",
   await page.route("**/api/opening-explorer?**", (route) =>
     route.fulfill({
       contentType: "application/json",
-      body: JSON.stringify({ moves: [], recentGames: [], positionLeaders: null }),
+      body: JSON.stringify({ moves: [], recentGames: [] }),
     }),
   );
   await page.addInitScript(() => {

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-export const OPENING_EXPLORER_RESPONSE_SCHEMA = "independent-leaders-v10";
+export const OPENING_EXPLORER_RESPONSE_SCHEMA = "moves-v11";
 
 export const sqlString = (value) => `'${value.replaceAll("'", "''")}'`;
 
@@ -23,30 +23,6 @@ export const sqlMonthBounds = (value) => {
 };
 
 const monthKeyFromDateKey = (value) => (Number.isInteger(value) ? Math.floor(value / 100) : null);
-
-export const buildPositionPlayerLeadersSql = (keyHex, lastMoveColor) => `
-  select
-    hex(l.position_key) as positionKey,
-    l.last_move_color as lastMoveColor,
-    l.total_games as totalGames,
-    l.leader_rank as leaderRank,
-    n.name as username,
-    l.player_games as playerGames
-  from opening_position_player_leaders l
-  join opening_names n
-    on n.name_id = l.canonical_player_id
-  where l.position_key = X'${keyHex}'
-    and l.last_move_color = ${lastMoveColor}
-  order by l.leader_rank
-  limit 3;
-`;
-
-export const buildPositionPlayerLeaderBandsSql = () => `
-  select value
-  from opening_index_meta
-  where key = 'position_player_leader_bands'
-  limit 1;
-`;
 
 // Every standard atomic game in the explorer passes through the initial position. Restricting
 // player discovery to that position lets the database use its position-key index instead of
@@ -81,99 +57,6 @@ export const buildOpeningPlayersSql = () => `
     on players.canonical_player_id = n.name_id
   order by lower(n.name), n.name;
 `;
-
-export const lastMoveColorFromFen = (fen) => {
-  const activeColor = String(fen ?? "")
-    .trim()
-    .split(/\s+/)[1];
-  if (activeColor === "b") return 0;
-  if (activeColor === "w") return 1;
-  return null;
-};
-
-const integerOrNull = (value) => {
-  const number = Number(value);
-  return Number.isInteger(number) ? number : null;
-};
-
-const parsePositionPlayerLeaderBands = (rawValue) => {
-  if (typeof rawValue !== "string") return [];
-
-  try {
-    const parsed = JSON.parse(rawValue);
-    if (!Array.isArray(parsed)) return [];
-
-    return parsed
-      .map((band) => {
-        const minGames = integerOrNull(band?.min_games ?? band?.minGames);
-        const maxGames = integerOrNull(band?.max_games ?? band?.maxGames);
-        const leaders = integerOrNull(band?.leaders);
-
-        if (
-          minGames === null ||
-          maxGames === null ||
-          leaders === null ||
-          minGames < 0 ||
-          maxGames < minGames ||
-          leaders < 1
-        ) {
-          return null;
-        }
-
-        return { minGames, maxGames, leaders };
-      })
-      .filter(Boolean);
-  } catch {
-    return [];
-  }
-};
-
-export const toPositionPlayerLeadersPayload = (rows, rawBandsValue) => {
-  const normalizedRows = Array.isArray(rows)
-    ? rows
-        .map((row) => ({
-          positionKey: String(row?.positionKey ?? row?.position_key ?? "").trim(),
-          lastMoveColor: integerOrNull(row?.lastMoveColor ?? row?.last_move_color),
-          totalGames: integerOrNull(row?.totalGames ?? row?.total_games),
-          leaderRank: integerOrNull(row?.leaderRank ?? row?.leader_rank),
-          username: String(row?.username ?? "").trim(),
-          playerGames: integerOrNull(row?.playerGames ?? row?.player_games),
-        }))
-        .filter(
-          (row) =>
-            row.positionKey &&
-            (row.lastMoveColor === 0 || row.lastMoveColor === 1) &&
-            row.totalGames !== null &&
-            row.leaderRank !== null &&
-            row.username &&
-            row.playerGames !== null,
-        )
-    : [];
-
-  if (!normalizedRows.length) return null;
-
-  const totalGames = normalizedRows[0].totalGames;
-  const bands = parsePositionPlayerLeaderBands(rawBandsValue);
-  const matchingBand = bands.find(
-    (band) => totalGames >= band.minGames && totalGames <= band.maxGames,
-  );
-
-  if (!matchingBand) return null;
-
-  const leaders = normalizedRows
-    .filter((row) => row.totalGames === totalGames && row.leaderRank <= matchingBand.leaders)
-    .sort((a, b) => a.leaderRank - b.leaderRank)
-    .map((row) => ({ username: row.username, games: row.playerGames }));
-
-  if (!leaders.length) return null;
-
-  return {
-    positionKey: normalizedRows[0].positionKey,
-    lastMoveColor: normalizedRows[0].lastMoveColor,
-    totalGames,
-    leaders,
-  };
-};
 
 // Coverage is per position/speed, not per request. Check the whole bucket before
 // applying dates: a covered bucket with no games in the date range is truly empty.

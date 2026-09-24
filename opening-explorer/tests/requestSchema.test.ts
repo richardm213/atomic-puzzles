@@ -51,7 +51,7 @@ describe("parseExplorerRequest", () => {
     [{ fen: FEN, color: "green" }, "Invalid color query parameter"],
     [{ fen: FEN, speeds: "0,9" }, "Invalid speeds query parameter"],
     [{ fen: FEN, startDate: "2025-13" }, "Invalid month filter query parameter"],
-    [{ fen: FEN, part: "everything" }, "Invalid part query parameter"],
+    [{ fen: FEN, part: "moves" }, "Unexpected query parameter: part"],
     [{ fen: FEN, extra: "1" }, "Unexpected query parameter: extra"],
   ])("rejects malformed explorer input %#", (values, error) => {
     expect(parse(values)).toEqual({ ok: false, error });
