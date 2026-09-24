@@ -85,7 +85,7 @@ const ArenaEntry = ({ arena }: { arena: Arena }) => {
 export const ArenasPage = () => {
   const [preferences] = useState(readPreferences);
   const [view, setView] = useState<View>(
-    views.includes(preferences?.view) ? preferences.view : "results",
+    views.includes(preferences?.view) ? preferences.view : "cards",
   );
   const [frequency, setFrequency] = useState<string>(
     frequencies.includes(preferences?.frequency) ? preferences.frequency : "all",
@@ -111,7 +111,7 @@ export const ArenasPage = () => {
       {view !== "cards" && (
         <div className="arenaColumns" aria-hidden="true">
           <span>Arena</span>
-          <span>Date (UTC)</span>
+          <span>Date</span>
           <span>Top 3</span>
           <span>Winner points</span>
           <span>Players</span>
@@ -182,12 +182,6 @@ export const ArenasPage = () => {
         </div>
       ) : (
         <>
-          <div className="arenaResultsMeta">
-            <span role="status">
-              {arenas.length} {arenas.length === 1 ? "arena" : "arenas"}
-            </span>
-            <span>Newest first · Links open in a new tab</span>
-          </div>
           {arenas.length === 0 ? (
             <div className="arenaMessage">
               <p>

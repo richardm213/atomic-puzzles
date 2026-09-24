@@ -171,8 +171,8 @@ const practiceSettingsSchema = z
 
 const oppositeSide = (side: PracticeSide): PracticeSide => (side === "white" ? "black" : "white");
 
-const fetchGeneralPracticeExplorerResponse = (fen: string) =>
-  fetchExplorerApiResponse(buildOpeningExplorerUrl({ fen, speeds: [0, 1] }), "practice");
+const fetchGeneralPracticeExplorerResponse = (fen: string, signal: AbortSignal) =>
+  fetchExplorerApiResponse(buildOpeningExplorerUrl({ fen, speeds: [0, 1] }), "practice", signal);
 
 const fetchPracticeExplorerResponse = async ({
   fen,
@@ -180,16 +180,18 @@ const fetchPracticeExplorerResponse = async ({
   opponentUsernames,
   opponentSide,
   playerContinuation,
+  signal,
 }: {
   fen: string;
   opponentSource: OpponentSource;
   opponentUsernames: string[];
   opponentSide: PracticeSide;
   playerContinuation: PlayerContinuation;
+  signal: AbortSignal;
 }): Promise<OpeningExplorerRequest> => {
   if (opponentSource === "general") {
     return {
-      response: await fetchGeneralPracticeExplorerResponse(fen),
+      response: await fetchGeneralPracticeExplorerResponse(fen, signal),
     };
   }
 
@@ -204,13 +206,14 @@ const fetchPracticeExplorerResponse = async ({
           minRating: PLAYER_MIN_RATING,
         }),
         "practice",
+        signal,
       ),
     ),
   ).then(mergeExplorerApiResponses);
 
   if (playerContinuation === "general" && playerResponse.moves.length === 0) {
     return {
-      response: await fetchGeneralPracticeExplorerResponse(fen),
+      response: await fetchGeneralPracticeExplorerResponse(fen, signal),
     };
   }
 
@@ -306,30 +309,53 @@ export const PracticePage = () => {
   const gameFinished = Boolean(boardState?.winner);
   const opponentSide = oppositeSide(side);
   const canUsePlayerSource = opponentSource === "general" || opponentUsernames.length > 0;
-  const requestExplorer = useCallback(() => {
-    if (manualContinuationActive) return null;
-    if (!canUsePlayerSource) {
-      setExhaustedFen(null);
-      return null;
-    }
-
-    setExhaustedFen(null);
-    return fetchPracticeExplorerResponse({
-      fen: currentFen,
+  const practiceExplorerCacheKey = useMemo(
+    () =>
+      JSON.stringify({
+        fen: currentFen,
+        manualContinuationActive,
+        opponentSource,
+        opponentUsernames,
+        opponentSide,
+        playerContinuation,
+      }),
+    [
+      currentFen,
+      manualContinuationActive,
+      opponentSide,
       opponentSource,
       opponentUsernames,
-      opponentSide,
       playerContinuation,
-    });
-  }, [
-    canUsePlayerSource,
-    currentFen,
-    manualContinuationActive,
-    opponentSide,
-    opponentSource,
-    opponentUsernames,
-    playerContinuation,
-  ]);
+    ],
+  );
+  const requestExplorer = useCallback(
+    (signal: AbortSignal) => {
+      if (manualContinuationActive) return null;
+      if (!canUsePlayerSource) {
+        setExhaustedFen(null);
+        return null;
+      }
+
+      setExhaustedFen(null);
+      return fetchPracticeExplorerResponse({
+        fen: currentFen,
+        opponentSource,
+        opponentUsernames,
+        opponentSide,
+        playerContinuation,
+        signal,
+      });
+    },
+    [
+      canUsePlayerSource,
+      currentFen,
+      manualContinuationActive,
+      opponentSide,
+      opponentSource,
+      opponentUsernames,
+      playerContinuation,
+    ],
+  );
   const {
     moves: practiceMoves,
     recentGames,
@@ -340,6 +366,7 @@ export const PracticePage = () => {
     playerColor: opponentSide,
     showPerformance: opponentSource === "player",
     request: requestExplorer,
+    cacheKey: practiceExplorerCacheKey,
   });
   const popupError =
     (status === "error" ? "Could not load database moves. Try again." : "") ||
