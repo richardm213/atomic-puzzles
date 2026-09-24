@@ -252,7 +252,7 @@
 .profileTrophy:focus-visible {
   transform: translateY(-1px);
   background: color-mix(in srgb, var(--color-primary) 9%, transparent);
-  color: var(--color-primary);
+  color: var(--color-heading);
 }
 
 .profileTrophy:focus-visible {

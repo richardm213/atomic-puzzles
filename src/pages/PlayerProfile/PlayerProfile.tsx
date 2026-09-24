@@ -185,7 +185,7 @@ export const PlayerProfilePage = ({
   const championshipTrophiesQuery = useQuery({
     queryKey: ["profile", canonicalUsername, "tournament-trophies"],
     queryFn: () => fetchChampionshipTrophies(canonicalUsername),
-    enabled: aliasesLoaded && Boolean(canonicalUsername),
+    enabled: Boolean(canonicalUsername),
     staleTime: 10 * 60 * 1_000,
   });
   const historyAvailabilityQuery = useQuery({
@@ -636,12 +636,14 @@ export const PlayerProfilePage = ({
   const currentMonthKey = getCurrentMonthKey();
   const visibleProfileTrophies = useMemo(
     () =>
-      getProfileHeaderTrophies({
-        championshipTrophies,
-        rankingTrophies,
-        currentMonthKey,
-      }),
-    [championshipTrophies, currentMonthKey, rankingTrophies],
+      championshipTrophiesQuery.isSuccess
+        ? getProfileHeaderTrophies({
+            championshipTrophies,
+            rankingTrophies,
+            currentMonthKey,
+          })
+        : [],
+    [championshipTrophies, championshipTrophiesQuery.isSuccess, currentMonthKey, rankingTrophies],
   );
   const hasVisibleProfileTrophies = visibleProfileTrophies.length > 0;
 
