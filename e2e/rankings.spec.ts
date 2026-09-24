@@ -34,7 +34,7 @@ test("rankings support January 2016 as the earliest month", async ({ page }) => 
   await expect(page.getByRole("button", { name: "Previous month" })).toBeDisabled();
 });
 
-test("Wolfrandom still starts in July 2026", async ({ page }) => {
+test("Wolfrandom is available only in July and August 2026", async ({ page }) => {
   await page.goto("/rankings?year=2026&month=Jul&mode=wolfrandom");
   await expect(page.getByRole("combobox", { name: "Mode", exact: true })).toHaveValue("wolfrandom");
   await page.getByRole("button", { name: "Previous month" }).click();
@@ -43,6 +43,15 @@ test("Wolfrandom still starts in July 2026", async ({ page }) => {
   await expect(page.getByRole("combobox", { name: "Mode", exact: true })).toHaveValue("blitz");
   await page.getByRole("button", { name: "Next month" }).click();
   await expect(page.getByRole("option", { name: "Wolfrandom", exact: true })).toHaveCount(1);
+  await page.getByRole("combobox", { name: "Mode", exact: true }).selectOption("wolfrandom");
+  await page.getByRole("button", { name: "Next month" }).click();
+  await expect(page.getByRole("combobox", { name: "Month", exact: true })).toHaveValue("Aug");
+  await expect(page.getByRole("option", { name: "Wolfrandom", exact: true })).toHaveCount(1);
+  await expect(page.getByRole("combobox", { name: "Mode", exact: true })).toHaveValue("wolfrandom");
+  await page.getByRole("button", { name: "Next month" }).click();
+  await expect(page.getByRole("combobox", { name: "Month", exact: true })).toHaveValue("Sep");
+  await expect(page.getByRole("option", { name: "Wolfrandom", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("combobox", { name: "Mode", exact: true })).toHaveValue("blitz");
 });
 
 test("yearly rankings use yearly eligibility and omit RD", async ({ page }) => {

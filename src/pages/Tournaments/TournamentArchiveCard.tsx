@@ -19,6 +19,7 @@ export const TournamentArchiveCard = ({
   spotlight = false,
 }: TournamentArchiveCardProps) => {
   const showWinner = Boolean(champion) && tournament.showChampion;
+  const isRoundArchive = tournament.seriesKey === "wr-arena";
   const cardClassName = spotlight ? `${styles.card} ${styles.spotlight}` : styles.card;
 
   return (
@@ -62,9 +63,9 @@ export const TournamentArchiveCard = ({
         className={styles.cardLink}
         to="/tournaments/$tournamentId"
         params={{ tournamentId: tournament.id }}
-        aria-label={`Open ${tournament.seriesName} ${tournament.year} bracket`}
+        aria-label={`Open ${tournament.seriesName} ${tournament.year} ${isRoundArchive ? "round archive" : "bracket"}`}
       >
-        <span>Open bracket</span>
+        <span>{isRoundArchive ? "Open rounds" : "Open bracket"}</span>
         <FontAwesomeIcon icon={faArrowRight} aria-hidden="true" />
       </Link>
     </article>

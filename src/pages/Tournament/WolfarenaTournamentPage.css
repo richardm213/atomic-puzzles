@@ -1,0 +1,604 @@
+.wolfarenaPage {
+  width: min(1240px, 100%);
+}
+
+.wolfarenaHeroCopy {
+  padding-right: clamp(22px, 3.5vw, 30px);
+}
+
+.wolfarenaChampionLine {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  color: var(--color-muted);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.wolfarenaChampionLine > span {
+  color: var(--color-subtle);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.wolfarenaChampionLine a {
+  color: var(--color-heading);
+  font-size: 1rem;
+  text-underline-offset: 3px;
+}
+
+.wolfarenaChampionLine strong {
+  color: var(--tournament-gold);
+  font-variant-numeric: tabular-nums;
+}
+
+.wolfarenaRoundNav,
+.wolfarenaRoundPanel {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-panel);
+  box-shadow: var(--shadow-soft);
+}
+
+.wolfarenaRoundNav {
+  overflow: hidden;
+}
+
+.wolfarenaRoundTrack {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding: var(--space-3);
+  scrollbar-width: thin;
+  scroll-snap-type: x proximity;
+}
+
+.wolfarenaRoundButton {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 2px;
+  min-width: 92px;
+  min-height: 52px;
+  padding: var(--space-2) var(--space-3);
+  scroll-snap-align: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-muted);
+  font: inherit;
+  font-weight: 750;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.wolfarenaRoundButton small {
+  color: var(--color-subtle);
+  font-size: 0.72rem;
+  font-weight: 650;
+}
+
+.wolfarenaRoundButton:hover {
+  border-color: var(--color-border-strong);
+  background: var(--color-panel-strong);
+  color: var(--color-heading);
+}
+
+.wolfarenaRoundButton:active {
+  transform: translateY(1px);
+}
+
+.wolfarenaRoundButton:focus-visible {
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+.wolfarenaRoundButton.isActive {
+  border-color: color-mix(in srgb, var(--tournament-gold) 52%, var(--color-border));
+  background: color-mix(in srgb, var(--tournament-gold) 10%, var(--color-panel-strong));
+  color: var(--color-heading);
+}
+
+.wolfarenaRoundButton.isActive small {
+  color: color-mix(in srgb, var(--tournament-gold) 74%, var(--color-muted));
+}
+
+.wolfarenaRoundPanel {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.wolfarenaRoundHeader,
+.wolfarenaRoundFooter,
+.wolfarenaSectionHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.wolfarenaRoundHeader {
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.wolfarenaRoundHeader h2,
+.wolfarenaSectionHeading h3 {
+  margin: 0;
+  color: var(--color-heading);
+  letter-spacing: -0.025em;
+}
+
+.wolfarenaRoundHeader h2 {
+  font-size: clamp(1.55rem, 3vw, 2rem);
+}
+
+.wolfarenaRoundHeader p {
+  margin: 4px 0 0;
+  color: var(--color-muted);
+  font-size: 0.86rem;
+  font-weight: 650;
+}
+
+.wolfarenaRoundActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.wolfarenaRoundActions a,
+.wolfarenaRoundFooter button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-panel-strong);
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 750;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.wolfarenaRoundActions a:hover,
+.wolfarenaRoundFooter button:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--tournament-gold) 42%, var(--color-border));
+  background: color-mix(in srgb, var(--tournament-gold) 7%, var(--color-panel-strong));
+  color: var(--color-heading);
+}
+
+.wolfarenaRoundActions a:active,
+.wolfarenaRoundFooter button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.wolfarenaRoundActions a:focus-visible,
+.wolfarenaRoundFooter button:focus-visible,
+.wolfarenaMatchCard a:focus-visible,
+.wolfarenaStandingsTable a:focus-visible,
+.wolfarenaChampionLine a:focus-visible {
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+.wolfarenaRoundFooter button:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.wolfarenaRoundGrid {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.86fr) minmax(520px, 1.34fr);
+  min-width: 0;
+}
+
+.wolfarenaResults,
+.wolfarenaStandings {
+  min-width: 0;
+  padding: var(--space-5) var(--space-6) var(--space-6);
+}
+
+.wolfarenaResults {
+  border-right: 1px solid var(--color-border);
+}
+
+.wolfarenaSectionHeading {
+  align-items: baseline;
+  margin-bottom: var(--space-4);
+}
+
+.wolfarenaSectionHeading h3 {
+  font-size: 1.12rem;
+}
+
+.wolfarenaSectionHeading > span {
+  color: var(--color-subtle);
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.wolfarenaMatchList {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.wolfarenaMatchCard {
+  position: relative;
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-panel-strong);
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    transform 180ms ease;
+}
+
+.wolfarenaMatchCard.isLinked:hover {
+  border-color: color-mix(in srgb, var(--tournament-gold) 48%, var(--color-border));
+  background: color-mix(in srgb, var(--tournament-gold) 6%, var(--color-panel-strong));
+  transform: translateY(-1px);
+}
+
+.wolfarenaMatchCardOverlayLink {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.wolfarenaMatchCardOverlayLink:focus-visible {
+  outline-offset: -2px !important;
+}
+
+.wolfarenaMatchCard .wolfarenaPlayerRow a,
+.wolfarenaByePlayer a {
+  position: relative;
+  z-index: 2;
+}
+
+.wolfarenaMatchTopline,
+.wolfarenaPlayerRow {
+  display: grid;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.wolfarenaMatchTopline {
+  grid-template-columns: 1fr auto;
+  min-height: 20px;
+}
+
+.wolfarenaMatchStatus,
+.wolfarenaMatchOpen,
+.wolfarenaMatchUnlinked,
+.wolfarenaMatchPoints {
+  color: var(--color-subtle);
+  font-size: 0.66rem;
+  font-weight: 750;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.wolfarenaMatchStatus.isforfeit {
+  color: var(--color-warning);
+}
+
+.wolfarenaMatchOpen {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: color-mix(in srgb, var(--tournament-gold) 78%, var(--color-muted));
+}
+
+.wolfarenaPlayerRow {
+  grid-template-columns: minmax(0, 1fr) auto 30px;
+  min-height: 26px;
+  color: var(--color-muted);
+}
+
+.wolfarenaPlayerRow a,
+.wolfarenaByePlayer a,
+.wolfarenaStandingsTable a {
+  min-width: 0;
+  overflow: hidden;
+  color: inherit;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wolfarenaPlayerRow a:hover,
+.wolfarenaByePlayer a:hover,
+.wolfarenaStandingsTable a:hover {
+  color: var(--color-heading);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.wolfarenaPlayerRow.isWinner {
+  color: var(--color-heading);
+  font-weight: 750;
+}
+
+.wolfarenaPlayerRow strong {
+  color: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.wolfarenaPlayerPoints {
+  color: var(--color-subtle);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.wolfarenaPlayerRow.isWinner .wolfarenaPlayerPoints {
+  color: color-mix(in srgb, var(--tournament-gold) 72%, var(--color-muted));
+}
+
+.wolfarenaByePlayer {
+  color: var(--color-heading);
+  font-weight: 750;
+}
+
+.wolfarenaMatchPoints {
+  color: color-mix(in srgb, var(--tournament-gold) 76%, var(--color-muted));
+}
+
+.wolfarenaStandingsTableWrap {
+  min-width: 0;
+}
+
+.wolfarenaStandingsTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.wolfarenaStandingsTable th,
+.wolfarenaStandingsTable td {
+  padding: 10px var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-muted);
+  font-size: 0.82rem;
+  text-align: right;
+}
+
+.wolfarenaStandingsTable thead th {
+  padding-top: 0;
+  color: var(--color-subtle);
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.wolfarenaStandingsTable th:nth-child(2),
+.wolfarenaStandingsTable td:nth-child(2) {
+  text-align: left;
+}
+
+.wolfarenaStandingsTable tbody th {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-heading);
+  font-weight: 700;
+}
+
+.wolfarenaStandingsTable tbody tr:last-child > * {
+  border-bottom: 0;
+}
+
+.wolfarenaStandingsTable tbody tr:hover > * {
+  background: color-mix(in srgb, var(--color-panel-strong) 74%, transparent);
+}
+
+.wolfarenaStandingsTable strong {
+  color: var(--color-heading);
+}
+
+.wolfarenaStandingsTable .isPositive {
+  color: var(--color-success);
+}
+
+.wolfarenaStandingsTable .isNegative {
+  color: var(--color-error);
+}
+
+.wolfarenaStreak {
+  flex: 0 0 auto;
+  padding: 2px 5px;
+  border: 1px solid color-mix(in srgb, var(--tournament-gold) 36%, var(--color-border));
+  border-radius: 999px;
+  color: color-mix(in srgb, var(--tournament-gold) 76%, var(--color-muted));
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.wolfarenaRoundFooter {
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--color-border);
+}
+
+.wolfarenaRoundFooter > span {
+  color: var(--color-subtle);
+  font-size: 0.76rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 940px) {
+  .wolfarenaRoundGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .wolfarenaResults {
+    border-right: 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .wolfarenaMatchList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .wolfarenaHeroCopy {
+    padding-bottom: var(--space-5);
+  }
+
+  .wolfarenaChampionLine {
+    align-items: baseline;
+    flex-wrap: wrap;
+  }
+
+  .wolfarenaRoundButton {
+    min-width: 88px;
+    min-height: 48px;
+  }
+
+  .wolfarenaRoundHeader {
+    align-items: flex-start;
+    padding: var(--space-4);
+  }
+
+  .wolfarenaRoundActions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .wolfarenaRoundActions a {
+    min-height: 44px;
+  }
+
+  .wolfarenaResults,
+  .wolfarenaStandings {
+    padding: var(--space-4);
+  }
+
+  .wolfarenaMatchList {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .wolfarenaStandingsTable thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    clip-path: inset(50%);
+  }
+
+  .wolfarenaStandingsTable,
+  .wolfarenaStandingsTable tbody,
+  .wolfarenaStandingsTable tr,
+  .wolfarenaStandingsTable th,
+  .wolfarenaStandingsTable td {
+    display: block;
+  }
+
+  .wolfarenaStandingsTable tbody {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .wolfarenaStandingsTable tr {
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 10px var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-panel-strong);
+  }
+
+  .wolfarenaStandingsTable th,
+  .wolfarenaStandingsTable td,
+  .wolfarenaStandingsTable tbody tr:last-child > * {
+    padding: 0;
+    border: 0;
+  }
+
+  .wolfarenaStandingsTable td:first-child {
+    grid-row: 1 / span 2;
+    color: var(--color-subtle);
+    font-size: 0.74rem;
+    text-align: left;
+  }
+
+  .wolfarenaStandingsTable tbody th {
+    grid-column: 2;
+  }
+
+  .wolfarenaStandingsTable td:nth-child(3) {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .wolfarenaStandingsTable td:nth-child(4),
+  .wolfarenaStandingsTable td:nth-child(5) {
+    grid-row: 2;
+    color: var(--color-subtle);
+    font-size: 0.7rem;
+  }
+
+  .wolfarenaStandingsTable td:nth-child(4) {
+    grid-column: 2;
+    text-align: left;
+  }
+
+  .wolfarenaStandingsTable td:nth-child(4)::before {
+    content: "Rating ";
+  }
+
+  .wolfarenaStandingsTable td:nth-child(5) {
+    grid-column: 3;
+  }
+
+  .wolfarenaRoundFooter {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .wolfarenaRoundFooter button {
+    min-height: 44px;
+    padding-inline: 10px;
+  }
+
+  .wolfarenaRoundFooter button:first-child svg,
+  .wolfarenaRoundFooter button:last-child svg {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wolfarenaRoundButton,
+  .wolfarenaRoundActions a,
+  .wolfarenaRoundFooter button,
+  .wolfarenaMatchCard {
+    transition-duration: 0.01ms;
+  }
+}

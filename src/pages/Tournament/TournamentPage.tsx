@@ -27,6 +27,7 @@ import {
 } from "../../lib/matches/tournaments";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { normalizeUsername } from "../../utils/playerNames";
+import { WolfarenaTournamentPage } from "./WolfarenaTournamentPage";
 
 type StageKey = string;
 
@@ -931,7 +932,7 @@ const TournamentStageSection = ({
   );
 };
 
-export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
+const BracketTournamentPage = ({ tournamentId }: { tournamentId: string }) => {
   const navigate = useNavigate();
   const catalogQuery = useQuery(tournamentCatalogQueryOptions());
   const adjacentTournaments = useMemo(
@@ -1450,3 +1451,10 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
     </div>
   );
 };
+
+export const TournamentPage = ({ tournamentId }: { tournamentId: string }) =>
+  tournamentId === "wr-arena2026" ? (
+    <WolfarenaTournamentPage />
+  ) : (
+    <BracketTournamentPage tournamentId={tournamentId} />
+  );

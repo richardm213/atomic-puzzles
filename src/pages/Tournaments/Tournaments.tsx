@@ -2,8 +2,8 @@ import "./Tournaments.css";
 
 import { useQuery } from "@tanstack/react-query";
 
-import { Seo } from "../../components/Seo/Seo";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
+import { Seo } from "../../components/Seo/Seo";
 import {
   tournamentCatalogQueryOptions,
   tournamentChampionsQueryOptions,
@@ -47,7 +47,7 @@ export const TournamentsPage = () => {
       <header className="tournamentsHeader">
         <h1>Tournament archive</h1>
         <p aria-label="Archive summary">
-          <span>{publishedTournaments.length} brackets</span>
+          <span>{publishedTournaments.length} tournaments</span>
           <span aria-hidden="true">/</span>
           <span>
             {earliestYear}–{latestYear}
@@ -58,7 +58,7 @@ export const TournamentsPage = () => {
       <section className="tournamentArchiveSection" aria-labelledby="current-tournaments-heading">
         <div className="tournamentArchiveHeading">
           <h2 id="current-tournaments-heading">{latestYear} championships</h2>
-          <span>{spotlightTournaments.length} brackets</span>
+          <span>{spotlightTournaments.length} archives</span>
         </div>
         <div className="tournamentsSpotlightGrid">
           {spotlightTournaments.map((tournament) => (
@@ -75,7 +75,7 @@ export const TournamentsPage = () => {
       <section className="tournamentArchiveSection" aria-labelledby="past-tournaments-heading">
         <div className="tournamentArchiveHeading">
           <h2 id="past-tournaments-heading">Past championships</h2>
-          <span>{archiveTournaments.length} brackets</span>
+          <span>{archiveTournaments.length} archives</span>
         </div>
         <div className="tournamentsGrid">
           {archiveTournaments.map((tournament) => (

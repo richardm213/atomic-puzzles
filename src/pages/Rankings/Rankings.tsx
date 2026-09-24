@@ -117,10 +117,15 @@ const isEligibleForRankings = (
 
 const earliestLeaderboardMonth = new Date(Date.UTC(2016, 0, 1));
 const earliestWolfrandomLeaderboardMonth = new Date(Date.UTC(2026, 6, 1));
+const latestWolfrandomLeaderboardMonth = new Date(Date.UTC(2026, 7, 1));
 
 const supportsWolfrandomLeaderboard = (monthKey: string): boolean => {
   const month = monthDateFromMonthKey(monthKey);
-  return Boolean(month && month >= earliestWolfrandomLeaderboardMonth);
+  return Boolean(
+    month &&
+    month >= earliestWolfrandomLeaderboardMonth &&
+    month <= latestWolfrandomLeaderboardMonth,
+  );
 };
 
 const allLeaderboardMonths = (): string[] => {
