@@ -32,12 +32,15 @@
 }
 
 .tournamentPageHeroCopy.wolfarenaHeroCopy {
-  gap: var(--space-4);
-  min-height: 184px;
-  padding: var(--space-5) 156px var(--space-6) var(--space-6);
+  grid-template-columns: minmax(0, 1fr) 144px;
+  grid-template-rows: auto 1fr;
+  gap: var(--space-4) var(--space-8);
+  min-height: 172px;
+  padding: var(--space-5) 172px var(--space-5) var(--space-6);
 }
 
 .wolfarenaBackLink {
+  grid-column: 1 / -1;
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
@@ -65,31 +68,57 @@
 }
 
 .tournamentPageHeroCopy.wolfarenaHeroCopy h1 {
-  margin-top: auto;
+  grid-column: 1;
+  grid-row: 2;
+  align-self: center;
+  margin: 0;
   font-size: clamp(2rem, 4vw, 2.8rem);
+  white-space: nowrap;
 }
 
-.wolfarenaWinnerSummary {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
+.wolfarenaPodium {
+  display: grid;
+  grid-column: 2;
+  grid-row: 2;
+  align-self: center;
   gap: 6px;
   min-width: 0;
   margin: 0;
-  color: var(--color-muted);
-  font-size: 0.9rem;
-  font-weight: 600;
+  padding: 0;
+  list-style: none;
 }
 
-.wolfarenaWinnerSummary a {
+.wolfarenaPodium li {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.wolfarenaPodium li:first-child > span {
+  color: var(--tournament-gold);
+}
+
+.wolfarenaPodium li > span {
+  color: var(--color-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.wolfarenaPodium a {
   color: var(--color-heading);
-  font-weight: 800;
+  font-size: 0.9rem;
+  font-weight: 750;
   text-decoration: none;
   transition: color 180ms ease;
 }
 
-.wolfarenaWinnerSummary a:hover {
+.wolfarenaPodium a:hover {
   color: color-mix(in srgb, var(--tournament-gold) 78%, var(--color-heading));
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .wolfarenaRoundNav,
@@ -607,8 +636,22 @@
 
 @media (max-width: 640px) {
   .tournamentPageHeroCopy.wolfarenaHeroCopy {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
     min-height: 260px;
     padding: var(--space-4) var(--space-4) 108px;
+  }
+
+  .tournamentPageHeroCopy.wolfarenaHeroCopy h1 {
+    grid-column: 1;
+    grid-row: 2;
+    white-space: normal;
+  }
+
+  .wolfarenaPodium {
+    grid-column: 1;
+    grid-row: 3;
+    justify-self: start;
   }
 
   .wolfarenaRoundButton {

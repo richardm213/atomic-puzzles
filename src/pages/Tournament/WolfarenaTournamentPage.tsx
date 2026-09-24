@@ -155,6 +155,10 @@ const WolfarenaTournamentArchive = ({
   const selectedRoundIndex = wolfarena2026.rounds.findIndex(
     (round) => round.number === selectedRound.number,
   );
+  const finalPodium = [...(wolfarena2026.rounds.at(-1)?.standings ?? [])]
+    .filter((standing) => standing.rank <= 3)
+    .sort((a, b) => a.rank - b.rank)
+    .slice(0, 3);
 
   useEffect(() => {
     window.sessionStorage.setItem(STORAGE_KEY, String(selectedRound.number));
@@ -205,13 +209,14 @@ const WolfarenaTournamentArchive = ({
             Tournaments
           </Link>
           <h1>{wolfarena2026.title}</h1>
-          <p className="wolfarenaWinnerSummary">
-            <span>Champion</span>
-            <span aria-hidden="true">·</span>
-            <PlayerLink player={wolfarena2026.champion} />
-            <span aria-hidden="true">·</span>
-            <span>128 points</span>
-          </p>
+          <ol className="wolfarenaPodium" aria-label="Final tournament podium">
+            {finalPodium.map((standing) => (
+              <li key={standing.player}>
+                <span>{standing.rank}</span>
+                <PlayerLink player={standing.player} />
+              </li>
+            ))}
+          </ol>
         </div>
         {tournamentMeta?.trophyAssetPath ? (
           <img
@@ -293,7 +298,6 @@ const WolfarenaTournamentArchive = ({
           <section className="wolfarenaStandings" aria-labelledby="wolfarena-standings-heading">
             <div className="wolfarenaSectionHeading">
               <h3 id="wolfarena-standings-heading">Standings</h3>
-              <span>{selectedRound.standings.length} scoring players</span>
             </div>
             <div className="wolfarenaStandingsTableWrap">
               <table className="wolfarenaStandingsTable">
