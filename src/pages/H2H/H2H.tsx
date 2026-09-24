@@ -2,7 +2,7 @@ import "./H2H.css";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
 import { BannedPlayerMark } from "../../components/BannedPlayerMark/BannedPlayerMark";
@@ -132,6 +132,40 @@ const defaultH2HModeFilters: Record<Mode, boolean> = {
   wolfrandom: true,
 };
 
+const presetMatchups = [
+  ["wolfram_ep", "rechesster"],
+  ["maxwellssilvrhammer", "wolfram_ep"],
+  ["ihatespammers", "natso"],
+  ["natso", "neverofzero"],
+  ["maxwellssilvrhammer", "ihatespammers"],
+  ["natso", "wolfram_ep"],
+  ["lesha2002", "vlad_00"],
+  ["crepuscular", "natso"],
+  ["sutcunuri", "vlad_00"],
+  ["chrisrapid", "natso"],
+  ["fast-tsunami", "vlad_00"],
+  ["pashpash", "wolfram_ep"],
+  ["chrisrapid", "vlad_00"],
+  ["fast-tsunami", "lesha2002"],
+  ["hysterix", "natso"],
+  ["jakestatefarm", "lesha2002"],
+  ["catask", "sutcunuri"],
+  ["liangeloball", "natso"],
+  ["soul-fly", "stephanie_s_symphony"],
+  ["neverofzero", "vlad_00"],
+  ["neverofzero", "wolfram_ep"],
+  ["jakestatefarm", "vlad_00"],
+  ["maxwellssilvrhammer", "opabinia"],
+  ["jakestatefarm", "wolfram_ep"],
+  ["onubense", "wolfram_ep"],
+  ["onubense", "penguingim1"],
+  ["onubense", "tipau"],
+  ["arka50", "teentra"],
+  ["grandlapin", "wolfram_ep"],
+  ["gannet", "grandlapin"],
+] as const;
+const presetBatchSize = 6;
+
 const h2hModeFiltersSchema = z
   .union([z.array(z.string()), z.record(z.string(), z.unknown())])
   .transform((value): Record<Mode, boolean> => {
@@ -209,7 +243,10 @@ export const H2HPage = () => {
     sources: readStoredSourceFilters(),
   });
   const [expandedMatchKeys, setExpandedMatchKeys] = useState<string[]>([]);
+  const [visiblePresetCount, setVisiblePresetCount] = useState(presetBatchSize);
+  const presetLoadMoreRef = useRef<HTMLDivElement | null>(null);
   const parsedRouteMatchup = useMemo(() => parseMatchupSlug(matchup), [matchup]);
+  const isSearchPage = !parsedRouteMatchup;
   const routePlayer1 = parsedRouteMatchup?.player1.trim() ?? "";
   const routePlayer2 = parsedRouteMatchup?.player2.trim() ?? "";
   const matchupQuery = useQuery({
@@ -358,6 +395,24 @@ export const H2HPage = () => {
     setExpandedMatchKeys([]);
   }, [parsedRouteMatchup]);
 
+  useEffect(() => {
+    const loadMoreTarget = presetLoadMoreRef.current;
+    if (!isSearchPage || !loadMoreTarget || visiblePresetCount >= presetMatchups.length) return;
+    if (!("IntersectionObserver" in window)) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return;
+        setVisiblePresetCount((current) =>
+          Math.min(current + presetBatchSize, presetMatchups.length),
+        );
+      },
+      { rootMargin: "120px 0px" },
+    );
+    observer.observe(loadMoreTarget);
+    return () => observer.disconnect();
+  }, [isSearchPage, visiblePresetCount]);
+
   const handleChangePlayers = () => {
     if (loadedPlayer1 || loadedPlayer2) {
       storeLastSearch(loadedPlayer1, loadedPlayer2);
@@ -408,61 +463,101 @@ export const H2HPage = () => {
     loadedPlayer1 && loadedPlayer2
       ? `Compare ${loadedPlayer1} and ${loadedPlayer2} across atomic chess matches, scores, and blitz, bullet, and hyperbullet splits.`
       : "Compare two atomic chess players side by side across recent results, total score, and time-control splits.";
-  const isSearchPage = !parsedRouteMatchup;
+  const visiblePresetMatchups = presetMatchups.slice(0, visiblePresetCount);
+  const hasMorePresetMatchups = visiblePresetCount < presetMatchups.length;
   return (
     <div className="rankingsPage">
       <Seo title={seoTitle} description={seoDescription} path={seoPath} />
-      <div className="panel rankingsPanel h2hPanel">
+      <div className={`panel rankingsPanel h2hPanel${isSearchPage ? " h2hSearchPage" : ""}`}>
         {isSearchPage ? (
           <>
             <h1>Compare Player Records</h1>
-            <p>
-              Search two atomic players to open their head-to-head record, scores, and match
-              history.
-            </p>
 
-            <form
-              className="matchFilterPanel h2hSearchForm"
-              onSubmit={(event) => {
-                event.preventDefault();
-                handleSearch();
-              }}
-            >
-              <div className="h2hSearchGrid">
-                <label htmlFor="h2h-player-1">
-                  Player 1
-                  <input
-                    id="h2h-player-1"
-                    type="text"
-                    inputMode="text"
-                    autoCapitalize="none"
-                    autoCorrect="off"
-                    spellCheck={false}
-                    placeholder="username"
-                    value={player1Input}
-                    onChange={(event) => setPlayer1Input(event.target.value)}
-                  />
-                </label>
-                <label htmlFor="h2h-player-2">
-                  Player 2
-                  <input
-                    id="h2h-player-2"
-                    type="text"
-                    inputMode="text"
-                    autoCapitalize="none"
-                    autoCorrect="off"
-                    spellCheck={false}
-                    placeholder="username"
-                    value={player2Input}
-                    onChange={(event) => setPlayer2Input(event.target.value)}
-                  />
-                </label>
-                <button className="analyzeButton h2hSearchButton" type="submit" disabled={loading}>
-                  {loading ? "Searching..." : "Search Matchup"}
-                </button>
-              </div>
-            </form>
+            <div className="h2hSearchSurface">
+              <form
+                className="h2hSearchForm"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  handleSearch();
+                }}
+              >
+                <div className="h2hSearchGrid">
+                  <label htmlFor="h2h-player-1">
+                    Player 1
+                    <input
+                      id="h2h-player-1"
+                      type="text"
+                      inputMode="text"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      placeholder="username"
+                      value={player1Input}
+                      onChange={(event) => setPlayer1Input(event.target.value)}
+                    />
+                  </label>
+                  <span className="h2hSearchVersus" aria-hidden="true">
+                    vs
+                  </span>
+                  <label htmlFor="h2h-player-2">
+                    Player 2
+                    <input
+                      id="h2h-player-2"
+                      type="text"
+                      inputMode="text"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      placeholder="username"
+                      value={player2Input}
+                      onChange={(event) => setPlayer2Input(event.target.value)}
+                    />
+                  </label>
+                  <button
+                    className="analyzeButton h2hSearchButton"
+                    type="submit"
+                    disabled={loading}
+                  >
+                    {loading ? "Searching..." : "Compare"}
+                  </button>
+                </div>
+              </form>
+            </div>
             {error ? <div className="errorText">{error}</div> : null}
+
+            <section className="h2hPresets" aria-labelledby="h2h-presets-heading">
+              <h2 id="h2h-presets-heading">Preset matchups</h2>
+              <div className="h2hPresetGrid" id="h2h-preset-list">
+                {visiblePresetMatchups.map(([first, second]) => (
+                  <Link
+                    key={`${first}-${second}`}
+                    className="h2hPresetLink"
+                    to="/h2h/$matchup"
+                    params={{ matchup: matchupToSlug(first, second) }}
+                  >
+                    <span>{first}</span>
+                    <strong>vs</strong>
+                    <span>{second}</span>
+                  </Link>
+                ))}
+              </div>
+              {hasMorePresetMatchups ? (
+                <div className="h2hPresetMore" ref={presetLoadMoreRef}>
+                  <button
+                    className="h2hPresetMoreButton"
+                    type="button"
+                    aria-controls="h2h-preset-list"
+                    onClick={() =>
+                      setVisiblePresetCount((current) =>
+                        Math.min(current + presetBatchSize, presetMatchups.length),
+                      )
+                    }
+                  >
+                    Show more matchups
+                  </button>
+                </div>
+              ) : null}
+            </section>
           </>
         ) : (
           <>
