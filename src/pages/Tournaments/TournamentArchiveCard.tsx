@@ -19,7 +19,7 @@ export const TournamentArchiveCard = ({
   spotlight = false,
 }: TournamentArchiveCardProps) => {
   const showWinner = Boolean(champion) && tournament.showChampion;
-  const isRoundArchive = tournament.seriesKey === "wr-arena";
+  const isRoundArchive = tournament.seriesKey === "wolfarena";
   const cardClassName = spotlight ? `${styles.card} ${styles.spotlight}` : styles.card;
 
   return (

@@ -35,13 +35,14 @@ insert into public.tournament_catalog (
   status,
   match_mode,
   hide_start_round_controls,
+  trophy_asset_path,
   show_champion,
   home_feature_order,
   display_order
 )
 values (
   'wr-arena2026',
-  'wr-arena',
+  'wolfarena',
   'Wolfarena',
   'Wolfarena 2026',
   null,
@@ -49,9 +50,10 @@ values (
   'available',
   'wolfrandom',
   true,
+  '/images/wolfarena-trophies/wolfarena-red-ruby-cup.png',
   true,
   null,
-  50
+  0
 )
 on conflict (id) do update set
   series_key = excluded.series_key,
@@ -61,6 +63,7 @@ on conflict (id) do update set
   status = excluded.status,
   match_mode = excluded.match_mode,
   hide_start_round_controls = excluded.hide_start_round_controls,
+  trophy_asset_path = excluded.trophy_asset_path,
   show_champion = excluded.show_champion,
   home_feature_order = excluded.home_feature_order,
   display_order = excluded.display_order;
@@ -82,7 +85,7 @@ values (
   'quasabianth',
   'wr-arena-2026',
   1,
-  'Wolfarena 2026',
+  'Wolfarena',
   '2026 Wolfarena Champion',
   'Champion',
   '2026-09-15',

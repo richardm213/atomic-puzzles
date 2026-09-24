@@ -1,5 +1,5 @@
 .wolfarenaPage {
-  width: min(1240px, 100%);
+  width: min(980px, 100%);
 }
 
 .wolfarenaArchiveError {
@@ -29,10 +29,6 @@
   color: var(--color-on-primary);
   font-weight: 750;
   cursor: pointer;
-}
-
-.wolfarenaHeroCopy {
-  padding-right: clamp(22px, 3.5vw, 30px);
 }
 
 .wolfarenaChampionLine {
@@ -318,8 +314,6 @@
 }
 
 .wolfarenaMatchStatus,
-.wolfarenaMatchOpen,
-.wolfarenaMatchUnlinked,
 .wolfarenaMatchPoints {
   color: var(--color-subtle);
   font-size: 0.66rem;
@@ -335,13 +329,6 @@
 .wolfarenaMatchStatus.isforfeit,
 .wolfarenaMatchStatus.isdouble-forfeit {
   color: var(--color-error);
-}
-
-.wolfarenaMatchOpen {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: color-mix(in srgb, var(--tournament-gold) 78%, var(--color-muted));
 }
 
 .wolfarenaMatchParts {
@@ -466,38 +453,25 @@
   color: var(--color-heading);
 }
 
-.wolfarenaStandingMetric {
-  display: inline-flex;
-  align-items: baseline;
-  justify-content: flex-end;
-  gap: 6px;
-}
-
-.wolfarenaStandingMetric small {
-  min-width: 34px;
-  color: var(--color-subtle);
-  font-size: 0.68rem;
-  font-weight: 700;
-}
-
-.wolfarenaStandingsTable .isPositive {
-  color: var(--color-success);
-}
-
-.wolfarenaStandingsTable .isNegative {
-  color: var(--color-error);
-}
-
 .wolfarenaStreak {
   flex: 0 0 auto;
-  padding: 2px 5px;
-  border: 1px solid color-mix(in srgb, var(--tournament-gold) 36%, var(--color-border));
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 22px;
+  padding: 2px 7px 2px 6px;
+  border: 1px solid color-mix(in srgb, var(--tournament-gold) 42%, var(--color-border));
   border-radius: 999px;
-  color: color-mix(in srgb, var(--tournament-gold) 76%, var(--color-muted));
-  font-size: 0.6rem;
+  background: color-mix(in srgb, var(--tournament-gold) 14%, var(--color-panel-strong));
+  color: color-mix(in srgb, var(--tournament-gold) 90%, var(--color-heading));
+  font-size: 0.64rem;
   font-weight: 800;
-  letter-spacing: 0.035em;
-  text-transform: uppercase;
+  line-height: 1;
+}
+
+.wolfarenaStreak svg {
+  width: 0.68rem;
+  color: var(--tournament-gold);
 }
 
 .wolfarenaRoundFooter {
@@ -528,10 +502,6 @@
 }
 
 @media (max-width: 640px) {
-  .wolfarenaHeroCopy {
-    padding-bottom: var(--space-5);
-  }
-
   .wolfarenaChampionLine {
     align-items: baseline;
     flex-wrap: wrap;

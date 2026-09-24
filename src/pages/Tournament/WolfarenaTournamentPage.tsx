@@ -5,6 +5,7 @@ import {
   faArrowRight,
   faArrowUpRightFromSquare,
   faComment,
+  faFireFlameCurved,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
@@ -24,6 +25,7 @@ import {
   type WolfarenaTournament,
 } from "../../lib/matches/wolfarena";
 import { wolfarenaTournamentQueryOptions } from "../../lib/matches/wolfarenaQueries";
+import { appAssetPath } from "../../utils/appAssetPath";
 import { normalizeUsername } from "../../utils/playerNames";
 
 const STORAGE_KEY = "tournament-view:wr-arena2026:round";
@@ -32,16 +34,6 @@ const formatDate = (date: string): string =>
   new Intl.DateTimeFormat("en", { month: "short", day: "numeric", timeZone: "UTC" }).format(
     new Date(`${date}T12:00:00Z`),
   );
-
-const formatRatingChange = (change: number): string => {
-  if (!change) return "—";
-  return `${change > 0 ? "+" : ""}${change.toFixed(1)}`;
-};
-
-const formatPointsChange = (change: number): string => {
-  if (!change) return "—";
-  return `${change > 0 ? "+" : ""}${change.toFixed(1)}`;
-};
 
 const matchStatusLabel = (status: WolfarenaMatch["status"]): string => {
   if (status === "partial-forfeit") return "Partial forfeit";
@@ -87,14 +79,6 @@ const MatchContent = ({ match }: { match: WolfarenaMatch }) => {
         <span className={`wolfarenaMatchStatus is${match.status}`}>
           {matchStatusLabel(match.status)}
         </span>
-        {match.matchId ? (
-          <span className="wolfarenaMatchOpen">
-            {match.additionalMatchIds?.length ? "2 archive parts" : "Open match"}
-            <FontAwesomeIcon icon={faArrowUpRightFromSquare} aria-hidden="true" />
-          </span>
-        ) : (
-          <span className="wolfarenaMatchUnlinked">Archive unavailable</span>
-        )}
       </div>
       <div className={`wolfarenaPlayerRow${player1Won ? " isWinner" : ""}`}>
         <PlayerLink player={match.player1} />
@@ -142,6 +126,9 @@ const WolfarenaTournamentArchive = ({
   tournament: WolfarenaTournament;
 }) => {
   const catalogQuery = useQuery(tournamentCatalogQueryOptions());
+  const tournamentMeta = (catalogQuery.data ?? []).find(
+    (tournament) => tournament.id === wolfarena2026.id,
+  );
   const adjacentTournaments = useMemo(
     () => getAdjacentTournamentMetas(wolfarena2026.id, catalogQuery.data ?? []),
     [catalogQuery.data, wolfarena2026.id],
@@ -240,6 +227,18 @@ const WolfarenaTournamentArchive = ({
             <strong>128.0 pts</strong>
           </div>
         </div>
+        {tournamentMeta?.trophyAssetPath ? (
+          <img
+            className="tournamentPageTrophy"
+            src={appAssetPath(tournamentMeta.trophyAssetPath)}
+            alt=""
+            width="152"
+            height="152"
+            loading="eager"
+            decoding="async"
+            aria-hidden="true"
+          />
+        ) : null}
       </section>
 
       <nav className="wolfarenaRoundNav" aria-label="Tournament rounds">
@@ -330,40 +329,21 @@ const WolfarenaTournamentArchive = ({
                       <td data-label="Rank">{standing.rank}</td>
                       <th scope="row" data-label="Player">
                         <PlayerLink player={standing.player} />
-                        {standing.streak ? <span className="wolfarenaStreak">Streak</span> : null}
+                        {standing.streak ? (
+                          <span
+                            className="wolfarenaStreak"
+                            aria-label="Streak active: double points"
+                            title="Streak active: double points"
+                          >
+                            <FontAwesomeIcon icon={faFireFlameCurved} aria-hidden="true" />
+                            <span>2× points</span>
+                          </span>
+                        ) : null}
                       </th>
                       <td data-label="Points">
-                        <span className="wolfarenaStandingMetric">
-                          <strong>{formatWolfarenaPoints(standing.points)}</strong>
-                          <small
-                            className={
-                              standing.pointsChange > 0
-                                ? "isPositive"
-                                : standing.pointsChange < 0
-                                  ? "isNegative"
-                                  : ""
-                            }
-                          >
-                            {formatPointsChange(standing.pointsChange)}
-                          </small>
-                        </span>
+                        <strong>{formatWolfarenaPoints(standing.points)}</strong>
                       </td>
-                      <td data-label="Rating">
-                        <span className="wolfarenaStandingMetric">
-                          <span>{standing.rating ?? "—"}</span>
-                          <small
-                            className={
-                              standing.ratingChange > 0
-                                ? "isPositive"
-                                : standing.ratingChange < 0
-                                  ? "isNegative"
-                                  : ""
-                            }
-                          >
-                            {formatRatingChange(standing.ratingChange)}
-                          </small>
-                        </span>
-                      </td>
+                      <td data-label="Rating">{standing.rating ?? "—"}</td>
                     </tr>
                   ))}
                 </tbody>

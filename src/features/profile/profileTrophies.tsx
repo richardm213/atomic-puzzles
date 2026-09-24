@@ -206,25 +206,33 @@ const isExternalHref = (href: string): boolean => /^https?:\/\//i.test(String(hr
 const getTrophyHoverLabel = (trophy: ProfileTrophy): string =>
   `${trophy.title} · ${trophy.dateLabel}`;
 
-export const ProfileTrophyLink = ({ trophy }: { trophy: ProfileTrophy }) =>
-  isExternalHref(trophy.href) ? (
+export const ProfileTrophyLink = ({ trophy }: { trophy: ProfileTrophy }) => {
+  const isWolfarenaTrophy = trophy.key.startsWith("wr-arena-");
+  const className = `profileTrophy${isWolfarenaTrophy ? " isWolfarena" : ""}`;
+  const content = (
+    <>
+      <img src={trophy.imageSrc} alt="" aria-hidden="true" />
+      <span className="profileTrophyLabel">{trophy.label}</span>
+    </>
+  );
+
+  return isExternalHref(trophy.href) ? (
     <a
-      className="profileTrophy"
+      className={className}
       title={trophy.title}
       aria-label={trophy.title}
       href={trophy.href}
       target="_blank"
       rel="noreferrer"
     >
-      <img src={trophy.imageSrc} alt="" aria-hidden="true" />
-      <span className="profileTrophyLabel">{trophy.label}</span>
+      {content}
     </a>
   ) : (
-    <Link className="profileTrophy" title={trophy.title} aria-label={trophy.title} to={trophy.href}>
-      <img src={trophy.imageSrc} alt="" aria-hidden="true" />
-      <span className="profileTrophyLabel">{trophy.label}</span>
+    <Link className={className} title={trophy.title} aria-label={trophy.title} to={trophy.href}>
+      {content}
     </Link>
   );
+};
 
 export const ProfileTrophyCaseCard = ({ trophy }: { trophy: ProfileTrophy }) => {
   const content = (
