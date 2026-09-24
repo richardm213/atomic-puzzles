@@ -97,6 +97,11 @@ import { isToggleActionKey } from "../../utils/toggleActionKey";
 
 const countOptions = [5, 10, 20];
 const matchPrefetchDelayMs = 750;
+const profileHighlightViewStorageKey = "atomic-profile-highlight-view";
+
+type ProfileHighlightView = "wins" | "best-ranks" | "recent-ranks";
+type RankHistorySort = "rank" | "players" | "rating" | "games";
+type SortDirection = "asc" | "desc";
 
 type NavigatorWithConnection = Navigator & {
   connection?: {
@@ -139,7 +144,14 @@ export const PlayerProfilePage = ({
     useState<import("../../constants/matches").Mode>(defaultMode);
   const [bestRankMode, setBestRankMode] =
     useState<import("../../constants/matches").Mode>(defaultMode);
+  const [profileHighlightView, setProfileHighlightView] = usePersistedState<ProfileHighlightView>(
+    profileHighlightViewStorageKey,
+    z.enum(["wins", "best-ranks", "recent-ranks"]),
+    "wins",
+  );
   const [rankHistoryMode, setRankHistoryMode] = useState<RankHistoryMode>("all");
+  const [rankHistorySort, setRankHistorySort] = useState<RankHistorySort | null>(null);
+  const [rankHistorySortDirection, setRankHistorySortDirection] = useState<SortDirection>("asc");
   const [rankHistoryView, setRankHistoryView] = useState<RankHistoryView>(
     getRankHistoryViewFromLocation,
   );
@@ -256,12 +268,18 @@ export const PlayerProfilePage = ({
     () => monthRanks.filter((rank) => profileModeOptions.includes(rank.mode)),
     [monthRanks, profileModeOptions],
   );
+  const rankHistoryCountsEnabled = profileHistoryTab === "ranks" && rankHistoryView === "history";
+  const rankHighlightCountsEnabled = !historyOnly && !isBanned && profileHighlightView !== "wins";
+  const monthRanksNeedingPlayerCounts = useMemo(
+    () =>
+      rankHistoryCountsEnabled ? monthRanks : getMonthRanksForMode(visibleMonthRanks, bestRankMode),
+    [bestRankMode, monthRanks, rankHistoryCountsEnabled, visibleMonthRanks],
+  );
   const monthRankPlayerCounts = useMonthRankPlayerCounts(
-    monthRanks,
-    profileHistoryTab === "ranks" && rankHistoryView === "history",
+    monthRanksNeedingPlayerCounts,
+    rankHistoryCountsEnabled || rankHighlightCountsEnabled,
   );
   const [bestMonthRankCount, setBestMonthRankCount] = useState(5);
-  const [recentMonthRankCount, setRecentMonthRankCount] = useState(5);
   const [bestWinCount, setBestWinCount] = useState(5);
   const [appliedFilters, setAppliedFilters] = useState(() => createDefaultProfileFilters());
 
@@ -271,6 +289,8 @@ export const PlayerProfilePage = ({
     setBestWinMode(defaultMode);
     setBestRankMode(defaultMode);
     setRankHistoryMode("all");
+    setRankHistorySort(null);
+    setRankHistorySortDirection("asc");
     setProfileHistoryTab(getProfileHistoryTabFromLocation());
     setPage(1);
     setExpandedMatchKeys([]);
@@ -474,32 +494,56 @@ export const PlayerProfilePage = ({
     () => getMonthRanksForMode(visibleMonthRanks, bestRankMode),
     [bestRankMode, visibleMonthRanks],
   );
-  const bestMonthRanks = useMemo(
-    () =>
-      getMonthRankHighlights(bestRankMonthRanks, bestMonthRankCount, recentMonthRankCount)
-        .bestMonthRanks,
-    [bestRankMonthRanks, bestMonthRankCount, recentMonthRankCount],
+  const rankHighlights = useMemo(
+    () => getMonthRankHighlights(bestRankMonthRanks, bestMonthRankCount, bestMonthRankCount),
+    [bestRankMonthRanks, bestMonthRankCount],
   );
-  const recentMonthRanks = useMemo(
-    () =>
-      getMonthRankHighlights(visibleMonthRanks, bestMonthRankCount, recentMonthRankCount)
-        .recentMonthRanks,
-    [bestMonthRankCount, recentMonthRankCount, visibleMonthRanks],
-  );
-  const rankHistoryRows = useMemo(
-    () =>
-      getMonthRanksForMode(visibleMonthRanks, rankHistoryMode)
-        .map((monthRank) => ({
-          ...monthRank,
-          playerCount: monthRankPlayerCounts[`${monthRank.monthValue}|${monthRank.mode}`] ?? null,
-        }))
-        .sort((a, b) => {
-          const dateDifference = b.monthDate.getTime() - a.monthDate.getTime();
-          if (dateDifference !== 0) return dateDifference;
-          return modeOptions.indexOf(a.mode) - modeOptions.indexOf(b.mode);
-        }),
-    [monthRankPlayerCounts, rankHistoryMode, visibleMonthRanks],
-  );
+  const bestMonthRanks = rankHighlights.bestMonthRanks;
+  const recentMonthRanks = rankHighlights.recentMonthRanks;
+  const displayedMonthRanks =
+    profileHighlightView === "recent-ranks" ? recentMonthRanks : bestMonthRanks;
+  const rankHistoryRows = useMemo(() => {
+    const rows = getMonthRanksForMode(visibleMonthRanks, rankHistoryMode).map((monthRank) => ({
+      ...monthRank,
+      playerCount: monthRankPlayerCounts[`${monthRank.monthValue}|${monthRank.mode}`] ?? null,
+    }));
+
+    return rows.sort((a, b) => {
+      if (rankHistorySort) {
+        const key = rankHistorySort === "players" ? "playerCount" : rankHistorySort;
+        const left = a[key];
+        const right = b[key];
+        const leftMissing = left === null || left === undefined;
+        const rightMissing = right === null || right === undefined;
+        if (leftMissing !== rightMissing) return leftMissing ? 1 : -1;
+        if (!leftMissing && !rightMissing && left !== right) {
+          return rankHistorySortDirection === "asc"
+            ? Number(left) - Number(right)
+            : Number(right) - Number(left);
+        }
+      }
+
+      const dateDifference = b.monthDate.getTime() - a.monthDate.getTime();
+      if (dateDifference !== 0) return dateDifference;
+      return modeOptions.indexOf(a.mode) - modeOptions.indexOf(b.mode);
+    });
+  }, [
+    monthRankPlayerCounts,
+    rankHistoryMode,
+    rankHistorySort,
+    rankHistorySortDirection,
+    visibleMonthRanks,
+  ]);
+
+  const handleRankHistorySort = (sort: RankHistorySort): void => {
+    if (rankHistorySort === sort) {
+      setRankHistorySortDirection((direction) => (direction === "asc" ? "desc" : "asc"));
+      return;
+    }
+
+    setRankHistorySort(sort);
+    setRankHistorySortDirection(sort === "rank" ? "asc" : "desc");
+  };
   const profileOpenings = useMemo(() => {
     if (!aliasesLoaded) return [];
 
@@ -539,6 +583,12 @@ export const PlayerProfilePage = ({
       .map((account): AliasAccount => ({ ...account }))
       .sort(compareAliasRows);
   }, [canonicalUsername, profileAliasEntry]);
+  useEffect(() => {
+    if (!aliasesLoaded) return;
+    const defaultCount = aliasDisplayRows.length >= 8 ? 10 : 5;
+    setBestWinCount(defaultCount);
+    setBestMonthRankCount(defaultCount);
+  }, [aliasDisplayRows.length, aliasesLoaded, canonicalUsername]);
   const latestMonthKeyByMode = useMemo(
     () =>
       visibleMonthRanks.reduce<
@@ -571,7 +621,10 @@ export const PlayerProfilePage = ({
     [latestMonthKeyByMode, profileModeOptions, ratingDisplayByMode],
   );
   const rankingTrophies = useMemo(() => getRankingTrophies(monthRanks), [monthRanks]);
-  const championshipTrophies = championshipTrophiesQuery.data ?? [];
+  const championshipTrophies = useMemo(
+    () => championshipTrophiesQuery.data ?? [],
+    [championshipTrophiesQuery.data],
+  );
   const profileTrophies = useMemo(
     () => sortProfileTrophies([...championshipTrophies, ...rankingTrophies], "prestige"),
     [championshipTrophies, rankingTrophies],
@@ -637,7 +690,22 @@ export const PlayerProfilePage = ({
             }`}
           >
             <div className="profileIdentityTitle">
-              <h1>{profileDisplayUsername}</h1>
+              <div className="profileIdentityHeading">
+                <h1>{profileDisplayUsername}</h1>
+                {!isBanned ? (
+                  <button
+                    className="profilePuzzleDashboardLink profileRatingGraphToggle profileIdentityGraphToggle"
+                    type="button"
+                    aria-label={showRatingGraph ? "Show rating summary" : "Show rating graph"}
+                    aria-controls="profile-rating-view"
+                    aria-pressed={showRatingGraph}
+                    title={showRatingGraph ? "Show rating summary" : "Show rating graph"}
+                    onClick={() => setShowRatingGraph((current) => !current)}
+                  >
+                    <FontAwesomeIcon icon={faChartLine} aria-hidden="true" />
+                  </button>
+                ) : null}
+              </div>
               {profileOpenings.length ? (
                 <div className="profileOpeningTags" aria-label="Recognized atomic openings">
                   {profileOpenings.map((opening) => (
@@ -740,17 +808,6 @@ export const PlayerProfilePage = ({
             >
               View comments
             </Link>
-            <button
-              className="profilePuzzleDashboardLink profileRatingGraphToggle"
-              type="button"
-              aria-label={showRatingGraph ? "Show rating summary" : "Show rating graph"}
-              aria-controls="profile-rating-view"
-              aria-pressed={showRatingGraph}
-              title={showRatingGraph ? "Show rating summary" : "Show rating graph"}
-              onClick={() => setShowRatingGraph((current) => !current)}
-            >
-              <FontAwesomeIcon icon={faChartLine} aria-hidden="true" />
-            </button>
             {isHistoryAvailable ? (
               <Link
                 className="profilePuzzleDashboardLink"
@@ -775,17 +832,34 @@ export const PlayerProfilePage = ({
             {!isBanned ? (
               <div className="profileBestWins">
                 <div className="profileBestMonthRanksHeader">
-                  <h2>Best Wins</h2>
+                  <h2>
+                    <select
+                      className="profileHighlightViewSelect"
+                      aria-label="Profile highlight"
+                      value={profileHighlightView}
+                      onChange={(event) =>
+                        setProfileHighlightView(event.target.value as ProfileHighlightView)
+                      }
+                    >
+                      <option value="wins">Best Wins</option>
+                      <option value="best-ranks">Best Ranks</option>
+                      <option value="recent-ranks">Recent Ranks</option>
+                    </select>
+                  </h2>
                   <div className="profileHeaderControls">
-                    <label htmlFor="profile-best-win-mode-select">
+                    <label htmlFor="profile-highlight-mode-select">
                       Mode
                       <select
-                        id="profile-best-win-mode-select"
-                        value={bestWinMode}
+                        id="profile-highlight-mode-select"
+                        value={profileHighlightView === "wins" ? bestWinMode : bestRankMode}
                         onChange={(event) => {
                           const v = event.target.value;
                           if ((profileModeOptions as readonly string[]).includes(v)) {
-                            setBestWinMode(v as import("../../constants/matches").Mode);
+                            if (profileHighlightView === "wins") {
+                              setBestWinMode(v as import("../../constants/matches").Mode);
+                            } else {
+                              setBestRankMode(v as import("../../constants/matches").Mode);
+                            }
                           }
                         }}
                       >
@@ -796,12 +870,19 @@ export const PlayerProfilePage = ({
                         ))}
                       </select>
                     </label>
-                    <label htmlFor="profile-best-win-count-select">
+                    <label htmlFor="profile-highlight-count-select">
                       Show
                       <select
-                        id="profile-best-win-count-select"
-                        value={bestWinCount}
-                        onChange={(event) => setBestWinCount(Number(event.target.value))}
+                        id="profile-highlight-count-select"
+                        value={profileHighlightView === "wins" ? bestWinCount : bestMonthRankCount}
+                        onChange={(event) => {
+                          const count = Number(event.target.value);
+                          if (profileHighlightView === "wins") {
+                            setBestWinCount(count);
+                          } else {
+                            setBestMonthRankCount(count);
+                          }
+                        }}
                       >
                         {countOptions.map((value) => (
                           <option key={value} value={value}>
@@ -812,30 +893,57 @@ export const PlayerProfilePage = ({
                     </label>
                   </div>
                 </div>
-                {bestWins.length === 0 ? (
+                {profileHighlightView === "wins" ? (
+                  bestWins.length === 0 ? (
+                    <div className="emptyRankings">
+                      No wins available in {modeLabels[bestWinMode]}.
+                    </div>
+                  ) : (
+                    <ol>
+                      {bestWins.map((win) => (
+                        <li key={`best-${win.gameId}`}>
+                          <span className="profileBestWinOpponent">
+                            <Link
+                              className="rankingLink"
+                              to="/@/$username"
+                              params={{ username: win.opponent }}
+                            >
+                              {formatOpponentWithRating(win.opponent, win.opponentRating)}
+                            </Link>
+                          </span>
+                          <span className="profileBestWinDate">
+                            <LichessGameLink
+                              gameId={win.gameId}
+                              source={inferExternalGameSource(win.gameId)}
+                            >
+                              {formatLocalDateTime(win.startTs)}
+                            </LichessGameLink>
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
+                  )
+                ) : displayedMonthRanks.length === 0 ? (
                   <div className="emptyRankings">
-                    No wins available in {modeLabels[bestWinMode]}.
+                    No monthly ranks available in {modeLabels[bestRankMode]}.
                   </div>
                 ) : (
                   <ol>
-                    {bestWins.map((win) => (
-                      <li key={`best-${win.gameId}`}>
-                        <span className="profileBestWinOpponent">
-                          <Link
-                            className="rankingLink"
-                            to="/@/$username"
-                            params={{ username: win.opponent }}
-                          >
-                            {formatOpponentWithRating(win.opponent, win.opponentRating)}
-                          </Link>
-                        </span>
-                        <span className="profileBestWinDate">
-                          <LichessGameLink
-                            gameId={win.gameId}
-                            source={inferExternalGameSource(win.gameId)}
-                          >
-                            {formatLocalDateTime(win.startTs)}
-                          </LichessGameLink>
+                    {displayedMonthRanks.map((monthRank) => (
+                      <li key={`${profileHighlightView}-${monthRank.mode}-${monthRank.monthKey}`}>
+                        <a
+                          className="rankingLink profileBestMonthRankPrimary"
+                          href={buildRankingsLocation(monthRank.monthKey, monthRank.mode)}
+                        >
+                          {monthRank.monthLabel} {modeLabels[monthRank.mode] ?? monthRank.mode} · #
+                          {`${monthRank.rank} of ${
+                            monthRankPlayerCounts[
+                              `${monthRank.monthValue}|${monthRank.mode}`
+                            ]?.toLocaleString("en-US") ?? "…"
+                          }`}
+                        </a>
+                        <span className="profileBestMonthRankRating">
+                          {monthRank.rating ?? "—"}
                         </span>
                       </li>
                     ))}
@@ -916,109 +1024,6 @@ export const PlayerProfilePage = ({
                   {aliasesExpanded ? "Show less" : "Show more"}
                 </button>
               ) : null}
-            </div>
-          </div>
-        ) : null}
-
-        {!historyOnly && !isBanned ? (
-          <div className="profileHighlights profileHighlightsBottomRow">
-            <div className="profileBestMonthRanks">
-              <div className="profileBestMonthRanksHeader">
-                <h2>Best Ranks</h2>
-                <div className="profileHeaderControls">
-                  <label htmlFor="profile-best-rank-mode-select">
-                    Mode
-                    <select
-                      id="profile-best-rank-mode-select"
-                      value={bestRankMode}
-                      onChange={(event) => {
-                        const v = event.target.value;
-                        if ((profileModeOptions as readonly string[]).includes(v)) {
-                          setBestRankMode(v as import("../../constants/matches").Mode);
-                        }
-                      }}
-                    >
-                      {profileModeOptions.map((mode) => (
-                        <option key={mode} value={mode}>
-                          {modeLabels[mode] ?? mode}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label htmlFor="profile-best-month-rank-count-select">
-                    Show
-                    <select
-                      id="profile-best-month-rank-count-select"
-                      value={bestMonthRankCount}
-                      onChange={(event) => setBestMonthRankCount(Number(event.target.value))}
-                    >
-                      {countOptions.map((value) => (
-                        <option key={value} value={value}>
-                          {value}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-              </div>
-              {bestMonthRanks.length === 0 ? (
-                <div className="emptyRankings">
-                  No monthly ranks available in {modeLabels[bestRankMode]}.
-                </div>
-              ) : (
-                <ol>
-                  {bestMonthRanks.map((monthRank) => (
-                    <li key={`best-month-rank-${monthRank.mode}-${monthRank.monthKey}`}>
-                      <a
-                        className="rankingLink profileBestMonthRankPrimary"
-                        href={buildRankingsLocation(monthRank.monthKey, monthRank.mode)}
-                      >
-                        {monthRank.monthLabel} {modeLabels[monthRank.mode] ?? monthRank.mode} · #
-                        {monthRank.rank}
-                      </a>
-                      <span className="profileBestMonthRankRating">{monthRank.rating ?? "—"}</span>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </div>
-
-            <div className="profileBestMonthRanks">
-              <div className="profileBestMonthRanksHeader">
-                <h2>Recent Ranks</h2>
-                <label htmlFor="profile-recent-month-rank-count-select">
-                  Show
-                  <select
-                    id="profile-recent-month-rank-count-select"
-                    value={recentMonthRankCount}
-                    onChange={(event) => setRecentMonthRankCount(Number(event.target.value))}
-                  >
-                    {countOptions.map((value) => (
-                      <option key={value} value={value}>
-                        {value}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              {recentMonthRanks.length === 0 ? (
-                <div className="emptyRankings">No monthly ranks available.</div>
-              ) : (
-                <ol>
-                  {recentMonthRanks.map((monthRank) => (
-                    <li key={`recent-month-rank-${monthRank.mode}-${monthRank.monthKey}`}>
-                      <a
-                        className="rankingLink profileBestMonthRankPrimary"
-                        href={buildRankingsLocation(monthRank.monthKey, monthRank.mode)}
-                      >
-                        {monthRank.monthLabel} {modeLabels[monthRank.mode] ?? monthRank.mode} · #
-                        {monthRank.rank}
-                      </a>
-                      <span className="profileBestMonthRankRating">{monthRank.rating ?? "—"}</span>
-                    </li>
-                  ))}
-                </ol>
-              )}
             </div>
           </div>
         ) : null}
@@ -1478,11 +1483,64 @@ export const PlayerProfilePage = ({
                             <tr>
                               <th>Month</th>
                               <th>Mode</th>
-                              <th>Rank</th>
-                              <th>Players</th>
-                              <th>Rating</th>
+                              {(
+                                [
+                                  ["rank", "Rank"],
+                                  ["players", "Players"],
+                                  ["rating", "Rating"],
+                                ] as const
+                              ).map(([column, label]) => (
+                                <th
+                                  key={column}
+                                  aria-sort={
+                                    rankHistorySort === column
+                                      ? rankHistorySortDirection === "asc"
+                                        ? "ascending"
+                                        : "descending"
+                                      : "none"
+                                  }
+                                >
+                                  <button
+                                    className="profileRankHistorySortButton"
+                                    type="button"
+                                    onClick={() => handleRankHistorySort(column)}
+                                  >
+                                    {label}
+                                    <span aria-hidden="true">
+                                      {rankHistorySort === column
+                                        ? rankHistorySortDirection === "asc"
+                                          ? "↑"
+                                          : "↓"
+                                        : ""}
+                                    </span>
+                                  </button>
+                                </th>
+                              ))}
                               <th>RD</th>
-                              <th>Games</th>
+                              <th
+                                aria-sort={
+                                  rankHistorySort === "games"
+                                    ? rankHistorySortDirection === "asc"
+                                      ? "ascending"
+                                      : "descending"
+                                    : "none"
+                                }
+                              >
+                                <button
+                                  className="profileRankHistorySortButton"
+                                  type="button"
+                                  onClick={() => handleRankHistorySort("games")}
+                                >
+                                  Games
+                                  <span aria-hidden="true">
+                                    {rankHistorySort === "games"
+                                      ? rankHistorySortDirection === "asc"
+                                        ? "↑"
+                                        : "↓"
+                                      : ""}
+                                  </span>
+                                </button>
+                              </th>
                             </tr>
                           </thead>
                           <tbody>

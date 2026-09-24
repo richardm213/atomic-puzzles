@@ -38,6 +38,9 @@
   --color-rating-blitz: #ff5252;
   --color-rating-hyper: #5688ff;
   --color-rating-bullet: #09bdd7;
+  --color-rating-graph-blitz: #ff5263;
+  --color-rating-graph-bullet: #e879f9;
+  --color-rating-graph-hyper: #6790ff;
   --color-calendar-monthly: #aa8cff;
   --color-on-primary: #eff6ff;
   --color-on-elevated: #f5f7fb;
@@ -132,6 +135,9 @@
   --color-rating-blitz: #d92727;
   --color-rating-hyper: #2859df;
   --color-rating-bullet: #00849e;
+  --color-rating-graph-blitz: #cf3042;
+  --color-rating-graph-bullet: #a83bbd;
+  --color-rating-graph-hyper: #2f5fd6;
   --color-calendar-monthly: #6946bd;
   --color-on-primary: #eff6ff;
   --color-on-elevated: #142033;

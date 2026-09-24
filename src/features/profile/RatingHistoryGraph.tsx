@@ -32,20 +32,17 @@ const weekLabel = (index: number) =>
 export const weeklyPeriodStart = (period: RatingPeriod, first: number, last: number) => {
   if (period === "All") return first;
   const end = weekDate(last);
-  const start =
-    period === "YTD"
-      ? new Date(Date.UTC(end.getUTCFullYear(), 0, 1))
-      : new Date(
-          Date.UTC(
-            end.getUTCFullYear(),
-            end.getUTCMonth() - { "1M": 1, "3M": 3, "6M": 6, "1Y": 12, "2Y": 24, "5Y": 60 }[period],
-            end.getUTCDate(),
-          ),
-        );
+  const start = new Date(
+    Date.UTC(
+      end.getUTCFullYear(),
+      end.getUTCMonth() - { "1Y": 12, "2Y": 24, "5Y": 60 }[period],
+      end.getUTCDate(),
+    ),
+  );
   return Math.max(first, weekIndex(start));
 };
 const modes = ["blitz", "bullet", "hyperbullet"] as const;
-const periods = ["1M", "3M", "6M", "YTD", "1Y", "2Y", "5Y", "All"] as const;
+const periods = ["1Y", "2Y", "5Y", "All"] as const;
 export type RatingPeriod = (typeof periods)[number];
 const monthIndex = (date: Date) => date.getUTCFullYear() * 12 + date.getUTCMonth();
 const monthDate = (index: number) => new Date(Date.UTC(Math.floor(index / 12), index % 12, 1));
@@ -59,14 +56,7 @@ const monthLabel = (index: number) =>
 
 // Lines connect recorded observations; missing periods do not get invented ratings.
 export const ratingPeriodStart = (period: RatingPeriod, first: number, last: number) =>
-  Math.max(
-    first,
-    period === "All"
-      ? first
-      : period === "YTD"
-        ? Math.floor(last / 12) * 12
-        : last - { "1M": 1, "3M": 3, "6M": 6, "1Y": 12, "2Y": 24, "5Y": 60 }[period],
-  );
+  Math.max(first, period === "All" ? first : last - { "1Y": 12, "2Y": 24, "5Y": 60 }[period]);
 
 export const ratingGraphRows = (rows: GraphRow[]) =>
   rows
@@ -260,7 +250,36 @@ export const RatingChart = ({
               {value}
             </button>
           ))}
+          <button
+            type="button"
+            aria-pressed={period === "Custom"}
+            onClick={() => setPeriod("Custom")}
+          >
+            Custom
+          </button>
         </div>
+        <div className="ratingGraphLegend" aria-label="Rating series">
+          {modes.map((mode) => (
+            <button
+              type="button"
+              key={mode}
+              className={`ratingSeries ${mode}`}
+              aria-pressed={!hidden.includes(mode)}
+              onClick={() =>
+                setHidden((current) =>
+                  current.includes(mode)
+                    ? current.filter((value) => value !== mode)
+                    : [...current, mode],
+                )
+              }
+            >
+              <span aria-hidden="true" />
+              {modeLabels[mode]}
+            </button>
+          ))}
+        </div>
+      </div>
+      {period === "Custom" ? (
         <div className="ratingGraphDates">
           <label>
             From
@@ -285,29 +304,7 @@ export const RatingChart = ({
             />
           </label>
         </div>
-      </div>
-      <div className="ratingGraphOptions">
-        <div className="ratingGraphLegend" aria-label="Rating series">
-          {modes.map((mode) => (
-            <button
-              type="button"
-              key={mode}
-              className={`ratingSeries ${mode}`}
-              aria-pressed={!hidden.includes(mode)}
-              onClick={() =>
-                setHidden((current) =>
-                  current.includes(mode)
-                    ? current.filter((value) => value !== mode)
-                    : [...current, mode],
-                )
-              }
-            >
-              <span aria-hidden="true" />
-              {modeLabels[mode]}
-            </button>
-          ))}
-        </div>
-      </div>
+      ) : null}
       <div ref={frame} className="ratingGraphPlot" onPointerLeave={() => setTooltipVisible(false)}>
         <svg
           viewBox={`0 0 ${width} ${bottom + 40}`}

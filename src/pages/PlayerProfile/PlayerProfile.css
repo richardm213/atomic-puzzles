@@ -48,6 +48,13 @@
   flex: 1 1 auto;
 }
 
+.profileIdentityHeading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
 .profileOpeningTags {
   display: flex;
   flex-direction: row;
@@ -382,6 +389,12 @@
   outline-offset: 2px;
 }
 
+.profileIdentityGraphToggle {
+  width: 36px;
+  min-height: 36px;
+  border-radius: 50%;
+}
+
 .profileBannedGameCounts {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -477,10 +490,6 @@
   align-items: start;
 }
 
-.profileHighlightsBottomRow {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
 .profileBestWins,
 .profileBestMonthRanks,
 .profileAliases {
@@ -546,6 +555,26 @@
   color: var(--color-text);
   border-radius: 8px;
   padding: 4px 6px;
+}
+
+.profileBestMonthRanksHeader .profileHighlightViewSelect {
+  max-width: 150px;
+  border-color: transparent;
+  background-color: transparent;
+  color: var(--color-heading);
+  font: inherit;
+  font-weight: 800;
+  padding: 3px 4px;
+}
+
+.profileBestMonthRanksHeader .profileHighlightViewSelect:hover {
+  border-color: var(--color-input-border);
+}
+
+.profileBestMonthRanksHeader .profileHighlightViewSelect:focus-visible {
+  border-color: var(--color-cyan-bright);
+  outline: 2px solid var(--color-cyan-bright);
+  outline-offset: 2px;
 }
 
 .profileFavoriteOpponentsDirectionButton {
@@ -1352,7 +1381,8 @@
   line-height: 1.2;
 }
 
-.profileFavoriteOpponentsSortButton {
+.profileFavoriteOpponentsSortButton,
+.profileRankHistorySortButton {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -1364,7 +1394,8 @@
   text-align: left;
 }
 
-.profileFavoriteOpponentsSortButton span {
+.profileFavoriteOpponentsSortButton span,
+.profileRankHistorySortButton span {
   display: inline-block;
   min-width: 9px;
   color: var(--color-heading);
@@ -1372,7 +1403,9 @@
 }
 
 .profileFavoriteOpponentsSortButton:hover,
-.profileFavoriteOpponentsSortButton:focus-visible {
+.profileFavoriteOpponentsSortButton:focus-visible,
+.profileRankHistorySortButton:hover,
+.profileRankHistorySortButton:focus-visible {
   color: var(--color-cyan-bright);
   outline: none;
 }
@@ -1553,8 +1586,7 @@
 }
 
 @media (max-width: 1180px) {
-  .profileHighlights,
-  .profileHighlightsBottomRow {
+  .profileHighlights {
     grid-template-columns: 1fr;
   }
 }
@@ -1614,7 +1646,7 @@
 
   .profileActionRow {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 44px;
+    grid-template-columns: 1fr;
     align-items: stretch;
   }
 
@@ -1622,12 +1654,9 @@
     width: 100%;
   }
 
-  .profileActionRow > :nth-child(n + 3) {
-    grid-column: 1 / -1;
-  }
-
-  .profileRatingGraphToggle {
+  .profileIdentityGraphToggle {
     width: 44px;
+    min-height: 44px;
     flex: 0 0 44px;
     margin-left: 0;
   }

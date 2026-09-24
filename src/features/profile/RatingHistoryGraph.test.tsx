@@ -131,7 +131,7 @@ describe("monthly rating graph", () => {
         ),
       );
     expect(topTick()).toBe(2400);
-    fireEvent.click(screen.getByRole("button", { name: "1M" }));
+    fireEvent.click(screen.getByRole("button", { name: "1Y" }));
     expect(topTick()).toBe(2250);
     fireEvent.click(screen.getByRole("button", { name: "Bullet" }));
     expect(topTick()).toBe(1800);
@@ -217,31 +217,32 @@ describe("monthly rating graph", () => {
     const last = 2026 * 12 + 8,
       first = 2020 * 12;
     expect(
-      ["1M", "3M", "6M", "YTD", "1Y", "2Y", "5Y", "All"].map((period) =>
+      ["1Y", "2Y", "5Y", "All"].map((period) =>
         ratingPeriodStart(period as Parameters<typeof ratingPeriodStart>[0], first, last),
       ),
-    ).toEqual([last - 1, last - 3, last - 6, 2026 * 12, last - 12, last - 24, last - 60, first]);
+    ).toEqual([last - 12, last - 24, last - 60, first]);
     expect(ratingPeriodStart("1Y", last - 2, last)).toBe(last - 2);
   });
   it("filters dates, toggles lines and exposes keyboard-readable monthly values", () => {
     render(
       <RatingChart
         rows={[
-          row("2025-01"),
+          row("2025-02"),
           row("2026-01"),
           row("2026-02", "bullet", 1900),
           row("2026-02", "hyperbullet", 2000),
         ]}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "1M" }));
-    expect(screen.getByLabelText("From month")).toHaveValue("2026-01");
+    fireEvent.click(screen.getByRole("button", { name: "1Y" }));
+    expect(screen.queryByLabelText("From month")).not.toBeInTheDocument();
     fireEvent.keyDown(screen.getByRole("img"), { key: "Home" });
     expect(screen.getByRole("tooltip")).toHaveTextContent("1,800");
     fireEvent.click(screen.getByRole("button", { name: "Blitz" }));
     expect(screen.getByRole("button", { name: "Blitz" })).toHaveAttribute("aria-pressed", "false");
-    fireEvent.change(screen.getByLabelText("From month"), { target: { value: "2025-01" } });
-    expect(screen.getByRole("button", { name: "1M" })).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(screen.getByRole("button", { name: "Custom" }));
+    fireEvent.change(screen.getByLabelText("From month"), { target: { value: "2026-01" } });
+    expect(screen.getByRole("button", { name: "1Y" })).toHaveAttribute("aria-pressed", "false");
   });
   it("uses two range handles to narrow dates, persist Custom and synchronize presets", () => {
     const { unmount } = render(
@@ -265,6 +266,7 @@ describe("monthly rating graph", () => {
     fireEvent.click(screen.getByRole("button", { name: "1Y" }));
     expect(start).toHaveAttribute("aria-valuetext", "Jun 2025");
     expect(end).toHaveAttribute("aria-valuetext", "Jun 2026");
+    fireEvent.click(screen.getByRole("button", { name: "Custom" }));
     fireEvent.change(screen.getByLabelText("From month"), { target: { value: "2026-01" } });
     expect(start).toHaveAttribute("aria-valuetext", "Jan 2026");
     unmount();
@@ -480,8 +482,8 @@ describe("weekly rating graph", () => {
     expect(weekIndex(new Date("2026-09-20T23:59:59Z"))).toBe(monday);
     expect(weekIndex(new Date("2026-09-13T23:59:59Z"))).toBe(monday - 1);
     expect(weekIndex(new Date("2026-09-21T00:00:00Z"))).toBe(monday + 1);
-    expect(weeklyPeriodStart("1M", monday - 30, monday)).toBe(
-      weekIndex(new Date("2026-08-20T00:00:00Z")),
+    expect(weeklyPeriodStart("1Y", monday - 60, monday)).toBe(
+      weekIndex(new Date("2025-09-15T00:00:00Z")),
     );
   });
 
@@ -518,6 +520,7 @@ describe("weekly rating graph", () => {
 
   it("retains a single qualifying observation and date-based range inputs", () => {
     const { container } = render(<RatingChart frequency="weekly" rows={[week("2026-09-13")]} />);
+    fireEvent.click(screen.getByRole("button", { name: "Custom" }));
     expect(screen.getByLabelText("From week")).toHaveAttribute("type", "date");
     fireEvent.focus(screen.getByRole("img"));
     fireEvent.keyDown(screen.getByRole("img"), { key: "Home" });
@@ -537,7 +540,8 @@ describe("weekly rating graph", () => {
     expect(container.querySelectorAll("circle")).toHaveLength(1);
     fireEvent.blur(screen.getByRole("img"));
     expect(container.querySelectorAll("circle")).toHaveLength(0);
-    fireEvent.click(screen.getByRole("button", { name: "1M" }));
+    const start = screen.getByRole("slider", { name: "Range start" });
+    for (let i = 0; i < 8; i += 1) fireEvent.keyDown(start, { key: "PageUp" });
     expect(container.querySelectorAll("circle").length).toBeGreaterThan(1);
     fireEvent.click(screen.getByRole("button", { name: "All" }));
     expect(container.querySelectorAll("circle")).toHaveLength(0);
@@ -562,7 +566,8 @@ describe("weekly rating graph", () => {
     expect(container.querySelectorAll("circle")).toHaveLength(20);
     act(() => resize([{ contentRect: { width: 330 } }]));
     expect(container.querySelectorAll("circle")).toHaveLength(0);
-    fireEvent.click(screen.getByRole("button", { name: "1M" }));
+    const start = screen.getByRole("slider", { name: "Range start" });
+    fireEvent.keyDown(start, { key: "PageUp" });
     expect(container.querySelectorAll("circle").length).toBeGreaterThan(1);
   });
   it("persists Show and Hide overrides while keeping tooltip values accessible", () => {

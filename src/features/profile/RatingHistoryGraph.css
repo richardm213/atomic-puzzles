@@ -39,7 +39,10 @@
 }
 .ratingGraphToolbar {
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px 20px;
+}
+.ratingGraphDates {
+  margin-top: var(--space-3);
 }
 .ratingGraphDates label {
   display: flex;
@@ -75,15 +78,16 @@
 }
 .ratingGraphLegend {
   margin-top: 0;
+  gap: var(--space-1);
 }
 .ratingSeries.blitz {
-  --series-color: var(--color-rating-blitz);
+  --series-color: var(--color-rating-graph-blitz);
 }
 .ratingSeries.hyperbullet {
-  --series-color: var(--color-rating-hyper);
+  --series-color: var(--color-rating-graph-hyper);
 }
 .ratingSeries.bullet {
-  --series-color: var(--color-rating-bullet);
+  --series-color: var(--color-rating-graph-bullet);
 }
 .ratingGraphLegend button {
   display: inline-flex;
@@ -115,6 +119,8 @@
 }
 .ratingPlotSurface {
   fill: var(--color-surface-inset);
+  stroke: var(--color-border);
+  stroke-width: 1;
 }
 .ratingGrid {
   stroke: color-mix(in srgb, var(--color-muted) 38%, transparent);
@@ -126,7 +132,7 @@
 .ratingLine {
   fill: none;
   stroke: var(--series-color);
-  stroke-width: 2;
+  stroke-width: 2.5;
   stroke-linejoin: round;
   stroke-linecap: round;
 }
@@ -293,14 +299,6 @@
   }
 }
 
-.ratingGraphOptions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-top: 12px;
-}
 .ratingGraphPeriods {
   gap: var(--space-1);
   padding: var(--space-1);
@@ -338,9 +336,6 @@
   }
   .ratingPageHeader {
     margin-bottom: 24px;
-  }
-  .ratingGraphOptions {
-    gap: 8px;
   }
 }
 
@@ -403,7 +398,16 @@
 @media (width <= 600px) {
   .ratingGraphPeriods {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .ratingGraphPeriods button {
+    min-width: 0;
+    padding-inline: 6px;
+  }
+
+  .ratingGraphLegend {
     width: 100%;
   }
 }
