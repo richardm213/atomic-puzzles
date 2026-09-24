@@ -21,6 +21,7 @@ import {
 import {
   getAdjacentTournamentMetas,
   getTournamentDecisiveMatch,
+  getTournamentRouteId,
   type TournamentBracket,
   type TournamentBracketStage,
   type TournamentMatch,
@@ -1325,7 +1326,9 @@ const BracketTournamentPage = ({ tournamentId }: { tournamentId: string }) => {
                 <Link
                   className="tournamentYearNavLink"
                   to="/tournaments/$tournamentId"
-                  params={{ tournamentId: adjacentTournaments.previous.id }}
+                  params={{
+                    tournamentId: getTournamentRouteId(adjacentTournaments.previous.id),
+                  }}
                 >
                   ← {adjacentTournaments.previous.year}
                 </Link>
@@ -1339,7 +1342,7 @@ const BracketTournamentPage = ({ tournamentId }: { tournamentId: string }) => {
                 <Link
                   className="tournamentYearNavLink"
                   to="/tournaments/$tournamentId"
-                  params={{ tournamentId: adjacentTournaments.next.id }}
+                  params={{ tournamentId: getTournamentRouteId(adjacentTournaments.next.id) }}
                 >
                   {adjacentTournaments.next.year} →
                 </Link>
@@ -1453,7 +1456,7 @@ const BracketTournamentPage = ({ tournamentId }: { tournamentId: string }) => {
 };
 
 export const TournamentPage = ({ tournamentId }: { tournamentId: string }) =>
-  tournamentId === "wr-arena2026" ? (
+  tournamentId === "wolfarena2026" || tournamentId === "wr-arena2026" ? (
     <WolfarenaTournamentPage />
   ) : (
     <BracketTournamentPage tournamentId={tournamentId} />

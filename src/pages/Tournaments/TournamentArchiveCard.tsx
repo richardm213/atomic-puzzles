@@ -2,7 +2,7 @@ import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 
-import type { TournamentMeta } from "../../lib/matches/tournaments";
+import { getTournamentRouteId, type TournamentMeta } from "../../lib/matches/tournaments";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { normalizeUsername } from "../../utils/playerNames";
 import styles from "./TournamentArchiveCard.module.css";
@@ -19,7 +19,8 @@ export const TournamentArchiveCard = ({
   spotlight = false,
 }: TournamentArchiveCardProps) => {
   const showWinner = Boolean(champion) && tournament.showChampion;
-  const isRoundArchive = tournament.seriesKey === "wolfarena";
+  const isRoundArchive =
+    tournament.seriesKey === "wolfarena" || tournament.id === "wr-arena2026";
   const cardClassName = spotlight ? `${styles.card} ${styles.spotlight}` : styles.card;
 
   return (
@@ -62,7 +63,7 @@ export const TournamentArchiveCard = ({
       <Link
         className={styles.cardLink}
         to="/tournaments/$tournamentId"
-        params={{ tournamentId: tournament.id }}
+        params={{ tournamentId: getTournamentRouteId(tournament.id) }}
         aria-label={`Open ${tournament.seriesName} ${tournament.year} ${isRoundArchive ? "round archive" : "bracket"}`}
       >
         <span>{isRoundArchive ? "Open rounds" : "Open bracket"}</span>

@@ -11,13 +11,12 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import type { KeyboardEvent } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { CommunityDiscussion } from "../../components/PuzzleCommunity/PuzzleCommunity";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { tournamentCatalogQueryOptions } from "../../lib/matches/tournamentQueries";
-import { getAdjacentTournamentMetas } from "../../lib/matches/tournaments";
 import {
   formatWolfarenaPoints,
   type WolfarenaMatch,
@@ -56,16 +55,27 @@ const PlayerLink = ({ player }: { player: string }) => (
   </Link>
 );
 
+const BonusPoints = ({ score, points }: { score: number | null; points: number }) => {
+  if (score === null || Math.abs(points - score) < 0.001) return null;
+
+  return (
+    <span className="wolfarenaBonusPoints" title="Streak bonus: double points">
+      <FontAwesomeIcon icon={faFireFlameCurved} aria-hidden="true" />
+      2×
+    </span>
+  );
+};
+
 const MatchContent = ({ match }: { match: WolfarenaMatch }) => {
   if (match.status === "bye") {
     return (
       <>
         <div className="wolfarenaMatchTopline">
           <span className="wolfarenaMatchStatus">Bye</span>
-          <span className="wolfarenaMatchPoints">+{formatWolfarenaPoints(match.points1)} pts</span>
         </div>
         <div className="wolfarenaByePlayer">
           <PlayerLink player={match.player1} />
+          <strong>{match.points1}</strong>
         </div>
       </>
     );
@@ -82,13 +92,17 @@ const MatchContent = ({ match }: { match: WolfarenaMatch }) => {
       </div>
       <div className={`wolfarenaPlayerRow${player1Won ? " isWinner" : ""}`}>
         <PlayerLink player={match.player1} />
-        <span className="wolfarenaPlayerPoints">+{formatWolfarenaPoints(match.points1)} pts</span>
-        <strong>{match.score1}</strong>
+        <span className="wolfarenaPlayerOutcome">
+          <BonusPoints score={match.score1} points={match.points1} />
+          <strong>{match.score1}</strong>
+        </span>
       </div>
       <div className={`wolfarenaPlayerRow${player2Won ? " isWinner" : ""}`}>
         <PlayerLink player={match.player2} />
-        <span className="wolfarenaPlayerPoints">+{formatWolfarenaPoints(match.points2)} pts</span>
-        <strong>{match.score2}</strong>
+        <span className="wolfarenaPlayerOutcome">
+          <BonusPoints score={match.score2} points={match.points2} />
+          <strong>{match.score2}</strong>
+        </span>
       </div>
       {match.additionalMatchIds?.length ? (
         <div className="wolfarenaMatchParts" aria-label="Archived match parts">
@@ -128,10 +142,6 @@ const WolfarenaTournamentArchive = ({
   const catalogQuery = useQuery(tournamentCatalogQueryOptions());
   const tournamentMeta = (catalogQuery.data ?? []).find(
     (tournament) => tournament.id === wolfarena2026.id,
-  );
-  const adjacentTournaments = useMemo(
-    () => getAdjacentTournamentMetas(wolfarena2026.id, catalogQuery.data ?? []),
-    [catalogQuery.data, wolfarena2026.id],
   );
   const [selectedRoundNumber, setSelectedRoundNumber] = useState(() =>
     initialRoundNumber(wolfarena2026),
@@ -183,49 +193,22 @@ const WolfarenaTournamentArchive = ({
       <Seo
         title={wolfarena2026.title}
         description="Browse every Wolfarena 2026 pairing, result, points award, and post-round standing."
-        path={`/tournaments/${wolfarena2026.id}`}
+        path="/tournaments/wolfarena2026"
       />
 
       <section className="tournamentPageHero">
         <div className="tournamentPageHeroCopy wolfarenaHeroCopy">
-          <div className="tournamentHeroTopRow">
-            <Link className="tournamentBackLink" to="/tournaments">
-              All tournaments
-            </Link>
-            <div className="tournamentYearNav" aria-label="Tournament years">
-              {adjacentTournaments.previous ? (
-                <Link
-                  className="tournamentYearNavLink"
-                  to="/tournaments/$tournamentId"
-                  params={{ tournamentId: adjacentTournaments.previous.id }}
-                >
-                  ← {adjacentTournaments.previous.year}
-                </Link>
-              ) : (
-                <span className="tournamentYearNavSpacer" aria-hidden="true" />
-              )}
-              <span className="tournamentYearNavCurrent" aria-current="page">
-                2026
-              </span>
-              {adjacentTournaments.next ? (
-                <Link
-                  className="tournamentYearNavLink"
-                  to="/tournaments/$tournamentId"
-                  params={{ tournamentId: adjacentTournaments.next.id }}
-                >
-                  {adjacentTournaments.next.year} →
-                </Link>
-              ) : (
-                <span className="tournamentYearNavSpacer" aria-hidden="true" />
-              )}
-            </div>
-          </div>
+          <Link className="wolfarenaBackLink" to="/tournaments">
+            <FontAwesomeIcon icon={faArrowLeft} aria-hidden="true" />
+            Tournaments
+          </Link>
           <h1>{wolfarena2026.title}</h1>
-          <div className="wolfarenaChampionLine">
-            <span>Champion</span>
+          <p className="wolfarenaWinnerSummary">
+            <span>Champion:</span>
             <PlayerLink player={wolfarena2026.champion} />
-            <strong>128.0 pts</strong>
-          </div>
+            <span aria-hidden="true">·</span>
+            <span>128 points</span>
+          </p>
         </div>
         {tournamentMeta?.trophyAssetPath ? (
           <img
@@ -310,7 +293,7 @@ const WolfarenaTournamentArchive = ({
 
           <section className="wolfarenaStandings" aria-labelledby="wolfarena-standings-heading">
             <div className="wolfarenaSectionHeading">
-              <h3 id="wolfarena-standings-heading">Standings after round</h3>
+              <h3 id="wolfarena-standings-heading">Standings</h3>
               <span>{selectedRound.standings.length} scoring players</span>
             </div>
             <div className="wolfarenaStandingsTableWrap">
@@ -326,7 +309,13 @@ const WolfarenaTournamentArchive = ({
                 <tbody>
                   {selectedRound.standings.map((standing) => (
                     <tr key={standing.player}>
-                      <td data-label="Rank">{standing.rank}</td>
+                      <td data-label="Rank">
+                        <span
+                          className={`wolfarenaRank${standing.rank <= 3 ? ` isRank${standing.rank}` : ""}`}
+                        >
+                          {standing.rank}
+                        </span>
+                      </td>
                       <th scope="row" data-label="Player">
                         <PlayerLink player={standing.player} />
                         {standing.streak ? (

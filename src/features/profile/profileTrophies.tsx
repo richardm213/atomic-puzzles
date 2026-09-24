@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { modeLabels } from "../../constants/matches";
 import { buildRankingsLocation, type MonthRank } from "../../hooks/usePlayerProfileData";
 import { monthKeyFromMonthValue } from "../../lib/archive/leaderboard";
+import { getTournamentRouteId } from "../../lib/matches/tournaments";
 import { getSupabaseClient } from "../../lib/supabase/client";
 import { loadSupabaseRows } from "../../lib/supabase/rows";
 import { appAssetPath } from "../../utils/appAssetPath";
@@ -134,12 +135,17 @@ export const fetchChampionshipTrophies = async (username: string): Promise<Profi
         return null;
       }
 
+      const tournamentHrefMatch = href.match(/^\/tournaments\/([^/?#]+)$/);
+      const resolvedHref = tournamentHrefMatch?.[1]
+        ? `/tournaments/${getTournamentRouteId(tournamentHrefMatch[1])}`
+        : href;
+
       return {
         key,
         label,
         title,
         imageSrc: appAssetPath(assetPath),
-        href: appAssetPath(href),
+        href: appAssetPath(resolvedHref),
         dateLabel,
         dateValue,
         placementLabel,

@@ -207,7 +207,7 @@ select
   a.label,
   a.title,
   coalesce(a.asset_path, t.trophy_asset_path) as asset_path,
-  '/tournaments/' || t.id as href,
+  '/tournaments/' || case when t.id = 'wr-arena2026' then 'wolfarena2026' else t.id end as href,
   to_char(a.awarded_on, 'Mon YYYY') as date_label,
   a.awarded_on as date_value,
   a.placement_label,

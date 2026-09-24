@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 
 import type { CommunityHistoryComment } from "../../lib/community/puzzleCommunity";
+import { getTournamentRouteId } from "../../lib/matches/tournaments";
 
 type CommunityCommentTargetLinkProps = Pick<
   CommunityHistoryComment,
@@ -36,7 +37,7 @@ export const CommunityCommentTargetLink = ({
       <Link
         className={className}
         to="/tournaments/$tournamentId"
-        params={{ tournamentId: targetId }}
+        params={{ tournamentId: getTournamentRouteId(targetId) }}
       >
         Tournament {targetId.toUpperCase()}
       </Link>

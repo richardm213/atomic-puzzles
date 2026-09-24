@@ -1,5 +1,5 @@
 .wolfarenaPage {
-  width: min(980px, 100%);
+  width: min(820px, 100%);
 }
 
 .wolfarenaArchiveError {
@@ -31,32 +31,65 @@
   cursor: pointer;
 }
 
-.wolfarenaChampionLine {
-  display: flex;
+.tournamentPageHeroCopy.wolfarenaHeroCopy {
+  gap: var(--space-4);
+  min-height: 184px;
+  padding: var(--space-5) 156px var(--space-6) var(--space-6);
+}
+
+.wolfarenaBackLink {
+  display: inline-flex;
   align-items: center;
-  gap: var(--space-3);
-  min-width: 0;
+  gap: var(--space-2);
+  width: fit-content;
   color: var(--color-muted);
-  font-size: 0.88rem;
-  font-weight: 700;
+  font-size: 0.82rem;
+  font-weight: 750;
+  text-decoration: none;
 }
 
-.wolfarenaChampionLine > span {
-  color: var(--color-subtle);
-  font-size: 0.72rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+.wolfarenaBackLink svg {
+  width: 0.72rem;
+  transition: transform 180ms ease;
 }
 
-.wolfarenaChampionLine a {
+.wolfarenaBackLink:hover,
+.wolfarenaBackLink:focus-visible {
   color: var(--color-heading);
-  font-size: 1rem;
-  text-underline-offset: 3px;
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 4px;
 }
 
-.wolfarenaChampionLine strong {
-  color: var(--tournament-gold);
-  font-variant-numeric: tabular-nums;
+.wolfarenaBackLink:hover svg {
+  transform: translateX(-2px);
+}
+
+.tournamentPageHeroCopy.wolfarenaHeroCopy h1 {
+  margin-top: auto;
+  font-size: clamp(2rem, 4vw, 2.8rem);
+}
+
+.wolfarenaWinnerSummary {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.wolfarenaWinnerSummary a {
+  color: var(--color-heading);
+  font-weight: 800;
+  text-decoration: none;
+  transition: color 180ms ease;
+}
+
+.wolfarenaWinnerSummary a:hover {
+  color: color-mix(in srgb, var(--tournament-gold) 78%, var(--color-heading));
 }
 
 .wolfarenaRoundNav,
@@ -76,8 +109,27 @@
   gap: var(--space-2);
   overflow-x: auto;
   padding: var(--space-3);
+  scrollbar-color: color-mix(in srgb, var(--tournament-gold) 36%, var(--color-border-strong))
+    var(--color-panel-strong);
   scrollbar-width: thin;
   scroll-snap-type: x proximity;
+}
+
+.wolfarenaRoundTrack::-webkit-scrollbar {
+  height: 6px;
+}
+
+.wolfarenaRoundTrack::-webkit-scrollbar-track {
+  background: var(--color-panel-strong);
+}
+
+.wolfarenaRoundTrack::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tournament-gold) 36%, var(--color-border-strong));
+}
+
+.wolfarenaRoundTrack::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--tournament-gold) 54%, var(--color-border-strong));
 }
 
 .wolfarenaRoundButton {
@@ -217,7 +269,7 @@
 .wolfarenaRoundFooter button:focus-visible,
 .wolfarenaMatchCard a:focus-visible,
 .wolfarenaStandingsTable a:focus-visible,
-.wolfarenaChampionLine a:focus-visible {
+.wolfarenaWinnerSummary a:focus-visible {
   outline: 2px solid var(--color-primary-ring);
   outline-offset: 2px;
 }
@@ -229,7 +281,7 @@
 
 .wolfarenaRoundGrid {
   display: grid;
-  grid-template-columns: minmax(300px, 0.86fr) minmax(520px, 1.34fr);
+  grid-template-columns: minmax(270px, 0.86fr) minmax(440px, 1.34fr);
   min-width: 0;
 }
 
@@ -313,8 +365,7 @@
   min-height: 20px;
 }
 
-.wolfarenaMatchStatus,
-.wolfarenaMatchPoints {
+.wolfarenaMatchStatus {
   color: var(--color-subtle);
   font-size: 0.66rem;
   font-weight: 750;
@@ -347,7 +398,7 @@
 }
 
 .wolfarenaPlayerRow {
-  grid-template-columns: minmax(0, 1fr) auto 30px;
+  grid-template-columns: minmax(0, 1fr) auto;
   min-height: 26px;
   color: var(--color-muted);
 }
@@ -376,29 +427,48 @@
   font-weight: 750;
 }
 
-.wolfarenaPlayerRow strong {
+.wolfarenaPlayerOutcome {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.wolfarenaPlayerOutcome strong {
+  min-width: 30px;
   color: inherit;
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
 
-.wolfarenaPlayerPoints {
-  color: var(--color-subtle);
-  font-size: 0.72rem;
+.wolfarenaBonusPoints {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: color-mix(in srgb, var(--tournament-gold) 78%, var(--color-muted));
+  font-size: 0.68rem;
+  font-weight: 750;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-.wolfarenaPlayerRow.isWinner .wolfarenaPlayerPoints {
-  color: color-mix(in srgb, var(--tournament-gold) 72%, var(--color-muted));
+.wolfarenaBonusPoints svg {
+  width: 0.62rem;
 }
 
 .wolfarenaByePlayer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
   color: var(--color-heading);
   font-weight: 750;
 }
 
-.wolfarenaMatchPoints {
-  color: color-mix(in srgb, var(--tournament-gold) 76%, var(--color-muted));
+.wolfarenaByePlayer strong {
+  min-width: 30px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 .wolfarenaStandingsTableWrap {
@@ -433,6 +503,10 @@
   text-align: left;
 }
 
+.wolfarenaStandingsTable td:first-child {
+  width: 48px;
+}
+
 .wolfarenaStandingsTable tbody th {
   display: flex;
   align-items: center;
@@ -451,6 +525,36 @@
 
 .wolfarenaStandingsTable strong {
   color: var(--color-heading);
+}
+
+.wolfarenaRank {
+  display: inline-grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  color: var(--color-subtle);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.wolfarenaRank.isRank1 {
+  border-color: color-mix(in srgb, var(--tournament-gold) 50%, var(--color-border));
+  background: color-mix(in srgb, var(--tournament-gold) 14%, var(--color-panel-strong));
+  color: color-mix(in srgb, var(--tournament-gold) 90%, var(--color-heading));
+}
+
+.wolfarenaRank.isRank2 {
+  border-color: color-mix(in srgb, var(--color-muted) 42%, var(--color-border));
+  background: color-mix(in srgb, var(--color-muted) 9%, var(--color-panel-strong));
+  color: var(--color-heading);
+}
+
+.wolfarenaRank.isRank3 {
+  border-color: color-mix(in srgb, var(--color-accent-warm) 42%, var(--color-border));
+  background: color-mix(in srgb, var(--color-accent-warm) 10%, var(--color-panel-strong));
+  color: color-mix(in srgb, var(--color-accent-warm) 76%, var(--color-heading));
 }
 
 .wolfarenaStreak {
@@ -502,9 +606,9 @@
 }
 
 @media (max-width: 640px) {
-  .wolfarenaChampionLine {
-    align-items: baseline;
-    flex-wrap: wrap;
+  .tournamentPageHeroCopy.wolfarenaHeroCopy {
+    min-height: 260px;
+    padding: var(--space-4) var(--space-4) 108px;
   }
 
   .wolfarenaRoundButton {
@@ -578,8 +682,7 @@
 
   .wolfarenaStandingsTable td:first-child {
     grid-row: 1 / span 2;
-    color: var(--color-subtle);
-    font-size: 0.74rem;
+    width: auto;
     text-align: left;
   }
 
@@ -623,6 +726,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .wolfarenaBackLink svg,
   .wolfarenaRoundButton,
   .wolfarenaRoundActions a,
   .wolfarenaRoundFooter button,

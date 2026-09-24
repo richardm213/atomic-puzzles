@@ -99,6 +99,9 @@ const PLAYER_COUNTRIES_TABLE = "player_countries";
 const TOURNAMENT_SEEDS_TABLE = "tournament_seeds";
 const TOURNAMENT_CATALOG_TABLE = "tournament_catalog";
 
+export const getTournamentRouteId = (tournamentId: string): string =>
+  tournamentId === "wr-arena2026" ? "wolfarena2026" : tournamentId;
+
 const TOURNAMENT_MATCHES_SELECT_COLUMNS =
   "tournament,bracket,round,order,id,match_id,p1,p2,s1,s2,winner_to,loser_to";
 const PLAYER_COUNTRIES_SELECT_COLUMNS = "player_name,country_code";

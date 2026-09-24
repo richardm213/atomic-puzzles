@@ -14,6 +14,7 @@ import { toMatchCardData } from "../../lib/matches/data";
 import { matchupToSlug } from "../../lib/matches/h2hRoutes";
 import { matchDetailQueryOptions } from "../../lib/matches/queries";
 import { normalizeMatchMode } from "../../lib/matches/routes";
+import { getTournamentRouteId } from "../../lib/matches/tournaments";
 import { formatLocalDateTime, formatScore } from "../../utils/formatters";
 
 const decodeParam = (value: unknown): string => {
@@ -106,7 +107,9 @@ export const MatchPage = () => {
                     <Link
                       className="matchPageTournamentLink"
                       to="/tournaments/$tournamentId"
-                      params={{ tournamentId: tournamentLocation.tournament.id }}
+                      params={{
+                        tournamentId: getTournamentRouteId(tournamentLocation.tournament.id),
+                      }}
                       title={`Open ${tournamentLocation.tournament.title}`}
                     >
                       <span className="matchPageTournamentText">

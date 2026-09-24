@@ -10,7 +10,7 @@ import {
   tournamentCatalogQueryOptions,
   tournamentChampionsQueryOptions,
 } from "../../lib/matches/tournamentQueries";
-import type { TournamentMeta } from "../../lib/matches/tournaments";
+import { getTournamentRouteId, type TournamentMeta } from "../../lib/matches/tournaments";
 import { appAssetPath } from "../../utils/appAssetPath";
 
 const TournamentSpotlightCard = ({
@@ -24,7 +24,7 @@ const TournamentSpotlightCard = ({
     className="homeSpotlightCard homeTrophyShortcut"
     data-series={tournament.seriesKey}
     to="/tournaments/$tournamentId"
-    params={{ tournamentId: tournament.id }}
+    params={{ tournamentId: getTournamentRouteId(tournament.id) }}
   >
     <span>Championship</span>
     <h2>{tournament.headingTitle || `${tournament.seriesName} ${tournament.year}`}</h2>
