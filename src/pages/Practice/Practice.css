@@ -435,12 +435,6 @@
   opacity: 0.62;
 }
 
-.practiceRandomPlayerError {
-  color: var(--color-danger);
-  font-size: 11px;
-  font-weight: 700;
-}
-
 .practicePlayerChooserRow .analysisOpponentClearButton {
   min-height: 36px;
 }
@@ -610,11 +604,60 @@
   opacity: 0.55;
 }
 
+.practiceErrorToast {
+  position: fixed;
+  right: 16px;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  z-index: 1000;
+  width: min(calc(100% - 32px), 420px);
+  padding: 10px 10px 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--color-danger) 64%, var(--color-border));
+  border-radius: calc(var(--radius-ui) + 3px);
+  background: color-mix(in srgb, var(--color-panel-strong) 92%, var(--color-danger) 8%);
+  color: var(--color-heading);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 16px 42px color-mix(in srgb, var(--color-panel-deep) 44%, transparent);
+}
+
+.practiceErrorToast > svg {
+  color: var(--color-danger);
+}
+
+.practiceErrorToast span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.practiceErrorToast button {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-ui);
+  background: transparent;
+  color: var(--color-muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.practiceErrorToast button:hover {
+  background: color-mix(in srgb, var(--color-danger) 14%, transparent);
+  color: var(--color-heading);
+}
+
 .practiceSideButton:focus-visible,
 .practiceSegmented button:focus-visible,
 .practiceModeGrid button:focus-visible,
 .practiceCopyPgnButton:focus-visible,
 .practiceClockActions button:focus-visible,
+.practiceErrorToast button:focus-visible,
 .practiceCheckbox input:focus-visible,
 .practiceMoveTable tr[role="button"]:focus-visible {
   outline: 3px solid var(--color-primary-ring);
@@ -720,6 +763,17 @@
   .practiceToolbar {
     margin: 0 -6px -6px;
     padding-inline: 6px;
+  }
+
+  .practiceErrorToast {
+    right: 10px;
+    bottom: max(10px, env(safe-area-inset-bottom));
+    width: calc(100% - 20px);
+  }
+
+  .practiceErrorToast button {
+    width: 44px;
+    height: 44px;
   }
 
   .practiceModeGrid,

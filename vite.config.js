@@ -80,6 +80,8 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   process.env.SUPABASE_URL ||= env.SUPABASE_URL || env.VITE_SUPABASE_URL;
   process.env.SUPABASE_SERVICE_ROLE_KEY ||= env.SUPABASE_SERVICE_ROLE_KEY;
+  process.env.TURSO_DATABASE_URL ||= env.TURSO_DATABASE_URL;
+  process.env.TURSO_AUTH_TOKEN ||= env.TURSO_AUTH_TOKEN;
   process.env.TURSO_MATCHES_DATABASE_URL ||= env.TURSO_MATCHES_DATABASE_URL;
   process.env.TURSO_MATCHES_AUTH_TOKEN ||= env.TURSO_MATCHES_AUTH_TOKEN;
 

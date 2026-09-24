@@ -46,4 +46,42 @@ describe("OpeningDatabaseDisplay recent-game links", () => {
       "https://lichess.org/ab12CD34/black#5",
     );
   });
+
+  it("can suppress inline loading and error placeholders", () => {
+    const { rerender } = render(
+      <OpeningDatabaseDisplay
+        moves={[]}
+        recentGames={[]}
+        status="loading"
+        error=""
+        emptyMessage="No games"
+        showPerformance={false}
+        orientation="white"
+        currentPly={0}
+        onPlayMove={vi.fn()}
+        onHoverMove={vi.fn()}
+        showInlineStatus={false}
+      />,
+    );
+
+    expect(screen.queryByText("Loading database moves...")).toBeNull();
+
+    rerender(
+      <OpeningDatabaseDisplay
+        moves={[]}
+        recentGames={[]}
+        status="error"
+        error="Database unavailable"
+        emptyMessage="No games"
+        showPerformance={false}
+        orientation="white"
+        currentPly={0}
+        onPlayMove={vi.fn()}
+        onHoverMove={vi.fn()}
+        showInlineStatus={false}
+      />,
+    );
+
+    expect(screen.queryByText("Database unavailable")).toBeNull();
+  });
 });

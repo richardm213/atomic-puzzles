@@ -1,11 +1,10 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { resolve } from "node:path";
 
 import type { Connect, Plugin, PreviewServer, ViteDevServer } from "vite";
 
 import { parseExplorerNavigation } from "../core/requestLifecycle.js";
 import { createOpeningExplorerService } from "../core/service.js";
-import { createSqliteRepository } from "./sqliteRepository.js";
+import { createTursoRepository } from "./tursoRepository.js";
 
 const applyResponse = (
   response: { statusCode: number; headers: Record<string, string>; body: string },
@@ -21,8 +20,8 @@ const applyResponse = (
 };
 
 export const createOpeningExplorerVitePlugin = (): Plugin => {
-  const dbPath = resolve(process.cwd(), "data/openings.sqlite");
-  const service = createOpeningExplorerService(createSqliteRepository(dbPath));
+  const repository = createTursoRepository();
+  const service = createOpeningExplorerService(repository);
 
   const middleware =
     (path: string) => (req: IncomingMessage, res: ServerResponse, next: Connect.NextFunction) => {
@@ -93,9 +92,7 @@ export const createOpeningExplorerVitePlugin = (): Plugin => {
     name: "atomic-opening-explorer-api",
     enforce: "pre",
     configureServer(server) {
-      console.log(
-        `[opening-explorer] SQLite middleware mounted at /api/opening-explorer (${dbPath})`,
-      );
+      console.log("[opening-explorer] Turso middleware mounted at /api/opening-explorer");
       configure(server);
     },
     configurePreviewServer: configure,

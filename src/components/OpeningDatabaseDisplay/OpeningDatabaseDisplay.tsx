@@ -43,6 +43,7 @@ type OpeningDatabaseDisplayProps = {
   currentPly: number;
   onPlayMove: (uci: string) => void;
   onHoverMove: (uci: string | null) => void;
+  showInlineStatus?: boolean;
 };
 
 const visibleWinRateLabel = (rate: number): string =>
@@ -106,6 +107,7 @@ export const OpeningDatabaseDisplay = ({
   currentPly,
   onPlayMove,
   onHoverMove,
+  showInlineStatus = true,
 }: OpeningDatabaseDisplayProps) => {
   const columnCount = showPerformance ? 4 : 3;
   const summary = moves.reduce(
@@ -134,14 +136,14 @@ export const OpeningDatabaseDisplay = ({
           </tr>
         </thead>
         <tbody>
-          {status === "loading" ? (
+          {showInlineStatus && status === "loading" ? (
             <tr>
               <td colSpan={columnCount} className="analysisExplorerState">
                 Loading database moves...
               </td>
             </tr>
           ) : null}
-          {status === "error" ? (
+          {showInlineStatus && status === "error" ? (
             <tr>
               <td colSpan={columnCount} className="analysisExplorerState">
                 {error}

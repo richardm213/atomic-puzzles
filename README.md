@@ -196,11 +196,11 @@ The app is set up like a standard static SPA build:
 - Build command: `npm run build`
 - Output directory: `dist`
 
-The production opening explorer uses a Netlify Function backed by Turso. Configure these
-environment variables in Netlify:
+The opening explorer uses Turso in both local development and production; it does not fall back to
+a local SQLite file. Configure these environment variables in `.env.local` and in Netlify:
 
-- `TURSO_DATABASE_URL`, from `turso db show --url openings2`
-- `TURSO_AUTH_TOKEN`, from `turso db tokens create openings2 --read-only`
+- `TURSO_DATABASE_URL`, from `turso db show openings7 --url`
+- `TURSO_AUTH_TOKEN`, from `turso db tokens create openings7 --read-only`
 
 The complete match, alias, rating, and leaderboard archive uses a separate Turso database. Configure:
 

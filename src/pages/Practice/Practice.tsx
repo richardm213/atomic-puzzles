@@ -12,6 +12,7 @@ import {
   faRobot,
   faRotateLeft,
   faShuffle,
+  faTriangleExclamation,
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -296,6 +297,7 @@ export const PracticePage = () => {
   const [randomPlayerError, setRandomPlayerError] = useState("");
   const [engineStatus, setEngineStatus] = useState<PracticeEngineStatus>("idle");
   const [engineError, setEngineError] = useState("");
+  const [dismissedError, setDismissedError] = useState("");
   const [remainingClockMs, setRemainingClockMs] = useState(clockMinutes * 60_000);
   const [clockExpired, setClockExpired] = useState(false);
   const [gamePaused, setGamePaused] = useState(true);
@@ -343,6 +345,16 @@ export const PracticePage = () => {
     showPerformance: opponentSource === "player",
     request: requestExplorer,
   });
+  const popupError =
+    (status === "error" ? "Could not load database moves. Try again." : "") ||
+    (engineStatus === "error" ? engineError : "") ||
+    randomPlayerError;
+  const visiblePopupError = popupError && popupError !== dismissedError ? popupError : "";
+
+  useEffect(() => {
+    if (!popupError) setDismissedError("");
+  }, [popupError]);
+
   const databaseExhausted = exhaustedFen === currentFen;
   const engineFallbackReady = databaseExhausted && !manualContinuationActive && status === "ready";
   const selectedPlayerSummary =
@@ -921,13 +933,13 @@ export const PracticePage = () => {
     if (clockEnabled && clockExpired) return "Time expired";
     if (gamePaused) return "";
     if (engineStatus === "thinking") return "Fairy-Stockfish is thinking";
-    if (engineStatus === "error") return engineError;
-    if (status === "loading") return "Loading database moves";
-    if (status === "error") return error;
+    if (engineStatus === "error") return "";
+    if (status === "loading") return "";
+    if (status === "error") return "";
     if (usingGeneralFallback) return "Using general database";
     if (manualContinuationActive) return "Continue with your moves";
     if (databaseExhausted) return "Database line ended";
-    if (currentTurn === side) return `Your move as ${side}`;
+    if (currentTurn === side) return "";
     return `Database to move as ${opponentSide}`;
   })();
 
@@ -1110,11 +1122,6 @@ export const PracticePage = () => {
                       </button>
                     ) : null}
                   </div>
-                  {randomPlayerError ? (
-                    <small className="practiceRandomPlayerError" role="alert">
-                      {randomPlayerError}
-                    </small>
-                  ) : null}
                   {allowMultiplePlayers && opponentUsernames.length ? (
                     <div className="practicePlayerChipList" aria-label="Selected players">
                       {opponentUsernames.map((opponentUsername) => (
@@ -1301,6 +1308,7 @@ export const PracticePage = () => {
                 currentPly={currentPly}
                 onPlayMove={playPracticeMove}
                 onHoverMove={setHoveredMoveUci}
+                showInlineStatus={false}
               />
             </div>
           </section>
@@ -1384,6 +1392,20 @@ export const PracticePage = () => {
         }
         document={boardDocument}
       />
+
+      {visiblePopupError ? (
+        <div className="practiceErrorToast" role="alert" aria-atomic="true">
+          <FontAwesomeIcon icon={faTriangleExclamation} aria-hidden="true" />
+          <span>{visiblePopupError}</span>
+          <button
+            type="button"
+            aria-label="Dismiss error"
+            onClick={() => setDismissedError(visiblePopupError)}
+          >
+            <FontAwesomeIcon icon={faXmark} aria-hidden="true" />
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 };
