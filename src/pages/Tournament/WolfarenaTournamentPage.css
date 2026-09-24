@@ -365,6 +365,10 @@
   transform: translateY(-1px);
 }
 
+.wolfarenaMatchCard.isLinked {
+  cursor: pointer;
+}
+
 .wolfarenaMatchCardOverlayLink {
   position: absolute;
   z-index: 1;
@@ -380,6 +384,12 @@
 .wolfarenaByePlayer a {
   position: relative;
   z-index: 2;
+}
+
+.wolfarenaMatchCard .wolfarenaPlayerRow a {
+  display: block;
+  justify-self: start;
+  max-width: 100%;
 }
 
 .wolfarenaMatchTopline,
