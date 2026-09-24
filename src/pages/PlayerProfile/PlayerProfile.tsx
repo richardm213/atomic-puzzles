@@ -85,7 +85,7 @@ import {
   writeStoredSourceFilters,
 } from "../../lib/matches/sourceFilterStorage";
 import { profileAliasQueryOptions } from "../../lib/users/aliasQueries";
-import { siteUserRegistrationQueryOptions } from "../../lib/users/userQueries";
+import { registeredSiteUsernameQueryOptions } from "../../lib/users/userQueries";
 import {
   formatLocalDateTime,
   formatOpponentWithRating,
@@ -184,17 +184,26 @@ export const PlayerProfilePage = ({
   const profileAliasEntry: AliasIdentityRow | null = profileAliasQuery.data ?? null;
   const aliasesLoaded = Boolean(normalizedUsername) && !profileAliasQuery.isPending;
   const canonicalUsername = profileAliasEntry?.username ?? normalizedUsername;
+  const puzzleDashboardCandidates = useMemo(
+    () => [
+      canonicalUsername,
+      ...(profileAliasEntry?.accounts ?? [])
+        .filter((account) => account.source === "lichess" && !account.banned)
+        .map((account) => account.alias),
+    ],
+    [canonicalUsername, profileAliasEntry],
+  );
   const championshipTrophiesQuery = useQuery({
     queryKey: ["profile", canonicalUsername, "tournament-trophies"],
     queryFn: () => fetchChampionshipTrophies(canonicalUsername),
     enabled: Boolean(canonicalUsername),
     staleTime: 10 * 60 * 1_000,
   });
-  const historyAvailabilityQuery = useQuery({
-    ...siteUserRegistrationQueryOptions(canonicalUsername),
+  const puzzleDashboardAccountQuery = useQuery({
+    ...registeredSiteUsernameQueryOptions(puzzleDashboardCandidates),
     enabled: !historyOnly && aliasesLoaded && Boolean(canonicalUsername),
   });
-  const isHistoryAvailable = historyAvailabilityQuery.data ?? false;
+  const puzzleDashboardUsername = puzzleDashboardAccountQuery.data ?? null;
   const profileDisplayUsername = String(username || "").trim() || canonicalUsername;
   const isBanned = Boolean(profileAliasEntry?.banned);
   const bannedGameCounts = useQuery({
@@ -816,11 +825,11 @@ export const PlayerProfilePage = ({
             >
               View comments
             </Link>
-            {isHistoryAvailable ? (
+            {puzzleDashboardUsername ? (
               <Link
                 className="profilePuzzleDashboardLink"
                 to="/@/$username/puzzles"
-                params={{ username: canonicalUsername }}
+                params={{ username: puzzleDashboardUsername }}
               >
                 View puzzle dashboard
               </Link>
