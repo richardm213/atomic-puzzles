@@ -2,6 +2,35 @@
   width: min(1240px, 100%);
 }
 
+.wolfarenaArchiveError {
+  width: min(560px, calc(100% - var(--space-6)));
+  margin: var(--space-8) auto;
+  padding: var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-panel);
+}
+
+.wolfarenaArchiveError h1 {
+  margin: 0 0 var(--space-2);
+}
+
+.wolfarenaArchiveError p {
+  margin: 0 0 var(--space-4);
+  color: var(--color-muted);
+}
+
+.wolfarenaArchiveError button {
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-weight: 750;
+  cursor: pointer;
+}
+
 .wolfarenaHeroCopy {
   padding-right: clamp(22px, 3.5vw, 30px);
 }
@@ -299,8 +328,13 @@
   text-transform: uppercase;
 }
 
-.wolfarenaMatchStatus.isforfeit {
+.wolfarenaMatchStatus.ispartial-forfeit {
   color: var(--color-warning);
+}
+
+.wolfarenaMatchStatus.isforfeit,
+.wolfarenaMatchStatus.isdouble-forfeit {
+  color: var(--color-error);
 }
 
 .wolfarenaMatchOpen {
@@ -308,6 +342,21 @@
   align-items: center;
   gap: 5px;
   color: color-mix(in srgb, var(--tournament-gold) 78%, var(--color-muted));
+}
+
+.wolfarenaMatchParts {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  gap: var(--space-2);
+  padding-top: var(--space-1);
+  border-top: 1px solid var(--color-border);
+}
+
+.wolfarenaMatchParts a {
+  color: color-mix(in srgb, var(--tournament-gold) 82%, var(--color-text));
+  font-size: 0.72rem;
+  font-weight: 750;
 }
 
 .wolfarenaPlayerRow {
@@ -415,6 +464,20 @@
 
 .wolfarenaStandingsTable strong {
   color: var(--color-heading);
+}
+
+.wolfarenaStandingMetric {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.wolfarenaStandingMetric small {
+  min-width: 34px;
+  color: var(--color-subtle);
+  font-size: 0.68rem;
+  font-weight: 700;
 }
 
 .wolfarenaStandingsTable .isPositive {
@@ -559,8 +622,7 @@
     grid-row: 1;
   }
 
-  .wolfarenaStandingsTable td:nth-child(4),
-  .wolfarenaStandingsTable td:nth-child(5) {
+  .wolfarenaStandingsTable td:nth-child(4) {
     grid-row: 2;
     color: var(--color-subtle);
     font-size: 0.7rem;
@@ -573,10 +635,6 @@
 
   .wolfarenaStandingsTable td:nth-child(4)::before {
     content: "Rating ";
-  }
-
-  .wolfarenaStandingsTable td:nth-child(5) {
-    grid-column: 3;
   }
 
   .wolfarenaRoundFooter {

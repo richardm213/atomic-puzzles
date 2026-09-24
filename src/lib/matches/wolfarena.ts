@@ -1,4 +1,5 @@
-export type WolfarenaMatchStatus = "played" | "forfeit" | "bye";
+export type WolfarenaMatchStatus =
+  "played" | "partial-forfeit" | "forfeit" | "double-forfeit" | "bye";
 
 export type WolfarenaMatch = {
   id: string;
@@ -10,12 +11,14 @@ export type WolfarenaMatch = {
   points2: number;
   status: WolfarenaMatchStatus;
   matchId: string;
+  additionalMatchIds?: readonly string[];
 };
 
 export type WolfarenaStanding = {
   rank: number;
   player: string;
   points: number;
+  pointsChange: number;
   rating: number | null;
   ratingChange: number;
   streak: boolean;

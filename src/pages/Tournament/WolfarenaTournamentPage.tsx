@@ -13,15 +13,17 @@ import type { KeyboardEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { CommunityDiscussion } from "../../components/PuzzleCommunity/PuzzleCommunity";
+import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
-import { wolfarena2026 } from "../../data/wolfarena2026";
 import { tournamentCatalogQueryOptions } from "../../lib/matches/tournamentQueries";
 import { getAdjacentTournamentMetas } from "../../lib/matches/tournaments";
 import {
   formatWolfarenaPoints,
   type WolfarenaMatch,
   wolfarenaRoundSourceUrl,
+  type WolfarenaTournament,
 } from "../../lib/matches/wolfarena";
+import { wolfarenaTournamentQueryOptions } from "../../lib/matches/wolfarenaQueries";
 import { normalizeUsername } from "../../utils/playerNames";
 
 const STORAGE_KEY = "tournament-view:wr-arena2026:round";
@@ -36,12 +38,24 @@ const formatRatingChange = (change: number): string => {
   return `${change > 0 ? "+" : ""}${change.toFixed(1)}`;
 };
 
-const initialRoundNumber = (): number => {
-  if (typeof window === "undefined") return wolfarena2026.rounds.length;
+const formatPointsChange = (change: number): string => {
+  if (!change) return "—";
+  return `${change > 0 ? "+" : ""}${change.toFixed(1)}`;
+};
+
+const matchStatusLabel = (status: WolfarenaMatch["status"]): string => {
+  if (status === "partial-forfeit") return "Partial forfeit";
+  if (status === "double-forfeit") return "Double forfeit";
+  if (status === "forfeit") return "Forfeit";
+  return "Played";
+};
+
+const initialRoundNumber = (tournament: WolfarenaTournament): number => {
+  if (typeof window === "undefined") return tournament.rounds.length;
   const stored = Number(window.sessionStorage.getItem(STORAGE_KEY));
-  return wolfarena2026.rounds.some((round) => round.number === stored)
+  return tournament.rounds.some((round) => round.number === stored)
     ? stored
-    : wolfarena2026.rounds.length;
+    : tournament.rounds.length;
 };
 
 const PlayerLink = ({ player }: { player: string }) => (
@@ -71,11 +85,11 @@ const MatchContent = ({ match }: { match: WolfarenaMatch }) => {
     <>
       <div className="wolfarenaMatchTopline">
         <span className={`wolfarenaMatchStatus is${match.status}`}>
-          {match.status === "forfeit" ? "Forfeit / partial" : "Played"}
+          {matchStatusLabel(match.status)}
         </span>
         {match.matchId ? (
           <span className="wolfarenaMatchOpen">
-            Open match
+            {match.additionalMatchIds?.length ? "2 archive parts" : "Open match"}
             <FontAwesomeIcon icon={faArrowUpRightFromSquare} aria-hidden="true" />
           </span>
         ) : (
@@ -92,12 +106,21 @@ const MatchContent = ({ match }: { match: WolfarenaMatch }) => {
         <span className="wolfarenaPlayerPoints">+{formatWolfarenaPoints(match.points2)} pts</span>
         <strong>{match.score2}</strong>
       </div>
+      {match.additionalMatchIds?.length ? (
+        <div className="wolfarenaMatchParts" aria-label="Archived match parts">
+          {[match.matchId, ...match.additionalMatchIds].map((matchId, index) => (
+            <Link key={matchId} to="/matches/$matchId" params={{ matchId }}>
+              Part {index + 1}
+            </Link>
+          ))}
+        </div>
+      ) : null}
     </>
   );
 };
 
 const MatchCard = ({ match }: { match: WolfarenaMatch }) =>
-  match.matchId ? (
+  match.matchId && !match.additionalMatchIds?.length ? (
     <article className="wolfarenaMatchCard isLinked">
       <MatchContent match={match} />
       <Link
@@ -108,18 +131,24 @@ const MatchCard = ({ match }: { match: WolfarenaMatch }) =>
       />
     </article>
   ) : (
-    <article className="wolfarenaMatchCard">
+    <article className={`wolfarenaMatchCard${match.matchId ? " isLinked" : ""}`}>
       <MatchContent match={match} />
     </article>
   );
 
-export const WolfarenaTournamentPage = () => {
+const WolfarenaTournamentArchive = ({
+  tournament: wolfarena2026,
+}: {
+  tournament: WolfarenaTournament;
+}) => {
   const catalogQuery = useQuery(tournamentCatalogQueryOptions());
   const adjacentTournaments = useMemo(
     () => getAdjacentTournamentMetas(wolfarena2026.id, catalogQuery.data ?? []),
-    [catalogQuery.data],
+    [catalogQuery.data, wolfarena2026.id],
   );
-  const [selectedRoundNumber, setSelectedRoundNumber] = useState(initialRoundNumber);
+  const [selectedRoundNumber, setSelectedRoundNumber] = useState(() =>
+    initialRoundNumber(wolfarena2026),
+  );
   const roundButtonsRef = useRef(new Map<number, HTMLButtonElement>());
   const selectedRound =
     wolfarena2026.rounds.find((round) => round.number === selectedRoundNumber) ??
@@ -293,7 +322,6 @@ export const WolfarenaTournamentPage = () => {
                     <th scope="col">Player</th>
                     <th scope="col">Points</th>
                     <th scope="col">Rating</th>
-                    <th scope="col">Change</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -305,20 +333,36 @@ export const WolfarenaTournamentPage = () => {
                         {standing.streak ? <span className="wolfarenaStreak">Streak</span> : null}
                       </th>
                       <td data-label="Points">
-                        <strong>{formatWolfarenaPoints(standing.points)}</strong>
+                        <span className="wolfarenaStandingMetric">
+                          <strong>{formatWolfarenaPoints(standing.points)}</strong>
+                          <small
+                            className={
+                              standing.pointsChange > 0
+                                ? "isPositive"
+                                : standing.pointsChange < 0
+                                  ? "isNegative"
+                                  : ""
+                            }
+                          >
+                            {formatPointsChange(standing.pointsChange)}
+                          </small>
+                        </span>
                       </td>
-                      <td data-label="Rating">{standing.rating ?? "—"}</td>
-                      <td
-                        data-label="Change"
-                        className={
-                          standing.ratingChange > 0
-                            ? "isPositive"
-                            : standing.ratingChange < 0
-                              ? "isNegative"
-                              : ""
-                        }
-                      >
-                        {formatRatingChange(standing.ratingChange)}
+                      <td data-label="Rating">
+                        <span className="wolfarenaStandingMetric">
+                          <span>{standing.rating ?? "—"}</span>
+                          <small
+                            className={
+                              standing.ratingChange > 0
+                                ? "isPositive"
+                                : standing.ratingChange < 0
+                                  ? "isNegative"
+                                  : ""
+                            }
+                          >
+                            {formatRatingChange(standing.ratingChange)}
+                          </small>
+                        </span>
                       </td>
                     </tr>
                   ))}
@@ -356,4 +400,25 @@ export const WolfarenaTournamentPage = () => {
       </div>
     </div>
   );
+};
+
+export const WolfarenaTournamentPage = () => {
+  const archiveQuery = useQuery(wolfarenaTournamentQueryOptions("wr-arena2026"));
+
+  if (archiveQuery.isPending) return <RouteLoadingFallback />;
+  if (archiveQuery.isError || !archiveQuery.data) {
+    return (
+      <main className="tournamentPage wolfarenaPage">
+        <section className="wolfarenaArchiveError" role="alert">
+          <h1>Wolfarena 2026</h1>
+          <p>The tournament archive could not be loaded. Please try again.</p>
+          <button type="button" onClick={() => void archiveQuery.refetch()}>
+            Retry
+          </button>
+        </section>
+      </main>
+    );
+  }
+
+  return <WolfarenaTournamentArchive tournament={archiveQuery.data} />;
 };

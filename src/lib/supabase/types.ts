@@ -120,10 +120,17 @@ export type AtomicArenaRow = {
   players: number;
 };
 
+export type TournamentArchiveRow = {
+  tournament_id: string;
+  payload: unknown;
+  updated_at: string;
+};
+
 export type Database = {
   public: {
     Tables: {
       lichess_atomic_arenas: TableDef<AtomicArenaRow, never, never>;
+      tournament_archives: TableDef<TournamentArchiveRow, never, never>;
       puzzle_progress: TableDef<
         PuzzleProgressWithUsernameRow,
         PuzzleProgressWithUsernameRow,
