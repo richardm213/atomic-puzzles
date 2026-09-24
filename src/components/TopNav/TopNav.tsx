@@ -83,6 +83,11 @@ const navItems: NavItem[] = [
         label: "Yearly rankings",
         isActive: (pathname) => pathname === "/rankings/yearly",
       },
+      {
+        to: "/rankings/puzzles",
+        label: "Puzzle rankings",
+        isActive: (pathname) => pathname === "/rankings/puzzles",
+      },
     ],
   },
   {
@@ -109,11 +114,6 @@ const navItems: NavItem[] = [
         to: "/dashboard",
         label: "Puzzle dashboard",
         isActive: (pathname) => pathname === "/dashboard" || pathname === "/solve/history",
-      },
-      {
-        to: "/solve/leaderboard",
-        label: "Puzzle leaderboard",
-        isActive: (pathname) => pathname === "/solve/leaderboard",
       },
       {
         to: "/solve/sets",
@@ -171,9 +171,8 @@ const navItems: NavItem[] = [
     children: [
       {
         to: "/tournaments",
-        label: "Championships",
-        isActive: (pathname) =>
-          pathname === "/tournaments" || pathname.startsWith("/tournaments/"),
+        label: "Tournament archive",
+        isActive: (pathname) => pathname === "/tournaments" || pathname.startsWith("/tournaments/"),
       },
       {
         to: "/arenas",

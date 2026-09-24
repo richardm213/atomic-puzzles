@@ -46,65 +46,36 @@ describe("puzzleLeaderboard", () => {
     ]);
   });
 
-  it("filters attempts to the rolling last 30 days", () => {
+  it("filters attempts to the selected calendar month", () => {
     const rows = [
       {
-        username: "boundary",
+        username: "start-of-month",
         puzzle_id: "1",
-        first_attempt_at: "2026-06-20T12:00:00.000Z",
+        first_attempt_at: "2026-07-01T00:00:00.000Z",
         puzzle_correct: true,
         incorrect_move: null,
       },
       {
-        username: "too-old",
+        username: "end-of-month",
         puzzle_id: "2",
-        first_attempt_at: "2026-06-20T11:59:59.999Z",
+        first_attempt_at: "2026-07-31T23:59:59.999Z",
         puzzle_correct: false,
         incorrect_move: "Nf3",
       },
       {
-        username: "future",
+        username: "next-month",
         puzzle_id: "3",
-        first_attempt_at: "2026-07-20T12:00:00.001Z",
+        first_attempt_at: "2026-08-01T00:00:00.000Z",
         puzzle_correct: true,
         incorrect_move: null,
       },
     ];
 
-    expect(
-      filterPuzzleProgressRowsByPeriod(rows, "30days", new Date("2026-07-20T12:00:00.000Z")),
-    ).toEqual([rows[0]]);
-    expect(filterPuzzleProgressRowsByPeriod(rows, "all")).toBe(rows);
-  });
-
-  it("filters attempts to the rolling last 90 days", () => {
-    const rows = [
-      {
-        username: "boundary",
-        puzzle_id: "1",
-        first_attempt_at: "2026-04-21T12:00:00.000Z",
-        puzzle_correct: true,
-        incorrect_move: null,
-      },
-      {
-        username: "inside",
-        puzzle_id: "2",
-        first_attempt_at: "2026-05-20T12:00:00.000Z",
-        puzzle_correct: true,
-        incorrect_move: null,
-      },
-      {
-        username: "too-old",
-        puzzle_id: "3",
-        first_attempt_at: "2026-04-21T11:59:59.999Z",
-        puzzle_correct: false,
-        incorrect_move: "Nf3",
-      },
-    ];
-
-    expect(
-      filterPuzzleProgressRowsByPeriod(rows, "90days", new Date("2026-07-20T12:00:00.000Z")),
-    ).toEqual([rows[0], rows[1]]);
+    expect(filterPuzzleProgressRowsByPeriod(rows, "monthly", "2026-07")).toEqual([
+      rows[0],
+      rows[1],
+    ]);
+    expect(filterPuzzleProgressRowsByPeriod(rows, "all", "2026-07")).toBe(rows);
   });
 
   it("includes every progress username and ranks tied scores together", () => {

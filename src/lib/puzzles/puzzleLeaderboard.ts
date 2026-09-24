@@ -14,7 +14,7 @@ export type PuzzleLeaderboardRow = {
   attempted: number;
 };
 
-export type PuzzleLeaderboardPeriod = "all" | "30days" | "90days";
+export type PuzzleLeaderboardPeriod = "monthly" | "all";
 
 type PuzzleLeaderboardAccumulator = Omit<PuzzleLeaderboardRow, "rank">;
 
@@ -37,17 +37,16 @@ export const calculatePuzzleCorrectPercent = (correct: number, attempted: number
 export const filterPuzzleProgressRowsByPeriod = (
   progressRows: PuzzleProgressWithUsernameRow[],
   period: PuzzleLeaderboardPeriod,
-  now = new Date(),
+  month: string,
 ): PuzzleProgressWithUsernameRow[] => {
   if (period === "all") return progressRows;
 
-  const nowTime = now.getTime();
-  const windowDays = period === "30days" ? 30 : 90;
-  const windowStart = nowTime - windowDays * 24 * 60 * 60 * 1000;
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return [];
 
   return progressRows.filter((row) => {
-    const attemptedAt = Date.parse(row?.first_attempt_at ?? "");
-    return Number.isFinite(attemptedAt) && attemptedAt >= windowStart && attemptedAt <= nowTime;
+    const attemptedAt = new Date(row?.first_attempt_at ?? "");
+    if (Number.isNaN(attemptedAt.getTime())) return false;
+    return attemptedAt.toISOString().slice(0, 7) === month;
   });
 };
 

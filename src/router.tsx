@@ -279,8 +279,16 @@ const customPuzzleSetEditRoute = createRoute({
 
 const puzzleLeaderboardRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/solve/leaderboard",
+  path: "/rankings/puzzles",
   component: PuzzleLeaderboardPage,
+});
+
+const legacyPuzzleLeaderboardRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/solve/leaderboard",
+  beforeLoad: () => {
+    throw redirect({ to: "/rankings/puzzles" });
+  },
 });
 
 const puzzleMotifsRoute = createRoute({
@@ -434,6 +442,7 @@ const routeTree = rootRoute.addChildren([
   customPuzzleSetsRoute,
   customPuzzleSetEditRoute,
   puzzleLeaderboardRoute,
+  legacyPuzzleLeaderboardRoute,
   puzzleMotifsRoute,
   puzzleSubmissionRoute,
   puzzleReviewRoute,

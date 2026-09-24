@@ -36,14 +36,39 @@ const puzzleLeaderboardColumns: Array<{ key: PuzzleLeaderboardSortKey; label: st
   { key: "percentCorrect", label: "% correct" },
 ];
 
-const puzzleLeaderboardPeriodLabels: Record<PuzzleLeaderboardPeriod, string> = {
-  all: "All time",
-  "30days": "Last 30 days",
-  "90days": "Last 90 days",
-};
 const puzzleLeaderboardPeriodStorageKey = "atomic-puzzles.puzzle-leaderboard-period";
-const puzzleLeaderboardPeriodSchema = z.enum(["all", "30days", "90days"]);
+const puzzleLeaderboardMonthStorageKey = "atomic-puzzles.puzzle-rankings-month";
+const puzzleLeaderboardPeriodSchema = z.enum(["monthly", "all"]);
+const puzzleLeaderboardMonthSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
 const emptyPuzzleProgressRows: PuzzleProgressWithUsernameRow[] = [];
+
+const currentUtcMonth = (): string => new Date().toISOString().slice(0, 7);
+
+const puzzleRankingMonthLabel = (month: string): string => {
+  const date = new Date(`${month}-01T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return month;
+  return date.toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+};
+
+const puzzleRankingMonthOptions = (progressRows: PuzzleProgressWithUsernameRow[]): string[] => {
+  const currentMonth = currentUtcMonth();
+  const validAttemptMonths = progressRows
+    .map((row) => new Date(row?.first_attempt_at ?? ""))
+    .filter((date) => !Number.isNaN(date.getTime()))
+    .map((date) => date.toISOString().slice(0, 7))
+    .filter((month) => month <= currentMonth);
+  const earliestMonth = validAttemptMonths.sort()[0] ?? currentMonth;
+  const options: string[] = [];
+  const cursor = new Date(`${earliestMonth}-01T00:00:00Z`);
+  const lastMonth = new Date(`${currentMonth}-01T00:00:00Z`);
+
+  while (cursor <= lastMonth) {
+    options.push(cursor.toISOString().slice(0, 7));
+    cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+  }
+
+  return options.reverse();
+};
 
 const sortIndicator = (
   sortKey: PuzzleLeaderboardSortKey,
@@ -58,7 +83,12 @@ const PuzzleLeaderboard = () => {
   const [period, setPeriod] = usePersistedState<PuzzleLeaderboardPeriod>(
     puzzleLeaderboardPeriodStorageKey,
     puzzleLeaderboardPeriodSchema,
-    "30days",
+    "monthly",
+  );
+  const [selectedMonth, setSelectedMonth] = usePersistedState(
+    puzzleLeaderboardMonthStorageKey,
+    puzzleLeaderboardMonthSchema,
+    currentUtcMonth(),
   );
   const [sortKey, setSortKey] = useState<PuzzleLeaderboardSortKey>("score");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
@@ -68,12 +98,19 @@ const PuzzleLeaderboard = () => {
   const error = progressQuery.error
     ? progressQuery.error instanceof Error
       ? progressQuery.error.message
-      : "Failed to load puzzle leaderboard."
+      : "Failed to load puzzle rankings."
     : "";
 
+  const monthOptions = useMemo(() => puzzleRankingMonthOptions(progressRows), [progressRows]);
+  const effectiveMonth = monthOptions.includes(selectedMonth)
+    ? selectedMonth
+    : (monthOptions[0] ?? currentUtcMonth());
   const rows = useMemo(
-    () => buildPuzzleLeaderboardRows(filterPuzzleProgressRowsByPeriod(progressRows, period)),
-    [period, progressRows],
+    () =>
+      buildPuzzleLeaderboardRows(
+        filterPuzzleProgressRowsByPeriod(progressRows, period, effectiveMonth),
+      ),
+    [effectiveMonth, period, progressRows],
   );
 
   const handleSort = (nextKey: PuzzleLeaderboardSortKey): void => {
@@ -107,88 +144,73 @@ const PuzzleLeaderboard = () => {
     });
   }, [rows, sortDirection, sortKey]);
 
-  const attemptedCount = useMemo(
-    () => rows.reduce((total, row) => total + row.attempted, 0),
-    [rows],
-  );
-
   if (loading && progressRows.length === 0) return <RouteLoadingFallback />;
 
   return (
     <div className="rankingsPage">
       <Seo
-        title="Puzzle Points Leaderboard"
-        description="Rank Atomic Puzzles users with recorded puzzle attempts by puzzle points, correct puzzle solves, and total attempts."
-        path="/solve/leaderboard"
+        title="Puzzle Rankings"
+        description="Browse monthly or all-time Atomic Puzzles rankings by puzzle points, correct solves, and total attempts."
+        path="/rankings/puzzles"
       />
-      <div className="panel rankingsPanel puzzleLeaderboardPanel">
-        <h1>Puzzle Points Leaderboard</h1>
+      <div className="panel rankingsPanel rankingsLeaderboardPanel puzzleLeaderboardPanel">
+        <h1>Puzzle Rankings</h1>
 
-        <div className="puzzleLeaderboardScoring" aria-label="Puzzle leaderboard scoring">
-          <span className="puzzleLeaderboardScoringLabel">Scoring</span>
-          <span className="puzzleLeaderboardScoringRule positive">
-            <span className="puzzleLeaderboardScoringPoints">
-              {PUZZLE_CORRECT_POINTS > 0 ? "+" : ""}
-              {PUZZLE_CORRECT_POINTS}
+        <div className={`controls rankingsControls puzzleRankingsControls ${period}`}>
+          <label htmlFor="puzzle-rankings-period">
+            Period
+            <select
+              id="puzzle-rankings-period"
+              value={period}
+              onChange={(event) => {
+                const nextPeriod = puzzleLeaderboardPeriodSchema.safeParse(event.target.value);
+                if (nextPeriod.success) setPeriod(nextPeriod.data);
+              }}
+            >
+              <option value="monthly">Monthly</option>
+              <option value="all">All time</option>
+            </select>
+          </label>
+
+          {period === "monthly" ? (
+            <label htmlFor="puzzle-rankings-month">
+              Month
+              <select
+                id="puzzle-rankings-month"
+                value={effectiveMonth}
+                onChange={(event) => setSelectedMonth(event.target.value)}
+              >
+                {monthOptions.map((month) => (
+                  <option key={month} value={month}>
+                    {puzzleRankingMonthLabel(month)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+
+          <div className="puzzleLeaderboardScoring" aria-label="Puzzle rankings scoring">
+            <span className="puzzleLeaderboardScoringRule positive">
+              <span className="puzzleLeaderboardScoringPoints">
+                {PUZZLE_CORRECT_POINTS > 0 ? "+" : ""}
+                {PUZZLE_CORRECT_POINTS}
+              </span>
+              <span>correct</span>
             </span>
-            <span>correct</span>
-          </span>
-          <span className="puzzleLeaderboardScoringRule negative">
-            <span className="puzzleLeaderboardScoringPoints">{PUZZLE_INCORRECT_POINTS}</span>
-            <span>incorrect</span>
-          </span>
-        </div>
-
-        <div className="puzzleLeaderboardPeriod" role="group" aria-label="Leaderboard period">
-          <button
-            type="button"
-            className={period === "all" ? "active" : ""}
-            aria-pressed={period === "all"}
-            onClick={() => setPeriod("all")}
-          >
-            All time
-          </button>
-          <button
-            type="button"
-            className={period === "30days" ? "active" : ""}
-            aria-pressed={period === "30days"}
-            onClick={() => setPeriod("30days")}
-          >
-            Last 30 days
-          </button>
-          <button
-            type="button"
-            className={period === "90days" ? "active" : ""}
-            aria-pressed={period === "90days"}
-            onClick={() => setPeriod("90days")}
-          >
-            Last 90 days
-          </button>
+            <span className="puzzleLeaderboardScoringRule negative">
+              <span className="puzzleLeaderboardScoringPoints">{PUZZLE_INCORRECT_POINTS}</span>
+              <span>incorrect</span>
+            </span>
+          </div>
         </div>
 
         {error ? <div className="errorText">{error}</div> : null}
-
-        <div className="rankingsMeta puzzleLeaderboardMeta">
-          <span>
-            {loading
-              ? "Loading puzzle leaderboard..."
-              : `${period === "all" ? "" : `${puzzleLeaderboardPeriodLabels[period]}: `}${rows.length} users, ${attemptedCount} recorded attempts`}
-          </span>
-          <span className="rankedCount">
-            <Link className="rankingsMetaLink" to="/solve">
-              Solve puzzles
-            </Link>
-            <Link className="rankingsMetaLink" to="/dashboard">
-              Puzzle dashboard
-            </Link>
-          </span>
-        </div>
 
         {!error && !loading && rows.length === 0 ? (
           <div className="emptyRankings">
             {period === "all"
               ? "No users have recorded puzzle attempts yet."
-              : `No users have recorded puzzle attempts in the ${puzzleLeaderboardPeriodLabels[period].toLowerCase()}.`}
+              : `No users recorded puzzle attempts in ${puzzleRankingMonthLabel(effectiveMonth)}.`}
           </div>
         ) : null}
 

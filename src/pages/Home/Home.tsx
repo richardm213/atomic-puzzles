@@ -140,9 +140,9 @@ export const HomePage = () => {
             />
           ))}
 
-          <Link className="homeSpotlightCard homePuzzleLeaderboardShortcut" to="/solve/leaderboard">
-            <span>Puzzles</span>
-            <h2>Puzzle leaderboard</h2>
+          <Link className="homeSpotlightCard homePuzzleLeaderboardShortcut" to="/rankings/puzzles">
+            <span>Rankings</span>
+            <h2>Puzzle rankings</h2>
             <p>Points, correct solves, misses, and total attempts.</p>
           </Link>
 

@@ -1,32 +1,13 @@
-.puzzleLeaderboardPanel {
-  width: min(860px, 100%);
-}
-
 .puzzleLeaderboardScoring {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  margin: 0 0 16px;
-  padding: 10px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background:
-    linear-gradient(180deg, var(--color-surface-inset), transparent), var(--color-panel-strong);
+  align-self: end;
+  grid-column: 3;
+  min-height: 42px;
   color: var(--color-text);
   line-height: 1.2;
-}
-
-.puzzleLeaderboardScoringLabel {
-  display: inline-flex;
-  align-items: center;
-  min-height: 34px;
-  padding: 0 4px 0 2px;
-  color: var(--color-heading);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 .puzzleLeaderboardScoringRule {
@@ -70,42 +51,18 @@
   color: var(--color-danger);
 }
 
-.puzzleLeaderboardMeta {
-  align-items: center;
+.puzzleRankingsControls {
+  grid-template-columns: repeat(2, minmax(140px, max-content)) minmax(260px, 1fr);
+  margin-bottom: 14px;
 }
 
-.puzzleLeaderboardPeriod {
-  display: inline-flex;
-  gap: 3px;
-  margin: 0 0 14px;
-  padding: 3px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-ui);
-  background: var(--color-surface-inset);
-}
-
-.puzzleLeaderboardPeriod button {
-  min-height: 34px;
-  padding: 6px 12px;
-  border: 0;
-  border-radius: calc(var(--radius-ui) - 2px);
-  background: transparent;
-  color: var(--color-muted);
-  font-size: 13px;
-  font-weight: 750;
-}
-
-.puzzleLeaderboardPeriod button:hover {
-  color: var(--color-heading);
-}
-
-.puzzleLeaderboardPeriod button.active {
-  background: var(--color-panel-strong);
-  color: var(--color-heading);
+.puzzleRankingsControls.all .puzzleLeaderboardScoring {
+  grid-column: 2 / 4;
+  justify-self: start;
 }
 
 .puzzleLeaderboardTable {
-  min-width: 700px;
+  min-width: 640px;
 }
 
 .rankingsTable.puzzleLeaderboardTable :is(th, td):nth-child(4),
@@ -145,12 +102,14 @@
 
 @media (max-width: 640px) {
   .puzzleLeaderboardScoring {
-    display: grid;
-    grid-template-columns: 1fr;
+    grid-column: 1 / -1;
   }
 
-  .puzzleLeaderboardScoringLabel,
-  .puzzleLeaderboardScoringRule {
-    width: 100%;
+  .puzzleRankingsControls.all .puzzleLeaderboardScoring {
+    grid-column: 1 / -1;
+  }
+
+  .puzzleRankingsControls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
