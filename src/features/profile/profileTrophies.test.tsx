@@ -83,7 +83,7 @@ const trophy = (
 });
 
 describe("profile header trophies", () => {
-  it("shows the highest-prestige championship when current ranking trophies are available", () => {
+  it("shows every championship and current ranking trophy", () => {
     const visible = getProfileHeaderTrophies({
       championshipTrophies: [
         trophy("chesscom-2025", 980, "Mar 2025", "2025-03-01"),
@@ -93,7 +93,12 @@ describe("profile header trophies", () => {
       currentMonthKey: "Aug 2026",
     });
 
-    expect(visible.map(({ key }) => key)).toEqual(["chesscom-2025", "blitz-rank", "hyper-rank"]);
+    expect(visible.map(({ key }) => key)).toEqual([
+      "chesscom-2025",
+      "aoc-2026",
+      "blitz-rank",
+      "hyper-rank",
+    ]);
   });
 
   it("prioritizes a higher-prestige championship over a more recent one", () => {
@@ -106,7 +111,7 @@ describe("profile header trophies", () => {
       currentMonthKey: "Aug 2026",
     });
 
-    expect(visible.map(({ key }) => key)).toEqual(["awc-2024", "hyper-rank"]);
+    expect(visible.map(({ key }) => key)).toEqual(["awc-2024", "aoc-2026", "hyper-rank"]);
   });
 
   it("uses additional championships when no current ranking trophies are available", () => {

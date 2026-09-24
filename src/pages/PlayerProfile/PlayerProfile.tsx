@@ -26,6 +26,7 @@ import {
   opponentRatingSliderMin,
   pageSizeOptions,
 } from "../../constants/matches";
+import { useAppSettings } from "../../context/AppSettings";
 import type { RankHistoryMode } from "../../features/profile/favoriteOpponents";
 import { FavoriteOpponentsSection } from "../../features/profile/FavoriteOpponentsSection";
 import {
@@ -137,6 +138,7 @@ export const PlayerProfilePage = ({
   historyOnly?: boolean;
 }) => {
   const queryClient = useQueryClient();
+  const { hideWolfrandomProfileRatings } = useAppSettings();
   const normalizedUsername = useMemo(() => normalizeUsername(username), [username]);
   const [matchHistoryMode, setMatchHistoryMode] =
     useState<import("../../constants/matches").Mode>(defaultMode);
@@ -617,8 +619,12 @@ export const PlayerProfilePage = ({
             monthRank?.monthKey ?? "",
           ]),
         ),
-      ).filter((row) => row.key !== "wolfrandom-row" || profileModeOptions.includes("wolfrandom")),
-    [latestMonthKeyByMode, profileModeOptions, ratingDisplayByMode],
+      ).filter(
+        (row) =>
+          row.key !== "wolfrandom-row" ||
+          (!hideWolfrandomProfileRatings && profileModeOptions.includes("wolfrandom")),
+      ),
+    [hideWolfrandomProfileRatings, latestMonthKeyByMode, profileModeOptions, ratingDisplayByMode],
   );
   const rankingTrophies = useMemo(() => getRankingTrophies(monthRanks), [monthRanks]);
   const championshipTrophies = useMemo(

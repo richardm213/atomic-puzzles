@@ -222,11 +222,12 @@
 
 .profileTrophyRow {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: flex-end;
   justify-content: flex-end;
   gap: var(--space-5);
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: 0;
   margin-left: auto;
 }
 
@@ -272,7 +273,7 @@
   width: 57px;
   height: 68px;
   filter: brightness(1.05) saturate(1.03)
-    drop-shadow(0 2px 4px color-mix(in srgb, #dc2626 10%, transparent));
+    drop-shadow(0 2px 4px color-mix(in srgb, var(--color-danger) 10%, transparent));
 }
 
 .profileTrophy img[src*="atomic-openings-championship"],

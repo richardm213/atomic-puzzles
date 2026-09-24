@@ -185,26 +185,19 @@ export const getProfileHeaderTrophies = ({
   championshipTrophies,
   rankingTrophies,
   currentMonthKey,
-  limit = 3,
 }: {
   championshipTrophies: ProfileTrophy[];
   rankingTrophies: ProfileTrophy[];
   currentMonthKey: string;
-  limit?: number;
 }): ProfileTrophy[] => {
   const currentRankingTrophies = rankingTrophies.filter(
     (trophy) => trophy.dateLabel === currentMonthKey,
   );
   const orderedChampionshipTrophies = sortChampionshipTrophiesForHeader(championshipTrophies);
 
-  if (!currentRankingTrophies.length) {
-    return orderedChampionshipTrophies.slice(0, limit);
-  }
-
-  const primaryChampionship = orderedChampionshipTrophies.slice(0, 1);
-  return sortProfileTrophies([...primaryChampionship, ...currentRankingTrophies], "prestige").slice(
-    0,
-    limit,
+  return sortProfileTrophies(
+    [...orderedChampionshipTrophies, ...currentRankingTrophies],
+    "prestige",
   );
 };
 

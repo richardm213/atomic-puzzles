@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createModeRecord } from "../../constants/matches";
+import { AppSettingsProvider } from "../../context/AppSettings";
 import { profileQueryKeys } from "../../features/profile/profileQueries";
 import { aliasQueryKeys } from "../../lib/users/aliasQueries";
 import { PlayerProfilePage } from "./PlayerProfile";
@@ -37,9 +38,11 @@ afterEach(() => {
 
 const renderProfile = () =>
   render(
-    <QueryClientProvider client={client}>
-      <PlayerProfilePage username="alice" historyOnly />
-    </QueryClientProvider>,
+    <AppSettingsProvider>
+      <QueryClientProvider client={client}>
+        <PlayerProfilePage username="alice" historyOnly />
+      </QueryClientProvider>
+    </AppSettingsProvider>,
   );
 
 describe("profile match pagination", () => {

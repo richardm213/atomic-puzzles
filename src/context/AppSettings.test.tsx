@@ -26,6 +26,15 @@ const PuzzleTimerSetting = () => {
   return <span>{showPuzzleTimer ? "Timer shown" : "Timer hidden"}</span>;
 };
 
+const ProfileRatingSetting = () => {
+  const { hideWolfrandomProfileRatings, setHideWolfrandomProfileRatings } = useAppSettings();
+  return (
+    <button type="button" onClick={() => setHideWolfrandomProfileRatings((hidden) => !hidden)}>
+      {hideWolfrandomProfileRatings ? "Wolfrandom hidden" : "Wolfrandom shown"}
+    </button>
+  );
+};
+
 describe("puzzle timer preference", () => {
   beforeEach(() => window.localStorage.clear());
 
@@ -94,6 +103,29 @@ describe("rankings opening preference", () => {
     await waitFor(() => {
       expect(toggle).toHaveTextContent("All users");
       expect(window.localStorage.getItem("atomic-puzzles.rankings.show-chesscom-users")).toBe(
+        "false",
+      );
+    });
+  });
+});
+
+describe("profile rating preference", () => {
+  beforeEach(() => window.localStorage.clear());
+
+  it("loads and persists the hide-Wolfrandom setting", async () => {
+    window.localStorage.setItem("atomic-puzzles.profile.hide-wolfrandom-ratings", "true");
+    render(
+      <AppSettingsProvider>
+        <ProfileRatingSetting />
+      </AppSettingsProvider>,
+    );
+
+    const toggle = screen.getByRole("button", { name: "Wolfrandom hidden" });
+    fireEvent.click(toggle);
+
+    await waitFor(() => {
+      expect(toggle).toHaveTextContent("Wolfrandom shown");
+      expect(window.localStorage.getItem("atomic-puzzles.profile.hide-wolfrandom-ratings")).toBe(
         "false",
       );
     });

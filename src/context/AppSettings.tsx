@@ -23,6 +23,7 @@ const STORAGE_KEYS = {
   boardOverrideDarkSquare: "atomic-puzzles.board-override-dark-square",
   hideRankingsOpenings: "atomic-puzzles.rankings.hide-openings",
   showChessComRankings: "atomic-puzzles.rankings.show-chesscom-users",
+  hideWolfrandomProfileRatings: "atomic-puzzles.profile.hide-wolfrandom-ratings",
   // The original key was written as `true` for users before the timer became opt-in.
   // Start from a clean preference so unchecked is the effective default for everyone.
   showPuzzleTimer: "atomic-puzzles.puzzles.show-timer-v2",
@@ -165,6 +166,8 @@ export type AppSettingsContextValue = {
   setHideRankingsOpenings: Dispatch<SetStateAction<boolean>>;
   showChessComRankings: boolean;
   setShowChessComRankings: Dispatch<SetStateAction<boolean>>;
+  hideWolfrandomProfileRatings: boolean;
+  setHideWolfrandomProfileRatings: Dispatch<SetStateAction<boolean>>;
   hiddenRatingGraphModes: string[];
   setHiddenRatingGraphModes: Dispatch<SetStateAction<string[]>>;
   ratingGraphDots: "auto" | "show" | "hide";
@@ -265,6 +268,11 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     z.boolean(),
     false,
   );
+  const [hideWolfrandomProfileRatings, setHideWolfrandomProfileRatings] = usePersistedState(
+    STORAGE_KEYS.hideWolfrandomProfileRatings,
+    z.boolean(),
+    false,
+  );
   const [showPuzzleTimer, setShowPuzzleTimer] = usePersistedState(
     STORAGE_KEYS.showPuzzleTimer,
     z.boolean(),
@@ -345,6 +353,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setHideRankingsOpenings,
       showChessComRankings,
       setShowChessComRankings,
+      hideWolfrandomProfileRatings,
+      setHideWolfrandomProfileRatings,
       hiddenRatingGraphModes,
       setHiddenRatingGraphModes,
       ratingGraphDots,
@@ -378,6 +388,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setHideRankingsOpenings,
       showChessComRankings,
       setShowChessComRankings,
+      hideWolfrandomProfileRatings,
+      setHideWolfrandomProfileRatings,
       hiddenRatingGraphModes,
       setHiddenRatingGraphModes,
       ratingGraphDots,
