@@ -66,7 +66,7 @@ values (
   'Champion',
   '2026-09-15',
   930,
-  null
+  '/images/wolfarena-trophies/wolfarena-red-ruby-cup.png'
 )
 on conflict (tournament_id, award_key) do update set
   player_name = excluded.player_name,

@@ -37,6 +37,7 @@ describe("championship profile trophies", () => {
     ["Arka50", "awc-2020", "/tournaments/awc2020"],
     ["RKROUNIT", "atomic-hyper-2026", "/tournaments/ahc2026"],
     ["JakeStateFarm", "atomic-openings-2026", "/tournaments/aoc2026"],
+    ["quasabianth", "wr-arena-2026", "/tournaments/wr-arena2026"],
   ])("loads %s's %s trophy from Supabase", async (username, key, href) => {
     loadSupabaseRowsMock.mockResolvedValue([
       {
