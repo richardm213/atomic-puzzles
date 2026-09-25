@@ -170,23 +170,23 @@ describe("groupPuzzlesByEvent", () => {
     expect(group?.event).toBe("AWC 2023 Losers Round 3 · jsf vs lesha");
   });
 
-  it("labels known 3+2 practice sets while leaving Paper-skies unlinked", () => {
+  it("labels known blitz matches while leaving Paper-skies unlinked", () => {
     const groups = groupPuzzlesByEvent([
       makePuzzle({
         puzzleId: 1,
         puzzle_set_id: 16,
-        puzzle_set: makeSet(16, "3+2 Practice", "2026-03", ["Opabinia", "Rechesster"]),
+        puzzle_set: makeSet(16, "Blitz 8-game match", "2026-03", ["Opabinia", "Rechesster"]),
       }),
       makePuzzle({
         puzzleId: 2,
         puzzle_set_id: 17,
-        puzzle_set: makeSet(17, "3+2 Practice", "2026-04", ["Paper-skies", "Rechesster"]),
+        puzzle_set: makeSet(17, "Blitz match", "2026-04", ["Paper-skies", "Rechesster"]),
       }),
     ]);
 
     expect(groups.find((group) => group.setId === 16)?.sourceId).toBe("CYLH7bBT");
     expect(groups.find((group) => group.setId === 16)?.event).toBe(
-      "3+2 Practice · Mar 2026 · opabinia vs rechesster",
+      "Blitz 8-game match · Mar 2026 · opabinia vs rechesster",
     );
     expect(groups.find((group) => group.setId === 17)?.sourceId).toBe("");
   });

@@ -34,8 +34,7 @@
   margin-bottom: var(--space-4);
 }
 
-.puzzleSetsHero > h1,
-.puzzleSetsSectionHeader h2 {
+.puzzleSetsHero > h1 {
   margin: 0;
   color: var(--color-heading);
 }
@@ -45,9 +44,43 @@
   line-height: 1.04;
 }
 
-.puzzleSetsFilterBar {
-  display: flex;
+.puzzleSetsFilterControl {
+  display: grid;
+  grid-template-columns: auto minmax(180px, 230px);
   align-items: center;
+  gap: 10px;
+}
+
+.puzzleSetsFilterControl > span {
+  color: var(--color-muted);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.puzzleSetsFilterControl select {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 36px 0 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+  color: var(--color-heading);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.puzzleSetsFilterControl select:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 62%, var(--color-border));
+}
+
+.puzzleSetsFilterControl select:focus-visible {
+  border-color: var(--color-primary);
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
 }
 
 .puzzleSetCardStartLink {
@@ -75,55 +108,9 @@
   transform: translateY(0);
 }
 
-.puzzleSetCardStartLink:focus-visible,
-.puzzleSetsFilterButton:focus-visible {
+.puzzleSetCardStartLink:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 3px;
-}
-
-.puzzleSetsSectionHeader {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 18px;
-  margin-bottom: 16px;
-}
-
-.puzzleSetsSectionHeader h2 {
-  font-size: clamp(21px, 2.4vw, 28px);
-  line-height: 1.12;
-}
-
-.puzzleSetsFilterBar {
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.puzzleSetsFilterButton {
-  min-height: 38px;
-  padding: 0 13px;
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  background: var(--color-panel-strong);
-  color: var(--color-heading);
-  font-weight: 700;
-  white-space: nowrap;
-  transition: var(--puzzle-sets-transition);
-}
-
-.puzzleSetsFilterButton:hover {
-  transform: translateY(-1px);
-  border-color: color-mix(in srgb, var(--color-primary) 62%, var(--color-border));
-}
-
-.puzzleSetsFilterButton:active {
-  transform: translateY(0);
-}
-
-.puzzleSetsFilterButton.active {
-  border-color: var(--color-primary);
-  background: color-mix(in srgb, var(--color-primary) 18%, var(--color-panel-strong));
 }
 
 .puzzleSetsStateCard {
@@ -274,22 +261,15 @@ a.puzzleSetCardPlayers:focus-visible {
 }
 
 @media (max-width: 760px) {
-  .puzzleSetsHero,
-  .puzzleSetsSectionHeader {
+  .puzzleSetsHero {
     align-items: flex-start;
     flex-direction: column;
   }
 
-  .puzzleSetsFilterBar {
+  .puzzleSetsFilterControl {
     width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    box-sizing: border-box;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    overflow-x: auto;
-    padding-bottom: 4px;
-    scrollbar-width: thin;
+    grid-template-columns: 1fr;
+    gap: 6px;
   }
 
   .puzzleSetGrid {

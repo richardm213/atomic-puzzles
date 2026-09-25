@@ -28,6 +28,7 @@ values
   ('rkrounit', 'rkr', true),
   ('lesha2002', 'lesha', true),
   ('rabbier', 'rabbie', true),
+  ('quasabianth', 'quasa', true),
   ('absolutelytrash', 'trash', true),
   ('ihatespammers', 'trk', true),
   ('queeneatingdragon', 'qed', true)

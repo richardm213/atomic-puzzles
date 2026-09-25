@@ -123,6 +123,39 @@ $$;
 create index if not exists puzzles_puzzle_set_id_idx
   on public.puzzles (puzzle_set_id);
 
+-- This legacy set was labeled Wolfrandom even though it came from Wolfarena.
+-- Normalize it before creating and linking canonical set rows to avoid leaving
+-- an orphaned Wolfrandom set behind on existing deployments.
+update public.puzzle_sets
+set event_name = 'Wolfarena'
+where lower(btrim(event_name)) = 'wolfrandom 1st time'
+  and event_date = ''
+  and public.normalize_puzzle_set_players(players) =
+      public.normalize_puzzle_set_players(array['Wolfram','Rkr']);
+
+update public.puzzles
+set event_name = 'Wolfarena'
+where lower(btrim(event_name)) = 'wolfrandom 1st time'
+  and event_date = ''
+  and public.normalize_puzzle_set_players(players) =
+      public.normalize_puzzle_set_players(array['Wolfram','Rkr']);
+
+-- Paper-Skies is not present in the normalized match archive, so retain an
+-- accurate generic Blitz label instead of inventing a game count.
+update public.puzzle_sets
+set event_name = 'Blitz match'
+where lower(btrim(event_name)) = 'blitz 10-game match'
+  and event_date = '2026-04'
+  and public.normalize_puzzle_set_players(players) =
+      public.normalize_puzzle_set_players(array['Paper-skies','Rechesster']);
+
+update public.puzzles
+set event_name = 'Blitz match'
+where lower(btrim(event_name)) = 'blitz 10-game match'
+  and event_date = '2026-04'
+  and public.normalize_puzzle_set_players(players) =
+      public.normalize_puzzle_set_players(array['Paper-skies','Rechesster']);
+
 -- Insert one canonical set for every distinct structured metadata combination.
 insert into public.puzzle_sets (event_name, event_date, players)
 select distinct on (
@@ -165,9 +198,9 @@ with puzzle_set_sources(previous_event_name, event_name, previous_event_date, ev
     ('AWC', 'AWC 2025 Round of 64', '2025', '2025-09', array['Blackjack','Sircachetes'], 'tUvUftLZ'),
     ('AWC', 'AWC 2025 Round of 32', '2025', '2025-09', array['Max','Sircachetes'], 'IJL3lXpE'),
     ('AWC', 'AWC 2025 Round of 16', '2025', '2025-10', array['Randoom','Wolfram'], '75L7QLTy'),
-    ('Blitz Practice', '3+2 Practice', '2026-04', '2026-03', array['Opabinia','Rechesster'], 'CYLH7bBT'),
-    ('Blitz Practice', '3+2 Practice', '2026-09', '2026-09', array['Max','Wolfram'], 'irgn69Ce'),
-    ('Blitz Practice', '3+2 Practice', '2026-09', '2026-09', array['Rechesster','Wolfram'], '3OG5r1jh')
+    ('Blitz 10-game match', 'Blitz 8-game match', '2026-04', '2026-03', array['Opabinia','Rechesster'], 'CYLH7bBT'),
+    ('Blitz 10-game match', 'Blitz 6-game match', '2026-09', '2026-09', array['Max','Wolfram'], 'irgn69Ce'),
+    ('Blitz 10-game match', 'Blitz 10-game match', '2026-09', '2026-09', array['Rechesster','Wolfram'], '3OG5r1jh')
 )
 update public.puzzle_sets puzzle_set
 set event_name = puzzle_set_sources.event_name,
@@ -199,9 +232,9 @@ with puzzle_set_sources(previous_event_name, event_name, previous_event_date, ev
     ('AWC', 'AWC 2025 Round of 64', '2025', '2025-09', array['Blackjack','Sircachetes'], 'tUvUftLZ'),
     ('AWC', 'AWC 2025 Round of 32', '2025', '2025-09', array['Max','Sircachetes'], 'IJL3lXpE'),
     ('AWC', 'AWC 2025 Round of 16', '2025', '2025-10', array['Randoom','Wolfram'], '75L7QLTy'),
-    ('Blitz Practice', '3+2 Practice', '2026-04', '2026-03', array['Opabinia','Rechesster'], 'CYLH7bBT'),
-    ('Blitz Practice', '3+2 Practice', '2026-09', '2026-09', array['Max','Wolfram'], 'irgn69Ce'),
-    ('Blitz Practice', '3+2 Practice', '2026-09', '2026-09', array['Rechesster','Wolfram'], '3OG5r1jh')
+    ('Blitz 10-game match', 'Blitz 8-game match', '2026-04', '2026-03', array['Opabinia','Rechesster'], 'CYLH7bBT'),
+    ('Blitz 10-game match', 'Blitz 6-game match', '2026-09', '2026-09', array['Max','Wolfram'], 'irgn69Ce'),
+    ('Blitz 10-game match', 'Blitz 10-game match', '2026-09', '2026-09', array['Rechesster','Wolfram'], '3OG5r1jh')
 )
 update public.puzzles puzzle
 set event_name = puzzle_set_sources.event_name,

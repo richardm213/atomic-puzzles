@@ -27,14 +27,61 @@ const EVENT_FILTERS = [
   { id: "all", label: "All" },
   { id: "awc", label: "AWC" },
   { id: "acl", label: "ACL" },
+  { id: "blitz", label: "Blitz" },
+  { id: "wolfarena", label: "Wolfarena" },
+  { id: "wolfrandom", label: "Wolfrandom" },
   { id: "swiss960", label: "960 Swiss" },
   { id: "chess960", label: "960" },
-  { id: "practiceMatch", label: "Practice" },
-  { id: "wolfrandom", label: "WolframRandom" },
+  { id: "endgames", label: "Endgames" },
+];
+const FEATURED_SET_MATCHERS: Array<(group: PuzzleEventGroup) => boolean> = [
+  (group) =>
+    group.eventName.toLocaleLowerCase() === "wolfrandom" &&
+    group.eventDate === "2026-09" &&
+    group.players.includes("quasabianth") &&
+    group.players.includes("rabbier"),
+  (group) => group.eventName.toLocaleLowerCase() === "awc 2018 finals",
+  (group) => group.eventName.toLocaleLowerCase() === "tipau endgames",
+  (group) =>
+    group.eventName.toLocaleLowerCase() === "blitz 6-game match" &&
+    group.eventDate === "2026-09" &&
+    group.players.includes("maxwellssilvrhammer") &&
+    group.players.includes("wolfram_ep"),
+  (group) =>
+    group.eventName.toLocaleLowerCase() === "blitz 10-game match" &&
+    group.eventDate === "2026-09" &&
+    group.players.includes("rechesster") &&
+    group.players.includes("wolfram_ep"),
 ];
 const emptyPuzzles: Puzzle[] = [];
 
-const matchesEventFilter = (
+export const getFeaturedPuzzleSetRank = (group: PuzzleEventGroup): number =>
+  FEATURED_SET_MATCHERS.findIndex((matches) => matches(group));
+
+const getShuffledSetRank = (setId: number, seed: number): number => {
+  let value = Math.imul(setId ^ seed, 0x45d9f3b);
+  value = Math.imul(value ^ (value >>> 16), 0x45d9f3b);
+  return (value ^ (value >>> 16)) >>> 0;
+};
+
+export const orderPuzzleSetGroups = (
+  groups: PuzzleEventGroup[],
+  seed: number,
+): PuzzleEventGroup[] =>
+  [...groups].sort((left, right) => {
+    const leftFeaturedRank = getFeaturedPuzzleSetRank(left);
+    const rightFeaturedRank = getFeaturedPuzzleSetRank(right);
+
+    if (leftFeaturedRank >= 0 || rightFeaturedRank >= 0) {
+      if (leftFeaturedRank < 0) return 1;
+      if (rightFeaturedRank < 0) return -1;
+      return leftFeaturedRank - rightFeaturedRank;
+    }
+
+    return getShuffledSetRank(left.setId, seed) - getShuffledSetRank(right.setId, seed);
+  });
+
+export const matchesEventFilter = (
   group: { eventName?: string | null | undefined },
   filterId: string,
 ): boolean => {
@@ -61,13 +108,21 @@ const matchesEventFilter = (
     return normalizedEvent.includes("awc") || normalizedEvent.includes("atomic wc");
   }
 
-  if (filterId === "practiceMatch") {
-    return normalizedEvent.includes("practice");
+  if (filterId === "blitz") {
+    return normalizedEvent.includes("blitz");
+  }
+
+  if (filterId === "wolfarena") {
+    return normalizedEvent.includes("wolfarena");
   }
 
   if (filterId === "wolfrandom") {
     const compactEvent = normalizedEvent.replace(/[^a-z0-9]/g, "");
     return compactEvent.includes("wolfrandom") || compactEvent.includes("wolframrandom");
+  }
+
+  if (filterId === "endgames") {
+    return isEndgamePuzzleEvent(normalizedEvent);
   }
 
   return true;
@@ -77,6 +132,7 @@ export const PuzzleSetsPage = () => {
   const { user } = useAuth();
   const username = normalizeUsername(user?.username);
   const [activeFilterId, setActiveFilterId] = useState("all");
+  const [shuffleSeed] = useState(() => Math.floor(Math.random() * 0x1_0000_0000));
   const puzzleCatalogQuery = useQuery(puzzleCatalogQueryOptions());
   const playerNicknamesQuery = useQuery(puzzlePlayerNicknamesQueryOptions());
   const progressQuery = useQuery({
@@ -92,17 +148,13 @@ export const PuzzleSetsPage = () => {
     : "";
 
   const puzzleGroups = useMemo(() => groupPuzzlesByEvent(puzzles), [puzzles]);
-  const endgamePuzzleGroups = useMemo(
-    () => puzzleGroups.filter((group) => isEndgamePuzzleEvent(group.eventName)),
-    [puzzleGroups],
-  );
-  const eventPuzzleGroups = useMemo(
-    () => puzzleGroups.filter((group) => !isEndgamePuzzleEvent(group.event)),
-    [puzzleGroups],
-  );
   const filteredPuzzleGroups = useMemo(
-    () => eventPuzzleGroups.filter((group) => matchesEventFilter(group, activeFilterId)),
-    [activeFilterId, eventPuzzleGroups],
+    () =>
+      orderPuzzleSetGroups(
+        puzzleGroups.filter((group) => matchesEventFilter(group, activeFilterId)),
+        shuffleSeed,
+      ),
+    [activeFilterId, puzzleGroups, shuffleSeed],
   );
   const completedPuzzleIds = useMemo(
     () => new Set((progressQuery.data ?? []).map((row) => String(row.puzzle_id).trim())),
@@ -221,32 +273,26 @@ export const PuzzleSetsPage = () => {
         <section className="puzzleSetsSection" aria-label="Puzzle set filters and results">
           <header className="puzzleSetsHero">
             <h1>Puzzle sets</h1>
+            <label className="puzzleSetsFilterControl">
+              <span>Category</span>
+              <select
+                aria-label="Filter puzzle sets"
+                value={activeFilterId}
+                onChange={(event) => setActiveFilterId(event.target.value)}
+              >
+                {EVENT_FILTERS.map((filter) => (
+                  <option key={filter.id} value={filter.id}>
+                    {filter.label}
+                  </option>
+                ))}
+              </select>
+            </label>
           </header>
 
           {error ? <div className="puzzleSetsStateCard">{error}</div> : null}
 
-          <div className="puzzleSetsSectionHeader">
-            <div className="puzzleSetsFilterBar" role="toolbar" aria-label="Filter puzzle sets">
-              {EVENT_FILTERS.map((filter) => {
-                const isActive = filter.id === activeFilterId;
-
-                return (
-                  <button
-                    key={filter.id}
-                    type="button"
-                    className={`puzzleSetsFilterButton ${isActive ? "active" : ""}`}
-                    onClick={() => setActiveFilterId(filter.id)}
-                    aria-pressed={isActive}
-                  >
-                    {filter.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
           {filteredPuzzleGroups.length > 0 ? (
-            renderPuzzleSetGrid(filteredPuzzleGroups, "Puzzle events")
+            renderPuzzleSetGrid(filteredPuzzleGroups, "Puzzle sets")
           ) : (
             <div className="puzzleSetsStateCard">
               {puzzleGroups.length > 0
@@ -255,15 +301,6 @@ export const PuzzleSetsPage = () => {
             </div>
           )}
         </section>
-
-        {endgamePuzzleGroups.length > 0 ? (
-          <section className="puzzleSetsSection puzzleSetsEndgameSection">
-            <div className="puzzleSetsSectionHeader">
-              <h2>Endgame sets</h2>
-            </div>
-            {renderPuzzleSetGrid(endgamePuzzleGroups, "Endgame puzzle sets")}
-          </section>
-        ) : null}
       </div>
     </div>
   );
