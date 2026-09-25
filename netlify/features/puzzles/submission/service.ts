@@ -15,6 +15,8 @@ export type PuzzleSubmissionInput = {
   fen: string;
   solution: string;
   event: string;
+  whitePlayer?: string;
+  blackPlayer?: string;
   explanation: string;
 };
 
@@ -35,6 +37,13 @@ export class PuzzleSubmissionService {
       fen,
       solution: compactPuzzleSolution(normalizeSolutionPgn(fen, solution)),
       event: parsedPgn.event || input.event,
+      // These columns are part of the new storage format, but submission keeps
+      // the existing form and intentionally leaves the new metadata unset.
+      eventName: "",
+      eventDate: "",
+      players: [],
+      whitePlayer: input.whitePlayer?.trim() ?? "",
+      blackPlayer: input.blackPlayer?.trim() ?? "",
       explanation: input.explanation,
     };
   }

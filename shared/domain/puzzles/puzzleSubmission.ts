@@ -4,6 +4,8 @@ export type PuzzleSubmissionValue = {
   fen: string;
   solution: string;
   event: string;
+  whitePlayer?: string;
+  blackPlayer?: string;
   explanation: string;
 };
 
@@ -111,6 +113,8 @@ export const validateParsedPuzzleSubmission = (
   const solution = parsedPgn.solution;
   const explanation = value.explanation.trim();
   const event = parsedPgn.event || value.event.trim();
+  const whitePlayer = value.whitePlayer?.trim() ?? "";
+  const blackPlayer = value.blackPlayer?.trim() ?? "";
 
   if (!fen) throw new Error("Enter a FEN.");
   createAtomicPosition(fen);
@@ -123,7 +127,7 @@ export const validateParsedPuzzleSubmission = (
   const normalizedSolution = /[()]/.test(solution)
     ? solution.trim()
     : serializeUciLinesToPgn(fen, solutionLines) || solution.trim();
-  return { fen, solution: normalizedSolution, event, explanation };
+  return { fen, solution: normalizedSolution, event, whitePlayer, blackPlayer, explanation };
 };
 
 export const validatePuzzleSubmission = (value: PuzzleSubmissionValue): PuzzleSubmissionValue =>

@@ -17,6 +17,8 @@ const puzzleFieldsSchema = z.object({
   fen: z.string().trim().min(1).max(200),
   solution: z.string().trim().min(1).max(10_000),
   event: z.string().trim().max(200).default(""),
+  whitePlayer: z.string().trim().max(200).default(""),
+  blackPlayer: z.string().trim().max(200).default(""),
   explanation: z.string().trim().max(5_000),
   author: z.string().trim().min(1).max(200),
 });

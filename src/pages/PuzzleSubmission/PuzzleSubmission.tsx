@@ -36,6 +36,8 @@ const emptyPuzzleSubmission = (): PuzzleSubmissionValue => ({
   fen: STARTING_FEN,
   solution: "",
   event: "",
+  whitePlayer: "",
+  blackPlayer: "",
   explanation: "",
 });
 

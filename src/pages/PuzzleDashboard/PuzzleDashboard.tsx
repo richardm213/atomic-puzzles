@@ -20,7 +20,7 @@ import {
   puzzleCatalogQueryOptions,
   puzzleProgressForUserQueryOptions,
 } from "../../lib/puzzles/puzzleQueries";
-import { normalizePuzzleEventName } from "../../lib/puzzles/puzzleSets";
+import { getPuzzleSetDisplayName } from "../../lib/puzzles/puzzleSets";
 import { siteUserRegistrationQueryOptions } from "../../lib/users/userQueries";
 import { normalizeUsername } from "../../utils/playerNames";
 import { DashboardTagFilter, getPuzzleTagName } from "./DashboardTagFilter";
@@ -91,7 +91,7 @@ const buildDashboardEntries = (
   progressRows.map((row) => {
     const puzzle = puzzlesById.get(String(row?.puzzle_id ?? "").trim()) || null;
     const author = String(puzzle?.["author"] ?? "").trim() || "Unknown";
-    const event = normalizePuzzleEventName(puzzle?.["event"]);
+    const event = puzzle ? getPuzzleSetDisplayName(puzzle) : UNKNOWN_EVENT_LABEL;
     const linkedPuzzleId = puzzle?.puzzleId ?? row?.puzzle_id;
 
     return {

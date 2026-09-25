@@ -296,6 +296,14 @@ describe("PuzzleEditor move tree", () => {
       "Optional event name",
     );
     expect(screen.getByText("Same event creates a puzzle set")).toBeVisible();
+    expect(screen.getByRole("textbox", { name: "White player (optional)" })).toHaveAttribute(
+      "placeholder",
+      "Lichess username",
+    );
+    expect(screen.getByRole("textbox", { name: "Black player (optional)" })).toHaveAttribute(
+      "placeholder",
+      "Lichess username",
+    );
     expect(screen.getByRole("textbox", { name: "Explanation" })).not.toBeRequired();
     expect(screen.queryByRole("button", { name: "Load moves on board" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Copy PGN" })).toBeNull();

@@ -15,6 +15,8 @@ export type PuzzleReviewAction =
       fen: string;
       solution: string;
       event: string;
+      whitePlayer: string;
+      blackPlayer: string;
       explanation: string;
       author: string;
     };
@@ -56,6 +58,8 @@ export class PuzzleReviewService {
         fen: input.fen,
         solution: compactPuzzleSolution(input.solution),
         event: input.event,
+        whitePlayer: input.whitePlayer,
+        blackPlayer: input.blackPlayer,
         explanation: input.explanation,
       });
       const puzzle = await this.repository().update(input.id, {

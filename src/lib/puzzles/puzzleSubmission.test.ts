@@ -28,6 +28,8 @@ describe("validatePuzzleSubmission", () => {
       fen: STARTING_FEN,
       solution: "1. e4 e5",
       event: "AWC 2026",
+      whitePlayer: "",
+      blackPlayer: "",
       explanation: "The threat is atomic.",
     });
   });

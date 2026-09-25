@@ -1,5 +1,13 @@
 export type PuzzleSolutionField = "solution" | "moves" | "line" | "pgn" | "variation";
 
+export type RawPuzzleSetRow = {
+  id: string | number;
+  event_name: string;
+  event_date: string;
+  players: string[];
+  source_id?: string | null;
+};
+
 export type RawPuzzleRow = {
   id?: string | number | null;
   fen?: string | null;
@@ -10,5 +18,9 @@ export type RawPuzzleRow = {
   line?: string | string[] | null;
   pgn?: string | string[] | null;
   variation?: string | string[] | null;
+  puzzle_set_id?: string | number | null;
+  puzzle_set?: RawPuzzleSetRow | RawPuzzleSetRow[] | null;
+  white_player?: string | null;
+  black_player?: string | null;
   [key: string]: unknown;
 };

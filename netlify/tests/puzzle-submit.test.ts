@@ -101,8 +101,54 @@ describe("puzzle-submit function", () => {
     expect(response.statusCode).toBe(201);
     expect(rpc).toHaveBeenCalledWith(
       "enqueue_puzzle_submission",
-      expect.objectContaining({ p_solution: "1. e4 (1. d4 d5) e5" }),
+      expect.objectContaining({
+        p_solution: "1. e4 (1. d4 d5) e5",
+        p_event_name: "",
+        p_event_date: "",
+        p_players: [],
+        p_white_player: "",
+        p_black_player: "",
+      }),
     );
+  });
+
+  it("stores optional player colors while leaving puzzle-set metadata blank", async () => {
+    const upsert = vi.fn(async () => ({ error: null }));
+    const single = vi.fn(async () => ({ data: { id: 5 }, error: null }));
+    const rpc = vi.fn(() => ({ single }));
+    const from = vi.fn(() => ({ upsert }));
+    mocks.createClient.mockReturnValue({ from, rpc });
+
+    const response = await handler({
+      httpMethod: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({
+        fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        solution: "1. e4",
+        event: "Community event",
+        eventName: "ignored",
+        eventDate: "2026-09",
+        players: ["white", "black"],
+        whitePlayer: "white",
+        blackPlayer: "black",
+        explanation: "",
+      }),
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(rpc).toHaveBeenCalledWith("enqueue_puzzle_submission", {
+      p_fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      p_solution: "1. e4",
+      p_event: "Community event",
+      p_event_name: "",
+      p_event_date: "",
+      p_players: [],
+      p_white_player: "white",
+      p_black_player: "black",
+      p_explanation: "",
+      p_submitted_by: "submitter",
+      p_allow_different_start_move: false,
+    });
   });
 
   it.each(["seaside_tiramisu", "wolfram_ep", "randoomplayer"])(

@@ -34,6 +34,8 @@ const emptyPuzzleSubmission = (): PuzzleSubmissionValue => ({
   fen: STARTING_FEN,
   solution: "",
   event: "",
+  whitePlayer: "",
+  blackPlayer: "",
   explanation: "",
 });
 
@@ -41,6 +43,8 @@ const queueRowValue = (row: PuzzleQueueRow): PuzzleSubmissionValue => ({
   fen: row.fen,
   solution: row.solution,
   event: row.event ?? "",
+  whitePlayer: row.white_player ?? "",
+  blackPlayer: row.black_player ?? "",
   explanation: row.explanation ?? "",
 });
 

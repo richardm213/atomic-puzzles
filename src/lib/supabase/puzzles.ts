@@ -6,8 +6,11 @@ import { fetchAllSupabaseRows, loadSupabaseRows } from "./rows";
 export type PuzzleRow = RawPuzzleRow;
 
 const PUZZLES_TABLE = import.meta.env.VITE_SUPABASE_PUZZLES_TABLE?.trim() ?? "puzzles";
-const PUZZLE_CATALOG_COLUMNS = "id,author,event,tags";
-const PUZZLE_DETAIL_COLUMNS = "id,fen,solution,author,event,explanation,tags";
+const PUZZLE_SET_RELATION =
+  "puzzle_set:puzzle_sets!puzzles_puzzle_set_id_fkey(id,event_name,event_date,players)";
+const PUZZLE_SET_COLUMNS = `puzzle_set_id,${PUZZLE_SET_RELATION},white_player,black_player`;
+const PUZZLE_CATALOG_COLUMNS = `id,author,${PUZZLE_SET_COLUMNS},tags`;
+const PUZZLE_DETAIL_COLUMNS = `id,fen,solution,author,${PUZZLE_SET_COLUMNS},explanation,tags`;
 const MAX_PUZZLE_BATCH_SIZE = 12;
 const puzzleCatalogCache = new Map<string, Promise<PuzzleRow[]>>();
 const puzzleDetailsCache = new Map<string, Promise<PuzzleRow[]>>();

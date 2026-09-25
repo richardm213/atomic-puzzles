@@ -34,7 +34,18 @@ export class PuzzleReviewRepository {
   async update(id: number, puzzle: QueuedPuzzleUpdate) {
     const { data, error } = await this.supabase
       .from("puzzles_queue")
-      .update(puzzle)
+      .update({
+        fen: puzzle.fen,
+        solution: puzzle.solution,
+        event: puzzle.event,
+        event_name: "",
+        event_date: "",
+        players: [],
+        white_player: puzzle.whitePlayer ?? "",
+        black_player: puzzle.blackPlayer ?? "",
+        explanation: puzzle.explanation,
+        submitted_by: puzzle.submitted_by,
+      })
       .eq("id", id)
       .select("*")
       .single();

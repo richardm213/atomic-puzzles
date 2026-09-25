@@ -35,6 +35,11 @@ export type PuzzleQueueRow = {
   fen: string;
   solution: string;
   event: string;
+  event_name: string;
+  event_date: string;
+  players: string[];
+  white_player: string;
+  black_player: string;
   explanation: string;
   submitted_by: string;
   created_at: string;
@@ -139,8 +144,20 @@ export type Database = {
       puzzles: TableDef<RawPuzzleRow>;
       puzzles_queue: TableDef<
         PuzzleQueueRow,
-        Pick<PuzzleQueueRow, "fen" | "solution" | "event" | "explanation" | "submitted_by">,
-        Partial<Pick<PuzzleQueueRow, "fen" | "solution" | "event" | "explanation" | "submitted_by">>
+        Pick<
+          PuzzleQueueRow,
+          | "fen"
+          | "solution"
+          | "event"
+          | "event_name"
+          | "event_date"
+          | "players"
+          | "white_player"
+          | "black_player"
+          | "explanation"
+          | "submitted_by"
+        >,
+        Partial<PuzzleQueueRow>
       >;
       puzzle_votes: TableDef<
         PuzzleVoteRow,

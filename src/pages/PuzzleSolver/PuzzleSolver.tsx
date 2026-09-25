@@ -15,6 +15,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import {
+  formatPuzzleSetDate,
+  formatPuzzleSetPlayers,
+  puzzleSetMetadataFromRow,
+} from "../../../shared/domain/puzzles/puzzleSetMetadata";
 import { buildPieceStyle } from "../../components/Chessboard/boardStyle";
 import { Chessboard } from "../../components/Chessboard/Chessboard";
 import { PuzzleCommunity } from "../../components/PuzzleCommunity/PuzzleCommunity";
@@ -48,7 +53,7 @@ import {
   puzzleMotifs,
 } from "../../lib/puzzles/puzzleMotifs";
 import { puzzleQueryKeys } from "../../lib/puzzles/puzzleQueries";
-import { getOrderedPuzzleIndexesForEvent } from "../../lib/puzzles/puzzleSets";
+import { getOrderedPuzzleIndexesForEvent, isAwcPuzzleEvent } from "../../lib/puzzles/puzzleSets";
 import { ensurePuzzlePgnHeaders } from "../../lib/puzzles/puzzleSubmission";
 import { updatePuzzleTags } from "../../lib/puzzles/puzzleTags";
 import {
@@ -561,6 +566,10 @@ export const PuzzleSolverPage = () => {
   const activePuzzle = activePuzzleIndex >= 0 ? (puzzles[activePuzzleIndex] ?? null) : null;
   const activePuzzleId = activePuzzle?.puzzleId;
   const activePuzzleKey = toPuzzleKey(activePuzzleId);
+  const activePuzzleSetMetadata = useMemo(
+    () => (activePuzzle ? puzzleSetMetadataFromRow(activePuzzle) : null),
+    [activePuzzle],
+  );
   const fen = activePuzzle?.fen ?? "";
   const author = String(activePuzzle?.["author"] ?? "").trim() || "Unknown";
   const event = String(activePuzzle?.["event"] ?? "").trim();
@@ -587,7 +596,8 @@ export const PuzzleSolverPage = () => {
   const materialCount = useMemo(() => materialCountFromFen(currentFen), [currentFen]);
   const materialPieceStyle = useMemo(() => buildPieceStyle(pieceSet || "cburnett"), [pieceSet]);
   const castlingRights = castlingRightsFromFen(currentFen);
-  const hasCastlingRights = castlingRights.white.length > 0 || castlingRights.black.length > 0;
+  const hasMaterialDifference = Boolean(currentFen) && materialCount.difference > 0;
+  const hasAnyCastlingRights = castlingRights.white.length > 0 || castlingRights.black.length > 0;
   const startAnalysisUrl = lichessAnalysisUrl(fen);
   const currentAnalysisUrl = lichessAnalysisUrl(currentFen);
   const activeSetPuzzlePosition = isSetSolveMode
@@ -606,6 +616,16 @@ export const PuzzleSolverPage = () => {
     ? activeSetPuzzlePosition >= 0 && activeSetPuzzlePosition < orderedSetPuzzleIndexes.length - 1
     : puzzles.length > 0;
   const hasCompletedPuzzleSet = isSetSolveMode && !canGoToNextPuzzle && boardState.solved;
+  const showPuzzleSetMetadata = Boolean(
+    isSetSolveMode && !isCustomSetSolveMode && activePuzzleSetMetadata?.eventName,
+  );
+  const puzzleSetDate =
+    activePuzzleSetMetadata && !isAwcPuzzleEvent(activePuzzleSetMetadata.eventName)
+      ? formatPuzzleSetDate(activePuzzleSetMetadata.eventDate)
+      : "";
+  const puzzleSetPlayers = activePuzzleSetMetadata
+    ? formatPuzzleSetPlayers(activePuzzleSetMetadata.players)
+    : "";
   const isAnalysisMode = interactionMode === ANALYSIS_MODE;
   const hasPersistedAttempt = activePuzzleKey ? attemptedPuzzleIds.has(activePuzzleKey) : false;
   const hasResolvedAttempt = activePuzzleKey
@@ -1695,7 +1715,7 @@ export const PuzzleSolverPage = () => {
   };
 
   const renderCastlingRights = () =>
-    hasCastlingRights ? (
+    hasAnyCastlingRights ? (
       <div
         className="castlingRightsBar"
         aria-label={`Castling rights. White: ${castlingRights.white.join(", ") || "none"}. Black: ${castlingRights.black.join(", ") || "none"}.`}
@@ -2091,12 +2111,27 @@ export const PuzzleSolverPage = () => {
             </div>
           </div>
 
+          {showPuzzleSetMetadata && activePuzzleSetMetadata ? (
+            <section className="puzzleHeaderSetMetadata" aria-label="Puzzle set details">
+              <strong>{activePuzzleSetMetadata.eventName}</strong>
+              {puzzleSetDate || puzzleSetPlayers ? (
+                <span className="puzzleHeaderSetDetails">
+                  {puzzleSetDate ? (
+                    <time dateTime={activePuzzleSetMetadata.eventDate}>{puzzleSetDate}</time>
+                  ) : null}
+                  {puzzleSetDate && puzzleSetPlayers ? <span aria-hidden="true">·</span> : null}
+                  {puzzleSetPlayers ? <span>{puzzleSetPlayers}</span> : null}
+                </span>
+              ) : null}
+            </section>
+          ) : null}
+
           <div className="puzzleHeaderMetadata">
             <div className="puzzleHeaderMeta" title={author}>
               <span>Created by</span>
               <strong>{author}</strong>
             </div>
-            {event ? (
+            {event && !showPuzzleSetMetadata ? (
               <div className="puzzleHeaderEvent" title={event}>
                 {event}
               </div>
@@ -2190,10 +2225,10 @@ export const PuzzleSolverPage = () => {
 
         {!isMobileLayout ? (
           <div className="puzzleDetails">
-            {hasCastlingRights || (currentFen && materialCount.advantage) ? (
+            {hasAnyCastlingRights || hasMaterialDifference ? (
               <div className="puzzlePositionSummary">
                 {renderCastlingRights()}
-                {currentFen && materialCount.advantage ? (
+                {hasMaterialDifference ? (
                   <div className="materialDifferencePanel" aria-label="Material difference">
                     <span className="materialDifferenceLabel">Material</span>
                     {renderMaterialDifference("white")}
@@ -2288,16 +2323,20 @@ export const PuzzleSolverPage = () => {
           {hasAttemptedActivePuzzle ? (
             <div id="mobile-puzzle-vote-slot" className="mobilePuzzleVoteSlot" />
           ) : null}
-          {hasCastlingRights ? (
-            <div className="mobileCastlingRights">{renderCastlingRights()}</div>
-          ) : null}
-          {currentFen && materialCount.advantage ? (
-            <div className="mobileMaterialDifference">
-              <div className="materialDifferencePanel" aria-label="Material difference">
-                <span className="materialDifferenceLabel">Material</span>
-                {renderMaterialDifference("white")}
-                {renderMaterialDifference("black")}
-              </div>
+          {hasAnyCastlingRights || hasMaterialDifference ? (
+            <div className="mobilePositionSummary">
+              {hasAnyCastlingRights ? (
+                <div className="mobileCastlingRights">{renderCastlingRights()}</div>
+              ) : null}
+              {hasMaterialDifference ? (
+                <div className="mobileMaterialDifference">
+                  <div className="materialDifferencePanel" aria-label="Material difference">
+                    <span className="materialDifferenceLabel">Material</span>
+                    {renderMaterialDifference("white")}
+                    {renderMaterialDifference("black")}
+                  </div>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </>

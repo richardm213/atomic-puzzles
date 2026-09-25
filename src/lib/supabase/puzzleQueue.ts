@@ -22,6 +22,8 @@ type PuzzleSubmissionInput = {
   fen: string;
   solution: string;
   event: string;
+  whitePlayer?: string;
+  blackPlayer?: string;
   explanation: string;
 };
 
@@ -39,6 +41,11 @@ export const submitPuzzle = async (
       fen: input.fen.trim(),
       solution: compactPuzzleSolution(input.solution),
       event: input.event.trim(),
+      eventName: "",
+      eventDate: "",
+      players: [],
+      whitePlayer: input.whitePlayer?.trim() ?? "",
+      blackPlayer: input.blackPlayer?.trim() ?? "",
       explanation: input.explanation.trim(),
       allowDifferentStartMove: options.allowDifferentStartMove ?? false,
     },
@@ -68,6 +75,11 @@ export const submitPuzzleBatch = async (
         fen: input.fen.trim(),
         solution: compactPuzzleSolution(input.solution),
         event: input.event.trim(),
+        eventName: "",
+        eventDate: "",
+        players: [],
+        whitePlayer: input.whitePlayer?.trim() ?? "",
+        blackPlayer: input.blackPlayer?.trim() ?? "",
         explanation: input.explanation.trim(),
       })),
       allowDifferentStartMove: options.allowDifferentStartMove ?? false,
@@ -118,6 +130,8 @@ export const updateQueuedPuzzle = async (
     fen: string;
     solution: string;
     event: string;
+    whitePlayer?: string;
+    blackPlayer?: string;
     explanation: string;
     author: string;
   },
@@ -128,6 +142,11 @@ export const updateQueuedPuzzle = async (
     fen: input.fen.trim(),
     solution: compactPuzzleSolution(input.solution),
     event: input.event.trim(),
+    eventName: "",
+    eventDate: "",
+    players: [],
+    whitePlayer: input.whitePlayer?.trim() ?? "",
+    blackPlayer: input.blackPlayer?.trim() ?? "",
     explanation: input.explanation.trim(),
     author: input.author.trim(),
   });

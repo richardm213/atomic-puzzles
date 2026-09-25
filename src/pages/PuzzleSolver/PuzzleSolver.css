@@ -217,6 +217,32 @@ body:has(.puzzlePage),
   min-width: 0;
 }
 
+.puzzleHeaderSetMetadata {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  min-width: 0;
+}
+
+.puzzleHeaderSetMetadata > strong {
+  overflow-wrap: anywhere;
+  color: var(--color-heading);
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.puzzleHeaderSetDetails {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
 .puzzleHeaderMeta {
   display: inline-flex;
   align-items: baseline;
@@ -455,10 +481,9 @@ body:has(.puzzlePage),
 }
 
 .puzzlePositionSummary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 7px 14px;
+  display: grid;
+  align-items: start;
+  gap: 4px;
   padding: 11px 0 0;
   border-top: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
 }
@@ -2036,12 +2061,18 @@ body:has(.puzzlePage),
     margin: 0 auto;
   }
 
+  .mobilePositionSummary {
+    display: grid;
+    gap: 2px;
+    width: min(100%, 548px);
+    margin: 0 auto;
+  }
+
   .mobileCastlingRights,
   .mobileMaterialDifference {
     display: flex;
+    min-width: 0;
     justify-content: flex-start;
-    width: min(100%, 548px);
-    margin: 0 auto;
   }
 
   .mobilePuzzleVoteSlot {

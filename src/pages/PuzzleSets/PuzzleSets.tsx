@@ -2,38 +2,45 @@ import "./PuzzleSets.css";
 
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 
+import { formatPuzzleSetDate } from "../../../shared/domain/puzzles/puzzleSetMetadata";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
+import { useAuth } from "../../context/AuthContext";
+import { matchupToSlug } from "../../lib/matches/h2hRoutes";
 import type { Puzzle } from "../../lib/puzzles/puzzleLibrary";
-import { puzzleCatalogQueryOptions } from "../../lib/puzzles/puzzleQueries";
 import {
-  getPuzzleEventKey,
+  puzzleCatalogQueryOptions,
+  puzzlePlayerNicknamesQueryOptions,
+  puzzleProgressForUserQueryOptions,
+} from "../../lib/puzzles/puzzleQueries";
+import {
   groupPuzzlesByEvent,
+  isAwcPuzzleEvent,
   isEndgamePuzzleEvent,
   type PuzzleEventGroup,
 } from "../../lib/puzzles/puzzleSets";
-import { getOpeningDisplayLabel } from "../../utils/openings";
+import { normalizeUsername } from "../../utils/playerNames";
 
 const EVENT_FILTERS = [
   { id: "all", label: "All" },
+  { id: "awc", label: "AWC" },
   { id: "acl", label: "ACL" },
   { id: "swiss960", label: "960 Swiss" },
   { id: "chess960", label: "960" },
-  { id: "awc", label: "AWC" },
   { id: "practiceMatch", label: "Practice" },
   { id: "wolfrandom", label: "WolframRandom" },
 ];
 const emptyPuzzles: Puzzle[] = [];
 
 const matchesEventFilter = (
-  group: { event?: string | null | undefined },
+  group: { eventName?: string | null | undefined },
   filterId: string,
 ): boolean => {
   if (filterId === "all") return true;
 
-  const normalizedEvent = String(group?.event ?? "")
+  const normalizedEvent = String(group?.eventName ?? "")
     .trim()
     .toLocaleLowerCase();
   if (!normalizedEvent) return false;
@@ -66,43 +73,16 @@ const matchesEventFilter = (
   return true;
 };
 
-const readEventKeyFromHash = (): string => {
-  if (typeof window === "undefined") return "";
-  let hashValue = window.location.hash.replace(/^#/, "").trim();
-  if (!hashValue) return "";
-
-  for (let pass = 0; pass < 2; pass += 1) {
-    try {
-      const decodedValue = decodeURIComponent(hashValue);
-      if (decodedValue === hashValue) break;
-      hashValue = decodedValue;
-    } catch {
-      break;
-    }
-  }
-
-  return getPuzzleEventKey(hashValue);
-};
-
-const updateEventKeyHash = (eventKey: string): void => {
-  if (typeof window === "undefined") return;
-
-  const nextHash = eventKey ? `#${eventKey}` : "";
-  if (window.location.hash === nextHash) return;
-
-  window.history.pushState(
-    null,
-    "",
-    `${window.location.pathname}${window.location.search}${nextHash}`,
-  );
-};
-
 export const PuzzleSetsPage = () => {
-  const [selectedEventKey, setSelectedEventKey] = useState(() => readEventKeyFromHash());
+  const { user } = useAuth();
+  const username = normalizeUsername(user?.username);
   const [activeFilterId, setActiveFilterId] = useState("all");
-  const selectedSetSectionRef = useRef<HTMLElement | null>(null);
-  const shouldScrollToSelectionRef = useRef(false);
   const puzzleCatalogQuery = useQuery(puzzleCatalogQueryOptions());
+  const playerNicknamesQuery = useQuery(puzzlePlayerNicknamesQueryOptions());
+  const progressQuery = useQuery({
+    ...puzzleProgressForUserQueryOptions(username),
+    enabled: Boolean(username),
+  });
   const puzzles = puzzleCatalogQuery.data ?? emptyPuzzles;
   const isLoading = puzzleCatalogQuery.isPending;
   const error = puzzleCatalogQuery.error
@@ -111,24 +91,9 @@ export const PuzzleSetsPage = () => {
       : "Failed to load puzzle sets."
     : "";
 
-  useEffect(() => {
-    if (typeof window === "undefined") return undefined;
-
-    const handleHashChange = () => {
-      setSelectedEventKey(readEventKeyFromHash());
-    };
-
-    window.addEventListener("hashchange", handleHashChange);
-    window.addEventListener("popstate", handleHashChange);
-    return () => {
-      window.removeEventListener("hashchange", handleHashChange);
-      window.removeEventListener("popstate", handleHashChange);
-    };
-  }, []);
-
   const puzzleGroups = useMemo(() => groupPuzzlesByEvent(puzzles), [puzzles]);
   const endgamePuzzleGroups = useMemo(
-    () => puzzleGroups.filter((group) => isEndgamePuzzleEvent(group.event)),
+    () => puzzleGroups.filter((group) => isEndgamePuzzleEvent(group.eventName)),
     [puzzleGroups],
   );
   const eventPuzzleGroups = useMemo(
@@ -139,120 +104,128 @@ export const PuzzleSetsPage = () => {
     () => eventPuzzleGroups.filter((group) => matchesEventFilter(group, activeFilterId)),
     [activeFilterId, eventPuzzleGroups],
   );
-  const selectedGroup = useMemo(() => {
-    const visiblePuzzleGroups = [...filteredPuzzleGroups, ...endgamePuzzleGroups];
-    if (!visiblePuzzleGroups.length) return null;
-
-    const fromHash = visiblePuzzleGroups.find((group) => group.eventKey === selectedEventKey);
-    if (fromHash) return fromHash;
-
-    return null;
-  }, [endgamePuzzleGroups, filteredPuzzleGroups, selectedEventKey]);
-
-  const totalPuzzleCount = useMemo(
-    () => puzzleGroups.reduce((count, group) => count + group.puzzles.length, 0),
-    [puzzleGroups],
+  const completedPuzzleIds = useMemo(
+    () => new Set((progressQuery.data ?? []).map((row) => String(row.puzzle_id).trim())),
+    [progressQuery.data],
   );
-  const totalSetCount = puzzleGroups.length;
-  const handleSetSelection = (eventKey: string): void => {
-    shouldScrollToSelectionRef.current = true;
-    setSelectedEventKey(eventKey);
-    updateEventKeyHash(eventKey);
+  const playerNicknames = useMemo(
+    () =>
+      new Map(
+        (playerNicknamesQuery.data ?? []).map((row) => [
+          row.username.trim().toLocaleLowerCase(),
+          row.nickname.trim().toLocaleLowerCase(),
+        ]),
+      ),
+    [playerNicknamesQuery.data],
+  );
+  const formatSetPlayers = (players: string[]): string => {
+    const labels = players.map((player) => {
+      const nickname = playerNicknames.get(player.toLocaleLowerCase());
+      return nickname || player;
+    });
+    return labels.length === 2 ? `${labels[0]} vs ${labels[1]}` : labels.join(" · ");
   };
 
   const renderPuzzleSetGrid = (groups: PuzzleEventGroup[], ariaLabel: string) => (
     <div className="puzzleSetGrid" role="list" aria-label={ariaLabel}>
       {groups.map((group) => {
-        const firstPuzzleId = group.puzzles[0]?.puzzleId ?? "—";
-        const lastPuzzleId = group.puzzles[group.puzzles.length - 1]?.puzzleId ?? "—";
-        const isSelected = selectedGroup?.eventKey === group.eventKey;
+        const completedPuzzleCount = group.puzzles.reduce(
+          (count, puzzle) =>
+            completedPuzzleIds.has(String(puzzle.puzzleId).trim()) ? count + 1 : count,
+          0,
+        );
+        const puzzleCount = group.puzzles.length;
+        const progressPercent = puzzleCount
+          ? Math.round((completedPuzzleCount / puzzleCount) * 100)
+          : 0;
 
         return (
-          <article
-            key={group.eventKey}
-            className={`puzzleSetCard ${isSelected ? "selected" : ""}`}
-            role="listitem"
-          >
-            <button
-              type="button"
-              className="puzzleSetCardSelect"
-              onClick={() => handleSetSelection(group.eventKey)}
-            >
-              <span className="puzzleSetsMiniLabel">Set</span>
-              <strong>{group.event}</strong>
-              <div className="puzzleSetCardMeta">
-                <span>{group.puzzles.length} puzzles</span>
-                <span>
-                  #{firstPuzzleId}
-                  {firstPuzzleId !== lastPuzzleId ? `-${lastPuzzleId}` : ""}
-                </span>
-              </div>
-              <span className="puzzleSetCardAuthors">
-                {group.authors.length} author{group.authors.length === 1 ? "" : "s"}
+          <article key={group.eventKey} className="puzzleSetCard" role="listitem">
+            <div className="puzzleSetCardContent">
+              <span className="puzzleSetCardHeading">
+                <strong>
+                  {group.sourceId ? (
+                    <Link
+                      className="puzzleSetCardTitleLink"
+                      to="/matches/$matchId"
+                      params={{ matchId: group.sourceId }}
+                    >
+                      {group.eventName}
+                    </Link>
+                  ) : (
+                    group.eventName
+                  )}
+                </strong>
+                {group.eventDate && !isAwcPuzzleEvent(group.eventName) ? (
+                  <time dateTime={group.eventDate}>{formatPuzzleSetDate(group.eventDate)}</time>
+                ) : null}
               </span>
-            </button>
-            <Link
-              className="puzzleSetCardStartLink"
-              to="/solve/set/$setKey/$puzzleId"
-              params={{
-                setKey: group.event,
-                puzzleId: String(group.puzzles[0]?.puzzleId ?? ""),
-              }}
-            >
-              Start set
-              <span aria-hidden="true">→</span>
-            </Link>
+              {group.players.length === 2 ? (
+                <Link
+                  className="puzzleSetCardPlayers"
+                  to="/h2h/$matchup"
+                  params={{ matchup: matchupToSlug(group.players[0]!, group.players[1]!) }}
+                >
+                  {formatSetPlayers(group.players)}
+                </Link>
+              ) : group.players.length > 0 ? (
+                <span className="puzzleSetCardPlayers">{formatSetPlayers(group.players)}</span>
+              ) : null}
+              <span className="puzzleSetProgress">
+                <span className="puzzleSetProgressLabel">
+                  <strong>
+                    {completedPuzzleCount} / {puzzleCount}
+                  </strong>
+                </span>
+                <span
+                  className="puzzleSetProgressTrack"
+                  role="progressbar"
+                  aria-label={`${group.eventName}: ${completedPuzzleCount} of ${puzzleCount} puzzles completed`}
+                  aria-valuemin={0}
+                  aria-valuemax={puzzleCount}
+                  aria-valuenow={completedPuzzleCount}
+                >
+                  <span style={{ width: `${progressPercent}%` }} />
+                </span>
+              </span>
+            </div>
+            <div className="puzzleSetCardActions">
+              <Link
+                className="puzzleSetCardStartLink"
+                to="/solve/set/$setKey/$puzzleId"
+                params={{
+                  setKey: group.eventKey,
+                  puzzleId: String(group.puzzles[0]?.puzzleId ?? ""),
+                }}
+              >
+                Start set
+                <span aria-hidden="true">→</span>
+              </Link>
+            </div>
           </article>
         );
       })}
     </div>
   );
 
-  useEffect(() => {
-    if (!selectedGroup || !shouldScrollToSelectionRef.current) return;
-
-    selectedSetSectionRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-    shouldScrollToSelectionRef.current = false;
-  }, [selectedGroup]);
-
   if (isLoading && puzzles.length === 0) return <RouteLoadingFallback />;
 
   return (
     <div className="puzzleSetsPage">
       <Seo
-        title="Puzzle Event Sets"
+        title="Puzzle Sets"
         description="Browse atomic puzzle events and open every puzzle from a selected set."
         path="/solve/sets"
       />
       <div className="puzzleSetsShell">
-        <header className="puzzleSetsHero">
-          <div className="puzzleSetsHeroCopy">
-            <p className="puzzleSetsEyebrow">Atomic tactics</p>
-            <h1>Puzzle Event Sets</h1>
-          </div>
-          <div className="puzzleSetsHeroActions">
-            <div className="puzzleSetsSummaryCard">
-              <span className="puzzleSetsSummaryLabel">Library coverage</span>
-              <strong>{totalSetCount} sets</strong>
-              <span>{totalPuzzleCount} puzzles</span>
-            </div>
-            <Link className="puzzleSetsBackLink" to="/dashboard">
-              Back to dashboard
-            </Link>
-          </div>
-        </header>
+        <section className="puzzleSetsSection" aria-label="Puzzle set filters and results">
+          <header className="puzzleSetsHero">
+            <h1>Puzzle sets</h1>
+          </header>
 
-        {error ? <div className="puzzleSetsStateCard">{error}</div> : null}
+          {error ? <div className="puzzleSetsStateCard">{error}</div> : null}
 
-        <section className="puzzleSetsSection">
           <div className="puzzleSetsSectionHeader">
-            <div className="puzzleSetsSectionCopy">
-              <p className="puzzleSetsSectionEyebrow">Events</p>
-              <h2>Choose a puzzle set</h2>
-            </div>
             <div className="puzzleSetsFilterBar" role="toolbar" aria-label="Filter puzzle sets">
               {EVENT_FILTERS.map((filter) => {
                 const isActive = filter.id === activeFilterId;
@@ -286,86 +259,9 @@ export const PuzzleSetsPage = () => {
         {endgamePuzzleGroups.length > 0 ? (
           <section className="puzzleSetsSection puzzleSetsEndgameSection">
             <div className="puzzleSetsSectionHeader">
-              <div className="puzzleSetsSectionCopy">
-                <p className="puzzleSetsSectionEyebrow">Endgames</p>
-                <h2>Endgame puzzle sets</h2>
-                <p className="puzzleSetsSectionIntro">
-                  Explore puzzle sets dedicated to atomic endgames.
-                </p>
-              </div>
+              <h2>Endgame sets</h2>
             </div>
             {renderPuzzleSetGrid(endgamePuzzleGroups, "Endgame puzzle sets")}
-          </section>
-        ) : null}
-
-        {selectedGroup ? (
-          <section
-            className="puzzleSetsSection puzzleSetsSelectedSection"
-            ref={selectedSetSectionRef}
-          >
-            <div className="puzzleSetsSectionHeader">
-              <div className="puzzleSetsSectionCopy">
-                <p className="puzzleSetsSectionEyebrow">Selected set</p>
-                <h2>{selectedGroup.event}</h2>
-              </div>
-              <Link
-                className="puzzleSetStartLink"
-                to="/solve/set/$setKey/$puzzleId"
-                params={{
-                  setKey: selectedGroup.event,
-                  puzzleId: String(selectedGroup.puzzles[0]?.puzzleId ?? ""),
-                }}
-              >
-                Solve set from the start
-                <span aria-hidden="true">→</span>
-              </Link>
-            </div>
-            <div
-              className="puzzleSetPuzzleList"
-              role="list"
-              aria-label={`${selectedGroup.event} puzzles`}
-            >
-              {selectedGroup.puzzles.map((puzzle) => {
-                const puzzleId = String(puzzle?.puzzleId ?? "").trim();
-                const author = String(puzzle?.["author"] ?? "").trim() || "Unknown";
-                const opening = String(puzzle?.["opening"] ?? "").trim();
-
-                return (
-                  <article
-                    key={`${selectedGroup.eventKey}-${puzzleId}`}
-                    className="puzzleSetPuzzleRow"
-                  >
-                    <div className="puzzleSetPuzzlePrimary">
-                      <span className="puzzleSetsMiniLabel">Puzzle</span>
-                      <Link
-                        className="puzzleSetPuzzleLink"
-                        to="/solve/$puzzleId"
-                        params={{ puzzleId }}
-                      >
-                        Puzzle {puzzleId}
-                      </Link>
-                      <div className="puzzleSetPuzzleMeta">
-                        <span>{author}</span>
-                        {opening ? <span>{getOpeningDisplayLabel(opening)}</span> : null}
-                        <span>{selectedGroup.event}</span>
-                      </div>
-                    </div>
-                    <Link
-                      className="puzzleSetOpenLink"
-                      to="/solve/$puzzleId"
-                      params={{ puzzleId }}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      <span>Open puzzle</span>
-                      <span className="puzzleSetOpenIcon" aria-hidden="true">
-                        ↗
-                      </span>
-                    </Link>
-                  </article>
-                );
-              })}
-            </div>
           </section>
         ) : null}
       </div>

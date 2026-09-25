@@ -7,6 +7,11 @@ export type QueuedPuzzleSubmission = {
   fen: string;
   solution: string;
   event: string;
+  eventName: string;
+  eventDate: string;
+  players: string[];
+  whitePlayer: string;
+  blackPlayer: string;
   explanation: string;
 };
 
@@ -24,6 +29,11 @@ export class PuzzleSubmissionRepository {
         p_fen: puzzle.fen,
         p_solution: puzzle.solution,
         p_event: puzzle.event,
+        p_event_name: puzzle.eventName,
+        p_event_date: puzzle.eventDate,
+        p_players: puzzle.players,
+        p_white_player: puzzle.whitePlayer,
+        p_black_player: puzzle.blackPlayer,
         p_explanation: puzzle.explanation,
         p_submitted_by: username,
         p_allow_different_start_move: allowDifferentStartMove,

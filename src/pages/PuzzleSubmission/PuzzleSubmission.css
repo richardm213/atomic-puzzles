@@ -209,6 +209,12 @@
   gap: 10px;
 }
 
+.puzzleEditorPlayerFields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .puzzleEditorFields label {
   display: grid;
   gap: 7px;
@@ -654,6 +660,7 @@
 .puzzleDeleteLineButton:focus-visible,
 .puzzleAnalysisButton:focus-visible,
 .puzzleEditorFields textarea:focus-visible,
+.puzzleEditorFields input:focus-visible,
 .puzzleReviewField input:focus-visible,
 .puzzleQueueList button:focus-visible {
   outline: 3px solid var(--color-primary-ring);
@@ -682,5 +689,11 @@
 
   .puzzlePgnInstructions ol {
     flex-direction: column;
+  }
+}
+
+@media (max-width: 520px) {
+  .puzzleEditorPlayerFields {
+    grid-template-columns: 1fr;
   }
 }

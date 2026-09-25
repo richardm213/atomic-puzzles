@@ -276,6 +276,7 @@ describe("PuzzleSolverPage solution options", () => {
         fen: "",
         solution: "",
         puzzleId: 1369,
+        puzzle_set_id: 1,
         author: mocks.puzzleAuthor,
         event: "ACL 2024",
         explanation: "",
@@ -288,6 +289,7 @@ describe("PuzzleSolverPage solution options", () => {
         solution:
           "12... O-O (12... Rf8 13. O-O-O Rf2 (13... Ba3) 14. Be2 Ba3) 13. O-O-O Rf2 (13... Ba3) 14. Be2 Ba3",
         puzzleId,
+        puzzle_set_id: 1,
         author: mocks.puzzleAuthor,
         event: "ACL 2024",
         explanation: mocks.puzzleExplanation,
@@ -707,6 +709,28 @@ describe("PuzzleSolverPage solution options", () => {
     expect(screen.queryByRole("tab", { name: "Explanation" })).not.toBeInTheDocument();
   });
 
+  it("hides castling and material summaries when neither applies", async () => {
+    mocks.loadPuzzlesById.mockResolvedValueOnce([
+      {
+        id: 1369,
+        fen: "8/8/8/3k4/8/4K3/8/8 w - - 0 1",
+        solution: "",
+        puzzleId: 1369,
+        author: mocks.puzzleAuthor,
+        event: "ACL 2024",
+        explanation: mocks.puzzleExplanation,
+        tags: [],
+      },
+    ]);
+
+    render(<PuzzleSolverPage />);
+
+    await screen.findByRole("heading", { name: "Puzzle 1369" });
+    await waitFor(() => expect(mocks.chessboardProps.length).toBeGreaterThan(0));
+    expect(screen.queryByLabelText(/^Castling rights\./)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Material difference")).not.toBeInTheDocument();
+  });
+
   it("shows the author an explanation editor only after attempting the puzzle", async () => {
     mocks.username = "admin";
     mocks.attemptedPuzzleIds = new Set();
@@ -882,10 +906,52 @@ describe("PuzzleSolverPage solution options", () => {
     );
   });
 
+  it("shows AWC puzzle-set metadata without repeating its date", async () => {
+    const puzzleSet = {
+      id: 8,
+      event_name: "AWC 2026",
+      event_date: "2026-07-09",
+      players: ["Alpha", "Beta"],
+    };
+    mocks.routeParams = { puzzleId: "1369", setKey: "8", setId: "" };
+    mocks.loadPuzzleCatalog.mockResolvedValueOnce([
+      {
+        id: 1369,
+        fen: "",
+        solution: "",
+        puzzleId: 1369,
+        puzzle_set_id: 8,
+        puzzle_set: puzzleSet,
+        author: mocks.puzzleAuthor,
+        explanation: "",
+      },
+    ]);
+    mocks.loadPuzzlesById.mockResolvedValueOnce([
+      {
+        id: 1369,
+        fen: "rn2k2r/pp5p/1qpp2p1/2Q5/1b2P3/2N5/PPP3PP/R3KB1R b KQkq - 1 12",
+        solution: "12... O-O 13. O-O-O Rf2 14. Be2 Ba3",
+        puzzleId: 1369,
+        puzzle_set_id: 8,
+        puzzle_set: puzzleSet,
+        author: mocks.puzzleAuthor,
+        explanation: "",
+        tags: [],
+      },
+    ]);
+
+    render(<PuzzleSolverPage />);
+
+    const setDetails = await screen.findByRole("region", { name: "Puzzle set details" });
+    expect(within(setDetails).getByText("AWC 2026")).toBeInTheDocument();
+    expect(within(setDetails).queryByText("Jul 2026")).not.toBeInTheDocument();
+    expect(within(setDetails).getByText("alpha vs beta")).toBeInTheDocument();
+  });
+
   it("offers exits when the final puzzle in an ordered set is solved", async () => {
     mocks.routeParams = {
       puzzleId: "1369",
-      setKey: "ACL 2024",
+      setKey: "1",
     };
     render(<PuzzleSolverPage />);
 

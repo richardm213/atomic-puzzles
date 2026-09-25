@@ -510,6 +510,39 @@ export const PuzzleEditor = ({
           />
         </label>
 
+        <div className="puzzleEditorPlayerFields">
+          <label>
+            <span className="puzzleEditorLabelHeader">
+              <span>White player</span>
+              <small>Optional</small>
+            </span>
+            <input
+              type="text"
+              aria-label="White player (optional)"
+              value={value.whitePlayer ?? ""}
+              placeholder="Lichess username"
+              readOnly={readOnly}
+              spellCheck={false}
+              onChange={(event) => onChange({ ...value, whitePlayer: event.target.value })}
+            />
+          </label>
+          <label>
+            <span className="puzzleEditorLabelHeader">
+              <span>Black player</span>
+              <small>Optional</small>
+            </span>
+            <input
+              type="text"
+              aria-label="Black player (optional)"
+              value={value.blackPlayer ?? ""}
+              placeholder="Lichess username"
+              readOnly={readOnly}
+              spellCheck={false}
+              onChange={(event) => onChange({ ...value, blackPlayer: event.target.value })}
+            />
+          </label>
+        </div>
+
         {showExplanation ? (
           <label className="puzzleEditorExplanationField">
             <span>Explanation</span>

@@ -4,11 +4,13 @@ import {
   fetchAllPuzzleProgressRows,
   fetchPuzzleProgressRowsForUsername,
 } from "../supabase/puzzleProgress";
+import { fetchPrimaryPlayerNicknames } from "../supabase/playerNicknames";
 import { loadPuzzleCatalog } from "./puzzleLibrary";
 
 export const puzzleQueryKeys = {
   catalog: ["puzzles", "catalog"] as const,
   progress: ["puzzle-progress"] as const,
+  nicknames: ["puzzles", "player-nicknames"] as const,
 };
 
 export const puzzleCatalogQueryOptions = () =>
@@ -16,6 +18,13 @@ export const puzzleCatalogQueryOptions = () =>
     queryKey: puzzleQueryKeys.catalog,
     queryFn: loadPuzzleCatalog,
     staleTime: 10 * 60 * 1_000,
+  });
+
+export const puzzlePlayerNicknamesQueryOptions = () =>
+  queryOptions({
+    queryKey: puzzleQueryKeys.nicknames,
+    queryFn: fetchPrimaryPlayerNicknames,
+    staleTime: 60 * 60 * 1_000,
   });
 
 export const puzzleProgressForUserQueryOptions = (username: string) =>

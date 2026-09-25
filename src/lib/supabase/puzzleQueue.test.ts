@@ -50,6 +50,11 @@ describe("puzzle queue review client", () => {
       fen: "fen",
       solution: "1. e4 e5 2. Nf3",
       event: "match",
+      eventName: "",
+      eventDate: "",
+      players: [],
+      whitePlayer: "",
+      blackPlayer: "",
       explanation: "idea",
       author: "edited_author",
     });
@@ -92,16 +97,48 @@ describe("puzzle queue review client", () => {
 
     await expect(
       submitPuzzleBatch([
-        { fen: "fen 1", solution: "1. e4", event: "event", explanation: "" },
-        { fen: "fen 2", solution: "1. d4", event: "event", explanation: "" },
+        {
+          fen: "fen 1",
+          solution: "1. e4",
+          event: "event",
+          whitePlayer: " white ",
+          blackPlayer: " black ",
+          explanation: "",
+        },
+        {
+          fen: "fen 2",
+          solution: "1. d4",
+          event: "event",
+          explanation: "",
+        },
       ]),
     ).resolves.toEqual({ destination: "published", puzzleIds: [1801, 1802] });
     const [, request] = fetchMock.mock.calls[0] ?? [];
     expect(JSON.parse(String(request?.body))).toEqual({
       allowDifferentStartMove: false,
       submissions: [
-        { fen: "fen 1", solution: "1. e4", event: "event", explanation: "" },
-        { fen: "fen 2", solution: "1. d4", event: "event", explanation: "" },
+        {
+          fen: "fen 1",
+          solution: "1. e4",
+          event: "event",
+          eventName: "",
+          eventDate: "",
+          players: [],
+          whitePlayer: "white",
+          blackPlayer: "black",
+          explanation: "",
+        },
+        {
+          fen: "fen 2",
+          solution: "1. d4",
+          event: "event",
+          eventName: "",
+          eventDate: "",
+          players: [],
+          whitePlayer: "",
+          blackPlayer: "",
+          explanation: "",
+        },
       ],
     });
   });
