@@ -22,6 +22,7 @@ import {
   fetchChampionshipTrophies,
   getProfileHeaderTrophies,
   type ProfileTrophy,
+  sortProfileTrophies,
 } from "./profileTrophies";
 
 describe("championship profile trophies", () => {
@@ -80,6 +81,22 @@ const trophy = (
   dateValue,
   placementLabel: "Champion",
   prestige,
+});
+
+describe("profile trophy sorting", () => {
+  it("orders the trophy case from oldest to newest when sorting by date", () => {
+    const trophies = [
+      trophy("bullet-aug", 900, "Aug 2026", "2026-08-01"),
+      trophy("blitz-jun", 900, "Jun 2026", "2026-06-01"),
+      trophy("hyper-jul", 900, "Jul 2026", "2026-07-01"),
+    ];
+
+    expect(sortProfileTrophies(trophies, "date").map(({ key }) => key)).toEqual([
+      "blitz-jun",
+      "hyper-jul",
+      "bullet-aug",
+    ]);
+  });
 });
 
 describe("profile header trophies", () => {

@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Atomic Chess League — Trophy Concepts</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --page: #0c1017;
+        --panel: #121824;
+        --panel-strong: #182131;
+        --border: #293448;
+        --text: #ecf2fa;
+        --muted: #93a0b4;
+        --accent: #53d8ff;
+        --space-1: 4px;
+        --space-2: 8px;
+        --space-3: 12px;
+        --space-4: 16px;
+        --space-5: 24px;
+        --space-6: 32px;
+        --radius-sm: 8px;
+        --radius-md: 14px;
+        --preview-height: 480px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        min-width: 320px;
+        margin: 0;
+        background: var(--page);
+        color: var(--text);
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      main {
+        width: min(1180px, calc(100% - 40px));
+        margin: 0 auto;
+        padding: 56px 0 72px;
+      }
+
+      header {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: var(--space-5);
+        margin-bottom: var(--space-6);
+      }
+
+      h1 {
+        max-width: 680px;
+        margin: 0;
+        font-size: clamp(2rem, 5vw, 3.6rem);
+        letter-spacing: -0.045em;
+        line-height: 0.96;
+      }
+
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: end;
+        gap: var(--space-2);
+      }
+
+      button {
+        min-height: 44px;
+        padding: 0 var(--space-4);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--panel);
+        color: var(--muted);
+        font: inherit;
+        font-size: 0.82rem;
+        font-weight: 750;
+        cursor: pointer;
+        transition:
+          border-color 180ms ease,
+          background 180ms ease,
+          color 180ms ease,
+          transform 180ms ease;
+      }
+
+      button:hover {
+        border-color: #45536a;
+        color: var(--text);
+      }
+
+      button:active {
+        transform: translateY(1px);
+      }
+
+      button:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      button[aria-pressed="true"] {
+        border-color: color-mix(in srgb, var(--accent) 58%, var(--border));
+        background: color-mix(in srgb, var(--accent) 10%, var(--panel));
+        color: var(--text);
+      }
+
+      .concepts {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: var(--space-4);
+      }
+
+      article {
+        overflow: hidden;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        background: var(--panel);
+      }
+
+      .preview {
+        display: grid;
+        min-height: var(--preview-height);
+        place-items: center;
+        overflow: hidden;
+        border-bottom: 1px solid var(--border);
+        background: #090c12;
+        transition: background 180ms ease;
+      }
+
+      .preview.is-light {
+        background: #eef2f6;
+      }
+
+      .preview.is-checker {
+        background-color: #cfd5de;
+        background-image:
+          linear-gradient(45deg, #eef2f6 25%, transparent 25%),
+          linear-gradient(-45deg, #eef2f6 25%, transparent 25%),
+          linear-gradient(45deg, transparent 75%, #eef2f6 75%),
+          linear-gradient(-45deg, transparent 75%, #eef2f6 75%);
+        background-position:
+          0 0,
+          0 12px,
+          12px -12px,
+          -12px 0;
+        background-size: 24px 24px;
+      }
+
+      img {
+        display: block;
+        width: auto;
+        height: var(--preview-height);
+        max-width: 100%;
+        object-fit: contain;
+        transform: scale(var(--image-scale, 0.88));
+        transition: transform 180ms ease;
+      }
+
+      .details {
+        display: grid;
+        gap: var(--space-3);
+        min-height: 176px;
+        padding: var(--space-5);
+      }
+
+      .title-row {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: var(--space-3);
+      }
+
+      h2 {
+        margin: 0;
+        font-size: 1.2rem;
+        letter-spacing: -0.02em;
+      }
+
+      .number {
+        color: var(--muted);
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+      }
+
+      p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.88rem;
+        line-height: 1.55;
+      }
+
+      .palette {
+        display: flex;
+        gap: 6px;
+        margin-top: auto;
+      }
+
+      .swatch {
+        width: 28px;
+        height: 5px;
+        border-radius: 999px;
+        background: var(--swatch);
+      }
+
+      @media (max-width: 860px) {
+        main {
+          width: min(620px, calc(100% - 32px));
+          padding-top: 36px;
+        }
+
+        header {
+          align-items: start;
+          flex-direction: column;
+        }
+
+        .controls {
+          justify-content: start;
+        }
+
+        .concepts {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          scroll-behavior: auto !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Atomic Chess League trophy directions</h1>
+        <div class="controls" aria-label="Preview controls">
+          <button type="button" data-background="dark" aria-pressed="true">Dark</button>
+          <button type="button" data-background="light" aria-pressed="false">Light</button>
+          <button type="button" data-background="checker" aria-pressed="false">Transparency</button>
+          <button type="button" id="scaleButton" aria-pressed="false">Small display</button>
+        </div>
+      </header>
+
+      <section class="concepts" aria-label="Three trophy concepts">
+        <article>
+          <div class="preview">
+            <img
+              src="../public/images/acl-trophies/team-orbit.png"
+              alt="Silver and cyan trophy with one chess knight above a large atomic core"
+            />
+          </div>
+          <div class="details">
+            <div class="title-row">
+              <h2>Team Orbit</h2>
+              <span class="number">01</span>
+            </div>
+            <p>
+              A single knight and oversized atomic core create a clearer, more recognizable
+              silhouette at archive-card size.
+            </p>
+            <div class="palette" aria-label="Platinum, navy, and cyan palette">
+              <span class="swatch" style="--swatch: #c6cbd1"></span>
+              <span class="swatch" style="--swatch: #17243d"></span>
+              <span class="swatch" style="--swatch: #21cdf5"></span>
+            </div>
+          </div>
+        </article>
+
+        <article>
+          <div class="preview">
+            <img
+              src="../public/images/acl-trophies/league-reactor.png"
+              alt="Black titanium and violet architectural trophy surrounding a plasma atom"
+            />
+          </div>
+          <div class="details">
+            <div class="title-row">
+              <h2>League Reactor</h2>
+              <span class="number">02</span>
+            </div>
+            <p>
+              Eight architectural fins imply the league field. The strongest standalone silhouette
+              and clearest own identity.
+            </p>
+            <div class="palette" aria-label="Black titanium, violet, and chrome palette">
+              <span class="swatch" style="--swatch: #15161a"></span>
+              <span class="swatch" style="--swatch: #783bd4"></span>
+              <span class="swatch" style="--swatch: #d3d0d9"></span>
+            </div>
+          </div>
+        </article>
+
+        <article>
+          <div class="preview">
+            <img
+              src="../public/images/acl-trophies/the-collision.png"
+              alt="Gunmetal king and knight colliding around a red atomic core"
+            />
+          </div>
+          <div class="details">
+            <div class="title-row">
+              <h2>The Collision</h2>
+              <span class="number">03</span>
+            </div>
+            <p>
+              Most competitive and dramatic: two opponents meet at the atomic core. Stronger esports
+              character.
+            </p>
+            <div class="palette" aria-label="Gunmetal, red crystal, and silver palette">
+              <span class="swatch" style="--swatch: #282a2f"></span>
+              <span class="swatch" style="--swatch: #b8142c"></span>
+              <span class="swatch" style="--swatch: #c9c5c3"></span>
+            </div>
+          </div>
+        </article>
+      </section>
+    </main>
+
+    <script>
+      const backgroundButtons = [...document.querySelectorAll("[data-background]")];
+      const previews = [...document.querySelectorAll(".preview")];
+      const scaleButton = document.querySelector("#scaleButton");
+
+      const applyBackground = (background) => {
+        previews.forEach((preview) => {
+          preview.classList.toggle("is-light", background === "light");
+          preview.classList.toggle("is-checker", background === "checker");
+        });
+        backgroundButtons.forEach((button) => {
+          button.setAttribute("aria-pressed", String(button.dataset.background === background));
+        });
+        localStorage.setItem("acl-trophy-background", background);
+      };
+
+      backgroundButtons.forEach((button) => {
+        button.addEventListener("click", () => applyBackground(button.dataset.background));
+      });
+
+      scaleButton.addEventListener("click", () => {
+        const small = scaleButton.getAttribute("aria-pressed") !== "true";
+        scaleButton.setAttribute("aria-pressed", String(small));
+        scaleButton.textContent = small ? "Large display" : "Small display";
+        document.documentElement.style.setProperty("--image-scale", small ? "0.52" : "0.88");
+        localStorage.setItem("acl-trophy-small", String(small));
+      });
+
+      applyBackground(localStorage.getItem("acl-trophy-background") ?? "dark");
+      if (localStorage.getItem("acl-trophy-small") === "true") scaleButton.click();
+    </script>
+  </body>
+</html>

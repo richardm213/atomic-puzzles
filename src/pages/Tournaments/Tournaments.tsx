@@ -8,6 +8,7 @@ import {
   tournamentCatalogQueryOptions,
   tournamentChampionsQueryOptions,
 } from "../../lib/matches/tournamentQueries";
+import { compareTournamentStartDates } from "../../lib/matches/tournaments";
 import { TournamentArchiveCard } from "./TournamentArchiveCard";
 
 export const TournamentsPage = () => {
@@ -15,9 +16,9 @@ export const TournamentsPage = () => {
   const championsQuery = useQuery(tournamentChampionsQueryOptions());
   if (catalogQuery.isPending) return <RouteLoadingFallback />;
 
-  const publishedTournaments = (catalogQuery.data ?? []).filter(
-    (tournament) => tournament.status === "available",
-  );
+  const publishedTournaments = (catalogQuery.data ?? [])
+    .filter((tournament) => tournament.status === "available")
+    .sort(compareTournamentStartDates);
   if (!publishedTournaments.length) {
     return (
       <main className="sitePage tournamentsPage">
@@ -27,13 +28,9 @@ export const TournamentsPage = () => {
     );
   }
   const latestYear = Math.max(...publishedTournaments.map((tournament) => tournament.year));
-  const spotlightTournaments = publishedTournaments
-    .filter((tournament) => tournament.year === latestYear)
-    .sort((a, b) => {
-      if (a.id === "awc2026") return -1;
-      if (b.id === "awc2026") return 1;
-      return 0;
-    });
+  const spotlightTournaments = publishedTournaments.filter(
+    (tournament) => tournament.year === latestYear,
+  );
   const archiveTournaments = publishedTournaments.filter(
     (tournament) => tournament.year !== latestYear,
   );

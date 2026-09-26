@@ -268,18 +268,6 @@ const solveSetsRoute = createRoute({
   component: PuzzleSetsPage,
 });
 
-const awcPuzzleSetsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/awc",
-  component: PuzzleSetsPage,
-});
-
-const aclPuzzleSetsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/acl",
-  component: PuzzleSetsPage,
-});
-
 const customPuzzleSetsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/solve/custom-sets",
@@ -454,8 +442,6 @@ const routeTree = rootRoute.addChildren([
   dashboardRoute,
   legacyPuzzleHistoryRoute,
   solveSetsRoute,
-  awcPuzzleSetsRoute,
-  aclPuzzleSetsRoute,
   customPuzzleSetsRoute,
   customPuzzleSetEditRoute,
   puzzleLeaderboardRoute,

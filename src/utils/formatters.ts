@@ -49,6 +49,23 @@ export const formatCalendarDate = (value: string | null | undefined): string => 
   });
 };
 
+export const formatCalendarDateRange = (
+  startValue: string | null | undefined,
+  endValue: string | null | undefined,
+): string => {
+  const start = formatCalendarDate(startValue);
+  if (!start) return "";
+
+  const end = formatCalendarDate(endValue);
+  if (!end) return `${start} – present`;
+
+  const startYear = String(startValue).slice(0, 4);
+  const endYear = String(endValue).slice(0, 4);
+  if (startYear !== endYear) return `${start} – ${end}`;
+
+  return `${start.replace(`, ${startYear}`, "")} – ${end}`;
+};
+
 export const formatScore = (value: number | string): string => {
   const numeric = Number(value);
   return String(numeric);

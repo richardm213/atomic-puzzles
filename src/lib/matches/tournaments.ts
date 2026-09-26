@@ -11,6 +11,7 @@ export type TournamentMeta = {
   headingTitle?: string;
   year: number;
   startDate?: string;
+  endDate?: string;
   status: "available" | "pending";
   matchMode?: Mode;
   hideStartRoundControls?: boolean;
@@ -85,6 +86,7 @@ type TournamentMetaRowFromDb = {
   heading_title?: string | null;
   year?: number | string | null;
   start_date?: string | null;
+  end_date?: string | null;
   status?: string | null;
   match_mode?: string | null;
   hide_start_round_controls?: boolean | null;
@@ -103,8 +105,21 @@ const TOURNAMENT_CATALOG_TABLE = "tournament_catalog";
 
 export const getTournamentRouteId = (tournamentId: string): string => {
   if (tournamentId === "wr-arena2026") return "wolfarena2026";
-  if (tournamentId === "acl") return "atomicchessleague";
+  if (tournamentId === "acl") return "acl-s2";
   return tournamentId;
+};
+
+export const compareTournamentStartDates = (
+  left: TournamentMeta,
+  right: TournamentMeta,
+): number => {
+  const leftDate = left.startDate || `${left.year}-01-01`;
+  const rightDate = right.startDate || `${right.year}-01-01`;
+  return (
+    rightDate.localeCompare(leftDate) ||
+    left.displayOrder - right.displayOrder ||
+    left.id.localeCompare(right.id)
+  );
 };
 
 const TOURNAMENT_MATCHES_SELECT_COLUMNS =
@@ -112,12 +127,17 @@ const TOURNAMENT_MATCHES_SELECT_COLUMNS =
 const PLAYER_COUNTRIES_SELECT_COLUMNS = "player_name,country_code";
 const TOURNAMENT_SEEDS_SELECT_COLUMNS = "tournament,player_name,seed";
 const TOURNAMENT_CATALOG_SELECT_COLUMNS =
+  "id,series_key,series_name,title,heading_title,year,start_date,end_date,status,match_mode,hide_start_round_controls,default_main_bracket_start_round,complete_main_bracket_from_round,trophy_asset_path,show_champion,display_order,home_feature_order";
+const TOURNAMENT_CATALOG_START_DATE_SELECT_COLUMNS =
   "id,series_key,series_name,title,heading_title,year,start_date,status,match_mode,hide_start_round_controls,default_main_bracket_start_round,complete_main_bracket_from_round,trophy_asset_path,show_champion,display_order,home_feature_order";
 const TOURNAMENT_CATALOG_LEGACY_SELECT_COLUMNS =
   "id,series_key,series_name,title,heading_title,year,status,match_mode,hide_start_round_controls,default_main_bracket_start_round,complete_main_bracket_from_round,trophy_asset_path,show_champion,display_order,home_feature_order";
 
 // Keeps the archive usable during a rolling deploy while the database migration propagates.
 const tournamentStartDateFallbacks: Readonly<Record<string, string>> = {
+  acl: "2026-02-01",
+  "acl-s2": "2026-02-01",
+  "acl-s1": "2025-07-01",
   "wr-arena2026": "2026-07-12",
   awc2026: "2026-09-07",
   aoc2026: "2026-07-02",
@@ -133,6 +153,26 @@ const tournamentStartDateFallbacks: Readonly<Record<string, string>> = {
   awc2018: "2018-09-24",
   awc2017: "2017-10-30",
   awc2016: "2016-09-12",
+};
+
+const tournamentEndDateFallbacks: Readonly<Record<string, string>> = {
+  acl: "2026-03-29",
+  "acl-s2": "2026-03-29",
+  "acl-s1": "2025-08-30",
+  "wr-arena2026": "2026-09-15",
+  aoc2026: "2026-07-31",
+  ahc2026: "2026-08-19",
+  ccac2026: "2026-03-06",
+  awc2025: "2025-12-20",
+  awc2024: "2024-12-21",
+  awc2023: "2023-12-10",
+  awc2022: "2023-03-22",
+  awc2021: "2021-12-05",
+  awc2020: "2020-11-15",
+  awc2019: "2019-11-24",
+  awc2018: "2018-12-22",
+  awc2017: "2017-12-14",
+  awc2016: "2016-12-04",
 };
 
 const tournamentMatchesCache = new Map<string, Promise<TournamentMatch[]>>();
@@ -257,7 +297,9 @@ export const normalizeTournamentMetaRow = (row: TournamentMetaRowFromDb): Tourna
   const completeMainBracketFromRound = String(row?.complete_main_bracket_from_round ?? "").trim();
   const trophyAssetPath = String(row?.trophy_asset_path ?? "").trim();
   const startDate = String(row?.start_date ?? tournamentStartDateFallbacks[id] ?? "").trim();
+  const endDate = String(row?.end_date ?? tournamentEndDateFallbacks[id] ?? "").trim();
   const hasValidStartDate = /^\d{4}-\d{2}-\d{2}$/.test(startDate);
+  const hasValidEndDate = /^\d{4}-\d{2}-\d{2}$/.test(endDate);
   return {
     id,
     seriesKey,
@@ -265,6 +307,7 @@ export const normalizeTournamentMetaRow = (row: TournamentMetaRowFromDb): Tourna
     title,
     year,
     ...(hasValidStartDate ? { startDate } : {}),
+    ...(hasValidEndDate ? { endDate } : {}),
     status,
     matchMode: mode,
     hideStartRoundControls: Boolean(row?.hide_start_round_controls),
@@ -627,11 +670,22 @@ export const fetchTournamentCatalog = async (): Promise<TournamentMeta[]> =>
         buildQuery(TOURNAMENT_CATALOG_SELECT_COLUMNS),
       );
     } catch (error) {
-      if (!(error instanceof Error) || !error.message.includes("start_date")) throw error;
-      rows = await loadSupabaseRows<TournamentMetaRowFromDb>(
-        TOURNAMENT_CATALOG_TABLE,
-        buildQuery(TOURNAMENT_CATALOG_LEGACY_SELECT_COLUMNS),
-      );
+      if (!(error instanceof Error) || !error.message.includes("end_date")) throw error;
+
+      try {
+        rows = await loadSupabaseRows<TournamentMetaRowFromDb>(
+          TOURNAMENT_CATALOG_TABLE,
+          buildQuery(TOURNAMENT_CATALOG_START_DATE_SELECT_COLUMNS),
+        );
+      } catch (startDateError) {
+        if (!(startDateError instanceof Error) || !startDateError.message.includes("start_date")) {
+          throw startDateError;
+        }
+        rows = await loadSupabaseRows<TournamentMetaRowFromDb>(
+          TOURNAMENT_CATALOG_TABLE,
+          buildQuery(TOURNAMENT_CATALOG_LEGACY_SELECT_COLUMNS),
+        );
+      }
     }
 
     return rows
@@ -643,12 +697,7 @@ export const getAdjacentTournamentMetas = (
   tournamentId: string,
   catalog: readonly TournamentMeta[],
 ): { previous: TournamentMeta | null; next: TournamentMeta | null } => {
-  const ordered = [...catalog].sort(
-    (left, right) =>
-      right.year - left.year ||
-      left.displayOrder - right.displayOrder ||
-      left.id.localeCompare(right.id),
-  );
+  const ordered = [...catalog].sort(compareTournamentStartDates);
   const index = ordered.findIndex((entry) => entry.id === tournamentId);
 
   if (index < 0) {

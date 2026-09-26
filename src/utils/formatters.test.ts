@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   formatCalendarDate,
+  formatCalendarDateRange,
   formatGameCount,
   formatLocalDateTime,
   formatOpponentWithRating,
@@ -29,6 +30,20 @@ describe("formatCalendarDate", () => {
     expect(formatCalendarDate(null)).toBe("");
     expect(formatCalendarDate(undefined)).toBe("");
     expect(formatCalendarDate("garbage")).toBe("");
+  });
+});
+
+describe("formatCalendarDateRange", () => {
+  it("formats dates in the same year without repeating the year", () => {
+    expect(formatCalendarDateRange("2024-09-11", "2024-12-21")).toBe("Sep 11 – Dec 21, 2024");
+  });
+
+  it("keeps both years when a tournament crosses a year boundary", () => {
+    expect(formatCalendarDateRange("2022-09-12", "2023-03-22")).toBe("Sep 12, 2022 – Mar 22, 2023");
+  });
+
+  it("marks a tournament without an end date as current", () => {
+    expect(formatCalendarDateRange("2026-09-07", null)).toBe("Sep 7, 2026 – present");
   });
 });
 

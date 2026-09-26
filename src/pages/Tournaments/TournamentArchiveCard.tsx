@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 
 import { getTournamentRouteId, type TournamentMeta } from "../../lib/matches/tournaments";
 import { appAssetPath } from "../../utils/appAssetPath";
-import { formatCalendarDate } from "../../utils/formatters";
+import { formatCalendarDateRange } from "../../utils/formatters";
 import { normalizeUsername } from "../../utils/playerNames";
 import styles from "./TournamentArchiveCard.module.css";
 
@@ -41,9 +41,9 @@ export const TournamentArchiveCard = ({ tournament, champion }: TournamentArchiv
       <div className={styles.copy}>
         <h3>{tournament.seriesName}</h3>
         {tournament.startDate ? (
-          <time dateTime={tournament.startDate}>
-            Started {formatCalendarDate(tournament.startDate)}
-          </time>
+          <span className={styles.dates}>
+            {formatCalendarDateRange(tournament.startDate, tournament.endDate)}
+          </span>
         ) : null}
       </div>
 

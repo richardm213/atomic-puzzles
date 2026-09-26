@@ -164,9 +164,9 @@ export const sortProfileTrophies = (
       const prestigeDifference = right.prestige - left.prestige;
       if (prestigeDifference !== 0) return prestigeDifference;
     }
-    const dateDifference =
-      new Date(`${right.dateValue}T00:00:00Z`).getTime() -
-      new Date(`${left.dateValue}T00:00:00Z`).getTime();
+    const leftDate = new Date(`${left.dateValue}T00:00:00Z`).getTime();
+    const rightDate = new Date(`${right.dateValue}T00:00:00Z`).getTime();
+    const dateDifference = sort === "date" ? leftDate - rightDate : rightDate - leftDate;
     return dateDifference !== 0 ? dateDifference : left.title.localeCompare(right.title);
   });
 

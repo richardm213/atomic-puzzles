@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   addEmptyMainBracketRounds,
+  compareTournamentStartDates,
   getTournamentChampion,
   getTournamentDecisiveMatch,
   normalizeTournamentMetaRow,
@@ -19,6 +20,7 @@ describe("tournament catalog rows", () => {
         heading_title: "Atomic Hyper Championship 2026",
         year: 2026,
         start_date: "2026-07-10",
+        end_date: "2026-08-19",
         status: "available",
         match_mode: "hyperbullet",
         complete_main_bracket_from_round: "Round of 32",
@@ -33,12 +35,35 @@ describe("tournament catalog rows", () => {
         seriesKey: "ahc",
         seriesName: "Atomic Hyper Championship",
         startDate: "2026-07-10",
+        endDate: "2026-08-19",
         matchMode: "hyperbullet",
         completeMainBracketFromRound: "Round of 32",
         showChampion: true,
         homeFeatureOrder: 20,
       }),
     );
+  });
+
+  it("orders tournaments by start date instead of display order", () => {
+    const base = {
+      seriesKey: "test",
+      seriesName: "Test",
+      title: "Test",
+      status: "available" as const,
+      showChampion: false,
+      displayOrder: 0,
+    };
+    const tournaments = [
+      { ...base, id: "acl-s1", year: 2025, startDate: "2025-07-01" },
+      { ...base, id: "awc2025", year: 2025, startDate: "2025-09-03" },
+      { ...base, id: "early-2026", year: 2026, startDate: "2026-02-01" },
+    ];
+
+    expect(tournaments.sort(compareTournamentStartDates).map((entry) => entry.id)).toEqual([
+      "early-2026",
+      "awc2025",
+      "acl-s1",
+    ]);
   });
 });
 

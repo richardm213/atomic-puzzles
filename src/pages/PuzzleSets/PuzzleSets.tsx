@@ -154,13 +154,9 @@ export const PuzzleSetsPage = () => {
   const location = useRouterState({ select: (state) => state.location });
   const username = normalizeUsername(user?.username);
   const routeFilterId =
-    location.pathname === "/awc"
-      ? "awc"
-      : location.pathname === "/acl"
-        ? "acl"
-        : typeof location.search.filter === "string" && EVENT_FILTER_IDS.has(location.search.filter)
-          ? location.search.filter
-          : "all";
+    typeof location.search.filter === "string" && EVENT_FILTER_IDS.has(location.search.filter)
+      ? location.search.filter
+      : "all";
   const activeFilterId = routeFilterId;
   const [shuffleSeed] = useState(readPuzzleSetShuffleSeed);
   const puzzleCatalogQuery = useQuery(puzzleCatalogQueryOptions());
@@ -208,11 +204,6 @@ export const PuzzleSetsPage = () => {
     return labels.length === 2 ? `${labels[0]} vs ${labels[1]}` : labels.join(" · ");
   };
   const selectEventFilter = (filterId: string) => {
-    if (filterId === "awc" || filterId === "acl") {
-      void navigate({ to: filterId === "awc" ? "/awc" : "/acl" });
-      return;
-    }
-
     void navigate({
       to: "/solve/sets",
       search: filterId === "all" ? {} : { filter: filterId },

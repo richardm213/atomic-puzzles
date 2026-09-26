@@ -27,7 +27,7 @@ import {
   type TournamentMatch,
 } from "../../lib/matches/tournaments";
 import { appAssetPath } from "../../utils/appAssetPath";
-import { formatCalendarDate } from "../../utils/formatters";
+import { formatCalendarDateRange } from "../../utils/formatters";
 import { normalizeUsername } from "../../utils/playerNames";
 import { AtomicChessLeaguePage } from "./AtomicChessLeaguePage";
 import { WolfarenaTournamentPage } from "./WolfarenaTournamentPage";
@@ -1355,9 +1355,9 @@ const BracketTournamentPage = ({ tournamentId }: { tournamentId: string }) => {
           </div>
           <h1>{heading}</h1>
           {bracket.startDate ? (
-            <time className="tournamentStartDate" dateTime={bracket.startDate}>
-              Started {formatCalendarDate(bracket.startDate)}
-            </time>
+            <span className="tournamentStartDate">
+              {formatCalendarDateRange(bracket.startDate, bracket.endDate)}
+            </span>
           ) : null}
         </div>
         {bracket.trophyAssetPath ? (
@@ -1466,8 +1466,11 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
   if (tournamentId === "wolfarena2026" || tournamentId === "wr-arena2026") {
     return <WolfarenaTournamentPage />;
   }
-  if (tournamentId === "atomicchessleague" || tournamentId === "acl") {
-    return <AtomicChessLeaguePage />;
+  if (tournamentId === "acl-s1") {
+    return <AtomicChessLeaguePage key="acl-s1" seasonNumber={1} />;
+  }
+  if (tournamentId === "acl-s2" || tournamentId === "atomicchessleague" || tournamentId === "acl") {
+    return <AtomicChessLeaguePage key="acl-s2" seasonNumber={2} />;
   }
   return <BracketTournamentPage tournamentId={tournamentId} />;
 };

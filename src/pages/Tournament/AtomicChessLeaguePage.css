@@ -11,9 +11,23 @@
 }
 
 .aclHero {
+  position: relative;
   display: grid;
-  gap: var(--space-5);
-  padding: var(--space-5) var(--space-6) var(--space-6);
+  gap: var(--space-4);
+  min-height: 176px;
+  overflow: hidden;
+  padding: var(--space-5) var(--space-6);
+  border-color: color-mix(in srgb, var(--color-primary) 26%, var(--color-border));
+  background: color-mix(in srgb, var(--color-panel) 95%, var(--color-primary));
+}
+
+.aclHeroTopRow {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
 }
 
 .aclBackLink {
@@ -42,38 +56,71 @@
 }
 
 .aclHeroMain {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: var(--space-6);
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px;
+  align-items: start;
+  gap: var(--space-5);
+}
+
+.aclHeroCopy {
+  align-self: center;
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
 }
 
 .aclHeroMain h1 {
   margin: 0;
   color: var(--color-heading);
-  font-size: clamp(2rem, 5vw, 2.8rem);
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
   letter-spacing: -0.035em;
-  line-height: 1;
+  line-height: 1.05;
 }
 
-.aclSeasonTabs,
-.aclDivisionTabs {
+.aclHeroMain h1 span {
+  white-space: nowrap;
+}
+
+.aclSeasonDates {
   display: flex;
-  padding: 3px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-panel-strong);
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.92rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
 }
 
-.aclSeasonTabs button,
-.aclDivisionTabs button {
+.aclTrophy {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+  object-position: center top;
+  opacity: 0.94;
+  filter: saturate(1.05) drop-shadow(0 12px 18px rgb(0 0 0 / 32%));
+  pointer-events: none;
+}
+
+.aclDivisionTabs,
+.aclViewTabs,
+.aclRoundTabs {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.aclDivisionTabs button,
+.aclViewTabs button,
+.aclRoundTabs button {
   min-height: 42px;
-  border: 0;
-  border-radius: calc(var(--radius-sm) - 2px);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-muted);
   font: inherit;
-  font-size: 0.82rem;
+  font-size: 0.86rem;
   font-weight: 750;
   cursor: pointer;
   transition:
@@ -82,82 +129,68 @@
     transform 180ms ease;
 }
 
-.aclSeasonTabs button {
-  display: grid;
-  grid-template-columns: auto auto;
-  align-items: baseline;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-}
-
-.aclSeasonTabs button span {
-  color: var(--color-subtle);
-  font-size: 0.68rem;
-}
-
-.aclSeasonTabs button:hover,
-.aclDivisionTabs button:hover {
+.aclDivisionTabs button:hover,
+.aclViewTabs button:hover,
+.aclRoundTabs button:hover {
   color: var(--color-heading);
 }
 
-.aclSeasonTabs button:active,
-.aclDivisionTabs button:active {
+.aclDivisionTabs button:active,
+.aclViewTabs button:active,
+.aclRoundTabs button:active {
   transform: translateY(1px);
 }
 
-.aclSeasonTabs button:focus-visible,
 .aclDivisionTabs button:focus-visible,
+.aclViewTabs button:focus-visible,
+.aclRoundTabs button:focus-visible,
 .aclBackLink:focus-visible,
+.aclSeasonSwitch:focus-visible,
 .aclPanelActions a:focus-visible,
 .aclRoster a:focus-visible,
+.aclBoardMatch:focus-visible,
 .aclSeasonFooter a:focus-visible {
   outline: 2px solid var(--color-primary-ring);
   outline-offset: 2px;
 }
 
-.aclSeasonTabs button.isActive,
-.aclDivisionTabs button.isActive {
+.aclDivisionTabs button.isActive,
+.aclViewTabs button.isActive,
+.aclRoundTabs button.isActive {
   background: var(--color-surface-elevated-strong);
+  border-color: var(--color-border-strong);
   color: var(--color-heading);
   box-shadow: var(--shadow-soft);
 }
 
+.aclDivisionTabs {
+  gap: var(--space-4);
+}
+
+.aclDivisionTabs button {
+  position: relative;
+  border-radius: 0;
+}
+
+.aclDivisionTabs button.isActive {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.aclDivisionTabs button.isActive::after {
+  position: absolute;
+  right: var(--space-4);
+  bottom: -17px;
+  left: var(--space-4);
+  height: 2px;
+  border-radius: 2px;
+  background: var(--color-primary);
+  content: "";
+}
+
 .aclSeasonPanel {
   overflow: hidden;
-}
-
-.aclSeasonFacts {
-  display: grid;
-  grid-template-columns: 1fr 1.15fr 1.35fr;
-  margin: 0;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.aclSeasonFacts > div {
-  min-width: 0;
-  padding: var(--space-4) var(--space-5);
-  border-right: 1px solid var(--color-border);
-}
-
-.aclSeasonFacts > div:last-child {
-  border-right: 0;
-}
-
-.aclSeasonFacts dt {
-  margin-bottom: 4px;
-  color: var(--color-subtle);
-  font-size: 0.66rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.aclSeasonFacts dd {
-  margin: 0;
-  color: var(--color-heading);
-  font-size: 0.8rem;
-  font-weight: 650;
-  line-height: 1.4;
 }
 
 .aclPanelHeader {
@@ -173,16 +206,14 @@
   padding: var(--space-2) var(--space-4);
 }
 
-.aclPanelActions {
-  display: flex;
-  gap: var(--space-2);
+.aclViewTabs button {
+  min-width: 92px;
+  padding: var(--space-2) var(--space-4);
 }
 
-.aclPanelActions a,
-.aclSeasonFooter a {
+.aclSeasonSwitch {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
   gap: var(--space-2);
   min-height: 40px;
   padding: var(--space-2) var(--space-3);
@@ -200,9 +231,46 @@
     transform 180ms ease;
 }
 
+.aclSeasonSwitch:hover {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-elevated-strong);
+  color: var(--color-heading);
+}
+
+.aclSeasonSwitch:active {
+  transform: translateY(1px);
+}
+
+.aclPanelActions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.aclPanelActions a,
+.aclSeasonFooter a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 0.82rem;
+  font-weight: 750;
+  text-decoration: none;
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
 .aclPanelActions a:hover,
 .aclSeasonFooter a:hover {
-  border-color: var(--color-border-strong);
+  border-color: var(--color-border);
   background: var(--color-surface-elevated-strong);
   color: var(--color-heading);
 }
@@ -212,26 +280,16 @@
   transform: translateY(1px);
 }
 
-.aclStandingsHeading {
+.aclViewBar {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+  align-items: center;
+  justify-content: flex-start;
   gap: var(--space-4);
   padding: var(--space-5) var(--space-6) var(--space-4);
 }
 
-.aclStandingsHeading h2 {
-  margin: 0;
-  color: var(--color-heading);
-  font-size: clamp(1.5rem, 3vw, 1.9rem);
-  letter-spacing: -0.025em;
-}
-
-.aclStandingsHeading span {
-  color: var(--color-subtle);
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
+.aclViewBar .aclRoundTabs {
+  margin-left: auto;
 }
 
 .aclTeamList {
@@ -242,7 +300,7 @@
 
 .aclTeam {
   display: grid;
-  grid-template-columns: minmax(220px, 0.9fr) minmax(300px, 1.1fr);
+  grid-template-columns: minmax(300px, 0.95fr) minmax(360px, 1.05fr);
   overflow: hidden;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
@@ -291,15 +349,16 @@
   margin: 0 0 3px;
   overflow: hidden;
   color: var(--color-heading);
-  font-size: 0.94rem;
+  font-size: 1rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.aclTeamIdentity span {
+.aclTeamRecord {
   color: var(--color-subtle);
-  font-size: 0.7rem;
-  font-weight: 700;
+  font-size: 0.88rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 
 .aclChampionMark {
@@ -307,7 +366,7 @@
   align-items: center;
   gap: 5px;
   color: color-mix(in srgb, var(--tournament-gold) 82%, var(--color-heading));
-  font-size: 0.68rem;
+  font-size: 0.74rem;
   font-weight: 800;
 }
 
@@ -338,13 +397,13 @@
   grid-row: 1 / span 2;
   align-self: center;
   color: var(--color-subtle);
-  font-size: 0.66rem;
+  font-size: 0.72rem;
   font-weight: 800;
 }
 
 .aclRoundResult strong {
   color: var(--color-heading);
-  font-size: 0.76rem;
+  font-size: 0.82rem;
 }
 
 .aclRoundResult.isWin strong {
@@ -353,7 +412,7 @@
 
 .aclRoundResult small {
   color: var(--color-muted);
-  font-size: 0.68rem;
+  font-size: 0.74rem;
   font-variant-numeric: tabular-nums;
 }
 
@@ -380,7 +439,7 @@
 
 .aclRoster a {
   color: var(--color-muted);
-  font-size: 0.74rem;
+  font-size: 0.8rem;
   font-weight: 650;
   text-decoration: none;
 }
@@ -395,49 +454,227 @@
   text-underline-offset: 3px;
 }
 
+.aclSchedule {
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 0 var(--space-6) var(--space-6);
+}
+
+.aclRoundTabs button {
+  min-width: 48px;
+  padding: var(--space-2) var(--space-3);
+}
+
+.aclMatchupList {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.aclMatchup {
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-panel-strong);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--color-heading) 3%, transparent);
+}
+
+.aclMatchupHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 56px;
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-surface-elevated-strong) 45%, transparent);
+}
+
+.aclMatchupHeader > span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-heading);
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aclMatchupHeader > span:last-child {
+  text-align: right;
+}
+
+.aclMatchupScore {
+  display: grid;
+  grid-template-columns: minmax(28px, auto) 8px minmax(28px, auto) auto;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-heading);
+  font-size: 0.96rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.aclMatchupScore i,
+.aclBoardScore i {
+  color: var(--color-subtle);
+  font-style: normal;
+  font-weight: 500;
+}
+
+.aclMatchupScore small {
+  color: var(--color-subtle);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+}
+
+.aclBoardList {
+  display: grid;
+}
+
+.aclBoardMatch {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) 84px minmax(0, 1fr) 64px;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 52px;
+  padding: 9px var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  color: inherit;
+  text-decoration: none;
+  transition:
+    background 180ms ease,
+    color 180ms ease;
+}
+
+.aclBoardMatch:nth-child(even) {
+  background: color-mix(in srgb, var(--color-surface-elevated-strong) 24%, transparent);
+}
+
+.aclBoardMatch:last-child {
+  border-bottom: 0;
+}
+
+.aclBoardMatch.isLinked:hover {
+  background: var(--color-surface-elevated-strong);
+}
+
+.aclBoardTime {
+  display: inline-grid;
+  min-height: 26px;
+  place-items: center;
+  padding: 3px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: calc(var(--radius-sm) - 2px);
+  background: var(--color-panel);
+  color: var(--color-subtle);
+  font-size: 0.72rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.aclBoardPlayer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--color-muted);
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.aclBoardPlayer > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aclBoardPlayer.isWinner svg {
+  flex: 0 0 auto;
+  width: 0.66rem;
+  color: var(--color-success);
+}
+
+.aclBoardPlayer.isSecond {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.aclBoardScore {
+  display: grid;
+  grid-template-columns: 1fr 8px 1fr;
+  align-items: center;
+  color: var(--color-heading);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.aclBoardOpen {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-self: end;
+  color: var(--color-subtle);
+  font-size: 0.72rem;
+  font-weight: 750;
+  transition: color 180ms ease;
+}
+
+.aclBoardOpen svg {
+  width: 0.62rem;
+  transition: transform 180ms ease;
+}
+
+.aclBoardMatch.isLinked:hover .aclBoardOpen {
+  color: var(--color-heading);
+}
+
+.aclBoardMatch.isLinked:hover .aclBoardOpen svg {
+  transform: translateX(2px);
+}
+
+.aclBoardStatus {
+  justify-self: end;
+  color: var(--color-subtle);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-align: right;
+}
+
 .aclSeasonFooter {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: var(--space-4);
   padding: var(--space-4) var(--space-6);
   border-top: 1px solid var(--color-border);
 }
 
-.aclSeasonFooter p {
-  max-width: 540px;
-  margin: 0;
-  color: var(--color-muted);
-  font-size: 0.78rem;
-  line-height: 1.45;
-}
-
 @media (max-width: 720px) {
   .aclHero {
+    min-height: 164px;
     padding: var(--space-4);
   }
 
   .aclHeroMain {
-    align-items: stretch;
-    flex-direction: column;
+    grid-template-columns: minmax(0, 1fr) 78px;
+    gap: var(--space-3);
   }
 
-  .aclSeasonTabs {
-    width: fit-content;
+  .aclTrophy {
+    width: 78px;
+    height: 88px;
+    opacity: 0.86;
   }
 
-  .aclSeasonFacts {
-    grid-template-columns: 1fr;
-  }
-
-  .aclSeasonFacts > div {
-    padding: var(--space-3) var(--space-4);
-    border-right: 0;
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  .aclSeasonFacts > div:last-child {
-    border-bottom: 0;
+  .aclBackLink,
+  .aclSeasonSwitch,
+  .aclDivisionTabs button,
+  .aclViewTabs button,
+  .aclRoundTabs button {
+    min-height: 44px;
   }
 
   .aclPanelHeader {
@@ -450,16 +687,47 @@
     flex: 1;
   }
 
+  .aclDivisionTabs button.isActive::after {
+    right: var(--space-2);
+    bottom: -17px;
+    left: var(--space-2);
+  }
+
   .aclPanelActions a {
     flex: 1;
     min-height: 44px;
   }
 
-  .aclStandingsHeading {
+  .aclViewBar {
+    align-items: center;
     padding: var(--space-5) var(--space-4) var(--space-3);
   }
 
+  .aclViewTabs button {
+    flex: 1;
+    min-width: 74px;
+    padding-inline: 10px;
+  }
+
+  .aclViewTabs {
+    flex: 0 1 auto;
+  }
+
+  .aclViewBar .aclRoundTabs {
+    flex: 0 0 auto;
+    margin-left: auto;
+  }
+
+  .aclRoundTabs button {
+    min-width: 44px;
+    padding-inline: var(--space-2);
+  }
+
   .aclTeamList {
+    padding: 0 var(--space-4) var(--space-4);
+  }
+
+  .aclSchedule {
     padding: 0 var(--space-4) var(--space-4);
   }
 
@@ -485,25 +753,41 @@
   .aclSeasonFooter a {
     min-height: 44px;
   }
+
+  .aclRoster a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
 }
 
 @media (max-width: 430px) {
   .aclHeroMain h1 {
-    font-size: 2.05rem;
+    font-size: 1.55rem;
+    line-height: 1.08;
   }
 
-  .aclSeasonTabs,
+  .aclHeroMain h1 span {
+    display: block;
+  }
+
+  .aclHeroMain {
+    padding-right: 62px;
+  }
+
+  .aclSeasonDates {
+    max-width: 210px;
+    gap: 3px var(--space-2);
+    font-size: 0.78rem;
+  }
+
+  .aclTrophy {
+    right: -6px;
+    width: 68px;
+  }
+
   .aclPanelActions {
     width: 100%;
-  }
-
-  .aclSeasonTabs button {
-    flex: 1;
-    justify-content: center;
-  }
-
-  .aclPanelActions {
-    flex-direction: column;
   }
 
   .aclTeamHeader {
@@ -522,13 +806,87 @@
   .aclRoundResult > span {
     grid-row: auto;
   }
+
+  .aclMatchupHeader {
+    grid-template-columns: 1fr auto;
+  }
+
+  .aclMatchupHeader > span:last-child {
+    grid-column: 1;
+    grid-row: 2;
+    text-align: left;
+  }
+
+  .aclMatchupHeader > span {
+    overflow: visible;
+    line-height: 1.25;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  .aclMatchupHeader strong {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  .aclBoardMatch {
+    grid-template-columns: 44px minmax(0, 1fr) 64px 28px;
+    gap: var(--space-2);
+    min-height: 72px;
+    padding-right: var(--space-3);
+  }
+
+  .aclBoardPlayer.isSecond {
+    grid-column: 2;
+    grid-row: 2;
+    justify-content: flex-start;
+    text-align: left;
+  }
+
+  .aclBoardTime {
+    grid-row: 1 / span 2;
+  }
+
+  .aclBoardScore {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+  }
+
+  .aclBoardOpen,
+  .aclBoardStatus {
+    grid-column: 4;
+    grid-row: 1 / span 2;
+  }
+
+  .aclBoardOpen {
+    font-size: 0;
+  }
+
+  .aclBoardOpen svg {
+    width: 0.72rem;
+  }
+
+  .aclBoardMatch:not(.isLinked) {
+    min-height: 92px;
+  }
+
+  .aclBoardMatch:not(.isLinked) .aclBoardStatus {
+    grid-column: 2 / -1;
+    grid-row: 3;
+    justify-self: start;
+    text-align: left;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .aclBackLink svg,
-  .aclSeasonTabs button,
   .aclDivisionTabs button,
+  .aclViewTabs button,
+  .aclRoundTabs button,
+  .aclSeasonSwitch,
   .aclPanelActions a,
+  .aclBoardMatch,
+  .aclBoardOpen,
   .aclSeasonFooter a {
     transition-duration: 0.01ms;
   }

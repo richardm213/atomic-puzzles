@@ -80,7 +80,7 @@
   white-space: nowrap;
 }
 
-.copy time {
+.dates {
   color: var(--color-subtle);
   font-size: 0.78rem;
   font-variant-numeric: tabular-nums;

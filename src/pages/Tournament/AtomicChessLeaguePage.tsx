@@ -2,6 +2,7 @@ import "./AtomicChessLeaguePage.css";
 
 import {
   faArrowLeft,
+  faArrowRight,
   faArrowUpRightFromSquare,
   faCheck,
   faComment,
@@ -15,25 +16,31 @@ import { useEffect, useRef, useState } from "react";
 import { CommunityDiscussion } from "../../components/PuzzleCommunity/PuzzleCommunity";
 import { Seo } from "../../components/Seo/Seo";
 import {
+  type AtomicChessLeagueBoardMatch,
   type AtomicChessLeagueDivision,
   type AtomicChessLeagueSeason,
-  atomicChessLeagueSeasons,
   type AtomicChessLeagueTeam,
+  type AtomicChessLeagueTeamMatch,
+  getAtomicChessLeaguePlayerName,
   getAtomicChessLeagueSeason,
 } from "../../lib/matches/atomicChessLeague";
-import { normalizeUsername } from "../../utils/playerNames";
+import { appAssetPath } from "../../utils/appAssetPath";
 
-const STORAGE_KEY = "tournament-view:acl";
+type RoundNumber = 1 | 2 | 3;
+type ArchiveView = "standings" | "matches";
 
 type SavedView = {
-  season?: number;
-  divisions?: Partial<Record<AtomicChessLeagueSeason["number"], AtomicChessLeagueDivision["id"]>>;
+  division?: AtomicChessLeagueDivision["id"];
+  rounds?: Partial<Record<AtomicChessLeagueDivision["id"], RoundNumber>>;
+  view?: ArchiveView;
 };
 
-const readSavedView = (): SavedView => {
+const readSavedView = (seasonNumber: AtomicChessLeagueSeason["number"]): SavedView => {
   if (typeof window === "undefined") return {};
   try {
-    const value: unknown = JSON.parse(window.sessionStorage.getItem(STORAGE_KEY) ?? "{}");
+    const value: unknown = JSON.parse(
+      window.sessionStorage.getItem(`tournament-view:acl-s${seasonNumber}`) ?? "{}",
+    );
     return value && typeof value === "object" && !Array.isArray(value) ? value : {};
   } catch {
     return {};
@@ -41,8 +48,8 @@ const readSavedView = (): SavedView => {
 };
 
 const PlayerLink = ({ player }: { player: string }) => (
-  <Link to="/@/$username" params={{ username: normalizeUsername(player) }}>
-    {player}
+  <Link to="/@/$username" params={{ username: getAtomicChessLeaguePlayerName(player) }}>
+    {getAtomicChessLeaguePlayerName(player)}
   </Link>
 );
 
@@ -54,7 +61,12 @@ const TeamStanding = ({ team }: { team: AtomicChessLeagueTeam }) => (
       </span>
       <div className="aclTeamIdentity">
         <h3>{team.name}</h3>
-        <span>{team.wins === 1 ? "1 win" : `${team.wins} wins`}</span>
+        <span
+          className="aclTeamRecord"
+          aria-label={`Record: ${team.wins} wins and ${team.rounds.length - team.wins} losses`}
+        >
+          {team.wins}–{team.rounds.length - team.wins}
+        </span>
       </div>
       {team.rank === 1 ? (
         <span className="aclChampionMark">
@@ -85,126 +97,220 @@ const TeamStanding = ({ team }: { team: AtomicChessLeagueTeam }) => (
   </article>
 );
 
-const SeasonFacts = ({ season }: { season: AtomicChessLeagueSeason }) => (
-  <dl className="aclSeasonFacts">
-    <div>
-      <dt>Played</dt>
-      <dd>{season.dates}</dd>
+const seasonDateFormatter = new Intl.DateTimeFormat("en", {
+  month: "long",
+  day: "numeric",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+const formatSeasonDate = (date: string): string =>
+  seasonDateFormatter.format(new Date(`${date}T00:00:00Z`));
+
+const boardStatusLabel = (board: AtomicChessLeagueBoardMatch): string => {
+  if (board.status === "forfeit") return "Forfeit";
+  if (board.status === "declared") return "Declared draw";
+  if (board.status === "unplayed") return "Not played";
+  if (board.status === "unarchived") return "Not archived";
+  return "";
+};
+
+const numericScore = (score: string): number | null => {
+  if (score === "½") return 0.5;
+  const value = Number.parseFloat(score.replace("%", ""));
+  return Number.isFinite(value) ? value : null;
+};
+
+const BoardMatchContent = ({ board }: { board: AtomicChessLeagueBoardMatch }) => {
+  const player1 = board.player1 ? getAtomicChessLeaguePlayerName(board.player1) : "—";
+  const player2 = board.player2 ? getAtomicChessLeaguePlayerName(board.player2) : "—";
+  const score1 = numericScore(board.score1);
+  const score2 = numericScore(board.score2);
+  const player1Won = score1 !== null && score2 !== null && score1 > score2;
+  const player2Won = score1 !== null && score2 !== null && score2 > score1;
+
+  return (
+    <>
+      <span className="aclBoardTime">{board.timeControl}</span>
+      <span
+        className={`aclBoardPlayer${player1Won ? " isWinner" : ""}`}
+        aria-label={`${player1}${player1Won ? ", winner" : ""}`}
+      >
+        <span>{player1}</span>
+        {player1Won ? <FontAwesomeIcon icon={faCheck} aria-hidden="true" /> : null}
+      </span>
+      <strong className="aclBoardScore">
+        <span>{board.score1 || "—"}</span>
+        <i>–</i>
+        <span>{board.score2 || "—"}</span>
+      </strong>
+      <span
+        className={`aclBoardPlayer isSecond${player2Won ? " isWinner" : ""}`}
+        aria-label={`${player2}${player2Won ? ", winner" : ""}`}
+      >
+        <span>{player2}</span>
+        {player2Won ? <FontAwesomeIcon icon={faCheck} aria-hidden="true" /> : null}
+      </span>
+      {board.matchId ? (
+        <span className="aclBoardOpen">
+          Open
+          <FontAwesomeIcon icon={faArrowRight} aria-hidden="true" />
+        </span>
+      ) : (
+        <span className="aclBoardStatus">{boardStatusLabel(board)}</span>
+      )}
+    </>
+  );
+};
+
+const BoardMatchRow = ({ board }: { board: AtomicChessLeagueBoardMatch }) => {
+  const label = `${board.player1 ? getAtomicChessLeaguePlayerName(board.player1) : "Unassigned"} ${board.score1 || ""}–${board.score2 || ""} ${board.player2 ? getAtomicChessLeaguePlayerName(board.player2) : "Unassigned"}`;
+  const className = `aclBoardMatch${board.matchId ? " isLinked" : ""}`;
+
+  if (board.matchId) {
+    return (
+      <Link
+        className={className}
+        to="/matches/$matchId"
+        params={{ matchId: board.matchId }}
+        aria-label={`Open ${label}`}
+      >
+        <BoardMatchContent board={board} />
+      </Link>
+    );
+  }
+
+  return (
+    <div className={className} aria-label={label}>
+      <BoardMatchContent board={board} />
     </div>
-    <div>
-      <dt>Format</dt>
-      <dd>8 teams · 2 leagues · 3 rounds</dd>
+  );
+};
+
+const TeamMatchCard = ({ matchup }: { matchup: AtomicChessLeagueTeamMatch }) => (
+  <article className="aclMatchup">
+    <header className="aclMatchupHeader">
+      <span>{matchup.team1}</span>
+      <strong className="aclMatchupScore">
+        <span>{matchup.score1}</span>
+        <i>–</i>
+        <span>{matchup.score2}</span>
+        {matchup.tiebreak ? <small> TB</small> : null}
+      </strong>
+      <span>{matchup.team2}</span>
+    </header>
+    <div className="aclBoardList">
+      {matchup.boards.map((board, index) => (
+        <BoardMatchRow key={`${board.timeControl}-${board.player1}-${index}`} board={board} />
+      ))}
     </div>
-    <div>
-      <dt>Boards</dt>
-      <dd>
-        {season.boardCount} · {season.timeControls.join(" · ")}
-      </dd>
-    </div>
-  </dl>
+  </article>
 );
 
-export const AtomicChessLeaguePage = () => {
-  const savedViewRef = useRef(readSavedView());
-  const [seasonNumber, setSeasonNumber] = useState(savedViewRef.current.season ?? 2);
-  const [divisionBySeason, setDivisionBySeason] = useState<
-    Partial<Record<AtomicChessLeagueSeason["number"], AtomicChessLeagueDivision["id"]>>
-  >(savedViewRef.current.divisions ?? {});
+const handleTabKeyDown = <T extends string | number>(
+  event: KeyboardEvent<HTMLButtonElement>,
+  values: readonly T[],
+  activeValue: T,
+  selectValue: (value: T) => void,
+  refs: Map<T, HTMLButtonElement>,
+): void => {
+  if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+  event.preventDefault();
+  const currentIndex = values.indexOf(activeValue);
+  let nextIndex = currentIndex;
+  if (event.key === "ArrowLeft") nextIndex = Math.max(0, currentIndex - 1);
+  if (event.key === "ArrowRight") nextIndex = Math.min(values.length - 1, currentIndex + 1);
+  if (event.key === "Home") nextIndex = 0;
+  if (event.key === "End") nextIndex = values.length - 1;
+  const nextValue = values[nextIndex];
+  if (nextValue === undefined) return;
+  selectValue(nextValue);
+  window.requestAnimationFrame(() => refs.get(nextValue)?.focus());
+};
+
+export const AtomicChessLeaguePage = ({
+  seasonNumber,
+}: {
+  seasonNumber: AtomicChessLeagueSeason["number"];
+}) => {
   const season = getAtomicChessLeagueSeason(seasonNumber);
-  const divisionId = divisionBySeason[season.number] ?? "elite";
+  const savedViewRef = useRef(readSavedView(seasonNumber));
+  const [divisionId, setDivisionId] = useState<AtomicChessLeagueDivision["id"]>(
+    savedViewRef.current.division ?? "elite",
+  );
+  const [roundByDivision, setRoundByDivision] = useState<
+    Partial<Record<AtomicChessLeagueDivision["id"], RoundNumber>>
+  >(savedViewRef.current.rounds ?? {});
+  const [view, setView] = useState<ArchiveView>(savedViewRef.current.view ?? "standings");
   const division =
     season.divisions.find((entry) => entry.id === divisionId) ?? season.divisions[0]!;
-  const seasonButtonsRef = useRef(new Map<number, HTMLButtonElement>());
+  const roundNumber = roundByDivision[division.id] ?? 1;
+  const round =
+    division.rounds.find((entry) => entry.number === roundNumber) ?? division.rounds[0]!;
   const divisionButtonsRef = useRef(new Map<AtomicChessLeagueDivision["id"], HTMLButtonElement>());
+  const viewButtonsRef = useRef(new Map<ArchiveView, HTMLButtonElement>());
+  const roundButtonsRef = useRef(new Map<RoundNumber, HTMLButtonElement>());
+  const otherSeason = season.number === 2 ? 1 : 2;
 
   useEffect(() => {
     window.sessionStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ season: season.number, divisions: divisionBySeason }),
+      `tournament-view:acl-s${season.number}`,
+      JSON.stringify({ division: division.id, rounds: roundByDivision, view }),
     );
-  }, [divisionBySeason, season.number]);
+  }, [division.id, roundByDivision, season.number, view]);
 
-  const selectDivision = (nextDivision: AtomicChessLeagueDivision["id"]): void => {
-    setDivisionBySeason((current) => ({ ...current, [season.number]: nextDivision }));
+  const selectRound = (nextRound: RoundNumber): void => {
+    setRoundByDivision((current) => ({ ...current, [division.id]: nextRound }));
   };
 
-  const handleTabKeyDown = <T extends string | number>(
-    event: KeyboardEvent<HTMLButtonElement>,
-    values: readonly T[],
-    activeValue: T,
-    selectValue: (value: T) => void,
-    refs: Map<T, HTMLButtonElement>,
-  ): void => {
-    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
-    event.preventDefault();
-    const currentIndex = values.indexOf(activeValue);
-    let nextIndex = currentIndex;
-    if (event.key === "ArrowLeft") nextIndex = Math.max(0, currentIndex - 1);
-    if (event.key === "ArrowRight") nextIndex = Math.min(values.length - 1, currentIndex + 1);
-    if (event.key === "Home") nextIndex = 0;
-    if (event.key === "End") nextIndex = values.length - 1;
-    const nextValue = values[nextIndex];
-    if (nextValue === undefined) return;
-    selectValue(nextValue);
-    window.requestAnimationFrame(() => refs.get(nextValue)?.focus());
-  };
+  const trophyAssetPath =
+    season.number === 1
+      ? "/images/acl-trophies/team-orbit.png"
+      : "/images/acl-trophies/league-reactor-v2.png";
 
   return (
     <div className="tournamentPage aclPage">
       <Seo
-        title="Atomic Chess League archive"
-        description="Browse team standings, rosters, and round results from Atomic Chess League Seasons 1 and 2."
-        path="/tournaments/atomicchessleague"
+        title={`Atomic Chess League Season ${season.number} archive`}
+        description={`Browse team standings, rosters, and every round from Atomic Chess League Season ${season.number}.`}
+        path={`/tournaments/acl-s${season.number}`}
       />
 
       <section className="aclHero">
-        <Link className="aclBackLink" to="/tournaments">
-          <FontAwesomeIcon icon={faArrowLeft} aria-hidden="true" />
-          Tournaments
-        </Link>
+        <div className="aclHeroTopRow">
+          <Link className="aclBackLink" to="/tournaments">
+            <FontAwesomeIcon icon={faArrowLeft} aria-hidden="true" />
+            Tournaments
+          </Link>
+          <Link
+            className="aclSeasonSwitch"
+            to="/tournaments/$tournamentId"
+            params={{ tournamentId: `acl-s${otherSeason}` }}
+          >
+            Season {otherSeason}
+            <FontAwesomeIcon icon={faArrowRight} aria-hidden="true" />
+          </Link>
+        </div>
         <div className="aclHeroMain">
-          <h1>Atomic Chess League</h1>
-          <div className="aclSeasonTabs" role="tablist" aria-label="Select a season">
-            {atomicChessLeagueSeasons.map((entry) => (
-              <button
-                key={entry.number}
-                ref={(element) => {
-                  if (element) seasonButtonsRef.current.set(entry.number, element);
-                  else seasonButtonsRef.current.delete(entry.number);
-                }}
-                type="button"
-                role="tab"
-                aria-selected={entry.number === season.number}
-                aria-controls="acl-season-panel"
-                tabIndex={entry.number === season.number ? 0 : -1}
-                className={entry.number === season.number ? "isActive" : ""}
-                onClick={() => setSeasonNumber(entry.number)}
-                onKeyDown={(event) =>
-                  handleTabKeyDown(
-                    event,
-                    atomicChessLeagueSeasons.map((item) => item.number),
-                    season.number,
-                    setSeasonNumber,
-                    seasonButtonsRef.current,
-                  )
-                }
-              >
-                Season {entry.number}
-                <span>{entry.year}</span>
-              </button>
-            ))}
+          <div className="aclHeroCopy">
+            <h1>
+              Atomic Chess League <span>Season {season.number}</span>
+            </h1>
+            <p className="aclSeasonDates">
+              <time dateTime={season.startDate}>{formatSeasonDate(season.startDate)}</time>
+              <span aria-hidden="true">–</span>
+              <time dateTime={season.endDate}>{formatSeasonDate(season.endDate)}</time>
+            </p>
           </div>
+          <img
+            className="aclTrophy"
+            src={appAssetPath(trophyAssetPath)}
+            alt={`Atomic Chess League Season ${season.number} trophy`}
+          />
         </div>
       </section>
 
-      <section
-        id="acl-season-panel"
-        className="aclSeasonPanel"
-        role="tabpanel"
-        aria-label={`Season ${season.number}`}
-      >
-        <SeasonFacts season={season} />
-
+      <section className="aclSeasonPanel" aria-label={`Season ${season.number}`}>
         <div className="aclPanelHeader">
           <div className="aclDivisionTabs" role="tablist" aria-label="Select a league">
             {season.divisions.map((entry) => (
@@ -220,13 +326,13 @@ export const AtomicChessLeaguePage = () => {
                 aria-controls="acl-division-panel"
                 tabIndex={entry.id === division.id ? 0 : -1}
                 className={entry.id === division.id ? "isActive" : ""}
-                onClick={() => selectDivision(entry.id)}
+                onClick={() => setDivisionId(entry.id)}
                 onKeyDown={(event) =>
                   handleTabKeyDown(
                     event,
                     season.divisions.map((item) => item.id),
                     division.id,
-                    selectDivision,
+                    setDivisionId,
                     divisionButtonsRef.current,
                   )
                 }
@@ -248,19 +354,89 @@ export const AtomicChessLeaguePage = () => {
         </div>
 
         <div id="acl-division-panel" role="tabpanel" aria-label={division.name}>
-          <div className="aclStandingsHeading">
-            <h2>{division.name}</h2>
-            <span>Final standings</span>
+          <div className="aclViewBar">
+            <div className="aclViewTabs" role="tablist" aria-label="Choose archive view">
+              {(["standings", "matches"] as const).map((entry) => (
+                <button
+                  key={entry}
+                  ref={(element) => {
+                    if (element) viewButtonsRef.current.set(entry, element);
+                    else viewButtonsRef.current.delete(entry);
+                  }}
+                  type="button"
+                  role="tab"
+                  aria-selected={entry === view}
+                  aria-controls="acl-view-panel"
+                  tabIndex={entry === view ? 0 : -1}
+                  className={entry === view ? "isActive" : ""}
+                  onClick={() => setView(entry)}
+                  onKeyDown={(event) =>
+                    handleTabKeyDown(
+                      event,
+                      ["standings", "matches"],
+                      view,
+                      setView,
+                      viewButtonsRef.current,
+                    )
+                  }
+                >
+                  {entry === "standings" ? "Standings" : "Matches"}
+                </button>
+              ))}
+            </div>
+            {view === "matches" ? (
+              <div className="aclRoundTabs" role="tablist" aria-label="Select a round">
+                {division.rounds.map((entry) => (
+                  <button
+                    key={entry.number}
+                    ref={(element) => {
+                      if (element) roundButtonsRef.current.set(entry.number, element);
+                      else roundButtonsRef.current.delete(entry.number);
+                    }}
+                    type="button"
+                    role="tab"
+                    aria-selected={entry.number === round.number}
+                    aria-controls="acl-round-panel"
+                    tabIndex={entry.number === round.number ? 0 : -1}
+                    className={entry.number === round.number ? "isActive" : ""}
+                    onClick={() => selectRound(entry.number)}
+                    onKeyDown={(event) =>
+                      handleTabKeyDown(
+                        event,
+                        division.rounds.map((item) => item.number),
+                        round.number,
+                        selectRound,
+                        roundButtonsRef.current,
+                      )
+                    }
+                  >
+                    R{entry.number}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
-          <div className="aclTeamList">
-            {division.teams.map((team) => (
-              <TeamStanding key={team.name} team={team} />
-            ))}
+
+          <div id="acl-view-panel" role="tabpanel">
+            {view === "standings" ? (
+              <div className="aclTeamList">
+                {division.teams.map((team) => (
+                  <TeamStanding key={team.name} team={team} />
+                ))}
+              </div>
+            ) : (
+              <section className="aclSchedule" aria-label={`${division.name} matches`}>
+                <div id="acl-round-panel" className="aclMatchupList" role="tabpanel">
+                  {round.matchups.map((matchup) => (
+                    <TeamMatchCard key={`${matchup.team1}-${matchup.team2}`} matchup={matchup} />
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
         </div>
 
         <footer className="aclSeasonFooter">
-          <p>{season.scoring}</p>
           <a href={season.teamsUrl} target="_blank" rel="noreferrer">
             Teams and rules
             <FontAwesomeIcon icon={faArrowUpRightFromSquare} aria-hidden="true" />
@@ -269,7 +445,7 @@ export const AtomicChessLeaguePage = () => {
       </section>
 
       <div id="tournament-comments" className="tournamentCommentsSection">
-        <CommunityDiscussion target={{ type: "tournament", id: `acl-season-${season.number}` }} />
+        <CommunityDiscussion target={{ type: "tournament", id: `acl-s${season.number}` }} />
       </div>
     </div>
   );
