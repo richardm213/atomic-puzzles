@@ -228,6 +228,9 @@ export const PlayerProfilePage = ({
     () => getRatingDisplayByMode(ratingsSnapshotByMode, canonicalUsername),
     [ratingsSnapshotByMode, canonicalUsername],
   );
+  const hasWolfrandomRating = Number.isFinite(ratingDisplayByMode.wolfrandom.currentRating);
+  const showsBannedWolfrandomRating =
+    isBanned && hasWolfrandomRating && !hideWolfrandomProfileRatings;
   const profileModeOptions = useMemo(
     () =>
       modeOptions.filter(
@@ -628,12 +631,22 @@ export const PlayerProfilePage = ({
             monthRank?.monthKey ?? "",
           ]),
         ),
-      ).filter(
-        (row) =>
-          row.key !== "wolfrandom-row" ||
-          (!hideWolfrandomProfileRatings && profileModeOptions.includes("wolfrandom")),
-      ),
-    [hideWolfrandomProfileRatings, latestMonthKeyByMode, profileModeOptions, ratingDisplayByMode],
+      ).filter((row) => {
+        if (row.key !== "wolfrandom-row") return !isBanned;
+        return (
+          !hideWolfrandomProfileRatings &&
+          profileModeOptions.includes("wolfrandom") &&
+          (!isBanned || hasWolfrandomRating)
+        );
+      }),
+    [
+      hasWolfrandomRating,
+      hideWolfrandomProfileRatings,
+      isBanned,
+      latestMonthKeyByMode,
+      profileModeOptions,
+      ratingDisplayByMode,
+    ],
   );
   const rankingTrophies = useMemo(() => getRankingTrophies(monthRanks), [monthRanks]);
   const championshipTrophies = useMemo(
@@ -757,16 +770,21 @@ export const PlayerProfilePage = ({
               </div>
               <p>
                 This player was banned by Lichess or deemed highly suspicious, so we do not include
-                them in the rating system.
+                them in the standard rating system.
+                {showsBannedWolfrandomRating
+                  ? " Their Wolfrandom rating is still shown below."
+                  : ""}
               </p>
               <div className="profileBanActions" aria-label="Fair play links">
                 <Link to="/users/banned">Banned user list</Link>
               </div>
             </div>
           </section>
-        ) : !historyOnly ? (
+        ) : null}
+
+        {!historyOnly && (!isBanned || profileMetricRows.length > 0) ? (
           <div id="profile-rating-view" className="profileRatingView">
-            {showRatingGraph ? (
+            {!isBanned && showRatingGraph ? (
               <Suspense fallback={<p role="status">Loading rating graph…</p>}>
                 <RatingHistoryGraph key={canonicalUsername} username={canonicalUsername} />
               </Suspense>

@@ -7,6 +7,7 @@ import { createModeRecord } from "../../constants/matches";
 import { AppSettingsProvider } from "../../context/AppSettings";
 import { profileQueryKeys } from "../../features/profile/profileQueries";
 import { aliasQueryKeys } from "../../lib/users/aliasQueries";
+import { userQueryKeys } from "../../lib/users/userQueries";
 import { PlayerProfilePage } from "./PlayerProfile";
 
 const loadRawMatchesByMode = vi.hoisted(() => vi.fn());
@@ -36,14 +37,49 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const renderProfile = () =>
+const renderProfile = ({ historyOnly = true }: { historyOnly?: boolean } = {}) =>
   render(
     <AppSettingsProvider>
       <QueryClientProvider client={client}>
-        <PlayerProfilePage username="alice" historyOnly />
+        <PlayerProfilePage username="alice" historyOnly={historyOnly} />
       </QueryClientProvider>
     </AppSettingsProvider>,
   );
+
+describe("banned profile ratings", () => {
+  it("still shows an available Wolfrandom rating", async () => {
+    client.setQueryData(aliasQueryKeys.identity("alice"), {
+      username: "alice",
+      banned: true,
+      accounts: [],
+    });
+    const ratings = createModeRecord(() => new Map());
+    ratings.wolfrandom.set("alice", {
+      currentRating: 2140,
+      peakRating: 2195,
+      peakDate: "2026-09-18",
+      currentRd: 52,
+      gamesPlayed: 31,
+      rank: 4,
+      topWins: [],
+    });
+    client.setQueryData(profileQueryKeys.ratingsSnapshot("alice"), ratings);
+    client.setQueryData(profileQueryKeys.monthRanks("alice"), []);
+    client.setQueryData(["profile", "alice", "tournament-trophies"], []);
+    client.setQueryData(userQueryKeys.aliasRegistration(["alice"]), null);
+    loadRawMatchesByMode.mockResolvedValue({ matches: [], total: 0 });
+
+    renderProfile({ historyOnly: false });
+
+    const wolfrandomRatings = await screen.findByRole("region", {
+      name: "Wolfrandom ratings",
+    });
+    expect(within(wolfrandomRatings).getByText("2140")).toBeInTheDocument();
+    expect(within(wolfrandomRatings).getByText("31")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Blitz ratings" })).not.toBeInTheDocument();
+    expect(screen.getByText(/Wolfrandom rating is still shown below/)).toBeInTheDocument();
+  });
+});
 
 describe("profile match pagination", () => {
   it("keeps an uncached next page selected while loading, then supports Previous", async () => {
