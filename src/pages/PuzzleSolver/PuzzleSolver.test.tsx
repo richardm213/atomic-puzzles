@@ -906,14 +906,14 @@ describe("PuzzleSolverPage solution options", () => {
     );
   });
 
-  it("shows AWC puzzle-set metadata without repeating its date", async () => {
+  it("shows AWC puzzle-set metadata on a regular puzzle URL without repeating its date", async () => {
     const puzzleSet = {
       id: 8,
       event_name: "AWC 2026",
       event_date: "2026-07-09",
       players: ["Alpha", "Beta"],
     };
-    mocks.routeParams = { puzzleId: "1369", setKey: "8", setId: "" };
+    mocks.routeParams = { puzzleId: "1369", setKey: "", setId: "" };
     mocks.loadPuzzleCatalog.mockResolvedValueOnce([
       {
         id: 1369,

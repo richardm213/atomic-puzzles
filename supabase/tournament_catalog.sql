@@ -31,6 +31,7 @@ create table if not exists public.tournament_catalog (
   title text not null check (length(btrim(title)) between 1 and 120),
   heading_title text check (heading_title is null or length(btrim(heading_title)) between 1 and 160),
   year smallint not null check (year between 1900 and 2200),
+  start_date date,
   status text not null default 'pending' check (status in ('available', 'pending')),
   match_mode text not null default 'blitz'
     check (match_mode in ('hyperbullet', 'bullet', 'blitz', 'wolfrandom', 'atomic960')),
@@ -47,6 +48,9 @@ create table if not exists public.tournament_catalog (
 
 alter table public.tournament_catalog
   add column if not exists home_feature_order smallint;
+
+alter table public.tournament_catalog
+  add column if not exists start_date date;
 
 create index if not exists tournament_catalog_archive_order_idx
   on public.tournament_catalog (status, year desc, display_order, id);
@@ -105,6 +109,7 @@ insert into public.tournament_catalog (
   title,
   heading_title,
   year,
+  start_date,
   status,
   match_mode,
   hide_start_round_controls,
@@ -116,26 +121,27 @@ insert into public.tournament_catalog (
   display_order
 )
 values
-  ('awc2026', 'awc', 'Atomic World Championship', 'AWC 2026', null, 2026, 'available', 'blitz', false, 'Round of 64', 'Round of 16', '/images/awc-trophies/awc.png', true, 10, 10),
-  ('aoc2026', 'aoc', 'Atomic Openings Championship', 'AOC 2026', 'Atomic Openings Championship 2026', 2026, 'available', 'blitz', false, null, null, '/images/awc-trophies/atomic-openings-championship.png', true, null, 20),
-  ('ahc2026', 'ahc', 'Atomic Hyper Championship', 'AHC 2026', 'Atomic Hyper Championship 2026', 2026, 'available', 'hyperbullet', false, null, 'Round of 32', '/images/awc-trophies/atomic-hyper-championship.png', true, 20, 30),
-  ('ccac2026', 'ccac', 'Chess.com Atomic Championship', 'CCAC 2026', 'Chess.com Atomic Championship 2026', 2026, 'available', 'blitz', true, null, null, '/images/awc-trophies/chesscomatomic.png', true, 30, 40),
-  ('awc2025', 'awc', 'Atomic World Championship', 'AWC 2025', null, 2025, 'available', 'blitz', false, null, null, '/images/awc-trophies/awc.png', true, null, 10),
-  ('awc2024', 'awc', 'Atomic World Championship', 'AWC 2024', null, 2024, 'available', 'blitz', false, null, null, '/images/awc-trophies/awc.png', true, null, 10),
-  ('awc2023', 'awc', 'Atomic World Championship', 'AWC 2023', null, 2023, 'available', 'blitz', false, null, null, '/images/awc-trophies/awc.png', true, null, 10),
-  ('awc2022', 'awc', 'Atomic World Championship', 'AWC 2022', null, 2022, 'available', 'blitz', false, null, null, '/images/awc-trophies/awc.png', true, null, 10),
-  ('awc2021', 'awc', 'Atomic World Championship', 'AWC 2021', null, 2021, 'available', 'blitz', false, null, null, '/images/awc-trophies/awc.png', true, null, 10),
-  ('awc2020', 'awc', 'Atomic World Championship', 'AWC 2020', null, 2020, 'available', 'blitz', false, null, null, '/images/awc-trophies/awc.png', true, null, 10),
-  ('awc2019', 'awc', 'Atomic World Championship', 'AWC 2019', null, 2019, 'available', 'blitz', false, null, null, '/images/awc-trophies/awc.png', true, null, 10),
-  ('awc2018', 'awc', 'Atomic World Championship', 'AWC 2018', null, 2018, 'available', 'blitz', false, null, null, '/images/awc-trophies/awc.png', true, null, 10),
-  ('awc2017', 'awc', 'Atomic World Championship', 'AWC 2017', null, 2017, 'available', 'blitz', false, null, null, '/images/awc-trophies/awc.png', true, null, 10),
-  ('awc2016', 'awc', 'Atomic World Championship', 'AWC 2016', null, 2016, 'available', 'blitz', false, null, null, '/images/awc-trophies/awc.png', true, null, 10)
+  ('awc2026', 'awc', 'Atomic World Championship', 'AWC 2026', null, 2026, '2026-09-07', 'available', 'blitz', false, 'Round of 64', 'Round of 16', '/images/awc-trophies/awc.png', true, 10, 10),
+  ('aoc2026', 'aoc', 'Atomic Openings Championship', 'AOC 2026', 'Atomic Openings Championship 2026', 2026, '2026-07-02', 'available', 'blitz', false, null, null, '/images/awc-trophies/atomic-openings-championship.png', true, null, 20),
+  ('ahc2026', 'ahc', 'Atomic Hyper Championship', 'AHC 2026', 'Atomic Hyper Championship 2026', 2026, '2026-07-10', 'available', 'hyperbullet', false, null, 'Round of 32', '/images/awc-trophies/atomic-hyper-championship.png', true, 20, 30),
+  ('ccac2026', 'ccac', 'Chess.com Atomic Championship', 'CCAC 2026', 'Chess.com Atomic Championship 2026', 2026, '2026-03-04', 'available', 'blitz', true, null, null, '/images/awc-trophies/chesscomatomic.png', true, 30, 40),
+  ('awc2025', 'awc', 'Atomic World Championship', 'AWC 2025', null, 2025, '2025-09-03', 'available', 'blitz', false, null, null, '/images/awc-trophies/awc.png', true, null, 10),
+  ('awc2024', 'awc', 'Atomic World Championship', 'AWC 2024', null, 2024, '2024-09-11', 'available', 'blitz', false, null, null, '/images/awc-trophies/awc.png', true, null, 10),
+  ('awc2023', 'awc', 'Atomic World Championship', 'AWC 2023', null, 2023, '2023-09-11', 'available', 'blitz', false, null, null, '/images/awc-trophies/awc.png', true, null, 10),
+  ('awc2022', 'awc', 'Atomic World Championship', 'AWC 2022', null, 2022, '2022-09-12', 'available', 'blitz', false, null, null, '/images/awc-trophies/awc.png', true, null, 10),
+  ('awc2021', 'awc', 'Atomic World Championship', 'AWC 2021', null, 2021, '2021-09-13', 'available', 'blitz', false, null, null, '/images/awc-trophies/awc.png', true, null, 10),
+  ('awc2020', 'awc', 'Atomic World Championship', 'AWC 2020', null, 2020, '2020-09-07', 'available', 'blitz', false, null, null, '/images/awc-trophies/awc.png', true, null, 10),
+  ('awc2019', 'awc', 'Atomic World Championship', 'AWC 2019', null, 2019, '2019-09-09', 'available', 'blitz', false, null, null, '/images/awc-trophies/awc.png', true, null, 10),
+  ('awc2018', 'awc', 'Atomic World Championship', 'AWC 2018', null, 2018, '2018-09-24', 'available', 'blitz', false, null, null, '/images/awc-trophies/awc.png', true, null, 10),
+  ('awc2017', 'awc', 'Atomic World Championship', 'AWC 2017', null, 2017, '2017-10-30', 'available', 'blitz', false, null, null, '/images/awc-trophies/awc.png', true, null, 10),
+  ('awc2016', 'awc', 'Atomic World Championship', 'AWC 2016', null, 2016, '2016-09-12', 'available', 'blitz', false, null, null, '/images/awc-trophies/awc.png', true, null, 10)
 on conflict (id) do update set
   series_key = excluded.series_key,
   series_name = excluded.series_name,
   title = excluded.title,
   heading_title = excluded.heading_title,
   year = excluded.year,
+  start_date = excluded.start_date,
   status = excluded.status,
   match_mode = excluded.match_mode,
   hide_start_round_controls = excluded.hide_start_round_controls,

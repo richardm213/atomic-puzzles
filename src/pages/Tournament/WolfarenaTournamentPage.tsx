@@ -24,6 +24,7 @@ import {
 } from "../../lib/matches/wolfarena";
 import { wolfarenaTournamentQueryOptions } from "../../lib/matches/wolfarenaQueries";
 import { appAssetPath } from "../../utils/appAssetPath";
+import { formatCalendarDate } from "../../utils/formatters";
 import { normalizeUsername } from "../../utils/playerNames";
 
 const STORAGE_KEY = "tournament-view:wr-arena2026:round";
@@ -209,6 +210,11 @@ const WolfarenaTournamentArchive = ({
             Tournaments
           </Link>
           <h1>{wolfarena2026.title}</h1>
+          {tournamentMeta?.startDate ? (
+            <time className="tournamentStartDate" dateTime={tournamentMeta.startDate}>
+              Started {formatCalendarDate(tournamentMeta.startDate)}
+            </time>
+          ) : null}
           <ol className="wolfarenaPodium" aria-label="Final tournament podium">
             {finalPodium.map((standing) => (
               <li key={standing.player}>

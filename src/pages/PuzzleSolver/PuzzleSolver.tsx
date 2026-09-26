@@ -617,7 +617,7 @@ export const PuzzleSolverPage = () => {
     : puzzles.length > 0;
   const hasCompletedPuzzleSet = isSetSolveMode && !canGoToNextPuzzle && boardState.solved;
   const showPuzzleSetMetadata = Boolean(
-    isSetSolveMode && !isCustomSetSolveMode && activePuzzleSetMetadata?.eventName,
+    !isCustomSetSolveMode && activePuzzleSetMetadata?.eventName,
   );
   const puzzleSetDate =
     activePuzzleSetMetadata && !isAwcPuzzleEvent(activePuzzleSetMetadata.eventName)

@@ -80,6 +80,13 @@
   white-space: nowrap;
 }
 
+.copy time {
+  color: var(--color-subtle);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+}
+
 .champion {
   position: relative;
   z-index: 2;
