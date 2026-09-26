@@ -191,6 +191,7 @@ with puzzle_set_sources(previous_event_name, event_name, previous_event_date, ev
     ('AWC', 'AWC 2025 Round of 64', '2025-09', '2025-09-21', array['Blackjack','Sircachetes'], 'tUvUftLZ'),
     ('AWC', 'AWC 2025 Round of 32', '2025-09', '2025-09-28', array['Max','Sircachetes'], 'IJL3lXpE'),
     ('AWC', 'AWC 2025 Round of 16', '2025-10', '2025-10-08', array['Randoom','Wolfram'], '75L7QLTy'),
+    ('AWC', 'AWC 2025 Round of 16', '2025-10', '2025-10-12', array['Rechesster','Seaside'], 'lOVW9Mod'),
     ('Blitz 10-game match', '3+2 match', '2026-03', '2026-03-19', array['Opabinia','Rechesster'], 'CYLH7bBT'),
     ('Blitz 10-game match', '3+2 match', '2026-09', '2026-09-20', array['Max','Wolfram'], 'irgn69Ce'),
     ('Blitz 10-game match', '3+2 match', '2026-09', '2026-09-10', array['Rechesster','Wolfram'], '3OG5r1jh')
@@ -225,6 +226,7 @@ with puzzle_set_sources(previous_event_name, event_name, previous_event_date, ev
     ('AWC', 'AWC 2025 Round of 64', '2025-09', '2025-09-21', array['Blackjack','Sircachetes'], 'tUvUftLZ'),
     ('AWC', 'AWC 2025 Round of 32', '2025-09', '2025-09-28', array['Max','Sircachetes'], 'IJL3lXpE'),
     ('AWC', 'AWC 2025 Round of 16', '2025-10', '2025-10-08', array['Randoom','Wolfram'], '75L7QLTy'),
+    ('AWC', 'AWC 2025 Round of 16', '2025-10', '2025-10-12', array['Rechesster','Seaside'], 'lOVW9Mod'),
     ('Blitz 10-game match', '3+2 match', '2026-03', '2026-03-19', array['Opabinia','Rechesster'], 'CYLH7bBT'),
     ('Blitz 10-game match', '3+2 match', '2026-09', '2026-09-20', array['Max','Wolfram'], 'irgn69Ce'),
     ('Blitz 10-game match', '3+2 match', '2026-09', '2026-09-10', array['Rechesster','Wolfram'], '3OG5r1jh')

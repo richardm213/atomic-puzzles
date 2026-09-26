@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => ({
     onStateChange?: (state: unknown) => void;
   }>,
   attemptedPuzzleIds: new Set(["1369"]),
+  fetchAttemptedPuzzleIds: vi.fn(),
   fetchCustomPuzzleSet: vi.fn(),
   fetchPuzzleAttemptsForPuzzle: vi.fn(),
   loadPuzzleCatalog: vi.fn(),
@@ -108,7 +109,7 @@ vi.mock("../../lib/puzzles/puzzleIssues", () => ({
 }));
 
 vi.mock("../../lib/supabase/puzzleProgress", () => ({
-  fetchAttemptedPuzzleIds: vi.fn(async () => new Set(mocks.attemptedPuzzleIds)),
+  fetchAttemptedPuzzleIds: mocks.fetchAttemptedPuzzleIds,
   fetchPuzzleAttemptsForPuzzle: mocks.fetchPuzzleAttemptsForPuzzle,
   recordPuzzleProgress: mocks.recordPuzzleProgress,
 }));
@@ -199,6 +200,9 @@ describe("PuzzleSolverPage solution options", () => {
   beforeEach(() => {
     mocks.chessboardProps.length = 0;
     mocks.attemptedPuzzleIds = new Set(["1369"]);
+    mocks.fetchAttemptedPuzzleIds
+      .mockReset()
+      .mockImplementation(async () => new Set(mocks.attemptedPuzzleIds));
     mocks.fetchPuzzleAttemptsForPuzzle.mockReset().mockResolvedValue([
       {
         username: "solver",
@@ -341,6 +345,66 @@ describe("PuzzleSolverPage solution options", () => {
     for (const [puzzleIds] of mocks.loadPuzzlesById.mock.calls) {
       expect(puzzleIds.length).toBeLessThanOrEqual(4);
     }
+  });
+
+  it("waits for progress before choosing a random puzzle and skips attempted puzzles", async () => {
+    mocks.routeParams = { puzzleId: "", setKey: "" };
+    mocks.loadPuzzleCatalog.mockResolvedValueOnce(
+      [1, 2].map((puzzleId) => ({
+        id: puzzleId,
+        fen: "",
+        solution: "",
+        puzzleId,
+        author: mocks.puzzleAuthor,
+        event: "ACL 2024",
+        explanation: "",
+      })),
+    );
+
+    let resolveProgress: (ids: Set<string>) => void = () => undefined;
+    mocks.fetchAttemptedPuzzleIds.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveProgress = resolve;
+      }),
+    );
+
+    render(<PuzzleSolverPage />);
+
+    await waitFor(() => expect(mocks.loadPuzzleCatalog).toHaveBeenCalledOnce());
+    expect(mocks.navigate).not.toHaveBeenCalled();
+
+    resolveProgress(new Set(["1"]));
+
+    await waitFor(() =>
+      expect(mocks.navigate).toHaveBeenCalledWith({
+        to: "/solve/$puzzleId",
+        params: { puzzleId: "2" },
+        replace: true,
+      }),
+    );
+  });
+
+  it("does not fall back to a previously attempted puzzle when none remain", async () => {
+    mocks.routeParams = { puzzleId: "", setKey: "" };
+    mocks.attemptedPuzzleIds = new Set(["1"]);
+    mocks.loadPuzzleCatalog.mockResolvedValueOnce([
+      {
+        id: 1,
+        fen: "",
+        solution: "",
+        puzzleId: 1,
+        author: mocks.puzzleAuthor,
+        event: "ACL 2024",
+        explanation: "",
+      },
+    ]);
+
+    render(<PuzzleSolverPage />);
+
+    await waitFor(() => expect(mocks.fetchAttemptedPuzzleIds).toHaveBeenCalledOnce());
+    await act(async () => Promise.resolve());
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("mock-board")).not.toBeInTheDocument();
   });
 
   it("uses an in-flight prefetch when Next selects that puzzle", async () => {

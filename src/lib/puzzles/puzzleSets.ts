@@ -107,6 +107,7 @@ const knownPuzzleSetSourceIds: Readonly<Record<number, string>> = {
   32: "sHD4NH5z",
   33: "K2GJJJnb",
   37: "s1XjJvZ8",
+  1496: "lOVW9Mod",
 };
 
 const getPuzzleSetSourceId = (puzzle: Puzzle): string => {

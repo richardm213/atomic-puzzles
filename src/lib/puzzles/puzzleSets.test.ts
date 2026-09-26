@@ -140,6 +140,21 @@ describe("groupPuzzlesByEvent", () => {
     expect(group?.sourceId).toBe("IJL3lXpE");
   });
 
+  it("links the Rechesster-Seaside AWC 2025 set to its source match", () => {
+    const [group] = groupPuzzlesByEvent([
+      makePuzzle({
+        puzzleId: 2353,
+        puzzle_set_id: 1496,
+        puzzle_set: makeSet(1496, "AWC 2025 Round of 16", "2025-10-12", [
+          "rechesster",
+          "seaside_tiramisu",
+        ]),
+      }),
+    ]);
+
+    expect(group?.sourceId).toBe("lOVW9Mod");
+  });
+
   it("does not repeat a separate date in an AWC display name", () => {
     const [group] = groupPuzzlesByEvent([
       makePuzzle({
@@ -157,13 +172,7 @@ describe("groupPuzzlesByEvent", () => {
       makePuzzle({
         puzzleId: 1,
         puzzle_set_id: 12,
-        puzzle_set: makeSet(
-          12,
-          "AWC 2023 Losers Round 3",
-          "2023-11",
-          ["Jsf", "Lesha"],
-          "OqWE65nu",
-        ),
+        puzzle_set: makeSet(12, "AWC 2023 Losers Round 3", "2023-11", ["Jsf", "Lesha"], "OqWE65nu"),
       }),
     ]);
 

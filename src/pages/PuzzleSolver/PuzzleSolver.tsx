@@ -244,10 +244,11 @@ export const PuzzleSolverPage = () => {
     setKey: routeSetKey = "",
     setId: routeCustomSetId = "",
   } = useParams({ strict: false });
-  const { login, user } = useAuth();
+  const { isLoading: isAuthLoading, login, user } = useAuth();
   const { pieceSet, showPuzzleTimer } = useAppSettings();
   const [puzzles, setPuzzles] = useState<Puzzle[]>([]);
   const [attemptedPuzzleIds, setAttemptedPuzzleIds] = useState<Set<string>>(() => new Set());
+  const [attemptedPuzzleIdsOwner, setAttemptedPuzzleIdsOwner] = useState<string | null>(null);
   const [resolvedAttemptedPuzzleIds, setResolvedAttemptedPuzzleIds] = useState<Set<string>>(
     () => new Set(),
   );
@@ -343,6 +344,10 @@ export const PuzzleSolverPage = () => {
   });
   const customPuzzleSet = customPuzzleSetQuery.data;
   const isCustomSetRoute = Boolean(routeCustomSetId);
+  const attemptedPuzzleIdsUsername = normalizeUsername(user?.username);
+  const attemptedPuzzleIdsReady =
+    !isAuthLoading &&
+    (!attemptedPuzzleIdsUsername || attemptedPuzzleIdsOwner === attemptedPuzzleIdsUsername);
   const orderedSetPuzzleIndexes = useMemo(
     () =>
       customPuzzleSet
@@ -382,13 +387,13 @@ export const PuzzleSolverPage = () => {
 
   const getNextShuffledPuzzleIndex = useCallback(
     (currentIndex: number): number => {
+      if (!attemptedPuzzleIdsReady) return -1;
       if (puzzles.length === 0) return -1;
-      if (puzzles.length === 1) return 0;
 
       ensureUpcomingPuzzleIndexes(currentIndex);
       return upcomingPuzzleIndexesRef.current.pop() ?? -1;
     },
-    [ensureUpcomingPuzzleIndexes, puzzles.length],
+    [attemptedPuzzleIdsReady, ensureUpcomingPuzzleIndexes, puzzles.length],
   );
 
   const mergeLoadedPuzzles = useCallback((loadedPuzzles: Puzzle[]): void => {
@@ -472,17 +477,31 @@ export const PuzzleSolverPage = () => {
   }, []);
 
   useEffect(() => {
+    if (isAuthLoading) return undefined;
+
     let isCurrent = true;
+    const username = normalizeUsername(user?.username);
+
+    if (!username) {
+      setAttemptedPuzzleIds(new Set());
+      setAttemptedPuzzleIdsOwner("");
+      return undefined;
+    }
+
+    setAttemptedPuzzleIds(new Set());
+    setAttemptedPuzzleIdsOwner(null);
 
     const loadAttemptedPuzzleIds = async () => {
       try {
-        const attemptedIds: Set<string> = user?.username
-          ? await fetchAttemptedPuzzleIds(user.username)
-          : new Set<string>();
-        if (isCurrent) setAttemptedPuzzleIds(attemptedIds);
+        const attemptedIds = await fetchAttemptedPuzzleIds(username);
+        if (isCurrent) {
+          setAttemptedPuzzleIds(attemptedIds);
+          setAttemptedPuzzleIdsOwner(username);
+        }
       } catch (error) {
         if (!isCurrent) return;
         setAttemptedPuzzleIds(new Set());
+        setAttemptedPuzzleIdsOwner(username);
         globalThis.console?.error(error);
       }
     };
@@ -492,7 +511,7 @@ export const PuzzleSolverPage = () => {
     return () => {
       isCurrent = false;
     };
-  }, [user?.username]);
+  }, [attemptedPuzzleIdsUsername, isAuthLoading, user?.username]);
 
   useEffect(() => {
     upcomingPuzzleIndexesRef.current = [];
@@ -529,7 +548,9 @@ export const PuzzleSolverPage = () => {
     if (historyIndex >= 0) return;
 
     const indexFromRoute = puzzleIndexFromParam(puzzles, routePuzzleId);
+    if (indexFromRoute < 0 && !attemptedPuzzleIdsReady) return;
     const initialIndex = indexFromRoute >= 0 ? indexFromRoute : getNextShuffledPuzzleIndex(-1);
+    if (initialIndex < 0) return;
 
     setHistory([initialIndex]);
     setHistoryIndex(0);
@@ -540,7 +561,14 @@ export const PuzzleSolverPage = () => {
         replaceUrlWithPuzzle(puzzleId);
       }
     }
-  }, [puzzles, historyIndex, routePuzzleId, replaceUrlWithPuzzle, getNextShuffledPuzzleIndex]);
+  }, [
+    attemptedPuzzleIdsReady,
+    puzzles,
+    historyIndex,
+    routePuzzleId,
+    replaceUrlWithPuzzle,
+    getNextShuffledPuzzleIndex,
+  ]);
 
   useEffect(() => {
     if (puzzles.length === 0) return;

@@ -28,6 +28,7 @@ with exact_dates(event_name, previous_dates, event_date, players, source_id) as 
     ('AWC 2025 Round of 64', array['2025','2025-09'], '2025-09-21', array['blackjack84','sircachetes'], 'tUvUftLZ'),
     ('AWC 2025 Round of 32', array['2025','2025-09'], '2025-09-28', array['maxwellssilvrhammer','sircachetes'], 'IJL3lXpE'),
     ('AWC 2025 Round of 16', array['2025','2025-10'], '2025-10-08', array['randoomplayer','wolfram_ep'], '75L7QLTy'),
+    ('AWC 2025 Round of 16', array['2025-10','2025-10-12'], '2025-10-12', array['rechesster','seaside_tiramisu'], 'lOVW9Mod'),
     ('3+2 match', array['2026-03','2026-04'], '2026-03-19', array['opabinia','rechesster'], 'CYLH7bBT'),
     ('3+2 match', array['2026-04'], '2026-04-21', array['paper-skies','rechesster'], null),
     ('3+2 match', array['2026-09'], '2026-09-20', array['maxwellssilvrhammer','wolfram_ep'], 'irgn69Ce'),
