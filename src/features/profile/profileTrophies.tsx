@@ -25,9 +25,9 @@ export type ProfileTrophy = {
 
 export const trophyCaseSortStorageKey = "atomic-puzzles:profile-trophy-case-sort";
 const rankingTrophyAssets = {
-  top1: appAssetPath("/images/lichess-trophies/gold-cup-2.png"),
-  secondPlace: appAssetPath("/images/lichess-trophies/red-cup-2.png"),
-  top10: appAssetPath("/images/lichess-trophies/silver-cup-2.png"),
+  top1: appAssetPath("/images/atomic-rank-trophies/top-1.png"),
+  secondPlace: appAssetPath("/images/atomic-rank-trophies/top-2.png"),
+  top10: appAssetPath("/images/atomic-rank-trophies/top-10.png"),
 };
 type TournamentProfileTrophyRow = {
   award_key?: string | null;
@@ -170,17 +170,6 @@ export const sortProfileTrophies = (
     return dateDifference !== 0 ? dateDifference : left.title.localeCompare(right.title);
   });
 
-const sortChampionshipTrophiesForHeader = (trophies: ProfileTrophy[]): ProfileTrophy[] =>
-  [...trophies].sort((left, right) => {
-    const prestigeDifference = right.prestige - left.prestige;
-    if (prestigeDifference !== 0) return prestigeDifference;
-
-    const dateDifference =
-      new Date(`${right.dateValue}T00:00:00Z`).getTime() -
-      new Date(`${left.dateValue}T00:00:00Z`).getTime();
-    return dateDifference !== 0 ? dateDifference : left.title.localeCompare(right.title);
-  });
-
 export const getProfileHeaderTrophies = ({
   championshipTrophies,
   rankingTrophies,
@@ -193,12 +182,8 @@ export const getProfileHeaderTrophies = ({
   const currentRankingTrophies = rankingTrophies.filter(
     (trophy) => trophy.dateLabel === currentMonthKey,
   );
-  const orderedChampionshipTrophies = sortChampionshipTrophiesForHeader(championshipTrophies);
 
-  return sortProfileTrophies(
-    [...orderedChampionshipTrophies, ...currentRankingTrophies],
-    "prestige",
-  );
+  return sortProfileTrophies([...championshipTrophies, ...currentRankingTrophies], "date");
 };
 
 const isExternalHref = (href: string): boolean => /^https?:\/\//i.test(String(href || "").trim());

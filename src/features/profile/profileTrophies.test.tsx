@@ -118,7 +118,7 @@ describe("profile header trophies", () => {
     ]);
   });
 
-  it("prioritizes a higher-prestige championship over a more recent one", () => {
+  it("orders championships from oldest to newest regardless of prestige", () => {
     const visible = getProfileHeaderTrophies({
       championshipTrophies: [
         trophy("awc-2024", 1000, "Dec 2024", "2024-12-01"),
@@ -129,6 +129,25 @@ describe("profile header trophies", () => {
     });
 
     expect(visible.map(({ key }) => key)).toEqual(["awc-2024", "aoc-2026", "hyper-rank"]);
+  });
+
+  it("places ACL Season 1 before Season 2 and later 2026 trophies", () => {
+    const visible = getProfileHeaderTrophies({
+      championshipTrophies: [
+        trophy("atomic-hyper-2026", 970, "Aug 2026", "2026-08-19"),
+        trophy("acl-s2", 960, "Mar 2026", "2026-03-29"),
+        trophy("acl-s1", 960, "Aug 2025", "2025-08-30"),
+      ],
+      rankingTrophies: [trophy("bullet-rank", 900, "Sep 2026", "2026-09-01")],
+      currentMonthKey: "Sep 2026",
+    });
+
+    expect(visible.map(({ key }) => key)).toEqual([
+      "acl-s1",
+      "acl-s2",
+      "atomic-hyper-2026",
+      "bullet-rank",
+    ]);
   });
 
   it("uses additional championships when no current ranking trophies are available", () => {
