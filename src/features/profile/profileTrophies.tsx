@@ -192,7 +192,8 @@ const getTrophyHoverLabel = (trophy: ProfileTrophy): string =>
 
 export const ProfileTrophyLink = ({ trophy }: { trophy: ProfileTrophy }) => {
   const isWolfarenaTrophy = trophy.key.startsWith("wr-arena-");
-  const className = `profileTrophy${isWolfarenaTrophy ? " isWolfarena" : ""}`;
+  const isAclSeasonOneTrophy = trophy.key.startsWith("acl-s1");
+  const className = `profileTrophy${isWolfarenaTrophy ? " isWolfarena" : ""}${isAclSeasonOneTrophy ? " isAclSeasonOne" : ""}`;
   const content = (
     <>
       <img src={trophy.imageSrc} alt="" aria-hidden="true" />
@@ -219,6 +220,7 @@ export const ProfileTrophyLink = ({ trophy }: { trophy: ProfileTrophy }) => {
 };
 
 export const ProfileTrophyCaseCard = ({ trophy }: { trophy: ProfileTrophy }) => {
+  const isAclSeasonOneTrophy = trophy.key.startsWith("acl-s1");
   const content = (
     <>
       <img src={trophy.imageSrc} alt="" aria-hidden="true" />
@@ -233,7 +235,7 @@ export const ProfileTrophyCaseCard = ({ trophy }: { trophy: ProfileTrophy }) => 
   const label = getTrophyHoverLabel(trophy);
   return isExternalHref(trophy.href) ? (
     <a
-      className="profileTrophyCaseCard"
+      className={`profileTrophyCaseCard${isAclSeasonOneTrophy ? " isAclSeasonOne" : ""}`}
       title={label}
       aria-label={label}
       href={trophy.href}
@@ -243,7 +245,12 @@ export const ProfileTrophyCaseCard = ({ trophy }: { trophy: ProfileTrophy }) => 
       {content}
     </a>
   ) : (
-    <Link className="profileTrophyCaseCard" title={label} aria-label={label} to={trophy.href}>
+    <Link
+      className={`profileTrophyCaseCard${isAclSeasonOneTrophy ? " isAclSeasonOne" : ""}`}
+      title={label}
+      aria-label={label}
+      to={trophy.href}
+    >
       {content}
     </Link>
   );

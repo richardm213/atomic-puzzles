@@ -165,6 +165,7 @@ export const PlayerProfilePage = ({
   const [profileHistoryTab, setProfileHistoryTab] = useState<ProfileHistoryTab>(() =>
     getProfileHistoryTabFromLocation(),
   );
+  const [matchFiltersOpen, setMatchFiltersOpen] = useState(false);
   const [showRatingGraph, setShowRatingGraph] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -306,6 +307,7 @@ export const PlayerProfilePage = ({
     setRankHistorySort(null);
     setRankHistorySortDirection("asc");
     setProfileHistoryTab(getProfileHistoryTabFromLocation());
+    setMatchFiltersOpen(false);
     setPage(1);
     setExpandedMatchKeys([]);
     setOpponentRatingMin(defaultFilters.opponentRatingMin);
@@ -1126,95 +1128,6 @@ export const PlayerProfilePage = ({
               >
                 {profileHistoryTab === "matches" ? (
                   <>
-                    <form
-                      className="matchFilterPanel profileMatchFilters"
-                      onSubmit={(event) => {
-                        event.preventDefault();
-                        handleSearchClick();
-                      }}
-                    >
-                      <div className="matchFilterGrid">
-                        <label htmlFor="profile-page-size-select">
-                          Page size
-                          <select
-                            id="profile-page-size-select"
-                            value={pageSize}
-                            onChange={(event) => {
-                              setPageSize(Number(event.target.value));
-                              setPage(1);
-                            }}
-                          >
-                            {pageSizeOptions.map((value) => (
-                              <option key={value} value={value}>
-                                {value}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        <TimeControlFields
-                          initialId="profile-time-initial-select"
-                          incrementId="profile-time-increment-select"
-                          initialValue={timeControlInitialFilter}
-                          incrementValue={timeControlIncrementFilter}
-                          initialOptions={initialOptions}
-                          incrementOptions={incrementOptions}
-                          onInitialChange={setTimeControlInitialFilter}
-                          onIncrementChange={setTimeControlIncrementFilter}
-                          startDateId="profile-start-date-filter"
-                          endDateId="profile-end-date-filter"
-                          startDateValue={startDateFilter}
-                          endDateValue={endDateFilter}
-                          onStartDateChange={setStartDateFilter}
-                          onEndDateChange={setEndDateFilter}
-                        />
-                        <label
-                          htmlFor="profile-opponent-filter"
-                          className="profileOpponentFilterField"
-                        >
-                          Opponent
-                          <input
-                            id="profile-opponent-filter"
-                            type="text"
-                            value={opponentFilter}
-                            onChange={(event) => setOpponentFilter(event.target.value)}
-                            placeholder="username"
-                          />
-                        </label>
-                      </div>
-
-                      {!isBanned ? (
-                        <div className="matchFilterRanges">
-                          <DualRangeSlider
-                            id="opponent-rating-min"
-                            label={`Opponent rating range: ${opponentRatingMin} - ${opponentRatingMax}`}
-                            min={opponentRatingSliderMin}
-                            max={opponentRatingSliderMax}
-                            step={10}
-                            lowerValue={opponentRatingMin}
-                            upperValue={opponentRatingMax}
-                            onLowerChange={setOpponentRatingMin}
-                            onUpperChange={setOpponentRatingMax}
-                          />
-                        </div>
-                      ) : null}
-
-                      <div className="matchFilterFooter profileMatchFilterFooter">
-                        <SourceFilterChecks values={sourceFilters} onChange={setSourceFilter} />
-                        <div className="matchFilterActions">
-                          <button
-                            className="primaryActionButton matchFilterSearch"
-                            type="submit"
-                            disabled={loadingMatches}
-                          >
-                            <FontAwesomeIcon icon={faMagnifyingGlass} aria-hidden="true" />
-                            {loadingMatches ? "Searching..." : "Search"}
-                          </button>
-                        </div>
-                      </div>
-                    </form>
-
-                    {error ? <div className="errorText">{error}</div> : null}
-
                     <div className="rankingsMeta profileHistoryMeta">
                       <div className="profileHistoryTitleControl">
                         <label htmlFor="profile-match-history-mode-select">
@@ -1238,7 +1151,108 @@ export const PlayerProfilePage = ({
                           </select>
                         </label>
                       </div>
+                      <button
+                        type="button"
+                        className="profileMatchFilterToggle"
+                        aria-expanded={matchFiltersOpen}
+                        aria-controls="profile-match-filters"
+                        onClick={() => setMatchFiltersOpen((open) => !open)}
+                      >
+                        {matchFiltersOpen ? "Hide filters" : "Show filters"}
+                      </button>
                     </div>
+
+                    {matchFiltersOpen ? (
+                      <form
+                        id="profile-match-filters"
+                        className="matchFilterPanel profileMatchFilters"
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          handleSearchClick();
+                        }}
+                      >
+                        <div className="matchFilterGrid">
+                          <label htmlFor="profile-page-size-select">
+                            Page size
+                            <select
+                              id="profile-page-size-select"
+                              value={pageSize}
+                              onChange={(event) => {
+                                setPageSize(Number(event.target.value));
+                                setPage(1);
+                              }}
+                            >
+                              {pageSizeOptions.map((value) => (
+                                <option key={value} value={value}>
+                                  {value}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <TimeControlFields
+                            initialId="profile-time-initial-select"
+                            incrementId="profile-time-increment-select"
+                            initialValue={timeControlInitialFilter}
+                            incrementValue={timeControlIncrementFilter}
+                            initialOptions={initialOptions}
+                            incrementOptions={incrementOptions}
+                            onInitialChange={setTimeControlInitialFilter}
+                            onIncrementChange={setTimeControlIncrementFilter}
+                            startDateId="profile-start-date-filter"
+                            endDateId="profile-end-date-filter"
+                            startDateValue={startDateFilter}
+                            endDateValue={endDateFilter}
+                            onStartDateChange={setStartDateFilter}
+                            onEndDateChange={setEndDateFilter}
+                          />
+                          <label
+                            htmlFor="profile-opponent-filter"
+                            className="profileOpponentFilterField"
+                          >
+                            Opponent
+                            <input
+                              id="profile-opponent-filter"
+                              type="text"
+                              value={opponentFilter}
+                              onChange={(event) => setOpponentFilter(event.target.value)}
+                              placeholder="username"
+                            />
+                          </label>
+                        </div>
+
+                        {!isBanned ? (
+                          <div className="matchFilterRanges">
+                            <DualRangeSlider
+                              id="opponent-rating-min"
+                              label={`Opponent rating range: ${opponentRatingMin} - ${opponentRatingMax}`}
+                              min={opponentRatingSliderMin}
+                              max={opponentRatingSliderMax}
+                              step={10}
+                              lowerValue={opponentRatingMin}
+                              upperValue={opponentRatingMax}
+                              onLowerChange={setOpponentRatingMin}
+                              onUpperChange={setOpponentRatingMax}
+                            />
+                          </div>
+                        ) : null}
+
+                        <div className="matchFilterFooter profileMatchFilterFooter">
+                          <SourceFilterChecks values={sourceFilters} onChange={setSourceFilter} />
+                          <div className="matchFilterActions">
+                            <button
+                              className="primaryActionButton matchFilterSearch"
+                              type="submit"
+                              disabled={loadingMatches}
+                            >
+                              <FontAwesomeIcon icon={faMagnifyingGlass} aria-hidden="true" />
+                              {loadingMatches ? "Searching..." : "Search"}
+                            </button>
+                          </div>
+                        </div>
+                      </form>
+                    ) : null}
+
+                    {error ? <div className="errorText">{error}</div> : null}
 
                     <div className="rankingsTableWrap profileMatchTableWrap">
                       <table className="rankingsTable profileMatchTable">

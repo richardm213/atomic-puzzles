@@ -81,6 +81,28 @@ describe("banned profile ratings", () => {
   });
 });
 
+describe("match filters", () => {
+  it("starts collapsed and can be shown or hidden", async () => {
+    window.history.replaceState(null, "", "/@/alice");
+    loadRawMatchesByMode.mockResolvedValue({ matches: [], total: 0 });
+    renderProfile();
+
+    const showFilters = await screen.findByRole("button", { name: "Show filters" });
+    expect(showFilters).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("combobox", { name: "Page size" })).not.toBeInTheDocument();
+
+    fireEvent.click(showFilters);
+    expect(screen.getByRole("button", { name: "Hide filters" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    expect(screen.getByRole("combobox", { name: "Page size" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Hide filters" }));
+    expect(screen.queryByRole("combobox", { name: "Page size" })).not.toBeInTheDocument();
+  });
+});
+
 describe("profile match pagination", () => {
   it("keeps an uncached next page selected while loading, then supports Previous", async () => {
     let resolvePage!: (result: { matches: never[]; total: number }) => void;

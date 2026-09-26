@@ -276,6 +276,10 @@
     drop-shadow(0 2px 4px color-mix(in srgb, var(--color-danger) 10%, transparent));
 }
 
+.profileTrophy.isAclSeasonOne img {
+  width: 56px;
+}
+
 .profileTrophy img[src*="atomic-openings-championship"],
 .profileTrophyCaseCard img[src*="atomic-openings-championship"] {
   border-radius: var(--radius-sm);
@@ -1088,17 +1092,44 @@
   display: none;
 }
 
+.profileMatchFilterToggle {
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: calc(var(--radius-ui) - 2px);
+  background: transparent;
+  color: var(--color-heading);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease,
+    transform 140ms ease;
+}
+
+.profileMatchFilterToggle:hover {
+  border-color: var(--color-accent-soft-border);
+  background: var(--color-surface-elevated-strong);
+}
+
+.profileMatchFilterToggle:active {
+  transform: translateY(1px);
+}
+
+.profileMatchFilterToggle:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-primary) 68%, white);
+  outline-offset: 2px;
+}
+
 .profileHistoryArea .profileMatchFilters {
   margin-top: 0;
+  margin-bottom: var(--space-4);
   gap: var(--space-4);
   padding: var(--space-4);
   border-color: color-mix(in srgb, var(--color-border) 76%, transparent);
   background: color-mix(in srgb, var(--color-panel-strong) 55%, transparent);
-}
-
-.profileMatchFilters + .profileHistoryMeta,
-.profileMatchFilters + .errorText + .profileHistoryMeta {
-  margin-top: var(--space-4);
 }
 
 .profileMatchFilters .matchFilterGrid label {
@@ -1165,6 +1196,7 @@
 
 .profileHistoryMeta {
   margin-top: 0;
+  margin-bottom: var(--space-3);
   min-height: 42px;
   align-items: center;
   gap: 12px;
@@ -1218,6 +1250,7 @@
   color: var(--color-subtle);
   font-size: 11px;
   line-height: 1.2;
+  text-align: left;
 }
 
 .profileMatchTable th,
@@ -1255,6 +1288,11 @@
 .profileMatchTable th:last-child,
 .profileMatchTable td:last-child {
   white-space: nowrap;
+}
+
+.profileMatchTable th:nth-child(4),
+.profileMatchTable .scoreCell {
+  text-align: center;
 }
 
 .profileMatchTable .scoreCell {
@@ -1323,6 +1361,11 @@
   width: 38px;
   height: 58px;
   object-fit: contain;
+}
+
+.profileTrophyCaseCard.isAclSeasonOne img {
+  width: 46px;
+  margin-left: -4px;
 }
 
 .profileTrophyCaseDetails {
@@ -1640,6 +1683,10 @@
     height: 54px;
   }
 
+  .profileTrophy.isAclSeasonOne img {
+    width: 44px;
+  }
+
   .profileTrophyLabel {
     min-width: 0;
     font-size: 12px;
@@ -1715,6 +1762,10 @@
 
   .profileMatchFilterFooter .matchFilterActions,
   .profileMatchFilterFooter .matchFilterSearch {
+    width: 100%;
+  }
+
+  .profileMatchFilterToggle {
     width: 100%;
   }
 
