@@ -49,7 +49,10 @@ import {
   NON_COUNTED_ALIAS_MESSAGE,
   profileResultToneClass,
 } from "../../features/profile/profilePresentation";
-import { profileMatchHistoryQueryOptions } from "../../features/profile/profileQueries";
+import {
+  type ProfileMatchHistoryMode,
+  profileMatchHistoryQueryOptions,
+} from "../../features/profile/profileQueries";
 import {
   fetchChampionshipTrophies,
   getCurrentMonthKey,
@@ -140,8 +143,7 @@ export const PlayerProfilePage = ({
   const queryClient = useQueryClient();
   const { hideWolfrandomProfileRatings } = useAppSettings();
   const normalizedUsername = useMemo(() => normalizeUsername(username), [username]);
-  const [matchHistoryMode, setMatchHistoryMode] =
-    useState<import("../../constants/matches").Mode>(defaultMode);
+  const [matchHistoryMode, setMatchHistoryMode] = useState<ProfileMatchHistoryMode>(defaultMode);
   const [bestWinMode, setBestWinMode] =
     useState<import("../../constants/matches").Mode>(defaultMode);
   const [bestRankMode, setBestRankMode] =
@@ -242,6 +244,9 @@ export const PlayerProfilePage = ({
   );
   const rankHistoryModeOptions: RankHistoryMode[] = ["all", ...profileModeOptions];
   const favoriteOpponentModeOptions: RankHistoryMode[] = ["all", ...profileModeOptions];
+  const matchHistoryModeOptions: ProfileMatchHistoryMode[] = isBanned
+    ? ["all", ...profileModeOptions]
+    : profileModeOptions;
   const {
     rows: favoriteOpponentRows,
     mode: favoriteOpponentMode,
@@ -300,7 +305,7 @@ export const PlayerProfilePage = ({
 
   useEffect(() => {
     const defaultFilters = createDefaultProfileFilters();
-    setMatchHistoryMode(defaultMode);
+    setMatchHistoryMode(isBanned ? "all" : defaultMode);
     setBestWinMode(defaultMode);
     setBestRankMode(defaultMode);
     setRankHistoryMode("all");
@@ -319,7 +324,7 @@ export const PlayerProfilePage = ({
     setTimeControlInitialFilter(defaultFilters.timeControlInitialFilter);
     setTimeControlIncrementFilter(defaultFilters.timeControlIncrementFilter);
     setAppliedFilters(defaultFilters);
-  }, [normalizedUsername]);
+  }, [isBanned, normalizedUsername]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
@@ -390,6 +395,7 @@ export const PlayerProfilePage = ({
       matchHistoryQuery.isPending ||
       !aliasesLoaded ||
       isBanned ||
+      matchHistoryMode === "all" ||
       profileHistoryTab !== "matches" ||
       isClientPagedResults ||
       profileModeOptions.length < 2 ||
@@ -471,7 +477,7 @@ export const PlayerProfilePage = ({
       return next;
     });
   };
-  const handleModeChange = (nextMode: import("../../constants/matches").Mode): void => {
+  const handleModeChange = (nextMode: ProfileMatchHistoryMode): void => {
     const nextModeFilters = createDefaultProfileFilters();
 
     setMatchHistoryMode(nextMode);
@@ -1138,14 +1144,14 @@ export const PlayerProfilePage = ({
                             value={matchHistoryMode}
                             onChange={(event) => {
                               const v = event.target.value;
-                              if ((profileModeOptions as readonly string[]).includes(v)) {
-                                handleModeChange(v as import("../../constants/matches").Mode);
+                              if ((matchHistoryModeOptions as readonly string[]).includes(v)) {
+                                handleModeChange(v as ProfileMatchHistoryMode);
                               }
                             }}
                           >
-                            {profileModeOptions.map((mode) => (
+                            {matchHistoryModeOptions.map((mode) => (
                               <option key={mode} value={mode}>
-                                {modeLabels[mode] ?? mode}
+                                {mode === "all" ? "All" : (modeLabels[mode] ?? mode)}
                               </option>
                             ))}
                           </select>
@@ -1373,7 +1379,7 @@ export const PlayerProfilePage = ({
                                         ...match,
                                         playerA: canonicalUsername,
                                         playerB: match.opponent,
-                                        mode: matchHistoryMode,
+                                        mode: match.mode,
                                       }}
                                       onClick={(event) => event.stopPropagation()}
                                       title="Open match page in new tab"
@@ -1387,7 +1393,7 @@ export const PlayerProfilePage = ({
                                         <MatchDetails
                                           match={{
                                             matchId: match.matchId,
-                                            mode: matchHistoryMode,
+                                            mode: match.mode,
                                             playerA: canonicalUsername,
                                             playerB: match.opponent,
                                             startTs: match.startTs,
@@ -1427,7 +1433,9 @@ export const PlayerProfilePage = ({
                           {visibleMatches.length === 0 ? (
                             <tr>
                               <td colSpan={isBanned ? 5 : 7} className="emptyRankings">
-                                {`No matches found for this player with current filters in ${modeLabels[matchHistoryMode]}.`}
+                                {matchHistoryMode === "all"
+                                  ? "No matches found for this player with current filters across all modes."
+                                  : `No matches found for this player with current filters in ${modeLabels[matchHistoryMode]}.`}
                               </td>
                             </tr>
                           ) : null}

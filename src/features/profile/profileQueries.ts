@@ -15,6 +15,8 @@ import {
 import type { ProfileFilters } from "./profileFilters";
 import { buildMatchFilters, isClientSidePagedSearch } from "./profileFilters";
 
+export type ProfileMatchHistoryMode = Mode | "all";
+
 export const profileQueryKeys = {
   all: ["profile"] as const,
   monthRanks: (username: string) => ["profile", username, "month-ranks"] as const,
@@ -23,7 +25,7 @@ export const profileQueryKeys = {
   ratingsSnapshot: (username: string) => ["profile", username, "ratings-snapshot"] as const,
   matchHistory: (
     username: string,
-    mode: Mode,
+    mode: ProfileMatchHistoryMode,
     filters: ProfileFilters,
     page: number,
     pageSize: number,
@@ -49,7 +51,7 @@ export const uniqueMonthRankPairs = <T extends { monthValue: string; mode: Mode 
 
 export const profileMatchHistoryQueryOptions = (
   username: string,
-  mode: Mode,
+  mode: ProfileMatchHistoryMode,
   filters: ProfileFilters,
   page: number,
   pageSize: number,

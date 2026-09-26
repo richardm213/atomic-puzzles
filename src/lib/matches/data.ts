@@ -61,6 +61,7 @@ export type NormalizedMatchGame = {
 
 export type NormalizedMatch = {
   matchId: string;
+  mode: Mode | "";
   startTs: number;
   timeControl: string;
   opponent: string;
@@ -214,6 +215,14 @@ export async function loadRawMatchesByMode(
 ): Promise<ParsedMatch[]>;
 export async function loadRawMatchesByMode(
   mode: Mode | "all",
+  options: LoadMatchesOptions & { pageSize: number },
+): Promise<PaginatedMatches>;
+export async function loadRawMatchesByMode(
+  mode: Mode | "all",
+  options?: LoadMatchesOptions,
+): Promise<ParsedMatch[]>;
+export async function loadRawMatchesByMode(
+  mode: Mode | "all",
   options: LoadMatchesOptions = {},
 ): Promise<ParsedMatch[] | PaginatedMatches> {
   const { filters = {}, page, pageSize } = options;
@@ -221,13 +230,34 @@ export async function loadRawMatchesByMode(
   if (page !== undefined) subOptionsBase.page = page;
   if (mode === "all") {
     if (pageSize !== undefined) {
+      const requestedPage = Math.max(1, Math.floor(Number(page)) || 1);
+      const requestedPageSize = Math.max(1, Math.floor(Number(pageSize)) || 1);
+      const rowsNeededPerMode = requestedPage * requestedPageSize;
+      const archivePageSize = Math.min(200, rowsNeededPerMode);
+      const archivePageCount = Math.ceil(rowsNeededPerMode / archivePageSize);
       const matchesByMode = await Promise.all(
-        modeOptions.map((modeOption) =>
-          loadRawMatchesByMode(modeOption, { ...subOptionsBase, pageSize }),
-        ),
+        modeOptions.map(async (modeOption) => {
+          const entries: ParsedMatch[] = [];
+          let total = 0;
+          for (let archivePage = 1; archivePage <= archivePageCount; archivePage += 1) {
+            const result = await loadRawMatchesByMode(modeOption, {
+              filters,
+              page: archivePage,
+              pageSize: archivePageSize,
+            });
+            entries.push(...result.matches);
+            total = result.total;
+            if (entries.length >= total || result.matches.length < archivePageSize) break;
+          }
+          return { matches: entries, total };
+        }),
       );
+      const offset = (requestedPage - 1) * requestedPageSize;
       return {
-        matches: matchesByMode.flatMap((entry) => entry.matches),
+        matches: matchesByMode
+          .flatMap((entry) => entry.matches)
+          .sort((left, right) => right.start_ts - left.start_ts)
+          .slice(offset, offset + requestedPageSize),
         total: matchesByMode.reduce((sum, entry) => sum + entry.total, 0),
       };
     }
@@ -323,6 +353,7 @@ export const normalizeMatches = (
       });
       return {
         matchId: String(match?.match_id ?? ""),
+        mode: modeOptions.includes(match?.mode as Mode) ? (match.mode as Mode) : "",
         startTs: Number(match?.start_ts),
         timeControl: String(match?.time_control ?? "—"),
         opponent: String(opponent),

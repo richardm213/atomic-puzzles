@@ -47,6 +47,27 @@ const renderProfile = ({ historyOnly = true }: { historyOnly?: boolean } = {}) =
   );
 
 describe("banned profile ratings", () => {
+  it("defaults match history to all modes", async () => {
+    client.setQueryData(aliasQueryKeys.identity("alice"), {
+      username: "alice",
+      banned: true,
+      accounts: [],
+    });
+    loadRawMatchesByMode.mockResolvedValue({ matches: [], total: 0 });
+
+    renderProfile();
+
+    const modeSelect = await screen.findByRole("combobox", { name: "Match history mode" });
+    await waitFor(() => expect(modeSelect).toHaveValue("all"));
+    expect(within(modeSelect).getByRole("option", { name: "All" })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(loadRawMatchesByMode).toHaveBeenCalledWith(
+        "all",
+        expect.objectContaining({ page: 1, pageSize: 25 }),
+      ),
+    );
+  });
+
   it("still shows an available Wolfrandom rating", async () => {
     client.setQueryData(aliasQueryKeys.identity("alice"), {
       username: "alice",

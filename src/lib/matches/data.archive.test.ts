@@ -12,6 +12,40 @@ import { loadRawMatchesByMode } from "./data";
 describe("loadRawMatchesByMode archive rows", () => {
   beforeEach(() => fetchMatchRowsFromArchive.mockReset());
 
+  it("merges all supported modes into one recency-sorted page", async () => {
+    const timestamps = { blitz: 400, bullet: 300, hyperbullet: 200, wolfrandom: 100 } as const;
+    fetchMatchRowsFromArchive.mockImplementation(async (mode: keyof typeof timestamps) => ({
+      total: 1,
+      rows: [
+        {
+          match_id: `${mode}-match`,
+          mode,
+          player_1: "alice",
+          player_2: "bob",
+          start_ts: timestamps[mode],
+          time_control: "3+0",
+          source: "lobby",
+          tournament_id: null,
+          games: [`${mode}-game,w,1,1`],
+          p1_before_rating: null,
+          p1_after_rating: null,
+          p1_before_rd: null,
+          p1_after_rd: null,
+          p2_before_rating: null,
+          p2_after_rating: null,
+          p2_before_rd: null,
+          p2_after_rd: null,
+        },
+      ],
+    }));
+
+    const result = await loadRawMatchesByMode("all", { page: 1, pageSize: 2 });
+
+    expect(result.total).toBe(4);
+    expect(result.matches.map((match) => match.match_id)).toEqual(["blitz-match", "bullet-match"]);
+    expect(fetchMatchRowsFromArchive).toHaveBeenCalledTimes(4);
+  });
+
   it("decodes Turso's pipe-split compact game entries and preserves nullable ratings", async () => {
     fetchMatchRowsFromArchive.mockResolvedValue({
       total: 1,
