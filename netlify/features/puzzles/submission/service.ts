@@ -1,4 +1,5 @@
 import { isApprovedPuzzleCreator } from "../../../../shared/domain/puzzles/approvedPuzzleCreators";
+import { normalizePuzzlePlayers } from "../../../../shared/domain/puzzles/puzzleSetMetadata";
 import {
   compactPuzzleSolution,
   parsePuzzlePgnInput,
@@ -33,17 +34,19 @@ export class PuzzleSubmissionService {
     if (parseSolutionUciLines(fen, solution).length === 0) {
       throw new HttpError(400, "The moves are not legal from this atomic position.");
     }
+    const whitePlayer = input.whitePlayer?.trim() ?? "";
+    const blackPlayer = input.blackPlayer?.trim() ?? "";
     return {
       fen,
       solution: compactPuzzleSolution(normalizeSolutionPgn(fen, solution)),
       event: parsedPgn.event || input.event,
-      // These columns are part of the new storage format, but submission keeps
-      // the existing form and intentionally leaves the new metadata unset.
+      // Event metadata remains unset until it can be reviewed, while the
+      // explicitly supplied players can safely populate the participants.
       eventName: "",
       eventDate: "",
-      players: [],
-      whitePlayer: input.whitePlayer?.trim() ?? "",
-      blackPlayer: input.blackPlayer?.trim() ?? "",
+      players: normalizePuzzlePlayers([whitePlayer, blackPlayer]),
+      whitePlayer,
+      blackPlayer,
       explanation: input.explanation,
     };
   }

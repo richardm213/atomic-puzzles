@@ -92,13 +92,14 @@ export const getPuzzleSetKey = (value: PuzzleSetMetadata): string => {
 export const formatPuzzleSetDate = (value: string): string => {
   const normalized = normalizePuzzleEventDate(value);
   if (!normalized) return "";
-  const [year = 0, month] = normalized.split("-").map(Number);
+  const [year = 0, month, day] = normalized.split("-").map(Number);
   if (!month) return String(year);
-  const monthLabel = new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat(undefined, {
     month: "short",
+    ...(day ? { day: "numeric" as const } : {}),
+    year: "numeric",
     timeZone: "UTC",
-  }).format(new Date(Date.UTC(year, month - 1, 1)));
-  return `${monthLabel} ${year}`;
+  }).format(new Date(Date.UTC(year, month - 1, day || 1)));
 };
 
 export const formatPuzzleSetPlayers = (players: string[]): string => {

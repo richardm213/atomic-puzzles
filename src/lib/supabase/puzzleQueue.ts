@@ -1,3 +1,4 @@
+import { normalizePuzzlePlayers } from "../../../shared/domain/puzzles/puzzleSetMetadata";
 import { postApi } from "../api/postApi";
 import { compactPuzzleSolution } from "../puzzles/puzzleSubmission";
 import type { PuzzleQueueRow, PuzzleReviewQueueRow } from "./types";
@@ -31,6 +32,9 @@ type PuzzleSubmissionOptions = {
   allowDifferentStartMove?: boolean;
 };
 
+const submissionPlayers = (input: Pick<PuzzleSubmissionInput, "whitePlayer" | "blackPlayer">) =>
+  normalizePuzzlePlayers([input.whitePlayer, input.blackPlayer]);
+
 export const submitPuzzle = async (
   input: PuzzleSubmissionInput,
   options: PuzzleSubmissionOptions = {},
@@ -43,7 +47,7 @@ export const submitPuzzle = async (
       event: input.event.trim(),
       eventName: "",
       eventDate: "",
-      players: [],
+      players: submissionPlayers(input),
       whitePlayer: input.whitePlayer?.trim() ?? "",
       blackPlayer: input.blackPlayer?.trim() ?? "",
       explanation: input.explanation.trim(),
@@ -77,7 +81,7 @@ export const submitPuzzleBatch = async (
         event: input.event.trim(),
         eventName: "",
         eventDate: "",
-        players: [],
+        players: submissionPlayers(input),
         whitePlayer: input.whitePlayer?.trim() ?? "",
         blackPlayer: input.blackPlayer?.trim() ?? "",
         explanation: input.explanation.trim(),
@@ -144,7 +148,7 @@ export const updateQueuedPuzzle = async (
     event: input.event.trim(),
     eventName: "",
     eventDate: "",
-    players: [],
+    players: submissionPlayers(input),
     whitePlayer: input.whitePlayer?.trim() ?? "",
     blackPlayer: input.blackPlayer?.trim() ?? "",
     explanation: input.explanation.trim(),

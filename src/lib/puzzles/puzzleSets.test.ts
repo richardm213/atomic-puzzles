@@ -39,8 +39,8 @@ describe("normalizePuzzleEventName", () => {
 });
 
 describe("formatPuzzleSetDate", () => {
-  it("shows month and year without day-level precision", () => {
-    expect(formatPuzzleSetDate("2026-03-26")).toBe("Mar 2026");
+  it("shows the exact day when available and preserves partial dates", () => {
+    expect(formatPuzzleSetDate("2026-03-26")).toBe("Mar 26, 2026");
     expect(formatPuzzleSetDate("2026-03")).toBe("Mar 2026");
   });
 });
@@ -175,20 +175,38 @@ describe("groupPuzzlesByEvent", () => {
       makePuzzle({
         puzzleId: 1,
         puzzle_set_id: 16,
-        puzzle_set: makeSet(16, "Blitz 8-game match", "2026-03", ["Opabinia", "Rechesster"]),
+        puzzle_set: makeSet(16, "3+2 match", "2026-03", ["Opabinia", "Rechesster"]),
       }),
       makePuzzle({
         puzzleId: 2,
         puzzle_set_id: 17,
-        puzzle_set: makeSet(17, "Blitz match", "2026-04", ["Paper-skies", "Rechesster"]),
+        puzzle_set: makeSet(17, "3+2 match", "2026-04", ["Paper-skies", "Rechesster"]),
       }),
     ]);
 
     expect(groups.find((group) => group.setId === 16)?.sourceId).toBe("CYLH7bBT");
     expect(groups.find((group) => group.setId === 16)?.event).toBe(
-      "Blitz 8-game match · Mar 2026 · opabinia vs rechesster",
+      "3+2 match · Mar 2026 · opabinia vs rechesster",
     );
     expect(groups.find((group) => group.setId === 17)?.sourceId).toBe("");
+  });
+
+  it("links known Wolfarena and Wolfrandom matches", () => {
+    const groups = groupPuzzlesByEvent([
+      makePuzzle({
+        puzzleId: 1,
+        puzzle_set_id: 31,
+        puzzle_set: makeSet(31, "Wolfarena", "2026-08-16", ["Maracker", "RabbieR"]),
+      }),
+      makePuzzle({
+        puzzleId: 2,
+        puzzle_set_id: 37,
+        puzzle_set: makeSet(37, "Wolfrandom", "2026-09-25", ["Quasabianth", "RabbieR"]),
+      }),
+    ]);
+
+    expect(groups.find((group) => group.setId === 31)?.sourceId).toBe("UhIDR1jR");
+    expect(groups.find((group) => group.setId === 37)?.sourceId).toBe("s1XjJvZ8");
   });
 });
 

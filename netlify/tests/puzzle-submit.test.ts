@@ -112,7 +112,7 @@ describe("puzzle-submit function", () => {
     );
   });
 
-  it("stores optional player colors while leaving puzzle-set metadata blank", async () => {
+  it("uses optional player colors as participants while leaving event metadata blank", async () => {
     const upsert = vi.fn(async () => ({ error: null }));
     const single = vi.fn(async () => ({ data: { id: 5 }, error: null }));
     const rpc = vi.fn(() => ({ single }));
@@ -142,7 +142,7 @@ describe("puzzle-submit function", () => {
       p_event: "Community event",
       p_event_name: "",
       p_event_date: "",
-      p_players: [],
+      p_players: ["black", "white"],
       p_white_player: "white",
       p_black_player: "black",
       p_explanation: "",

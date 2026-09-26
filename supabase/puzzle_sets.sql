@@ -140,21 +140,14 @@ where lower(btrim(event_name)) = 'wolfrandom 1st time'
   and public.normalize_puzzle_set_players(players) =
       public.normalize_puzzle_set_players(array['Wolfram','Rkr']);
 
--- Paper-Skies is not present in the normalized match archive, so retain an
--- accurate generic Blitz label instead of inventing a game count.
+-- Name practice matches by their time control rather than their game count.
 update public.puzzle_sets
-set event_name = 'Blitz match'
-where lower(btrim(event_name)) = 'blitz 10-game match'
-  and event_date = '2026-04'
-  and public.normalize_puzzle_set_players(players) =
-      public.normalize_puzzle_set_players(array['Paper-skies','Rechesster']);
+set event_name = '3+2 match'
+where lower(btrim(event_name)) in ('blitz match', 'blitz 6-game match', 'blitz 8-game match', 'blitz 10-game match');
 
 update public.puzzles
-set event_name = 'Blitz match'
-where lower(btrim(event_name)) = 'blitz 10-game match'
-  and event_date = '2026-04'
-  and public.normalize_puzzle_set_players(players) =
-      public.normalize_puzzle_set_players(array['Paper-skies','Rechesster']);
+set event_name = '3+2 match'
+where lower(btrim(event_name)) in ('blitz match', 'blitz 6-game match', 'blitz 8-game match', 'blitz 10-game match');
 
 -- Insert one canonical set for every distinct structured metadata combination.
 insert into public.puzzle_sets (event_name, event_date, players)
@@ -189,18 +182,18 @@ where btrim(coalesce(p.event_name, '')) <> ''
 -- Canonical archive match IDs and month-level dates for linked event sets.
 with puzzle_set_sources(previous_event_name, event_name, previous_event_date, event_date, players, source_id) as (
   values
-    ('ACL S2', 'ACL S2', '', '2026-02', array['Lesha','Maracker'], 'tiPlLQEE'),
-    ('ACL S2', 'ACL S2', '', '2026-03', array['Quasabianth','RabbieR'], 'fIJoCI7j'),
-    ('ACL S2', 'ACL S2', '', '2026-03', array['Quasabianth','Studieb'], 'cna1BteU'),
-    ('AWC', 'AWC 2018 Finals', '2018', '2018-11', array['Onubense','Tipau'], 'Yr9V8s5R'),
-    ('AWC', 'AWC 2021 Quarterfinals', '2021', '2021-10', array['Astavakra','Wolfram'], '5xtZlERw'),
-    ('AWC', 'AWC 2023 Losers Round 3', '2023', '2023-11', array['Jsf','Lesha'], 'OqWE65nu'),
-    ('AWC', 'AWC 2025 Round of 64', '2025', '2025-09', array['Blackjack','Sircachetes'], 'tUvUftLZ'),
-    ('AWC', 'AWC 2025 Round of 32', '2025', '2025-09', array['Max','Sircachetes'], 'IJL3lXpE'),
-    ('AWC', 'AWC 2025 Round of 16', '2025', '2025-10', array['Randoom','Wolfram'], '75L7QLTy'),
-    ('Blitz 10-game match', 'Blitz 8-game match', '2026-04', '2026-03', array['Opabinia','Rechesster'], 'CYLH7bBT'),
-    ('Blitz 10-game match', 'Blitz 6-game match', '2026-09', '2026-09', array['Max','Wolfram'], 'irgn69Ce'),
-    ('Blitz 10-game match', 'Blitz 10-game match', '2026-09', '2026-09', array['Rechesster','Wolfram'], '3OG5r1jh')
+    ('ACL S2', 'ACL S2', '2026-02', '2026-02-21', array['Lesha','Maracker'], 'tiPlLQEE'),
+    ('ACL S2', 'ACL S2', '2026-03', '2026-03-08', array['Quasabianth','RabbieR'], 'fIJoCI7j'),
+    ('ACL S2', 'ACL S2', '2026-03', '2026-03-26', array['Quasabianth','Studieb'], 'cna1BteU'),
+    ('AWC', 'AWC 2018 Finals', '2018-11', '2018-11-27', array['Onubense','Tipau'], 'Yr9V8s5R'),
+    ('AWC', 'AWC 2021 Quarterfinals', '2021-10', '2021-10-16', array['Astavakra','Wolfram'], '5xtZlERw'),
+    ('AWC', 'AWC 2023 Losers Round 3', '2023-11', '2023-11-04', array['Jsf','Lesha'], 'OqWE65nu'),
+    ('AWC', 'AWC 2025 Round of 64', '2025-09', '2025-09-21', array['Blackjack','Sircachetes'], 'tUvUftLZ'),
+    ('AWC', 'AWC 2025 Round of 32', '2025-09', '2025-09-28', array['Max','Sircachetes'], 'IJL3lXpE'),
+    ('AWC', 'AWC 2025 Round of 16', '2025-10', '2025-10-08', array['Randoom','Wolfram'], '75L7QLTy'),
+    ('Blitz 10-game match', '3+2 match', '2026-03', '2026-03-19', array['Opabinia','Rechesster'], 'CYLH7bBT'),
+    ('Blitz 10-game match', '3+2 match', '2026-09', '2026-09-20', array['Max','Wolfram'], 'irgn69Ce'),
+    ('Blitz 10-game match', '3+2 match', '2026-09', '2026-09-10', array['Rechesster','Wolfram'], '3OG5r1jh')
 )
 update public.puzzle_sets puzzle_set
 set event_name = puzzle_set_sources.event_name,
@@ -223,18 +216,18 @@ where lower(btrim(puzzle_set.event_name)) in (
 
 with puzzle_set_sources(previous_event_name, event_name, previous_event_date, event_date, players, source_id) as (
   values
-    ('ACL S2', 'ACL S2', '', '2026-02', array['Lesha','Maracker'], 'tiPlLQEE'),
-    ('ACL S2', 'ACL S2', '', '2026-03', array['Quasabianth','RabbieR'], 'fIJoCI7j'),
-    ('ACL S2', 'ACL S2', '', '2026-03', array['Quasabianth','Studieb'], 'cna1BteU'),
-    ('AWC', 'AWC 2018 Finals', '2018', '2018-11', array['Onubense','Tipau'], 'Yr9V8s5R'),
-    ('AWC', 'AWC 2021 Quarterfinals', '2021', '2021-10', array['Astavakra','Wolfram'], '5xtZlERw'),
-    ('AWC', 'AWC 2023 Losers Round 3', '2023', '2023-11', array['Jsf','Lesha'], 'OqWE65nu'),
-    ('AWC', 'AWC 2025 Round of 64', '2025', '2025-09', array['Blackjack','Sircachetes'], 'tUvUftLZ'),
-    ('AWC', 'AWC 2025 Round of 32', '2025', '2025-09', array['Max','Sircachetes'], 'IJL3lXpE'),
-    ('AWC', 'AWC 2025 Round of 16', '2025', '2025-10', array['Randoom','Wolfram'], '75L7QLTy'),
-    ('Blitz 10-game match', 'Blitz 8-game match', '2026-04', '2026-03', array['Opabinia','Rechesster'], 'CYLH7bBT'),
-    ('Blitz 10-game match', 'Blitz 6-game match', '2026-09', '2026-09', array['Max','Wolfram'], 'irgn69Ce'),
-    ('Blitz 10-game match', 'Blitz 10-game match', '2026-09', '2026-09', array['Rechesster','Wolfram'], '3OG5r1jh')
+    ('ACL S2', 'ACL S2', '2026-02', '2026-02-21', array['Lesha','Maracker'], 'tiPlLQEE'),
+    ('ACL S2', 'ACL S2', '2026-03', '2026-03-08', array['Quasabianth','RabbieR'], 'fIJoCI7j'),
+    ('ACL S2', 'ACL S2', '2026-03', '2026-03-26', array['Quasabianth','Studieb'], 'cna1BteU'),
+    ('AWC', 'AWC 2018 Finals', '2018-11', '2018-11-27', array['Onubense','Tipau'], 'Yr9V8s5R'),
+    ('AWC', 'AWC 2021 Quarterfinals', '2021-10', '2021-10-16', array['Astavakra','Wolfram'], '5xtZlERw'),
+    ('AWC', 'AWC 2023 Losers Round 3', '2023-11', '2023-11-04', array['Jsf','Lesha'], 'OqWE65nu'),
+    ('AWC', 'AWC 2025 Round of 64', '2025-09', '2025-09-21', array['Blackjack','Sircachetes'], 'tUvUftLZ'),
+    ('AWC', 'AWC 2025 Round of 32', '2025-09', '2025-09-28', array['Max','Sircachetes'], 'IJL3lXpE'),
+    ('AWC', 'AWC 2025 Round of 16', '2025-10', '2025-10-08', array['Randoom','Wolfram'], '75L7QLTy'),
+    ('Blitz 10-game match', '3+2 match', '2026-03', '2026-03-19', array['Opabinia','Rechesster'], 'CYLH7bBT'),
+    ('Blitz 10-game match', '3+2 match', '2026-09', '2026-09-20', array['Max','Wolfram'], 'irgn69Ce'),
+    ('Blitz 10-game match', '3+2 match', '2026-09', '2026-09-10', array['Rechesster','Wolfram'], '3OG5r1jh')
 )
 update public.puzzles puzzle
 set event_name = puzzle_set_sources.event_name,

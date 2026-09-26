@@ -154,6 +154,8 @@ describe("puzzle-review function", () => {
         id: 4,
         fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
         solution: "1. e4",
+        whitePlayer: " White ",
+        blackPlayer: " Black ",
         explanation: " idea ",
         author: "edited_author",
       }),
@@ -164,6 +166,9 @@ describe("puzzle-review function", () => {
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({
         solution: "1. e4",
+        players: ["black", "white"],
+        white_player: "White",
+        black_player: "Black",
         explanation: "idea",
         submitted_by: "edited_author",
       }),

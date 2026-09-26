@@ -39,19 +39,19 @@ const puzzleSetShuffleSeedStorageKey = "atomic-puzzles:puzzle-set-shuffle-seed";
 const FEATURED_SET_MATCHERS: Array<(group: PuzzleEventGroup) => boolean> = [
   (group) =>
     group.eventName.toLocaleLowerCase() === "wolfrandom" &&
-    group.eventDate === "2026-09" &&
+    group.eventDate === "2026-09-25" &&
     group.players.includes("quasabianth") &&
     group.players.includes("rabbier"),
   (group) => group.eventName.toLocaleLowerCase() === "awc 2018 finals",
   (group) => group.eventName.toLocaleLowerCase() === "tipau endgames",
   (group) =>
-    group.eventName.toLocaleLowerCase() === "blitz 6-game match" &&
-    group.eventDate === "2026-09" &&
+    group.eventName.toLocaleLowerCase() === "3+2 match" &&
+    group.eventDate === "2026-09-20" &&
     group.players.includes("maxwellssilvrhammer") &&
     group.players.includes("wolfram_ep"),
   (group) =>
-    group.eventName.toLocaleLowerCase() === "blitz 10-game match" &&
-    group.eventDate === "2026-09" &&
+    group.eventName.toLocaleLowerCase() === "3+2 match" &&
+    group.eventDate === "2026-09-10" &&
     group.players.includes("rechesster") &&
     group.players.includes("wolfram_ep"),
 ];
@@ -129,7 +129,7 @@ export const matchesEventFilter = (
   }
 
   if (filterId === "blitz") {
-    return normalizedEvent.includes("blitz");
+    return normalizedEvent.includes("blitz") || normalizedEvent === "3+2 match";
   }
 
   if (filterId === "wolfarena") {

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { normalizePuzzlePlayers } from "../../../../shared/domain/puzzles/puzzleSetMetadata";
 import type { PuzzleSubmissionValue } from "../../../../shared/domain/puzzles/puzzleSubmission";
 import { HttpError } from "../../../platform/errors";
 
@@ -40,7 +41,7 @@ export class PuzzleReviewRepository {
         event: puzzle.event,
         event_name: "",
         event_date: "",
-        players: [],
+        players: normalizePuzzlePlayers([puzzle.whitePlayer, puzzle.blackPlayer]),
         white_player: puzzle.whitePlayer ?? "",
         black_player: puzzle.blackPlayer ?? "",
         explanation: puzzle.explanation,

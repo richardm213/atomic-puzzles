@@ -12,7 +12,7 @@ const makeGroup = (
 
 describe("puzzle set category filters", () => {
   it("separates Blitz, Wolfarena, WolframRandom, and Endgames", () => {
-    expect(matchesEventFilter({ eventName: "Blitz 10-game match" }, "blitz")).toBe(true);
+    expect(matchesEventFilter({ eventName: "3+2 match" }, "blitz")).toBe(true);
     expect(matchesEventFilter({ eventName: "Wolfarena" }, "wolfarena")).toBe(true);
     expect(matchesEventFilter({ eventName: "Wolfarena" }, "wolfrandom")).toBe(false);
     expect(matchesEventFilter({ eventName: "Wolfrandom" }, "wolfrandom")).toBe(true);
@@ -21,11 +21,11 @@ describe("puzzle set category filters", () => {
 
   it("keeps the requested featured sets in their curated order", () => {
     const groups = [
-      makeGroup("Wolfrandom", "2026-09", ["quasabianth", "rabbier"], 37),
+      makeGroup("Wolfrandom", "2026-09-25", ["quasabianth", "rabbier"], 37),
       makeGroup("AWC 2018 Finals", "2018-11", ["onubense", "tipau"], 10),
       makeGroup("Tipau Endgames", "", [], 29),
-      makeGroup("Blitz 6-game match", "2026-09", ["maxwellssilvrhammer", "wolfram_ep"], 18),
-      makeGroup("Blitz 10-game match", "2026-09", ["rechesster", "wolfram_ep"], 19),
+      makeGroup("3+2 match", "2026-09-20", ["maxwellssilvrhammer", "wolfram_ep"], 18),
+      makeGroup("3+2 match", "2026-09-10", ["rechesster", "wolfram_ep"], 19),
     ];
 
     expect(groups.map(getFeaturedPuzzleSetRank)).toEqual([0, 1, 2, 3, 4]);
@@ -40,7 +40,7 @@ describe("puzzle set category filters", () => {
       makeGroup("AWC 2024 Round 1", "2024-01", [], 2),
       makeGroup("960", "2023-01", [], 3),
       makeGroup("Wolfarena", "2026-01", [], 4),
-      makeGroup("Blitz match", "2026-01", [], 5),
+      makeGroup("3+2 match", "2026-01", [], 5),
     ];
 
     const orderForSeed = (seed: number) =>
