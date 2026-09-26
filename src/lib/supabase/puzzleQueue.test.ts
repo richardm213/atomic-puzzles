@@ -58,6 +58,7 @@ describe("puzzle queue review client", () => {
       whitePlayer: "White",
       blackPlayer: "Black",
       explanation: "idea",
+      opaStyle: false,
       author: "edited_author",
     });
     expect(request?.credentials).toBe("same-origin");
@@ -129,6 +130,7 @@ describe("puzzle queue review client", () => {
           whitePlayer: "white",
           blackPlayer: "black",
           explanation: "",
+          opaStyle: false,
         },
         {
           fen: "fen 2",
@@ -140,6 +142,7 @@ describe("puzzle queue review client", () => {
           whitePlayer: "",
           blackPlayer: "",
           explanation: "",
+          opaStyle: false,
         },
       ],
     });

@@ -239,6 +239,96 @@
   font-weight: 650;
 }
 
+.puzzleOpaField {
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.puzzleOpaField label {
+  min-width: 0;
+  display: inline-flex;
+  grid-template-columns: none;
+  align-items: center;
+  gap: 9px;
+  cursor: pointer;
+}
+
+.puzzleOpaField input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+.puzzleOpaField input[type="checkbox"]:disabled,
+.puzzleOpaField input[type="checkbox"]:disabled + span {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.puzzleOpaHelp {
+  position: relative;
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  color: var(--color-muted);
+  display: inline-grid;
+  place-items: center;
+}
+
+.puzzleOpaHelp:hover,
+.puzzleOpaHelp:focus-visible {
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  color: var(--color-primary-pale);
+}
+
+.puzzleOpaHelp:focus-visible {
+  outline: 3px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+.puzzleOpaHelp::after {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 30;
+  width: max-content;
+  max-width: min(280px, 76vw);
+  padding: 7px 9px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-deep);
+  color: var(--color-heading);
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--color-panel-deep) 26%, transparent);
+  content: attr(data-tooltip);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(3px);
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+}
+
+.puzzleOpaHelp:hover::after,
+.puzzleOpaHelp:focus-visible::after {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 .puzzleEditorSolutionField {
   display: grid;
   gap: 7px;

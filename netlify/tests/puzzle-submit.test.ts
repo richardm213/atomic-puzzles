@@ -146,6 +146,7 @@ describe("puzzle-submit function", () => {
       p_white_player: "white",
       p_black_player: "black",
       p_explanation: "",
+      p_opa_style: false,
       p_submitted_by: "submitter",
       p_allow_different_start_move: false,
     });

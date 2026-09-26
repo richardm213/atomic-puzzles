@@ -41,6 +41,7 @@ export type PuzzleQueueRow = {
   white_player: string;
   black_player: string;
   explanation: string;
+  opa_style: boolean;
   submitted_by: string;
   created_at: string;
 };
@@ -155,6 +156,7 @@ export type Database = {
           | "white_player"
           | "black_player"
           | "explanation"
+          | "opa_style"
           | "submitted_by"
         >,
         Partial<PuzzleQueueRow>

@@ -26,6 +26,7 @@ type PuzzleSubmissionInput = {
   whitePlayer?: string;
   blackPlayer?: string;
   explanation: string;
+  opaStyle?: boolean;
 };
 
 type PuzzleSubmissionOptions = {
@@ -51,6 +52,7 @@ export const submitPuzzle = async (
       whitePlayer: input.whitePlayer?.trim() ?? "",
       blackPlayer: input.blackPlayer?.trim() ?? "",
       explanation: input.explanation.trim(),
+      opaStyle: input.opaStyle === true,
       allowDifferentStartMove: options.allowDifferentStartMove ?? false,
     },
     {
@@ -85,6 +87,7 @@ export const submitPuzzleBatch = async (
         whitePlayer: input.whitePlayer?.trim() ?? "",
         blackPlayer: input.blackPlayer?.trim() ?? "",
         explanation: input.explanation.trim(),
+        opaStyle: input.opaStyle === true,
       })),
       allowDifferentStartMove: options.allowDifferentStartMove ?? false,
     },
@@ -137,6 +140,7 @@ export const updateQueuedPuzzle = async (
     whitePlayer?: string;
     blackPlayer?: string;
     explanation: string;
+    opaStyle?: boolean;
     author: string;
   },
 ): Promise<PuzzleQueueRow> => {
@@ -152,6 +156,7 @@ export const updateQueuedPuzzle = async (
     whitePlayer: input.whitePlayer?.trim() ?? "",
     blackPlayer: input.blackPlayer?.trim() ?? "",
     explanation: input.explanation.trim(),
+    opaStyle: input.opaStyle === true,
     author: input.author.trim(),
   });
   if (!result.puzzle) {

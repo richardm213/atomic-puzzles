@@ -45,6 +45,7 @@ export class PuzzleReviewRepository {
         white_player: puzzle.whitePlayer ?? "",
         black_player: puzzle.blackPlayer ?? "",
         explanation: puzzle.explanation,
+        opa_style: puzzle.opaStyle,
         submitted_by: puzzle.submitted_by,
       })
       .eq("id", id)

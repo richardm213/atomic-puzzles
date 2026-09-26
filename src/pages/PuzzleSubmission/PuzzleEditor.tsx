@@ -4,6 +4,7 @@ import {
   faCheck,
   faChevronLeft,
   faChevronRight,
+  faCircleInfo,
   faCopy,
   faTrashCan,
 } from "@fortawesome/free-solid-svg-icons";
@@ -49,6 +50,9 @@ const multilineSolutionPgn = (pgn: string): string =>
 
 const orientationFromFen = (fen: string): "white" | "black" =>
   fen.split(" ")[1] === "b" ? "black" : "white";
+
+const OPA_STYLE_DESCRIPTION =
+  "Only the best moves are accepted. Weaker alternatives are rejected even if they also lead to mate.";
 
 const editorPgnState = (solution: string, fallbackFen: string) => {
   try {
@@ -541,6 +545,28 @@ export const PuzzleEditor = ({
               onChange={(event) => onChange({ ...value, blackPlayer: event.target.value })}
             />
           </label>
+        </div>
+
+        <div className="puzzleOpaField">
+          <label>
+            <input
+              type="checkbox"
+              checked={value.opaStyle === true}
+              disabled={readOnly}
+              onChange={(event) => onChange({ ...value, opaStyle: event.target.checked })}
+            />
+            <span>OPA style</span>
+          </label>
+          <span
+            className="puzzleOpaHelp"
+            role="img"
+            tabIndex={0}
+            title={OPA_STYLE_DESCRIPTION}
+            aria-label={`OPA style: ${OPA_STYLE_DESCRIPTION}`}
+            data-tooltip={OPA_STYLE_DESCRIPTION}
+          >
+            <FontAwesomeIcon icon={faCircleInfo} aria-hidden="true" />
+          </span>
         </div>
 
         {showExplanation ? (

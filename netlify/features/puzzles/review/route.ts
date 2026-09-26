@@ -20,6 +20,7 @@ const puzzleFieldsSchema = z.object({
   whitePlayer: z.string().trim().max(200).default(""),
   blackPlayer: z.string().trim().max(200).default(""),
   explanation: z.string().trim().max(5_000),
+  opaStyle: z.boolean().default(false),
   author: z.string().trim().min(1).max(200),
 });
 const reviewBodySchema = z.discriminatedUnion("action", [

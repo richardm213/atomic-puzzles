@@ -347,6 +347,36 @@ describe("PuzzleSolverPage solution options", () => {
     }
   });
 
+  it("only shows the OPA style label for OPA puzzles", async () => {
+    const { unmount } = render(<PuzzleSolverPage />);
+
+    await screen.findByTestId("mock-board");
+    expect(screen.queryByText("OPA style")).not.toBeInTheDocument();
+    unmount();
+
+    mocks.loadPuzzlesById.mockResolvedValueOnce([
+      {
+        id: 1369,
+        fen: "rn2k2r/pp5p/1qpp2p1/2Q5/1b2P3/2N5/PPP3PP/R3KB1R b KQkq - 1 12",
+        solution: "12... O-O 13. O-O-O Rf2 14. Be2 Ba3",
+        puzzleId: 1369,
+        author: mocks.puzzleAuthor,
+        event: "ACL 2024",
+        explanation: "",
+        tags: [],
+        opa_style: true,
+      },
+    ]);
+
+    render(<PuzzleSolverPage />);
+
+    expect(
+      await screen.findByLabelText(
+        "OPA style: Only the best moves are accepted. Weaker alternatives are rejected even if they also lead to mate.",
+      ),
+    ).toHaveTextContent("OPA style");
+  });
+
   it("waits for progress before choosing a random puzzle and skips attempted puzzles", async () => {
     mocks.routeParams = { puzzleId: "", setKey: "" };
     mocks.loadPuzzleCatalog.mockResolvedValueOnce(

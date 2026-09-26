@@ -13,6 +13,7 @@ export type QueuedPuzzleSubmission = {
   whitePlayer: string;
   blackPlayer: string;
   explanation: string;
+  opaStyle: boolean;
 };
 
 export class PuzzleSubmissionRepository {
@@ -35,6 +36,7 @@ export class PuzzleSubmissionRepository {
         p_white_player: puzzle.whitePlayer,
         p_black_player: puzzle.blackPlayer,
         p_explanation: puzzle.explanation,
+        p_opa_style: puzzle.opaStyle,
         p_submitted_by: username,
         p_allow_different_start_move: allowDifferentStartMove,
       })

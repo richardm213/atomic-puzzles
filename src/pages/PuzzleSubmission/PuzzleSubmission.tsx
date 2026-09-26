@@ -39,6 +39,7 @@ const emptyPuzzleSubmission = (): PuzzleSubmissionValue => ({
   whitePlayer: "",
   blackPlayer: "",
   explanation: "",
+  opaStyle: false,
 });
 
 export const formatCreatedPuzzleIds = (puzzleIds: number[]): string => {

@@ -22,5 +22,6 @@ export type RawPuzzleRow = {
   puzzle_set?: RawPuzzleSetRow | RawPuzzleSetRow[] | null;
   white_player?: string | null;
   black_player?: string | null;
+  opa_style?: boolean | null;
   [key: string]: unknown;
 };

@@ -14,6 +14,7 @@ create table if not exists public.puzzles_queue (
   white_player text not null default '',
   black_player text not null default '',
   explanation text not null default '',
+  opa_style boolean not null default false,
   submitted_by text not null check (length(btrim(submitted_by)) > 0),
   created_at timestamptz not null default now()
 );
@@ -21,6 +22,9 @@ create table if not exists public.puzzles_queue (
 -- Safe to run against the existing queue table.
 alter table public.puzzles_queue
   add column if not exists explanation text not null default '';
+
+alter table public.puzzles_queue
+  add column if not exists opa_style boolean not null default false;
 
 alter table public.puzzles_queue
   add column if not exists event text not null default '';
@@ -38,6 +42,9 @@ alter table public.puzzles
   add column if not exists players text[] not null default '{}'::text[],
   add column if not exists white_player text not null default '',
   add column if not exists black_player text not null default '';
+
+alter table public.puzzles
+  add column if not exists opa_style boolean not null default false;
 
 alter table public.puzzles
   drop constraint if exists puzzles_event_date_format_check;
@@ -92,7 +99,8 @@ $$;
 -- Inserts a server-verified submission with no time-based submission limit.
 drop function if exists public.enqueue_puzzle_submission(text, text, text, text, text);
 drop function if exists public.enqueue_puzzle_submission(text, text, text, text, text, boolean);
-drop function if exists public.enqueue_puzzle_submission(text, text, text, text, text, text, text[], text, text, text, boolean);
+drop function if exists public.enqueue_puzzle_submission(text, text, text, text, text, text[], text, text, text, text, boolean);
+drop function if exists public.enqueue_puzzle_submission(text, text, text, text, text, text[], text, text, text, boolean, text, boolean);
 
 create or replace function public.enqueue_puzzle_submission(
   p_fen text,
@@ -104,6 +112,7 @@ create or replace function public.enqueue_puzzle_submission(
   p_white_player text,
   p_black_player text,
   p_explanation text,
+  p_opa_style boolean,
   p_submitted_by text,
   p_allow_different_start_move boolean
 )
@@ -176,6 +185,7 @@ begin
     white_player,
     black_player,
     explanation,
+    opa_style,
     submitted_by
   )
   values (
@@ -188,6 +198,7 @@ begin
     btrim(coalesce(p_white_player, '')),
     btrim(coalesce(p_black_player, '')),
     btrim(coalesce(p_explanation, '')),
+    coalesce(p_opa_style, false),
     normalized_username
   )
   returning * into queued;
@@ -201,6 +212,7 @@ $$;
 -- stale or conflicting puzzle ID.
 drop function if exists public.publish_approved_puzzle_submission(text, text, text, text, text);
 drop function if exists public.publish_approved_puzzle_submission(text, text, text, text, text, text[], text, text, text, text);
+drop function if exists public.publish_approved_puzzle_submission(text, text, text, text, text, text[], text, text, text, boolean, text);
 
 create or replace function public.publish_approved_puzzle_submission(
   p_fen text,
@@ -212,6 +224,7 @@ create or replace function public.publish_approved_puzzle_submission(
   p_white_player text,
   p_black_player text,
   p_explanation text,
+  p_opa_style boolean,
   p_submitted_by text
 )
 returns bigint
@@ -281,7 +294,7 @@ begin
 
   insert into public.puzzles (
     id, fen, solution, event, event_name, event_date, players,
-    white_player, black_player, explanation, author
+    white_player, black_player, explanation, opa_style, author
   )
   values (
     next_puzzle_id,
@@ -294,6 +307,7 @@ begin
     btrim(coalesce(p_white_player, '')),
     btrim(coalesce(p_black_player, '')),
     btrim(coalesce(p_explanation, '')),
+    coalesce(p_opa_style, false),
     normalized_username
   );
 
@@ -426,7 +440,7 @@ begin
 
     insert into public.puzzles (
       id, fen, solution, event, event_name, event_date, players,
-      white_player, black_player, explanation, author
+      white_player, black_player, explanation, opa_style, author
     )
     values (
       next_puzzle_id,
@@ -442,6 +456,7 @@ begin
       btrim(coalesce(item->>'whitePlayer', '')),
       btrim(coalesce(item->>'blackPlayer', '')),
       btrim(coalesce(item->>'explanation', '')),
+      coalesce((item->>'opaStyle')::boolean, false),
       normalized_username
     );
 
@@ -502,7 +517,7 @@ begin
   begin
     insert into public.puzzles (
       id, fen, solution, event, event_name, event_date, players,
-      white_player, black_player, explanation, author
+      white_player, black_player, explanation, opa_style, author
     )
     values (
       p_puzzle_id,
@@ -515,6 +530,7 @@ begin
       btrim(queued.white_player),
       btrim(queued.black_player),
       btrim(queued.explanation),
+      queued.opa_style,
       queued.submitted_by
     );
   exception
@@ -559,10 +575,10 @@ drop policy if exists "public can edit pending puzzles" on public.puzzles_queue;
 revoke all on public.puzzles_queue from anon, authenticated;
 revoke usage, select on sequence public.puzzles_queue_id_seq from anon, authenticated;
 revoke all on function public.puzzle_start_move(text) from public;
-revoke all on function public.enqueue_puzzle_submission(text, text, text, text, text, text[], text, text, text, text, boolean) from public;
-grant execute on function public.enqueue_puzzle_submission(text, text, text, text, text, text[], text, text, text, text, boolean) to service_role;
-revoke all on function public.publish_approved_puzzle_submission(text, text, text, text, text, text[], text, text, text, text) from public;
-grant execute on function public.publish_approved_puzzle_submission(text, text, text, text, text, text[], text, text, text, text) to service_role;
+revoke all on function public.enqueue_puzzle_submission(text, text, text, text, text, text[], text, text, text, boolean, text, boolean) from public;
+grant execute on function public.enqueue_puzzle_submission(text, text, text, text, text, text[], text, text, text, boolean, text, boolean) to service_role;
+revoke all on function public.publish_approved_puzzle_submission(text, text, text, text, text, text[], text, text, text, boolean, text) from public;
+grant execute on function public.publish_approved_puzzle_submission(text, text, text, text, text, text[], text, text, text, boolean, text) to service_role;
 revoke all on function public.publish_approved_puzzle_batch(jsonb, text) from public;
 grant execute on function public.publish_approved_puzzle_batch(jsonb, text) to service_role;
 revoke all on function public.approve_queued_puzzle(bigint, text, bigint) from public;

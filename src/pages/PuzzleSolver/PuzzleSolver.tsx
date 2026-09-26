@@ -100,6 +100,8 @@ const toPuzzleKey = (puzzleId: unknown): string =>
 
 const ATTEMPTED_PUZZLE_BADGE_LABEL = "You've already attempted this puzzle before";
 const SOLVED_BEFORE_BADGE_LABEL = "You've solved this puzzle before";
+const OPA_STYLE_BADGE_LABEL =
+  "Only the best moves are accepted. Weaker alternatives are rejected even if they also lead to mate.";
 const OTHER_PUZZLE_ATTEMPTS_LIMIT = 30;
 const PUZZLE_PREFETCH_COUNT = 3;
 const PUZZLE_TAG_EDITOR = "seaside_tiramisu";
@@ -602,6 +604,7 @@ export const PuzzleSolverPage = () => {
   const author = String(activePuzzle?.["author"] ?? "").trim() || "Unknown";
   const event = String(activePuzzle?.["event"] ?? "").trim();
   const explanation = activePuzzle?.explanation ?? "";
+  const opaStyle = activePuzzle?.opa_style === true;
   const activePuzzleTags = useMemo(
     () => normalizePuzzleMotifTags(activePuzzle?.tags),
     [activePuzzle?.tags],
@@ -2132,6 +2135,17 @@ export const PuzzleSolverPage = () => {
                   <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
                 </span>
               ) : null}
+              {opaStyle ? (
+                <span
+                  className="puzzleOpaBadge"
+                  tabIndex={0}
+                  title={OPA_STYLE_BADGE_LABEL}
+                  aria-label={`OPA style: ${OPA_STYLE_BADGE_LABEL}`}
+                  data-tooltip={OPA_STYLE_BADGE_LABEL}
+                >
+                  OPA style
+                </span>
+              ) : null}
               <div className="puzzleCount" aria-label="Puzzle count">
                 <span>{puzzleOrdinal ?? "-"}</span>
                 <small>of {puzzleCount || "-"}</small>
@@ -2342,6 +2356,17 @@ export const PuzzleSolverPage = () => {
                 data-tooltip={attemptedPuzzleBadgeLabel}
               >
                 <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
+              </span>
+            ) : null}
+            {opaStyle ? (
+              <span
+                className="puzzleOpaBadge"
+                tabIndex={0}
+                title={OPA_STYLE_BADGE_LABEL}
+                aria-label={`OPA style: ${OPA_STYLE_BADGE_LABEL}`}
+                data-tooltip={OPA_STYLE_BADGE_LABEL}
+              >
+                OPA style
               </span>
             ) : null}
             <span className="mobilePuzzleAuthor" title={author}>

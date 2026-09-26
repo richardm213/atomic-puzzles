@@ -7,6 +7,7 @@ export type PuzzleSubmissionValue = {
   whitePlayer?: string;
   blackPlayer?: string;
   explanation: string;
+  opaStyle?: boolean;
 };
 
 export type ParsedPuzzlePgn = {
@@ -127,7 +128,15 @@ export const validateParsedPuzzleSubmission = (
   const normalizedSolution = /[()]/.test(solution)
     ? solution.trim()
     : serializeUciLinesToPgn(fen, solutionLines) || solution.trim();
-  return { fen, solution: normalizedSolution, event, whitePlayer, blackPlayer, explanation };
+  return {
+    fen,
+    solution: normalizedSolution,
+    event,
+    whitePlayer,
+    blackPlayer,
+    explanation,
+    opaStyle: value.opaStyle === true,
+  };
 };
 
 export const validatePuzzleSubmission = (value: PuzzleSubmissionValue): PuzzleSubmissionValue =>

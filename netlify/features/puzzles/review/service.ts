@@ -18,6 +18,7 @@ export type PuzzleReviewAction =
       whitePlayer: string;
       blackPlayer: string;
       explanation: string;
+      opaStyle: boolean;
       author: string;
     };
 
@@ -61,6 +62,7 @@ export class PuzzleReviewService {
         whitePlayer: input.whitePlayer,
         blackPlayer: input.blackPlayer,
         explanation: input.explanation,
+        opaStyle: input.opaStyle,
       });
       const puzzle = await this.repository().update(input.id, {
         ...validated,

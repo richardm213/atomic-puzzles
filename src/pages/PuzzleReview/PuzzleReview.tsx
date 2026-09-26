@@ -37,6 +37,7 @@ const emptyPuzzleSubmission = (): PuzzleSubmissionValue => ({
   whitePlayer: "",
   blackPlayer: "",
   explanation: "",
+  opaStyle: false,
 });
 
 const queueRowValue = (row: PuzzleQueueRow): PuzzleSubmissionValue => ({
@@ -46,6 +47,7 @@ const queueRowValue = (row: PuzzleQueueRow): PuzzleSubmissionValue => ({
   whitePlayer: row.white_player ?? "",
   blackPlayer: row.black_player ?? "",
   explanation: row.explanation ?? "",
+  opaStyle: row.opa_style === true,
 });
 
 export const PuzzleReviewPage = () => {

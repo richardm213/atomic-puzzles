@@ -19,6 +19,7 @@ export type PuzzleSubmissionInput = {
   whitePlayer?: string;
   blackPlayer?: string;
   explanation: string;
+  opaStyle: boolean;
 };
 
 const PUBLIC_DOMAIN_ERROR = /^(Invalid (FEN|atomic position|PGN)|Enter PGN|The PGN)/;
@@ -48,6 +49,7 @@ export class PuzzleSubmissionService {
       whitePlayer,
       blackPlayer,
       explanation: input.explanation,
+      opaStyle: input.opaStyle === true,
     };
   }
 
