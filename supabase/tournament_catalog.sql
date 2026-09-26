@@ -144,7 +144,7 @@ insert into public.tournament_catalog (
 )
 values
   ('acl-s2', 'acl', 'Atomic Chess League', 'Atomic Chess League Season 2', null, 2026, '2026-02-01', '2026-03-29', 'available', 'blitz', true, null, null, '/images/acl-trophies/league-reactor-v2.png', false, null, 1),
-  ('awc2026', 'awc', 'Atomic World Championship', 'AWC 2026', null, 2026, '2026-09-07', null, 'available', 'blitz', false, 'Round of 64', 'Round of 16', '/images/awc-trophies/awc.png', true, 10, 10),
+  ('awc2026', 'awc', 'Atomic World Championship', 'AWC 2026', null, 2026, '2026-09-07', null, 'available', 'blitz', false, 'Round of 16', 'Round of 16', '/images/awc-trophies/awc.png', true, 10, 10),
   ('aoc2026', 'aoc', 'Atomic Openings Championship', 'AOC 2026', 'Atomic Openings Championship 2026', 2026, '2026-07-02', '2026-07-31', 'available', 'blitz', false, null, null, '/images/awc-trophies/atomic-openings-championship.png', true, null, 20),
   ('ahc2026', 'ahc', 'Atomic Hyper Championship', 'AHC 2026', 'Atomic Hyper Championship 2026', 2026, '2026-07-10', '2026-08-19', 'available', 'hyperbullet', false, null, 'Round of 32', '/images/awc-trophies/atomic-hyper-championship.png', true, 20, 30),
   ('ccac2026', 'ccac', 'Chess.com Atomic Championship', 'CCAC 2026', 'Chess.com Atomic Championship 2026', 2026, '2026-03-04', '2026-03-06', 'available', 'blitz', true, null, null, '/images/awc-trophies/chesscomatomic.png', true, 30, 40),
@@ -204,7 +204,7 @@ values
   ('awc2025', 'neverofzero', 'awc-2025', 1, 'AWC 2025', 'Atomic World Champion 2025', 'Champion', '2025-12-01', 1000, null),
   ('aoc2026', 'jakestatefarm', 'atomic-openings-2026', 1, 'AOC 2026', '2026 Atomic Openings Champion', 'Champion', '2026-07-31', 970, null),
   ('ahc2026', 'rkrounit', 'atomic-hyper-2026', 1, 'AHC 2026', '2026 Atomic Hyper Champion', 'Champion', '2026-08-19', 970, null),
-  ('ccac2026', 'wolfram_ep', 'chesscom-atomic-2026', 1, 'Chess.com', '2026 Chess.com Atomic Champion', 'Champion', '2026-03-01', 980, null)
+  ('ccac2026', 'wolfram_ep', 'chesscom-atomic-2026', 1, 'CC 2026', '2026 Chess.com Atomic Champion', 'Champion', '2026-03-01', 980, null)
 on conflict (tournament_id, award_key) do update set
   player_name = excluded.player_name,
   placement = excluded.placement,

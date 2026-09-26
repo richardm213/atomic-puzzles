@@ -2,7 +2,7 @@
   --tournament-gold: color-mix(in srgb, var(--color-accent-warm) 76%, var(--color-heading));
   min-height: var(--page-shell-min-height);
   min-height: var(--page-shell-min-height-dynamic);
-  width: min(1180px, 100%);
+  width: min(980px, 100%);
   margin: 0 auto;
   padding: max(var(--page-gutter), env(safe-area-inset-top))
     max(clamp(18px, 3vw, 28px), env(safe-area-inset-right))
@@ -401,6 +401,16 @@
   max-width: 100%;
 }
 
+.tournamentBracketControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
 .tournamentStageToggle {
   display: inline-flex;
   align-items: center;
@@ -452,10 +462,6 @@
 }
 
 .tournamentStageHeader {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: center;
-  gap: 12px 18px;
   margin-bottom: 10px;
 }
 
@@ -524,9 +530,6 @@
 }
 
 .tournamentZoomControls {
-  grid-column: 3;
-  grid-row: 1;
-  justify-self: end;
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
@@ -800,18 +803,8 @@
 }
 
 @media (max-width: 1100px) {
-  .tournamentStageHeader {
-    grid-template-columns: 1fr;
-  }
-
   .tournamentStageHeader h2 {
     white-space: normal;
-  }
-
-  .tournamentZoomControls {
-    grid-column: auto;
-    grid-row: auto;
-    width: fit-content;
   }
 
   .tournamentRoundsScroller {
@@ -828,6 +821,10 @@
 
   .tournamentBracketToolbar {
     flex-wrap: wrap;
+  }
+
+  .tournamentBracketControls {
+    width: 100%;
   }
 
   .tournamentCommentsLink {

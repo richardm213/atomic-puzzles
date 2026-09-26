@@ -53,6 +53,7 @@ type NavItem = {
   to: string;
   label: string;
   isActive: (pathname: string) => boolean;
+  hideInCompactNav?: boolean;
   linkToPage?: boolean;
   children?: {
     to: string;
@@ -189,6 +190,7 @@ const navItems: NavItem[] = [
   {
     to: "/community",
     label: "Community",
+    hideInCompactNav: true,
     isActive: (pathname) =>
       pathname.startsWith("/community/") ||
       pathname === "/comments" ||
@@ -220,6 +222,7 @@ const navItems: NavItem[] = [
   {
     to: "/analysis",
     label: "Analysis",
+    hideInCompactNav: true,
     isActive: (pathname) => pathname === "/analysis" || pathname === "/practice",
     children: [
       {
@@ -781,7 +784,7 @@ export const TopNav = () => {
                 openPanel?.type === "navDropdown" && openPanel.navItemTo === item.to;
               return (
                 <div
-                  className={`navDropdown ${active ? "isActive" : ""} ${
+                  className={`navDropdown ${item.hideInCompactNav ? "compactNavHidden" : ""} ${active ? "isActive" : ""} ${
                     dropdownOpen ? "open" : ""
                   }`}
                   key={item.to}

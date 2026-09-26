@@ -723,6 +723,51 @@ const TournamentMatchCard = ({
   );
 };
 
+const TournamentZoomControls = ({
+  stageLabel,
+  zoomLevel,
+  onZoomOut,
+  onZoomReset,
+  onZoomIn,
+}: {
+  stageLabel: string;
+  zoomLevel: number;
+  onZoomOut: () => void;
+  onZoomReset: () => void;
+  onZoomIn: () => void;
+}) => (
+  <div
+    className="tournamentZoomControls"
+    role="group"
+    aria-label={`Zoom controls for ${stageLabel}`}
+  >
+    <button
+      type="button"
+      className="tournamentZoomButton"
+      onClick={onZoomOut}
+      aria-label={`Zoom out ${stageLabel}`}
+    >
+      -
+    </button>
+    <button
+      type="button"
+      className="tournamentZoomValue"
+      onClick={onZoomReset}
+      aria-label={`Reset zoom for ${stageLabel}`}
+    >
+      {zoomDisplayPercent(zoomLevel)}%
+    </button>
+    <button
+      type="button"
+      className="tournamentZoomButton"
+      onClick={onZoomIn}
+      aria-label={`Zoom in ${stageLabel}`}
+    >
+      +
+    </button>
+  </div>
+);
+
 const TournamentStageSection = ({
   stage,
   layout,
@@ -737,9 +782,6 @@ const TournamentStageSection = ({
   hideStartRoundControls,
   shouldSuppressMatchClick,
   onOpenMatch,
-  onZoomOut,
-  onZoomReset,
-  onZoomIn,
   onStartRoundChange,
   setHeaderTrackRef,
   setScrollerRef,
@@ -761,9 +803,6 @@ const TournamentStageSection = ({
   hideStartRoundControls?: boolean;
   shouldSuppressMatchClick: () => boolean;
   onOpenMatch: (match: TournamentMatch) => void;
-  onZoomOut: () => void;
-  onZoomReset: () => void;
-  onZoomIn: () => void;
   onStartRoundChange: (roundName: string) => void;
   setHeaderTrackRef: (stageKey: StageKey, node: HTMLDivElement | null) => void;
   setScrollerRef: (stageKey: StageKey, node: HTMLDivElement | null) => void;
@@ -779,36 +818,6 @@ const TournamentStageSection = ({
     <section className="tournamentStageSection" aria-labelledby={`${stage.key}-heading`}>
       <div className="tournamentStageHeader">
         <h2 id={`${stage.key}-heading`}>{stage.label}</h2>
-        <div
-          className="tournamentZoomControls"
-          role="group"
-          aria-label={`Zoom controls for ${stage.label}`}
-        >
-          <button
-            type="button"
-            className="tournamentZoomButton"
-            onClick={onZoomOut}
-            aria-label={`Zoom out ${stage.label}`}
-          >
-            -
-          </button>
-          <button
-            type="button"
-            className="tournamentZoomValue"
-            onClick={onZoomReset}
-            aria-label={`Reset zoom for ${stage.label}`}
-          >
-            {zoomDisplayPercent(zoomLevel)}%
-          </button>
-          <button
-            type="button"
-            className="tournamentZoomButton"
-            onClick={onZoomIn}
-            aria-label={`Zoom in ${stage.label}`}
-          >
-            +
-          </button>
-        </div>
       </div>
       {!hideStartRoundControls && startRoundOptions.length > 1 ? (
         <div className="tournamentRoundNavigator" aria-label={`Starting round for ${stage.label}`}>
@@ -1100,6 +1109,7 @@ const BracketTournamentPage = ({ tournamentId }: { tournamentId: string }) => {
     () => bracket?.stages?.filter((stage) => stage.key === activeStageKey) || [],
     [bracket, activeStageKey],
   );
+  const activeStage = visibleStages[0];
 
   const setScrollerRef = (stageKey: string, node: HTMLDivElement | null): void => {
     if (node) {
@@ -1375,36 +1385,47 @@ const BracketTournamentPage = ({ tournamentId }: { tournamentId: string }) => {
       </section>
 
       <div className="tournamentBracketToolbar">
-        {bracket.stages.length > 1 || seedEntries.length ? (
-          <div className="tournamentStageToggle" role="tablist" aria-label="Bracket type">
-            {bracket.stages.map((stage) => {
-              const isActive = stage.key === activeStageKey;
-              return (
+        <div className="tournamentBracketControls">
+          {bracket.stages.length > 1 || seedEntries.length ? (
+            <div className="tournamentStageToggle" role="tablist" aria-label="Bracket type">
+              {bracket.stages.map((stage) => {
+                const isActive = stage.key === activeStageKey;
+                return (
+                  <button
+                    key={`${stage.key}-toggle`}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    className={`tournamentStageToggleButton${isActive ? " isActive" : ""}`}
+                    onClick={() => selectTournamentTab(stage.key)}
+                  >
+                    {stage.label}
+                  </button>
+                );
+              })}
+              {seedEntries.length ? (
                 <button
-                  key={`${stage.key}-toggle`}
                   type="button"
                   role="tab"
-                  aria-selected={isActive}
-                  className={`tournamentStageToggleButton${isActive ? " isActive" : ""}`}
-                  onClick={() => selectTournamentTab(stage.key)}
+                  aria-selected={activeStageKey === SEEDS_STAGE_KEY}
+                  className={`tournamentStageToggleButton${activeStageKey === SEEDS_STAGE_KEY ? " isActive" : ""}`}
+                  onClick={() => selectTournamentTab(SEEDS_STAGE_KEY)}
                 >
-                  {stage.label}
+                  Seeds
                 </button>
-              );
-            })}
-            {seedEntries.length ? (
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activeStageKey === SEEDS_STAGE_KEY}
-                className={`tournamentStageToggleButton${activeStageKey === SEEDS_STAGE_KEY ? " isActive" : ""}`}
-                onClick={() => selectTournamentTab(SEEDS_STAGE_KEY)}
-              >
-                Seeds
-              </button>
-            ) : null}
-          </div>
-        ) : null}
+              ) : null}
+            </div>
+          ) : null}
+          {activeStage ? (
+            <TournamentZoomControls
+              stageLabel={activeStage.label}
+              zoomLevel={clampZoom(zoomLevels[activeStage.key] || DEFAULT_STAGE_ZOOM)}
+              onZoomOut={() => updateStageZoom(activeStage.key, -STAGE_ZOOM_STEP)}
+              onZoomReset={() => resetStageZoom(activeStage.key)}
+              onZoomIn={() => updateStageZoom(activeStage.key, STAGE_ZOOM_STEP)}
+            />
+          ) : null}
+        </div>
         <a
           className="tournamentCommentsLink"
           href="#tournament-comments"
@@ -1437,9 +1458,6 @@ const BracketTournamentPage = ({ tournamentId }: { tournamentId: string }) => {
               hideStartRoundControls={Boolean(bracket.hideStartRoundControls)}
               shouldSuppressMatchClick={shouldSuppressMatchClick}
               onOpenMatch={openMatchPage}
-              onZoomOut={() => updateStageZoom(stage.key, -STAGE_ZOOM_STEP)}
-              onZoomReset={() => resetStageZoom(stage.key)}
-              onZoomIn={() => updateStageZoom(stage.key, STAGE_ZOOM_STEP)}
               onStartRoundChange={(roundName) => setStageStartRound(stage.key, roundName)}
               setHeaderTrackRef={setHeaderTrackRef}
               setScrollerRef={setScrollerRef}

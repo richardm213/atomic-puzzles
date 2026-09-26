@@ -53,18 +53,8 @@ on conflict (id) do update set
   home_feature_order = excluded.home_feature_order,
   display_order = excluded.display_order;
 
-insert into public.tournament_seeds (tournament, player_name, seed)
-values
-  ('ccac2025', 'rojitto', 1),
-  ('ccac2025', 'fast-tsunami', 2),
-  ('ccac2025', 'jakestatefarm', 3),
-  ('ccac2025', 'opabinia', 4),
-  ('ccac2025', 'lesha2002', 5),
-  ('ccac2025', 'pawnosaurus', 6),
-  ('ccac2025', 'alwaysbullet', 7),
-  ('ccac2025', 'shnitez', 8)
-on conflict (tournament, player_name) do update set
-  seed = excluded.seed;
+delete from public.tournament_seeds
+where tournament = 'ccac2025';
 
 insert into public.tournament_matches (
   tournament, bracket, round, "order", id, match_id, p1, p2, s1, s2, winner_to, loser_to
@@ -114,7 +104,7 @@ values (
   'jakestatefarm',
   'chesscom-atomic-2025',
   1,
-  'Chess.com',
+  'CC 2025',
   '2025 Chess.com Atomic Champion',
   'Champion',
   '2025-03-28',

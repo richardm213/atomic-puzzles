@@ -320,7 +320,6 @@
   }
 }
 
-
 :root[data-theme="light"] .topNav {
   box-shadow: var(--nav-shadow);
 }
@@ -1304,6 +1303,18 @@
   }
 }
 
+@media (min-width: 701px) and (max-width: 1120px) {
+  .topNavLinks > .compactNavHidden {
+    display: none;
+  }
+}
+
+@media (min-width: 1121px) and (max-width: 1320px) {
+  .topNavCenter:has(.navSearch.open) .topNavLinks > .compactNavHidden {
+    display: none;
+  }
+}
+
 @media (max-width: 700px) {
   .puzzleTimerSettingsSection {
     display: none;
@@ -1424,7 +1435,6 @@
     min-height: 36px;
     padding-left: 14px;
   }
-
 
   .topNavLinks a:hover,
   .navDropdownTrigger:hover {
