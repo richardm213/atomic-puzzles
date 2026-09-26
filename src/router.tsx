@@ -262,6 +262,21 @@ const legacyPuzzleHistoryRoute = createRoute({
 const solveSetsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/solve/sets",
+  validateSearch: (search: Record<string, unknown>) => ({
+    filter: typeof search.filter === "string" ? search.filter : undefined,
+  }),
+  component: PuzzleSetsPage,
+});
+
+const awcPuzzleSetsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/awc",
+  component: PuzzleSetsPage,
+});
+
+const aclPuzzleSetsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/acl",
   component: PuzzleSetsPage,
 });
 
@@ -439,6 +454,8 @@ const routeTree = rootRoute.addChildren([
   dashboardRoute,
   legacyPuzzleHistoryRoute,
   solveSetsRoute,
+  awcPuzzleSetsRoute,
+  aclPuzzleSetsRoute,
   customPuzzleSetsRoute,
   customPuzzleSetEditRoute,
   puzzleLeaderboardRoute,
@@ -469,6 +486,7 @@ const router = createRouter({
   context: { queryClient },
   defaultPendingComponent: RouteLoadingFallback,
   defaultPreload: "intent",
+  scrollRestoration: true,
 });
 
 export const AppRouterProvider = () => (

@@ -1,7 +1,7 @@
 import "./PuzzleSets.css";
 
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 
 import { formatPuzzleSetDate } from "../../../shared/domain/puzzles/puzzleSetMetadata";
@@ -34,6 +34,8 @@ const EVENT_FILTERS = [
   { id: "chess960", label: "960" },
   { id: "endgames", label: "Endgames" },
 ];
+const EVENT_FILTER_IDS = new Set(EVENT_FILTERS.map((filter) => filter.id));
+const puzzleSetShuffleSeedStorageKey = "atomic-puzzles:puzzle-set-shuffle-seed";
 const FEATURED_SET_MATCHERS: Array<(group: PuzzleEventGroup) => boolean> = [
   (group) =>
     group.eventName.toLocaleLowerCase() === "wolfrandom" &&
@@ -54,6 +56,24 @@ const FEATURED_SET_MATCHERS: Array<(group: PuzzleEventGroup) => boolean> = [
     group.players.includes("wolfram_ep"),
 ];
 const emptyPuzzles: Puzzle[] = [];
+
+const readPuzzleSetShuffleSeed = (): number => {
+  const createSeed = () => Math.floor(Math.random() * 0x1_0000_0000);
+  if (typeof window === "undefined") return createSeed();
+
+  try {
+    const storedSeed = Number(window.sessionStorage.getItem(puzzleSetShuffleSeedStorageKey));
+    if (Number.isInteger(storedSeed) && storedSeed >= 0 && storedSeed < 0x1_0000_0000) {
+      return storedSeed;
+    }
+
+    const nextSeed = createSeed();
+    window.sessionStorage.setItem(puzzleSetShuffleSeedStorageKey, String(nextSeed));
+    return nextSeed;
+  } catch {
+    return createSeed();
+  }
+};
 
 export const getFeaturedPuzzleSetRank = (group: PuzzleEventGroup): number =>
   FEATURED_SET_MATCHERS.findIndex((matches) => matches(group));
@@ -130,9 +150,19 @@ export const matchesEventFilter = (
 
 export const PuzzleSetsPage = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useRouterState({ select: (state) => state.location });
   const username = normalizeUsername(user?.username);
-  const [activeFilterId, setActiveFilterId] = useState("all");
-  const [shuffleSeed] = useState(() => Math.floor(Math.random() * 0x1_0000_0000));
+  const routeFilterId =
+    location.pathname === "/awc"
+      ? "awc"
+      : location.pathname === "/acl"
+        ? "acl"
+        : typeof location.search.filter === "string" && EVENT_FILTER_IDS.has(location.search.filter)
+          ? location.search.filter
+          : "all";
+  const activeFilterId = routeFilterId;
+  const [shuffleSeed] = useState(readPuzzleSetShuffleSeed);
   const puzzleCatalogQuery = useQuery(puzzleCatalogQueryOptions());
   const playerNicknamesQuery = useQuery(puzzlePlayerNicknamesQueryOptions());
   const progressQuery = useQuery({
@@ -176,6 +206,17 @@ export const PuzzleSetsPage = () => {
       return nickname || player;
     });
     return labels.length === 2 ? `${labels[0]} vs ${labels[1]}` : labels.join(" · ");
+  };
+  const selectEventFilter = (filterId: string) => {
+    if (filterId === "awc" || filterId === "acl") {
+      void navigate({ to: filterId === "awc" ? "/awc" : "/acl" });
+      return;
+    }
+
+    void navigate({
+      to: "/solve/sets",
+      search: filterId === "all" ? {} : { filter: filterId },
+    });
   };
 
   const renderPuzzleSetGrid = (groups: PuzzleEventGroup[], ariaLabel: string) => (
@@ -267,7 +308,7 @@ export const PuzzleSetsPage = () => {
       <Seo
         title="Puzzle Sets"
         description="Browse atomic puzzle events and open every puzzle from a selected set."
-        path="/solve/sets"
+        path={location.pathname}
       />
       <div className="puzzleSetsShell">
         <section className="puzzleSetsSection" aria-label="Puzzle set filters and results">
@@ -278,7 +319,7 @@ export const PuzzleSetsPage = () => {
               <select
                 aria-label="Filter puzzle sets"
                 value={activeFilterId}
-                onChange={(event) => setActiveFilterId(event.target.value)}
+                onChange={(event) => selectEventFilter(event.target.value)}
               >
                 {EVENT_FILTERS.map((filter) => (
                   <option key={filter.id} value={filter.id}>
