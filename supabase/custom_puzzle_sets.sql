@@ -17,28 +17,6 @@ create table if not exists public.custom_puzzle_sets (
   updated_at timestamptz not null default now()
 );
 
-alter table public.custom_puzzle_sets
-  add column if not exists untagged_only boolean not null default false;
-
-alter table public.custom_puzzle_sets
-  add column if not exists author_filters text[] not null default '{}';
-
-update public.custom_puzzle_sets
-set author_filters = array[author_filter]
-where author_filter is not null
-  and btrim(author_filter) <> ''
-  and cardinality(author_filters) = 0;
-
-alter table public.custom_puzzle_sets
-  add column if not exists result_filter text not null default 'all';
-
-alter table public.custom_puzzle_sets
-  drop constraint if exists custom_puzzle_sets_result_filter_check;
-
-alter table public.custom_puzzle_sets
-  add constraint custom_puzzle_sets_result_filter_check
-  check (result_filter in ('all', 'correct', 'incorrect'));
-
 create unique index if not exists custom_puzzle_sets_username_name_unique
   on public.custom_puzzle_sets (lower(username), lower(name));
 create index if not exists custom_puzzle_sets_username_updated_idx
@@ -55,9 +33,6 @@ create table if not exists public.custom_puzzle_set_items (
   primary key (set_id, puzzle_id),
   unique (set_id, position)
 );
-
-alter table public.custom_puzzle_set_items
-  add column if not exists removed_at timestamptz;
 
 create index if not exists custom_puzzle_set_items_progress_idx
   on public.custom_puzzle_set_items (set_id, completed_at, position);

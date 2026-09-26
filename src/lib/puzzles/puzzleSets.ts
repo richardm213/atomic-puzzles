@@ -110,7 +110,7 @@ const knownPuzzleSetSourceIds: Readonly<Record<number, string>> = {
   1496: "lOVW9Mod",
 };
 
-const getPuzzleSetSourceId = (puzzle: Puzzle): string => {
+export const getPuzzleSetSourceId = (puzzle: Puzzle): string => {
   const relation = Array.isArray(puzzle.puzzle_set) ? puzzle.puzzle_set[0] : puzzle.puzzle_set;
   const storedSourceId = String(relation?.source_id ?? "").trim();
   if (storedSourceId) return storedSourceId;

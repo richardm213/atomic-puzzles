@@ -799,41 +799,24 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
               </div>
 
               {createdPuzzleEntries.length > 0 ? (
-                <div className="dashboardAttemptRows" role="list" aria-label="Puzzles created">
-                  {createdPuzzleEntries.map((puzzle, index) => (
-                    <article key={puzzle.puzzleId} className="dashboardAttemptRow">
-                      <div className="dashboardAttemptPrimary">
-                        <span className="dashboardRowNumber" aria-hidden="true">
-                          {(currentPage - 1) * pageSize + index + 1}
-                        </span>
-                        <Link
-                          className="dashboardPuzzleLink"
-                          to="/solve/$puzzleId"
-                          params={{ puzzleId: String(puzzle.puzzleId) }}
-                        >
-                          Puzzle {puzzle.puzzleId}
-                        </Link>
-                      </div>
-                    </article>
+                <ol className="dashboardCreatedGrid" aria-label="Puzzles created">
+                  {createdPuzzleEntries.map((puzzle) => (
+                    <li key={puzzle.puzzleId}>
+                      <Link
+                        className="dashboardCreatedPuzzleLink"
+                        to="/solve/$puzzleId"
+                        params={{ puzzleId: String(puzzle.puzzleId) }}
+                      >
+                        Puzzle {puzzle.puzzleId}
+                      </Link>
+                    </li>
                   ))}
-                </div>
+                </ol>
               ) : (
                 <div className="dashboardStateCard">
                   <p>No puzzles created yet.</p>
                 </div>
               )}
-
-              {createdPuzzleEntries.length > 0 ? (
-                <div className="dashboardAttemptsFooter">
-                  <PaginationRow
-                    currentPage={currentPage}
-                    totalPages={createdTotalPages}
-                    onPageChange={setCurrentPage}
-                    formatLabel={(current, total) => `Page ${current} / ${total}`}
-                    disabled={isPageLoading}
-                  />
-                </div>
-              ) : null}
             </section>
           </>
         ) : null}

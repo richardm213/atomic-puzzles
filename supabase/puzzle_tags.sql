@@ -1,24 +1,10 @@
--- Adds a curated motif list to each published puzzle.
--- Safe to run more than once in the Supabase SQL editor.
+-- Curated motif schema and write protection for published puzzles.
 
 alter table public.puzzles
   add column if not exists tags text[] not null default '{}'::text[];
 
 alter table public.puzzles
   drop constraint if exists puzzles_tags_valid;
-
-update public.puzzles
-set tags = (
-  select coalesce(array_agg(normalized.tag order by normalized.first_position), '{}'::text[])
-  from (
-    select
-      case when value in ('equal', 'endgame_draw') then 'draw' else value end as tag,
-      min(position) as first_position
-    from unnest(tags) with ordinality as existing(value, position)
-    group by case when value in ('equal', 'endgame_draw') then 'draw' else value end
-  ) as normalized
-)
-where 'equal' = any(tags) or 'endgame_draw' = any(tags);
 
 alter table public.puzzles
   add constraint puzzles_tags_valid check (

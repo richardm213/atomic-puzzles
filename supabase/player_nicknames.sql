@@ -17,25 +17,6 @@ create unique index if not exists player_nicknames_one_primary_per_username
   on public.player_nicknames (username)
   where is_primary;
 
-insert into public.player_nicknames (username, nickname, is_primary)
-values
-  ('maxwellssilvrhammer', 'max', true),
-  ('randoomplayer', 'randoom', true),
-  ('wolfram_ep', 'wolfram', true),
-  ('seaside_tiramisu', 'seaside', true),
-  ('neverofzero', 'noz', true),
-  ('jakestatefarm', 'jsf', true),
-  ('rkrounit', 'rkr', true),
-  ('lesha2002', 'lesha', true),
-  ('rabbier', 'rabbie', true),
-  ('quasabianth', 'quasa', true),
-  ('absolutelytrash', 'trash', true),
-  ('ihatespammers', 'trk', true),
-  ('queeneatingdragon', 'qed', true)
-on conflict (username, nickname) do update
-set is_primary = excluded.is_primary,
-    updated_at = now();
-
 alter table public.player_nicknames enable row level security;
 
 drop policy if exists "Player nicknames are publicly readable" on public.player_nicknames;

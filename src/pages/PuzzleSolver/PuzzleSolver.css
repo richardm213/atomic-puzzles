@@ -232,6 +232,23 @@ body:has(.puzzlePage),
   line-height: 1.3;
 }
 
+.puzzleHeaderEventLink {
+  color: inherit;
+  border-radius: 3px;
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+
+.puzzleHeaderEventLink:hover {
+  color: var(--color-heading);
+  text-decoration: underline;
+}
+
+.puzzleHeaderEventLink:focus-visible {
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
 .puzzleHeaderSetDetails {
   display: flex;
   flex-wrap: wrap;
@@ -269,12 +286,100 @@ body:has(.puzzlePage),
   font-weight: 700;
 }
 
-.puzzleHeaderMeta strong {
+.puzzleHeaderMeta strong,
+.puzzleHeaderAuthorLink {
   min-width: 0;
   overflow-wrap: anywhere;
   color: var(--color-text);
   font-size: 12px;
   font-weight: 800;
+}
+
+.puzzleHeaderAuthorLink {
+  border-radius: 3px;
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+
+.puzzleHeaderAuthorLink:hover {
+  color: var(--color-text);
+  text-decoration: underline;
+}
+
+.puzzleHeaderAuthorLink:focus-visible {
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+.puzzlePlayers {
+  display: grid;
+  gap: 2px;
+}
+
+.puzzlePlayer {
+  display: grid;
+  grid-template-columns: 18px 38px minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  min-height: 27px;
+  padding: 0 4px;
+  border-radius: 6px;
+}
+
+.puzzlePlayerColor {
+  width: 16px;
+  height: 16px;
+  border: 2px solid color-mix(in srgb, var(--color-muted) 78%, var(--color-border));
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-panel-deep) 34%, transparent);
+}
+
+.puzzlePlayerColor.white {
+  background: var(--color-player-white);
+}
+
+.puzzlePlayerColor.black {
+  background: var(--color-player-black);
+}
+
+.puzzlePlayerSide {
+  color: var(--color-subtle);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.puzzlePlayer strong,
+.puzzlePlayerLink {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-heading);
+  font-size: 12.5px;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.puzzlePlayerLink {
+  border-radius: 3px;
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+
+.puzzlePlayerLink:hover {
+  color: var(--color-heading);
+  text-decoration: underline;
+}
+
+.puzzlePlayerLink:focus-visible {
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+.puzzlePlayers + .puzzleActions {
+  padding-top: 4px;
+  border-top: 0;
 }
 
 .puzzleCount {
@@ -1655,6 +1760,10 @@ body:has(.puzzlePage),
   display: none;
 }
 
+.mobilePuzzlePlayers {
+  display: none;
+}
+
 .mobileActionCard {
   display: grid;
   gap: 10px;
@@ -2111,6 +2220,37 @@ body:has(.puzzlePage),
     min-width: 0;
     width: min(100%, 548px);
     margin: 0 auto;
+  }
+
+  .mobilePuzzlePlayers {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    width: min(100%, 548px);
+    margin: 0 auto;
+  }
+
+  .mobilePuzzlePlayers .puzzlePlayer {
+    grid-template-columns: 18px 35px minmax(0, 1fr);
+    gap: 6px;
+    min-height: 34px;
+    padding: 3px 7px;
+    border: 1px solid var(--color-border);
+    background: var(--color-panel-strong);
+  }
+
+  .mobilePuzzlePlayers .puzzlePlayerColor {
+    width: 16px;
+    height: 16px;
+  }
+
+  .mobilePuzzlePlayers .puzzlePlayerSide {
+    font-size: 8px;
+  }
+
+  .mobilePuzzlePlayers .puzzlePlayer strong,
+  .mobilePuzzlePlayers .puzzlePlayerLink {
+    font-size: 11px;
   }
 
   .mobilePositionSummary {

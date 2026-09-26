@@ -17,7 +17,6 @@ import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } fro
 
 import {
   formatPuzzleSetDate,
-  formatPuzzleSetPlayers,
   puzzleSetMetadataFromRow,
 } from "../../../shared/domain/puzzles/puzzleSetMetadata";
 import { buildPieceStyle } from "../../components/Chessboard/boardStyle";
@@ -52,8 +51,15 @@ import {
   normalizePuzzleMotifTags,
   puzzleMotifs,
 } from "../../lib/puzzles/puzzleMotifs";
-import { puzzleQueryKeys } from "../../lib/puzzles/puzzleQueries";
-import { getOrderedPuzzleIndexesForEvent, isAwcPuzzleEvent } from "../../lib/puzzles/puzzleSets";
+import {
+  puzzlePlayerNicknamesQueryOptions,
+  puzzleQueryKeys,
+} from "../../lib/puzzles/puzzleQueries";
+import {
+  getOrderedPuzzleIndexesForEvent,
+  getPuzzleSetSourceId,
+  isAwcPuzzleEvent,
+} from "../../lib/puzzles/puzzleSets";
 import { ensurePuzzlePgnHeaders } from "../../lib/puzzles/puzzleSubmission";
 import { updatePuzzleTags } from "../../lib/puzzles/puzzleTags";
 import {
@@ -344,6 +350,7 @@ export const PuzzleSolverPage = () => {
     enabled: Boolean(SERVER_CUSTOM_SET_ID_PATTERN.test(routeCustomSetId) && user?.username),
     retry: false,
   });
+  const playerNicknamesQuery = useQuery(puzzlePlayerNicknamesQueryOptions());
   const customPuzzleSet = customPuzzleSetQuery.data;
   const isCustomSetRoute = Boolean(routeCustomSetId);
   const attemptedPuzzleIdsUsername = normalizeUsername(user?.username);
@@ -602,6 +609,7 @@ export const PuzzleSolverPage = () => {
   );
   const fen = activePuzzle?.fen ?? "";
   const author = String(activePuzzle?.["author"] ?? "").trim() || "Unknown";
+  const authorDashboardUsername = author === "Unknown" ? "" : normalizeUsername(author);
   const event = String(activePuzzle?.["event"] ?? "").trim();
   const explanation = activePuzzle?.explanation ?? "";
   const opaStyle = activePuzzle?.opa_style === true;
@@ -654,9 +662,26 @@ export const PuzzleSolverPage = () => {
     activePuzzleSetMetadata && !isAwcPuzzleEvent(activePuzzleSetMetadata.eventName)
       ? formatPuzzleSetDate(activePuzzleSetMetadata.eventDate)
       : "";
-  const puzzleSetPlayers = activePuzzleSetMetadata
-    ? formatPuzzleSetPlayers(activePuzzleSetMetadata.players)
-    : "";
+  const whitePlayer = activePuzzleSetMetadata?.whitePlayer ?? "";
+  const blackPlayer = activePuzzleSetMetadata?.blackPlayer ?? "";
+  const playerNicknames = useMemo(
+    () =>
+      new Map(
+        (playerNicknamesQuery.data ?? []).map((row) => [
+          normalizeUsername(row.username),
+          row.nickname.trim(),
+        ]),
+      ),
+    [playerNicknamesQuery.data],
+  );
+  const whitePlayerLabel = playerNicknames.get(normalizeUsername(whitePlayer)) || whitePlayer;
+  const blackPlayerLabel = playerNicknames.get(normalizeUsername(blackPlayer)) || blackPlayer;
+  const hasKnownPlayers = Boolean(whitePlayer && blackPlayer);
+  const puzzleSetParticipants = hasKnownPlayers ? [] : (activePuzzleSetMetadata?.players ?? []);
+  const puzzleSetParticipantsLabel =
+    puzzleSetParticipants.length === 2
+      ? `${puzzleSetParticipants[0]} vs ${puzzleSetParticipants[1]}`
+      : puzzleSetParticipants.join(" · ");
   const isAnalysisMode = interactionMode === ANALYSIS_MODE;
   const hasPersistedAttempt = activePuzzleKey ? attemptedPuzzleIds.has(activePuzzleKey) : false;
   const hasResolvedAttempt = activePuzzleKey
@@ -666,6 +691,10 @@ export const PuzzleSolverPage = () => {
   // acknowledged by the badge, but it must not reveal post-attempt UI before
   // the solver finishes this pass through the puzzle.
   const hasAttemptedActivePuzzle = hasResolvedAttempt || (!isCustomSetRoute && hasPersistedAttempt);
+  const sourceMatchId = activePuzzle ? getPuzzleSetSourceId(activePuzzle) : "";
+  const canLinkSourceMatch = Boolean(
+    hasAttemptedActivePuzzle && !routeSetKey && !routeCustomSetId && sourceMatchId,
+  );
   const attemptedPuzzleBadgeLabel = isCustomSetRoute
     ? SOLVED_BEFORE_BADGE_LABEL
     : ATTEMPTED_PUZZLE_BADGE_LABEL;
@@ -2155,14 +2184,30 @@ export const PuzzleSolverPage = () => {
 
           {showPuzzleSetMetadata && activePuzzleSetMetadata ? (
             <section className="puzzleHeaderSetMetadata" aria-label="Puzzle set details">
-              <strong>{activePuzzleSetMetadata.eventName}</strong>
-              {puzzleSetDate || puzzleSetPlayers ? (
+              <strong>
+                {canLinkSourceMatch ? (
+                  <Link
+                    className="puzzleHeaderEventLink"
+                    to="/matches/$matchId"
+                    params={{ matchId: sourceMatchId }}
+                  >
+                    {activePuzzleSetMetadata.eventName}
+                  </Link>
+                ) : (
+                  activePuzzleSetMetadata.eventName
+                )}
+              </strong>
+              {puzzleSetDate || puzzleSetParticipantsLabel ? (
                 <span className="puzzleHeaderSetDetails">
                   {puzzleSetDate ? (
                     <time dateTime={activePuzzleSetMetadata.eventDate}>{puzzleSetDate}</time>
                   ) : null}
-                  {puzzleSetDate && puzzleSetPlayers ? <span aria-hidden="true">·</span> : null}
-                  {puzzleSetPlayers ? <span>{puzzleSetPlayers}</span> : null}
+                  {puzzleSetDate && puzzleSetParticipantsLabel ? (
+                    <span aria-hidden="true">·</span>
+                  ) : null}
+                  {puzzleSetParticipantsLabel ? (
+                    <span>{puzzleSetParticipantsLabel}</span>
+                  ) : null}
                 </span>
               ) : null}
             </section>
@@ -2171,7 +2216,17 @@ export const PuzzleSolverPage = () => {
           <div className="puzzleHeaderMetadata">
             <div className="puzzleHeaderMeta" title={author}>
               <span>Created by</span>
-              <strong>{author}</strong>
+              {authorDashboardUsername ? (
+                <Link
+                  className="puzzleHeaderAuthorLink"
+                  to="/@/$username/puzzles"
+                  params={{ username: authorDashboardUsername }}
+                >
+                  {author}
+                </Link>
+              ) : (
+                <strong>{author}</strong>
+              )}
             </div>
             {event && !showPuzzleSetMetadata ? (
               <div className="puzzleHeaderEvent" title={event}>
@@ -2179,6 +2234,35 @@ export const PuzzleSolverPage = () => {
               </div>
             ) : null}
           </div>
+
+          {hasKnownPlayers ? (
+            <section className="puzzlePlayers" aria-label="Game players">
+              <div className="puzzlePlayer">
+                <span className="puzzlePlayerColor white" aria-hidden="true" />
+                <span className="puzzlePlayerSide">White</span>
+                <Link
+                  className="puzzlePlayerLink"
+                  to="/@/$username/puzzles"
+                  params={{ username: normalizeUsername(whitePlayer) }}
+                  title={whitePlayer}
+                >
+                  {whitePlayerLabel}
+                </Link>
+              </div>
+              <div className="puzzlePlayer">
+                <span className="puzzlePlayerColor black" aria-hidden="true" />
+                <span className="puzzlePlayerSide">Black</span>
+                <Link
+                  className="puzzlePlayerLink"
+                  to="/@/$username/puzzles"
+                  params={{ username: normalizeUsername(blackPlayer) }}
+                  title={blackPlayer}
+                >
+                  {blackPlayerLabel}
+                </Link>
+              </div>
+            </section>
+          ) : null}
 
           {!isMobileLayout ? (
             <nav className="puzzleActions" aria-label="Puzzle navigation">
@@ -2373,6 +2457,34 @@ export const PuzzleSolverPage = () => {
               {author}
             </span>
           </div>
+          {hasKnownPlayers ? (
+            <section className="mobilePuzzlePlayers" aria-label="Game players">
+              <div className="puzzlePlayer">
+                <span className="puzzlePlayerColor white" aria-hidden="true" />
+                <span className="puzzlePlayerSide">White</span>
+                <Link
+                  className="puzzlePlayerLink"
+                  to="/@/$username/puzzles"
+                  params={{ username: normalizeUsername(whitePlayer) }}
+                  title={whitePlayer}
+                >
+                  {whitePlayerLabel}
+                </Link>
+              </div>
+              <div className="puzzlePlayer">
+                <span className="puzzlePlayerColor black" aria-hidden="true" />
+                <span className="puzzlePlayerSide">Black</span>
+                <Link
+                  className="puzzlePlayerLink"
+                  to="/@/$username/puzzles"
+                  params={{ username: normalizeUsername(blackPlayer) }}
+                  title={blackPlayer}
+                >
+                  {blackPlayerLabel}
+                </Link>
+              </div>
+            </section>
+          ) : null}
           {hasAttemptedActivePuzzle ? (
             <div id="mobile-puzzle-vote-slot" className="mobilePuzzleVoteSlot" />
           ) : null}

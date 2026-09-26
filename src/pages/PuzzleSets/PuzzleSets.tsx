@@ -8,7 +8,6 @@ import { formatPuzzleSetDate } from "../../../shared/domain/puzzles/puzzleSetMet
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
-import { matchupToSlug } from "../../lib/matches/h2hRoutes";
 import type { Puzzle } from "../../lib/puzzles/puzzleLibrary";
 import {
   puzzleCatalogQueryOptions,
@@ -227,32 +226,12 @@ export const PuzzleSetsPage = () => {
           <article key={group.eventKey} className="puzzleSetCard" role="listitem">
             <div className="puzzleSetCardContent">
               <span className="puzzleSetCardHeading">
-                <strong>
-                  {group.sourceId ? (
-                    <Link
-                      className="puzzleSetCardTitleLink"
-                      to="/matches/$matchId"
-                      params={{ matchId: group.sourceId }}
-                    >
-                      {group.eventName}
-                    </Link>
-                  ) : (
-                    group.eventName
-                  )}
-                </strong>
+                <strong>{group.eventName}</strong>
                 {group.eventDate && !isAwcPuzzleEvent(group.eventName) ? (
                   <time dateTime={group.eventDate}>{formatPuzzleSetDate(group.eventDate)}</time>
                 ) : null}
               </span>
-              {group.players.length === 2 ? (
-                <Link
-                  className="puzzleSetCardPlayers"
-                  to="/h2h/$matchup"
-                  params={{ matchup: matchupToSlug(group.players[0]!, group.players[1]!) }}
-                >
-                  {formatSetPlayers(group.players)}
-                </Link>
-              ) : group.players.length > 0 ? (
+              {group.players.length > 0 ? (
                 <span className="puzzleSetCardPlayers">{formatSetPlayers(group.players)}</span>
               ) : null}
               <span className="puzzleSetProgress">

@@ -26,6 +26,7 @@ const mocks = vi.hoisted(() => ({
   fetchPuzzleAttemptsForPuzzle: vi.fn(),
   loadPuzzleCatalog: vi.fn(),
   loadPuzzlesById: vi.fn(),
+  fetchPrimaryPlayerNicknames: vi.fn(),
   login: vi.fn(),
   navigate: vi.fn(),
   puzzleAuthor: "admin",
@@ -52,12 +53,14 @@ vi.mock("@tanstack/react-router", async () => {
     Link: ({
       children,
       className,
+      title,
       to,
     }: {
       children: React.ReactNode;
       className?: string;
+      title?: string;
       to?: string;
-    }) => React.createElement("a", { className, href: to ?? "#" }, children),
+    }) => React.createElement("a", { className, href: to ?? "#", title }, children),
     useNavigate: () => mocks.navigate,
     useParams: () => mocks.routeParams,
   };
@@ -112,6 +115,10 @@ vi.mock("../../lib/supabase/puzzleProgress", () => ({
   fetchAttemptedPuzzleIds: mocks.fetchAttemptedPuzzleIds,
   fetchPuzzleAttemptsForPuzzle: mocks.fetchPuzzleAttemptsForPuzzle,
   recordPuzzleProgress: mocks.recordPuzzleProgress,
+}));
+
+vi.mock("../../lib/supabase/playerNicknames", () => ({
+  fetchPrimaryPlayerNicknames: mocks.fetchPrimaryPlayerNicknames,
 }));
 
 vi.mock("../../lib/supabase/users", () => ({
@@ -229,6 +236,7 @@ describe("PuzzleSolverPage solution options", () => {
         correct_move: null,
       },
     ]);
+    mocks.fetchPrimaryPlayerNicknames.mockReset().mockResolvedValue([]);
     mocks.fetchCustomPuzzleSet.mockReset().mockResolvedValue({
       id: "4b648b2a-e2bf-49dc-aaed-235c05615d1b",
       label: "Review set",
@@ -296,6 +304,8 @@ describe("PuzzleSolverPage solution options", () => {
         puzzle_set_id: 1,
         author: mocks.puzzleAuthor,
         event: "ACL 2024",
+        white_player: "white-user",
+        black_player: "black-user",
         explanation: mocks.puzzleExplanation,
         tags: ["fork"],
       })),
@@ -375,6 +385,93 @@ describe("PuzzleSolverPage solution options", () => {
         "OPA style: Only the best moves are accepted. Weaker alternatives are rejected even if they also lead to mate.",
       ),
     ).toHaveTextContent("OPA style");
+  });
+
+  it("shows separate White and Black rows whenever both puzzle players are known", async () => {
+    render(<PuzzleSolverPage />);
+
+    const players = await screen.findByRole("region", { name: "Game players" });
+    expect(within(players).getByText("White")).toBeInTheDocument();
+    expect(within(players).getByText("white-user")).toBeInTheDocument();
+    expect(within(players).getByText("Black")).toBeInTheDocument();
+    expect(within(players).getByText("black-user")).toBeInTheDocument();
+    expect(within(players).getAllByRole("link")).toHaveLength(2);
+    within(players)
+      .getAllByRole("link")
+      .forEach((link) => expect(link).toHaveAttribute("href", "/@/$username/puzzles"));
+    expect(screen.queryByText("white-user vs black-user")).not.toBeInTheDocument();
+  });
+
+  it("links the puzzle author to their puzzle dashboard", async () => {
+    render(<PuzzleSolverPage />);
+
+    const authorLink = await screen.findByRole("link", { name: mocks.puzzleAuthor });
+    expect(authorLink).toHaveAttribute("href", "/@/$username/puzzles");
+  });
+
+  it("uses primary player nicknames while keeping usernames available as titles", async () => {
+    mocks.fetchPrimaryPlayerNicknames.mockResolvedValueOnce([
+      { username: "white-user", nickname: "white", is_primary: true },
+      { username: "black-user", nickname: "black", is_primary: true },
+    ]);
+
+    render(<PuzzleSolverPage />);
+
+    const players = await screen.findByRole("region", { name: "Game players" });
+    expect(await within(players).findByText("white")).toHaveAttribute("title", "white-user");
+    expect(within(players).getByText("black")).toHaveAttribute("title", "black-user");
+    expect(within(players).queryByText("white-user")).not.toBeInTheDocument();
+    expect(within(players).queryByText("black-user")).not.toBeInTheDocument();
+  });
+
+  it("does not show player rows when either player is unknown", async () => {
+    mocks.loadPuzzlesById.mockResolvedValueOnce([
+      {
+        id: 1369,
+        fen: "rn2k2r/pp5p/1qpp2p1/2Q5/1b2P3/2N5/PPP3PP/R3KB1R b KQkq - 1 12",
+        solution: "12... O-O 13. O-O-O Rf2 14. Be2 Ba3",
+        puzzleId: 1369,
+        author: mocks.puzzleAuthor,
+        event: "ACL 2024",
+        white_player: "white-user",
+        black_player: "",
+        explanation: "",
+        tags: [],
+      },
+    ]);
+
+    render(<PuzzleSolverPage />);
+
+    await screen.findByTestId("mock-board");
+    expect(screen.queryByRole("region", { name: "Game players" })).not.toBeInTheDocument();
+  });
+
+  it("falls back to puzzle-set participants when player colors are unknown", async () => {
+    const puzzleSet = {
+      id: 8,
+      event_name: "AWC 2026",
+      event_date: "2026-07-09",
+      players: ["Alpha", "Beta"],
+    };
+    mocks.loadPuzzlesById.mockResolvedValueOnce([
+      {
+        id: 1369,
+        fen: "rn2k2r/pp5p/1qpp2p1/2Q5/1b2P3/2N5/PPP3PP/R3KB1R b KQkq - 1 12",
+        solution: "12... O-O 13. O-O-O Rf2 14. Be2 Ba3",
+        puzzleId: 1369,
+        puzzle_set_id: 8,
+        puzzle_set: puzzleSet,
+        author: mocks.puzzleAuthor,
+        explanation: "",
+        tags: [],
+      },
+    ]);
+
+    render(<PuzzleSolverPage />);
+
+    const setDetails = await screen.findByRole("region", { name: "Puzzle set details" });
+    expect(within(setDetails).getByText("alpha vs beta")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Game players" })).not.toBeInTheDocument();
   });
 
   it("waits for progress before choosing a random puzzle and skips attempted puzzles", async () => {
@@ -1006,6 +1103,7 @@ describe("PuzzleSolverPage solution options", () => {
       event_name: "AWC 2026",
       event_date: "2026-07-09",
       players: ["Alpha", "Beta"],
+      source_id: "source-match-8",
     };
     mocks.routeParams = { puzzleId: "1369", setKey: "", setId: "" };
     mocks.loadPuzzleCatalog.mockResolvedValueOnce([
@@ -1016,6 +1114,8 @@ describe("PuzzleSolverPage solution options", () => {
         puzzleId: 1369,
         puzzle_set_id: 8,
         puzzle_set: puzzleSet,
+        white_player: "Alpha",
+        black_player: "Beta",
         author: mocks.puzzleAuthor,
         explanation: "",
       },
@@ -1028,6 +1128,8 @@ describe("PuzzleSolverPage solution options", () => {
         puzzleId: 1369,
         puzzle_set_id: 8,
         puzzle_set: puzzleSet,
+        white_player: "Alpha",
+        black_player: "Beta",
         author: mocks.puzzleAuthor,
         explanation: "",
         tags: [],
@@ -1037,9 +1139,16 @@ describe("PuzzleSolverPage solution options", () => {
     render(<PuzzleSolverPage />);
 
     const setDetails = await screen.findByRole("region", { name: "Puzzle set details" });
-    expect(within(setDetails).getByText("AWC 2026")).toBeInTheDocument();
+    expect(within(setDetails).getByRole("link", { name: "AWC 2026" })).toHaveAttribute(
+      "href",
+      "/matches/$matchId",
+    );
     expect(within(setDetails).queryByText("Jul 2026")).not.toBeInTheDocument();
-    expect(within(setDetails).getByText("alpha vs beta")).toBeInTheDocument();
+    expect(within(setDetails).queryByText("alpha vs beta")).not.toBeInTheDocument();
+
+    const players = screen.getByRole("region", { name: "Game players" });
+    expect(within(players).getByText("Alpha")).toBeInTheDocument();
+    expect(within(players).getByText("Beta")).toBeInTheDocument();
   });
 
   it("offers exits when the final puzzle in an ordered set is solved", async () => {
