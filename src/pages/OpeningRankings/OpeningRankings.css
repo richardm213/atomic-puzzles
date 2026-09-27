@@ -19,8 +19,15 @@
 }
 
 .openingRankingsHeader h1,
+.openingRankingsHeader p,
 .openingRankingsHeader a {
   margin: 0;
+}
+
+.openingRankingsHeader p {
+  max-width: 68ch;
+  color: var(--color-muted);
+  line-height: 1.55;
 }
 
 .openingRankingsHeader a {

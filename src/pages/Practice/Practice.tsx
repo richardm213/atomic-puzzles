@@ -1060,16 +1060,28 @@ export const PracticePage = () => {
               </button>
             </div>
             <div className="practiceExplorerActions">
-              <button
-                type="button"
-                className="practiceAlternateMoveButton"
-                onClick={requestAlternateAutoMove}
-                disabled={status !== "ready"}
-                aria-label="Choose a different opponent move"
-                title="Undo the opponent move and choose a different one (Q)"
-              >
-                <FontAwesomeIcon icon={faShuffle} />
-              </button>
+              <span className="practiceActionTooltip" data-tooltip="Practice random opponent">
+                <button
+                  type="button"
+                  className="practiceRandomBoppButton"
+                  onClick={selectRandomPlayer}
+                  disabled={randomPlayerLoading || !canChoosePracticePlayer}
+                  aria-label="Practice a random opponent"
+                >
+                  <FontAwesomeIcon icon={faDice} />
+                </button>
+              </span>
+              <span className="practiceActionTooltip" data-tooltip="Swap opponent’s move">
+                <button
+                  type="button"
+                  className="practiceAlternateMoveButton"
+                  onClick={requestAlternateAutoMove}
+                  disabled={status !== "ready"}
+                  aria-label="Choose a different opponent move"
+                >
+                  <FontAwesomeIcon icon={faShuffle} />
+                </button>
+              </span>
               <button
                 type="button"
                 className={`analysisFilterToggle ${settingsOpen ? "open" : ""}`}
@@ -1102,16 +1114,6 @@ export const PracticePage = () => {
                           ? "Add player"
                           : opponentUsernames[0] || "Choose player"
                         : "Player limit reached"}
-                    </button>
-                    <button
-                      type="button"
-                      className="practiceRandomPlayerButton"
-                      onClick={selectRandomPlayer}
-                      disabled={randomPlayerLoading || !canChoosePracticePlayer}
-                      title="Select a random opening database player"
-                    >
-                      <FontAwesomeIcon icon={faDice} />
-                      <span>{randomPlayerLoading ? "Choosing..." : "Random"}</span>
                     </button>
                     {allowMultiplePlayers && opponentUsernames.length ? (
                       <button
@@ -1161,8 +1163,7 @@ export const PracticePage = () => {
                     aria-pressed={opponentMode === "random"}
                     onClick={() => updateSettings({ opponentMode: "random" })}
                   >
-                    <FontAwesomeIcon icon={faShuffle} />
-                    <span>Random</span>
+                    Random
                   </button>
                   <button
                     type="button"

@@ -244,12 +244,16 @@ export const OpeningRankingsPage = () => (
   <div className="openingRankingsPage">
     <Seo
       title="Atomic opening rankings"
-      description="Compare AtomicDB evaluations for atomic chess openings."
+      description="Rank meaningful opening choices for White using AtomicDB evaluations."
       path="/rankings/openings"
     />
     <div className="panel openingRankingsPanel">
       <header className="openingRankingsHeader">
         <h1>Opening Rankings</h1>
+        <p>
+          Openings are counted by meaningful choices for White. Nf3, Nh3, and e3 branch after their
+          fixed replies; moves such as d4 stay as single entries.
+        </p>
         <a href="https://belzedar.duckdns.org/atomicdb/" target="_blank" rel="noreferrer">
           View on AtomicDB
         </a>

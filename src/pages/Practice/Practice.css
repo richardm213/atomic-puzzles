@@ -254,7 +254,8 @@
 
 .practiceSettingsPanel {
   min-height: 0;
-  padding: 0 2px 2px;
+  gap: 10px;
+  padding: 6px 8px 10px;
 }
 
 .practicePanel.dbMovesCollapsed .practiceSettings {
@@ -291,16 +292,33 @@
   text-transform: uppercase;
 }
 
+.practicePlayerChooserRow .analysisPlayerNameButton {
+  min-height: 34px;
+  border-color: color-mix(in srgb, var(--color-border-strong) 82%, transparent);
+  background: color-mix(in srgb, var(--color-panel-deep) 42%, var(--color-panel-strong));
+  box-shadow: none;
+  color: var(--color-heading);
+  font-size: 13px;
+  font-weight: 800;
+  text-shadow: none;
+}
+
+.practicePlayerChooserRow .analysisPlayerNameButton:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-border-strong));
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-panel-strong));
+  filter: none;
+}
+
 .practiceTimeControl {
   justify-self: start;
   display: inline-grid;
-  grid-template-columns: 76px 18px 76px;
+  grid-template-columns: 62px 14px 62px;
   align-items: end;
-  gap: 7px;
+  gap: 5px;
 }
 
 .practiceTimeControl > span {
-  height: 40px;
+  height: 34px;
   display: grid;
   place-items: center;
   color: color-mix(in srgb, var(--color-subtle) 82%, transparent);
@@ -310,7 +328,7 @@
 
 .practiceTimeControl label {
   display: grid;
-  gap: 5px;
+  gap: 3px;
 }
 
 .practiceTimeControl label span {
@@ -323,8 +341,8 @@
 }
 
 .practiceTimeControl input {
-  width: 76px;
-  height: 40px;
+  width: 62px;
+  height: 34px;
   min-width: 0;
   padding: 5px 10px;
   border: 1px solid color-mix(in srgb, var(--color-border-strong) 78%, transparent);
@@ -332,7 +350,7 @@
   appearance: textfield;
   background: color-mix(in srgb, var(--color-panel-deep) 56%, var(--color-panel-strong));
   color: var(--color-heading);
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   text-align: center;
@@ -363,11 +381,15 @@
 .practiceSegmented,
 .practiceModeGrid {
   display: grid;
-  gap: 4px;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 78%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-panel-deep) 34%, transparent);
 }
 
 .practiceSegmented {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .practiceModeGrid {
@@ -376,55 +398,61 @@
 
 .practiceSegmented button,
 .practiceModeGrid button {
-  min-height: 34px;
-  padding: 0 8px;
+  min-height: 30px;
+  padding: 0 6px;
   border: 0;
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--color-panel-deep) 20%, transparent);
+  border-radius: 5px;
+  background: transparent;
   color: color-mix(in srgb, var(--color-muted) 86%, transparent);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  font-size: 13px;
-  font-weight: 820;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 780;
 }
 
 .practiceSegmented button.active,
 .practiceModeGrid button.active {
-  background: color-mix(in srgb, var(--color-primary) 28%, var(--color-panel-strong) 72%);
+  background: color-mix(in srgb, var(--color-primary) 25%, var(--color-panel-strong) 75%);
   color: var(--color-heading);
+  box-shadow: 0 1px 0 color-mix(in srgb, white 7%, transparent) inset;
 }
 
 .practicePlayerChooserRow {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
 }
 
 .practicePlayerChooserRow.single {
-  grid-template-columns: minmax(0, 190px) auto;
+  grid-template-columns: minmax(0, 190px);
   justify-content: start;
 }
 
-.practiceRandomPlayerButton {
-  min-height: 36px;
-  padding: 0 10px;
-  border: 1px solid color-mix(in srgb, var(--color-primary) 38%, var(--color-border));
-  border-radius: 6px;
+.practiceRandomBoppButton {
+  width: 34px;
+  min-height: 34px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 42%, var(--color-border));
+  border-radius: var(--radius-ui);
   background: color-mix(in srgb, var(--color-primary) 16%, var(--color-panel-strong));
   color: var(--color-heading);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
   font-size: 12px;
   font-weight: 820;
 }
 
-.practiceRandomPlayerButton:disabled {
+.practiceRandomBoppButton:hover:not(:disabled) {
+  border-color: var(--color-primary-soft);
+  background: color-mix(in srgb, var(--color-primary) 24%, var(--color-panel-strong));
+}
+
+.practiceRandomBoppButton:disabled {
   cursor: wait;
   opacity: 0.62;
 }
@@ -445,12 +473,70 @@
 }
 
 .practiceCheckbox {
-  min-height: 32px;
+  min-height: 28px;
   gap: 12px;
   color: var(--color-heading);
-  font-size: 13px;
-  font-weight: 820;
+  font-size: 12px;
+  font-weight: 780;
   cursor: pointer;
+}
+
+.practiceCheckbox input {
+  width: 32px;
+  height: 18px;
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--color-border-strong) 86%, transparent);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 9px 50%, var(--color-muted) 0 6px, transparent 6.5px),
+    color-mix(in srgb, var(--color-panel-deep) 62%, var(--color-panel-strong));
+  transition:
+    border-color 140ms ease,
+    background 140ms ease;
+}
+
+.practiceCheckbox input:checked {
+  border-color: color-mix(in srgb, var(--color-primary) 74%, var(--color-border));
+  background:
+    radial-gradient(circle at 23px 50%, #ffffff 0 6px, transparent 6.5px),
+    color-mix(in srgb, var(--color-primary) 78%, var(--color-panel-strong));
+}
+
+.practiceActionTooltip {
+  position: relative;
+  display: inline-flex;
+}
+
+.practiceActionTooltip::after {
+  position: absolute;
+  top: calc(100% + 7px);
+  left: 50%;
+  z-index: 20;
+  width: max-content;
+  max-width: min(180px, 72vw);
+  padding: 6px 8px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-deep);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--color-panel-deep) 32%, transparent);
+  color: var(--color-heading);
+  content: attr(data-tooltip);
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1.2;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -3px);
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+  white-space: nowrap;
+}
+
+.practiceActionTooltip:hover::after,
+.practiceActionTooltip:focus-within::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
 }
 
 .practiceAlternateMoveButton {
@@ -751,7 +837,12 @@
   }
 
   .practiceExplorerHeader {
+    grid-template-columns: minmax(0, 1fr);
     gap: 4px;
+  }
+
+  .practiceExplorerActions {
+    justify-self: start;
   }
 
   .practiceToolbar {
@@ -770,7 +861,6 @@
     height: 44px;
   }
 
-  .practiceModeGrid,
   .practicePlayerChooserRow {
     grid-template-columns: minmax(0, 1fr);
   }
