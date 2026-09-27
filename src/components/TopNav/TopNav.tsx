@@ -89,6 +89,11 @@ const navItems: NavItem[] = [
         label: "Puzzle rankings",
         isActive: (pathname) => pathname === "/rankings/puzzles",
       },
+      {
+        to: "/rankings/openings",
+        label: "Opening rankings",
+        isActive: (pathname) => pathname === "/rankings/openings",
+      },
     ],
   },
   {

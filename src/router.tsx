@@ -92,6 +92,10 @@ const RankingsMethodologyPage = lazyRouteComponent(
   () => import("./pages/Rankings/RankingsMethodology"),
   "RankingsMethodologyPage",
 );
+const OpeningRankingsPage = lazyRouteComponent(
+  () => import("./pages/OpeningRankings/OpeningRankings"),
+  "OpeningRankingsPage",
+);
 const RecentMatchesPage = lazyRouteComponent(
   () => import("./pages/RecentMatches/RecentMatches"),
   "RecentMatchesPage",
@@ -158,6 +162,12 @@ const rankingsMethodologyRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/rankings/how-ratings-work",
   component: RankingsMethodologyPage,
+});
+
+const openingRankingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/rankings/openings",
+  component: OpeningRankingsPage,
 });
 
 const recentRoute = createRoute({
@@ -426,6 +436,7 @@ const routeTree = rootRoute.addChildren([
   usersRoute,
   bannedUsersRoute,
   rankingsMethodologyRoute,
+  openingRankingsRoute,
   analysisRoute,
   practiceRoute,
   recentRoute,
