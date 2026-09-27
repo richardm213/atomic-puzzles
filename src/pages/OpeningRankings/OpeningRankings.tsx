@@ -11,8 +11,13 @@ const atomicDbBaseUrl = "https://belzedar.duckdns.org/atomicdb/explore";
 const openings: OpeningRanking[] = [
   {
     move: "1. Nf3 f6 2. Nc3",
-    evaluation: 969,
+    evaluation: 1013,
     url: `${atomicDbBaseUrl}/973d2a56a0c497e578aaf388fbc56c9104860eea0f0914bcc1957946cfc118a5/?play=g1f3%2Cf7f6%2Cb1c3`,
+  },
+  {
+    move: "1. Nh3 h6 2. d4",
+    evaluation: 793,
+    url: `${atomicDbBaseUrl}/40f2db0f36021dd12df78757131539c70e3972799811cc277118302a37ae8ad1/?play=g1h3%2Ch7h6%2Cd2d4`,
   },
   {
     move: "1. Nf3 f6 2. e3",
@@ -23,11 +28,6 @@ const openings: OpeningRanking[] = [
     move: "1. Nf3 f6 2. e4",
     evaluation: 775,
     url: `${atomicDbBaseUrl}/025e0b7321202fe56334280db7e4c4582fe2408a61ee8871c4250b169402cf82/?play=g1f3%2Cf7f6%2Ce2e4`,
-  },
-  {
-    move: "1. Nh3 h6 2. d4",
-    evaluation: 693,
-    url: `${atomicDbBaseUrl}/40f2db0f36021dd12df78757131539c70e3972799811cc277118302a37ae8ad1/?play=g1h3%2Ch7h6%2Cd2d4`,
   },
   {
     move: "1. e3 e6 2. Nf3",
@@ -250,10 +250,6 @@ export const OpeningRankingsPage = () => (
     <div className="panel openingRankingsPanel">
       <header className="openingRankingsHeader">
         <h1>Opening Rankings</h1>
-        <p>
-          Openings are counted by meaningful choices for White. Nf3, Nh3, and e3 branch after their
-          fixed replies; moves such as d4 stay as single entries.
-        </p>
         <a href="https://belzedar.duckdns.org/atomicdb/" target="_blank" rel="noreferrer">
           View on AtomicDB
         </a>

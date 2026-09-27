@@ -12,9 +12,6 @@ describe("OpeningRankingsPage", () => {
     render(<OpeningRankingsPage />);
     const section = screen.getByRole("region", { name: "Ranked openings" });
 
-    expect(
-      screen.getByText(/Openings are counted by meaningful choices for White/i),
-    ).toBeInTheDocument();
     expect(within(section).getByRole("link", { name: "1. Nf3 f6 2. Nc3" })).toBeInTheDocument();
     expect(within(section).getByRole("link", { name: "1. Nh3 h6 2. d4" })).toBeInTheDocument();
     expect(within(section).getByRole("link", { name: "1. e3 e6 2. Nf3" })).toBeInTheDocument();
