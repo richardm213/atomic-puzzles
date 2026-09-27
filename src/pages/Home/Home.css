@@ -1,74 +1,78 @@
 .homePage {
   min-height: var(--page-shell-min-height);
   min-height: var(--page-shell-min-height-dynamic);
+  display: grid;
+  align-content: start;
+  gap: var(--space-8);
+  padding: max(var(--space-8), env(safe-area-inset-top))
+    max(var(--page-gutter), env(safe-area-inset-right))
+    max(var(--space-12), env(safe-area-inset-bottom))
+    max(var(--page-gutter), env(safe-area-inset-left));
   color: var(--color-text);
   background: var(--site-background);
   background-size: var(--site-background-size);
-  display: grid;
-  gap: clamp(22px, 3vw, 34px);
-  align-content: start;
-  padding: max(var(--page-gutter), env(safe-area-inset-top))
-    max(clamp(22px, 4vw, 48px), env(safe-area-inset-right))
-    max(calc(var(--page-gutter) + 2px), env(safe-area-inset-bottom))
-    max(clamp(22px, 4vw, 48px), env(safe-area-inset-left));
 }
 
 .homeHero,
 .homeSpotlightSection {
-  width: min(1120px, 100%);
+  width: min(900px, 100%);
   margin: 0 auto;
 }
 
 .homeHero {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 18px;
-  align-items: start;
-  padding-block: clamp(24px, 6vh, 72px) clamp(14px, 2vh, 24px);
+  grid-template-columns: minmax(0, 1.08fr) minmax(300px, 0.92fr);
+  gap: var(--space-12);
+  align-items: center;
+  padding: var(--space-12) 0;
   border-bottom: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
 }
 
 .homeHeroLead {
+  max-width: 42rem;
   display: grid;
-  gap: 16px;
-  min-width: 0;
-}
-
-.homeHeroLead {
-  max-width: 44rem;
+  gap: var(--space-4);
 }
 
 .homeHeroLead > h1 {
   max-width: 19ch;
   margin: 0;
   color: var(--color-heading);
-  font-size: clamp(29px, 3vw, 43px);
-  line-height: 1.06;
-  letter-spacing: 0;
+  font-size: clamp(30px, 4vw, 42px);
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+}
+
+.homePuzzleCount {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 15px;
+}
+
+.homePuzzleCount > strong {
+  color: var(--color-primary-pale);
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
 }
 
 .homeHeroActions {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 8px;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
 }
 
 .homePrimaryCta,
 .homeSecondaryCta {
+  min-height: 46px;
+  padding: 10px var(--space-5);
+  border-radius: var(--radius-ui);
+  text-decoration: none;
   transition:
     border-color 160ms ease,
+    background 160ms ease,
     box-shadow 160ms ease,
-    transform 160ms ease,
-    background 160ms ease;
-}
-
-.homePrimaryCta,
-.homeSecondaryCta {
-  min-height: 48px;
-  border-radius: var(--radius-ui);
-  padding: 12px 19px;
-  text-decoration: none;
+    transform 160ms ease;
 }
 
 .homeSecondaryCta {
@@ -79,962 +83,293 @@
 
 .homePrimaryCta:hover,
 .homeSecondaryCta:hover {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
 .homePrimaryCta:hover {
-  box-shadow: 0 16px 34px color-mix(in srgb, var(--color-primary) 24%, transparent);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--color-primary) 22%, transparent);
 }
 
-.homeSpotlightSection {
-  display: grid;
-  gap: 16px;
+.homeSecondaryCta:hover {
+  border-color: color-mix(in srgb, var(--color-primary-soft) 42%, var(--color-border));
+  background: var(--color-surface-elevated-strong);
 }
 
-.homeSpotlightCard {
-  border: 1px solid var(--color-border);
-  background: var(--color-panel);
+.homePrimaryCta:active,
+.homeSecondaryCta:active {
+  transform: translateY(0);
 }
 
-.homeSpotlightCard > p {
-  margin: 0;
-  color: var(--color-muted);
+.homePuzzlePreview {
+  position: relative;
+  width: 100%;
+  height: 368px;
+  justify-self: end;
+}
+
+.homePuzzlePreviewCard {
+  position: absolute;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--color-primary-soft) 22%, var(--color-border));
+  border-radius: var(--radius-lg);
+  background: var(--color-panel-strong);
+  box-shadow: 0 22px 48px color-mix(in srgb, var(--color-panel-deep) 42%, transparent);
+}
+
+.homePuzzlePreviewCard > img {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  display: block;
+  width: 104.5%;
+  max-width: none;
+  height: auto;
+  transform: translateX(-50%);
+}
+
+.homePuzzlePreviewPrimary {
+  z-index: 2;
+  right: 0;
+  top: 0;
+  width: 282px;
+  height: 282px;
+}
+
+.homePuzzlePreviewSecondary {
+  left: 0;
+  bottom: 0;
+  width: 214px;
+  height: 214px;
+  opacity: 0.72;
+}
+
+.homePuzzlePreviewLight {
+  display: none !important;
+}
+
+:root[data-theme="light"] .homePuzzlePreviewDark {
+  display: none;
+}
+
+:root[data-theme="light"] .homePuzzlePreviewLight {
+  display: block !important;
 }
 
 .homeSpotlightGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--space-4);
 }
 
 .homeSpotlightCard {
-  --home-card-accent: var(--color-primary-pale);
+  --home-card-accent: var(--color-primary-soft);
 
   position: relative;
   min-width: 0;
-  min-height: 224px;
+  min-height: 176px;
+  grid-column: span 3;
   display: grid;
   align-content: start;
-  gap: 11px;
-  color: inherit;
-  padding: 27px;
-  border-radius: 18px;
-  border-color: color-mix(in srgb, var(--home-card-accent) 20%, var(--color-border));
+  gap: var(--space-3);
+  padding: var(--space-6);
   overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--home-card-accent) 18%, var(--color-border));
+  border-radius: var(--radius-ui);
+  background: color-mix(in srgb, var(--color-panel) 96%, var(--home-card-accent) 4%);
+  color: inherit;
   text-decoration: none;
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, white 7%, transparent),
-    0 1px 0 color-mix(in srgb, var(--home-card-accent) 22%, transparent),
-    0 14px 34px color-mix(in srgb, var(--color-panel-deep) 30%, transparent);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--color-panel-deep) 20%, transparent);
   transition:
-    border-color 220ms ease,
-    box-shadow 220ms ease,
-    transform 220ms ease,
-    background 220ms ease;
+    border-color 180ms ease,
+    background 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
 }
 
 .homeSpotlightCard:hover {
-  transform: translateY(-4px);
-  border-color: color-mix(in srgb, var(--home-card-accent) 42%, var(--color-border));
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, white 11%, transparent),
-    0 1px 0 color-mix(in srgb, var(--home-card-accent) 32%, transparent),
-    0 22px 48px color-mix(in srgb, var(--home-card-accent) 12%, transparent),
-    0 18px 40px color-mix(in srgb, var(--color-panel-deep) 34%, transparent);
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--home-card-accent) 40%, var(--color-border));
+  background: color-mix(
+    in srgb,
+    var(--color-surface-elevated-strong) 95%,
+    var(--home-card-accent) 5%
+  );
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--color-panel-deep) 28%, transparent);
 }
 
-.homeSpotlightCard > span {
-  color: color-mix(in srgb, var(--home-card-accent) 76%, var(--color-heading));
-  font-size: 11px;
-  font-weight: 850;
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
+.homeSpotlightCard:active {
+  transform: translateY(0);
 }
 
 .homeSpotlightCard > h2 {
+  max-width: 23ch;
   margin: 0;
   color: var(--color-heading);
-  max-width: 19ch;
-  font-size: clamp(21px, 2vw, 27px);
-  line-height: 1.1;
+  font-size: clamp(20px, 2.4vw, 24px);
+  line-height: 1.15;
   letter-spacing: -0.02em;
   overflow-wrap: anywhere;
 }
 
 .homeSpotlightCard > p {
-  max-width: 48ch;
-  font-size: 15px;
-  line-height: 1.5;
+  max-width: 46ch;
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 1.55;
 }
 
-.homeSpotlightCard:nth-child(-n + 2) {
-  min-height: 242px;
-}
-
-.homeSubmitPuzzleShortcut::before,
-.homePuzzleLeaderboardShortcut::before,
-.homeYearlyRankingsShortcut::before,
-.homeH2HShortcut::after,
-.homeRecentMatchesShortcut::before,
-.homeCommentsShortcut::before,
-.homeCommentsShortcut::after,
-.homePuzzleSetsShortcut::before {
-  transition:
-    transform 240ms ease,
-    box-shadow 240ms ease;
-}
-
-.homeSubmitPuzzleShortcut:hover::before,
-.homePuzzleLeaderboardShortcut:hover::before,
-.homeYearlyRankingsShortcut:hover::before,
-.homeRecentMatchesShortcut:hover::before,
-.homePuzzleSetsShortcut:hover::before {
-  transform: translateY(-3px) rotate(0deg);
-}
-
-.homeH2HShortcut:hover::after {
-  transform: translateY(calc(-50% - 3px)) rotate(-2deg);
-}
-
-.homeCommentsShortcut:hover::before {
-  transform: translateY(-3px) rotate(1deg);
-}
-
-.homeCommentsShortcut:hover::after {
-  transform: translateY(-1px) rotate(-2deg);
-}
-
-.homeSubmitPuzzleShortcut {
-  --home-card-accent: var(--color-accent-warm);
-
-  padding-right: 166px;
-  background:
-    radial-gradient(
-      circle at 88% 18%,
-      color-mix(in srgb, var(--color-accent-warm) 32%, transparent) 0 4%,
-      transparent 4.5%
-    ),
-    radial-gradient(
-      circle at 73% 82%,
-      color-mix(in srgb, var(--color-cyan) 22%, transparent) 0 3%,
-      transparent 3.5%
-    ),
-    linear-gradient(
-      132deg,
-      color-mix(in srgb, var(--color-accent-warm) 18%, transparent),
-      transparent 48%
-    ),
-    linear-gradient(
-      320deg,
-      color-mix(in srgb, var(--color-cyan) 12%, transparent),
-      transparent 46%
-    ),
-    var(--color-panel);
-}
-
-.homeSubmitPuzzleShortcut::before {
-  content: "";
-  position: absolute;
-  right: 29px;
-  top: 44px;
-  width: 100px;
-  aspect-ratio: 1;
-  border: 1px solid color-mix(in srgb, var(--color-accent-warm) 48%, var(--color-border));
-  border-radius: 12px;
-  background: conic-gradient(
-      from 90deg,
-      color-mix(in srgb, var(--color-accent-warm) 38%, var(--color-panel)) 0 25%,
-      color-mix(in srgb, var(--color-panel-strong) 94%, transparent) 0 50%,
-      color-mix(in srgb, var(--color-accent-warm) 38%, var(--color-panel)) 0 75%,
-      color-mix(in srgb, var(--color-panel-strong) 94%, transparent) 0
-    )
-    0 0 / 50% 50%;
-  box-shadow:
-    9px 10px 0 color-mix(in srgb, var(--color-cyan) 11%, var(--color-panel)),
-    0 20px 34px color-mix(in srgb, var(--color-panel-deep) 42%, transparent);
-  transform: rotate(5deg);
-}
-
-.homeSubmitPuzzleShortcut::after {
-  content: "+";
-  position: absolute;
-  right: 18px;
-  top: 31px;
-  width: 38px;
-  height: 38px;
-  display: grid;
-  place-items: center;
-  border: 3px solid var(--color-panel);
-  border-radius: 50%;
-  background: var(--color-accent-warm);
-  color: var(--color-panel-deep);
-  font-size: 27px;
-  font-weight: 900;
-  line-height: 1;
-  box-shadow: 0 8px 18px color-mix(in srgb, black 28%, transparent);
-}
-
-.homeSubmitPuzzleShortcut > strong {
-  width: fit-content;
-  margin-top: 2px;
-  border: 1px solid color-mix(in srgb, var(--color-accent-warm) 42%, transparent);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--color-accent-warm) 13%, transparent);
-  color: var(--color-heading);
-  padding: 7px 11px;
-  font-size: 13px;
-  font-weight: 850;
-}
-
-.homeSubmitPuzzleShortcut > strong > span {
-  display: inline-block;
-  margin-left: 4px;
-  transition: transform 160ms ease;
-}
-
-.homeSubmitPuzzleShortcut:hover {
-  background:
-    radial-gradient(
-      circle at 88% 18%,
-      color-mix(in srgb, var(--color-accent-warm) 38%, transparent) 0 4%,
-      transparent 4.5%
-    ),
-    radial-gradient(
-      circle at 73% 82%,
-      color-mix(in srgb, var(--color-cyan) 28%, transparent) 0 3%,
-      transparent 3.5%
-    ),
-    linear-gradient(
-      132deg,
-      color-mix(in srgb, var(--color-accent-warm) 23%, transparent),
-      transparent 48%
-    ),
-    linear-gradient(
-      320deg,
-      color-mix(in srgb, var(--color-cyan) 16%, transparent),
-      transparent 46%
-    ),
-    var(--color-surface-elevated-strong);
-}
-
-.homeSubmitPuzzleShortcut:hover > strong > span {
-  transform: translateX(3px);
-}
-
-.homePuzzleLeaderboardShortcut {
-  --home-card-accent: var(--color-cyan);
-
-  padding-right: 156px;
-  background:
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--color-primary) 18%, transparent),
-      transparent 52%
-    ),
-    repeating-linear-gradient(
-      90deg,
-      transparent 0 18px,
-      color-mix(in srgb, var(--color-cyan) 5%, transparent) 18px 19px
-    ),
-    repeating-linear-gradient(
-      0deg,
-      transparent 0 18px,
-      color-mix(in srgb, var(--color-primary) 5%, transparent) 18px 19px
-    ),
-    var(--color-panel);
-}
-
-.homePuzzleLeaderboardShortcut::before {
-  content: "";
-  position: absolute;
-  right: 22px;
-  bottom: 20px;
-  width: 106px;
-  aspect-ratio: 1;
-  border: 1px solid color-mix(in srgb, var(--color-primary) 26%, var(--color-border));
-  border-radius: 6px;
-  background:
-    linear-gradient(
-      45deg,
-      color-mix(in srgb, var(--color-primary) 18%, transparent),
-      transparent 62%
-    ),
-    conic-gradient(
-        from 90deg,
-        color-mix(in srgb, var(--color-primary) 28%, var(--color-panel)) 0 25%,
-        color-mix(in srgb, var(--color-panel-strong) 96%, transparent) 0 50%,
-        color-mix(in srgb, var(--color-primary) 28%, var(--color-panel)) 0 75%,
-        color-mix(in srgb, var(--color-panel-strong) 96%, transparent) 0
-      )
-      0 0 / 50% 50%;
-  box-shadow:
-    0 18px 26px color-mix(in srgb, var(--color-panel-deep) 44%, transparent),
-    inset 0 1px 0 color-mix(in srgb, white 8%, transparent);
-  transform: rotate(-4deg);
-}
-
-.homePuzzleLeaderboardShortcut::after {
-  content: "";
-  position: absolute;
-  right: 45px;
-  bottom: 52px;
-  width: 60px;
-  height: 46px;
-  background:
-    linear-gradient(var(--color-primary-pale), var(--color-primary-pale)) 0 28px / 10px 18px,
-    linear-gradient(
-        color-mix(in srgb, var(--color-cyan) 78%, white),
-        color-mix(in srgb, var(--color-cyan) 78%, white)
-      )
-      24px 12px / 10px 34px,
-    linear-gradient(
-        color-mix(in srgb, var(--color-accent-warm) 86%, white),
-        color-mix(in srgb, var(--color-accent-warm) 86%, white)
-      )
-      48px 0 / 10px 46px;
-  background-repeat: no-repeat;
-  border-bottom: 2px solid color-mix(in srgb, var(--color-heading) 36%, transparent);
-  filter: drop-shadow(0 10px 14px color-mix(in srgb, black 30%, transparent));
-}
-
-.homePuzzleLeaderboardShortcut:hover {
-  background:
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--color-primary) 30%, transparent),
-      transparent 52%
-    ),
-    repeating-linear-gradient(
-      90deg,
-      transparent 0 18px,
-      color-mix(in srgb, var(--color-cyan) 11%, transparent) 18px 19px
-    ),
-    repeating-linear-gradient(
-      0deg,
-      transparent 0 18px,
-      color-mix(in srgb, var(--color-primary) 11%, transparent) 18px 19px
-    ),
-    var(--color-surface-elevated-strong);
+.homeTrophyShortcut,
+.homeArenaShortcut {
+  padding-right: 120px;
 }
 
 .homeTrophyShortcut {
-  padding-right: 150px;
+  --home-card-accent: var(--color-gold);
 }
 
+.homeTrophyShortcut[data-series="ahc"],
+.homeTrophyShortcut[data-series="awc"],
 .homeTrophyShortcut[data-series="ccac"] {
-  --home-card-accent: #f2c14e;
-
-  background:
-    radial-gradient(
-      circle at 88% 25%,
-      color-mix(in srgb, #f2c14e 20%, transparent),
-      transparent 35%
-    ),
-    repeating-linear-gradient(
-      135deg,
-      transparent 0 22px,
-      color-mix(in srgb, #f2c14e 5%, transparent) 22px 23px
-    ),
-    var(--color-panel);
-}
-
-.homeTrophyShortcut[data-series="ccac"]:hover {
-  background:
-    radial-gradient(
-      circle at 88% 25%,
-      color-mix(in srgb, #f2c14e 27%, transparent),
-      transparent 35%
-    ),
-    repeating-linear-gradient(
-      135deg,
-      transparent 0 22px,
-      color-mix(in srgb, #f2c14e 8%, transparent) 22px 23px
-    ),
-    var(--color-surface-elevated-strong);
-}
-
-.homeTrophyShortcut[data-series="ahc"] {
-  --home-card-accent: #f8c85a;
-
-  padding-right: 182px;
-  background:
-    radial-gradient(
-      ellipse at 88% 52%,
-      color-mix(in srgb, #f8c85a 22%, transparent),
-      transparent 38%
-    ),
-    linear-gradient(128deg, color-mix(in srgb, #f8c85a 11%, transparent), transparent 50%),
-    linear-gradient(
-      320deg,
-      color-mix(in srgb, var(--color-primary) 11%, transparent),
-      transparent 47%
-    ),
-    var(--color-panel);
+  background: color-mix(in srgb, var(--color-panel) 96%, var(--color-gold) 4%);
 }
 
 .homeTrophyShortcut > img {
   position: absolute;
-  right: 22px;
-  bottom: 18px;
+  right: var(--space-5);
+  top: 50%;
   width: auto;
-  max-width: min(28%, 126px);
-  height: auto;
-  max-height: calc(100% - 32px);
+  max-width: 76px;
+  max-height: 112px;
   object-fit: contain;
-  filter: drop-shadow(0 18px 24px color-mix(in srgb, black 30%, transparent));
-  transition:
-    transform 260ms ease,
-    filter 260ms ease;
+  filter: drop-shadow(0 8px 12px color-mix(in srgb, black 20%, transparent));
+  transform: translateY(-50%);
+  transition: transform 180ms ease;
 }
 
 .homeTrophyShortcut:hover > img {
-  filter: drop-shadow(0 23px 28px color-mix(in srgb, black 34%, transparent));
-  transform: translateY(-4px) rotate(1deg);
+  transform: translateY(calc(-50% - 2px));
 }
 
-.homeTrophyShortcut[data-series="ahc"] > img {
-  right: 20px;
-  top: 50%;
-  bottom: auto;
-  width: min(34%, 132px);
-  max-width: min(34%, 132px);
-  max-height: calc(100% - 20px);
-  transform: translateY(-50%);
-}
-
-.homeTrophyShortcut[data-series="ahc"]:hover {
-  background:
-    radial-gradient(
-      ellipse at 88% 52%,
-      color-mix(in srgb, #f8c85a 28%, transparent),
-      transparent 38%
-    ),
-    linear-gradient(128deg, color-mix(in srgb, #f8c85a 15%, transparent), transparent 50%),
-    linear-gradient(
-      320deg,
-      color-mix(in srgb, var(--color-primary) 15%, transparent),
-      transparent 47%
-    ),
-    var(--color-surface-elevated-strong);
-}
-
-.homeTrophyShortcut[data-series="ahc"]:hover > img {
-  transform: translateY(calc(-50% - 4px)) rotate(1deg);
-}
-
-.homeTrophyShortcut[data-series="awc"] {
-  --home-card-accent: #e7a93d;
-
-  background:
-    radial-gradient(
-      circle at 87% 20%,
-      color-mix(in srgb, #f8c85a 20%, transparent),
-      transparent 38%
-    ),
-    linear-gradient(140deg, color-mix(in srgb, #f8c85a 10%, transparent), transparent 54%),
-    var(--color-panel);
-}
-
-.homeTrophyShortcut[data-series="awc"] > img {
-  width: min(34%, 112px);
-  max-width: min(34%, 112px);
-  object-fit: contain;
-}
-
-.homeTrophyShortcut[data-series="awc"]:hover {
-  background:
-    radial-gradient(
-      circle at 87% 20%,
-      color-mix(in srgb, #f8c85a 26%, transparent),
-      transparent 38%
-    ),
-    linear-gradient(140deg, color-mix(in srgb, #f8c85a 14%, transparent), transparent 54%),
-    var(--color-surface-elevated-strong);
-}
-
-.homeYearlyRankingsShortcut {
-  --home-card-accent: var(--color-cyan);
-
-  padding-right: 158px;
-  background:
-    radial-gradient(
-      circle at 84% 48%,
-      color-mix(in srgb, var(--color-cyan) 20%, transparent),
-      transparent 31%
-    ),
-    linear-gradient(
-      142deg,
-      color-mix(in srgb, var(--color-cyan) 10%, transparent),
-      transparent 58%
-    ),
-    var(--color-panel);
-}
-
-.homeYearlyRankingsShortcut::before {
-  content: "";
-  position: absolute;
-  right: 28px;
-  top: 47px;
-  width: 96px;
-  height: 116px;
-  border: 1px solid color-mix(in srgb, var(--color-cyan) 42%, var(--color-border));
-  border-radius: 9px 16px 16px 9px;
-  background:
-    radial-gradient(circle, var(--color-cyan-bright) 0 3px, transparent 3.5px) 20px 19px / 100% 27px
-      repeat-y,
-    linear-gradient(color-mix(in srgb, var(--color-primary-pale) 30%, transparent) 0 0) 34px 20px /
-      42px 2px repeat-y,
-    color-mix(in srgb, var(--color-panel-strong) 92%, transparent);
-  box-shadow:
-    -9px 8px 0 color-mix(in srgb, var(--color-primary) 12%, var(--color-panel)),
-    0 19px 30px color-mix(in srgb, var(--color-panel-deep) 40%, transparent);
-  transform: rotate(4deg);
-}
-
-.homeYearlyRankingsShortcut::after {
-  content: "YEAR";
-  position: absolute;
-  right: 17px;
-  top: 32px;
-  min-width: 34px;
-  height: 28px;
-  display: grid;
-  place-items: center;
-  border: 2px solid var(--color-panel);
-  border-radius: 999px;
-  background: var(--color-cyan);
-  color: white;
-  font-size: 10px;
-  font-weight: 900;
-  box-shadow: 0 8px 18px color-mix(in srgb, black 24%, transparent);
-}
-
-.homeYearlyRankingsShortcut:hover {
-  background:
-    radial-gradient(
-      circle at 84% 48%,
-      color-mix(in srgb, var(--color-cyan) 27%, transparent),
-      transparent 31%
-    ),
-    linear-gradient(
-      142deg,
-      color-mix(in srgb, var(--color-cyan) 15%, transparent),
-      transparent 58%
-    ),
-    var(--color-surface-elevated-strong);
-}
-
-.homeH2HShortcut {
-  --home-card-accent: var(--color-danger);
-
-  padding-right: 142px;
-  background:
-    conic-gradient(
-      from 218deg at 86% 18%,
-      color-mix(in srgb, var(--color-danger) 18%, transparent),
-      transparent 24%,
-      color-mix(in srgb, var(--color-primary) 10%, transparent) 44%,
-      transparent 66%,
-      color-mix(in srgb, var(--color-danger) 12%, transparent) 84%,
-      transparent
-    ),
-    linear-gradient(
-      142deg,
-      color-mix(in srgb, var(--color-danger) 9%, transparent),
-      transparent 58%
-    ),
-    var(--color-panel);
-}
-
-.homeH2HShortcut::after {
-  content: "VS";
-  position: absolute;
-  right: 27px;
-  top: 50%;
-  width: 82px;
-  aspect-ratio: 1;
-  display: grid;
-  place-items: center;
-  border: 1px solid color-mix(in srgb, var(--color-danger) 48%, var(--color-border));
-  border-radius: 50%;
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--color-danger) 28%, var(--color-panel)),
-    color-mix(in srgb, var(--color-primary) 26%, var(--color-panel))
-  );
-  color: var(--color-heading);
-  font-size: 23px;
-  font-weight: 950;
-  letter-spacing: -0.05em;
-  box-shadow:
-    0 16px 28px color-mix(in srgb, var(--color-panel-deep) 42%, transparent),
-    inset 0 1px 0 color-mix(in srgb, white 12%, transparent);
-  transform: translateY(-50%) rotate(-7deg);
-}
-
-.homeH2HShortcut:hover {
-  background:
-    conic-gradient(
-      from 218deg at 86% 18%,
-      color-mix(in srgb, var(--color-danger) 24%, transparent),
-      transparent 24%,
-      color-mix(in srgb, var(--color-primary) 14%, transparent) 44%,
-      transparent 66%,
-      color-mix(in srgb, var(--color-danger) 16%, transparent) 84%,
-      transparent
-    ),
-    linear-gradient(
-      142deg,
-      color-mix(in srgb, var(--color-danger) 13%, transparent),
-      transparent 58%
-    ),
-    var(--color-surface-elevated-strong);
-}
-
+.homeH2HShortcut,
 .homeRecentMatchesShortcut {
   --home-card-accent: var(--color-danger);
-
-  padding-right: 158px;
-  background:
-    radial-gradient(
-      circle at 86% 24%,
-      color-mix(in srgb, var(--color-danger) 20%, transparent),
-      transparent 34%
-    ),
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--color-danger) 9%, transparent),
-      transparent 56%
-    ),
-    var(--color-panel);
 }
 
-.homeRecentMatchesShortcut::before {
-  content: "";
-  position: absolute;
-  right: 24px;
-  bottom: 31px;
-  width: 104px;
-  height: 78px;
-  border: 1px solid color-mix(in srgb, var(--color-danger) 28%, var(--color-border));
-  border-radius: 10px;
-  background:
-    radial-gradient(circle, var(--color-danger) 0 3px, transparent 4px) 15px 16px / 100% 22px
-      repeat-y,
-    linear-gradient(
-        90deg,
-        color-mix(in srgb, var(--color-danger) 34%, transparent),
-        color-mix(in srgb, var(--color-cyan) 20%, transparent)
-      )
-      30px 18px / 55px 2px repeat-y,
-    color-mix(in srgb, var(--color-panel-strong) 90%, transparent);
-  box-shadow: 0 16px 28px color-mix(in srgb, var(--color-panel-deep) 40%, transparent);
-  transform: rotate(3deg);
-}
-
-.homeRecentMatchesShortcut::after {
-  content: "LIVE";
-  position: absolute;
-  right: 17px;
-  top: 23px;
-  border-radius: 999px;
-  background: var(--color-danger);
-  color: white;
-  padding: 5px 8px;
-  font-size: 9px;
-  font-weight: 950;
-  letter-spacing: 0.1em;
-  box-shadow: 0 7px 16px color-mix(in srgb, var(--color-danger) 28%, transparent);
-}
-
-.homeRecentMatchesShortcut:hover {
-  background:
-    radial-gradient(
-      circle at 86% 24%,
-      color-mix(in srgb, var(--color-danger) 26%, transparent),
-      transparent 34%
-    ),
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--color-danger) 13%, transparent),
-      transparent 56%
-    ),
-    var(--color-surface-elevated-strong);
+.homeYearlyRankingsShortcut,
+.homePuzzleLeaderboardShortcut {
+  --home-card-accent: var(--color-cyan-bright);
 }
 
 .homeCommentsShortcut {
   --home-card-accent: var(--color-primary-pale);
 
-  padding-right: 154px;
-  background:
-    radial-gradient(
-      circle at 84% 26%,
-      color-mix(in srgb, var(--color-primary) 20%, transparent),
-      transparent 34%
-    ),
-    linear-gradient(138deg, color-mix(in srgb, var(--color-cyan) 9%, transparent), transparent 56%),
-    var(--color-panel);
-}
-
-.homeCommentsShortcut::before,
-.homeCommentsShortcut::after {
-  content: "";
-  position: absolute;
-  border: 1px solid color-mix(in srgb, var(--color-primary-pale) 34%, var(--color-border));
-  background: color-mix(in srgb, var(--color-panel-strong) 92%, transparent);
-  box-shadow: 0 14px 24px color-mix(in srgb, var(--color-panel-deep) 38%, transparent);
-}
-
-.homeCommentsShortcut::before {
-  right: 24px;
-  top: 43px;
-  width: 100px;
-  height: 65px;
-  border-radius: 14px 14px 4px 14px;
-  background:
-    linear-gradient(color-mix(in srgb, var(--color-primary-pale) 54%, transparent) 0 0) 15px 18px /
-      63px 3px no-repeat,
-    linear-gradient(color-mix(in srgb, var(--color-cyan) 34%, transparent) 0 0) 15px 31px / 48px 3px
-      no-repeat,
-    color-mix(in srgb, var(--color-panel-strong) 92%, transparent);
-  transform: rotate(3deg);
-}
-
-.homeCommentsShortcut::after {
-  right: 50px;
-  top: 113px;
-  width: 75px;
-  height: 49px;
-  border-radius: 12px 12px 12px 4px;
-  background:
-    linear-gradient(color-mix(in srgb, var(--color-primary-pale) 38%, transparent) 0 0) 13px 15px /
-      45px 3px no-repeat,
-    linear-gradient(color-mix(in srgb, var(--color-cyan) 28%, transparent) 0 0) 13px 27px / 34px 3px
-      no-repeat,
-    color-mix(in srgb, var(--color-panel-strong) 94%, transparent);
-  transform: rotate(-4deg);
-}
-
-.homeCommentsShortcut:hover {
-  background:
-    radial-gradient(
-      circle at 84% 26%,
-      color-mix(in srgb, var(--color-primary) 27%, transparent),
-      transparent 34%
-    ),
-    linear-gradient(
-      138deg,
-      color-mix(in srgb, var(--color-cyan) 13%, transparent),
-      transparent 56%
-    ),
-    var(--color-surface-elevated-strong);
+  grid-column: span 4;
 }
 
 .homePuzzleSetsShortcut {
-  --home-card-accent: #7ac48c;
+  --home-card-accent: var(--color-success);
 
-  padding-right: 158px;
-  background:
-    radial-gradient(
-      circle at 84% 72%,
-      color-mix(in srgb, #7ac48c 20%, transparent),
-      transparent 36%
-    ),
-    linear-gradient(135deg, color-mix(in srgb, #7ac48c 9%, transparent), transparent 54%),
-    var(--color-panel);
+  grid-column: span 2;
 }
 
-.homePuzzleSetsShortcut::before {
-  content: "";
+.homeArenaShortcut {
+  --home-card-accent: var(--color-accent-warm);
+
+  grid-column: span 4;
+}
+
+.homeYearlyRankingsShortcut {
+  grid-column: span 2;
+}
+
+.homeArenaArtwork {
   position: absolute;
-  right: 26px;
-  bottom: 35px;
-  width: 88px;
-  aspect-ratio: 1;
-  border: 1px solid color-mix(in srgb, #7ac48c 42%, var(--color-border));
-  border-radius: 9px;
-  background: conic-gradient(
-      from 90deg,
-      color-mix(in srgb, #7ac48c 30%, var(--color-panel)) 0 25%,
-      var(--color-panel-strong) 0 50%,
-      color-mix(in srgb, #7ac48c 30%, var(--color-panel)) 0 75%,
-      var(--color-panel-strong) 0
-    )
-    0 0 / 50% 50%;
-  box-shadow:
-    -8px 8px 0 color-mix(in srgb, var(--color-primary) 14%, var(--color-panel)),
-    -15px 15px 0 color-mix(in srgb, #7ac48c 12%, var(--color-panel)),
-    0 20px 28px color-mix(in srgb, var(--color-panel-deep) 38%, transparent);
-  transform: rotate(-4deg);
+  right: var(--space-5);
+  top: 50%;
+  width: 68px;
+  height: 68px;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--color-accent-warm) 36%, var(--color-border));
+  border-radius: var(--radius-ui);
+  background: color-mix(in srgb, var(--color-panel-strong) 88%, var(--color-accent-warm) 12%);
+  color: var(--color-accent-warm);
+  transform: translateY(-50%);
+  transition:
+    border-color 180ms ease,
+    transform 180ms ease;
+  pointer-events: none;
 }
 
-.homePuzzleSetsShortcut::after {
-  content: "SET";
-  position: absolute;
-  right: 17px;
-  top: 23px;
-  border: 1px solid color-mix(in srgb, #7ac48c 38%, transparent);
-  border-radius: 999px;
-  background: color-mix(in srgb, #7ac48c 16%, var(--color-panel));
-  color: color-mix(in srgb, #7ac48c 82%, white);
-  padding: 5px 8px;
-  font-size: 9px;
-  font-weight: 950;
-  letter-spacing: 0.1em;
+.homeArenaArtwork img {
+  width: 58px;
+  height: 64px;
+  object-fit: contain;
 }
 
-.homePuzzleSetsShortcut:hover {
-  background:
-    radial-gradient(
-      circle at 84% 72%,
-      color-mix(in srgb, #7ac48c 27%, transparent),
-      transparent 36%
-    ),
-    linear-gradient(135deg, color-mix(in srgb, #7ac48c 13%, transparent), transparent 54%),
-    var(--color-surface-elevated-strong);
+.homeArenaShortcut:hover .homeArenaArtwork {
+  border-color: color-mix(in srgb, var(--color-accent-warm) 58%, var(--color-border));
+  transform: translateY(calc(-50% - 2px));
 }
 
-@media (max-width: 1180px) {
-  .homeSpotlightSection {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 860px) {
-  .homeSpotlightGrid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 1080px) {
-  .homeHero {
-    min-height: 0;
-    padding-block: 12px;
-  }
-}
-
-@media (max-width: 720px) {
+@media (max-width: 820px) {
   .homePage {
-    gap: 16px;
-    padding: max(18px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right))
-      max(24px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+    gap: var(--space-6);
+    padding: max(var(--space-5), env(safe-area-inset-top))
+      max(var(--space-4), env(safe-area-inset-right))
+      max(var(--space-8), env(safe-area-inset-bottom))
+      max(var(--space-4), env(safe-area-inset-left));
+  }
+
+  .homeHero {
+    grid-template-columns: 1fr;
+    gap: var(--space-8);
+    padding: var(--space-6) 0 var(--space-8);
   }
 
   .homeHeroLead > h1 {
     font-size: 30px;
   }
 
-  .homeHero,
-  .homeSpotlightSection {
-    gap: 16px;
+  .homeSpotlightGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .homePuzzleLeaderboardShortcut {
-    min-height: 196px;
-    padding-right: 112px;
+  .homeSpotlightCard {
+    min-height: 0;
+    grid-column: span 1;
+    padding: var(--space-5);
   }
 
-  .homeH2HShortcut,
-  .homeRecentMatchesShortcut,
-  .homeCommentsShortcut,
-  .homePuzzleSetsShortcut {
-    min-height: 196px;
-    padding-right: 116px;
+  .homePuzzlePreview {
+    width: min(420px, 100%);
+    height: 320px;
+    justify-self: center;
   }
 
-  .homeRecentMatchesShortcut::before {
-    right: 15px;
-    bottom: 25px;
-    width: 78px;
-    height: 68px;
+  .homePuzzlePreviewPrimary {
+    width: 252px;
+    height: 252px;
   }
 
-  .homePuzzleSetsShortcut::before {
-    right: 17px;
-    bottom: 28px;
-    width: 68px;
+  .homePuzzlePreviewSecondary {
+    width: 188px;
+    height: 188px;
   }
 
-  .homeRecentMatchesShortcut::after,
-  .homePuzzleSetsShortcut::after {
-    right: 10px;
-    top: 18px;
-  }
-
-  .homeH2HShortcut::after {
-    right: 15px;
-    width: 74px;
-  }
-
-  .homeCommentsShortcut::before {
-    right: 14px;
-    width: 78px;
-  }
-
-  .homeCommentsShortcut::after {
-    right: 34px;
-    width: 62px;
-  }
-
-  .homeSubmitPuzzleShortcut {
-    min-height: 196px;
-    padding-right: 124px;
-  }
-
-  .homeSubmitPuzzleShortcut::before {
-    right: 18px;
-    top: 36px;
-    width: 78px;
-  }
-
-  .homeSubmitPuzzleShortcut::after {
-    right: 10px;
-    top: 25px;
-    width: 32px;
-    height: 32px;
-    font-size: 23px;
-  }
-
-  .homePuzzleLeaderboardShortcut::before {
-    right: 16px;
-    bottom: 18px;
-    width: 78px;
-  }
-
-  .homePuzzleLeaderboardShortcut::after {
-    right: 32px;
-    bottom: 43px;
-    transform: scale(0.78);
-    transform-origin: bottom right;
-  }
-
-  .homeTrophyShortcut {
-    min-height: 196px;
-    padding-right: 116px;
-  }
-
-  .homeTrophyShortcut > img {
-    max-width: 86px;
-    max-height: calc(100% - 28px);
-    right: 14px;
-    bottom: 14px;
-    margin-top: 0;
-  }
-
-  .homeTrophyShortcut[data-series="ahc"] {
-    min-height: 220px;
-    padding-right: 164px;
-  }
-
-  .homeTrophyShortcut[data-series="ahc"] > img {
-    position: absolute;
-    right: 16px;
-    width: 124px;
-    max-width: 124px;
+  .homeTrophyShortcut,
+  .homeArenaShortcut {
+    min-height: 152px;
+    padding-right: 108px;
   }
 }
 
-@media (max-width: 680px) {
+@media (max-width: 520px) {
+  .homeSpotlightGrid {
+    grid-template-columns: 1fr;
+  }
+
   .homeHeroActions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1047,89 +382,31 @@
   .homePrimaryCta,
   .homeSecondaryCta {
     width: 100%;
+    min-height: var(--control-height-touch);
+    padding-inline: var(--space-4);
+  }
+
+  .homePuzzlePreview {
+    height: 272px;
+  }
+
+  .homePuzzlePreviewPrimary {
+    width: 222px;
+    height: 222px;
+  }
+
+  .homePuzzlePreviewSecondary {
+    width: 162px;
+    height: 162px;
   }
 }
 
-.homeArenaShortcut {
-  --home-card-accent: var(--color-accent-warm);
-
-  padding-right: 164px;
-  background:
-    radial-gradient(
-      ellipse at 88% 40%,
-      color-mix(in srgb, var(--color-accent-warm) 24%, transparent),
-      transparent 54%
-    ),
-    linear-gradient(
-      125deg,
-      color-mix(in srgb, var(--color-primary) 24%, transparent),
-      transparent 70%
-    ),
-    var(--color-panel);
-}
-
-.homeArenaArtwork {
-  position: absolute;
-  right: 28px;
-  top: 50%;
-  display: grid;
-  place-items: center;
-  width: 112px;
-  height: 128px;
-  border: 1px solid color-mix(in srgb, var(--color-accent-warm) 48%, var(--color-border));
-  border-radius: var(--radius-lg);
-  background: linear-gradient(
-    150deg,
-    color-mix(in srgb, var(--color-accent-warm) 20%, var(--color-panel-strong)),
-    var(--color-panel-strong)
-  );
-  color: var(--color-accent-warm);
-  box-shadow:
-    0 16px 28px color-mix(in srgb, var(--color-panel-deep) 40%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--color-accent-warm) 28%, transparent);
-  transform: translateY(-50%) rotate(7deg);
-  transition:
-    transform 240ms ease,
-    box-shadow 240ms ease;
-  pointer-events: none;
-}
-
-.homeArenaArtwork svg {
-  width: 64px;
-  height: 64px;
-}
-
-.homeArenaShortcut:hover .homeArenaArtwork {
-  transform: translateY(calc(-50% - 4px)) rotate(2deg);
-  box-shadow: 0 20px 32px color-mix(in srgb, var(--color-panel-deep) 48%, transparent);
-}
-
-.homeArenaShortcut:active {
-  transform: translateY(-1px);
-}
-
-.homeArenaShortcut > strong {
-  width: fit-content;
-  margin-top: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid color-mix(in srgb, var(--color-accent-warm) 42%, transparent);
-  border-radius: var(--radius-ui);
-  background: color-mix(in srgb, var(--color-accent-warm) 13%, transparent);
-  color: var(--color-heading);
-  font-size: 14px;
-}
-
-@media (max-width: 720px) {
-  .homeArenaShortcut {
-    padding-right: 124px;
-  }
+@media (prefers-reduced-motion: reduce) {
+  .homePrimaryCta,
+  .homeSecondaryCta,
+  .homeSpotlightCard,
+  .homeTrophyShortcut > img,
   .homeArenaArtwork {
-    right: 18px;
-    width: 84px;
-    height: 104px;
-  }
-  .homeArenaArtwork svg {
-    width: 48px;
-    height: 48px;
+    transition-duration: 0.01ms;
   }
 }

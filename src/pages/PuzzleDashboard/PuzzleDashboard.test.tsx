@@ -83,17 +83,56 @@ const renderDashboard = (username?: string) =>
   );
 
 describe("puzzle dashboard views", () => {
-  it("shows a tag-free list of puzzles created by the dashboard owner", async () => {
+  it("never shows tags in puzzle attempts or created puzzles", async () => {
     const user = userEvent.setup();
     renderDashboard();
 
-    expect(await screen.findByLabelText("Puzzle tags")).toHaveTextContent("Fork");
+    expect(await screen.findByRole("link", { name: "Puzzle 10" })).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("list", { name: "Puzzle dashboard" })).queryByText("Atomic Arena"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Puzzle tags")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Search tags to add")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Show filters" }));
+    expect(screen.getByPlaceholderText("Puzzle, author, or event")).toBeInTheDocument();
     await user.click(screen.getByRole("tab", { name: "Puzzles created" }));
 
     const createdList = screen.getByRole("list", { name: "Puzzles created" });
     expect(within(createdList).getByRole("link", { name: "Puzzle 10" })).toBeInTheDocument();
     expect(within(createdList).queryByText("Puzzle 11")).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Puzzle tags")).not.toBeVisible();
+    expect(screen.queryByLabelText("Puzzle tags")).not.toBeInTheDocument();
+  });
+
+  it("shows 40 created puzzles by default with options for 100 and 500", async () => {
+    const user = userEvent.setup();
+    const createdPuzzles = Array.from({ length: 105 }, (_, index) => ({
+      id: index + 1,
+      puzzleId: index + 1,
+      author: "alice",
+      event: "Atomic Arena",
+      tags: [],
+      fen: "",
+      solution: "",
+      explanation: "",
+    }));
+    client.setQueryData(puzzleQueryKeys.catalog, createdPuzzles);
+    renderDashboard();
+
+    await user.click(screen.getByRole("tab", { name: "Puzzles created" }));
+
+    const firstPage = screen.getByRole("list", { name: "Puzzles created" });
+    expect(within(firstPage).getAllByRole("listitem")).toHaveLength(40);
+    expect(within(firstPage).getByRole("link", { name: "Puzzle 105" })).toBeInTheDocument();
+    expect(within(firstPage).queryByRole("link", { name: "Puzzle 65" })).not.toBeInTheDocument();
+
+    await user.selectOptions(screen.getByRole("combobox", { name: "Puzzles per page" }), "100");
+    expect(within(firstPage).getAllByRole("listitem")).toHaveLength(100);
+    expect(within(firstPage).getByRole("link", { name: "Puzzle 6" })).toBeInTheDocument();
+    expect(within(firstPage).queryByRole("link", { name: "Puzzle 5" })).not.toBeInTheDocument();
+
+    await user.selectOptions(screen.getByRole("combobox", { name: "Puzzles per page" }), "500");
+    expect(within(firstPage).getAllByRole("listitem")).toHaveLength(105);
+    expect(within(firstPage).getByRole("link", { name: "Puzzle 1" })).toBeInTheDocument();
   });
 
   it("hides puzzle tags when viewing another player's attempts", async () => {

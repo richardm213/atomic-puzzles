@@ -3,6 +3,8 @@ import "./PuzzleSolver.css";
 import {
   faArrowUpRightFromSquare,
   faCheck,
+  faChevronLeft,
+  faChevronRight,
   faCircleInfo,
   faClockRotateLeft,
   faComment,
@@ -1774,25 +1776,6 @@ export const PuzzleSolverPage = () => {
     );
   };
 
-  const renderCastlingRights = () =>
-    hasAnyCastlingRights ? (
-      <div
-        className="castlingRightsBar"
-        aria-label={`Castling rights. White: ${castlingRights.white.join(", ") || "none"}. Black: ${castlingRights.black.join(", ") || "none"}.`}
-        title="Castling rights; a listed right may not be a legal move in the current position"
-      >
-        <span className="castlingRightsLabel">Castling</span>
-        <span className="castlingRightsSide white">
-          <span aria-hidden="true">White</span>
-          <strong>{castlingRights.white.join(" · ") || "—"}</strong>
-        </span>
-        <span className="castlingRightsSide black">
-          <span aria-hidden="true">Black</span>
-          <strong>{castlingRights.black.join(" · ") || "—"}</strong>
-        </span>
-      </div>
-    ) : null;
-
   const renderPuzzleMotifs = () => {
     if (!hasAttemptedActivePuzzle) return null;
     const savingMotifs = motifSaveStatus.state === "saving";
@@ -2090,30 +2073,74 @@ export const PuzzleSolverPage = () => {
     </dialog>
   );
 
-  const renderMaterialDifference = (side: "white" | "black") => {
-    const label = side === "white" ? "White" : "Black";
-    const pieces = side === "white" ? materialCount.whitePieces : materialCount.blackPieces;
-    const status = pieces.length
-      ? `${label} material difference: ${pieces.join(", ")}`
-      : `${label} has no extra pieces`;
+  const renderPlayerRows = (mobile = false) => {
+    const hasPositionData = hasAnyCastlingRights || hasMaterialDifference;
+    if (!whitePlayer && !blackPlayer && !hasPositionData) return null;
 
     return (
-      <div className={`materialDifference ${side}`} aria-label={status} title={status}>
-        <span className="materialDifferenceSide">{label}</span>
-        <span className="materialDifferencePieces" aria-live="polite">
-          {pieces.map((role: MaterialPieceRole, index: number) => (
-            <span
-              className={`materialDifferencePiece ${role}`}
-              style={{
-                maskImage: `var(--cg-piece-white-${role})`,
-                WebkitMaskImage: `var(--cg-piece-white-${role})`,
-              }}
-              aria-hidden="true"
-              key={`${role}-${index}`}
-            />
-          ))}
-        </span>
-      </div>
+      <section
+        className={mobile ? "mobilePuzzlePlayers" : "puzzlePlayers"}
+        aria-label="Game players"
+      >
+        {(["white", "black"] as const).map((side) => {
+          const label = side === "white" ? "White" : "Black";
+          const player = side === "white" ? whitePlayer : blackPlayer;
+          const playerLabel = side === "white" ? whitePlayerLabel : blackPlayerLabel;
+          const rights = castlingRights[side];
+          const pieces = side === "white" ? materialCount.whitePieces : materialCount.blackPieces;
+          const materialStatus = pieces.length ? pieces.join(", ") : "no extra material";
+
+          return (
+            <div
+              className={`puzzlePlayer ${hasPositionData ? "hasPositionData" : ""} ${
+                hasMaterialDifference ? "hasMaterialData" : ""
+              } ${player ? "hasPlayerName" : ""}`}
+              aria-label={`${label}: ${playerLabel || "unknown"}`}
+              key={side}
+            >
+              <span className={`puzzlePlayerColor ${side}`} aria-hidden="true" />
+              {player ? (
+                <Link
+                  className="puzzlePlayerLink"
+                  to="/@/$username/puzzles"
+                  params={{ username: normalizeUsername(player) }}
+                  title={player}
+                >
+                  {playerLabel}
+                </Link>
+              ) : null}
+              {hasPositionData ? (
+                <>
+                  <strong
+                    className="puzzlePlayerCastling"
+                    aria-label={`Castling rights: ${rights.join(", ") || "none"}`}
+                  >
+                    {rights.join(" · ") || "—"}
+                  </strong>
+                  {hasMaterialDifference ? (
+                    <span
+                      className="materialDifferencePieces"
+                      aria-label={`Material difference: ${materialStatus}`}
+                    >
+                      {pieces.map((role: MaterialPieceRole, index: number) => (
+                        <span
+                          className={`materialDifferencePiece ${role}`}
+                          style={{
+                            maskImage: `var(--cg-piece-white-${role})`,
+                            WebkitMaskImage: `var(--cg-piece-white-${role})`,
+                          }}
+                          aria-hidden="true"
+                          key={`${role}-${index}`}
+                        />
+                      ))}
+                    </span>
+                  ) : null}
+                </>
+              ) : null}
+            </div>
+          );
+        })}
+      </section>
     );
   };
 
@@ -2141,7 +2168,31 @@ export const PuzzleSolverPage = () => {
       <div className="panel puzzlePanel">
         <header className="puzzleHeader">
           <div className="puzzleHeaderTopline">
-            <h1>{activePuzzleId ? `Puzzle ${activePuzzleId}` : "Puzzle"}</h1>
+            <div className="puzzleTitleRow">
+              <h1>{activePuzzleId ? `Puzzle ${activePuzzleId}` : "Puzzle"}</h1>
+              {!isMobileLayout ? (
+                <nav className="puzzleHeaderNavigation" aria-label="Puzzle navigation">
+                  <button
+                    type="button"
+                    aria-label="Previous"
+                    title="Previous puzzle"
+                    onClick={handlePreviousPuzzle}
+                    disabled={!canGoToPreviousPuzzle}
+                  >
+                    <FontAwesomeIcon icon={faChevronLeft} aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Next"
+                    title="Next puzzle"
+                    onClick={handleNextPuzzle}
+                    disabled={!canGoToNextPuzzle}
+                  >
+                    <FontAwesomeIcon icon={faChevronRight} aria-hidden="true" />
+                  </button>
+                </nav>
+              ) : null}
+            </div>
             <div className="puzzleHeaderStatus">
               {!isMobileLayout && showPuzzleTimer ? (
                 <div
@@ -2205,9 +2256,7 @@ export const PuzzleSolverPage = () => {
                   {puzzleSetDate && puzzleSetParticipantsLabel ? (
                     <span aria-hidden="true">·</span>
                   ) : null}
-                  {puzzleSetParticipantsLabel ? (
-                    <span>{puzzleSetParticipantsLabel}</span>
-                  ) : null}
+                  {puzzleSetParticipantsLabel ? <span>{puzzleSetParticipantsLabel}</span> : null}
                 </span>
               ) : null}
             </section>
@@ -2235,55 +2284,7 @@ export const PuzzleSolverPage = () => {
             ) : null}
           </div>
 
-          {hasKnownPlayers ? (
-            <section className="puzzlePlayers" aria-label="Game players">
-              <div className="puzzlePlayer">
-                <span className="puzzlePlayerColor white" aria-hidden="true" />
-                <span className="puzzlePlayerSide">White</span>
-                <Link
-                  className="puzzlePlayerLink"
-                  to="/@/$username/puzzles"
-                  params={{ username: normalizeUsername(whitePlayer) }}
-                  title={whitePlayer}
-                >
-                  {whitePlayerLabel}
-                </Link>
-              </div>
-              <div className="puzzlePlayer">
-                <span className="puzzlePlayerColor black" aria-hidden="true" />
-                <span className="puzzlePlayerSide">Black</span>
-                <Link
-                  className="puzzlePlayerLink"
-                  to="/@/$username/puzzles"
-                  params={{ username: normalizeUsername(blackPlayer) }}
-                  title={blackPlayer}
-                >
-                  {blackPlayerLabel}
-                </Link>
-              </div>
-            </section>
-          ) : null}
-
-          {!isMobileLayout ? (
-            <nav className="puzzleActions" aria-label="Puzzle navigation">
-              <button
-                type="button"
-                onClick={handlePreviousPuzzle}
-                disabled={!canGoToPreviousPuzzle}
-              >
-                <span className="puzzleActionArrow" aria-hidden="true">
-                  ‹
-                </span>
-                Previous
-              </button>
-              <button type="button" onClick={handleNextPuzzle} disabled={!canGoToNextPuzzle}>
-                Next
-                <span className="puzzleActionArrow" aria-hidden="true">
-                  ›
-                </span>
-              </button>
-            </nav>
-          ) : null}
+          {renderPlayerRows()}
         </header>
 
         {renderPuzzleMotifs()}
@@ -2349,23 +2350,7 @@ export const PuzzleSolverPage = () => {
           </section>
         ) : null}
 
-        {!isMobileLayout ? (
-          <div className="puzzleDetails">
-            {hasAnyCastlingRights || hasMaterialDifference ? (
-              <div className="puzzlePositionSummary">
-                {renderCastlingRights()}
-                {hasMaterialDifference ? (
-                  <div className="materialDifferencePanel" aria-label="Material difference">
-                    <span className="materialDifferenceLabel">Material</span>
-                    {renderMaterialDifference("white")}
-                    {renderMaterialDifference("black")}
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-            {renderPuzzleInfoSection()}
-          </div>
-        ) : null}
+        {!isMobileLayout ? <div className="puzzleDetails">{renderPuzzleInfoSection()}</div> : null}
       </div>
 
       <div className="boardWrap">
@@ -2457,52 +2442,9 @@ export const PuzzleSolverPage = () => {
               {author}
             </span>
           </div>
-          {hasKnownPlayers ? (
-            <section className="mobilePuzzlePlayers" aria-label="Game players">
-              <div className="puzzlePlayer">
-                <span className="puzzlePlayerColor white" aria-hidden="true" />
-                <span className="puzzlePlayerSide">White</span>
-                <Link
-                  className="puzzlePlayerLink"
-                  to="/@/$username/puzzles"
-                  params={{ username: normalizeUsername(whitePlayer) }}
-                  title={whitePlayer}
-                >
-                  {whitePlayerLabel}
-                </Link>
-              </div>
-              <div className="puzzlePlayer">
-                <span className="puzzlePlayerColor black" aria-hidden="true" />
-                <span className="puzzlePlayerSide">Black</span>
-                <Link
-                  className="puzzlePlayerLink"
-                  to="/@/$username/puzzles"
-                  params={{ username: normalizeUsername(blackPlayer) }}
-                  title={blackPlayer}
-                >
-                  {blackPlayerLabel}
-                </Link>
-              </div>
-            </section>
-          ) : null}
+          {renderPlayerRows(true)}
           {hasAttemptedActivePuzzle ? (
             <div id="mobile-puzzle-vote-slot" className="mobilePuzzleVoteSlot" />
-          ) : null}
-          {hasAnyCastlingRights || hasMaterialDifference ? (
-            <div className="mobilePositionSummary">
-              {hasAnyCastlingRights ? (
-                <div className="mobileCastlingRights">{renderCastlingRights()}</div>
-              ) : null}
-              {hasMaterialDifference ? (
-                <div className="mobileMaterialDifference">
-                  <div className="materialDifferencePanel" aria-label="Material difference">
-                    <span className="materialDifferenceLabel">Material</span>
-                    {renderMaterialDifference("white")}
-                    {renderMaterialDifference("black")}
-                  </div>
-                </div>
-              ) : null}
-            </div>
           ) : null}
         </>
       ) : null}

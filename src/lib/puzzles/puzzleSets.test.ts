@@ -184,7 +184,7 @@ describe("groupPuzzlesByEvent", () => {
       makePuzzle({
         puzzleId: 1,
         puzzle_set_id: 16,
-        puzzle_set: makeSet(16, "3+2 match", "2026-03", ["Opabinia", "Rechesster"]),
+        puzzle_set: makeSet(16, "3+2 match", "2026-04-14", ["Opabinia", "Rechesster"]),
       }),
       makePuzzle({
         puzzleId: 2,
@@ -193,9 +193,9 @@ describe("groupPuzzlesByEvent", () => {
       }),
     ]);
 
-    expect(groups.find((group) => group.setId === 16)?.sourceId).toBe("CYLH7bBT");
+    expect(groups.find((group) => group.setId === 16)?.sourceId).toBe("Lx9Aw3eb");
     expect(groups.find((group) => group.setId === 16)?.event).toBe(
-      "3+2 match · Mar 2026 · opabinia vs rechesster",
+      "3+2 match · Apr 14, 2026 · opabinia vs rechesster",
     );
     expect(groups.find((group) => group.setId === 17)?.sourceId).toBe("");
   });

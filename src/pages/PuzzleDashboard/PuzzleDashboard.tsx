@@ -23,12 +23,13 @@ import {
 import { getPuzzleSetDisplayName } from "../../lib/puzzles/puzzleSets";
 import { siteUserRegistrationQueryOptions } from "../../lib/users/userQueries";
 import { normalizeUsername } from "../../utils/playerNames";
-import { DashboardTagFilter, getPuzzleTagName } from "./DashboardTagFilter";
-import { entryMatchesSelectedTags } from "./puzzleDashboardTags";
 
 const DEFAULT_PAGE_SIZE = 20;
 const PAGE_SIZE_OPTIONS = [20, 50, 100] as const;
+const DEFAULT_CREATED_PAGE_SIZE = 40;
+const CREATED_PAGE_SIZE_OPTIONS = [40, 100, 500] as const;
 const PAGE_SIZE_STORAGE_KEY = "atomic-puzzles.puzzle-dashboard-page-size";
+const CREATED_PAGE_SIZE_STORAGE_KEY = "atomic-puzzles.puzzle-dashboard-created-page-size";
 const FILTERS_STORAGE_KEY = "atomic-puzzles.puzzle-dashboard-filters.v1";
 const UNKNOWN_EVENT_LABEL = "Unknown event";
 const emptyPuzzleProgressRows: import("../../lib/supabase/puzzleProgress").PuzzleProgressRow[] = [];
@@ -42,7 +43,6 @@ const dashboardFiltersSchema = z.object({
   eventFilter: z.string(),
   authorFilter: z.string(),
   searchFilter: z.string(),
-  tagFilters: z.array(z.string()),
   attemptSource: z.union([z.literal("first"), z.string().uuid()]),
   filtersOpen: z.boolean(),
 });
@@ -54,15 +54,18 @@ const DEFAULT_DASHBOARD_FILTERS: DashboardFilters = {
   eventFilter: "",
   authorFilter: "",
   searchFilter: "",
-  tagFilters: [],
   attemptSource: "first",
   filtersOpen: false,
 };
 
 type PuzzleDashboardPageSize = (typeof PAGE_SIZE_OPTIONS)[number];
+type CreatedPuzzlePageSize = (typeof CREATED_PAGE_SIZE_OPTIONS)[number];
 const pageSizeSchema = z.union([z.literal(20), z.literal(50), z.literal(100)]);
+const createdPageSizeSchema = z.union([z.literal(40), z.literal(100), z.literal(500)]);
 const isPuzzleDashboardPageSize = (value: number): value is PuzzleDashboardPageSize =>
   PAGE_SIZE_OPTIONS.includes(value as PuzzleDashboardPageSize);
+const isCreatedPuzzlePageSize = (value: number): value is CreatedPuzzlePageSize =>
+  CREATED_PAGE_SIZE_OPTIONS.includes(value as CreatedPuzzlePageSize);
 
 const formatDateTime = (value: string | number | Date | null | undefined): string => {
   if (!value) return "—";
@@ -84,7 +87,6 @@ const buildDashboardEntries = (
   linkedPuzzleId: string | number;
   author: string;
   event: string;
-  tags: string[];
   puzzleCorrect: boolean;
   firstAttemptAt: string;
 }> =>
@@ -99,7 +101,6 @@ const buildDashboardEntries = (
       linkedPuzzleId,
       author,
       event,
-      tags: puzzle?.tags ?? [],
       puzzleCorrect: Boolean(row?.puzzle_correct),
       firstAttemptAt: row?.first_attempt_at || "",
     };
@@ -114,14 +115,17 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
   const routeUsername = useMemo(() => normalizeUsername(username), [username]);
   const viewingOwnDashboard = !routeUsername;
   const targetUsername = viewingOwnDashboard ? normalizeUsername(user?.username) : routeUsername;
-  const isOwnPuzzleHistory =
-    isAuthenticated && normalizeUsername(user?.username) === targetUsername;
   const [activeTab, setActiveTab] = useState<DashboardTab>("attempts");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = usePersistedState<PuzzleDashboardPageSize>(
     PAGE_SIZE_STORAGE_KEY,
     pageSizeSchema,
     DEFAULT_PAGE_SIZE,
+  );
+  const [createdPageSize, setCreatedPageSize] = usePersistedState<CreatedPuzzlePageSize>(
+    CREATED_PAGE_SIZE_STORAGE_KEY,
+    createdPageSizeSchema,
+    DEFAULT_CREATED_PAGE_SIZE,
   );
   const [dashboardFilters, setDashboardFilters] = usePersistedState<DashboardFilters>(
     FILTERS_STORAGE_KEY,
@@ -135,7 +139,6 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
     eventFilter,
     authorFilter,
     searchFilter,
-    tagFilters,
     attemptSource,
     filtersOpen,
   } = dashboardFilters;
@@ -215,12 +218,12 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
     activeTab,
     authorFilter,
     activeAttemptSource,
+    createdPageSize,
     eventFilter,
     pageSize,
     resultFilter,
     searchFilter,
     sinceDate,
-    tagFilters,
     targetUsername,
     untilDate,
   ]);
@@ -271,18 +274,13 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
       if (resultFilter === "incorrect" && entry.puzzleCorrect) return false;
       if (eventFilter && entry.event !== eventFilter) return false;
       if (authorFilter && entry.author !== authorFilter) return false;
-      if (isOwnPuzzleHistory && !entryMatchesSelectedTags(entry.tags, tagFilters)) return false;
-
       const attemptTimestamp = new Date(entry.firstAttemptAt).getTime();
       if (sinceTimestamp !== null && attemptTimestamp < sinceTimestamp) return false;
       if (untilTimestamp !== null && attemptTimestamp > untilTimestamp) return false;
 
       if (normalizedSearch) {
-        const tagSearchText = isOwnPuzzleHistory
-          ? entry.tags.map((tag) => `${tag} ${getPuzzleTagName(tag)}`).join(" ")
-          : "";
         const searchableText =
-          `${entry.puzzleId} ${entry.author} ${entry.event} ${tagSearchText}`.toLocaleLowerCase();
+          `${entry.puzzleId} ${entry.author} ${entry.event}`.toLocaleLowerCase();
         if (!searchableText.includes(normalizedSearch)) return false;
       }
 
@@ -292,11 +290,9 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
     allDashboardEntries,
     authorFilter,
     eventFilter,
-    isOwnPuzzleHistory,
     resultFilter,
     searchFilter,
     sinceDate,
-    tagFilters,
     untilDate,
   ]);
   const dashboardSummary = useMemo(() => {
@@ -325,10 +321,10 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
     [puzzlesById, targetUsername],
   );
   const puzzlesCreated = createdPuzzles.length;
-  const createdTotalPages = Math.max(1, Math.ceil(puzzlesCreated / pageSize));
+  const createdTotalPages = Math.max(1, Math.ceil(puzzlesCreated / createdPageSize));
   const createdPuzzleEntries = useMemo(
-    () => createdPuzzles.slice((currentPage - 1) * pageSize, currentPage * pageSize),
-    [createdPuzzles, currentPage, pageSize],
+    () => createdPuzzles.slice((currentPage - 1) * createdPageSize, currentPage * createdPageSize),
+    [createdPageSize, createdPuzzles, currentPage],
   );
   const isPageLoading = isDashboardLoading || arePuzzlesLoading;
   const areStatsLoading = isDashboardLoading || arePuzzlesLoading;
@@ -367,8 +363,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
     resultFilter !== "all" ||
     eventFilter ||
     authorFilter ||
-    searchFilter.trim() ||
-    (isOwnPuzzleHistory && tagFilters.length > 0),
+    searchFilter.trim(),
   );
   const clearFilters = (): void => {
     setDashboardFilters((current) => ({
@@ -487,13 +482,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
             >
               <div className="dashboardAttemptsHeader">
                 <div className="dashboardAttemptsTitleRow">
-                  <div>
-                    <h2>Puzzle attempts</h2>
-                    <p className="dashboardAttemptsCount" aria-live="polite">
-                      {dashboardSummary.total} matching attempt
-                      {dashboardSummary.total === 1 ? "" : "s"}
-                    </p>
-                  </div>
+                  <h2>Puzzle attempts</h2>
                   <div className="dashboardAttemptsActions">
                     <button
                       type="button"
@@ -535,11 +524,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
                       <span>Search</span>
                       <input
                         type="search"
-                        placeholder={
-                          isOwnPuzzleHistory
-                            ? "Puzzle, author, event, or tag"
-                            : "Puzzle, author, or event"
-                        }
+                        placeholder="Puzzle, author, or event"
                         value={searchFilter}
                         onChange={(event) =>
                           updateDashboardFilter("searchFilter", event.target.value)
@@ -547,13 +532,6 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
                         disabled={isPageLoading}
                       />
                     </label>
-                    {isOwnPuzzleHistory ? (
-                      <DashboardTagFilter
-                        disabled={isPageLoading}
-                        selectedTags={tagFilters}
-                        onChange={(tags) => updateDashboardFilter("tagFilters", tags)}
-                      />
-                    ) : null}
                     <label className="dashboardFilterField">
                       <span>Result</span>
                       <select
@@ -666,43 +644,36 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
               </div>
 
               {dashboardEntries.length > 0 ? (
-                <div className="dashboardAttemptRows" role="list" aria-label="Puzzle dashboard">
-                  {dashboardEntries.map((entry, index) => (
-                    <article
-                      key={`${entry.puzzleId}-${entry.firstAttemptAt}`}
-                      className={`dashboardAttemptRow ${
-                        entry.puzzleCorrect ? "correct" : "incorrect"
-                      }`}
-                    >
-                      <div className="dashboardAttemptPrimary">
+                <div className="dashboardAttemptTable">
+                  <div className="dashboardAttemptHeader" aria-hidden="true">
+                    <span>#</span>
+                    <span>Puzzle</span>
+                    <span>Author</span>
+                    <span>Result</span>
+                    <span>Attempted</span>
+                  </div>
+                  <div className="dashboardAttemptRows" role="list" aria-label="Puzzle dashboard">
+                    {dashboardEntries.map((entry, index) => (
+                      <article
+                        key={`${entry.puzzleId}-${entry.firstAttemptAt}`}
+                        className={`dashboardAttemptRow ${
+                          entry.puzzleCorrect ? "correct" : "incorrect"
+                        }`}
+                        role="listitem"
+                      >
                         <span className="dashboardRowNumber" aria-hidden="true">
                           {firstRowNumber + index}
                         </span>
-                        <div className="dashboardPuzzleBlock">
-                          <Link
-                            className="dashboardPuzzleLink"
-                            to="/solve/$puzzleId"
-                            params={{ puzzleId: String(entry.linkedPuzzleId) }}
-                          >
-                            Puzzle {entry.linkedPuzzleId}
-                          </Link>
-                          <div className="dashboardPuzzleSubline">
-                            <span className="dashboardPuzzleAuthor">{entry.author}</span>
-                            {isKnownEvent(entry.event) ? (
-                              <span className="dashboardPuzzleEvent">{entry.event}</span>
-                            ) : null}
-                            {isOwnPuzzleHistory && entry.tags.length > 0 ? (
-                              <span className="dashboardPuzzleTags" aria-label="Puzzle tags">
-                                {entry.tags.map((tag) => (
-                                  <span key={tag}>{getPuzzleTagName(tag)}</span>
-                                ))}
-                              </span>
-                            ) : null}
-                          </div>
+                        <Link
+                          className="dashboardPuzzleLink"
+                          to="/solve/$puzzleId"
+                          params={{ puzzleId: String(entry.linkedPuzzleId) }}
+                        >
+                          Puzzle {entry.linkedPuzzleId}
+                        </Link>
+                        <div className="dashboardPuzzleSubline">
+                          <span className="dashboardPuzzleAuthor">{entry.author}</span>
                         </div>
-                      </div>
-
-                      <div className="dashboardAttemptMeta">
                         <span
                           className={`dashboardStatus ${
                             entry.puzzleCorrect ? "correct" : "incorrect"
@@ -710,12 +681,12 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
                         >
                           {resultLabel(entry.puzzleCorrect)}
                         </span>
-                        <span className="dashboardMetaValue">
+                        <time className="dashboardMetaValue" dateTime={entry.firstAttemptAt}>
                           {formatDateTime(entry.firstAttemptAt)}
-                        </span>
-                      </div>
-                    </article>
-                  ))}
+                        </time>
+                      </article>
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <div className="dashboardStateCard">
@@ -761,26 +732,24 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
                 <div className="dashboardAttemptsTitleRow">
                   <div>
                     <h2>Puzzles created</h2>
-                    <p className="dashboardAttemptsCount" aria-live="polite">
-                      {puzzlesCreated} puzzle{puzzlesCreated === 1 ? "" : "s"}
-                    </p>
                   </div>
                 </div>
                 {createdPuzzleEntries.length > 0 ? (
                   <div className="dashboardAttemptsPager">
                     <label className="dashboardFilterLabel">
-                      <span>Rows</span>
+                      <span>Per page</span>
                       <select
-                        value={pageSize}
+                        aria-label="Puzzles per page"
+                        value={createdPageSize}
                         onChange={(event) => {
                           const nextPageSize = Number.parseInt(event.target.value, 10);
-                          if (isPuzzleDashboardPageSize(nextPageSize)) {
-                            setPageSize(nextPageSize);
+                          if (isCreatedPuzzlePageSize(nextPageSize)) {
+                            setCreatedPageSize(nextPageSize);
                           }
                         }}
                         disabled={isPageLoading}
                       >
-                        {PAGE_SIZE_OPTIONS.map((option) => (
+                        {CREATED_PAGE_SIZE_OPTIONS.map((option) => (
                           <option key={option} value={option}>
                             {option}
                           </option>

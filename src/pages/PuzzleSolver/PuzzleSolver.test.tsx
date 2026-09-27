@@ -387,14 +387,16 @@ describe("PuzzleSolverPage solution options", () => {
     ).toHaveTextContent("OPA style");
   });
 
-  it("shows separate White and Black rows whenever both puzzle players are known", async () => {
+  it("shows color swatches and player names without visible side labels", async () => {
     render(<PuzzleSolverPage />);
 
     const players = await screen.findByRole("region", { name: "Game players" });
-    expect(within(players).getByText("White")).toBeInTheDocument();
+    expect(within(players).queryByText("White")).not.toBeInTheDocument();
     expect(within(players).getByText("white-user")).toBeInTheDocument();
-    expect(within(players).getByText("Black")).toBeInTheDocument();
+    expect(within(players).queryByText("Black")).not.toBeInTheDocument();
     expect(within(players).getByText("black-user")).toBeInTheDocument();
+    expect(within(players).getByLabelText("White: white-user")).toBeInTheDocument();
+    expect(within(players).getByLabelText("Black: black-user")).toBeInTheDocument();
     expect(within(players).getAllByRole("link")).toHaveLength(2);
     within(players)
       .getAllByRole("link")
@@ -424,7 +426,7 @@ describe("PuzzleSolverPage solution options", () => {
     expect(within(players).queryByText("black-user")).not.toBeInTheDocument();
   });
 
-  it("does not show player rows when either player is unknown", async () => {
+  it("keeps both position rows when either player is unknown", async () => {
     mocks.loadPuzzlesById.mockResolvedValueOnce([
       {
         id: 1369,
@@ -443,7 +445,10 @@ describe("PuzzleSolverPage solution options", () => {
     render(<PuzzleSolverPage />);
 
     await screen.findByTestId("mock-board");
-    expect(screen.queryByRole("region", { name: "Game players" })).not.toBeInTheDocument();
+    const players = screen.getByRole("region", { name: "Game players" });
+    expect(within(players).getByLabelText("White: white-user")).toBeInTheDocument();
+    expect(within(players).getByLabelText("Black: unknown")).toBeInTheDocument();
+    expect(within(players).getAllByLabelText(/^Castling rights:/)).toHaveLength(2);
   });
 
   it("falls back to puzzle-set participants when player colors are unknown", async () => {
@@ -471,7 +476,9 @@ describe("PuzzleSolverPage solution options", () => {
 
     const setDetails = await screen.findByRole("region", { name: "Puzzle set details" });
     expect(within(setDetails).getByText("alpha vs beta")).toBeInTheDocument();
-    expect(screen.queryByRole("region", { name: "Game players" })).not.toBeInTheDocument();
+    const players = screen.getByRole("region", { name: "Game players" });
+    expect(within(players).getByLabelText("White: unknown")).toBeInTheDocument();
+    expect(within(players).getByLabelText("Black: unknown")).toBeInTheDocument();
   });
 
   it("waits for progress before choosing a random puzzle and skips attempted puzzles", async () => {

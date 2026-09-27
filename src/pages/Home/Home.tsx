@@ -1,7 +1,5 @@
 import "./Home.css";
 
-import { faTrophy } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
@@ -26,7 +24,6 @@ const TournamentSpotlightCard = ({
     to="/tournaments/$tournamentId"
     params={{ tournamentId: getTournamentRouteId(tournament.id) }}
   >
-    <span>Championship</span>
     <h2>{tournament.headingTitle || `${tournament.seriesName} ${tournament.year}`}</h2>
     <p>
       {tournament.seriesKey === "awc" && tournament.year === 2026
@@ -78,6 +75,10 @@ export const HomePage = () => {
         <div className="homeHeroLead">
           <h1 id="home-title">Atomic chess puzzles, rankings, and matches</h1>
 
+          <p className="homePuzzleCount">
+            <strong>2,000+</strong> puzzles available
+          </p>
+
           <div className="homeHeroActions">
             <Link className="homePrimaryCta" to="/solve">
               Solve puzzles
@@ -88,6 +89,45 @@ export const HomePage = () => {
             <Link className="homeSecondaryCta" to="/analysis">
               Analyze
             </Link>
+          </div>
+        </div>
+
+        <div className="homePuzzlePreview" aria-hidden="true">
+          <div className="homePuzzlePreviewCard homePuzzlePreviewSecondary">
+            <img
+              className="homePuzzlePreviewDark"
+              src={appAssetPath("/images/home-puzzles/home-puzzle-dark-3.png")}
+              alt=""
+              width="918"
+              height="1036"
+              decoding="async"
+            />
+            <img
+              className="homePuzzlePreviewLight"
+              src={appAssetPath("/images/home-puzzles/home-puzzle-light-3.png")}
+              alt=""
+              width="918"
+              height="1036"
+              decoding="async"
+            />
+          </div>
+          <div className="homePuzzlePreviewCard homePuzzlePreviewPrimary">
+            <img
+              className="homePuzzlePreviewDark"
+              src={appAssetPath("/images/home-puzzles/home-puzzle-dark-1.png")}
+              alt=""
+              width="918"
+              height="1036"
+              decoding="async"
+            />
+            <img
+              className="homePuzzlePreviewLight"
+              src={appAssetPath("/images/home-puzzles/home-puzzle-light-1.png")}
+              alt=""
+              width="918"
+              height="1036"
+              decoding="async"
+            />
           </div>
         </div>
       </section>
@@ -107,13 +147,11 @@ export const HomePage = () => {
             to="/matches/$matchId"
             params={{ matchId: "Yr9V8s5R" }}
           >
-            <span>Blockbuster match</span>
-            <h2>onubense vs tipau</h2>
-            <p>Two giants of the past face off in 2018 AWC finals.</p>
+            <h2>2018 AWC grand final reset</h2>
+            <p>onubense vs tipau</p>
           </Link>
 
           <Link className="homeSpotlightCard homeYearlyRankingsShortcut" to="/rankings/yearly">
-            <span>Rankings</span>
             <h2>Yearly rankings</h2>
             <p>Compare the strongest average ratings across each calendar year.</p>
           </Link>
@@ -121,15 +159,19 @@ export const HomePage = () => {
           <Link className="homeSpotlightCard homeArenaShortcut" to="/arenas">
             <h2>Arena archive</h2>
             <div className="homeArenaArtwork" aria-hidden="true">
-              <FontAwesomeIcon icon={faTrophy} />
+              <img
+                src={appAssetPath("/images/arenas/atomic-shield.png")}
+                alt=""
+                width="58"
+                height="64"
+                loading="lazy"
+                decoding="async"
+              />
             </div>
             <p>
               Monthly, Shield, and Yearly Atomic arenas. Browse the winners and revisit each event
               on Lichess.
             </p>
-            <strong>
-              Browse arenas <span aria-hidden="true">→</span>
-            </strong>
           </Link>
 
           {featuredTournaments.slice(1).map((tournament) => (
@@ -141,25 +183,21 @@ export const HomePage = () => {
           ))}
 
           <Link className="homeSpotlightCard homePuzzleLeaderboardShortcut" to="/rankings/puzzles">
-            <span>Rankings</span>
             <h2>Puzzle rankings</h2>
             <p>Points, correct solves, misses, and total attempts.</p>
           </Link>
 
           <Link className="homeSpotlightCard homeRecentMatchesShortcut" to="/recent">
-            <span>Latest games</span>
             <h2>Recent matches</h2>
             <p>See who's playing, who won, and how the ratings moved.</p>
           </Link>
 
           <Link className="homeSpotlightCard homeCommentsShortcut" to="/comments">
-            <span>Community discussion</span>
             <h2>Comments from across the site</h2>
             <p>Follow conversations on puzzles, player profiles, and match pages in one feed.</p>
           </Link>
 
           <Link className="homeSpotlightCard homePuzzleSetsShortcut" to="/solve/sets">
-            <span>Focused training</span>
             <h2>Puzzle sets</h2>
             <p>Choose a match and play through the puzzles that came from it.</p>
           </Link>

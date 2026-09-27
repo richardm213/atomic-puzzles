@@ -100,7 +100,7 @@ const knownPuzzleSetSourceIds: Readonly<Record<number, string>> = {
   13: "tUvUftLZ",
   14: "IJL3lXpE",
   15: "75L7QLTy",
-  16: "CYLH7bBT",
+  16: "Lx9Aw3eb",
   18: "irgn69Ce",
   19: "3OG5r1jh",
   31: "UhIDR1jR",
