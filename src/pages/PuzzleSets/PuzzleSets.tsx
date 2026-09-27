@@ -31,6 +31,7 @@ const EVENT_FILTERS = [
   { id: "wolfrandom", label: "Wolfrandom" },
   { id: "swiss960", label: "960 Swiss" },
   { id: "chess960", label: "960" },
+  { id: "openings", label: "Openings" },
   { id: "endgames", label: "Endgames" },
 ];
 const EVENT_FILTER_IDS = new Set(EVENT_FILTERS.map((filter) => filter.id));
@@ -55,6 +56,11 @@ const FEATURED_SET_MATCHERS: Array<(group: PuzzleEventGroup) => boolean> = [
     group.players.includes("wolfram_ep"),
 ];
 const emptyPuzzles: Puzzle[] = [];
+const CHESS_MOVE_TOKEN =
+  /(?:^|[\s:(,/+-])(?:O-O(?:-O)?|[KQRBN](?:[a-h1-8]?x?)?[a-h][1-8]|[a-h](?:x[a-h])?[1-8](?:=[QRBN])?)[+#?!]*(?=$|[\s:),/+-])/i;
+
+export const hasChessMoveInPuzzleSetName = (value: unknown): boolean =>
+  CHESS_MOVE_TOKEN.test(String(value ?? "").trim());
 
 const readPuzzleSetShuffleSeed = (): number => {
   const createSeed = () => Math.floor(Math.random() * 0x1_0000_0000);
@@ -142,6 +148,10 @@ export const matchesEventFilter = (
 
   if (filterId === "endgames") {
     return isEndgamePuzzleEvent(normalizedEvent);
+  }
+
+  if (filterId === "openings") {
+    return hasChessMoveInPuzzleSetName(group.eventName);
   }
 
   return true;

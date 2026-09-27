@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import type { PuzzleEventGroup } from "../../lib/puzzles/puzzleSets";
-import { getFeaturedPuzzleSetRank, matchesEventFilter, orderPuzzleSetGroups } from "./PuzzleSets";
+import {
+  getFeaturedPuzzleSetRank,
+  hasChessMoveInPuzzleSetName,
+  matchesEventFilter,
+  orderPuzzleSetGroups,
+} from "./PuzzleSets";
 
 const makeGroup = (
   eventName: string,
@@ -17,6 +22,17 @@ describe("puzzle set category filters", () => {
     expect(matchesEventFilter({ eventName: "Wolfarena" }, "wolfrandom")).toBe(false);
     expect(matchesEventFilter({ eventName: "Wolfrandom" }, "wolfrandom")).toBe(true);
     expect(matchesEventFilter({ eventName: "Tipau Endgames" }, "endgames")).toBe(true);
+    expect(matchesEventFilter({ eventName: "Nh3 d4 Qd3 tricks" }, "openings")).toBe(true);
+  });
+
+  it("recognizes SAN move tokens in opening set names without matching ordinary labels", () => {
+    expect(hasChessMoveInPuzzleSetName("Nh3 d4 Qd3 tricks")).toBe(true);
+    expect(hasChessMoveInPuzzleSetName("1. e4 e5")).toBe(true);
+    expect(hasChessMoveInPuzzleSetName("Bxh7+ ideas")).toBe(true);
+    expect(hasChessMoveInPuzzleSetName("O-O attacks")).toBe(true);
+    expect(hasChessMoveInPuzzleSetName("AWC 2026")).toBe(false);
+    expect(hasChessMoveInPuzzleSetName("3+2 match")).toBe(false);
+    expect(hasChessMoveInPuzzleSetName("Tipau Endgames")).toBe(false);
   });
 
   it("keeps the requested featured sets in their curated order", () => {

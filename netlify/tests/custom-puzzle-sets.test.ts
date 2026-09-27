@@ -144,6 +144,53 @@ const createRefreshSupabaseMock = () => {
   return { insertItems };
 };
 
+const createEndgameSetSupabaseMock = () => {
+  const progressQuery: Record<string, ReturnType<typeof vi.fn>> = {};
+  progressQuery.select = vi.fn(() => progressQuery);
+  progressQuery.eq = vi.fn(() => progressQuery);
+  progressQuery.order = vi.fn(() => progressQuery);
+  progressQuery.range = vi.fn(async () => ({
+    data: [{ puzzle_id: "1369", puzzle_correct: true }],
+    error: null,
+  }));
+
+  const puzzleQuery: Record<string, ReturnType<typeof vi.fn>> = {};
+  puzzleQuery.select = vi.fn(() => puzzleQuery);
+  puzzleQuery.order = vi.fn(() => puzzleQuery);
+  puzzleQuery.range = vi.fn(async () => ({
+    data: [
+      { id: 70, author: "admin", tags: ["pawn_endgame"] },
+      { id: 1369, author: "admin", tags: ["fork"] },
+    ],
+    error: null,
+  }));
+
+  const setRow = {
+    id: setId,
+    name: "Pawn endings",
+    tag_filters: ["pawn_endgame"],
+    author_filter: null,
+    created_at: "2026-09-21T00:00:00.000Z",
+    updated_at: "2026-09-21T00:00:00.000Z",
+  };
+  const setInsertQuery: Record<string, ReturnType<typeof vi.fn>> = {};
+  setInsertQuery.select = vi.fn(() => setInsertQuery);
+  setInsertQuery.single = vi.fn(async () => ({ data: setRow, error: null }));
+  const insertSet = vi.fn(() => setInsertQuery);
+  const insertItems = vi.fn(async () => ({ data: null, error: null }));
+
+  mocks.createClient.mockReturnValue({
+    from: vi.fn((table: string) => {
+      if (table === "puzzle_progress") return { select: progressQuery.select };
+      if (table === "puzzles") return { select: puzzleQuery.select };
+      if (table === "custom_puzzle_sets") return { insert: insertSet };
+      return { insert: insertItems };
+    }),
+  });
+
+  return { insertItems };
+};
+
 const recordRequest = (puzzleCorrect: boolean) => {
   const cookie = createSiteSessionCookie("Solver", {});
   return handler({
@@ -238,6 +285,30 @@ describe("custom puzzle set progress", () => {
         completedCount: 1,
         nextPuzzleId: 1370,
       },
+    });
+  });
+
+  it("creates an endgame set with matching puzzles the user has not attempted", async () => {
+    const { insertItems } = createEndgameSetSupabaseMock();
+    const cookie = createSiteSessionCookie("Solver", {});
+
+    const response = await handler({
+      httpMethod: "POST",
+      headers: { cookie: cookie.split(";")[0] },
+      body: JSON.stringify({
+        action: "create",
+        name: "Pawn endings",
+        tags: ["pawn_endgame"],
+        untaggedOnly: false,
+        authors: [],
+        resultFilter: "all",
+      }),
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(insertItems).toHaveBeenCalledWith([{ set_id: setId, puzzle_id: "70", position: 0 }]);
+    expect(JSON.parse(response.body ?? "{}")).toMatchObject({
+      set: { puzzleIds: [70], completedCount: 0, nextPuzzleId: 70 },
     });
   });
 });

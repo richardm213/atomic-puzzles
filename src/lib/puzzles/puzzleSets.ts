@@ -2,6 +2,7 @@ import {
   formatPuzzleSetDate,
   formatPuzzleSetPlayers,
   puzzleSetMetadataFromRow,
+  puzzleSetRelationsFromRow,
 } from "../../../shared/domain/puzzles/puzzleSetMetadata";
 import type { Puzzle } from "./puzzleLibrary";
 
@@ -39,8 +40,8 @@ export const getPuzzleEventKey = (value: string): string => {
   return /^\d+$/.test(normalized) ? normalized : "";
 };
 
-export const getPuzzleSetDisplayName = (puzzle: Puzzle): string => {
-  const metadata = puzzleSetMetadataFromRow(puzzle);
+export const getPuzzleSetDisplayName = (puzzle: Puzzle, setId?: number): string => {
+  const metadata = puzzleSetMetadataFromRow(puzzle, setId);
   const name = normalizePuzzleEventName(metadata.eventName);
   if (name === UNKNOWN_PUZZLE_EVENT_LABEL) return name;
   const date = isAwcPuzzleEvent(name) ? "" : formatPuzzleSetDate(metadata.eventDate);
@@ -67,7 +68,11 @@ export const getOrderedPuzzleIndexesForEvent = (
 
   return puzzles
     .map((puzzle, index) => ({ puzzle, index }))
-    .filter(({ puzzle }) => String(puzzle.puzzle_set_id ?? "") === requestedSetId)
+    .filter(({ puzzle }) =>
+      puzzleSetRelationsFromRow(puzzle).some(
+        (puzzleSet) => String(puzzleSet["id"] ?? "") === requestedSetId,
+      ),
+    )
     .sort(({ puzzle: left }, { puzzle: right }) => left.puzzleId - right.puzzleId)
     .map(({ index }) => index);
 };
@@ -110,12 +115,21 @@ const knownPuzzleSetSourceIds: Readonly<Record<number, string>> = {
   1496: "lOVW9Mod",
 };
 
-export const getPuzzleSetSourceId = (puzzle: Puzzle): string => {
-  const relation = Array.isArray(puzzle.puzzle_set) ? puzzle.puzzle_set[0] : puzzle.puzzle_set;
+const knownPuzzleSetPlayerOrders: Readonly<Record<number, string[]>> = {
+  39: ["seaside_tiramisu", "rafaelsouzasouza"],
+};
+
+export const getPuzzleSetSourceId = (puzzle: Puzzle, requestedSetId?: number): string => {
+  const relations = puzzleSetRelationsFromRow(puzzle);
+  const relation =
+    relations.find((candidate) => Number(candidate["id"]) === requestedSetId) ?? relations[0];
   const storedSourceId = String(relation?.source_id ?? "").trim();
   if (storedSourceId) return storedSourceId;
 
-  const setId = Number.parseInt(String(puzzle.puzzle_set_id ?? relation?.id ?? ""), 10);
+  const setId = Number.parseInt(
+    String(requestedSetId ?? relation?.id ?? puzzle.puzzle_set_id ?? ""),
+    10,
+  );
   return knownPuzzleSetSourceIds[setId] ?? "";
 };
 
@@ -123,33 +137,35 @@ export const groupPuzzlesByEvent = (puzzles: Puzzle[] = []): PuzzleEventGroup[] 
   const groups = new Map<string, PuzzleGroupBuilder>();
 
   puzzles.forEach((puzzle) => {
-    const setId = Number.parseInt(String(puzzle.puzzle_set_id ?? ""), 10);
-    if (!Number.isSafeInteger(setId) || setId <= 0) return;
+    puzzleSetRelationsFromRow(puzzle).forEach((relation) => {
+      const setId = Number.parseInt(String(relation["id"] ?? ""), 10);
+      if (!Number.isSafeInteger(setId) || setId <= 0) return;
 
-    const metadata = puzzleSetMetadataFromRow(puzzle);
-    const eventName = normalizePuzzleEventName(metadata.eventName);
-    if (eventName === UNKNOWN_PUZZLE_EVENT_LABEL) return;
+      const metadata = puzzleSetMetadataFromRow(puzzle, setId);
+      const eventName = normalizePuzzleEventName(metadata.eventName);
+      if (eventName === UNKNOWN_PUZZLE_EVENT_LABEL) return;
 
-    const eventKey = String(setId);
-    const author = String(puzzle.author ?? "").trim() || "Unknown";
-    const existingGroup = groups.get(eventKey);
+      const eventKey = String(setId);
+      const author = String(puzzle.author ?? "").trim() || "Unknown";
+      const existingGroup = groups.get(eventKey);
 
-    if (existingGroup) {
-      existingGroup.puzzles.push(puzzle);
-      existingGroup.authors.add(author);
-      return;
-    }
+      if (existingGroup) {
+        existingGroup.puzzles.push(puzzle);
+        existingGroup.authors.add(author);
+        return;
+      }
 
-    groups.set(eventKey, {
-      setId,
-      event: getPuzzleSetDisplayName(puzzle),
-      eventName,
-      eventDate: metadata.eventDate,
-      players: metadata.players,
-      sourceId: getPuzzleSetSourceId(puzzle),
-      eventKey,
-      puzzles: [puzzle],
-      authors: new Set([author]),
+      groups.set(eventKey, {
+        setId,
+        event: getPuzzleSetDisplayName(puzzle, setId),
+        eventName,
+        eventDate: metadata.eventDate,
+        players: knownPuzzleSetPlayerOrders[setId] ?? metadata.players,
+        sourceId: getPuzzleSetSourceId(puzzle, setId),
+        eventKey,
+        puzzles: [puzzle],
+        authors: new Set([author]),
+      });
     });
   });
 

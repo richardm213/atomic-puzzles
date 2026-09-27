@@ -213,6 +213,13 @@ export const puzzleMotifs: PuzzleMotif[] = [
     description:
       "The solution requires precise endgame play with little material, such as a promotion race, active king, or exact piece placement.",
   },
+  {
+    tag: "pawn_endgame",
+    name: "Pawn endgame",
+    parentTag: "endgame",
+    description:
+      "The solution requires precise play in an endgame where pawns, promotion races, and king activity are the central factors.",
+  },
 ];
 
 const puzzleMotifTagSet = new Set(puzzleMotifs.map((motif) => motif.tag));
@@ -238,5 +245,18 @@ export const normalizePuzzleMotifTags = (value: unknown): string[] => {
 
 export const getPuzzleMotifParent = (motif: PuzzleMotif): PuzzleMotif | undefined =>
   motif.parentTag ? puzzleMotifs.find((candidate) => candidate.tag === motif.parentTag) : undefined;
+
+export const isPuzzleEndgameMotifTag = (tag: string): boolean => {
+  const visited = new Set<string>();
+  let currentTag = tag;
+
+  while (currentTag && !visited.has(currentTag)) {
+    if (currentTag === "endgame") return true;
+    visited.add(currentTag);
+    currentTag = puzzleMotifs.find((motif) => motif.tag === currentTag)?.parentTag ?? "";
+  }
+
+  return false;
+};
 
 export const getPuzzleMotifAnchor = (tag: string): string => `motif-${tag}`;

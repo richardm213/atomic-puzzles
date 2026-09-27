@@ -481,6 +481,36 @@ describe("PuzzleSolverPage solution options", () => {
     expect(within(players).getByLabelText("Black: unknown")).toBeInTheDocument();
   });
 
+  it("hides player attribution when a puzzle has multiple source games", async () => {
+    const puzzleSet = {
+      id: 8,
+      event_name: "AWC 2026",
+      event_date: "2026-07-09",
+      players: ["Alpha", "Beta"],
+    };
+    mocks.loadPuzzlesById.mockResolvedValueOnce([
+      {
+        id: 1369,
+        fen: "rn2k2r/pp5p/1qpp2p1/2Q5/1b2P3/2N5/PPP3PP/R3KB1R b KQkq - 1 12",
+        solution: "12... O-O 13. O-O-O Rf2 14. Be2 Ba3",
+        puzzleId: 1369,
+        players: ["multiple"],
+        puzzle_set_id: 8,
+        puzzle_set: puzzleSet,
+        author: mocks.puzzleAuthor,
+        explanation: "",
+        tags: [],
+      },
+    ]);
+
+    render(<PuzzleSolverPage />);
+
+    const setDetails = await screen.findByRole("region", { name: "Puzzle set details" });
+    expect(within(setDetails).queryByText("alpha vs beta")).not.toBeInTheDocument();
+    const players = screen.getByRole("region", { name: "Game players" });
+    expect(within(players).queryByRole("link")).not.toBeInTheDocument();
+  });
+
   it("waits for progress before choosing a random puzzle and skips attempted puzzles", async () => {
     mocks.routeParams = { puzzleId: "", setKey: "" };
     mocks.loadPuzzleCatalog.mockResolvedValueOnce(
@@ -791,6 +821,36 @@ describe("PuzzleSolverPage solution options", () => {
     expect(await screen.findByText("Tags updated.")).toBeInTheDocument();
   });
 
+  it("lets seaside_tiramisu convert an applied tag to one of its subtags", async () => {
+    mocks.username = "seaside_tiramisu";
+    mocks.loadPuzzlesById.mockImplementation(async (puzzleIds: number[]) =>
+      puzzleIds.map((puzzleId) => ({
+        id: puzzleId,
+        fen: "8/p2k2p1/5p2/1p1P4/8/8/PP4P1/4K3 b - - 0 16",
+        solution: "16... Kd6",
+        puzzleId,
+        author: mocks.puzzleAuthor,
+        event: "blitz",
+        white_player: "rafaelsouzasouza",
+        black_player: "seaside_tiramisu",
+        explanation: "",
+        tags: ["endgame"],
+      })),
+    );
+    const user = userEvent.setup();
+    render(<PuzzleSolverPage />);
+
+    await user.click(await screen.findByRole("button", { name: "View definition for Endgame" }));
+    const dialog = screen.getByRole("dialog", { name: "Endgame" });
+    await user.click(within(dialog).getByRole("button", { name: "Pawn endgame" }));
+
+    await waitFor(() =>
+      expect(mocks.updatePuzzleTags).toHaveBeenCalledWith(1369, ["pawn_endgame"]),
+    );
+    expect(screen.queryByRole("dialog", { name: "Endgame" })).not.toBeInTheDocument();
+    expect(await screen.findByText("Tags updated.")).toBeInTheDocument();
+  });
+
   it("keeps the motif editor hidden from seaside_tiramisu until the puzzle is attempted", async () => {
     mocks.username = "seaside_tiramisu";
     mocks.attemptedPuzzleIds = new Set();
@@ -927,6 +987,28 @@ describe("PuzzleSolverPage solution options", () => {
     await waitFor(() => expect(mocks.chessboardProps.length).toBeGreaterThan(0));
     expect(screen.queryByLabelText(/^Castling rights\./)).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Material difference")).not.toBeInTheDocument();
+  });
+
+  it("hides castling summaries when neither side can castle but material differs", async () => {
+    mocks.loadPuzzlesById.mockResolvedValueOnce([
+      {
+        id: 1369,
+        fen: "2r2rk1/p6p/4p1p1/8/3P1P2/8/PP1bK1PP/2R4R b - - 0 17",
+        solution: "17... Rxc1",
+        puzzleId: 1369,
+        author: mocks.puzzleAuthor,
+        white_player: "rafaelsouzasouza",
+        black_player: "seaside_tiramisu",
+        explanation: "",
+        tags: [],
+      },
+    ]);
+
+    render(<PuzzleSolverPage />);
+
+    const players = await screen.findByRole("region", { name: "Game players" });
+    expect(within(players).queryByLabelText(/^Castling rights:/)).not.toBeInTheDocument();
+    expect(within(players).getAllByLabelText(/^Material difference:/)).toHaveLength(2);
   });
 
   it("shows the author an explanation editor only after attempting the puzzle", async () => {

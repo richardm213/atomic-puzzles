@@ -8,6 +8,11 @@ export type RawPuzzleSetRow = {
   source_id?: string | null;
 };
 
+export type RawPuzzleSetMembershipRow = {
+  puzzle_set_id?: string | number | null;
+  puzzle_set?: RawPuzzleSetRow | RawPuzzleSetRow[] | null;
+};
+
 export type RawPuzzleRow = {
   id?: string | number | null;
   fen?: string | null;
@@ -18,10 +23,13 @@ export type RawPuzzleRow = {
   line?: string | string[] | null;
   pgn?: string | string[] | null;
   variation?: string | string[] | null;
+  players?: string[] | null;
   puzzle_set_id?: string | number | null;
   puzzle_set?: RawPuzzleSetRow | RawPuzzleSetRow[] | null;
+  puzzle_set_memberships?: RawPuzzleSetMembershipRow[] | null;
   white_player?: string | null;
   black_player?: string | null;
+  game_id?: string | number | null;
   opa_style?: boolean | null;
   [key: string]: unknown;
 };

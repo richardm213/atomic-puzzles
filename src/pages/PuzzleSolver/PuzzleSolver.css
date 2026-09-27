@@ -386,19 +386,27 @@ body:has(.puzzlePage),
   border-radius: 6px;
 }
 
-.puzzlePlayer.hasPositionData {
+.puzzlePlayer.hasCastlingData {
   grid-template-columns: 18px minmax(0, 1fr) minmax(64px, auto);
 }
 
 .puzzlePlayer.hasMaterialData {
+  grid-template-columns: 18px minmax(0, 1fr) minmax(18px, auto);
+}
+
+.puzzlePlayer.hasCastlingData.hasMaterialData {
   grid-template-columns: 18px minmax(0, 1fr) minmax(64px, auto) minmax(18px, auto);
 }
 
-.puzzlePlayer.hasPositionData:not(.hasPlayerName) {
+.puzzlePlayer.hasCastlingData:not(.hasPlayerName) {
   grid-template-columns: 18px minmax(64px, 1fr);
 }
 
 .puzzlePlayer.hasMaterialData:not(.hasPlayerName) {
+  grid-template-columns: 18px minmax(18px, 1fr);
+}
+
+.puzzlePlayer.hasCastlingData.hasMaterialData:not(.hasPlayerName) {
   grid-template-columns: 18px minmax(64px, auto) minmax(18px, 1fr);
 }
 
@@ -742,7 +750,8 @@ body:has(.puzzlePage),
 
 .puzzleMotifDefinitionButton:focus-visible,
 .puzzleMotifRemoveButton:focus-visible,
-.puzzleMotifDefinitionClose:focus-visible {
+.puzzleMotifDefinitionClose:focus-visible,
+.puzzleMotifConversions button:focus-visible {
   position: relative;
   z-index: 1;
   outline: 2px solid color-mix(in srgb, var(--color-primary) 72%, white);
@@ -1076,6 +1085,61 @@ body:has(.puzzlePage),
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 11px;
   font-weight: 750;
+}
+
+.puzzleMotifConversions {
+  display: grid;
+  gap: 9px;
+  padding-top: 16px;
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
+}
+
+.puzzleMotifConversions > strong {
+  color: var(--color-heading);
+  font-size: 13px;
+}
+
+.puzzleMotifConversions > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.puzzleMotifConversions button {
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-accent-soft-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-accent-soft-bg);
+  color: var(--color-accent-soft-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.puzzleMotifConversions button:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-primary) 58%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 18%, var(--color-surface-soft));
+  color: var(--color-heading);
+}
+
+.puzzleMotifConversions button:disabled {
+  cursor: wait;
+  opacity: 0.52;
+}
+
+.puzzleMotifConversions > span {
+  color: var(--color-subtle);
+  font-size: 12px;
+}
+
+.puzzleMotifConversions > span.error {
+  color: var(--color-danger);
 }
 
 .puzzleMotifsAddButton {

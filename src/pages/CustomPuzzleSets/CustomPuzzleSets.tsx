@@ -26,6 +26,7 @@ import {
   renameCustomPuzzleSet,
   resetCustomPuzzleSetProgress,
 } from "../../lib/puzzles/customPuzzleSets";
+import { isPuzzleEndgameMotifTag } from "../../lib/puzzles/puzzleMotifs";
 import {
   puzzleCatalogQueryOptions,
   puzzleProgressForUserQueryOptions,
@@ -81,18 +82,26 @@ export const CustomPuzzleSetsPage = () => {
       ),
     [progressQuery.data],
   );
-  const attemptedPuzzles = useMemo(
-    () => (catalogQuery.data ?? []).filter((puzzle) => attemptedIds.has(String(puzzle.puzzleId))),
-    [attemptedIds, catalogQuery.data],
+  const includeUnattemptedEndgames =
+    !untaggedOnly && resultFilter === "all" && selectedTags.some(isPuzzleEndgameMotifTag);
+  const eligiblePuzzles = useMemo(
+    () =>
+      (catalogQuery.data ?? []).filter(
+        (puzzle) =>
+          attemptedIds.has(String(puzzle.puzzleId)) ||
+          (includeUnattemptedEndgames &&
+            selectedTags.every((tag) => (puzzle.tags ?? []).includes(tag))),
+      ),
+    [attemptedIds, catalogQuery.data, includeUnattemptedEndgames, selectedTags],
   );
   const authors = useMemo(
     () =>
       [
         ...new Set(
-          attemptedPuzzles.map((puzzle) => String(puzzle.author ?? "").trim()).filter(Boolean),
+          eligiblePuzzles.map((puzzle) => String(puzzle.author ?? "").trim()).filter(Boolean),
         ),
       ].sort((left, right) => left.localeCompare(right, undefined, { sensitivity: "base" })),
-    [attemptedPuzzles],
+    [eligiblePuzzles],
   );
   useEffect(() => {
     if (!username) {
@@ -100,14 +109,15 @@ export const CustomPuzzleSetsPage = () => {
       setSelectedAuthors([]);
       return;
     }
-    if (authors.length > 0 && initializedAuthorsForRef.current !== username) {
-      initializedAuthorsForRef.current = username;
+    const authorPoolKey = `${username}:${includeUnattemptedEndgames ? "endgames" : "completed"}`;
+    if (authors.length > 0 && initializedAuthorsForRef.current !== authorPoolKey) {
+      initializedAuthorsForRef.current = authorPoolKey;
       setSelectedAuthors(authors);
     }
-  }, [authors, username]);
+  }, [authors, includeUnattemptedEndgames, username]);
   const matchingPuzzles = useMemo(
     () =>
-      attemptedPuzzles.filter((puzzle) => {
+      eligiblePuzzles.filter((puzzle) => {
         const wasCorrect = resultByPuzzleId.get(String(puzzle.puzzleId));
         if (resultFilter === "correct" && wasCorrect !== true) return false;
         if (resultFilter === "incorrect" && wasCorrect !== false) return false;
@@ -120,7 +130,7 @@ export const CustomPuzzleSetsPage = () => {
         if (untaggedOnly) return tags.size === 0;
         return selectedTags.every((tag) => tags.has(tag));
       }),
-    [attemptedPuzzles, resultByPuzzleId, resultFilter, selectedAuthors, selectedTags, untaggedOnly],
+    [eligiblePuzzles, resultByPuzzleId, resultFilter, selectedAuthors, selectedTags, untaggedOnly],
   );
   const pageLoading =
     isAuthLoading || catalogQuery.isPending || (Boolean(username) && progressQuery.isPending);
@@ -195,7 +205,7 @@ export const CustomPuzzleSetsPage = () => {
     <div className="customSetsPage">
       <Seo
         title="Custom Puzzle Sets"
-        description="Build and track custom training sets from puzzles you have already attempted."
+        description="Build and track training sets from completed puzzles or unattempted endgames."
         path="/solve/custom-sets"
       />
       <div className="customSetsShell">
@@ -208,8 +218,10 @@ export const CustomPuzzleSetsPage = () => {
                 <FontAwesomeIcon icon={faCircleQuestion} aria-hidden="true" />
               </button>
               <p id="custom-sets-help-text" role="tooltip">
-                Custom sets can only include puzzles you have already completed. Choose an author or
-                tags to narrow that history, then work through the saved set at your own pace.
+                Custom sets normally include puzzles you have already completed. When you filter by
+                Endgame or one of its subtags, the set can also include endgame puzzles you have not
+                attempted. Choose authors or tags to narrow the pool, then work through the saved
+                set at your own pace.
               </p>
             </div>
           </div>
@@ -248,10 +260,6 @@ export const CustomPuzzleSetsPage = () => {
               <div className="customSetsSectionHeading">
                 <div>
                   <h2>Create a set</h2>
-                  <p>
-                    {matchingPuzzles.length} of your {attemptedPuzzles.length} completed puzzles
-                    match
-                  </p>
                 </div>
               </div>
               <form onSubmit={(event) => void handleCreate(event)}>
@@ -337,7 +345,7 @@ export const CustomPuzzleSetsPage = () => {
                   />
                   <span>
                     <strong>No tags</strong>
-                    Only include attempted puzzles that do not have any tags.
+                    Only include completed puzzles that do not have any tags.
                   </span>
                 </label>
                 <div className="customSetsCreateRow">

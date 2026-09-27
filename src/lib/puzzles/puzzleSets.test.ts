@@ -58,6 +58,22 @@ describe("isEndgamePuzzleEvent", () => {
 });
 
 describe("groupPuzzlesByEvent", () => {
+  it("places a puzzle in every set membership", () => {
+    const puzzle = makePuzzle({
+      puzzleId: 4,
+      puzzle_set_memberships: [
+        { puzzle_set_id: 10, puzzle_set: makeSet(10, "ACL") },
+        { puzzle_set_id: 20, puzzle_set: makeSet(20, "AWC") },
+      ],
+      author: "alice",
+    });
+
+    const groups = groupPuzzlesByEvent([puzzle]);
+
+    expect(groups.map((group) => group.setId)).toEqual([20, 10]);
+    expect(groups.every((group) => group.puzzles[0]?.puzzleId === 4)).toBe(true);
+  });
+
   it("groups puzzles by event and sorts by id within a group", () => {
     const puzzles = [
       makePuzzle({
@@ -140,6 +156,18 @@ describe("groupPuzzlesByEvent", () => {
     expect(group?.sourceId).toBe("IJL3lXpE");
   });
 
+  it("keeps the Seaside-Rafael set in its intended display order", () => {
+    const [group] = groupPuzzlesByEvent([
+      makePuzzle({
+        puzzleId: 48,
+        puzzle_set_id: 39,
+        puzzle_set: makeSet(39, "blitz", "", ["rafaelsouzasouza", "seaside_tiramisu"]),
+      }),
+    ]);
+
+    expect(group?.players).toEqual(["seaside_tiramisu", "rafaelsouzasouza"]);
+  });
+
   it("links the Rechesster-Seaside AWC 2025 set to its source match", () => {
     const [group] = groupPuzzlesByEvent([
       makePuzzle({
@@ -220,6 +248,21 @@ describe("groupPuzzlesByEvent", () => {
 });
 
 describe("getOrderedPuzzleIndexesForEvent", () => {
+  it("finds a puzzle through any of its memberships", () => {
+    const puzzles = [
+      makePuzzle({
+        puzzleId: 8,
+        puzzle_set_memberships: [
+          { puzzle_set_id: 10, puzzle_set: makeSet(10, "ACL") },
+          { puzzle_set_id: 20, puzzle_set: makeSet(20, "AWC") },
+        ],
+      }),
+    ];
+
+    expect(getOrderedPuzzleIndexesForEvent(puzzles, "10")).toEqual([0]);
+    expect(getOrderedPuzzleIndexesForEvent(puzzles, "20")).toEqual([0]);
+  });
+
   it("returns every puzzle in the selected event in puzzle-id order", () => {
     const puzzles = [
       makePuzzle({ puzzleId: 8, puzzle_set_id: 10, puzzle_set: makeSet(10, "ACL") }),

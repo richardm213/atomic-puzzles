@@ -89,7 +89,7 @@ export const CustomPuzzleSetEditPage = () => {
         type: "status",
         text: result.addedPuzzleIds.length
           ? `Added ${result.addedPuzzleIds.length} puzzle${result.addedPuzzleIds.length === 1 ? "" : "s"}.`
-          : "Every completed puzzle with these tags is already in the set.",
+          : "Every eligible puzzle with these tags is already in the set.",
       });
     } catch (error) {
       setMessage({

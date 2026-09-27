@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { isPuzzleEndgameMotifTag } from "../../../../shared/domain/puzzles/puzzleMotifs";
 import {
   authenticateRequest,
   identityResponse,
@@ -201,22 +202,47 @@ export const puzzleSetsRoute = async (event: FunctionEvent) => {
     const resultByPuzzleId = new Map(
       progressRows.map((row) => [String(row.puzzle_id), Boolean(row.puzzle_correct)]),
     );
-    if (!attemptedIds.length) return [];
+    const includeUnattemptedEndgames =
+      !filters.untaggedOnly &&
+      filters.resultFilter === "all" &&
+      filters.tags.some(isPuzzleEndgameMotifTag);
+    if (!attemptedIds.length && !includeUnattemptedEndgames) return [];
 
     const puzzles: Array<{ id: number | string; author: string | null; tags: string[] | null }> =
       [];
-    for (let index = 0; index < attemptedIds.length; index += 500) {
-      const result = await supabase
-        .from("puzzles")
-        .select("id,author,tags")
-        .in("id", attemptedIds.slice(index, index + 500));
-      if (result.error) throw new Error(result.error.message);
-      puzzles.push(...((result.data ?? []) as typeof puzzles));
+    if (includeUnattemptedEndgames) {
+      puzzles.push(
+        ...(await loadAll<(typeof puzzles)[number]>((from, to) =>
+          supabase
+            .from("puzzles")
+            .select("id,author,tags")
+            .order("id", { ascending: true })
+            .range(from, to),
+        )),
+      );
+    } else {
+      for (let index = 0; index < attemptedIds.length; index += 500) {
+        const result = await supabase
+          .from("puzzles")
+          .select("id,author,tags")
+          .in("id", attemptedIds.slice(index, index + 500));
+        if (result.error) throw new Error(result.error.message);
+        puzzles.push(...((result.data ?? []) as typeof puzzles));
+      }
     }
 
     const normalizedAuthors = new Set(filters.authors.map((author) => author.toLocaleLowerCase()));
     const puzzlesById = new Map(puzzles.map((puzzle) => [String(puzzle.id), puzzle]));
-    return attemptedIds.filter((puzzleId) => {
+    const attemptedIdSet = new Set(attemptedIds);
+    const candidateIds = includeUnattemptedEndgames
+      ? [
+          ...attemptedIds,
+          ...puzzles
+            .map((puzzle) => String(puzzle.id))
+            .filter((puzzleId) => !attemptedIdSet.has(puzzleId)),
+        ]
+      : attemptedIds;
+    return candidateIds.filter((puzzleId) => {
       const puzzle = puzzlesById.get(puzzleId);
       if (!puzzle) return false;
       const wasCorrect = resultByPuzzleId.get(puzzleId);
@@ -279,7 +305,7 @@ export const puzzleSetsRoute = async (event: FunctionEvent) => {
       resultFilter: input.resultFilter,
     });
     if (!matchingPuzzleIds.length) {
-      throw new HttpError(400, "No completed puzzles match those filters.");
+      throw new HttpError(400, "No puzzles match those filters.");
     }
 
     const insertResult = await supabase

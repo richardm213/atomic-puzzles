@@ -606,8 +606,8 @@ export const PuzzleSolverPage = () => {
   const activePuzzleId = activePuzzle?.puzzleId;
   const activePuzzleKey = toPuzzleKey(activePuzzleId);
   const activePuzzleSetMetadata = useMemo(
-    () => (activePuzzle ? puzzleSetMetadataFromRow(activePuzzle) : null),
-    [activePuzzle],
+    () => (activePuzzle ? puzzleSetMetadataFromRow(activePuzzle, routeSetKey) : null),
+    [activePuzzle, routeSetKey],
   );
   const fen = activePuzzle?.fen ?? "";
   const author = String(activePuzzle?.["author"] ?? "").trim() || "Unknown";
@@ -664,8 +664,11 @@ export const PuzzleSolverPage = () => {
     activePuzzleSetMetadata && !isAwcPuzzleEvent(activePuzzleSetMetadata.eventName)
       ? formatPuzzleSetDate(activePuzzleSetMetadata.eventDate)
       : "";
-  const whitePlayer = activePuzzleSetMetadata?.whitePlayer ?? "";
-  const blackPlayer = activePuzzleSetMetadata?.blackPlayer ?? "";
+  const hasMultiplePlayers = (activePuzzle?.players ?? []).some(
+    (player) => player.trim().toLocaleLowerCase() === "multiple",
+  );
+  const whitePlayer = hasMultiplePlayers ? "" : (activePuzzleSetMetadata?.whitePlayer ?? "");
+  const blackPlayer = hasMultiplePlayers ? "" : (activePuzzleSetMetadata?.blackPlayer ?? "");
   const playerNicknames = useMemo(
     () =>
       new Map(
@@ -679,7 +682,8 @@ export const PuzzleSolverPage = () => {
   const whitePlayerLabel = playerNicknames.get(normalizeUsername(whitePlayer)) || whitePlayer;
   const blackPlayerLabel = playerNicknames.get(normalizeUsername(blackPlayer)) || blackPlayer;
   const hasKnownPlayers = Boolean(whitePlayer && blackPlayer);
-  const puzzleSetParticipants = hasKnownPlayers ? [] : (activePuzzleSetMetadata?.players ?? []);
+  const puzzleSetParticipants =
+    hasKnownPlayers || hasMultiplePlayers ? [] : (activePuzzleSetMetadata?.players ?? []);
   const puzzleSetParticipantsLabel =
     puzzleSetParticipants.length === 2
       ? `${puzzleSetParticipants[0]} vs ${puzzleSetParticipants[1]}`
@@ -693,7 +697,9 @@ export const PuzzleSolverPage = () => {
   // acknowledged by the badge, but it must not reveal post-attempt UI before
   // the solver finishes this pass through the puzzle.
   const hasAttemptedActivePuzzle = hasResolvedAttempt || (!isCustomSetRoute && hasPersistedAttempt);
-  const sourceMatchId = activePuzzle ? getPuzzleSetSourceId(activePuzzle) : "";
+  const sourceMatchId = activePuzzle
+    ? getPuzzleSetSourceId(activePuzzle, Number.parseInt(routeSetKey, 10))
+    : "";
   const canLinkSourceMatch = Boolean(
     hasAttemptedActivePuzzle && !routeSetKey && !routeCustomSetId && sourceMatchId,
   );
@@ -1399,8 +1405,8 @@ export const PuzzleSolverPage = () => {
     await copyPgn(puzzlePgn);
   }, [copyPgn, puzzlePgn]);
 
-  const handleUpdateMotifs = async (nextTags: string[]): Promise<void> => {
-    if (!canManagePuzzleTags || !activePuzzleId || motifSaveStatus.state === "saving") return;
+  const handleUpdateMotifs = async (nextTags: string[]): Promise<boolean> => {
+    if (!canManagePuzzleTags || !activePuzzleId || motifSaveStatus.state === "saving") return false;
     setMotifSaveStatus({ state: "saving" });
 
     try {
@@ -1411,12 +1417,21 @@ export const PuzzleSolverPage = () => {
         ),
       );
       setMotifSaveStatus({ state: "saved" });
+      return true;
     } catch (error) {
       setMotifSaveStatus({
         state: "error",
         message: error instanceof Error ? error.message : "Unable to update puzzle motifs.",
       });
+      return false;
     }
+  };
+
+  const handleConvertMotif = async (sourceTag: string, targetTag: string): Promise<void> => {
+    const nextTags = [
+      ...new Set(activePuzzleTags.map((tag) => (tag === sourceTag ? targetTag : tag))),
+    ];
+    if (await handleUpdateMotifs(nextTags)) setSelectedMotifTag(null);
   };
 
   const currentLineLength =
@@ -1908,8 +1923,18 @@ export const PuzzleSolverPage = () => {
     );
   };
 
-  const renderMotifDefinitionDialog = () =>
-    selectedMotif ? (
+  const renderMotifDefinitionDialog = () => {
+    const subtags = selectedMotif
+      ? puzzleMotifs.filter((motif) => motif.parentTag === selectedMotif.tag)
+      : [];
+    const canConvertMotif = Boolean(
+      selectedMotif &&
+      canManagePuzzleTags &&
+      activePuzzleTags.includes(selectedMotif.tag) &&
+      subtags.length > 0,
+    );
+
+    return selectedMotif ? (
       <dialog
         ref={motifDialogRef}
         className="puzzleMotifDefinitionDialog"
@@ -1939,9 +1964,33 @@ export const PuzzleSolverPage = () => {
           </div>
           <p>{selectedMotif.description}</p>
           <span className="puzzleMotifDefinitionTag">{selectedMotif.tag}</span>
+          {canConvertMotif ? (
+            <div className="puzzleMotifConversions">
+              <strong>Convert to a subtag</strong>
+              <div>
+                {subtags.map((subtag) => (
+                  <button
+                    key={subtag.tag}
+                    type="button"
+                    disabled={motifSaveStatus.state === "saving"}
+                    onClick={() => void handleConvertMotif(selectedMotif.tag, subtag.tag)}
+                  >
+                    {subtag.name}
+                  </button>
+                ))}
+              </div>
+              {motifSaveStatus.state === "saving" ? <span role="status">Updating tag…</span> : null}
+              {motifSaveStatus.state === "error" ? (
+                <span className="error" role="alert">
+                  {motifSaveStatus.message}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </dialog>
     ) : null;
+  };
 
   const closeReportIssueDialog = () => {
     setReportIssueOpen(false);
@@ -2092,7 +2141,7 @@ export const PuzzleSolverPage = () => {
 
           return (
             <div
-              className={`puzzlePlayer ${hasPositionData ? "hasPositionData" : ""} ${
+              className={`puzzlePlayer ${hasAnyCastlingRights ? "hasCastlingData" : ""} ${
                 hasMaterialDifference ? "hasMaterialData" : ""
               } ${player ? "hasPlayerName" : ""}`}
               aria-label={`${label}: ${playerLabel || "unknown"}`}
@@ -2111,12 +2160,14 @@ export const PuzzleSolverPage = () => {
               ) : null}
               {hasPositionData ? (
                 <>
-                  <strong
-                    className="puzzlePlayerCastling"
-                    aria-label={`Castling rights: ${rights.join(", ") || "none"}`}
-                  >
-                    {rights.join(" · ") || "—"}
-                  </strong>
+                  {hasAnyCastlingRights ? (
+                    <strong
+                      className="puzzlePlayerCastling"
+                      aria-label={`Castling rights: ${rights.join(", ") || "none"}`}
+                    >
+                      {rights.join(" · ") || "—"}
+                    </strong>
+                  ) : null}
                   {hasMaterialDifference ? (
                     <span
                       className="materialDifferencePieces"

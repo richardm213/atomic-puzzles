@@ -7,7 +7,9 @@ export type PuzzleSetMetadata = {
 };
 
 export type PuzzleSetMetadataRow = {
+  puzzle_set_id?: unknown;
   puzzle_set?: unknown;
+  puzzle_set_memberships?: unknown;
   white_player?: unknown;
   black_player?: unknown;
 };
@@ -66,8 +68,42 @@ const readPuzzleSetRelation = (value: unknown): Record<string, unknown> | null =
   return candidate && typeof candidate === "object" ? (candidate as Record<string, unknown>) : null;
 };
 
-export const puzzleSetMetadataFromRow = (row: PuzzleSetMetadataRow): PuzzleSetMetadata => {
-  const puzzleSet = readPuzzleSetRelation(row.puzzle_set);
+const readPuzzleSetMembershipRelations = (value: unknown): Record<string, unknown>[] => {
+  if (!Array.isArray(value)) return [];
+
+  return value.flatMap((membership) => {
+    if (!membership || typeof membership !== "object") return [];
+    const row = membership as Record<string, unknown>;
+    const puzzleSet = readPuzzleSetRelation(row["puzzle_set"]);
+    return puzzleSet ? [puzzleSet] : [];
+  });
+};
+
+export const puzzleSetRelationsFromRow = (row: PuzzleSetMetadataRow): Record<string, unknown>[] => {
+  const memberships = readPuzzleSetMembershipRelations(row.puzzle_set_memberships);
+  const legacyRelation = readPuzzleSetRelation(row.puzzle_set);
+  if (memberships.length > 0) {
+    if (!legacyRelation) return memberships;
+    const legacyId = String(legacyRelation["id"] ?? "");
+    return [
+      legacyRelation,
+      ...memberships.filter((relation) => String(relation["id"] ?? "") !== legacyId),
+    ];
+  }
+  if (legacyRelation) return [legacyRelation];
+
+  const legacyId = String(row.puzzle_set_id ?? "").trim();
+  return legacyId ? [{ id: legacyId }] : [];
+};
+
+export const puzzleSetMetadataFromRow = (
+  row: PuzzleSetMetadataRow,
+  puzzleSetId?: string | number,
+): PuzzleSetMetadata => {
+  const relations = puzzleSetRelationsFromRow(row);
+  const requestedId = String(puzzleSetId ?? "");
+  const puzzleSet =
+    relations.find((relation) => String(relation["id"] ?? "") === requestedId) ?? relations[0];
 
   return normalizePuzzleSetMetadata({
     eventName: puzzleSet?.["event_name"],

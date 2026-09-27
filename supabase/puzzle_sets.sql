@@ -57,6 +57,9 @@ create table if not exists public.puzzle_sets (
   )
 );
 
+alter table public.puzzle_sets
+  add column if not exists source_id text;
+
 -- Event names and player names are matched case-insensitively. Player order is
 -- not significant, so normalized arrays prevent duplicate set records.
 create unique index if not exists puzzle_sets_identity_unique
@@ -116,6 +119,24 @@ $$;
 create index if not exists puzzles_puzzle_set_id_idx
   on public.puzzles (puzzle_set_id);
 
+-- Membership is many-to-many. The legacy puzzles.puzzle_set_id column remains
+-- temporarily as a primary-set compatibility field for older import clients.
+create table if not exists public.puzzle_set_memberships (
+  puzzle_id bigint not null references public.puzzles(id) on delete cascade,
+  puzzle_set_id bigint not null references public.puzzle_sets(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (puzzle_id, puzzle_set_id)
+);
+
+create index if not exists puzzle_set_memberships_set_puzzle_idx
+  on public.puzzle_set_memberships (puzzle_set_id, puzzle_id);
+
+insert into public.puzzle_set_memberships (puzzle_id, puzzle_set_id)
+select id, puzzle_set_id
+from public.puzzles
+where puzzle_set_id is not null
+on conflict do nothing;
+
 -- Keep puzzle_set_id populated while the application still writes the
 -- compatibility metadata fields on public.puzzles.
 create or replace function public.assign_puzzle_set_id()
@@ -157,7 +178,28 @@ create trigger assign_puzzle_set_before_write
 before insert or update of event_name, event_date, players on public.puzzles
 for each row execute function public.assign_puzzle_set_id();
 
+create or replace function public.add_legacy_puzzle_set_membership()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if new.puzzle_set_id is not null then
+    insert into public.puzzle_set_memberships (puzzle_id, puzzle_set_id)
+    values (new.id, new.puzzle_set_id)
+    on conflict do nothing;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists add_legacy_puzzle_set_membership_after_write on public.puzzles;
+create trigger add_legacy_puzzle_set_membership_after_write
+after insert or update of puzzle_set_id, event_name, event_date, players on public.puzzles
+for each row execute function public.add_legacy_puzzle_set_membership();
+
 alter table public.puzzle_sets enable row level security;
+alter table public.puzzle_set_memberships enable row level security;
 
 drop policy if exists "Puzzle sets are publicly readable" on public.puzzle_sets;
 create policy "Puzzle sets are publicly readable"
@@ -166,7 +208,17 @@ create policy "Puzzle sets are publicly readable"
   to anon, authenticated
   using (true);
 
+drop policy if exists "Puzzle set memberships are publicly readable"
+  on public.puzzle_set_memberships;
+create policy "Puzzle set memberships are publicly readable"
+  on public.puzzle_set_memberships
+  for select
+  to anon, authenticated
+  using (true);
+
 grant select on public.puzzle_sets to anon, authenticated;
+grant select on public.puzzle_set_memberships to anon, authenticated;
+grant select, insert, update, delete on public.puzzle_set_memberships to service_role;
 grant select, insert, update, delete on public.puzzle_sets to service_role;
 grant usage, select on sequence public.puzzle_sets_id_seq to service_role;
 
@@ -176,12 +228,16 @@ revoke all on function public.normalize_puzzle_set_row() from public;
 grant execute on function public.normalize_puzzle_set_row() to service_role;
 revoke all on function public.assign_puzzle_set_id() from public;
 grant execute on function public.assign_puzzle_set_id() to service_role;
+revoke all on function public.add_legacy_puzzle_set_membership() from public;
+grant execute on function public.add_legacy_puzzle_set_membership() to service_role;
 
 comment on table public.puzzle_sets is
   'Canonical event/date/player metadata shared by puzzles in the same curated set.';
 comment on column public.puzzle_sets.source_id is
   'Optional archived match ID associated with the complete source set.';
 comment on column public.puzzles.puzzle_set_id is
-  'Canonical puzzle set membership. Null for puzzles that do not belong to a named set.';
+  'Legacy primary puzzle set. Canonical many-to-many membership is stored in puzzle_set_memberships.';
+comment on table public.puzzle_set_memberships is
+  'Many-to-many membership between puzzles and canonical puzzle sets.';
 
 notify pgrst, 'reload schema';
