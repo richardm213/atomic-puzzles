@@ -2,6 +2,7 @@ import type { PuzzleSolutionField } from "../../types/puzzles";
 import {
   fetchPuzzleCatalogFromSupabase,
   fetchPuzzleRowsByIdFromSupabase,
+  fetchPuzzleSolverIndexFromSupabase,
   type PuzzleRow,
 } from "../supabase/puzzles";
 import { normalizePuzzleMotifTags } from "./puzzleMotifs";
@@ -81,6 +82,9 @@ const normalizePuzzleCatalogRow = (item: PuzzleRow, index: number): Puzzle => {
 
 export const loadPuzzleCatalog = async (): Promise<Puzzle[]> =>
   (await fetchPuzzleCatalogFromSupabase()).map(normalizePuzzleCatalogRow);
+
+export const loadPuzzleSolverIndex = async (): Promise<Puzzle[]> =>
+  (await fetchPuzzleSolverIndexFromSupabase()).map(normalizePuzzleCatalogRow);
 
 export const loadPuzzlesById = async (puzzleIds: Array<number | string>): Promise<Puzzle[]> => {
   const requestedIds = puzzleIds.map(String);

@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => ({
   fetchCustomPuzzleSet: vi.fn(),
   fetchPuzzleAttemptsForPuzzle: vi.fn(),
   loadPuzzleCatalog: vi.fn(),
+  loadPuzzleSolverIndex: vi.fn(),
   loadPuzzlesById: vi.fn(),
   fetchPrimaryPlayerNicknames: vi.fn(),
   login: vi.fn(),
@@ -81,6 +82,7 @@ vi.mock("../../context/AppSettings", () => ({
 vi.mock("../../lib/puzzles/puzzleLibrary", () => ({
   loadPuzzleCatalog: mocks.loadPuzzleCatalog,
   loadPuzzlesById: mocks.loadPuzzlesById,
+  loadPuzzleSolverIndex: mocks.loadPuzzleSolverIndex,
 }));
 
 vi.mock("../../lib/puzzles/customPuzzleSets", () => ({
@@ -294,6 +296,7 @@ describe("PuzzleSolverPage solution options", () => {
         explanation: "",
       },
     ]);
+    mocks.loadPuzzleSolverIndex.mockReset().mockImplementation(() => mocks.loadPuzzleCatalog());
     mocks.loadPuzzlesById.mockReset().mockImplementation(async (puzzleIds: number[]) =>
       puzzleIds.map((puzzleId) => ({
         id: puzzleId,
@@ -349,7 +352,7 @@ describe("PuzzleSolverPage solution options", () => {
     render(<PuzzleSolverPage />);
 
     await waitFor(() => expect(screen.getByTestId("mock-board")).toBeInTheDocument());
-    expect(mocks.loadPuzzleCatalog).toHaveBeenCalledOnce();
+    expect(mocks.loadPuzzleSolverIndex).toHaveBeenCalledOnce();
     expect(mocks.loadPuzzlesById).toHaveBeenCalled();
     expect(mocks.loadPuzzlesById.mock.calls[0]?.[0]).toHaveLength(4);
     for (const [puzzleIds] of mocks.loadPuzzlesById.mock.calls) {
@@ -534,7 +537,7 @@ describe("PuzzleSolverPage solution options", () => {
 
     render(<PuzzleSolverPage />);
 
-    await waitFor(() => expect(mocks.loadPuzzleCatalog).toHaveBeenCalledOnce());
+    await waitFor(() => expect(mocks.loadPuzzleSolverIndex).toHaveBeenCalledOnce());
     expect(mocks.navigate).not.toHaveBeenCalled();
 
     resolveProgress(new Set(["1"]));

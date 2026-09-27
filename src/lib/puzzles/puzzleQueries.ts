@@ -1,10 +1,10 @@
 import { queryOptions } from "@tanstack/react-query";
 
+import { fetchPrimaryPlayerNicknames } from "../supabase/playerNicknames";
 import {
   fetchAllPuzzleProgressRows,
   fetchPuzzleProgressRowsForUsername,
 } from "../supabase/puzzleProgress";
-import { fetchPrimaryPlayerNicknames } from "../supabase/playerNicknames";
 import { loadPuzzleCatalog } from "./puzzleLibrary";
 
 export const puzzleQueryKeys = {

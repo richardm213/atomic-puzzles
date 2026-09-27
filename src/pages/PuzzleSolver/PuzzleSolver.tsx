@@ -47,7 +47,12 @@ import {
 } from "../../lib/puzzles/customPuzzleSets";
 import { updatePuzzleExplanation } from "../../lib/puzzles/puzzleExplanation";
 import { type PuzzleIssueCategory, reportPuzzleIssue } from "../../lib/puzzles/puzzleIssues";
-import { loadPuzzleCatalog, loadPuzzlesById, type Puzzle } from "../../lib/puzzles/puzzleLibrary";
+import {
+  loadPuzzleCatalog,
+  loadPuzzlesById,
+  loadPuzzleSolverIndex,
+  type Puzzle,
+} from "../../lib/puzzles/puzzleLibrary";
 import {
   getPuzzleMotifParent,
   normalizePuzzleMotifTags,
@@ -334,6 +339,7 @@ export const PuzzleSolverPage = () => {
   const loadingPuzzleIdsRef = useRef<Set<string>>(new Set());
   const isMountedRef = useRef(true);
   const initialRoutePuzzleIdRef = useRef(parsePuzzleId(routePuzzleId));
+  const initialRouteSetKeyRef = useRef(routeSetKey);
   const progressWriteQueueRef = useRef(Promise.resolve());
   const attemptedPuzzleIdsRef = useRef<Set<string>>(new Set());
   const activePuzzleKeyRef = useRef("");
@@ -462,7 +468,7 @@ export const PuzzleSolverPage = () => {
         setLoadingError("");
         const initialPuzzleId = initialRoutePuzzleIdRef.current;
         const [catalog, initialPuzzles] = await Promise.all([
-          loadPuzzleCatalog(),
+          initialRouteSetKeyRef.current ? loadPuzzleCatalog() : loadPuzzleSolverIndex(),
           initialPuzzleId === null ? Promise.resolve([]) : loadPuzzlesById([initialPuzzleId]),
         ]);
         if (!isCurrent) return;

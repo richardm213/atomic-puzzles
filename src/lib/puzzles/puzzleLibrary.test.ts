@@ -3,25 +3,43 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../supabase/puzzles", () => ({
   fetchPuzzleCatalogFromSupabase: vi.fn(),
   fetchPuzzleRowsByIdFromSupabase: vi.fn(),
+  fetchPuzzleSolverIndexFromSupabase: vi.fn(),
 }));
 
 import {
   fetchPuzzleCatalogFromSupabase,
   fetchPuzzleRowsByIdFromSupabase,
+  fetchPuzzleSolverIndexFromSupabase,
 } from "../supabase/puzzles";
-import { loadPuzzleCatalog, loadPuzzlesById } from "./puzzleLibrary";
+import { loadPuzzleCatalog, loadPuzzlesById, loadPuzzleSolverIndex } from "./puzzleLibrary";
 
 const fetchCatalogMock = fetchPuzzleCatalogFromSupabase as unknown as ReturnType<typeof vi.fn>;
 const fetchDetailsMock = fetchPuzzleRowsByIdFromSupabase as unknown as ReturnType<typeof vi.fn>;
+const fetchSolverIndexMock = fetchPuzzleSolverIndexFromSupabase as unknown as ReturnType<
+  typeof vi.fn
+>;
 
 describe("puzzleLibrary", () => {
   beforeEach(() => {
     fetchCatalogMock.mockReset();
     fetchDetailsMock.mockReset();
+    fetchSolverIndexMock.mockReset();
   });
   afterEach(() => {
     fetchCatalogMock.mockReset();
     fetchDetailsMock.mockReset();
+    fetchSolverIndexMock.mockReset();
+  });
+
+  it("loads the solver index from id-only rows", async () => {
+    fetchSolverIndexMock.mockResolvedValueOnce([{ id: 7 }, { id: 12 }]);
+
+    const puzzles = await loadPuzzleSolverIndex();
+
+    expect(puzzles).toEqual([
+      expect.objectContaining({ puzzleId: 7, fen: "", solution: "" }),
+      expect.objectContaining({ puzzleId: 12, fen: "", solution: "" }),
+    ]);
   });
 
   it("loads a lightweight catalog without parsing solutions", async () => {
