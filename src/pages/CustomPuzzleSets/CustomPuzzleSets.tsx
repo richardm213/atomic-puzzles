@@ -398,9 +398,13 @@ export const CustomPuzzleSetsPage = () => {
                   {sets.map((set) => {
                     const total = set.puzzleIds.length;
                     const percent = total ? Math.round((set.completedCount / total) * 100) : 0;
+                    const isCompleted = total > 0 && set.completedCount >= total;
                     const startPuzzleId = set.nextPuzzleId ?? set.puzzleIds[0];
                     return (
-                      <article key={set.id} className="customSetCard">
+                      <article
+                        key={set.id}
+                        className={`customSetCard${isCompleted ? " isCompleted" : ""}`}
+                      >
                         <div className="customSetCardTop">
                           <div>
                             <h3>{set.label}</h3>

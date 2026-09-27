@@ -10,6 +10,7 @@ const ARCHIVE_URL = "https://atomicpuzzles.org/api/archive-data";
 const LICHESS_EXPORT_URL = "https://lichess.org/api/games/export/_ids";
 const PAGE_SIZE = 200;
 const LICHESS_BATCH_SIZE = 250;
+const ARCHIVE_LOOKUP_CONCURRENCY = 6;
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   throw new Error("VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are required");
@@ -81,7 +82,7 @@ const requestJson = async (url, init) => {
 const fetchPuzzles = async () => {
   const query = new URLSearchParams({
     select:
-      "id,fen,solution,white_player,black_player,puzzle_set_id,puzzle_set:puzzle_sets!puzzles_puzzle_set_id_fkey(id,event_date,source_id)",
+      "id,fen,solution,event_date,white_player,black_player,puzzle_set_id,puzzle_set:puzzle_sets!puzzles_puzzle_set_id_fkey(id,event_date,source_id)",
     white_player: "neq.",
     black_player: "neq.",
     order: "id.asc",
@@ -122,12 +123,17 @@ const fetchCandidateMatches = async (puzzle) => {
   }
 };
 
-const lichessGameId = (entry) => {
+const archiveGameId = (entry) => {
   const id = String(entry ?? "").split(",", 1)[0];
   return /^[A-Za-z0-9]{8}$/.test(id) ? id : "";
 };
 
-const positionsFromPgn = (pgn, gamePlayersById) => {
+const utcDate = (timestamp) => {
+  const date = new Date(Number(timestamp));
+  return Number.isFinite(date.valueOf()) ? date.toISOString().slice(0, 10) : "";
+};
+
+const positionsFromPgn = (pgn, gamePlayersById, wantedKeys) => {
   const positions = new Map();
   for (const game of parsePgn(pgn)) {
     const site = game.headers.get("Site") ?? "";
@@ -154,6 +160,7 @@ const positionsFromPgn = (pgn, gamePlayersById) => {
         }
       }
       for (const key of keys) {
+        if (!wantedKeys.has(key)) continue;
         const ids = positions.get(key) ?? new Set();
         ids.add(gameId);
         positions.set(key, ids);
@@ -179,7 +186,7 @@ const mergePositionIndexes = (target, source) => {
   }
 };
 
-const exportLichessGames = async (gameIds, gamePlayersById) => {
+const exportLichessGames = async (gameIds, gamePlayersById, wantedKeys) => {
   const positions = new Map();
   for (let offset = 0; offset < gameIds.length; offset += LICHESS_BATCH_SIZE) {
     const ids = gameIds.slice(offset, offset + LICHESS_BATCH_SIZE);
@@ -191,12 +198,18 @@ const exportLichessGames = async (gameIds, gamePlayersById) => {
     if (!response.ok) {
       throw new Error(`Lichess export failed: ${response.status} ${await response.text()}`);
     }
-    mergePositionIndexes(positions, positionsFromPgn(await response.text(), gamePlayersById));
+    mergePositionIndexes(
+      positions,
+      positionsFromPgn(await response.text(), gamePlayersById, wantedKeys),
+    );
+    console.error(
+      `Lichess export ${Math.min(offset + ids.length, gameIds.length)}/${gameIds.length}`,
+    );
   }
   return positions;
 };
 
-const patchPuzzle = async (id, gameId) => {
+const patchPuzzle = async ({ id, event_date, game_id, match_id }) => {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/puzzles?id=eq.${encodeURIComponent(id)}`, {
     method: "PATCH",
     headers: {
@@ -205,7 +218,7 @@ const patchPuzzle = async (id, gameId) => {
       "Content-Type": "application/json",
       Prefer: "return=minimal",
     },
-    body: JSON.stringify({ game_id: gameId }),
+    body: JSON.stringify({ event_date, game_id, match_id }),
   });
   if (!response.ok) throw new Error(`Puzzle ${id}: ${response.status} ${await response.text()}`);
 };
@@ -243,6 +256,18 @@ const puzzleLookupKey = (puzzle) =>
   ].join("\0");
 
 const puzzles = await fetchPuzzles();
+const wantedPositionKeys = new Set();
+for (const puzzle of puzzles) {
+  const pair = pairKey(puzzle.white_player, puzzle.black_player);
+  const fen = comparableFen(puzzle.fen);
+  const solution = solutionSans(puzzle.solution);
+  wantedPositionKeys.add(`full\0${pair}\0${puzzle.fen.trim()}`);
+  wantedPositionKeys.add(`position\0${pair}\0${fen}`);
+  if (solution[0]) wantedPositionKeys.add(`move\0${pair}\0${fen}\0${solution[0]}`);
+  if (solution.length > 1) {
+    wantedPositionKeys.add(`line\0${pair}\0${fen}\0${solution.slice(0, 10).join("|")}`);
+  }
+}
 const lookupGroups = new Map();
 for (const puzzle of puzzles) {
   const groupKey = puzzleLookupKey(puzzle);
@@ -251,35 +276,51 @@ for (const puzzle of puzzles) {
 
 const candidateGameIds = new Set();
 const gamePlayersById = new Map();
-for (const [index, group] of [...lookupGroups.values()].entries()) {
-  const { puzzle } = group;
-  const matches = await fetchCandidateMatches(puzzle);
-  for (const match of matches) {
-    for (const entry of match.games ?? []) {
-      const id = lichessGameId(entry);
-      if (id) {
-        candidateGameIds.add(id);
-        group.gameIds.add(id);
-        const whiteSlot = String(entry).split(",")[3];
-        gamePlayersById.set(
-          id,
-          whiteSlot === "2"
-            ? {
-                white: canonicalPlayer(match.player_2),
-                black: canonicalPlayer(match.player_1),
-              }
-            : {
-                white: canonicalPlayer(match.player_1),
-                black: canonicalPlayer(match.player_2),
-              },
-        );
+const gameSourcesById = new Map();
+const groups = [...lookupGroups.values()];
+let completedArchiveLookups = 0;
+for (let offset = 0; offset < groups.length; offset += ARCHIVE_LOOKUP_CONCURRENCY) {
+  const batch = groups.slice(offset, offset + ARCHIVE_LOOKUP_CONCURRENCY);
+  const batchMatches = await Promise.all(batch.map(({ puzzle }) => fetchCandidateMatches(puzzle)));
+  batch.forEach((group, batchIndex) => {
+    for (const match of batchMatches[batchIndex]) {
+      for (const entry of match.games ?? []) {
+        const id = archiveGameId(entry);
+        if (id) {
+          candidateGameIds.add(id);
+          group.gameIds.add(id);
+          gameSourcesById.set(id, {
+            event_date: utcDate(match.start_ts),
+            match_id: String(match.match_id ?? "").trim(),
+          });
+          const whiteSlot = String(entry).split(",")[3];
+          gamePlayersById.set(
+            id,
+            whiteSlot === "2"
+              ? {
+                  white: canonicalPlayer(match.player_2),
+                  black: canonicalPlayer(match.player_1),
+                }
+              : {
+                  white: canonicalPlayer(match.player_1),
+                  black: canonicalPlayer(match.player_2),
+                },
+          );
+        }
       }
     }
-  }
-  console.error(`Archive lookup ${index + 1}/${lookupGroups.size}: ${candidateGameIds.size} games`);
+  });
+  completedArchiveLookups += batch.length;
+  console.error(
+    `Archive lookup ${completedArchiveLookups}/${groups.length}: ${candidateGameIds.size} games`,
+  );
 }
 
-const positions = await exportLichessGames([...candidateGameIds], gamePlayersById);
+const positions = await exportLichessGames(
+  [...candidateGameIds],
+  gamePlayersById,
+  wantedPositionKeys,
+);
 const matched = [];
 const ambiguous = [];
 const missing = [];
@@ -304,23 +345,36 @@ for (const puzzle of puzzles) {
   const positionIds = allowed([
     ...(positions.get(`position\0${pair}\0${comparableFen(puzzle.fen)}`) ?? []),
   ]);
-  const ids =
-    lineIds.length > 0
-      ? lineIds
-      : moveIds.length > 0
-        ? moveIds
-        : exactIds.length > 0
-          ? exactIds
-          : positionIds;
-  if (ids.length === 1) matched.push({ id: puzzle.id, game_id: ids[0] });
-  else if (ids.length > 1) ambiguous.push({ id: puzzle.id, game_ids: ids });
+  const candidateScores = new Map();
+  const addEvidence = (ids, weight) => {
+    ids.forEach((id) => candidateScores.set(id, (candidateScores.get(id) ?? 0) + weight));
+  };
+  addEvidence(positionIds, 1);
+  addEvidence(moveIds, 2);
+  addEvidence(exactIds, 4);
+  addEvidence(lineIds, 8);
+  const rankedCandidates = [...candidateScores.entries()].sort(
+    ([leftId, leftScore], [rightId, rightScore]) =>
+      rightScore - leftScore || leftId.localeCompare(rightId),
+  );
+  const bestScore = rankedCandidates[0]?.[1] ?? 0;
+  const ids = rankedCandidates.filter(([, score]) => score === bestScore).map(([id]) => id);
+  if (ids.length === 1) {
+    const game_id = ids[0];
+    const source = gameSourcesById.get(game_id);
+    if (source?.event_date && source.match_id) {
+      matched.push({ id: puzzle.id, game_id, ...source });
+    } else {
+      missing.push({ id: puzzle.id, white: puzzle.white_player, black: puzzle.black_player });
+    }
+  } else if (ids.length > 1) ambiguous.push({ id: puzzle.id, game_ids: ids });
   else missing.push({ id: puzzle.id, white: puzzle.white_player, black: puzzle.black_player });
 }
 
 console.log(JSON.stringify({ matched, ambiguous, missing }, null, 2));
 if (APPLY) {
   for (const [index, puzzle] of matched.entries()) {
-    await patchPuzzle(puzzle.id, puzzle.game_id);
+    await patchPuzzle(puzzle);
     console.error(`Updated ${index + 1}/${matched.length}`);
   }
 }

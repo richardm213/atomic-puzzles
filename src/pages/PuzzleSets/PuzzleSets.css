@@ -140,6 +140,12 @@
   transition: var(--puzzle-sets-transition);
 }
 
+.puzzleSetCard.isCompleted {
+  border-color: color-mix(in srgb, var(--color-success) 42%, var(--color-border));
+  background: color-mix(in srgb, var(--color-success) 8%, var(--color-surface-soft));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-success) 7%, transparent);
+}
+
 .puzzleSetCard:focus-within {
   transform: translateY(-1px);
   border-color: color-mix(in srgb, var(--color-primary) 56%, var(--color-border));
@@ -216,6 +222,14 @@
   background: var(--color-primary);
 }
 
+.puzzleSetCard.isCompleted .puzzleSetProgressTrack {
+  background: color-mix(in srgb, var(--color-success) 16%, var(--color-surface-inset-strong));
+}
+
+.puzzleSetCard.isCompleted .puzzleSetProgressTrack > span {
+  background: var(--color-success);
+}
+
 .puzzleSetCardActions {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
@@ -233,6 +247,17 @@
 
 .puzzleSetCardStartLink:hover {
   background: var(--color-primary-hover);
+}
+
+.puzzleSetCard.isCompleted .puzzleSetCardStartLink {
+  border-color: color-mix(in srgb, var(--color-success) 54%, var(--color-border));
+  background: var(--color-success-soft-bg);
+  color: var(--color-success);
+}
+
+.puzzleSetCard.isCompleted .puzzleSetCardStartLink:hover {
+  border-color: var(--color-success);
+  background: color-mix(in srgb, var(--color-success) 17%, var(--color-panel-strong));
 }
 
 @media (max-width: 760px) {

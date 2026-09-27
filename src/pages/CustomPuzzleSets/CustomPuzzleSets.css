@@ -460,6 +460,11 @@
   background: var(--color-surface-soft);
   min-width: 0;
 }
+.customSetCard.isCompleted {
+  border-color: color-mix(in srgb, var(--color-success) 42%, var(--color-border));
+  background: color-mix(in srgb, var(--color-success) 8%, var(--color-surface-soft));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-success) 7%, transparent);
+}
 .customSetCardTop {
   align-items: flex-start;
 }
@@ -483,6 +488,12 @@
   border-radius: inherit;
   background: var(--color-primary);
 }
+.customSetCard.isCompleted .customSetProgress {
+  background: color-mix(in srgb, var(--color-success) 16%, var(--color-surface-inset-strong));
+}
+.customSetCard.isCompleted .customSetProgress > span {
+  background: var(--color-success);
+}
 .customSetStats {
   justify-content: space-between;
   color: var(--color-muted);
@@ -493,6 +504,15 @@
 }
 .customSetCard > .customSetsButton {
   width: 100%;
+}
+.customSetCard.isCompleted > .customSetsButton.primary {
+  border-color: color-mix(in srgb, var(--color-success) 54%, var(--color-border));
+  background: var(--color-success-soft-bg);
+  color: var(--color-success);
+}
+.customSetCard.isCompleted > .customSetsButton.primary:hover:not(:disabled) {
+  border-color: var(--color-success);
+  background: color-mix(in srgb, var(--color-success) 17%, var(--color-panel-strong));
 }
 
 .customSetsState {

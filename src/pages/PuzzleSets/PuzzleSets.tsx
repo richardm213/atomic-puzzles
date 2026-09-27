@@ -231,9 +231,14 @@ export const PuzzleSetsPage = () => {
         const progressPercent = puzzleCount
           ? Math.round((completedPuzzleCount / puzzleCount) * 100)
           : 0;
+        const isCompleted = puzzleCount > 0 && completedPuzzleCount >= puzzleCount;
 
         return (
-          <article key={group.eventKey} className="puzzleSetCard" role="listitem">
+          <article
+            key={group.eventKey}
+            className={`puzzleSetCard${isCompleted ? " isCompleted" : ""}`}
+            role="listitem"
+          >
             <div className="puzzleSetCardContent">
               <span className="puzzleSetCardHeading">
                 <strong>{group.eventName}</strong>
