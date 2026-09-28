@@ -1,23 +1,16 @@
-import type {
-  CommunityRequest,
-  CommunityTargetType,
-} from "../../../shared/domain/community/schemas";
+import type { CommunityRequest } from "../../../shared/domain/community/schemas";
 import { HttpError } from "../../platform/errors";
+import type {
+  CommunityCommentVoteRecord,
+  CommunityPuzzleVoteRecord,
+  CommunityTarget,
+  CommunityUsernameRecord,
+  CommunityUserStatRow,
+  ProfileCommentCountRecord,
+  ProfileCommentRecord,
+  PuzzleAttemptRecord,
+} from "./model";
 import type { CommunityRepository } from "./repository";
-import {
-  type CommunityCommentVoteRecord,
-  type CommunityPuzzleVoteRecord,
-  type CommunityUsernameRecord,
-  type ProfileCommentCountRecord,
-  type ProfileCommentRecord,
-  type PuzzleAttemptRecord,
-} from "./repository";
-
-export type CommunityTarget = {
-  type: CommunityTargetType;
-  id: string;
-  context: string;
-};
 
 const MAX_COMMENT_LENGTH = 10_000;
 
@@ -48,14 +41,6 @@ export const sumCommentKarma = (votes: CommunityCommentVoteRecord[]): number =>
     const vote = Number(row.vote);
     return karma + (vote === 1 || vote === -1 ? vote : 0);
   }, 0);
-
-export type CommunityUserStatRow = {
-  username: string;
-  puzzles_upvoted: number;
-  puzzles_downvoted: number;
-  comment_karma: number;
-  comments_left: number;
-};
 
 export const buildCommunityUserStats = (
   users: CommunityUsernameRecord[],

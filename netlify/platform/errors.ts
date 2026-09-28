@@ -1,4 +1,4 @@
-import { type FunctionResponse, jsonResponse } from "./defineFunction";
+import { type FunctionResponse, jsonResponse } from "./response";
 
 export class HttpError extends Error {
   constructor(

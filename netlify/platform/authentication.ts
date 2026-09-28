@@ -1,7 +1,7 @@
 import { isSameOriginRequest, resolveSiteIdentity } from "../lib/siteSession";
 import type { FunctionEvent } from "./defineFunction";
-import { jsonResponse } from "./defineFunction";
 import { HttpError } from "./errors";
+import { jsonResponse } from "./response";
 
 export type RequestIdentity = {
   username: string | null;

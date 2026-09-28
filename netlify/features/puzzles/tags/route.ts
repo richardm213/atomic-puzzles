@@ -9,9 +9,10 @@ import {
   requireSameOrigin,
   requireUsername,
 } from "../../../platform/authentication";
-import { type FunctionEvent, jsonResponse } from "../../../platform/defineFunction";
+import type { FunctionEvent } from "../../../platform/defineFunction";
 import { createServerSupabase } from "../../../platform/environment";
 import { HttpError } from "../../../platform/errors";
+import { jsonResponse } from "../../../platform/response";
 import { parseJsonBody } from "../../../platform/validation";
 
 const TAG_EDITOR = "seaside_tiramisu";

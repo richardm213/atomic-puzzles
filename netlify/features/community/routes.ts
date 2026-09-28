@@ -2,9 +2,9 @@ import { communityRequestSchema } from "../../../shared/domain/community/schemas
 import { isSameOriginRequest } from "../../lib/siteSession";
 import { authenticateRequest } from "../../platform/authentication";
 import type { FunctionEvent } from "../../platform/defineFunction";
-import { jsonResponse } from "../../platform/defineFunction";
 import { createServerSupabase } from "../../platform/environment";
 import { HttpError } from "../../platform/errors";
+import { jsonResponse } from "../../platform/response";
 import { parseJsonBody } from "../../platform/validation";
 import { CommunityRepository } from "./repository";
 import { CommunityService, isPublicCommunityReadAction, readCommunityTarget } from "./service";

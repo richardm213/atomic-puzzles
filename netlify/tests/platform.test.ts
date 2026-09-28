@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
-import { defineFunction, jsonResponse } from "../platform/defineFunction";
+import { defineFunction } from "../platform/defineFunction";
 import { HttpError } from "../platform/errors";
+import { jsonResponse } from "../platform/response";
 import { parseJsonBody } from "../platform/validation";
 
 const functionUnderTest = defineFunction(

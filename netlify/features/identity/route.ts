@@ -1,8 +1,9 @@
 import { parseBearerToken } from "../../lib/lichessAccount";
 import { clearSiteSessionCookie, readSiteSession } from "../../lib/siteSession";
 import { requireSameOrigin } from "../../platform/authentication";
-import { type FunctionEvent, jsonResponse } from "../../platform/defineFunction";
+import type { FunctionEvent } from "../../platform/defineFunction";
 import { HttpError } from "../../platform/errors";
+import { jsonResponse } from "../../platform/response";
 import { IdentityService, parseOauthExchange } from "./service";
 
 export const authSessionRoute = async (event: FunctionEvent) => {
