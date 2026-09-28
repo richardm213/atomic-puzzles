@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-export const OPENING_EXPLORER_RESPONSE_SCHEMA = "moves-v11";
+export const OPENING_EXPLORER_RESPONSE_SCHEMA = "combined-player-results-v12";
 
 export const sqlString = (value) => `'${value.replaceAll("'", "''")}'`;
 
@@ -36,6 +36,19 @@ const openingPlayerIdsSql = () => `
   from opening_edges_daily
   where position_key = X'${STANDARD_START_POSITION_KEY_HEX}'
 `;
+
+const combinedResultSelect = () => `select
+  (select json_group_array(json_object(
+    'uci',uci,'games',games,'whiteWins',whiteWins,'draws',draws,
+    'blackWins',blackWins,'avgOpponentRating',avgOpponentRating
+  )) from moves) as movesJson,
+  (select json_group_array(json_object(
+    'uci',uci,'gameId',gameId,'playedAt',playedAt,'playedOn',playedOn,
+    'white',white,'black',black,'whiteRating',whiteRating,
+    'blackRating',blackRating,'winner',winner
+  )) from recent_games) as recentGamesJson`;
+
+const withoutTrailingSemicolon = (sql) => sql.trim().replace(/;\s*$/, "");
 
 export const buildRandomOpeningPlayerSql = () => `
   select n.name as username
@@ -150,16 +163,7 @@ const buildGeneralBucketQueries = ({ keyHex, speeds, startDate, endDate }) => {
   return {
     movesSql: `${common} select * from moves;`,
     gamesSql: `${common} select * from recent_games;`,
-    combinedSql: `${common} select
-      (select json_group_array(json_object(
-        'uci',uci,'games',games,'whiteWins',whiteWins,'draws',draws,
-        'blackWins',blackWins,'avgOpponentRating',avgOpponentRating
-      )) from moves) as movesJson,
-      (select json_group_array(json_object(
-        'uci',uci,'gameId',gameId,'playedAt',playedAt,'playedOn',playedOn,
-        'white',white,'black',black,'whiteRating',whiteRating,
-        'blackRating',blackRating,'winner',winner
-      )) from recent_games) as recentGamesJson;`,
+    combinedSql: `${common} ${combinedResultSelect()};`,
   };
 };
 
@@ -267,5 +271,12 @@ export const buildOpeningExplorerSql = ({
     limit 8;
   `;
 
-  return { gamesSql, movesSql, combinedSql: undefined };
+  // Turso batches avoid a second HTTP request, but each statement still pays its own
+  // execution/setup cost. One statement also resolves hot database pages only once.
+  const combinedSql = `with
+    moves as materialized (${withoutTrailingSemicolon(movesSql)}),
+    recent_games as materialized (${withoutTrailingSemicolon(gamesSql)})
+    ${combinedResultSelect()};`;
+
+  return { gamesSql, movesSql, combinedSql };
 };

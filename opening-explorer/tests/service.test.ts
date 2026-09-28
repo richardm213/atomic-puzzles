@@ -113,12 +113,16 @@ describe("createOpeningExplorerService", () => {
     expect(second.body).toBe(first.body);
     expect(query).toHaveBeenCalledTimes(callsAfterFirst);
     expect(second.headers["Cache-Control"]).toBe("public, max-age=30");
+    expect(second.headers["Netlify-CDN-Cache-Control"]).toBe(
+      "public, durable, s-maxage=300, stale-while-revalidate=3600",
+    );
 
     await service.handle(explorerRequest({ username: "alice" }));
     const callsAfterPersonalized = query.mock.calls.length;
     const personalized = await service.handle(explorerRequest({ username: "alice" }));
     expect(query.mock.calls.length).toBe(callsAfterPersonalized);
     expect(personalized.headers["Cache-Control"]).toBe("no-store");
+    expect(personalized.headers["Netlify-CDN-Cache-Control"]).toBeUndefined();
   });
 
   it("caches small and empty results, isolates filters, and expires entries", async () => {
@@ -165,16 +169,14 @@ describe("createOpeningExplorerService", () => {
     expect(query).toHaveBeenCalledTimes(calls);
   });
 
-  it("batches the two player reads with no saved-status round trip", async () => {
+  it("loads player moves and games with one combined query", async () => {
     const query = vi.fn(fixtureQuery);
-    const queryBatch = vi.fn(async (statements: string[]) =>
-      Promise.all(statements.map(fixtureQuery)),
-    );
+    const queryBatch = vi.fn();
     const service = createOpeningExplorerService({ ...createRepository(query), queryBatch });
     const response = await service.handle(explorerRequest({ username: "alice" }));
     expect(response.statusCode).toBe(200);
-    expect(queryBatch).toHaveBeenCalledTimes(1);
-    expect(queryBatch.mock.calls[0]![0]).toHaveLength(2);
+    expect(query.mock.calls.filter(([sql]) => sql.includes("as movesJson"))).toHaveLength(1);
+    expect(queryBatch).not.toHaveBeenCalled();
     expect(query.mock.calls.every(([sql]) => !sql.includes("savedGames"))).toBe(true);
   });
 
@@ -253,11 +255,13 @@ describe("createOpeningExplorerService", () => {
     let runs = 0;
     const service = createOpeningExplorerService({
       ...createRepository(fixtureQuery),
-      queryBatch: (statements, priority) =>
-        queue.enqueue(async () => {
+      query: (sql, priority) => {
+        if (sql.includes("key = 'aliases'")) return fixtureQuery(sql);
+        return queue.enqueue(async () => {
           runs += 1;
-          return Promise.all(statements.map(fixtureQuery));
-        }, priority),
+          return fixtureQuery(sql);
+        }, priority);
+      },
     });
     const first = service.handle({
       ...explorerRequest({ username: "alice", speeds: "0" }),
@@ -288,27 +292,32 @@ describe("createOpeningExplorerService", () => {
   });
 
   it("does not cache a late result from a disconnected request", async () => {
-    let resolve!: (rows: JsonRow[][]) => void;
-    const queryBatch = vi.fn(
-      () =>
-        new Promise<JsonRow[][]>((r) => {
-          resolve = r;
-        }),
+    let resolve!: (rows: JsonRow[]) => void;
+    const query = vi.fn((sql: string) =>
+      sql.includes("key = 'aliases'")
+        ? Promise.resolve(fixtureQuery(sql))
+        : new Promise<JsonRow[]>((r) => {
+            resolve = r;
+          }),
     );
-    const service = createOpeningExplorerService({ ...createRepository(fixtureQuery), queryBatch });
+    const queryBatch = vi.fn();
+    const service = createOpeningExplorerService({
+      ...createRepository(query),
+      queryBatch,
+    });
     const controller = new AbortController();
     const first = service.handle({
       ...explorerRequest({ username: "alice" }),
       signal: controller.signal,
     });
-    await vi.waitFor(() => expect(queryBatch).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() => expect(query).toHaveBeenCalledTimes(2));
     controller.abort();
     expect((await first).statusCode).toBe(499);
-    resolve([[], []]);
+    resolve([{ movesJson: "[]", recentGamesJson: "[]" }]);
     await Promise.resolve();
     const retry = service.handle(explorerRequest({ username: "alice" }));
-    await vi.waitFor(() => expect(queryBatch).toHaveBeenCalledTimes(2));
-    resolve([[], []]);
+    await vi.waitFor(() => expect(query).toHaveBeenCalledTimes(3));
+    resolve([{ movesJson: "[]", recentGamesJson: "[]" }]);
     expect((await retry).statusCode).toBe(200);
   });
 });

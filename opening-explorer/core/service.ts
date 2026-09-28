@@ -44,25 +44,32 @@ type PendingRequest = {
   priorityRef: PriorityRef;
 };
 
+const PUBLIC_CACHE_HEADERS = {
+  "Cache-Control": "public, max-age=30",
+  // General explorer results and the player directory are public and immutable
+  // between database refreshes. Netlify's durable cache avoids a function cold
+  // start and Turso round trip for repeat positions across edge regions.
+  "Netlify-CDN-Cache-Control": "public, durable, s-maxage=300, stale-while-revalidate=3600",
+};
+
+const responseHeaders = (shouldCache: boolean): Record<string, string> => ({
+  "Content-Type": "application/json",
+  ...(shouldCache ? PUBLIC_CACHE_HEADERS : { "Cache-Control": "no-store" }),
+});
+
 const jsonResponse = (
   statusCode: number,
   body: unknown,
   shouldCache = statusCode === 200,
 ): ExplorerServiceResponse => ({
   statusCode,
-  headers: {
-    "Content-Type": "application/json",
-    "Cache-Control": shouldCache ? "public, max-age=30" : "no-store",
-  },
+  headers: responseHeaders(shouldCache),
   body: JSON.stringify(body),
 });
 
 const successResponse = (body: string, shouldCache: boolean): ExplorerServiceResponse => ({
   statusCode: 200,
-  headers: {
-    "Content-Type": "application/json",
-    "Cache-Control": shouldCache ? "public, max-age=30" : "no-store",
-  },
+  headers: responseHeaders(shouldCache),
   body,
 });
 
