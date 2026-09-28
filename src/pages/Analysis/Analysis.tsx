@@ -685,20 +685,22 @@ export const AnalysisPage = () => {
         ref={rightPanelRef}
         className={`analysisPanel analysisRightPanel ${explorerOpen ? "explorerOpen" : "explorerCollapsed"} ${
           movePanelHeight === MIN_MOVE_PANEL_HEIGHT ? "movesCollapsed" : ""
-        } ${explorerResizing ? "explorerResizing" : ""}`}
+        } ${movePanelHeight !== null ? "customExplorerSplit" : ""} ${
+          explorerResizing ? "explorerResizing" : ""
+        }`}
         style={rightPanelStyle}
         aria-label="Analysis controls"
       >
         <div className="analysisMovePanel" ref={movePanelRef}>
-          <AtomicDbEngineControls
-            fen={currentFen}
-            analysis={atomicDbAnalysis}
-            settings={atomicDbEngineSettings}
-            setSettings={setAtomicDbEngineSettings}
-            onDisable={() => setHoveredExplorerMoveUci(null)}
-            onFlipBoard={flipBoard}
-          />
-          <div className="analysisMoveContent">
+          <div className="analysisEngineBlock">
+            <AtomicDbEngineControls
+              fen={currentFen}
+              analysis={atomicDbAnalysis}
+              settings={atomicDbEngineSettings}
+              setSettings={setAtomicDbEngineSettings}
+              onDisable={() => setHoveredExplorerMoveUci(null)}
+              onFlipBoard={flipBoard}
+            />
             <AtomicDbEngine
               fen={currentFen}
               settings={atomicDbEngineSettings}
@@ -706,6 +708,8 @@ export const AnalysisPage = () => {
               onPlayMove={playExplorerMove}
               onHoverMove={setHoveredExplorerMoveUci}
             />
+          </div>
+          <div className="analysisMoveContent">
             <PlayedMoves moves={moveList} currentPly={currentPly} onNavigate={navigateToPly} />
           </div>
         </div>

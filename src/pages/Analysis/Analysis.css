@@ -177,8 +177,12 @@ body:has(.analysisPage),
   height: var(--analysis-side-panel-height);
   max-height: var(--analysis-side-panel-max-height);
   min-height: 0;
-  grid-template-rows: minmax(0, var(--analysis-move-panel-height, 0.32fr)) minmax(0, 1fr) auto;
+  grid-template-rows: minmax(min-content, 0.32fr) minmax(0, 1fr) auto;
   overflow: hidden;
+}
+
+.analysisRightPanel.customExplorerSplit {
+  grid-template-rows: minmax(0, var(--analysis-move-panel-height)) minmax(0, 1fr) auto;
 }
 
 .analysisRightPanel.explorerResizing {
@@ -197,6 +201,10 @@ body:has(.analysisPage),
   gap: 2px;
   min-height: 0;
   overflow: hidden;
+}
+
+.analysisEngineBlock {
+  min-width: 0;
 }
 
 .analysisMoveHeaderActions {
