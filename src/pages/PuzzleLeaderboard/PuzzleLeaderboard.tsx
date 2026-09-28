@@ -8,6 +8,7 @@ import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { z } from "zod";
 
+import { InlineState } from "../../components/InlineState/InlineState";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { usePersistedState } from "../../hooks/usePersistedState";
@@ -204,14 +205,14 @@ const PuzzleLeaderboard = () => {
           </div>
         </div>
 
-        {error ? <div className="errorText">{error}</div> : null}
+        {error ? <InlineState kind="error">{error}</InlineState> : null}
 
         {!error && !loading && rows.length === 0 ? (
-          <div className="emptyRankings">
+          <InlineState kind="empty">
             {period === "all"
               ? "No users have recorded puzzle attempts yet."
               : `No users recorded puzzle attempts in ${puzzleRankingMonthLabel(effectiveMonth)}.`}
-          </div>
+          </InlineState>
         ) : null}
 
         {!error && !loading && rows.length > 0 ? (

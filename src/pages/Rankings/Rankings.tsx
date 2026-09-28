@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { InlineState } from "../../components/InlineState/InlineState";
 import { Seo } from "../../components/Seo/Seo";
 import {
   defaultMode,
@@ -484,7 +485,7 @@ const LeaderboardView = ({ selectedPeriod }: { selectedPeriod: RankingPeriod }) 
           </label>
         </div>
 
-        {error ? <div className="errorText">{error}</div> : null}
+        {error ? <InlineState kind="error">{error}</InlineState> : null}
 
         <div className="rankingsMeta">
           <div
@@ -573,19 +574,21 @@ const LeaderboardView = ({ selectedPeriod }: { selectedPeriod: RankingPeriod }) 
         </div>
 
         {showChessComRankings && aliasesQuery.isError ? (
-          <div className="errorText" role="alert">
+          <InlineState kind="error">
             Unable to load Chess.com aliases. Please reload to try again.
-          </div>
+          </InlineState>
         ) : showChessComRankings && !aliasesLoaded ? (
-          <div className="emptyRankings">Loading Chess.com aliases...</div>
+          <InlineState kind="info" role="status" aria-live="polite">
+            Loading Chess.com aliases...
+          </InlineState>
         ) : filteredPlayers.length === 0 ? (
-          <div className="emptyRankings">
+          <InlineState kind="empty">
             {activeModeOpeningFilter
               ? `No ranked players found for ${getOpeningDisplayLabel(activeModeOpeningFilter)}.`
               : showChessComRankings
                 ? "No ranked players with a Chess.com alias were found."
                 : `No leaderboard entries available for this ${selectedPeriod === "yearly" ? "year" : "month"}.`}
-          </div>
+          </InlineState>
         ) : (
           <div className="rankingsTableWrap">
             <table className="rankingsTable">

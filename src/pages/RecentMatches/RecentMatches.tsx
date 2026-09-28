@@ -40,6 +40,7 @@ type AppliedFilters = {
 };
 
 import { DualRangeSlider } from "../../components/DualRangeSlider/DualRangeSlider";
+import { InlineState } from "../../components/InlineState/InlineState";
 import { MatchCard } from "../../components/MatchCard/MatchCard";
 import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { Seo } from "../../components/Seo/Seo";
@@ -386,7 +387,7 @@ export const RecentMatchesPage = () => {
           </div>
         </form>
 
-        {error ? <div className="errorText">{error}</div> : null}
+        {error ? <InlineState kind="error">{error}</InlineState> : null}
 
         <div className="rankingsMeta">
           <span>Showing recent matches</span>
@@ -419,7 +420,7 @@ export const RecentMatchesPage = () => {
             );
           })}
           {filteredMatches.length === 0 ? (
-            <div className="emptyRankings">No matches found with current filters.</div>
+            <InlineState kind="empty">No matches found with current filters.</InlineState>
           ) : null}
         </div>
         {filteredMatches.length > 0 ? (

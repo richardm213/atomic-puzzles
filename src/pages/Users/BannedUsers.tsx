@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 
+import { InlineState } from "../../components/InlineState/InlineState";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import type { AliasIdentityRow } from "../../lib/archive/aliases";
@@ -100,7 +101,7 @@ export const BannedUsersPage = () => {
       <div className="panel rankingsPanel usersPanel bannedUsersPanel">
         <h1>Banned Accounts</h1>
 
-        {error ? <div className="errorText">{error}</div> : null}
+        {error ? <InlineState kind="error">{error}</InlineState> : null}
 
         <div className="bannedUsersHero">
           <span className="bannedUsersHeroIcon" aria-hidden="true">
@@ -146,7 +147,7 @@ export const BannedUsersPage = () => {
         </div>
 
         {!error && !loading && rows.length === 0 ? (
-          <div className="emptyRankings">No banned users available.</div>
+          <InlineState kind="empty">No banned users available.</InlineState>
         ) : null}
 
         {!error && !loading && rows.length > 0 ? (
