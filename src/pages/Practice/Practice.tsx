@@ -21,6 +21,11 @@ import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
+import {
+  AtomicDbEngine,
+  AtomicDbEngineControls,
+  AtomicDbEvalBar,
+} from "../../components/AtomicDbEngine/AtomicDbEngine";
 import { BoardWorkspace } from "../../components/BoardWorkspace/BoardWorkspace";
 import {
   isTextEntryTarget,
@@ -34,6 +39,8 @@ import { PlaybackButtons } from "../../components/PlaybackButtons/PlaybackButton
 import { PlayedMoves } from "../../components/PlayedMoves/PlayedMoves";
 import { Seo } from "../../components/Seo/Seo";
 import { UsernamePickerModal } from "../../components/UsernamePickerModal/UsernamePickerModal";
+import { useAtomicDbAnalysis } from "../../hooks/useAtomicDbAnalysis";
+import { useAtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";
 import { useBoardDocument } from "../../hooks/useBoardDocument";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
 import { useCopyFeedback } from "../../hooks/useCopyFeedback";
@@ -44,6 +51,7 @@ import { findFairyStockfishMove } from "../../lib/practice/fairyStockfish";
 import { movePrefix } from "../../lib/puzzles/solutionPgn";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
 import { appAssetPath } from "../../utils/appAssetPath";
+import { atomicDbPositionUrl } from "../../utils/atomicDb";
 import { formatGameCount } from "../../utils/formatters";
 import { lichessAtomicAnalysisUrl } from "../../utils/lichess";
 import {
@@ -249,6 +257,10 @@ const chooseOpponentMove = (moves: PracticeMove[], mode: OpponentMode): Practice
 };
 
 export const PracticePage = () => {
+  const [atomicDbEngineSettings, setAtomicDbEngineSettings] = useAtomicDbEngineSettings({
+    storageKey: "atomic-puzzles.practice.atomicdb-engine",
+    defaultEnabled: false,
+  });
   const [settings, setSettings] = usePersistedState<StoredPracticeSettings>(
     PRACTICE_SETTINGS_STORAGE_KEY,
     practiceSettingsSchema,
@@ -304,6 +316,7 @@ export const PracticePage = () => {
   const [sessionStarted, setSessionStarted] = useState(false);
 
   const currentFen = boardState?.fen || STARTING_FEN;
+  const atomicDbAnalysis = useAtomicDbAnalysis(currentFen, atomicDbEngineSettings.enabled);
   const currentLichessAnalysisUrl = lichessAtomicAnalysisUrl(currentFen);
   const currentTurn = boardState?.turn || "white";
   const gameFinished = Boolean(boardState?.winner);
@@ -901,7 +914,12 @@ export const PracticePage = () => {
 
       if (
         usernamePickerOpen ||
-        (key !== "a" && key !== "e" && key !== "f" && key !== "q" && !isMoveShortcut) ||
+        (key !== "a" &&
+          key !== "e" &&
+          key !== "f" &&
+          key !== "l" &&
+          key !== "q" &&
+          !isMoveShortcut) ||
         event.metaKey ||
         event.ctrlKey ||
         event.altKey
@@ -926,6 +944,8 @@ export const PracticePage = () => {
       if (key === "e") {
         setMovesOpen((open) => !open);
         setSettingsOpen(false);
+      } else if (key === "l") {
+        setAtomicDbEngineSettings((current) => ({ ...current, enabled: !current.enabled }));
       } else if (key === "a") {
         toggleGamePaused();
       } else if (key === "q") {
@@ -943,6 +963,7 @@ export const PracticePage = () => {
     playPracticeMove,
     practiceMoves,
     requestAlternateAutoMove,
+    setAtomicDbEngineSettings,
     settingsOpen,
     status,
     toggleGamePaused,
@@ -1013,16 +1034,10 @@ export const PracticePage = () => {
               className="practiceSideButton"
               data-side={side}
               aria-label={`Play as ${opponentSide}`}
-              title="Switch sides"
+              title={`Playing as ${side}. Switch sides`}
               onClick={flipPracticeSide}
             >
-              <span className="practiceSideColor" aria-hidden="true" />
-              <span className="practiceSideCopy">
-                <strong>{side}</strong>
-              </span>
-              <span className="practiceSideFlip" aria-hidden="true">
-                <FontAwesomeIcon icon={faArrowsRotate} />
-              </span>
+              <FontAwesomeIcon icon={faArrowsRotate} aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -1280,22 +1295,28 @@ export const PracticePage = () => {
 
         {movesOpen && !settingsOpen ? (
           <section className="analysisMovePanel practicePlayedMovesPanel" aria-label="Played moves">
-            <div className="analysisSectionTitle">
-              <span>Moves</span>
-              <small>
-                {currentPly}/{moveList.length}
-              </small>
+            <AtomicDbEngineControls
+              fen={currentFen}
+              analysis={atomicDbAnalysis}
+              settings={atomicDbEngineSettings}
+              setSettings={setAtomicDbEngineSettings}
+              onDisable={() => setHoveredMoveUci(null)}
+            />
+            <div className="analysisMoveContent">
+              <AtomicDbEngine
+                fen={currentFen}
+                settings={atomicDbEngineSettings}
+                analysis={atomicDbAnalysis}
+                onPlayMove={playPracticeMove}
+                onHoverMove={setHoveredMoveUci}
+              />
+              <PlayedMoves moves={moveList} currentPly={currentPly} onNavigate={navigateToPly} />
             </div>
-            <PlayedMoves moves={moveList} currentPly={currentPly} onNavigate={navigateToPly} />
           </section>
         ) : null}
 
         {!movesOpen && !settingsOpen ? (
           <section className="practiceMovesPanel" aria-label="Database moves">
-            <div className="analysisSectionTitle">
-              <span>Database moves</span>
-              <small>{opponentSide}</small>
-            </div>
             <div className="practiceMoveTableWrap">
               <OpeningDatabaseDisplay
                 moves={practiceMoves}
@@ -1384,7 +1405,20 @@ export const PracticePage = () => {
           },
           onStateChange: handleBoardStateChange,
         }}
+        boardOverlay={
+          <AtomicDbEvalBar
+            fen={currentFen}
+            analysis={atomicDbAnalysis}
+            enabled={atomicDbEngineSettings.enabled}
+            orientation={side}
+          />
+        }
         lichessHref={currentLichessAnalysisUrl}
+        atomicDbHref={
+          atomicDbAnalysis.status === "ready" && atomicDbAnalysis.result?.position?.key
+            ? atomicDbPositionUrl(atomicDbAnalysis.result.position.key)
+            : undefined
+        }
         actionClassName="practiceBoardActions"
         secondaryAction={
           <button type="button" className="practiceCopyPgnButton" onClick={handleCopyPgn}>

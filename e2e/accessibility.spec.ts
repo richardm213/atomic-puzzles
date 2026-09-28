@@ -7,10 +7,17 @@ const accessiblePages = [
   { path: "/h2h", name: "head-to-head search" },
   { path: "/tournaments", name: "tournament archive" },
   { path: "/solve/101", name: "puzzle solver" },
+  { path: "/analysis", name: "analysis board", theme: "light" },
+  { path: "/practice", name: "practice board", theme: "light" },
 ] as const;
 
 for (const appPage of accessiblePages) {
   test(`${appPage.name} has no serious automated accessibility violations`, async ({ page }) => {
+    if ("theme" in appPage) {
+      await page.addInitScript(() => {
+        window.localStorage.setItem("atomic-puzzles.theme", JSON.stringify("light"));
+      });
+    }
     await page.goto(appPage.path);
     await expect(page.getByRole("main")).toBeVisible();
 

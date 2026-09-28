@@ -13,6 +13,7 @@ type BoardWorkspaceProps = {
   chessboardProps: ComponentProps<typeof Chessboard>;
   boardOverlay?: ReactNode;
   lichessHref: string;
+  atomicDbHref?: string | undefined;
   actionClassName?: string;
   secondaryAction?: ReactNode;
   document: BoardDocument;
@@ -54,6 +55,7 @@ export const BoardWorkspace = ({
   chessboardProps,
   boardOverlay,
   lichessHref,
+  atomicDbHref,
   actionClassName,
   secondaryAction,
   document,
@@ -64,6 +66,17 @@ export const BoardWorkspace = ({
       <span>View on Lichess</span>
     </a>
   );
+  const atomicDbLink = atomicDbHref ? (
+    <a
+      className="analysisLichessLink analysisAtomicDbLink"
+      href={atomicDbHref}
+      target="_blank"
+      rel="noreferrer"
+    >
+      <FontAwesomeIcon icon={faExternalLinkAlt} />
+      <span>View on AtomicDB</span>
+    </a>
+  ) : null;
 
   return (
     <div className={`analysisBoardColumn ${className}`.trim()}>
@@ -77,17 +90,11 @@ export const BoardWorkspace = ({
         {boardOverlay}
       </div>
       <div className="analysisBoardTextPanel">
-        {actionClassName ? (
-          <div className={actionClassName}>
-            {lichessLink}
-            {secondaryAction}
-          </div>
-        ) : (
-          <>
-            {lichessLink}
-            {secondaryAction}
-          </>
-        )}
+        <div className={actionClassName ?? "analysisBoardActions"}>
+          {lichessLink}
+          {atomicDbLink}
+          {secondaryAction}
+        </div>
         <DocumentField label="FEN" rows={2} field={document.fen} />
         <DocumentField label="PGN" rows={3} field={document.pgn} />
       </div>

@@ -11,6 +11,11 @@ import type {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
+import {
+  AtomicDbEngine,
+  AtomicDbEngineControls,
+  AtomicDbEvalBar,
+} from "../../components/AtomicDbEngine/AtomicDbEngine";
 import { BoardWorkspace } from "../../components/BoardWorkspace/BoardWorkspace";
 import {
   isTextEntryTarget,
@@ -21,12 +26,15 @@ import { PlaybackButtons } from "../../components/PlaybackButtons/PlaybackButton
 import { pairPlayedMoves, PlayedMoves } from "../../components/PlayedMoves/PlayedMoves";
 import { Seo } from "../../components/Seo/Seo";
 import { UsernamePickerModal } from "../../components/UsernamePickerModal/UsernamePickerModal";
+import { useAtomicDbAnalysis } from "../../hooks/useAtomicDbAnalysis";
+import { useAtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";
 import { useBoardDocument } from "../../hooks/useBoardDocument";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
 import { useOpeningExplorer } from "../../hooks/useOpeningExplorer";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import { useUsernamePicker } from "../../hooks/useUsernamePicker";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
+import { atomicDbPositionUrl } from "../../utils/atomicDb";
 import { lichessAtomicAnalysisUrl } from "../../utils/lichess";
 import {
   buildOpeningExplorerUrl,
@@ -34,8 +42,8 @@ import {
   fetchExplorerApiResponse,
 } from "../../utils/openingExplorer";
 
-const MIN_MOVE_PANEL_HEIGHT = 86;
-const MIN_EXPLORER_PANEL_HEIGHT = 220;
+const MIN_MOVE_PANEL_HEIGHT = 0;
+const MIN_EXPLORER_PANEL_HEIGHT = 12;
 const EXPLORER_RESIZE_STEP = 24;
 
 type ExplorerScope = "general" | "player";
@@ -237,8 +245,8 @@ export const AnalysisPage = () => {
   const boardPanelRef = useRef<HTMLDivElement | null>(null);
   const rightPanelRef = useRef<HTMLElement | null>(null);
   const movePanelRef = useRef<HTMLDivElement | null>(null);
-  const moveSettingsRef = useRef<HTMLDivElement | null>(null);
   const [boardState, setBoardState] = useState<ChessboardState | null>(null);
+  const [atomicDbEngineSettings, setAtomicDbEngineSettings] = useAtomicDbEngineSettings();
   const [boardSize, setBoardSize] = usePersistedState(
     BOARD_SIZE_STORAGE_KEY,
     boardSizeSchema,
@@ -248,7 +256,6 @@ export const AnalysisPage = () => {
   const [orientation, setOrientation] = useState<"white" | "black">("white");
   const [navigation, setNavigation] = useState<SolutionNavigation | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [moveSettingsOpen, setMoveSettingsOpen] = useState(false);
   const [explorerOpen, setExplorerOpen] = useState(true);
   const [movePanelHeight, setMovePanelHeight] = useState<number | null>(null);
   const [explorerResizing, setExplorerResizing] = useState(false);
@@ -286,6 +293,7 @@ export const AnalysisPage = () => {
 
   const moveList = boardState?.lineMoves ?? [];
   const currentFen = boardState?.fen || STARTING_FEN;
+  const atomicDbAnalysis = useAtomicDbAnalysis(currentFen, atomicDbEngineSettings.enabled);
   const currentLichessAnalysisUrl = lichessAtomicAnalysisUrl(currentFen);
   const currentPly = boardState?.lineIndex ?? 0;
   const analysisPageStyle = {
@@ -334,30 +342,6 @@ export const AnalysisPage = () => {
   const flipBoard = useCallback((): void => {
     setOrientation((current) => (current === "white" ? "black" : "white"));
   }, []);
-
-  useEffect(() => {
-    if (!moveSettingsOpen) return;
-
-    const closeMoveSettings = (event: PointerEvent): void => {
-      const target = event.target;
-      if (target instanceof Node && moveSettingsRef.current?.contains(target)) return;
-
-      setMoveSettingsOpen(false);
-    };
-
-    const closeMoveSettingsOnEscape = (event: KeyboardEvent): void => {
-      if (event.key === "Escape") {
-        setMoveSettingsOpen(false);
-      }
-    };
-
-    window.addEventListener("pointerdown", closeMoveSettings);
-    window.addEventListener("keydown", closeMoveSettingsOnEscape);
-    return () => {
-      window.removeEventListener("pointerdown", closeMoveSettings);
-      window.removeEventListener("keydown", closeMoveSettingsOnEscape);
-    };
-  }, [moveSettingsOpen]);
 
   const requestBoardWheelNavigation = useCallback(
     (command: "next" | "previous"): void => setNavigation({ type: "command", command }),
@@ -442,8 +426,23 @@ export const AnalysisPage = () => {
     const panel = rightPanelRef.current;
     if (!panel) return null;
 
-    const panelHeight = panel.getBoundingClientRect().height;
-    const maxHeight = Math.max(MIN_MOVE_PANEL_HEIGHT, panelHeight - MIN_EXPLORER_PANEL_HEIGHT);
+    const panelStyles = window.getComputedStyle(panel);
+    const panelContentHeight =
+      panel.clientHeight -
+      (Number.parseFloat(panelStyles.paddingTop) || 0) -
+      (Number.parseFloat(panelStyles.paddingBottom) || 0);
+    const rowGap = Number.parseFloat(panelStyles.rowGap) || 0;
+    const toolbar = panel.querySelector<HTMLElement>(".analysisBottomToolbar");
+    const toolbarStyles = toolbar ? window.getComputedStyle(toolbar) : null;
+    const toolbarOuterHeight = toolbar
+      ? toolbar.getBoundingClientRect().height +
+        (Number.parseFloat(toolbarStyles?.marginTop ?? "0") || 0) +
+        (Number.parseFloat(toolbarStyles?.marginBottom ?? "0") || 0)
+      : 0;
+    const maxHeight = Math.max(
+      MIN_MOVE_PANEL_HEIGHT,
+      panelContentHeight - toolbarOuterHeight - rowGap * 2 - MIN_EXPLORER_PANEL_HEIGHT,
+    );
     return Math.round(Math.min(Math.max(nextHeight, MIN_MOVE_PANEL_HEIGHT), maxHeight));
   }, []);
 
@@ -630,7 +629,7 @@ export const AnalysisPage = () => {
       const isExplorerMoveShortcut = shortcutIndex !== null;
 
       if (
-        (key !== "e" && key !== "f" && !isExplorerMoveShortcut) ||
+        (key !== "e" && key !== "f" && key !== "l" && !isExplorerMoveShortcut) ||
         event.metaKey ||
         event.ctrlKey ||
         event.altKey
@@ -655,6 +654,8 @@ export const AnalysisPage = () => {
 
       if (key === "e") {
         setExplorerOpen((open) => !open);
+      } else if (key === "l") {
+        setAtomicDbEngineSettings((current) => ({ ...current, enabled: !current.enabled }));
       } else {
         flipBoard();
       }
@@ -662,7 +663,15 @@ export const AnalysisPage = () => {
 
     window.addEventListener("keydown", handleAnalysisShortcut, { capture: true });
     return () => window.removeEventListener("keydown", handleAnalysisShortcut, { capture: true });
-  }, [explorerMoves, explorerOpen, explorerStatus, filtersOpen, flipBoard, usernamePickerOpen]);
+  }, [
+    explorerMoves,
+    explorerOpen,
+    explorerStatus,
+    filtersOpen,
+    flipBoard,
+    setAtomicDbEngineSettings,
+    usernamePickerOpen,
+  ]);
 
   return (
     <section className="analysisPage" style={analysisPageStyle}>
@@ -675,49 +684,30 @@ export const AnalysisPage = () => {
       <aside
         ref={rightPanelRef}
         className={`analysisPanel analysisRightPanel ${explorerOpen ? "explorerOpen" : "explorerCollapsed"} ${
-          explorerResizing ? "explorerResizing" : ""
-        }`}
+          movePanelHeight === MIN_MOVE_PANEL_HEIGHT ? "movesCollapsed" : ""
+        } ${explorerResizing ? "explorerResizing" : ""}`}
         style={rightPanelStyle}
         aria-label="Analysis controls"
       >
         <div className="analysisMovePanel" ref={movePanelRef}>
-          <div className="analysisSectionTitle">
-            <span>Moves</span>
-            <div className="analysisMoveSettings" ref={moveSettingsRef}>
-              <button
-                type="button"
-                className="analysisMoveSettingsButton"
-                aria-label="Moves settings"
-                aria-haspopup="menu"
-                aria-expanded={moveSettingsOpen}
-                aria-controls="analysis-move-settings-menu"
-                title="Moves settings"
-                onClick={() => setMoveSettingsOpen((open) => !open)}
-              >
-                <FontAwesomeIcon icon={faGear} />
-              </button>
-              {moveSettingsOpen ? (
-                <div
-                  className="analysisMoveSettingsMenu"
-                  id="analysis-move-settings-menu"
-                  role="menu"
-                >
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      flipBoard();
-                      setMoveSettingsOpen(false);
-                    }}
-                  >
-                    <FontAwesomeIcon icon={faArrowsRotate} />
-                    <span>Flip board</span>
-                  </button>
-                </div>
-              ) : null}
-            </div>
+          <AtomicDbEngineControls
+            fen={currentFen}
+            analysis={atomicDbAnalysis}
+            settings={atomicDbEngineSettings}
+            setSettings={setAtomicDbEngineSettings}
+            onDisable={() => setHoveredExplorerMoveUci(null)}
+            onFlipBoard={flipBoard}
+          />
+          <div className="analysisMoveContent">
+            <AtomicDbEngine
+              fen={currentFen}
+              settings={atomicDbEngineSettings}
+              analysis={atomicDbAnalysis}
+              onPlayMove={playExplorerMove}
+              onHoverMove={setHoveredExplorerMoveUci}
+            />
+            <PlayedMoves moves={moveList} currentPly={currentPly} onNavigate={navigateToPly} />
           </div>
-          <PlayedMoves moves={moveList} currentPly={currentPly} onNavigate={navigateToPly} />
         </div>
 
         {explorerOpen ? (
@@ -728,6 +718,19 @@ export const AnalysisPage = () => {
               role="separator"
               tabIndex={0}
               aria-orientation="horizontal"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={
+                movePanelHeight === null
+                  ? 32
+                  : Math.min(
+                      100,
+                      Math.round(
+                        (movePanelHeight / Math.max(1, rightPanelRef.current?.clientHeight ?? 1)) *
+                          100,
+                      ),
+                    )
+              }
               aria-label="Resize moves and opening explorer"
               title="Resize moves and opening explorer"
               onPointerDown={handleExplorerResizePointerDown}
@@ -995,15 +998,28 @@ export const AnalysisPage = () => {
           onStateChange: setBoardState,
         }}
         boardOverlay={
-          <button
-            type="button"
-            className="analysisBoardResizeHandle"
-            aria-label="Resize analysis board"
-            title="Resize board"
-            onPointerDown={handleBoardResizePointerDown}
-          />
+          <>
+            <AtomicDbEvalBar
+              fen={currentFen}
+              analysis={atomicDbAnalysis}
+              enabled={atomicDbEngineSettings.enabled}
+              orientation={orientation}
+            />
+            <button
+              type="button"
+              className="analysisBoardResizeHandle"
+              aria-label="Resize analysis board"
+              title="Resize board"
+              onPointerDown={handleBoardResizePointerDown}
+            />
+          </>
         }
         lichessHref={currentLichessAnalysisUrl}
+        atomicDbHref={
+          atomicDbAnalysis.status === "ready" && atomicDbAnalysis.result?.position?.key
+            ? atomicDbPositionUrl(atomicDbAnalysis.result.position.key)
+            : undefined
+        }
         document={boardDocument}
       />
     </section>

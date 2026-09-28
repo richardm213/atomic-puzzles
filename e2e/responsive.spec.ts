@@ -34,3 +34,19 @@ test("puzzle solver keeps its primary controls within the mobile viewport", asyn
   }));
   expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);
 });
+
+for (const path of ["/analysis", "/practice"] as const) {
+  test(`${path} light mode stays within the mobile viewport`, async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("atomic-puzzles.theme", JSON.stringify("light"));
+    });
+    await page.goto(path);
+    await expect(page.locator(".cg-board")).toBeVisible();
+
+    const dimensions = await page.evaluate(() => ({
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+    }));
+    expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);
+  });
+}

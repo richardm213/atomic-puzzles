@@ -126,7 +126,15 @@ export const OpeningDatabaseDisplay = ({
 
   return (
     <>
-      <table className="analysisExplorerTable">
+      <table
+        className={`analysisExplorerTable ${showPerformance ? "withPerformance" : ""}`}
+      >
+        <colgroup>
+          <col className="analysisExplorerMoveColumn" />
+          <col className="analysisExplorerGamesColumn" />
+          {showPerformance ? <col className="analysisExplorerPerformanceColumn" /> : null}
+          <col className="analysisExplorerWinRateColumn" />
+        </colgroup>
         <thead>
           <tr>
             <th>Move</th>

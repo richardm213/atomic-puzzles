@@ -186,4 +186,16 @@
     0 5px 12px color-mix(in srgb, var(--color-primary) 12%, transparent);
   --nav-shadow: 0 10px 30px color-mix(in srgb, var(--color-muted) 8%, transparent);
   --dropdown-panel-bg: var(--color-panel-strong);
+  --analysis-workspace-panel-strong: #f2f6fb;
+  --analysis-workspace-panel-deep: #dfe7f1;
+  --analysis-workspace-text: #17253a;
+  --analysis-workspace-heading: #0b1729;
+  --analysis-workspace-muted: #30445f;
+  --analysis-workspace-subtle: #405776;
+  --analysis-workspace-primary: #2854ca;
+  --analysis-workspace-primary-hover: #1f45ad;
+  --analysis-workspace-primary-soft: #3158b9;
+  --analysis-workspace-primary-pale: #234aa9;
+  --analysis-workspace-cyan: #0d7478;
+  --analysis-workspace-cyan-bright: #076d80;
 }
