@@ -89,7 +89,7 @@ export const AtomicDbEngineControls = ({
         </span>
       </button>
       <strong className="atomicDbTopEvaluation" aria-live="polite">
-        {view.evaluationLabel}
+        {view.evaluation.type === "unknown" ? null : view.evaluationLabel}
       </strong>
       <span className="atomicDbTopSource">
         AtomicDB
