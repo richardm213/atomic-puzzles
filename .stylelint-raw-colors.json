@@ -8,7 +8,7 @@
     "#fca5a5",
     "#ffffff"
   ],
-  "src/pages/Analysis/Analysis.css": [
+  "src/features/analysisWorkspace/AnalysisWorkspace.css": [
     "#10233f",
     "#172033",
     "#17305d",

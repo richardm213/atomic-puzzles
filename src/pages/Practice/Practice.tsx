@@ -1,4 +1,3 @@
-import "../Analysis/Analysis.css";
 import "./Practice.css";
 
 import {
@@ -31,14 +30,16 @@ import {
   isTextEntryTarget,
   shortcutIndexFromKeyboardEvent,
 } from "../../components/Chessboard/boardShortcuts";
-import {
-  OpeningDatabaseDisplay,
-  type OpeningDatabaseMove,
-} from "../../components/OpeningDatabaseDisplay/OpeningDatabaseDisplay";
-import { PlaybackButtons } from "../../components/PlaybackButtons/PlaybackButtons";
+import type { OpeningDatabaseMove } from "../../components/OpeningDatabaseDisplay/OpeningDatabaseDisplay";
 import { PlayedMoves } from "../../components/PlayedMoves/PlayedMoves";
 import { Seo } from "../../components/Seo/Seo";
 import { UsernamePickerModal } from "../../components/UsernamePickerModal/UsernamePickerModal";
+import { AnalysisToolbar } from "../../features/analysisWorkspace/AnalysisToolbar";
+import {
+  AnalysisWorkspaceLayout,
+  AnalysisWorkspacePanel,
+} from "../../features/analysisWorkspace/AnalysisWorkspaceLayout";
+import { OpeningExplorerPanel } from "../../features/analysisWorkspace/OpeningExplorerPanel";
 import { useAtomicDbAnalysis } from "../../hooks/useAtomicDbAnalysis";
 import { useAtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";
 import { useBoardDocument } from "../../hooks/useBoardDocument";
@@ -975,15 +976,15 @@ export const PracticePage = () => {
   } as CSSProperties;
 
   return (
-    <section className="analysisPage practicePage" style={pageStyle}>
+    <AnalysisWorkspaceLayout className="practicePage" style={pageStyle}>
       <Seo
         title="Opening Database Practice"
         description="Practice atomic openings against the general database or a selected player's games."
         path="/practice"
       />
 
-      <aside
-        className={`analysisPanel practicePanel ${settingsOpen ? "dbMovesCollapsed" : ""}`}
+      <AnalysisWorkspacePanel
+        className={`practicePanel ${settingsOpen ? "dbMovesCollapsed" : ""}`}
         aria-label="Practice controls"
       >
         <div className="practiceSessionControls" role="group" aria-label="Practice session">
@@ -1316,57 +1317,50 @@ export const PracticePage = () => {
         ) : null}
 
         {!movesOpen && !settingsOpen ? (
-          <section className="practiceMovesPanel" aria-label="Database moves">
-            <div className="practiceMoveTableWrap">
-              <OpeningDatabaseDisplay
-                moves={practiceMoves}
-                recentGames={recentGames}
-                status={status}
-                error={error}
-                emptyMessage={
-                  opponentSource === "player" && opponentUsernames.length === 0
-                    ? "Choose a player or use the general database."
-                    : "No database continuation."
-                }
-                showPerformance={opponentSource === "player"}
-                orientation={side}
-                currentPly={currentPly}
-                onPlayMove={playPracticeMove}
-                onHoverMove={setHoveredMoveUci}
-                showInlineError={false}
-              />
-            </div>
-          </section>
+          <OpeningExplorerPanel
+            className="practiceMovesPanel"
+            ariaLabel="Database moves"
+            tableClassName="practiceMoveTableWrap"
+            displayProps={{
+              moves: practiceMoves,
+              recentGames,
+              status,
+              error,
+              emptyMessage:
+                opponentSource === "player" && opponentUsernames.length === 0
+                  ? "Choose a player or use the general database."
+                  : "No database continuation.",
+              showPerformance: opponentSource === "player",
+              orientation: side,
+              currentPly,
+              onPlayMove: playPracticeMove,
+              onHoverMove: setHoveredMoveUci,
+              showInlineError: false,
+            }}
+          />
         ) : null}
 
-        <div className="analysisBottomToolbar practiceToolbar" aria-label="Practice navigation">
-          <button
-            type="button"
-            className={`analysisToolbarButton ${!movesOpen && !settingsOpen ? "active" : ""}`}
-            aria-label={movesOpen || settingsOpen ? "Show database moves" : "Show played moves"}
-            title={movesOpen || settingsOpen ? "Show database moves (E)" : "Show played moves (E)"}
-            aria-pressed={!movesOpen && !settingsOpen}
-            onClick={() => {
-              if (settingsOpen || movesOpen) {
-                setSettingsOpen(false);
-                setMovesOpen(false);
-              } else {
-                setMovesOpen(true);
-              }
-            }}
-          >
-            <FontAwesomeIcon icon={faBookOpen} />
-          </button>
-          <PlaybackButtons
-            buttonClassName="analysisToolbarButton"
-            canStart={canStepBack}
-            canPrevious={canStepBack}
-            canNext={canStepForward}
-            canEnd={canStepForward}
-            onNavigate={requestNavigation}
-          />
-        </div>
-      </aside>
+        <AnalysisToolbar
+          active={!movesOpen && !settingsOpen}
+          ariaLabel="Practice navigation"
+          canStepBack={canStepBack}
+          canStepForward={canStepForward}
+          className="practiceToolbar"
+          onNavigate={requestNavigation}
+          onToggle={() => {
+            if (settingsOpen || movesOpen) {
+              setSettingsOpen(false);
+              setMovesOpen(false);
+            } else {
+              setMovesOpen(true);
+            }
+          }}
+          toggleAriaLabel={movesOpen || settingsOpen ? "Show database moves" : "Show played moves"}
+          toggleTitle={
+            movesOpen || settingsOpen ? "Show database moves (E)" : "Show played moves (E)"
+          }
+        />
+      </AnalysisWorkspacePanel>
 
       {usernamePickerOpen ? (
         <UsernamePickerModal
@@ -1444,6 +1438,6 @@ export const PracticePage = () => {
           </button>
         </div>
       ) : null}
-    </section>
+    </AnalysisWorkspaceLayout>
   );
 };

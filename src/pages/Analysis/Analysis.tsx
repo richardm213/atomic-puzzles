@@ -1,5 +1,3 @@
-import "./Analysis.css";
-
 import { faArrowsRotate, faBookOpen, faGear, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
@@ -21,11 +19,18 @@ import {
   isTextEntryTarget,
   shortcutIndexFromKeyboardEvent,
 } from "../../components/Chessboard/boardShortcuts";
-import { OpeningDatabaseDisplay } from "../../components/OpeningDatabaseDisplay/OpeningDatabaseDisplay";
-import { PlaybackButtons } from "../../components/PlaybackButtons/PlaybackButtons";
 import { pairPlayedMoves, PlayedMoves } from "../../components/PlayedMoves/PlayedMoves";
 import { Seo } from "../../components/Seo/Seo";
 import { UsernamePickerModal } from "../../components/UsernamePickerModal/UsernamePickerModal";
+import { AnalysisToolbar } from "../../features/analysisWorkspace/AnalysisToolbar";
+import {
+  AnalysisWorkspaceLayout,
+  AnalysisWorkspacePanel,
+} from "../../features/analysisWorkspace/AnalysisWorkspaceLayout";
+import {
+  OpeningExplorerPanel,
+  OpeningExplorerResizeHandle,
+} from "../../features/analysisWorkspace/OpeningExplorerPanel";
 import { useAtomicDbAnalysis } from "../../hooks/useAtomicDbAnalysis";
 import { useAtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";
 import { useBoardDocument } from "../../hooks/useBoardDocument";
@@ -308,6 +313,15 @@ export const AnalysisPage = () => {
     explorerOpen && movePanelHeight !== null
       ? ({ "--analysis-move-panel-height": `${movePanelHeight}px` } as CSSProperties)
       : undefined;
+  const explorerSplitValue =
+    movePanelHeight === null
+      ? 32
+      : Math.min(
+          100,
+          Math.round(
+            (movePanelHeight / Math.max(1, rightPanelRef.current?.clientHeight ?? 1)) * 100,
+          ),
+        );
 
   const movePairs = pairPlayedMoves(moveList);
 
@@ -674,16 +688,16 @@ export const AnalysisPage = () => {
   ]);
 
   return (
-    <section className="analysisPage" style={analysisPageStyle}>
+    <AnalysisWorkspaceLayout style={analysisPageStyle}>
       <Seo
         title="Analysis board"
         description="Analyze atomic chess positions and browse opening explorer filters."
         path="/analysis"
       />
 
-      <aside
+      <AnalysisWorkspacePanel
         ref={rightPanelRef}
-        className={`analysisPanel analysisRightPanel ${explorerOpen ? "explorerOpen" : "explorerCollapsed"} ${
+        className={`analysisRightPanel ${explorerOpen ? "explorerOpen" : "explorerCollapsed"} ${
           movePanelHeight === MIN_MOVE_PANEL_HEIGHT ? "movesCollapsed" : ""
         } ${movePanelHeight !== null ? "customExplorerSplit" : ""} ${
           explorerResizing ? "explorerResizing" : ""
@@ -715,28 +729,32 @@ export const AnalysisPage = () => {
         </div>
 
         {explorerOpen ? (
-          <section className="analysisExplorerPanel" aria-label="Opening explorer">
-            {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- a focusable separator is the resize control */}
-            <div
-              className="analysisExplorerResizeHandle"
-              role="separator"
-              tabIndex={0}
-              aria-orientation="horizontal"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={
-                movePanelHeight === null
-                  ? 32
-                  : Math.min(
-                      100,
-                      Math.round(
-                        (movePanelHeight / Math.max(1, rightPanelRef.current?.clientHeight ?? 1)) *
-                          100,
-                      ),
-                    )
-              }
-              aria-label="Resize moves and opening explorer"
-              title="Resize moves and opening explorer"
+          <OpeningExplorerPanel
+            className="analysisExplorerPanel"
+            ariaLabel="Opening explorer"
+            tableClassName="analysisExplorerTableWrap"
+            displayProps={
+              showExplorerResults
+                ? {
+                    moves: explorerMoves,
+                    recentGames,
+                    status: explorerStatus,
+                    error: explorerError,
+                    emptyMessage:
+                      explorerScope === "player" && !username.trim()
+                        ? "Enter a username for player explorer."
+                        : "No database games for this position.",
+                    showPerformance: explorerScope === "player",
+                    orientation,
+                    currentPly,
+                    onPlayMove: playExplorerMove,
+                    onHoverMove: setHoveredExplorerMoveUci,
+                  }
+                : undefined
+            }
+          >
+            <OpeningExplorerResizeHandle
+              valueNow={explorerSplitValue}
               onPointerDown={handleExplorerResizePointerDown}
               onKeyDown={handleExplorerResizeKeyDown}
             />
@@ -921,51 +939,21 @@ export const AnalysisPage = () => {
                 </div>
               </div>
             ) : null}
-
-            {showExplorerResults ? (
-              <div className="analysisExplorerTableWrap">
-                <OpeningDatabaseDisplay
-                  moves={explorerMoves}
-                  recentGames={recentGames}
-                  status={explorerStatus}
-                  error={explorerError}
-                  emptyMessage={
-                    explorerScope === "player" && !username.trim()
-                      ? "Enter a username for player explorer."
-                      : "No database games for this position."
-                  }
-                  showPerformance={explorerScope === "player"}
-                  orientation={orientation}
-                  currentPly={currentPly}
-                  onPlayMove={playExplorerMove}
-                  onHoverMove={setHoveredExplorerMoveUci}
-                />
-              </div>
-            ) : null}
-          </section>
+          </OpeningExplorerPanel>
         ) : null}
 
-        <div className="analysisBottomToolbar" aria-label="Analysis menu">
-          <button
-            type="button"
-            className={`analysisToolbarButton explorer ${explorerOpen ? "active" : ""}`}
-            aria-label={explorerOpen ? "Hide opening explorer" : "Show opening explorer"}
-            aria-pressed={explorerOpen}
-            title="Opening explorer"
-            onClick={() => setExplorerOpen((open) => !open)}
-          >
-            <FontAwesomeIcon icon={faBookOpen} />
-          </button>
-          <PlaybackButtons
-            buttonClassName="analysisToolbarButton"
-            canStart={canStepBack}
-            canPrevious={canStepBack}
-            canNext={canStepForward}
-            canEnd={canStepForward}
-            onNavigate={requestNavigation}
-          />
-        </div>
-      </aside>
+        <AnalysisToolbar
+          active={explorerOpen}
+          ariaLabel="Analysis menu"
+          canStepBack={canStepBack}
+          canStepForward={canStepForward}
+          onNavigate={requestNavigation}
+          onToggle={() => setExplorerOpen((open) => !open)}
+          toggleAriaLabel={explorerOpen ? "Hide opening explorer" : "Show opening explorer"}
+          toggleClassName="explorer"
+          toggleTitle="Opening explorer"
+        />
+      </AnalysisWorkspacePanel>
 
       {usernamePickerOpen ? (
         <UsernamePickerModal
@@ -1026,6 +1014,6 @@ export const AnalysisPage = () => {
         }
         document={boardDocument}
       />
-    </section>
+    </AnalysisWorkspaceLayout>
   );
 };
