@@ -18,7 +18,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { z } from "zod";
 
 import {
   AtomicDbEngine,
@@ -46,7 +45,6 @@ import { useBoardDocument } from "../../hooks/useBoardDocument";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
 import { useCopyFeedback } from "../../hooks/useCopyFeedback";
 import { type OpeningExplorerRequest, useOpeningExplorer } from "../../hooks/useOpeningExplorer";
-import { usePersistedState } from "../../hooks/usePersistedState";
 import { useUsernamePicker } from "../../hooks/useUsernamePicker";
 import { findFairyStockfishMove } from "../../lib/practice/fairyStockfish";
 import { movePrefix } from "../../lib/puzzles/solutionPgn";
@@ -60,13 +58,19 @@ import {
   fetchExplorerApiResponse,
   mergeExplorerApiResponses,
 } from "../../utils/openingExplorer";
+import {
+  MAX_PRACTICE_PLAYERS,
+  normalizeClockValue,
+  normalizePracticeUsernames,
+  type OpponentMode,
+  type OpponentSource,
+  type PlayerContinuation,
+  type PracticeSide,
+  usePracticeSettings,
+} from "./usePracticeSettings";
 
 const PRACTICE_AUTOMOVE_MIN_THINK_MS = 520;
 const PLAYER_MIN_RATING = 1700;
-const PRACTICE_SETTINGS_STORAGE_KEY = "atomic-puzzles.practice.settings";
-const MAX_PRACTICE_PLAYERS = 8;
-const DEFAULT_CLOCK_MINUTES = 3;
-const DEFAULT_CLOCK_INCREMENT_SECONDS = 0;
 const buildPracticePgn = (rootFen: string, moveText = ""): string =>
   [
     '[Variant "Atomic"]',
@@ -77,44 +81,9 @@ const buildPracticePgn = (rootFen: string, moveText = ""): string =>
 type PracticeMove = OpeningDatabaseMove;
 
 type PracticeEngineStatus = "idle" | "thinking" | "error";
-type PracticeSide = "white" | "black";
-type OpponentMode = "frequency" | "random" | "popular";
-type OpponentSource = "general" | "player";
-type PlayerContinuation = "general" | "stockfish" | "manual";
 type PendingAutoMove = {
   fen: string;
   uci: string;
-};
-type StoredPracticeSettings = {
-  side: PracticeSide;
-  opponentMode: OpponentMode;
-  opponentSource: OpponentSource;
-  opponentUsernames: string[];
-  opponentUsername?: string;
-  allowMultiplePlayers: boolean;
-  playerContinuation: PlayerContinuation;
-  continueWithGeneralDb?: boolean;
-  clockMinutes: number;
-  clockIncrementSeconds: number;
-  clockEnabled: boolean;
-};
-
-const DEFAULT_SETTINGS: StoredPracticeSettings = {
-  side: "white",
-  opponentMode: "frequency",
-  opponentSource: "general",
-  opponentUsernames: [],
-  allowMultiplePlayers: false,
-  playerContinuation: "stockfish",
-  clockMinutes: DEFAULT_CLOCK_MINUTES,
-  clockIncrementSeconds: DEFAULT_CLOCK_INCREMENT_SECONDS,
-  clockEnabled: true,
-};
-
-const normalizeClockValue = (value: unknown, fallback: number, maximum: number): number => {
-  const numericValue = Number(value);
-  if (!Number.isFinite(numericValue)) return fallback;
-  return Math.min(maximum, Math.max(0, Math.floor(numericValue)));
 };
 
 const formatClockTime = (milliseconds: number): string => {
@@ -124,59 +93,6 @@ const formatClockTime = (milliseconds: number): string => {
   const seconds = totalSeconds % 60;
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 };
-
-const normalizePracticeUsernames = (value: unknown): string[] => {
-  const usernames = Array.isArray(value) ? value : typeof value === "string" ? [value] : [];
-  const seenUsernames = new Set<string>();
-
-  return usernames
-    .map((username) => String(username).trim())
-    .filter((username) => {
-      if (!username) return false;
-
-      const normalizedUsername = username.toLowerCase();
-      if (seenUsernames.has(normalizedUsername)) return false;
-
-      seenUsernames.add(normalizedUsername);
-      return true;
-    })
-    .slice(0, MAX_PRACTICE_PLAYERS);
-};
-
-const practiceSettingsSchema = z
-  .record(z.string(), z.unknown())
-  .transform((value): StoredPracticeSettings => {
-    const allowMultiplePlayers = value.allowMultiplePlayers === true;
-    const opponentUsernames = normalizePracticeUsernames(
-      Array.isArray(value.opponentUsernames) && value.opponentUsernames.length
-        ? value.opponentUsernames
-        : value.opponentUsername,
-    );
-
-    return {
-      side: value.side === "black" ? "black" : "white",
-      opponentMode:
-        value.opponentMode === "random" || value.opponentMode === "popular"
-          ? value.opponentMode
-          : "frequency",
-      opponentSource: value.opponentSource === "player" ? "player" : "general",
-      opponentUsernames: allowMultiplePlayers ? opponentUsernames : opponentUsernames.slice(0, 1),
-      allowMultiplePlayers,
-      playerContinuation:
-        value.playerContinuation === "manual"
-          ? "manual"
-          : value.playerContinuation === "general" || value.continueWithGeneralDb === true
-            ? "general"
-            : "stockfish",
-      clockMinutes: normalizeClockValue(value.clockMinutes, DEFAULT_CLOCK_MINUTES, 180),
-      clockIncrementSeconds: normalizeClockValue(
-        value.clockIncrementSeconds,
-        DEFAULT_CLOCK_INCREMENT_SECONDS,
-        60,
-      ),
-      clockEnabled: value.clockEnabled !== false,
-    };
-  });
 
 const oppositeSide = (side: PracticeSide): PracticeSide => (side === "white" ? "black" : "white");
 
@@ -262,11 +178,7 @@ export const PracticePage = () => {
     storageKey: "atomic-puzzles.practice.atomicdb-engine",
     defaultEnabled: false,
   });
-  const [settings, setSettings] = usePersistedState<StoredPracticeSettings>(
-    PRACTICE_SETTINGS_STORAGE_KEY,
-    practiceSettingsSchema,
-    DEFAULT_SETTINGS,
-  );
+  const { settings, setSettings, updateSettings } = usePracticeSettings();
   const {
     side,
     opponentMode,
@@ -278,11 +190,6 @@ export const PracticePage = () => {
     clockIncrementSeconds,
     clockEnabled,
   } = settings;
-  const updateSettings = useCallback(
-    (patch: Partial<StoredPracticeSettings>): void =>
-      setSettings((current) => ({ ...current, ...patch })),
-    [setSettings],
-  );
   const boardPanelRef = useRef<HTMLDivElement | null>(null);
   const remainingClockMsRef = useRef(clockMinutes * 60_000);
   const lastAutoFenRef = useRef("");

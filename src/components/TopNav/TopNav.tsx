@@ -6,11 +6,9 @@ import {
   faChartLine,
   faCheck,
   faChevronDown,
-  faComment,
   faGear,
   faMagnifyingGlass,
   faMoon,
-  faReply,
   faRightFromBracket,
   faRightToBracket,
   faSun,
@@ -39,28 +37,12 @@ import {
   notificationsQueryOptions,
   unreadNotificationCountQueryOptions,
 } from "../../lib/community/notificationQueries";
-import {
-  markNotificationsRead,
-  notificationCopy,
-  type UserNotification,
-} from "../../lib/community/notifications";
+import { markNotificationsRead, type UserNotification } from "../../lib/community/notifications";
 import type { UsernameSearchSuggestion } from "../../lib/users/usernameSearch";
 import { appAssetPath } from "../../utils/appAssetPath";
-import { formatLocalDateTime } from "../../utils/formatters";
 import { normalizeUsername } from "../../utils/playerNames";
-
-type NavItem = {
-  to: string;
-  label: string;
-  isActive: (pathname: string) => boolean;
-  hideInCompactNav?: boolean;
-  linkToPage?: boolean;
-  children?: {
-    to: string;
-    label: string;
-    isActive: (pathname: string) => boolean;
-  }[];
-};
+import { NavNotificationsPanel } from "./NavNotificationsPanel";
+import { navItems } from "./topNavItems";
 
 type OpenPanel =
   | { type: "navDropdown"; navItemTo: string }
@@ -68,192 +50,10 @@ type OpenPanel =
   | { type: "profile" }
   | { type: "settings" };
 
-const navItems: NavItem[] = [
-  {
-    to: "/rankings",
-    label: "Rankings",
-    isActive: (pathname) => pathname === "/rankings" || pathname.startsWith("/rankings/"),
-    children: [
-      {
-        to: "/rankings",
-        label: "Monthly rankings",
-        isActive: (pathname) => pathname === "/rankings",
-      },
-      {
-        to: "/rankings/yearly",
-        label: "Yearly rankings",
-        isActive: (pathname) => pathname === "/rankings/yearly",
-      },
-      {
-        to: "/rankings/puzzles",
-        label: "Puzzle rankings",
-        isActive: (pathname) => pathname === "/rankings/puzzles",
-      },
-      {
-        to: "/rankings/openings",
-        label: "Opening rankings",
-        isActive: (pathname) => pathname === "/rankings/openings",
-      },
-    ],
-  },
-  {
-    to: "/solve",
-    label: "Puzzles",
-    isActive: (pathname) =>
-      pathname === "/solve" ||
-      pathname.startsWith("/solve/") ||
-      pathname.startsWith("/puzzles/") ||
-      pathname === "/dashboard",
-    children: [
-      {
-        to: "/solve",
-        label: "Solve puzzles",
-        isActive: (pathname) =>
-          pathname === "/solve" ||
-          (/^\/solve\/[^/]+$/.test(pathname) &&
-            pathname !== "/solve/sets" &&
-            pathname !== "/solve/custom-sets" &&
-            pathname !== "/solve/leaderboard" &&
-            pathname !== "/solve/history"),
-      },
-      {
-        to: "/dashboard",
-        label: "Puzzle dashboard",
-        isActive: (pathname) => pathname === "/dashboard" || pathname === "/solve/history",
-      },
-      {
-        to: "/solve/sets",
-        label: "Puzzle sets",
-        isActive: (pathname) => pathname === "/solve/sets",
-      },
-      {
-        to: "/solve/custom-sets",
-        label: "Custom sets",
-        isActive: (pathname) => pathname === "/solve/custom-sets",
-      },
-      {
-        to: "/puzzles/motifs",
-        label: "Tactical motifs",
-        isActive: (pathname) => pathname === "/puzzles/motifs",
-      },
-      {
-        to: "/puzzles/submit",
-        label: "Submit puzzles",
-        isActive: (pathname) => pathname === "/puzzles/submit",
-      },
-    ],
-  },
-  {
-    to: "/recent",
-    label: "Games",
-    isActive: (pathname) =>
-      pathname === "/recent" ||
-      pathname === "/matches" ||
-      pathname.startsWith("/matches/") ||
-      pathname === "/h2h" ||
-      pathname.startsWith("/h2h/"),
-    children: [
-      {
-        to: "/recent",
-        label: "Recent games",
-        isActive: (pathname) =>
-          pathname === "/recent" || pathname === "/matches" || pathname.startsWith("/matches/"),
-      },
-      {
-        to: "/h2h",
-        label: "H2H",
-        isActive: (pathname) => pathname === "/h2h" || pathname.startsWith("/h2h/"),
-      },
-    ],
-  },
-  {
-    to: "/tournaments",
-    label: "Tournaments",
-    isActive: (pathname) =>
-      pathname === "/tournaments" ||
-      pathname.startsWith("/tournaments/") ||
-      pathname === "/arenas" ||
-      pathname === "/calendar",
-    children: [
-      {
-        to: "/tournaments",
-        label: "Tournament archive",
-        isActive: (pathname) => pathname === "/tournaments" || pathname.startsWith("/tournaments/"),
-      },
-      {
-        to: "/arenas",
-        label: "Arena archive",
-        isActive: (pathname) => pathname === "/arenas",
-      },
-      {
-        to: "/calendar",
-        label: "Arena calendar",
-        isActive: (pathname) => pathname === "/calendar",
-      },
-    ],
-  },
-  {
-    to: "/community",
-    label: "Community",
-    hideInCompactNav: true,
-    isActive: (pathname) =>
-      pathname.startsWith("/community/") ||
-      pathname === "/comments" ||
-      pathname === "/users" ||
-      pathname.startsWith("/users/"),
-    children: [
-      {
-        to: "/users",
-        label: "Players",
-        isActive: (pathname) => pathname === "/users" || pathname.startsWith("/users/"),
-      },
-      {
-        to: "/community/puzzles",
-        label: "Puzzle votes",
-        isActive: (pathname) => pathname === "/community/puzzles",
-      },
-      {
-        to: "/community/users",
-        label: "User activity",
-        isActive: (pathname) => pathname === "/community/users",
-      },
-      {
-        to: "/comments",
-        label: "Comments",
-        isActive: (pathname) => pathname === "/comments",
-      },
-    ],
-  },
-  {
-    to: "/analysis",
-    label: "Analysis",
-    hideInCompactNav: true,
-    isActive: (pathname) => pathname === "/analysis" || pathname === "/practice",
-    children: [
-      {
-        to: "/analysis",
-        label: "Analysis board",
-        isActive: (pathname) => pathname === "/analysis",
-      },
-      {
-        to: "/practice",
-        label: "Practice",
-        isActive: (pathname) => pathname === "/practice",
-      },
-    ],
-  },
-];
-
 const PROFILE_USERNAME_STORAGE_PREFIX = "atomic-puzzles.profile-username";
 const SEARCH_SUGGESTION_MIN_LENGTH = 3;
 const SEARCH_SUGGESTION_DELAY_MS = 150;
 const NAV_DROPDOWN_CLOSE_DELAY_MS = 180;
-
-const notificationIcon = (notification: UserNotification) => {
-  if (notification.notification_type === "puzzle_approved") return faCheck;
-  if (notification.notification_type === "comment_reply") return faReply;
-  return faComment;
-};
 
 const getStoredProfileUsername = (username: string | null | undefined): string => {
   const normalizedUsername = normalizeUsername(username);
@@ -976,77 +776,16 @@ export const TopNav = () => {
               ) : null}
             </button>
             {notificationsOpen ? (
-              <section
-                className="navNotificationsPopup"
-                role="dialog"
-                aria-modal="false"
-                aria-labelledby="nav-notifications-title"
-              >
-                <header className="navNotificationsHeader">
-                  <div>
-                    <span>Inbox</span>
-                    <h2 id="nav-notifications-title">Notifications</h2>
-                  </div>
-                  {unreadNotificationCount > 0 ? (
-                    <button
-                      type="button"
-                      disabled={notificationsUpdating}
-                      onClick={() => void markPopupNotificationsRead()}
-                    >
-                      <FontAwesomeIcon icon={faCheck} />
-                      Mark all read
-                    </button>
-                  ) : null}
-                </header>
-                {notificationsLoading ? (
-                  <p className="navNotificationsStatus">Loading notifications…</p>
-                ) : null}
-                {notificationsError ? (
-                  <p className="navNotificationsError">{notificationsError}</p>
-                ) : null}
-                {!notificationsLoading && !notificationsError && notifications.length === 0 ? (
-                  <div className="navNotificationsEmpty">
-                    <FontAwesomeIcon icon={faBell} />
-                    <strong>You’re all caught up</strong>
-                  </div>
-                ) : null}
-                {notifications.length > 0 ? (
-                  <ol className="navNotificationList">
-                    {notifications.slice(0, 8).map((notification) => (
-                      <li key={notification.id}>
-                        <div
-                          className={`navNotificationRow ${notification.read_at ? "read" : "unread"}`}
-                        >
-                          <button
-                            type="button"
-                            className="navNotificationOpenButton"
-                            disabled={notificationsUpdating}
-                            onClick={() => void openPopupNotification(notification)}
-                          >
-                            <span className="navNotificationIcon" aria-hidden="true">
-                              <FontAwesomeIcon icon={notificationIcon(notification)} />
-                            </span>
-                            <span className="navNotificationCopy">
-                              <strong>{notificationCopy(notification)}</strong>
-                              <span>
-                                {`Puzzle #${notification.puzzle_id} · ${formatLocalDateTime(notification.created_at)}`}
-                              </span>
-                            </span>
-                            {!notification.read_at ? <span className="navNotificationDot" /> : null}
-                          </button>
-                        </div>
-                      </li>
-                    ))}
-                  </ol>
-                ) : null}
-                <Link
-                  className="navNotificationsSeeAll"
-                  to="/notifications"
-                  onClick={() => setOpenPanel(null)}
-                >
-                  See all notifications
-                </Link>
-              </section>
+              <NavNotificationsPanel
+                notifications={notifications}
+                unreadCount={unreadNotificationCount}
+                loading={notificationsLoading}
+                updating={notificationsUpdating}
+                error={notificationsError}
+                onMarkAllRead={() => void markPopupNotificationsRead()}
+                onOpenNotification={(notification) => void openPopupNotification(notification)}
+                onClose={() => setOpenPanel(null)}
+              />
             ) : null}
           </div>
         ) : null}

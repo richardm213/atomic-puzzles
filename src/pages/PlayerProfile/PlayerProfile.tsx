@@ -18,8 +18,6 @@ import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFi
 import { TimeControlFields } from "../../components/TimeControlFields/TimeControlFields";
 import {
   defaultMode,
-  defaultRatingMax,
-  defaultRatingMin,
   modeLabels,
   modeOptions,
   opponentRatingSliderMax,
@@ -29,10 +27,7 @@ import {
 import { useAppSettings } from "../../context/AppSettings";
 import type { RankHistoryMode } from "../../features/profile/favoriteOpponents";
 import { FavoriteOpponentsSection } from "../../features/profile/FavoriteOpponentsSection";
-import {
-  createDefaultProfileFilters,
-  isClientSidePagedSearch,
-} from "../../features/profile/profileFilters";
+import { isClientSidePagedSearch } from "../../features/profile/profileFilters";
 import {
   getProfileHistoryTabFromLocation,
   getRankHistoryViewFromLocation,
@@ -83,10 +78,6 @@ import { type AliasAccount, type AliasIdentityRow } from "../../lib/archive/alia
 import { fetchArchiveJson } from "../../lib/archive/client";
 import { getTimeControlOptions } from "../../lib/matches/collection";
 import { inferExternalGameSource } from "../../lib/matches/routes";
-import {
-  readStoredSourceFilters,
-  writeStoredSourceFilters,
-} from "../../lib/matches/sourceFilterStorage";
 import { profileAliasQueryOptions } from "../../lib/users/aliasQueries";
 import { registeredSiteUsernameQueryOptions } from "../../lib/users/userQueries";
 import {
@@ -98,6 +89,7 @@ import {
 import { getOpeningDisplayLabel } from "../../utils/openings";
 import { normalizeUsername } from "../../utils/playerNames";
 import { isToggleActionKey } from "../../utils/toggleActionKey";
+import { useProfileFilters } from "./useProfileFilters";
 
 const countOptions = [5, 10, 20];
 const matchPrefetchDelayMs = 750;
@@ -167,19 +159,8 @@ export const PlayerProfilePage = ({
   const [profileHistoryTab, setProfileHistoryTab] = useState<ProfileHistoryTab>(() =>
     getProfileHistoryTabFromLocation(),
   );
-  const [matchFiltersOpen, setMatchFiltersOpen] = useState(false);
   const [showRatingGraph, setShowRatingGraph] = useState(false);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
   const [expandedMatchKeys, setExpandedMatchKeys] = useState<string[]>([]);
-  const [opponentRatingMin, setOpponentRatingMin] = useState(defaultRatingMin);
-  const [opponentRatingMax, setOpponentRatingMax] = useState(defaultRatingMax);
-  const [opponentFilter, setOpponentFilter] = useState("");
-  const [startDateFilter, setStartDateFilter] = useState("");
-  const [endDateFilter, setEndDateFilter] = useState("");
-  const [sourceFilters, setSourceFilters] = useState(readStoredSourceFilters);
-  const [timeControlInitialFilter, setTimeControlInitialFilter] = useState("all");
-  const [timeControlIncrementFilter, setTimeControlIncrementFilter] = useState("all");
   const profileAliasQuery = useQuery({
     ...profileAliasQueryOptions(normalizedUsername),
     enabled: Boolean(normalizedUsername),
@@ -209,6 +190,33 @@ export const PlayerProfilePage = ({
   const puzzleDashboardUsername = puzzleDashboardAccountQuery.data ?? null;
   const profileDisplayUsername = String(username || "").trim() || canonicalUsername;
   const isBanned = Boolean(profileAliasEntry?.banned);
+  const {
+    matchFiltersOpen,
+    toggleMatchFilters,
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
+    appliedFilters,
+    applyFilters,
+    resetTimeControl,
+    opponentRatingMin,
+    setOpponentRatingMin,
+    opponentRatingMax,
+    setOpponentRatingMax,
+    opponentFilter,
+    setOpponentFilter,
+    startDateFilter,
+    setStartDateFilter,
+    endDateFilter,
+    setEndDateFilter,
+    sourceFilters,
+    setSourceFilter,
+    timeControlInitialFilter,
+    setTimeControlInitialFilter,
+    timeControlIncrementFilter,
+    setTimeControlIncrementFilter,
+  } = useProfileFilters(`${normalizedUsername}:${String(isBanned)}`);
   const bannedGameCounts = useQuery({
     queryKey: ["profile", canonicalUsername, "archived-game-counts"],
     queryFn: () =>
@@ -301,10 +309,7 @@ export const PlayerProfilePage = ({
   );
   const [bestMonthRankCount, setBestMonthRankCount] = useState(5);
   const [bestWinCount, setBestWinCount] = useState(5);
-  const [appliedFilters, setAppliedFilters] = useState(() => createDefaultProfileFilters());
-
   useEffect(() => {
-    const defaultFilters = createDefaultProfileFilters();
     setMatchHistoryMode(isBanned ? "all" : defaultMode);
     setBestWinMode(defaultMode);
     setBestRankMode(defaultMode);
@@ -312,18 +317,7 @@ export const PlayerProfilePage = ({
     setRankHistorySort(null);
     setRankHistorySortDirection("asc");
     setProfileHistoryTab(getProfileHistoryTabFromLocation());
-    setMatchFiltersOpen(false);
-    setPage(1);
     setExpandedMatchKeys([]);
-    setOpponentRatingMin(defaultFilters.opponentRatingMin);
-    setOpponentRatingMax(defaultFilters.opponentRatingMax);
-    setOpponentFilter(defaultFilters.opponentFilter);
-    setStartDateFilter(defaultFilters.startDateFilter);
-    setEndDateFilter(defaultFilters.endDateFilter);
-    setSourceFilters(defaultFilters.sourceFilters);
-    setTimeControlInitialFilter(defaultFilters.timeControlInitialFilter);
-    setTimeControlIncrementFilter(defaultFilters.timeControlIncrementFilter);
-    setAppliedFilters(defaultFilters);
   }, [isBanned, normalizedUsername]);
 
   useEffect(() => {
@@ -455,40 +449,11 @@ export const PlayerProfilePage = ({
 
   const handleSearchClick = () => {
     if (loadingMatches) return;
-    setPage(1);
-    setAppliedFilters({
-      opponentRatingMin,
-      opponentRatingMax,
-      opponentFilter,
-      startDateFilter,
-      endDateFilter,
-      sourceFilters: { ...sourceFilters },
-      timeControlInitialFilter,
-      timeControlIncrementFilter,
-    });
-  };
-  const setSourceFilter = (
-    source: keyof import("../../constants/matches").SourceFilters,
-    checked: boolean,
-  ): void => {
-    setSourceFilters((current) => {
-      const next = { ...current, [source]: checked };
-      writeStoredSourceFilters(next);
-      return next;
-    });
+    applyFilters();
   };
   const handleModeChange = (nextMode: ProfileMatchHistoryMode): void => {
-    const nextModeFilters = createDefaultProfileFilters();
-
     setMatchHistoryMode(nextMode);
-    setPage(1);
-    setTimeControlInitialFilter(nextModeFilters.timeControlInitialFilter);
-    setTimeControlIncrementFilter(nextModeFilters.timeControlIncrementFilter);
-    setAppliedFilters((current) => ({
-      ...current,
-      timeControlInitialFilter: nextModeFilters.timeControlInitialFilter,
-      timeControlIncrementFilter: nextModeFilters.timeControlIncrementFilter,
-    }));
+    resetTimeControl();
   };
   const handleProfileHistoryTabChange = (nextTab: ProfileHistoryTab): void => {
     if (profileHistoryTab === nextTab) return;
@@ -506,7 +471,7 @@ export const PlayerProfilePage = ({
     if (currentPage !== page) {
       setPage(currentPage);
     }
-  }, [currentPage, page]);
+  }, [currentPage, page, setPage]);
 
   const bestWins = useMemo(
     () => getBestWinsForMode(ratingDisplayByMode, bestWinMode, bestWinCount),
@@ -1162,7 +1127,7 @@ export const PlayerProfilePage = ({
                         className="profileMatchFilterToggle"
                         aria-expanded={matchFiltersOpen}
                         aria-controls="profile-match-filters"
-                        onClick={() => setMatchFiltersOpen((open) => !open)}
+                        onClick={toggleMatchFilters}
                       >
                         {matchFiltersOpen ? "Hide filters" : "Show filters"}
                       </button>
@@ -1185,7 +1150,6 @@ export const PlayerProfilePage = ({
                               value={pageSize}
                               onChange={(event) => {
                                 setPageSize(Number(event.target.value));
-                                setPage(1);
                               }}
                             >
                               {pageSizeOptions.map((value) => (

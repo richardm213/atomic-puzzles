@@ -47,12 +47,7 @@ import {
 } from "../../lib/puzzles/customPuzzleSets";
 import { updatePuzzleExplanation } from "../../lib/puzzles/puzzleExplanation";
 import { type PuzzleIssueCategory, reportPuzzleIssue } from "../../lib/puzzles/puzzleIssues";
-import {
-  loadPuzzleCatalog,
-  loadPuzzlesById,
-  loadPuzzleSolverIndex,
-  type Puzzle,
-} from "../../lib/puzzles/puzzleLibrary";
+import { loadPuzzlesById } from "../../lib/puzzles/puzzleLibrary";
 import {
   getPuzzleMotifParent,
   normalizePuzzleMotifTags,
@@ -90,6 +85,8 @@ import { formatLocalDateTime } from "../../utils/formatters";
 import { normalizeUsername } from "../../utils/playerNames";
 import { castlingRightsFromFen } from "./castlingRights";
 import { materialCountFromFen, type MaterialPieceRole } from "./materialCount";
+import { PuzzleIssueDialog, type PuzzleIssueStatus } from "./PuzzleIssueDialog";
+import { usePuzzleCatalog } from "./usePuzzleCatalog";
 
 const lichessAnalysisUrl = (fen: string | null | undefined): string => {
   if (!fen) return "https://lichess.org/analysis/atomic";
@@ -261,13 +258,13 @@ export const PuzzleSolverPage = () => {
   } = useParams({ strict: false });
   const { isLoading: isAuthLoading, login, user } = useAuth();
   const { pieceSet, showPuzzleTimer } = useAppSettings();
-  const [puzzles, setPuzzles] = useState<Puzzle[]>([]);
+  const { puzzles, setPuzzles, loadingError, setLoadingError, mergeLoadedPuzzles } =
+    usePuzzleCatalog(routePuzzleId, routeSetKey);
   const [attemptedPuzzleIds, setAttemptedPuzzleIds] = useState<Set<string>>(() => new Set());
   const [attemptedPuzzleIdsOwner, setAttemptedPuzzleIdsOwner] = useState<string | null>(null);
   const [resolvedAttemptedPuzzleIds, setResolvedAttemptedPuzzleIds] = useState<Set<string>>(
     () => new Set(),
   );
-  const [loadingError, setLoadingError] = useState("");
   const [history, setHistory] = useState<number[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [isMobileLayout, setIsMobileLayout] = useState(false);
@@ -311,12 +308,7 @@ export const PuzzleSolverPage = () => {
     "missing_alternate_solution",
   );
   const [reportIssueDetails, setReportIssueDetails] = useState("");
-  const [reportIssueStatus, setReportIssueStatus] = useState<
-    | { state: "idle" }
-    | { state: "submitting" }
-    | { state: "success" }
-    | { state: "error"; message: string }
-  >({ state: "idle" });
+  const [reportIssueStatus, setReportIssueStatus] = useState<PuzzleIssueStatus>({ state: "idle" });
   const [selectedMotifTag, setSelectedMotifTag] = useState<string | null>(null);
   const [motifSaveStatus, setMotifSaveStatus] = useState<
     | { state: "idle" }
@@ -338,8 +330,6 @@ export const PuzzleSolverPage = () => {
   const upcomingPuzzleIndexesRef = useRef<number[]>([]);
   const loadingPuzzleIdsRef = useRef<Set<string>>(new Set());
   const isMountedRef = useRef(true);
-  const initialRoutePuzzleIdRef = useRef(parsePuzzleId(routePuzzleId));
-  const initialRouteSetKeyRef = useRef(routeSetKey);
   const progressWriteQueueRef = useRef(Promise.resolve());
   const attemptedPuzzleIdsRef = useRef<Set<string>>(new Set());
   const activePuzzleKeyRef = useRef("");
@@ -413,17 +403,6 @@ export const PuzzleSolverPage = () => {
     [attemptedPuzzleIdsReady, ensureUpcomingPuzzleIndexes, puzzles.length],
   );
 
-  const mergeLoadedPuzzles = useCallback((loadedPuzzles: Puzzle[]): void => {
-    if (loadedPuzzles.length === 0) return;
-
-    const loadedById = new Map(
-      loadedPuzzles.map((puzzle) => [String(puzzle.puzzleId), puzzle] as const),
-    );
-    setPuzzles((current) =>
-      current.map((puzzle) => loadedById.get(String(puzzle.puzzleId)) ?? puzzle),
-    );
-  }, []);
-
   const replaceUrlWithPuzzle = useCallback(
     (puzzleId: string | number): void => {
       if (isCustomSetSolveMode) {
@@ -458,39 +437,6 @@ export const PuzzleSolverPage = () => {
 
     mediaQuery.addEventListener("change", updateLayout);
     return () => mediaQuery.removeEventListener("change", updateLayout);
-  }, []);
-
-  useEffect(() => {
-    let isCurrent = true;
-
-    const loadPuzzles = async () => {
-      try {
-        setLoadingError("");
-        const initialPuzzleId = initialRoutePuzzleIdRef.current;
-        const [catalog, initialPuzzles] = await Promise.all([
-          initialRouteSetKeyRef.current ? loadPuzzleCatalog() : loadPuzzleSolverIndex(),
-          initialPuzzleId === null ? Promise.resolve([]) : loadPuzzlesById([initialPuzzleId]),
-        ]);
-        if (!isCurrent) return;
-
-        const initialPuzzlesById = new Map(
-          initialPuzzles.map((puzzle) => [String(puzzle.puzzleId), puzzle] as const),
-        );
-        setPuzzles(
-          catalog.map((puzzle) => initialPuzzlesById.get(String(puzzle.puzzleId)) ?? puzzle),
-        );
-      } catch (error) {
-        if (!isCurrent) return;
-        setPuzzles([]);
-        setLoadingError(error instanceof Error ? error.message : "Failed to load puzzles");
-      }
-    };
-
-    void loadPuzzles();
-
-    return () => {
-      isCurrent = false;
-    };
   }, []);
 
   useEffect(() => {
@@ -829,6 +775,7 @@ export const PuzzleSolverPage = () => {
     mergeLoadedPuzzles,
     orderedSetPuzzleIndexes,
     puzzles,
+    setLoadingError,
   ]);
 
   useEffect(() => {
@@ -2023,111 +1970,6 @@ export const PuzzleSolverPage = () => {
     }
   };
 
-  const renderReportIssueDialog = () => (
-    <dialog
-      ref={reportIssueDialogRef}
-      className="puzzleIssueDialog"
-      aria-labelledby="puzzle-issue-dialog-title"
-      onCancel={(event) => {
-        event.preventDefault();
-        closeReportIssueDialog();
-      }}
-    >
-      <div className="puzzleIssueDialogCard">
-        <header className="puzzleIssueDialogHeading">
-          <h2 id="puzzle-issue-dialog-title">Report puzzle issue</h2>
-          <button type="button" onClick={closeReportIssueDialog} aria-label="Close issue report">
-            <FontAwesomeIcon icon={faXmark} aria-hidden="true" />
-          </button>
-        </header>
-        {reportIssueStatus.state === "success" ? (
-          <div className="puzzleIssueSuccess" role="status">
-            <strong>Report sent</strong>
-            <p>Thanks. The puzzle will be reviewed.</p>
-            <button type="button" onClick={closeReportIssueDialog}>
-              Done
-            </button>
-          </div>
-        ) : user?.username ? (
-          <form className="puzzleIssueForm" onSubmit={(event) => void submitPuzzleIssue(event)}>
-            <fieldset disabled={reportIssueStatus.state === "submitting"}>
-              <legend>What’s wrong?</legend>
-              <label>
-                <input
-                  type="radio"
-                  name="puzzle-issue-category"
-                  value="missing_alternate_solution"
-                  checked={reportIssueCategory === "missing_alternate_solution"}
-                  onChange={() => setReportIssueCategory("missing_alternate_solution")}
-                />
-                <span>Missing alternate solution</span>
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="puzzle-issue-category"
-                  value="incorrect_solution"
-                  checked={reportIssueCategory === "incorrect_solution"}
-                  onChange={() => setReportIssueCategory("incorrect_solution")}
-                />
-                <span>Incorrect solution</span>
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="puzzle-issue-category"
-                  value="other"
-                  checked={reportIssueCategory === "other"}
-                  onChange={() => setReportIssueCategory("other")}
-                />
-                <span>Other</span>
-              </label>
-            </fieldset>
-            <label className="puzzleIssueDetailsField">
-              <span>Details {reportIssueCategory === "other" ? "(required)" : "(optional)"}</span>
-              <textarea
-                rows={4}
-                maxLength={2000}
-                required={reportIssueCategory === "other"}
-                value={reportIssueDetails}
-                disabled={reportIssueStatus.state === "submitting"}
-                onChange={(event) => setReportIssueDetails(event.target.value)}
-                placeholder="Include the move or line that needs review."
-              />
-            </label>
-            {reportIssueStatus.state === "error" ? (
-              <p className="puzzleIssueFormError" role="alert">
-                {reportIssueStatus.message}
-              </p>
-            ) : null}
-            <div className="puzzleIssueFormActions">
-              <button type="button" onClick={closeReportIssueDialog}>
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="primary"
-                disabled={reportIssueStatus.state === "submitting"}
-              >
-                {reportIssueStatus.state === "submitting" ? "Sending…" : "Send report"}
-              </button>
-            </div>
-          </form>
-        ) : (
-          <div className="puzzleIssueLogin">
-            <p>Log in with Lichess to send this report.</p>
-            <button
-              type="button"
-              onClick={() => void login(`${window.location.pathname}${window.location.search}`)}
-            >
-              Log in with Lichess
-            </button>
-          </div>
-        )}
-      </div>
-    </dialog>
-  );
-
   const renderPlayerRows = (mobile = false) => {
     const hasPositionData = hasAnyCastlingRights || hasMaterialDifference;
     if (!whitePlayer && !blackPlayer && !hasPositionData) return null;
@@ -2221,7 +2063,18 @@ export const PuzzleSolverPage = () => {
         }
       />
       {renderMotifDefinitionDialog()}
-      {renderReportIssueDialog()}
+      <PuzzleIssueDialog
+        dialogRef={reportIssueDialogRef}
+        signedIn={Boolean(user?.username)}
+        category={reportIssueCategory}
+        details={reportIssueDetails}
+        status={reportIssueStatus}
+        onCategoryChange={setReportIssueCategory}
+        onDetailsChange={setReportIssueDetails}
+        onClose={closeReportIssueDialog}
+        onSubmit={(event) => void submitPuzzleIssue(event)}
+        onLogin={() => void login(`${window.location.pathname}${window.location.search}`)}
+      />
       <div className="panel puzzlePanel">
         <header className="puzzleHeader">
           <div className="puzzleHeaderTopline">
