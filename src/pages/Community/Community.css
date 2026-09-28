@@ -54,42 +54,25 @@
 }
 
 .communityTableWrap {
-  overflow-x: auto;
   border: 1px solid var(--color-border);
-  border-radius: 10px;
   background: var(--color-panel-strong);
 }
 
 .communityTable {
-  width: 100%;
   min-width: 420px;
-  border-collapse: collapse;
+  border: 0;
 }
 
 .communityTable th,
 .communityTable td {
   padding: 11px 12px;
-  border-bottom: 1px solid var(--color-border);
-  color: var(--color-text);
-  text-align: left;
 }
 
 .communityTable th {
-  background: var(--color-table-head);
-  color: var(--color-muted);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.05em;
-  text-transform: uppercase;
   white-space: nowrap;
-}
-
-.communityTable tbody tr:last-child td {
-  border-bottom: 0;
-}
-
-.communityTable tbody tr:hover {
-  background: var(--color-table-hover);
 }
 
 .communityTable a {
@@ -194,20 +177,6 @@
 
 .communityVoteSummaryValue.downvote svg {
   color: var(--color-danger);
-}
-
-.communityVoteTable th button {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  letter-spacing: inherit;
-  text-transform: inherit;
-}
-
-.communityVoteTable th button:hover,
-.communityVoteTable th button:focus-visible {
-  color: var(--color-heading);
 }
 
 .communityVoteTable {

@@ -4,18 +4,22 @@ import { faArrowDown, faArrowUp } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
+import { DataTable } from "../../components/DataTable/DataTable";
+import { SortableTableHeader } from "../../components/DataTable/SortableTableHeader";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
+import { useTableSort } from "../../hooks/useTableSort";
 import { puzzleRankingsQueryOptions } from "../../lib/community/communityQueries";
 import type { PuzzleVoteRankingRow } from "../../lib/community/puzzleCommunity";
 
 type VoteSortKey = "upvotes" | "downvotes";
 
 export const PuzzleVoteRankingsPage = () => {
-  const [sortKey, setSortKey] = useState<VoteSortKey>("upvotes");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const { changeSort, sortDirection, sortKey, toggleDirection } = useTableSort<VoteSortKey>({
+    initialKey: "upvotes",
+  });
   const rankingsQuery = useQuery(puzzleRankingsQueryOptions());
   const rankings = rankingsQuery.data ?? null;
   const loading = rankingsQuery.isPending;
@@ -45,20 +49,6 @@ export const PuzzleVoteRankingsPage = () => {
       ),
     [rankings?.puzzles],
   );
-
-  const changeSort = (nextKey: VoteSortKey): void => {
-    if (nextKey === sortKey) {
-      setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
-      return;
-    }
-    setSortKey(nextKey);
-    setSortDirection("desc");
-  };
-
-  const sortIndicator = (key: VoteSortKey): string => {
-    if (key !== sortKey) return "";
-    return sortDirection === "asc" ? " ↑" : " ↓";
-  };
 
   if (loading && !rankings) return <RouteLoadingFallback />;
 
@@ -121,11 +111,7 @@ export const PuzzleVoteRankingsPage = () => {
               Downvotes
             </button>
           </div>
-          <button
-            type="button"
-            className="communityVoteDirection"
-            onClick={() => setSortDirection((current) => (current === "asc" ? "desc" : "asc"))}
-          >
+          <button type="button" className="communityVoteDirection" onClick={toggleDirection}>
             <FontAwesomeIcon
               icon={sortDirection === "desc" ? faArrowDown : faArrowUp}
               aria-hidden="true"
@@ -138,54 +124,59 @@ export const PuzzleVoteRankingsPage = () => {
           <p className="communityEmpty">No puzzle votes yet.</p>
         ) : null}
         {!loading && !error && sortedPuzzles.length > 0 ? (
-          <div className="communityTableWrap communityVoteTableWrap">
-            <table className="communityTable communityVoteTable">
-              <thead>
-                <tr>
-                  <th scope="col">Rank</th>
-                  <th scope="col">Puzzle</th>
-                  <th scope="col" className="communityNumericCell">
-                    <button type="button" onClick={() => changeSort("upvotes")}>
-                      Upvotes{sortIndicator("upvotes")}
-                    </button>
-                  </th>
-                  <th scope="col" className="communityNumericCell">
-                    <button type="button" onClick={() => changeSort("downvotes")}>
-                      Downvotes{sortIndicator("downvotes")}
-                    </button>
-                  </th>
-                  <th scope="col" className="communityNumericCell">
-                    Score
-                  </th>
-                  <th scope="col" className="communityNumericCell">
-                    Attempts
-                  </th>
-                  <th scope="col" className="communityNumericCell">
-                    Solve rate
-                  </th>
+          <DataTable
+            wrapperClassName="communityTableWrap communityVoteTableWrap"
+            className="communityTable communityVoteTable"
+          >
+            <thead>
+              <tr>
+                <th scope="col">Rank</th>
+                <th scope="col">Puzzle</th>
+                <SortableTableHeader
+                  className="communityNumericCell"
+                  active={sortKey === "upvotes"}
+                  direction={sortDirection}
+                  label="Upvotes"
+                  onSort={() => changeSort("upvotes")}
+                />
+                <SortableTableHeader
+                  className="communityNumericCell"
+                  active={sortKey === "downvotes"}
+                  direction={sortDirection}
+                  label="Downvotes"
+                  onSort={() => changeSort("downvotes")}
+                />
+                <th scope="col" className="communityNumericCell">
+                  Score
+                </th>
+                <th scope="col" className="communityNumericCell">
+                  Attempts
+                </th>
+                <th scope="col" className="communityNumericCell">
+                  Solve rate
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedPuzzles.map((puzzle: PuzzleVoteRankingRow, index) => (
+                <tr key={puzzle.puzzle_id}>
+                  <td className="communityRank">{index + 1}</td>
+                  <td>
+                    <Link to="/solve/$puzzleId" params={{ puzzleId: String(puzzle.puzzle_id) }}>
+                      Puzzle #{puzzle.puzzle_id}
+                    </Link>
+                  </td>
+                  <td className="communityNumericCell communityPositive">{puzzle.upvotes}</td>
+                  <td className="communityNumericCell communityNegative">{puzzle.downvotes}</td>
+                  <td className="communityNumericCell">{puzzle.score}</td>
+                  <td className="communityNumericCell">{puzzle.attempts}</td>
+                  <td className="communityNumericCell">
+                    {puzzle.solve_rate === null ? "—" : `${puzzle.solve_rate}%`}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {sortedPuzzles.map((puzzle: PuzzleVoteRankingRow, index) => (
-                  <tr key={puzzle.puzzle_id}>
-                    <td className="communityRank">{index + 1}</td>
-                    <td>
-                      <Link to="/solve/$puzzleId" params={{ puzzleId: String(puzzle.puzzle_id) }}>
-                        Puzzle #{puzzle.puzzle_id}
-                      </Link>
-                    </td>
-                    <td className="communityNumericCell communityPositive">{puzzle.upvotes}</td>
-                    <td className="communityNumericCell communityNegative">{puzzle.downvotes}</td>
-                    <td className="communityNumericCell">{puzzle.score}</td>
-                    <td className="communityNumericCell">{puzzle.attempts}</td>
-                    <td className="communityNumericCell">
-                      {puzzle.solve_rate === null ? "—" : `${puzzle.solve_rate}%`}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </DataTable>
         ) : null}
       </section>
     </div>

@@ -1,0 +1,68 @@
+.dataTableWrap {
+  max-width: 100%;
+  overflow-x: auto;
+  border-radius: var(--radius-ui);
+  overscroll-behavior-inline: contain;
+  scrollbar-color: color-mix(in srgb, var(--color-primary-soft) 48%, transparent) transparent;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.dataTable {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-collapse: collapse;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--color-panel-strong);
+}
+
+.dataTable thead {
+  background: var(--color-table-head);
+}
+
+.dataTable th,
+.dataTable td {
+  padding: 10px 11px;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
+  text-align: left;
+}
+
+.dataTable th {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.dataTable tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.dataTable tbody tr:hover {
+  background: var(--color-table-hover);
+}
+
+.sortableTableButton {
+  min-height: 24px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+
+.sortableTableButton:hover,
+.sortableTableButton:focus-visible {
+  color: var(--color-heading);
+}
+
+.sortableTableIndicator {
+  display: inline-block;
+  min-width: 1em;
+  margin-inline-start: 0.15em;
+}

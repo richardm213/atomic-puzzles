@@ -8,6 +8,7 @@ import { useMemo, useState } from "react";
 
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
+import { useTableSort } from "../../hooks/useTableSort";
 import { communityUsersQueryOptions } from "../../lib/community/communityQueries";
 import type { CommunityUserStats } from "../../lib/community/puzzleCommunity";
 
@@ -24,8 +25,10 @@ const emptyCommunityUsers: CommunityUserStats[] = [];
 
 export const CommunityUsersPage = () => {
   const [query, setQuery] = useState("");
-  const [sortKey, setSortKey] = useState<SortKey>("comments_left");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const { changeSort, sortDirection, sortKey } = useTableSort<SortKey>({
+    initialKey: "comments_left",
+    getDefaultDirection: (key) => (key === "username" ? "asc" : "desc"),
+  });
   const usersQuery = useQuery(communityUsersQueryOptions());
   const users = usersQuery.data ?? emptyCommunityUsers;
   const loading = usersQuery.isPending;
@@ -63,20 +66,6 @@ export const CommunityUsersPage = () => {
       ),
     [users],
   );
-
-  const changeSort = (nextKey: SortKey) => {
-    if (nextKey === sortKey) {
-      setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
-      return;
-    }
-    setSortKey(nextKey);
-    setSortDirection(nextKey === "username" ? "asc" : "desc");
-  };
-
-  const sortIndicator = (key: SortKey): string => {
-    if (sortKey !== key) return "";
-    return sortDirection === "asc" ? " ↑" : " ↓";
-  };
 
   if (loading && users.length === 0) return <RouteLoadingFallback />;
 
@@ -150,7 +139,7 @@ export const CommunityUsersPage = () => {
                   onClick={() => changeSort(column.key)}
                 >
                   {column.label}
-                  {sortIndicator(column.key)}
+                  {sortKey === column.key ? (sortDirection === "asc" ? " ↑" : " ↓") : ""}
                 </button>
               ))}
             </div>

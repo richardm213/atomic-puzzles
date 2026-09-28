@@ -4,29 +4,24 @@ import { faCircleInfo, faShieldHalved } from "@fortawesome/free-solid-svg-icons"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
+import { DataTable } from "../../components/DataTable/DataTable";
+import { SortableTableHeader } from "../../components/DataTable/SortableTableHeader";
 import { InlineState } from "../../components/InlineState/InlineState";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
+import { useTableSort } from "../../hooks/useTableSort";
 import type { AliasIdentityRow } from "../../lib/archive/aliases";
 import { aliasRowsQueryOptions } from "../../lib/users/aliasQueries";
 
+type BannedUserSortKey = "username" | "accounts";
 const bannedUserColumns = [
   { key: "username", label: "Username" },
   { key: "accounts", label: "Banned Accounts" },
-];
+] satisfies Array<{ key: BannedUserSortKey; label: string }>;
 type BannedUserRow = { username: string; accounts: string[] };
 const emptyBannedUserRows: BannedUserRow[] = [];
-
-const sortIndicator = (
-  sortKey: string,
-  sortDirection: "asc" | "desc",
-  columnKey: string,
-): string => {
-  if (sortKey !== columnKey) return "";
-  return sortDirection === "asc" ? "↑" : "↓";
-};
 
 const buildBannedRows = (aliasRows: AliasIdentityRow[]): BannedUserRow[] =>
   aliasRows
@@ -46,8 +41,11 @@ const buildBannedRows = (aliasRows: AliasIdentityRow[]): BannedUserRow[] =>
     .filter((row) => row.username && row.accounts.length > 0);
 
 export const BannedUsersPage = () => {
-  const [sortKey, setSortKey] = useState("username");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const { changeSort, sortDirection, sortKey } = useTableSort<BannedUserSortKey>({
+    initialKey: "username",
+    initialDirection: "asc",
+    getDefaultDirection: () => "asc",
+  });
   const bannedUsersQuery = useQuery(aliasRowsQueryOptions());
   const rows = bannedUsersQuery.data ? buildBannedRows(bannedUsersQuery.data) : emptyBannedUserRows;
   const loading = bannedUsersQuery.isPending;
@@ -56,16 +54,6 @@ export const BannedUsersPage = () => {
       ? bannedUsersQuery.error.message
       : "Failed to load banned users."
     : "";
-
-  const handleSort = (nextKey: string): void => {
-    if (sortKey === nextKey) {
-      setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
-      return;
-    }
-
-    setSortKey(nextKey);
-    setSortDirection("asc");
-  };
 
   const sortedRows = useMemo(() => {
     const directionMultiplier = sortDirection === "asc" ? 1 : -1;
@@ -151,56 +139,55 @@ export const BannedUsersPage = () => {
         ) : null}
 
         {!error && !loading && rows.length > 0 ? (
-          <div className="rankingsTableWrap">
-            <table className="rankingsTable bannedUsersTable">
-              <thead>
-                <tr>
-                  {bannedUserColumns.map((column) => (
-                    <th key={column.key}>
-                      <button
-                        type="button"
-                        className="sortButton"
-                        onClick={() => handleSort(column.key)}
-                      >
-                        {column.label} {sortIndicator(sortKey, sortDirection, column.key)}
-                      </button>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {sortedRows.map((row) => (
-                  <tr key={row.username}>
-                    <td>
-                      <span className="bannedUserName">
-                        <Link
-                          className="rankingLink"
-                          to="/@/$username"
-                          params={{ username: row.username }}
-                        >
-                          {row.username}
-                        </Link>
-                      </span>
-                    </td>
-                    <td>
-                      {row.accounts.length > 0 ? (
-                        <div
-                          className="bannedAliasTags"
-                          aria-label={`${row.username} banned accounts`}
-                        >
-                          {row.accounts.map((alias) => (
-                            <span key={`${row.username}-${alias}`} className="bannedAliasTag">
-                              {alias}
-                            </span>
-                          ))}
-                        </div>
-                      ) : null}
-                    </td>
-                  </tr>
+          <DataTable
+            wrapperClassName="rankingsTableWrap"
+            className="rankingsTable bannedUsersTable"
+          >
+            <thead>
+              <tr>
+                {bannedUserColumns.map((column) => (
+                  <SortableTableHeader
+                    key={column.key}
+                    active={sortKey === column.key}
+                    direction={sortDirection}
+                    label={column.label}
+                    onSort={() => changeSort(column.key)}
+                  />
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedRows.map((row) => (
+                <tr key={row.username}>
+                  <td>
+                    <span className="bannedUserName">
+                      <Link
+                        className="rankingLink"
+                        to="/@/$username"
+                        params={{ username: row.username }}
+                      >
+                        {row.username}
+                      </Link>
+                    </span>
+                  </td>
+                  <td>
+                    {row.accounts.length > 0 ? (
+                      <div
+                        className="bannedAliasTags"
+                        aria-label={`${row.username} banned accounts`}
+                      >
+                        {row.accounts.map((alias) => (
+                          <span key={`${row.username}-${alias}`} className="bannedAliasTag">
+                            {alias}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </DataTable>
         ) : null}
       </div>
     </div>

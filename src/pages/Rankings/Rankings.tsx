@@ -6,6 +6,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { DataTable } from "../../components/DataTable/DataTable";
+import { SortableTableHeader } from "../../components/DataTable/SortableTableHeader";
 import { InlineState } from "../../components/InlineState/InlineState";
 import { Seo } from "../../components/Seo/Seo";
 import {
@@ -19,6 +21,7 @@ import {
 } from "../../constants/matches";
 import { useAppSettings } from "../../context/AppSettings";
 import { useRankingsByMonth } from "../../hooks/useRankingsByMonth";
+import { useTableSort } from "../../hooks/useTableSort";
 import { monthDateFromMonthKey } from "../../lib/archive/leaderboard";
 import { formatRankingUpdatedAt } from "../../lib/rankings/formatRankingUpdatedAt";
 import {
@@ -94,15 +97,6 @@ const readableMonthLabel = (monthKey: string): string => {
   const date = monthDateFromMonthKey(monthKey);
   if (!date) return monthKey || "Unknown month";
   return monthLabelFromDate(date);
-};
-
-const sortIndicator = (
-  sortKey: string,
-  sortDirection: "asc" | "desc",
-  columnKey: string,
-): string => {
-  if (sortKey !== columnKey) return "";
-  return sortDirection === "asc" ? "↑" : "↓";
 };
 
 const isEligibleForRankings = (
@@ -208,8 +202,11 @@ const LeaderboardView = ({ selectedPeriod }: { selectedPeriod: RankingPeriod }) 
   const [selectedYear, setSelectedYear] = useState(initialFilters.selectedYear);
   const [selectedMonthName, setSelectedMonthName] = useState(initialFilters.selectedMonthName);
   const [selectedMode, setSelectedMode] = useState<Mode>(initialFilters.selectedMode);
-  const [sortKey, setSortKey] = useState("rank");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const { changeSort, sortDirection, sortKey } = useTableSort<string>({
+    initialKey: "rank",
+    initialDirection: "asc",
+    getDefaultDirection: (key) => (key === "rank" ? "asc" : "desc"),
+  });
   const [activeOpeningFilter, setActiveOpeningFilter] = useState("");
   const hasInitializedFiltersRef = useRef(false);
 
@@ -379,15 +376,6 @@ const LeaderboardView = ({ selectedPeriod }: { selectedPeriod: RankingPeriod }) 
   };
   const handleNextYear = () => {
     if (hasNextYear) setSelectedYear(yearOptions[selectedYearIndex - 1] ?? selectedYear);
-  };
-
-  const handleSort = (nextKey: string): void => {
-    if (sortKey === nextKey) {
-      setSortDirection((direction) => (direction === "asc" ? "desc" : "asc"));
-      return;
-    }
-    setSortKey(nextKey);
-    setSortDirection(nextKey === "rank" ? "asc" : "desc");
   };
 
   const sortedPlayers = useMemo(() => {
@@ -590,91 +578,74 @@ const LeaderboardView = ({ selectedPeriod }: { selectedPeriod: RankingPeriod }) 
                 : `No leaderboard entries available for this ${selectedPeriod === "yearly" ? "year" : "month"}.`}
           </InlineState>
         ) : (
-          <div className="rankingsTableWrap">
-            <table className="rankingsTable">
-              <thead>
-                <tr>
-                  {rankingColumns.map((column) => (
-                    <th
-                      key={column.key}
-                      aria-sort={
-                        sortKey === column.key
-                          ? sortDirection === "asc"
-                            ? "ascending"
-                            : "descending"
-                          : "none"
-                      }
-                    >
-                      <button
-                        type="button"
-                        className={`sortButton${sortKey === column.key ? " active" : ""}`}
-                        onClick={() => handleSort(column.key)}
-                      >
-                        {column.label} {sortIndicator(sortKey, sortDirection, column.key)}
-                      </button>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {sortedPlayers.map((player) => {
-                  const displayUsername = showChessComRankings
-                    ? getFirstChessComAlias(aliasesLookup, player.username)
-                    : player.username;
+          <DataTable wrapperClassName="rankingsTableWrap" className="rankingsTable">
+            <thead>
+              <tr>
+                {rankingColumns.map((column) => (
+                  <SortableTableHeader
+                    key={column.key}
+                    active={sortKey === column.key}
+                    direction={sortDirection}
+                    label={column.label}
+                    onSort={() => changeSort(column.key)}
+                  />
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {sortedPlayers.map((player) => {
+                const displayUsername = showChessComRankings
+                  ? getFirstChessComAlias(aliasesLookup, player.username)
+                  : player.username;
 
-                  return (
-                    <tr
-                      key={`${selectedPeriod}-${selectedYear}-${selectedMonth}-${player.rank}-${player.username}`}
-                    >
-                      <td>{player.rank}</td>
-                      <td>
-                        <div className="rankingPlayerCell">
-                          <Link
-                            className="rankingLink"
-                            to="/@/$username"
-                            params={{ username: player.username }}
+                return (
+                  <tr
+                    key={`${selectedPeriod}-${selectedYear}-${selectedMonth}-${player.rank}-${player.username}`}
+                  >
+                    <td>{player.rank}</td>
+                    <td>
+                      <div className="rankingPlayerCell">
+                        <Link
+                          className="rankingLink"
+                          to="/@/$username"
+                          params={{ username: player.username }}
+                        >
+                          {displayUsername}
+                        </Link>
+                        {selectedMode !== "wolfrandom" && !hideRankingsOpenings ? (
+                          <div
+                            className="rankingOpeningTags"
+                            aria-label={`${displayUsername} openings`}
                           >
-                            {displayUsername}
-                          </Link>
-                          {selectedMode !== "wolfrandom" && !hideRankingsOpenings ? (
-                            <div
-                              className="rankingOpeningTags"
-                              aria-label={`${displayUsername} openings`}
-                            >
-                              {getOpeningsForPlayer(aliasesLookup, player.username).map(
-                                (opening) => (
-                                  <button
-                                    type="button"
-                                    key={`${player.username}-${opening}`}
-                                    className={`rankingOpeningTag${
-                                      activeOpeningFilter === opening ? " active" : ""
-                                    }`}
-                                    aria-pressed={activeOpeningFilter === opening}
-                                    onClick={() =>
-                                      setActiveOpeningFilter((current) =>
-                                        current === opening ? "" : opening,
-                                      )
-                                    }
-                                  >
-                                    {getOpeningDisplayLabel(opening)}
-                                  </button>
-                                ),
-                              )}
-                            </div>
-                          ) : null}
-                        </div>
-                      </td>
-                      <td>{player.score.toFixed(1)}</td>
-                      {selectedPeriod === "monthly" ? (
-                        <td>{player.rd?.toFixed(1) ?? "—"}</td>
-                      ) : null}
-                      <td>{player.games ?? "—"}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                            {getOpeningsForPlayer(aliasesLookup, player.username).map((opening) => (
+                              <button
+                                type="button"
+                                key={`${player.username}-${opening}`}
+                                className={`rankingOpeningTag${
+                                  activeOpeningFilter === opening ? " active" : ""
+                                }`}
+                                aria-pressed={activeOpeningFilter === opening}
+                                onClick={() =>
+                                  setActiveOpeningFilter((current) =>
+                                    current === opening ? "" : opening,
+                                  )
+                                }
+                              >
+                                {getOpeningDisplayLabel(opening)}
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    </td>
+                    <td>{player.score.toFixed(1)}</td>
+                    {selectedPeriod === "monthly" ? <td>{player.rd?.toFixed(1) ?? "—"}</td> : null}
+                    <td>{player.games ?? "—"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </DataTable>
         )}
       </div>
     </div>

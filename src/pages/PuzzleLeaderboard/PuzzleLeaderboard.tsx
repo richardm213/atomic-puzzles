@@ -5,13 +5,16 @@ import { faArrowUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { z } from "zod";
 
+import { DataTable } from "../../components/DataTable/DataTable";
+import { SortableTableHeader } from "../../components/DataTable/SortableTableHeader";
 import { InlineState } from "../../components/InlineState/InlineState";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { usePersistedState } from "../../hooks/usePersistedState";
+import { useTableSort } from "../../hooks/useTableSort";
 import {
   buildPuzzleLeaderboardRows,
   filterPuzzleProgressRowsByPeriod,
@@ -71,15 +74,6 @@ const puzzleRankingMonthOptions = (progressRows: PuzzleProgressWithUsernameRow[]
   return options.reverse();
 };
 
-const sortIndicator = (
-  sortKey: PuzzleLeaderboardSortKey,
-  sortDirection: "asc" | "desc",
-  columnKey: PuzzleLeaderboardSortKey,
-): string => {
-  if (sortKey !== columnKey) return "";
-  return sortDirection === "asc" ? "↑" : "↓";
-};
-
 const PuzzleLeaderboard = () => {
   const [period, setPeriod] = usePersistedState<PuzzleLeaderboardPeriod>(
     puzzleLeaderboardPeriodStorageKey,
@@ -91,8 +85,10 @@ const PuzzleLeaderboard = () => {
     puzzleLeaderboardMonthSchema,
     currentUtcMonth(),
   );
-  const [sortKey, setSortKey] = useState<PuzzleLeaderboardSortKey>("score");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const { changeSort, sortDirection, sortKey } = useTableSort<PuzzleLeaderboardSortKey>({
+    initialKey: "score",
+    getDefaultDirection: (key) => (key === "rank" || key === "username" ? "asc" : "desc"),
+  });
   const progressQuery = useQuery(puzzleLeaderboardProgressQueryOptions());
   const progressRows = progressQuery.data ?? emptyPuzzleProgressRows;
   const loading = progressQuery.isPending;
@@ -113,16 +109,6 @@ const PuzzleLeaderboard = () => {
       ),
     [effectiveMonth, period, progressRows],
   );
-
-  const handleSort = (nextKey: PuzzleLeaderboardSortKey): void => {
-    if (sortKey === nextKey) {
-      setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
-      return;
-    }
-
-    setSortKey(nextKey);
-    setSortDirection(nextKey === "rank" || nextKey === "username" ? "asc" : "desc");
-  };
 
   const sortedRows = useMemo(() => {
     const directionMultiplier = sortDirection === "asc" ? 1 : -1;
@@ -216,56 +202,55 @@ const PuzzleLeaderboard = () => {
         ) : null}
 
         {!error && !loading && rows.length > 0 ? (
-          <div className="rankingsTableWrap">
-            <table className="rankingsTable puzzleLeaderboardTable">
-              <thead>
-                <tr>
-                  {puzzleLeaderboardColumns.map((column) => (
-                    <th key={column.key}>
-                      <button
-                        type="button"
-                        className="sortButton"
-                        onClick={() => handleSort(column.key)}
-                      >
-                        {column.label} {sortIndicator(sortKey, sortDirection, column.key)}
-                      </button>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {sortedRows.map((row) => (
-                  <tr key={row.username}>
-                    <td>{row.rank}</td>
-                    <td>
-                      <span className="puzzleLeaderboardPlayerCell">
-                        <Link
-                          className="rankingLink"
-                          to="/@/$username"
-                          params={{ username: row.username }}
-                        >
-                          {row.username}
-                        </Link>
-                        <Link
-                          className="puzzleLeaderboardDashboardLink"
-                          to="/@/$username/puzzles"
-                          params={{ username: row.username }}
-                          aria-label={`Open ${row.username}'s puzzle dashboard`}
-                          title="Puzzle dashboard"
-                        >
-                          <FontAwesomeIcon icon={faArrowUpRightFromSquare} aria-hidden="true" />
-                        </Link>
-                      </span>
-                    </td>
-                    <td>{row.score}</td>
-                    <td>{row.correct}</td>
-                    <td>{row.incorrect}</td>
-                    <td>{row.percentCorrect}%</td>
-                  </tr>
+          <DataTable
+            wrapperClassName="rankingsTableWrap"
+            className="rankingsTable puzzleLeaderboardTable"
+          >
+            <thead>
+              <tr>
+                {puzzleLeaderboardColumns.map((column) => (
+                  <SortableTableHeader
+                    key={column.key}
+                    active={sortKey === column.key}
+                    direction={sortDirection}
+                    label={column.label}
+                    onSort={() => changeSort(column.key)}
+                  />
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedRows.map((row) => (
+                <tr key={row.username}>
+                  <td>{row.rank}</td>
+                  <td>
+                    <span className="puzzleLeaderboardPlayerCell">
+                      <Link
+                        className="rankingLink"
+                        to="/@/$username"
+                        params={{ username: row.username }}
+                      >
+                        {row.username}
+                      </Link>
+                      <Link
+                        className="puzzleLeaderboardDashboardLink"
+                        to="/@/$username/puzzles"
+                        params={{ username: row.username }}
+                        aria-label={`Open ${row.username}'s puzzle dashboard`}
+                        title="Puzzle dashboard"
+                      >
+                        <FontAwesomeIcon icon={faArrowUpRightFromSquare} aria-hidden="true" />
+                      </Link>
+                    </span>
+                  </td>
+                  <td>{row.score}</td>
+                  <td>{row.correct}</td>
+                  <td>{row.incorrect}</td>
+                  <td>{row.percentCorrect}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </DataTable>
         ) : null}
       </div>
     </div>

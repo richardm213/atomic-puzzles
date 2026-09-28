@@ -7,11 +7,14 @@ import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { z } from "zod";
 
+import { DataTable } from "../../components/DataTable/DataTable";
+import { SortableTableHeader } from "../../components/DataTable/SortableTableHeader";
 import { InlineState } from "../../components/InlineState/InlineState";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { isMode, type Mode } from "../../constants/matches";
 import { usePersistedState } from "../../hooks/usePersistedState";
+import { useTableSort } from "../../hooks/useTableSort";
 import type { PlayerRatingRow } from "../../lib/archive/ratings";
 import type { AliasLookup } from "../../lib/users/aliasesLookup";
 import { aliasesLookupQueryOptions } from "../../lib/users/aliasQueries";
@@ -82,15 +85,6 @@ const normalizeRatingCells = (row: PlayerRatingRow): RatingCells => {
   };
 };
 
-const sortIndicator = (
-  sortKey: UserSortKey,
-  sortDirection: "asc" | "desc",
-  columnKey: UserSortKey,
-): string => {
-  if (sortKey !== columnKey) return "";
-  return sortDirection === "asc" ? "↑" : "↓";
-};
-
 const compareNullableNumbers = (
   a: number | null | undefined,
   b: number | null | undefined,
@@ -140,8 +134,10 @@ const buildUserRows = (ratingRows: PlayerRatingRow[], aliasesLookup: AliasLookup
 };
 
 const UsersTablePage = () => {
-  const [sortKey, setSortKey] = useState<UserSortKey>("blitz");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const { changeSort, sortDirection, sortKey } = useTableSort<UserSortKey>({
+    initialKey: "blitz",
+    getDefaultDirection: (key) => (key === "username" ? "asc" : "desc"),
+  });
   const [ratingDisplayMode, setRatingDisplayMode] = usePersistedState<RatingDisplayMode>(
     RATING_DISPLAY_STORAGE_KEY,
     ratingDisplayModeSchema,
@@ -161,16 +157,6 @@ const UsersTablePage = () => {
       ? queryError.message
       : "Failed to load users."
     : "";
-
-  const handleSort = (nextKey: UserSortKey): void => {
-    if (sortKey === nextKey) {
-      setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
-      return;
-    }
-
-    setSortKey(nextKey);
-    setSortDirection(nextKey === "username" ? "asc" : "desc");
-  };
 
   const filteredRows = useMemo(() => {
     if (!activeOpeningFilter) return rows;
@@ -308,97 +294,93 @@ const UsersTablePage = () => {
         ) : null}
 
         {!error && !loading && rows.length > 0 && filteredRows.length > 0 ? (
-          <div className="rankingsTableWrap">
-            <table className="rankingsTable usersTable">
-              <thead>
-                <tr>
-                  {userColumns.map((column) => (
-                    <th key={column.key}>
-                      <button
-                        type="button"
-                        className="sortButton"
-                        onClick={() => handleSort(column.key)}
-                      >
-                        {column.label} {sortIndicator(sortKey, sortDirection, column.key)}
-                      </button>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {sortedRows.map((row) => (
-                  <tr key={row.username}>
-                    <td>
-                      <Link
-                        className="rankingLink"
-                        to="/@/$username"
-                        params={{ username: row.username }}
-                      >
-                        {row.username}
-                      </Link>
-                    </td>
-                    <td>{row.blitz[ratingDisplayMode].display}</td>
-                    <td>{row.bullet[ratingDisplayMode].display}</td>
-                    <td>{row.hyperbullet[ratingDisplayMode].display}</td>
-                    <td>
-                      {row.openings.length > 0 ? (
-                        <div className="usersOpeningsCell">
-                          <div className="usersOpeningTags" aria-label={`${row.username} openings`}>
-                            {row.openings.map((opening) => {
-                              const openingKey = normalizeOpeningKey(opening);
-
-                              return (
-                                <button
-                                  type="button"
-                                  key={`${row.username}-${openingKey}`}
-                                  className={`usersOpeningTag${
-                                    activeOpeningFilter === openingKey ? " active" : ""
-                                  }`}
-                                  aria-pressed={activeOpeningFilter === openingKey}
-                                  onClick={() =>
-                                    setActiveOpeningFilter((current) =>
-                                      current === openingKey ? "" : openingKey,
-                                    )
-                                  }
-                                >
-                                  {getOpeningDisplayLabel(opening)}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td>
-                      {row.aliasCount > 0 ? (
-                        <div className="usersAliasCell">
-                          <span
-                            className="usersAliasToggle"
-                            tabIndex={0}
-                            aria-controls={`user-aliases-${row.username}`}
-                          >
-                            <span>{row.aliasCount}</span>
-                            <FontAwesomeIcon icon={faChevronDown} aria-hidden="true" />
-                          </span>
-                          <div id={`user-aliases-${row.username}`} className="usersAliasList">
-                            {row.aliases.map((alias) => (
-                              <span key={`${row.username}-${alias}`} className="usersAliasText">
-                                {alias}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      ) : (
-                        0
-                      )}
-                    </td>
-                  </tr>
+          <DataTable wrapperClassName="rankingsTableWrap" className="rankingsTable usersTable">
+            <thead>
+              <tr>
+                {userColumns.map((column) => (
+                  <SortableTableHeader
+                    key={column.key}
+                    active={sortKey === column.key}
+                    direction={sortDirection}
+                    label={column.label}
+                    onSort={() => changeSort(column.key)}
+                  />
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedRows.map((row) => (
+                <tr key={row.username}>
+                  <td>
+                    <Link
+                      className="rankingLink"
+                      to="/@/$username"
+                      params={{ username: row.username }}
+                    >
+                      {row.username}
+                    </Link>
+                  </td>
+                  <td>{row.blitz[ratingDisplayMode].display}</td>
+                  <td>{row.bullet[ratingDisplayMode].display}</td>
+                  <td>{row.hyperbullet[ratingDisplayMode].display}</td>
+                  <td>
+                    {row.openings.length > 0 ? (
+                      <div className="usersOpeningsCell">
+                        <div className="usersOpeningTags" aria-label={`${row.username} openings`}>
+                          {row.openings.map((opening) => {
+                            const openingKey = normalizeOpeningKey(opening);
+
+                            return (
+                              <button
+                                type="button"
+                                key={`${row.username}-${openingKey}`}
+                                className={`usersOpeningTag${
+                                  activeOpeningFilter === openingKey ? " active" : ""
+                                }`}
+                                aria-pressed={activeOpeningFilter === openingKey}
+                                onClick={() =>
+                                  setActiveOpeningFilter((current) =>
+                                    current === openingKey ? "" : openingKey,
+                                  )
+                                }
+                              >
+                                {getOpeningDisplayLabel(opening)}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td>
+                    {row.aliasCount > 0 ? (
+                      <div className="usersAliasCell">
+                        <span
+                          className="usersAliasToggle"
+                          tabIndex={0}
+                          aria-controls={`user-aliases-${row.username}`}
+                        >
+                          <span>{row.aliasCount}</span>
+                          <FontAwesomeIcon icon={faChevronDown} aria-hidden="true" />
+                        </span>
+                        <div id={`user-aliases-${row.username}`} className="usersAliasList">
+                          {row.aliases.map((alias) => (
+                            <span key={`${row.username}-${alias}`} className="usersAliasText">
+                              {alias}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      0
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </DataTable>
         ) : null}
       </div>
     </div>

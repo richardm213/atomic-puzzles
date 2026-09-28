@@ -76,46 +76,10 @@
 
 .rankingsTableWrap {
   margin-top: 14px;
-  overflow-x: auto;
-  max-width: 100%;
-  border-radius: var(--radius-ui);
-  overscroll-behavior-inline: contain;
-  scrollbar-color: color-mix(in srgb, var(--color-primary-soft) 48%, transparent) transparent;
-  scrollbar-width: thin;
-  -webkit-overflow-scrolling: touch;
 }
 
 .rankingsTable {
-  width: 100%;
   min-width: 500px;
-  border-collapse: collapse;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  overflow: hidden;
-  background: var(--color-panel-strong);
-}
-
-.rankingsTable thead {
-  background: var(--color-table-head);
-}
-
-.rankingsTable th,
-.rankingsTable td {
-  text-align: left;
-  padding: 10px 11px;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.rankingsTable th {
-  color: var(--color-muted);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.rankingsTable td {
-  color: var(--color-text);
 }
 
 .rankingsTable :is(th, td):nth-child(1) {
@@ -128,18 +92,6 @@
 .rankingsTable :is(th, td):nth-child(5) {
   width: 1%;
   white-space: nowrap;
-}
-
-.sortButton {
-  border: 0;
-  background: transparent;
-  color: inherit;
-  padding: 0;
-  min-height: 24px;
-}
-
-.sortButton:hover {
-  color: var(--color-heading);
 }
 
 .rankingsMeta {
@@ -256,10 +208,6 @@
   line-height: 1.4;
 }
 
-.rankingsTable tbody tr:hover {
-  background: var(--color-table-hover);
-}
-
 .rankingPlayerCell {
   display: flex;
   flex-wrap: wrap;
@@ -374,13 +322,13 @@
   font-variant-numeric: tabular-nums;
 }
 
-.rankingsLeaderboardPanel .sortButton {
+.rankingsLeaderboardPanel .sortableTableButton {
   color: inherit;
   font-weight: inherit;
   transition: color 150ms ease;
 }
 
-.rankingsLeaderboardPanel .sortButton.active {
+.rankingsLeaderboardPanel .sortableTableButton.active {
   color: var(--color-heading);
 }
 
