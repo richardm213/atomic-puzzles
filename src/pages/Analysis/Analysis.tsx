@@ -40,6 +40,7 @@ import { usePersistedState } from "../../hooks/usePersistedState";
 import { useUsernamePicker } from "../../hooks/useUsernamePicker";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
 import { atomicDbPositionUrl } from "../../utils/atomicDb";
+import { selectSpacebarMove } from "../../utils/boardMoveSelection";
 import { lichessAtomicAnalysisUrl } from "../../utils/lichess";
 import {
   buildOpeningExplorerUrl,
@@ -623,7 +624,7 @@ export const AnalysisPage = () => {
     status: explorerStatus,
     error: explorerError,
   } = useOpeningExplorer({
-    enabled: explorerOpen,
+    enabled: explorerOpen || !atomicDbEngineSettings.enabled,
     cacheKey: explorerUrl ?? undefined,
     debounceMs: 250,
     fen: currentFen,
@@ -640,10 +641,15 @@ export const AnalysisPage = () => {
     const handleAnalysisShortcut = (event: KeyboardEvent): void => {
       const key = event.key.toLowerCase();
       const shortcutIndex = shortcutIndexFromKeyboardEvent(event);
-      const isExplorerMoveShortcut = shortcutIndex !== null;
+      const isSpacebarShortcut = key === " " || key === "spacebar";
+      const isExplorerMoveShortcut = shortcutIndex !== null && !isSpacebarShortcut;
 
       if (
-        (key !== "e" && key !== "f" && key !== "l" && !isExplorerMoveShortcut) ||
+        (key !== "e" &&
+          key !== "f" &&
+          key !== "l" &&
+          !isSpacebarShortcut &&
+          !isExplorerMoveShortcut) ||
         event.metaKey ||
         event.ctrlKey ||
         event.altKey
@@ -652,6 +658,24 @@ export const AnalysisPage = () => {
       }
 
       if (isTextEntryTarget(event.target)) return;
+
+      if (isSpacebarShortcut) {
+        if (usernamePickerOpen || filtersOpen) return;
+
+        const move = selectSpacebarMove({
+          engineEnabled: atomicDbEngineSettings.enabled,
+          engineResult: atomicDbAnalysis.result,
+          engineStatus: atomicDbAnalysis.status,
+          databaseMoves: explorerMoves,
+          databaseStatus: explorerStatus,
+          fen: currentFen,
+        });
+        if (!move) return;
+
+        event.preventDefault();
+        playExplorerMove(move);
+        return;
+      }
 
       if (isExplorerMoveShortcut) {
         if (usernamePickerOpen || filtersOpen || !explorerOpen || explorerStatus !== "ready") {
@@ -678,6 +702,10 @@ export const AnalysisPage = () => {
     window.addEventListener("keydown", handleAnalysisShortcut, { capture: true });
     return () => window.removeEventListener("keydown", handleAnalysisShortcut, { capture: true });
   }, [
+    atomicDbAnalysis.result,
+    atomicDbAnalysis.status,
+    atomicDbEngineSettings.enabled,
+    currentFen,
     explorerMoves,
     explorerOpen,
     explorerStatus,

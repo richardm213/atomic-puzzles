@@ -51,6 +51,7 @@ import { movePrefix } from "../../lib/puzzles/solutionPgn";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { atomicDbPositionUrl } from "../../utils/atomicDb";
+import { selectSpacebarMove } from "../../utils/boardMoveSelection";
 import { formatGameCount } from "../../utils/formatters";
 import { lichessAtomicAnalysisUrl } from "../../utils/lichess";
 import {
@@ -818,7 +819,8 @@ export const PracticePage = () => {
     const handlePracticeShortcut = (event: KeyboardEvent): void => {
       const key = event.key.toLowerCase();
       const shortcutIndex = shortcutIndexFromKeyboardEvent(event);
-      const isMoveShortcut = shortcutIndex !== null;
+      const isSpacebarShortcut = key === " " || key === "spacebar";
+      const isMoveShortcut = shortcutIndex !== null && !isSpacebarShortcut;
 
       if (
         usernamePickerOpen ||
@@ -827,6 +829,7 @@ export const PracticePage = () => {
           key !== "f" &&
           key !== "l" &&
           key !== "q" &&
+          !isSpacebarShortcut &&
           !isMoveShortcut) ||
         event.metaKey ||
         event.ctrlKey ||
@@ -836,6 +839,24 @@ export const PracticePage = () => {
       }
 
       if (isTextEntryTarget(event.target)) return;
+
+      if (isSpacebarShortcut) {
+        if (settingsOpen) return;
+
+        const move = selectSpacebarMove({
+          engineEnabled: atomicDbEngineSettings.enabled,
+          engineResult: atomicDbAnalysis.result,
+          engineStatus: atomicDbAnalysis.status,
+          databaseMoves: practiceMoves,
+          databaseStatus: status,
+          fen: currentFen,
+        });
+        if (!move) return;
+
+        event.preventDefault();
+        playPracticeMove(move);
+        return;
+      }
 
       if (isMoveShortcut) {
         if (movesOpen || settingsOpen || status !== "ready") return;
@@ -866,6 +887,10 @@ export const PracticePage = () => {
     window.addEventListener("keydown", handlePracticeShortcut, { capture: true });
     return () => window.removeEventListener("keydown", handlePracticeShortcut, { capture: true });
   }, [
+    atomicDbAnalysis.result,
+    atomicDbAnalysis.status,
+    atomicDbEngineSettings.enabled,
+    currentFen,
     flipPracticeSide,
     movesOpen,
     playPracticeMove,
