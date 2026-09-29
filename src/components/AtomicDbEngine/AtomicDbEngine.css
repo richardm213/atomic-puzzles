@@ -163,6 +163,38 @@
   accent-color: var(--color-primary);
 }
 
+.atomicDbFollowUpSetting {
+  min-height: 34px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 76%, transparent);
+  color: var(--color-text);
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.atomicDbFollowUpSetting input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--color-primary);
+}
+
+.atomicDbSettingShortcut {
+  min-width: 20px;
+  padding: 2px 5px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 4px;
+  color: var(--color-muted);
+  font-size: 10px;
+  line-height: 1.2;
+  text-align: center;
+}
+
 .atomicDbSettingsAction {
   width: 100%;
   min-height: 34px;
@@ -382,6 +414,7 @@
 .atomicDbSettingsButton:focus-visible,
 .atomicDbSettingsAction:focus-visible,
 .atomicDbLinesSetting input:focus-visible,
+.atomicDbFollowUpSetting input:focus-visible,
 .atomicDbEngineLines button:focus-visible {
   outline: 3px solid var(--color-primary-ring);
   outline-offset: 2px;

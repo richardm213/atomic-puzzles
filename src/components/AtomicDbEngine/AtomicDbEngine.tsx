@@ -52,7 +52,7 @@ export const AtomicDbEngineControls = ({
       onDisable();
       return;
     }
-    setSettings({ enabled: true, lineCount: clampedCount });
+    setSettings((current) => ({ ...current, enabled: true, lineCount: clampedCount }));
   };
 
   useEffect(() => {
@@ -124,6 +124,22 @@ export const AtomicDbEngineControls = ({
                 onChange={(event) => setLineCount(Number(event.target.value))}
               />
             </label>
+            <label className="atomicDbFollowUpSetting">
+              <span>Follow-up moves</span>
+              <span className="atomicDbSettingShortcut" aria-hidden="true">
+                K
+              </span>
+              <input
+                type="checkbox"
+                checked={settings.showFollowUpMoves}
+                onChange={(event) =>
+                  setSettings((current) => ({
+                    ...current,
+                    showFollowUpMoves: event.target.checked,
+                  }))
+                }
+              />
+            </label>
             {onFlipBoard ? (
               <button
                 type="button"
@@ -152,7 +168,7 @@ export const AtomicDbEngine = ({
   onHoverMove,
   disabled = false,
 }: AtomicDbEngineProps) => {
-  const { enabled, lineCount } = settings;
+  const { enabled, lineCount, showFollowUpMoves } = settings;
   const { status, error } = analysis;
   const view = buildAtomicDbView(analysis.result, fen);
   const { position } = view;
@@ -185,7 +201,9 @@ export const AtomicDbEngine = ({
           <ol className="atomicDbEngineLines">
             {visibleMoves.map((move) => {
               const principalVariation = analysis.principalVariations[move.uci];
-              const displayedUcis = principalVariation ?? [move.uci];
+              const displayedUcis = showFollowUpMoves
+                ? (principalVariation ?? [move.uci])
+                : [move.uci];
               const lineTokens = numberedSanLineFromUci(view.fen, displayedUcis);
               if (lineTokens.length === 0) {
                 return (

@@ -864,6 +864,7 @@ export const PracticePage = () => {
         (key !== "a" &&
           key !== "e" &&
           key !== "f" &&
+          key !== "k" &&
           key !== "l" &&
           key !== "q" &&
           !isSpacebarShortcut &&
@@ -911,6 +912,11 @@ export const PracticePage = () => {
       if (key === "e") {
         setMovesOpen((open) => !open);
         setSettingsOpen(false);
+      } else if (key === "k") {
+        setAtomicDbEngineSettings((current) => ({
+          ...current,
+          showFollowUpMoves: !current.showFollowUpMoves,
+        }));
       } else if (key === "l") {
         setAtomicDbEngineSettings((current) => ({ ...current, enabled: !current.enabled }));
       } else if (key === "a") {

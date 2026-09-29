@@ -17,4 +17,14 @@ describe("useAtomicDbEngineSettings", () => {
     const second = renderHook(() => useAtomicDbEngineSettings({ storageKey: STORAGE_KEY }));
     expect(second.result.current[0].lineCount).toBe(5);
   });
+
+  it("restores the follow-up move preference", () => {
+    const first = renderHook(() => useAtomicDbEngineSettings({ storageKey: STORAGE_KEY }));
+
+    act(() => first.result.current[1]((current) => ({ ...current, showFollowUpMoves: false })));
+    first.unmount();
+
+    const second = renderHook(() => useAtomicDbEngineSettings({ storageKey: STORAGE_KEY }));
+    expect(second.result.current[0].showFollowUpMoves).toBe(false);
+  });
 });

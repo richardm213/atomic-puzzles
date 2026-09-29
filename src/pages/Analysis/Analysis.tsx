@@ -690,6 +690,7 @@ export const AnalysisPage = () => {
       if (
         (key !== "e" &&
           key !== "f" &&
+          key !== "k" &&
           key !== "l" &&
           !isSpacebarShortcut &&
           !isExplorerMoveShortcut) ||
@@ -736,6 +737,11 @@ export const AnalysisPage = () => {
 
       if (key === "e") {
         setExplorerOpen((open) => !open);
+      } else if (key === "k") {
+        setAtomicDbEngineSettings((current) => ({
+          ...current,
+          showFollowUpMoves: !current.showFollowUpMoves,
+        }));
       } else if (key === "l") {
         setAtomicDbEngineSettings((current) => ({ ...current, enabled: !current.enabled }));
       } else {

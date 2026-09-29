@@ -22,7 +22,7 @@ describe("AtomicDbEngine", () => {
     render(
       <AtomicDbEngine
         fen={STARTING_FEN}
-        settings={{ enabled: true, lineCount: 2 }}
+        settings={{ enabled: true, lineCount: 2, showFollowUpMoves: true }}
         analysis={{
           status: "ready",
           error: "",
@@ -46,5 +46,37 @@ describe("AtomicDbEngine", () => {
     const singleMove = screen.getByRole("listitem", { name: /line 1\. Nh3/ });
     fireEvent.click(within(singleMove).getByRole("button", { name: "Play variation through Nh3" }));
     expect(onPlayLine).toHaveBeenCalledWith(["g1h3"]);
+  });
+
+  it("shows only each root move and its evaluation when follow-up moves are off", () => {
+    const position = parseAtomicDbResponse({
+      status: "UNKNOWN",
+      score: 1100,
+      best_move: "g1f3",
+      moves: [{ uci: "g1f3", status: "UNKNOWN", score: 1100, backed_plies: 29 }],
+    });
+
+    render(
+      <AtomicDbEngine
+        fen={STARTING_FEN}
+        settings={{ enabled: true, lineCount: 1, showFollowUpMoves: false }}
+        analysis={{
+          status: "ready",
+          error: "",
+          result: { fen: STARTING_FEN, position },
+          principalVariations: {
+            g1f3: ["g1f3", "f7f6", "e2e3"],
+          },
+        }}
+        onPlayLine={() => undefined}
+        onHoverMove={() => undefined}
+      />,
+    );
+
+    const engineLine = screen.getByRole("listitem", { name: /line 1\. Nf3$/ });
+    expect(within(engineLine).getByText("+11.0")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Play variation through f6" }),
+    ).not.toBeInTheDocument();
   });
 });
