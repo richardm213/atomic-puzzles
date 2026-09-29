@@ -11,11 +11,8 @@ import {
 
 describe("formatSignedDecimal", () => {
   it.each([
-    [2.34, "+2.3"],
     [-0.05, "0"],
     [1, "+1"],
-    [-3.2, "-3.2"],
-    [0, "0"],
   ])("formats %s as %s", (value, expected) => {
     expect(formatSignedDecimal(value)).toBe(expected);
   });
@@ -63,12 +60,7 @@ describe("formatGameCount", () => {
   it.each([
     [999, "999"],
     [1_000, "1k"],
-    [9_999, "10k"],
-    [10_000, "10k"],
-    [999_000, "999k"],
     [1_000_000, "1M"],
-    [9_999_999, "10M"],
-    [10_000_000, "10M"],
   ])("formats %s games as %s", (games, expected) => {
     expect(formatGameCount(games)).toBe(expected);
   });

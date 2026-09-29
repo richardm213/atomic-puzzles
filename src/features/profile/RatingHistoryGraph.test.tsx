@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render as testingRender, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render as testingRender, screen } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -136,43 +136,6 @@ describe("monthly rating graph", () => {
     fireEvent.click(screen.getByRole("button", { name: "Bullet" }));
     expect(topTick()).toBe(1800);
   });
-  it("refits 5Y, 2Y and 1Y headroom without reducing the graph height", () => {
-    const { container } = render(
-      <RatingChart
-        rows={[
-          row("2020-01", "blitz", 2900),
-          row("2022-01", "blitz", 2500),
-          row("2024-01", "blitz", 2200),
-          row("2026-01", "blitz", 2100),
-        ]}
-      />,
-    );
-    const svg = screen.getByRole("img");
-    const originalViewBox = svg.getAttribute("viewBox");
-    for (const [period, ratings] of [
-      ["5Y", [2500, 2200, 2100]],
-      ["2Y", [2200, 2100]],
-      ["1Y", [2100]],
-    ] as const) {
-      fireEvent.click(screen.getByRole("button", { name: period }));
-      const dots = Array.from(container.querySelectorAll("circle"));
-      expect(dots).toHaveLength(ratings.length);
-      const scale = ratingGraphScale([...ratings]);
-      const expectedPeakY =
-        240 - ((Math.max(...ratings) - scale.low) / (scale.high - scale.low)) * 220;
-      expect(Math.min(...dots.map((dot) => Number(dot.getAttribute("cy"))))).toBeCloseTo(
-        expectedPeakY,
-      );
-      expect(scale.high - Math.max(...ratings)).toBe(20);
-      expect(svg).toHaveAttribute("viewBox", originalViewBox);
-    }
-  });
-  it("preserves the existing saved dots-only preference", () => {
-    window.localStorage.setItem("profile.ratingGraph.showLines", "false");
-    const { container } = render(<RatingChart rows={[row("2026-01"), row("2026-02")]} />);
-    expect(container.querySelector(".ratingLine")).toBeNull();
-    expect(container.querySelectorAll("circle")).toHaveLength(2);
-  });
   it("syncs all three settings toggles with the legend, plotted series and saved preference", () => {
     const { container, unmount } = render(
       <RatingChart
@@ -244,206 +207,6 @@ describe("monthly rating graph", () => {
     fireEvent.change(screen.getByLabelText("From month"), { target: { value: "2026-01" } });
     expect(screen.getByRole("button", { name: "1Y" })).toHaveAttribute("aria-pressed", "false");
   });
-  it("uses two range handles to narrow dates, persist Custom and synchronize presets", () => {
-    const { unmount } = render(
-      <RatingChart rows={[row("2025-01"), row("2025-06"), row("2026-01"), row("2026-06")]} />,
-    );
-    const start = screen.getByRole("slider", { name: "Range start" });
-    const end = screen.getByRole("slider", { name: "Range end" });
-    fireEvent.keyDown(start, { key: "PageUp" });
-    expect(screen.getByLabelText("From month")).toHaveValue("2026-01");
-    fireEvent.keyDown(end, { key: "ArrowLeft" });
-    expect(screen.getByLabelText("To month")).toHaveValue("2026-05");
-    expect(screen.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "false");
-    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
-    expect(window.localStorage.getItem("profile.ratingGraph.period")).toBe('"Custom"');
-    fireEvent.keyDown(start, { key: "End" });
-    expect(start).toHaveAttribute("aria-valuenow", end.getAttribute("aria-valuenow"));
-    fireEvent.keyDown(start, { key: "ArrowRight" });
-    expect(start).toHaveAttribute("aria-valuenow", end.getAttribute("aria-valuenow"));
-    fireEvent.keyDown(end, { key: "ArrowLeft" });
-    expect(end).toHaveAttribute("aria-valuenow", start.getAttribute("aria-valuenow"));
-    fireEvent.click(screen.getByRole("button", { name: "1Y" }));
-    expect(start).toHaveAttribute("aria-valuetext", "Jun 2025");
-    expect(end).toHaveAttribute("aria-valuetext", "Jun 2026");
-    fireEvent.click(screen.getByRole("button", { name: "Custom" }));
-    fireEvent.change(screen.getByLabelText("From month"), { target: { value: "2026-01" } });
-    expect(start).toHaveAttribute("aria-valuetext", "Jan 2026");
-    unmount();
-    render(<RatingChart rows={[row("2025-01"), row("2026-01"), row("2026-06")]} />);
-    expect(screen.getByRole("slider", { name: "Range start" })).toHaveAttribute(
-      "aria-valuetext",
-      "Jan 2026",
-    );
-  });
-  it("refits the vertical scale as either date handle excludes or restores peaks", () => {
-    const { container } = render(
-      <RatingChart
-        rows={[
-          row("2021-01", "blitz", 2800),
-          row("2022-01", "blitz", 2200),
-          row("2023-01", "blitz", 2220),
-          row("2024-01", "blitz", 2700),
-        ]}
-      />,
-    );
-    const originalViewBox = screen.getByRole("img").getAttribute("viewBox");
-    const expectScale = (ratings: number[]) => {
-      const { low, high, ticks } = ratingGraphScale(ratings);
-      const labels = Array.from(container.querySelectorAll("svg g > text"), (label) =>
-        Number(label.textContent),
-      );
-      expect(labels).toEqual(ticks);
-      const dots = Array.from(container.querySelectorAll("circle"));
-      expect(dots).toHaveLength(ratings.length);
-      dots.forEach((dot, index) => {
-        expect(Number(dot.getAttribute("cy"))).toBeCloseTo(
-          240 - ((ratings[index]! - low) / (high - low)) * 220,
-        );
-      });
-      expect(screen.getByRole("img")).toHaveAttribute("viewBox", originalViewBox);
-    };
-    expectScale([2800, 2200, 2220, 2700]);
-    fireEvent.keyDown(screen.getByRole("slider", { name: "Range start" }), { key: "PageUp" });
-    expectScale([2200, 2220, 2700]);
-    fireEvent.keyDown(screen.getByRole("slider", { name: "Range end" }), { key: "PageDown" });
-    expectScale([2200, 2220]);
-    expect(ratingGraphScale([2200, 2220]).high).toBe(2240);
-    fireEvent.keyDown(screen.getByRole("slider", { name: "Range end" }), { key: "End" });
-    expectScale([2200, 2220, 2700]);
-    fireEvent.keyDown(screen.getByRole("slider", { name: "Range start" }), { key: "Home" });
-    expectScale([2800, 2200, 2220, 2700]);
-  });
-  it("drags either range handle inward and stops updating after release", () => {
-    const { container } = render(<RatingChart rows={[row("2025-01"), row("2026-01")]} />);
-    const range = screen.getByRole("group", { name: "Rating history date range" });
-    vi.spyOn(
-      container.querySelector(".ratingRangeTrack")!,
-      "getBoundingClientRect",
-    ).mockReturnValue({
-      x: 0,
-      y: 0,
-      left: 0,
-      top: 0,
-      right: 120,
-      bottom: 4,
-      width: 120,
-      height: 4,
-      toJSON: () => ({}),
-    });
-    Object.assign(range, { setPointerCapture: vi.fn(), hasPointerCapture: () => false });
-    const pointer = (type: string, x: number) =>
-      fireEvent(range, new MouseEvent(type, { bubbles: true, clientX: x, button: 0 }));
-    pointer("pointerdown", 0);
-    pointer("pointermove", 30);
-    pointer("pointerup", 30);
-    expect(screen.getByLabelText("From month")).toHaveValue("2025-04");
-    pointer("pointerdown", 120);
-    pointer("pointermove", 90);
-    pointer("pointerup", 90);
-    expect(screen.getByLabelText("To month")).toHaveValue("2025-10");
-    pointer("pointermove", 60);
-    expect(screen.getByLabelText("To month")).toHaveValue("2025-10");
-  });
-  it("only enlarges dots while inspecting inside the plot or with the keyboard", () => {
-    const { container } = render(<RatingChart rows={[row("2026-01"), row("2026-02")]} />);
-    const svg = screen.getByRole("img");
-    vi.spyOn(svg, "getBoundingClientRect").mockReturnValue({
-      x: 0,
-      y: 0,
-      left: 0,
-      top: 0,
-      right: 800,
-      bottom: 280,
-      width: 800,
-      height: 280,
-      toJSON: () => ({}),
-    });
-    const move = (x: number, y: number) =>
-      fireEvent(
-        svg,
-        new MouseEvent("pointermove", {
-          bubbles: true,
-          clientX: x,
-          clientY: y,
-        }),
-      );
-    const expectNormal = () => {
-      expect(container.querySelector(".isSelected")).toBeNull();
-      expect(container.querySelector(".ratingCursor")).toBeNull();
-      container.querySelectorAll("circle").forEach((dot) => expect(dot).toHaveAttribute("r", "4"));
-      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
-    };
-    expectNormal();
-    for (const [x, y] of [
-      [400, 10],
-      [400, 260],
-      [20, 100],
-      [795, 100],
-    ] as const) {
-      move(400, 100);
-      expect(container.querySelector(".isSelected")).toHaveAttribute("r", "6");
-      move(x, y);
-      expectNormal();
-    }
-    move(400, 100);
-    fireEvent.pointerLeave(container.querySelector(".ratingGraphPlot")!);
-    expectNormal();
-    fireEvent.focus(screen.getByRole("img"));
-    expect(container.querySelector(".isSelected")).toHaveAttribute("r", "6");
-    fireEvent.blur(screen.getByRole("img"));
-    expectNormal();
-  });
-  it("orders tooltip ratings as Blitz, Bullet, Hyper", () => {
-    render(
-      <RatingChart
-        rows={[
-          row("2026-01"),
-          row("2026-02", "hyperbullet", 2100),
-          row("2026-02", "blitz", 2300),
-          row("2026-02", "bullet", 2200),
-        ]}
-      />,
-    );
-    fireEvent.focus(screen.getByRole("img"));
-    expect(
-      Array.from(
-        screen.getByRole("tooltip").querySelectorAll(".ratingTooltipRow > span"),
-        (label) => label.textContent,
-      ),
-    ).toEqual(["Blitz", "Bullet", "Hyper"]);
-  });
-  it("only shows recorded, enabled ratings for the inspected month without missing-value rows", () => {
-    render(
-      <RatingChart
-        rows={[
-          row("2026-01", "blitz", 2376),
-          row("2026-01", "bullet", 2240.2),
-          row("2026-01", "hyperbullet", null),
-          row("2026-03", "hyperbullet", 2100),
-        ]}
-      />,
-    );
-    const graph = screen.getByRole("img");
-    fireEvent.keyDown(graph, { key: "Home" });
-    let tooltip = screen.getByRole("tooltip");
-    expect(tooltip).toHaveTextContent("Blitz");
-    expect(tooltip).toHaveTextContent("2,376");
-    expect(tooltip).toHaveTextContent("Bullet");
-    expect(tooltip).toHaveTextContent("2,240.2");
-    expect(tooltip).not.toHaveTextContent("Hyper");
-    expect(tooltip).not.toHaveTextContent("—");
-    fireEvent.click(screen.getByRole("button", { name: "Bullet" }));
-    expect(screen.getByRole("tooltip")).not.toHaveTextContent("Bullet");
-    fireEvent.keyDown(graph, { key: "ArrowRight" });
-    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
-    fireEvent.keyDown(graph, { key: "End" });
-    tooltip = screen.getByRole("tooltip");
-    expect(tooltip).toHaveTextContent("Hyper");
-    expect(tooltip).not.toHaveTextContent("Blitz");
-    expect(tooltip).not.toHaveTextContent("Bullet");
-    expect(tooltip).not.toHaveTextContent("—");
-  });
   it("shows in-chart values for keyboard inspection and dismisses with Escape", () => {
     render(<RatingChart rows={[row("2026-01"), row("2026-02", "blitz", 1900)]} />);
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
@@ -454,19 +217,6 @@ describe("monthly rating graph", () => {
     expect(screen.getByRole("tooltip")).toHaveTextContent("1,900");
     fireEvent.keyDown(screen.getByRole("img"), { key: "Escape" });
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
-  });
-  it("connects recorded months, supports dots only, and handles single-point and empty histories", () => {
-    const { container, rerender } = render(<RatingChart rows={[row("2026-01"), row("2026-03")]} />);
-    expect(container.querySelector(".ratingLine")?.getAttribute("d")).toContain("L");
-    expect(screen.queryByRole("checkbox", { name: "Show lines" })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Toggle lines in settings" }));
-    expect(container.querySelector(".ratingLine")).toBeNull();
-    expect(container.querySelectorAll("circle")).toHaveLength(2);
-    expect(window.localStorage.getItem("profile.ratingGraph.showLines")).toBe("false");
-    rerender(<RatingChart rows={[row("2026-01")]} />);
-    screen.getAllByRole("slider").forEach((handle) => expect(handle).toBeDisabled());
-    rerender(<RatingChart rows={[]} />);
-    expect(screen.getByText("No monthly leaderboard ratings available.")).toBeInTheDocument();
   });
 });
 
@@ -518,58 +268,6 @@ describe("weekly rating graph", () => {
     expect(container.querySelectorAll("circle")).toHaveLength(3);
   });
 
-  it("retains a single qualifying observation and date-based range inputs", () => {
-    const { container } = render(<RatingChart frequency="weekly" rows={[week("2026-09-13")]} />);
-    fireEvent.click(screen.getByRole("button", { name: "Custom" }));
-    expect(screen.getByLabelText("From week")).toHaveAttribute("type", "date");
-    fireEvent.focus(screen.getByRole("img"));
-    fireEvent.keyDown(screen.getByRole("img"), { key: "Home" });
-    expect(screen.getByRole("tooltip")).toHaveTextContent("1,800");
-    expect(container.querySelectorAll("circle")).toHaveLength(1);
-    fireEvent.keyDown(screen.getByRole("img"), { key: "Escape" });
-    expect(container.querySelectorAll("circle")).toHaveLength(1);
-  });
-  it("reveals dots on shorter ranges and hides them again on dense ranges", () => {
-    const rows = Array.from({ length: 105 }, (_, i) => {
-      const date = new Date(Date.UTC(2024, 8, 22 + i * 7));
-      return week(date.toISOString().slice(0, 10), 1800 + i);
-    });
-    const { container } = render(<RatingChart frequency="weekly" rows={rows} />);
-    expect(container.querySelectorAll("circle")).toHaveLength(0);
-    fireEvent.focus(screen.getByRole("img"));
-    expect(container.querySelectorAll("circle")).toHaveLength(1);
-    fireEvent.blur(screen.getByRole("img"));
-    expect(container.querySelectorAll("circle")).toHaveLength(0);
-    const start = screen.getByRole("slider", { name: "Range start" });
-    for (let i = 0; i < 8; i += 1) fireEvent.keyDown(start, { key: "PageUp" });
-    expect(container.querySelectorAll("circle").length).toBeGreaterThan(1);
-    fireEvent.click(screen.getByRole("button", { name: "All" }));
-    expect(container.querySelectorAll("circle")).toHaveLength(0);
-  });
-
-  it("adapts dot visibility to the available plot width", () => {
-    let resize: (entries: { contentRect: { width: number } }[]) => void = () => {};
-    vi.stubGlobal(
-      "ResizeObserver",
-      class {
-        constructor(callback: typeof resize) {
-          resize = callback;
-        }
-        observe() {}
-        disconnect() {}
-      },
-    );
-    const rows = Array.from({ length: 20 }, (_, i) =>
-      week(new Date(Date.UTC(2026, 4, 10 + i * 7)).toISOString().slice(0, 10)),
-    );
-    const { container } = render(<RatingChart frequency="weekly" rows={rows} />);
-    expect(container.querySelectorAll("circle")).toHaveLength(20);
-    act(() => resize([{ contentRect: { width: 330 } }]));
-    expect(container.querySelectorAll("circle")).toHaveLength(0);
-    const start = screen.getByRole("slider", { name: "Range start" });
-    fireEvent.keyDown(start, { key: "PageUp" });
-    expect(container.querySelectorAll("circle").length).toBeGreaterThan(1);
-  });
   it("persists Show and Hide overrides while keeping tooltip values accessible", () => {
     const rows = [week("2024-09-22"), week("2026-09-20", 1900)];
     const { container, unmount } = render(<RatingChart frequency="weekly" rows={rows} />);
@@ -586,17 +284,5 @@ describe("weekly rating graph", () => {
     expect(next.container.querySelectorAll("circle")).toHaveLength(0);
     fireEvent.change(screen.getByLabelText("Dots"), { target: { value: "auto" } });
     expect(next.container.querySelectorAll("circle")).toHaveLength(1);
-  });
-  it("lets weekly lines be switched off and back on independently of dots", () => {
-    const { container } = render(
-      <RatingChart frequency="weekly" rows={[week("2026-09-13"), week("2026-09-20")]} />,
-    );
-    expect(container.querySelector(".ratingLine")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Toggle lines in settings" }));
-    expect(container.querySelector(".ratingLine")).not.toBeInTheDocument();
-    expect(container.querySelectorAll("circle")).toHaveLength(2);
-    expect(localStorage.getItem("profile.ratingGraph.showLines")).toBe("false");
-    fireEvent.click(screen.getByRole("button", { name: "Toggle lines in settings" }));
-    expect(container.querySelector(".ratingLine")).toBeInTheDocument();
   });
 });

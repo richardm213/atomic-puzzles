@@ -29,7 +29,7 @@ test("practice plays a real engine move when the opening database is exhausted",
   expect(await page.evaluate(() => window.crossOriginIsolated)).toBe(true);
   expect(await page.evaluate(() => typeof SharedArrayBuffer)).toBe("function");
 
-  await page.getByRole("button", { name: "Start", exact: true }).click();
+  await page.getByRole("button", { name: "Start game", exact: true }).click();
   await expect(page.getByRole("region", { name: "Played moves", exact: true })).toContainText(
     "1/1",
     { timeout: 25_000 },

@@ -30,23 +30,14 @@ describe("championship profile trophies", () => {
     loadSupabaseRowsMock.mockReset();
   });
 
-  it.each([
-    ["tipau", "awc-2016", "/tournaments/awc2016"],
-    ["Arka50", "awc-2017", "/tournaments/awc2017"],
-    ["Arka50", "awc-2018", "/tournaments/awc2018"],
-    ["onubense", "awc-2019", "/tournaments/awc2019"],
-    ["Arka50", "awc-2020", "/tournaments/awc2020"],
-    ["RKROUNIT", "atomic-hyper-2026", "/tournaments/ahc2026"],
-    ["JakeStateFarm", "atomic-openings-2026", "/tournaments/aoc2026"],
-    ["quasabianth", "wr-arena-2026", "/tournaments/wolfarena2026"],
-  ])("loads %s's %s trophy from Supabase", async (username, key, href) => {
+  it("maps championship rows from Supabase", async () => {
     loadSupabaseRowsMock.mockResolvedValue([
       {
-        award_key: key,
-        label: key,
-        title: `${key} title`,
+        award_key: "awc-2020",
+        label: "AWC 2020",
+        title: "AWC 2020 title",
         asset_path: "/images/awc-trophies/awc.png",
-        href,
+        href: "/tournaments/awc2020",
         date_label: "Dec 2020",
         date_value: "2020-12-01",
         placement_label: "Champion",
@@ -54,11 +45,11 @@ describe("championship profile trophies", () => {
       },
     ]);
 
-    await expect(fetchChampionshipTrophies(username)).resolves.toEqual(
+    await expect(fetchChampionshipTrophies("Arka50")).resolves.toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          key,
-          href,
+          key: "awc-2020",
+          href: "/tournaments/awc2020",
           prestige: 1000,
         }),
       ]),

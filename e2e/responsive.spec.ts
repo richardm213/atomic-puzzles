@@ -9,7 +9,8 @@ test("mobile navigation opens and reaches rankings", async ({ page }) => {
   await menuButton.click();
   await expect(menuButton).toHaveAttribute("aria-expanded", "true");
   await expect(menuButton).toHaveAccessibleName("Close navigation menu");
-  await page.getByRole("link", { name: "Rankings", exact: true }).click();
+  await page.getByRole("button", { name: "Rankings", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Monthly rankings", exact: true }).click();
   await expect(page).toHaveURL(/\/rankings/);
 });
 

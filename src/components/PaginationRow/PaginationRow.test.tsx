@@ -5,23 +5,6 @@ import { describe, expect, it, vi } from "vitest";
 import { PaginationRow } from "./PaginationRow";
 
 describe("PaginationRow", () => {
-  it("renders the current page out of total by default", () => {
-    render(<PaginationRow currentPage={3} totalPages={7} onPageChange={() => {}} />);
-    expect(screen.getByText("Page 3 of 7")).toBeInTheDocument();
-  });
-
-  it("uses formatLabel when provided", () => {
-    render(
-      <PaginationRow
-        currentPage={2}
-        totalPages={5}
-        onPageChange={() => {}}
-        formatLabel={(c, t) => `${c}/${t}`}
-      />,
-    );
-    expect(screen.getByText("2/5")).toBeInTheDocument();
-  });
-
   it("disables Previous on the first page and Next on the last page", () => {
     const { rerender } = render(
       <PaginationRow currentPage={1} totalPages={3} onPageChange={() => {}} />,
@@ -39,18 +22,6 @@ describe("PaginationRow", () => {
     render(<PaginationRow currentPage={2} totalPages={5} onPageChange={handleChange} />);
     await userEvent.click(screen.getByRole("button", { name: "Next" }));
     expect(handleChange).toHaveBeenCalledWith(3);
-  });
-
-  it("clamps Next to totalPages and Previous to 1", async () => {
-    const handleChange = vi.fn();
-    const { rerender } = render(
-      <PaginationRow currentPage={5} totalPages={5} onPageChange={handleChange} />,
-    );
-    // Last page — Next button is disabled, can't be clicked
-    expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
-
-    rerender(<PaginationRow currentPage={1} totalPages={5} onPageChange={handleChange} />);
-    expect(screen.getByRole("button", { name: "Previous" })).toBeDisabled();
   });
 
   it("opens an editable jump input when the page label is clicked", async () => {

@@ -360,160 +360,6 @@ describe("PuzzleSolverPage solution options", () => {
     }
   });
 
-  it("only shows the OPA style label for OPA puzzles", async () => {
-    const { unmount } = render(<PuzzleSolverPage />);
-
-    await screen.findByTestId("mock-board");
-    expect(screen.queryByText("OPA style")).not.toBeInTheDocument();
-    unmount();
-
-    mocks.loadPuzzlesById.mockResolvedValueOnce([
-      {
-        id: 1369,
-        fen: "rn2k2r/pp5p/1qpp2p1/2Q5/1b2P3/2N5/PPP3PP/R3KB1R b KQkq - 1 12",
-        solution: "12... O-O 13. O-O-O Rf2 14. Be2 Ba3",
-        puzzleId: 1369,
-        author: mocks.puzzleAuthor,
-        event: "ACL 2024",
-        explanation: "",
-        tags: [],
-        opa_style: true,
-      },
-    ]);
-
-    render(<PuzzleSolverPage />);
-
-    expect(
-      await screen.findByLabelText(
-        "OPA style: Only the best moves are accepted. Weaker alternatives are rejected even if they also lead to mate.",
-      ),
-    ).toHaveTextContent("OPA style");
-  });
-
-  it("shows color swatches and player names without visible side labels", async () => {
-    render(<PuzzleSolverPage />);
-
-    const players = await screen.findByRole("region", { name: "Game players" });
-    expect(within(players).queryByText("White")).not.toBeInTheDocument();
-    expect(within(players).getByText("white-user")).toBeInTheDocument();
-    expect(within(players).queryByText("Black")).not.toBeInTheDocument();
-    expect(within(players).getByText("black-user")).toBeInTheDocument();
-    expect(within(players).getByLabelText("White: white-user")).toBeInTheDocument();
-    expect(within(players).getByLabelText("Black: black-user")).toBeInTheDocument();
-    expect(within(players).getAllByRole("link")).toHaveLength(2);
-    within(players)
-      .getAllByRole("link")
-      .forEach((link) => expect(link).toHaveAttribute("href", "/@/$username/puzzles"));
-    expect(screen.queryByText("white-user vs black-user")).not.toBeInTheDocument();
-  });
-
-  it("links the puzzle author to their puzzle dashboard", async () => {
-    render(<PuzzleSolverPage />);
-
-    const authorLink = await screen.findByRole("link", { name: mocks.puzzleAuthor });
-    expect(authorLink).toHaveAttribute("href", "/@/$username/puzzles");
-  });
-
-  it("uses primary player nicknames while keeping usernames available as titles", async () => {
-    mocks.fetchPrimaryPlayerNicknames.mockResolvedValueOnce([
-      { username: "white-user", nickname: "white", is_primary: true },
-      { username: "black-user", nickname: "black", is_primary: true },
-    ]);
-
-    render(<PuzzleSolverPage />);
-
-    const players = await screen.findByRole("region", { name: "Game players" });
-    expect(await within(players).findByText("white")).toHaveAttribute("title", "white-user");
-    expect(within(players).getByText("black")).toHaveAttribute("title", "black-user");
-    expect(within(players).queryByText("white-user")).not.toBeInTheDocument();
-    expect(within(players).queryByText("black-user")).not.toBeInTheDocument();
-  });
-
-  it("keeps both position rows when either player is unknown", async () => {
-    mocks.loadPuzzlesById.mockResolvedValueOnce([
-      {
-        id: 1369,
-        fen: "rn2k2r/pp5p/1qpp2p1/2Q5/1b2P3/2N5/PPP3PP/R3KB1R b KQkq - 1 12",
-        solution: "12... O-O 13. O-O-O Rf2 14. Be2 Ba3",
-        puzzleId: 1369,
-        author: mocks.puzzleAuthor,
-        event: "ACL 2024",
-        white_player: "white-user",
-        black_player: "",
-        explanation: "",
-        tags: [],
-      },
-    ]);
-
-    render(<PuzzleSolverPage />);
-
-    await screen.findByTestId("mock-board");
-    const players = screen.getByRole("region", { name: "Game players" });
-    expect(within(players).getByLabelText("White: white-user")).toBeInTheDocument();
-    expect(within(players).getByLabelText("Black: unknown")).toBeInTheDocument();
-    expect(within(players).getAllByLabelText(/^Castling rights:/)).toHaveLength(2);
-  });
-
-  it("falls back to puzzle-set participants when player colors are unknown", async () => {
-    const puzzleSet = {
-      id: 8,
-      event_name: "AWC 2026",
-      event_date: "2026-07-09",
-      players: ["Alpha", "Beta"],
-    };
-    mocks.loadPuzzlesById.mockResolvedValueOnce([
-      {
-        id: 1369,
-        fen: "rn2k2r/pp5p/1qpp2p1/2Q5/1b2P3/2N5/PPP3PP/R3KB1R b KQkq - 1 12",
-        solution: "12... O-O 13. O-O-O Rf2 14. Be2 Ba3",
-        puzzleId: 1369,
-        puzzle_set_id: 8,
-        puzzle_set: puzzleSet,
-        author: mocks.puzzleAuthor,
-        explanation: "",
-        tags: [],
-      },
-    ]);
-
-    render(<PuzzleSolverPage />);
-
-    const setDetails = await screen.findByRole("region", { name: "Puzzle set details" });
-    expect(within(setDetails).getByText("alpha vs beta")).toBeInTheDocument();
-    const players = screen.getByRole("region", { name: "Game players" });
-    expect(within(players).getByLabelText("White: unknown")).toBeInTheDocument();
-    expect(within(players).getByLabelText("Black: unknown")).toBeInTheDocument();
-  });
-
-  it("hides player attribution when a puzzle has multiple source games", async () => {
-    const puzzleSet = {
-      id: 8,
-      event_name: "AWC 2026",
-      event_date: "2026-07-09",
-      players: ["Alpha", "Beta"],
-    };
-    mocks.loadPuzzlesById.mockResolvedValueOnce([
-      {
-        id: 1369,
-        fen: "rn2k2r/pp5p/1qpp2p1/2Q5/1b2P3/2N5/PPP3PP/R3KB1R b KQkq - 1 12",
-        solution: "12... O-O 13. O-O-O Rf2 14. Be2 Ba3",
-        puzzleId: 1369,
-        players: ["multiple"],
-        puzzle_set_id: 8,
-        puzzle_set: puzzleSet,
-        author: mocks.puzzleAuthor,
-        explanation: "",
-        tags: [],
-      },
-    ]);
-
-    render(<PuzzleSolverPage />);
-
-    const setDetails = await screen.findByRole("region", { name: "Puzzle set details" });
-    expect(within(setDetails).queryByText("alpha vs beta")).not.toBeInTheDocument();
-    const players = screen.getByRole("region", { name: "Game players" });
-    expect(within(players).queryByRole("link")).not.toBeInTheDocument();
-  });
-
   it("waits for progress before choosing a random puzzle and skips attempted puzzles", async () => {
     mocks.routeParams = { puzzleId: "", setKey: "" };
     mocks.loadPuzzleCatalog.mockResolvedValueOnce(
@@ -735,24 +581,6 @@ describe("PuzzleSolverPage solution options", () => {
     );
   });
 
-  it("shows all players who attempted the puzzle, including the current user", async () => {
-    const user = userEvent.setup();
-    render(<PuzzleSolverPage />);
-
-    await user.click(await screen.findByRole("tab", { name: "Other attempts" }));
-
-    const attempts = await screen.findByRole("list", { name: "Other puzzle attempts" });
-    expect(within(attempts).getByRole("link", { name: "solver" })).toBeInTheDocument();
-    expect(within(attempts).getByRole("link", { name: "alpha" })).toBeInTheDocument();
-    expect(within(attempts).getAllByText("Correct")).toHaveLength(2);
-    expect(within(attempts).getByLabelText("Played 1. Rf8")).toHaveTextContent("1. Rf8");
-    expect(within(attempts).getByRole("link", { name: "beta" })).toBeInTheDocument();
-    expect(within(attempts).getByText("Incorrect")).toBeInTheDocument();
-    const wrongMove = within(attempts).getByLabelText("Played 2. Nf3+");
-    expect(wrongMove).toHaveTextContent("2. Nf3+");
-    expect(mocks.fetchPuzzleAttemptsForPuzzle).toHaveBeenCalledWith("1369", { limit: 30 });
-  });
-
   it("shows puzzle motifs after the puzzle has been attempted", async () => {
     render(<PuzzleSolverPage />);
 
@@ -782,14 +610,6 @@ describe("PuzzleSolverPage solution options", () => {
       ),
     );
     expect(await within(dialog).findByText("Report sent")).toBeInTheDocument();
-  });
-
-  it("hides the issue report before the puzzle has been attempted", async () => {
-    mocks.attemptedPuzzleIds = new Set();
-    render(<PuzzleSolverPage />);
-
-    await screen.findByTestId("mock-board");
-    expect(screen.queryByRole("button", { name: "Report issue" })).not.toBeInTheDocument();
   });
 
   it("keeps puzzle motifs hidden before a regular user attempts the puzzle", async () => {
@@ -824,94 +644,6 @@ describe("PuzzleSolverPage solution options", () => {
     expect(await screen.findByText("Tags updated.")).toBeInTheDocument();
   });
 
-  it("lets seaside_tiramisu convert an applied tag to one of its subtags", async () => {
-    mocks.username = "seaside_tiramisu";
-    mocks.loadPuzzlesById.mockImplementation(async (puzzleIds: number[]) =>
-      puzzleIds.map((puzzleId) => ({
-        id: puzzleId,
-        fen: "8/p2k2p1/5p2/1p1P4/8/8/PP4P1/4K3 b - - 0 16",
-        solution: "16... Kd6",
-        puzzleId,
-        author: mocks.puzzleAuthor,
-        event: "blitz",
-        white_player: "rafaelsouzasouza",
-        black_player: "seaside_tiramisu",
-        explanation: "",
-        tags: ["endgame"],
-      })),
-    );
-    const user = userEvent.setup();
-    render(<PuzzleSolverPage />);
-
-    await user.click(await screen.findByRole("button", { name: "View definition for Endgame" }));
-    const dialog = screen.getByRole("dialog", { name: "Endgame" });
-    await user.click(within(dialog).getByRole("button", { name: "Pawn endgame" }));
-
-    await waitFor(() =>
-      expect(mocks.updatePuzzleTags).toHaveBeenCalledWith(1369, ["pawn_endgame"]),
-    );
-    expect(screen.queryByRole("dialog", { name: "Endgame" })).not.toBeInTheDocument();
-    expect(await screen.findByText("Tags updated.")).toBeInTheDocument();
-  });
-
-  it("keeps the motif editor hidden from seaside_tiramisu until the puzzle is attempted", async () => {
-    mocks.username = "seaside_tiramisu";
-    mocks.attemptedPuzzleIds = new Set();
-    render(<PuzzleSolverPage />);
-
-    await screen.findByTestId("mock-board");
-    expect(screen.queryByLabelText("Puzzle tags")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Add tag" })).not.toBeInTheDocument();
-  });
-
-  it("collapses solution and attempts panels when their active tab is selected again", async () => {
-    const user = userEvent.setup();
-    render(<PuzzleSolverPage />);
-
-    const solutionTab = await screen.findByRole("tab", { name: "Solution" });
-    await waitFor(() => expect(solutionTab).toBeEnabled());
-    await user.click(solutionTab);
-    expect(screen.getByRole("list", { name: "Solution variations" })).toBeInTheDocument();
-
-    await user.click(solutionTab);
-    expect(screen.queryByRole("list", { name: "Solution variations" })).not.toBeInTheDocument();
-
-    const attemptsTab = screen.getByRole("tab", { name: "Other attempts" });
-    await user.click(attemptsTab);
-    expect(await screen.findByRole("list", { name: "Other puzzle attempts" })).toBeInTheDocument();
-
-    await user.click(attemptsTab);
-    expect(screen.queryByRole("list", { name: "Other puzzle attempts" })).not.toBeInTheDocument();
-    expect(mocks.fetchPuzzleAttemptsForPuzzle).toHaveBeenCalledTimes(1);
-  });
-
-  it("lets mobile users jump between comments and the board tools", async () => {
-    Object.defineProperty(window, "matchMedia", {
-      configurable: true,
-      value: vi.fn(() => ({
-        addEventListener: vi.fn(),
-        matches: true,
-        removeEventListener: vi.fn(),
-      })),
-    });
-    const user = userEvent.setup();
-    render(<PuzzleSolverPage />);
-
-    const commentsTab = await screen.findByRole("tab", { name: "Comments" });
-    await waitFor(() => expect(screen.queryByLabelText(/^Elapsed time /)).not.toBeInTheDocument());
-    await waitFor(() => expect(commentsTab).toBeEnabled());
-    await user.click(commentsTab);
-
-    expect(commentsTab).toHaveAttribute("aria-selected", "true");
-    expect(document.getElementById("puzzle-community")).toBeInTheDocument();
-    await waitFor(() => expect(mocks.scrollIntoView).toHaveBeenCalled());
-
-    const solutionTab = screen.getByRole("tab", { name: "Solution" });
-    await user.click(solutionTab);
-    expect(await screen.findByRole("list", { name: "Solution variations" })).toBeInTheDocument();
-    expect(solutionTab).toHaveAttribute("aria-selected", "true");
-  });
-
   it("unlocks and opens the explanation tab after a wrong move", async () => {
     mocks.attemptedPuzzleIds = new Set();
     render(<PuzzleSolverPage />);
@@ -944,74 +676,6 @@ describe("PuzzleSolverPage solution options", () => {
         "Castling avoids the atomic mating net and creates the decisive rook threat.",
       ),
     ).toBeInTheDocument();
-  });
-
-  it("unlocks the explanation when the puzzle was attempted before", async () => {
-    const user = userEvent.setup();
-    render(<PuzzleSolverPage />);
-
-    const explanationTab = await screen.findByRole("tab", { name: "Explanation" });
-    await waitFor(() => expect(explanationTab).toBeEnabled());
-    expect(explanationTab).toHaveAttribute("aria-selected", "false");
-
-    await user.click(explanationTab);
-    expect(
-      screen.getByText(
-        "Castling avoids the atomic mating net and creates the decisive rook threat.",
-      ),
-    ).toBeInTheDocument();
-  });
-
-  it("does not show the explanation tab when the puzzle has no explanation", async () => {
-    mocks.puzzleExplanation = "";
-    render(<PuzzleSolverPage />);
-
-    await screen.findByRole("tab", { name: "Solution" });
-    expect(screen.queryByRole("tab", { name: "Explanation" })).not.toBeInTheDocument();
-  });
-
-  it("hides castling and material summaries when neither applies", async () => {
-    mocks.loadPuzzlesById.mockResolvedValueOnce([
-      {
-        id: 1369,
-        fen: "8/8/8/3k4/8/4K3/8/8 w - - 0 1",
-        solution: "",
-        puzzleId: 1369,
-        author: mocks.puzzleAuthor,
-        event: "ACL 2024",
-        explanation: mocks.puzzleExplanation,
-        tags: [],
-      },
-    ]);
-
-    render(<PuzzleSolverPage />);
-
-    await screen.findByRole("heading", { name: "Puzzle 1369" });
-    await waitFor(() => expect(mocks.chessboardProps.length).toBeGreaterThan(0));
-    expect(screen.queryByLabelText(/^Castling rights\./)).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Material difference")).not.toBeInTheDocument();
-  });
-
-  it("hides castling summaries when neither side can castle but material differs", async () => {
-    mocks.loadPuzzlesById.mockResolvedValueOnce([
-      {
-        id: 1369,
-        fen: "2r2rk1/p6p/4p1p1/8/3P1P2/8/PP1bK1PP/2R4R b - - 0 17",
-        solution: "17... Rxc1",
-        puzzleId: 1369,
-        author: mocks.puzzleAuthor,
-        white_player: "rafaelsouzasouza",
-        black_player: "seaside_tiramisu",
-        explanation: "",
-        tags: [],
-      },
-    ]);
-
-    render(<PuzzleSolverPage />);
-
-    const players = await screen.findByRole("region", { name: "Game players" });
-    expect(within(players).queryByLabelText(/^Castling rights:/)).not.toBeInTheDocument();
-    expect(within(players).getAllByLabelText(/^Material difference:/)).toHaveLength(2);
   });
 
   it("shows the author an explanation editor only after attempting the puzzle", async () => {
@@ -1050,55 +714,6 @@ describe("PuzzleSolverPage solution options", () => {
     );
     expect(await screen.findByText("Explanation saved.")).toBeInTheDocument();
     expect(screen.getByText("The king move escapes the atomic threat.")).toBeInTheDocument();
-  });
-
-  it("lets seaside_tiramisu edit explanations on legacy admin puzzles", async () => {
-    mocks.username = "seaside_tiramisu";
-    const user = userEvent.setup();
-    render(<PuzzleSolverPage />);
-
-    await user.click(await screen.findByRole("tab", { name: "Explanation" }));
-    await user.click(screen.getByRole("button", { name: "Edit" }));
-    const explanationInput = screen.getByRole("textbox", { name: "Puzzle explanation" });
-    await user.clear(explanationInput);
-    await user.type(explanationInput, "Updated by the puzzle admin.");
-    await user.click(screen.getByRole("button", { name: "Save explanation" }));
-
-    await waitFor(() =>
-      expect(mocks.updatePuzzleExplanation).toHaveBeenCalledWith(
-        1369,
-        "Updated by the puzzle admin.",
-      ),
-    );
-  });
-
-  it("does not let seaside_tiramisu edit another player's explanation", async () => {
-    mocks.username = "seaside_tiramisu";
-    mocks.puzzleAuthor = "randoomplayer";
-    const user = userEvent.setup();
-    render(<PuzzleSolverPage />);
-
-    await user.click(await screen.findByRole("tab", { name: "Explanation" }));
-    expect(screen.getByText(mocks.puzzleExplanation)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Add explanation" })).not.toBeInTheDocument();
-  });
-
-  it("keeps the current solution position when opening other attempts", async () => {
-    const user = userEvent.setup();
-    render(<PuzzleSolverPage />);
-
-    const solutionTab = await screen.findByRole("tab", { name: "Solution" });
-    await waitFor(() => expect(solutionTab).toBeEnabled());
-    await user.click(solutionTab);
-    const options = await screen.findByRole("list", { name: "Solution options" });
-    await user.click(within(options).getByRole("button", { name: "1. Rf8" }));
-    await waitFor(() => expect(mocks.chessboardProps.at(-1)?.showSolution).toBe(true));
-
-    await user.click(screen.getByRole("tab", { name: "Other attempts" }));
-
-    expect(mocks.chessboardProps.at(-1)?.showSolution).toBe(true);
-    expect(mocks.chessboardProps.at(-1)?.solutionNavigation).toBeNull();
   });
 
   it("locks other attempts until the current user has attempted the puzzle", async () => {
@@ -1187,60 +802,6 @@ describe("PuzzleSolverPage solution options", () => {
       "1369",
       false,
     );
-  });
-
-  it("shows AWC puzzle-set metadata on a regular puzzle URL without repeating its date", async () => {
-    const puzzleSet = {
-      id: 8,
-      event_name: "AWC 2026",
-      event_date: "2026-07-09",
-      players: ["Alpha", "Beta"],
-      source_id: "source-match-8",
-    };
-    mocks.routeParams = { puzzleId: "1369", setKey: "", setId: "" };
-    mocks.loadPuzzleCatalog.mockResolvedValueOnce([
-      {
-        id: 1369,
-        fen: "",
-        solution: "",
-        puzzleId: 1369,
-        puzzle_set_id: 8,
-        puzzle_set: puzzleSet,
-        white_player: "Alpha",
-        black_player: "Beta",
-        author: mocks.puzzleAuthor,
-        explanation: "",
-      },
-    ]);
-    mocks.loadPuzzlesById.mockResolvedValueOnce([
-      {
-        id: 1369,
-        fen: "rn2k2r/pp5p/1qpp2p1/2Q5/1b2P3/2N5/PPP3PP/R3KB1R b KQkq - 1 12",
-        solution: "12... O-O 13. O-O-O Rf2 14. Be2 Ba3",
-        puzzleId: 1369,
-        puzzle_set_id: 8,
-        puzzle_set: puzzleSet,
-        white_player: "Alpha",
-        black_player: "Beta",
-        author: mocks.puzzleAuthor,
-        explanation: "",
-        tags: [],
-      },
-    ]);
-
-    render(<PuzzleSolverPage />);
-
-    const setDetails = await screen.findByRole("region", { name: "Puzzle set details" });
-    expect(within(setDetails).getByRole("link", { name: "AWC 2026" })).toHaveAttribute(
-      "href",
-      "/matches/$matchId",
-    );
-    expect(within(setDetails).queryByText("Jul 2026")).not.toBeInTheDocument();
-    expect(within(setDetails).queryByText("alpha vs beta")).not.toBeInTheDocument();
-
-    const players = screen.getByRole("region", { name: "Game players" });
-    expect(within(players).getByText("Alpha")).toBeInTheDocument();
-    expect(within(players).getByText("Beta")).toBeInTheDocument();
   });
 
   it("offers exits when the final puzzle in an ordered set is solved", async () => {

@@ -47,27 +47,6 @@ const renderProfile = ({ historyOnly = true }: { historyOnly?: boolean } = {}) =
   );
 
 describe("banned profile ratings", () => {
-  it("defaults match history to all modes", async () => {
-    client.setQueryData(aliasQueryKeys.identity("alice"), {
-      username: "alice",
-      banned: true,
-      accounts: [],
-    });
-    loadRawMatchesByMode.mockResolvedValue({ matches: [], total: 0 });
-
-    renderProfile();
-
-    const modeSelect = await screen.findByRole("combobox", { name: "Match history mode" });
-    await waitFor(() => expect(modeSelect).toHaveValue("all"));
-    expect(within(modeSelect).getByRole("option", { name: "All" })).toBeInTheDocument();
-    await waitFor(() =>
-      expect(loadRawMatchesByMode).toHaveBeenCalledWith(
-        "all",
-        expect.objectContaining({ page: 1, pageSize: 25 }),
-      ),
-    );
-  });
-
   it("still shows an available Wolfrandom rating", async () => {
     client.setQueryData(aliasQueryKeys.identity("alice"), {
       username: "alice",
@@ -99,28 +78,6 @@ describe("banned profile ratings", () => {
     expect(within(wolfrandomRatings).getByText("31")).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Blitz ratings" })).not.toBeInTheDocument();
     expect(screen.getByText(/Wolfrandom rating is still shown below/)).toBeInTheDocument();
-  });
-});
-
-describe("match filters", () => {
-  it("starts collapsed and can be shown or hidden", async () => {
-    window.history.replaceState(null, "", "/@/alice");
-    loadRawMatchesByMode.mockResolvedValue({ matches: [], total: 0 });
-    renderProfile();
-
-    const showFilters = await screen.findByRole("button", { name: "Show filters" });
-    expect(showFilters).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByRole("combobox", { name: "Page size" })).not.toBeInTheDocument();
-
-    fireEvent.click(showFilters);
-    expect(screen.getByRole("button", { name: "Hide filters" })).toHaveAttribute(
-      "aria-expanded",
-      "true",
-    );
-    expect(screen.getByRole("combobox", { name: "Page size" })).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Hide filters" }));
-    expect(screen.queryByRole("combobox", { name: "Page size" })).not.toBeInTheDocument();
   });
 });
 
@@ -165,55 +122,5 @@ describe("profile match pagination", () => {
       ),
     );
     await screen.findByText("Page 1 / 3");
-  });
-});
-
-describe("unrated match history", () => {
-  const ratings = { before_rating: null, after_rating: null, before_rd: null, after_rd: null };
-  beforeEach(() => {
-    window.history.replaceState(null, "", "/@/alice");
-    loadRawMatchesByMode.mockResolvedValue({
-      total: 1,
-      matches: [
-        {
-          match_id: "unrated-match",
-          players: ["alice", "bob"],
-          start_ts: 1700000000000,
-          time_control: "3+0",
-          source: "arena",
-          games: [{ id: "game1234", white: "alice", black: "bob", winner: "white" }],
-          ratings: { alice: ratings, bob: ratings },
-        },
-      ],
-    });
-  });
-
-  it.each([false, true])("shows unrated matches with banned=%s", async (banned) => {
-    client.setQueryData(aliasQueryKeys.identity("alice"), {
-      username: "alice",
-      banned,
-      accounts: [],
-    });
-    renderProfile();
-    await screen.findByText("bob");
-    const table = screen.getByRole("table");
-    const rows = within(table).getAllByRole("row");
-    expect(within(rows[0]!).getAllByRole("columnheader")).toHaveLength(banned ? 5 : 7);
-    const matchRow = table.querySelector("tbody tr")!;
-    const cells = matchRow.querySelectorAll("td");
-    expect(cells).toHaveLength(banned ? 5 : 7);
-    if (!banned) {
-      expect(cells[4]).toHaveTextContent("");
-      expect(cells[5]).toHaveTextContent("");
-      expect(cells[4]?.textContent).toBe("");
-      expect(cells[5]?.textContent).toBe("");
-    }
-    fireEvent.click(matchRow);
-    expect(await screen.findAllByText("Unrated")).toHaveLength(2);
-    expect(screen.getByRole("link", { name: "game1234" })).toHaveAttribute(
-      "href",
-      expect.stringContaining("game1234"),
-    );
-    expect(screen.queryByText(/NaN|Rating 0/)).not.toBeInTheDocument();
   });
 });

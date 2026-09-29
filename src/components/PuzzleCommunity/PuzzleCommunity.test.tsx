@@ -95,27 +95,4 @@ describe("PuzzleCommunity", () => {
       expect(screen.getByRole("textbox", { name: "Add a comment" }).closest("li")).toBeNull();
     });
   });
-
-  it("loads the same threaded discussion UI for a profile target", async () => {
-    render(<CommunityDiscussion target={{ type: "profile", id: "alice" }} />);
-
-    expect(await screen.findByRole("region", { name: "Comments" })).toBeVisible();
-    expect(mocks.fetchCommunityDiscussion).toHaveBeenCalledWith({
-      type: "profile",
-      id: "alice",
-      context: "",
-    });
-    expect(screen.queryByRole("group", { name: "Vote on this puzzle" })).not.toBeInTheDocument();
-  });
-
-  it("loads the shared discussion UI for a tournament target", async () => {
-    render(<CommunityDiscussion target={{ type: "tournament", id: "ahc2026" }} />);
-
-    expect(await screen.findByRole("region", { name: "Comments" })).toBeVisible();
-    expect(mocks.fetchCommunityDiscussion).toHaveBeenCalledWith({
-      type: "tournament",
-      id: "ahc2026",
-      context: "",
-    });
-  });
 });

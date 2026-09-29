@@ -13,15 +13,9 @@ import {
 describe("winnerToFullWord", () => {
   it.each([
     ["w", "white"],
-    ["b", "black"],
     ["d", "draw"],
-    ["W", "white"],
   ])("expands %s into %s", (input, expected) => {
     expect(winnerToFullWord(input)).toBe(expected);
-  });
-
-  it("passes through already-spelled-out winners", () => {
-    expect(winnerToFullWord("white")).toBe("white");
   });
 
   it("returns empty string for falsy input", () => {

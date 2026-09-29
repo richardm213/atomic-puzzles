@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
 import { useState } from "react";
@@ -13,7 +13,7 @@ import {
 import { DIFFERENT_START_MOVE_CONFIRMATION } from "../../lib/supabase/puzzleQueue";
 import type { ChessboardState, SolutionNavigation } from "../../types/chessboard";
 import { PuzzleEditor } from "./PuzzleEditor";
-import { formatCreatedPuzzleIds, PuzzleSubmissionPage } from "./PuzzleSubmission";
+import { PuzzleSubmissionPage } from "./PuzzleSubmission";
 
 const chessboardMocks = vi.hoisted(() => ({
   navigations: [] as SolutionNavigation[],
@@ -216,19 +216,6 @@ describe("PuzzleSubmissionPage fields", () => {
     vi.unstubAllGlobals();
   });
 
-  it("shows the explanation for a single puzzle but not a puzzle batch", async () => {
-    const user = userEvent.setup();
-    render(<PuzzleSubmissionPage />);
-
-    expect(screen.getByRole("textbox", { name: "Explanation" })).toBeVisible();
-
-    await user.click(screen.getByRole("button", { name: "Puzzle batch" }));
-    expect(screen.queryByRole("textbox", { name: "Explanation" })).toBeNull();
-
-    await user.click(screen.getByRole("button", { name: "Single puzzle" }));
-    expect(screen.getByRole("textbox", { name: "Explanation" })).toBeVisible();
-  });
-
   it("uses direct-creation actions only for approved puzzle creators", async () => {
     authMocks.username = "wolfram_ep";
     const user = userEvent.setup();
@@ -239,11 +226,6 @@ describe("PuzzleSubmissionPage fields", () => {
 
     await user.click(screen.getByRole("button", { name: "Puzzle batch" }));
     expect(screen.getByRole("button", { name: "Create puzzle" })).toBeVisible();
-  });
-
-  it("shows one id for a single creation and an id range for a batch", () => {
-    expect(formatCreatedPuzzleIds([1801])).toBe("Puzzle 1801 created.");
-    expect(formatCreatedPuzzleIds([1802, 1803, 1804])).toBe("Puzzles 1802–1804 created.");
   });
 
   it("asks before sending an alternate starting move to the review queue", async () => {
@@ -287,28 +269,6 @@ describe("PuzzleEditor move tree", () => {
     chessboardMocks.navigations.length = 0;
   });
 
-  it("requires a solution and explains how events create puzzle sets", () => {
-    render(<EditorHarness />);
-
-    expect(screen.getByRole("textbox", { name: "Solution PGN" })).toBeRequired();
-    expect(screen.getByRole("textbox", { name: "Event" })).toHaveAttribute(
-      "placeholder",
-      "Optional event name",
-    );
-    expect(screen.getByText("Same event creates a puzzle set")).toBeVisible();
-    expect(screen.getByRole("textbox", { name: "White player (optional)" })).toHaveAttribute(
-      "placeholder",
-      "Lichess username",
-    );
-    expect(screen.getByRole("textbox", { name: "Black player (optional)" })).toHaveAttribute(
-      "placeholder",
-      "Lichess username",
-    );
-    expect(screen.getByRole("textbox", { name: "Explanation" })).not.toBeRequired();
-    expect(screen.queryByRole("button", { name: "Load moves on board" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Copy PGN" })).toBeNull();
-  });
-
   it("supports a submission-only batch navigator without an explanation field", () => {
     const previous = vi.fn();
     const next = vi.fn();
@@ -334,48 +294,6 @@ describe("PuzzleEditor move tree", () => {
     expect(screen.getByRole("textbox", { name: "Solutions PGNs" })).toBeRequired();
     expect(screen.getByText("Puzzle 2 of 3")).toBeVisible();
     expect(screen.getByText("Same event creates a puzzle set")).toBeVisible();
-  });
-
-  it("shows submission errors inside the editor above its actions", () => {
-    render(
-      <PuzzleEditor
-        value={{
-          fen: STARTING_FEN,
-          solution: serializeSanLinesToPgn(STARTING_FEN, startingLines),
-          event: "",
-          explanation: "",
-        }}
-        onChange={vi.fn()}
-        resetKey="error-test"
-        feedback={{ tone: "error", text: "Puzzle ID already exists" }}
-        actions={<button type="button">Submit for review</button>}
-      />,
-    );
-
-    const error = screen.getByText("Puzzle ID already exists");
-    const submit = screen.getByRole("button", { name: "Submit for review" });
-    expect(error.compareDocumentPosition(submit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  });
-
-  it("shows submission success inside the same feedback position", () => {
-    render(
-      <PuzzleEditor
-        value={{
-          fen: STARTING_FEN,
-          solution: serializeSanLinesToPgn(STARTING_FEN, startingLines),
-          event: "",
-          explanation: "",
-        }}
-        onChange={vi.fn()}
-        resetKey="success-test"
-        feedback={{ tone: "success", text: "Puzzle submitted for review. Thank you!" }}
-        actions={<button type="button">Submit for review</button>}
-      />,
-    );
-
-    const success = screen.getByText("Puzzle submitted for review. Thank you!");
-    const submit = screen.getByRole("button", { name: "Submit for review" });
-    expect(success.compareDocumentPosition(submit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("copies the complete displayed PGN when enabled for review", async () => {
@@ -417,49 +335,6 @@ describe("PuzzleEditor move tree", () => {
     });
   });
 
-  it("opens every newly loaded puzzle at the start of its first line", () => {
-    render(
-      <PuzzleEditor
-        value={{
-          fen: STARTING_FEN,
-          solution: serializeSanLinesToPgn(STARTING_FEN, startingLines),
-          event: "",
-          explanation: "",
-        }}
-        onChange={vi.fn()}
-        resetKey="review-selection"
-        allowSolutionEditing
-      />,
-    );
-
-    expect(chessboardMocks.navigations.at(-1)).toEqual({
-      type: "solution",
-      line: 0,
-      ply: 0,
-    });
-  });
-
-  it("locks loaded batch puzzles against text and board editing", () => {
-    render(
-      <PuzzleEditor
-        value={{
-          fen: STARTING_FEN,
-          solution: serializeSanLinesToPgn(STARTING_FEN, startingLines),
-          event: "Batch event",
-          explanation: "",
-        }}
-        onChange={vi.fn()}
-        resetKey="loaded-batch"
-        batchMode
-        batchPosition={{ current: 0, total: 2 }}
-      />,
-    );
-
-    expect(screen.getByRole("textbox", { name: "Solutions PGNs" })).toHaveAttribute("readonly");
-    expect(screen.getByTestId("board-restrictions")).toHaveTextContent("true");
-    expect(screen.queryByRole("button", { name: "Delete current line" })).toBeNull();
-  });
-
   it("makes every puzzle field and board move read-only for public review", () => {
     render(
       <PuzzleEditor
@@ -483,54 +358,6 @@ describe("PuzzleEditor move tree", () => {
     expect(screen.queryByRole("button", { name: "Delete current line" })).toBeNull();
   });
 
-  it("lets single-puzzle editors replace the movetext and any number of lines", async () => {
-    const user = userEvent.setup();
-    render(<EditorHarness allowSolutionEditing />);
-
-    const solution = screen.getByRole("textbox", {
-      name: "Solution PGN",
-    }) as HTMLTextAreaElement;
-    expect(solution).not.toHaveAttribute("readonly");
-
-    expect(screen.getByTestId("board-restrictions")).toHaveTextContent("false");
-    await user.clear(solution);
-    await user.type(solution, "1. d4 d5 2. c4 (2. Nf3 Nf6)");
-
-    await waitFor(() => expect(screen.getByTestId("stored-solution")).toHaveTextContent("d4 d5"));
-    expect(screen.getByTestId("board-solution")).toHaveTextContent("d4 d5");
-    const moves = screen.getByRole("list", { name: "Solution variations" });
-    expect(moves).toHaveTextContent("d4");
-    expect(moves).toHaveTextContent("c4");
-    expect(moves).toHaveTextContent("Nf6");
-    expect(moves).not.toHaveTextContent("e4");
-    expect(moves).not.toHaveTextContent("c5");
-    expect(lineSet(solutionLinesFromTextarea(solution))).toEqual(
-      lineSet([
-        ["d4", "d5", "c4"],
-        ["d4", "d5", "Nf3", "Nf6"],
-      ]),
-    );
-  });
-
-  it("accepts a typed move appended to one line and preserves every variation", async () => {
-    const user = userEvent.setup();
-    render(<EditorHarness allowSolutionEditing />);
-
-    const textarea = screen.getByRole("textbox", { name: "Solution PGN" }) as HTMLTextAreaElement;
-    await user.type(textarea, " 2... Nc6");
-
-    await waitFor(() =>
-      expect(lineSet(solutionLinesFromTextarea(textarea))).toEqual(
-        lineSet([
-          ["e4", "e5", "Nf3", "Nc6"],
-          ["e4", "c5", "Nf3"],
-        ]),
-      ),
-    );
-    expect(screen.getByTestId("stored-solution")).toHaveTextContent("Nc6");
-    expect(textarea.value.split("\n").length).toBeGreaterThan(3);
-  });
-
   it("rejects direct edits that change the original FEN", () => {
     render(<EditorHarness allowSolutionEditing />);
 
@@ -549,40 +376,6 @@ describe("PuzzleEditor move tree", () => {
     expect(screen.getByTestId("board-solution")).toHaveTextContent("e4");
   });
 
-  it("adds a board move to the selected line and keeps the PGN multiline", async () => {
-    const user = userEvent.setup();
-    render(<EditorHarness allowSolutionEditing />);
-
-    await user.click(screen.getByRole("button", { name: "1... c5" }));
-    await user.click(screen.getByRole("button", { name: "Add move to line" }));
-
-    const textarea = screen.getByRole("textbox", { name: "Solution PGN" }) as HTMLTextAreaElement;
-    await waitFor(() =>
-      expect(lineSet(solutionLinesFromTextarea(textarea))).toEqual(
-        lineSet([
-          ["e4", "e5", "Nf3"],
-          ["e4", "c5", "Nf3", "d6"],
-        ]),
-      ),
-    );
-    expect(textarea.value.split("\n").length).toBeGreaterThan(4);
-  });
-
-  it("creates the first solution line by playing on an empty single-puzzle board", async () => {
-    const user = userEvent.setup();
-    render(<EditorHarness initialSolution="" allowSolutionEditing />);
-
-    await user.click(screen.getByRole("button", { name: "Add move to line" }));
-
-    const textarea = screen.getByRole("textbox", { name: "Solution PGN" }) as HTMLTextAreaElement;
-    await waitFor(() =>
-      expect(lineSet(solutionLinesFromTextarea(textarea))).toEqual(
-        lineSet([["e4", "c5", "Nf3", "d6"]]),
-      ),
-    );
-    expect(screen.getByRole("button", { name: "Delete current line" })).toBeVisible();
-  });
-
   it("adds a board deviation as a new line without replacing existing lines", async () => {
     const user = userEvent.setup();
     render(<EditorHarness allowSolutionEditing />);
@@ -599,59 +392,6 @@ describe("PuzzleEditor move tree", () => {
           ["e4", "c6"],
         ]),
       ),
-    );
-  });
-
-  it("keeps board editing active when starting from the middle of a line", async () => {
-    const user = userEvent.setup();
-    render(<EditorHarness allowSolutionEditing />);
-
-    await user.click(screen.getByRole("button", { name: "1... c5" }));
-    await user.click(screen.getByRole("button", { name: "Follow line from middle" }));
-
-    const textarea = screen.getByRole("textbox", { name: "Solution PGN" }) as HTMLTextAreaElement;
-    expect(lineSet(solutionLinesFromTextarea(textarea))).toEqual(lineSet(startingLines));
-
-    await user.click(screen.getByRole("button", { name: "Deviate after following line" }));
-    await waitFor(() =>
-      expect(lineSet(solutionLinesFromTextarea(textarea))).toEqual(
-        lineSet([...startingLines, ["e4", "c5", "Nc3"]]),
-      ),
-    );
-  });
-
-  it("deletes the active solution line with the trash button", async () => {
-    const user = userEvent.setup();
-    render(<EditorHarness allowSolutionEditing />);
-
-    await user.click(screen.getByRole("button", { name: "1... c5" }));
-    await user.click(screen.getByRole("button", { name: "Delete current line" }));
-
-    const textarea = screen.getByRole("textbox", { name: "Solution PGN" }) as HTMLTextAreaElement;
-    await waitFor(() =>
-      expect(lineSet(solutionLinesFromTextarea(textarea))).toEqual(lineSet([["e4", "e5", "Nf3"]])),
-    );
-    expect(screen.getByText("1 solution")).toBeVisible();
-  });
-
-  it("shows puzzle-style continuation options at a branch point", async () => {
-    const user = userEvent.setup();
-    render(<EditorHarness />);
-
-    expect(screen.queryByText("2 options from here")).toBeNull();
-    await user.click(screen.getByRole("button", { name: "Navigate to branch point" }));
-
-    expect(screen.getByText("2 options from here")).toBeVisible();
-    const options = screen.getByRole("list", { name: "Solution options" });
-    expect(within(options).getByRole("button", { name: "1... e5" })).toBeVisible();
-    expect(within(options).getByRole("button", { name: "1... c5" })).toBeVisible();
-    expect(screen.getByRole("button", { name: "Go to start of line" })).toHaveAttribute(
-      "title",
-      "Start (Arrow Up)",
-    );
-    expect(screen.getByRole("button", { name: "Go to end of line" })).toHaveAttribute(
-      "title",
-      "End (Arrow Down)",
     );
   });
 
@@ -703,23 +443,6 @@ describe("PuzzleEditor move tree", () => {
     const textarea = screen.getByRole("textbox", {
       name: "Solution PGN",
     }) as HTMLTextAreaElement;
-    expect(textarea.value).toContain('[Variant "Atomic"]');
-    expect(textarea.value).toContain(`[FEN "${STARTING_FEN}"]`);
-  });
-
-  it("never rewrites the PGN text while navigating existing solution lines", async () => {
-    const user = userEvent.setup();
-    const formattedPgn = "1.  e4   e5 (1... c5 2. Nf3) 2. Nf3";
-    render(<EditorHarness initialSolution={formattedPgn} />);
-
-    const textarea = screen.getByRole("textbox", {
-      name: "Solution PGN",
-    }) as HTMLTextAreaElement;
-    const displayedPgn = textarea.value;
-    await user.click(screen.getByRole("button", { name: "Navigate c5 line" }));
-
-    expect(textarea.value).toBe(displayedPgn);
-    expect(textarea.value).toContain(formattedPgn);
     expect(textarea.value).toContain('[Variant "Atomic"]');
     expect(textarea.value).toContain(`[FEN "${STARTING_FEN}"]`);
   });

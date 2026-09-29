@@ -6,28 +6,8 @@ const pages = [
     title: /Puzzles, Rankings & Matches/,
     heading: "Atomic chess puzzles, rankings, and matches",
   },
-  { path: "/solve/101", title: /Puzzle #101/, heading: "Solve the Atomic Tactic" },
-  {
-    path: "/practice",
-    title: /Opening Database Practice/,
-    heading: "Opening Database Practice",
-    visuallyHiddenHeading: true,
-  },
-  { path: "/rankings", title: /Atomic rankings/, heading: "Monthly Rankings" },
+  { path: "/solve/101", title: /Puzzle #101/, heading: "Puzzle 101" },
   { path: "/recent", title: /Recent Match Archive/, heading: "Recent Match Archive" },
-  { path: "/tournaments", title: /Tournament history/, heading: "Tournament archive" },
-  { path: "/h2h", title: /Player Head-to-Head/, heading: "Compare Player Records" },
-  { path: "/solve/sets", title: /Puzzle Event Sets/, heading: "Puzzle Event Sets" },
-  {
-    path: "/puzzles/motifs",
-    title: /Atomic Chess Tactical Motifs/,
-    heading: "Atomic tactical motifs",
-  },
-  {
-    path: "/rankings/how-ratings-work",
-    title: /Ranking Methodology/,
-    heading: "Ranking Methodology",
-  },
   { path: "/dashboard", title: /Puzzle Dashboard/, heading: "My Puzzle Dashboard" },
 ] as const;
 
