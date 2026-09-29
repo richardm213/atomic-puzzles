@@ -39,7 +39,7 @@ import {
   AnalysisWorkspacePanel,
 } from "../../features/analysisWorkspace/AnalysisWorkspaceLayout";
 import { OpeningExplorerPanel } from "../../features/analysisWorkspace/OpeningExplorerPanel";
-import { useAtomicDbAnalysis } from "../../hooks/useAtomicDbAnalysis";
+import { useAtomicDbBoardAnalysis } from "../../hooks/useAtomicDbBoardAnalysis";
 import { useAtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";
 import { useBoardDocument } from "../../hooks/useBoardDocument";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
@@ -50,7 +50,7 @@ import { findFairyStockfishMove } from "../../lib/practice/fairyStockfish";
 import { movePrefix } from "../../lib/puzzles/solutionPgn";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
 import { appAssetPath } from "../../utils/appAssetPath";
-import { atomicDbPositionUrl } from "../../utils/atomicDb";
+import { ATOMIC_DB_HOME_URL, atomicDbPositionUrl } from "../../utils/atomicDb";
 import { selectSpacebarMove } from "../../utils/boardMoveSelection";
 import { formatGameCount } from "../../utils/formatters";
 import { lichessAtomicAnalysisUrl } from "../../utils/lichess";
@@ -225,7 +225,18 @@ export const PracticePage = () => {
   const [sessionStarted, setSessionStarted] = useState(false);
 
   const currentFen = boardState?.fen || STARTING_FEN;
-  const atomicDbAnalysis = useAtomicDbAnalysis(currentFen, atomicDbEngineSettings.enabled);
+  const {
+    analysis: atomicDbAnalysis,
+    beginVariationPlayback,
+    fen: atomicDbFen,
+    finishVariationPlayback,
+    variationPlaying: atomicDbLinePlaying,
+  } = useAtomicDbBoardAnalysis({
+    currentFen,
+    enabled: atomicDbEngineSettings.enabled,
+    navigation,
+    lineCount: atomicDbEngineSettings.lineCount,
+  });
   const currentLichessAnalysisUrl = lichessAtomicAnalysisUrl(currentFen);
   const currentTurn = boardState?.turn || "white";
   const gameFinished = Boolean(boardState?.winner);
@@ -579,6 +590,32 @@ export const PracticePage = () => {
     ],
   );
 
+  const playAtomicDbLine = useCallback(
+    (ucis: string[]): void => {
+      const firstMove = ucis[0];
+      if (!firstMove) return;
+      if (ucis.length === 1) {
+        playPracticeMove(firstMove);
+        return;
+      }
+
+      clearAutoMoveState();
+      setHoveredMoveUci(null);
+      setGamePaused(true);
+      recordTriedMove(currentFen, firstMove);
+      beginVariationPlayback();
+      queueNavigation({ type: "line", ucis });
+    },
+    [
+      beginVariationPlayback,
+      clearAutoMoveState,
+      currentFen,
+      playPracticeMove,
+      queueNavigation,
+      recordTriedMove,
+    ],
+  );
+
   const toggleGamePaused = useCallback((): void => {
     if (!canRunPractice) return;
 
@@ -841,6 +878,8 @@ export const PracticePage = () => {
       if (isTextEntryTarget(event.target)) return;
 
       if (isSpacebarShortcut) {
+        // Space is reserved for move playback on this page, even while no move is available.
+        event.preventDefault();
         if (settingsOpen) return;
 
         const move = selectSpacebarMove({
@@ -853,7 +892,6 @@ export const PracticePage = () => {
         });
         if (!move) return;
 
-        event.preventDefault();
         playPracticeMove(move);
         return;
       }
@@ -1229,7 +1267,7 @@ export const PracticePage = () => {
         {movesOpen && !settingsOpen ? (
           <section className="analysisMovePanel practicePlayedMovesPanel" aria-label="Played moves">
             <AtomicDbEngineControls
-              fen={currentFen}
+              fen={atomicDbFen}
               analysis={atomicDbAnalysis}
               settings={atomicDbEngineSettings}
               setSettings={setAtomicDbEngineSettings}
@@ -1237,11 +1275,12 @@ export const PracticePage = () => {
             />
             <div className="analysisMoveContent">
               <AtomicDbEngine
-                fen={currentFen}
+                fen={atomicDbFen}
                 settings={atomicDbEngineSettings}
                 analysis={atomicDbAnalysis}
-                onPlayMove={playPracticeMove}
+                onPlayLine={playAtomicDbLine}
                 onHoverMove={setHoveredMoveUci}
+                disabled={atomicDbLinePlaying}
               />
               <PlayedMoves moves={moveList} currentPly={currentPly} onNavigate={navigateToPly} />
             </div>
@@ -1327,13 +1366,14 @@ export const PracticePage = () => {
           previewMove: hoveredMoveUci,
           onNavigateHandled: () => {
             const handledNavigation = navigation;
+            if (handledNavigation?.type === "line") finishVariationPlayback();
             clearHandledNavigation(handledNavigation);
           },
           onStateChange: handleBoardStateChange,
         }}
         boardOverlay={
           <AtomicDbEvalBar
-            fen={currentFen}
+            fen={atomicDbFen}
             analysis={atomicDbAnalysis}
             enabled={atomicDbEngineSettings.enabled}
             orientation={side}
@@ -1341,9 +1381,9 @@ export const PracticePage = () => {
         }
         lichessHref={currentLichessAnalysisUrl}
         atomicDbHref={
-          atomicDbAnalysis.status === "ready" && atomicDbAnalysis.result?.position?.key
+          atomicDbAnalysis.result?.position?.key
             ? atomicDbPositionUrl(atomicDbAnalysis.result.position.key)
-            : undefined
+            : ATOMIC_DB_HOME_URL
         }
         actionClassName="practiceBoardActions"
         secondaryAction={

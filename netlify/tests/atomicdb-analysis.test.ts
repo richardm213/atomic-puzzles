@@ -67,4 +67,82 @@ describe("atomicdb-analysis function", () => {
 
     expect(response.statusCode).toBe(404);
   });
+
+  it("loads a batch of positions in parallel without caching the response", async () => {
+    const resolvers: Array<() => void> = [];
+    const fetchMock = vi.fn().mockImplementation(
+      (input: string | URL | Request) =>
+        new Promise<Response>((resolve) => {
+          const url = input as URL;
+          resolvers.push(() =>
+            resolve(
+              new Response(
+                JSON.stringify({
+                  key: url.searchParams.get("fen"),
+                  status: "UNKNOWN",
+                  moves: [],
+                }),
+                { status: 200, headers: { "Content-Type": "application/json" } },
+              ),
+            ),
+          );
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const { handler } = await import("../functions/atomicdb-analysis");
+    const fens = [
+      "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+    ];
+    const responsePromise = handler({
+      httpMethod: "POST",
+      body: JSON.stringify({ fens }),
+    });
+
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    resolvers.forEach((resolve) => resolve());
+    const response = await responsePromise;
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["Cache-Control"]).toBe("no-store");
+    expect(Object.keys(JSON.parse(response.body).positions)).toEqual(fens);
+  });
+
+  it("loads multiple principal variations in one cached batch response", async () => {
+    const fetchMock = vi.fn().mockImplementation((input: string | URL | Request) => {
+      const fen = (input as URL).searchParams.get("fen") ?? "";
+      const bestMove = fen.includes("/5N2/")
+        ? fen.includes(" b ")
+          ? "f7f6"
+          : "b1c3"
+        : fen.includes(" b ")
+          ? "e7e6"
+          : "e2e4";
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            status: "UNKNOWN",
+            best_move: bestMove,
+            moves: [{ uci: bestMove, score: 500 }],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const { handler } = await import("../functions/atomicdb-analysis");
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    const response = await handler({
+      httpMethod: "GET",
+      queryStringParameters: { fen, line_moves: "g1f3,g1h3", plies: "3" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["Cache-Control"]).toContain("public");
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(JSON.parse(response.body).lines).toEqual({
+      g1f3: ["g1f3", "f7f6", "b1c3"],
+      g1h3: ["g1h3", "e7e6", "e2e4"],
+    });
+  });
 });

@@ -137,6 +137,41 @@ describe("Chessboard orchestration", () => {
     expect(states.at(-1)?.fen).toContain("4P3");
   });
 
+  it("plays an analysis variation through the requested ply", () => {
+    vi.useFakeTimers();
+    const states: ChessboardState[] = [];
+    const boardProps: ComponentProps<typeof Chessboard> = {
+      puzzleId: "analysis-line",
+      fen: STARTING_FEN,
+      orientation: "white",
+      coordinates: true,
+      solution: "",
+      showSolution: false,
+      analysisMode: true,
+      onStateChange: (state) => states.push(state),
+    };
+    const { rerender } = render(<Chessboard {...boardProps} />);
+
+    rerender(
+      <Chessboard
+        {...boardProps}
+        solutionNavigation={{ type: "line", ucis: ["g1f3", "f7f6", "e2e3"] }}
+      />,
+    );
+
+    expect(states.at(-1)?.lineMoves).toEqual(["Nf3"]);
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    expect(states.at(-1)?.lineMoves).toEqual(["Nf3", "f6"]);
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    expect(states.at(-1)?.lineMoves).toEqual(["Nf3", "f6", "e3"]);
+    expect(states.at(-1)?.turn).toBe("black");
+    vi.useRealTimers();
+  });
+
   it("reports an incorrect move in SAN notation", () => {
     vi.useFakeTimers();
     const onAttemptResolved = vi.fn();

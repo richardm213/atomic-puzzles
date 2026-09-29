@@ -14,6 +14,13 @@
 - Never add eyebrow labels or mini-titles above page headings.
 - Never add descriptive subtitles that merely restate the page title or visible controls.
 
+## Testing protocol
+
+- Before adding, expanding, or substantially rewriting tests, read and follow `docs/testing-protocol.md`.
+- Tests are not required for every change. Add coverage only when it protects a meaningful invariant or realistic regression.
+- Prefer extending an existing test over adding another test for the same behavior at a different layer, route, viewport, role, or data value.
+- Do not treat test count, assertion count, or coverage percentage as goals. Low-signal tests should be deleted rather than maintained.
+
 ## Matches database token renewal
 
 - “Refresh matches token” is the saved shorthand for issuing a new read-only matches token, updating Netlify production, redeploying, and verifying live database reads. Follow `docs/rotate-matches-token.md`. Also recognize “Rotate the matches token and redeploy” and requests to renew the Turso matches token in Netlify.

@@ -215,22 +215,14 @@
   list-style: none;
 }
 
-.atomicDbEngineLines button {
-  width: 100%;
-  min-height: 22px;
+.atomicDbEngineLine {
+  min-height: 26px;
   padding: 0 5px;
-  border: 0;
-  border-radius: 3px;
-  background: transparent;
   color: var(--color-text);
   display: grid;
   grid-template-columns: 46px minmax(0, 1fr) 52px;
   align-items: center;
   gap: 5px;
-  text-align: left;
-  transition:
-    background 140ms ease,
-    color 140ms ease;
 }
 
 .atomicDbEngineLineUnavailable {
@@ -243,17 +235,6 @@
   gap: 5px;
   font-size: 10px;
   font-weight: 700;
-}
-
-.atomicDbEngineLines button:hover,
-.atomicDbEngineLines button:focus-visible {
-  background: color-mix(in srgb, var(--color-panel-strong) 62%, transparent);
-  color: var(--color-heading);
-}
-
-.atomicDbEngineLines button:disabled {
-  cursor: wait;
-  opacity: 0.68;
 }
 
 .atomicDbEvalBar {
@@ -324,6 +305,11 @@
   font-variant-numeric: tabular-nums;
 }
 
+.atomicDbEngineScore.mate {
+  width: 34px;
+  text-align: center;
+}
+
 .atomicDbEngineDepth {
   color: color-mix(in srgb, var(--color-muted) 78%, transparent);
   font-size: 9px;
@@ -337,10 +323,59 @@
 .atomicDbEngineMove {
   min-width: 0;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  column-gap: 4px;
   font-size: 12px;
-  font-weight: 850;
+  font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.atomicDbEngineMoveNumber {
+  color: var(--color-muted);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.atomicDbEngineMoveButton {
+  min-width: 0;
+  min-height: 22px;
+  padding: 1px 4px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: color-mix(in srgb, var(--color-text) 86%, var(--color-muted) 14%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 1 auto;
+  font: inherit;
+  font-weight: 750;
+  line-height: 1;
+  transition:
+    background 140ms ease,
+    color 140ms ease;
+}
+
+.atomicDbEngineMoveButton.first {
+  color: var(--color-heading);
+  font-weight: 900;
+}
+
+.atomicDbEngineMoveButton:hover:not(:disabled),
+.atomicDbEngineMoveButton:focus-visible {
+  background: color-mix(in srgb, var(--color-primary) 22%, transparent);
+  color: var(--color-cyan-bright);
+}
+
+.atomicDbEngineMoveButton:active:not(:disabled) {
+  background: color-mix(in srgb, var(--color-primary) 32%, transparent);
+}
+
+.atomicDbEngineMoveButton:disabled {
+  cursor: wait;
+  opacity: 0.68;
 }
 
 .atomicDbEngineToggle:focus-visible,
@@ -381,7 +416,12 @@
     height: 44px;
   }
 
-  .atomicDbEngineLines button {
+  .atomicDbEngineLine {
     min-height: 44px;
+  }
+
+  .atomicDbEngineMoveButton {
+    min-height: 44px;
+    padding-inline: 5px;
   }
 }

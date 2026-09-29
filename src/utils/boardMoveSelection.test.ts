@@ -22,7 +22,7 @@ const databaseMoves = [
 ];
 
 describe("selectSpacebarMove", () => {
-  it("uses AtomicDB's best move while the engine is on", () => {
+  it("uses AtomicDB's top-ranked move while the engine is on", () => {
     expect(
       selectSpacebarMove({
         engineEnabled: true,
@@ -32,7 +32,7 @@ describe("selectSpacebarMove", () => {
         databaseStatus: "ready",
         fen: FEN,
       }),
-    ).toBe("a1b2");
+    ).toBe("a1a2");
   });
 
   it("uses the most-played database move while the engine is off", () => {
@@ -48,12 +48,23 @@ describe("selectSpacebarMove", () => {
     ).toBe("a1b1");
   });
 
-  it("does not use stale engine analysis or fall back to the database", () => {
+  it("waits for current engine analysis instead of falling back to the database", () => {
     expect(
       selectSpacebarMove({
         engineEnabled: true,
         engineResult,
         engineStatus: "loading",
+        databaseMoves,
+        databaseStatus: "ready",
+        fen: FEN,
+      }),
+    ).toBeNull();
+
+    expect(
+      selectSpacebarMove({
+        engineEnabled: true,
+        engineResult,
+        engineStatus: "ready",
         databaseMoves,
         databaseStatus: "ready",
         fen: `${FEN} stale`,

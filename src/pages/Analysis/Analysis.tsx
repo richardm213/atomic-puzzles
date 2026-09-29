@@ -1,5 +1,6 @@
 import { faArrowsRotate, faBookOpen, faGear, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
 import type {
   CSSProperties,
@@ -31,15 +32,16 @@ import {
   OpeningExplorerPanel,
   OpeningExplorerResizeHandle,
 } from "../../features/analysisWorkspace/OpeningExplorerPanel";
-import { useAtomicDbAnalysis } from "../../hooks/useAtomicDbAnalysis";
+import { useAtomicDbBoardAnalysis } from "../../hooks/useAtomicDbBoardAnalysis";
 import { useAtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";
 import { useBoardDocument } from "../../hooks/useBoardDocument";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
 import { useOpeningExplorer } from "../../hooks/useOpeningExplorer";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import { useUsernamePicker } from "../../hooks/useUsernamePicker";
+import { createAtomicPosition } from "../../lib/puzzles/solutionPgn";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
-import { atomicDbPositionUrl } from "../../utils/atomicDb";
+import { ATOMIC_DB_HOME_URL, atomicDbPositionUrl } from "../../utils/atomicDb";
 import { selectSpacebarMove } from "../../utils/boardMoveSelection";
 import { lichessAtomicAnalysisUrl } from "../../utils/lichess";
 import {
@@ -74,6 +76,21 @@ const EXPLORER_SPEED_FILTER_VERSION = 2;
 const PLAYER_MIN_RATING = 1700;
 const MAX_EXPLORER_RATING = 2200;
 const PLAYER_RATING_STEP = 50;
+
+const fenFromRoute = (value: string | undefined): string => {
+  if (!value) return STARTING_FEN;
+
+  const fen = value.replace(/^\/+/, "").replaceAll("_", " ");
+
+  try {
+    createAtomicPosition(fen);
+    return fen;
+  } catch {
+    return STARTING_FEN;
+  }
+};
+
+const analysisPathFromFen = (fen: string): string => `/analysis/${fen.replaceAll(" ", "_")}`;
 
 const DEFAULT_EXPLORER_SETTINGS = {
   speedFilterVersion: EXPLORER_SPEED_FILTER_VERSION,
@@ -248,6 +265,9 @@ const SpeedFilterIcon = ({ speed }: { speed: ExplorerSpeed }) => {
 };
 
 export const AnalysisPage = () => {
+  const navigate = useNavigate();
+  const { _splat: fenPath } = useParams({ strict: false });
+  const routeFen = fenFromRoute(fenPath);
   const boardPanelRef = useRef<HTMLDivElement | null>(null);
   const rightPanelRef = useRef<HTMLElement | null>(null);
   const movePanelRef = useRef<HTMLDivElement | null>(null);
@@ -258,7 +278,7 @@ export const AnalysisPage = () => {
     boardSizeSchema,
     DEFAULT_ANALYSIS_BOARD_SIZE,
   );
-  const [rootFen, setRootFen] = useState(STARTING_FEN);
+  const [rootFen, setRootFen] = useState(routeFen);
   const [orientation, setOrientation] = useState<"white" | "black">("white");
   const [navigation, setNavigation] = useState<SolutionNavigation | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -299,7 +319,18 @@ export const AnalysisPage = () => {
 
   const moveList = boardState?.lineMoves ?? [];
   const currentFen = boardState?.fen || STARTING_FEN;
-  const atomicDbAnalysis = useAtomicDbAnalysis(currentFen, atomicDbEngineSettings.enabled);
+  const {
+    analysis: atomicDbAnalysis,
+    beginVariationPlayback,
+    fen: atomicDbFen,
+    finishVariationPlayback,
+    variationPlaying: atomicDbLinePlaying,
+  } = useAtomicDbBoardAnalysis({
+    currentFen,
+    enabled: atomicDbEngineSettings.enabled,
+    navigation,
+    lineCount: atomicDbEngineSettings.lineCount,
+  });
   const currentLichessAnalysisUrl = lichessAtomicAnalysisUrl(currentFen);
   const currentPly = boardState?.lineIndex ?? 0;
   const analysisPageStyle = {
@@ -344,11 +375,17 @@ export const AnalysisPage = () => {
     onCommitFen: (nextFen) => {
       setRootFen(nextFen);
       setNavigation({ type: "reset", fen: nextFen });
+      void navigate({ to: analysisPathFromFen(nextFen) });
     },
     onCommitPgn: (nextPgn) => {
       setNavigation({ type: "loadPgn", pgn: nextPgn, fen: rootFen });
     },
   });
+
+  useEffect(() => {
+    setRootFen(routeFen);
+    setNavigation({ type: "reset", fen: routeFen });
+  }, [routeFen]);
 
   const requestNavigation = (command: PlaybackCommand): void => {
     setNavigation({ type: "command", command });
@@ -428,6 +465,12 @@ export const AnalysisPage = () => {
   const playExplorerMove = (uci: string): void => {
     setHoveredExplorerMoveUci(null);
     setNavigation({ type: "play", uci });
+  };
+
+  const playAtomicDbLine = (ucis: string[]): void => {
+    setHoveredExplorerMoveUci(null);
+    beginVariationPlayback();
+    setNavigation({ type: "line", ucis });
   };
 
   const ensurePlayerStartDate = useCallback((): void => {
@@ -660,6 +703,8 @@ export const AnalysisPage = () => {
       if (isTextEntryTarget(event.target)) return;
 
       if (isSpacebarShortcut) {
+        // Space is reserved for move playback on this page, even while no move is available.
+        event.preventDefault();
         if (usernamePickerOpen || filtersOpen) return;
 
         const move = selectSpacebarMove({
@@ -672,7 +717,6 @@ export const AnalysisPage = () => {
         });
         if (!move) return;
 
-        event.preventDefault();
         playExplorerMove(move);
         return;
       }
@@ -736,7 +780,7 @@ export const AnalysisPage = () => {
         <div className="analysisMovePanel" ref={movePanelRef}>
           <div className="analysisEngineBlock">
             <AtomicDbEngineControls
-              fen={currentFen}
+              fen={atomicDbFen}
               analysis={atomicDbAnalysis}
               settings={atomicDbEngineSettings}
               setSettings={setAtomicDbEngineSettings}
@@ -744,11 +788,12 @@ export const AnalysisPage = () => {
               onFlipBoard={flipBoard}
             />
             <AtomicDbEngine
-              fen={currentFen}
+              fen={atomicDbFen}
               settings={atomicDbEngineSettings}
               analysis={atomicDbAnalysis}
-              onPlayMove={playExplorerMove}
+              onPlayLine={playAtomicDbLine}
               onHoverMove={setHoveredExplorerMoveUci}
+              disabled={atomicDbLinePlaying}
             />
           </div>
           <div className="analysisMoveContent">
@@ -1014,13 +1059,16 @@ export const AnalysisPage = () => {
           captureNavigationShortcuts: true,
           solutionNavigation: navigation,
           previewMove: hoveredExplorerMoveUci,
-          onNavigateHandled: () => setNavigation(null),
+          onNavigateHandled: () => {
+            finishVariationPlayback();
+            setNavigation(null);
+          },
           onStateChange: setBoardState,
         }}
         boardOverlay={
           <>
             <AtomicDbEvalBar
-              fen={currentFen}
+              fen={atomicDbFen}
               analysis={atomicDbAnalysis}
               enabled={atomicDbEngineSettings.enabled}
               orientation={orientation}
@@ -1036,9 +1084,9 @@ export const AnalysisPage = () => {
         }
         lichessHref={currentLichessAnalysisUrl}
         atomicDbHref={
-          atomicDbAnalysis.status === "ready" && atomicDbAnalysis.result?.position?.key
+          atomicDbAnalysis.result?.position?.key
             ? atomicDbPositionUrl(atomicDbAnalysis.result.position.key)
-            : undefined
+            : ATOMIC_DB_HOME_URL
         }
         document={boardDocument}
       />

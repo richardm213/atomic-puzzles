@@ -111,6 +111,7 @@ const getStatus = (position: Atomic): string => {
 const colorFromFen = (fen: string): Color => (fen?.split(" ")?.[1] === "b" ? "black" : "white");
 
 const MOVE_EVALUATION_DELAY_MS = 250;
+const ANALYSIS_LINE_PLAYBACK_DELAY_MS = 250;
 
 const keyPair = (a: string, b: string): [Key, Key] => [a as Key, b as Key];
 
@@ -194,6 +195,7 @@ export const Chessboard = ({
   const solverColorRef = useLatestRef<Color>(colorFromFen(fen));
   const onStateChangeRef = useLatestRef(onStateChange);
   const onAttemptResolvedRef = useLatestRef(onAttemptResolved);
+  const onNavigateHandledRef = useLatestRef(onNavigateHandled);
 
   const solutionUciLines = useMemo(
     () => suppliedSolutionUciLines ?? parseSolutionUciLines(fen, solution),
@@ -1090,6 +1092,43 @@ export const Chessboard = ({
       case "play":
         playUciMove(solutionNavigation.uci);
         break;
+      case "line": {
+        let cancelled = false;
+        let timeoutId: number | null = null;
+        const stepDelay = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+          ? 0
+          : ANALYSIS_LINE_PLAYBACK_DELAY_MS;
+
+        const finish = (): void => {
+          if (!cancelled) onNavigateHandledRef.current?.();
+        };
+        const playNext = (index: number): void => {
+          if (cancelled) return;
+          const uci = solutionNavigation.ucis[index];
+          if (!uci) {
+            finish();
+            return;
+          }
+          const position = positionRef.current;
+          const move = position ? moveFromUci(position, uci.trim().toLowerCase()) : undefined;
+          if (!position || !move || !position.isLegal(move)) {
+            finish();
+            return;
+          }
+          playUciMove(uci);
+          if (index === solutionNavigation.ucis.length - 1) {
+            finish();
+            return;
+          }
+          timeoutId = window.setTimeout(() => playNext(index + 1), stepDelay);
+        };
+
+        playNext(0);
+        return () => {
+          cancelled = true;
+          if (timeoutId !== null) window.clearTimeout(timeoutId);
+        };
+      }
       case "command":
         navigatePlayback(solutionNavigation.command);
         break;
@@ -1104,11 +1143,12 @@ export const Chessboard = ({
         break;
     }
 
-    onNavigateHandled?.();
+    onNavigateHandledRef.current?.();
+    return undefined;
   }, [
     solutionNavigation,
     fenRef,
-    onNavigateHandled,
+    onNavigateHandledRef,
     navigatePlayback,
     navigateTo,
     loadPgnMainline,

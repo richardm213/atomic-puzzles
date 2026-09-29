@@ -28,6 +28,11 @@ export type AtomicDbResult = {
   position: AtomicDbPosition | null;
 };
 
+export type AtomicDbPrincipalVariationResult = {
+  lines: Record<string, string[]>;
+  positions: Record<string, AtomicDbPosition>;
+};
+
 export type AtomicDbEvaluation =
   { type: "centipawns"; value: number } | { type: "mate"; value: number } | { type: "unknown" };
 
@@ -63,6 +68,8 @@ type AtomicDbResponse = {
 const UNKNOWN_EVALUATION: AtomicDbEvaluation = { type: "unknown" };
 const TERMINAL_SCORE = 10_000;
 const LICHESS_WINNING_CHANCES_COEFFICIENT = 0.00368208;
+
+export const ATOMIC_DB_HOME_URL = "https://belzedar.duckdns.org/atomicdb/";
 
 const nullableNumber = (value: unknown): number | null =>
   typeof value === "number" && Number.isFinite(value) ? value : null;
@@ -152,6 +159,19 @@ export const buildAtomicDbUrl = (fen: string): string => {
   return `${appAssetPath("/api/atomicdb-analysis")}?${params.toString()}`;
 };
 
+export const buildAtomicDbLinesUrl = (
+  fen: string,
+  rootMoves: string[],
+  plyCount: number,
+): string => {
+  const params = new URLSearchParams({
+    fen,
+    line_moves: rootMoves.join(","),
+    plies: String(plyCount),
+  });
+  return `${appAssetPath("/api/atomicdb-analysis")}?${params.toString()}`;
+};
+
 export const fetchAtomicDbPosition = async (
   fen: string,
   signal?: AbortSignal,
@@ -168,6 +188,77 @@ export const fetchAtomicDbPosition = async (
   }
 
   return parseAtomicDbResponse(body);
+};
+
+export const fetchAtomicDbPositions = async (
+  fens: string[],
+  signal?: AbortSignal,
+): Promise<Record<string, AtomicDbPosition | null>> => {
+  const response = await fetch(appAssetPath("/api/atomicdb-analysis"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fens }),
+    cache: "no-store",
+    ...(signal ? { signal } : {}),
+  });
+  const body: unknown = await response.json().catch(() => null);
+  if (!response.ok || !body || typeof body !== "object") {
+    const error = body as { error?: unknown } | null;
+    throw new Error(
+      typeof error?.error === "string" ? error.error : "AtomicDB analysis is unavailable.",
+    );
+  }
+
+  const payload = body as { positions?: unknown };
+  if (!payload.positions || typeof payload.positions !== "object") {
+    throw new Error("AtomicDB returned an unexpected response.");
+  }
+
+  const positions: Record<string, AtomicDbPosition | null> = {};
+  for (const fen of fens) {
+    const value = (payload.positions as Record<string, unknown>)[fen];
+    positions[fen] = value === null ? null : parseAtomicDbResponse(value);
+  }
+  return positions;
+};
+
+export const fetchAtomicDbPrincipalVariations = async (
+  fen: string,
+  rootMoves: string[],
+  plyCount: number,
+  signal?: AbortSignal,
+): Promise<AtomicDbPrincipalVariationResult> => {
+  const response = await fetch(
+    buildAtomicDbLinesUrl(fen, rootMoves, plyCount),
+    signal ? { signal } : undefined,
+  );
+  const body: unknown = await response.json().catch(() => null);
+  if (!response.ok || !body || typeof body !== "object") {
+    const error = body as { error?: unknown } | null;
+    throw new Error(
+      typeof error?.error === "string" ? error.error : "AtomicDB lines are unavailable.",
+    );
+  }
+
+  const payload = body as { lines?: unknown; positions?: unknown };
+  const lines: Record<string, string[]> = {};
+  if (payload.lines && typeof payload.lines === "object") {
+    for (const [rootMove, moves] of Object.entries(payload.lines)) {
+      if (!Array.isArray(moves)) continue;
+      lines[rootMove] = moves.filter(
+        (move): move is string =>
+          typeof move === "string" && /^[a-h][1-8][a-h][1-8][nbrq]?$/.test(move),
+      );
+    }
+  }
+
+  const positions: Record<string, AtomicDbPosition> = {};
+  if (payload.positions && typeof payload.positions === "object") {
+    for (const [positionFen, value] of Object.entries(payload.positions)) {
+      positions[positionFen] = parseAtomicDbResponse(value);
+    }
+  }
+  return { lines, positions };
 };
 
 export const getAtomicDbMoveEvaluation = (move: AtomicDbMove, fen: string): AtomicDbEvaluation =>

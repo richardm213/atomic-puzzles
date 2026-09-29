@@ -182,6 +182,12 @@ const analysisRoute = createRoute({
   component: AnalysisPage,
 });
 
+const analysisFenRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/analysis/$",
+  component: AnalysisPage,
+});
+
 const practiceRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/practice",
@@ -438,6 +444,7 @@ const routeTree = rootRoute.addChildren([
   rankingsMethodologyRoute,
   openingRankingsRoute,
   analysisRoute,
+  analysisFenRoute,
   practiceRoute,
   recentRoute,
   tournamentsRoute,

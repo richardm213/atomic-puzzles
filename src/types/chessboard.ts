@@ -32,6 +32,7 @@ export type PlaybackCommand =
 export type SolutionNavigation =
   | { type: "command"; command: PlaybackCommand }
   | { type: "play"; uci: string }
+  | { type: "line"; ucis: string[] }
   | { type: "reset"; fen: string }
   | { type: "loadPgn"; pgn: string; fen?: string }
   | { type: "history"; ply: number }

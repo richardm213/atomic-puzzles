@@ -12,14 +12,15 @@ import {
   formatAtomicDbEvaluation,
   getAtomicDbMoveEvaluation,
 } from "../../utils/atomicDb";
-import { sanFromUci } from "../../utils/chessNotation";
+import { numberedSanLineFromUci } from "../../utils/chessNotation";
 
 type AtomicDbEngineProps = {
   fen: string;
   settings: AtomicDbEngineSettings;
   analysis: AtomicDbAnalysisState;
-  onPlayMove: (uci: string) => void;
+  onPlayLine: (ucis: string[]) => void;
   onHoverMove: (uci: string | null) => void;
+  disabled?: boolean;
 };
 
 type AtomicDbEngineControlsProps = {
@@ -147,8 +148,9 @@ export const AtomicDbEngine = ({
   fen,
   settings,
   analysis,
-  onPlayMove,
+  onPlayLine,
   onHoverMove,
+  disabled = false,
 }: AtomicDbEngineProps) => {
   const { enabled, lineCount } = settings;
   const { status, error } = analysis;
@@ -182,8 +184,10 @@ export const AtomicDbEngine = ({
         {visibleMoves.length > 0 ? (
           <ol className="atomicDbEngineLines">
             {visibleMoves.map((move) => {
-              const san = sanFromUci(view.fen, move.uci);
-              if (san === move.uci) {
+              const principalVariation = analysis.principalVariations[move.uci];
+              const displayedUcis = principalVariation ?? [move.uci];
+              const lineTokens = numberedSanLineFromUci(view.fen, displayedUcis);
+              if (lineTokens.length === 0) {
                 return (
                   <li
                     key={move.uci}
@@ -197,32 +201,54 @@ export const AtomicDbEngine = ({
                 );
               }
               const support = move.backedPlies > 0 ? `, backed to depth ${move.backedPlies}` : "";
-              const evaluation = formatAtomicDbEvaluation(
-                getAtomicDbMoveEvaluation(move, view.fen),
-              );
+              const moveEvaluation = getAtomicDbMoveEvaluation(move, view.fen);
+              const evaluation = formatAtomicDbEvaluation(moveEvaluation);
+              const displayedLine = lineTokens.map((token) => token.value).join(" ");
               return (
-                <li key={move.uci}>
-                  <button
-                    type="button"
-                    disabled={showingPreviousPosition}
-                    aria-label={`Play ${san}, evaluation ${evaluation}${support}`}
-                    onPointerEnter={() => onHoverMove(move.uci)}
-                    onPointerLeave={() => onHoverMove(null)}
-                    onFocus={() => onHoverMove(move.uci)}
-                    onBlur={() => onHoverMove(null)}
-                    onClick={() => onPlayMove(move.uci)}
+                <li
+                  key={move.uci}
+                  className="atomicDbEngineLine"
+                  aria-label={`Evaluation ${evaluation}${support}, line ${displayedLine}`}
+                >
+                  <span
+                    className={`atomicDbEngineScore ${moveEvaluation.type === "mate" ? "mate" : ""}`}
                   >
-                    <span className="atomicDbEngineScore">{evaluation}</span>
-                    <span className="atomicDbEngineMove">{san}</span>
-                    <span
-                      className="atomicDbEngineDepth"
-                      title={
-                        move.backedPlies > 0 ? `Backed to depth ${move.backedPlies}` : undefined
-                      }
-                    >
-                      {move.backedPlies > 0 ? `depth ${move.backedPlies}` : ""}
-                    </span>
-                  </button>
+                    {evaluation}
+                  </span>
+                  <span className="atomicDbEngineMove">
+                    {lineTokens.map((token, index) =>
+                      token.type === "moveNumber" ? (
+                        <span className="atomicDbEngineMoveNumber" key={`number-${index}`}>
+                          {token.value}
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className={`atomicDbEngineMoveButton ${token.ply === 0 ? "first" : ""}`}
+                          disabled={showingPreviousPosition || disabled}
+                          aria-label={`Play variation through ${token.value}`}
+                          key={`move-${token.ply}`}
+                          onPointerEnter={() =>
+                            onHoverMove(token.ply === 0 ? (displayedUcis[0] ?? null) : null)
+                          }
+                          onPointerLeave={() => onHoverMove(null)}
+                          onFocus={() =>
+                            onHoverMove(token.ply === 0 ? (displayedUcis[0] ?? null) : null)
+                          }
+                          onBlur={() => onHoverMove(null)}
+                          onClick={() => onPlayLine(displayedUcis.slice(0, token.ply + 1))}
+                        >
+                          {token.value}
+                        </button>
+                      ),
+                    )}
+                  </span>
+                  <span
+                    className="atomicDbEngineDepth"
+                    title={move.backedPlies > 0 ? `Backed to depth ${move.backedPlies}` : undefined}
+                  >
+                    {move.backedPlies > 0 ? `depth ${move.backedPlies}` : ""}
+                  </span>
                 </li>
               );
             })}

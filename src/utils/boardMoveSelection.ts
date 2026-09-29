@@ -28,11 +28,8 @@ export const selectSpacebarMove = ({
     const position = engineResult.position;
     if (!position) return null;
 
-    return (
-      position.moves.find((move) => move.uci === position.bestMove)?.uci ??
-      position.moves[0]?.uci ??
-      null
-    );
+    // AtomicDB returns moves in engine rank order; this is the same move shown at the top.
+    return position.moves[0]?.uci ?? null;
   }
 
   if (databaseStatus !== "ready") return null;
