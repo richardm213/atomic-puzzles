@@ -366,12 +366,12 @@ export const AnalysisPage = () => {
             : `${pair.number}. ${whiteMove}`;
         })
         .join(" ")} *`
-    : "*";
+    : "";
   const boardDocument = useBoardDocument({
     fen: currentFen,
     pgn: pgnText,
     boardState,
-    pgnAfterFenCommit: () => "*",
+    pgnAfterFenCommit: () => "",
     onCommitFen: (nextFen) => {
       setRootFen(nextFen);
       setNavigation({ type: "reset", fen: nextFen });

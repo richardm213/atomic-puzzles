@@ -60,10 +60,6 @@
   border-color: rgba(35, 55, 84, 0.22);
 }
 
-:root[data-theme="light"] .analysisPage .analysisBottomToolbar {
-  background: color-mix(in srgb, var(--color-panel-deep) 74%, var(--color-panel) 26%);
-}
-
 :root[data-theme="light"] .analysisPage .atomicDbTopSource,
 :root[data-theme="light"] .analysisPage .atomicDbEngineDepth,
 :root[data-theme="light"] .analysisPage .atomicDbEngineLineUnavailable {
@@ -177,7 +173,7 @@ body:has(.analysisPage),
   height: var(--analysis-side-panel-height);
   max-height: var(--analysis-side-panel-max-height);
   min-height: 0;
-  grid-template-rows: minmax(min-content, 0.32fr) minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 0.32fr) minmax(0, 1fr) auto;
   overflow: hidden;
 }
 
@@ -1116,7 +1112,7 @@ body:has(.analysisPage),
   border-top: 1px solid var(--color-border);
   border-bottom-left-radius: var(--radius-ui);
   border-bottom-right-radius: var(--radius-ui);
-  background: color-mix(in srgb, var(--color-panel-deep) 52%, transparent);
+  background: var(--color-panel-deep);
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: center;
