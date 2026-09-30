@@ -554,6 +554,7 @@
 .dashboardSelectedTag > button:focus-visible,
 .dashboardTagOptions > button:focus-visible,
 .dashboardClearFilters:focus-visible,
+.dashboardCalendarToggle:focus-visible,
 .dashboardFilterToggle:focus-visible,
 .dashboardStartSetButton:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--color-primary) 68%, white);
@@ -566,6 +567,7 @@
 }
 
 .dashboardClearFilters,
+.dashboardCalendarToggle,
 .dashboardFilterToggle {
   min-height: 40px;
   padding: 0 12px;
@@ -582,6 +584,7 @@
 }
 
 .dashboardClearFilters:hover:not(:disabled),
+.dashboardCalendarToggle:hover:not(:disabled),
 .dashboardFilterToggle:hover:not(:disabled) {
   border-color: var(--color-accent-soft-border);
   background: var(--color-surface-elevated-strong);
@@ -590,6 +593,264 @@
 .dashboardClearFilters:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+.dashboardCalendar {
+  --calendar-performance-1: oklch(33% 0.045 245deg);
+  --calendar-performance-2: oklch(38% 0.065 245deg);
+  --calendar-performance-3: oklch(44% 0.085 245deg);
+  --calendar-performance-4: oklch(52% 0.11 245deg);
+  --calendar-performance-5: oklch(68% 0.14 235deg);
+  --calendar-performance-text: oklch(97% 0.012 245deg);
+  --calendar-performance-strong-text: oklch(18% 0.035 245deg);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: color-mix(in srgb, var(--color-surface-soft) 86%, transparent);
+}
+
+.dashboardCalendarHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.dashboardCalendarTitle {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.dashboardCalendarTitle h3 {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.dashboardCalendarTitle span {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboardCalendarNavigation {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dashboardCalendarNavigation button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: calc(var(--radius-ui) - 2px);
+  background: var(--color-surface-elevated-strong);
+  color: var(--color-heading);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  transition: var(--dashboard-transition);
+}
+
+.dashboardCalendarNavigation button:hover:not(:disabled) {
+  border-color: var(--color-accent-soft-border);
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface-elevated-strong));
+}
+
+.dashboardCalendarNavigation button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.dashboardCalendarNavigation button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-primary) 68%, white);
+  outline-offset: 2px;
+}
+
+.dashboardCalendarNavigation button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.dashboardCalendarLegend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-subtle);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.dashboardCalendarLegend > ol {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dashboardCalendarLegend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.dashboardCalendarLegend i {
+  display: block;
+  width: 12px;
+  height: 12px;
+  border: 1px solid color-mix(in srgb, var(--color-heading) 20%, transparent);
+  border-radius: 3px;
+}
+
+.dashboardCalendarTableWrap {
+  overflow-x: auto;
+}
+
+.dashboardCalendarTable {
+  width: 100%;
+  table-layout: fixed;
+  border-spacing: 0;
+  border-collapse: collapse;
+}
+
+.dashboardCalendarTable caption,
+.dashboardCalendarDateLabel {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.dashboardCalendarTable th {
+  height: 30px;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-subtle);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.dashboardCalendarTable td {
+  position: relative;
+  height: 76px;
+  padding: 8px;
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  background: transparent;
+  vertical-align: top;
+}
+
+.dashboardCalendarTable tr:last-child td {
+  border-bottom: 0;
+}
+
+.dashboardCalendarTable td:last-child {
+  border-right: 0;
+}
+
+.dashboardCalendarTable td.outsideMonth {
+  background: color-mix(in srgb, var(--color-surface-inset) 50%, transparent);
+}
+
+.dashboardCalendar .performance1 {
+  background: var(--calendar-performance-1);
+}
+
+.dashboardCalendar .performance2 {
+  background: var(--calendar-performance-2);
+}
+
+.dashboardCalendar .performance3 {
+  background: var(--calendar-performance-3);
+}
+
+.dashboardCalendar .performance4 {
+  background: var(--calendar-performance-4);
+}
+
+.dashboardCalendar .performance5 {
+  background: var(--calendar-performance-5);
+}
+
+.dashboardCalendarTable td:is(.performance1, .performance2, .performance3, .performance4) {
+  --calendar-cell-text: var(--calendar-performance-text);
+}
+
+.dashboardCalendarTable td.performance5 {
+  --calendar-cell-text: var(--calendar-performance-strong-text);
+}
+
+.dashboardCalendarTable time {
+  display: block;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.dashboardCalendarDayScore {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  display: grid;
+  gap: 2px;
+  width: calc(100% - 12px);
+  text-align: center;
+  transform: translate(-50%, -42%);
+}
+
+.dashboardCalendarDayScore strong {
+  color: var(--color-heading);
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.dashboardCalendarDayScore small {
+  color: var(--color-muted);
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1.15;
+}
+
+.dashboardCalendarTable td[class*="performance"] time,
+.dashboardCalendarTable td[class*="performance"] .dashboardCalendarDayScore strong,
+.dashboardCalendarTable td[class*="performance"] .dashboardCalendarDayScore small {
+  color: var(--calendar-cell-text);
+}
+
+:root[data-theme="light"] .dashboardCalendar {
+  --calendar-performance-1: oklch(95% 0.035 65deg);
+  --calendar-performance-2: oklch(90% 0.07 65deg);
+  --calendar-performance-3: oklch(83% 0.105 65deg);
+  --calendar-performance-4: oklch(74% 0.135 65deg);
+  --calendar-performance-5: oklch(62% 0.16 55deg);
+  --calendar-performance-text: oklch(22% 0.045 55deg);
+  --calendar-performance-strong-text: oklch(18% 0.045 55deg);
 }
 
 .dashboardAttemptsPager {
@@ -619,8 +880,8 @@
 .dashboardAttemptRow {
   display: grid;
   grid-template-columns:
-    34px minmax(112px, 1fr) minmax(170px, 1fr) minmax(84px, 0.72fr)
-    minmax(140px, 1.12fr);
+    34px minmax(136px, 1.08fr) minmax(142px, 0.88fr) minmax(96px, 0.72fr)
+    minmax(180px, 1.2fr);
   gap: 12px;
   align-items: center;
 }
@@ -995,6 +1256,36 @@
     width: 100%;
   }
 
+  .dashboardCalendarToggle {
+    width: 100%;
+  }
+
+  .dashboardCalendarHeading {
+    align-items: flex-start;
+  }
+
+  .dashboardCalendarLegend {
+    align-items: flex-start;
+    justify-content: flex-start;
+  }
+
+  .dashboardCalendarLegend > ol {
+    flex-wrap: wrap;
+  }
+
+  .dashboardCalendarTable td {
+    height: 68px;
+    padding: 6px;
+  }
+
+  .dashboardCalendarDayScore strong {
+    font-size: 14px;
+  }
+
+  .dashboardCalendarDayScore small {
+    font-size: 9px;
+  }
+
   .dashboardFilters {
     grid-template-columns: 1fr;
   }
@@ -1090,6 +1381,28 @@
 }
 
 @media (max-width: 480px) {
+  .dashboardCalendarHeading {
+    display: grid;
+  }
+
+  .dashboardCalendarNavigation {
+    justify-content: space-between;
+  }
+
+  .dashboardCalendarNavigation button:not(.dashboardCalendarToday) {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .dashboardCalendarTable td {
+    height: 62px;
+    padding: 5px;
+  }
+
+  .dashboardCalendarDayScore small {
+    display: none;
+  }
+
   .dashboardOverview {
     grid-template-areas:
       "rating"

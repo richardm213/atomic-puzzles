@@ -303,11 +303,7 @@ export const ShopPage = () => {
 
           <fieldset className="analysisFocusOptions">
             <legend>Analysis focus</legend>
-            <label
-              htmlFor="analysis-focus-higher-eval"
-              aria-label="Push for higher evaluation"
-              className={analysisFocus === "higher_eval" ? "selected" : ""}
-            >
+            <div className={analysisFocus === "higher_eval" ? "selected" : ""}>
               <input
                 id="analysis-focus-higher-eval"
                 type="radio"
@@ -320,16 +316,12 @@ export const ShopPage = () => {
                   setOpeningInputs((current) => current.slice(0, 5));
                 }}
               />
-              <span>
-                <strong>Push for higher evaluation</strong>
+              <label htmlFor="analysis-focus-higher-eval">
+                <strong id="analysis-focus-higher-eval-label">Push for higher evaluation</strong>
                 <small>Submit up to five opening sequences for deeper analysis.</small>
-              </span>
-            </label>
-            <label
-              htmlFor="analysis-focus-player-lines"
-              aria-label="Cover player database lines"
-              className={analysisFocus === "player_lines" ? "selected" : ""}
-            >
+              </label>
+            </div>
+            <div className={analysisFocus === "player_lines" ? "selected" : ""}>
               <input
                 id="analysis-focus-player-lines"
                 type="radio"
@@ -342,11 +334,11 @@ export const ShopPage = () => {
                   setOpeningInputs((current) => [current[0] ?? ""]);
                 }}
               />
-              <span>
-                <strong>Cover player database lines</strong>
+              <label htmlFor="analysis-focus-player-lines">
+                <strong id="analysis-focus-player-lines-label">Cover player database lines</strong>
                 <small>Analyze one opening across up to ten players.</small>
-              </span>
-            </label>
+              </label>
+            </div>
           </fieldset>
 
           <div className="analysisRequestFields">

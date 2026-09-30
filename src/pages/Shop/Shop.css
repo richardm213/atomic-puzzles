@@ -222,7 +222,7 @@
   white-space: nowrap;
 }
 
-.analysisFocusOptions label {
+.analysisFocusOptions > div {
   display: flex;
   align-items: flex-start;
   gap: var(--space-3);
@@ -236,12 +236,12 @@
     background-color 160ms ease;
 }
 
-.analysisFocusOptions label:hover {
+.analysisFocusOptions > div:hover {
   border-color: var(--color-accent-soft-border);
   background: var(--color-panel-strong);
 }
 
-.analysisFocusOptions label.selected {
+.analysisFocusOptions > div.selected {
   border-color: var(--color-primary);
   background: color-mix(in srgb, var(--color-primary) 11%, var(--color-panel-strong));
 }
@@ -253,10 +253,11 @@
   accent-color: var(--color-primary);
 }
 
-.analysisFocusOptions span {
+.analysisFocusOptions label {
   min-width: 0;
   display: grid;
   gap: var(--space-1);
+  cursor: pointer;
 }
 
 .analysisFocusOptions strong {
@@ -892,7 +893,7 @@
     transition: none;
   }
 
-  .analysisFocusOptions label,
+  .analysisFocusOptions > div,
   .analysisRequestForm > footer button {
     transition: none;
   }

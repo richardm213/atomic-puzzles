@@ -41,13 +41,15 @@ export const notificationCopy = (notification: UserNotification): string => {
     return `${notification.actor_username ?? "Someone"} requested ${notification.coin_amount ?? 0} coins.`;
   }
   if (notification.notification_type === "shop_redemption") {
+    if (notification.shop_item_key === "atomicdb_analysis_12h") {
+      return `${notification.actor_username ?? "Someone"} requested a 12-hour AtomicDB opening analysis.`;
+    }
     const itemNames: Record<string, string> = {
       discord_nitro_month: "1 month Discord Nitro",
       discord_nitro_year: "1 year Discord Nitro",
       flowers_500: "500 Flowers",
       lichess_patron_month: "1 month Lichess Patron",
       next_prize_tournament_format: "the next 100$+ prize tournament format choice",
-      atomicdb_analysis_12h: "a 12-hour AtomicDB opening analysis",
     };
     return `${notification.actor_username ?? "Someone"} redeemed ${itemNames[notification.shop_item_key ?? ""] ?? "a shop item"}.`;
   }

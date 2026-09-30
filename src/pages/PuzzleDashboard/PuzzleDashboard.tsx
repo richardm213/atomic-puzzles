@@ -34,6 +34,7 @@ import { clearPuzzleRatingCaches } from "../../lib/supabase/puzzles";
 import type { PuzzleRatingEvent } from "../../lib/supabase/puzzleUserRatings";
 import { siteUserRegistrationQueryOptions } from "../../lib/users/userQueries";
 import { normalizeUsername } from "../../utils/playerNames";
+import { MonthlyAttemptsCalendar } from "./MonthlyAttemptsCalendar";
 
 const DEFAULT_PAGE_SIZE = 20;
 const PAGE_SIZE_OPTIONS = [20, 50, 100] as const;
@@ -42,6 +43,7 @@ const CREATED_PAGE_SIZE_OPTIONS = [40, 100, 500] as const;
 const PAGE_SIZE_STORAGE_KEY = "atomic-puzzles.puzzle-dashboard-page-size";
 const CREATED_PAGE_SIZE_STORAGE_KEY = "atomic-puzzles.puzzle-dashboard-created-page-size";
 const FILTERS_STORAGE_KEY = "atomic-puzzles.puzzle-dashboard-filters.v1";
+const CALENDAR_OPEN_STORAGE_KEY = "atomic-puzzles.puzzle-dashboard-calendar-open";
 const UNKNOWN_EVENT_LABEL = "Unknown event";
 const emptyPuzzleProgressRows: import("../../lib/supabase/puzzleProgress").PuzzleProgressRow[] = [];
 type DashboardResultFilter = "all" | "correct" | "incorrect";
@@ -78,6 +80,7 @@ type PuzzleDashboardPageSize = (typeof PAGE_SIZE_OPTIONS)[number];
 type CreatedPuzzlePageSize = (typeof CREATED_PAGE_SIZE_OPTIONS)[number];
 const pageSizeSchema = z.union([z.literal(20), z.literal(50), z.literal(100)]);
 const createdPageSizeSchema = z.union([z.literal(40), z.literal(100), z.literal(500)]);
+const calendarOpenSchema = z.boolean();
 const isPuzzleDashboardPageSize = (value: number): value is PuzzleDashboardPageSize =>
   PAGE_SIZE_OPTIONS.includes(value as PuzzleDashboardPageSize);
 const isCreatedPuzzlePageSize = (value: number): value is CreatedPuzzlePageSize =>
@@ -164,6 +167,11 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
     FILTERS_STORAGE_KEY,
     dashboardFiltersSchema,
     DEFAULT_DASHBOARD_FILTERS,
+  );
+  const [calendarOpen, setCalendarOpen] = usePersistedState<boolean>(
+    CALENDAR_OPEN_STORAGE_KEY,
+    calendarOpenSchema,
+    true,
   );
   const {
     sinceDate,
@@ -624,6 +632,15 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
                   <div className="dashboardAttemptsActions">
                     <button
                       type="button"
+                      className="dashboardCalendarToggle"
+                      onClick={() => setCalendarOpen((current) => !current)}
+                      aria-expanded={calendarOpen}
+                      aria-controls="dashboard-attempt-calendar"
+                    >
+                      {calendarOpen ? "Hide calendar" : "Show calendar"}
+                    </button>
+                    <button
+                      type="button"
                       className="dashboardFilterToggle"
                       onClick={() => updateDashboardFilter("filtersOpen", !filtersOpen)}
                       aria-expanded={filtersOpen}
@@ -751,6 +768,11 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
                     </button>
                   </div>
                 ) : null}
+                {calendarOpen ? (
+                  <div id="dashboard-attempt-calendar">
+                    <MonthlyAttemptsCalendar attempts={filteredDashboardEntries} />
+                  </div>
+                ) : null}
                 <div className="dashboardAttemptsPager">
                   <label className="dashboardFilterLabel">
                     <span>Rows</span>
@@ -786,7 +808,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
                   <div className="dashboardAttemptHeader" aria-hidden="true">
                     <span>#</span>
                     <span>Puzzle</span>
-                    <span>Puzzle rating · level</span>
+                    <span>Puzzle rating</span>
                     <span>Rating</span>
                     <span>Attempted</span>
                   </div>

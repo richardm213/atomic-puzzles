@@ -115,7 +115,7 @@ describe("puzzle-rating function", () => {
     });
   });
 
-  it("immediately returns the selected V preset without refreshing history", async () => {
+  it("updates the V preset without replaying historical player ratings", async () => {
     const row = {
       puzzle_id: 42,
       level: 5,
@@ -142,6 +142,7 @@ describe("puzzle-rating function", () => {
       p_username: "seaside_tiramisu",
       p_level: 5,
     });
+    expect(rpc).toHaveBeenCalledTimes(1);
     expect(JSON.parse(response.body)).toEqual({
       puzzleId: 42,
       level: 5,

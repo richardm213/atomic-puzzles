@@ -73,6 +73,8 @@ export const puzzleRatingRoute = async (event: FunctionEvent) => {
     return jsonResponse(200, { refreshed: true });
   }
 
+  // Changing a puzzle's V grade only updates that puzzle's manual seed. Player
+  // history stays frozen until the explicit refresh action replays all attempts.
   const { data, error } = await createServerSupabase("Puzzle rating service")
     .rpc("set_human_puzzle_level", {
       p_puzzle_id: input.puzzleId,
