@@ -28,6 +28,7 @@ const mocks = vi.hoisted(() => ({
   loadPuzzleSolverIndex: vi.fn(),
   loadPuzzlesById: vi.fn(),
   fetchPrimaryPlayerNicknames: vi.fn(),
+  fetchPuzzleUserRating: vi.fn(),
   login: vi.fn(),
   navigate: vi.fn(),
   puzzleAuthor: "admin",
@@ -121,6 +122,10 @@ vi.mock("../../lib/supabase/puzzleProgress", () => ({
 
 vi.mock("../../lib/supabase/playerNicknames", () => ({
   fetchPrimaryPlayerNicknames: mocks.fetchPrimaryPlayerNicknames,
+}));
+
+vi.mock("../../lib/supabase/puzzleUserRatings", () => ({
+  fetchPuzzleUserRating: mocks.fetchPuzzleUserRating,
 }));
 
 vi.mock("../../lib/supabase/users", () => ({
@@ -239,6 +244,15 @@ describe("PuzzleSolverPage solution options", () => {
       },
     ]);
     mocks.fetchPrimaryPlayerNicknames.mockReset().mockResolvedValue([]);
+    mocks.fetchPuzzleUserRating.mockReset().mockResolvedValue({
+      username: "solver",
+      rating: 2000,
+      ratingDeviation: 350,
+      attempts: 0,
+      successes: 0,
+      updatedAt: null,
+      lastAttemptAt: null,
+    });
     mocks.fetchCustomPuzzleSet.mockReset().mockResolvedValue({
       id: "4b648b2a-e2bf-49dc-aaed-235c05615d1b",
       label: "Review set",
@@ -802,6 +816,7 @@ describe("PuzzleSolverPage solution options", () => {
     render(<PuzzleSolverPage />);
 
     await screen.findByTestId("mock-board");
+    expect(await screen.findByLabelText("Your puzzle rating is 2000")).toBeVisible();
     expect(screen.queryByLabelText(/V3, 2100 Elo/)).not.toBeInTheDocument();
     expect(
       screen.queryByRole("img", { name: "You've solved this puzzle before" }),
@@ -845,8 +860,11 @@ describe("PuzzleSolverPage solution options", () => {
       false,
     );
     expect(await screen.findByLabelText(/V3, 2100 Elo/)).toBeInTheDocument();
-    expect(await screen.findByText("1978")).toBeInTheDocument();
-    expect(screen.getByText("-22")).toBeInTheDocument();
+    const updatedRating = await screen.findByLabelText(
+      "Your puzzle rating is 1978, decreased by 22",
+    );
+    expect(updatedRating).toHaveClass("negative");
+    expect(updatedRating).toHaveTextContent("1978-22");
   });
 
   it("offers exits when the final puzzle in an ordered set is solved", async () => {

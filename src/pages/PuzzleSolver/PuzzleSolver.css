@@ -259,6 +259,61 @@ body:has(.puzzlePage),
   min-width: 0;
 }
 
+.userPuzzleRating {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-inset);
+  color: var(--color-muted);
+  line-height: 1;
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    color 180ms ease;
+}
+
+.userPuzzleRating > span {
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.userPuzzleRating strong,
+.userPuzzleRating small {
+  font-variant-numeric: tabular-nums;
+  font-weight: 900;
+}
+
+.userPuzzleRating strong {
+  color: var(--color-heading);
+  font-size: 12px;
+}
+
+.userPuzzleRating small {
+  font-size: 10px;
+}
+
+.userPuzzleRating.positive {
+  border-color: color-mix(in srgb, var(--color-success) 50%, var(--color-border));
+  background: color-mix(in srgb, var(--color-success) 10%, var(--color-panel-strong));
+}
+
+.userPuzzleRating.positive small {
+  color: var(--color-success);
+}
+
+.userPuzzleRating.negative {
+  border-color: color-mix(in srgb, var(--color-danger) 50%, var(--color-border));
+  background: color-mix(in srgb, var(--color-danger) 10%, var(--color-panel-strong));
+}
+
+.userPuzzleRating.negative small {
+  color: var(--color-danger);
+}
+
 .puzzleRatingBadge {
   min-height: 30px;
   display: inline-flex;
@@ -1331,6 +1386,7 @@ button.puzzleRatingBadge.editable:active {
 }
 
 @media (max-width: 680px) {
+  .userPuzzleRating.mobile,
   .puzzleRatingBadge.mobile,
   .puzzleRatingEditor.mobile select,
   .puzzleRatingEditor.mobile button {

@@ -61,6 +61,7 @@ import {
 import {
   puzzlePlayerNicknamesQueryOptions,
   puzzleQueryKeys,
+  puzzleUserRatingQueryOptions,
 } from "../../lib/puzzles/puzzleQueries";
 import { puzzleRatingFromRow, updatePuzzleRating } from "../../lib/puzzles/puzzleRating";
 import {
@@ -267,6 +268,11 @@ export const PuzzleSolverPage = () => {
     setId: routeCustomSetId = "",
   } = useParams({ strict: false });
   const { isLoading: isAuthLoading, login, user } = useAuth();
+  const normalizedUsername = normalizeUsername(user?.username);
+  const userPuzzleRatingQuery = useQuery({
+    ...puzzleUserRatingQueryOptions(normalizedUsername),
+    enabled: Boolean(normalizedUsername),
+  });
   const { pieceSet, showPuzzleTimer } = useAppSettings();
   const { puzzles, setPuzzles, loadingError, setLoadingError, mergeLoadedPuzzles } =
     usePuzzleCatalog(routePuzzleId, routeSetKey);
@@ -600,7 +606,6 @@ export const PuzzleSolverPage = () => {
   const canManagePuzzleTags = user?.username?.trim().toLowerCase() === PUZZLE_TAG_EDITOR;
   const canManagePuzzleRating = normalizeUsername(user?.username) === PUZZLE_RATING_EDITOR;
   const activePuzzleRating = useMemo(() => puzzleRatingFromRow(activePuzzle), [activePuzzle]);
-  const normalizedUsername = normalizeUsername(user?.username);
   const normalizedAuthor = normalizeUsername(author);
   const canManagePuzzleExplanation =
     Boolean(normalizedUsername) &&
@@ -971,6 +976,11 @@ export const PuzzleSolverPage = () => {
     (feedback.type === "correct" || feedback.type === "wrong")
       ? attemptRatingFeedback
       : null;
+  const displayedUserPuzzleRating = visibleRatingFeedback
+    ? visibleRatingFeedback.userRatingAfter
+    : userPuzzleRatingQuery.isPending || userPuzzleRatingQuery.isError
+      ? null
+      : (userPuzzleRatingQuery.data?.rating ?? 2000);
 
   const handleRefreshCustomSet = async (): Promise<void> => {
     if (!isCustomSetSolveMode || !customPuzzleSet) return;
@@ -2228,6 +2238,37 @@ export const PuzzleSolverPage = () => {
     );
   };
 
+  const renderUserPuzzleRating = (mobile = false) => {
+    if (!normalizedUsername) return null;
+
+    const ratingChange = visibleRatingFeedback?.userRatingChange;
+    const changeDirection =
+      ratingChange === undefined ? "" : ratingChange >= 0 ? "positive" : "negative";
+    const changeDescription =
+      displayedUserPuzzleRating === null
+        ? userPuzzleRatingQuery.isError
+          ? "Your puzzle rating is unavailable"
+          : "Loading your puzzle rating"
+        : ratingChange === undefined
+          ? `Your puzzle rating is ${displayedUserPuzzleRating}`
+          : `Your puzzle rating is ${displayedUserPuzzleRating}, ${
+              ratingChange >= 0 ? "increased" : "decreased"
+            } by ${Math.abs(ratingChange)}`;
+
+    return (
+      <div
+        className={`userPuzzleRating ${changeDirection} ${mobile ? "mobile" : ""}`.trim()}
+        aria-label={changeDescription}
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        <span>Your rating</span>
+        <strong>{displayedUserPuzzleRating ?? "—"}</strong>
+        {ratingChange !== undefined ? <small>{formatSignedRating(ratingChange)}</small> : null}
+      </div>
+    );
+  };
+
   return (
     <div className="page puzzlePage" style={materialPieceStyle}>
       <Seo
@@ -2289,6 +2330,7 @@ export const PuzzleSolverPage = () => {
               ) : null}
             </div>
             <div className="puzzleHeaderStatus">
+              {renderUserPuzzleRating()}
               {hasAttemptedActivePuzzle ? renderPuzzleRating() : null}
               {!isMobileLayout && showPuzzleTimer ? (
                 <div
@@ -2528,6 +2570,7 @@ export const PuzzleSolverPage = () => {
       {isMobileLayout ? (
         <>
           <div className="mobilePuzzleStatus" aria-label="Puzzle details">
+            {renderUserPuzzleRating(true)}
             {hasAttemptedActivePuzzle ? renderPuzzleRating(true) : null}
             {hasPersistedAttempt ? (
               <span
@@ -2582,7 +2625,7 @@ export const PuzzleSolverPage = () => {
 
       {hasAttemptedActivePuzzle ? (
         <p className="puzzleIssuePrompt">
-          Something wrong with this puzzle?
+          Something wrong with this puzzle?{" "}
           <button type="button" onClick={() => setReportIssueOpen(true)}>
             Report issue
           </button>
