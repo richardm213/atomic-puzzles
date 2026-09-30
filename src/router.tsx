@@ -19,6 +19,10 @@ import { HomePage } from "./pages/Home/Home";
 const ArenasPage = lazyRouteComponent(() => import("./pages/Arenas/Arenas"), "ArenasPage");
 const CalendarPage = lazyRouteComponent(() => import("./pages/Calendar/Calendar"), "CalendarPage");
 const AnalysisPage = lazyRouteComponent(() => import("./pages/Analysis/Analysis"), "AnalysisPage");
+const AchievementsPage = lazyRouteComponent(
+  () => import("./pages/Achievements/Achievements"),
+  "AchievementsPage",
+);
 const CommentsPage = lazyRouteComponent(() => import("./pages/Comments/Comments"), "CommentsPage");
 const CommunityUsersPage = lazyRouteComponent(
   () => import("./pages/Community/CommunityUsers"),
@@ -357,6 +361,12 @@ const howCoinsWorkRoute = createRoute({
   component: HowCoinsWorkPage,
 });
 
+const achievementsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/achievements",
+  component: AchievementsPage,
+});
+
 const commentsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/comments",
@@ -437,6 +447,15 @@ const profileRatingsRoute = createRoute({
   },
 });
 
+const profileAchievementsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/@/$username/achievements",
+  component: function ProfileAchievementsRoute() {
+    const { username } = useParams({ strict: false });
+    return <AchievementsPage username={username} />;
+  },
+});
+
 const profileHistoryRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/@/$username/history",
@@ -488,6 +507,7 @@ const routeTree = rootRoute.addChildren([
   notificationsRoute,
   shopRoute,
   howCoinsWorkRoute,
+  achievementsRoute,
   commentsRoute,
   communityRoute,
   communityPuzzlesRoute,
@@ -496,6 +516,7 @@ const routeTree = rootRoute.addChildren([
   solveCustomSetWithIdRoute,
   solveWithIdRoute,
   profileRatingsRoute,
+  profileAchievementsRoute,
   profileHistoryRoute,
   profileRoute,
   profilePuzzleDashboardRoute,

@@ -347,6 +347,51 @@ const queryUsernames = async (params: URLSearchParams) => {
   return normalizedRows(result.rows);
 };
 
+export type AchievementRatingPeak = {
+  mode: "hyperbullet" | "bullet" | "blitz";
+  rating: number;
+};
+
+export const queryAchievementRatingPeaks = async (
+  username: string,
+): Promise<AchievementRatingPeak[]> => {
+  const normalizedUsername = username.trim().toLowerCase();
+  if (!normalizedUsername) return [];
+  const result = await getArchiveClient().execute({
+    sql: `select ${modeNameSql("qualified.mode")} mode,max(qualified.rating) / 10.0 rating
+      from (
+        select m.mode,m.p1_before_rating rating from matches m
+        where m.player_1_id=(select id from players where username=? limit 1)
+          and m.mode in (0,1,2) and m.p1_before_rd < 600
+        union all
+        select m.mode,m.p1_after_rating rating from matches m
+        where m.player_1_id=(select id from players where username=? limit 1)
+          and m.mode in (0,1,2) and m.p1_after_rd < 600
+        union all
+        select m.mode,m.p2_before_rating rating from matches m
+        where m.player_2_id=(select id from players where username=? limit 1)
+          and m.mode in (0,1,2) and m.p2_before_rd < 600
+        union all
+        select m.mode,m.p2_after_rating rating from matches m
+        where m.player_2_id=(select id from players where username=? limit 1)
+          and m.mode in (0,1,2) and m.p2_after_rd < 600
+      ) qualified
+      group by qualified.mode`,
+    args: [normalizedUsername, normalizedUsername, normalizedUsername, normalizedUsername],
+  });
+  return normalizedRows(result.rows).flatMap((row) => {
+    const mode = String(row.mode);
+    const rating = Number(row.rating);
+    if (
+      (mode !== "hyperbullet" && mode !== "bullet" && mode !== "blitz") ||
+      !Number.isFinite(rating)
+    ) {
+      return [];
+    }
+    return [{ mode, rating }];
+  });
+};
+
 export const queryArchiveResource = async (params: URLSearchParams): Promise<unknown> => {
   const resource = params.get("resource");
   if (resource === "matches") return queryMatches(params);

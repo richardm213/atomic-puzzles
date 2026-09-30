@@ -1,0 +1,218 @@
+.card {
+  --badge-tier-color: var(--color-accent-warm);
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  justify-items: center;
+  align-content: start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+  text-align: center;
+}
+
+.card[data-tier="moon"] {
+  --badge-tier-color: var(--color-muted);
+}
+
+.card[data-tier="planet"] {
+  --badge-tier-color: var(--color-cyan-bright);
+}
+
+.card[data-tier="sun"] {
+  --badge-tier-color: var(--color-gold);
+}
+
+.card[data-tier="eclipse"] {
+  --badge-tier-color: var(--color-calendar-monthly);
+}
+
+.card[data-tier="nova"] {
+  --badge-tier-color: var(--color-rating-blitz);
+}
+
+.card[data-tier="black_hole"] {
+  --badge-tier-color: var(--color-primary-soft);
+}
+
+.medallion {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  display: grid;
+  place-items: center;
+  border: 2px solid color-mix(in srgb, var(--badge-tier-color) 64%, var(--color-border));
+  border-radius: 50%;
+  background: var(--color-panel-deep);
+}
+
+.medallionInset {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.medallionInset img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.stateIcon {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--color-panel-strong);
+  border-radius: 50%;
+  background: var(--color-surface-inset-strong);
+  color: var(--color-muted);
+  font-size: 9px;
+}
+
+.copy {
+  min-width: 0;
+  width: 100%;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: var(--space-3);
+}
+
+.copy h3 {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.copy .badgeMeta {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.badgeMeta span:first-child {
+  color: var(--badge-tier-color);
+  font-weight: 800;
+}
+
+.badgeMeta span + span {
+  margin-left: 0.35em;
+}
+
+.earnedDate {
+  align-self: end;
+  margin-top: auto;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.progressBlock {
+  align-self: end;
+  width: 100%;
+  display: grid;
+  gap: 6px;
+  margin-top: auto;
+  color: var(--color-subtle);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.progressTrack {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--color-surface-inset-strong);
+}
+
+.progressTrack span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--badge-tier-color);
+}
+
+.locked {
+  border-color: var(--color-border);
+  background: var(--color-surface-soft);
+}
+
+.locked .medallion {
+  filter: saturate(0.15);
+  opacity: 0.52;
+}
+
+.earned {
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease;
+}
+
+.earned:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--badge-tier-color) 48%, var(--color-border));
+}
+
+.compact {
+  grid-template-columns: 58px minmax(0, 1fr);
+  justify-items: start;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  text-align: left;
+}
+
+.compact .medallion {
+  width: 54px;
+  height: 54px;
+  border-width: 1px;
+}
+
+.compact .medallionInset {
+  width: 34px;
+  height: 34px;
+}
+
+.compact .stateIcon {
+  width: 17px;
+  height: 17px;
+  font-size: 8px;
+}
+
+.compact .copy {
+  justify-items: start;
+}
+
+.compact .copy h3 {
+  font-size: 13px;
+}
+
+.compact .copy .badgeMeta {
+  color: var(--color-muted);
+  font-size: 11px;
+  line-height: 1.35;
+  text-align: left;
+}
+
+.compact .earnedDate {
+  font-size: 11px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .earned {
+    transition-duration: 0.01ms;
+  }
+}
