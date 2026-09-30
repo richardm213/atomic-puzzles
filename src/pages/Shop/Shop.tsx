@@ -18,6 +18,7 @@ import {
 } from "../../lib/coins/coinQueries";
 import {
   claimDailyCoins,
+  DAILY_COIN_BONUS,
   redeemShopItem,
   requestAtomicDbAnalysis,
   type ShopItemKey,
@@ -494,7 +495,7 @@ export const ShopPage = () => {
                 ) : summary.isLoading ? (
                   "Loading…"
                 ) : summary.data?.dailyClaimAvailable ? (
-                  "Claim +5"
+                  `Claim +${DAILY_COIN_BONUS}`
                 ) : (
                   <>
                     <FontAwesomeIcon icon={faCheck} aria-hidden="true" />

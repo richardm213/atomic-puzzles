@@ -3,6 +3,7 @@ import "./HowCoinsWork.css";
 import { Link } from "@tanstack/react-router";
 
 import { Seo } from "../../components/Seo/Seo";
+import { DAILY_COIN_BONUS } from "../../lib/coins/coins";
 import { appAssetPath } from "../../utils/appAssetPath";
 
 const earningRules = [
@@ -11,7 +12,7 @@ const earningRules = [
   ["Solve a V3 puzzle on the first attempt", 3],
   ["Solve a V4 puzzle on the first attempt", 5],
   ["Solve a V5 puzzle on the first attempt", 10],
-  ["Claim the daily bonus", 5],
+  ["Claim the daily bonus", DAILY_COIN_BONUS],
 ] as const;
 
 export const HowCoinsWorkPage = () => (
