@@ -1,4 +1,4 @@
-import { faBell, faCheck, faComment, faReply } from "@fortawesome/free-solid-svg-icons";
+import { faBell, faChartLine, faCheck, faComment, faReply } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 
@@ -6,6 +6,7 @@ import { notificationCopy, type UserNotification } from "../../lib/community/not
 import { formatLocalDateTime } from "../../utils/formatters";
 
 const notificationIcon = (notification: UserNotification) => {
+  if (notification.notification_type === "puzzle_rating_added") return faChartLine;
   if (notification.notification_type === "puzzle_approved") return faCheck;
   if (notification.notification_type === "comment_reply") return faReply;
   return faComment;
@@ -75,7 +76,9 @@ export const NavNotificationsPanel = ({
                 <span className="navNotificationCopy">
                   <strong>{notificationCopy(notification)}</strong>
                   <span>
-                    {`Puzzle #${notification.puzzle_id} · ${formatLocalDateTime(notification.created_at)}`}
+                    {notification.notification_type === "puzzle_rating_added"
+                      ? `Puzzle rating · ${formatLocalDateTime(notification.created_at)}`
+                      : `Puzzle #${notification.puzzle_id} · ${formatLocalDateTime(notification.created_at)}`}
                   </span>
                 </span>
                 {!notification.read_at ? <span className="navNotificationDot" /> : null}

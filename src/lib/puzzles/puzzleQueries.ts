@@ -5,11 +5,18 @@ import {
   fetchAllPuzzleProgressRows,
   fetchPuzzleProgressRowsForUsername,
 } from "../supabase/puzzleProgress";
+import {
+  fetchAllPuzzleUserRatings,
+  fetchPuzzleRatingEventsForUsername,
+  fetchPuzzleUserRating,
+} from "../supabase/puzzleUserRatings";
 import { loadPuzzleCatalog } from "./puzzleLibrary";
 
 export const puzzleQueryKeys = {
   catalog: ["puzzles", "catalog"] as const,
   progress: ["puzzle-progress"] as const,
+  userRating: ["puzzle-user-rating"] as const,
+  ratingEvents: ["puzzle-rating-events"] as const,
   nicknames: ["puzzles", "player-nicknames"] as const,
 };
 
@@ -31,6 +38,27 @@ export const puzzleProgressForUserQueryOptions = (username: string) =>
   queryOptions({
     queryKey: [...puzzleQueryKeys.progress, "user", username] as const,
     queryFn: () => fetchPuzzleProgressRowsForUsername(username),
+  });
+
+export const puzzleUserRatingQueryOptions = (username: string) =>
+  queryOptions({
+    queryKey: [...puzzleQueryKeys.userRating, username] as const,
+    queryFn: () => fetchPuzzleUserRating(username),
+    staleTime: 30_000,
+  });
+
+export const puzzleUserRatingsQueryOptions = () =>
+  queryOptions({
+    queryKey: puzzleQueryKeys.userRating,
+    queryFn: fetchAllPuzzleUserRatings,
+    staleTime: 30_000,
+  });
+
+export const puzzleRatingEventsQueryOptions = (username: string) =>
+  queryOptions({
+    queryKey: [...puzzleQueryKeys.ratingEvents, username] as const,
+    queryFn: () => fetchPuzzleRatingEventsForUsername(username),
+    staleTime: 30_000,
   });
 
 export const puzzleLeaderboardProgressQueryOptions = () =>

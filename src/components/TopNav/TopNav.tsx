@@ -531,6 +531,10 @@ export const TopNav = () => {
   const openPopupNotification = async (notification: UserNotification): Promise<void> => {
     if (!notification.read_at) await markPopupNotificationsRead([notification.id]);
     setOpenPanel(null);
+    if (notification.notification_type === "puzzle_rating_added") {
+      void navigate({ to: "/dashboard" });
+      return;
+    }
     void navigate({
       to: "/solve/$puzzleId",
       params: { puzzleId: String(notification.puzzle_id) },

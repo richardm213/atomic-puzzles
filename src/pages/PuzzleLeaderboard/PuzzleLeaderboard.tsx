@@ -23,21 +23,25 @@ import {
   type PuzzleLeaderboardPeriod,
   type PuzzleLeaderboardRow,
 } from "../../lib/puzzles/puzzleLeaderboard";
-import { puzzleLeaderboardProgressQueryOptions } from "../../lib/puzzles/puzzleQueries";
+import {
+  puzzleLeaderboardProgressQueryOptions,
+  puzzleUserRatingsQueryOptions,
+} from "../../lib/puzzles/puzzleQueries";
 import type { PuzzleProgressWithUsernameRow } from "../../lib/supabase/types";
 
 type PuzzleLeaderboardSortKey = keyof Pick<
-  PuzzleLeaderboardRow,
-  "rank" | "username" | "score" | "correct" | "incorrect" | "percentCorrect"
+  PuzzleLeaderboardRow & { rating: number; ratingDeviation: number },
+  "rank" | "username" | "rating" | "ratingDeviation" | "score" | "attempted" | "percentCorrect"
 >;
 
 const puzzleLeaderboardColumns: Array<{ key: PuzzleLeaderboardSortKey; label: string }> = [
+  { key: "score", label: "Pts" },
   { key: "rank", label: "#" },
   { key: "username", label: "Player" },
-  { key: "score", label: "Points" },
-  { key: "correct", label: "# correct" },
-  { key: "incorrect", label: "# incorrect" },
-  { key: "percentCorrect", label: "% correct" },
+  { key: "rating", label: "Rating" },
+  { key: "ratingDeviation", label: "RD" },
+  { key: "attempted", label: "Tries" },
+  { key: "percentCorrect", label: "Accuracy" },
 ];
 
 const puzzleLeaderboardPeriodStorageKey = "atomic-puzzles.puzzle-leaderboard-period";
@@ -90,11 +94,13 @@ const PuzzleLeaderboard = () => {
     getDefaultDirection: (key) => (key === "rank" || key === "username" ? "asc" : "desc"),
   });
   const progressQuery = useQuery(puzzleLeaderboardProgressQueryOptions());
+  const ratingsQuery = useQuery(puzzleUserRatingsQueryOptions());
   const progressRows = progressQuery.data ?? emptyPuzzleProgressRows;
-  const loading = progressQuery.isPending;
-  const error = progressQuery.error
-    ? progressQuery.error instanceof Error
-      ? progressQuery.error.message
+  const loading = progressQuery.isPending || ratingsQuery.isPending;
+  const queryError = progressQuery.error ?? ratingsQuery.error;
+  const error = queryError
+    ? queryError instanceof Error
+      ? queryError.message
       : "Failed to load puzzle rankings."
     : "";
 
@@ -102,13 +108,21 @@ const PuzzleLeaderboard = () => {
   const effectiveMonth = monthOptions.includes(selectedMonth)
     ? selectedMonth
     : (monthOptions[0] ?? currentUtcMonth());
-  const rows = useMemo(
-    () =>
-      buildPuzzleLeaderboardRows(
-        filterPuzzleProgressRowsByPeriod(progressRows, period, effectiveMonth),
-      ),
-    [effectiveMonth, period, progressRows],
-  );
+  const rows = useMemo(() => {
+    const ratingsByUsername = new Map(
+      (ratingsQuery.data ?? []).map((rating) => [rating.username, rating] as const),
+    );
+    return buildPuzzleLeaderboardRows(
+      filterPuzzleProgressRowsByPeriod(progressRows, period, effectiveMonth),
+    ).map((row) => {
+      const rating = ratingsByUsername.get(row.username);
+      return {
+        ...row,
+        rating: rating?.rating ?? 2000,
+        ratingDeviation: rating?.ratingDeviation ?? 350,
+      };
+    });
+  }, [effectiveMonth, period, progressRows, ratingsQuery.data]);
 
   const sortedRows = useMemo(() => {
     const directionMultiplier = sortDirection === "asc" ? 1 : -1;
@@ -222,6 +236,7 @@ const PuzzleLeaderboard = () => {
             <tbody>
               {sortedRows.map((row) => (
                 <tr key={row.username}>
+                  <td>{row.score}</td>
                   <td>{row.rank}</td>
                   <td>
                     <span className="puzzleLeaderboardPlayerCell">
@@ -243,9 +258,9 @@ const PuzzleLeaderboard = () => {
                       </Link>
                     </span>
                   </td>
-                  <td>{row.score}</td>
-                  <td>{row.correct}</td>
-                  <td>{row.incorrect}</td>
+                  <td>{row.rating}</td>
+                  <td>{row.ratingDeviation}</td>
+                  <td>{row.attempted}</td>
                   <td>{row.percentCorrect}%</td>
                 </tr>
               ))}

@@ -947,11 +947,11 @@
   position: relative;
   display: grid;
   grid-template-columns: 32px minmax(0, 1fr);
-  align-items: center;
+  align-items: start;
   gap: 10px;
   min-width: 0;
-  min-height: 56px;
-  padding: 8px 6px 8px 8px;
+  min-height: 62px;
+  padding: 10px 10px 10px 8px;
   border: 0;
   background: transparent;
   color: inherit;
@@ -973,26 +973,28 @@
   background: var(--notification-accent-soft);
   color: var(--notification-accent);
   font-size: 12px;
+  margin-top: 2px;
 }
 
 .navNotificationCopy {
   display: grid;
   min-width: 0;
   gap: 4px;
+  padding-right: 10px;
 }
 
 .navNotificationCopy strong {
-  overflow: hidden;
   color: var(--color-heading);
   font-size: 12px;
-  line-height: 1.35;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .navNotificationCopy > span {
   color: var(--color-subtle);
   font-size: 10px;
+  line-height: 1.4;
 }
 
 .navNotificationDot {

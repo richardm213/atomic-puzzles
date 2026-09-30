@@ -1,6 +1,9 @@
+import { z } from "zod";
+
 import { normalizeUsername } from "../../utils/playerNames";
 import { postApi } from "../api/postApi";
 import { getSupabaseClient } from "./client";
+import type { PuzzleRatingEvent } from "./puzzleUserRatings";
 import { fetchAllSupabaseRows, loadSupabasePage, loadSupabaseRows } from "./rows";
 import type {
   AttemptedPuzzleIdRow,
@@ -21,7 +24,22 @@ const PUZZLE_PROGRESS_PAGE_RPC = (import.meta.env.VITE_SUPABASE_PUZZLE_PROGRESS_
   "get_puzzle_progress_page") as keyof Database["public"]["Functions"];
 const ATTEMPTED_PUZZLE_IDS_RPC = (import.meta.env.VITE_SUPABASE_ATTEMPTED_PUZZLE_IDS_RPC?.trim() ??
   "get_attempted_puzzle_ids") as keyof Database["public"]["Functions"];
-const puzzleProgressWriteRequests = new Map<string, Promise<void>>();
+const puzzleProgressWriteRequests = new Map<string, Promise<PuzzleRatingEvent | null>>();
+const puzzleProgressResponseSchema = z.object({
+  ratingEvent: z
+    .object({
+      username: z.string(),
+      puzzleId: z.string(),
+      attemptedAt: z.string(),
+      puzzleCorrect: z.boolean(),
+      userRatingBefore: z.number(),
+      userRatingAfter: z.number(),
+      userRatingDeviationBefore: z.number(),
+      userRatingDeviationAfter: z.number(),
+    })
+    .nullable()
+    .optional(),
+});
 
 const normalizePuzzleId = (puzzleId: unknown): string => {
   if (puzzleId === undefined || puzzleId === null) return "";
@@ -204,13 +222,13 @@ export const recordPuzzleProgress = async ({
   puzzleCorrect,
   incorrectMove,
   correctMove,
-}: RecordPuzzleProgressInput): Promise<void> => {
+}: RecordPuzzleProgressInput): Promise<PuzzleRatingEvent | null> => {
   const normalizedUsername = normalizeUsername(username);
   const normalizedPuzzleId = normalizePuzzleId(puzzleId);
   const normalizedIncorrectMove = puzzleCorrect ? null : String(incorrectMove ?? "").trim() || null;
   const normalizedCorrectMove = puzzleCorrect ? String(correctMove ?? "").trim() || null : null;
 
-  if (!normalizedUsername || !normalizedPuzzleId) return;
+  if (!normalizedUsername || !normalizedPuzzleId) return null;
 
   const requestKey = `${normalizedUsername}:${normalizedPuzzleId}`;
   const existingRequest = puzzleProgressWriteRequests.get(requestKey);
@@ -218,8 +236,8 @@ export const recordPuzzleProgress = async ({
     return existingRequest;
   }
 
-  const request = (async (): Promise<void> => {
-    await postApi(
+  const request = (async (): Promise<PuzzleRatingEvent | null> => {
+    const result = await postApi(
       "/api/puzzles/progress",
       {
         puzzleId: normalizedPuzzleId,
@@ -227,8 +245,17 @@ export const recordPuzzleProgress = async ({
         incorrectMove: normalizedIncorrectMove,
         correctMove: normalizedCorrectMove,
       },
-      { errorMessage: "Unable to record puzzle progress." },
+      {
+        schema: puzzleProgressResponseSchema,
+        errorMessage: "Unable to record puzzle progress.",
+        invalidMessage: "Unable to record puzzle progress: the server returned invalid data.",
+      },
     );
+    if (!result.ratingEvent) return null;
+    return {
+      ...result.ratingEvent,
+      userRatingChange: result.ratingEvent.userRatingAfter - result.ratingEvent.userRatingBefore,
+    };
   })().finally(() => {
     if (puzzleProgressWriteRequests.get(requestKey) === request) {
       puzzleProgressWriteRequests.delete(requestKey);

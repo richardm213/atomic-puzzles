@@ -1,6 +1,10 @@
 import { postApi } from "../api/postApi";
 
-export type NotificationType = "puzzle_comment" | "comment_reply" | "puzzle_approved";
+export type NotificationType =
+  | "puzzle_comment"
+  | "comment_reply"
+  | "puzzle_approved"
+  | "puzzle_rating_added";
 
 export type UserNotification = {
   id: number;
@@ -9,6 +13,8 @@ export type UserNotification = {
   notification_type: NotificationType;
   puzzle_id: number;
   comment_id: number | null;
+  rating: number | null;
+  rating_deviation: number | null;
   created_at: string;
   read_at: string | null;
 };
@@ -19,6 +25,9 @@ export type NotificationResult = {
 };
 
 export const notificationCopy = (notification: UserNotification): string => {
+  if (notification.notification_type === "puzzle_rating_added") {
+    return `Puzzle ratings have been added to the site! Yours is ${notification.rating} with RD ${notification.rating_deviation}`;
+  }
   if (notification.notification_type === "puzzle_approved") {
     return `Your puzzle #${notification.puzzle_id} was approved.`;
   }

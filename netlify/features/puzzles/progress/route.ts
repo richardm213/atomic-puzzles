@@ -25,16 +25,38 @@ export const puzzleProgressRoute = async (event: FunctionEvent) => {
   const input = parseJsonBody(event, progressBodySchema, "Invalid puzzle progress request.");
   const identity = await authenticateRequest(event.headers);
   const username = requireUsername(identity, "Your Lichess login is no longer valid.");
-  const { error } = await createServerSupabase("Puzzle progress service").rpc(
-    "record_first_puzzle_attempt_v2",
-    {
-      p_username: username,
-      p_puzzle_id: input.puzzleId,
-      p_puzzle_correct: input.puzzleCorrect,
-      p_incorrect_move: input.puzzleCorrect ? null : input.incorrectMove || null,
-      p_correct_move: input.puzzleCorrect ? input.correctMove || null : null,
-    },
-  );
+  const supabase = createServerSupabase("Puzzle progress service");
+  const { error } = await supabase.rpc("record_first_puzzle_attempt_v2", {
+    p_username: username,
+    p_puzzle_id: input.puzzleId,
+    p_puzzle_correct: input.puzzleCorrect,
+    p_incorrect_move: input.puzzleCorrect ? null : input.incorrectMove || null,
+    p_correct_move: input.puzzleCorrect ? input.correctMove || null : null,
+  });
   if (error) throw new Error(`Unable to record puzzle progress: ${error.message}`);
-  return identityResponse(identity, 200, { recorded: true, username });
+  const { data: ratingEvent } = await supabase
+    .from("puzzle_rating_events")
+    .select(
+      "username,puzzle_id,attempted_at,puzzle_correct,user_rating_before,user_rating_after,user_rd_before,user_rd_after",
+    )
+    .eq("username", username)
+    .eq("puzzle_id", Number(input.puzzleId))
+    .maybeSingle();
+
+  return identityResponse(identity, 200, {
+    recorded: true,
+    username,
+    ratingEvent: ratingEvent
+      ? {
+          username: String(ratingEvent.username),
+          puzzleId: String(ratingEvent.puzzle_id),
+          attemptedAt: String(ratingEvent.attempted_at),
+          puzzleCorrect: Boolean(ratingEvent.puzzle_correct),
+          userRatingBefore: Number(ratingEvent.user_rating_before),
+          userRatingAfter: Number(ratingEvent.user_rating_after),
+          userRatingDeviationBefore: Number(ratingEvent.user_rd_before),
+          userRatingDeviationAfter: Number(ratingEvent.user_rd_after),
+        }
+      : null,
+  });
 };

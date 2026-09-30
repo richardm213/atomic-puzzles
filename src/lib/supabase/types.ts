@@ -9,6 +9,7 @@ export type PuzzleProgressRow = {
 };
 
 export type PuzzleProgressWithUsernameRow = PuzzleProgressRow & {
+  user_id?: number;
   username: string;
 };
 
@@ -26,7 +27,38 @@ export type AttemptedPuzzleIdRow = {
 };
 
 export type SupabaseUser = {
+  id: number;
   username: string;
+  created_at: string;
+};
+
+export type PuzzleUserRatingRow = {
+  user_id: number;
+  username: string;
+  rating: number;
+  rating_deviation: number;
+  attempts: number;
+  successes: number;
+  updated_at: string | null;
+  last_attempt_at: string | null;
+};
+
+export type PuzzleRatingEventRow = {
+  id: number;
+  user_id: number;
+  username: string;
+  puzzle_id: number;
+  attempted_at: string;
+  puzzle_correct: boolean;
+  user_rating_before: number;
+  user_rating_after: number;
+  user_rd_before: number;
+  user_rd_after: number;
+  puzzle_rating_before: number;
+  puzzle_rating_after: number;
+  puzzle_rd_before: number;
+  puzzle_rd_after: number;
+  calculation_kind: "historical_backfill" | "historical_user_backfill" | "live_glicko";
   created_at: string;
 };
 
@@ -81,9 +113,15 @@ export type NotificationRow = {
   id: number;
   recipient_username: string;
   actor_username: string | null;
-  notification_type: "puzzle_comment" | "comment_reply" | "puzzle_approved";
+  notification_type:
+    | "puzzle_comment"
+    | "comment_reply"
+    | "puzzle_approved"
+    | "puzzle_rating_added";
   puzzle_id: number;
   comment_id: number | null;
+  rating: number | null;
+  rating_deviation: number | null;
   created_at: string;
   read_at: string | null;
 };
@@ -142,6 +180,8 @@ export type Database = {
         PuzzleProgressWithUsernameRow,
         Partial<PuzzleProgressWithUsernameRow>
       >;
+      puzzle_user_ratings: TableDef<PuzzleUserRatingRow, never, never>;
+      puzzle_rating_events: TableDef<PuzzleRatingEventRow, never, never>;
       puzzles: TableDef<RawPuzzleRow>;
       puzzles_queue: TableDef<
         PuzzleQueueRow,
@@ -185,7 +225,10 @@ export type Database = {
         Pick<PuzzleIssueRow, "puzzle_id" | "reporter_username" | "category" | "details">,
         Pick<PuzzleIssueRow, "status" | "updated_at" | "resolved_at" | "resolved_by">
       >;
-      users: TableDef<{ username: string; created_at: string | null }, { username: string }>;
+      users: TableDef<
+        { id: number; username: string; created_at: string | null },
+        { username: string }
+      >;
     };
     Views: Record<string, never>;
     Functions: {

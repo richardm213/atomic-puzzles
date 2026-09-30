@@ -1,12 +1,17 @@
 import "./PuzzleDashboard.css";
 
-import { faArrowUpRightFromSquare, faClockRotateLeft } from "@fortawesome/free-solid-svg-icons";
+import {
+  faArrowRotateRight,
+  faArrowUpRightFromSquare,
+  faClockRotateLeft,
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 
+import { puzzleLevelLabel } from "../../../shared/domain/puzzles/puzzleRating";
 import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
@@ -19,8 +24,14 @@ import {
 import {
   puzzleCatalogQueryOptions,
   puzzleProgressForUserQueryOptions,
+  puzzleQueryKeys,
+  puzzleRatingEventsQueryOptions,
+  puzzleUserRatingQueryOptions,
 } from "../../lib/puzzles/puzzleQueries";
+import { puzzleRatingFromRow, refreshPuzzleRatings } from "../../lib/puzzles/puzzleRating";
 import { getPuzzleSetDisplayName } from "../../lib/puzzles/puzzleSets";
+import { clearPuzzleRatingCaches } from "../../lib/supabase/puzzles";
+import type { PuzzleRatingEvent } from "../../lib/supabase/puzzleUserRatings";
 import { siteUserRegistrationQueryOptions } from "../../lib/users/userQueries";
 import { normalizeUsername } from "../../utils/playerNames";
 
@@ -35,6 +46,11 @@ const UNKNOWN_EVENT_LABEL = "Unknown event";
 const emptyPuzzleProgressRows: import("../../lib/supabase/puzzleProgress").PuzzleProgressRow[] = [];
 type DashboardResultFilter = "all" | "correct" | "incorrect";
 type DashboardTab = "attempts" | "created";
+type RatingRefreshStatus =
+  | { state: "idle" }
+  | { state: "refreshing" }
+  | { state: "success"; message: string }
+  | { state: "error"; message: string };
 
 const dashboardFiltersSchema = z.object({
   sinceDate: z.string(),
@@ -82,6 +98,7 @@ const formatDateTime = (value: string | number | Date | null | undefined): strin
 const buildDashboardEntries = (
   progressRows: import("../../lib/supabase/puzzleProgress").PuzzleProgressRow[],
   puzzlesById: Map<string, import("../../lib/puzzles/puzzleLibrary").Puzzle>,
+  ratingEventsByPuzzleId: Map<string, PuzzleRatingEvent>,
 ): Array<{
   puzzleId: string;
   linkedPuzzleId: string | number;
@@ -89,12 +106,19 @@ const buildDashboardEntries = (
   event: string;
   puzzleCorrect: boolean;
   firstAttemptAt: string;
+  level: string;
+  rating: number;
+  userRatingAfter: number | null;
+  userRatingChange: number | null;
+  userRatingBefore: number | null;
 }> =>
   progressRows.map((row) => {
     const puzzle = puzzlesById.get(String(row?.puzzle_id ?? "").trim()) || null;
     const author = String(puzzle?.["author"] ?? "").trim() || "Unknown";
     const event = puzzle ? getPuzzleSetDisplayName(puzzle) : UNKNOWN_EVENT_LABEL;
     const linkedPuzzleId = puzzle?.puzzleId ?? row?.puzzle_id;
+    const puzzleRating = puzzleRatingFromRow(puzzle);
+    const ratingEvent = ratingEventsByPuzzleId.get(String(row?.puzzle_id ?? "").trim()) ?? null;
 
     return {
       puzzleId: String(row?.puzzle_id ?? "").trim(),
@@ -103,19 +127,28 @@ const buildDashboardEntries = (
       event,
       puzzleCorrect: Boolean(row?.puzzle_correct),
       firstAttemptAt: row?.first_attempt_at || "",
+      level: puzzleLevelLabel(puzzleRating.level),
+      rating: puzzleRating.rating,
+      userRatingAfter: ratingEvent?.userRatingAfter ?? null,
+      userRatingChange: ratingEvent?.userRatingChange ?? null,
+      userRatingBefore: ratingEvent?.userRatingBefore ?? null,
     };
   });
 
-const resultLabel = (isCorrect: boolean): string => (isCorrect ? "Correct" : "Incorrect");
+const formatSignedRating = (value: number): string => `${value > 0 ? "+" : ""}${value}`;
 
 const isKnownEvent = (event: string): boolean => event.trim() !== UNKNOWN_EVENT_LABEL;
 
 export const PuzzleDashboardPage = ({ username = "" }: { username?: string | undefined }) => {
   const { isAuthenticated, isLoading, user } = useAuth();
+  const queryClient = useQueryClient();
   const routeUsername = useMemo(() => normalizeUsername(username), [username]);
   const viewingOwnDashboard = !routeUsername;
   const targetUsername = viewingOwnDashboard ? normalizeUsername(user?.username) : routeUsername;
   const [activeTab, setActiveTab] = useState<DashboardTab>("attempts");
+  const [ratingRefreshStatus, setRatingRefreshStatus] = useState<RatingRefreshStatus>({
+    state: "idle",
+  });
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = usePersistedState<PuzzleDashboardPageSize>(
     PAGE_SIZE_STORAGE_KEY,
@@ -158,6 +191,14 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
     ...puzzleProgressForUserQueryOptions(targetUsername),
     enabled: Boolean(targetUsername) && canViewDashboard,
   });
+  const userRatingQuery = useQuery({
+    ...puzzleUserRatingQueryOptions(targetUsername),
+    enabled: Boolean(targetUsername) && canViewDashboard,
+  });
+  const ratingEventsQuery = useQuery({
+    ...puzzleRatingEventsQueryOptions(targetUsername),
+    enabled: Boolean(targetUsername) && canViewDashboard,
+  });
   const customSetsQuery = useQuery({
     queryKey: ["custom-puzzle-sets"],
     queryFn: listCustomPuzzleSets,
@@ -197,13 +238,15 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
   );
   const isDashboardLoading = selectedCustomSetId
     ? customSetsQuery.isFetching || customSetAttemptsQuery.isFetching
-    : progressQuery.isFetching;
+    : progressQuery.isFetching || userRatingQuery.isFetching || ratingEventsQuery.isFetching;
   const arePuzzlesLoading = puzzleCatalogQuery.isFetching;
   const isAccessCheckLoading = Boolean(targetUsername) && accessQuery.isPending;
   const queryError =
     accessQuery.error ??
     puzzleCatalogQuery.error ??
     progressQuery.error ??
+    userRatingQuery.error ??
+    ratingEventsQuery.error ??
     customSetsQuery.error ??
     customSetAttemptsQuery.error;
   const error = queryError
@@ -246,10 +289,15 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
     viewingOwnDashboard,
   ]);
 
-  const allDashboardEntries = useMemo(
-    () => buildDashboardEntries(progressRows, puzzlesById),
-    [progressRows, puzzlesById],
-  );
+  const allDashboardEntries = useMemo(() => {
+    const ratingEventsByPuzzleId = new Map(
+      (activeAttemptSource === "first" ? (ratingEventsQuery.data ?? []) : []).map((event) => [
+        event.puzzleId,
+        event,
+      ]),
+    );
+    return buildDashboardEntries(progressRows, puzzlesById, ratingEventsByPuzzleId);
+  }, [activeAttemptSource, progressRows, puzzlesById, ratingEventsQuery.data]);
   const eventOptions = useMemo(
     () =>
       [...new Set(allDashboardEntries.map((entry) => entry.event).filter(isKnownEvent))].sort(
@@ -320,6 +368,11 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
         .sort((left, right) => right.puzzleId - left.puzzleId),
     [puzzlesById, targetUsername],
   );
+  const attemptedPuzzleIds = useMemo(
+    () =>
+      new Set((progressQuery.data ?? emptyPuzzleProgressRows).map((row) => String(row.puzzle_id))),
+    [progressQuery.data],
+  );
   const puzzlesCreated = createdPuzzles.length;
   const createdTotalPages = Math.max(1, Math.ceil(puzzlesCreated / createdPageSize));
   const createdPuzzleEntries = useMemo(
@@ -356,6 +409,29 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
   const heroTitle = viewingOwnDashboard
     ? "My Puzzle Dashboard"
     : `${targetUsername}'s Puzzle Dashboard`;
+  const canRefreshRatings =
+    viewingOwnDashboard && normalizeUsername(user?.username) === "seaside_tiramisu";
+  const handleRefreshRatings = async (): Promise<void> => {
+    if (!canRefreshRatings || ratingRefreshStatus.state === "refreshing") return;
+
+    setRatingRefreshStatus({ state: "refreshing" });
+    try {
+      await refreshPuzzleRatings();
+      clearPuzzleRatingCaches();
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: puzzleQueryKeys.catalog }),
+        queryClient.invalidateQueries({ queryKey: puzzleQueryKeys.userRating }),
+        queryClient.invalidateQueries({ queryKey: puzzleQueryKeys.ratingEvents }),
+      ]);
+      setRatingRefreshStatus({ state: "success", message: "Ratings refreshed." });
+    } catch (refreshError) {
+      setRatingRefreshStatus({
+        state: "error",
+        message:
+          refreshError instanceof Error ? refreshError.message : "Unable to refresh ratings.",
+      });
+    }
+  };
   const hasActiveFilters = Boolean(
     activeAttemptSource !== "first" ||
     sinceDate ||
@@ -393,11 +469,37 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
                 <FontAwesomeIcon icon={faArrowUpRightFromSquare} aria-hidden="true" />
                 <span>Custom sets</span>
               </Link>
-              <Link className="puzzleDashboardActionLink" to={backLinkTo} params={backLinkParams}>
-                <FontAwesomeIcon icon={faArrowUpRightFromSquare} aria-hidden="true" />
-                <span>{backLinkLabel}</span>
-              </Link>
+              {!viewingOwnDashboard ? (
+                <Link className="puzzleDashboardActionLink" to={backLinkTo} params={backLinkParams}>
+                  <FontAwesomeIcon icon={faArrowUpRightFromSquare} aria-hidden="true" />
+                  <span>{backLinkLabel}</span>
+                </Link>
+              ) : null}
+              {canRefreshRatings ? (
+                <button
+                  type="button"
+                  className="puzzleDashboardActionLink puzzleDashboardActionButton"
+                  onClick={() => void handleRefreshRatings()}
+                  disabled={ratingRefreshStatus.state === "refreshing"}
+                >
+                  <FontAwesomeIcon icon={faArrowRotateRight} aria-hidden="true" />
+                  <span>
+                    {ratingRefreshStatus.state === "refreshing"
+                      ? "Refreshing ratings…"
+                      : "Refresh ratings"}
+                  </span>
+                </button>
+              ) : null}
             </div>
+            {canRefreshRatings &&
+            (ratingRefreshStatus.state === "success" || ratingRefreshStatus.state === "error") ? (
+              <p
+                className={`dashboardRatingRefreshStatus ${ratingRefreshStatus.state}`}
+                role={ratingRefreshStatus.state === "error" ? "alert" : "status"}
+              >
+                {ratingRefreshStatus.message}
+              </p>
+            ) : null}
           </div>
         </header>
 
@@ -425,27 +527,61 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
 
         {!needsLoginForOwnDashboard && !error && !isCheckingAccess && isRegisteredViewer ? (
           <>
-            <section className="dashboardStatsStrip" aria-label="Puzzle dashboard summary">
-              <div className="dashboardStatCard dashboardStatCardPrimary">
-                <span className="dashboardStatLabel">Attempted</span>
-                <strong>{areStatsLoading ? "…" : dashboardSummary.total}</strong>
-              </div>
-              <div className="dashboardStatCard dashboardStatCardCorrect">
-                <span className="dashboardStatLabel">Correct</span>
-                <strong>{areStatsLoading ? "…" : dashboardSummary.correct}</strong>
-              </div>
-              <div className="dashboardStatCard dashboardStatCardIncorrect">
-                <span className="dashboardStatLabel">Missed</span>
-                <strong>{areStatsLoading ? "…" : dashboardSummary.incorrect}</strong>
-              </div>
-              <div className="dashboardStatCard dashboardStatCardAccuracy">
-                <span className="dashboardStatLabel">Accuracy</span>
-                <strong>{areStatsLoading ? "…" : `${accuracy}%`}</strong>
-              </div>
-              <div className="dashboardStatCard dashboardStatCardCreated">
-                <span className="dashboardStatLabel">Puzzles created</span>
+            <section className="dashboardOverview" aria-label="Puzzle dashboard summary">
+              <article
+                className="dashboardRatingSummary"
+                title={
+                  userRatingQuery.data
+                    ? `Rating deviation ${userRatingQuery.data.ratingDeviation} · ${userRatingQuery.data.attempts} rated attempts`
+                    : "No rated attempts yet"
+                }
+              >
+                <span className="dashboardOverviewLabel">Rating</span>
+                <div className="dashboardRatingReading">
+                  <strong>{areStatsLoading ? "…" : (userRatingQuery.data?.rating ?? 2000)}</strong>
+                  <span>
+                    {areStatsLoading
+                      ? "Calculating"
+                      : `RD ${userRatingQuery.data?.ratingDeviation ?? 350}`}
+                  </span>
+                </div>
+              </article>
+
+              <article className="dashboardPerformanceSummary">
+                <div className="dashboardPerformanceHeading">
+                  <span className="dashboardOverviewLabel">Accuracy</span>
+                  <strong>{areStatsLoading ? "…" : `${accuracy}%`}</strong>
+                </div>
+                <div
+                  className="dashboardAccuracyTrack"
+                  role="progressbar"
+                  aria-label="Puzzle accuracy"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={areStatsLoading ? undefined : accuracy}
+                >
+                  <span style={{ width: areStatsLoading ? "0%" : `${accuracy}%` }} />
+                </div>
+                <dl className="dashboardPerformanceBreakdown">
+                  <div>
+                    <dt>Attempts</dt>
+                    <dd>{areStatsLoading ? "…" : dashboardSummary.total}</dd>
+                  </div>
+                  <div className="correct">
+                    <dt>Correct</dt>
+                    <dd>{areStatsLoading ? "…" : dashboardSummary.correct}</dd>
+                  </div>
+                  <div className="incorrect">
+                    <dt>Missed</dt>
+                    <dd>{areStatsLoading ? "…" : dashboardSummary.incorrect}</dd>
+                  </div>
+                </dl>
+              </article>
+
+              <article className="dashboardCreatedSummary">
+                <span className="dashboardOverviewLabel">Created</span>
                 <strong>{areStatsLoading ? "…" : puzzlesCreated}</strong>
-              </div>
+              </article>
             </section>
 
             <div className="dashboardTabs" role="tablist" aria-label="Puzzle dashboard views">
@@ -458,7 +594,8 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
                 className={activeTab === "attempts" ? "active" : ""}
                 onClick={() => setActiveTab("attempts")}
               >
-                Puzzle attempts
+                <span>History</span>
+                <small>{areStatsLoading ? "…" : dashboardSummary.total}</small>
               </button>
               <button
                 id="dashboard-created-tab"
@@ -469,7 +606,8 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
                 className={activeTab === "created" ? "active" : ""}
                 onClick={() => setActiveTab("created")}
               >
-                Puzzles created
+                <span>Created</span>
+                <small>{areStatsLoading ? "…" : puzzlesCreated}</small>
               </button>
             </div>
 
@@ -482,7 +620,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
             >
               <div className="dashboardAttemptsHeader">
                 <div className="dashboardAttemptsTitleRow">
-                  <h2>Puzzle attempts</h2>
+                  <h2>Attempt history</h2>
                   <div className="dashboardAttemptsActions">
                     <button
                       type="button"
@@ -648,8 +786,8 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
                   <div className="dashboardAttemptHeader" aria-hidden="true">
                     <span>#</span>
                     <span>Puzzle</span>
-                    <span>Author</span>
-                    <span>Result</span>
+                    <span>Puzzle rating · level</span>
+                    <span>Rating</span>
                     <span>Attempted</span>
                   </div>
                   <div className="dashboardAttemptRows" role="list" aria-label="Puzzle dashboard">
@@ -672,14 +810,31 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
                           Puzzle {entry.linkedPuzzleId}
                         </Link>
                         <div className="dashboardPuzzleSubline">
-                          <span className="dashboardPuzzleAuthor">{entry.author}</span>
+                          <span className="dashboardPuzzleRating">{entry.rating}</span>
+                          <span className="dashboardPuzzleLevel">{entry.level}</span>
                         </div>
                         <span
-                          className={`dashboardStatus ${
-                            entry.puzzleCorrect ? "correct" : "incorrect"
+                          className={`dashboardRatingChange ${
+                            entry.userRatingChange === null
+                              ? "unrated"
+                              : entry.userRatingChange >= 0
+                                ? "positive"
+                                : "negative"
                           }`}
+                          title={
+                            entry.userRatingBefore === null || entry.userRatingAfter === null
+                              ? undefined
+                              : `${entry.userRatingBefore} → ${entry.userRatingAfter}`
+                          }
                         >
-                          {resultLabel(entry.puzzleCorrect)}
+                          {entry.userRatingAfter === null || entry.userRatingChange === null ? (
+                            "—"
+                          ) : (
+                            <>
+                              <strong>{entry.userRatingAfter}</strong>
+                              <small>{formatSignedRating(entry.userRatingChange)}</small>
+                            </>
+                          )}
                         </span>
                         <time className="dashboardMetaValue" dateTime={entry.firstAttemptAt}>
                           {formatDateTime(entry.firstAttemptAt)}
@@ -731,7 +886,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
               <div className="dashboardAttemptsHeader">
                 <div className="dashboardAttemptsTitleRow">
                   <div>
-                    <h2>Puzzles created</h2>
+                    <h2>Created puzzles</h2>
                   </div>
                 </div>
                 {createdPuzzleEntries.length > 0 ? (
@@ -776,7 +931,13 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
                         to="/solve/$puzzleId"
                         params={{ puzzleId: String(puzzle.puzzleId) }}
                       >
-                        Puzzle {puzzle.puzzleId}
+                        <span>Puzzle {puzzle.puzzleId}</span>
+                        {attemptedPuzzleIds.has(String(puzzle.puzzleId)) ? (
+                          <small>
+                            {puzzleLevelLabel(puzzleRatingFromRow(puzzle).level)} ·
+                            {puzzleRatingFromRow(puzzle).rating}
+                          </small>
+                        ) : null}
                       </Link>
                     </li>
                   ))}

@@ -33,6 +33,7 @@ const localPuzzleFunctionsPlugin = () => {
     ["/api/puzzles/review", "/netlify/functions/puzzle-review.ts"],
     ["/api/puzzles/issues", "/netlify/functions/puzzle-issues.ts"],
     ["/api/puzzles/tags", "/netlify/functions/puzzle-tags.ts"],
+    ["/api/puzzles/rating", "/netlify/functions/puzzle-rating.ts"],
     ["/api/puzzles/explanation", "/netlify/functions/puzzle-explanation.ts"],
     ["/api/puzzles/community", "/netlify/functions/puzzle-community.ts"],
     ["/api/puzzles/progress", "/netlify/functions/puzzle-progress.ts"],

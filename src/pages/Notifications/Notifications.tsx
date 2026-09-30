@@ -1,6 +1,12 @@
 import "./Notifications.css";
 
-import { faBell, faCheck, faComment, faReply } from "@fortawesome/free-solid-svg-icons";
+import {
+  faBell,
+  faChartLine,
+  faCheck,
+  faComment,
+  faReply,
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -20,6 +26,7 @@ import {
 import { formatLocalDateTime } from "../../utils/formatters";
 
 const notificationIcon = (notification: UserNotification) => {
+  if (notification.notification_type === "puzzle_rating_added") return faChartLine;
   if (notification.notification_type === "puzzle_approved") return faCheck;
   if (notification.notification_type === "comment_reply") return faReply;
   return faComment;
@@ -64,6 +71,10 @@ export const NotificationsPage = () => {
 
   const openNotification = async (notification: UserNotification) => {
     if (!notification.read_at) await markRead([notification.id]);
+    if (notification.notification_type === "puzzle_rating_added") {
+      void navigate({ to: "/dashboard" });
+      return;
+    }
     void navigate({
       to: "/solve/$puzzleId",
       params: { puzzleId: String(notification.puzzle_id) },
@@ -131,11 +142,16 @@ export const NotificationsPage = () => {
                     </span>
                     <span className="notificationItemCopy">
                       <strong>{notificationCopy(notification)}</strong>
-                      <span>Puzzle #{notification.puzzle_id}</span>
+                      <span>
+                        {notification.notification_type === "puzzle_rating_added"
+                          ? "Puzzle rating"
+                          : `Puzzle #${notification.puzzle_id}`}{" "}
+                        ·{" "}
+                        <time dateTime={notification.created_at}>
+                          {formatLocalDateTime(notification.created_at)}
+                        </time>
+                      </span>
                     </span>
-                    <time dateTime={notification.created_at}>
-                      {formatLocalDateTime(notification.created_at)}
-                    </time>
                     {!notification.read_at ? <span className="notificationUnreadDot" /> : null}
                   </button>
                 </div>

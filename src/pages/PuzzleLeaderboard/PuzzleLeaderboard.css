@@ -1,3 +1,7 @@
+.puzzleLeaderboardPanel {
+  width: min(680px, 100%);
+}
+
 .puzzleLeaderboardScoring {
   display: flex;
   flex-wrap: wrap;
@@ -62,14 +66,41 @@
 }
 
 .puzzleLeaderboardTable {
-  min-width: 640px;
+  min-width: 580px;
 }
 
-.rankingsTable.puzzleLeaderboardTable :is(th, td):nth-child(4),
-.rankingsTable.puzzleLeaderboardTable :is(th, td):nth-child(5),
-.rankingsTable.puzzleLeaderboardTable :is(th, td):nth-child(6) {
+.rankingsTable.puzzleLeaderboardTable
+  :is(th, td):is(
+    :nth-child(1),
+    :nth-child(2),
+    :nth-child(4),
+    :nth-child(5),
+    :nth-child(6),
+    :nth-child(7)
+  ) {
   width: 1%;
   white-space: nowrap;
+}
+
+/* Keep numeric headings on the same right edge as their tabular values.
+   The sort arrow sits outside that edge so active and inactive columns do not shift. */
+.rankingsTable.puzzleLeaderboardTable
+  th:is(:nth-child(1), :nth-child(2), :nth-child(n + 4))
+  .sortableTableButton {
+  position: relative;
+  display: inline-flex;
+  justify-content: flex-end;
+}
+
+.rankingsTable.puzzleLeaderboardTable
+  th:is(:nth-child(1), :nth-child(2), :nth-child(n + 4))
+  .sortableTableButton
+  .sortableTableIndicator {
+  position: absolute;
+  inset-inline-start: 100%;
+  min-width: 1em;
+  margin-inline-start: 0.15em;
+  text-align: left;
 }
 
 .puzzleLeaderboardPlayerCell {

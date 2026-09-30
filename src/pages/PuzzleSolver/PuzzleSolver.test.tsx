@@ -767,6 +767,17 @@ describe("PuzzleSolverPage solution options", () => {
 
   it("records both progress sources when a custom-set solve is the first attempt", async () => {
     mocks.attemptedPuzzleIds = new Set();
+    mocks.recordPuzzleProgress.mockResolvedValueOnce({
+      username: "solver",
+      puzzleId: "1369",
+      attemptedAt: "2026-09-29T00:00:00.000Z",
+      puzzleCorrect: false,
+      userRatingBefore: 2000,
+      userRatingAfter: 1978,
+      userRatingChange: -22,
+      userRatingDeviationBefore: 350,
+      userRatingDeviationAfter: 290,
+    });
     mocks.routeParams = {
       puzzleId: "1369",
       setId: "4b648b2a-e2bf-49dc-aaed-235c05615d1b",
@@ -775,6 +786,7 @@ describe("PuzzleSolverPage solution options", () => {
     render(<PuzzleSolverPage />);
 
     await screen.findByTestId("mock-board");
+    expect(screen.queryByLabelText(/V3, 2100 Elo/)).not.toBeInTheDocument();
     expect(
       screen.queryByRole("img", { name: "You've solved this puzzle before" }),
     ).not.toBeInTheDocument();
@@ -785,6 +797,20 @@ describe("PuzzleSolverPage solution options", () => {
         puzzleCorrect: false,
         incorrectMove: "1... Kd7",
         correctMove: null,
+      });
+      mocks.chessboardProps.at(-1)?.onStateChange?.({
+        fen: "rn2k2r/pp5p/1qpp2p1/2Q5/1b2P3/2N5/PPP3PP/R3KB1R b KQkq - 1 12",
+        turn: "white",
+        status: "Incorrect",
+        error: "",
+        lineMoves: ["Kd7"],
+        solutionLines: [["O-O"]],
+        solutionLineIndex: 0,
+        lineIndex: 1,
+        viewingSolution: false,
+        showWrongMove: true,
+        showRetryMove: false,
+        solved: false,
       });
     });
 
@@ -802,6 +828,9 @@ describe("PuzzleSolverPage solution options", () => {
       "1369",
       false,
     );
+    expect(await screen.findByLabelText(/V3, 2100 Elo/)).toBeInTheDocument();
+    expect(await screen.findByText("1978")).toBeInTheDocument();
+    expect(screen.getByText("-22")).toBeInTheDocument();
   });
 
   it("offers exits when the final puzzle in an ordered set is solved", async () => {

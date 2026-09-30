@@ -12,6 +12,17 @@ import { handler } from "../functions/puzzle-progress";
 import { createSiteSessionCookie } from "../lib/siteSession";
 
 describe("puzzle-progress function", () => {
+  const ratingEventQuery = () => {
+    const query = {
+      select: vi.fn(),
+      eq: vi.fn(),
+      maybeSingle: vi.fn(async () => ({ data: null, error: null })),
+    };
+    query.select.mockReturnValue(query);
+    query.eq.mockReturnValue(query);
+    return query;
+  };
+
   beforeEach(() => {
     mocks.createClient.mockReset();
     vi.stubEnv("SUPABASE_URL", "https://example.supabase.co");
@@ -48,7 +59,8 @@ describe("puzzle-progress function", () => {
 
   it("takes the progress owner from the signed session, never the request body", async () => {
     const rpc = vi.fn(async () => ({ error: null }));
-    mocks.createClient.mockReturnValue({ rpc });
+    const query = ratingEventQuery();
+    mocks.createClient.mockReturnValue({ rpc, from: vi.fn(() => query) });
     const cookie = createSiteSessionCookie("Actual_Solver", {});
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
@@ -77,7 +89,8 @@ describe("puzzle-progress function", () => {
 
   it("records a correct alternate solution move", async () => {
     const rpc = vi.fn(async () => ({ error: null }));
-    mocks.createClient.mockReturnValue({ rpc });
+    const query = ratingEventQuery();
+    mocks.createClient.mockReturnValue({ rpc, from: vi.fn(() => query) });
     const cookie = createSiteSessionCookie("Solver", {});
 
     const response = await handler({

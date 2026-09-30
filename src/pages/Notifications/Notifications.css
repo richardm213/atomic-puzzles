@@ -70,7 +70,7 @@
   grid-template-columns: minmax(0, 1fr);
   align-items: center;
   width: 100%;
-  min-height: 66px;
+  min-height: 76px;
   border: 1px solid var(--color-border);
   border-radius: 11px;
   background: color-mix(in srgb, var(--color-panel-strong) 72%, transparent);
@@ -99,12 +99,12 @@
 .notificationOpenButton {
   position: relative;
   display: grid;
-  grid-template-columns: 36px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-items: start;
+  gap: 14px;
   min-width: 0;
-  min-height: 64px;
-  padding: 10px 12px;
+  min-height: 74px;
+  padding: 14px 18px 14px 14px;
   border: 0;
   background: transparent;
   color: inherit;
@@ -119,8 +119,8 @@
 .notificationItemIcon {
   display: inline-grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   border: 1px solid color-mix(in srgb, var(--notification-accent) 22%, transparent);
   background: var(--notification-accent-soft);
@@ -129,26 +129,28 @@
 
 .notificationItemCopy {
   display: grid;
-  gap: 3px;
+  gap: 5px;
   min-width: 0;
+  padding-right: 10px;
 }
 
 .notificationItemCopy strong {
-  overflow: hidden;
   color: var(--color-heading);
-  font-size: 13px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 14px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .notificationItemCopy > span,
 .notificationList time {
   color: var(--color-subtle);
-  font-size: 11px;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .notificationList time {
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .notificationUnreadDot {
@@ -215,10 +217,13 @@
   }
 
   .notificationOpenButton {
-    grid-template-columns: 32px minmax(0, 1fr);
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 10px;
+    padding: 12px 14px 12px 12px;
   }
 
-  .notificationList time {
-    grid-column: 2;
+  .notificationItemIcon {
+    width: 36px;
+    height: 36px;
   }
 }

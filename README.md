@@ -137,16 +137,24 @@ into an array before returning it to the browser.
 
 Puzzle progress also uses these RPCs by default:
 
-- `record_first_puzzle_attempt`
+- `record_first_puzzle_attempt_v2`
 - `get_puzzle_progress_page`
 - `get_attempted_puzzle_ids`
+
+Puzzle ratings live in `puzzle_ratings`; the `puzzles` table contains puzzle content only.
+`puzzles_with_ratings` is a read-only compatibility view for consumers that still need the old
+flattened rating fields. Puzzle progress, solver ratings, and rating events use `users.id` as their
+canonical owner key while retaining synchronized usernames for display-compatible reads.
+Selecting a manual V level immediately sets that puzzle to the V preset. The private rating refresh
+action replays the full first-attempt ledger from every human-selected V preset; puzzles without a
+human grade first estimate a V from their attempts and use that preset as their starting rating.
 
 ### Constraints worth having
 
 For production safety, the data layer should enforce idempotency and uniqueness where appropriate. In practice, these constraints are especially helpful:
 
-- `users.username` unique
-- `(puzzle_progress.username, puzzle_progress.puzzle_id)` unique
+- `users.id` unique and stable
+- `(puzzle_progress.user_id, puzzle_progress.puzzle_id)` unique
 
 Without those constraints, concurrent writes from multiple tabs or devices are harder to keep consistent.
 

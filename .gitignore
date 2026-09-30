@@ -12,3 +12,6 @@ data/tournaments/tournament-seeds.csv
 playwright-report/
 test-results/
 .playwright/
+
+# Local Netlify folder
+.netlify

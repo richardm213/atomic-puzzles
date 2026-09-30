@@ -37,7 +37,7 @@ export class NotificationRepository {
     const { data, error } = await this.supabase
       .from("notifications")
       .select(
-        "id, recipient_username, actor_username, notification_type, puzzle_id, comment_id, created_at, read_at",
+        "id, recipient_username, actor_username, notification_type, puzzle_id, comment_id, rating, rating_deviation, created_at, read_at",
       )
       .eq("recipient_username", username)
       .order("created_at", { ascending: false })

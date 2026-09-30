@@ -18,6 +18,11 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
+  normalizePuzzleLevel,
+  type PuzzleLevel,
+  puzzleLevelLabel,
+} from "../../../shared/domain/puzzles/puzzleRating";
+import {
   formatPuzzleSetDate,
   puzzleSetMetadataFromRow,
 } from "../../../shared/domain/puzzles/puzzleSetMetadata";
@@ -57,6 +62,7 @@ import {
   puzzlePlayerNicknamesQueryOptions,
   puzzleQueryKeys,
 } from "../../lib/puzzles/puzzleQueries";
+import { puzzleRatingFromRow, updatePuzzleRating } from "../../lib/puzzles/puzzleRating";
 import {
   getOrderedPuzzleIndexesForEvent,
   getPuzzleSetSourceId,
@@ -75,6 +81,7 @@ import {
   type PuzzleProgressWithUsernameRow,
   recordPuzzleProgress,
 } from "../../lib/supabase/puzzleProgress";
+import type { PuzzleRatingEvent } from "../../lib/supabase/puzzleUserRatings";
 import type {
   AttemptResolved,
   ChessboardState,
@@ -115,6 +122,7 @@ const OPA_STYLE_BADGE_LABEL =
 const OTHER_PUZZLE_ATTEMPTS_LIMIT = 30;
 const PUZZLE_PREFETCH_COUNT = 3;
 const PUZZLE_TAG_EDITOR = "seaside_tiramisu";
+const PUZZLE_RATING_EDITOR = "seaside_tiramisu";
 const PUZZLE_EXPLANATION_LEGACY_AUTHOR = "admin";
 const PUZZLE_EXPLANATION_LEGACY_EDITOR = "seaside_tiramisu";
 
@@ -124,6 +132,8 @@ const formatElapsedTime = (milliseconds: number): string => {
   const seconds = totalSeconds % 60;
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 };
+
+const formatSignedRating = (value: number): string => `${value > 0 ? "+" : ""}${value}`;
 
 type PuzzleInfoTab = "solution" | "explanation" | "attempts" | "comments";
 
@@ -284,6 +294,9 @@ export const PuzzleSolverPage = () => {
     icon: string;
     title: string;
   } | null>(null);
+  const [attemptRatingFeedback, setAttemptRatingFeedback] = useState<PuzzleRatingEvent | null>(
+    null,
+  );
   const [feedbackBadgeId, setFeedbackBadgeId] = useState(0);
   const [explanationUnlockedByWrongMove, setExplanationUnlockedByWrongMove] = useState(false);
   const [explanationEditorOpen, setExplanationEditorOpen] = useState(false);
@@ -303,6 +316,14 @@ export const PuzzleSolverPage = () => {
     [],
   );
   const [motifEditorOpen, setMotifEditorOpen] = useState(false);
+  const [ratingEditorOpen, setRatingEditorOpen] = useState(false);
+  const [ratingDraftLevel, setRatingDraftLevel] = useState<PuzzleLevel>(1);
+  const [ratingSaveStatus, setRatingSaveStatus] = useState<
+    | { state: "idle" }
+    | { state: "saving" }
+    | { state: "saved" }
+    | { state: "error"; message: string }
+  >({ state: "idle" });
   const [reportIssueOpen, setReportIssueOpen] = useState(false);
   const [reportIssueCategory, setReportIssueCategory] = useState<PuzzleIssueCategory>(
     "missing_alternate_solution",
@@ -576,6 +597,8 @@ export const PuzzleSolverPage = () => {
     [selectedMotifTag],
   );
   const canManagePuzzleTags = user?.username?.trim().toLowerCase() === PUZZLE_TAG_EDITOR;
+  const canManagePuzzleRating = normalizeUsername(user?.username) === PUZZLE_RATING_EDITOR;
+  const activePuzzleRating = useMemo(() => puzzleRatingFromRow(activePuzzle), [activePuzzle]);
   const normalizedUsername = normalizeUsername(user?.username);
   const normalizedAuthor = normalizeUsername(author);
   const canManagePuzzleExplanation =
@@ -596,13 +619,6 @@ export const PuzzleSolverPage = () => {
   const activeSetPuzzlePosition = isSetSolveMode
     ? orderedSetPuzzleIndexes.indexOf(activePuzzleIndex)
     : -1;
-  const puzzleOrdinal = isSetSolveMode
-    ? activeSetPuzzlePosition >= 0
-      ? activeSetPuzzlePosition + 1
-      : null
-    : activePuzzleIndex >= 0
-      ? activePuzzleIndex + 1
-      : null;
   const puzzleCount = isSetSolveMode ? orderedSetPuzzleIndexes.length : puzzles.length;
   const canGoToPreviousPuzzle = isSetSolveMode ? activeSetPuzzlePosition > 0 : historyIndex > 0;
   const canGoToNextPuzzle = isSetSolveMode
@@ -671,6 +687,8 @@ export const PuzzleSolverPage = () => {
     setMotifEditorOpen(false);
     setSelectedMotifTag(null);
     setMotifSaveStatus({ state: "idle" });
+    setRatingEditorOpen(false);
+    setRatingSaveStatus({ state: "idle" });
     setExplanationEditorOpen(false);
     setExplanationDraft("");
     setExplanationSaveStatus({ state: "idle" });
@@ -807,9 +825,19 @@ export const PuzzleSolverPage = () => {
             puzzleCorrect,
             incorrectMove,
             correctMove,
-          }).then(() => {
+          }).then((ratingEvent) => {
             setAttemptedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
             void queryClient.invalidateQueries({ queryKey: puzzleQueryKeys.progress });
+            void queryClient.invalidateQueries({ queryKey: puzzleQueryKeys.userRating });
+            void queryClient.invalidateQueries({ queryKey: puzzleQueryKeys.ratingEvents });
+            if (!ratingEvent || activePuzzleKeyRef.current !== normalizedPuzzleId) return;
+            setAttemptRatingFeedback(ratingEvent);
+            setFeedbackBadgeId((current) => current + 1);
+            setMobileFeedback((current) => {
+              if (!current) return current;
+              mobileFeedbackIdRef.current += 1;
+              return { ...current, id: mobileFeedbackIdRef.current, fading: false };
+            });
           }),
         )
         .catch((error) => {
@@ -850,6 +878,7 @@ export const PuzzleSolverPage = () => {
     setSolutionNavigation(null);
     setInteractionMode(SOLVE_MODE);
     setCompletionFeedback(null);
+    setAttemptRatingFeedback(null);
     setFeedbackBadgeId(0);
     setExplanationUnlockedByWrongMove(false);
     lockedCompletionFeedbackRef.current = null;
@@ -934,6 +963,12 @@ export const PuzzleSolverPage = () => {
       ? "View the solution"
       : SOLUTION_UNLOCK_HINT;
   const feedback = completionFeedback;
+  const visibleRatingFeedback =
+    attemptRatingFeedback?.puzzleId === activePuzzleKey &&
+    feedback &&
+    (feedback.type === "correct" || feedback.type === "wrong")
+      ? attemptRatingFeedback
+      : null;
 
   const handleRefreshCustomSet = async (): Promise<void> => {
     if (!isCustomSetSolveMode || !customPuzzleSet) return;
@@ -1387,6 +1422,46 @@ export const PuzzleSolverPage = () => {
     if (await handleUpdateMotifs(nextTags)) setSelectedMotifTag(null);
   };
 
+  const handleUpdatePuzzleRating = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+    event.preventDefault();
+    if (!canManagePuzzleRating || !activePuzzleId || ratingSaveStatus.state === "saving") return;
+    setRatingSaveStatus({ state: "saving" });
+
+    try {
+      const savedRating = await updatePuzzleRating(activePuzzleId, ratingDraftLevel);
+      setPuzzles((current) =>
+        current.map((puzzle) =>
+          puzzle.puzzleId === activePuzzleId
+            ? {
+                ...puzzle,
+                rating_state: {
+                  ...(Array.isArray(puzzle.rating_state)
+                    ? (puzzle.rating_state[0] ?? {})
+                    : (puzzle.rating_state ?? {})),
+                  rating: savedRating.rating,
+                  rating_deviation: savedRating.ratingDeviation,
+                  attempts: savedRating.attempts,
+                  successes: savedRating.successes,
+                  computed_level: savedRating.level,
+                  human_level: savedRating.level,
+                  human_rated_by: normalizeUsername(user?.username),
+                  human_rated_at: savedRating.updatedAt,
+                  updated_at: savedRating.updatedAt,
+                },
+              }
+            : puzzle,
+        ),
+      );
+      setRatingEditorOpen(false);
+      setRatingSaveStatus({ state: "saved" });
+    } catch (error) {
+      setRatingSaveStatus({
+        state: "error",
+        message: error instanceof Error ? error.message : "Unable to update puzzle rating.",
+      });
+    }
+  };
+
   const currentLineLength =
     boardShowsSolution && canRevealSolution
       ? activeSolutionLine.length
@@ -1772,7 +1847,6 @@ export const PuzzleSolverPage = () => {
           {activePuzzleTags.length > 0 ? (
             activePuzzleTags.map((tag) => {
               const motif = puzzleMotifs.find((entry) => entry.tag === tag);
-              const parentMotif = motif ? getPuzzleMotifParent(motif) : undefined;
 
               return (
                 <div className="puzzleMotifAppliedTag" key={tag}>
@@ -1782,9 +1856,6 @@ export const PuzzleSolverPage = () => {
                     onClick={() => setSelectedMotifTag(tag)}
                     aria-label={`View definition for ${motif?.name ?? tag}`}
                   >
-                    {parentMotif ? (
-                      <small className="puzzleMotifAppliedParent">{parentMotif.name} ›</small>
-                    ) : null}
                     {motif?.name ?? tag}
                   </button>
                   {canManagePuzzleTags ? (
@@ -1899,13 +1970,7 @@ export const PuzzleSolverPage = () => {
       >
         <div className="puzzleMotifDefinitionCard">
           <div className="puzzleMotifDefinitionHeading">
-            <div>
-              <span>
-                {getPuzzleMotifParent(selectedMotif)?.name ?? "Atomic motif"}
-                {selectedMotif.parentTag ? " submotif" : ""}
-              </span>
-              <h2 id="puzzle-motif-dialog-title">{selectedMotif.name}</h2>
-            </div>
+            <h2 id="puzzle-motif-dialog-title">{selectedMotif.name}</h2>
             <button
               type="button"
               className="puzzleMotifDefinitionClose"
@@ -1916,7 +1981,6 @@ export const PuzzleSolverPage = () => {
             </button>
           </div>
           <p>{selectedMotif.description}</p>
-          <span className="puzzleMotifDefinitionTag">{selectedMotif.tag}</span>
           {canConvertMotif ? (
             <div className="puzzleMotifConversions">
               <strong>Convert to a subtag</strong>
@@ -2043,6 +2107,84 @@ export const PuzzleSolverPage = () => {
     );
   };
 
+  const renderPuzzleRating = (mobile = false) => {
+    const levelLabel = puzzleLevelLabel(activePuzzleRating.level);
+    const details = `${levelLabel}, ${activePuzzleRating.rating} Elo, rating deviation ${activePuzzleRating.ratingDeviation}, ${activePuzzleRating.attempts} attempts`;
+
+    if (canManagePuzzleRating && ratingEditorOpen) {
+      return (
+        <form
+          className={`puzzleRatingEditor ${mobile ? "mobile" : ""}`.trim()}
+          onSubmit={(event) => void handleUpdatePuzzleRating(event)}
+          aria-label="Edit puzzle level"
+        >
+          <label>
+            <span className="srOnly">Puzzle level</span>
+            <select
+              value={ratingDraftLevel}
+              onChange={(event) =>
+                setRatingDraftLevel(normalizePuzzleLevel(Number(event.target.value)))
+              }
+              disabled={ratingSaveStatus.state === "saving"}
+            >
+              {[1, 2, 3, 4, 5, 6].map((level) => (
+                <option key={level} value={level}>
+                  V{level}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button type="submit" disabled={ratingSaveStatus.state === "saving"}>
+            {ratingSaveStatus.state === "saving" ? "Saving…" : "Save"}
+          </button>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => {
+              setRatingDraftLevel(activePuzzleRating.level);
+              setRatingEditorOpen(false);
+              setRatingSaveStatus({ state: "idle" });
+            }}
+            disabled={ratingSaveStatus.state === "saving"}
+          >
+            Cancel
+          </button>
+        </form>
+      );
+    }
+
+    const content = (
+      <>
+        <strong>{levelLabel}</strong>
+        <span>{activePuzzleRating.rating}</span>
+      </>
+    );
+
+    return canManagePuzzleRating ? (
+      <button
+        type="button"
+        className={`puzzleRatingBadge editable ${mobile ? "mobile" : ""}`.trim()}
+        title={`${details}. Edit level.`}
+        aria-label={`${details}. Edit level.`}
+        onClick={() => {
+          setRatingDraftLevel(activePuzzleRating.level);
+          setRatingEditorOpen(true);
+          setRatingSaveStatus({ state: "idle" });
+        }}
+      >
+        {content}
+      </button>
+    ) : (
+      <span
+        className={`puzzleRatingBadge ${mobile ? "mobile" : ""}`.trim()}
+        title={details}
+        aria-label={details}
+      >
+        {content}
+      </span>
+    );
+  };
+
   return (
     <div className="page puzzlePage" style={materialPieceStyle}>
       <Seo
@@ -2104,6 +2246,7 @@ export const PuzzleSolverPage = () => {
               ) : null}
             </div>
             <div className="puzzleHeaderStatus">
+              {hasAttemptedActivePuzzle ? renderPuzzleRating() : null}
               {!isMobileLayout && showPuzzleTimer ? (
                 <div
                   className="puzzleElapsedTimer desktop"
@@ -2136,10 +2279,6 @@ export const PuzzleSolverPage = () => {
                   OPA style
                 </span>
               ) : null}
-              <div className="puzzleCount" aria-label="Puzzle count">
-                <span>{puzzleOrdinal ?? "-"}</span>
-                <small>of {puzzleCount || "-"}</small>
-              </div>
             </div>
           </div>
 
@@ -2195,6 +2334,11 @@ export const PuzzleSolverPage = () => {
           </div>
 
           {renderPlayerRows()}
+          {ratingSaveStatus.state === "error" ? (
+            <p className="puzzleRatingError" role="alert">
+              {ratingSaveStatus.message}
+            </p>
+          ) : null}
         </header>
 
         {renderPuzzleMotifs()}
@@ -2278,6 +2422,16 @@ export const PuzzleSolverPage = () => {
                 {feedback.icon}
               </span>
               <strong>{feedback.title}</strong>
+              {visibleRatingFeedback ? (
+                <span
+                  className={`feedbackRating ${
+                    visibleRatingFeedback.userRatingChange >= 0 ? "positive" : "negative"
+                  }`}
+                >
+                  {visibleRatingFeedback.userRatingAfter}
+                  <small>{formatSignedRating(visibleRatingFeedback.userRatingChange)}</small>
+                </span>
+              ) : null}
             </div>
           ) : null}
           <div className="boardStage">
@@ -2313,6 +2467,16 @@ export const PuzzleSolverPage = () => {
                 {mobileFeedback.icon}
               </span>
               <strong className="mobileFeedbackText">{mobileFeedback.title}</strong>
+              {visibleRatingFeedback ? (
+                <span
+                  className={`feedbackRating ${
+                    visibleRatingFeedback.userRatingChange >= 0 ? "positive" : "negative"
+                  }`}
+                >
+                  {visibleRatingFeedback.userRatingAfter}
+                  <small>{formatSignedRating(visibleRatingFeedback.userRatingChange)}</small>
+                </span>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -2321,10 +2485,7 @@ export const PuzzleSolverPage = () => {
       {isMobileLayout ? (
         <>
           <div className="mobilePuzzleStatus" aria-label="Puzzle details">
-            <div className="puzzleCount" aria-label="Puzzle count">
-              <span>{puzzleOrdinal ?? "-"}</span>
-              <small>of {puzzles.length || "-"}</small>
-            </div>
+            {hasAttemptedActivePuzzle ? renderPuzzleRating(true) : null}
             {hasPersistedAttempt ? (
               <span
                 className="puzzleAttemptedBadge"
