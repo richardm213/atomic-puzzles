@@ -1,9 +1,42 @@
--- Identifies the chosen line for correct attempts on puzzles with multiple solutions.
-alter table public.puzzle_progress
-  add column if not exists correct_move text;
+-- Award puzzle-solve coins by V level. Incorrect first attempts earn no coins.
+begin;
 
-comment on column public.puzzle_progress.correct_move is
-  'Move played at the first point where the correct solution lines diverge, including move number.';
+create or replace function public.award_coins_for_puzzle_attempt()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  reward integer;
+begin
+  if not new.puzzle_correct then
+    return new;
+  end if;
+
+  select case coalesce(rating.human_level, rating.computed_level, 3)
+    when 1 then 2
+    when 2 then 2
+    when 4 then 5
+    when 5 then 10
+    else 3
+  end
+  into reward
+  from (select 1) fallback
+  left join public.puzzle_ratings rating on rating.puzzle_id = new.puzzle_id::bigint;
+
+  perform public.apply_coin_transaction(
+    new.username,
+    reward,
+    'puzzle_correct',
+    'attempt:' || lower(btrim(new.username)) || ':' || new.puzzle_id,
+    jsonb_build_object('puzzleId', new.puzzle_id, 'correct', true, 'reward', reward),
+    new.first_attempt_at
+  );
+
+  return new;
+end;
+$$;
 
 create or replace function public.record_first_puzzle_attempt_v2(
   p_username text,
@@ -24,7 +57,6 @@ begin
   if nullif(btrim(p_username), '') is null then
     raise exception 'Username is required';
   end if;
-
   if nullif(btrim(p_puzzle_id), '') is null then
     raise exception 'Puzzle ID is required';
   end if;
@@ -55,6 +87,7 @@ begin
   on conflict do nothing;
 
   get diagnostics inserted_count = row_count;
+
   if inserted_count = 1 and p_puzzle_correct then
     select transaction.amount
     into reward
@@ -82,3 +115,6 @@ grant execute on function public.record_first_puzzle_attempt_v2(
   text,
   text
 ) to service_role;
+
+notify pgrst, 'reload schema';
+commit;

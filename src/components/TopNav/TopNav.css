@@ -788,6 +788,40 @@
   min-width: 0;
 }
 
+.navCoinBalance {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 38px;
+  padding: 2px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--color-heading);
+  font-size: 13px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  text-decoration: none;
+  transition:
+    color 140ms ease,
+    transform 140ms ease;
+}
+
+.navCoinBalance img {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+}
+
+.navCoinBalance:hover {
+  color: var(--color-gold);
+  transform: translateY(-1px);
+}
+
+.navCoinBalance:focus-visible {
+  outline: 3px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
 .navNotifications {
   --notification-accent: color-mix(in srgb, var(--color-primary) 72%, var(--color-cyan-bright));
   --notification-accent-soft: color-mix(in srgb, var(--notification-accent) 16%, transparent);
@@ -1367,6 +1401,11 @@
   .topNav.mobileMenuOpen .topNavCenter {
     display: inline-flex;
     gap: 8px;
+  }
+
+  .navAuthProfile,
+  .navAuthProfileCaret {
+    display: none;
   }
 
   .topNavLinks {

@@ -142,6 +142,8 @@ export const navItems: NavItem[] = [
     isActive: (pathname) =>
       pathname.startsWith("/community/") ||
       pathname === "/comments" ||
+      pathname === "/shop" ||
+      pathname.startsWith("/shop/") ||
       pathname === "/users" ||
       pathname.startsWith("/users/"),
     children: [
@@ -164,6 +166,11 @@ export const navItems: NavItem[] = [
         to: "/comments",
         label: "Comments",
         isActive: (pathname) => pathname === "/comments",
+      },
+      {
+        to: "/shop",
+        label: "Shop",
+        isActive: (pathname) => pathname === "/shop" || pathname.startsWith("/shop/"),
       },
     ],
   },

@@ -14,4 +14,5 @@
 /api/puzzle-sets    /.netlify/functions/puzzle-sets    200
 /api/auth/session    /.netlify/functions/auth-session    200
 /api/notifications    /.netlify/functions/notifications    200
+/api/coins    /.netlify/functions/coins    200
 /*    /index.html   200

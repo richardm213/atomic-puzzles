@@ -39,6 +39,7 @@ const localPuzzleFunctionsPlugin = () => {
     ["/api/puzzles/progress", "/netlify/functions/puzzle-progress.ts"],
     ["/api/puzzle-sets", "/netlify/functions/puzzle-sets.ts"],
     ["/api/notifications", "/netlify/functions/notifications.ts"],
+    ["/api/coins", "/netlify/functions/coins.ts"],
     ["/api/atomicdb-analysis", "/netlify/functions/atomicdb-analysis.ts"],
     ["/api/archive-data", "/netlify/functions/archive-data.ts"],
   ]);

@@ -1,0 +1,120 @@
+.coinGuidePage {
+  width: min(820px, 100%);
+}
+
+.coinGuidePanel {
+  display: grid;
+  gap: var(--space-6);
+  padding: clamp(var(--space-5), 5vw, var(--space-8));
+}
+
+.coinGuideHeader {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
+}
+
+.coinGuideHeader h1,
+.coinGuideSection h2 {
+  margin: 0;
+}
+
+.coinGuideBackLink {
+  color: var(--color-primary-soft);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.coinGuideBackLink:hover,
+.coinGuideBackLink:focus-visible {
+  color: var(--color-primary-pale);
+  text-decoration: underline;
+}
+
+.coinGuideBackLink:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
+}
+
+.coinGuideSection {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.coinGuideSection p,
+.coinGuideSection ul {
+  margin: 0;
+  color: var(--color-muted);
+  line-height: 1.65;
+}
+
+.coinGuideSection ul {
+  display: grid;
+  gap: var(--space-2);
+  padding-left: var(--space-5);
+}
+
+.coinGuideDisclaimer {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid color-mix(in srgb, var(--color-warning) 45%, var(--color-border));
+  border-radius: var(--radius-ui);
+  background: color-mix(in srgb, var(--color-warning) 10%, var(--color-panel-soft));
+  color: var(--color-heading);
+  font-weight: 700;
+}
+
+.coinRuleList {
+  display: grid;
+  margin: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  overflow: hidden;
+}
+
+.coinRuleList > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-panel-soft);
+}
+
+.coinRuleList > div + div {
+  border-top: 1px solid var(--color-border);
+}
+
+.coinRuleList dt {
+  min-width: 0;
+  color: var(--color-heading);
+  font-weight: 700;
+}
+
+.coinRuleList dd {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+  color: var(--color-heading);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  justify-self: end;
+  white-space: nowrap;
+}
+
+.coinRuleList img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+
+@media (max-width: 520px) {
+  .coinGuidePanel {
+    padding: var(--space-5);
+  }
+
+  .coinRuleList > div {
+    column-gap: var(--space-3);
+  }
+}

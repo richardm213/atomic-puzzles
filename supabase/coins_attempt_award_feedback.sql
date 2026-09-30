@@ -1,11 +1,16 @@
--- Identifies the chosen line for correct attempts on puzzles with multiple solutions.
-alter table public.puzzle_progress
-  add column if not exists correct_move text;
+-- Returns the amount awarded for a new first attempt so the client can show
+-- reward feedback without falsely celebrating duplicate submissions.
+begin;
 
-comment on column public.puzzle_progress.correct_move is
-  'Move played at the first point where the correct solution lines diverge, including move number.';
+drop function if exists public.record_first_puzzle_attempt_v2(
+  text,
+  text,
+  boolean,
+  text,
+  text
+);
 
-create or replace function public.record_first_puzzle_attempt_v2(
+create function public.record_first_puzzle_attempt_v2(
   p_username text,
   p_puzzle_id text,
   p_puzzle_correct boolean,
@@ -24,7 +29,6 @@ begin
   if nullif(btrim(p_username), '') is null then
     raise exception 'Username is required';
   end if;
-
   if nullif(btrim(p_puzzle_id), '') is null then
     raise exception 'Puzzle ID is required';
   end if;
@@ -82,3 +86,6 @@ grant execute on function public.record_first_puzzle_attempt_v2(
   text,
   text
 ) to service_role;
+
+notify pgrst, 'reload schema';
+commit;

@@ -7,6 +7,7 @@ import { Link } from "@tanstack/react-router";
 import { Fragment, lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 
+import { CoinProfileActions } from "../../components/CoinProfileActions/CoinProfileActions";
 import { DualRangeSlider } from "../../components/DualRangeSlider/DualRangeSlider";
 import { LichessGameLink } from "../../components/LichessGameLink/LichessGameLink";
 import { MatchDetails } from "../../components/MatchDetails/MatchDetails";
@@ -185,7 +186,7 @@ export const PlayerProfilePage = ({
   });
   const puzzleDashboardAccountQuery = useQuery({
     ...registeredSiteUsernameQueryOptions(puzzleDashboardCandidates),
-    enabled: !historyOnly && aliasesLoaded && Boolean(canonicalUsername),
+    enabled: !historyOnly && Boolean(canonicalUsername),
   });
   const puzzleDashboardUsername = puzzleDashboardAccountQuery.data ?? null;
   const profileDisplayUsername = String(username || "").trim() || canonicalUsername;
@@ -808,6 +809,12 @@ export const PlayerProfilePage = ({
 
         {!isBanned && !historyOnly ? (
           <div className="profileActionRow">
+            {puzzleDashboardUsername ? (
+              <CoinProfileActions
+                recipientUsername={puzzleDashboardUsername}
+                displayUsername={profileDisplayUsername}
+              />
+            ) : null}
             <Link
               className="profilePuzzleDashboardLink"
               to="/@/$username/history"

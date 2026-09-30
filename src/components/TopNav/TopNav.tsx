@@ -32,6 +32,7 @@ import {
 import { modeLabels } from "../../constants/matches";
 import { getBoardThemeColors, useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
+import { coinSummaryQueryOptions } from "../../lib/coins/coinQueries";
 import {
   notificationQueryKeys,
   notificationsQueryOptions,
@@ -108,6 +109,11 @@ export const TopNav = () => {
   const unreadCountQuery = useQuery({
     ...unreadNotificationCountQueryOptions(notificationViewerKey),
     enabled: isAuthenticated,
+  });
+  const coinSummaryQuery = useQuery({
+    ...coinSummaryQueryOptions(user?.username ?? "anonymous"),
+    enabled: isAuthenticated,
+    refetchInterval: 15_000,
   });
   const markNotificationsMutation = useMutation({
     mutationFn: markNotificationsRead,
@@ -531,13 +537,28 @@ export const TopNav = () => {
   const openPopupNotification = async (notification: UserNotification): Promise<void> => {
     if (!notification.read_at) await markPopupNotificationsRead([notification.id]);
     setOpenPanel(null);
+    if (
+      (notification.notification_type === "coin_gift" ||
+        notification.notification_type === "coin_request") &&
+      notification.actor_username
+    ) {
+      void navigate({
+        to: "/@/$username",
+        params: { username: notification.actor_username },
+      });
+      return;
+    }
+    if (notification.notification_type === "shop_redemption") {
+      void navigate({ to: "/shop" });
+      return;
+    }
     if (notification.notification_type === "puzzle_rating_added") {
       void navigate({ to: "/dashboard" });
       return;
     }
     void navigate({
       to: "/solve/$puzzleId",
-      params: { puzzleId: String(notification.puzzle_id) },
+      params: { puzzleId: String(notification.puzzle_id ?? "") },
       ...(notification.comment_id ? { hash: `comment-${notification.comment_id}` } : {}),
     });
   };
@@ -757,6 +778,22 @@ export const TopNav = () => {
             ) : null}
           </form>
         </div>
+        {isAuthenticated && coinSummaryQuery.data ? (
+          <Link
+            className="navCoinBalance"
+            to="/shop"
+            aria-label={`${coinSummaryQuery.data.balance} coins${
+              coinSummaryQuery.data.dailyClaimAvailable ? ". Daily bonus available" : ""
+            }. Open coin shop.`}
+          >
+            <img
+              src={appAssetPath("/images/coins/gold-coin-stack-v2.png")}
+              alt=""
+              aria-hidden="true"
+            />
+            <span>{coinSummaryQuery.data.balance.toLocaleString()}</span>
+          </Link>
+        ) : null}
         {isAuthenticated ? (
           <div className="navNotifications" ref={notificationsRef}>
             <button

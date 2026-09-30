@@ -30,6 +30,7 @@ const NotificationsPage = lazyRouteComponent(
   () => import("./pages/Notifications/Notifications"),
   "NotificationsPage",
 );
+const ShopPage = lazyRouteComponent(() => import("./pages/Shop/Shop"), "ShopPage");
 const PlayerProfilePage = lazyRouteComponent(
   () => import("./pages/PlayerProfile/PlayerProfile"),
   "PlayerProfilePage",
@@ -82,6 +83,10 @@ const PuzzleReviewPage = lazyRouteComponent(
 const PuzzleIssuesPage = lazyRouteComponent(
   () => import("./pages/PuzzleIssues/PuzzleIssues"),
   "PuzzleIssuesPage",
+);
+const HowCoinsWorkPage = lazyRouteComponent(
+  () => import("./pages/Shop/HowCoinsWork"),
+  "HowCoinsWorkPage",
 );
 const RankingsPage = lazyRouteComponent(() => import("./pages/Rankings/Rankings"), "RankingsPage");
 const YearlyRankingsPage = lazyRouteComponent(
@@ -340,6 +345,18 @@ const notificationsRoute = createRoute({
   component: NotificationsPage,
 });
 
+const shopRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/shop",
+  component: ShopPage,
+});
+
+const howCoinsWorkRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/shop/how-coins-work",
+  component: HowCoinsWorkPage,
+});
+
 const commentsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/comments",
@@ -469,6 +486,8 @@ const routeTree = rootRoute.addChildren([
   puzzleReviewRoute,
   puzzleIssuesRoute,
   notificationsRoute,
+  shopRoute,
+  howCoinsWorkRoute,
   commentsRoute,
   communityRoute,
   communityPuzzlesRoute,

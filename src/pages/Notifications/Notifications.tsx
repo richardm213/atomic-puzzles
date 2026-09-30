@@ -4,7 +4,10 @@ import {
   faBell,
   faChartLine,
   faCheck,
+  faCoins,
   faComment,
+  faGift,
+  faHandHoldingDollar,
   faReply,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -21,11 +24,15 @@ import {
 import {
   markNotificationsRead,
   notificationCopy,
+  notificationMessage,
   type UserNotification,
 } from "../../lib/community/notifications";
 import { formatLocalDateTime } from "../../utils/formatters";
 
 const notificationIcon = (notification: UserNotification) => {
+  if (notification.notification_type === "coin_gift") return faCoins;
+  if (notification.notification_type === "coin_request") return faHandHoldingDollar;
+  if (notification.notification_type === "shop_redemption") return faGift;
   if (notification.notification_type === "puzzle_rating_added") return faChartLine;
   if (notification.notification_type === "puzzle_approved") return faCheck;
   if (notification.notification_type === "comment_reply") return faReply;
@@ -71,13 +78,28 @@ export const NotificationsPage = () => {
 
   const openNotification = async (notification: UserNotification) => {
     if (!notification.read_at) await markRead([notification.id]);
+    if (
+      (notification.notification_type === "coin_gift" ||
+        notification.notification_type === "coin_request") &&
+      notification.actor_username
+    ) {
+      void navigate({
+        to: "/@/$username",
+        params: { username: notification.actor_username },
+      });
+      return;
+    }
+    if (notification.notification_type === "shop_redemption") {
+      void navigate({ to: "/shop" });
+      return;
+    }
     if (notification.notification_type === "puzzle_rating_added") {
       void navigate({ to: "/dashboard" });
       return;
     }
     void navigate({
       to: "/solve/$puzzleId",
-      params: { puzzleId: String(notification.puzzle_id) },
+      params: { puzzleId: String(notification.puzzle_id ?? "") },
       ...(notification.comment_id ? { hash: `comment-${notification.comment_id}` } : {}),
     });
   };
@@ -142,11 +164,19 @@ export const NotificationsPage = () => {
                     </span>
                     <span className="notificationItemCopy">
                       <strong>{notificationCopy(notification)}</strong>
+                      {notificationMessage(notification) ? (
+                        <span>“{notificationMessage(notification)}”</span>
+                      ) : null}
                       <span>
-                        {notification.notification_type === "puzzle_rating_added"
-                          ? "Puzzle rating"
-                          : `Puzzle #${notification.puzzle_id}`}{" "}
-                        ·{" "}
+                        {notification.notification_type === "coin_gift" ||
+                        notification.notification_type === "coin_request"
+                          ? `Coins · ${formatLocalDateTime(notification.created_at)}`
+                          : notification.notification_type === "shop_redemption"
+                            ? "Shop redemption"
+                            : notification.notification_type === "puzzle_rating_added"
+                              ? "Puzzle rating"
+                              : `Puzzle #${notification.puzzle_id}`}
+                        ·
                         <time dateTime={notification.created_at}>
                           {formatLocalDateTime(notification.created_at)}
                         </time>

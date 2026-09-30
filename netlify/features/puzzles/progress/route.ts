@@ -26,7 +26,7 @@ export const puzzleProgressRoute = async (event: FunctionEvent) => {
   const identity = await authenticateRequest(event.headers);
   const username = requireUsername(identity, "Your Lichess login is no longer valid.");
   const supabase = createServerSupabase("Puzzle progress service");
-  const { error } = await supabase.rpc("record_first_puzzle_attempt_v2", {
+  const { data: coinAward, error } = await supabase.rpc("record_first_puzzle_attempt_v2", {
     p_username: username,
     p_puzzle_id: input.puzzleId,
     p_puzzle_correct: input.puzzleCorrect,
@@ -45,6 +45,7 @@ export const puzzleProgressRoute = async (event: FunctionEvent) => {
 
   return identityResponse(identity, 200, {
     recorded: true,
+    coinAward: Math.max(0, Number(coinAward) || 0),
     username,
     ratingEvent: ratingEvent
       ? {

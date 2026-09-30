@@ -117,11 +117,20 @@ export type NotificationRow = {
     | "puzzle_comment"
     | "comment_reply"
     | "puzzle_approved"
-    | "puzzle_rating_added";
-  puzzle_id: number;
+    | "puzzle_rating_added"
+    | "shop_redemption"
+    | "coin_gift"
+    | "coin_request";
+  puzzle_id: number | null;
   comment_id: number | null;
   rating: number | null;
   rating_deviation: number | null;
+  shop_item_key: string | null;
+  redemption_id: number | null;
+  coin_amount: number | null;
+  coin_message: string | null;
+  coin_transfer_id: number | null;
+  coin_request_id: number | null;
   created_at: string;
   read_at: string | null;
 };

@@ -58,7 +58,7 @@ describe("puzzle-progress function", () => {
   });
 
   it("takes the progress owner from the signed session, never the request body", async () => {
-    const rpc = vi.fn(async () => ({ error: null }));
+    const rpc = vi.fn(async () => ({ data: 0, error: null }));
     const query = ratingEventQuery();
     mocks.createClient.mockReturnValue({ rpc, from: vi.fn(() => query) });
     const cookie = createSiteSessionCookie("Actual_Solver", {});
@@ -85,10 +85,11 @@ describe("puzzle-progress function", () => {
       p_correct_move: null,
     });
     expect(fetchMock).not.toHaveBeenCalled();
+    expect(JSON.parse(response.body)).toMatchObject({ coinAward: 0 });
   });
 
   it("records a correct alternate solution move", async () => {
-    const rpc = vi.fn(async () => ({ error: null }));
+    const rpc = vi.fn(async () => ({ data: 2, error: null }));
     const query = ratingEventQuery();
     mocks.createClient.mockReturnValue({ rpc, from: vi.fn(() => query) });
     const cookie = createSiteSessionCookie("Solver", {});
@@ -111,6 +112,7 @@ describe("puzzle-progress function", () => {
       p_incorrect_move: null,
       p_correct_move: "3. Qg5",
     });
+    expect(JSON.parse(response.body)).toMatchObject({ coinAward: 2 });
   });
 
   it("does not write progress for a tampered site cookie", async () => {

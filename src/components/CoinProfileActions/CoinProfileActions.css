@@ -1,0 +1,212 @@
+.coinProfileTriggers {
+  display: inline-flex;
+}
+
+.coinProfileTriggers button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-4);
+  border: 1px solid color-mix(in srgb, var(--color-gold) 34%, var(--color-border));
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-gold) 7%, var(--color-panel-strong));
+  color: var(--color-heading);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    transform 160ms ease;
+}
+
+.coinProfileTriggers button:hover {
+  border-color: color-mix(in srgb, var(--color-gold) 68%, var(--color-border));
+  background: color-mix(in srgb, var(--color-gold) 12%, var(--color-panel-strong));
+  transform: translateY(-1px);
+}
+
+.coinProfileTriggers button:active {
+  transform: translateY(0);
+}
+
+.coinProfileTriggers button:focus-visible,
+.coinProfileClose:focus-visible,
+.coinProfileDialog input:focus-visible,
+.coinProfileDialog textarea:focus-visible,
+.coinProfileSubmit:focus-visible,
+.coinProfileSuccess button:focus-visible {
+  outline: 3px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+.coinProfileDialog {
+  width: min(560px, calc(100vw - var(--space-6)));
+  max-height: calc(100dvh - var(--space-8));
+  margin: auto;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--color-gold) 32%, var(--color-border));
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-soft);
+  color: var(--color-text);
+  box-shadow: 0 24px 80px rgb(0 0 0 / 45%);
+  overflow: auto;
+}
+
+.coinProfileDialog::backdrop {
+  background: rgb(3 7 18 / 72%);
+  backdrop-filter: blur(5px);
+}
+
+.coinProfilePanel {
+  display: grid;
+  gap: var(--space-5);
+  padding: var(--space-6);
+}
+
+.coinProfilePanel > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.coinProfilePanel h2 {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: 22px;
+}
+
+.coinProfileClose {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.coinProfileClose:hover:not(:disabled) {
+  background: var(--color-panel-strong);
+  color: var(--color-heading);
+}
+
+.coinProfilePanel form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.coinProfilePanel label {
+  display: grid;
+  gap: var(--space-2);
+  color: var(--color-heading);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.coinProfilePanel label span {
+  color: var(--color-muted);
+  font-weight: 500;
+}
+
+.coinProfilePanel input,
+.coinProfilePanel textarea {
+  width: 100%;
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-input-bg);
+  color: var(--color-heading);
+  font: inherit;
+}
+
+.coinProfilePanel input {
+  min-height: 48px;
+  padding: 0 var(--space-3);
+}
+
+.coinProfilePanel textarea {
+  min-height: 104px;
+  padding: var(--space-3);
+  resize: vertical;
+}
+
+.coinProfileSubmit,
+.coinProfileSuccess button {
+  min-height: 46px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.coinProfileSubmit:hover:not(:disabled),
+.coinProfileSuccess button:hover {
+  background: var(--color-primary-hover);
+}
+
+.coinProfileSubmit:disabled,
+.coinProfileClose:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.coinProfileError {
+  margin: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-danger-soft-bg);
+  color: var(--color-danger);
+}
+
+.coinProfileSuccess {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-4);
+  margin: 0;
+  padding: var(--space-4) 0 0;
+  color: var(--color-success);
+  text-align: center;
+}
+
+.coinProfileSuccess > svg {
+  font-size: 38px;
+}
+
+.coinProfileSuccess p {
+  margin: 0;
+  font-weight: 800;
+}
+
+.coinProfileSuccess button {
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .coinProfileTriggers,
+  .coinProfileTriggers button {
+    width: 100%;
+  }
+
+  .coinProfileTriggers button {
+    justify-content: center;
+  }
+
+  .coinProfilePanel {
+    padding: var(--space-5);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coinProfileTriggers button {
+    transition: none;
+  }
+}
