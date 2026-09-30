@@ -27,6 +27,14 @@ export type PuzzleRatingEvent = {
   userRatingDeviationAfter: number;
 };
 
+export type PuzzleLeaderboardMetricRow = {
+  username: string;
+  rating: number;
+  ratingDeviation: number;
+  attempted: number;
+  correct: number;
+};
+
 type PuzzleUserRatingRow = {
   username?: string | null;
   rating?: number | null;
@@ -50,6 +58,18 @@ const puzzleRatingEventResponseSchema = z.object({
 
 const puzzleRatingHistoryResponseSchema = z.object({
   events: z.array(puzzleRatingEventResponseSchema),
+});
+
+const puzzleLeaderboardResponseSchema = z.object({
+  rows: z.array(
+    z.object({
+      username: z.string(),
+      rating: z.number(),
+      ratingDeviation: z.number(),
+      attempted: z.number(),
+      correct: z.number(),
+    }),
+  ),
 });
 
 const normalizePuzzleUserRating = (row: PuzzleUserRatingRow): PuzzleUserRating => ({
@@ -91,6 +111,28 @@ export const fetchAllPuzzleUserRatings = async (): Promise<PuzzleUserRating[]> =
   );
 
   return rows.map(normalizePuzzleUserRating).filter((row) => row.username);
+};
+
+export const fetchPuzzleLeaderboard = async (
+  period: "monthly" | "all",
+  month: string,
+): Promise<PuzzleLeaderboardMetricRow[]> => {
+  const result = await postApi(
+    "/api/puzzles/rating",
+    { action: "leaderboard", period, ...(period === "monthly" ? { month } : {}) },
+    {
+      schema: puzzleLeaderboardResponseSchema,
+      errorMessage: "Unable to load puzzle rankings.",
+      invalidMessage: "The puzzle rankings service returned invalid data.",
+    },
+  );
+  return result.rows.map((row) => ({
+    username: normalizeUsername(row.username),
+    rating: Math.round(row.rating),
+    ratingDeviation: Math.max(0, Math.round(row.ratingDeviation)),
+    attempted: Math.max(0, Math.round(row.attempted)),
+    correct: Math.max(0, Math.round(row.correct)),
+  }));
 };
 
 export const fetchPuzzleRatingEventsForUsername = async (

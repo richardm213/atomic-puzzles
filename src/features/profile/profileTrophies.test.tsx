@@ -21,6 +21,7 @@ vi.mock("../../lib/supabase/rows", () => ({
 import {
   fetchChampionshipTrophies,
   getProfileHeaderTrophies,
+  getPuzzleRankingTrophy,
   type ProfileTrophy,
   sortProfileTrophies,
 } from "./profileTrophies";
@@ -153,5 +154,49 @@ describe("profile header trophies", () => {
     });
 
     expect(visible.map(({ key }) => key)).toEqual(["awc-2024", "chesscom-2025", "aoc-2026"]);
+  });
+});
+
+describe("puzzle ranking trophies", () => {
+  it("adds the current eligible puzzle trophy to the existing trophy system", () => {
+    expect(
+      getPuzzleRankingTrophy(
+        {
+          username: "solver",
+          rating: 2300,
+          ratingDeviation: 45,
+          attempted: 24,
+          correct: 18,
+          incorrect: 6,
+          percentCorrect: 75,
+          eligible: true,
+          rank: 2,
+        },
+        "2026-09",
+      ),
+    ).toEqual([
+      expect.objectContaining({
+        key: "puzzles-2026-09-top2",
+        label: "Puzzles",
+        placementLabel: "2nd place",
+        href: "/rankings/puzzles",
+      }),
+    ]);
+  });
+
+  it("does not award an ineligible or outside-top-10 player", () => {
+    const row = {
+      username: "solver",
+      rating: 2300,
+      ratingDeviation: 45,
+      attempted: 24,
+      correct: 18,
+      incorrect: 6,
+      percentCorrect: 75,
+      eligible: false,
+      rank: 2,
+    };
+    expect(getPuzzleRankingTrophy(row, "2026-09")).toEqual([]);
+    expect(getPuzzleRankingTrophy({ ...row, eligible: true, rank: 11 }, "2026-09")).toEqual([]);
   });
 });

@@ -14,6 +14,14 @@ import { parseJsonBody } from "../../../platform/validation";
 const RATING_EDITOR = "seaside_tiramisu";
 const ratingRequestSchema = z.union([
   z.object({ action: z.literal("history"), username: z.string().trim().min(1).max(100) }),
+  z.object({
+    action: z.literal("leaderboard"),
+    period: z.enum(["monthly", "all"]),
+    month: z
+      .string()
+      .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
+      .optional(),
+  }),
   z.object({ action: z.literal("refresh") }),
   z.object({
     puzzleId: z.number().int().positive(),
@@ -32,8 +40,107 @@ const serializeRatingEvent = (row: Record<string, unknown>) => ({
   userRatingDeviationAfter: Number(row.user_rd_after),
 });
 
+const pageThrough = async (
+  loadPage: (
+    from: number,
+    to: number,
+  ) => PromiseLike<{
+    data: unknown[] | null;
+    error: { message: string } | null;
+  }>,
+  label: string,
+): Promise<Record<string, unknown>[]> => {
+  const rows: Record<string, unknown>[] = [];
+  const pageSize = 1_000;
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await loadPage(from, from + pageSize - 1);
+    if (error) throw new Error(`Unable to load ${label}: ${error.message}`);
+    const page = (data ?? []) as Record<string, unknown>[];
+    rows.push(...page);
+    if (page.length < pageSize) break;
+  }
+  return rows;
+};
+
+const nextUtcMonth = (month: string): string => {
+  const date = new Date(`${month}-01T00:00:00Z`);
+  date.setUTCMonth(date.getUTCMonth() + 1);
+  return date.toISOString().slice(0, 7);
+};
+
+const loadLeaderboardRows = async (period: "monthly" | "all", month: string | undefined) => {
+  const supabase = createServerSupabase("Puzzle leaderboard service");
+  if (period === "all") {
+    const rows = await pageThrough(
+      (from, to) =>
+        supabase
+          .from("puzzle_user_ratings")
+          .select("username,rating,rating_deviation,attempts,successes")
+          .order("rating", { ascending: false })
+          .range(from, to),
+      "all-time puzzle rankings",
+    );
+    return rows.map((row) => ({
+      username: String(row.username ?? ""),
+      rating: Number(row.rating),
+      ratingDeviation: Number(row.rating_deviation),
+      attempted: Number(row.attempts),
+      correct: Number(row.successes),
+    }));
+  }
+
+  if (!month) throw new HttpError(400, "Choose a month for monthly puzzle rankings.");
+  const start = `${month}-01T00:00:00.000Z`;
+  const end = `${nextUtcMonth(month)}-01T00:00:00.000Z`;
+  const events = await pageThrough(
+    (from, to) =>
+      supabase
+        .from("puzzle_rating_events")
+        .select("username,attempted_at,puzzle_correct,user_rating_after,user_rd_after")
+        .gte("attempted_at", start)
+        .lt("attempted_at", end)
+        .order("attempted_at", { ascending: true })
+        .range(from, to),
+    "monthly puzzle rankings",
+  );
+  const players = new Map<
+    string,
+    {
+      username: string;
+      rating: number;
+      ratingDeviation: number;
+      attempted: number;
+      correct: number;
+    }
+  >();
+  events.forEach((event) => {
+    const username = String(event.username ?? "")
+      .trim()
+      .toLowerCase();
+    if (!username) return;
+    const row = players.get(username) ?? {
+      username,
+      rating: 2000,
+      ratingDeviation: 350,
+      attempted: 0,
+      correct: 0,
+    };
+    row.attempted += 1;
+    if (event.puzzle_correct) row.correct += 1;
+    row.rating = Number(event.user_rating_after);
+    row.ratingDeviation = Number(event.user_rd_after);
+    players.set(username, row);
+  });
+  return [...players.values()];
+};
+
 export const puzzleRatingRoute = async (event: FunctionEvent) => {
   const input = parseJsonBody(event, ratingRequestSchema, "Invalid puzzle rating request.");
+  if ("action" in input && input.action === "leaderboard") {
+    return jsonResponse(200, {
+      rows: await loadLeaderboardRows(input.period, input.month),
+    });
+  }
   if ("action" in input && input.action === "history") {
     const normalizedUsername = input.username.trim().toLocaleLowerCase();
     const supabase = createServerSupabase("Puzzle rating history service");

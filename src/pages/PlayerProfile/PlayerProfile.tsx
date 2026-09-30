@@ -53,6 +53,7 @@ import {
   fetchChampionshipTrophies,
   getCurrentMonthKey,
   getProfileHeaderTrophies,
+  getPuzzleRankingTrophy,
   getRankingTrophies,
   isTrophyCaseSort,
   ProfileTrophyCaseCard,
@@ -79,6 +80,8 @@ import { type AliasAccount, type AliasIdentityRow } from "../../lib/archive/alia
 import { fetchArchiveJson } from "../../lib/archive/client";
 import { getTimeControlOptions } from "../../lib/matches/collection";
 import { inferExternalGameSource } from "../../lib/matches/routes";
+import { buildPuzzleLeaderboardRows } from "../../lib/puzzles/puzzleLeaderboard";
+import { puzzleLeaderboardQueryOptions } from "../../lib/puzzles/puzzleQueries";
 import { profileAliasQueryOptions } from "../../lib/users/aliasQueries";
 import { registeredSiteUsernameQueryOptions } from "../../lib/users/userQueries";
 import {
@@ -169,6 +172,7 @@ export const PlayerProfilePage = ({
   const profileAliasEntry: AliasIdentityRow | null = profileAliasQuery.data ?? null;
   const aliasesLoaded = Boolean(normalizedUsername) && !profileAliasQuery.isPending;
   const canonicalUsername = profileAliasEntry?.username ?? normalizedUsername;
+  const isBanned = Boolean(profileAliasEntry?.banned);
   const puzzleDashboardCandidates = useMemo(
     () => [
       canonicalUsername,
@@ -184,13 +188,17 @@ export const PlayerProfilePage = ({
     enabled: Boolean(canonicalUsername),
     staleTime: 10 * 60 * 1_000,
   });
+  const currentPuzzleRankingMonth = new Date().toISOString().slice(0, 7);
+  const puzzleRankingQuery = useQuery({
+    ...puzzleLeaderboardQueryOptions("monthly", currentPuzzleRankingMonth),
+    enabled: Boolean(canonicalUsername) && !isBanned,
+  });
   const puzzleDashboardAccountQuery = useQuery({
     ...registeredSiteUsernameQueryOptions(puzzleDashboardCandidates),
     enabled: !historyOnly && Boolean(canonicalUsername),
   });
   const puzzleDashboardUsername = puzzleDashboardAccountQuery.data ?? null;
   const profileDisplayUsername = String(username || "").trim() || canonicalUsername;
-  const isBanned = Boolean(profileAliasEntry?.banned);
   const {
     matchFiltersOpen,
     toggleMatchFilters,
@@ -623,13 +631,31 @@ export const PlayerProfilePage = ({
     ],
   );
   const rankingTrophies = useMemo(() => getRankingTrophies(monthRanks), [monthRanks]);
+  const currentPuzzleRankingRows = useMemo(
+    () => buildPuzzleLeaderboardRows(puzzleRankingQuery.data ?? [], "monthly"),
+    [puzzleRankingQuery.data],
+  );
+  const puzzleRankingTrophies = useMemo(() => {
+    const profileUsernames = new Set(puzzleDashboardCandidates.map(normalizeUsername));
+    const row = currentPuzzleRankingRows
+      .filter((candidate) => profileUsernames.has(normalizeUsername(candidate.username)))
+      .sort(
+        (left, right) =>
+          (left.rank ?? Number.POSITIVE_INFINITY) - (right.rank ?? Number.POSITIVE_INFINITY),
+      )[0];
+    return getPuzzleRankingTrophy(row, currentPuzzleRankingMonth);
+  }, [currentPuzzleRankingMonth, currentPuzzleRankingRows, puzzleDashboardCandidates]);
+  const allRankingTrophies = useMemo(
+    () => [...rankingTrophies, ...puzzleRankingTrophies],
+    [puzzleRankingTrophies, rankingTrophies],
+  );
   const championshipTrophies = useMemo(
     () => championshipTrophiesQuery.data ?? [],
     [championshipTrophiesQuery.data],
   );
   const profileTrophies = useMemo(
-    () => sortProfileTrophies([...championshipTrophies, ...rankingTrophies], "prestige"),
-    [championshipTrophies, rankingTrophies],
+    () => sortProfileTrophies([...championshipTrophies, ...allRankingTrophies], "prestige"),
+    [allRankingTrophies, championshipTrophies],
   );
   const trophyCaseTrophies = useMemo(
     () => sortProfileTrophies(profileTrophies, trophyCaseSort),
@@ -641,11 +667,16 @@ export const PlayerProfilePage = ({
       championshipTrophiesQuery.isSuccess
         ? getProfileHeaderTrophies({
             championshipTrophies,
-            rankingTrophies,
+            rankingTrophies: allRankingTrophies,
             currentMonthKey,
           })
         : [],
-    [championshipTrophies, championshipTrophiesQuery.isSuccess, currentMonthKey, rankingTrophies],
+    [
+      allRankingTrophies,
+      championshipTrophies,
+      championshipTrophiesQuery.isSuccess,
+      currentMonthKey,
+    ],
   );
   const hasVisibleProfileTrophies = visibleProfileTrophies.length > 0;
 
@@ -1607,7 +1638,7 @@ export const PlayerProfilePage = ({
                         ))}
                       </div>
                     ) : (
-                      <div className="emptyRankings">No top 10 or championship trophies yet.</div>
+                      <div className="emptyRankings">No ranking or championship trophies yet.</div>
                     )}
                   </>
                 ) : null}

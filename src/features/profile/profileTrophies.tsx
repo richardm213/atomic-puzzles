@@ -4,6 +4,7 @@ import { modeLabels } from "../../constants/matches";
 import { buildRankingsLocation, type MonthRank } from "../../hooks/usePlayerProfileData";
 import { monthKeyFromMonthValue } from "../../lib/archive/leaderboard";
 import { getTournamentRouteId } from "../../lib/matches/tournaments";
+import { puzzleTrophyLevel, type PuzzleLeaderboardRow } from "../../lib/puzzles/puzzleLeaderboard";
 import { getSupabaseClient } from "../../lib/supabase/client";
 import { loadSupabaseRows } from "../../lib/supabase/rows";
 import { appAssetPath } from "../../utils/appAssetPath";
@@ -94,6 +95,37 @@ export const getRankingTrophies = (monthRanks: MonthRank[]): ProfileTrophy[] =>
       },
     ];
   });
+
+export const getPuzzleRankingTrophy = (
+  row: PuzzleLeaderboardRow | null | undefined,
+  month: string,
+): ProfileTrophy[] => {
+  if (!row?.eligible || !row.rank) return [];
+  const level = puzzleTrophyLevel(row.rank);
+  if (!level) return [];
+  const trophy =
+    level === "gold"
+      ? rankingTrophyLevels[0]
+      : level === "red"
+        ? rankingTrophyLevels[1]
+        : rankingTrophyLevels[2];
+  if (!trophy) return [];
+  const dateValue = `${month}-01`;
+  const dateLabel = monthKeyFromMonthValue(dateValue);
+  return [
+    {
+      key: `puzzles-${month}-${trophy.key}`,
+      label: "Puzzles",
+      title: `Puzzle rankings ${trophy.placementLabel}`,
+      imageSrc: trophy.imageSrc,
+      href: "/rankings/puzzles",
+      dateLabel,
+      dateValue,
+      placementLabel: trophy.placementLabel,
+      prestige: trophy.prestige,
+    },
+  ];
+};
 
 export const fetchChampionshipTrophies = async (username: string): Promise<ProfileTrophy[]> => {
   const normalizedUsername = normalizeUsername(username);

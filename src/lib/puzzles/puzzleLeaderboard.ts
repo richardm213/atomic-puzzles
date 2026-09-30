@@ -1,37 +1,67 @@
-import { normalizeUsername } from "../../utils/playerNames";
+import type { PuzzleLeaderboardMetricRow } from "../supabase/puzzleUserRatings";
 import type { PuzzleProgressWithUsernameRow } from "../supabase/types";
 
-export const PUZZLE_CORRECT_POINTS = 5;
-export const PUZZLE_INCORRECT_POINTS = -3;
-
-export type PuzzleLeaderboardRow = {
-  rank: number;
-  username: string;
-  score: number;
-  correct: number;
-  incorrect: number;
-  percentCorrect: number;
-  attempted: number;
-};
+export const MONTHLY_PUZZLE_MIN_ATTEMPTS = 20;
+export const MONTHLY_PUZZLE_MAX_RD = 60;
+export const ALL_TIME_PUZZLE_MIN_ATTEMPTS = 20;
 
 export type PuzzleLeaderboardPeriod = "monthly" | "all";
 
-type PuzzleLeaderboardAccumulator = Omit<PuzzleLeaderboardRow, "rank">;
-
-export const calculatePuzzleScore = (correct: number, attempted: number): number => {
-  const normalizedCorrect = Math.max(0, Math.floor(Number(correct)) || 0);
-  const normalizedAttempted = Math.max(normalizedCorrect, Math.floor(Number(attempted)) || 0);
-  const incorrect = normalizedAttempted - normalizedCorrect;
-
-  return normalizedCorrect * PUZZLE_CORRECT_POINTS + incorrect * PUZZLE_INCORRECT_POINTS;
+export type PuzzleLeaderboardRow = PuzzleLeaderboardMetricRow & {
+  rank: number | null;
+  eligible: boolean;
+  incorrect: number;
+  percentCorrect: number;
 };
 
 export const calculatePuzzleCorrectPercent = (correct: number, attempted: number): number => {
   const normalizedCorrect = Math.max(0, Math.floor(Number(correct)) || 0);
   const normalizedAttempted = Math.max(normalizedCorrect, Math.floor(Number(attempted)) || 0);
   if (normalizedAttempted === 0) return 0;
-
   return Math.round((normalizedCorrect / normalizedAttempted) * 100);
+};
+
+export const isPuzzleLeaderboardEligible = (
+  row: PuzzleLeaderboardMetricRow,
+  period: PuzzleLeaderboardPeriod,
+): boolean =>
+  row.attempted >=
+    (period === "monthly" ? MONTHLY_PUZZLE_MIN_ATTEMPTS : ALL_TIME_PUZZLE_MIN_ATTEMPTS) &&
+  (period === "all" || row.ratingDeviation < MONTHLY_PUZZLE_MAX_RD);
+
+export const buildPuzzleLeaderboardRows = (
+  metricRows: PuzzleLeaderboardMetricRow[],
+  period: PuzzleLeaderboardPeriod,
+): PuzzleLeaderboardRow[] => {
+  const normalizedRows = metricRows
+    .filter((row) => row.username)
+    .map((row) => ({
+      ...row,
+      incorrect: Math.max(0, row.attempted - row.correct),
+      percentCorrect: calculatePuzzleCorrectPercent(row.correct, row.attempted),
+      eligible: isPuzzleLeaderboardEligible(row, period),
+    }));
+  const eligibleRows = normalizedRows
+    .filter((row) => row.eligible)
+    .sort((left, right) => {
+      if (left.rating !== right.rating) return right.rating - left.rating;
+      if (left.ratingDeviation !== right.ratingDeviation) {
+        return left.ratingDeviation - right.ratingDeviation;
+      }
+      if (left.attempted !== right.attempted) return right.attempted - left.attempted;
+      return left.username.localeCompare(right.username);
+    });
+  const ranks = new Map<string, number>();
+  let previousRating: number | null = null;
+  let previousRank = 0;
+  eligibleRows.forEach((row, index) => {
+    const rank = previousRating === row.rating ? previousRank : index + 1;
+    previousRating = row.rating;
+    previousRank = rank;
+    ranks.set(row.username, rank);
+  });
+
+  return normalizedRows.map((row) => ({ ...row, rank: ranks.get(row.username) ?? null }));
 };
 
 export const filterPuzzleProgressRowsByPeriod = (
@@ -40,69 +70,16 @@ export const filterPuzzleProgressRowsByPeriod = (
   month: string,
 ): PuzzleProgressWithUsernameRow[] => {
   if (period === "all") return progressRows;
-
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return [];
-
   return progressRows.filter((row) => {
     const attemptedAt = new Date(row?.first_attempt_at ?? "");
-    if (Number.isNaN(attemptedAt.getTime())) return false;
-    return attemptedAt.toISOString().slice(0, 7) === month;
+    return !Number.isNaN(attemptedAt.getTime()) && attemptedAt.toISOString().slice(0, 7) === month;
   });
 };
 
-const rankPuzzleLeaderboardRows = (
-  rows: PuzzleLeaderboardAccumulator[],
-): PuzzleLeaderboardRow[] => {
-  let previousScore: number | null = null;
-  let previousRank = 0;
-
-  return rows
-    .sort((left, right) => {
-      if (left.score !== right.score) return right.score - left.score;
-      if (left.correct !== right.correct) return right.correct - left.correct;
-      if (left.attempted !== right.attempted) return left.attempted - right.attempted;
-      return left.username.localeCompare(right.username);
-    })
-    .map((row, index) => {
-      const rank = previousScore === row.score ? previousRank : index + 1;
-      previousScore = row.score;
-      previousRank = rank;
-
-      return {
-        rank,
-        ...row,
-      };
-    });
-};
-
-export const buildPuzzleLeaderboardRows = (
-  progressRows: PuzzleProgressWithUsernameRow[],
-): PuzzleLeaderboardRow[] => {
-  const rowsByUsername = new Map<string, PuzzleLeaderboardAccumulator>();
-
-  progressRows.forEach((row) => {
-    const username = normalizeUsername(row?.username);
-    if (!username) return;
-
-    const existing = rowsByUsername.get(username) ?? {
-      username,
-      score: 0,
-      correct: 0,
-      incorrect: 0,
-      percentCorrect: 0,
-      attempted: 0,
-    };
-
-    existing.attempted += 1;
-    if (row?.puzzle_correct) {
-      existing.correct += 1;
-    } else {
-      existing.incorrect += 1;
-    }
-    existing.score = calculatePuzzleScore(existing.correct, existing.attempted);
-    existing.percentCorrect = calculatePuzzleCorrectPercent(existing.correct, existing.attempted);
-    rowsByUsername.set(username, existing);
-  });
-
-  return rankPuzzleLeaderboardRows([...rowsByUsername.values()]);
+export const puzzleTrophyLevel = (rank: number | null): "gold" | "red" | "silver" | null => {
+  if (rank === 1) return "gold";
+  if (rank === 2) return "red";
+  if (rank !== null && rank <= 10) return "silver";
+  return null;
 };
