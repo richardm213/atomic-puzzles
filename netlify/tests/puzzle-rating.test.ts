@@ -41,11 +41,11 @@ describe("puzzle-rating function", () => {
     expect(mocks.createClient).not.toHaveBeenCalled();
   });
 
-  it("rejects levels outside V1 to V6", async () => {
+  it("rejects levels outside V1 to V5", async () => {
     const response = await handler({
       httpMethod: "POST",
       headers: authHeaders("seaside_tiramisu"),
-      body: JSON.stringify({ puzzleId: 42, level: 7 }),
+      body: JSON.stringify({ puzzleId: 42, level: 6 }),
     });
 
     expect(response.statusCode).toBe(400);

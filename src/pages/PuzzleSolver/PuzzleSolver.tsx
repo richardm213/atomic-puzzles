@@ -316,6 +316,7 @@ export const PuzzleSolverPage = () => {
     [],
   );
   const [motifEditorOpen, setMotifEditorOpen] = useState(false);
+  const [motifSearchValue, setMotifSearchValue] = useState("");
   const [ratingEditorOpen, setRatingEditorOpen] = useState(false);
   const [ratingDraftLevel, setRatingDraftLevel] = useState<PuzzleLevel>(1);
   const [ratingSaveStatus, setRatingSaveStatus] = useState<
@@ -685,6 +686,7 @@ export const PuzzleSolverPage = () => {
 
   useEffect(() => {
     setMotifEditorOpen(false);
+    setMotifSearchValue("");
     setSelectedMotifTag(null);
     setMotifSaveStatus({ state: "idle" });
     setRatingEditorOpen(false);
@@ -1422,6 +1424,13 @@ export const PuzzleSolverPage = () => {
     if (await handleUpdateMotifs(nextTags)) setSelectedMotifTag(null);
   };
 
+  const handleAddMotif = async (tag: string): Promise<void> => {
+    if (await handleUpdateMotifs([...activePuzzleTags, tag])) {
+      setMotifSearchValue("");
+      setMotifEditorOpen(false);
+    }
+  };
+
   const handleUpdatePuzzleRating = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     if (!canManagePuzzleRating || !activePuzzleId || ratingSaveStatus.state === "saving") return;
@@ -1823,13 +1832,25 @@ export const PuzzleSolverPage = () => {
     if (!hasAttemptedActivePuzzle) return null;
     const savingMotifs = motifSaveStatus.state === "saving";
     const availableMotifs = puzzleMotifs.filter((motif) => !activePuzzleTags.includes(motif.tag));
-    const availableTagSet = new Set(availableMotifs.map((motif) => motif.tag));
-    const orderedAvailableMotifs = availableMotifs
-      .filter((motif) => !motif.parentTag || !availableTagSet.has(motif.parentTag))
-      .flatMap((motif) => [
-        motif,
-        ...availableMotifs.filter((candidate) => candidate.parentTag === motif.tag),
-      ]);
+    const normalizedMotifSearch = motifSearchValue.trim().toLocaleLowerCase();
+    const matchingAvailableMotifs = normalizedMotifSearch
+      ? availableMotifs
+          .filter((motif) =>
+            `${motif.name} ${motif.tag.replaceAll("_", " ")}`
+              .toLocaleLowerCase()
+              .includes(normalizedMotifSearch),
+          )
+          .sort((first, second) => {
+            const firstStartsWith = first.name
+              .toLocaleLowerCase()
+              .startsWith(normalizedMotifSearch);
+            const secondStartsWith = second.name
+              .toLocaleLowerCase()
+              .startsWith(normalizedMotifSearch);
+            return Number(secondStartsWith) - Number(firstStartsWith);
+          })
+          .slice(0, 5)
+      : [];
 
     return (
       <section className="puzzleMotifsPanel" aria-label="Puzzle tags">
@@ -1853,25 +1874,11 @@ export const PuzzleSolverPage = () => {
                   <button
                     type="button"
                     className="puzzleMotifDefinitionButton"
-                    onClick={() => setSelectedMotifTag(tag)}
                     aria-label={`View definition for ${motif?.name ?? tag}`}
+                    onClick={() => setSelectedMotifTag(tag)}
                   >
                     {motif?.name ?? tag}
                   </button>
-                  {canManagePuzzleTags ? (
-                    <button
-                      type="button"
-                      className="puzzleMotifRemoveButton"
-                      aria-label={`Remove ${tag}`}
-                      title={`Remove ${tag}`}
-                      disabled={savingMotifs}
-                      onClick={() =>
-                        void handleUpdateMotifs(activePuzzleTags.filter((entry) => entry !== tag))
-                      }
-                    >
-                      <span aria-hidden="true">−</span>
-                    </button>
-                  ) : null}
                 </div>
               );
             })
@@ -1887,7 +1894,8 @@ export const PuzzleSolverPage = () => {
             aria-expanded={motifEditorOpen}
             disabled={savingMotifs || availableMotifs.length === 0}
             onClick={() => {
-              setMotifEditorOpen((open) => !open);
+              if (motifEditorOpen) setMotifSearchValue("");
+              setMotifEditorOpen(!motifEditorOpen);
               setMotifSaveStatus({ state: "idle" });
             }}
           >
@@ -1898,32 +1906,48 @@ export const PuzzleSolverPage = () => {
 
         {motifEditorOpen && canManagePuzzleTags ? (
           <div className="puzzleMotifPicker" role="region" aria-label="Add puzzle tag">
-            <div className="puzzleMotifPickerHeading">
-              <strong>Add tag</strong>
-              <span>{availableMotifs.length} available</span>
-            </div>
-            <div className="puzzleMotifPickerOptions puzzleMotifPickerOptionsFlat">
-              {orderedAvailableMotifs.map((motif) => {
-                const parentMotif = getPuzzleMotifParent(motif);
-                return (
-                  <button
-                    key={motif.tag}
-                    type="button"
-                    className={parentMotif ? "puzzleMotifChildOption" : undefined}
-                    aria-label={`Add ${motif.tag}`}
-                    title={motif.description}
-                    disabled={savingMotifs}
-                    onClick={() => void handleUpdateMotifs([...activePuzzleTags, motif.tag])}
-                  >
-                    <span className="puzzleMotifPickerOptionLabel">
-                      {parentMotif ? <small>{parentMotif.name} ›</small> : null}
-                      <span>{motif.name}</span>
-                    </span>
-                    <strong aria-hidden="true">+</strong>
-                  </button>
-                );
-              })}
-            </div>
+            <input
+              type="search"
+              aria-label="Search tags to add"
+              placeholder="Type a tag name"
+              autoFocus
+              value={motifSearchValue}
+              disabled={savingMotifs}
+              onChange={(event) => setMotifSearchValue(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  setMotifSearchValue("");
+                  setMotifEditorOpen(false);
+                }
+                if (event.key === "Enter" && matchingAvailableMotifs[0]) {
+                  event.preventDefault();
+                  void handleAddMotif(matchingAvailableMotifs[0].tag);
+                }
+              }}
+            />
+            {normalizedMotifSearch ? (
+              <div className="puzzleMotifSearchResults" aria-label="Matching tags">
+                {matchingAvailableMotifs.length > 0 ? (
+                  matchingAvailableMotifs.map((motif) => {
+                    const parentMotif = getPuzzleMotifParent(motif);
+                    return (
+                      <button
+                        key={motif.tag}
+                        type="button"
+                        aria-label={`Add ${motif.tag}`}
+                        disabled={savingMotifs}
+                        onClick={() => void handleAddMotif(motif.tag)}
+                      >
+                        <span>{motif.name}</span>
+                        {parentMotif ? <small>{parentMotif.name}</small> : null}
+                      </button>
+                    );
+                  })
+                ) : (
+                  <p>No tags found.</p>
+                )}
+              </div>
+            ) : null}
           </div>
         ) : null}
 
@@ -1971,14 +1995,33 @@ export const PuzzleSolverPage = () => {
         <div className="puzzleMotifDefinitionCard">
           <div className="puzzleMotifDefinitionHeading">
             <h2 id="puzzle-motif-dialog-title">{selectedMotif.name}</h2>
-            <button
-              type="button"
-              className="puzzleMotifDefinitionClose"
-              onClick={() => setSelectedMotifTag(null)}
-              aria-label="Close tag definition"
-            >
-              <FontAwesomeIcon icon={faXmark} aria-hidden="true" />
-            </button>
+            <div className="puzzleMotifDefinitionActions">
+              {canManagePuzzleTags && activePuzzleTags.includes(selectedMotif.tag) ? (
+                <button
+                  type="button"
+                  className="puzzleMotifDefinitionRemove"
+                  aria-label={`Remove ${selectedMotif.tag}`}
+                  title={`Remove ${selectedMotif.name}`}
+                  disabled={motifSaveStatus.state === "saving"}
+                  onClick={async () => {
+                    const removed = await handleUpdateMotifs(
+                      activePuzzleTags.filter((tag) => tag !== selectedMotif.tag),
+                    );
+                    if (removed) setSelectedMotifTag(null);
+                  }}
+                >
+                  <span aria-hidden="true">−</span>
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="puzzleMotifDefinitionClose"
+                onClick={() => setSelectedMotifTag(null)}
+                aria-label="Close tag definition"
+              >
+                <FontAwesomeIcon icon={faXmark} aria-hidden="true" />
+              </button>
+            </div>
           </div>
           <p>{selectedMotif.description}</p>
           {canConvertMotif ? (
@@ -2127,7 +2170,7 @@ export const PuzzleSolverPage = () => {
               }
               disabled={ratingSaveStatus.state === "saving"}
             >
-              {[1, 2, 3, 4, 5, 6].map((level) => (
+              {[1, 2, 3, 4, 5].map((level) => (
                 <option key={level} value={level}>
                   V{level}
                 </option>

@@ -586,6 +586,12 @@ describe("PuzzleSolverPage solution options", () => {
 
     const motifList = await screen.findByLabelText("Tags on this puzzle");
     expect(within(motifList).getByText("Fork")).toBeInTheDocument();
+    expect(
+      within(motifList).getByRole("button", { name: "View definition for Fork" }),
+    ).toBeInTheDocument();
+    expect(
+      within(motifList).queryByRole("button", { name: "Remove fork" }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Add tag" })).not.toBeInTheDocument();
   });
 
@@ -626,16 +632,26 @@ describe("PuzzleSolverPage solution options", () => {
     render(<PuzzleSolverPage />);
 
     await user.click(await screen.findByRole("button", { name: "Add tag" }));
+    expect(screen.queryByText(/available/i)).not.toBeInTheDocument();
+    await user.type(screen.getByRole("searchbox", { name: "Search tags to add" }), "pin");
     await user.click(screen.getByRole("button", { name: "Add pin" }));
     await waitFor(() =>
       expect(mocks.updatePuzzleTags).toHaveBeenLastCalledWith(1369, ["fork", "pin"]),
     );
 
+    await user.click(screen.getByRole("button", { name: "Add tag" }));
+    await user.type(screen.getByRole("searchbox", { name: "Search tags to add" }), "tempo");
     await user.click(screen.getByRole("button", { name: "Add tempo" }));
     await waitFor(() =>
       expect(mocks.updatePuzzleTags).toHaveBeenLastCalledWith(1369, ["fork", "pin", "tempo"]),
     );
 
+    await user.click(screen.getByRole("button", { name: "View definition for Fork" }));
+    expect(
+      screen.getByText(
+        "One piece attacks two or more targets at once, and the opponent cannot defend them all.",
+      ),
+    ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Remove fork" }));
 
     await waitFor(() =>

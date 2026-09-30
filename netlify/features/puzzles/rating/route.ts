@@ -17,7 +17,7 @@ const ratingRequestSchema = z.union([
   z.object({ action: z.literal("refresh") }),
   z.object({
     puzzleId: z.number().int().positive(),
-    level: z.number().int().min(1).max(6),
+    level: z.number().int().min(1).max(5),
   }),
 ]);
 

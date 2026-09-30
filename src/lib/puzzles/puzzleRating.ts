@@ -21,7 +21,7 @@ export type PuzzleRating = {
 
 const puzzleRatingResponseSchema = z.object({
   puzzleId: z.number().int().positive(),
-  level: z.number().int().min(1).max(6),
+  level: z.number().int().min(1).max(5),
   rating: z.number().int(),
   ratingDeviation: z.number().int().nonnegative(),
   attempts: z.number().int().nonnegative(),
@@ -42,7 +42,7 @@ export const puzzleRatingFromRow = (
     const state = relation as Record<string, unknown>;
     const rawHumanLevel = Number(state["human_level"]);
     const hasHumanLevel =
-      Number.isInteger(rawHumanLevel) && rawHumanLevel >= 1 && rawHumanLevel <= 6;
+      Number.isInteger(rawHumanLevel) && rawHumanLevel >= 1 && rawHumanLevel <= 5;
     const level = normalizePuzzleLevel(hasHumanLevel ? rawHumanLevel : state["computed_level"]);
     const attempts = Math.max(0, Math.round(Number(state["attempts"]) || 0));
 
