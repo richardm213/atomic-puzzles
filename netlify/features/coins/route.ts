@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { resolveCanonicalArchiveUsername } from "../../archive/aliases";
 import {
   authenticateRequest,
   identityResponse,
@@ -69,8 +70,8 @@ export const coinsRoute = async (event: FunctionEvent) => {
   }
   const identity = await authenticateRequest(event.headers);
   const username = requireUsername(identity, "Log in with Lichess to use Atomic Coins.");
-  const supabase = createServerSupabase("Atomic Coins service");
   if (input.action === "history") {
+    const supabase = createServerSupabase("Atomic Coins service");
     const { data, error } = await supabase
       .from("shop_redemptions")
       .select("id,item_key,cost,status,created_at,fulfilled_at")
@@ -81,6 +82,22 @@ export const coinsRoute = async (event: FunctionEvent) => {
     if (error) throw new Error(`Unable to load redemption history: ${error.message}`);
     return identityResponse(identity, 200, { result: data });
   }
+  if (input.action === "give") {
+    let senderIdentity: string;
+    let recipientIdentity: string;
+    try {
+      [senderIdentity, recipientIdentity] = await Promise.all([
+        resolveCanonicalArchiveUsername(username),
+        resolveCanonicalArchiveUsername(input.recipientUsername),
+      ]);
+    } catch {
+      throw new HttpError(503, "Coin gifts are temporarily unavailable. Please try again.");
+    }
+    if (senderIdentity && senderIdentity === recipientIdentity) {
+      throw new HttpError(409, "You can’t gift coins between aliases of the same player.");
+    }
+  }
+  const supabase = createServerSupabase("Atomic Coins service");
   const rpc = (() => {
     if (input.action === "summary") {
       return supabase.rpc("get_coin_summary", { p_username: username });

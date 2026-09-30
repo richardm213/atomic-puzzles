@@ -2,10 +2,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   createClient: vi.fn(),
+  resolveCanonicalArchiveUsername: vi.fn(async (username: string) => username.toLowerCase()),
 }));
 
 vi.mock("@supabase/supabase-js", () => ({
   createClient: mocks.createClient,
+}));
+
+vi.mock("../archive/aliases", () => ({
+  resolveCanonicalArchiveUsername: mocks.resolveCanonicalArchiveUsername,
 }));
 
 import { handler } from "../functions/coins";
@@ -20,6 +25,10 @@ const requestHeaders = (username: string) => ({
 describe("coins function", () => {
   beforeEach(() => {
     mocks.createClient.mockReset();
+    mocks.resolveCanonicalArchiveUsername.mockReset();
+    mocks.resolveCanonicalArchiveUsername.mockImplementation(async (username: string) =>
+      username.toLowerCase(),
+    );
     vi.stubEnv("SUPABASE_URL", "https://example.supabase.co");
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "service-role-key");
     vi.stubEnv(
@@ -64,6 +73,26 @@ describe("coins function", () => {
       p_amount: 10,
       p_message: "gg",
     });
+  });
+
+  it("rejects gifts between aliases of the same player", async () => {
+    mocks.resolveCanonicalArchiveUsername.mockResolvedValue("canonical_player");
+
+    const response = await handler({
+      httpMethod: "POST",
+      headers: requestHeaders("first_alias"),
+      body: JSON.stringify({
+        action: "give",
+        recipientUsername: "second_alias",
+        amount: 10,
+      }),
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(JSON.parse(response.body)).toMatchObject({
+      error: "You can’t gift coins between aliases of the same player.",
+    });
+    expect(mocks.createClient).not.toHaveBeenCalled();
   });
 
   it("returns only the signed-in player’s redemption history", async () => {
