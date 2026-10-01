@@ -6,6 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createModeRecord } from "../../constants/matches";
 import { AppSettingsProvider } from "../../context/AppSettings";
 import { profileQueryKeys } from "../../features/profile/profileQueries";
+import { getProfileRankingMonthKey } from "../../features/profile/profileTrophies";
+import { isoMonthStartFromMonthKey } from "../../lib/archive/leaderboard";
 import { aliasQueryKeys } from "../../lib/users/aliasQueries";
 import { userQueryKeys } from "../../lib/users/userQueries";
 import { PlayerProfilePage } from "./PlayerProfile";
@@ -37,14 +39,62 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const renderProfile = ({ historyOnly = true }: { historyOnly?: boolean } = {}) =>
+const renderProfile = ({
+  historyOnly = true,
+  username = "alice",
+}: { historyOnly?: boolean; username?: string } = {}) =>
   render(
     <AppSettingsProvider>
       <QueryClientProvider client={client}>
-        <PlayerProfilePage username="alice" historyOnly={historyOnly} />
+        <PlayerProfilePage username={username} historyOnly={historyOnly} />
       </QueryClientProvider>
     </AppSettingsProvider>,
   );
+
+describe("profile alias trophies", () => {
+  it("shows canonical ranking trophies on an alternate profile alias", async () => {
+    const rankingMonthLabel = getProfileRankingMonthKey(new Date());
+    const rankingMonthValue = isoMonthStartFromMonthKey(rankingMonthLabel);
+    const identity = {
+      username: "alice",
+      aliases: ["alice_alt"],
+      openings: [],
+      banned: false,
+      accounts: [
+        {
+          alias: "alice_alt",
+          displayAlias: "alice_alt",
+          source: "lichess" as const,
+          isCounted: true,
+          banned: false,
+        },
+      ],
+    };
+    client.setQueryData(aliasQueryKeys.identity("alice_alt"), identity);
+    client.setQueryData(profileQueryKeys.monthRanks("alice"), [
+      {
+        monthKey: rankingMonthLabel,
+        monthValue: rankingMonthValue,
+        monthDate: new Date(`${rankingMonthValue}T00:00:00Z`),
+        monthLabel: rankingMonthLabel,
+        mode: "blitz",
+        rank: 1,
+        rating: 2400,
+        rd: 45,
+        games: 20,
+      },
+    ]);
+    client.setQueryData(["profile", "alice", "tournament-trophies", ["alice", "alice_alt"]], []);
+    client.setQueryData(["puzzle-ranking-trophies"], []);
+    client.setQueryData(userQueryKeys.aliasRegistration(["alice", "alice_alt"]), null);
+    loadRawMatchesByMode.mockResolvedValue({ matches: [], total: 0 });
+
+    renderProfile({ historyOnly: false, username: "alice_alt" });
+
+    const trophies = await screen.findByLabelText("Atomic trophies");
+    expect(within(trophies).getByText("Blitz")).toBeInTheDocument();
+  });
+});
 
 describe("banned profile ratings", () => {
   it("still shows an available Wolfrandom rating", async () => {
@@ -65,7 +115,7 @@ describe("banned profile ratings", () => {
     });
     client.setQueryData(profileQueryKeys.ratingsSnapshot("alice"), ratings);
     client.setQueryData(profileQueryKeys.monthRanks("alice"), []);
-    client.setQueryData(["profile", "alice", "tournament-trophies"], []);
+    client.setQueryData(["profile", "alice", "tournament-trophies", ["alice"]], []);
     client.setQueryData(userQueryKeys.aliasRegistration(["alice"]), null);
     loadRawMatchesByMode.mockResolvedValue({ matches: [], total: 0 });
 

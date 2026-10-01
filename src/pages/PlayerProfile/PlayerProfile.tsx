@@ -78,7 +78,11 @@ import {
   useMonthRanks,
   useRatingsSnapshotByMode,
 } from "../../hooks/usePlayerProfileData";
-import { type AliasAccount, type AliasIdentityRow } from "../../lib/archive/aliases";
+import {
+  type AliasAccount,
+  type AliasIdentityRow,
+  getAliasIdentityUsernames,
+} from "../../lib/archive/aliases";
 import { fetchArchiveJson } from "../../lib/archive/client";
 import { getTimeControlOptions } from "../../lib/matches/collection";
 import { inferExternalGameSource } from "../../lib/matches/routes";
@@ -183,19 +187,14 @@ export const PlayerProfilePage = ({
     ],
     [canonicalUsername, profileAliasEntry],
   );
-  const puzzleTrophyCandidates = useMemo(
-    () => [
-      canonicalUsername,
-      ...(profileAliasEntry?.accounts ?? [])
-        .filter((account) => account.source === "lichess")
-        .map((account) => account.alias),
-    ],
+  const profileTrophyUsernames = useMemo(
+    () => getAliasIdentityUsernames(canonicalUsername, profileAliasEntry),
     [canonicalUsername, profileAliasEntry],
   );
   const championshipTrophiesQuery = useQuery({
-    queryKey: ["profile", canonicalUsername, "tournament-trophies"],
-    queryFn: () => fetchChampionshipTrophies(canonicalUsername),
-    enabled: Boolean(canonicalUsername),
+    queryKey: ["profile", canonicalUsername, "tournament-trophies", profileTrophyUsernames],
+    queryFn: () => fetchChampionshipTrophies(profileTrophyUsernames),
+    enabled: aliasesLoaded && profileTrophyUsernames.length > 0,
     staleTime: 10 * 60 * 1_000,
   });
   const puzzleRankingTrophiesQuery = useQuery({
@@ -307,6 +306,7 @@ export const PlayerProfilePage = ({
     if (matchHistoryMode === "wolfrandom") setMatchHistoryMode(defaultMode);
   }, [bestRankMode, bestWinMode, matchHistoryMode, profileModeOptions, rankHistoryMode]);
   const monthRanks = useMonthRanks(
+    // Archive ranking rows are keyed by the canonical player, so every profile alias shares them.
     profileDataUsername,
     !historyOnly || profileHistoryTab === "ranks",
   );
@@ -641,8 +641,8 @@ export const PlayerProfilePage = ({
   );
   const rankingTrophies = useMemo(() => getRankingTrophies(monthRanks), [monthRanks]);
   const puzzleRankingTrophies = useMemo(
-    () => getPuzzleRankingTrophies(puzzleRankingTrophiesQuery.data ?? [], puzzleTrophyCandidates),
-    [puzzleRankingTrophiesQuery.data, puzzleTrophyCandidates],
+    () => getPuzzleRankingTrophies(puzzleRankingTrophiesQuery.data ?? [], profileTrophyUsernames),
+    [profileTrophyUsernames, puzzleRankingTrophiesQuery.data],
   );
   const allRankingTrophies = useMemo(
     () => [...rankingTrophies, ...puzzleRankingTrophies],

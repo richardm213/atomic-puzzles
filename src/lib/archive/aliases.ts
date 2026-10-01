@@ -32,6 +32,22 @@ export type AliasIdentityRow = {
   accounts: AliasAccount[];
 };
 
+export const getAliasIdentityUsernames = (
+  username: string,
+  identity: AliasIdentityRow | null | undefined,
+): string[] => [
+  ...new Set(
+    [
+      username,
+      identity?.username,
+      ...(identity?.aliases ?? []),
+      ...(identity?.accounts ?? []).flatMap((account) => [account.alias, account.displayAlias]),
+    ]
+      .map(normalizeUsername)
+      .filter(Boolean),
+  ),
+];
+
 type AliasIdentityAccumulator = {
   username: string;
   aliases: Set<string>;

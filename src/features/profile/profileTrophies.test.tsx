@@ -6,7 +6,7 @@ const { loadSupabaseRowsMock } = vi.hoisted(() => ({
 
 const query = {
   select: vi.fn(() => query),
-  eq: vi.fn(() => query),
+  in: vi.fn(() => query),
   order: vi.fn(() => query),
 };
 
@@ -32,6 +32,7 @@ import {
 describe("championship profile trophies", () => {
   beforeEach(() => {
     loadSupabaseRowsMock.mockReset();
+    query.in.mockClear();
   });
 
   it("maps championship rows from Supabase", async () => {
@@ -49,7 +50,7 @@ describe("championship profile trophies", () => {
       },
     ]);
 
-    await expect(fetchChampionshipTrophies("Arka50")).resolves.toEqual(
+    await expect(fetchChampionshipTrophies(["Arka50", "ARKA_ALT", "arka50"])).resolves.toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           key: "awc-2020",
@@ -58,6 +59,7 @@ describe("championship profile trophies", () => {
         }),
       ]),
     );
+    expect(query.in).toHaveBeenCalledWith("player_name", ["arka50", "arka_alt"]);
   });
 });
 

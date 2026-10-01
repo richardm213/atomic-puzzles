@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildAliasIdentityRowsFromArchiveRows } from "./aliases";
+import { buildAliasIdentityRowsFromArchiveRows, getAliasIdentityUsernames } from "./aliases";
 
 describe("buildAliasIdentityRowsFromArchiveRows", () => {
   it("groups archive alias rows by canonical user", () => {
@@ -102,5 +102,34 @@ describe("buildAliasIdentityRowsFromArchiveRows", () => {
     expect(rows[0]?.banned).toBe(true);
     expect(rows[0]?.aliases).toEqual(["dense_alt"]);
     expect(rows[0]?.accounts.find((account) => account.alias === "densef0g")?.banned).toBe(true);
+  });
+});
+
+describe("getAliasIdentityUsernames", () => {
+  it("includes the main username and every linked profile alias once", () => {
+    expect(
+      getAliasIdentityUsernames("Main_Player", {
+        username: "main_player",
+        aliases: ["lichess_alt"],
+        openings: [],
+        banned: false,
+        accounts: [
+          {
+            alias: "lichess_alt",
+            displayAlias: "Lichess_Alt",
+            source: "lichess",
+            isCounted: true,
+            banned: false,
+          },
+          {
+            alias: "chesscom-alt",
+            displayAlias: "ChessCom-Alt",
+            source: "chesscom",
+            isCounted: true,
+            banned: false,
+          },
+        ],
+      }),
+    ).toEqual(["main_player", "lichess_alt", "chesscom-alt"]);
   });
 });

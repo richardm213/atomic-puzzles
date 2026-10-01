@@ -165,9 +165,9 @@ export const getPuzzleRankingTrophies = (
   return [...bestByMonth.values()].flatMap((row) => getPuzzleRankingTrophy(row, row.month));
 };
 
-export const fetchChampionshipTrophies = async (username: string): Promise<ProfileTrophy[]> => {
-  const normalizedUsername = normalizeUsername(username);
-  if (!normalizedUsername) return [];
+export const fetchChampionshipTrophies = async (usernames: string[]): Promise<ProfileTrophy[]> => {
+  const normalizedUsernames = [...new Set(usernames.map(normalizeUsername).filter(Boolean))];
+  if (normalizedUsernames.length === 0) return [];
 
   const rows = await loadSupabaseRows<TournamentProfileTrophyRow>(
     "tournament_profile_trophies",
@@ -176,7 +176,7 @@ export const fetchChampionshipTrophies = async (username: string): Promise<Profi
       .select(
         "award_key,label,title,asset_path,href,date_label,date_value,placement_label,prestige",
       )
-      .eq("player_name", normalizedUsername)
+      .in("player_name", normalizedUsernames)
       .order("date_value", { ascending: false }),
   );
 
