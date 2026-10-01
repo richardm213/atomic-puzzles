@@ -26,7 +26,26 @@ const requestHeaders = (headers) =>
     ]),
   );
 
-const localPuzzleFunctionsPlugin = () => {
+const DEFAULT_LOCAL_ARCHIVE_ORIGIN = "https://atomicpuzzles.org";
+
+const proxyArchiveRequest = async (req, res, archiveOrigin) => {
+  const requestUrl = new URL(req.url ?? "/", "http://localhost");
+  const upstreamUrl = new URL("/api/archive-data", archiveOrigin);
+  upstreamUrl.search = requestUrl.search;
+  const response = await fetch(upstreamUrl, {
+    method: req.method,
+    headers: { Accept: req.headers.accept ?? "application/json" },
+  });
+
+  res.statusCode = response.status;
+  for (const name of ["content-type", "cache-control"]) {
+    const value = response.headers.get(name);
+    if (value) res.setHeader(name, value);
+  }
+  res.end(Buffer.from(await response.arrayBuffer()));
+};
+
+const localPuzzleFunctionsPlugin = ({ archiveOrigin, useLocalArchive }) => {
   const functions = new Map([
     ["/api/auth/session", "/netlify/functions/auth-session.ts"],
     ["/api/puzzles/submit", "/netlify/functions/puzzle-submit.ts"],
@@ -52,6 +71,10 @@ const localPuzzleFunctionsPlugin = () => {
       for (const [route, modulePath] of functions) {
         server.middlewares.use(route, async (req, res) => {
           try {
+            if (route === "/api/archive-data" && !useLocalArchive) {
+              await proxyArchiveRequest(req, res, archiveOrigin);
+              return;
+            }
             const module = await server.ssrLoadModule(modulePath);
             const requestUrl = new URL(req.url ?? "/", "http://localhost");
             const response = await module.handler({
@@ -89,6 +112,8 @@ export default defineConfig(({ mode }) => {
   process.env.TURSO_AUTH_TOKEN ||= env.TURSO_AUTH_TOKEN;
   process.env.TURSO_MATCHES_DATABASE_URL ||= env.TURSO_MATCHES_DATABASE_URL;
   process.env.TURSO_MATCHES_AUTH_TOKEN ||= env.TURSO_MATCHES_AUTH_TOKEN;
+  const useLocalArchive = env.LOCAL_ARCHIVE_DATA_SOURCE?.trim().toLowerCase() === "turso";
+  const archiveOrigin = env.LOCAL_ARCHIVE_ORIGIN?.trim() || DEFAULT_LOCAL_ARCHIVE_ORIGIN;
 
   return {
     server: {
@@ -116,6 +141,10 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
-    plugins: [react(), localPuzzleFunctionsPlugin(), createOpeningExplorerVitePlugin()],
+    plugins: [
+      react(),
+      localPuzzleFunctionsPlugin({ archiveOrigin, useLocalArchive }),
+      createOpeningExplorerVitePlugin(),
+    ],
   };
 });

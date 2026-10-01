@@ -210,7 +210,12 @@ a local SQLite file. Configure these environment variables in `.env.local` and i
 - `TURSO_DATABASE_URL`, from `turso db show openings7 --url`
 - `TURSO_AUTH_TOKEN`, from `turso db tokens create openings7 --read-only`
 
-The complete match, alias, rating, and leaderboard archive uses a separate Turso database. Configure:
+The complete match, alias, rating, and leaderboard archive uses a separate Turso database. Local
+development proxies `/api/archive-data` to the public production endpoint by default, so profiles
+and match pages use the same read-only archive data as the live site without copying a Turso token
+into every development environment.
+
+To exercise the local archive function itself, set `LOCAL_ARCHIVE_DATA_SOURCE=turso` and configure:
 
 - `TURSO_MATCHES_DATABASE_URL`, from `turso db show matches --url`
 - `TURSO_MATCHES_AUTH_TOKEN`, from `turso db tokens create matches --read-only`
