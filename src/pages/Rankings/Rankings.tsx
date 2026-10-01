@@ -3,7 +3,7 @@ import "./Rankings.css";
 import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { DataTable } from "../../components/DataTable/DataTable";
@@ -150,7 +150,7 @@ const allLeaderboardYears = (): string[] => {
   return years;
 };
 
-const getInitialRankingsFilters = (selectedPeriod: RankingPeriod) => {
+const getInitialRankingsFilters = (selectedPeriod: RankingPeriod, locationSearch = "") => {
   if (typeof window === "undefined") {
     return {
       selectedYear: "",
@@ -160,7 +160,7 @@ const getInitialRankingsFilters = (selectedPeriod: RankingPeriod) => {
     };
   }
 
-  const searchParams = new window.URLSearchParams(window.location.search);
+  const searchParams = new window.URLSearchParams(locationSearch || window.location.search);
   const selectedYear = String(searchParams.get("year") || "").trim();
   const selectedMonthName = String(searchParams.get("month") || "").trim();
   const requestedMode = String(searchParams.get("mode") || "")
@@ -198,7 +198,11 @@ const updateRankingsUrl = (
 
 const LeaderboardView = ({ selectedPeriod }: { selectedPeriod: RankingPeriod }) => {
   const { hideRankingsOpenings, showChessComRankings } = useAppSettings();
-  const initialFilters = useMemo(() => getInitialRankingsFilters(selectedPeriod), [selectedPeriod]);
+  const locationSearch = useRouterState({ select: (state) => state.location.searchStr });
+  const initialFilters = useMemo(
+    () => getInitialRankingsFilters(selectedPeriod, locationSearch),
+    [locationSearch, selectedPeriod],
+  );
   const [selectedYear, setSelectedYear] = useState(initialFilters.selectedYear);
   const [selectedMonthName, setSelectedMonthName] = useState(initialFilters.selectedMonthName);
   const [selectedMode, setSelectedMode] = useState<Mode>(initialFilters.selectedMode);
@@ -276,11 +280,22 @@ const LeaderboardView = ({ selectedPeriod }: { selectedPeriod: RankingPeriod }) 
         : "";
     const hasRequestedMonth = requestedMonthKey && monthOptions.includes(requestedMonthKey);
 
+    if (hasInitializedFiltersRef.current) {
+      if (hasRequestedMonth) {
+        setSelectedYear(initialFilters.selectedYear);
+        setSelectedMonthName(initialFilters.selectedMonthName);
+        setSelectedMode(initialFilters.selectedMode);
+      }
+      return;
+    }
+
     setSelectedYear(hasRequestedMonth ? initialFilters.selectedYear : fallbackYear);
     setSelectedMonthName(hasRequestedMonth ? initialFilters.selectedMonthName : fallbackMonthName);
+    setSelectedMode(initialFilters.selectedMode);
     hasInitializedFiltersRef.current = true;
   }, [
     initialFilters.selectedMonthName,
+    initialFilters.selectedMode,
     initialFilters.selectedPeriod,
     initialFilters.selectedYear,
     monthOptions,
