@@ -1010,6 +1010,12 @@
   margin-top: 2px;
 }
 
+.navNotificationIcon img {
+  width: 24px;
+  height: 27px;
+  object-fit: contain;
+}
+
 .navNotificationCopy {
   display: grid;
   min-width: 0;

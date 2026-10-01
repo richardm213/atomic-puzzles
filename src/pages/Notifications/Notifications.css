@@ -127,6 +127,12 @@
   color: var(--notification-accent);
 }
 
+.notificationItemIcon img {
+  width: 30px;
+  height: 34px;
+  object-fit: contain;
+}
+
 .notificationItemCopy {
   display: grid;
   gap: 5px;

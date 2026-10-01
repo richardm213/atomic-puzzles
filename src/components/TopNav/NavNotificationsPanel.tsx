@@ -14,8 +14,10 @@ import { Link } from "@tanstack/react-router";
 import {
   notificationCopy,
   notificationMessage,
+  rankingNotificationImage,
   type UserNotification,
 } from "../../lib/community/notifications";
+import { appAssetPath } from "../../utils/appAssetPath";
 import { formatLocalDateTime } from "../../utils/formatters";
 
 const notificationIcon = (notification: UserNotification) => {
@@ -87,7 +89,11 @@ export const NavNotificationsPanel = ({
                 onClick={() => onOpenNotification(notification)}
               >
                 <span className="navNotificationIcon" aria-hidden="true">
-                  <FontAwesomeIcon icon={notificationIcon(notification)} />
+                  {rankingNotificationImage(notification) ? (
+                    <img src={appAssetPath(rankingNotificationImage(notification) ?? "")} alt="" />
+                  ) : (
+                    <FontAwesomeIcon icon={notificationIcon(notification)} />
+                  )}
                 </span>
                 <span className="navNotificationCopy">
                   <strong>{notificationCopy(notification)}</strong>
@@ -98,11 +104,13 @@ export const NavNotificationsPanel = ({
                     {notification.notification_type === "coin_gift" ||
                     notification.notification_type === "coin_request"
                       ? `Coins · ${formatLocalDateTime(notification.created_at)}`
-                      : notification.notification_type === "shop_redemption"
-                        ? `Shop redemption · ${formatLocalDateTime(notification.created_at)}`
-                        : notification.notification_type === "puzzle_rating_added"
-                          ? `Puzzle rating · ${formatLocalDateTime(notification.created_at)}`
-                          : `Puzzle #${notification.puzzle_id} · ${formatLocalDateTime(notification.created_at)}`}
+                      : notification.notification_type === "monthly_ranking"
+                        ? `Monthly rankings · ${formatLocalDateTime(notification.created_at)}`
+                        : notification.notification_type === "shop_redemption"
+                          ? `Shop redemption · ${formatLocalDateTime(notification.created_at)}`
+                          : notification.notification_type === "puzzle_rating_added"
+                            ? `Puzzle rating · ${formatLocalDateTime(notification.created_at)}`
+                            : `Puzzle #${notification.puzzle_id} · ${formatLocalDateTime(notification.created_at)}`}
                   </span>
                 </span>
                 {!notification.read_at ? <span className="navNotificationDot" /> : null}

@@ -556,6 +556,20 @@ export const TopNav = () => {
       void navigate({ to: "/dashboard" });
       return;
     }
+    if (notification.notification_type === "monthly_ranking") {
+      const rankingDate = new Date(`${notification.ranking_period?.slice(0, 10) ?? ""}T00:00:00Z`);
+      void navigate({
+        to: "/rankings",
+        search: {
+          year: Number.isNaN(rankingDate.getTime()) ? "" : String(rankingDate.getUTCFullYear()),
+          month: Number.isNaN(rankingDate.getTime())
+            ? ""
+            : rankingDate.toLocaleString("en-US", { month: "short", timeZone: "UTC" }),
+          mode: notification.ranking_mode ?? "blitz",
+        },
+      });
+      return;
+    }
     void navigate({
       to: "/solve/$puzzleId",
       params: { puzzleId: String(notification.puzzle_id ?? "") },

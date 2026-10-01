@@ -120,7 +120,8 @@ export type NotificationRow = {
     | "puzzle_rating_added"
     | "shop_redemption"
     | "coin_gift"
-    | "coin_request";
+    | "coin_request"
+    | "monthly_ranking";
   puzzle_id: number | null;
   comment_id: number | null;
   rating: number | null;
@@ -131,6 +132,9 @@ export type NotificationRow = {
   coin_message: string | null;
   coin_transfer_id: number | null;
   coin_request_id: number | null;
+  ranking_period: string | null;
+  ranking_mode: "blitz" | "bullet" | "hyperbullet" | null;
+  ranking_position: number | null;
   created_at: string;
   read_at: string | null;
 };

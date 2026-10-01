@@ -25,8 +25,10 @@ import {
   markNotificationsRead,
   notificationCopy,
   notificationMessage,
+  rankingNotificationImage,
   type UserNotification,
 } from "../../lib/community/notifications";
+import { appAssetPath } from "../../utils/appAssetPath";
 import { formatLocalDateTime } from "../../utils/formatters";
 
 const notificationIcon = (notification: UserNotification) => {
@@ -97,6 +99,20 @@ export const NotificationsPage = () => {
       void navigate({ to: "/dashboard" });
       return;
     }
+    if (notification.notification_type === "monthly_ranking") {
+      const rankingDate = new Date(`${notification.ranking_period?.slice(0, 10) ?? ""}T00:00:00Z`);
+      void navigate({
+        to: "/rankings",
+        search: {
+          year: Number.isNaN(rankingDate.getTime()) ? "" : String(rankingDate.getUTCFullYear()),
+          month: Number.isNaN(rankingDate.getTime())
+            ? ""
+            : rankingDate.toLocaleString("en-US", { month: "short", timeZone: "UTC" }),
+          mode: notification.ranking_mode ?? "blitz",
+        },
+      });
+      return;
+    }
     void navigate({
       to: "/solve/$puzzleId",
       params: { puzzleId: String(notification.puzzle_id ?? "") },
@@ -160,7 +176,14 @@ export const NotificationsPage = () => {
                     onClick={() => void openNotification(notification)}
                   >
                     <span className="notificationItemIcon" aria-hidden="true">
-                      <FontAwesomeIcon icon={notificationIcon(notification)} />
+                      {rankingNotificationImage(notification) ? (
+                        <img
+                          src={appAssetPath(rankingNotificationImage(notification) ?? "")}
+                          alt=""
+                        />
+                      ) : (
+                        <FontAwesomeIcon icon={notificationIcon(notification)} />
+                      )}
                     </span>
                     <span className="notificationItemCopy">
                       <strong>{notificationCopy(notification)}</strong>
@@ -171,11 +194,13 @@ export const NotificationsPage = () => {
                         {notification.notification_type === "coin_gift" ||
                         notification.notification_type === "coin_request"
                           ? `Coins · ${formatLocalDateTime(notification.created_at)}`
-                          : notification.notification_type === "shop_redemption"
-                            ? "Shop redemption"
-                            : notification.notification_type === "puzzle_rating_added"
-                              ? "Puzzle rating"
-                              : `Puzzle #${notification.puzzle_id}`}
+                          : notification.notification_type === "monthly_ranking"
+                            ? "Monthly rankings"
+                            : notification.notification_type === "shop_redemption"
+                              ? "Shop redemption"
+                              : notification.notification_type === "puzzle_rating_added"
+                                ? "Puzzle rating"
+                                : `Puzzle #${notification.puzzle_id}`}
                         ·
                         <time dateTime={notification.created_at}>
                           {formatLocalDateTime(notification.created_at)}

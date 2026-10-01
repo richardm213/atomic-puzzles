@@ -7,7 +7,8 @@ export type NotificationType =
   | "puzzle_rating_added"
   | "shop_redemption"
   | "coin_gift"
-  | "coin_request";
+  | "coin_request"
+  | "monthly_ranking";
 
 export type UserNotification = {
   id: number;
@@ -24,6 +25,9 @@ export type UserNotification = {
   coin_message?: string | null;
   coin_transfer_id?: number | null;
   coin_request_id?: number | null;
+  ranking_period?: string | null;
+  ranking_mode?: "blitz" | "bullet" | "hyperbullet" | null;
+  ranking_position?: number | null;
   created_at: string;
   read_at: string | null;
 };
@@ -34,6 +38,24 @@ export type NotificationResult = {
 };
 
 export const notificationCopy = (notification: UserNotification): string => {
+  if (notification.notification_type === "monthly_ranking") {
+    const period = notification.ranking_period
+      ? new Date(`${notification.ranking_period.slice(0, 10)}T00:00:00Z`).toLocaleString("en-US", {
+          month: "long",
+          year: "numeric",
+          timeZone: "UTC",
+        })
+      : "Monthly";
+    const modeLabels = {
+      blitz: "Blitz",
+      bullet: "Bullet",
+      hyperbullet: "Hyper",
+    } as const;
+    const mode = notification.ranking_mode ? modeLabels[notification.ranking_mode] : "Atomic";
+    return notification.ranking_position
+      ? `You finished ${period} ranked #${notification.ranking_position} in ${mode}.`
+      : `You did not place in the ${period} ${mode} rankings.`;
+  }
   if (notification.notification_type === "coin_gift") {
     return `${notification.actor_username ?? "Someone"} gave you ${notification.coin_amount ?? 0} coins.`;
   }
@@ -67,6 +89,17 @@ export const notificationCopy = (notification: UserNotification): string => {
 
 export const notificationMessage = (notification: UserNotification): string =>
   notification.coin_message?.trim() ?? "";
+
+export const rankingNotificationImage = (notification: UserNotification): string | null =>
+  notification.notification_type !== "monthly_ranking" || !notification.ranking_position
+    ? null
+    : notification.ranking_position === 1
+      ? "/images/atomic-rank-trophies/top-1.png"
+      : notification.ranking_position === 2
+        ? "/images/atomic-rank-trophies/top-2.png"
+        : notification.ranking_position <= 10
+          ? "/images/atomic-rank-trophies/top-10.png"
+          : null;
 
 const notificationRequest = <T>(body: Record<string, unknown>): Promise<T> =>
   postApi("/api/notifications", body, {
