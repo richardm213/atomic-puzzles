@@ -110,7 +110,9 @@ export const NavNotificationsPanel = ({
                           ? `Shop redemption · ${formatLocalDateTime(notification.created_at)}`
                           : notification.notification_type === "puzzle_rating_added"
                             ? `Puzzle rating · ${formatLocalDateTime(notification.created_at)}`
-                            : `Puzzle #${notification.puzzle_id} · ${formatLocalDateTime(notification.created_at)}`}
+                            : notification.notification_type === "puzzle_approved"
+                              ? `10 coins · ${formatLocalDateTime(notification.created_at)}`
+                              : `Puzzle #${notification.puzzle_id} · ${formatLocalDateTime(notification.created_at)}`}
                   </span>
                 </span>
                 {!notification.read_at ? <span className="navNotificationDot" /> : null}

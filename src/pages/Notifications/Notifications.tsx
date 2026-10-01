@@ -200,7 +200,9 @@ export const NotificationsPage = () => {
                               ? "Shop redemption"
                               : notification.notification_type === "puzzle_rating_added"
                                 ? "Puzzle rating"
-                                : `Puzzle #${notification.puzzle_id}`}
+                                : notification.notification_type === "puzzle_approved"
+                                  ? "10 coins"
+                                  : `Puzzle #${notification.puzzle_id}`}
                         ·
                         <time dateTime={notification.created_at}>
                           {formatLocalDateTime(notification.created_at)}
