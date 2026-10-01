@@ -234,6 +234,30 @@ describe("puzzle-review function", () => {
     });
   });
 
+  it("explains when stale approval overloads make the database function ambiguous", async () => {
+    const rpc = vi.fn(async () => ({
+      data: null,
+      error: {
+        code: "PGRST203",
+        message:
+          "Could not choose the best candidate function between overloaded approve_queued_puzzle functions",
+      },
+    }));
+    mocks.createClient.mockReturnValue({ rpc });
+
+    const response = await handler({
+      httpMethod: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ action: "approve", id: 4, puzzleId: 42 }),
+    });
+
+    expect(response.statusCode).toBe(503);
+    expect(JSON.parse(response.body)).toEqual({
+      error:
+        "Puzzle approval has a conflicting database function. Run the latest puzzles_queue.sql in Supabase.",
+    });
+  });
+
   it("rejects by deleting the puzzle from the queue", async () => {
     const eq = vi.fn(async () => ({ error: null }));
     const deleteRow = vi.fn(() => ({ eq }));

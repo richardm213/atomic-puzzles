@@ -68,6 +68,15 @@ export class PuzzleReviewRepository {
       p_puzzle_id: puzzleId,
     });
     if (error) {
+      if (
+        error.code === "PGRST203" ||
+        /could not choose the best candidate function.*approve_queued_puzzle/i.test(error.message)
+      ) {
+        throw new HttpError(
+          503,
+          "Puzzle approval has a conflicting database function. Run the latest puzzles_queue.sql in Supabase.",
+        );
+      }
       if (/could not find the function.*approve_queued_puzzle/i.test(error.message)) {
         throw new HttpError(
           503,

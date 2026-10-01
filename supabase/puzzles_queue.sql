@@ -459,6 +459,10 @@ $$;
 -- Inserts the reviewed row with the reviewer-selected puzzle ID, then removes
 -- it from the queue. The review service suggests MAX(puzzles.id) + 1.
 drop function if exists public.approve_queued_puzzle(bigint, text);
+-- Remove the short-lived three-argument overload that placed p_puzzle_id
+-- before p_reviewer. Keeping both overloads makes named PostgREST RPC calls
+-- ambiguous (PGRST203), even though their positional signatures differ.
+drop function if exists public.approve_queued_puzzle(bigint, bigint, text);
 
 create or replace function public.approve_queued_puzzle(
   p_queue_id bigint,
