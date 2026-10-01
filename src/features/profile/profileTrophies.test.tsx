@@ -21,6 +21,8 @@ vi.mock("../../lib/supabase/rows", () => ({
 import {
   fetchChampionshipTrophies,
   getProfileHeaderTrophies,
+  getProfileRankingMonthKey,
+  getPublishedProfileRankingTrophies,
   getPuzzleRankingTrophy,
   type ProfileTrophy,
   sortProfileTrophies,
@@ -92,6 +94,33 @@ describe("profile trophy sorting", () => {
 });
 
 describe("profile header trophies", () => {
+  it("keeps the previous month's trophies through the first three UTC days", () => {
+    expect(getProfileRankingMonthKey(new Date("2027-01-03T23:59:59.999Z"))).toBe("Dec 2026");
+    expect(getProfileRankingMonthKey(new Date("2027-01-04T00:00:00.000Z"))).toBe("Jan 2027");
+  });
+
+  it("withholds the new month's ranking trophies until the UTC grace period ends", () => {
+    const rankingTrophies = [
+      trophy("dec-rank", 900, "Dec 2026", "2026-12-01"),
+      trophy("jan-rank", 900, "Jan 2027", "2027-01-01"),
+    ];
+
+    expect(
+      getPublishedProfileRankingTrophies(
+        rankingTrophies,
+        "Jan 2027",
+        getProfileRankingMonthKey(new Date("2027-01-03T23:59:59.999Z")),
+      ).map(({ key }) => key),
+    ).toEqual(["dec-rank"]);
+    expect(
+      getPublishedProfileRankingTrophies(
+        rankingTrophies,
+        "Jan 2027",
+        getProfileRankingMonthKey(new Date("2027-01-04T00:00:00.000Z")),
+      ).map(({ key }) => key),
+    ).toEqual(["dec-rank", "jan-rank"]);
+  });
+
   it("shows every championship and current ranking trophy", () => {
     const visible = getProfileHeaderTrophies({
       championshipTrophies: [

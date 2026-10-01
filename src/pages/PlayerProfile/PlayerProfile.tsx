@@ -53,6 +53,8 @@ import {
   fetchChampionshipTrophies,
   getCurrentMonthKey,
   getProfileHeaderTrophies,
+  getProfileRankingMonthKey,
+  getPublishedProfileRankingTrophies,
   getPuzzleRankingTrophy,
   getRankingTrophies,
   isTrophyCaseSort,
@@ -649,33 +651,44 @@ export const PlayerProfilePage = ({
     () => [...rankingTrophies, ...puzzleRankingTrophies],
     [puzzleRankingTrophies, rankingTrophies],
   );
+  const trophyNow = new Date();
+  const currentMonthKey = getCurrentMonthKey(trophyNow);
+  const profileRankingMonthKey = getProfileRankingMonthKey(trophyNow);
+  const publishedRankingTrophies = useMemo(
+    () =>
+      getPublishedProfileRankingTrophies(
+        allRankingTrophies,
+        currentMonthKey,
+        profileRankingMonthKey,
+      ),
+    [allRankingTrophies, currentMonthKey, profileRankingMonthKey],
+  );
   const championshipTrophies = useMemo(
     () => championshipTrophiesQuery.data ?? [],
     [championshipTrophiesQuery.data],
   );
   const profileTrophies = useMemo(
-    () => sortProfileTrophies([...championshipTrophies, ...allRankingTrophies], "prestige"),
-    [allRankingTrophies, championshipTrophies],
+    () => sortProfileTrophies([...championshipTrophies, ...publishedRankingTrophies], "prestige"),
+    [championshipTrophies, publishedRankingTrophies],
   );
   const trophyCaseTrophies = useMemo(
     () => sortProfileTrophies(profileTrophies, trophyCaseSort),
     [profileTrophies, trophyCaseSort],
   );
-  const currentMonthKey = getCurrentMonthKey();
   const visibleProfileTrophies = useMemo(
     () =>
       championshipTrophiesQuery.isSuccess
         ? getProfileHeaderTrophies({
             championshipTrophies,
-            rankingTrophies: allRankingTrophies,
-            currentMonthKey,
+            rankingTrophies: publishedRankingTrophies,
+            currentMonthKey: profileRankingMonthKey,
           })
         : [],
     [
-      allRankingTrophies,
       championshipTrophies,
       championshipTrophiesQuery.isSuccess,
-      currentMonthKey,
+      profileRankingMonthKey,
+      publishedRankingTrophies,
     ],
   );
   const hasVisibleProfileTrophies = visibleProfileTrophies.length > 0;

@@ -72,8 +72,28 @@ const rankingTrophyLevels = [
 export const isTrophyCaseSort = (value: string): value is TrophyCaseSort =>
   value === "prestige" || value === "date";
 
-export const getCurrentMonthKey = (): string =>
-  monthKeyFromMonthValue(new Date().toISOString().slice(0, 10));
+const profileTrophyRolloverDays = 3;
+
+export const getCurrentMonthKey = (now = new Date()): string =>
+  monthKeyFromMonthValue(now.toISOString().slice(0, 10));
+
+export const getProfileRankingMonthKey = (now = new Date()): string => {
+  if (now.getUTCDate() > profileTrophyRolloverDays) return getCurrentMonthKey(now);
+
+  return monthKeyFromMonthValue(
+    new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)).toISOString().slice(0, 10),
+  );
+};
+
+export const getPublishedProfileRankingTrophies = (
+  rankingTrophies: ProfileTrophy[],
+  currentMonthKey: string,
+  profileRankingMonthKey: string,
+): ProfileTrophy[] => {
+  if (currentMonthKey === profileRankingMonthKey) return rankingTrophies;
+
+  return rankingTrophies.filter((trophy) => trophy.dateLabel !== currentMonthKey);
+};
 
 export const getRankingTrophies = (monthRanks: MonthRank[]): ProfileTrophy[] =>
   monthRanks.flatMap((monthRank) => {
