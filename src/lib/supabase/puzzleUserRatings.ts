@@ -35,6 +35,12 @@ export type PuzzleLeaderboardMetricRow = {
   correct: number;
 };
 
+export type PuzzleRankingTrophyRow = PuzzleLeaderboardMetricRow & {
+  month: string;
+  rank: number;
+  eligible: true;
+};
+
 type PuzzleUserRatingRow = {
   username?: string | null;
   rating?: number | null;
@@ -64,6 +70,21 @@ const puzzleLeaderboardResponseSchema = z.object({
   rows: z.array(
     z.object({
       username: z.string(),
+      rating: z.number(),
+      ratingDeviation: z.number(),
+      attempted: z.number(),
+      correct: z.number(),
+    }),
+  ),
+});
+
+const puzzleRankingTrophiesResponseSchema = z.object({
+  rows: z.array(
+    z.object({
+      username: z.string(),
+      month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
+      rank: z.number().int().min(1).max(10),
+      eligible: z.literal(true),
       rating: z.number(),
       ratingDeviation: z.number(),
       attempted: z.number(),
@@ -133,6 +154,19 @@ export const fetchPuzzleLeaderboard = async (
     attempted: Math.max(0, Math.round(row.attempted)),
     correct: Math.max(0, Math.round(row.correct)),
   }));
+};
+
+export const fetchPuzzleRankingTrophies = async (): Promise<PuzzleRankingTrophyRow[]> => {
+  const result = await postApi(
+    "/api/puzzles/rating",
+    { action: "trophies" },
+    {
+      schema: puzzleRankingTrophiesResponseSchema,
+      errorMessage: "Unable to load puzzle ranking trophies.",
+      invalidMessage: "The puzzle ranking trophy service returned invalid data.",
+    },
+  );
+  return result.rows.map((row) => ({ ...row, username: normalizeUsername(row.username) }));
 };
 
 export const fetchPuzzleRatingEventsForUsername = async (

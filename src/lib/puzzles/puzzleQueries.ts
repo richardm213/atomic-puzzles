@@ -8,6 +8,7 @@ import {
 import {
   fetchAllPuzzleUserRatings,
   fetchPuzzleLeaderboard,
+  fetchPuzzleRankingTrophies,
   fetchPuzzleRatingEventsForUsername,
   fetchPuzzleUserRating,
 } from "../supabase/puzzleUserRatings";
@@ -60,6 +61,13 @@ export const puzzleLeaderboardQueryOptions = (period: "monthly" | "all", month: 
     queryKey: ["puzzle-rankings", period, period === "monthly" ? month : "all"] as const,
     queryFn: () => fetchPuzzleLeaderboard(period, month),
     staleTime: 30_000,
+  });
+
+export const puzzleRankingTrophiesQueryOptions = () =>
+  queryOptions({
+    queryKey: ["puzzle-ranking-trophies"] as const,
+    queryFn: fetchPuzzleRankingTrophies,
+    staleTime: 10 * 60 * 1_000,
   });
 
 export const puzzleRatingEventsQueryOptions = (username: string) =>

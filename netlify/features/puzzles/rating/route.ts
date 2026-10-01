@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { rankPuzzleLeaderboardMetrics } from "../../../../shared/domain/puzzles/puzzleLeaderboard";
+
 import {
   authenticateRequest,
   requireSameOrigin,
@@ -14,6 +16,7 @@ import { parseJsonBody } from "../../../platform/validation";
 const RATING_EDITOR = "seaside_tiramisu";
 const ratingRequestSchema = z.union([
   z.object({ action: z.literal("history"), username: z.string().trim().min(1).max(100) }),
+  z.object({ action: z.literal("trophies") }),
   z.object({
     action: z.literal("leaderboard"),
     period: z.enum(["monthly", "all"]),
@@ -134,6 +137,61 @@ const loadLeaderboardRows = async (period: "monthly" | "all", month: string | un
   return [...players.values()];
 };
 
+const loadPuzzleRankingTrophies = async () => {
+  const supabase = createServerSupabase("Puzzle ranking trophy service");
+  const events = await pageThrough(
+    (from, to) =>
+      supabase
+        .from("puzzle_rating_events")
+        .select("username,attempted_at,puzzle_correct,user_rating_after,user_rd_after")
+        .order("attempted_at", { ascending: true })
+        .range(from, to),
+    "puzzle ranking trophy history",
+  );
+  const months = new Map<
+    string,
+    Map<
+      string,
+      {
+        username: string;
+        rating: number;
+        ratingDeviation: number;
+        attempted: number;
+        correct: number;
+      }
+    >
+  >();
+
+  events.forEach((event) => {
+    const attemptedAt = new Date(String(event.attempted_at ?? ""));
+    const username = String(event.username ?? "")
+      .trim()
+      .toLowerCase();
+    if (Number.isNaN(attemptedAt.getTime()) || !username) return;
+    const month = attemptedAt.toISOString().slice(0, 7);
+    const players = months.get(month) ?? new Map();
+    const row = players.get(username) ?? {
+      username,
+      rating: 2000,
+      ratingDeviation: 350,
+      attempted: 0,
+      correct: 0,
+    };
+    row.attempted += 1;
+    if (event.puzzle_correct) row.correct += 1;
+    row.rating = Number(event.user_rating_after);
+    row.ratingDeviation = Number(event.user_rd_after);
+    players.set(username, row);
+    months.set(month, players);
+  });
+
+  return [...months.entries()].flatMap(([month, players]) =>
+    rankPuzzleLeaderboardMetrics([...players.values()], "monthly")
+      .filter((row) => row.eligible && row.rank !== null && row.rank <= 10)
+      .map((row) => ({ ...row, month })),
+  );
+};
+
 export const puzzleRatingRoute = async (event: FunctionEvent) => {
   const input = parseJsonBody(event, ratingRequestSchema, "Invalid puzzle rating request.");
   if ("action" in input && input.action === "leaderboard") {
@@ -163,6 +221,10 @@ export const puzzleRatingRoute = async (event: FunctionEvent) => {
     }
 
     return jsonResponse(200, { events: events.map(serializeRatingEvent) });
+  }
+
+  if ("action" in input && input.action === "trophies") {
+    return jsonResponse(200, { rows: await loadPuzzleRankingTrophies() });
   }
 
   requireSameOrigin(event.headers, "Cross-site puzzle rating changes are not allowed.");

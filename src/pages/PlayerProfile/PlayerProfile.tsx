@@ -55,7 +55,7 @@ import {
   getProfileHeaderTrophies,
   getProfileRankingMonthKey,
   getPublishedProfileRankingTrophies,
-  getPuzzleRankingTrophy,
+  getPuzzleRankingTrophies,
   getRankingTrophies,
   isTrophyCaseSort,
   ProfileTrophyCaseCard,
@@ -82,8 +82,7 @@ import { type AliasAccount, type AliasIdentityRow } from "../../lib/archive/alia
 import { fetchArchiveJson } from "../../lib/archive/client";
 import { getTimeControlOptions } from "../../lib/matches/collection";
 import { inferExternalGameSource } from "../../lib/matches/routes";
-import { buildPuzzleLeaderboardRows } from "../../lib/puzzles/puzzleLeaderboard";
-import { puzzleLeaderboardQueryOptions } from "../../lib/puzzles/puzzleQueries";
+import { puzzleRankingTrophiesQueryOptions } from "../../lib/puzzles/puzzleQueries";
 import { profileAliasQueryOptions } from "../../lib/users/aliasQueries";
 import { registeredSiteUsernameQueryOptions } from "../../lib/users/userQueries";
 import {
@@ -184,16 +183,24 @@ export const PlayerProfilePage = ({
     ],
     [canonicalUsername, profileAliasEntry],
   );
+  const puzzleTrophyCandidates = useMemo(
+    () => [
+      canonicalUsername,
+      ...(profileAliasEntry?.accounts ?? [])
+        .filter((account) => account.source === "lichess")
+        .map((account) => account.alias),
+    ],
+    [canonicalUsername, profileAliasEntry],
+  );
   const championshipTrophiesQuery = useQuery({
     queryKey: ["profile", canonicalUsername, "tournament-trophies"],
     queryFn: () => fetchChampionshipTrophies(canonicalUsername),
     enabled: Boolean(canonicalUsername),
     staleTime: 10 * 60 * 1_000,
   });
-  const currentPuzzleRankingMonth = new Date().toISOString().slice(0, 7);
-  const puzzleRankingQuery = useQuery({
-    ...puzzleLeaderboardQueryOptions("monthly", currentPuzzleRankingMonth),
-    enabled: Boolean(canonicalUsername) && !isBanned,
+  const puzzleRankingTrophiesQuery = useQuery({
+    ...puzzleRankingTrophiesQueryOptions(),
+    enabled: Boolean(canonicalUsername),
   });
   const puzzleDashboardAccountQuery = useQuery({
     ...registeredSiteUsernameQueryOptions(puzzleDashboardCandidates),
@@ -633,20 +640,10 @@ export const PlayerProfilePage = ({
     ],
   );
   const rankingTrophies = useMemo(() => getRankingTrophies(monthRanks), [monthRanks]);
-  const currentPuzzleRankingRows = useMemo(
-    () => buildPuzzleLeaderboardRows(puzzleRankingQuery.data ?? [], "monthly"),
-    [puzzleRankingQuery.data],
+  const puzzleRankingTrophies = useMemo(
+    () => getPuzzleRankingTrophies(puzzleRankingTrophiesQuery.data ?? [], puzzleTrophyCandidates),
+    [puzzleRankingTrophiesQuery.data, puzzleTrophyCandidates],
   );
-  const puzzleRankingTrophies = useMemo(() => {
-    const profileUsernames = new Set(puzzleDashboardCandidates.map(normalizeUsername));
-    const row = currentPuzzleRankingRows
-      .filter((candidate) => profileUsernames.has(normalizeUsername(candidate.username)))
-      .sort(
-        (left, right) =>
-          (left.rank ?? Number.POSITIVE_INFINITY) - (right.rank ?? Number.POSITIVE_INFINITY),
-      )[0];
-    return getPuzzleRankingTrophy(row, currentPuzzleRankingMonth);
-  }, [currentPuzzleRankingMonth, currentPuzzleRankingRows, puzzleDashboardCandidates]);
   const allRankingTrophies = useMemo(
     () => [...rankingTrophies, ...puzzleRankingTrophies],
     [puzzleRankingTrophies, rankingTrophies],
@@ -675,22 +672,33 @@ export const PlayerProfilePage = ({
     () => sortProfileTrophies(profileTrophies, trophyCaseSort),
     [profileTrophies, trophyCaseSort],
   );
-  const visibleProfileTrophies = useMemo(
-    () =>
-      championshipTrophiesQuery.isSuccess
-        ? getProfileHeaderTrophies({
-            championshipTrophies,
-            rankingTrophies: publishedRankingTrophies,
-            currentMonthKey: profileRankingMonthKey,
-          })
-        : [],
-    [
-      championshipTrophies,
-      championshipTrophiesQuery.isSuccess,
-      profileRankingMonthKey,
-      publishedRankingTrophies,
-    ],
-  );
+  const visibleProfileTrophies = useMemo(() => {
+    if (isBanned) {
+      if (!puzzleRankingTrophiesQuery.isSuccess) return [];
+      return getProfileHeaderTrophies({
+        championshipTrophies: [],
+        rankingTrophies: publishedRankingTrophies.filter((trophy) =>
+          trophy.key.startsWith("puzzles-"),
+        ),
+        currentMonthKey: profileRankingMonthKey,
+      });
+    }
+
+    return championshipTrophiesQuery.isSuccess
+      ? getProfileHeaderTrophies({
+          championshipTrophies,
+          rankingTrophies: publishedRankingTrophies,
+          currentMonthKey: profileRankingMonthKey,
+        })
+      : [];
+  }, [
+    championshipTrophies,
+    championshipTrophiesQuery.isSuccess,
+    isBanned,
+    profileRankingMonthKey,
+    publishedRankingTrophies,
+    puzzleRankingTrophiesQuery.isSuccess,
+  ]);
   const hasVisibleProfileTrophies = visibleProfileTrophies.length > 0;
 
   const toggleMatchKey = (key: string): void => {
@@ -767,7 +775,7 @@ export const PlayerProfilePage = ({
                 </div>
               ) : null}
             </div>
-            {!isBanned && visibleProfileTrophies.length ? (
+            {visibleProfileTrophies.length ? (
               <div className="profileTrophyRow" aria-label="Atomic trophies">
                 {visibleProfileTrophies.map((trophy) => (
                   <ProfileTrophyLink key={trophy.key} trophy={trophy} />

@@ -182,6 +182,51 @@ describe("puzzle-rating function", () => {
     });
   });
 
+  it("returns top-10 puzzle ranking trophies for every UTC month", async () => {
+    const monthlyAttempts = (
+      username: string,
+      month: string,
+      rating: number,
+      ratingDeviation: number,
+    ) =>
+      Array.from({ length: 20 }, (_, index) => ({
+        username,
+        attempted_at: `${month}-${String(index + 1).padStart(2, "0")}T12:00:00.000Z`,
+        puzzle_correct: index % 2 === 0,
+        user_rating_after: rating,
+        user_rd_after: ratingDeviation,
+      }));
+    const query = {
+      select: vi.fn(),
+      order: vi.fn(),
+      range: vi.fn(async () => ({
+        data: [
+          ...monthlyAttempts("solver", "2026-08", 2200, 50),
+          ...monthlyAttempts("leader", "2026-08", 2300, 50),
+          ...monthlyAttempts("solver", "2026-09", 2400, 50),
+          ...monthlyAttempts("leader", "2026-09", 2300, 50),
+        ],
+        error: null,
+      })),
+    };
+    query.select.mockReturnValue(query);
+    query.order.mockReturnValue(query);
+    mocks.createClient.mockReturnValue({ from: vi.fn(() => query) });
+
+    const response = await handler({
+      httpMethod: "POST",
+      body: JSON.stringify({ action: "trophies" }),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body).rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ username: "solver", month: "2026-08", rank: 2 }),
+        expect.objectContaining({ username: "solver", month: "2026-09", rank: 1 }),
+      ]),
+    );
+  });
+
   it("updates the V preset without replaying historical player ratings", async () => {
     const row = {
       puzzle_id: 42,

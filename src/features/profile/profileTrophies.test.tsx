@@ -23,6 +23,7 @@ import {
   getProfileHeaderTrophies,
   getProfileRankingMonthKey,
   getPublishedProfileRankingTrophies,
+  getPuzzleRankingTrophies,
   getPuzzleRankingTrophy,
   type ProfileTrophy,
   sortProfileTrophies,
@@ -227,5 +228,33 @@ describe("puzzle ranking trophies", () => {
     };
     expect(getPuzzleRankingTrophy(row, "2026-09")).toEqual([]);
     expect(getPuzzleRankingTrophy({ ...row, eligible: true, rank: 11 }, "2026-09")).toEqual([]);
+  });
+
+  it("includes past months and keeps the best linked account for each month", () => {
+    const row = (username: string, month: string, rank: number) => ({
+      username,
+      month,
+      rank,
+      eligible: true as const,
+      rating: 2300,
+      ratingDeviation: 45,
+      attempted: 24,
+      correct: 18,
+    });
+
+    const trophies = getPuzzleRankingTrophies(
+      [
+        row("solver", "2026-08", 7),
+        row("solver_alias", "2026-08", 2),
+        row("solver", "2026-09", 1),
+        row("someone_else", "2026-07", 1),
+      ],
+      ["solver", "solver_alias"],
+    );
+
+    expect(trophies.map(({ key }) => key)).toEqual([
+      "puzzles-2026-08-top2",
+      "puzzles-2026-09-top1",
+    ]);
   });
 });

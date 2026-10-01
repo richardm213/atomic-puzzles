@@ -4,8 +4,9 @@ import { modeLabels } from "../../constants/matches";
 import { buildRankingsLocation, type MonthRank } from "../../hooks/usePlayerProfileData";
 import { monthKeyFromMonthValue } from "../../lib/archive/leaderboard";
 import { getTournamentRouteId } from "../../lib/matches/tournaments";
-import { puzzleTrophyLevel, type PuzzleLeaderboardRow } from "../../lib/puzzles/puzzleLeaderboard";
+import { type PuzzleLeaderboardRow, puzzleTrophyLevel } from "../../lib/puzzles/puzzleLeaderboard";
 import { getSupabaseClient } from "../../lib/supabase/client";
+import type { PuzzleRankingTrophyRow } from "../../lib/supabase/puzzleUserRatings";
 import { loadSupabaseRows } from "../../lib/supabase/rows";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { normalizeUsername } from "../../utils/playerNames";
@@ -117,7 +118,10 @@ export const getRankingTrophies = (monthRanks: MonthRank[]): ProfileTrophy[] =>
   });
 
 export const getPuzzleRankingTrophy = (
-  row: PuzzleLeaderboardRow | null | undefined,
+  row:
+    | (Partial<PuzzleLeaderboardRow> & Pick<PuzzleLeaderboardRow, "eligible" | "rank">)
+    | null
+    | undefined,
   month: string,
 ): ProfileTrophy[] => {
   if (!row?.eligible || !row.rank) return [];
@@ -145,6 +149,20 @@ export const getPuzzleRankingTrophy = (
       prestige: trophy.prestige,
     },
   ];
+};
+
+export const getPuzzleRankingTrophies = (
+  rows: PuzzleRankingTrophyRow[],
+  usernames: string[],
+): ProfileTrophy[] => {
+  const profileUsernames = new Set(usernames.map(normalizeUsername).filter(Boolean));
+  const bestByMonth = new Map<string, PuzzleRankingTrophyRow>();
+  rows.forEach((row) => {
+    if (!profileUsernames.has(normalizeUsername(row.username))) return;
+    const existing = bestByMonth.get(row.month);
+    if (!existing || row.rank < existing.rank) bestByMonth.set(row.month, row);
+  });
+  return [...bestByMonth.values()].flatMap((row) => getPuzzleRankingTrophy(row, row.month));
 };
 
 export const fetchChampionshipTrophies = async (username: string): Promise<ProfileTrophy[]> => {

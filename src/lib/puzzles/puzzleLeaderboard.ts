@@ -1,11 +1,21 @@
 import type { PuzzleLeaderboardMetricRow } from "../supabase/puzzleUserRatings";
 import type { PuzzleProgressWithUsernameRow } from "../supabase/types";
+import {
+  ALL_TIME_PUZZLE_MIN_ATTEMPTS,
+  isPuzzleLeaderboardEligible,
+  MONTHLY_PUZZLE_MAX_RD,
+  MONTHLY_PUZZLE_MIN_ATTEMPTS,
+  type PuzzleLeaderboardPeriod,
+  rankPuzzleLeaderboardMetrics,
+} from "../../../shared/domain/puzzles/puzzleLeaderboard";
 
-export const MONTHLY_PUZZLE_MIN_ATTEMPTS = 20;
-export const MONTHLY_PUZZLE_MAX_RD = 60;
-export const ALL_TIME_PUZZLE_MIN_ATTEMPTS = 20;
-
-export type PuzzleLeaderboardPeriod = "monthly" | "all";
+export {
+  ALL_TIME_PUZZLE_MIN_ATTEMPTS,
+  isPuzzleLeaderboardEligible,
+  MONTHLY_PUZZLE_MAX_RD,
+  MONTHLY_PUZZLE_MIN_ATTEMPTS,
+};
+export type { PuzzleLeaderboardPeriod };
 
 export type PuzzleLeaderboardRow = PuzzleLeaderboardMetricRow & {
   rank: number | null;
@@ -21,47 +31,18 @@ export const calculatePuzzleCorrectPercent = (correct: number, attempted: number
   return Math.round((normalizedCorrect / normalizedAttempted) * 100);
 };
 
-export const isPuzzleLeaderboardEligible = (
-  row: PuzzleLeaderboardMetricRow,
-  period: PuzzleLeaderboardPeriod,
-): boolean =>
-  row.attempted >=
-    (period === "monthly" ? MONTHLY_PUZZLE_MIN_ATTEMPTS : ALL_TIME_PUZZLE_MIN_ATTEMPTS) &&
-  (period === "all" || row.ratingDeviation < MONTHLY_PUZZLE_MAX_RD);
-
 export const buildPuzzleLeaderboardRows = (
   metricRows: PuzzleLeaderboardMetricRow[],
   period: PuzzleLeaderboardPeriod,
 ): PuzzleLeaderboardRow[] => {
-  const normalizedRows = metricRows
-    .filter((row) => row.username)
-    .map((row) => ({
-      ...row,
-      incorrect: Math.max(0, row.attempted - row.correct),
-      percentCorrect: calculatePuzzleCorrectPercent(row.correct, row.attempted),
-      eligible: isPuzzleLeaderboardEligible(row, period),
-    }));
-  const eligibleRows = normalizedRows
-    .filter((row) => row.eligible)
-    .sort((left, right) => {
-      if (left.rating !== right.rating) return right.rating - left.rating;
-      if (left.ratingDeviation !== right.ratingDeviation) {
-        return left.ratingDeviation - right.ratingDeviation;
-      }
-      if (left.attempted !== right.attempted) return right.attempted - left.attempted;
-      return left.username.localeCompare(right.username);
-    });
-  const ranks = new Map<string, number>();
-  let previousRating: number | null = null;
-  let previousRank = 0;
-  eligibleRows.forEach((row, index) => {
-    const rank = previousRating === row.rating ? previousRank : index + 1;
-    previousRating = row.rating;
-    previousRank = rank;
-    ranks.set(row.username, rank);
-  });
-
-  return normalizedRows.map((row) => ({ ...row, rank: ranks.get(row.username) ?? null }));
+  return rankPuzzleLeaderboardMetrics(
+    metricRows.filter((row) => row.username),
+    period,
+  ).map((row) => ({
+    ...row,
+    incorrect: Math.max(0, row.attempted - row.correct),
+    percentCorrect: calculatePuzzleCorrectPercent(row.correct, row.attempted),
+  }));
 };
 
 export const filterPuzzleProgressRowsByPeriod = (
