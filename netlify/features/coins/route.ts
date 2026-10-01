@@ -79,7 +79,7 @@ export const coinsRoute = async (event: FunctionEvent) => {
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
       .limit(50);
-    if (error) throw new Error(`Unable to load redemption history: ${error.message}`);
+    if (error) throw new Error(`Unable to load purchase history: ${error.message}`);
     return identityResponse(identity, 200, { result: data });
   }
   if (input.action === "give") {

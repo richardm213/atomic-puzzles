@@ -45,7 +45,7 @@ const shopItems: {
     cost: 200,
     icon: { kind: "fontawesome", icon: faDatabase },
     priceImage: "/images/coins/gold-coin-stack-v2.png",
-    description: "Push opening sequences deeper or cover lines from selected players.",
+    description: "1T of analysis",
   },
   {
     key: "discord_nitro_month",
@@ -561,14 +561,14 @@ export const ShopPage = () => {
           </section>
 
           <section className="redemptionHistory" aria-labelledby="redemption-history-title">
-            <h2 id="redemption-history-title">Redemption history</h2>
+            <h2 id="redemption-history-title">Purchase history</h2>
             {redemptionHistory.isLoading ? (
               <p className="redemptionHistoryState" role="status">
-                Loading redemptions…
+                Loading purchases…
               </p>
             ) : redemptionHistory.isError ? (
               <p className="redemptionHistoryState coinShopError" role="alert">
-                Unable to load redemption history.
+                Unable to load purchase history.
               </p>
             ) : redemptionHistory.data?.length ? (
               <ol className="redemptionHistoryList">

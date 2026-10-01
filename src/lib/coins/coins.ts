@@ -89,8 +89,8 @@ export const fetchRedemptionHistory = async (): Promise<RedemptionHistoryItem[]>
     { action: "history" },
     {
       schema: redemptionHistorySchema,
-      errorMessage: "Unable to load redemption history.",
-      invalidMessage: "The coin service returned invalid redemption history.",
+      errorMessage: "Unable to load purchase history.",
+      invalidMessage: "The coin service returned invalid purchase history.",
     },
   );
   return response.result;
