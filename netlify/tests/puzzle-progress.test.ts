@@ -42,7 +42,7 @@ describe("puzzle-progress function", () => {
   it("requires a signed site session", async () => {
     const response = await handler({
       httpMethod: "POST",
-      body: JSON.stringify({ puzzleId: "42", puzzleCorrect: true }),
+      body: JSON.stringify({ puzzleId: "42", puzzleCorrect: true, attemptDurationMs: 1_000 }),
     });
     expect(response.statusCode).toBe(401);
   });
@@ -72,6 +72,7 @@ describe("puzzle-progress function", () => {
         username: "impersonated-victim",
         puzzleId: "42",
         puzzleCorrect: false,
+        attemptDurationMs: 12_345,
         incorrectMove: "2. Nf3+",
       }),
     });
@@ -81,6 +82,7 @@ describe("puzzle-progress function", () => {
       p_username: "actual_solver",
       p_puzzle_id: "42",
       p_puzzle_correct: false,
+      p_attempt_duration_ms: 12_345,
       p_incorrect_move: "2. Nf3+",
       p_correct_move: null,
     });
@@ -100,6 +102,7 @@ describe("puzzle-progress function", () => {
       body: JSON.stringify({
         puzzleId: "43",
         puzzleCorrect: true,
+        attemptDurationMs: 4_321,
         correctMove: "3. Qg5",
       }),
     });
@@ -109,6 +112,7 @@ describe("puzzle-progress function", () => {
       p_username: "solver",
       p_puzzle_id: "43",
       p_puzzle_correct: true,
+      p_attempt_duration_ms: 4_321,
       p_incorrect_move: null,
       p_correct_move: "3. Qg5",
     });
@@ -122,7 +126,7 @@ describe("puzzle-progress function", () => {
     const response = await handler({
       httpMethod: "POST",
       headers: { cookie: "atomic_session=tampered" },
-      body: JSON.stringify({ puzzleId: "42", puzzleCorrect: true }),
+      body: JSON.stringify({ puzzleId: "42", puzzleCorrect: true, attemptDurationMs: 1_000 }),
     });
 
     expect(response.statusCode).toBe(401);

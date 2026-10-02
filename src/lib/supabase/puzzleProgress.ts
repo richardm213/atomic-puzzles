@@ -58,6 +58,11 @@ const normalizePuzzleProgressRows = (rows: PuzzleProgressRow[]): PuzzleProgressR
     const normalizedRow: PuzzleProgressRow = {
       puzzle_id: puzzleId,
       first_attempt_at: firstAttemptAt,
+      first_attempt_duration_ms:
+        typeof row?.first_attempt_duration_ms === "number" &&
+        Number.isFinite(row.first_attempt_duration_ms)
+          ? Math.max(0, Math.round(row.first_attempt_duration_ms))
+          : null,
       puzzle_correct: Boolean(row?.puzzle_correct),
       incorrect_move:
         typeof row?.incorrect_move === "string" && row.incorrect_move.trim()
@@ -208,6 +213,7 @@ export type RecordPuzzleProgressInput = {
   username: string;
   puzzleId: string | number;
   puzzleCorrect: boolean;
+  attemptDurationMs: number;
   incorrectMove: string | null;
   correctMove: string | null;
 };
@@ -221,6 +227,7 @@ export const recordPuzzleProgress = async ({
   username,
   puzzleId,
   puzzleCorrect,
+  attemptDurationMs,
   incorrectMove,
   correctMove,
 }: RecordPuzzleProgressInput): Promise<PuzzleRatingEvent | null> => {
@@ -228,6 +235,10 @@ export const recordPuzzleProgress = async ({
   const normalizedPuzzleId = normalizePuzzleId(puzzleId);
   const normalizedIncorrectMove = puzzleCorrect ? null : String(incorrectMove ?? "").trim() || null;
   const normalizedCorrectMove = puzzleCorrect ? String(correctMove ?? "").trim() || null : null;
+  const normalizedAttemptDurationMs = Math.min(
+    2_147_483_647,
+    Math.max(0, Math.round(Number(attemptDurationMs) || 0)),
+  );
 
   if (!normalizedUsername || !normalizedPuzzleId) return null;
 
@@ -243,6 +254,7 @@ export const recordPuzzleProgress = async ({
       {
         puzzleId: normalizedPuzzleId,
         puzzleCorrect: Boolean(puzzleCorrect),
+        attemptDurationMs: normalizedAttemptDurationMs,
         incorrectMove: normalizedIncorrectMove,
         correctMove: normalizedCorrectMove,
       },
@@ -387,7 +399,9 @@ export const fetchAllPuzzleProgressRows = async (): Promise<PuzzleProgressWithUs
   return fetchAllSupabaseRows<PuzzleProgressWithUsernameRow>(PUZZLE_PROGRESS_TABLE, () =>
     supabase
       .from(PUZZLE_PROGRESS_TABLE)
-      .select("username,puzzle_id,first_attempt_at,puzzle_correct,incorrect_move,correct_move")
+      .select(
+        "username,puzzle_id,first_attempt_at,first_attempt_duration_ms,puzzle_correct,incorrect_move,correct_move",
+      )
       .order("first_attempt_at", { ascending: false }),
   );
 };
@@ -404,7 +418,9 @@ export const fetchPuzzleAttemptsForPuzzle = async (
   const supabase = getSupabaseClient();
   let query = supabase
     .from(PUZZLE_PROGRESS_TABLE)
-    .select("username,puzzle_id,first_attempt_at,puzzle_correct,incorrect_move,correct_move")
+    .select(
+      "username,puzzle_id,first_attempt_at,first_attempt_duration_ms,puzzle_correct,incorrect_move,correct_move",
+    )
     .eq("puzzle_id", normalizedPuzzleId)
     .order("first_attempt_at", { ascending: false })
     .limit(boundedLimit);
@@ -420,6 +436,11 @@ export const fetchPuzzleAttemptsForPuzzle = async (
       username: normalizeUsername(row?.username),
       puzzle_id: normalizePuzzleId(row?.puzzle_id),
       first_attempt_at: typeof row?.first_attempt_at === "string" ? row.first_attempt_at : "",
+      first_attempt_duration_ms:
+        typeof row?.first_attempt_duration_ms === "number" &&
+        Number.isFinite(row.first_attempt_duration_ms)
+          ? Math.max(0, Math.round(row.first_attempt_duration_ms))
+          : null,
       puzzle_correct: Boolean(row?.puzzle_correct),
       incorrect_move:
         typeof row?.incorrect_move === "string" && row.incorrect_move.trim()

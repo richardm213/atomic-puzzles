@@ -65,6 +65,7 @@ describe("fetchPuzzleProgressPage", () => {
       username: "Solver",
       puzzleId: "42",
       puzzleCorrect: false,
+      attemptDurationMs: 12_345,
       incorrectMove: "2. Nf3+",
       correctMove: null,
     });
@@ -78,6 +79,7 @@ describe("fetchPuzzleProgressPage", () => {
         body: JSON.stringify({
           puzzleId: "42",
           puzzleCorrect: false,
+          attemptDurationMs: 12_345,
           incorrectMove: "2. Nf3+",
           correctMove: null,
         }),
@@ -120,6 +122,7 @@ describe("fetchPuzzleProgressPage", () => {
       username: "Solver",
       puzzleId: "43",
       puzzleCorrect: true,
+      attemptDurationMs: 4_321,
       incorrectMove: null,
       correctMove: "3. Qg5",
     });
@@ -130,6 +133,7 @@ describe("fetchPuzzleProgressPage", () => {
         body: JSON.stringify({
           puzzleId: "43",
           puzzleCorrect: true,
+          attemptDurationMs: 4_321,
           incorrectMove: null,
           correctMove: "3. Qg5",
         }),

@@ -3,6 +3,7 @@ import type { RawPuzzleRow } from "../../types/puzzles";
 export type PuzzleProgressRow = {
   puzzle_id: string;
   first_attempt_at: string;
+  first_attempt_duration_ms?: number | null;
   puzzle_correct: boolean;
   incorrect_move: string | null;
   correct_move?: string | null;
@@ -16,6 +17,7 @@ export type PuzzleProgressWithUsernameRow = PuzzleProgressRow & {
 export type PuzzleProgressRpcRow = {
   puzzle_id?: string | number | null;
   first_attempt_at?: string | null;
+  first_attempt_duration_ms?: number | null;
   puzzle_correct?: boolean | null;
   incorrect_move?: string | null;
   correct_move?: string | null;

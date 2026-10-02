@@ -230,6 +230,7 @@ describe("PuzzleSolverPage solution options", () => {
         username: "alpha",
         puzzle_id: "1369",
         first_attempt_at: "2026-07-09T07:00:00.000Z",
+        first_attempt_duration_ms: 65_000,
         puzzle_correct: true,
         incorrect_move: null,
         correct_move: "1. Rf8",
@@ -755,6 +756,15 @@ describe("PuzzleSolverPage solution options", () => {
     await waitFor(() => expect(otherAttemptsTab).toBeDisabled());
   });
 
+  it("shows an attempt time when one was recorded", async () => {
+    const user = userEvent.setup();
+    render(<PuzzleSolverPage />);
+
+    await user.click(await screen.findByRole("tab", { name: "Other attempts" }));
+
+    expect(await screen.findByLabelText("Attempt time 1:05")).toHaveTextContent("1:05");
+  });
+
   it("treats a custom-set puzzle as fresh while preserving the solved-before badge", async () => {
     mocks.routeParams = {
       puzzleId: "1369",
@@ -850,6 +860,7 @@ describe("PuzzleSolverPage solution options", () => {
         username: "solver",
         puzzleId: "1369",
         puzzleCorrect: false,
+        attemptDurationMs: expect.any(Number),
         incorrectMove: "1... Kd7",
         correctMove: null,
       }),

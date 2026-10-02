@@ -362,6 +362,7 @@ export const PuzzleSolverPage = () => {
   const attemptedPuzzleIdsRef = useRef<Set<string>>(new Set());
   const activePuzzleKeyRef = useRef("");
   const elapsedTimeMsRef = useRef(0);
+  const elapsedTimerStartedAtRef = useRef<number | null>(null);
   const [elapsedTimeMs, setElapsedTimeMs] = useState(0);
   const [elapsedTimerRunning, setElapsedTimerRunning] = useState(false);
   const [customSetRefreshState, setCustomSetRefreshState] = useState<
@@ -813,11 +814,13 @@ export const PuzzleSolverPage = () => {
       puzzleCorrect,
       incorrectMove,
       correctMove,
+      attemptDurationMs,
     }: {
       puzzleId: string | number | null | undefined;
       puzzleCorrect: boolean;
       incorrectMove: string | null;
       correctMove: string | null;
+      attemptDurationMs: number;
     }): void => {
       const normalizedPuzzleId = toPuzzleKey(puzzleId);
       if (!normalizedPuzzleId || !user?.username) return;
@@ -830,6 +833,7 @@ export const PuzzleSolverPage = () => {
             username: user.username,
             puzzleId: normalizedPuzzleId,
             puzzleCorrect,
+            attemptDurationMs,
             incorrectMove,
             correctMove,
           }).then((ratingEvent) => {
@@ -856,6 +860,17 @@ export const PuzzleSolverPage = () => {
 
   const handleAttemptResolved = useCallback(
     ({ puzzleId, puzzleCorrect, incorrectMove, correctMove }: AttemptResolved): void => {
+      const attemptDurationMs = Math.max(
+        0,
+        Math.round(
+          elapsedTimerStartedAtRef.current === null
+            ? elapsedTimeMsRef.current
+            : window.performance.now() - elapsedTimerStartedAtRef.current,
+        ),
+      );
+      elapsedTimeMsRef.current = attemptDurationMs;
+      elapsedTimerStartedAtRef.current = null;
+      setElapsedTimeMs(attemptDurationMs);
       setElapsedTimerRunning(false);
       const normalizedPuzzleId = toPuzzleKey(puzzleId);
       setResolvedAttemptedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
@@ -863,6 +878,7 @@ export const PuzzleSolverPage = () => {
       enqueuePuzzleProgressWrite({
         puzzleId: normalizedPuzzleId,
         puzzleCorrect,
+        attemptDurationMs,
         incorrectMove,
         correctMove,
       });
@@ -909,6 +925,7 @@ export const PuzzleSolverPage = () => {
   useEffect(() => {
     resetPuzzleUiState();
     elapsedTimeMsRef.current = 0;
+    elapsedTimerStartedAtRef.current = activePuzzleId && fen ? window.performance.now() : null;
     setElapsedTimeMs(0);
     setElapsedTimerRunning(Boolean(activePuzzleId && fen));
     setMobileFeedback(null);
@@ -921,11 +938,9 @@ export const PuzzleSolverPage = () => {
   useEffect(() => {
     if (!elapsedTimerRunning) return;
 
-    let lastTick = window.performance.now();
     const updateElapsedTime = (): void => {
-      const now = window.performance.now();
-      elapsedTimeMsRef.current += now - lastTick;
-      lastTick = now;
+      if (elapsedTimerStartedAtRef.current === null) return;
+      elapsedTimeMsRef.current = window.performance.now() - elapsedTimerStartedAtRef.current;
       setElapsedTimeMs(elapsedTimeMsRef.current);
     };
     const interval = window.setInterval(updateElapsedTime, 250);
@@ -1646,6 +1661,15 @@ export const PuzzleSolverPage = () => {
               <time className="puzzleOtherAttemptTime" dateTime={attempt.first_attempt_at}>
                 {formatLocalDateTime(attempt.first_attempt_at)}
               </time>
+              {typeof attempt.first_attempt_duration_ms === "number" ? (
+                <span
+                  className="puzzleOtherAttemptDuration"
+                  aria-label={`Attempt time ${formatElapsedTime(attempt.first_attempt_duration_ms)}`}
+                >
+                  <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
+                  {formatElapsedTime(attempt.first_attempt_duration_ms)}
+                </span>
+              ) : null}
             </li>
           ))}
         </ul>

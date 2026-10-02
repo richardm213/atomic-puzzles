@@ -16,6 +16,7 @@ const progressBodySchema = z.object({
     .transform(String)
     .pipe(z.string().regex(/^\d{1,20}$/)),
   puzzleCorrect: z.boolean(),
+  attemptDurationMs: z.number().int().nonnegative().max(2_147_483_647),
   incorrectMove: z.string().trim().max(100).nullable().optional(),
   correctMove: z.string().trim().max(100).nullable().optional(),
 });
@@ -30,6 +31,7 @@ export const puzzleProgressRoute = async (event: FunctionEvent) => {
     p_username: username,
     p_puzzle_id: input.puzzleId,
     p_puzzle_correct: input.puzzleCorrect,
+    p_attempt_duration_ms: input.attemptDurationMs,
     p_incorrect_move: input.puzzleCorrect ? null : input.incorrectMove || null,
     p_correct_move: input.puzzleCorrect ? input.correctMove || null : null,
   });
