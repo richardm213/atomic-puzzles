@@ -141,6 +141,37 @@ describe("fetchPuzzleProgressPage", () => {
     );
   });
 
+  it("sends a null duration after timing expires", async () => {
+    const fetchMock = vi.spyOn(window, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ recorded: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    await recordPuzzleProgress({
+      username: "Solver",
+      puzzleId: "44",
+      puzzleCorrect: false,
+      attemptDurationMs: null,
+      incorrectMove: "1. Kf2",
+      correctMove: null,
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/puzzles/progress",
+      expect.objectContaining({
+        body: JSON.stringify({
+          puzzleId: "44",
+          puzzleCorrect: false,
+          attemptDurationMs: null,
+          incorrectMove: "1. Kf2",
+          correctMove: null,
+        }),
+      }),
+    );
+  });
+
   it("filters rows and totals by a since date", async () => {
     rpcMock.mockResolvedValue({
       data: [

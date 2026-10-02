@@ -122,6 +122,7 @@ const OPA_STYLE_BADGE_LABEL =
   "Only the best moves are accepted. Weaker alternatives are rejected even if they also lead to mate.";
 const OTHER_PUZZLE_ATTEMPTS_LIMIT = 30;
 const PUZZLE_PREFETCH_COUNT = 3;
+const MAX_PUZZLE_ATTEMPT_DURATION_MS = 60 * 60 * 1000;
 const PUZZLE_TAG_EDITOR = "seaside_tiramisu";
 const PUZZLE_RATING_EDITOR = "seaside_tiramisu";
 const PUZZLE_EXPLANATION_LEGACY_AUTHOR = "admin";
@@ -363,6 +364,7 @@ export const PuzzleSolverPage = () => {
   const activePuzzleKeyRef = useRef("");
   const elapsedTimeMsRef = useRef(0);
   const elapsedTimerStartedAtRef = useRef<number | null>(null);
+  const elapsedTimerExpiredRef = useRef(false);
   const [elapsedTimeMs, setElapsedTimeMs] = useState(0);
   const [elapsedTimerRunning, setElapsedTimerRunning] = useState(false);
   const [customSetRefreshState, setCustomSetRefreshState] = useState<
@@ -820,7 +822,7 @@ export const PuzzleSolverPage = () => {
       puzzleCorrect: boolean;
       incorrectMove: string | null;
       correctMove: string | null;
-      attemptDurationMs: number;
+      attemptDurationMs: number | null;
     }): void => {
       const normalizedPuzzleId = toPuzzleKey(puzzleId);
       if (!normalizedPuzzleId || !user?.username) return;
@@ -860,17 +862,23 @@ export const PuzzleSolverPage = () => {
 
   const handleAttemptResolved = useCallback(
     ({ puzzleId, puzzleCorrect, incorrectMove, correctMove }: AttemptResolved): void => {
-      const attemptDurationMs = Math.max(
+      const elapsedAtAttempt = Math.max(
         0,
-        Math.round(
-          elapsedTimerStartedAtRef.current === null
-            ? elapsedTimeMsRef.current
-            : window.performance.now() - elapsedTimerStartedAtRef.current,
-        ),
+        elapsedTimerStartedAtRef.current === null
+          ? elapsedTimeMsRef.current
+          : window.performance.now() - elapsedTimerStartedAtRef.current,
       );
-      elapsedTimeMsRef.current = attemptDurationMs;
+      const attemptDurationMs =
+        elapsedTimerExpiredRef.current || elapsedAtAttempt >= MAX_PUZZLE_ATTEMPT_DURATION_MS
+          ? null
+          : Math.round(elapsedAtAttempt);
+      elapsedTimeMsRef.current = Math.min(
+        elapsedAtAttempt,
+        MAX_PUZZLE_ATTEMPT_DURATION_MS,
+      );
+      elapsedTimerExpiredRef.current = attemptDurationMs === null;
       elapsedTimerStartedAtRef.current = null;
-      setElapsedTimeMs(attemptDurationMs);
+      setElapsedTimeMs(elapsedTimeMsRef.current);
       setElapsedTimerRunning(false);
       const normalizedPuzzleId = toPuzzleKey(puzzleId);
       setResolvedAttemptedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
@@ -925,6 +933,7 @@ export const PuzzleSolverPage = () => {
   useEffect(() => {
     resetPuzzleUiState();
     elapsedTimeMsRef.current = 0;
+    elapsedTimerExpiredRef.current = false;
     elapsedTimerStartedAtRef.current = activePuzzleId && fen ? window.performance.now() : null;
     setElapsedTimeMs(0);
     setElapsedTimerRunning(Boolean(activePuzzleId && fen));
@@ -940,13 +949,21 @@ export const PuzzleSolverPage = () => {
 
     const updateElapsedTime = (): void => {
       if (elapsedTimerStartedAtRef.current === null) return;
-      elapsedTimeMsRef.current = window.performance.now() - elapsedTimerStartedAtRef.current;
+      const elapsed = window.performance.now() - elapsedTimerStartedAtRef.current;
+      if (elapsed >= MAX_PUZZLE_ATTEMPT_DURATION_MS) {
+        elapsedTimeMsRef.current = MAX_PUZZLE_ATTEMPT_DURATION_MS;
+        elapsedTimerExpiredRef.current = true;
+        elapsedTimerStartedAtRef.current = null;
+        setElapsedTimeMs(MAX_PUZZLE_ATTEMPT_DURATION_MS);
+        setElapsedTimerRunning(false);
+        return;
+      }
+      elapsedTimeMsRef.current = elapsed;
       setElapsedTimeMs(elapsedTimeMsRef.current);
     };
     const interval = window.setInterval(updateElapsedTime, 250);
 
     return () => {
-      updateElapsedTime();
       window.clearInterval(interval);
     };
   }, [elapsedTimerRunning]);

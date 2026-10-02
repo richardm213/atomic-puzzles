@@ -119,6 +119,34 @@ describe("puzzle-progress function", () => {
     expect(JSON.parse(response.body)).toMatchObject({ coinAward: 2 });
   });
 
+  it("records no duration after the one-hour timer expires", async () => {
+    const rpc = vi.fn(async () => ({ data: 0, error: null }));
+    const query = ratingEventQuery();
+    mocks.createClient.mockReturnValue({ rpc, from: vi.fn(() => query) });
+    const cookie = createSiteSessionCookie("Solver", {});
+
+    const response = await handler({
+      httpMethod: "POST",
+      headers: { cookie: cookie.split(";")[0] },
+      body: JSON.stringify({
+        puzzleId: "44",
+        puzzleCorrect: false,
+        attemptDurationMs: null,
+        incorrectMove: "1. Kf2",
+      }),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(rpc).toHaveBeenCalledWith("record_first_puzzle_attempt_v2", {
+      p_username: "solver",
+      p_puzzle_id: "44",
+      p_puzzle_correct: false,
+      p_attempt_duration_ms: null,
+      p_incorrect_move: "1. Kf2",
+      p_correct_move: null,
+    });
+  });
+
   it("does not write progress for a tampered site cookie", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);

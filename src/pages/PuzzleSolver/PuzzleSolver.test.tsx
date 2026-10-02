@@ -878,6 +878,37 @@ describe("PuzzleSolverPage solution options", () => {
     expect(updatedRating).toHaveTextContent("1978-22");
   });
 
+  it("omits attempt time after the timer reaches 60 minutes", async () => {
+    mocks.attemptedPuzzleIds = new Set();
+    let now = 0;
+    const performanceNow = vi.spyOn(window.performance, "now").mockImplementation(() => now);
+
+    render(<PuzzleSolverPage />);
+    await screen.findByTestId("mock-board");
+    now = 3_600_001;
+
+    act(() => {
+      mocks.chessboardProps.at(-1)?.onAttemptResolved?.({
+        puzzleId: 1369,
+        puzzleCorrect: false,
+        incorrectMove: "1... Kd7",
+        correctMove: null,
+      });
+    });
+
+    await waitFor(() =>
+      expect(mocks.recordPuzzleProgress).toHaveBeenCalledWith({
+        username: "solver",
+        puzzleId: "1369",
+        puzzleCorrect: false,
+        attemptDurationMs: null,
+        incorrectMove: "1... Kd7",
+        correctMove: null,
+      }),
+    );
+    performanceNow.mockRestore();
+  });
+
   it("offers exits when the final puzzle in an ordered set is solved", async () => {
     mocks.routeParams = {
       puzzleId: "1369",

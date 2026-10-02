@@ -16,7 +16,7 @@ const progressBodySchema = z.object({
     .transform(String)
     .pipe(z.string().regex(/^\d{1,20}$/)),
   puzzleCorrect: z.boolean(),
-  attemptDurationMs: z.number().int().nonnegative().max(2_147_483_647),
+  attemptDurationMs: z.number().int().nonnegative().max(3_600_000).nullable(),
   incorrectMove: z.string().trim().max(100).nullable().optional(),
   correctMove: z.string().trim().max(100).nullable().optional(),
 });

@@ -213,7 +213,7 @@ export type RecordPuzzleProgressInput = {
   username: string;
   puzzleId: string | number;
   puzzleCorrect: boolean;
-  attemptDurationMs: number;
+  attemptDurationMs: number | null;
   incorrectMove: string | null;
   correctMove: string | null;
 };
@@ -235,10 +235,10 @@ export const recordPuzzleProgress = async ({
   const normalizedPuzzleId = normalizePuzzleId(puzzleId);
   const normalizedIncorrectMove = puzzleCorrect ? null : String(incorrectMove ?? "").trim() || null;
   const normalizedCorrectMove = puzzleCorrect ? String(correctMove ?? "").trim() || null : null;
-  const normalizedAttemptDurationMs = Math.min(
-    2_147_483_647,
-    Math.max(0, Math.round(Number(attemptDurationMs) || 0)),
-  );
+  const normalizedAttemptDurationMs =
+    attemptDurationMs === null
+      ? null
+      : Math.min(3_600_000, Math.max(0, Math.round(Number(attemptDurationMs) || 0)));
 
   if (!normalizedUsername || !normalizedPuzzleId) return null;
 
