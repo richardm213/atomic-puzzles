@@ -87,28 +87,7 @@ describe("puzzle-progress function", () => {
       p_correct_move: null,
     });
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(JSON.parse(response.body)).toMatchObject({ coinAward: 0, coinDelta: 0 });
-  });
-
-  it("returns an incorrect-attempt penalty as a signed coin delta", async () => {
-    const rpc = vi.fn(async () => ({ data: -5, error: null }));
-    const query = ratingEventQuery();
-    mocks.createClient.mockReturnValue({ rpc, from: vi.fn(() => query) });
-    const cookie = createSiteSessionCookie("Solver", {});
-
-    const response = await handler({
-      httpMethod: "POST",
-      headers: { cookie: cookie.split(";")[0] },
-      body: JSON.stringify({
-        puzzleId: "42",
-        puzzleCorrect: false,
-        attemptDurationMs: 1_000,
-        incorrectMove: "2. Nf3+",
-      }),
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(JSON.parse(response.body)).toMatchObject({ coinAward: 0, coinDelta: -5 });
+    expect(JSON.parse(response.body)).toMatchObject({ coinAward: 0 });
   });
 
   it("records a correct alternate solution move", async () => {
@@ -137,7 +116,7 @@ describe("puzzle-progress function", () => {
       p_incorrect_move: null,
       p_correct_move: "3. Qg5",
     });
-    expect(JSON.parse(response.body)).toMatchObject({ coinAward: 2, coinDelta: 2 });
+    expect(JSON.parse(response.body)).toMatchObject({ coinAward: 2 });
   });
 
   it("records no duration after the one-hour timer expires", async () => {

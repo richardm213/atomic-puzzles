@@ -73,12 +73,7 @@ const transactionDescription = (transaction: CoinTransaction) => {
   if (transaction.reason === "puzzle_correct") {
     return puzzleId ? `Solved puzzle #${puzzleId}` : "Solved a puzzle";
   }
-  if (transaction.reason === "puzzle_attempted") {
-    if (transaction.amount < 0) {
-      return puzzleId ? `Incorrect on puzzle #${puzzleId}` : "Incorrect puzzle attempt";
-    }
-    return "Solved a puzzle";
-  }
+  if (transaction.reason === "puzzle_attempted") return "Solved a puzzle";
   if (transaction.reason === "puzzle_created") {
     return puzzleId ? `Submitted puzzle #${puzzleId}` : "Submitted a puzzle";
   }

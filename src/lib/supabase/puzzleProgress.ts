@@ -27,7 +27,6 @@ const ATTEMPTED_PUZZLE_IDS_RPC = (import.meta.env.VITE_SUPABASE_ATTEMPTED_PUZZLE
 const puzzleProgressWriteRequests = new Map<string, Promise<PuzzleRatingEvent | null>>();
 const puzzleProgressResponseSchema = z.object({
   coinAward: z.number().int().nonnegative().optional().default(0),
-  coinDelta: z.number().int().optional(),
   ratingEvent: z
     .object({
       username: z.string(),
@@ -265,10 +264,9 @@ export const recordPuzzleProgress = async ({
         invalidMessage: "Unable to record puzzle progress: the server returned invalid data.",
       },
     );
-    const coinDelta = result.coinDelta ?? result.coinAward;
-    if (coinDelta !== 0) {
-      const { announceCoinChange } = await import("../coins/coinEvents");
-      announceCoinChange(coinDelta, puzzleCorrect ? "Puzzle solved" : "Incorrect attempt");
+    if (result.coinAward > 0) {
+      const { announceCoinsEarned } = await import("../coins/coinEvents");
+      announceCoinsEarned(result.coinAward, puzzleCorrect ? "Puzzle solved" : "Puzzle attempted");
     }
     if (!result.ratingEvent) return null;
     return {

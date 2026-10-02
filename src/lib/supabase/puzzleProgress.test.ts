@@ -54,10 +54,8 @@ describe("fetchPuzzleProgressPage", () => {
   });
 
   it("records an incorrect move without changing its SAN notation", async () => {
-    const coinChangeListener = vi.fn();
-    window.addEventListener("atomic-puzzles:coins-earned", coinChangeListener);
     const fetchMock = vi.spyOn(window, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ recorded: true, coinDelta: -5 }), {
+      new Response(JSON.stringify({ recorded: true }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       }),
@@ -88,12 +86,6 @@ describe("fetchPuzzleProgressPage", () => {
       }),
     );
     expect(window.localStorage.getItem("atomic-puzzles.puzzle-progress.solver")).toBeNull();
-    expect(coinChangeListener).toHaveBeenCalledOnce();
-    expect((coinChangeListener.mock.calls[0]?.[0] as CustomEvent).detail).toEqual({
-      amount: -5,
-      label: "Incorrect attempt",
-    });
-    window.removeEventListener("atomic-puzzles:coins-earned", coinChangeListener);
   });
 
   it("uses Supabase as the sole source of attempted puzzle ids", async () => {
