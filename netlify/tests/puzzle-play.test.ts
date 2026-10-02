@@ -5,6 +5,11 @@ const mocks = vi.hoisted(() => ({ createClient: vi.fn() }));
 vi.mock("@supabase/supabase-js", () => ({ createClient: mocks.createClient }));
 
 import { handler } from "../functions/puzzle-play";
+import { createSiteSessionCookie } from "../lib/siteSession";
+
+const authHeaders = () => ({
+  cookie: createSiteSessionCookie("solver", {}).split(";")[0],
+});
 
 const createPuzzleQuery = () => {
   const query = {
@@ -23,6 +28,10 @@ describe("puzzle-play function", () => {
     mocks.createClient.mockReset();
     vi.stubEnv("SUPABASE_URL", "https://example.supabase.co");
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "service-role-key");
+    vi.stubEnv(
+      "SITE_SESSION_SECRET",
+      "test-session-secret-that-is-longer-than-thirty-two-characters",
+    );
     vi.spyOn(console, "info").mockImplementation(() => undefined);
   });
 
@@ -31,17 +40,27 @@ describe("puzzle-play function", () => {
     vi.unstubAllEnvs();
   });
 
-  it("preserves the existing puzzle detail payload, including the solution", async () => {
-    const query = createPuzzleQuery();
-    mocks.createClient.mockReturnValue({ from: vi.fn(() => query) });
-
+  it("requires a signed site session before returning playable puzzle data", async () => {
     const response = await handler({
       httpMethod: "POST",
       body: JSON.stringify({ puzzleIds: [414] }),
     });
 
+    expect(response.statusCode).toBe(401);
+    expect(mocks.createClient).not.toHaveBeenCalled();
+  });
+
+  it("returns playable puzzle data to a signed-in user", async () => {
+    const query = createPuzzleQuery();
+    mocks.createClient.mockReturnValue({ from: vi.fn(() => query) });
+
+    const response = await handler({
+      httpMethod: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ puzzleIds: [414] }),
+    });
+
     expect(response.statusCode).toBe(200);
-    expect(response.headers["X-Puzzle-Details-Source"]).toBe("server");
     expect(JSON.parse(response.body)).toEqual({
       puzzles: [{ id: 414, fen: "puzzle fen", solution: "18. O-O-O" }],
     });
@@ -62,6 +81,7 @@ describe("puzzle-play function", () => {
   it("rejects batches larger than the current prefetch limit", async () => {
     const response = await handler({
       httpMethod: "POST",
+      headers: authHeaders(),
       body: JSON.stringify({ puzzleIds: Array.from({ length: 13 }, (_, index) => index + 1) }),
     });
 

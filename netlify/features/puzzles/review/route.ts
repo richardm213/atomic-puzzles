@@ -38,11 +38,9 @@ const reviewBodySchema = z.discriminatedUnion("action", [
 export const puzzleReviewRoute = async (event: FunctionEvent) => {
   requireSameOrigin(event.headers, "Cross-site puzzle reviews are not allowed.");
   const input = parseJsonBody(event, reviewBodySchema, "Invalid review action.");
-  if (input.action !== "list") {
-    const identity = await authenticateRequest(event.headers);
-    const username = requireUsername(identity, "Log in with Lichess to review puzzles.");
-    if (username !== REVIEWER) throw new HttpError(403, "This review queue is restricted.");
-  }
+  const identity = await authenticateRequest(event.headers);
+  const username = requireUsername(identity, "Log in with Lichess to review puzzles.");
+  if (username !== REVIEWER) throw new HttpError(403, "This review queue is restricted.");
   const service = new PuzzleReviewService(
     () => new PuzzleReviewRepository(createServerSupabase("Puzzle review service")),
     REVIEWER,

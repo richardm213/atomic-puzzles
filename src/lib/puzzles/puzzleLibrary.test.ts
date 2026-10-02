@@ -2,21 +2,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../supabase/puzzles", () => ({
   fetchPuzzleCatalogFromSupabase: vi.fn(),
-  fetchPuzzleRowsByIdFromSupabase: vi.fn(),
   fetchPuzzleSolverIndexFromSupabase: vi.fn(),
 }));
 vi.mock("./puzzlePlay", () => ({ fetchPuzzleDetails: vi.fn() }));
 
 import {
   fetchPuzzleCatalogFromSupabase,
-  fetchPuzzleRowsByIdFromSupabase,
   fetchPuzzleSolverIndexFromSupabase,
 } from "../supabase/puzzles";
 import { loadPuzzleCatalog, loadPuzzlesById, loadPuzzleSolverIndex } from "./puzzleLibrary";
 import { fetchPuzzleDetails } from "./puzzlePlay";
 
 const fetchCatalogMock = fetchPuzzleCatalogFromSupabase as unknown as ReturnType<typeof vi.fn>;
-const fetchDetailsMock = fetchPuzzleRowsByIdFromSupabase as unknown as ReturnType<typeof vi.fn>;
 const fetchPrivateDetailsMock = fetchPuzzleDetails as unknown as ReturnType<typeof vi.fn>;
 const fetchSolverIndexMock = fetchPuzzleSolverIndexFromSupabase as unknown as ReturnType<
   typeof vi.fn
@@ -25,13 +22,11 @@ const fetchSolverIndexMock = fetchPuzzleSolverIndexFromSupabase as unknown as Re
 describe("puzzleLibrary", () => {
   beforeEach(() => {
     fetchCatalogMock.mockReset();
-    fetchDetailsMock.mockReset();
     fetchPrivateDetailsMock.mockReset();
     fetchSolverIndexMock.mockReset();
   });
   afterEach(() => {
     fetchCatalogMock.mockReset();
-    fetchDetailsMock.mockReset();
     fetchPrivateDetailsMock.mockReset();
     fetchSolverIndexMock.mockReset();
     vi.unstubAllEnvs();
@@ -69,7 +64,7 @@ describe("puzzleLibrary", () => {
   });
 
   it("filters requested rows without a fen without excluding catalog entries by solution text", async () => {
-    fetchDetailsMock.mockResolvedValueOnce([
+    fetchPrivateDetailsMock.mockResolvedValueOnce([
       { id: 1, fen: "  ", solution: "1. e4" },
       {
         id: 2,
@@ -93,7 +88,7 @@ describe("puzzleLibrary", () => {
   });
 
   it("reads details from any candidate solution field and preserves requested order", async () => {
-    fetchDetailsMock.mockResolvedValueOnce([
+    fetchPrivateDetailsMock.mockResolvedValueOnce([
       {
         id: 1,
         fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
@@ -113,8 +108,7 @@ describe("puzzleLibrary", () => {
     expect(puzzles[1]?.solution).toContain("e4");
   });
 
-  it("uses the private details endpoint after the privacy cutover", async () => {
-    vi.stubEnv("VITE_PUZZLE_SOLUTION_PRIVACY_ENABLED", "true");
+  it("always loads playable details through the authenticated endpoint", async () => {
     fetchPrivateDetailsMock.mockResolvedValueOnce([
       {
         id: 414,
@@ -126,7 +120,6 @@ describe("puzzleLibrary", () => {
     const puzzles = await loadPuzzlesById([414]);
 
     expect(fetchPrivateDetailsMock).toHaveBeenCalledWith([414]);
-    expect(fetchDetailsMock).not.toHaveBeenCalled();
     expect(puzzles[0]?.solution).toContain("O-O-O");
   });
 });

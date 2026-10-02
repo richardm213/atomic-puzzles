@@ -1,16 +1,12 @@
 import type { PuzzleSolutionField } from "../../types/puzzles";
 import {
   fetchPuzzleCatalogFromSupabase,
-  fetchPuzzleRowsByIdFromSupabase,
   fetchPuzzleSolverIndexFromSupabase,
   type PuzzleRow,
 } from "../supabase/puzzles";
 import { normalizePuzzleMotifTags } from "./puzzleMotifs";
 import { fetchPuzzleDetails } from "./puzzlePlay";
 import { normalizeSolutionPgn } from "./solutionPgn";
-
-const privatePuzzleSolutionTransportEnabled = (): boolean =>
-  import.meta.env.VITE_PUZZLE_SOLUTION_PRIVACY_ENABLED?.trim().toLowerCase() === "true";
 
 export type Puzzle = PuzzleRow & {
   fen: string;
@@ -89,9 +85,7 @@ export const loadPuzzleSolverIndex = async (): Promise<Puzzle[]> =>
 
 export const loadPuzzlesById = async (puzzleIds: Array<number | string>): Promise<Puzzle[]> => {
   const requestedIds = puzzleIds.map(String);
-  const rows = privatePuzzleSolutionTransportEnabled()
-    ? await fetchPuzzleDetails(puzzleIds)
-    : await fetchPuzzleRowsByIdFromSupabase(puzzleIds);
+  const rows = await fetchPuzzleDetails(puzzleIds);
   const puzzles = rows.map(normalizePuzzleRow).filter((item) => item.fen.length > 0);
 
   const puzzlesById = new Map(puzzles.map((puzzle) => [String(puzzle.puzzleId), puzzle]));

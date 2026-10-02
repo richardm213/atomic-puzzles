@@ -1,9 +1,13 @@
 import { z } from "zod";
 
-import { requireSameOrigin } from "../../../platform/authentication";
+import {
+  authenticateRequest,
+  identityResponse,
+  requireSameOrigin,
+  requireUsername,
+} from "../../../platform/authentication";
 import type { FunctionEvent } from "../../../platform/defineFunction";
 import { createServerSupabase } from "../../../platform/environment";
-import { jsonResponse } from "../../../platform/response";
 import { parseJsonBody } from "../../../platform/validation";
 
 const puzzleIdSchema = z
@@ -35,10 +39,12 @@ const isSequentialBatch = (ids: number[]): boolean => {
 export const puzzlePlayRoute = async (event: FunctionEvent) => {
   requireSameOrigin(event.headers, "Cross-site puzzle requests are not allowed.");
   const input = parseJsonBody(event, detailsBodySchema, "Invalid puzzle details request.");
+  const identity = await authenticateRequest(event.headers);
+  requireUsername(identity, "Log in with Lichess to solve puzzles.");
   const puzzleIds = [...new Set(input.puzzleIds.map(Number))];
 
-  // Start with observation rather than enforcement. Netlify already records request
-  // metadata; these fields make genuine prefetches distinguishable from enumeration.
+  // Authentication is enforced above. Log the request shape as an additional
+  // signal for distinguishing genuine prefetches from account-based enumeration.
   console.info("Puzzle details request", {
     count: puzzleIds.length,
     sequential: isSequentialBatch(puzzleIds),
@@ -46,15 +52,8 @@ export const puzzlePlayRoute = async (event: FunctionEvent) => {
   });
 
   const supabase = createServerSupabase("Puzzle play service");
-  const { data, error } = await supabase
-    .from("puzzles")
-    .select(DETAIL_COLUMNS)
-    .in("id", puzzleIds);
+  const { data, error } = await supabase.from("puzzles").select(DETAIL_COLUMNS).in("id", puzzleIds);
   if (error) throw new Error(`Unable to load puzzles: ${error.message}`);
 
-  return jsonResponse(
-    200,
-    { puzzles: Array.isArray(data) ? data : [] },
-    { "X-Puzzle-Details-Source": "server" },
-  );
+  return identityResponse(identity, 200, { puzzles: Array.isArray(data) ? data : [] });
 };

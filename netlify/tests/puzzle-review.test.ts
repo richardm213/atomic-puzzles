@@ -36,12 +36,13 @@ describe("puzzle-review function", () => {
     expect(response.statusCode).toBe(405);
   });
 
-  it("requires a signed site session for review actions", async () => {
+  it("requires a signed reviewer session before exposing queued puzzles", async () => {
     const response = await handler({
       httpMethod: "POST",
-      body: JSON.stringify({ action: "approve", id: 4, puzzleId: 42 }),
+      body: JSON.stringify({ action: "list" }),
     });
     expect(response.statusCode).toBe(401);
+    expect(mocks.createClient).not.toHaveBeenCalled();
   });
 
   it("rejects invalid actions before contacting external services", async () => {
@@ -96,7 +97,7 @@ describe("puzzle-review function", () => {
     expect(mocks.createClient).not.toHaveBeenCalled();
   });
 
-  it("loads the queue without requiring a reviewer session", async () => {
+  it("loads the queue for the signed reviewer", async () => {
     const queueOrder = vi.fn(async () => ({ data: [{ id: 7 }], error: null }));
     const queueSelect = vi.fn(() => ({ order: queueOrder }));
     const latestLimit = vi.fn(async () => ({ data: [{ id: 1797 }], error: null }));
@@ -109,6 +110,7 @@ describe("puzzle-review function", () => {
 
     const response = await handler({
       httpMethod: "POST",
+      headers: authHeaders(),
       body: JSON.stringify({ action: "list" }),
     });
 
@@ -128,6 +130,7 @@ describe("puzzle-review function", () => {
 
     const response = await handler({
       httpMethod: "POST",
+      headers: authHeaders(),
       body: JSON.stringify({ action: "list" }),
     });
 
