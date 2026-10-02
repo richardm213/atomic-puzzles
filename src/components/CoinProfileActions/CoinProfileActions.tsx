@@ -12,11 +12,13 @@ import { normalizeUsername } from "../../utils/playerNames";
 
 type CoinProfileActionsProps = {
   recipientUsername: string;
+  recipientAliases: string[];
   displayUsername: string;
 };
 
 export const CoinProfileActions = ({
   recipientUsername,
+  recipientAliases,
   displayUsername,
 }: CoinProfileActionsProps) => {
   const { isAuthenticated, user } = useAuth();
@@ -51,7 +53,9 @@ export const CoinProfileActions = ({
   if (
     !isAuthenticated ||
     !viewerUsername ||
-    normalizeUsername(viewerUsername) === normalizeUsername(recipientUsername)
+    recipientAliases.some(
+      (recipientAlias) => normalizeUsername(viewerUsername) === normalizeUsername(recipientAlias),
+    )
   ) {
     return null;
   }

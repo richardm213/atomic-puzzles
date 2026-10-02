@@ -178,6 +178,15 @@ export const PlayerProfilePage = ({
   const aliasesLoaded = Boolean(normalizedUsername) && !profileAliasQuery.isPending;
   const canonicalUsername = profileAliasEntry?.username ?? normalizedUsername;
   const isBanned = Boolean(profileAliasEntry?.banned);
+  const profileLichessUsernames = useMemo(
+    () => [
+      canonicalUsername,
+      ...(profileAliasEntry?.accounts ?? [])
+        .filter((account) => account.source === "lichess")
+        .map((account) => account.alias),
+    ],
+    [canonicalUsername, profileAliasEntry],
+  );
   const puzzleDashboardCandidates = useMemo(
     () => [
       canonicalUsername,
@@ -206,6 +215,11 @@ export const PlayerProfilePage = ({
     enabled: !historyOnly && Boolean(canonicalUsername),
   });
   const puzzleDashboardUsername = puzzleDashboardAccountQuery.data ?? null;
+  const coinGiftAccountQuery = useQuery({
+    ...registeredSiteUsernameQueryOptions(profileLichessUsernames),
+    enabled: !historyOnly && Boolean(canonicalUsername),
+  });
+  const coinGiftRecipientUsername = coinGiftAccountQuery.data ?? null;
   const profileDisplayUsername = String(username || "").trim() || canonicalUsername;
   const {
     matchFiltersOpen,
@@ -861,9 +875,10 @@ export const PlayerProfilePage = ({
 
         {!isBanned && !historyOnly ? (
           <div className="profileActionRow">
-            {puzzleDashboardUsername ? (
+            {coinGiftRecipientUsername ? (
               <CoinProfileActions
-                recipientUsername={puzzleDashboardUsername}
+                recipientUsername={coinGiftRecipientUsername}
+                recipientAliases={profileLichessUsernames}
                 displayUsername={profileDisplayUsername}
               />
             ) : null}
