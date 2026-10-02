@@ -132,6 +132,11 @@ alter table public.puzzles
 comment on column public.puzzles.created_at is
   'Timestamp when the puzzle was first created or the closest available historical timestamp.';
 
+-- Puzzle catalogs are read by browser clients using the anon role. The puzzle
+-- privacy cutover replaced the table-wide SELECT grant with column grants, so
+-- every new public catalog column must be granted explicitly.
+grant select (created_at) on table public.puzzles to anon, authenticated;
+
 create or replace function public.award_coins_for_puzzle_attempt()
 returns trigger
 language plpgsql

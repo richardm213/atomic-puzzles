@@ -14,6 +14,7 @@ grant select (
   id,
   fen,
   author,
+  created_at,
   black_player,
   event,
   event_date,
