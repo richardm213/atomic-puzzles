@@ -168,10 +168,12 @@ export const fetchCoinRankings = async (): Promise<CoinRanking[]> => {
   );
   return response.result;
 };
-export const fetchCoinTransactions = async (): Promise<CoinTransaction[]> => {
+export const fetchCoinTransactions = async (
+  reasons?: CoinTransactionReason[],
+): Promise<CoinTransaction[]> => {
   const response = await postApi(
     "/api/coins",
-    { action: "transactions" },
+    { action: "transactions", ...(reasons?.length ? { reasons } : {}) },
     {
       schema: coinTransactionsSchema,
       errorMessage: "Unable to load coin transactions.",

@@ -9,7 +9,7 @@ import {
 
 export const coinQueryKeys = {
   rankings: ["coins", "rankings"] as const,
-  transactions: ["coins", "transactions"] as const,
+  transactions: (reasons: string[]) => ["coins", "transactions", ...reasons] as const,
   summary: (username: string) => ["coins", "summary", username] as const,
   redemptionHistory: (username: string) => ["coins", "redemption-history", username] as const,
 };
@@ -21,10 +21,12 @@ export const coinRankingsQueryOptions = () =>
     staleTime: 30_000,
   });
 
-export const coinTransactionsQueryOptions = () =>
+export const coinTransactionsQueryOptions = (
+  reasons: Parameters<typeof fetchCoinTransactions>[0],
+) =>
   queryOptions({
-    queryKey: coinQueryKeys.transactions,
-    queryFn: fetchCoinTransactions,
+    queryKey: coinQueryKeys.transactions(reasons ?? []),
+    queryFn: () => fetchCoinTransactions(reasons),
     staleTime: 30_000,
   });
 

@@ -38,6 +38,11 @@ const reasonCategory: Record<CoinTransactionReason, TransactionCategory> = {
   daily_bonus: "bonuses",
 };
 
+const selectedReasonsFor = (categories: TransactionCategory[]) =>
+  (Object.entries(reasonCategory) as [CoinTransactionReason, TransactionCategory][])
+    .filter(([, category]) => categories.includes(category))
+    .map(([reason]) => reason);
+
 const shopItemLabels: Record<string, string> = {
   atomicdb_analysis_12h: "AtomicDB analysis",
   discord_nitro_month: "Discord Nitro",
@@ -94,10 +99,14 @@ export const CoinRankingsPage = () => {
   const [view, setView] = useState<CoinView>("rankings");
   const [selectedCategories, setSelectedCategories] =
     useState<TransactionCategory[]>(readSavedFilters);
+  const selectedReasons = useMemo(
+    () => selectedReasonsFor(selectedCategories),
+    [selectedCategories],
+  );
   const rankingsQuery = useQuery(coinRankingsQueryOptions());
   const transactionsQuery = useQuery({
-    ...coinTransactionsQueryOptions(),
-    enabled: view === "transactions",
+    ...coinTransactionsQueryOptions(selectedReasons),
+    enabled: view === "transactions" && selectedReasons.length > 0,
   });
   const rankings = rankingsQuery.data ?? [];
   const transactions = useMemo(() => transactionsQuery.data ?? [], [transactionsQuery.data]);
@@ -236,17 +245,21 @@ export const CoinRankingsPage = () => {
               </div>
             </fieldset>
 
-            {transactionsQuery.isPending ? (
+            {selectedReasons.length > 0 && transactionsQuery.isPending ? (
               <InlineState role="status">Loading transactions…</InlineState>
             ) : null}
             {transactionsError ? <InlineState kind="error">{transactionsError}</InlineState> : null}
-            {!transactionsQuery.isPending && !transactionsError && transactions.length === 0 ? (
+            {selectedReasons.length > 0 &&
+            !transactionsQuery.isPending &&
+            !transactionsError &&
+            transactions.length === 0 ? (
               <InlineState kind="empty">No coin transactions are available yet.</InlineState>
             ) : null}
-            {!transactionsQuery.isPending &&
-            !transactionsError &&
-            transactions.length > 0 &&
-            filteredTransactions.length === 0 ? (
+            {selectedReasons.length === 0 ||
+            (!transactionsQuery.isPending &&
+              !transactionsError &&
+              transactions.length > 0 &&
+              filteredTransactions.length === 0) ? (
               <InlineState kind="empty">No transactions match the selected filters.</InlineState>
             ) : null}
 

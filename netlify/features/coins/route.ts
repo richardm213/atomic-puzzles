@@ -26,12 +26,23 @@ const coinBanUsernameSchema = z
   .min(1)
   .max(100)
   .regex(/^[a-z0-9_-]+$/i, "Invalid Lichess username.");
+const coinTransactionReasonSchema = z.enum([
+  "coin_transfer",
+  "puzzle_correct",
+  "puzzle_attempted",
+  "puzzle_created",
+  "shop_redemption",
+  "daily_bonus",
+]);
 
 const bodySchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("summary") }),
   z.object({ action: z.literal("history") }),
   z.object({ action: z.literal("leaderboard") }),
-  z.object({ action: z.literal("transactions") }),
+  z.object({
+    action: z.literal("transactions"),
+    reasons: z.array(coinTransactionReasonSchema).min(1).max(6).optional(),
+  }),
   z.object({ action: z.literal("claimDaily") }),
   z.object({ action: z.literal("listBans") }),
   z.object({
@@ -109,9 +120,11 @@ export const coinsRoute = async (event: FunctionEvent) => {
   }
   if (input.action === "transactions") {
     const supabase = createServerSupabase("Atomic Coins service");
-    const { data, error } = await supabase
+    let query = supabase
       .from("coin_transactions")
-      .select("id,username,amount,reason,metadata,created_at")
+      .select("id,username,amount,reason,metadata,created_at");
+    if (input.reasons) query = query.in("reason", input.reasons);
+    const { data, error } = await query
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
       .limit(100);
