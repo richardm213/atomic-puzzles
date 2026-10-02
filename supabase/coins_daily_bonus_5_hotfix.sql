@@ -1,4 +1,4 @@
--- Reapply the five-coin daily bonus to databases that still have the original ten-coin function.
+-- Reapply the five-coin daily bonus where the function is out of date.
 begin;
 
 create or replace function public.claim_daily_coins(p_username text)

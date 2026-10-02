@@ -1,4 +1,4 @@
--- Reduce the once-per-UTC-day Atomic Coin bonus from 10 coins to 5 coins.
+-- Set the once-per-UTC-day Atomic Coin bonus to 5 coins.
 
 create or replace function public.claim_daily_coins(p_username text)
 returns jsonb language plpgsql security definer set search_path = public as $$

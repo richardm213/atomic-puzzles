@@ -1,4 +1,4 @@
--- Set the once-per-UTC-day Atomic Coin bonus to 10 coins.
+-- Set the once-per-UTC-day Atomic Coin bonus to 5 coins.
 begin;
 
 create or replace function public.claim_daily_coins(p_username text)
@@ -12,13 +12,13 @@ begin
     raise exception 'Daily bonus already claimed';
   end if;
   current_balance := public.apply_coin_transaction(
-    normalized_username, 10, 'daily_bonus', source,
+    normalized_username, 5, 'daily_bonus', source,
     jsonb_build_object('date', current_date), now()
   );
   return jsonb_build_object(
     'balance', current_balance,
     'dailyClaimAvailable', false,
-    'awarded', 10
+    'awarded', 5
   );
 end;
 $$;

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { postApi } from "../api/postApi";
 import { announceCoinsEarned } from "./coinEvents";
 
-export const DAILY_COIN_BONUS = 10;
+export const DAILY_COIN_BONUS = 5;
 
 export type ShopItemKey =
   | "discord_nitro_month"
@@ -194,7 +194,7 @@ export const fetchRedemptionHistory = async (): Promise<RedemptionHistoryItem[]>
 };
 export const claimDailyCoins = async (): Promise<CoinSummary> => {
   const result = await request({ action: "claimDaily" });
-  if (result.awarded) announceCoinsEarned(DAILY_COIN_BONUS, "Daily bonus claimed");
+  if (result.awarded) announceCoinsEarned(result.awarded, "Daily bonus claimed");
   return result;
 };
 export const redeemShopItem = (itemKey: ShopItemKey) => request({ action: "redeem", itemKey });
