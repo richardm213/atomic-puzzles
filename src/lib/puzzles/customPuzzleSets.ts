@@ -174,11 +174,11 @@ export const deleteCustomPuzzleSet = async (id: string): Promise<void> => {
 export const recordCustomPuzzleSetProgress = async (
   id: string,
   puzzleId: string | number,
-  puzzleCorrect: boolean,
+  moves: string[],
 ): Promise<void> => {
   await postApi(
     "/api/puzzle-sets",
-    { action: "record", id, puzzleId, puzzleCorrect },
+    { action: "record", id, puzzleId, moves },
     { errorMessage: "Unable to record custom set progress.", schema: successResponseSchema },
   );
 };

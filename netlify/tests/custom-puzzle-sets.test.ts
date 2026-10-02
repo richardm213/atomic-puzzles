@@ -52,8 +52,19 @@ const createSupabaseMock = (completedAt: string | null) => {
   itemUpdateQuery.is = vi.fn(async () => ({ data: null, error: null }));
 
   const update = vi.fn(() => itemUpdateQuery);
+  const puzzleQuery: Record<string, ReturnType<typeof vi.fn>> = {};
+  puzzleQuery.select = vi.fn(() => puzzleQuery);
+  puzzleQuery.eq = vi.fn(() => puzzleQuery);
+  puzzleQuery.maybeSingle = vi.fn(async () => ({
+    data: {
+      fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      solution: "1. e4 e5",
+    },
+    error: null,
+  }));
   const from = vi.fn((table: string) => {
     if (table === "custom_puzzle_sets") return setQuery;
+    if (table === "puzzles") return puzzleQuery;
     return {
       select: itemReadQuery.select,
       update,
@@ -191,7 +202,7 @@ const createEndgameSetSupabaseMock = () => {
   return { insertItems };
 };
 
-const recordRequest = (puzzleCorrect: boolean) => {
+const recordRequest = () => {
   const cookie = createSiteSessionCookie("Solver", {});
   return handler({
     httpMethod: "POST",
@@ -200,7 +211,7 @@ const recordRequest = (puzzleCorrect: boolean) => {
       action: "record",
       id: setId,
       puzzleId: "1369",
-      puzzleCorrect,
+      moves: ["d2d4"],
     }),
   });
 };
@@ -224,7 +235,7 @@ describe("custom puzzle set progress", () => {
   it("records the first attempt made after the custom set was created", async () => {
     const { update, itemUpdateQuery } = createSupabaseMock(null);
 
-    const response = await recordRequest(false);
+    const response = await recordRequest();
 
     expect(response.statusCode).toBe(200);
     expect(update).toHaveBeenCalledWith({
@@ -238,7 +249,7 @@ describe("custom puzzle set progress", () => {
   it("does not overwrite an existing custom-set attempt", async () => {
     const { update } = createSupabaseMock("2026-09-21T01:00:00.000Z");
 
-    const response = await recordRequest(false);
+    const response = await recordRequest();
 
     expect(response.statusCode).toBe(200);
     expect(update).not.toHaveBeenCalled();

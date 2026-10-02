@@ -67,6 +67,7 @@ describe("fetchPuzzleProgressPage", () => {
       puzzleCorrect: false,
       incorrectMove: "2. Nf3+",
       correctMove: null,
+      moves: ["g1f3"],
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -75,11 +76,12 @@ describe("fetchPuzzleProgressPage", () => {
         method: "POST",
         credentials: "same-origin",
         headers: expect.not.objectContaining({ Authorization: expect.anything() }),
-        body: JSON.stringify({
-          puzzleId: "42",
-          puzzleCorrect: false,
-          incorrectMove: "2. Nf3+",
-          correctMove: null,
+          body: JSON.stringify({
+            puzzleId: "42",
+            puzzleCorrect: false,
+            incorrectMove: "2. Nf3+",
+            correctMove: null,
+            moves: ["g1f3"],
         }),
       }),
     );
@@ -122,6 +124,7 @@ describe("fetchPuzzleProgressPage", () => {
       puzzleCorrect: true,
       incorrectMove: null,
       correctMove: "3. Qg5",
+      moves: ["d1g4"],
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -129,9 +132,10 @@ describe("fetchPuzzleProgressPage", () => {
       expect.objectContaining({
         body: JSON.stringify({
           puzzleId: "43",
-          puzzleCorrect: true,
-          incorrectMove: null,
-          correctMove: "3. Qg5",
+            puzzleCorrect: true,
+            incorrectMove: null,
+            correctMove: "3. Qg5",
+            moves: ["d1g4"],
         }),
       }),
     );

@@ -9,6 +9,7 @@ import {
   encodeCustomPuzzleSetFilters,
   type PuzzleFilterRow,
   type PuzzleProgressRow,
+  type PuzzleSolutionRow,
 } from "./model";
 
 const loadAll = async <T>(
@@ -100,6 +101,17 @@ export class CustomPuzzleSetRepository {
       puzzles.push(...((result.data ?? []) as PuzzleFilterRow[]));
     }
     return puzzles;
+  }
+
+  async loadPuzzleSolution(puzzleId: string): Promise<PuzzleSolutionRow> {
+    const result = await this.supabase
+      .from("puzzles")
+      .select("fen,solution")
+      .eq("id", Number(puzzleId))
+      .maybeSingle();
+    if (result.error) throw new Error(result.error.message);
+    if (!result.data?.fen || !result.data?.solution) throw new HttpError(404, "Puzzle not found.");
+    return { fen: String(result.data.fen), solution: String(result.data.solution) };
   }
 
   async createSet(name: string, filters: CustomPuzzleSetFilters): Promise<CustomPuzzleSetRow> {

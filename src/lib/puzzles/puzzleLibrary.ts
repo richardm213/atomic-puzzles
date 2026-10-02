@@ -1,12 +1,12 @@
 import type { PuzzleSolutionField } from "../../types/puzzles";
 import {
   fetchPuzzleCatalogFromSupabase,
-  fetchPuzzleRowsByIdFromSupabase,
   fetchPuzzleSolverIndexFromSupabase,
   type PuzzleRow,
 } from "../supabase/puzzles";
 import { normalizePuzzleMotifTags } from "./puzzleMotifs";
-import { normalizeSolutionPgn, parseSolutionUciLines } from "./solutionPgn";
+import { fetchPuzzleDetails } from "./puzzlePlay";
+import { normalizeSolutionPgn } from "./solutionPgn";
 
 export type Puzzle = PuzzleRow & {
   fen: string;
@@ -49,9 +49,6 @@ const extractSolutionFromRow = (row: PuzzleRow): string => {
   return "";
 };
 
-const hasPlayableSolution = (puzzle: Puzzle): boolean =>
-  Boolean(puzzle?.fen && parseSolutionUciLines(puzzle.fen, puzzle.solution).length > 0);
-
 const normalizePuzzleRow = (item: PuzzleRow, index: number): Puzzle => {
   const parsedId = Number.parseInt(String(item?.["id"] ?? ""), 10);
   const fen = typeof item?.["fen"] === "string" ? item["fen"].trim() : "";
@@ -88,9 +85,9 @@ export const loadPuzzleSolverIndex = async (): Promise<Puzzle[]> =>
 
 export const loadPuzzlesById = async (puzzleIds: Array<number | string>): Promise<Puzzle[]> => {
   const requestedIds = puzzleIds.map(String);
-  const puzzles = (await fetchPuzzleRowsByIdFromSupabase(puzzleIds))
+  const puzzles = (await fetchPuzzleDetails(puzzleIds))
     .map(normalizePuzzleRow)
-    .filter((item) => item.fen.length > 0 && hasPlayableSolution(item));
+    .filter((item) => item.fen.length > 0);
 
   const puzzlesById = new Map(puzzles.map((puzzle) => [String(puzzle.puzzleId), puzzle]));
   return requestedIds.flatMap((puzzleId) => {
