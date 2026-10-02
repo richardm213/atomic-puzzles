@@ -42,6 +42,36 @@ describe("coins function", () => {
     vi.unstubAllEnvs();
   });
 
+  it("returns public coin rankings ordered by balance and username", async () => {
+    const orderByUsername = vi.fn(async () => ({
+      data: [
+        { username: "leader", balance: 1200 },
+        { username: "runner_up", balance: 850 },
+      ],
+      error: null,
+    }));
+    const orderByBalance = vi.fn(() => ({ order: orderByUsername }));
+    const select = vi.fn(() => ({ order: orderByBalance }));
+    const from = vi.fn(() => ({ select }));
+    mocks.createClient.mockReturnValue({ from });
+
+    const response = await handler({
+      httpMethod: "POST",
+      headers: {},
+      body: JSON.stringify({ action: "leaderboard" }),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(from).toHaveBeenCalledWith("coin_accounts");
+    expect(select).toHaveBeenCalledWith("username,balance");
+    expect(orderByBalance).toHaveBeenCalledWith("balance", { ascending: false });
+    expect(orderByUsername).toHaveBeenCalledWith("username", { ascending: true });
+    expect(JSON.parse(response.body).result).toEqual([
+      { username: "leader", balance: 1200 },
+      { username: "runner_up", balance: 850 },
+    ]);
+  });
+
   it("takes the gift sender from the signed session", async () => {
     const rpc = vi.fn(async () => ({
       data: { balance: 90, dailyClaimAvailable: true, transferId: 7 },

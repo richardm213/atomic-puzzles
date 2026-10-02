@@ -64,6 +64,10 @@ const PuzzleLeaderboardPage = lazyRouteComponent(
   () => import("./pages/PuzzleLeaderboard/PuzzleLeaderboard"),
   "PuzzleLeaderboardPage",
 );
+const CoinRankingsPage = lazyRouteComponent(
+  () => import("./pages/CoinRankings/CoinRankings"),
+  "CoinRankingsPage",
+);
 const PuzzleMotifsPage = lazyRouteComponent(
   () => import("./pages/PuzzleMotifs/PuzzleMotifs"),
   "PuzzleMotifsPage",
@@ -311,6 +315,12 @@ const puzzleLeaderboardRoute = createRoute({
   component: PuzzleLeaderboardPage,
 });
 
+const coinRankingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/rankings/coins",
+  component: CoinRankingsPage,
+});
+
 const legacyPuzzleLeaderboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/solve/leaderboard",
@@ -499,6 +509,7 @@ const routeTree = rootRoute.addChildren([
   customPuzzleSetsRoute,
   customPuzzleSetEditRoute,
   puzzleLeaderboardRoute,
+  coinRankingsRoute,
   legacyPuzzleLeaderboardRoute,
   puzzleMotifsRoute,
   puzzleSubmissionRoute,

@@ -22,6 +22,11 @@ export type CoinSummary = {
   dailyClaimAvailable: boolean;
 };
 
+export type CoinRanking = {
+  username: string;
+  balance: number;
+};
+
 export type RedemptionHistoryItem = {
   id: number;
   itemKey: Exclude<ShopItemKey, "atomicdb_analysis_12h">;
@@ -73,6 +78,20 @@ const redemptionHistorySchema = z.object({
   ),
 });
 
+const coinRankingsSchema = z.object({
+  result: z.array(
+    z
+      .object({
+        username: z.string(),
+        balance: z.number(),
+      })
+      .transform((entry) => ({
+        username: entry.username,
+        balance: entry.balance,
+      })),
+  ),
+});
+
 const request = async (body: Record<string, unknown>) => {
   const response = await postApi("/api/coins", body, {
     schema: summarySchema,
@@ -83,6 +102,18 @@ const request = async (body: Record<string, unknown>) => {
 };
 
 export const fetchCoinSummary = (): Promise<CoinSummary> => request({ action: "summary" });
+export const fetchCoinRankings = async (): Promise<CoinRanking[]> => {
+  const response = await postApi(
+    "/api/coins",
+    { action: "leaderboard" },
+    {
+      schema: coinRankingsSchema,
+      errorMessage: "Unable to load coin rankings.",
+      invalidMessage: "The coin service returned invalid rankings.",
+    },
+  );
+  return response.result;
+};
 export const fetchRedemptionHistory = async (): Promise<RedemptionHistoryItem[]> => {
   const response = await postApi(
     "/api/coins",
