@@ -50,6 +50,10 @@ import {
   recordCustomPuzzleSetProgress,
   refreshCustomPuzzleSet,
 } from "../../lib/puzzles/customPuzzleSets";
+import {
+  getOrderedPuzzleIndexesForDashboardSet,
+  readDashboardPuzzleSet,
+} from "../../lib/puzzles/dashboardPuzzleSets";
 import { updatePuzzleExplanation } from "../../lib/puzzles/puzzleExplanation";
 import { type PuzzleIssueCategory, reportPuzzleIssue } from "../../lib/puzzles/puzzleIssues";
 import { loadPuzzlesById } from "../../lib/puzzles/puzzleLibrary";
@@ -267,6 +271,7 @@ export const PuzzleSolverPage = () => {
     puzzleId: routePuzzleId = "",
     setKey: routeSetKey = "",
     setId: routeCustomSetId = "",
+    dashboardSetId: routeDashboardSetId = "",
   } = useParams({ strict: false });
   const { isLoading: isAuthLoading, login, user } = useAuth();
   const normalizedUsername = normalizeUsername(user?.username);
@@ -276,7 +281,7 @@ export const PuzzleSolverPage = () => {
   });
   const { pieceSet, showPuzzleTimer } = useAppSettings();
   const { puzzles, setPuzzles, loadingError, setLoadingError, mergeLoadedPuzzles } =
-    usePuzzleCatalog(routePuzzleId, routeSetKey);
+    usePuzzleCatalog(routePuzzleId, routeSetKey || routeDashboardSetId);
   const [attemptedPuzzleIds, setAttemptedPuzzleIds] = useState<Set<string>>(() => new Set());
   const [attemptedPuzzleIdsOwner, setAttemptedPuzzleIdsOwner] = useState<string | null>(null);
   const [resolvedAttemptedPuzzleIds, setResolvedAttemptedPuzzleIds] = useState<Set<string>>(
@@ -382,20 +387,28 @@ export const PuzzleSolverPage = () => {
   const playerNicknamesQuery = useQuery(puzzlePlayerNicknamesQueryOptions());
   const customPuzzleSet = customPuzzleSetQuery.data;
   const isCustomSetRoute = Boolean(routeCustomSetId);
+  const dashboardPuzzleSet = useMemo(
+    () => readDashboardPuzzleSet(routeDashboardSetId),
+    [routeDashboardSetId],
+  );
   const attemptedPuzzleIdsUsername = normalizeUsername(user?.username);
   const attemptedPuzzleIdsReady =
     !isAuthLoading &&
     (!attemptedPuzzleIdsUsername || attemptedPuzzleIdsOwner === attemptedPuzzleIdsUsername);
   const orderedSetPuzzleIndexes = useMemo(
     () =>
-      customPuzzleSet
-        ? getOrderedPuzzleIndexesForCustomSet(puzzles, customPuzzleSet)
-        : getOrderedPuzzleIndexesForEvent(puzzles, routeSetKey),
-    [customPuzzleSet, puzzles, routeSetKey],
+      dashboardPuzzleSet
+        ? getOrderedPuzzleIndexesForDashboardSet(puzzles, dashboardPuzzleSet)
+        : customPuzzleSet
+          ? getOrderedPuzzleIndexesForCustomSet(puzzles, customPuzzleSet)
+          : getOrderedPuzzleIndexesForEvent(puzzles, routeSetKey),
+    [customPuzzleSet, dashboardPuzzleSet, puzzles, routeSetKey],
   );
   const isCustomSetSolveMode = Boolean(routeCustomSetId && customPuzzleSet);
+  const isDashboardSetSolveMode = Boolean(routeDashboardSetId && dashboardPuzzleSet);
   const isSetSolveMode = Boolean(
-    orderedSetPuzzleIndexes.length > 0 && (routeSetKey || isCustomSetSolveMode),
+    orderedSetPuzzleIndexes.length > 0 &&
+    (routeSetKey || isCustomSetSolveMode || isDashboardSetSolveMode),
   );
 
   useEffect(() => {
@@ -436,7 +449,13 @@ export const PuzzleSolverPage = () => {
 
   const replaceUrlWithPuzzle = useCallback(
     (puzzleId: string | number): void => {
-      if (isCustomSetSolveMode) {
+      if (isDashboardSetSolveMode) {
+        void navigate({
+          to: "/solve/dashboard/$dashboardSetId/$puzzleId",
+          params: { dashboardSetId: routeDashboardSetId, puzzleId: String(puzzleId) },
+          replace: true,
+        });
+      } else if (isCustomSetSolveMode) {
         void navigate({
           to: "/solve/custom/$setId/$puzzleId",
           params: { setId: routeCustomSetId, puzzleId: String(puzzleId) },
@@ -456,7 +475,15 @@ export const PuzzleSolverPage = () => {
         });
       }
     },
-    [isCustomSetSolveMode, isSetSolveMode, navigate, routeCustomSetId, routeSetKey],
+    [
+      isCustomSetSolveMode,
+      isDashboardSetSolveMode,
+      isSetSolveMode,
+      navigate,
+      routeCustomSetId,
+      routeDashboardSetId,
+      routeSetKey,
+    ],
   );
 
   useEffect(() => {
@@ -635,7 +662,7 @@ export const PuzzleSolverPage = () => {
     : puzzles.length > 0;
   const hasCompletedPuzzleSet = isSetSolveMode && !canGoToNextPuzzle && boardState.solved;
   const showPuzzleSetMetadata = Boolean(
-    !isCustomSetSolveMode && activePuzzleSetMetadata?.eventName,
+    !isCustomSetSolveMode && !isDashboardSetSolveMode && activePuzzleSetMetadata?.eventName,
   );
   const puzzleSetDate =
     activePuzzleSetMetadata && !isAwcPuzzleEvent(activePuzzleSetMetadata.eventName)
@@ -670,19 +697,21 @@ export const PuzzleSolverPage = () => {
   const hasResolvedAttempt = activePuzzleKey
     ? resolvedAttemptedPuzzleIds.has(activePuzzleKey)
     : false;
-  // A custom set is a fresh solving pass. A historical attempt may still be
+  // A custom or dashboard set is a fresh solving pass. A historical attempt may still be
   // acknowledged by the badge, but it must not reveal post-attempt UI before
   // the solver finishes this pass through the puzzle.
-  const hasAttemptedActivePuzzle = hasResolvedAttempt || (!isCustomSetRoute && hasPersistedAttempt);
+  const hasAttemptedActivePuzzle =
+    hasResolvedAttempt || (!isCustomSetRoute && !isDashboardSetSolveMode && hasPersistedAttempt);
   const sourceMatchId = activePuzzle
     ? getPuzzleSetSourceId(activePuzzle, Number.parseInt(routeSetKey, 10))
     : "";
   const canLinkSourceMatch = Boolean(
     hasAttemptedActivePuzzle && !routeSetKey && !routeCustomSetId && sourceMatchId,
   );
-  const attemptedPuzzleBadgeLabel = isCustomSetRoute
-    ? SOLVED_BEFORE_BADGE_LABEL
-    : ATTEMPTED_PUZZLE_BADGE_LABEL;
+  const attemptedPuzzleBadgeLabel =
+    isCustomSetRoute || isDashboardSetSolveMode
+      ? SOLVED_BEFORE_BADGE_LABEL
+      : ATTEMPTED_PUZZLE_BADGE_LABEL;
   const canViewExplanation =
     (hasExplanation || canManagePuzzleExplanation) &&
     (hasAttemptedActivePuzzle || explanationUnlockedByWrongMove);
@@ -2321,11 +2350,13 @@ export const PuzzleSolverPage = () => {
         }
         path={
           activePuzzleId
-            ? isCustomSetSolveMode
-              ? `/solve/custom/${encodeURIComponent(routeCustomSetId)}/${activePuzzleId}`
-              : isSetSolveMode
-                ? `/solve/set/${encodeURIComponent(routeSetKey)}/${activePuzzleId}`
-                : `/solve/${activePuzzleId}`
+            ? isDashboardSetSolveMode
+              ? `/solve/dashboard/${encodeURIComponent(routeDashboardSetId)}/${activePuzzleId}`
+              : isCustomSetSolveMode
+                ? `/solve/custom/${encodeURIComponent(routeCustomSetId)}/${activePuzzleId}`
+                : isSetSolveMode
+                  ? `/solve/set/${encodeURIComponent(routeSetKey)}/${activePuzzleId}`
+                  : `/solve/${activePuzzleId}`
             : "/solve"
         }
       />
@@ -2482,11 +2513,13 @@ export const PuzzleSolverPage = () => {
               <h2>Puzzle set complete</h2>
               <p>
                 You finished all {puzzleCount} puzzles
-                {isCustomSetSolveMode
-                  ? ` in ${customPuzzleSet?.label ?? "this dashboard set"}`
-                  : event
-                    ? ` in ${event}`
-                    : ""}
+                {isDashboardSetSolveMode
+                  ? ` in ${dashboardPuzzleSet?.label ?? "this dashboard set"}`
+                  : isCustomSetSolveMode
+                    ? ` in ${customPuzzleSet?.label ?? "this dashboard set"}`
+                    : event
+                      ? ` in ${event}`
+                      : ""}
                 .
               </p>
             </div>
@@ -2513,9 +2546,26 @@ export const PuzzleSolverPage = () => {
               </Link>
               <Link
                 className="puzzleSetCompleteLink"
-                to={isCustomSetSolveMode ? "/solve/custom-sets" : "/solve/sets"}
+                to={
+                  isDashboardSetSolveMode
+                    ? dashboardPuzzleSet?.sourceUsername
+                      ? "/@/$username/puzzles"
+                      : "/dashboard"
+                    : isCustomSetSolveMode
+                      ? "/solve/custom-sets"
+                      : "/solve/sets"
+                }
+                params={
+                  isDashboardSetSolveMode && dashboardPuzzleSet?.sourceUsername
+                    ? { username: dashboardPuzzleSet.sourceUsername }
+                    : undefined
+                }
               >
-                {isCustomSetSolveMode ? "Back to custom sets" : "Back to puzzle sets"}
+                {isDashboardSetSolveMode
+                  ? "Back to puzzle dashboard"
+                  : isCustomSetSolveMode
+                    ? "Back to custom sets"
+                    : "Back to puzzle sets"}
               </Link>
               {customSetRefreshState.status === "empty" ||
               customSetRefreshState.status === "error" ? (

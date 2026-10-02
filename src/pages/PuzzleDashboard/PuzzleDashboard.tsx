@@ -7,7 +7,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 
@@ -21,6 +21,7 @@ import {
   fetchCustomPuzzleSetAttempts,
   listCustomPuzzleSets,
 } from "../../lib/puzzles/customPuzzleSets";
+import { createDashboardPuzzleSet } from "../../lib/puzzles/dashboardPuzzleSets";
 import {
   puzzleCatalogQueryOptions,
   puzzleProgressForUserQueryOptions,
@@ -143,6 +144,7 @@ const formatSignedRating = (value: number): string => `${value > 0 ? "+" : ""}${
 const isKnownEvent = (event: string): boolean => event.trim() !== UNKNOWN_EVENT_LABEL;
 
 export const PuzzleDashboardPage = ({ username = "" }: { username?: string | undefined }) => {
+  const navigate = useNavigate();
   const { isAuthenticated, isLoading, user } = useAuth();
   const queryClient = useQueryClient();
   const routeUsername = useMemo(() => normalizeUsername(username), [username]);
@@ -454,6 +456,19 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
       ...DEFAULT_DASHBOARD_FILTERS,
       filtersOpen: current.filtersOpen,
     }));
+  };
+  const handleSolveAsSet = (): void => {
+    const set = createDashboardPuzzleSet(
+      filteredDashboardEntries.map((entry) => entry.linkedPuzzleId),
+      targetUsername,
+    );
+    const firstPuzzleId = set?.puzzleIds[0];
+    if (!set || firstPuzzleId === undefined) return;
+
+    void navigate({
+      to: "/solve/dashboard/$dashboardSetId/$puzzleId",
+      params: { dashboardSetId: set.id, puzzleId: String(firstPuzzleId) },
+    });
   };
   if (isCheckingAccess || (isRegisteredViewer && isPageLoading && dashboardEntries.length === 0)) {
     return <RouteLoadingFallback />;
@@ -793,6 +808,15 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
                       ))}
                     </select>
                   </label>
+                  <button
+                    type="button"
+                    className="puzzleDashboardActionLink primary dashboardStartSetButton"
+                    onClick={handleSolveAsSet}
+                    disabled={isPageLoading || filteredDashboardEntries.length === 0}
+                  >
+                    <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
+                    Solve as set
+                  </button>
                   <PaginationRow
                     currentPage={currentPage}
                     totalPages={attemptTotalPages}
