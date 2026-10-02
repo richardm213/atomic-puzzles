@@ -9,8 +9,10 @@ import {
   RouterProvider,
   useParams,
 } from "@tanstack/react-router";
+import type { ComponentType } from "react";
 
 import { App } from "./App/App";
+import { RequireAuthentication } from "./components/RequireAuthentication/RequireAuthentication";
 import { RouteLoadingFallback } from "./components/RouteLoadingFallback/RouteLoadingFallback";
 import { queryClient } from "./lib/query/queryClient";
 import { AuthCallbackPage } from "./pages/AuthCallback/AuthCallback";
@@ -130,6 +132,26 @@ const BannedUsersPage = lazyRouteComponent(
   "BannedUsersPage",
 );
 const UsersPage = lazyRouteComponent(() => import("./pages/Users/Users"), "UsersPage");
+
+const requirePuzzleLogin = (Page: ComponentType) => {
+  const AuthenticatedPuzzlePage = () => (
+    <RequireAuthentication>
+      <Page />
+    </RequireAuthentication>
+  );
+  AuthenticatedPuzzlePage.displayName = `AuthenticatedPuzzlePage(${Page.displayName || Page.name || "Page"})`;
+  return AuthenticatedPuzzlePage;
+};
+
+const AuthenticatedPuzzleDashboardPage = requirePuzzleLogin(PuzzleDashboardPage);
+const AuthenticatedCustomPuzzleSetsPage = requirePuzzleLogin(CustomPuzzleSetsPage);
+const AuthenticatedCustomPuzzleSetEditPage = requirePuzzleLogin(CustomPuzzleSetEditPage);
+const AuthenticatedPuzzleMotifsPage = requirePuzzleLogin(PuzzleMotifsPage);
+const AuthenticatedPuzzleSetsPage = requirePuzzleLogin(PuzzleSetsPage);
+const AuthenticatedPuzzleSolverPage = requirePuzzleLogin(PuzzleSolverPage);
+const AuthenticatedPuzzleSubmissionPage = requirePuzzleLogin(PuzzleSubmissionPage);
+const AuthenticatedPuzzleReviewPage = requirePuzzleLogin(PuzzleReviewPage);
+const AuthenticatedPuzzleIssuesPage = requirePuzzleLogin(PuzzleIssuesPage);
 
 const appBasePath = (() => {
   const baseUrl = import.meta.env.BASE_URL || "/";
@@ -275,13 +297,13 @@ const legacyMatchRoute = createRoute({
 const solveRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/solve",
-  component: PuzzleSolverPage,
+  component: AuthenticatedPuzzleSolverPage,
 });
 
 const dashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/dashboard",
-  component: PuzzleDashboardPage,
+  component: AuthenticatedPuzzleDashboardPage,
 });
 
 const legacyPuzzleHistoryRoute = createRoute({
@@ -298,19 +320,19 @@ const solveSetsRoute = createRoute({
   validateSearch: (search: Record<string, unknown>) => ({
     filter: typeof search.filter === "string" ? search.filter : undefined,
   }),
-  component: PuzzleSetsPage,
+  component: AuthenticatedPuzzleSetsPage,
 });
 
 const customPuzzleSetsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/solve/custom-sets",
-  component: CustomPuzzleSetsPage,
+  component: AuthenticatedCustomPuzzleSetsPage,
 });
 
 const customPuzzleSetEditRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/solve/custom-sets/$setId/edit",
-  component: CustomPuzzleSetEditPage,
+  component: AuthenticatedCustomPuzzleSetEditPage,
 });
 
 const puzzleLeaderboardRoute = createRoute({
@@ -342,25 +364,25 @@ const legacyPuzzleLeaderboardRoute = createRoute({
 const puzzleMotifsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/puzzles/motifs",
-  component: PuzzleMotifsPage,
+  component: AuthenticatedPuzzleMotifsPage,
 });
 
 const puzzleSubmissionRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/puzzles/submit",
-  component: PuzzleSubmissionPage,
+  component: AuthenticatedPuzzleSubmissionPage,
 });
 
 const puzzleReviewRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/puzzles/review",
-  component: PuzzleReviewPage,
+  component: AuthenticatedPuzzleReviewPage,
 });
 
 const puzzleIssuesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/puzzles/issues",
-  component: PuzzleIssuesPage,
+  component: AuthenticatedPuzzleIssuesPage,
 });
 
 const notificationsRoute = createRoute({
@@ -418,7 +440,11 @@ const profilePuzzleDashboardRoute = createRoute({
   path: "/@/$username/puzzles",
   component: function ProfilePuzzleDashboardRoute() {
     const { username } = useParams({ strict: false });
-    return <PuzzleDashboardPage username={username} />;
+    return (
+      <RequireAuthentication>
+        <PuzzleDashboardPage username={username} />
+      </RequireAuthentication>
+    );
   },
 });
 
@@ -434,25 +460,25 @@ const profilePuzzleContributionsRoute = createRoute({
 const solveWithIdRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/solve/$puzzleId",
-  component: PuzzleSolverPage,
+  component: AuthenticatedPuzzleSolverPage,
 });
 
 const solveSetWithIdRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/solve/set/$setKey/$puzzleId",
-  component: PuzzleSolverPage,
+  component: AuthenticatedPuzzleSolverPage,
 });
 
 const solveCustomSetWithIdRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/solve/custom/$setId/$puzzleId",
-  component: PuzzleSolverPage,
+  component: AuthenticatedPuzzleSolverPage,
 });
 
 const solveDashboardSetWithIdRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/solve/dashboard/$dashboardSetId/$puzzleId",
-  component: PuzzleSolverPage,
+  component: AuthenticatedPuzzleSolverPage,
 });
 
 const profileRoute = createRoute({
