@@ -31,6 +31,26 @@ export type CoinRanking = {
   balance: number;
 };
 
+export const coinTransactionReasons = [
+  "coin_transfer",
+  "puzzle_correct",
+  "puzzle_attempted",
+  "puzzle_created",
+  "shop_redemption",
+  "daily_bonus",
+] as const;
+
+export type CoinTransactionReason = (typeof coinTransactionReasons)[number];
+
+export type CoinTransaction = {
+  id: number;
+  username: string;
+  amount: number;
+  reason: CoinTransactionReason;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+};
+
 export type RedemptionHistoryItem = {
   id: number;
   itemKey: Exclude<ShopItemKey, "atomicdb_analysis_12h">;
@@ -104,6 +124,28 @@ const coinRankingsSchema = z.object({
   ),
 });
 
+const coinTransactionsSchema = z.object({
+  result: z.array(
+    z
+      .object({
+        id: z.number(),
+        username: z.string(),
+        amount: z.number(),
+        reason: z.enum(coinTransactionReasons),
+        metadata: z.record(z.string(), z.unknown()).optional().default({}),
+        created_at: z.string(),
+      })
+      .transform((transaction) => ({
+        id: transaction.id,
+        username: transaction.username,
+        amount: transaction.amount,
+        reason: transaction.reason,
+        metadata: transaction.metadata,
+        createdAt: transaction.created_at,
+      })),
+  ),
+});
+
 const request = async (body: Record<string, unknown>) => {
   const response = await postApi("/api/coins", body, {
     schema: summarySchema,
@@ -122,6 +164,18 @@ export const fetchCoinRankings = async (): Promise<CoinRanking[]> => {
       schema: coinRankingsSchema,
       errorMessage: "Unable to load coin rankings.",
       invalidMessage: "The coin service returned invalid rankings.",
+    },
+  );
+  return response.result;
+};
+export const fetchCoinTransactions = async (): Promise<CoinTransaction[]> => {
+  const response = await postApi(
+    "/api/coins",
+    { action: "transactions" },
+    {
+      schema: coinTransactionsSchema,
+      errorMessage: "Unable to load coin transactions.",
+      invalidMessage: "The coin service returned invalid transactions.",
     },
   );
   return response.result;

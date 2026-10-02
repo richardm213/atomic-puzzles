@@ -1,10 +1,67 @@
 @import "../Rankings/Rankings.css";
 
 .coinRankingsPanel {
-  width: min(620px, 100%);
+  width: min(780px, 100%);
+}
+
+.coinRankingsTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.coinRankingsTitle img {
+  width: 31px;
+  height: 31px;
+  object-fit: contain;
+}
+
+.coinRankingsViewTabs {
+  width: fit-content;
+  display: flex;
+  gap: var(--space-1);
+  margin-bottom: var(--space-5);
+  padding: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-surface-inset);
+}
+
+.coinRankingsViewTabs button {
+  min-height: 40px;
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-muted);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.coinRankingsViewTabs button:hover {
+  color: var(--color-heading);
+}
+
+.coinRankingsViewTabs button:active {
+  transform: translateY(1px);
+}
+
+.coinRankingsViewTabs button[aria-selected="true"] {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.coinRankingsViewTabs button[aria-selected="true"]:hover {
+  background: var(--color-primary-hover);
 }
 
 .coinRankingsMeta {
+  justify-content: flex-end;
   margin-top: 0;
   margin-bottom: var(--space-4);
   padding-top: 0;
@@ -54,17 +111,194 @@
   font-weight: 800;
 }
 
+.coinBalanceValue {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.coinBalanceValue img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
 .coinRankingsTable .rankingLink {
   font-weight: 700;
   text-underline-offset: 3px;
 }
 
+.coinTransactionFilters {
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  border: 0;
+}
+
+.coinTransactionFilters legend {
+  margin-bottom: var(--space-2);
+  color: var(--color-subtle);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.coinTransactionFilters > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+}
+
+.coinTransactionFilters label {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-muted);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.coinTransactionFilters input {
+  width: 18px;
+  height: 18px;
+}
+
+.coinTransactionsTable {
+  min-width: 680px;
+}
+
+.coinTransactionsTable :is(th, td):nth-child(1) {
+  width: auto;
+  text-align: left;
+}
+
+.coinTransactionsTable :is(th, td):nth-child(3),
+.coinTransactionsTable :is(th, td):nth-child(4) {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.coinTransactionsTable :is(th, td):nth-child(4) {
+  text-align: right;
+}
+
+.coinTransactionsTable time {
+  color: var(--color-subtle);
+  font-size: 13px;
+}
+
+.coinTransactionAmount {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.coinTransactionAmount.isPositive {
+  color: var(--color-success);
+}
+
+.coinTransactionAmount.isNegative {
+  color: var(--color-muted);
+}
+
 @media (max-width: 640px) {
+  .coinRankingsViewTabs {
+    width: 100%;
+  }
+
+  .coinRankingsViewTabs button {
+    min-height: 44px;
+    flex: 1;
+  }
+
   .coinRankingsMeta {
     align-items: center;
   }
 
   .coinRankingsTable {
     min-width: 320px;
+  }
+
+  .coinTransactionFilters > div {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 var(--space-3);
+  }
+
+  .coinTransactionFilters label {
+    min-height: 44px;
+  }
+
+  .coinRankingsTableWrap:has(.coinTransactionsTable) {
+    overflow: visible;
+  }
+
+  .coinTransactionsTable,
+  .coinTransactionsTable tbody,
+  .coinTransactionsTable tr,
+  .coinTransactionsTable td {
+    width: 100%;
+    min-width: 0;
+    display: block;
+  }
+
+  .coinTransactionsTable {
+    border: 0;
+    background: transparent;
+  }
+
+  .coinTransactionsTable thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .coinTransactionsTable tbody {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .coinTransactionsTable tr {
+    position: relative;
+    padding: var(--space-3) 92px var(--space-3) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-ui);
+    background: var(--color-panel-strong);
+  }
+
+  .rankingsTable.coinTransactionsTable td {
+    padding: 0;
+    border-bottom: 0;
+  }
+
+  .coinTransactionsTable td:nth-child(1) {
+    margin-bottom: var(--space-1);
+  }
+
+  .coinTransactionsTable td:nth-child(2) {
+    color: var(--color-text);
+    line-height: 1.4;
+  }
+
+  .coinTransactionsTable td:nth-child(3) {
+    margin-top: var(--space-1);
+  }
+
+  .coinTransactionsTable td:nth-child(4) {
+    position: absolute;
+    top: var(--space-3);
+    right: var(--space-3);
+    width: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coinRankingsViewTabs button {
+    transition-duration: 0.01ms;
   }
 }

@@ -72,6 +72,41 @@ describe("coins function", () => {
     ]);
   });
 
+  it("returns a bounded public transaction feed without source keys", async () => {
+    const limit = vi.fn(async () => ({
+      data: [
+        {
+          id: 19,
+          username: "solver",
+          amount: 5,
+          reason: "puzzle_correct",
+          metadata: { puzzleId: 42 },
+          created_at: "2026-10-01T12:00:00.000Z",
+        },
+      ],
+      error: null,
+    }));
+    const orderById = vi.fn(() => ({ limit }));
+    const orderByCreatedAt = vi.fn(() => ({ order: orderById }));
+    const select = vi.fn(() => ({ order: orderByCreatedAt }));
+    const from = vi.fn(() => ({ select }));
+    mocks.createClient.mockReturnValue({ from });
+
+    const response = await handler({
+      httpMethod: "POST",
+      headers: {},
+      body: JSON.stringify({ action: "transactions" }),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(from).toHaveBeenCalledWith("coin_transactions");
+    expect(select).toHaveBeenCalledWith("id,username,amount,reason,metadata,created_at");
+    expect(orderByCreatedAt).toHaveBeenCalledWith("created_at", { ascending: false });
+    expect(orderById).toHaveBeenCalledWith("id", { ascending: false });
+    expect(limit).toHaveBeenCalledWith(100);
+    expect(JSON.parse(response.body).result[0]).not.toHaveProperty("source_key");
+  });
+
   it("takes the gift sender from the signed session", async () => {
     const rpc = vi.fn(async () => ({
       data: { balance: 90, dailyClaimAvailable: true, transferId: 7 },

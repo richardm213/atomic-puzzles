@@ -31,6 +31,7 @@ const bodySchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("summary") }),
   z.object({ action: z.literal("history") }),
   z.object({ action: z.literal("leaderboard") }),
+  z.object({ action: z.literal("transactions") }),
   z.object({ action: z.literal("claimDaily") }),
   z.object({ action: z.literal("listBans") }),
   z.object({
@@ -87,11 +88,15 @@ export const coinsRoute = async (event: FunctionEvent) => {
   if (
     input.action !== "summary" &&
     input.action !== "history" &&
-    input.action !== "leaderboard"
+    input.action !== "leaderboard" &&
+    input.action !== "transactions"
   ) {
     requireSameOrigin(event.headers, "Cross-site coin requests are not allowed.");
   }
-  const identity = await authenticateRequest(event.headers, input.action === "leaderboard");
+  const identity = await authenticateRequest(
+    event.headers,
+    input.action === "leaderboard" || input.action === "transactions",
+  );
   if (input.action === "leaderboard") {
     const supabase = createServerSupabase("Atomic Coins service");
     const { data, error } = await supabase
@@ -100,6 +105,17 @@ export const coinsRoute = async (event: FunctionEvent) => {
       .order("balance", { ascending: false })
       .order("username", { ascending: true });
     if (error) throw new Error(`Unable to load coin rankings: ${error.message}`);
+    return identityResponse(identity, 200, { result: data });
+  }
+  if (input.action === "transactions") {
+    const supabase = createServerSupabase("Atomic Coins service");
+    const { data, error } = await supabase
+      .from("coin_transactions")
+      .select("id,username,amount,reason,metadata,created_at")
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(100);
+    if (error) throw new Error(`Unable to load coin transactions: ${error.message}`);
     return identityResponse(identity, 200, { result: data });
   }
   const username = requireUsername(identity, "Log in with Lichess to use Atomic Coins.");
