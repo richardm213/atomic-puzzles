@@ -31,7 +31,7 @@ const STORAGE_KEYS = {
   hiddenRatingGraphModes: "profile.ratingGraph.hiddenModes",
 };
 
-const THEMES = ["dark", "light"] as const;
+const THEMES = ["dark", "light", "amethyst"] as const;
 export type Theme = (typeof THEMES)[number];
 
 export type LabeledOption = { value: string; label: string };

@@ -199,3 +199,58 @@
   --analysis-workspace-cyan: #0d7478;
   --analysis-workspace-cyan-bright: #076d80;
 }
+
+:root[data-theme="amethyst"] {
+  --color-page-top: #281631;
+  --color-page-bottom: #100a18;
+  --color-panel: rgba(36, 20, 47, 0.9);
+  --color-panel-strong: #281832;
+  --color-panel-deep: #110a18;
+  --color-nav: rgba(18, 10, 25, 0.9);
+  --color-border: rgba(224, 174, 235, 0.2);
+  --color-border-strong: rgba(246, 202, 244, 0.24);
+  --color-input-border: rgba(231, 190, 239, 0.28);
+  --color-text: #f1e8f4;
+  --color-heading: #fff7fd;
+  --color-muted: #d5bedc;
+  --color-subtle: #b597bd;
+  --color-primary: #bd45c7;
+  --color-primary-hover: #a437af;
+  --color-primary-soft: #e58ce5;
+  --color-primary-pale: #f5c8ef;
+  --color-cyan: #a74db4;
+  --color-cyan-bright: #ea8dd9;
+  --color-accent-soft-bg: rgba(189, 69, 199, 0.17);
+  --color-accent-soft-bg-strong: rgba(189, 69, 199, 0.24);
+  --color-accent-soft-border: rgba(231, 168, 232, 0.3);
+  --color-accent-soft-text: #fff1fc;
+  --color-surface-soft: rgba(22, 8, 29, 0.22);
+  --color-surface-soft-strong: rgba(22, 8, 29, 0.34);
+  --color-surface-elevated: rgba(46, 24, 57, 0.76);
+  --color-surface-elevated-strong: rgba(46, 24, 57, 0.94);
+  --color-surface-inset: rgba(221, 156, 226, 0.09);
+  --color-surface-inset-strong: rgba(221, 156, 226, 0.13);
+  --color-table-head: rgba(221, 156, 226, 0.09);
+  --color-table-hover: rgba(232, 128, 218, 0.1);
+  --color-overlay: rgba(31, 13, 39, 0.58);
+  --color-overlay-strong: rgba(24, 10, 31, 0.96);
+  --color-modal-bg: rgba(31, 13, 39, 0.62);
+  --color-glass-border: rgba(224, 174, 235, 0.2);
+  --color-primary-ring: rgba(229, 140, 229, 0.72);
+  --shadow-panel: 0 22px 54px rgba(12, 3, 18, 0.38);
+  --shadow-soft: 0 12px 30px rgba(12, 3, 18, 0.3);
+  --shadow-strong: 0 28px 74px rgba(8, 2, 13, 0.48);
+  --page-background:
+    radial-gradient(ellipse 70% 44% at 12% 6%, rgba(189, 69, 199, 0.24), transparent 100%),
+    radial-gradient(ellipse 58% 38% at 88% 0%, rgba(235, 93, 185, 0.16), transparent 100%),
+    linear-gradient(180deg, var(--color-page-top) 0%, var(--color-page-bottom) 100%);
+  --site-background: var(--page-background);
+  --brand-wordmark-gradient: linear-gradient(180deg, #fff7fd 0%, #f0bfe9 100%);
+  --brand-wordmark-shadow: 0 0 18px rgba(232, 128, 218, 0.22);
+  --brand-mark-bg: linear-gradient(145deg, #4b2057, var(--color-panel-deep));
+  --brand-mark-border: rgba(232, 128, 218, 0.58);
+  --brand-mark-color: #f0a5e5;
+  --brand-mark-shadow:
+    0 0 0 1px color-mix(in srgb, white 8%, transparent) inset, 0 8px 18px rgba(189, 69, 199, 0.28);
+  --dropdown-panel-bg: var(--color-panel-strong);
+}

@@ -5,14 +5,11 @@ import {
   faBars,
   faBell,
   faChartLine,
-  faCheck,
   faChevronDown,
   faGear,
   faMagnifyingGlass,
-  faMoon,
   faRightFromBracket,
   faRightToBracket,
-  faSun,
   faTriangleExclamation,
   faUser,
   faXmark,
@@ -31,7 +28,7 @@ import {
 } from "react";
 
 import { modeLabels } from "../../constants/matches";
-import { getBoardThemeColors, useAppSettings } from "../../context/AppSettings";
+import { getBoardThemeColors, type Theme, useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
 import { coinSummaryQueryOptions } from "../../lib/coins/coinQueries";
 import {
@@ -176,6 +173,8 @@ export const TopNav = () => {
   } = useAppSettings();
   const trimmedSearchQuery = searchQuery.trim();
   const normalizedAuthUsername = normalizeUsername(user?.username);
+  const canUseAmethystTheme =
+    normalizedAuthUsername === "admin" || normalizedAuthUsername === "seaside_tiramisu";
   const [profileUsername, setProfileUsername] = useState(() =>
     getStoredProfileUsername(user?.username),
   );
@@ -234,6 +233,12 @@ export const TopNav = () => {
       cancelled = true;
     };
   }, [normalizedAuthUsername, profileMenuOpen]);
+
+  useEffect(() => {
+    if (!isLoading && theme === "amethyst" && !canUseAmethystTheme) {
+      setTheme("dark");
+    }
+  }, [canUseAmethystTheme, isLoading, setTheme, theme]);
 
   const resolvedProfileUsername = profileUsername || normalizedAuthUsername;
   const searchExpanded = searchOpen;
@@ -588,6 +593,14 @@ export const TopNav = () => {
       >
         <img
           className="brandMarkDark"
+          src={appAssetPath("/favicon.ico")}
+          alt=""
+          width="30"
+          height="30"
+          aria-hidden="true"
+        />
+        <img
+          className="brandMarkAmethyst"
           src={appAssetPath("/favicon.ico")}
           alt=""
           width="30"
@@ -964,33 +977,28 @@ export const TopNav = () => {
           {settingsOpen ? (
             <div className="navSettingsMenu" role="menu" aria-label="Site settings">
               <div className="navSettingsSection">
-                <span className="navSettingsLabel">Appearance</span>
-                <div className="navThemeToggle" role="group" aria-label="Color theme">
-                  <button
-                    type="button"
-                    className={theme === "dark" ? "active" : ""}
-                    aria-pressed={theme === "dark"}
-                    onClick={() => setTheme("dark")}
-                  >
-                    <span className="navThemeIcon navThemeIconDark" aria-hidden="true">
-                      <FontAwesomeIcon icon={faMoon} />
-                    </span>
-                    <span>Dark</span>
-                    <FontAwesomeIcon className="navThemeCheck" icon={faCheck} aria-hidden="true" />
-                  </button>
-                  <button
-                    type="button"
-                    className={theme === "light" ? "active" : ""}
-                    aria-pressed={theme === "light"}
-                    onClick={() => setTheme("light")}
-                  >
-                    <span className="navThemeIcon navThemeIconLight" aria-hidden="true">
-                      <FontAwesomeIcon icon={faSun} />
-                    </span>
-                    <span>Light</span>
-                    <FontAwesomeIcon className="navThemeCheck" icon={faCheck} aria-hidden="true" />
-                  </button>
-                </div>
+                <label className="navSettingsLabel" htmlFor="site-theme-select">
+                  Theme
+                </label>
+                <select
+                  id="site-theme-select"
+                  value={theme}
+                  onChange={(event) => {
+                    const nextTheme = event.target.value as Theme;
+                    if (nextTheme === "amethyst" && !canUseAmethystTheme) return;
+                    if (nextTheme === "amethyst" && boardTheme === "blue") {
+                      setBoardTheme("purple");
+                      setBoardColorOverrideTheme("");
+                    }
+                    setTheme(nextTheme);
+                  }}
+                >
+                  <option value="dark">Dark</option>
+                  <option value="light">Light</option>
+                  <option value="amethyst" disabled={!canUseAmethystTheme}>
+                    {canUseAmethystTheme ? "Amethyst" : "Amethyst — Locked"}
+                  </option>
+                </select>
               </div>
               {pathname === "/rankings" || pathname === "/rankings/yearly" ? (
                 <div className="navSettingsSection">
