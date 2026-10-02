@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   compactPuzzleSolution,
+  countExplanationWords,
+  getPuzzleSubmissionReward,
   parsePuzzlePgnInput,
   splitPuzzlePgnBatch,
   validatePuzzleSubmission,
@@ -12,6 +14,18 @@ import { parseSolutionUciLines } from "./solutionPgn";
 describe("compactPuzzleSolution", () => {
   it("replaces real and escaped line breaks with readable spaces", () => {
     expect(compactPuzzleSolution("1. e4\n  e5\\n2. Nf3\r\nNc6")).toBe("1. e4 e5 2. Nf3 Nc6");
+  });
+});
+
+describe("puzzle submission rewards", () => {
+  it("awards 10 coins at the 20-word explanation threshold", () => {
+    const nineteenWords = Array.from({ length: 19 }, (_, index) => `word${index + 1}`).join(" ");
+    const twentyWords = `${nineteenWords} word20`;
+
+    expect(countExplanationWords(`  ${twentyWords}\n`)).toBe(20);
+    expect(getPuzzleSubmissionReward("")).toBe(5);
+    expect(getPuzzleSubmissionReward(nineteenWords)).toBe(5);
+    expect(getPuzzleSubmissionReward(twentyWords)).toBe(10);
   });
 });
 

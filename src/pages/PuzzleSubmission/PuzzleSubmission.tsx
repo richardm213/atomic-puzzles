@@ -11,6 +11,7 @@ import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
 import { announceCoinsEarned } from "../../lib/coins/coinEvents";
 import {
+  getPuzzleSubmissionReward,
   type PuzzleSubmissionValue,
   validatePuzzleSubmission,
 } from "../../lib/puzzles/puzzleSubmission";
@@ -112,7 +113,14 @@ export const PuzzleSubmissionPage = () => {
       setEditorVersion((version) => version + 1);
       setConfirmDifferentStartMove(false);
       if (publishesDirectly && !allowDifferentStartMove) {
-        announceCoinsEarned(createdPuzzleIds.length * 10, "Puzzle created");
+        const coinReward = normalizedSubmissions.reduce(
+          (total, submission) => total + getPuzzleSubmissionReward(submission.explanation),
+          0,
+        );
+        announceCoinsEarned(
+          coinReward,
+          createdPuzzleIds.length === 1 ? "Puzzle created" : "Puzzles created",
+        );
         setMessage(formatCreatedPuzzleIds(createdPuzzleIds));
       } else {
         setMessage(

@@ -18,6 +18,20 @@ export type ParsedPuzzlePgn = {
   headerText: string;
 };
 
+export const PUZZLE_SUBMISSION_REWARD = 5;
+export const EXPLAINED_PUZZLE_SUBMISSION_REWARD = 10;
+export const EXPLANATION_REWARD_WORD_COUNT = 20;
+
+export const countExplanationWords = (explanation: string): number => {
+  const normalized = explanation.trim();
+  return normalized ? normalized.split(/\s+/).length : 0;
+};
+
+export const getPuzzleSubmissionReward = (explanation: string): number =>
+  countExplanationWords(explanation) >= EXPLANATION_REWARD_WORD_COUNT
+    ? EXPLAINED_PUZZLE_SUBMISSION_REWARD
+    : PUZZLE_SUBMISSION_REWARD;
+
 const PGN_TAG_PATTERN = /^\s*\[([A-Za-z0-9_]+)\s+"((?:\\.|[^"\\])*)"\]\s*$/;
 const PGN_MOVETEXT_PATTERN = /^\d+\.(?:\.\.)?\s*\S/;
 

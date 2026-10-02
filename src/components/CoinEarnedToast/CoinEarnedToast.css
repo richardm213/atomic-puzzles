@@ -25,6 +25,14 @@
     coinToastOut 280ms ease 2.3s forwards;
 }
 
+.coinEarnedToast.isPenalty {
+  border-color: color-mix(in srgb, var(--color-danger) 48%, var(--color-border));
+}
+
+.coinEarnedToast.isPenalty .coinEarnedCopy strong {
+  color: var(--color-danger);
+}
+
 .coinEarnedBurst {
   position: relative;
   display: grid;

@@ -7,7 +7,8 @@ import { DAILY_COIN_BONUS } from "../../lib/coins/coins";
 import { appAssetPath } from "../../utils/appAssetPath";
 
 const earningRules = [
-  ["Create a published puzzle", 10],
+  ["Create a published puzzle", 5],
+  ["Publish a puzzle with a good explanation", 10],
   ["Solve a V1 or V2 puzzle on the first attempt", 2],
   ["Solve a V3 puzzle on the first attempt", 3],
   ["Solve a V4 puzzle on the first attempt", 5],
@@ -50,8 +51,10 @@ export const HowCoinsWorkPage = () => (
       <section className="coinGuideSection">
         <h2>What counts</h2>
         <ul>
-          <li>Only a correct first attempt earns coins. Incorrect attempts earn none.</li>
-          <li>Creator coins are awarded when a puzzle is published.</li>
+          <li>Only the first attempt changes your coin balance.</li>
+          <li>An incorrect V1, V2, or V3 attempt deducts 5, 3, or 1 coin respectively.</li>
+          <li>Incorrect V4 and harder attempts have no coin penalty.</li>
+          <li>Creator coins are awarded when a puzzle is published, based on its explanation.</li>
           <li>The daily bonus can be claimed once per UTC day.</li>
         </ul>
       </section>

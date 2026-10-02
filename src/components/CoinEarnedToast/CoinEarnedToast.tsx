@@ -16,7 +16,7 @@ export const CoinEarnedToast = () => {
   useEffect(() => {
     const onCoinsEarned = (event: Event) => {
       const detail = (event as CustomEvent<CoinEarnedDetail>).detail;
-      if (!detail || detail.amount <= 0) return;
+      if (!detail || detail.amount === 0) return;
       const id = ++nextId.current;
       setRewards((current) => [...current.slice(-2), { ...detail, id }]);
       void queryClient.invalidateQueries({ queryKey: ["coins"] });
@@ -31,12 +31,15 @@ export const CoinEarnedToast = () => {
   return (
     <div className="coinEarnedRegion" aria-live="polite" aria-atomic="false">
       {rewards.map((reward) => (
-        <div className="coinEarnedToast" key={reward.id}>
+        <div className={`coinEarnedToast${reward.amount < 0 ? " isPenalty" : ""}`} key={reward.id}>
           <span className="coinEarnedBurst" aria-hidden="true">
             <img src={appAssetPath("/images/coins/gold-coin-stack-v2.png")} alt="" />
           </span>
           <span className="coinEarnedCopy">
-            <strong>+{reward.amount} coins</strong>
+            <strong>
+              {reward.amount > 0 ? "+" : ""}
+              {reward.amount} coins
+            </strong>
             <span>{reward.label}</span>
           </span>
         </div>
