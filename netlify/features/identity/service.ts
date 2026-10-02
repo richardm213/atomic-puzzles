@@ -1,4 +1,5 @@
 import { LichessVerificationError, verifyLichessAccount } from "../../lib/lichessAccount";
+import { resolveCanonicalArchiveUsername } from "../../archive/aliases";
 import { createSiteSessionCookie } from "../../lib/siteSession";
 import type { FunctionEvent } from "../../platform/defineFunction";
 import { createServerSupabase } from "../../platform/environment";
@@ -76,9 +77,15 @@ export class IdentityService {
       : legacyAccessToken;
     try {
       const account = await verifyLichessAccount(accessToken);
-      const username = account?.username?.trim().toLowerCase() ?? "";
-      if (!username || username.length > 100) {
+      const lichessUsername = account?.username?.trim().toLowerCase() ?? "";
+      if (!lichessUsername || lichessUsername.length > 100) {
         throw new HttpError(401, "Your Lichess login is no longer valid.");
+      }
+      let username: string;
+      try {
+        username = await resolveCanonicalArchiveUsername(lichessUsername);
+      } catch {
+        throw new HttpError(503, "Unable to resolve your linked Atomic Puzzles account.");
       }
 
       try {

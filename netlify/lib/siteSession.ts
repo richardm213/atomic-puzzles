@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
+import { resolveCanonicalArchiveUsername } from "../archive/aliases";
 import {
   getRequestHeader,
   parseBearerToken,
@@ -17,10 +18,11 @@ export type SiteSession = {
   username: string;
   issuedAt: number;
   expiresAt: number;
+  version: 1 | 2;
 };
 
 type SiteSessionPayload = {
-  v: 1;
+  v: 1 | 2;
   sub: string;
   iat: number;
   exp: number;
@@ -69,12 +71,16 @@ const parseCookies = (headers: RequestHeaders | undefined): Map<string, string> 
   return cookies;
 };
 
-export const createSiteSessionToken = (username: string, now = Date.now()): string => {
+export const createSiteSessionToken = (
+  username: string,
+  now = Date.now(),
+  version: 1 | 2 = 2,
+): string => {
   const normalizedUsername = username.trim().toLowerCase();
   if (!USERNAME_PATTERN.test(normalizedUsername)) throw new Error("Invalid site-session username.");
   const issuedAt = Math.floor(now / 1000);
   const payload: SiteSessionPayload = {
-    v: 1,
+    v: version,
     sub: normalizedUsername,
     iat: issuedAt,
     exp: issuedAt + SITE_SESSION_MAX_AGE_SECONDS,
@@ -103,7 +109,7 @@ export const verifySiteSessionToken = (token: string, now = Date.now()): SiteSes
     ) as Partial<SiteSessionPayload>;
     const nowSeconds = Math.floor(now / 1000);
     if (
-      payload.v !== 1 ||
+      (payload.v !== 1 && payload.v !== 2) ||
       typeof payload.sub !== "string" ||
       !USERNAME_PATTERN.test(payload.sub) ||
       !Number.isSafeInteger(payload.iat) ||
@@ -118,6 +124,7 @@ export const verifySiteSessionToken = (token: string, now = Date.now()): SiteSes
       username: payload.sub.toLowerCase(),
       issuedAt: payload.iat!,
       expiresAt: payload.exp!,
+      version: payload.v,
     };
   } catch {
     return null;
@@ -135,14 +142,23 @@ export const resolveSiteIdentity = async (
 ): Promise<{ username: string | null; setCookie: string; hadBearerToken: boolean }> => {
   const siteSession = readSiteSession(headers);
   if (siteSession) {
-    return { username: siteSession.username, setCookie: "", hadBearerToken: false };
+    if (siteSession.version === 2) {
+      return { username: siteSession.username, setCookie: "", hadBearerToken: false };
+    }
+    const username = await resolveCanonicalArchiveUsername(siteSession.username);
+    return {
+      username,
+      setCookie: createSiteSessionCookie(username, headers),
+      hadBearerToken: false,
+    };
   }
 
   const accessToken = parseBearerToken(headers);
   if (!accessToken) return { username: null, setCookie: "", hadBearerToken: false };
 
   const account = await verifyCachedLichessAccount(accessToken);
-  const username = account?.username?.trim().toLowerCase() ?? "";
+  const lichessUsername = account?.username?.trim().toLowerCase() ?? "";
+  const username = lichessUsername ? await resolveCanonicalArchiveUsername(lichessUsername) : "";
   return {
     username: username || null,
     setCookie: username ? createSiteSessionCookie(username, headers) : "",

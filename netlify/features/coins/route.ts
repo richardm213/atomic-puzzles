@@ -169,6 +169,7 @@ export const coinsRoute = async (event: FunctionEvent) => {
     if (error) throw new Error(`Unable to load purchase history: ${error.message}`);
     return identityResponse(identity, 200, { result: data });
   }
+  let canonicalRecipientUsername = input.action === "give" ? input.recipientUsername : "";
   if (input.action === "give") {
     let senderIdentity: string;
     let recipientIdentity: string;
@@ -183,6 +184,7 @@ export const coinsRoute = async (event: FunctionEvent) => {
     if (senderIdentity && senderIdentity === recipientIdentity) {
       throw new HttpError(409, "You can’t gift coins between aliases of the same player.");
     }
+    canonicalRecipientUsername = recipientIdentity;
   }
   const supabase = createServerSupabase("Atomic Coins service");
   const rpc = (() => {
@@ -195,7 +197,7 @@ export const coinsRoute = async (event: FunctionEvent) => {
     if (input.action === "give") {
       return supabase.rpc("give_coins", {
         p_sender_username: username,
-        p_recipient_username: input.recipientUsername,
+        p_recipient_username: canonicalRecipientUsername,
         p_amount: input.amount,
         p_message: input.message,
       });

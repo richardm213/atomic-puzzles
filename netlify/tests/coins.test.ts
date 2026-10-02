@@ -160,6 +160,26 @@ describe("coins function", () => {
     expect(mocks.createClient).not.toHaveBeenCalled();
   });
 
+  it("credits a gift sent to an alias to the canonical recipient", async () => {
+    mocks.resolveCanonicalArchiveUsername.mockImplementation(async (username: string) =>
+      username === "xeransis" ? "gannet" : username,
+    );
+    const rpc = vi.fn(async () => ({ data: { balance: 90 }, error: null }));
+    mocks.createClient.mockReturnValue({ rpc });
+
+    const response = await handler({
+      httpMethod: "POST",
+      headers: requestHeaders("sender"),
+      body: JSON.stringify({ action: "give", recipientUsername: "xeransis", amount: 10 }),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(rpc).toHaveBeenCalledWith(
+      "give_coins",
+      expect.objectContaining({ p_recipient_username: "gannet" }),
+    );
+  });
+
   it("returns only the signed-in player’s redemption history", async () => {
     const limit = vi.fn(async () => ({
       data: [

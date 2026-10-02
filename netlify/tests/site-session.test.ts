@@ -1,5 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const mocks = vi.hoisted(() => ({
+  resolveCanonicalArchiveUsername: vi.fn(async (username: string) => username.toLowerCase()),
+}));
+
+vi.mock("../archive/aliases", () => ({
+  resolveCanonicalArchiveUsername: mocks.resolveCanonicalArchiveUsername,
+}));
+
 import { clearLichessAccountVerificationCache } from "../lib/lichessAccount";
 import {
   clearSiteSessionCookie,
@@ -17,6 +25,10 @@ const previousSecret = "previous-session-secret-that-is-at-least-32-characters";
 
 describe("signed site sessions", () => {
   beforeEach(() => {
+    mocks.resolveCanonicalArchiveUsername.mockReset();
+    mocks.resolveCanonicalArchiveUsername.mockImplementation(async (username: string) =>
+      username.toLowerCase(),
+    );
     vi.stubEnv("SITE_SESSION_SECRET", currentSecret);
     vi.stubEnv("NODE_ENV", "test");
   });
@@ -35,6 +47,21 @@ describe("signed site sessions", () => {
       username: "savedviewer",
       issuedAt: Math.floor(now / 1000),
       expiresAt: Math.floor(now / 1000) + SITE_SESSION_MAX_AGE_SECONDS,
+      version: 2,
+    });
+  });
+
+  it("upgrades a legacy alias session to its canonical account", async () => {
+    const legacyCookie = createSiteSessionToken("Xeransis", Date.now(), 1);
+    mocks.resolveCanonicalArchiveUsername.mockResolvedValue("gannet");
+
+    const identity = await resolveSiteIdentity({ cookie: `atomic_session=${legacyCookie}` });
+
+    expect(identity).toMatchObject({ username: "gannet", hadBearerToken: false });
+    expect(identity.setCookie).toContain("atomic_session=");
+    expect(readSiteSession({ cookie: identity.setCookie.split(";")[0] })).toMatchObject({
+      username: "gannet",
+      version: 2,
     });
   });
 

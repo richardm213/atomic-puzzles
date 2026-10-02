@@ -1,8 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ createClient: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  createClient: vi.fn(),
+  resolveCanonicalArchiveUsername: vi.fn(async (username: string) => username.toLowerCase()),
+}));
 
 vi.mock("@supabase/supabase-js", () => ({ createClient: mocks.createClient }));
+vi.mock("../archive/aliases", () => ({
+  resolveCanonicalArchiveUsername: mocks.resolveCanonicalArchiveUsername,
+}));
 
 import { handler } from "../functions/auth-session";
 import { createSiteSessionCookie, readSiteSession } from "../lib/siteSession";
@@ -22,6 +28,10 @@ const loginEvent = {
 describe("auth-session function", () => {
   beforeEach(() => {
     mocks.createClient.mockReset();
+    mocks.resolveCanonicalArchiveUsername.mockReset();
+    mocks.resolveCanonicalArchiveUsername.mockImplementation(async (username: string) =>
+      username.toLowerCase(),
+    );
     vi.stubEnv("SUPABASE_URL", "https://example.supabase.co");
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "service-role-key");
     vi.stubEnv(
@@ -127,6 +137,37 @@ describe("auth-session function", () => {
     ]);
     expect(upsert).toHaveBeenCalledWith(
       { username: "actual_owner" },
+      { onConflict: "username", ignoreDuplicates: true },
+    );
+  });
+
+  it("logs a linked Lichess alias in as the canonical Atomic Puzzles user", async () => {
+    mocks.resolveCanonicalArchiveUsername.mockResolvedValue("gannet");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.endsWith("/api/token") && init?.method === "POST") {
+          return new Response(JSON.stringify({ access_token: "secret_token" }), { status: 200 });
+        }
+        if (url.endsWith("/api/account")) {
+          return new Response(JSON.stringify({ username: "Xeransis" }), { status: 200 });
+        }
+        return new Response(null, { status: 204 });
+      }),
+    );
+    const upsert = vi.fn(async () => ({ error: null }));
+    mocks.createClient.mockReturnValue({ from: () => ({ upsert }) });
+
+    const response = await handler(loginEvent);
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body)).toEqual({ user: { username: "gannet" } });
+    expect(readSiteSession({ cookie: response.headers["Set-Cookie"].split(";")[0] })).toMatchObject(
+      { username: "gannet", version: 2 },
+    );
+    expect(upsert).toHaveBeenCalledWith(
+      { username: "gannet" },
       { onConflict: "username", ignoreDuplicates: true },
     );
   });
