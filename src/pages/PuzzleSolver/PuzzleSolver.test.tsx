@@ -756,13 +756,13 @@ describe("PuzzleSolverPage solution options", () => {
     await waitFor(() => expect(otherAttemptsTab).toBeDisabled());
   });
 
-  it("shows an attempt time when one was recorded", async () => {
+  it("does not display another user's puzzle solve time", async () => {
     const user = userEvent.setup();
     render(<PuzzleSolverPage />);
 
     await user.click(await screen.findByRole("tab", { name: "Other attempts" }));
 
-    expect(await screen.findByLabelText("Attempt time 1:05")).toHaveTextContent("1:05");
+    expect(screen.queryByLabelText("Attempt time 1:05")).not.toBeInTheDocument();
   });
 
   it("treats a custom-set puzzle as fresh while preserving the solved-before badge", async () => {
