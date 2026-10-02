@@ -20,6 +20,10 @@ export type AtomicDbAnalysisRequest =
 export type CoinSummary = {
   balance: number;
   dailyClaimAvailable: boolean;
+  economyBan?: {
+    endsAt: string;
+    reason: string;
+  } | null;
 };
 
 export type CoinRanking = {
@@ -40,6 +44,14 @@ const summarySchema = z.object({
   result: z.object({
     balance: z.number(),
     dailyClaimAvailable: z.boolean().optional().default(false),
+    economyBan: z
+      .object({
+        endsAt: z.string(),
+        reason: z.string(),
+      })
+      .nullable()
+      .optional()
+      .default(null),
     awarded: z.number().optional(),
     redemptionId: z.number().optional(),
     transferId: z.number().optional(),

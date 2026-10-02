@@ -18,6 +18,7 @@ import {
 } from "../../lib/coins/coinQueries";
 import {
   claimDailyCoins,
+  type CoinSummary,
   DAILY_COIN_BONUS,
   redeemShopItem,
   requestAtomicDbAnalysis,
@@ -129,7 +130,7 @@ export const ShopPage = () => {
     ...redemptionHistoryQueryOptions(username),
     enabled: isAuthenticated,
   });
-  const updateSummary = (data: { balance: number; dailyClaimAvailable: boolean }) => {
+  const updateSummary = (data: CoinSummary) => {
     queryClient.setQueryData(coinQueryKeys.summary(username), data);
   };
   const daily = useMutation({ mutationFn: claimDailyCoins, onSuccess: updateSummary });
@@ -150,12 +151,13 @@ export const ShopPage = () => {
     },
   });
   const balance = summary.data?.balance ?? 0;
+  const economyBan = summary.data?.economyBan ?? null;
   const busy = daily.isPending || redeem.isPending || analysis.isPending;
   const errorValue = summary.error ?? daily.error ?? redeem.error ?? analysis.error;
   const error = errorValue instanceof Error ? errorValue.message : "";
 
   const redeemItem = (item: (typeof shopItems)[number]) => {
-    if (balance < item.cost || busy) return;
+    if (balance < item.cost || busy || economyBan) return;
     if (item.key === "atomicdb_analysis_12h") {
       analysis.reset();
       setAnalysisFocus("higher_eval");
@@ -170,7 +172,7 @@ export const ShopPage = () => {
   const closeRedeemDialog = () => setSelectedReward(null);
 
   const confirmRedemption = () => {
-    if (!selectedReward || balance < selectedReward.cost || busy) return;
+    if (!selectedReward || balance < selectedReward.cost || busy || economyBan) return;
     redeem.mutate(selectedReward.key);
     closeRedeemDialog();
   };
@@ -214,7 +216,7 @@ export const ShopPage = () => {
   }, [analysisOpen]);
 
   useEffect(() => {
-    if (summary.data?.dailyClaimAvailable !== false) return undefined;
+    if (summary.data?.dailyClaimAvailable !== false || economyBan) return undefined;
 
     const resetAt = getNextDailyReset();
     let resetReached = false;
@@ -229,7 +231,7 @@ export const ShopPage = () => {
     updateCountdown();
     const intervalId = window.setInterval(updateCountdown, 1000);
     return () => window.clearInterval(intervalId);
-  }, [queryClient, summary.data?.dailyClaimAvailable, username]);
+  }, [economyBan, queryClient, summary.data?.dailyClaimAvailable, username]);
 
   if (isLoading) return <RouteLoadingFallback />;
 
@@ -481,19 +483,23 @@ export const ShopPage = () => {
               </div>
             </div>
             <div className="dailyCoinPanel">
-              {summary.data?.dailyClaimAvailable === false ? <p>Next in {dailyCountdown}</p> : null}
+              {summary.data?.dailyClaimAvailable === false && !economyBan ? (
+                <p>Next in {dailyCountdown}</p>
+              ) : null}
               <button
                 className={`dailyClaimButton ${
                   summary.data?.dailyClaimAvailable === false ? "claimed" : ""
                 } ${daily.isPending ? "claiming" : ""}`}
                 type="button"
-                disabled={!summary.data?.dailyClaimAvailable || busy}
+                disabled={!summary.data?.dailyClaimAvailable || busy || Boolean(economyBan)}
                 onClick={() => daily.mutate()}
               >
                 {daily.isPending ? (
                   "Claiming…"
                 ) : summary.isLoading ? (
                   "Loading…"
+                ) : economyBan ? (
+                  "Suspended"
                 ) : summary.data?.dailyClaimAvailable ? (
                   `Claim +${DAILY_COIN_BONUS}`
                 ) : (
@@ -505,6 +511,20 @@ export const ShopPage = () => {
               </button>
             </div>
           </section>
+
+          {economyBan ? (
+            <section className="coinEconomyBanNotice" aria-labelledby="coin-ban-title">
+              <h2 id="coin-ban-title">Coin access suspended</h2>
+              <p>{economyBan.reason}</p>
+              <p>
+                {"Access returns "}
+                <time dateTime={economyBan.endsAt}>
+                  {redemptionDateFormatter.format(new Date(economyBan.endsAt))}
+                </time>
+                .
+              </p>
+            </section>
+          ) : null}
 
           {error ? (
             <p className="coinShopError" role="alert">
@@ -546,7 +566,7 @@ export const ShopPage = () => {
                   </div>
                   <button
                     type="button"
-                    disabled={balance < item.cost || busy}
+                    disabled={balance < item.cost || busy || Boolean(economyBan)}
                     onClick={() => redeemItem(item)}
                   >
                     {item.key === "atomicdb_analysis_12h"

@@ -255,4 +255,60 @@ describe("coins function", () => {
     expect(response.statusCode).toBe(400);
     expect(mocks.createClient).not.toHaveBeenCalled();
   });
+
+  it("restricts economy ban management to the coin administrator", async () => {
+    const response = await handler({
+      httpMethod: "POST",
+      headers: requestHeaders("regular_player"),
+      body: JSON.stringify({ action: "listBans" }),
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(mocks.createClient).not.toHaveBeenCalled();
+  });
+
+  it("creates a time-limited economy ban using the signed administrator identity", async () => {
+    const rpc = vi.fn(async () => ({
+      data: { id: 4, username: "flagged_player" },
+      error: null,
+    }));
+    mocks.createClient.mockReturnValue({ rpc });
+    const endsAt = "2026-10-08T12:00:00.000Z";
+
+    const response = await handler({
+      httpMethod: "POST",
+      headers: requestHeaders("seaside_tiramisu"),
+      body: JSON.stringify({
+        action: "ban",
+        username: "Flagged_Player",
+        endsAt,
+        reason: "Prize eligibility review",
+      }),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(rpc).toHaveBeenCalledWith("create_coin_economy_ban", {
+      p_username: "Flagged_Player",
+      p_ends_at: endsAt,
+      p_reason: "Prize eligibility review",
+      p_created_by: "seaside_tiramisu",
+    });
+  });
+
+  it("returns a clear forbidden response when a banned player changes coins", async () => {
+    const rpc = vi.fn(async () => ({
+      data: null,
+      error: { message: "Coin economy ban active until 2026-10-08T12:00:00.000Z" },
+    }));
+    mocks.createClient.mockReturnValue({ rpc });
+
+    const response = await handler({
+      httpMethod: "POST",
+      headers: requestHeaders("flagged_player"),
+      body: JSON.stringify({ action: "claimDaily" }),
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(JSON.parse(response.body).error).toContain("Atomic Coin access is suspended until");
+  });
 });

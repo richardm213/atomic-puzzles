@@ -1,0 +1,244 @@
+.economyBansPage {
+  grid-template-columns: minmax(0, 1fr);
+  width: min(100%, 820px);
+  align-items: start;
+}
+
+.economyBansPanel {
+  overflow: hidden;
+  padding: 0;
+}
+
+.economyBansHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.economyBansHeader h1 {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: clamp(24px, 4vw, 32px);
+}
+
+.economyBansHeader > span,
+.economyBanTopline > span {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
+.economyBanForm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.8fr);
+  gap: var(--space-4);
+  padding: var(--space-6);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-inset);
+}
+
+.economyBanForm label,
+.economyBanForm fieldset {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: var(--color-heading);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.economyBanForm legend {
+  margin-bottom: var(--space-2);
+  padding: 0;
+}
+
+.economyBanForm fieldset > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(110px, auto);
+  gap: var(--space-2);
+}
+
+.economyBanForm :is(input, select, textarea) {
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 500;
+}
+
+.economyBanForm textarea {
+  min-height: 84px;
+  resize: vertical;
+}
+
+.economyBanReason {
+  grid-column: 1 / -1;
+}
+
+.economyBanSubmit {
+  min-height: 44px;
+  grid-column: 1 / -1;
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-ui);
+  background: var(--color-danger);
+  color: var(--color-on-primary);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    filter 160ms ease,
+    transform 160ms ease;
+}
+
+.economyBanSubmit:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.economyBanSubmit:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.economyBanSubmit:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.economyBanList {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.economyBanRow {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.economyBanRow:last-child {
+  border-bottom: 0;
+}
+
+.economyBanRow:is(.revoked, .expired) {
+  background: color-mix(in srgb, var(--color-panel-strong) 54%, transparent);
+  opacity: 0.76;
+}
+
+.economyBanTopline,
+.economyBanMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.economyBanTopline {
+  justify-content: space-between;
+}
+
+.economyBanTopline a {
+  color: var(--color-primary-soft);
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.economyBanRow > p {
+  margin: 0;
+  color: var(--color-text);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.economyBanMeta {
+  color: var(--color-subtle);
+  font-size: 12px;
+}
+
+.economyBanRow > button {
+  min-height: 38px;
+  justify-self: end;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.economyBanRow > button:hover:not(:disabled) {
+  border-color: var(--color-primary);
+}
+
+.economyBanRow > button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.economyBanForm :is(input, select, textarea):focus-visible,
+.economyBanSubmit:focus-visible,
+.economyBanTopline a:focus-visible,
+.economyBanRow > button:focus-visible {
+  outline: 3px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+.economyBansError,
+.economyBansAccess,
+.economyBansEmpty {
+  margin: 0;
+  padding: var(--space-6);
+}
+
+.economyBansError {
+  color: var(--color-danger);
+}
+
+@media (max-width: 600px) {
+  .economyBansHeader,
+  .economyBanForm,
+  .economyBanRow {
+    padding-inline: var(--space-4);
+  }
+
+  .economyBanForm {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .economyBanReason,
+  .economyBanSubmit {
+    grid-column: 1;
+  }
+
+  .economyBanSubmit {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .economyBanSubmit {
+    transition-duration: 0.01ms;
+  }
+}

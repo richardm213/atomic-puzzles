@@ -429,6 +429,29 @@
   background: var(--color-panel);
 }
 
+.coinEconomyBanNotice {
+  padding: var(--space-4);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-ui);
+  background: var(--color-danger-soft-bg);
+  color: var(--color-text);
+}
+
+.coinEconomyBanNotice h2,
+.coinEconomyBanNotice p {
+  margin: 0;
+}
+
+.coinEconomyBanNotice h2 {
+  color: var(--color-danger);
+  font-size: 18px;
+}
+
+.coinEconomyBanNotice p {
+  margin-top: var(--space-2);
+  line-height: 1.5;
+}
+
 .coinBalanceCard {
   display: flex;
   align-items: center;

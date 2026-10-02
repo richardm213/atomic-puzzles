@@ -1,6 +1,7 @@
 import "./TopNav.css";
 
 import {
+  faBan,
   faBars,
   faBell,
   faChartLine,
@@ -911,6 +912,17 @@ export const TopNav = () => {
                           <FontAwesomeIcon icon={faTriangleExclamation} />
                         </span>
                         Puzzle issues
+                      </Link>
+                      <Link
+                        className="navProfileDropdownItem"
+                        to="/admin/coin-bans"
+                        role="menuitem"
+                        onClick={() => setOpenPanel(null)}
+                      >
+                        <span className="navProfileDropdownIcon" aria-hidden="true">
+                          <FontAwesomeIcon icon={faBan} />
+                        </span>
+                        Coin economy bans
                       </Link>
                     </>
                   ) : null}
