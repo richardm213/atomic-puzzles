@@ -149,6 +149,16 @@ describe("toComparableUci", () => {
 });
 
 describe("parseSolutionUciLines", () => {
+  it("normalizes puzzle 414 long castling to the king destination", () => {
+    const lines = parseSolutionUciLines(
+      "rnb1kbnr/2p1q1p1/p4p2/3pp2p/3PP3/N1P4N/PP1B1PPP/R2QK2R w KQkq - 0 10",
+      "10. Nc4 exd4 11. Qa4+ c6 12. Bf4 dxe4+ 13. Qe4 Qxe4 14. O-O-O Bd6 15. Rhe1+",
+    );
+
+    const castlingMove = lines[0]?.find((entry) => entry.key === "e1c1");
+    expect(castlingMove).toMatchObject({ key: "e1c1", retry: false });
+  });
+
   it("parses a single SAN line into UCI entries", () => {
     const lines = parseSolutionUciLines(STARTING_FEN, "1. e4 e5 2. Nf3");
     expect(lines).toHaveLength(1);

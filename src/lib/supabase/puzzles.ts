@@ -25,19 +25,10 @@ export const clearPuzzleRatingCaches = (): void => {
   puzzleDetailsCache.clear();
 };
 
-const onlyRowsWithSolutions = <
-  TQuery extends {
-    not: (column: string, operator: "is", value: null) => TQuery;
-    neq: (column: string, value: string) => TQuery;
-  },
->(
-  query: TQuery,
-): TQuery => query.not("solution", "is", null).neq("solution", "");
-
 const fetchUncachedPuzzleCatalogFromSupabase = async (): Promise<PuzzleRow[]> => {
   const supabase = getSupabaseClient();
   return fetchAllSupabaseRows<PuzzleRow>(PUZZLES_TABLE, () =>
-    onlyRowsWithSolutions(supabase.from(PUZZLES_TABLE).select(PUZZLE_CATALOG_COLUMNS)).order("id"),
+    supabase.from(PUZZLES_TABLE).select(PUZZLE_CATALOG_COLUMNS).order("id"),
   );
 };
 
@@ -58,9 +49,7 @@ export const fetchPuzzleSolverIndexFromSupabase = async (): Promise<PuzzleRow[]>
   cachedRequest(puzzleSolverIndexCache, ["puzzle-solver-index", PUZZLES_TABLE], () => {
     const supabase = getSupabaseClient();
     return fetchAllSupabaseRows<PuzzleRow>(PUZZLES_TABLE, () =>
-      onlyRowsWithSolutions(supabase.from(PUZZLES_TABLE).select(PUZZLE_SOLVER_INDEX_COLUMNS)).order(
-        "id",
-      ),
+      supabase.from(PUZZLES_TABLE).select(PUZZLE_SOLVER_INDEX_COLUMNS).order("id"),
     );
   });
 
@@ -79,10 +68,7 @@ const fetchUncachedPuzzleRowsByIdFromSupabase = async (puzzleIds: number[]) => {
   const supabase = getSupabaseClient();
   return loadSupabaseRows<PuzzleRow>(
     PUZZLES_TABLE,
-    onlyRowsWithSolutions(supabase.from(PUZZLES_TABLE).select(PUZZLE_DETAIL_COLUMNS)).in(
-      "id",
-      puzzleIds,
-    ),
+    supabase.from(PUZZLES_TABLE).select(PUZZLE_DETAIL_COLUMNS).in("id", puzzleIds),
   );
 };
 

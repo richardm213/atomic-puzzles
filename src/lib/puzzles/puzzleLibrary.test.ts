@@ -5,6 +5,7 @@ vi.mock("../supabase/puzzles", () => ({
   fetchPuzzleRowsByIdFromSupabase: vi.fn(),
   fetchPuzzleSolverIndexFromSupabase: vi.fn(),
 }));
+vi.mock("./puzzlePlay", () => ({ fetchPuzzleDetails: vi.fn() }));
 
 import {
   fetchPuzzleCatalogFromSupabase,
@@ -12,9 +13,11 @@ import {
   fetchPuzzleSolverIndexFromSupabase,
 } from "../supabase/puzzles";
 import { loadPuzzleCatalog, loadPuzzlesById, loadPuzzleSolverIndex } from "./puzzleLibrary";
+import { fetchPuzzleDetails } from "./puzzlePlay";
 
 const fetchCatalogMock = fetchPuzzleCatalogFromSupabase as unknown as ReturnType<typeof vi.fn>;
 const fetchDetailsMock = fetchPuzzleRowsByIdFromSupabase as unknown as ReturnType<typeof vi.fn>;
+const fetchPrivateDetailsMock = fetchPuzzleDetails as unknown as ReturnType<typeof vi.fn>;
 const fetchSolverIndexMock = fetchPuzzleSolverIndexFromSupabase as unknown as ReturnType<
   typeof vi.fn
 >;
@@ -23,12 +26,15 @@ describe("puzzleLibrary", () => {
   beforeEach(() => {
     fetchCatalogMock.mockReset();
     fetchDetailsMock.mockReset();
+    fetchPrivateDetailsMock.mockReset();
     fetchSolverIndexMock.mockReset();
   });
   afterEach(() => {
     fetchCatalogMock.mockReset();
     fetchDetailsMock.mockReset();
+    fetchPrivateDetailsMock.mockReset();
     fetchSolverIndexMock.mockReset();
+    vi.unstubAllEnvs();
   });
 
   it("loads the solver index from id-only rows", async () => {
@@ -62,7 +68,7 @@ describe("puzzleLibrary", () => {
     ]);
   });
 
-  it("filters requested rows without a fen and ones with no solution moves", async () => {
+  it("filters requested rows without a fen without excluding catalog entries by solution text", async () => {
     fetchDetailsMock.mockResolvedValueOnce([
       { id: 1, fen: "  ", solution: "1. e4" },
       {
@@ -79,10 +85,11 @@ describe("puzzleLibrary", () => {
     ]);
 
     const puzzles = await loadPuzzlesById([1, 2, 3]);
-    expect(puzzles).toHaveLength(1);
+    expect(puzzles).toHaveLength(2);
     expect(puzzles[0]?.puzzleId).toBe(2);
     expect(puzzles[0]?.solution).toContain("e4");
     expect(puzzles[0]?.explanation).toBe("Controls the center.");
+    expect(puzzles[1]?.puzzleId).toBe(3);
   });
 
   it("reads details from any candidate solution field and preserves requested order", async () => {
@@ -104,5 +111,22 @@ describe("puzzleLibrary", () => {
     expect(puzzles[0]?.solution).toContain("e5");
     expect(puzzles[1]?.puzzleId).toBe(1);
     expect(puzzles[1]?.solution).toContain("e4");
+  });
+
+  it("uses the private details endpoint after the privacy cutover", async () => {
+    vi.stubEnv("VITE_PUZZLE_SOLUTION_PRIVACY_ENABLED", "true");
+    fetchPrivateDetailsMock.mockResolvedValueOnce([
+      {
+        id: 414,
+        fen: "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
+        solution: "1. O-O-O",
+      },
+    ]);
+
+    const puzzles = await loadPuzzlesById([414]);
+
+    expect(fetchPrivateDetailsMock).toHaveBeenCalledWith([414]);
+    expect(fetchDetailsMock).not.toHaveBeenCalled();
+    expect(puzzles[0]?.solution).toContain("O-O-O");
   });
 });
