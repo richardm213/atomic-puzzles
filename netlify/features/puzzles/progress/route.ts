@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-import { evaluatePuzzleMoves } from "../../../../shared/domain/puzzles/serverEvaluation";
 import {
   authenticateRequest,
   identityResponse,
@@ -9,7 +8,6 @@ import {
 } from "../../../platform/authentication";
 import type { FunctionEvent } from "../../../platform/defineFunction";
 import { createServerSupabase } from "../../../platform/environment";
-import { HttpError } from "../../../platform/errors";
 import { parseJsonBody } from "../../../platform/validation";
 
 const progressBodySchema = z.object({
@@ -17,7 +15,9 @@ const progressBodySchema = z.object({
     .union([z.string(), z.number()])
     .transform(String)
     .pipe(z.string().regex(/^\d{1,20}$/)),
-  moves: z.array(z.string().regex(/^[a-h][1-8][a-h][1-8][qrbn]?$/i)).min(1).max(100),
+  puzzleCorrect: z.boolean(),
+  incorrectMove: z.string().trim().max(100).nullable().optional(),
+  correctMove: z.string().trim().max(100).nullable().optional(),
 });
 
 export const puzzleProgressRoute = async (event: FunctionEvent) => {
@@ -26,32 +26,12 @@ export const puzzleProgressRoute = async (event: FunctionEvent) => {
   const identity = await authenticateRequest(event.headers);
   const username = requireUsername(identity, "Your Lichess login is no longer valid.");
   const supabase = createServerSupabase("Puzzle progress service");
-  const { data: puzzle, error: puzzleError } = await supabase
-    .from("puzzles")
-    .select("fen,solution")
-    .eq("id", Number(input.puzzleId))
-    .maybeSingle();
-  if (puzzleError) throw new Error(`Unable to verify puzzle: ${puzzleError.message}`);
-  if (!puzzle?.fen || !puzzle?.solution) throw new Error("Unable to verify puzzle solution.");
-  let evaluation;
-  try {
-    evaluation = evaluatePuzzleMoves(String(puzzle.fen), String(puzzle.solution), input.moves);
-  } catch (evaluationError) {
-    throw new HttpError(
-      400,
-      evaluationError instanceof Error ? evaluationError.message : "Invalid puzzle move history.",
-    );
-  }
-  if (evaluation.evaluation === "retry") {
-    throw new HttpError(400, "A retry move is not a completed puzzle attempt.");
-  }
-  const puzzleCorrect = evaluation.evaluation === "accepted" && evaluation.solved;
   const { data: coinAward, error } = await supabase.rpc("record_first_puzzle_attempt_v2", {
     p_username: username,
     p_puzzle_id: input.puzzleId,
-    p_puzzle_correct: puzzleCorrect,
-    p_incorrect_move: puzzleCorrect ? null : evaluation.moveLabel,
-    p_correct_move: puzzleCorrect ? evaluation.moveLabel : null,
+    p_puzzle_correct: input.puzzleCorrect,
+    p_incorrect_move: input.puzzleCorrect ? null : input.incorrectMove || null,
+    p_correct_move: input.puzzleCorrect ? input.correctMove || null : null,
   });
   if (error) throw new Error(`Unable to record puzzle progress: ${error.message}`);
   const { data: ratingEvent } = await supabase

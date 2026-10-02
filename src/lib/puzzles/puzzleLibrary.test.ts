@@ -2,19 +2,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../supabase/puzzles", () => ({
   fetchPuzzleCatalogFromSupabase: vi.fn(),
+  fetchPuzzleRowsByIdFromSupabase: vi.fn(),
   fetchPuzzleSolverIndexFromSupabase: vi.fn(),
 }));
-vi.mock("./puzzlePlay", () => ({ fetchPuzzleDetails: vi.fn() }));
 
 import {
   fetchPuzzleCatalogFromSupabase,
+  fetchPuzzleRowsByIdFromSupabase,
   fetchPuzzleSolverIndexFromSupabase,
 } from "../supabase/puzzles";
 import { loadPuzzleCatalog, loadPuzzlesById, loadPuzzleSolverIndex } from "./puzzleLibrary";
-import { fetchPuzzleDetails } from "./puzzlePlay";
 
 const fetchCatalogMock = fetchPuzzleCatalogFromSupabase as unknown as ReturnType<typeof vi.fn>;
-const fetchDetailsMock = fetchPuzzleDetails as unknown as ReturnType<typeof vi.fn>;
+const fetchDetailsMock = fetchPuzzleRowsByIdFromSupabase as unknown as ReturnType<typeof vi.fn>;
 const fetchSolverIndexMock = fetchPuzzleSolverIndexFromSupabase as unknown as ReturnType<
   typeof vi.fn
 >;
@@ -62,43 +62,47 @@ describe("puzzleLibrary", () => {
     ]);
   });
 
-  it("filters requested rows without a fen and keeps hidden solutions empty", async () => {
+  it("filters requested rows without a fen and ones with no solution moves", async () => {
     fetchDetailsMock.mockResolvedValueOnce([
       { id: 1, fen: "  ", solution: "1. e4" },
       {
         id: 2,
         fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        solution: "1. e4 e5",
         explanation: "  Controls the center.  ",
       },
       {
         id: 3,
         fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        solution: "garbage",
       },
     ]);
 
     const puzzles = await loadPuzzlesById([1, 2, 3]);
-    expect(puzzles).toHaveLength(2);
+    expect(puzzles).toHaveLength(1);
     expect(puzzles[0]?.puzzleId).toBe(2);
-    expect(puzzles[0]?.solution).toBe("");
+    expect(puzzles[0]?.solution).toContain("e4");
     expect(puzzles[0]?.explanation).toBe("Controls the center.");
   });
 
-  it("preserves requested detail order", async () => {
+  it("reads details from any candidate solution field and preserves requested order", async () => {
     fetchDetailsMock.mockResolvedValueOnce([
       {
         id: 1,
         fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        moves: "1. e4",
       },
       {
         id: 2,
         fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        line: ["e4", "e5"],
       },
     ]);
     const puzzles = await loadPuzzlesById([2, 1]);
     expect(puzzles).toHaveLength(2);
     expect(puzzles[0]?.puzzleId).toBe(2);
-    expect(puzzles[0]?.solution).toBe("");
+    expect(puzzles[0]?.solution).toContain("e5");
     expect(puzzles[1]?.puzzleId).toBe(1);
-    expect(puzzles[1]?.solution).toBe("");
+    expect(puzzles[1]?.solution).toContain("e4");
   });
 });

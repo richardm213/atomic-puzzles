@@ -1,5 +1,4 @@
 import { isPuzzleEndgameMotifTag } from "../../../../shared/domain/puzzles/puzzleMotifs";
-import { evaluatePuzzleMoves } from "../../../../shared/domain/puzzles/serverEvaluation";
 import { HttpError } from "../../../platform/errors";
 import {
   createPendingItem,
@@ -248,7 +247,7 @@ export class CustomPuzzleSetService {
   private async record(
     id: string,
     puzzleId: string,
-    moves: string[],
+    puzzleCorrect: boolean,
   ): Promise<ServiceResult> {
     const set = await this.repository.loadOwnedSet(id);
     const currentItems = await this.repository.loadItems([set.id]);
@@ -257,22 +256,6 @@ export class CustomPuzzleSetService {
     );
     if (!item) throw new HttpError(400, "That puzzle is not part of this custom set.");
     if (!item.completed_at) {
-      const puzzle = await this.repository.loadPuzzleSolution(puzzleId);
-      let evaluation;
-      try {
-        evaluation = evaluatePuzzleMoves(puzzle.fen, puzzle.solution, moves);
-      } catch (evaluationError) {
-        throw new HttpError(
-          400,
-          evaluationError instanceof Error
-            ? evaluationError.message
-            : "Invalid puzzle move history.",
-        );
-      }
-      if (evaluation.evaluation === "retry") {
-        throw new HttpError(400, "A retry move is not a completed puzzle attempt.");
-      }
-      const puzzleCorrect = evaluation.evaluation === "accepted" && evaluation.solved;
       await this.repository.recordItem(set.id, puzzleId, puzzleCorrect);
     }
     return { statusCode: 200, body: { success: true } };
@@ -299,7 +282,7 @@ export class CustomPuzzleSetService {
       case "delete":
         return this.delete(input.id);
       case "record":
-        return this.record(input.id, input.puzzleId, input.moves);
+        return this.record(input.id, input.puzzleId, input.puzzleCorrect);
     }
   }
 }

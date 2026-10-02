@@ -44,13 +44,4 @@ export type AttemptResolved = {
   puzzleCorrect: boolean;
   incorrectMove: string | null;
   correctMove: string | null;
-  moves?: string[];
-};
-
-export type RemotePuzzleMoveEvaluation = {
-  evaluation: "accepted" | "retry" | "wrong";
-  solved: boolean;
-  opponentMove: string | null;
-  moveLabel: string | null;
-  solution: string | null;
 };

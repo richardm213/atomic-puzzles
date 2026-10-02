@@ -56,7 +56,6 @@ const localPuzzleFunctionsPlugin = ({ archiveOrigin, useLocalArchive }) => {
     ["/api/puzzles/explanation", "/netlify/functions/puzzle-explanation.ts"],
     ["/api/puzzles/community", "/netlify/functions/puzzle-community.ts"],
     ["/api/puzzles/progress", "/netlify/functions/puzzle-progress.ts"],
-    ["/api/puzzles/play", "/netlify/functions/puzzle-play.ts"],
     ["/api/puzzle-sets", "/netlify/functions/puzzle-sets.ts"],
     ["/api/notifications", "/netlify/functions/notifications.ts"],
     ["/api/coins", "/netlify/functions/coins.ts"],

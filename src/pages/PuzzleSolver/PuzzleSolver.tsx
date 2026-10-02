@@ -59,10 +59,6 @@ import {
   puzzleMotifs,
 } from "../../lib/puzzles/puzzleMotifs";
 import {
-  evaluatePuzzleMove,
-  revealPuzzleSolution,
-} from "../../lib/puzzles/puzzlePlay";
-import {
   puzzlePlayerNicknamesQueryOptions,
   puzzleQueryKeys,
   puzzleUserRatingQueryOptions,
@@ -78,7 +74,6 @@ import { updatePuzzleTags } from "../../lib/puzzles/puzzleTags";
 import {
   mergeAdditiveSolutionLine,
   movePrefix,
-  normalizeSolutionPgn,
   serializeSanLinesToPgn,
 } from "../../lib/puzzles/solutionPgn";
 import {
@@ -818,13 +813,11 @@ export const PuzzleSolverPage = () => {
       puzzleCorrect,
       incorrectMove,
       correctMove,
-      moves,
     }: {
       puzzleId: string | number | null | undefined;
       puzzleCorrect: boolean;
       incorrectMove: string | null;
       correctMove: string | null;
-      moves?: string[];
     }): void => {
       const normalizedPuzzleId = toPuzzleKey(puzzleId);
       if (!normalizedPuzzleId || !user?.username) return;
@@ -839,7 +832,6 @@ export const PuzzleSolverPage = () => {
             puzzleCorrect,
             incorrectMove,
             correctMove,
-            ...(moves ? { moves } : {}),
           }).then((ratingEvent) => {
             setAttemptedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
             void queryClient.invalidateQueries({ queryKey: puzzleQueryKeys.progress });
@@ -863,7 +855,7 @@ export const PuzzleSolverPage = () => {
   );
 
   const handleAttemptResolved = useCallback(
-    ({ puzzleId, puzzleCorrect, incorrectMove, correctMove, moves }: AttemptResolved): void => {
+    ({ puzzleId, puzzleCorrect, incorrectMove, correctMove }: AttemptResolved): void => {
       setElapsedTimerRunning(false);
       const normalizedPuzzleId = toPuzzleKey(puzzleId);
       setResolvedAttemptedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
@@ -873,10 +865,9 @@ export const PuzzleSolverPage = () => {
         puzzleCorrect,
         incorrectMove,
         correctMove,
-        ...(moves ? { moves } : {}),
       });
-      if (SERVER_CUSTOM_SET_ID_PATTERN.test(routeCustomSetId) && moves) {
-        void recordCustomPuzzleSetProgress(routeCustomSetId, normalizedPuzzleId, moves)
+      if (SERVER_CUSTOM_SET_ID_PATTERN.test(routeCustomSetId)) {
+        void recordCustomPuzzleSetProgress(routeCustomSetId, normalizedPuzzleId, puzzleCorrect)
           .then(() =>
             queryClient.invalidateQueries({
               queryKey: ["custom-puzzle-sets"],
@@ -1064,35 +1055,13 @@ export const PuzzleSolverPage = () => {
     if (previousPuzzle) replaceUrlWithPuzzle(previousPuzzle.puzzleId);
   };
 
-  const handleSolutionRevealed = useCallback(
-    (rawSolution: string): void => {
-      if (!activePuzzleId || !fen) return;
-      const solution = normalizeSolutionPgn(fen, rawSolution);
-      setPuzzles((current) =>
-        current.map((puzzle) =>
-          puzzle.puzzleId === activePuzzleId ? { ...puzzle, solution } : puzzle,
-        ),
-      );
-    },
-    [activePuzzleId, fen, setPuzzles],
-  );
-
-  const handleSelectSolutionTab = async () => {
+  const handleSelectSolutionTab = () => {
     if (!canRevealSolution) return;
 
     if (showSolution) {
       setActivePuzzleInfoTab(null);
       setSolutionNavigation(null);
       return;
-    }
-
-    if (!activePuzzle?.solution && activePuzzleId) {
-      try {
-        handleSolutionRevealed(await revealPuzzleSolution(activePuzzleId));
-      } catch (error) {
-        setLoadingError(error instanceof Error ? error.message : "Unable to reveal the solution.");
-        return;
-      }
     }
 
     setInteractionMode(ANALYSIS_MODE);
@@ -2564,8 +2533,6 @@ export const PuzzleSolverPage = () => {
                 solutionNavigation={solutionNavigation}
                 onNavigateHandled={() => setSolutionNavigation(null)}
                 onAttemptResolved={handleAttemptResolved}
-                evaluatePuzzleMove={(moves) => evaluatePuzzleMove(activePuzzleId!, moves)}
-                onSolutionRevealed={handleSolutionRevealed}
                 onStateChange={handleBoardStateChange}
               />
             ) : (

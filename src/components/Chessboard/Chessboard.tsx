@@ -28,7 +28,6 @@ import type {
   AttemptResolved,
   ChessboardState,
   PlaybackCommand,
-  RemotePuzzleMoveEvaluation,
   SolutionNavigation,
 } from "../../types/chessboard";
 import {
@@ -94,8 +93,6 @@ export type ChessboardProps = {
   restrictMovesToSolution?: boolean;
   onNavigateHandled?: () => void;
   onAttemptResolved?: (result: AttemptResolved) => void;
-  evaluatePuzzleMove?: (moves: string[]) => Promise<RemotePuzzleMoveEvaluation>;
-  onSolutionRevealed?: (solution: string) => void;
   onStateChange?: (state: ChessboardState) => void;
 };
 
@@ -161,8 +158,6 @@ export const Chessboard = ({
   restrictMovesToSolution = false,
   onNavigateHandled,
   onAttemptResolved,
-  evaluatePuzzleMove,
-  onSolutionRevealed,
   onStateChange,
 }: ChessboardProps) => {
   const {
@@ -179,7 +174,6 @@ export const Chessboard = ({
   const cgRef = useRef<Api | null>(null);
   const positionRef = useRef<Atomic | null>(null);
   const pendingPromotionRef = useRef<PendingPromotion | null>(null);
-  const previousSolutionRef = useRef(solution);
   const [pendingPromotion, setPendingPromotion] = useState<PendingPromotion | null>(null);
   const historyRef = useRef<BoardHistory>(createBoardHistory());
   const {
@@ -201,8 +195,6 @@ export const Chessboard = ({
   const solverColorRef = useLatestRef<Color>(colorFromFen(fen));
   const onStateChangeRef = useLatestRef(onStateChange);
   const onAttemptResolvedRef = useLatestRef(onAttemptResolved);
-  const evaluatePuzzleMoveRef = useLatestRef(evaluatePuzzleMove);
-  const onSolutionRevealedRef = useLatestRef(onSolutionRevealed);
   const onNavigateHandledRef = useLatestRef(onNavigateHandled);
 
   const solutionUciLines = useMemo(
@@ -775,9 +767,7 @@ export const Chessboard = ({
         return;
       }
 
-      const trainingEnabled =
-        (solutionEntriesRef.current.length > 0 || Boolean(evaluatePuzzleMoveRef.current)) &&
-        !analysisModeRef.current;
+      const trainingEnabled = solutionEntriesRef.current.length > 0 && !analysisModeRef.current;
 
       if (!trainingEnabled || boardStatusRef.current.solved) {
         position.play(move);
@@ -785,103 +775,6 @@ export const Chessboard = ({
         syncBoard(position, keyPair(orig, dest), {
           solved: boardStatusRef.current.solved,
         });
-        return;
-      }
-
-      if (evaluatePuzzleMoveRef.current) {
-        const priorMoves = historyRef.current.plies
-          .slice(1, historyRef.current.index + 1)
-          .flatMap((ply) => (ply.uci ? [ply.uci] : []));
-        const submittedMoves = [...priorMoves, userMoveText];
-        boardStatusRef.current = { ...boardStatusRef.current, mode: "evaluating", locked: true };
-        cgRef.current?.set({
-          lastMove: keyPair(orig, dest),
-          movable: { dests: new Map(), free: false },
-        });
-
-        const scheduledPuzzleId = puzzleIdRef.current;
-        const scheduledFen = fenRef.current;
-        void evaluatePuzzleMoveRef
-          .current(submittedMoves)
-          .then((result) => {
-            if (
-              puzzleIdRef.current !== scheduledPuzzleId ||
-              fenRef.current !== scheduledFen ||
-              positionRef.current !== position
-            ) {
-              return;
-            }
-            if (result.solution) onSolutionRevealedRef.current?.(result.solution);
-
-            if (result.evaluation === "retry") {
-              boardStatusRef.current = { ...boardStatusRef.current, mode: "training", locked: false };
-              syncBoard(position, undefined, {
-                showRetryMove: true,
-                solved: false,
-                status: "Try again",
-              });
-              return;
-            }
-            if (result.evaluation === "wrong") {
-              boardStatusRef.current = { ...boardStatusRef.current, mode: "training", locked: false };
-              onAttemptResolvedRef.current?.({
-                puzzleId: puzzleIdRef.current,
-                puzzleCorrect: false,
-                incorrectMove: result.moveLabel,
-                correctMove: null,
-                moves: submittedMoves,
-              });
-              syncBoard(position, undefined, {
-                showWrongMove: true,
-                solved: false,
-                status: "Incorrect",
-              });
-              return;
-            }
-
-            position.play(move);
-            saveMove(position, keyPair(orig, dest), userMoveText, userMoveKey, userMoveSan);
-            let lastMove = keyPair(orig, dest);
-            if (result.opponentMove) {
-              const opponentMove = moveFromUci(position, result.opponentMove);
-              if (!opponentMove) throw new Error("The puzzle service returned an illegal reply.");
-              const opponentSan = makeSan(position, opponentMove);
-              const opponentMoveKey = toComparableUci(position, result.opponentMove, opponentMove);
-              position.play(opponentMove);
-              saveMove(
-                position,
-                keyPair(result.opponentMove.slice(0, 2), result.opponentMove.slice(2, 4)),
-                result.opponentMove,
-                opponentMoveKey,
-                opponentSan,
-              );
-              lastMove = keyPair(result.opponentMove.slice(0, 2), result.opponentMove.slice(2, 4));
-            }
-            boardStatusRef.current = { mode: "training", locked: false, solved: result.solved };
-            if (result.solved) {
-              onAttemptResolvedRef.current?.({
-                puzzleId: puzzleIdRef.current,
-                puzzleCorrect: true,
-                incorrectMove: null,
-                correctMove: result.moveLabel,
-                moves: historyRef.current.plies
-                  .slice(1, historyRef.current.index + 1)
-                  .flatMap((ply) => (ply.uci ? [ply.uci] : [])),
-              });
-            }
-            syncBoard(position, lastMove, {
-              solved: result.solved,
-              status: result.solved ? "Correct" : getStatus(position),
-            });
-          })
-          .catch((error) => {
-            if (positionRef.current !== position) return;
-            boardStatusRef.current = { ...boardStatusRef.current, mode: "training", locked: false };
-            syncBoard(position, undefined, {
-              solved: false,
-              status: error instanceof Error ? error.message : "Unable to check move",
-            });
-          });
         return;
       }
 
@@ -1008,10 +901,8 @@ export const Chessboard = ({
       analysisModeRef,
       isSolutionPlaybackLocked,
       evaluationTimerRef,
-      evaluatePuzzleMoveRef,
       getCorrectLineMove,
       onAttemptResolvedRef,
-      onSolutionRevealedRef,
       puzzleIdRef,
       progressRef,
       restrictMovesToSolutionRef,
@@ -1300,11 +1191,6 @@ export const Chessboard = ({
   useBoardShortcuts(navigatePlayback, pendingPromotion !== null, captureNavigationShortcuts);
 
   useEffect(() => {
-    const solutionWasJustRevealed = Boolean(
-      evaluatePuzzleMoveRef.current && !previousSolutionRef.current && solution,
-    );
-    previousSolutionRef.current = solution;
-    if (solutionWasJustRevealed) return;
     if (showSolution && solutionEntriesRef.current.length > 0) return;
     if (solutionNavigationRef.current) {
       if (preserveAnalysisHistoryOnSolutionChange && analysisModeRef.current) {
@@ -1367,7 +1253,6 @@ export const Chessboard = ({
     preserveAnalysisHistoryOnSolutionChange,
     resetSession,
     showSolution,
-    solution,
     solutionNavigationRef,
     syncBoard,
   ]);

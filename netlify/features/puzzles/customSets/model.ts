@@ -29,7 +29,7 @@ export const customPuzzleSetBodySchema = z.discriminatedUnion("action", [
     action: z.literal("record"),
     id: idSchema,
     puzzleId: puzzleIdSchema,
-    moves: z.array(z.string().regex(/^[a-h][1-8][a-h][1-8][qrbn]?$/i)).min(1).max(100),
+    puzzleCorrect: z.boolean(),
   }),
 ]);
 
@@ -64,8 +64,6 @@ export type PuzzleFilterRow = {
   author: string | null;
   tags: string[] | null;
 };
-
-export type PuzzleSolutionRow = { fen: string; solution: string };
 
 export type CustomPuzzleSetFilters = {
   tags: string[];

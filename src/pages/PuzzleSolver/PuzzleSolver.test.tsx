@@ -778,7 +778,6 @@ describe("PuzzleSolverPage solution options", () => {
         puzzleCorrect: true,
         incorrectMove: null,
         correctMove: "1. O-O",
-        moves: ["e1g1"],
       });
     });
 
@@ -790,7 +789,7 @@ describe("PuzzleSolverPage solution options", () => {
       expect(mocks.recordCustomPuzzleSetProgress).toHaveBeenCalledWith(
         "4b648b2a-e2bf-49dc-aaed-235c05615d1b",
         "1369",
-        ["e1g1"],
+        true,
       ),
     );
     expect(mocks.recordPuzzleProgress).not.toHaveBeenCalled();
@@ -829,7 +828,6 @@ describe("PuzzleSolverPage solution options", () => {
         puzzleCorrect: false,
         incorrectMove: "1... Kd7",
         correctMove: null,
-        moves: ["e8d7"],
       });
       mocks.chessboardProps.at(-1)?.onStateChange?.({
         fen: "rn2k2r/pp5p/1qpp2p1/2Q5/1b2P3/2N5/PPP3PP/R3KB1R b KQkq - 1 12",
@@ -854,13 +852,12 @@ describe("PuzzleSolverPage solution options", () => {
         puzzleCorrect: false,
         incorrectMove: "1... Kd7",
         correctMove: null,
-        moves: ["e8d7"],
       }),
     );
     expect(mocks.recordCustomPuzzleSetProgress).toHaveBeenCalledWith(
       "4b648b2a-e2bf-49dc-aaed-235c05615d1b",
       "1369",
-      ["e8d7"],
+      false,
     );
     expect(await screen.findByLabelText(/V3, 2100 Elo/)).toBeInTheDocument();
     const updatedRating = await screen.findByLabelText(

@@ -210,7 +210,6 @@ export type RecordPuzzleProgressInput = {
   puzzleCorrect: boolean;
   incorrectMove: string | null;
   correctMove: string | null;
-  moves?: string[];
 };
 
 export type FetchPuzzleAttemptsForPuzzleOptions = {
@@ -224,7 +223,6 @@ export const recordPuzzleProgress = async ({
   puzzleCorrect,
   incorrectMove,
   correctMove,
-  moves,
 }: RecordPuzzleProgressInput): Promise<PuzzleRatingEvent | null> => {
   const normalizedUsername = normalizeUsername(username);
   const normalizedPuzzleId = normalizePuzzleId(puzzleId);
@@ -247,7 +245,6 @@ export const recordPuzzleProgress = async ({
         puzzleCorrect: Boolean(puzzleCorrect),
         incorrectMove: normalizedIncorrectMove,
         correctMove: normalizedCorrectMove,
-        moves: moves ?? [],
       },
       {
         schema: puzzleProgressResponseSchema,
