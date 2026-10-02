@@ -21,7 +21,7 @@ const PUZZLE_SET_MEMBERSHIP_RELATION = `puzzle_set_memberships(puzzle_set_id,puz
 const PUZZLE_RATING_RELATION =
   "rating_state:puzzle_ratings!puzzle_ratings_puzzle_id_fkey(rating,rating_deviation,attempts,successes,computed_level,human_level,human_rated_by,human_rated_at,updated_at)";
 const DETAIL_COLUMNS =
-  `id,fen,solution,author,players,puzzle_set_id,${PUZZLE_SET_RELATION},` +
+  `id,fen,solution,author,created_at,players,puzzle_set_id,${PUZZLE_SET_RELATION},` +
   `${PUZZLE_SET_MEMBERSHIP_RELATION},white_player,black_player,explanation,tags,opa_style,` +
   PUZZLE_RATING_RELATION;
 

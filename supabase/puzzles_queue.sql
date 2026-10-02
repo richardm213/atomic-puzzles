@@ -18,6 +18,7 @@ create table if not exists public.puzzles_queue (
 );
 
 alter table public.puzzles
+  add column if not exists created_at timestamptz not null default now(),
   add column if not exists event_name text not null default '',
   add column if not exists event_date text not null default '',
   add column if not exists players text[] not null default '{}'::text[],

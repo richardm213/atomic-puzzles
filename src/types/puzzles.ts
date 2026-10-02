@@ -27,6 +27,7 @@ export type RawPuzzleRatingRow = {
 
 export type RawPuzzleRow = {
   id?: string | number | null;
+  created_at?: string | null;
   fen?: string | null;
   explanation?: string | null;
   tags?: string[] | null;

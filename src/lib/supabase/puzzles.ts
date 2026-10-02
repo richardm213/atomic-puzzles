@@ -12,9 +12,9 @@ const PUZZLE_SET_MEMBERSHIP_RELATION = `puzzle_set_memberships(puzzle_set_id,puz
 const PUZZLE_SET_COLUMNS = `players,puzzle_set_id,${PUZZLE_SET_RELATION},${PUZZLE_SET_MEMBERSHIP_RELATION},white_player,black_player`;
 const PUZZLE_RATING_RELATION =
   "rating_state:puzzle_ratings!puzzle_ratings_puzzle_id_fkey(rating,rating_deviation,attempts,successes,computed_level,human_level,human_rated_by,human_rated_at,updated_at)";
-const PUZZLE_CATALOG_COLUMNS = `id,author,${PUZZLE_SET_COLUMNS},tags,opa_style,${PUZZLE_RATING_RELATION}`;
+const PUZZLE_CATALOG_COLUMNS = `id,author,created_at,${PUZZLE_SET_COLUMNS},tags,opa_style,${PUZZLE_RATING_RELATION}`;
 const PUZZLE_SOLVER_INDEX_COLUMNS = "id";
-const PUZZLE_DETAIL_COLUMNS = `id,fen,solution,author,${PUZZLE_SET_COLUMNS},explanation,tags,opa_style,${PUZZLE_RATING_RELATION}`;
+const PUZZLE_DETAIL_COLUMNS = `id,fen,solution,author,created_at,${PUZZLE_SET_COLUMNS},explanation,tags,opa_style,${PUZZLE_RATING_RELATION}`;
 const MAX_PUZZLE_BATCH_SIZE = 12;
 const puzzleCatalogCache = new Map<string, Promise<PuzzleRow[]>>();
 const puzzleSolverIndexCache = new Map<string, Promise<PuzzleRow[]>>();

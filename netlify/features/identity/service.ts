@@ -1,5 +1,5 @@
-import { LichessVerificationError, verifyLichessAccount } from "../../lib/lichessAccount";
 import { resolveCanonicalArchiveUsername } from "../../archive/aliases";
+import { LichessVerificationError, verifyLichessAccount } from "../../lib/lichessAccount";
 import { createSiteSessionCookie } from "../../lib/siteSession";
 import type { FunctionEvent } from "../../platform/defineFunction";
 import { createServerSupabase } from "../../platform/environment";

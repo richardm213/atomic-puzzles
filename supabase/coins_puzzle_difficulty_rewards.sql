@@ -9,8 +9,21 @@ set search_path = public
 as $$
 declare
   reward integer;
+  puzzle_author text;
+  puzzle_created_at timestamptz;
 begin
   if not new.puzzle_correct then
+    return new;
+  end if;
+
+  select lower(btrim(puzzle.author)), puzzle.created_at
+  into puzzle_author, puzzle_created_at
+  from public.puzzles puzzle
+  where puzzle.id::text = new.puzzle_id;
+
+  if puzzle_author = lower(btrim(new.username))
+    and new.first_attempt_at >= puzzle_created_at
+    and new.first_attempt_at < puzzle_created_at + interval '3 days' then
     return new;
   end if;
 
