@@ -81,15 +81,39 @@ export class IdentityService {
       if (!lichessUsername || lichessUsername.length > 100) {
         throw new HttpError(401, "Your Lichess login is no longer valid.");
       }
+      const supabase = createServerSupabase("Auth session service");
       let username: string;
+      let canonicalUsername: unknown;
+      let canonicalUsernameError: unknown;
       try {
-        username = await resolveCanonicalArchiveUsername(lichessUsername);
-      } catch {
-        throw new HttpError(503, "Unable to resolve your linked Atomic Puzzles account.");
+        const resolution = await supabase.rpc("canonical_user_username", {
+          p_username: lichessUsername,
+        });
+        canonicalUsername = resolution.data;
+        canonicalUsernameError = resolution.error;
+      } catch (error) {
+        canonicalUsernameError = error;
+      }
+      if (canonicalUsernameError) {
+        // Keep the archive lookup as a compatibility fallback while deployments
+        // without the user_aliases migration are still possible.
+        try {
+          username = await resolveCanonicalArchiveUsername(lichessUsername);
+        } catch (archiveError) {
+          globalThis.console?.error("Unable to resolve authenticated user identity", {
+            supabaseError: canonicalUsernameError,
+            archiveError,
+          });
+          throw new HttpError(503, "Unable to resolve your linked Atomic Puzzles account.");
+        }
+      } else {
+        username = String(canonicalUsername ?? lichessUsername)
+          .trim()
+          .toLowerCase();
       }
 
       try {
-        const { error } = await createServerSupabase("Auth session service")
+        const { error } = await supabase
           .from("users")
           .upsert({ username }, { onConflict: "username", ignoreDuplicates: true });
         if (error) throw new Error(`Unable to register authenticated user: ${error.message}`);
