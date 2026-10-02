@@ -111,18 +111,6 @@
   font-weight: 800;
 }
 
-.coinBalanceValue {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.coinBalanceValue img {
-  width: 18px;
-  height: 18px;
-  object-fit: contain;
-}
-
 .coinRankingsTable .rankingLink {
   font-weight: 700;
   text-underline-offset: 3px;

@@ -145,7 +145,7 @@ export const CoinRankingsPage = () => {
       />
       <div className="panel rankingsPanel coinRankingsPanel">
         <h1 className="coinRankingsTitle">
-          <img src={appAssetPath("/images/coins/atomic-coin.png")} alt="" />
+          <img src={appAssetPath("/images/coins/gold-coin-stack-v2.png")} alt="" />
           Coin Rankings
         </h1>
 
@@ -210,12 +210,7 @@ export const CoinRankingsPage = () => {
                             {entry.username}
                           </Link>
                         </td>
-                        <td className="coinBalance">
-                          <span className="coinBalanceValue">
-                            <img src={appAssetPath("/images/coins/atomic-coin.png")} alt="" />
-                            {entry.balance.toLocaleString()}
-                          </span>
-                        </td>
+                        <td className="coinBalance">{entry.balance.toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>
