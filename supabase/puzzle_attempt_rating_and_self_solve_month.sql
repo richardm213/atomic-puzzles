@@ -598,7 +598,7 @@ begin
     select
       estimate.*,
       case
-        when estimate.attempts < 4 then estimate.computed_level
+        when estimate.attempts < 4 then 3
         else public.puzzle_level_for_rating(
           estimate.estimated_rating,
           estimate.attempts,

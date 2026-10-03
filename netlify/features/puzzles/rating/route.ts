@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 import { rankPuzzleLeaderboardMetrics } from "../../../../shared/domain/puzzles/puzzleLeaderboard";
-
 import {
   authenticateRequest,
   requireSameOrigin,
@@ -235,9 +234,19 @@ export const puzzleRatingRoute = async (event: FunctionEvent) => {
   }
 
   if ("action" in input) {
-    const { error } = await createServerSupabase("Puzzle rating refresh service").rpc(
-      "rebuild_puzzle_ratings_from_history",
-    );
+    const supabase = createServerSupabase("Puzzle rating refresh service");
+    const { error: provisionalLevelError } = await supabase
+      .from("puzzle_ratings")
+      .update({ computed_level: 3 })
+      .lt("attempts", 4)
+      .is("human_level", null);
+    if (provisionalLevelError) {
+      throw new Error(
+        `Unable to reset provisional puzzle levels: ${provisionalLevelError.message}`,
+      );
+    }
+
+    const { error } = await supabase.rpc("rebuild_puzzle_ratings_from_history");
     if (error) throw new Error(`Unable to refresh puzzle ratings: ${error.message}`);
     return jsonResponse(200, { refreshed: true });
   }

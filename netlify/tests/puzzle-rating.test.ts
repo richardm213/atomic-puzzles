@@ -52,8 +52,18 @@ describe("puzzle-rating function", () => {
   });
 
   it("lets seaside_tiramisu explicitly refresh all rating calculations", async () => {
+    const provisionalLevelQuery = {
+      update: vi.fn(),
+      lt: vi.fn(),
+      is: vi.fn(async () => ({ data: null, error: null })),
+    };
+    provisionalLevelQuery.update.mockReturnValue(provisionalLevelQuery);
+    provisionalLevelQuery.lt.mockReturnValue(provisionalLevelQuery);
     const rpc = vi.fn(async () => ({ data: null, error: null }));
-    mocks.createClient.mockReturnValue({ rpc });
+    mocks.createClient.mockReturnValue({
+      from: vi.fn(() => provisionalLevelQuery),
+      rpc,
+    });
 
     const response = await handler({
       httpMethod: "POST",
@@ -62,6 +72,9 @@ describe("puzzle-rating function", () => {
     });
 
     expect(response.statusCode).toBe(200);
+    expect(provisionalLevelQuery.update).toHaveBeenCalledWith({ computed_level: 3 });
+    expect(provisionalLevelQuery.lt).toHaveBeenCalledWith("attempts", 4);
+    expect(provisionalLevelQuery.is).toHaveBeenCalledWith("human_level", null);
     expect(rpc).toHaveBeenCalledWith("rebuild_puzzle_ratings_from_history");
     expect(JSON.parse(response.body)).toEqual({ refreshed: true });
   });
