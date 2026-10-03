@@ -44,7 +44,6 @@ const CREATED_PAGE_SIZE_OPTIONS = [40, 100, 500] as const;
 const PAGE_SIZE_STORAGE_KEY = "atomic-puzzles.puzzle-dashboard-page-size";
 const CREATED_PAGE_SIZE_STORAGE_KEY = "atomic-puzzles.puzzle-dashboard-created-page-size";
 const FILTERS_STORAGE_KEY = "atomic-puzzles.puzzle-dashboard-filters.v1";
-const CALENDAR_OPEN_STORAGE_KEY = "atomic-puzzles.puzzle-dashboard-calendar-open";
 const UNKNOWN_EVENT_LABEL = "Unknown event";
 const emptyPuzzleProgressRows: import("../../lib/supabase/puzzleProgress").PuzzleProgressRow[] = [];
 type DashboardResultFilter = "all" | "correct" | "incorrect";
@@ -81,7 +80,6 @@ type PuzzleDashboardPageSize = (typeof PAGE_SIZE_OPTIONS)[number];
 type CreatedPuzzlePageSize = (typeof CREATED_PAGE_SIZE_OPTIONS)[number];
 const pageSizeSchema = z.union([z.literal(20), z.literal(50), z.literal(100)]);
 const createdPageSizeSchema = z.union([z.literal(40), z.literal(100), z.literal(500)]);
-const calendarOpenSchema = z.boolean();
 const isPuzzleDashboardPageSize = (value: number): value is PuzzleDashboardPageSize =>
   PAGE_SIZE_OPTIONS.includes(value as PuzzleDashboardPageSize);
 const isCreatedPuzzlePageSize = (value: number): value is CreatedPuzzlePageSize =>
@@ -170,11 +168,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
     dashboardFiltersSchema,
     DEFAULT_DASHBOARD_FILTERS,
   );
-  const [calendarOpen, setCalendarOpen] = usePersistedState<boolean>(
-    CALENDAR_OPEN_STORAGE_KEY,
-    calendarOpenSchema,
-    true,
-  );
+  const [calendarOpen, setCalendarOpen] = useState(true);
   const {
     sinceDate,
     untilDate,
