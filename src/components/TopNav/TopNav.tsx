@@ -649,8 +649,10 @@ export const TopNav = () => {
                   ref={(element) => {
                     navDropdownRefs.current[item.to] = element;
                   }}
-                  onMouseEnter={() => openNavDropdownFor(item.to)}
-                  onMouseLeave={scheduleNavDropdownClose}
+                  onMouseEnter={
+                    mobileMenuOpen ? undefined : () => openNavDropdownFor(item.to)
+                  }
+                  onMouseLeave={mobileMenuOpen ? undefined : scheduleNavDropdownClose}
                 >
                   {item.linkToPage ? (
                     <Link
