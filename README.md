@@ -138,8 +138,8 @@ into an array before returning it to the browser.
 Puzzle progress also uses these RPCs by default:
 
 - `record_first_puzzle_attempt_v2`
-- `get_puzzle_progress_page`
-- `get_attempted_puzzle_ids`
+- `get_puzzle_progress_page_v2`
+- `get_rated_puzzle_ids`
 
 Puzzle ratings live in `puzzle_ratings`; the `puzzles` table contains puzzle content only.
 `puzzles_with_ratings` is a read-only compatibility view for consumers that still need the old

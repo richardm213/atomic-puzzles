@@ -54,6 +54,11 @@ export const HowCoinsWorkPage = () => (
           <li>An incorrect V1 or V2 attempt deducts 2 coins; an incorrect V3 deducts 1.</li>
           <li>Incorrect V4 and V5 attempts have no coin penalty.</li>
           <li>Creator coins are awarded when a puzzle is published.</li>
+          <li>
+            Attempts on your own puzzles are unrated and do not change your coin balance for one
+            month after publication. Each unrated retry replaces the last one and restarts the
+            one-month wait.
+          </li>
           <li>The daily bonus can be claimed once per UTC day.</li>
         </ul>
       </section>

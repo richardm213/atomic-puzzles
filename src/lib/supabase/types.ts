@@ -5,6 +5,7 @@ export type PuzzleProgressRow = {
   first_attempt_at: string;
   first_attempt_duration_ms?: number | null;
   puzzle_correct: boolean;
+  rated?: boolean;
   incorrect_move: string | null;
   correct_move?: string | null;
 };
@@ -19,6 +20,7 @@ export type PuzzleProgressRpcRow = {
   first_attempt_at?: string | null;
   first_attempt_duration_ms?: number | null;
   puzzle_correct?: boolean | null;
+  rated?: boolean | null;
   incorrect_move?: string | null;
   correct_move?: string | null;
   total_count?: number | null;
@@ -251,7 +253,15 @@ export type Database = {
         Args: { p_username: string };
         Returns: AttemptedPuzzleIdRow[];
       };
+      get_rated_puzzle_ids: {
+        Args: { p_username: string };
+        Returns: AttemptedPuzzleIdRow[];
+      };
       get_puzzle_progress_page: {
+        Args: { p_username: string; p_page: number; p_page_size: number };
+        Returns: PuzzleProgressRpcRow[];
+      };
+      get_puzzle_progress_page_v2: {
         Args: { p_username: string; p_page: number; p_page_size: number };
         Returns: PuzzleProgressRpcRow[];
       };

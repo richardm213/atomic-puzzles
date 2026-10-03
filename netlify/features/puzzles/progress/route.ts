@@ -36,6 +36,13 @@ export const puzzleProgressRoute = async (event: FunctionEvent) => {
     p_correct_move: input.puzzleCorrect ? input.correctMove || null : null,
   });
   if (error) throw new Error(`Unable to record puzzle progress: ${error.message}`);
+  const { data: progress, error: progressError } = await supabase
+    .from("puzzle_progress")
+    .select("rated")
+    .eq("username", username)
+    .eq("puzzle_id", input.puzzleId)
+    .maybeSingle();
+  if (progressError) throw new Error(`Unable to read puzzle progress: ${progressError.message}`);
   const { data: ratingEvent } = await supabase
     .from("puzzle_rating_events")
     .select(
@@ -49,6 +56,7 @@ export const puzzleProgressRoute = async (event: FunctionEvent) => {
     recorded: true,
     coinAward: Math.max(0, Number(coinDelta) || 0),
     coinDelta: Number(coinDelta) || 0,
+    rated: progress?.rated !== false,
     username,
     ratingEvent: ratingEvent
       ? {

@@ -54,6 +54,7 @@ import {
   getOrderedPuzzleIndexesForDashboardSet,
   readDashboardPuzzleSet,
 } from "../../lib/puzzles/dashboardPuzzleSets";
+import { getPuzzleUnratedReason } from "../../lib/puzzles/puzzleAttemptRating";
 import { updatePuzzleExplanation } from "../../lib/puzzles/puzzleExplanation";
 import { type PuzzleIssueCategory, reportPuzzleIssue } from "../../lib/puzzles/puzzleIssues";
 import { loadPuzzlesById } from "../../lib/puzzles/puzzleLibrary";
@@ -81,8 +82,8 @@ import {
   serializeSanLinesToPgn,
 } from "../../lib/puzzles/solutionPgn";
 import {
-  fetchAttemptedPuzzleIds,
   fetchPuzzleAttemptsForPuzzle,
+  fetchPuzzleProgressRowsForUsername,
   type PuzzleProgressWithUsernameRow,
   recordPuzzleProgress,
 } from "../../lib/supabase/puzzleProgress";
@@ -147,6 +148,13 @@ const addValueToSet = (currentSet: Set<string>, value: string): Set<string> => {
   if (!value) return currentSet;
   const next = new Set(currentSet);
   next.add(value);
+  return next;
+};
+
+const removeValueFromSet = (currentSet: Set<string>, value: string): Set<string> => {
+  if (!value || !currentSet.has(value)) return currentSet;
+  const next = new Set(currentSet);
+  next.delete(value);
   return next;
 };
 
@@ -283,6 +291,7 @@ export const PuzzleSolverPage = () => {
   const { puzzles, setPuzzles, loadingError, setLoadingError, mergeLoadedPuzzles } =
     usePuzzleCatalog(routePuzzleId, routeSetKey || routeDashboardSetId);
   const [attemptedPuzzleIds, setAttemptedPuzzleIds] = useState<Set<string>>(() => new Set());
+  const [unratedPuzzleIds, setUnratedPuzzleIds] = useState<Set<string>>(() => new Set());
   const [attemptedPuzzleIdsOwner, setAttemptedPuzzleIdsOwner] = useState<string | null>(null);
   const [resolvedAttemptedPuzzleIds, setResolvedAttemptedPuzzleIds] = useState<Set<string>>(
     () => new Set(),
@@ -505,23 +514,35 @@ export const PuzzleSolverPage = () => {
 
     if (!username) {
       setAttemptedPuzzleIds(new Set());
+      setUnratedPuzzleIds(new Set());
       setAttemptedPuzzleIdsOwner("");
       return undefined;
     }
 
     setAttemptedPuzzleIds(new Set());
+    setUnratedPuzzleIds(new Set());
     setAttemptedPuzzleIdsOwner(null);
 
     const loadAttemptedPuzzleIds = async () => {
       try {
-        const attemptedIds = await fetchAttemptedPuzzleIds(username);
+        const progressRows = await fetchPuzzleProgressRowsForUsername(username);
         if (isCurrent) {
-          setAttemptedPuzzleIds(attemptedIds);
+          setAttemptedPuzzleIds(
+            new Set(
+              progressRows.filter((row) => row.rated !== false).map((row) => String(row.puzzle_id)),
+            ),
+          );
+          setUnratedPuzzleIds(
+            new Set(
+              progressRows.filter((row) => row.rated === false).map((row) => String(row.puzzle_id)),
+            ),
+          );
           setAttemptedPuzzleIdsOwner(username);
         }
       } catch (error) {
         if (!isCurrent) return;
         setAttemptedPuzzleIds(new Set());
+        setUnratedPuzzleIds(new Set());
         setAttemptedPuzzleIdsOwner(username);
         globalThis.console?.error(error);
       }
@@ -698,6 +719,17 @@ export const PuzzleSolverPage = () => {
       : puzzleSetParticipants.join(" · ");
   const isAnalysisMode = interactionMode === ANALYSIS_MODE;
   const hasPersistedAttempt = activePuzzleKey ? attemptedPuzzleIds.has(activePuzzleKey) : false;
+  const hasUnratedAttempt = activePuzzleKey ? unratedPuzzleIds.has(activePuzzleKey) : false;
+  const unratedReason = getPuzzleUnratedReason({
+    username: normalizedUsername,
+    author,
+    createdAt: activePuzzle?.created_at,
+    hasUnratedAttempt,
+  });
+  const unratedLabel =
+    unratedReason === "existing-unrated"
+      ? "Your latest attempt is unrated. Wait one month after that attempt for a rated try."
+      : "Your attempts are unrated for one month after this puzzle was published.";
   const hasResolvedAttempt = activePuzzleKey
     ? resolvedAttemptedPuzzleIds.has(activePuzzleKey)
     : false;
@@ -871,11 +903,17 @@ export const PuzzleSolverPage = () => {
             attemptDurationMs,
             incorrectMove,
             correctMove,
-          }).then((ratingEvent) => {
-            setAttemptedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
+          }).then((result) => {
+            if (result?.rated) {
+              setAttemptedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
+              setUnratedPuzzleIds((current) => removeValueFromSet(current, normalizedPuzzleId));
+            } else if (result) {
+              setUnratedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
+            }
             void queryClient.invalidateQueries({ queryKey: puzzleQueryKeys.progress });
             void queryClient.invalidateQueries({ queryKey: puzzleQueryKeys.userRating });
             void queryClient.invalidateQueries({ queryKey: puzzleQueryKeys.ratingEvents });
+            const ratingEvent = result?.ratingEvent ?? null;
             if (!ratingEvent || activePuzzleKeyRef.current !== normalizedPuzzleId) return;
             setAttemptRatingFeedback(ratingEvent);
             setFeedbackBadgeId((current) => current + 1);
@@ -905,10 +943,7 @@ export const PuzzleSolverPage = () => {
         elapsedTimerExpiredRef.current || elapsedAtAttempt >= MAX_PUZZLE_ATTEMPT_DURATION_MS
           ? null
           : Math.round(elapsedAtAttempt);
-      elapsedTimeMsRef.current = Math.min(
-        elapsedAtAttempt,
-        MAX_PUZZLE_ATTEMPT_DURATION_MS,
-      );
+      elapsedTimeMsRef.current = Math.min(elapsedAtAttempt, MAX_PUZZLE_ATTEMPT_DURATION_MS);
       elapsedTimerExpiredRef.current = attemptDurationMs === null;
       elapsedTimerStartedAtRef.current = null;
       setElapsedTimeMs(elapsedTimeMsRef.current);
@@ -1691,6 +1726,9 @@ export const PuzzleSolverPage = () => {
                   aria-hidden="true"
                 />
                 <span>{attempt.puzzle_correct ? "Correct" : "Incorrect"}</span>
+                {attempt.rated === false ? (
+                  <span className="puzzleOtherAttemptRated">Unrated</span>
+                ) : null}
                 {attempt.puzzle_correct && attempt.correct_move ? (
                   <span
                     className="puzzleOtherAttemptMove"
@@ -2420,6 +2458,17 @@ export const PuzzleSolverPage = () => {
                   <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
                 </span>
               ) : null}
+              {unratedReason ? (
+                <span
+                  className="puzzleUnratedBadge"
+                  tabIndex={0}
+                  title={unratedLabel}
+                  aria-label={unratedLabel}
+                  data-tooltip={unratedLabel}
+                >
+                  Unrated
+                </span>
+              ) : null}
               {opaStyle ? (
                 <span
                   className="puzzleOpaBadge"
@@ -2670,6 +2719,17 @@ export const PuzzleSolverPage = () => {
                 <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
               </span>
             ) : null}
+            {unratedReason ? (
+              <span
+                className="puzzleUnratedBadge"
+                tabIndex={0}
+                title={unratedLabel}
+                aria-label={unratedLabel}
+                data-tooltip={unratedLabel}
+              >
+                Unrated
+              </span>
+            ) : null}
             {opaStyle ? (
               <span
                 className="puzzleOpaBadge"
@@ -2711,7 +2771,7 @@ export const PuzzleSolverPage = () => {
 
       {hasAttemptedActivePuzzle ? (
         <p className="puzzleIssuePrompt">
-          Something wrong with this puzzle?{" "}
+          Something wrong with this puzzle?
           <button type="button" onClick={() => setReportIssueOpen(true)}>
             Report issue
           </button>

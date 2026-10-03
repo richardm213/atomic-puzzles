@@ -23,6 +23,17 @@ describe("puzzle-progress function", () => {
     return query;
   };
 
+  const progressQuery = (rated: boolean) => {
+    const query = {
+      select: vi.fn(),
+      eq: vi.fn(),
+      maybeSingle: vi.fn(async () => ({ data: { rated }, error: null })),
+    };
+    query.select.mockReturnValue(query);
+    query.eq.mockReturnValue(query);
+    return query;
+  };
+
   beforeEach(() => {
     mocks.createClient.mockReset();
     vi.stubEnv("SUPABASE_URL", "https://example.supabase.co");
@@ -109,6 +120,35 @@ describe("puzzle-progress function", () => {
 
     expect(response.statusCode).toBe(200);
     expect(JSON.parse(response.body)).toMatchObject({ coinAward: 0, coinDelta: -2 });
+  });
+
+  it("reports an unrated attempt without manufacturing a rating event", async () => {
+    const rpc = vi.fn(async () => ({ data: 0, error: null }));
+    const unratedProgressQuery = progressQuery(false);
+    const query = ratingEventQuery();
+    mocks.createClient.mockReturnValue({
+      rpc,
+      from: vi.fn((table: string) => (table === "puzzle_progress" ? unratedProgressQuery : query)),
+    });
+    const cookie = createSiteSessionCookie("Puzzle_Author", {});
+
+    const response = await handler({
+      httpMethod: "POST",
+      headers: { cookie: cookie.split(";")[0] },
+      body: JSON.stringify({
+        puzzleId: "42",
+        puzzleCorrect: true,
+        attemptDurationMs: 1_000,
+      }),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body)).toMatchObject({
+      coinAward: 0,
+      coinDelta: 0,
+      rated: false,
+      ratingEvent: null,
+    });
   });
 
   it("records a correct alternate solution move", async () => {

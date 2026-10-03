@@ -21,7 +21,7 @@ const mocks = vi.hoisted(() => ({
     onStateChange?: (state: unknown) => void;
   }>,
   attemptedPuzzleIds: new Set(["1369"]),
-  fetchAttemptedPuzzleIds: vi.fn(),
+  fetchPuzzleProgressRowsForUsername: vi.fn(),
   fetchCustomPuzzleSet: vi.fn(),
   fetchPuzzleAttemptsForPuzzle: vi.fn(),
   loadPuzzleCatalog: vi.fn(),
@@ -115,7 +115,7 @@ vi.mock("../../lib/puzzles/puzzleIssues", () => ({
 }));
 
 vi.mock("../../lib/supabase/puzzleProgress", () => ({
-  fetchAttemptedPuzzleIds: mocks.fetchAttemptedPuzzleIds,
+  fetchPuzzleProgressRowsForUsername: mocks.fetchPuzzleProgressRowsForUsername,
   fetchPuzzleAttemptsForPuzzle: mocks.fetchPuzzleAttemptsForPuzzle,
   recordPuzzleProgress: mocks.recordPuzzleProgress,
 }));
@@ -214,9 +214,15 @@ describe("PuzzleSolverPage solution options", () => {
   beforeEach(() => {
     mocks.chessboardProps.length = 0;
     mocks.attemptedPuzzleIds = new Set(["1369"]);
-    mocks.fetchAttemptedPuzzleIds
-      .mockReset()
-      .mockImplementation(async () => new Set(mocks.attemptedPuzzleIds));
+    mocks.fetchPuzzleProgressRowsForUsername.mockReset().mockImplementation(async () =>
+      [...mocks.attemptedPuzzleIds].map((puzzleId) => ({
+        puzzle_id: puzzleId,
+        first_attempt_at: "2026-01-01T00:00:00.000Z",
+        puzzle_correct: true,
+        rated: true,
+        incorrect_move: null,
+      })),
+    );
     mocks.fetchPuzzleAttemptsForPuzzle.mockReset().mockResolvedValue([
       {
         username: "solver",
@@ -375,6 +381,22 @@ describe("PuzzleSolverPage solution options", () => {
     }
   });
 
+  it("labels a puzzle when the user's current attempt is unrated", async () => {
+    mocks.fetchPuzzleProgressRowsForUsername.mockResolvedValueOnce([
+      {
+        puzzle_id: "1369",
+        first_attempt_at: "2026-10-02T00:00:00.000Z",
+        puzzle_correct: true,
+        rated: false,
+        incorrect_move: null,
+      },
+    ]);
+
+    render(<PuzzleSolverPage />);
+
+    expect((await screen.findAllByText("Unrated")).length).toBeGreaterThan(0);
+  });
+
   it("waits for progress before choosing a random puzzle and skips attempted puzzles", async () => {
     mocks.routeParams = { puzzleId: "", setKey: "" };
     mocks.loadPuzzleCatalog.mockResolvedValueOnce(
@@ -389,8 +411,9 @@ describe("PuzzleSolverPage solution options", () => {
       })),
     );
 
-    let resolveProgress: (ids: Set<string>) => void = () => undefined;
-    mocks.fetchAttemptedPuzzleIds.mockReturnValueOnce(
+    let resolveProgress: (rows: Array<{ puzzle_id: string; rated: boolean }>) => void = () =>
+      undefined;
+    mocks.fetchPuzzleProgressRowsForUsername.mockReturnValueOnce(
       new Promise((resolve) => {
         resolveProgress = resolve;
       }),
@@ -401,7 +424,7 @@ describe("PuzzleSolverPage solution options", () => {
     await waitFor(() => expect(mocks.loadPuzzleSolverIndex).toHaveBeenCalledOnce());
     expect(mocks.navigate).not.toHaveBeenCalled();
 
-    resolveProgress(new Set(["1"]));
+    resolveProgress([{ puzzle_id: "1", rated: true }]);
 
     await waitFor(() =>
       expect(mocks.navigate).toHaveBeenCalledWith({
@@ -429,7 +452,7 @@ describe("PuzzleSolverPage solution options", () => {
 
     render(<PuzzleSolverPage />);
 
-    await waitFor(() => expect(mocks.fetchAttemptedPuzzleIds).toHaveBeenCalledOnce());
+    await waitFor(() => expect(mocks.fetchPuzzleProgressRowsForUsername).toHaveBeenCalledOnce());
     await act(async () => Promise.resolve());
     expect(mocks.navigate).not.toHaveBeenCalled();
     expect(screen.queryByTestId("mock-board")).not.toBeInTheDocument();
@@ -808,15 +831,18 @@ describe("PuzzleSolverPage solution options", () => {
   it("records both progress sources when a custom-set solve is the first attempt", async () => {
     mocks.attemptedPuzzleIds = new Set();
     mocks.recordPuzzleProgress.mockResolvedValueOnce({
-      username: "solver",
-      puzzleId: "1369",
-      attemptedAt: "2026-09-29T00:00:00.000Z",
-      puzzleCorrect: false,
-      userRatingBefore: 2000,
-      userRatingAfter: 1978,
-      userRatingChange: -22,
-      userRatingDeviationBefore: 350,
-      userRatingDeviationAfter: 290,
+      rated: true,
+      ratingEvent: {
+        username: "solver",
+        puzzleId: "1369",
+        attemptedAt: "2026-09-29T00:00:00.000Z",
+        puzzleCorrect: false,
+        userRatingBefore: 2000,
+        userRatingAfter: 1978,
+        userRatingChange: -22,
+        userRatingDeviationBefore: 350,
+        userRatingDeviationAfter: 290,
+      },
     });
     mocks.routeParams = {
       puzzleId: "1369",

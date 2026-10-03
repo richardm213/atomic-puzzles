@@ -44,7 +44,7 @@ describe("fetchPuzzleProgressPage", () => {
 
     const page = await fetchPuzzleProgressPage("whooooami", { page: 2, pageSize: 20 });
 
-    expect(rpcMock).toHaveBeenCalledWith("get_puzzle_progress_page", {
+    expect(rpcMock).toHaveBeenCalledWith("get_puzzle_progress_page_v2", {
       p_username: "whooooami",
       p_page: 2,
       p_page_size: 20,
@@ -113,7 +113,7 @@ describe("fetchPuzzleProgressPage", () => {
     const attemptedIds = await fetchAttemptedPuzzleIds("whooooami");
 
     expect(attemptedIds).toEqual(new Set());
-    expect(rpcMock).toHaveBeenCalledWith("get_attempted_puzzle_ids", {
+    expect(rpcMock).toHaveBeenCalledWith("get_rated_puzzle_ids", {
       p_username: "whooooami",
     });
   });
@@ -211,7 +211,7 @@ describe("fetchPuzzleProgressPage", () => {
       sinceDate: "2026-07-02",
     });
 
-    expect(rpcMock).toHaveBeenCalledWith("get_puzzle_progress_page", {
+    expect(rpcMock).toHaveBeenCalledWith("get_puzzle_progress_page_v2", {
       p_username: "whooooami",
       p_page: 1,
       p_page_size: 1000,
