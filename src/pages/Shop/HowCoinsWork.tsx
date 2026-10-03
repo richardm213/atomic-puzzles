@@ -50,7 +50,9 @@ export const HowCoinsWorkPage = () => (
       <section className="coinGuideSection">
         <h2>What counts</h2>
         <ul>
-          <li>Only a correct first attempt earns coins. Incorrect attempts earn none.</li>
+          <li>Only the first attempt changes your coin balance.</li>
+          <li>An incorrect V1 or V2 attempt deducts 2 coins; an incorrect V3 deducts 1.</li>
+          <li>Incorrect V4 and V5 attempts have no coin penalty.</li>
           <li>Creator coins are awarded when a puzzle is published.</li>
           <li>The daily bonus can be claimed once per UTC day.</li>
         </ul>

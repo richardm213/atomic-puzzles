@@ -139,6 +139,7 @@ declare
   puzzle_attempts integer;
   puzzle_successes integer;
   puzzle_human_level smallint;
+  puzzle_computed_level smallint;
   user_g double precision;
   puzzle_g double precision;
   user_expected double precision;
@@ -162,8 +163,14 @@ begin
   on conflict (username) do nothing;
 
   -- Always lock puzzle first, then user, to keep concurrent attempts ordered.
-  select rating, rating_deviation, attempts, successes, human_level
-  into puzzle_rating_value, puzzle_rd, puzzle_attempts, puzzle_successes, puzzle_human_level
+  select rating, rating_deviation, attempts, successes, human_level, computed_level
+  into
+    puzzle_rating_value,
+    puzzle_rd,
+    puzzle_attempts,
+    puzzle_successes,
+    puzzle_human_level,
+    puzzle_computed_level
   from public.puzzle_ratings
   where puzzle_id = numeric_puzzle_id
   for update;
@@ -220,6 +227,7 @@ begin
   next_puzzle_successes := puzzle_successes + case when new.puzzle_correct then 1 else 0 end;
   next_computed_level := case
     when puzzle_human_level is not null then puzzle_human_level
+    when next_puzzle_attempts < 4 then puzzle_computed_level
     else public.puzzle_level_for_rating(
       next_puzzle_rating,
       next_puzzle_attempts,
@@ -359,6 +367,7 @@ begin
   ), estimates as (
     select
       state.puzzle_id,
+      state.computed_level,
       coalesce(history.attempts, 0) as attempts,
       coalesce(history.successes, 0) as successes,
       case
@@ -384,11 +393,14 @@ begin
   ), seeds as (
     select
       estimate.*,
-      public.puzzle_level_for_rating(
-        estimate.estimated_rating,
-        estimate.attempts,
-        estimate.successes
-      ) as seed_level
+      case
+        when estimate.attempts < 4 then estimate.computed_level
+        else public.puzzle_level_for_rating(
+          estimate.estimated_rating,
+          estimate.attempts,
+          estimate.successes
+        )
+      end as seed_level
     from estimates estimate
   )
   update public.puzzle_ratings state
@@ -499,6 +511,7 @@ begin
     next_puzzle_successes := puzzle_successes + case when attempt.puzzle_correct then 1 else 0 end;
     next_computed_level := case
       when puzzle_human_level is not null then puzzle_human_level
+      when next_puzzle_attempts < 4 then puzzle_computed_level
       else public.puzzle_level_for_rating(
         next_puzzle_rating,
         next_puzzle_attempts,
