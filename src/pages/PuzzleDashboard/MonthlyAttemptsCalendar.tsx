@@ -13,43 +13,51 @@ type CalendarDay = {
   isInMonth: boolean;
 };
 
-const startOfMonth = (date: Date): Date => new Date(date.getFullYear(), date.getMonth(), 1);
+const startOfMonth = (date: Date): Date =>
+  new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
 
-const dateKey = (date: Date): string =>
-  [date.getFullYear(), date.getMonth() + 1, date.getDate()]
+export const utcDateKey = (date: Date): string =>
+  [date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate()]
     .map((part, index) => String(part).padStart(index === 0 ? 4 : 2, "0"))
     .join("-");
 
 const isSameMonth = (left: Date, right: Date): boolean =>
-  left.getFullYear() === right.getFullYear() && left.getMonth() === right.getMonth();
+  left.getUTCFullYear() === right.getUTCFullYear() && left.getUTCMonth() === right.getUTCMonth();
 
 const buildCalendarDays = (month: Date): CalendarDay[] => {
   const firstDay = startOfMonth(month);
-  const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
-  const visibleDayCount = firstDay.getDay() + daysInMonth > 35 ? 42 : 35;
+  const daysInMonth = new Date(
+    Date.UTC(month.getUTCFullYear(), month.getUTCMonth() + 1, 0),
+  ).getUTCDate();
+  const visibleDayCount = firstDay.getUTCDay() + daysInMonth > 35 ? 42 : 35;
   const calendarStart = new Date(
-    firstDay.getFullYear(),
-    firstDay.getMonth(),
-    1 - firstDay.getDay(),
+    Date.UTC(firstDay.getUTCFullYear(), firstDay.getUTCMonth(), 1 - firstDay.getUTCDay()),
   );
 
   return Array.from({ length: visibleDayCount }, (_, index) => {
     const date = new Date(
-      calendarStart.getFullYear(),
-      calendarStart.getMonth(),
-      calendarStart.getDate() + index,
+      Date.UTC(
+        calendarStart.getUTCFullYear(),
+        calendarStart.getUTCMonth(),
+        calendarStart.getUTCDate() + index,
+      ),
     );
-    return { date, dateKey: dateKey(date), isInMonth: isSameMonth(date, month) };
+    return { date, dateKey: utcDateKey(date), isInMonth: isSameMonth(date, month) };
   });
 };
 
-const monthFormatter = new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" });
+const monthFormatter = new Intl.DateTimeFormat(undefined, {
+  month: "long",
+  year: "numeric",
+  timeZone: "UTC",
+});
 const fullDateFormatter = new Intl.DateTimeFormat(undefined, {
   day: "numeric",
   month: "long",
+  timeZone: "UTC",
   year: "numeric",
 });
-const weekdayFormatter = new Intl.DateTimeFormat(undefined, { weekday: "short" });
+const weekdayFormatter = new Intl.DateTimeFormat(undefined, { weekday: "short", timeZone: "UTC" });
 const performanceLegend = [
   { className: "performance1", label: "Very poor" },
   { className: "performance2", label: "Poor" },
@@ -73,7 +81,7 @@ export const MonthlyAttemptsCalendar = ({ attempts }: { attempts: CalendarAttemp
   const weekdayLabels = useMemo(
     () =>
       Array.from({ length: 7 }, (_, index) =>
-        weekdayFormatter.format(new Date(2026, 7, 2 + index)),
+        weekdayFormatter.format(new Date(Date.UTC(2026, 7, 2 + index))),
       ),
     [],
   );
@@ -84,7 +92,7 @@ export const MonthlyAttemptsCalendar = ({ attempts }: { attempts: CalendarAttemp
       const attemptedAt = new Date(attempt.firstAttemptAt);
       if (Number.isNaN(attemptedAt.getTime()) || !isSameMonth(attemptedAt, visibleMonth)) return;
 
-      const key = dateKey(attemptedAt);
+      const key = utcDateKey(attemptedAt);
       const count = counts.get(key) ?? { correct: 0, total: 0 };
       count.total += 1;
       if (attempt.puzzleCorrect) count.correct += 1;
@@ -108,7 +116,9 @@ export const MonthlyAttemptsCalendar = ({ attempts }: { attempts: CalendarAttemp
     monthSummary.total > 0 ? Math.round((monthSummary.correct / monthSummary.total) * 100) : 0;
   const isCurrentMonth = isSameMonth(visibleMonth, today);
   const moveMonth = (offset: number): void => {
-    setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() + offset, 1));
+    setVisibleMonth(
+      (current) => new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth() + offset, 1)),
+    );
   };
 
   return (
@@ -160,7 +170,9 @@ export const MonthlyAttemptsCalendar = ({ attempts }: { attempts: CalendarAttemp
 
       <div className="dashboardCalendarTableWrap">
         <table className="dashboardCalendarTable">
-          <caption>Daily puzzle attempts for {monthFormatter.format(visibleMonth)}</caption>
+          <caption>
+            Daily puzzle attempts grouped by UTC day for {monthFormatter.format(visibleMonth)}
+          </caption>
           <thead>
             <tr>
               {weekdayLabels.map((weekday) => (
@@ -190,7 +202,7 @@ export const MonthlyAttemptsCalendar = ({ attempts }: { attempts: CalendarAttemp
                     >
                       {day.isInMonth ? (
                         <>
-                          <time dateTime={day.dateKey}>{day.date.getDate()}</time>
+                          <time dateTime={day.dateKey}>{day.date.getUTCDate()}</time>
                           {count ? (
                             <span className="dashboardCalendarDayScore">
                               <strong>
