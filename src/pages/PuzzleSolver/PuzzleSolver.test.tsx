@@ -842,6 +842,9 @@ describe("PuzzleSolverPage solution options", () => {
         userRatingChange: -22,
         userRatingDeviationBefore: 350,
         userRatingDeviationAfter: 290,
+        puzzleRatingBefore: 2100,
+        puzzleRatingAfter: 2117,
+        puzzleRatingChange: 17,
       },
     });
     mocks.routeParams = {
@@ -902,6 +905,11 @@ describe("PuzzleSolverPage solution options", () => {
     );
     expect(updatedRating).toHaveClass("negative");
     expect(updatedRating).toHaveTextContent("1978-22");
+    const puzzleRatingChange = await screen.findByLabelText(
+      "Puzzle rating was 2100 and increased by 17",
+    );
+    expect(puzzleRatingChange).toHaveClass("positive");
+    expect(puzzleRatingChange).toHaveTextContent("2100+17");
   });
 
   it("omits attempt time after the timer reaches 60 minutes", async () => {

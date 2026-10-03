@@ -25,6 +25,9 @@ export type PuzzleRatingEvent = {
   userRatingChange: number;
   userRatingDeviationBefore: number;
   userRatingDeviationAfter: number;
+  puzzleRatingBefore: number;
+  puzzleRatingAfter: number;
+  puzzleRatingChange: number;
 };
 
 export type PuzzleLeaderboardMetricRow = {
@@ -60,6 +63,8 @@ const puzzleRatingEventResponseSchema = z.object({
   userRatingAfter: z.number(),
   userRatingDeviationBefore: z.number(),
   userRatingDeviationAfter: z.number(),
+  puzzleRatingBefore: z.number(),
+  puzzleRatingAfter: z.number(),
 });
 
 const puzzleRatingHistoryResponseSchema = z.object({
@@ -189,5 +194,6 @@ export const fetchPuzzleRatingEventsForUsername = async (
     ...event,
     username: normalizeUsername(event.username),
     userRatingChange: event.userRatingAfter - event.userRatingBefore,
+    puzzleRatingChange: event.puzzleRatingAfter - event.puzzleRatingBefore,
   }));
 };

@@ -2120,11 +2120,11 @@ button.puzzleRatingBadge.editable:active {
   font-weight: 900;
 }
 
-.feedbackRating.positive small {
+.feedbackRating.positive {
   color: color-mix(in srgb, var(--color-success) 62%, white);
 }
 
-.feedbackRating.negative small {
+.feedbackRating.negative {
   color: color-mix(in srgb, var(--color-danger) 56%, white);
 }
 

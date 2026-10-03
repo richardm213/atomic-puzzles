@@ -39,6 +39,8 @@ const puzzleProgressResponseSchema = z.object({
       userRatingAfter: z.number(),
       userRatingDeviationBefore: z.number(),
       userRatingDeviationAfter: z.number(),
+      puzzleRatingBefore: z.number(),
+      puzzleRatingAfter: z.number(),
     })
     .nullable()
     .optional(),
@@ -285,6 +287,8 @@ export const recordPuzzleProgress = async ({
             ...result.ratingEvent,
             userRatingChange:
               result.ratingEvent.userRatingAfter - result.ratingEvent.userRatingBefore,
+            puzzleRatingChange:
+              result.ratingEvent.puzzleRatingAfter - result.ratingEvent.puzzleRatingBefore,
           }
         : null,
     };

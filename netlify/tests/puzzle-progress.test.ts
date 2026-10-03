@@ -12,11 +12,11 @@ import { handler } from "../functions/puzzle-progress";
 import { createSiteSessionCookie } from "../lib/siteSession";
 
 describe("puzzle-progress function", () => {
-  const ratingEventQuery = () => {
+  const ratingEventQuery = (data: Record<string, unknown> | null = null) => {
     const query = {
       select: vi.fn(),
       eq: vi.fn(),
-      maybeSingle: vi.fn(async () => ({ data: null, error: null })),
+      maybeSingle: vi.fn(async () => ({ data, error: null })),
     };
     query.select.mockReturnValue(query);
     query.eq.mockReturnValue(query);
@@ -153,7 +153,18 @@ describe("puzzle-progress function", () => {
 
   it("records a correct alternate solution move", async () => {
     const rpc = vi.fn(async () => ({ data: 2, error: null }));
-    const query = ratingEventQuery();
+    const query = ratingEventQuery({
+      username: "solver",
+      puzzle_id: 43,
+      attempted_at: "2026-09-29T00:00:00.000Z",
+      puzzle_correct: true,
+      user_rating_before: 2000,
+      user_rating_after: 2018,
+      user_rd_before: 350,
+      user_rd_after: 290,
+      puzzle_rating_before: 2100,
+      puzzle_rating_after: 2086,
+    });
     mocks.createClient.mockReturnValue({ rpc, from: vi.fn(() => query) });
     const cookie = createSiteSessionCookie("Solver", {});
 
@@ -177,7 +188,14 @@ describe("puzzle-progress function", () => {
       p_incorrect_move: null,
       p_correct_move: "3. Qg5",
     });
-    expect(JSON.parse(response.body)).toMatchObject({ coinAward: 2, coinDelta: 2 });
+    expect(JSON.parse(response.body)).toMatchObject({
+      coinAward: 2,
+      coinDelta: 2,
+      ratingEvent: {
+        puzzleRatingBefore: 2100,
+        puzzleRatingAfter: 2086,
+      },
+    });
   });
 
   it("records no duration after the one-hour timer expires", async () => {

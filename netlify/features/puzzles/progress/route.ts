@@ -46,7 +46,7 @@ export const puzzleProgressRoute = async (event: FunctionEvent) => {
   const { data: ratingEvent } = await supabase
     .from("puzzle_rating_events")
     .select(
-      "username,puzzle_id,attempted_at,puzzle_correct,user_rating_before,user_rating_after,user_rd_before,user_rd_after",
+      "username,puzzle_id,attempted_at,puzzle_correct,user_rating_before,user_rating_after,user_rd_before,user_rd_after,puzzle_rating_before,puzzle_rating_after",
     )
     .eq("username", username)
     .eq("puzzle_id", Number(input.puzzleId))
@@ -68,6 +68,8 @@ export const puzzleProgressRoute = async (event: FunctionEvent) => {
           userRatingAfter: Number(ratingEvent.user_rating_after),
           userRatingDeviationBefore: Number(ratingEvent.user_rd_before),
           userRatingDeviationAfter: Number(ratingEvent.user_rd_after),
+          puzzleRatingBefore: Number(ratingEvent.puzzle_rating_before),
+          puzzleRatingAfter: Number(ratingEvent.puzzle_rating_after),
         }
       : null,
   });

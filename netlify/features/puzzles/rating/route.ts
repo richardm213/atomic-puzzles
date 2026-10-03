@@ -40,6 +40,8 @@ const serializeRatingEvent = (row: Record<string, unknown>) => ({
   userRatingAfter: Number(row.user_rating_after),
   userRatingDeviationBefore: Number(row.user_rd_before),
   userRatingDeviationAfter: Number(row.user_rd_after),
+  puzzleRatingBefore: Number(row.puzzle_rating_before),
+  puzzleRatingAfter: Number(row.puzzle_rating_after),
 });
 
 const pageThrough = async (
@@ -208,7 +210,7 @@ export const puzzleRatingRoute = async (event: FunctionEvent) => {
       const { data, error } = await supabase
         .from("puzzle_rating_events")
         .select(
-          "username,puzzle_id,attempted_at,puzzle_correct,user_rating_before,user_rating_after,user_rd_before,user_rd_after",
+          "username,puzzle_id,attempted_at,puzzle_correct,user_rating_before,user_rating_after,user_rd_before,user_rd_after,puzzle_rating_before,puzzle_rating_after",
         )
         .eq("username", normalizedUsername)
         .order("attempted_at", { ascending: false })

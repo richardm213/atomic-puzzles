@@ -95,6 +95,8 @@ describe("puzzle-rating function", () => {
             user_rating_after: 2018,
             user_rd_before: 350,
             user_rd_after: 290,
+            puzzle_rating_before: 2100,
+            puzzle_rating_after: 2086,
           },
         ],
         error: null,
@@ -123,6 +125,8 @@ describe("puzzle-rating function", () => {
           userRatingAfter: 2018,
           userRatingDeviationBefore: 350,
           userRatingDeviationAfter: 290,
+          puzzleRatingBefore: 2100,
+          puzzleRatingAfter: 2086,
         },
       ],
     });

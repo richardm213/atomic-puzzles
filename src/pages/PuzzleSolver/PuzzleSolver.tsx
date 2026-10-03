@@ -2654,11 +2654,14 @@ export const PuzzleSolverPage = () => {
               {visibleRatingFeedback ? (
                 <span
                   className={`feedbackRating ${
-                    visibleRatingFeedback.userRatingChange >= 0 ? "positive" : "negative"
+                    visibleRatingFeedback.puzzleRatingChange >= 0 ? "positive" : "negative"
                   }`}
+                  aria-label={`Puzzle rating was ${visibleRatingFeedback.puzzleRatingBefore} and ${
+                    visibleRatingFeedback.puzzleRatingChange >= 0 ? "increased" : "decreased"
+                  } by ${Math.abs(visibleRatingFeedback.puzzleRatingChange)}`}
                 >
-                  {visibleRatingFeedback.userRatingAfter}
-                  <small>{formatSignedRating(visibleRatingFeedback.userRatingChange)}</small>
+                  {visibleRatingFeedback.puzzleRatingBefore}
+                  <small>{formatSignedRating(visibleRatingFeedback.puzzleRatingChange)}</small>
                 </span>
               ) : null}
             </div>
@@ -2699,11 +2702,14 @@ export const PuzzleSolverPage = () => {
               {visibleRatingFeedback ? (
                 <span
                   className={`feedbackRating ${
-                    visibleRatingFeedback.userRatingChange >= 0 ? "positive" : "negative"
+                    visibleRatingFeedback.puzzleRatingChange >= 0 ? "positive" : "negative"
                   }`}
+                  aria-label={`Puzzle rating was ${visibleRatingFeedback.puzzleRatingBefore} and ${
+                    visibleRatingFeedback.puzzleRatingChange >= 0 ? "increased" : "decreased"
+                  } by ${Math.abs(visibleRatingFeedback.puzzleRatingChange)}`}
                 >
-                  {visibleRatingFeedback.userRatingAfter}
-                  <small>{formatSignedRating(visibleRatingFeedback.userRatingChange)}</small>
+                  {visibleRatingFeedback.puzzleRatingBefore}
+                  <small>{formatSignedRating(visibleRatingFeedback.puzzleRatingChange)}</small>
                 </span>
               ) : null}
             </div>
