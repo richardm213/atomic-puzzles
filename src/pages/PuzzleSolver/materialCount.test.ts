@@ -34,6 +34,17 @@ describe("materialCountFromFen", () => {
     });
   });
 
+  it("reports piece differences when total material values are equal", () => {
+    expect(materialCountFromFen("1n2k1n1/8/8/8/8/8/P7/R3K3 w - - 0 1")).toEqual({
+      white: 6,
+      black: 6,
+      advantage: null,
+      difference: 0,
+      whitePieces: ["rook", "pawn"],
+      blackPieces: ["knight", "knight"],
+    });
+  });
+
   it("returns zero material for an empty value", () => {
     expect(materialCountFromFen(undefined)).toEqual({
       white: 0,

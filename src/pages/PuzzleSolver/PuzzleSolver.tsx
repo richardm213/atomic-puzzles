@@ -648,7 +648,11 @@ export const PuzzleSolverPage = () => {
   const materialCount = useMemo(() => materialCountFromFen(currentFen), [currentFen]);
   const materialPieceStyle = useMemo(() => buildPieceStyle(pieceSet || "cburnett"), [pieceSet]);
   const castlingRights = castlingRightsFromFen(currentFen);
-  const hasMaterialDifference = Boolean(currentFen) && materialCount.difference > 0;
+  const hasMaterialDifference =
+    Boolean(currentFen) &&
+    (materialCount.difference > 0 ||
+      materialCount.whitePieces.length > 0 ||
+      materialCount.blackPieces.length > 0);
   const hasAnyCastlingRights = castlingRights.white.length > 0 || castlingRights.black.length > 0;
   const startAnalysisUrl = lichessAnalysisUrl(fen);
   const currentAnalysisUrl = lichessAnalysisUrl(currentFen);
