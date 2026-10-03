@@ -3,6 +3,40 @@
 -- do not change puzzle ratings, solver ratings, or coin balances.
 begin;
 
+-- Keep full-precision Glicko uncertainty internally. The integer RD columns
+-- remain the stable public/API representation and are rounded only on write.
+alter table public.puzzle_user_ratings
+  add column if not exists rating_deviation_precise double precision;
+update public.puzzle_user_ratings
+set rating_deviation_precise = rating_deviation
+where rating_deviation_precise is null;
+alter table public.puzzle_user_ratings
+  alter column rating_deviation_precise set default 350,
+  alter column rating_deviation_precise set not null;
+alter table public.puzzle_user_ratings
+  drop constraint if exists puzzle_user_ratings_rating_deviation_check,
+  add constraint puzzle_user_ratings_rating_deviation_check
+    check (rating_deviation between 45 and 350),
+  drop constraint if exists puzzle_user_ratings_precise_deviation_check,
+  add constraint puzzle_user_ratings_precise_deviation_check
+    check (rating_deviation_precise between 45 and 350);
+
+alter table public.puzzle_ratings
+  add column if not exists rating_deviation_precise double precision;
+update public.puzzle_ratings
+set rating_deviation_precise = rating_deviation
+where rating_deviation_precise is null;
+alter table public.puzzle_ratings
+  alter column rating_deviation_precise set default 300,
+  alter column rating_deviation_precise set not null;
+alter table public.puzzle_ratings
+  drop constraint if exists puzzle_ratings_rating_deviation_check,
+  add constraint puzzle_ratings_rating_deviation_check
+    check (rating_deviation between 45 and 350),
+  drop constraint if exists puzzle_ratings_precise_deviation_check,
+  add constraint puzzle_ratings_precise_deviation_check
+    check (rating_deviation_precise between 45 and 350);
+
 alter table public.puzzle_progress
   add column if not exists rated boolean not null default true;
 
@@ -310,9 +344,9 @@ declare
   user_d2 double precision;
   puzzle_d2 double precision;
   next_user_rating integer;
-  next_user_rd integer;
+  next_user_rd double precision;
   next_puzzle_rating integer;
-  next_puzzle_rd integer;
+  next_puzzle_rd double precision;
   next_puzzle_attempts integer;
   next_puzzle_successes integer;
   next_computed_level smallint;
@@ -330,7 +364,7 @@ begin
   on conflict (username) do nothing;
 
   -- Always lock puzzle first, then user, to keep concurrent attempts ordered.
-  select rating, rating_deviation, attempts, successes, human_level, computed_level
+  select rating, rating_deviation_precise, attempts, successes, human_level, computed_level
   into
     puzzle_rating_value,
     puzzle_rd,
@@ -342,7 +376,7 @@ begin
   where puzzle_id = numeric_puzzle_id
   for update;
 
-  select rating, rating_deviation, attempts, successes
+  select rating, rating_deviation_precise, attempts, successes
   into user_rating_value, user_rd, user_attempts, user_successes
   from public.puzzle_user_ratings
   where username = normalized_username
@@ -364,8 +398,8 @@ begin
   );
 
   next_user_rd := greatest(
-    50,
-    least(350, round(sqrt(1.0 / (1.0 / (user_rd * user_rd) + 1.0 / user_d2)))::integer)
+    45,
+    least(350, sqrt(1.0 / (1.0 / (user_rd * user_rd) + 1.0 / user_d2)))
   );
   next_user_rating := greatest(
     800,
@@ -379,8 +413,8 @@ begin
     )
   );
   next_puzzle_rd := greatest(
-    50,
-    least(350, round(sqrt(1.0 / (1.0 / (puzzle_rd * puzzle_rd) + 1.0 / puzzle_d2)))::integer)
+    45,
+    least(350, sqrt(1.0 / (1.0 / (puzzle_rd * puzzle_rd) + 1.0 / puzzle_d2)))
   );
   next_puzzle_rating := greatest(
     800,
@@ -405,7 +439,8 @@ begin
   update public.puzzle_user_ratings
   set
     rating = next_user_rating,
-    rating_deviation = next_user_rd,
+    rating_deviation = round(next_user_rd)::integer,
+    rating_deviation_precise = next_user_rd,
     attempts = user_attempts + 1,
     successes = user_successes + case when new.puzzle_correct then 1 else 0 end,
     updated_at = new.first_attempt_at,
@@ -415,7 +450,8 @@ begin
   update public.puzzle_ratings
   set
     rating = next_puzzle_rating,
-    rating_deviation = next_puzzle_rd,
+    rating_deviation = round(next_puzzle_rd)::integer,
+    rating_deviation_precise = next_puzzle_rd,
     attempts = next_puzzle_attempts,
     successes = next_puzzle_successes,
     computed_level = next_computed_level,
@@ -426,7 +462,7 @@ begin
   update public.puzzles
   set
     puzzle_rating = next_puzzle_rating,
-    puzzle_rating_deviation = next_puzzle_rd,
+    puzzle_rating_deviation = round(next_puzzle_rd)::integer,
     puzzle_rating_attempts = next_puzzle_attempts,
     puzzle_rating_successes = next_puzzle_successes,
     puzzle_level = coalesce(puzzle_human_level, next_computed_level),
@@ -460,11 +496,11 @@ begin
     round(user_rating_value)::integer,
     next_user_rating,
     round(user_rd)::integer,
-    next_user_rd,
+    round(next_user_rd)::integer,
     round(puzzle_rating_value)::integer,
     next_puzzle_rating,
     round(puzzle_rd)::integer,
-    next_puzzle_rd,
+    round(next_puzzle_rd)::integer,
     'live_glicko'
   )
   on conflict (username, puzzle_id) do nothing;
@@ -500,9 +536,9 @@ declare
   user_d2 double precision;
   puzzle_d2 double precision;
   next_user_rating integer;
-  next_user_rd integer;
+  next_user_rd double precision;
   next_puzzle_rating integer;
-  next_puzzle_rd integer;
+  next_puzzle_rd double precision;
   next_puzzle_attempts integer;
   next_puzzle_successes integer;
   next_computed_level smallint;
@@ -514,6 +550,7 @@ begin
   set
     rating = 2000,
     rating_deviation = 350,
+    rating_deviation_precise = 350,
     attempts = 0,
     successes = 0,
     updated_at = null,
@@ -581,6 +618,11 @@ begin
       when seed.attempts >= 4 then 150
       else 300
     end,
+    rating_deviation_precise = case
+      when state.human_level is not null then 75
+      when seed.attempts >= 4 then 150
+      else 300
+    end,
     attempts = 0,
     successes = 0,
     computed_level = case
@@ -605,13 +647,13 @@ begin
       lower(btrim(progress.username)),
       progress.puzzle_id
   loop
-    select rating, rating_deviation, attempts, successes
+    select rating, rating_deviation_precise, attempts, successes
     into user_rating_value, user_rd, user_attempts, user_successes
     from public.puzzle_user_ratings
     where username = attempt.username
     for update;
 
-    select rating, rating_deviation, attempts, successes, human_level, computed_level, updated_at
+    select rating, rating_deviation_precise, attempts, successes, human_level, computed_level, updated_at
     into
       puzzle_rating_value,
       puzzle_rd,
@@ -643,10 +685,10 @@ begin
       q * q * puzzle_g * puzzle_g * puzzle_expected * (1.0 - puzzle_expected)
     );
     next_user_rd := greatest(
-      50,
+      45,
       least(
         350,
-        round(sqrt(1.0 / (1.0 / (user_rd * user_rd) + 1.0 / user_d2)))::integer
+        sqrt(1.0 / (1.0 / (user_rd * user_rd) + 1.0 / user_d2))
       )
     );
     next_user_rating := greatest(
@@ -661,10 +703,10 @@ begin
       )
     );
     next_puzzle_rd := greatest(
-      50,
+      45,
       least(
         350,
-        round(sqrt(1.0 / (1.0 / (puzzle_rd * puzzle_rd) + 1.0 / puzzle_d2)))::integer
+        sqrt(1.0 / (1.0 / (puzzle_rd * puzzle_rd) + 1.0 / puzzle_d2))
       )
     );
     next_puzzle_rating := greatest(
@@ -690,7 +732,8 @@ begin
     update public.puzzle_user_ratings
     set
       rating = next_user_rating,
-      rating_deviation = next_user_rd,
+      rating_deviation = round(next_user_rd)::integer,
+      rating_deviation_precise = next_user_rd,
       attempts = user_attempts + 1,
       successes = user_successes + case when attempt.puzzle_correct then 1 else 0 end,
       updated_at = attempt.attempted_at,
@@ -700,7 +743,8 @@ begin
     update public.puzzle_ratings
     set
       rating = next_puzzle_rating,
-      rating_deviation = next_puzzle_rd,
+      rating_deviation = round(next_puzzle_rd)::integer,
+      rating_deviation_precise = next_puzzle_rd,
       attempts = next_puzzle_attempts,
       successes = next_puzzle_successes,
       computed_level = next_computed_level,
@@ -732,11 +776,11 @@ begin
       round(user_rating_value)::integer,
       next_user_rating,
       round(user_rd)::integer,
-      next_user_rd,
+      round(next_user_rd)::integer,
       round(puzzle_rating_value)::integer,
       next_puzzle_rating,
       round(puzzle_rd)::integer,
-      next_puzzle_rd,
+      round(next_puzzle_rd)::integer,
       'historical_backfill'
     );
   end loop;

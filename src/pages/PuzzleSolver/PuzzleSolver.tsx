@@ -1749,6 +1749,15 @@ export const PuzzleSolverPage = () => {
               <time className="puzzleOtherAttemptTime" dateTime={attempt.first_attempt_at}>
                 {formatLocalDateTime(attempt.first_attempt_at)}
               </time>
+              {typeof attempt.first_attempt_duration_ms === "number" ? (
+                <span
+                  className="puzzleOtherAttemptDuration"
+                  aria-label={`Attempt time ${formatElapsedTime(attempt.first_attempt_duration_ms)}`}
+                >
+                  <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
+                  {formatElapsedTime(attempt.first_attempt_duration_ms)}
+                </span>
+              ) : null}
             </li>
           ))}
         </ul>

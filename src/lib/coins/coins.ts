@@ -3,7 +3,7 @@ import { z } from "zod";
 import { postApi } from "../api/postApi";
 import { announceCoinsEarned } from "./coinEvents";
 
-export const DAILY_COIN_BONUS = 5;
+export const DAILY_COIN_BONUS = 10;
 
 export type ShopItemKey =
   | "discord_nitro_month"

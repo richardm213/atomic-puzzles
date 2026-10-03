@@ -195,10 +195,10 @@ begin
     raise exception 'Daily bonus already claimed';
   end if;
   current_balance := public.apply_coin_transaction(
-    normalized_username, 5, 'daily_bonus', source,
+    normalized_username, 10, 'daily_bonus', source,
     jsonb_build_object('date', current_date), now()
   );
-  return jsonb_build_object('balance', current_balance, 'dailyClaimAvailable', false, 'awarded', 5);
+  return jsonb_build_object('balance', current_balance, 'dailyClaimAvailable', false, 'awarded', 10);
 end;
 $$;
 

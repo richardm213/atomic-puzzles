@@ -1,6 +1,6 @@
--- Align automatic puzzle levels with the compromise rating bands:
--- V1 < 1650, V2 1650-1924, V3 1925-2199,
--- V4 2200-2474, and V5 >= 2475.
+-- Restore the original automatic puzzle-level rating bands:
+-- V1 < 1625, V2 1625-1874, V3 1875-2124,
+-- V4 2125-2374, and V5 >= 2375.
 -- Human-assigned levels remain unchanged.
 begin;
 
@@ -15,16 +15,14 @@ immutable
 set search_path = public
 as $$
   select case
-    when p_rating >= 2475 then 5
-    when p_rating >= 2200 then 4
-    when p_rating >= 1925 then 3
-    when p_rating >= 1650 then 2
+    when p_rating >= 2375 then 5
+    when p_rating >= 2125 then 4
+    when p_rating >= 1875 then 3
+    when p_rating >= 1625 then 2
     else 1
   end::smallint;
 $$;
 
--- New puzzles normally receive their rating row on first attempt. Seed any
--- that have not been attempted yet so the full catalog is updated now.
 insert into public.puzzle_ratings (puzzle_id)
 select puzzle.id
 from public.puzzles puzzle
@@ -35,7 +33,6 @@ set computed_level = public.puzzle_level_for_rating(rating, attempts, successes)
 where human_level is null
   and computed_level is distinct from public.puzzle_level_for_rating(rating, attempts, successes);
 
--- Keep the compatibility cache used by older clients in sync.
 update public.puzzles puzzle
 set puzzle_level = coalesce(rating.human_level, rating.computed_level)
 from public.puzzle_ratings rating

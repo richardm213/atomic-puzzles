@@ -1,6 +1,5 @@
--- Remove the 3000 puzzle-rating ceiling and retire V6.
--- V grades remain editorial/summary bands; the numeric Glicko rating is now unbounded above.
-
+-- Make the RD 45 floor reachable by preserving full-precision uncertainty.
+-- Public/API RD columns remain integers rounded from the internal values.
 begin;
 
 -- Keep full-precision Glicko uncertainty internally. The integer RD columns
@@ -36,43 +35,6 @@ alter table public.puzzle_ratings
   drop constraint if exists puzzle_ratings_precise_deviation_check,
   add constraint puzzle_ratings_precise_deviation_check
     check (rating_deviation_precise between 45 and 350);
-
-create or replace function public.puzzle_level_anchor(p_level smallint)
-returns integer
-language sql
-immutable
-set search_path = public
-as $$
-  select case p_level
-    when 1 then 1500
-    when 2 then 1800
-    when 3 then 2100
-    when 4 then 2400
-    when 5 then 2700
-    -- Treat legacy V6 values as V5 during the migration window.
-    when 6 then 2700
-    else 2100
-  end;
-$$;
-
-create or replace function public.puzzle_level_for_rating(
-  p_rating double precision,
-  p_attempts integer,
-  p_successes integer
-)
-returns smallint
-language sql
-immutable
-set search_path = public
-as $$
-  select case
-    when p_rating >= 2375 then 5
-    when p_rating >= 2125 then 4
-    when p_rating >= 1875 then 3
-    when p_rating >= 1625 then 2
-    else 1
-  end::smallint;
-$$;
 
 CREATE OR REPLACE FUNCTION public.set_human_puzzle_level(p_puzzle_id bigint, p_username text, p_level smallint)
  RETURNS TABLE(puzzle_id bigint, level smallint, rating integer, rating_deviation integer, attempts integer, successes integer, source text, updated_at timestamp with time zone)
@@ -154,8 +116,7 @@ begin
   from public.puzzle_ratings state
   where state.puzzle_id = p_puzzle_id;
 end;
-$function$
-
+$function$;
 
 CREATE OR REPLACE FUNCTION public.rate_first_puzzle_attempt_v2()
  RETURNS trigger
@@ -191,6 +152,10 @@ declare
   next_puzzle_successes integer;
   next_computed_level smallint;
 begin
+  if not new.rated then
+    return new;
+  end if;
+
   insert into public.puzzle_ratings (puzzle_id)
   values (numeric_puzzle_id)
   on conflict (puzzle_id) do nothing;
@@ -343,8 +308,7 @@ begin
 
   return new;
 end;
-$function$
-
+$function$;
 
 CREATE OR REPLACE FUNCTION public.rebuild_puzzle_ratings_from_history()
  RETURNS void
@@ -403,6 +367,7 @@ begin
       count(*)::integer as attempts,
       count(*) filter (where progress.puzzle_correct)::integer as successes
     from public.puzzle_progress progress
+    where progress.rated
     group by progress.puzzle_id::bigint
   ), estimates as (
     select
@@ -477,6 +442,7 @@ begin
       progress.puzzle_correct
     from public.puzzle_progress progress
     join public.puzzle_ratings rating on rating.puzzle_id = progress.puzzle_id::bigint
+    where progress.rated
     order by
       progress.first_attempt_at,
       lower(btrim(progress.username)),
@@ -637,20 +603,40 @@ begin
   from public.puzzle_ratings state
   where puzzle.id = state.puzzle_id;
 end;
-$function$
+$function$;
 
+alter table public.notifications
+  drop constraint if exists notifications_rating_deviation_check,
+  add constraint notifications_rating_deviation_check
+    check (rating_deviation is null or rating_deviation between 45 and 350);
 
--- Normalize any legacy manual or computed V6 state before replaying history.
-update public.puzzle_ratings
-set
-  human_level = case when human_level = 6 then 5 else human_level end,
-  computed_level = case when computed_level = 6 then 5 else computed_level end
-where human_level = 6 or computed_level = 6;
-
-update public.puzzles
-set puzzle_level = 5
-where puzzle_level = 6;
-
-select public.rebuild_puzzle_ratings_from_history();
-
+notify pgrst, 'reload schema';
 commit;
+
+select jsonb_build_object(
+  'solver_floor', 45,
+  'puzzle_floor', 45,
+  'precise_solver_column', exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'puzzle_user_ratings'
+      and column_name = 'rating_deviation_precise' and data_type = 'double precision'
+  ),
+  'precise_puzzle_column', exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'puzzle_ratings'
+      and column_name = 'rating_deviation_precise' and data_type = 'double precision'
+  ),
+  'live_function_uses_precise_rd',
+    pg_get_functiondef('public.rate_first_puzzle_attempt_v2()'::regprocedure)
+      like '%rating_deviation_precise%'
+    and pg_get_functiondef('public.rate_first_puzzle_attempt_v2()'::regprocedure)
+      not like '%round(sqrt%',
+  'rebuild_function_uses_precise_rd',
+    pg_get_functiondef('public.rebuild_puzzle_ratings_from_history()'::regprocedure)
+      like '%rating_deviation_precise%'
+    and pg_get_functiondef('public.rebuild_puzzle_ratings_from_history()'::regprocedure)
+      not like '%round(sqrt%',
+  'human_rating_function_uses_precise_rd',
+    pg_get_functiondef('public.set_human_puzzle_level(bigint,text,smallint)'::regprocedure)
+      like '%rating_deviation_precise%'
+) as migration_result;

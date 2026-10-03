@@ -32,7 +32,7 @@ alter table public.notifications
     check (rating is null or rating between 800 and 3200),
   drop constraint if exists notifications_rating_deviation_check,
   add constraint notifications_rating_deviation_check
-    check (rating_deviation is null or rating_deviation between 50 and 350),
+    check (rating_deviation is null or rating_deviation between 45 and 350),
   drop constraint if exists notifications_puzzle_rating_payload_check,
   add constraint notifications_puzzle_rating_payload_check check (
     notification_type <> 'puzzle_rating_added'
