@@ -266,14 +266,14 @@ export const ShopPage = () => {
           <div className="redeemDialogContent">
             <img src={appAssetPath(selectedReward.priceImage)} alt="" aria-hidden="true" />
             <div className="redeemDialogCopy">
-              <h2 id="redeem-dialog-title">Redeem {selectedReward.name}?</h2>
+              <h2 id="redeem-dialog-title">Buy {selectedReward.name}?</h2>
             </div>
             <div className="redeemDialogActions">
               <button className="redeemDialogCancel" type="button" onClick={closeRedeemDialog}>
                 Cancel
               </button>
               <button className="redeemDialogConfirm" type="button" onClick={confirmRedemption}>
-                Redeem for {selectedReward.cost.toLocaleString()}
+                Buy for {selectedReward.cost.toLocaleString()}
               </button>
             </div>
           </div>
@@ -533,7 +533,7 @@ export const ShopPage = () => {
           ) : null}
           {redeem.isSuccess ? (
             <p className="coinShopSuccess" role="status">
-              Redemption sent. An admin has been notified.
+              Purchase sent. An admin has been notified.
             </p>
           ) : null}
           {analysis.isSuccess ? (
@@ -572,8 +572,8 @@ export const ShopPage = () => {
                     {item.key === "atomicdb_analysis_12h"
                       ? "Request"
                       : redeem.isPending && redeem.variables === item.key
-                        ? "Redeeming…"
-                        : "Redeem"}
+                        ? "Buying…"
+                        : "Buy"}
                   </button>
                 </article>
               ))}
@@ -613,7 +613,7 @@ export const ShopPage = () => {
                 })}
               </ol>
             ) : (
-              <p className="redemptionHistoryState">You haven’t redeemed anything yet.</p>
+              <p className="redemptionHistoryState">You haven’t bought anything yet.</p>
             )}
           </section>
         </>

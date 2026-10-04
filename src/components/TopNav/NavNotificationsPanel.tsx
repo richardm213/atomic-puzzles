@@ -107,7 +107,7 @@ export const NavNotificationsPanel = ({
                       : notification.notification_type === "monthly_ranking"
                         ? `Monthly rankings · ${formatLocalDateTime(notification.created_at)}`
                         : notification.notification_type === "shop_redemption"
-                          ? `Shop redemption · ${formatLocalDateTime(notification.created_at)}`
+                          ? `Shop purchase · ${formatLocalDateTime(notification.created_at)}`
                           : notification.notification_type === "puzzle_rating_added"
                             ? `Puzzle rating · ${formatLocalDateTime(notification.created_at)}`
                             : notification.notification_type === "puzzle_approved"

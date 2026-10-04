@@ -197,7 +197,7 @@ export const NotificationsPage = () => {
                           : notification.notification_type === "monthly_ranking"
                             ? "Monthly rankings"
                             : notification.notification_type === "shop_redemption"
-                              ? "Shop redemption"
+                              ? "Shop purchase"
                               : notification.notification_type === "puzzle_rating_added"
                                 ? "Puzzle rating"
                                 : notification.notification_type === "puzzle_approved"

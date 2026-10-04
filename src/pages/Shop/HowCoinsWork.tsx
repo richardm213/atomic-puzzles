@@ -64,9 +64,9 @@ export const HowCoinsWorkPage = () => (
       </section>
 
       <section className="coinGuideSection">
-        <h2>Redeem coins</h2>
+        <h2>Buy rewards</h2>
         <p>
-          Each reward shows its coin price. Redeeming one deducts the coins immediately and notifies
+          Each reward shows its coin price. Buying one deducts the coins immediately and notifies
           an admin to deliver it.
         </p>
       </section>

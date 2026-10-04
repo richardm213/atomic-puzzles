@@ -266,7 +266,7 @@ describe("coins function", () => {
     });
     expect(response.statusCode).toBe(409);
     expect(JSON.parse(response.body)).toMatchObject({
-      error: "You need 4,000 coins to redeem this item.",
+      error: "You need 4,000 coins to buy this item.",
     });
   });
 

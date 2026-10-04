@@ -258,7 +258,7 @@ export const coinsRoute = async (event: FunctionEvent) => {
           ? "You don’t have enough coins for this gift."
           : input.action === "requestAtomicDbAnalysis"
             ? "You need 200 coins to request this analysis."
-            : `You need ${redemptionCost.toLocaleString()} coins to redeem this item.`,
+            : `You need ${redemptionCost.toLocaleString()} coins to buy this item.`,
       );
     }
     if (/recipient must have/i.test(error.message)) {

@@ -73,7 +73,7 @@ export const notificationCopy = (notification: UserNotification): string => {
       lichess_patron_month: "1 month Lichess Patron",
       next_prize_tournament_format: "the next 100$+ prize tournament format choice",
     };
-    return `${notification.actor_username ?? "Someone"} redeemed ${itemNames[notification.shop_item_key ?? ""] ?? "a shop item"}.`;
+    return `${notification.actor_username ?? "Someone"} bought ${itemNames[notification.shop_item_key ?? ""] ?? "a shop item"}.`;
   }
   if (notification.notification_type === "puzzle_rating_added") {
     return `Puzzle ratings have been added to the site! Yours is ${notification.rating} with RD ${notification.rating_deviation}`;
