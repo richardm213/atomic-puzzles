@@ -592,7 +592,7 @@ export const TopNav = () => {
         aria-current={pathname === "/" ? "page" : undefined}
       >
         <img
-          className="brandMarkDark"
+          className="brandMarkImage brandMarkDark"
           src={appAssetPath("/favicon.ico")}
           alt=""
           width="30"
@@ -600,23 +600,21 @@ export const TopNav = () => {
           aria-hidden="true"
         />
         <img
-          className="brandMarkAmethyst"
-          src={appAssetPath("/favicon.ico")}
+          className="brandMarkImage brandMarkLight"
+          src={appAssetPath("/images/brand/atomic-logo-light.png")}
           alt=""
           width="30"
           height="30"
           aria-hidden="true"
         />
-        <span className="brandMark brandMarkLight" aria-hidden="true">
-          <svg viewBox="0 0 48 48" focusable="false">
-            <ellipse cx="24" cy="24" rx="21" ry="8.5" transform="rotate(45 24 24)" />
-            <ellipse cx="24" cy="24" rx="21" ry="8.5" transform="rotate(-45 24 24)" />
-            <circle className="brandMarkNucleus" cx="24" cy="24" r="5.5" />
-            <circle className="brandMarkElectron" cx="8" cy="7" r="2.4" />
-            <circle className="brandMarkElectron" cx="39" cy="15" r="2.4" />
-            <circle className="brandMarkElectron" cx="29" cy="40" r="2.4" />
-          </svg>
-        </span>
+        <img
+          className="brandMarkImage brandMarkAmethyst"
+          src={appAssetPath("/images/brand/atomic-logo-amethyst.png")}
+          alt=""
+          width="30"
+          height="30"
+          aria-hidden="true"
+        />
         <span>Atomic Puzzles</span>
       </Link>
       <button

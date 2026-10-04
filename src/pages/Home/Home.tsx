@@ -96,36 +96,52 @@ export const HomePage = () => {
           <div className="homePuzzlePreviewCard homePuzzlePreviewSecondary">
             <img
               className="homePuzzlePreviewDark"
-              src={appAssetPath("/images/home-puzzles/home-puzzle-dark-3.png")}
+              src={appAssetPath("/images/home-puzzles/home-board-dark-secondary.png")}
               alt=""
-              width="918"
-              height="1036"
+              width="832"
+              height="832"
               decoding="async"
             />
             <img
               className="homePuzzlePreviewLight"
-              src={appAssetPath("/images/home-puzzles/home-puzzle-light-3.png")}
+              src={appAssetPath("/images/home-puzzles/home-board-light-secondary.png")}
               alt=""
-              width="918"
-              height="1036"
+              width="832"
+              height="832"
+              decoding="async"
+            />
+            <img
+              className="homePuzzlePreviewAmethyst"
+              src={appAssetPath("/images/home-puzzles/home-board-amethyst-secondary.png")}
+              alt=""
+              width="832"
+              height="832"
               decoding="async"
             />
           </div>
           <div className="homePuzzlePreviewCard homePuzzlePreviewPrimary">
             <img
               className="homePuzzlePreviewDark"
-              src={appAssetPath("/images/home-puzzles/home-puzzle-dark-1.png")}
+              src={appAssetPath("/images/home-puzzles/home-board-dark-primary.png")}
               alt=""
-              width="918"
-              height="1036"
+              width="832"
+              height="832"
               decoding="async"
             />
             <img
               className="homePuzzlePreviewLight"
-              src={appAssetPath("/images/home-puzzles/home-puzzle-light-1.png")}
+              src={appAssetPath("/images/home-puzzles/home-board-light-primary.png")}
               alt=""
-              width="918"
-              height="1036"
+              width="832"
+              height="832"
+              decoding="async"
+            />
+            <img
+              className="homePuzzlePreviewAmethyst"
+              src={appAssetPath("/images/home-puzzles/home-board-amethyst-primary.png")}
+              alt=""
+              width="832"
+              height="832"
               decoding="async"
             />
           </div>

@@ -118,13 +118,13 @@
 
 .homePuzzlePreviewCard > img {
   position: absolute;
-  left: 50%;
-  bottom: 0;
+  inset: 6px;
   display: block;
-  width: 104.5%;
+  width: calc(100% - 12px);
   max-width: none;
-  height: auto;
-  transform: translateX(-50%);
+  height: calc(100% - 12px);
+  border-radius: calc(var(--radius-lg) - 6px);
+  object-fit: cover;
 }
 
 .homePuzzlePreviewPrimary {
@@ -143,7 +143,8 @@
   opacity: 0.72;
 }
 
-.homePuzzlePreviewLight {
+.homePuzzlePreviewLight,
+.homePuzzlePreviewAmethyst {
   display: none !important;
 }
 
@@ -152,6 +153,14 @@
 }
 
 :root[data-theme="light"] .homePuzzlePreviewLight {
+  display: block !important;
+}
+
+:root[data-theme="amethyst"] .homePuzzlePreviewDark {
+  display: none;
+}
+
+:root[data-theme="amethyst"] .homePuzzlePreviewAmethyst {
   display: block !important;
 }
 
