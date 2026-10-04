@@ -59,8 +59,8 @@ export const HomePage = () => {
   return (
     <div className="homePage">
       <Seo
-        title="Puzzles, Rankings & Matches"
-        description="Train with atomic chess puzzles, browse monthly and yearly rankings, track recent matches, and look up player profiles in one place."
+        title="Atomic Puzzles | Atomic Chess Training & Rankings"
+        description="Solve atomic chess puzzles, compare monthly and yearly rankings, study recent matches, and explore player profiles."
         path="/"
         structuredData={{
           "@context": "https://schema.org",
@@ -68,7 +68,7 @@ export const HomePage = () => {
           name: "Atomic Puzzles",
           url: typeof window === "undefined" ? "/" : window.location.origin,
           description:
-            "Atomic chess puzzles, rankings, recent matches, and player profiles for the Lichess atomic community.",
+            "Solve atomic chess puzzles, compare monthly and yearly rankings, study recent matches, and explore player profiles.",
         }}
       />
       <section className="homeHero" aria-labelledby="home-title">
