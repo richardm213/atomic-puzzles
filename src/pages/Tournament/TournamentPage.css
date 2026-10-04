@@ -667,6 +667,48 @@
   align-content: center;
 }
 
+.tournamentDoubleByeAnchor {
+  position: absolute;
+  height: 102px;
+  pointer-events: none;
+}
+
+.tournamentByeAdvance {
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  overflow: visible;
+}
+
+.tournamentByeAdvanceCard {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  padding: 4px 8px;
+  border: 1px solid color-mix(in srgb, var(--color-primary-soft) 14%, var(--color-border));
+  border-radius: 6px;
+  background: var(--color-panel-strong);
+  transform: translateY(-50%);
+}
+
+.tournamentByeAdvanceCard .tournamentPlayerRow {
+  min-height: 38px;
+}
+
+.tournamentVisuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  margin: -1px;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
 .tournamentMatchCardTree.hasTrophy {
   z-index: 7;
   overflow: visible;

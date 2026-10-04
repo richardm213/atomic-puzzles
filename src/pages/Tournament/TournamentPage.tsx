@@ -91,6 +91,14 @@ const isByePlayer = (playerName: string): boolean =>
 const isByeMatch = (match: TournamentMatch | null | undefined): boolean =>
   isByePlayer(match?.p1 ?? "") || isByePlayer(match?.p2 ?? "");
 
+const isDoubleByeMatch = (match: TournamentMatch | null | undefined): boolean =>
+  isByePlayer(match?.p1 ?? "") && isByePlayer(match?.p2 ?? "");
+
+const byeAdvancePlayerName = (match: TournamentMatch | null | undefined): string => {
+  if (!match || !isByeMatch(match) || isDoubleByeMatch(match)) return "";
+  return isByePlayer(match.p1) ? match.p2 : match.p1;
+};
+
 const isEmptyMatch = (match: TournamentMatch | null | undefined): boolean =>
   isEmptyPlayer(match?.p1 ?? "") && isEmptyPlayer(match?.p2 ?? "");
 
@@ -331,6 +339,51 @@ const TournamentMatchCard = ({
   const withdrawalPlayer = withdrewPlayerName(match);
   const hasMatchPage = Boolean(match.match_id);
   const shouldShowTrophy = showTrophy && Boolean(trophyAssetPath);
+  const isDoubleBye = isDoubleByeMatch(match);
+  const byeAdvancePlayer = byeAdvancePlayerName(match);
+
+  if (isDoubleBye) {
+    return (
+      <div
+        className="tournamentMatchCardTree tournamentDoubleByeAnchor"
+        style={{
+          left: `${match.x}px`,
+          top: `${match.y}px`,
+          width: `${CARD_WIDTH}px`,
+        }}
+        aria-hidden="true"
+      />
+    );
+  }
+
+  if (byeAdvancePlayer) {
+    return (
+      <div
+        className="tournamentMatchCard tournamentMatchCardTree tournamentByeAdvance"
+        style={{
+          left: `${match.x}px`,
+          top: `${match.y}px`,
+          width: `${CARD_WIDTH}px`,
+        }}
+      >
+        <div className="tournamentByeAdvanceCard">
+          <div className="tournamentPlayerRow">
+            <span>
+              <PlayerLabel
+                playerName={byeAdvancePlayer}
+                seed={topSeedMap.get(byeAdvancePlayer)}
+                seedCount={seedCount}
+                isWinner={false}
+                countryCode={countryMap.get(byeAdvancePlayer)}
+                shouldSuppressClick={shouldSuppressClick}
+              />
+              <span className="tournamentVisuallyHidden"> advances by bye</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

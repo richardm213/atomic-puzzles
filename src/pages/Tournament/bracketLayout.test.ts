@@ -70,4 +70,43 @@ describe("bracket layout", () => {
     expect(clampZoom(0)).toBe(0.85);
     expect(zoomDisplayPercent(0.85)).toBe(100);
   });
+
+  it("preserves bye anchors across selectable starting rounds without drawing empty branches", () => {
+    const byeStage: TournamentBracketStage = {
+      key: "main",
+      label: "Main bracket",
+      rounds: [
+        {
+          roundName: "Round of 64",
+          matches: [
+            { ...match("r64-player", "r32-1"), p1: "Player one", p2: "bye" },
+            { ...match("r64-empty", "r32-1"), p1: "bye", p2: "bye" },
+            match("r64-3", "r32-2"),
+            match("r64-4", "r32-2"),
+          ],
+        },
+        {
+          roundName: "Round of 32",
+          matches: [
+            { ...match("r32-1", "r16-1"), p1: "Player one", p2: "bye" },
+            match("r32-2", "r16-1"),
+          ],
+        },
+        { roundName: "Round of 16", matches: [match("r16-1")] },
+      ],
+    };
+
+    const fromRoundOf64 = buildStageTreeLayout(byeStage, "Round of 64");
+    const fromRoundOf32 = buildStageTreeLayout(byeStage, "Round of 32");
+    const fromRoundOf16 = buildStageTreeLayout(byeStage, "Round of 16");
+
+    expect(fromRoundOf64?.positionedMatches).toHaveLength(7);
+    expect(fromRoundOf64?.connectors.some(({ key }) => key.includes("r64-empty"))).toBe(false);
+    expect(fromRoundOf32?.positionedMatches.map(({ id }) => id)).toEqual([
+      "r32-1",
+      "r32-2",
+      "r16-1",
+    ]);
+    expect(fromRoundOf16?.positionedMatches.map(({ id }) => id)).toEqual(["r16-1"]);
+  });
 });

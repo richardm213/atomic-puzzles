@@ -178,6 +178,14 @@ const createConnector = (
   y2: number,
 ): ConnectorSegment => ({ key, x1, y1, x2, y2 });
 
+const isByePlayer = (playerName: string): boolean =>
+  String(playerName || "")
+    .trim()
+    .toLowerCase() === "bye";
+
+const isDoubleByeMatch = (match: TournamentMatch | undefined): boolean =>
+  Boolean(match && isByePlayer(match.p1) && isByePlayer(match.p2));
+
 export const buildStageTreeLayout = (
   stage: TournamentBracketStage,
   startRoundName: string,
@@ -227,10 +235,11 @@ export const buildStageTreeLayout = (
 
   incoming.forEach((sourceMatchIds, targetMatchId) => {
     const targetPosition = positions.get(targetMatchId);
-    if (!targetPosition) return;
+    if (!targetPosition || isDoubleByeMatch(matchesByKey.get(targetMatchId))) return;
 
     const sourcePositions = sourceMatchIds
       .map((sourceMatchId) => {
+        if (isDoubleByeMatch(matchesByKey.get(sourceMatchId))) return null;
         const position = positions.get(sourceMatchId);
         return position
           ? {
