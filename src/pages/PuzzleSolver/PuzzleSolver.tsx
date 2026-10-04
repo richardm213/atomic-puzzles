@@ -2306,7 +2306,14 @@ export const PuzzleSolverPage = () => {
 
   const renderPuzzleRating = (mobile = false) => {
     const levelLabel = puzzleLevelLabel(activePuzzleRating.level);
-    const details = `${levelLabel}, ${activePuzzleRating.rating} Elo, rating deviation ${activePuzzleRating.ratingDeviation}, ${activePuzzleRating.attempts} attempts`;
+    const ratingChange = visibleRatingFeedback?.puzzleRatingChange;
+    const changeDirection =
+      ratingChange === undefined ? "" : ratingChange >= 0 ? "positive" : "negative";
+    const changeDescription =
+      ratingChange === undefined
+        ? ""
+        : `, ${ratingChange >= 0 ? "increased" : "decreased"} by ${Math.abs(ratingChange)}`;
+    const details = `${levelLabel}, ${activePuzzleRating.rating} Elo${changeDescription}, rating deviation ${activePuzzleRating.ratingDeviation}, ${activePuzzleRating.attempts} attempts`;
 
     if (canManagePuzzleRating && ratingEditorOpen) {
       return (
@@ -2354,13 +2361,14 @@ export const PuzzleSolverPage = () => {
       <>
         <strong>{levelLabel}</strong>
         <span>{activePuzzleRating.rating}</span>
+        {ratingChange !== undefined ? <small>{formatSignedRating(ratingChange)}</small> : null}
       </>
     );
 
     return canManagePuzzleRating ? (
       <button
         type="button"
-        className={`puzzleRatingBadge editable ${mobile ? "mobile" : ""}`.trim()}
+        className={`puzzleRatingBadge editable ${changeDirection} ${mobile ? "mobile" : ""}`.trim()}
         title={`${details}. Edit level.`}
         aria-label={`${details}. Edit level.`}
         onClick={() => {
@@ -2373,7 +2381,7 @@ export const PuzzleSolverPage = () => {
       </button>
     ) : (
       <span
-        className={`puzzleRatingBadge ${mobile ? "mobile" : ""}`.trim()}
+        className={`puzzleRatingBadge ${changeDirection} ${mobile ? "mobile" : ""}`.trim()}
         title={details}
         aria-label={details}
       >
@@ -2683,19 +2691,6 @@ export const PuzzleSolverPage = () => {
                 {feedback.icon}
               </span>
               <strong>{feedback.title}</strong>
-              {visibleRatingFeedback ? (
-                <span
-                  className={`feedbackRating ${
-                    visibleRatingFeedback.puzzleRatingChange >= 0 ? "positive" : "negative"
-                  }`}
-                  aria-label={`Puzzle rating was ${visibleRatingFeedback.puzzleRatingBefore} and ${
-                    visibleRatingFeedback.puzzleRatingChange >= 0 ? "increased" : "decreased"
-                  } by ${Math.abs(visibleRatingFeedback.puzzleRatingChange)}`}
-                >
-                  {visibleRatingFeedback.puzzleRatingBefore}
-                  <small>{formatSignedRating(visibleRatingFeedback.puzzleRatingChange)}</small>
-                </span>
-              ) : null}
             </div>
           ) : null}
           <div className="boardStage">
@@ -2731,19 +2726,6 @@ export const PuzzleSolverPage = () => {
                 {mobileFeedback.icon}
               </span>
               <strong className="mobileFeedbackText">{mobileFeedback.title}</strong>
-              {visibleRatingFeedback ? (
-                <span
-                  className={`feedbackRating ${
-                    visibleRatingFeedback.puzzleRatingChange >= 0 ? "positive" : "negative"
-                  }`}
-                  aria-label={`Puzzle rating was ${visibleRatingFeedback.puzzleRatingBefore} and ${
-                    visibleRatingFeedback.puzzleRatingChange >= 0 ? "increased" : "decreased"
-                  } by ${Math.abs(visibleRatingFeedback.puzzleRatingChange)}`}
-                >
-                  {visibleRatingFeedback.puzzleRatingBefore}
-                  <small>{formatSignedRating(visibleRatingFeedback.puzzleRatingChange)}</small>
-                </span>
-              ) : null}
             </div>
           ) : null}
         </div>

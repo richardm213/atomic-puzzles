@@ -341,6 +341,20 @@ body:has(.puzzlePage),
   font-variant-numeric: tabular-nums;
 }
 
+.puzzleRatingBadge > small {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 900;
+}
+
+.puzzleRatingBadge.positive > small {
+  color: var(--color-success);
+}
+
+.puzzleRatingBadge.negative > small {
+  color: var(--color-danger);
+}
+
 button.puzzleRatingBadge.editable {
   cursor: pointer;
   transition:
@@ -2100,32 +2114,6 @@ button.puzzleRatingBadge.editable:active {
   font-weight: 900;
   line-height: 1;
   text-shadow: 0 1px 8px rgba(2, 6, 23, 0.36);
-}
-
-.feedbackRating {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 5px;
-  padding-left: 8px;
-  border-left: 1px solid color-mix(in srgb, currentColor 32%, transparent);
-  color: currentColor;
-  font-size: 13px;
-  font-weight: 900;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-}
-
-.feedbackRating small {
-  font-size: 10px;
-  font-weight: 900;
-}
-
-.feedbackRating.positive {
-  color: color-mix(in srgb, var(--color-success) 62%, white);
-}
-
-.feedbackRating.negative {
-  color: color-mix(in srgb, var(--color-danger) 56%, white);
 }
 
 @keyframes feedbackBadgeFade {

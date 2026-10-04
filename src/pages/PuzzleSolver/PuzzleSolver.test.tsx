@@ -900,17 +900,19 @@ describe("PuzzleSolverPage solution options", () => {
       "1369",
       false,
     );
-    expect(await screen.findByLabelText(/V3, 2100 Elo/)).toBeInTheDocument();
+    const updatedPuzzleRating = await screen.findByLabelText(
+      /V3, 2100 Elo, increased by 17/,
+    );
+    expect(updatedPuzzleRating).toHaveClass("positive");
+    expect(updatedPuzzleRating).toHaveTextContent("V32100+17");
     const updatedRating = await screen.findByLabelText(
       "Your puzzle rating is 1978, decreased by 22",
     );
     expect(updatedRating).toHaveClass("negative");
     expect(updatedRating).toHaveTextContent("1978-22");
-    const puzzleRatingChange = await screen.findByLabelText(
-      "Puzzle rating was 2100 and increased by 17",
-    );
-    expect(puzzleRatingChange).toHaveClass("positive");
-    expect(puzzleRatingChange).toHaveTextContent("2100+17");
+    expect(
+      screen.queryByLabelText("Puzzle rating was 2100 and increased by 17"),
+    ).not.toBeInTheDocument();
   });
 
   it("omits attempt time after the timer reaches 60 minutes", async () => {
