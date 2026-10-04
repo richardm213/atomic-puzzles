@@ -586,6 +586,7 @@ const router = createRouter({
   defaultPendingComponent: RouteLoadingFallback,
   defaultPreload: "intent",
   scrollRestoration: true,
+  getScrollRestorationKey: (location) => location.pathname,
 });
 
 export const AppRouterProvider = () => (
