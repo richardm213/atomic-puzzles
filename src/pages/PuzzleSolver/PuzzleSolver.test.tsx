@@ -212,6 +212,7 @@ describe("castlingRightsFromFen", () => {
 
 describe("PuzzleSolverPage solution options", () => {
   beforeEach(() => {
+    window.localStorage.clear();
     mocks.chessboardProps.length = 0;
     mocks.attemptedPuzzleIds = new Set(["1369"]);
     mocks.fetchPuzzleProgressRowsForUsername.mockReset().mockImplementation(async () =>
@@ -941,6 +942,36 @@ describe("PuzzleSolverPage solution options", () => {
       }),
     );
     performanceNow.mockRestore();
+  });
+
+  it("keeps the original puzzle start time after the solver remounts", async () => {
+    let now = 1_000_000;
+    const dateNow = vi.spyOn(Date, "now").mockImplementation(() => now);
+
+    const firstRender = render(<PuzzleSolverPage />);
+    await screen.findByTestId("mock-board");
+    firstRender.unmount();
+
+    now += 65_000;
+    render(<PuzzleSolverPage />);
+
+    expect(await screen.findByLabelText("Elapsed time 1:05")).toBeInTheDocument();
+    dateNow.mockRestore();
+  });
+
+  it("starts a fresh timer when the stored attempt is more than 30 minutes old", async () => {
+    let now = 1_000_000;
+    const dateNow = vi.spyOn(Date, "now").mockImplementation(() => now);
+
+    const firstRender = render(<PuzzleSolverPage />);
+    await screen.findByTestId("mock-board");
+    firstRender.unmount();
+
+    now += 30 * 60 * 1000 + 1;
+    render(<PuzzleSolverPage />);
+
+    expect(await screen.findByLabelText("Elapsed time 0:00")).toBeInTheDocument();
+    dateNow.mockRestore();
   });
 
   it("offers exits when the final puzzle in an ordered set is solved", async () => {

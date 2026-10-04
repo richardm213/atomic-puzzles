@@ -128,6 +128,8 @@ const OPA_STYLE_BADGE_LABEL =
 const OTHER_PUZZLE_ATTEMPTS_LIMIT = 30;
 const PUZZLE_PREFETCH_COUNT = 3;
 const MAX_PUZZLE_ATTEMPT_DURATION_MS = 60 * 60 * 1000;
+const PUZZLE_ATTEMPT_STORAGE_DURATION_MS = 30 * 60 * 1000;
+const PUZZLE_ATTEMPT_STARTED_AT_STORAGE_PREFIX = "atomic-puzzles.puzzle-attempt-started-at.v1";
 const PUZZLE_TAG_EDITOR = "seaside_tiramisu";
 const PUZZLE_RATING_EDITOR = "seaside_tiramisu";
 const PUZZLE_EXPLANATION_LEGACY_AUTHOR = "admin";
@@ -138,6 +140,28 @@ const formatElapsedTime = (milliseconds: number): string => {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
+};
+
+const getPuzzleAttemptStartedAt = (puzzleId: string): number => {
+  const storageKey = `${PUZZLE_ATTEMPT_STARTED_AT_STORAGE_PREFIX}:${puzzleId}`;
+  const now = Date.now();
+
+  try {
+    const storedStartedAt = Number.parseInt(window.localStorage.getItem(storageKey) ?? "", 10);
+    const storedAttemptAge = now - storedStartedAt;
+    if (
+      Number.isFinite(storedStartedAt) &&
+      storedAttemptAge >= 0 &&
+      storedAttemptAge <= PUZZLE_ATTEMPT_STORAGE_DURATION_MS
+    ) {
+      return storedStartedAt;
+    }
+    window.localStorage.setItem(storageKey, String(now));
+  } catch {
+    // The timer still works for this page load when local storage is unavailable.
+  }
+
+  return now;
 };
 
 const formatSignedRating = (value: number): string => `${value > 0 ? "+" : ""}${value}`;
@@ -1000,17 +1024,25 @@ export const PuzzleSolverPage = () => {
 
   useEffect(() => {
     resetPuzzleUiState();
-    elapsedTimeMsRef.current = 0;
-    elapsedTimerExpiredRef.current = false;
-    elapsedTimerStartedAtRef.current = activePuzzleId && fen ? window.performance.now() : null;
-    setElapsedTimeMs(0);
-    setElapsedTimerRunning(Boolean(activePuzzleId && fen));
+    const shouldStartTimer = Boolean(activePuzzleKey && fen);
+    const elapsedBeforePageLoad = shouldStartTimer
+      ? Math.max(0, Date.now() - getPuzzleAttemptStartedAt(activePuzzleKey))
+      : 0;
+    const initialElapsedTime = Math.min(elapsedBeforePageLoad, MAX_PUZZLE_ATTEMPT_DURATION_MS);
+    const timerExpired = elapsedBeforePageLoad >= MAX_PUZZLE_ATTEMPT_DURATION_MS;
+
+    elapsedTimeMsRef.current = initialElapsedTime;
+    elapsedTimerExpiredRef.current = timerExpired;
+    elapsedTimerStartedAtRef.current =
+      shouldStartTimer && !timerExpired ? window.performance.now() - initialElapsedTime : null;
+    setElapsedTimeMs(initialElapsedTime);
+    setElapsedTimerRunning(shouldStartTimer && !timerExpired);
     setMobileFeedback(null);
     resetCopyFeedback();
     setOtherPuzzleAttemptsStatus("idle");
     setOtherPuzzleAttempts([]);
     previousBoardSnapshotRef.current = createInitialBoardSnapshot();
-  }, [activePuzzleId, fen, resetCopyFeedback, resetPuzzleUiState]);
+  }, [activePuzzleKey, fen, resetCopyFeedback, resetPuzzleUiState]);
 
   useEffect(() => {
     if (!elapsedTimerRunning) return;
