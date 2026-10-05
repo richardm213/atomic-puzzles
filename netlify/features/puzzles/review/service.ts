@@ -8,7 +8,13 @@ import type { PuzzleReviewRepository } from "./repository";
 export type PuzzleReviewAction =
   | { action: "list" }
   | { action: "reject"; id: number }
-  | { action: "approve"; id: number; puzzleId: number }
+  | {
+      action: "approve";
+      id: number;
+      puzzleId: number;
+      complexityBonus: boolean;
+      explanationBonus: boolean;
+    }
   | {
       action: "update";
       id: number;
@@ -51,7 +57,15 @@ export class PuzzleReviewService {
     }
 
     if (input.action === "approve") {
-      return { puzzleId: await this.repository().approve(input.id, this.reviewer, input.puzzleId) };
+      return {
+        puzzleId: await this.repository().approve(
+          input.id,
+          this.reviewer,
+          input.puzzleId,
+          input.complexityBonus,
+          input.explanationBonus,
+        ),
+      };
     }
 
     try {

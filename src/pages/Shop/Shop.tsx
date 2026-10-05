@@ -246,7 +246,7 @@ export const ShopPage = () => {
         <h1>Shop</h1>
         <Link className="coinHelpLink" to="/shop/how-coins-work">
           <FontAwesomeIcon icon={faCircleInfo} aria-hidden="true" />
-          How do coins work?
+          How to earn coins
         </Link>
       </header>
 

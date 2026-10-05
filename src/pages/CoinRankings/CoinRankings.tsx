@@ -196,7 +196,7 @@ export const CoinRankingsPage = () => {
               <>
                 <div className="rankingsMeta coinRankingsMeta">
                   <Link className="rankingsMetaLink" to="/shop/how-coins-work">
-                    How coins work
+                    How to earn coins
                   </Link>
                 </div>
 

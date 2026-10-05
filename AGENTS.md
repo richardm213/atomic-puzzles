@@ -14,6 +14,11 @@
 - Never add eyebrow labels or mini-titles above page headings.
 - Never add descriptive subtitles that merely restate the page title or visible controls.
 
+## SQL tooling
+
+- Always use Firefox when running SQL for this project. Do not use Chrome or another browser for SQL workflows.
+- Always use the new/current database. Never query, modify, or otherwise use the old/legacy database.
+
 ## Testing protocol
 
 - Before adding, expanding, or substantially rewriting tests, read and follow `docs/testing-protocol.md`.

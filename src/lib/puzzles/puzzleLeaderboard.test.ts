@@ -14,7 +14,7 @@ const metricRow = (
   ratingDeviation: number,
   attempted: number,
   correct = attempted,
-) => ({ username, rating, ratingDeviation, attempted, correct });
+) => ({ username, rating, ratingDeviation, attempted, correct, averageSeconds: null });
 
 describe("puzzleLeaderboard", () => {
   it("calculates whole-number correct percentages", () => {
@@ -95,5 +95,53 @@ describe("puzzleLeaderboard", () => {
       rows[1],
     ]);
     expect(filterPuzzleProgressRowsByPeriod(rows, "all", "2026-07")).toBe(rows);
+  });
+
+  it("averages rated puzzle times in seconds and excludes durations above 15 minutes", () => {
+    const rows = buildPuzzleLeaderboardRows(
+      [metricRow("solver", 2100, 50, 20)],
+      "monthly",
+      [
+        {
+          username: "solver",
+          puzzle_id: "1",
+          first_attempt_at: "2026-07-01T00:00:00.000Z",
+          first_attempt_duration_ms: 30_000,
+          puzzle_correct: true,
+          rated: true,
+          incorrect_move: null,
+        },
+        {
+          username: "solver",
+          puzzle_id: "2",
+          first_attempt_at: "2026-07-02T00:00:00.000Z",
+          first_attempt_duration_ms: 900_000,
+          puzzle_correct: true,
+          rated: true,
+          incorrect_move: null,
+        },
+        {
+          username: "solver",
+          puzzle_id: "3",
+          first_attempt_at: "2026-07-03T00:00:00.000Z",
+          first_attempt_duration_ms: 900_001,
+          puzzle_correct: false,
+          rated: true,
+          incorrect_move: "Nf3",
+        },
+        {
+          username: "solver",
+          puzzle_id: "4",
+          first_attempt_at: "2026-07-04T00:00:00.000Z",
+          first_attempt_duration_ms: 1_000,
+          puzzle_correct: true,
+          rated: false,
+          incorrect_move: null,
+        },
+      ],
+      "2026-07",
+    );
+
+    expect(rows[0]?.averageSeconds).toBe(465);
   });
 });

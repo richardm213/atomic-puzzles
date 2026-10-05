@@ -31,6 +31,8 @@ const reviewBodySchema = z.discriminatedUnion("action", [
     action: z.literal("approve"),
     id: z.number().int().positive(),
     puzzleId: z.number().int().positive(),
+    complexityBonus: z.boolean().default(true),
+    explanationBonus: z.boolean().default(false),
   }),
   puzzleFieldsSchema.extend({ action: z.literal("update"), id: z.number().int().positive() }),
 ]);

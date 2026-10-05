@@ -61,11 +61,19 @@ export class PuzzleReviewRepository {
     if (error) throw new Error(`Unable to reject queued puzzle: ${error.message}`);
   }
 
-  async approve(id: number, reviewer: string, puzzleId: number): Promise<number> {
+  async approve(
+    id: number,
+    reviewer: string,
+    puzzleId: number,
+    complexityBonus: boolean,
+    explanationBonus: boolean,
+  ): Promise<number> {
     const { data, error } = await this.supabase.rpc("approve_queued_puzzle", {
       p_queue_id: id,
       p_reviewer: reviewer,
       p_puzzle_id: puzzleId,
+      p_complexity_bonus: complexityBonus,
+      p_explanation_bonus: explanationBonus,
     });
     if (error) {
       if (

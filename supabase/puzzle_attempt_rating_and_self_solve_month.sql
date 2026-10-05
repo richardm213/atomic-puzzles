@@ -598,7 +598,7 @@ begin
     select
       estimate.*,
       case
-        when estimate.attempts < 4 then 3
+        when estimate.attempts < 4 then 3::smallint
         else public.puzzle_level_for_rating(
           estimate.estimated_rating,
           estimate.attempts,
@@ -614,12 +614,12 @@ begin
       else public.puzzle_level_anchor(state.human_level)
     end,
     rating_deviation = case
-      when state.human_level is not null then 75
+      when state.human_level is not null then 150
       when seed.attempts >= 4 then 150
       else 300
     end,
     rating_deviation_precise = case
-      when state.human_level is not null then 75
+      when state.human_level is not null then 150
       when seed.attempts >= 4 then 150
       else 300
     end,

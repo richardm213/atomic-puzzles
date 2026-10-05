@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
 import { defineFunction } from "../platform/defineFunction";
+import { readServerEnvironment } from "../platform/environment";
 import { HttpError } from "../platform/errors";
 import { jsonResponse } from "../platform/response";
 import { parseJsonBody } from "../platform/validation";
@@ -16,7 +17,10 @@ const functionUnderTest = defineFunction(
   { methods: ["POST"], fallbackMessage: "Request failed." },
 );
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllEnvs();
+});
 
 describe("function platform", () => {
   it("enforces configured methods and standard response headers", async () => {
@@ -48,5 +52,17 @@ describe("function platform", () => {
     expect(response.statusCode).toBe(500);
     expect(JSON.parse(response.body)).toEqual({ error: "Request failed." });
     expect(response.body).not.toContain("database");
+  });
+});
+
+describe("server environment", () => {
+  it("uses the canonical shared Supabase project instead of a stale server fallback", () => {
+    vi.stubEnv("SUPABASE_URL", "https://legacy.supabase.co");
+    vi.stubEnv("VITE_SUPABASE_URL", "https://current.supabase.co");
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "service-role-key");
+
+    expect(readServerEnvironment("Puzzle submission service").supabaseUrl).toBe(
+      "https://current.supabase.co",
+    );
   });
 });

@@ -10,8 +10,9 @@ type ServerEnvironment = {
 };
 
 export const readServerEnvironment = (serviceName: string): ServerEnvironment => {
-  const supabaseUrl =
-    process.env.SUPABASE_URL?.trim() || process.env.VITE_SUPABASE_URL?.trim() || "";
+  const serverSupabaseUrl = process.env.SUPABASE_URL?.trim() ?? "";
+  const sharedSupabaseUrl = process.env.VITE_SUPABASE_URL?.trim() ?? "";
+  const supabaseUrl = sharedSupabaseUrl || serverSupabaseUrl;
   const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ?? "";
   if (!supabaseUrl || !supabaseServiceRoleKey) {
     throw new HttpError(503, `${serviceName} is not configured.`);

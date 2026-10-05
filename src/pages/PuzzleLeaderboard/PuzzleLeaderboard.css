@@ -40,11 +40,18 @@
 }
 
 .puzzleLeaderboardTable {
-  min-width: 540px;
+  min-width: 0;
 }
 
 .rankingsTable.puzzleLeaderboardTable
-  :is(th, td):is(:nth-child(1), :nth-child(3), :nth-child(4), :nth-child(5), :nth-child(6)) {
+  :is(th, td):is(
+    :nth-child(1),
+    :nth-child(3),
+    :nth-child(4),
+    :nth-child(5),
+    :nth-child(6),
+    :nth-child(7)
+  ) {
   width: 1%;
   white-space: nowrap;
 }
@@ -120,6 +127,72 @@
 
   .controls > .puzzleLeaderboardEligibilityToggle {
     grid-column: 1 / -1;
+  }
+
+  .puzzleLeaderboardTableWrap {
+    overflow-x: hidden;
+  }
+
+  .puzzleLeaderboardTable {
+    width: 100%;
+    table-layout: fixed;
+    font-size: 12px;
+  }
+
+  .rankingsLeaderboardPanel .puzzleLeaderboardTable th,
+  .rankingsLeaderboardPanel .puzzleLeaderboardTable td {
+    padding: 8px 3px;
+  }
+
+  .rankingsTable.puzzleLeaderboardTable :is(th, td):nth-child(1) {
+    width: 7%;
+  }
+
+  .rankingsTable.puzzleLeaderboardTable :is(th, td):nth-child(2) {
+    width: 32%;
+  }
+
+  .rankingsTable.puzzleLeaderboardTable :is(th, td):nth-child(3) {
+    width: 13%;
+  }
+
+  .rankingsTable.puzzleLeaderboardTable :is(th, td):nth-child(4) {
+    width: 9%;
+  }
+
+  .rankingsTable.puzzleLeaderboardTable :is(th, td):nth-child(5) {
+    width: 10%;
+  }
+
+  .rankingsTable.puzzleLeaderboardTable :is(th, td):nth-child(6) {
+    width: 12%;
+  }
+
+  .rankingsTable.puzzleLeaderboardTable :is(th, td):nth-child(7) {
+    width: 17%;
+  }
+
+  .puzzleLeaderboardPlayerCell {
+    width: 100%;
+    gap: 4px;
+  }
+
+  .puzzleLeaderboardPlayerCell .rankingLink {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .puzzleLeaderboardDashboardLink {
+    width: 24px;
+    height: 24px;
+    flex-basis: 24px;
+  }
+
+  .puzzleLeaderboardTrophy {
+    width: 16px;
+    height: 24px;
   }
 }
 

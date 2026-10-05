@@ -468,7 +468,9 @@ drop function if exists public.approve_queued_puzzle(bigint, bigint, text);
 create or replace function public.approve_queued_puzzle(
   p_queue_id bigint,
   p_reviewer text,
-  p_puzzle_id bigint
+  p_puzzle_id bigint,
+  p_complexity_bonus boolean,
+  p_explanation_bonus boolean
 )
 returns bigint
 language plpgsql
@@ -488,6 +490,10 @@ begin
     raise exception 'Puzzle ID must be a positive integer';
   end if;
 
+  if p_complexity_bonus is null or p_explanation_bonus is null then
+    raise exception 'Puzzle reward bonus selections are required';
+  end if;
+
   select * into queued
   from public.puzzles_queue
   where id = p_queue_id
@@ -499,6 +505,19 @@ begin
 
   -- Serialize ID allocation and insertion with other approvals.
   lock table public.puzzles in share row exclusive mode;
+
+  -- The puzzle-created trigger reads these transaction-local settings so the
+  -- reviewer's selections and the puzzle insert remain one atomic operation.
+  perform set_config(
+    'app.puzzle_creation_complexity_bonus',
+    p_complexity_bonus::text,
+    true
+  );
+  perform set_config(
+    'app.puzzle_creation_explanation_bonus',
+    p_explanation_bonus::text,
+    true
+  );
 
   begin
     insert into public.puzzles (
@@ -548,6 +567,29 @@ begin
 end;
 $$;
 
+-- Keep the prior RPC available while older deployed clients roll forward.
+-- Its behavior matches the review page defaults.
+create or replace function public.approve_queued_puzzle(
+  p_queue_id bigint,
+  p_reviewer text,
+  p_puzzle_id bigint
+)
+returns bigint
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return public.approve_queued_puzzle(
+    p_queue_id,
+    p_reviewer,
+    p_puzzle_id,
+    true,
+    false
+  );
+end;
+$$;
+
 alter table public.puzzles_queue enable row level security;
 
 -- Submission and review access goes through server-side functions that verify
@@ -569,6 +611,8 @@ revoke all on function public.publish_approved_puzzle_batch(jsonb, text) from pu
 grant execute on function public.publish_approved_puzzle_batch(jsonb, text) to service_role;
 revoke all on function public.approve_queued_puzzle(bigint, text, bigint) from public;
 grant execute on function public.approve_queued_puzzle(bigint, text, bigint) to service_role;
+revoke all on function public.approve_queued_puzzle(bigint, text, bigint, boolean, boolean) from public;
+grant execute on function public.approve_queued_puzzle(bigint, text, bigint, boolean, boolean) to service_role;
 
 -- Make newly created RPC functions available to PostgREST immediately.
 notify pgrst, 'reload schema';

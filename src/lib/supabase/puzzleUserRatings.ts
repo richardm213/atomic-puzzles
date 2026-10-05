@@ -13,6 +13,9 @@ export type PuzzleUserRating = {
   successes: number;
   updatedAt: string | null;
   lastAttemptAt: string | null;
+  timedAttempts: number;
+  totalDurationMs: number;
+  averageTimeSeconds: number | null;
 };
 
 export type PuzzleRatingEvent = {
@@ -36,9 +39,10 @@ export type PuzzleLeaderboardMetricRow = {
   ratingDeviation: number;
   attempted: number;
   correct: number;
+  averageSeconds: number | null;
 };
 
-export type PuzzleRankingTrophyRow = PuzzleLeaderboardMetricRow & {
+export type PuzzleRankingTrophyRow = Omit<PuzzleLeaderboardMetricRow, "averageSeconds"> & {
   month: string;
   rank: number;
   eligible: true;
@@ -52,6 +56,9 @@ type PuzzleUserRatingRow = {
   successes?: number | null;
   updated_at?: string | null;
   last_attempt_at?: string | null;
+  timed_attempts?: number | null;
+  total_duration_ms?: number | null;
+  average_time_seconds?: number | null;
 };
 
 const puzzleRatingEventResponseSchema = z.object({
@@ -79,6 +86,7 @@ const puzzleLeaderboardResponseSchema = z.object({
       ratingDeviation: z.number(),
       attempted: z.number(),
       correct: z.number(),
+      averageSeconds: z.number().nullable(),
     }),
   ),
 });
@@ -106,6 +114,12 @@ const normalizePuzzleUserRating = (row: PuzzleUserRatingRow): PuzzleUserRating =
   successes: Math.max(0, Math.round(Number(row.successes) || 0)),
   updatedAt: typeof row.updated_at === "string" ? row.updated_at : null,
   lastAttemptAt: typeof row.last_attempt_at === "string" ? row.last_attempt_at : null,
+  timedAttempts: Math.max(0, Math.round(Number(row.timed_attempts) || 0)),
+  totalDurationMs: Math.max(0, Math.round(Number(row.total_duration_ms) || 0)),
+  averageTimeSeconds:
+    typeof row.average_time_seconds === "number"
+      ? Math.max(0, Math.round(row.average_time_seconds))
+      : null,
 });
 
 export const fetchPuzzleUserRating = async (username: string): Promise<PuzzleUserRating | null> => {
@@ -117,7 +131,9 @@ export const fetchPuzzleUserRating = async (username: string): Promise<PuzzleUse
     "puzzle_user_ratings",
     supabase
       .from("puzzle_user_ratings")
-      .select("username,rating,rating_deviation,attempts,successes,updated_at,last_attempt_at")
+      .select(
+        "username,rating,rating_deviation,attempts,successes,updated_at,last_attempt_at,timed_attempts,total_duration_ms,average_time_seconds",
+      )
       .eq("username", normalizedUsername)
       .limit(1),
   );
@@ -132,7 +148,9 @@ export const fetchAllPuzzleUserRatings = async (): Promise<PuzzleUserRating[]> =
   const rows = await fetchAllSupabaseRows<PuzzleUserRatingRow>("puzzle_user_ratings", () =>
     supabase
       .from("puzzle_user_ratings")
-      .select("username,rating,rating_deviation,attempts,successes,updated_at,last_attempt_at")
+      .select(
+        "username,rating,rating_deviation,attempts,successes,updated_at,last_attempt_at,timed_attempts,total_duration_ms,average_time_seconds",
+      )
       .order("rating", { ascending: false }),
   );
 
@@ -158,6 +176,8 @@ export const fetchPuzzleLeaderboard = async (
     ratingDeviation: Math.max(0, Math.round(row.ratingDeviation)),
     attempted: Math.max(0, Math.round(row.attempted)),
     correct: Math.max(0, Math.round(row.correct)),
+    averageSeconds:
+      typeof row.averageSeconds === "number" ? Math.max(0, Math.round(row.averageSeconds)) : null,
   }));
 };
 

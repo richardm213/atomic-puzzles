@@ -3,6 +3,7 @@ import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import type { SortDirection } from "../../hooks/useTableSort";
 
 type SortableTableHeaderProps = Omit<ComponentPropsWithoutRef<"th">, "aria-sort"> & {
+  accessibleLabel?: string;
   active: boolean;
   buttonClassName?: string;
   direction: SortDirection;
@@ -11,6 +12,7 @@ type SortableTableHeaderProps = Omit<ComponentPropsWithoutRef<"th">, "aria-sort"
 };
 
 export const SortableTableHeader = ({
+  accessibleLabel,
   active,
   buttonClassName,
   direction,
@@ -29,7 +31,13 @@ export const SortableTableHeader = ({
       scope={scope}
       aria-sort={active ? (direction === "asc" ? "ascending" : "descending") : "none"}
     >
-      <button type="button" className={buttonClasses} onClick={onSort}>
+      <button
+        type="button"
+        className={buttonClasses}
+        aria-label={accessibleLabel}
+        title={accessibleLabel}
+        onClick={onSort}
+      >
         {label}
         <span className="sortableTableIndicator" aria-hidden="true">
           {active ? (direction === "asc" ? "↑" : "↓") : ""}

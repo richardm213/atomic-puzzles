@@ -150,11 +150,52 @@ create trigger award_coins_after_puzzle_attempt
 
 create or replace function public.award_coins_for_created_puzzle()
 returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  normalized_author text := lower(btrim(coalesce(new.author, '')));
+  explanation_word_count integer := case
+    when nullif(btrim(coalesce(new.explanation, '')), '') is null then 0
+    else cardinality(regexp_split_to_array(btrim(new.explanation), '[[:space:]]+'))
+  end;
+  explanation_bonus integer := 0;
+  complexity_bonus integer := 0;
+  reward integer := 10;
+  review_complexity_setting text := current_setting(
+    'app.puzzle_creation_complexity_bonus',
+    true
+  );
+  review_explanation_setting text := current_setting(
+    'app.puzzle_creation_explanation_bonus',
+    true
+  );
+  has_review_override boolean := review_complexity_setting in ('true', 'false')
+    and review_explanation_setting in ('true', 'false');
 begin
-  if nullif(btrim(coalesce(new.author, '')), '') is not null then
+  if has_review_override then
+    complexity_bonus := case when review_complexity_setting::boolean then 3 else 0 end;
+    explanation_bonus := case when review_explanation_setting::boolean then 2 else 0 end;
+    reward := 5 + complexity_bonus + explanation_bonus;
+  elsif normalized_author in ('wolfram_ep', 'randoomplayer', 'seaside_tiramisu') then
+    complexity_bonus := 3;
+    explanation_bonus := case when explanation_word_count >= 12 then 2 else 0 end;
+    reward := 5 + complexity_bonus + explanation_bonus;
+  end if;
+
+  if normalized_author <> '' then
     perform public.apply_coin_transaction(
-      new.author, 10, 'puzzle_created', 'puzzle:' || new.id,
-      jsonb_build_object('puzzleId', new.id), now()
+      normalized_author, reward, 'puzzle_created', 'puzzle:' || new.id,
+      jsonb_build_object(
+        'puzzleId', new.id,
+        'reward', reward,
+        'baseReward', case
+          when has_review_override
+            or normalized_author in ('wolfram_ep', 'randoomplayer', 'seaside_tiramisu') then 5
+          else 10
+        end,
+        'complexityBonus', complexity_bonus,
+        'explanationBonus', explanation_bonus,
+        'explanationWordCount', explanation_word_count
+      ),
+      now()
     );
   end if;
   return new;
@@ -246,7 +287,7 @@ begin
     recipient_username, actor_username, notification_type, puzzle_id, comment_id,
     shop_item_key, redemption_id
   ) values (
-    'admin', normalized_username, 'shop_redemption', null, null,
+    'seaside_tiramisu', normalized_username, 'shop_redemption', null, null,
     p_item_key, redemption.id
   );
   return jsonb_build_object('balance', current_balance, 'redemptionId', redemption.id, 'status', redemption.status);
@@ -314,7 +355,7 @@ begin
     recipient_username, actor_username, notification_type, puzzle_id, comment_id,
     shop_item_key, redemption_id, coin_message
   ) values (
-    'admin', normalized_username, 'shop_redemption', null, null,
+    'seaside_tiramisu', normalized_username, 'shop_redemption', null, null,
     redemption.item_key, redemption.id, notification_message
   );
   return jsonb_build_object('balance', current_balance, 'redemptionId', redemption.id,

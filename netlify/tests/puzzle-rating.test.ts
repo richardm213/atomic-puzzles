@@ -187,6 +187,7 @@ describe("puzzle-rating function", () => {
           ratingDeviation: 55,
           attempted: 2,
           correct: 1,
+          averageSeconds: null,
         },
         {
           username: "other",
@@ -194,6 +195,7 @@ describe("puzzle-rating function", () => {
           ratingDeviation: 50,
           attempted: 1,
           correct: 1,
+          averageSeconds: null,
         },
       ],
     });
@@ -249,7 +251,7 @@ describe("puzzle-rating function", () => {
       puzzle_id: 42,
       level: 5,
       rating: 2700,
-      rating_deviation: 75,
+      rating_deviation: 150,
       attempts: 9,
       successes: 2,
       source: "human",
@@ -276,7 +278,7 @@ describe("puzzle-rating function", () => {
       puzzleId: 42,
       level: 5,
       rating: 2700,
-      ratingDeviation: 75,
+      ratingDeviation: 150,
       attempts: 9,
       successes: 2,
       source: "human",

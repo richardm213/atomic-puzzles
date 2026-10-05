@@ -32,21 +32,37 @@ import { appAssetPath } from "../../utils/appAssetPath";
 
 type PuzzleLeaderboardSortKey = keyof Pick<
   PuzzleLeaderboardRow,
-  "rank" | "username" | "rating" | "ratingDeviation" | "attempted" | "percentCorrect"
+  | "rank"
+  | "username"
+  | "rating"
+  | "ratingDeviation"
+  | "attempted"
+  | "percentCorrect"
+  | "averageSeconds"
 >;
 
-const puzzleLeaderboardColumns: Array<{ key: PuzzleLeaderboardSortKey; label: string }> = [
-  { key: "rank", label: "#" },
-  { key: "username", label: "Player" },
-  { key: "rating", label: "Rating" },
-  { key: "ratingDeviation", label: "RD" },
-  { key: "attempted", label: "Tries" },
-  { key: "percentCorrect", label: "Accuracy" },
+const puzzleLeaderboardColumns: Array<{
+  key: PuzzleLeaderboardSortKey;
+  label: string;
+  title: string;
+}> = [
+  { key: "rank", label: "#", title: "Rank" },
+  { key: "username", label: "Player", title: "Player" },
+  { key: "rating", label: "Rating", title: "Puzzle rating" },
+  { key: "ratingDeviation", label: "RD", title: "Rating deviation" },
+  { key: "attempted", label: "ATT", title: "Total attempts" },
+  { key: "percentCorrect", label: "ACC", title: "Accuracy" },
+  {
+    key: "averageSeconds",
+    label: "TIME",
+    title: "Average time spent per puzzle",
+  },
 ];
 
 const puzzleLeaderboardPeriodStorageKey = "atomic-puzzles.puzzle-leaderboard-period";
 const puzzleLeaderboardMonthStorageKey = "atomic-puzzles.puzzle-rankings-month";
 const puzzleLeaderboardShowAllStorageKey = "atomic-puzzles.puzzle-rankings-show-all";
+const puzzleAverageTimeStartMonth = "2026-10";
 const puzzleLeaderboardPeriodSchema = z.enum(["monthly", "all"]);
 const puzzleLeaderboardMonthSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
 const emptyPuzzleProgressRows: PuzzleProgressWithUsernameRow[] = [];
@@ -120,8 +136,9 @@ const PuzzleLeaderboard = () => {
       : "Failed to load puzzle rankings."
     : "";
   const allRows = useMemo(
-    () => buildPuzzleLeaderboardRows(leaderboardQuery.data ?? [], period),
-    [leaderboardQuery.data, period],
+    () =>
+      buildPuzzleLeaderboardRows(leaderboardQuery.data ?? [], period, progressRows, effectiveMonth),
+    [effectiveMonth, leaderboardQuery.data, period, progressRows],
   );
   const rows = useMemo(
     () =>
@@ -138,6 +155,12 @@ const PuzzleLeaderboard = () => {
         const leftRank = left.rank ?? Number.POSITIVE_INFINITY;
         const rightRank = right.rank ?? Number.POSITIVE_INFINITY;
         if (leftRank !== rightRank) return directionMultiplier * (leftRank - rightRank);
+      } else if (sortKey === "averageSeconds") {
+        if (left.averageSeconds === null) return 1;
+        if (right.averageSeconds === null) return -1;
+        if (left.averageSeconds !== right.averageSeconds) {
+          return directionMultiplier * (left.averageSeconds - right.averageSeconds);
+        }
       } else if (left[sortKey] !== right[sortKey]) {
         return directionMultiplier * (Number(left[sortKey]) - Number(right[sortKey]));
       }
@@ -145,6 +168,7 @@ const PuzzleLeaderboard = () => {
     });
   }, [rows, sortDirection, sortKey]);
   const showCurrentTrophies = period === "monthly" && effectiveMonth === currentUtcMonth();
+  const showAverageTime = period === "all" || effectiveMonth >= puzzleAverageTimeStartMonth;
 
   if (loading && !leaderboardQuery.data) return <RouteLoadingFallback />;
 
@@ -204,8 +228,8 @@ const PuzzleLeaderboard = () => {
 
         {period === "monthly" ? (
           <p className="puzzleLeaderboardEligibilityNote">
-            Official ranks require at least {MONTHLY_PUZZLE_MIN_ATTEMPTS} attempts and RD below{" "}
-            {MONTHLY_PUZZLE_MAX_RD} in the selected month.
+            Official ranks require at least {MONTHLY_PUZZLE_MIN_ATTEMPTS} attempts and RD below
+            {` ${MONTHLY_PUZZLE_MAX_RD}`} in the selected month.
           </p>
         ) : null}
 
@@ -223,20 +247,23 @@ const PuzzleLeaderboard = () => {
 
         {!error && !loading && rows.length > 0 ? (
           <DataTable
-            wrapperClassName="rankingsTableWrap"
+            wrapperClassName="rankingsTableWrap puzzleLeaderboardTableWrap"
             className="rankingsTable puzzleLeaderboardTable"
           >
             <thead>
               <tr>
-                {puzzleLeaderboardColumns.map((column) => (
-                  <SortableTableHeader
-                    key={column.key}
-                    active={sortKey === column.key}
-                    direction={sortDirection}
-                    label={column.label}
-                    onSort={() => changeSort(column.key)}
-                  />
-                ))}
+                {puzzleLeaderboardColumns
+                  .filter((column) => column.key !== "averageSeconds" || showAverageTime)
+                  .map((column) => (
+                    <SortableTableHeader
+                      key={column.key}
+                      accessibleLabel={column.title}
+                      active={sortKey === column.key}
+                      direction={sortDirection}
+                      label={column.label}
+                      onSort={() => changeSort(column.key)}
+                    />
+                  ))}
               </tr>
             </thead>
             <tbody>
@@ -277,6 +304,9 @@ const PuzzleLeaderboard = () => {
                     <td>{row.ratingDeviation}</td>
                     <td>{row.attempted}</td>
                     <td>{row.percentCorrect}%</td>
+                    {showAverageTime ? (
+                      <td>{row.averageSeconds === null ? "—" : `${row.averageSeconds}s`}</td>
+                    ) : null}
                   </tr>
                 );
               })}

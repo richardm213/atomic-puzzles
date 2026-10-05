@@ -154,9 +154,17 @@ describe("puzzle queue review client", () => {
       vi.fn(async () => jsonResponse({ puzzleId: 42 })),
     );
     const fetchMock = vi.mocked(fetch);
-    await expect(approveQueuedPuzzle(4, 42)).resolves.toBe(42);
+    await expect(
+      approveQueuedPuzzle(4, 42, { complexity: false, explanation: true }),
+    ).resolves.toBe(42);
     const [, request] = fetchMock.mock.calls[0] ?? [];
-    expect(JSON.parse(String(request?.body))).toEqual({ action: "approve", id: 4, puzzleId: 42 });
+    expect(JSON.parse(String(request?.body))).toEqual({
+      action: "approve",
+      id: 4,
+      puzzleId: 42,
+      complexityBonus: false,
+      explanationBonus: true,
+    });
   });
 
   it("sends rejection to the verified review endpoint", async () => {

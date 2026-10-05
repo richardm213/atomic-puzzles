@@ -186,7 +186,13 @@ describe("puzzle-review function", () => {
     const response = await handler({
       httpMethod: "POST",
       headers: authHeaders(),
-      body: JSON.stringify({ action: "approve", id: 4, puzzleId: 42 }),
+      body: JSON.stringify({
+        action: "approve",
+        id: 4,
+        puzzleId: 42,
+        complexityBonus: false,
+        explanationBonus: true,
+      }),
     });
 
     expect(response.statusCode).toBe(200);
@@ -195,6 +201,8 @@ describe("puzzle-review function", () => {
       p_queue_id: 4,
       p_reviewer: "seaside_tiramisu",
       p_puzzle_id: 42,
+      p_complexity_bonus: false,
+      p_explanation_bonus: true,
     });
   });
 

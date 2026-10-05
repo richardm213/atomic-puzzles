@@ -733,6 +733,76 @@
   margin-top: 14px;
 }
 
+.puzzleReviewBonuses {
+  margin: var(--space-4) 0 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-surface-soft);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+}
+
+.puzzleReviewBonuses legend {
+  padding: 0 var(--space-1);
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.puzzleReviewBonusOptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.puzzleReviewBonusOptions label {
+  min-height: 42px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 750;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+
+.puzzleReviewBonusOptions label:has(input:checked) {
+  border-color: color-mix(in srgb, var(--color-primary) 62%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-panel-strong));
+}
+
+.puzzleReviewBonusOptions label:hover {
+  border-color: var(--color-primary);
+}
+
+.puzzleReviewBonusOptions input {
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  accent-color: var(--color-primary);
+}
+
+.puzzleReviewBonuses output {
+  color: var(--color-heading);
+  font-size: 14px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.puzzleReviewBonuses:disabled {
+  opacity: 0.6;
+}
+
 .puzzleReviewRejectButton,
 .puzzleReviewApproveButton {
   min-width: 112px;
@@ -752,6 +822,7 @@
 .puzzleEditorFields textarea:focus-visible,
 .puzzleEditorFields input:focus-visible,
 .puzzleReviewField input:focus-visible,
+.puzzleReviewBonusOptions input:focus-visible,
 .puzzleQueueList button:focus-visible {
   outline: 3px solid var(--color-primary-ring);
   outline-offset: 2px;
@@ -785,5 +856,13 @@
 @media (max-width: 520px) {
   .puzzleEditorPlayerFields {
     grid-template-columns: 1fr;
+  }
+
+  .puzzleReviewBonuses {
+    grid-template-columns: 1fr;
+  }
+
+  .puzzleReviewBonusOptions {
+    display: grid;
   }
 }

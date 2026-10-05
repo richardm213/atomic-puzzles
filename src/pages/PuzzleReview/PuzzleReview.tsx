@@ -58,6 +58,8 @@ export const PuzzleReviewPage = () => {
   const [loadingQueue, setLoadingQueue] = useState(true);
   const [puzzleIdInput, setPuzzleIdInput] = useState("");
   const [authorInput, setAuthorInput] = useState("");
+  const [complexityBonus, setComplexityBonus] = useState(true);
+  const [explanationBonus, setExplanationBonus] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -96,6 +98,8 @@ export const PuzzleReviewPage = () => {
   const selectQueuedPuzzle = (row: PuzzleReviewQueueRow): void => {
     setValue(queueRowValue(row));
     setAuthorInput(row.submitted_by);
+    setComplexityBonus(true);
+    setExplanationBonus(false);
     setSelectedId(row.id);
     setMessage("");
     setError("");
@@ -127,7 +131,10 @@ export const PuzzleReviewPage = () => {
     setError("");
     try {
       await saveBeforeApproval(selectedId);
-      const puzzleId = await approveQueuedPuzzle(selectedId, requestedPuzzleId);
+      const puzzleId = await approveQueuedPuzzle(selectedId, requestedPuzzleId, {
+        complexity: complexityBonus,
+        explanation: explanationBonus,
+      });
       const nextPuzzleId = puzzleId + 1;
       const nextQueue = queue
         .filter((row) => row.id !== selectedId)
@@ -256,26 +263,52 @@ export const PuzzleReviewPage = () => {
               />
               {error ? <p className="queueMessage error">{error}</p> : null}
               {isReviewer ? (
-                <div className="puzzleReviewActions">
-                  <button
-                    type="button"
-                    className="queueDangerButton puzzleReviewRejectButton"
-                    disabled={saving}
-                    onClick={() => void reject()}
-                  >
-                    <FontAwesomeIcon icon={faXmark} aria-hidden="true" />
-                    Reject
-                  </button>
-                  <button
-                    type="button"
-                    className="queuePrimaryButton puzzleReviewApproveButton"
-                    disabled={saving}
-                    onClick={() => void approve()}
-                  >
-                    <FontAwesomeIcon icon={faCheck} aria-hidden="true" />
-                    {saving ? "Working…" : "Approve"}
-                  </button>
-                </div>
+                <>
+                  <fieldset className="puzzleReviewBonuses" disabled={saving}>
+                    <legend>Bonuses beyond the +5 base reward</legend>
+                    <div className="puzzleReviewBonusOptions">
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={complexityBonus}
+                          onChange={(event) => setComplexityBonus(event.target.checked)}
+                        />
+                        <span>+3 Not overly simplistic</span>
+                      </label>
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={explanationBonus}
+                          onChange={(event) => setExplanationBonus(event.target.checked)}
+                        />
+                        <span>+2 Explanation</span>
+                      </label>
+                    </div>
+                    <output>
+                      Total +{5 + (complexityBonus ? 3 : 0) + (explanationBonus ? 2 : 0)}
+                    </output>
+                  </fieldset>
+                  <div className="puzzleReviewActions">
+                    <button
+                      type="button"
+                      className="queueDangerButton puzzleReviewRejectButton"
+                      disabled={saving}
+                      onClick={() => void reject()}
+                    >
+                      <FontAwesomeIcon icon={faXmark} aria-hidden="true" />
+                      Reject
+                    </button>
+                    <button
+                      type="button"
+                      className="queuePrimaryButton puzzleReviewApproveButton"
+                      disabled={saving}
+                      onClick={() => void approve()}
+                    >
+                      <FontAwesomeIcon icon={faCheck} aria-hidden="true" />
+                      {saving ? "Working…" : "Approve"}
+                    </button>
+                  </div>
+                </>
               ) : null}
             </>
           ) : null}

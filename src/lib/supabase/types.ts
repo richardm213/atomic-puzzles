@@ -43,6 +43,9 @@ export type PuzzleUserRatingRow = {
   rating_deviation: number;
   attempts: number;
   successes: number;
+  timed_attempts: number;
+  total_duration_ms: number;
+  average_time_seconds: number | null;
   updated_at: string | null;
   last_attempt_at: string | null;
 };

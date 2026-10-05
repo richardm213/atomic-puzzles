@@ -79,7 +79,7 @@ const loadLeaderboardRows = async (period: "monthly" | "all", month: string | un
       (from, to) =>
         supabase
           .from("puzzle_user_ratings")
-          .select("username,rating,rating_deviation,attempts,successes")
+          .select("username,rating,rating_deviation,attempts,successes,average_time_seconds")
           .order("rating", { ascending: false })
           .range(from, to),
       "all-time puzzle rankings",
@@ -90,6 +90,7 @@ const loadLeaderboardRows = async (period: "monthly" | "all", month: string | un
       ratingDeviation: Number(row.rating_deviation),
       attempted: Number(row.attempts),
       correct: Number(row.successes),
+      averageSeconds: row.average_time_seconds === null ? null : Number(row.average_time_seconds),
     }));
   }
 
@@ -115,6 +116,7 @@ const loadLeaderboardRows = async (period: "monthly" | "all", month: string | un
       ratingDeviation: number;
       attempted: number;
       correct: number;
+      averageSeconds: number | null;
     }
   >();
   events.forEach((event) => {
@@ -128,6 +130,7 @@ const loadLeaderboardRows = async (period: "monthly" | "all", month: string | un
       ratingDeviation: 350,
       attempted: 0,
       correct: 0,
+      averageSeconds: null,
     };
     row.attempted += 1;
     if (event.puzzle_correct) row.correct += 1;

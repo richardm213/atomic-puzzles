@@ -65,8 +65,8 @@ begin
   ) values (
     p_puzzle_id,
     public.puzzle_level_anchor(p_level),
-    75,
-    75,
+    150,
+    150,
     p_level,
     p_level,
     lower(btrim(p_username)),
@@ -78,8 +78,8 @@ begin
   -- as an ambiguous reference at runtime.
   on conflict on constraint puzzle_ratings_pkey do update set
     rating = public.puzzle_level_anchor(excluded.human_level),
-    rating_deviation = 75,
-    rating_deviation_precise = 75,
+    rating_deviation = 150,
+    rating_deviation_precise = 150,
     computed_level = excluded.human_level,
     human_level = excluded.human_level,
     human_rated_by = excluded.human_rated_by,
@@ -415,12 +415,12 @@ begin
       else public.puzzle_level_anchor(state.human_level)
     end,
     rating_deviation = case
-      when state.human_level is not null then 75
+      when state.human_level is not null then 150
       when seed.attempts >= 4 then 150
       else 300
     end,
     rating_deviation_precise = case
-      when state.human_level is not null then 75
+      when state.human_level is not null then 150
       when seed.attempts >= 4 then 150
       else 300
     end,

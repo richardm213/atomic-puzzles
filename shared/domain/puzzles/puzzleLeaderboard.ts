@@ -10,6 +10,7 @@ export type PuzzleLeaderboardMetric = {
   ratingDeviation: number;
   attempted: number;
   correct: number;
+  averageSeconds?: number | null;
 };
 
 export type RankedPuzzleLeaderboardMetric = PuzzleLeaderboardMetric & {

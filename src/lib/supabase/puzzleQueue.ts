@@ -165,11 +165,17 @@ export const updateQueuedPuzzle = async (
   return result.puzzle;
 };
 
-export const approveQueuedPuzzle = async (id: number, puzzleId: number): Promise<number> => {
+export const approveQueuedPuzzle = async (
+  id: number,
+  puzzleId: number,
+  bonuses: { complexity: boolean; explanation: boolean },
+): Promise<number> => {
   const result = await reviewRequest<{ puzzleId: number }>({
     action: "approve",
     id,
     puzzleId,
+    complexityBonus: bonuses.complexity,
+    explanationBonus: bonuses.explanation,
   });
   if (!Number.isFinite(result.puzzleId)) {
     throw new Error("Unable to approve puzzle: no puzzle id was returned.");
