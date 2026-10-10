@@ -22,7 +22,10 @@ describe("puzzle-rating function", () => {
     );
   });
 
-  afterEach(() => vi.unstubAllEnvs());
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllEnvs();
+  });
 
   it("restricts rating edits to seaside_tiramisu", async () => {
     const editResponse = await handler({
@@ -198,6 +201,62 @@ describe("puzzle-rating function", () => {
           averageSeconds: null,
         },
       ],
+    });
+  });
+
+  it("counts all-time activity from rated attempts in the trailing 120 days", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-10T00:00:00.000Z"));
+    const ratingsQuery = {
+      select: vi.fn(),
+      order: vi.fn(),
+      range: vi.fn(async () => ({
+        data: [
+          {
+            username: "Solver",
+            rating: 2200,
+            rating_deviation: 50,
+            attempts: 600,
+            successes: 400,
+            average_time_seconds: 30,
+          },
+        ],
+        error: null,
+      })),
+    };
+    ratingsQuery.select.mockReturnValue(ratingsQuery);
+    ratingsQuery.order.mockReturnValue(ratingsQuery);
+    const eventsQuery = {
+      select: vi.fn(),
+      gte: vi.fn(),
+      order: vi.fn(),
+      range: vi.fn(async () => ({
+        data: [
+          { username: "solver", attempted_at: "2026-09-01T00:00:00.000Z" },
+          { username: "Solver", attempted_at: "2026-09-02T00:00:00.000Z" },
+        ],
+        error: null,
+      })),
+    };
+    eventsQuery.select.mockReturnValue(eventsQuery);
+    eventsQuery.gte.mockReturnValue(eventsQuery);
+    eventsQuery.order.mockReturnValue(eventsQuery);
+    mocks.createClient.mockReturnValue({
+      from: vi.fn((table: string) =>
+        table === "puzzle_user_ratings" ? ratingsQuery : eventsQuery,
+      ),
+    });
+
+    const response = await handler({
+      httpMethod: "POST",
+      body: JSON.stringify({ action: "leaderboard", period: "all" }),
+    });
+
+    expect(eventsQuery.gte).toHaveBeenCalledWith("attempted_at", "2026-06-12T00:00:00.000Z");
+    expect(JSON.parse(response.body).rows[0]).toMatchObject({
+      username: "solver",
+      attempted: 600,
+      activityAttempts: 2,
     });
   });
 

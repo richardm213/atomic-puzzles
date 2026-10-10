@@ -1,5 +1,5 @@
 .puzzleLeaderboardPanel {
-  width: min(680px, 100%);
+  width: min(820px, 100%);
 }
 
 .puzzleRankingsControls {
@@ -39,6 +39,19 @@
   font-size: 13px;
 }
 
+.puzzleLeaderboardEligibilityNote strong {
+  color: var(--color-heading);
+}
+
+.puzzleLeaderboardBonus {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.puzzleLeaderboardTable tr.isIneligible .puzzleLeaderboardBonus {
+  color: inherit;
+}
+
 .puzzleLeaderboardTable {
   min-width: 0;
 }
@@ -50,7 +63,9 @@
     :nth-child(4),
     :nth-child(5),
     :nth-child(6),
-    :nth-child(7)
+    :nth-child(7),
+    :nth-child(8),
+    :nth-child(9)
   ) {
   width: 1%;
   white-space: nowrap;
@@ -157,18 +172,26 @@
   }
 
   .rankingsTable.puzzleLeaderboardTable :is(th, td):nth-child(4) {
-    width: 9%;
+    display: none;
   }
 
   .rankingsTable.puzzleLeaderboardTable :is(th, td):nth-child(5) {
-    width: 10%;
+    display: none;
   }
 
   .rankingsTable.puzzleLeaderboardTable :is(th, td):nth-child(6) {
-    width: 12%;
+    width: 9%;
   }
 
   .rankingsTable.puzzleLeaderboardTable :is(th, td):nth-child(7) {
+    width: 10%;
+  }
+
+  .rankingsTable.puzzleLeaderboardTable :is(th, td):nth-child(8) {
+    width: 12%;
+  }
+
+  .rankingsTable.puzzleLeaderboardTable :is(th, td):nth-child(9) {
     width: 17%;
   }
 

@@ -72,6 +72,11 @@ const nextUtcMonth = (month: string): string => {
   return date.toISOString().slice(0, 7);
 };
 
+const ALL_TIME_ACTIVITY_WINDOW_DAYS = 120;
+
+const allTimeActivityStart = (): string =>
+  new Date(Date.now() - ALL_TIME_ACTIVITY_WINDOW_DAYS * 24 * 60 * 60 * 1_000).toISOString();
+
 const loadLeaderboardRows = async (period: "monthly" | "all", month: string | undefined) => {
   const supabase = createServerSupabase("Puzzle leaderboard service");
   if (period === "all") {
@@ -84,12 +89,38 @@ const loadLeaderboardRows = async (period: "monthly" | "all", month: string | un
           .range(from, to),
       "all-time puzzle rankings",
     );
+    const recentEvents = await pageThrough(
+      (from, to) =>
+        supabase
+          .from("puzzle_rating_events")
+          .select("username,attempted_at")
+          .gte("attempted_at", allTimeActivityStart())
+          .order("attempted_at", { ascending: true })
+          .range(from, to),
+      "recent all-time puzzle ranking activity",
+    );
+    const recentAttempts = new Map<string, number>();
+    recentEvents.forEach((event) => {
+      const username = String(event.username ?? "")
+        .trim()
+        .toLowerCase();
+      if (!username) return;
+      recentAttempts.set(username, (recentAttempts.get(username) ?? 0) + 1);
+    });
     return rows.map((row) => ({
-      username: String(row.username ?? ""),
+      username: String(row.username ?? "")
+        .trim()
+        .toLowerCase(),
       rating: Number(row.rating),
       ratingDeviation: Number(row.rating_deviation),
       attempted: Number(row.attempts),
       correct: Number(row.successes),
+      activityAttempts:
+        recentAttempts.get(
+          String(row.username ?? "")
+            .trim()
+            .toLowerCase(),
+        ) ?? 0,
       averageSeconds: row.average_time_seconds === null ? null : Number(row.average_time_seconds),
     }));
   }

@@ -8,6 +8,7 @@ import { DataTable } from "../../components/DataTable/DataTable";
 import { InlineState } from "../../components/InlineState/InlineState";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
+import { formatCoinAmount, formatCoinBalance } from "../../lib/coins/coinDisplay";
 import {
   coinRankingsQueryOptions,
   coinTransactionsQueryOptions,
@@ -224,7 +225,7 @@ export const CoinRankingsPage = () => {
                             {entry.username}
                           </Link>
                         </td>
-                        <td className="coinBalance">{entry.balance.toLocaleString()}</td>
+                        <td className="coinBalance">{formatCoinBalance(entry.balance)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -304,8 +305,7 @@ export const CoinRankingsPage = () => {
                           transaction.amount > 0 ? "isPositive" : "isNegative"
                         }`}
                       >
-                        {transaction.amount > 0 ? "+" : ""}
-                        {transaction.amount.toLocaleString()}
+                        {formatCoinAmount(transaction.amount)}
                       </td>
                     </tr>
                   ))}

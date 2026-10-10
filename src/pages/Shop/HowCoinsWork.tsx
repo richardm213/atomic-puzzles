@@ -5,7 +5,10 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 
 import { Seo } from "../../components/Seo/Seo";
+import { formatCoinAmount } from "../../lib/coins/coinDisplay";
 import { DAILY_COIN_BONUS } from "../../lib/coins/coins";
+import { calculateCorrectAttemptSpeedBonus } from "../../lib/coins/speedBonus";
+import { calculateIncorrectAttemptSpeedPenalty } from "../../lib/coins/speedPenalty";
 import { appAssetPath } from "../../utils/appAssetPath";
 
 const creationRewards = [
@@ -21,11 +24,12 @@ const solvingRewards = [
   ["V5", 10, 0],
 ] as const;
 
+const speedAdjustmentSeconds = [0, 5, 10, 15, 20, 25, 30] as const;
+
 const CoinAmount = ({ amount }: { amount: number }) => (
   <span className={amount < 0 ? "coinAmount coinAmountPenalty" : "coinAmount"}>
     <img src={appAssetPath("/images/coins/gold-coin-stack-v2.png")} alt="" />
-    {amount > 0 ? "+" : ""}
-    {amount}
+    {formatCoinAmount(amount)}
   </span>
 );
 
@@ -101,6 +105,49 @@ export const HowCoinsWorkPage = () => (
                 </tbody>
               </table>
             </div>
+            <section className="coinSpeedAdjustment" aria-labelledby="speed-adjustment-heading">
+              <h3 id="speed-adjustment-heading">Speed bonus/penalty</h3>
+              <p className="coinSpeedAdjustmentCaption">
+                Rated first attempts under 30 seconds get a time adjustment. Correct V1–V3 solves
+                earn a small bonus; incorrect attempts get an added deduction.
+              </p>
+              <div className="coinOutcomeTableWrap">
+                <table className="coinOutcomeTable">
+                  <thead>
+                    <tr>
+                      <th scope="col">Attempt time</th>
+                      <th scope="col">V1–V3 solve bonus</th>
+                      <th scope="col">Incorrect deduction</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {speedAdjustmentSeconds.map((seconds) => {
+                      const bonus = calculateCorrectAttemptSpeedBonus(3, seconds * 1_000);
+                      const penalty = calculateIncorrectAttemptSpeedPenalty(seconds * 1_000);
+                      return (
+                        <tr key={seconds}>
+                          <th scope="row">{seconds} sec</th>
+                          <td>
+                            {bonus === 0 ? (
+                              <span className="coinNoPenalty">No bonus</span>
+                            ) : (
+                              <CoinAmount amount={bonus} />
+                            )}
+                          </td>
+                          <td>
+                            {penalty === 0 ? (
+                              <span className="coinNoPenalty">No deduction</span>
+                            ) : (
+                              <CoinAmount amount={-penalty} />
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </section>
           </section>
         </div>
 

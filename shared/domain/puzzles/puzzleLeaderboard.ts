@@ -1,6 +1,8 @@
 export const MONTHLY_PUZZLE_MIN_ATTEMPTS = 20;
 export const MONTHLY_PUZZLE_MAX_RD = 60;
 export const ALL_TIME_PUZZLE_MIN_ATTEMPTS = 20;
+export const PUZZLE_ACTIVITY_BONUS_MAX = 50;
+export const PUZZLE_ACTIVITY_BONUS_SCALE_ATTEMPTS = 500;
 
 export type PuzzleLeaderboardPeriod = "monthly" | "all";
 
@@ -10,12 +12,27 @@ export type PuzzleLeaderboardMetric = {
   ratingDeviation: number;
   attempted: number;
   correct: number;
+  activityAttempts?: number;
   averageSeconds?: number | null;
 };
 
 export type RankedPuzzleLeaderboardMetric = PuzzleLeaderboardMetric & {
   rank: number | null;
   eligible: boolean;
+  activityAttempts: number;
+  activityBonus: number;
+  leaderboardScore: number;
+};
+
+export const puzzleActivityBonus = (attempts: number): number => {
+  const normalizedAttempts = Math.max(0, Number.isFinite(attempts) ? attempts : 0);
+  return Math.min(
+    PUZZLE_ACTIVITY_BONUS_MAX,
+    Math.round(
+      PUZZLE_ACTIVITY_BONUS_MAX *
+        (1 - Math.exp(-normalizedAttempts / PUZZLE_ACTIVITY_BONUS_SCALE_ATTEMPTS)),
+    ),
+  );
 };
 
 export const isPuzzleLeaderboardEligible = (
@@ -30,14 +47,23 @@ export const rankPuzzleLeaderboardMetrics = (
   metricRows: PuzzleLeaderboardMetric[],
   period: PuzzleLeaderboardPeriod,
 ): RankedPuzzleLeaderboardMetric[] => {
-  const normalizedRows = metricRows.map((row) => ({
-    ...row,
-    eligible: isPuzzleLeaderboardEligible(row, period),
-  }));
+  const normalizedRows = metricRows.map((row) => {
+    const activityAttempts = Math.max(0, Math.round(row.activityAttempts ?? row.attempted));
+    const activityBonus = puzzleActivityBonus(activityAttempts);
+    return {
+      ...row,
+      activityAttempts,
+      activityBonus,
+      leaderboardScore: row.rating + activityBonus,
+      eligible: isPuzzleLeaderboardEligible(row, period),
+    };
+  });
   const eligibleRows = normalizedRows
     .filter((row) => row.eligible)
     .sort((left, right) => {
-      if (left.rating !== right.rating) return right.rating - left.rating;
+      if (left.leaderboardScore !== right.leaderboardScore) {
+        return right.leaderboardScore - left.leaderboardScore;
+      }
       if (left.ratingDeviation !== right.ratingDeviation) {
         return left.ratingDeviation - right.ratingDeviation;
       }
@@ -45,11 +71,11 @@ export const rankPuzzleLeaderboardMetrics = (
       return left.username.localeCompare(right.username);
     });
   const ranks = new Map<string, number>();
-  let previousRating: number | null = null;
+  let previousScore: number | null = null;
   let previousRank = 0;
   eligibleRows.forEach((row, index) => {
-    const rank = previousRating === row.rating ? previousRank : index + 1;
-    previousRating = row.rating;
+    const rank = previousScore === row.leaderboardScore ? previousRank : index + 1;
+    previousScore = row.leaderboardScore;
     previousRank = rank;
     ranks.set(row.username, rank);
   });

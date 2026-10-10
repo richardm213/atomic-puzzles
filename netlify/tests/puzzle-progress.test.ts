@@ -102,7 +102,7 @@ describe("puzzle-progress function", () => {
   });
 
   it("returns an incorrect-attempt penalty as a signed coin delta", async () => {
-    const rpc = vi.fn(async () => ({ data: -2, error: null }));
+    const rpc = vi.fn(async () => ({ data: -3.21644, error: null }));
     const query = ratingEventQuery();
     mocks.createClient.mockReturnValue({ rpc, from: vi.fn(() => query) });
     const cookie = createSiteSessionCookie("Solver", {});
@@ -119,7 +119,7 @@ describe("puzzle-progress function", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(JSON.parse(response.body)).toMatchObject({ coinAward: 0, coinDelta: -2 });
+    expect(JSON.parse(response.body)).toMatchObject({ coinAward: 0, coinDelta: -3.21644 });
   });
 
   it("reports an unrated attempt without manufacturing a rating event", async () => {

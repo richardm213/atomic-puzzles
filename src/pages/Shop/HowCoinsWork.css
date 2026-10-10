@@ -187,10 +187,29 @@
 
 .coinOutcomeTable tbody th {
   color: var(--color-heading);
+  white-space: nowrap;
 }
 
 .coinOutcomeTable tbody tr {
   border-top: 1px solid var(--color-border);
+}
+
+.coinSpeedAdjustment {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.coinSpeedAdjustment h3 {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: 0.9375rem;
+}
+
+.coinSpeedAdjustmentCaption {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
 }
 
 .coinNoPenalty {

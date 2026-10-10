@@ -39,6 +39,7 @@ export type PuzzleLeaderboardMetricRow = {
   ratingDeviation: number;
   attempted: number;
   correct: number;
+  activityAttempts?: number;
   averageSeconds: number | null;
 };
 
@@ -86,6 +87,7 @@ const puzzleLeaderboardResponseSchema = z.object({
       ratingDeviation: z.number(),
       attempted: z.number(),
       correct: z.number(),
+      activityAttempts: z.number().optional(),
       averageSeconds: z.number().nullable(),
     }),
   ),
@@ -176,6 +178,9 @@ export const fetchPuzzleLeaderboard = async (
     ratingDeviation: Math.max(0, Math.round(row.ratingDeviation)),
     attempted: Math.max(0, Math.round(row.attempted)),
     correct: Math.max(0, Math.round(row.correct)),
+    ...(typeof row.activityAttempts === "number"
+      ? { activityAttempts: Math.max(0, Math.round(row.activityAttempts)) }
+      : {}),
     averageSeconds:
       typeof row.averageSeconds === "number" ? Math.max(0, Math.round(row.averageSeconds)) : null,
   }));

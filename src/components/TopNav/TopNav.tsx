@@ -30,6 +30,7 @@ import {
 import { modeLabels } from "../../constants/matches";
 import { getBoardThemeColors, type Theme, useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
+import { formatCoinBalance } from "../../lib/coins/coinDisplay";
 import { coinSummaryQueryOptions } from "../../lib/coins/coinQueries";
 import {
   notificationQueryKeys,
@@ -558,6 +559,10 @@ export const TopNav = () => {
       void navigate({ to: "/shop" });
       return;
     }
+    if (notification.notification_type === "coin_policy_update") {
+      void navigate({ to: "/shop/how-coins-work" });
+      return;
+    }
     if (notification.notification_type === "puzzle_rating_added") {
       void navigate({ to: "/dashboard" });
       return;
@@ -647,9 +652,7 @@ export const TopNav = () => {
                   ref={(element) => {
                     navDropdownRefs.current[item.to] = element;
                   }}
-                  onMouseEnter={
-                    mobileMenuOpen ? undefined : () => openNavDropdownFor(item.to)
-                  }
+                  onMouseEnter={mobileMenuOpen ? undefined : () => openNavDropdownFor(item.to)}
                   onMouseLeave={mobileMenuOpen ? undefined : scheduleNavDropdownClose}
                 >
                   {item.linkToPage ? (
@@ -810,7 +813,7 @@ export const TopNav = () => {
           <Link
             className="navCoinBalance"
             to="/shop"
-            aria-label={`${coinSummaryQuery.data.balance} coins${
+            aria-label={`${formatCoinBalance(coinSummaryQuery.data.balance)} coins${
               coinSummaryQuery.data.dailyClaimAvailable ? ". Daily bonus available" : ""
             }. Open coin shop.`}
           >
@@ -819,7 +822,7 @@ export const TopNav = () => {
               alt=""
               aria-hidden="true"
             />
-            <span>{coinSummaryQuery.data.balance.toLocaleString()}</span>
+            <span>{formatCoinBalance(coinSummaryQuery.data.balance)}</span>
           </Link>
         ) : null}
         {isAuthenticated ? (

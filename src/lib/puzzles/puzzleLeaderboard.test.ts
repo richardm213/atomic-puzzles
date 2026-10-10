@@ -5,6 +5,7 @@ import {
   calculatePuzzleCorrectPercent,
   filterPuzzleProgressRowsByPeriod,
   isPuzzleLeaderboardEligible,
+  puzzleActivityBonus,
   puzzleTrophyLevel,
 } from "./puzzleLeaderboard";
 
@@ -23,6 +24,14 @@ describe("puzzleLeaderboard", () => {
     expect(calculatePuzzleCorrectPercent(0, 0)).toBe(0);
   });
 
+  it("scales the activity bonus gradually toward 50 points", () => {
+    expect(puzzleActivityBonus(0)).toBe(0);
+    expect(puzzleActivityBonus(100)).toBe(9);
+    expect(puzzleActivityBonus(500)).toBe(32);
+    expect(puzzleActivityBonus(1_000)).toBe(43);
+    expect(puzzleActivityBonus(100_000)).toBe(50);
+  });
+
   it("requires 20 monthly attempts and RD below 60", () => {
     expect(isPuzzleLeaderboardEligible(metricRow("eligible", 2100, 59, 20), "monthly")).toBe(true);
     expect(isPuzzleLeaderboardEligible(metricRow("high-rd", 2200, 60, 20), "monthly")).toBe(false);
@@ -31,11 +40,11 @@ describe("puzzleLeaderboard", () => {
     );
   });
 
-  it("ranks eligible monthly players by rating and leaves ineligible players unranked", () => {
+  it("ranks eligible monthly players by rating plus activity and leaves ineligible players unranked", () => {
     const rows = buildPuzzleLeaderboardRows(
       [
         metricRow("tied-later", 2200, 45, 22, 18),
-        metricRow("leader", 2300, 50, 20, 16),
+        metricRow("leader", 2210, 50, 20, 16),
         metricRow("tied-first", 2200, 40, 20, 15),
         metricRow("ineligible", 2400, 60, 30, 25),
       ],
@@ -49,6 +58,21 @@ describe("puzzleLeaderboard", () => {
       eligible: false,
       rank: null,
     });
+  });
+
+  it("lets sustained activity change rank without changing the underlying rating", () => {
+    const rows = buildPuzzleLeaderboardRows(
+      [metricRow("active", 2230, 40, 500), metricRow("inactive", 2250, 40, 20)],
+      "monthly",
+    );
+
+    expect(rows.find(({ username }) => username === "active")).toMatchObject({
+      rating: 2230,
+      activityBonus: 32,
+      leaderboardScore: 2262,
+      rank: 1,
+    });
+    expect(rows.find(({ username }) => username === "inactive")?.rank).toBe(2);
   });
 
   it("keeps all-time rankings at 20 attempts without an RD requirement", () => {

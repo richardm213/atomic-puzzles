@@ -11,6 +11,7 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
+import { formatCoinBalance } from "../../lib/coins/coinDisplay";
 import {
   coinQueryKeys,
   coinSummaryQueryOptions,
@@ -478,7 +479,7 @@ export const ShopPage = () => {
                 aria-hidden="true"
               />
               <div>
-                <strong>{balance.toLocaleString()}</strong>
+                <strong>{formatCoinBalance(balance)}</strong>
                 <span>coins</span>
               </div>
             </div>
@@ -517,7 +518,7 @@ export const ShopPage = () => {
               <h2 id="coin-ban-title">Coin access suspended</h2>
               <p>{economyBan.reason}</p>
               <p>
-                {"Access returns "}
+                <span>Access returns </span>
                 <time dateTime={economyBan.endsAt}>
                   {redemptionDateFormatter.format(new Date(economyBan.endsAt))}
                 </time>

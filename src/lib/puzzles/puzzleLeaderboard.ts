@@ -3,6 +3,7 @@ import {
   isPuzzleLeaderboardEligible,
   MONTHLY_PUZZLE_MAX_RD,
   MONTHLY_PUZZLE_MIN_ATTEMPTS,
+  puzzleActivityBonus,
   type PuzzleLeaderboardPeriod,
   rankPuzzleLeaderboardMetrics,
 } from "../../../shared/domain/puzzles/puzzleLeaderboard";
@@ -14,12 +15,16 @@ export {
   isPuzzleLeaderboardEligible,
   MONTHLY_PUZZLE_MAX_RD,
   MONTHLY_PUZZLE_MIN_ATTEMPTS,
+  puzzleActivityBonus,
 };
 export type { PuzzleLeaderboardPeriod };
 
 export type PuzzleLeaderboardRow = PuzzleLeaderboardMetricRow & {
   rank: number | null;
   eligible: boolean;
+  activityAttempts: number;
+  activityBonus: number;
+  leaderboardScore: number;
   incorrect: number;
   percentCorrect: number;
 };

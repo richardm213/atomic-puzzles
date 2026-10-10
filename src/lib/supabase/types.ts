@@ -128,6 +128,7 @@ export type NotificationRow = {
     | "shop_redemption"
     | "coin_gift"
     | "coin_request"
+    | "coin_policy_update"
     | "monthly_ranking";
   puzzle_id: number | null;
   comment_id: number | null;

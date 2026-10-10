@@ -57,7 +57,7 @@ describe("fetchPuzzleProgressPage", () => {
     const coinChangeListener = vi.fn();
     window.addEventListener("atomic-puzzles:coins-earned", coinChangeListener);
     const fetchMock = vi.spyOn(window, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ recorded: true, coinDelta: -2 }), {
+      new Response(JSON.stringify({ recorded: true, coinDelta: -3.21644 }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       }),
@@ -90,7 +90,7 @@ describe("fetchPuzzleProgressPage", () => {
     expect(window.localStorage.getItem("atomic-puzzles.puzzle-progress.solver")).toBeNull();
     expect(coinChangeListener).toHaveBeenCalledOnce();
     expect((coinChangeListener.mock.calls[0]?.[0] as CustomEvent).detail).toEqual({
-      amount: -2,
+      amount: -3.21644,
       label: "Incorrect attempt",
     });
     window.removeEventListener("atomic-puzzles:coins-earned", coinChangeListener);

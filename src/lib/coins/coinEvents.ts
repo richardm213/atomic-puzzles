@@ -9,7 +9,7 @@ export const announceCoinChange = (amount: number, label: string): void => {
   if (typeof window === "undefined" || !Number.isFinite(amount) || amount === 0) return;
   window.dispatchEvent(
     new CustomEvent<CoinEarnedDetail>(COINS_EARNED_EVENT, {
-      detail: { amount: Math.round(amount), label },
+      detail: { amount, label },
     }),
   );
 };

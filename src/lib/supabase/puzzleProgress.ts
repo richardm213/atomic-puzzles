@@ -26,8 +26,8 @@ const ATTEMPTED_PUZZLE_IDS_RPC = (import.meta.env.VITE_SUPABASE_ATTEMPTED_PUZZLE
   "get_rated_puzzle_ids") as keyof Database["public"]["Functions"];
 const puzzleProgressWriteRequests = new Map<string, Promise<RecordPuzzleProgressResult>>();
 const puzzleProgressResponseSchema = z.object({
-  coinAward: z.number().int().nonnegative().optional().default(0),
-  coinDelta: z.number().int().optional(),
+  coinAward: z.number().nonnegative().optional().default(0),
+  coinDelta: z.number().optional(),
   rated: z.boolean().optional().default(true),
   ratingEvent: z
     .object({

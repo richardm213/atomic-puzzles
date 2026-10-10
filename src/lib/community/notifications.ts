@@ -8,6 +8,7 @@ export type NotificationType =
   | "shop_redemption"
   | "coin_gift"
   | "coin_request"
+  | "coin_policy_update"
   | "monthly_ranking";
 
 export type UserNotification = {
@@ -38,6 +39,12 @@ export type NotificationResult = {
 };
 
 export const notificationCopy = (notification: UserNotification): string => {
+  if (notification.notification_type === "coin_policy_update") {
+    return (
+      notification.coin_message?.trim() ??
+      "Puzzle speed penalties are now active. See the Earn Coins page for details."
+    );
+  }
   if (notification.notification_type === "monthly_ranking") {
     const period = notification.ranking_period
       ? new Date(`${notification.ranking_period.slice(0, 10)}T00:00:00Z`).toLocaleString("en-US", {
@@ -88,7 +95,9 @@ export const notificationCopy = (notification: UserNotification): string => {
 };
 
 export const notificationMessage = (notification: UserNotification): string =>
-  notification.coin_message?.trim() ?? "";
+  notification.notification_type === "coin_policy_update"
+    ? ""
+    : (notification.coin_message?.trim() ?? "");
 
 export const rankingNotificationImage = (notification: UserNotification): string | null =>
   notification.notification_type !== "monthly_ranking" || !notification.ranking_position

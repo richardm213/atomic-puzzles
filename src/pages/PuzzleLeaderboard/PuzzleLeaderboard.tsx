@@ -34,7 +34,9 @@ type PuzzleLeaderboardSortKey = keyof Pick<
   PuzzleLeaderboardRow,
   | "rank"
   | "username"
+  | "leaderboardScore"
   | "rating"
+  | "activityBonus"
   | "ratingDeviation"
   | "attempted"
   | "percentCorrect"
@@ -48,7 +50,9 @@ const puzzleLeaderboardColumns: Array<{
 }> = [
   { key: "rank", label: "#", title: "Rank" },
   { key: "username", label: "Player", title: "Player" },
-  { key: "rating", label: "Rating", title: "Puzzle rating" },
+  { key: "leaderboardScore", label: "Score", title: "Puzzle rating plus activity bonus" },
+  { key: "rating", label: "Rating", title: "Puzzle rating before activity bonus" },
+  { key: "activityBonus", label: "Bonus", title: "Activity bonus" },
   { key: "ratingDeviation", label: "RD", title: "Rating deviation" },
   { key: "attempted", label: "ATT", title: "Total attempts" },
   { key: "percentCorrect", label: "ACC", title: "Accuracy" },
@@ -118,7 +122,7 @@ const PuzzleLeaderboard = () => {
     false,
   );
   const { changeSort, sortDirection, sortKey } = useTableSort<PuzzleLeaderboardSortKey>({
-    initialKey: "rating",
+    initialKey: "leaderboardScore",
     getDefaultDirection: (key) => (key === "rank" || key === "username" ? "asc" : "desc"),
   });
   const progressQuery = useQuery(puzzleLeaderboardProgressQueryOptions());
@@ -228,10 +232,16 @@ const PuzzleLeaderboard = () => {
 
         {period === "monthly" ? (
           <p className="puzzleLeaderboardEligibilityNote">
-            Official ranks require at least {MONTHLY_PUZZLE_MIN_ATTEMPTS} attempts and RD below
-            {` ${MONTHLY_PUZZLE_MAX_RD}`} in the selected month.
+            <strong>Score = Rating + Activity bonus. </strong>
+            {`The bonus rises smoothly with rated attempts in the selected month: about +9 at 100 attempts, +32 at 500, and +43 at 1,000, with a maximum of +50. Official ranks still require at least ${MONTHLY_PUZZLE_MIN_ATTEMPTS} attempts and RD below ${MONTHLY_PUZZLE_MAX_RD}.`}
           </p>
-        ) : null}
+        ) : (
+          <p className="puzzleLeaderboardEligibilityNote">
+            <strong>Score = Rating + Activity bonus.</strong> The bonus rises smoothly with rated
+            attempts from the last 120 days: about +9 at 100 attempts, +32 at 500, and +43 at 1,000,
+            with a maximum of +50. The ATT column remains the player&apos;s all-time total.
+          </p>
+        )}
 
         {error ? <InlineState kind="error">{error}</InlineState> : null}
 
@@ -300,7 +310,14 @@ const PuzzleLeaderboard = () => {
                         </Link>
                       </span>
                     </td>
+                    <td>{row.leaderboardScore}</td>
                     <td>{row.rating}</td>
+                    <td
+                      className="puzzleLeaderboardBonus"
+                      title={`${row.activityAttempts.toLocaleString()} rated ${row.activityAttempts === 1 ? "attempt" : "attempts"} ${period === "monthly" ? `in ${puzzleRankingMonthLabel(effectiveMonth)}` : "in the last 120 days"}`}
+                    >
+                      +{row.activityBonus}
+                    </td>
                     <td>{row.ratingDeviation}</td>
                     <td>{row.attempted}</td>
                     <td>{row.percentCorrect}%</td>

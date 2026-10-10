@@ -3,6 +3,7 @@ import "./CoinEarnedToast.css";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 
+import { formatCoinAmount } from "../../lib/coins/coinDisplay";
 import { type CoinEarnedDetail, COINS_EARNED_EVENT } from "../../lib/coins/coinEvents";
 import { appAssetPath } from "../../utils/appAssetPath";
 
@@ -36,10 +37,7 @@ export const CoinEarnedToast = () => {
             <img src={appAssetPath("/images/coins/gold-coin-stack-v2.png")} alt="" />
           </span>
           <span className="coinEarnedCopy">
-            <strong>
-              {reward.amount > 0 ? "+" : ""}
-              {reward.amount} coins
-            </strong>
+            <strong>{formatCoinAmount(reward.amount)} coins</strong>
             <span>{reward.label}</span>
           </span>
         </div>
