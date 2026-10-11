@@ -1,7 +1,8 @@
 import { SPEED_PENALTY_CUTOFF_MS } from "./speedPenalty";
 
 const STARTING_SPEED_BONUS = 1;
-const ENDING_SPEED_BONUS = 0.1;
+const ENDING_SPEED_BONUS = 0.2;
+const FULL_SPEED_BONUS_DURATION_MS = 5_000;
 
 export const calculateCorrectAttemptSpeedBonus = (
   puzzleLevel: number,
@@ -19,6 +20,12 @@ export const calculateCorrectAttemptSpeedBonus = (
     return 0;
   }
 
-  const progress = attemptDurationMs / SPEED_PENALTY_CUTOFF_MS;
+  if (attemptDurationMs <= FULL_SPEED_BONUS_DURATION_MS) {
+    return STARTING_SPEED_BONUS;
+  }
+
+  const progress =
+    (attemptDurationMs - FULL_SPEED_BONUS_DURATION_MS) /
+    (SPEED_PENALTY_CUTOFF_MS - FULL_SPEED_BONUS_DURATION_MS);
   return STARTING_SPEED_BONUS * Math.pow(STARTING_SPEED_BONUS / ENDING_SPEED_BONUS, -progress);
 };

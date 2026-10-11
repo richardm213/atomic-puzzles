@@ -55,13 +55,19 @@ begin
       and new.first_attempt_duration_ms is not null
       and new.first_attempt_duration_ms >= 0
       and new.first_attempt_duration_ms < 30000 then
-      -- Starts at 1 coin and approaches 0.1 immediately before 30 seconds.
-      speed_bonus := round((
-        power(
-          10::numeric,
-          -(new.first_attempt_duration_ms::numeric / 30000::numeric)
-        )
-      )::numeric, 6);
+      -- Stays at 1 coin through 5 seconds, then approaches 0.2 before 30 seconds.
+      speed_bonus := case
+        when new.first_attempt_duration_ms <= 5000 then 1
+        else round((
+          power(
+            5::numeric,
+            -(
+              (new.first_attempt_duration_ms::numeric - 5000::numeric)
+              / 25000::numeric
+            )
+          )
+        )::numeric, 6)
+      end;
     end if;
 
     coin_delta := round(base_reward + speed_bonus, 6);
@@ -79,7 +85,7 @@ begin
         'baseReward', base_reward,
         'speedBonus', speed_bonus,
         'attemptDurationMs', new.first_attempt_duration_ms,
-        'speedBonusVersion', 'v1-v3-exponential-1-to-0.1-30s'
+        'speedBonusVersion', 'v1-v3-full-through-5s-exponential-to-0.2-30s'
       ),
       new.first_attempt_at
     );
