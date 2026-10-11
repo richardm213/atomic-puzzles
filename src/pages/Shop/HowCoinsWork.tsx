@@ -24,7 +24,7 @@ const solvingRewards = [
   ["V5", 10, 0],
 ] as const;
 
-const speedAdjustmentSeconds = [0, 5, 10, 15, 20, 25, 30] as const;
+const speedAdjustmentSeconds = [3, 5, 10, 15, 20, 25, 30] as const;
 
 const CoinAmount = ({ amount }: { amount: number }) => (
   <span className={amount < 0 ? "coinAmount coinAmountPenalty" : "coinAmount"}>
