@@ -29,6 +29,7 @@ describe("fetchPuzzleProgressPage", () => {
         {
           puzzle_id: "21",
           first_attempt_at: "2026-06-02T00:00:00.000Z",
+          first_attempt_duration_ms: 12_345,
           puzzle_correct: true,
           total_count: 27,
         },
@@ -44,13 +45,14 @@ describe("fetchPuzzleProgressPage", () => {
 
     const page = await fetchPuzzleProgressPage("whooooami", { page: 2, pageSize: 20 });
 
-    expect(rpcMock).toHaveBeenCalledWith("get_puzzle_progress_page_v2", {
+    expect(rpcMock).toHaveBeenCalledWith("get_puzzle_progress_page_v3", {
       p_username: "whooooami",
       p_page: 2,
       p_page_size: 20,
     });
     expect(page.total).toBe(27);
     expect(page.rows.map((row) => row.puzzle_id)).toEqual(["21", "22"]);
+    expect(page.rows[0]?.first_attempt_duration_ms).toBe(12_345);
   });
 
   it("records an incorrect move without changing its SAN notation", async () => {
@@ -211,7 +213,7 @@ describe("fetchPuzzleProgressPage", () => {
       sinceDate: "2026-07-02",
     });
 
-    expect(rpcMock).toHaveBeenCalledWith("get_puzzle_progress_page_v2", {
+    expect(rpcMock).toHaveBeenCalledWith("get_puzzle_progress_page_v3", {
       p_username: "whooooami",
       p_page: 1,
       p_page_size: 1000,

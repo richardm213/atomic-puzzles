@@ -834,7 +834,7 @@ create trigger rate_puzzle_after_first_attempt
   when (new.rated)
   execute function public.rate_first_puzzle_attempt_v2();
 
-create or replace function public.get_puzzle_progress_page_v2(
+create or replace function public.get_puzzle_progress_page_v3(
   p_username text,
   p_page integer default 1,
   p_page_size integer default 20
@@ -842,6 +842,7 @@ create or replace function public.get_puzzle_progress_page_v2(
 returns table (
   puzzle_id text,
   first_attempt_at timestamptz,
+  first_attempt_duration_ms integer,
   puzzle_correct boolean,
   rated boolean,
   total_count bigint
@@ -854,6 +855,7 @@ as $$
   select
     progress.puzzle_id,
     progress.first_attempt_at,
+    progress.first_attempt_duration_ms,
     progress.puzzle_correct,
     progress.rated,
     count(*) over () as total_count
@@ -865,9 +867,9 @@ as $$
     * least(1000, greatest(1, coalesce(p_page_size, 20)));
 $$;
 
-revoke all on function public.get_puzzle_progress_page_v2(text, integer, integer)
+revoke all on function public.get_puzzle_progress_page_v3(text, integer, integer)
   from public;
-grant execute on function public.get_puzzle_progress_page_v2(text, integer, integer)
+grant execute on function public.get_puzzle_progress_page_v3(text, integer, integer)
   to anon, authenticated, service_role;
 
 create or replace function public.get_rated_puzzle_ids(p_username text)
@@ -900,5 +902,5 @@ select jsonb_build_object(
       and column_name = 'rated'
   ),
   'creator_cooldown', '1 month',
-  'progress_page_rpc', 'get_puzzle_progress_page_v2'
+  'progress_page_rpc', 'get_puzzle_progress_page_v3'
 ) as migration_result;

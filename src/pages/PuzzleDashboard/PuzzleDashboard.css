@@ -554,7 +554,6 @@
 .dashboardSelectedTag > button:focus-visible,
 .dashboardTagOptions > button:focus-visible,
 .dashboardClearFilters:focus-visible,
-.dashboardCalendarToggle:focus-visible,
 .dashboardFilterToggle:focus-visible,
 .dashboardStartSetButton:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--color-primary) 68%, white);
@@ -567,7 +566,6 @@
 }
 
 .dashboardClearFilters,
-.dashboardCalendarToggle,
 .dashboardFilterToggle {
   min-height: 40px;
   padding: 0 12px;
@@ -584,7 +582,6 @@
 }
 
 .dashboardClearFilters:hover:not(:disabled),
-.dashboardCalendarToggle:hover:not(:disabled),
 .dashboardFilterToggle:hover:not(:disabled) {
   border-color: var(--color-accent-soft-border);
   background: var(--color-surface-elevated-strong);
@@ -881,7 +878,7 @@
   display: grid;
   grid-template-columns:
     34px minmax(136px, 1.08fr) minmax(142px, 0.88fr) minmax(96px, 0.72fr)
-    minmax(180px, 1.2fr);
+    minmax(58px, 0.42fr) minmax(180px, 1.2fr);
   gap: 12px;
   align-items: center;
 }
@@ -1051,6 +1048,14 @@
   color: var(--color-muted);
   font-size: 13px;
   line-height: 1.4;
+  white-space: nowrap;
+}
+
+.dashboardAttemptDuration {
+  color: var(--color-heading);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 750;
   white-space: nowrap;
 }
 
@@ -1256,10 +1261,6 @@
     width: 100%;
   }
 
-  .dashboardCalendarToggle {
-    width: 100%;
-  }
-
   .dashboardCalendarHeading {
     align-items: flex-start;
   }
@@ -1313,7 +1314,7 @@
     grid-template-areas:
       "number puzzle puzzle"
       ". author rating"
-      ". attempted attempted";
+      ". duration attempted";
     gap: 3px 10px;
     min-height: 64px;
     padding: 8px 10px;
@@ -1345,7 +1346,13 @@
 
   .dashboardMetaValue {
     grid-area: attempted;
+    justify-self: end;
+    text-align: right;
     white-space: normal;
+  }
+
+  .dashboardAttemptDuration {
+    grid-area: duration;
   }
 
   .puzzleDashboardActionLink,

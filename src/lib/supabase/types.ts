@@ -269,6 +269,10 @@ export type Database = {
         Args: { p_username: string; p_page: number; p_page_size: number };
         Returns: PuzzleProgressRpcRow[];
       };
+      get_puzzle_progress_page_v3: {
+        Args: { p_username: string; p_page: number; p_page_size: number };
+        Returns: PuzzleProgressRpcRow[];
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

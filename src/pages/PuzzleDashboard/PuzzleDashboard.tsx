@@ -91,10 +91,23 @@ const formatDateTime = (value: string | number | Date | null | undefined): strin
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
 
+  const showYear = date.getFullYear() < new Date().getFullYear();
   return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    month: "short",
+    ...(showYear ? { year: "numeric" } : {}),
   }).format(date);
+};
+
+const formatAttemptDuration = (milliseconds: number | null): string => {
+  if (milliseconds === null || !Number.isFinite(milliseconds) || milliseconds < 0) return "—";
+
+  const totalSeconds = Math.floor(milliseconds / 1_000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
 };
 
 const buildDashboardEntries = (
@@ -108,6 +121,7 @@ const buildDashboardEntries = (
   event: string;
   puzzleCorrect: boolean;
   firstAttemptAt: string;
+  firstAttemptDurationMs: number | null;
   level: string;
   rating: number;
   userRatingAfter: number | null;
@@ -129,6 +143,8 @@ const buildDashboardEntries = (
       event,
       puzzleCorrect: Boolean(row?.puzzle_correct),
       firstAttemptAt: row?.first_attempt_at || "",
+      firstAttemptDurationMs:
+        typeof row?.first_attempt_duration_ms === "number" ? row.first_attempt_duration_ms : null,
       level: puzzleLevelLabel(puzzleRating.level),
       rating: puzzleRating.rating,
       userRatingAfter: ratingEvent?.userRatingAfter ?? null,
@@ -168,7 +184,6 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
     dashboardFiltersSchema,
     DEFAULT_DASHBOARD_FILTERS,
   );
-  const [calendarOpen, setCalendarOpen] = useState(true);
   const {
     sinceDate,
     untilDate,
@@ -225,6 +240,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
     ? (customSetAttemptsQuery.data ?? []).map((attempt) => ({
         puzzle_id: attempt.puzzleId,
         first_attempt_at: attempt.attemptedAt,
+        first_attempt_duration_ms: null,
         puzzle_correct: attempt.puzzleCorrect,
         incorrect_move: null,
         correct_move: null,
@@ -641,15 +657,6 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
                   <div className="dashboardAttemptsActions">
                     <button
                       type="button"
-                      className="dashboardCalendarToggle"
-                      onClick={() => setCalendarOpen((current) => !current)}
-                      aria-expanded={calendarOpen}
-                      aria-controls="dashboard-attempt-calendar"
-                    >
-                      {calendarOpen ? "Hide calendar" : "Show calendar"}
-                    </button>
-                    <button
-                      type="button"
                       className="dashboardFilterToggle"
                       onClick={() => updateDashboardFilter("filtersOpen", !filtersOpen)}
                       aria-expanded={filtersOpen}
@@ -777,11 +784,9 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
                     </button>
                   </div>
                 ) : null}
-                {calendarOpen ? (
-                  <div id="dashboard-attempt-calendar">
-                    <MonthlyAttemptsCalendar attempts={filteredDashboardEntries} />
-                  </div>
-                ) : null}
+                <div id="dashboard-attempt-calendar">
+                  <MonthlyAttemptsCalendar attempts={filteredDashboardEntries} />
+                </div>
                 <div className="dashboardAttemptsPager">
                   <label className="dashboardFilterLabel">
                     <span>Rows</span>
@@ -826,9 +831,10 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
                   <div className="dashboardAttemptHeader" aria-hidden="true">
                     <span>#</span>
                     <span>Puzzle</span>
-                    <span>Puzzle rating</span>
+                    <span>Pzl rating</span>
                     <span>Rating</span>
-                    <span>Attempted</span>
+                    <span>Time</span>
+                    <span>Date</span>
                   </div>
                   <div className="dashboardAttemptRows" role="list" aria-label="Puzzle dashboard">
                     {dashboardEntries.map((entry, index) => (
@@ -875,6 +881,16 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
                               <small>{formatSignedRating(entry.userRatingChange)}</small>
                             </>
                           )}
+                        </span>
+                        <span
+                          className="dashboardAttemptDuration"
+                          aria-label={
+                            entry.firstAttemptDurationMs === null
+                              ? "Puzzle time unavailable"
+                              : `Puzzle time ${formatAttemptDuration(entry.firstAttemptDurationMs)}`
+                          }
+                        >
+                          {formatAttemptDuration(entry.firstAttemptDurationMs)}
                         </span>
                         <time className="dashboardMetaValue" dateTime={entry.firstAttemptAt}>
                           {formatDateTime(entry.firstAttemptAt)}

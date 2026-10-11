@@ -21,7 +21,7 @@ type SupabaseClient = ReturnType<typeof getSupabaseClient>;
 const PUZZLE_PROGRESS_TABLE =
   import.meta.env.VITE_SUPABASE_PUZZLE_PROGRESS_TABLE?.trim() ?? "puzzle_progress";
 const PUZZLE_PROGRESS_PAGE_RPC = (import.meta.env.VITE_SUPABASE_PUZZLE_PROGRESS_PAGE_RPC?.trim() ??
-  "get_puzzle_progress_page_v2") as keyof Database["public"]["Functions"];
+  "get_puzzle_progress_page_v3") as keyof Database["public"]["Functions"];
 const ATTEMPTED_PUZZLE_IDS_RPC = (import.meta.env.VITE_SUPABASE_ATTEMPTED_PUZZLE_IDS_RPC?.trim() ??
   "get_rated_puzzle_ids") as keyof Database["public"]["Functions"];
 const puzzleProgressWriteRequests = new Map<string, Promise<RecordPuzzleProgressResult>>();
@@ -145,6 +145,11 @@ const loadPuzzleProgressPageFromRpc = async (
     .map((row) => ({
       puzzle_id: normalizePuzzleId(row?.puzzle_id),
       first_attempt_at: typeof row?.first_attempt_at === "string" ? row.first_attempt_at : "",
+      first_attempt_duration_ms:
+        typeof row?.first_attempt_duration_ms === "number" &&
+        Number.isFinite(row.first_attempt_duration_ms)
+          ? Math.max(0, Math.round(row.first_attempt_duration_ms))
+          : null,
       puzzle_correct: Boolean(row?.puzzle_correct),
       rated: row?.rated !== false,
       incorrect_move:
@@ -401,7 +406,9 @@ export const fetchPuzzleProgressRowsForUsername = async (
       serverRows = await fetchAllSupabaseRows<PuzzleProgressRow>(PUZZLE_PROGRESS_TABLE, () =>
         supabase
           .from(PUZZLE_PROGRESS_TABLE)
-          .select("puzzle_id,first_attempt_at,puzzle_correct,rated,incorrect_move,correct_move")
+          .select(
+            "puzzle_id,first_attempt_at,first_attempt_duration_ms,puzzle_correct,rated,incorrect_move,correct_move",
+          )
           .eq("username", normalizedUsername)
           .order("first_attempt_at", { ascending: false }),
       );

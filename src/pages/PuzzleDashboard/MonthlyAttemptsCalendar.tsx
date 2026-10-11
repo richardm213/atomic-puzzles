@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 
 type CalendarAttempt = {
   firstAttemptAt: string;
+  firstAttemptDurationMs: number | null;
   puzzleCorrect: boolean;
 };
 
@@ -74,6 +75,31 @@ const performanceClass = (accuracy: number): string => {
   return "performance1";
 };
 
+const median = (values: number[]): number | null => {
+  if (values.length === 0) return null;
+
+  const sorted = [...values].sort((left, right) => left - right);
+  const middle = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 !== 0) return sorted[middle] ?? null;
+
+  const lower = sorted[middle - 1];
+  const upper = sorted[middle];
+  return lower === undefined || upper === undefined ? null : (lower + upper) / 2;
+};
+
+const formatDuration = (milliseconds: number): string => {
+  const totalSeconds = milliseconds / 1_000;
+  if (totalSeconds < 60) {
+    const roundedSeconds = Math.round(totalSeconds * 10) / 10;
+    return `${roundedSeconds}s`;
+  }
+
+  const roundedSeconds = Math.round(totalSeconds);
+  const minutes = Math.floor(roundedSeconds / 60);
+  const seconds = roundedSeconds % 60;
+  return `${minutes}m ${String(seconds).padStart(2, "0")}s`;
+};
+
 export const MonthlyAttemptsCalendar = ({ attempts }: { attempts: CalendarAttempt[] }) => {
   const today = useMemo(() => new Date(), []);
   const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(today));
@@ -86,16 +112,23 @@ export const MonthlyAttemptsCalendar = ({ attempts }: { attempts: CalendarAttemp
     [],
   );
   const attemptsByDay = useMemo(() => {
-    const counts = new Map<string, { correct: number; total: number }>();
+    const counts = new Map<string, { correct: number; durations: number[]; total: number }>();
 
     attempts.forEach((attempt) => {
       const attemptedAt = new Date(attempt.firstAttemptAt);
       if (Number.isNaN(attemptedAt.getTime()) || !isSameMonth(attemptedAt, visibleMonth)) return;
 
       const key = utcDateKey(attemptedAt);
-      const count = counts.get(key) ?? { correct: 0, total: 0 };
+      const count = counts.get(key) ?? { correct: 0, durations: [], total: 0 };
       count.total += 1;
       if (attempt.puzzleCorrect) count.correct += 1;
+      if (
+        typeof attempt.firstAttemptDurationMs === "number" &&
+        Number.isFinite(attempt.firstAttemptDurationMs) &&
+        attempt.firstAttemptDurationMs >= 0
+      ) {
+        count.durations.push(attempt.firstAttemptDurationMs);
+      }
       counts.set(key, count);
     });
 
@@ -188,6 +221,9 @@ export const MonthlyAttemptsCalendar = ({ attempts }: { attempts: CalendarAttemp
                 {days.slice(weekIndex * 7, weekIndex * 7 + 7).map((day) => {
                   const count = attemptsByDay.get(day.dateKey);
                   const accuracy = count ? Math.round((count.correct / count.total) * 100) : 0;
+                  const medianDuration = count ? median(count.durations) : null;
+                  const medianDurationLabel =
+                    medianDuration === null ? null : formatDuration(medianDuration);
                   const resultClass = count?.total ? ` ${performanceClass(accuracy)}` : "";
 
                   return (
@@ -196,7 +232,9 @@ export const MonthlyAttemptsCalendar = ({ attempts }: { attempts: CalendarAttemp
                       className={`${day.isInMonth ? "" : "outsideMonth"}${resultClass}`}
                       title={
                         count
-                          ? `${count.correct} correct out of ${count.total} attempts`
+                          ? `${count.correct} correct out of ${count.total} attempts${
+                              medianDurationLabel ? ` · Median time ${medianDurationLabel}` : ""
+                            }`
                           : undefined
                       }
                     >
@@ -213,6 +251,7 @@ export const MonthlyAttemptsCalendar = ({ attempts }: { attempts: CalendarAttemp
                           ) : null}
                           <span className="dashboardCalendarDateLabel">
                             {fullDateFormatter.format(day.date)}
+                            {medianDurationLabel ? `, median time ${medianDurationLabel}` : ""}
                           </span>
                         </>
                       ) : null}
