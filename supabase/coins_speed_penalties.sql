@@ -102,12 +102,12 @@ begin
   if new.first_attempt_duration_ms is not null
     and new.first_attempt_duration_ms >= 0
     and new.first_attempt_duration_ms < 30000 then
-    -- Stays at 3 coins through 3 seconds, then approaches 0.2 before 30 seconds.
+    -- Stays at 3 coins through 3 seconds, then approaches 0.5 before 30 seconds.
     speed_penalty := case
       when new.first_attempt_duration_ms <= 3000 then 3
       else round((
         3::numeric * power(
-          15::numeric,
+          6::numeric,
           -(
             (new.first_attempt_duration_ms::numeric - 3000::numeric)
             / 27000::numeric
@@ -151,7 +151,7 @@ begin
       'basePenalty', base_penalty,
       'speedPenalty', speed_penalty,
       'attemptDurationMs', new.first_attempt_duration_ms,
-      'speedPenaltyVersion', 'full-through-3s-exponential-3-to-0.2-30s',
+      'speedPenaltyVersion', 'full-through-3s-exponential-3-to-0.5-30s',
       'balanceCapped', abs(coin_delta) < requested_penalty
     ),
     new.first_attempt_at

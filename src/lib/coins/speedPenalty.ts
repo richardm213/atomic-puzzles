@@ -1,7 +1,7 @@
 export const SPEED_PENALTY_CUTOFF_MS = 30_000;
 
 const STARTING_SPEED_PENALTY = 3;
-const ENDING_SPEED_PENALTY = 0.2;
+const ENDING_SPEED_PENALTY = 0.5;
 const FULL_SPEED_PENALTY_DURATION_MS = 3_000;
 
 export const calculateIncorrectAttemptSpeedPenalty = (attemptDurationMs: number | null): number => {

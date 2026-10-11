@@ -4,12 +4,12 @@ import { formatCoinAmount } from "./coinDisplay";
 import { calculateIncorrectAttemptSpeedPenalty } from "./speedPenalty";
 
 describe("incorrect-attempt speed penalty", () => {
-  it("stays at three coins through 3 seconds, then decays toward 0.2 until 30 seconds", () => {
+  it("stays at three coins through 3 seconds, then decays toward 0.5 until 30 seconds", () => {
     expect(calculateIncorrectAttemptSpeedPenalty(0)).toBe(3);
     expect(calculateIncorrectAttemptSpeedPenalty(3_000)).toBe(3);
     expect(calculateIncorrectAttemptSpeedPenalty(3_001)).toBeLessThan(3);
-    expect(calculateIncorrectAttemptSpeedPenalty(10_000)).toBeCloseTo(1.487, 3);
-    expect(calculateIncorrectAttemptSpeedPenalty(29_999)).toBeCloseTo(0.2, 3);
+    expect(calculateIncorrectAttemptSpeedPenalty(10_000)).toBeCloseTo(1.885, 3);
+    expect(calculateIncorrectAttemptSpeedPenalty(29_999)).toBeCloseTo(0.5, 3);
     expect(calculateIncorrectAttemptSpeedPenalty(30_000)).toBe(0);
     expect(calculateIncorrectAttemptSpeedPenalty(null)).toBe(0);
   });
@@ -20,6 +20,6 @@ describe("incorrect-attempt speed penalty", () => {
         const penalty = calculateIncorrectAttemptSpeedPenalty(seconds * 1_000);
         return penalty === 0 ? "No deduction" : formatCoinAmount(-penalty);
       }),
-    ).toEqual(["-3", "-2.5", "-1.5", "-0.9", "-0.5", "-0.3", "No deduction"]);
+    ).toEqual(["-3", "-2.6", "-1.9", "-1.4", "-1", "-0.7", "No deduction"]);
   });
 });
