@@ -1,7 +1,5 @@
--- Final privacy cutover. Do not apply until all of these are true:
--- 1. prepare_puzzle_solution_privacy.sql has been applied;
--- 2. /api/puzzles/play has been verified in production;
--- 3. The client version that always uses /api/puzzles/play is deployed and verified.
+-- Puzzle-solution privacy setup and final cutover. Do not apply until
+-- /api/puzzles/play and the client that uses it are deployed and verified.
 --
 -- Browser clients use the Supabase anon role even after Lichess login. Revoke
 -- the table-wide grant, then restore read access to public metadata only. The
@@ -9,6 +7,13 @@
 -- signed-session /api/puzzles/play endpoint. Server-side service-role clients
 -- retain full access.
 -- Emergency rollback: `grant select on table public.puzzles to anon, authenticated;`
+
+alter table public.puzzles
+  add column if not exists has_solution boolean
+  generated always as (solution is not null and length(btrim(solution)) > 0) stored;
+
+comment on column public.puzzles.has_solution is
+  'Public-safe indicator used to filter playable puzzles without reading solution text.';
 
 revoke select on table public.puzzles from anon, authenticated;
 
