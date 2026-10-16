@@ -60,7 +60,10 @@ describe("createOpeningExplorerService", () => {
 
     const explorer = await service.handle(explorerRequest());
     expect(explorer.statusCode).toBe(503);
-    expect(responseBody(explorer)).toEqual({ error: "fixture unavailable" });
+    expect(responseBody(explorer)).toEqual({
+      error: "fixture unavailable",
+      code: "service_unavailable",
+    });
     expect(query).not.toHaveBeenCalled();
   });
 
@@ -80,7 +83,10 @@ describe("createOpeningExplorerService", () => {
       params: new URLSearchParams({ randomPlayer: "1" }),
     });
     expect(random.statusCode).toBe(404);
-    expect(responseBody(random)).toEqual({ error: "No opening database players are available" });
+    expect(responseBody(random)).toEqual({
+      error: "No opening database players are available",
+      code: "player_not_found",
+    });
   });
 
   it("resolves aliases once per database signature before building personalized SQL", async () => {
@@ -226,7 +232,7 @@ describe("createOpeningExplorerService", () => {
       params: new URLSearchParams(),
     });
     expect(busy.statusCode).toBe(429);
-    expect(responseBody(busy)).toEqual({ error: "busy" });
+    expect(responseBody(busy)).toEqual({ error: "busy", code: "queue_unavailable" });
 
     const opaqueFailureService = createOpeningExplorerService(
       createRepository(async () => {
@@ -240,7 +246,10 @@ describe("createOpeningExplorerService", () => {
       params: new URLSearchParams(),
     });
     expect(failure.statusCode).toBe(500);
-    expect(responseBody(failure)).toEqual({ error: "Opening explorer query failed" });
+    expect(responseBody(failure)).toEqual({
+      error: "Opening explorer query failed",
+      code: "internal_error",
+    });
   });
   it("drops superseded navigation jobs without cancelling another tab", async () => {
     const queue = createOpeningExplorerQueue({ maxConcurrent: 1, maxQueued: 10 });

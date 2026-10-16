@@ -1,0 +1,1140 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Atomic Puzzles API",
+    "version": "1.0.0",
+    "description": "JSON API for Atomic Puzzles matches, ratings, opening statistics, AtomicDB analysis, puzzles, and community features. Mutation and private-data operations are same-origin and may require a signed site session."
+  },
+  "servers": [
+    {
+      "url": "https://atomicpuzzles.org",
+      "description": "Production"
+    },
+    {
+      "url": "http://localhost:5173",
+      "description": "Local development"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Archive",
+      "description": "Read-only matches, ratings, leaderboards, aliases, and usernames."
+    },
+    {
+      "name": "Analysis",
+      "description": "Opening Explorer and AtomicDB analysis."
+    },
+    {
+      "name": "Puzzles",
+      "description": "Puzzle play, progress, submission, and curation."
+    },
+    {
+      "name": "Account",
+      "description": "Site session, notifications, coins, and achievements."
+    },
+    {
+      "name": "Community",
+      "description": "Discussions and custom puzzle sets."
+    }
+  ],
+  "paths": {
+    "/api/archive-data": {
+      "get": {
+        "tags": ["Archive"],
+        "summary": "Query the match and rating archive",
+        "operationId": "queryArchive",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ArchiveResource"
+          },
+          {
+            "$ref": "#/components/parameters/Mode"
+          },
+          {
+            "name": "username",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "pairA",
+            "in": "query",
+            "description": "First player in a head-to-head filter. Requires pairB.",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "pairB",
+            "in": "query",
+            "description": "Second player in a head-to-head filter. Requires pairA.",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "matchId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 100
+            }
+          },
+          {
+            "name": "startTs",
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "endTs",
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "timeControl",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 40
+            }
+          },
+          {
+            "name": "sources",
+            "in": "query",
+            "description": "Comma-separated source names.",
+            "schema": {
+              "type": "string",
+              "examples": ["lobby,arena,friend"]
+            }
+          },
+          {
+            "name": "ratingFilterType",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["both", "average"],
+              "default": "both"
+            }
+          },
+          {
+            "name": "ratingMin",
+            "in": "query",
+            "description": "Requires ratingMax.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "ratingMax",
+            "in": "query",
+            "description": "Requires ratingMin.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "query",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 3
+            }
+          },
+          {
+            "name": "exact",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource-specific archive data. Match queries return MatchArchivePage.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/opening-explorer": {
+      "get": {
+        "tags": ["Analysis"],
+        "summary": "Query atomic opening statistics",
+        "operationId": "queryOpeningExplorer",
+        "parameters": [
+          {
+            "name": "fen",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 120
+            }
+          },
+          {
+            "name": "color",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["white", "black"]
+            }
+          },
+          {
+            "name": "minRating",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1700,
+              "maximum": 2200
+            }
+          },
+          {
+            "name": "speeds",
+            "in": "query",
+            "description": "Comma-separated speed IDs 0, 1, and 2.",
+            "schema": {
+              "type": "string",
+              "default": "0,1,2"
+            }
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]{4}-[0-9]{2}$"
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]{4}-[0-9]{2}$"
+            }
+          },
+          {
+            "name": "username",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 40
+            }
+          },
+          {
+            "name": "opponent",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 40
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Opening moves and recent games.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    },
+    "/api/opening-explorer/health": {
+      "get": {
+        "tags": ["Analysis"],
+        "summary": "Read Opening Explorer health",
+        "operationId": "openingExplorerHealth",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Health"
+          }
+        }
+      }
+    },
+    "/api/opening-players": {
+      "get": {
+        "tags": ["Analysis"],
+        "summary": "List players indexed by Opening Explorer",
+        "operationId": "listOpeningPlayers",
+        "responses": {
+          "200": {
+            "description": "Player list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["players"],
+                  "properties": {
+                    "players": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/api/atomicdb-analysis": {
+      "get": {
+        "tags": ["Analysis"],
+        "summary": "Analyze one AtomicDB position",
+        "operationId": "analyzeAtomicDbPosition",
+        "parameters": [
+          {
+            "name": "fen",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "line_moves",
+            "in": "query",
+            "description": "Up to five comma-separated root moves for principal variations.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "plies",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5,
+              "default": 5
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "AtomicDB position or principal variations.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "description": "Position not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "$ref": "#/components/responses/Unavailable"
+          },
+          "504": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Analysis"],
+        "summary": "Analyze a bounded batch of AtomicDB positions",
+        "operationId": "analyzeAtomicDbBatch",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["fens"],
+                "properties": {
+                  "fens": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 50,
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Results keyed by FEN.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["positions"],
+                  "properties": {
+                    "positions": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "anyOf": [
+                          {
+                            "type": "object"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "502": {
+            "$ref": "#/components/responses/Unavailable"
+          },
+          "504": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    },
+    "/api/auth/session": {
+      "get": {
+        "tags": ["Account"],
+        "summary": "Read the signed site session",
+        "operationId": "getSiteSession",
+        "security": [
+          {
+            "siteSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current user."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Account"],
+        "summary": "Exchange a Lichess login for a signed site session",
+        "operationId": "createSiteSession",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "description": "Authenticated user."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Account"],
+        "summary": "Clear the signed site session",
+        "operationId": "deleteSiteSession",
+        "security": [
+          {
+            "siteSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session cleared."
+          }
+        }
+      }
+    },
+    "/api/puzzles/play": {
+      "$ref": "#/components/pathItems/PuzzlePlay"
+    },
+    "/api/puzzles/progress": {
+      "$ref": "#/components/pathItems/PuzzleProgress"
+    },
+    "/api/puzzles/submit": {
+      "$ref": "#/components/pathItems/PuzzleSubmit"
+    },
+    "/api/puzzles/community": {
+      "$ref": "#/components/pathItems/Community"
+    },
+    "/api/puzzles/issues": {
+      "$ref": "#/components/pathItems/PuzzleIssues"
+    },
+    "/api/puzzles/rating": {
+      "$ref": "#/components/pathItems/PuzzleRating"
+    },
+    "/api/puzzles/explanation": {
+      "$ref": "#/components/pathItems/PuzzleExplanation"
+    },
+    "/api/puzzles/tags": {
+      "$ref": "#/components/pathItems/PuzzleTags"
+    },
+    "/api/puzzles/review": {
+      "$ref": "#/components/pathItems/PuzzleReview"
+    },
+    "/api/puzzle-sets": {
+      "$ref": "#/components/pathItems/PuzzleSets"
+    },
+    "/api/notifications": {
+      "$ref": "#/components/pathItems/Notifications"
+    },
+    "/api/coins": {
+      "$ref": "#/components/pathItems/Coins"
+    },
+    "/api/badges": {
+      "$ref": "#/components/pathItems/Badges"
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "siteSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "__Host-atomic_puzzles_session",
+        "description": "Signed first-party site session."
+      }
+    },
+    "parameters": {
+      "ArchiveResource": {
+        "name": "resource",
+        "in": "query",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "enum": [
+            "matches",
+            "player_game_counts",
+            "latest_match",
+            "aliases",
+            "weekly_ratings",
+            "ratings",
+            "leaderboard",
+            "yearly_leaderboard",
+            "leaderboard_counts",
+            "usernames",
+            "health"
+          ]
+        }
+      },
+      "Mode": {
+        "name": "mode",
+        "in": "query",
+        "schema": {
+          "type": "string",
+          "enum": ["hyperbullet", "bullet", "blitz", "wolfrandom", "atomic960"]
+        }
+      }
+    },
+    "schemas": {
+      "ApiError": {
+        "type": "object",
+        "required": ["error", "code"],
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "details": {}
+        }
+      },
+      "Match": {
+        "type": "object",
+        "required": ["match_id", "mode", "player_1", "player_2", "start_ts", "games"],
+        "properties": {
+          "match_id": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "player_1": {
+            "type": "string"
+          },
+          "player_2": {
+            "type": "string"
+          },
+          "start_ts": {
+            "type": "number"
+          },
+          "time_control": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "tournament_id": {
+            "type": ["string", "null"]
+          },
+          "games": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "MatchArchivePage": {
+        "type": "object",
+        "required": [
+          "rows",
+          "total",
+          "page",
+          "pageSize",
+          "totalPages",
+          "hasPreviousPage",
+          "hasNextPage"
+        ],
+        "properties": {
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Match"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200
+          },
+          "totalPages": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "hasPreviousPage": {
+            "type": "boolean"
+          },
+          "hasNextPage": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "headers": {
+      "RequestId": {
+        "description": "Identifier to include in support reports.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "ApiVersion": {
+        "description": "API contract version.",
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Invalid request.",
+        "headers": {
+          "X-Request-Id": {
+            "$ref": "#/components/headers/RequestId"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "A valid signed site session is required.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        }
+      },
+      "RateLimited": {
+        "description": "Rate limit exceeded.",
+        "headers": {
+          "Retry-After": {
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "X-Request-Id": {
+            "$ref": "#/components/headers/RequestId"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        }
+      },
+      "Unavailable": {
+        "description": "The service or an upstream dependency is unavailable.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        }
+      },
+      "InternalError": {
+        "description": "Unexpected server error.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        }
+      },
+      "Health": {
+        "description": "Service health.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "required": ["ok"],
+              "properties": {
+                "ok": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": true
+            }
+          }
+        }
+      }
+    },
+    "requestBodies": {
+      "JsonObject": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        }
+      }
+    },
+    "pathItems": {
+      "PuzzlePlay": {
+        "post": {
+          "tags": ["Puzzles"],
+          "summary": "Load playable puzzle details",
+          "operationId": "loadPuzzleDetails",
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["puzzleIds"],
+                  "properties": {
+                    "puzzleIds": {
+                      "type": "array",
+                      "minItems": 1,
+                      "maxItems": 20,
+                      "items": {
+                        "type": ["string", "number"]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "Action-specific response."
+            },
+            "400": {
+              "$ref": "#/components/responses/BadRequest"
+            },
+            "401": {
+              "$ref": "#/components/responses/Unauthorized"
+            }
+          },
+          "security": [
+            {
+              "siteSession": []
+            }
+          ]
+        }
+      },
+      "PuzzleProgress": {
+        "post": {
+          "tags": ["Puzzles"],
+          "summary": "Record a first puzzle attempt",
+          "operationId": "recordPuzzleProgress",
+          "requestBody": {
+            "$ref": "#/components/requestBodies/JsonObject"
+          },
+          "responses": {
+            "200": {
+              "description": "Action-specific response."
+            },
+            "400": {
+              "$ref": "#/components/responses/BadRequest"
+            },
+            "401": {
+              "$ref": "#/components/responses/Unauthorized"
+            }
+          },
+          "security": [
+            {
+              "siteSession": []
+            }
+          ]
+        }
+      },
+      "PuzzleSubmit": {
+        "post": {
+          "tags": ["Puzzles"],
+          "summary": "Submit puzzles for review",
+          "operationId": "submitPuzzles",
+          "requestBody": {
+            "$ref": "#/components/requestBodies/JsonObject"
+          },
+          "responses": {
+            "200": {
+              "description": "Action-specific response."
+            },
+            "400": {
+              "$ref": "#/components/responses/BadRequest"
+            },
+            "201": {
+              "description": "Puzzle submission created."
+            },
+            "401": {
+              "$ref": "#/components/responses/Unauthorized"
+            }
+          },
+          "security": [
+            {
+              "siteSession": []
+            }
+          ]
+        }
+      },
+      "Community": {
+        "post": {
+          "tags": ["Community"],
+          "summary": "Read or update community discussions",
+          "operationId": "puzzleCommunityAction",
+          "requestBody": {
+            "$ref": "#/components/requestBodies/JsonObject"
+          },
+          "responses": {
+            "200": {
+              "description": "Action-specific response."
+            },
+            "400": {
+              "$ref": "#/components/responses/BadRequest"
+            }
+          }
+        }
+      },
+      "PuzzleIssues": {
+        "post": {
+          "tags": ["Puzzles"],
+          "summary": "Create or manage puzzle issues",
+          "operationId": "puzzleIssueAction",
+          "requestBody": {
+            "$ref": "#/components/requestBodies/JsonObject"
+          },
+          "responses": {
+            "200": {
+              "description": "Action-specific response."
+            },
+            "400": {
+              "$ref": "#/components/responses/BadRequest"
+            }
+          }
+        }
+      },
+      "PuzzleRating": {
+        "post": {
+          "tags": ["Puzzles"],
+          "summary": "Read or update puzzle ratings",
+          "operationId": "puzzleRatingAction",
+          "requestBody": {
+            "$ref": "#/components/requestBodies/JsonObject"
+          },
+          "responses": {
+            "200": {
+              "description": "Action-specific response."
+            },
+            "400": {
+              "$ref": "#/components/responses/BadRequest"
+            }
+          }
+        }
+      },
+      "PuzzleExplanation": {
+        "post": {
+          "tags": ["Puzzles"],
+          "summary": "Update a puzzle explanation",
+          "operationId": "updatePuzzleExplanation",
+          "requestBody": {
+            "$ref": "#/components/requestBodies/JsonObject"
+          },
+          "responses": {
+            "200": {
+              "description": "Action-specific response."
+            },
+            "400": {
+              "$ref": "#/components/responses/BadRequest"
+            },
+            "401": {
+              "$ref": "#/components/responses/Unauthorized"
+            }
+          },
+          "security": [
+            {
+              "siteSession": []
+            }
+          ]
+        }
+      },
+      "PuzzleTags": {
+        "post": {
+          "tags": ["Puzzles"],
+          "summary": "Update puzzle motif tags",
+          "operationId": "updatePuzzleTags",
+          "requestBody": {
+            "$ref": "#/components/requestBodies/JsonObject"
+          },
+          "responses": {
+            "200": {
+              "description": "Action-specific response."
+            },
+            "400": {
+              "$ref": "#/components/responses/BadRequest"
+            },
+            "401": {
+              "$ref": "#/components/responses/Unauthorized"
+            }
+          },
+          "security": [
+            {
+              "siteSession": []
+            }
+          ]
+        }
+      },
+      "PuzzleReview": {
+        "post": {
+          "tags": ["Puzzles"],
+          "summary": "Manage the puzzle review queue",
+          "operationId": "reviewPuzzleAction",
+          "requestBody": {
+            "$ref": "#/components/requestBodies/JsonObject"
+          },
+          "responses": {
+            "200": {
+              "description": "Action-specific response."
+            },
+            "400": {
+              "$ref": "#/components/responses/BadRequest"
+            },
+            "401": {
+              "$ref": "#/components/responses/Unauthorized"
+            }
+          },
+          "security": [
+            {
+              "siteSession": []
+            }
+          ]
+        }
+      },
+      "PuzzleSets": {
+        "post": {
+          "tags": ["Community"],
+          "summary": "Read or manage custom puzzle sets",
+          "operationId": "puzzleSetAction",
+          "requestBody": {
+            "$ref": "#/components/requestBodies/JsonObject"
+          },
+          "responses": {
+            "200": {
+              "description": "Action-specific response."
+            },
+            "400": {
+              "$ref": "#/components/responses/BadRequest"
+            }
+          }
+        }
+      },
+      "Notifications": {
+        "post": {
+          "tags": ["Account"],
+          "summary": "Read or update notifications",
+          "operationId": "notificationAction",
+          "requestBody": {
+            "$ref": "#/components/requestBodies/JsonObject"
+          },
+          "responses": {
+            "200": {
+              "description": "Action-specific response."
+            },
+            "400": {
+              "$ref": "#/components/responses/BadRequest"
+            },
+            "401": {
+              "$ref": "#/components/responses/Unauthorized"
+            }
+          },
+          "security": [
+            {
+              "siteSession": []
+            }
+          ]
+        }
+      },
+      "Coins": {
+        "post": {
+          "tags": ["Account"],
+          "summary": "Read or update Atomic Coins",
+          "operationId": "coinAction",
+          "requestBody": {
+            "$ref": "#/components/requestBodies/JsonObject"
+          },
+          "responses": {
+            "200": {
+              "description": "Action-specific response."
+            },
+            "400": {
+              "$ref": "#/components/responses/BadRequest"
+            }
+          }
+        }
+      },
+      "Badges": {
+        "post": {
+          "tags": ["Account"],
+          "summary": "Load achievements for a username",
+          "operationId": "loadBadges",
+          "requestBody": {
+            "$ref": "#/components/requestBodies/JsonObject"
+          },
+          "responses": {
+            "200": {
+              "description": "Action-specific response."
+            },
+            "400": {
+              "$ref": "#/components/responses/BadRequest"
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -61,8 +61,29 @@ describe("archive-data function", () => {
     expect(mocks.execute.mock.calls[0]?.[0].args).toEqual([2]);
     expect(JSON.parse(response.body)).toMatchObject({
       total: 1,
+      page: 1,
+      pageSize: 25,
+      totalPages: 1,
+      hasPreviousPage: false,
+      hasNextPage: false,
       rows: [{ games: ["abc12345,w,1,1", "def67890,b,1,2"] }],
     });
+  });
+
+  it.each([
+    [{ resource: "matches", page: "not-a-number" }, "page must be a finite number"],
+    [{ resource: "matches", pairA: "alice" }, "pairA and pairB must be supplied together"],
+    [{ resource: "matches", unexpected: "ignored-before" }, "Unexpected query parameter"],
+  ])("rejects ambiguous match filters before querying (%#)", async (query, message) => {
+    const { handler } = await import("../functions/archive-data");
+    const response = await handler({ httpMethod: "GET", queryStringParameters: query });
+
+    expect(response.statusCode).toBe(400);
+    expect(JSON.parse(response.body)).toMatchObject({
+      error: expect.stringContaining(message),
+      code: "invalid_archive_query",
+    });
+    expect(mocks.execute).not.toHaveBeenCalled();
   });
 
   it("looks up a match id across the unified table when mode is omitted", async () => {
@@ -219,7 +240,10 @@ describe("archive-data function", () => {
 
     expect(response.statusCode).toBe(500);
     expect(response.headers["Cache-Control"]).toBe("no-store");
-    expect(JSON.parse(response.body)).toEqual({ error: "Archive query failed" });
+    expect(JSON.parse(response.body)).toEqual({
+      error: "Archive query failed",
+      code: "internal_error",
+    });
     expect(mocks.createClient).not.toHaveBeenCalled();
   });
 });

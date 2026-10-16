@@ -44,6 +44,7 @@ describe("puzzle-submit function", () => {
     expect(response.statusCode).toBe(401);
     expect(JSON.parse(response.body)).toEqual({
       error: "Log in with Lichess to submit a puzzle.",
+      code: "unauthorized",
     });
   });
 
@@ -299,6 +300,7 @@ describe("puzzle-submit function", () => {
     expect(response.statusCode).toBe(409);
     expect(JSON.parse(response.body)).toEqual({
       error: "A puzzle with this FEN and starting move already exists.",
+      code: "conflict",
     });
   });
 
@@ -335,6 +337,7 @@ describe("puzzle-submit function", () => {
     expect(response.statusCode).toBe(409);
     expect(JSON.parse(response.body)).toEqual({
       error: "A puzzle with this FEN and starting move is already pending review.",
+      code: "conflict",
     });
   });
 

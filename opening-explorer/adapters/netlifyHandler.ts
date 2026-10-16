@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { parseExplorerNavigation } from "../core/requestLifecycle.js";
 import { createOpeningExplorerService, type ExplorerServiceResponse } from "../core/service.js";
 import { createTursoRepository } from "./tursoRepository.js";
@@ -47,8 +49,31 @@ const isSameOriginRequest = (event: NetlifyEvent): boolean => {
 
 const noStoreJson = (statusCode: number, body: unknown): ExplorerServiceResponse => ({
   statusCode,
-  headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+  headers: {
+    "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "no-store",
+    "X-Content-Type-Options": "nosniff",
+  },
   body: JSON.stringify(body),
+});
+
+const requestIdFor = (event: NetlifyEvent): string => {
+  const supplied = getHeader(event, "x-request-id") || getHeader(event, "x-nf-request-id");
+  return /^[a-zA-Z0-9._:-]{1,128}$/.test(supplied) ? supplied : randomUUID();
+};
+
+const finalize = (
+  response: ExplorerServiceResponse,
+  requestId: string,
+): ExplorerServiceResponse => ({
+  ...response,
+  headers: {
+    "X-Request-Id": requestId,
+    "X-API-Version": "1",
+    "X-Content-Type-Options": "nosniff",
+    Link: '</api/openapi.json>; rel="service-desc"; type="application/vnd.oai.openapi+json"',
+    ...response.headers,
+  },
 });
 
 const checkRateLimit = (clientIp: string, now = Date.now()) => {
@@ -67,29 +92,41 @@ const checkRateLimit = (clientIp: string, now = Date.now()) => {
 export const createNetlifyOpeningExplorerHandler =
   (explorerService: Pick<typeof service, "handle"> = service) =>
   async (event: NetlifyEvent): Promise<ExplorerServiceResponse> => {
+    const requestId = requestIdFor(event);
     const method = event.httpMethod ?? "GET";
     if (method === "OPTIONS") {
-      return {
-        statusCode: 204,
-        headers: {
-          "Access-Control-Allow-Methods": "GET, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type",
-          "Cache-Control": "no-store",
+      return finalize(
+        {
+          statusCode: 204,
+          headers: {
+            Allow: "GET, OPTIONS",
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type",
+            "Cache-Control": "no-store",
+          },
+          body: "",
         },
-        body: "",
-      };
+        requestId,
+      );
     }
     if (!isSameOriginRequest(event)) {
-      return noStoreJson(403, { error: "Opening explorer requests must come from this site" });
+      return finalize(
+        noStoreJson(403, {
+          error: "Opening explorer requests must come from this site",
+          code: "cross_site_request",
+        }),
+        requestId,
+      );
     }
 
     const retryAfter = checkRateLimit(getClientIp(event));
     if (retryAfter !== null) {
       const response = noStoreJson(429, {
         error: "Too many opening explorer requests. Please wait and try again.",
+        code: "rate_limited",
       });
       response.headers["Retry-After"] = String(retryAfter);
-      return response;
+      return finalize(response, requestId);
     }
 
     const params = new URLSearchParams();
@@ -100,15 +137,20 @@ export const createNetlifyOpeningExplorerHandler =
       getHeader(event, "x-explorer-session"),
       getHeader(event, "x-explorer-sequence"),
     );
-    return explorerService.handle({
-      method,
-      path: event.path ?? "/api/opening-explorer",
-      params,
-      intent: getHeader(event, "x-explorer-intent"),
-      ...(navigation
-        ? { navigation: { ...navigation, session: `${getClientIp(event)}:${navigation.session}` } }
-        : {}),
-    });
+    return finalize(
+      await explorerService.handle({
+        method,
+        path: event.path ?? "/api/opening-explorer",
+        params,
+        intent: getHeader(event, "x-explorer-intent"),
+        ...(navigation
+          ? {
+              navigation: { ...navigation, session: `${getClientIp(event)}:${navigation.session}` },
+            }
+          : {}),
+      }),
+      requestId,
+    );
   };
 
 export const handler = createNetlifyOpeningExplorerHandler();

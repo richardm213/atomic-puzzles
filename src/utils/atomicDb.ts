@@ -1,3 +1,4 @@
+import { ApiError, apiRequest, postApi } from "../lib/api/postApi";
 import { appAssetPath } from "./appAssetPath";
 
 export type AtomicDbTurn = "white" | "black";
@@ -159,6 +160,11 @@ export const buildAtomicDbUrl = (fen: string): string => {
   return `${appAssetPath("/api/atomicdb-analysis")}?${params.toString()}`;
 };
 
+const atomicDbRequestPath = (fen: string): string => {
+  const params = new URLSearchParams({ fen });
+  return `/api/atomicdb-analysis?${params.toString()}`;
+};
+
 export const buildAtomicDbLinesUrl = (
   fen: string,
   rootMoves: string[],
@@ -172,44 +178,47 @@ export const buildAtomicDbLinesUrl = (
   return `${appAssetPath("/api/atomicdb-analysis")}?${params.toString()}`;
 };
 
+const atomicDbLinesRequestPath = (fen: string, rootMoves: string[], plyCount: number): string => {
+  const params = new URLSearchParams({
+    fen,
+    line_moves: rootMoves.join(","),
+    plies: String(plyCount),
+  });
+  return `/api/atomicdb-analysis?${params.toString()}`;
+};
+
 export const fetchAtomicDbPosition = async (
   fen: string,
   signal?: AbortSignal,
 ): Promise<AtomicDbPosition | null> => {
-  const response = await fetch(buildAtomicDbUrl(fen), signal ? { signal } : undefined);
-  const body: unknown = await response.json().catch(() => null);
-
-  if (response.status === 404) return null;
-  if (!response.ok) {
-    const error = body as { error?: unknown } | null;
-    throw new Error(
-      typeof error?.error === "string" ? error.error : "AtomicDB analysis is unavailable.",
-    );
+  try {
+    const body = await apiRequest<unknown>(atomicDbRequestPath(fen), {
+      errorMessage: "AtomicDB analysis is unavailable.",
+      invalidMessage: "AtomicDB returned an unexpected response.",
+      ...(signal ? { signal } : {}),
+    });
+    return parseAtomicDbResponse(body);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
   }
-
-  return parseAtomicDbResponse(body);
 };
 
 export const fetchAtomicDbPositions = async (
   fens: string[],
   signal?: AbortSignal,
 ): Promise<Record<string, AtomicDbPosition | null>> => {
-  const response = await fetch(appAssetPath("/api/atomicdb-analysis"), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ fens }),
-    cache: "no-store",
-    ...(signal ? { signal } : {}),
-  });
-  const body: unknown = await response.json().catch(() => null);
-  if (!response.ok || !body || typeof body !== "object") {
-    const error = body as { error?: unknown } | null;
-    throw new Error(
-      typeof error?.error === "string" ? error.error : "AtomicDB analysis is unavailable.",
-    );
-  }
+  const body = await postApi<unknown>(
+    "/api/atomicdb-analysis",
+    { fens },
+    {
+      errorMessage: "AtomicDB analysis is unavailable.",
+      invalidMessage: "AtomicDB returned an unexpected response.",
+      ...(signal ? { signal } : {}),
+    },
+  );
 
-  const payload = body as { positions?: unknown };
+  const payload = body && typeof body === "object" ? (body as { positions?: unknown }) : {};
   if (!payload.positions || typeof payload.positions !== "object") {
     throw new Error("AtomicDB returned an unexpected response.");
   }
@@ -228,19 +237,14 @@ export const fetchAtomicDbPrincipalVariations = async (
   plyCount: number,
   signal?: AbortSignal,
 ): Promise<AtomicDbPrincipalVariationResult> => {
-  const response = await fetch(
-    buildAtomicDbLinesUrl(fen, rootMoves, plyCount),
-    signal ? { signal } : undefined,
-  );
-  const body: unknown = await response.json().catch(() => null);
-  if (!response.ok || !body || typeof body !== "object") {
-    const error = body as { error?: unknown } | null;
-    throw new Error(
-      typeof error?.error === "string" ? error.error : "AtomicDB lines are unavailable.",
-    );
-  }
+  const body = await apiRequest<unknown>(atomicDbLinesRequestPath(fen, rootMoves, plyCount), {
+    errorMessage: "AtomicDB lines are unavailable.",
+    invalidMessage: "AtomicDB returned an unexpected response.",
+    ...(signal ? { signal } : {}),
+  });
 
-  const payload = body as { lines?: unknown; positions?: unknown };
+  const payload =
+    body && typeof body === "object" ? (body as { lines?: unknown; positions?: unknown }) : {};
   const lines: Record<string, string[]> = {};
   if (payload.lines && typeof payload.lines === "object") {
     for (const [rootMove, moves] of Object.entries(payload.lines)) {

@@ -20,6 +20,37 @@ const SOURCE_IDS = {
 const modeNameSql = (column: string): string =>
   `case ${column} when 0 then 'hyperbullet' when 1 then 'bullet' when 2 then 'blitz' when 3 then 'wolfrandom' when 4 then 'atomic960' else 'unknown' end`;
 const MAX_PAGE_SIZE = 200;
+const MAX_ROW_LIMIT = 10_000;
+
+const RESOURCE_PARAMETERS: Record<string, ReadonlySet<string>> = {
+  matches: new Set([
+    "resource",
+    "mode",
+    "username",
+    "pairA",
+    "pairB",
+    "matchId",
+    "startTs",
+    "endTs",
+    "timeControl",
+    "sources",
+    "ratingMin",
+    "ratingMax",
+    "ratingFilterType",
+    "page",
+    "pageSize",
+  ]),
+  player_game_counts: new Set(["resource", "username"]),
+  latest_match: new Set(["resource"]),
+  aliases: new Set(["resource", "username"]),
+  weekly_ratings: new Set(["resource", "username", "mode"]),
+  ratings: new Set(["resource", "username", "mode", "limit"]),
+  leaderboard: new Set(["resource", "month", "mode", "username", "limit"]),
+  yearly_leaderboard: new Set(["resource", "year", "mode"]),
+  leaderboard_counts: new Set(["resource"]),
+  usernames: new Set(["resource", "query", "exact"]),
+  health: new Set(["resource"]),
+};
 
 export class ArchiveRequestError extends Error {}
 
@@ -41,7 +72,51 @@ const numberParam = (params: URLSearchParams, key: string): number | null => {
   const raw = params.get(key);
   if (raw === null || raw.trim() === "") return null;
   const value = Number(raw);
-  return Number.isFinite(value) ? value : null;
+  if (!Number.isFinite(value)) throw new ArchiveRequestError(`${key} must be a finite number`);
+  return value;
+};
+
+const boundedStringParam = (
+  params: URLSearchParams,
+  key: string,
+  maximumLength: number,
+): string => {
+  const value = String(params.get(key) ?? "").trim();
+  if (value.length > maximumLength) {
+    throw new ArchiveRequestError(`${key} must be at most ${maximumLength} characters`);
+  }
+  return value;
+};
+
+const positiveIntegerParam = (
+  params: URLSearchParams,
+  key: string,
+  fallback: number,
+  maximum?: number,
+): number => {
+  const value = numberParam(params, key) ?? fallback;
+  if (!Number.isSafeInteger(value) || value < 1) {
+    throw new ArchiveRequestError(`${key} must be a positive integer`);
+  }
+  return maximum === undefined ? value : Math.min(value, maximum);
+};
+
+const optionalPositiveIntegerParam = (
+  params: URLSearchParams,
+  key: string,
+  maximum: number,
+): number => {
+  if (!params.has(key)) return 0;
+  if (!params.get(key)?.trim()) throw new ArchiveRequestError(`${key} must be a positive integer`);
+  return positiveIntegerParam(params, key, 1, maximum);
+};
+
+const validateResourceParameters = (params: URLSearchParams, resource: string): void => {
+  const allowed = RESOURCE_PARAMETERS[resource];
+  if (!allowed) throw new ArchiveRequestError("Unknown archive resource");
+  for (const key of params.keys()) {
+    if (!allowed.has(key)) throw new ArchiveRequestError(`Unexpected query parameter: ${key}`);
+  }
 };
 
 const normalizedRows = (rows: Iterable<Record<string, unknown>>): JsonRow[] =>
@@ -58,6 +133,17 @@ const queryMatches = async (params: URLSearchParams) => {
   const mode = enumIdParam(params, "mode", MODE_IDS);
   const clauses: string[] = [];
   const args: Array<string | number> = [];
+  const page = positiveIntegerParam(params, "page", 1);
+  const pageSize = positiveIntegerParam(params, "pageSize", 100, MAX_PAGE_SIZE);
+  const emptyPage = {
+    rows: [],
+    total: 0,
+    page,
+    pageSize,
+    totalPages: 0,
+    hasPreviousPage: page > 1,
+    hasNextPage: false,
+  };
   if (mode !== null) {
     clauses.push("m.mode = ?");
     args.push(mode);
@@ -71,27 +157,24 @@ const queryMatches = async (params: URLSearchParams) => {
     const value = Number(result.rows[0]?.id);
     return Number.isSafeInteger(value) ? value : null;
   };
-  const username = String(params.get("username") ?? "")
-    .trim()
-    .toLowerCase();
-  const pairA = String(params.get("pairA") ?? "")
-    .trim()
-    .toLowerCase();
-  const pairB = String(params.get("pairB") ?? "")
-    .trim()
-    .toLowerCase();
-  const matchId = String(params.get("matchId") ?? "").trim();
+  const username = boundedStringParam(params, "username", 100).toLowerCase();
+  const pairA = boundedStringParam(params, "pairA", 100).toLowerCase();
+  const pairB = boundedStringParam(params, "pairB", 100).toLowerCase();
+  const matchId = boundedStringParam(params, "matchId", 128);
+  if (Boolean(pairA) !== Boolean(pairB)) {
+    throw new ArchiveRequestError("pairA and pairB must be supplied together");
+  }
   let usernamePlayerId: number | null = null;
   if (username) {
     usernamePlayerId = await resolvePlayerId(username);
-    if (usernamePlayerId === null) return { rows: [], total: 0 };
+    if (usernamePlayerId === null) return emptyPage;
   }
   if (pairA && pairB) {
     const [playerAId, playerBId] = await Promise.all([
       resolvePlayerId(pairA),
       resolvePlayerId(pairB),
     ]);
-    if (playerAId === null || playerBId === null) return { rows: [], total: 0 };
+    if (playerAId === null || playerBId === null) return emptyPage;
     clauses.push(
       "((m.player_1_id = ? and m.player_2_id = ?) or (m.player_1_id = ? and m.player_2_id = ?))",
     );
@@ -103,6 +186,9 @@ const queryMatches = async (params: URLSearchParams) => {
   }
   const startTs = numberParam(params, "startTs");
   const endTs = numberParam(params, "endTs");
+  if (startTs !== null && endTs !== null && startTs > endTs) {
+    throw new ArchiveRequestError("startTs must be less than or equal to endTs");
+  }
   if (startTs !== null) {
     clauses.push("m.start_ts >= ?");
     args.push(startTs);
@@ -111,13 +197,13 @@ const queryMatches = async (params: URLSearchParams) => {
     clauses.push("m.start_ts <= ?");
     args.push(endTs);
   }
-  const timeControl = String(params.get("timeControl") ?? "").trim();
+  const timeControl = boundedStringParam(params, "timeControl", 40);
   if (timeControl && timeControl.toLowerCase() !== "all") {
     clauses.push("tc.value = ?");
     args.push(timeControl);
   }
   const sourcesSpecified = params.has("sources");
-  const sourceValues = String(params.get("sources") ?? "")
+  const sourceValues = boundedStringParam(params, "sources", 100)
     .split(",")
     .map((value) => value.trim().toLowerCase())
     .filter(Boolean);
@@ -133,8 +219,21 @@ const queryMatches = async (params: URLSearchParams) => {
   }
   const ratingMin = numberParam(params, "ratingMin");
   const ratingMax = numberParam(params, "ratingMax");
+  if ((ratingMin === null) !== (ratingMax === null)) {
+    throw new ArchiveRequestError("ratingMin and ratingMax must be supplied together");
+  }
+  if (params.has("ratingFilterType") && ratingMin === null) {
+    throw new ArchiveRequestError("ratingFilterType requires ratingMin and ratingMax");
+  }
+  if (ratingMin !== null && ratingMax !== null && ratingMin > ratingMax) {
+    throw new ArchiveRequestError("ratingMin must be less than or equal to ratingMax");
+  }
   if (ratingMin !== null && ratingMax !== null) {
-    if (params.get("ratingFilterType") === "average") {
+    const ratingFilterType = params.get("ratingFilterType") ?? "both";
+    if (ratingFilterType !== "both" && ratingFilterType !== "average") {
+      throw new ArchiveRequestError("ratingFilterType must be both or average");
+    }
+    if (ratingFilterType === "average") {
       clauses.push("(m.p1_after_rating + m.p2_after_rating) between ? and ?");
       args.push(ratingMin * 20, ratingMax * 20);
     } else {
@@ -142,11 +241,6 @@ const queryMatches = async (params: URLSearchParams) => {
       args.push(ratingMin * 10, ratingMax * 10, ratingMin * 10, ratingMax * 10);
     }
   }
-  const page = Math.max(1, Math.floor(numberParam(params, "page") ?? 1));
-  const pageSize = Math.min(
-    MAX_PAGE_SIZE,
-    Math.max(1, Math.floor(numberParam(params, "pageSize") ?? 100)),
-  );
   const where = clauses.length ? clauses.join(" and ") : "1 = 1";
   const selectMatch = `select m.match_id,${modeNameSql("m.mode")} mode,p1.username player_1,p2.username player_2,m.start_ts,tc.value time_control,
       case m.source when 0 then 'lobby' when 1 then 'arena' when 2 then 'friend' when 3 then 'swiss' when 4 then 'chesscom' else 'unknown' end source,
@@ -194,13 +288,21 @@ const queryMatches = async (params: URLSearchParams) => {
       .split("|")
       .filter(Boolean),
   }));
-  return { rows, total: Number(countResult.rows[0]?.total ?? rows.length) };
+  const total = Number(countResult.rows[0]?.total ?? rows.length);
+  const totalPages = Math.ceil(total / pageSize);
+  return {
+    rows,
+    total,
+    page,
+    pageSize,
+    totalPages,
+    hasPreviousPage: page > 1,
+    hasNextPage: page < totalPages,
+  };
 };
 
 const queryAliases = async (params: URLSearchParams) => {
-  const requested = String(params.get("username") ?? "")
-    .trim()
-    .toLowerCase();
+  const requested = boundedStringParam(params, "username", 100).toLowerCase();
   const archive = getArchiveClient();
   let canonical = requested;
   if (requested) {
@@ -226,14 +328,12 @@ const queryRatings = async (params: URLSearchParams) => {
     clauses.push("r.mode=?");
     args.push(mode);
   }
-  const username = String(params.get("username") ?? "")
-    .trim()
-    .toLowerCase();
+  const username = boundedStringParam(params, "username", 100).toLowerCase();
   if (username) {
     clauses.push("p.username=?");
     args.push(username);
   }
-  const limit = Math.max(0, Math.floor(numberParam(params, "limit") ?? 0));
+  const limit = optionalPositiveIntegerParam(params, "limit", MAX_ROW_LIMIT);
   const result = await getArchiveClient().execute({
     sql: `select p.username,r.rating/10.0 rating,r.peak/10.0 peak,r.peak_date,r.rd/10.0 rd,r.games,
       ${modeNameSql("r.mode")} tc,
@@ -247,9 +347,7 @@ const queryRatings = async (params: URLSearchParams) => {
 // Weekly aggregates are maintained by the matches pipeline, not recomputed here.
 // Include the incomplete week and retain missing weeks as missing observations.
 const queryWeeklyRatings = async (params: URLSearchParams) => {
-  const username = String(params.get("username") ?? "")
-    .trim()
-    .toLowerCase();
+  const username = boundedStringParam(params, "username", 100).toLowerCase();
   if (!username) throw new ArchiveRequestError("Weekly ratings require a username");
   const mode = enumIdParam(params, "mode", MODE_IDS);
   const result = await getArchiveClient().execute({
@@ -265,7 +363,10 @@ const queryWeeklyRatings = async (params: URLSearchParams) => {
 const queryLeaderboard = async (params: URLSearchParams) => {
   const clauses: string[] = [];
   const args: Array<string | number> = [];
-  const month = String(params.get("month") ?? "").slice(0, 10);
+  const month = boundedStringParam(params, "month", 10);
+  if (month && !/^\d{4}-(?:0[1-9]|1[0-2])-01$/.test(month)) {
+    throw new ArchiveRequestError("month must be the first day of a month in YYYY-MM-01 format");
+  }
   if (month) {
     clauses.push("l.month=?");
     args.push(month);
@@ -275,14 +376,12 @@ const queryLeaderboard = async (params: URLSearchParams) => {
     clauses.push("l.mode=?");
     args.push(mode);
   }
-  const username = String(params.get("username") ?? "")
-    .trim()
-    .toLowerCase();
+  const username = boundedStringParam(params, "username", 100).toLowerCase();
   if (username) {
     clauses.push("p.username=?");
     args.push(username);
   }
-  const limit = Math.max(0, Math.floor(numberParam(params, "limit") ?? 0));
+  const limit = optionalPositiveIntegerParam(params, "limit", MAX_ROW_LIMIT);
   const where = clauses.length ? `where ${clauses.join(" and ")}` : "";
   const result = await getArchiveClient().execute({
     sql: `select p.username,l.month,l.rank,l.rating/10.0 rating,l.rd/10.0 rd,l.games,
@@ -303,7 +402,14 @@ const queryLeaderboardCounts = async () => {
 const queryYearlyLeaderboard = async (params: URLSearchParams) => {
   const clauses: string[] = [];
   const args: Array<string | number> = [];
-  const year = Math.floor(numberParam(params, "year") ?? 0);
+  const yearValue = numberParam(params, "year");
+  if (
+    yearValue !== null &&
+    (!Number.isSafeInteger(yearValue) || yearValue < 2000 || yearValue > 3000)
+  ) {
+    throw new ArchiveRequestError("year must be an integer from 2000 through 3000");
+  }
+  const year = yearValue ?? 0;
   if (year) {
     clauses.push("l.year=?");
     args.push(year);
@@ -325,12 +431,8 @@ const queryYearlyLeaderboard = async (params: URLSearchParams) => {
 };
 
 const queryUsernames = async (params: URLSearchParams) => {
-  const query = String(params.get("query") ?? "")
-    .trim()
-    .toLowerCase();
-  const exact = String(params.get("exact") ?? "")
-    .trim()
-    .toLowerCase();
+  const query = boundedStringParam(params, "query", 100).toLowerCase();
+  const exact = boundedStringParam(params, "exact", 100).toLowerCase();
   if (exact) {
     const result = await getArchiveClient().execute({
       sql: "select username from players where username=? limit 1",
@@ -393,12 +495,11 @@ export const queryAchievementRatingPeaks = async (
 };
 
 export const queryArchiveResource = async (params: URLSearchParams): Promise<unknown> => {
-  const resource = params.get("resource");
+  const resource = boundedStringParam(params, "resource", 50);
+  validateResourceParameters(params, resource);
   if (resource === "matches") return queryMatches(params);
   if (resource === "player_game_counts") {
-    const username = String(params.get("username") ?? "")
-      .trim()
-      .toLowerCase();
+    const username = boundedStringParam(params, "username", 100).toLowerCase();
     if (!username) throw new ArchiveRequestError("Username is required");
     const result = await getArchiveClient().execute({
       sql: `select ${modeNameSql("m.mode")} mode,

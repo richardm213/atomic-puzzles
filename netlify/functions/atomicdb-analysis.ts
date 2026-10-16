@@ -5,6 +5,8 @@ import {
   isValidAtomicDbFen,
   trimAtomicDbPosition,
 } from "../lib/atomicDb";
+import { defineFunction } from "../platform/defineFunction";
+import { jsonResponse } from "../platform/response";
 
 type Event = {
   httpMethod?: string;
@@ -17,12 +19,9 @@ const MAX_LINES = 5;
 const MAX_PLIES = 5;
 
 const json = (statusCode: number, body: unknown, cache = false) => ({
-  statusCode,
-  headers: {
-    "Content-Type": "application/json",
+  ...jsonResponse(statusCode, body, {
     "Cache-Control": cache ? "public, max-age=30, stale-while-revalidate=120" : "no-store",
-  },
-  body: JSON.stringify(body),
+  }),
 });
 
 const parseBatchFens = (bodyText: string | null | undefined): string[] | null => {
@@ -44,17 +43,19 @@ const parseBatchFens = (bodyText: string | null | undefined): string[] | null =>
   return [...new Set(values.map((value) => String(value).trim()))];
 };
 
-export const handler = async (event: Event) => {
+const atomicDbAnalysisRoute = async (event: Event) => {
   const method = event.httpMethod ?? "GET";
-  if (method !== "GET" && method !== "POST") return json(405, { error: "Method not allowed" });
 
   const fen = event.queryStringParameters?.fen?.trim() ?? "";
   const batchFens = method === "POST" ? parseBatchFens(event.body) : null;
   if (method === "POST" && !batchFens) {
-    return json(400, { error: `Between 1 and ${MAX_BATCH_POSITIONS} valid FENs are required.` });
+    return json(400, {
+      error: `Between 1 and ${MAX_BATCH_POSITIONS} valid FENs are required.`,
+      code: "validation_failed",
+    });
   }
   if (method === "GET" && !isValidAtomicDbFen(fen)) {
-    return json(400, { error: "A valid FEN is required." });
+    return json(400, { error: "A valid FEN is required.", code: "validation_failed" });
   }
 
   const controller = new AbortController();
@@ -82,7 +83,10 @@ export const handler = async (event: Event) => {
         plyCount < 1 ||
         plyCount > MAX_PLIES
       ) {
-        return json(400, { error: "Valid line moves and ply count are required." });
+        return json(400, {
+          error: "Valid line moves and ply count are required.",
+          code: "validation_failed",
+        });
       }
 
       const positions: Record<string, ReturnType<typeof trimAtomicDbPosition>> = {};
@@ -112,14 +116,26 @@ export const handler = async (event: Event) => {
     }
 
     const position = await queryPosition(fen);
-    if (!position) return json(404, { error: "Position not found in AtomicDB." }, true);
+    if (!position) {
+      return json(
+        404,
+        { error: "Position not found in AtomicDB.", code: "position_not_found" },
+        true,
+      );
+    }
     return json(200, trimAtomicDbPosition(position), true);
   } catch (error: unknown) {
     const timedOut = error instanceof Error && error.name === "AbortError";
     return json(timedOut ? 504 : 502, {
       error: timedOut ? "AtomicDB took too long to respond." : "AtomicDB analysis is unavailable.",
+      code: timedOut ? "upstream_timeout" : "upstream_unavailable",
     });
   } finally {
     clearTimeout(timeout);
   }
 };
+
+export const handler = defineFunction(atomicDbAnalysisRoute, {
+  methods: ["GET", "POST"],
+  fallbackMessage: "AtomicDB analysis is unavailable.",
+});

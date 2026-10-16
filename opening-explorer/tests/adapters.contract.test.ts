@@ -98,7 +98,7 @@ describe.each(serviceFactories)("%s Opening Explorer adapter", (_name, createSer
 
     expect(response.statusCode).toBe(400);
     expect(response.headers["Cache-Control"]).toBe("no-store");
-    expect(JSON.parse(response.body)).toEqual({ error });
+    expect(JSON.parse(response.body)).toEqual({ error, code: "validation_failed" });
   });
 });
 

@@ -116,7 +116,8 @@ Depending on which pages you open, the frontend reads from or writes to:
 - additional mutable community tables referenced by puzzle, profile, and tournament pages
 
 Historical matches, aliases, ratings, and leaderboards are not read from Supabase. Those reads go
-through the server-only Turso archive API described below.
+through the server-only Turso archive API described below. See [`docs/api.md`](docs/api.md) for API
+conventions, authentication boundaries, structured errors, the route catalog, and request examples.
 
 ### Turso archive data
 

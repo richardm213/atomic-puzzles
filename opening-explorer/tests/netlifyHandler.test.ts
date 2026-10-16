@@ -13,14 +13,20 @@ describe("Netlify Opening Explorer boundary", () => {
     const handle = vi.fn();
     const response = await createNetlifyOpeningExplorerHandler({ handle })({
       httpMethod: "OPTIONS",
+      headers: { "x-nf-request-id": "preflight-request" },
     });
 
     expect(response).toEqual({
       statusCode: 204,
       headers: {
+        Allow: "GET, OPTIONS",
         "Access-Control-Allow-Methods": "GET, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type",
         "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff",
+        "X-Request-Id": "preflight-request",
+        "X-API-Version": "1",
+        Link: expect.stringContaining("/api/openapi.json"),
       },
       body: "",
     });
@@ -35,13 +41,16 @@ describe("Netlify Opening Explorer boundary", () => {
         host: "atomic.example",
         origin: "https://attacker.example",
         "x-nf-client-connection-ip": "198.51.100.10",
+        "x-nf-request-id": "cross-site-request",
       },
     });
 
     expect(response.statusCode).toBe(403);
     expect(JSON.parse(response.body)).toEqual({
       error: "Opening explorer requests must come from this site",
+      code: "cross_site_request",
     });
+    expect(response.headers["X-Request-Id"]).toBe("cross-site-request");
     expect(handle).not.toHaveBeenCalled();
   });
 

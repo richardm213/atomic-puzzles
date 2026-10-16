@@ -3,8 +3,9 @@ import "./UsernamePickerModal.css";
 import { faCheck, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { z } from "zod";
 
-import { appAssetPath } from "../../utils/appAssetPath";
+import { apiRequest } from "../../lib/api/postApi";
 
 type UsernamePickerModalProps = {
   id: string;
@@ -24,20 +25,18 @@ const containsUsername = (usernames: string[], username: string): boolean =>
   usernames.some((currentUsername) => currentUsername.toLowerCase() === username.toLowerCase());
 
 let openingPlayersRequest: Promise<string[]> | null = null;
+const openingPlayersSchema = z.object({ players: z.array(z.string()) });
 
 const loadOpeningPlayers = (): Promise<string[]> => {
   if (openingPlayersRequest) return openingPlayersRequest;
 
-  openingPlayersRequest = fetch(appAssetPath("/api/opening-players"), {
+  openingPlayersRequest = apiRequest("/api/opening-players", {
+    errorMessage: "Could not load opening database players",
+    invalidMessage: "The opening database returned invalid player data.",
+    schema: openingPlayersSchema,
     headers: { "X-Explorer-Intent": "visible" },
   })
-    .then(async (response) => {
-      const data = (await response.json()) as { players?: string[]; error?: string };
-      if (!response.ok || !Array.isArray(data.players)) {
-        throw new Error(data.error || "Could not load opening database players");
-      }
-      return data.players;
-    })
+    .then((data) => data.players)
     .catch((error) => {
       openingPlayersRequest = null;
       throw error;

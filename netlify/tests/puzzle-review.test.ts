@@ -220,7 +220,10 @@ describe("puzzle-review function", () => {
     });
 
     expect(response.statusCode).toBe(409);
-    expect(JSON.parse(response.body)).toEqual({ error: "Puzzle ID 42 already exists" });
+    expect(JSON.parse(response.body)).toEqual({
+      error: "Puzzle ID 42 already exists",
+      code: "conflict",
+    });
   });
 
   it("explains when the approval database function has not been installed", async () => {
@@ -242,6 +245,7 @@ describe("puzzle-review function", () => {
     expect(response.statusCode).toBe(503);
     expect(JSON.parse(response.body)).toEqual({
       error: "Puzzle approval is not configured yet. Run the latest puzzles_queue.sql in Supabase.",
+      code: "service_unavailable",
     });
   });
 
@@ -266,6 +270,7 @@ describe("puzzle-review function", () => {
     expect(JSON.parse(response.body)).toEqual({
       error:
         "Puzzle approval has a conflicting database function. Run the latest puzzles_queue.sql in Supabase.",
+      code: "service_unavailable",
     });
   });
 

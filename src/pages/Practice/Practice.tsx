@@ -18,6 +18,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { z } from "zod";
 
 import {
   AtomicDbEngine,
@@ -46,10 +47,10 @@ import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
 import { useCopyFeedback } from "../../hooks/useCopyFeedback";
 import { type OpeningExplorerRequest, useOpeningExplorer } from "../../hooks/useOpeningExplorer";
 import { useUsernamePicker } from "../../hooks/useUsernamePicker";
+import { apiRequest } from "../../lib/api/postApi";
 import { findFairyStockfishMove } from "../../lib/practice/fairyStockfish";
 import { movePrefix } from "../../lib/puzzles/solutionPgn";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
-import { appAssetPath } from "../../utils/appAssetPath";
 import { ATOMIC_DB_HOME_URL, atomicDbPositionUrl } from "../../utils/atomicDb";
 import { selectSpacebarMove } from "../../utils/boardMoveSelection";
 import { formatGameCount } from "../../utils/formatters";
@@ -69,6 +70,8 @@ import {
   type PracticeSide,
   usePracticeSettings,
 } from "./usePracticeSettings";
+
+const randomOpeningPlayerSchema = z.object({ username: z.string().trim().min(1) });
 
 const PRACTICE_AUTOMOVE_MIN_THINK_MS = 520;
 const PLAYER_MIN_RATING = 1700;
@@ -779,18 +782,13 @@ export const PracticePage = () => {
     setRandomPlayerError("");
 
     try {
-      const response = await fetch(`${appAssetPath("/api/opening-explorer")}?randomPlayer=1`, {
+      const data = await apiRequest("/api/opening-explorer?randomPlayer=1", {
+        errorMessage: "Could not select a random player",
+        invalidMessage: "No random player is available",
+        schema: randomOpeningPlayerSchema,
         headers: { "X-Explorer-Intent": "visible" },
       });
-      const data = (await response.json()) as { username?: string; error?: string };
-      if (!response.ok) {
-        throw new Error(data.error || "Could not select a random player");
-      }
-
-      const username = data.username?.trim() ?? "";
-      if (!username) throw new Error("No random player is available");
-
-      commitUsername(username);
+      commitUsername(data.username);
     } catch (randomError) {
       setRandomPlayerError(
         randomError instanceof Error ? randomError.message : "Could not select a random player",

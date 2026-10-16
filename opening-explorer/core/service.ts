@@ -138,10 +138,20 @@ export const createOpeningExplorerService = (repository: OpeningExplorerReposito
 
   const handle = async (request: ExplorerServiceRequest): Promise<ExplorerServiceResponse> => {
     const method = request.method ?? "GET";
-    if (method !== "GET") return jsonResponse(405, { error: "Method not allowed" }, false);
+    if (method !== "GET") {
+      const response = jsonResponse(
+        405,
+        { error: "Method not allowed", code: "method_not_allowed" },
+        false,
+      );
+      response.headers.Allow = "GET, OPTIONS";
+      return response;
+    }
 
     const parsed = parseExplorerRequest(request.path, request.params);
-    if (!parsed.ok) return jsonResponse(400, { error: parsed.error }, false);
+    if (!parsed.ok) {
+      return jsonResponse(400, { error: parsed.error, code: "validation_failed" }, false);
+    }
 
     const availability = repository.availability();
     if (parsed.request.kind === "health") {
@@ -152,7 +162,9 @@ export const createOpeningExplorerService = (repository: OpeningExplorerReposito
         source: repository.source,
       });
     }
-    if (!availability.available) return jsonResponse(503, { error: availability.message }, false);
+    if (!availability.available) {
+      return jsonResponse(503, { error: availability.message, code: "service_unavailable" }, false);
+    }
 
     const priorityRef: PriorityRef = nextPriority(request.intent?.toLowerCase() ?? "");
     let lifecycle: ReturnType<typeof beginRequest> | undefined;
@@ -175,7 +187,14 @@ export const createOpeningExplorerService = (repository: OpeningExplorerReposito
         ).trim();
         return username
           ? jsonResponse(200, { username }, false)
-          : jsonResponse(404, { error: "No opening database players are available" }, false);
+          : jsonResponse(
+              404,
+              {
+                error: "No opening database players are available",
+                code: "player_not_found",
+              },
+              false,
+            );
       }
 
       const signature = repository.signature();
@@ -268,7 +287,10 @@ export const createOpeningExplorerService = (repository: OpeningExplorerReposito
       const statusCode = error instanceof OpeningExplorerQueueError ? error.statusCode : 500;
       return jsonResponse(
         statusCode,
-        { error: error instanceof Error ? error.message : "Opening explorer query failed" },
+        {
+          error: error instanceof Error ? error.message : "Opening explorer query failed",
+          code: error instanceof OpeningExplorerQueueError ? "queue_unavailable" : "internal_error",
+        },
         false,
       );
     } finally {

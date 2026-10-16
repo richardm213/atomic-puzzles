@@ -1,8 +1,8 @@
-import { appAssetPath } from "../../utils/appAssetPath";
+import { apiRequest } from "../api/postApi";
 
 export const clearAuthenticatedSiteSession = async (): Promise<void> => {
-  await fetch(appAssetPath("/api/auth/session"), {
+  await apiRequest("/api/auth/session", {
     method: "DELETE",
-    credentials: "same-origin",
+    errorMessage: "Unable to clear the site session.",
   });
 };
