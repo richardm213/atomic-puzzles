@@ -1,6 +1,6 @@
 import "./TournamentPage.css";
 
-import { faCheck, faComment, faRobot } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faComment } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -14,6 +14,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CommunityDiscussion } from "../../components/PuzzleCommunity/PuzzleCommunity";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
+import { modeLabels } from "../../constants/matches";
+import { TournamentFairPlayFlag } from "../../features/tournaments/TournamentFairPlayFlag";
 import {
   tournamentBracketQueryOptions,
   tournamentCatalogQueryOptions,
@@ -27,6 +29,7 @@ import {
   type TournamentMatch,
 } from "../../lib/matches/tournaments";
 import { appAssetPath } from "../../utils/appAssetPath";
+import { countryCodeToFlagUrl } from "../../utils/countryFlags";
 import { formatCalendarDateRange } from "../../utils/formatters";
 import { normalizeUsername } from "../../utils/playerNames";
 import { AtomicChessLeaguePage } from "./AtomicChessLeaguePage";
@@ -64,6 +67,8 @@ const normalizeTournamentTab = (value: string | undefined): string => {
     .toLowerCase();
   return TOURNAMENT_TAB_KEYS.has(normalized) ? normalized : "";
 };
+
+const formatTimeControl = (timeControl: string): string => timeControl.replace(/^0\.5\+/, "½+");
 
 type DragState = {
   stageKey: string;
@@ -208,43 +213,11 @@ const DrawEntryBadge = ({
   );
 };
 
-const FAIR_PLAY_FLAGGED_PLAYERS = new Set(["neverofzero", "thuban", "taisthuban", "jasos12"]);
-const FAIR_PLAY_FLAG_LABEL =
-  "Fair-play flag: this player cheated in this tournament, so interpret their results accordingly.";
-
-const isFairPlayFlaggedPlayer = (playerName: string): boolean =>
-  FAIR_PLAY_FLAGGED_PLAYERS.has(normalizeUsername(playerName));
-
-const FairPlayFlagBadge = ({ playerName }: { playerName: string }) =>
-  isFairPlayFlaggedPlayer(playerName) ? (
-    <span
-      className="tournamentFairPlayFlag"
-      title={FAIR_PLAY_FLAG_LABEL}
-      aria-label={FAIR_PLAY_FLAG_LABEL}
-    >
-      <FontAwesomeIcon icon={faRobot} />
-    </span>
-  ) : null;
-
 const AdvanceCheck = () => (
   <span className="tournamentAdvanceCheck" aria-label="Advanced">
     <FontAwesomeIcon icon={faCheck} />
   </span>
 );
-
-const countryCodeToFlag = (countryCode: string | null | undefined): string =>
-  String(countryCode || "")
-    .toUpperCase()
-    .replace(/[^A-Z]/g, "")
-    .slice(0, 2);
-
-const neutralFlagDataUrl =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='12' viewBox='0 0 20 12'%3E%3Crect width='20' height='12' rx='2' fill='%230f1f3b'/%3E%3Ccircle cx='10' cy='6' r='4' fill='none' stroke='%23d7e3ff' stroke-width='1'/%3E%3Cpath d='M6 6h8M10 2v8M7.2 3.3c.8.5 1.8.7 2.8.7s2-.2 2.8-.7M7.2 8.7c.8-.5 1.8-.7 2.8-.7s2 .2 2.8.7' fill='none' stroke='%23d7e3ff' stroke-width='.7' stroke-linecap='round'/%3E%3C/svg%3E";
-
-const countryCodeToFlagUrl = (countryCode: string | null | undefined): string => {
-  const normalized = countryCodeToFlag(countryCode);
-  return normalized ? `https://flagcdn.com/${normalized.toLowerCase()}.svg` : neutralFlagDataUrl;
-};
 
 const isInteractivePointerTarget = (target: EventTarget | null): boolean => {
   if (!(target instanceof Element)) return false;
@@ -344,7 +317,7 @@ const PlayerLabel = ({
         <Link
           ref={playerLinkRef}
           className="tournamentPlayerLink"
-          to="/@/$username"
+          to="/tournaments/players/$username"
           params={{ username: normalizeUsername(playerName) }}
           onClick={(event) => {
             if (shouldSuppressClick()) {
@@ -358,7 +331,7 @@ const PlayerLabel = ({
           {displayName}
         </Link>
       )}
-      <FairPlayFlagBadge playerName={playerName} />
+      <TournamentFairPlayFlag playerName={playerName} />
       {isWinner ? <AdvanceCheck /> : null}
     </span>
   );
@@ -502,12 +475,12 @@ const TournamentSeeds = ({
           <span className="tournamentSeedsIdentity">
             <Link
               className="tournamentSeedsPlayerLink"
-              to="/@/$username"
+              to="/tournaments/players/$username"
               params={{ username: normalizeUsername(playerName) }}
             >
               {playerName}
             </Link>
-            <FairPlayFlagBadge playerName={playerName} />
+            <TournamentFairPlayFlag playerName={playerName} />
           </span>
           <span className="tournamentSeedsResult">({eliminationStatus})</span>
         </li>
@@ -1392,10 +1365,20 @@ const BracketTournamentPage = ({
             </div>
           </div>
           <h1>{heading}</h1>
-          {bracket.startDate ? (
-            <span className="tournamentStartDate">
-              {formatCalendarDateRange(bracket.startDate, bracket.endDate)}
-            </span>
+          {bracket.startDate || bracket.timeControl ? (
+            <div className="tournamentHeroDetails">
+              {bracket.startDate ? (
+                <span className="tournamentStartDate">
+                  {formatCalendarDateRange(bracket.startDate, bracket.endDate)}
+                </span>
+              ) : null}
+              {bracket.timeControl ? (
+                <span className="tournamentTimeControl">
+                  {bracket.matchMode ? `${modeLabels[bracket.matchMode]} ` : null}
+                  {formatTimeControl(bracket.timeControl)}
+                </span>
+              ) : null}
+            </div>
           ) : null}
         </div>
         {bracket.trophyAssetPath ? (

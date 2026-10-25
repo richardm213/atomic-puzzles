@@ -325,14 +325,6 @@
   gap: var(--space-3);
 }
 
-.profileActionRow {
-  margin-top: var(--space-4);
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: var(--space-3);
-}
-
 .playerProfilePanel .matchFilterGrid {
   grid-template-columns:
     minmax(76px, 0.65fr) minmax(88px, 0.75fr) minmax(96px, 0.85fr)
@@ -348,56 +340,115 @@
   min-width: 0;
 }
 
-.profilePuzzleDashboardLink {
-  min-height: 44px;
-  padding: 0 var(--space-4);
+.profileActionsMenu {
+  position: relative;
+  z-index: 20;
+  flex: none;
+}
+
+.profileActionsMenu > summary {
+  width: 40px;
+  height: 40px;
+  display: inline-grid;
+  place-items: center;
+  list-style: none;
+  border: 0;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--color-accent-soft-border);
-  background: var(--color-panel-strong);
-  color: var(--color-heading);
-  text-decoration: none;
-  transition:
-    transform 140ms ease,
-    border-color 140ms ease,
-    background-color 140ms ease;
-}
-
-.profilePuzzleDashboardLink:hover,
-.profilePuzzleDashboardLink:focus-visible {
-  transform: translateY(-1px);
-  border-color: var(--color-primary);
-  background: var(--color-surface-elevated-strong);
-}
-
-.profileRatingGraphToggle {
-  width: 44px;
-  min-height: 44px;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  background: transparent;
+  color: var(--color-muted);
   cursor: pointer;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease;
 }
 
-.profileRatingGraphToggle[aria-pressed="true"] {
-  border-color: var(--color-primary);
-  background: var(--color-accent-soft-bg);
+.profileActionsMenu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.profileActionsMenu > summary:hover,
+.profileActionsMenu[open] > summary {
+  background: color-mix(in srgb, var(--color-primary) 9%, transparent);
   color: var(--color-primary-soft);
 }
 
-.profileRatingGraphToggle:active {
-  transform: translateY(0);
-}
-
-.profileRatingGraphToggle:focus-visible {
+.profileActionsMenu > summary:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 
-.profileIdentityGraphToggle {
-  width: 36px;
-  min-height: 36px;
-  border-radius: 50%;
+.profileActionsMenuPanel {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  width: 220px;
+  display: grid;
+  gap: 2px;
+  padding: 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+  box-shadow: var(--shadow-soft);
+}
+
+.profileActionsMenuPanel > a,
+.profileActionsMenuPanel > button,
+.profileActionsMenuPanel .coinProfileTriggers button {
+  width: 100%;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  box-shadow: none;
+  color: var(--color-heading);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease;
+}
+
+.profileActionsMenuPanel > a:hover,
+.profileActionsMenuPanel > button:hover,
+.profileActionsMenuPanel .coinProfileTriggers button:hover {
+  background: var(--color-surface-elevated-strong);
+  color: var(--color-primary-pale);
+  transform: none;
+}
+
+.profileActionsMenuPanel > a:focus-visible,
+.profileActionsMenuPanel > button:focus-visible,
+.profileActionsMenuPanel .coinProfileTriggers button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.profileActionsMenuPanel svg {
+  width: 18px;
+  flex: 0 0 18px;
+  color: var(--color-primary-soft);
+}
+
+.profileActionsMenuPanel .coinProfileTriggers {
+  width: 100%;
+}
+
+.profileActionsMenu > summary,
+.profileActionsMenu > summary *,
+.profileActionsMenuPanel a,
+.profileActionsMenuPanel button,
+.profileActionsMenuPanel a *,
+.profileActionsMenuPanel button * {
+  cursor: pointer;
 }
 
 .profileBannedGameCounts {
@@ -1692,21 +1743,9 @@
     font-size: 12px;
   }
 
-  .profileActionRow {
-    display: grid;
-    grid-template-columns: 1fr;
-    align-items: stretch;
-  }
-
-  .profilePuzzleDashboardLink {
-    width: 100%;
-  }
-
-  .profileIdentityGraphToggle {
+  .profileActionsMenu > summary {
     width: 44px;
-    min-height: 44px;
-    flex: 0 0 44px;
-    margin-left: 0;
+    height: 44px;
   }
 
   .profileHistoryTabs {

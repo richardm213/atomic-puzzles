@@ -2,13 +2,20 @@ import { queryOptions } from "@tanstack/react-query";
 
 import { getSupabaseClient } from "../supabase/client";
 import { loadSupabaseRows } from "../supabase/rows";
-import { fetchTournamentCatalog, getTournamentBracket } from "./tournaments";
+import {
+  fetchPlayerCountryMap,
+  fetchTournamentCatalog,
+  fetchTournamentPlayerAppearances,
+  getTournamentBracket,
+} from "./tournaments";
 
 export const tournamentQueryKeys = {
   all: ["tournaments"] as const,
   catalog: () => ["tournaments", "catalog"] as const,
   bracket: (tournamentId: string) => ["tournaments", "bracket", tournamentId] as const,
   champions: () => ["tournaments", "champions"] as const,
+  player: (usernames: string[]) => ["tournaments", "player", ...usernames] as const,
+  playerCountries: () => ["tournaments", "player-countries"] as const,
 };
 
 export const tournamentCatalogQueryOptions = () =>
@@ -23,6 +30,20 @@ export const tournamentBracketQueryOptions = (tournamentId: string) =>
     queryKey: tournamentQueryKeys.bracket(tournamentId),
     queryFn: () => getTournamentBracket(tournamentId),
     staleTime: 5 * 60 * 1_000,
+  });
+
+export const tournamentPlayerQueryOptions = (usernames: string[]) =>
+  queryOptions({
+    queryKey: tournamentQueryKeys.player(usernames),
+    queryFn: () => fetchTournamentPlayerAppearances(usernames),
+    staleTime: 10 * 60 * 1_000,
+  });
+
+export const tournamentPlayerCountriesQueryOptions = () =>
+  queryOptions({
+    queryKey: tournamentQueryKeys.playerCountries(),
+    queryFn: fetchPlayerCountryMap,
+    staleTime: 10 * 60 * 1_000,
   });
 
 export const tournamentChampionsQueryOptions = () =>

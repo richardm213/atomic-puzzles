@@ -1,10 +1,19 @@
 import "./PlayerProfile.css";
 
-import { faChartLine, faMagnifyingGlass, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
+import {
+  faChartLine,
+  faClockRotateLeft,
+  faCommentDots,
+  faEllipsisVertical,
+  faMagnifyingGlass,
+  faPuzzlePiece,
+  faShieldHalved,
+  faTrophy,
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Fragment, lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { Fragment, lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
 import { CoinProfileActions } from "../../components/CoinProfileActions/CoinProfileActions";
@@ -170,6 +179,7 @@ export const PlayerProfilePage = ({
   );
   const [showRatingGraph, setShowRatingGraph] = useState(false);
   const [expandedMatchKeys, setExpandedMatchKeys] = useState<string[]>([]);
+  const profileActionsMenuRef = useRef<HTMLDetailsElement>(null);
   const profileAliasQuery = useQuery({
     ...profileAliasQueryOptions(normalizedUsername),
     enabled: Boolean(normalizedUsername),
@@ -363,6 +373,29 @@ export const PlayerProfilePage = ({
 
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  useEffect(() => {
+    const closeProfileActionsMenu = (event: PointerEvent) => {
+      const menu = profileActionsMenuRef.current;
+      if (menu?.open && event.target instanceof Node && !menu.contains(event.target)) {
+        menu.removeAttribute("open");
+      }
+    };
+    const closeProfileActionsMenuOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      const menu = profileActionsMenuRef.current;
+      if (!menu?.open) return;
+      menu.removeAttribute("open");
+      menu.querySelector("summary")?.focus();
+    };
+
+    document.addEventListener("pointerdown", closeProfileActionsMenu);
+    document.addEventListener("keydown", closeProfileActionsMenuOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeProfileActionsMenu);
+      document.removeEventListener("keydown", closeProfileActionsMenuOnEscape);
+    };
   }, []);
 
   useEffect(() => {
@@ -763,17 +796,60 @@ export const PlayerProfilePage = ({
               <div className="profileIdentityHeading">
                 <h1>{profileDisplayUsername}</h1>
                 {!isBanned ? (
-                  <button
-                    className="profilePuzzleDashboardLink profileRatingGraphToggle profileIdentityGraphToggle"
-                    type="button"
-                    aria-label={showRatingGraph ? "Show rating summary" : "Show rating graph"}
-                    aria-controls="profile-rating-view"
-                    aria-pressed={showRatingGraph}
-                    title={showRatingGraph ? "Show rating summary" : "Show rating graph"}
-                    onClick={() => setShowRatingGraph((current) => !current)}
-                  >
-                    <FontAwesomeIcon icon={faChartLine} aria-hidden="true" />
-                  </button>
+                  <details ref={profileActionsMenuRef} className="profileActionsMenu">
+                    <summary aria-label="Profile actions" title="Profile actions">
+                      <FontAwesomeIcon icon={faEllipsisVertical} aria-hidden="true" />
+                    </summary>
+                    <nav className="profileActionsMenuPanel" aria-label="Profile actions">
+                      {coinGiftRecipientUsername ? (
+                        <CoinProfileActions
+                          recipientUsername={coinGiftRecipientUsername}
+                          recipientAliases={profileLichessUsernames}
+                          displayUsername={profileDisplayUsername}
+                        />
+                      ) : null}
+                      <button
+                        type="button"
+                        aria-controls="profile-rating-view"
+                        aria-pressed={showRatingGraph}
+                        onClick={(event) => {
+                          setShowRatingGraph((current) => !current);
+                          event.currentTarget.closest("details")?.removeAttribute("open");
+                        }}
+                      >
+                        <FontAwesomeIcon icon={faChartLine} aria-hidden="true" />
+                        {showRatingGraph ? "Show rating summary" : "Show rating graph"}
+                      </button>
+                      <Link
+                        to="/@/$username/history"
+                        params={{ username: canonicalUsername }}
+                        search={{ tab: "comments" }}
+                      >
+                        <FontAwesomeIcon icon={faCommentDots} aria-hidden="true" />
+                        Comments
+                      </Link>
+                      {puzzleDashboardUsername ? (
+                        <Link
+                          to="/@/$username/puzzles"
+                          params={{ username: puzzleDashboardUsername }}
+                        >
+                          <FontAwesomeIcon icon={faPuzzlePiece} aria-hidden="true" />
+                          Puzzle dashboard
+                        </Link>
+                      ) : null}
+                      <Link to="/@/$username/history" params={{ username: canonicalUsername }}>
+                        <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
+                        Match history
+                      </Link>
+                      <Link
+                        to="/tournaments/players/$username"
+                        params={{ username: canonicalUsername }}
+                      >
+                        <FontAwesomeIcon icon={faTrophy} aria-hidden="true" />
+                        Tournament history
+                      </Link>
+                    </nav>
+                  </details>
                 ) : null}
               </div>
               {profileOpenings.length ? (
@@ -871,42 +947,6 @@ export const PlayerProfilePage = ({
               </div>
             ))}
           </dl>
-        ) : null}
-
-        {!isBanned && !historyOnly ? (
-          <div className="profileActionRow">
-            {coinGiftRecipientUsername ? (
-              <CoinProfileActions
-                recipientUsername={coinGiftRecipientUsername}
-                recipientAliases={profileLichessUsernames}
-                displayUsername={profileDisplayUsername}
-              />
-            ) : null}
-            <Link
-              className="profilePuzzleDashboardLink"
-              to="/@/$username/history"
-              params={{ username: canonicalUsername }}
-              search={{ tab: "comments" }}
-            >
-              View comments
-            </Link>
-            {puzzleDashboardUsername ? (
-              <Link
-                className="profilePuzzleDashboardLink"
-                to="/@/$username/puzzles"
-                params={{ username: puzzleDashboardUsername }}
-              >
-                View puzzle dashboard
-              </Link>
-            ) : null}
-            <Link
-              className="profilePuzzleDashboardLink"
-              to="/@/$username/history"
-              params={{ username: canonicalUsername }}
-            >
-              View history
-            </Link>
-          </div>
         ) : null}
 
         {!historyOnly ? (

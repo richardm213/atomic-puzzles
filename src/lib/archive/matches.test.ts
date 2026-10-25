@@ -61,4 +61,24 @@ describe("fetchMatchRowsFromArchive", () => {
     expect(params.has("mode")).toBe(false);
     expect(params.get("matchId")).toBe("Yr9V8s5R");
   });
+
+  it("only sends the rating filter type with a complete rating range", async () => {
+    await fetchMatchRowsFromArchive("blitz", { username: "alice" }, { pageSize: 25 });
+
+    const unfilteredParams = fetchArchiveJson.mock.calls[0]?.[0] as URLSearchParams;
+    expect(unfilteredParams.has("ratingFilterType")).toBe(false);
+    expect(unfilteredParams.has("ratingMin")).toBe(false);
+    expect(unfilteredParams.has("ratingMax")).toBe(false);
+
+    await fetchMatchRowsFromArchive(
+      "blitz",
+      { username: "alice", opponentRatingMin: 1500, opponentRatingMax: 2000 },
+      { pageSize: 25 },
+    );
+
+    const filteredParams = fetchArchiveJson.mock.calls[1]?.[0] as URLSearchParams;
+    expect(filteredParams.get("ratingFilterType")).toBe("both");
+    expect(filteredParams.get("ratingMin")).toBe("1500");
+    expect(filteredParams.get("ratingMax")).toBe("2000");
+  });
 });

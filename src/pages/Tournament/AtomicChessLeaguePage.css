@@ -148,7 +148,7 @@
 .aclSeasonSwitch:focus-visible,
 .aclPanelActions a:focus-visible,
 .aclRoster a:focus-visible,
-.aclBoardMatch:focus-visible,
+.aclBoardMatch:has(.aclBoardMatchOverlayLink:focus-visible),
 .aclSeasonFooter a:focus-visible {
   outline: 2px solid var(--color-primary-ring);
   outline-offset: 2px;
@@ -533,6 +533,7 @@
 }
 
 .aclBoardMatch {
+  position: relative;
   display: grid;
   grid-template-columns: 52px minmax(0, 1fr) 84px minmax(0, 1fr) 64px;
   align-items: center;
@@ -545,6 +546,16 @@
   transition:
     background 180ms ease,
     color 180ms ease;
+}
+
+.aclBoardMatchOverlayLink {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.aclBoardMatchOverlayLink:focus-visible {
+  outline: none;
 }
 
 .aclBoardMatch:nth-child(even) {
@@ -588,6 +599,29 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.aclBoardPlayer > a {
+  position: relative;
+  z-index: 2;
+  min-width: 0;
+  overflow: hidden;
+  color: inherit;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aclBoardPlayer > a:hover {
+  color: var(--link-hover-color);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.aclBoardPlayer > a:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 3px;
 }
 
 .aclBoardPlayer.isWinner svg {

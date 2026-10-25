@@ -11,6 +11,7 @@ import {
   faRightFromBracket,
   faRightToBracket,
   faTriangleExclamation,
+  faTrophy,
   faUser,
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
@@ -893,6 +894,18 @@ export const TopNav = () => {
                       <FontAwesomeIcon icon={faUser} />
                     </span>
                     View profile
+                  </Link>
+                  <Link
+                    className="navProfileDropdownItem"
+                    to="/tournaments/players/$username"
+                    params={{ username: resolvedProfileUsername }}
+                    role="menuitem"
+                    onClick={() => setOpenPanel(null)}
+                  >
+                    <span className="navProfileDropdownIcon" aria-hidden="true">
+                      <FontAwesomeIcon icon={faTrophy} />
+                    </span>
+                    Tournament profile
                   </Link>
                   <Link
                     className="navProfileDropdownItem"

@@ -59,17 +59,13 @@ const buildParams = (
   appendArchiveParam(params, "startTs", finiteNumber(filters.startTs));
   appendArchiveParam(params, "endTs", finiteNumber(filters.endTs));
   appendArchiveParam(params, "timeControl", filters.timeControl);
-  appendArchiveParam(params, "ratingFilterType", filters.ratingFilterType ?? "both");
-  appendArchiveParam(
-    params,
-    "ratingMin",
-    finiteNumber(filters.ratingMin ?? filters.opponentRatingMin),
-  );
-  appendArchiveParam(
-    params,
-    "ratingMax",
-    finiteNumber(filters.ratingMax ?? filters.opponentRatingMax),
-  );
+  const ratingMin = finiteNumber(filters.ratingMin ?? filters.opponentRatingMin);
+  const ratingMax = finiteNumber(filters.ratingMax ?? filters.opponentRatingMax);
+  if (ratingMin !== null && ratingMax !== null) {
+    appendArchiveParam(params, "ratingFilterType", filters.ratingFilterType ?? "both");
+    appendArchiveParam(params, "ratingMin", ratingMin);
+    appendArchiveParam(params, "ratingMax", ratingMax);
+  }
   const sourceFilters = filters.sourceFilters ?? {};
   const allSourcesEnabled = knownSourceKeys.every((source) => sourceFilters[source] !== false);
   if (!allSourcesEnabled) {

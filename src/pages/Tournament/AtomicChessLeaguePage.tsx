@@ -48,7 +48,10 @@ const readSavedView = (seasonNumber: AtomicChessLeagueSeason["number"]): SavedVi
 };
 
 const PlayerLink = ({ player }: { player: string }) => (
-  <Link to="/@/$username" params={{ username: getAtomicChessLeaguePlayerName(player) }}>
+  <Link
+    to="/tournaments/players/$username"
+    params={{ username: getAtomicChessLeaguePlayerName(player) }}
+  >
     {getAtomicChessLeaguePlayerName(player)}
   </Link>
 );
@@ -136,7 +139,7 @@ const BoardMatchContent = ({ board }: { board: AtomicChessLeagueBoardMatch }) =>
         className={`aclBoardPlayer${player1Won ? " isWinner" : ""}`}
         aria-label={`${player1}${player1Won ? ", winner" : ""}`}
       >
-        <span>{player1}</span>
+        {board.player1 ? <PlayerLink player={board.player1} /> : <span>{player1}</span>}
         {player1Won ? <FontAwesomeIcon icon={faCheck} aria-hidden="true" /> : null}
       </span>
       <strong className="aclBoardScore">
@@ -148,7 +151,7 @@ const BoardMatchContent = ({ board }: { board: AtomicChessLeagueBoardMatch }) =>
         className={`aclBoardPlayer isSecond${player2Won ? " isWinner" : ""}`}
         aria-label={`${player2}${player2Won ? ", winner" : ""}`}
       >
-        <span>{player2}</span>
+        {board.player2 ? <PlayerLink player={board.player2} /> : <span>{player2}</span>}
         {player2Won ? <FontAwesomeIcon icon={faCheck} aria-hidden="true" /> : null}
       </span>
       {board.matchId ? (
@@ -169,14 +172,15 @@ const BoardMatchRow = ({ board }: { board: AtomicChessLeagueBoardMatch }) => {
 
   if (board.matchId) {
     return (
-      <Link
-        className={className}
-        to="/matches/$matchId"
-        params={{ matchId: board.matchId }}
-        aria-label={`Open ${label}`}
-      >
+      <div className={className}>
         <BoardMatchContent board={board} />
-      </Link>
+        <Link
+          className="aclBoardMatchOverlayLink"
+          to="/matches/$matchId"
+          params={{ matchId: board.matchId }}
+          aria-label={`Open ${label}`}
+        />
+      </div>
     );
   }
 

@@ -14,6 +14,7 @@ export type TournamentMeta = {
   endDate?: string;
   status: "available" | "pending";
   matchMode?: Mode;
+  timeControl?: string;
   hideStartRoundControls?: boolean;
   defaultMainBracketStartRound?: string;
   completeMainBracketFromRound?: string;
@@ -77,6 +78,31 @@ export type TournamentMatchLocation = {
   roundLabel: string;
 };
 
+export type TournamentPlayerResult = "win" | "loss" | "draw" | "unplayed";
+
+export type TournamentPlayerMatch = {
+  key: string;
+  roundLabel: string;
+  opponent: string;
+  opponentSeed?: number;
+  pointsMultiplier?: 1 | 2;
+  playerScore: number;
+  opponentScore: number;
+  result: TournamentPlayerResult;
+  matchId: string;
+  outcomeType: TournamentMatch["outcome_type"];
+};
+
+export type TournamentPlayerAppearance = {
+  tournament: TournamentMeta;
+  placementLabel: string;
+  divisionLabel?: string;
+  wins: number;
+  losses: number;
+  draws: number;
+  matches: TournamentPlayerMatch[];
+};
+
 type TournamentMatchRowFromDb = {
   tournament?: string | null;
   bracket?: string | null;
@@ -108,6 +134,7 @@ type TournamentMetaRowFromDb = {
   end_date?: string | null;
   status?: string | null;
   match_mode?: string | null;
+  time_control?: string | null;
   hide_start_round_controls?: boolean | null;
   default_main_bracket_start_round?: string | null;
   complete_main_bracket_from_round?: string | null;
@@ -146,6 +173,8 @@ const TOURNAMENT_MATCHES_SELECT_COLUMNS =
 const PLAYER_COUNTRIES_SELECT_COLUMNS = "player_name,country_code";
 const TOURNAMENT_SEEDS_SELECT_COLUMNS = "tournament,player_name,seed";
 const TOURNAMENT_CATALOG_SELECT_COLUMNS =
+  "id,series_key,series_name,title,heading_title,year,start_date,end_date,status,match_mode,time_control,hide_start_round_controls,default_main_bracket_start_round,complete_main_bracket_from_round,trophy_asset_path,show_champion,display_order,home_feature_order";
+const TOURNAMENT_CATALOG_WITH_DATES_SELECT_COLUMNS =
   "id,series_key,series_name,title,heading_title,year,start_date,end_date,status,match_mode,hide_start_round_controls,default_main_bracket_start_round,complete_main_bracket_from_round,trophy_asset_path,show_champion,display_order,home_feature_order";
 const TOURNAMENT_CATALOG_START_DATE_SELECT_COLUMNS =
   "id,series_key,series_name,title,heading_title,year,start_date,status,match_mode,hide_start_round_controls,default_main_bracket_start_round,complete_main_bracket_from_round,trophy_asset_path,show_champion,display_order,home_feature_order";
@@ -196,7 +225,29 @@ const tournamentEndDateFallbacks: Readonly<Record<string, string>> = {
   awc2016: "2016-12-04",
 };
 
+// Verified against archived matches. ACL seasons intentionally stay unset because they use
+// several time controls rather than one tournament-wide control.
+const tournamentTimeControlFallbacks: Readonly<Record<string, string>> = {
+  "wr-arena2026": "3+2",
+  ahc2026: "0.5+0",
+  aoc2026: "3+1",
+  ccac2026: "3+0",
+  ccac2025: "3+0",
+  awc2026: "3+2",
+  awc2025: "3+1",
+  awc2024: "3+0",
+  awc2023: "3+2",
+  awc2022: "1+0",
+  awc2021: "3+2",
+  awc2020: "3+2",
+  awc2019: "3+2",
+  awc2018: "3+2",
+  awc2017: "3+2",
+  awc2016: "3+2",
+};
+
 const tournamentMatchesCache = new Map<string, Promise<TournamentMatch[]>>();
+const tournamentPlayerHistoryCache = new Map<string, Promise<TournamentPlayerAppearance[]>>();
 const tournamentMatchLocationCache = new Map<string, Promise<TournamentMatchLocation | null>>();
 const playerCountriesCache = new Map<string, Promise<Record<string, string>>>();
 const tournamentSeedsCache = new Map<string, Promise<Record<string, number>>>();
@@ -366,6 +417,7 @@ export const normalizeTournamentMetaRow = (row: TournamentMetaRowFromDb): Tourna
   const trophyAssetPath = String(row?.trophy_asset_path ?? "").trim();
   const startDate = String(row?.start_date ?? tournamentStartDateFallbacks[id] ?? "").trim();
   const endDate = String(row?.end_date ?? tournamentEndDateFallbacks[id] ?? "").trim();
+  const timeControl = String(row?.time_control ?? tournamentTimeControlFallbacks[id] ?? "").trim();
   const hasValidStartDate = /^\d{4}-\d{2}-\d{2}$/.test(startDate);
   const hasValidEndDate = /^\d{4}-\d{2}-\d{2}$/.test(endDate);
   return {
@@ -378,6 +430,7 @@ export const normalizeTournamentMetaRow = (row: TournamentMetaRowFromDb): Tourna
     ...(hasValidEndDate ? { endDate } : {}),
     status,
     matchMode: mode,
+    ...(timeControl ? { timeControl } : {}),
     hideStartRoundControls: Boolean(row?.hide_start_round_controls),
     showChampion: row?.show_champion !== false,
     displayOrder: Number(row?.display_order) || 0,
@@ -464,6 +517,18 @@ const fetchLocalTournamentRowsByMatchId = async (matchId: string): Promise<Tourn
     .map(normalizeMatchRow);
 };
 
+const fetchLocalAllTournamentRows = async (): Promise<TournamentMatch[]> => {
+  const tournamentMatchesCsv = await fetchLocalTournamentCsv("tournament_matches.csv");
+  return parseCsvRows(tournamentMatchesCsv).map(normalizeMatchRow);
+};
+
+const fetchLocalAllTournamentSeedMaps = async (): Promise<
+  Record<string, Record<string, number>>
+> => {
+  const tournamentSeedsCsv = await fetchLocalTournamentCsv("tournament-seeds.csv");
+  return buildTournamentSeedMaps(parseCsvRows(tournamentSeedsCsv));
+};
+
 const fetchLocalPlayerCountryMap = async (): Promise<Record<string, string>> => {
   const playerCountriesCsv = await fetchLocalTournamentCsv("player-countries.csv");
 
@@ -502,6 +567,195 @@ const winnerName = (match: TournamentMatch): string => {
   if (Number(match.s1) > Number(match.s2)) return match.p1;
   if (Number(match.s2) > Number(match.s1)) return match.p2;
   return "";
+};
+
+const tournamentMatchProgress = (match: TournamentMatch): number => {
+  const numberedRound = /^Round (\d+)$/.exec(match.round);
+  if (numberedRound) return 500 + Number(numberedRound[1]);
+  if (match.bracket === "grand_final") return match.round === "Reset" ? 1_002 : 1_001;
+  if (match.bracket === "losers") return 700 + Math.max(0, getRoundIndex("losers", match.round));
+  if (match.bracket === "main") return 500 + Math.max(0, getRoundIndex("main", match.round));
+  if (match.bracket === "qualifying") {
+    return 100 + Math.max(0, getRoundIndex("qualifying", match.round));
+  }
+  return 0;
+};
+
+const isDoubleEliminationStage = (match: TournamentMatch): boolean => {
+  if (match.bracket === "losers" || match.bracket === "grand_final") return true;
+  if (match.bracket !== "main") return false;
+  return getRoundIndex("main", match.round) >= getRoundIndex("main", "Round of 16");
+};
+
+const comparePlayerMatchChronology = (
+  left: TournamentMatch,
+  right: TournamentMatch,
+  hasDoubleElimination: boolean,
+): number => {
+  if (hasDoubleElimination) {
+    const leftInFinalStage = isDoubleEliminationStage(left);
+    const rightInFinalStage = isDoubleEliminationStage(right);
+    if (leftInFinalStage !== rightInFinalStage) return leftInFinalStage ? -1 : 1;
+    if (leftInFinalStage && rightInFinalStage) {
+      return right.order - left.order || right.id.localeCompare(left.id);
+    }
+  }
+
+  return (
+    tournamentMatchProgress(right) - tournamentMatchProgress(left) ||
+    right.order - left.order ||
+    right.id.localeCompare(left.id)
+  );
+};
+
+const playerMatchResult = (match: TournamentMatch, playerKey: string): TournamentPlayerResult => {
+  const isPlayerOne = normalizePlayerKey(match.p1) === playerKey;
+  const playerScore = isPlayerOne ? match.s1 : match.s2;
+  const opponentScore = isPlayerOne ? match.s2 : match.s1;
+  if (!match.match_id && playerScore === 0 && opponentScore === 0) return "unplayed";
+  if (playerScore > opponentScore) return "win";
+  if (playerScore < opponentScore) return "loss";
+  return "draw";
+};
+
+const playerMatchOutcomeType = (match: TournamentMatch): TournamentMatch["outcome_type"] => {
+  if (match.outcome_type) return match.outcome_type;
+  const isLegacyWalkoverScore =
+    !match.match_id && ((match.s1 === 1 && match.s2 === 0) || (match.s1 === 0 && match.s2 === 1));
+  return isLegacyWalkoverScore ? "withdrawal" : "";
+};
+
+const normalizePlayerKey = (value: string): string =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
+
+const buildTournamentSeedMaps = (
+  rows: Array<{
+    tournament?: string | null;
+    player_name?: string | null;
+    seed?: number | string | null;
+  }>,
+): Record<string, Record<string, number>> =>
+  rows.reduce<Record<string, Record<string, number>>>((accumulator, row) => {
+    const tournamentId = String(row?.tournament ?? "").trim();
+    const playerName = normalizePlayerKey(String(row?.player_name ?? ""));
+    const seed = Number(row?.seed);
+    if (!tournamentId || !playerName || !Number.isInteger(seed) || seed < 1 || seed > 16) {
+      return accumulator;
+    }
+    const seedMap = accumulator[tournamentId] ?? {};
+    seedMap[playerName] = seed;
+    accumulator[tournamentId] = seedMap;
+    return accumulator;
+  }, {});
+
+const placementForTournamentPlayer = (
+  matches: TournamentMatch[],
+  playerKeys: Set<string>,
+): string => {
+  const decisiveMatch = getTournamentDecisiveMatch({ matches });
+  if (decisiveMatch && playerKeys.has(normalizePlayerKey(winnerName(decisiveMatch)))) {
+    return "Champion";
+  }
+
+  const latestLoss = matches
+    .filter((match) => {
+      const participantKey = playerKeys.has(normalizePlayerKey(match.p1))
+        ? normalizePlayerKey(match.p1)
+        : normalizePlayerKey(match.p2);
+      return participantKey && playerMatchResult(match, participantKey) === "loss";
+    })
+    .sort(
+      (left, right) =>
+        tournamentMatchProgress(right) - tournamentMatchProgress(left) || right.order - left.order,
+    )[0];
+
+  if (!latestLoss) return "Entered";
+  const roundLabel = getTournamentRoundLabel(latestLoss);
+  if (latestLoss.bracket === "main" || latestLoss.bracket === "grand_final") {
+    if (["Finals", "Grand Final", "Grand Final Reset"].includes(roundLabel)) return "Runner-up";
+    if (roundLabel === "Semifinals") return "Semifinalist";
+    if (roundLabel === "Quarterfinals") return "Quarterfinalist";
+  }
+  return roundLabel;
+};
+
+export const buildTournamentPlayerAppearances = (
+  catalog: TournamentMeta[],
+  allMatches: TournamentMatch[],
+  usernames: string[],
+  seedMapsByTournament: Record<string, Record<string, number>> = {},
+): TournamentPlayerAppearance[] => {
+  const playerKeys = new Set(usernames.map(normalizePlayerKey).filter(Boolean));
+  if (!playerKeys.size) return [];
+
+  const tournamentById = new Map(catalog.map((tournament) => [tournament.id, tournament]));
+  const relatedMatches = allMatches.filter((match) =>
+    [match.p1, match.p2].some((playerName) => playerKeys.has(normalizePlayerKey(playerName))),
+  );
+  const matchesByTournament = new Map<string, TournamentMatch[]>();
+  relatedMatches.forEach((match) => {
+    const current = matchesByTournament.get(match.tournament) ?? [];
+    current.push(match);
+    matchesByTournament.set(match.tournament, current);
+  });
+
+  return [...matchesByTournament.entries()]
+    .flatMap(([tournamentId, matches]): TournamentPlayerAppearance[] => {
+      const tournament = tournamentById.get(tournamentId);
+      if (!tournament) return [];
+      const hasDoubleElimination = matches.some(
+        (match) => match.bracket === "losers" || match.bracket === "grand_final",
+      );
+      const playerMatches = matches
+        .map((match): TournamentPlayerMatch | null => {
+          const playerKey = [match.p1, match.p2]
+            .map(normalizePlayerKey)
+            .find((key) => playerKeys.has(key));
+          if (!playerKey) return null;
+          const isPlayerOne = normalizePlayerKey(match.p1) === playerKey;
+          const opponent = isPlayerOne ? match.p2 : match.p1;
+          if (normalizePlayerKey(opponent) === "bye") return null;
+          const opponentSeed =
+            seedMapsByTournament[match.tournament]?.[normalizePlayerKey(opponent)];
+          const result = playerMatchResult(match, playerKey);
+          return {
+            key: `${match.tournament}-${match.id}`,
+            roundLabel: getTournamentRoundLabel(match),
+            opponent,
+            ...(opponentSeed ? { opponentSeed } : {}),
+            playerScore: isPlayerOne ? match.s1 : match.s2,
+            opponentScore: isPlayerOne ? match.s2 : match.s1,
+            result,
+            matchId: match.match_id,
+            outcomeType: playerMatchOutcomeType(match),
+          };
+        })
+        .filter((match): match is TournamentPlayerMatch => match !== null)
+        .sort((left, right) => {
+          const leftSource = matches.find(
+            (match) => `${match.tournament}-${match.id}` === left.key,
+          );
+          const rightSource = matches.find(
+            (match) => `${match.tournament}-${match.id}` === right.key,
+          );
+          if (!leftSource || !rightSource) return 0;
+          return comparePlayerMatchChronology(leftSource, rightSource, hasDoubleElimination);
+        });
+
+      return [
+        {
+          tournament,
+          placementLabel: placementForTournamentPlayer(matches, playerKeys),
+          wins: playerMatches.filter((match) => match.result === "win").length,
+          losses: playerMatches.filter((match) => match.result === "loss").length,
+          draws: playerMatches.filter((match) => match.result === "draw").length,
+          matches: playerMatches,
+        },
+      ];
+    })
+    .sort((left, right) => compareTournamentStartDates(left.tournament, right.tournament));
 };
 
 export const addImplicitByeMatches = (matches: TournamentMatch[]): TournamentMatch[] => {
@@ -732,7 +986,45 @@ const fetchTournamentMatchRows = async (tournamentId: string): Promise<Tournamen
     return rows.map(normalizeMatchRow);
   });
 
-const fetchPlayerCountryMap = async (): Promise<Record<string, string>> =>
+export const fetchTournamentPlayerAppearances = async (
+  usernames: string[],
+): Promise<TournamentPlayerAppearance[]> => {
+  const normalizedUsernames = [...new Set(usernames.map(normalizePlayerKey).filter(Boolean))];
+  if (!normalizedUsernames.length) return [];
+  const cacheKey = normalizedUsernames.sort().join("|");
+
+  return cachedRequest(tournamentPlayerHistoryCache, [cacheKey], async () => {
+    const [catalog, allMatches, seedMapsByTournament] = await Promise.all([
+      fetchTournamentCatalog(),
+      shouldUseLocalTournamentCsv()
+        ? fetchLocalAllTournamentRows()
+        : fetchAllSupabaseRows<TournamentMatchRowFromDb>(TOURNAMENT_MATCHES_TABLE, () =>
+            getSupabaseClient()
+              .from(TOURNAMENT_MATCHES_TABLE)
+              .select(TOURNAMENT_MATCHES_SELECT_COLUMNS),
+          ).then((rows) => rows.map(normalizeMatchRow)),
+      shouldUseLocalTournamentCsv()
+        ? fetchLocalAllTournamentSeedMaps()
+        : fetchAllSupabaseRows<{
+            tournament?: string | null;
+            player_name?: string | null;
+            seed?: number | string | null;
+          }>(TOURNAMENT_SEEDS_TABLE, () =>
+            getSupabaseClient()
+              .from(TOURNAMENT_SEEDS_TABLE)
+              .select(TOURNAMENT_SEEDS_SELECT_COLUMNS),
+          ).then(buildTournamentSeedMaps),
+    ]);
+    return buildTournamentPlayerAppearances(
+      catalog,
+      allMatches,
+      normalizedUsernames,
+      seedMapsByTournament,
+    );
+  });
+};
+
+export const fetchPlayerCountryMap = async (): Promise<Record<string, string>> =>
   cachedRequest(playerCountriesCache, ["playerCountries"], async () => {
     if (shouldUseLocalTournamentCsv()) {
       return fetchLocalPlayerCountryMap();
@@ -799,28 +1091,28 @@ export const fetchTournamentCatalog = async (): Promise<TournamentMeta[]> =>
         .order("display_order", { ascending: true })
         .order("id", { ascending: true });
 
-    let rows: TournamentMetaRowFromDb[];
-    try {
-      rows = await loadSupabaseRows<TournamentMetaRowFromDb>(
-        TOURNAMENT_CATALOG_TABLE,
-        buildQuery(TOURNAMENT_CATALOG_SELECT_COLUMNS),
-      );
-    } catch (error) {
-      if (!(error instanceof Error) || !error.message.includes("end_date")) throw error;
+    let rows: TournamentMetaRowFromDb[] = [];
+    const selectColumns = [
+      TOURNAMENT_CATALOG_SELECT_COLUMNS,
+      TOURNAMENT_CATALOG_WITH_DATES_SELECT_COLUMNS,
+      TOURNAMENT_CATALOG_START_DATE_SELECT_COLUMNS,
+      TOURNAMENT_CATALOG_LEGACY_SELECT_COLUMNS,
+    ];
 
+    for (const [index, columns] of selectColumns.entries()) {
       try {
         rows = await loadSupabaseRows<TournamentMetaRowFromDb>(
           TOURNAMENT_CATALOG_TABLE,
-          buildQuery(TOURNAMENT_CATALOG_START_DATE_SELECT_COLUMNS),
+          buildQuery(columns),
         );
-      } catch (startDateError) {
-        if (!(startDateError instanceof Error) || !startDateError.message.includes("start_date")) {
-          throw startDateError;
-        }
-        rows = await loadSupabaseRows<TournamentMetaRowFromDb>(
-          TOURNAMENT_CATALOG_TABLE,
-          buildQuery(TOURNAMENT_CATALOG_LEGACY_SELECT_COLUMNS),
-        );
+        break;
+      } catch (error) {
+        const isMissingRollingDeployColumn =
+          error instanceof Error &&
+          ["time_control", "end_date", "start_date"].some((column) =>
+            error.message.includes(column),
+          );
+        if (!isMissingRollingDeployColumn || index === selectColumns.length - 1) throw error;
       }
     }
 

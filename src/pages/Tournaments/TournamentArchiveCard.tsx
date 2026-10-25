@@ -51,7 +51,7 @@ export const TournamentArchiveCard = ({ tournament, champion }: TournamentArchiv
         <div className={styles.champion}>
           <Link
             className={styles.winnerLink}
-            to="/@/$username"
+            to="/tournaments/players/$username"
             params={{ username: normalizeUsername(champion) }}
           >
             {champion}

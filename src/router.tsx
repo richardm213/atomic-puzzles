@@ -127,6 +127,10 @@ const TournamentsPage = lazyRouteComponent(
   () => import("./pages/Tournaments/Tournaments"),
   "TournamentsPage",
 );
+const TournamentPlayerPage = lazyRouteComponent(
+  () => import("./pages/TournamentPlayer/TournamentPlayer"),
+  "TournamentPlayerPage",
+);
 const BannedUsersPage = lazyRouteComponent(
   () => import("./pages/Users/BannedUsers"),
   "BannedUsersPage",
@@ -249,6 +253,15 @@ const tournamentsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/tournaments",
   component: TournamentsPage,
+});
+
+const tournamentPlayerRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/tournaments/players/$username",
+  component: function TournamentPlayerRoute() {
+    const { username } = useParams({ strict: false });
+    return <TournamentPlayerPage username={username} />;
+  },
 });
 
 const tournamentRoute = createRoute({
@@ -545,6 +558,7 @@ const routeTree = rootRoute.addChildren([
   practiceRoute,
   recentRoute,
   tournamentsRoute,
+  tournamentPlayerRoute,
   arenasRoute,
   calendarRoute,
   tournamentRoute,

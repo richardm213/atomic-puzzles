@@ -1,0 +1,477 @@
+.tournamentProfilePage {
+  --site-page-max-width: 720px;
+}
+
+.tournamentProfilePanel {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.tournamentProfileBack,
+.tournamentProfileFullProfile {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: fit-content;
+  color: var(--color-heading);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+
+.tournamentProfileBack:hover,
+.tournamentProfileFullProfile:hover {
+  color: var(--link-hover-color);
+  text-decoration: underline;
+}
+
+.tournamentProfileBack:focus-visible,
+.tournamentProfileFullProfile:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 4px;
+}
+
+.tournamentProfileHeader {
+  display: grid;
+  gap: var(--space-3);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tournamentProfileHeaderMeta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-5);
+}
+
+.tournamentProfileHeader h1 {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--color-heading);
+  font-size: var(--text-page-title);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.tournamentProfileHeader h1 .tournamentFairPlayFlag {
+  margin-left: 12px;
+  font-size: 0.56em;
+  vertical-align: 0.1em;
+}
+
+.tournamentProfileSummary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.tournamentProfileSummary > div {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding-left: var(--space-3);
+  border-left: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.tournamentProfileSummary dt {
+  color: var(--color-subtle);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.tournamentProfileSummary dd {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+
+.tournamentProfileActivity {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.tournamentProfileEvent {
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+  box-shadow: var(--shadow-soft);
+}
+
+.tournamentProfileEventHeader {
+  display: grid;
+  grid-template-columns: 68px minmax(190px, 1fr) auto;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: 112px;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-soft);
+}
+
+.tournamentProfileTrophy,
+.tournamentProfileTrophyPlaceholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 62px;
+  height: 78px;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  color: inherit;
+  text-decoration: none;
+  transition:
+    transform 140ms ease,
+    background-color 140ms ease;
+}
+
+.tournamentProfileTrophy:hover,
+.tournamentProfileTrophy:focus-visible {
+  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--color-primary) 9%, transparent);
+}
+
+.tournamentProfileTrophy:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.tournamentProfileTrophy img {
+  width: 56px;
+  height: 72px;
+  object-fit: contain;
+  filter: drop-shadow(0 5px 7px color-mix(in srgb, black 24%, transparent));
+  transition: transform 0.2s ease;
+}
+
+.tournamentProfileTrophy img[src*="atomic-openings-championship"] {
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+}
+
+.tournamentProfileTrophy:hover img,
+.tournamentProfileTrophy:focus-visible img {
+  transform: translateY(-3px);
+}
+
+.tournamentProfileEventTitle {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.tournamentProfileEventTitle h2 {
+  margin: 0;
+  font-size: 1.12rem;
+  line-height: 1.25;
+}
+
+.tournamentProfileEventTitle h2 a {
+  color: var(--color-heading);
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+
+.tournamentProfileEventTitle h2 a:hover {
+  color: var(--link-hover-color);
+  text-decoration: underline;
+}
+
+.tournamentProfileEventTitle h2 a:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 3px;
+}
+
+.tournamentProfileEventTitle > span {
+  color: var(--color-muted);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.tournamentProfileEventMeta {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: 0.86rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.tournamentProfileMatchHead,
+.tournamentProfileMatchRow {
+  display: grid;
+  grid-template-columns: 64px minmax(160px, 1fr) minmax(160px, 1fr) 88px;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.tournamentProfileMatchHead {
+  min-height: 36px;
+  padding: 0 var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-subtle);
+  font-size: 0.7rem;
+  font-weight: 750;
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
+}
+
+.tournamentProfileMatchHead > span:last-child {
+  text-align: right;
+}
+
+.tournamentProfileMatchRow {
+  position: relative;
+  min-height: 52px;
+  padding: var(--space-2) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+  transition: background-color 160ms ease;
+}
+
+.tournamentProfileMatchRow:last-child {
+  border-bottom: 0;
+}
+
+.tournamentProfileMatchRow:hover,
+.tournamentProfileMatchRow:has(.tournamentProfileMatchLink:focus-visible) {
+  background: var(--color-surface-elevated-strong);
+}
+
+.tournamentProfileResult {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 26px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-inset);
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  font-weight: 850;
+}
+
+.tournamentProfileResult.iswin {
+  border-color: color-mix(in srgb, var(--color-success) 34%, var(--color-border));
+  background: var(--color-success-soft-bg);
+  color: var(--color-success);
+}
+
+.tournamentProfileResult.isloss {
+  border-color: color-mix(in srgb, var(--color-danger) 34%, var(--color-border));
+  background: var(--color-danger-soft-bg);
+  color: var(--color-danger);
+}
+
+.tournamentProfileRound,
+.tournamentProfileOpponent,
+.tournamentProfileScore {
+  min-width: 0;
+  font-size: 0.86rem;
+}
+
+.tournamentProfileRound {
+  color: var(--color-muted);
+}
+
+.tournamentProfilePointRate {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 5px;
+  color: var(--color-accent-warm);
+  font-size: 0.72rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.tournamentProfileOpponent {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  color: var(--link-color);
+  font-weight: 700;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+
+.tournamentProfileOpponentFlag {
+  flex: none;
+  width: 20px;
+  height: 14px;
+  border: 1px solid color-mix(in srgb, white 12%, transparent);
+  border-radius: 2px;
+  object-fit: cover;
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--color-panel-deep) 48%, transparent);
+}
+
+.tournamentProfileOpponentName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tournamentProfileOpponent .tournamentFairPlayFlag {
+  flex: none;
+  margin-left: 0;
+}
+
+.tournamentProfileOpponent:hover {
+  color: var(--color-heading);
+  text-decoration: underline;
+}
+
+.tournamentProfileOpponent:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 3px;
+}
+
+.tournamentProfileScore {
+  color: var(--color-heading);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.tournamentProfileMatchLink {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.tournamentProfileMatchLink:focus-visible {
+  outline: 3px solid var(--color-primary-ring);
+  outline-offset: -3px;
+}
+
+.tournamentProfileNoMatches,
+.tournamentProfileEmpty {
+  margin: 0;
+  color: var(--color-muted);
+}
+
+.tournamentProfileNoMatches {
+  padding: var(--space-5);
+}
+
+.tournamentProfileEmpty {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+}
+
+.tournamentProfileEmpty h2,
+.tournamentProfileEmpty p {
+  margin: 0;
+}
+
+.tournamentProfileEmpty h2 {
+  color: var(--color-heading);
+  font-size: 1.05rem;
+}
+
+@media (max-width: 760px) {
+  .tournamentProfileEventHeader {
+    grid-template-columns: 56px minmax(0, 1fr);
+    min-height: 0;
+    padding: var(--space-4);
+  }
+
+  .tournamentProfileTrophy,
+  .tournamentProfileTrophyPlaceholder {
+    width: 52px;
+    height: 66px;
+  }
+
+  .tournamentProfileTrophy img {
+    width: 48px;
+    height: 62px;
+  }
+
+  .tournamentProfileEventMeta {
+    grid-column: 1 / -1;
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--color-border);
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .tournamentProfileMatchHead {
+    display: none;
+  }
+
+  .tournamentProfileMatchRow {
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+    gap: var(--space-1) var(--space-3);
+    min-height: 70px;
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .tournamentProfileResult {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  .tournamentProfileOpponent {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .tournamentProfileRound {
+    grid-column: 2 / -1;
+    grid-row: 2;
+    font-size: 0.78rem;
+  }
+
+  .tournamentProfileScore {
+    grid-column: 3;
+    grid-row: 1;
+  }
+}
+
+@media (max-width: 480px) {
+  .tournamentProfileHeader h1 {
+    font-size: var(--text-page-title-mobile);
+  }
+
+  .tournamentProfileSummary {
+    gap: var(--space-2) var(--space-3);
+  }
+
+  .tournamentProfileSummary > div {
+    gap: 5px;
+    padding-left: var(--space-2);
+  }
+
+  .tournamentProfileSummary dd {
+    font-size: 0.86rem;
+  }
+
+  .tournamentProfileSummary dt {
+    font-size: 0.72rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tournamentProfileTrophy,
+  .tournamentProfileTrophy img,
+  .tournamentProfileMatchRow {
+    transition-duration: 0.01ms;
+  }
+}

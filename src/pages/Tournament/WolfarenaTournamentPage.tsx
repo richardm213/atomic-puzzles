@@ -16,6 +16,7 @@ import { useEffect, useRef, useState } from "react";
 import { CommunityDiscussion } from "../../components/PuzzleCommunity/PuzzleCommunity";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
+import { modeLabels } from "../../constants/matches";
 import { tournamentCatalogQueryOptions } from "../../lib/matches/tournamentQueries";
 import {
   formatWolfarenaPoints,
@@ -35,6 +36,8 @@ const formatDate = (date: string): string =>
     new Date(`${date}T12:00:00Z`),
   );
 
+const formatTimeControl = (timeControl: string): string => timeControl.replace(/^0\.5\+/, "½+");
+
 const matchStatusLabel = (status: WolfarenaMatch["status"]): string => {
   if (status === "partial-forfeit") return "Partial forfeit";
   if (status === "double-forfeit") return "Double forfeit";
@@ -51,7 +54,7 @@ const initialRoundNumber = (tournament: WolfarenaTournament): number => {
 };
 
 const PlayerLink = ({ player }: { player: string }) => (
-  <Link to="/@/$username" params={{ username: normalizeUsername(player) }}>
+  <Link to="/tournaments/players/$username" params={{ username: normalizeUsername(player) }}>
     {player}
   </Link>
 );
@@ -210,10 +213,20 @@ const WolfarenaTournamentArchive = ({
             Tournaments
           </Link>
           <h1>{wolfarena2026.title}</h1>
-          {tournamentMeta?.startDate ? (
-            <span className="tournamentStartDate">
-              {formatCalendarDateRange(tournamentMeta.startDate, tournamentMeta.endDate)}
-            </span>
+          {tournamentMeta?.startDate || tournamentMeta?.timeControl ? (
+            <div className="tournamentHeroDetails">
+              {tournamentMeta.startDate ? (
+                <span className="tournamentStartDate">
+                  {formatCalendarDateRange(tournamentMeta.startDate, tournamentMeta.endDate)}
+                </span>
+              ) : null}
+              {tournamentMeta.timeControl ? (
+                <span className="tournamentTimeControl">
+                  {tournamentMeta.matchMode ? `${modeLabels[tournamentMeta.matchMode]} ` : null}
+                  {formatTimeControl(tournamentMeta.timeControl)}
+                </span>
+              ) : null}
+            </div>
           ) : null}
           <ol className="wolfarenaPodium" aria-label="Final tournament podium">
             {finalPodium.map((standing) => (
@@ -326,17 +339,19 @@ const WolfarenaTournamentArchive = ({
                         </span>
                       </td>
                       <th scope="row" data-label="Player">
-                        <PlayerLink player={standing.player} />
-                        {standing.streak ? (
-                          <span
-                            className="wolfarenaStreak"
-                            aria-label="Streak active: double points"
-                            title="Streak active: double points"
-                          >
-                            <FontAwesomeIcon icon={faFireFlameCurved} aria-hidden="true" />
-                            <span>2× points</span>
-                          </span>
-                        ) : null}
+                        <span className="wolfarenaStandingPlayer">
+                          <PlayerLink player={standing.player} />
+                          {standing.streak ? (
+                            <span
+                              className="wolfarenaStreak"
+                              aria-label="Streak active: double points"
+                              title="Streak active: double points"
+                            >
+                              <FontAwesomeIcon icon={faFireFlameCurved} aria-hidden="true" />
+                              <span>2× points</span>
+                            </span>
+                          ) : null}
+                        </span>
                       </th>
                       <td data-label="Points">
                         <strong>{formatWolfarenaPoints(standing.points)}</strong>
