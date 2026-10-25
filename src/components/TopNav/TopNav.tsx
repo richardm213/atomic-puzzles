@@ -924,6 +924,7 @@ export const TopNav = () => {
                   </Link>
                   {normalizedAuthUsername === "seaside_tiramisu" ? (
                     <>
+                      <div className="navProfileDropdownDivider" role="separator" />
                       <Link
                         className="navProfileDropdownItem"
                         to="/puzzles/review"
@@ -959,8 +960,9 @@ export const TopNav = () => {
                       </Link>
                     </>
                   ) : null}
+                  <div className="navProfileDropdownDivider" role="separator" />
                   <button
-                    className="navProfileDropdownItem"
+                    className="navProfileDropdownItem navProfileDropdownLogout"
                     type="button"
                     role="menuitem"
                     onClick={() => {

@@ -1066,11 +1066,12 @@
   top: calc(100% + 10px);
   right: 0;
   z-index: 41;
-  min-width: 160px;
-  padding: 8px;
-  border-radius: 14px;
+  width: 244px;
+  max-width: calc(100vw - (var(--space-4) * 2));
+  padding: var(--space-2);
+  border-radius: var(--radius-lg);
   display: grid;
-  gap: 4px;
+  gap: var(--space-1);
   transform-origin: top right;
   animation: navProfileDropdownIn 140ms ease;
 }
@@ -1085,24 +1086,32 @@
 
 .navProfileDropdownItem {
   width: 100%;
-  min-height: 38px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 10px;
+  min-height: var(--control-height-touch);
+  padding: 4px var(--space-3) 4px var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-ui);
   background: transparent;
   color: var(--color-text);
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-3);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: left;
   text-decoration: none;
+  white-space: nowrap;
   transition:
     background 120ms ease,
+    border-color 120ms ease,
     color 120ms ease,
     transform 90ms ease;
 }
 
 .navProfileDropdownItem:hover {
-  background: var(--color-panel-strong);
+  border-color: color-mix(in srgb, var(--color-primary) 22%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-panel-strong));
+  color: var(--color-heading);
 }
 
 .navProfileDropdownItem:active {
@@ -1116,16 +1125,43 @@
 }
 
 .navProfileDropdownIcon {
-  width: 16px;
-  display: inline-flex;
-  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  border-radius: calc(var(--radius-ui) - 2px);
+  background: var(--color-surface-inset);
+  display: inline-grid;
+  place-items: center;
   color: var(--color-muted);
-  transition: color 120ms ease;
+  font-size: 14px;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
 }
 
 .navProfileDropdownItem:hover .navProfileDropdownIcon,
 .navProfileDropdownItem:focus-visible .navProfileDropdownIcon {
+  background: color-mix(in srgb, var(--color-primary) 16%, var(--color-surface-inset));
+  color: var(--color-primary-soft);
+}
+
+.navProfileDropdownDivider {
+  height: 1px;
+  margin: var(--space-1) var(--space-2);
+  background: var(--color-border);
+}
+
+.navProfileDropdownLogout:hover,
+.navProfileDropdownLogout:focus-visible {
+  border-color: color-mix(in srgb, var(--color-danger) 24%, transparent);
+  background: var(--color-danger-soft-bg);
   color: var(--color-heading);
+}
+
+.navProfileDropdownLogout:hover .navProfileDropdownIcon,
+.navProfileDropdownLogout:focus-visible .navProfileDropdownIcon {
+  background: var(--color-danger-soft-bg);
+  color: var(--color-danger);
 }
 
 @keyframes navProfileDropdownIn {
