@@ -571,37 +571,24 @@ const winnerName = (match: TournamentMatch): string => {
 };
 
 const tournamentMatchProgress = (match: TournamentMatch): number => {
-  const numberedRound = /^Round (\d+)$/.exec(match.round);
-  if (numberedRound) return 500 + Number(numberedRound[1]);
-  if (match.bracket === "grand_final") return match.round === "Reset" ? 1_002 : 1_001;
-  if (match.bracket === "losers") return 700 + Math.max(0, getRoundIndex("losers", match.round));
-  if (match.bracket === "main") return 500 + Math.max(0, getRoundIndex("main", match.round));
+  if (match.bracket === "grand_final") return match.round === "Reset" ? 4_002 : 4_001;
+  if (match.bracket === "main" && match.round === "Grand Final Reset") return 4_002;
+  if (match.bracket === "main" && match.round === "Grand Final") return 4_001;
+  if (match.bracket === "losers") {
+    return 3_000 + Math.max(0, getRoundIndex("losers", match.round));
+  }
+  if (match.bracket === "main") {
+    const numberedRound = /^Round (\d+)$/.exec(match.round);
+    if (numberedRound) return 2_000 + Number(numberedRound[1]);
+    return 2_000 + Math.max(0, getRoundIndex("main", match.round));
+  }
   if (match.bracket === "qualifying") {
-    return 100 + Math.max(0, getRoundIndex("qualifying", match.round));
+    return 1_000 + Math.max(0, getRoundIndex("qualifying", match.round));
   }
   return 0;
 };
 
-const isDoubleEliminationStage = (match: TournamentMatch): boolean => {
-  if (match.bracket === "losers" || match.bracket === "grand_final") return true;
-  if (match.bracket !== "main") return false;
-  return getRoundIndex("main", match.round) >= getRoundIndex("main", "Round of 16");
-};
-
-const comparePlayerMatchChronology = (
-  left: TournamentMatch,
-  right: TournamentMatch,
-  hasDoubleElimination: boolean,
-): number => {
-  if (hasDoubleElimination) {
-    const leftInFinalStage = isDoubleEliminationStage(left);
-    const rightInFinalStage = isDoubleEliminationStage(right);
-    if (leftInFinalStage !== rightInFinalStage) return leftInFinalStage ? -1 : 1;
-    if (leftInFinalStage && rightInFinalStage) {
-      return right.order - left.order || right.id.localeCompare(left.id);
-    }
-  }
-
+const comparePlayerMatchChronology = (left: TournamentMatch, right: TournamentMatch): number => {
   return (
     tournamentMatchProgress(right) - tournamentMatchProgress(left) ||
     right.order - left.order ||
@@ -706,9 +693,6 @@ export const buildTournamentPlayerAppearances = (
     .flatMap(([tournamentId, matches]): TournamentPlayerAppearance[] => {
       const tournament = tournamentById.get(tournamentId);
       if (!tournament) return [];
-      const hasDoubleElimination = matches.some(
-        (match) => match.bracket === "losers" || match.bracket === "grand_final",
-      );
       const playerMatches = matches
         .map((match): TournamentPlayerMatch | null => {
           const playerKey = [match.p1, match.p2]
@@ -743,7 +727,7 @@ export const buildTournamentPlayerAppearances = (
             (match) => `${match.tournament}-${match.id}` === right.key,
           );
           if (!leftSource || !rightSource) return 0;
-          return comparePlayerMatchChronology(leftSource, rightSource, hasDoubleElimination);
+          return comparePlayerMatchChronology(leftSource, rightSource);
         });
 
       return [

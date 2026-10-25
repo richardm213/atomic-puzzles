@@ -1,5 +1,6 @@
 .tournamentProfilePage {
   --site-page-max-width: 720px;
+  --tournament-champion-gap: 4.5px;
 }
 
 .tournamentProfilePanel {
@@ -197,6 +198,12 @@
   font-variant-numeric: tabular-nums;
 }
 
+.tournamentProfileEventAside {
+  display: grid;
+  justify-items: end;
+  gap: var(--tournament-champion-gap);
+}
+
 .tournamentProfileEventMeta {
   margin: 0;
   color: var(--color-heading);
@@ -204,6 +211,12 @@
   font-variant-numeric: tabular-nums;
   font-weight: 800;
   white-space: nowrap;
+}
+
+.tournamentProfileChampion {
+  color: color-mix(in srgb, var(--color-accent-warm) 76%, var(--color-heading));
+  font-size: 0.82rem;
+  font-weight: 800;
 }
 
 .tournamentProfileMatchHead,
@@ -441,10 +454,14 @@
     height: 62px;
   }
 
-  .tournamentProfileEventMeta {
+  .tournamentProfileEventAside {
     grid-column: 1 / -1;
+    justify-items: start;
     padding-top: var(--space-3);
     border-top: 1px solid var(--color-border);
+  }
+
+  .tournamentProfileEventMeta {
     overflow-wrap: anywhere;
     white-space: normal;
   }

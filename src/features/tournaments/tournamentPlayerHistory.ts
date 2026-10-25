@@ -34,7 +34,7 @@ const aclTournamentMeta = (
   catalog.find((tournament) => tournament.id === `acl-s${seasonNumber}`) ??
   catalog.find((tournament) => tournament.seriesKey === "acl" && tournament.year === year);
 
-const isFirstPlace = (placementLabel: string): boolean =>
+export const isTournamentTitlePlacement = (placementLabel: string): boolean =>
   placementLabel === "Champion" || placementLabel === "1st" || placementLabel.startsWith("1st ");
 
 export const countTournamentPlayerTitles = (
@@ -42,7 +42,7 @@ export const countTournamentPlayerTitles = (
 ): { titles: number; teamTitles: number } =>
   appearances.reduce(
     (counts, appearance) => {
-      if (!isFirstPlace(appearance.placementLabel)) return counts;
+      if (!isTournamentTitlePlacement(appearance.placementLabel)) return counts;
       if (appearance.tournament.seriesKey === "acl") {
         counts.teamTitles += 1;
       } else {
