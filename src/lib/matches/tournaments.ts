@@ -238,7 +238,7 @@ const tournamentTimeControlFallbacks: Readonly<Record<string, string>> = {
   awc2025: "3+1",
   awc2024: "3+0",
   awc2023: "3+2",
-  awc2022: "1+0",
+  awc2022: "3+2",
   awc2021: "3+2",
   awc2020: "3+2",
   awc2019: "3+2",
