@@ -41,6 +41,7 @@ describe("buildAliasIdentityRowsFromArchiveRows", () => {
       aliases: ["grevozin", "drunk_ep"],
       openings: ["variety", "nh3 d4", "nf3 e4"],
       banned: false,
+      bot: false,
     });
     expect(rows[0]?.accounts).toEqual([
       {
@@ -49,6 +50,7 @@ describe("buildAliasIdentityRowsFromArchiveRows", () => {
         source: "chesscom",
         isCounted: true,
         banned: false,
+        bot: false,
       },
       {
         alias: "wolfram_ep",
@@ -56,6 +58,7 @@ describe("buildAliasIdentityRowsFromArchiveRows", () => {
         source: "lichess",
         isCounted: true,
         banned: false,
+        bot: false,
       },
       {
         alias: "wolfram_ep",
@@ -63,6 +66,7 @@ describe("buildAliasIdentityRowsFromArchiveRows", () => {
         source: "chesscom",
         isCounted: true,
         banned: false,
+        bot: false,
       },
       {
         alias: "drunk_ep",
@@ -70,6 +74,7 @@ describe("buildAliasIdentityRowsFromArchiveRows", () => {
         source: "lichess",
         isCounted: false,
         banned: false,
+        bot: false,
       },
       {
         alias: "banned_ep",
@@ -77,6 +82,7 @@ describe("buildAliasIdentityRowsFromArchiveRows", () => {
         source: "lichess",
         isCounted: true,
         banned: true,
+        bot: false,
       },
     ]);
   });
@@ -103,6 +109,26 @@ describe("buildAliasIdentityRowsFromArchiveRows", () => {
     expect(rows[0]?.aliases).toEqual(["dense_alt"]);
     expect(rows[0]?.accounts.find((account) => account.alias === "densef0g")?.banned).toBe(true);
   });
+
+  it("marks a bot identity separately from a banned identity", () => {
+    const rows = buildAliasIdentityRowsFromArchiveRows([
+      {
+        alias: "variantsbot",
+        username: "variantsbot",
+        banned: false,
+        bot: 1,
+        count_games: "y",
+        openings: "{}",
+      },
+    ]);
+
+    expect(rows[0]).toMatchObject({
+      username: "variantsbot",
+      banned: false,
+      bot: true,
+    });
+    expect(rows[0]?.accounts[0]).toMatchObject({ banned: false, bot: true });
+  });
 });
 
 describe("getAliasIdentityUsernames", () => {
@@ -113,6 +139,7 @@ describe("getAliasIdentityUsernames", () => {
         aliases: ["lichess_alt"],
         openings: [],
         banned: false,
+        bot: false,
         accounts: [
           {
             alias: "lichess_alt",
@@ -120,6 +147,7 @@ describe("getAliasIdentityUsernames", () => {
             source: "lichess",
             isCounted: true,
             banned: false,
+            bot: false,
           },
           {
             alias: "chesscom-alt",
@@ -127,6 +155,7 @@ describe("getAliasIdentityUsernames", () => {
             source: "chesscom",
             isCounted: true,
             banned: false,
+            bot: false,
           },
         ],
       }),

@@ -8,6 +8,7 @@ describe("buildAliasesLookup", () => {
         aliases: ["lichess_alt", "chesscom_one", "chesscom_two"],
         openings: [],
         banned: false,
+        bot: false,
         accounts: [
           {
             alias: "canonical",
@@ -15,6 +16,7 @@ describe("buildAliasesLookup", () => {
             source: "lichess",
             isCounted: true,
             banned: false,
+            bot: false,
           },
           {
             alias: "chesscom_one",
@@ -22,6 +24,7 @@ describe("buildAliasesLookup", () => {
             source: "chesscom",
             isCounted: true,
             banned: false,
+            bot: false,
           },
           {
             alias: "chesscom_two",
@@ -29,6 +32,7 @@ describe("buildAliasesLookup", () => {
             source: "chesscom",
             isCounted: true,
             banned: false,
+            bot: false,
           },
         ],
       },

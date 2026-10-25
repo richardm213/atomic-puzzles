@@ -33,7 +33,7 @@ export const RatingHistoryPage = ({ username }: { username: string }) => {
               Retry
             </button>
           </div>
-        ) : aliases.data?.banned ? (
+        ) : aliases.data?.banned || aliases.data?.bot ? (
           <p>This player is not included in Atomic Puzzles ratings.</p>
         ) : (
           <RatingHistoryGraph key={canonical} username={canonical} />

@@ -6,6 +6,7 @@ export type AliasLookupEntry = {
   chessComAliases: string[];
   openings: string[];
   banned: boolean;
+  bot: boolean;
 };
 
 export type AliasLookup = Map<string, AliasLookupEntry>;
@@ -31,6 +32,7 @@ export const buildAliasesLookup = (rows: AliasIdentityRow[]): AliasLookup => {
       chessComAliases,
       openings,
       banned: Boolean(row.banned),
+      bot: Boolean(row.bot),
     };
 
     members.forEach((member) => {

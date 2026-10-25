@@ -129,9 +129,47 @@ describe("banned profile ratings", () => {
     expect(screen.queryByRole("region", { name: "Blitz ratings" })).not.toBeInTheDocument();
     expect(screen.getByText(/Wolfrandom rating is still shown below/)).toBeInTheDocument();
   });
+
+  it("shows a bot tag without the banned-player notice", async () => {
+    client.setQueryData(aliasQueryKeys.identity("alice"), {
+      username: "alice",
+      aliases: [],
+      openings: [],
+      banned: false,
+      bot: true,
+      accounts: [],
+    });
+    client.setQueryData(profileQueryKeys.monthRanks("alice"), []);
+    client.setQueryData(["profile", "alice", "tournament-trophies", ["alice"]], []);
+    client.setQueryData(["puzzle-ranking-trophies"], []);
+    client.setQueryData(userQueryKeys.aliasRegistration(["alice"]), null);
+    loadRawMatchesByMode.mockResolvedValue({ matches: [], total: 0 });
+
+    renderProfile({ historyOnly: false });
+
+    expect(await screen.findByText("BOT")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Banned" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: /ratings$/i })).not.toBeInTheDocument();
+  });
 });
 
 describe("profile match pagination", () => {
+  it("loads all modes by default", async () => {
+    loadRawMatchesByMode.mockResolvedValue({ matches: [], total: 0 });
+
+    renderProfile();
+
+    const modeSelect = await screen.findByRole("combobox", { name: "Match history mode" });
+    expect(modeSelect).toHaveValue("all");
+    expect(within(modeSelect).getByRole("option", { name: "All" })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(loadRawMatchesByMode).toHaveBeenCalledWith(
+        "all",
+        expect.objectContaining({ page: 1, pageSize: 25 }),
+      ),
+    );
+  });
+
   it("keeps an uncached next page selected while loading, then supports Previous", async () => {
     let resolvePage!: (result: { matches: never[]; total: number }) => void;
     loadRawMatchesByMode.mockImplementation((_mode, { page }) =>

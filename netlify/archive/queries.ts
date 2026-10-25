@@ -312,12 +312,20 @@ const queryAliases = async (params: URLSearchParams) => {
     });
     canonical = String(resolved.rows[0]?.username ?? requested);
   }
+  const botColumn = await archive.execute(
+    "select 1 as present from pragma_table_info('aliases') where name='bot' limit 1",
+  );
+  const botSelection = botColumn.rows.length > 0 ? "a.bot" : "0 as bot";
   const result = await archive.execute({
-    sql: `select a.alias,p.username,a.banned,a.count_games,a.openings from aliases a
+    sql: `select a.alias,p.username,a.banned,${botSelection},a.count_games,a.openings from aliases a
       join players p on p.id=a.player_id ${canonical ? "where p.username=?" : ""} order by p.username,a.alias`,
     args: canonical ? [canonical] : [],
   });
-  return normalizedRows(result.rows).map((row) => ({ ...row, banned: Boolean(row.banned) }));
+  return normalizedRows(result.rows).map((row) => ({
+    ...row,
+    banned: Boolean(row.banned),
+    bot: Boolean(row.bot),
+  }));
 };
 
 const queryRatings = async (params: URLSearchParams) => {

@@ -55,6 +55,21 @@
   min-width: 0;
 }
 
+.profileBotTag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 2px 8px;
+  border: 1px solid color-mix(in srgb, var(--color-primary-soft) 55%, var(--color-border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-panel-strong));
+  color: var(--color-primary-soft);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1;
+}
+
 .profileOpeningTags {
   display: flex;
   flex-direction: row;

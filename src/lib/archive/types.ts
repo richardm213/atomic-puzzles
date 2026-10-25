@@ -63,6 +63,7 @@ export type AliasRow = {
   alias: string;
   username: string;
   banned: boolean;
+  bot?: boolean | 0 | 1;
   count_games: "y" | "n" | "c" | "o";
   openings: string;
 };

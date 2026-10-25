@@ -153,7 +153,7 @@ export const PlayerProfilePage = ({
   const queryClient = useQueryClient();
   const { hideWolfrandomProfileRatings } = useAppSettings();
   const normalizedUsername = useMemo(() => normalizeUsername(username), [username]);
-  const [matchHistoryMode, setMatchHistoryMode] = useState<ProfileMatchHistoryMode>(defaultMode);
+  const [matchHistoryMode, setMatchHistoryMode] = useState<ProfileMatchHistoryMode>("all");
   const [bestWinMode, setBestWinMode] =
     useState<import("../../constants/matches").Mode>(defaultMode);
   const [bestRankMode, setBestRankMode] =
@@ -188,6 +188,8 @@ export const PlayerProfilePage = ({
   const aliasesLoaded = Boolean(normalizedUsername) && !profileAliasQuery.isPending;
   const canonicalUsername = profileAliasEntry?.username ?? normalizedUsername;
   const isBanned = Boolean(profileAliasEntry?.banned);
+  const isBot = Boolean(profileAliasEntry?.bot) && !isBanned;
+  const isExcluded = isBanned || isBot;
   const profileLichessUsernames = useMemo(
     () => [
       canonicalUsername,
@@ -201,7 +203,7 @@ export const PlayerProfilePage = ({
     () => [
       canonicalUsername,
       ...(profileAliasEntry?.accounts ?? [])
-        .filter((account) => account.source === "lichess" && !account.banned)
+        .filter((account) => account.source === "lichess" && !account.banned && !account.bot)
         .map((account) => account.alias),
     ],
     [canonicalUsername, profileAliasEntry],
@@ -257,22 +259,22 @@ export const PlayerProfilePage = ({
     setTimeControlInitialFilter,
     timeControlIncrementFilter,
     setTimeControlIncrementFilter,
-  } = useProfileFilters(`${normalizedUsername}:${String(isBanned)}`);
+  } = useProfileFilters(`${normalizedUsername}:${String(isExcluded)}`);
   const bannedGameCounts = useQuery({
     queryKey: ["profile", canonicalUsername, "archived-game-counts"],
     queryFn: () =>
       fetchArchiveJson<Array<{ mode: string; games: number }>>(
         new URLSearchParams({ resource: "player_game_counts", username: canonicalUsername }),
       ),
-    enabled: aliasesLoaded && isBanned && Boolean(canonicalUsername),
+    enabled: aliasesLoaded && isExcluded && Boolean(canonicalUsername),
     staleTime: 5 * 60 * 1_000,
   });
 
   useEffect(() => {
-    if (isBanned && (profileHistoryTab === "ranks" || profileHistoryTab === "opponents")) {
+    if (isExcluded && (profileHistoryTab === "ranks" || profileHistoryTab === "opponents")) {
       setProfileHistoryTab("matches");
     }
-  }, [isBanned, profileHistoryTab]);
+  }, [isExcluded, profileHistoryTab]);
 
   const profileDataUsername = aliasesLoaded ? canonicalUsername : "";
   const ratingsSnapshotByMode = useRatingsSnapshotByMode(profileDataUsername);
@@ -287,15 +289,13 @@ export const PlayerProfilePage = ({
     () =>
       modeOptions.filter(
         (mode) =>
-          isBanned || mode !== "wolfrandom" || ratingDisplayByMode.wolfrandom.gamesPlayed > 0,
+          isExcluded || mode !== "wolfrandom" || ratingDisplayByMode.wolfrandom.gamesPlayed > 0,
       ),
-    [isBanned, ratingDisplayByMode.wolfrandom.gamesPlayed],
+    [isExcluded, ratingDisplayByMode.wolfrandom.gamesPlayed],
   );
   const rankHistoryModeOptions: RankHistoryMode[] = ["all", ...profileModeOptions];
   const favoriteOpponentModeOptions: RankHistoryMode[] = ["all", ...profileModeOptions];
-  const matchHistoryModeOptions: ProfileMatchHistoryMode[] = isBanned
-    ? ["all", ...profileModeOptions]
-    : profileModeOptions;
+  const matchHistoryModeOptions: ProfileMatchHistoryMode[] = ["all", ...profileModeOptions];
   const {
     rows: favoriteOpponentRows,
     mode: favoriteOpponentMode,
@@ -319,7 +319,7 @@ export const PlayerProfilePage = ({
   } = useFavoriteOpponentsModel({
     canonicalUsername,
     availableModes: profileModeOptions,
-    enabled: aliasesLoaded && !isBanned && profileHistoryTab === "opponents",
+    enabled: aliasesLoaded && !isExcluded && profileHistoryTab === "opponents",
     resetKey: normalizedUsername,
   });
   useEffect(() => {
@@ -339,7 +339,7 @@ export const PlayerProfilePage = ({
     [monthRanks, profileModeOptions],
   );
   const rankHistoryCountsEnabled = profileHistoryTab === "ranks" && rankHistoryView === "history";
-  const rankHighlightCountsEnabled = !historyOnly && !isBanned && profileHighlightView !== "wins";
+  const rankHighlightCountsEnabled = !historyOnly && !isExcluded && profileHighlightView !== "wins";
   const monthRanksNeedingPlayerCounts = useMemo(
     () =>
       rankHistoryCountsEnabled ? monthRanks : getMonthRanksForMode(visibleMonthRanks, bestRankMode),
@@ -352,7 +352,7 @@ export const PlayerProfilePage = ({
   const [bestMonthRankCount, setBestMonthRankCount] = useState(5);
   const [bestWinCount, setBestWinCount] = useState(5);
   useEffect(() => {
-    setMatchHistoryMode(isBanned ? "all" : defaultMode);
+    setMatchHistoryMode("all");
     setBestWinMode(defaultMode);
     setBestRankMode(defaultMode);
     setRankHistoryMode("all");
@@ -360,7 +360,7 @@ export const PlayerProfilePage = ({
     setRankHistorySortDirection("asc");
     setProfileHistoryTab(getProfileHistoryTabFromLocation());
     setExpandedMatchKeys([]);
-  }, [isBanned, normalizedUsername]);
+  }, [isExcluded, normalizedUsername]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
@@ -453,7 +453,7 @@ export const PlayerProfilePage = ({
     if (
       matchHistoryQuery.isPending ||
       !aliasesLoaded ||
-      isBanned ||
+      isExcluded ||
       matchHistoryMode === "all" ||
       profileHistoryTab !== "matches" ||
       isClientPagedResults ||
@@ -501,7 +501,7 @@ export const PlayerProfilePage = ({
     aliasesLoaded,
     appliedFilters,
     canonicalUsername,
-    isBanned,
+    isExcluded,
     isClientPagedResults,
     matchHistoryQuery.isPending,
     matchHistoryMode,
@@ -670,17 +670,19 @@ export const PlayerProfilePage = ({
           ]),
         ),
       ).filter((row) => {
-        if (row.key !== "wolfrandom-row") return !isBanned;
+        if (isBot) return false;
+        if (row.key !== "wolfrandom-row") return !isExcluded;
         return (
           !hideWolfrandomProfileRatings &&
           profileModeOptions.includes("wolfrandom") &&
-          (!isBanned || hasWolfrandomRating)
+          (!isExcluded || hasWolfrandomRating)
         );
       }),
     [
       hasWolfrandomRating,
       hideWolfrandomProfileRatings,
-      isBanned,
+      isBot,
+      isExcluded,
       latestMonthKeyByMode,
       profileModeOptions,
       ratingDisplayByMode,
@@ -720,7 +722,7 @@ export const PlayerProfilePage = ({
     [profileTrophies, trophyCaseSort],
   );
   const visibleProfileTrophies = useMemo(() => {
-    if (isBanned) {
+    if (isExcluded) {
       if (!puzzleRankingTrophiesQuery.isSuccess) return [];
       return getProfileHeaderTrophies({
         championshipTrophies: [],
@@ -741,7 +743,7 @@ export const PlayerProfilePage = ({
   }, [
     championshipTrophies,
     championshipTrophiesQuery.isSuccess,
-    isBanned,
+    isExcluded,
     profileRankingMonthKey,
     publishedRankingTrophies,
     puzzleRankingTrophiesQuery.isSuccess,
@@ -788,14 +790,15 @@ export const PlayerProfilePage = ({
           </div>
         ) : (
           <div
-            className={`profileIdentityRow${!isBanned && hasVisibleProfileTrophies ? "" : " noTrophies"}${
-              !isBanned && visibleProfileTrophies.length >= 3 ? " compactOpenings" : ""
+            className={`profileIdentityRow${!isExcluded && hasVisibleProfileTrophies ? "" : " noTrophies"}${
+              !isExcluded && visibleProfileTrophies.length >= 3 ? " compactOpenings" : ""
             }`}
           >
             <div className="profileIdentityTitle">
               <div className="profileIdentityHeading">
                 <h1>{profileDisplayUsername}</h1>
-                {!isBanned ? (
+                {isBot ? <span className="profileBotTag">BOT</span> : null}
+                {!isExcluded ? (
                   <details ref={profileActionsMenuRef} className="profileActionsMenu">
                     <summary aria-label="Profile actions" title="Profile actions">
                       <FontAwesomeIcon icon={faEllipsisVertical} aria-hidden="true" />
@@ -898,9 +901,9 @@ export const PlayerProfilePage = ({
           </section>
         ) : null}
 
-        {!historyOnly && (!isBanned || profileMetricRows.length > 0) ? (
+        {!historyOnly && (!isExcluded || profileMetricRows.length > 0) ? (
           <div id="profile-rating-view" className="profileRatingView">
-            {!isBanned && showRatingGraph ? (
+            {!isExcluded && showRatingGraph ? (
               <Suspense fallback={<p role="status">Loading rating graph…</p>}>
                 <RatingHistoryGraph key={canonicalUsername} username={canonicalUsername} />
               </Suspense>
@@ -932,7 +935,7 @@ export const PlayerProfilePage = ({
           </div>
         ) : null}
 
-        {isBanned ? (
+        {isExcluded ? (
           <dl className="profileBannedGameCounts" aria-label="Games played">
             {(["blitz", "bullet", "hyperbullet"] as const).map((mode) => (
               <div key={mode}>
@@ -951,7 +954,7 @@ export const PlayerProfilePage = ({
 
         {!historyOnly ? (
           <div className="profileHighlights profileHighlightsTopRow">
-            {!isBanned ? (
+            {!isExcluded ? (
               <div className="profileBestWins">
                 <div className="profileBestMonthRanksHeader">
                   <h2>
@@ -1165,7 +1168,7 @@ export const PlayerProfilePage = ({
                 >
                   Match History
                 </button>
-                {!isBanned ? (
+                {!isExcluded ? (
                   <>
                     <button
                       id="profile-rank-history-tab"
@@ -1304,7 +1307,7 @@ export const PlayerProfilePage = ({
                           </label>
                         </div>
 
-                        {!isBanned ? (
+                        {!isExcluded ? (
                           <div className="matchFilterRanges">
                             <DualRangeSlider
                               id="opponent-rating-min"
@@ -1345,7 +1348,7 @@ export const PlayerProfilePage = ({
                           <col className="profileMatchOpponentColumn" />
                           <col className="profileMatchTimeControlColumn" />
                           <col className="profileMatchScoreColumn" />
-                          {!isBanned ? (
+                          {!isExcluded ? (
                             <>
                               <col className="profileMatchRatingColumn" />
                               <col className="profileMatchRdColumn" />
@@ -1359,7 +1362,7 @@ export const PlayerProfilePage = ({
                             <th>Opponent</th>
                             <th>TC</th>
                             <th>Score</th>
-                            {!isBanned ? (
+                            {!isExcluded ? (
                               <>
                                 <th>Rating (Δ)</th>
                                 <th>RD (Δ)</th>
@@ -1427,7 +1430,7 @@ export const PlayerProfilePage = ({
                                       </span>
                                     </span>
                                   </td>
-                                  {!isBanned ? (
+                                  {!isExcluded ? (
                                     <>
                                       <td>
                                         <span className="profileMetricPair">
@@ -1466,7 +1469,7 @@ export const PlayerProfilePage = ({
                                 </tr>
                                 {isExpanded ? (
                                   <tr className="matchDetailsRow">
-                                    <td colSpan={isBanned ? 5 : 7}>
+                                    <td colSpan={isExcluded ? 5 : 7}>
                                       <div className="matchDetailsInner">
                                         <MatchDetails
                                           match={{
@@ -1510,7 +1513,7 @@ export const PlayerProfilePage = ({
                           })}
                           {visibleMatches.length === 0 ? (
                             <tr>
-                              <td colSpan={isBanned ? 5 : 7} className="emptyRankings">
+                              <td colSpan={isExcluded ? 5 : 7} className="emptyRankings">
                                 {matchHistoryMode === "all"
                                   ? "No matches found for this player with current filters across all modes."
                                   : `No matches found for this player with current filters in ${modeLabels[matchHistoryMode]}.`}

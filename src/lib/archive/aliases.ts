@@ -10,6 +10,7 @@ type NormalizedAliasAccountRow = {
   alias: string;
   openings: string[];
   banned: boolean;
+  bot: boolean;
   isCounted: boolean;
   accounts: AliasAccount[];
 };
@@ -22,6 +23,7 @@ export type AliasAccount = {
   source: AliasAccountSource;
   isCounted: boolean;
   banned: boolean;
+  bot: boolean;
 };
 
 export type AliasIdentityRow = {
@@ -29,6 +31,7 @@ export type AliasIdentityRow = {
   aliases: string[];
   openings: string[];
   banned: boolean;
+  bot: boolean;
   accounts: AliasAccount[];
 };
 
@@ -56,6 +59,8 @@ type AliasIdentityAccumulator = {
   hasActiveAccount: boolean;
   hasBannedAccount: boolean;
   hasBannedCanonicalAccount: boolean;
+  hasBotAccount: boolean;
+  hasBotCanonicalAccount: boolean;
 };
 
 const COUNT_GAMES_MODES = new Set<CountGamesMode>(["y", "n", "c", "o"]);
@@ -68,24 +73,28 @@ const createLichessAccount = (
   alias: string,
   isCounted: boolean = true,
   banned: boolean = false,
+  bot: boolean = false,
 ): AliasAccount => ({
   alias,
   displayAlias: alias,
   source: "lichess",
   isCounted,
   banned,
+  bot,
 });
 
 const createChessComAccount = (
   alias: string,
   displayAlias: string,
   banned: boolean,
+  bot: boolean,
 ): AliasAccount => ({
   alias,
   displayAlias,
   source: "chesscom",
   isCounted: true,
   banned,
+  bot,
 });
 
 const normalizeCountGamesValue = (value: AliasRow["count_games"] | undefined): CountGamesMode => {
@@ -100,16 +109,17 @@ const createAliasAccounts = (
   rawAlias: string,
   countGames: CountGamesMode,
   banned: boolean,
+  bot: boolean,
 ): AliasAccount[] => {
   const accounts: AliasAccount[] = [];
   const chessComDisplayAlias = normalizeUsername(rawAlias || alias);
 
   if (countGames !== "c") {
-    accounts.push(createLichessAccount(alias, countGames !== "n", banned));
+    accounts.push(createLichessAccount(alias, countGames !== "n", banned, bot));
   }
 
   if (countGames === "c" || countGames === "o") {
-    accounts.push(createChessComAccount(alias, chessComDisplayAlias, banned));
+    accounts.push(createChessComAccount(alias, chessComDisplayAlias, banned, bot));
   }
 
   return accounts;
@@ -133,6 +143,7 @@ const mergeAliasAccounts = (accounts: AliasAccount[] = []): AliasAccount[] => {
       source,
       isCounted: Boolean(account.isCounted),
       banned: Boolean(account.banned),
+      bot: Boolean(account.bot),
     });
   });
 
@@ -228,9 +239,16 @@ const normalizeAliasAccountRow = (
     username,
     alias,
     banned: Boolean(row?.banned),
+    bot: row?.bot === true || row?.bot === 1,
     isCounted: isCountedMode(countGames),
     openings: normalizeOpenings(row?.openings),
-    accounts: createAliasAccounts(alias, rawAlias, countGames, Boolean(row?.banned)),
+    accounts: createAliasAccounts(
+      alias,
+      rawAlias,
+      countGames,
+      Boolean(row?.banned),
+      row?.bot === true || row?.bot === 1,
+    ),
   };
 };
 
@@ -244,6 +262,8 @@ const createAliasIdentityAccumulator = (username: string): AliasIdentityAccumula
   hasActiveAccount: false,
   hasBannedAccount: false,
   hasBannedCanonicalAccount: false,
+  hasBotAccount: false,
+  hasBotCanonicalAccount: false,
 });
 
 const addAliasAccountRow = (
@@ -251,7 +271,12 @@ const addAliasAccountRow = (
   row: NormalizedAliasAccountRow,
 ): void => {
   accumulator.accounts.push(...row.accounts);
-  if (row.banned) {
+  if (row.banned || row.bot) {
+    if (row.bot) {
+      accumulator.hasBotAccount = true;
+      accumulator.hasBotCanonicalAccount ||= row.alias === row.username;
+    }
+    if (!row.banned) return;
     accumulator.hasBannedAccount = true;
     accumulator.hasBannedCanonicalAccount ||= row.alias === row.username;
     return;
@@ -280,6 +305,9 @@ const buildAliasIdentityRow = (
     banned:
       accumulator.hasBannedCanonicalAccount ||
       (!accumulator.hasActiveAccount && accumulator.hasBannedAccount),
+    bot:
+      accumulator.hasBotCanonicalAccount ||
+      (!accumulator.hasActiveAccount && accumulator.hasBotAccount),
     accounts: mergeAliasAccounts(accumulator.accounts),
   };
 };
