@@ -12,6 +12,7 @@ import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 
 import { puzzleLevelLabel } from "../../../shared/domain/puzzles/puzzleRating";
+import { CoinProfileActions } from "../../components/CoinProfileActions/CoinProfileActions";
 import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
@@ -502,6 +503,13 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
                 <FontAwesomeIcon icon={faArrowUpRightFromSquare} aria-hidden="true" />
                 <span>Custom sets</span>
               </Link>
+              {!viewingOwnDashboard ? (
+                <CoinProfileActions
+                  recipientUsername={targetUsername}
+                  recipientAliases={[targetUsername]}
+                  displayUsername={targetUsername}
+                />
+              ) : null}
               {!viewingOwnDashboard ? (
                 <Link className="puzzleDashboardActionLink" to={backLinkTo} params={backLinkParams}>
                   <FontAwesomeIcon icon={faArrowUpRightFromSquare} aria-hidden="true" />

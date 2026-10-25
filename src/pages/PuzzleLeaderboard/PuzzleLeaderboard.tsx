@@ -1,8 +1,6 @@
 import "../Rankings/Rankings.css";
 import "./PuzzleLeaderboard.css";
 
-import { faArrowUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo } from "react";
@@ -291,19 +289,10 @@ const PuzzleLeaderboard = () => {
                         ) : null}
                         <Link
                           className="rankingLink"
-                          to="/@/$username"
+                          to="/@/$username/puzzles"
                           params={{ username: row.username }}
                         >
                           {row.username}
-                        </Link>
-                        <Link
-                          className="puzzleLeaderboardDashboardLink"
-                          to="/@/$username/puzzles"
-                          params={{ username: row.username }}
-                          aria-label={`Open ${row.username}'s puzzle dashboard`}
-                          title="Puzzle dashboard"
-                        >
-                          <FontAwesomeIcon icon={faArrowUpRightFromSquare} aria-hidden="true" />
                         </Link>
                       </span>
                     </td>

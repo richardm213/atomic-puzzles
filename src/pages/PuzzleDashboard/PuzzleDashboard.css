@@ -71,6 +71,12 @@
   transition: var(--dashboard-transition);
 }
 
+.dashboardHeroLinks .coinProfileTriggers button {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: var(--radius-ui);
+}
+
 .puzzleDashboardActionButton {
   margin-left: auto;
   cursor: pointer;
@@ -1364,6 +1370,10 @@
   }
 
   .puzzleDashboardActionLink {
+    min-height: 44px;
+  }
+
+  .dashboardHeroLinks .coinProfileTriggers button {
     min-height: 44px;
   }
 

@@ -219,7 +219,7 @@ export const CoinRankingsPage = () => {
                         <td>
                           <Link
                             className="rankingLink"
-                            to="/@/$username"
+                            to="/@/$username/puzzles"
                             params={{ username: entry.username }}
                           >
                             {entry.username}
@@ -288,7 +288,7 @@ export const CoinRankingsPage = () => {
                       <td>
                         <Link
                           className="rankingLink"
-                          to="/@/$username"
+                          to="/@/$username/puzzles"
                           params={{ username: transaction.username }}
                         >
                           {transaction.username}
