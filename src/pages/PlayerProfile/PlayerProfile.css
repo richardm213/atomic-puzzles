@@ -1354,7 +1354,8 @@
 }
 
 .profileMatchTable td:nth-child(2) .rankingLink {
-  display: block;
+  display: inline-block;
+  max-width: 100%;
   min-width: 0;
   overflow-wrap: anywhere;
 }
