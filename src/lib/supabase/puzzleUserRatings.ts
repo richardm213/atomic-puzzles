@@ -91,6 +91,7 @@ const puzzleLeaderboardResponseSchema = z.object({
       averageSeconds: z.number().nullable(),
     }),
   ),
+  months: z.array(z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/)),
 });
 
 const puzzleRankingTrophiesResponseSchema = z.object({
@@ -162,7 +163,7 @@ export const fetchAllPuzzleUserRatings = async (): Promise<PuzzleUserRating[]> =
 export const fetchPuzzleLeaderboard = async (
   period: "monthly" | "all",
   month: string,
-): Promise<PuzzleLeaderboardMetricRow[]> => {
+): Promise<{ rows: PuzzleLeaderboardMetricRow[]; months: string[] }> => {
   const result = await postApi(
     "/api/puzzles/rating",
     { action: "leaderboard", period, ...(period === "monthly" ? { month } : {}) },
@@ -172,18 +173,21 @@ export const fetchPuzzleLeaderboard = async (
       invalidMessage: "The puzzle rankings service returned invalid data.",
     },
   );
-  return result.rows.map((row) => ({
-    username: normalizeUsername(row.username),
-    rating: Math.round(row.rating),
-    ratingDeviation: Math.max(0, Math.round(row.ratingDeviation)),
-    attempted: Math.max(0, Math.round(row.attempted)),
-    correct: Math.max(0, Math.round(row.correct)),
-    ...(typeof row.activityAttempts === "number"
-      ? { activityAttempts: Math.max(0, Math.round(row.activityAttempts)) }
-      : {}),
-    averageSeconds:
-      typeof row.averageSeconds === "number" ? Math.max(0, Math.round(row.averageSeconds)) : null,
-  }));
+  return {
+    rows: result.rows.map((row) => ({
+      username: normalizeUsername(row.username),
+      rating: Math.round(row.rating),
+      ratingDeviation: Math.max(0, Math.round(row.ratingDeviation)),
+      attempted: Math.max(0, Math.round(row.attempted)),
+      correct: Math.max(0, Math.round(row.correct)),
+      ...(typeof row.activityAttempts === "number"
+        ? { activityAttempts: Math.max(0, Math.round(row.activityAttempts)) }
+        : {}),
+      averageSeconds:
+        typeof row.averageSeconds === "number" ? Math.max(0, Math.round(row.averageSeconds)) : null,
+    })),
+    months: result.months,
+  };
 };
 
 export const fetchPuzzleRankingTrophies = async (): Promise<PuzzleRankingTrophyRow[]> => {

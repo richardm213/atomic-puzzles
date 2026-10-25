@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import {
   buildPuzzleLeaderboardRows,
   calculatePuzzleCorrectPercent,
-  filterPuzzleProgressRowsByPeriod,
   isPuzzleLeaderboardEligible,
   puzzleActivityBonus,
   puzzleTrophyLevel,
@@ -89,81 +88,10 @@ describe("puzzleLeaderboard", () => {
     expect(puzzleTrophyLevel(null)).toBeNull();
   });
 
-  it("filters attempts to the selected calendar month", () => {
-    const rows = [
-      {
-        username: "start-of-month",
-        puzzle_id: "1",
-        first_attempt_at: "2026-07-01T00:00:00.000Z",
-        puzzle_correct: true,
-        incorrect_move: null,
-      },
-      {
-        username: "end-of-month",
-        puzzle_id: "2",
-        first_attempt_at: "2026-07-31T23:59:59.999Z",
-        puzzle_correct: false,
-        incorrect_move: "Nf3",
-      },
-      {
-        username: "next-month",
-        puzzle_id: "3",
-        first_attempt_at: "2026-08-01T00:00:00.000Z",
-        puzzle_correct: true,
-        incorrect_move: null,
-      },
-    ];
-
-    expect(filterPuzzleProgressRowsByPeriod(rows, "monthly", "2026-07")).toEqual([
-      rows[0],
-      rows[1],
-    ]);
-    expect(filterPuzzleProgressRowsByPeriod(rows, "all", "2026-07")).toBe(rows);
-  });
-
-  it("averages rated puzzle times in seconds and excludes durations above 15 minutes", () => {
+  it("uses the server-aggregated average puzzle time", () => {
     const rows = buildPuzzleLeaderboardRows(
-      [metricRow("solver", 2100, 50, 20)],
+      [{ ...metricRow("solver", 2100, 50, 20), averageSeconds: 465 }],
       "monthly",
-      [
-        {
-          username: "solver",
-          puzzle_id: "1",
-          first_attempt_at: "2026-07-01T00:00:00.000Z",
-          first_attempt_duration_ms: 30_000,
-          puzzle_correct: true,
-          rated: true,
-          incorrect_move: null,
-        },
-        {
-          username: "solver",
-          puzzle_id: "2",
-          first_attempt_at: "2026-07-02T00:00:00.000Z",
-          first_attempt_duration_ms: 900_000,
-          puzzle_correct: true,
-          rated: true,
-          incorrect_move: null,
-        },
-        {
-          username: "solver",
-          puzzle_id: "3",
-          first_attempt_at: "2026-07-03T00:00:00.000Z",
-          first_attempt_duration_ms: 900_001,
-          puzzle_correct: false,
-          rated: true,
-          incorrect_move: "Nf3",
-        },
-        {
-          username: "solver",
-          puzzle_id: "4",
-          first_attempt_at: "2026-07-04T00:00:00.000Z",
-          first_attempt_duration_ms: 1_000,
-          puzzle_correct: true,
-          rated: false,
-          incorrect_move: null,
-        },
-      ],
-      "2026-07",
     );
 
     expect(rows[0]?.averageSeconds).toBe(465);

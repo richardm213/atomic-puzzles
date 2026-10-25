@@ -5,7 +5,7 @@ import { faArrowUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { z } from "zod";
 
 import { DataTable } from "../../components/DataTable/DataTable";
@@ -23,11 +23,7 @@ import {
   type PuzzleLeaderboardRow,
   puzzleTrophyLevel,
 } from "../../lib/puzzles/puzzleLeaderboard";
-import {
-  puzzleLeaderboardProgressQueryOptions,
-  puzzleLeaderboardQueryOptions,
-} from "../../lib/puzzles/puzzleQueries";
-import type { PuzzleProgressWithUsernameRow } from "../../lib/supabase/types";
+import { puzzleLeaderboardQueryOptions } from "../../lib/puzzles/puzzleQueries";
 import { appAssetPath } from "../../utils/appAssetPath";
 
 type PuzzleLeaderboardSortKey = keyof Pick<
@@ -69,7 +65,6 @@ const puzzleLeaderboardShowAllStorageKey = "atomic-puzzles.puzzle-rankings-show-
 const puzzleAverageTimeStartMonth = "2026-10";
 const puzzleLeaderboardPeriodSchema = z.enum(["monthly", "all"]);
 const puzzleLeaderboardMonthSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
-const emptyPuzzleProgressRows: PuzzleProgressWithUsernameRow[] = [];
 
 const currentUtcMonth = (): string => new Date().toISOString().slice(0, 7);
 
@@ -79,14 +74,10 @@ const puzzleRankingMonthLabel = (month: string): string => {
   return date.toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
 };
 
-const puzzleRankingMonthOptions = (progressRows: PuzzleProgressWithUsernameRow[]): string[] => {
+const puzzleRankingMonthOptions = (availableMonths: string[]): string[] => {
   const currentMonth = currentUtcMonth();
-  const validAttemptMonths = progressRows
-    .map((row) => new Date(row?.first_attempt_at ?? ""))
-    .filter((date) => !Number.isNaN(date.getTime()))
-    .map((date) => date.toISOString().slice(0, 7))
-    .filter((month) => month <= currentMonth);
-  const earliestMonth = validAttemptMonths.sort()[0] ?? currentMonth;
+  const earliestMonth =
+    [...availableMonths].filter((month) => month <= currentMonth).sort()[0] ?? currentMonth;
   const options: string[] = [];
   const cursor = new Date(`${earliestMonth}-01T00:00:00Z`);
   const lastMonth = new Date(`${currentMonth}-01T00:00:00Z`);
@@ -125,24 +116,30 @@ const PuzzleLeaderboard = () => {
     initialKey: "leaderboardScore",
     getDefaultDirection: (key) => (key === "rank" || key === "username" ? "asc" : "desc"),
   });
-  const progressQuery = useQuery(puzzleLeaderboardProgressQueryOptions());
-  const progressRows = progressQuery.data ?? emptyPuzzleProgressRows;
-  const monthOptions = useMemo(() => puzzleRankingMonthOptions(progressRows), [progressRows]);
+  const requestedMonth = selectedMonth <= currentUtcMonth() ? selectedMonth : currentUtcMonth();
+  const leaderboardQuery = useQuery(puzzleLeaderboardQueryOptions(period, requestedMonth));
+  const monthOptions = useMemo(
+    () => puzzleRankingMonthOptions(leaderboardQuery.data?.months ?? []),
+    [leaderboardQuery.data?.months],
+  );
   const effectiveMonth = monthOptions.includes(selectedMonth)
     ? selectedMonth
     : (monthOptions[0] ?? currentUtcMonth());
-  const leaderboardQuery = useQuery(puzzleLeaderboardQueryOptions(period, effectiveMonth));
-  const loading = progressQuery.isPending || leaderboardQuery.isPending;
-  const queryError = progressQuery.error ?? leaderboardQuery.error;
+  useEffect(() => {
+    if (leaderboardQuery.data && effectiveMonth !== selectedMonth) {
+      setSelectedMonth(effectiveMonth);
+    }
+  }, [effectiveMonth, leaderboardQuery.data, selectedMonth, setSelectedMonth]);
+  const loading = leaderboardQuery.isPending;
+  const queryError = leaderboardQuery.error;
   const error = queryError
     ? queryError instanceof Error
       ? queryError.message
       : "Failed to load puzzle rankings."
     : "";
   const allRows = useMemo(
-    () =>
-      buildPuzzleLeaderboardRows(leaderboardQuery.data ?? [], period, progressRows, effectiveMonth),
-    [effectiveMonth, leaderboardQuery.data, period, progressRows],
+    () => buildPuzzleLeaderboardRows(leaderboardQuery.data?.rows ?? [], period),
+    [leaderboardQuery.data?.rows, period],
   );
   const rows = useMemo(
     () =>

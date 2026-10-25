@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-import { rankPuzzleLeaderboardMetrics } from "../../../../shared/domain/puzzles/puzzleLeaderboard";
 import {
   authenticateRequest,
   requireSameOrigin,
@@ -44,195 +43,61 @@ const serializeRatingEvent = (row: Record<string, unknown>) => ({
   puzzleRatingAfter: Number(row.puzzle_rating_after),
 });
 
-const pageThrough = async (
-  loadPage: (
-    from: number,
-    to: number,
-  ) => PromiseLike<{
-    data: unknown[] | null;
-    error: { message: string } | null;
-  }>,
-  label: string,
-): Promise<Record<string, unknown>[]> => {
-  const rows: Record<string, unknown>[] = [];
-  const pageSize = 1_000;
-  for (let from = 0; ; from += pageSize) {
-    const { data, error } = await loadPage(from, from + pageSize - 1);
-    if (error) throw new Error(`Unable to load ${label}: ${error.message}`);
-    const page = (data ?? []) as Record<string, unknown>[];
-    rows.push(...page);
-    if (page.length < pageSize) break;
-  }
-  return rows;
-};
-
-const nextUtcMonth = (month: string): string => {
-  const date = new Date(`${month}-01T00:00:00Z`);
-  date.setUTCMonth(date.getUTCMonth() + 1);
-  return date.toISOString().slice(0, 7);
-};
-
-const ALL_TIME_ACTIVITY_WINDOW_DAYS = 120;
-
-const allTimeActivityStart = (): string =>
-  new Date(Date.now() - ALL_TIME_ACTIVITY_WINDOW_DAYS * 24 * 60 * 60 * 1_000).toISOString();
-
 const loadLeaderboardRows = async (period: "monthly" | "all", month: string | undefined) => {
+  if (period === "monthly" && !month) {
+    throw new HttpError(400, "Choose a month for monthly puzzle rankings.");
+  }
   const supabase = createServerSupabase("Puzzle leaderboard service");
-  if (period === "all") {
-    const rows = await pageThrough(
-      (from, to) =>
-        supabase
-          .from("puzzle_user_ratings")
-          .select("username,rating,rating_deviation,attempts,successes,average_time_seconds")
-          .order("rating", { ascending: false })
-          .range(from, to),
-      "all-time puzzle rankings",
-    );
-    const recentEvents = await pageThrough(
-      (from, to) =>
-        supabase
-          .from("puzzle_rating_events")
-          .select("username,attempted_at")
-          .gte("attempted_at", allTimeActivityStart())
-          .order("attempted_at", { ascending: true })
-          .range(from, to),
-      "recent all-time puzzle ranking activity",
-    );
-    const recentAttempts = new Map<string, number>();
-    recentEvents.forEach((event) => {
-      const username = String(event.username ?? "")
-        .trim()
-        .toLowerCase();
-      if (!username) return;
-      recentAttempts.set(username, (recentAttempts.get(username) ?? 0) + 1);
-    });
-    return rows.map((row) => ({
+  const [{ data: rows, error }, { data: months, error: monthsError }] = await Promise.all([
+    supabase.rpc("get_puzzle_leaderboard", {
+      p_period: period,
+      p_month: period === "monthly" ? month : null,
+    }),
+    supabase.rpc("get_puzzle_leaderboard_months"),
+  ]);
+  if (error) throw new Error(`Unable to load puzzle rankings: ${error.message}`);
+  if (monthsError) throw new Error(`Unable to load puzzle ranking months: ${monthsError.message}`);
+
+  return {
+    rows: (rows ?? []).map((row: Record<string, unknown>) => ({
       username: String(row.username ?? "")
         .trim()
         .toLowerCase(),
       rating: Number(row.rating),
       ratingDeviation: Number(row.rating_deviation),
-      attempted: Number(row.attempts),
-      correct: Number(row.successes),
-      activityAttempts:
-        recentAttempts.get(
-          String(row.username ?? "")
-            .trim()
-            .toLowerCase(),
-        ) ?? 0,
-      averageSeconds: row.average_time_seconds === null ? null : Number(row.average_time_seconds),
-    }));
-  }
-
-  if (!month) throw new HttpError(400, "Choose a month for monthly puzzle rankings.");
-  const start = `${month}-01T00:00:00.000Z`;
-  const end = `${nextUtcMonth(month)}-01T00:00:00.000Z`;
-  const events = await pageThrough(
-    (from, to) =>
-      supabase
-        .from("puzzle_rating_events")
-        .select("username,attempted_at,puzzle_correct,user_rating_after,user_rd_after")
-        .gte("attempted_at", start)
-        .lt("attempted_at", end)
-        .order("attempted_at", { ascending: true })
-        .range(from, to),
-    "monthly puzzle rankings",
-  );
-  const players = new Map<
-    string,
-    {
-      username: string;
-      rating: number;
-      ratingDeviation: number;
-      attempted: number;
-      correct: number;
-      averageSeconds: number | null;
-    }
-  >();
-  events.forEach((event) => {
-    const username = String(event.username ?? "")
-      .trim()
-      .toLowerCase();
-    if (!username) return;
-    const row = players.get(username) ?? {
-      username,
-      rating: 2000,
-      ratingDeviation: 350,
-      attempted: 0,
-      correct: 0,
-      averageSeconds: null,
-    };
-    row.attempted += 1;
-    if (event.puzzle_correct) row.correct += 1;
-    row.rating = Number(event.user_rating_after);
-    row.ratingDeviation = Number(event.user_rd_after);
-    players.set(username, row);
-  });
-  return [...players.values()];
+      attempted: Number(row.attempted),
+      correct: Number(row.correct),
+      activityAttempts: Number(row.activity_attempts),
+      averageSeconds: row.average_seconds === null ? null : Number(row.average_seconds),
+    })),
+    months: (months ?? [])
+      .map((row: Record<string, unknown>) => String(row.month ?? ""))
+      .filter(Boolean),
+  };
 };
 
 const loadPuzzleRankingTrophies = async () => {
   const supabase = createServerSupabase("Puzzle ranking trophy service");
-  const events = await pageThrough(
-    (from, to) =>
-      supabase
-        .from("puzzle_rating_events")
-        .select("username,attempted_at,puzzle_correct,user_rating_after,user_rd_after")
-        .order("attempted_at", { ascending: true })
-        .range(from, to),
-    "puzzle ranking trophy history",
-  );
-  const months = new Map<
-    string,
-    Map<
-      string,
-      {
-        username: string;
-        rating: number;
-        ratingDeviation: number;
-        attempted: number;
-        correct: number;
-      }
-    >
-  >();
-
-  events.forEach((event) => {
-    const attemptedAt = new Date(String(event.attempted_at ?? ""));
-    const username = String(event.username ?? "")
+  const { data, error } = await supabase.rpc("get_puzzle_ranking_trophies");
+  if (error) throw new Error(`Unable to load puzzle ranking trophies: ${error.message}`);
+  return (data ?? []).map((row: Record<string, unknown>) => ({
+    username: String(row.username ?? "")
       .trim()
-      .toLowerCase();
-    if (Number.isNaN(attemptedAt.getTime()) || !username) return;
-    const month = attemptedAt.toISOString().slice(0, 7);
-    const players = months.get(month) ?? new Map();
-    const row = players.get(username) ?? {
-      username,
-      rating: 2000,
-      ratingDeviation: 350,
-      attempted: 0,
-      correct: 0,
-    };
-    row.attempted += 1;
-    if (event.puzzle_correct) row.correct += 1;
-    row.rating = Number(event.user_rating_after);
-    row.ratingDeviation = Number(event.user_rd_after);
-    players.set(username, row);
-    months.set(month, players);
-  });
-
-  return [...months.entries()].flatMap(([month, players]) =>
-    rankPuzzleLeaderboardMetrics([...players.values()], "monthly")
-      .filter((row) => row.eligible && row.rank !== null && row.rank <= 10)
-      .map((row) => ({ ...row, month })),
-  );
+      .toLowerCase(),
+    month: String(row.month ?? ""),
+    rank: Number(row.rank),
+    eligible: Boolean(row.eligible),
+    rating: Number(row.rating),
+    ratingDeviation: Number(row.rating_deviation),
+    attempted: Number(row.attempted),
+    correct: Number(row.correct),
+  }));
 };
 
 export const puzzleRatingRoute = async (event: FunctionEvent) => {
   const input = parseJsonBody(event, ratingRequestSchema, "Invalid puzzle rating request.");
   if ("action" in input && input.action === "leaderboard") {
-    return jsonResponse(200, {
-      rows: await loadLeaderboardRows(input.period, input.month),
-    });
+    return jsonResponse(200, await loadLeaderboardRows(input.period, input.month));
   }
   if ("action" in input && input.action === "history") {
     const normalizedUsername = input.username.trim().toLocaleLowerCase();

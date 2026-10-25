@@ -420,18 +420,6 @@ export const fetchPuzzleProgressRowsForUsername = async (
   return normalizePuzzleProgressRows(serverRows);
 };
 
-export const fetchAllPuzzleProgressRows = async (): Promise<PuzzleProgressWithUsernameRow[]> => {
-  const supabase = getSupabaseClient();
-  return fetchAllSupabaseRows<PuzzleProgressWithUsernameRow>(PUZZLE_PROGRESS_TABLE, () =>
-    supabase
-      .from(PUZZLE_PROGRESS_TABLE)
-      .select(
-        "username,puzzle_id,first_attempt_at,first_attempt_duration_ms,puzzle_correct,rated,incorrect_move,correct_move",
-      )
-      .order("first_attempt_at", { ascending: false }),
-  );
-};
-
 export const fetchPuzzleAttemptsForPuzzle = async (
   puzzleId: string | number | null | undefined,
   options: FetchPuzzleAttemptsForPuzzleOptions = {},

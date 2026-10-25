@@ -135,44 +135,27 @@ describe("puzzle-rating function", () => {
     });
   });
 
-  it("builds monthly rankings from each player's final event in the selected month", async () => {
-    const query = {
-      select: vi.fn(),
-      gte: vi.fn(),
-      lt: vi.fn(),
-      order: vi.fn(),
-      range: vi.fn(async () => ({
+  it("loads monthly rankings and available months through aggregate RPCs", async () => {
+    const rpc = vi.fn((name: string) => {
+      if (name === "get_puzzle_leaderboard_months") {
+        return Promise.resolve({ data: [{ month: "2026-09" }], error: null });
+      }
+      return Promise.resolve({
         data: [
           {
             username: "solver",
-            attempted_at: "2026-09-01T00:00:00.000Z",
-            puzzle_correct: false,
-            user_rating_after: 1990,
-            user_rd_after: 80,
-          },
-          {
-            username: "solver",
-            attempted_at: "2026-09-30T23:59:59.000Z",
-            puzzle_correct: true,
-            user_rating_after: 2040,
-            user_rd_after: 55,
-          },
-          {
-            username: "other",
-            attempted_at: "2026-09-15T00:00:00.000Z",
-            puzzle_correct: true,
-            user_rating_after: 2100,
-            user_rd_after: 50,
+            rating: 2040,
+            rating_deviation: 55,
+            attempted: 20,
+            correct: 15,
+            activity_attempts: 20,
+            average_seconds: 42,
           },
         ],
         error: null,
-      })),
-    };
-    query.select.mockReturnValue(query);
-    query.gte.mockReturnValue(query);
-    query.lt.mockReturnValue(query);
-    query.order.mockReturnValue(query);
-    mocks.createClient.mockReturnValue({ from: vi.fn(() => query) });
+      });
+    });
+    mocks.createClient.mockReturnValue({ rpc });
 
     const response = await handler({
       httpMethod: "POST",
@@ -180,79 +163,58 @@ describe("puzzle-rating function", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(query.gte).toHaveBeenCalledWith("attempted_at", "2026-09-01T00:00:00.000Z");
-    expect(query.lt).toHaveBeenCalledWith("attempted_at", "2026-10-01T00:00:00.000Z");
+    expect(rpc).toHaveBeenCalledWith("get_puzzle_leaderboard", {
+      p_period: "monthly",
+      p_month: "2026-09",
+    });
+    expect(rpc).toHaveBeenCalledWith("get_puzzle_leaderboard_months");
     expect(JSON.parse(response.body)).toEqual({
       rows: [
         {
           username: "solver",
           rating: 2040,
           ratingDeviation: 55,
-          attempted: 2,
-          correct: 1,
-          averageSeconds: null,
-        },
-        {
-          username: "other",
-          rating: 2100,
-          ratingDeviation: 50,
-          attempted: 1,
-          correct: 1,
-          averageSeconds: null,
+          attempted: 20,
+          correct: 15,
+          activityAttempts: 20,
+          averageSeconds: 42,
         },
       ],
+      months: ["2026-09"],
     });
   });
 
-  it("counts all-time activity from rated attempts in the trailing 120 days", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-10-10T00:00:00.000Z"));
-    const ratingsQuery = {
-      select: vi.fn(),
-      order: vi.fn(),
-      range: vi.fn(async () => ({
-        data: [
-          {
-            username: "Solver",
-            rating: 2200,
-            rating_deviation: 50,
-            attempts: 600,
-            successes: 400,
-            average_time_seconds: 30,
-          },
-        ],
+  it("loads all-time activity through the aggregate leaderboard RPC", async () => {
+    const rpc = vi.fn((name: string) =>
+      Promise.resolve({
+        data:
+          name === "get_puzzle_leaderboard"
+            ? [
+                {
+                  username: "solver",
+                  rating: 2200,
+                  rating_deviation: 50,
+                  attempted: 600,
+                  correct: 400,
+                  activity_attempts: 2,
+                  average_seconds: 30,
+                },
+              ]
+            : [{ month: "2026-10" }],
         error: null,
-      })),
-    };
-    ratingsQuery.select.mockReturnValue(ratingsQuery);
-    ratingsQuery.order.mockReturnValue(ratingsQuery);
-    const eventsQuery = {
-      select: vi.fn(),
-      gte: vi.fn(),
-      order: vi.fn(),
-      range: vi.fn(async () => ({
-        data: [
-          { username: "solver", attempted_at: "2026-09-01T00:00:00.000Z" },
-          { username: "Solver", attempted_at: "2026-09-02T00:00:00.000Z" },
-        ],
-        error: null,
-      })),
-    };
-    eventsQuery.select.mockReturnValue(eventsQuery);
-    eventsQuery.gte.mockReturnValue(eventsQuery);
-    eventsQuery.order.mockReturnValue(eventsQuery);
-    mocks.createClient.mockReturnValue({
-      from: vi.fn((table: string) =>
-        table === "puzzle_user_ratings" ? ratingsQuery : eventsQuery,
-      ),
-    });
+      }),
+    );
+    mocks.createClient.mockReturnValue({ rpc });
 
     const response = await handler({
       httpMethod: "POST",
       body: JSON.stringify({ action: "leaderboard", period: "all" }),
     });
 
-    expect(eventsQuery.gte).toHaveBeenCalledWith("attempted_at", "2026-06-12T00:00:00.000Z");
+    expect(rpc).toHaveBeenCalledWith("get_puzzle_leaderboard", {
+      p_period: "all",
+      p_month: null,
+    });
     expect(JSON.parse(response.body).rows[0]).toMatchObject({
       username: "solver",
       attempted: 600,
@@ -260,36 +222,23 @@ describe("puzzle-rating function", () => {
     });
   });
 
-  it("returns top-10 puzzle ranking trophies for every UTC month", async () => {
-    const monthlyAttempts = (
-      username: string,
-      month: string,
-      rating: number,
-      ratingDeviation: number,
-    ) =>
-      Array.from({ length: 20 }, (_, index) => ({
-        username,
-        attempted_at: `${month}-${String(index + 1).padStart(2, "0")}T12:00:00.000Z`,
-        puzzle_correct: index % 2 === 0,
-        user_rating_after: rating,
-        user_rd_after: ratingDeviation,
-      }));
-    const query = {
-      select: vi.fn(),
-      order: vi.fn(),
-      range: vi.fn(async () => ({
-        data: [
-          ...monthlyAttempts("solver", "2026-08", 2200, 50),
-          ...monthlyAttempts("leader", "2026-08", 2300, 50),
-          ...monthlyAttempts("solver", "2026-09", 2400, 50),
-          ...monthlyAttempts("leader", "2026-09", 2300, 50),
-        ],
-        error: null,
-      })),
-    };
-    query.select.mockReturnValue(query);
-    query.order.mockReturnValue(query);
-    mocks.createClient.mockReturnValue({ from: vi.fn(() => query) });
+  it("returns pre-aggregated puzzle ranking trophies", async () => {
+    const rpc = vi.fn(async () => ({
+      data: [
+        {
+          username: "solver",
+          month: "2026-09",
+          rank: 1,
+          eligible: true,
+          rating: 2400,
+          rating_deviation: 50,
+          attempted: 20,
+          correct: 10,
+        },
+      ],
+      error: null,
+    }));
+    mocks.createClient.mockReturnValue({ rpc });
 
     const response = await handler({
       httpMethod: "POST",
@@ -297,12 +246,10 @@ describe("puzzle-rating function", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(JSON.parse(response.body).rows).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ username: "solver", month: "2026-08", rank: 2 }),
-        expect.objectContaining({ username: "solver", month: "2026-09", rank: 1 }),
-      ]),
-    );
+    expect(rpc).toHaveBeenCalledWith("get_puzzle_ranking_trophies");
+    expect(JSON.parse(response.body).rows).toEqual([
+      expect.objectContaining({ username: "solver", month: "2026-09", rank: 1 }),
+    ]);
   });
 
   it("updates the V preset without replaying historical player ratings", async () => {
