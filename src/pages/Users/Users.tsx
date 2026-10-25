@@ -33,6 +33,8 @@ type UserRatingMode = Exclude<Mode, "wolfrandom">;
 
 type UserRow = {
   username: string;
+  banned: boolean;
+  bot: boolean;
   blitz: RatingCells;
   bullet: RatingCells;
   hyperbullet: RatingCells;
@@ -100,13 +102,18 @@ const compareNullableNumbers = (
   return directionMultiplier * (a - b);
 };
 
-const buildUserRows = (ratingRows: PlayerRatingRow[], aliasesLookup: AliasLookup): UserRow[] => {
+export const buildUserRows = (
+  ratingRows: PlayerRatingRow[],
+  aliasesLookup: AliasLookup,
+): UserRow[] => {
   const rowsByUsername = new Map<string, UserRow>();
 
   (Array.isArray(ratingRows) ? ratingRows : []).forEach((row) => {
     const username = String(row?.username ?? "").trim();
     const mode = String(row?.tc ?? "").toLowerCase();
     if (!username || !isMode(mode)) return;
+    const aliasEntry = aliasesLookup.get(username);
+    const isEstimated = Boolean(aliasEntry?.banned || aliasEntry?.bot);
 
     const emptyRatingCells: RatingCells = {
       current: { display: "?", sortValue: null },
@@ -115,6 +122,8 @@ const buildUserRows = (ratingRows: PlayerRatingRow[], aliasesLookup: AliasLookup
 
     const existing: UserRow = rowsByUsername.get(username) ?? {
       username,
+      banned: Boolean(aliasEntry?.banned),
+      bot: Boolean(aliasEntry?.bot),
       blitz: emptyRatingCells,
       bullet: emptyRatingCells,
       hyperbullet: emptyRatingCells,
@@ -123,7 +132,11 @@ const buildUserRows = (ratingRows: PlayerRatingRow[], aliasesLookup: AliasLookup
       openings: aliasesLookup.get(username)?.openings ?? [],
     };
 
-    if (isUserRatingMode(mode)) existing[mode] = normalizeRatingCells(row);
+    existing.banned = Boolean(aliasEntry?.banned);
+    existing.bot = Boolean(aliasEntry?.bot);
+    if (isUserRatingMode(mode)) {
+      existing[mode] = isEstimated ? emptyRatingCells : normalizeRatingCells(row);
+    }
     existing.aliasCount = aliasesLookup.get(username)?.aliases?.length ?? existing.aliasCount ?? 0;
     existing.aliases = aliasesLookup.get(username)?.aliases ?? existing.aliases ?? [];
     existing.openings = aliasesLookup.get(username)?.openings ?? existing.openings ?? [];
@@ -319,6 +332,12 @@ const UsersTablePage = () => {
                     >
                       {row.username}
                     </Link>
+                    {row.banned ? (
+                      <span className="usersClassificationTag usersClassificationTagCheater">
+                        CHEATER
+                      </span>
+                    ) : null}
+                    {row.bot ? <span className="usersClassificationTag">BOT</span> : null}
                   </td>
                   <td>{row.blitz[ratingDisplayMode].display}</td>
                   <td>{row.bullet[ratingDisplayMode].display}</td>

@@ -286,6 +286,7 @@ export const getRatingDisplayByMode = (
 export const getProfileMetricCardRows = (
   ratingDisplayByMode: RatingDisplayByMode,
   latestMonthKeyByMode: Partial<Record<Mode, string>> = {},
+  estimated = false,
 ): ProfileMetricCardRow[] =>
   modeOptions.map((mode): ProfileMetricCardRow => {
     const label = modeLabels[mode] ?? mode;
@@ -297,19 +298,20 @@ export const getProfileMetricCardRows = (
       cards: [
         {
           key: `${mode}-rating`,
-          label: "Rating",
+          label: estimated ? "Estimated Rating" : "Rating",
           value: formatCurrentRating(summary),
           valueSuffix: formatRankSuffix(summary.rank),
-          valueLink: (summary.rank ?? 0) > 0 && rankingsLocation ? rankingsLocation : null,
+          valueLink:
+            !estimated && (summary.rank ?? 0) > 0 && rankingsLocation ? rankingsLocation : null,
         },
         {
           key: `${mode}-rd`,
-          label: "RD",
+          label: estimated ? "Estimate RD" : "RD",
           value: summary.currentRd,
         },
         {
           key: `${mode}-peak-rating`,
-          label: "Peak Rating",
+          label: estimated ? "Estimated Peak" : "Peak Rating",
           value: summary.peakRating === 0 ? "N/A" : summary.peakRating,
           subtext:
             summary.peakRating !== null && summary.peakRating !== 0 && summary.peakDate

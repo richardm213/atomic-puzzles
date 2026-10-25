@@ -187,6 +187,7 @@ describe("archive-data function", () => {
         args: ["2026-08-01", 2],
       }),
     );
+    expect(mocks.execute.mock.calls[0]![0].sql).toContain("l.rank>0");
     expect(JSON.parse(response.body)).toEqual([
       { username: "alice", month: "2026-08-01", rank: 1, tc: "blitz" },
     ]);
@@ -209,6 +210,7 @@ describe("archive-data function", () => {
       }),
     );
     expect(mocks.execute.mock.calls[0]![0].sql).not.toContain("l.rd");
+    expect(mocks.execute.mock.calls[0]![0].sql).toContain("l.rank>0");
     expect(JSON.parse(response.body)).toEqual([
       { username: "alice", year: 2026, rank: 1, rating: 2100, games: 151, tc: "blitz" },
     ]);

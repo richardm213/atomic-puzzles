@@ -96,21 +96,24 @@ describe("profile alias trophies", () => {
   });
 });
 
-describe("banned profile ratings", () => {
-  it("still shows an available Wolfrandom rating", async () => {
+describe("estimated player profiles", () => {
+  it("shows a cheater's estimates without presenting a leaderboard rank", async () => {
     client.setQueryData(aliasQueryKeys.identity("alice"), {
       username: "alice",
+      aliases: [],
+      openings: [],
       banned: true,
+      bot: false,
       accounts: [],
     });
     const ratings = createModeRecord(() => new Map());
-    ratings.wolfrandom.set("alice", {
+    ratings.blitz.set("alice", {
       currentRating: 2140,
       peakRating: 2195,
       peakDate: "2026-09-18",
       currentRd: 52,
       gamesPlayed: 31,
-      rank: 4,
+      rank: 0,
       topWins: [],
     });
     client.setQueryData(profileQueryKeys.ratingsSnapshot("alice"), ratings);
@@ -121,16 +124,19 @@ describe("banned profile ratings", () => {
 
     renderProfile({ historyOnly: false });
 
-    const wolfrandomRatings = await screen.findByRole("region", {
-      name: "Wolfrandom ratings",
+    const blitzRatings = await screen.findByRole("region", {
+      name: "Blitz ratings",
     });
-    expect(within(wolfrandomRatings).getByText("2140")).toBeInTheDocument();
-    expect(within(wolfrandomRatings).getByText("31")).toBeInTheDocument();
-    expect(screen.queryByRole("region", { name: "Blitz ratings" })).not.toBeInTheDocument();
-    expect(screen.getByText(/Wolfrandom rating is still shown below/)).toBeInTheDocument();
+    expect(within(blitzRatings).getByText("Estimated Rating")).toBeInTheDocument();
+    expect(within(blitzRatings).getByText("2140")).toBeInTheDocument();
+    expect(within(blitzRatings).getByText("Estimated Peak")).toBeInTheDocument();
+    expect(within(blitzRatings).getByText("2195")).toBeInTheDocument();
+    expect(screen.getByText("CHEATER")).toBeInTheDocument();
+    expect(screen.getByText(/Ratings shown below are estimates/)).toBeInTheDocument();
+    expect(screen.queryByText("(#4)")).not.toBeInTheDocument();
   });
 
-  it("shows a bot tag without the banned-player notice", async () => {
+  it("shows a bot's estimate and BOT tag without the banned-player notice", async () => {
     client.setQueryData(aliasQueryKeys.identity("alice"), {
       username: "alice",
       aliases: [],
@@ -139,6 +145,17 @@ describe("banned profile ratings", () => {
       bot: true,
       accounts: [],
     });
+    const ratings = createModeRecord(() => new Map());
+    ratings.bullet.set("alice", {
+      currentRating: 2012,
+      peakRating: 2050,
+      peakDate: "2026-09-20",
+      currentRd: 61,
+      gamesPlayed: 18,
+      rank: 0,
+      topWins: [],
+    });
+    client.setQueryData(profileQueryKeys.ratingsSnapshot("alice"), ratings);
     client.setQueryData(profileQueryKeys.monthRanks("alice"), []);
     client.setQueryData(["profile", "alice", "tournament-trophies", ["alice"]], []);
     client.setQueryData(["puzzle-ranking-trophies"], []);
@@ -149,7 +166,9 @@ describe("banned profile ratings", () => {
 
     expect(await screen.findByText("BOT")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Banned" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("region", { name: /ratings$/i })).not.toBeInTheDocument();
+    const bulletRatings = screen.getByRole("region", { name: "Bullet ratings" });
+    expect(within(bulletRatings).getByText("Estimated Rating")).toBeInTheDocument();
+    expect(within(bulletRatings).getByText("2012")).toBeInTheDocument();
   });
 });
 

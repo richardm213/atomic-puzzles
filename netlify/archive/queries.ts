@@ -369,7 +369,7 @@ const queryWeeklyRatings = async (params: URLSearchParams) => {
 };
 
 const queryLeaderboard = async (params: URLSearchParams) => {
-  const clauses: string[] = [];
+  const clauses: string[] = ["l.rank>0"];
   const args: Array<string | number> = [];
   const month = boundedStringParam(params, "month", 10);
   if (month && !/^\d{4}-(?:0[1-9]|1[0-2])-01$/.test(month)) {
@@ -403,12 +403,12 @@ const queryLeaderboard = async (params: URLSearchParams) => {
 const queryLeaderboardCounts = async () => {
   const result = await getArchiveClient().execute(`select month month_value,
     ${modeNameSql("mode")} mode,
-    count(*) player_count from lb group by month,mode`);
+    count(*) player_count from lb where rank>0 group by month,mode`);
   return normalizedRows(result.rows);
 };
 
 const queryYearlyLeaderboard = async (params: URLSearchParams) => {
-  const clauses: string[] = [];
+  const clauses: string[] = ["l.rank>0"];
   const args: Array<string | number> = [];
   const yearValue = numberParam(params, "year");
   if (

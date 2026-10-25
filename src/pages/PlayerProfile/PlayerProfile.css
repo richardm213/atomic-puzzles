@@ -50,12 +50,14 @@
 
 .profileIdentityHeading {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3);
   min-width: 0;
 }
 
-.profileBotTag {
+.profileBotTag,
+.profileCheaterTag {
   display: inline-flex;
   align-items: center;
   min-height: 24px;
@@ -68,6 +70,12 @@
   font-weight: 900;
   letter-spacing: 0.08em;
   line-height: 1;
+}
+
+.profileCheaterTag {
+  border-color: color-mix(in srgb, var(--color-danger) 50%, var(--color-border));
+  background: color-mix(in srgb, var(--color-danger) 10%, var(--color-panel-strong));
+  color: var(--color-danger);
 }
 
 .profileOpeningTags {
@@ -464,26 +472,6 @@
 .profileActionsMenuPanel a *,
 .profileActionsMenuPanel button * {
   cursor: pointer;
-}
-
-.profileBannedGameCounts {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-4);
-  margin: var(--space-6) 0;
-}
-
-.profileBannedGameCounts dt {
-  color: var(--color-muted);
-  font-size: 14px;
-}
-
-.profileBannedGameCounts dd {
-  margin: var(--space-1) 0 0;
-  color: var(--color-heading);
-  font-size: 24px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
 }
 
 .profileBanNotice {

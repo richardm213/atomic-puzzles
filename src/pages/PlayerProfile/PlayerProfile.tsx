@@ -92,7 +92,6 @@ import {
   type AliasIdentityRow,
   getAliasIdentityUsernames,
 } from "../../lib/archive/aliases";
-import { fetchArchiveJson } from "../../lib/archive/client";
 import { getTimeControlOptions } from "../../lib/matches/collection";
 import { inferExternalGameSource } from "../../lib/matches/routes";
 import { puzzleRankingTrophiesQueryOptions } from "../../lib/puzzles/puzzleQueries";
@@ -188,7 +187,7 @@ export const PlayerProfilePage = ({
   const aliasesLoaded = Boolean(normalizedUsername) && !profileAliasQuery.isPending;
   const canonicalUsername = profileAliasEntry?.username ?? normalizedUsername;
   const isBanned = Boolean(profileAliasEntry?.banned);
-  const isBot = Boolean(profileAliasEntry?.bot) && !isBanned;
+  const isBot = Boolean(profileAliasEntry?.bot);
   const isExcluded = isBanned || isBot;
   const profileLichessUsernames = useMemo(
     () => [
@@ -260,16 +259,6 @@ export const PlayerProfilePage = ({
     timeControlIncrementFilter,
     setTimeControlIncrementFilter,
   } = useProfileFilters(`${normalizedUsername}:${String(isExcluded)}`);
-  const bannedGameCounts = useQuery({
-    queryKey: ["profile", canonicalUsername, "archived-game-counts"],
-    queryFn: () =>
-      fetchArchiveJson<Array<{ mode: string; games: number }>>(
-        new URLSearchParams({ resource: "player_game_counts", username: canonicalUsername }),
-      ),
-    enabled: aliasesLoaded && isExcluded && Boolean(canonicalUsername),
-    staleTime: 5 * 60 * 1_000,
-  });
-
   useEffect(() => {
     if (isExcluded && (profileHistoryTab === "ranks" || profileHistoryTab === "opponents")) {
       setProfileHistoryTab("matches");
@@ -282,9 +271,6 @@ export const PlayerProfilePage = ({
     () => getRatingDisplayByMode(ratingsSnapshotByMode, canonicalUsername),
     [ratingsSnapshotByMode, canonicalUsername],
   );
-  const hasWolfrandomRating = Number.isFinite(ratingDisplayByMode.wolfrandom.currentRating);
-  const showsBannedWolfrandomRating =
-    isBanned && hasWolfrandomRating && !hideWolfrandomProfileRatings;
   const profileModeOptions = useMemo(
     () =>
       modeOptions.filter(
@@ -669,19 +655,16 @@ export const PlayerProfilePage = ({
             monthRank?.monthKey ?? "",
           ]),
         ),
+        isExcluded,
       ).filter((row) => {
-        if (isBot) return false;
-        if (row.key !== "wolfrandom-row") return !isExcluded;
-        return (
-          !hideWolfrandomProfileRatings &&
-          profileModeOptions.includes("wolfrandom") &&
-          (!isExcluded || hasWolfrandomRating)
-        );
+        const mode = row.key.replace(/-row$/, "") as (typeof modeOptions)[number];
+        if (mode === "wolfrandom" && hideWolfrandomProfileRatings) return false;
+        if (!profileModeOptions.includes(mode)) return false;
+        if (!isExcluded) return true;
+        return Number.isFinite(ratingDisplayByMode[mode]?.currentRating);
       }),
     [
-      hasWolfrandomRating,
       hideWolfrandomProfileRatings,
-      isBot,
       isExcluded,
       latestMonthKeyByMode,
       profileModeOptions,
@@ -776,16 +759,20 @@ export const PlayerProfilePage = ({
         {historyOnly ? (
           <div className="profileIdentityRow noTrophies">
             <div className="profileIdentityTitle">
-              <h1>
-                <Link
-                  className="profileHistoryTitleLink"
-                  to="/@/$username"
-                  params={{ username: canonicalUsername }}
-                >
-                  {profileDisplayUsername}
-                </Link>
-                <span> Match History</span>
-              </h1>
+              <div className="profileIdentityHeading">
+                <h1>
+                  <Link
+                    className="profileHistoryTitleLink"
+                    to="/@/$username"
+                    params={{ username: canonicalUsername }}
+                  >
+                    {profileDisplayUsername}
+                  </Link>
+                  <span> Match History</span>
+                </h1>
+                {isBanned ? <span className="profileCheaterTag">CHEATER</span> : null}
+                {isBot ? <span className="profileBotTag">BOT</span> : null}
+              </div>
             </div>
           </div>
         ) : (
@@ -797,63 +784,62 @@ export const PlayerProfilePage = ({
             <div className="profileIdentityTitle">
               <div className="profileIdentityHeading">
                 <h1>{profileDisplayUsername}</h1>
+                {isBanned ? <span className="profileCheaterTag">CHEATER</span> : null}
                 {isBot ? <span className="profileBotTag">BOT</span> : null}
-                {!isExcluded ? (
-                  <details ref={profileActionsMenuRef} className="profileActionsMenu">
-                    <summary aria-label="Profile actions" title="Profile actions">
-                      <FontAwesomeIcon icon={faEllipsisVertical} aria-hidden="true" />
-                    </summary>
-                    <nav className="profileActionsMenuPanel" aria-label="Profile actions">
-                      {coinGiftRecipientUsername ? (
-                        <CoinProfileActions
-                          recipientUsername={coinGiftRecipientUsername}
-                          recipientAliases={profileLichessUsernames}
-                          displayUsername={profileDisplayUsername}
-                        />
-                      ) : null}
-                      <button
-                        type="button"
-                        aria-controls="profile-rating-view"
-                        aria-pressed={showRatingGraph}
-                        onClick={(event) => {
-                          setShowRatingGraph((current) => !current);
-                          event.currentTarget.closest("details")?.removeAttribute("open");
-                        }}
-                      >
-                        <FontAwesomeIcon icon={faChartLine} aria-hidden="true" />
-                        {showRatingGraph ? "Show rating summary" : "Show rating graph"}
-                      </button>
+                <details ref={profileActionsMenuRef} className="profileActionsMenu">
+                  <summary aria-label="Profile actions" title="Profile actions">
+                    <FontAwesomeIcon icon={faEllipsisVertical} aria-hidden="true" />
+                  </summary>
+                  <nav className="profileActionsMenuPanel" aria-label="Profile actions">
+                    {!isExcluded && coinGiftRecipientUsername ? (
+                      <CoinProfileActions
+                        recipientUsername={coinGiftRecipientUsername}
+                        recipientAliases={profileLichessUsernames}
+                        displayUsername={profileDisplayUsername}
+                      />
+                    ) : null}
+                    <button
+                      type="button"
+                      aria-controls="profile-rating-view"
+                      aria-pressed={showRatingGraph}
+                      onClick={(event) => {
+                        setShowRatingGraph((current) => !current);
+                        event.currentTarget.closest("details")?.removeAttribute("open");
+                      }}
+                    >
+                      <FontAwesomeIcon icon={faChartLine} aria-hidden="true" />
+                      {showRatingGraph ? "Show rating summary" : "Show rating graph"}
+                    </button>
+                    <Link
+                      to="/@/$username/history"
+                      params={{ username: canonicalUsername }}
+                      search={{ tab: "comments" }}
+                    >
+                      <FontAwesomeIcon icon={faCommentDots} aria-hidden="true" />
+                      Comments
+                    </Link>
+                    {!isExcluded && puzzleDashboardUsername ? (
                       <Link
-                        to="/@/$username/history"
-                        params={{ username: canonicalUsername }}
-                        search={{ tab: "comments" }}
+                        to="/@/$username/puzzles"
+                        params={{ username: puzzleDashboardUsername }}
                       >
-                        <FontAwesomeIcon icon={faCommentDots} aria-hidden="true" />
-                        Comments
+                        <FontAwesomeIcon icon={faPuzzlePiece} aria-hidden="true" />
+                        Puzzle dashboard
                       </Link>
-                      {puzzleDashboardUsername ? (
-                        <Link
-                          to="/@/$username/puzzles"
-                          params={{ username: puzzleDashboardUsername }}
-                        >
-                          <FontAwesomeIcon icon={faPuzzlePiece} aria-hidden="true" />
-                          Puzzle dashboard
-                        </Link>
-                      ) : null}
-                      <Link to="/@/$username/history" params={{ username: canonicalUsername }}>
-                        <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
-                        Match history
-                      </Link>
-                      <Link
-                        to="/tournaments/players/$username"
-                        params={{ username: canonicalUsername }}
-                      >
-                        <FontAwesomeIcon icon={faTrophy} aria-hidden="true" />
-                        Tournament history
-                      </Link>
-                    </nav>
-                  </details>
-                ) : null}
+                    ) : null}
+                    <Link to="/@/$username/history" params={{ username: canonicalUsername }}>
+                      <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
+                      Match history
+                    </Link>
+                    <Link
+                      to="/tournaments/players/$username"
+                      params={{ username: canonicalUsername }}
+                    >
+                      <FontAwesomeIcon icon={faTrophy} aria-hidden="true" />
+                      Tournament history
+                    </Link>
+                  </nav>
+                </details>
               </div>
               {profileOpenings.length ? (
                 <div className="profileOpeningTags" aria-label="Recognized atomic openings">
@@ -889,10 +875,8 @@ export const PlayerProfilePage = ({
               </div>
               <p>
                 This player was banned by Lichess or deemed highly suspicious, so we do not include
-                them in the standard rating system.
-                {showsBannedWolfrandomRating
-                  ? " Their Wolfrandom rating is still shown below."
-                  : ""}
+                them in rankings or normal-player statistics. Ratings shown below are estimates and
+                never affect their opponents.
               </p>
               <div className="profileBanActions" aria-label="Fair play links">
                 <Link to="/users/banned">Banned user list</Link>
@@ -903,7 +887,7 @@ export const PlayerProfilePage = ({
 
         {!historyOnly && (!isExcluded || profileMetricRows.length > 0) ? (
           <div id="profile-rating-view" className="profileRatingView">
-            {!isExcluded && showRatingGraph ? (
+            {showRatingGraph ? (
               <Suspense fallback={<p role="status">Loading rating graph…</p>}>
                 <RatingHistoryGraph key={canonicalUsername} username={canonicalUsername} />
               </Suspense>
@@ -933,23 +917,6 @@ export const PlayerProfilePage = ({
               </div>
             )}
           </div>
-        ) : null}
-
-        {isExcluded ? (
-          <dl className="profileBannedGameCounts" aria-label="Games played">
-            {(["blitz", "bullet", "hyperbullet"] as const).map((mode) => (
-              <div key={mode}>
-                <dt>{modeLabels[mode]} games</dt>
-                <dd>
-                  {bannedGameCounts.isPending || bannedGameCounts.isError
-                    ? "—"
-                    : (
-                        bannedGameCounts.data?.find((row) => row.mode === mode)?.games ?? 0
-                      ).toLocaleString()}
-                </dd>
-              </div>
-            ))}
-          </dl>
         ) : null}
 
         {!historyOnly ? (
@@ -1348,12 +1315,8 @@ export const PlayerProfilePage = ({
                           <col className="profileMatchOpponentColumn" />
                           <col className="profileMatchTimeControlColumn" />
                           <col className="profileMatchScoreColumn" />
-                          {!isExcluded ? (
-                            <>
-                              <col className="profileMatchRatingColumn" />
-                              <col className="profileMatchRdColumn" />
-                            </>
-                          ) : null}
+                          <col className="profileMatchRatingColumn" />
+                          <col className="profileMatchRdColumn" />
                           <col className="profileMatchLinkColumn" />
                         </colgroup>
                         <thead>
@@ -1362,12 +1325,8 @@ export const PlayerProfilePage = ({
                             <th>Opponent</th>
                             <th>TC</th>
                             <th>Score</th>
-                            {!isExcluded ? (
-                              <>
-                                <th>Rating (Δ)</th>
-                                <th>RD (Δ)</th>
-                              </>
-                            ) : null}
+                            <th>{isExcluded ? "Estimated rating (Δ)" : "Rating (Δ)"}</th>
+                            <th>{isExcluded ? "Estimate RD (Δ)" : "RD (Δ)"}</th>
                             <th aria-label="Open match page" />
                           </tr>
                         </thead>
@@ -1430,30 +1389,24 @@ export const PlayerProfilePage = ({
                                       </span>
                                     </span>
                                   </td>
-                                  {!isExcluded ? (
-                                    <>
-                                      <td>
-                                        <span className="profileMetricPair">
-                                          <span className="profileMetricValue">
-                                            {match.beforeRating}
-                                          </span>
-                                          <span className="profileDelta">
-                                            {formatSignedDecimal(match.ratingChange)}
-                                          </span>
-                                        </span>
-                                      </td>
-                                      <td>
-                                        <span className="profileMetricPair">
-                                          <span className="profileMetricValue">
-                                            {match.beforeRd}
-                                          </span>
-                                          <span className="profileDelta">
-                                            {formatSignedDecimal(match.rdChange)}
-                                          </span>
-                                        </span>
-                                      </td>
-                                    </>
-                                  ) : null}
+                                  <td>
+                                    <span className="profileMetricPair">
+                                      <span className="profileMetricValue">
+                                        {match.beforeRating}
+                                      </span>
+                                      <span className="profileDelta">
+                                        {formatSignedDecimal(match.ratingChange)}
+                                      </span>
+                                    </span>
+                                  </td>
+                                  <td>
+                                    <span className="profileMetricPair">
+                                      <span className="profileMetricValue">{match.beforeRd}</span>
+                                      <span className="profileDelta">
+                                        {formatSignedDecimal(match.rdChange)}
+                                      </span>
+                                    </span>
+                                  </td>
                                   <td>
                                     <MatchPageLink
                                       match={{
@@ -1469,7 +1422,7 @@ export const PlayerProfilePage = ({
                                 </tr>
                                 {isExpanded ? (
                                   <tr className="matchDetailsRow">
-                                    <td colSpan={isExcluded ? 5 : 7}>
+                                    <td colSpan={7}>
                                       <div className="matchDetailsInner">
                                         <MatchDetails
                                           match={{
@@ -1513,7 +1466,7 @@ export const PlayerProfilePage = ({
                           })}
                           {visibleMatches.length === 0 ? (
                             <tr>
-                              <td colSpan={isExcluded ? 5 : 7} className="emptyRankings">
+                              <td colSpan={7} className="emptyRankings">
                                 {matchHistoryMode === "all"
                                   ? "No matches found for this player with current filters across all modes."
                                   : `No matches found for this player with current filters in ${modeLabels[matchHistoryMode]}.`}
