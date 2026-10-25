@@ -1,5 +1,6 @@
 import {
   faBell,
+  faBullhorn,
   faChartLine,
   faCheck,
   faCoins,
@@ -22,6 +23,7 @@ import { appAssetPath } from "../../utils/appAssetPath";
 import { formatLocalDateTime } from "../../utils/formatters";
 
 const notificationIcon = (notification: UserNotification) => {
+  if (notification.notification_type === "feature") return faBullhorn;
   if (notification.notification_type === "coin_policy_update") return faGaugeHigh;
   if (notification.notification_type === "coin_gift") return faCoins;
   if (notification.notification_type === "coin_request") return faHandHoldingDollar;
@@ -110,13 +112,15 @@ export const NavNotificationsPanel = ({
                         ? `Coin rules · ${formatLocalDateTime(notification.created_at)}`
                         : notification.notification_type === "monthly_ranking"
                           ? `Monthly rankings · ${formatLocalDateTime(notification.created_at)}`
-                          : notification.notification_type === "shop_redemption"
-                            ? `Shop purchase · ${formatLocalDateTime(notification.created_at)}`
-                            : notification.notification_type === "puzzle_rating_added"
-                              ? `Puzzle rating · ${formatLocalDateTime(notification.created_at)}`
-                              : notification.notification_type === "puzzle_approved"
-                                ? `10 coins · ${formatLocalDateTime(notification.created_at)}`
-                                : `Puzzle #${notification.puzzle_id} · ${formatLocalDateTime(notification.created_at)}`}
+                          : notification.notification_type === "feature"
+                            ? `New feature · ${formatLocalDateTime(notification.created_at)}`
+                            : notification.notification_type === "shop_redemption"
+                              ? `Shop purchase · ${formatLocalDateTime(notification.created_at)}`
+                              : notification.notification_type === "puzzle_rating_added"
+                                ? `Puzzle rating · ${formatLocalDateTime(notification.created_at)}`
+                                : notification.notification_type === "puzzle_approved"
+                                  ? `10 coins · ${formatLocalDateTime(notification.created_at)}`
+                                  : `Puzzle #${notification.puzzle_id} · ${formatLocalDateTime(notification.created_at)}`}
                   </span>
                 </span>
                 {!notification.read_at ? <span className="navNotificationDot" /> : null}

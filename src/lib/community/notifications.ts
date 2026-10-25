@@ -9,7 +9,8 @@ export type NotificationType =
   | "coin_gift"
   | "coin_request"
   | "coin_policy_update"
-  | "monthly_ranking";
+  | "monthly_ranking"
+  | "feature";
 
 export type UserNotification = {
   id: number;
@@ -29,6 +30,9 @@ export type UserNotification = {
   ranking_period?: string | null;
   ranking_mode?: "blitz" | "bullet" | "hyperbullet" | null;
   ranking_position?: number | null;
+  feature_key?: string | null;
+  feature_message?: string | null;
+  feature_path?: string | null;
   created_at: string;
   read_at: string | null;
 };
@@ -39,6 +43,9 @@ export type NotificationResult = {
 };
 
 export const notificationCopy = (notification: UserNotification): string => {
+  if (notification.notification_type === "feature") {
+    return notification.feature_message?.trim() || "Check out a new Atomic Puzzles feature.";
+  }
   if (notification.notification_type === "coin_policy_update") {
     return (
       notification.coin_message?.trim() ??
@@ -95,7 +102,8 @@ export const notificationCopy = (notification: UserNotification): string => {
 };
 
 export const notificationMessage = (notification: UserNotification): string =>
-  notification.notification_type === "coin_policy_update"
+  notification.notification_type === "coin_policy_update" ||
+  notification.notification_type === "feature"
     ? ""
     : (notification.coin_message?.trim() ?? "");
 

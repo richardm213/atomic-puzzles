@@ -18,6 +18,17 @@ const makeNotification = (
 });
 
 describe("notificationCopy", () => {
+  it("shows a reusable feature announcement without quoted detail text", () => {
+    const notification = {
+      ...makeNotification("feature"),
+      feature_key: "tournament-history-launch",
+      feature_message: "Check out the new tournament history page.",
+      feature_path: "/tournaments/players/alice",
+    };
+
+    expect(notificationCopy(notification)).toBe("Check out the new tournament history page.");
+  });
+
   it("shows a personalized puzzle rating announcement", () => {
     expect(
       notificationCopy({

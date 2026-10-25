@@ -2,6 +2,7 @@ import "./Notifications.css";
 
 import {
   faBell,
+  faBullhorn,
   faChartLine,
   faCheck,
   faCoins,
@@ -33,6 +34,7 @@ import { appAssetPath } from "../../utils/appAssetPath";
 import { formatLocalDateTime } from "../../utils/formatters";
 
 const notificationIcon = (notification: UserNotification) => {
+  if (notification.notification_type === "feature") return faBullhorn;
   if (notification.notification_type === "coin_policy_update") return faGaugeHigh;
   if (notification.notification_type === "coin_gift") return faCoins;
   if (notification.notification_type === "coin_request") return faHandHoldingDollar;
@@ -82,6 +84,10 @@ export const NotificationsPage = () => {
 
   const openNotification = async (notification: UserNotification) => {
     if (!notification.read_at) await markRead([notification.id]);
+    if (notification.notification_type === "feature" && notification.feature_path) {
+      window.location.assign(notification.feature_path);
+      return;
+    }
     if (
       (notification.notification_type === "coin_gift" ||
         notification.notification_type === "coin_request") &&
@@ -204,13 +210,15 @@ export const NotificationsPage = () => {
                             ? "Coin rules"
                             : notification.notification_type === "monthly_ranking"
                               ? "Monthly rankings"
-                              : notification.notification_type === "shop_redemption"
-                                ? "Shop purchase"
-                                : notification.notification_type === "puzzle_rating_added"
-                                  ? "Puzzle rating"
-                                  : notification.notification_type === "puzzle_approved"
-                                    ? "10 coins"
-                                    : `Puzzle #${notification.puzzle_id}`}
+                              : notification.notification_type === "feature"
+                                ? `New feature · ${formatLocalDateTime(notification.created_at)}`
+                                : notification.notification_type === "shop_redemption"
+                                  ? "Shop purchase"
+                                  : notification.notification_type === "puzzle_rating_added"
+                                    ? "Puzzle rating"
+                                    : notification.notification_type === "puzzle_approved"
+                                      ? "10 coins"
+                                      : `Puzzle #${notification.puzzle_id}`}
                         ·
                         <time dateTime={notification.created_at}>
                           {formatLocalDateTime(notification.created_at)}
