@@ -217,7 +217,7 @@ const tournamentEndDateFallbacks: Readonly<Record<string, string>> = {
   awc2025: "2025-12-20",
   awc2024: "2024-12-21",
   awc2023: "2023-12-10",
-  awc2022: "2023-03-22",
+  awc2022: "2022-12-11",
   awc2021: "2021-12-05",
   awc2020: "2020-11-15",
   awc2019: "2019-11-24",

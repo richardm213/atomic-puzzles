@@ -1973,7 +1973,9 @@ var matchDate = async (matchId, fallback) => {
       new URLSearchParams({ resource: "matches", matchId: normalizedId, pageSize: "1" })
     );
     const timestamp = Number(result2.rows?.[0]?.start_ts);
-    const resolved = Number.isFinite(timestamp) ? new Date(timestamp * 1e3).toISOString().slice(0, 10) : fallback;
+    const timestampMs = timestamp < 1e10 ? timestamp * 1e3 : timestamp;
+    const date = new Date(timestampMs);
+    const resolved = Number.isFinite(date.valueOf()) ? date.toISOString().slice(0, 10) : fallback;
     archiveDates.set(normalizedId, resolved);
     return resolved;
   } catch {

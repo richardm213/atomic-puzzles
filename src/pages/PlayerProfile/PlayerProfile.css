@@ -348,19 +348,83 @@
   gap: var(--space-3);
 }
 
-.playerProfilePanel .matchFilterGrid {
-  grid-template-columns:
-    minmax(76px, 0.65fr) minmax(88px, 0.75fr) minmax(96px, 0.85fr)
-    repeat(2, minmax(112px, 1fr)) minmax(124px, 1.1fr);
-  gap: 10px;
+.profileUtilityRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  padding: var(--space-2);
+  border-radius: var(--radius-ui);
 }
 
-.profileOpponentFilterField {
+.profileUtilityActions {
   min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  margin-left: 0;
 }
 
-.profileOpponentFilterField input {
-  min-width: 0;
+.profileUtilityActions > a,
+.profileUtilityActions > button,
+.profileUtilityActions .coinProfileTriggers button {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 9px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  box-shadow: none;
+  color: var(--color-heading);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease,
+    color 140ms ease;
+}
+
+.profileUtilityActions > a:hover,
+.profileUtilityActions > button:hover,
+.profileUtilityActions .coinProfileTriggers button:hover {
+  border-color: var(--color-border);
+  background: var(--color-surface-elevated-strong);
+  color: var(--color-primary-pale);
+  transform: none;
+}
+
+.profileUtilityActions > a:active,
+.profileUtilityActions > button:active,
+.profileUtilityActions .coinProfileTriggers button:active {
+  background: var(--color-panel-strong);
+  transform: none;
+}
+
+.profileUtilityActions > a:focus-visible,
+.profileUtilityActions > button:focus-visible,
+.profileUtilityActions .coinProfileTriggers button:focus-visible {
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: -1px;
+}
+
+.profileUtilityActions svg {
+  width: 14px;
+  flex: 0 0 14px;
+  color: var(--color-primary-soft);
+}
+
+.profileUtilityActions .coinProfileTriggers {
+  flex: 0 0 auto;
 }
 
 .profileActionsMenu {
@@ -380,13 +444,23 @@
   background: transparent;
   color: var(--color-muted);
   cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
   transition:
     background-color 140ms ease,
     color 140ms ease;
 }
 
+.profileActionsMenu > summary svg {
+  pointer-events: none;
+}
+
 .profileActionsMenu > summary::-webkit-details-marker {
   display: none;
+}
+
+.profileActionsMenu > summary::marker {
+  content: "";
 }
 
 .profileActionsMenu > summary:hover,
@@ -403,7 +477,8 @@
 .profileActionsMenuPanel {
   position: absolute;
   top: calc(100% + var(--space-2));
-  right: 0;
+  left: 0;
+  z-index: 1;
   width: 220px;
   display: grid;
   gap: 2px;
@@ -465,13 +540,19 @@
   width: 100%;
 }
 
-.profileActionsMenu > summary,
-.profileActionsMenu > summary *,
-.profileActionsMenuPanel a,
-.profileActionsMenuPanel button,
-.profileActionsMenuPanel a *,
-.profileActionsMenuPanel button * {
-  cursor: pointer;
+.playerProfilePanel .matchFilterGrid {
+  grid-template-columns:
+    minmax(76px, 0.65fr) minmax(88px, 0.75fr) minmax(96px, 0.85fr)
+    repeat(2, minmax(112px, 1fr)) minmax(124px, 1.1fr);
+  gap: 10px;
+}
+
+.profileOpponentFilterField {
+  min-width: 0;
+}
+
+.profileOpponentFilterField input {
+  min-width: 0;
 }
 
 .profileBanNotice {
@@ -1361,9 +1442,12 @@
 }
 
 .profileFavoriteOpponentRow td:first-child .rankingLink {
-  display: inline-block;
+  display: block;
+  width: 100%;
   max-width: 100%;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .profileMatchTable .matchDetailsRow > td {
@@ -1376,10 +1460,14 @@
 
 .profileRankHistoryTableWrap,
 .profileFavoriteOpponentsTableWrap {
+  max-width: 100%;
   margin-top: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: var(--color-surface-soft);
+  -webkit-overflow-scrolling: touch;
 }
 
 .profileTrophyCaseGrid {
@@ -1460,8 +1548,54 @@
   line-height: 1.35;
 }
 
+.profileRankHistoryTable {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.profileRankHistoryTable :is(th, td):nth-child(1) {
+  width: 16%;
+}
+
+.profileRankHistoryTable :is(th, td):nth-child(2) {
+  width: 17%;
+}
+
+.profileRankHistoryTable :is(th, td):nth-child(3) {
+  width: 11%;
+}
+
+.profileRankHistoryTable :is(th, td):nth-child(4) {
+  width: 14%;
+}
+
+.profileRankHistoryTable :is(th, td):nth-child(5) {
+  width: 16%;
+}
+
+.profileRankHistoryTable :is(th, td):nth-child(6) {
+  width: 12%;
+}
+
+.profileRankHistoryTable :is(th, td):nth-child(7) {
+  width: 14%;
+}
+
 .profileFavoriteOpponentsTable {
-  min-width: 800px;
+  width: 100%;
+  min-width: 720px;
+  table-layout: auto;
+  border-collapse: collapse;
+}
+
+.profileFavoriteOpponentsTable :is(th, td):nth-child(1) {
+  width: 100%;
+  max-width: 0;
+}
+
+.profileFavoriteOpponentsTable :is(th, td):nth-child(n + 2) {
+  width: 1%;
 }
 
 .profileRankHistoryTable thead,
@@ -1484,6 +1618,7 @@
   color: var(--color-subtle);
   font-size: 11px;
   line-height: 1.2;
+  text-align: left;
 }
 
 .profileFavoriteOpponentsSortButton,
@@ -1756,6 +1891,24 @@
   .profileActionsMenu > summary {
     width: 44px;
     height: 44px;
+  }
+
+  .profileUtilityRow {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .profileUtilityActions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    margin-left: 0;
+  }
+
+  .profileUtilityActions > a,
+  .profileUtilityActions > button,
+  .profileUtilityActions .coinProfileTriggers button {
+    min-height: 44px;
   }
 
   .profileHistoryTabs {

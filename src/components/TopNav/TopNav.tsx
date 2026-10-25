@@ -161,8 +161,10 @@ export const TopNav = () => {
     setHideRankingsOpenings,
     showChessComRankings,
     setShowChessComRankings,
-    hideWolfrandomProfileRatings,
-    setHideWolfrandomProfileRatings,
+    showWolfrandomProfileRatings,
+    setShowWolfrandomProfileRatings,
+    showProfileActionButtons,
+    setShowProfileActionButtons,
     hiddenRatingGraphModes,
     setHiddenRatingGraphModes,
     ratingGraphDots,
@@ -1120,11 +1122,19 @@ export const TopNav = () => {
               {/^\/@\/[^/]+\/?$/.test(pathname) ? (
                 <div className="navSettingsSection">
                   <label className="navSettingsCheckbox">
-                    <span>Hide Wolfrandom ratings</span>
+                    <span>Show Wolfrandom ratings</span>
                     <input
                       type="checkbox"
-                      checked={hideWolfrandomProfileRatings}
-                      onChange={(event) => setHideWolfrandomProfileRatings(event.target.checked)}
+                      checked={showWolfrandomProfileRatings}
+                      onChange={(event) => setShowWolfrandomProfileRatings(event.target.checked)}
+                    />
+                  </label>
+                  <label className="navSettingsCheckbox">
+                    <span>Show profile action buttons</span>
+                    <input
+                      type="checkbox"
+                      checked={showProfileActionButtons}
+                      onChange={(event) => setShowProfileActionButtons(event.target.checked)}
                     />
                   </label>
                 </div>

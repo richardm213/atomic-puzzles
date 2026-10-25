@@ -23,7 +23,8 @@ const STORAGE_KEYS = {
   boardOverrideDarkSquare: "atomic-puzzles.board-override-dark-square",
   hideRankingsOpenings: "atomic-puzzles.rankings.hide-openings",
   showChessComRankings: "atomic-puzzles.rankings.show-chesscom-users",
-  hideWolfrandomProfileRatings: "atomic-puzzles.profile.hide-wolfrandom-ratings",
+  showWolfrandomProfileRatings: "atomic-puzzles.profile.show-wolfrandom-ratings",
+  showProfileActionButtons: "atomic-puzzles.profile.show-action-buttons",
   // The original key was written as `true` for users before the timer became opt-in.
   // Start from a clean preference so unchecked is the effective default for everyone.
   showPuzzleTimer: "atomic-puzzles.puzzles.show-timer-v2",
@@ -166,8 +167,10 @@ export type AppSettingsContextValue = {
   setHideRankingsOpenings: Dispatch<SetStateAction<boolean>>;
   showChessComRankings: boolean;
   setShowChessComRankings: Dispatch<SetStateAction<boolean>>;
-  hideWolfrandomProfileRatings: boolean;
-  setHideWolfrandomProfileRatings: Dispatch<SetStateAction<boolean>>;
+  showWolfrandomProfileRatings: boolean;
+  setShowWolfrandomProfileRatings: Dispatch<SetStateAction<boolean>>;
+  showProfileActionButtons: boolean;
+  setShowProfileActionButtons: Dispatch<SetStateAction<boolean>>;
   hiddenRatingGraphModes: string[];
   setHiddenRatingGraphModes: Dispatch<SetStateAction<string[]>>;
   ratingGraphDots: "auto" | "show" | "hide";
@@ -268,8 +271,13 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     z.boolean(),
     false,
   );
-  const [hideWolfrandomProfileRatings, setHideWolfrandomProfileRatings] = usePersistedState(
-    STORAGE_KEYS.hideWolfrandomProfileRatings,
+  const [showWolfrandomProfileRatings, setShowWolfrandomProfileRatings] = usePersistedState(
+    STORAGE_KEYS.showWolfrandomProfileRatings,
+    z.boolean(),
+    false,
+  );
+  const [showProfileActionButtons, setShowProfileActionButtons] = usePersistedState(
+    STORAGE_KEYS.showProfileActionButtons,
     z.boolean(),
     false,
   );
@@ -353,8 +361,10 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setHideRankingsOpenings,
       showChessComRankings,
       setShowChessComRankings,
-      hideWolfrandomProfileRatings,
-      setHideWolfrandomProfileRatings,
+      showWolfrandomProfileRatings,
+      setShowWolfrandomProfileRatings,
+      showProfileActionButtons,
+      setShowProfileActionButtons,
       hiddenRatingGraphModes,
       setHiddenRatingGraphModes,
       ratingGraphDots,
@@ -388,8 +398,10 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setHideRankingsOpenings,
       showChessComRankings,
       setShowChessComRankings,
-      hideWolfrandomProfileRatings,
-      setHideWolfrandomProfileRatings,
+      showWolfrandomProfileRatings,
+      setShowWolfrandomProfileRatings,
+      showProfileActionButtons,
+      setShowProfileActionButtons,
       hiddenRatingGraphModes,
       setHiddenRatingGraphModes,
       ratingGraphDots,

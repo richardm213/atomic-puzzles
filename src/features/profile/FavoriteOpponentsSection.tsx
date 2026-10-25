@@ -233,6 +233,7 @@ export const FavoriteOpponentsSection = ({
                         className="rankingLink"
                         to="/@/$username"
                         params={{ username: row.opponent }}
+                        title={row.opponent}
                         onClick={(event) => event.stopPropagation()}
                       >
                         {row.opponent}

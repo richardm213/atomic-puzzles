@@ -134,9 +134,9 @@ const matchDate = async (matchId: string | null, fallback: string): Promise<stri
       new URLSearchParams({ resource: "matches", matchId: normalizedId, pageSize: "1" }),
     )) as { rows?: Array<{ start_ts?: number | string }> };
     const timestamp = Number(result.rows?.[0]?.start_ts);
-    const resolved = Number.isFinite(timestamp)
-      ? new Date(timestamp * 1_000).toISOString().slice(0, 10)
-      : fallback;
+    const timestampMs = timestamp < 10_000_000_000 ? timestamp * 1_000 : timestamp;
+    const date = new Date(timestampMs);
+    const resolved = Number.isFinite(date.valueOf()) ? date.toISOString().slice(0, 10) : fallback;
     archiveDates.set(normalizedId, resolved);
     return resolved;
   } catch {

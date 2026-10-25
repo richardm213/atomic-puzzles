@@ -18,6 +18,7 @@ import {
 import { getAliasIdentityUsernames } from "../../lib/archive/aliases";
 import {
   atomicTourEventEntriesQueryOptions,
+  atomicTourPlayerRankingStatsQueryOptions,
   type AtomicTourEventEntry,
 } from "../../lib/atomicTour/queries";
 import {
@@ -304,6 +305,9 @@ export const TournamentPlayerPage = ({ username }: { username?: string }) => {
     enabled: !aliasQuery.isPending && identityUsernames.length > 0,
   });
   const tourEntriesQuery = useQuery(atomicTourEventEntriesQueryOptions(identityUsernames));
+  const tourRankingStatsQuery = useQuery(
+    atomicTourPlayerRankingStatsQueryOptions(identityUsernames),
+  );
   const wolfarenaQuery = useQuery(wolfarenaTournamentQueryOptions("wr-arena2026"));
   const appearances = useMemo(() => {
     const merged = mergeTournamentPlayerAppearances(
@@ -335,7 +339,8 @@ export const TournamentPlayerPage = ({ username }: { username?: string }) => {
     aliasQuery.isPending ||
     catalogQuery.isPending ||
     countryQuery.isPending ||
-    historyQuery.isPending
+    historyQuery.isPending ||
+    tourRankingStatsQuery.isPending
   ) {
     return <RouteLoadingFallback />;
   }
@@ -378,25 +383,47 @@ export const TournamentPlayerPage = ({ username }: { username?: string }) => {
               Full profile
             </Link>
             <dl className="tournamentProfileSummary">
+              {tourRankingStatsQuery.data ? (
+                <>
+                  <div className="tournamentProfileTourRank">
+                    <dt>Tour rank</dt>
+                    <dd>
+                      <Link className="tournamentProfileTourRankLink" to="/rankings/tour">
+                        {tourRankingStatsQuery.data.currentRank
+                          ? `#${tourRankingStatsQuery.data.currentRank}`
+                          : "—"}
+                      </Link>
+                    </dd>
+                  </div>
+                  <div className="tournamentProfileTourRank">
+                    <dt>Career high</dt>
+                    <dd>
+                      <Link className="tournamentProfileTourRankLink" to="/rankings/tour">
+                        #{tourRankingStatsQuery.data.peakRank}
+                      </Link>
+                    </dd>
+                  </div>
+                </>
+              ) : null}
               <div>
-                <dd>{appearances.length}</dd>
                 <dt>{appearances.length === 1 ? "Tournament" : "Tournaments"}</dt>
+                <dd>{appearances.length}</dd>
               </div>
               {titles > 0 ? (
                 <div>
-                  <dd>{titles}</dd>
                   <dt>{titles === 1 ? "Title" : "Titles"}</dt>
+                  <dd>{titles}</dd>
                 </div>
               ) : null}
               {teamTitles > 0 ? (
                 <div>
-                  <dd>{teamTitles}</dd>
                   <dt>{teamTitles === 1 ? "Team Title" : "Team Titles"}</dt>
+                  <dd>{teamTitles}</dd>
                 </div>
               ) : null}
               <div>
-                <dd>{fullRecord}</dd>
                 <dt>Match record</dt>
+                <dd>{fullRecord}</dd>
               </div>
             </dl>
           </div>

@@ -150,7 +150,7 @@ export const PlayerProfilePage = ({
   historyOnly?: boolean;
 }) => {
   const queryClient = useQueryClient();
-  const { hideWolfrandomProfileRatings } = useAppSettings();
+  const { showWolfrandomProfileRatings, showProfileActionButtons } = useAppSettings();
   const normalizedUsername = useMemo(() => normalizeUsername(username), [username]);
   const [matchHistoryMode, setMatchHistoryMode] = useState<ProfileMatchHistoryMode>("all");
   const [bestWinMode, setBestWinMode] =
@@ -353,15 +353,6 @@ export const PlayerProfilePage = ({
   }, [normalizedUsername]);
 
   useEffect(() => {
-    const handlePopState = () => {
-      setProfileHistoryTab(getProfileHistoryTabFromLocation());
-    };
-
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
-
-  useEffect(() => {
     const closeProfileActionsMenu = (event: PointerEvent) => {
       const menu = profileActionsMenuRef.current;
       if (menu?.open && event.target instanceof Node && !menu.contains(event.target)) {
@@ -382,6 +373,15 @@ export const PlayerProfilePage = ({
       document.removeEventListener("pointerdown", closeProfileActionsMenu);
       document.removeEventListener("keydown", closeProfileActionsMenuOnEscape);
     };
+  }, []);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setProfileHistoryTab(getProfileHistoryTabFromLocation());
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
   useEffect(() => {
@@ -658,13 +658,13 @@ export const PlayerProfilePage = ({
         isExcluded,
       ).filter((row) => {
         const mode = row.key.replace(/-row$/, "") as (typeof modeOptions)[number];
-        if (mode === "wolfrandom" && hideWolfrandomProfileRatings) return false;
+        if (mode === "wolfrandom" && !showWolfrandomProfileRatings) return false;
         if (!profileModeOptions.includes(mode)) return false;
         if (!isExcluded) return true;
         return Number.isFinite(ratingDisplayByMode[mode]?.currentRating);
       }),
     [
-      hideWolfrandomProfileRatings,
+      showWolfrandomProfileRatings,
       isExcluded,
       latestMonthKeyByMode,
       profileModeOptions,
@@ -738,6 +738,51 @@ export const PlayerProfilePage = ({
       current.includes(key) ? current.filter((k) => k !== key) : [...current, key],
     );
   };
+  const profileActionItems = (
+    <>
+      {!isExcluded && coinGiftRecipientUsername ? (
+        <CoinProfileActions
+          recipientUsername={coinGiftRecipientUsername}
+          recipientAliases={profileLichessUsernames}
+          displayUsername={profileDisplayUsername}
+        />
+      ) : null}
+      <button
+        type="button"
+        aria-controls="profile-rating-view"
+        aria-pressed={showRatingGraph}
+        onClick={(event) => {
+          setShowRatingGraph((current) => !current);
+          event.currentTarget.closest("details")?.removeAttribute("open");
+        }}
+      >
+        <FontAwesomeIcon icon={faChartLine} aria-hidden="true" />
+        {showRatingGraph ? "Rating summary" : "Rating graph"}
+      </button>
+      <Link
+        to="/@/$username/history"
+        params={{ username: canonicalUsername }}
+        search={{ tab: "comments" }}
+      >
+        <FontAwesomeIcon icon={faCommentDots} aria-hidden="true" />
+        Comments
+      </Link>
+      {!isExcluded && puzzleDashboardUsername ? (
+        <Link to="/@/$username/puzzles" params={{ username: puzzleDashboardUsername }}>
+          <FontAwesomeIcon icon={faPuzzlePiece} aria-hidden="true" />
+          Puzzles
+        </Link>
+      ) : null}
+      <Link to="/@/$username/history" params={{ username: canonicalUsername }}>
+        <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
+        Matches
+      </Link>
+      <Link to="/tournaments/players/$username" params={{ username: canonicalUsername }}>
+        <FontAwesomeIcon icon={faTrophy} aria-hidden="true" />
+        Tournaments
+      </Link>
+    </>
+  );
   return (
     <div className="rankingsPage">
       <Seo
@@ -786,60 +831,16 @@ export const PlayerProfilePage = ({
                 <h1>{profileDisplayUsername}</h1>
                 {isBanned ? <span className="profileCheaterTag">CHEATER</span> : null}
                 {isBot ? <span className="profileBotTag">BOT</span> : null}
-                <details ref={profileActionsMenuRef} className="profileActionsMenu">
-                  <summary aria-label="Profile actions" title="Profile actions">
-                    <FontAwesomeIcon icon={faEllipsisVertical} aria-hidden="true" />
-                  </summary>
-                  <nav className="profileActionsMenuPanel" aria-label="Profile actions">
-                    {!isExcluded && coinGiftRecipientUsername ? (
-                      <CoinProfileActions
-                        recipientUsername={coinGiftRecipientUsername}
-                        recipientAliases={profileLichessUsernames}
-                        displayUsername={profileDisplayUsername}
-                      />
-                    ) : null}
-                    <button
-                      type="button"
-                      aria-controls="profile-rating-view"
-                      aria-pressed={showRatingGraph}
-                      onClick={(event) => {
-                        setShowRatingGraph((current) => !current);
-                        event.currentTarget.closest("details")?.removeAttribute("open");
-                      }}
-                    >
-                      <FontAwesomeIcon icon={faChartLine} aria-hidden="true" />
-                      {showRatingGraph ? "Show rating summary" : "Show rating graph"}
-                    </button>
-                    <Link
-                      to="/@/$username/history"
-                      params={{ username: canonicalUsername }}
-                      search={{ tab: "comments" }}
-                    >
-                      <FontAwesomeIcon icon={faCommentDots} aria-hidden="true" />
-                      Comments
-                    </Link>
-                    {!isExcluded && puzzleDashboardUsername ? (
-                      <Link
-                        to="/@/$username/puzzles"
-                        params={{ username: puzzleDashboardUsername }}
-                      >
-                        <FontAwesomeIcon icon={faPuzzlePiece} aria-hidden="true" />
-                        Puzzle dashboard
-                      </Link>
-                    ) : null}
-                    <Link to="/@/$username/history" params={{ username: canonicalUsername }}>
-                      <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
-                      Match history
-                    </Link>
-                    <Link
-                      to="/tournaments/players/$username"
-                      params={{ username: canonicalUsername }}
-                    >
-                      <FontAwesomeIcon icon={faTrophy} aria-hidden="true" />
-                      Tournament history
-                    </Link>
-                  </nav>
-                </details>
+                {!showProfileActionButtons ? (
+                  <details ref={profileActionsMenuRef} className="profileActionsMenu">
+                    <summary aria-label="Profile actions" title="Profile actions">
+                      <FontAwesomeIcon icon={faEllipsisVertical} aria-hidden="true" />
+                    </summary>
+                    <nav className="profileActionsMenuPanel" aria-label="Profile actions">
+                      {profileActionItems}
+                    </nav>
+                  </details>
+                ) : null}
               </div>
               {profileOpenings.length ? (
                 <div className="profileOpeningTags" aria-label="Recognized atomic openings">
@@ -863,6 +864,14 @@ export const PlayerProfilePage = ({
             ) : null}
           </div>
         )}
+
+        {!historyOnly && showProfileActionButtons ? (
+          <div className="profileUtilityRow">
+            <nav className="profileUtilityActions" aria-label="Profile actions">
+              {profileActionItems}
+            </nav>
+          </div>
+        ) : null}
 
         {isBanned ? (
           <section className="profileBanNotice" aria-labelledby="profile-ban-notice-title">

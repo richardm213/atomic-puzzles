@@ -27,11 +27,21 @@ const PuzzleTimerSetting = () => {
 };
 
 const ProfileRatingSetting = () => {
-  const { hideWolfrandomProfileRatings, setHideWolfrandomProfileRatings } = useAppSettings();
+  const {
+    showWolfrandomProfileRatings,
+    setShowWolfrandomProfileRatings,
+    showProfileActionButtons,
+    setShowProfileActionButtons,
+  } = useAppSettings();
   return (
-    <button type="button" onClick={() => setHideWolfrandomProfileRatings((hidden) => !hidden)}>
-      {hideWolfrandomProfileRatings ? "Wolfrandom hidden" : "Wolfrandom shown"}
-    </button>
+    <>
+      <button type="button" onClick={() => setShowWolfrandomProfileRatings((shown) => !shown)}>
+        {showWolfrandomProfileRatings ? "Wolfrandom shown" : "Wolfrandom hidden"}
+      </button>
+      <button type="button" onClick={() => setShowProfileActionButtons((shown) => !shown)}>
+        {showProfileActionButtons ? "Action buttons" : "Action menu"}
+      </button>
+    </>
   );
 };
 
@@ -112,8 +122,7 @@ describe("rankings opening preference", () => {
 describe("profile rating preference", () => {
   beforeEach(() => window.localStorage.clear());
 
-  it("loads and persists the hide-Wolfrandom setting", async () => {
-    window.localStorage.setItem("atomic-puzzles.profile.hide-wolfrandom-ratings", "true");
+  it("hides Wolfrandom ratings by default and persists the opt-in setting", async () => {
     render(
       <AppSettingsProvider>
         <ProfileRatingSetting />
@@ -125,8 +134,26 @@ describe("profile rating preference", () => {
 
     await waitFor(() => {
       expect(toggle).toHaveTextContent("Wolfrandom shown");
-      expect(window.localStorage.getItem("atomic-puzzles.profile.hide-wolfrandom-ratings")).toBe(
-        "false",
+      expect(window.localStorage.getItem("atomic-puzzles.profile.show-wolfrandom-ratings")).toBe(
+        "true",
+      );
+    });
+  });
+
+  it("uses the action menu by default and persists the inline-button preference", async () => {
+    render(
+      <AppSettingsProvider>
+        <ProfileRatingSetting />
+      </AppSettingsProvider>,
+    );
+
+    const toggle = screen.getByRole("button", { name: "Action menu" });
+    fireEvent.click(toggle);
+
+    await waitFor(() => {
+      expect(toggle).toHaveTextContent("Action buttons");
+      expect(window.localStorage.getItem("atomic-puzzles.profile.show-action-buttons")).toBe(
+        "true",
       );
     });
   });

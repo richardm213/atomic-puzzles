@@ -80,6 +80,7 @@
 }
 
 .tournamentProfileSummary dt {
+  order: 2;
   color: var(--color-subtle);
   font-size: 0.78rem;
   font-weight: 700;
@@ -91,6 +92,27 @@
   font-size: 0.9rem;
   font-variant-numeric: tabular-nums;
   font-weight: 800;
+}
+
+.tournamentProfileSummary > .tournamentProfileTourRank {
+  gap: var(--space-2);
+}
+
+.tournamentProfileTourRankLink {
+  color: inherit;
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+
+.tournamentProfileTourRankLink:hover {
+  color: var(--link-hover-color);
+  text-decoration: underline;
+}
+
+.tournamentProfileTourRankLink:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 3px;
 }
 
 .tournamentProfileActivity {

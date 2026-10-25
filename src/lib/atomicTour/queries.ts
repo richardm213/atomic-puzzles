@@ -20,6 +20,11 @@ export type AtomicTourEventEntry = {
   pointsEarned: number;
 };
 
+export type AtomicTourPlayerRankingStats = {
+  currentRank: number | null;
+  peakRank: number;
+};
+
 type RankingRow = {
   snapshot_date?: string | null;
   player_name?: string | null;
@@ -27,6 +32,26 @@ type RankingRow = {
   points?: number | string | null;
   rank_change?: number | string | null;
   points_change?: number | string | null;
+};
+
+export const summarizeAtomicTourPlayerRanking = (
+  rows: RankingRow[],
+  latestSnapshotDate: string,
+): AtomicTourPlayerRankingStats | null => {
+  const rankedRows = rows.flatMap((row) => {
+    const snapshotDate = String(row.snapshot_date ?? "").trim();
+    const rank = Number(row.rank);
+    return snapshotDate && Number.isFinite(rank) && rank > 0 ? [{ snapshotDate, rank }] : [];
+  });
+  if (!rankedRows.length) return null;
+
+  const currentRanks = rankedRows
+    .filter((row) => row.snapshotDate === latestSnapshotDate)
+    .map((row) => row.rank);
+  return {
+    currentRank: currentRanks.length ? Math.min(...currentRanks) : null,
+    peakRank: Math.min(...rankedRows.map((row) => row.rank)),
+  };
 };
 
 const normalizeRanking = (row: RankingRow): AtomicTourRanking | null => {
@@ -85,6 +110,39 @@ export const atomicTourRankingsQueryOptions = (snapshotDate: string) =>
     enabled: Boolean(snapshotDate),
     staleTime: 5 * 60 * 1_000,
   });
+
+export const atomicTourPlayerRankingStatsQueryOptions = (playerNames: string[]) => {
+  const normalizedNames = [
+    ...new Set(playerNames.map((name) => name.trim().toLowerCase()).filter(Boolean)),
+  ].sort();
+  return queryOptions({
+    queryKey: ["atomic-tour", "player-ranking-stats", ...normalizedNames],
+    queryFn: async () => {
+      if (!normalizedNames.length) return null;
+      const [latestSnapshotRows, playerRows] = await Promise.all([
+        loadSupabaseRows<{ snapshot_date?: string | null }>(
+          "atomic_tour_ranking_snapshots",
+          getSupabaseClient()
+            .from("atomic_tour_ranking_snapshots")
+            .select("snapshot_date")
+            .order("snapshot_date", { ascending: false })
+            .limit(1),
+        ),
+        fetchAllSupabaseRows<RankingRow>("atomic_tour_ranking_snapshots", () =>
+          getSupabaseClient()
+            .from("atomic_tour_ranking_snapshots")
+            .select("snapshot_date,player_name,rank")
+            .in("player_name", normalizedNames)
+            .order("snapshot_date", { ascending: false }),
+        ),
+      ]);
+      const latestSnapshotDate = String(latestSnapshotRows[0]?.snapshot_date ?? "").trim();
+      return summarizeAtomicTourPlayerRanking(playerRows, latestSnapshotDate);
+    },
+    enabled: normalizedNames.length > 0,
+    staleTime: 5 * 60 * 1_000,
+  });
+};
 
 export const atomicTourEventEntriesQueryOptions = (playerNames: string[]) => {
   const normalizedNames = [

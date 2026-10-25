@@ -36,7 +36,7 @@ describe("formatCalendarDateRange", () => {
   });
 
   it("keeps both years when a tournament crosses a year boundary", () => {
-    expect(formatCalendarDateRange("2022-09-12", "2023-03-22")).toBe("Sep 12, 2022 – Mar 22, 2023");
+    expect(formatCalendarDateRange("2022-12-30", "2023-01-02")).toBe("Dec 30, 2022 – Jan 2, 2023");
   });
 
   it("marks a tournament without an end date as current", () => {
