@@ -34,6 +34,8 @@ export const getStartRoundOptions = (
   stage.rounds.filter((round) => !hiddenStartRoundsByStage[stage.key]?.has(round.roundName));
 
 const roundShortLabels: Record<string, string> = {
+  "First Round": "Q1",
+  "Qualifying Round": "Q2",
   "Round of 128": "R128",
   "Round of 64": "R64",
   "Round of 32": "R32",
@@ -221,7 +223,11 @@ export const buildStageTreeLayout = (
         .map((key) => positions.get(key))
         .filter((position): position is MatchPosition => Boolean(position))
         .map((position) => position.y + CARD_CENTER_ANCHOR_OFFSET);
-      const fallbackY = HEADER_SPACE + BOARD_PADDING + matchIndex * (CARD_HEIGHT + LEAF_GAP);
+      const slotIndex =
+        stage.key === "qualifying" && Number.isFinite(match.order)
+          ? Math.max(0, match.order - 1)
+          : matchIndex;
+      const fallbackY = HEADER_SPACE + BOARD_PADDING + slotIndex * (CARD_HEIGHT + LEAF_GAP);
       const y = feederCenters.length
         ? feederCenters.reduce((sum, value) => sum + value, 0) / feederCenters.length -
           CARD_CENTER_ANCHOR_OFFSET

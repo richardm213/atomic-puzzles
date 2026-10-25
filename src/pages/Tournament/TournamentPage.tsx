@@ -69,6 +69,12 @@ type DragState = {
 type TournamentSeedEntry = {
   playerName: string;
   seed: number;
+  eliminationStatus: string;
+};
+
+type TournamentEntryMarker = {
+  label: "ALT" | "Q";
+  description: string;
 };
 
 const tournamentHeading = (bracket: TournamentBracket): string => {
@@ -110,6 +116,8 @@ const withdrewPlayerName = (match: TournamentMatch): string => {
   if (isByeMatch(match) || !isWithdrawalScore(match.s1, match.s2)) return "";
   return match.s1 < match.s2 ? match.p1 : match.p2;
 };
+const disqualifiedPlayerName = (match: TournamentMatch): string =>
+  match.outcome_type === "disqualification" ? withdrewPlayerName(match) : "";
 const scoreSlotDisplay = (match: TournamentMatch, playerName: string): string => {
   if (isEmptyPlayer(playerName)) {
     return "";
@@ -135,34 +143,63 @@ const scoreSlotDisplay = (match: TournamentMatch, playerName: string): string =>
     return playerName === match.p1 ? scoreDisplay(match.s1) : scoreDisplay(match.s2);
   }
 
-  return withdrewPlayerName(match) === playerName ? "w/o" : "—";
+  if (withdrewPlayerName(match) !== playerName) return "—";
+  return match.outcome_type === "disqualification" ? "dq" : "w/o";
 };
-const PLAYER_NAME_TRUNCATION_LIMIT = 13;
 const isExternalMatchUrl = (value: string): boolean =>
   /^https?:\/\//i.test(String(value || "").trim());
 
-const getBracketDisplayName = (playerName: string): string => {
-  const name = String(playerName || "");
-  if (name.length <= PLAYER_NAME_TRUNCATION_LIMIT) return name;
+const DrawEntryBadge = ({
+  seed,
+  seedCount,
+  marker,
+}: {
+  seed?: number | null | undefined;
+  seedCount: number;
+  marker?: TournamentEntryMarker | undefined;
+}) => {
+  if (!seedCount && !marker) return null;
+  if (seed) {
+    return (
+      <span
+        className={`tournamentSeedBadge${seedCount <= 8 ? " isSingleDigit" : ""}`}
+        aria-label={`Seed ${seed}`}
+      >
+        {seed}
+      </span>
+    );
+  }
 
-  const prefix = name.slice(0, PLAYER_NAME_TRUNCATION_LIMIT + 1);
-  const lastDelimiterIndex = Math.max(prefix.lastIndexOf("_"), prefix.lastIndexOf("-"));
+  if (marker?.label === "ALT") {
+    return (
+      <button
+        type="button"
+        className="tournamentSeedBadge tournamentEntryBadge isAlternate"
+        aria-label={marker.description}
+        onClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) => event.stopPropagation()}
+      >
+        <span className="tournamentEntryBadgeLabel">Alt</span>
+        <span className="tournamentEntryTooltip" role="tooltip">
+          <strong>Alternate</strong>
+          <span>{marker.description}</span>
+        </span>
+      </button>
+    );
+  }
 
-  return lastDelimiterIndex > 0 ? name.slice(0, lastDelimiterIndex) : name;
+  return (
+    <span
+      className={`tournamentSeedBadge${marker ? " tournamentEntryBadge isQualifier" : ""}`}
+      aria-label={marker?.description}
+      aria-hidden={marker ? undefined : true}
+    >
+      {marker?.label || null}
+    </span>
+  );
 };
 
-const SeedBadge = ({ seed, seedCount }: { seed?: number | null | undefined; seedCount: number }) =>
-  seedCount ? (
-    <span
-      className={`tournamentSeedBadge${seedCount <= 8 ? " isSingleDigit" : ""}`}
-      aria-label={seed ? `Seed ${seed}` : undefined}
-      aria-hidden={seed ? undefined : true}
-    >
-      {seed || null}
-    </span>
-  ) : null;
-
-const FAIR_PLAY_FLAGGED_PLAYERS = new Set(["neverofzero", "taisthuban", "jasos12"]);
+const FAIR_PLAY_FLAGGED_PLAYERS = new Set(["neverofzero", "thuban", "taisthuban", "jasos12"]);
 const FAIR_PLAY_FLAG_LABEL =
   "Fair-play flag: this player cheated in this tournament, so interpret their results accordingly.";
 
@@ -213,6 +250,7 @@ const PlayerLabel = ({
   playerName,
   seed,
   seedCount,
+  entryMarker,
   isWinner,
   countryCode,
   shouldSuppressClick,
@@ -220,49 +258,201 @@ const PlayerLabel = ({
   playerName: string;
   seed?: number | null | undefined;
   seedCount: number;
+  entryMarker?: TournamentEntryMarker | undefined;
   isWinner: boolean;
   countryCode?: string | null | undefined;
   shouldSuppressClick: () => boolean;
-}) => (
-  <span className="tournamentPlayerLabel">
-    <SeedBadge seed={seed} seedCount={seedCount} />
-    {!isByePlayer(playerName) && !isEmptyPlayer(playerName) ? (
-      <img
-        className="tournamentPlayerFlag"
-        crossOrigin="anonymous"
-        src={countryCodeToFlagUrl(countryCode)}
-        alt=""
-        loading="lazy"
-        decoding="async"
-        aria-hidden="true"
-      />
-    ) : null}
-    {isEmptyPlayer(playerName) ? (
-      <span className="tournamentPlayerEmpty" aria-hidden="true">
-        &nbsp;
-      </span>
-    ) : isByePlayer(playerName) ? (
-      <span className="tournamentPlayerBye">bye</span>
-    ) : (
-      <Link
-        className="tournamentPlayerLink"
-        to="/@/$username"
-        params={{ username: normalizeUsername(playerName) }}
-        onClick={(event) => {
-          if (shouldSuppressClick()) {
-            event.preventDefault();
-          }
-          event.stopPropagation();
-        }}
-        title={playerName}
-      >
-        {getBracketDisplayName(playerName)}
-      </Link>
-    )}
-    <FairPlayFlagBadge playerName={playerName} />
-    {isWinner ? <AdvanceCheck /> : null}
-  </span>
-);
+}) => {
+  const playerLinkRef = useRef<HTMLAnchorElement | null>(null);
+  const [displayName, setDisplayName] = useState(playerName);
+
+  useEffect(() => {
+    const link = playerLinkRef.current;
+    if (!link || !playerName.includes("_")) {
+      setDisplayName(playerName);
+      return undefined;
+    }
+
+    const updateDisplayName = () => {
+      const availableWidth = link.clientWidth;
+      if (!availableWidth) return;
+
+      const context = document.createElement("canvas").getContext("2d");
+      if (!context) return;
+
+      const styles = window.getComputedStyle(link);
+      context.font = styles.font;
+      const letterSpacing = Number.parseFloat(styles.letterSpacing) || 0;
+      const textWidth = (value: string) =>
+        context.measureText(value).width + Math.max(0, value.length - 1) * letterSpacing;
+
+      let nextDisplayName = playerName;
+      if (textWidth(playerName) > availableWidth) {
+        const underscoreIndexes = Array.from(
+          playerName.matchAll(/_/g),
+          (match) => match.index,
+        ).reverse();
+        const fittingPrefix = underscoreIndexes
+          .map((index) => playerName.slice(0, index))
+          .find((candidate) => textWidth(candidate) <= availableWidth);
+
+        if (fittingPrefix) nextDisplayName = fittingPrefix;
+      }
+
+      setDisplayName((currentName) =>
+        currentName === nextDisplayName ? currentName : nextDisplayName,
+      );
+    };
+
+    updateDisplayName();
+    const resizeObserver = new ResizeObserver(updateDisplayName);
+    resizeObserver.observe(link.parentElement || link);
+
+    return () => resizeObserver.disconnect();
+  }, [playerName]);
+
+  return (
+    <span className="tournamentPlayerLabel">
+      <DrawEntryBadge seed={seed} seedCount={seedCount} marker={entryMarker} />
+      {!isByePlayer(playerName) && !isEmptyPlayer(playerName) ? (
+        <img
+          className="tournamentPlayerFlag"
+          crossOrigin="anonymous"
+          src={countryCodeToFlagUrl(countryCode)}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          aria-hidden="true"
+        />
+      ) : null}
+      {isEmptyPlayer(playerName) ? (
+        <span className="tournamentPlayerEmpty" aria-hidden="true">
+          &nbsp;
+        </span>
+      ) : isByePlayer(playerName) ? (
+        <span className="tournamentPlayerBye">bye</span>
+      ) : (
+        <Link
+          ref={playerLinkRef}
+          className="tournamentPlayerLink"
+          to="/@/$username"
+          params={{ username: normalizeUsername(playerName) }}
+          onClick={(event) => {
+            if (shouldSuppressClick()) {
+              event.preventDefault();
+            }
+            event.stopPropagation();
+          }}
+          title={playerName}
+          aria-label={playerName}
+        >
+          {displayName}
+        </Link>
+      )}
+      <FairPlayFlagBadge playerName={playerName} />
+      {isWinner ? <AdvanceCheck /> : null}
+    </span>
+  );
+};
+
+const isReplacementPlayer = (match: TournamentMatch, playerName: string): boolean =>
+  Boolean(match.replacement_for) &&
+  normalizeUsername(match.replacement_player) === normalizeUsername(playerName);
+
+const replacementSummary = (match: TournamentMatch): string =>
+  match.replacement_note ||
+  `${match.replacement_player} replaced ${match.replacement_for} in the published draw.`;
+
+const buildTournamentEntryMarkers = (
+  bracket: TournamentBracket,
+): Map<string, TournamentEntryMarker> => {
+  const markers = new Map<string, TournamentEntryMarker>();
+
+  bracket.matches
+    .filter((match) => match.bracket === "qualifying" && !match.winner_to)
+    .forEach((match) => {
+      const winner = winnerName(match);
+      if (!winner || winner === "Draw") return;
+      markers.set(normalizeUsername(winner), {
+        label: "Q",
+        description: "Qualified through the qualifying draw.",
+      });
+    });
+
+  bracket.matches.forEach((match) => {
+    if (!match.replacement_player || !match.replacement_for) return;
+    markers.set(normalizeUsername(match.replacement_player), {
+      label: "ALT",
+      description: replacementSummary(match),
+    });
+  });
+
+  return markers;
+};
+
+const eliminationRoundLabel = (roundName: string): string => {
+  if (roundName === "Quarterfinals") return "quarterfinals";
+  if (roundName === "Semifinals") return "semifinals";
+  if (["Finals", "Grand Final", "Grand Final Reset"].includes(roundName)) return "final";
+  return roundName.toLowerCase();
+};
+
+const mainDrawRoundIndex = (match: TournamentMatch): number => {
+  if (match.bracket === "grand_final") {
+    return match.round === "Reset" ? 9 : 8;
+  }
+  const roundOrder = [
+    "Round of 128",
+    "Round of 64",
+    "Round of 32",
+    "Round of 16",
+    "Quarterfinals",
+    "Semifinals",
+    "Finals",
+    "Grand Final",
+    "Grand Final Reset",
+  ];
+  return roundOrder.indexOf(match.round);
+};
+
+const getSeedEliminationStatus = (bracket: TournamentBracket, playerName: string): string => {
+  const playerKey = normalizeUsername(playerName);
+  const decisiveMatch = getTournamentDecisiveMatch(bracket);
+  const champion = decisiveMatch ? winnerName(decisiveMatch) : "";
+  if (normalizeUsername(champion) === playerKey) return "champion";
+
+  const losses = bracket.matches
+    .filter((match) => match.bracket === "main" || match.bracket === "grand_final")
+    .filter((match) =>
+      [match.p1, match.p2].some((participant) => normalizeUsername(participant) === playerKey),
+    )
+    .filter((match) => {
+      const winner = winnerName(match);
+      return winner && winner !== "Draw" && normalizeUsername(winner) !== playerKey;
+    })
+    .sort(
+      (left, right) =>
+        mainDrawRoundIndex(right) - mainDrawRoundIndex(left) || right.order - left.order,
+    );
+
+  const eliminationMatch = losses[0];
+  if (!eliminationMatch) return "active";
+
+  const round = eliminationRoundLabel(
+    eliminationMatch.bracket === "grand_final"
+      ? eliminationMatch.round === "Reset"
+        ? "Grand Final Reset"
+        : "Grand Final"
+      : eliminationMatch.round,
+  );
+  if (eliminationMatch.outcome_type === "disqualification") {
+    return `${round}, disqualified`;
+  }
+  if (withdrewPlayerName(eliminationMatch)) {
+    return `${round}, withdrew`;
+  }
+  return round;
+};
 
 const TournamentStateMessage = ({ title, message }: { title: string; message: string }) => (
   <div className="tournamentPage tournamentPageMissing">
@@ -284,7 +474,7 @@ const TournamentSeeds = ({
   <section className="tournamentSeedsSection" aria-labelledby="tournament-seeds-heading">
     <h2 id="tournament-seeds-heading">Seeds</h2>
     <ol className="tournamentSeedsList">
-      {seeds.map(({ playerName, seed }) => (
+      {seeds.map(({ playerName, seed, eliminationStatus }) => (
         <li key={`${seed}-${playerName}`} value={seed}>
           <span className="tournamentSeedsNumber" aria-label={`Seed ${seed}`}>
             {seed}
@@ -300,14 +490,17 @@ const TournamentSeeds = ({
             decoding="async"
             aria-hidden="true"
           />
-          <Link
-            className="tournamentSeedsPlayerLink"
-            to="/@/$username"
-            params={{ username: normalizeUsername(playerName) }}
-          >
-            {playerName}
-          </Link>
-          <FairPlayFlagBadge playerName={playerName} />
+          <span className="tournamentSeedsIdentity">
+            <Link
+              className="tournamentSeedsPlayerLink"
+              to="/@/$username"
+              params={{ username: normalizeUsername(playerName) }}
+            >
+              {playerName}
+            </Link>
+            <FairPlayFlagBadge playerName={playerName} />
+          </span>
+          <span className="tournamentSeedsResult">({eliminationStatus})</span>
         </li>
       ))}
     </ol>
@@ -317,6 +510,7 @@ const TournamentSeeds = ({
 const TournamentMatchCard = ({
   match,
   topSeedMap,
+  entryMarkers,
   seedCount,
   countryMap,
   trophyAssetPath,
@@ -327,6 +521,7 @@ const TournamentMatchCard = ({
 }: {
   match: PositionedMatch;
   topSeedMap: Map<string, number>;
+  entryMarkers: Map<string, TournamentEntryMarker>;
   seedCount: number;
   countryMap: Map<string, string>;
   trophyAssetPath: string | undefined;
@@ -337,6 +532,7 @@ const TournamentMatchCard = ({
 }) => {
   const matchWinner = winnerName(match);
   const withdrawalPlayer = withdrewPlayerName(match);
+  const disqualifiedPlayer = disqualifiedPlayerName(match);
   const hasMatchPage = Boolean(match.match_id);
   const shouldShowTrophy = showTrophy && Boolean(trophyAssetPath);
   const isDoubleBye = isDoubleByeMatch(match);
@@ -373,6 +569,11 @@ const TournamentMatchCard = ({
                 playerName={byeAdvancePlayer}
                 seed={topSeedMap.get(byeAdvancePlayer)}
                 seedCount={seedCount}
+                entryMarker={
+                  match.bracket === "qualifying"
+                    ? undefined
+                    : entryMarkers.get(normalizeUsername(byeAdvancePlayer))
+                }
                 isWinner={false}
                 countryCode={countryMap.get(byeAdvancePlayer)}
                 shouldSuppressClick={shouldSuppressClick}
@@ -387,7 +588,7 @@ const TournamentMatchCard = ({
 
   return (
     <div
-      className={`tournamentMatchCard tournamentMatchCardTree${hasMatchPage ? " isClickable" : ""}${shouldShowTrophy ? " hasTrophy" : ""}${shouldShowTrophy && placeTrophyOnSide ? " hasSideTrophy" : ""}`}
+      className={`tournamentMatchCard tournamentMatchCardTree${hasMatchPage ? " isClickable" : ""}${shouldShowTrophy ? " hasTrophy" : ""}${shouldShowTrophy && placeTrophyOnSide ? " hasSideTrophy" : ""}${match.replacement_for ? " hasReplacementHistory" : ""}`}
       style={{
         left: `${match.x}px`,
         top: `${match.y}px`,
@@ -431,33 +632,63 @@ const TournamentMatchCard = ({
         />
       ) : null}
       <div className="tournamentMatchPlayers">
-        <div className={`tournamentPlayerRow${matchWinner === match.p1 ? " isWinner" : ""}`}>
-          <span>
+        <div
+          className={`tournamentPlayerRow${matchWinner === match.p1 ? " isWinner" : ""}${isReplacementPlayer(match, match.p1) ? " hasReplacement" : ""}`}
+        >
+          <span className="tournamentPlayerIdentity">
             <PlayerLabel
               playerName={match.p1}
               seed={topSeedMap.get(match.p1)}
               seedCount={seedCount}
+              entryMarker={
+                match.bracket === "qualifying"
+                  ? undefined
+                  : entryMarkers.get(normalizeUsername(match.p1))
+              }
               isWinner={matchWinner === match.p1}
               countryCode={countryMap.get(match.p1)}
               shouldSuppressClick={shouldSuppressClick}
             />
           </span>
-          <strong className={withdrawalPlayer === match.p1 ? "tournamentScoreWithdrawal" : ""}>
+          <strong
+            className={
+              disqualifiedPlayer === match.p1
+                ? "tournamentScoreDisqualification"
+                : withdrawalPlayer === match.p1
+                  ? "tournamentScoreWithdrawal"
+                  : ""
+            }
+          >
             {scoreSlotDisplay(match, match.p1)}
           </strong>
         </div>
-        <div className={`tournamentPlayerRow${matchWinner === match.p2 ? " isWinner" : ""}`}>
-          <span>
+        <div
+          className={`tournamentPlayerRow${matchWinner === match.p2 ? " isWinner" : ""}${isReplacementPlayer(match, match.p2) ? " hasReplacement" : ""}`}
+        >
+          <span className="tournamentPlayerIdentity">
             <PlayerLabel
               playerName={match.p2}
               seed={topSeedMap.get(match.p2)}
               seedCount={seedCount}
+              entryMarker={
+                match.bracket === "qualifying"
+                  ? undefined
+                  : entryMarkers.get(normalizeUsername(match.p2))
+              }
               isWinner={matchWinner === match.p2}
               countryCode={countryMap.get(match.p2)}
               shouldSuppressClick={shouldSuppressClick}
             />
           </span>
-          <strong className={withdrawalPlayer === match.p2 ? "tournamentScoreWithdrawal" : ""}>
+          <strong
+            className={
+              disqualifiedPlayer === match.p2
+                ? "tournamentScoreDisqualification"
+                : withdrawalPlayer === match.p2
+                  ? "tournamentScoreWithdrawal"
+                  : ""
+            }
+          >
             {scoreSlotDisplay(match, match.p2)}
           </strong>
         </div>
@@ -518,6 +749,7 @@ const TournamentStageSection = ({
   isDragging,
   startRoundName,
   topSeedMap,
+  entryMarkers,
   seedCount,
   countryMap,
   trophyAssetPath,
@@ -539,6 +771,7 @@ const TournamentStageSection = ({
   isDragging: boolean;
   startRoundName: string;
   topSeedMap: Map<string, number>;
+  entryMarkers: Map<string, TournamentEntryMarker>;
   seedCount: number;
   countryMap: Map<string, string>;
   trophyAssetPath: string | undefined;
@@ -609,7 +842,11 @@ const TournamentStageSection = ({
                   width: `${CARD_WIDTH * zoomLevel}px`,
                 }}
               >
-                <span>{round.roundName}</span>
+                <span>
+                  {stage.key === "qualifying"
+                    ? getRoundShortLabel(round.roundName)
+                    : round.roundName}
+                </span>
               </div>
             ))}
           </div>
@@ -667,6 +904,7 @@ const TournamentStageSection = ({
                     key={match.id}
                     match={match}
                     topSeedMap={topSeedMap}
+                    entryMarkers={entryMarkers}
                     seedCount={seedCount}
                     countryMap={countryMap}
                     trophyAssetPath={trophyAssetPath}
@@ -824,6 +1062,11 @@ const BracketTournamentPage = ({ tournamentId }: { tournamentId: string }) => {
 
   const topSeedMap = useMemo(() => new Map(Object.entries(bracket?.seedMap || {})), [bracket]);
   const countryMap = useMemo(() => new Map(Object.entries(bracket?.countryMap || {})), [bracket]);
+  const entryMarkers = useMemo(
+    () =>
+      bracket ? buildTournamentEntryMarkers(bracket) : new Map<string, TournamentEntryMarker>(),
+    [bracket],
+  );
   const seedEntries = useMemo<TournamentSeedEntry[]>(() => {
     if (!bracket) return [];
 
@@ -842,6 +1085,7 @@ const BracketTournamentPage = ({ tournamentId }: { tournamentId: string }) => {
       .map(([playerName, seed]) => ({
         playerName: displayNamesByUsername.get(normalizeUsername(playerName)) || playerName,
         seed,
+        eliminationStatus: getSeedEliminationStatus(bracket, playerName),
       }))
       .sort(
         (left, right) => left.seed - right.seed || left.playerName.localeCompare(right.playerName),
@@ -1194,6 +1438,7 @@ const BracketTournamentPage = ({ tournamentId }: { tournamentId: string }) => {
               isDragging={draggingStage === stage.key}
               startRoundName={startRoundName}
               topSeedMap={topSeedMap}
+              entryMarkers={entryMarkers}
               seedCount={topSeedMap.size}
               countryMap={countryMap}
               trophyAssetPath={bracket.trophyAssetPath}

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   addEmptyMainBracketRounds,
+  addImplicitByeMatches,
   compareTournamentStartDates,
   getTournamentChampion,
   getTournamentDecisiveMatch,
@@ -80,7 +81,54 @@ const match = (overrides: Partial<TournamentMatch>): TournamentMatch => ({
   s2: 0,
   winner_to: "",
   loser_to: "",
+  outcome_type: "",
+  replacement_player: "",
+  replacement_for: "",
+  replacement_note: "",
+  replacement_history: [],
   ...overrides,
+});
+
+describe("implicit bracket byes", () => {
+  it("pairs played and bye feeders for each qualifying-round match", () => {
+    const augmented = addImplicitByeMatches([
+      match({
+        bracket: "qualifying",
+        round: "First Round",
+        order: 6,
+        id: "q1-played",
+        p1: "challenger",
+        p2: "qualifier",
+        s1: 2,
+        s2: 6,
+        winner_to: "q2-1",
+      }),
+      match({
+        bracket: "qualifying",
+        round: "Qualifying Round",
+        order: 1,
+        id: "q2-1",
+        p1: "direct entrant",
+        p2: "qualifier",
+        s1: 3,
+        s2: 6,
+      }),
+    ]);
+
+    const feeders = augmented
+      .filter((entry) => entry.winner_to === "q2-1")
+      .sort((left, right) => left.order - right.order);
+
+    expect(feeders).toEqual([
+      expect.objectContaining({
+        id: "q2-1-q1-bye-1",
+        order: 1,
+        p1: "direct entrant",
+        p2: "bye",
+      }),
+      expect.objectContaining({ id: "q1-played", order: 2 }),
+    ]);
+  });
 });
 
 describe("tournament decisive match helpers", () => {

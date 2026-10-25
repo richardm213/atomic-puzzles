@@ -36,6 +36,20 @@ export type TournamentMatch = {
   s2: number;
   winner_to: string;
   loser_to: string;
+  outcome_type: "" | "withdrawal" | "disqualification";
+  replacement_player: string;
+  replacement_for: string;
+  replacement_note: string;
+  replacement_history: TournamentPriorMatch[];
+};
+
+export type TournamentPriorMatch = {
+  round: string;
+  p1: string;
+  p2: string;
+  s1: number;
+  s2: number;
+  match_id: string;
 };
 
 export type TournamentRound = {
@@ -76,6 +90,11 @@ type TournamentMatchRowFromDb = {
   s2?: number | string | null;
   winner_to?: string | null;
   loser_to?: string | null;
+  outcome_type?: string | null;
+  replacement_player?: string | null;
+  replacement_for?: string | null;
+  replacement_note?: string | null;
+  replacement_history?: unknown;
 };
 
 type TournamentMetaRowFromDb = {
@@ -123,7 +142,7 @@ export const compareTournamentStartDates = (
 };
 
 const TOURNAMENT_MATCHES_SELECT_COLUMNS =
-  "tournament,bracket,round,order,id,match_id,p1,p2,s1,s2,winner_to,loser_to";
+  "tournament,bracket,round,order,id,match_id,p1,p2,s1,s2,winner_to,loser_to,outcome_type,replacement_player,replacement_for,replacement_note,replacement_history";
 const PLAYER_COUNTRIES_SELECT_COLUMNS = "player_name,country_code";
 const TOURNAMENT_SEEDS_SELECT_COLUMNS = "tournament,player_name,seed";
 const TOURNAMENT_CATALOG_SELECT_COLUMNS =
@@ -187,6 +206,7 @@ const tournamentCatalogCache = new Map<string, Promise<TournamentMeta[]>>();
 type CsvRow = Record<string, string>;
 
 const roundDisplayOrder: Record<string, string[]> = {
+  qualifying: ["First Round", "Qualifying Round"],
   main: [
     "Round of 128",
     "Round of 64",
@@ -218,13 +238,15 @@ const roundDisplayOrder: Record<string, string[]> = {
 const bracketLabels: Record<string, string> = {
   main: "Main Bracket",
   losers: "Losers Bracket",
+  qualifying: "Qualifying",
   grand_final: "Grand Final",
 };
 
 const bracketPriority = (bracketKey: string): number => {
   if (bracketKey === "main") return 0;
   if (bracketKey === "losers") return 1;
-  if (bracketKey === "grand_final") return 2;
+  if (bracketKey === "qualifying") return 2;
+  if (bracketKey === "grand_final") return 3;
   return 100;
 };
 
@@ -253,6 +275,45 @@ const getBracketRounds = (bracketKey: string, matches: TournamentMatch[]): strin
   );
 };
 
+const normalizeOutcomeType = (value: unknown): TournamentMatch["outcome_type"] => {
+  const outcomeType = String(value ?? "")
+    .trim()
+    .toLowerCase();
+  return outcomeType === "withdrawal" || outcomeType === "disqualification" ? outcomeType : "";
+};
+
+const normalizeReplacementHistory = (value: unknown): TournamentPriorMatch[] => {
+  let entries: unknown = value;
+  if (typeof entries === "string" && entries.trim()) {
+    try {
+      entries = JSON.parse(entries);
+    } catch {
+      return [];
+    }
+  }
+  if (!Array.isArray(entries)) return [];
+
+  return entries.flatMap((entry): TournamentPriorMatch[] => {
+    if (!entry || typeof entry !== "object") return [];
+    const row = entry as Record<string, unknown>;
+    const p1 = String(row.p1 ?? "").trim();
+    const p2 = String(row.p2 ?? "").trim();
+    const s1 = Number(row.s1);
+    const s2 = Number(row.s2);
+    if (!p1 || !p2 || !Number.isFinite(s1) || !Number.isFinite(s2)) return [];
+    return [
+      {
+        round: String(row.round ?? "").trim(),
+        p1,
+        p2,
+        s1,
+        s2,
+        match_id: String(row.match_id ?? "").trim(),
+      },
+    ];
+  });
+};
+
 const normalizeMatchRow = (row: TournamentMatchRowFromDb): TournamentMatch => ({
   tournament: String(row?.tournament ?? "").trim(),
   bracket: String(row?.bracket ?? "").trim(),
@@ -266,6 +327,11 @@ const normalizeMatchRow = (row: TournamentMatchRowFromDb): TournamentMatch => ({
   s2: Number(row?.s2),
   winner_to: String(row?.winner_to ?? "").trim(),
   loser_to: String(row?.loser_to ?? "").trim(),
+  outcome_type: normalizeOutcomeType(row?.outcome_type),
+  replacement_player: String(row?.replacement_player ?? "").trim(),
+  replacement_for: String(row?.replacement_for ?? "").trim(),
+  replacement_note: String(row?.replacement_note ?? "").trim(),
+  replacement_history: normalizeReplacementHistory(row?.replacement_history),
 });
 
 export const normalizeTournamentMetaRow = (row: TournamentMetaRowFromDb): TournamentMeta | null => {
@@ -438,8 +504,8 @@ const winnerName = (match: TournamentMatch): string => {
   return "";
 };
 
-const addImplicitByeMatches = (matches: TournamentMatch[]): TournamentMatch[] => {
-  const augmented = [...matches];
+export const addImplicitByeMatches = (matches: TournamentMatch[]): TournamentMatch[] => {
+  const augmented = matches.map((match) => ({ ...match }));
   const mainRounds = roundDisplayOrder["main"] ?? [];
   const byeSourceRound = "Round of 64";
   const byeDestinationRound = "Round of 32";
@@ -492,9 +558,67 @@ const addImplicitByeMatches = (matches: TournamentMatch[]): TournamentMatch[] =>
         s2: missingPlayerIsSecond ? 1 : 0,
         winner_to: currentMatch.id,
         loser_to: "",
+        outcome_type: "",
+        replacement_player: "",
+        replacement_for: "",
+        replacement_note: "",
+        replacement_history: [],
       });
     });
   }
+
+  const qualifyingFirstRound = "First Round";
+  const qualifyingSecondRound = "Qualifying Round";
+  const qualifyingMatches = augmented.filter(
+    (match) => match.bracket === "qualifying" && match.round === qualifyingSecondRound,
+  );
+
+  qualifyingMatches.forEach((currentMatch) => {
+    const feederMatches = augmented.filter(
+      (match) =>
+        match.bracket === "qualifying" &&
+        match.round === qualifyingFirstRound &&
+        match.winner_to === currentMatch.id,
+    );
+
+    [currentMatch.p1, currentMatch.p2].forEach((playerName, playerIndex) => {
+      if (!playerName || playerName.toLowerCase() === "bye") return;
+
+      const feederMatch = feederMatches.find(
+        (match) => winnerName(match).toLowerCase() === playerName.toLowerCase(),
+      );
+      const feederOrder = (currentMatch.order - 1) * 2 + playerIndex + 1;
+
+      if (feederMatch) {
+        feederMatch.order = feederOrder;
+        return;
+      }
+
+      const syntheticId = `${currentMatch.id}-q1-bye-${playerIndex + 1}`;
+      if (augmented.some((match) => match.id === syntheticId)) return;
+
+      const playerIsSecond = playerIndex === 1;
+      augmented.push({
+        tournament: currentMatch.tournament,
+        bracket: "qualifying",
+        round: qualifyingFirstRound,
+        order: feederOrder,
+        id: syntheticId,
+        match_id: "",
+        p1: playerIsSecond ? "bye" : playerName,
+        p2: playerIsSecond ? playerName : "bye",
+        s1: playerIsSecond ? 0 : 1,
+        s2: playerIsSecond ? 1 : 0,
+        winner_to: currentMatch.id,
+        loser_to: "",
+        outcome_type: "",
+        replacement_player: "",
+        replacement_for: "",
+        replacement_note: "",
+        replacement_history: [],
+      });
+    });
+  });
 
   return augmented;
 };
@@ -516,6 +640,11 @@ const emptyTournamentMatch = (
   s2: 0,
   winner_to: "",
   loser_to: "",
+  outcome_type: "",
+  replacement_player: "",
+  replacement_for: "",
+  replacement_note: "",
+  replacement_history: [],
 });
 
 export const addEmptyMainBracketRounds = (

@@ -21,6 +21,11 @@ const match = (id: string, winnerTo = ""): TournamentMatch => ({
   s2: 0,
   winner_to: winnerTo,
   loser_to: "",
+  outcome_type: "",
+  replacement_player: "",
+  replacement_for: "",
+  replacement_note: "",
+  replacement_history: [],
 });
 
 const stage: TournamentBracketStage = {
@@ -108,5 +113,38 @@ describe("bracket layout", () => {
       "r16-1",
     ]);
     expect(fromRoundOf16?.positionedMatches.map(({ id }) => id)).toEqual(["r16-1"]);
+  });
+
+  it("keeps sparse qualifier feeders in their destination slots", () => {
+    const qualifierFinals = Array.from({ length: 8 }, (_, index) => ({
+      ...match(`qualifier-final-${index + 1}`),
+      bracket: "qualifying",
+      round: "Qualifying Round",
+      order: index + 1,
+    }));
+    const qualifierStage: TournamentBracketStage = {
+      key: "qualifying",
+      label: "Qualifying",
+      rounds: [
+        {
+          roundName: "First Round",
+          matches: [6, 7, 8].map((order) => ({
+            ...match(`qualifier-r1-${order}`, `qualifier-final-${order}`),
+            bracket: "qualifying",
+            round: "First Round",
+            order,
+          })),
+        },
+        { roundName: "Qualifying Round", matches: qualifierFinals },
+      ],
+    };
+
+    const layout = buildStageTreeLayout(qualifierStage, "First Round");
+    const positions = new Map(layout?.positionedMatches.map(({ id, y }) => [id, y]));
+
+    expect(positions.get("qualifier-r1-6")).toBe(positions.get("qualifier-final-6"));
+    expect(positions.get("qualifier-r1-7")).toBe(positions.get("qualifier-final-7"));
+    expect(positions.get("qualifier-r1-8")).toBe(positions.get("qualifier-final-8"));
+    expect(positions.get("qualifier-final-5")).toBeLessThan(positions.get("qualifier-final-6")!);
   });
 });
