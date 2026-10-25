@@ -3,9 +3,13 @@ import { describe, expect, it } from "vitest";
 import type { TournamentPlayerAppearance } from "../../lib/matches/tournaments";
 import { countTournamentPlayerTitles } from "./tournamentPlayerHistory";
 
-const appearance = (seriesKey: string, placementLabel: string): TournamentPlayerAppearance => ({
+const appearance = (
+  seriesKey: string,
+  placementLabel: string,
+  id = `${seriesKey}-${placementLabel}`,
+): TournamentPlayerAppearance => ({
   tournament: {
-    id: `${seriesKey}-${placementLabel}`,
+    id,
     seriesKey,
     seriesName: seriesKey,
     title: seriesKey,
@@ -31,5 +35,12 @@ describe("tournament player title counts", () => {
         appearance("ahc", "Runner-up"),
       ]),
     ).toEqual({ titles: 2, teamTitles: 1 });
+  });
+
+  it("does not count AWC 2025 as a title", () => {
+    expect(countTournamentPlayerTitles([appearance("awc", "Champion", "awc2025")])).toEqual({
+      titles: 0,
+      teamTitles: 0,
+    });
   });
 });

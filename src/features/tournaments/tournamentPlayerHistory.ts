@@ -37,12 +37,15 @@ const aclTournamentMeta = (
 export const isTournamentTitlePlacement = (placementLabel: string): boolean =>
   placementLabel === "Champion" || placementLabel === "1st" || placementLabel.startsWith("1st ");
 
+const excludedTournamentTitles = new Set(["awc2025"]);
+
 export const countTournamentPlayerTitles = (
   appearances: TournamentPlayerAppearance[],
 ): { titles: number; teamTitles: number } =>
   appearances.reduce(
     (counts, appearance) => {
       if (!isTournamentTitlePlacement(appearance.placementLabel)) return counts;
+      if (excludedTournamentTitles.has(appearance.tournament.id.toLowerCase())) return counts;
       if (appearance.tournament.seriesKey === "acl") {
         counts.teamTitles += 1;
       } else {
