@@ -96,6 +96,7 @@ export type TournamentPlayerMatch = {
 export type TournamentPlayerAppearance = {
   tournament: TournamentMeta;
   placementLabel: string;
+  placementFieldLabel?: string;
   divisionLabel?: string;
   wins: number;
   losses: number;
@@ -720,6 +721,7 @@ export const buildTournamentPlayerAppearances = (
           const opponentSeed =
             seedMapsByTournament[match.tournament]?.[normalizePlayerKey(opponent)];
           const result = playerMatchResult(match, playerKey);
+          if (result === "unplayed" && !normalizePlayerKey(opponent)) return null;
           return {
             key: `${match.tournament}-${match.id}`,
             roundLabel: getTournamentRoundLabel(match),

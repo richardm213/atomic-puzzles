@@ -12,6 +12,7 @@ import { modeLabels } from "../../constants/matches";
 import { TournamentFairPlayFlag } from "../../features/tournaments/TournamentFairPlayFlag";
 import {
   buildAtomicChessLeaguePlayerAppearances,
+  countTournamentPlayerTitles,
   mergeTournamentPlayerAppearances,
 } from "../../features/tournaments/tournamentPlayerHistory";
 import { getAliasIdentityUsernames } from "../../lib/archive/aliases";
@@ -185,6 +186,7 @@ const TournamentActivityCard = ({
   countryMap: Record<string, string>;
 }) => {
   const tournamentName = `${appearance.tournament.seriesName} ${appearance.tournament.year}`;
+  const showsFinalPlacement = Boolean(appearance.placementFieldLabel);
 
   return (
     <article className="tournamentProfileEvent">
@@ -243,6 +245,17 @@ const TournamentActivityCard = ({
       ) : (
         <p className="tournamentProfileNoMatches">No individual board results are available.</p>
       )}
+
+      {showsFinalPlacement ? (
+        <div
+          className="tournamentProfilePlacement"
+          aria-label={`Final placement: ${appearance.placementLabel} of ${appearance.placementFieldLabel}`}
+        >
+          <span className="tournamentProfilePlacementLabel">Final placement</span>
+          <span className="tournamentProfilePlacementField">{appearance.placementFieldLabel}</span>
+          <strong>{appearance.placementLabel}</strong>
+        </div>
+      ) : null}
     </article>
   );
 };
@@ -282,7 +295,11 @@ export const TournamentPlayerPage = ({ username }: { username?: string }) => {
     if (!finalStanding) return withWolfarenaPoints;
     return withWolfarenaPoints.map((appearance) =>
       appearance.tournament.id === "wr-arena2026"
-        ? { ...appearance, placementLabel: `${ordinal(finalStanding.rank)} place` }
+        ? {
+            ...appearance,
+            placementLabel: ordinal(finalStanding.rank),
+            placementFieldLabel: `${finalStandings.length} ${finalStandings.length === 1 ? "player" : "players"}`,
+          }
         : appearance,
     );
   }, [catalogQuery.data, historyQuery.data, identityUsernames, wolfarenaQuery.data]);
@@ -299,10 +316,7 @@ export const TournamentPlayerPage = ({ username }: { username?: string }) => {
   const totalWins = appearances.reduce((sum, appearance) => sum + appearance.wins, 0);
   const totalLosses = appearances.reduce((sum, appearance) => sum + appearance.losses, 0);
   const totalDraws = appearances.reduce((sum, appearance) => sum + appearance.draws, 0);
-  const titles = appearances.filter(
-    (appearance) =>
-      appearance.placementLabel === "Champion" || appearance.placementLabel.startsWith("1st ·"),
-  ).length;
+  const { titles, teamTitles } = countTournamentPlayerTitles(appearances);
   const fullRecord = `${totalWins} - ${totalLosses}${totalDraws ? ` - ${totalDraws}` : ""}`;
 
   return (
@@ -342,6 +356,12 @@ export const TournamentPlayerPage = ({ username }: { username?: string }) => {
                 <div>
                   <dd>{titles}</dd>
                   <dt>{titles === 1 ? "Title" : "Titles"}</dt>
+                </div>
+              ) : null}
+              {teamTitles > 0 ? (
+                <div>
+                  <dd>{teamTitles}</dd>
+                  <dt>{teamTitles === 1 ? "Team Title" : "Team Titles"}</dt>
                 </div>
               ) : null}
               <div>

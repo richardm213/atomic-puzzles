@@ -34,6 +34,25 @@ const aclTournamentMeta = (
   catalog.find((tournament) => tournament.id === `acl-s${seasonNumber}`) ??
   catalog.find((tournament) => tournament.seriesKey === "acl" && tournament.year === year);
 
+const isFirstPlace = (placementLabel: string): boolean =>
+  placementLabel === "Champion" || placementLabel === "1st" || placementLabel.startsWith("1st ");
+
+export const countTournamentPlayerTitles = (
+  appearances: TournamentPlayerAppearance[],
+): { titles: number; teamTitles: number } =>
+  appearances.reduce(
+    (counts, appearance) => {
+      if (!isFirstPlace(appearance.placementLabel)) return counts;
+      if (appearance.tournament.seriesKey === "acl") {
+        counts.teamTitles += 1;
+      } else {
+        counts.titles += 1;
+      }
+      return counts;
+    },
+    { titles: 0, teamTitles: 0 },
+  );
+
 export const buildAtomicChessLeaguePlayerAppearances = (
   catalog: TournamentMeta[],
   usernames: string[],
@@ -95,7 +114,8 @@ export const buildAtomicChessLeaguePlayerAppearances = (
       return [
         {
           tournament,
-          placementLabel: `${ordinal(team.rank)} · ${division.name}`,
+          placementLabel: ordinal(team.rank),
+          placementFieldLabel: `${division.teams.length} ${division.teams.length === 1 ? "team" : "teams"}`,
           divisionLabel: division.name,
           wins: matches.filter((match) => match.result === "win").length,
           losses: matches.filter((match) => match.result === "loss").length,

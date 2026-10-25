@@ -306,6 +306,46 @@ describe("tournament player history", () => {
     expect(appearances[0]?.matches.map((entry) => entry.key)).toEqual(["awc2026-played"]);
   });
 
+  it("shows future matches only after the opponent is known", () => {
+    const tournament: TournamentMeta = {
+      id: "awc2026",
+      seriesKey: "awc",
+      seriesName: "Atomic World Championship",
+      title: "AWC 2026",
+      year: 2026,
+      status: "available",
+      matchMode: "blitz",
+      showChampion: true,
+      displayOrder: 0,
+    };
+    const appearances = buildTournamentPlayerAppearances(
+      [tournament],
+      [
+        match({
+          tournament: "awc2026",
+          id: "opponent-pending",
+          p1: "player",
+          p2: "",
+          s1: 0,
+          s2: 0,
+        }),
+        match({
+          tournament: "awc2026",
+          id: "opponent-known",
+          p1: "player",
+          p2: "opponent",
+          s1: 0,
+          s2: 0,
+        }),
+      ],
+      ["player"],
+    );
+
+    expect(appearances[0]?.matches).toEqual([
+      expect.objectContaining({ key: "awc2026-opponent-known", result: "unplayed" }),
+    ]);
+  });
+
   it("identifies unlinked legacy 1-0 results as walkovers", () => {
     const tournament: TournamentMeta = {
       id: "test",
