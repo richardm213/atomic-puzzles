@@ -1,6 +1,5 @@
 .tournamentProfilePage {
   --site-page-max-width: 720px;
-  --tournament-champion-gap: 4.5px;
 }
 
 .tournamentProfilePanel {
@@ -201,7 +200,6 @@
 .tournamentProfileEventAside {
   display: grid;
   justify-items: end;
-  gap: var(--tournament-champion-gap);
 }
 
 .tournamentProfileEventMeta {
@@ -211,12 +209,6 @@
   font-variant-numeric: tabular-nums;
   font-weight: 800;
   white-space: nowrap;
-}
-
-.tournamentProfileChampion {
-  color: color-mix(in srgb, var(--color-accent-warm) 76%, var(--color-heading));
-  font-size: 0.82rem;
-  font-weight: 800;
 }
 
 .tournamentProfileMatchHead,

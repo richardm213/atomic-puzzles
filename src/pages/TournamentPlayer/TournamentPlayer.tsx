@@ -13,7 +13,6 @@ import { TournamentFairPlayFlag } from "../../features/tournaments/TournamentFai
 import {
   buildAtomicChessLeaguePlayerAppearances,
   countTournamentPlayerTitles,
-  isTournamentTitlePlacement,
   mergeTournamentPlayerAppearances,
 } from "../../features/tournaments/tournamentPlayerHistory";
 import { getAliasIdentityUsernames } from "../../lib/archive/aliases";
@@ -188,7 +187,6 @@ const TournamentActivityCard = ({
 }) => {
   const tournamentName = `${appearance.tournament.seriesName} ${appearance.tournament.year}`;
   const showsFinalPlacement = Boolean(appearance.placementFieldLabel);
-  const isChampion = isTournamentTitlePlacement(appearance.placementLabel);
 
   return (
     <article className="tournamentProfileEvent">
@@ -212,23 +210,20 @@ const TournamentActivityCard = ({
             </span>
           ) : null}
         </div>
-        {appearance.divisionLabel || appearance.tournament.timeControl || isChampion ? (
+        {appearance.divisionLabel || appearance.tournament.timeControl ? (
           <div className="tournamentProfileEventAside">
-            {appearance.divisionLabel || appearance.tournament.timeControl ? (
-              <p className="tournamentProfileEventMeta">
-                {appearance.divisionLabel ?? (
-                  <>
-                    {appearance.tournament.matchMode
-                      ? `${modeLabels[appearance.tournament.matchMode]} `
-                      : null}
-                    {appearance.tournament.timeControl
-                      ? formatTimeControl(appearance.tournament.timeControl)
-                      : null}
-                  </>
-                )}
-              </p>
-            ) : null}
-            {isChampion ? <strong className="tournamentProfileChampion">Champion</strong> : null}
+            <p className="tournamentProfileEventMeta">
+              {appearance.divisionLabel ?? (
+                <>
+                  {appearance.tournament.matchMode
+                    ? `${modeLabels[appearance.tournament.matchMode]} `
+                    : null}
+                  {appearance.tournament.timeControl
+                    ? formatTimeControl(appearance.tournament.timeControl)
+                    : null}
+                </>
+              )}
+            </p>
           </div>
         ) : null}
       </header>
