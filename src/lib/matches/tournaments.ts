@@ -569,6 +569,11 @@ export const addImplicitByeMatches = (matches: TournamentMatch[]): TournamentMat
 
   const qualifyingFirstRound = "First Round";
   const qualifyingSecondRound = "Qualifying Round";
+  const hasPlayedQualifyingFirstRound = matches.some(
+    (match) => match.bracket === "qualifying" && match.round === qualifyingFirstRound,
+  );
+  if (!hasPlayedQualifyingFirstRound) return augmented;
+
   const qualifyingMatches = augmented.filter(
     (match) => match.bracket === "qualifying" && match.round === qualifyingSecondRound,
   );
@@ -828,7 +833,17 @@ export const getAdjacentTournamentMetas = (
   tournamentId: string,
   catalog: readonly TournamentMeta[],
 ): { previous: TournamentMeta | null; next: TournamentMeta | null } => {
-  const ordered = [...catalog].sort(compareTournamentStartDates);
+  const currentTournament = catalog.find((entry) => entry.id === tournamentId);
+  if (!currentTournament) {
+    return {
+      previous: null,
+      next: null,
+    };
+  }
+
+  const ordered = catalog
+    .filter((entry) => entry.seriesKey === currentTournament.seriesKey)
+    .sort(compareTournamentStartDates);
   const index = ordered.findIndex((entry) => entry.id === tournamentId);
 
   if (index < 0) {

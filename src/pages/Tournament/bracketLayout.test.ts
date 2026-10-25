@@ -4,6 +4,7 @@ import {
   buildStartRoundState,
   clampZoom,
   getRoundShortLabel,
+  getStageRoundShortLabel,
   getStartRoundOptions,
   zoomDisplayPercent,
 } from "./bracketLayout";
@@ -74,6 +75,25 @@ describe("bracket layout", () => {
     expect(clampZoom(99)).toBe(1.35);
     expect(clampZoom(0)).toBe(0.85);
     expect(zoomDisplayPercent(0.85)).toBe(100);
+  });
+
+  it("labels a single qualifying round Q1 instead of Q2", () => {
+    const singleRoundQualifyingStage: TournamentBracketStage = {
+      key: "qualifying",
+      label: "Qualifying",
+      rounds: [{ roundName: "Qualifying Round", matches: [match("qualifier-1")] }],
+    };
+    const twoRoundQualifyingStage: TournamentBracketStage = {
+      ...singleRoundQualifyingStage,
+      rounds: [
+        { roundName: "First Round", matches: [match("qualifier-r1")] },
+        { roundName: "Qualifying Round", matches: [match("qualifier-r2")] },
+      ],
+    };
+
+    expect(getStageRoundShortLabel(singleRoundQualifyingStage, "Qualifying Round")).toBe("Q1");
+    expect(getStageRoundShortLabel(twoRoundQualifyingStage, "First Round")).toBe("Q1");
+    expect(getStageRoundShortLabel(twoRoundQualifyingStage, "Qualifying Round")).toBe("Q2");
   });
 
   it("preserves bye anchors across selectable starting rounds without drawing empty branches", () => {

@@ -4,6 +4,7 @@ import {
   addEmptyMainBracketRounds,
   addImplicitByeMatches,
   compareTournamentStartDates,
+  getAdjacentTournamentMetas,
   getTournamentChampion,
   getTournamentDecisiveMatch,
   normalizeTournamentMetaRow,
@@ -66,6 +67,42 @@ describe("tournament catalog rows", () => {
       "acl-s1",
     ]);
   });
+
+  it("links only adjacent editions from the same tournament series", () => {
+    const base = {
+      seriesName: "Atomic World Championship",
+      title: "Tournament",
+      status: "available" as const,
+      showChampion: false,
+      displayOrder: 0,
+    };
+    const catalog = [
+      { ...base, id: "awc2026", seriesKey: "awc", year: 2026, startDate: "2026-09-07" },
+      {
+        ...base,
+        id: "ccac2026",
+        seriesKey: "ccac",
+        seriesName: "Crazyhouse Championship",
+        year: 2026,
+        startDate: "2026-03-04",
+      },
+      { ...base, id: "awc2025", seriesKey: "awc", year: 2025, startDate: "2025-09-03" },
+      {
+        ...base,
+        id: "acl-s1",
+        seriesKey: "acl",
+        seriesName: "Atomic Chess League",
+        year: 2025,
+        startDate: "2025-07-01",
+      },
+      { ...base, id: "awc2024", seriesKey: "awc", year: 2024, startDate: "2024-09-11" },
+    ];
+
+    expect(getAdjacentTournamentMetas("awc2025", catalog)).toEqual({
+      previous: expect.objectContaining({ id: "awc2024" }),
+      next: expect.objectContaining({ id: "awc2026" }),
+    });
+  });
 });
 
 const match = (overrides: Partial<TournamentMatch>): TournamentMatch => ({
@@ -90,6 +127,19 @@ const match = (overrides: Partial<TournamentMatch>): TournamentMatch => ({
 });
 
 describe("implicit bracket byes", () => {
+  it("does not invent a first qualifying round for a one-round qualifying draw", () => {
+    const augmented = addImplicitByeMatches([
+      match({
+        bracket: "qualifying",
+        round: "Qualifying Round",
+        id: "only-qualifying-match",
+      }),
+    ]);
+
+    expect(augmented).toHaveLength(1);
+    expect(augmented[0]?.round).toBe("Qualifying Round");
+  });
+
   it("pairs played and bye feeders for each qualifying-round match", () => {
     const augmented = addImplicitByeMatches([
       match({

@@ -265,7 +265,8 @@
   transform: translateY(-50%);
 }
 
-.tournamentEntryBadge.isQualifier {
+.tournamentEntryBadge.isQualifier,
+.tournamentEntryBadge.isWildcard {
   font-size: 0.86em;
 }
 
@@ -277,24 +278,46 @@
 
 .tournamentEntryTooltip {
   position: absolute;
-  bottom: calc(100% + 10px);
+  bottom: calc(100% + 9px);
   left: 0;
   z-index: 12;
-  display: none;
-  width: min(300px, 72vw);
-  padding: 12px 14px;
-  border: 1px solid color-mix(in srgb, var(--color-primary) 24%, var(--color-border));
-  border-radius: 7px;
-  background: var(--color-panel-deep);
-  box-shadow: 0 14px 30px color-mix(in srgb, var(--color-panel-deep) 54%, transparent);
+  display: grid;
+  gap: 4px;
+  width: min(250px, 70vw);
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 18%, var(--color-border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-panel-deep) 94%, var(--color-primary) 6%);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--color-panel-deep) 62%, transparent);
   color: var(--color-on-elevated);
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 500;
   letter-spacing: normal;
-  line-height: 1.45;
+  line-height: 1.4;
+  opacity: 0;
+  pointer-events: none;
   text-align: left;
+  transform: translateY(4px);
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease,
+    visibility 140ms ease;
+  visibility: hidden;
   white-space: normal;
   overflow-wrap: break-word;
+}
+
+.tournamentEntryTooltip::after {
+  position: absolute;
+  bottom: -5px;
+  left: 8px;
+  width: 8px;
+  height: 8px;
+  border-right: 1px solid color-mix(in srgb, var(--color-primary) 18%, var(--color-border));
+  border-bottom: 1px solid color-mix(in srgb, var(--color-primary) 18%, var(--color-border));
+  background: inherit;
+  content: "";
+  transform: rotate(45deg);
 }
 
 .tournamentEntryTooltip strong,
@@ -303,15 +326,17 @@
 }
 
 .tournamentEntryTooltip strong {
-  margin-bottom: 4px;
-  color: var(--color-heading);
-  font-size: 0.8rem;
+  color: var(--color-primary-pale);
+  font-size: 0.78rem;
+  line-height: 1.2;
 }
 
 .tournamentEntryBadge:hover .tournamentEntryTooltip,
 .tournamentEntryBadge:focus .tournamentEntryTooltip,
 .tournamentEntryBadge:focus-within .tournamentEntryTooltip {
-  display: block;
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible;
 }
 
 .tournamentSeedBadge.isSingleDigit {
@@ -343,10 +368,13 @@
 }
 
 .tournamentPlayerLink {
-  border-bottom: 1px solid transparent;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
   transition:
     color 160ms ease,
-    border-color 160ms ease;
+    text-decoration-color 160ms ease;
 }
 
 .tournamentPlayerBye {
@@ -362,8 +390,8 @@
 .tournamentPlayerLink:hover,
 .tournamentPlayerLink:focus-visible {
   color: var(--link-hover-color);
-  border-color: color-mix(in srgb, var(--color-primary-soft) 72%, transparent);
   outline: none;
+  text-decoration-color: color-mix(in srgb, var(--color-primary-soft) 72%, transparent);
 }
 
 .tournamentAdvanceCheck {

@@ -39,7 +39,7 @@ import {
   clampZoom,
   COLUMN_GAP,
   DEFAULT_STAGE_ZOOM,
-  getRoundShortLabel,
+  getStageRoundShortLabel,
   getStageStartRound,
   getStageTrophyMatchId,
   getStartRoundOptions,
@@ -55,6 +55,15 @@ import {
 import { WolfarenaTournamentPage } from "./WolfarenaTournamentPage";
 
 type StageKey = string;
+
+const TOURNAMENT_TAB_KEYS = new Set(["main", "losers", "qualifying", SEEDS_STAGE_KEY]);
+
+const normalizeTournamentTab = (value: string | undefined): string => {
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase();
+  return TOURNAMENT_TAB_KEYS.has(normalized) ? normalized : "";
+};
 
 type DragState = {
   stageKey: string;
@@ -73,7 +82,7 @@ type TournamentSeedEntry = {
 };
 
 type TournamentEntryMarker = {
-  label: "ALT" | "Q";
+  label: "WC" | "Q";
   description: string;
 };
 
@@ -170,18 +179,18 @@ const DrawEntryBadge = ({
     );
   }
 
-  if (marker?.label === "ALT") {
+  if (marker?.label === "WC") {
     return (
       <button
         type="button"
-        className="tournamentSeedBadge tournamentEntryBadge isAlternate"
+        className="tournamentSeedBadge tournamentEntryBadge isWildcard"
         aria-label={marker.description}
         onClick={(event) => event.stopPropagation()}
         onKeyDown={(event) => event.stopPropagation()}
       >
-        <span className="tournamentEntryBadgeLabel">Alt</span>
+        <span className="tournamentEntryBadgeLabel">WC</span>
         <span className="tournamentEntryTooltip" role="tooltip">
-          <strong>Alternate</strong>
+          <strong>Wildcard replacement</strong>
           <span>{marker.description}</span>
         </span>
       </button>
@@ -382,7 +391,7 @@ const buildTournamentEntryMarkers = (
   bracket.matches.forEach((match) => {
     if (!match.replacement_player || !match.replacement_for) return;
     markers.set(normalizeUsername(match.replacement_player), {
-      label: "ALT",
+      label: "WC",
       description: replacementSummary(match),
     });
   });
@@ -811,7 +820,7 @@ const TournamentStageSection = ({
                   onClick={() => onStartRoundChange(round.roundName)}
                   title={`Start bracket at ${round.roundName}`}
                 >
-                  {getRoundShortLabel(round.roundName)}
+                  {getStageRoundShortLabel(stage, round.roundName)}
                 </button>
               );
             })}
@@ -844,7 +853,7 @@ const TournamentStageSection = ({
               >
                 <span>
                   {stage.key === "qualifying"
-                    ? getRoundShortLabel(round.roundName)
+                    ? getStageRoundShortLabel(stage, round.roundName)
                     : round.roundName}
                 </span>
               </div>
@@ -925,7 +934,13 @@ const TournamentStageSection = ({
   );
 };
 
-const BracketTournamentPage = ({ tournamentId }: { tournamentId: string }) => {
+const BracketTournamentPage = ({
+  tournamentId,
+  tournamentTab,
+}: {
+  tournamentId: string;
+  tournamentTab?: string | undefined;
+}) => {
   const navigate = useNavigate();
   const catalogQuery = useQuery(tournamentCatalogQueryOptions());
   const adjacentTournaments = useMemo(
@@ -1000,21 +1015,35 @@ const BracketTournamentPage = ({ tournamentId }: { tournamentId: string }) => {
       ? "main"
       : bracket.stages[0]?.key || "";
     const savedActiveStageKey = String(savedView?.activeStageKey || "").trim();
+    const requestedStageKey = normalizeTournamentTab(tournamentTab);
+    const nextActiveStageKey =
+      requestedStageKey && availableStageKeys.has(requestedStageKey)
+        ? requestedStageKey
+        : savedActiveStageKey && availableStageKeys.has(savedActiveStageKey)
+          ? savedActiveStageKey
+          : defaultActiveStageKey;
 
     setStartRounds({ ...defaultStartRounds, ...(savedView?.startRounds || {}) });
     setZoomLevels(buildZoomState(bracket.stages || [], savedView?.zoomLevels || {}));
-    setActiveStageKey(
-      savedActiveStageKey && availableStageKeys.has(savedActiveStageKey)
-        ? savedActiveStageKey
-        : defaultActiveStageKey,
-    );
+    setActiveStageKey(nextActiveStageKey);
     pendingRestoreRef.current = savedView
       ? {
           scrollPositions: savedView.scrollPositions || {},
           pageScrollY: Number(savedView.pageScrollY) || 0,
         }
       : null;
-  }, [bracket]);
+
+    if (nextActiveStageKey && tournamentTab !== nextActiveStageKey) {
+      void navigate({
+        to: "/tournaments/$tournamentId/$tournamentTab",
+        params: {
+          tournamentId: getTournamentRouteId(bracket.id),
+          tournamentTab: nextActiveStageKey,
+        },
+        replace: true,
+      });
+    }
+  }, [bracket, navigate, tournamentTab]);
 
   useEffect(() => {
     if (!bracket || !pendingRestoreRef.current || typeof window === "undefined") return;
@@ -1141,6 +1170,14 @@ const BracketTournamentPage = ({ tournamentId }: { tournamentId: string }) => {
   const selectTournamentTab = (stageKey: string): void => {
     setActiveStageKey(stageKey);
     if (!bracket || typeof window === "undefined") return;
+
+    void navigate({
+      to: "/tournaments/$tournamentId/$tournamentTab",
+      params: {
+        tournamentId: getTournamentRouteId(bracket.id),
+        tournamentTab: stageKey,
+      },
+    });
 
     // The view-state effect cleans up after the tab change; persist afterward so its
     // previous active key cannot overwrite the new selection.
@@ -1324,9 +1361,10 @@ const BracketTournamentPage = ({ tournamentId }: { tournamentId: string }) => {
               {adjacentTournaments.previous ? (
                 <Link
                   className="tournamentYearNavLink"
-                  to="/tournaments/$tournamentId"
+                  to="/tournaments/$tournamentId/$tournamentTab"
                   params={{
                     tournamentId: getTournamentRouteId(adjacentTournaments.previous.id),
+                    tournamentTab: activeStageKey,
                   }}
                 >
                   ← {adjacentTournaments.previous.year}
@@ -1340,8 +1378,11 @@ const BracketTournamentPage = ({ tournamentId }: { tournamentId: string }) => {
               {adjacentTournaments.next ? (
                 <Link
                   className="tournamentYearNavLink"
-                  to="/tournaments/$tournamentId"
-                  params={{ tournamentId: getTournamentRouteId(adjacentTournaments.next.id) }}
+                  to="/tournaments/$tournamentId/$tournamentTab"
+                  params={{
+                    tournamentId: getTournamentRouteId(adjacentTournaments.next.id),
+                    tournamentTab: activeStageKey,
+                  }}
                 >
                   {adjacentTournaments.next.year} →
                 </Link>
@@ -1468,7 +1509,13 @@ const BracketTournamentPage = ({ tournamentId }: { tournamentId: string }) => {
   );
 };
 
-export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
+export const TournamentPage = ({
+  tournamentId,
+  tournamentTab,
+}: {
+  tournamentId: string;
+  tournamentTab?: string | undefined;
+}) => {
   if (tournamentId === "wolfarena2026" || tournamentId === "wr-arena2026") {
     return <WolfarenaTournamentPage />;
   }
@@ -1478,5 +1525,5 @@ export const TournamentPage = ({ tournamentId }: { tournamentId: string }) => {
   if (tournamentId === "acl-s2" || tournamentId === "atomicchessleague" || tournamentId === "acl") {
     return <AtomicChessLeaguePage key="acl-s2" seasonNumber={2} />;
   }
-  return <BracketTournamentPage tournamentId={tournamentId} />;
+  return <BracketTournamentPage tournamentId={tournamentId} tournamentTab={tournamentTab} />;
 };

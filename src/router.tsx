@@ -260,6 +260,15 @@ const tournamentRoute = createRoute({
   },
 });
 
+const tournamentTabRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/tournaments/$tournamentId/$tournamentTab",
+  component: function TournamentTabRoute() {
+    const { tournamentId, tournamentTab } = useParams({ strict: false });
+    return <TournamentPage tournamentId={tournamentId} tournamentTab={tournamentTab} />;
+  },
+});
+
 const h2hRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/h2h",
@@ -539,6 +548,7 @@ const routeTree = rootRoute.addChildren([
   arenasRoute,
   calendarRoute,
   tournamentRoute,
+  tournamentTabRoute,
   h2hRoute,
   h2hMatchupRoute,
   matchRoute,

@@ -59,6 +59,14 @@ const roundShortLabels: Record<string, string> = {
 export const getRoundShortLabel = (roundName: string): string =>
   roundShortLabels[roundName] ?? roundName.replace(/^Round\s+/i, "R");
 
+export const getStageRoundShortLabel = (
+  stage: TournamentBracketStage,
+  roundName: string,
+): string =>
+  stage.key === "qualifying" && stage.rounds.length === 1
+    ? "Q1"
+    : getRoundShortLabel(roundName);
+
 export const CARD_WIDTH = 260;
 const CARD_HEIGHT = 102;
 export const COLUMN_GAP = 78;
