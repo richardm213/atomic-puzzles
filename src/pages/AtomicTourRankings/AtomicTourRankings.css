@@ -84,7 +84,7 @@
 }
 
 .atomicTourControls {
-  grid-template-columns: minmax(220px, max-content) max-content;
+  grid-template-columns: minmax(220px, max-content) repeat(2, max-content);
   justify-content: start;
   align-items: end;
   gap: var(--space-3);
@@ -118,7 +118,7 @@
   border-color: color-mix(in srgb, var(--color-primary-soft) 42%, var(--color-input-border));
 }
 
-.atomicTourPointsLink {
+.atomicTourUtilityLink {
   min-height: 40px;
   display: inline-flex;
   align-items: center;
@@ -136,12 +136,12 @@
     background-color 160ms ease;
 }
 
-.atomicTourPointsLink:hover {
+.atomicTourUtilityLink:hover {
   border-color: color-mix(in srgb, var(--color-primary-soft) 42%, var(--color-border));
   background: var(--color-surface-inset-strong);
 }
 
-.atomicTourPointsLink:focus-visible {
+.atomicTourUtilityLink:focus-visible {
   outline: 2px solid var(--color-primary-ring);
   outline-offset: 2px;
 }
@@ -289,7 +289,7 @@
     min-width: 0;
   }
 
-  .atomicTourPointsLink {
+  .atomicTourUtilityLink {
     width: fit-content;
   }
 

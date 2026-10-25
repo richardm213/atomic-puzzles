@@ -1,6 +1,6 @@
 import "./AtomicTourRankings.css";
 
-import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
+import { faArrowUpRightFromSquare, faCircleInfo } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -94,10 +94,19 @@ export const AtomicTourRankingsPage = () => {
               ))}
             </select>
           </label>
-          <Link className="atomicTourPointsLink" to="/rankings/tour/points">
+          <Link className="atomicTourUtilityLink" to="/rankings/tour/points">
             <FontAwesomeIcon icon={faCircleInfo} aria-hidden="true" />
             Points by round
           </Link>
+          <a
+            className="atomicTourUtilityLink"
+            href="https://lichess.org/team/atomic-chess-tour"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Lichess team
+            <FontAwesomeIcon icon={faArrowUpRightFromSquare} aria-hidden="true" />
+          </a>
         </div>
 
         {snapshotsQuery.isPending || rankingsQuery.isPending ? (
