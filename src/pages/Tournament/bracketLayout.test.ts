@@ -167,4 +167,58 @@ describe("bracket layout", () => {
     expect(positions.get("qualifier-r1-8")).toBe(positions.get("qualifier-final-8"));
     expect(positions.get("qualifier-final-5")).toBeLessThan(positions.get("qualifier-final-6")!);
   });
+
+  it("orders historical losers-bracket rows by their advancement tree", () => {
+    const losersMatch = (id: string, round: string, order: number, winnerTo = "") => ({
+      ...match(id, winnerTo),
+      bracket: "losers",
+      round,
+      order,
+    });
+    const losersStage: TournamentBracketStage = {
+      key: "losers",
+      label: "Losers Bracket",
+      rounds: [
+        {
+          roundName: "Round 1",
+          matches: [
+            losersMatch("r1-a", "Round 1", 1, "r2-b"),
+            losersMatch("r1-b", "Round 1", 2, "r2-d"),
+            losersMatch("r1-c", "Round 1", 3, "r2-a"),
+            losersMatch("r1-d", "Round 1", 4, "r2-c"),
+          ],
+        },
+        {
+          roundName: "Round 2",
+          matches: [
+            losersMatch("r2-a", "Round 2", 1, "r3-a"),
+            losersMatch("r2-b", "Round 2", 2, "r3-b"),
+            losersMatch("r2-c", "Round 2", 3, "r3-a"),
+            losersMatch("r2-d", "Round 2", 4, "r3-b"),
+          ],
+        },
+        {
+          roundName: "Round 3",
+          matches: [
+            losersMatch("r3-a", "Round 3", 1, "final"),
+            losersMatch("r3-b", "Round 3", 2, "final"),
+          ],
+        },
+        { roundName: "Final", matches: [losersMatch("final", "Final", 1)] },
+      ],
+    };
+
+    const layout = buildStageTreeLayout(losersStage, "Round 1");
+    const roundOne = layout?.positionedMatches
+      .filter(({ round }) => round === "Round 1")
+      .sort((left, right) => left.y - right.y)
+      .map(({ id }) => id);
+    const roundThreeY = layout?.positionedMatches
+      .filter(({ round }) => round === "Round 3")
+      .map(({ y }) => y)
+      .sort((left, right) => left - right);
+
+    expect(roundOne).toEqual(["r1-c", "r1-d", "r1-a", "r1-b"]);
+    expect(roundThreeY).toEqual([146, 402]);
+  });
 });

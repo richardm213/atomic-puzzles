@@ -68,6 +68,7 @@
   --color-warning-soft-border: rgba(245, 194, 107, 0.2);
   --color-table-head: rgba(148, 163, 184, 0.08);
   --color-table-hover: rgba(147, 197, 253, 0.08);
+  --color-table-divider: rgba(157, 176, 207, 0.1);
   --color-overlay: rgba(15, 23, 42, 0.54);
   --color-overlay-strong: rgba(15, 23, 42, 0.95);
   --color-modal-bg: rgba(15, 23, 42, 0.54);
@@ -162,6 +163,7 @@
   --color-warning-soft-border: rgba(143, 101, 0, 0.22);
   --color-table-head: rgba(148, 163, 184, 0.14);
   --color-table-hover: rgba(42, 91, 215, 0.08);
+  --color-table-divider: rgba(60, 82, 116, 0.11);
   --color-overlay: rgba(255, 251, 246, 0.7);
   --color-overlay-strong: rgba(255, 252, 249, 0.96);
   --color-modal-bg: rgba(255, 250, 245, 0.74);
@@ -232,6 +234,7 @@
   --color-surface-inset-strong: rgba(221, 156, 226, 0.13);
   --color-table-head: rgba(221, 156, 226, 0.09);
   --color-table-hover: rgba(232, 128, 218, 0.1);
+  --color-table-divider: rgba(224, 174, 235, 0.11);
   --color-overlay: rgba(31, 13, 39, 0.58);
   --color-overlay-strong: rgba(24, 10, 31, 0.96);
   --color-modal-bg: rgba(31, 13, 39, 0.62);

@@ -376,37 +376,63 @@
 }
 
 .tournamentProfilePlacement {
-  display: grid;
-  grid-template-columns: 64px minmax(160px, 1fr) minmax(160px, 1fr) 88px;
+  display: flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-5);
-  border-top: 1px solid var(--color-border);
-  background: var(--color-surface-soft);
-}
-
-.tournamentProfilePlacementLabel {
-  grid-column: 2;
-}
-
-.tournamentProfilePlacementField {
-  grid-column: 3;
-  padding-left: 26px;
+  gap: 6px;
+  margin: 0;
+  margin-left: auto;
+  white-space: nowrap;
 }
 
 .tournamentProfilePlacement span {
   color: var(--color-subtle);
   font-size: 0.8rem;
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .tournamentProfilePlacement strong {
-  grid-column: 4;
   color: var(--color-heading);
-  font-size: 0.88rem;
+  font-size: 0.8rem;
   font-variant-numeric: tabular-nums;
   font-weight: 800;
-  text-align: right;
+}
+
+.tournamentProfileTourFooter {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-6);
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--color-border);
+  background: transparent;
+}
+
+.tournamentProfileTourFooter dl {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-6);
+  margin: 0;
+  white-space: nowrap;
+}
+
+.tournamentProfileTourFooter dl > div {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.tournamentProfileTourFooter dt {
+  color: var(--color-subtle);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.tournamentProfileTourFooter dd {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: 0.86rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
 }
 
 .tournamentProfileEmpty {
@@ -491,23 +517,23 @@
   }
 
   .tournamentProfilePlacement {
-    grid-template-columns: 38px minmax(0, 1fr) auto;
+    margin-left: 0;
+  }
+
+  .tournamentProfileTourFooter {
+    justify-content: space-between;
+    gap: var(--space-3);
     padding-inline: var(--space-4);
   }
+}
 
-  .tournamentProfilePlacementLabel {
-    grid-column: 2;
-    grid-row: 1;
+@media (max-width: 420px) {
+  .tournamentProfileTourFooter dl {
+    gap: var(--space-3);
   }
 
-  .tournamentProfilePlacementField {
-    grid-column: 2;
-    grid-row: 2;
-  }
-
-  .tournamentProfilePlacement strong {
-    grid-column: 3;
-    grid-row: 1 / span 2;
+  .tournamentProfileTourFooter {
+    gap: var(--space-2);
   }
 }
 

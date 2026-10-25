@@ -17,6 +17,10 @@ import {
 } from "../../features/tournaments/tournamentPlayerHistory";
 import { getAliasIdentityUsernames } from "../../lib/archive/aliases";
 import {
+  atomicTourEventEntriesQueryOptions,
+  type AtomicTourEventEntry,
+} from "../../lib/atomicTour/queries";
+import {
   tournamentCatalogQueryOptions,
   tournamentPlayerCountriesQueryOptions,
   tournamentPlayerQueryOptions,
@@ -181,9 +185,11 @@ const TournamentMatchRow = ({
 const TournamentActivityCard = ({
   appearance,
   countryMap,
+  tourEntry,
 }: {
   appearance: TournamentPlayerAppearance;
   countryMap: Record<string, string>;
+  tourEntry?: AtomicTourEventEntry;
 }) => {
   const tournamentName = `${appearance.tournament.seriesName} ${appearance.tournament.year}`;
   const showsFinalPlacement = Boolean(appearance.placementFieldLabel);
@@ -248,15 +254,33 @@ const TournamentActivityCard = ({
         <p className="tournamentProfileNoMatches">No individual board results are available.</p>
       )}
 
-      {showsFinalPlacement ? (
-        <div
-          className="tournamentProfilePlacement"
-          aria-label={`Final placement: ${appearance.placementLabel} of ${appearance.placementFieldLabel}`}
+      {showsFinalPlacement || tourEntry ? (
+        <footer
+          className="tournamentProfileTourFooter"
+          aria-label="Tournament result and Atomic Tour details"
         >
-          <span className="tournamentProfilePlacementLabel">Final placement</span>
-          <span className="tournamentProfilePlacementField">{appearance.placementFieldLabel}</span>
-          <strong>{appearance.placementLabel}</strong>
-        </div>
+          {tourEntry ? (
+            <dl>
+              <div>
+                <dt>Points</dt>
+                <dd>{tourEntry.pointsEarned.toLocaleString("en-US")}</dd>
+              </div>
+              <div>
+                <dt>Ranking</dt>
+                <dd>{tourEntry.startRank ? `#${tourEntry.startRank}` : "–"}</dd>
+              </div>
+            </dl>
+          ) : null}
+          {showsFinalPlacement ? (
+            <p
+              className="tournamentProfilePlacement"
+              aria-label={`Final placement: ${appearance.placementLabel} of ${appearance.placementFieldLabel}`}
+            >
+              <strong>{appearance.placementLabel}</strong>
+              <span>of {appearance.placementFieldLabel}</span>
+            </p>
+          ) : null}
+        </footer>
       ) : null}
     </article>
   );
@@ -279,6 +303,7 @@ export const TournamentPlayerPage = ({ username }: { username?: string }) => {
     ...tournamentPlayerQueryOptions(identityUsernames),
     enabled: !aliasQuery.isPending && identityUsernames.length > 0,
   });
+  const tourEntriesQuery = useQuery(atomicTourEventEntriesQueryOptions(identityUsernames));
   const wolfarenaQuery = useQuery(wolfarenaTournamentQueryOptions("wr-arena2026"));
   const appearances = useMemo(() => {
     const merged = mergeTournamentPlayerAppearances(
@@ -319,6 +344,9 @@ export const TournamentPlayerPage = ({ username }: { username?: string }) => {
   const totalLosses = appearances.reduce((sum, appearance) => sum + appearance.losses, 0);
   const totalDraws = appearances.reduce((sum, appearance) => sum + appearance.draws, 0);
   const { titles, teamTitles } = countTournamentPlayerTitles(appearances);
+  const tourEntriesByTournament = Object.fromEntries(
+    (tourEntriesQuery.data ?? []).map((entry) => [entry.tournamentId, entry]),
+  );
   const fullRecord = `${totalWins} - ${totalLosses}${totalDraws ? ` - ${totalDraws}` : ""}`;
 
   return (
@@ -381,6 +409,9 @@ export const TournamentPlayerPage = ({ username }: { username?: string }) => {
                 key={appearance.tournament.id}
                 appearance={appearance}
                 countryMap={countryQuery.data ?? {}}
+                {...(tourEntriesByTournament[appearance.tournament.id]
+                  ? { tourEntry: tourEntriesByTournament[appearance.tournament.id] }
+                  : {})}
               />
             ))}
           </section>

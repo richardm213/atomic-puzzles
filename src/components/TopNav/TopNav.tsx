@@ -8,6 +8,7 @@ import {
   faChevronDown,
   faGear,
   faMagnifyingGlass,
+  faPuzzlePiece,
   faRightFromBracket,
   faRightToBracket,
   faTriangleExclamation,
@@ -448,6 +449,15 @@ export const TopNav = () => {
     }
   };
 
+  const closeSearchAfterNavigation = (): void => {
+    setSearchQuery("");
+    setSearchSuggestions([]);
+    setSearchSuggestionsSearched(false);
+    setActiveSearchSuggestionIndex(-1);
+    setSearchOpen(false);
+    setMobileMenuOpen(false);
+  };
+
   const handleSearchSuggestionSelect = (suggestion: UsernameSearchSuggestion): void => {
     if (searchPending) return;
 
@@ -745,20 +755,12 @@ export const TopNav = () => {
           >
             <input
               ref={searchInputRef}
-              type="text"
-              role="combobox"
+              type="search"
               value={searchQuery}
               placeholder="Search player"
               aria-label="Search player username"
               aria-busy={searchBusy}
-              aria-autocomplete="list"
               aria-controls="nav-search-results"
-              aria-expanded={showSearchSuggestions}
-              aria-activedescendant={
-                activeSearchSuggestionIndex >= 0
-                  ? `nav-search-result-${activeSearchSuggestionIndex}`
-                  : undefined
-              }
               onChange={(event) => setSearchQuery(event.target.value)}
               onKeyDown={handleSearchInputKeyDown}
               disabled={searchPending}
@@ -781,33 +783,106 @@ export const TopNav = () => {
               <FontAwesomeIcon icon={faMagnifyingGlass} />
             </button>
             {showSearchSuggestions ? (
-              <div className="navSearchResults" id="nav-search-results" role="listbox">
+              <div
+                className="navSearchResults"
+                id="nav-search-results"
+                role="list"
+                aria-label="Player search results"
+              >
                 {searchSuggestionsPending ? (
-                  <div className="navSearchResultsHint">Searching...</div>
+                  <div className="navSearchResultsHint" role="status">
+                    Searching...
+                  </div>
                 ) : null}
                 {!searchSuggestionsPending && searchSuggestions.length === 0 ? (
-                  <div className="navSearchResultsHint">No players found</div>
+                  <div className="navSearchResultsHint" role="status">
+                    No players found
+                  </div>
                 ) : null}
                 {!searchSuggestionsPending
                   ? searchSuggestions.map((suggestion, index) => (
-                      <button
+                      <div
                         className={`navSearchResult ${
                           index === activeSearchSuggestionIndex ? "active" : ""
                         }`}
                         id={`nav-search-result-${index}`}
                         key={`${suggestion.username}-${suggestion.matchedName}`}
-                        type="button"
-                        role="option"
-                        aria-selected={index === activeSearchSuggestionIndex}
-                        onMouseDown={(event) => event.preventDefault()}
+                        role="listitem"
                         onMouseEnter={() => setActiveSearchSuggestionIndex(index)}
-                        onClick={() => void handleSearchSuggestionSelect(suggestion)}
                       >
-                        <span className="navSearchResultName">{suggestion.matchedName}</span>
-                        {suggestion.matchType === "alias" ? (
-                          <span className="navSearchResultMeta">{suggestion.username}</span>
-                        ) : null}
-                      </button>
+                        <span className="navSearchResultPrimary">
+                          <span className="navSearchResultName">{suggestion.matchedName}</span>
+                        </span>
+                        <Link
+                          className="navSearchResultDefault"
+                          to="/@/$username"
+                          params={{ username: suggestion.matchedName }}
+                          aria-label={`Open ${suggestion.matchedName}'s profile`}
+                          onClick={closeSearchAfterNavigation}
+                        />
+                        <div
+                          className="navSearchResultActions"
+                          role="group"
+                          aria-label={`${suggestion.matchedName} links`}
+                        >
+                          {suggestion.accountUsername ? (
+                            <Link
+                              className="navSearchResultAction"
+                              to="/@/$username/puzzles"
+                              params={{ username: suggestion.accountUsername }}
+                              aria-label={`Open ${suggestion.matchedName}'s puzzle dashboard`}
+                              title="Puzzle dashboard"
+                              onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                void navigate({
+                                  to: "/@/$username/puzzles",
+                                  params: { username: suggestion.accountUsername ?? "" },
+                                });
+                                closeSearchAfterNavigation();
+                              }}
+                            >
+                              <FontAwesomeIcon icon={faPuzzlePiece} aria-hidden="true" />
+                            </Link>
+                          ) : null}
+                          <Link
+                            className="navSearchResultAction"
+                            to="/tournaments/players/$username"
+                            params={{ username: suggestion.matchedName }}
+                            aria-label={`Open ${suggestion.matchedName}'s tournament history`}
+                            title="Tournament history"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              void navigate({
+                                to: "/tournaments/players/$username",
+                                params: { username: suggestion.matchedName },
+                              });
+                              closeSearchAfterNavigation();
+                            }}
+                          >
+                            <FontAwesomeIcon icon={faTrophy} aria-hidden="true" />
+                          </Link>
+                          <Link
+                            className="navSearchResultAction"
+                            to="/@/$username"
+                            params={{ username: suggestion.matchedName }}
+                            aria-label={`Open ${suggestion.matchedName}'s profile`}
+                            title="Profile"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              void navigate({
+                                to: "/@/$username",
+                                params: { username: suggestion.matchedName },
+                              });
+                              closeSearchAfterNavigation();
+                            }}
+                          >
+                            <FontAwesomeIcon icon={faUser} aria-hidden="true" />
+                          </Link>
+                        </div>
+                      </div>
                     ))
                   : null}
               </div>

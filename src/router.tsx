@@ -115,6 +115,14 @@ const OpeningRankingsPage = lazyRouteComponent(
   () => import("./pages/OpeningRankings/OpeningRankings"),
   "OpeningRankingsPage",
 );
+const AtomicTourRankingsPage = lazyRouteComponent(
+  () => import("./pages/AtomicTourRankings/AtomicTourRankings"),
+  "AtomicTourRankingsPage",
+);
+const AtomicTourPointsPage = lazyRouteComponent(
+  () => import("./pages/AtomicTourPoints/AtomicTourPoints"),
+  "AtomicTourPointsPage",
+);
 const RecentMatchesPage = lazyRouteComponent(
   () => import("./pages/RecentMatches/RecentMatches"),
   "RecentMatchesPage",
@@ -211,6 +219,18 @@ const openingRankingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/rankings/openings",
   component: OpeningRankingsPage,
+});
+
+const atomicTourRankingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/rankings/tour",
+  component: AtomicTourRankingsPage,
+});
+
+const atomicTourPointsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/rankings/tour/points",
+  component: AtomicTourPointsPage,
 });
 
 const recentRoute = createRoute({
@@ -553,6 +573,8 @@ const routeTree = rootRoute.addChildren([
   bannedUsersRoute,
   rankingsMethodologyRoute,
   openingRankingsRoute,
+  atomicTourRankingsRoute,
+  atomicTourPointsRoute,
   analysisRoute,
   analysisFenRoute,
   practiceRoute,

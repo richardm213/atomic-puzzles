@@ -1,0 +1,230 @@
+.atomicTourPointsPage {
+  --site-page-max-width: 800px;
+}
+
+.atomicTourPointsPanel {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.atomicTourPointsPanel h1,
+.atomicTourPointsGroup h2,
+.atomicTourWolfarena h2,
+.atomicTourWolfarena p,
+.atomicTourPointsNote {
+  margin: 0;
+}
+
+.atomicTourPointsPanel h1 {
+  color: var(--color-heading);
+  font-size: var(--text-page-title);
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+}
+
+.atomicTourPointsBackLink {
+  width: fit-content;
+  color: var(--link-color);
+  font-size: 0.86rem;
+  font-weight: 750;
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+
+.atomicTourPointsBackLink:hover {
+  color: var(--link-hover-color);
+  text-decoration: underline;
+}
+
+.atomicTourPointsBackLink:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 3px;
+}
+
+.atomicTourTierKey {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.atomicTourTierKey > div {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-surface-soft);
+}
+
+.atomicTourTierKey strong {
+  color: var(--color-heading);
+  font-size: 0.9rem;
+}
+
+.atomicTourTierKey span {
+  color: var(--color-muted);
+  font-size: 0.82rem;
+}
+
+.atomicTourPointsTables {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.atomicTourPointsGroup,
+.atomicTourPointsGroup .dataTableWrap {
+  min-width: 0;
+}
+
+.atomicTourPointsGroup h2 {
+  margin-bottom: var(--space-2);
+  color: var(--color-heading);
+  font-size: 1rem;
+}
+
+.atomicTourLosersStartControl {
+  min-height: 42px;
+  display: grid;
+  grid-template-columns: 1fr max-content;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-soft);
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.atomicTourLosersStartControl select {
+  min-height: 34px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-elevated-strong);
+  color: var(--color-heading);
+  font: inherit;
+}
+
+.atomicTourLosersStartControl select:focus-visible {
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+.atomicTourPointsTable {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.atomicTourPointsTable th,
+.atomicTourPointsTable td {
+  padding: 8px;
+}
+
+.atomicTourPointsTable tbody th {
+  color: var(--color-text);
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.atomicTourPointsTable :is(th, td):nth-child(n + 2) {
+  width: 21%;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.atomicTourPointsTable td {
+  color: var(--color-heading);
+  font-weight: 750;
+}
+
+.atomicTourWolfarena {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 1fr);
+  align-items: start;
+  gap: var(--space-5);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-surface-soft);
+}
+
+.atomicTourWolfarenaCopy {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.atomicTourWolfarena h2 {
+  color: var(--color-heading);
+  font-size: 1rem;
+}
+
+.atomicTourWolfarena p {
+  color: var(--color-muted);
+  font-size: 0.86rem;
+  line-height: 1.6;
+}
+
+.atomicTourWolfarena .dataTableWrap {
+  min-width: 0;
+}
+
+.atomicTourWolfarenaTable {
+  width: 100%;
+  min-width: 0;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.atomicTourWolfarenaTable th,
+.atomicTourWolfarenaTable td {
+  padding: 8px;
+}
+
+.atomicTourWolfarenaTable tbody th {
+  color: var(--color-text);
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.atomicTourWolfarenaTable :is(th, td):last-child {
+  width: 1%;
+  color: var(--color-heading);
+  font-weight: 750;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.atomicTourPointsNote {
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-surface-soft);
+  color: var(--color-muted);
+  font-size: 0.86rem;
+  line-height: 1.6;
+}
+
+@media (max-width: 640px) {
+  .atomicTourPointsPanel h1 {
+    font-size: var(--text-page-title-mobile);
+  }
+
+  .atomicTourTierKey,
+  .atomicTourPointsTables,
+  .atomicTourWolfarena {
+    grid-template-columns: 1fr;
+  }
+
+  .atomicTourWolfarena {
+    padding: var(--space-3);
+  }
+}

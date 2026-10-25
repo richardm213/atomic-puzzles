@@ -16,6 +16,7 @@ export type UsernameSearchSuggestion = {
   matchedName: string;
   matchType: "username" | "alias";
   banned: boolean;
+  accountUsername: string | null;
 };
 
 type RankedUsernameSearchSuggestion = UsernameSearchSuggestion & {
@@ -105,6 +106,7 @@ export const searchUsernameSuggestions = async (
           matchedName,
           matchType: member.matchType,
           banned: Boolean(row.banned),
+          accountUsername: null,
           rank,
         });
       });
@@ -119,11 +121,12 @@ export const searchUsernameSuggestions = async (
         matchedName: username,
         matchType: "username",
         banned: false,
+        accountUsername: null,
         rank,
       });
     });
 
-    return [...suggestionsByMatchedName.values()]
+    const suggestions = [...suggestionsByMatchedName.values()]
       .sort((first, second) => {
         if (first.rank !== second.rank) return first.rank - second.rank;
         if (first.matchedName.length !== second.matchedName.length) {
@@ -131,8 +134,41 @@ export const searchUsernameSuggestions = async (
         }
         return first.matchedName.localeCompare(second.matchedName);
       })
-      .slice(0, limit)
-      .map(({ rank: _rank, ...suggestion }) => suggestion);
+      .slice(0, limit);
+
+    const aliasRowsByUsername = new Map(aliasRows.map((row) => [row.username, row]));
+    const accountCandidatesBySuggestion = suggestions.map((suggestion) => {
+      const identity = aliasRowsByUsername.get(suggestion.username);
+      if (identity?.banned || identity?.bot) return [];
+
+      return [
+        suggestion.matchedName,
+        suggestion.username,
+        ...(identity?.accounts ?? [])
+          .filter((account) => account.source === "lichess" && !account.banned && !account.bot)
+          .map((account) => account.alias),
+      ]
+        .map(normalizeUsername)
+        .filter(Boolean);
+    });
+    const accountCandidates = [...new Set(accountCandidatesBySuggestion.flat())];
+    const registeredRows = accountCandidates.length
+      ? await loadSupabaseRows<{ username: string | null }>(
+          "users",
+          getSupabaseClient().from("users").select("username").in("username", accountCandidates),
+        ).catch(() => [])
+      : [];
+    const registeredUsernames = new Set(
+      registeredRows.map((row) => normalizeUsername(row.username)).filter(Boolean),
+    );
+
+    return suggestions.map(({ rank: _rank, ...suggestion }, index) => ({
+      ...suggestion,
+      accountUsername:
+        accountCandidatesBySuggestion[index]?.find((username) =>
+          registeredUsernames.has(username),
+        ) ?? null,
+    }));
   });
 
 export const resolveUsernameInput = async (value: string): Promise<string> =>

@@ -28,6 +28,11 @@ export const navItems: NavItem[] = [
         isActive: (pathname) => pathname === "/rankings/yearly",
       },
       {
+        to: "/rankings/tour",
+        label: "Atomic Chess Tour",
+        isActive: (pathname) => pathname.startsWith("/rankings/tour"),
+      },
+      {
         to: "/rankings/puzzles",
         label: "Puzzle rankings",
         isActive: (pathname) => pathname === "/rankings/puzzles",

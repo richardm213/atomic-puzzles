@@ -154,6 +154,37 @@ export const getVisibleRounds = (
   return stage.rounds.slice(Math.max(0, startIndex));
 };
 
+const orderRoundsByAdvancement = (
+  rounds: TournamentBracketStage["rounds"],
+): TournamentBracketStage["rounds"] => {
+  const orderedRounds = rounds.map((round) => ({ ...round, matches: [...round.matches] }));
+  let downstreamOrder = new Map<string, number>();
+
+  for (let roundIndex = orderedRounds.length - 1; roundIndex >= 0; roundIndex -= 1) {
+    const round = orderedRounds[roundIndex]!;
+
+    if (downstreamOrder.size) {
+      const sourceOrder = new Map(round.matches.map((match, index) => [match.id, index]));
+      round.matches.sort((left, right) => {
+        const leftTargetOrder = downstreamOrder.get(left.winner_to);
+        const rightTargetOrder = downstreamOrder.get(right.winner_to);
+        const leftHasTarget = leftTargetOrder !== undefined;
+        const rightHasTarget = rightTargetOrder !== undefined;
+
+        if (leftHasTarget && rightHasTarget && leftTargetOrder !== rightTargetOrder) {
+          return leftTargetOrder - rightTargetOrder;
+        }
+        if (leftHasTarget !== rightHasTarget) return leftHasTarget ? -1 : 1;
+        return sourceOrder.get(left.id)! - sourceOrder.get(right.id)!;
+      });
+    }
+
+    downstreamOrder = new Map(round.matches.map((match, index) => [match.id, index]));
+  }
+
+  return orderedRounds;
+};
+
 const trophyRoundNames = new Set([
   "Final",
   "Finals",
@@ -200,7 +231,11 @@ export const buildStageTreeLayout = (
   stage: TournamentBracketStage,
   startRoundName: string,
 ): StageLayout => {
-  const rounds = getVisibleRounds(stage, startRoundName);
+  // Keep every feeder group together even when historical row orders describe the
+  // match chronology rather than the visual draw. This is especially important for
+  // older double-elimination losers brackets, where crossed source orders can make
+  // later cards overlap instead of forming a balanced tree.
+  const rounds = orderRoundsByAdvancement(getVisibleRounds(stage, startRoundName));
   if (!rounds.length) return null;
 
   const incoming = new Map<string, string[]>();

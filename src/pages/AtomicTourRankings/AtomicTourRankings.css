@@ -1,0 +1,319 @@
+.atomicTourPage {
+  --site-page-max-width: 720px;
+}
+
+.atomicTourPanel {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.atomicTourHeader h1 {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: var(--text-page-title);
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+}
+
+.atomicTourTitleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.atomicTourHelp {
+  position: relative;
+  display: inline-flex;
+}
+
+.atomicTourHelpButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-primary-soft);
+  cursor: help;
+  font-size: 0.95rem;
+  transition: color 160ms ease;
+}
+
+.atomicTourHelpButton:hover,
+.atomicTourHelpButton:focus-visible {
+  color: var(--color-primary-pale);
+}
+
+.atomicTourHelpButton:focus-visible {
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+.atomicTourHelpTooltip {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 10;
+  width: min(360px, calc(100vw - 64px));
+  padding: 12px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-panel-strong);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 28%);
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: left;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease,
+    visibility 140ms;
+}
+
+.atomicTourHelp:hover .atomicTourHelpTooltip,
+.atomicTourHelp:focus-within .atomicTourHelpTooltip {
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.atomicTourControls {
+  grid-template-columns: minmax(220px, max-content) max-content;
+  justify-content: start;
+  align-items: end;
+  gap: var(--space-3);
+  padding: 0;
+}
+
+.atomicTourDateControl {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+  color: var(--color-subtle);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.atomicTourDateControl select {
+  width: 100%;
+  min-width: 220px;
+  min-height: 40px;
+  border-radius: 8px;
+  background: var(--color-surface-elevated-strong);
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.atomicTourDateControl select:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-primary-soft) 42%, var(--color-input-border));
+}
+
+.atomicTourPointsLink {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface-elevated-strong);
+  color: var(--color-heading);
+  font-size: 0.86rem;
+  font-weight: 750;
+  text-decoration: none;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+
+.atomicTourPointsLink:hover {
+  border-color: color-mix(in srgb, var(--color-primary-soft) 42%, var(--color-border));
+  background: var(--color-surface-inset-strong);
+}
+
+.atomicTourPointsLink:focus-visible {
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+.atomicTourTableWrap {
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--color-border) 82%, transparent);
+  background: var(--color-panel-strong);
+}
+
+.atomicTourTable {
+  min-width: 0;
+  border: 0;
+  table-layout: fixed;
+}
+
+.atomicTourTable :is(th, td) {
+  padding: var(--space-3) var(--space-3);
+  border-bottom-color: var(--color-table-divider);
+}
+
+.atomicTourTable thead {
+  background: color-mix(in srgb, var(--color-table-head) 74%, var(--color-panel-strong));
+}
+
+.atomicTourTable th {
+  font-size: 0.68rem;
+  letter-spacing: 0.055em;
+}
+
+.atomicTourTable :is(th, td):nth-child(1) {
+  width: 56px;
+}
+
+.atomicTourTable :is(th, td):nth-child(2) {
+  width: 58px;
+  text-align: center;
+}
+
+.atomicTourTable :is(th, td):nth-child(2) > * {
+  display: inline-block;
+  transform: translateX(-8px);
+}
+
+.atomicTourTable :is(th, td):nth-child(4) {
+  width: 96px;
+}
+
+.atomicTourTable :is(th, td):nth-child(5) {
+  width: 70px;
+}
+
+.atomicTourTable :is(th, td):nth-child(1),
+.atomicTourTable :is(th, td):nth-child(2),
+.atomicTourTable :is(th, td):nth-child(4),
+.atomicTourTable :is(th, td):nth-child(5) {
+  white-space: nowrap;
+}
+
+.atomicTourTable :is(th, td):nth-child(4) {
+  text-align: right;
+}
+
+.atomicTourTable :is(th, td):nth-child(5) {
+  text-align: right;
+}
+
+.atomicTourRank,
+.atomicTourPoints {
+  color: var(--color-heading);
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+
+.atomicTourPlayer {
+  max-width: 100%;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--link-color);
+  font-weight: 750;
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+
+.atomicTourPlayer > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atomicTourPlayerFlag {
+  width: 20px;
+  height: 14px;
+  flex: none;
+  border: 1px solid color-mix(in srgb, white 12%, transparent);
+  border-radius: 2px;
+  object-fit: cover;
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--color-panel-deep) 48%, transparent);
+}
+
+.atomicTourPlayer:hover {
+  color: var(--link-hover-color);
+  text-decoration: underline;
+}
+
+.atomicTourPlayer:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 3px;
+}
+
+.atomicTourChange {
+  display: inline-block;
+  min-width: 0;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 750;
+}
+
+.atomicTourChange.isUp {
+  color: var(--color-success);
+}
+
+.atomicTourChange.isDown {
+  color: var(--color-danger);
+}
+
+.atomicTourChange.isNeutral {
+  color: var(--color-subtle);
+}
+
+@media (max-width: 640px) {
+  .atomicTourHeader h1 {
+    font-size: var(--text-page-title-mobile);
+  }
+
+  .atomicTourControls {
+    grid-template-columns: 1fr;
+  }
+
+  .atomicTourDateControl select {
+    min-width: 0;
+  }
+
+  .atomicTourPointsLink {
+    width: fit-content;
+  }
+
+  .atomicTourTable :is(th, td) {
+    padding-inline: var(--space-2);
+  }
+
+  .atomicTourTable :is(th, td):nth-child(1) {
+    width: 38px;
+  }
+
+  .atomicTourTable :is(th, td):nth-child(2) {
+    width: 42px;
+  }
+
+  .atomicTourTable :is(th, td):nth-child(4) {
+    width: 66px;
+  }
+
+  .atomicTourTable :is(th, td):nth-child(5) {
+    width: 58px;
+  }
+
+  .atomicTourPlayerFlag {
+    display: none;
+  }
+}
