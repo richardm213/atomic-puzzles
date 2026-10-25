@@ -306,7 +306,7 @@ export const getProfileMetricCardRows = (
         },
         {
           key: `${mode}-rd`,
-          label: estimated ? "Estimate RD" : "RD",
+          label: "RD",
           value: summary.currentRd,
         },
         {

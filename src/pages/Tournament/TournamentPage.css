@@ -375,6 +375,8 @@
 }
 
 .tournamentPlayerLink {
+  flex: 0 1 auto;
+  inline-size: fit-content;
   text-decoration: underline;
   text-decoration-color: transparent;
   text-decoration-thickness: 1px;

@@ -1326,7 +1326,7 @@ export const PlayerProfilePage = ({
                             <th>TC</th>
                             <th>Score</th>
                             <th>{isExcluded ? "Estimated rating (Δ)" : "Rating (Δ)"}</th>
-                            <th>{isExcluded ? "Estimate RD (Δ)" : "RD (Δ)"}</th>
+                            <th>RD (Δ)</th>
                             <th aria-label="Open match page" />
                           </tr>
                         </thead>

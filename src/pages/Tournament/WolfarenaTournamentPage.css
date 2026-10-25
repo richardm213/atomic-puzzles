@@ -389,6 +389,7 @@
 .wolfarenaMatchCard .wolfarenaPlayerRow a {
   display: block;
   justify-self: start;
+  width: fit-content;
   max-width: 100%;
 }
 

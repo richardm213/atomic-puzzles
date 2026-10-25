@@ -1360,6 +1360,12 @@
   overflow-wrap: anywhere;
 }
 
+.profileFavoriteOpponentRow td:first-child .rankingLink {
+  display: inline-block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
 .profileMatchTable .matchDetailsRow > td {
   width: auto;
 }
