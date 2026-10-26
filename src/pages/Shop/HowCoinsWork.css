@@ -76,11 +76,13 @@
 .coinRewardGroups {
   display: grid;
   gap: var(--space-4);
+  min-width: 0;
 }
 
 .coinRewardGroup {
   display: grid;
   gap: var(--space-3);
+  min-width: 0;
 }
 
 .coinRewardGroupHeader {
@@ -197,6 +199,7 @@
 .coinSpeedAdjustment {
   display: grid;
   gap: var(--space-3);
+  min-width: 0;
 }
 
 .coinSpeedAdjustment h3 {
@@ -209,6 +212,18 @@
   margin: 0;
   color: var(--color-muted);
   font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.coinReducedPenaltyNote {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-soft);
+  color: var(--color-heading);
+  font-size: 0.875rem;
+  font-weight: 600;
   line-height: 1.5;
 }
 

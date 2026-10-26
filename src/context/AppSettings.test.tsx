@@ -26,6 +26,21 @@ const PuzzleTimerSetting = () => {
   return <span>{showPuzzleTimer ? "Timer shown" : "Timer hidden"}</span>;
 };
 
+const CoinVisibilitySettings = () => {
+  const { showCoinBalance, setShowCoinBalance, showCoinChangePopups, setShowCoinChangePopups } =
+    useAppSettings();
+  return (
+    <>
+      <button type="button" onClick={() => setShowCoinBalance((shown) => !shown)}>
+        {showCoinBalance ? "Balance shown" : "Balance hidden"}
+      </button>
+      <button type="button" onClick={() => setShowCoinChangePopups((shown) => !shown)}>
+        {showCoinChangePopups ? "Popups shown" : "Popups hidden"}
+      </button>
+    </>
+  );
+};
+
 const ProfileRatingSetting = () => {
   const {
     showWolfrandomProfileRatings,
@@ -78,6 +93,30 @@ describe("puzzle timer preference", () => {
     );
 
     expect(screen.getByText("Timer hidden")).toBeInTheDocument();
+  });
+});
+
+describe("coin visibility preferences", () => {
+  beforeEach(() => window.localStorage.clear());
+
+  it("shows coin balances and change popups by default and persists opt-out choices", async () => {
+    render(
+      <AppSettingsProvider>
+        <CoinVisibilitySettings />
+      </AppSettingsProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Balance shown" }));
+    fireEvent.click(screen.getByRole("button", { name: "Popups shown" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Balance hidden" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Popups hidden" })).toBeInTheDocument();
+      expect(window.localStorage.getItem("atomic-puzzles.coins.show-balance")).toBe("false");
+      expect(window.localStorage.getItem("atomic-puzzles.puzzles.show-coin-change-popups")).toBe(
+        "false",
+      );
+    });
   });
 });
 

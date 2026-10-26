@@ -175,6 +175,10 @@ export const TopNav = () => {
     setShowRatingGraphLines,
     showPuzzleTimer,
     setShowPuzzleTimer,
+    showCoinBalance,
+    setShowCoinBalance,
+    showCoinChangePopups,
+    setShowCoinChangePopups,
   } = useAppSettings();
   const trimmedSearchQuery = searchQuery.trim();
   const normalizedAuthUsername = normalizeUsername(user?.username);
@@ -867,7 +871,7 @@ export const TopNav = () => {
             ) : null}
           </form>
         </div>
-        {isAuthenticated && coinSummaryQuery.data ? (
+        {isAuthenticated && showCoinBalance && coinSummaryQuery.data ? (
           <Link
             className="navCoinBalance"
             to="/shop"
@@ -1075,6 +1079,16 @@ export const TopNav = () => {
                   </option>
                 </select>
               </div>
+              <div className="navSettingsSection">
+                <label className="navSettingsCheckbox">
+                  <span>Show coin balance</span>
+                  <input
+                    type="checkbox"
+                    checked={showCoinBalance}
+                    onChange={(event) => setShowCoinBalance(event.target.checked)}
+                  />
+                </label>
+              </div>
               {pathname === "/rankings" || pathname === "/rankings/yearly" ? (
                 <div className="navSettingsSection">
                   <label className="navSettingsCheckbox">
@@ -1181,6 +1195,18 @@ export const TopNav = () => {
                           type="checkbox"
                           checked={showPuzzleTimer}
                           onChange={(event) => setShowPuzzleTimer(event.target.checked)}
+                        />
+                      </label>
+                    </div>
+                  ) : null}
+                  {showPuzzleTimerSetting ? (
+                    <div className="navSettingsSection">
+                      <label className="navSettingsCheckbox">
+                        <span>Show coin change popups</span>
+                        <input
+                          type="checkbox"
+                          checked={showCoinChangePopups}
+                          onChange={(event) => setShowCoinChangePopups(event.target.checked)}
                         />
                       </label>
                     </div>

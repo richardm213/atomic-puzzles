@@ -25,6 +25,8 @@ const STORAGE_KEYS = {
   showChessComRankings: "atomic-puzzles.rankings.show-chesscom-users",
   showWolfrandomProfileRatings: "atomic-puzzles.profile.show-wolfrandom-ratings",
   showProfileActionButtons: "atomic-puzzles.profile.show-action-buttons",
+  showCoinBalance: "atomic-puzzles.coins.show-balance",
+  showCoinChangePopups: "atomic-puzzles.puzzles.show-coin-change-popups",
   // The original key was written as `true` for users before the timer became opt-in.
   // Start from a clean preference so unchecked is the effective default for everyone.
   showPuzzleTimer: "atomic-puzzles.puzzles.show-timer-v2",
@@ -181,6 +183,10 @@ export type AppSettingsContextValue = {
   setShowRatingGraphLines: Dispatch<SetStateAction<boolean>>;
   showPuzzleTimer: boolean;
   setShowPuzzleTimer: Dispatch<SetStateAction<boolean>>;
+  showCoinBalance: boolean;
+  setShowCoinBalance: Dispatch<SetStateAction<boolean>>;
+  showCoinChangePopups: boolean;
+  setShowCoinChangePopups: Dispatch<SetStateAction<boolean>>;
 };
 
 const AppSettingsContext = createContext<AppSettingsContextValue | null>(null);
@@ -286,6 +292,16 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     z.boolean(),
     false,
   );
+  const [showCoinBalance, setShowCoinBalance] = usePersistedState(
+    STORAGE_KEYS.showCoinBalance,
+    z.boolean(),
+    true,
+  );
+  const [showCoinChangePopups, setShowCoinChangePopups] = usePersistedState(
+    STORAGE_KEYS.showCoinChangePopups,
+    z.boolean(),
+    true,
+  );
 
   const [ratingGraphDots, setRatingGraphDots] = usePersistedState<"auto" | "show" | "hide">(
     "profile.ratingGraph.dots",
@@ -375,6 +391,10 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setShowRatingGraphLines,
       showPuzzleTimer,
       setShowPuzzleTimer,
+      showCoinBalance,
+      setShowCoinBalance,
+      showCoinChangePopups,
+      setShowCoinChangePopups,
     }),
     [
       theme,
@@ -412,6 +432,10 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setShowRatingGraphLines,
       showPuzzleTimer,
       setShowPuzzleTimer,
+      showCoinBalance,
+      setShowCoinBalance,
+      showCoinChangePopups,
+      setShowCoinChangePopups,
     ],
   );
 

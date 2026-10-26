@@ -3,6 +3,7 @@ import "./CoinEarnedToast.css";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 
+import { useAppSettings } from "../../context/AppSettings";
 import { formatCoinAmount } from "../../lib/coins/coinDisplay";
 import { type CoinEarnedDetail, COINS_EARNED_EVENT } from "../../lib/coins/coinEvents";
 import { appAssetPath } from "../../utils/appAssetPath";
@@ -13,35 +14,42 @@ export const CoinEarnedToast = () => {
   const [rewards, setRewards] = useState<Reward[]>([]);
   const nextId = useRef(0);
   const queryClient = useQueryClient();
+  const { showCoinChangePopups } = useAppSettings();
 
   useEffect(() => {
     const onCoinsEarned = (event: Event) => {
       const detail = (event as CustomEvent<CoinEarnedDetail>).detail;
       if (!detail || detail.amount === 0) return;
+      void queryClient.invalidateQueries({ queryKey: ["coins"] });
+      if (!showCoinChangePopups) return;
       const id = ++nextId.current;
       setRewards((current) => [...current.slice(-2), { ...detail, id }]);
-      void queryClient.invalidateQueries({ queryKey: ["coins"] });
       window.setTimeout(() => {
         setRewards((current) => current.filter((reward) => reward.id !== id));
       }, 2600);
     };
     window.addEventListener(COINS_EARNED_EVENT, onCoinsEarned);
     return () => window.removeEventListener(COINS_EARNED_EVENT, onCoinsEarned);
-  }, [queryClient]);
+  }, [queryClient, showCoinChangePopups]);
 
   return (
     <div className="coinEarnedRegion" aria-live="polite" aria-atomic="false">
-      {rewards.map((reward) => (
-        <div className={`coinEarnedToast${reward.amount < 0 ? " isPenalty" : ""}`} key={reward.id}>
-          <span className="coinEarnedBurst" aria-hidden="true">
-            <img src={appAssetPath("/images/coins/gold-coin-stack-v2.png")} alt="" />
-          </span>
-          <span className="coinEarnedCopy">
-            <strong>{formatCoinAmount(reward.amount)} coins</strong>
-            <span>{reward.label}</span>
-          </span>
-        </div>
-      ))}
+      {showCoinChangePopups
+        ? rewards.map((reward) => (
+            <div
+              className={`coinEarnedToast${reward.amount < 0 ? " isPenalty" : ""}`}
+              key={reward.id}
+            >
+              <span className="coinEarnedBurst" aria-hidden="true">
+                <img src={appAssetPath("/images/coins/gold-coin-stack-v2.png")} alt="" />
+              </span>
+              <span className="coinEarnedCopy">
+                <strong>{formatCoinAmount(reward.amount)} coins</strong>
+                <span>{reward.label}</span>
+              </span>
+            </div>
+          ))
+        : null}
     </div>
   );
 };
