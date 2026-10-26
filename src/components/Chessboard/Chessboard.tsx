@@ -36,6 +36,7 @@ import {
   type BoardHistory,
   cloneBoardHistory,
   createBoardHistory,
+  historyContainsPosition,
   historyMoveKeys,
   historyMoveSans,
 } from "./boardHistory";
@@ -784,6 +785,17 @@ export const Chessboard = ({
         moveKey: userMoveKey,
       });
       const { candidates, progress, evaluation: moveEvaluation } = moveResult;
+      let createsTwofoldRepetition = false;
+      if (moveEvaluation === "wrong") {
+        const { position: nextPosition } = tryCreateAtomicPosition(makeFen(position.toSetup()));
+        if (nextPosition) {
+          nextPosition.play(move);
+          createsTwofoldRepetition = historyContainsPosition(
+            historyRef.current,
+            makeFen(nextPosition.toSetup()),
+          );
+        }
+      }
       candidateLinesRef.current = candidates;
       progressRef.current = progress;
 
@@ -817,7 +829,7 @@ export const Chessboard = ({
         const activePos = positionRef.current;
         if (!activePos) return;
 
-        if (moveEvaluation === "retry") {
+        if (moveEvaluation === "retry" || createsTwofoldRepetition) {
           boardStatusRef.current = { ...boardStatusRef.current, mode: "training", locked: false };
           syncBoard(activePos, undefined, {
             showRetryMove: true,

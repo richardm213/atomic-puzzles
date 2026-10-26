@@ -261,6 +261,40 @@ describe("Chessboard orchestration", () => {
     vi.useRealTimers();
   });
 
+  it("automatically retries a non-solution move that creates twofold repetition", () => {
+    vi.useFakeTimers();
+    const onAttemptResolved = vi.fn();
+    const states = renderBoard({
+      puzzleId: 333,
+      fen: "1k1r4/pp1b1Rpp/2ppp3/1B6/1b1P3P/2N5/PPP5/6K1 w - - 3 20",
+      analysisMode: false,
+      solution: "20. Bxc6 Rd7 21. Nb5 (21. Rf8+ Rd8 22. Nb5 a5 23. Rf7)",
+      onAttemptResolved,
+    });
+
+    play("b5", "c6");
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    play("f7", "f8");
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    play("f8", "f7");
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+
+    expect(states.at(-1)).toMatchObject({
+      solved: false,
+      showRetryMove: true,
+      showWrongMove: false,
+      status: "Try again",
+    });
+    expect(onAttemptResolved).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
   it("reports the first move when the main solution is played", () => {
     vi.useFakeTimers();
     const onAttemptResolved = vi.fn();
