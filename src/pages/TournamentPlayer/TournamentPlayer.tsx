@@ -461,6 +461,10 @@ export const TournamentPlayerPage = ({ username }: { username?: string }) => {
                 <dt>{appearances.length === 1 ? "Tournament" : "Tournaments"}</dt>
                 <dd>{appearances.length}</dd>
               </div>
+              <div>
+                <dt>Match record</dt>
+                <dd>{fullRecord}</dd>
+              </div>
               {showTitleStats ? (
                 <>
                   <div>
@@ -473,10 +477,6 @@ export const TournamentPlayerPage = ({ username }: { username?: string }) => {
                   </div>
                 </>
               ) : null}
-              <div>
-                <dt>Match record</dt>
-                <dd>{fullRecord}</dd>
-              </div>
             </dl>
           </div>
         </header>
