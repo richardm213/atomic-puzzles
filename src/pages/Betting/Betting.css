@@ -1,5 +1,5 @@
 .bettingPage {
-  --site-page-max-width: 900px;
+  --site-page-max-width: 1080px;
 }
 
 .bettingPanel {
@@ -27,6 +27,12 @@
   font-weight: 700;
   text-underline-offset: 3px;
   cursor: pointer;
+}
+
+.bettingHeaderLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
 }
 
 .bettingHeader a:hover,
@@ -284,7 +290,15 @@
   white-space: nowrap;
 }
 
-.bettingOutcomes button strong {
+.bettingOutcomeQuote {
+  min-width: 76px;
+  display: grid;
+  flex: none;
+  justify-items: end;
+  gap: 2px;
+}
+
+.bettingOutcomeQuote strong {
   flex: none;
   min-width: 42px;
   color: var(--color-heading);
@@ -293,7 +307,15 @@
   text-align: right;
 }
 
-.bettingOutcomes button.isSelected strong {
+.bettingOutcomeQuote small {
+  color: var(--color-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.bettingOutcomes button.isSelected .bettingOutcomeQuote strong {
   color: var(--color-heading);
 }
 
@@ -544,81 +566,212 @@
   text-align: center;
 }
 
-.bettingHistory,
-.betHistoryList {
-  display: grid;
-  gap: var(--space-3);
-}
-
-.betHistoryRow {
-  display: grid;
-  grid-template-columns: minmax(180px, 1fr) minmax(280px, 1.2fr) auto;
-  align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-4);
-}
-
-.betHistoryMatch {
+.bettingHistory {
   min-width: 0;
-  display: grid;
-  gap: 2px;
 }
 
-.betHistoryMatch span,
-.betHistoryMatch small,
-.betHistoryRow time {
+.betHistoryTableWrap {
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+}
+
+.betHistoryTable {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.betHistoryCaption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.betHistoryTable th,
+.betHistoryTable td {
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.betHistoryTable thead th {
+  padding-block: var(--space-3);
+  background: color-mix(in srgb, var(--color-panel-deep) 44%, var(--color-panel-strong));
   color: var(--color-subtle);
   font-size: var(--text-sm);
-}
-
-.betHistoryMeta a {
-  color: var(--link-color);
   font-weight: 750;
-  text-underline-offset: 2px;
-  cursor: pointer;
+  letter-spacing: 0.02em;
 }
 
-.betHistoryMatch strong {
-  overflow: hidden;
+.betHistoryTable tbody tr:last-child > * {
+  border-bottom: 0;
+}
+
+.betHistoryTable tbody tr {
+  transition: background-color 160ms ease;
+}
+
+.betHistoryTable tbody tr:hover {
+  background: color-mix(in srgb, var(--color-primary) 5%, transparent);
+}
+
+.betHistoryTable thead th:first-child {
+  width: 33%;
+}
+
+.betHistoryTableWrap--all .betHistoryTable thead th:first-child {
+  width: 28%;
+}
+
+.betHistoryTable thead th:last-child {
+  width: 18%;
+}
+
+.betHistoryTableWrap--all .betHistoryTable thead th:last-child {
+  width: 17%;
+}
+
+.betHistorySelection {
+  min-width: 0;
   color: var(--color-heading);
+}
+
+.betHistoryPlayer,
+.betHistoryMarket,
+.betHistoryNumber,
+.betHistoryState {
+  min-width: 0;
+}
+
+.betHistoryPlayer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.betHistoryPlayer img {
+  width: 22px;
+  height: 15px;
+  flex: none;
+  border: 1px solid color-mix(in srgb, var(--color-border-strong) 72%, transparent);
+  border-radius: 3px;
+  object-fit: cover;
+}
+
+.betHistoryPlayer strong {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 1rem;
+  font-weight: 820;
+}
+
+.betHistoryUsernameCutoff {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.betHistoryRow dl {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-3);
-  margin: 0;
+.betHistoryMarket {
+  display: block;
+  margin-top: var(--space-1);
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.betHistoryRow dl > div {
-  display: grid;
-  gap: 2px;
+.betHistoryMarket small {
+  color: var(--color-subtle);
+  font: inherit;
 }
 
-.betHistoryRow dt {
+.betHistoryBettor a {
+  display: block;
+  overflow: hidden;
+  color: var(--link-color);
+  font-weight: 750;
+  text-decoration-thickness: 1px;
+  text-overflow: ellipsis;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+
+.betHistoryBettor a:hover {
+  color: var(--link-hover-color);
+}
+
+.betHistoryNumber {
+  font-variant-numeric: tabular-nums;
+}
+
+.betHistoryNumber strong,
+.betHistoryNumber small {
+  display: block;
+}
+
+.betHistoryNumber strong {
+  color: var(--color-heading);
+  font-size: 1rem;
+  font-weight: 820;
+  line-height: 1.2;
+}
+
+.betHistoryNumber small {
+  margin-top: 2px;
   color: var(--color-subtle);
   font-size: var(--text-sm);
 }
 
-.betHistoryRow dd {
-  margin: 0;
-  color: var(--color-heading);
-  font-variant-numeric: tabular-nums;
-  font-weight: 800;
+.betHistoryReturn strong {
+  color: var(--color-primary-pale);
+}
+
+.betHistoryState time {
+  display: block;
+  margin-top: var(--space-2);
+  color: var(--color-subtle);
+  font-size: var(--text-sm);
+  white-space: nowrap;
 }
 
 .betStatus {
-  min-width: 72px;
-  padding: 5px 9px;
-  border: 1px solid var(--color-border);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 9px;
+  border: 1px solid color-mix(in srgb, var(--color-muted) 36%, var(--color-border));
   border-radius: 999px;
   color: var(--color-muted);
   font-size: var(--text-sm);
   font-weight: 850;
   text-align: center;
   text-transform: capitalize;
+}
+
+.betStatus::before {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
+  content: "";
 }
 
 .betStatus--won {
@@ -956,17 +1109,93 @@
     position: static;
   }
 
-  .betHistoryRow {
-    grid-template-columns: minmax(0, 1fr) auto;
+  .betHistoryTableWrap {
+    overflow: visible;
+    border: 0;
+    background: transparent;
   }
 
-  .betHistoryRow dl {
-    grid-column: 1 / -1;
-    grid-row: 2;
+  .betHistoryTable,
+  .betHistoryTable tbody {
+    display: grid;
+    gap: var(--space-3);
   }
 
-  .betHistoryRow time {
+  .betHistoryTable thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .betHistoryTable tbody tr {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-ui);
+    background: var(--color-panel-strong);
+  }
+
+  .betHistoryTable th,
+  .betHistoryTable td {
+    display: block;
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 0;
+  }
+
+  .betHistorySelection {
     grid-column: 1 / -1;
+    padding-block: var(--space-4) !important;
+    border-bottom: 1px solid var(--color-border) !important;
+  }
+
+  .betHistoryBettor {
+    grid-column: 1 / -1;
+    padding-block: var(--space-2) !important;
+    border-bottom: 1px solid var(--color-border) !important;
+  }
+
+  .betHistoryBettor::before {
+    color: var(--color-subtle);
+    content: "Placed by ";
+    font-size: var(--text-sm);
+  }
+
+  .betHistoryBettor a {
+    display: inline;
+  }
+
+  .betHistoryNumber {
+    position: relative;
+    padding-top: 30px !important;
+  }
+
+  .betHistoryNumber::before {
+    position: absolute;
+    top: var(--space-3);
+    left: var(--space-4);
+    color: var(--color-subtle);
+    content: attr(data-label);
+    font-size: var(--text-sm);
+  }
+
+  .betHistoryState {
+    grid-column: 1 / -1;
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    border-top: 1px solid var(--color-border) !important;
+  }
+
+  .betHistoryState time {
+    margin-top: 0;
   }
 
   .marketSuggestions {
@@ -994,10 +1223,6 @@
 
   .bettingOutcomes {
     grid-template-columns: 1fr;
-  }
-
-  .betHistoryRow dl {
-    grid-template-columns: repeat(3, auto);
   }
 
   .marketSuggestionCard {

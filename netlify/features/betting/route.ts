@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { MIN_BET_AMOUNT } from "../../../shared/domain/betting";
 import {
   authenticateRequest,
   identityResponse,
@@ -43,7 +44,7 @@ const bodySchema = z.discriminatedUnion("action", [
       .min(1)
       .max(50)
       .regex(/^[a-z0-9_-]+$/i, "Invalid player selection."),
-    stake: z.number().int().min(1).max(1000),
+    stake: z.number().int().min(MIN_BET_AMOUNT).max(1000),
   }),
 ]);
 
@@ -197,10 +198,7 @@ export const bettingRoute = async (event: FunctionEvent) => {
       .single();
     if (error) throw new Error(`Unable to submit market suggestion: ${error.message}`);
     return identityResponse(identity, 200, {
-      result: presentSuggestion(
-        { ...data, tournament_market_suggestion_votes: [] },
-        username,
-      ),
+      result: presentSuggestion({ ...data, tournament_market_suggestion_votes: [] }, username),
     });
   }
 
@@ -237,6 +235,9 @@ export const bettingRoute = async (event: FunctionEvent) => {
   if (input.marketId.startsWith("lichess-ban-") && input.stake > 200) {
     throw new HttpError(400, "Banned-market bets are limited to 200 coins.");
   }
+  if (input.selection.toLowerCase() === username) {
+    throw new HttpError(400, "You can’t bet on yourself.");
+  }
 
   const { data, error } = await supabase.rpc("place_tournament_bet", {
     p_username: username,
@@ -248,7 +249,7 @@ export const bettingRoute = async (event: FunctionEvent) => {
     if (/exceeds 50 percent of net worth/i.test(error.message)) {
       throw new HttpError(
         409,
-        "Your open bets can’t exceed 50% of your net worth, including outstanding bets.",
+        "One position can’t exceed 50% of your net worth, including existing bets on that outcome.",
       );
     }
     if (/not enough coins/i.test(error.message)) {

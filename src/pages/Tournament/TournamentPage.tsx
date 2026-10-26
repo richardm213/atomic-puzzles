@@ -16,6 +16,7 @@ import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/Rout
 import { Seo } from "../../components/Seo/Seo";
 import { modeLabels } from "../../constants/matches";
 import { TournamentFairPlayFlag } from "../../features/tournaments/TournamentFairPlayFlag";
+import { useUnderscoreUsernameCutoff } from "../../hooks/useUnderscoreUsernameCutoff";
 import {
   tournamentBracketQueryOptions,
   tournamentCatalogQueryOptions,
@@ -245,53 +246,8 @@ const PlayerLabel = ({
   countryCode?: string | null | undefined;
   shouldSuppressClick: () => boolean;
 }) => {
-  const playerLinkRef = useRef<HTMLAnchorElement | null>(null);
-  const [displayName, setDisplayName] = useState(playerName);
-
-  useEffect(() => {
-    const link = playerLinkRef.current;
-    if (!link || !playerName.includes("_")) {
-      setDisplayName(playerName);
-      return undefined;
-    }
-
-    const updateDisplayName = () => {
-      const availableWidth = link.clientWidth;
-      if (!availableWidth) return;
-
-      const context = document.createElement("canvas").getContext("2d");
-      if (!context) return;
-
-      const styles = window.getComputedStyle(link);
-      context.font = styles.font;
-      const letterSpacing = Number.parseFloat(styles.letterSpacing) || 0;
-      const textWidth = (value: string) =>
-        context.measureText(value).width + Math.max(0, value.length - 1) * letterSpacing;
-
-      let nextDisplayName = playerName;
-      if (textWidth(playerName) > availableWidth) {
-        const underscoreIndexes = Array.from(
-          playerName.matchAll(/_/g),
-          (match) => match.index,
-        ).reverse();
-        const fittingPrefix = underscoreIndexes
-          .map((index) => playerName.slice(0, index))
-          .find((candidate) => textWidth(candidate) <= availableWidth);
-
-        if (fittingPrefix) nextDisplayName = fittingPrefix;
-      }
-
-      setDisplayName((currentName) =>
-        currentName === nextDisplayName ? currentName : nextDisplayName,
-      );
-    };
-
-    updateDisplayName();
-    const resizeObserver = new ResizeObserver(updateDisplayName);
-    resizeObserver.observe(link.parentElement || link);
-
-    return () => resizeObserver.disconnect();
-  }, [playerName]);
+  const { displayName, elementRef: playerLinkRef } =
+    useUnderscoreUsernameCutoff<HTMLAnchorElement>(playerName);
 
   return (
     <span className="tournamentPlayerLabel">

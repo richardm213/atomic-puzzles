@@ -2,6 +2,8 @@ import { z } from "zod";
 
 import { postApi } from "../api/postApi";
 
+export { MIN_BET_AMOUNT } from "../../../shared/domain/betting";
+
 export const BET_FEE_RATE = 0.02;
 export const BET_NET_WORTH_LIMIT_RATE = 0.5;
 export const MAX_BET_STAKE = 1000;
@@ -77,15 +79,49 @@ export type MarketSuggestion = {
   createdAt: string;
 };
 
+const championWithMatchingCase = (winner: string): string =>
+  winner === winner.toUpperCase()
+    ? "CHAMPION"
+    : winner[0] === winner[0]?.toUpperCase()
+      ? "Champion"
+      : "champion";
+
+const formatAwcChampionTerminology = (value: string): string =>
+  value
+    .replace(
+      /\b(AWC(?:\s+\d{4})?)\s+(winner)\b/gi,
+      (_match, eventName: string, winner: string) =>
+        `${eventName} ${championWithMatchingCase(winner)}`,
+    )
+    .replace(
+      /\b(Tournament)\s+(winner)\b/gi,
+      (_match, tournament: string, winner: string) =>
+        `${tournament} ${championWithMatchingCase(winner)}`,
+    );
+
+const formatBettingMarketLabel = (value: string): string => {
+  const championLabel = formatAwcChampionTerminology(value);
+  return /^new_life14 banned on Lichess by Dec 31, 2026$/i.test(championLabel)
+    ? "Banned by Dec 31"
+    : championLabel;
+};
+
 const roundCoins = (value: number): number => Math.round(value * 1_000_000) / 1_000_000;
 
-export const maxTournamentBetStake = (balance: number, openBetCost = 0): number => {
+export const maxTournamentBetStake = (
+  balance: number,
+  openBetCost = 0,
+  positionBetCost = 0,
+): number => {
   const normalizedBalance = Number.isFinite(balance) ? Math.max(0, balance) : 0;
   const normalizedOpenBetCost = Number.isFinite(openBetCost) ? Math.max(0, openBetCost) : 0;
+  const normalizedPositionBetCost = Number.isFinite(positionBetCost)
+    ? Math.max(0, positionBetCost)
+    : 0;
   const netWorth = normalizedBalance + normalizedOpenBetCost;
   const remainingBetBudget = Math.max(
     0,
-    netWorth * BET_NET_WORTH_LIMIT_RATE - normalizedOpenBetCost,
+    netWorth * BET_NET_WORTH_LIMIT_RATE - normalizedPositionBetCost,
   );
   const availableCost = Math.min(normalizedBalance, remainingBetBudget);
   return Math.min(MAX_BET_STAKE, Math.floor(availableCost / (1 + BET_FEE_RATE)));
@@ -137,16 +173,16 @@ const marketSchema = z
     id: market.id,
     tournamentId: market.tournament_id,
     bracketMatchId: market.bracket_match_id,
-    roundName: market.round_name,
+    roundName: formatAwcChampionTerminology(market.round_name),
     roundOrder: market.round_order,
     playerOne: market.player_one,
     playerTwo: market.player_two,
     playerOnePrice: market.player_one_price,
     playerTwoPrice: market.player_two_price,
     marketKind: market.market_kind,
-    category: market.category,
+    category: formatAwcChampionTerminology(market.category),
     categoryOrder: market.category_order,
-    label: market.label,
+    label: formatBettingMarketLabel(market.label),
     outcomes: market.tournament_betting_outcomes
       .map((outcome) => ({
         player: outcome.player,

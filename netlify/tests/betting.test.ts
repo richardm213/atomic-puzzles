@@ -83,7 +83,7 @@ describe("betting function", () => {
         {
           id: 4,
           username: "market_maker",
-          question: "Will sircacehets win AWC 2026?",
+          question: "Will sircachetes win AWC 2026?",
           outcomes: [
             { label: "Yes", odds: 1 },
             { label: "No", odds: 99 },
@@ -157,6 +157,19 @@ describe("betting function", () => {
     expect(invalidResponse.statusCode).toBe(400);
     expect(rpc).toHaveBeenCalledTimes(1);
 
+    const belowMinimumResponse = await handler({
+      httpMethod: "POST",
+      headers: requestHeaders("Actual_User"),
+      body: JSON.stringify({
+        action: "place",
+        marketId: "awc2026-wb-r1-m2",
+        selection: "rabbier",
+        stake: 0,
+      }),
+    });
+    expect(belowMinimumResponse.statusCode).toBe(400);
+    expect(rpc).toHaveBeenCalledTimes(1);
+
     const bannedMarketResponse = await handler({
       httpMethod: "POST",
       headers: requestHeaders("Actual_User"),
@@ -168,6 +181,20 @@ describe("betting function", () => {
       }),
     });
     expect(bannedMarketResponse.statusCode).toBe(400);
+    expect(rpc).toHaveBeenCalledTimes(1);
+
+    const selfBetResponse = await handler({
+      httpMethod: "POST",
+      headers: requestHeaders("Actual_User"),
+      body: JSON.stringify({
+        action: "place",
+        marketId: "awc2026-wb-r1-m2",
+        selection: "actual_user",
+        stake: 10,
+      }),
+    });
+    expect(selfBetResponse.statusCode).toBe(400);
+    expect(JSON.parse(selfBetResponse.body).error).toBe("You can’t bet on yourself.");
     expect(rpc).toHaveBeenCalledTimes(1);
   });
 });
