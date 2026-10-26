@@ -122,7 +122,18 @@ describe("betting function", () => {
       data: { balance: 898, bet: { id: 7, selection: "rabbier" } },
       error: null,
     }));
-    mocks.createClient.mockReturnValue({ rpc });
+    const maybeSingle = vi.fn(async () => ({
+      data: {
+        market_kind: "match",
+        player_one: "maracker",
+        player_two: "rabbier",
+      },
+      error: null,
+    }));
+    const eq = vi.fn(() => ({ maybeSingle }));
+    const select = vi.fn(() => ({ eq }));
+    const from = vi.fn(() => ({ select }));
+    mocks.createClient.mockReturnValue({ from, rpc });
 
     const response = await handler({
       httpMethod: "POST",
@@ -183,6 +194,14 @@ describe("betting function", () => {
     expect(bannedMarketResponse.statusCode).toBe(400);
     expect(rpc).toHaveBeenCalledTimes(1);
 
+    maybeSingle.mockResolvedValueOnce({
+      data: {
+        market_kind: "match",
+        player_one: "Actual_User",
+        player_two: "rival",
+      },
+      error: null,
+    });
     const selfBetResponse = await handler({
       httpMethod: "POST",
       headers: requestHeaders("Actual_User"),
@@ -193,9 +212,30 @@ describe("betting function", () => {
         stake: 10,
       }),
     });
-    expect(selfBetResponse.statusCode).toBe(400);
-    expect(JSON.parse(selfBetResponse.body).error).toBe("You can’t bet on yourself.");
-    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(selfBetResponse.statusCode).toBe(200);
+    expect(rpc).toHaveBeenCalledTimes(2);
+
+    maybeSingle.mockResolvedValueOnce({
+      data: {
+        market_kind: "match",
+        player_one: "Actual_User",
+        player_two: "rival",
+      },
+      error: null,
+    });
+    const opponentBetResponse = await handler({
+      httpMethod: "POST",
+      headers: requestHeaders("Actual_User"),
+      body: JSON.stringify({
+        action: "place",
+        marketId: "awc2026-wb-r1-m2",
+        selection: "rival",
+        stake: 10,
+      }),
+    });
+    expect(opponentBetResponse.statusCode).toBe(400);
+    expect(JSON.parse(opponentBetResponse.body).error).toBe("You can’t bet on your opponent.");
+    expect(rpc).toHaveBeenCalledTimes(2);
   });
 
   it("reports a market deadline rejection as a closed market", async () => {
@@ -203,7 +243,18 @@ describe("betting function", () => {
       data: null,
       error: { message: "Betting deadline has passed for market awc2026-winner" },
     }));
-    mocks.createClient.mockReturnValue({ rpc });
+    const maybeSingle = vi.fn(async () => ({
+      data: {
+        market_kind: "outright",
+        player_one: "",
+        player_two: "",
+      },
+      error: null,
+    }));
+    const eq = vi.fn(() => ({ maybeSingle }));
+    const select = vi.fn(() => ({ eq }));
+    const from = vi.fn(() => ({ select }));
+    mocks.createClient.mockReturnValue({ from, rpc });
 
     const response = await handler({
       httpMethod: "POST",

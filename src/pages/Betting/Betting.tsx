@@ -14,6 +14,7 @@ import { useUnderscoreUsernameCutoff } from "../../hooks/useUnderscoreUsernameCu
 import {
   BET_NET_WORTH_LIMIT_RATE,
   type BettingMarket,
+  isTournamentBetOnOpponent,
   type MarketSuggestion,
   MAX_BET_STAKE,
   maxTournamentBetStake,
@@ -443,10 +444,10 @@ export const BettingPage = () => {
     : MAX_BET_STAKE;
   const effectiveStakeLimit = Math.min(balanceLimitedStake, marketStakeLimit);
   const bettingUnavailable = isAuthenticated && effectiveStakeLimit < MIN_BET_AMOUNT;
-  const selectionIsSelf =
-    Boolean(selection) &&
-    (isAuthenticated || demoState === "self") &&
-    selection?.player.toLowerCase() === (demoSelfPlayer ?? username.toLowerCase());
+  const selectionIsOpponent =
+    selection && selectedMarket && (isAuthenticated || demoState === "self")
+      ? isTournamentBetOnOpponent(selectedMarket, demoSelfPlayer ?? username, selection.player)
+      : false;
   const exceedsPositionLimit =
     isAuthenticated && validStake && quote.totalCost > remainingPositionBudget;
   const insufficientBalance = isAuthenticated && validStake && quote.totalCost > balance;
@@ -596,7 +597,7 @@ export const BettingPage = () => {
       !selectedMarket ||
       !selection ||
       !validStake ||
-      selectionIsSelf ||
+      selectionIsOpponent ||
       exceedsPositionLimit ||
       insufficientBalance
     )
@@ -761,7 +762,7 @@ export const BettingPage = () => {
               <div className="bettingMarketList">
                 {demoSelfPlayer ? (
                   <InlineState kind="info">
-                    Example: signed in as {visibleMarkets[0]?.outcomes[0]?.player}. Their own
+                    Example: signed in as {visibleMarkets[0]?.outcomes[0]?.player}. Their opponent’s
                     outcome is unavailable.
                   </InlineState>
                 ) : null}
@@ -802,6 +803,13 @@ export const BettingPage = () => {
                                 (isAuthenticated || demoState === "self") &&
                                 outcome.player.toLowerCase() ===
                                   (demoSelfPlayer ?? username.toLowerCase());
+                              const isOpponentOutcome =
+                                (isAuthenticated || demoState === "self") &&
+                                isTournamentBetOnOpponent(
+                                  market,
+                                  demoSelfPlayer ?? username,
+                                  outcome.player,
+                                );
                               const positionCost = myBets.reduce(
                                 (total, bet) =>
                                   total +
@@ -817,8 +825,8 @@ export const BettingPage = () => {
                                 (isAuthenticated &&
                                   maxTournamentBetStake(balance, openBetCost, positionCost) <
                                     MIN_BET_AMOUNT);
-                              const unavailableReason = isOwnOutcome
-                                ? "You can’t bet on yourself."
+                              const unavailableReason = isOpponentOutcome
+                                ? "You can’t bet on your opponent."
                                 : positionLimitReached
                                   ? "This position has reached 50% of your net worth."
                                   : undefined;
@@ -851,7 +859,9 @@ export const BettingPage = () => {
                                       {market.category === "Banned" ? "Yes · " : ""}
                                       {outcome.pricePercent}%
                                     </strong>
-                                    {isOwnOutcome ? (
+                                    {isOpponentOutcome ? (
+                                      <small>Your opponent</small>
+                                    ) : isOwnOutcome ? (
                                       <small>Your outcome</small>
                                     ) : positionLimitReached ? (
                                       <small>Limit reached</small>
@@ -972,9 +982,9 @@ export const BettingPage = () => {
                       or wait for it to settle.
                     </InlineState>
                   ) : null}
-                  {selectionIsSelf ? (
+                  {selectionIsOpponent ? (
                     <InlineState kind="error">
-                      You can’t bet on yourself. Choose another outcome.
+                      You can’t bet on your opponent. Choose another outcome.
                     </InlineState>
                   ) : null}
                   {placeBetMutation.error ? (
@@ -997,7 +1007,7 @@ export const BettingPage = () => {
                         exceedsPositionLimit ||
                         insufficientBalance ||
                         bettingUnavailable ||
-                        selectionIsSelf ||
+                        selectionIsOpponent ||
                         placeBetMutation.isPending
                       }
                     >

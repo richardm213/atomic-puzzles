@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { MIN_BET_AMOUNT } from "../../../shared/domain/betting";
+import { isTournamentBetOnOpponent, MIN_BET_AMOUNT } from "../../../shared/domain/betting";
 import {
   authenticateRequest,
   identityResponse,
@@ -236,8 +236,28 @@ export const bettingRoute = async (event: FunctionEvent) => {
   if (input.marketId.startsWith("lichess-ban-") && input.stake > 200) {
     throw new HttpError(400, "Banned-market bets are limited to 200 coins.");
   }
-  if (input.selection.toLowerCase() === username) {
-    throw new HttpError(400, "You can’t bet on yourself.");
+
+  const { data: selectedMarket, error: selectedMarketError } = await supabase
+    .from("tournament_betting_markets")
+    .select("market_kind,player_one,player_two")
+    .eq("id", input.marketId)
+    .maybeSingle();
+  if (selectedMarketError) {
+    throw new Error(`Unable to validate betting market: ${selectedMarketError.message}`);
+  }
+  if (
+    selectedMarket &&
+    isTournamentBetOnOpponent(
+      {
+        marketKind: selectedMarket.market_kind,
+        playerOne: selectedMarket.player_one,
+        playerTwo: selectedMarket.player_two,
+      },
+      username,
+      input.selection,
+    )
+  ) {
+    throw new HttpError(400, "You can’t bet on your opponent.");
   }
 
   const { data, error } = await supabase.rpc("place_tournament_bet", {
