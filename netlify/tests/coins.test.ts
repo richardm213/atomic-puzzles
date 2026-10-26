@@ -73,6 +73,17 @@ describe("coins function", () => {
   });
 
   it("returns a bounded, filtered public transaction feed without source keys", async () => {
+    const reasons = [
+      "coin_transfer",
+      "puzzle_correct",
+      "puzzle_attempted",
+      "puzzle_created",
+      "shop_redemption",
+      "daily_bonus",
+      "tournament_bet",
+      "tournament_bet_payout",
+      "tournament_bet_refund",
+    ];
     const limit = vi.fn(async () => ({
       data: [
         {
@@ -96,13 +107,13 @@ describe("coins function", () => {
     const response = await handler({
       httpMethod: "POST",
       headers: {},
-      body: JSON.stringify({ action: "transactions", reasons: ["shop_redemption"] }),
+      body: JSON.stringify({ action: "transactions", reasons }),
     });
 
     expect(response.statusCode).toBe(200);
     expect(from).toHaveBeenCalledWith("coin_transactions");
     expect(select).toHaveBeenCalledWith("id,username,amount,reason,metadata,created_at");
-    expect(filterReasons).toHaveBeenCalledWith("reason", ["shop_redemption"]);
+    expect(filterReasons).toHaveBeenCalledWith("reason", reasons);
     expect(orderByCreatedAt).toHaveBeenCalledWith("created_at", { ascending: false });
     expect(orderById).toHaveBeenCalledWith("id", { ascending: false });
     expect(limit).toHaveBeenCalledWith(100);

@@ -26,7 +26,7 @@ const coinBanUsernameSchema = z
   .min(1)
   .max(100)
   .regex(/^[a-z0-9_-]+$/i, "Invalid Lichess username.");
-const coinTransactionReasonSchema = z.enum([
+const coinTransactionReasons = [
   "coin_transfer",
   "puzzle_correct",
   "puzzle_attempted",
@@ -36,7 +36,8 @@ const coinTransactionReasonSchema = z.enum([
   "tournament_bet",
   "tournament_bet_payout",
   "tournament_bet_refund",
-]);
+] as const;
+const coinTransactionReasonSchema = z.enum(coinTransactionReasons);
 
 const bodySchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("summary") }),
@@ -44,7 +45,11 @@ const bodySchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("leaderboard") }),
   z.object({
     action: z.literal("transactions"),
-    reasons: z.array(coinTransactionReasonSchema).min(1).max(6).optional(),
+    reasons: z
+      .array(coinTransactionReasonSchema)
+      .min(1)
+      .max(coinTransactionReasons.length)
+      .optional(),
   }),
   z.object({ action: z.literal("claimDaily") }),
   z.object({ action: z.literal("listBans") }),
