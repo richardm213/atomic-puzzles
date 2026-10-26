@@ -163,11 +163,13 @@ export const BettingPage = () => {
   const selectedCountryCode = selection
     ? (countryByPlayer[selection.player.toLowerCase()] ?? "")
     : "";
+  const marketStakeLimit = selectedMarket?.category === "Banned" ? 200 : MAX_BET_STAKE;
   const stake = Number(stakeInput);
-  const validStake = Number.isInteger(stake) && stake >= 1 && stake <= MAX_BET_STAKE;
+  const validStake = Number.isInteger(stake) && stake >= 1 && stake <= marketStakeLimit;
   const quote = quoteTournamentBet(validStake ? stake : 0, selectedPrice);
   const balance = coinSummaryQuery.data?.balance ?? 0;
   const balanceLimitedStake = isAuthenticated ? maxTournamentBetStake(balance) : MAX_BET_STAKE;
+  const effectiveStakeLimit = Math.min(balanceLimitedStake, marketStakeLimit);
   const exceedsBalanceLimit = isAuthenticated && validStake && quote.totalCost > balance * 0.25;
   const insufficientBalance = isAuthenticated && validStake && quote.totalCost > balance;
   const myBets = betsQuery.data ?? [];
@@ -220,7 +222,7 @@ export const BettingPage = () => {
     <main className="sitePage bettingPage">
       <Seo
         title="Betting"
-        description="Use Atomic Coins to make fixed-price predictions on unfinished AWC 2026 matches."
+        description="Use Atomic Coins to make fixed-price predictions."
         path="/betting"
       />
       <div className="bettingPanel">
@@ -332,7 +334,10 @@ export const BettingPage = () => {
                                     />
                                     <span>{outcome.player}</span>
                                   </span>
-                                  <strong>{outcome.pricePercent}%</strong>
+                                  <strong>
+                                    {market.category === "Banned" ? "Yes · " : ""}
+                                    {outcome.pricePercent}%
+                                  </strong>
                                 </button>
                               );
                             })}
@@ -369,7 +374,7 @@ export const BettingPage = () => {
                           crossOrigin="anonymous"
                         />
                         <strong>{selection.player}</strong>
-                        <em>to win</em>
+                        <em>{selectedMarket.category === "Banned" ? "Yes" : "to win"}</em>
                       </span>
                       <b>{selectedPrice}%</b>
                     </div>
@@ -382,7 +387,7 @@ export const BettingPage = () => {
                       type="number"
                       inputMode="numeric"
                       min="1"
-                      max={balanceLimitedStake}
+                      max={effectiveStakeLimit}
                       step="1"
                       placeholder="0"
                       value={stakeInput}
@@ -396,8 +401,10 @@ export const BettingPage = () => {
                   </div>
                   <small id="bet-stake-help">
                     {isAuthenticated
-                      ? `Up to ${formatBetCoins(balanceLimitedStake)} coins before the fee.`
-                      : "2% fee · 25% balance limit"}
+                      ? `Up to ${formatBetCoins(effectiveStakeLimit)} coins before the fee.`
+                      : selectedMarket.category === "Banned"
+                        ? "200 coin maximum · 2% fee · 25% balance limit"
+                        : "2% fee · 25% balance limit"}
                   </small>
 
                   <dl className="betQuote">
@@ -416,7 +423,9 @@ export const BettingPage = () => {
                   </dl>
 
                   {stakeTouched && !validStake ? (
-                    <InlineState kind="error">Enter a whole number from 1 to 1,000.</InlineState>
+                    <InlineState kind="error">
+                      Enter a whole number from 1 to {formatBetCoins(marketStakeLimit)}.
+                    </InlineState>
                   ) : null}
                   {insufficientBalance && !exceedsBalanceLimit ? (
                     <InlineState kind="error">

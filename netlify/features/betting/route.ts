@@ -80,7 +80,7 @@ export const bettingRoute = async (event: FunctionEvent) => {
     const { data, error } = await supabase
       .from("tournament_betting_markets")
       .select(marketColumns)
-      .eq("tournament_id", "awc2026")
+      .in("tournament_id", ["awc2026", "lichess-ban-2026"])
       .order("category_order", { ascending: true })
       .order("round_order", { ascending: true });
     if (error) throw new Error(`Unable to load betting markets: ${error.message}`);
@@ -109,6 +109,10 @@ export const bettingRoute = async (event: FunctionEvent) => {
       .limit(200);
     if (error) throw new Error(`Unable to load tournament bets: ${error.message}`);
     return identityResponse(identity, 200, { result: data });
+  }
+
+  if (input.marketId.startsWith("lichess-ban-") && input.stake > 200) {
+    throw new HttpError(400, "Banned-market bets are limited to 200 coins.");
   }
 
   const { data, error } = await supabase.rpc("place_tournament_bet", {

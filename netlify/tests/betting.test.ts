@@ -35,8 +35,8 @@ describe("betting function", () => {
       error: null,
     }));
     const categoryOrder = vi.fn(() => ({ order: roundOrder }));
-    const eq = vi.fn(() => ({ order: categoryOrder }));
-    const select = vi.fn(() => ({ eq }));
+    const inFilter = vi.fn(() => ({ order: categoryOrder }));
+    const select = vi.fn(() => ({ in: inFilter }));
     const from = vi.fn(() => ({ select }));
     mocks.createClient.mockReturnValue({ from });
 
@@ -48,7 +48,7 @@ describe("betting function", () => {
 
     expect(response.statusCode).toBe(200);
     expect(from).toHaveBeenCalledWith("tournament_betting_markets");
-    expect(eq).toHaveBeenCalledWith("tournament_id", "awc2026");
+    expect(inFilter).toHaveBeenCalledWith("tournament_id", ["awc2026", "lichess-ban-2026"]);
     expect(categoryOrder).toHaveBeenCalledWith("category_order", { ascending: true });
     expect(roundOrder).toHaveBeenCalledWith("round_order", { ascending: true });
   });
@@ -115,6 +115,19 @@ describe("betting function", () => {
       }),
     });
     expect(invalidResponse.statusCode).toBe(400);
+    expect(rpc).toHaveBeenCalledTimes(1);
+
+    const bannedMarketResponse = await handler({
+      httpMethod: "POST",
+      headers: requestHeaders("Actual_User"),
+      body: JSON.stringify({
+        action: "place",
+        marketId: "lichess-ban-2026-new-life14",
+        selection: "new_life14",
+        stake: 201,
+      }),
+    });
+    expect(bannedMarketResponse.statusCode).toBe(400);
     expect(rpc).toHaveBeenCalledTimes(1);
   });
 });
