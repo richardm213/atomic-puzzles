@@ -20,6 +20,7 @@ import { HomePage } from "./pages/Home/Home";
 
 const ArenasPage = lazyRouteComponent(() => import("./pages/Arenas/Arenas"), "ArenasPage");
 const CalendarPage = lazyRouteComponent(() => import("./pages/Calendar/Calendar"), "CalendarPage");
+const BettingPage = lazyRouteComponent(() => import("./pages/Betting/Betting"), "BettingPage");
 const AnalysisPage = lazyRouteComponent(() => import("./pages/Analysis/Analysis"), "AnalysisPage");
 const AchievementsPage = lazyRouteComponent(
   () => import("./pages/Achievements/Achievements"),
@@ -267,6 +268,12 @@ const calendarRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/calendar",
   component: CalendarPage,
+});
+
+const bettingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/betting",
+  component: BettingPage,
 });
 
 const tournamentsRoute = createRoute({
@@ -583,6 +590,7 @@ const routeTree = rootRoute.addChildren([
   tournamentPlayerRoute,
   arenasRoute,
   calendarRoute,
+  bettingRoute,
   tournamentRoute,
   tournamentTabRoute,
   h2hRoute,

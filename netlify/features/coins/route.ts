@@ -33,6 +33,9 @@ const coinTransactionReasonSchema = z.enum([
   "puzzle_created",
   "shop_redemption",
   "daily_bonus",
+  "tournament_bet",
+  "tournament_bet_payout",
+  "tournament_bet_refund",
 ]);
 
 const bodySchema = z.discriminatedUnion("action", [

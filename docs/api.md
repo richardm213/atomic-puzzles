@@ -73,6 +73,7 @@ Common codes are:
 | `/api/puzzle-sets`         | POST              | mixed      | Read or manage custom puzzle sets.                                   |
 | `/api/notifications`       | POST              | signed in  | List, count, mark, or delete notifications.                          |
 | `/api/coins`               | POST              | mixed      | Read or mutate Atomic Coin data according to the requested action.   |
+| `/api/betting`             | POST              | mixed      | Read AWC markets or place and review Atomic Coin bets.               |
 | `/api/badges`              | POST              | public     | Load earned achievements for a username.                             |
 | `/api/archive-data`        | GET               | public     | Query the read-only match and rating archive.                        |
 | `/api/opening-explorer`    | GET               | public     | Query opening statistics.                                            |

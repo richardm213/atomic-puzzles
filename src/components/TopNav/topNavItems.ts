@@ -126,7 +126,8 @@ export const navItems: NavItem[] = [
       pathname === "/tournaments" ||
       pathname.startsWith("/tournaments/") ||
       pathname === "/arenas" ||
-      pathname === "/calendar",
+      pathname === "/calendar" ||
+      pathname === "/betting",
     children: [
       {
         to: "/tournaments",
@@ -142,6 +143,11 @@ export const navItems: NavItem[] = [
         to: "/calendar",
         label: "Arena calendar",
         isActive: (pathname) => pathname === "/calendar",
+      },
+      {
+        to: "/betting",
+        label: "Betting",
+        isActive: (pathname) => pathname === "/betting",
       },
     ],
   },

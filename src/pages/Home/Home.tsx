@@ -158,13 +158,9 @@ export const HomePage = () => {
             />
           ))}
 
-          <Link
-            className="homeSpotlightCard homeH2HShortcut"
-            to="/matches/$matchId"
-            params={{ matchId: "Yr9V8s5R" }}
-          >
-            <h2>2018 AWC grand final reset</h2>
-            <p>onubense vs tipau</p>
+          <Link className="homeSpotlightCard homeBettingShortcut" to="/betting">
+            <h2>AWC 2026 betting</h2>
+            <p>Bet on the upcoming AWC matches!</p>
           </Link>
 
           <Link className="homeSpotlightCard homeYearlyRankingsShortcut" to="/rankings/yearly">

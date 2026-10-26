@@ -18,7 +18,7 @@ import { appAssetPath } from "../../utils/appAssetPath";
 import { formatLocalDateTime } from "../../utils/formatters";
 
 type CoinView = "rankings" | "transactions";
-type TransactionCategory = "gifts" | "solves" | "submissions" | "purchases" | "bonuses";
+type TransactionCategory = "gifts" | "solves" | "submissions" | "purchases" | "bonuses" | "bets";
 
 const filterStorageKey = "atomic-puzzles.coin-transaction-filters";
 const transactionFilters: { key: TransactionCategory; label: string }[] = [
@@ -27,6 +27,7 @@ const transactionFilters: { key: TransactionCategory; label: string }[] = [
   { key: "submissions", label: "Puzzle submissions" },
   { key: "purchases", label: "Shop purchases" },
   { key: "bonuses", label: "Daily bonuses" },
+  { key: "bets", label: "Tournament bets" },
 ];
 const allTransactionCategories = transactionFilters.map(({ key }) => key);
 
@@ -37,6 +38,9 @@ const reasonCategory: Record<CoinTransactionReason, TransactionCategory> = {
   puzzle_created: "submissions",
   shop_redemption: "purchases",
   daily_bonus: "bonuses",
+  tournament_bet: "bets",
+  tournament_bet_payout: "bets",
+  tournament_bet_refund: "bets",
 };
 
 const selectedReasonsFor = (categories: TransactionCategory[]) =>
@@ -86,6 +90,17 @@ const transactionDescription = (transaction: CoinTransaction) => {
   if (transaction.reason === "shop_redemption") {
     const itemKey = metadataString(transaction, "itemKey");
     return `Purchased ${shopItemLabels[itemKey] ?? "a shop item"}`;
+  }
+  if (transaction.reason === "tournament_bet") {
+    const selection = metadataString(transaction, "selection");
+    return selection ? `Bet on ${selection}` : "Placed a tournament bet";
+  }
+  if (transaction.reason === "tournament_bet_payout") {
+    const winner = metadataString(transaction, "winner");
+    return winner ? `Won bet on ${winner}` : "Tournament bet payout";
+  }
+  if (transaction.reason === "tournament_bet_refund") {
+    return "Tournament bet refunded";
   }
   return "Claimed daily bonus";
 };

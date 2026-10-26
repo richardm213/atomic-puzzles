@@ -265,6 +265,10 @@
   --home-card-accent: var(--color-danger);
 }
 
+.homeBettingShortcut {
+  --home-card-accent: var(--color-gold);
+}
+
 .homeYearlyRankingsShortcut,
 .homePuzzleLeaderboardShortcut {
   --home-card-accent: var(--color-cyan-bright);

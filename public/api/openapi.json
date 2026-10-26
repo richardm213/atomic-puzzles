@@ -574,6 +574,9 @@
     "/api/coins": {
       "$ref": "#/components/pathItems/Coins"
     },
+    "/api/betting": {
+      "$ref": "#/components/pathItems/Betting"
+    },
     "/api/badges": {
       "$ref": "#/components/pathItems/Badges"
     }
@@ -1113,6 +1116,27 @@
             },
             "400": {
               "$ref": "#/components/responses/BadRequest"
+            }
+          }
+        }
+      },
+      "Betting": {
+        "post": {
+          "tags": ["Account"],
+          "summary": "Read AWC markets or manage the signed-in user's bets",
+          "operationId": "bettingAction",
+          "requestBody": {
+            "$ref": "#/components/requestBodies/JsonObject"
+          },
+          "responses": {
+            "200": {
+              "description": "Action-specific response."
+            },
+            "400": {
+              "$ref": "#/components/responses/BadRequest"
+            },
+            "401": {
+              "$ref": "#/components/responses/Unauthorized"
             }
           }
         }
