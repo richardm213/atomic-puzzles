@@ -34,6 +34,7 @@ export type BettingMarket = {
   outcomes: BettingOutcome[];
   status: BettingMarketStatus;
   winner: string | null;
+  closesAt: string | null;
   updatedAt: string;
   settledAt: string | null;
 };
@@ -166,6 +167,7 @@ const marketSchema = z
     ),
     status: z.enum(["open", "suspended", "settled", "refunded"]),
     winner: z.string().nullable(),
+    closes_at: z.string().nullable(),
     updated_at: z.string(),
     settled_at: z.string().nullable(),
   })
@@ -192,6 +194,7 @@ const marketSchema = z
       .sort((a, b) => a.displayOrder - b.displayOrder),
     status: market.status,
     winner: market.winner,
+    closesAt: market.closes_at,
     updatedAt: market.updated_at,
     settledAt: market.settled_at,
   }));

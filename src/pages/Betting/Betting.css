@@ -3,7 +3,9 @@
 }
 
 .bettingPanel {
+  min-width: 0;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-5);
 }
 
@@ -80,6 +82,7 @@
 }
 
 .bettingTabs {
+  min-width: 0;
   display: flex;
   gap: var(--space-1);
   padding: 4px;
@@ -176,6 +179,50 @@
   outline-offset: 2px;
 }
 
+.bettingPositionToggle {
+  width: fit-content;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(72px, 1fr));
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+}
+
+.bettingPositionToggle button {
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: calc(var(--radius-ui) - 3px);
+  background: transparent;
+  color: var(--color-muted);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.bettingPositionToggle button:hover {
+  color: var(--color-heading);
+}
+
+.bettingPositionToggle button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-panel));
+  color: var(--color-heading);
+}
+
+.bettingPositionToggle button:focus-visible {
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+.bettingPositionToggle button:active {
+  transform: translateY(1px);
+}
+
 .bettingMarketList {
   display: grid;
   overflow: hidden;
@@ -193,8 +240,30 @@
 }
 
 .bettingMarketCard {
+  display: grid;
+  gap: var(--space-3);
   padding: var(--space-4);
   border-bottom: 1px solid var(--color-border);
+}
+
+.bettingMarketDeadline {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+
+.bettingMarketDeadline span {
+  font-weight: 700;
+}
+
+.bettingMarketDeadline time {
+  color: var(--color-heading);
+  font-weight: 800;
+  text-align: right;
 }
 
 .bettingMarketGroup:last-child .bettingMarketCard:last-child {
@@ -206,11 +275,10 @@
   padding: 10px var(--space-4);
   border-bottom: 1px solid var(--color-border);
   background: var(--color-surface-soft);
-  color: var(--color-subtle);
-  font-size: var(--text-sm);
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  color: var(--color-heading);
+  font-size: 0.9rem;
+  font-weight: 750;
+  letter-spacing: -0.01em;
 }
 
 .bettingMarketGroup + .bettingMarketGroup h2 {
@@ -1225,6 +1293,16 @@
     grid-template-columns: 1fr;
   }
 
+  .bettingMarketDeadline {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .bettingMarketDeadline time {
+    text-align: left;
+  }
+
   .marketSuggestionCard {
     grid-template-columns: 1fr;
   }
@@ -1240,6 +1318,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .bettingTabs button,
+  .bettingPositionToggle button,
   .bettingOutcomes button,
   .betSubmitButton,
   .bettingLoginPrompt button {

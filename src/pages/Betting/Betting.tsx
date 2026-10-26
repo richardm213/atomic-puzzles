@@ -39,11 +39,13 @@ import { countryCodeToFlagUrl } from "../../utils/countryFlags";
 import { formatLocalDateTime } from "../../utils/formatters";
 
 type BettingView = "markets" | "mine" | "all" | "suggestions";
+type WinnerPosition = "yes" | "no";
 type Selection = { marketId: string; player: string };
 type SuggestionDraftOutcome = { label: string; odds: string };
 
 const bettingViews: readonly BettingView[] = ["markets", "mine", "all", "suggestions"];
 const defaultMarketCategory = "AWC Round of 16";
+const winnerNoMarketId = "awc2026-winner-no";
 const defaultSuggestionOutcomes = (): SuggestionDraftOutcome[] => [
   { label: "", odds: "50" },
   { label: "", odds: "50" },
@@ -80,8 +82,33 @@ const bettingViewFromSearch = (search: string): BettingView => {
 const bettingViewFromLocation = (): BettingView =>
   typeof window === "undefined" ? "markets" : bettingViewFromSearch(window.location.search);
 
+const winnerPositionFromSearch = (search: string): WinnerPosition =>
+  new URLSearchParams(search).get("side") === "no" ? "no" : "yes";
+
+const winnerPositionForMarket = (market: BettingMarket): WinnerPosition =>
+  market.id === winnerNoMarketId ? "no" : "yes";
+
 const formatBetCoins = (value: number): string =>
   value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+
+const formatBettingDeadline = (value: string): string =>
+  new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "UTC",
+    timeZoneName: "short",
+  }).format(new Date(value));
+
+const marketAcceptsBets = (market: BettingMarket, now: number): boolean => {
+  const isStagedWinnerNoMarket =
+    import.meta.env.DEV && market.id === winnerNoMarketId && market.status === "suspended";
+  return (
+    (market.status === "open" || isStagedWinnerNoMarket) &&
+    (!market.closesAt || Date.parse(market.closesAt) > now)
+  );
+};
 
 const abbreviateBetRound = (roundName: string): string => {
   const normalizedRound = roundName.trim().toLowerCase();
@@ -300,6 +327,9 @@ export const BettingPage = () => {
       ? defaultMarketCategory
       : marketCategoryFromSearch(window.location.search),
   );
+  const [winnerPosition, setWinnerPosition] = useState<WinnerPosition>(() =>
+    typeof window === "undefined" ? "yes" : winnerPositionFromSearch(window.location.search),
+  );
   const [selection, setSelection] = useState<Selection | null>(null);
   const [stakeInput, setStakeInput] = useState("");
   const [stakeTouched, setStakeTouched] = useState(false);
@@ -308,6 +338,7 @@ export const BettingPage = () => {
   const [suggestionOutcomes, setSuggestionOutcomes] =
     useState<SuggestionDraftOutcome[]>(defaultSuggestionOutcomes);
   const [suggestionSubmitted, setSuggestionSubmitted] = useState(false);
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
   const betSlipRef = useRef<HTMLElement>(null);
   const betAmountRef = useRef<HTMLInputElement>(null);
 
@@ -332,8 +363,8 @@ export const BettingPage = () => {
   const countryByPlayer = countriesQuery.data ?? {};
   const markets = useMemo(() => marketsQuery.data ?? [], [marketsQuery.data]);
   const openMarkets = useMemo(
-    () => markets.filter((market) => market.status === "open"),
-    [markets],
+    () => markets.filter((market) => marketAcceptsBets(market, currentTime)),
+    [currentTime, markets],
   );
   const marketCategories = useMemo(
     () =>
@@ -347,9 +378,17 @@ export const BettingPage = () => {
     [openMarkets],
   );
   const visibleMarkets = useMemo(
-    () => openMarkets.filter((market) => market.category === marketCategory),
-    [marketCategory, openMarkets],
+    () =>
+      openMarkets.filter(
+        (market) =>
+          market.category === marketCategory &&
+          (marketCategory !== "AWC Champion" || winnerPositionForMarket(market) === winnerPosition),
+      ),
+    [marketCategory, openMarkets, winnerPosition],
   );
+  const showWinnerPositionToggle =
+    marketCategory === "AWC Champion" &&
+    openMarkets.some((market) => market.id === winnerNoMarketId);
   const demoSelfPlayer =
     demoState === "self" ? visibleMarkets[0]?.outcomes[0]?.player.toLowerCase() : undefined;
   const demoLimitPlayer =
@@ -413,9 +452,24 @@ export const BettingPage = () => {
   const insufficientBalance = isAuthenticated && validStake && quote.totalCost > balance;
 
   useEffect(() => {
+    const nextDeadline = markets
+      .filter((market) => market.status === "open" && market.closesAt)
+      .map((market) => Date.parse(market.closesAt ?? ""))
+      .filter((deadline) => Number.isFinite(deadline) && deadline > Date.now())
+      .sort((a, b) => a - b)[0];
+    if (!nextDeadline) return;
+    const timeout = window.setTimeout(
+      () => setCurrentTime(Date.now()),
+      Math.min(nextDeadline - Date.now() + 250, 2_147_483_647),
+    );
+    return () => window.clearTimeout(timeout);
+  }, [markets]);
+
+  useEffect(() => {
     const syncViewFromHistory = () => {
       setView(bettingViewFromLocation());
       setMarketCategory(marketCategoryFromSearch(window.location.search, marketCategories));
+      setWinnerPosition(winnerPositionFromSearch(window.location.search));
       setSelection(null);
     };
     window.addEventListener("popstate", syncViewFromHistory);
@@ -427,8 +481,14 @@ export const BettingPage = () => {
     currentUrl.searchParams.set("view", view);
     if (view === "markets") {
       currentUrl.searchParams.set("market", marketCategorySlug(marketCategory));
+      if (marketCategory === "AWC Champion") {
+        currentUrl.searchParams.set("side", winnerPosition);
+      } else {
+        currentUrl.searchParams.delete("side");
+      }
     } else {
       currentUrl.searchParams.delete("market");
+      currentUrl.searchParams.delete("side");
     }
     if (
       `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}` ===
@@ -440,7 +500,7 @@ export const BettingPage = () => {
       "",
       `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`,
     );
-  }, [marketCategory, view]);
+  }, [marketCategory, view, winnerPosition]);
 
   const selectView = (nextView: BettingView) => {
     if (nextView === view) return;
@@ -448,8 +508,12 @@ export const BettingPage = () => {
     nextUrl.searchParams.set("view", nextView);
     if (nextView === "markets") {
       nextUrl.searchParams.set("market", marketCategorySlug(marketCategory));
+      if (marketCategory === "AWC Champion") {
+        nextUrl.searchParams.set("side", winnerPosition);
+      }
     } else {
       nextUrl.searchParams.delete("market");
+      nextUrl.searchParams.delete("side");
     }
     window.history.pushState({}, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
     setView(nextView);
@@ -460,8 +524,19 @@ export const BettingPage = () => {
     const nextUrl = new URL(window.location.href);
     nextUrl.searchParams.set("view", "markets");
     nextUrl.searchParams.set("market", marketCategorySlug(nextCategory));
+    if (nextCategory === "AWC Champion") {
+      nextUrl.searchParams.set("side", winnerPosition);
+    } else {
+      nextUrl.searchParams.delete("side");
+    }
     window.history.pushState({}, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
     setMarketCategory(nextCategory);
+    setSelection(null);
+  };
+
+  const selectWinnerPosition = (nextPosition: WinnerPosition) => {
+    if (nextPosition === winnerPosition) return;
+    setWinnerPosition(nextPosition);
     setSelection(null);
   };
 
@@ -665,6 +740,24 @@ export const BettingPage = () => {
                   </button>
                 ))}
               </div>
+              {showWinnerPositionToggle ? (
+                <div className="bettingPositionToggle" role="group" aria-label="AWC winner side">
+                  <button
+                    type="button"
+                    aria-pressed={winnerPosition === "yes"}
+                    onClick={() => selectWinnerPosition("yes")}
+                  >
+                    Yes
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={winnerPosition === "no"}
+                    onClick={() => selectWinnerPosition("no")}
+                  >
+                    No
+                  </button>
+                </div>
+              ) : null}
               <div className="bettingMarketList">
                 {demoSelfPlayer ? (
                   <InlineState kind="info">
@@ -681,9 +774,25 @@ export const BettingPage = () => {
                 {marketGroups.length ? (
                   marketGroups.map(([roundName, roundMarkets]) => (
                     <section className="bettingMarketGroup" key={roundName}>
-                      <h2>{roundName}</h2>
-                      {roundMarkets.map((market) => (
+                      <h2>
+                        {marketCategory === "AWC Champion"
+                          ? winnerPosition === "yes"
+                            ? "Who will win AWC 2026?"
+                            : "Who will not win AWC 2026?"
+                          : roundName}
+                      </h2>
+                      {roundMarkets.map((market, marketIndex) => (
                         <article className="bettingMarketCard" key={market.id}>
+                          {market.closesAt &&
+                          (marketIndex === 0 ||
+                            market.closesAt !== roundMarkets[marketIndex - 1]?.closesAt) ? (
+                            <p className="bettingMarketDeadline">
+                              <span>Bets close</span>
+                              <time dateTime={market.closesAt}>
+                                {formatBettingDeadline(market.closesAt)}
+                              </time>
+                            </p>
+                          ) : null}
                           <div className="bettingOutcomes">
                             {market.outcomes.map((outcome) => {
                               const isSelected =
@@ -784,7 +893,13 @@ export const BettingPage = () => {
                           crossOrigin="anonymous"
                         />
                         <strong>{selection.player}</strong>
-                        <em>{selectedMarket.category === "Banned" ? "Yes" : "to win"}</em>
+                        <em>
+                          {selectedMarket.category === "Banned"
+                            ? "Yes"
+                            : selectedMarket.id === winnerNoMarketId
+                              ? "not to win"
+                              : "to win"}
+                        </em>
                       </span>
                       <b>{selectedPrice}%</b>
                     </div>

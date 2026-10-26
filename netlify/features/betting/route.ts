@@ -64,6 +64,7 @@ const marketColumns = [
   "label",
   "status",
   "winner",
+  "closes_at",
   "updated_at",
   "settled_at",
   "tournament_betting_outcomes(player,price_percent,display_order)",
@@ -255,8 +256,8 @@ export const bettingRoute = async (event: FunctionEvent) => {
     if (/not enough coins/i.test(error.message)) {
       throw new HttpError(409, "You don’t have enough coins for this bet and its 2% fee.");
     }
-    if (/not open/i.test(error.message)) {
-      throw new HttpError(409, "Betting has closed for this match.");
+    if (/not open|deadline has passed/i.test(error.message)) {
+      throw new HttpError(409, "Betting has closed for this market.");
     }
     if (/not found/i.test(error.message)) {
       throw new HttpError(404, "That betting market no longer exists.");

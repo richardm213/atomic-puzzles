@@ -197,4 +197,26 @@ describe("betting function", () => {
     expect(JSON.parse(selfBetResponse.body).error).toBe("You can’t bet on yourself.");
     expect(rpc).toHaveBeenCalledTimes(1);
   });
+
+  it("reports a market deadline rejection as a closed market", async () => {
+    const rpc = vi.fn(async () => ({
+      data: null,
+      error: { message: "Betting deadline has passed for market awc2026-winner" },
+    }));
+    mocks.createClient.mockReturnValue({ rpc });
+
+    const response = await handler({
+      httpMethod: "POST",
+      headers: requestHeaders("bettor"),
+      body: JSON.stringify({
+        action: "place",
+        marketId: "awc2026-winner",
+        selection: "natso",
+        stake: 10,
+      }),
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(JSON.parse(response.body).error).toBe("Betting has closed for this market.");
+  });
 });
