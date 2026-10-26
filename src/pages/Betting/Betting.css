@@ -647,6 +647,306 @@
   font-size: 1.1rem;
 }
 
+.marketSuggestions {
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-5);
+}
+
+.marketSuggestionFormPanel,
+.marketSuggestionCard {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+}
+
+.marketSuggestionFormPanel {
+  overflow: hidden;
+}
+
+.marketSuggestionFormPanel h2,
+.marketSuggestionFeed h2 {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: 1.05rem;
+  font-weight: 750;
+  letter-spacing: -0.015em;
+}
+
+.marketSuggestionFormPanel h2 {
+  padding: 14px var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.marketSuggestionFeed {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.marketSuggestionFormPanel form {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.marketSuggestionFormPanel label,
+.marketSuggestionFormPanel legend {
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.marketSuggestionFormPanel > form > input,
+.marketSuggestionOutcomeField input {
+  width: 100%;
+  min-width: 0;
+  height: 44px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  outline: 0;
+  background: var(--color-panel);
+  color: var(--color-heading);
+  font: inherit;
+}
+
+.marketSuggestionFormPanel input:focus-visible {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-ring);
+}
+
+.marketSuggestionFormPanel fieldset {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.marketSuggestionFormPanel legend {
+  margin-bottom: var(--space-2);
+}
+
+.marketSuggestionOutcomeFields {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.marketSuggestionOutcomeField {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 82px auto;
+  align-items: end;
+  gap: var(--space-2);
+}
+
+.marketSuggestionOutcomeField label {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.marketSuggestionOddsField {
+  position: relative;
+  display: block;
+}
+
+.marketSuggestionOddsField input {
+  padding-right: 28px;
+  font-variant-numeric: tabular-nums;
+}
+
+.marketSuggestionOddsField b {
+  position: absolute;
+  top: 50%;
+  right: 11px;
+  color: var(--color-subtle);
+  font-size: 0.78rem;
+  transform: translateY(-50%);
+}
+
+.marketSuggestionAddOutcome,
+.marketSuggestionRemoveOutcome,
+.marketSuggestionVotes button {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-panel);
+  color: var(--color-muted);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.marketSuggestionAddOutcome {
+  min-height: 40px;
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: 750;
+}
+
+.marketSuggestionRemoveOutcome {
+  width: 44px;
+  height: 44px;
+}
+
+.marketSuggestionAddOutcome:hover,
+.marketSuggestionRemoveOutcome:hover,
+.marketSuggestionVotes button:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-primary) 50%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 7%, var(--color-panel));
+  color: var(--color-heading);
+}
+
+.marketSuggestionAddOutcome:focus-visible,
+.marketSuggestionRemoveOutcome:focus-visible,
+.marketSuggestionSubmit:focus-visible,
+.marketSuggestionLogin button:focus-visible,
+.marketSuggestionVotes button:focus-visible {
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+.marketSuggestionSubmit,
+.marketSuggestionLogin button {
+  min-height: 46px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.marketSuggestionSubmit:hover:not(:disabled),
+.marketSuggestionLogin button:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.marketSuggestionSubmit:disabled,
+.marketSuggestionLogin button:disabled,
+.marketSuggestionVotes button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.marketSuggestionLogin {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.marketSuggestionLogin p {
+  margin: 0;
+  color: var(--color-muted);
+  line-height: var(--line-body);
+}
+
+.marketSuggestionList {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.marketSuggestionCard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+
+.marketSuggestionContent {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.marketSuggestionMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  color: var(--color-subtle);
+  font-size: var(--text-sm);
+}
+
+.marketSuggestionMeta a {
+  color: var(--link-color);
+  font-weight: 750;
+  text-underline-offset: 2px;
+}
+
+.marketSuggestionCard h3 {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+.marketSuggestionOutcomes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.marketSuggestionOutcomes > span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 5px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-panel);
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+
+.marketSuggestionOutcomes strong {
+  color: var(--color-heading);
+  font-variant-numeric: tabular-nums;
+}
+
+.marketSuggestionVotes {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.marketSuggestionVotes > strong {
+  min-width: 28px;
+  color: var(--color-heading);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.marketSuggestionVotes button {
+  min-width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 750;
+}
+
+.marketSuggestionVotes button.isSelected {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-panel));
+  color: var(--color-heading);
+}
+
 @media (max-width: 760px) {
   .bettingMarketView {
     grid-template-columns: 1fr;
@@ -667,6 +967,10 @@
 
   .betHistoryRow time {
     grid-column: 1 / -1;
+  }
+
+  .marketSuggestions {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -695,6 +999,18 @@
   .betHistoryRow dl {
     grid-template-columns: repeat(3, auto);
   }
+
+  .marketSuggestionCard {
+    grid-template-columns: 1fr;
+  }
+
+  .marketSuggestionVotes {
+    justify-self: start;
+  }
+
+  .marketSuggestionOutcomeField {
+    grid-template-columns: minmax(0, 1fr) 78px auto;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -702,6 +1018,14 @@
   .bettingOutcomes button,
   .betSubmitButton,
   .bettingLoginPrompt button {
+    transition-duration: 0.01ms;
+  }
+
+  .marketSuggestionAddOutcome,
+  .marketSuggestionRemoveOutcome,
+  .marketSuggestionSubmit,
+  .marketSuggestionLogin button,
+  .marketSuggestionVotes button {
     transition-duration: 0.01ms;
   }
 }

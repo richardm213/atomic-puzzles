@@ -77,6 +77,46 @@ describe("betting function", () => {
     expect(limit).toHaveBeenCalledWith(200);
   });
 
+  it("publishes suggestion vote totals without exposing voter identities", async () => {
+    const limit = vi.fn(async () => ({
+      data: [
+        {
+          id: 4,
+          username: "market_maker",
+          question: "Will sircacehets win AWC 2026?",
+          outcomes: [
+            { label: "Yes", odds: 1 },
+            { label: "No", odds: 99 },
+          ],
+          created_at: "2026-10-26T10:00:00Z",
+          tournament_market_suggestion_votes: [
+            { username: "one", vote: 1 },
+            { username: "two", vote: -1 },
+            { username: "three", vote: 1 },
+          ],
+        },
+      ],
+      error: null,
+    }));
+    const order = vi.fn(() => ({ limit }));
+    const eq = vi.fn(() => ({ order }));
+    const select = vi.fn(() => ({ eq }));
+    const from = vi.fn(() => ({ select }));
+    mocks.createClient.mockReturnValue({ from });
+
+    const response = await handler({
+      httpMethod: "POST",
+      headers: {},
+      body: JSON.stringify({ action: "suggestions" }),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body).result).toEqual([
+      expect.objectContaining({ id: 4, upvotes: 2, downvotes: 1, score: 1, userVote: 0 }),
+    ]);
+    expect(response.body).not.toContain('"username":"one"');
+  });
+
   it("places a bet for the signed-in username and enforces the maximum", async () => {
     const rpc = vi.fn(async () => ({
       data: { balance: 898, bet: { id: 7, selection: "rabbier" } },

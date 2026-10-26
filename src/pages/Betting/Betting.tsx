@@ -1,5 +1,7 @@
 import "./Betting.css";
 
+import { faPlus, faThumbsDown, faThumbsUp, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
@@ -11,16 +13,20 @@ import { useAuth } from "../../context/AuthContext";
 import {
   BET_NET_WORTH_LIMIT_RATE,
   type BettingMarket,
+  type MarketSuggestion,
   MAX_BET_STAKE,
   maxTournamentBetStake,
   placeTournamentBet,
   quoteTournamentBet,
+  suggestMarket,
   type TournamentBet,
+  voteOnMarketSuggestion,
 } from "../../lib/betting/betting";
 import {
   allTournamentBetsQueryOptions,
   bettingMarketsQueryOptions,
   bettingQueryKeys,
+  marketSuggestionsQueryOptions,
   tournamentBetsQueryOptions,
 } from "../../lib/betting/bettingQueries";
 import { formatCoinBalance } from "../../lib/coins/coinDisplay";
@@ -30,14 +36,86 @@ import { appAssetPath } from "../../utils/appAssetPath";
 import { countryCodeToFlagUrl } from "../../utils/countryFlags";
 import { formatLocalDateTime } from "../../utils/formatters";
 
-type BettingView = "markets" | "mine" | "all";
+type BettingView = "markets" | "mine" | "all" | "suggestions";
 type Selection = { marketId: string; player: string };
+type SuggestionDraftOutcome = { label: string; odds: string };
 
 const formatBetCoins = (value: number): string =>
   value.toLocaleString(undefined, { maximumFractionDigits: 2 });
 
 const marketForBet = (markets: BettingMarket[], bet: TournamentBet) =>
   markets.find((market) => market.id === bet.marketId);
+
+const MarketSuggestionList = ({
+  suggestions,
+  isAuthenticated,
+  votingSuggestionId,
+  onLogin,
+  onVote,
+}: {
+  suggestions: MarketSuggestion[];
+  isAuthenticated: boolean;
+  votingSuggestionId: number | undefined;
+  onLogin: () => void;
+  onVote: (suggestion: MarketSuggestion, vote: -1 | 1) => void;
+}) => {
+  if (!suggestions.length) {
+    return <InlineState kind="empty">No markets have been suggested yet.</InlineState>;
+  }
+  return (
+    <div className="marketSuggestionList">
+      {suggestions.map((suggestion) => (
+        <article className="marketSuggestionCard" key={suggestion.id}>
+          <div className="marketSuggestionContent">
+            <div className="marketSuggestionMeta">
+              <Link to="/@/$username" params={{ username: suggestion.username }}>
+                {suggestion.username}
+              </Link>
+              <span aria-hidden="true">·</span>
+              <time dateTime={suggestion.createdAt}>
+                {formatLocalDateTime(suggestion.createdAt)}
+              </time>
+            </div>
+            <h3>{suggestion.question}</h3>
+            <div className="marketSuggestionOutcomes" aria-label="Proposed outcomes">
+              {suggestion.outcomes.map((outcome) => (
+                <span key={`${outcome.label}-${outcome.odds}`}>
+                  {outcome.label}
+                  <strong>{outcome.odds}%</strong>
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="marketSuggestionVotes" aria-label={`Votes: ${suggestion.score}`}>
+            <button
+              type="button"
+              className={suggestion.userVote === 1 ? "isSelected" : ""}
+              aria-label={`Upvote suggestion by ${suggestion.username}`}
+              aria-pressed={suggestion.userVote === 1}
+              disabled={votingSuggestionId === suggestion.id}
+              onClick={() => (isAuthenticated ? onVote(suggestion, 1) : onLogin())}
+            >
+              <FontAwesomeIcon icon={faThumbsUp} aria-hidden="true" />
+              <span>{suggestion.upvotes}</span>
+            </button>
+            <strong aria-label={`${suggestion.score} net votes`}>{suggestion.score}</strong>
+            <button
+              type="button"
+              className={suggestion.userVote === -1 ? "isSelected" : ""}
+              aria-label={`Downvote suggestion by ${suggestion.username}`}
+              aria-pressed={suggestion.userVote === -1}
+              disabled={votingSuggestionId === suggestion.id}
+              onClick={() => (isAuthenticated ? onVote(suggestion, -1) : onLogin())}
+            >
+              <FontAwesomeIcon icon={faThumbsDown} aria-hidden="true" />
+              <span>{suggestion.downvotes}</span>
+            </button>
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+};
 
 const BetHistory = ({
   bets,
@@ -107,6 +185,12 @@ export const BettingPage = () => {
   const [stakeInput, setStakeInput] = useState("");
   const [stakeTouched, setStakeTouched] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [suggestionQuestion, setSuggestionQuestion] = useState("");
+  const [suggestionOutcomes, setSuggestionOutcomes] = useState<SuggestionDraftOutcome[]>([
+    { label: "", odds: "" },
+    { label: "", odds: "" },
+  ]);
+  const [suggestionSubmitted, setSuggestionSubmitted] = useState(false);
   const betSlipRef = useRef<HTMLElement>(null);
   const betAmountRef = useRef<HTMLInputElement>(null);
 
@@ -118,6 +202,10 @@ export const BettingPage = () => {
   const allBetsQuery = useQuery({
     ...allTournamentBetsQueryOptions(),
     enabled: view === "all",
+  });
+  const suggestionsQuery = useQuery({
+    ...marketSuggestionsQueryOptions(),
+    enabled: view === "suggestions",
   });
   const coinSummaryQuery = useQuery({
     ...coinSummaryQueryOptions(username),
@@ -203,6 +291,26 @@ export const BettingPage = () => {
     },
   });
 
+  const suggestMarketMutation = useMutation({
+    mutationFn: suggestMarket,
+    onSuccess: async () => {
+      setSuggestionQuestion("");
+      setSuggestionOutcomes([
+        { label: "", odds: "" },
+        { label: "", odds: "" },
+      ]);
+      setSuggestionSubmitted(true);
+      await queryClient.invalidateQueries({ queryKey: bettingQueryKeys.suggestions });
+    },
+  });
+
+  const suggestionVoteMutation = useMutation({
+    mutationFn: voteOnMarketSuggestion,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: bettingQueryKeys.suggestions });
+    },
+  });
+
   if (marketsQuery.isPending && markets.length === 0) return <RouteLoadingFallback />;
 
   const chooseOutcome = (marketId: string, player: string) => {
@@ -228,6 +336,47 @@ export const BettingPage = () => {
       marketId: selectedMarket.id,
       selection: selection.player,
       stake,
+    });
+  };
+
+  const updateSuggestionOutcome = (
+    index: number,
+    field: keyof SuggestionDraftOutcome,
+    value: string,
+  ) => {
+    setSuggestionSubmitted(false);
+    setSuggestionOutcomes((current) =>
+      current.map((outcome, outcomeIndex) =>
+        outcomeIndex === index ? { ...outcome, [field]: value } : outcome,
+      ),
+    );
+  };
+
+  const submitMarketSuggestion = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const outcomes = suggestionOutcomes.map((outcome) => ({
+      label: outcome.label.trim(),
+      odds: Number(outcome.odds),
+    }));
+    if (
+      suggestionQuestion.trim().length < 8 ||
+      outcomes.some(
+        (outcome) =>
+          !outcome.label ||
+          !Number.isInteger(outcome.odds) ||
+          outcome.odds < 1 ||
+          outcome.odds > 99,
+      )
+    )
+      return;
+    setSuggestionSubmitted(false);
+    suggestMarketMutation.mutate({ question: suggestionQuestion.trim(), outcomes });
+  };
+
+  const voteOnSuggestion = (suggestion: MarketSuggestion, vote: -1 | 1) => {
+    suggestionVoteMutation.mutate({
+      suggestionId: suggestion.id,
+      vote: suggestion.userVote === vote ? 0 : vote,
     });
   };
 
@@ -288,6 +437,14 @@ export const BettingPage = () => {
             onClick={() => setView("all")}
           >
             All bets
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={view === "suggestions"}
+            onClick={() => setView("suggestions")}
+          >
+            Suggestions
           </button>
         </div>
 
@@ -519,6 +676,150 @@ export const BettingPage = () => {
                 <p className="betSlipEmpty">Choose a player to see the exact cost and payout.</p>
               )}
             </aside>
+          </section>
+        ) : view === "suggestions" ? (
+          <section className="marketSuggestions" role="tabpanel">
+            <div className="marketSuggestionFormPanel">
+              <h2>Suggest a market</h2>
+              {isAuthenticated ? (
+                <form onSubmit={submitMarketSuggestion}>
+                  <label htmlFor="market-suggestion-question">Market question</label>
+                  <input
+                    id="market-suggestion-question"
+                    type="text"
+                    minLength={8}
+                    maxLength={160}
+                    required
+                    value={suggestionQuestion}
+                    onChange={(event) => {
+                      setSuggestionQuestion(event.target.value);
+                      setSuggestionSubmitted(false);
+                    }}
+                    placeholder="Will a player reach the AWC final?"
+                  />
+                  <fieldset>
+                    <legend>Outcomes and proposed odds</legend>
+                    <div className="marketSuggestionOutcomeFields">
+                      {suggestionOutcomes.map((outcome, index) => (
+                        <div className="marketSuggestionOutcomeField" key={index}>
+                          <label>
+                            <span>Outcome {index + 1}</span>
+                            <input
+                              type="text"
+                              maxLength={60}
+                              required
+                              value={outcome.label}
+                              onChange={(event) =>
+                                updateSuggestionOutcome(index, "label", event.target.value)
+                              }
+                            />
+                          </label>
+                          <label>
+                            <span>Odds</span>
+                            <span className="marketSuggestionOddsField">
+                              <input
+                                type="number"
+                                inputMode="numeric"
+                                min="1"
+                                max="99"
+                                step="1"
+                                required
+                                value={outcome.odds}
+                                onChange={(event) =>
+                                  updateSuggestionOutcome(index, "odds", event.target.value)
+                                }
+                              />
+                              <b>%</b>
+                            </span>
+                          </label>
+                          {suggestionOutcomes.length > 2 ? (
+                            <button
+                              type="button"
+                              className="marketSuggestionRemoveOutcome"
+                              aria-label={`Remove outcome ${index + 1}`}
+                              onClick={() =>
+                                setSuggestionOutcomes((current) =>
+                                  current.filter((_, outcomeIndex) => outcomeIndex !== index),
+                                )
+                              }
+                            >
+                              <FontAwesomeIcon icon={faTrash} aria-hidden="true" />
+                            </button>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  </fieldset>
+                  {suggestionOutcomes.length < 6 ? (
+                    <button
+                      type="button"
+                      className="marketSuggestionAddOutcome"
+                      onClick={() =>
+                        setSuggestionOutcomes((current) => [...current, { label: "", odds: "" }])
+                      }
+                    >
+                      <FontAwesomeIcon icon={faPlus} aria-hidden="true" />
+                      Add outcome
+                    </button>
+                  ) : null}
+                  {suggestMarketMutation.error ? (
+                    <InlineState kind="error">
+                      {suggestMarketMutation.error instanceof Error
+                        ? suggestMarketMutation.error.message
+                        : "Unable to submit this market suggestion."}
+                    </InlineState>
+                  ) : null}
+                  {suggestionSubmitted ? (
+                    <InlineState kind="success">Market suggestion published.</InlineState>
+                  ) : null}
+                  <button
+                    type="submit"
+                    className="marketSuggestionSubmit"
+                    disabled={suggestMarketMutation.isPending}
+                  >
+                    {suggestMarketMutation.isPending ? "Publishing…" : "Publish suggestion"}
+                  </button>
+                </form>
+              ) : (
+                <div className="marketSuggestionLogin">
+                  <p>Log in with Lichess to suggest a market or vote.</p>
+                  <button
+                    type="button"
+                    disabled={authLoading}
+                    onClick={() => void login("/betting")}
+                  >
+                    Log in with Lichess
+                  </button>
+                </div>
+              )}
+            </div>
+            <div className="marketSuggestionFeed">
+              <h2>Suggested markets</h2>
+              {suggestionsQuery.error ? (
+                <InlineState kind="error">
+                  {suggestionsQuery.error instanceof Error
+                    ? suggestionsQuery.error.message
+                    : "Unable to load market suggestions."}
+                </InlineState>
+              ) : suggestionsQuery.isPending ? (
+                <RouteLoadingFallback />
+              ) : (
+                <MarketSuggestionList
+                  suggestions={suggestionsQuery.data ?? []}
+                  isAuthenticated={isAuthenticated}
+                  votingSuggestionId={suggestionVoteMutation.variables?.suggestionId}
+                  onLogin={() => void login("/betting")}
+                  onVote={voteOnSuggestion}
+                />
+              )}
+              {suggestionVoteMutation.error ? (
+                <InlineState kind="error">
+                  {suggestionVoteMutation.error instanceof Error
+                    ? suggestionVoteMutation.error.message
+                    : "Unable to record your vote."}
+                </InlineState>
+              ) : null}
+            </div>
           </section>
         ) : (
           <section className="bettingHistory" role="tabpanel">
