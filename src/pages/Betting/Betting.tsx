@@ -9,6 +9,7 @@ import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/Rout
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
 import {
+  BET_NET_WORTH_LIMIT_RATE,
   type BettingMarket,
   MAX_BET_STAKE,
   maxTournamentBetStake,
@@ -168,17 +169,29 @@ export const BettingPage = () => {
   const validStake = Number.isInteger(stake) && stake >= 1 && stake <= marketStakeLimit;
   const quote = quoteTournamentBet(validStake ? stake : 0, selectedPrice);
   const balance = coinSummaryQuery.data?.balance ?? 0;
-  const balanceLimitedStake = isAuthenticated ? maxTournamentBetStake(balance) : MAX_BET_STAKE;
-  const effectiveStakeLimit = Math.min(balanceLimitedStake, marketStakeLimit);
-  const exceedsBalanceLimit = isAuthenticated && validStake && quote.totalCost > balance * 0.25;
-  const insufficientBalance = isAuthenticated && validStake && quote.totalCost > balance;
   const myBets = betsQuery.data ?? [];
+  const openBetCost = myBets.reduce(
+    (total, bet) => total + (bet.status === "open" ? bet.totalCost : 0),
+    0,
+  );
+  const netWorth = balance + openBetCost;
+  const betCostLimit = netWorth * BET_NET_WORTH_LIMIT_RATE;
+  const remainingBetBudget = Math.max(0, betCostLimit - openBetCost);
+  const balanceLimitedStake = isAuthenticated
+    ? maxTournamentBetStake(balance, openBetCost)
+    : MAX_BET_STAKE;
+  const effectiveStakeLimit = Math.min(balanceLimitedStake, marketStakeLimit);
+  const bettingUnavailable = isAuthenticated && effectiveStakeLimit < 1;
+  const exceedsNetWorthLimit =
+    isAuthenticated && validStake && quote.totalCost > remainingBetBudget;
+  const insufficientBalance = isAuthenticated && validStake && quote.totalCost > balance;
 
   const placeBetMutation = useMutation({
     mutationFn: placeTournamentBet,
-    onSuccess: async (result) => {
+    onSuccess: async (result, variables) => {
+      const placedCost = quoteTournamentBet(variables.stake, result.bet.priceCents).totalCost;
       setSuccessMessage(
-        `Bet placed on ${result.bet.selection} for ${formatBetCoins(result.bet.totalCost)} coins.`,
+        `Bet placed on ${result.bet.selection} for ${formatBetCoins(placedCost)} coins.`,
       );
       setStakeInput("");
       setStakeTouched(false);
@@ -208,7 +221,7 @@ export const BettingPage = () => {
 
   const submitBet = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!selectedMarket || !selection || !validStake || exceedsBalanceLimit || insufficientBalance)
+    if (!selectedMarket || !selection || !validStake || exceedsNetWorthLimit || insufficientBalance)
       return;
     setSuccessMessage("");
     placeBetMutation.mutate({
@@ -242,6 +255,10 @@ export const BettingPage = () => {
               <span>
                 <strong>{formatCoinBalance(balance)}</strong>
                 coins available
+                <small>
+                  {formatBetCoins(remainingBetBudget)} available to bet · {formatBetCoins(netWorth)}
+                  net worth
+                </small>
               </span>
             </div>
           ) : null}
@@ -301,6 +318,12 @@ export const BettingPage = () => {
                 ))}
               </div>
               <div className="bettingMarketList">
+                {bettingUnavailable ? (
+                  <InlineState kind="info">
+                    Betting limit reached. Your open bets already use 50% of your net worth. Earn
+                    more coins or wait for a bet to settle to bet again.
+                  </InlineState>
+                ) : null}
                 {marketGroups.length ? (
                   marketGroups.map(([roundName, roundMarkets]) => (
                     <section className="bettingMarketGroup" key={roundName}>
@@ -319,6 +342,12 @@ export const BettingPage = () => {
                                   type="button"
                                   className={isSelected ? "isSelected" : ""}
                                   aria-pressed={isSelected}
+                                  disabled={bettingUnavailable}
+                                  title={
+                                    bettingUnavailable
+                                      ? "Your open bets have reached 50% of your net worth."
+                                      : undefined
+                                  }
                                   onClick={() => chooseOutcome(market.id, outcome.player)}
                                   key={outcome.player}
                                 >
@@ -401,10 +430,12 @@ export const BettingPage = () => {
                   </div>
                   <small id="bet-stake-help">
                     {isAuthenticated
-                      ? `Up to ${formatBetCoins(effectiveStakeLimit)} coins before the fee.`
+                      ? bettingUnavailable
+                        ? "No more bets are available at your current net worth."
+                        : `Up to ${formatBetCoins(effectiveStakeLimit)} coins before the fee. Open bets are limited to 50% of net worth.`
                       : selectedMarket.category === "Banned"
-                        ? "200 coin maximum · 2% fee · 25% balance limit"
-                        : "2% fee · 25% balance limit"}
+                        ? "200 coin maximum · 2% fee · 50% net worth limit"
+                        : "2% fee · 50% net worth limit"}
                   </small>
 
                   <dl className="betQuote">
@@ -427,15 +458,21 @@ export const BettingPage = () => {
                       Enter a whole number from 1 to {formatBetCoins(marketStakeLimit)}.
                     </InlineState>
                   ) : null}
-                  {insufficientBalance && !exceedsBalanceLimit ? (
+                  {insufficientBalance && !exceedsNetWorthLimit ? (
                     <InlineState kind="error">
                       You need {formatBetCoins(quote.totalCost)} coins including the fee.
                     </InlineState>
                   ) : null}
-                  {exceedsBalanceLimit ? (
+                  {exceedsNetWorthLimit ? (
                     <InlineState kind="error">
-                      Total cost cannot exceed 25% of your balance. Your current limit is
-                      {` ${formatBetCoins(balance * 0.25)} coins`} including the fee.
+                      Your open bets can use up to 50% of your net worth. You have
+                      {` ${formatBetCoins(remainingBetBudget)} coins`} left to bet, including the
+                      fee.
+                    </InlineState>
+                  ) : null}
+                  {bettingUnavailable ? (
+                    <InlineState kind="info">
+                      Betting limit reached. Earn more coins or wait for an open bet to settle.
                     </InlineState>
                   ) : null}
                   {placeBetMutation.error ? (
@@ -455,8 +492,9 @@ export const BettingPage = () => {
                       type="submit"
                       disabled={
                         !validStake ||
-                        exceedsBalanceLimit ||
+                        exceedsNetWorthLimit ||
                         insufficientBalance ||
+                        bettingUnavailable ||
                         placeBetMutation.isPending
                       }
                     >

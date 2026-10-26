@@ -122,10 +122,10 @@ export const bettingRoute = async (event: FunctionEvent) => {
     p_stake: input.stake,
   });
   if (error) {
-    if (/exceeds 25 percent/i.test(error.message)) {
+    if (/exceeds 50 percent of net worth/i.test(error.message)) {
       throw new HttpError(
         409,
-        "A bet’s total cost, including the fee, can’t exceed 25% of your current balance.",
+        "Your open bets can’t exceed 50% of your net worth, including outstanding bets.",
       );
     }
     if (/not enough coins/i.test(error.message)) {

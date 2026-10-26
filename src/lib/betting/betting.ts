@@ -3,7 +3,7 @@ import { z } from "zod";
 import { postApi } from "../api/postApi";
 
 export const BET_FEE_RATE = 0.02;
-export const BET_BALANCE_LIMIT_RATE = 0.25;
+export const BET_NET_WORTH_LIMIT_RATE = 0.5;
 export const MAX_BET_STAKE = 1000;
 
 export type BettingMarketStatus = "open" | "suspended" | "settled" | "refunded";
@@ -62,10 +62,16 @@ export type BetQuote = {
 
 const roundCoins = (value: number): number => Math.round(value * 1_000_000) / 1_000_000;
 
-export const maxTournamentBetStake = (balance: number): number => {
+export const maxTournamentBetStake = (balance: number, openBetCost = 0): number => {
   const normalizedBalance = Number.isFinite(balance) ? Math.max(0, balance) : 0;
-  const balanceLimit = normalizedBalance * BET_BALANCE_LIMIT_RATE;
-  return Math.min(MAX_BET_STAKE, Math.floor(balanceLimit / (1 + BET_FEE_RATE)));
+  const normalizedOpenBetCost = Number.isFinite(openBetCost) ? Math.max(0, openBetCost) : 0;
+  const netWorth = normalizedBalance + normalizedOpenBetCost;
+  const remainingBetBudget = Math.max(
+    0,
+    netWorth * BET_NET_WORTH_LIMIT_RATE - normalizedOpenBetCost,
+  );
+  const availableCost = Math.min(normalizedBalance, remainingBetBudget);
+  return Math.min(MAX_BET_STAKE, Math.floor(availableCost / (1 + BET_FEE_RATE)));
 };
 
 export const quoteTournamentBet = (stake: number, priceCents: number): BetQuote => {

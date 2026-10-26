@@ -23,10 +23,15 @@ describe("quoteTournamentBet", () => {
 });
 
 describe("maxTournamentBetStake", () => {
-  it("caps the full upfront cost at 25 percent of the balance", () => {
-    expect(maxTournamentBetStake(1000)).toBe(245);
-    expect(quoteTournamentBet(245, 50).totalCost).toBeLessThanOrEqual(250);
-    expect(quoteTournamentBet(246, 50).totalCost).toBeGreaterThan(250);
+  it("caps all open bets at 50 percent of net worth", () => {
+    expect(maxTournamentBetStake(500, 500)).toBe(0);
+    expect(maxTournamentBetStake(700, 300)).toBe(196);
+    expect(quoteTournamentBet(196, 50).totalCost + 300).toBeLessThanOrEqual(500);
+    expect(quoteTournamentBet(197, 50).totalCost + 300).toBeGreaterThan(500);
+  });
+
+  it("increases as the available balance increases", () => {
+    expect(maxTournamentBetStake(720, 300)).toBeGreaterThan(maxTournamentBetStake(700, 300));
   });
 
   it("never exceeds the absolute 1,000 coin maximum", () => {
