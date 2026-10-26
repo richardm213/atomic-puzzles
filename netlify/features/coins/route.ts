@@ -118,13 +118,36 @@ export const coinsRoute = async (event: FunctionEvent) => {
   );
   if (input.action === "leaderboard") {
     const supabase = createServerSupabase("Atomic Coins service");
-    const { data, error } = await supabase
-      .from("coin_accounts")
-      .select("username,balance")
-      .order("balance", { ascending: false })
-      .order("username", { ascending: true });
-    if (error) throw new Error(`Unable to load coin rankings: ${error.message}`);
-    return identityResponse(identity, 200, { result: data });
+    const [accountsResult, openBetsResult] = await Promise.all([
+      supabase.from("coin_accounts").select("username,balance"),
+      supabase.from("tournament_bets").select("username,total_cost").eq("status", "open"),
+    ]);
+    if (accountsResult.error) {
+      throw new Error(`Unable to load coin rankings: ${accountsResult.error.message}`);
+    }
+    if (openBetsResult.error) {
+      throw new Error(`Unable to load coin rankings: ${openBetsResult.error.message}`);
+    }
+
+    const openBetCosts = new Map<string, number>();
+    for (const bet of openBetsResult.data ?? []) {
+      openBetCosts.set(bet.username, (openBetCosts.get(bet.username) ?? 0) + bet.total_cost);
+    }
+    const rankings = (accountsResult.data ?? [])
+      .map((account) => {
+        const inBets = openBetCosts.get(account.username) ?? 0;
+        return {
+          username: account.username,
+          netWorth: account.balance + inBets,
+          balance: account.balance,
+          inBets,
+        };
+      })
+      .sort(
+        (left, right) =>
+          right.netWorth - left.netWorth || left.username.localeCompare(right.username),
+      );
+    return identityResponse(identity, 200, { result: rankings });
   }
   if (input.action === "transactions") {
     const supabase = createServerSupabase("Atomic Coins service");

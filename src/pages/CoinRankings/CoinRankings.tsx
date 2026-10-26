@@ -218,13 +218,15 @@ export const CoinRankingsPage = () => {
 
                 <DataTable
                   wrapperClassName="rankingsTableWrap coinRankingsTableWrap"
-                  className="rankingsTable coinRankingsTable"
+                  className="rankingsTable coinRankingsTable coinLeaderboardTable"
                 >
                   <thead>
                     <tr>
                       <th scope="col">Rank</th>
                       <th scope="col">Player</th>
-                      <th scope="col">Coins</th>
+                      <th scope="col">Net Worth</th>
+                      <th scope="col">Balance</th>
+                      <th scope="col">In Bets</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -240,7 +242,15 @@ export const CoinRankingsPage = () => {
                             {entry.username}
                           </Link>
                         </td>
-                        <td className="coinBalance">{formatCoinBalance(entry.balance)}</td>
+                        <td className="coinAmount coinNetWorth" data-label="Net Worth">
+                          {formatCoinBalance(entry.netWorth)}
+                        </td>
+                        <td className="coinAmount" data-label="Balance">
+                          {formatCoinBalance(entry.balance)}
+                        </td>
+                        <td className="coinAmount" data-label="In Bets">
+                          {formatCoinBalance(entry.inBets)}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

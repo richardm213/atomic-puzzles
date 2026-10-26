@@ -42,17 +42,25 @@ describe("coins function", () => {
     vi.unstubAllEnvs();
   });
 
-  it("returns public coin rankings ordered by balance and username", async () => {
-    const orderByUsername = vi.fn(async () => ({
+  it("returns public coin rankings ordered by net worth", async () => {
+    const selectAccounts = vi.fn(async () => ({
       data: [
-        { username: "leader", balance: 1200 },
-        { username: "runner_up", balance: 850 },
+        { username: "saver", balance: 1200 },
+        { username: "bettor", balance: 850 },
       ],
       error: null,
     }));
-    const orderByBalance = vi.fn(() => ({ order: orderByUsername }));
-    const select = vi.fn(() => ({ order: orderByBalance }));
-    const from = vi.fn(() => ({ select }));
+    const filterOpenBets = vi.fn(async () => ({
+      data: [
+        { username: "bettor", total_cost: 220 },
+        { username: "bettor", total_cost: 180 },
+      ],
+      error: null,
+    }));
+    const selectOpenBets = vi.fn(() => ({ eq: filterOpenBets }));
+    const from = vi.fn((table: string) => ({
+      select: table === "coin_accounts" ? selectAccounts : selectOpenBets,
+    }));
     mocks.createClient.mockReturnValue({ from });
 
     const response = await handler({
@@ -63,12 +71,13 @@ describe("coins function", () => {
 
     expect(response.statusCode).toBe(200);
     expect(from).toHaveBeenCalledWith("coin_accounts");
-    expect(select).toHaveBeenCalledWith("username,balance");
-    expect(orderByBalance).toHaveBeenCalledWith("balance", { ascending: false });
-    expect(orderByUsername).toHaveBeenCalledWith("username", { ascending: true });
+    expect(selectAccounts).toHaveBeenCalledWith("username,balance");
+    expect(from).toHaveBeenCalledWith("tournament_bets");
+    expect(selectOpenBets).toHaveBeenCalledWith("username,total_cost");
+    expect(filterOpenBets).toHaveBeenCalledWith("status", "open");
     expect(JSON.parse(response.body).result).toEqual([
-      { username: "leader", balance: 1200 },
-      { username: "runner_up", balance: 850 },
+      { username: "bettor", netWorth: 1250, balance: 850, inBets: 400 },
+      { username: "saver", netWorth: 1200, balance: 1200, inBets: 0 },
     ]);
   });
 

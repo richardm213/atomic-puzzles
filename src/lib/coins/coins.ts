@@ -28,7 +28,9 @@ export type CoinSummary = {
 
 export type CoinRanking = {
   username: string;
+  netWorth: number;
   balance: number;
+  inBets: number;
 };
 
 export const coinTransactionReasons = [
@@ -118,11 +120,15 @@ const coinRankingsSchema = z.object({
     z
       .object({
         username: z.string(),
+        netWorth: z.number(),
         balance: z.number(),
+        inBets: z.number(),
       })
       .transform((entry) => ({
         username: entry.username,
+        netWorth: entry.netWorth,
         balance: entry.balance,
+        inBets: entry.inBets,
       })),
   ),
 });

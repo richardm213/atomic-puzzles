@@ -75,7 +75,7 @@
 }
 
 .coinRankingsTable {
-  min-width: 360px;
+  min-width: 560px;
   border: 0;
 }
 
@@ -89,7 +89,7 @@
   text-align: center;
 }
 
-.coinRankingsTable :is(th, td):nth-child(3) {
+.coinRankingsTable :is(th, td):nth-child(n + 3) {
   width: 1%;
   text-align: right;
   white-space: nowrap;
@@ -106,7 +106,12 @@
   font-variant-numeric: tabular-nums;
 }
 
-.coinBalance {
+.coinAmount {
+  color: var(--color-muted);
+  font-weight: 700;
+}
+
+.coinNetWorth {
   color: var(--color-heading);
   font-weight: 800;
 }
@@ -204,8 +209,90 @@
     align-items: center;
   }
 
-  .coinRankingsTable {
-    min-width: 320px;
+  .coinLeaderboardTable,
+  .coinLeaderboardTable tbody,
+  .coinLeaderboardTable tr,
+  .coinLeaderboardTable td {
+    width: 100%;
+    min-width: 0;
+    display: block;
+  }
+
+  .coinLeaderboardTable {
+    border: 0;
+    background: transparent;
+  }
+
+  .coinRankingsTableWrap:has(.coinLeaderboardTable) {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+  }
+
+  .coinLeaderboardTable thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .coinLeaderboardTable tbody {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .coinLeaderboardTable tbody tr {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-ui);
+    background: var(--color-panel-strong);
+  }
+
+  .rankingsTable.coinLeaderboardTable td {
+    padding: 0;
+    border-bottom: 0;
+  }
+
+  .coinLeaderboardTable td:nth-child(1) {
+    width: auto;
+    grid-column: 1;
+    text-align: left;
+  }
+
+  .coinLeaderboardTable td:nth-child(2) {
+    grid-column: 2 / -1;
+    padding-bottom: var(--space-3);
+  }
+
+  .coinLeaderboardTable td:nth-child(n + 3) {
+    width: auto;
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--color-border);
+    text-align: right;
+  }
+
+  .coinLeaderboardTable td:nth-child(3) {
+    text-align: left;
+  }
+
+  .coinLeaderboardTable td:nth-child(4) {
+    text-align: center;
+  }
+
+  .coinLeaderboardTable td:nth-child(n + 3)::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: var(--space-1);
+    color: var(--color-subtle);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
   }
 
   .coinTransactionFilters > div {
