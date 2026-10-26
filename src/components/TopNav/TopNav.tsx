@@ -834,15 +834,7 @@ export const TopNav = () => {
                               params={{ username: suggestion.accountUsername }}
                               aria-label={`Open ${suggestion.matchedName}'s puzzle dashboard`}
                               title="Puzzle dashboard"
-                              onClick={(event) => {
-                                event.preventDefault();
-                                event.stopPropagation();
-                                void navigate({
-                                  to: "/@/$username/puzzles",
-                                  params: { username: suggestion.accountUsername ?? "" },
-                                });
-                                closeSearchAfterNavigation();
-                              }}
+                              onClick={closeSearchAfterNavigation}
                             >
                               <FontAwesomeIcon icon={faPuzzlePiece} aria-hidden="true" />
                             </Link>
@@ -853,15 +845,7 @@ export const TopNav = () => {
                             params={{ username: suggestion.matchedName }}
                             aria-label={`Open ${suggestion.matchedName}'s tournament history`}
                             title="Tournament history"
-                            onClick={(event) => {
-                              event.preventDefault();
-                              event.stopPropagation();
-                              void navigate({
-                                to: "/tournaments/players/$username",
-                                params: { username: suggestion.matchedName },
-                              });
-                              closeSearchAfterNavigation();
-                            }}
+                            onClick={closeSearchAfterNavigation}
                           >
                             <FontAwesomeIcon icon={faTrophy} aria-hidden="true" />
                           </Link>
@@ -871,15 +855,7 @@ export const TopNav = () => {
                             params={{ username: suggestion.matchedName }}
                             aria-label={`Open ${suggestion.matchedName}'s profile`}
                             title="Profile"
-                            onClick={(event) => {
-                              event.preventDefault();
-                              event.stopPropagation();
-                              void navigate({
-                                to: "/@/$username",
-                                params: { username: suggestion.matchedName },
-                              });
-                              closeSearchAfterNavigation();
-                            }}
+                            onClick={closeSearchAfterNavigation}
                           >
                             <FontAwesomeIcon icon={faUser} aria-hidden="true" />
                           </Link>

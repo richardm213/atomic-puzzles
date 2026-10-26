@@ -22,7 +22,9 @@ export type AtomicTourEventEntry = {
 
 export type AtomicTourPlayerRankingStats = {
   currentRank: number | null;
+  currentRankChange: number | null;
   peakRank: number;
+  peakRankDate: string;
 };
 
 type RankingRow = {
@@ -41,16 +43,33 @@ export const summarizeAtomicTourPlayerRanking = (
   const rankedRows = rows.flatMap((row) => {
     const snapshotDate = String(row.snapshot_date ?? "").trim();
     const rank = Number(row.rank);
-    return snapshotDate && Number.isFinite(rank) && rank > 0 ? [{ snapshotDate, rank }] : [];
+    const rankChange =
+      row.rank_change === null || row.rank_change === undefined ? null : Number(row.rank_change);
+    return snapshotDate && Number.isFinite(rank) && rank > 0
+      ? [
+          {
+            snapshotDate,
+            rank,
+            rankChange: Number.isFinite(rankChange) ? rankChange : null,
+          },
+        ]
+      : [];
   });
   if (!rankedRows.length) return null;
 
-  const currentRanks = rankedRows
+  const currentRow = rankedRows
     .filter((row) => row.snapshotDate === latestSnapshotDate)
-    .map((row) => row.rank);
+    .sort((left, right) => left.rank - right.rank)[0];
+  const peakRank = Math.min(...rankedRows.map((row) => row.rank));
+  const peakRankDate = rankedRows
+    .filter((row) => row.rank === peakRank)
+    .map((row) => row.snapshotDate)
+    .sort()[0];
   return {
-    currentRank: currentRanks.length ? Math.min(...currentRanks) : null,
-    peakRank: Math.min(...rankedRows.map((row) => row.rank)),
+    currentRank: currentRow?.rank ?? null,
+    currentRankChange: currentRow?.rankChange ?? null,
+    peakRank,
+    peakRankDate: peakRankDate ?? "",
   };
 };
 
@@ -131,7 +150,7 @@ export const atomicTourPlayerRankingStatsQueryOptions = (playerNames: string[]) 
         fetchAllSupabaseRows<RankingRow>("atomic_tour_ranking_snapshots", () =>
           getSupabaseClient()
             .from("atomic_tour_ranking_snapshots")
-            .select("snapshot_date,player_name,rank")
+            .select("snapshot_date,player_name,rank,rank_change")
             .in("player_name", normalizedNames)
             .order("snapshot_date", { ascending: false }),
         ),

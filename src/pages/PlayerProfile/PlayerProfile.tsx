@@ -92,6 +92,7 @@ import {
   type AliasIdentityRow,
   getAliasIdentityUsernames,
 } from "../../lib/archive/aliases";
+import { atomicTourPlayerRankingStatsQueryOptions } from "../../lib/atomicTour/queries";
 import { getTimeControlOptions } from "../../lib/matches/collection";
 import { inferExternalGameSource } from "../../lib/matches/routes";
 import { puzzleRankingTrophiesQueryOptions } from "../../lib/puzzles/puzzleQueries";
@@ -216,6 +217,10 @@ export const PlayerProfilePage = ({
     queryFn: () => fetchChampionshipTrophies(profileTrophyUsernames),
     enabled: aliasesLoaded && profileTrophyUsernames.length > 0,
     staleTime: 10 * 60 * 1_000,
+  });
+  const tourRankingStatsQuery = useQuery({
+    ...atomicTourPlayerRankingStatsQueryOptions(profileTrophyUsernames),
+    enabled: !historyOnly && aliasesLoaded && profileTrophyUsernames.length > 0,
   });
   const puzzleRankingTrophiesQuery = useQuery({
     ...puzzleRankingTrophiesQueryOptions(),
@@ -829,6 +834,16 @@ export const PlayerProfilePage = ({
             <div className="profileIdentityTitle">
               <div className="profileIdentityHeading">
                 <h1>{profileDisplayUsername}</h1>
+                {tourRankingStatsQuery.data?.currentRank ? (
+                  <Link
+                    className="profileTourRankLink"
+                    to="/rankings/tour"
+                    aria-label={`Atomic Chess Tour rank ${tourRankingStatsQuery.data.currentRank}`}
+                    title={`Atomic Chess Tour rank #${tourRankingStatsQuery.data.currentRank}`}
+                  >
+                    #{tourRankingStatsQuery.data.currentRank}
+                  </Link>
+                ) : null}
                 {isBanned ? <span className="profileCheaterTag">CHEATER</span> : null}
                 {isBot ? <span className="profileBotTag">BOT</span> : null}
                 {!showProfileActionButtons ? (

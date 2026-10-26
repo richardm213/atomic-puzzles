@@ -113,6 +113,38 @@
   box-shadow: 0 6px 14px color-mix(in srgb, var(--opening-border) 32%, transparent);
 }
 
+.profileTourRankLink {
+  min-width: 40px;
+  min-height: 40px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  padding: 0 6px;
+  border-radius: var(--radius-sm);
+  color: var(--color-primary-pale);
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 900;
+  line-height: 1;
+  text-decoration: none;
+  transform: translateY(1px);
+  transition:
+    background-color 140ms ease,
+    color 140ms ease;
+}
+
+.profileTourRankLink:hover {
+  background: color-mix(in srgb, var(--color-primary) 9%, transparent);
+  color: var(--color-heading);
+}
+
+.profileTourRankLink:focus-visible {
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
 .openingToneNf3E3 {
   --opening-bg: rgba(14, 165, 233, 0.16);
   --opening-border: rgba(56, 189, 248, 0.42);

@@ -1,6 +1,12 @@
 import "./TournamentPlayer.css";
 
-import { faArrowLeft, faFireFlameCurved, faUser } from "@fortawesome/free-solid-svg-icons";
+import {
+  faArrowDown,
+  faArrowLeft,
+  faArrowUp,
+  faFireFlameCurved,
+  faUser,
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -50,6 +56,8 @@ const ordinal = (rank: number): string => {
   if (rank % 10 === 3) return `${rank}rd`;
   return `${rank}th`;
 };
+
+const formatRankingDate = (date: string): string => date.replaceAll("-", ".");
 
 const resultLabel = (match: TournamentPlayerMatch): string => {
   if (match.result === "unplayed") return "—";
@@ -349,6 +357,7 @@ export const TournamentPlayerPage = ({ username }: { username?: string }) => {
   const totalLosses = appearances.reduce((sum, appearance) => sum + appearance.losses, 0);
   const totalDraws = appearances.reduce((sum, appearance) => sum + appearance.draws, 0);
   const { titles, teamTitles } = countTournamentPlayerTitles(appearances);
+  const showTitleStats = titles > 0 || teamTitles > 0;
   const tourEntriesByTournament = Object.fromEntries(
     (tourEntriesQuery.data ?? []).map((entry) => [entry.tournamentId, entry]),
   );
@@ -369,57 +378,100 @@ export const TournamentPlayerPage = ({ username }: { username?: string }) => {
         </Link>
 
         <header className="tournamentProfileHeader">
-          <h1>
-            {canonicalUsername}
-            <TournamentFairPlayFlag playerName={canonicalUsername} />
-          </h1>
-          <div className="tournamentProfileHeaderMeta">
+          <div className="tournamentProfileTitleRow">
+            <h1>
+              {canonicalUsername}
+              <TournamentFairPlayFlag playerName={canonicalUsername} />
+            </h1>
             <Link
               className="tournamentProfileFullProfile"
               to="/@/$username"
               params={{ username: canonicalUsername }}
+              aria-label="Open full profile"
+              title="Open full profile"
             >
               <FontAwesomeIcon icon={faUser} aria-hidden="true" />
               Full profile
             </Link>
-            <dl className="tournamentProfileSummary">
-              {tourRankingStatsQuery.data ? (
-                <>
-                  <div className="tournamentProfileTourRank">
-                    <dt>Tour rank</dt>
-                    <dd>
-                      <Link className="tournamentProfileTourRankLink" to="/rankings/tour">
-                        {tourRankingStatsQuery.data.currentRank
-                          ? `#${tourRankingStatsQuery.data.currentRank}`
-                          : "—"}
-                      </Link>
-                    </dd>
-                  </div>
-                  <div className="tournamentProfileTourRank">
-                    <dt>Career high</dt>
-                    <dd>
-                      <Link className="tournamentProfileTourRankLink" to="/rankings/tour">
-                        #{tourRankingStatsQuery.data.peakRank}
-                      </Link>
-                    </dd>
-                  </div>
-                </>
-              ) : null}
+          </div>
+          <div className="tournamentProfileHeaderMeta">
+            {tourRankingStatsQuery.data ? (
+              <dl className="tournamentProfileSummary tournamentProfileRankSummary">
+                <div className="tournamentProfileRankAndMove">
+                  <dt className="tournamentProfileRankLabel">Tour rank</dt>
+                  <dd className="tournamentProfileRankValue">
+                    <Link className="tournamentProfileTourRankLink" to="/rankings/tour">
+                      {tourRankingStatsQuery.data.currentRank
+                        ? `#${tourRankingStatsQuery.data.currentRank}`
+                        : "—"}
+                    </Link>
+                  </dd>
+                  <dt className="tournamentProfileMoveLabel">Move</dt>
+                  <dd
+                    className={`tournamentProfileMoveValue${
+                      tourRankingStatsQuery.data.currentRankChange === null
+                        ? ""
+                        : tourRankingStatsQuery.data.currentRankChange > 0
+                          ? " isUp"
+                          : tourRankingStatsQuery.data.currentRankChange < 0
+                            ? " isDown"
+                            : ""
+                    }`}
+                  >
+                    {tourRankingStatsQuery.data.currentRank === null ? (
+                      "—"
+                    ) : tourRankingStatsQuery.data.currentRankChange === null ? (
+                      "New"
+                    ) : tourRankingStatsQuery.data.currentRankChange === 0 ? (
+                      "—"
+                    ) : (
+                      <>
+                        <FontAwesomeIcon
+                          icon={
+                            tourRankingStatsQuery.data.currentRankChange > 0
+                              ? faArrowUp
+                              : faArrowDown
+                          }
+                          aria-hidden="true"
+                        />
+                        {Math.abs(tourRankingStatsQuery.data.currentRankChange)}
+                      </>
+                    )}
+                  </dd>
+                </div>
+                <div className="tournamentProfileTourRank">
+                  <dt>
+                    Career high
+                    <time dateTime={tourRankingStatsQuery.data.peakRankDate}>
+                      ({formatRankingDate(tourRankingStatsQuery.data.peakRankDate)})
+                    </time>
+                  </dt>
+                  <dd>
+                    <Link className="tournamentProfileTourRankLink" to="/rankings/tour">
+                      #{tourRankingStatsQuery.data.peakRank}
+                    </Link>
+                  </dd>
+                </div>
+              </dl>
+            ) : null}
+            <dl
+              className={`tournamentProfileSummary tournamentProfileRecordSummary${showTitleStats ? " hasTitleStats" : ""}`}
+            >
               <div>
                 <dt>{appearances.length === 1 ? "Tournament" : "Tournaments"}</dt>
                 <dd>{appearances.length}</dd>
               </div>
-              {titles > 0 ? (
-                <div>
-                  <dt>{titles === 1 ? "Title" : "Titles"}</dt>
-                  <dd>{titles}</dd>
-                </div>
-              ) : null}
-              {teamTitles > 0 ? (
-                <div>
-                  <dt>{teamTitles === 1 ? "Team Title" : "Team Titles"}</dt>
-                  <dd>{teamTitles}</dd>
-                </div>
+              {showTitleStats ? (
+                <>
+                  <div>
+                    <dt>{titles === 1 ? "Title" : "Titles"}</dt>
+                    <dd>{titles}</dd>
+                  </div>
+                  <div>
+                    <dt>{teamTitles === 1 ? "Team title" : "Team titles"}</dt>
+                    <dd>{teamTitles}</dd>
+                  </div>
+                </>
               ) : null}
               <div>
                 <dt>Match record</dt>
