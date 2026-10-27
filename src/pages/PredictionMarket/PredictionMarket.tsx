@@ -147,10 +147,7 @@ export const PredictionMarketPage = () => {
                   {askPrices[entry] === undefined ? (
                     <small>No asks</small>
                   ) : (
-                    <>
-                      <strong>{money(askPrices[entry])}</strong>
-                      <small>Best ask</small>
-                    </>
+                    <strong>{money(askPrices[entry])}</strong>
                   )}
                 </button>
               ))}
@@ -160,31 +157,20 @@ export const PredictionMarketPage = () => {
               <section className="predictionBookPanel" aria-labelledby="order-book-title">
                 <div className="predictionSectionHeader">
                   <h2 id="order-book-title">Order book</h2>
-                  <span>{outcomeLabel(outcome)} contracts</span>
+                  <span>{outcomeLabel(outcome)} · all traders</span>
                 </div>
-                <div className="predictionBookColumns">
-                  <OrderBookSide
-                    label="Bids"
-                    levels={marketState.book[outcome].bids}
-                    tone="bid"
-                    onSelect={(nextPrice) => {
-                      setSide("sell");
-                      setPriceInput(String(nextPrice));
-                    }}
-                  />
-                  <OrderBookSide
-                    label="Asks"
-                    levels={marketState.book[outcome].asks}
-                    tone="ask"
-                    onSelect={(nextPrice) => {
-                      setSide("buy");
-                      setPriceInput(String(nextPrice));
-                    }}
-                  />
-                </div>
-                <p className="predictionBookNote">
-                  A YES bid can also match a complementary NO bid when their prices total $1.
-                </p>
+                <VerticalOrderBook
+                  bids={marketState.book[outcome].bids}
+                  asks={marketState.book[outcome].asks}
+                  onSelectBid={(nextPrice) => {
+                    setSide("sell");
+                    setPriceInput(String(nextPrice));
+                  }}
+                  onSelectAsk={(nextPrice) => {
+                    setSide("buy");
+                    setPriceInput(String(nextPrice));
+                  }}
+                />
               </section>
 
               <aside className="predictionTicket" aria-labelledby="order-ticket-title">
@@ -377,35 +363,64 @@ export const PredictionMarketPage = () => {
   );
 };
 
-const OrderBookSide = ({
-  label,
-  levels,
-  tone,
-  onSelect,
+const VerticalOrderBook = ({
+  bids,
+  asks,
+  onSelectBid,
+  onSelectAsk,
 }: {
-  label: string;
-  levels: Array<{ priceCents: number; quantity: number }>;
-  tone: "bid" | "ask";
-  onSelect: (price: number) => void;
-}) => (
-  <div className={`predictionBookSide predictionBookSide--${tone}`}>
-    <h3>{label}</h3>
-    <div className="predictionBookLabels" aria-hidden="true">
-      <span>Price</span>
-      <span>Contracts</span>
-    </div>
-    {levels.length ? (
-      levels.slice(0, 8).map((level) => (
-        <button type="button" onClick={() => onSelect(level.priceCents)} key={level.priceCents}>
+  bids: Array<{ priceCents: number; quantity: number }>;
+  asks: Array<{ priceCents: number; quantity: number }>;
+  onSelectBid: (price: number) => void;
+  onSelectAsk: (price: number) => void;
+}) => {
+  const bestBid = bids[0]?.priceCents;
+  const bestAsk = asks[0]?.priceCents;
+  const spread =
+    bestBid === undefined || bestAsk === undefined ? undefined : Math.max(0, bestAsk - bestBid);
+
+  const renderLevels = (
+    levels: Array<{ priceCents: number; quantity: number }>,
+    tone: "bid" | "ask",
+    onSelect: (price: number) => void,
+  ) =>
+    levels.length ? (
+      levels.map((level) => (
+        <button
+          type="button"
+          className={`predictionBookLevel predictionBookLevel--${tone}`}
+          aria-label={`${tone === "ask" ? "Ask" : "Bid"} ${money(level.priceCents)}, ${level.quantity.toLocaleString()} contracts`}
+          onClick={() => onSelect(level.priceCents)}
+          key={`${tone}-${level.priceCents}`}
+        >
           <strong>{money(level.priceCents)}</strong>
-          <span>{level.quantity.toLocaleString()}</span>
+          <span>{tone === "ask" ? "Ask" : "Bid"}</span>
+          <b>{level.quantity.toLocaleString()}</b>
         </button>
       ))
     ) : (
-      <p>No {label.toLowerCase()}</p>
-    )}
-  </div>
-);
+      <p className="predictionBookEmpty">No {tone}s</p>
+    );
+
+  return (
+    <div className="predictionOrderBook">
+      <div className="predictionBookLabels" aria-hidden="true">
+        <span>Price</span>
+        <span>Side</span>
+        <span>Contracts</span>
+      </div>
+      <div className="predictionBookStack predictionBookStack--asks">
+        {renderLevels([...asks].reverse(), "ask", onSelectAsk)}
+      </div>
+      <div className="predictionBookSpread">
+        {spread === undefined ? <span aria-hidden="true" /> : <span>Spread {spread}¢</span>}
+      </div>
+      <div className="predictionBookStack predictionBookStack--bids">
+        {renderLevels(bids, "bid", onSelectBid)}
+      </div>
+    </div>
+  );
+};
 
 const OrderTable = ({
   orders,

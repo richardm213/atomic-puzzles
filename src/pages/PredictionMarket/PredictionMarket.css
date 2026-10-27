@@ -117,23 +117,24 @@
 .predictionOutcomeSummary {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  padding: 12px 20px;
+  gap: 8px;
+  padding: 10px 20px;
   background: color-mix(in srgb, var(--color-panel-deep) 55%, var(--color-panel));
   border-bottom: 1px solid var(--color-border);
 }
 
 .predictionOutcomeCard {
-  min-height: 80px;
-  padding: 13px 16px;
+  min-height: 48px;
+  padding: 10px 14px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-ui);
   background: var(--color-panel-strong);
   color: var(--color-text);
   text-align: left;
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: end;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   transition:
     background-color 180ms ease,
     border-color 180ms ease,
@@ -141,20 +142,19 @@
 }
 
 .predictionOutcomeCard span {
-  align-self: start;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 800;
 }
 
 .predictionOutcomeCard strong {
-  grid-row: span 2;
-  font-size: clamp(28px, 3.4vw, 34px);
+  font-size: 21px;
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 
 .predictionOutcomeCard small {
   color: var(--color-muted);
+  font-size: 12px;
 }
 
 .predictionOutcomeCard--yes strong,
@@ -220,70 +220,115 @@
   font-size: 13px;
 }
 
-.predictionBookColumns {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
-}
-
-.predictionBookSide h3 {
-  margin: 0 0 8px;
-  font-size: 14px;
+.predictionOrderBook {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: color-mix(in srgb, var(--color-panel-deep) 42%, transparent);
+  overflow: hidden;
 }
 
 .predictionBookLabels,
-.predictionBookSide button {
+.predictionBookLevel {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(70px, 1fr) 70px minmax(90px, 1fr);
   align-items: center;
   gap: 12px;
 }
 
 .predictionBookLabels {
-  padding: 7px 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border);
   color: var(--color-subtle);
   font-size: 11px;
   text-transform: uppercase;
 }
 
+.predictionBookLabels span:nth-child(2) {
+  text-align: center;
+}
+
 .predictionBookLabels span:last-child,
-.predictionBookSide button span {
+.predictionBookLevel b {
   text-align: right;
 }
 
-.predictionBookSide button {
+.predictionBookStack {
+  display: grid;
+}
+
+.predictionBookLevel {
   width: 100%;
-  min-height: 36px;
+  min-height: 38px;
   border: 0;
   border-top: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
   background: transparent;
   color: var(--color-text);
-  padding: 7px 10px;
+  padding: 8px 12px;
   font-variant-numeric: tabular-nums;
 }
 
-.predictionBookSide--bid button strong {
+.predictionBookStack .predictionBookLevel:first-child {
+  border-top: 0;
+}
+
+.predictionBookLevel span {
+  color: var(--color-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.predictionBookLevel b {
+  font-weight: 700;
+}
+
+.predictionBookLevel--bid strong {
   color: var(--color-success);
 }
 
-.predictionBookSide--ask button strong {
+.predictionBookLevel--ask strong {
   color: var(--color-danger);
 }
 
-.predictionBookSide button:hover {
+.predictionBookLevel--bid {
+  background: color-mix(in srgb, var(--color-success) 6%, transparent);
+}
+
+.predictionBookLevel--ask {
+  background: color-mix(in srgb, var(--color-danger) 6%, transparent);
+}
+
+.predictionBookLevel:hover {
   background: var(--color-surface-elevated-strong);
 }
 
-.predictionBookSide > p,
-.predictionBookNote,
-.predictionAccountPanel > p,
-.predictionActivityPanel > p {
+.predictionBookEmpty {
+  min-height: 46px;
+  margin: 0;
+  padding: 13px 12px;
   color: var(--color-muted);
 }
 
-.predictionBookNote {
-  margin: 20px 0 0;
-  font-size: 13px;
+.predictionBookSpread {
+  display: grid;
+  place-items: center;
+  min-height: 28px;
+  border-top: 1px solid var(--color-border-strong);
+  border-bottom: 1px solid var(--color-border-strong);
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.predictionBookSpread span:empty {
+  width: 48px;
+  height: 1px;
+  background: var(--color-border-strong);
+}
+
+.predictionAccountPanel > p,
+.predictionActivityPanel > p {
+  color: var(--color-muted);
 }
 
 .predictionTicket {
@@ -532,7 +577,7 @@
 }
 
 .predictionOutcomeCard:focus-visible,
-.predictionBookSide button:focus-visible,
+.predictionBookLevel:focus-visible,
 .predictionTicket button:focus-visible,
 .predictionTicket input:focus-visible,
 .predictionOrders button:focus-visible,
@@ -590,25 +635,12 @@
   }
 
   .predictionOutcomeCard {
-    min-height: 96px;
-    padding: 14px;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
+    min-height: 48px;
+    padding: 10px 12px;
   }
 
   .predictionOutcomeCard strong {
-    align-self: flex-end;
-    font-size: 32px;
-  }
-
-  .predictionOutcomeCard small {
-    margin-top: auto;
-  }
-
-  .predictionBookColumns {
-    gap: 12px;
+    font-size: 20px;
   }
 
   .predictionTrades > div {
