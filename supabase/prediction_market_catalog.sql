@@ -12,7 +12,9 @@ alter table public.prediction_markets
   add column if not exists starting_chance integer check (starting_chance between 0 and 100),
   add column if not exists display_order integer,
   add column if not exists sportsbook_volume_coins numeric(18, 6) not null default 0
-    check (sportsbook_volume_coins >= 0);
+    check (sportsbook_volume_coins >= 0),
+  add column if not exists exchange_volume_coins numeric(18, 6) not null default 0
+    check (exchange_volume_coins >= 0);
 
 update public.prediction_markets set
   group_id = 'ban-2026', group_path = '/betting/ban-2026',

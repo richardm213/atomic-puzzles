@@ -3,6 +3,7 @@ import { queryOptions } from "@tanstack/react-query";
 import {
   fetchPredictionMarket,
   fetchPredictionMarketGroups,
+  fetchPredictionMarkets,
   type PredictionMarketId,
 } from "./predictionMarkets";
 
@@ -24,3 +25,17 @@ export const predictionMarketQueryOptions = (marketId: PredictionMarketId) =>
     refetchInterval: 30_000,
     refetchIntervalInBackground: false,
   });
+
+export const predictionMarketBatchQueryKey = (marketIds: readonly PredictionMarketId[]) =>
+  [...predictionMarketQueryRoot, "batch", [...new Set(marketIds)].sort()] as const;
+
+export const predictionMarketBatchQueryOptions = (marketIds: readonly PredictionMarketId[]) => {
+  const uniqueMarketIds = [...new Set(marketIds)].sort();
+  return queryOptions({
+    queryKey: predictionMarketBatchQueryKey(uniqueMarketIds),
+    queryFn: () => fetchPredictionMarkets(uniqueMarketIds),
+    staleTime: 1_000,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
+  });
+};

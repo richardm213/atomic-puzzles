@@ -2,7 +2,7 @@ import "./PredictionMarket.css";
 
 import { faPen } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { CSSProperties, FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -24,13 +24,14 @@ import { formatCoinBalance } from "../../lib/coins/coinDisplay";
 import { coinQueryKeys, coinSummaryQueryOptions } from "../../lib/coins/coinQueries";
 import { tournamentBracketQueryOptions } from "../../lib/matches/tournamentQueries";
 import {
+  predictionMarketBatchQueryKey,
+  predictionMarketBatchQueryOptions,
   predictionMarketCatalogQueryOptions,
-  predictionMarketQueryKey,
-  predictionMarketQueryOptions,
 } from "../../lib/predictionMarkets/predictionMarketQueries";
 import { usePredictionMarketRealtime } from "../../lib/predictionMarkets/predictionMarketRealtime";
 import {
   cancelPredictionOrder,
+  formatPredictionShares,
   placePredictionOrder,
   type PredictionMarketDefinition,
   type PredictionMarketId,
@@ -77,15 +78,21 @@ export const PredictionMarketPage = () => {
   const [activeMarketId, setActiveMarketId] = useState<PredictionMarketId>("");
   const [expandedMarketId, setExpandedMarketId] = useState<PredictionMarketId | null>(null);
   const [editingOrders, setEditingOrders] = useState<PredictionOrder[] | null>(null);
-  const marketQueries = useQueries({
-    queries: marketDefinitions.map((market) => predictionMarketQueryOptions(market.id)),
+  const marketIds = useMemo(
+    () => marketDefinitions.map((market) => market.id),
+    [marketDefinitions],
+  );
+  const marketsQuery = useQuery({
+    ...predictionMarketBatchQueryOptions(marketIds),
+    enabled: marketIds.length > 0,
   });
-  usePredictionMarketRealtime(
-    queryClient,
-    marketDefinitions.map((market) => market.id),
+  usePredictionMarketRealtime(queryClient, marketIds);
+  const marketStates = useMemo(() => marketsQuery.data ?? [], [marketsQuery.data]);
+  const marketStateById = useMemo(
+    () => new Map(marketStates.map((state) => [state.market.id, state])),
+    [marketStates],
   );
   const activeMarketIndex = marketDefinitions.findIndex((market) => market.id === activeMarketId);
-  const marketQuery = marketQueries[activeMarketIndex] ?? marketQueries[0];
   const coinQuery = useQuery({
     ...coinSummaryQueryOptions(username),
     enabled: isAuthenticated,
@@ -99,8 +106,8 @@ export const PredictionMarketPage = () => {
   const [priceInput, setPriceInput] = useState("50");
   const [quantityInput, setQuantityInput] = useState("10");
   const [successMessage, setSuccessMessage] = useState("");
-  const marketVolume = marketQueries.reduce(
-    (total, query) => total + predictionMarketVolume(query.data),
+  const marketVolume = marketStates.reduce(
+    (total, state) => total + predictionMarketVolume(state),
     0,
   );
 
@@ -113,7 +120,8 @@ export const PredictionMarketPage = () => {
     setSuccessMessage("");
   }, [marketDefinitions]);
 
-  const marketState = marketQuery?.data;
+  const marketState =
+    marketStateById.get(activeMarketId) ?? marketStateById.get(marketDefinitions[0]?.id ?? "");
   const price = Number(priceInput);
   const quantity = Number(quantityInput);
   const validPrice = Number.isInteger(price) && price >= 1 && price <= 99;
@@ -162,9 +170,8 @@ export const PredictionMarketPage = () => {
     (isAuthenticated && validQuantity && quantity <= availableContracts && availableContracts > 0);
   const marketOpen =
     marketState?.market.status === "open" && Date.parse(marketState.market.closesAt) > Date.now();
-  const marketGroupOpen = marketQueries.some(
-    (query) =>
-      query.data?.market.status === "open" && Date.parse(query.data.market.closesAt) > Date.now(),
+  const marketGroupOpen = marketStates.some(
+    (state) => state.market.status === "open" && Date.parse(state.market.closesAt) > Date.now(),
   );
 
   const askPrices = useMemo(() => {
@@ -198,8 +205,8 @@ export const PredictionMarketPage = () => {
       : null;
   const orderRestriction = activeMarketDefinition ? orderRestrictionFor(outcome, side) : null;
   const recentFills = marketDefinitions
-    .flatMap((definition, index) =>
-      (marketQueries[index]?.data?.fills ?? []).map((fill) => ({ ...fill, definition })),
+    .flatMap((definition) =>
+      (marketStateById.get(definition.id)?.fills ?? []).map((fill) => ({ ...fill, definition })),
     )
     .sort((left, right) => right.createdAt.localeCompare(left.createdAt) || right.id - left.id)
     .slice(0, 20);
@@ -210,9 +217,9 @@ export const PredictionMarketPage = () => {
     );
   };
 
-  const refreshMarket = (marketId = activeMarketId) =>
+  const refreshMarkets = () =>
     queryClient.invalidateQueries({
-      queryKey: predictionMarketQueryKey(marketId),
+      queryKey: predictionMarketBatchQueryKey(marketIds),
       exact: true,
     });
 
@@ -222,7 +229,7 @@ export const PredictionMarketPage = () => {
       setSuccessMessage(`${side === "buy" ? "Bid" : "Ask"} placed.`);
       updateCoinBalance(result.balance);
       void queryClient.invalidateQueries({
-        queryKey: predictionMarketQueryKey(activeMarketId),
+        queryKey: predictionMarketBatchQueryKey(marketIds),
         exact: true,
       });
     },
@@ -232,7 +239,7 @@ export const PredictionMarketPage = () => {
     onSuccess: (result) => {
       updateCoinBalance(result.balance);
       void queryClient.invalidateQueries({
-        queryKey: predictionMarketQueryKey(activeMarketId),
+        queryKey: predictionMarketBatchQueryKey(marketIds),
         exact: true,
       });
     },
@@ -522,8 +529,7 @@ export const PredictionMarketPage = () => {
     ) : null;
 
   if (catalogQuery.isPending || !marketGroup) return <RouteLoadingFallback />;
-  if (marketQueries.every((query) => query.isPending && !query.data))
-    return <RouteLoadingFallback />;
+  if (marketsQuery.isPending && marketStates.length === 0) return <RouteLoadingFallback />;
   const showShieldIcon = marketGroup.id === "november-atomic-shield-2026";
 
   return (
@@ -571,10 +577,10 @@ export const PredictionMarketPage = () => {
           ) : null}
         </header>
 
-        {marketQuery?.error ? (
+        {marketsQuery.error ? (
           <InlineState kind="error">
-            {marketQuery.error instanceof Error
-              ? marketQuery.error.message
+            {marketsQuery.error instanceof Error
+              ? marketsQuery.error.message
               : "Unable to load this market."}
           </InlineState>
         ) : null}
@@ -596,8 +602,8 @@ export const PredictionMarketPage = () => {
                       <span>Chance</span>
                       <span />
                     </div>
-                    {marketDefinitions.map((definition, index) => {
-                      const state = marketQueries[index]?.data;
+                    {marketDefinitions.map((definition) => {
+                      const state = marketStateById.get(definition.id);
                       const rowPositions = {
                         yes: state?.positions.find((entry) => entry.outcome === "yes"),
                         no: state?.positions.find((entry) => entry.outcome === "no"),
@@ -679,7 +685,9 @@ export const PredictionMarketPage = () => {
                                         ✓
                                       </span>
                                       <strong>
-                                        {rowOwned[entry].toLocaleString()} {outcomeLabel(entry)}
+                                        {`${formatPredictionShares(rowOwned[entry])} ${outcomeLabel(
+                                          entry,
+                                        )}`}
                                       </strong>
                                       <span>
                                         (
@@ -853,7 +861,7 @@ export const PredictionMarketPage = () => {
           onClose={() => setEditingOrders(null)}
           onUpdated={(balance) => {
             updateCoinBalance(balance);
-            return refreshMarket(activeMarketId);
+            return refreshMarkets();
           }}
         />
       ) : null}

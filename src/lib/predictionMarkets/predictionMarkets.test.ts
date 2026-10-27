@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { predictionTakerFee, quotePredictionBuy, quotePredictionSell } from "./predictionMarkets";
+import {
+  formatPredictionShares,
+  type PredictionMarketState,
+  predictionMarketVolume,
+  predictionTakerFee,
+  quotePredictionBuy,
+  quotePredictionSell,
+} from "./predictionMarkets";
 
 describe("quotePredictionBuy", () => {
   it("reports weighted fill price and leaves excess contracts resting", () => {
@@ -37,5 +44,24 @@ describe("quotePredictionBuy", () => {
     expect(sellQuote.restingQuantity).toBe(5);
     expect(predictionTakerFee(sellQuote.proceedsCoins)).toBe(0.11);
     expect(predictionTakerFee(0)).toBe(0);
+  });
+});
+
+describe("predictionMarketVolume", () => {
+  it("uses the stored volume totals instead of recalculating returned fills", () => {
+    const state = {
+      market: { sportsbookVolumeCoins: 400, exchangeVolumeCoins: 11 },
+      fills: [{ priceCents: 99, quantity: 10_000 }],
+    } as PredictionMarketState;
+
+    expect(predictionMarketVolume(state)).toBe(411);
+  });
+});
+
+describe("formatPredictionShares", () => {
+  it("shows at most hundredths without trailing zeroes", () => {
+    expect(formatPredictionShares(501)).toBe("501");
+    expect(formatPredictionShares(12.5)).toBe("12.5");
+    expect(formatPredictionShares(12.345)).toBe("12.35");
   });
 });

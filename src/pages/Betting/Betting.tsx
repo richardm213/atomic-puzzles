@@ -9,7 +9,7 @@ import {
   faTrash,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
@@ -57,16 +57,17 @@ import {
   tournamentPlayerCountriesQueryOptions,
 } from "../../lib/matches/tournamentQueries";
 import {
+  predictionMarketBatchQueryKey,
+  predictionMarketBatchQueryOptions,
   predictionMarketCatalogQueryOptions,
-  predictionMarketQueryKey,
-  predictionMarketQueryOptions,
 } from "../../lib/predictionMarkets/predictionMarketQueries";
 import { usePredictionMarketRealtime } from "../../lib/predictionMarkets/predictionMarketRealtime";
 import {
+  formatPredictionShares,
   placePredictionOrder,
   type PredictionMarketState,
-  type PredictionOrder,
   predictionMarketVolume,
+  type PredictionOrder,
   type PredictionOutcome,
   predictionOutcomes,
   predictionTakerFee,
@@ -521,23 +522,27 @@ export const BettingPage = () => {
     ...tournamentBracketQueryOptions("awc2026"),
     enabled: isAuthenticated && marketCategory === "AWC Champion",
   });
-  const predictionMarketQueries = useQueries({
-    queries: predictionMarkets.map((market) => ({
-      ...predictionMarketQueryOptions(market.id),
-      enabled:
-        isPredictionMarketCategory(marketCategory) ||
+  const predictionMarketIds = useMemo(
+    () => predictionMarkets.map((market) => market.id),
+    [predictionMarkets],
+  );
+  const predictionMarketQuery = useQuery({
+    ...predictionMarketBatchQueryOptions(predictionMarketIds),
+    enabled:
+      predictionMarketIds.length > 0 &&
+      (isPredictionMarketCategory(marketCategory) ||
         marketCategory === "AWC Champion" ||
         view === "all" ||
-        view === "mine",
-    })),
+        view === "mine"),
   });
-  usePredictionMarketRealtime(
-    queryClient,
-    predictionMarkets.map((market) => market.id),
+  usePredictionMarketRealtime(queryClient, predictionMarketIds);
+  const predictionMarketStates = useMemo(
+    () => predictionMarketQuery.data ?? [],
+    [predictionMarketQuery.data],
   );
-  const predictionMarketStates = predictionMarketQueries.map((query) => query.data);
-  const predictionStateByMarketId = new Map(
-    predictionMarkets.map((market, index) => [market.id, predictionMarketStates[index]]),
+  const predictionStateByMarketId = useMemo(
+    () => new Map(predictionMarketStates.map((state) => [state.market.id, state])),
+    [predictionMarketStates],
   );
   const countryByPlayer = countriesQuery.data ?? {};
   const markets = useMemo(() => marketsQuery.data ?? [], [marketsQuery.data]);
@@ -554,8 +559,7 @@ export const BettingPage = () => {
       quantity: number,
       totalCost: number,
     ): Pick<TournamentBet, "status" | "payout" | "settledAt"> => {
-      const marketIndex = predictionMarkets.findIndex((market) => market.id === marketId);
-      const state = marketIndex >= 0 ? predictionMarketStates[marketIndex] : undefined;
+      const state = predictionStateByMarketId.get(marketId);
       const resolvedOutcome = state?.market.outcome;
       const settlementPrice = state?.market.settlementPriceCents;
       const status: TournamentBet["status"] =
@@ -603,8 +607,8 @@ export const BettingPage = () => {
         predictionMarketTitle: "AWC 2026 champion",
       };
     });
-    const predictionBets = predictionMarkets.flatMap((definition, index) => {
-      const predictionState = predictionMarketStates[index];
+    const predictionBets = predictionMarkets.flatMap((definition) => {
+      const predictionState = predictionStateByMarketId.get(definition.id);
       const predictionGroup = predictionMarketGroups.find((group) =>
         group.markets.some((market) => market.id === definition.id),
       );
@@ -678,7 +682,7 @@ export const BettingPage = () => {
     return [...passthroughBets, ...combinedBets.values()].sort(
       (left, right) => Date.parse(right.placedAt) - Date.parse(left.placedAt),
     );
-  }, [allBetsQuery.data, predictionMarketGroups, predictionMarkets, predictionMarketStates]);
+  }, [allBetsQuery.data, predictionMarketGroups, predictionMarkets, predictionStateByMarketId]);
   const pendingBetCount = useMemo(
     () => allHistoryBets.filter((bet) => bet.status === "open").length,
     [allHistoryBets],
@@ -740,6 +744,10 @@ export const BettingPage = () => {
       const state = predictionStateByMarketId.get(definition.id);
       return state?.market.status === "open" && Date.parse(state.market.closesAt) > currentTime;
     }) ?? false;
+  const activePredictionGroupLoading =
+    Boolean(activePredictionGroup) &&
+    predictionMarketQuery.isPending &&
+    predictionMarketStates.length === 0;
   const activePredictionVolume =
     activePredictionGroup?.markets.reduce(
       (total, definition) =>
@@ -1029,7 +1037,7 @@ export const BettingPage = () => {
 
   const placePredictionMutation = useMutation({
     mutationFn: placePredictionOrder,
-    onSuccess: (result, variables) => {
+    onSuccess: (result) => {
       setSuccessMessage(
         activePredictionDisplayMode === "book" ? "Bet placed." : "Prediction order placed.",
       );
@@ -1039,7 +1047,7 @@ export const BettingPage = () => {
         current && typeof current === "object" ? { ...current, balance: result.balance } : current,
       );
       void queryClient.invalidateQueries({
-        queryKey: predictionMarketQueryKey(variables.marketId),
+        queryKey: predictionMarketBatchQueryKey(predictionMarketIds),
         exact: true,
       });
     },
@@ -1552,12 +1560,24 @@ export const BettingPage = () => {
                           <span className="bettingExchangeMeta">
                             <small
                               className={`bettingExchangeStatus${
-                                activePredictionGroupOpen ? "" : " bettingExchangeStatus--closed"
+                                activePredictionGroupLoading
+                                  ? " bettingExchangeStatus--loading"
+                                  : activePredictionGroupOpen
+                                    ? ""
+                                    : " bettingExchangeStatus--closed"
                               }`}
                             >
-                              {activePredictionGroupOpen ? "Open" : "Closed"}
+                              {activePredictionGroupLoading
+                                ? "Loading"
+                                : activePredictionGroupOpen
+                                  ? "Open"
+                                  : "Closed"}
                             </small>
-                            <small>Volume {formatBetCoins(activePredictionVolume)} coins</small>
+                            <small>
+                              {activePredictionGroupLoading
+                                ? "Volume —"
+                                : `Volume ${formatBetCoins(activePredictionVolume)} coins`}
+                            </small>
                           </span>
                         </div>
                         <Link className="bettingExchangeAction" to={group.path}>
@@ -1598,7 +1618,9 @@ export const BettingPage = () => {
                                       key={outcome}
                                     >
                                       <span aria-hidden="true">✓</span>
-                                      {formatBetCoins(quantity)} {outcome === "yes" ? "Yes" : "No"}
+                                      {`${formatPredictionShares(quantity)} ${
+                                        outcome === "yes" ? "Yes" : "No"
+                                      }`}
                                     </span>
                                   ))}
                                 </span>
@@ -2551,7 +2573,7 @@ export const BettingPage = () => {
               current && typeof current === "object" ? { ...current, balance } : current,
             );
             return queryClient.invalidateQueries({
-              queryKey: predictionMarketQueryKey(editingOrderContext.marketId),
+              queryKey: predictionMarketBatchQueryKey(predictionMarketIds),
               exact: true,
             });
           }}

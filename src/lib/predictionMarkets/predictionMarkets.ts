@@ -211,6 +211,7 @@ const marketStateSchema = z.object({
         settlement_reference_fill_id: z.number().int().nullable(),
         resolved_at: z.string().nullable(),
         sportsbook_volume_coins: z.number().default(0),
+        exchange_volume_coins: z.number().default(0),
       })
       .transform((market) => ({
         id: market.id,
@@ -224,6 +225,7 @@ const marketStateSchema = z.object({
         settlementReferenceFillId: market.settlement_reference_fill_id,
         resolvedAt: market.resolved_at,
         sportsbookVolumeCoins: market.sportsbook_volume_coins,
+        exchangeVolumeCoins: market.exchange_volume_coins,
       })),
     book: z.object({
       yes: z.object({ bids: z.array(levelSchema), asks: z.array(levelSchema) }),
@@ -264,8 +266,27 @@ export const suggestedPredictionPrice = (
   50;
 
 export const predictionMarketVolume = (state: PredictionMarketState | undefined): number =>
-  (state?.market.sportsbookVolumeCoins ?? 0) +
-  (state?.fills.reduce((total, fill) => total + (fill.priceCents * fill.quantity) / 100, 0) ?? 0);
+  (state?.market.sportsbookVolumeCoins ?? 0) + (state?.market.exchangeVolumeCoins ?? 0);
+
+export const formatPredictionShares = (value: number): string =>
+  value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+
+const marketStatesSchema = z.object({ result: z.array(marketStateSchema.shape.result) });
+
+export const fetchPredictionMarkets = async (
+  marketIds: readonly PredictionMarketId[],
+): Promise<PredictionMarketState[]> => {
+  const response = await postApi(
+    "/api/betting",
+    { action: "exchangeMarketBatch", marketIds },
+    {
+      schema: marketStatesSchema,
+      errorMessage: "Unable to load prediction markets.",
+      invalidMessage: "The markets returned invalid order book data.",
+    },
+  );
+  return response.result;
+};
 
 const orderMutationSchema = z.object({
   result: z.object({ orderId: z.number(), balance: z.number() }),

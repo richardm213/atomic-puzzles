@@ -394,6 +394,11 @@
   color: var(--color-market-no);
 }
 
+.bettingExchangeQuestion .bettingExchangeStatus--loading {
+  background: var(--color-surface-elevated-strong);
+  color: var(--color-muted);
+}
+
 .bettingExchangeAction {
   color: var(--color-primary-pale);
   font-weight: 800;
@@ -519,11 +524,11 @@
 }
 
 .bettingExchangeStrikeHolding--yes {
-  color: var(--prediction-yes);
+  color: var(--color-market-yes);
 }
 
 .bettingExchangeStrikeHolding--no {
-  color: var(--prediction-no);
+  color: var(--color-market-no);
 }
 
 .bettingExchangeStrikeChance {
