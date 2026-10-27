@@ -46,16 +46,16 @@ describe("notificationCopy", () => {
 
   it("describes comments for prior discussion participants without implying a follow feature", () => {
     expect(notificationCopy(makeNotification("puzzle_comment"))).toBe(
-      "bob commented on a puzzle you previously commented on.",
+      "bob added to a puzzle discussion you joined.",
     );
   });
 
   it("distinguishes previous attempts from comments on a created puzzle", () => {
     expect(notificationCopy(makeNotification("puzzle_attempt_comment"))).toBe(
-      "bob commented on a puzzle you previously attempted.",
+      "bob commented on Puzzle #42, which you attempted.",
     );
     expect(notificationCopy(makeNotification("puzzle_author_comment"))).toBe(
-      "bob commented on your puzzle.",
+      "bob commented on your Puzzle #42.",
     );
   });
 
@@ -70,6 +70,33 @@ describe("notificationCopy", () => {
       "That defensive move is easy to miss.",
     );
     expect(notificationMessage(makeNotification("puzzle_author_comment"))).toBe("");
+  });
+
+  it("uses direct social copy for visible replies, mentions, and creator comments", () => {
+    expect(
+      notificationCopy({
+        ...makeNotification("comment_reply"),
+        comment_body: "I agree with your line.",
+      }),
+    ).toBe("bob replied to you:");
+    expect(
+      notificationCopy({
+        ...makeNotification("comment_mention"),
+        comment_body: "@alice what do you think?",
+      }),
+    ).toBe("bob mentioned you:");
+    expect(
+      notificationCopy({
+        ...makeNotification("puzzle_author_comment"),
+        comment_body: "This defense also works.",
+      }),
+    ).toBe("bob commented on your Puzzle #42:");
+    expect(
+      notificationCopy({
+        ...makeNotification("puzzle_comment"),
+        comment_body: "There is another continuation.",
+      }),
+    ).toBe("bob continued a puzzle discussion you joined:");
   });
 
   it("describes a separate monthly placement for each time control", () => {

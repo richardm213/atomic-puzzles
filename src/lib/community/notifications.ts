@@ -133,22 +133,28 @@ export const notificationCopy = (notification: UserNotification): string => {
     return `Your puzzle #${notification.puzzle_id} was approved.`;
   }
   if (notification.notification_type === "comment_reply") {
-    return `${notification.actor_username ?? "Someone"} replied to your comment.`;
+    return notification.comment_body?.trim()
+      ? `${notification.actor_username ?? "Someone"} replied to you:`
+      : `${notification.actor_username ?? "Someone"} replied to your comment.`;
   }
   if (notification.notification_type === "comment_mention") {
-    return `${notification.actor_username ?? "Someone"} mentioned you in a comment.`;
+    return notification.comment_body?.trim()
+      ? `${notification.actor_username ?? "Someone"} mentioned you:`
+      : `${notification.actor_username ?? "Someone"} mentioned you in a comment.`;
   }
   if (notification.notification_type === "puzzle_attempt_comment") {
     return notification.comment_body?.trim()
       ? `${notification.actor_username ?? "Someone"} commented:`
-      : `${notification.actor_username ?? "Someone"} commented on a puzzle you previously attempted.`;
+      : `${notification.actor_username ?? "Someone"} commented on Puzzle #${notification.puzzle_id}, which you attempted.`;
   }
   if (notification.notification_type === "puzzle_author_comment") {
     return notification.comment_body?.trim()
-      ? `${notification.actor_username ?? "Someone"} commented:`
-      : `${notification.actor_username ?? "Someone"} commented on your puzzle.`;
+      ? `${notification.actor_username ?? "Someone"} commented on your Puzzle #${notification.puzzle_id}:`
+      : `${notification.actor_username ?? "Someone"} commented on your Puzzle #${notification.puzzle_id}.`;
   }
-  return `${notification.actor_username ?? "Someone"} commented on a puzzle you previously commented on.`;
+  return notification.comment_body?.trim()
+    ? `${notification.actor_username ?? "Someone"} continued a puzzle discussion you joined:`
+    : `${notification.actor_username ?? "Someone"} added to a puzzle discussion you joined.`;
 };
 
 export const notificationMessage = (notification: UserNotification): string =>
