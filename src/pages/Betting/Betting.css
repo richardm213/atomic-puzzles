@@ -187,37 +187,58 @@
   align-items: center;
   gap: var(--space-3);
   width: fit-content;
+  padding: 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: color-mix(in srgb, var(--color-panel-strong) 78%, transparent);
 }
 
 .bettingPredictionViewControl > span {
+  padding-left: 6px;
   color: var(--color-muted);
   font-size: var(--text-sm);
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .bettingPredictionModeToggle {
   width: fit-content;
   display: grid;
-  grid-template-columns: repeat(2, minmax(108px, 1fr));
-  gap: 3px;
-  padding: 3px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-ui);
-  background: var(--color-panel-strong);
+  grid-template-columns: repeat(2, minmax(142px, 1fr));
+  gap: 4px;
 }
 
 .bettingPredictionModeToggle button {
   min-height: 38px;
-  border: 0;
-  border-radius: calc(var(--radius-ui) - 3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid transparent;
+  border-radius: calc(var(--radius-ui) - 4px);
   background: transparent;
-  color: var(--color-muted);
+  color: var(--color-subtle);
   font-weight: 800;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.bettingPredictionModeToggle button:hover {
+  background: color-mix(in srgb, var(--color-heading) 5%, transparent);
+  color: var(--color-heading);
 }
 
 .bettingPredictionModeToggle button[aria-pressed="true"] {
-  background: var(--color-surface-elevated-strong);
+  border-color: color-mix(in srgb, var(--color-primary) 68%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 18%, var(--color-panel));
   color: var(--color-heading);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 18%, transparent);
+}
+
+.bettingPredictionModeToggle button[aria-pressed="true"] svg {
+  color: var(--color-primary-pale);
+  font-size: 0.78rem;
 }
 
 .bettingPredictionModeToggle button:focus-visible {
@@ -540,7 +561,11 @@
 .bettingPredictionOutcomePicker {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-2);
+  gap: 0;
+  padding: 3px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface-inset-strong);
 }
 
 .bettingPredictionOutcomePicker button {
@@ -549,23 +574,22 @@
   justify-content: center;
   gap: 5px;
   min-height: 42px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  min-width: 0;
+  border: 0;
+  border-radius: 999px;
   background: transparent;
   color: var(--color-muted);
   font-weight: 800;
 }
 
 .bettingPredictionOutcomePicker button:first-child[aria-pressed="true"] {
-  border-color: var(--color-market-yes);
-  background: color-mix(in srgb, var(--color-market-yes) 9%, transparent);
-  color: var(--color-market-yes);
+  background: var(--color-market-yes);
+  color: var(--color-panel-deep);
 }
 
 .bettingPredictionOutcomePicker button:last-child[aria-pressed="true"] {
-  border-color: var(--color-market-no);
-  background: color-mix(in srgb, var(--color-market-no) 9%, transparent);
-  color: var(--color-market-no);
+  background: var(--color-market-no);
+  color: var(--color-panel-deep);
 }
 
 .bettingPredictionQuantity {
@@ -583,26 +607,24 @@
   outline-offset: 2px;
 }
 
-.bettingPredictionFullMarket {
-  color: var(--color-primary-pale);
-  font-weight: 800;
-  text-align: center;
-  text-decoration: none;
-}
-
-.bettingPredictionFullMarket:hover {
-  text-decoration: underline;
-}
-
 .bettingExchangeResolved {
   border-color: color-mix(in srgb, var(--color-market-yes) 48%, var(--color-border));
   background: color-mix(in srgb, var(--color-market-yes) 8%, transparent);
 }
 
 .bettingExchangeResolved--no {
-  border-color: color-mix(in srgb, var(--color-market-no) 48%, var(--color-border));
-  background: color-mix(in srgb, var(--color-market-no) 8%, transparent);
   color: var(--color-market-no);
+}
+
+.bettingExchangeResolved,
+.bettingExchangeResolved--no {
+  min-height: auto;
+  justify-self: end;
+  margin-right: var(--space-12);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .bettingInlineBookDrawer {
@@ -667,6 +689,36 @@
   display: grid;
 }
 
+.bettingInlineBookLevelWrap {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(58px, 0.8fr) 52px minmax(72px, 1fr) minmax(88px, 1fr);
+}
+
+.bettingInlineBookLevelWrap .bettingInlineBookLevel {
+  grid-area: 1 / 1 / 2 / -1;
+}
+
+.bettingOwnOrderButton {
+  z-index: 2;
+  grid-area: 1 / 3;
+  align-self: center;
+  justify-self: start;
+  width: 24px;
+  height: 24px;
+  margin-left: 4px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 48%, var(--color-border));
+  border-radius: 50%;
+  background: var(--color-panel);
+  color: var(--color-primary);
+  font-size: 11px;
+}
+
+.bettingOwnOrderButton:hover {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 14%, var(--color-panel));
+}
+
 .bettingInlineBookLevel {
   position: relative;
   isolation: isolate;
@@ -717,7 +769,8 @@
   background: color-mix(in srgb, var(--color-heading) 5%, transparent);
 }
 
-.bettingInlineBookLevel:focus-visible {
+.bettingInlineBookLevel:focus-visible,
+.bettingOwnOrderButton:focus-visible {
   outline: 2px solid var(--color-primary-ring);
   outline-offset: -3px;
 }
@@ -988,6 +1041,132 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+.betSlip--predictionOrder h2 {
+  padding: 10px var(--space-4);
+}
+
+.betSlip h2.betSlipVisuallyHiddenTitle {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.betSlip--predictionOrder form {
+  gap: 12px;
+  padding: 0 var(--space-4) var(--space-4);
+}
+
+.betSlip--predictionOrder .betSlipSelection {
+  gap: 0;
+  padding: 14px 0 2px;
+  border-bottom: 0;
+}
+
+.betSlip--predictionOrder .betSlipContract {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.betSlip--predictionOrder .betSlipContract strong {
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.betSlip--predictionOrder .bettingPredictionOutcomePicker button {
+  min-height: 38px;
+}
+
+.betSlipOrderHeader {
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 calc(-1 * var(--space-4));
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-heading);
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.betSlipPredictionQuoteRow {
+  display: block;
+}
+
+.betSlipPredictionFields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+
+.bettingPredictionField,
+.betSlip label.bettingPredictionField {
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0 10px;
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-panel);
+  color: var(--color-muted);
+}
+
+.bettingPredictionField:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-ring);
+}
+
+.bettingPredictionField > input,
+.bettingPredictionFieldValue input {
+  width: 100%;
+  min-height: 50px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--color-heading);
+  font: inherit;
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  text-align: right;
+  appearance: textfield;
+}
+
+.bettingPredictionFieldValue {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px;
+}
+
+.bettingPredictionFieldValue > span {
+  color: var(--color-subtle);
+  font-weight: 750;
+}
+
+.bettingPredictionField input::-webkit-inner-spin-button,
+.bettingPredictionField input::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+.betSlip .bettingPredictionField > input:focus-visible,
+.betSlip .bettingPredictionFieldValue input:focus-visible {
+  outline: 0;
+}
+
 .betSlip > p,
 #bet-stake-help,
 .betSlipHelp {
@@ -1166,6 +1345,93 @@
 .betQuote .betQuoteFee dd {
   color: var(--color-subtle);
   font-size: 0.74rem;
+  font-weight: 550;
+}
+
+.betQuote--predictionOrder {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+  margin-top: 0;
+  padding: 10px 0;
+}
+
+.betQuote--predictionOrder > div {
+  min-width: 0;
+  display: grid;
+  justify-content: stretch;
+  gap: 2px;
+  padding: 0;
+}
+
+.betQuote--predictionOrder > .betQuoteCost,
+.betQuote--predictionOrder > .betQuotePayout {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.betQuote--predictionOrder > .betQuoteCost {
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border);
+}
+
+.betQuote--predictionOrder > .betQuotePayout {
+  align-items: end;
+}
+
+.betQuotePayout dd {
+  display: grid;
+  justify-items: end;
+  gap: 1px;
+}
+
+.betQuote--predictionOrder .betQuotePayout strong {
+  font-size: 1.2rem;
+  letter-spacing: -0.025em;
+}
+
+.betQuotePayout small,
+.predictionOrderPayout small {
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.betQuotePayout small.isPositive,
+.predictionOrderPayout small.isPositive {
+  color: var(--color-market-yes);
+}
+
+.betQuotePayout small.isNegative,
+.predictionOrderPayout small.isNegative {
+  color: var(--color-market-no);
+}
+
+.betQuote--predictionOrder dt {
+  font-size: 0.7rem;
+}
+
+.betQuote--predictionOrder dd {
+  overflow: hidden;
+  font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.betQuoteWithNote {
+  display: grid;
+  justify-items: end;
+  gap: 1px;
+}
+
+.betQuoteWithNote strong {
+  font: inherit;
+}
+
+.betQuoteWithNote small {
+  color: var(--color-subtle);
+  font-size: 0.68rem;
   font-weight: 550;
 }
 
@@ -1909,9 +2175,34 @@
   .bettingExchangeResolved {
     grid-column: 1 / -1;
   }
+
+  .bettingExchangeResolved {
+    margin-right: var(--space-4);
+  }
 }
 
 @media (max-width: 540px) {
+  .bettingPredictionViewControl {
+    width: 100%;
+    display: grid;
+    gap: 6px;
+  }
+
+  .bettingPredictionViewControl > span {
+    padding: 0 4px;
+  }
+
+  .bettingPredictionModeToggle {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bettingPredictionModeToggle button {
+    min-width: 0;
+    padding-inline: 8px;
+    font-size: 0.78rem;
+  }
+
   .bettingPredictionBookGroup {
     grid-template-columns: minmax(0, 1fr);
   }

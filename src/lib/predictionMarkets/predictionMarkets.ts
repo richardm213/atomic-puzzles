@@ -330,3 +330,26 @@ export const cancelPredictionOrder = async (marketId: PredictionMarketId, orderI
   );
   return response.result;
 };
+
+export const amendPredictionOrder = async ({
+  marketId,
+  orderId,
+  priceCents,
+  quantity,
+}: {
+  marketId: PredictionMarketId;
+  orderId: number;
+  priceCents: number;
+  quantity: number;
+}) => {
+  const response = await postApi(
+    "/api/betting",
+    { action: "amendExchangeOrder", marketId, orderId, priceCents, quantity },
+    {
+      schema: orderMutationSchema,
+      errorMessage: "Unable to update this order.",
+      invalidMessage: "The market returned invalid order details.",
+    },
+  );
+  return response.result;
+};

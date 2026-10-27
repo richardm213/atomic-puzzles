@@ -49,6 +49,13 @@ const bodySchema = z.discriminatedUnion("action", [
     orderId: z.number().int().positive(),
   }),
   z.object({
+    action: z.literal("amendExchangeOrder"),
+    marketId: exchangeMarketIdSchema,
+    orderId: z.number().int().positive(),
+    priceCents: z.number().int().min(1).max(99),
+    quantity: z.number().int().min(1).max(10_000),
+  }),
+  z.object({
     action: z.literal("suggest"),
     question: z.string().trim().min(8).max(160),
     outcomes: z
@@ -155,9 +162,14 @@ const presentSuggestion = (row: SuggestionRow, currentUsername?: string | null) 
 export const bettingRoute = async (event: FunctionEvent) => {
   const input = parseJsonBody(event, bodySchema, "Invalid betting request.");
   if (
-    ["place", "suggest", "voteSuggestion", "placeExchangeOrder", "cancelExchangeOrder"].includes(
-      input.action,
-    )
+    [
+      "place",
+      "suggest",
+      "voteSuggestion",
+      "placeExchangeOrder",
+      "cancelExchangeOrder",
+      "amendExchangeOrder",
+    ].includes(input.action)
   ) {
     requireSameOrigin(event.headers, "Cross-site betting requests are not allowed.");
   }
@@ -400,6 +412,31 @@ export const bettingRoute = async (event: FunctionEvent) => {
       if (/not open/i.test(error.message))
         throw new HttpError(409, "That order is no longer open.");
       throw new Error(`Unable to cancel prediction order: ${error.message}`);
+    }
+    return identityResponse(identity, 200, { result: data });
+  }
+
+  if (input.action === "amendExchangeOrder") {
+    const { data, error } = await supabase.rpc("amend_prediction_order", {
+      p_username: username,
+      p_market_id: input.marketId,
+      p_order_id: input.orderId,
+      p_price_cents: input.priceCents,
+      p_quantity: input.quantity,
+    });
+    if (error) {
+      if (/not found/i.test(error.message))
+        throw new HttpError(404, "That open order was not found.");
+      if (/not open/i.test(error.message))
+        throw new HttpError(409, "That order is no longer open.");
+      if (/not enough coins/i.test(error.message))
+        throw new HttpError(409, "You don’t have enough available Atomic Coins.");
+      if (/not enough available contracts/i.test(error.message))
+        throw new HttpError(409, "You don’t have enough available contracts to sell.");
+      if (/would cross one of your open orders/i.test(error.message))
+        throw new HttpError(409, "This order would cross one of your existing open orders.");
+      if (/closed/i.test(error.message)) throw new HttpError(409, "This market is closed.");
+      throw new Error(`Unable to update prediction order: ${error.message}`);
     }
     return identityResponse(identity, 200, { result: data });
   }

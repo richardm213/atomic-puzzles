@@ -612,6 +612,57 @@ begin
 end;
 $$;
 
+create or replace function public.amend_prediction_order(
+  p_username text,
+  p_market_id text,
+  p_order_id bigint,
+  p_price_cents integer,
+  p_quantity integer
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  normalized_username text := lower(btrim(coalesce(p_username, '')));
+  order_row public.prediction_orders%rowtype;
+begin
+  if p_price_cents < 1 or p_price_cents > 99 then
+    raise exception 'Prediction order price must be between 1 and 99 cents';
+  end if;
+  if p_quantity < 1 or p_quantity > 10000 then
+    raise exception 'Prediction order quantity must be between 1 and 10000';
+  end if;
+
+  select * into order_row from public.prediction_orders where id = p_order_id;
+  if order_row.id is null
+    or order_row.username <> normalized_username
+    or order_row.market_id <> p_market_id then
+    raise exception 'Prediction order not found';
+  end if;
+
+  perform pg_advisory_xact_lock(hashtext('prediction-market:' || order_row.market_id));
+  select * into order_row
+  from public.prediction_orders
+  where id = p_order_id
+  for update;
+  if order_row.status not in ('open', 'partial') or order_row.remaining_quantity <= 0 then
+    raise exception 'Prediction order is not open';
+  end if;
+
+  perform public.cancel_prediction_order(normalized_username, p_order_id);
+  return public.place_prediction_order(
+    normalized_username,
+    order_row.market_id,
+    order_row.outcome,
+    order_row.side,
+    p_price_cents,
+    p_quantity
+  );
+end;
+$$;
+
 create or replace function public.resolve_prediction_market(
   p_market_id text,
   p_outcome text
@@ -950,6 +1001,11 @@ revoke all on function public.cancel_prediction_order(text, bigint)
   from public, anon, authenticated;
 grant execute on function public.cancel_prediction_order(text, bigint)
   to service_role;
+revoke all on function public.amend_prediction_order(text, text, bigint, integer, integer)
+  from public, anon, authenticated;
+grant execute on function public.amend_prediction_order(text, text, bigint, integer, integer)
+  to service_role;
+drop function if exists public.amend_prediction_order(text, bigint, integer, integer);
 revoke all on function public.resolve_prediction_market(text, text)
   from public, anon, authenticated;
 grant execute on function public.resolve_prediction_market(text, text)
