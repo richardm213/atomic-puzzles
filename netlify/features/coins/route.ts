@@ -168,11 +168,13 @@ export const coinsRoute = async (event: FunctionEvent) => {
     return identityResponse(identity, 200, { result: data });
   }
   const sessionUsername = requireUsername(identity, "Log in with Lichess to use Atomic Coins.");
-  let username: string;
+  let username = sessionUsername.trim().toLowerCase();
   try {
     username = await resolveCanonicalArchiveUsername(sessionUsername);
   } catch {
-    throw new HttpError(503, "Atomic Coins are temporarily unavailable. Please try again.");
+    if (input.action !== "summary" && input.action !== "history") {
+      throw new HttpError(503, "Atomic Coins are temporarily unavailable. Please try again.");
+    }
   }
   if (input.action === "listBans" || input.action === "ban" || input.action === "revokeBan") {
     if (username !== coinBanManager) {
