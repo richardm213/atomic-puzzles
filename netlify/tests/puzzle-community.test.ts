@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   buildPuzzleCommentNotificationRecipients,
+  excludeRecipientsWithUnreadPuzzleNotifications,
   getMentionedUsernames,
   getPuzzleCommentParticipantRecipients,
 } from "../features/community/repository";
@@ -45,26 +46,45 @@ describe("profile comment history", () => {
     expect(
       buildPuzzleCommentNotificationRecipients({
         actorUsername: "New_Commenter",
-        parentAuthor: "Reply_Target",
         puzzleAuthor: "Puzzle_Author",
         attemptedUsers: [
           { username: "puzzle_author" },
           { username: "Attempted_User" },
           { username: "Mentioned_User" },
         ],
-        priorCommenters: [
-          { username: "reply_target" },
-          { username: "attempted_user" },
-          { username: "Follower" },
-        ],
+        priorCommenters: [{ username: "attempted_user" }, { username: "Follower" }],
         excludedUsernames: ["mentioned_user"],
       }),
     ).toEqual([
-      { recipientUsername: "reply_target", notificationType: "comment_reply" },
       { recipientUsername: "puzzle_author", notificationType: "puzzle_author_comment" },
       { recipientUsername: "attempted_user", notificationType: "puzzle_attempt_comment" },
       { recipientUsername: "follower", notificationType: "puzzle_comment" },
     ]);
+  });
+
+  it("notifies only the parent commenter when a comment is a reply", () => {
+    expect(
+      buildPuzzleCommentNotificationRecipients({
+        actorUsername: "New_Commenter",
+        parentAuthor: "Reply_Target",
+        isReply: true,
+        puzzleAuthor: "Puzzle_Author",
+        attemptedUsers: [{ username: "Attempted_User" }],
+        priorCommenters: [{ username: "Follower" }],
+      }),
+    ).toEqual([{ recipientUsername: "reply_target", notificationType: "comment_reply" }]);
+  });
+
+  it("does not queue another notification while one for that puzzle is unread", () => {
+    expect(
+      excludeRecipientsWithUnreadPuzzleNotifications(
+        [
+          { recipientUsername: "alice", notificationType: "puzzle_attempt_comment" },
+          { recipientUsername: "bob", notificationType: "puzzle_author_comment" },
+        ],
+        [{ recipient_username: "ALICE" }],
+      ),
+    ).toEqual([{ recipientUsername: "bob", notificationType: "puzzle_author_comment" }]);
   });
 
   it("notifies prior commenters after a puzzle comment without failing the saved comment", async () => {

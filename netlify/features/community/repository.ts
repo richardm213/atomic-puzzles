@@ -41,8 +41,20 @@ export const getPuzzleCommentParticipantRecipients = (
 type PuzzleCommentNotificationRecipient = {
   recipientUsername: string;
   notificationType:
-    "comment_reply" | "puzzle_author_comment" | "puzzle_attempt_comment" | "puzzle_comment";
+    | "comment_reply"
+    | "comment_mention"
+    | "puzzle_author_comment"
+    | "puzzle_attempt_comment"
+    | "puzzle_comment";
 };
+
+const PUZZLE_COMMENT_NOTIFICATION_TYPES = [
+  "puzzle_comment",
+  "puzzle_attempt_comment",
+  "puzzle_author_comment",
+  "comment_reply",
+  "comment_mention",
+] as const;
 
 const normalizedUsername = (username: unknown): string =>
   String(username ?? "")
@@ -53,6 +65,7 @@ export const buildPuzzleCommentNotificationRecipients = ({
   actorUsername,
   puzzleAuthor,
   parentAuthor,
+  isReply = false,
   attemptedUsers,
   priorCommenters,
   excludedUsernames = [],
@@ -60,6 +73,7 @@ export const buildPuzzleCommentNotificationRecipients = ({
   actorUsername: string;
   puzzleAuthor?: string | null;
   parentAuthor?: string | null;
+  isReply?: boolean;
   attemptedUsers: Array<{ username?: string | null }>;
   priorCommenters: Array<{ username?: string | null }>;
   excludedUsernames?: string[];
@@ -77,6 +91,12 @@ export const buildPuzzleCommentNotificationRecipients = ({
 
   // A user receives only the most specific notification for a comment.
   addRecipient(parentAuthor, "comment_reply");
+  if (isReply) {
+    return [...recipients].map(([recipientUsername, notificationType]) => ({
+      recipientUsername,
+      notificationType,
+    }));
+  }
   addRecipient(puzzleAuthor, "puzzle_author_comment");
   attemptedUsers.forEach(({ username }) => addRecipient(username, "puzzle_attempt_comment"));
   priorCommenters.forEach(({ username }) => addRecipient(username, "puzzle_comment"));
@@ -85,6 +105,19 @@ export const buildPuzzleCommentNotificationRecipients = ({
     recipientUsername,
     notificationType,
   }));
+};
+
+export const excludeRecipientsWithUnreadPuzzleNotifications = (
+  recipients: PuzzleCommentNotificationRecipient[],
+  unreadNotifications: Array<{ recipient_username?: string | null }>,
+): PuzzleCommentNotificationRecipient[] => {
+  const recipientsWithUnreadNotifications = new Set(
+    unreadNotifications.map(({ recipient_username }) => normalizedUsername(recipient_username)),
+  );
+  return recipients.filter(
+    ({ recipientUsername }) =>
+      !recipientsWithUnreadNotifications.has(normalizedUsername(recipientUsername)),
+  );
 };
 
 export const getMentionedUsernames = (body: string): string[] => [
@@ -486,14 +519,36 @@ export class CommunityRepository {
       actorUsername,
       puzzleAuthor: puzzleAuthorResult.data?.author,
       parentAuthor: parentAuthorResult.data?.username,
+      isReply: parentId !== null,
       attemptedUsers: attemptedUsersResult.data ?? [],
       priorCommenters: priorCommentersResult.data ?? [],
       excludedUsernames,
     });
     if (!recipients.length) return;
 
+    const unreadNotificationsResult = await this.supabase
+      .from("notifications")
+      .select("recipient_username")
+      .eq("puzzle_id", puzzleId)
+      .is("read_at", null)
+      .in("notification_type", [...PUZZLE_COMMENT_NOTIFICATION_TYPES])
+      .in(
+        "recipient_username",
+        recipients.map(({ recipientUsername }) => recipientUsername),
+      );
+    if (unreadNotificationsResult.error) {
+      throw new Error(
+        `Unable to check unread puzzle notifications: ${unreadNotificationsResult.error.message}`,
+      );
+    }
+    const recipientsWithoutUnreadNotifications = excludeRecipientsWithUnreadPuzzleNotifications(
+      recipients,
+      unreadNotificationsResult.data ?? [],
+    );
+    if (!recipientsWithoutUnreadNotifications.length) return;
+
     const result = await this.supabase.from("notifications").insert(
-      recipients.map(({ recipientUsername, notificationType }) => ({
+      recipientsWithoutUnreadNotifications.map(({ recipientUsername, notificationType }) => ({
         recipient_username: recipientUsername,
         actor_username: actorUsername,
         notification_type: notificationType,
@@ -524,7 +579,7 @@ export class CommunityRepository {
     if (usersResult.error) {
       throw new Error(`Unable to find mentioned users: ${usersResult.error.message}`);
     }
-    const recipients = [
+    let recipients = [
       ...new Set(
         (usersResult.data ?? [])
           .map((row) =>
@@ -537,11 +592,36 @@ export class CommunityRepository {
     ];
     if (!recipients.length) return [];
 
+    if (target.type === "puzzle") {
+      const puzzleId = Number(target.id);
+      const unreadNotificationsResult = await this.supabase
+        .from("notifications")
+        .select("recipient_username")
+        .eq("puzzle_id", puzzleId)
+        .is("read_at", null)
+        .in("notification_type", [...PUZZLE_COMMENT_NOTIFICATION_TYPES])
+        .in("recipient_username", recipients);
+      if (unreadNotificationsResult.error) {
+        throw new Error(
+          `Unable to check unread puzzle notifications: ${unreadNotificationsResult.error.message}`,
+        );
+      }
+      recipients = excludeRecipientsWithUnreadPuzzleNotifications(
+        recipients.map((recipientUsername) => ({
+          recipientUsername,
+          notificationType: "comment_mention" as const,
+        })),
+        unreadNotificationsResult.data ?? [],
+      ).map(({ recipientUsername }) => recipientUsername);
+      if (!recipients.length) return [];
+    }
+
     const result = await this.supabase.from("notifications").insert(
       recipients.map((recipientUsername) => ({
         recipient_username: recipientUsername,
         actor_username: actorUsername,
         notification_type: "comment_mention",
+        puzzle_id: target.type === "puzzle" ? Number(target.id) : null,
         comment_id: commentId,
         feature_key: `comment-mention:${commentId}:${recipientUsername}`,
         feature_path: mentionDestinationPath(target, commentId),
