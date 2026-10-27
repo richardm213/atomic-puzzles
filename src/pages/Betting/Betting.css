@@ -502,6 +502,30 @@
   white-space: nowrap;
 }
 
+.bettingExchangeStrikeHoldings {
+  display: inline-flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 750;
+}
+
+.bettingExchangeStrikeHolding {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.bettingExchangeStrikeHolding--yes {
+  color: var(--prediction-yes);
+}
+
+.bettingExchangeStrikeHolding--no {
+  color: var(--prediction-no);
+}
+
 .bettingExchangeStrikeChance {
   display: block;
 }
@@ -1594,6 +1618,9 @@
 }
 
 .betHistoryPlayer strong {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
   min-width: 0;
   flex: 1;
   overflow: hidden;
@@ -1605,11 +1632,16 @@
 
 .betHistoryUsernameCutoff {
   display: block;
-  width: 100%;
+  width: auto;
   min-width: 0;
+  flex: 0 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.betHistoryOutcome {
+  flex: none;
 }
 
 .betHistoryMarket {

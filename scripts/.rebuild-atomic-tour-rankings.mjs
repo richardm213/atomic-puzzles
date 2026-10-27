@@ -2214,18 +2214,21 @@ var run = async () => {
     requireEnvironment("SUPABASE_SERVICE_ROLE_KEY"),
     { auth: { persistSession: false } }
   );
-  const [
-    { data: catalog, error: catalogError },
-    { data: matches, error: matchesError },
-    { data: archives, error: archivesError }
-  ] = await Promise.all([
+  const [{ data: catalog, error: catalogError }, { data: archives, error: archivesError }] = await Promise.all([
     supabase.from("tournament_catalog").select("id,series_key,start_date,end_date"),
-    supabase.from("tournament_matches").select("tournament,bracket,round,order,id,match_id,p1,p2,s1,s2,outcome_type"),
     supabase.from("tournament_archives").select("tournament_id,payload")
   ]);
   if (catalogError) throw catalogError;
-  if (matchesError) throw matchesError;
   if (archivesError) throw archivesError;
+  const matches = [];
+  const pageSize = 1e3;
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase.from("tournament_matches").select("tournament,bracket,round,order,id,match_id,p1,p2,s1,s2,outcome_type").range(from, from + pageSize - 1);
+    if (error) throw error;
+    const page = data;
+    matches.push(...page);
+    if (page.length < pageSize) break;
+  }
   const events = new Map(catalog.map((event) => [event.id, event]));
   const awcEvents = catalog.filter((event) => event.series_key === "awc").sort((left, right) => left.start_date.localeCompare(right.start_date));
   const awards = [];
@@ -2339,6 +2342,32 @@ var run = async () => {
       points_earned: awards.filter((award) => award.tournament_id === tournamentId && award.player_name === playerName).reduce((total, award) => total + award.points, 0)
     }));
   });
+  const desiredEntryKeys = new Set(
+    entryRows.map(({ tournament_id, player_name }) => `${tournament_id}:${player_name}`)
+  );
+  const staleEntriesByTournament = /* @__PURE__ */ new Map();
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase.from("atomic_tour_event_entries").select("tournament_id,player_name").range(from, from + pageSize - 1);
+    if (error) throw error;
+    const page = data;
+    page.forEach(({ tournament_id: tournamentId, player_name: playerName }) => {
+      if (desiredEntryKeys.has(`${tournamentId}:${playerName}`)) return;
+      const stalePlayers = staleEntriesByTournament.get(tournamentId) ?? [];
+      stalePlayers.push(playerName);
+      staleEntriesByTournament.set(tournamentId, stalePlayers);
+    });
+    if (page.length < pageSize) break;
+  }
+  for (const [tournamentId, stalePlayers] of staleEntriesByTournament) {
+    for (let offset = 0; offset < stalePlayers.length; offset += 200) {
+      const { error } = await supabase.from("atomic_tour_event_entries").delete().eq("tournament_id", tournamentId).in("player_name", stalePlayers.slice(offset, offset + 200));
+      if (error) throw error;
+    }
+  }
+  const staleEntryCount = [...staleEntriesByTournament.values()].reduce(
+    (total, players) => total + players.length,
+    0
+  );
   for (let offset = 0; offset < entryRows.length; offset += 500) {
     const { error } = await supabase.from("atomic_tour_event_entries").upsert(entryRows.slice(offset, offset + 500), {
       onConflict: "tournament_id,player_name"
@@ -2346,7 +2375,7 @@ var run = async () => {
     if (error) throw error;
   }
   process.stdout.write(
-    `Published ${awards.length} Atomic Tour point awards and ${snapshotDates.size} material snapshots.
+    `Published ${awards.length} Atomic Tour point awards and ${snapshotDates.size} material snapshots; removed ${staleEntryCount} stale event entries.
 `
   );
 };

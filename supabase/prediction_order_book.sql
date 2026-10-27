@@ -50,8 +50,8 @@ create table if not exists public.prediction_positions (
   market_id text not null references public.prediction_markets(id),
   username text not null,
   outcome text not null check (outcome in ('yes', 'no')),
-  quantity integer not null default 0 check (quantity >= 0),
-  reserved_quantity integer not null default 0 check (reserved_quantity >= 0),
+  quantity numeric(18, 6) not null default 0 check (quantity >= 0),
+  reserved_quantity numeric(18, 6) not null default 0 check (reserved_quantity >= 0),
   updated_at timestamptz not null default now(),
   primary key (market_id, username, outcome),
   check (reserved_quantity <= quantity)
@@ -115,6 +115,12 @@ revoke all on table public.prediction_markets from public, anon, authenticated;
 revoke all on table public.prediction_orders from public, anon, authenticated;
 revoke all on table public.prediction_positions from public, anon, authenticated;
 revoke all on table public.prediction_fills from public, anon, authenticated;
+
+-- Legacy sportsbook bets can produce fractional contracts. Orders remain whole-contract,
+-- while positions retain the exact payout entitlement through settlement.
+alter table public.prediction_positions
+  alter column quantity type numeric(18, 6) using quantity::numeric,
+  alter column reserved_quantity type numeric(18, 6) using reserved_quantity::numeric;
 
 alter table public.coin_transactions
   drop constraint if exists coin_transactions_reason_check;

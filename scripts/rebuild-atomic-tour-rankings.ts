@@ -427,20 +427,26 @@ const run = async () => {
     requireEnvironment("SUPABASE_SERVICE_ROLE_KEY"),
     { auth: { persistSession: false } },
   );
-  const [
-    { data: catalog, error: catalogError },
-    { data: matches, error: matchesError },
-    { data: archives, error: archivesError },
-  ] = await Promise.all([
-    supabase.from("tournament_catalog").select("id,series_key,start_date,end_date"),
-    supabase
-      .from("tournament_matches")
-      .select("tournament,bracket,round,order,id,match_id,p1,p2,s1,s2,outcome_type"),
-    supabase.from("tournament_archives").select("tournament_id,payload"),
-  ]);
+  const [{ data: catalog, error: catalogError }, { data: archives, error: archivesError }] =
+    await Promise.all([
+      supabase.from("tournament_catalog").select("id,series_key,start_date,end_date"),
+      supabase.from("tournament_archives").select("tournament_id,payload"),
+    ]);
   if (catalogError) throw catalogError;
-  if (matchesError) throw matchesError;
   if (archivesError) throw archivesError;
+
+  const matches: MatchRow[] = [];
+  const pageSize = 1_000;
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase
+      .from("tournament_matches")
+      .select("tournament,bracket,round,order,id,match_id,p1,p2,s1,s2,outcome_type")
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    const page = data as MatchRow[];
+    matches.push(...page);
+    if (page.length < pageSize) break;
+  }
 
   const events = new Map((catalog as CatalogRow[]).map((event) => [event.id, event]));
   const awcEvents = (catalog as CatalogRow[])
@@ -450,7 +456,7 @@ const run = async () => {
   const participants = new Map<string, Set<string>>();
   for (const event of catalog as CatalogRow[]) {
     if (!["awc", "ccac", "ahc", "aoc"].includes(event.series_key)) continue;
-    const eventMatches = (matches as MatchRow[]).filter((match) => match.tournament === event.id);
+    const eventMatches = matches.filter((match) => match.tournament === event.id);
     eventMatches.forEach((match) => {
       addParticipant(participants, event.id, match.p1);
       addParticipant(participants, event.id, match.p2);
@@ -585,6 +591,39 @@ const run = async () => {
         .reduce((total, award) => total + award.points, 0),
     }));
   });
+  const desiredEntryKeys = new Set(
+    entryRows.map(({ tournament_id, player_name }) => `${tournament_id}:${player_name}`),
+  );
+  const staleEntriesByTournament = new Map<string, string[]>();
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase
+      .from("atomic_tour_event_entries")
+      .select("tournament_id,player_name")
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    const page = data as Array<{ tournament_id: string; player_name: string }>;
+    page.forEach(({ tournament_id: tournamentId, player_name: playerName }) => {
+      if (desiredEntryKeys.has(`${tournamentId}:${playerName}`)) return;
+      const stalePlayers = staleEntriesByTournament.get(tournamentId) ?? [];
+      stalePlayers.push(playerName);
+      staleEntriesByTournament.set(tournamentId, stalePlayers);
+    });
+    if (page.length < pageSize) break;
+  }
+  for (const [tournamentId, stalePlayers] of staleEntriesByTournament) {
+    for (let offset = 0; offset < stalePlayers.length; offset += 200) {
+      const { error } = await supabase
+        .from("atomic_tour_event_entries")
+        .delete()
+        .eq("tournament_id", tournamentId)
+        .in("player_name", stalePlayers.slice(offset, offset + 200));
+      if (error) throw error;
+    }
+  }
+  const staleEntryCount = [...staleEntriesByTournament.values()].reduce(
+    (total, players) => total + players.length,
+    0,
+  );
   for (let offset = 0; offset < entryRows.length; offset += 500) {
     const { error } = await supabase
       .from("atomic_tour_event_entries")
@@ -594,7 +633,7 @@ const run = async () => {
     if (error) throw error;
   }
   process.stdout.write(
-    `Published ${awards.length} Atomic Tour point awards and ${snapshotDates.size} material snapshots.\n`,
+    `Published ${awards.length} Atomic Tour point awards and ${snapshotDates.size} material snapshots; removed ${staleEntryCount} stale event entries.\n`,
   );
 };
 

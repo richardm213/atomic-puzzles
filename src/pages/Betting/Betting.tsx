@@ -87,7 +87,9 @@ type PredictionSelection = { marketId: string; outcome: PredictionOutcome };
 type SuggestionDraftOutcome = { label: string; odds: string };
 type BetHistoryEntry = TournamentBet & {
   kind?: "prediction";
+  historyKey?: string;
   predictionUsername?: string;
+  predictionOutcome?: PredictionOutcome;
   predictionMarketTitle?: string | undefined;
   predictionSettlementPriceCents?: number | undefined;
 };
@@ -384,32 +386,23 @@ const BetHistory = ({
             const countryCode = countryByPlayer[bet.selection.toLowerCase()] ?? "";
             const payout = bet.status === "open" ? bet.potentialPayout : bet.payout;
             return (
-              <tr key={`${bet.kind ?? "tournament"}-${bet.id}`}>
+              <tr key={bet.historyKey ?? `${bet.kind ?? "tournament"}-${bet.id}`}>
                 <th className="betHistorySelection" scope="row">
-                  {isPredictionBet ? (
-                    <span
-                      className={`betHistoryPlayer betHistoryPlayer--prediction betHistoryPlayer--${bet.selection}`}
-                    >
-                      <span aria-hidden="true" />
-                      <strong>
-                        {bet.predictionUsername ?? "Prediction"} ·
-                        {bet.selection === "yes" ? "Yes" : "No"}
-                      </strong>
-                    </span>
-                  ) : (
-                    <span className="betHistoryPlayer">
-                      <img
-                        src={countryCodeToFlagUrl(countryCode)}
-                        alt={countryCode ? `${countryCode} flag` : "Country unavailable"}
-                        crossOrigin="anonymous"
-                        loading="lazy"
-                        decoding="async"
-                      />
-                      <strong>
-                        <BetHistoryUsername username={bet.selection} />
-                      </strong>
-                    </span>
-                  )}
+                  <span className="betHistoryPlayer">
+                    <img
+                      src={countryCodeToFlagUrl(countryCode)}
+                      alt={countryCode ? `${countryCode} flag` : "Country unavailable"}
+                      crossOrigin="anonymous"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                    <strong>
+                      <BetHistoryUsername username={bet.selection} />
+                      {isPredictionBet && bet.predictionOutcome === "no" ? (
+                        <span className="betHistoryOutcome">· No</span>
+                      ) : null}
+                    </strong>
+                  </span>
                   <span className="betHistoryMarket">
                     {isPredictionBet
                       ? (bet.predictionMarketTitle ?? "Prediction market")
@@ -427,7 +420,7 @@ const BetHistory = ({
                 <td className="betHistoryNumber" data-label="Price">
                   <strong>
                     {bet.priceCents}
-                    <span className="betHistoryPriceSuffix">{isPredictionBet ? "¢" : "%"}</span>
+                    <span className="betHistoryPriceSuffix">%</span>
                   </strong>
                 </td>
                 <td className="betHistoryNumber" data-label="Cost">
@@ -439,10 +432,8 @@ const BetHistory = ({
                   <small>{bet.status === "open" ? "possible" : "paid"}</small>
                 </td>
                 <td className="betHistoryState" data-label="Status">
-                  <span
-                    className={`betStatus betStatus--${bet.status}${isPredictionBet ? " betStatus--prediction" : ""}`}
-                  >
-                    {bet.status === "open" ? (isPredictionBet ? "Trading" : "Open") : bet.status}
+                  <span className={`betStatus betStatus--${bet.status}`}>
+                    {bet.status === "open" ? "Open" : bet.status}
                   </span>
                   <time dateTime={bet.placedAt}>{formatLocalDateTime(bet.placedAt)}</time>
                 </td>
@@ -536,7 +527,8 @@ export const BettingPage = () => {
       enabled:
         isPredictionMarketCategory(marketCategory) ||
         marketCategory === "AWC Champion" ||
-        view === "all",
+        view === "all" ||
+        view === "mine",
     })),
   });
   usePredictionMarketRealtime(
@@ -550,61 +542,140 @@ export const BettingPage = () => {
   const countryByPlayer = countriesQuery.data ?? {};
   const markets = useMemo(() => marketsQuery.data ?? [], [marketsQuery.data]);
   const allHistoryBets = useMemo<BetHistoryEntry[]>(() => {
-    const tournamentBets = allBetsQuery.data ?? [];
+    const awcChampionGroup = predictionMarketGroups.find(
+      (group) => group.id === "awc-2026-champion",
+    );
+    const championMarketByUsername = new Map(
+      (awcChampionGroup?.markets ?? []).map((market) => [market.username.toLowerCase(), market]),
+    );
+    const predictionStatus = (
+      marketId: string,
+      outcome: PredictionOutcome,
+      quantity: number,
+      totalCost: number,
+    ): Pick<TournamentBet, "status" | "payout" | "settledAt"> => {
+      const marketIndex = predictionMarkets.findIndex((market) => market.id === marketId);
+      const state = marketIndex >= 0 ? predictionMarketStates[marketIndex] : undefined;
+      const resolvedOutcome = state?.market.outcome;
+      const settlementPrice = state?.market.settlementPriceCents;
+      const status: TournamentBet["status"] =
+        state?.market.status === "refunded"
+          ? "refunded"
+          : state?.market.status === "resolved"
+            ? settlementPrice !== null && settlementPrice !== undefined
+              ? "settled"
+              : resolvedOutcome === outcome
+                ? "won"
+                : "lost"
+            : "open";
+      const settlementPayout =
+        settlementPrice !== null && settlementPrice !== undefined
+          ? (quantity * (outcome === "yes" ? settlementPrice : 100 - settlementPrice)) / 100
+          : 0;
+      return {
+        status,
+        payout:
+          status === "won"
+            ? quantity
+            : status === "settled"
+              ? settlementPayout
+              : status === "refunded"
+                ? totalCost
+                : 0,
+        settledAt: status === "open" ? null : (state?.market.resolvedAt ?? null),
+      };
+    };
+    const tournamentBets = (allBetsQuery.data ?? []).map((bet): BetHistoryEntry => {
+      const isChampionYes = bet.marketId === "awc2026-winner";
+      const isChampionNo = bet.marketId === winnerNoMarketId;
+      if (!isChampionYes && !isChampionNo) return bet;
+      const definition = championMarketByUsername.get(bet.selection.toLowerCase());
+      if (!definition) return bet;
+      const outcome: PredictionOutcome = isChampionNo ? "no" : "yes";
+      return {
+        ...bet,
+        ...predictionStatus(definition.id, outcome, bet.potentialPayout, bet.totalCost),
+        marketId: definition.id,
+        selection: definition.username,
+        kind: "prediction",
+        predictionUsername: definition.username,
+        predictionOutcome: outcome,
+        predictionMarketTitle: "AWC 2026 champion",
+      };
+    });
     const predictionBets = predictionMarkets.flatMap((definition, index) => {
       const predictionState = predictionMarketStates[index];
       const predictionGroup = predictionMarketGroups.find((group) =>
         group.markets.some((market) => market.id === definition.id),
       );
-      return (predictionState?.fills ?? []).map((fill): BetHistoryEntry => {
-        const totalCost = Math.round(fill.priceCents * fill.quantity * 10_000) / 1_000_000;
-        const resolvedOutcome = predictionState?.market.outcome;
-        const settlementPrice = predictionState?.market.settlementPriceCents;
-        const status: TournamentBet["status"] =
-          predictionState?.market.status === "refunded"
-            ? "refunded"
-            : predictionState?.market.status === "resolved"
-              ? settlementPrice !== null && settlementPrice !== undefined
-                ? "settled"
-                : resolvedOutcome === fill.outcome
-                  ? "won"
-                  : "lost"
-              : "open";
-        const settlementPayout =
-          settlementPrice !== null && settlementPrice !== undefined
-            ? (fill.quantity * (fill.outcome === "yes" ? settlementPrice : 100 - settlementPrice)) /
-              100
-            : 0;
-        return {
-          id: fill.id,
-          marketId: definition.id,
-          username: fill.buyerUsername,
-          selection: fill.outcome,
-          priceCents: fill.priceCents,
-          stake: totalCost,
-          fee: 0,
-          totalCost,
-          potentialPayout: fill.quantity,
-          status,
-          payout:
-            status === "won"
-              ? fill.quantity
-              : status === "settled"
-                ? settlementPayout
-                : status === "refunded"
-                  ? totalCost
-                  : 0,
-          placedAt: fill.createdAt,
-          settledAt:
-            status === "open" ? null : (predictionState?.market.resolvedAt ?? fill.createdAt),
-          kind: "prediction",
-          predictionUsername: definition.username,
-          predictionMarketTitle: predictionGroup?.title,
-          predictionSettlementPriceCents: settlementPrice ?? undefined,
-        };
-      });
+      return (predictionState?.fills ?? [])
+        .filter((fill) => fill.buyerUsername.toLowerCase() !== "prediction_admin")
+        .map((fill): BetHistoryEntry => {
+          const totalCost = Math.round(fill.priceCents * fill.quantity * 10_000) / 1_000_000;
+          const settlement = predictionStatus(
+            definition.id,
+            fill.outcome,
+            fill.quantity,
+            totalCost,
+          );
+          return {
+            id: fill.id,
+            marketId: definition.id,
+            username: fill.buyerUsername,
+            selection: definition.username,
+            priceCents: fill.priceCents,
+            stake: totalCost,
+            fee: 0,
+            totalCost,
+            potentialPayout: fill.quantity,
+            ...settlement,
+            placedAt: fill.createdAt,
+            kind: "prediction",
+            predictionUsername: definition.username,
+            predictionOutcome: fill.outcome,
+            predictionMarketTitle:
+              predictionGroup?.id === "awc-2026-champion"
+                ? "AWC 2026 champion"
+                : predictionGroup?.title,
+            predictionSettlementPriceCents:
+              predictionState?.market.settlementPriceCents ?? undefined,
+          };
+        });
     });
-    return [...tournamentBets, ...predictionBets].sort(
+    const combinedBets = new Map<string, BetHistoryEntry>();
+    const passthroughBets: BetHistoryEntry[] = [];
+    for (const bet of [...tournamentBets, ...predictionBets]) {
+      if (bet.kind !== "prediction") {
+        passthroughBets.push(bet);
+        continue;
+      }
+      const key = [
+        bet.username.toLowerCase(),
+        bet.marketId,
+        bet.predictionOutcome,
+        bet.status,
+      ].join(":");
+      const current = combinedBets.get(key);
+      const potentialPayout = (current?.potentialPayout ?? 0) + bet.potentialPayout;
+      const stake = (current?.stake ?? 0) + bet.stake;
+      combinedBets.set(key, {
+        ...(current ?? bet),
+        id: current?.id ?? bet.id,
+        historyKey: `prediction:${key}`,
+        priceCents: potentialPayout > 0 ? Math.round((stake / potentialPayout) * 100) : 0,
+        stake,
+        fee: (current?.fee ?? 0) + bet.fee,
+        totalCost: (current?.totalCost ?? 0) + bet.totalCost,
+        potentialPayout,
+        payout: (current?.payout ?? 0) + bet.payout,
+        placedAt:
+          !current || Date.parse(bet.placedAt) > Date.parse(current.placedAt)
+            ? bet.placedAt
+            : current.placedAt,
+        settledAt: bet.settledAt ?? current?.settledAt ?? null,
+      });
+    }
+    return [...passthroughBets, ...combinedBets.values()].sort(
       (left, right) => Date.parse(right.placedAt) - Date.parse(left.placedAt),
     );
   }, [allBetsQuery.data, predictionMarketGroups, predictionMarkets, predictionMarketStates]);
@@ -802,7 +873,13 @@ export const BettingPage = () => {
   const validStake =
     Number.isInteger(stake) && stake >= MIN_BET_AMOUNT && stake <= marketStakeLimit;
   const quote = quoteTournamentBet(validStake ? stake : 0, selectedPrice);
-  const myBets = betsQuery.data ?? [];
+  const myBets = useMemo(
+    () =>
+      isAuthenticated
+        ? allHistoryBets.filter((bet) => bet.username.toLowerCase() === username.toLowerCase())
+        : [],
+    [allHistoryBets, isAuthenticated, username],
+  );
   const openBetCost = myBets.reduce(
     (total, bet) => total + (bet.status === "open" ? bet.totalCost : 0),
     0,
@@ -1497,7 +1574,35 @@ export const BettingPage = () => {
                             const yesChance = predictionYesChance(definition, state);
                             const yesAsk = state?.book.yes.asks[0]?.priceCents;
                             const noAsk = state?.book.no.asks[0]?.priceCents;
+                            const ownedPositions = predictionOutcomes.flatMap((outcome) => {
+                              const quantity = myBets
+                                .filter(
+                                  (bet) =>
+                                    bet.marketId === definition.id &&
+                                    bet.predictionOutcome === outcome &&
+                                    bet.status === "open",
+                                )
+                                .reduce((total, bet) => total + bet.potentialPayout, 0);
+                              return quantity > 0 ? [{ outcome, quantity }] : [];
+                            });
                             const isResolved = state?.market.status === "resolved";
+                            const holdings =
+                              isAuthenticated && ownedPositions.length > 0 ? (
+                                <span
+                                  className="bettingExchangeStrikeHoldings"
+                                  aria-label="Your position"
+                                >
+                                  {ownedPositions.map(({ outcome, quantity }) => (
+                                    <span
+                                      className={`bettingExchangeStrikeHolding bettingExchangeStrikeHolding--${outcome}`}
+                                      key={outcome}
+                                    >
+                                      <span aria-hidden="true">✓</span>
+                                      {formatBetCoins(quantity)} {outcome === "yes" ? "Yes" : "No"}
+                                    </span>
+                                  ))}
+                                </span>
+                              ) : null;
                             return (
                               <div className="bettingExchangeStrike" key={definition.id}>
                                 {isResolved ? (
@@ -1512,6 +1617,7 @@ export const BettingPage = () => {
                                         aria-hidden="true"
                                       />
                                       <strong>{definition.username}</strong>
+                                      {holdings}
                                     </span>
                                   </div>
                                 ) : (
@@ -1532,6 +1638,7 @@ export const BettingPage = () => {
                                         aria-hidden="true"
                                       />
                                       <strong>{definition.username}</strong>
+                                      {holdings}
                                     </span>
                                     <span className="bettingExchangeStrikeChance">
                                       <strong>
