@@ -69,6 +69,12 @@ export const PredictionMarketPage = () => {
       no: marketState.book.no.asks[0]?.priceCents,
     };
   }, [marketState]);
+  const latestFill = marketState?.fills[0];
+  const currentYesPercent = latestFill
+    ? latestFill.outcome === "yes"
+      ? latestFill.priceCents
+      : 100 - latestFill.priceCents
+    : undefined;
 
   const refreshMarket = async () => {
     await Promise.all([
@@ -143,24 +149,93 @@ export const PredictionMarketPage = () => {
         {marketState ? (
           <>
             <div className="predictionTradingGrid">
-              <section className="predictionBookPanel" aria-labelledby="order-book-title">
-                <div className="predictionSectionHeader">
-                  <h2 id="order-book-title">Order book</h2>
-                  <span>{outcomeLabel(outcome)} · all traders</span>
-                </div>
-                <VerticalOrderBook
-                  bids={marketState.book[outcome].bids}
-                  asks={marketState.book[outcome].asks}
-                  onSelectBid={(nextPrice) => {
-                    setSide("sell");
-                    setPriceInput(String(nextPrice));
-                  }}
-                  onSelectAsk={(nextPrice) => {
-                    setSide("buy");
-                    setPriceInput(String(nextPrice));
-                  }}
-                />
-              </section>
+              <div className="predictionMarketMain">
+                <section
+                  className="predictionProbabilityPanel"
+                  aria-labelledby="market-probability-title"
+                >
+                  <div className="predictionSectionHeader">
+                    <h2 id="market-probability-title">Current probability</h2>
+                    {latestFill ? (
+                      <span>Last trade {formatLocalDateTime(latestFill.createdAt)}</span>
+                    ) : null}
+                  </div>
+                  {currentYesPercent === undefined ? (
+                    <p className="predictionProbabilityEmpty">No trades yet</p>
+                  ) : (
+                    <div className="predictionProbabilityValues">
+                      <div className="predictionProbabilityValue predictionProbabilityValue--yes">
+                        <span>Yes</span>
+                        <strong>{currentYesPercent}%</strong>
+                      </div>
+                      <div className="predictionProbabilityTrack" aria-hidden="true">
+                        <span style={{ width: `${currentYesPercent}%` }} />
+                      </div>
+                      <div className="predictionProbabilityValue predictionProbabilityValue--no">
+                        <span>No</span>
+                        <strong>{100 - currentYesPercent}%</strong>
+                      </div>
+                    </div>
+                  )}
+                </section>
+
+                <section className="predictionBookPanel" aria-labelledby="order-book-title">
+                  <div className="predictionSectionHeader">
+                    <h2 id="order-book-title">Order book</h2>
+                    <span>{outcomeLabel(outcome)} · all traders</span>
+                  </div>
+                  <VerticalOrderBook
+                    bids={marketState.book[outcome].bids}
+                    asks={marketState.book[outcome].asks}
+                    onSelectBid={(nextPrice) => {
+                      setSide("sell");
+                      setPriceInput(String(nextPrice));
+                    }}
+                    onSelectAsk={(nextPrice) => {
+                      setSide("buy");
+                      setPriceInput(String(nextPrice));
+                    }}
+                  />
+                </section>
+
+                <section className="predictionActivityPanel" aria-labelledby="trades-title">
+                  <h2 id="trades-title">Recent trades</h2>
+                  {marketState.fills.length ? (
+                    <div className="predictionTrades" role="list">
+                      {marketState.fills.slice(0, 20).map((fill) => (
+                        <div role="listitem" key={fill.id}>
+                          <strong
+                            className={`predictionTradeOutcome predictionTradeOutcome--${fill.outcome}`}
+                          >
+                            {outcomeLabel(fill.outcome)}
+                          </strong>
+                          <span>
+                            <Price cents={fill.priceCents} />
+                          </span>
+                          <span>{fill.quantity.toLocaleString()} contracts</span>
+                          <span className="predictionTradeParties">
+                            <Link to="/@/$username" params={{ username: fill.buyerUsername }}>
+                              {fill.buyerUsername}
+                            </Link>
+                            <small>bought</small>
+                            {fill.sellerUsername ? (
+                              <>
+                                <Link to="/@/$username" params={{ username: fill.sellerUsername }}>
+                                  {fill.sellerUsername}
+                                </Link>
+                                <small>sold</small>
+                              </>
+                            ) : null}
+                          </span>
+                          <time dateTime={fill.createdAt}>{formatLocalDateTime(fill.createdAt)}</time>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p>No trades yet.</p>
+                  )}
+                </section>
+              </div>
 
               <aside className="predictionTicket" aria-labelledby="order-ticket-title">
                 <h2 id="order-ticket-title">Order ticket</h2>
@@ -323,44 +398,6 @@ export const PredictionMarketPage = () => {
                     </InlineState>
                   ) : null}
                 </>
-              )}
-            </section>
-
-            <section className="predictionActivityPanel" aria-labelledby="trades-title">
-              <h2 id="trades-title">Recent trades</h2>
-              {marketState.fills.length ? (
-                <div className="predictionTrades" role="list">
-                  {marketState.fills.slice(0, 20).map((fill) => (
-                    <div role="listitem" key={fill.id}>
-                      <strong
-                        className={`predictionTradeOutcome predictionTradeOutcome--${fill.outcome}`}
-                      >
-                        {outcomeLabel(fill.outcome)}
-                      </strong>
-                      <span>
-                        <Price cents={fill.priceCents} />
-                      </span>
-                      <span>{fill.quantity.toLocaleString()} contracts</span>
-                      <span className="predictionTradeParties">
-                        <Link to="/@/$username" params={{ username: fill.buyerUsername }}>
-                          {fill.buyerUsername}
-                        </Link>
-                        <small>bought</small>
-                        {fill.sellerUsername ? (
-                          <>
-                            <Link to="/@/$username" params={{ username: fill.sellerUsername }}>
-                              {fill.sellerUsername}
-                            </Link>
-                            <small>sold</small>
-                          </>
-                        ) : null}
-                      </span>
-                      <time dateTime={fill.createdAt}>{formatLocalDateTime(fill.createdAt)}</time>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p>No trades yet.</p>
               )}
             </section>
 
