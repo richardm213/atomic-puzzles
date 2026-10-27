@@ -54,19 +54,12 @@ export const PredictionMarketPage = () => {
   const marketOpen =
     marketState?.market.status === "open" && Date.parse(marketState.market.closesAt) > Date.now();
 
-  const probability = useMemo(() => {
-    if (!marketState) return { yes: 50, no: 50 };
-    const last = (selectedOutcome: PredictionOutcome) =>
-      marketState.fills.find((fill) => fill.outcome === selectedOutcome)?.priceCents;
-    const estimated = (selectedOutcome: PredictionOutcome) => {
-      const book = marketState.book[selectedOutcome];
-      const bestBid = book.bids[0]?.priceCents;
-      const bestAsk = book.asks[0]?.priceCents;
-      if (bestBid !== undefined && bestAsk !== undefined)
-        return Math.round((bestBid + bestAsk) / 2);
-      return bestBid ?? bestAsk ?? 50;
+  const askPrices = useMemo(() => {
+    if (!marketState) return { yes: undefined, no: undefined };
+    return {
+      yes: marketState.book.yes.asks[0]?.priceCents,
+      no: marketState.book.no.asks[0]?.priceCents,
     };
-    return { yes: last("yes") ?? estimated("yes"), no: last("no") ?? estimated("no") };
   }, [marketState]);
 
   const refreshMarket = async () => {
@@ -141,7 +134,7 @@ export const PredictionMarketPage = () => {
 
         {marketState ? (
           <>
-            <div className="predictionOutcomeSummary" aria-label="Latest market prices">
+            <div className="predictionOutcomeSummary" aria-label="Best available asks">
               {(["yes", "no"] as const).map((entry) => (
                 <button
                   type="button"
@@ -151,8 +144,14 @@ export const PredictionMarketPage = () => {
                   key={entry}
                 >
                   <span>{outcomeLabel(entry)}</span>
-                  <strong>{money(probability[entry])}</strong>
-                  <small>{probability[entry]}% chance</small>
+                  {askPrices[entry] === undefined ? (
+                    <small>No asks</small>
+                  ) : (
+                    <>
+                      <strong>{money(askPrices[entry])}</strong>
+                      <small>Best ask</small>
+                    </>
+                  )}
                 </button>
               ))}
             </div>

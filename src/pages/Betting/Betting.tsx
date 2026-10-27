@@ -397,17 +397,11 @@ export const BettingPage = () => {
   const showWinnerPositionToggle =
     marketCategory === "AWC Champion" &&
     openMarkets.some((market) => market.id === winnerNoMarketId);
-  const natsoMarketPrices = useMemo(() => {
+  const natsoAskPrices = useMemo(() => {
     const state = predictionMarketQuery.data;
     const priceFor = (outcome: "yes" | "no") => {
-      if (!state) return 50;
-      const latest = state.fills.find((fill) => fill.outcome === outcome)?.priceCents;
-      if (latest !== undefined) return latest;
-      const bestBid = state.book[outcome].bids[0]?.priceCents;
-      const bestAsk = state.book[outcome].asks[0]?.priceCents;
-      if (bestBid !== undefined && bestAsk !== undefined)
-        return Math.round((bestBid + bestAsk) / 2);
-      return bestBid ?? bestAsk ?? 50;
+      if (!state) return undefined;
+      return state.book[outcome].asks[0]?.priceCents;
     };
     return { yes: priceFor("yes"), no: priceFor("no") };
   }, [predictionMarketQuery.data]);
@@ -806,12 +800,18 @@ export const BettingPage = () => {
                         <strong>Will natso be banned by Dec 31?</strong>
                         <small>Order book · no fees</small>
                       </span>
-                      <span className="bettingExchangePrices" aria-label="Latest prices">
+                      <span className="bettingExchangePrices" aria-label="Best available asks">
                         <span>
-                          Yes <strong>{natsoMarketPrices.yes}¢</strong>
+                          Yes
+                          {natsoAskPrices.yes === undefined ? null : (
+                            <strong>{natsoAskPrices.yes}¢</strong>
+                          )}
                         </span>
                         <span>
-                          No <strong>{natsoMarketPrices.no}¢</strong>
+                          No
+                          {natsoAskPrices.no === undefined ? null : (
+                            <strong>{natsoAskPrices.no}¢</strong>
+                          )}
                         </span>
                       </span>
                       <span className="bettingExchangeAction">Trade →</span>
