@@ -16,10 +16,12 @@ import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/Rout
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
 import {
+  AWC_NOT_TO_WIN_MARKET_ID,
   findCurrentTournamentOpponent,
   isRestrictedAwcChampionOrder,
   predictionOrderRestrictionMessage,
 } from "../../lib/betting/betting";
+import { allTournamentBetsQueryOptions } from "../../lib/betting/bettingQueries";
 import { formatCoinBalance } from "../../lib/coins/coinDisplay";
 import { coinQueryKeys, coinSummaryQueryOptions } from "../../lib/coins/coinQueries";
 import { tournamentBracketQueryOptions } from "../../lib/matches/tournamentQueries";
@@ -50,6 +52,7 @@ import { countryCodeToFlagUrl } from "../../utils/countryFlags";
 import { formatLocalDateTime } from "../../utils/formatters";
 
 const outcomeLabel = (outcome: PredictionOutcome) => (outcome === "yes" ? "Yes" : "No");
+const predictionAdminUsername = "prediction_admin";
 const money = (cents: number) => `${cents} cents`;
 const averagePrice = (cents: number | undefined) => {
   if (cents === undefined) return "—";
@@ -85,6 +88,10 @@ export const PredictionMarketPage = () => {
   const marketsQuery = useQuery({
     ...predictionMarketBatchQueryOptions(marketIds),
     enabled: marketIds.length > 0,
+  });
+  const legacyBetsQuery = useQuery({
+    ...allTournamentBetsQueryOptions(),
+    enabled: Boolean(marketGroup),
   });
   usePredictionMarketRealtime(queryClient, marketIds);
   const marketStates = useMemo(() => marketsQuery.data ?? [], [marketsQuery.data]);
@@ -204,12 +211,57 @@ export const PredictionMarketPage = () => {
         })
       : null;
   const orderRestriction = activeMarketDefinition ? orderRestrictionFor(outcome, side) : null;
-  const recentFills = marketDefinitions
-    .flatMap((definition) =>
+  const recentFills = useMemo(() => {
+    const definitionByUsername = new Map(
+      marketDefinitions.map((definition) => [definition.username.toLowerCase(), definition]),
+    );
+    const exchangeFills = marketDefinitions.flatMap((definition) =>
       (marketStateById.get(definition.id)?.fills ?? []).map((fill) => ({ ...fill, definition })),
-    )
-    .sort((left, right) => right.createdAt.localeCompare(left.createdAt) || right.id - left.id)
-    .slice(0, 20);
+    );
+    const legacyFills = (legacyBetsQuery.data ?? []).flatMap((bet) => {
+      let legacyOutcome: PredictionOutcome | null = null;
+      if (marketGroup?.id === "awc-2026-champion") {
+        if (bet.marketId === "awc2026-winner") legacyOutcome = "yes";
+        else if (bet.marketId === AWC_NOT_TO_WIN_MARKET_ID) legacyOutcome = "no";
+      } else if (marketGroup?.id === "ban-2026" && bet.marketId.startsWith("lichess-ban-2026-")) {
+        legacyOutcome = "yes";
+      }
+      if (!legacyOutcome) return [];
+
+      const definition = definitionByUsername.get(bet.selection.toLowerCase());
+      if (!definition) return [];
+      return [
+        {
+          id: -bet.id,
+          outcome: legacyOutcome,
+          priceCents: bet.priceCents,
+          quantity: bet.potentialPayout,
+          buyerUsername: bet.username,
+          sellerUsername: null,
+          createdAt: bet.placedAt,
+          definition,
+        },
+      ];
+    });
+
+    return [...exchangeFills, ...legacyFills]
+      .filter((fill) => fill.buyerUsername.toLowerCase() !== predictionAdminUsername)
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt) || right.id - left.id)
+      .slice(0, 20);
+  }, [legacyBetsQuery.data, marketDefinitions, marketGroup?.id, marketStateById]);
+  const accountOrders = useMemo(
+    () =>
+      marketDefinitions
+        .flatMap((definition) =>
+          (marketStateById.get(definition.id)?.orders ?? []).map((order) => ({
+            ...order,
+            marketId: definition.id,
+            marketName: definition.username,
+          })),
+        )
+        .sort((left, right) => right.createdAt.localeCompare(left.createdAt)),
+    [marketDefinitions, marketStateById],
+  );
 
   const updateCoinBalance = (balance: number) => {
     queryClient.setQueryData(coinQueryKeys.summary(username), (current: unknown) =>
@@ -235,7 +287,8 @@ export const PredictionMarketPage = () => {
     },
   });
   const cancelMutation = useMutation({
-    mutationFn: (orderId: number) => cancelPredictionOrder(activeMarketId, orderId),
+    mutationFn: ({ marketId, orderId }: { marketId: PredictionMarketId; orderId: number }) =>
+      cancelPredictionOrder(marketId, orderId),
     onSuccess: (result) => {
       updateCoinBalance(result.balance);
       void queryClient.invalidateQueries({
@@ -282,6 +335,16 @@ export const PredictionMarketPage = () => {
   const toggleMarket = (marketId: PredictionMarketId) => {
     setActiveMarketId(marketId);
     setExpandedMarketId((current) => (current === marketId ? null : marketId));
+    setSuccessMessage("");
+  };
+
+  const toggleOutcome = (marketId: PredictionMarketId, nextOutcome: PredictionOutcome) => {
+    const isOpenSelection =
+      expandedMarketId === marketId && activeMarketId === marketId && outcome === nextOutcome;
+
+    setActiveMarketId(marketId);
+    setExpandedMarketId(isOpenSelection ? null : marketId);
+    setOutcome(nextOutcome);
     setSuccessMessage("");
   };
 
@@ -737,14 +800,11 @@ export const PredictionMarketPage = () => {
                                     type="button"
                                     className={`predictionOutcomeAction predictionOutcomeAction--${entry}`}
                                     aria-pressed={
-                                      activeMarketId === definition.id && outcome === entry
+                                      expandedMarketId === definition.id &&
+                                      activeMarketId === definition.id &&
+                                      outcome === entry
                                     }
-                                    onClick={() => {
-                                      setActiveMarketId(definition.id);
-                                      setExpandedMarketId(definition.id);
-                                      setOutcome(entry);
-                                      setSuccessMessage("");
-                                    }}
+                                    onClick={() => toggleOutcome(definition.id, entry)}
                                     key={entry}
                                   >
                                     <strong className="predictionOutcomeActionPrice">
@@ -784,7 +844,7 @@ export const PredictionMarketPage = () => {
                             <Price cents={fill.priceCents} />
                           </span>
                           <span className="predictionTradeQuantity">
-                            {fill.quantity.toLocaleString()} contracts
+                            {formatPredictionShares(fill.quantity)} contracts
                           </span>
                           <time dateTime={fill.createdAt}>
                             {formatLocalDateTime(fill.createdAt)}
@@ -793,7 +853,8 @@ export const PredictionMarketPage = () => {
                             <Link to="/@/$username" params={{ username: fill.buyerUsername }}>
                               {fill.buyerUsername}
                             </Link>
-                            {fill.sellerUsername ? (
+                            {fill.sellerUsername &&
+                            fill.sellerUsername.toLowerCase() !== predictionAdminUsername ? (
                               <>
                                 <small>bought from</small>
                                 <Link to="/@/$username" params={{ username: fill.sellerUsername }}>
@@ -820,9 +881,11 @@ export const PredictionMarketPage = () => {
               ) : (
                 <>
                   <OrderTable
-                    orders={marketState.orders}
-                    cancellingId={cancelMutation.isPending ? cancelMutation.variables : undefined}
-                    onCancel={(orderId) => cancelMutation.mutate(orderId)}
+                    orders={accountOrders}
+                    cancellingId={
+                      cancelMutation.isPending ? cancelMutation.variables.orderId : undefined
+                    }
+                    onCancel={(marketId, orderId) => cancelMutation.mutate({ marketId, orderId })}
                   />
                   {cancelMutation.error ? (
                     <InlineState kind="error">
@@ -966,6 +1029,8 @@ const OrderTable = ({
 }: {
   orders: Array<{
     id: number;
+    marketId: PredictionMarketId;
+    marketName: string;
     outcome: PredictionOutcome;
     side: PredictionOrderSide;
     priceCents: number;
@@ -976,7 +1041,7 @@ const OrderTable = ({
     createdAt: string;
   }>;
   cancellingId: number | undefined;
-  onCancel: (orderId: number) => void;
+  onCancel: (marketId: PredictionMarketId, orderId: number) => void;
 }) => {
   if (!orders.length) return <p>No orders yet.</p>;
   return (
@@ -1000,7 +1065,12 @@ const OrderTable = ({
             return (
               <tr key={order.id}>
                 <th scope="row">
-                  {order.side === "buy" ? "Buy" : "Sell"} {outcomeLabel(order.outcome)}
+                  <span className="predictionOrderContract">
+                    <strong>{order.marketName}</strong>
+                    <small>
+                      {order.side === "buy" ? "Buy" : "Sell"} {outcomeLabel(order.outcome)}
+                    </small>
+                  </span>
                 </th>
                 <td>
                   <Price cents={order.priceCents} />
@@ -1014,7 +1084,7 @@ const OrderTable = ({
                     <button
                       type="button"
                       disabled={cancellingId === order.id}
-                      onClick={() => onCancel(order.id)}
+                      onClick={() => onCancel(order.marketId, order.id)}
                     >
                       {cancellingId === order.id ? "Cancelling…" : "Cancel"}
                     </button>

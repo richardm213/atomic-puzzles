@@ -225,7 +225,7 @@
   gap: clamp(10px, 2vw, 18px);
   align-items: center;
   min-height: 72px;
-  padding: 8px 0;
+  padding: 8px 0 8px 12px;
   border-top: 1px solid var(--color-border);
 }
 
@@ -241,7 +241,7 @@
   grid-template-columns: minmax(180px, 1fr) auto;
   gap: 18px;
   min-height: 72px;
-  padding: 8px 0;
+  padding: 8px 0 8px 12px;
 }
 
 .predictionOutcomeMarket {
@@ -360,7 +360,7 @@
 
 .predictionOutcomeChance strong {
   color: var(--color-heading);
-  font-size: 22px;
+  font-size: 20px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -385,7 +385,7 @@
 }
 
 .predictionOutcomeAction strong {
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .predictionOutcomeActionPrice {
@@ -1195,6 +1195,21 @@
 
 .predictionOrders tbody th {
   color: var(--color-heading);
+}
+
+.predictionOrderContract {
+  display: grid;
+  gap: 2px;
+}
+
+.predictionOrderContract strong {
+  font-size: 14px;
+}
+
+.predictionOrderContract small {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .predictionOrders td {

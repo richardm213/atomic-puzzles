@@ -42,10 +42,10 @@ update public.prediction_markets as market set
   starting_chance = metadata.starting_chance, display_order = metadata.display_order
 from (values
   ('natso-ban-2026', 'Natso', 'NL', null, 1),
-  ('new-life14-ban-2026', 'New_Life14', 'KZ', null, 2),
+  ('new-life14-ban-2026', 'New_Life14', 'KZ', 50, 2),
   ('goroarmet-ban-2026', 'GoroArmeT', 'ES', null, 3),
-  ('november-atomic-shield-2026-rechesster', 'rechesster', 'AT', null, 1),
-  ('november-atomic-shield-2026-vannto', 'vannto', 'VE', null, 2),
+  ('november-atomic-shield-2026-rechesster', 'rechesster', 'AT', 50, 1),
+  ('november-atomic-shield-2026-vannto', 'vannto', 'VE', 50, 2),
   ('november-atomic-shield-2026-wolfram-ep', 'wolfram_ep', 'RU', null, 3),
   ('november-atomic-shield-2026-opabinia', 'opabinia', 'US', null, 4),
   ('november-atomic-shield-2026-maxwellssilvrhammer', 'maxwellssilvrhammer', 'US', null, 5),
