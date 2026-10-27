@@ -1,0 +1,264 @@
+.shopRedemptionsPage {
+  width: min(100%, 880px);
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+
+.shopRedemptionsPanel {
+  overflow: hidden;
+  padding: 0;
+}
+
+.shopRedemptionsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.shopRedemptionsHeader h1 {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: clamp(24px, 4vw, 32px);
+}
+
+.shopRedemptionsHeader > span,
+.shopRedemptionStatus {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
+.shopRedemptionFilters {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-6);
+  overflow-x: auto;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-inset);
+}
+
+.shopRedemptionFilters button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 750;
+  text-transform: capitalize;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.shopRedemptionFilters button strong {
+  min-width: 24px;
+  padding: 2px var(--space-1);
+  border-radius: 999px;
+  background: var(--color-surface-inset);
+  color: var(--color-text);
+  font-size: 11px;
+  text-align: center;
+}
+
+.shopRedemptionFilters button:hover,
+.shopRedemptionFilters button.active {
+  border-color: var(--color-primary);
+  color: var(--color-heading);
+}
+
+.shopRedemptionFilters button.active {
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-panel-strong));
+}
+
+.shopRedemptionList {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shopRedemptionList > li {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.shopRedemptionList > li:last-child {
+  border-bottom: 0;
+}
+
+.shopRedemptionTopline {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.shopRedemptionTopline > div {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.shopRedemptionTopline strong {
+  color: var(--color-heading);
+  font-size: 17px;
+}
+
+.shopRedemptionTopline a {
+  color: var(--color-primary-soft);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.shopRedemptionStatus.pending {
+  border-color: color-mix(in srgb, var(--color-gold) 42%, var(--color-border));
+  color: var(--color-gold);
+}
+
+.shopRedemptionStatus.fulfilled {
+  border-color: color-mix(in srgb, var(--color-success) 42%, var(--color-border));
+  color: var(--color-success);
+}
+
+.shopRedemptionStatus.cancelled {
+  border-color: color-mix(in srgb, var(--color-danger) 42%, var(--color-border));
+  color: var(--color-danger);
+}
+
+.shopRedemptionDetails {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-surface-inset);
+}
+
+.shopRedemptionDetails > div {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.shopRedemptionDetails :is(dt, dd) {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.shopRedemptionDetails dt {
+  color: var(--color-muted);
+  font-weight: 800;
+}
+
+.shopRedemptionDetails dd {
+  overflow-wrap: anywhere;
+  color: var(--color-text);
+  white-space: pre-wrap;
+}
+
+.shopRedemptionMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  color: var(--color-subtle);
+  font-size: 12px;
+}
+
+.shopRedemptionActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.shopRedemptionActions button {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.shopRedemptionActions .fulfill {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.shopRedemptionActions button:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.shopRedemptionActions button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.shopRedemptionActions button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.shopRedemptionFilters button:focus-visible,
+.shopRedemptionTopline a:focus-visible,
+.shopRedemptionActions button:focus-visible {
+  outline: 3px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+.shopRedemptionsError,
+.shopRedemptionsState {
+  margin: 0;
+  padding: var(--space-6);
+}
+
+.shopRedemptionsError {
+  color: var(--color-danger);
+}
+
+@media (max-width: 640px) {
+  .shopRedemptionsHeader,
+  .shopRedemptionFilters,
+  .shopRedemptionList > li {
+    padding-inline: var(--space-4);
+  }
+
+  .shopRedemptionDetails > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-1);
+  }
+
+  .shopRedemptionActions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shopRedemptionActions button {
+    transition-duration: 0.01ms;
+  }
+}

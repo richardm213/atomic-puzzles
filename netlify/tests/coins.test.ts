@@ -290,6 +290,30 @@ describe("coins function", () => {
     });
   });
 
+  it("stores a username-change request with the signed-in buyer", async () => {
+    const rpc = vi.fn(async () => ({
+      data: { balance: 250, redemptionId: 14, status: "pending" },
+      error: null,
+    }));
+    mocks.createClient.mockReturnValue({ rpc });
+
+    const response = await handler({
+      httpMethod: "POST",
+      headers: requestHeaders("Current_Name"),
+      body: JSON.stringify({
+        action: "redeem",
+        itemKey: "username_change",
+        requestedUsername: "New_Name",
+      }),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(rpc).toHaveBeenCalledWith("request_username_change", {
+      p_username: "current_name",
+      p_requested_username: "New_Name",
+    });
+  });
+
   it("stores a structured AtomicDB request for the signed-in user", async () => {
     const rpc = vi.fn(async () => ({
       data: { balance: 300, redemptionId: 12, status: "pending" },
@@ -369,6 +393,32 @@ describe("coins function", () => {
       p_ends_at: endsAt,
       p_reason: "Prize eligibility review",
       p_created_by: "seaside_tiramisu",
+    });
+  });
+
+  it("uses the signed administrator identity when resolving a redemption", async () => {
+    const rpc = vi.fn(async () => ({
+      data: {
+        id: 17,
+        username: "buyer",
+        item_key: "discord_nitro_month",
+        status: "fulfilled",
+      },
+      error: null,
+    }));
+    mocks.createClient.mockReturnValue({ rpc });
+
+    const response = await handler({
+      httpMethod: "POST",
+      headers: requestHeaders("seaside_tiramisu"),
+      body: JSON.stringify({ action: "updateRedemption", id: 17, status: "fulfilled" }),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(rpc).toHaveBeenCalledWith("update_shop_redemption_status", {
+      p_id: 17,
+      p_status: "fulfilled",
+      p_updated_by: "seaside_tiramisu",
     });
   });
 

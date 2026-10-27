@@ -6,6 +6,7 @@ import { announceCoinsEarned } from "./coinEvents";
 export const DAILY_COIN_BONUS = 10;
 
 export type ShopItemKey =
+  | "username_change"
   | "discord_nitro_month"
   | "discord_nitro_year"
   | "flowers_500"
@@ -63,7 +64,7 @@ export type CoinTransaction = {
 
 export type RedemptionHistoryItem = {
   id: number;
-  itemKey: Exclude<ShopItemKey, "atomicdb_analysis_12h">;
+  itemKey: ShopItemKey;
   cost: number;
   status: "pending" | "fulfilled" | "cancelled";
   createdAt: string;
@@ -98,11 +99,13 @@ const redemptionHistorySchema = z.object({
       .object({
         id: z.number(),
         item_key: z.enum([
+          "username_change",
           "discord_nitro_month",
           "discord_nitro_year",
           "flowers_500",
           "lichess_patron_month",
           "next_prize_tournament_format",
+          "atomicdb_analysis_12h",
         ]),
         cost: z.number(),
         status: z.enum(["pending", "fulfilled", "cancelled"]),
@@ -213,7 +216,8 @@ export const claimDailyCoins = async (): Promise<CoinSummary> => {
   if (result.awarded) announceCoinsEarned(result.awarded, "Daily bonus claimed");
   return result;
 };
-export const redeemShopItem = (itemKey: ShopItemKey) => request({ action: "redeem", itemKey });
+export const redeemShopItem = (itemKey: ShopItemKey, requestedUsername?: string) =>
+  request({ action: "redeem", itemKey, ...(requestedUsername ? { requestedUsername } : {}) });
 export const requestAtomicDbAnalysis = (details: AtomicDbAnalysisRequest) =>
   request({ action: "requestAtomicDbAnalysis", ...details });
 

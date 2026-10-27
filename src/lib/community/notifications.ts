@@ -103,6 +103,9 @@ export const notificationCopy = (notification: UserNotification): string => {
     return `${notification.actor_username ?? "Someone"} requested ${notification.coin_amount ?? 0} coins.`;
   }
   if (notification.notification_type === "shop_redemption") {
+    if (notification.shop_item_key === "username_change") {
+      return `${notification.actor_username ?? "Someone"} requested a username change.`;
+    }
     if (notification.shop_item_key === "atomicdb_analysis_12h") {
       return `${notification.actor_username ?? "Someone"} requested a 12-hour AtomicDB opening analysis.`;
     }

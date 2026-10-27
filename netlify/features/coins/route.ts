@@ -19,7 +19,7 @@ const atomicDbPlayerSchema = z
   .min(1)
   .max(50)
   .regex(/^[a-z0-9_-]+$/i, "Invalid Lichess username.");
-const coinBanManager = "seaside_tiramisu";
+const coinAdmin = "seaside_tiramisu";
 const coinBanUsernameSchema = z
   .string()
   .trim()
@@ -58,6 +58,12 @@ const bodySchema = z.discriminatedUnion("action", [
   }),
   z.object({ action: z.literal("claimDaily") }),
   z.object({ action: z.literal("listBans") }),
+  z.object({ action: z.literal("listRedemptions") }),
+  z.object({
+    action: z.literal("updateRedemption"),
+    id: z.number().int().positive(),
+    status: z.enum(["fulfilled", "cancelled"]),
+  }),
   z.object({
     action: z.literal("ban"),
     username: coinBanUsernameSchema,
@@ -77,12 +83,20 @@ const bodySchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("redeem"),
     itemKey: z.enum([
+      "username_change",
       "discord_nitro_month",
       "discord_nitro_year",
       "flowers_500",
       "lichess_patron_month",
       "next_prize_tournament_format",
     ]),
+    requestedUsername: z
+      .string()
+      .trim()
+      .min(3)
+      .max(30)
+      .regex(/^[a-z0-9_-]+$/i, "Use only letters, numbers, underscores, and hyphens.")
+      .optional(),
   }),
   z
     .object({
@@ -177,11 +191,43 @@ export const coinsRoute = async (event: FunctionEvent) => {
       throw new HttpError(503, "Atomic Coins are temporarily unavailable. Please try again.");
     }
   }
-  if (input.action === "listBans" || input.action === "ban" || input.action === "revokeBan") {
-    if (username !== coinBanManager) {
-      throw new HttpError(403, "Coin economy ban management is restricted.");
+  if (
+    input.action === "listBans" ||
+    input.action === "ban" ||
+    input.action === "revokeBan" ||
+    input.action === "listRedemptions" ||
+    input.action === "updateRedemption"
+  ) {
+    if (username !== coinAdmin) {
+      throw new HttpError(403, "Shop administration is restricted.");
     }
     const supabase = createServerSupabase("Atomic Coins service");
+    if (input.action === "listRedemptions") {
+      const { data, error } = await supabase
+        .from("shop_redemptions")
+        .select(
+          "id,username,item_key,cost,status,created_at,fulfilled_at,fulfilled_by,request_details",
+        )
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .limit(500);
+      if (error) throw new Error(`Unable to load shop redemptions: ${error.message}`);
+      return identityResponse(identity, 200, { redemptions: data });
+    }
+    if (input.action === "updateRedemption") {
+      const { data, error } = await supabase.rpc("update_shop_redemption_status", {
+        p_id: input.id,
+        p_status: input.status,
+        p_updated_by: username,
+      });
+      if (error) {
+        if (/pending shop redemption not found/i.test(error.message)) {
+          throw new HttpError(409, "This redemption is no longer pending.");
+        }
+        throw new Error(`Unable to update shop redemption: ${error.message}`);
+      }
+      return identityResponse(identity, 200, { redemption: data });
+    }
     if (input.action === "listBans") {
       const { data, error } = await supabase
         .from("coin_economy_bans")
@@ -241,6 +287,28 @@ export const coinsRoute = async (event: FunctionEvent) => {
     canonicalRecipientUsername = recipientIdentity;
   }
   const supabase = createServerSupabase("Atomic Coins service");
+  if (input.action === "redeem" && input.itemKey === "username_change") {
+    if (!input.requestedUsername) {
+      throw new HttpError(400, "Enter the username you want to request.");
+    }
+    const { data, error } = await supabase.rpc("request_username_change", {
+      p_username: username,
+      p_requested_username: input.requestedUsername,
+    });
+    if (error) {
+      if (/not enough coins/i.test(error.message)) {
+        throw new HttpError(409, "You need 100 coins to request a username change.");
+      }
+      if (/username change already pending/i.test(error.message)) {
+        throw new HttpError(409, "You already have a username change awaiting approval.");
+      }
+      if (/requested username is unchanged/i.test(error.message)) {
+        throw new HttpError(400, "Enter a username different from your current one.");
+      }
+      throw new Error(`Unable to request a username change: ${error.message}`);
+    }
+    return identityResponse(identity, 200, { result: data });
+  }
   const rpc = (() => {
     if (input.action === "summary") {
       return supabase.rpc("get_coin_summary", { p_username: username });
@@ -284,15 +352,17 @@ export const coinsRoute = async (event: FunctionEvent) => {
       const redemptionCost =
         input.action === "requestAtomicDbAnalysis"
           ? 200
-          : input.action === "redeem" && input.itemKey === "discord_nitro_year"
-            ? 4000
-            : input.action === "redeem" && input.itemKey === "discord_nitro_month"
-              ? 400
-              : input.action === "redeem" && input.itemKey === "lichess_patron_month"
-                ? 600
-                : input.action === "redeem" && input.itemKey === "next_prize_tournament_format"
-                  ? 1000
-                  : 500;
+          : input.action === "redeem" && input.itemKey === "username_change"
+            ? 100
+            : input.action === "redeem" && input.itemKey === "discord_nitro_year"
+              ? 4000
+              : input.action === "redeem" && input.itemKey === "discord_nitro_month"
+                ? 400
+                : input.action === "redeem" && input.itemKey === "lichess_patron_month"
+                  ? 600
+                  : input.action === "redeem" && input.itemKey === "next_prize_tournament_format"
+                    ? 1000
+                    : 500;
       throw new HttpError(
         409,
         input.action === "give"

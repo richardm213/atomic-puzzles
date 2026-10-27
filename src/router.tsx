@@ -79,6 +79,10 @@ const CoinEconomyBansPage = lazyRouteComponent(
   () => import("./pages/CoinEconomyBans/CoinEconomyBans"),
   "CoinEconomyBansPage",
 );
+const ShopRedemptionsPage = lazyRouteComponent(
+  () => import("./pages/ShopRedemptions/ShopRedemptions"),
+  "ShopRedemptionsPage",
+);
 const PuzzleMotifsPage = lazyRouteComponent(
   () => import("./pages/PuzzleMotifs/PuzzleMotifs"),
   "PuzzleMotifsPage",
@@ -424,6 +428,12 @@ const coinEconomyBansRoute = createRoute({
   component: CoinEconomyBansPage,
 });
 
+const shopRedemptionsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/shop-redemptions",
+  component: ShopRedemptionsPage,
+});
+
 const legacyPuzzleLeaderboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/solve/leaderboard",
@@ -632,6 +642,7 @@ const routeTree = rootRoute.addChildren([
   puzzleLeaderboardRoute,
   coinRankingsRoute,
   coinEconomyBansRoute,
+  shopRedemptionsRoute,
   legacyPuzzleLeaderboardRoute,
   puzzleMotifsRoute,
   puzzleSubmissionRoute,

@@ -54,6 +54,7 @@ const selectedReasonsFor = (categories: TransactionCategory[]) =>
     .map(([reason]) => reason);
 
 const shopItemLabels: Record<string, string> = {
+  username_change: "a username change",
   atomicdb_analysis_12h: "AtomicDB analysis",
   discord_nitro_month: "Discord Nitro",
   discord_nitro_year: "Discord Nitro",
@@ -94,7 +95,9 @@ const transactionDescription = (transaction: CoinTransaction) => {
   }
   if (transaction.reason === "shop_redemption") {
     const itemKey = metadataString(transaction, "itemKey");
-    return `Purchased ${shopItemLabels[itemKey] ?? "a shop item"}`;
+    return transaction.amount > 0
+      ? `Refunded ${shopItemLabels[itemKey] ?? "a shop item"}`
+      : `Purchased ${shopItemLabels[itemKey] ?? "a shop item"}`;
   }
   if (transaction.reason === "tournament_bet") {
     const selection = metadataString(transaction, "selection");

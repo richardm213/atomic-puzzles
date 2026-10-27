@@ -6,6 +6,7 @@ import {
   faBell,
   faChartLine,
   faChevronDown,
+  faClipboardCheck,
   faGear,
   faMagnifyingGlass,
   faPuzzlePiece,
@@ -982,6 +983,17 @@ export const TopNav = () => {
                   {normalizedAuthUsername === "seaside_tiramisu" ? (
                     <>
                       <div className="navProfileDropdownDivider" role="separator" />
+                      <Link
+                        className="navProfileDropdownItem"
+                        to="/admin/shop-redemptions"
+                        role="menuitem"
+                        onClick={() => setOpenPanel(null)}
+                      >
+                        <span className="navProfileDropdownIcon" aria-hidden="true">
+                          <FontAwesomeIcon icon={faClipboardCheck} />
+                        </span>
+                        Shop redemptions
+                      </Link>
                       <Link
                         className="navProfileDropdownItem"
                         to="/puzzles/review"

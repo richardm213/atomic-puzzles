@@ -2,7 +2,13 @@ import "./Shop.css";
 
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import { faDiscord } from "@fortawesome/free-brands-svg-icons";
-import { faCheck, faCircleInfo, faDatabase, faSitemap } from "@fortawesome/free-solid-svg-icons";
+import {
+  faCheck,
+  faCircleInfo,
+  faDatabase,
+  faSitemap,
+  faUserPen,
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -41,6 +47,14 @@ const shopItems: {
   priceImage: string;
   description?: string;
 }[] = [
+  {
+    key: "username_change",
+    name: "Change username",
+    cost: 100,
+    icon: { kind: "fontawesome", icon: faUserPen },
+    priceImage: "/images/coins/gold-coin-stack-v2.png",
+    description: "Admin approval required",
+  },
   {
     key: "atomicdb_analysis_12h",
     name: "12-hour AtomicDB opening analysis",
@@ -113,6 +127,7 @@ export const ShopPage = () => {
   const redeemDialogRef = useRef<HTMLDialogElement>(null);
   const analysisDialogRef = useRef<HTMLDialogElement>(null);
   const [selectedReward, setSelectedReward] = useState<(typeof shopItems)[number] | null>(null);
+  const [requestedUsername, setRequestedUsername] = useState("");
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const [analysisFocus, setAnalysisFocus] = useState<"higher_eval" | "player_lines">("higher_eval");
   const [openingInputs, setOpeningInputs] = useState([""]);
@@ -136,7 +151,13 @@ export const ShopPage = () => {
   };
   const daily = useMutation({ mutationFn: claimDailyCoins, onSuccess: updateSummary });
   const redeem = useMutation({
-    mutationFn: redeemShopItem,
+    mutationFn: ({
+      itemKey,
+      requestedUsername: requested,
+    }: {
+      itemKey: ShopItemKey;
+      requestedUsername?: string;
+    }) => redeemShopItem(itemKey, requested),
     onSuccess: (data) => {
       updateSummary({ ...data, dailyClaimAvailable: summary.data?.dailyClaimAvailable ?? false });
       void queryClient.invalidateQueries({
@@ -167,14 +188,23 @@ export const ShopPage = () => {
       setAnalysisOpen(true);
       return;
     }
+    setRequestedUsername("");
     setSelectedReward(item);
   };
 
   const closeRedeemDialog = () => setSelectedReward(null);
 
-  const confirmRedemption = () => {
+  const confirmRedemption = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     if (!selectedReward || balance < selectedReward.cost || busy || economyBan) return;
-    redeem.mutate(selectedReward.key);
+    const requested = requestedUsername.trim();
+    if (selectedReward.key === "username_change" && !/^[A-Za-z0-9_-]{3,30}$/.test(requested)) {
+      return;
+    }
+    redeem.mutate({
+      itemKey: selectedReward.key,
+      ...(selectedReward.key === "username_change" ? { requestedUsername: requested } : {}),
+    });
     closeRedeemDialog();
   };
 
@@ -264,20 +294,39 @@ export const ShopPage = () => {
         }}
       >
         {selectedReward ? (
-          <div className="redeemDialogContent">
+          <form className="redeemDialogContent" onSubmit={confirmRedemption}>
             <img src={appAssetPath(selectedReward.priceImage)} alt="" aria-hidden="true" />
             <div className="redeemDialogCopy">
               <h2 id="redeem-dialog-title">Buy {selectedReward.name}?</h2>
+              {selectedReward.key === "username_change" ? (
+                <label className="usernameChangeField">
+                  Requested username
+                  <input
+                    type="text"
+                    required
+                    minLength={3}
+                    maxLength={30}
+                    pattern="[A-Za-z0-9_-]+"
+                    autoComplete="off"
+                    spellCheck={false}
+                    value={requestedUsername}
+                    onChange={(event) => setRequestedUsername(event.target.value)}
+                  />
+                  <small>
+                    Letters, numbers, underscores, and hyphens. An admin will review it.
+                  </small>
+                </label>
+              ) : null}
             </div>
             <div className="redeemDialogActions">
               <button className="redeemDialogCancel" type="button" onClick={closeRedeemDialog}>
                 Cancel
               </button>
-              <button className="redeemDialogConfirm" type="button" onClick={confirmRedemption}>
+              <button className="redeemDialogConfirm" type="submit">
                 Buy for {selectedReward.cost.toLocaleString()}
               </button>
             </div>
-          </div>
+          </form>
         ) : null}
       </dialog>
 
@@ -572,7 +621,7 @@ export const ShopPage = () => {
                   >
                     {item.key === "atomicdb_analysis_12h"
                       ? "Request"
-                      : redeem.isPending && redeem.variables === item.key
+                      : redeem.isPending && redeem.variables?.itemKey === item.key
                         ? "Buying…"
                         : "Buy"}
                   </button>

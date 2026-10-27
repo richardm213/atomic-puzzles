@@ -84,6 +84,40 @@
   line-height: 1.5;
 }
 
+.usernameChangeField {
+  width: 100%;
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+  color: var(--color-heading);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: left;
+}
+
+.usernameChangeField input {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 500;
+}
+
+.usernameChangeField small {
+  color: var(--color-muted);
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.usernameChangeField input:focus-visible {
+  outline: 3px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
 .redeemDialogActions {
   width: 100%;
   display: grid;
