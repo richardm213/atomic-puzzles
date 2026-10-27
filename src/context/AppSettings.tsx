@@ -285,7 +285,7 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
   const [showProfileActionButtons, setShowProfileActionButtons] = usePersistedState(
     STORAGE_KEYS.showProfileActionButtons,
     z.boolean(),
-    false,
+    true,
   );
   const [showPuzzleTimer, setShowPuzzleTimer] = usePersistedState(
     STORAGE_KEYS.showPuzzleTimer,

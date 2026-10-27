@@ -59,15 +59,20 @@ export class CommunityRepository {
 
   async resolveCanonicalTarget(target: CommunityTarget): Promise<CommunityTarget> {
     if (target.type !== "profile") return target;
-    const result = await getArchiveClient().execute({
-      sql: `select p.username from aliases a
-        join players p on p.id=a.player_id where a.alias=? limit 1`,
-      args: [target.id],
-    });
-    const canonical = String(result.rows[0]?.username ?? "")
-      .trim()
-      .toLowerCase();
-    return canonical && canonical.length <= 100 ? { ...target, id: canonical } : target;
+    try {
+      const result = await getArchiveClient().execute({
+        sql: `select p.username from aliases a
+          join players p on p.id=a.player_id where a.alias=? limit 1`,
+        args: [target.id],
+      });
+      const canonical = String(result.rows[0]?.username ?? "")
+        .trim()
+        .toLowerCase();
+      return canonical && canonical.length <= 100 ? { ...target, id: canonical } : target;
+    } catch {
+      // Comments should remain available when the optional alias lookup is unavailable.
+      return target;
+    }
   }
 
   async listCommentVotes(username: string, from: number, pageSize: number) {

@@ -35,6 +35,7 @@ import {
   pageSizeOptions,
 } from "../../constants/matches";
 import { useAppSettings } from "../../context/AppSettings";
+import { useAuth } from "../../context/AuthContext";
 import type { RankHistoryMode } from "../../features/profile/favoriteOpponents";
 import { FavoriteOpponentsSection } from "../../features/profile/FavoriteOpponentsSection";
 import { isClientSidePagedSearch } from "../../features/profile/profileFilters";
@@ -93,6 +94,7 @@ import {
   getAliasIdentityUsernames,
 } from "../../lib/archive/aliases";
 import { atomicTourPlayerRankingStatsQueryOptions } from "../../lib/atomicTour/queries";
+import { communityDiscussionQueryOptions } from "../../lib/community/communityQueries";
 import { getTimeControlOptions } from "../../lib/matches/collection";
 import { inferExternalGameSource } from "../../lib/matches/routes";
 import { puzzleRankingTrophiesQueryOptions } from "../../lib/puzzles/puzzleQueries";
@@ -151,6 +153,7 @@ export const PlayerProfilePage = ({
   historyOnly?: boolean;
 }) => {
   const queryClient = useQueryClient();
+  const { isAuthenticated, user } = useAuth();
   const { showWolfrandomProfileRatings, showProfileActionButtons } = useAppSettings();
   const normalizedUsername = useMemo(() => normalizeUsername(username), [username]);
   const [matchHistoryMode, setMatchHistoryMode] = useState<ProfileMatchHistoryMode>("all");
@@ -237,6 +240,14 @@ export const PlayerProfilePage = ({
   });
   const coinGiftRecipientUsername = coinGiftAccountQuery.data ?? null;
   const profileDisplayUsername = String(username || "").trim() || canonicalUsername;
+  const profileDiscussionQuery = useQuery({
+    ...communityDiscussionQueryOptions(
+      { type: "profile", id: canonicalUsername },
+      isAuthenticated ? (user?.username ?? "authenticated") : "anonymous",
+    ),
+    enabled: !historyOnly && aliasesLoaded && Boolean(canonicalUsername),
+  });
+  const profileCommentCount = profileDiscussionQuery.data?.comments.length ?? 0;
   const {
     matchFiltersOpen,
     toggleMatchFilters,
@@ -771,6 +782,16 @@ export const PlayerProfilePage = ({
       >
         <FontAwesomeIcon icon={faCommentDots} aria-hidden="true" />
         Comments
+        <span
+          className="profileActionCount"
+          aria-label={
+            profileDiscussionQuery.isPending
+              ? "Loading comment count"
+              : `${profileCommentCount} ${profileCommentCount === 1 ? "comment" : "comments"}`
+          }
+        >
+          {profileDiscussionQuery.isPending ? "…" : profileCommentCount}
+        </span>
       </Link>
       {!isExcluded && puzzleDashboardUsername ? (
         <Link to="/@/$username/puzzles" params={{ username: puzzleDashboardUsername }}>

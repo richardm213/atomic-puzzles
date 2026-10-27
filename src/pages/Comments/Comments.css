@@ -96,28 +96,24 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 14px;
-  padding: 10px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: 9px;
-  background: color-mix(in srgb, var(--color-panel-strong) 72%, transparent);
+  margin-bottom: 0;
+  padding: 0 4px 12px;
+  border-bottom: 1px solid var(--color-border);
   color: var(--color-subtle);
   font-size: 12px;
   font-weight: 700;
 }
 
 .siteCommentList {
-  gap: 11px;
+  gap: 0;
 }
 
 .siteCommentCard {
   display: grid;
   grid-template-columns: 38px minmax(0, 1fr);
   gap: 14px;
-  padding: 14px 16px 14px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--color-panel-strong) 74%, transparent);
+  padding: 16px 4px;
+  border-bottom: 1px solid var(--color-border);
   transition:
     border-color 140ms ease,
     background-color 140ms ease;
@@ -153,8 +149,7 @@
 }
 
 .siteCommentCard:hover {
-  border-color: color-mix(in srgb, var(--color-primary) 38%, var(--color-border));
-  background: var(--color-surface-elevated-strong);
+  background: color-mix(in srgb, var(--color-panel-strong) 42%, transparent);
 }
 
 .siteCommentMeta {

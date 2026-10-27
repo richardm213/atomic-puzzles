@@ -179,20 +179,20 @@ describe("profile rating preference", () => {
     });
   });
 
-  it("uses the action menu by default and persists the inline-button preference", async () => {
+  it("shows action buttons by default and persists the compact-menu preference", async () => {
     render(
       <AppSettingsProvider>
         <ProfileRatingSetting />
       </AppSettingsProvider>,
     );
 
-    const toggle = screen.getByRole("button", { name: "Action menu" });
+    const toggle = screen.getByRole("button", { name: "Action buttons" });
     fireEvent.click(toggle);
 
     await waitFor(() => {
-      expect(toggle).toHaveTextContent("Action buttons");
+      expect(toggle).toHaveTextContent("Action menu");
       expect(window.localStorage.getItem("atomic-puzzles.profile.show-action-buttons")).toBe(
-        "true",
+        "false",
       );
     });
   });
