@@ -36,6 +36,10 @@ const coinTransactionReasons = [
   "tournament_bet",
   "tournament_bet_payout",
   "tournament_bet_refund",
+  "prediction_order_reserve",
+  "prediction_order_refund",
+  "prediction_trade_credit",
+  "prediction_market_payout",
 ] as const;
 const coinTransactionReasonSchema = z.enum(coinTransactionReasons);
 
@@ -162,7 +166,13 @@ export const coinsRoute = async (event: FunctionEvent) => {
     if (error) throw new Error(`Unable to load coin transactions: ${error.message}`);
     return identityResponse(identity, 200, { result: data });
   }
-  const username = requireUsername(identity, "Log in with Lichess to use Atomic Coins.");
+  const sessionUsername = requireUsername(identity, "Log in with Lichess to use Atomic Coins.");
+  let username: string;
+  try {
+    username = await resolveCanonicalArchiveUsername(sessionUsername);
+  } catch {
+    throw new HttpError(503, "Atomic Coins are temporarily unavailable. Please try again.");
+  }
   if (input.action === "listBans" || input.action === "ban" || input.action === "revokeBan") {
     if (username !== coinBanManager) {
       throw new HttpError(403, "Coin economy ban management is restricted.");
@@ -215,17 +225,13 @@ export const coinsRoute = async (event: FunctionEvent) => {
   }
   let canonicalRecipientUsername = input.action === "give" ? input.recipientUsername : "";
   if (input.action === "give") {
-    let senderIdentity: string;
     let recipientIdentity: string;
     try {
-      [senderIdentity, recipientIdentity] = await Promise.all([
-        resolveCanonicalArchiveUsername(username),
-        resolveCanonicalArchiveUsername(input.recipientUsername),
-      ]);
+      recipientIdentity = await resolveCanonicalArchiveUsername(input.recipientUsername);
     } catch {
       throw new HttpError(503, "Coin gifts are temporarily unavailable. Please try again.");
     }
-    if (senderIdentity && senderIdentity === recipientIdentity) {
+    if (username && username === recipientIdentity) {
       throw new HttpError(409, "You can’t gift coins between aliases of the same player.");
     }
     canonicalRecipientUsername = recipientIdentity;

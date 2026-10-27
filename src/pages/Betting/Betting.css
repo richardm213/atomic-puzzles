@@ -246,6 +246,80 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+.bettingExchangeCard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 24px;
+  align-items: center;
+  min-height: 82px;
+  padding: 16px 18px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+  color: var(--color-text);
+  text-decoration: none;
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    transform 120ms ease;
+}
+
+.bettingExchangeCard:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 64%, var(--color-border));
+  background: var(--color-surface-elevated-strong);
+}
+
+.bettingExchangeCard:active {
+  transform: translateY(1px);
+}
+
+.bettingExchangeCard:focus-visible {
+  outline: 3px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+.bettingExchangeQuestion {
+  display: grid;
+  gap: 5px;
+}
+
+.bettingExchangeQuestion strong {
+  color: var(--color-heading);
+  font-size: 16px;
+}
+
+.bettingExchangeQuestion small {
+  color: var(--color-muted);
+}
+
+.bettingExchangePrices {
+  display: flex;
+  gap: 8px;
+}
+
+.bettingExchangePrices > span {
+  display: grid;
+  gap: 2px;
+  min-width: 68px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.bettingExchangePrices strong {
+  color: var(--color-heading);
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.bettingExchangeAction {
+  color: var(--color-primary-pale);
+  font-weight: 800;
+}
+
 .bettingMarketDeadline {
   display: flex;
   align-items: baseline;
@@ -1269,6 +1343,16 @@
   .marketSuggestions {
     grid-template-columns: 1fr;
   }
+
+  .bettingExchangeCard {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-3);
+  }
+
+  .bettingExchangePrices {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
 }
 
 @media (max-width: 540px) {
@@ -1314,6 +1398,10 @@
   .marketSuggestionOutcomeField {
     grid-template-columns: minmax(0, 1fr) 78px auto;
   }
+
+  .bettingExchangeAction {
+    align-self: start;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1330,6 +1418,10 @@
   .marketSuggestionSubmit,
   .marketSuggestionLogin button,
   .marketSuggestionVotes button {
+    transition-duration: 0.01ms;
+  }
+
+  .bettingExchangeCard {
     transition-duration: 0.01ms;
   }
 }

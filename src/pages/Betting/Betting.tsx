@@ -37,6 +37,7 @@ import {
 import { formatCoinBalance } from "../../lib/coins/coinDisplay";
 import { coinQueryKeys, coinSummaryQueryOptions } from "../../lib/coins/coinQueries";
 import { tournamentPlayerCountriesQueryOptions } from "../../lib/matches/tournamentQueries";
+import { predictionMarketQueryOptions } from "../../lib/predictionMarkets/predictionMarketQueries";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { countryCodeToFlagUrl } from "../../utils/countryFlags";
 import { formatLocalDateTime } from "../../utils/formatters";
@@ -363,6 +364,10 @@ export const BettingPage = () => {
     enabled: isAuthenticated,
   });
   const countriesQuery = useQuery(tournamentPlayerCountriesQueryOptions());
+  const predictionMarketQuery = useQuery({
+    ...predictionMarketQueryOptions(),
+    enabled: marketCategory === "Banned",
+  });
   const countryByPlayer = countriesQuery.data ?? {};
   const markets = useMemo(() => marketsQuery.data ?? [], [marketsQuery.data]);
   const openMarkets = useMemo(
@@ -392,6 +397,20 @@ export const BettingPage = () => {
   const showWinnerPositionToggle =
     marketCategory === "AWC Champion" &&
     openMarkets.some((market) => market.id === winnerNoMarketId);
+  const natsoMarketPrices = useMemo(() => {
+    const state = predictionMarketQuery.data;
+    const priceFor = (outcome: "yes" | "no") => {
+      if (!state) return 50;
+      const latest = state.fills.find((fill) => fill.outcome === outcome)?.priceCents;
+      if (latest !== undefined) return latest;
+      const bestBid = state.book[outcome].bids[0]?.priceCents;
+      const bestAsk = state.book[outcome].asks[0]?.priceCents;
+      if (bestBid !== undefined && bestAsk !== undefined)
+        return Math.round((bestBid + bestAsk) / 2);
+      return bestBid ?? bestAsk ?? 50;
+    };
+    return { yes: priceFor("yes"), no: priceFor("no") };
+  }, [predictionMarketQuery.data]);
   const demoSelfPlayer =
     demoState === "self" ? visibleMarkets[0]?.outcomes[0]?.player.toLowerCase() : undefined;
   const demoLimitPlayer =
@@ -675,6 +694,7 @@ export const BettingPage = () => {
               >
                 View bracket
               </Link>
+              <Link to="/betting/natso-ban-2026">Natso order book</Link>
             </nav>
           </div>
           {isAuthenticated ? (
@@ -777,6 +797,26 @@ export const BettingPage = () => {
                     Example: the {visibleMarkets[0]?.outcomes[0]?.player} position already uses 50%
                     of this user’s net worth. Other outcomes remain available.
                   </InlineState>
+                ) : null}
+                {marketCategory === "Banned" ? (
+                  <section className="bettingMarketGroup">
+                    <h2>Natso</h2>
+                    <Link className="bettingExchangeCard" to="/betting/natso-ban-2026">
+                      <span className="bettingExchangeQuestion">
+                        <strong>Will natso be banned by Dec 31?</strong>
+                        <small>Order book · no fees</small>
+                      </span>
+                      <span className="bettingExchangePrices" aria-label="Latest prices">
+                        <span>
+                          Yes <strong>{natsoMarketPrices.yes}¢</strong>
+                        </span>
+                        <span>
+                          No <strong>{natsoMarketPrices.no}¢</strong>
+                        </span>
+                      </span>
+                      <span className="bettingExchangeAction">Trade →</span>
+                    </Link>
+                  </section>
                 ) : null}
                 {marketGroups.length ? (
                   marketGroups.map(([roundName, roundMarkets]) => (

@@ -41,6 +41,10 @@ const reasonCategory: Record<CoinTransactionReason, TransactionCategory> = {
   tournament_bet: "bets",
   tournament_bet_payout: "bets",
   tournament_bet_refund: "bets",
+  prediction_order_reserve: "bets",
+  prediction_order_refund: "bets",
+  prediction_trade_credit: "bets",
+  prediction_market_payout: "bets",
 };
 
 const selectedReasonsFor = (categories: TransactionCategory[]) =>
@@ -101,6 +105,18 @@ const transactionDescription = (transaction: CoinTransaction) => {
   }
   if (transaction.reason === "tournament_bet_refund") {
     return "Tournament bet refunded";
+  }
+  if (transaction.reason === "prediction_order_reserve") {
+    return "Reserved coins for a prediction order";
+  }
+  if (transaction.reason === "prediction_order_refund") {
+    return "Prediction order refund";
+  }
+  if (transaction.reason === "prediction_trade_credit") {
+    return "Sold prediction contracts";
+  }
+  if (transaction.reason === "prediction_market_payout") {
+    return "Prediction market payout";
   }
   return "Claimed daily bonus";
 };

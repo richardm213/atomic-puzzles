@@ -43,6 +43,10 @@ export const coinTransactionReasons = [
   "tournament_bet",
   "tournament_bet_payout",
   "tournament_bet_refund",
+  "prediction_order_reserve",
+  "prediction_order_refund",
+  "prediction_trade_credit",
+  "prediction_market_payout",
 ] as const;
 
 export type CoinTransactionReason = (typeof coinTransactionReasons)[number];

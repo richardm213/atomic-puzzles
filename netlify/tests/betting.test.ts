@@ -286,4 +286,32 @@ describe("betting function", () => {
     expect(response.statusCode).toBe(409);
     expect(JSON.parse(response.body).error).toBe("Betting has closed for this market.");
   });
+
+  it("places exchange orders under the authenticated username", async () => {
+    const rpc = vi.fn(async () => ({ data: { orderId: 41, balance: 92.5 }, error: null }));
+    mocks.createClient.mockReturnValue({ rpc });
+
+    const response = await handler({
+      httpMethod: "POST",
+      headers: requestHeaders("Market_User"),
+      body: JSON.stringify({
+        action: "placeExchangeOrder",
+        marketId: "natso-ban-2026",
+        outcome: "yes",
+        side: "buy",
+        priceCents: 75,
+        quantity: 10,
+      }),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(rpc).toHaveBeenCalledWith("place_prediction_order", {
+      p_username: "market_user",
+      p_market_id: "natso-ban-2026",
+      p_outcome: "yes",
+      p_side: "buy",
+      p_price_cents: 75,
+      p_quantity: 10,
+    });
+  });
 });

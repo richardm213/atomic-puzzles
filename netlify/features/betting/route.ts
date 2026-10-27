@@ -21,6 +21,20 @@ const bodySchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("bets") }),
   z.object({ action: z.literal("allBets") }),
   z.object({ action: z.literal("suggestions") }),
+  z.object({ action: z.literal("exchangeMarket"), marketId: z.literal("natso-ban-2026") }),
+  z.object({
+    action: z.literal("placeExchangeOrder"),
+    marketId: z.literal("natso-ban-2026"),
+    outcome: z.enum(["yes", "no"]),
+    side: z.enum(["buy", "sell"]),
+    priceCents: z.number().int().min(1).max(99),
+    quantity: z.number().int().min(1).max(10_000),
+  }),
+  z.object({
+    action: z.literal("cancelExchangeOrder"),
+    marketId: z.literal("natso-ban-2026"),
+    orderId: z.number().int().positive(),
+  }),
   z.object({
     action: z.literal("suggest"),
     question: z.string().trim().min(8).max(160),
@@ -127,14 +141,101 @@ const presentSuggestion = (row: SuggestionRow, currentUsername?: string | null) 
 
 export const bettingRoute = async (event: FunctionEvent) => {
   const input = parseJsonBody(event, bodySchema, "Invalid betting request.");
-  if (["place", "suggest", "voteSuggestion"].includes(input.action)) {
+  if (
+    ["place", "suggest", "voteSuggestion", "placeExchangeOrder", "cancelExchangeOrder"].includes(
+      input.action,
+    )
+  ) {
     requireSameOrigin(event.headers, "Cross-site betting requests are not allowed.");
   }
   const identity = await authenticateRequest(
     event.headers,
-    input.action === "markets" || input.action === "allBets" || input.action === "suggestions",
+    input.action === "markets" ||
+      input.action === "allBets" ||
+      input.action === "suggestions" ||
+      input.action === "exchangeMarket",
   );
   const supabase = createServerSupabase("Tournament betting service");
+
+  if (input.action === "exchangeMarket") {
+    const [marketResult, ordersResult, fillsResult] = await Promise.all([
+      supabase
+        .from("prediction_markets")
+        .select("id,question,resolution_rules,resolution_source_url,closes_at,status,outcome")
+        .eq("id", input.marketId)
+        .maybeSingle(),
+      supabase
+        .from("prediction_orders")
+        .select(
+          "id,username,outcome,side,price_cents,quantity,filled_quantity,remaining_quantity,status,created_at,updated_at",
+        )
+        .eq("market_id", input.marketId)
+        .order("created_at", { ascending: false })
+        .limit(500),
+      supabase
+        .from("prediction_fills")
+        .select("id,outcome,price_cents,quantity,created_at")
+        .eq("market_id", input.marketId)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .limit(100),
+    ]);
+    if (marketResult.error)
+      throw new Error(`Unable to load prediction market: ${marketResult.error.message}`);
+    if (!marketResult.data) throw new HttpError(404, "That prediction market does not exist.");
+    if (ordersResult.error)
+      throw new Error(`Unable to load prediction orders: ${ordersResult.error.message}`);
+    if (fillsResult.error)
+      throw new Error(`Unable to load prediction fills: ${fillsResult.error.message}`);
+
+    const username = identity?.username ?? null;
+    const orders = ordersResult.data ?? [];
+    const levelsFor = (outcome: "yes" | "no", side: "buy" | "sell") => {
+      const levels = new Map<number, number>();
+      orders
+        .filter(
+          (order) =>
+            order.outcome === outcome &&
+            order.side === side &&
+            ["open", "partial"].includes(order.status) &&
+            order.remaining_quantity > 0,
+        )
+        .forEach((order) =>
+          levels.set(
+            order.price_cents,
+            (levels.get(order.price_cents) ?? 0) + order.remaining_quantity,
+          ),
+        );
+      return Array.from(levels, ([priceCents, quantity]) => ({ priceCents, quantity })).sort(
+        (a, b) => (side === "buy" ? b.priceCents - a.priceCents : a.priceCents - b.priceCents),
+      );
+    };
+
+    let positions: unknown[] = [];
+    if (username) {
+      const positionsResult = await supabase
+        .from("prediction_positions")
+        .select("outcome,quantity,reserved_quantity,updated_at")
+        .eq("market_id", input.marketId)
+        .eq("username", username);
+      if (positionsResult.error)
+        throw new Error(`Unable to load prediction positions: ${positionsResult.error.message}`);
+      positions = positionsResult.data ?? [];
+    }
+
+    return identityResponse(identity, 200, {
+      result: {
+        market: marketResult.data,
+        book: {
+          yes: { bids: levelsFor("yes", "buy"), asks: levelsFor("yes", "sell") },
+          no: { bids: levelsFor("no", "buy"), asks: levelsFor("no", "sell") },
+        },
+        fills: fillsResult.data ?? [],
+        positions,
+        orders: username ? orders.filter((order) => order.username === username) : [],
+      },
+    });
+  }
 
   if (input.action === "markets") {
     const { data, error } = await supabase
@@ -174,6 +275,41 @@ export const bettingRoute = async (event: FunctionEvent) => {
   }
 
   const username = requireUsername(identity, "Log in with Lichess to use Atomic Coins for bets.");
+  if (input.action === "placeExchangeOrder") {
+    const { data, error } = await supabase.rpc("place_prediction_order", {
+      p_username: username,
+      p_market_id: input.marketId,
+      p_outcome: input.outcome,
+      p_side: input.side,
+      p_price_cents: input.priceCents,
+      p_quantity: input.quantity,
+    });
+    if (error) {
+      if (/not enough coins/i.test(error.message))
+        throw new HttpError(409, "You don’t have enough available Atomic Coins.");
+      if (/not enough available contracts/i.test(error.message))
+        throw new HttpError(409, "You don’t have enough available contracts to sell.");
+      if (/closed/i.test(error.message)) throw new HttpError(409, "This market is closed.");
+      throw new Error(`Unable to place prediction order: ${error.message}`);
+    }
+    return identityResponse(identity, 200, { result: data });
+  }
+
+  if (input.action === "cancelExchangeOrder") {
+    const { data, error } = await supabase.rpc("cancel_prediction_order", {
+      p_username: username,
+      p_order_id: input.orderId,
+    });
+    if (error) {
+      if (/not found/i.test(error.message))
+        throw new HttpError(404, "That open order was not found.");
+      if (/not open/i.test(error.message))
+        throw new HttpError(409, "That order is no longer open.");
+      throw new Error(`Unable to cancel prediction order: ${error.message}`);
+    }
+    return identityResponse(identity, 200, { result: data });
+  }
+
   if (input.action === "bets") {
     const { data, error } = await supabase
       .from("tournament_bets")
