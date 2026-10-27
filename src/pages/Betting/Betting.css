@@ -809,6 +809,22 @@
   object-fit: cover;
 }
 
+.betHistoryPlayer--prediction > span {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  border-radius: 999px;
+  background: var(--color-muted);
+}
+
+.betHistoryPlayer--yes > span {
+  background: var(--color-success);
+}
+
+.betHistoryPlayer--no > span {
+  background: var(--color-danger);
+}
+
 .betHistoryPlayer strong {
   min-width: 0;
   flex: 1;
@@ -859,6 +875,18 @@
   color: var(--link-hover-color);
 }
 
+.betHistoryBettor > small {
+  display: block;
+  margin-top: 3px;
+  color: var(--color-subtle);
+  font-size: var(--text-sm);
+}
+
+.betHistoryBettor > small a {
+  display: inline;
+  font: inherit;
+}
+
 .betHistoryNumber {
   font-variant-numeric: tabular-nums;
 }
@@ -873,6 +901,11 @@
   font-size: 1rem;
   font-weight: 820;
   line-height: 1.2;
+}
+
+.betHistoryPriceSuffix {
+  display: inline;
+  font-family: Arial, sans-serif;
 }
 
 .betHistoryNumber small {

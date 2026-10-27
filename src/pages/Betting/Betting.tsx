@@ -38,6 +38,7 @@ import { formatCoinBalance } from "../../lib/coins/coinDisplay";
 import { coinQueryKeys, coinSummaryQueryOptions } from "../../lib/coins/coinQueries";
 import { tournamentPlayerCountriesQueryOptions } from "../../lib/matches/tournamentQueries";
 import { predictionMarketQueryOptions } from "../../lib/predictionMarkets/predictionMarketQueries";
+import { NATSO_BAN_MARKET_ID } from "../../lib/predictionMarkets/predictionMarkets";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { countryCodeToFlagUrl } from "../../utils/countryFlags";
 import { formatLocalDateTime } from "../../utils/formatters";
@@ -46,6 +47,10 @@ type BettingView = "markets" | "mine" | "all" | "suggestions";
 type WinnerPosition = "yes" | "no";
 type Selection = { marketId: string; player: string };
 type SuggestionDraftOutcome = { label: string; odds: string };
+type BetHistoryEntry = TournamentBet & {
+  kind?: "prediction";
+  counterpartyUsername?: string | null;
+};
 
 const bettingViews: readonly BettingView[] = ["markets", "mine", "all", "suggestions"];
 const defaultMarketCategory = "AWC Round of 16";
@@ -237,7 +242,7 @@ const BetHistory = ({
   emptyMessage,
   showUsername = false,
 }: {
-  bets: TournamentBet[];
+  bets: BetHistoryEntry[];
   markets: BettingMarket[];
   countryByPlayer: Record<string, string>;
   emptyMessage: string;
@@ -260,28 +265,43 @@ const BetHistory = ({
         </thead>
         <tbody>
           {bets.map((bet) => {
+            const isPredictionBet = bet.kind === "prediction";
             const market = marketForBet(markets, bet);
-            const historyContext =
-              market?.marketKind === "outright" ? "" : (market?.roundName ?? "AWC 2026");
+            const historyContext = isPredictionBet
+              ? "Natso ban market"
+              : market?.marketKind === "outright"
+                ? ""
+                : (market?.roundName ?? "AWC 2026");
             const countryCode = countryByPlayer[bet.selection.toLowerCase()] ?? "";
             const payout = bet.status === "open" ? bet.potentialPayout : bet.payout;
             return (
-              <tr key={bet.id}>
+              <tr key={`${bet.kind ?? "tournament"}-${bet.id}`}>
                 <th className="betHistorySelection" scope="row">
-                  <span className="betHistoryPlayer">
-                    <img
-                      src={countryCodeToFlagUrl(countryCode)}
-                      alt={countryCode ? `${countryCode} flag` : "Country unavailable"}
-                      crossOrigin="anonymous"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                    <strong>
-                      <BetHistoryUsername username={bet.selection} />
-                    </strong>
-                  </span>
+                  {isPredictionBet ? (
+                    <span
+                      className={`betHistoryPlayer betHistoryPlayer--prediction betHistoryPlayer--${bet.selection}`}
+                    >
+                      <span aria-hidden="true" />
+                      <strong>{bet.selection === "yes" ? "Yes" : "No"}</strong>
+                    </span>
+                  ) : (
+                    <span className="betHistoryPlayer">
+                      <img
+                        src={countryCodeToFlagUrl(countryCode)}
+                        alt={countryCode ? `${countryCode} flag` : "Country unavailable"}
+                        crossOrigin="anonymous"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                      <strong>
+                        <BetHistoryUsername username={bet.selection} />
+                      </strong>
+                    </span>
+                  )}
                   <span className="betHistoryMarket">
-                    {market?.label || bet.marketId}
+                    {isPredictionBet
+                      ? "Will natso be banned by Dec 31?"
+                      : market?.label || bet.marketId}
                     {historyContext ? <small> · {abbreviateBetRound(historyContext)}</small> : null}
                   </span>
                 </th>
@@ -290,10 +310,21 @@ const BetHistory = ({
                     <Link to="/@/$username" params={{ username: bet.username }}>
                       <BetHistoryUsername username={bet.username} />
                     </Link>
+                    {isPredictionBet && bet.counterpartyUsername ? (
+                      <small>
+                        with{" "}
+                        <Link to="/@/$username" params={{ username: bet.counterpartyUsername }}>
+                          <BetHistoryUsername username={bet.counterpartyUsername} />
+                        </Link>
+                      </small>
+                    ) : null}
                   </td>
                 ) : null}
                 <td className="betHistoryNumber" data-label="Price">
-                  <strong>{bet.priceCents}%</strong>
+                  <strong>
+                    {bet.priceCents}
+                    <span className="betHistoryPriceSuffix">{isPredictionBet ? "¢" : "%"}</span>
+                  </strong>
                 </td>
                 <td className="betHistoryNumber" data-label="Cost">
                   <strong>{formatBetCoins(bet.totalCost)}</strong>
@@ -365,13 +396,52 @@ export const BettingPage = () => {
   const countriesQuery = useQuery(tournamentPlayerCountriesQueryOptions());
   const predictionMarketQuery = useQuery({
     ...predictionMarketQueryOptions(),
-    enabled: marketCategory === "Banned",
+    enabled: marketCategory === "Banned" || view === "all",
   });
   const countryByPlayer = countriesQuery.data ?? {};
   const markets = useMemo(() => marketsQuery.data ?? [], [marketsQuery.data]);
+  const allHistoryBets = useMemo<BetHistoryEntry[]>(() => {
+    const tournamentBets = previewSettledBetStatuses(
+      allBetsQuery.data ?? [],
+      import.meta.env.DEV && demoState === "statuses",
+    );
+    const predictionState = predictionMarketQuery.data;
+    const predictionBets = (predictionState?.fills ?? []).map((fill): BetHistoryEntry => {
+      const totalCost = Math.round(fill.priceCents * fill.quantity * 10_000) / 1_000_000;
+      const resolvedOutcome = predictionState?.market.outcome;
+      const status: TournamentBet["status"] =
+        predictionState?.market.status === "refunded"
+          ? "refunded"
+          : predictionState?.market.status === "resolved"
+            ? resolvedOutcome === fill.outcome
+              ? "won"
+              : "lost"
+            : "open";
+      return {
+        id: fill.id,
+        marketId: NATSO_BAN_MARKET_ID,
+        username: fill.buyerUsername,
+        selection: fill.outcome,
+        priceCents: fill.priceCents,
+        stake: totalCost,
+        fee: 0,
+        totalCost,
+        potentialPayout: fill.quantity,
+        status,
+        payout: status === "won" ? fill.quantity : status === "refunded" ? totalCost : 0,
+        placedAt: fill.createdAt,
+        settledAt: status === "open" ? null : fill.createdAt,
+        kind: "prediction",
+        counterpartyUsername: fill.sellerUsername,
+      };
+    });
+    return [...tournamentBets, ...predictionBets].sort(
+      (left, right) => Date.parse(right.placedAt) - Date.parse(left.placedAt),
+    );
+  }, [allBetsQuery.data, demoState, predictionMarketQuery.data]);
   const pendingBetCount = useMemo(
-    () => (allBetsQuery.data ?? []).filter((bet) => bet.status === "open").length,
-    [allBetsQuery.data],
+    () => allHistoryBets.filter((bet) => bet.status === "open").length,
+    [allHistoryBets],
   );
   const openMarkets = useMemo(
     () => markets.filter((market) => marketAcceptsBets(market, currentTime)),
@@ -807,13 +877,19 @@ export const BettingPage = () => {
                         <span>
                           Yes
                           {natsoAskPrices.yes === undefined ? null : (
-                            <strong>{natsoAskPrices.yes}¢</strong>
+                            <strong>
+                              {natsoAskPrices.yes}
+                              <span className="betHistoryPriceSuffix">¢</span>
+                            </strong>
                           )}
                         </span>
                         <span>
                           No
                           {natsoAskPrices.no === undefined ? null : (
-                            <strong>{natsoAskPrices.no}¢</strong>
+                            <strong>
+                              {natsoAskPrices.no}
+                              <span className="betHistoryPriceSuffix">¢</span>
+                            </strong>
                           )}
                         </span>
                       </span>
@@ -1277,10 +1353,7 @@ export const BettingPage = () => {
               <RouteLoadingFallback />
             ) : (
               <BetHistory
-                bets={previewSettledBetStatuses(
-                  allBetsQuery.data ?? [],
-                  import.meta.env.DEV && demoState === "statuses",
-                )}
+                bets={allHistoryBets}
                 markets={markets}
                 countryByPlayer={countryByPlayer}
                 emptyMessage="No bets have been placed yet."

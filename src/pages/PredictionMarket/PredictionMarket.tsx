@@ -2,7 +2,7 @@ import "./PredictionMarket.css";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import type { FormEvent } from "react";
+import type { CSSProperties, FormEvent } from "react";
 import { useMemo, useState } from "react";
 
 import { InlineState } from "../../components/InlineState/InlineState";
@@ -30,7 +30,7 @@ const Price = ({ cents }: { cents: number }) => (
   <span className="predictionPrice" aria-label={`${cents} cents`}>
     <span aria-hidden="true">{cents}</span>
     <span className="predictionPriceCent" aria-hidden="true">
-      c
+      ¢
     </span>
   </span>
 );
@@ -227,7 +227,9 @@ export const PredictionMarketPage = () => {
                               </>
                             ) : null}
                           </span>
-                          <time dateTime={fill.createdAt}>{formatLocalDateTime(fill.createdAt)}</time>
+                          <time dateTime={fill.createdAt}>
+                            {formatLocalDateTime(fill.createdAt)}
+                          </time>
                         </div>
                       ))}
                     </div>
@@ -437,21 +439,26 @@ const VerticalOrderBook = ({
     onSelect: (price: number) => void,
   ) =>
     levels.length ? (
-      levels.map((level) => (
-        <button
-          type="button"
-          className={`predictionBookLevel predictionBookLevel--${tone}`}
-          aria-label={`${tone === "ask" ? "Ask" : "Bid"} ${money(level.priceCents)}, ${level.quantity.toLocaleString()} contracts`}
-          onClick={() => onSelect(level.priceCents)}
-          key={`${tone}-${level.priceCents}`}
-        >
-          <strong>
-            <Price cents={level.priceCents} />
-          </strong>
-          <span>{tone === "ask" ? "Ask" : "Bid"}</span>
-          <b>{level.quantity.toLocaleString()}</b>
-        </button>
-      ))
+      levels.map((level) => {
+        const largestLevel = Math.max(...levels.map((entry) => entry.quantity));
+        const depth = largestLevel > 0 ? Math.max(8, (level.quantity / largestLevel) * 100) : 0;
+        return (
+          <button
+            type="button"
+            className={`predictionBookLevel predictionBookLevel--${tone}`}
+            style={{ "--prediction-book-depth": `${depth}%` } as CSSProperties}
+            aria-label={`${tone === "ask" ? "Ask" : "Bid"} ${money(level.priceCents)}, ${level.quantity.toLocaleString()} contracts`}
+            onClick={() => onSelect(level.priceCents)}
+            key={`${tone}-${level.priceCents}`}
+          >
+            <strong>
+              <Price cents={level.priceCents} />
+            </strong>
+            <span>{tone === "ask" ? "Ask" : "Bid"}</span>
+            <b>{level.quantity.toLocaleString()}</b>
+          </button>
+        );
+      })
     ) : (
       <p className="predictionBookEmpty">No {tone}s</p>
     );
