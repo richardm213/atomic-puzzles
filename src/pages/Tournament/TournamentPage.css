@@ -934,6 +934,19 @@
   flex: 1 1 auto;
 }
 
+.tournamentLoserSource {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  font-style: italic;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .tournamentMatchPlayers strong {
   justify-self: end;
   min-width: 3.2ch;

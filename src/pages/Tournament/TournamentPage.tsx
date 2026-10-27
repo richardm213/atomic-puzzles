@@ -43,6 +43,7 @@ import {
   clampZoom,
   COLUMN_GAP,
   DEFAULT_STAGE_ZOOM,
+  getRoundShortLabel,
   getStageRoundShortLabel,
   getStageStartRound,
   getStageTrophyMatchId,
@@ -92,6 +93,11 @@ type TournamentEntryMarker = {
   description: string;
 };
 
+type LoserSource = {
+  label: string;
+  loserName: string;
+};
+
 const tournamentHeading = (bracket: TournamentBracket): string => {
   if (bracket.headingTitle) return bracket.headingTitle;
   return `${bracket.seriesName} ${bracket.year}`;
@@ -100,6 +106,12 @@ const winnerName = (match: TournamentMatch): string => {
   if (match.s1 > match.s2) return match.p1;
   if (match.s2 > match.s1) return match.p2;
   return "Draw";
+};
+
+const loserName = (match: TournamentMatch): string => {
+  const winner = winnerName(match);
+  if (!winner || winner === "Draw") return "";
+  return normalizeUsername(winner) === normalizeUsername(match.p1) ? match.p2 : match.p1;
 };
 
 const isEmptyPlayer = (playerName: string): boolean => String(playerName || "").trim() === "";
@@ -456,6 +468,7 @@ const TournamentMatchCard = ({
   placeTrophyOnSide,
   shouldSuppressClick,
   onOpenMatch,
+  loserSources = [],
 }: {
   match: PositionedMatch;
   topSeedMap: Map<string, number>;
@@ -467,6 +480,7 @@ const TournamentMatchCard = ({
   placeTrophyOnSide: boolean;
   shouldSuppressClick: () => boolean;
   onOpenMatch: (match: TournamentMatch) => void;
+  loserSources?: LoserSource[];
 }) => {
   const matchWinner = winnerName(match);
   const withdrawalPlayer = withdrewPlayerName(match);
@@ -475,6 +489,23 @@ const TournamentMatchCard = ({
   const shouldShowTrophy = showTrophy && Boolean(trophyAssetPath);
   const isDoubleBye = isDoubleByeMatch(match);
   const byeAdvancePlayer = byeAdvancePlayerName(match);
+  const representedLosers = new Set(
+    [match.p1, match.p2]
+      .filter((playerName) => !isEmptyPlayer(playerName))
+      .map((playerName) => normalizeUsername(playerName)),
+  );
+  const availableLoserSources = loserSources.filter(
+    (source) => !source.loserName || !representedLosers.has(normalizeUsername(source.loserName)),
+  );
+  let nextLoserSourceIndex = 0;
+  const loserSourceForPlayer = (playerName: string): LoserSource | undefined => {
+    if (!isEmptyPlayer(playerName)) return undefined;
+    const source = availableLoserSources[nextLoserSourceIndex];
+    nextLoserSourceIndex += 1;
+    return source;
+  };
+  const p1LoserSource = loserSourceForPlayer(match.p1);
+  const p2LoserSource = loserSourceForPlayer(match.p2);
 
   if (isDoubleBye) {
     return (
@@ -574,19 +605,25 @@ const TournamentMatchCard = ({
           className={`tournamentPlayerRow${matchWinner === match.p1 ? " isWinner" : ""}${isReplacementPlayer(match, match.p1) ? " hasReplacement" : ""}`}
         >
           <span className="tournamentPlayerIdentity">
-            <PlayerLabel
-              playerName={match.p1}
-              seed={topSeedMap.get(match.p1)}
-              seedCount={seedCount}
-              entryMarker={
-                match.bracket === "qualifying"
-                  ? undefined
-                  : entryMarkers.get(normalizeUsername(match.p1))
-              }
-              isWinner={matchWinner === match.p1}
-              countryCode={countryMap.get(match.p1)}
-              shouldSuppressClick={shouldSuppressClick}
-            />
+            {p1LoserSource ? (
+              <span className="tournamentLoserSource" title={p1LoserSource.label}>
+                {p1LoserSource.label}
+              </span>
+            ) : (
+              <PlayerLabel
+                playerName={match.p1}
+                seed={topSeedMap.get(match.p1)}
+                seedCount={seedCount}
+                entryMarker={
+                  match.bracket === "qualifying"
+                    ? undefined
+                    : entryMarkers.get(normalizeUsername(match.p1))
+                }
+                isWinner={matchWinner === match.p1}
+                countryCode={countryMap.get(match.p1)}
+                shouldSuppressClick={shouldSuppressClick}
+              />
+            )}
           </span>
           <strong
             className={
@@ -604,19 +641,25 @@ const TournamentMatchCard = ({
           className={`tournamentPlayerRow${matchWinner === match.p2 ? " isWinner" : ""}${isReplacementPlayer(match, match.p2) ? " hasReplacement" : ""}`}
         >
           <span className="tournamentPlayerIdentity">
-            <PlayerLabel
-              playerName={match.p2}
-              seed={topSeedMap.get(match.p2)}
-              seedCount={seedCount}
-              entryMarker={
-                match.bracket === "qualifying"
-                  ? undefined
-                  : entryMarkers.get(normalizeUsername(match.p2))
-              }
-              isWinner={matchWinner === match.p2}
-              countryCode={countryMap.get(match.p2)}
-              shouldSuppressClick={shouldSuppressClick}
-            />
+            {p2LoserSource ? (
+              <span className="tournamentLoserSource" title={p2LoserSource.label}>
+                {p2LoserSource.label}
+              </span>
+            ) : (
+              <PlayerLabel
+                playerName={match.p2}
+                seed={topSeedMap.get(match.p2)}
+                seedCount={seedCount}
+                entryMarker={
+                  match.bracket === "qualifying"
+                    ? undefined
+                    : entryMarkers.get(normalizeUsername(match.p2))
+                }
+                isWinner={matchWinner === match.p2}
+                countryCode={countryMap.get(match.p2)}
+                shouldSuppressClick={shouldSuppressClick}
+              />
+            )}
           </span>
           <strong
             className={
@@ -702,6 +745,7 @@ const TournamentStageSection = ({
   onPointerDown,
   onPointerMove,
   onPointerEnd,
+  loserSourcesByMatchId,
 }: {
   stage: TournamentBracketStage;
   layout: StageLayout;
@@ -724,6 +768,7 @@ const TournamentStageSection = ({
   onPointerDown: (stageKey: StageKey, event: ReactPointerEvent<HTMLDivElement>) => void;
   onPointerMove: (event: ReactPointerEvent<HTMLDivElement>) => void;
   onPointerEnd: (event: ReactPointerEvent<HTMLDivElement>) => void;
+  loserSourcesByMatchId: Map<string, LoserSource[]>;
 }) => {
   const startRoundOptions = getStartRoundOptions(stage);
   const trophyMatchId = trophyAssetPath ? getStageTrophyMatchId(stage, decisiveMatchId) : "";
@@ -852,6 +897,7 @@ const TournamentStageSection = ({
                     }
                     shouldSuppressClick={shouldSuppressMatchClick}
                     onOpenMatch={onOpenMatch}
+                    loserSources={loserSourcesByMatchId.get(match.id) ?? []}
                   />
                 ))}
               </div>
@@ -1025,6 +1071,39 @@ const BracketTournamentPage = ({
       bracket ? buildTournamentEntryMarkers(bracket) : new Map<string, TournamentEntryMarker>(),
     [bracket],
   );
+  const loserSourcesByMatchId = useMemo(() => {
+    if (bracket?.id !== "awc2026") return new Map<string, LoserSource[]>();
+
+    const losersRoundOneIds = new Set(
+      bracket.matches
+        .filter((match) => match.bracket === "losers" && match.round === "Round 1")
+        .map((match) => match.id),
+    );
+    const sources = new Map<string, LoserSource[]>();
+
+    bracket.matches
+      .filter(
+        (match) => match.bracket === "main" && losersRoundOneIds.has(match.loser_to),
+      )
+      .sort((left, right) => left.order - right.order)
+      .forEach((match) => {
+        const existing = sources.get(match.loser_to) || [];
+        const hasNamedMatchup =
+          !isEmptyPlayer(match.p1) &&
+          !isEmptyPlayer(match.p2) &&
+          !isByePlayer(match.p1) &&
+          !isByePlayer(match.p2);
+        existing.push({
+          label: hasNamedMatchup
+            ? `Loser: ${match.p1} vs ${match.p2}`
+            : `Loser of ${getRoundShortLabel(match.round)} #${match.order}`,
+          loserName: loserName(match),
+        });
+        sources.set(match.loser_to, existing);
+      });
+
+    return sources;
+  }, [bracket]);
   const seedEntries = useMemo<TournamentSeedEntry[]>(() => {
     if (!bracket) return [];
 
@@ -1433,6 +1512,7 @@ const BracketTournamentPage = ({
               onPointerDown={handleScrollerPointerDown}
               onPointerMove={handleScrollerPointerMove}
               onPointerEnd={endScrollerDrag}
+              loserSourcesByMatchId={loserSourcesByMatchId}
             />
           );
         })}
