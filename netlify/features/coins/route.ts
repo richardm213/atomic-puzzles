@@ -138,6 +138,7 @@ export const coinsRoute = async (event: FunctionEvent) => {
       openBetCosts.set(bet.username, (openBetCosts.get(bet.username) ?? 0) + bet.total_cost);
     }
     const rankings = (accountsResult.data ?? [])
+      .filter((account) => account.username !== "prediction_admin")
       .map((account) => {
         const inBets = openBetCosts.get(account.username) ?? 0;
         return {
