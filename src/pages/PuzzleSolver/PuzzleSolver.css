@@ -2301,9 +2301,13 @@ button.puzzleRatingBadge.editable:active {
   }
 
   .mobileActionCard .puzzleInfoPanel {
+    grid-auto-rows: max-content;
     min-height: 0;
+    overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: contain;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
     padding: 8px;
     scrollbar-width: thin;
   }
