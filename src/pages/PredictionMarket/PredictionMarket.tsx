@@ -8,6 +8,7 @@ import type { CSSProperties, FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 
 import { InlineState } from "../../components/InlineState/InlineState";
+import { PredictionMarketExplainer } from "../../components/PredictionMarketExplainer/PredictionMarketExplainer";
 import {
   orderAppearsAtLevel,
   PredictionOrderEditor,
@@ -616,6 +617,7 @@ export const PredictionMarketPage = () => {
                 />
               ) : null}
               <h1>{marketGroup.title}</h1>
+              <PredictionMarketExplainer />
             </div>
             <div className="predictionMarketMeta">
               <span

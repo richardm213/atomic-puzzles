@@ -1,0 +1,61 @@
+.predictionMarketExplainer {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.predictionMarketExplainerButton {
+  width: 24px;
+  height: 24px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 50%;
+  background: var(--color-surface-elevated-strong);
+  color: var(--color-muted);
+  cursor: help;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 850;
+  line-height: 1;
+  transition:
+    border-color 160ms ease,
+    color 160ms ease,
+    background-color 160ms ease;
+}
+
+.predictionMarketExplainerButton:hover,
+.predictionMarketExplainerButton:focus-visible {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-panel));
+  color: var(--color-heading);
+}
+
+.predictionMarketExplainerButton:focus-visible {
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+.predictionMarketExplainerTooltip {
+  position: fixed;
+  z-index: 1000;
+  display: block;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+  box-shadow: var(--shadow-panel);
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+  pointer-events: none;
+  text-align: left;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .predictionMarketExplainerButton {
+    transition-duration: 0.01ms;
+  }
+}

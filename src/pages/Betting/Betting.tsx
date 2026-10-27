@@ -15,6 +15,7 @@ import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react"
 import { z } from "zod";
 
 import { InlineState } from "../../components/InlineState/InlineState";
+import { PredictionMarketExplainer } from "../../components/PredictionMarketExplainer/PredictionMarketExplainer";
 import {
   orderAppearsAtLevel,
   PredictionOrderEditor,
@@ -1363,12 +1364,13 @@ export const BettingPage = () => {
                 {activePredictionGroup && activePredictionDisplayMode === "book" ? (
                   <section className="bettingMarketGroup bettingPredictionBookGroup">
                     <h2>
-                      <span>
+                      <span className="bettingPredictionBookHeadingTitle">
                         {marketCategory === "AWC Champion"
                           ? winnerPosition === "yes"
                             ? "Who will win AWC 2026?"
                             : "Who will not win AWC 2026?"
                           : activePredictionGroup.title}
+                        <PredictionMarketExplainer />
                       </span>
                       <Link to={activePredictionGroup.path}>View market →</Link>
                     </h2>
@@ -1556,6 +1558,7 @@ export const BettingPage = () => {
                               />
                             ) : null}
                             <strong>{group.title}</strong>
+                            <PredictionMarketExplainer />
                           </span>
                           <span className="bettingExchangeMeta">
                             <small

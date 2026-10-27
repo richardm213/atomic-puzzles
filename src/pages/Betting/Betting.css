@@ -884,6 +884,13 @@
   gap: var(--space-3);
 }
 
+.bettingPredictionBookHeadingTitle {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .bettingPredictionBookGroup h2 a {
   color: var(--color-primary-pale);
   font-size: var(--text-sm);
