@@ -123,7 +123,8 @@ alter table public.coin_transactions
     'puzzle_created', 'puzzle_correct', 'puzzle_attempted', 'daily_bonus',
     'shop_redemption', 'coin_transfer', 'tournament_bet', 'tournament_bet_payout',
     'tournament_bet_refund', 'prediction_order_reserve', 'prediction_order_refund',
-    'prediction_trade_credit', 'prediction_trade_fee', 'prediction_market_payout'
+    'prediction_trade_credit', 'prediction_trade_fee', 'prediction_market_payout',
+    'prediction_liquidity_funding'
   ));
 
 insert into public.prediction_markets (
@@ -1089,6 +1090,44 @@ begin
       and tablename = 'prediction_market_updates'
   ) then
     alter publication supabase_realtime add table public.prediction_market_updates;
+  end if;
+end;
+$$;
+
+-- Offer 400 New_Life14 Yes contracts at 50 cents. The complementary No bid
+-- reserves 200 coins while leaving the visible market on the Yes side.
+select public.apply_coin_transaction(
+  'prediction_admin',
+  200,
+  'prediction_liquidity_funding',
+  'prediction-liquidity-funding:new-life14-ban-2026:yes-50',
+  jsonb_build_object(
+    'marketId', 'new-life14-ban-2026',
+    'purpose', 'initial liquidity'
+  )
+);
+
+do $$
+begin
+  if not exists (
+    select 1
+    from public.prediction_orders
+    where market_id = 'new-life14-ban-2026'
+      and username = 'prediction_admin'
+      and outcome = 'no'
+      and side = 'buy'
+      and price_cents = 50
+      and remaining_quantity > 0
+      and status in ('open', 'partial')
+  ) then
+    perform public.place_prediction_order(
+      'prediction_admin',
+      'new-life14-ban-2026',
+      'no',
+      'buy',
+      50,
+      400
+    );
   end if;
 end;
 $$;

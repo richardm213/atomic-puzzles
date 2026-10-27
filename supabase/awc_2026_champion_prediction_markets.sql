@@ -22,6 +22,7 @@ insert into public.prediction_markets (
   ('awc-2026-champion-theatomicstorm', 'Will theatomicstorm be the 2026 Atomic World Champion?', 'Resolves Yes if the named player wins the 2026 Atomic World Championship and No otherwise. A ban or disqualification resolves the market No. If the player voluntarily withdraws after trading begins, the market settles at the last fair traded price recorded before the withdrawal was confirmed; manipulative trades may be excluded. If prediction_admin leaves stale orders open after a match is played or a player is disqualified, those orders will be canceled and the reserved coins refunded. The official AWC 2026 bracket is the primary resolution source.', 'https://atomicpuzzles.org/tournaments/awc2026', '2026-10-31T23:59:59Z'),
   ('awc-2026-champion-dandan2016', 'Will dandan2016 be the 2026 Atomic World Champion?', 'Resolves Yes if the named player wins the 2026 Atomic World Championship and No otherwise. A ban or disqualification resolves the market No. If the player voluntarily withdraws after trading begins, the market settles at the last fair traded price recorded before the withdrawal was confirmed; manipulative trades may be excluded. If prediction_admin leaves stale orders open after a match is played or a player is disqualified, those orders will be canceled and the reserved coins refunded. The official AWC 2026 bracket is the primary resolution source.', 'https://atomicpuzzles.org/tournaments/awc2026', '2026-10-31T23:59:59Z'),
   ('awc-2026-champion-tolya-starina0995', 'Will tolya_starina0995 be the 2026 Atomic World Champion?', 'Resolves Yes if the named player wins the 2026 Atomic World Championship and No otherwise. A ban or disqualification resolves the market No. If the player voluntarily withdraws after trading begins, the market settles at the last fair traded price recorded before the withdrawal was confirmed; manipulative trades may be excluded. If prediction_admin leaves stale orders open after a match is played or a player is disqualified, those orders will be canceled and the reserved coins refunded. The official AWC 2026 bracket is the primary resolution source.', 'https://atomicpuzzles.org/tournaments/awc2026', '2026-10-31T23:59:59Z'),
+  ('awc-2026-champion-crepuscular', 'Will crepuscular be the 2026 Atomic World Champion?', 'Resolves Yes if the named player wins the 2026 Atomic World Championship and No otherwise. A ban or disqualification resolves the market No. If the player voluntarily withdraws after trading begins, the market settles at the last fair traded price recorded before the withdrawal was confirmed; manipulative trades may be excluded. If prediction_admin leaves stale orders open after a match is played or a player is disqualified, those orders will be canceled and the reserved coins refunded. The official AWC 2026 bracket is the primary resolution source.', 'https://atomicpuzzles.org/tournaments/awc2026', '2026-10-31T23:59:59Z'),
   ('awc-2026-champion-wolfram-ep', 'Will wolfram_ep be the 2026 Atomic World Champion?', 'Resolves Yes if the named player wins the 2026 Atomic World Championship and No otherwise. A ban or disqualification resolves the market No. If the player voluntarily withdraws after trading begins, the market settles at the last fair traded price recorded before the withdrawal was confirmed; manipulative trades may be excluded. If prediction_admin leaves stale orders open after a match is played or a player is disqualified, those orders will be canceled and the reserved coins refunded. The official AWC 2026 bracket is the primary resolution source.', 'https://atomicpuzzles.org/tournaments/awc2026', '2026-10-31T23:59:59Z'),
   ('awc-2026-champion-opabinia', 'Will opabinia be the 2026 Atomic World Champion?', 'Resolves Yes if the named player wins the 2026 Atomic World Championship and No otherwise. A ban or disqualification resolves the market No. If the player voluntarily withdraws after trading begins, the market settles at the last fair traded price recorded before the withdrawal was confirmed; manipulative trades may be excluded. If prediction_admin leaves stale orders open after a match is played or a player is disqualified, those orders will be canceled and the reserved coins refunded. The official AWC 2026 bracket is the primary resolution source.', 'https://atomicpuzzles.org/tournaments/awc2026', '2026-10-31T23:59:59Z')
 on conflict (id) do update set
@@ -71,13 +72,7 @@ begin
       'awc-2026-champion-jakestatefarm',
       'awc-2026-champion-quasabianth',
       'awc-2026-champion-maracker',
-      'awc-2026-champion-judebaetorrens',
-      'awc-2026-champion-howlind',
-      'awc-2026-champion-renaudmerle',
-      'awc-2026-champion-rabbier',
-      'awc-2026-champion-theatomicstorm',
-      'awc-2026-champion-dandan2016',
-      'awc-2026-champion-tolya-starina0995'
+      'awc-2026-champion-judebaetorrens'
     ] loop
       foreach seed_outcome in array array['yes', 'no'] loop
         if not exists (
@@ -101,6 +96,53 @@ begin
           );
         end if;
       end loop;
+    end loop;
+  end if;
+end;
+$$;
+
+-- Long-shot contenders only offer Yes contracts at 1 cent. A 99-cent No bid
+-- appears as a 1-cent Yes ask without creating liquidity for buying No.
+select public.apply_coin_transaction(
+  'prediction_admin',
+  1000,
+  'prediction_liquidity_funding',
+  'prediction-liquidity-funding:awc-2026-champion-crepuscular',
+  jsonb_build_object(
+    'marketId', 'awc-2026-champion-crepuscular',
+    'purpose', 'initial liquidity'
+  )
+);
+
+do $$
+declare
+  seed_market_id text;
+begin
+  if exists (select 1 from public.coin_accounts where username = 'prediction_admin') then
+    foreach seed_market_id in array array[
+      'awc-2026-champion-howlind',
+      'awc-2026-champion-renaudmerle',
+      'awc-2026-champion-rabbier',
+      'awc-2026-champion-theatomicstorm',
+      'awc-2026-champion-dandan2016',
+      'awc-2026-champion-tolya-starina0995',
+      'awc-2026-champion-crepuscular'
+    ] loop
+      if not exists (
+        select 1
+        from public.prediction_orders
+        where prediction_orders.market_id = seed_market_id
+          and username = 'prediction_admin'
+          and outcome = 'no'
+          and side = 'buy'
+          and price_cents = 99
+          and remaining_quantity > 0
+          and status in ('open', 'partial')
+      ) then
+        perform public.place_prediction_order(
+          'prediction_admin', seed_market_id, 'no', 'buy', 99, 1010
+        );
+      end if;
     end loop;
   end if;
 end;

@@ -25,8 +25,8 @@ import { coinQueryKeys, coinSummaryQueryOptions } from "../../lib/coins/coinQuer
 import { tournamentBracketQueryOptions } from "../../lib/matches/tournamentQueries";
 import {
   predictionMarketCatalogQueryOptions,
+  predictionMarketQueryKey,
   predictionMarketQueryOptions,
-  predictionMarketQueryRoot,
 } from "../../lib/predictionMarkets/predictionMarketQueries";
 import { usePredictionMarketRealtime } from "../../lib/predictionMarkets/predictionMarketRealtime";
 import {
@@ -204,23 +204,38 @@ export const PredictionMarketPage = () => {
     .sort((left, right) => right.createdAt.localeCompare(left.createdAt) || right.id - left.id)
     .slice(0, 20);
 
-  const refreshMarket = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: predictionMarketQueryRoot }),
-      queryClient.invalidateQueries({ queryKey: coinQueryKeys.summary(username) }),
-    ]);
+  const updateCoinBalance = (balance: number) => {
+    queryClient.setQueryData(coinQueryKeys.summary(username), (current: unknown) =>
+      current && typeof current === "object" ? { ...current, balance } : current,
+    );
   };
+
+  const refreshMarket = (marketId = activeMarketId) =>
+    queryClient.invalidateQueries({
+      queryKey: predictionMarketQueryKey(marketId),
+      exact: true,
+    });
 
   const placeMutation = useMutation({
     mutationFn: placePredictionOrder,
-    onSuccess: async () => {
+    onSuccess: (result) => {
       setSuccessMessage(`${side === "buy" ? "Bid" : "Ask"} placed.`);
-      await refreshMarket();
+      updateCoinBalance(result.balance);
+      void queryClient.invalidateQueries({
+        queryKey: predictionMarketQueryKey(activeMarketId),
+        exact: true,
+      });
     },
   });
   const cancelMutation = useMutation({
     mutationFn: (orderId: number) => cancelPredictionOrder(activeMarketId, orderId),
-    onSuccess: refreshMarket,
+    onSuccess: (result) => {
+      updateCoinBalance(result.balance);
+      void queryClient.invalidateQueries({
+        queryKey: predictionMarketQueryKey(activeMarketId),
+        exact: true,
+      });
+    },
   });
 
   const submitOrder = (event: FormEvent) => {
@@ -836,7 +851,10 @@ export const PredictionMarketPage = () => {
           outcome={outcome}
           orders={editingOrders}
           onClose={() => setEditingOrders(null)}
-          onUpdated={refreshMarket}
+          onUpdated={(balance) => {
+            updateCoinBalance(balance);
+            return refreshMarket(activeMarketId);
+          }}
         />
       ) : null}
     </main>

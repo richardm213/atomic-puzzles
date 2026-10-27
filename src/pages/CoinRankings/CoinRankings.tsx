@@ -45,6 +45,7 @@ const reasonCategory: Record<CoinTransactionReason, TransactionCategory> = {
   prediction_order_refund: "bets",
   prediction_trade_credit: "bets",
   prediction_market_payout: "bets",
+  prediction_liquidity_funding: "bets",
 };
 
 const selectedReasonsFor = (categories: TransactionCategory[]) =>

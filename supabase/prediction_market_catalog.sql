@@ -69,12 +69,13 @@ from (values
   ('awc-2026-champion-theatomicstorm', 'theatomicstorm', 'US', 1, 12),
   ('awc-2026-champion-dandan2016', 'dandan2016', 'US', 1, 13),
   ('awc-2026-champion-tolya-starina0995', 'tolya_starina0995', 'RU', 1, 14),
-  ('awc-2026-champion-wolfram-ep', 'wolfram_ep', 'RU', null, 15),
-  ('awc-2026-champion-opabinia', 'opabinia', 'US', null, 16),
-  ('awc-2026-champion-stinkypotato', 'stinkypotato', 'US', 0, 17),
-  ('awc-2026-champion-goroarmet', 'goroarmet', 'ES', 0, 18),
-  ('awc-2026-champion-arinor0109', 'arinor0109', 'SE', 0, 19),
-  ('awc-2026-champion-matvei-e2e4', 'matvei-e2e4', 'RU', 0, 20)
+  ('awc-2026-champion-crepuscular', 'crepuscular', 'US', 1, 15),
+  ('awc-2026-champion-wolfram-ep', 'wolfram_ep', 'RU', null, 16),
+  ('awc-2026-champion-opabinia', 'opabinia', 'US', null, 17),
+  ('awc-2026-champion-stinkypotato', 'stinkypotato', 'US', 0, 18),
+  ('awc-2026-champion-goroarmet', 'goroarmet', 'ES', 0, 19),
+  ('awc-2026-champion-arinor0109', 'arinor0109', 'SE', 0, 20),
+  ('awc-2026-champion-matvei-e2e4', 'matvei-e2e4', 'RU', 0, 21)
 ) as metadata(id, display_name, country_code, starting_chance, display_order)
 where market.id = metadata.id;
 

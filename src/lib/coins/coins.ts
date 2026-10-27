@@ -47,6 +47,7 @@ export const coinTransactionReasons = [
   "prediction_order_refund",
   "prediction_trade_credit",
   "prediction_market_payout",
+  "prediction_liquidity_funding",
 ] as const;
 
 export type CoinTransactionReason = (typeof coinTransactionReasons)[number];

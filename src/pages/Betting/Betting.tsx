@@ -58,8 +58,8 @@ import {
 } from "../../lib/matches/tournamentQueries";
 import {
   predictionMarketCatalogQueryOptions,
+  predictionMarketQueryKey,
   predictionMarketQueryOptions,
-  predictionMarketQueryRoot,
 } from "../../lib/predictionMarkets/predictionMarketQueries";
 import { usePredictionMarketRealtime } from "../../lib/predictionMarkets/predictionMarketRealtime";
 import {
@@ -952,16 +952,19 @@ export const BettingPage = () => {
 
   const placePredictionMutation = useMutation({
     mutationFn: placePredictionOrder,
-    onSuccess: async () => {
+    onSuccess: (result, variables) => {
       setSuccessMessage(
         activePredictionDisplayMode === "book" ? "Bet placed." : "Prediction order placed.",
       );
       setPredictionStakeInput("");
       setPredictionStakeTouched(false);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: predictionMarketQueryRoot }),
-        queryClient.invalidateQueries({ queryKey: coinQueryKeys.summary(username) }),
-      ]);
+      queryClient.setQueryData(coinQueryKeys.summary(username), (current: unknown) =>
+        current && typeof current === "object" ? { ...current, balance: result.balance } : current,
+      );
+      void queryClient.invalidateQueries({
+        queryKey: predictionMarketQueryKey(variables.marketId),
+        exact: true,
+      });
     },
   });
 
@@ -2436,12 +2439,15 @@ export const BettingPage = () => {
           outcome={editingOrderContext.outcome}
           orders={editingOrderContext.orders}
           onClose={() => setEditingOrderContext(null)}
-          onUpdated={() =>
-            Promise.all([
-              queryClient.invalidateQueries({ queryKey: predictionMarketQueryRoot }),
-              queryClient.invalidateQueries({ queryKey: coinQueryKeys.summary(username) }),
-            ])
-          }
+          onUpdated={(balance) => {
+            queryClient.setQueryData(coinQueryKeys.summary(username), (current: unknown) =>
+              current && typeof current === "object" ? { ...current, balance } : current,
+            );
+            return queryClient.invalidateQueries({
+              queryKey: predictionMarketQueryKey(editingOrderContext.marketId),
+              exact: true,
+            });
+          }}
         />
       ) : null}
     </main>

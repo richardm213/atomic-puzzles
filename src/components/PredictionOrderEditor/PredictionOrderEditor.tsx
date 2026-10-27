@@ -48,7 +48,7 @@ export const PredictionOrderEditor = ({
   outcome: PredictionOutcome;
   orders: PredictionOrder[];
   onClose: () => void;
-  onUpdated: () => Promise<unknown> | unknown;
+  onUpdated: (balance: number) => Promise<unknown> | unknown;
 }) => {
   const [selectedOrderId, setSelectedOrderId] = useState(orders[0]?.id ?? 0);
   const selectedOrder = useMemo(
@@ -72,9 +72,9 @@ export const PredictionOrderEditor = ({
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [onClose]);
 
-  const finish = async () => {
-    await onUpdated();
+  const finish = (result: { balance: number }) => {
     onClose();
+    void onUpdated(result.balance);
   };
   const amendMutation = useMutation({
     mutationFn: amendPredictionOrder,
