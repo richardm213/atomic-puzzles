@@ -1,6 +1,10 @@
 import { z } from "zod";
 
-import { isTournamentBetOnOpponent, MIN_BET_AMOUNT } from "../../../shared/domain/betting";
+import {
+  isAwcNotToWinSelfBet,
+  isTournamentBetOnOpponent,
+  MIN_BET_AMOUNT,
+} from "../../../shared/domain/betting";
 import {
   authenticateRequest,
   identityResponse,
@@ -235,6 +239,10 @@ export const bettingRoute = async (event: FunctionEvent) => {
 
   if (input.marketId.startsWith("lichess-ban-") && input.stake > 200) {
     throw new HttpError(400, "Banned-market bets are limited to 200 coins.");
+  }
+
+  if (isAwcNotToWinSelfBet(input.marketId, username, input.selection)) {
+    throw new HttpError(400, "You can’t bet on yourself not to win AWC.");
   }
 
   const { data: selectedMarket, error: selectedMarketError } = await supabase

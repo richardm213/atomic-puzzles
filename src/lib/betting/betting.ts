@@ -2,7 +2,12 @@ import { z } from "zod";
 
 import { postApi } from "../api/postApi";
 
-export { isTournamentBetOnOpponent, MIN_BET_AMOUNT } from "../../../shared/domain/betting";
+export {
+  AWC_NOT_TO_WIN_MARKET_ID,
+  isAwcNotToWinSelfBet,
+  isTournamentBetOnOpponent,
+  MIN_BET_AMOUNT,
+} from "../../../shared/domain/betting";
 
 export const BET_FEE_RATE = 0.02;
 export const BET_NET_WORTH_LIMIT_RATE = 0.5;

@@ -12,8 +12,10 @@ import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
 import { useUnderscoreUsernameCutoff } from "../../hooks/useUnderscoreUsernameCutoff";
 import {
+  AWC_NOT_TO_WIN_MARKET_ID,
   BET_NET_WORTH_LIMIT_RATE,
   type BettingMarket,
+  isAwcNotToWinSelfBet,
   isTournamentBetOnOpponent,
   type MarketSuggestion,
   MAX_BET_STAKE,
@@ -46,7 +48,7 @@ type SuggestionDraftOutcome = { label: string; odds: string };
 
 const bettingViews: readonly BettingView[] = ["markets", "mine", "all", "suggestions"];
 const defaultMarketCategory = "AWC Round of 16";
-const winnerNoMarketId = "awc2026-winner-no";
+const winnerNoMarketId = AWC_NOT_TO_WIN_MARKET_ID;
 const defaultSuggestionOutcomes = (): SuggestionDraftOutcome[] => [
   { label: "", odds: "50" },
   { label: "", odds: "50" },
@@ -448,6 +450,10 @@ export const BettingPage = () => {
     selection && selectedMarket && (isAuthenticated || demoState === "self")
       ? isTournamentBetOnOpponent(selectedMarket, demoSelfPlayer ?? username, selection.player)
       : false;
+  const selectionIsSelfNotToWin =
+    selection && (isAuthenticated || demoState === "self")
+      ? isAwcNotToWinSelfBet(selection.marketId, demoSelfPlayer ?? username, selection.player)
+      : false;
   const exceedsPositionLimit =
     isAuthenticated && validStake && quote.totalCost > remainingPositionBudget;
   const insufficientBalance = isAuthenticated && validStake && quote.totalCost > balance;
@@ -810,6 +816,13 @@ export const BettingPage = () => {
                                   demoSelfPlayer ?? username,
                                   outcome.player,
                                 );
+                              const isSelfNotToWinOutcome =
+                                (isAuthenticated || demoState === "self") &&
+                                isAwcNotToWinSelfBet(
+                                  market.id,
+                                  demoSelfPlayer ?? username,
+                                  outcome.player,
+                                );
                               const positionCost = myBets.reduce(
                                 (total, bet) =>
                                   total +
@@ -825,11 +838,13 @@ export const BettingPage = () => {
                                 (isAuthenticated &&
                                   maxTournamentBetStake(balance, openBetCost, positionCost) <
                                     MIN_BET_AMOUNT);
-                              const unavailableReason = isOpponentOutcome
-                                ? "You can’t bet on your opponent."
-                                : positionLimitReached
-                                  ? "This position has reached 50% of your net worth."
-                                  : undefined;
+                              const unavailableReason = isSelfNotToWinOutcome
+                                ? "You can’t bet on yourself not to win AWC."
+                                : isOpponentOutcome
+                                  ? "You can’t bet on your opponent."
+                                  : positionLimitReached
+                                    ? "This position has reached 50% of your net worth."
+                                    : undefined;
                               const countryCode =
                                 countryByPlayer[outcome.player.toLowerCase()] ?? "";
                               return (
@@ -859,7 +874,9 @@ export const BettingPage = () => {
                                       {market.category === "Banned" ? "Yes · " : ""}
                                       {outcome.pricePercent}%
                                     </strong>
-                                    {isOpponentOutcome ? (
+                                    {isSelfNotToWinOutcome ? (
+                                      <small>Your outcome</small>
+                                    ) : isOpponentOutcome ? (
                                       <small>Your opponent</small>
                                     ) : isOwnOutcome ? (
                                       <small>Your outcome</small>
@@ -987,6 +1004,11 @@ export const BettingPage = () => {
                       You can’t bet on your opponent. Choose another outcome.
                     </InlineState>
                   ) : null}
+                  {selectionIsSelfNotToWin ? (
+                    <InlineState kind="error">
+                      You can’t bet on yourself not to win AWC. Choose another player.
+                    </InlineState>
+                  ) : null}
                   {placeBetMutation.error ? (
                     <InlineState kind="error">
                       {placeBetMutation.error instanceof Error
@@ -1008,6 +1030,7 @@ export const BettingPage = () => {
                         insufficientBalance ||
                         bettingUnavailable ||
                         selectionIsOpponent ||
+                        selectionIsSelfNotToWin ||
                         placeBetMutation.isPending
                       }
                     >

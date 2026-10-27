@@ -236,6 +236,22 @@ describe("betting function", () => {
     expect(opponentBetResponse.statusCode).toBe(400);
     expect(JSON.parse(opponentBetResponse.body).error).toBe("You can’t bet on your opponent.");
     expect(rpc).toHaveBeenCalledTimes(2);
+
+    const selfNotToWinResponse = await handler({
+      httpMethod: "POST",
+      headers: requestHeaders("Actual_User"),
+      body: JSON.stringify({
+        action: "place",
+        marketId: "awc2026-winner-no",
+        selection: "actual_user",
+        stake: 10,
+      }),
+    });
+    expect(selfNotToWinResponse.statusCode).toBe(400);
+    expect(JSON.parse(selfNotToWinResponse.body).error).toBe(
+      "You can’t bet on yourself not to win AWC.",
+    );
+    expect(rpc).toHaveBeenCalledTimes(2);
   });
 
   it("reports a market deadline rejection as a closed market", async () => {

@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { maxTournamentBetStake, quoteTournamentBet } from "./betting";
+import { isAwcNotToWinSelfBet, maxTournamentBetStake, quoteTournamentBet } from "./betting";
+
+describe("isAwcNotToWinSelfBet", () => {
+  it("blocks only a player's own selection in the AWC not-to-win market", () => {
+    expect(isAwcNotToWinSelfBet("awc2026-winner-no", "Actual_User", "actual_user")).toBe(true);
+    expect(isAwcNotToWinSelfBet("awc2027-winner-no", "Actual_User", "actual_user")).toBe(true);
+    expect(isAwcNotToWinSelfBet("awc2026-winner-no", "Actual_User", "another_player")).toBe(false);
+    expect(isAwcNotToWinSelfBet("awc2026-winner", "Actual_User", "actual_user")).toBe(false);
+  });
+});
 
 describe("quoteTournamentBet", () => {
   it("adds the two percent fee to the upfront cost", () => {
