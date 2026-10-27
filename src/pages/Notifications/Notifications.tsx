@@ -1,6 +1,7 @@
 import "./Notifications.css";
 
 import {
+  faAt,
   faBell,
   faBullhorn,
   faChartLine,
@@ -24,6 +25,7 @@ import {
   notificationsQueryOptions,
 } from "../../lib/community/notificationQueries";
 import {
+  isCommentMentionNotification,
   isPredictionOrderFillNotification,
   isPredictionPayoutNotification,
   markNotificationsRead,
@@ -37,6 +39,7 @@ import { appAssetPath } from "../../utils/appAssetPath";
 import { formatLocalDateTime } from "../../utils/formatters";
 
 const notificationIcon = (notification: UserNotification) => {
+  if (isCommentMentionNotification(notification)) return faAt;
   if (isPredictionOrderFillNotification(notification)) return faCheck;
   if (isPredictionPayoutNotification(notification)) return faCoins;
   if (notification.notification_type === "feature") return faBullhorn;
@@ -89,7 +92,11 @@ export const NotificationsPage = () => {
 
   const openNotification = async (notification: UserNotification) => {
     if (!notification.read_at) await markRead([notification.id]);
-    if (notification.notification_type === "feature" && notification.feature_path) {
+    if (
+      (notification.notification_type === "feature" ||
+        notification.notification_type === "comment_mention") &&
+      notification.feature_path
+    ) {
       window.location.assign(notification.feature_path);
       return;
     }

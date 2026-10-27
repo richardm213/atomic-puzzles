@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   fetchCommunityDiscussion: vi.fn(),
   fetchPuzzleCommunity: vi.fn(),
   isAuthenticated: true,
+  searchUsernameSuggestions: vi.fn(),
 }));
 
 vi.mock("../../context/AuthContext", () => ({
@@ -37,6 +38,10 @@ vi.mock("../../lib/community/puzzleCommunity", async (importOriginal) => {
     fetchPuzzleCommunity: mocks.fetchPuzzleCommunity,
   };
 });
+
+vi.mock("../../lib/users/usernameSearch", () => ({
+  searchUsernameSuggestions: mocks.searchUsernameSuggestions,
+}));
 
 describe("PuzzleCommunity", () => {
   beforeEach(() => {
@@ -60,6 +65,15 @@ describe("PuzzleCommunity", () => {
       ],
       viewerVote: 0,
     });
+    mocks.searchUsernameSuggestions.mockResolvedValue([
+      {
+        username: "seaside_tiramisu",
+        matchedName: "seaside_tiramisu",
+        matchType: "username",
+        banned: false,
+        accountUsername: "seaside_tiramisu",
+      },
+    ]);
   });
 
   it("shows only the login action and empty state when signed out with no comments", async () => {
@@ -94,5 +108,18 @@ describe("PuzzleCommunity", () => {
     await waitFor(() => {
       expect(screen.getByRole("textbox", { name: "Add a comment" }).closest("li")).toBeNull();
     });
+  });
+
+  it("suggests matching registered users and inserts a mention", async () => {
+    const user = userEvent.setup();
+    render(<CommunityDiscussion target={{ type: "match", id: "match-1", context: "blitz" }} />);
+
+    const input = await screen.findByRole("textbox", { name: "Add a comment" });
+    await user.type(input, "Thanks @sea");
+
+    const suggestion = await screen.findByRole("option", { name: "@seaside_tiramisu" });
+    await user.click(within(suggestion).getByRole("button"));
+
+    expect(input).toHaveValue("Thanks @seaside_tiramisu ");
   });
 });

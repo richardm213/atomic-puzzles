@@ -86,12 +86,46 @@
 }
 
 .puzzleCommentComposer {
+  position: relative;
   display: grid;
   gap: 9px;
   padding: 13px;
   border: 1px solid var(--color-border);
   border-radius: 12px;
   background: color-mix(in srgb, var(--color-panel-strong) 78%, transparent);
+}
+
+.commentMentionSuggestions {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% - 50px);
+  left: 13px;
+  width: min(320px, calc(100% - 26px));
+  max-height: 210px;
+  overflow-y: auto;
+  padding: 5px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 9px;
+  background: var(--color-panel-deep);
+  box-shadow: var(--shadow-panel);
+}
+
+.commentMentionSuggestions button {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text);
+  text-align: left;
+  font-size: 13px;
+}
+
+.commentMentionSuggestions button:hover,
+.commentMentionSuggestions [aria-selected="true"] button {
+  background: color-mix(in srgb, var(--color-primary) 16%, var(--color-panel-strong));
+  color: var(--color-heading);
 }
 
 .puzzleCommentComposer.replyComposer {
@@ -345,6 +379,16 @@
   line-height: 1.5;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
+}
+
+.commentMention {
+  color: var(--color-primary-soft);
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.commentMention:hover {
+  text-decoration: underline;
 }
 
 .commentReplyButton {

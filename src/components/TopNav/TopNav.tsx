@@ -562,7 +562,11 @@ export const TopNav = () => {
   const openPopupNotification = async (notification: UserNotification): Promise<void> => {
     if (!notification.read_at) await markPopupNotificationsRead([notification.id]);
     setOpenPanel(null);
-    if (notification.notification_type === "feature" && notification.feature_path) {
+    if (
+      (notification.notification_type === "feature" ||
+        notification.notification_type === "comment_mention") &&
+      notification.feature_path
+    ) {
       window.location.assign(notification.feature_path);
       return;
     }

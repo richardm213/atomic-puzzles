@@ -123,6 +123,7 @@ export type NotificationRow = {
   notification_type:
     | "puzzle_comment"
     | "comment_reply"
+    | "comment_mention"
     | "puzzle_approved"
     | "puzzle_rating_added"
     | "shop_redemption"

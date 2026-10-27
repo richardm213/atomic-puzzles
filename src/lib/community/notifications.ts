@@ -3,6 +3,7 @@ import { postApi } from "../api/postApi";
 export type NotificationType =
   | "puzzle_comment"
   | "comment_reply"
+  | "comment_mention"
   | "puzzle_approved"
   | "puzzle_rating_added"
   | "shop_redemption"
@@ -50,7 +51,11 @@ export const isPredictionPayoutNotification = (notification: UserNotification): 
   notification.notification_type === "feature" &&
   notification.feature_key?.startsWith("prediction-market-payout:") === true;
 
+export const isCommentMentionNotification = (notification: UserNotification): boolean =>
+  notification.notification_type === "comment_mention";
+
 export const notificationCategory = (notification: UserNotification): string => {
+  if (isCommentMentionNotification(notification)) return "Mention";
   if (isPredictionOrderFillNotification(notification)) return "Prediction order";
   if (isPredictionPayoutNotification(notification)) return "Prediction payout";
   if (
@@ -126,6 +131,9 @@ export const notificationCopy = (notification: UserNotification): string => {
   }
   if (notification.notification_type === "comment_reply") {
     return `${notification.actor_username ?? "Someone"} replied to your comment.`;
+  }
+  if (notification.notification_type === "comment_mention") {
+    return `${notification.actor_username ?? "Someone"} mentioned you in a comment.`;
   }
   return `${notification.actor_username ?? "Someone"} commented on a puzzle you follow.`;
 };

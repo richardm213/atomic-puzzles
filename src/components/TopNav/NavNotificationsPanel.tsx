@@ -1,4 +1,5 @@
 import {
+  faAt,
   faBell,
   faBullhorn,
   faChartLine,
@@ -14,6 +15,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 
 import {
+  isCommentMentionNotification,
   isPredictionOrderFillNotification,
   isPredictionPayoutNotification,
   notificationCategory,
@@ -26,6 +28,7 @@ import { appAssetPath } from "../../utils/appAssetPath";
 import { formatLocalDateTime } from "../../utils/formatters";
 
 const notificationIcon = (notification: UserNotification) => {
+  if (isCommentMentionNotification(notification)) return faAt;
   if (isPredictionOrderFillNotification(notification)) return faCheck;
   if (isPredictionPayoutNotification(notification)) return faCoins;
   if (notification.notification_type === "feature") return faBullhorn;

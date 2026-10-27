@@ -38,6 +38,22 @@ export const getPuzzleCommentParticipantRecipients = (
   ];
 };
 
+export const getMentionedUsernames = (body: string): string[] => [
+  ...new Set(
+    [...body.matchAll(/(?:^|[^a-z0-9_-])@([a-z0-9_-]+)/gi)]
+      .map((match) => match[1]?.toLowerCase())
+      .filter((username): username is string => Boolean(username)),
+  ),
+];
+
+const mentionDestinationPath = (target: CommunityTarget, commentId: number): string => {
+  const hash = `#comment-${commentId}`;
+  if (target.type === "puzzle") return `/solve/${encodeURIComponent(target.id)}${hash}`;
+  if (target.type === "profile") return `/@/${encodeURIComponent(target.id)}${hash}`;
+  if (target.type === "match") return `/matches/${encodeURIComponent(target.id)}${hash}`;
+  return `/tournaments/${encodeURIComponent(target.id)}${hash}`;
+};
+
 export class CommunityRepository {
   constructor(private readonly supabase: SupabaseClient) {}
 
@@ -418,6 +434,52 @@ export class CommunityRepository {
     );
     if (result.error) {
       throw new Error(`Unable to notify puzzle participants: ${result.error.message}`);
+    }
+  }
+
+  async notifyMentionedUsers(
+    target: CommunityTarget,
+    commentId: number,
+    actorUsername: string,
+    body: string,
+  ): Promise<void> {
+    const mentionedUsernames = getMentionedUsernames(body).filter(
+      (username) => username !== actorUsername.toLowerCase(),
+    );
+    if (!mentionedUsernames.length) return;
+
+    const usersResult = await this.supabase
+      .from("users")
+      .select("username")
+      .in("username", mentionedUsernames);
+    if (usersResult.error) {
+      throw new Error(`Unable to find mentioned users: ${usersResult.error.message}`);
+    }
+    const recipients = [
+      ...new Set(
+        (usersResult.data ?? [])
+          .map((row) =>
+            String(row.username ?? "")
+              .trim()
+              .toLowerCase(),
+          )
+          .filter(Boolean),
+      ),
+    ];
+    if (!recipients.length) return;
+
+    const result = await this.supabase.from("notifications").insert(
+      recipients.map((recipientUsername) => ({
+        recipient_username: recipientUsername,
+        actor_username: actorUsername,
+        notification_type: "comment_mention",
+        comment_id: commentId,
+        feature_key: `comment-mention:${commentId}:${recipientUsername}`,
+        feature_path: mentionDestinationPath(target, commentId),
+      })),
+    );
+    if (result.error) {
+      throw new Error(`Unable to notify mentioned users: ${result.error.message}`);
     }
   }
 }

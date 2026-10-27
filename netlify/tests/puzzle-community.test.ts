@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { getPuzzleCommentParticipantRecipients } from "../features/community/repository";
+import {
+  getMentionedUsernames,
+  getPuzzleCommentParticipantRecipients,
+} from "../features/community/repository";
 import {
   addPuzzleAttemptStats,
   buildCommunityUserStats,
@@ -14,6 +17,12 @@ import {
 import { handler } from "../functions/puzzle-community";
 
 describe("profile comment history", () => {
+  it("extracts unique case-insensitive mentions at word boundaries", () => {
+    expect(
+      getMentionedUsernames("Thanks @Seaside_Tiramisu and @alice. Not email@example.com @ALICE"),
+    ).toEqual(["seaside_tiramisu", "alice"]);
+  });
+
   it("notifies each prior puzzle commenter once while excluding existing notification recipients", () => {
     expect(
       getPuzzleCommentParticipantRecipients(
@@ -38,6 +47,7 @@ describe("profile comment history", () => {
       loadDiscussionRows: vi.fn().mockResolvedValue({ comments: [], counts: [], viewerVotes: [] }),
       loadPuzzleVoteRows: vi.fn().mockResolvedValue({ counts: null, viewerVote: null }),
       notifyPriorPuzzleCommenters: vi.fn().mockRejectedValue(new Error("Notification unavailable")),
+      notifyMentionedUsers: vi.fn().mockResolvedValue(undefined),
     };
     const service = new CommunityService(repository as never);
 
@@ -54,6 +64,12 @@ describe("profile comment history", () => {
       77,
       "new_commenter",
       12,
+    );
+    expect(repository.notifyMentionedUsers).toHaveBeenCalledWith(
+      { type: "puzzle", id: "42", context: "" },
+      77,
+      "new_commenter",
+      "A new thought",
     );
   });
 

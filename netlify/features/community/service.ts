@@ -414,8 +414,11 @@ export class CommunityService {
     }
     await this.repository.ensureUser(username);
     const commentId = await this.repository.createComment(target, username, commentBody, parentId);
+    // Notification delivery should not turn a successfully saved comment into a failed post.
+    await this.repository
+      .notifyMentionedUsers(target, commentId, username, commentBody)
+      .catch(() => undefined);
     if (target.type === "puzzle") {
-      // Notification delivery should not turn a successfully saved comment into a failed post.
       await this.repository
         .notifyPriorPuzzleCommenters(Number(target.id), commentId, username, parentId)
         .catch(() => undefined);
