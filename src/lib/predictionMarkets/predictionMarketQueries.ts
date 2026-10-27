@@ -1,8 +1,18 @@
 import { queryOptions } from "@tanstack/react-query";
 
-import { fetchPredictionMarket, type PredictionMarketId } from "./predictionMarkets";
+import {
+  fetchPredictionMarket,
+  fetchPredictionMarketGroups,
+  type PredictionMarketId,
+} from "./predictionMarkets";
 
 export const predictionMarketQueryRoot = ["prediction-market"] as const;
+export const predictionMarketCatalogQueryOptions = () =>
+  queryOptions({
+    queryKey: [...predictionMarketQueryRoot, "catalog"] as const,
+    queryFn: fetchPredictionMarketGroups,
+    staleTime: 60_000,
+  });
 export const predictionMarketQueryKey = (marketId: PredictionMarketId) =>
   [...predictionMarketQueryRoot, marketId] as const;
 

@@ -37,11 +37,10 @@ import {
 import { formatCoinBalance } from "../../lib/coins/coinDisplay";
 import { coinQueryKeys, coinSummaryQueryOptions } from "../../lib/coins/coinQueries";
 import { tournamentPlayerCountriesQueryOptions } from "../../lib/matches/tournamentQueries";
-import { predictionMarketQueryOptions } from "../../lib/predictionMarkets/predictionMarketQueries";
 import {
-  PREDICTION_MARKET_GROUPS,
-  PREDICTION_MARKETS,
-} from "../../lib/predictionMarkets/predictionMarkets";
+  predictionMarketCatalogQueryOptions,
+  predictionMarketQueryOptions,
+} from "../../lib/predictionMarkets/predictionMarketQueries";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { countryCodeToFlagUrl } from "../../utils/countryFlags";
 import { formatLocalDateTime } from "../../utils/formatters";
@@ -388,6 +387,15 @@ export const BettingPage = () => {
   const betAmountRef = useRef<HTMLInputElement>(null);
 
   const marketsQuery = useQuery(bettingMarketsQueryOptions());
+  const predictionCatalogQuery = useQuery(predictionMarketCatalogQueryOptions());
+  const predictionMarketGroups = useMemo(
+    () => predictionCatalogQuery.data ?? [],
+    [predictionCatalogQuery.data],
+  );
+  const predictionMarkets = useMemo(
+    () => predictionMarketGroups.flatMap((group) => group.markets),
+    [predictionMarketGroups],
+  );
   const betsQuery = useQuery({
     ...tournamentBetsQueryOptions(username),
     enabled: isAuthenticated,
@@ -405,7 +413,7 @@ export const BettingPage = () => {
   });
   const countriesQuery = useQuery(tournamentPlayerCountriesQueryOptions());
   const predictionMarketQueries = useQueries({
-    queries: PREDICTION_MARKETS.map((market) => ({
+    queries: predictionMarkets.map((market) => ({
       ...predictionMarketQueryOptions(market.id),
       enabled:
         isPredictionMarketCategory(marketCategory) ||
@@ -421,9 +429,9 @@ export const BettingPage = () => {
       allBetsQuery.data ?? [],
       import.meta.env.DEV && demoState === "statuses",
     );
-    const predictionBets = PREDICTION_MARKETS.flatMap((definition, index) => {
+    const predictionBets = predictionMarkets.flatMap((definition, index) => {
       const predictionState = predictionMarketStates[index];
-      const predictionGroup = PREDICTION_MARKET_GROUPS.find((group) =>
+      const predictionGroup = predictionMarketGroups.find((group) =>
         group.markets.some((market) => market.id === definition.id),
       );
       return (predictionState?.fills ?? []).map((fill): BetHistoryEntry => {
@@ -460,7 +468,13 @@ export const BettingPage = () => {
     return [...tournamentBets, ...predictionBets].sort(
       (left, right) => Date.parse(right.placedAt) - Date.parse(left.placedAt),
     );
-  }, [allBetsQuery.data, demoState, predictionMarketStates]);
+  }, [
+    allBetsQuery.data,
+    demoState,
+    predictionMarketGroups,
+    predictionMarkets,
+    predictionMarketStates,
+  ]);
   const pendingBetCount = useMemo(
     () => allHistoryBets.filter((bet) => bet.status === "open").length,
     [allHistoryBets],
@@ -509,15 +523,15 @@ export const BettingPage = () => {
     openMarkets.some((market) => market.id === winnerNoMarketId);
   const activePredictionGroup =
     marketCategory === "Ban"
-      ? PREDICTION_MARKET_GROUPS.find((group) => group.id === "ban-2026")
+      ? predictionMarketGroups.find((group) => group.id === "ban-2026")
       : marketCategory === "Shield"
-        ? PREDICTION_MARKET_GROUPS.find((group) => group.id === "november-atomic-shield-2026")
+        ? predictionMarketGroups.find((group) => group.id === "november-atomic-shield-2026")
         : marketCategory === "AWC Champion"
-          ? PREDICTION_MARKET_GROUPS.find((group) => group.id === "awc-2026-champion")
+          ? predictionMarketGroups.find((group) => group.id === "awc-2026-champion")
           : undefined;
   const activePredictionVolume =
     activePredictionGroup?.markets.reduce((groupTotal, definition) => {
-      const marketIndex = PREDICTION_MARKETS.findIndex((market) => market.id === definition.id);
+      const marketIndex = predictionMarkets.findIndex((market) => market.id === definition.id);
       return (
         groupTotal +
         (predictionMarketStates[marketIndex]?.fills.reduce(
@@ -940,7 +954,7 @@ export const BettingPage = () => {
                         {group.id !== "awc-2026-champion" ? (
                           <span className="bettingExchangeStrikes">
                             {group.markets.map((definition) => {
-                              const marketIndex = PREDICTION_MARKETS.findIndex(
+                              const marketIndex = predictionMarkets.findIndex(
                                 (market) => market.id === definition.id,
                               );
                               const state = predictionMarketStates[marketIndex];

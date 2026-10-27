@@ -12,13 +12,13 @@ import { useAuth } from "../../context/AuthContext";
 import { formatCoinBalance } from "../../lib/coins/coinDisplay";
 import { coinQueryKeys, coinSummaryQueryOptions } from "../../lib/coins/coinQueries";
 import {
+  predictionMarketCatalogQueryOptions,
   predictionMarketQueryOptions,
   predictionMarketQueryRoot,
 } from "../../lib/predictionMarkets/predictionMarketQueries";
 import {
   cancelPredictionOrder,
   placePredictionOrder,
-  PREDICTION_MARKET_GROUPS,
   type PredictionMarketDefinition,
   type PredictionMarketId,
   type PredictionOrderSide,
@@ -48,21 +48,19 @@ export const PredictionMarketPage = () => {
   const queryClient = useQueryClient();
   const username = user?.username ?? "anonymous";
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const marketGroup =
-    PREDICTION_MARKET_GROUPS.find((group) => group.path === pathname) ??
-    PREDICTION_MARKET_GROUPS[0];
-  const marketDefinitions: readonly PredictionMarketDefinition[] = marketGroup.markets;
-  const [activeMarketId, setActiveMarketId] = useState<PredictionMarketId>(
-    marketDefinitions[0]!.id,
+  const catalogQuery = useQuery(predictionMarketCatalogQueryOptions());
+  const marketGroup = catalogQuery.data?.find((group) => group.path === pathname);
+  const marketDefinitions: readonly PredictionMarketDefinition[] = useMemo(
+    () => marketGroup?.markets ?? [],
+    [marketGroup?.markets],
   );
-  const [expandedMarketId, setExpandedMarketId] = useState<PredictionMarketId | null>(
-    marketDefinitions[0]!.id,
-  );
+  const [activeMarketId, setActiveMarketId] = useState<PredictionMarketId>("");
+  const [expandedMarketId, setExpandedMarketId] = useState<PredictionMarketId | null>(null);
   const marketQueries = useQueries({
     queries: marketDefinitions.map((market) => predictionMarketQueryOptions(market.id)),
   });
   const activeMarketIndex = marketDefinitions.findIndex((market) => market.id === activeMarketId);
-  const marketQuery = marketQueries[activeMarketIndex] ?? marketQueries[0]!;
+  const marketQuery = marketQueries[activeMarketIndex] ?? marketQueries[0];
   const coinQuery = useQuery({
     ...coinSummaryQueryOptions(username),
     enabled: isAuthenticated,
@@ -83,14 +81,15 @@ export const PredictionMarketPage = () => {
   );
 
   useEffect(() => {
-    const firstMarketId = marketDefinitions[0]!.id;
+    const firstMarketId = marketDefinitions[0]?.id;
+    if (!firstMarketId) return;
     setActiveMarketId(firstMarketId);
     setExpandedMarketId(firstMarketId);
     setOutcome("yes");
     setSuccessMessage("");
   }, [marketDefinitions]);
 
-  const marketState = marketQuery.data;
+  const marketState = marketQuery?.data;
   const price = Number(priceInput);
   const quantity = Number(quantityInput);
   const validPrice = Number.isInteger(price) && price >= 1 && price <= 99;
@@ -145,7 +144,7 @@ export const PredictionMarketPage = () => {
       no: marketState.book.no.asks[0]?.priceCents,
     };
   }, [marketState]);
-  const activeMarketDefinition = marketDefinitions[activeMarketIndex] ?? marketDefinitions[0]!;
+  const activeMarketDefinition = marketDefinitions[activeMarketIndex] ?? marketDefinitions[0];
   const recentFills = marketDefinitions
     .flatMap((definition, index) =>
       (marketQueries[index]?.data?.fills ?? []).map((fill) => ({ ...fill, definition })),
@@ -211,204 +210,209 @@ export const PredictionMarketPage = () => {
     setSuccessMessage("");
   };
 
-  const activeMarketPanel = marketState ? (
-    <div className="predictionStrikeDrawer" id={`prediction-strike-${activeMarketDefinition.id}`}>
-      <section className="predictionBookPanel" aria-labelledby="order-book-title">
-        <div className="predictionSectionHeader">
-          <h2 id="order-book-title">Order book</h2>
-          <span>
-            {activeMarketDefinition.username} · {outcomeLabel(outcome)} · all traders
-          </span>
-        </div>
-        <VerticalOrderBook
-          bids={marketState.book[outcome].bids}
-          asks={marketState.book[outcome].asks}
-          onSelectBid={(nextPrice, nextQuantity) =>
-            startOrderFromBook("sell", nextPrice, nextQuantity)
-          }
-          onSelectAsk={(nextPrice, nextQuantity) =>
-            startOrderFromBook("buy", nextPrice, nextQuantity)
-          }
-        />
-      </section>
-      <aside className="predictionTicket" aria-labelledby="order-ticket-title">
-        <h2 id="order-ticket-title">Order ticket</h2>
-        <div className="predictionTicketTabs" role="group" aria-label="Order side">
-          {(["buy", "sell"] as const).map((entry) => (
-            <button
-              type="button"
-              aria-pressed={side === entry}
-              disabled={entry === "sell" && isAuthenticated && !ownsAnyContracts}
-              title={
-                entry === "sell" && isAuthenticated && !ownsAnyContracts
-                  ? "You do not own any available contracts to sell."
-                  : undefined
-              }
-              onClick={() => selectSide(entry)}
-              key={entry}
-            >
-              {entry === "buy" ? "Buy" : "Sell"}
-            </button>
-          ))}
-        </div>
-        <div className="predictionTicketMarket">
-          <img
-            className="predictionOutcomeFlag"
-            crossOrigin="anonymous"
-            src={countryCodeToFlagUrl(activeMarketDefinition.countryCode)}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            aria-hidden="true"
+  const activeMarketPanel =
+    marketState && activeMarketDefinition ? (
+      <div className="predictionStrikeDrawer" id={`prediction-strike-${activeMarketDefinition.id}`}>
+        <section className="predictionBookPanel" aria-labelledby="order-book-title">
+          <div className="predictionSectionHeader">
+            <h2 id="order-book-title">Order book</h2>
+            <span>
+              {activeMarketDefinition.username} · {outcomeLabel(outcome)} · all traders
+            </span>
+          </div>
+          <VerticalOrderBook
+            bids={marketState.book[outcome].bids}
+            asks={marketState.book[outcome].asks}
+            onSelectBid={(nextPrice, nextQuantity) =>
+              startOrderFromBook("sell", nextPrice, nextQuantity)
+            }
+            onSelectAsk={(nextPrice, nextQuantity) =>
+              startOrderFromBook("buy", nextPrice, nextQuantity)
+            }
           />
-          <strong>{activeMarketDefinition.username}</strong>
-        </div>
-        <form onSubmit={submitOrder}>
-          <div
-            className={`predictionOutcomePicker predictionOutcomePicker--${side}`}
-            role="group"
-            aria-label="Outcome"
-          >
-            {(["yes", "no"] as const).map((entry) => (
+        </section>
+        <aside className="predictionTicket" aria-labelledby="order-ticket-title">
+          <h2 id="order-ticket-title">Order ticket</h2>
+          <div className="predictionTicketTabs" role="group" aria-label="Order side">
+            {(["buy", "sell"] as const).map((entry) => (
               <button
                 type="button"
-                aria-pressed={outcome === entry}
-                disabled={side === "sell" && availableByOutcome[entry] <= 0}
-                onClick={() => setOutcome(entry)}
+                aria-pressed={side === entry}
+                disabled={entry === "sell" && isAuthenticated && !ownsAnyContracts}
+                title={
+                  entry === "sell" && isAuthenticated && !ownsAnyContracts
+                    ? "You do not own any available contracts to sell."
+                    : undefined
+                }
+                onClick={() => selectSide(entry)}
                 key={entry}
               >
-                <span className="predictionOutcomePrimary">
-                  <span>
-                    {side === "buy" ? "Buy" : "Sell"} {outcomeLabel(entry)}
-                  </span>
-                  {askPrices[entry] === undefined ? null : (
-                    <strong>
-                      <Price cents={askPrices[entry]} />
-                    </strong>
-                  )}
-                </span>
+                {entry === "buy" ? "Buy" : "Sell"}
               </button>
             ))}
           </div>
-          <label>
-            Limit price
-            <span className="predictionInputSuffix">
+          <div className="predictionTicketMarket">
+            <img
+              className="predictionOutcomeFlag"
+              crossOrigin="anonymous"
+              src={countryCodeToFlagUrl(activeMarketDefinition.countryCode)}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              aria-hidden="true"
+            />
+            <strong>{activeMarketDefinition.username}</strong>
+          </div>
+          <form onSubmit={submitOrder}>
+            <div
+              className={`predictionOutcomePicker predictionOutcomePicker--${side}`}
+              role="group"
+              aria-label="Outcome"
+            >
+              {(["yes", "no"] as const).map((entry) => (
+                <button
+                  type="button"
+                  aria-pressed={outcome === entry}
+                  disabled={side === "sell" && availableByOutcome[entry] <= 0}
+                  onClick={() => setOutcome(entry)}
+                  key={entry}
+                >
+                  <span className="predictionOutcomePrimary">
+                    <span>
+                      {side === "buy" ? "Buy" : "Sell"} {outcomeLabel(entry)}
+                    </span>
+                    {askPrices[entry] === undefined ? null : (
+                      <strong>
+                        <Price cents={askPrices[entry]} />
+                      </strong>
+                    )}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <label>
+              Limit price
+              <span className="predictionInputSuffix">
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min="1"
+                  max="99"
+                  step="1"
+                  value={priceInput}
+                  onChange={(event) => setPriceInput(event.target.value)}
+                />
+                <span>¢</span>
+              </span>
+            </label>
+            <div className="predictionQuantityField">
+              <div className="predictionQuantityLabel">
+                <label htmlFor="prediction-contract-quantity">Contracts</label>
+                {side === "sell" && availableContracts > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setQuantityInput(String(availableContracts))}
+                  >
+                    Sell max
+                  </button>
+                ) : null}
+              </div>
               <input
+                id="prediction-contract-quantity"
                 type="number"
                 inputMode="numeric"
                 min="1"
-                max="99"
+                max="10000"
                 step="1"
-                value={priceInput}
-                onChange={(event) => setPriceInput(event.target.value)}
+                value={quantityInput}
+                onChange={(event) => setQuantityInput(event.target.value)}
               />
-              <span>¢</span>
-            </span>
-          </label>
-          <div className="predictionQuantityField">
-            <div className="predictionQuantityLabel">
-              <label htmlFor="prediction-contract-quantity">Contracts</label>
-              {side === "sell" && availableContracts > 0 ? (
-                <button type="button" onClick={() => setQuantityInput(String(availableContracts))}>
-                  Sell max
-                </button>
-              ) : null}
             </div>
-            <input
-              id="prediction-contract-quantity"
-              type="number"
-              inputMode="numeric"
-              min="1"
-              max="10000"
-              step="1"
-              value={quantityInput}
-              onChange={(event) => setQuantityInput(event.target.value)}
-            />
-          </div>
-          <dl className="predictionOrderMath">
-            {side === "buy" ? (
+            <dl className="predictionOrderMath">
+              {side === "buy" ? (
+                <div>
+                  <dt>Execution</dt>
+                  <dd
+                    className={
+                      immediateBuyQuantity === 0
+                        ? "predictionExecution predictionExecution--bid"
+                        : restingBidQuantity === 0
+                          ? "predictionExecution predictionExecution--immediate"
+                          : "predictionExecution predictionExecution--mixed"
+                    }
+                  >
+                    {buyExecution}
+                  </dd>
+                </div>
+              ) : null}
               <div>
-                <dt>Execution</dt>
-                <dd
-                  className={
-                    immediateBuyQuantity === 0
-                      ? "predictionExecution predictionExecution--bid"
-                      : restingBidQuantity === 0
-                        ? "predictionExecution predictionExecution--immediate"
-                        : "predictionExecution predictionExecution--mixed"
-                  }
-                >
-                  {buyExecution}
+                <dt>{side === "buy" ? "Maximum cost" : "Sale value"}</dt>
+                <dd>{orderValue.toFixed(2)} coins</dd>
+              </div>
+              <div>
+                <dt>{side === "buy" ? "Potential payout" : "Contracts offered"}</dt>
+                <dd>
+                  {validQuantity ? quantity.toLocaleString() : "—"}
+                  {side === "buy" ? " coins" : ""}
                 </dd>
               </div>
+            </dl>
+            {side === "sell" ? (
+              <div className="predictionInventory">
+                <strong>
+                  {availableContracts.toLocaleString()} {outcomeLabel(outcome)} contracts available
+                </strong>
+                <small>Selling uses contracts you own. It does not spend coins.</small>
+              </div>
             ) : null}
-            <div>
-              <dt>{side === "buy" ? "Maximum cost" : "Sale value"}</dt>
-              <dd>{orderValue.toFixed(2)} coins</dd>
-            </div>
-            <div>
-              <dt>{side === "buy" ? "Potential payout" : "Contracts offered"}</dt>
-              <dd>
-                {validQuantity ? quantity.toLocaleString() : "—"}
-                {side === "buy" ? " coins" : ""}
-              </dd>
-            </div>
-          </dl>
-          {side === "sell" ? (
-            <div className="predictionInventory">
-              <strong>
-                {availableContracts.toLocaleString()} {outcomeLabel(outcome)} contracts available
-              </strong>
-              <small>Selling uses contracts you own. It does not spend coins.</small>
-            </div>
-          ) : null}
-          {!hasSellInventory ? (
-            <InlineState kind="error">You don’t have enough available contracts.</InlineState>
-          ) : null}
-          {placeMutation.error ? (
-            <InlineState kind="error">
-              {placeMutation.error instanceof Error
-                ? placeMutation.error.message
-                : "Unable to place this order."}
-            </InlineState>
-          ) : null}
-          {successMessage ? <InlineState kind="success">{successMessage}</InlineState> : null}
-          {isAuthenticated ? (
-            <button
-              className="predictionSubmit"
-              type="submit"
-              disabled={
-                !validPrice ||
-                !validQuantity ||
-                !hasSellInventory ||
-                !marketOpen ||
-                placeMutation.isPending
-              }
-            >
-              {placeMutation.isPending ? (
-                "Placing order…"
-              ) : (
-                <>
-                  {side === "buy" ? buyAction : "Place ask"} · {outcomeLabel(outcome)}{" "}
-                  <Price cents={validPrice ? price : 0} />
-                </>
-              )}
-            </button>
-          ) : (
-            <button
-              className="predictionSubmit"
-              type="button"
-              disabled={authLoading}
-              onClick={() => void login(marketGroup.path)}
-            >
-              Log in to trade
-            </button>
-          )}
-        </form>
-      </aside>
-    </div>
-  ) : null;
+            {!hasSellInventory ? (
+              <InlineState kind="error">You don’t have enough available contracts.</InlineState>
+            ) : null}
+            {placeMutation.error ? (
+              <InlineState kind="error">
+                {placeMutation.error instanceof Error
+                  ? placeMutation.error.message
+                  : "Unable to place this order."}
+              </InlineState>
+            ) : null}
+            {successMessage ? <InlineState kind="success">{successMessage}</InlineState> : null}
+            {isAuthenticated ? (
+              <button
+                className="predictionSubmit"
+                type="submit"
+                disabled={
+                  !validPrice ||
+                  !validQuantity ||
+                  !hasSellInventory ||
+                  !marketOpen ||
+                  placeMutation.isPending
+                }
+              >
+                {placeMutation.isPending ? (
+                  "Placing order…"
+                ) : (
+                  <>
+                    {side === "buy" ? buyAction : "Place ask"} · {outcomeLabel(outcome)}{" "}
+                    <Price cents={validPrice ? price : 0} />
+                  </>
+                )}
+              </button>
+            ) : (
+              <button
+                className="predictionSubmit"
+                type="button"
+                disabled={authLoading}
+                onClick={() => void login(marketGroup?.path ?? pathname)}
+              >
+                Log in to trade
+              </button>
+            )}
+          </form>
+        </aside>
+      </div>
+    ) : null;
 
+  if (catalogQuery.isPending || !marketGroup) return <RouteLoadingFallback />;
   if (marketQueries.every((query) => query.isPending && !query.data))
     return <RouteLoadingFallback />;
 
@@ -447,7 +451,7 @@ export const PredictionMarketPage = () => {
           ) : null}
         </header>
 
-        {marketQuery.error ? (
+        {marketQuery?.error ? (
           <InlineState kind="error">
             {marketQuery.error instanceof Error
               ? marketQuery.error.message

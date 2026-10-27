@@ -17,39 +17,16 @@ import { HttpError } from "../../platform/errors";
 import { parseJsonBody } from "../../platform/validation";
 import { buildPredictionBook, calculatePredictionPositionCost } from "./predictionBook";
 
-const exchangeMarketIdSchema = z.enum([
-  "natso-ban-2026",
-  "new-life14-ban-2026",
-  "goroarmet-ban-2026",
-  "november-atomic-shield-2026-rechesster",
-  "november-atomic-shield-2026-vannto",
-  "november-atomic-shield-2026-wolfram-ep",
-  "november-atomic-shield-2026-opabinia",
-  "november-atomic-shield-2026-maxwellssilvrhammer",
-  "november-atomic-shield-2026-new-life14",
-  "november-atomic-shield-2026-others",
-  "awc-2026-champion-natso",
-  "awc-2026-champion-maxwellssilvrhammer",
-  "awc-2026-champion-sutcunuri",
-  "awc-2026-champion-rechesster",
-  "awc-2026-champion-jakestatefarm",
-  "awc-2026-champion-quasabianth",
-  "awc-2026-champion-maracker",
-  "awc-2026-champion-judebaetorrens",
-  "awc-2026-champion-howlind",
-  "awc-2026-champion-renaudmerle",
-  "awc-2026-champion-rabbier",
-  "awc-2026-champion-theatomicstorm",
-  "awc-2026-champion-dandan2016",
-  "awc-2026-champion-tolya-starina0995",
-  "awc-2026-champion-stinkypotato",
-  "awc-2026-champion-goroarmet",
-  "awc-2026-champion-arinor0109",
-  "awc-2026-champion-matvei-e2e4",
-]);
+const exchangeMarketIdSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(100)
+  .regex(/^[a-z0-9-]+$/);
 
 const bodySchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("markets") }),
+  z.object({ action: z.literal("exchangeMarkets") }),
   z.object({ action: z.literal("bets") }),
   z.object({ action: z.literal("allBets") }),
   z.object({ action: z.literal("suggestions") }),
@@ -183,11 +160,25 @@ export const bettingRoute = async (event: FunctionEvent) => {
   const identity = await authenticateRequest(
     event.headers,
     input.action === "markets" ||
+      input.action === "exchangeMarkets" ||
       input.action === "allBets" ||
       input.action === "suggestions" ||
       input.action === "exchangeMarket",
   );
   const supabase = createServerSupabase("Tournament betting service");
+
+  if (input.action === "exchangeMarkets") {
+    const { data, error } = await supabase
+      .from("prediction_markets")
+      .select(
+        "id,group_id,group_path,group_title,group_description,group_order,display_name,country_code,starting_chance,display_order",
+      )
+      .not("group_id", "is", null)
+      .order("group_order", { ascending: true })
+      .order("display_order", { ascending: true });
+    if (error) throw new Error(`Unable to load prediction market catalog: ${error.message}`);
+    return identityResponse(identity, 200, { result: data ?? [] });
+  }
 
   if (input.action === "exchangeMarket") {
     const [marketResult, ordersResult, fillsResult] = await Promise.all([

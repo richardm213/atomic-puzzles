@@ -2,207 +2,70 @@ import { z } from "zod";
 
 import { postApi } from "../api/postApi";
 
-export const NATSO_BAN_MARKET_ID = "natso-ban-2026";
-export const NEW_LIFE14_BAN_MARKET_ID = "new-life14-ban-2026";
-export const GOROARMET_BAN_MARKET_ID = "goroarmet-ban-2026";
-export const PREDICTION_BAN_MARKETS = [
-  { id: NATSO_BAN_MARKET_ID, username: "Natso", countryCode: "NL", startingChance: undefined },
-  {
-    id: NEW_LIFE14_BAN_MARKET_ID,
-    username: "New_Life14",
-    countryCode: "KZ",
-    startingChance: undefined,
-  },
-  {
-    id: GOROARMET_BAN_MARKET_ID,
-    username: "GoroArmeT",
-    countryCode: "ES",
-    startingChance: undefined,
-  },
-] as const;
-export const PREDICTION_ATOMIC_SHIELD_MARKETS = [
-  {
-    id: "november-atomic-shield-2026-rechesster",
-    username: "rechesster",
-    countryCode: "AT",
-    startingChance: undefined,
-  },
-  {
-    id: "november-atomic-shield-2026-vannto",
-    username: "vannto",
-    countryCode: "VE",
-    startingChance: undefined,
-  },
-  {
-    id: "november-atomic-shield-2026-wolfram-ep",
-    username: "wolfram_ep",
-    countryCode: "RU",
-    startingChance: undefined,
-  },
-  {
-    id: "november-atomic-shield-2026-opabinia",
-    username: "opabinia",
-    countryCode: "US",
-    startingChance: undefined,
-  },
-  {
-    id: "november-atomic-shield-2026-maxwellssilvrhammer",
-    username: "maxwellssilvrhammer",
-    countryCode: "US",
-    startingChance: undefined,
-  },
-  {
-    id: "november-atomic-shield-2026-new-life14",
-    username: "new_life14",
-    countryCode: "KZ",
-    startingChance: undefined,
-  },
-  {
-    id: "november-atomic-shield-2026-others",
-    username: "others",
-    countryCode: "",
-    startingChance: undefined,
-  },
-] as const;
+export type PredictionMarketId = string;
+export type PredictionMarketDefinition = {
+  id: PredictionMarketId;
+  username: string;
+  countryCode: string;
+  startingChance?: number | undefined;
+};
+export type PredictionMarketGroup = {
+  id: string;
+  path: string;
+  title: string;
+  description: string;
+  displayOrder: number;
+  markets: PredictionMarketDefinition[];
+};
 
-export const PREDICTION_AWC_CHAMPION_MARKETS = [
-  { id: "awc-2026-champion-natso", username: "natso", countryCode: "NL", startingChance: 30 },
-  {
-    id: "awc-2026-champion-maxwellssilvrhammer",
-    username: "maxwellssilvrhammer",
-    countryCode: "US",
-    startingChance: 23,
-  },
-  {
-    id: "awc-2026-champion-sutcunuri",
-    username: "sutcunuri",
-    countryCode: "TR",
-    startingChance: 20,
-  },
-  {
-    id: "awc-2026-champion-rechesster",
-    username: "rechesster",
-    countryCode: "AT",
-    startingChance: 20,
-  },
-  {
-    id: "awc-2026-champion-jakestatefarm",
-    username: "jakestatefarm",
-    countryCode: "US",
-    startingChance: 15,
-  },
-  {
-    id: "awc-2026-champion-quasabianth",
-    username: "quasabianth",
-    countryCode: "RU",
-    startingChance: 5,
-  },
-  {
-    id: "awc-2026-champion-maracker",
-    username: "maracker",
-    countryCode: "RU",
-    startingChance: 4,
-  },
-  {
-    id: "awc-2026-champion-judebaetorrens",
-    username: "judebaetorrens",
-    countryCode: "US",
-    startingChance: 2,
-  },
-  {
-    id: "awc-2026-champion-howlind",
-    username: "howlind",
-    countryCode: "FR",
-    startingChance: 1,
-  },
-  {
-    id: "awc-2026-champion-renaudmerle",
-    username: "renaudmerle",
-    countryCode: "FR",
-    startingChance: 1,
-  },
-  {
-    id: "awc-2026-champion-rabbier",
-    username: "rabbier",
-    countryCode: "NZ",
-    startingChance: 1,
-  },
-  {
-    id: "awc-2026-champion-theatomicstorm",
-    username: "theatomicstorm",
-    countryCode: "US",
-    startingChance: 1,
-  },
-  {
-    id: "awc-2026-champion-dandan2016",
-    username: "dandan2016",
-    countryCode: "US",
-    startingChance: 1,
-  },
-  {
-    id: "awc-2026-champion-tolya-starina0995",
-    username: "tolya_starina0995",
-    countryCode: "RU",
-    startingChance: 1,
-  },
-  {
-    id: "awc-2026-champion-stinkypotato",
-    username: "stinkypotato",
-    countryCode: "US",
-    startingChance: 0,
-  },
-  {
-    id: "awc-2026-champion-goroarmet",
-    username: "goroarmet",
-    countryCode: "ES",
-    startingChance: 0,
-  },
-  {
-    id: "awc-2026-champion-arinor0109",
-    username: "arinor0109",
-    countryCode: "SE",
-    startingChance: 0,
-  },
-  {
-    id: "awc-2026-champion-matvei-e2e4",
-    username: "matvei-e2e4",
-    countryCode: "RU",
-    startingChance: 0,
-  },
-] as const;
+const catalogSchema = z.object({
+  result: z.array(
+    z.object({
+      id: z.string(),
+      group_id: z.string(),
+      group_path: z.string(),
+      group_title: z.string(),
+      group_description: z.string(),
+      group_order: z.number(),
+      display_name: z.string(),
+      country_code: z.string(),
+      starting_chance: z.number().nullable(),
+      display_order: z.number(),
+    }),
+  ),
+});
 
-export const PREDICTION_MARKET_GROUPS = [
-  {
-    id: "ban-2026",
-    path: "/betting/ban-2026",
-    title: "Who will be banned by Dec 31?",
-    description: "Trade Lichess ban prediction markets with Atomic Coins.",
-    markets: PREDICTION_BAN_MARKETS,
-  },
-  {
-    id: "november-atomic-shield-2026",
-    path: "/betting/november-atomic-shield-2026",
-    title: "Who will win the November Atomic Shield?",
-    description: "Trade November Atomic Shield winner predictions with Atomic Coins.",
-    markets: PREDICTION_ATOMIC_SHIELD_MARKETS,
-  },
-  {
-    id: "awc-2026-champion",
-    path: "/betting/awc-2026-champion",
-    title: "Who will be the 2026 Atomic World Champion?",
-    description: "Trade 2026 Atomic World Championship winner predictions with Atomic Coins.",
-    markets: PREDICTION_AWC_CHAMPION_MARKETS,
-  },
-] as const;
+export const fetchPredictionMarketGroups = async (): Promise<PredictionMarketGroup[]> => {
+  const response = await postApi(
+    "/api/betting",
+    { action: "exchangeMarkets" },
+    {
+      schema: catalogSchema,
+      errorMessage: "Unable to load prediction markets.",
+      invalidMessage: "The prediction market catalog is invalid.",
+    },
+  );
+  const groups = new Map<string, PredictionMarketGroup>();
+  for (const row of response.result) {
+    const group = groups.get(row.group_id) ?? {
+      id: row.group_id,
+      path: row.group_path,
+      title: row.group_title,
+      description: row.group_description,
+      displayOrder: row.group_order,
+      markets: [],
+    };
+    group.markets.push({
+      id: row.id,
+      username: row.display_name,
+      countryCode: row.country_code,
+      startingChance: row.starting_chance ?? undefined,
+    });
+    groups.set(row.group_id, group);
+  }
+  return [...groups.values()].sort((a, b) => a.displayOrder - b.displayOrder);
+};
 
-export const PREDICTION_MARKETS = [
-  ...PREDICTION_BAN_MARKETS,
-  ...PREDICTION_ATOMIC_SHIELD_MARKETS,
-  ...PREDICTION_AWC_CHAMPION_MARKETS,
-] as const;
-
-export type PredictionMarketId = (typeof PREDICTION_MARKETS)[number]["id"];
-export type PredictionMarketDefinition = (typeof PREDICTION_MARKETS)[number];
 export type PredictionOutcome = "yes" | "no";
 export type PredictionOrderSide = "buy" | "sell";
 

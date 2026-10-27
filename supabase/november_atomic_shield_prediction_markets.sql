@@ -51,9 +51,58 @@ insert into public.prediction_markets (
     '2026-11-20T16:00:00Z'
   ),
   (
+    'november-atomic-shield-2026-chrisrapid',
+    'Will chrisrapid win the November Atomic Shield?',
+    'Resolves Yes if chrisrapid finishes first in the official Lichess Atomic Shield Arena scheduled for 2026-11-20. Otherwise resolves No. The official Lichess tournament result is the sole resolution source.',
+    'https://lichess.org/tournament/calendar',
+    '2026-11-20T16:00:00Z'
+  ),
+  (
+    'november-atomic-shield-2026-randoomplayer',
+    'Will randoomplayer win the November Atomic Shield?',
+    'Resolves Yes if randoomplayer finishes first in the official Lichess Atomic Shield Arena scheduled for 2026-11-20. Otherwise resolves No. The official Lichess tournament result is the sole resolution source.',
+    'https://lichess.org/tournament/calendar',
+    '2026-11-20T16:00:00Z'
+  ),
+  (
+    'november-atomic-shield-2026-natso',
+    'Will natso win the November Atomic Shield?',
+    'Resolves Yes if natso finishes first in the official Lichess Atomic Shield Arena scheduled for 2026-11-20. Otherwise resolves No. The official Lichess tournament result is the sole resolution source.',
+    'https://lichess.org/tournament/calendar',
+    '2026-11-20T16:00:00Z'
+  ),
+  (
+    'november-atomic-shield-2026-ihatespammers',
+    'Will ihatespammers win the November Atomic Shield?',
+    'Resolves Yes if ihatespammers finishes first in the official Lichess Atomic Shield Arena scheduled for 2026-11-20. Otherwise resolves No. The official Lichess tournament result is the sole resolution source.',
+    'https://lichess.org/tournament/calendar',
+    '2026-11-20T16:00:00Z'
+  ),
+  (
+    'november-atomic-shield-2026-quasabianth',
+    'Will quasabianth win the November Atomic Shield?',
+    'Resolves Yes if quasabianth finishes first in the official Lichess Atomic Shield Arena scheduled for 2026-11-20. Otherwise resolves No. The official Lichess tournament result is the sole resolution source.',
+    'https://lichess.org/tournament/calendar',
+    '2026-11-20T16:00:00Z'
+  ),
+  (
+    'november-atomic-shield-2026-maracker',
+    'Will maracker win the November Atomic Shield?',
+    'Resolves Yes if maracker finishes first in the official Lichess Atomic Shield Arena scheduled for 2026-11-20. Otherwise resolves No. The official Lichess tournament result is the sole resolution source.',
+    'https://lichess.org/tournament/calendar',
+    '2026-11-20T16:00:00Z'
+  ),
+  (
+    'november-atomic-shield-2026-rabbier',
+    'Will rabbier win the November Atomic Shield?',
+    'Resolves Yes if rabbier finishes first in the official Lichess Atomic Shield Arena scheduled for 2026-11-20. Otherwise resolves No. The official Lichess tournament result is the sole resolution source.',
+    'https://lichess.org/tournament/calendar',
+    '2026-11-20T16:00:00Z'
+  ),
+  (
     'november-atomic-shield-2026-others',
     'Will someone else win the November Atomic Shield?',
-    'Resolves Yes if the official winner of the Lichess Atomic Shield Arena scheduled for 2026-11-20 is not rechesster, vannto, wolfram_ep, opabinia, maxwellssilvrhammer, or new_life14. Otherwise resolves No. The official Lichess tournament result is the sole resolution source.',
+    'Resolves Yes if the official winner of the Lichess Atomic Shield Arena scheduled for 2026-11-20 is not rechesster, vannto, wolfram_ep, opabinia, maxwellssilvrhammer, new_life14, chrisrapid, randoomplayer, natso, ihatespammers, quasabianth, maracker, or rabbier. Otherwise resolves No. The official Lichess tournament result is the sole resolution source.',
     'https://lichess.org/tournament/calendar',
     '2026-11-20T16:00:00Z'
   )
