@@ -98,13 +98,6 @@ insert into public.prediction_markets (
     'Resolves Yes if rabbier finishes first in the official Lichess Atomic Shield Arena scheduled for 2026-11-20. Otherwise resolves No. The official Lichess tournament result is the sole resolution source.',
     'https://lichess.org/tournament/calendar',
     '2026-11-20T16:00:00Z'
-  ),
-  (
-    'november-atomic-shield-2026-others',
-    'Will someone else win the November Atomic Shield?',
-    'Resolves Yes if the official winner of the Lichess Atomic Shield Arena scheduled for 2026-11-20 is not rechesster, vannto, wolfram_ep, opabinia, maxwellssilvrhammer, new_life14, chrisrapid, randoomplayer, natso, ihatespammers, quasabianth, maracker, or rabbier. Otherwise resolves No. The official Lichess tournament result is the sole resolution source.',
-    'https://lichess.org/tournament/calendar',
-    '2026-11-20T16:00:00Z'
   )
 on conflict (id) do update set
   question = excluded.question,

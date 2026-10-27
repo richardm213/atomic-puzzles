@@ -9,20 +9,33 @@ import { InlineState } from "../../components/InlineState/InlineState";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
+import {
+  findCurrentTournamentOpponent,
+  isRestrictedAwcChampionOrder,
+  predictionOrderRestrictionMessage,
+} from "../../lib/betting/betting";
 import { formatCoinBalance } from "../../lib/coins/coinDisplay";
 import { coinQueryKeys, coinSummaryQueryOptions } from "../../lib/coins/coinQueries";
+import { tournamentBracketQueryOptions } from "../../lib/matches/tournamentQueries";
 import {
   predictionMarketCatalogQueryOptions,
   predictionMarketQueryOptions,
   predictionMarketQueryRoot,
 } from "../../lib/predictionMarkets/predictionMarketQueries";
+import { usePredictionMarketRealtime } from "../../lib/predictionMarkets/predictionMarketRealtime";
 import {
   cancelPredictionOrder,
   placePredictionOrder,
   type PredictionMarketDefinition,
   type PredictionMarketId,
+  predictionMarketVolume,
   type PredictionOrderSide,
   type PredictionOutcome,
+  predictionOutcomes,
+  predictionTakerFee,
+  predictionYesChance,
+  quotePredictionBuy,
+  quotePredictionSell,
 } from "../../lib/predictionMarkets/predictionMarkets";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { countryCodeToFlagUrl } from "../../utils/countryFlags";
@@ -59,11 +72,19 @@ export const PredictionMarketPage = () => {
   const marketQueries = useQueries({
     queries: marketDefinitions.map((market) => predictionMarketQueryOptions(market.id)),
   });
+  usePredictionMarketRealtime(
+    queryClient,
+    marketDefinitions.map((market) => market.id),
+  );
   const activeMarketIndex = marketDefinitions.findIndex((market) => market.id === activeMarketId);
   const marketQuery = marketQueries[activeMarketIndex] ?? marketQueries[0];
   const coinQuery = useQuery({
     ...coinSummaryQueryOptions(username),
     enabled: isAuthenticated,
+  });
+  const awcBracketQuery = useQuery({
+    ...tournamentBracketQueryOptions("awc2026"),
+    enabled: isAuthenticated && marketGroup?.id === "awc-2026-champion",
   });
   const [outcome, setOutcome] = useState<PredictionOutcome>("yes");
   const [side, setSide] = useState<PredictionOrderSide>("buy");
@@ -71,12 +92,7 @@ export const PredictionMarketPage = () => {
   const [quantityInput, setQuantityInput] = useState("10");
   const [successMessage, setSuccessMessage] = useState("");
   const marketVolume = marketQueries.reduce(
-    (groupTotal, query) =>
-      groupTotal +
-      (query.data?.fills.reduce(
-        (marketTotal, fill) => marketTotal + (fill.priceCents * fill.quantity) / 100,
-        0,
-      ) ?? 0),
+    (total, query) => total + predictionMarketVolume(query.data),
     0,
   );
 
@@ -84,7 +100,7 @@ export const PredictionMarketPage = () => {
     const firstMarketId = marketDefinitions[0]?.id;
     if (!firstMarketId) return;
     setActiveMarketId(firstMarketId);
-    setExpandedMarketId(firstMarketId);
+    setExpandedMarketId(null);
     setOutcome("yes");
     setSuccessMessage("");
   }, [marketDefinitions]);
@@ -95,14 +111,23 @@ export const PredictionMarketPage = () => {
   const validPrice = Number.isInteger(price) && price >= 1 && price <= 99;
   const validQuantity = Number.isInteger(quantity) && quantity >= 1 && quantity <= 10_000;
   const orderValue = validPrice && validQuantity ? (price * quantity) / 100 : 0;
-  const immediatelyAvailable =
-    validPrice && marketState
-      ? marketState.book[outcome].asks
-          .filter((level) => level.priceCents <= price)
-          .reduce((total, level) => total + level.quantity, 0)
-      : 0;
-  const immediateBuyQuantity = validQuantity ? Math.min(quantity, immediatelyAvailable) : 0;
-  const restingBidQuantity = validQuantity ? Math.max(0, quantity - immediateBuyQuantity) : 0;
+  const buyQuote = quotePredictionBuy(
+    marketState?.book[outcome].asks ?? [],
+    validPrice ? price : 0,
+    validQuantity ? quantity : 0,
+  );
+  const sellQuote = quotePredictionSell(
+    marketState?.book[outcome].bids ?? [],
+    validPrice ? price : 100,
+    validQuantity ? quantity : 0,
+  );
+  const estimatedTakerFee = predictionTakerFee(
+    side === "buy" ? buyQuote.fillCostCoins : sellQuote.proceedsCoins,
+  );
+  const estimatedBuyTotal = orderValue + estimatedTakerFee;
+  const estimatedSellProceeds = Math.max(0, sellQuote.proceedsCoins - estimatedTakerFee);
+  const immediateBuyQuantity = buyQuote.filledQuantity;
+  const restingBidQuantity = buyQuote.restingQuantity;
   const buyAction =
     immediateBuyQuantity === 0
       ? "Place bid"
@@ -136,6 +161,10 @@ export const PredictionMarketPage = () => {
     (isAuthenticated && validQuantity && quantity <= availableContracts && availableContracts > 0);
   const marketOpen =
     marketState?.market.status === "open" && Date.parse(marketState.market.closesAt) > Date.now();
+  const marketGroupOpen = marketQueries.some(
+    (query) =>
+      query.data?.market.status === "open" && Date.parse(query.data.market.closesAt) > Date.now(),
+  );
 
   const askPrices = useMemo(() => {
     if (!marketState) return { yes: undefined, no: undefined };
@@ -145,6 +174,28 @@ export const PredictionMarketPage = () => {
     };
   }, [marketState]);
   const activeMarketDefinition = marketDefinitions[activeMarketIndex] ?? marketDefinitions[0];
+  const currentAwcOpponent = findCurrentTournamentOpponent(
+    (awcBracketQuery.data?.matches ?? []).map((match) => ({
+      p1: match.p1,
+      p2: match.p2,
+      s1: match.s1,
+      s2: match.s2,
+      matchId: match.match_id,
+    })),
+    username,
+  );
+  const orderRestrictionFor = (nextOutcome: PredictionOutcome, nextSide: PredictionOrderSide) =>
+    activeMarketDefinition
+      ? isRestrictedAwcChampionOrder({
+          groupId: marketGroup?.id,
+          marketPlayer: activeMarketDefinition.username,
+          username,
+          currentOpponent: currentAwcOpponent,
+          outcome: nextOutcome,
+          side: nextSide,
+        })
+      : null;
+  const orderRestriction = activeMarketDefinition ? orderRestrictionFor(outcome, side) : null;
   const recentFills = marketDefinitions
     .flatMap((definition, index) =>
       (marketQueries[index]?.data?.fills ?? []).map((fill) => ({ ...fill, definition })),
@@ -174,7 +225,8 @@ export const PredictionMarketPage = () => {
   const submitOrder = (event: FormEvent) => {
     event.preventDefault();
     setSuccessMessage("");
-    if (!validPrice || !validQuantity || !hasSellInventory || !marketOpen) return;
+    if (!validPrice || !validQuantity || !hasSellInventory || !marketOpen || orderRestriction)
+      return;
     placeMutation.mutate({
       marketId: activeMarketId,
       outcome,
@@ -216,11 +268,9 @@ export const PredictionMarketPage = () => {
         <section className="predictionBookPanel" aria-labelledby="order-book-title">
           <div className="predictionSectionHeader">
             <h2 id="order-book-title">Order book</h2>
-            <span>
-              {activeMarketDefinition.username} · {outcomeLabel(outcome)} · all traders
-            </span>
           </div>
           <VerticalOrderBook
+            outcome={outcome}
             bids={marketState.book[outcome].bids}
             asks={marketState.book[outcome].asks}
             onSelectBid={(nextPrice, nextQuantity) =>
@@ -269,11 +319,14 @@ export const PredictionMarketPage = () => {
               role="group"
               aria-label="Outcome"
             >
-              {(["yes", "no"] as const).map((entry) => (
+              {predictionOutcomes.map((entry) => (
                 <button
                   type="button"
                   aria-pressed={outcome === entry}
-                  disabled={side === "sell" && availableByOutcome[entry] <= 0}
+                  disabled={
+                    (side === "sell" && availableByOutcome[entry] <= 0) ||
+                    Boolean(orderRestrictionFor(entry, side))
+                  }
                   onClick={() => setOutcome(entry)}
                   key={entry}
                 >
@@ -346,9 +399,25 @@ export const PredictionMarketPage = () => {
                 </div>
               ) : null}
               <div>
-                <dt>{side === "buy" ? "Maximum cost" : "Sale value"}</dt>
-                <dd>{orderValue.toFixed(2)} coins</dd>
+                <dt>{side === "buy" ? "Maximum cost" : "Immediate proceeds"}</dt>
+                <dd>
+                  {(side === "buy" ? estimatedBuyTotal : estimatedSellProceeds).toFixed(2)} coins
+                </dd>
               </div>
+              <div>
+                <dt>Taker fee (2%)</dt>
+                <dd>{estimatedTakerFee.toFixed(2)} coins</dd>
+              </div>
+              {side === "buy" ? (
+                <div>
+                  <dt>Average buy price</dt>
+                  <dd>
+                    {buyQuote.averageFillPriceCents === undefined
+                      ? "—"
+                      : `${buyQuote.averageFillPriceCents.toFixed(1)}¢`}
+                  </dd>
+                </div>
+              ) : null}
               <div>
                 <dt>{side === "buy" ? "Potential payout" : "Contracts offered"}</dt>
                 <dd>
@@ -357,6 +426,20 @@ export const PredictionMarketPage = () => {
                 </dd>
               </div>
             </dl>
+            {side === "buy" && validQuantity && restingBidQuantity > 0 ? (
+              <InlineState kind="info">
+                Only {buyQuote.availableQuantity.toLocaleString()} contracts are available at or
+                below your limit. The remaining {restingBidQuantity.toLocaleString()} will stay open
+                as a bid.
+              </InlineState>
+            ) : null}
+            {side === "sell" && validQuantity && sellQuote.restingQuantity > 0 ? (
+              <InlineState kind="info">
+                Only {sellQuote.availableQuantity.toLocaleString()} contracts can sell immediately
+                at or above your limit. The remaining {sellQuote.restingQuantity.toLocaleString()}
+                will stay open as an ask.
+              </InlineState>
+            ) : null}
             {side === "sell" ? (
               <div className="predictionInventory">
                 <strong>
@@ -367,6 +450,11 @@ export const PredictionMarketPage = () => {
             ) : null}
             {!hasSellInventory ? (
               <InlineState kind="error">You don’t have enough available contracts.</InlineState>
+            ) : null}
+            {orderRestriction ? (
+              <InlineState kind="error">
+                {predictionOrderRestrictionMessage(orderRestriction)}
+              </InlineState>
             ) : null}
             {placeMutation.error ? (
               <InlineState kind="error">
@@ -384,6 +472,7 @@ export const PredictionMarketPage = () => {
                   !validPrice ||
                   !validQuantity ||
                   !hasSellInventory ||
+                  Boolean(orderRestriction) ||
                   !marketOpen ||
                   placeMutation.isPending
                 }
@@ -415,6 +504,7 @@ export const PredictionMarketPage = () => {
   if (catalogQuery.isPending || !marketGroup) return <RouteLoadingFallback />;
   if (marketQueries.every((query) => query.isPending && !query.data))
     return <RouteLoadingFallback />;
+  const showShieldIcon = marketGroup.id === "november-atomic-shield-2026";
 
   return (
     <main className="sitePage predictionMarketPage">
@@ -427,12 +517,22 @@ export const PredictionMarketPage = () => {
         <header className="predictionMarketHeader">
           <div>
             <Link to="/betting">← All markets</Link>
-            <h1>{marketGroup.title}</h1>
+            <div className="predictionMarketTitle">
+              {showShieldIcon ? (
+                <img
+                  className="predictionMarketTitleIcon"
+                  src={appAssetPath("/images/arenas/atomic-shield.png")}
+                  alt=""
+                  aria-hidden="true"
+                />
+              ) : null}
+              <h1>{marketGroup.title}</h1>
+            </div>
             <div className="predictionMarketMeta">
               <span
-                className={`predictionStatus predictionStatus--${marketOpen ? "open" : "closed"}`}
+                className={`predictionStatus predictionStatus--${marketGroupOpen ? "open" : "closed"}`}
               >
-                {marketOpen ? "Trading" : "Closed"}
+                {marketGroupOpen ? "Open" : "Closed"}
               </span>
               {marketState ? (
                 <span>Closes {formatLocalDateTime(marketState.market.closesAt)}</span>
@@ -471,6 +571,11 @@ export const PredictionMarketPage = () => {
                     Market outcomes
                   </h2>
                   <div className="predictionOutcomeList">
+                    <div className="predictionOutcomeHeader" aria-hidden="true">
+                      <span />
+                      <span>Chance</span>
+                      <span />
+                    </div>
                     {marketDefinitions.map((definition, index) => {
                       const state = marketQueries[index]?.data;
                       const rowPositions = {
@@ -485,17 +590,8 @@ export const PredictionMarketPage = () => {
                         yes: state?.book.yes.asks[0]?.priceCents,
                         no: state?.book.no.asks[0]?.priceCents,
                       };
-                      const rowLatestFill = state?.fills[0];
-                      const rowYesPercent =
-                        state?.market.status === "resolved"
-                          ? state.market.outcome === "yes"
-                            ? 100
-                            : 0
-                          : rowLatestFill
-                            ? rowLatestFill.outcome === "yes"
-                              ? rowLatestFill.priceCents
-                              : 100 - rowLatestFill.priceCents
-                            : definition.startingChance;
+                      const settlementPrice = state?.market.settlementPriceCents;
+                      const rowYesPercent = predictionYesChance(definition, state);
                       const isResolved = state?.market.status === "resolved";
 
                       return (
@@ -547,7 +643,7 @@ export const PredictionMarketPage = () => {
                             )}
                             {isAuthenticated && (rowOwned.yes > 0 || rowOwned.no > 0) ? (
                               <div className="predictionHoldings" aria-label="Your position">
-                                {(["yes", "no"] as const).map((entry) =>
+                                {predictionOutcomes.map((entry) =>
                                   rowOwned[entry] > 0 ? (
                                     <span
                                       className={`predictionHolding predictionHolding--${entry}`}
@@ -572,49 +668,70 @@ export const PredictionMarketPage = () => {
                               </div>
                             ) : null}
                           </div>
-                          <span className="predictionOutcomeChance">
-                            <small>Chance</small>
-                            <strong>
-                              {rowYesPercent === undefined ? "—" : `${rowYesPercent}%`}
-                            </strong>
-                          </span>
                           {isResolved ? (
                             <span
-                              className={`predictionResolvedBadge predictionResolvedBadge--${state?.market.outcome ?? "no"}`}
+                              className={`predictionResolvedResult ${
+                                settlementPrice === null || settlementPrice === undefined
+                                  ? `predictionResolvedResult--${state?.market.outcome ?? "no"}`
+                                  : "predictionResolvedResult--price"
+                              }`}
+                              aria-label={
+                                settlementPrice === null || settlementPrice === undefined
+                                  ? `Resolved ${state?.market.outcome === "yes" ? "Yes" : "No"}`
+                                  : `Settled at ${settlementPrice} cents`
+                              }
                             >
-                              Resolved {state?.market.outcome === "yes" ? "Yes" : "No"}
+                              {settlementPrice === null || settlementPrice === undefined ? (
+                                state?.market.outcome === "yes" ? (
+                                  <span className="predictionResolvedCheck" aria-hidden="true">
+                                    ✓
+                                  </span>
+                                ) : null
+                              ) : null}
+                              <strong>
+                                {settlementPrice === null || settlementPrice === undefined
+                                  ? outcomeLabel(state?.market.outcome ?? "no")
+                                  : `Settled ${settlementPrice}¢`}
+                              </strong>
                             </span>
                           ) : (
-                            <div
-                              className="predictionOutcomeActions"
-                              aria-label={`${definition.username} outcome`}
-                            >
-                              {(["yes", "no"] as const).map((entry) => (
-                                <button
-                                  type="button"
-                                  className={`predictionOutcomeAction predictionOutcomeAction--${entry}`}
-                                  aria-pressed={
-                                    activeMarketId === definition.id && outcome === entry
-                                  }
-                                  onClick={() => {
-                                    setActiveMarketId(definition.id);
-                                    setExpandedMarketId(definition.id);
-                                    setOutcome(entry);
-                                    setSuccessMessage("");
-                                  }}
-                                  key={entry}
-                                >
-                                  <strong className="predictionOutcomeActionPrice">
-                                    <span>{outcomeLabel(entry)}</span>
-                                    {rowAskPrices[entry] === undefined ? (
-                                      "—"
-                                    ) : (
-                                      <Price cents={rowAskPrices[entry]} />
-                                    )}
-                                  </strong>
-                                </button>
-                              ))}
-                            </div>
+                            <>
+                              <span className="predictionOutcomeChance">
+                                <strong>
+                                  {rowYesPercent === undefined ? "—" : `${rowYesPercent}%`}
+                                </strong>
+                              </span>
+                              <div
+                                className="predictionOutcomeActions"
+                                aria-label={`${definition.username} outcome`}
+                              >
+                                {predictionOutcomes.map((entry) => (
+                                  <button
+                                    type="button"
+                                    className={`predictionOutcomeAction predictionOutcomeAction--${entry}`}
+                                    aria-pressed={
+                                      activeMarketId === definition.id && outcome === entry
+                                    }
+                                    onClick={() => {
+                                      setActiveMarketId(definition.id);
+                                      setExpandedMarketId(definition.id);
+                                      setOutcome(entry);
+                                      setSuccessMessage("");
+                                    }}
+                                    key={entry}
+                                  >
+                                    <strong className="predictionOutcomeActionPrice">
+                                      <span>{outcomeLabel(entry)}</span>
+                                      {rowAskPrices[entry] === undefined ? (
+                                        "—"
+                                      ) : (
+                                        <Price cents={rowAskPrices[entry]} />
+                                      )}
+                                    </strong>
+                                  </button>
+                                ))}
+                              </div>
+                            </>
                           )}
                           {!isResolved && expandedMarketId === definition.id
                             ? activeMarketPanel
@@ -693,6 +810,14 @@ export const PredictionMarketPage = () => {
             <details className="predictionRules">
               <summary>Resolution rules</summary>
               <p>{marketState.market.resolutionRules}</p>
+              {marketState.market.settlementPriceCents !== null ? (
+                <p>
+                  {`Settlement: ${marketState.market.settlementPriceCents}¢ Yes / ${100 - marketState.market.settlementPriceCents}¢ No`}
+                  {marketState.market.settlementReferenceFillId !== null
+                    ? ` · Reference trade #${marketState.market.settlementReferenceFillId}`
+                    : ""}
+                </p>
+              ) : null}
               <a href={marketState.market.resolutionSourceUrl} target="_blank" rel="noreferrer">
                 View resolution source
               </a>
@@ -705,50 +830,51 @@ export const PredictionMarketPage = () => {
 };
 
 const VerticalOrderBook = ({
+  outcome,
   bids,
   asks,
   onSelectBid,
   onSelectAsk,
 }: {
+  outcome: PredictionOutcome;
   bids: Array<{ priceCents: number; quantity: number }>;
   asks: Array<{ priceCents: number; quantity: number }>;
   onSelectBid: (price: number, quantity: number) => void;
   onSelectAsk: (price: number, quantity: number) => void;
 }) => {
-  const bestBid = bids[0]?.priceCents;
-  const bestAsk = asks[0]?.priceCents;
-  const spread =
-    bestBid === undefined || bestAsk === undefined ? undefined : Math.max(0, bestAsk - bestBid);
-
   const renderLevels = (
     levels: Array<{ priceCents: number; quantity: number }>,
     tone: "bid" | "ask",
     onSelect: (price: number, quantity: number) => void,
-  ) =>
-    levels.length ? (
-      levels.map((level) => {
-        const largestLevel = Math.max(...levels.map((entry) => entry.quantity));
-        const depth = largestLevel > 0 ? Math.max(8, (level.quantity / largestLevel) * 100) : 0;
-        return (
-          <button
-            type="button"
-            className={`predictionBookLevel predictionBookLevel--${tone}`}
-            style={{ "--prediction-book-depth": `${depth}%` } as CSSProperties}
-            aria-label={`${tone === "ask" ? "Ask" : "Bid"} ${money(level.priceCents)}, ${level.quantity.toLocaleString()} contracts`}
-            onClick={() => onSelect(level.priceCents, level.quantity)}
-            key={`${tone}-${level.priceCents}`}
-          >
-            <strong>
-              <Price cents={level.priceCents} />
-            </strong>
-            <span>{tone === "ask" ? "Ask" : "Bid"}</span>
-            <b>{level.quantity.toLocaleString()}</b>
-          </button>
-        );
-      })
-    ) : (
-      <p className="predictionBookEmpty">No {tone}s</p>
-    );
+  ) => {
+    if (!levels.length) return <p className="predictionBookEmpty">No {tone}s</p>;
+    const totalQuantity = levels.reduce((total, level) => total + level.quantity, 0);
+    return levels.map((level, index) => {
+      const coinValue = (level.priceCents * level.quantity) / 100;
+      const cumulativeQuantity =
+        tone === "ask"
+          ? levels.slice(index).reduce((total, entry) => total + entry.quantity, 0)
+          : levels.slice(0, index + 1).reduce((total, entry) => total + entry.quantity, 0);
+      const barWidth = Math.max(2, (cumulativeQuantity / totalQuantity) * 72);
+      return (
+        <button
+          type="button"
+          className={`predictionBookLevel predictionBookLevel--${tone}`}
+          style={{ "--prediction-book-bar": `${barWidth}%` } as CSSProperties}
+          aria-label={`${tone === "ask" ? "Ask" : "Bid"} ${money(level.priceCents)}, ${level.quantity.toLocaleString()} contracts, ${formatCoinBalance(coinValue)} coins`}
+          onClick={() => onSelect(level.priceCents, level.quantity)}
+          key={`${tone}-${level.priceCents}`}
+        >
+          <strong>
+            <Price cents={level.priceCents} />
+          </strong>
+          <span>{tone === "ask" ? "Ask" : "Bid"}</span>
+          <b>{level.quantity.toLocaleString()}</b>
+          <b>{formatCoinBalance(coinValue)} coins</b>
+        </button>
+      );
+    });
+  };
 
   return (
     <div className="predictionOrderBook">
@@ -756,18 +882,16 @@ const VerticalOrderBook = ({
         <span>Price</span>
         <span>Side</span>
         <span>Contracts</span>
+        <span>Coin value</span>
       </div>
       <div className="predictionBookStack predictionBookStack--asks">
         {renderLevels([...asks].reverse(), "ask", onSelectAsk)}
       </div>
-      <div className="predictionBookSpread">
-        {spread === undefined ? (
-          <span aria-hidden="true" />
-        ) : (
-          <span>
-            Spread <Price cents={spread} />
-          </span>
-        )}
+      <div
+        className={`predictionBookTrade predictionBookTrade--${outcome}`}
+        aria-label={`Trading ${outcome === "yes" ? "Yes" : "No"}`}
+      >
+        Trade {outcome === "yes" ? "Yes" : "No"}
       </div>
       <div className="predictionBookStack predictionBookStack--bids">
         {renderLevels(bids, "bid", onSelectBid)}

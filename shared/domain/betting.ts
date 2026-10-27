@@ -7,6 +7,21 @@ type MatchBettingMarket = {
   playerTwo: string;
 };
 
+type PredictionOrderDirection = {
+  outcome: "yes" | "no";
+  side: "buy" | "sell";
+};
+
+type TournamentOpponentMatch = {
+  p1: string;
+  p2: string;
+  s1: number;
+  s2: number;
+  matchId?: string | null;
+};
+
+export type PredictionOrderRestriction = "self" | "opponent";
+
 const normalizePlayer = (player: string): string => player.trim().toLowerCase();
 
 export const isAwcNotToWinSelfBet = (
@@ -31,4 +46,75 @@ export const isTournamentBetOnOpponent = (
   if (user === playerOne) return selectedPlayer === playerTwo;
   if (user === playerTwo) return selectedPlayer === playerOne;
   return false;
+};
+
+export const isPredictionOrderAgainstOutcome = ({
+  outcome,
+  side,
+}: PredictionOrderDirection): boolean =>
+  (outcome === "no" && side === "buy") || (outcome === "yes" && side === "sell");
+
+export const findCurrentTournamentOpponent = (
+  matches: TournamentOpponentMatch[],
+  username: string,
+): string | null => {
+  const normalizedUsername = normalizePlayer(username);
+  const currentMatch = matches.find((match) => {
+    const playerOne = normalizePlayer(match.p1);
+    const playerTwo = normalizePlayer(match.p2);
+    const hasBothPlayers =
+      playerOne !== "" && playerTwo !== "" && playerOne !== "bye" && playerTwo !== "bye";
+    const isUnplayed = !match.matchId && match.s1 === 0 && match.s2 === 0;
+    return (
+      hasBothPlayers &&
+      isUnplayed &&
+      (playerOne === normalizedUsername || playerTwo === normalizedUsername)
+    );
+  });
+  if (!currentMatch) return null;
+  return normalizePlayer(currentMatch.p1) === normalizedUsername
+    ? currentMatch.p2
+    : currentMatch.p1;
+};
+
+export const isRestrictedAwcChampionOrder = ({
+  groupId,
+  marketPlayer,
+  username,
+  currentOpponent,
+  outcome,
+  side,
+}: PredictionOrderDirection & {
+  groupId: string | null | undefined;
+  marketPlayer: string | null | undefined;
+  username: string;
+  currentOpponent?: string | null;
+}): PredictionOrderRestriction | null => {
+  if (groupId !== "awc-2026-champion" || !isPredictionOrderAgainstOutcome({ outcome, side })) {
+    return null;
+  }
+  const normalizedMarketPlayer = normalizePlayer(marketPlayer ?? "");
+  if (normalizedMarketPlayer === normalizePlayer(username)) return "self";
+  if (currentOpponent && normalizedMarketPlayer === normalizePlayer(currentOpponent)) {
+    return "opponent";
+  }
+  return null;
+};
+
+export const predictionOrderRestrictionMessage = (
+  restriction: PredictionOrderRestriction,
+): string =>
+  restriction === "self"
+    ? "You can’t bet against yourself in the AWC champion market."
+    : "You can’t bet against your current AWC opponent.";
+
+export const awcChampionOutcomeRestrictions = (
+  input: Omit<Parameters<typeof isRestrictedAwcChampionOrder>[0], "outcome">,
+): Partial<Record<PredictionOrderDirection["outcome"], string>> => {
+  const restrictions: Partial<Record<PredictionOrderDirection["outcome"], string>> = {};
+  for (const outcome of ["yes", "no"] as const) {
+    const restriction = isRestrictedAwcChampionOrder({ ...input, outcome });
+    if (restriction) restrictions[outcome] = predictionOrderRestrictionMessage(restriction);
+  }
+  return restrictions;
 };

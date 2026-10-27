@@ -195,11 +195,19 @@ export type TournamentArchiveRow = {
   updated_at: string;
 };
 
+export type PredictionMarketUpdateRow = {
+  market_id: string;
+  version: number;
+  change_scope: "book" | "catalog";
+  updated_at: string;
+};
+
 export type Database = {
   public: {
     Tables: {
       lichess_atomic_arenas: TableDef<AtomicArenaRow, never, never>;
       tournament_archives: TableDef<TournamentArchiveRow, never, never>;
+      prediction_market_updates: TableDef<PredictionMarketUpdateRow, never, never>;
       puzzle_progress: TableDef<
         PuzzleProgressWithUsernameRow,
         PuzzleProgressWithUsernameRow,

@@ -1,9 +1,13 @@
 import { z } from "zod";
 
 import {
+  findCurrentTournamentOpponent,
   isAwcNotToWinSelfBet,
+  isPredictionOrderAgainstOutcome,
+  isRestrictedAwcChampionOrder,
   isTournamentBetOnOpponent,
   MIN_BET_AMOUNT,
+  predictionOrderRestrictionMessage,
 } from "../../../shared/domain/betting";
 import {
   authenticateRequest,
@@ -184,7 +188,9 @@ export const bettingRoute = async (event: FunctionEvent) => {
     const [marketResult, ordersResult, fillsResult] = await Promise.all([
       supabase
         .from("prediction_markets")
-        .select("id,question,resolution_rules,resolution_source_url,closes_at,status,outcome")
+        .select(
+          "id,question,resolution_rules,resolution_source_url,closes_at,status,outcome,settlement_price_cents,settlement_reference_fill_id,resolved_at,sportsbook_volume_coins",
+        )
         .eq("id", input.marketId)
         .maybeSingle(),
       supabase
@@ -302,6 +308,62 @@ export const bettingRoute = async (event: FunctionEvent) => {
 
   const username = requireUsername(identity, "Log in with Lichess to use Atomic Coins for bets.");
   if (input.action === "placeExchangeOrder") {
+    if (isPredictionOrderAgainstOutcome(input)) {
+      const { data: predictionMarket, error: predictionMarketError } = await supabase
+        .from("prediction_markets")
+        .select("group_id,display_name")
+        .eq("id", input.marketId)
+        .maybeSingle();
+      if (predictionMarketError) {
+        throw new Error(`Unable to validate prediction market: ${predictionMarketError.message}`);
+      }
+      if (predictionMarket?.group_id === "awc-2026-champion") {
+        const selfRestriction = isRestrictedAwcChampionOrder({
+          groupId: predictionMarket.group_id,
+          marketPlayer: predictionMarket.display_name,
+          username,
+          outcome: input.outcome,
+          side: input.side,
+        });
+        if (selfRestriction === "self") {
+          throw new HttpError(400, predictionOrderRestrictionMessage(selfRestriction));
+        }
+
+        const { data: bracketMatches, error: bracketMatchesError } = await supabase
+          .from("tournament_matches")
+          .select("p1,p2,s1,s2,match_id")
+          .eq("tournament", "awc2026")
+          .eq("s1", 0)
+          .eq("s2", 0);
+        if (bracketMatchesError) {
+          throw new Error(
+            `Unable to validate your current opponent: ${bracketMatchesError.message}`,
+          );
+        }
+        const currentOpponent = findCurrentTournamentOpponent(
+          (bracketMatches ?? []).map((match) => ({
+            p1: match.p1,
+            p2: match.p2,
+            s1: match.s1,
+            s2: match.s2,
+            matchId: match.match_id,
+          })),
+          username,
+        );
+        const opponentRestriction = isRestrictedAwcChampionOrder({
+          groupId: predictionMarket.group_id,
+          marketPlayer: predictionMarket.display_name,
+          username,
+          currentOpponent,
+          outcome: input.outcome,
+          side: input.side,
+        });
+        if (opponentRestriction === "opponent") {
+          throw new HttpError(400, predictionOrderRestrictionMessage(opponentRestriction));
+        }
+      }
+    }
+
     const { data, error } = await supabase.rpc("place_prediction_order", {
       p_username: username,
       p_market_id: input.marketId,
@@ -315,6 +377,12 @@ export const bettingRoute = async (event: FunctionEvent) => {
         throw new HttpError(409, "You don’t have enough available Atomic Coins.");
       if (/not enough available contracts/i.test(error.message))
         throw new HttpError(409, "You don’t have enough available contracts to sell.");
+      if (/would cross one of your open orders/i.test(error.message))
+        throw new HttpError(409, "This order would cross one of your existing open orders.");
+      if (/bet against yourself/i.test(error.message))
+        throw new HttpError(400, "You can’t bet against yourself in the AWC champion market.");
+      if (/bet against your current awc opponent/i.test(error.message))
+        throw new HttpError(400, "You can’t bet against your current AWC opponent.");
       if (/closed/i.test(error.message)) throw new HttpError(409, "This market is closed.");
       throw new Error(`Unable to place prediction order: ${error.message}`);
     }

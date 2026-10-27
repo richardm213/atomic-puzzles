@@ -10,7 +10,9 @@ alter table public.prediction_markets
   add column if not exists display_name text,
   add column if not exists country_code text,
   add column if not exists starting_chance integer check (starting_chance between 0 and 100),
-  add column if not exists display_order integer;
+  add column if not exists display_order integer,
+  add column if not exists sportsbook_volume_coins numeric(18, 6) not null default 0
+    check (sportsbook_volume_coins >= 0);
 
 update public.prediction_markets set
   group_id = 'ban-2026', group_path = '/betting/ban-2026',
@@ -53,7 +55,6 @@ from (values
   ('november-atomic-shield-2026-quasabianth', 'quasabianth', 'RU', null, 11),
   ('november-atomic-shield-2026-maracker', 'maracker', 'RU', null, 12),
   ('november-atomic-shield-2026-rabbier', 'rabbier', 'NZ', null, 13),
-  ('november-atomic-shield-2026-others', 'others', '', null, 14),
   ('awc-2026-champion-natso', 'natso', 'NL', 30, 1),
   ('awc-2026-champion-maxwellssilvrhammer', 'maxwellssilvrhammer', 'US', 23, 2),
   ('awc-2026-champion-sutcunuri', 'sutcunuri', 'TR', 20, 3),
@@ -68,10 +69,12 @@ from (values
   ('awc-2026-champion-theatomicstorm', 'theatomicstorm', 'US', 1, 12),
   ('awc-2026-champion-dandan2016', 'dandan2016', 'US', 1, 13),
   ('awc-2026-champion-tolya-starina0995', 'tolya_starina0995', 'RU', 1, 14),
-  ('awc-2026-champion-stinkypotato', 'stinkypotato', 'US', 0, 15),
-  ('awc-2026-champion-goroarmet', 'goroarmet', 'ES', 0, 16),
-  ('awc-2026-champion-arinor0109', 'arinor0109', 'SE', 0, 17),
-  ('awc-2026-champion-matvei-e2e4', 'matvei-e2e4', 'RU', 0, 18)
+  ('awc-2026-champion-wolfram-ep', 'wolfram_ep', 'RU', null, 15),
+  ('awc-2026-champion-opabinia', 'opabinia', 'US', null, 16),
+  ('awc-2026-champion-stinkypotato', 'stinkypotato', 'US', 0, 17),
+  ('awc-2026-champion-goroarmet', 'goroarmet', 'ES', 0, 18),
+  ('awc-2026-champion-arinor0109', 'arinor0109', 'SE', 0, 19),
+  ('awc-2026-champion-matvei-e2e4', 'matvei-e2e4', 'RU', 0, 20)
 ) as metadata(id, display_name, country_code, starting_chance, display_order)
 where market.id = metadata.id;
 

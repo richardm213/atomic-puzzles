@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { isAwcNotToWinSelfBet, maxTournamentBetStake, quoteTournamentBet } from "./betting";
+import {
+  findCurrentTournamentOpponent,
+  isAwcNotToWinSelfBet,
+  isRestrictedAwcChampionOrder,
+  maxTournamentBetStake,
+  quoteTournamentBet,
+} from "./betting";
 
 describe("isAwcNotToWinSelfBet", () => {
   it("blocks only a player's own selection in the AWC not-to-win market", () => {
@@ -8,6 +14,41 @@ describe("isAwcNotToWinSelfBet", () => {
     expect(isAwcNotToWinSelfBet("awc2027-winner-no", "Actual_User", "actual_user")).toBe(true);
     expect(isAwcNotToWinSelfBet("awc2026-winner-no", "Actual_User", "another_player")).toBe(false);
     expect(isAwcNotToWinSelfBet("awc2026-winner", "Actual_User", "actual_user")).toBe(false);
+  });
+});
+
+describe("AWC prediction-market player protections", () => {
+  it("finds only an unresolved current opponent", () => {
+    expect(
+      findCurrentTournamentOpponent(
+        [
+          { p1: "player", p2: "old_opponent", s1: 6, s2: 2, matchId: "played" },
+          { p1: "Player", p2: "current_opponent", s1: 0, s2: 0, matchId: "" },
+        ],
+        "player",
+      ),
+    ).toBe("current_opponent");
+  });
+
+  it("blocks negative exposure to yourself or your current opponent", () => {
+    const base = {
+      groupId: "awc-2026-champion",
+      username: "player",
+      currentOpponent: "opponent",
+      side: "buy" as const,
+    };
+    expect(isRestrictedAwcChampionOrder({ ...base, marketPlayer: "player", outcome: "no" })).toBe(
+      "self",
+    );
+    expect(isRestrictedAwcChampionOrder({ ...base, marketPlayer: "opponent", outcome: "no" })).toBe(
+      "opponent",
+    );
+    expect(
+      isRestrictedAwcChampionOrder({ ...base, marketPlayer: "player", outcome: "yes" }),
+    ).toBeNull();
+    expect(
+      isRestrictedAwcChampionOrder({ ...base, marketPlayer: "someone_else", outcome: "no" }),
+    ).toBeNull();
   });
 });
 

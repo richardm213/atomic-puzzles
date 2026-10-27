@@ -30,6 +30,24 @@ describe("prediction order-book normalization", () => {
     expect(book.no.bids).toEqual([{ priceCents: 67, quantity: 40 }]);
   });
 
+  it("uses separate sportsbook bid and ask prices without locking the book", () => {
+    const book = buildPredictionBook([
+      order({ outcome: "yes", side: "buy", price_cents: 26, remaining_quantity: 1_352 }),
+      order({ outcome: "no", side: "buy", price_cents: 70, remaining_quantity: 3_334 }),
+    ]);
+
+    expect(book.yes).toEqual({
+      bids: [{ priceCents: 26, quantity: 1_352 }],
+      asks: [{ priceCents: 30, quantity: 3_334 }],
+    });
+    expect(book.no).toEqual({
+      bids: [{ priceCents: 70, quantity: 3_334 }],
+      asks: [{ priceCents: 74, quantity: 1_352 }],
+    });
+    expect(book.yes.bids[0]!.priceCents).toBeLessThan(book.yes.asks[0]!.priceCents);
+    expect(book.no.bids[0]!.priceCents).toBeLessThan(book.no.asks[0]!.priceCents);
+  });
+
   it("keeps average position cost accurate through buys, sells, and paired fills", () => {
     const fill = (
       id: number,

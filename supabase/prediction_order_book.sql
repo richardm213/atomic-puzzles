@@ -9,10 +9,20 @@ create table if not exists public.prediction_markets (
   closes_at timestamptz not null,
   status text not null default 'open' check (status in ('open', 'closed', 'resolved', 'refunded')),
   outcome text check (outcome in ('yes', 'no')),
+  settlement_price_cents integer check (settlement_price_cents between 0 and 100),
+  settlement_reference_fill_id bigint,
+  sportsbook_volume_coins numeric(18, 6) not null default 0 check (sportsbook_volume_coins >= 0),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   resolved_at timestamptz,
-  check ((status = 'resolved') = (outcome is not null))
+  constraint prediction_markets_resolution_check check (
+    (status = 'resolved' and ((outcome is not null)::integer +
+      (settlement_price_cents is not null)::integer) = 1)
+    or
+    (status <> 'resolved' and outcome is null and settlement_price_cents is null)
+  ),
+  constraint prediction_markets_settlement_reference_check
+    check ((settlement_price_cents is null) = (settlement_reference_fill_id is null))
 );
 
 create table if not exists public.prediction_orders (
@@ -64,6 +74,43 @@ create table if not exists public.prediction_fills (
 create index if not exists prediction_fills_market_idx
   on public.prediction_fills (market_id, created_at desc, id desc);
 
+alter table public.prediction_markets
+  add column if not exists settlement_price_cents integer,
+  add column if not exists settlement_reference_fill_id bigint,
+  add column if not exists sportsbook_volume_coins numeric(18, 6) not null default 0;
+
+alter table public.prediction_markets
+  drop constraint if exists prediction_markets_check,
+  drop constraint if exists prediction_markets_resolution_check,
+  drop constraint if exists prediction_markets_settlement_reference_check,
+  drop constraint if exists prediction_markets_settlement_price_cents_check,
+  drop constraint if exists prediction_markets_sportsbook_volume_coins_check,
+  drop constraint if exists prediction_markets_settlement_reference_fill_id_fkey;
+
+alter table public.prediction_markets
+  add constraint prediction_markets_settlement_price_cents_check
+    check (settlement_price_cents between 0 and 100),
+  add constraint prediction_markets_sportsbook_volume_coins_check
+    check (sportsbook_volume_coins >= 0),
+  add constraint prediction_markets_settlement_reference_check
+    check ((settlement_price_cents is null) = (settlement_reference_fill_id is null)),
+  add constraint prediction_markets_resolution_check check (
+    (
+      status = 'resolved'
+      and ((outcome is not null)::integer + (settlement_price_cents is not null)::integer) = 1
+    )
+    or
+    (
+      status <> 'resolved'
+      and outcome is null
+      and settlement_price_cents is null
+    )
+  );
+
+alter table public.prediction_markets
+  add constraint prediction_markets_settlement_reference_fill_id_fkey
+    foreign key (settlement_reference_fill_id) references public.prediction_fills(id);
+
 revoke all on table public.prediction_markets from public, anon, authenticated;
 revoke all on table public.prediction_orders from public, anon, authenticated;
 revoke all on table public.prediction_positions from public, anon, authenticated;
@@ -76,7 +123,7 @@ alter table public.coin_transactions
     'puzzle_created', 'puzzle_correct', 'puzzle_attempted', 'daily_bonus',
     'shop_redemption', 'coin_transfer', 'tournament_bet', 'tournament_bet_payout',
     'tournament_bet_refund', 'prediction_order_reserve', 'prediction_order_refund',
-    'prediction_trade_credit', 'prediction_market_payout'
+    'prediction_trade_credit', 'prediction_trade_fee', 'prediction_market_payout'
   ));
 
 insert into public.prediction_markets (
@@ -173,6 +220,7 @@ declare
   execution_price integer;
   refund_amount numeric(18, 6);
   trade_amount numeric(18, 6);
+  taker_fee numeric(18, 6);
   fill_id bigint;
   pair_key_value text;
   next_balance numeric(18, 6);
@@ -196,6 +244,38 @@ begin
     raise exception 'Prediction market is closed';
   end if;
   perform public.assert_coin_economy_access(normalized_username);
+
+  if exists (
+    select 1
+    from public.prediction_orders
+    where market_id = p_market_id
+      and username = normalized_username
+      and status in ('open', 'partial')
+      and remaining_quantity > 0
+      and (
+        (
+          normalized_side = 'buy'
+          and (
+            (outcome = normalized_outcome and side = 'sell' and price_cents <= p_price_cents)
+            or
+            (outcome <> normalized_outcome and side = 'buy'
+              and price_cents + p_price_cents >= 100)
+          )
+        )
+        or
+        (
+          normalized_side = 'sell'
+          and (
+            (outcome = normalized_outcome and side = 'buy' and price_cents >= p_price_cents)
+            or
+            (outcome <> normalized_outcome and side = 'sell'
+              and price_cents + p_price_cents <= 100)
+          )
+        )
+      )
+  ) then
+    raise exception 'Order would cross one of your open orders';
+  end if;
 
   if normalized_side = 'sell' then
     insert into public.prediction_positions (market_id, username, outcome)
@@ -434,6 +514,22 @@ begin
       end if;
     end if;
 
+    taker_fee := round((execution_price::numeric * match_quantity) / 100 * 0.02, 6);
+    next_balance := public.apply_coin_transaction(
+      incoming.username,
+      -taker_fee,
+      'prediction_trade_fee',
+      'prediction-taker-fee:' || incoming.id || ':' || resting.id || ':' || incoming.filled_quantity,
+      jsonb_build_object(
+        'marketId', p_market_id,
+        'orderId', incoming.id,
+        'makerOrderId', resting.id,
+        'priceCents', execution_price,
+        'quantity', match_quantity,
+        'rate', 0.02
+      )
+    );
+
     update public.prediction_orders
     set filled_quantity = filled_quantity + match_quantity,
         remaining_quantity = remaining_quantity - match_quantity,
@@ -588,10 +684,263 @@ begin
   end loop;
 
   update public.prediction_markets
-  set status = 'resolved', outcome = normalized_outcome, resolved_at = now(), updated_at = now()
+  set status = 'resolved', outcome = normalized_outcome, settlement_price_cents = null,
+      settlement_reference_fill_id = null,
+      resolved_at = now(), updated_at = now()
   where id = p_market_id;
 end;
 $$;
+
+create or replace function public.resolve_prediction_market_at_price(
+  p_market_id text,
+  p_reference_fill_id bigint
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  market_row public.prediction_markets%rowtype;
+  order_row public.prediction_orders%rowtype;
+  position_row public.prediction_positions%rowtype;
+  reference_fill public.prediction_fills%rowtype;
+  settlement_price integer;
+  refund_amount numeric(18, 6);
+  payout_amount numeric(18, 6);
+begin
+  perform pg_advisory_xact_lock(hashtext('prediction-market:' || p_market_id));
+  select * into market_row
+  from public.prediction_markets
+  where id = p_market_id
+  for update;
+
+  if market_row.id is null then raise exception 'Prediction market not found'; end if;
+
+  select * into reference_fill
+  from public.prediction_fills
+  where id = p_reference_fill_id and market_id = p_market_id;
+  if reference_fill.id is null then raise exception 'Settlement reference trade not found'; end if;
+
+  settlement_price := case reference_fill.outcome
+    when 'yes' then reference_fill.price_cents
+    else 100 - reference_fill.price_cents
+  end;
+
+  if market_row.status = 'resolved' then
+    if market_row.outcome is null
+      and market_row.settlement_reference_fill_id = p_reference_fill_id then
+      return;
+    end if;
+    raise exception 'Prediction market already resolved differently';
+  end if;
+
+  for order_row in
+    select * from public.prediction_orders
+    where market_id = p_market_id
+      and status in ('open', 'partial')
+      and remaining_quantity > 0
+    order by id
+    for update
+  loop
+    if order_row.side = 'buy' then
+      refund_amount := round(
+        (order_row.price_cents::numeric * order_row.remaining_quantity) / 100,
+        6
+      );
+      perform public.apply_coin_transaction(
+        order_row.username,
+        refund_amount,
+        'prediction_order_refund',
+        'prediction-market-close-refund:' || order_row.id,
+        jsonb_build_object('marketId', p_market_id, 'orderId', order_row.id)
+      );
+    else
+      update public.prediction_positions
+      set reserved_quantity = reserved_quantity - order_row.remaining_quantity,
+          updated_at = now()
+      where market_id = p_market_id
+        and username = order_row.username
+        and outcome = order_row.outcome;
+    end if;
+
+    update public.prediction_orders
+    set remaining_quantity = 0,
+        status = 'cancelled',
+        updated_at = now()
+    where id = order_row.id;
+  end loop;
+
+  for position_row in
+    select * from public.prediction_positions
+    where market_id = p_market_id and quantity > 0
+    order by username, outcome
+    for update
+  loop
+    payout_amount := round(
+      position_row.quantity::numeric
+      * case position_row.outcome
+          when 'yes' then settlement_price
+          else 100 - settlement_price
+        end
+      / 100,
+      6
+    );
+
+    if payout_amount > 0 then
+      perform public.apply_coin_transaction(
+        position_row.username,
+        payout_amount,
+        'prediction_market_payout',
+        'prediction-market-price-payout:' || p_market_id || ':'
+          || position_row.username || ':' || position_row.outcome,
+        jsonb_build_object(
+          'marketId', p_market_id,
+          'outcome', position_row.outcome,
+          'contracts', position_row.quantity,
+          'settlementPriceCents', settlement_price,
+          'settlementReferenceFillId', p_reference_fill_id
+        )
+      );
+    end if;
+  end loop;
+
+  update public.prediction_markets
+  set status = 'resolved',
+      outcome = null,
+      settlement_price_cents = settlement_price,
+      settlement_reference_fill_id = p_reference_fill_id,
+      resolved_at = now(),
+      updated_at = now()
+  where id = p_market_id;
+end;
+$$;
+
+revoke all on function public.resolve_prediction_market_at_price(text, bigint)
+  from public, anon, authenticated;
+grant execute on function public.resolve_prediction_market_at_price(text, bigint)
+  to service_role;
+
+create or replace function public.prevent_prediction_self_cross()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if new.status in ('open', 'partial')
+    and new.remaining_quantity > 0
+    and exists (
+      select 1
+      from public.prediction_orders as resting
+      where resting.market_id = new.market_id
+        and resting.username = new.username
+        and resting.status in ('open', 'partial')
+        and resting.remaining_quantity > 0
+        and (
+          (
+            new.side = 'buy'
+            and (
+              (resting.outcome = new.outcome
+                and resting.side = 'sell'
+                and resting.price_cents <= new.price_cents)
+              or
+              (resting.outcome <> new.outcome
+                and resting.side = 'buy'
+                and resting.price_cents + new.price_cents >= 100)
+            )
+          )
+          or
+          (
+            new.side = 'sell'
+            and (
+              (resting.outcome = new.outcome
+                and resting.side = 'buy'
+                and resting.price_cents >= new.price_cents)
+              or
+              (resting.outcome <> new.outcome
+                and resting.side = 'sell'
+                and resting.price_cents + new.price_cents <= 100)
+            )
+          )
+        )
+    ) then
+    raise exception 'Order would cross one of your open orders';
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function public.prevent_prediction_self_cross()
+  from public, anon, authenticated;
+
+drop trigger if exists prediction_orders_prevent_self_cross
+  on public.prediction_orders;
+create trigger prediction_orders_prevent_self_cross
+before insert on public.prediction_orders
+for each row execute function public.prevent_prediction_self_cross();
+
+create or replace function public.enforce_prediction_awc_player_protections()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+declare
+  market_group_id text;
+  market_player text;
+  normalized_username text := lower(btrim(new.username));
+  negative_exposure boolean :=
+    (new.outcome = 'no' and new.side = 'buy')
+    or (new.outcome = 'yes' and new.side = 'sell');
+begin
+  if not negative_exposure then return new; end if;
+
+  select group_id, lower(btrim(display_name))
+  into market_group_id, market_player
+  from public.prediction_markets
+  where id = new.market_id;
+
+  if market_group_id <> 'awc-2026-champion' then return new; end if;
+
+  if market_player = normalized_username then
+    raise exception 'You cannot bet against yourself in the AWC champion market';
+  end if;
+
+  if exists (
+    select 1
+    from public.tournament_matches as match
+    where match.tournament = 'awc2026'
+      and coalesce(match.match_id, '') = ''
+      and match.s1 = 0
+      and match.s2 = 0
+      and lower(btrim(match.p1)) not in ('', 'bye')
+      and lower(btrim(match.p2)) not in ('', 'bye')
+      and (
+        (
+          lower(btrim(match.p1)) = normalized_username
+          and lower(btrim(match.p2)) = market_player
+        )
+        or
+        (
+          lower(btrim(match.p2)) = normalized_username
+          and lower(btrim(match.p1)) = market_player
+        )
+      )
+  ) then
+    raise exception 'You cannot bet against your current AWC opponent';
+  end if;
+
+  return new;
+end;
+$$;
+
+revoke all on function public.enforce_prediction_awc_player_protections()
+  from public, anon, authenticated;
+
+drop trigger if exists prediction_orders_awc_player_protections
+  on public.prediction_orders;
+create trigger prediction_orders_awc_player_protections
+before insert on public.prediction_orders
+for each row execute function public.enforce_prediction_awc_player_protections();
 
 revoke all on function public.place_prediction_order(text, text, text, text, integer, integer)
   from public, anon, authenticated;
@@ -605,5 +954,87 @@ revoke all on function public.resolve_prediction_market(text, text)
   from public, anon, authenticated;
 grant execute on function public.resolve_prediction_market(text, text)
   to service_role;
+
+
+create table if not exists public.prediction_market_updates (
+  market_id text primary key,
+  version bigint not null default 0,
+  change_scope text not null default 'book' check (change_scope in ('book', 'catalog')),
+  updated_at timestamptz not null default now()
+);
+
+revoke all on table public.prediction_market_updates from public, anon, authenticated;
+grant select on table public.prediction_market_updates to anon, authenticated;
+alter table public.prediction_market_updates enable row level security;
+
+drop policy if exists prediction_market_updates_read
+  on public.prediction_market_updates;
+create policy prediction_market_updates_read
+  on public.prediction_market_updates
+  for select
+  to anon, authenticated
+  using (true);
+
+create or replace function public.signal_prediction_market_update()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  changed_row jsonb;
+  changed_market_id text;
+  changed_scope text := case when tg_table_name = 'prediction_markets' then 'catalog' else 'book' end;
+begin
+  changed_row := case when tg_op = 'DELETE' then to_jsonb(old) else to_jsonb(new) end;
+  changed_market_id := coalesce(changed_row ->> 'market_id', changed_row ->> 'id');
+
+  insert into public.prediction_market_updates (market_id, version, change_scope, updated_at)
+  values (changed_market_id, 1, changed_scope, now())
+  on conflict (market_id) do update
+  set version = public.prediction_market_updates.version + 1,
+      change_scope = excluded.change_scope,
+      updated_at = excluded.updated_at;
+
+  return case when tg_op = 'DELETE' then old else new end;
+end;
+$$;
+
+revoke all on function public.signal_prediction_market_update()
+  from public, anon, authenticated;
+
+drop trigger if exists prediction_markets_signal_update on public.prediction_markets;
+create trigger prediction_markets_signal_update
+after insert or update or delete on public.prediction_markets
+for each row execute function public.signal_prediction_market_update();
+
+drop trigger if exists prediction_orders_signal_update on public.prediction_orders;
+create trigger prediction_orders_signal_update
+after insert or update or delete on public.prediction_orders
+for each row execute function public.signal_prediction_market_update();
+
+drop trigger if exists prediction_fills_signal_update on public.prediction_fills;
+create trigger prediction_fills_signal_update
+after insert or update or delete on public.prediction_fills
+for each row execute function public.signal_prediction_market_update();
+
+drop trigger if exists prediction_positions_signal_update on public.prediction_positions;
+create trigger prediction_positions_signal_update
+after insert or update or delete on public.prediction_positions
+for each row execute function public.signal_prediction_market_update();
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'prediction_market_updates'
+  ) then
+    alter publication supabase_realtime add table public.prediction_market_updates;
+  end if;
+end;
+$$;
 
 commit;

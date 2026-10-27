@@ -1,5 +1,6 @@
 .predictionMarketPage {
   --site-page-max-width: 960px;
+  --site-page-padding: clamp(12px, 3vw, 28px);
 }
 
 .predictionMarketPage .visuallyHidden {
@@ -33,9 +34,9 @@
 .predictionMarketHeader {
   display: flex;
   justify-content: space-between;
-  gap: 24px;
+  gap: clamp(16px, 3vw, 24px);
   align-items: flex-start;
-  padding: 20px 22px;
+  padding: clamp(16px, 2.5vw, 20px) clamp(16px, 3vw, 22px);
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -52,11 +53,25 @@
 }
 
 .predictionMarketHeader h1 {
-  margin: 7px 0 10px;
+  margin: 0;
   max-width: 560px;
   font-size: clamp(22px, 2.5vw, 27px);
   line-height: 1.2;
   color: var(--color-heading);
+}
+
+.predictionMarketTitle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 7px 0 10px;
+}
+
+.predictionMarketTitleIcon {
+  flex: 0 0 auto;
+  width: clamp(42px, 6vw, 54px);
+  height: clamp(42px, 6vw, 54px);
+  object-fit: contain;
 }
 
 .predictionMarketMeta {
@@ -151,7 +166,7 @@
 .predictionRules {
   min-width: 0;
   max-width: 100%;
-  padding: 20px 22px;
+  padding: 20px clamp(14px, 3vw, 22px);
 }
 
 .predictionProbabilityPanel,
@@ -183,17 +198,29 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+.predictionOutcomeHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(52px, 8vw, 68px) minmax(196px, 230px);
+  gap: clamp(10px, 2vw, 18px);
+  padding: 7px 0;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-subtle);
+  font-size: 10px;
+  text-align: center;
+  text-transform: uppercase;
+}
+
 .predictionOutcomeSummary {
   display: grid;
-  grid-template-columns: minmax(120px, 1fr) 68px minmax(230px, auto);
-  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) clamp(52px, 8vw, 68px) minmax(196px, 230px);
+  gap: clamp(10px, 2vw, 18px);
   align-items: center;
   min-height: 72px;
   padding: 8px 0;
   border-top: 1px solid var(--color-border);
 }
 
-.predictionOutcomeSummary:first-child {
+.predictionOutcomeHeader + .predictionOutcomeSummary {
   border-top: 0;
 }
 
@@ -202,27 +229,10 @@
 }
 
 .predictionOutcomeSummary--resolved {
-  grid-template-columns: minmax(180px, 1fr) 110px minmax(300px, 0.85fr);
-  gap: 24px;
-  min-height: 104px;
-  padding: 16px 0;
-}
-
-.predictionOutcomeSummary--resolved .predictionOutcomeFlag {
-  width: 28px;
-  height: 19px;
-}
-
-.predictionOutcomeSummary--resolved .predictionOutcomeMarket {
-  font-size: 20px;
-}
-
-.predictionOutcomeSummary--resolved .predictionOutcomeChance small {
-  font-size: 12px;
-}
-
-.predictionOutcomeSummary--resolved .predictionOutcomeChance strong {
-  font-size: 32px;
+  grid-template-columns: minmax(180px, 1fr) auto;
+  gap: 18px;
+  min-height: 72px;
+  padding: 8px 0;
 }
 
 .predictionOutcomeMarket {
@@ -262,9 +272,9 @@
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
-  gap: 28px;
+  gap: clamp(18px, 3vw, 28px);
   margin-top: 8px;
-  padding: 20px;
+  padding: clamp(14px, 2.5vw, 20px);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-ui);
   background: color-mix(in srgb, var(--color-panel-deep) 36%, transparent);
@@ -337,15 +347,8 @@
 }
 
 .predictionOutcomeChance {
-  display: grid;
-  gap: 2px;
-  justify-items: center;
-}
-
-.predictionOutcomeChance small {
-  color: var(--color-muted);
-  font-size: 10px;
-  text-transform: uppercase;
+  display: block;
+  text-align: center;
 }
 
 .predictionOutcomeChance strong {
@@ -356,14 +359,14 @@
 
 .predictionOutcomeActions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(108px, 1fr));
+  grid-template-columns: repeat(2, minmax(90px, 1fr));
   gap: 8px;
 }
 
 .predictionOutcomeAction {
   display: grid;
   align-content: center;
-  min-height: 42px;
+  min-height: 44px;
   border: 1px solid var(--color-border-strong);
   border-radius: 999px;
   background: transparent;
@@ -411,25 +414,35 @@
   transform: translateY(1px);
 }
 
-.predictionResolvedBadge {
-  display: inline-flex;
+.predictionResolvedResult {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-height: 54px;
-  border: 1px solid color-mix(in srgb, var(--prediction-yes) 58%, var(--color-border));
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--prediction-yes) 10%, transparent);
-  color: var(--prediction-yes);
-  padding: 5px 14px;
+  gap: 9px;
   font-size: 16px;
-  font-weight: 850;
+  font-weight: 800;
 }
 
-.predictionResolvedBadge--no {
-  border-color: color-mix(in srgb, var(--prediction-no) 58%, var(--color-border));
-  background: color-mix(in srgb, var(--prediction-no) 10%, transparent);
+.predictionResolvedResult--yes {
+  color: var(--prediction-yes);
+}
+
+.predictionResolvedResult--no {
   color: var(--prediction-no);
+}
+
+.predictionResolvedResult--price {
+  color: var(--color-text-secondary);
+}
+
+.predictionResolvedCheck {
+  display: inline-grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, currentColor 18%, var(--color-panel-strong));
+  color: currentColor;
+  font-size: 14px;
 }
 
 .predictionSectionHeader {
@@ -455,9 +468,9 @@
 .predictionBookLabels,
 .predictionBookLevel {
   display: grid;
-  grid-template-columns: minmax(70px, 1fr) 70px minmax(90px, 1fr);
+  grid-template-columns: minmax(58px, 0.8fr) 52px minmax(72px, 1fr) minmax(88px, 1fr);
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .predictionBookLabels {
@@ -472,7 +485,7 @@
   text-align: center;
 }
 
-.predictionBookLabels span:last-child,
+.predictionBookLabels span:nth-child(n + 3),
 .predictionBookLevel b {
   text-align: right;
 }
@@ -498,10 +511,18 @@
   position: absolute;
   z-index: -1;
   top: 0;
-  right: 0;
   bottom: 0;
-  width: var(--prediction-book-depth, 0%);
+  left: 0;
+  width: var(--prediction-book-bar, 8px);
   content: "";
+}
+
+.predictionBookLevel--ask::before {
+  background: color-mix(in srgb, var(--prediction-no) 24%, transparent);
+}
+
+.predictionBookLevel--bid::before {
+  background: color-mix(in srgb, var(--prediction-yes) 24%, transparent);
 }
 
 .predictionBookStack .predictionBookLevel:first-child {
@@ -518,36 +539,27 @@
   font-weight: 700;
 }
 
-.predictionBookLevel--bid strong {
+.predictionBookLevel b:last-child {
+  color: var(--color-text-secondary);
+  font-weight: 700;
+}
+
+.predictionBookLevel--bid strong,
+.predictionBookLevel--bid span {
   color: var(--prediction-yes);
 }
 
-.predictionBookLevel--ask strong {
+.predictionBookLevel--ask strong,
+.predictionBookLevel--ask span {
   color: var(--prediction-no);
 }
 
-.predictionBookLevel--bid {
-  background: color-mix(in srgb, var(--prediction-yes) 10%, transparent);
+.predictionBookLevel b {
+  color: var(--color-heading);
 }
 
-.predictionBookLevel--ask {
-  background: color-mix(in srgb, var(--prediction-no) 10%, transparent);
-}
-
-.predictionBookLevel--bid::before {
-  background: color-mix(in srgb, var(--prediction-yes) 28%, transparent);
-}
-
-.predictionBookLevel--ask::before {
-  background: color-mix(in srgb, var(--prediction-no) 28%, transparent);
-}
-
-.predictionBookLevel--bid:hover {
-  background: color-mix(in srgb, var(--prediction-yes) 17%, transparent);
-}
-
-.predictionBookLevel--ask:hover {
-  background: color-mix(in srgb, var(--prediction-no) 17%, transparent);
+.predictionBookLevel:hover {
+  background: color-mix(in srgb, var(--color-heading) 5%, transparent);
 }
 
 .predictionBookEmpty {
@@ -557,22 +569,24 @@
   color: var(--color-muted);
 }
 
-.predictionBookSpread {
-  display: grid;
-  place-items: center;
-  min-height: 28px;
+.predictionBookTrade {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 12px;
   border-top: 1px solid var(--color-border-strong);
   border-bottom: 1px solid var(--color-border-strong);
-  color: var(--color-muted);
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
+  background: var(--color-panel-deep);
+  font-weight: 900;
 }
 
-.predictionBookSpread span:empty {
-  width: 48px;
-  height: 1px;
-  background: var(--color-border-strong);
+.predictionBookTrade--yes {
+  color: var(--prediction-yes);
+}
+
+.predictionBookTrade--no {
+  color: var(--prediction-no);
 }
 
 .predictionAccountPanel > p,
@@ -1104,7 +1118,7 @@
   outline-offset: 2px;
 }
 
-@media (max-width: 1180px) and (min-width: 821px) {
+@media (max-width: 1180px) and (min-width: 901px) {
   .predictionStrikeDrawer {
     grid-template-columns: minmax(0, 1fr) 300px;
     gap: 20px;
@@ -1120,7 +1134,7 @@
   }
 }
 
-@media (max-width: 820px) {
+@media (max-width: 900px) {
   .predictionMarketHeader,
   .predictionTradingGrid {
     grid-template-columns: minmax(0, 1fr);
@@ -1170,15 +1184,9 @@
   }
 }
 
-@media (max-width: 560px) {
-  .predictionMarketPage {
-    padding: 0;
-  }
-
-  .predictionMarketShell {
-    border-right: 0;
-    border-left: 0;
-    border-radius: 0;
+@media (max-width: 700px) {
+  .predictionOutcomeHeader {
+    display: none;
   }
 
   .predictionOutcomeSummary {
@@ -1190,24 +1198,24 @@
   .predictionOutcomeSummary--resolved {
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 10px 14px;
-    min-height: 88px;
-    padding: 12px 0;
-  }
-
-  .predictionOutcomeSummary--resolved .predictionOutcomeMarket {
-    font-size: 17px;
-  }
-
-  .predictionOutcomeSummary--resolved .predictionOutcomeChance strong {
-    font-size: 26px;
+    min-height: 72px;
+    padding: 8px 0;
   }
 
   .predictionOutcomeActions {
     grid-column: 1 / -1;
   }
+}
 
-  .predictionResolvedBadge {
-    grid-column: 1 / -1;
+@media (max-width: 560px) {
+  .predictionMarketPage {
+    padding: 0;
+  }
+
+  .predictionMarketShell {
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
   }
 
   .predictionTrades > div {

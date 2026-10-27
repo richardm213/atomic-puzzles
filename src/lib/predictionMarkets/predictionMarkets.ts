@@ -66,8 +66,70 @@ export const fetchPredictionMarketGroups = async (): Promise<PredictionMarketGro
   return [...groups.values()].sort((a, b) => a.displayOrder - b.displayOrder);
 };
 
-export type PredictionOutcome = "yes" | "no";
+export const predictionOutcomes = ["yes", "no"] as const;
+export type PredictionOutcome = (typeof predictionOutcomes)[number];
 export type PredictionOrderSide = "buy" | "sell";
+export type PredictionBookLevel = { priceCents: number; quantity: number };
+export const PREDICTION_TAKER_FEE_RATE = 0.02;
+
+export const predictionTakerFee = (executedValueCoins: number) =>
+  Math.round(executedValueCoins * PREDICTION_TAKER_FEE_RATE * 1_000_000) / 1_000_000;
+
+const quotePredictionLevels = (
+  levels: readonly PredictionBookLevel[],
+  quantity: number,
+  isExecutable: (priceCents: number) => boolean,
+) => {
+  let remaining = Math.max(0, quantity);
+  let filledQuantity = 0;
+  let executedValueCents = 0;
+
+  for (const level of levels) {
+    if (!isExecutable(level.priceCents) || remaining === 0) break;
+    const levelFill = Math.min(remaining, level.quantity);
+    filledQuantity += levelFill;
+    executedValueCents += levelFill * level.priceCents;
+    remaining -= levelFill;
+  }
+
+  return {
+    availableQuantity: levels
+      .filter((level) => isExecutable(level.priceCents))
+      .reduce((total, level) => total + level.quantity, 0),
+    filledQuantity,
+    restingQuantity: remaining,
+    executedValueCoins: executedValueCents / 100,
+    averageFillPriceCents: filledQuantity > 0 ? executedValueCents / filledQuantity : undefined,
+  };
+};
+
+export const quotePredictionBuy = (
+  asks: readonly PredictionBookLevel[],
+  limitPriceCents: number,
+  quantity: number,
+) => {
+  const quote = quotePredictionLevels(
+    asks,
+    quantity,
+    (priceCents) => priceCents <= limitPriceCents,
+  );
+  const { executedValueCoins, ...details } = quote;
+  return { ...details, fillCostCoins: executedValueCoins };
+};
+
+export const quotePredictionSell = (
+  bids: readonly PredictionBookLevel[],
+  limitPriceCents: number,
+  quantity: number,
+) => {
+  const quote = quotePredictionLevels(
+    bids,
+    quantity,
+    (priceCents) => priceCents >= limitPriceCents,
+  );
+  const { executedValueCoins, ...details } = quote;
+  return { ...details, proceedsCoins: executedValueCoins };
+};
 
 const levelSchema = z.object({ priceCents: z.number(), quantity: z.number() });
 const orderSchema = z
@@ -145,6 +207,10 @@ const marketStateSchema = z.object({
         closes_at: z.string(),
         status: z.enum(["open", "closed", "resolved", "refunded"]),
         outcome: z.enum(["yes", "no"]).nullable(),
+        settlement_price_cents: z.number().int().min(0).max(100).nullable(),
+        settlement_reference_fill_id: z.number().int().nullable(),
+        resolved_at: z.string().nullable(),
+        sportsbook_volume_coins: z.number().default(0),
       })
       .transform((market) => ({
         id: market.id,
@@ -154,6 +220,10 @@ const marketStateSchema = z.object({
         closesAt: market.closes_at,
         status: market.status,
         outcome: market.outcome,
+        settlementPriceCents: market.settlement_price_cents,
+        settlementReferenceFillId: market.settlement_reference_fill_id,
+        resolvedAt: market.resolved_at,
+        sportsbookVolumeCoins: market.sportsbook_volume_coins,
       })),
     book: z.object({
       yes: z.object({ bids: z.array(levelSchema), asks: z.array(levelSchema) }),
@@ -167,6 +237,35 @@ const marketStateSchema = z.object({
 
 export type PredictionMarketState = z.infer<typeof marketStateSchema>["result"];
 export type PredictionOrder = PredictionMarketState["orders"][number];
+
+export const predictionYesChance = (
+  definition: PredictionMarketDefinition,
+  state: PredictionMarketState | undefined,
+): number | undefined => {
+  if (state?.market.status === "resolved") {
+    return state.market.settlementPriceCents ?? (state.market.outcome === "yes" ? 100 : 0);
+  }
+  const latestFill = state?.fills[0];
+  if (!latestFill) return definition.startingChance;
+  return latestFill.outcome === "yes" ? latestFill.priceCents : 100 - latestFill.priceCents;
+};
+
+export const suggestedPredictionPrice = (
+  definition: PredictionMarketDefinition,
+  state: PredictionMarketState | undefined,
+  outcome: PredictionOutcome,
+): number =>
+  state?.book[outcome].asks[0]?.priceCents ??
+  (outcome === "yes"
+    ? definition.startingChance
+    : definition.startingChance === undefined
+      ? undefined
+      : 100 - definition.startingChance) ??
+  50;
+
+export const predictionMarketVolume = (state: PredictionMarketState | undefined): number =>
+  (state?.market.sportsbookVolumeCoins ?? 0) +
+  (state?.fills.reduce((total, fill) => total + (fill.priceCents * fill.quantity) / 100, 0) ?? 0);
 
 const orderMutationSchema = z.object({
   result: z.object({ orderId: z.number(), balance: z.number() }),

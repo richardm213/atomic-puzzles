@@ -4,9 +4,15 @@ import { postApi } from "../api/postApi";
 
 export {
   AWC_NOT_TO_WIN_MARKET_ID,
+  awcChampionOutcomeRestrictions,
+  findCurrentTournamentOpponent,
   isAwcNotToWinSelfBet,
+  isPredictionOrderAgainstOutcome,
+  isRestrictedAwcChampionOrder,
   isTournamentBetOnOpponent,
   MIN_BET_AMOUNT,
+  type PredictionOrderRestriction,
+  predictionOrderRestrictionMessage,
 } from "../../../shared/domain/betting";
 
 export const BET_FEE_RATE = 0.02;
@@ -14,7 +20,7 @@ export const BET_NET_WORTH_LIMIT_RATE = 0.5;
 export const MAX_BET_STAKE = 1000;
 
 export type BettingMarketStatus = "open" | "suspended" | "settled" | "refunded";
-export type TournamentBetStatus = "open" | "won" | "lost" | "refunded";
+export type TournamentBetStatus = "open" | "won" | "lost" | "refunded" | "settled";
 
 export type BettingOutcome = {
   player: string;

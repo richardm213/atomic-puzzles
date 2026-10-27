@@ -20,6 +20,7 @@ export const predictionMarketQueryOptions = (marketId: PredictionMarketId) =>
   queryOptions({
     queryKey: predictionMarketQueryKey(marketId),
     queryFn: () => fetchPredictionMarket(marketId),
-    staleTime: 3_000,
-    refetchInterval: 5_000,
+    staleTime: 1_000,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   });
