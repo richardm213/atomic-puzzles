@@ -2,6 +2,8 @@ import { postApi } from "../api/postApi";
 
 export type NotificationType =
   | "puzzle_comment"
+  | "puzzle_attempt_comment"
+  | "puzzle_author_comment"
   | "comment_reply"
   | "comment_mention"
   | "puzzle_approved"
@@ -20,6 +22,7 @@ export type UserNotification = {
   notification_type: NotificationType;
   puzzle_id: number | null;
   comment_id: number | null;
+  comment_body?: string | null;
   rating: number | null;
   rating_deviation: number | null;
   shop_item_key?: string | null;
@@ -135,14 +138,29 @@ export const notificationCopy = (notification: UserNotification): string => {
   if (notification.notification_type === "comment_mention") {
     return `${notification.actor_username ?? "Someone"} mentioned you in a comment.`;
   }
-  return `${notification.actor_username ?? "Someone"} commented on a puzzle you follow.`;
+  if (notification.notification_type === "puzzle_attempt_comment") {
+    return notification.comment_body?.trim()
+      ? `${notification.actor_username ?? "Someone"} commented:`
+      : `${notification.actor_username ?? "Someone"} commented on a puzzle you previously attempted.`;
+  }
+  if (notification.notification_type === "puzzle_author_comment") {
+    return notification.comment_body?.trim()
+      ? `${notification.actor_username ?? "Someone"} commented:`
+      : `${notification.actor_username ?? "Someone"} commented on your puzzle.`;
+  }
+  return `${notification.actor_username ?? "Someone"} commented on a puzzle you previously commented on.`;
 };
 
 export const notificationMessage = (notification: UserNotification): string =>
   notification.notification_type === "coin_policy_update" ||
   notification.notification_type === "feature"
     ? ""
-    : (notification.coin_message?.trim() ?? "");
+    : truncateNotificationComment(
+        notification.comment_body?.trim() || notification.coin_message?.trim() || "",
+      );
+
+const truncateNotificationComment = (comment: string): string =>
+  comment.length > 180 ? `${comment.slice(0, 177).trimEnd()}…` : comment;
 
 export const rankingNotificationImage = (notification: UserNotification): string | null =>
   notification.notification_type !== "monthly_ranking" || !notification.ranking_position

@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { notificationCopy, rankingNotificationImage, type UserNotification } from "./notifications";
+import {
+  notificationCopy,
+  notificationMessage,
+  rankingNotificationImage,
+  type UserNotification,
+} from "./notifications";
 
 const makeNotification = (
   notificationType: UserNotification["notification_type"],
@@ -39,10 +44,32 @@ describe("notificationCopy", () => {
     ).toBe("Puzzle ratings have been added to the site! Yours is 2142 with RD 87");
   });
 
-  it("describes puzzle comments in a way that applies to authors and prior commenters", () => {
+  it("describes comments for prior discussion participants without implying a follow feature", () => {
     expect(notificationCopy(makeNotification("puzzle_comment"))).toBe(
-      "bob commented on a puzzle you follow.",
+      "bob commented on a puzzle you previously commented on.",
     );
+  });
+
+  it("distinguishes previous attempts from comments on a created puzzle", () => {
+    expect(notificationCopy(makeNotification("puzzle_attempt_comment"))).toBe(
+      "bob commented on a puzzle you previously attempted.",
+    );
+    expect(notificationCopy(makeNotification("puzzle_author_comment"))).toBe(
+      "bob commented on your puzzle.",
+    );
+  });
+
+  it("previews comment text only when the API marks it as visible", () => {
+    const attemptedPuzzleNotification = {
+      ...makeNotification("puzzle_attempt_comment"),
+      comment_body: "That defensive move is easy to miss.",
+    };
+
+    expect(notificationCopy(attemptedPuzzleNotification)).toBe("bob commented:");
+    expect(notificationMessage(attemptedPuzzleNotification)).toBe(
+      "That defensive move is easy to miss.",
+    );
+    expect(notificationMessage(makeNotification("puzzle_author_comment"))).toBe("");
   });
 
   it("describes a separate monthly placement for each time control", () => {

@@ -38,6 +38,55 @@ export const getPuzzleCommentParticipantRecipients = (
   ];
 };
 
+type PuzzleCommentNotificationRecipient = {
+  recipientUsername: string;
+  notificationType:
+    "comment_reply" | "puzzle_author_comment" | "puzzle_attempt_comment" | "puzzle_comment";
+};
+
+const normalizedUsername = (username: unknown): string =>
+  String(username ?? "")
+    .trim()
+    .toLowerCase();
+
+export const buildPuzzleCommentNotificationRecipients = ({
+  actorUsername,
+  puzzleAuthor,
+  parentAuthor,
+  attemptedUsers,
+  priorCommenters,
+  excludedUsernames = [],
+}: {
+  actorUsername: string;
+  puzzleAuthor?: string | null;
+  parentAuthor?: string | null;
+  attemptedUsers: Array<{ username?: string | null }>;
+  priorCommenters: Array<{ username?: string | null }>;
+  excludedUsernames?: string[];
+}): PuzzleCommentNotificationRecipient[] => {
+  const recipients = new Map<string, PuzzleCommentNotificationRecipient["notificationType"]>();
+  const excluded = new Set([actorUsername, ...excludedUsernames].map(normalizedUsername));
+  const addRecipient = (
+    username: unknown,
+    notificationType: PuzzleCommentNotificationRecipient["notificationType"],
+  ) => {
+    const normalized = normalizedUsername(username);
+    if (!normalized || excluded.has(normalized) || recipients.has(normalized)) return;
+    recipients.set(normalized, notificationType);
+  };
+
+  // A user receives only the most specific notification for a comment.
+  addRecipient(parentAuthor, "comment_reply");
+  addRecipient(puzzleAuthor, "puzzle_author_comment");
+  attemptedUsers.forEach(({ username }) => addRecipient(username, "puzzle_attempt_comment"));
+  priorCommenters.forEach(({ username }) => addRecipient(username, "puzzle_comment"));
+
+  return [...recipients].map(([recipientUsername, notificationType]) => ({
+    recipientUsername,
+    notificationType,
+  }));
+};
+
 export const getMentionedUsernames = (body: string): string[] => [
   ...new Set(
     [...body.matchAll(/(?:^|[^a-z0-9_-])@([a-z0-9_-]+)/gi)]
@@ -385,11 +434,12 @@ export class CommunityRepository {
     );
   }
 
-  async notifyPriorPuzzleCommenters(
+  async notifyPuzzleCommentRecipients(
     puzzleId: number,
     commentId: number,
     actorUsername: string,
     parentId: number | null,
+    excludedUsernames: string[] = [],
   ): Promise<void> {
     const priorCommentersQuery = this.supabase
       .from("community_comments")
@@ -406,11 +456,17 @@ export class CommunityRepository {
     const parentAuthorQuery = parentId
       ? this.supabase.from("community_comments").select("username").eq("id", parentId).maybeSingle()
       : Promise.resolve({ data: null, error: null });
-    const [priorCommentersResult, puzzleAuthorResult, parentAuthorResult] = await Promise.all([
-      priorCommentersQuery,
-      puzzleAuthorQuery,
-      parentAuthorQuery,
-    ]);
+    const attemptedUsersQuery = this.supabase
+      .from("puzzle_progress")
+      .select("username")
+      .eq("puzzle_id", String(puzzleId));
+    const [priorCommentersResult, puzzleAuthorResult, parentAuthorResult, attemptedUsersResult] =
+      await Promise.all([
+        priorCommentersQuery,
+        puzzleAuthorQuery,
+        parentAuthorQuery,
+        attemptedUsersQuery,
+      ]);
     if (priorCommentersResult.error) {
       throw new Error(`Unable to find puzzle participants: ${priorCommentersResult.error.message}`);
     }
@@ -420,19 +476,27 @@ export class CommunityRepository {
     if (parentAuthorResult.error) {
       throw new Error(`Unable to find the reply recipient: ${parentAuthorResult.error.message}`);
     }
+    if (attemptedUsersResult.error) {
+      throw new Error(
+        `Unable to find previous puzzle attempts: ${attemptedUsersResult.error.message}`,
+      );
+    }
 
-    const recipients = getPuzzleCommentParticipantRecipients(priorCommentersResult.data ?? [], [
+    const recipients = buildPuzzleCommentNotificationRecipients({
       actorUsername,
-      puzzleAuthorResult.data?.author,
-      parentAuthorResult.data?.username,
-    ]);
+      puzzleAuthor: puzzleAuthorResult.data?.author,
+      parentAuthor: parentAuthorResult.data?.username,
+      attemptedUsers: attemptedUsersResult.data ?? [],
+      priorCommenters: priorCommentersResult.data ?? [],
+      excludedUsernames,
+    });
     if (!recipients.length) return;
 
     const result = await this.supabase.from("notifications").insert(
-      recipients.map((recipientUsername) => ({
+      recipients.map(({ recipientUsername, notificationType }) => ({
         recipient_username: recipientUsername,
         actor_username: actorUsername,
-        notification_type: "puzzle_comment",
+        notification_type: notificationType,
         puzzle_id: puzzleId,
         comment_id: commentId,
       })),
@@ -447,11 +511,11 @@ export class CommunityRepository {
     commentId: number,
     actorUsername: string,
     body: string,
-  ): Promise<void> {
+  ): Promise<string[]> {
     const mentionedUsernames = getMentionedUsernames(body).filter(
       (username) => username !== actorUsername.toLowerCase(),
     );
-    if (!mentionedUsernames.length) return;
+    if (!mentionedUsernames.length) return [];
 
     const usersResult = await this.supabase
       .from("users")
@@ -471,7 +535,7 @@ export class CommunityRepository {
           .filter(Boolean),
       ),
     ];
-    if (!recipients.length) return;
+    if (!recipients.length) return [];
 
     const result = await this.supabase.from("notifications").insert(
       recipients.map((recipientUsername) => ({
@@ -486,5 +550,6 @@ export class CommunityRepository {
     if (result.error) {
       throw new Error(`Unable to notify mentioned users: ${result.error.message}`);
     }
+    return recipients;
   }
 }

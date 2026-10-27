@@ -1,5 +1,49 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+type NotificationWithCommentId = {
+  comment_id?: number | null;
+};
+
+type NotificationCommentPreview = {
+  id: number;
+  target_type: string;
+  target_id: string;
+  body: string | null;
+  created_at: string;
+};
+
+type NotificationPuzzleAttempt = {
+  puzzle_id: string | number;
+  first_attempt_at: string;
+};
+
+export const attachAttemptedPuzzleCommentBodies = <T extends NotificationWithCommentId>(
+  notifications: T[],
+  comments: NotificationCommentPreview[],
+  attempts: NotificationPuzzleAttempt[],
+): Array<T & { comment_body: string | null }> => {
+  const commentsById = new Map(comments.map((comment) => [Number(comment.id), comment]));
+  const firstAttemptByPuzzleId = new Map(
+    attempts.map((attempt) => [String(attempt.puzzle_id), new Date(attempt.first_attempt_at)]),
+  );
+
+  return notifications.map((notification) => {
+    const comment = commentsById.get(Number(notification.comment_id));
+    const firstAttempt = comment
+      ? firstAttemptByPuzzleId.get(String(comment.target_id))
+      : undefined;
+    const canShowBody =
+      comment?.target_type === "puzzle" &&
+      firstAttempt &&
+      !Number.isNaN(firstAttempt.getTime()) &&
+      firstAttempt.getTime() <= new Date(comment.created_at).getTime();
+    return {
+      ...notification,
+      comment_body: canShowBody ? String(comment.body ?? "") : null,
+    };
+  });
+};
+
 export class NotificationRepository {
   constructor(private readonly supabase: SupabaseClient) {}
 
@@ -44,6 +88,45 @@ export class NotificationRepository {
       .order("id", { ascending: false })
       .limit(100);
     if (error) throw new Error(`Unable to load notifications: ${error.message}`);
-    return data ?? [];
+    const notifications = data ?? [];
+    const commentIds = [
+      ...new Set(
+        notifications
+          .map((notification) => Number(notification.comment_id))
+          .filter((commentId) => Number.isSafeInteger(commentId) && commentId > 0),
+      ),
+    ];
+    if (!commentIds.length) {
+      return attachAttemptedPuzzleCommentBodies(notifications, [], []);
+    }
+
+    const commentsResult = await this.supabase
+      .from("community_comments")
+      .select("id, target_type, target_id, body, created_at")
+      .in("id", commentIds);
+    if (commentsResult.error) {
+      throw new Error(`Unable to load notification comments: ${commentsResult.error.message}`);
+    }
+    const comments = commentsResult.data ?? [];
+    const puzzleIds = [
+      ...new Set(
+        comments
+          .filter((comment) => comment.target_type === "puzzle")
+          .map((comment) => String(comment.target_id)),
+      ),
+    ];
+    if (!puzzleIds.length) {
+      return attachAttemptedPuzzleCommentBodies(notifications, comments, []);
+    }
+
+    const attemptsResult = await this.supabase
+      .from("puzzle_progress")
+      .select("puzzle_id, first_attempt_at")
+      .eq("username", username)
+      .in("puzzle_id", puzzleIds);
+    if (attemptsResult.error) {
+      throw new Error(`Unable to check puzzle attempts: ${attemptsResult.error.message}`);
+    }
+    return attachAttemptedPuzzleCommentBodies(notifications, comments, attemptsResult.data ?? []);
   }
 }

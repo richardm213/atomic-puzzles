@@ -122,6 +122,8 @@ export type NotificationRow = {
   actor_username: string | null;
   notification_type:
     | "puzzle_comment"
+    | "puzzle_attempt_comment"
+    | "puzzle_author_comment"
     | "comment_reply"
     | "comment_mention"
     | "puzzle_approved"

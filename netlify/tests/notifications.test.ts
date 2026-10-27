@@ -8,10 +8,54 @@ vi.mock("@supabase/supabase-js", () => ({
   createClient: mocks.createClient,
 }));
 
+import { attachAttemptedPuzzleCommentBodies } from "../features/notifications/repository";
 import { handler } from "../functions/notifications";
 import { createSiteSessionCookie } from "../lib/siteSession";
 
 describe("notifications function", () => {
+  it("exposes comment bodies only when the recipient had already attempted the puzzle", () => {
+    expect(
+      attachAttemptedPuzzleCommentBodies(
+        [
+          { id: 1, comment_id: 10, notification_type: "puzzle_attempt_comment" },
+          { id: 2, comment_id: 20, notification_type: "puzzle_author_comment" },
+          { id: 3, comment_id: 30, notification_type: "puzzle_author_comment" },
+        ],
+        [
+          {
+            id: 10,
+            target_type: "puzzle",
+            target_id: "100",
+            body: "Visible attempt comment",
+            created_at: "2026-10-27T12:00:00.000Z",
+          },
+          {
+            id: 20,
+            target_type: "puzzle",
+            target_id: "200",
+            body: "Hidden creator comment",
+            created_at: "2026-10-27T12:00:00.000Z",
+          },
+          {
+            id: 30,
+            target_type: "puzzle",
+            target_id: "300",
+            body: "Attempt happened too late",
+            created_at: "2026-10-27T12:00:00.000Z",
+          },
+        ],
+        [
+          { puzzle_id: "100", first_attempt_at: "2026-10-26T12:00:00.000Z" },
+          { puzzle_id: "300", first_attempt_at: "2026-10-27T13:00:00.000Z" },
+        ],
+      ),
+    ).toEqual([
+      expect.objectContaining({ id: 1, comment_body: "Visible attempt comment" }),
+      expect.objectContaining({ id: 2, comment_body: null }),
+      expect.objectContaining({ id: 3, comment_body: null }),
+    ]);
+  });
+
   beforeEach(() => {
     mocks.createClient.mockReset();
     vi.stubEnv("SUPABASE_URL", "https://example.supabase.co");

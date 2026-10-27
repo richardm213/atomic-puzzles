@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  buildPuzzleCommentNotificationRecipients,
   getMentionedUsernames,
   getPuzzleCommentParticipantRecipients,
 } from "../features/community/repository";
@@ -40,14 +41,42 @@ describe("profile comment history", () => {
     ).toEqual(["alice", "bob"]);
   });
 
+  it("chooses one specific puzzle comment notification per recipient", () => {
+    expect(
+      buildPuzzleCommentNotificationRecipients({
+        actorUsername: "New_Commenter",
+        parentAuthor: "Reply_Target",
+        puzzleAuthor: "Puzzle_Author",
+        attemptedUsers: [
+          { username: "puzzle_author" },
+          { username: "Attempted_User" },
+          { username: "Mentioned_User" },
+        ],
+        priorCommenters: [
+          { username: "reply_target" },
+          { username: "attempted_user" },
+          { username: "Follower" },
+        ],
+        excludedUsernames: ["mentioned_user"],
+      }),
+    ).toEqual([
+      { recipientUsername: "reply_target", notificationType: "comment_reply" },
+      { recipientUsername: "puzzle_author", notificationType: "puzzle_author_comment" },
+      { recipientUsername: "attempted_user", notificationType: "puzzle_attempt_comment" },
+      { recipientUsername: "follower", notificationType: "puzzle_comment" },
+    ]);
+  });
+
   it("notifies prior commenters after a puzzle comment without failing the saved comment", async () => {
     const repository = {
       createComment: vi.fn().mockResolvedValue(77),
       ensureUser: vi.fn().mockResolvedValue(undefined),
       loadDiscussionRows: vi.fn().mockResolvedValue({ comments: [], counts: [], viewerVotes: [] }),
       loadPuzzleVoteRows: vi.fn().mockResolvedValue({ counts: null, viewerVote: null }),
-      notifyPriorPuzzleCommenters: vi.fn().mockRejectedValue(new Error("Notification unavailable")),
-      notifyMentionedUsers: vi.fn().mockResolvedValue(undefined),
+      notifyPuzzleCommentRecipients: vi
+        .fn()
+        .mockRejectedValue(new Error("Notification unavailable")),
+      notifyMentionedUsers: vi.fn().mockResolvedValue(["mentioned_user"]),
     };
     const service = new CommunityService(repository as never);
 
@@ -59,11 +88,12 @@ describe("profile comment history", () => {
         12,
       ),
     ).resolves.toEqual(expect.objectContaining({ comments: [] }));
-    expect(repository.notifyPriorPuzzleCommenters).toHaveBeenCalledWith(
+    expect(repository.notifyPuzzleCommentRecipients).toHaveBeenCalledWith(
       42,
       77,
       "new_commenter",
       12,
+      ["mentioned_user"],
     );
     expect(repository.notifyMentionedUsers).toHaveBeenCalledWith(
       { type: "puzzle", id: "42", context: "" },
