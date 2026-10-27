@@ -16,7 +16,7 @@
 
 .predictionMarketShell {
   min-width: 0;
-  width: min(960px, 100%);
+  width: min(840px, 100%);
   margin: 0 auto;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
@@ -30,7 +30,7 @@
   justify-content: space-between;
   gap: 24px;
   align-items: flex-start;
-  padding: 24px 26px 22px;
+  padding: 20px 22px;
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -47,10 +47,10 @@
 }
 
 .predictionMarketHeader h1 {
-  margin: 10px 0 14px;
-  max-width: 650px;
-  font-size: clamp(28px, 3.3vw, 38px);
-  line-height: 1.12;
+  margin: 8px 0 12px;
+  max-width: 560px;
+  font-size: clamp(26px, 3vw, 32px);
+  line-height: 1.16;
   color: var(--color-heading);
 }
 
@@ -118,14 +118,14 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
-  padding: 14px 24px;
+  padding: 12px 20px;
   background: color-mix(in srgb, var(--color-panel-deep) 55%, var(--color-panel));
   border-bottom: 1px solid var(--color-border);
 }
 
 .predictionOutcomeCard {
-  min-height: 94px;
-  padding: 15px 18px;
+  min-height: 80px;
+  padding: 13px 16px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-ui);
   background: var(--color-panel-strong);
@@ -142,13 +142,13 @@
 
 .predictionOutcomeCard span {
   align-self: start;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 800;
 }
 
 .predictionOutcomeCard strong {
   grid-row: span 2;
-  font-size: clamp(34px, 4vw, 44px);
+  font-size: clamp(28px, 3.4vw, 34px);
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
@@ -179,7 +179,7 @@
 
 .predictionTradingGrid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 310px;
+  grid-template-columns: minmax(0, 1fr) 280px;
   gap: 0;
   border-bottom: 1px solid var(--color-border);
 }
@@ -191,7 +191,7 @@
 .predictionRules {
   min-width: 0;
   max-width: 100%;
-  padding: 22px 24px;
+  padding: 18px 20px;
 }
 
 .predictionBookPanel {
@@ -204,7 +204,7 @@
 .predictionActivityPanel h2 {
   margin: 0;
   color: var(--color-heading);
-  font-size: 20px;
+  font-size: 18px;
 }
 
 .predictionSectionHeader {
@@ -212,7 +212,7 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 }
 
 .predictionSectionHeader span {
@@ -292,7 +292,7 @@
 }
 
 .predictionTicket h2 {
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
 .predictionTicketTabs,
@@ -348,7 +348,7 @@
   background: var(--color-panel-strong);
   color: var(--color-heading);
   padding: 9px 12px;
-  font-size: 17px;
+  font-size: 16px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -451,7 +451,7 @@
 .predictionPositions strong {
   margin: 3px 0;
   color: var(--color-heading);
-  font-size: 24px;
+  font-size: 21px;
 }
 
 .predictionOrdersWrap {
