@@ -353,7 +353,6 @@ export const BettingPage = () => {
   });
   const allBetsQuery = useQuery({
     ...allTournamentBetsQueryOptions(),
-    enabled: view === "all",
   });
   const suggestionsQuery = useQuery({
     ...marketSuggestionsQueryOptions(),
@@ -370,6 +369,10 @@ export const BettingPage = () => {
   });
   const countryByPlayer = countriesQuery.data ?? {};
   const markets = useMemo(() => marketsQuery.data ?? [], [marketsQuery.data]);
+  const pendingBetCount = useMemo(
+    () => (allBetsQuery.data ?? []).filter((bet) => bet.status === "open").length,
+    [allBetsQuery.data],
+  );
   const openMarkets = useMemo(
     () => markets.filter((market) => marketAcceptsBets(market, currentTime)),
     [currentTime, markets],
@@ -726,7 +729,7 @@ export const BettingPage = () => {
             aria-selected={view === "all"}
             onClick={() => selectView("all")}
           >
-            All bets
+            All bets{allBetsQuery.data ? ` (${pendingBetCount})` : ""}
           </button>
           <button
             type="button"
