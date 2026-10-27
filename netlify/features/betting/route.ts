@@ -15,17 +15,48 @@ import type { FunctionEvent } from "../../platform/defineFunction";
 import { createServerSupabase } from "../../platform/environment";
 import { HttpError } from "../../platform/errors";
 import { parseJsonBody } from "../../platform/validation";
-import { buildPredictionBook, type PredictionBookOrder } from "./predictionBook";
+import { buildPredictionBook, calculatePredictionPositionCost } from "./predictionBook";
+
+const exchangeMarketIdSchema = z.enum([
+  "natso-ban-2026",
+  "new-life14-ban-2026",
+  "goroarmet-ban-2026",
+  "november-atomic-shield-2026-rechesster",
+  "november-atomic-shield-2026-vannto",
+  "november-atomic-shield-2026-wolfram-ep",
+  "november-atomic-shield-2026-opabinia",
+  "november-atomic-shield-2026-maxwellssilvrhammer",
+  "november-atomic-shield-2026-new-life14",
+  "november-atomic-shield-2026-others",
+  "awc-2026-champion-natso",
+  "awc-2026-champion-maxwellssilvrhammer",
+  "awc-2026-champion-sutcunuri",
+  "awc-2026-champion-rechesster",
+  "awc-2026-champion-jakestatefarm",
+  "awc-2026-champion-quasabianth",
+  "awc-2026-champion-maracker",
+  "awc-2026-champion-judebaetorrens",
+  "awc-2026-champion-howlind",
+  "awc-2026-champion-renaudmerle",
+  "awc-2026-champion-rabbier",
+  "awc-2026-champion-theatomicstorm",
+  "awc-2026-champion-dandan2016",
+  "awc-2026-champion-tolya-starina0995",
+  "awc-2026-champion-stinkypotato",
+  "awc-2026-champion-goroarmet",
+  "awc-2026-champion-arinor0109",
+  "awc-2026-champion-matvei-e2e4",
+]);
 
 const bodySchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("markets") }),
   z.object({ action: z.literal("bets") }),
   z.object({ action: z.literal("allBets") }),
   z.object({ action: z.literal("suggestions") }),
-  z.object({ action: z.literal("exchangeMarket"), marketId: z.literal("natso-ban-2026") }),
+  z.object({ action: z.literal("exchangeMarket"), marketId: exchangeMarketIdSchema }),
   z.object({
     action: z.literal("placeExchangeOrder"),
-    marketId: z.literal("natso-ban-2026"),
+    marketId: exchangeMarketIdSchema,
     outcome: z.enum(["yes", "no"]),
     side: z.enum(["buy", "sell"]),
     priceCents: z.number().int().min(1).max(99),
@@ -33,7 +64,7 @@ const bodySchema = z.discriminatedUnion("action", [
   }),
   z.object({
     action: z.literal("cancelExchangeOrder"),
-    marketId: z.literal("natso-ban-2026"),
+    marketId: exchangeMarketIdSchema,
     orderId: z.number().int().positive(),
   }),
   z.object({
@@ -191,18 +222,43 @@ export const bettingRoute = async (event: FunctionEvent) => {
 
     const username = identity?.username ?? null;
     const orders = ordersResult.data ?? [];
-    const book = buildPredictionBook(orders as PredictionBookOrder[]);
+    const book = buildPredictionBook(orders);
 
     let positions: unknown[] = [];
     if (username) {
-      const positionsResult = await supabase
-        .from("prediction_positions")
-        .select("outcome,quantity,reserved_quantity,updated_at")
-        .eq("market_id", input.marketId)
-        .eq("username", username);
+      const [positionsResult, positionFillsResult] = await Promise.all([
+        supabase
+          .from("prediction_positions")
+          .select("outcome,quantity,reserved_quantity,updated_at")
+          .eq("market_id", input.marketId)
+          .eq("username", username),
+        supabase
+          .from("prediction_fills")
+          .select(
+            "id,outcome,price_cents,quantity,buyer_username,seller_username,pair_key,created_at",
+          )
+          .eq("market_id", input.marketId)
+          .order("created_at", { ascending: true })
+          .order("id", { ascending: true })
+          .limit(1000),
+      ]);
       if (positionsResult.error)
         throw new Error(`Unable to load prediction positions: ${positionsResult.error.message}`);
-      positions = positionsResult.data ?? [];
+      if (positionFillsResult.error)
+        throw new Error(
+          `Unable to load prediction position history: ${positionFillsResult.error.message}`,
+        );
+      const positionCosts = calculatePredictionPositionCost(
+        positionFillsResult.data ?? [],
+        username,
+      );
+      positions = (positionsResult.data ?? []).map((position) => {
+        const cost = positionCosts[position.outcome as "yes" | "no"];
+        return {
+          ...position,
+          average_price_cents: cost.quantity === position.quantity ? cost.averagePriceCents : null,
+        };
+      });
     }
 
     return identityResponse(identity, 200, {

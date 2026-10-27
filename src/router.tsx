@@ -282,7 +282,19 @@ const bettingRoute = createRoute({
 
 const predictionMarketRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/betting/natso-ban-2026",
+  path: "/betting/ban-2026",
+  component: PredictionMarketPage,
+});
+
+const atomicShieldPredictionMarketRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/betting/november-atomic-shield-2026",
+  component: PredictionMarketPage,
+});
+
+const awcChampionPredictionMarketRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/betting/awc-2026-champion",
   component: PredictionMarketPage,
 });
 
@@ -602,6 +614,8 @@ const routeTree = rootRoute.addChildren([
   calendarRoute,
   bettingRoute,
   predictionMarketRoute,
+  atomicShieldPredictionMarketRoute,
+  awcChampionPredictionMarketRoute,
   tournamentRoute,
   tournamentTabRoute,
   h2hRoute,

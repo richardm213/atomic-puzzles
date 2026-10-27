@@ -2,7 +2,7 @@ import "./Betting.css";
 
 import { faPlus, faThumbsDown, faThumbsUp, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -38,7 +38,10 @@ import { formatCoinBalance } from "../../lib/coins/coinDisplay";
 import { coinQueryKeys, coinSummaryQueryOptions } from "../../lib/coins/coinQueries";
 import { tournamentPlayerCountriesQueryOptions } from "../../lib/matches/tournamentQueries";
 import { predictionMarketQueryOptions } from "../../lib/predictionMarkets/predictionMarketQueries";
-import { NATSO_BAN_MARKET_ID } from "../../lib/predictionMarkets/predictionMarkets";
+import {
+  PREDICTION_MARKET_GROUPS,
+  PREDICTION_MARKETS,
+} from "../../lib/predictionMarkets/predictionMarkets";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { countryCodeToFlagUrl } from "../../utils/countryFlags";
 import { formatLocalDateTime } from "../../utils/formatters";
@@ -49,11 +52,13 @@ type Selection = { marketId: string; player: string };
 type SuggestionDraftOutcome = { label: string; odds: string };
 type BetHistoryEntry = TournamentBet & {
   kind?: "prediction";
-  counterpartyUsername?: string | null;
+  predictionUsername?: string;
+  predictionMarketTitle?: string | undefined;
 };
 
 const bettingViews: readonly BettingView[] = ["markets", "mine", "all", "suggestions"];
 const defaultMarketCategory = "AWC Round of 16";
+const predictionMarketCategories = ["Ban", "Shield"] as const;
 const winnerNoMarketId = AWC_NOT_TO_WIN_MARKET_ID;
 const defaultSuggestionOutcomes = (): SuggestionDraftOutcome[] => [
   { label: "", odds: "50" },
@@ -72,14 +77,22 @@ const marketCategorySlug = (category: string): string => {
 
 const marketCategoryFromSearch = (
   search: string,
-  categories: readonly string[] = [defaultMarketCategory, "AWC Champion", "Banned"],
+  categories: readonly string[] = [
+    defaultMarketCategory,
+    "AWC Champion",
+    ...predictionMarketCategories,
+  ],
 ): string => {
   const requestedMarket = new URLSearchParams(search).get("market") ?? "";
+  if (requestedMarket === "markets") return "Ban";
   return (
     categories.find((category) => marketCategorySlug(category) === requestedMarket) ??
     defaultMarketCategory
   );
 };
+
+const isPredictionMarketCategory = (category: string): boolean =>
+  predictionMarketCategories.includes(category as (typeof predictionMarketCategories)[number]);
 
 const bettingViewFromSearch = (search: string): BettingView => {
   const requestedView = new URLSearchParams(search).get("view") ?? "";
@@ -268,7 +281,7 @@ const BetHistory = ({
             const isPredictionBet = bet.kind === "prediction";
             const market = marketForBet(markets, bet);
             const historyContext = isPredictionBet
-              ? "Natso ban market"
+              ? ""
               : market?.marketKind === "outright"
                 ? ""
                 : (market?.roundName ?? "AWC 2026");
@@ -282,7 +295,10 @@ const BetHistory = ({
                       className={`betHistoryPlayer betHistoryPlayer--prediction betHistoryPlayer--${bet.selection}`}
                     >
                       <span aria-hidden="true" />
-                      <strong>{bet.selection === "yes" ? "Yes" : "No"}</strong>
+                      <strong>
+                        {bet.predictionUsername ?? "Prediction"} ·
+                        {bet.selection === "yes" ? "Yes" : "No"}
+                      </strong>
                     </span>
                   ) : (
                     <span className="betHistoryPlayer">
@@ -300,11 +316,8 @@ const BetHistory = ({
                   )}
                   <span className="betHistoryMarket">
                     {isPredictionBet
-                      ? "Will natso be banned by Dec 31?"
+                      ? (bet.predictionMarketTitle ?? "Prediction market")
                       : market?.label || bet.marketId}
-                    {isPredictionBet ? (
-                      <small className="betHistoryMarketType"> · Prediction market</small>
-                    ) : null}
                     {historyContext ? <small> · {abbreviateBetRound(historyContext)}</small> : null}
                   </span>
                 </th>
@@ -313,14 +326,6 @@ const BetHistory = ({
                     <Link to="/@/$username" params={{ username: bet.username }}>
                       <BetHistoryUsername username={bet.username} />
                     </Link>
-                    {isPredictionBet && bet.counterpartyUsername ? (
-                      <small>
-                        with{" "}
-                        <Link to="/@/$username" params={{ username: bet.counterpartyUsername }}>
-                          <BetHistoryUsername username={bet.counterpartyUsername} />
-                        </Link>
-                      </small>
-                    ) : null}
                   </td>
                 ) : null}
                 <td className="betHistoryNumber" data-label="Price">
@@ -399,10 +404,16 @@ export const BettingPage = () => {
     enabled: isAuthenticated,
   });
   const countriesQuery = useQuery(tournamentPlayerCountriesQueryOptions());
-  const predictionMarketQuery = useQuery({
-    ...predictionMarketQueryOptions(),
-    enabled: marketCategory === "Banned" || view === "all",
+  const predictionMarketQueries = useQueries({
+    queries: PREDICTION_MARKETS.map((market) => ({
+      ...predictionMarketQueryOptions(market.id),
+      enabled:
+        isPredictionMarketCategory(marketCategory) ||
+        marketCategory === "AWC Champion" ||
+        view === "all",
+    })),
   });
+  const predictionMarketStates = predictionMarketQueries.map((query) => query.data);
   const countryByPlayer = countriesQuery.data ?? {};
   const markets = useMemo(() => marketsQuery.data ?? [], [marketsQuery.data]);
   const allHistoryBets = useMemo<BetHistoryEntry[]>(() => {
@@ -410,40 +421,46 @@ export const BettingPage = () => {
       allBetsQuery.data ?? [],
       import.meta.env.DEV && demoState === "statuses",
     );
-    const predictionState = predictionMarketQuery.data;
-    const predictionBets = (predictionState?.fills ?? []).map((fill): BetHistoryEntry => {
-      const totalCost = Math.round(fill.priceCents * fill.quantity * 10_000) / 1_000_000;
-      const resolvedOutcome = predictionState?.market.outcome;
-      const status: TournamentBet["status"] =
-        predictionState?.market.status === "refunded"
-          ? "refunded"
-          : predictionState?.market.status === "resolved"
-            ? resolvedOutcome === fill.outcome
-              ? "won"
-              : "lost"
-            : "open";
-      return {
-        id: fill.id,
-        marketId: NATSO_BAN_MARKET_ID,
-        username: fill.buyerUsername,
-        selection: fill.outcome,
-        priceCents: fill.priceCents,
-        stake: totalCost,
-        fee: 0,
-        totalCost,
-        potentialPayout: fill.quantity,
-        status,
-        payout: status === "won" ? fill.quantity : status === "refunded" ? totalCost : 0,
-        placedAt: fill.createdAt,
-        settledAt: status === "open" ? null : fill.createdAt,
-        kind: "prediction",
-        counterpartyUsername: fill.sellerUsername,
-      };
+    const predictionBets = PREDICTION_MARKETS.flatMap((definition, index) => {
+      const predictionState = predictionMarketStates[index];
+      const predictionGroup = PREDICTION_MARKET_GROUPS.find((group) =>
+        group.markets.some((market) => market.id === definition.id),
+      );
+      return (predictionState?.fills ?? []).map((fill): BetHistoryEntry => {
+        const totalCost = Math.round(fill.priceCents * fill.quantity * 10_000) / 1_000_000;
+        const resolvedOutcome = predictionState?.market.outcome;
+        const status: TournamentBet["status"] =
+          predictionState?.market.status === "refunded"
+            ? "refunded"
+            : predictionState?.market.status === "resolved"
+              ? resolvedOutcome === fill.outcome
+                ? "won"
+                : "lost"
+              : "open";
+        return {
+          id: fill.id,
+          marketId: definition.id,
+          username: fill.buyerUsername,
+          selection: fill.outcome,
+          priceCents: fill.priceCents,
+          stake: totalCost,
+          fee: 0,
+          totalCost,
+          potentialPayout: fill.quantity,
+          status,
+          payout: status === "won" ? fill.quantity : status === "refunded" ? totalCost : 0,
+          placedAt: fill.createdAt,
+          settledAt: status === "open" ? null : fill.createdAt,
+          kind: "prediction",
+          predictionUsername: definition.username,
+          predictionMarketTitle: predictionGroup?.title,
+        };
+      });
     });
     return [...tournamentBets, ...predictionBets].sort(
       (left, right) => Date.parse(right.placedAt) - Date.parse(left.placedAt),
     );
-  }, [allBetsQuery.data, demoState, predictionMarketQuery.data]);
+  }, [allBetsQuery.data, demoState, predictionMarketStates]);
   const pendingBetCount = useMemo(
     () => allHistoryBets.filter((bet) => bet.status === "open").length,
     [allHistoryBets],
@@ -452,48 +469,76 @@ export const BettingPage = () => {
     () => markets.filter((market) => marketAcceptsBets(market, currentTime)),
     [currentTime, markets],
   );
-  const marketCategories = useMemo(
-    () =>
-      Array.from(
-        new Map(
-          [...openMarkets]
-            .sort((a, b) => a.categoryOrder - b.categoryOrder)
-            .map((market) => [market.category, market.categoryOrder]),
-        ).keys(),
+  const marketCategories = useMemo(() => {
+    const categories = Array.from(
+      new Map(
+        [...openMarkets]
+          .sort((a, b) => a.categoryOrder - b.categoryOrder)
+          .map((market) => [market.category, market.categoryOrder]),
+      ).keys(),
+    );
+    const awcRoundOf16Category = categories.find((category) => category === defaultMarketCategory);
+    const awcChampionCategory = categories.find((category) => category === "AWC Champion");
+    return [
+      ...(awcRoundOf16Category ? [awcRoundOf16Category] : []),
+      ...(awcChampionCategory ? [awcChampionCategory] : []),
+      ...predictionMarketCategories,
+      ...categories.filter(
+        (category) =>
+          category !== "Banned" &&
+          category !== "Markets" &&
+          category !== "AWC Champion" &&
+          category !== defaultMarketCategory,
       ),
-    [openMarkets],
-  );
+    ];
+  }, [openMarkets]);
   const visibleMarkets = useMemo(
     () =>
-      openMarkets.filter(
-        (market) =>
-          market.category === marketCategory &&
-          (marketCategory !== "AWC Champion" || winnerPositionForMarket(market) === winnerPosition),
-      ),
+      isPredictionMarketCategory(marketCategory)
+        ? []
+        : openMarkets.filter(
+            (market) =>
+              market.category === marketCategory &&
+              (marketCategory !== "AWC Champion" ||
+                winnerPositionForMarket(market) === winnerPosition),
+          ),
     [marketCategory, openMarkets, winnerPosition],
   );
   const showWinnerPositionToggle =
     marketCategory === "AWC Champion" &&
     openMarkets.some((market) => market.id === winnerNoMarketId);
-  const natsoAskPrices = useMemo(() => {
-    const state = predictionMarketQuery.data;
-    const priceFor = (outcome: "yes" | "no") => {
-      if (!state) return undefined;
-      return state.book[outcome].asks[0]?.priceCents;
-    };
-    return { yes: priceFor("yes"), no: priceFor("no") };
-  }, [predictionMarketQuery.data]);
+  const activePredictionGroup =
+    marketCategory === "Ban"
+      ? PREDICTION_MARKET_GROUPS.find((group) => group.id === "ban-2026")
+      : marketCategory === "Shield"
+        ? PREDICTION_MARKET_GROUPS.find((group) => group.id === "november-atomic-shield-2026")
+        : marketCategory === "AWC Champion"
+          ? PREDICTION_MARKET_GROUPS.find((group) => group.id === "awc-2026-champion")
+          : undefined;
+  const activePredictionVolume =
+    activePredictionGroup?.markets.reduce((groupTotal, definition) => {
+      const marketIndex = PREDICTION_MARKETS.findIndex((market) => market.id === definition.id);
+      return (
+        groupTotal +
+        (predictionMarketStates[marketIndex]?.fills.reduce(
+          (marketTotal, fill) => marketTotal + (fill.priceCents * fill.quantity) / 100,
+          0,
+        ) ?? 0)
+      );
+    }, 0) ?? 0;
   const demoSelfPlayer =
     demoState === "self" ? visibleMarkets[0]?.outcomes[0]?.player.toLowerCase() : undefined;
   const demoLimitPlayer =
     demoState === "limit" ? visibleMarkets[0]?.outcomes[0]?.player.toLowerCase() : undefined;
   const marketGroups = useMemo(() => {
     const groups = new Map<string, BettingMarket[]>();
-    visibleMarkets.forEach((market) => {
-      const group = groups.get(market.roundName) ?? [];
-      group.push(market);
-      groups.set(market.roundName, group);
-    });
+    visibleMarkets
+      .filter((market) => !market.id.startsWith("lichess-ban-"))
+      .forEach((market) => {
+        const group = groups.get(market.roundName) ?? [];
+        group.push(market);
+        groups.set(market.roundName, group);
+      });
     return Array.from(groups.entries());
   }, [visibleMarkets]);
   const selectedMarket = selection
@@ -506,7 +551,7 @@ export const BettingPage = () => {
   const selectedCountryCode = selection
     ? (countryByPlayer[selection.player.toLowerCase()] ?? "")
     : "";
-  const marketStakeLimit = selectedMarket?.category === "Banned" ? 200 : MAX_BET_STAKE;
+  const marketStakeLimit = selectedMarket?.id.startsWith("lichess-ban-") ? 200 : MAX_BET_STAKE;
   const stake = Number(stakeInput);
   const validStake =
     Number.isInteger(stake) && stake >= MIN_BET_AMOUNT && stake <= marketStakeLimit;
@@ -766,7 +811,6 @@ export const BettingPage = () => {
               >
                 View bracket
               </Link>
-              <Link to="/betting/natso-ban-2026">Natso order book</Link>
             </nav>
           </div>
           {isAuthenticated ? (
@@ -825,7 +869,12 @@ export const BettingPage = () => {
         ) : null}
 
         {view === "markets" ? (
-          <section className="bettingMarketView" role="tabpanel">
+          <section
+            className={`bettingMarketView${
+              isPredictionMarketCategory(marketCategory) ? " bettingMarketView--exchange" : ""
+            }`}
+            role="tabpanel"
+          >
             <div className="bettingMarketColumn">
               <div className="bettingCategories" aria-label="Market categories">
                 {marketCategories.map((category) => (
@@ -870,39 +919,83 @@ export const BettingPage = () => {
                     of this user’s net worth. Other outcomes remain available.
                   </InlineState>
                 ) : null}
-                {marketCategory === "Banned" ? (
-                  <section className="bettingMarketGroup">
-                    <h2>Natso</h2>
-                    <Link className="bettingExchangeCard" to="/betting/natso-ban-2026">
-                      <span className="bettingExchangeQuestion">
-                        <strong>Will natso be banned by Dec 31?</strong>
-                        <span className="bettingExchangeMeta">
-                          <small className="bettingExchangeStatus">Trading</small>
-                          <small>Order book · no fees</small>
+                {activePredictionGroup ? (
+                  <section className="bettingExchangeGroup">
+                    {[activePredictionGroup].map((group) => (
+                      <Link
+                        className={`bettingExchangeCard${
+                          group.id === "awc-2026-champion" ? "" : " bettingExchangeCard--strikes"
+                        }`}
+                        to={group.path}
+                        key={group.id}
+                      >
+                        <span className="bettingExchangeQuestion">
+                          <strong>{group.title}</strong>
+                          <span className="bettingExchangeMeta">
+                            <small className="bettingExchangeStatus">Trading</small>
+                            <small>Volume {formatBetCoins(activePredictionVolume)} coins</small>
+                          </span>
                         </span>
-                      </span>
-                      <span className="bettingExchangePrices" aria-label="Best available asks">
-                        <span>
-                          Yes
-                          {natsoAskPrices.yes === undefined ? null : (
-                            <strong>
-                              {natsoAskPrices.yes}
-                              <span className="betHistoryPriceSuffix">¢</span>
-                            </strong>
-                          )}
-                        </span>
-                        <span>
-                          No
-                          {natsoAskPrices.no === undefined ? null : (
-                            <strong>
-                              {natsoAskPrices.no}
-                              <span className="betHistoryPriceSuffix">¢</span>
-                            </strong>
-                          )}
-                        </span>
-                      </span>
-                      <span className="bettingExchangeAction">Trade →</span>
-                    </Link>
+                        <span className="bettingExchangeAction">Open market →</span>
+                        {group.id !== "awc-2026-champion" ? (
+                          <span className="bettingExchangeStrikes">
+                            {group.markets.map((definition) => {
+                              const marketIndex = PREDICTION_MARKETS.findIndex(
+                                (market) => market.id === definition.id,
+                              );
+                              const state = predictionMarketStates[marketIndex];
+                              const latestFill = state?.fills[0];
+                              const yesChance =
+                                state?.market.status === "resolved"
+                                  ? state.market.outcome === "yes"
+                                    ? 100
+                                    : 0
+                                  : latestFill
+                                    ? latestFill.outcome === "yes"
+                                      ? latestFill.priceCents
+                                      : 100 - latestFill.priceCents
+                                    : definition.startingChance;
+                              const yesAsk = state?.book.yes.asks[0]?.priceCents;
+                              const noAsk = state?.book.no.asks[0]?.priceCents;
+                              const isResolved = state?.market.status === "resolved";
+                              return (
+                                <span className="bettingExchangeStrike" key={definition.id}>
+                                  <span className="bettingExchangeStrikePlayer">
+                                    <img
+                                      src={countryCodeToFlagUrl(definition.countryCode)}
+                                      alt=""
+                                      crossOrigin="anonymous"
+                                      loading="lazy"
+                                      decoding="async"
+                                      aria-hidden="true"
+                                    />
+                                    <strong>{definition.username}</strong>
+                                  </span>
+                                  <span className="bettingExchangeStrikeChance">
+                                    <small>Chance</small>
+                                    <strong>
+                                      {yesChance === undefined ? "—" : `${yesChance}%`}
+                                    </strong>
+                                  </span>
+                                  {isResolved ? (
+                                    <span
+                                      className={`bettingExchangeResolved bettingExchangeResolved--${state?.market.outcome ?? "no"}`}
+                                    >
+                                      Resolved {state?.market.outcome === "yes" ? "Yes" : "No"}
+                                    </span>
+                                  ) : (
+                                    <span className="bettingExchangeStrikePrices">
+                                      <span>Yes {yesAsk === undefined ? "—" : `${yesAsk}¢`}</span>
+                                      <span>No {noAsk === undefined ? "—" : `${noAsk}¢`}</span>
+                                    </span>
+                                  )}
+                                </span>
+                              );
+                            })}
+                          </span>
+                        ) : null}
+                      </Link>
+                    ))}
                   </section>
                 ) : null}
                 {marketGroups.length ? (
@@ -998,7 +1091,7 @@ export const BettingPage = () => {
                                   </span>
                                   <span className="bettingOutcomeQuote">
                                     <strong>
-                                      {market.category === "Banned" ? "Yes · " : ""}
+                                      {market.id.startsWith("lichess-ban-") ? "Yes · " : ""}
                                       {outcome.pricePercent}%
                                     </strong>
                                     {isSelfNotToWinOutcome ? (
@@ -1019,9 +1112,9 @@ export const BettingPage = () => {
                       ))}
                     </section>
                   ))
-                ) : (
+                ) : !isPredictionMarketCategory(marketCategory) ? (
                   <InlineState kind="empty">No AWC 2026 markets are open.</InlineState>
-                )}
+                ) : null}
               </div>
             </div>
 
@@ -1048,7 +1141,7 @@ export const BettingPage = () => {
                         />
                         <strong>{selection.player}</strong>
                         <em>
-                          {selectedMarket.category === "Banned"
+                          {selectedMarket.id.startsWith("lichess-ban-")
                             ? "Yes"
                             : selectedMarket.id === winnerNoMarketId
                               ? "not to win"
@@ -1083,7 +1176,7 @@ export const BettingPage = () => {
                       ? bettingUnavailable
                         ? "This position has reached 50% of your net worth. Other outcomes remain available."
                         : `Up to ${formatBetCoins(effectiveStakeLimit)} coins before the fee. Each outcome is limited to 50% of net worth.`
-                      : selectedMarket.category === "Banned"
+                      : selectedMarket.id.startsWith("lichess-ban-")
                         ? "200 coin maximum · 2% fee · 50% net worth limit"
                         : "2% fee · 50% net worth limit"}
                   </small>

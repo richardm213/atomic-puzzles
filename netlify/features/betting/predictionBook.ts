@@ -8,6 +8,17 @@ export type PredictionBookOrder = {
 
 type PredictionBookLevel = { priceCents: number; quantity: number };
 
+export type PredictionPositionFill = {
+  id: number;
+  outcome: "yes" | "no";
+  price_cents: number;
+  quantity: number;
+  buyer_username: string;
+  seller_username: string | null;
+  pair_key: string | null;
+  created_at: string;
+};
+
 const oppositeOutcome = (outcome: "yes" | "no") => (outcome === "yes" ? "no" : "yes");
 const oppositeSide = (side: "buy" | "sell") => (side === "buy" ? "sell" : "buy");
 
@@ -49,5 +60,48 @@ export const buildPredictionBook = (orders: PredictionBookOrder[]) => {
   return {
     yes: { bids: present(levels.yes.buy, "buy"), asks: present(levels.yes.sell, "sell") },
     no: { bids: present(levels.no.buy, "buy"), asks: present(levels.no.sell, "sell") },
+  };
+};
+
+export const calculatePredictionPositionCost = (
+  fills: PredictionPositionFill[],
+  username: string,
+) => {
+  const normalizedUsername = username.toLowerCase();
+  const positions = {
+    yes: { quantity: 0, costCents: 0 },
+    no: { quantity: 0, costCents: 0 },
+  };
+
+  for (const fill of [...fills].sort(
+    (left, right) => left.created_at.localeCompare(right.created_at) || left.id - right.id,
+  )) {
+    const position = positions[fill.outcome];
+    const pairedSell = fill.pair_key !== null && fill.seller_username !== null;
+
+    if (fill.buyer_username === normalizedUsername && !pairedSell) {
+      position.quantity += fill.quantity;
+      position.costCents += fill.price_cents * fill.quantity;
+    }
+
+    if (fill.seller_username === normalizedUsername && position.quantity > 0) {
+      const soldQuantity = Math.min(fill.quantity, position.quantity);
+      position.costCents -= (position.costCents / position.quantity) * soldQuantity;
+      position.quantity -= soldQuantity;
+      if (position.quantity === 0) position.costCents = 0;
+    }
+  }
+
+  return {
+    yes: {
+      quantity: positions.yes.quantity,
+      averagePriceCents:
+        positions.yes.quantity > 0 ? positions.yes.costCents / positions.yes.quantity : null,
+    },
+    no: {
+      quantity: positions.no.quantity,
+      averagePriceCents:
+        positions.no.quantity > 0 ? positions.no.costCents / positions.no.quantity : null,
+    },
   };
 };

@@ -88,7 +88,7 @@ insert into public.prediction_markets (
 ) values (
   'natso-ban-2026',
   'Will natso be banned by Dec 31?',
-  'Resolves Yes if the Lichess account natso is visibly closed or disabled by 2026-12-31 23:59:59 UTC. Otherwise resolves No. Lichess is the sole resolution source.',
+  'Resolves Yes if the Lichess account natso is visibly marked as banned by 2026-12-31 23:59:59 UTC. Otherwise resolves No. Lichess is the sole resolution source.',
   'https://lichess.org/@/natso',
   '2027-01-01T00:00:00Z'
 )
@@ -97,6 +97,55 @@ on conflict (id) do update set
   resolution_rules = excluded.resolution_rules,
   resolution_source_url = excluded.resolution_source_url,
   closes_at = excluded.closes_at,
+  updated_at = now();
+
+insert into public.prediction_markets (
+  id,
+  question,
+  resolution_rules,
+  resolution_source_url,
+  closes_at
+) values (
+  'new-life14-ban-2026',
+  'Will New_Life14 be banned by Dec 31?',
+  'Resolves Yes if the Lichess account New_Life14 is visibly marked as banned by 2026-12-31 23:59:59 UTC. Otherwise resolves No. Lichess is the sole resolution source.',
+  'https://lichess.org/@/new_life14',
+  '2027-01-01T00:00:00Z'
+)
+on conflict (id) do update set
+  question = excluded.question,
+  resolution_rules = excluded.resolution_rules,
+  resolution_source_url = excluded.resolution_source_url,
+  closes_at = excluded.closes_at,
+  updated_at = now();
+
+insert into public.prediction_markets (
+  id,
+  question,
+  resolution_rules,
+  resolution_source_url,
+  closes_at,
+  status,
+  outcome,
+  resolved_at
+) values (
+  'goroarmet-ban-2026',
+  'Will GoroArmeT be banned by Dec 31?',
+  'Resolves Yes if the Lichess account GoroArmeT is visibly marked as banned by 2026-12-31 23:59:59 UTC. Otherwise resolves No. Lichess is the sole resolution source.',
+  'https://lichess.org/@/goroarmet',
+  '2027-01-01T00:00:00Z',
+  'resolved',
+  'yes',
+  now()
+)
+on conflict (id) do update set
+  question = excluded.question,
+  resolution_rules = excluded.resolution_rules,
+  resolution_source_url = excluded.resolution_source_url,
+  closes_at = excluded.closes_at,
+  status = 'resolved',
+  outcome = 'yes',
+  resolved_at = coalesce(public.prediction_markets.resolved_at, now()),
   updated_at = now();
 
 create or replace function public.place_prediction_order(

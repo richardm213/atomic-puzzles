@@ -1,13 +1,15 @@
 import { queryOptions } from "@tanstack/react-query";
 
-import { fetchPredictionMarket, NATSO_BAN_MARKET_ID } from "./predictionMarkets";
+import { fetchPredictionMarket, type PredictionMarketId } from "./predictionMarkets";
 
-export const predictionMarketQueryKey = ["prediction-market", NATSO_BAN_MARKET_ID] as const;
+export const predictionMarketQueryRoot = ["prediction-market"] as const;
+export const predictionMarketQueryKey = (marketId: PredictionMarketId) =>
+  [...predictionMarketQueryRoot, marketId] as const;
 
-export const predictionMarketQueryOptions = () =>
+export const predictionMarketQueryOptions = (marketId: PredictionMarketId) =>
   queryOptions({
-    queryKey: predictionMarketQueryKey,
-    queryFn: fetchPredictionMarket,
+    queryKey: predictionMarketQueryKey(marketId),
+    queryFn: () => fetchPredictionMarket(marketId),
     staleTime: 3_000,
     refetchInterval: 5_000,
   });

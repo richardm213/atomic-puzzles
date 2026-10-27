@@ -3,6 +3,206 @@ import { z } from "zod";
 import { postApi } from "../api/postApi";
 
 export const NATSO_BAN_MARKET_ID = "natso-ban-2026";
+export const NEW_LIFE14_BAN_MARKET_ID = "new-life14-ban-2026";
+export const GOROARMET_BAN_MARKET_ID = "goroarmet-ban-2026";
+export const PREDICTION_BAN_MARKETS = [
+  { id: NATSO_BAN_MARKET_ID, username: "Natso", countryCode: "NL", startingChance: undefined },
+  {
+    id: NEW_LIFE14_BAN_MARKET_ID,
+    username: "New_Life14",
+    countryCode: "KZ",
+    startingChance: undefined,
+  },
+  {
+    id: GOROARMET_BAN_MARKET_ID,
+    username: "GoroArmeT",
+    countryCode: "ES",
+    startingChance: undefined,
+  },
+] as const;
+export const PREDICTION_ATOMIC_SHIELD_MARKETS = [
+  {
+    id: "november-atomic-shield-2026-rechesster",
+    username: "rechesster",
+    countryCode: "AT",
+    startingChance: undefined,
+  },
+  {
+    id: "november-atomic-shield-2026-vannto",
+    username: "vannto",
+    countryCode: "VE",
+    startingChance: undefined,
+  },
+  {
+    id: "november-atomic-shield-2026-wolfram-ep",
+    username: "wolfram_ep",
+    countryCode: "RU",
+    startingChance: undefined,
+  },
+  {
+    id: "november-atomic-shield-2026-opabinia",
+    username: "opabinia",
+    countryCode: "US",
+    startingChance: undefined,
+  },
+  {
+    id: "november-atomic-shield-2026-maxwellssilvrhammer",
+    username: "maxwellssilvrhammer",
+    countryCode: "US",
+    startingChance: undefined,
+  },
+  {
+    id: "november-atomic-shield-2026-new-life14",
+    username: "new_life14",
+    countryCode: "KZ",
+    startingChance: undefined,
+  },
+  {
+    id: "november-atomic-shield-2026-others",
+    username: "others",
+    countryCode: "",
+    startingChance: undefined,
+  },
+] as const;
+
+export const PREDICTION_AWC_CHAMPION_MARKETS = [
+  { id: "awc-2026-champion-natso", username: "natso", countryCode: "NL", startingChance: 30 },
+  {
+    id: "awc-2026-champion-maxwellssilvrhammer",
+    username: "maxwellssilvrhammer",
+    countryCode: "US",
+    startingChance: 23,
+  },
+  {
+    id: "awc-2026-champion-sutcunuri",
+    username: "sutcunuri",
+    countryCode: "TR",
+    startingChance: 20,
+  },
+  {
+    id: "awc-2026-champion-rechesster",
+    username: "rechesster",
+    countryCode: "AT",
+    startingChance: 20,
+  },
+  {
+    id: "awc-2026-champion-jakestatefarm",
+    username: "jakestatefarm",
+    countryCode: "US",
+    startingChance: 15,
+  },
+  {
+    id: "awc-2026-champion-quasabianth",
+    username: "quasabianth",
+    countryCode: "RU",
+    startingChance: 5,
+  },
+  {
+    id: "awc-2026-champion-maracker",
+    username: "maracker",
+    countryCode: "RU",
+    startingChance: 4,
+  },
+  {
+    id: "awc-2026-champion-judebaetorrens",
+    username: "judebaetorrens",
+    countryCode: "US",
+    startingChance: 2,
+  },
+  {
+    id: "awc-2026-champion-howlind",
+    username: "howlind",
+    countryCode: "FR",
+    startingChance: 1,
+  },
+  {
+    id: "awc-2026-champion-renaudmerle",
+    username: "renaudmerle",
+    countryCode: "FR",
+    startingChance: 1,
+  },
+  {
+    id: "awc-2026-champion-rabbier",
+    username: "rabbier",
+    countryCode: "NZ",
+    startingChance: 1,
+  },
+  {
+    id: "awc-2026-champion-theatomicstorm",
+    username: "theatomicstorm",
+    countryCode: "US",
+    startingChance: 1,
+  },
+  {
+    id: "awc-2026-champion-dandan2016",
+    username: "dandan2016",
+    countryCode: "US",
+    startingChance: 1,
+  },
+  {
+    id: "awc-2026-champion-tolya-starina0995",
+    username: "tolya_starina0995",
+    countryCode: "RU",
+    startingChance: 1,
+  },
+  {
+    id: "awc-2026-champion-stinkypotato",
+    username: "stinkypotato",
+    countryCode: "US",
+    startingChance: 0,
+  },
+  {
+    id: "awc-2026-champion-goroarmet",
+    username: "goroarmet",
+    countryCode: "ES",
+    startingChance: 0,
+  },
+  {
+    id: "awc-2026-champion-arinor0109",
+    username: "arinor0109",
+    countryCode: "SE",
+    startingChance: 0,
+  },
+  {
+    id: "awc-2026-champion-matvei-e2e4",
+    username: "matvei-e2e4",
+    countryCode: "RU",
+    startingChance: 0,
+  },
+] as const;
+
+export const PREDICTION_MARKET_GROUPS = [
+  {
+    id: "ban-2026",
+    path: "/betting/ban-2026",
+    title: "Who will be banned by Dec 31?",
+    description: "Trade Lichess ban prediction markets with Atomic Coins.",
+    markets: PREDICTION_BAN_MARKETS,
+  },
+  {
+    id: "november-atomic-shield-2026",
+    path: "/betting/november-atomic-shield-2026",
+    title: "Who will win the November Atomic Shield?",
+    description: "Trade November Atomic Shield winner predictions with Atomic Coins.",
+    markets: PREDICTION_ATOMIC_SHIELD_MARKETS,
+  },
+  {
+    id: "awc-2026-champion",
+    path: "/betting/awc-2026-champion",
+    title: "Who will be the 2026 Atomic World Champion?",
+    description: "Trade 2026 Atomic World Championship winner predictions with Atomic Coins.",
+    markets: PREDICTION_AWC_CHAMPION_MARKETS,
+  },
+] as const;
+
+export const PREDICTION_MARKETS = [
+  ...PREDICTION_BAN_MARKETS,
+  ...PREDICTION_ATOMIC_SHIELD_MARKETS,
+  ...PREDICTION_AWC_CHAMPION_MARKETS,
+] as const;
+
+export type PredictionMarketId = (typeof PREDICTION_MARKETS)[number]["id"];
+export type PredictionMarketDefinition = (typeof PREDICTION_MARKETS)[number];
 export type PredictionOutcome = "yes" | "no";
 export type PredictionOrderSide = "buy" | "sell";
 
@@ -60,12 +260,14 @@ const positionSchema = z
     outcome: z.enum(["yes", "no"]),
     quantity: z.number(),
     reserved_quantity: z.number(),
+    average_price_cents: z.number().nullable(),
     updated_at: z.string(),
   })
   .transform((position) => ({
     outcome: position.outcome,
     quantity: position.quantity,
     reservedQuantity: position.reserved_quantity,
+    averagePriceCents: position.average_price_cents,
     updatedAt: position.updated_at,
   }));
 
@@ -107,10 +309,12 @@ const orderMutationSchema = z.object({
   result: z.object({ orderId: z.number(), balance: z.number() }),
 });
 
-export const fetchPredictionMarket = async (): Promise<PredictionMarketState> => {
+export const fetchPredictionMarket = async (
+  marketId: PredictionMarketId,
+): Promise<PredictionMarketState> => {
   const response = await postApi(
     "/api/betting",
-    { action: "exchangeMarket", marketId: NATSO_BAN_MARKET_ID },
+    { action: "exchangeMarket", marketId },
     {
       schema: marketStateSchema,
       errorMessage: "Unable to load this market.",
@@ -121,11 +325,13 @@ export const fetchPredictionMarket = async (): Promise<PredictionMarketState> =>
 };
 
 export const placePredictionOrder = async ({
+  marketId,
   outcome,
   side,
   priceCents,
   quantity,
 }: {
+  marketId: PredictionMarketId;
   outcome: PredictionOutcome;
   side: PredictionOrderSide;
   priceCents: number;
@@ -135,7 +341,7 @@ export const placePredictionOrder = async ({
     "/api/betting",
     {
       action: "placeExchangeOrder",
-      marketId: NATSO_BAN_MARKET_ID,
+      marketId,
       outcome,
       side,
       priceCents,
@@ -150,10 +356,10 @@ export const placePredictionOrder = async ({
   return response.result;
 };
 
-export const cancelPredictionOrder = async (orderId: number) => {
+export const cancelPredictionOrder = async (marketId: PredictionMarketId, orderId: number) => {
   const response = await postApi(
     "/api/betting",
-    { action: "cancelExchangeOrder", marketId: NATSO_BAN_MARKET_ID, orderId },
+    { action: "cancelExchangeOrder", marketId, orderId },
     {
       schema: orderMutationSchema,
       errorMessage: "Unable to cancel this order.",

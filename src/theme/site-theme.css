@@ -35,6 +35,8 @@
   --color-success: #86efac;
   --color-warning: #facc15;
   --color-danger: #fca5a5;
+  --color-market-yes: #2ad8a2;
+  --color-market-no: #ff5a69;
   --color-rating-blitz: #ff5252;
   --color-rating-hyper: #5688ff;
   --color-rating-bullet: #09bdd7;
@@ -135,6 +137,8 @@
   --color-success: #15803d;
   --color-warning: #a86d00;
   --color-danger: #dc2626;
+  --color-market-yes: #087a5d;
+  --color-market-no: #d92f45;
   --color-rating-blitz: #d92727;
   --color-rating-hyper: #2859df;
   --color-rating-bullet: #00849e;
