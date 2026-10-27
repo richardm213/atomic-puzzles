@@ -42,6 +42,32 @@ export type NotificationResult = {
   unreadCount: number;
 };
 
+export const isPredictionOrderFillNotification = (notification: UserNotification): boolean =>
+  notification.notification_type === "feature" &&
+  notification.feature_key?.startsWith("prediction-order-filled:") === true;
+
+export const isPredictionPayoutNotification = (notification: UserNotification): boolean =>
+  notification.notification_type === "feature" &&
+  notification.feature_key?.startsWith("prediction-market-payout:") === true;
+
+export const notificationCategory = (notification: UserNotification): string => {
+  if (isPredictionOrderFillNotification(notification)) return "Prediction order";
+  if (isPredictionPayoutNotification(notification)) return "Prediction payout";
+  if (
+    notification.notification_type === "coin_gift" ||
+    notification.notification_type === "coin_request"
+  ) {
+    return "Coins";
+  }
+  if (notification.notification_type === "coin_policy_update") return "Coin rules";
+  if (notification.notification_type === "monthly_ranking") return "Monthly rankings";
+  if (notification.notification_type === "feature") return "New feature";
+  if (notification.notification_type === "shop_redemption") return "Shop purchase";
+  if (notification.notification_type === "puzzle_rating_added") return "Puzzle rating";
+  if (notification.notification_type === "puzzle_approved") return "10 coins";
+  return `Puzzle #${notification.puzzle_id}`;
+};
+
 export const notificationCopy = (notification: UserNotification): string => {
   if (notification.notification_type === "feature") {
     return notification.feature_message?.trim() || "Check out a new Atomic Puzzles feature.";

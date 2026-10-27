@@ -57,7 +57,7 @@ export const fetchPredictionMarketGroups = async (): Promise<PredictionMarketGro
     };
     group.markets.push({
       id: row.id,
-      username: row.display_name,
+      username: row.display_name.toLowerCase(),
       countryCode: row.country_code,
       startingChance: row.starting_chance ?? undefined,
     });

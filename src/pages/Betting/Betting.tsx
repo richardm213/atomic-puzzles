@@ -399,9 +399,13 @@ const BetHistory = ({
                       decoding="async"
                     />
                     <strong>
-                      <BetHistoryUsername username={bet.selection} />
-                      {isPredictionBet && bet.predictionOutcome === "no" ? (
-                        <span className="betHistoryOutcome">· No</span>
+                      <BetHistoryUsername
+                        username={isPredictionBet ? bet.selection.toLowerCase() : bet.selection}
+                      />
+                      {isPredictionBet && bet.predictionOutcome ? (
+                        <span className="betHistoryOutcome">
+                          · {bet.predictionOutcome === "yes" ? "Yes" : "No"}
+                        </span>
                       ) : null}
                     </strong>
                   </span>
