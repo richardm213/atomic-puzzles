@@ -302,6 +302,9 @@ const BetHistory = ({
                     {isPredictionBet
                       ? "Will natso be banned by Dec 31?"
                       : market?.label || bet.marketId}
+                    {isPredictionBet ? (
+                      <small className="betHistoryMarketType"> · Prediction market</small>
+                    ) : null}
                     {historyContext ? <small> · {abbreviateBetRound(historyContext)}</small> : null}
                   </span>
                 </th>
@@ -335,8 +338,10 @@ const BetHistory = ({
                   <small>{bet.status === "open" ? "possible" : "paid"}</small>
                 </td>
                 <td className="betHistoryState" data-label="Status">
-                  <span className={`betStatus betStatus--${bet.status}`}>
-                    {bet.status === "open" ? "Open" : bet.status}
+                  <span
+                    className={`betStatus betStatus--${bet.status}${isPredictionBet ? " betStatus--prediction" : ""}`}
+                  >
+                    {bet.status === "open" ? (isPredictionBet ? "Trading" : "Open") : bet.status}
                   </span>
                   <time dateTime={bet.placedAt}>{formatLocalDateTime(bet.placedAt)}</time>
                 </td>
@@ -871,7 +876,10 @@ export const BettingPage = () => {
                     <Link className="bettingExchangeCard" to="/betting/natso-ban-2026">
                       <span className="bettingExchangeQuestion">
                         <strong>Will natso be banned by Dec 31?</strong>
-                        <small>Order book · no fees</small>
+                        <span className="bettingExchangeMeta">
+                          <small className="bettingExchangeStatus">Trading</small>
+                          <small>Order book · no fees</small>
+                        </span>
                       </span>
                       <span className="bettingExchangePrices" aria-label="Best available asks">
                         <span>
