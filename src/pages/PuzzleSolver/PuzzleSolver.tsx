@@ -395,6 +395,7 @@ export const PuzzleSolverPage = () => {
   const motifDialogRef = useRef<HTMLDialogElement | null>(null);
   const reportIssueDialogRef = useRef<HTMLDialogElement | null>(null);
   const upcomingPuzzleIndexesRef = useRef<number[]>([]);
+  const visitedPuzzleIdsRef = useRef<Set<string>>(new Set());
   const loadingPuzzleIdsRef = useRef<Set<string>>(new Set());
   const isMountedRef = useRef(true);
   const progressWriteQueueRef = useRef(Promise.resolve());
@@ -459,14 +460,16 @@ export const PuzzleSolverPage = () => {
           .filter(
             (index) =>
               index !== currentIndex &&
-              !attemptedPuzzleIds.has(String(puzzles[index]?.puzzleId ?? "")),
+              !visitedPuzzleIdsRef.current.has(String(puzzles[index]?.puzzleId ?? "")) &&
+              !attemptedPuzzleIds.has(String(puzzles[index]?.puzzleId ?? "")) &&
+              !unratedPuzzleIds.has(String(puzzles[index]?.puzzleId ?? "")),
           );
         upcomingPuzzleIndexesRef.current = shuffleIndexes(candidateIndexes);
       }
 
       return upcomingPuzzleIndexesRef.current.length;
     },
-    [attemptedPuzzleIds, puzzles],
+    [attemptedPuzzleIds, puzzles, unratedPuzzleIds],
   );
 
   const getNextShuffledPuzzleIndex = useCallback(
@@ -578,10 +581,6 @@ export const PuzzleSolverPage = () => {
       isCurrent = false;
     };
   }, [attemptedPuzzleIdsUsername, isAuthLoading, user?.username]);
-
-  useEffect(() => {
-    upcomingPuzzleIndexesRef.current = [];
-  }, [attemptedPuzzleIds, puzzles]);
 
   useEffect(() => {
     attemptedPuzzleIdsRef.current = attemptedPuzzleIds;
@@ -897,6 +896,7 @@ export const PuzzleSolverPage = () => {
 
   useEffect(() => {
     activePuzzleKeyRef.current = activePuzzleKey;
+    if (activePuzzleKey) visitedPuzzleIdsRef.current.add(activePuzzleKey);
   }, [activePuzzleKey]);
 
   const enqueuePuzzleProgressWrite = useCallback(

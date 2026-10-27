@@ -398,10 +398,10 @@ describe("PuzzleSolverPage solution options", () => {
     expect((await screen.findAllByText("Unrated")).length).toBeGreaterThan(0);
   });
 
-  it("waits for progress before choosing a random puzzle and skips attempted puzzles", async () => {
+  it("waits for progress and skips rated and unrated attempted puzzles", async () => {
     mocks.routeParams = { puzzleId: "", setKey: "" };
     mocks.loadPuzzleCatalog.mockResolvedValueOnce(
-      [1, 2].map((puzzleId) => ({
+      [1, 2, 3].map((puzzleId) => ({
         id: puzzleId,
         fen: "",
         solution: "",
@@ -425,12 +425,15 @@ describe("PuzzleSolverPage solution options", () => {
     await waitFor(() => expect(mocks.loadPuzzleSolverIndex).toHaveBeenCalledOnce());
     expect(mocks.navigate).not.toHaveBeenCalled();
 
-    resolveProgress([{ puzzle_id: "1", rated: true }]);
+    resolveProgress([
+      { puzzle_id: "1", rated: true },
+      { puzzle_id: "2", rated: false },
+    ]);
 
     await waitFor(() =>
       expect(mocks.navigate).toHaveBeenCalledWith({
         to: "/solve/$puzzleId",
-        params: { puzzleId: "2" },
+        params: { puzzleId: "3" },
         replace: true,
       }),
     );
@@ -459,7 +462,7 @@ describe("PuzzleSolverPage solution options", () => {
     expect(screen.queryByTestId("mock-board")).not.toBeInTheDocument();
   });
 
-  it("uses an in-flight prefetch when Next selects that puzzle", async () => {
+  it("uses an in-flight prefetch and does not loop back to a seen puzzle", async () => {
     mocks.routeParams = { puzzleId: "1", setKey: "" };
     mocks.attemptedPuzzleIds = new Set();
     mocks.loadPuzzleCatalog.mockResolvedValueOnce(
@@ -500,6 +503,10 @@ describe("PuzzleSolverPage solution options", () => {
         mocks.routeParams = { ...mocks.routeParams, puzzleId: options.params.puzzleId };
       }
     });
+    vi.spyOn(window.crypto, "getRandomValues").mockImplementation((array) => {
+      (array as Uint32Array)[0] = 0;
+      return array;
+    });
 
     const user = userEvent.setup();
     render(<PuzzleSolverPage />);
@@ -515,6 +522,14 @@ describe("PuzzleSolverPage solution options", () => {
 
     await waitFor(() => expect(screen.getByTestId("mock-board")).toBeInTheDocument());
     expect(screen.queryByText("Waiting for puzzle data...")).not.toBeInTheDocument();
+
+    await user.click(nextButton);
+    const navigatedPuzzleIds = mocks.navigate.mock.calls.map(
+      ([options]) => options.params?.puzzleId,
+    );
+    expect(navigatedPuzzleIds.slice(-2)).toHaveLength(2);
+    expect(new Set(navigatedPuzzleIds.slice(-2))).toHaveLength(2);
+    expect(navigatedPuzzleIds.slice(-2)).not.toContain("1");
   });
 
   it.each([
