@@ -41,6 +41,8 @@ const fillSchema = z
     outcome: z.enum(["yes", "no"]),
     price_cents: z.number(),
     quantity: z.number(),
+    buyer_username: z.string(),
+    seller_username: z.string().nullable(),
     created_at: z.string(),
   })
   .transform((fill) => ({
@@ -48,6 +50,8 @@ const fillSchema = z
     outcome: fill.outcome,
     priceCents: fill.price_cents,
     quantity: fill.quantity,
+    buyerUsername: fill.buyer_username,
+    sellerUsername: fill.seller_username,
     createdAt: fill.created_at,
   }));
 

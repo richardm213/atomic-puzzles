@@ -197,17 +197,25 @@ begin
       select * into resting
       from public.prediction_orders
       where market_id = p_market_id
-        and outcome = incoming.outcome
-        and side = 'sell'
         and status in ('open', 'partial')
         and remaining_quantity > 0
-        and price_cents <= incoming.price_cents
         and username <> incoming.username
-      order by price_cents asc, created_at asc, id asc
+        and (
+          (outcome = incoming.outcome and side = 'sell' and price_cents <= incoming.price_cents)
+          or
+          (outcome <> incoming.outcome and side = 'buy'
+            and price_cents + incoming.price_cents >= 100)
+        )
+      order by
+        case when outcome = incoming.outcome then price_cents else 100 - price_cents end asc,
+        created_at asc,
+        id asc
       limit 1
       for update;
 
-      if resting.id is not null then
+      exit when resting.id is null;
+
+      if resting.outcome = incoming.outcome then
         match_quantity := least(incoming.remaining_quantity, resting.remaining_quantity);
         execution_price := resting.price_cents;
         trade_amount := round((execution_price::numeric * match_quantity) / 100, 6);
@@ -244,20 +252,6 @@ begin
           );
         end if;
       else
-        select * into resting
-        from public.prediction_orders
-        where market_id = p_market_id
-          and outcome <> incoming.outcome
-          and side = 'buy'
-          and status in ('open', 'partial')
-          and remaining_quantity > 0
-          and price_cents + incoming.price_cents >= 100
-          and username <> incoming.username
-        order by price_cents desc, created_at asc, id asc
-        limit 1
-        for update;
-
-        exit when resting.id is null;
         match_quantity := least(incoming.remaining_quantity, resting.remaining_quantity);
         execution_price := 100 - resting.price_cents;
         refund_amount := round(((incoming.price_cents - execution_price)::numeric * match_quantity) / 100, 6);
@@ -299,43 +293,96 @@ begin
       select * into resting
       from public.prediction_orders
       where market_id = p_market_id
-        and outcome = incoming.outcome
-        and side = 'buy'
         and status in ('open', 'partial')
         and remaining_quantity > 0
-        and price_cents >= incoming.price_cents
         and username <> incoming.username
-      order by price_cents desc, created_at asc, id asc
+        and (
+          (outcome = incoming.outcome and side = 'buy' and price_cents >= incoming.price_cents)
+          or
+          (outcome <> incoming.outcome and side = 'sell'
+            and price_cents + incoming.price_cents <= 100)
+        )
+      order by
+        case when outcome = incoming.outcome then price_cents else 100 - price_cents end desc,
+        created_at asc,
+        id asc
       limit 1
       for update;
 
       exit when resting.id is null;
       match_quantity := least(incoming.remaining_quantity, resting.remaining_quantity);
-      execution_price := resting.price_cents;
-      trade_amount := round((execution_price::numeric * match_quantity) / 100, 6);
 
-      update public.prediction_positions
-      set quantity = quantity - match_quantity,
-          reserved_quantity = reserved_quantity - match_quantity,
-          updated_at = now()
-      where market_id = p_market_id and username = incoming.username and outcome = incoming.outcome;
-      insert into public.prediction_positions (market_id, username, outcome, quantity)
-      values (p_market_id, resting.username, incoming.outcome, match_quantity)
-      on conflict (market_id, username, outcome) do update
-      set quantity = public.prediction_positions.quantity + excluded.quantity, updated_at = now();
+      if resting.outcome = incoming.outcome then
+        execution_price := resting.price_cents;
+        trade_amount := round((execution_price::numeric * match_quantity) / 100, 6);
 
-      insert into public.prediction_fills (
-        market_id, outcome, price_cents, quantity, buyer_username, seller_username,
-        maker_order_id, taker_order_id
-      ) values (
-        p_market_id, incoming.outcome, execution_price, match_quantity, resting.username,
-        incoming.username, resting.id, incoming.id
-      ) returning id into fill_id;
-      next_balance := public.apply_coin_transaction(
-        incoming.username, trade_amount, 'prediction_trade_credit',
-        'prediction-fill-seller:' || fill_id,
-        jsonb_build_object('marketId', p_market_id, 'fillId', fill_id, 'orderId', incoming.id)
-      );
+        update public.prediction_positions
+        set quantity = quantity - match_quantity,
+            reserved_quantity = reserved_quantity - match_quantity,
+            updated_at = now()
+        where market_id = p_market_id and username = incoming.username and outcome = incoming.outcome;
+        insert into public.prediction_positions (market_id, username, outcome, quantity)
+        values (p_market_id, resting.username, incoming.outcome, match_quantity)
+        on conflict (market_id, username, outcome) do update
+        set quantity = public.prediction_positions.quantity + excluded.quantity, updated_at = now();
+
+        insert into public.prediction_fills (
+          market_id, outcome, price_cents, quantity, buyer_username, seller_username,
+          maker_order_id, taker_order_id
+        ) values (
+          p_market_id, incoming.outcome, execution_price, match_quantity, resting.username,
+          incoming.username, resting.id, incoming.id
+        ) returning id into fill_id;
+        next_balance := public.apply_coin_transaction(
+          incoming.username, trade_amount, 'prediction_trade_credit',
+          'prediction-fill-seller:' || fill_id,
+          jsonb_build_object('marketId', p_market_id, 'fillId', fill_id, 'orderId', incoming.id)
+        );
+      else
+        execution_price := 100 - resting.price_cents;
+        pair_key_value := incoming.id || ':' || resting.id || ':' || incoming.filled_quantity;
+
+        update public.prediction_positions
+        set quantity = quantity - match_quantity,
+            reserved_quantity = reserved_quantity - match_quantity,
+            updated_at = now()
+        where market_id = p_market_id and username = incoming.username and outcome = incoming.outcome;
+        update public.prediction_positions
+        set quantity = quantity - match_quantity,
+            reserved_quantity = reserved_quantity - match_quantity,
+            updated_at = now()
+        where market_id = p_market_id and username = resting.username and outcome = resting.outcome;
+
+        insert into public.prediction_fills (
+          market_id, outcome, price_cents, quantity, buyer_username, seller_username,
+          maker_order_id, taker_order_id, pair_key
+        ) values (
+          p_market_id, incoming.outcome, execution_price, match_quantity, resting.username,
+          incoming.username, resting.id, incoming.id, pair_key_value
+        ) returning id into fill_id;
+        next_balance := public.apply_coin_transaction(
+          incoming.username,
+          round((execution_price::numeric * match_quantity) / 100, 6),
+          'prediction_trade_credit',
+          'prediction-fill-seller:' || fill_id,
+          jsonb_build_object('marketId', p_market_id, 'fillId', fill_id, 'orderId', incoming.id)
+        );
+
+        insert into public.prediction_fills (
+          market_id, outcome, price_cents, quantity, buyer_username, seller_username,
+          maker_order_id, taker_order_id, pair_key
+        ) values (
+          p_market_id, resting.outcome, resting.price_cents, match_quantity, incoming.username,
+          resting.username, resting.id, incoming.id, pair_key_value
+        ) returning id into fill_id;
+        perform public.apply_coin_transaction(
+          resting.username,
+          round((resting.price_cents::numeric * match_quantity) / 100, 6),
+          'prediction_trade_credit',
+          'prediction-fill-seller:' || fill_id,
+          jsonb_build_object('marketId', p_market_id, 'fillId', fill_id, 'orderId', resting.id)
+        );
+      end if;
     end if;
 
     update public.prediction_orders

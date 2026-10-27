@@ -25,7 +25,15 @@ import { appAssetPath } from "../../utils/appAssetPath";
 import { formatLocalDateTime } from "../../utils/formatters";
 
 const outcomeLabel = (outcome: PredictionOutcome) => (outcome === "yes" ? "Yes" : "No");
-const money = (cents: number) => `${cents}¢`;
+const money = (cents: number) => `${cents} cents`;
+const Price = ({ cents }: { cents: number }) => (
+  <span className="predictionPrice" aria-label={`${cents} cents`}>
+    <span aria-hidden="true">{cents}</span>
+    <span className="predictionPriceCent" aria-hidden="true">
+      c
+    </span>
+  </span>
+);
 
 export const PredictionMarketPage = () => {
   const { isAuthenticated, isLoading: authLoading, login, user } = useAuth();
@@ -134,25 +142,6 @@ export const PredictionMarketPage = () => {
 
         {marketState ? (
           <>
-            <div className="predictionOutcomeSummary" aria-label="Best available asks">
-              {(["yes", "no"] as const).map((entry) => (
-                <button
-                  type="button"
-                  className={`predictionOutcomeCard predictionOutcomeCard--${entry}${outcome === entry ? " isSelected" : ""}`}
-                  aria-pressed={outcome === entry}
-                  onClick={() => setOutcome(entry)}
-                  key={entry}
-                >
-                  <span>{outcomeLabel(entry)}</span>
-                  {askPrices[entry] === undefined ? (
-                    <small>No asks</small>
-                  ) : (
-                    <strong>{money(askPrices[entry])}</strong>
-                  )}
-                </button>
-              ))}
-            </div>
-
             <div className="predictionTradingGrid">
               <section className="predictionBookPanel" aria-labelledby="order-book-title">
                 <div className="predictionSectionHeader">
@@ -196,7 +185,12 @@ export const PredictionMarketPage = () => {
                         onClick={() => setOutcome(entry)}
                         key={entry}
                       >
-                        {outcomeLabel(entry)}
+                        <span>{outcomeLabel(entry)}</span>
+                        {askPrices[entry] === undefined ? null : (
+                          <strong>
+                            <Price cents={askPrices[entry]} />
+                          </strong>
+                        )}
                       </button>
                     ))}
                   </div>
@@ -273,9 +267,14 @@ export const PredictionMarketPage = () => {
                         placeMutation.isPending
                       }
                     >
-                      {placeMutation.isPending
-                        ? "Placing order…"
-                        : `${side === "buy" ? "Place bid" : "Place ask"} · ${outcomeLabel(outcome)} ${money(validPrice ? price : 0)}`}
+                      {placeMutation.isPending ? (
+                        "Placing order…"
+                      ) : (
+                        <>
+                          {side === "buy" ? "Place bid" : "Place ask"} · {outcomeLabel(outcome)}{" "}
+                          <Price cents={validPrice ? price : 0} />
+                        </>
+                      )}
                     </button>
                   ) : (
                     <button
@@ -338,8 +337,24 @@ export const PredictionMarketPage = () => {
                       >
                         {outcomeLabel(fill.outcome)}
                       </strong>
-                      <span>{money(fill.priceCents)}</span>
+                      <span>
+                        <Price cents={fill.priceCents} />
+                      </span>
                       <span>{fill.quantity.toLocaleString()} contracts</span>
+                      <span className="predictionTradeParties">
+                        <Link to="/@/$username" params={{ username: fill.buyerUsername }}>
+                          {fill.buyerUsername}
+                        </Link>
+                        <small>bought</small>
+                        {fill.sellerUsername ? (
+                          <>
+                            <Link to="/@/$username" params={{ username: fill.sellerUsername }}>
+                              {fill.sellerUsername}
+                            </Link>
+                            <small>sold</small>
+                          </>
+                        ) : null}
+                      </span>
                       <time dateTime={fill.createdAt}>{formatLocalDateTime(fill.createdAt)}</time>
                     </div>
                   ))}
@@ -393,7 +408,9 @@ const VerticalOrderBook = ({
           onClick={() => onSelect(level.priceCents)}
           key={`${tone}-${level.priceCents}`}
         >
-          <strong>{money(level.priceCents)}</strong>
+          <strong>
+            <Price cents={level.priceCents} />
+          </strong>
           <span>{tone === "ask" ? "Ask" : "Bid"}</span>
           <b>{level.quantity.toLocaleString()}</b>
         </button>
@@ -413,7 +430,13 @@ const VerticalOrderBook = ({
         {renderLevels([...asks].reverse(), "ask", onSelectAsk)}
       </div>
       <div className="predictionBookSpread">
-        {spread === undefined ? <span aria-hidden="true" /> : <span>Spread {spread}¢</span>}
+        {spread === undefined ? (
+          <span aria-hidden="true" />
+        ) : (
+          <span>
+            Spread <Price cents={spread} />
+          </span>
+        )}
       </div>
       <div className="predictionBookStack predictionBookStack--bids">
         {renderLevels(bids, "bid", onSelectBid)}
@@ -465,7 +488,9 @@ const OrderTable = ({
                 <th scope="row">
                   {order.side === "buy" ? "Buy" : "Sell"} {outcomeLabel(order.outcome)}
                 </th>
-                <td>{money(order.priceCents)}</td>
+                <td>
+                  <Price cents={order.priceCents} />
+                </td>
                 <td>
                   {order.filledQuantity}/{order.quantity}
                 </td>

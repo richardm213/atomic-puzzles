@@ -114,67 +114,40 @@
   font-variant-numeric: tabular-nums;
 }
 
-.predictionOutcomeSummary {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  padding: 10px 20px;
-  background: color-mix(in srgb, var(--color-panel-deep) 55%, var(--color-panel));
-  border-bottom: 1px solid var(--color-border);
-}
-
-.predictionOutcomeCard {
-  min-height: 48px;
-  padding: 10px 14px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-ui);
-  background: var(--color-panel-strong);
-  color: var(--color-text);
-  text-align: left;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  transition:
-    background-color 180ms ease,
-    border-color 180ms ease,
-    box-shadow 180ms ease;
-}
-
-.predictionOutcomeCard span {
-  font-size: 14px;
-  font-weight: 800;
-}
-
-.predictionOutcomeCard strong {
-  font-size: 21px;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-
-.predictionOutcomeCard small {
-  color: var(--color-muted);
-  font-size: 12px;
-}
-
-.predictionOutcomeCard--yes strong,
 .predictionTradeOutcome--yes {
   color: var(--color-success);
 }
 
-.predictionOutcomeCard--no strong,
 .predictionTradeOutcome--no {
   color: var(--color-danger);
 }
 
-.predictionOutcomeCard:hover,
-.predictionOutcomeCard.isSelected {
-  background: var(--color-surface-elevated-strong);
+.predictionPrice {
+  display: inline-flex;
+  align-items: baseline;
+  font-variant-numeric: tabular-nums;
 }
 
-.predictionOutcomeCard.isSelected {
-  border-color: color-mix(in srgb, var(--color-primary) 72%, var(--color-border));
-  box-shadow: inset 0 -2px var(--color-primary);
+.predictionPriceCent {
+  position: relative;
+  margin-left: 1px;
+  font-family: Arial, sans-serif;
+  font-size: 0.76em;
+  font-weight: 700;
+  line-height: 1;
+  transform: translateY(-0.1em);
+}
+
+.predictionPriceCent::before {
+  position: absolute;
+  top: -0.16em;
+  bottom: -0.08em;
+  left: 48%;
+  width: 1.5px;
+  border-radius: 999px;
+  background: currentColor;
+  content: "";
+  transform: translateX(-50%);
 }
 
 .predictionTradingGrid {
@@ -358,6 +331,27 @@
   background: transparent;
   color: var(--color-muted);
   font-weight: 800;
+}
+
+.predictionOutcomePicker button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 10px;
+}
+
+.predictionOutcomePicker strong {
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.predictionOutcomePicker button:first-child strong {
+  color: var(--color-success);
+}
+
+.predictionOutcomePicker button:last-child strong {
+  color: var(--color-danger);
 }
 
 .predictionTicketTabs button[aria-pressed="true"],
@@ -551,12 +545,34 @@
 
 .predictionTrades > div {
   display: grid;
-  grid-template-columns: 70px 70px minmax(120px, 1fr) auto;
+  grid-template-columns: 55px 55px 100px minmax(180px, 1fr) auto;
   gap: 16px;
   padding: 10px 0;
   border-top: 1px solid var(--color-border);
   align-items: center;
   font-size: 14px;
+}
+
+.predictionTradeParties {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  min-width: 0;
+}
+
+.predictionTradeParties a {
+  color: var(--color-primary-pale);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+.predictionTradeParties a:hover {
+  text-decoration: underline;
+}
+
+.predictionTradeParties small {
+  color: var(--color-muted);
 }
 
 .predictionTrades time {
@@ -576,7 +592,6 @@
   line-height: 1.55;
 }
 
-.predictionOutcomeCard:focus-visible,
 .predictionBookLevel:focus-visible,
 .predictionTicket button:focus-visible,
 .predictionTicket input:focus-visible,
@@ -619,6 +634,8 @@
   }
 
   .predictionTicket {
+    order: -1;
+    border-bottom: 1px solid var(--color-border);
     background: transparent;
   }
 }
@@ -634,18 +651,13 @@
     border-radius: 0;
   }
 
-  .predictionOutcomeCard {
-    min-height: 48px;
-    padding: 10px 12px;
-  }
-
-  .predictionOutcomeCard strong {
-    font-size: 20px;
-  }
-
   .predictionTrades > div {
-    grid-template-columns: 55px 55px 1fr;
+    grid-template-columns: 45px 45px 1fr;
     gap: 10px;
+  }
+
+  .predictionTradeParties {
+    grid-column: 1 / -1;
   }
 
   .predictionTrades time {
@@ -654,7 +666,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .predictionOutcomeCard,
   .predictionSubmit {
     transition: none;
   }

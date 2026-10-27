@@ -15,6 +15,7 @@ import type { FunctionEvent } from "../../platform/defineFunction";
 import { createServerSupabase } from "../../platform/environment";
 import { HttpError } from "../../platform/errors";
 import { parseJsonBody } from "../../platform/validation";
+import { buildPredictionBook, type PredictionBookOrder } from "./predictionBook";
 
 const bodySchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("markets") }),
@@ -174,7 +175,7 @@ export const bettingRoute = async (event: FunctionEvent) => {
         .limit(500),
       supabase
         .from("prediction_fills")
-        .select("id,outcome,price_cents,quantity,created_at")
+        .select("id,outcome,price_cents,quantity,buyer_username,seller_username,created_at")
         .eq("market_id", input.marketId)
         .order("created_at", { ascending: false })
         .order("id", { ascending: false })
@@ -190,26 +191,7 @@ export const bettingRoute = async (event: FunctionEvent) => {
 
     const username = identity?.username ?? null;
     const orders = ordersResult.data ?? [];
-    const levelsFor = (outcome: "yes" | "no", side: "buy" | "sell") => {
-      const levels = new Map<number, number>();
-      orders
-        .filter(
-          (order) =>
-            order.outcome === outcome &&
-            order.side === side &&
-            ["open", "partial"].includes(order.status) &&
-            order.remaining_quantity > 0,
-        )
-        .forEach((order) =>
-          levels.set(
-            order.price_cents,
-            (levels.get(order.price_cents) ?? 0) + order.remaining_quantity,
-          ),
-        );
-      return Array.from(levels, ([priceCents, quantity]) => ({ priceCents, quantity })).sort(
-        (a, b) => (side === "buy" ? b.priceCents - a.priceCents : a.priceCents - b.priceCents),
-      );
-    };
+    const book = buildPredictionBook(orders as PredictionBookOrder[]);
 
     let positions: unknown[] = [];
     if (username) {
@@ -226,10 +208,7 @@ export const bettingRoute = async (event: FunctionEvent) => {
     return identityResponse(identity, 200, {
       result: {
         market: marketResult.data,
-        book: {
-          yes: { bids: levelsFor("yes", "buy"), asks: levelsFor("yes", "sell") },
-          no: { bids: levelsFor("no", "buy"), asks: levelsFor("no", "sell") },
-        },
+        book,
         fills: fillsResult.data ?? [],
         positions,
         orders: username ? orders.filter((order) => order.username === username) : [],
