@@ -11,6 +11,10 @@ const archiveDataRoute = async (event: FunctionEvent) => {
   try {
     return jsonResponse(200, await queryArchiveResource(params), {
       "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
+      // Share public archive responses across Netlify regions so an edge miss
+      // does not automatically become another Turso query.
+      "Netlify-CDN-Cache-Control":
+        "public, durable, s-maxage=60, stale-while-revalidate=300",
     });
   } catch (error) {
     if (error instanceof ArchiveRequestError) {

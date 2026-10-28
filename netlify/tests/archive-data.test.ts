@@ -25,6 +25,9 @@ describe("archive-data function", () => {
       queryStringParameters: { resource: "weekly_ratings", username: " Alice ", mode: "blitz" },
     });
     expect(response.statusCode).toBe(200);
+    expect(response.headers["Netlify-CDN-Cache-Control"]).toBe(
+      "public, durable, s-maxage=60, stale-while-revalidate=300",
+    );
     const query = mocks.execute.mock.calls[0]![0];
     expect(query.args).toEqual(["alice", 2]);
     expect(query.sql).toContain("weekly_ratings");

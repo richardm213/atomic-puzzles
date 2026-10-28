@@ -73,6 +73,8 @@ describe("loadRawMatchesByMode archive rows", () => {
 
     const matches = await loadRawMatchesByMode("blitz");
 
+    expect(fetchMatchRowsFromArchive).toHaveBeenCalledWith("blitz", {}, { includeTotal: false });
+
     expect(matches).toEqual([
       expect.objectContaining({
         match_id: "match-1",

@@ -269,7 +269,13 @@ export async function loadRawMatchesByMode(
   const result = await fetchMatchRowsFromArchive(mode, filters, {
     ...(page !== undefined ? { page } : {}),
     ...(pageSize !== undefined ? { pageSize } : {}),
-    ...(includeTotal !== undefined ? { includeTotal } : {}),
+    // List-only callers never consume an exact total. Avoid making Turso scan
+    // the full filtered result set before returning the first page.
+    ...(includeTotal !== undefined
+      ? { includeTotal }
+      : pageSize === undefined
+        ? { includeTotal: false }
+        : {}),
   });
   const rows = Array.isArray(result?.rows) ? result.rows : [];
   const matches = parseMatchRows(rows);

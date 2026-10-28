@@ -100,6 +100,7 @@ export const favoriteOpponentsQueryOptions = (
               filters: { username },
               page,
               pageSize: favoriteOpponentPageSize,
+              includeTotal: false,
             });
             matches.push(...result.matches);
             if (result.matches.length < favoriteOpponentPageSize) break;
