@@ -4,6 +4,7 @@ import {
   findCurrentTournamentOpponent,
   isAwcNotToWinSelfBet,
   isRestrictedAwcChampionOrder,
+  isRestrictedPredictionOrder,
   maxTournamentBetStake,
   quoteTournamentBet,
 } from "./betting";
@@ -49,6 +50,20 @@ describe("AWC prediction-market player protections", () => {
     expect(
       isRestrictedAwcChampionOrder({ ...base, marketPlayer: "someone_else", outcome: "no" }),
     ).toBeNull();
+  });
+
+  it("lets an R16 player buy themselves but not their opponent", () => {
+    const base = {
+      groupId: "awc-2026-round-of-16",
+      marketPlayer: "player vs opponent",
+      yesPlayer: "player",
+      noPlayer: "opponent",
+      username: "player",
+      currentOpponent: "opponent",
+    };
+    expect(isRestrictedPredictionOrder({ ...base, outcome: "yes", side: "buy" })).toBeNull();
+    expect(isRestrictedPredictionOrder({ ...base, outcome: "no", side: "buy" })).toBe("opponent");
+    expect(isRestrictedPredictionOrder({ ...base, outcome: "yes", side: "sell" })).toBeNull();
   });
 });
 

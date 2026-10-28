@@ -431,7 +431,7 @@
 
 .bettingExchangeStrikeHeader {
   display: grid;
-  grid-template-columns: minmax(160px, 1fr) 84px minmax(220px, auto);
+  grid-template-columns: minmax(0, 1fr) 84px minmax(240px, 280px);
   gap: 18px;
   padding: 7px 18px;
   border-bottom: 1px solid var(--color-border);
@@ -442,7 +442,7 @@
 
 .bettingExchangeStrike {
   display: grid;
-  grid-template-columns: minmax(160px, 1fr) 84px minmax(220px, auto);
+  grid-template-columns: minmax(0, 1fr) 84px minmax(240px, 280px);
   gap: 18px;
   align-items: center;
   min-height: 68px;
@@ -457,6 +457,7 @@
   gap: 18px;
   align-items: center;
   min-width: 0;
+  width: 100%;
   min-height: 44px;
   border: 0;
   background: transparent;
@@ -500,6 +501,27 @@
   box-shadow: 0 1px 3px color-mix(in srgb, var(--color-panel-deep) 48%, transparent);
 }
 
+.bettingExchangeMatchupPlayer {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  gap: 9px;
+  min-width: 0;
+}
+
+.bettingExchangeMatchup {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-width: 0;
+}
+
+.bettingExchangeMatchupVs {
+  flex: none;
+}
+
 .bettingExchangeStrikePlayer strong {
   overflow: hidden;
   color: var(--color-heading);
@@ -533,6 +555,7 @@
 
 .bettingExchangeStrikeChance {
   display: block;
+  text-align: center;
 }
 
 .bettingExchangeStrikeChance strong {
@@ -876,6 +899,10 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.bettingPredictionBookGroup--singleColumn {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .bettingPredictionBookGroup h2 {
   grid-column: 1 / -1;
   display: flex;
@@ -907,6 +934,10 @@
 
 .bettingPredictionBookGroup > article:nth-of-type(odd) {
   border-right: 1px solid var(--color-border);
+}
+
+.bettingPredictionBookGroup--singleColumn > article:nth-of-type(odd) {
+  border-right: 0;
 }
 
 .bettingPredictionBookResolvedRow {

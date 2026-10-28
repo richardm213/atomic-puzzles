@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { CSSProperties, FormEvent } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 
 import { InlineState } from "../../components/InlineState/InlineState";
 import { PredictionMarketExplainer } from "../../components/PredictionMarketExplainer/PredictionMarketExplainer";
@@ -19,7 +19,7 @@ import { useAuth } from "../../context/AuthContext";
 import {
   AWC_NOT_TO_WIN_MARKET_ID,
   findCurrentTournamentOpponent,
-  isRestrictedAwcChampionOrder,
+  isRestrictedPredictionOrder,
   predictionOrderRestrictionMessage,
 } from "../../lib/betting/betting";
 import { allTournamentBetsQueryOptions } from "../../lib/betting/bettingQueries";
@@ -39,6 +39,10 @@ import {
   type PredictionMarketDefinition,
   type PredictionMarketId,
   predictionMarketVolume,
+  predictionOutcomeAbbreviation,
+  predictionOutcomeCountryCode,
+  predictionOutcomeLabel,
+  predictionOutcomeUnderscoreLabel,
   type PredictionOrder,
   type PredictionOrderSide,
   type PredictionOutcome,
@@ -52,7 +56,8 @@ import { appAssetPath } from "../../utils/appAssetPath";
 import { countryCodeToFlagUrl } from "../../utils/countryFlags";
 import { formatLocalDateTime } from "../../utils/formatters";
 
-const outcomeLabel = (outcome: PredictionOutcome) => (outcome === "yes" ? "Yes" : "No");
+const outcomeLabel = (outcome: PredictionOutcome, definition?: PredictionMarketDefinition) =>
+  predictionOutcomeLabel(definition, outcome);
 const predictionAdminUsername = "prediction_admin";
 const money = (cents: number) => `${cents} cents`;
 const averagePrice = (cents: number | undefined) => {
@@ -67,6 +72,54 @@ const Price = ({ cents }: { cents: number }) => (
     </span>
   </span>
 );
+
+const PredictionMatchupIdentity = ({ definition }: { definition: PredictionMarketDefinition }) => {
+  if (!definition.outcomeLabels) {
+    return (
+      <>
+        <img
+          className="predictionOutcomeFlag"
+          crossOrigin="anonymous"
+          src={countryCodeToFlagUrl(definition.countryCode)}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          aria-hidden="true"
+        />
+        <strong className="predictionOutcomeMarket" title={definition.username}>
+          {definition.username}
+        </strong>
+      </>
+    );
+  }
+
+  return (
+    <span className="predictionOutcomeMatchup">
+      {predictionOutcomes.map((entry, index) => (
+        <Fragment key={entry}>
+          {index > 0 ? <span className="predictionOutcomeMatchupVs">vs</span> : null}
+          <span className="predictionOutcomeMatchupPlayer">
+            <img
+              className="predictionOutcomeFlag"
+              crossOrigin="anonymous"
+              src={countryCodeToFlagUrl(predictionOutcomeCountryCode(definition, entry))}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              aria-hidden="true"
+            />
+            <strong
+              className="predictionOutcomeMarket"
+              title={predictionOutcomeLabel(definition, entry)}
+            >
+              {predictionOutcomeUnderscoreLabel(definition, entry)}
+            </strong>
+          </span>
+        </Fragment>
+      ))}
+    </span>
+  );
+};
 
 export const PredictionMarketPage = () => {
   const { isAuthenticated, isLoading: authLoading, login, user } = useAuth();
@@ -202,9 +255,11 @@ export const PredictionMarketPage = () => {
   );
   const orderRestrictionFor = (nextOutcome: PredictionOutcome, nextSide: PredictionOrderSide) =>
     activeMarketDefinition
-      ? isRestrictedAwcChampionOrder({
+      ? isRestrictedPredictionOrder({
           groupId: marketGroup?.id,
           marketPlayer: activeMarketDefinition.username,
+          yesPlayer: activeMarketDefinition.outcomeLabels?.yes,
+          noPlayer: activeMarketDefinition.outcomeLabels?.no,
           username,
           currentOpponent: currentAwcOpponent,
           outcome: nextOutcome,
@@ -216,6 +271,9 @@ export const PredictionMarketPage = () => {
     const definitionByUsername = new Map(
       marketDefinitions.map((definition) => [definition.username.toLowerCase(), definition]),
     );
+    const definitionById = new Map(
+      marketDefinitions.map((definition) => [definition.id, definition]),
+    );
     const exchangeFills = marketDefinitions.flatMap((definition) =>
       (marketStateById.get(definition.id)?.fills ?? []).map((fill) => ({ ...fill, definition })),
     );
@@ -226,10 +284,17 @@ export const PredictionMarketPage = () => {
         else if (bet.marketId === AWC_NOT_TO_WIN_MARKET_ID) legacyOutcome = "no";
       } else if (marketGroup?.id === "ban-2026" && bet.marketId.startsWith("lichess-ban-2026-")) {
         legacyOutcome = "yes";
+      } else if (marketGroup?.id === "awc-2026-round-of-16") {
+        const matchup = definitionById.get(bet.marketId);
+        legacyOutcome =
+          predictionOutcomes.find(
+            (entry) => outcomeLabel(entry, matchup).toLowerCase() === bet.selection.toLowerCase(),
+          ) ?? null;
       }
       if (!legacyOutcome) return [];
 
-      const definition = definitionByUsername.get(bet.selection.toLowerCase());
+      const definition =
+        definitionById.get(bet.marketId) ?? definitionByUsername.get(bet.selection.toLowerCase());
       if (!definition) return [];
       return [
         {
@@ -258,6 +323,7 @@ export const PredictionMarketPage = () => {
             ...order,
             marketId: definition.id,
             marketName: definition.username,
+            outcomeName: outcomeLabel(order.outcome, definition),
           })),
         )
         .sort((left, right) => right.createdAt.localeCompare(left.createdAt)),
@@ -358,6 +424,7 @@ export const PredictionMarketPage = () => {
           </div>
           <VerticalOrderBook
             outcome={outcome}
+            outcomeName={outcomeLabel(outcome, activeMarketDefinition)}
             bids={marketState.book[outcome].bids}
             asks={marketState.book[outcome].asks}
             ownOrders={marketState.orders}
@@ -403,14 +470,16 @@ export const PredictionMarketPage = () => {
             <img
               className="predictionOutcomeFlag"
               crossOrigin="anonymous"
-              src={countryCodeToFlagUrl(activeMarketDefinition.countryCode)}
+              src={countryCodeToFlagUrl(
+                predictionOutcomeCountryCode(activeMarketDefinition, outcome),
+              )}
               alt=""
               loading="lazy"
               decoding="async"
               aria-hidden="true"
             />
-            <strong title={activeMarketDefinition.username}>
-              {activeMarketDefinition.username}
+            <strong title={outcomeLabel(outcome, activeMarketDefinition)}>
+              {outcomeLabel(outcome, activeMarketDefinition)}
             </strong>
           </div>
         </div>
@@ -433,7 +502,7 @@ export const PredictionMarketPage = () => {
                   key={entry}
                 >
                   <span className="predictionOutcomePrimary">
-                    <span>{outcomeLabel(entry)}</span>
+                    <span>{predictionOutcomeAbbreviation(activeMarketDefinition, entry)}</span>
                     {askPrices[entry] === undefined ? null : (
                       <strong>
                         <Price cents={askPrices[entry]} />
@@ -535,7 +604,8 @@ export const PredictionMarketPage = () => {
           {side === "sell" ? (
             <div className="predictionInventory">
               <strong>
-                {availableContracts.toLocaleString()} {outcomeLabel(outcome)} contracts available
+                {availableContracts.toLocaleString()}{" "}
+                {outcomeLabel(outcome, activeMarketDefinition)} contracts available
               </strong>
               <small>Selling uses contracts you own. It does not spend coins.</small>
             </div>
@@ -545,7 +615,7 @@ export const PredictionMarketPage = () => {
           ) : null}
           {orderRestriction ? (
             <InlineState kind="error">
-              {predictionOrderRestrictionMessage(orderRestriction)}
+              {predictionOrderRestrictionMessage(orderRestriction, marketGroup?.id)}
             </InlineState>
           ) : null}
           {placeMutation.error ? (
@@ -573,7 +643,8 @@ export const PredictionMarketPage = () => {
                 "Placing order…"
               ) : (
                 <>
-                  {side === "buy" ? buyAction : "Place ask"} · {outcomeLabel(outcome)}{" "}
+                  {side === "buy" ? buyAction : "Place ask"} ·{" "}
+                  {outcomeLabel(outcome, activeMarketDefinition)}{" "}
                   <Price cents={validPrice ? price : 0} />
                 </>
               )}
@@ -697,21 +768,7 @@ export const PredictionMarketPage = () => {
                           <div className="predictionOutcomeMarketBlock">
                             {isResolved ? (
                               <div className="predictionOutcomeIdentity predictionOutcomeIdentity--resolved">
-                                <img
-                                  className="predictionOutcomeFlag"
-                                  crossOrigin="anonymous"
-                                  src={countryCodeToFlagUrl(definition.countryCode)}
-                                  alt=""
-                                  loading="lazy"
-                                  decoding="async"
-                                  aria-hidden="true"
-                                />
-                                <strong
-                                  className="predictionOutcomeMarket"
-                                  title={definition.username}
-                                >
-                                  {definition.username}
-                                </strong>
+                                <PredictionMatchupIdentity definition={definition} />
                               </div>
                             ) : (
                               <button
@@ -721,21 +778,7 @@ export const PredictionMarketPage = () => {
                                 aria-controls={`prediction-strike-${definition.id}`}
                                 onClick={() => toggleMarket(definition.id)}
                               >
-                                <img
-                                  className="predictionOutcomeFlag"
-                                  crossOrigin="anonymous"
-                                  src={countryCodeToFlagUrl(definition.countryCode)}
-                                  alt=""
-                                  loading="lazy"
-                                  decoding="async"
-                                  aria-hidden="true"
-                                />
-                                <strong
-                                  className="predictionOutcomeMarket"
-                                  title={definition.username}
-                                >
-                                  {definition.username}
-                                </strong>
+                                <PredictionMatchupIdentity definition={definition} />
                               </button>
                             )}
                             {isAuthenticated && (rowOwned.yes > 0 || rowOwned.no > 0) ? (
@@ -752,6 +795,7 @@ export const PredictionMarketPage = () => {
                                       <strong>
                                         {`${formatPredictionShares(rowOwned[entry])} ${outcomeLabel(
                                           entry,
+                                          definition,
                                         )}`}
                                       </strong>
                                       <span>
@@ -782,7 +826,7 @@ export const PredictionMarketPage = () => {
                             >
                               <strong>
                                 {settlementPrice === null || settlementPrice === undefined
-                                  ? outcomeLabel(state?.market.outcome ?? "no")
+                                  ? outcomeLabel(state?.market.outcome ?? "no", definition)
                                   : `Settled ${settlementPrice}¢`}
                               </strong>
                             </span>
@@ -810,7 +854,9 @@ export const PredictionMarketPage = () => {
                                     key={entry}
                                   >
                                     <strong className="predictionOutcomeActionPrice">
-                                      <span>{outcomeLabel(entry)}</span>
+                                      <span>
+                                        {predictionOutcomeAbbreviation(definition, entry)}
+                                      </span>
                                       {rowAskPrices[entry] === undefined ? (
                                         "—"
                                       ) : (
@@ -841,7 +887,8 @@ export const PredictionMarketPage = () => {
                             className={`predictionTradeQuote predictionTradeQuote--${fill.outcome}`}
                           >
                             <strong>
-                              {fill.definition.username} · {outcomeLabel(fill.outcome)}
+                              {fill.definition.username} ·{" "}
+                              {outcomeLabel(fill.outcome, fill.definition)}
                             </strong>
                             <Price cents={fill.priceCents} />
                           </span>
@@ -936,6 +983,7 @@ export const PredictionMarketPage = () => {
 
 const VerticalOrderBook = ({
   outcome,
+  outcomeName,
   bids,
   asks,
   ownOrders,
@@ -944,6 +992,7 @@ const VerticalOrderBook = ({
   onSelectAsk,
 }: {
   outcome: PredictionOutcome;
+  outcomeName: string;
   bids: Array<{ priceCents: number; quantity: number }>;
   asks: Array<{ priceCents: number; quantity: number }>;
   ownOrders: PredictionOrder[];
@@ -1013,9 +1062,9 @@ const VerticalOrderBook = ({
       </div>
       <div
         className={`predictionBookTrade predictionBookTrade--${outcome}`}
-        aria-label={`Trading ${outcome === "yes" ? "Yes" : "No"}`}
+        aria-label={`Trading ${outcomeName}`}
       >
-        Trade {outcome === "yes" ? "Yes" : "No"}
+        Trade {outcomeName}
       </div>
       <div className="predictionBookStack predictionBookStack--bids">
         {renderLevels(bids, "bid", onSelectBid)}
@@ -1033,6 +1082,7 @@ const OrderTable = ({
     id: number;
     marketId: PredictionMarketId;
     marketName: string;
+    outcomeName: string;
     outcome: PredictionOutcome;
     side: PredictionOrderSide;
     priceCents: number;
@@ -1070,7 +1120,7 @@ const OrderTable = ({
                   <span className="predictionOrderContract">
                     <strong>{order.marketName}</strong>
                     <small>
-                      {order.side === "buy" ? "Buy" : "Sell"} {outcomeLabel(order.outcome)}
+                      {order.side === "buy" ? "Buy" : "Sell"} {order.outcomeName}
                     </small>
                   </span>
                 </th>

@@ -8,6 +8,8 @@ export type PredictionMarketDefinition = {
   username: string;
   countryCode: string;
   startingChance?: number | undefined;
+  outcomeLabels?: Record<PredictionOutcome, string> | undefined;
+  outcomeCountryCodes?: Record<PredictionOutcome, string> | undefined;
 };
 export type PredictionMarketGroup = {
   id: string;
@@ -31,6 +33,10 @@ const catalogSchema = z.object({
       country_code: z.string(),
       starting_chance: z.number().nullable(),
       display_order: z.number(),
+      outcome_yes_label: z.string().nullable(),
+      outcome_no_label: z.string().nullable(),
+      outcome_yes_country_code: z.string().nullable(),
+      outcome_no_country_code: z.string().nullable(),
     }),
   ),
 });
@@ -55,11 +61,21 @@ export const fetchPredictionMarketGroups = async (): Promise<PredictionMarketGro
       displayOrder: row.group_order,
       markets: [],
     };
+    const hasNamedOutcomes = Boolean(row.outcome_yes_label && row.outcome_no_label);
     group.markets.push({
       id: row.id,
       username: row.display_name.toLowerCase(),
       countryCode: row.country_code,
       startingChance: row.starting_chance ?? undefined,
+      outcomeLabels: hasNamedOutcomes
+        ? { yes: row.outcome_yes_label ?? "Yes", no: row.outcome_no_label ?? "No" }
+        : undefined,
+      outcomeCountryCodes: hasNamedOutcomes
+        ? {
+            yes: row.outcome_yes_country_code ?? row.country_code,
+            no: row.outcome_no_country_code ?? row.country_code,
+          }
+        : undefined,
     });
     groups.set(row.group_id, group);
   }
@@ -71,6 +87,50 @@ export type PredictionOutcome = (typeof predictionOutcomes)[number];
 export type PredictionOrderSide = "buy" | "sell";
 export type PredictionBookLevel = { priceCents: number; quantity: number };
 export const PREDICTION_TAKER_FEE_RATE = 0.02;
+
+export const predictionOutcomeLabel = (
+  definition: PredictionMarketDefinition | undefined,
+  outcome: PredictionOutcome,
+): string => definition?.outcomeLabels?.[outcome] ?? (outcome === "yes" ? "Yes" : "No");
+
+export const predictionOutcomeAbbreviation = (
+  definition: PredictionMarketDefinition | undefined,
+  outcome: PredictionOutcome,
+): string => {
+  const label = predictionOutcomeLabel(definition, outcome);
+  const abbreviations: Record<string, string> = {
+    natso: "natso",
+    crepuscular: "crep",
+    jakestatefarm: "jake",
+    maracker: "mara",
+    sutcunuri: "sut",
+    howlind: "howlin",
+    quasabianth: "quasa",
+    judebaetorrens: "jude",
+    theatomicstorm: "storm",
+    renaudmerle: "renaud",
+    rechesster: "rechess",
+    dandan2016: "dandan",
+    rabbier: "rabbie",
+  };
+  return (
+    abbreviations[label.toLowerCase()] ?? predictionOutcomeUnderscoreLabel(definition, outcome)
+  );
+};
+
+export const predictionOutcomeUnderscoreLabel = (
+  definition: PredictionMarketDefinition | undefined,
+  outcome: PredictionOutcome,
+): string => {
+  const label = predictionOutcomeLabel(definition, outcome);
+  const underscoreIndex = label.indexOf("_");
+  return underscoreIndex > 0 ? label.slice(0, underscoreIndex) : label;
+};
+
+export const predictionOutcomeCountryCode = (
+  definition: PredictionMarketDefinition | undefined,
+  outcome: PredictionOutcome,
+): string => definition?.outcomeCountryCodes?.[outcome] ?? definition?.countryCode ?? "";
 
 export const predictionTakerFee = (executedValueCoins: number) =>
   Math.round(executedValueCoins * PREDICTION_TAKER_FEE_RATE * 1_000_000) / 1_000_000;

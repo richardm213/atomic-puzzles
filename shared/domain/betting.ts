@@ -101,12 +101,51 @@ export const isRestrictedAwcChampionOrder = ({
   return null;
 };
 
+export const isRestrictedAwcRoundOf16Order = ({
+  groupId,
+  yesPlayer,
+  noPlayer,
+  username,
+  outcome,
+  side,
+}: PredictionOrderDirection & {
+  groupId: string | null | undefined;
+  yesPlayer: string | null | undefined;
+  noPlayer: string | null | undefined;
+  username: string;
+}): PredictionOrderRestriction | null => {
+  if (groupId !== "awc-2026-round-of-16" || side !== "buy") return null;
+  const user = normalizePlayer(username);
+  if (user === normalizePlayer(yesPlayer ?? "") && outcome === "no") return "opponent";
+  if (user === normalizePlayer(noPlayer ?? "") && outcome === "yes") return "opponent";
+  return null;
+};
+
+export const isRestrictedPredictionOrder = (
+  input: Parameters<typeof isRestrictedAwcChampionOrder>[0] & {
+    yesPlayer?: string | null | undefined;
+    noPlayer?: string | null | undefined;
+  },
+): PredictionOrderRestriction | null =>
+  isRestrictedAwcChampionOrder(input) ??
+  isRestrictedAwcRoundOf16Order({
+    groupId: input.groupId,
+    yesPlayer: input.yesPlayer,
+    noPlayer: input.noPlayer,
+    username: input.username,
+    outcome: input.outcome,
+    side: input.side,
+  });
+
 export const predictionOrderRestrictionMessage = (
   restriction: PredictionOrderRestriction,
+  groupId?: string | null,
 ): string =>
   restriction === "self"
     ? "You can’t bet against yourself in the AWC champion market."
-    : "You can’t bet against your current AWC opponent.";
+    : groupId === "awc-2026-round-of-16"
+      ? "You can only bet on yourself in your AWC Round of 16 market."
+      : "You can’t bet against your current AWC opponent.";
 
 export const awcChampionOutcomeRestrictions = (
   input: Omit<Parameters<typeof isRestrictedAwcChampionOrder>[0], "outcome">,

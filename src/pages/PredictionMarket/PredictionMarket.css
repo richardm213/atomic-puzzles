@@ -311,6 +311,27 @@
   box-shadow: 0 1px 3px color-mix(in srgb, var(--color-panel-deep) 48%, transparent);
 }
 
+.predictionOutcomeMatchupPlayer {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  gap: 10px;
+  min-width: 0;
+}
+
+.predictionOutcomeMatchup {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.predictionOutcomeMatchupVs {
+  flex: none;
+}
+
 .predictionHoldings {
   display: flex;
   flex-wrap: wrap;

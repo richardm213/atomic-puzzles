@@ -9,6 +9,8 @@ export {
   isAwcNotToWinSelfBet,
   isPredictionOrderAgainstOutcome,
   isRestrictedAwcChampionOrder,
+  isRestrictedAwcRoundOf16Order,
+  isRestrictedPredictionOrder,
   isTournamentBetOnOpponent,
   MIN_BET_AMOUNT,
   type PredictionOrderRestriction,

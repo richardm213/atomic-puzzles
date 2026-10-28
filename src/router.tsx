@@ -302,6 +302,12 @@ const awcChampionPredictionMarketRoute = createRoute({
   component: PredictionMarketPage,
 });
 
+const awcRoundOf16PredictionMarketRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/betting/awc-2026-round-of-16",
+  component: PredictionMarketPage,
+});
+
 const tournamentsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/tournaments",
@@ -626,6 +632,7 @@ const routeTree = rootRoute.addChildren([
   predictionMarketRoute,
   atomicShieldPredictionMarketRoute,
   awcChampionPredictionMarketRoute,
+  awcRoundOf16PredictionMarketRoute,
   tournamentRoute,
   tournamentTabRoute,
   h2hRoute,

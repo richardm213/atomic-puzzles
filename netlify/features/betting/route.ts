@@ -443,7 +443,7 @@ export const bettingRoute = async (event: FunctionEvent) => {
     const { data, error } = await supabase
       .from("prediction_markets")
       .select(
-        "id,group_id,group_path,group_title,group_description,group_order,display_name,country_code,starting_chance,display_order",
+        "id,group_id,group_path,group_title,group_description,group_order,display_name,country_code,starting_chance,display_order,outcome_yes_label,outcome_no_label,outcome_yes_country_code,outcome_no_country_code",
       )
       .not("group_id", "is", null)
       .order("group_order", { ascending: true })
@@ -525,6 +525,8 @@ export const bettingRoute = async (event: FunctionEvent) => {
         throw new HttpError(400, "You can’t bet against yourself in the AWC champion market.");
       if (/bet against your current awc opponent/i.test(error.message))
         throw new HttpError(400, "You can’t bet against your current AWC opponent.");
+      if (/only bet on yourself in your awc round of 16 market/i.test(error.message))
+        throw new HttpError(400, "You can only bet on yourself in your AWC Round of 16 market.");
       if (/closed/i.test(error.message)) throw new HttpError(409, "This market is closed.");
       throw new Error(`Unable to place prediction order: ${error.message}`);
     }
@@ -565,6 +567,8 @@ export const bettingRoute = async (event: FunctionEvent) => {
         throw new HttpError(409, "You don’t have enough available contracts to sell.");
       if (/would cross one of your open orders/i.test(error.message))
         throw new HttpError(409, "This order would cross one of your existing open orders.");
+      if (/only bet on yourself in your awc round of 16 market/i.test(error.message))
+        throw new HttpError(400, "You can only bet on yourself in your AWC Round of 16 market.");
       if (/closed/i.test(error.message)) throw new HttpError(409, "This market is closed.");
       throw new Error(`Unable to update prediction order: ${error.message}`);
     }
