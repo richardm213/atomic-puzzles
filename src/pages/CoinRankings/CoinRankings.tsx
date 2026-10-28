@@ -140,6 +140,8 @@ const readSavedFilters = (): TransactionCategory[] => {
 export const CoinRankingsPage = () => {
   const [view, setView] = useState<CoinView>("rankings");
   const [transactionPage, setTransactionPage] = useState(1);
+  const [usernameDraft, setUsernameDraft] = useState("");
+  const [usernameFilter, setUsernameFilter] = useState("");
   const [selectedCategories, setSelectedCategories] =
     useState<TransactionCategory[]>(readSavedFilters);
   const selectedReasons = useMemo(
@@ -148,7 +150,7 @@ export const CoinRankingsPage = () => {
   );
   const rankingsQuery = useQuery(coinRankingsQueryOptions());
   const transactionsQuery = useQuery({
-    ...coinTransactionsQueryOptions(selectedReasons, transactionPage),
+    ...coinTransactionsQueryOptions(selectedReasons, transactionPage, usernameFilter),
     enabled: view === "transactions" && selectedReasons.length > 0,
   });
   const rankings = rankingsQuery.data ?? [];
@@ -293,6 +295,43 @@ export const CoinRankingsPage = () => {
           </section>
         ) : (
           <section id="coin-transactions-view" role="tabpanel">
+            <form
+              className="coinTransactionUsernameFilter"
+              onSubmit={(event) => {
+                event.preventDefault();
+                setUsernameFilter(usernameDraft.trim().toLowerCase());
+                setTransactionPage(1);
+              }}
+            >
+              <label htmlFor="coin-transaction-username">Player</label>
+              <div>
+                <input
+                  id="coin-transaction-username"
+                  type="text"
+                  value={usernameDraft}
+                  onChange={(event) => setUsernameDraft(event.target.value)}
+                  placeholder="username"
+                  autoComplete="off"
+                  maxLength={100}
+                  pattern="[A-Za-z0-9_-]+"
+                />
+                <button type="submit">Filter</button>
+                {usernameFilter ? (
+                  <button
+                    type="button"
+                    className="isSecondary"
+                    onClick={() => {
+                      setUsernameDraft("");
+                      setUsernameFilter("");
+                      setTransactionPage(1);
+                    }}
+                  >
+                    Clear
+                  </button>
+                ) : null}
+              </div>
+            </form>
+
             <fieldset className="coinTransactionFilters">
               <legend>Show transactions</legend>
               <div>

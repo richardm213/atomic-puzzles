@@ -52,6 +52,7 @@ const bodySchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("transactions"),
     page: z.number().int().positive().max(10_000).optional().default(1),
+    username: coinBanUsernameSchema.optional(),
     reasons: z
       .array(coinTransactionReasonSchema)
       .min(1)
@@ -179,6 +180,7 @@ export const coinsRoute = async (event: FunctionEvent) => {
       .from("coin_transactions")
       .select("id,username,amount,reason,metadata,created_at", { count: "exact" });
     if (input.reasons) query = query.in("reason", input.reasons);
+    if (input.username) query = query.eq("username", input.username.toLowerCase());
     const { data, error, count } = await query
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })

@@ -109,7 +109,8 @@ describe("coins function", () => {
     }));
     const orderById = vi.fn(() => ({ range }));
     const orderByCreatedAt = vi.fn(() => ({ order: orderById }));
-    const filterReasons = vi.fn(() => ({ order: orderByCreatedAt }));
+    const filterUsername = vi.fn(() => ({ order: orderByCreatedAt }));
+    const filterReasons = vi.fn(() => ({ eq: filterUsername }));
     const select = vi.fn(() => ({ in: filterReasons }));
     const from = vi.fn(() => ({ select }));
     mocks.createClient.mockReturnValue({ from });
@@ -117,7 +118,7 @@ describe("coins function", () => {
     const response = await handler({
       httpMethod: "POST",
       headers: {},
-      body: JSON.stringify({ action: "transactions", reasons, page: 2 }),
+      body: JSON.stringify({ action: "transactions", reasons, page: 2, username: "Solver" }),
     });
 
     expect(response.statusCode).toBe(200);
@@ -126,6 +127,7 @@ describe("coins function", () => {
       count: "exact",
     });
     expect(filterReasons).toHaveBeenCalledWith("reason", reasons);
+    expect(filterUsername).toHaveBeenCalledWith("username", "solver");
     expect(orderByCreatedAt).toHaveBeenCalledWith("created_at", { ascending: false });
     expect(orderById).toHaveBeenCalledWith("id", { ascending: false });
     expect(range).toHaveBeenCalledWith(50, 99);
