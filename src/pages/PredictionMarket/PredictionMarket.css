@@ -237,6 +237,10 @@
   background: color-mix(in srgb, var(--color-heading) 2.5%, transparent);
 }
 
+.predictionOutcomeSummary--interactive {
+  cursor: pointer;
+}
+
 .predictionOutcomeSummary--resolved {
   grid-template-columns: minmax(180px, 1fr) auto;
   gap: 18px;

@@ -367,7 +367,7 @@ const aclRoundData: Readonly<Record<string, readonly AtomicChessLeagueRound[]>> 
             {
               timeControl: "1+2",
               player1: "VenusaurBeedrill",
-              player2: "cycl1one",
+              player2: "theatomicstorm",
               score1: "2.5",
               score2: "7.5",
               status: "unarchived",
@@ -478,7 +478,7 @@ const aclRoundData: Readonly<Record<string, readonly AtomicChessLeagueRound[]>> 
             {
               timeControl: "1+0",
               player1: "MarcoTheTiger",
-              player2: "cycl1one",
+              player2: "theatomicstorm",
               score1: "9",
               score2: "11",
               matchId: "RQDBG6PV",
@@ -629,7 +629,7 @@ const aclRoundData: Readonly<Record<string, readonly AtomicChessLeagueRound[]>> 
             },
             {
               timeControl: "1+0",
-              player1: "cycl1one",
+              player1: "theatomicstorm",
               player2: "francothefalcon",
               score1: "0",
               score2: "1",
@@ -1251,9 +1251,9 @@ export const atomicChessLeagueSeasons: readonly AtomicChessLeagueSeason[] = [
           {
             rank: 2,
             name: "Atomic Storm",
-            captain: "cycl1one",
+            captain: "theatomicstorm",
             players: [
-              "cycl1one",
+              "theatomicstorm",
               "imjustanotherbot",
               "RaviharaV",
               "gage12",

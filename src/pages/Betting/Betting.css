@@ -450,6 +450,10 @@
   border-top: 1px solid var(--color-border);
 }
 
+.bettingExchangeStrike--interactive {
+  cursor: pointer;
+}
+
 .bettingExchangeStrikeToggle {
   display: grid;
   grid-column: 1 / 3;
@@ -486,6 +490,7 @@
 
 .bettingExchangeStrikePlayer {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 9px;
   min-width: 0;
@@ -531,9 +536,10 @@
 
 .bettingExchangeStrikeHoldings {
   display: inline-flex;
-  flex: none;
+  flex: 0 0 100%;
   flex-wrap: wrap;
   gap: 4px 10px;
+  margin-top: 3px;
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   font-weight: 750;

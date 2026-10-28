@@ -760,9 +760,22 @@ export const PredictionMarketPage = () => {
                         <div
                           className={`predictionOutcomeSummary${
                             activeMarketId === definition.id && !isResolved
-                              ? " predictionOutcomeSummary--active"
-                              : ""
+                              ? " predictionOutcomeSummary--active predictionOutcomeSummary--interactive"
+                              : !isResolved
+                                ? " predictionOutcomeSummary--interactive"
+                                : ""
                           }${isResolved ? " predictionOutcomeSummary--resolved" : ""}`}
+                          onClick={
+                            isResolved
+                              ? undefined
+                              : (event) => {
+                                  const target = event.target as HTMLElement;
+                                  if (target.closest("button, a, .predictionStrikeDrawer")) {
+                                    return;
+                                  }
+                                  toggleMarket(definition.id);
+                                }
+                          }
                           key={definition.id}
                         >
                           <div className="predictionOutcomeMarketBlock">

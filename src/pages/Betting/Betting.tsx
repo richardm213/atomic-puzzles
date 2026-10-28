@@ -1624,9 +1624,7 @@ export const BettingPage = () => {
                                           aria-hidden="true"
                                         />
                                       ) : null}
-                                      <span>
-                                        {predictionOutcomeAbbreviation(definition, entry)}
-                                      </span>
+                                      <span>{predictionOutcomeLabel(definition, entry)}</span>
                                     </span>
                                     <span className="bettingOutcomeQuote">
                                       <strong>
@@ -1727,7 +1725,23 @@ export const BettingPage = () => {
                                 </span>
                               ) : null;
                             return (
-                              <div className="bettingExchangeStrike" key={definition.id}>
+                              <div
+                                className={`bettingExchangeStrike${
+                                  isResolved ? "" : " bettingExchangeStrike--interactive"
+                                }`}
+                                onClick={
+                                  isResolved
+                                    ? undefined
+                                    : (event) => {
+                                        const target = event.target as HTMLElement;
+                                        if (target.closest("button, a, .bettingInlineBookDrawer")) {
+                                          return;
+                                        }
+                                        togglePredictionStrike(definition.id);
+                                      }
+                                }
+                                key={definition.id}
+                              >
                                 {isResolved ? (
                                   <div className="bettingExchangeStrikeToggle bettingExchangeStrikeToggle--resolved">
                                     <span className="bettingExchangeStrikePlayer">
