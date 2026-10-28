@@ -85,6 +85,12 @@
   line-height: 1.5;
 }
 
+.redeemDialogCopy .redeemDialogError {
+  color: var(--color-danger);
+  font-size: 14px;
+  text-align: left;
+}
+
 .usernameChangeField {
   width: 100%;
   display: grid;
@@ -167,6 +173,11 @@
 .redeemDialogActions button:focus-visible {
   outline: 3px solid var(--color-primary-ring);
   outline-offset: 2px;
+}
+
+.redeemDialogActions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
 }
 
 .analysisRequestDialog {

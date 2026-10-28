@@ -29,6 +29,7 @@ import {
   type CoinSummary,
   DAILY_COIN_BONUS,
   redeemShopItem,
+  type RedemptionHistoryItem,
   requestAtomicDbAnalysis,
   type ShopItemKey,
 } from "../../lib/coins/coins";
@@ -161,11 +162,63 @@ export const ShopPage = () => {
       itemKey: ShopItemKey;
       requestedUsername?: string;
     }) => redeemShopItem(itemKey, requested),
-    onSuccess: (data) => {
+    onMutate: async (variables) => {
+      const summaryKey = coinQueryKeys.summary(username);
+      const historyKey = coinQueryKeys.redemptionHistory(username);
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: summaryKey }),
+        queryClient.cancelQueries({ queryKey: historyKey }),
+      ]);
+      const previousSummary = queryClient.getQueryData<CoinSummary>(summaryKey);
+      const previousHistory = queryClient.getQueryData<RedemptionHistoryItem[]>(historyKey);
+      const item = shopItems.find((candidate) => candidate.key === variables.itemKey);
+      const optimisticId = -Date.now();
+      if (previousSummary && item) {
+        queryClient.setQueryData<CoinSummary>(summaryKey, {
+          ...previousSummary,
+          balance: Math.max(0, previousSummary.balance - item.cost),
+        });
+      }
+      if (previousHistory && item) {
+        queryClient.setQueryData<RedemptionHistoryItem[]>(historyKey, [
+          {
+            id: optimisticId,
+            itemKey: item.key,
+            cost: item.cost,
+            status: "pending",
+            createdAt: new Date().toISOString(),
+            fulfilledAt: null,
+          },
+          ...previousHistory,
+        ]);
+      }
+      return { previousSummary, previousHistory, optimisticId };
+    },
+    onError: (_error, _variables, context) => {
+      if (!context) return;
+      queryClient.setQueryData(coinQueryKeys.summary(username), context.previousSummary);
+      queryClient.setQueryData(coinQueryKeys.redemptionHistory(username), context.previousHistory);
+    },
+    onSuccess: (data, _variables, context) => {
       updateSummary({ ...data, dailyClaimAvailable: summary.data?.dailyClaimAvailable ?? false });
-      void queryClient.invalidateQueries({
-        queryKey: coinQueryKeys.redemptionHistory(username),
-      });
+      if (context && data.redemptionId) {
+        queryClient.setQueryData<RedemptionHistoryItem[]>(
+          coinQueryKeys.redemptionHistory(username),
+          (current) =>
+            current?.map((item) =>
+              item.id === context.optimisticId ? { ...item, id: data.redemptionId! } : item,
+            ),
+        );
+      }
+      setSelectedReward(null);
+    },
+    onSettled: () => {
+      void Promise.all([
+        queryClient.invalidateQueries({ queryKey: coinQueryKeys.summary(username) }),
+        queryClient.invalidateQueries({ queryKey: coinQueryKeys.redemptionHistory(username) }),
+        queryClient.invalidateQueries({ queryKey: coinQueryKeys.rankings }),
+        queryClient.invalidateQueries({ queryKey: ["coins", "transactions"] }),
+      ]);
     },
   });
   const analysis = useMutation({
@@ -183,6 +236,7 @@ export const ShopPage = () => {
 
   const redeemItem = (item: (typeof shopItems)[number]) => {
     if (shopClosed || balance < item.cost || busy || economyBan) return;
+    redeem.reset();
     if (item.key === "atomicdb_analysis_12h") {
       analysis.reset();
       setAnalysisFocus("higher_eval");
@@ -195,7 +249,9 @@ export const ShopPage = () => {
     setSelectedReward(item);
   };
 
-  const closeRedeemDialog = () => setSelectedReward(null);
+  const closeRedeemDialog = () => {
+    if (!redeem.isPending) setSelectedReward(null);
+  };
 
   const confirmRedemption = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -210,7 +266,6 @@ export const ShopPage = () => {
       itemKey: selectedReward.key,
       ...(selectedReward.key === "username_change" ? { requestedUsername: requested } : {}),
     });
-    closeRedeemDialog();
   };
 
   const closeAnalysisDialog = () => {
@@ -330,13 +385,23 @@ export const ShopPage = () => {
                   </small>
                 </label>
               ) : null}
+              {redeem.error ? (
+                <p className="redeemDialogError" role="alert">
+                  {getErrorMessage(redeem.error, "Unable to complete this purchase.")}
+                </p>
+              ) : null}
             </div>
             <div className="redeemDialogActions">
-              <button className="redeemDialogCancel" type="button" onClick={closeRedeemDialog}>
+              <button
+                className="redeemDialogCancel"
+                type="button"
+                disabled={redeem.isPending}
+                onClick={closeRedeemDialog}
+              >
                 Cancel
               </button>
-              <button className="redeemDialogConfirm" type="submit">
-                Buy for {selectedReward.cost.toLocaleString()}
+              <button className="redeemDialogConfirm" type="submit" disabled={redeem.isPending}>
+                {redeem.isPending ? "Buying…" : `Buy for ${selectedReward.cost.toLocaleString()}`}
               </button>
             </div>
           </form>
