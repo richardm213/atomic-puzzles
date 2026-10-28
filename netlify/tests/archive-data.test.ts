@@ -70,6 +70,60 @@ describe("archive-data function", () => {
     });
   });
 
+  it("loads one lookahead row instead of counting the full recent-match result", async () => {
+    mocks.execute.mockResolvedValueOnce({
+      rows: Array.from({ length: 26 }, (_, index) => ({
+        match_id: `match-${index}`,
+        player_1: "alice",
+        player_2: "bob",
+        start_ts: 1000 - index,
+        time_control: "3+0",
+        source: "lobby",
+        games: "",
+      })),
+    });
+    const { handler } = await import("../functions/archive-data");
+    const response = await handler({
+      httpMethod: "GET",
+      queryStringParameters: {
+        resource: "matches",
+        mode: "blitz",
+        page: "1",
+        pageSize: "25",
+        includeTotal: "false",
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(mocks.execute).toHaveBeenCalledTimes(1);
+    expect(mocks.execute.mock.calls[0]?.[0].args).toEqual([2, 26, 0]);
+    expect(JSON.parse(response.body)).toMatchObject({
+      total: 26,
+      totalPages: 2,
+      hasPreviousPage: false,
+      hasNextPage: true,
+    });
+    expect(JSON.parse(response.body).rows).toHaveLength(25);
+  });
+
+  it("serves a compact one-row-per-player directory payload", async () => {
+    mocks.execute.mockResolvedValueOnce({
+      rows: [{ username: "alice", blitz_rating: 1800, blitz_peak: 1900, blitz_rd: 45 }],
+    });
+    const { handler } = await import("../functions/archive-data");
+    const response = await handler({
+      httpMethod: "GET",
+      queryStringParameters: { resource: "player_directory" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(mocks.execute.mock.calls[0]?.[0].sql).toContain("group by p.id,p.username");
+    expect(mocks.execute.mock.calls[0]?.[0].sql).not.toContain("top20_wins");
+    expect(JSON.parse(response.body)).toEqual([
+      { username: "alice", blitz_rating: 1800, blitz_peak: 1900, blitz_rd: 45 },
+    ]);
+  });
+
   it.each([
     [{ resource: "matches", page: "not-a-number" }, "page must be a finite number"],
     [{ resource: "matches", pairA: "alice" }, "pairA and pairB must be supplied together"],

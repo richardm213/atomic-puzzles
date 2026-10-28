@@ -156,7 +156,7 @@ export const quoteTournamentBet = (stake: number, priceCents: number): BetQuote 
   };
 };
 
-const marketSchema = z
+export const bettingMarketSchema = z
   .object({
     id: z.string(),
     tournament_id: z.string(),
@@ -212,7 +212,7 @@ const marketSchema = z
     settledAt: market.settled_at,
   }));
 
-const betSchema = z
+export const tournamentBetSchema = z
   .object({
     id: z.number(),
     market_id: z.string(),
@@ -244,12 +244,12 @@ const betSchema = z
     settledAt: bet.settled_at,
   }));
 
-const marketsResponseSchema = z.object({ result: z.array(marketSchema) });
-const betsResponseSchema = z.object({ result: z.array(betSchema) });
+const marketsResponseSchema = z.object({ result: z.array(bettingMarketSchema) });
+const betsResponseSchema = z.object({ result: z.array(tournamentBetSchema) });
 const placeBetResponseSchema = z.object({
   result: z.object({
     balance: z.number(),
-    bet: betSchema,
+    bet: tournamentBetSchema,
   }),
 });
 

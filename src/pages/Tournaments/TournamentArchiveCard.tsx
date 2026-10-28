@@ -28,7 +28,7 @@ export const TournamentArchiveCard = ({ tournament, champion }: TournamentArchiv
       <div className={styles.art} aria-hidden="true">
         {tournament.trophyAssetPath ? (
           <img
-            src={appAssetPath(tournament.trophyAssetPath)}
+            src={appAssetPath(tournament.trophyAssetPath.replace(/\.png$/i, ".webp"))}
             alt=""
             width="112"
             height="112"

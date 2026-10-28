@@ -11,7 +11,28 @@ type PlayerRatingFilters = {
   limit?: number;
 };
 
+export type PlayerDirectoryRow = {
+  username: string;
+  hyperbullet_rating: number | null;
+  hyperbullet_peak: number | null;
+  hyperbullet_rd: number | null;
+  bullet_rating: number | null;
+  bullet_peak: number | null;
+  bullet_rd: number | null;
+  blitz_rating: number | null;
+  blitz_peak: number | null;
+  blitz_rd: number | null;
+};
+
 const playerRatingsCache = new Map<string, Promise<PlayerRatingRow[]>>();
+let playerDirectoryRequest: Promise<PlayerDirectoryRow[]> | null = null;
+
+export const fetchPlayerDirectoryRows = (): Promise<PlayerDirectoryRow[]> => {
+  playerDirectoryRequest ??= fetchArchiveJson<PlayerDirectoryRow[]>(
+    new URLSearchParams({ resource: "player_directory" }),
+  );
+  return playerDirectoryRequest;
+};
 
 const fetchUncachedPlayerRatingsRows = async (
   filters: PlayerRatingFilters = {},

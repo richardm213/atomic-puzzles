@@ -42,7 +42,6 @@ type AppliedFilters = {
 import { DualRangeSlider } from "../../components/DualRangeSlider/DualRangeSlider";
 import { InlineState } from "../../components/InlineState/InlineState";
 import { MatchCard } from "../../components/MatchCard/MatchCard";
-import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { Seo } from "../../components/Seo/Seo";
 import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFilterChecks";
 import { TimeControlFields } from "../../components/TimeControlFields/TimeControlFields";
@@ -143,7 +142,14 @@ export const RecentMatchesPage = () => {
       ({
         matches: normalizeRecentMatches(loaded.matches, appliedFilters.selectedMode),
         total: loaded.total,
-      }) satisfies { matches: RecentMatch[]; total: number },
+        hasPreviousPage: loaded.hasPreviousPage,
+        hasNextPage: loaded.hasNextPage,
+      }) satisfies {
+        matches: RecentMatch[];
+        total: number;
+        hasPreviousPage: boolean;
+        hasNextPage: boolean;
+      },
     placeholderData: keepPreviousData,
   });
   const applyFiltersMutation = useMutation({
@@ -154,7 +160,8 @@ export const RecentMatchesPage = () => {
     },
   });
   const matches = useMemo(() => matchesQuery.data?.matches ?? [], [matchesQuery.data?.matches]);
-  const totalMatches = matchesQuery.data?.total ?? 0;
+  const hasPreviousPage = matchesQuery.data?.hasPreviousPage ?? currentPage > 1;
+  const hasNextPage = matchesQuery.data?.hasNextPage ?? false;
   const loadingMatches = matchesQuery.isFetching || applyFiltersMutation.isPending;
   const queryError = matchesQuery.error ?? applyFiltersMutation.error;
   const error = queryError
@@ -224,7 +231,6 @@ export const RecentMatchesPage = () => {
       }),
     [matches, appliedFilters, startDateTs, endDateTs],
   );
-  const totalPages = Math.max(1, Math.ceil(totalMatches / Math.max(1, pageSize)));
 
   const handleSearch = () => {
     if (loadingMatches) return;
@@ -245,10 +251,6 @@ export const RecentMatchesPage = () => {
 
     applyFiltersMutation.mutate(nextAppliedFilters);
   };
-
-  useEffect(() => {
-    setCurrentPage((current) => Math.min(current, totalPages));
-  }, [totalPages]);
 
   const paginatedMatches = filteredMatches;
   const setSourceFilter = (source: keyof SourceFilters, checked: boolean): void => {
@@ -424,12 +426,25 @@ export const RecentMatchesPage = () => {
           ) : null}
         </div>
         {filteredMatches.length > 0 ? (
-          <PaginationRow
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-            disabled={loadingMatches}
-          />
+          <div className="paginationRow" aria-label="Recent match pages">
+            <button
+              type="button"
+              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+              disabled={loadingMatches || !hasPreviousPage}
+            >
+              Previous
+            </button>
+            <span className="paginationPageButton" aria-current="page">
+              Page {currentPage}
+            </span>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((page) => page + 1)}
+              disabled={loadingMatches || !hasNextPage}
+            >
+              Next
+            </button>
+          </div>
         ) : null}
       </div>
     </div>

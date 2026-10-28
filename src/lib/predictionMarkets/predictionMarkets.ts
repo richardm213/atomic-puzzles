@@ -20,39 +20,34 @@ export type PredictionMarketGroup = {
   markets: PredictionMarketDefinition[];
 };
 
-const catalogSchema = z.object({
-  result: z.array(
-    z.object({
-      id: z.string(),
-      group_id: z.string(),
-      group_path: z.string(),
-      group_title: z.string(),
-      group_description: z.string(),
-      group_order: z.number(),
-      display_name: z.string(),
-      country_code: z.string(),
-      starting_chance: z.number().nullable(),
-      display_order: z.number(),
-      outcome_yes_label: z.string().nullable(),
-      outcome_no_label: z.string().nullable(),
-      outcome_yes_country_code: z.string().nullable(),
-      outcome_no_country_code: z.string().nullable(),
-    }),
-  ),
+export const predictionMarketCatalogRowSchema = z.object({
+  id: z.string(),
+  group_id: z.string(),
+  group_path: z.string(),
+  group_title: z.string(),
+  group_description: z.string(),
+  group_order: z.number(),
+  display_name: z.string(),
+  country_code: z.string(),
+  starting_chance: z.number().nullable(),
+  display_order: z.number(),
+  outcome_yes_label: z.string().nullable(),
+  outcome_no_label: z.string().nullable(),
+  outcome_yes_country_code: z.string().nullable(),
+  outcome_no_country_code: z.string().nullable(),
 });
 
-export const fetchPredictionMarketGroups = async (): Promise<PredictionMarketGroup[]> => {
-  const response = await postApi(
-    "/api/betting",
-    { action: "exchangeMarkets" },
-    {
-      schema: catalogSchema,
-      errorMessage: "Unable to load prediction markets.",
-      invalidMessage: "The prediction market catalog is invalid.",
-    },
-  );
+const catalogSchema = z.object({
+  result: z.array(predictionMarketCatalogRowSchema),
+});
+
+type PredictionMarketCatalogRow = z.infer<typeof predictionMarketCatalogRowSchema>;
+
+export const predictionMarketGroupsFromRows = (
+  rows: PredictionMarketCatalogRow[],
+): PredictionMarketGroup[] => {
   const groups = new Map<string, PredictionMarketGroup>();
-  for (const row of response.result) {
+  for (const row of rows) {
     const group = groups.get(row.group_id) ?? {
       id: row.group_id,
       path: row.group_path,
@@ -80,6 +75,19 @@ export const fetchPredictionMarketGroups = async (): Promise<PredictionMarketGro
     groups.set(row.group_id, group);
   }
   return [...groups.values()].sort((a, b) => a.displayOrder - b.displayOrder);
+};
+
+export const fetchPredictionMarketGroups = async (): Promise<PredictionMarketGroup[]> => {
+  const response = await postApi(
+    "/api/betting",
+    { action: "exchangeMarkets" },
+    {
+      schema: catalogSchema,
+      errorMessage: "Unable to load prediction markets.",
+      invalidMessage: "The prediction market catalog is invalid.",
+    },
+  );
+  return predictionMarketGroupsFromRows(response.result);
 };
 
 export const predictionOutcomes = ["yes", "no"] as const;
@@ -296,6 +304,8 @@ const marketStateSchema = z.object({
     orders: z.array(orderSchema),
   }),
 });
+
+export const predictionMarketStateResultSchema = marketStateSchema.shape.result;
 
 export type PredictionMarketState = z.infer<typeof marketStateSchema>["result"];
 export type PredictionOrder = PredictionMarketState["orders"][number];

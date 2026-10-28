@@ -6,13 +6,22 @@ import {
   fetchMarketSuggestions,
   fetchMyTournamentBets,
 } from "./betting";
+import { fetchBettingBootstrap } from "./bettingBootstrap";
 
 export const bettingQueryKeys = {
+  bootstrap: ["betting", "bootstrap"] as const,
   markets: ["betting", "markets"] as const,
   bets: (username: string) => ["betting", "bets", username.toLowerCase()] as const,
   allBets: ["betting", "all-bets"] as const,
   suggestions: ["betting", "suggestions"] as const,
 };
+
+export const bettingBootstrapQueryOptions = () =>
+  queryOptions({
+    queryKey: bettingQueryKeys.bootstrap,
+    queryFn: fetchBettingBootstrap,
+    staleTime: 10_000,
+  });
 
 export const bettingMarketsQueryOptions = () =>
   queryOptions({

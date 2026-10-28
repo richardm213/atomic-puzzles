@@ -45,11 +45,14 @@ export type LoadMatchesOptions = {
   filters?: MatchFilters;
   page?: number;
   pageSize?: number;
+  includeTotal?: boolean;
 };
 
 export type PaginatedMatches = {
   matches: ParsedMatch[];
   total: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
 };
 
 export type NormalizedMatchGame = {
@@ -225,7 +228,7 @@ export async function loadRawMatchesByMode(
   mode: Mode | "all",
   options: LoadMatchesOptions = {},
 ): Promise<ParsedMatch[] | PaginatedMatches> {
-  const { filters = {}, page, pageSize } = options;
+  const { filters = {}, page, pageSize, includeTotal } = options;
   const subOptionsBase: LoadMatchesOptions = { filters };
   if (page !== undefined) subOptionsBase.page = page;
   if (mode === "all") {
@@ -253,12 +256,15 @@ export async function loadRawMatchesByMode(
         }),
       );
       const offset = (requestedPage - 1) * requestedPageSize;
+      const total = matchesByMode.reduce((sum, entry) => sum + entry.total, 0);
       return {
         matches: matchesByMode
           .flatMap((entry) => entry.matches)
           .sort((left, right) => right.start_ts - left.start_ts)
           .slice(offset, offset + requestedPageSize),
-        total: matchesByMode.reduce((sum, entry) => sum + entry.total, 0),
+        total,
+        hasPreviousPage: requestedPage > 1,
+        hasNextPage: offset + requestedPageSize < total,
       };
     }
     const matchesByMode = await Promise.all(
@@ -270,6 +276,7 @@ export async function loadRawMatchesByMode(
   const result = await fetchMatchRowsFromArchive(mode, filters, {
     ...(page !== undefined ? { page } : {}),
     ...(pageSize !== undefined ? { pageSize } : {}),
+    ...(includeTotal !== undefined ? { includeTotal } : {}),
   });
   const rows = Array.isArray(result?.rows) ? result.rows : [];
   const matches = parseMatchRows(rows);
@@ -277,6 +284,8 @@ export async function loadRawMatchesByMode(
     return {
       matches,
       total: Number(result?.total) || matches.length,
+      hasPreviousPage: result.hasPreviousPage,
+      hasNextPage: result.hasNextPage,
     };
   }
   return matches;

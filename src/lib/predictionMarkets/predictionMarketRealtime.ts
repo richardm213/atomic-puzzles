@@ -57,6 +57,7 @@ const refreshMarkets = async (queryClient: QueryClient, marketIds: readonly stri
 export const usePredictionMarketRealtime = (
   queryClient: QueryClient,
   marketIds: readonly PredictionMarketId[],
+  refreshOnSubscribe = true,
 ) => {
   const marketIdsKey = JSON.stringify([...new Set(marketIds)].sort());
 
@@ -102,7 +103,7 @@ export const usePredictionMarketRealtime = (
         },
       )
       .subscribe((status) => {
-        if (status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) {
+        if (refreshOnSubscribe && status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) {
           refresh.request(trackedMarketIds);
         }
       });
@@ -118,5 +119,5 @@ export const usePredictionMarketRealtime = (
       window.removeEventListener("online", refreshVisibleMarkets);
       void supabase.removeChannel(channel);
     };
-  }, [marketIdsKey, queryClient]);
+  }, [marketIdsKey, queryClient, refreshOnSubscribe]);
 };

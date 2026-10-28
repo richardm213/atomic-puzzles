@@ -41,7 +41,7 @@ export const recentMatchesPageQueryOptions = (
 ) =>
   queryOptions({
     queryKey: matchQueryKeys.recent(mode, filters, page, pageSize),
-    queryFn: () => loadRawMatchesByMode(mode, { filters, page, pageSize }),
+    queryFn: () => loadRawMatchesByMode(mode, { filters, page, pageSize, includeTotal: false }),
     staleTime: 30_000,
   });
 

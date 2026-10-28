@@ -173,8 +173,6 @@ const TOURNAMENT_MATCHES_SELECT_COLUMNS =
   "tournament,bracket,round,order,id,match_id,p1,p2,s1,s2,winner_to,loser_to,outcome_type,replacement_player,replacement_for,replacement_note,replacement_history";
 const PLAYER_COUNTRIES_SELECT_COLUMNS = "player_name,country_code";
 const TOURNAMENT_SEEDS_SELECT_COLUMNS = "tournament,player_name,seed";
-const TOURNAMENT_CATALOG_SELECT_COLUMNS =
-  "id,series_key,series_name,title,heading_title,year,start_date,end_date,status,match_mode,time_control,hide_start_round_controls,default_main_bracket_start_round,complete_main_bracket_from_round,trophy_asset_path,show_champion,display_order,home_feature_order";
 const TOURNAMENT_CATALOG_WITH_DATES_SELECT_COLUMNS =
   "id,series_key,series_name,title,heading_title,year,start_date,end_date,status,match_mode,hide_start_round_controls,default_main_bracket_start_round,complete_main_bracket_from_round,trophy_asset_path,show_champion,display_order,home_feature_order";
 const TOURNAMENT_CATALOG_START_DATE_SELECT_COLUMNS =
@@ -1078,8 +1076,9 @@ export const fetchTournamentCatalog = async (): Promise<TournamentMeta[]> =>
         .order("id", { ascending: true });
 
     let rows: TournamentMetaRowFromDb[] = [];
+    // Start with the columns present across every deployed catalog version. Optional values such
+    // as time_control are filled from the verified fallback map without a failed discovery request.
     const selectColumns = [
-      TOURNAMENT_CATALOG_SELECT_COLUMNS,
       TOURNAMENT_CATALOG_WITH_DATES_SELECT_COLUMNS,
       TOURNAMENT_CATALOG_START_DATE_SELECT_COLUMNS,
       TOURNAMENT_CATALOG_LEGACY_SELECT_COLUMNS,

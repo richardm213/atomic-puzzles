@@ -68,6 +68,7 @@ describe("match query behavior", () => {
       filters: matchFilters,
       page: 2,
       pageSize: 25,
+      includeTotal: false,
     });
   });
 

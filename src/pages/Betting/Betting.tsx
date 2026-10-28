@@ -46,6 +46,7 @@ import {
 } from "../../lib/betting/betting";
 import {
   allTournamentBetsQueryOptions,
+  bettingBootstrapQueryOptions,
   bettingMarketsQueryOptions,
   bettingQueryKeys,
   marketSuggestionsQueryOptions,
@@ -547,8 +548,15 @@ export const BettingPage = () => {
   const betAmountRef = useRef<HTMLInputElement>(null);
   const predictionStakeRef = useRef<HTMLInputElement>(null);
 
-  const marketsQuery = useQuery(bettingMarketsQueryOptions());
-  const predictionCatalogQuery = useQuery(predictionMarketCatalogQueryOptions());
+  const bootstrapQuery = useQuery(bettingBootstrapQueryOptions());
+  const marketsQuery = useQuery({
+    ...bettingMarketsQueryOptions(),
+    enabled: bootstrapQuery.isError,
+  });
+  const predictionCatalogQuery = useQuery({
+    ...predictionMarketCatalogQueryOptions(),
+    enabled: bootstrapQuery.isError,
+  });
   const predictionMarketGroups = useMemo(
     () => predictionCatalogQuery.data ?? [],
     [predictionCatalogQuery.data],
@@ -563,6 +571,7 @@ export const BettingPage = () => {
   });
   const allBetsQuery = useQuery({
     ...allTournamentBetsQueryOptions(),
+    enabled: bootstrapQuery.isError,
   });
   const suggestionsQuery = useQuery({
     ...marketSuggestionsQueryOptions(),
@@ -581,8 +590,25 @@ export const BettingPage = () => {
     () => predictionMarkets.map((market) => market.id),
     [predictionMarkets],
   );
+  useEffect(() => {
+    if (!bootstrapQuery.data) return;
+    const bootstrapMarketIds = bootstrapQuery.data.predictionMarketGroups.flatMap((group) =>
+      group.markets.map((market) => market.id),
+    );
+    queryClient.setQueryData(bettingQueryKeys.markets, bootstrapQuery.data.markets);
+    queryClient.setQueryData(bettingQueryKeys.allBets, bootstrapQuery.data.allBets);
+    queryClient.setQueryData(
+      predictionMarketCatalogQueryOptions().queryKey,
+      bootstrapQuery.data.predictionMarketGroups,
+    );
+    queryClient.setQueryData(
+      predictionMarketBatchQueryOptions(bootstrapMarketIds).queryKey,
+      bootstrapQuery.data.predictionMarketStates,
+    );
+  }, [bootstrapQuery.data, queryClient]);
   const predictionMarketQuery = useQuery({
     ...predictionMarketBatchQueryOptions(predictionMarketIds),
+    refetchOnMount: false,
     enabled:
       predictionMarketIds.length > 0 &&
       (isPredictionMarketCategory(marketCategory) ||
@@ -590,7 +616,7 @@ export const BettingPage = () => {
         view === "all" ||
         view === "mine"),
   });
-  usePredictionMarketRealtime(queryClient, predictionMarketIds);
+  usePredictionMarketRealtime(queryClient, predictionMarketIds, !bootstrapQuery.data);
   const predictionMarketStates = useMemo(
     () => predictionMarketQuery.data ?? [],
     [predictionMarketQuery.data],

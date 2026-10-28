@@ -15,7 +15,7 @@ import { Seo } from "../../components/Seo/Seo";
 import { isMode, type Mode } from "../../constants/matches";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import { useTableSort } from "../../hooks/useTableSort";
-import type { PlayerRatingRow } from "../../lib/archive/ratings";
+import type { PlayerDirectoryRow, PlayerRatingRow } from "../../lib/archive/ratings";
 import type { AliasLookup } from "../../lib/users/aliasesLookup";
 import { aliasesLookupQueryOptions } from "../../lib/users/aliasQueries";
 import { userRatingsQueryOptions } from "../../lib/users/userQueries";
@@ -146,6 +146,21 @@ export const buildUserRows = (
   return [...rowsByUsername.values()];
 };
 
+export const expandPlayerDirectoryRows = (rows: PlayerDirectoryRow[]): PlayerRatingRow[] =>
+  rows.flatMap((row) =>
+    (["blitz", "bullet", "hyperbullet"] as const).map((mode) => ({
+      username: row.username,
+      tc: mode,
+      rating: row[`${mode}_rating`],
+      peak: row[`${mode}_peak`],
+      rd: row[`${mode}_rd`],
+      peak_date: null,
+      games: null,
+      rank: null,
+      top20_wins: null,
+    })),
+  );
+
 const UsersTablePage = () => {
   const { changeSort, sortDirection, sortKey } = useTableSort<UserSortKey>({
     initialKey: "blitz",
@@ -160,7 +175,11 @@ const UsersTablePage = () => {
   const ratingsQuery = useQuery(userRatingsQueryOptions());
   const aliasesQuery = useQuery(aliasesLookupQueryOptions());
   const rows = useMemo(
-    () => buildUserRows(ratingsQuery.data ?? [], aliasesQuery.data ?? new Map()),
+    () =>
+      buildUserRows(
+        expandPlayerDirectoryRows(ratingsQuery.data ?? []),
+        aliasesQuery.data ?? new Map(),
+      ),
     [aliasesQuery.data, ratingsQuery.data],
   );
   const loading = ratingsQuery.isPending || aliasesQuery.isPending;

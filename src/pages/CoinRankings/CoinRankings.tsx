@@ -210,7 +210,7 @@ export const CoinRankingsPage = () => {
       />
       <div className="panel rankingsPanel coinRankingsPanel">
         <h1 className="coinRankingsTitle">
-          <img src={appAssetPath("/images/coins/gold-coin-stack-v2.png")} alt="" />
+          <img src={appAssetPath("/images/coins/gold-coin-stack-v2.webp")} alt="" />
           Coin Rankings
         </h1>
 

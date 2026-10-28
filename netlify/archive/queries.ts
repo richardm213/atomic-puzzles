@@ -39,12 +39,14 @@ const RESOURCE_PARAMETERS: Record<string, ReadonlySet<string>> = {
     "ratingFilterType",
     "page",
     "pageSize",
+    "includeTotal",
   ]),
   player_game_counts: new Set(["resource", "username"]),
   latest_match: new Set(["resource"]),
   aliases: new Set(["resource", "username"]),
   weekly_ratings: new Set(["resource", "username", "mode"]),
   ratings: new Set(["resource", "username", "mode", "limit"]),
+  player_directory: new Set(["resource"]),
   leaderboard: new Set(["resource", "month", "mode", "username", "limit"]),
   yearly_leaderboard: new Set(["resource", "year", "mode"]),
   leaderboard_counts: new Set(["resource"]),
@@ -135,6 +137,7 @@ const queryMatches = async (params: URLSearchParams) => {
   const args: Array<string | number> = [];
   const page = positiveIntegerParam(params, "page", 1);
   const pageSize = positiveIntegerParam(params, "pageSize", 100, MAX_PAGE_SIZE);
+  const includeTotal = params.get("includeTotal") !== "false";
   const emptyPage = {
     rows: [],
     total: 0,
@@ -249,55 +252,66 @@ const queryMatches = async (params: URLSearchParams) => {
       m.p2_after_rating/10.0 p2_after_rating,m.p2_before_rd/10.0 p2_before_rd,m.p2_after_rd/10.0 p2_after_rd
       from matches m join players p1 on p1.id=m.player_1_id join players p2 on p2.id=m.player_2_id
       join time_controls tc on tc.id=m.time_control_id`;
-  let countResult;
   let result;
+  let total: number | null = null;
+  const queryLimit = includeTotal ? pageSize : pageSize + 1;
   if (usernamePlayerId !== null) {
     const playerOneWhere = `${where} and m.player_1_id = ?`;
     // The extra player_1 predicate preserves OR semantics for the unlikely self-match case.
     const playerTwoWhere = `${where} and m.player_2_id = ? and m.player_1_id <> ?`;
     const playerOneArgs = [...args, usernamePlayerId];
     const playerTwoArgs = [...args, usernamePlayerId, usernamePlayerId];
-    countResult = await archive.execute({
-      sql: `select sum(total) as total from (
-        select count(*) as total from matches m join time_controls tc on tc.id=m.time_control_id where ${playerOneWhere}
-        union all
-        select count(*) as total from matches m join time_controls tc on tc.id=m.time_control_id where ${playerTwoWhere})`,
-      args: [...playerOneArgs, ...playerTwoArgs],
-    });
+    if (includeTotal) {
+      const countResult = await archive.execute({
+        sql: `select sum(total) as total from (
+          select count(*) as total from matches m join time_controls tc on tc.id=m.time_control_id where ${playerOneWhere}
+          union all
+          select count(*) as total from matches m join time_controls tc on tc.id=m.time_control_id where ${playerTwoWhere})`,
+        args: [...playerOneArgs, ...playerTwoArgs],
+      });
+      total = Number(countResult.rows[0]?.total ?? 0);
+    }
     result = await archive.execute({
       sql: `select * from (
         ${selectMatch} where ${playerOneWhere}
         union all
         ${selectMatch} where ${playerTwoWhere}
       ) order by start_ts desc limit ? offset ?`,
-      args: [...playerOneArgs, ...playerTwoArgs, pageSize, (page - 1) * pageSize],
+      args: [...playerOneArgs, ...playerTwoArgs, queryLimit, (page - 1) * pageSize],
     });
   } else {
-    countResult = await archive.execute({
-      sql: `select count(*) as total from matches m join time_controls tc on tc.id=m.time_control_id where ${where}`,
-      args,
-    });
+    if (includeTotal) {
+      const countResult = await archive.execute({
+        sql: `select count(*) as total from matches m join time_controls tc on tc.id=m.time_control_id where ${where}`,
+        args,
+      });
+      total = Number(countResult.rows[0]?.total ?? 0);
+    }
     result = await archive.execute({
       sql: `${selectMatch} where ${where} order by m.start_ts desc limit ? offset ?`,
-      args: [...args, pageSize, (page - 1) * pageSize],
+      args: [...args, queryLimit, (page - 1) * pageSize],
     });
   }
-  const rows = normalizedRows(result.rows).map((row) => ({
+  const rawRows = normalizedRows(result.rows);
+  const hasNextPage = includeTotal ? page * pageSize < (total ?? 0) : rawRows.length > pageSize;
+  const rows = rawRows.slice(0, pageSize).map((row) => ({
     ...row,
     games: String(row.games ?? "")
       .split("|")
       .filter(Boolean),
   }));
-  const total = Number(countResult.rows[0]?.total ?? rows.length);
-  const totalPages = Math.ceil(total / pageSize);
+  const resolvedTotal = total ?? (page - 1) * pageSize + rows.length + (hasNextPage ? 1 : 0);
+  const totalPages = includeTotal
+    ? Math.ceil(resolvedTotal / pageSize)
+    : page + (hasNextPage ? 1 : 0);
   return {
     rows,
-    total,
+    total: resolvedTotal,
     page,
     pageSize,
     totalPages,
     hasPreviousPage: page > 1,
-    hasNextPage: page < totalPages,
+    hasNextPage,
   };
 };
 
@@ -348,6 +362,26 @@ const queryRatings = async (params: URLSearchParams) => {
       r.rank,r.top20_wins from player_ratings r join players p on p.id=r.username_id
       ${clauses.length ? `where ${clauses.join(" and ")}` : ""} order by r.rank${limit ? " limit ?" : ""}`,
     args: limit ? [...args, limit] : args,
+  });
+  return normalizedRows(result.rows);
+};
+
+const queryPlayerDirectory = async () => {
+  const result = await getArchiveClient().execute({
+    sql: `select p.username,
+      max(case when r.mode=0 then r.rating/10.0 end) hyperbullet_rating,
+      max(case when r.mode=0 then r.peak/10.0 end) hyperbullet_peak,
+      max(case when r.mode=0 then r.rd/10.0 end) hyperbullet_rd,
+      max(case when r.mode=1 then r.rating/10.0 end) bullet_rating,
+      max(case when r.mode=1 then r.peak/10.0 end) bullet_peak,
+      max(case when r.mode=1 then r.rd/10.0 end) bullet_rd,
+      max(case when r.mode=2 then r.rating/10.0 end) blitz_rating,
+      max(case when r.mode=2 then r.peak/10.0 end) blitz_peak,
+      max(case when r.mode=2 then r.rd/10.0 end) blitz_rd
+      from player_ratings r join players p on p.id=r.username_id
+      where r.mode in (0,1,2)
+      group by p.id,p.username order by p.username`,
+    args: [],
   });
   return normalizedRows(result.rows);
 };
@@ -533,6 +567,7 @@ export const queryArchiveResource = async (params: URLSearchParams): Promise<unk
   if (resource === "aliases") return queryAliases(params);
   if (resource === "weekly_ratings") return queryWeeklyRatings(params);
   if (resource === "ratings") return queryRatings(params);
+  if (resource === "player_directory") return queryPlayerDirectory();
   if (resource === "leaderboard") return queryLeaderboard(params);
   if (resource === "yearly_leaderboard") return queryYearlyLeaderboard(params);
   if (resource === "leaderboard_counts") return queryLeaderboardCounts();

@@ -30,6 +30,7 @@ const exchangeMarketIdSchema = z
   .regex(/^[a-z0-9-]+$/);
 
 const bodySchema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("bootstrap") }),
   z.object({ action: z.literal("markets") }),
   z.object({ action: z.literal("exchangeMarkets") }),
   z.object({ action: z.literal("bets") }),
@@ -439,6 +440,41 @@ const presentOrderMutation = async (
   return { ...mutation, marketId, state };
 };
 
+const loadExchangeMarketCatalog = async (supabase: ReturnType<typeof createServerSupabase>) => {
+  const { data, error } = await supabase
+    .from("prediction_markets")
+    .select(
+      "id,group_id,group_path,group_title,group_description,group_order,display_name,country_code,starting_chance,display_order,outcome_yes_label,outcome_no_label,outcome_yes_country_code,outcome_no_country_code",
+    )
+    .not("group_id", "is", null)
+    .order("group_order", { ascending: true })
+    .order("display_order", { ascending: true });
+  if (error) throw new Error(`Unable to load prediction market catalog: ${error.message}`);
+  return data ?? [];
+};
+
+const loadTournamentMarkets = async (supabase: ReturnType<typeof createServerSupabase>) => {
+  const { data, error } = await supabase
+    .from("tournament_betting_markets")
+    .select(marketColumns)
+    .in("tournament_id", ["awc2026", "lichess-ban-2026"])
+    .order("category_order", { ascending: true })
+    .order("round_order", { ascending: true });
+  if (error) throw new Error(`Unable to load betting markets: ${error.message}`);
+  return data ?? [];
+};
+
+const loadAllTournamentBets = async (supabase: ReturnType<typeof createServerSupabase>) => {
+  const { data, error } = await supabase
+    .from("tournament_bets")
+    .select(betColumns)
+    .order("placed_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(200);
+  if (error) throw new Error(`Unable to load all tournament bets: ${error.message}`);
+  return data ?? [];
+};
+
 export const bettingRoute = async (event: FunctionEvent) => {
   const input = parseJsonBody(event, bodySchema, "Invalid betting request.");
   if (
@@ -455,7 +491,8 @@ export const bettingRoute = async (event: FunctionEvent) => {
   }
   const identity = await authenticateRequest(
     event.headers,
-    input.action === "markets" ||
+    input.action === "bootstrap" ||
+      input.action === "markets" ||
       input.action === "exchangeMarkets" ||
       input.action === "allBets" ||
       input.action === "suggestions" ||
@@ -464,17 +501,24 @@ export const bettingRoute = async (event: FunctionEvent) => {
   );
   const supabase = createServerSupabase("Tournament betting service");
 
+  if (input.action === "bootstrap") {
+    const [markets, exchangeMarkets, allBets] = await Promise.all([
+      loadTournamentMarkets(supabase),
+      loadExchangeMarketCatalog(supabase),
+      loadAllTournamentBets(supabase),
+    ]);
+    const exchangeMarketStates = await loadPredictionMarketStates(
+      supabase,
+      exchangeMarkets.map((market) => market.id),
+      identity?.username ?? null,
+    );
+    return identityResponse(identity, 200, {
+      result: { markets, exchangeMarkets, allBets, exchangeMarketStates },
+    });
+  }
+
   if (input.action === "exchangeMarkets") {
-    const { data, error } = await supabase
-      .from("prediction_markets")
-      .select(
-        "id,group_id,group_path,group_title,group_description,group_order,display_name,country_code,starting_chance,display_order,outcome_yes_label,outcome_no_label,outcome_yes_country_code,outcome_no_country_code",
-      )
-      .not("group_id", "is", null)
-      .order("group_order", { ascending: true })
-      .order("display_order", { ascending: true });
-    if (error) throw new Error(`Unable to load prediction market catalog: ${error.message}`);
-    return identityResponse(identity, 200, { result: data ?? [] });
+    return identityResponse(identity, 200, { result: await loadExchangeMarketCatalog(supabase) });
   }
 
   if (input.action === "exchangeMarket" || input.action === "exchangeMarketBatch") {
@@ -493,25 +537,11 @@ export const bettingRoute = async (event: FunctionEvent) => {
   }
 
   if (input.action === "markets") {
-    const { data, error } = await supabase
-      .from("tournament_betting_markets")
-      .select(marketColumns)
-      .in("tournament_id", ["awc2026", "lichess-ban-2026"])
-      .order("category_order", { ascending: true })
-      .order("round_order", { ascending: true });
-    if (error) throw new Error(`Unable to load betting markets: ${error.message}`);
-    return identityResponse(identity, 200, { result: data });
+    return identityResponse(identity, 200, { result: await loadTournamentMarkets(supabase) });
   }
 
   if (input.action === "allBets") {
-    const { data, error } = await supabase
-      .from("tournament_bets")
-      .select(betColumns)
-      .order("placed_at", { ascending: false })
-      .order("id", { ascending: false })
-      .limit(200);
-    if (error) throw new Error(`Unable to load all tournament bets: ${error.message}`);
-    return identityResponse(identity, 200, { result: data });
+    return identityResponse(identity, 200, { result: await loadAllTournamentBets(supabase) });
   }
 
   if (input.action === "suggestions") {

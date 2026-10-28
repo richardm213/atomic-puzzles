@@ -28,6 +28,7 @@ create table if not exists public.tournament_catalog (
   status text not null default 'pending' check (status in ('available', 'pending')),
   match_mode text not null default 'blitz'
     check (match_mode in ('hyperbullet', 'bullet', 'blitz', 'wolfrandom', 'atomic960')),
+  time_control text,
   hide_start_round_controls boolean not null default false,
   default_main_bracket_start_round text,
   complete_main_bracket_from_round text,
@@ -47,6 +48,9 @@ alter table public.tournament_catalog
 
 alter table public.tournament_catalog
   add column if not exists end_date date;
+
+alter table public.tournament_catalog
+  add column if not exists time_control text;
 
 do $$
 begin

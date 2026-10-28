@@ -1,7 +1,7 @@
 import { queryOptions } from "@tanstack/react-query";
 
 import { normalizeUsername } from "../../utils/playerNames";
-import { fetchPlayerRatingsRows } from "../archive/ratings";
+import { fetchPlayerDirectoryRows } from "../archive/ratings";
 import { isRegisteredSiteUser } from "../supabase/users";
 
 const USERS_STALE_TIME_MS = 5 * 60 * 1_000;
@@ -21,7 +21,7 @@ const normalizeCandidateUsernames = (usernames: string[]): string[] => [
 export const userRatingsQueryOptions = () =>
   queryOptions({
     queryKey: userQueryKeys.ratings(),
-    queryFn: () => fetchPlayerRatingsRows(),
+    queryFn: fetchPlayerDirectoryRows,
     staleTime: USERS_STALE_TIME_MS,
   });
 

@@ -34,7 +34,7 @@ const TournamentSpotlightCard = ({
     </p>
     {tournament.trophyAssetPath ? (
       <img
-        src={appAssetPath(tournament.trophyAssetPath)}
+        src={appAssetPath(tournament.trophyAssetPath.replace(/\.png$/i, ".webp"))}
         alt=""
         width="140"
         height="140"
@@ -172,7 +172,7 @@ export const HomePage = () => {
             <h2>Arena archive</h2>
             <div className="homeArenaArtwork" aria-hidden="true">
               <img
-                src={appAssetPath("/images/arenas/atomic-shield.png")}
+                src={appAssetPath("/images/arenas/atomic-shield.webp")}
                 alt=""
                 width="58"
                 height="64"

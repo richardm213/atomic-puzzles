@@ -21,7 +21,13 @@ export type MatchFilters = {
   sourceFilters?: Partial<SourceFilters>;
 };
 
-type MatchPageOptions = { page?: number; pageSize?: number };
+type MatchPageOptions = { page?: number; pageSize?: number; includeTotal?: boolean };
+type MatchPageResult = {
+  rows: MatchRow[];
+  total: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
+};
 
 const ARCHIVE_MATCH_MODES = new Set<ArchiveMode>([
   "blitz",
@@ -31,7 +37,7 @@ const ARCHIVE_MATCH_MODES = new Set<ArchiveMode>([
   "atomic960",
 ]);
 
-const matchRowsCache = new Map<string, Promise<{ rows: MatchRow[]; total: number }>>();
+const matchRowsCache = new Map<string, Promise<MatchPageResult>>();
 const MAX_MATCH_PAGE_SIZE = 200;
 
 const finiteNumber = (value: unknown): number | null => {
@@ -45,6 +51,7 @@ const buildParams = (
   filters: MatchFilters,
   page: number,
   pageSize: number,
+  includeTotal: boolean,
 ): URLSearchParams => {
   const params = new URLSearchParams({
     resource: "matches",
@@ -52,6 +59,7 @@ const buildParams = (
     pageSize: String(pageSize),
   });
   appendArchiveParam(params, "mode", mode);
+  if (!includeTotal) params.set("includeTotal", "false");
   appendArchiveParam(params, "username", normalizeUsername(filters.username));
   appendArchiveParam(params, "pairA", normalizeUsername(filters.usernamePair?.[0]));
   appendArchiveParam(params, "pairB", normalizeUsername(filters.usernamePair?.[1]));
@@ -81,22 +89,23 @@ const fetchUncachedMatchRows = async (
   mode: ArchiveMode | undefined,
   filters: MatchFilters,
   options: MatchPageOptions,
-): Promise<{ rows: MatchRow[]; total: number }> => {
+): Promise<MatchPageResult> => {
   if (mode !== undefined && !ARCHIVE_MATCH_MODES.has(mode)) {
     throw new Error(`Unsupported match mode "${mode}"`);
   }
   const requestedSize = Math.floor(Number(options.pageSize));
   const singlePage = Number.isFinite(requestedSize) && requestedSize > 0;
   const pageSize = singlePage ? Math.min(MAX_MATCH_PAGE_SIZE, requestedSize) : MAX_MATCH_PAGE_SIZE;
+  const includeTotal = options.includeTotal !== false;
   let page = Math.max(1, Math.floor(Number(options.page)) || 1);
   const rows: MatchRow[] = [];
   for (;;) {
-    const result = await fetchArchiveJson<{ rows: MatchRow[]; total: number }>(
-      buildParams(mode, filters, page, pageSize),
+    const result = await fetchArchiveJson<MatchPageResult>(
+      buildParams(mode, filters, page, pageSize, includeTotal),
     );
     rows.push(...result.rows);
-    if (singlePage || rows.length >= result.total || result.rows.length < pageSize) {
-      return { rows, total: result.total };
+    if (singlePage || !result.hasNextPage || result.rows.length < pageSize) {
+      return { ...result, rows };
     }
     page += 1;
   }
@@ -106,7 +115,7 @@ export const fetchMatchRowsFromArchive = async (
   mode: ArchiveMode | undefined,
   filters: MatchFilters = {},
   pageOptions: MatchPageOptions = {},
-): Promise<{ rows: MatchRow[]; total: number }> =>
+): Promise<MatchPageResult> =>
   cachedRequest(matchRowsCache, ["matches-archive", mode, filters, pageOptions], () =>
     fetchUncachedMatchRows(mode, filters, pageOptions),
   );
