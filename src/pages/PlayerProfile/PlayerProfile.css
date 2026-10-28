@@ -67,7 +67,7 @@
   background: color-mix(in srgb, var(--color-primary) 12%, var(--color-panel-strong));
   color: var(--color-primary-soft);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 650;
   letter-spacing: 0.08em;
   line-height: 1;
 }
@@ -107,7 +107,7 @@
   background: var(--opening-bg);
   color: var(--opening-text);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 650;
   line-height: 1.2;
   white-space: nowrap;
   box-shadow: 0 6px 14px color-mix(in srgb, var(--opening-border) 32%, transparent);
@@ -126,7 +126,7 @@
   color: var(--color-primary-pale);
   font-size: 24px;
   font-variant-numeric: tabular-nums;
-  font-weight: 700;
+  font-weight: 650;
   line-height: 1;
   text-decoration: none;
   transform: translateY(1px);
@@ -633,7 +633,7 @@
   margin: 0;
   color: var(--color-heading);
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 650;
   line-height: 24px;
 }
 
@@ -923,7 +923,7 @@
 
 .profileAliasTooltipLink {
   color: color-mix(in srgb, var(--color-primary) 78%, white 22%);
-  font-weight: 700;
+  font-weight: 650;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -1746,7 +1746,7 @@
   margin-bottom: 8px;
   color: var(--color-subtle);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 650;
 }
 
 .favoriteOpponentMatchesHeader > span {

@@ -253,7 +253,7 @@ body:has(.analysisPage),
   background: transparent;
   color: var(--color-text);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 650;
   text-align: left;
 }
 
@@ -621,7 +621,7 @@ body:has(.analysisPage),
   );
   color: #ffffff;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 650;
   text-align: left;
   text-shadow: 0 1px 1px color-mix(in srgb, black 48%, transparent);
   box-shadow: 0 1px 0 color-mix(in srgb, white 16%, transparent) inset;
@@ -828,7 +828,7 @@ body:has(.analysisPage),
 .analysisRatingSlider output {
   color: color-mix(in srgb, var(--color-heading) 82%, var(--color-primary-soft) 18%);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1146,14 +1146,14 @@ body:has(.analysisPage),
   border-bottom: 0;
   background: color-mix(in srgb, var(--color-primary) 26%, var(--color-panel-deep) 74%);
   color: color-mix(in srgb, var(--color-heading) 88%, transparent);
-  font-weight: 700;
+  font-weight: 650;
   box-shadow: 0 -8px 18px color-mix(in srgb, black 22%, transparent);
 }
 
 .analysisExplorerSummaryMove {
   color: var(--color-primary-pale);
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 650;
 }
 
 .analysisExplorerMoveButton {
@@ -1214,7 +1214,7 @@ body:has(.analysisPage),
   overflow: hidden;
   color: #17305d;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 650;
   line-height: 1;
   text-shadow: none;
   white-space: nowrap;

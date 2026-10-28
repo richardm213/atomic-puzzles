@@ -313,7 +313,7 @@
   box-shadow: 0 12px 24px color-mix(in srgb, var(--color-panel-deep) 26%, transparent);
   content: attr(data-tooltip);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 650;
   line-height: 1.35;
   opacity: 0;
   pointer-events: none;
@@ -436,7 +436,7 @@
   display: grid;
   place-items: center;
   font-size: 9px;
-  font-weight: 700;
+  font-weight: 650;
 }
 
 .puzzleReviewInstructions {
@@ -463,7 +463,7 @@
   justify-content: center;
   gap: 8px;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 650;
   line-height: 1.1;
   text-decoration: none;
   transition:
@@ -565,7 +565,7 @@
   justify-content: center;
   gap: 9px;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 650;
   letter-spacing: 0.01em;
   transition:
     transform 140ms ease,
@@ -796,7 +796,7 @@
 .puzzleReviewBonuses output {
   color: var(--color-heading);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 650;
   white-space: nowrap;
 }
 

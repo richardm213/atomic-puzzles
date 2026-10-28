@@ -145,7 +145,7 @@
 }
 .arenaIdentity strong {
   color: var(--arena-accent);
-  font-weight: 700;
+  font-weight: 650;
   font-size: 21px;
   letter-spacing: -0.025em;
 }

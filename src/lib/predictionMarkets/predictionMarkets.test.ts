@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  formatPredictionAveragePrice,
+  formatPredictionChance,
   formatPredictionShares,
   type PredictionMarketState,
   predictionMarketStateResultSchema,
@@ -9,6 +11,21 @@ import {
   quotePredictionBuy,
   quotePredictionSell,
 } from "./predictionMarkets";
+
+describe("formatPredictionChance", () => {
+  it("formats sportsbook prices as implied percentages", () => {
+    expect(formatPredictionChance(85)).toBe("85%");
+    expect(formatPredictionChance(undefined)).toBe("—");
+  });
+});
+
+describe("formatPredictionAveragePrice", () => {
+  it("formats whole and fractional position cost bases", () => {
+    expect(formatPredictionAveragePrice(90)).toBe("90¢");
+    expect(formatPredictionAveragePrice(33.333333)).toBe("33.3¢");
+    expect(formatPredictionAveragePrice(null)).toBeUndefined();
+  });
+});
 
 describe("quotePredictionBuy", () => {
   it("reports weighted fill price and leaves excess contracts resting", () => {

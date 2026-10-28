@@ -47,7 +47,7 @@
 
 .paginationPageButton {
   min-width: 112px;
-  font-weight: 700;
+  font-weight: 650;
 }
 
 .paginationJumpForm {
@@ -59,7 +59,7 @@
   align-items: center;
   gap: 8px;
   padding: 4px 8px 4px 10px;
-  font-weight: 700;
+  font-weight: 650;
 }
 
 .paginationJumpInput {

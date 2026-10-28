@@ -103,7 +103,7 @@
 .wolfarenaPodium li > span {
   color: var(--color-muted);
   font-size: 0.82rem;
-  font-weight: 700;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
 
@@ -335,7 +335,7 @@
 .wolfarenaSectionHeading > span {
   color: var(--color-subtle);
   font-size: 0.72rem;
-  font-weight: 700;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
 
@@ -549,7 +549,7 @@
 
 .wolfarenaStandingsTable tbody th {
   color: var(--color-heading);
-  font-weight: 700;
+  font-weight: 650;
 }
 
 .wolfarenaStandingPlayer {
@@ -630,7 +630,7 @@
 .wolfarenaRoundFooter > span {
   color: var(--color-subtle);
   font-size: 0.76rem;
-  font-weight: 700;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
 

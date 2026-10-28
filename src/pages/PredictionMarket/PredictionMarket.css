@@ -1,5 +1,5 @@
 .predictionMarketPage {
-  --site-page-max-width: 1100px;
+  --site-page-max-width: 1180px;
   --site-page-padding: clamp(12px, 3vw, 28px);
 }
 
@@ -9,7 +9,7 @@
 
   min-width: 0;
   width: 100%;
-  max-width: 1100px;
+  max-width: var(--site-page-max-width);
   margin: 0 auto;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
@@ -31,7 +31,7 @@
 .predictionMarketHeader a,
 .predictionRules a {
   color: var(--color-primary-pale);
-  font-weight: 700;
+  font-weight: 650;
   text-decoration: none;
 }
 
@@ -122,21 +122,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.predictionPrice {
-  display: inline-flex;
-  align-items: baseline;
-  font-variant-numeric: tabular-nums;
-}
-
-.predictionPriceCent {
-  margin-left: 1px;
-  font-family: var(--font-sans);
-  font-size: 0.8em;
-  font-weight: 700;
-  line-height: 1;
-  transform: translateY(-0.08em);
-}
-
 .predictionTradingGrid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 330px;
@@ -172,6 +157,7 @@
 }
 
 .predictionProbabilityPanel {
+  padding-right: 0;
   border-bottom: 0;
   background: transparent;
 }
@@ -188,221 +174,6 @@
   margin: 0;
   color: var(--color-heading);
   font-size: 16px;
-}
-
-.predictionOutcomeList {
-  border-top: 1px solid var(--color-border);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.predictionOutcomeHeader {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) clamp(52px, 8vw, 68px) minmax(196px, 230px);
-  gap: clamp(10px, 2vw, 18px);
-  padding: 7px 0;
-  border-bottom: 1px solid var(--color-border);
-  color: var(--color-subtle);
-  font-size: 10px;
-  text-align: center;
-  text-transform: uppercase;
-}
-
-.predictionOutcomeSummary {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) clamp(52px, 8vw, 68px) minmax(196px, 230px);
-  gap: clamp(10px, 2vw, 18px);
-  align-items: center;
-  min-height: 72px;
-  padding: 8px 0 8px 12px;
-  border-top: 1px solid var(--color-border);
-}
-
-.predictionOutcomeHeader + .predictionOutcomeSummary {
-  border-top: 0;
-}
-
-.predictionOutcomeSummary--active {
-  background: color-mix(in srgb, var(--color-heading) 2.5%, transparent);
-}
-
-.predictionOutcomeSummary--resolved {
-  grid-template-columns: minmax(180px, 1fr) auto;
-  gap: 18px;
-  min-height: 72px;
-  padding: 8px 0 8px 12px;
-}
-
-.predictionOutcomeMarketBlock {
-  display: grid;
-  gap: 8px;
-}
-
-.predictionOutcomeIdentity {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.predictionOutcomeIdentity--resolved {
-  min-height: 40px;
-  padding: 4px 0;
-}
-
-.predictionOutcomeToggle {
-  width: 100%;
-  max-width: 100%;
-  min-height: 40px;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  padding: 4px 0;
-  font: inherit;
-  text-align: left;
-  overflow: hidden;
-}
-
-.predictionStrikeDrawer {
-  grid-column: 1 / -1;
-  display: block;
-  margin-top: 8px;
-  padding: 0;
-}
-
-.predictionStrikeDrawer .predictionBookPanel {
-  margin: 0;
-  padding: 0;
-  border-bottom: 0;
-}
-
-.predictionHoldings {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 14px;
-}
-
-.predictionHolding {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
-}
-
-.predictionHolding--yes {
-  color: var(--prediction-yes);
-}
-
-.predictionHolding--no {
-  color: var(--prediction-no);
-}
-
-.predictionHoldingCheck {
-  display: inline-grid;
-  width: 17px;
-  height: 17px;
-  place-items: center;
-  border-radius: 50%;
-  color: var(--color-panel);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.predictionHolding--yes .predictionHoldingCheck {
-  background: var(--prediction-yes);
-}
-
-.predictionHolding--no .predictionHoldingCheck {
-  background: var(--prediction-no);
-}
-
-.predictionOutcomeChance {
-  display: block;
-  text-align: center;
-}
-
-.predictionOutcomeChance strong {
-  color: var(--color-heading);
-  font-size: 20px;
-  font-variant-numeric: tabular-nums;
-}
-
-.predictionOutcomeActions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(90px, 1fr));
-  gap: 8px;
-}
-
-.predictionOutcomeAction {
-  display: grid;
-  align-content: center;
-  min-height: 44px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: 999px;
-  background: transparent;
-  padding: 5px 14px;
-  transition:
-    background-color 180ms ease,
-    border-color 180ms ease,
-    transform 120ms ease;
-}
-
-.predictionOutcomeAction strong {
-  font-size: 14px;
-}
-
-.predictionOutcomeActionPrice {
-  display: flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 5px;
-}
-
-.predictionOutcomeAction--yes {
-  color: var(--prediction-yes);
-}
-
-.predictionOutcomeAction--no {
-  color: var(--prediction-no);
-}
-
-.predictionOutcomeAction--yes[aria-pressed="true"] {
-  border-color: color-mix(in srgb, var(--prediction-yes) 72%, var(--color-border));
-  background: color-mix(in srgb, var(--prediction-yes) 10%, transparent);
-}
-
-.predictionOutcomeAction--no[aria-pressed="true"] {
-  border-color: color-mix(in srgb, var(--prediction-no) 72%, var(--color-border));
-  background: color-mix(in srgb, var(--prediction-no) 10%, transparent);
-}
-
-.predictionOutcomeAction:hover {
-  border-color: var(--color-muted);
-}
-
-.predictionOutcomeAction:active {
-  transform: translateY(1px);
-}
-
-.predictionResolvedResult {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  font-size: 16px;
-  font-weight: 650;
-}
-
-.predictionResolvedResult--yes {
-  color: var(--prediction-yes);
-}
-
-.predictionResolvedResult--no {
-  color: var(--prediction-no);
-}
-
-.predictionResolvedResult--price {
-  color: var(--color-text-secondary);
 }
 
 .predictionAccountPanel > p,
@@ -436,36 +207,6 @@
   padding: 14px 18px 18px;
 }
 
-.predictionTicket label {
-  display: grid;
-  gap: 7px;
-  color: var(--color-muted);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.predictionTicket input {
-  width: 100%;
-  min-height: 44px;
-  border: 1px solid var(--color-input-border);
-  border-radius: var(--radius-ui);
-  background: var(--color-panel-strong);
-  color: var(--color-heading);
-  padding: 9px 12px;
-  font-size: 16px;
-  font-variant-numeric: tabular-nums;
-}
-
-.predictionTicket input[type="number"] {
-  appearance: textfield;
-}
-
-.predictionTicket input[type="number"]::-webkit-inner-spin-button,
-.predictionTicket input[type="number"]::-webkit-outer-spin-button {
-  margin: 0;
-  appearance: none;
-}
-
 .predictionInventory {
   display: grid;
   gap: 3px;
@@ -488,7 +229,7 @@
   background: var(--color-primary);
   color: var(--color-on-primary);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 650;
   transition:
     background-color 180ms ease,
     transform 120ms ease;
@@ -551,7 +292,7 @@
 .predictionOrderContract small {
   color: var(--color-muted);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 650;
 }
 
 .predictionOrders td {
@@ -612,7 +353,7 @@
   grid-column: 3;
   grid-row: 1;
   color: var(--color-heading);
-  font-weight: 700;
+  font-weight: 650;
   white-space: nowrap;
 }
 
@@ -627,7 +368,7 @@
 
 .predictionTradeParties a {
   color: var(--color-primary-pale);
-  font-weight: 700;
+  font-weight: 650;
   overflow-wrap: anywhere;
   text-decoration: none;
 }
@@ -661,8 +402,6 @@
   line-height: 1.55;
 }
 
-.predictionOutcomeAction:focus-visible,
-.predictionOutcomeToggle:focus-visible,
 .predictionTicket button:focus-visible,
 .predictionOrders button:focus-visible,
 .predictionRules summary:focus-visible {
@@ -697,12 +436,6 @@
 
   .predictionTradingGrid {
     display: grid;
-  }
-
-  .predictionStrikeDrawer {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0;
-    padding: 0;
   }
 
   .predictionBookPanel {
@@ -749,29 +482,6 @@
   }
 }
 
-@media (max-width: 700px) {
-  .predictionOutcomeHeader {
-    display: none;
-  }
-
-  .predictionOutcomeSummary {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 10px 14px;
-    padding: 10px 0;
-  }
-
-  .predictionOutcomeSummary--resolved {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 10px 14px;
-    min-height: 72px;
-    padding: 8px 0;
-  }
-
-  .predictionOutcomeActions {
-    grid-column: 1 / -1;
-  }
-}
-
 @media (max-width: 560px) {
   .predictionMarketPage {
     padding: 0;
@@ -803,8 +513,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .predictionSubmit,
-  .predictionOutcomeAction {
+  .predictionSubmit {
     transition: none;
   }
 }

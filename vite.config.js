@@ -30,7 +30,10 @@ const DEFAULT_LOCAL_ARCHIVE_ORIGIN = "https://atomicpuzzles.org";
 
 const proxyArchiveRequest = async (req, res, archiveOrigin) => {
   const requestUrl = new URL(req.url ?? "/", "http://localhost");
-  const upstreamUrl = new URL("/api/archive-data", archiveOrigin);
+  // Proxy the function's stable Netlify URL directly. The public /api route can
+  // be shadowed by the SPA fallback on an older deploy, which returns index.html
+  // with a 200 and makes valid archive requests look like malformed JSON.
+  const upstreamUrl = new URL("/.netlify/functions/archive-data", archiveOrigin);
   upstreamUrl.search = requestUrl.search;
   const response = await fetch(upstreamUrl, {
     method: req.method,

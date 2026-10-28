@@ -66,10 +66,10 @@ immutable
 set search_path = public
 as $$
   select case
-    when p_rating >= 2375 then 5
-    when p_rating >= 2125 then 4
-    when p_rating >= 1875 then 3
-    when p_rating >= 1625 then 2
+    when p_rating >= 2550 then 5
+    when p_rating >= 2250 then 4
+    when p_rating >= 1950 then 3
+    when p_rating >= 1650 then 2
     else 1
   end::smallint;
 $$;

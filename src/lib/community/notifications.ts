@@ -66,6 +66,12 @@ export const isPredictionOrderFillNotification = (notification: UserNotification
   notification.notification_type === "feature" &&
   notification.feature_key?.startsWith("prediction-order-filled:") === true;
 
+export const isPredictionOrderCancellationNotification = (
+  notification: UserNotification,
+): boolean =>
+  notification.notification_type === "feature" &&
+  notification.feature_key?.startsWith("prediction-order-cancelled-unfunded:") === true;
+
 export const isPredictionPayoutNotification = (notification: UserNotification): boolean =>
   notification.notification_type === "feature" &&
   notification.feature_key?.startsWith("prediction-market-payout:") === true;
@@ -75,7 +81,11 @@ export const isCommentMentionNotification = (notification: UserNotification): bo
 
 export const notificationCategory = (notification: UserNotification): string => {
   if (isCommentMentionNotification(notification)) return "Mention";
-  if (isPredictionOrderFillNotification(notification)) return "Prediction order";
+  if (
+    isPredictionOrderFillNotification(notification) ||
+    isPredictionOrderCancellationNotification(notification)
+  )
+    return "Prediction order";
   if (isPredictionPayoutNotification(notification)) return "Prediction payout";
   if (
     notification.notification_type === "coin_gift" ||

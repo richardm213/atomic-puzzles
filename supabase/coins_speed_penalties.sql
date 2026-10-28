@@ -3,6 +3,23 @@
 -- Run fractional_coins.sql before this migration.
 begin;
 
+alter table public.puzzle_progress
+  add column if not exists correct_move text,
+  add column if not exists first_attempt_duration_ms integer;
+
+comment on column public.puzzle_progress.correct_move is
+  'Move played at the first point where the correct solution lines diverge, including move number.';
+
+comment on column public.puzzle_progress.first_attempt_duration_ms is
+  'Elapsed milliseconds from puzzle readiness to the user''s first resolved attempt.';
+
+alter table public.puzzle_progress
+  drop constraint if exists puzzle_progress_first_attempt_duration_ms_check;
+
+alter table public.puzzle_progress
+  add constraint puzzle_progress_first_attempt_duration_ms_check
+  check (first_attempt_duration_ms is null or first_attempt_duration_ms >= 0);
+
 create or replace function public.award_coins_for_puzzle_attempt()
 returns trigger
 language plpgsql

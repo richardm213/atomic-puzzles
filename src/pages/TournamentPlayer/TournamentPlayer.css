@@ -14,7 +14,7 @@
   width: fit-content;
   color: var(--color-heading);
   font-size: var(--text-sm);
-  font-weight: 700;
+  font-weight: 650;
   text-decoration: none;
   text-underline-offset: 3px;
 }
@@ -50,7 +50,7 @@
   padding: 0 2px;
   color: var(--color-heading);
   font-size: var(--text-sm);
-  font-weight: 700;
+  font-weight: 650;
   text-decoration: none;
   text-underline-offset: 3px;
   transition: color 140ms ease;
@@ -126,7 +126,7 @@
   order: 2;
   color: var(--color-subtle);
   font-size: 0.72rem;
-  font-weight: 700;
+  font-weight: 650;
   line-height: 1.2;
 }
 
@@ -424,7 +424,7 @@
   max-width: 100%;
   overflow: hidden;
   color: var(--link-color);
-  font-weight: 700;
+  font-weight: 650;
   text-decoration: none;
   text-overflow: ellipsis;
   text-underline-offset: 3px;
@@ -502,7 +502,7 @@
 .tournamentProfilePlacement span {
   color: var(--color-subtle);
   font-size: 0.8rem;
-  font-weight: 700;
+  font-weight: 650;
 }
 
 .tournamentProfilePlacement strong {
@@ -539,7 +539,7 @@
 .tournamentProfileTourFooter dt {
   color: var(--color-subtle);
   font-size: 0.75rem;
-  font-weight: 700;
+  font-weight: 650;
 }
 
 .tournamentProfileTourFooter dd {

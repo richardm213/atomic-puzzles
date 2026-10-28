@@ -46,7 +46,7 @@
   background: color-mix(in srgb, var(--color-surface-soft) 88%, transparent);
   color: var(--color-heading);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 650;
   text-decoration: none;
   transition:
     transform 140ms ease,

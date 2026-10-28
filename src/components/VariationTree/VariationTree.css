@@ -10,7 +10,7 @@
   color: var(--color-muted);
   border-radius: var(--radius-ui);
   padding: 3px 5px;
-  font-weight: 700;
+  font-weight: 650;
   transition:
     color 140ms ease,
     text-decoration-color 140ms ease;

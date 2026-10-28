@@ -95,7 +95,7 @@
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  font-weight: 700;
+  font-weight: 650;
   color: transparent;
   text-shadow: var(--brand-wordmark-shadow);
   transition:
@@ -257,7 +257,7 @@
   align-items: center;
   color: var(--color-muted);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 650;
   text-decoration: none;
   transition:
     background 120ms ease,
@@ -360,7 +360,7 @@
   gap: 16px;
   color: var(--color-heading);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 650;
   cursor: pointer;
 }
 
@@ -626,7 +626,7 @@
   min-width: 0;
   overflow: hidden;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 650;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -735,7 +735,7 @@
   background: transparent;
   color: var(--color-heading);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
   text-decoration: none;
   transition:
@@ -801,7 +801,7 @@
   background: linear-gradient(135deg, var(--notification-accent), var(--color-cyan));
   color: white;
   font-size: 9px;
-  font-weight: 700;
+  font-weight: 650;
   line-height: 1;
   font-variant-numeric: tabular-nums;
   box-shadow: 0 3px 10px color-mix(in srgb, var(--notification-accent) 34%, transparent);
@@ -1115,7 +1115,7 @@
 }
 
 .navAuthProfile {
-  font-weight: 700;
+  font-weight: 650;
   white-space: nowrap;
   transition: color 140ms ease;
 }
@@ -1160,7 +1160,7 @@
   align-items: center;
   gap: var(--space-3);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 650;
   line-height: 1.25;
   text-align: left;
   text-decoration: none;
@@ -1441,7 +1441,7 @@
     padding: 0 12px;
     border-radius: var(--radius-ui);
     color: var(--color-text);
-    font-weight: 700;
+    font-weight: 650;
   }
 
   .navDropdown {

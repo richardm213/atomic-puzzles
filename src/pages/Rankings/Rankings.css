@@ -20,7 +20,7 @@
   gap: 6px;
   color: var(--color-subtle);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 650;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -59,7 +59,7 @@
 .currentMonthLabel {
   color: var(--color-text);
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 650;
   line-height: 1.2;
 }
 
@@ -198,7 +198,7 @@
 .rankingsWolfrandomTooltip a {
   margin-left: 0.28em;
   color: var(--color-primary-soft);
-  font-weight: 700;
+  font-weight: 650;
 }
 
 .rankingsEligibilityNote {
@@ -333,7 +333,7 @@
 }
 
 .rankingsLeaderboardPanel .rankingLink {
-  font-weight: 700;
+  font-weight: 650;
   text-underline-offset: 3px;
 }
 

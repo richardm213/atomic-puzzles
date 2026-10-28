@@ -97,7 +97,7 @@
   background: var(--color-surface-soft);
   color: var(--color-muted);
   font-size: 0.78rem;
-  font-weight: 700;
+  font-weight: 650;
 }
 
 .atomicTourLosersStartControl select {

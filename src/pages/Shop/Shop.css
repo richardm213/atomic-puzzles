@@ -228,7 +228,7 @@
   align-items: center;
   color: var(--color-heading);
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
 
@@ -362,7 +362,7 @@
   gap: var(--space-1);
   color: var(--color-muted);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 650;
 }
 
 .analysisInputRow {
@@ -400,7 +400,7 @@
   padding: 0 var(--space-5) var(--space-3);
   color: var(--color-danger);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 650;
 }
 
 .analysisRequestForm > footer {
@@ -574,7 +574,7 @@
   align-items: center;
   gap: var(--space-1);
   color: var(--color-heading);
-  font-weight: 700;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
 

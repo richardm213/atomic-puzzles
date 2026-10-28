@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  notificationCategory,
   notificationCopy,
   notificationMessage,
   rankingNotificationImage,
@@ -36,6 +37,16 @@ describe("safeNotificationPath", () => {
 });
 
 describe("notificationCopy", () => {
+  it("groups unfunded order cancellations with prediction-order activity", () => {
+    expect(
+      notificationCategory({
+        ...makeNotification("feature"),
+        feature_key: "prediction-order-cancelled-unfunded:42",
+        feature_message: "We cancelled the remaining order.",
+      }),
+    ).toBe("Prediction order");
+  });
+
   it("shows a reusable feature announcement without quoted detail text", () => {
     const notification = {
       ...makeNotification("feature"),

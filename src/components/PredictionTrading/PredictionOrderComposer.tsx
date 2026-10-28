@@ -14,6 +14,7 @@ import {
   predictionOutcomes,
 } from "../../lib/predictionMarkets/predictionMarkets";
 import { countryCodeToFlagUrl } from "../../utils/countryFlags";
+import { PredictionPrice } from "./PredictionPrice";
 
 type PredictionOrderComposerProps = {
   definition: PredictionMarketDefinition;
@@ -33,8 +34,8 @@ type PredictionOrderComposerProps = {
   secondaryLabel: string;
   secondaryNote?: ReactNode;
   secondaryValue: ReactNode;
+  showSell?: boolean;
   side?: PredictionOrderSide;
-  sellDisabled?: boolean;
 };
 
 export const PredictionOrderComposer = ({
@@ -55,18 +56,17 @@ export const PredictionOrderComposer = ({
   secondaryLabel,
   secondaryNote,
   secondaryValue,
+  showSell = true,
   side = "buy",
-  sellDisabled = false,
 }: PredictionOrderComposerProps) => (
   <div className={`predictionSharedComposer predictionSharedComposer--${density}`}>
     <div className="predictionSharedTicketHeader">
       <div className="predictionSharedSideTabs" role="group" aria-label="Order side">
         {onSideChange ? (
-          (["buy", "sell"] as const).map((entry) => (
+          (["buy", ...(showSell ? (["sell"] as const) : [])] as const).map((entry) => (
             <button
               type="button"
               aria-pressed={side === entry}
-              disabled={entry === "sell" && sellDisabled}
               onClick={() => onSideChange(entry)}
               key={entry}
             >
@@ -104,7 +104,13 @@ export const PredictionOrderComposer = ({
           key={entry}
         >
           <span>{predictionOutcomeAbbreviation(definition, entry)}</span>
-          <strong>{outcomePrices[entry] === undefined ? "—" : `${outcomePrices[entry]}¢`}</strong>
+          <strong>
+            {outcomePrices[entry] === undefined ? (
+              "—"
+            ) : (
+              <PredictionPrice cents={outcomePrices[entry]} />
+            )}
+          </strong>
         </button>
       ))}
     </div>

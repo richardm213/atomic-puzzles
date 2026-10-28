@@ -1046,7 +1046,7 @@
   background: color-mix(in srgb, var(--color-primary) 8%, transparent);
   color: var(--color-heading);
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 650;
   line-height: 1.2;
 }
 

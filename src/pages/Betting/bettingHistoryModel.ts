@@ -3,6 +3,7 @@ import {
   type PredictionMarketGroup,
   type PredictionMarketState,
   type PredictionOutcome,
+  predictionOutcomeCountryCode,
   predictionOutcomeLabel,
   predictionOutcomes,
 } from "../../lib/predictionMarkets/predictionMarkets";
@@ -12,6 +13,8 @@ export type BetHistoryEntry = TournamentBet & {
   historyKey?: string;
   predictionUsername?: string;
   predictionOutcome?: PredictionOutcome;
+  predictionSelectionLabel?: string | undefined;
+  predictionSelectionCountryCode?: string | undefined;
   predictionMarketTitle?: string | undefined;
   predictionSettlementPriceCents?: number | undefined;
 };
@@ -96,6 +99,8 @@ export const buildBetHistory = ({
         kind: "prediction",
         predictionUsername: roundOf16Definition.username,
         predictionOutcome: outcome,
+        predictionSelectionLabel: predictionOutcomeLabel(roundOf16Definition, outcome),
+        predictionSelectionCountryCode: predictionOutcomeCountryCode(roundOf16Definition, outcome),
         predictionMarketTitle: "AWC 2026 Round of 16",
       };
     }
@@ -118,7 +123,7 @@ export const buildBetHistory = ({
       kind: "prediction",
       predictionUsername: definition.username,
       predictionOutcome: outcome,
-      predictionMarketTitle: "AWC 2026 champion",
+      predictionMarketTitle: "Who will win 2026 AWC",
     };
   });
 
@@ -131,6 +136,7 @@ export const buildBetHistory = ({
       .filter((fill) => fill.buyerUsername.toLowerCase() !== "prediction_admin")
       .map((fill): BetHistoryEntry => {
         const totalCost = Math.round(fill.priceCents * fill.quantity * 10_000) / 1_000_000;
+        const hasNamedOutcomes = Boolean(definition.outcomeLabels);
         return {
           id: fill.id,
           marketId: definition.id,
@@ -146,8 +152,12 @@ export const buildBetHistory = ({
           kind: "prediction",
           predictionUsername: definition.username,
           predictionOutcome: fill.outcome,
+          predictionSelectionLabel: hasNamedOutcomes
+            ? predictionOutcomeLabel(definition, fill.outcome)
+            : undefined,
+          predictionSelectionCountryCode: predictionOutcomeCountryCode(definition, fill.outcome),
           predictionMarketTitle:
-            group?.id === "awc-2026-champion" ? "AWC 2026 champion" : group?.title,
+            group?.id === "awc-2026-champion" ? "Who will win 2026 AWC" : group?.title,
           predictionSettlementPriceCents: state?.market.settlementPriceCents ?? undefined,
         };
       });

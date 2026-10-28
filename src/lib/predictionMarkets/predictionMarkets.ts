@@ -154,7 +154,7 @@ export const predictionOutcomeAbbreviation = (
     theatomicstorm: "storm",
     renaudmerle: "renaud",
     rechesster: "rechess",
-    dandan2016: "dandan",
+    dandan2016: "dan",
     rabbier: "rabbie",
   };
   return (
@@ -350,6 +350,7 @@ export const predictionMarketStateResultSchema = marketStateSchema.shape.result;
 
 export type PredictionMarketState = z.infer<typeof marketStateSchema>["result"];
 export type PredictionOrder = PredictionMarketState["orders"][number];
+export type PredictionPosition = PredictionMarketState["positions"][number];
 
 export const predictionYesChance = (
   definition: PredictionMarketDefinition,
@@ -382,6 +383,17 @@ export const predictionMarketVolume = (state: PredictionMarketState | undefined)
 export const formatPredictionShares = (value: number): string =>
   value.toLocaleString(undefined, { maximumFractionDigits: 2 });
 
+export const formatPredictionChance = (value: number | undefined): string =>
+  value === undefined ? "—" : `${value}%`;
+
+export const formatPredictionAveragePrice = (
+  cents: number | null | undefined,
+): string | undefined => {
+  if (cents === null || cents === undefined) return undefined;
+  const price = Number.isInteger(cents) ? cents.toFixed(0) : cents.toFixed(1);
+  return `${price}¢`;
+};
+
 const marketStatesSchema = z.object({ result: z.array(marketStateSchema.shape.result) });
 
 export const fetchPredictionMarkets = async (
@@ -404,6 +416,7 @@ const orderMutationSchema = z.object({
     orderId: z.number(),
     balance: z.number(),
     marketId: z.string(),
+    cancelledForInsufficientBalance: z.boolean().optional().default(false),
     state: marketStateSchema.shape.result,
   }),
 });

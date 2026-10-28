@@ -45,6 +45,7 @@ export const COIN_TRANSACTION_REASONS = [
   "prediction_order_reserve",
   "prediction_order_refund",
   "prediction_trade_credit",
+  "prediction_trade_fee",
   "prediction_market_payout",
   "prediction_liquidity_funding",
 ] as const;

@@ -303,7 +303,7 @@
 .usernamePickerSelectedHeader span {
   color: var(--color-heading);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 650;
 }
 
 .usernamePickerSelectedHeader small {
@@ -321,7 +321,7 @@
   color: var(--color-subtle);
   display: block;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 650;
   line-height: 1.35;
   margin: -10px 0 18px;
   text-align: center;

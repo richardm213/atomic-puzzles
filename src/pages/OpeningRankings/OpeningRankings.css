@@ -26,7 +26,7 @@
 .openingRankingsHeader a {
   width: fit-content;
   color: var(--color-primary-soft);
-  font-weight: 700;
+  font-weight: 650;
   text-underline-offset: 3px;
 }
 
@@ -58,7 +58,7 @@
   background: var(--color-panel-strong);
   color: var(--color-heading);
   font: inherit;
-  font-weight: 700;
+  font-weight: 650;
   cursor: pointer;
   transition:
     background-color 150ms ease,

@@ -223,7 +223,7 @@
   min-width: 0;
   color: var(--color-muted);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 650;
 }
 
 .calendarJumpControls label > span {

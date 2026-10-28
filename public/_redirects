@@ -16,4 +16,5 @@
 /api/coins    /.netlify/functions/coins    200
 /api/betting    /.netlify/functions/betting    200
 /api/badges    /.netlify/functions/badges    200
+/api/archive-data    /.netlify/functions/archive-data    200
 /*    /index.html   200

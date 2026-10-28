@@ -18,7 +18,7 @@ alter table public.prediction_markets
 
 update public.prediction_markets set
   group_id = 'ban-2026', group_path = '/betting/ban-2026',
-  group_title = 'Who will be banned by Dec 31?',
+  group_title = 'Who will get banned on Lichess by Dec 31',
   group_description = 'Trade Lichess ban prediction markets with Atomic Coins.',
   group_order = 1
 where id in ('natso-ban-2026','new-life14-ban-2026','goroarmet-ban-2026');
@@ -32,10 +32,11 @@ where id like 'november-atomic-shield-2026-%';
 
 update public.prediction_markets set
   group_id = 'awc-2026-champion', group_path = '/betting/awc-2026-champion',
-  group_title = 'Who will be the 2026 Atomic World Champion?',
+  group_title = 'Who will win 2026 AWC',
   group_description = 'Trade 2026 Atomic World Championship winner predictions with Atomic Coins.',
   group_order = 3
-where id like 'awc-2026-champion-%';
+where id like 'awc-2026-champion-%'
+  and id not in ('awc-2026-champion-wolfram-ep', 'awc-2026-champion-opabinia');
 
 update public.prediction_markets as market set
   display_name = metadata.display_name, country_code = metadata.country_code,
@@ -72,12 +73,10 @@ from (values
   ('awc-2026-champion-dandan2016', 'dandan2016', 'US', 1, 13),
   ('awc-2026-champion-tolya-starina0995', 'tolya_starina0995', 'RU', 1, 14),
   ('awc-2026-champion-crepuscular', 'crepuscular', 'US', 1, 15),
-  ('awc-2026-champion-wolfram-ep', 'wolfram_ep', 'RU', null, 16),
-  ('awc-2026-champion-opabinia', 'opabinia', 'US', null, 17),
-  ('awc-2026-champion-stinkypotato', 'stinkypotato', 'US', 0, 18),
-  ('awc-2026-champion-goroarmet', 'goroarmet', 'ES', 0, 19),
-  ('awc-2026-champion-arinor0109', 'arinor0109', 'SE', 0, 20),
-  ('awc-2026-champion-matvei-e2e4', 'matvei-e2e4', 'RU', 0, 21)
+  ('awc-2026-champion-stinkypotato', 'stinkypotato', 'US', 0, 16),
+  ('awc-2026-champion-goroarmet', 'goroarmet', 'ES', 0, 17),
+  ('awc-2026-champion-arinor0109', 'arinor0109', 'SE', 0, 18),
+  ('awc-2026-champion-matvei-e2e4', 'matvei-e2e4', 'RU', 0, 19)
 ) as metadata(id, display_name, country_code, starting_chance, display_order)
 where market.id = metadata.id;
 

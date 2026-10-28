@@ -68,11 +68,15 @@ const BetHistoryTable = ({
           {bets.map((bet) => {
             const isPrediction = bet.kind === "prediction";
             const market = markets.find((candidate) => candidate.id === bet.marketId);
+            const selectionLabel = bet.predictionSelectionLabel ?? bet.selection;
             const round =
               !isPrediction && market?.marketKind !== "outright"
                 ? (market?.roundName ?? "AWC 2026")
                 : "";
-            const countryCode = countryByPlayer[bet.selection.toLowerCase()] ?? "";
+            const countryCode =
+              bet.predictionSelectionCountryCode ??
+              countryByPlayer[selectionLabel.toLowerCase()] ??
+              "";
             const payout = bet.status === "open" ? bet.potentialPayout : bet.payout;
             return (
               <tr key={bet.historyKey ?? `${bet.kind ?? "tournament"}-${bet.id}`}>
@@ -87,9 +91,9 @@ const BetHistoryTable = ({
                     />
                     <strong>
                       <BetHistoryUsername
-                        username={isPrediction ? bet.selection.toLowerCase() : bet.selection}
+                        username={isPrediction ? selectionLabel.toLowerCase() : selectionLabel}
                       />
-                      {isPrediction && bet.predictionOutcome ? (
+                      {isPrediction && bet.predictionOutcome && !bet.predictionSelectionLabel ? (
                         <span className="betHistoryOutcome">
                           · {bet.predictionOutcome === "yes" ? "Yes" : "No"}
                         </span>

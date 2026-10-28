@@ -8,9 +8,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
 import { InlineState } from "../../components/InlineState/InlineState";
-import { PredictionMarketExplainer } from "../../components/PredictionMarketExplainer/PredictionMarketExplainer";
 import { PredictionOrderEditor } from "../../components/PredictionOrderEditor/PredictionOrderEditor";
+import { PredictionMarketGroupHeader } from "../../components/PredictionTrading/PredictionMarketGroupHeader";
 import { PredictionMarketIdentity } from "../../components/PredictionTrading/PredictionMarketIdentity";
+import { PredictionMarketTable } from "../../components/PredictionTrading/PredictionMarketTable";
 import { PredictionOrderBook } from "../../components/PredictionTrading/PredictionOrderBook";
 import { PredictionOrderComposer } from "../../components/PredictionTrading/PredictionOrderComposer";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
@@ -52,17 +53,15 @@ import {
 } from "../../lib/predictionMarkets/predictionMarketQueries";
 import { usePredictionMarketRealtime } from "../../lib/predictionMarkets/predictionMarketRealtime";
 import {
-  formatPredictionShares,
+  formatPredictionChance,
   placePredictionOrder,
   predictionMarketVolume,
   type PredictionOrder,
   type PredictionOutcome,
-  predictionOutcomeAbbreviation,
   predictionOutcomeCountryCode,
   predictionOutcomeLabel,
   predictionOutcomes,
   predictionTakerFee,
-  predictionYesChance,
   quotePredictionBuy,
   suggestedPredictionPrice,
 } from "../../lib/predictionMarkets/predictionMarkets";
@@ -319,11 +318,6 @@ export const BettingPage = () => {
   const activePredictionDisplayMode: PredictionDisplayMode = predictionMarketOnlyCategory
     ? "market"
     : predictionDisplayMode;
-  const showWinnerPositionToggle =
-    marketCategory === "AWC Champion" &&
-    (activePredictionDisplayMode === "book" ||
-      (!isPredictionMarketCategory(marketCategory) &&
-        openMarkets.some((market) => market.id === winnerNoMarketId)));
   const activePredictionGroupId = isPredictionMarketCategory(marketCategory)
     ? predictionGroupIdByCategory[marketCategory]
     : undefined;
@@ -626,7 +620,11 @@ export const BettingPage = () => {
     mutationFn: placePredictionOrder,
     onSuccess: (result) => {
       setSuccessMessage(
-        activePredictionDisplayMode === "book" ? "Bet placed." : "Prediction order placed.",
+        result.cancelledForInsufficientBalance
+          ? "Order cancelled because your available coin balance was too low when it matched."
+          : activePredictionDisplayMode === "book"
+            ? "Bet placed."
+            : "Prediction order placed.",
       );
       setPredictionStakeInput("");
       setPredictionStakeTouched(false);
@@ -863,24 +861,6 @@ export const BettingPage = () => {
                   </div>
                 </div>
               ) : null}
-              {showWinnerPositionToggle ? (
-                <div className="bettingPositionToggle" role="group" aria-label="AWC winner side">
-                  <button
-                    type="button"
-                    aria-pressed={winnerPosition === "yes"}
-                    onClick={() => selectWinnerPosition("yes")}
-                  >
-                    Yes
-                  </button>
-                  <button
-                    type="button"
-                    aria-pressed={winnerPosition === "no"}
-                    onClick={() => selectWinnerPosition("no")}
-                  >
-                    No
-                  </button>
-                </div>
-              ) : null}
               <div className="bettingMarketList">
                 {activePredictionGroup && activePredictionDisplayMode === "book" ? (
                   <section
@@ -890,17 +870,47 @@ export const BettingPage = () => {
                         : ""
                     }`}
                   >
-                    <h2>
-                      <span className="bettingPredictionBookHeadingTitle">
-                        {marketCategory === "AWC Champion"
-                          ? winnerPosition === "yes"
-                            ? "Who will win AWC 2026?"
-                            : "Who will not win AWC 2026?"
-                          : activePredictionGroup.title}
-                        <PredictionMarketExplainer />
-                      </span>
-                      <Link to={activePredictionGroup.path}>View market →</Link>
-                    </h2>
+                    <PredictionMarketGroupHeader
+                      iconSrc={
+                        activePredictionGroup.id === "november-atomic-shield-2026"
+                          ? appAssetPath("/images/arenas/atomic-shield.png")
+                          : undefined
+                      }
+                      isLoading={activePredictionGroupLoading}
+                      isOpen={activePredictionGroupOpen}
+                      middle={
+                        marketCategory === "AWC Champion" ? (
+                          <div
+                            className="bettingPositionToggle"
+                            role="group"
+                            aria-label="AWC winner side"
+                          >
+                            <button
+                              type="button"
+                              aria-pressed={winnerPosition === "yes"}
+                              onClick={() => selectWinnerPosition("yes")}
+                            >
+                              Yes
+                            </button>
+                            <button
+                              type="button"
+                              aria-pressed={winnerPosition === "no"}
+                              onClick={() => selectWinnerPosition("no")}
+                            >
+                              No
+                            </button>
+                          </div>
+                        ) : undefined
+                      }
+                      path={activePredictionGroup.path}
+                      showExplainer={false}
+                      title={
+                        marketCategory === "AWC Champion"
+                          ? "Who will win 2026 AWC"
+                          : activePredictionGroup.title
+                      }
+                      volume={formatCoinValue(activePredictionVolume)}
+                    />
                     {activePredictionGroup.markets.map((definition) => {
                       const state = predictionStateByMarketId.get(definition.id);
                       const yesAsk = state?.book.yes.asks[0]?.priceCents;
@@ -924,7 +934,7 @@ export const BettingPage = () => {
                               : settlementPrice;
                         return (
                           <article className="bettingPredictionBookResolvedRow" key={definition.id}>
-                            <span className="bettingExchangeStrikePlayer">
+                            <span className="predictionSharedMarketIdentity">
                               <PredictionMarketIdentity definition={definition} density="compact" />
                             </span>
                             <span
@@ -943,128 +953,85 @@ export const BettingPage = () => {
                       }
                       const sportsbookOutcome: PredictionOutcome =
                         marketCategory === "AWC Champion" ? winnerPosition : "yes";
-                      const sportsbookPrice = sportsbookOutcome === "yes" ? yesAsk : noAsk;
-                      const suggestedPrice = suggestedPredictionPrice(
-                        definition,
-                        state,
-                        sportsbookOutcome,
-                      );
-                      const selected =
-                        predictionSelection?.marketId === definition.id &&
-                        predictionSelection.outcome === sportsbookOutcome;
-                      const sportsbookRestriction = predictionRestrictionFor(
-                        activePredictionGroup.id,
-                        definition.username,
-                        sportsbookOutcome,
-                      );
+                      const compactSportsbookCard =
+                        marketCategory === "AWC Champion" || marketCategory === "Ban";
+                      const sportsbookOutcomes = compactSportsbookCard
+                        ? [sportsbookOutcome]
+                        : predictionOutcomes;
                       return (
                         <article className="bettingMarketCard" key={definition.id}>
-                          {marketCategory === "AWC Champion" || marketCategory === "Ban" ? (
-                            <div className="bettingOutcomes bettingPredictionBookOutcome">
-                              <button
-                                type="button"
-                                className={selected ? "isSelected" : ""}
-                                aria-pressed={selected}
-                                disabled={
-                                  Boolean(sportsbookRestriction) || sportsbookPrice === undefined
-                                }
-                                title={
-                                  predictionRestrictionTitle(sportsbookRestriction) ??
-                                  (sportsbookPrice === undefined
-                                    ? "No liquidity is available."
-                                    : undefined)
-                                }
-                                onClick={() =>
-                                  choosePredictionOutcome(
-                                    definition.id,
-                                    sportsbookOutcome,
-                                    suggestedPrice,
-                                  )
-                                }
-                              >
-                                <span className="bettingOutcomePlayer">
-                                  <img
-                                    src={countryCodeToFlagUrl(definition.countryCode)}
-                                    alt=""
-                                    crossOrigin="anonymous"
-                                    loading="lazy"
-                                    decoding="async"
-                                    aria-hidden="true"
-                                  />
-                                  <span>{definition.username}</span>
-                                </span>
-                                <span className="bettingOutcomeQuote">
-                                  <strong>
-                                    {sportsbookPrice === undefined ? "—" : `${sportsbookPrice}%`}
-                                  </strong>
-                                  {sportsbookRestriction ? (
-                                    <small>Unavailable</small>
-                                  ) : sportsbookPrice === undefined ? (
-                                    <small>No liquidity</small>
-                                  ) : marketCategory === "Ban" ? (
-                                    <small>to be banned</small>
-                                  ) : null}
-                                </span>
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="bettingOutcomes">
-                              {predictionOutcomes.map((entry) => {
-                                const entryPrice = entry === "yes" ? yesAsk : noAsk;
-                                const entrySuggestedPrice = suggestedPredictionPrice(
-                                  definition,
-                                  state,
-                                  entry,
-                                );
-                                const entrySelected =
-                                  predictionSelection?.marketId === definition.id &&
-                                  predictionSelection.outcome === entry;
-                                const entryRestriction = predictionRestrictionFor(
-                                  activePredictionGroup.id,
-                                  definition.username,
-                                  entry,
-                                );
-                                return (
-                                  <button
-                                    type="button"
-                                    className={entrySelected ? "isSelected" : ""}
-                                    aria-pressed={entrySelected}
-                                    disabled={Boolean(entryRestriction)}
-                                    title={predictionRestrictionTitle(entryRestriction)}
-                                    onClick={() =>
-                                      choosePredictionOutcome(
-                                        definition.id,
-                                        entry,
-                                        entrySuggestedPrice,
-                                      )
-                                    }
-                                    key={entry}
-                                  >
-                                    <span className="bettingOutcomePlayer">
-                                      {definition.outcomeLabels ? (
-                                        <img
-                                          src={countryCodeToFlagUrl(
-                                            predictionOutcomeCountryCode(definition, entry),
-                                          )}
-                                          alt=""
-                                          crossOrigin="anonymous"
-                                          loading="lazy"
-                                          decoding="async"
-                                          aria-hidden="true"
-                                        />
-                                      ) : null}
-                                      <span>{predictionOutcomeLabel(definition, entry)}</span>
-                                    </span>
-                                    <span className="bettingOutcomeQuote">
-                                      <strong>
-                                        {entryPrice === undefined ? "—" : `${entryPrice}¢`}
-                                      </strong>
-                                    </span>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          )}
+                          <div
+                            className={`bettingOutcomes${
+                              compactSportsbookCard ? " bettingPredictionBookOutcome" : ""
+                            }`}
+                          >
+                            {sportsbookOutcomes.map((entry) => {
+                              const entryPrice = entry === "yes" ? yesAsk : noAsk;
+                              const entrySuggestedPrice = suggestedPredictionPrice(
+                                definition,
+                                state,
+                                entry,
+                              );
+                              const entrySelected =
+                                predictionSelection?.marketId === definition.id &&
+                                predictionSelection.outcome === entry;
+                              const entryRestriction = predictionRestrictionFor(
+                                activePredictionGroup.id,
+                                definition.username,
+                                entry,
+                              );
+                              const entryCountryCode = compactSportsbookCard
+                                ? definition.countryCode
+                                : predictionOutcomeCountryCode(definition, entry);
+                              const entryLabel = compactSportsbookCard
+                                ? definition.username
+                                : predictionOutcomeLabel(definition, entry);
+                              return (
+                                <button
+                                  type="button"
+                                  className={entrySelected ? "isSelected" : ""}
+                                  aria-pressed={entrySelected}
+                                  disabled={Boolean(entryRestriction) || entryPrice === undefined}
+                                  title={
+                                    predictionRestrictionTitle(entryRestriction) ??
+                                    (entryPrice === undefined
+                                      ? "No liquidity is available."
+                                      : undefined)
+                                  }
+                                  onClick={() =>
+                                    choosePredictionOutcome(
+                                      definition.id,
+                                      entry,
+                                      entrySuggestedPrice,
+                                    )
+                                  }
+                                  key={entry}
+                                >
+                                  <span className="bettingOutcomePlayer">
+                                    <img
+                                      src={countryCodeToFlagUrl(entryCountryCode)}
+                                      alt=""
+                                      crossOrigin="anonymous"
+                                      loading="lazy"
+                                      decoding="async"
+                                      aria-hidden="true"
+                                    />
+                                    <span>{entryLabel}</span>
+                                  </span>
+                                  <span className="bettingOutcomeQuote">
+                                    <strong>{formatPredictionChance(entryPrice)}</strong>
+                                    {entryRestriction ? (
+                                      <small>Unavailable</small>
+                                    ) : entryPrice === undefined ? (
+                                      <small>No liquidity</small>
+                                    ) : marketCategory === "Ban" ? (
+                                      <small>to be banned</small>
+                                    ) : null}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
                         </article>
                       );
                     })}
@@ -1077,220 +1044,64 @@ export const BettingPage = () => {
                         className="bettingExchangeCard bettingExchangeCard--strikes"
                         key={group.id}
                       >
-                        <div className="bettingExchangeQuestion">
-                          <span className="bettingExchangeTitle">
-                            {group.id === "november-atomic-shield-2026" ? (
-                              <img
-                                src={appAssetPath("/images/arenas/atomic-shield.png")}
-                                alt=""
-                                aria-hidden="true"
-                              />
-                            ) : null}
-                            <strong>{group.title}</strong>
-                            <PredictionMarketExplainer />
-                          </span>
-                          <span className="bettingExchangeMeta">
-                            <small
-                              className={`bettingExchangeStatus${
-                                activePredictionGroupLoading
-                                  ? " bettingExchangeStatus--loading"
-                                  : activePredictionGroupOpen
-                                    ? ""
-                                    : " bettingExchangeStatus--closed"
-                              }`}
-                            >
-                              {activePredictionGroupLoading
-                                ? "Loading"
-                                : activePredictionGroupOpen
-                                  ? "Open"
-                                  : "Closed"}
-                            </small>
-                            <small>
-                              {activePredictionGroupLoading
-                                ? "Volume —"
-                                : `Volume ${formatCoinValue(activePredictionVolume)} coins`}
-                            </small>
-                          </span>
-                        </div>
-                        <Link className="bettingExchangeAction" to={group.path}>
-                          Open market →
-                        </Link>
-                        <div className="bettingExchangeStrikes">
-                          <div className="bettingExchangeStrikeHeader" aria-hidden="true">
-                            <span />
-                            <span>Chance</span>
-                            <span />
-                          </div>
-                          {group.markets.map((definition) => {
-                            const state = predictionStateByMarketId.get(definition.id);
-                            const yesChance = predictionYesChance(definition, state);
-                            const yesAsk = state?.book.yes.asks[0]?.priceCents;
-                            const noAsk = state?.book.no.asks[0]?.priceCents;
-                            const ownedPositions = predictionOutcomes.flatMap((outcome) => {
-                              const quantity =
-                                state?.positions.find((position) => position.outcome === outcome)
-                                  ?.quantity ?? 0;
-                              return quantity > 0 ? [{ outcome, quantity }] : [];
-                            });
-                            const isResolved = state?.market.status === "resolved";
-                            const holdings =
-                              isAuthenticated && ownedPositions.length > 0 ? (
-                                <span
-                                  className="bettingExchangeStrikeHoldings"
-                                  aria-label="Your position"
-                                >
-                                  {ownedPositions.map(({ outcome, quantity }) => (
-                                    <span
-                                      className={`bettingExchangeStrikeHolding bettingExchangeStrikeHolding--${outcome}`}
-                                      key={outcome}
-                                    >
-                                      <span aria-hidden="true">✓</span>
-                                      {`${formatPredictionShares(quantity)} ${predictionOutcomeLabel(
-                                        definition,
-                                        outcome,
-                                      )}`}
-                                    </span>
-                                  ))}
-                                </span>
-                              ) : null;
-                            return (
-                              <div
-                                className={`bettingExchangeStrike${
-                                  isResolved ? "" : " bettingExchangeStrike--interactive"
-                                }`}
-                                key={definition.id}
-                              >
-                                {isResolved ? (
-                                  <div className="bettingExchangeStrikeToggle bettingExchangeStrikeToggle--resolved">
-                                    <span className="bettingExchangeStrikePlayer">
-                                      <PredictionMarketIdentity
-                                        definition={definition}
-                                        density="compact"
-                                      />
-                                      {holdings}
-                                    </span>
-                                  </div>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    className="bettingExchangeStrikeToggle"
-                                    aria-expanded={expandedPredictionMarketId === definition.id}
-                                    aria-controls={`betting-strike-book-${definition.id}`}
-                                    onClick={() => togglePredictionStrike(definition.id)}
-                                  >
-                                    <span className="bettingExchangeStrikePlayer">
-                                      <PredictionMarketIdentity
-                                        definition={definition}
-                                        density="compact"
-                                      />
-                                      {holdings}
-                                    </span>
-                                    <span className="bettingExchangeStrikeChance">
-                                      <strong>
-                                        {yesChance === undefined ? "—" : `${yesChance}%`}
-                                      </strong>
-                                    </span>
-                                  </button>
-                                )}
-                                {isResolved ? (
-                                  <span
-                                    className={`bettingExchangeResolved ${
-                                      state?.market.settlementPriceCents === null
-                                        ? `bettingExchangeResolved--${state?.market.outcome ?? "no"}`
-                                        : "bettingExchangeResolved--price"
-                                    }`}
-                                  >
-                                    {state?.market.settlementPriceCents === null
-                                      ? state?.market.outcome === "yes"
-                                        ? predictionOutcomeLabel(definition, "yes")
-                                        : predictionOutcomeLabel(definition, "no")
-                                      : `Settled ${state?.market.settlementPriceCents}¢`}
-                                  </span>
-                                ) : (
-                                  <span className="bettingExchangeStrikePrices">
-                                    {predictionOutcomes.map((entry) => {
-                                      const displayedPrice = entry === "yes" ? yesAsk : noAsk;
-                                      const suggestedPrice = suggestedPredictionPrice(
-                                        definition,
-                                        state,
-                                        entry,
-                                      );
-                                      const selected =
-                                        predictionSelection?.marketId === definition.id &&
-                                        predictionSelection.outcome === entry;
-                                      const entryRestriction = predictionRestrictionFor(
-                                        group.id,
-                                        definition.username,
-                                        entry,
-                                      );
-                                      return (
-                                        <button
-                                          type="button"
-                                          className={selected ? "isSelected" : ""}
-                                          aria-pressed={selected}
-                                          disabled={Boolean(entryRestriction)}
-                                          title={predictionRestrictionTitle(entryRestriction)}
-                                          onClick={() =>
-                                            choosePredictionOutcome(
-                                              definition.id,
-                                              entry,
-                                              suggestedPrice,
-                                            )
-                                          }
-                                          key={entry}
-                                        >
-                                          <span>
-                                            {predictionOutcomeAbbreviation(definition, entry)}
-                                          </span>
-                                          <span>
-                                            {displayedPrice === undefined
-                                              ? "—"
-                                              : `${displayedPrice}¢`}
-                                          </span>
-                                        </button>
-                                      );
-                                    })}
-                                  </span>
-                                )}
-                                {!isResolved &&
-                                state &&
-                                expandedPredictionMarketId === definition.id ? (
-                                  <div
-                                    className="bettingInlineBookDrawer"
-                                    id={`betting-strike-book-${definition.id}`}
-                                  >
-                                    <PredictionOrderBook
-                                      asks={state.book[expandedPredictionOutcome].asks}
-                                      bids={state.book[expandedPredictionOutcome].bids}
-                                      density="compact"
-                                      headingLevel={2}
-                                      outcome={expandedPredictionOutcome}
-                                      outcomeName={predictionOutcomeLabel(
-                                        definition,
-                                        expandedPredictionOutcome,
-                                      )}
-                                      ownOrders={state.orders}
-                                      onEditOrders={(orders) =>
-                                        setEditingOrderContext({
-                                          marketId: definition.id,
-                                          outcome: expandedPredictionOutcome,
-                                          orders,
-                                        })
-                                      }
-                                      onSelect={(_side, priceCents) =>
-                                        choosePredictionOutcome(
-                                          definition.id,
-                                          expandedPredictionOutcome,
-                                          priceCents,
-                                        )
-                                      }
-                                    />
-                                  </div>
-                                ) : null}
-                              </div>
+                        <PredictionMarketGroupHeader
+                          iconSrc={
+                            group.id === "november-atomic-shield-2026"
+                              ? appAssetPath("/images/arenas/atomic-shield.png")
+                              : undefined
+                          }
+                          isLoading={activePredictionGroupLoading}
+                          isOpen={activePredictionGroupOpen}
+                          path={group.path}
+                          title={group.title}
+                          volume={formatCoinValue(activePredictionVolume)}
+                        />
+                        <PredictionMarketTable
+                          activeMarketId={predictionSelection?.marketId}
+                          definitions={group.markets}
+                          density="compact"
+                          expandedMarketId={expandedPredictionMarketId}
+                          expandedOutcome={expandedPredictionOutcome}
+                          isAuthenticated={isAuthenticated}
+                          states={predictionStateByMarketId}
+                          selectedOutcome={predictionSelection?.outcome}
+                          onToggleMarket={(definition) => togglePredictionStrike(definition.id)}
+                          onSelectOutcome={(definition, outcome, suggestedPrice) =>
+                            choosePredictionOutcome(definition.id, outcome, suggestedPrice)
+                          }
+                          outcomeAvailability={(definition, outcome) => {
+                            const restriction = predictionRestrictionFor(
+                              group.id,
+                              definition.username,
+                              outcome,
                             );
-                          })}
-                        </div>
+                            return {
+                              disabled: Boolean(restriction),
+                              title: predictionRestrictionTitle(restriction),
+                            };
+                          }}
+                          renderExpandedContent={(definition, state, outcome) => (
+                            <PredictionOrderBook
+                              asks={state.book[outcome].asks}
+                              bids={state.book[outcome].bids}
+                              density="compact"
+                              headingLevel={2}
+                              outcome={outcome}
+                              outcomeName={predictionOutcomeLabel(definition, outcome)}
+                              ownOrders={state.orders}
+                              onEditOrders={(orders) =>
+                                setEditingOrderContext({
+                                  marketId: definition.id,
+                                  outcome,
+                                  orders,
+                                })
+                              }
+                              onSelect={(_side, priceCents) =>
+                                choosePredictionOutcome(definition.id, outcome, priceCents)
+                              }
+                            />
+                          )}
+                        />
                       </div>
                     ))}
                   </section>
@@ -1299,11 +1110,7 @@ export const BettingPage = () => {
                   marketGroups.map(([roundName, roundMarkets]) => (
                     <section className="bettingMarketGroup" key={roundName}>
                       <h2>
-                        {marketCategory === "AWC Champion"
-                          ? winnerPosition === "yes"
-                            ? "Who will win AWC 2026?"
-                            : "Who will not win AWC 2026?"
-                          : roundName}
+                        {marketCategory === "AWC Champion" ? "Who will win 2026 AWC" : roundName}
                       </h2>
                       {roundMarkets.map((market, marketIndex) => (
                         <article className="bettingMarketCard" key={market.id}>

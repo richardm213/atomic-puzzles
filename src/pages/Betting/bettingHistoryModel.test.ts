@@ -9,7 +9,7 @@ import { buildBetHistory } from "./bettingHistoryModel";
 const group: PredictionMarketGroup = {
   id: "awc-2026-champion",
   path: "/betting/awc-2026-champion",
-  title: "AWC 2026 champion",
+  title: "Who will win 2026 AWC",
   description: "",
   displayOrder: 1,
   markets: [{ id: "champion-player", username: "player", countryCode: "US" }],
@@ -64,6 +64,46 @@ const state: PredictionMarketState = {
   orders: [],
 };
 
+const roundOf16Group: PredictionMarketGroup = {
+  id: "awc-2026-round-of-16",
+  path: "/betting/awc-2026-round-of-16",
+  title: "AWC 2026 Round of 16",
+  description: "",
+  displayOrder: 2,
+  markets: [
+    {
+      id: "awc-r16-natso-crepuscular",
+      username: "natso vs crepuscular",
+      countryCode: "US",
+      outcomeLabels: { yes: "natso", no: "crepuscular" },
+      outcomeCountryCodes: { yes: "CA", no: "US" },
+    },
+  ],
+};
+
+const roundOf16State: PredictionMarketState = {
+  ...state,
+  market: {
+    ...state.market,
+    id: "awc-r16-natso-crepuscular",
+    question: "Who will win?",
+    status: "open",
+    outcome: null,
+    resolvedAt: null,
+  },
+  fills: [
+    {
+      id: 4,
+      outcome: "no",
+      priceCents: 85,
+      quantity: 670,
+      buyerUsername: "buyer",
+      sellerUsername: null,
+      createdAt: "2026-10-27T20:36:00Z",
+    },
+  ],
+};
+
 describe("buildBetHistory", () => {
   it("combines prediction fills and excludes liquidity-administration trades", () => {
     expect(
@@ -82,6 +122,24 @@ describe("buildBetHistory", () => {
         potentialPayout: 20,
         payout: 20,
         placedAt: "2026-10-03T00:00:00Z",
+      }),
+    ]);
+  });
+
+  it("labels Round of 16 history with the selected player instead of Yes or No", () => {
+    expect(
+      buildBetHistory({
+        tournamentBets: [],
+        predictionMarketGroups: [roundOf16Group],
+        predictionMarketStates: [roundOf16State],
+      }),
+    ).toEqual([
+      expect.objectContaining({
+        selection: "natso vs crepuscular",
+        predictionOutcome: "no",
+        predictionSelectionLabel: "crepuscular",
+        predictionSelectionCountryCode: "US",
+        predictionMarketTitle: "AWC 2026 Round of 16",
       }),
     ]);
   });

@@ -47,6 +47,7 @@ const reasonCategory: Record<CoinTransactionReason, TransactionCategory> = {
   prediction_order_reserve: "bets",
   prediction_order_refund: "bets",
   prediction_trade_credit: "bets",
+  prediction_trade_fee: "bets",
   prediction_market_payout: "bets",
   prediction_liquidity_funding: "bets",
 };
@@ -114,13 +115,18 @@ const transactionDescription = (transaction: CoinTransaction) => {
     return "Tournament bet refunded";
   }
   if (transaction.reason === "prediction_order_reserve") {
-    return "Reserved coins for a prediction order";
+    return transaction.metadata.chargeMode === "fill"
+      ? "Bought prediction contracts"
+      : "Reserved coins for a prediction order";
   }
   if (transaction.reason === "prediction_order_refund") {
     return "Prediction order refund";
   }
   if (transaction.reason === "prediction_trade_credit") {
     return "Sold prediction contracts";
+  }
+  if (transaction.reason === "prediction_trade_fee") {
+    return "Prediction trade fee";
   }
   if (transaction.reason === "prediction_market_payout") {
     return "Prediction market payout";
