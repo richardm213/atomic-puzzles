@@ -60,8 +60,10 @@ const selectedReasonsFor = (categories: TransactionCategory[]) =>
 const shopItemLabels: Record<string, string> = {
   username_change: "a username change",
   atomicdb_analysis_12h: "AtomicDB analysis",
-  discord_nitro_month: "Discord Nitro",
-  discord_nitro_year: "Discord Nitro",
+  discord_nitro_month: "Discord Nitro Basic",
+  discord_nitro_year: "Discord Nitro Basic",
+  discord_nitro_full_month: "Discord Nitro Nitro",
+  discord_nitro_full_year: "Discord Nitro Nitro",
   flowers_500: "flowers",
   lichess_patron_month: "Lichess Patron",
   next_prize_tournament_format: "tournament format",

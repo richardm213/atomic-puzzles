@@ -359,7 +359,7 @@ export const coinsRoute = async (event: FunctionEvent) => {
     }
     const supabase = createServerSupabase("Atomic Coins service");
     if (input.action === "listRedemptions") {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from("shop_redemptions")
         .select(
           "id,username,item_key,cost,status,created_at,fulfilled_at,fulfilled_by,request_details",
@@ -367,6 +367,20 @@ export const coinsRoute = async (event: FunctionEvent) => {
         .order("created_at", { ascending: false })
         .order("id", { ascending: false })
         .limit(500);
+      if (error?.code === "42703" && /request_details/i.test(error.message)) {
+        const legacyResult = await supabase
+          .from("shop_redemptions")
+          .select("id,username,item_key,cost,status,created_at,fulfilled_at,fulfilled_by")
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .limit(500);
+        data =
+          legacyResult.data?.map((redemption) => ({
+            ...redemption,
+            request_details: {},
+          })) ?? null;
+        error = legacyResult.error;
+      }
       if (error) throw new Error(`Unable to load shop redemptions: ${error.message}`);
       return identityResponse(identity, 200, { redemptions: data });
     }

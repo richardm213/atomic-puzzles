@@ -23,8 +23,10 @@ type RedemptionFilter = "all" | ShopRedemptionStatus;
 
 const itemNames: Record<ShopRedemption["itemKey"], string> = {
   username_change: "Change username",
-  discord_nitro_month: "1 month Discord Nitro",
-  discord_nitro_year: "1 year Discord Nitro",
+  discord_nitro_month: "1 month Discord Nitro Basic",
+  discord_nitro_year: "1 year Discord Nitro Basic",
+  discord_nitro_full_month: "1 month Discord Nitro Nitro",
+  discord_nitro_full_year: "1 year Discord Nitro Nitro",
   flowers_500: "500 Flowers",
   lichess_patron_month: "1 month Lichess Patron",
   next_prize_tournament_format: "Choose tournament format",

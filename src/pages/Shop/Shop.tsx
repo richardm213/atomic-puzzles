@@ -68,15 +68,29 @@ const shopItems: {
   },
   {
     key: "discord_nitro_month",
-    name: "1 month Discord Nitro",
+    name: "1 month Discord Nitro Basic",
     cost: SHOP_ITEM_COSTS.discord_nitro_month,
     icon: { kind: "fontawesome", icon: faDiscord },
     priceImage: CHEST_PRICE_IMAGE,
   },
   {
     key: "discord_nitro_year",
-    name: "1 year Discord Nitro",
+    name: "1 year Discord Nitro Basic",
     cost: SHOP_ITEM_COSTS.discord_nitro_year,
+    icon: { kind: "fontawesome", icon: faDiscord },
+    priceImage: "/images/coins/gold-coin-sack.png",
+  },
+  {
+    key: "discord_nitro_full_month",
+    name: "1 month Discord Nitro Nitro",
+    cost: SHOP_ITEM_COSTS.discord_nitro_full_month,
+    icon: { kind: "fontawesome", icon: faDiscord },
+    priceImage: CHEST_PRICE_IMAGE,
+  },
+  {
+    key: "discord_nitro_full_year",
+    name: "1 year Discord Nitro Nitro",
+    cost: SHOP_ITEM_COSTS.discord_nitro_full_year,
     icon: { kind: "fontawesome", icon: faDiscord },
     priceImage: "/images/coins/gold-coin-sack.png",
   },
@@ -715,7 +729,12 @@ export const ShopPage = () => {
                     </div>
                     <span className="shopItemPrice">
                       <img
-                        className={item.key === "discord_nitro_year" ? "premiumPriceImage" : ""}
+                        className={
+                          item.key === "discord_nitro_year" ||
+                          item.key === "discord_nitro_full_year"
+                            ? "premiumPriceImage"
+                            : ""
+                        }
                         src={appAssetPath(item.priceImage)}
                         alt=""
                       />

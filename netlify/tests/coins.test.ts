@@ -347,6 +347,41 @@ describe("coins function", () => {
     expect(JSON.parse(response.body).result).toHaveLength(1);
   });
 
+  it("loads past admin redemptions from databases without request details", async () => {
+    const legacyRow = {
+      id: 33,
+      username: "rechesster",
+      item_key: "discord_nitro_month",
+      cost: 500,
+      status: "pending",
+      created_at: "2026-10-15T19:11:05.407Z",
+      fulfilled_at: null,
+      fulfilled_by: null,
+    };
+    const currentLimit = vi.fn(async () => ({
+      data: null,
+      error: { code: "42703", message: "column shop_redemptions.request_details does not exist" },
+    }));
+    const legacyLimit = vi.fn(async () => ({ data: [legacyRow], error: null }));
+    const select = vi.fn((columns: string) => {
+      const limit = columns.includes("request_details") ? currentLimit : legacyLimit;
+      const secondOrder = vi.fn(() => ({ limit }));
+      return { order: vi.fn(() => ({ order: secondOrder })) };
+    });
+    mocks.createClient.mockReturnValue({ from: vi.fn(() => ({ select })) });
+
+    const response = await handler({
+      httpMethod: "POST",
+      headers: requestHeaders("seaside_tiramisu"),
+      body: JSON.stringify({ action: "listRedemptions" }),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body).redemptions).toEqual([
+      { ...legacyRow, request_details: {} },
+    ]);
+  });
+
   it("rejects cross-site gifts before contacting the database", async () => {
     const response = await handler({
       httpMethod: "POST",
@@ -376,7 +411,7 @@ describe("coins function", () => {
     expect(mocks.createClient).not.toHaveBeenCalled();
   });
 
-  it("accepts the yearly Nitro reward and reports its 4,000-coin price", async () => {
+  it("accepts the yearly Nitro reward and reports its 11,000-coin price", async () => {
     mocks.resolveCanonicalArchiveUsername.mockRejectedValue(new Error("Archive unavailable"));
     const rpc = vi.fn(async () => ({ data: null, error: { message: "Not enough coins" } }));
     mocks.createClient.mockReturnValue({ rpc });
@@ -389,16 +424,16 @@ describe("coins function", () => {
         host: "atomic.example",
         origin: "https://atomic.example",
       },
-      body: JSON.stringify({ action: "redeem", itemKey: "discord_nitro_year" }),
+      body: JSON.stringify({ action: "redeem", itemKey: "discord_nitro_full_year" }),
     });
 
     expect(rpc).toHaveBeenCalledWith("redeem_shop_item", {
       p_username: "nitro_buyer",
-      p_item_key: "discord_nitro_year",
+      p_item_key: "discord_nitro_full_year",
     });
     expect(response.statusCode).toBe(409);
     expect(JSON.parse(response.body)).toMatchObject({
-      error: "You need 4,000 coins to buy this item.",
+      error: "You need 11,000 coins to buy this item.",
     });
   });
 
