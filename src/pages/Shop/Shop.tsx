@@ -129,12 +129,14 @@ const redemptionDateFormatter = new Intl.DateTimeFormat(undefined, {
 export const ShopPage = () => {
   const redeemDialogRef = useRef<HTMLDialogElement>(null);
   const analysisDialogRef = useRef<HTMLDialogElement>(null);
+  const purchaseToastTimeoutRef = useRef<number | null>(null);
   const [selectedReward, setSelectedReward] = useState<(typeof shopItems)[number] | null>(null);
   const [requestedUsername, setRequestedUsername] = useState("");
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const [analysisFocus, setAnalysisFocus] = useState<"higher_eval" | "player_lines">("higher_eval");
   const [openingInputs, setOpeningInputs] = useState([""]);
   const [playerInputs, setPlayerInputs] = useState([""]);
+  const [purchaseToast, setPurchaseToast] = useState("");
   const [shopClosed, setShopClosed] = useState(() => Date.now() < Date.parse(SHOP_REOPENS_AT));
   const [dailyCountdown, setDailyCountdown] = useState(() =>
     formatCountdown(Math.max(0, Math.ceil((getNextDailyReset() - Date.now()) / 1000))),
@@ -199,7 +201,7 @@ export const ShopPage = () => {
       queryClient.setQueryData(coinQueryKeys.summary(username), context.previousSummary);
       queryClient.setQueryData(coinQueryKeys.redemptionHistory(username), context.previousHistory);
     },
-    onSuccess: (data, _variables, context) => {
+    onSuccess: (data, variables, context) => {
       updateSummary({ ...data, dailyClaimAvailable: summary.data?.dailyClaimAvailable ?? false });
       if (context && data.redemptionId) {
         queryClient.setQueryData<RedemptionHistoryItem[]>(
@@ -210,6 +212,15 @@ export const ShopPage = () => {
             ),
         );
       }
+      const purchasedItem = shopItems.find((item) => item.key === variables.itemKey);
+      setPurchaseToast(`${purchasedItem?.name ?? "Purchase"} confirmed`);
+      if (purchaseToastTimeoutRef.current !== null) {
+        window.clearTimeout(purchaseToastTimeoutRef.current);
+      }
+      purchaseToastTimeoutRef.current = window.setTimeout(() => {
+        setPurchaseToast("");
+        purchaseToastTimeoutRef.current = null;
+      }, 3_600);
       setSelectedReward(null);
     },
     onSettled: () => {
@@ -292,6 +303,14 @@ export const ShopPage = () => {
     if (!openings[0] || !players.length) return;
     analysis.mutate({ focus: "player_lines", openings: [openings[0]], players });
   };
+
+  useEffect(() => {
+    return () => {
+      if (purchaseToastTimeoutRef.current !== null) {
+        window.clearTimeout(purchaseToastTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!shopClosed) return undefined;
@@ -407,6 +426,18 @@ export const ShopPage = () => {
           </form>
         ) : null}
       </dialog>
+
+      {purchaseToast ? (
+        <div className="shopPurchaseToast" role="status" aria-live="polite">
+          <span aria-hidden="true">
+            <FontAwesomeIcon icon={faCheck} />
+          </span>
+          <div>
+            <strong>Purchased</strong>
+            <small>{purchaseToast}</small>
+          </div>
+        </div>
+      ) : null}
 
       <dialog
         ref={analysisDialogRef}
@@ -665,11 +696,6 @@ export const ShopPage = () => {
           {error ? (
             <p className="coinShopError" role="alert">
               {error}
-            </p>
-          ) : null}
-          {redeem.isSuccess ? (
-            <p className="coinShopSuccess" role="status">
-              Purchase sent. An admin has been notified.
             </p>
           ) : null}
           {analysis.isSuccess ? (

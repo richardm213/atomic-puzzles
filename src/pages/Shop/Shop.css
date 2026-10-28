@@ -180,6 +180,72 @@
   opacity: 0.62;
 }
 
+.shopPurchaseToast {
+  position: fixed;
+  top: calc(var(--nav-height) + var(--space-4));
+  right: var(--space-5);
+  z-index: 60;
+  width: min(300px, calc(100vw - 32px));
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid color-mix(in srgb, var(--color-success) 48%, var(--color-border));
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+  color: var(--color-text);
+  box-shadow: var(--shadow-panel);
+  pointer-events: none;
+  animation:
+    shopPurchaseToastIn 240ms ease-out,
+    shopPurchaseToastOut 240ms ease-in 3.35s forwards;
+}
+
+.shopPurchaseToast > span {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--color-success-soft-bg);
+  color: var(--color-success);
+}
+
+.shopPurchaseToast > div {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+
+.shopPurchaseToast strong {
+  color: var(--color-heading);
+  font-size: 16px;
+}
+
+.shopPurchaseToast small {
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes shopPurchaseToastIn {
+  from {
+    opacity: 0;
+    transform: translate3d(16px, -6px, 0);
+  }
+}
+
+@keyframes shopPurchaseToastOut {
+  to {
+    opacity: 0;
+    transform: translate3d(12px, 0, 0);
+  }
+}
+
 .analysisRequestDialog {
   width: min(680px, calc(100vw - 32px));
   max-height: calc(100dvh - 32px);
@@ -908,6 +974,12 @@
 }
 
 @media (max-width: 640px) {
+  .shopPurchaseToast {
+    right: var(--space-4);
+    left: var(--space-4);
+    width: auto;
+  }
+
   .coinShopHeader {
     align-items: flex-start;
     flex-direction: column;
@@ -977,6 +1049,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .shopPurchaseToast {
+    animation: none;
+  }
+
   .dailyCoinPanel button,
   .shopItem,
   .shopItem button,
