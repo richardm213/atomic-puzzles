@@ -62,6 +62,14 @@ export type CoinTransaction = {
   createdAt: string;
 };
 
+export type CoinTransactionPage = {
+  transactions: CoinTransaction[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+};
+
 export type RedemptionHistoryItem = {
   id: number;
   itemKey: ShopItemKey;
@@ -161,6 +169,12 @@ const coinTransactionsSchema = z.object({
         createdAt: transaction.created_at,
       })),
   ),
+  pagination: z.object({
+    page: z.number().int().positive(),
+    pageSize: z.number().int().positive(),
+    total: z.number().int().nonnegative(),
+    totalPages: z.number().int().positive(),
+  }),
 });
 
 const request = async (body: Record<string, unknown>) => {
@@ -187,17 +201,21 @@ export const fetchCoinRankings = async (): Promise<CoinRanking[]> => {
 };
 export const fetchCoinTransactions = async (
   reasons?: CoinTransactionReason[],
-): Promise<CoinTransaction[]> => {
+  page = 1,
+): Promise<CoinTransactionPage> => {
   const response = await postApi(
     "/api/coins",
-    { action: "transactions", ...(reasons?.length ? { reasons } : {}) },
+    { action: "transactions", page, ...(reasons?.length ? { reasons } : {}) },
     {
       schema: coinTransactionsSchema,
       errorMessage: "Unable to load coin transactions.",
       invalidMessage: "The coin service returned invalid transactions.",
     },
   );
-  return response.result;
+  return {
+    transactions: response.result,
+    ...response.pagination,
+  };
 };
 export const fetchRedemptionHistory = async (): Promise<RedemptionHistoryItem[]> => {
   const response = await postApi(

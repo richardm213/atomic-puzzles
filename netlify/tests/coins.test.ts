@@ -93,7 +93,7 @@ describe("coins function", () => {
       "tournament_bet_payout",
       "tournament_bet_refund",
     ];
-    const limit = vi.fn(async () => ({
+    const range = vi.fn(async () => ({
       data: [
         {
           id: 19,
@@ -105,8 +105,9 @@ describe("coins function", () => {
         },
       ],
       error: null,
+      count: 121,
     }));
-    const orderById = vi.fn(() => ({ limit }));
+    const orderById = vi.fn(() => ({ range }));
     const orderByCreatedAt = vi.fn(() => ({ order: orderById }));
     const filterReasons = vi.fn(() => ({ order: orderByCreatedAt }));
     const select = vi.fn(() => ({ in: filterReasons }));
@@ -116,17 +117,25 @@ describe("coins function", () => {
     const response = await handler({
       httpMethod: "POST",
       headers: {},
-      body: JSON.stringify({ action: "transactions", reasons }),
+      body: JSON.stringify({ action: "transactions", reasons, page: 2 }),
     });
 
     expect(response.statusCode).toBe(200);
     expect(from).toHaveBeenCalledWith("coin_transactions");
-    expect(select).toHaveBeenCalledWith("id,username,amount,reason,metadata,created_at");
+    expect(select).toHaveBeenCalledWith("id,username,amount,reason,metadata,created_at", {
+      count: "exact",
+    });
     expect(filterReasons).toHaveBeenCalledWith("reason", reasons);
     expect(orderByCreatedAt).toHaveBeenCalledWith("created_at", { ascending: false });
     expect(orderById).toHaveBeenCalledWith("id", { ascending: false });
-    expect(limit).toHaveBeenCalledWith(100);
+    expect(range).toHaveBeenCalledWith(50, 99);
     expect(JSON.parse(response.body).result[0]).not.toHaveProperty("source_key");
+    expect(JSON.parse(response.body).pagination).toEqual({
+      page: 2,
+      pageSize: 50,
+      total: 121,
+      totalPages: 3,
+    });
   });
 
   it("takes the gift sender from the signed session", async () => {

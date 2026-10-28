@@ -43,6 +43,7 @@ const coinTransactionReasons = [
   "prediction_liquidity_funding",
 ] as const;
 const coinTransactionReasonSchema = z.enum(coinTransactionReasons);
+const coinTransactionsPageSize = 50;
 
 const bodySchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("summary") }),
@@ -50,6 +51,7 @@ const bodySchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("leaderboard") }),
   z.object({
     action: z.literal("transactions"),
+    page: z.number().int().positive().max(10_000).optional().default(1),
     reasons: z
       .array(coinTransactionReasonSchema)
       .min(1)
@@ -171,16 +173,27 @@ export const coinsRoute = async (event: FunctionEvent) => {
   }
   if (input.action === "transactions") {
     const supabase = createServerSupabase("Atomic Coins service");
+    const from = (input.page - 1) * coinTransactionsPageSize;
+    const to = from + coinTransactionsPageSize - 1;
     let query = supabase
       .from("coin_transactions")
-      .select("id,username,amount,reason,metadata,created_at");
+      .select("id,username,amount,reason,metadata,created_at", { count: "exact" });
     if (input.reasons) query = query.in("reason", input.reasons);
-    const { data, error } = await query
+    const { data, error, count } = await query
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
-      .limit(100);
+      .range(from, to);
     if (error) throw new Error(`Unable to load coin transactions: ${error.message}`);
-    return identityResponse(identity, 200, { result: data });
+    const total = count ?? 0;
+    return identityResponse(identity, 200, {
+      result: data,
+      pagination: {
+        page: input.page,
+        pageSize: coinTransactionsPageSize,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / coinTransactionsPageSize)),
+      },
+    });
   }
   const sessionUsername = requireUsername(identity, "Log in with Lichess to use Atomic Coins.");
   let username = sessionUsername.trim().toLowerCase();

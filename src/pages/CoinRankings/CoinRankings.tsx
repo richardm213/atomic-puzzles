@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { DataTable } from "../../components/DataTable/DataTable";
 import { InlineState } from "../../components/InlineState/InlineState";
+import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { formatCoinAmount, formatCoinBalance } from "../../lib/coins/coinDisplay";
@@ -138,6 +139,7 @@ const readSavedFilters = (): TransactionCategory[] => {
 
 export const CoinRankingsPage = () => {
   const [view, setView] = useState<CoinView>("rankings");
+  const [transactionPage, setTransactionPage] = useState(1);
   const [selectedCategories, setSelectedCategories] =
     useState<TransactionCategory[]>(readSavedFilters);
   const selectedReasons = useMemo(
@@ -146,11 +148,15 @@ export const CoinRankingsPage = () => {
   );
   const rankingsQuery = useQuery(coinRankingsQueryOptions());
   const transactionsQuery = useQuery({
-    ...coinTransactionsQueryOptions(selectedReasons),
+    ...coinTransactionsQueryOptions(selectedReasons, transactionPage),
     enabled: view === "transactions" && selectedReasons.length > 0,
   });
   const rankings = rankingsQuery.data ?? [];
-  const transactions = useMemo(() => transactionsQuery.data ?? [], [transactionsQuery.data]);
+  const transactions = useMemo(
+    () => transactionsQuery.data?.transactions ?? [],
+    [transactionsQuery.data],
+  );
+  const transactionTotalPages = transactionsQuery.data?.totalPages ?? 1;
   const filteredTransactions = useMemo(
     () =>
       transactions.filter((transaction) =>
@@ -167,6 +173,12 @@ export const CoinRankingsPage = () => {
     }
   }, [selectedCategories]);
 
+  useEffect(() => {
+    if (transactionsQuery.data && transactionPage > transactionTotalPages) {
+      setTransactionPage(transactionTotalPages);
+    }
+  }, [transactionPage, transactionTotalPages, transactionsQuery.data]);
+
   if (rankingsQuery.isPending && rankings.length === 0) return <RouteLoadingFallback />;
 
   const rankingsError = rankingsQuery.error
@@ -181,6 +193,7 @@ export const CoinRankingsPage = () => {
     : "";
 
   const toggleCategory = (category: TransactionCategory, checked: boolean) => {
+    setTransactionPage(1);
     setSelectedCategories((current) =>
       checked ? [...current, category] : current.filter((entry) => entry !== category),
     );
@@ -315,47 +328,57 @@ export const CoinRankingsPage = () => {
             ) : null}
 
             {!transactionsError && filteredTransactions.length > 0 ? (
-              <DataTable
-                wrapperClassName="rankingsTableWrap coinRankingsTableWrap"
-                className="rankingsTable coinTransactionsTable"
-              >
-                <thead>
-                  <tr>
-                    <th scope="col">Player</th>
-                    <th scope="col">Activity</th>
-                    <th scope="col">Date</th>
-                    <th scope="col">Coins</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredTransactions.map((transaction) => (
-                    <tr key={transaction.id}>
-                      <td>
-                        <Link
-                          className="rankingLink"
-                          to="/@/$username/puzzles"
-                          params={{ username: transaction.username }}
-                        >
-                          {transaction.username}
-                        </Link>
-                      </td>
-                      <td>{transactionDescription(transaction)}</td>
-                      <td>
-                        <time dateTime={transaction.createdAt}>
-                          {formatLocalDateTime(transaction.createdAt)}
-                        </time>
-                      </td>
-                      <td
-                        className={`coinTransactionAmount ${
-                          transaction.amount > 0 ? "isPositive" : "isNegative"
-                        }`}
-                      >
-                        {formatCoinAmount(transaction.amount)}
-                      </td>
+              <>
+                <DataTable
+                  wrapperClassName="rankingsTableWrap coinRankingsTableWrap"
+                  className="rankingsTable coinTransactionsTable"
+                >
+                  <thead>
+                    <tr>
+                      <th scope="col">Player</th>
+                      <th scope="col">Activity</th>
+                      <th scope="col">Date</th>
+                      <th scope="col">Coins</th>
                     </tr>
-                  ))}
-                </tbody>
-              </DataTable>
+                  </thead>
+                  <tbody>
+                    {filteredTransactions.map((transaction) => (
+                      <tr key={transaction.id}>
+                        <td>
+                          <Link
+                            className="rankingLink"
+                            to="/@/$username/puzzles"
+                            params={{ username: transaction.username }}
+                          >
+                            {transaction.username}
+                          </Link>
+                        </td>
+                        <td>{transactionDescription(transaction)}</td>
+                        <td>
+                          <time dateTime={transaction.createdAt}>
+                            {formatLocalDateTime(transaction.createdAt)}
+                          </time>
+                        </td>
+                        <td
+                          className={`coinTransactionAmount ${
+                            transaction.amount > 0 ? "isPositive" : "isNegative"
+                          }`}
+                        >
+                          {formatCoinAmount(transaction.amount)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </DataTable>
+                <nav className="coinTransactionsPagination" aria-label="Coin transaction pages">
+                  <PaginationRow
+                    currentPage={transactionPage}
+                    totalPages={transactionTotalPages}
+                    onPageChange={setTransactionPage}
+                    disabled={transactionsQuery.isFetching}
+                  />
+                </nav>
+              </>
             ) : null}
           </section>
         )}
