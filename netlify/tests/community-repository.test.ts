@@ -31,4 +31,31 @@ describe("CommunityRepository archive identity resolution", () => {
     await expect(repository.resolveCanonicalTarget(target)).resolves.toEqual(target);
     expect(mocks.execute).not.toHaveBeenCalled();
   });
+
+  it("returns the canonical profile and all aliases as one discussion identity", async () => {
+    mocks.execute.mockResolvedValueOnce({
+      rows: [
+        { alias: "Grevozin" },
+        { alias: "drunk_ep" },
+        { alias: "WOLFRAM_EP" },
+        { alias: "grevozin" },
+      ],
+    });
+    const repository = new CommunityRepository({} as never);
+
+    await expect(repository.resolveProfileTargetIds("wolfram_ep")).resolves.toEqual([
+      "wolfram_ep",
+      "grevozin",
+      "drunk_ep",
+    ]);
+
+    expect(mocks.execute).toHaveBeenCalledWith(expect.objectContaining({ args: ["wolfram_ep"] }));
+  });
+
+  it("falls back to the canonical profile when alias lookup is unavailable", async () => {
+    mocks.execute.mockRejectedValueOnce(new Error("Archive unavailable"));
+    const repository = new CommunityRepository({} as never);
+
+    await expect(repository.resolveProfileTargetIds("Wolfram_EP")).resolves.toEqual(["wolfram_ep"]);
+  });
 });

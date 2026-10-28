@@ -157,6 +157,28 @@ export class CommunityRepository {
     }
   }
 
+  async resolveProfileTargetIds(profileUsername: string): Promise<string[]> {
+    const canonicalUsername = normalizedUsername(profileUsername);
+    if (!canonicalUsername) return [];
+    try {
+      const result = await getArchiveClient().execute({
+        sql: `select a.alias from aliases a
+          join players p on p.id=a.player_id where p.username=?`,
+        args: [canonicalUsername],
+      });
+      return [
+        ...new Set(
+          [canonicalUsername, ...result.rows.map((row) => normalizedUsername(row.alias))].filter(
+            (username) => username && username.length <= 100,
+          ),
+        ),
+      ];
+    } catch {
+      // Keep canonical profile discussions available if the archive is temporarily unavailable.
+      return [canonicalUsername];
+    }
+  }
+
   async listCommentVotes(username: string, from: number, pageSize: number) {
     const result = await this.supabase
       .from("community_comment_votes")
@@ -291,20 +313,29 @@ export class CommunityRepository {
   }
 
   async loadDiscussionRows(target: CommunityTarget, username: string | null) {
-    const commentsQuery = this.supabase
+    const profileTargetIds =
+      target.type === "profile" ? await this.resolveProfileTargetIds(target.id) : [target.id];
+    let commentsQuery = this.supabase
       .from("community_comments")
       .select("id, target_type, target_id, target_context, username, parent_id, body, created_at")
       .eq("target_type", target.type)
-      .eq("target_id", target.id)
-      .eq("target_context", target.context)
+      .eq("target_context", target.context);
+    commentsQuery =
+      profileTargetIds.length === 1
+        ? commentsQuery.eq("target_id", profileTargetIds[0]!)
+        : commentsQuery.in("target_id", profileTargetIds);
+    commentsQuery = commentsQuery
       .order("created_at", { ascending: true })
       .order("id", { ascending: true });
-    const countsQuery = this.supabase
+    let countsQuery = this.supabase
       .from("community_comment_vote_counts")
       .select("comment_id, upvotes, downvotes, score")
       .eq("target_type", target.type)
-      .eq("target_id", target.id)
       .eq("target_context", target.context);
+    countsQuery =
+      profileTargetIds.length === 1
+        ? countsQuery.eq("target_id", profileTargetIds[0]!)
+        : countsQuery.in("target_id", profileTargetIds);
     const [commentsResult, countsResult] = await Promise.all([commentsQuery, countsQuery]);
     if (commentsResult.error) {
       throw new Error(`Unable to load comments: ${commentsResult.error.message}`);
@@ -382,14 +413,19 @@ export class CommunityRepository {
   }
 
   async commentBelongsToTarget(commentId: number, target: CommunityTarget): Promise<boolean> {
-    const result = await this.supabase
+    const profileTargetIds =
+      target.type === "profile" ? await this.resolveProfileTargetIds(target.id) : [target.id];
+    let query = this.supabase
       .from("community_comments")
       .select("id")
       .eq("id", commentId)
       .eq("target_type", target.type)
-      .eq("target_id", target.id)
-      .eq("target_context", target.context)
-      .maybeSingle();
+      .eq("target_context", target.context);
+    query =
+      profileTargetIds.length === 1
+        ? query.eq("target_id", profileTargetIds[0]!)
+        : query.in("target_id", profileTargetIds);
+    const result = await query.maybeSingle();
     if (result.error) throw new Error(`Unable to validate comment: ${result.error.message}`);
     return Boolean(result.data);
   }
