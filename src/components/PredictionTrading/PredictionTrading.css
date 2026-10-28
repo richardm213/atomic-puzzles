@@ -67,6 +67,10 @@
 }
 
 .predictionSharedBookHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   padding: 12px;
   border-bottom: 1px solid var(--color-border);
 }
@@ -220,18 +224,18 @@
 
 .predictionSharedComposer {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .predictionSharedTicketHeader {
-  min-height: 54px;
+  min-height: 50px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding-inline: 18px;
   border-bottom: 1px solid var(--color-border);
   color: var(--color-heading);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 850;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -276,7 +280,7 @@
   min-width: 0;
   overflow: hidden;
   color: var(--color-heading);
-  font-size: 18px;
+  font-size: 16px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -295,23 +299,25 @@
 .predictionSharedOutcomePicker button {
   min-height: 38px;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: center;
   gap: 5px;
   border: 0;
   border-radius: 999px;
   background: transparent;
   color: var(--color-muted);
+  font-size: 14px;
   font-weight: 750;
 }
 
-.predictionSharedOutcomePicker button[aria-pressed="true"] {
+.predictionSharedOutcomePicker button:first-child[aria-pressed="true"] {
   background: var(--color-market-yes);
   color: var(--color-panel-deep);
 }
 
-.predictionSharedOutcomePicker--sell button[aria-pressed="true"] {
+.predictionSharedOutcomePicker button:last-child[aria-pressed="true"] {
   background: var(--color-market-no);
+  color: var(--color-panel-deep);
 }
 
 .predictionSharedOutcomePicker button[aria-pressed="true"] strong {
@@ -325,7 +331,7 @@
 }
 
 .predictionSharedField {
-  min-height: 58px;
+  min-height: 54px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -334,7 +340,7 @@
   border: 1px solid var(--color-input-border);
   border-radius: var(--radius-ui);
   color: var(--color-muted);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -352,7 +358,7 @@
   outline: 0;
   background: transparent;
   color: var(--color-heading);
-  font-size: 20px;
+  font-size: 18px;
   font-variant-numeric: tabular-nums;
   font-weight: 850;
   text-align: right;
@@ -373,20 +379,20 @@
   display: grid;
   gap: 8px;
   margin: 0 18px;
-  padding-block: 10px;
+  padding-block: 8px;
   border-block: 1px solid var(--color-border);
 }
 
 .predictionSharedSummary > div {
   display: flex;
-  align-items: end;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
 
 .predictionSharedSummary dt {
   color: var(--color-muted);
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .predictionSharedSummary dd {
@@ -395,16 +401,16 @@
   gap: 1px;
   margin: 0;
   color: var(--color-heading);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
 }
 
 .predictionSharedSummary dd strong {
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .predictionSharedSummary dd small {
-  font-size: 11px;
+  font-size: 10px;
 }
 
 .predictionSharedSummary .isPositive {
@@ -451,6 +457,11 @@
   .predictionSharedBookLabels,
   .predictionSharedBookLevel {
     gap: 6px;
+    padding-inline: 10px;
+  }
+
+  .predictionSharedBookHeader {
+    gap: 10px;
     padding-inline: 10px;
   }
 

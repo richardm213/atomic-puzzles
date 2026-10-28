@@ -561,7 +561,7 @@
   align-items: center;
   justify-content: center;
   gap: 5px;
-  min-height: 38px;
+  min-height: 44px;
   border: 1px solid var(--color-border);
   border-radius: 999px;
   font-weight: 800;
@@ -578,6 +578,7 @@
 
 .bettingExchangeStrikePrices button {
   background: transparent;
+  font-size: 14px;
   transition:
     border-color 160ms ease,
     background-color 160ms ease;
@@ -751,7 +752,7 @@
 
 .bettingOutcomes button {
   min-width: 0;
-  min-height: 52px;
+  min-height: 48px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -811,6 +812,7 @@
 .bettingOutcomePlayer > span {
   min-width: 0;
   overflow: hidden;
+  font-size: 0.82rem;
   font-weight: 750;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -828,7 +830,7 @@
   flex: none;
   min-width: 42px;
   color: var(--color-heading);
-  font-size: 0.95rem;
+  font-size: 0.82rem;
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
@@ -1102,6 +1104,7 @@
   background: var(--color-primary);
   color: var(--color-on-primary);
   font: inherit;
+  font-size: 0.75rem;
   font-weight: 750;
   cursor: pointer;
   transition:
