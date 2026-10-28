@@ -344,14 +344,9 @@ export const coinsRoute = async (event: FunctionEvent) => {
     });
   }
   const sessionUsername = requireUsername(identity, "Log in with Lichess to use Atomic Coins.");
-  let username = sessionUsername.trim().toLowerCase();
-  try {
-    username = await resolveCanonicalArchiveUsername(sessionUsername);
-  } catch {
-    if (input.action !== "summary" && input.action !== "history") {
-      throw new HttpError(503, "Atomic Coins are temporarily unavailable. Please try again.");
-    }
-  }
+  // Version 2 site sessions already contain the canonical username. Do not make
+  // purchases depend on a second archive lookup, which can fail independently.
+  const username = sessionUsername.trim().toLowerCase();
   if (
     input.action === "listBans" ||
     input.action === "ban" ||

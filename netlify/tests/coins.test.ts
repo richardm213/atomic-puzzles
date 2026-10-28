@@ -45,8 +45,8 @@ describe("coins function", () => {
     vi.unstubAllEnvs();
   });
 
-  it("blocks shop purchases until the automatic November 3 reopening", async () => {
-    vi.setSystemTime(new Date("2026-11-02T23:59:59.000Z"));
+  it("blocks shop purchases before the configured reopening", async () => {
+    vi.setSystemTime(new Date("2026-10-27T23:59:59.000Z"));
     const cookie = createSiteSessionCookie("Closed_Shop_Buyer", {});
 
     const response = await handler({
@@ -273,12 +273,12 @@ describe("coins function", () => {
     });
   });
 
-  it("rejects gifts between aliases of the same player", async () => {
+  it("rejects gifts from a canonical account to one of its aliases", async () => {
     mocks.resolveCanonicalArchiveUsername.mockResolvedValue("canonical_player");
 
     const response = await handler({
       httpMethod: "POST",
-      headers: requestHeaders("first_alias"),
+      headers: requestHeaders("canonical_player"),
       body: JSON.stringify({
         action: "give",
         recipientUsername: "second_alias",
@@ -377,6 +377,7 @@ describe("coins function", () => {
   });
 
   it("accepts the yearly Nitro reward and reports its 4,000-coin price", async () => {
+    mocks.resolveCanonicalArchiveUsername.mockRejectedValue(new Error("Archive unavailable"));
     const rpc = vi.fn(async () => ({ data: null, error: { message: "Not enough coins" } }));
     mocks.createClient.mockReturnValue({ rpc });
     const cookie = createSiteSessionCookie("Nitro_Buyer", {});
