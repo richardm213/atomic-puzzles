@@ -473,6 +473,30 @@
   color: var(--color-text);
 }
 
+.shopClosureNotice {
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel);
+  color: var(--color-text);
+}
+
+.shopClosureNotice h2,
+.shopClosureNotice p {
+  margin: 0;
+}
+
+.shopClosureNotice h2 {
+  color: var(--color-heading);
+  font-size: 18px;
+}
+
+.shopClosureNotice p {
+  margin-top: var(--space-2);
+  color: var(--color-muted);
+  line-height: 1.5;
+}
+
 .coinEconomyBanNotice h2,
 .coinEconomyBanNotice p {
   margin: 0;

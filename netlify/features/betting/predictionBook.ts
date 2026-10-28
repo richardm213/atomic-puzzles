@@ -66,11 +66,14 @@ export const buildPredictionBook = (orders: PredictionBookOrder[]) => {
 export const calculatePredictionPositionCost = (
   fills: PredictionPositionFill[],
   username: string,
+  initialPositions?: Partial<
+    Record<"yes" | "no", { quantity: number; costCents: number }>
+  >,
 ) => {
   const normalizedUsername = username.toLowerCase();
   const positions = {
-    yes: { quantity: 0, costCents: 0 },
-    no: { quantity: 0, costCents: 0 },
+    yes: { quantity: 0, costCents: 0, ...initialPositions?.yes },
+    no: { quantity: 0, costCents: 0, ...initialPositions?.no },
   };
 
   for (const fill of [...fills].sort(

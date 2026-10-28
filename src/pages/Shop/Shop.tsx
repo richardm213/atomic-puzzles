@@ -14,7 +14,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 
-import { SHOP_ITEM_COSTS } from "../../../shared/domain/coins";
+import { SHOP_ITEM_COSTS, SHOP_REOPENS_AT } from "../../../shared/domain/coins";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
@@ -134,6 +134,7 @@ export const ShopPage = () => {
   const [analysisFocus, setAnalysisFocus] = useState<"higher_eval" | "player_lines">("higher_eval");
   const [openingInputs, setOpeningInputs] = useState([""]);
   const [playerInputs, setPlayerInputs] = useState([""]);
+  const [shopClosed, setShopClosed] = useState(() => Date.now() < Date.parse(SHOP_REOPENS_AT));
   const [dailyCountdown, setDailyCountdown] = useState(() =>
     formatCountdown(Math.max(0, Math.ceil((getNextDailyReset() - Date.now()) / 1000))),
   );
@@ -181,7 +182,7 @@ export const ShopPage = () => {
   const error = getErrorMessage(errorValue, "");
 
   const redeemItem = (item: (typeof shopItems)[number]) => {
-    if (balance < item.cost || busy || economyBan) return;
+    if (shopClosed || balance < item.cost || busy || economyBan) return;
     if (item.key === "atomicdb_analysis_12h") {
       analysis.reset();
       setAnalysisFocus("higher_eval");
@@ -198,7 +199,9 @@ export const ShopPage = () => {
 
   const confirmRedemption = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!selectedReward || balance < selectedReward.cost || busy || economyBan) return;
+    if (shopClosed || !selectedReward || balance < selectedReward.cost || busy || economyBan) {
+      return;
+    }
     const requested = requestedUsername.trim();
     if (selectedReward.key === "username_change" && !/^[A-Za-z0-9_-]{3,30}$/.test(requested)) {
       return;
@@ -223,6 +226,7 @@ export const ShopPage = () => {
 
   const submitAnalysisRequest = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (shopClosed) return;
     const openings = openingInputs.map((value) => value.trim()).filter(Boolean);
     const players = playerInputs.map((value) => value.trim()).filter(Boolean);
     if (analysisFocus === "higher_eval") {
@@ -233,6 +237,13 @@ export const ShopPage = () => {
     if (!openings[0] || !players.length) return;
     analysis.mutate({ focus: "player_lines", openings: [openings[0]], players });
   };
+
+  useEffect(() => {
+    if (!shopClosed) return undefined;
+    const remaining = Math.max(0, Date.parse(SHOP_REOPENS_AT) - Date.now());
+    const timeoutId = window.setTimeout(() => setShopClosed(false), remaining + 100);
+    return () => window.clearTimeout(timeoutId);
+  }, [shopClosed]);
 
   useEffect(() => {
     const dialog = redeemDialogRef.current;
@@ -562,6 +573,16 @@ export const ShopPage = () => {
             </div>
           </section>
 
+          {shopClosed ? (
+            <section className="shopClosureNotice" aria-labelledby="shop-closure-title">
+              <h2 id="shop-closure-title">Shop temporarily closed</h2>
+              <p>
+                Purchases reopen automatically on <time dateTime={SHOP_REOPENS_AT}>November 3</time>
+                at 12:00 AM PT.
+              </p>
+            </section>
+          ) : null}
+
           {economyBan ? (
             <section className="coinEconomyBanNotice" aria-labelledby="coin-ban-title">
               <h2 id="coin-ban-title">Coin access suspended</h2>
@@ -616,14 +637,16 @@ export const ShopPage = () => {
                   </div>
                   <button
                     type="button"
-                    disabled={balance < item.cost || busy || Boolean(economyBan)}
+                    disabled={shopClosed || balance < item.cost || busy || Boolean(economyBan)}
                     onClick={() => redeemItem(item)}
                   >
-                    {item.key === "atomicdb_analysis_12h"
-                      ? "Request"
-                      : redeem.isPending && redeem.variables?.itemKey === item.key
-                        ? "Buying…"
-                        : "Buy"}
+                    {shopClosed
+                      ? "Closed"
+                      : item.key === "atomicdb_analysis_12h"
+                        ? "Request"
+                        : redeem.isPending && redeem.variables?.itemKey === item.key
+                          ? "Buying…"
+                          : "Buy"}
                   </button>
                 </article>
               ))}

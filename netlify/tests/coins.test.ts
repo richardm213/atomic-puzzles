@@ -24,6 +24,8 @@ const requestHeaders = (username: string) => ({
 
 describe("coins function", () => {
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-03T08:00:01.000Z"));
     mocks.createClient.mockReset();
     mocks.resolveCanonicalArchiveUsername.mockReset();
     mocks.resolveCanonicalArchiveUsername.mockImplementation(async (username: string) =>
@@ -38,28 +40,125 @@ describe("coins function", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
     vi.unstubAllEnvs();
   });
 
+  it("blocks shop purchases until the automatic November 3 reopening", async () => {
+    vi.setSystemTime(new Date("2026-11-03T07:59:59.000Z"));
+    const cookie = createSiteSessionCookie("Closed_Shop_Buyer", {});
+
+    const response = await handler({
+      httpMethod: "POST",
+      headers: {
+        cookie: cookie.split(";")[0],
+        host: "atomic.example",
+        origin: "https://atomic.example",
+      },
+      body: JSON.stringify({ action: "redeem", itemKey: "flowers_500" }),
+    });
+
+    expect(response.statusCode).toBe(503);
+    expect(JSON.parse(response.body)).toMatchObject({
+      error: "The shop is closed until November 3 at 12:00 AM PT.",
+    });
+    expect(mocks.createClient).not.toHaveBeenCalled();
+  });
+
   it("returns public coin rankings ordered by net worth", async () => {
-    const selectAccounts = vi.fn(async () => ({
+    const accountRange = vi.fn(async () => ({
       data: [
         { username: "saver", balance: 1200 },
         { username: "bettor", balance: 850 },
       ],
       error: null,
     }));
-    const filterOpenBets = vi.fn(async () => ({
+    const orderAccounts = vi.fn(() => ({ range: accountRange }));
+    const selectAccounts = vi.fn(() => ({ order: orderAccounts }));
+    const openBetRange = vi.fn(async () => ({
       data: [
-        { username: "bettor", total_cost: 220 },
-        { username: "bettor", total_cost: 180 },
+        { id: 1, username: "bettor", total_cost: 400 },
+        { id: 2, username: "bettor", total_cost: 50 },
       ],
       error: null,
     }));
+    const orderOpenBets = vi.fn(() => ({ range: openBetRange }));
+    const filterOpenBets = vi.fn(() => ({ order: orderOpenBets }));
     const selectOpenBets = vi.fn(() => ({ eq: filterOpenBets }));
+    const unsettledMarketRange = vi.fn(async () => ({
+      data: [{ id: "market-1" }],
+      error: null,
+    }));
+    const orderUnsettledMarkets = vi.fn(() => ({ range: unsettledMarketRange }));
+    const filterUnsettledMarkets = vi.fn(() => ({ order: orderUnsettledMarkets }));
+    const selectOpenMarkets = vi.fn(() => ({ in: filterUnsettledMarkets }));
+    const positionRange = vi.fn(async () => ({
+      data: [
+        { market_id: "market-1", username: "bettor", outcome: "yes", quantity: 200 },
+        {
+          market_id: "market-1",
+          username: "prediction_admin",
+          outcome: "no",
+          quantity: 490,
+        },
+      ],
+      error: null,
+    }));
+    const positionOrderOutcome = vi.fn(() => ({ range: positionRange }));
+    const positionOrderUsername = vi.fn(() => ({ order: positionOrderOutcome }));
+    const positionOrderMarket = vi.fn(() => ({ order: positionOrderUsername }));
+    const filterPositivePositions = vi.fn(() => ({ order: positionOrderMarket }));
+    const filterPositionMarkets = vi.fn(() => ({ gt: filterPositivePositions }));
+    const selectPositions = vi.fn(() => ({ in: filterPositionMarkets }));
+    const fillRange = vi.fn(async () => ({
+      data: [
+        {
+          id: 10,
+          market_id: "market-1",
+          outcome: "yes",
+          price_cents: 50,
+          quantity: 100,
+          buyer_username: "bettor",
+          seller_username: null,
+          pair_key: null,
+          created_at: "2026-10-01T00:00:00.000Z",
+        },
+      ],
+      error: null,
+    }));
+    const orderFills = vi.fn(() => ({ range: fillRange }));
+    const filterFillMarkets = vi.fn(() => ({ order: orderFills }));
+    const selectFills = vi.fn(() => ({ in: filterFillMarkets }));
+    const creditRange = vi.fn(async () => ({
+      data: [
+        {
+          source_bet_id: 2,
+          market_id: "market-1",
+          username: "bettor",
+          outcome: "yes",
+          quantity: 100,
+          price_cents: 50,
+        },
+      ],
+      error: null,
+    }));
+    const orderCredits = vi.fn(() => ({ range: creditRange }));
+    const filterCreditMarkets = vi.fn(() => ({ order: orderCredits }));
+    const selectCredits = vi.fn(() => ({ in: filterCreditMarkets }));
     const from = vi.fn((table: string) => ({
-      select: table === "coin_accounts" ? selectAccounts : selectOpenBets,
+      select:
+        table === "coin_accounts"
+          ? selectAccounts
+          : table === "tournament_bets"
+            ? selectOpenBets
+            : table === "prediction_markets"
+              ? selectOpenMarkets
+              : table === "prediction_positions"
+                ? selectPositions
+                : table === "prediction_fills"
+                  ? selectFills
+                  : selectCredits,
     }));
     mocks.createClient.mockReturnValue({ from });
 
@@ -73,10 +172,11 @@ describe("coins function", () => {
     expect(from).toHaveBeenCalledWith("coin_accounts");
     expect(selectAccounts).toHaveBeenCalledWith("username,balance");
     expect(from).toHaveBeenCalledWith("tournament_bets");
-    expect(selectOpenBets).toHaveBeenCalledWith("username,total_cost");
+    expect(selectOpenBets).toHaveBeenCalledWith("id,username,total_cost");
     expect(filterOpenBets).toHaveBeenCalledWith("status", "open");
+    expect(filterUnsettledMarkets).toHaveBeenCalledWith("status", ["open", "closed"]);
     expect(JSON.parse(response.body).result).toEqual([
-      { username: "bettor", netWorth: 1250, balance: 850, inBets: 400 },
+      { username: "bettor", netWorth: 1350, balance: 850, inBets: 500 },
       { username: "saver", netWorth: 1200, balance: 1200, inBets: 0 },
     ]);
   });
