@@ -674,7 +674,7 @@ export const ShopPage = () => {
               <h2 id="shop-closure-title">Shop temporarily closed</h2>
               <p>
                 Purchases reopen automatically on <time dateTime={SHOP_REOPENS_AT}>November 3</time>
-                at 12:00 AM PT.
+                at 00:00 UTC.
               </p>
             </section>
           ) : null}

@@ -25,7 +25,7 @@ const requestHeaders = (username: string) => ({
 describe("coins function", () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-11-03T08:00:01.000Z"));
+    vi.setSystemTime(new Date("2026-11-03T00:00:01.000Z"));
     mocks.createClient.mockReset();
     mocks.resolveCanonicalArchiveUsername.mockReset();
     mocks.resolveCanonicalArchiveUsername.mockImplementation(async (username: string) =>
@@ -46,7 +46,7 @@ describe("coins function", () => {
   });
 
   it("blocks shop purchases until the automatic November 3 reopening", async () => {
-    vi.setSystemTime(new Date("2026-11-03T07:59:59.000Z"));
+    vi.setSystemTime(new Date("2026-11-02T23:59:59.000Z"));
     const cookie = createSiteSessionCookie("Closed_Shop_Buyer", {});
 
     const response = await handler({
@@ -61,7 +61,7 @@ describe("coins function", () => {
 
     expect(response.statusCode).toBe(503);
     expect(JSON.parse(response.body)).toMatchObject({
-      error: "The shop is closed until November 3 at 12:00 AM PT.",
+      error: "The shop is closed until November 3 at 00:00 UTC.",
     });
     expect(mocks.createClient).not.toHaveBeenCalled();
   });

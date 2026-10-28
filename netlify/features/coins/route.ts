@@ -166,7 +166,7 @@ export const coinsRoute = async (event: FunctionEvent) => {
     (input.action === "redeem" || input.action === "requestAtomicDbAnalysis") &&
     Date.now() < Date.parse(SHOP_REOPENS_AT)
   ) {
-    throw new HttpError(503, "The shop is closed until November 3 at 12:00 AM PT.");
+    throw new HttpError(503, "The shop is closed until November 3 at 00:00 UTC.");
   }
   if (input.action === "leaderboard") {
     const supabase = createServerSupabase("Atomic Coins service");
