@@ -289,7 +289,41 @@ describe("betting function", () => {
 
   it("places exchange orders under the authenticated username", async () => {
     const rpc = vi.fn(async () => ({ data: { orderId: 41, balance: 92.5 }, error: null }));
-    mocks.createClient.mockReturnValue({ rpc });
+    const rowsByTable: Record<string, unknown[]> = {
+      prediction_markets: [
+        {
+          id: "natso-ban-2026",
+          question: "Will natso be banned?",
+          resolution_rules: "Resolves from the official account status.",
+          resolution_source_url: "https://lichess.org/@/natso",
+          closes_at: "2026-12-01T00:00:00Z",
+          status: "open",
+          outcome: null,
+          settlement_price_cents: null,
+          settlement_reference_fill_id: null,
+          resolved_at: null,
+          sportsbook_volume_coins: 0,
+          exchange_volume_coins: 0,
+        },
+      ],
+      prediction_orders: [],
+      prediction_fills: [],
+      prediction_positions: [],
+      prediction_legacy_position_credits: [],
+    };
+    const from = vi.fn((table: string) => {
+      const result = { data: rowsByTable[table] ?? [], error: null };
+      const query = {
+        select: () => query,
+        in: () => query,
+        eq: () => query,
+        order: () => query,
+        limit: () => query,
+        then: (resolve: (value: typeof result) => unknown) => Promise.resolve(resolve(result)),
+      };
+      return query;
+    });
+    mocks.createClient.mockReturnValue({ from, rpc });
 
     const response = await handler({
       httpMethod: "POST",
@@ -313,5 +347,15 @@ describe("betting function", () => {
       p_price_cents: 75,
       p_quantity: 10,
     });
+    expect(JSON.parse(response.body).result).toEqual(
+      expect.objectContaining({
+        orderId: 41,
+        balance: 92.5,
+        marketId: "natso-ban-2026",
+        state: expect.objectContaining({
+          market: expect.objectContaining({ id: "natso-ban-2026" }),
+        }),
+      }),
+    );
   });
 });

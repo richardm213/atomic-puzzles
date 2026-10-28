@@ -46,6 +46,10 @@ create index if not exists prediction_orders_book_idx
   on public.prediction_orders (market_id, outcome, side, status, price_cents, created_at, id);
 create index if not exists prediction_orders_user_idx
   on public.prediction_orders (username, market_id, created_at desc);
+create index if not exists prediction_orders_open_match_idx
+  on public.prediction_orders (market_id, outcome, side, price_cents, created_at, id)
+  include (username, remaining_quantity)
+  where status in ('open', 'partial') and remaining_quantity > 0;
 
 create table if not exists public.prediction_positions (
   market_id text not null references public.prediction_markets(id),
@@ -624,7 +628,11 @@ begin
     where id = resting.id;
   end loop;
 
-  return jsonb_build_object('orderId', incoming.id, 'balance', coalesce(next_balance, 0));
+  return jsonb_build_object(
+    'orderId', incoming.id,
+    'marketId', p_market_id,
+    'balance', coalesce(next_balance, 0)
+  );
 end;
 $$;
 
@@ -680,7 +688,11 @@ begin
   update public.prediction_orders
   set remaining_quantity = 0, status = 'cancelled', updated_at = now()
   where id = order_row.id;
-  return jsonb_build_object('orderId', order_row.id, 'balance', coalesce(next_balance, 0));
+  return jsonb_build_object(
+    'orderId', order_row.id,
+    'marketId', order_row.market_id,
+    'balance', coalesce(next_balance, 0)
+  );
 end;
 $$;
 
@@ -1088,8 +1100,12 @@ create table if not exists public.prediction_market_updates (
   market_id text primary key,
   version bigint not null default 0,
   change_scope text not null default 'book' check (change_scope in ('book', 'catalog')),
+  transaction_id bigint,
   updated_at timestamptz not null default now()
 );
+
+alter table public.prediction_market_updates
+  add column if not exists transaction_id bigint;
 
 revoke all on table public.prediction_market_updates from public, anon, authenticated;
 grant select on table public.prediction_market_updates to anon, authenticated;
@@ -1117,12 +1133,16 @@ begin
   changed_row := case when tg_op = 'DELETE' then to_jsonb(old) else to_jsonb(new) end;
   changed_market_id := coalesce(changed_row ->> 'market_id', changed_row ->> 'id');
 
-  insert into public.prediction_market_updates (market_id, version, change_scope, updated_at)
-  values (changed_market_id, 1, changed_scope, now())
+  insert into public.prediction_market_updates (
+    market_id, version, change_scope, transaction_id, updated_at
+  )
+  values (changed_market_id, 1, changed_scope, txid_current(), now())
   on conflict (market_id) do update
   set version = public.prediction_market_updates.version + 1,
       change_scope = excluded.change_scope,
-      updated_at = excluded.updated_at;
+      transaction_id = excluded.transaction_id,
+      updated_at = excluded.updated_at
+  where public.prediction_market_updates.transaction_id is distinct from excluded.transaction_id;
 
   return case when tg_op = 'DELETE' then old else new end;
 end;

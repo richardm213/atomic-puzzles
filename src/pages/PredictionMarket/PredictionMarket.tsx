@@ -27,7 +27,7 @@ import { formatCoinBalance } from "../../lib/coins/coinDisplay";
 import { coinQueryKeys, coinSummaryQueryOptions } from "../../lib/coins/coinQueries";
 import { tournamentBracketQueryOptions } from "../../lib/matches/tournamentQueries";
 import {
-  predictionMarketBatchQueryKey,
+  patchPredictionMarketState,
   predictionMarketBatchQueryOptions,
   predictionMarketCatalogQueryOptions,
 } from "../../lib/predictionMarkets/predictionMarketQueries";
@@ -39,14 +39,14 @@ import {
   type PredictionMarketDefinition,
   type PredictionMarketId,
   predictionMarketVolume,
-  predictionOutcomeAbbreviation,
-  predictionOutcomeCountryCode,
-  predictionOutcomeLabel,
-  predictionOutcomeUnderscoreLabel,
   type PredictionOrder,
   type PredictionOrderSide,
   type PredictionOutcome,
+  predictionOutcomeAbbreviation,
+  predictionOutcomeCountryCode,
+  predictionOutcomeLabel,
   predictionOutcomes,
+  predictionOutcomeUnderscoreLabel,
   predictionTakerFee,
   predictionYesChance,
   quotePredictionBuy,
@@ -59,6 +59,7 @@ import { formatLocalDateTime } from "../../utils/formatters";
 const outcomeLabel = (outcome: PredictionOutcome, definition?: PredictionMarketDefinition) =>
   predictionOutcomeLabel(definition, outcome);
 const predictionAdminUsername = "prediction_admin";
+const quickTradeStorageKey = "atomic-puzzles.prediction-markets.quick-trade";
 const money = (cents: number) => `${cents} cents`;
 const averagePrice = (cents: number | undefined) => {
   if (cents === undefined) return "—";
@@ -167,6 +168,10 @@ export const PredictionMarketPage = () => {
   const [priceInput, setPriceInput] = useState("50");
   const [quantityInput, setQuantityInput] = useState("10");
   const [successMessage, setSuccessMessage] = useState("");
+  const [quickTrade, setQuickTrade] = useState(
+    () =>
+      typeof window !== "undefined" && window.localStorage.getItem(quickTradeStorageKey) === "true",
+  );
   const marketVolume = marketStates.reduce(
     (total, state) => total + predictionMarketVolume(state),
     0,
@@ -336,21 +341,12 @@ export const PredictionMarketPage = () => {
     );
   };
 
-  const refreshMarkets = () =>
-    queryClient.invalidateQueries({
-      queryKey: predictionMarketBatchQueryKey(marketIds),
-      exact: true,
-    });
-
   const placeMutation = useMutation({
     mutationFn: placePredictionOrder,
-    onSuccess: (result) => {
-      setSuccessMessage(`${side === "buy" ? "Bid" : "Ask"} placed.`);
+    onSuccess: (result, variables) => {
+      setSuccessMessage(`${variables.side === "buy" ? "Bid" : "Ask"} placed.`);
       updateCoinBalance(result.balance);
-      void queryClient.invalidateQueries({
-        queryKey: predictionMarketBatchQueryKey(marketIds),
-        exact: true,
-      });
+      patchPredictionMarketState(queryClient, result.state);
     },
   });
   const cancelMutation = useMutation({
@@ -358,10 +354,7 @@ export const PredictionMarketPage = () => {
       cancelPredictionOrder(marketId, orderId),
     onSuccess: (result) => {
       updateCoinBalance(result.balance);
-      void queryClient.invalidateQueries({
-        queryKey: predictionMarketBatchQueryKey(marketIds),
-        exact: true,
-      });
+      patchPredictionMarketState(queryClient, result.state);
     },
   });
 
@@ -397,6 +390,24 @@ export const PredictionMarketPage = () => {
     setQuantityInput(String(nextQuantity));
     setSuccessMessage("");
     placeMutation.reset();
+    if (!quickTrade || !isAuthenticated || placeMutation.isPending || !marketOpen) return;
+    const nextRestriction = orderRestrictionFor(outcome, nextSide);
+    const nextHasInventory =
+      nextSide === "buy" ||
+      (availableByOutcome[outcome] > 0 && nextQuantity <= availableByOutcome[outcome]);
+    if (nextRestriction || !nextHasInventory) return;
+    placeMutation.mutate({
+      marketId: activeMarketId,
+      outcome,
+      side: nextSide,
+      priceCents: nextPrice,
+      quantity: nextQuantity,
+    });
+  };
+
+  const toggleQuickTrade = (checked: boolean) => {
+    setQuickTrade(checked);
+    window.localStorage.setItem(quickTradeStorageKey, String(checked));
   };
 
   const toggleMarket = (marketId: PredictionMarketId) => {
@@ -463,7 +474,19 @@ export const PredictionMarketPage = () => {
               </button>
             ))}
           </div>
-          <span className="predictionTicketOrderType">Limit</span>
+          <div className="predictionTicketMode">
+            <span className="predictionTicketOrderType">Limit</span>
+            {isAuthenticated ? (
+              <label className="predictionQuickTrade">
+                <input
+                  type="checkbox"
+                  checked={quickTrade}
+                  onChange={(event) => toggleQuickTrade(event.target.checked)}
+                />
+                Quick trade
+              </label>
+            ) : null}
+          </div>
         </div>
         <div className="predictionTicketContract">
           <div className="predictionTicketMarket">
@@ -984,9 +1007,9 @@ export const PredictionMarketPage = () => {
           outcome={outcome}
           orders={editingOrders}
           onClose={() => setEditingOrders(null)}
-          onUpdated={(balance) => {
-            updateCoinBalance(balance);
-            return refreshMarkets();
+          onUpdated={(result) => {
+            updateCoinBalance(result.balance);
+            patchPredictionMarketState(queryClient, result.state);
           }}
         />
       ) : null}

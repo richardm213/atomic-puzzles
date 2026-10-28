@@ -9,6 +9,7 @@ import {
   amendPredictionOrder,
   cancelPredictionOrder,
   type PredictionOrder,
+  type PredictionOrderMutationResult,
   type PredictionOutcome,
 } from "../../lib/predictionMarkets/predictionMarkets";
 
@@ -48,7 +49,7 @@ export const PredictionOrderEditor = ({
   outcome: PredictionOutcome;
   orders: PredictionOrder[];
   onClose: () => void;
-  onUpdated: (balance: number) => Promise<unknown> | unknown;
+  onUpdated: (result: PredictionOrderMutationResult) => Promise<unknown> | unknown;
 }) => {
   const [selectedOrderId, setSelectedOrderId] = useState(orders[0]?.id ?? 0);
   const selectedOrder = useMemo(
@@ -72,9 +73,9 @@ export const PredictionOrderEditor = ({
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [onClose]);
 
-  const finish = (result: { balance: number }) => {
+  const finish = (result: PredictionOrderMutationResult) => {
     onClose();
-    void onUpdated(result.balance);
+    void onUpdated(result);
   };
   const amendMutation = useMutation({
     mutationFn: amendPredictionOrder,

@@ -11,7 +11,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Fragment, type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
 import { InlineState } from "../../components/InlineState/InlineState";
@@ -58,7 +58,7 @@ import {
   tournamentPlayerCountriesQueryOptions,
 } from "../../lib/matches/tournamentQueries";
 import {
-  predictionMarketBatchQueryKey,
+  patchPredictionMarketState,
   predictionMarketBatchQueryOptions,
   predictionMarketCatalogQueryOptions,
 } from "../../lib/predictionMarkets/predictionMarketQueries";
@@ -69,13 +69,13 @@ import {
   type PredictionMarketDefinition,
   type PredictionMarketState,
   predictionMarketVolume,
+  type PredictionOrder,
+  type PredictionOutcome,
   predictionOutcomeAbbreviation,
   predictionOutcomeCountryCode,
   predictionOutcomeLabel,
-  predictionOutcomeUnderscoreLabel,
-  type PredictionOrder,
-  type PredictionOutcome,
   predictionOutcomes,
+  predictionOutcomeUnderscoreLabel,
   predictionTakerFee,
   predictionYesChance,
   quotePredictionBuy,
@@ -1145,10 +1145,7 @@ export const BettingPage = () => {
       queryClient.setQueryData(coinQueryKeys.summary(username), (current: unknown) =>
         current && typeof current === "object" ? { ...current, balance: result.balance } : current,
       );
-      void queryClient.invalidateQueries({
-        queryKey: predictionMarketBatchQueryKey(predictionMarketIds),
-        exact: true,
-      });
+      patchPredictionMarketState(queryClient, result.state);
     },
   });
 
@@ -2721,14 +2718,13 @@ export const BettingPage = () => {
           outcome={editingOrderContext.outcome}
           orders={editingOrderContext.orders}
           onClose={() => setEditingOrderContext(null)}
-          onUpdated={(balance) => {
+          onUpdated={(result) => {
             queryClient.setQueryData(coinQueryKeys.summary(username), (current: unknown) =>
-              current && typeof current === "object" ? { ...current, balance } : current,
+              current && typeof current === "object"
+                ? { ...current, balance: result.balance }
+                : current,
             );
-            return queryClient.invalidateQueries({
-              queryKey: predictionMarketBatchQueryKey(predictionMarketIds),
-              exact: true,
-            });
+            patchPredictionMarketState(queryClient, result.state);
           }}
         />
       ) : null}

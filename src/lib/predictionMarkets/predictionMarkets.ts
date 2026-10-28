@@ -349,8 +349,15 @@ export const fetchPredictionMarkets = async (
 };
 
 const orderMutationSchema = z.object({
-  result: z.object({ orderId: z.number(), balance: z.number() }),
+  result: z.object({
+    orderId: z.number(),
+    balance: z.number(),
+    marketId: z.string(),
+    state: marketStateSchema.shape.result,
+  }),
 });
+
+export type PredictionOrderMutationResult = z.infer<typeof orderMutationSchema>["result"];
 
 export const fetchPredictionMarket = async (
   marketId: PredictionMarketId,

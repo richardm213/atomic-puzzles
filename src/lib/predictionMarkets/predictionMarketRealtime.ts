@@ -3,8 +3,8 @@ import type { QueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 
 import { getSupabaseClient } from "../supabase/client";
-import { predictionMarketQueryRoot } from "./predictionMarketQueries";
-import type { PredictionMarketId } from "./predictionMarkets";
+import { patchPredictionMarketState, predictionMarketQueryRoot } from "./predictionMarketQueries";
+import { fetchPredictionMarkets, type PredictionMarketId } from "./predictionMarkets";
 
 type PredictionMarketUpdate = {
   market_id: string;
@@ -50,20 +50,8 @@ export const createCoalescedBatchRefresh = <Item>(
 };
 
 const refreshMarkets = async (queryClient: QueryClient, marketIds: readonly string[]) => {
-  const changedMarketIds = new Set(marketIds);
-  await queryClient.refetchQueries({
-    type: "active",
-    predicate: (query) => {
-      const [root, scope, ids] = query.queryKey;
-      if (root !== predictionMarketQueryRoot[0]) return false;
-      if (scope === "batch" && Array.isArray(ids)) {
-        return ids.some((marketId) =>
-          changedMarketIds.has(typeof marketId === "string" ? marketId : ""),
-        );
-      }
-      return typeof scope === "string" && changedMarketIds.has(scope);
-    },
-  });
+  const states = await fetchPredictionMarkets(marketIds);
+  states.forEach((state) => patchPredictionMarketState(queryClient, state));
 };
 
 export const usePredictionMarketRealtime = (

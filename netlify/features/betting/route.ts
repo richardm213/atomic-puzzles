@@ -252,6 +252,16 @@ type LegacyPositionCreditRow = {
   price_cents: number;
 };
 
+const groupByMarketId = <Row extends { market_id: string }>(rows: readonly Row[]) => {
+  const grouped = new Map<string, Row[]>();
+  for (const row of rows) {
+    const marketRows = grouped.get(row.market_id);
+    if (marketRows) marketRows.push(row);
+    else grouped.set(row.market_id, [row]);
+  }
+  return grouped;
+};
+
 const loadPredictionMarketStates = async (
   supabase: ReturnType<typeof createServerSupabase>,
   requestedMarketIds: readonly string[],
@@ -357,9 +367,10 @@ const loadPredictionMarketStates = async (
     positionFills = [
       ...new Map([...boughtFills, ...soldFills].map((fill) => [fill.id, fill])).values(),
     ];
+    const legacyCreditsByMarket = groupByMarketId(legacyCredits);
     positions = positions.map((position) => {
-      const credits = legacyCredits.filter(
-        (credit) => credit.market_id === position.market_id && credit.outcome === position.outcome,
+      const credits = (legacyCreditsByMarket.get(position.market_id) ?? []).filter(
+        (credit) => credit.outcome === position.outcome,
       );
       const legacyQuantity = credits.reduce((total, credit) => total + credit.quantity, 0);
       const legacyCostCents = credits.reduce(
@@ -370,13 +381,17 @@ const loadPredictionMarketStates = async (
     });
   }
 
+  const bookOrdersByMarket = groupByMarketId(bookOrders);
+  const recentFillsByMarket = groupByMarketId(recentFills);
+  const positionFillsByMarket = groupByMarketId(positionFills);
+  const positionsByMarket = groupByMarketId(positions);
+  const userOrdersByMarket = groupByMarketId(userOrders);
+
   return markets.map((market) => {
     const marketId = market.id;
-    const marketBookOrders = bookOrders.filter((order) => order.market_id === marketId);
-    const marketPositionFills = positionFills.filter((fill) => fill.market_id === marketId);
-    const marketRecentFills = recentFills
-      .filter((fill) => fill.market_id === marketId)
-      .slice(0, 100);
+    const marketBookOrders = bookOrdersByMarket.get(marketId) ?? [];
+    const marketPositionFills = positionFillsByMarket.get(marketId) ?? [];
+    const marketRecentFills = (recentFillsByMarket.get(marketId) ?? []).slice(0, 100);
     const positionCosts = username
       ? calculatePredictionPositionCost(marketPositionFills, username)
       : null;
@@ -393,25 +408,35 @@ const loadPredictionMarketStates = async (
           : market,
       book: buildPredictionBook(marketBookOrders),
       fills: marketRecentFills,
-      positions: positions
-        .filter((position) => position.market_id === marketId)
-        .map((position) => {
-          const cost = positionCosts?.[position.outcome];
-          const { legacyQuantity = 0, legacyCostCents = 0, ...publicPosition } = position;
-          const trackedQuantity = (cost?.quantity ?? 0) + legacyQuantity;
-          const trackedCostCents =
-            (cost?.averagePriceCents ?? 0) * (cost?.quantity ?? 0) + legacyCostCents;
-          return {
-            ...publicPosition,
-            average_price_cents:
-              trackedQuantity === position.quantity && trackedQuantity > 0
-                ? trackedCostCents / trackedQuantity
-                : null,
-          };
-        }),
-      orders: userOrders.filter((order) => order.market_id === marketId),
+      positions: (positionsByMarket.get(marketId) ?? []).map((position) => {
+        const cost = positionCosts?.[position.outcome];
+        const { legacyQuantity = 0, legacyCostCents = 0, ...publicPosition } = position;
+        const trackedQuantity = (cost?.quantity ?? 0) + legacyQuantity;
+        const trackedCostCents =
+          (cost?.averagePriceCents ?? 0) * (cost?.quantity ?? 0) + legacyCostCents;
+        return {
+          ...publicPosition,
+          average_price_cents:
+            trackedQuantity === position.quantity && trackedQuantity > 0
+              ? trackedCostCents / trackedQuantity
+              : null,
+        };
+      }),
+      orders: userOrdersByMarket.get(marketId) ?? [],
     };
   });
+};
+
+const presentOrderMutation = async (
+  supabase: ReturnType<typeof createServerSupabase>,
+  marketId: string,
+  username: string,
+  result: unknown,
+) => {
+  const [state] = await loadPredictionMarketStates(supabase, [marketId], username);
+  if (!state) throw new Error("Unable to load the updated prediction market.");
+  const mutation = result && typeof result === "object" ? result : {};
+  return { ...mutation, marketId, state };
 };
 
 export const bettingRoute = async (event: FunctionEvent) => {
@@ -530,7 +555,9 @@ export const bettingRoute = async (event: FunctionEvent) => {
       if (/closed/i.test(error.message)) throw new HttpError(409, "This market is closed.");
       throw new Error(`Unable to place prediction order: ${error.message}`);
     }
-    return identityResponse(identity, 200, { result: data });
+    return identityResponse(identity, 200, {
+      result: await presentOrderMutation(supabase, input.marketId, username, data),
+    });
   }
 
   if (input.action === "cancelExchangeOrder") {
@@ -545,7 +572,13 @@ export const bettingRoute = async (event: FunctionEvent) => {
         throw new HttpError(409, "That order is no longer open.");
       throw new Error(`Unable to cancel prediction order: ${error.message}`);
     }
-    return identityResponse(identity, 200, { result: data });
+    const resultMarketId =
+      data && typeof data === "object" && "marketId" in data && typeof data.marketId === "string"
+        ? data.marketId
+        : input.marketId;
+    return identityResponse(identity, 200, {
+      result: await presentOrderMutation(supabase, resultMarketId, username, data),
+    });
   }
 
   if (input.action === "amendExchangeOrder") {
@@ -572,7 +605,9 @@ export const bettingRoute = async (event: FunctionEvent) => {
       if (/closed/i.test(error.message)) throw new HttpError(409, "This market is closed.");
       throw new Error(`Unable to update prediction order: ${error.message}`);
     }
-    return identityResponse(identity, 200, { result: data });
+    return identityResponse(identity, 200, {
+      result: await presentOrderMutation(supabase, input.marketId, username, data),
+    });
   }
 
   if (input.action === "bets") {

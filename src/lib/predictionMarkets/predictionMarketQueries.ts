@@ -1,10 +1,11 @@
-import { queryOptions } from "@tanstack/react-query";
+import { type QueryClient, queryOptions } from "@tanstack/react-query";
 
 import {
   fetchPredictionMarket,
   fetchPredictionMarketGroups,
   fetchPredictionMarkets,
   type PredictionMarketId,
+  type PredictionMarketState,
 } from "./predictionMarkets";
 
 export const predictionMarketQueryRoot = ["prediction-market"] as const;
@@ -38,4 +39,18 @@ export const predictionMarketBatchQueryOptions = (marketIds: readonly Prediction
     refetchInterval: 30_000,
     refetchIntervalInBackground: false,
   });
+};
+
+export const patchPredictionMarketState = (
+  queryClient: QueryClient,
+  state: PredictionMarketState,
+) => {
+  queryClient.setQueryData(predictionMarketQueryKey(state.market.id), state);
+  queryClient.setQueriesData<PredictionMarketState[]>(
+    { queryKey: [...predictionMarketQueryRoot, "batch"] },
+    (current) =>
+      current?.map((marketState) =>
+        marketState.market.id === state.market.id ? state : marketState,
+      ),
+  );
 };
