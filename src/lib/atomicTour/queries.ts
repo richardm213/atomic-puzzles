@@ -1,5 +1,7 @@
 import { queryOptions } from "@tanstack/react-query";
+import { z } from "zod";
 
+import { apiRequest } from "../api/postApi";
 import { getSupabaseClient } from "../supabase/client";
 import { fetchAllSupabaseRows, loadSupabaseRows } from "../supabase/rows";
 
@@ -28,13 +30,35 @@ export type AtomicTourPlayerRankingStats = {
 };
 
 type RankingRow = {
-  snapshot_date?: string | null;
-  player_name?: string | null;
-  rank?: number | string | null;
-  points?: number | string | null;
-  rank_change?: number | string | null;
-  points_change?: number | string | null;
+  snapshot_date?: string | null | undefined;
+  player_name?: string | null | undefined;
+  rank?: number | string | null | undefined;
+  points?: number | string | null | undefined;
+  rank_change?: number | string | null | undefined;
+  points_change?: number | string | null | undefined;
 };
+
+const snapshotDatesResponseSchema = z.object({ snapshotDates: z.array(z.string()) });
+const rankingsResponseSchema = z.object({
+  rows: z.array(
+    z.object({
+      snapshot_date: z.string().nullable().optional(),
+      player_name: z.string().nullable().optional(),
+      rank: z.union([z.number(), z.string()]).nullable().optional(),
+      points: z.union([z.number(), z.string()]).nullable().optional(),
+      rank_change: z.union([z.number(), z.string()]).nullable().optional(),
+      points_change: z.union([z.number(), z.string()]).nullable().optional(),
+    }),
+  ),
+});
+const fetchAtomicTourSnapshotDates = async (): Promise<string[]> =>
+  (
+    await apiRequest("/api/public-data?resource=atomic-tour-snapshot-dates", {
+      schema: snapshotDatesResponseSchema,
+      errorMessage: "Unable to load Atomic Tour ranking dates.",
+      invalidMessage: "The Atomic Tour ranking service returned invalid data.",
+    })
+  ).snapshotDates;
 
 export const summarizeAtomicTourPlayerRanking = (
   rows: RankingRow[],
@@ -95,19 +119,7 @@ const normalizeRanking = (row: RankingRow): AtomicTourRanking | null => {
 export const atomicTourSnapshotDatesQueryOptions = () =>
   queryOptions({
     queryKey: ["atomic-tour", "snapshot-dates"],
-    queryFn: async () => {
-      const rows = await fetchAllSupabaseRows<{ snapshot_date?: string | null }>(
-        "atomic_tour_ranking_snapshots",
-        () =>
-          getSupabaseClient()
-            .from("atomic_tour_ranking_snapshots")
-            .select("snapshot_date")
-            .order("snapshot_date", { ascending: false }),
-      );
-      return [
-        ...new Set(rows.map((row) => String(row.snapshot_date ?? "").trim()).filter(Boolean)),
-      ];
-    },
+    queryFn: fetchAtomicTourSnapshotDates,
     staleTime: 5 * 60 * 1_000,
   });
 
@@ -115,16 +127,17 @@ export const atomicTourRankingsQueryOptions = (snapshotDate: string) =>
   queryOptions({
     queryKey: ["atomic-tour", "rankings", snapshotDate],
     queryFn: async () => {
-      const rows = await loadSupabaseRows<RankingRow>(
-        "atomic_tour_ranking_snapshots",
-        getSupabaseClient()
-          .from("atomic_tour_ranking_snapshots")
-          .select("snapshot_date,player_name,rank,points,rank_change,points_change")
-          .eq("snapshot_date", snapshotDate)
-          .order("rank", { ascending: true })
-          .order("player_name", { ascending: true }),
+      const result = await apiRequest(
+        `/api/public-data?resource=atomic-tour-rankings&snapshotDate=${encodeURIComponent(snapshotDate)}`,
+        {
+          schema: rankingsResponseSchema,
+          errorMessage: "Unable to load Atomic Tour rankings.",
+          invalidMessage: "The Atomic Tour ranking service returned invalid data.",
+        },
       );
-      return rows.map(normalizeRanking).filter((row): row is AtomicTourRanking => row !== null);
+      return result.rows
+        .map(normalizeRanking)
+        .filter((row): row is AtomicTourRanking => row !== null);
     },
     enabled: Boolean(snapshotDate),
     staleTime: 5 * 60 * 1_000,
@@ -138,15 +151,8 @@ export const atomicTourPlayerRankingStatsQueryOptions = (playerNames: string[]) 
     queryKey: ["atomic-tour", "player-ranking-stats", ...normalizedNames],
     queryFn: async () => {
       if (!normalizedNames.length) return null;
-      const [latestSnapshotRows, playerRows] = await Promise.all([
-        loadSupabaseRows<{ snapshot_date?: string | null }>(
-          "atomic_tour_ranking_snapshots",
-          getSupabaseClient()
-            .from("atomic_tour_ranking_snapshots")
-            .select("snapshot_date")
-            .order("snapshot_date", { ascending: false })
-            .limit(1),
-        ),
+      const [snapshotDates, playerRows] = await Promise.all([
+        fetchAtomicTourSnapshotDates(),
         fetchAllSupabaseRows<RankingRow>("atomic_tour_ranking_snapshots", () =>
           getSupabaseClient()
             .from("atomic_tour_ranking_snapshots")
@@ -155,7 +161,7 @@ export const atomicTourPlayerRankingStatsQueryOptions = (playerNames: string[]) 
             .order("snapshot_date", { ascending: false }),
         ),
       ]);
-      const latestSnapshotDate = String(latestSnapshotRows[0]?.snapshot_date ?? "").trim();
+      const latestSnapshotDate = snapshotDates[0] ?? "";
       return summarizeAtomicTourPlayerRanking(playerRows, latestSnapshotDate);
     },
     enabled: normalizedNames.length > 0,

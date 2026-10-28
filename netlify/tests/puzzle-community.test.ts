@@ -91,8 +91,7 @@ describe("profile comment history", () => {
     const repository = {
       createComment: vi.fn().mockResolvedValue(77),
       ensureUser: vi.fn().mockResolvedValue(undefined),
-      loadDiscussionRows: vi.fn().mockResolvedValue({ comments: [], counts: [], viewerVotes: [] }),
-      loadPuzzleVoteRows: vi.fn().mockResolvedValue({ counts: null, viewerVote: null }),
+      loadTargetCommunity: vi.fn().mockResolvedValue({ comments: [] }),
       notifyPuzzleCommentRecipients: vi
         .fn()
         .mockRejectedValue(new Error("Notification unavailable")),

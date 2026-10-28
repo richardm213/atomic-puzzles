@@ -302,79 +302,21 @@ export class CommunityRepository {
     return requireSupabaseRows(result, "Unable to check attempted puzzles");
   }
 
-  async loadDiscussionRows(target: CommunityTarget, username: string | null) {
+  async loadTargetCommunity(target: CommunityTarget, username: string | null) {
     const profileTargetIds =
       target.type === "profile" ? await this.resolveProfileTargetIds(target.id) : [target.id];
-    let commentsQuery = this.supabase
-      .from("community_comments")
-      .select("id, target_type, target_id, target_context, username, parent_id, body, created_at")
-      .eq("target_type", target.type)
-      .eq("target_context", target.context);
-    commentsQuery =
-      profileTargetIds.length === 1
-        ? commentsQuery.eq("target_id", profileTargetIds[0]!)
-        : commentsQuery.in("target_id", profileTargetIds);
-    commentsQuery = commentsQuery
-      .order("created_at", { ascending: true })
-      .order("id", { ascending: true });
-    let countsQuery = this.supabase
-      .from("community_comment_vote_counts")
-      .select("comment_id, upvotes, downvotes, score")
-      .eq("target_type", target.type)
-      .eq("target_context", target.context);
-    countsQuery =
-      profileTargetIds.length === 1
-        ? countsQuery.eq("target_id", profileTargetIds[0]!)
-        : countsQuery.in("target_id", profileTargetIds);
-    const [commentsResult, countsResult] = await Promise.all([commentsQuery, countsQuery]);
-    if (commentsResult.error) {
-      throw new Error(`Unable to load comments: ${commentsResult.error.message}`);
-    }
-    if (countsResult.error) {
-      throw new Error(`Unable to load comment votes: ${countsResult.error.message}`);
-    }
-    const commentIds = (commentsResult.data ?? []).map((comment) => Number(comment.id));
-    const viewerVotesResult =
-      username && commentIds.length
-        ? await this.supabase
-            .from("community_comment_votes")
-            .select("comment_id, vote")
-            .eq("username", username)
-            .in("comment_id", commentIds)
-        : { data: [], error: null };
-    if (viewerVotesResult.error) {
-      throw new Error(`Unable to load your comment votes: ${viewerVotesResult.error.message}`);
-    }
-    return {
-      comments: commentsResult.data ?? [],
-      counts: countsResult.data ?? [],
-      viewerVotes: viewerVotesResult.data ?? [],
+    const { data, error } = await this.supabase.rpc("get_community_discussion_bundle", {
+      p_target_type: target.type,
+      p_target_ids: profileTargetIds,
+      p_target_context: target.context,
+      p_username: username,
+    });
+    if (error) throw new Error(`Unable to load discussion: ${error.message}`);
+    return (data ?? { comments: [] }) as {
+      comments: Array<Record<string, unknown>>;
+      counts?: Record<string, unknown> | null;
+      viewerVote?: number | null;
     };
-  }
-
-  async loadPuzzleVoteRows(puzzleId: number, username: string | null) {
-    const [countsResult, viewerVoteResult] = await Promise.all([
-      this.supabase
-        .from("puzzle_vote_counts")
-        .select("puzzle_id, upvotes, downvotes, score")
-        .eq("puzzle_id", puzzleId)
-        .maybeSingle(),
-      username
-        ? this.supabase
-            .from("puzzle_votes")
-            .select("vote")
-            .eq("puzzle_id", puzzleId)
-            .eq("username", username)
-            .maybeSingle()
-        : Promise.resolve({ data: null, error: null }),
-    ]);
-    if (countsResult.error) {
-      throw new Error(`Unable to load puzzle votes: ${countsResult.error.message}`);
-    }
-    if (viewerVoteResult.error) {
-      throw new Error(`Unable to load your vote: ${viewerVoteResult.error.message}`);
-    }
-    return { counts: countsResult.data, viewerVote: viewerVoteResult.data };
   }
 
   async ensureUser(username: string): Promise<void> {

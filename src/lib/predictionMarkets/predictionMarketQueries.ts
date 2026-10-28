@@ -26,8 +26,6 @@ export const predictionMarketBatchQueryOptions = (marketIds: readonly Prediction
     queryKey: predictionMarketBatchQueryKey(uniqueMarketIds),
     queryFn: () => fetchPredictionMarkets(uniqueMarketIds),
     staleTime: 1_000,
-    refetchInterval: 30_000,
-    refetchIntervalInBackground: false,
   });
 };
 

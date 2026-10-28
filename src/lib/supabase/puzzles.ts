@@ -1,5 +1,6 @@
 import type { RawPuzzleRow } from "../../types/puzzles";
 import { cachedRequest } from "../../utils/requestCache";
+import { apiRequest } from "../api/postApi";
 import { getSupabaseClient } from "./client";
 import { fetchAllSupabaseRows } from "./rows";
 
@@ -13,7 +14,6 @@ const PUZZLE_SET_COLUMNS = `players,puzzle_set_id,${PUZZLE_SET_RELATION},${PUZZL
 const PUZZLE_RATING_RELATION =
   "rating_state:puzzle_ratings!puzzle_ratings_puzzle_id_fkey(rating,rating_deviation,attempts,successes,computed_level,human_level,human_rated_by,human_rated_at,updated_at)";
 const PUZZLE_CATALOG_COLUMNS = `id,author,created_at,${PUZZLE_SET_COLUMNS},tags,opa_style,${PUZZLE_RATING_RELATION}`;
-const PUZZLE_SOLVER_INDEX_COLUMNS = "id";
 const puzzleCatalogCache = new Map<string, Promise<PuzzleRow[]>>();
 const puzzleSolverIndexCache = new Map<string, Promise<PuzzleRow[]>>();
 
@@ -42,9 +42,13 @@ export const fetchPuzzleCatalogFromSupabase = async (): Promise<PuzzleRow[]> =>
  * first board can be shown.
  */
 export const fetchPuzzleSolverIndexFromSupabase = async (): Promise<PuzzleRow[]> =>
-  cachedRequest(puzzleSolverIndexCache, ["puzzle-solver-index", PUZZLES_TABLE], () => {
-    const supabase = getSupabaseClient();
-    return fetchAllSupabaseRows<PuzzleRow>(PUZZLES_TABLE, () =>
-      supabase.from(PUZZLES_TABLE).select(PUZZLE_SOLVER_INDEX_COLUMNS).order("id"),
+  cachedRequest(puzzleSolverIndexCache, ["puzzle-solver-index", PUZZLES_TABLE], async () => {
+    const result = await apiRequest<{ rows: PuzzleRow[] }>(
+      "/api/public-data?resource=puzzle-solver-index",
+      {
+        errorMessage: "Unable to load the puzzle index.",
+        invalidMessage: "The puzzle index service returned invalid data.",
+      },
     );
+    return result.rows;
   });

@@ -341,35 +341,12 @@ export class CommunityService {
   }
 
   async loadDiscussion(target: CommunityTarget, username: string | null) {
-    const rows = await this.repository.loadDiscussionRows(target, username);
-    const counts = new Map(rows.counts.map((row) => [Number(row.comment_id), row]));
-    const viewerVotes = new Map(
-      rows.viewerVotes.map((row) => [Number(row.comment_id), Number(row.vote)]),
-    );
-    return {
-      comments: rows.comments.map((comment) => {
-        const count = counts.get(Number(comment.id));
-        return {
-          ...comment,
-          upvotes: Number(count?.upvotes ?? 0),
-          downvotes: Number(count?.downvotes ?? 0),
-          score: Number(count?.score ?? 0),
-          viewer_vote: Number(viewerVotes.get(Number(comment.id)) ?? 0),
-        };
-      }),
-    };
+    const rows = await this.repository.loadTargetCommunity(target, username);
+    return { comments: rows.comments };
   }
 
   async loadTargetCommunity(target: CommunityTarget, username: string | null) {
-    const discussion = await this.loadDiscussion(target, username);
-    if (target.type !== "puzzle") return discussion;
-    const puzzleId = Number(target.id);
-    const voteRows = await this.repository.loadPuzzleVoteRows(puzzleId, username);
-    return {
-      ...discussion,
-      counts: voteRows.counts ?? { puzzle_id: puzzleId, upvotes: 0, downvotes: 0, score: 0 },
-      viewerVote: Number(voteRows.viewerVote?.vote ?? 0),
-    };
+    return this.repository.loadTargetCommunity(target, username);
   }
 
   async voteOnPuzzle(puzzleId: number, username: string, vote: VoteValue) {

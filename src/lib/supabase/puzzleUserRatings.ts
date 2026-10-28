@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import type { PuzzleLeaderboardMetric } from "../../../shared/domain/puzzles/puzzleLeaderboard";
 import { normalizeUsername } from "../../utils/playerNames";
-import { postApi } from "../api/postApi";
+import { apiRequest, postApi } from "../api/postApi";
 import { getSupabaseClient } from "./client";
 import { loadSupabaseRows } from "./rows";
 import type { PuzzleUserRatingRow as StoredPuzzleUserRatingRow } from "./types";
@@ -163,15 +163,11 @@ export const fetchPuzzleLeaderboard = async (
 };
 
 export const fetchPuzzleRankingTrophies = async (): Promise<PuzzleRankingTrophyRow[]> => {
-  const result = await postApi(
-    "/api/puzzles/rating",
-    { action: "trophies" },
-    {
-      schema: puzzleRankingTrophiesResponseSchema,
-      errorMessage: "Unable to load puzzle ranking trophies.",
-      invalidMessage: "The puzzle ranking trophy service returned invalid data.",
-    },
-  );
+  const result = await apiRequest("/api/public-data?resource=puzzle-ranking-trophies", {
+    schema: puzzleRankingTrophiesResponseSchema,
+    errorMessage: "Unable to load puzzle ranking trophies.",
+    invalidMessage: "The puzzle ranking trophy service returned invalid data.",
+  });
   return result.rows.map((row) => ({ ...row, username: normalizeUsername(row.username) }));
 };
 

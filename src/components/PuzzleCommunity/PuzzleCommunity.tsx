@@ -86,6 +86,7 @@ type PuzzleCommunityProps = {
 type CommunityDiscussionProps = {
   target: CommunityTarget;
   voteTargetId?: string;
+  deferUntilVisible?: boolean;
 };
 
 const emptyCommunity = (target: CommunityTarget): CommunityDiscussionData => ({
@@ -98,7 +99,11 @@ const emptyCommunity = (target: CommunityTarget): CommunityDiscussionData => ({
   comments: [],
 });
 
-export const CommunityDiscussion = ({ target, voteTargetId }: CommunityDiscussionProps) => {
+export const CommunityDiscussion = ({
+  target,
+  voteTargetId,
+  deferUntilVisible = false,
+}: CommunityDiscussionProps) => {
   const targetType = target.type;
   const targetId = target.id;
   const targetContext = target.context;
@@ -116,7 +121,11 @@ export const CommunityDiscussion = ({ target, voteTargetId }: CommunityDiscussio
   const [actionError, setActionError] = useState("");
   const [voteTarget, setVoteTarget] = useState<HTMLElement | null>(null);
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
+  const communityRef = useRef<HTMLElement>(null);
   const mentionRequestIdRef = useRef(0);
+  const [discussionReady, setDiscussionReady] = useState(
+    () => !deferUntilVisible || window.location.hash.startsWith("#comment-"),
+  );
   const queryClient = useQueryClient();
   const currentTarget = useMemo<CommunityTarget>(
     () => ({ type: targetType, id: targetId, context: targetContext ?? "" }),
@@ -126,7 +135,7 @@ export const CommunityDiscussion = ({ target, voteTargetId }: CommunityDiscussio
   const discussionOptions = communityDiscussionQueryOptions(currentTarget, viewerKey);
   const discussionQuery = useQuery({
     ...discussionOptions,
-    enabled: Boolean(targetId),
+    enabled: Boolean(targetId) && discussionReady,
   });
   const community = discussionQuery.data ?? null;
   const loading = discussionQuery.isPending;
@@ -168,6 +177,25 @@ export const CommunityDiscussion = ({ target, voteTargetId }: CommunityDiscussio
   });
   const pendingVote = voteMutation.isPending;
   const postingComment = postCommentMutation.isPending;
+
+  useEffect(() => {
+    if (discussionReady || !deferUntilVisible) return;
+    const element = communityRef.current;
+    if (!element || !("IntersectionObserver" in window)) {
+      setDiscussionReady(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        setDiscussionReady(true);
+        observer.disconnect();
+      },
+      { rootMargin: "240px 0px" },
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [deferUntilVisible, discussionReady]);
 
   useEffect(() => {
     setVoteTarget(voteTargetId ? document.getElementById(voteTargetId) : null);
@@ -576,7 +604,12 @@ export const CommunityDiscussion = ({ target, voteTargetId }: CommunityDiscussio
   return (
     <>
       {voteTarget && puzzleVoteControls ? createPortal(puzzleVoteControls, voteTarget) : null}
-      <section id={`${target.type}-community`} className="puzzleCommunity" aria-label="Comments">
+      <section
+        ref={communityRef}
+        id={`${target.type}-community`}
+        className="puzzleCommunity"
+        aria-label="Comments"
+      >
         {!replyingTo ? renderCommentComposer(false) : null}
 
         {target.type === "tournament" && data.comments.length > 0 ? (
@@ -617,5 +650,6 @@ export const PuzzleCommunity = ({ puzzleId, voteTargetId }: PuzzleCommunityProps
     <CommunityDiscussion
       target={{ type: "puzzle", id: String(puzzleId) }}
       voteTargetId={voteTargetId}
+      deferUntilVisible
     />
   ) : null;

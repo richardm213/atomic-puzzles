@@ -100,7 +100,6 @@ export const TopNav = () => {
   const coinSummaryQuery = useQuery({
     ...coinSummaryQueryOptions(user?.username ?? "anonymous"),
     enabled: isAuthenticated,
-    refetchInterval: 15_000,
   });
   const markNotificationsMutation = useMutation({
     mutationFn: markNotificationsRead,
