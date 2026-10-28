@@ -65,6 +65,7 @@ const localPuzzleFunctionsPlugin = ({ archiveOrigin, useLocalArchive }) => {
     ["/api/coins", "/netlify/functions/coins.ts"],
     ["/api/betting", "/netlify/functions/betting.ts"],
     ["/api/badges", "/netlify/functions/badges.ts"],
+    ["/api/public-data", "/netlify/functions/public-data.ts"],
     ["/api/atomicdb-analysis", "/netlify/functions/atomicdb-analysis.ts"],
     ["/api/archive-data", "/netlify/functions/archive-data.ts"],
   ]);

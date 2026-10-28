@@ -1841,8 +1841,11 @@ export const PuzzleSolverPage = () => {
           <div id="desktop-puzzle-vote-slot" className="puzzleVoteSlot" />
         ) : null}
 
-        {boardState.error ? <div className="errorText">{boardState.error}</div> : null}
-        {loadingError ? <div className="errorText">{loadingError}</div> : null}
+        {loadingError || boardState.error ? (
+          <div className="errorText" role="alert">
+            {loadingError || boardState.error}
+          </div>
+        ) : null}
         {hasCompletedPuzzleSet ? (
           <section className="puzzleSetComplete" role="status" aria-live="polite">
             <div className="puzzleSetCompleteCopy">
