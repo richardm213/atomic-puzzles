@@ -536,6 +536,7 @@ export const BettingPage = () => {
     );
   const [stakeInput, setStakeInput] = useState("");
   const [stakeTouched, setStakeTouched] = useState(false);
+  const [bettorFilter, setBettorFilter] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [suggestionQuestion, setSuggestionQuestion] = useState("");
   const [suggestionOutcomes, setSuggestionOutcomes] =
@@ -766,6 +767,11 @@ export const BettingPage = () => {
     () => allHistoryBets.filter((bet) => bet.status === "open").length,
     [allHistoryBets],
   );
+  const filteredAllHistoryBets = useMemo(() => {
+    const normalizedFilter = bettorFilter.trim().toLowerCase();
+    if (!normalizedFilter) return allHistoryBets;
+    return allHistoryBets.filter((bet) => bet.username.toLowerCase().includes(normalizedFilter));
+  }, [allHistoryBets, bettorFilter]);
   const openMarkets = useMemo(
     () => markets.filter((market) => marketAcceptsBets(market, currentTime)),
     [currentTime, markets],
@@ -2642,6 +2648,27 @@ export const BettingPage = () => {
           </section>
         ) : (
           <section className="bettingHistory" role="tabpanel">
+            {view === "all" ? (
+              <div className="betHistoryBettorFilter">
+                <label htmlFor="all-bets-bettor">Bettor</label>
+                <div>
+                  <input
+                    id="all-bets-bettor"
+                    type="text"
+                    value={bettorFilter}
+                    onChange={(event) => setBettorFilter(event.target.value)}
+                    placeholder="username"
+                    autoComplete="off"
+                    maxLength={100}
+                  />
+                  {bettorFilter ? (
+                    <button type="button" onClick={() => setBettorFilter("")}>
+                      Clear
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
             {view === "mine" && !isAuthenticated ? (
               <div className="bettingLoginPrompt">
                 <h2>Log in to view your bets</h2>
@@ -2674,10 +2701,14 @@ export const BettingPage = () => {
               <RouteLoadingFallback />
             ) : (
               <BetHistory
-                bets={allHistoryBets}
+                bets={filteredAllHistoryBets}
                 markets={markets}
                 countryByPlayer={countryByPlayer}
-                emptyMessage="No bets have been placed yet."
+                emptyMessage={
+                  bettorFilter.trim()
+                    ? "No bets match this bettor."
+                    : "No bets have been placed yet."
+                }
                 showUsername
               />
             )}
