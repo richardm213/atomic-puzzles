@@ -9,16 +9,8 @@ import type {
   TournamentPlayerResult,
 } from "../../lib/matches/tournaments";
 import { compareTournamentStartDates } from "../../lib/matches/tournaments";
+import { formatOrdinal } from "../../utils/formatters";
 import { normalizeUsername } from "../../utils/playerNames";
-
-const ordinal = (rank: number): string => {
-  const remainder = rank % 100;
-  if (remainder >= 11 && remainder <= 13) return `${rank}th`;
-  if (rank % 10 === 1) return `${rank}st`;
-  if (rank % 10 === 2) return `${rank}nd`;
-  if (rank % 10 === 3) return `${rank}rd`;
-  return `${rank}th`;
-};
 
 const scoreResult = (playerScore: number, opponentScore: number): TournamentPlayerResult => {
   if (playerScore > opponentScore) return "win";
@@ -117,7 +109,7 @@ export const buildAtomicChessLeaguePlayerAppearances = (
       return [
         {
           tournament,
-          placementLabel: ordinal(team.rank),
+          placementLabel: formatOrdinal(team.rank),
           placementFieldLabel: `${division.teams.length} ${division.teams.length === 1 ? "team" : "teams"}`,
           divisionLabel: division.name,
           wins: matches.filter((match) => match.result === "win").length,

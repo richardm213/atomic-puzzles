@@ -31,7 +31,7 @@ import {
 } from "../../lib/matches/tournaments";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { countryCodeToFlagUrl } from "../../utils/countryFlags";
-import { formatCalendarDateRange } from "../../utils/formatters";
+import { formatCalendarDateRange, formatTimeControl } from "../../utils/formatters";
 import { normalizeUsername } from "../../utils/playerNames";
 import { AtomicChessLeaguePage } from "./AtomicChessLeaguePage";
 import {
@@ -69,8 +69,6 @@ const normalizeTournamentTab = (value: string | undefined): string => {
     .toLowerCase();
   return TOURNAMENT_TAB_KEYS.has(normalized) ? normalized : "";
 };
-
-const formatTimeControl = (timeControl: string): string => timeControl.replace(/^0\.5\+/, "½+");
 
 type DragState = {
   stageKey: string;
@@ -1082,9 +1080,7 @@ const BracketTournamentPage = ({
     const sources = new Map<string, LoserSource[]>();
 
     bracket.matches
-      .filter(
-        (match) => match.bracket === "main" && losersRoundOneIds.has(match.loser_to),
-      )
+      .filter((match) => match.bracket === "main" && losersRoundOneIds.has(match.loser_to))
       .sort((left, right) => left.order - right.order)
       .forEach((match) => {
         const existing = sources.get(match.loser_to) || [];

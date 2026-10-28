@@ -42,20 +42,11 @@ import { wolfarenaTournamentQueryOptions } from "../../lib/matches/wolfarenaQuer
 import { profileAliasQueryOptions } from "../../lib/users/aliasQueries";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { countryCodeToFlagUrl } from "../../utils/countryFlags";
-import { formatCalendarDateRange } from "../../utils/formatters";
+import { formatCalendarDateRange, formatOrdinal, formatTimeControl } from "../../utils/formatters";
 import { normalizeUsername } from "../../utils/playerNames";
 
 const scoreValue = (score: number): string =>
   Number.isInteger(score) ? String(score) : score.toFixed(1).replace(/\.0$/, "");
-
-const ordinal = (rank: number): string => {
-  const remainder = rank % 100;
-  if (remainder >= 11 && remainder <= 13) return `${rank}th`;
-  if (rank % 10 === 1) return `${rank}st`;
-  if (rank % 10 === 2) return `${rank}nd`;
-  if (rank % 10 === 3) return `${rank}rd`;
-  return `${rank}th`;
-};
 
 const formatRankingDate = (date: string): string => date.replaceAll("-", ".");
 
@@ -72,8 +63,6 @@ const scoreLabel = (match: TournamentPlayerMatch): string => {
   if (match.outcomeType === "withdrawal") return "W/O";
   return `${scoreValue(match.playerScore)} - ${scoreValue(match.opponentScore)}`;
 };
-
-const formatTimeControl = (timeControl: string): string => timeControl.replace(/^0\.5\+/, "½+");
 
 const addWolfarenaPointMultipliers = (
   appearances: TournamentPlayerAppearance[],
@@ -336,7 +325,7 @@ export const TournamentPlayerPage = ({ username }: { username?: string }) => {
       appearance.tournament.id === "wr-arena2026"
         ? {
             ...appearance,
-            placementLabel: ordinal(finalStanding.rank),
+            placementLabel: formatOrdinal(finalStanding.rank),
             placementFieldLabel: `${finalStandings.length} ${finalStandings.length === 1 ? "player" : "players"}`,
           }
         : appearance,

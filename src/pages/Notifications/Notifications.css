@@ -170,7 +170,6 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--notification-accent) 16%, transparent);
 }
 
-.notificationsStatus,
 .notificationsError {
   margin: 0;
   padding: 12px;

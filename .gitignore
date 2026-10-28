@@ -4,6 +4,7 @@ node_modules
 private/
 .env.local
 dist/
+scripts/.rebuild-atomic-tour-rankings.mjs
 data/*.sqlite*
 data/**/*.csv
 data/tournaments/visible-tournament-matches.csv

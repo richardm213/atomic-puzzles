@@ -8,35 +8,11 @@ import { type FormEvent, useEffect, useMemo, useState } from "react";
 import {
   amendPredictionOrder,
   cancelPredictionOrder,
+  predictionDisplayedOrderPrice,
   type PredictionOrder,
   type PredictionOrderMutationResult,
   type PredictionOutcome,
 } from "../../lib/predictionMarkets/predictionMarkets";
-
-const displayedPriceFor = (order: PredictionOrder, outcome: PredictionOutcome) =>
-  order.outcome === outcome ? order.priceCents : 100 - order.priceCents;
-
-export const orderAppearsAtLevel = (
-  order: PredictionOrder,
-  outcome: PredictionOutcome,
-  tone: "bid" | "ask",
-  priceCents: number,
-) => {
-  const displayedTone =
-    order.outcome === outcome
-      ? order.side === "buy"
-        ? "bid"
-        : "ask"
-      : order.side === "buy"
-        ? "ask"
-        : "bid";
-  return (
-    order.remainingQuantity > 0 &&
-    (order.status === "open" || order.status === "partial") &&
-    displayedTone === tone &&
-    displayedPriceFor(order, outcome) === priceCents
-  );
-};
 
 export const PredictionOrderEditor = ({
   marketId,
@@ -62,7 +38,7 @@ export const PredictionOrderEditor = ({
   useEffect(() => {
     if (!selectedOrder) return;
     setQuantityInput(String(selectedOrder.remainingQuantity));
-    setPriceInput(String(displayedPriceFor(selectedOrder, outcome)));
+    setPriceInput(String(predictionDisplayedOrderPrice(selectedOrder, outcome)));
   }, [outcome, selectedOrder]);
 
   useEffect(() => {

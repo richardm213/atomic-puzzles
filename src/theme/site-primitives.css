@@ -351,8 +351,7 @@
   padding: 0 4px;
 }
 
-.dashboardAttemptRow:hover,
-.puzzleSetPuzzleRow:hover {
+.dashboardAttemptRow:hover {
   transform: translateY(-1px);
   border-color: var(--color-accent-soft-border);
   background: color-mix(in srgb, var(--color-surface-elevated) 72%, transparent);
@@ -386,22 +385,16 @@
 .homePrimaryCta,
 .homeSecondaryCta,
 .puzzleSetCompleteLink,
-.puzzleActions .puzzlePrimaryAction,
-.mobileActionCard .puzzlePrimaryAction,
 .fenAnalyzeButton,
 .analysisLichessLink,
 .analysisFilterToggle,
 .analysisSpeedToggles button,
 .analysisPrimaryButton,
 .matchPageH2HLink,
-.profilePuzzleDashboardLink,
 .profileBanActions a,
 .profileScoreBox,
 .profileFavoriteOpponentH2HButton,
 .puzzleDashboardActionLink,
-.puzzleSetsBackLink,
-.puzzleSetStartLink,
-.puzzleSetOpenLink,
 .puzzleSetCardStartLink,
 .tournamentYearNavCurrent,
 .navAuthButton {
@@ -413,7 +406,6 @@
 
 .usernamePickerDatabaseList button,
 .navSearchResultName,
-.navSearchResultMeta,
 .puzzleOtherAttemptUser,
 .feedbackBadge strong,
 .analysisMoveList button,

@@ -35,6 +35,18 @@ export const formatGameCount = (games: number): string => {
   return String(games);
 };
 
+export const formatTimeControl = (timeControl: string): string =>
+  timeControl.replace(/^0\.5\+/, "½+");
+
+export const formatOrdinal = (value: number): string => {
+  const lastTwoDigits = value % 100;
+  if (lastTwoDigits >= 11 && lastTwoDigits <= 13) return `${value}th`;
+  if (value % 10 === 1) return `${value}st`;
+  if (value % 10 === 2) return `${value}nd`;
+  if (value % 10 === 3) return `${value}rd`;
+  return `${value}th`;
+};
+
 export const formatCalendarDate = (value: string | null | undefined): string => {
   if (!value) return "";
 

@@ -109,9 +109,9 @@
 }
 
 .predictionOrderEditorDelete {
-  border: 1px solid color-mix(in srgb, var(--prediction-no, #ff5264) 56%, var(--color-border));
+  border: 1px solid color-mix(in srgb, var(--color-market-no) 56%, var(--color-border));
   background: transparent;
-  color: var(--prediction-no, #ff5264);
+  color: var(--color-market-no);
 }
 
 .predictionOrderEditorDelete svg {
@@ -121,7 +121,7 @@
 .predictionOrderEditorSave {
   border: 1px solid var(--color-primary);
   background: var(--color-primary);
-  color: var(--color-on-primary, #fff);
+  color: var(--color-on-primary);
 }
 
 .predictionOrderEditorActions button:hover:not(:disabled) {
@@ -146,7 +146,7 @@
 
 .predictionOrderEditorError {
   margin: 0;
-  color: var(--prediction-no, #ff5264);
+  color: var(--color-market-no);
   font-size: 0.82rem;
   line-height: 1.4;
 }

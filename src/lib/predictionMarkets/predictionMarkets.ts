@@ -96,6 +96,34 @@ export type PredictionOrderSide = "buy" | "sell";
 export type PredictionBookLevel = { priceCents: number; quantity: number };
 export const PREDICTION_TAKER_FEE_RATE = 0.02;
 
+export const predictionDisplayedOrderPrice = (
+  order: PredictionOrder,
+  outcome: PredictionOutcome,
+): number => (order.outcome === outcome ? order.priceCents : 100 - order.priceCents);
+
+export const predictionOrderAppearsAtLevel = (
+  order: PredictionOrder,
+  outcome: PredictionOutcome,
+  bookSide: "bid" | "ask",
+  priceCents: number,
+): boolean => {
+  const displayedSide =
+    order.outcome === outcome
+      ? order.side === "buy"
+        ? "bid"
+        : "ask"
+      : order.side === "buy"
+        ? "ask"
+        : "bid";
+
+  return (
+    order.remainingQuantity > 0 &&
+    (order.status === "open" || order.status === "partial") &&
+    displayedSide === bookSide &&
+    predictionDisplayedOrderPrice(order, outcome) === priceCents
+  );
+};
+
 export const predictionOutcomeLabel = (
   definition: PredictionMarketDefinition | undefined,
   outcome: PredictionOutcome,

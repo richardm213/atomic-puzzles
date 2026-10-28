@@ -25,7 +25,7 @@ import {
 } from "../../lib/matches/wolfarena";
 import { wolfarenaTournamentQueryOptions } from "../../lib/matches/wolfarenaQueries";
 import { appAssetPath } from "../../utils/appAssetPath";
-import { formatCalendarDateRange } from "../../utils/formatters";
+import { formatCalendarDateRange, formatTimeControl } from "../../utils/formatters";
 import { normalizeUsername } from "../../utils/playerNames";
 
 const STORAGE_KEY = "tournament-view:wr-arena2026:round";
@@ -35,8 +35,6 @@ const formatDate = (date: string): string =>
   new Intl.DateTimeFormat("en", { month: "short", day: "numeric", timeZone: "UTC" }).format(
     new Date(`${date}T12:00:00Z`),
   );
-
-const formatTimeControl = (timeControl: string): string => timeControl.replace(/^0\.5\+/, "½+");
 
 const matchStatusLabel = (status: WolfarenaMatch["status"]): string => {
   if (status === "partial-forfeit") return "Partial forfeit";

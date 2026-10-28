@@ -297,8 +297,7 @@
 .wolfarenaRoundActions a:focus-visible,
 .wolfarenaRoundFooter button:focus-visible,
 .wolfarenaMatchCard a:focus-visible,
-.wolfarenaStandingsTable a:focus-visible,
-.wolfarenaWinnerSummary a:focus-visible {
+.wolfarenaStandingsTable a:focus-visible {
   outline: 2px solid var(--color-primary-ring);
   outline-offset: 2px;
 }

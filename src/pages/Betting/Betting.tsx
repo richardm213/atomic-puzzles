@@ -2,7 +2,6 @@ import "./Betting.css";
 
 import {
   faCheck,
-  faPen,
   faPlus,
   faThumbsDown,
   faThumbsUp,
@@ -11,15 +10,15 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { type CSSProperties, Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
 import { InlineState } from "../../components/InlineState/InlineState";
 import { PredictionMarketExplainer } from "../../components/PredictionMarketExplainer/PredictionMarketExplainer";
-import {
-  orderAppearsAtLevel,
-  PredictionOrderEditor,
-} from "../../components/PredictionOrderEditor/PredictionOrderEditor";
+import { PredictionOrderEditor } from "../../components/PredictionOrderEditor/PredictionOrderEditor";
+import { PredictionMarketIdentity } from "../../components/PredictionTrading/PredictionMarketIdentity";
+import { PredictionOrderBook } from "../../components/PredictionTrading/PredictionOrderBook";
+import { PredictionOrderComposer } from "../../components/PredictionTrading/PredictionOrderComposer";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
@@ -67,8 +66,6 @@ import { usePredictionMarketRealtime } from "../../lib/predictionMarkets/predict
 import {
   formatPredictionShares,
   placePredictionOrder,
-  type PredictionMarketDefinition,
-  type PredictionMarketState,
   predictionMarketVolume,
   type PredictionOrder,
   type PredictionOutcome,
@@ -76,7 +73,6 @@ import {
   predictionOutcomeCountryCode,
   predictionOutcomeLabel,
   predictionOutcomes,
-  predictionOutcomeUnderscoreLabel,
   predictionTakerFee,
   predictionYesChance,
   quotePredictionBuy,
@@ -173,88 +169,6 @@ const formatBettingDeadline = (value: string): string =>
     timeZoneName: "short",
   }).format(new Date(value));
 
-const QuickPredictionOrderBook = ({
-  state,
-  outcome,
-  outcomeName,
-  onSelectPrice,
-  onEditOrders,
-}: {
-  state: PredictionMarketState;
-  outcome: PredictionOutcome;
-  outcomeName: string;
-  onSelectPrice: (priceCents: number) => void;
-  onEditOrders: (orders: PredictionOrder[]) => void;
-}) => {
-  const book = state.book[outcome];
-  const renderLevels = (levels: typeof book.asks, side: "ask" | "bid") => {
-    if (!levels.length) return <p className="bettingInlineBookEmpty">No {side}s</p>;
-    const totalQuantity = levels.reduce((total, level) => total + level.quantity, 0);
-    return levels.map((level, index) => {
-      const ordersAtLevel = state.orders.filter((order) =>
-        orderAppearsAtLevel(order, outcome, side, level.priceCents),
-      );
-      const coinValue = (level.priceCents * level.quantity) / 100;
-      const cumulativeQuantity =
-        side === "ask"
-          ? levels.slice(index).reduce((total, entry) => total + entry.quantity, 0)
-          : levels.slice(0, index + 1).reduce((total, entry) => total + entry.quantity, 0);
-      const barWidth = Math.max(2, (cumulativeQuantity / totalQuantity) * 72);
-      return (
-        <div className="bettingInlineBookLevelWrap" key={`${side}-${level.priceCents}`}>
-          <button
-            type="button"
-            className={`bettingInlineBookLevel bettingInlineBookLevel--${side}`}
-            style={{ "--betting-book-bar": `${barWidth}%` } as CSSProperties}
-            aria-label={`${side === "ask" ? "Ask" : "Bid"} ${level.priceCents} cents, ${level.quantity.toLocaleString()} contracts, ${formatBetCoins(coinValue)} coins`}
-            onClick={() => onSelectPrice(level.priceCents)}
-          >
-            <strong>{level.priceCents}¢</strong>
-            <span>{side === "ask" ? "Ask" : "Bid"}</span>
-            <b>{level.quantity.toLocaleString()}</b>
-            <b>{formatBetCoins(coinValue)} coins</b>
-          </button>
-          {ordersAtLevel.length ? (
-            <button
-              type="button"
-              className="bettingOwnOrderButton"
-              aria-label={`Edit your order at ${level.priceCents} cents`}
-              title="Your order — edit"
-              onClick={() => onEditOrders(ordersAtLevel)}
-            >
-              <FontAwesomeIcon icon={faPen} />
-            </button>
-          ) : null}
-        </div>
-      );
-    });
-  };
-
-  return (
-    <div className="bettingInlineBook">
-      <div className="bettingInlineBookHeader">
-        <strong>Order book</strong>
-      </div>
-      <div className="bettingInlineBookLabels" aria-hidden="true">
-        <span>Price</span>
-        <span>Side</span>
-        <span>Contracts</span>
-        <span>Coin value</span>
-      </div>
-      <div className="bettingInlineBookLevels">
-        {renderLevels([...book.asks].reverse(), "ask")}
-        <div
-          className={`bettingInlineBookTrade bettingInlineBookTrade--${outcome}`}
-          aria-label={`Trading ${outcomeName}`}
-        >
-          Trade {outcomeName}
-        </div>
-        {renderLevels(book.bids, "bid")}
-      </div>
-    </div>
-  );
-};
-
 const marketAcceptsBets = (market: BettingMarket, now: number): boolean => {
   return market.status === "open" && (!market.closesAt || Date.parse(market.closesAt) > now);
 };
@@ -282,47 +196,6 @@ const BetHistoryUsername = ({ username }: { username: string }) => {
       aria-label={username}
     >
       {displayName}
-    </span>
-  );
-};
-
-const BettingPredictionMatchup = ({ definition }: { definition: PredictionMarketDefinition }) => {
-  if (!definition.outcomeLabels) {
-    return (
-      <>
-        <img
-          src={countryCodeToFlagUrl(definition.countryCode)}
-          alt=""
-          crossOrigin="anonymous"
-          loading="lazy"
-          decoding="async"
-          aria-hidden="true"
-        />
-        <strong>{definition.username}</strong>
-      </>
-    );
-  }
-
-  return (
-    <span className="bettingExchangeMatchup">
-      {predictionOutcomes.map((entry, index) => (
-        <Fragment key={entry}>
-          {index > 0 ? <span className="bettingExchangeMatchupVs">vs</span> : null}
-          <span className="bettingExchangeMatchupPlayer">
-            <img
-              src={countryCodeToFlagUrl(predictionOutcomeCountryCode(definition, entry))}
-              alt=""
-              crossOrigin="anonymous"
-              loading="lazy"
-              decoding="async"
-              aria-hidden="true"
-            />
-            <strong title={predictionOutcomeLabel(definition, entry)}>
-              {predictionOutcomeUnderscoreLabel(definition, entry)}
-            </strong>
-          </span>
-        </Fragment>
-      ))}
     </span>
   );
 };
@@ -1525,7 +1398,7 @@ export const BettingPage = () => {
                         return (
                           <article className="bettingPredictionBookResolvedRow" key={definition.id}>
                             <span className="bettingExchangeStrikePlayer">
-                              <BettingPredictionMatchup definition={definition} />
+                              <PredictionMarketIdentity definition={definition} density="compact" />
                             </span>
                             <span
                               className={`bettingPredictionBookResolved ${
@@ -1774,7 +1647,10 @@ export const BettingPage = () => {
                                 {isResolved ? (
                                   <div className="bettingExchangeStrikeToggle bettingExchangeStrikeToggle--resolved">
                                     <span className="bettingExchangeStrikePlayer">
-                                      <BettingPredictionMatchup definition={definition} />
+                                      <PredictionMarketIdentity
+                                        definition={definition}
+                                        density="compact"
+                                      />
                                       {holdings}
                                     </span>
                                   </div>
@@ -1787,7 +1663,10 @@ export const BettingPage = () => {
                                     onClick={() => togglePredictionStrike(definition.id)}
                                   >
                                     <span className="bettingExchangeStrikePlayer">
-                                      <BettingPredictionMatchup definition={definition} />
+                                      <PredictionMarketIdentity
+                                        definition={definition}
+                                        density="compact"
+                                      />
                                       {holdings}
                                     </span>
                                     <span className="bettingExchangeStrikeChance">
@@ -1864,13 +1743,17 @@ export const BettingPage = () => {
                                     className="bettingInlineBookDrawer"
                                     id={`betting-strike-book-${definition.id}`}
                                   >
-                                    <QuickPredictionOrderBook
-                                      state={state}
+                                    <PredictionOrderBook
+                                      asks={state.book[expandedPredictionOutcome].asks}
+                                      bids={state.book[expandedPredictionOutcome].bids}
+                                      density="compact"
+                                      headingLevel={2}
                                       outcome={expandedPredictionOutcome}
                                       outcomeName={predictionOutcomeLabel(
                                         definition,
                                         expandedPredictionOutcome,
                                       )}
+                                      ownOrders={state.orders}
                                       onEditOrders={(orders) =>
                                         setEditingOrderContext({
                                           marketId: definition.id,
@@ -1878,7 +1761,7 @@ export const BettingPage = () => {
                                           orders,
                                         })
                                       }
-                                      onSelectPrice={(priceCents) =>
+                                      onSelect={(_side, priceCents) =>
                                         choosePredictionOutcome(
                                           definition.id,
                                           expandedPredictionOutcome,
@@ -2036,58 +1919,54 @@ export const BettingPage = () => {
                         : submitPredictionOrder
                     }
                   >
-                    {activePredictionDisplayMode === "market" ? (
-                      <div className="betSlipOrderHeader" aria-hidden="true">
-                        <strong>Buy</strong>
-                        <span>Limit</span>
-                      </div>
-                    ) : null}
-                    <div className="betSlipSelection">
-                      {activePredictionDisplayMode === "book" ? (
-                        <small>{selectedPredictionGroup?.title ?? "Prediction market"}</small>
-                      ) : null}
-                      <div className="betSlipContract">
-                        <span>
-                          <img
-                            src={countryCodeToFlagUrl(
-                              predictionOutcomeCountryCode(
+                    {activePredictionDisplayMode === "book" ? (
+                      <div className="betSlipSelection">
+                        {activePredictionDisplayMode === "book" ? (
+                          <small>{selectedPredictionGroup?.title ?? "Prediction market"}</small>
+                        ) : null}
+                        <div className="betSlipContract">
+                          <span>
+                            <img
+                              src={countryCodeToFlagUrl(
+                                predictionOutcomeCountryCode(
+                                  selectedPredictionDefinition,
+                                  predictionSelection.outcome,
+                                ),
+                              )}
+                              alt=""
+                              crossOrigin="anonymous"
+                              aria-hidden="true"
+                            />
+                            <strong>
+                              {predictionOutcomeLabel(
                                 selectedPredictionDefinition,
                                 predictionSelection.outcome,
-                              ),
-                            )}
-                            alt=""
-                            crossOrigin="anonymous"
-                            aria-hidden="true"
-                          />
-                          <strong>
-                            {predictionOutcomeLabel(
-                              selectedPredictionDefinition,
-                              predictionSelection.outcome,
-                            )}
-                          </strong>
+                              )}
+                            </strong>
+                            {activePredictionDisplayMode === "book" ? (
+                              <em>
+                                {selectedPredictionGroup?.id === "awc-2026-champion"
+                                  ? predictionSelection.outcome === "yes"
+                                    ? "to win"
+                                    : "not to win"
+                                  : selectedPredictionGroup?.id === "awc-2026-round-of-16"
+                                    ? "to win"
+                                    : selectedPredictionGroup?.id === "ban-2026"
+                                      ? predictionSelection.outcome === "yes"
+                                        ? "banned"
+                                        : "not banned"
+                                      : predictionSelection.outcome === "yes"
+                                        ? "to win"
+                                        : "not to win"}
+                              </em>
+                            ) : null}
+                          </span>
                           {activePredictionDisplayMode === "book" ? (
-                            <em>
-                              {selectedPredictionGroup?.id === "awc-2026-champion"
-                                ? predictionSelection.outcome === "yes"
-                                  ? "to win"
-                                  : "not to win"
-                                : selectedPredictionGroup?.id === "awc-2026-round-of-16"
-                                  ? "to win"
-                                  : selectedPredictionGroup?.id === "ban-2026"
-                                    ? predictionSelection.outcome === "yes"
-                                      ? "banned"
-                                      : "not banned"
-                                    : predictionSelection.outcome === "yes"
-                                      ? "to win"
-                                      : "not to win"}
-                            </em>
+                            <b>{validPredictionPrice ? `${predictionPrice}%` : "—"}</b>
                           ) : null}
-                        </span>
-                        {activePredictionDisplayMode === "book" ? (
-                          <b>{validPredictionPrice ? `${predictionPrice}%` : "—"}</b>
-                        ) : null}
+                        </div>
                       </div>
-                    </div>
+                    ) : null}
                     {activePredictionDisplayMode === "book" ? (
                       <>
                         <label htmlFor="prediction-sportsbook-stake">Bet amount</label>
@@ -2174,124 +2053,55 @@ export const BettingPage = () => {
                         ) : null}
                       </>
                     ) : (
-                      <>
-                        <div className="betSlipPredictionQuoteRow">
-                          <div
-                            className="bettingPredictionOutcomePicker"
-                            role="group"
-                            aria-label="Prediction outcome"
-                          >
-                            {predictionOutcomes.map((entry) => {
-                              const availablePrice =
-                                selectedPredictionState?.book[entry].asks[0]?.priceCents;
-                              const suggestedPrice = suggestedPredictionPrice(
-                                selectedPredictionDefinition,
-                                selectedPredictionState,
-                                entry,
-                              );
-                              return (
-                                <button
-                                  type="button"
-                                  aria-pressed={predictionSelection.outcome === entry}
-                                  onClick={() =>
-                                    choosePredictionOutcome(
-                                      selectedPredictionDefinition.id,
-                                      entry,
-                                      suggestedPrice,
-                                    )
-                                  }
-                                  key={entry}
-                                >
-                                  <span>
-                                    {predictionOutcomeAbbreviation(
-                                      selectedPredictionDefinition,
-                                      entry,
-                                    )}
-                                  </span>
-                                  <span>
-                                    {availablePrice === undefined ? "—" : `${availablePrice}¢`}
-                                  </span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                        <div className="betSlipPredictionFields">
-                          <label
-                            className="bettingPredictionField"
-                            htmlFor="prediction-quick-quantity"
-                          >
-                            <span>Contracts</span>
-                            <input
-                              id="prediction-quick-quantity"
-                              className="bettingPredictionQuantity"
-                              type="number"
-                              inputMode="numeric"
-                              min="1"
-                              max="10000"
-                              step="1"
-                              value={predictionQuantityInput}
-                              onChange={(event) => setPredictionQuantityInput(event.target.value)}
-                            />
-                          </label>
-                          <label
-                            className="bettingPredictionField"
-                            htmlFor="prediction-quick-price"
-                          >
-                            <span>Limit price</span>
-                            <span className="bettingPredictionFieldValue">
-                              <input
-                                id="prediction-quick-price"
-                                type="number"
-                                inputMode="numeric"
-                                min="1"
-                                max="99"
-                                step="1"
-                                value={predictionPriceInput}
-                                onChange={(event) => setPredictionPriceInput(event.target.value)}
-                              />
-                              <span>¢</span>
+                      <PredictionOrderComposer
+                        definition={selectedPredictionDefinition}
+                        density="compact"
+                        idPrefix="prediction-betting-order"
+                        outcome={predictionSelection.outcome}
+                        outcomePrices={{
+                          yes: selectedPredictionState?.book.yes.asks[0]?.priceCents,
+                          no: selectedPredictionState?.book.no.asks[0]?.priceCents,
+                        }}
+                        quantityInput={predictionQuantityInput}
+                        priceInput={predictionPriceInput}
+                        primaryLabel="Cost"
+                        primaryValue={
+                          validPredictionPrice && validPredictionQuantity
+                            ? `${formatBetCoins(predictionEstimatedTotal)} coins`
+                            : "—"
+                        }
+                        secondaryLabel="Max payout"
+                        secondaryValue={
+                          validPredictionQuantity
+                            ? `${predictionQuantity.toLocaleString()} coins`
+                            : "—"
+                        }
+                        secondaryNote={
+                          validPredictionPrice && validPredictionQuantity ? (
+                            <span
+                              className={
+                                predictionEstimatedProfit >= 0 ? "isPositive" : "isNegative"
+                              }
+                            >
+                              {predictionEstimatedProfit >= 0 ? "+" : ""}
+                              {formatBetCoins(predictionEstimatedProfit)} coins
                             </span>
-                          </label>
-                        </div>
-                        <dl className="betQuote betQuote--predictionOrder">
-                          <div className="betQuoteCost">
-                            <dt>Cost</dt>
-                            <dd>
-                              {validPredictionPrice && validPredictionQuantity
-                                ? `${formatBetCoins(predictionEstimatedTotal)} coins`
-                                : "—"}
-                            </dd>
-                          </div>
-                          <div className="betQuotePayout">
-                            <dt>Max payout</dt>
-                            <dd>
-                              <strong>
-                                {validPredictionQuantity
-                                  ? `${predictionQuantity.toLocaleString()} coins`
-                                  : "—"}
-                              </strong>
-                              {validPredictionPrice && validPredictionQuantity ? (
-                                <small
-                                  className={
-                                    predictionEstimatedProfit >= 0 ? "isPositive" : "isNegative"
-                                  }
-                                >
-                                  {predictionEstimatedProfit >= 0 ? "+" : ""}
-                                  {formatBetCoins(predictionEstimatedProfit)} coins
-                                </small>
-                              ) : null}
-                            </dd>
-                          </div>
-                        </dl>
-                        {validPredictionQuantity && predictionBuyQuote.restingQuantity > 0 ? (
-                          <InlineState kind="info">
-                            {predictionBuyQuote.availableQuantity.toLocaleString()} available now.
-                            {predictionBuyQuote.restingQuantity.toLocaleString()} will remain open
-                            as a bid.
-                          </InlineState>
-                        ) : null}
-                      </>
+                          ) : undefined
+                        }
+                        onOutcomeChange={(entry) =>
+                          choosePredictionOutcome(
+                            selectedPredictionDefinition.id,
+                            entry,
+                            suggestedPredictionPrice(
+                              selectedPredictionDefinition,
+                              selectedPredictionState,
+                              entry,
+                            ),
+                          )
+                        }
+                        onQuantityChange={setPredictionQuantityInput}
+                        onPriceChange={setPredictionPriceInput}
+                      />
                     )}
                     {placePredictionMutation.error ? (
                       <InlineState kind="error">

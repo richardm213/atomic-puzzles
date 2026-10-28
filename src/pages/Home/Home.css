@@ -260,7 +260,6 @@
   transform: translateY(calc(-50% - 2px));
 }
 
-.homeH2HShortcut,
 .homeRecentMatchesShortcut {
   --home-card-accent: var(--color-danger);
 }

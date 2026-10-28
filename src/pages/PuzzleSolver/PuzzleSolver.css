@@ -775,47 +775,6 @@ button.puzzleRatingBadge.editable:active {
   display: none;
 }
 
-.mobileActionCard .puzzlePrimaryAction {
-  width: 100%;
-  grid-column: 1 / -1;
-  min-height: 44px;
-  padding: 10px 12px;
-  border: 1px solid color-mix(in srgb, var(--color-primary-soft) 28%, var(--color-primary));
-  border-radius: var(--radius-ui);
-  background: linear-gradient(
-    135deg,
-    var(--color-primary),
-    color-mix(in srgb, var(--color-primary) 72%, var(--color-cyan) 28%)
-  );
-  color: var(--color-on-primary);
-  font-size: 13px;
-  white-space: nowrap;
-  text-decoration: none;
-  box-shadow: 0 12px 26px color-mix(in srgb, var(--color-primary) 22%, transparent);
-  transition:
-    transform 140ms ease,
-    border-color 140ms ease,
-    background 140ms ease,
-    box-shadow 140ms ease,
-    color 140ms ease;
-}
-
-.mobileActionCard .puzzlePrimaryAction:hover:not(:disabled) {
-  transform: translateY(-1px);
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--color-primary) 90%, white 10%),
-    color-mix(in srgb, var(--color-primary) 64%, var(--color-cyan) 36%)
-  );
-  box-shadow: 0 16px 30px color-mix(in srgb, var(--color-primary) 28%, transparent);
-}
-
-.mobileActionCard .puzzlePrimaryAction:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
-  box-shadow: none;
-}
-
 .puzzleInfoTab:focus-visible,
 .fenAnalyzeButton:focus-visible {
   outline: 3px solid var(--color-primary-ring);
@@ -2457,7 +2416,6 @@ button.puzzleRatingBadge.editable:active {
     font-weight: 800;
   }
 
-  .puzzlePrimaryAction,
   .mobileBottomNav button {
     min-height: 44px;
     font-size: 13px;
