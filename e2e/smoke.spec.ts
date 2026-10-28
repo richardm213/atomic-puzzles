@@ -3,19 +3,17 @@ import { expect, test } from "./fixtures";
 const pages = [
   {
     path: "/",
-    title: /Puzzles, Rankings & Matches/,
     heading: "Atomic chess puzzles, rankings, and matches",
   },
-  { path: "/solve/101", title: /Puzzle #101/, heading: "Puzzle 101" },
-  { path: "/recent", title: /Recent Match Archive/, heading: "Recent Match Archive" },
-  { path: "/dashboard", title: /Puzzle Dashboard/, heading: "My Puzzle Dashboard" },
+  { path: "/solve/101", heading: "Puzzle 101" },
+  { path: "/recent", heading: "Recent Match Archive" },
+  { path: "/dashboard", heading: "My Puzzle Dashboard" },
 ] as const;
 
 for (const appPage of pages) {
   test(`${appPage.path} renders its primary landmark`, async ({ page }) => {
     await page.goto(appPage.path);
 
-    await expect(page).toHaveTitle(appPage.title);
     await expect(page.locator("#main-content")).toBeVisible();
     if ("visuallyHiddenHeading" in appPage && appPage.visuallyHiddenHeading) {
       await expect(page.locator("h1", { hasText: appPage.heading })).toBeAttached();

@@ -108,12 +108,17 @@ const localPuzzleFunctionsPlugin = ({ archiveOrigin, useLocalArchive }) => {
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  process.env.SUPABASE_URL ||= env.SUPABASE_URL || env.VITE_SUPABASE_URL;
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||= env.SUPABASE_SERVICE_ROLE_KEY;
-  process.env.TURSO_DATABASE_URL ||= env.TURSO_DATABASE_URL;
-  process.env.TURSO_AUTH_TOKEN ||= env.TURSO_AUTH_TOKEN;
-  process.env.TURSO_MATCHES_DATABASE_URL ||= env.TURSO_MATCHES_DATABASE_URL;
-  process.env.TURSO_MATCHES_AUTH_TOKEN ||= env.TURSO_MATCHES_AUTH_TOKEN;
+  const setRuntimeEnv = (name, ...candidates) => {
+    if (process.env[name]?.trim()) return;
+    const value = candidates.find((candidate) => candidate?.trim())?.trim();
+    if (value) process.env[name] = value;
+  };
+  setRuntimeEnv("SUPABASE_URL", env.SUPABASE_URL, env.VITE_SUPABASE_URL);
+  setRuntimeEnv("SUPABASE_SERVICE_ROLE_KEY", env.SUPABASE_SERVICE_ROLE_KEY);
+  setRuntimeEnv("TURSO_DATABASE_URL", env.TURSO_DATABASE_URL);
+  setRuntimeEnv("TURSO_AUTH_TOKEN", env.TURSO_AUTH_TOKEN);
+  setRuntimeEnv("TURSO_MATCHES_DATABASE_URL", env.TURSO_MATCHES_DATABASE_URL);
+  setRuntimeEnv("TURSO_MATCHES_AUTH_TOKEN", env.TURSO_MATCHES_AUTH_TOKEN);
   const useLocalArchive = env.LOCAL_ARCHIVE_DATA_SOURCE?.trim().toLowerCase() === "turso";
   const archiveOrigin = env.LOCAL_ARCHIVE_ORIGIN?.trim() || DEFAULT_LOCAL_ARCHIVE_ORIGIN;
 

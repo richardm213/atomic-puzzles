@@ -54,13 +54,14 @@ test("profile history presents an unrated match without fake rating values", asy
 
   const table = page.locator(".profileMatchTable");
   const row = table.locator("tbody > tr").first();
-  await expect(table.getByText("bob", { exact: true })).toBeVisible();
+  await expect(row.getByRole("link", { name: "bob", exact: true })).toBeVisible();
   await expect(row.locator("td").nth(4)).toBeEmpty();
   await expect(row.locator("td").nth(5)).toBeEmpty();
   await row.focus();
   await page.keyboard.press("Enter");
-  await expect(table.getByText("Unrated", { exact: true })).toHaveCount(2);
-  await expect(table.getByRole("link", { name: "game1234", exact: true })).toBeVisible();
+  const detailsRow = table.locator("tbody > tr").nth(1);
+  await expect(detailsRow.getByText("Unrated", { exact: true })).toHaveCount(2);
+  await expect(detailsRow.getByRole("link", { name: "game1234", exact: true })).toBeVisible();
 });
 
 test("recent matches keep unrated and banned states usable on mobile", async ({ page }) => {

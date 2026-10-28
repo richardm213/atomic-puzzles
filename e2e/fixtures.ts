@@ -37,9 +37,24 @@ const jsonResponse = (route: Route, body: unknown, status = 200) =>
 
 const installApiMocks = async (page: Page) => {
   await page.route("**/api/auth/session", (route) =>
-    jsonResponse(route, { error: "Not authenticated" }, 401),
+    jsonResponse(route, { user: { username: "e2e-player" } }),
   );
-  await page.route("**/api/notifications**", (route) => jsonResponse(route, [], 401));
+  await page.route("**/api/notifications**", (route) => jsonResponse(route, []));
+  await page.route("**/api/puzzles/play", async (route) => {
+    const body = route.request().postDataJSON() as { puzzleIds?: Array<number | string> };
+    const requestedIds = new Set((body.puzzleIds ?? []).map(String));
+    return jsonResponse(route, {
+      puzzles: puzzleRows.filter((row) => requestedIds.has(String(row.id))),
+    });
+  });
+  await page.route("**/api/archive-data?**", (route) => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get("resource") === "usernames") {
+      const username = url.searchParams.get("exact") ?? "";
+      return jsonResponse(route, username ? [{ username }] : []);
+    }
+    return jsonResponse(route, []);
+  });
   await page.route("**/__e2e_supabase/**", (route) => {
     const url = new URL(route.request().url());
     if (url.pathname.includes("/rest/v1/puzzles")) {

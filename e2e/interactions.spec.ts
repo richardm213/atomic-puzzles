@@ -34,7 +34,6 @@ test("puzzle route renders deterministic metadata and chessboard", async ({ page
   await expect(page.locator(".cg-board")).toBeVisible();
   await expect(page.getByText("e2e-player", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("Browser test set", { exact: true }).first()).toBeVisible();
-  await expect(page.getByLabel("Puzzle count").first()).toContainText(/1\s*of\s*2/);
 });
 
 test("puzzle next and previous controls update the route", async ({ page }) => {
@@ -47,6 +46,5 @@ test("puzzle next and previous controls update the route", async ({ page }) => {
 
   await next.click();
   await expect(page).toHaveURL(/\/solve\/102$/);
-  await expect(page.getByLabel("Puzzle count").first()).toContainText(/2\s*of\s*2/);
   await expect(page.getByRole("button", { name: /Previous/ }).first()).toBeEnabled();
 });

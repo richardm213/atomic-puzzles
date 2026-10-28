@@ -21,10 +21,10 @@ export const TournamentsPage = () => {
     .sort(compareTournamentStartDates);
   if (!publishedTournaments.length) {
     return (
-      <main className="sitePage tournamentsPage">
+      <div className="sitePage tournamentsPage">
         <h1>Tournament archive unavailable</h1>
         <p>Please try again shortly.</p>
-      </main>
+      </div>
     );
   }
   const latestYear = Math.max(...publishedTournaments.map((tournament) => tournament.year));
@@ -37,7 +37,7 @@ export const TournamentsPage = () => {
   const championsById: Record<string, string> = championsQuery.data ?? {};
 
   return (
-    <main className="sitePage tournamentsPage">
+    <div className="sitePage tournamentsPage">
       <Seo
         title="Tournament history"
         description="Browse atomic tournament brackets and archives."
@@ -81,6 +81,6 @@ export const TournamentsPage = () => {
           </div>
         </section>
       </div>
-    </main>
+    </div>
   );
 };

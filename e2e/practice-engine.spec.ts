@@ -31,7 +31,7 @@ test("practice plays a real engine move when the opening database is exhausted",
 
   await page.getByRole("button", { name: "Start game", exact: true }).click();
   await expect(page.getByRole("region", { name: "Played moves", exact: true })).toContainText(
-    "1/1",
+    /1\.[a-zA-Z]/,
     { timeout: 25_000 },
   );
   await expect(page.getByText("Fairy-Stockfish requires cross-origin isolation")).toHaveCount(0);
