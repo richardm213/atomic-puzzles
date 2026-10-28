@@ -106,8 +106,17 @@ export const communityCommentSchema = z.object({
 
 export const communityDiscussionSchema = z.object({
   comments: z.array(communityCommentSchema),
-  counts: puzzleVoteCountsSchema.optional(),
-  viewerVote: voteValueSchema.optional(),
+  // The discussion bundle RPC returns null for puzzle-only fields on profile,
+  // match, and tournament discussions. Normalize those values to the optional
+  // shape consumed by the shared comments UI.
+  counts: z.preprocess(
+    (value) => (value === null ? undefined : value),
+    puzzleVoteCountsSchema.optional(),
+  ),
+  viewerVote: z.preprocess(
+    (value) => (value === null ? undefined : value),
+    voteValueSchema.optional(),
+  ),
 });
 
 export const puzzleCommunitySchema = communityDiscussionSchema.extend({

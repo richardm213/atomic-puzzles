@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { communityDiscussionSchema } from "../../shared/domain/community/schemas";
 import {
   buildPuzzleCommentNotificationRecipients,
   excludeRecipientsWithUnreadPuzzleNotifications,
@@ -17,6 +18,14 @@ import {
   sumCommentKarma,
 } from "../features/community/service";
 import { handler } from "../functions/puzzle-community";
+
+describe("community discussion responses", () => {
+  it("normalizes null puzzle-only fields returned for non-puzzle discussions", () => {
+    expect(
+      communityDiscussionSchema.parse({ comments: [], counts: null, viewerVote: null }),
+    ).toEqual({ comments: [], counts: undefined, viewerVote: undefined });
+  });
+});
 
 describe("profile comment history", () => {
   it("extracts unique case-insensitive mentions at word boundaries", () => {

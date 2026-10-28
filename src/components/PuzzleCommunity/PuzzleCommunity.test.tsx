@@ -89,6 +89,15 @@ describe("PuzzleCommunity", () => {
     expect(screen.queryByText(/start the conversation/i)).not.toBeInTheDocument();
   });
 
+  it("shows a discussion error without also claiming there are no comments", async () => {
+    mocks.fetchCommunityDiscussion.mockRejectedValue(new Error("Unable to load discussion."));
+
+    render(<CommunityDiscussion target={{ type: "profile", id: "opabinia" }} />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Unable to load discussion.");
+    expect(screen.queryByText("No comments yet.")).not.toBeInTheDocument();
+  });
+
   it("sorts tournament comments by recent by default and top on request", async () => {
     const user = userEvent.setup();
     mocks.fetchCommunityDiscussion.mockResolvedValue({

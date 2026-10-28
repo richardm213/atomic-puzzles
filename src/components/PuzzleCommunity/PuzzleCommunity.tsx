@@ -630,9 +630,13 @@ export const CommunityDiscussion = ({
           </div>
         ) : null}
 
-        {error ? <p className="puzzleCommunityError">{error}</p> : null}
+        {error ? (
+          <p className="puzzleCommunityError" role="alert">
+            {error}
+          </p>
+        ) : null}
         {loading && !community ? <p className="puzzleCommunityEmpty">Loading discussion…</p> : null}
-        {!loading && data.comments.length === 0 ? (
+        {!loading && !error && data.comments.length === 0 ? (
           <p className="puzzleCommunityEmpty">No comments yet.</p>
         ) : null}
         {rootComments.length > 0 ? (
