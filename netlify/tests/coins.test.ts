@@ -45,8 +45,8 @@ describe("coins function", () => {
     vi.unstubAllEnvs();
   });
 
-  it("blocks shop purchases before the configured reopening", async () => {
-    vi.setSystemTime(new Date("2026-10-27T23:59:59.000Z"));
+  it("blocks shop purchases until the automatic November 3 reopening", async () => {
+    vi.setSystemTime(new Date("2026-11-02T23:59:59.000Z"));
     const cookie = createSiteSessionCookie("Closed_Shop_Buyer", {});
 
     const response = await handler({

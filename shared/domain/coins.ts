@@ -10,8 +10,8 @@ export const SHOP_ITEM_KEYS = [
 
 export type ShopItemKey = (typeof SHOP_ITEM_KEYS)[number];
 
-// Temporary manual unlock. Restore this to 2026-11-03T00:00:00.000Z to relock the shop.
-export const SHOP_REOPENS_AT = "2026-10-28T00:00:00.000Z";
+// The temporary closure expires automatically at midnight UTC on November 3, 2026.
+export const SHOP_REOPENS_AT = "2026-11-03T00:00:00.000Z";
 
 export const SHOP_REDEMPTION_STATUSES = ["pending", "fulfilled", "cancelled"] as const;
 export type ShopRedemptionStatus = (typeof SHOP_REDEMPTION_STATUSES)[number];
