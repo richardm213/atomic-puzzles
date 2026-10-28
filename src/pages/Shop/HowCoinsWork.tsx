@@ -111,10 +111,6 @@ export const HowCoinsWorkPage = () => (
                 Rated first attempts under 30 seconds get a time adjustment. Correct V1–V3 solves
                 earn a small bonus; incorrect attempts get an added deduction.
               </p>
-              <p className="coinReducedPenaltyNote">
-                Developing solvers on the reduced-penalty list receive 50% smaller base deductions.
-                Speed deductions and solve rewards are unchanged.
-              </p>
               <div className="coinOutcomeTableWrap">
                 <table className="coinOutcomeTable">
                   <thead>
