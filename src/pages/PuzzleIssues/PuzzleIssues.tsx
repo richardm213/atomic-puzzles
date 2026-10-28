@@ -15,6 +15,7 @@ import {
   type PuzzleIssueStatus,
   setPuzzleIssueStatus,
 } from "../../lib/puzzles/puzzleIssues";
+import { getErrorMessage } from "../../utils/errors";
 import { formatLocalDateTime } from "../../utils/formatters";
 import { normalizeUsername } from "../../utils/playerNames";
 
@@ -46,9 +47,7 @@ export const PuzzleIssuesPage = () => {
       })
       .catch((loadError) => {
         if (current) {
-          setError(
-            loadError instanceof Error ? loadError.message : "Unable to load puzzle issues.",
-          );
+          setError(getErrorMessage(loadError, "Unable to load puzzle issues."));
         }
       })
       .finally(() => {
@@ -75,7 +74,7 @@ export const PuzzleIssuesPage = () => {
       const result = await setPuzzleIssueStatus(issue.id, status);
       setIssues((current) => current.map((row) => (row.id === issue.id ? result.issue : row)));
     } catch (updateError) {
-      setError(updateError instanceof Error ? updateError.message : "Unable to update issue.");
+      setError(getErrorMessage(updateError, "Unable to update issue."));
     } finally {
       setUpdatingId(null);
     }
@@ -84,7 +83,7 @@ export const PuzzleIssuesPage = () => {
   if (isLoading || loading) return <RouteLoadingFallback />;
 
   return (
-    <main className="page puzzleIssuesPage">
+    <div className="page puzzleIssuesPage">
       <Seo title="Puzzle issues" description="Review reported atomic puzzle issues." />
       <section className="panel puzzleIssuesPanel">
         <header className="puzzleIssuesHeader">
@@ -154,6 +153,6 @@ export const PuzzleIssuesPage = () => {
           </ol>
         ) : null}
       </section>
-    </main>
+    </div>
   );
 };

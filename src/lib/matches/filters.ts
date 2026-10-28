@@ -1,6 +1,15 @@
 import { knownSourceKeys, type SourceFilters } from "../../constants/matches";
+import { parseTimeControlParts } from "./transforms";
 
 export type MatchSource = "arena" | "friend" | "lobby" | "swiss" | "chesscom" | "unknown";
+
+export type MatchListFilters = {
+  startDateFilter: string;
+  endDateFilter: string;
+  sourceFilters: SourceFilters;
+  timeControlInitialFilter: string;
+  timeControlIncrementFilter: string;
+};
 
 const firstNonEmptyValue = (...values: unknown[]): unknown =>
   values.find((value) => value !== undefined && value !== null && String(value).trim().length > 0);
@@ -70,4 +79,24 @@ export const isSourceAllowedByFilters = (
   }
 
   return sourceFilters.unknown !== false;
+};
+
+export const buildTimeControlFilter = (
+  initialFilter: string,
+  incrementFilter: string,
+): string | undefined =>
+  initialFilter !== "all" && incrementFilter !== "all"
+    ? `${initialFilter}+${incrementFilter}`
+    : undefined;
+
+export const matchesTimeControlFilters = (
+  timeControl: string | null | undefined,
+  initialFilter: string,
+  incrementFilter: string,
+): boolean => {
+  const { initial, increment } = parseTimeControlParts(timeControl);
+  return (
+    (initialFilter === "all" || initial === initialFilter) &&
+    (incrementFilter === "all" || increment === incrementFilter)
+  );
 };

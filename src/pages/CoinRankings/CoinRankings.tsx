@@ -16,6 +16,8 @@ import {
 } from "../../lib/coins/coinQueries";
 import type { CoinTransaction, CoinTransactionReason } from "../../lib/coins/coins";
 import { appAssetPath } from "../../utils/appAssetPath";
+import { getBrowserStorageJson, setBrowserStorageJson } from "../../utils/browserStorage";
+import { getErrorMessage } from "../../utils/errors";
 import { formatLocalDateTime } from "../../utils/formatters";
 
 type CoinView = "rankings" | "transactions";
@@ -127,14 +129,9 @@ const transactionDescription = (transaction: CoinTransaction) => {
 };
 
 const readSavedFilters = (): TransactionCategory[] => {
-  if (typeof window === "undefined") return allTransactionCategories;
-  try {
-    const saved = JSON.parse(window.localStorage.getItem(filterStorageKey) ?? "null");
-    if (!Array.isArray(saved)) return allTransactionCategories;
-    return allTransactionCategories.filter((category) => saved.includes(category));
-  } catch {
-    return allTransactionCategories;
-  }
+  const saved = getBrowserStorageJson<unknown>("local", filterStorageKey, null);
+  if (!Array.isArray(saved)) return allTransactionCategories;
+  return allTransactionCategories.filter((category) => saved.includes(category));
 };
 
 export const CoinRankingsPage = () => {
@@ -168,11 +165,7 @@ export const CoinRankingsPage = () => {
   );
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem(filterStorageKey, JSON.stringify(selectedCategories));
-    } catch {
-      // Filtering still works when storage is unavailable.
-    }
+    setBrowserStorageJson("local", filterStorageKey, selectedCategories);
   }, [selectedCategories]);
 
   useEffect(() => {
@@ -184,14 +177,10 @@ export const CoinRankingsPage = () => {
   if (rankingsQuery.isPending && rankings.length === 0) return <RouteLoadingFallback />;
 
   const rankingsError = rankingsQuery.error
-    ? rankingsQuery.error instanceof Error
-      ? rankingsQuery.error.message
-      : "Unable to load coin rankings."
+    ? getErrorMessage(rankingsQuery.error, "Unable to load coin rankings.")
     : "";
   const transactionsError = transactionsQuery.error
-    ? transactionsQuery.error instanceof Error
-      ? transactionsQuery.error.message
-      : "Unable to load coin transactions."
+    ? getErrorMessage(transactionsQuery.error, "Unable to load coin transactions.")
     : "";
 
   const toggleCategory = (category: TransactionCategory, checked: boolean) => {
@@ -409,14 +398,15 @@ export const CoinRankingsPage = () => {
                     ))}
                   </tbody>
                 </DataTable>
-                <nav className="coinTransactionsPagination" aria-label="Coin transaction pages">
+                <div className="coinTransactionsPagination">
                   <PaginationRow
                     currentPage={transactionPage}
                     totalPages={transactionTotalPages}
                     onPageChange={setTransactionPage}
                     disabled={transactionsQuery.isFetching}
+                    ariaLabel="Coin transaction pages"
                   />
-                </nav>
+                </div>
               </>
             ) : null}
           </section>

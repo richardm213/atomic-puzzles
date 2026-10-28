@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { createAtomicPosition } from "../lib/puzzles/solutionPgn";
 import type { ChessboardState } from "../types/chessboard";
+import { getErrorMessage } from "../utils/errors";
 
 type DocumentKind = "fen" | "pgn";
 
@@ -76,7 +77,7 @@ export const useBoardDocument = ({
     try {
       createAtomicPosition(nextFen);
     } catch (error) {
-      setFenError(error instanceof Error ? error.message : "Invalid FEN");
+      setFenError(getErrorMessage(error, "Invalid FEN"));
       return;
     }
 

@@ -66,6 +66,7 @@
       color-mix(in srgb, var(--color-border) 18%, transparent) 50%,
       transparent 50.1%
     );
+  -webkit-mask-image: linear-gradient(to bottom, black, transparent);
   mask-image: linear-gradient(to bottom, black, transparent);
 }
 

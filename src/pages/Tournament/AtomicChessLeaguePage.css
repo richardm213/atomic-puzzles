@@ -37,7 +37,7 @@
   width: fit-content;
   color: var(--color-muted);
   font-size: 0.82rem;
-  font-weight: 750;
+  font-weight: 650;
   text-decoration: none;
 }
 
@@ -121,7 +121,7 @@
   color: var(--color-muted);
   font: inherit;
   font-size: 0.86rem;
-  font-weight: 750;
+  font-weight: 650;
   cursor: pointer;
   transition:
     background 180ms ease,
@@ -222,7 +222,7 @@
   background: var(--color-panel-strong);
   color: var(--color-muted);
   font-size: 0.78rem;
-  font-weight: 750;
+  font-weight: 650;
   text-decoration: none;
   transition:
     border-color 180ms ease,
@@ -259,7 +259,7 @@
   background: transparent;
   color: var(--color-muted);
   font-size: 0.82rem;
-  font-weight: 750;
+  font-weight: 650;
   text-decoration: none;
   transition:
     border-color 180ms ease,
@@ -331,7 +331,7 @@
   border-radius: 50%;
   color: var(--color-muted);
   font-size: 0.72rem;
-  font-weight: 800;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
 
@@ -357,7 +357,7 @@
 .aclTeamRecord {
   color: var(--color-subtle);
   font-size: 0.88rem;
-  font-weight: 800;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
 
@@ -367,7 +367,7 @@
   gap: 5px;
   color: color-mix(in srgb, var(--tournament-gold) 82%, var(--color-heading));
   font-size: 0.74rem;
-  font-weight: 800;
+  font-weight: 650;
 }
 
 .aclChampionMark svg {
@@ -398,7 +398,7 @@
   align-self: center;
   color: var(--color-subtle);
   font-size: 0.72rem;
-  font-weight: 800;
+  font-weight: 650;
 }
 
 .aclRoundResult strong {
@@ -495,7 +495,7 @@
   overflow: hidden;
   color: var(--color-heading);
   font-size: 0.9rem;
-  font-weight: 800;
+  font-weight: 650;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -580,7 +580,7 @@
   background: var(--color-panel);
   color: var(--color-subtle);
   font-size: 0.72rem;
-  font-weight: 800;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
 
@@ -654,7 +654,7 @@
   justify-self: end;
   color: var(--color-subtle);
   font-size: 0.72rem;
-  font-weight: 750;
+  font-weight: 650;
   transition: color 180ms ease;
 }
 

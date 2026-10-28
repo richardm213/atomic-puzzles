@@ -1,5 +1,5 @@
 import type { Move, NormalMove, Role } from "chessops";
-import { parseFen } from "chessops/fen";
+import { makeFen, parseFen } from "chessops/fen";
 import { makeSan, parseSan } from "chessops/san";
 import { makeUci, parseSquare } from "chessops/util";
 import { Atomic } from "chessops/variant";
@@ -68,6 +68,18 @@ export const moveFromUci = (position: Position, uci: string): Move | null => {
 
   const move: Move = promotion ? { from, to, promotion } : { from, to };
   return position.isLegal(move) ? move : null;
+};
+
+export const fenAfterAtomicMove = (fen: string, uci: string): string | null => {
+  try {
+    const position = createAtomicPosition(fen);
+    const move = moveFromUci(position, uci);
+    if (!move || !position.isLegal(move)) return null;
+    position.play(move);
+    return makeFen(position.toSetup());
+  } catch {
+    return null;
+  }
 };
 
 export const toComparableUci = (position: Position, uci: string, move?: Move | null): string => {

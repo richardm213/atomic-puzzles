@@ -1,37 +1,29 @@
-.recentMatchesPanel {
-  width: min(820px, 100%);
-  min-width: 0;
-}
+@import "../Rankings/Rankings.css";
 
+.recentMatchesPanel,
 .rankingsPanel.recentMatchesPanel {
   width: min(820px, 100%);
+  min-width: 0;
 }
 
 .recentMatchesPanel h1 {
   margin-bottom: 8px;
 }
 
-.recentMatchesPanel > p {
-  max-width: 62ch;
-  margin-bottom: 22px;
-  color: var(--color-muted);
-  line-height: 1.5;
-}
-
 .matchFilterPanel {
   display: grid;
-  gap: 12px;
+  gap: 14px;
   margin-top: 18px;
-  padding: 14px;
-  border: 1px solid var(--color-border);
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
   border-radius: 8px;
-  background: var(--color-surface-soft);
+  background: color-mix(in srgb, var(--color-surface-soft) 42%, transparent);
 }
 
 .matchFilterGrid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr)) max-content;
-  align-items: end;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: start;
   gap: 12px;
 }
 
@@ -42,27 +34,26 @@
   justify-items: start;
   color: var(--color-subtle);
   font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  font-weight: 650;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
+.matchFilterGrid select,
+.matchFilterGrid input[type="text"],
+.matchFilterGrid input[type="date"] {
+  width: 100%;
+  min-width: 0;
+  background: var(--color-panel-strong);
+}
+
 .controlHint {
+  color: var(--color-muted);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: normal;
   line-height: 1.35;
   text-transform: none;
-  color: var(--color-muted);
-}
-
-.recentMatchesPanel .analyzeButton:hover:not(:disabled) {
-  background: var(--color-primary-hover);
-}
-
-.recentMatchesPanel .analyzeButton:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
 }
 
 .matchFilterRanges {
@@ -75,159 +66,43 @@
   grid-column: 1 / -1;
 }
 
-.matchFilterActions {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.matchFilterFooter {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 14px;
-  flex-wrap: wrap;
-}
-
-.matchFilterActions .matchFilterSearch {
-  min-width: 160px;
-}
-
-.recentMatchesPanel .matchFilterPanel {
-  gap: 14px;
-  padding: 16px;
-  border-color: color-mix(in srgb, var(--color-border) 72%, transparent);
-  background: color-mix(in srgb, var(--color-surface-soft) 42%, transparent);
-}
-
-.recentMatchesPanel .matchFilterGrid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: start;
-}
-
-.recentMatchesPanel .matchFilterGrid label {
-  font-weight: 650;
-  letter-spacing: 0.06em;
-}
-
-.recentMatchesPanel .matchFilterGrid select,
-.recentMatchesPanel .matchFilterGrid input[type="text"],
-.recentMatchesPanel .matchFilterGrid input[type="date"] {
-  background: var(--color-panel-strong);
-}
-
-.recentMatchesPanel .matchFilterRanges {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.recentMatchesPanel .rangeFilter {
-  padding: 12px;
-  background: color-mix(in srgb, var(--color-panel-strong) 70%, transparent);
-}
-
-.recentMatchesPanel .rangeFilter > label {
-  font-weight: 650;
-  letter-spacing: 0.06em;
-}
-
-.recentMatchesPanel .sourceFilterGroup {
-  flex: 1 1 420px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-}
-
-.recentMatchesPanel .sourceFilterChecks {
-  gap: 8px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-}
-
-.recentMatchesPanel .sourceFilterCheck {
-  min-height: 32px;
-  border-color: color-mix(in srgb, var(--color-border) 78%, transparent);
-  background: color-mix(in srgb, var(--color-panel-strong) 72%, transparent);
-  color: var(--color-text);
-  font-weight: 650;
-}
-
-.recentMatchesPanel .rankingsMeta {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--color-border);
-}
-
-.recentMatchesPanel .matchCards {
-  gap: 10px;
-  margin-top: 12px;
-}
-
-.recentMatchesPanel .matchCard {
-  border-color: color-mix(in srgb, var(--color-border) 78%, transparent);
-  background: color-mix(in srgb, var(--color-panel-strong) 82%, transparent);
-  padding: 13px 15px;
-}
-
-.recentMatchesPanel .matchCardHeader {
-  grid-template-columns: minmax(0, 1fr) minmax(70px, auto) max-content;
-  gap: 14px;
-}
-
-.recentMatchesPanel .matchCard:hover,
-.recentMatchesPanel .matchCard:focus-visible {
-  transform: none;
-}
-
-.recentMatchesPanel .matchCardPlayers {
-  font-size: 16px;
-  font-weight: 700;
-}
-
-.recentMatchesPanel .matchScoreBlock {
-  color: var(--color-text);
-  font-size: 15px;
-  font-weight: 650;
-}
-
-.opponentRatingFilter {
-  padding: 12px;
-  border-radius: 8px;
-  background: var(--color-panel-strong);
-  border: 1px solid var(--color-border);
-}
-
 .rangeFilter {
   display: grid;
   gap: 8px;
-  padding: 14px;
+  padding: 12px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: var(--color-surface-soft);
+  background: color-mix(in srgb, var(--color-panel-strong) 70%, transparent);
+}
+
+.rangeFilter > label {
+  font-weight: 650;
+  letter-spacing: 0.06em;
 }
 
 .dualRangeSlider {
   position: relative;
-  height: 24px;
-  margin-top: 8px;
   width: 100%;
   min-width: 240px;
   max-width: 520px;
-  touch-action: none;
+  height: 24px;
+  margin-top: 8px;
   cursor: pointer;
+  touch-action: none;
 }
 
 .dualRangeTrack,
 .dualRangeSelected {
   position: absolute;
   top: 50%;
-  transform: translateY(-50%);
   height: 6px;
   border-radius: 999px;
+  transform: translateY(-50%);
 }
 
 .dualRangeTrack {
-  left: 0;
   right: 0;
+  left: 0;
   background: var(--color-surface-inset-strong);
 }
 
@@ -238,17 +113,17 @@
 .dualRangeHandle {
   position: absolute;
   top: 50%;
+  z-index: 2;
   width: 14px;
   height: 14px;
-  padding: 0;
   margin: 0;
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-  background: var(--color-panel-strong);
+  padding: 0;
   border: 2px solid var(--color-cyan-bright);
+  border-radius: 50%;
+  background: var(--color-panel-strong);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-panel) 82%, transparent);
   cursor: pointer;
-  z-index: 2;
+  transform: translate(-50%, -50%);
 }
 
 .dualRangeHandleActive,
@@ -261,18 +136,33 @@
     0 0 0 8px color-mix(in srgb, var(--color-cyan-bright) 18%, transparent);
 }
 
-.sourceFilterChecks {
+.matchFilterFooter {
   display: flex;
-  gap: 10px;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
   flex-wrap: wrap;
-  padding: 12px 14px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-surface-soft);
 }
 
-.sourceFilterGroup .sourceFilterChecks {
-  margin-top: 8px;
+.matchFilterActions {
+  display: flex;
+  justify-content: flex-end;
+}
+.matchFilterActions .matchFilterSearch {
+  min-width: 160px;
+}
+
+.recentMatchesPanel .sourceFilterGroup {
+  flex: 1 1 420px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.sourceFilterChecks {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
   padding: 0;
   border: 0;
   background: transparent;
@@ -282,90 +172,214 @@
   display: inline-flex !important;
   align-items: center;
   gap: 8px;
-  min-height: 34px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-surface-elevated);
-  color: var(--color-muted);
-  padding: 0 10px;
   width: auto;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 78%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-panel-strong) 72%, transparent);
+  color: var(--color-text);
+  font-weight: 650;
 }
 
 .sourceFilterCheck input {
   accent-color: var(--color-primary);
 }
-
-.paginationRow {
-  margin-top: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
+.recentMatchesPanel .analyzeButton:hover:not(:disabled) {
+  background: var(--color-primary-hover);
 }
-
-.paginationRow button,
-.paginationJumpLabel {
-  border: 1px solid var(--color-input-border);
-  background: var(--color-panel-strong);
-  color: var(--color-text);
-  border-radius: 8px;
-  padding: 8px 10px;
-}
-
-.paginationPageButton {
-  font-weight: 700;
-}
-
-.paginationJumpForm {
-  margin: 0;
-}
-
-.paginationJumpInput {
-  width: 72px;
-  min-height: 34px;
-  border: 1px solid var(--color-input-border);
-  border-radius: 6px;
-  background: var(--color-surface-elevated-strong);
-  color: var(--color-text);
-  padding: 6px 8px;
-}
-
-.paginationJumpInput:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--color-primary) 65%, white);
-  outline-offset: 1px;
-}
-
-.paginationRow button:hover:not(:disabled) {
-  border-color: var(--color-accent-soft-border);
-  color: var(--color-heading);
-}
-
-.paginationRow button:disabled {
-  opacity: 0.5;
+.recentMatchesPanel .analyzeButton:disabled {
   cursor: not-allowed;
+  opacity: 0.55;
 }
 
-@media (max-width: 1180px) {
-  .matchFilterGrid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
+.recentMatchTableWrap {
+  margin-top: 16px;
+}
+
+.recentMatchTable {
+  min-width: 680px;
+}
+.recentMatchDateColumn {
+  width: 20%;
+}
+.recentMatchPlayersColumn {
+  width: 43%;
+}
+.recentMatchTimeControlColumn {
+  width: 11%;
+}
+.recentMatchScoreColumn {
+  width: 18%;
+}
+.recentMatchActionsColumn {
+  width: 8%;
+}
+
+.recentMatchPlayers {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+}
+
+.recentMatchPlayers .rankingLink {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recentMatchPlayers > span {
+  flex: 0 0 auto;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.recentTimeControl {
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.recentScoreCell {
+  text-align: center;
+}
+
+.recentScoreBox {
+  gap: 5px;
+  min-width: 74px;
+  color: var(--color-heading);
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.recentMatchTable .expandableMatchRow.expanded {
+  background: var(--color-accent-soft-bg);
+}
+
+.recentMatchTable .expandableMatchRow {
+  cursor: pointer;
+}
+
+.recentRowToggle {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.recentRowToggle:focus-visible {
+  position: static;
+  width: auto;
+  height: 32px;
+  overflow: visible;
+  clip-path: none;
+  padding: 0 8px;
+  border: 1px solid var(--color-accent-soft-border);
+  border-radius: 6px;
+  background: var(--color-panel-strong);
+  color: var(--color-heading);
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.recentMatchTable .matchDetailsRow > td {
+  background: transparent;
+}
+.matchDetailsInner {
+  padding: 4px 0 2px;
 }
 
 @media (max-width: 820px) {
-  .matchFilterGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .recentMatchesPanel .matchFilterGrid,
-  .recentMatchesPanel .matchFilterRanges {
+  .matchFilterGrid,
+  .matchFilterRanges {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 640px) {
-  .recentMatchesPanel .matchFilterGrid,
-  .recentMatchesPanel .matchFilterRanges {
+  .recentMatchTableWrap {
+    overflow: visible;
+  }
+
+  .recentMatchTable {
+    min-width: 0;
+    table-layout: auto;
+  }
+
+  .recentMatchTable colgroup,
+  .recentMatchTable thead {
+    display: none;
+  }
+
+  .recentMatchTable tbody,
+  .recentMatchTable .expandableMatchRow,
+  .recentMatchTable .matchDetailsRow,
+  .recentMatchTable .matchDetailsRow > td {
+    display: block;
+    width: 100%;
+  }
+
+  .recentMatchTable .expandableMatchRow {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    grid-template-areas:
+      "players players players action"
+      "date time score action";
+    align-items: center;
+    gap: 6px 12px;
+    padding: 12px 10px;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .recentMatchTable .expandableMatchRow > td {
+    width: auto;
+    padding: 0;
+    border: 0;
+  }
+
+  .recentMatchTable .expandableMatchRow > td:nth-child(1) {
+    grid-area: date;
+    color: var(--color-subtle);
+    font-size: 12px;
+  }
+
+  .recentMatchTable .expandableMatchRow > td:nth-child(2) {
+    grid-area: players;
+  }
+
+  .recentMatchTable .expandableMatchRow > td:nth-child(3) {
+    grid-area: time;
+  }
+
+  .recentMatchTable .expandableMatchRow > td:nth-child(4) {
+    grid-area: score;
+  }
+
+  .recentMatchTable .expandableMatchRow > td:nth-child(5) {
+    grid-area: action;
+  }
+
+  .recentMatchPlayers {
+    gap: 5px;
+  }
+
+  .recentMatchTable .matchDetailsRow > td {
+    padding: 10px;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .matchFilterGrid,
+  .matchFilterRanges {
     grid-template-columns: 1fr;
+  }
+  .matchFilterGrid label {
+    justify-items: stretch;
   }
 
   .matchFilterFooter,
@@ -377,13 +391,13 @@
   .recentMatchesPanel .sourceFilterGroup {
     flex-basis: 100%;
   }
-
   .recentMatchesPanel .sourceFilterChecks {
     gap: 4px;
   }
 
   .recentMatchesPanel .sourceFilterCheck {
     flex: 0 0 calc((100% - 20px) / 3);
+    min-height: 44px;
     justify-content: center;
     padding: 0 8px;
   }
@@ -392,97 +406,13 @@
     flex: 0 0 auto;
     padding: 0 4px;
   }
-
-  .recentMatchesPanel .matchCardHeader {
-    grid-template-columns: minmax(0, 1fr) max-content;
-    align-items: center;
-    gap: 8px 12px;
-  }
-
-  .recentMatchesPanel .matchCardMain {
-    grid-column: 1 / -1;
-  }
-
-  .recentMatchesPanel .matchScoreBlock {
-    grid-column: 1;
-    width: auto;
-    min-width: 0;
-    justify-content: flex-start;
-  }
-
-  .recentMatchesPanel .matchPageLink {
-    grid-column: 2;
-    justify-self: end;
-  }
-
-  .matchFilterGrid,
-  .matchFilterRanges {
-    grid-template-columns: 1fr;
-  }
-
-  .matchFilterGrid label {
-    justify-items: stretch;
-  }
-
-  .matchFilterActions {
-    justify-content: stretch;
-  }
-
-  .matchFilterActions .matchFilterSearch {
-    width: 100%;
-  }
-
-  .opponentRatingFilter {
-    border-radius: 10px;
-    padding: 10px;
-  }
-
   .dualRangeSlider {
     min-width: 0;
     max-width: none;
     height: 34px;
   }
-
   .dualRangeHandle {
     width: 22px;
     height: 22px;
-  }
-
-  .sourceFilterChecks {
-    gap: 8px 12px;
-  }
-
-  .sourceFilterCheck {
-    flex: 1 1 140px;
-    min-height: 44px;
-  }
-
-  .sourceFilterSourceCheck {
-    flex: 0 0 auto;
-    min-height: 34px;
-  }
-
-  .paginationRow {
-    justify-content: stretch;
-    flex-wrap: wrap;
-  }
-
-  .paginationRow button {
-    flex: 1 1 96px;
-    min-height: 44px;
-  }
-
-  .paginationJumpForm {
-    flex: 1 1 100%;
-  }
-
-  .paginationJumpLabel {
-    width: 100%;
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-
-  .paginationJumpInput {
-    width: min(100%, 120px);
   }
 }

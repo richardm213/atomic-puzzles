@@ -26,7 +26,7 @@
   width: fit-content;
   color: var(--link-color);
   font-size: 0.86rem;
-  font-weight: 750;
+  font-weight: 650;
   text-decoration: none;
   text-underline-offset: 3px;
 }
@@ -142,7 +142,7 @@
 
 .atomicTourPointsTable td {
   color: var(--color-heading);
-  font-weight: 750;
+  font-weight: 650;
 }
 
 .atomicTourWolfarena {
@@ -198,7 +198,7 @@
 .atomicTourWolfarenaTable :is(th, td):last-child {
   width: 1%;
   color: var(--color-heading);
-  font-weight: 750;
+  font-weight: 650;
   text-align: right;
   white-space: nowrap;
 }

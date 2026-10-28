@@ -34,7 +34,7 @@
   margin: 0;
   color: var(--color-heading);
   font-size: clamp(1.8rem, 4vw, 2.35rem);
-  font-weight: 760;
+  font-weight: 650;
   line-height: 1.05;
   letter-spacing: -0.04em;
 }
@@ -333,7 +333,7 @@
   background: var(--color-danger);
   color: var(--color-panel-deep);
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 650;
   line-height: 1;
 }
 
@@ -432,7 +432,7 @@
   overflow: hidden;
   color: var(--color-heading);
   font-size: 13px;
-  font-weight: 750;
+  font-weight: 650;
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -449,9 +449,9 @@
   padding: 3px 6px;
   border-radius: 4px;
   background: color-mix(in srgb, var(--arena-color) 16%, transparent);
-  color: var(--arena-color);
+  color: var(--color-heading);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
 

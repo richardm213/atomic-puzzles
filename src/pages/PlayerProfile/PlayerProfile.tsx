@@ -1,9 +1,11 @@
+import "../../components/MatchHistoryTable/MatchHistoryTable.css";
 import "./PlayerProfile.css";
 
 import {
+  faBeerMugEmpty,
   faChartLine,
   faClockRotateLeft,
-  faCommentDots,
+  faComment,
   faEllipsisVertical,
   faMagnifyingGlass,
   faPuzzlePiece,
@@ -17,15 +19,19 @@ import { Fragment, lazy, Suspense, useEffect, useMemo, useRef, useState } from "
 import { z } from "zod";
 
 import { CoinProfileActions } from "../../components/CoinProfileActions/CoinProfileActions";
+import { CommunityCommentCount } from "../../components/CommunityCommentsLink/CommunityCommentsLink";
 import { DualRangeSlider } from "../../components/DualRangeSlider/DualRangeSlider";
 import { LichessGameLink } from "../../components/LichessGameLink/LichessGameLink";
 import { MatchDetails } from "../../components/MatchDetails/MatchDetails";
 import { MatchPageLink } from "../../components/MatchPageLink/MatchPageLink";
 import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
+import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { ProfileMetricCard } from "../../components/ProfileMetricCard/ProfileMetricCard";
+import { RowExpansionButton } from "../../components/RowExpansionButton/RowExpansionButton";
 import { Seo } from "../../components/Seo/Seo";
 import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFilterChecks";
 import { TimeControlFields } from "../../components/TimeControlFields/TimeControlFields";
+import { TournamentPlayerLink } from "../../components/TournamentPlayerLink/TournamentPlayerLink";
 import {
   defaultMode,
   modeLabels,
@@ -35,7 +41,6 @@ import {
   pageSizeOptions,
 } from "../../constants/matches";
 import { useAppSettings } from "../../context/AppSettings";
-import { useAuth } from "../../context/AuthContext";
 import type { RankHistoryMode } from "../../features/profile/favoriteOpponents";
 import { FavoriteOpponentsSection } from "../../features/profile/FavoriteOpponentsSection";
 import { isClientSidePagedSearch } from "../../features/profile/profileFilters";
@@ -94,12 +99,13 @@ import {
   getAliasIdentityUsernames,
 } from "../../lib/archive/aliases";
 import { atomicTourPlayerRankingStatsQueryOptions } from "../../lib/atomicTour/queries";
-import { communityDiscussionQueryOptions } from "../../lib/community/communityQueries";
 import { getTimeControlOptions } from "../../lib/matches/collection";
 import { inferExternalGameSource } from "../../lib/matches/routes";
 import { puzzleRankingTrophiesQueryOptions } from "../../lib/puzzles/puzzleQueries";
 import { profileAliasQueryOptions } from "../../lib/users/aliasQueries";
 import { registeredSiteUsernameQueryOptions } from "../../lib/users/userQueries";
+import { isOneOf, toggleArrayValue } from "../../utils/arrays";
+import { getErrorMessage } from "../../utils/errors";
 import {
   formatLocalDateTime,
   formatOpponentWithRating,
@@ -108,7 +114,6 @@ import {
 } from "../../utils/formatters";
 import { getOpeningDisplayLabel } from "../../utils/openings";
 import { normalizeUsername } from "../../utils/playerNames";
-import { isToggleActionKey } from "../../utils/toggleActionKey";
 import { useProfileFilters } from "./useProfileFilters";
 
 const countOptions = [5, 10, 20];
@@ -153,7 +158,6 @@ export const PlayerProfilePage = ({
   historyOnly?: boolean;
 }) => {
   const queryClient = useQueryClient();
-  const { isAuthenticated, user } = useAuth();
   const { showWolfrandomProfileRatings, showProfileActionButtons } = useAppSettings();
   const normalizedUsername = useMemo(() => normalizeUsername(username), [username]);
   const [matchHistoryMode, setMatchHistoryMode] = useState<ProfileMatchHistoryMode>("all");
@@ -240,14 +244,6 @@ export const PlayerProfilePage = ({
   });
   const coinGiftRecipientUsername = coinGiftAccountQuery.data ?? null;
   const profileDisplayUsername = String(username || "").trim() || canonicalUsername;
-  const profileDiscussionQuery = useQuery({
-    ...communityDiscussionQueryOptions(
-      { type: "profile", id: canonicalUsername },
-      isAuthenticated ? (user?.username ?? "authenticated") : "anonymous",
-    ),
-    enabled: !historyOnly && aliasesLoaded && Boolean(canonicalUsername),
-  });
-  const profileCommentCount = profileDiscussionQuery.data?.comments.length ?? 0;
   const {
     matchFiltersOpen,
     toggleMatchFilters,
@@ -421,9 +417,7 @@ export const PlayerProfilePage = ({
   );
   const loadingMatches = matchHistoryQuery.isFetching;
   const error = matchHistoryQuery.error
-    ? matchHistoryQuery.error instanceof Error
-      ? matchHistoryQuery.error.message
-      : String(matchHistoryQuery.error)
+    ? getErrorMessage(matchHistoryQuery.error, "Unable to load match history.")
     : "";
 
   const { initialOptions, incrementOptions } = useMemo(
@@ -750,9 +744,7 @@ export const PlayerProfilePage = ({
   const hasVisibleProfileTrophies = visibleProfileTrophies.length > 0;
 
   const toggleMatchKey = (key: string): void => {
-    setExpandedMatchKeys((current) =>
-      current.includes(key) ? current.filter((k) => k !== key) : [...current, key],
-    );
+    setExpandedMatchKeys((current) => toggleArrayValue(current, key));
   };
   const profileActionItems = (
     <>
@@ -780,18 +772,12 @@ export const PlayerProfilePage = ({
         params={{ username: canonicalUsername }}
         search={{ tab: "comments" }}
       >
-        <FontAwesomeIcon icon={faCommentDots} aria-hidden="true" />
+        <FontAwesomeIcon icon={faComment} aria-hidden="true" />
         Comments
-        <span
+        <CommunityCommentCount
+          target={{ type: "profile", id: canonicalUsername }}
           className="profileActionCount"
-          aria-label={
-            profileDiscussionQuery.isPending
-              ? "Loading comment count"
-              : `${profileCommentCount} ${profileCommentCount === 1 ? "comment" : "comments"}`
-          }
-        >
-          {profileDiscussionQuery.isPending ? "…" : profileCommentCount}
-        </span>
+        />
       </Link>
       {!isExcluded && puzzleDashboardUsername ? (
         <Link to="/@/$username/puzzles" params={{ username: puzzleDashboardUsername }}>
@@ -803,10 +789,10 @@ export const PlayerProfilePage = ({
         <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
         Matches
       </Link>
-      <Link to="/tournaments/players/$username" params={{ username: canonicalUsername }}>
+      <TournamentPlayerLink username={canonicalUsername}>
         <FontAwesomeIcon icon={faTrophy} aria-hidden="true" />
         Tournaments
-      </Link>
+      </TournamentPlayerLink>
     </>
   );
   return (
@@ -832,13 +818,9 @@ export const PlayerProfilePage = ({
             <div className="profileIdentityTitle">
               <div className="profileIdentityHeading">
                 <h1>
-                  <Link
-                    className="profileHistoryTitleLink"
-                    to="/@/$username"
-                    params={{ username: canonicalUsername }}
-                  >
+                  <PlayerLink className="profileHistoryTitleLink" username={canonicalUsername}>
                     {profileDisplayUsername}
-                  </Link>
+                  </PlayerLink>
                   <span> Match History</span>
                 </h1>
                 {isBanned ? <span className="profileCheaterTag">CHEATER</span> : null}
@@ -991,11 +973,11 @@ export const PlayerProfilePage = ({
                         value={profileHighlightView === "wins" ? bestWinMode : bestRankMode}
                         onChange={(event) => {
                           const v = event.target.value;
-                          if ((profileModeOptions as readonly string[]).includes(v)) {
+                          if (isOneOf(profileModeOptions, v)) {
                             if (profileHighlightView === "wins") {
-                              setBestWinMode(v as import("../../constants/matches").Mode);
+                              setBestWinMode(v);
                             } else {
-                              setBestRankMode(v as import("../../constants/matches").Mode);
+                              setBestRankMode(v);
                             }
                           }
                         }}
@@ -1040,13 +1022,9 @@ export const PlayerProfilePage = ({
                       {bestWins.map((win) => (
                         <li key={`best-${win.gameId}`}>
                           <span className="profileBestWinOpponent">
-                            <Link
-                              className="rankingLink"
-                              to="/@/$username"
-                              params={{ username: win.opponent }}
-                            >
+                            <PlayerLink className="rankingLink" username={win.opponent}>
                               {formatOpponentWithRating(win.opponent, win.opponentRating)}
-                            </Link>
+                            </PlayerLink>
                           </span>
                           <span className="profileBestWinDate">
                             <LichessGameLink
@@ -1111,7 +1089,7 @@ export const PlayerProfilePage = ({
                                 aria-label={NON_COUNTED_ALIAS_MESSAGE}
                                 tabIndex={0}
                               >
-                                <span aria-hidden="true">🍺</span>
+                                <FontAwesomeIcon icon={faBeerMugEmpty} aria-hidden="true" />
                                 <span className="profileAliasTooltip" role="tooltip">
                                   {NON_COUNTED_ALIAS_MESSAGE} For more info,
                                   <Link
@@ -1238,8 +1216,8 @@ export const PlayerProfilePage = ({
                             value={matchHistoryMode}
                             onChange={(event) => {
                               const v = event.target.value;
-                              if ((matchHistoryModeOptions as readonly string[]).includes(v)) {
-                                handleModeChange(v as ProfileMatchHistoryMode);
+                              if (isOneOf(matchHistoryModeOptions, v)) {
+                                handleModeChange(v);
                               }
                             }}
                           >
@@ -1279,6 +1257,7 @@ export const PlayerProfilePage = ({
                               value={pageSize}
                               onChange={(event) => {
                                 setPageSize(Number(event.target.value));
+                                setPage(1);
                               }}
                             >
                               {pageSizeOptions.map((value) => (
@@ -1353,8 +1332,8 @@ export const PlayerProfilePage = ({
 
                     {error ? <div className="errorText">{error}</div> : null}
 
-                    <div className="rankingsTableWrap profileMatchTableWrap">
-                      <table className="rankingsTable profileMatchTable">
+                    <div className="rankingsTableWrap matchHistoryTableWrap profileMatchTableWrap">
+                      <table className="rankingsTable matchHistoryTable profileMatchTable">
                         <colgroup>
                           <col className="profileMatchDateColumn" />
                           <col className="profileMatchOpponentColumn" />
@@ -1372,7 +1351,7 @@ export const PlayerProfilePage = ({
                             <th>Score</th>
                             <th>{isExcluded ? "Estimated rating (Δ)" : "Rating (Δ)"}</th>
                             <th>RD (Δ)</th>
-                            <th aria-label="Open match page" />
+                            <th aria-label="Match actions" />
                           </tr>
                         </thead>
                         <tbody>
@@ -1383,15 +1362,6 @@ export const PlayerProfilePage = ({
                               <Fragment key={matchKey}>
                                 <tr
                                   className={`expandableMatchRow${isExpanded ? " expanded" : ""}`}
-                                  onClick={() => toggleMatchKey(matchKey)}
-                                  onKeyDown={(event) => {
-                                    if (!isToggleActionKey(event)) return;
-                                    event.preventDefault();
-                                    toggleMatchKey(matchKey);
-                                  }}
-                                  role="button"
-                                  tabIndex={0}
-                                  aria-expanded={isExpanded}
                                 >
                                   <td>
                                     <LichessGameLink
@@ -1403,20 +1373,21 @@ export const PlayerProfilePage = ({
                                     </LichessGameLink>
                                   </td>
                                   <td>
-                                    <Link
+                                    <PlayerLink
                                       className="rankingLink"
-                                      to="/@/$username"
-                                      params={{ username: match.opponent }}
+                                      username={match.opponent}
                                       onClick={(event) => event.stopPropagation()}
                                     >
                                       {formatOpponentWithRating(
                                         match.opponent,
                                         match.opponentAfterRating,
                                       )}
-                                    </Link>
+                                    </PlayerLink>
                                   </td>
                                   <td>
-                                    <span className="profileTablePill">{match.timeControl}</span>
+                                    <span className="profileTablePill timeControlValue">
+                                      {match.timeControl}
+                                    </span>
                                   </td>
                                   <td className="scoreCell">
                                     <span className="profileScoreBox">
@@ -1453,16 +1424,22 @@ export const PlayerProfilePage = ({
                                     </span>
                                   </td>
                                   <td>
-                                    <MatchPageLink
-                                      match={{
-                                        ...match,
-                                        playerA: canonicalUsername,
-                                        playerB: match.opponent,
-                                        mode: match.mode,
-                                      }}
-                                      onClick={(event) => event.stopPropagation()}
-                                      title="Open match page in new tab"
-                                    />
+                                    <div className="tableRowActions">
+                                      <RowExpansionButton
+                                        expanded={isExpanded}
+                                        label={`${isExpanded ? "Hide" : "Show"} match details`}
+                                        onToggle={() => toggleMatchKey(matchKey)}
+                                      />
+                                      <MatchPageLink
+                                        match={{
+                                          ...match,
+                                          playerA: canonicalUsername,
+                                          playerB: match.opponent,
+                                          mode: match.mode,
+                                        }}
+                                        title="Open match page in new tab"
+                                      />
+                                    </div>
                                   </td>
                                 </tr>
                                 {isExpanded ? (
@@ -1572,9 +1549,9 @@ export const PlayerProfilePage = ({
                                 const v = event.target.value;
                                 if (
                                   v === "all" ||
-                                  (profileModeOptions as readonly string[]).includes(v)
+                                  isOneOf(profileModeOptions, v)
                                 ) {
-                                  setRankHistoryMode(v as RankHistoryMode);
+                                  setRankHistoryMode(v);
                                 }
                               }}
                             >

@@ -5,7 +5,6 @@ import {
   faArrowRight,
   faArrowUpRightFromSquare,
   faCheck,
-  faComment,
   faUsers,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -13,8 +12,10 @@ import { Link } from "@tanstack/react-router";
 import type { KeyboardEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 
+import { CommunityCommentsLink } from "../../components/CommunityCommentsLink/CommunityCommentsLink";
 import { CommunityDiscussion } from "../../components/PuzzleCommunity/PuzzleCommunity";
 import { Seo } from "../../components/Seo/Seo";
+import { TournamentPlayerLink } from "../../components/TournamentPlayerLink/TournamentPlayerLink";
 import {
   type AtomicChessLeagueBoardMatch,
   type AtomicChessLeagueDivision,
@@ -25,6 +26,7 @@ import {
   getAtomicChessLeagueSeason,
 } from "../../lib/matches/atomicChessLeague";
 import { appAssetPath } from "../../utils/appAssetPath";
+import { getBrowserStorageJson, setBrowserStorageJson } from "../../utils/browserStorage";
 
 type RoundNumber = 1 | 2 | 3;
 type ArchiveView = "standings" | "matches";
@@ -36,25 +38,13 @@ type SavedView = {
 };
 
 const readSavedView = (seasonNumber: AtomicChessLeagueSeason["number"]): SavedView => {
-  if (typeof window === "undefined") return {};
-  try {
-    const value: unknown = JSON.parse(
-      window.sessionStorage.getItem(`tournament-view:acl-s${seasonNumber}`) ?? "{}",
-    );
-    return value && typeof value === "object" && !Array.isArray(value) ? value : {};
-  } catch {
-    return {};
-  }
+  const value = getBrowserStorageJson<unknown>(
+    "session",
+    `tournament-view:acl-s${seasonNumber}`,
+    {},
+  );
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
 };
-
-const PlayerLink = ({ player }: { player: string }) => (
-  <Link
-    to="/tournaments/players/$username"
-    params={{ username: getAtomicChessLeaguePlayerName(player) }}
-  >
-    {getAtomicChessLeaguePlayerName(player)}
-  </Link>
-);
 
 const TeamStanding = ({ team }: { team: AtomicChessLeagueTeam }) => (
   <article className={`aclTeam${team.rank === 1 ? " isChampion" : ""}`}>
@@ -93,7 +83,7 @@ const TeamStanding = ({ team }: { team: AtomicChessLeagueTeam }) => (
       <FontAwesomeIcon icon={faUsers} aria-hidden="true" />
       <div>
         {team.players.map((player) => (
-          <PlayerLink key={player} player={player} />
+          <TournamentPlayerLink key={player} username={getAtomicChessLeaguePlayerName(player)} />
         ))}
       </div>
     </div>
@@ -134,12 +124,12 @@ const BoardMatchContent = ({ board }: { board: AtomicChessLeagueBoardMatch }) =>
 
   return (
     <>
-      <span className="aclBoardTime">{board.timeControl}</span>
+      <span className="aclBoardTime timeControlValue">{board.timeControl}</span>
       <span
         className={`aclBoardPlayer${player1Won ? " isWinner" : ""}`}
         aria-label={`${player1}${player1Won ? ", winner" : ""}`}
       >
-        {board.player1 ? <PlayerLink player={board.player1} /> : <span>{player1}</span>}
+        {board.player1 ? <TournamentPlayerLink username={player1} /> : <span>{player1}</span>}
         {player1Won ? <FontAwesomeIcon icon={faCheck} aria-hidden="true" /> : null}
       </span>
       <strong className="aclBoardScore">
@@ -151,7 +141,7 @@ const BoardMatchContent = ({ board }: { board: AtomicChessLeagueBoardMatch }) =>
         className={`aclBoardPlayer isSecond${player2Won ? " isWinner" : ""}`}
         aria-label={`${player2}${player2Won ? ", winner" : ""}`}
       >
-        {board.player2 ? <PlayerLink player={board.player2} /> : <span>{player2}</span>}
+        {board.player2 ? <TournamentPlayerLink username={player2} /> : <span>{player2}</span>}
         {player2Won ? <FontAwesomeIcon icon={faCheck} aria-hidden="true" /> : null}
       </span>
       {board.matchId ? (
@@ -257,9 +247,10 @@ export const AtomicChessLeaguePage = ({
   const otherSeason = season.number === 2 ? 1 : 2;
 
   useEffect(() => {
-    window.sessionStorage.setItem(
+    setBrowserStorageJson(
+      "session",
       `tournament-view:acl-s${season.number}`,
-      JSON.stringify({ division: division.id, rounds: roundByDivision, view }),
+      { division: division.id, rounds: roundByDivision, view },
     );
   }, [division.id, roundByDivision, season.number, view]);
 
@@ -350,10 +341,10 @@ export const AtomicChessLeaguePage = ({
               Official results
               <FontAwesomeIcon icon={faArrowUpRightFromSquare} aria-hidden="true" />
             </a>
-            <a href="#tournament-comments">
-              <FontAwesomeIcon icon={faComment} aria-hidden="true" />
-              Comments
-            </a>
+            <CommunityCommentsLink
+              target={{ type: "tournament", id: `acl-s${season.number}` }}
+              href="#tournament-comments"
+            />
           </div>
         </div>
 

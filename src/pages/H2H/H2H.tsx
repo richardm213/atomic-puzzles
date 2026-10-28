@@ -28,6 +28,8 @@ type PlayerSnapshotsByMode = Partial<Record<Mode, PlayerRatingRow>>;
 import { LichessGameLink } from "../../components/LichessGameLink/LichessGameLink";
 import { MatchDetails } from "../../components/MatchDetails/MatchDetails";
 import { MatchPageLink } from "../../components/MatchPageLink/MatchPageLink";
+import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
+import { RowExpansionButton } from "../../components/RowExpansionButton/RowExpansionButton";
 import { Seo } from "../../components/Seo/Seo";
 import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFilterChecks";
 import { usePersistedState } from "../../hooks/usePersistedState";
@@ -47,8 +49,9 @@ import {
 } from "../../lib/matches/summaries";
 import { normalizedGamesFromMatch, normalizedPlayersFromMatch } from "../../lib/matches/transforms";
 import { resolveUsernameInputs } from "../../lib/users/usernameSearch";
+import { toggleArrayValue } from "../../utils/arrays";
+import { getBrowserStorageJson, setBrowserStorageJson } from "../../utils/browserStorage";
 import { formatLocalDateTime, formatScore } from "../../utils/formatters";
-import { isToggleActionKey } from "../../utils/toggleActionKey";
 
 const normalizeH2HMatches = (
   matches: RawMatchLike[] | null | undefined,
@@ -188,25 +191,20 @@ const h2hModeFiltersSchema = z
   });
 
 const storeLastSearch = (player1: string, player2: string): void => {
-  try {
-    window.sessionStorage.setItem(h2hSearchStorageKey, JSON.stringify({ player1, player2 }));
-  } catch {
-    // Session storage is a convenience only; navigation still works without it.
-  }
+  setBrowserStorageJson("session", h2hSearchStorageKey, { player1, player2 });
 };
 
 const readLastSearch = (): { player1: string; player2: string } | null => {
-  try {
-    const saved = window.sessionStorage.getItem(h2hSearchStorageKey);
-    if (!saved) return null;
-    const parsed = JSON.parse(saved) as { player1?: unknown; player2?: unknown };
-    return {
-      player1: typeof parsed.player1 === "string" ? parsed.player1 : "",
-      player2: typeof parsed.player2 === "string" ? parsed.player2 : "",
-    };
-  } catch {
-    return null;
-  }
+  const saved = getBrowserStorageJson<{ player1?: unknown; player2?: unknown } | null>(
+    "session",
+    h2hSearchStorageKey,
+    null,
+  );
+  if (!saved) return null;
+  return {
+    player1: typeof saved.player1 === "string" ? saved.player1 : "",
+    player2: typeof saved.player2 === "string" ? saved.player2 : "",
+  };
 };
 
 const indexRatingsRowsByTimeControl = (rows: PlayerRatingRow[]): PlayerSnapshotsByMode => {
@@ -589,14 +587,13 @@ export const H2HPage = () => {
                     <div className="h2hPlayerIdentity h2hPlayerIdentityLeft">
                       <span className="h2hPlayerLabel">Player 1</span>
                       <h2>
-                        <Link
+                        <PlayerLink
                           className="rankingLink h2hPlayerNameLink"
-                          to="/@/$username"
-                          params={{ username: loadedPlayer1 }}
+                          username={loadedPlayer1}
                         >
                           {loadedPlayer1}
                           <BannedPlayerMark username={loadedPlayer1} />
-                        </Link>
+                        </PlayerLink>
                       </h2>
                     </div>
                     <div className="h2hScoreBlock h2hScoreBlockHero" aria-label="Overall score">
@@ -608,14 +605,13 @@ export const H2HPage = () => {
                     <div className="h2hPlayerIdentity h2hPlayerIdentityRight">
                       <span className="h2hPlayerLabel">Player 2</span>
                       <h2>
-                        <Link
+                        <PlayerLink
                           className="rankingLink h2hPlayerNameLink"
-                          to="/@/$username"
-                          params={{ username: loadedPlayer2 }}
+                          username={loadedPlayer2}
                         >
                           {loadedPlayer2}
                           <BannedPlayerMark username={loadedPlayer2} />
-                        </Link>
+                        </PlayerLink>
                       </h2>
                     </div>
                   </div>
@@ -727,33 +723,18 @@ export const H2HPage = () => {
                         <th>TC</th>
                         <th>Winner</th>
                         <th>Score</th>
-                        <th aria-label="Open match page" />
+                        <th aria-label="Match actions" />
                       </tr>
                     </thead>
                     <tbody>
                       {filteredMatches.map((match) => {
                         const isExpanded = expandedMatchKeys.includes(match.key);
                         const toggleMatch = () =>
-                          setExpandedMatchKeys((current) =>
-                            current.includes(match.key)
-                              ? current.filter((key) => key !== match.key)
-                              : [...current, match.key],
-                          );
+                          setExpandedMatchKeys((current) => toggleArrayValue(current, match.key));
 
                         return (
                           <Fragment key={match.key}>
-                            <tr
-                              className={`h2hMatchTableRow${isExpanded ? " expanded" : ""}`}
-                              onClick={toggleMatch}
-                              onKeyDown={(event) => {
-                                if (!isToggleActionKey(event)) return;
-                                event.preventDefault();
-                                toggleMatch();
-                              }}
-                              role="button"
-                              tabIndex={0}
-                              aria-expanded={isExpanded}
-                            >
+                            <tr className={`h2hMatchTableRow${isExpanded ? " expanded" : ""}`}>
                               <td>
                                 <LichessGameLink
                                   gameId={match.firstGameId}
@@ -765,7 +746,7 @@ export const H2HPage = () => {
                                 </LichessGameLink>
                               </td>
                               <td>
-                                <span className="h2hMatchTableType">
+                                <span className="h2hMatchTableType timeControlValue">
                                   <strong>{match.timeControl}</strong>
                                 </span>
                               </td>
@@ -773,15 +754,14 @@ export const H2HPage = () => {
                                 {match.winner === "Draw" ? (
                                   <span className="h2hMatchWinner">Draw</span>
                                 ) : (
-                                  <Link
+                                  <PlayerLink
                                     className="rankingLink h2hMatchWinner h2hMatchWinnerLink"
-                                    to="/@/$username"
-                                    params={{ username: match.winner }}
+                                    username={match.winner}
                                     onClick={(event) => event.stopPropagation()}
                                   >
                                     {match.winner}
                                     <BannedPlayerMark username={match.winner} />
-                                  </Link>
+                                  </PlayerLink>
                                 )}
                               </td>
                               <td>
@@ -790,11 +770,14 @@ export const H2HPage = () => {
                                 </span>
                               </td>
                               <td>
-                                <MatchPageLink
-                                  match={match}
-                                  onClick={(event) => event.stopPropagation()}
-                                  title="Open match page in new tab"
-                                />
+                                <div className="tableRowActions">
+                                  <RowExpansionButton
+                                    expanded={isExpanded}
+                                    label={`${isExpanded ? "Hide" : "Show"} match details`}
+                                    onToggle={toggleMatch}
+                                  />
+                                  <MatchPageLink match={match} title="Open match page in new tab" />
+                                </div>
                               </td>
                             </tr>
                             {isExpanded ? (

@@ -22,7 +22,7 @@ export const aliasesLookupQueryOptions = () =>
 export const aliasRowsQueryOptions = () =>
   queryOptions({
     queryKey: aliasQueryKeys.bannedUsers(),
-    queryFn: fetchAliasRows,
+    queryFn: () => fetchAliasRows(),
     staleTime: ALIASES_STALE_TIME_MS,
   });
 

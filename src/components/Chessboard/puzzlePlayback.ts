@@ -42,7 +42,7 @@ export const tryCreateAtomicPosition = (
   } catch (error) {
     return {
       position: null,
-      error: error instanceof Error ? error.message : "Invalid position",
+      error: getErrorMessage(error, "Invalid position"),
     };
   }
 };
@@ -152,3 +152,5 @@ export const buildSolutionHistory = (
   return history;
 };
 import type { Key } from "@lichess-org/chessground/types";
+
+import { getErrorMessage } from "../../utils/errors";

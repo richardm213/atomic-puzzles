@@ -126,9 +126,7 @@ export const OpeningDatabaseDisplay = ({
 
   return (
     <>
-      <table
-        className={`analysisExplorerTable ${showPerformance ? "withPerformance" : ""}`}
-      >
+      <table className={`analysisExplorerTable ${showPerformance ? "withPerformance" : ""}`}>
         <colgroup>
           <col className="analysisExplorerMoveColumn" />
           <col className="analysisExplorerGamesColumn" />
@@ -159,25 +157,20 @@ export const OpeningDatabaseDisplay = ({
             </tr>
           ) : null}
           {moves.map((move) => (
-            <tr
-              key={move.uci}
-              className="analysisExplorerRow"
-              role="button"
-              tabIndex={0}
-              aria-label={`Play ${move.move}`}
-              onPointerEnter={() => onHoverMove(move.uci)}
-              onPointerLeave={() => onHoverMove(null)}
-              onFocus={() => onHoverMove(move.uci)}
-              onBlur={() => onHoverMove(null)}
-              onClick={() => onPlayMove(move.uci)}
-              onKeyDown={(event) => {
-                if (event.key !== "Enter" && event.key !== " ") return;
-                event.preventDefault();
-                onPlayMove(move.uci);
-              }}
-            >
+            <tr key={move.uci} className="analysisExplorerRow">
               <td>
-                <span className="analysisExplorerMove">{move.move}</span>
+                <button
+                  type="button"
+                  className="analysisExplorerMove analysisExplorerMoveButton"
+                  aria-label={`Play ${move.move}`}
+                  onPointerEnter={() => onHoverMove(move.uci)}
+                  onPointerLeave={() => onHoverMove(null)}
+                  onFocus={() => onHoverMove(move.uci)}
+                  onBlur={() => onHoverMove(null)}
+                  onClick={() => onPlayMove(move.uci)}
+                >
+                  {move.move}
+                </button>
               </td>
               <td>{formatGameCount(move.games)}</td>
               {showPerformance ? (

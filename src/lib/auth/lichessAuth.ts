@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { appAssetPath } from "../../utils/appAssetPath";
+import { getErrorMessage } from "../../utils/errors";
 
 const LICHESS_HOST = "https://lichess.org";
 
@@ -322,7 +323,7 @@ export const completeLichessLogin = async (
     if (loginError instanceof LichessAuthError) throw loginError;
     throw new LichessAuthError(
       "account_load_failed",
-      loginError instanceof Error ? loginError.message : "Unable to finish Lichess login.",
+      getErrorMessage(loginError, "Unable to finish Lichess login."),
     );
   }
 };

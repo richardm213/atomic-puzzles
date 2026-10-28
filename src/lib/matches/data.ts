@@ -1,4 +1,5 @@
 import { type Mode, modeOptions } from "../../constants/matches";
+import type { PaginatedCollection, PaginationOptions } from "../../types/pagination";
 import { normalizeUsername } from "../../utils/playerNames";
 import { fetchMatchRowsFromArchive, type MatchFilters, type MatchRow } from "../archive/matches";
 import { type MatchSource, matchSourceFromValues, sourceValueFromValues } from "./filters";
@@ -41,19 +42,11 @@ export type ParsedMatch = {
   ratings: RawRatingsByPlayer;
 };
 
-export type LoadMatchesOptions = {
+export type LoadMatchesOptions = PaginationOptions & {
   filters?: MatchFilters;
-  page?: number;
-  pageSize?: number;
-  includeTotal?: boolean;
 };
 
-export type PaginatedMatches = {
-  matches: ParsedMatch[];
-  total: number;
-  hasPreviousPage: boolean;
-  hasNextPage: boolean;
-};
+export type PaginatedMatches = PaginatedCollection<"matches", ParsedMatch>;
 
 export type NormalizedMatchGame = {
   id: string;

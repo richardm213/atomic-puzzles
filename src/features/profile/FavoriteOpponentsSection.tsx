@@ -1,8 +1,10 @@
 import { Link } from "@tanstack/react-router";
-import { Fragment, type KeyboardEvent } from "react";
+import { Fragment } from "react";
 
 import { MatchPageLink } from "../../components/MatchPageLink/MatchPageLink";
 import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
+import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
+import { RowExpansionButton } from "../../components/RowExpansionButton/RowExpansionButton";
 import { modeLabels } from "../../constants/matches";
 import { matchupToSlug } from "../../lib/matches/h2hRoutes";
 import {
@@ -12,7 +14,6 @@ import {
 } from "../../lib/matches/routes";
 import { formatLocalDateTime, formatScore, formatSignedDecimal } from "../../utils/formatters";
 import { normalizeUsername } from "../../utils/playerNames";
-import { isToggleActionKey } from "../../utils/toggleActionKey";
 import {
   favoriteOpponentDisplayCountOptions,
   type FavoriteOpponentRow,
@@ -82,12 +83,6 @@ export const FavoriteOpponentsSection = ({
     sort === column ? (sortDirection === "asc" ? "↑" : "↓") : "";
   const handleHeaderSort = (column: FavoriteOpponentSort): void =>
     onSortChange(column, sort === column ? (sortDirection === "desc" ? "asc" : "desc") : undefined);
-  const handleToggleKey = (event: KeyboardEvent<HTMLTableRowElement>, key: string): void => {
-    if (!isToggleActionKey(event)) return;
-    event.preventDefault();
-    onToggleOpponent(key);
-  };
-
   return (
     <section
       id="profile-favorite-opponents-panel"
@@ -212,6 +207,7 @@ export const FavoriteOpponentsSection = ({
                   </button>
                 </th>
               ))}
+              <th aria-label="Show opponent matches" />
             </tr>
           </thead>
           <tbody>
@@ -222,22 +218,16 @@ export const FavoriteOpponentsSection = ({
                 <Fragment key={`favorite-opponent-${opponentKey}`}>
                   <tr
                     className={`expandableMatchRow profileFavoriteOpponentRow${isExpanded ? " expanded" : ""}`}
-                    onClick={() => onToggleOpponent(opponentKey)}
-                    onKeyDown={(event) => handleToggleKey(event, opponentKey)}
-                    role="button"
-                    tabIndex={0}
-                    aria-expanded={isExpanded}
                   >
                     <td>
-                      <Link
+                      <PlayerLink
                         className="rankingLink"
-                        to="/@/$username"
-                        params={{ username: row.opponent }}
+                        username={row.opponent}
                         title={row.opponent}
                         onClick={(event) => event.stopPropagation()}
                       >
                         {row.opponent}
-                      </Link>
+                      </PlayerLink>
                     </td>
                     <td>{`${formatScore(row.playerScore)} - ${formatScore(row.opponentScore)}`}</td>
                     <td>{row.performanceScore ?? "—"}</td>
@@ -255,10 +245,17 @@ export const FavoriteOpponentsSection = ({
                       {row.favoriteTimeControl}
                       {row.favoriteTimeControlCount > 0 ? ` (${row.favoriteTimeControlCount})` : ""}
                     </td>
+                    <td>
+                      <RowExpansionButton
+                        expanded={isExpanded}
+                        label={`${isExpanded ? "Hide" : "Show"} matches against ${row.opponent}`}
+                        onToggle={() => onToggleOpponent(opponentKey)}
+                      />
+                    </td>
                   </tr>
                   {isExpanded ? (
                     <tr className="favoriteOpponentMatchesRow">
-                      <td colSpan={6}>
+                      <td colSpan={7}>
                         <div className="favoriteOpponentMatchesInner">
                           <div className="favoriteOpponentMatchesHeader">
                             <span>{`${row.matches.length.toLocaleString("en-US")} matches vs ${row.opponent}`}</span>
@@ -327,7 +324,9 @@ export const FavoriteOpponentsSection = ({
                                       )}
                                     </td>
                                     <td>
-                                      <span className="profileTablePill">{match.timeControl}</span>
+                                      <span className="profileTablePill timeControlValue">
+                                        {match.timeControl}
+                                      </span>
                                     </td>
                                     <td>{`${formatScore(match.playerScore)} - ${formatScore(match.opponentScore)}`}</td>
                                     <td>

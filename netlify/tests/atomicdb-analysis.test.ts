@@ -108,6 +108,44 @@ describe("atomicdb-analysis function", () => {
     expect(Object.keys(JSON.parse(response.body).positions)).toEqual(fens);
   });
 
+  it("bounds batch fan-out so one request cannot flood the upstream service", async () => {
+    const releases: Array<() => void> = [];
+    let inFlight = 0;
+    let peakInFlight = 0;
+    const fetchMock = vi.fn().mockImplementation(
+      () =>
+        new Promise<Response>((resolve) => {
+          inFlight += 1;
+          peakInFlight = Math.max(peakInFlight, inFlight);
+          releases.push(() => {
+            inFlight -= 1;
+            resolve(
+              new Response(JSON.stringify({ status: "UNKNOWN", moves: [] }), {
+                status: 200,
+                headers: { "Content-Type": "application/json" },
+              }),
+            );
+          });
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const { handler } = await import("../functions/atomicdb-analysis");
+    const fens = Array.from({ length: 8 }, (_, index) => `8/8/8/8/8/8/8/K6k w - - ${index} 1`);
+    const responsePromise = handler({
+      httpMethod: "POST",
+      body: JSON.stringify({ fens }),
+    });
+
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(6));
+    expect(peakInFlight).toBe(6);
+    releases.splice(0).forEach((release) => release());
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(8));
+    releases.splice(0).forEach((release) => release());
+
+    expect((await responsePromise).statusCode).toBe(200);
+    expect(peakInFlight).toBe(6);
+  });
+
   it("loads multiple principal variations in one cached batch response", async () => {
     const fetchMock = vi.fn().mockImplementation((input: string | URL | Request) => {
       const fen = (input as URL).searchParams.get("fen") ?? "";

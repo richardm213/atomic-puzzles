@@ -5,6 +5,7 @@ import {
   isTournamentBetOnOpponent,
   MIN_BET_AMOUNT,
 } from "../../../shared/domain/betting";
+import { voteValueSchema } from "../../../shared/domain/voting";
 import {
   authenticateRequest,
   identityResponse,
@@ -36,7 +37,6 @@ const bodySchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("bets") }),
   z.object({ action: z.literal("allBets") }),
   z.object({ action: z.literal("suggestions") }),
-  z.object({ action: z.literal("exchangeMarket"), marketId: exchangeMarketIdSchema }),
   z.object({
     action: z.literal("exchangeMarketBatch"),
     marketIds: z.array(exchangeMarketIdSchema).min(1).max(100),
@@ -77,7 +77,7 @@ const bodySchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("voteSuggestion"),
     suggestionId: z.number().int().positive(),
-    vote: z.union([z.literal(-1), z.literal(0), z.literal(1)]),
+    vote: voteValueSchema,
   }),
   z.object({
     action: z.literal("place"),
@@ -496,7 +496,6 @@ export const bettingRoute = async (event: FunctionEvent) => {
       input.action === "exchangeMarkets" ||
       input.action === "allBets" ||
       input.action === "suggestions" ||
-      input.action === "exchangeMarket" ||
       input.action === "exchangeMarketBatch",
   );
   const supabase = createServerSupabase("Tournament betting service");
@@ -521,19 +520,13 @@ export const bettingRoute = async (event: FunctionEvent) => {
     return identityResponse(identity, 200, { result: await loadExchangeMarketCatalog(supabase) });
   }
 
-  if (input.action === "exchangeMarket" || input.action === "exchangeMarketBatch") {
-    const requestedMarketIds =
-      input.action === "exchangeMarket" ? [input.marketId] : input.marketIds;
+  if (input.action === "exchangeMarketBatch") {
     const states = await loadPredictionMarketStates(
       supabase,
-      requestedMarketIds,
+      input.marketIds,
       identity?.username ?? null,
     );
-    if (input.action === "exchangeMarket" && states.length === 0)
-      throw new HttpError(404, "That prediction market does not exist.");
-    return identityResponse(identity, 200, {
-      result: input.action === "exchangeMarket" ? states[0] : states,
-    });
+    return identityResponse(identity, 200, { result: states });
   }
 
   if (input.action === "markets") {

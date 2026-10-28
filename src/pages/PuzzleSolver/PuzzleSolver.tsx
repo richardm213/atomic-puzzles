@@ -1,16 +1,9 @@
 import "./PuzzleSolver.css";
 
 import {
-  faArrowUpRightFromSquare,
-  faCheck,
   faChevronLeft,
   faChevronRight,
-  faCircleInfo,
   faClockRotateLeft,
-  faComment,
-  faMagnifyingGlassChart,
-  faUsers,
-  faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -30,11 +23,7 @@ import { buildPieceStyle } from "../../components/Chessboard/boardStyle";
 import { Chessboard } from "../../components/Chessboard/Chessboard";
 import { PuzzleCommunity } from "../../components/PuzzleCommunity/PuzzleCommunity";
 import { Seo } from "../../components/Seo/Seo";
-import {
-  continuationOptionsAt,
-  SolutionMoveTree,
-  SolutionPlaybackControls,
-} from "../../components/SolutionMoveNavigation/SolutionMoveNavigation";
+import { continuationOptionsAt } from "../../components/SolutionMoveNavigation/SolutionMoveNavigation";
 import {
   activeLineIndex,
   matchingLineIndexes,
@@ -58,11 +47,7 @@ import { getPuzzleUnratedReason } from "../../lib/puzzles/puzzleAttemptRating";
 import { updatePuzzleExplanation } from "../../lib/puzzles/puzzleExplanation";
 import { type PuzzleIssueCategory, reportPuzzleIssue } from "../../lib/puzzles/puzzleIssues";
 import { loadPuzzlesById } from "../../lib/puzzles/puzzleLibrary";
-import {
-  getPuzzleMotifParent,
-  normalizePuzzleMotifTags,
-  puzzleMotifs,
-} from "../../lib/puzzles/puzzleMotifs";
+import { normalizePuzzleMotifTags } from "../../lib/puzzles/puzzleMotifs";
 import {
   puzzlePlayerNicknamesQueryOptions,
   puzzleQueryKeys,
@@ -88,38 +73,36 @@ import {
   recordPuzzleProgress,
 } from "../../lib/supabase/puzzleProgress";
 import type { PuzzleRatingEvent } from "../../lib/supabase/puzzleUserRatings";
+import type { AsyncActionStatus } from "../../types/async";
 import type {
   AttemptResolved,
   ChessboardState,
   PlaybackCommand,
   SolutionNavigation,
 } from "../../types/chessboard";
-import { formatLocalDateTime } from "../../utils/formatters";
+import { orientationFromFen } from "../../utils/chessNotation";
+import { getErrorMessage } from "../../utils/errors";
+import { formatElapsedDuration, formatSignedDecimal } from "../../utils/formatters";
+import { lichessAtomicAnalysisUrl } from "../../utils/lichess";
 import { normalizeUsername } from "../../utils/playerNames";
 import { castlingRightsFromFen } from "./castlingRights";
 import { materialCountFromFen, type MaterialPieceRole } from "./materialCount";
+import { PuzzleInfoSection, type PuzzleInfoTab } from "./PuzzleInfoSection";
 import { PuzzleIssueDialog, type PuzzleIssueStatus } from "./PuzzleIssueDialog";
+import { PuzzleMotifsPanel } from "./PuzzleMotifsPanel";
+import {
+  addValueToSet,
+  buildCompletionFeedback,
+  type CompletionFeedback,
+  createInitialBoardSnapshot,
+  createInitialBoardState,
+  getPuzzleAttemptStartedAt,
+  puzzleIndexFromParam,
+  removeValueFromSet,
+  shuffleIndexes,
+  toPuzzleKey,
+} from "./puzzleSolverState";
 import { usePuzzleCatalog } from "./usePuzzleCatalog";
-
-const lichessAnalysisUrl = (fen: string | null | undefined): string => {
-  if (!fen) return "https://lichess.org/analysis/atomic";
-  return `https://lichess.org/analysis/atomic/${fen.replaceAll(" ", "_")}`;
-};
-
-const orientationFromFen = (fen: string | undefined): "black" | "white" => {
-  const turn = fen?.split(" ")?.[1];
-  return turn === "b" ? "black" : "white";
-};
-
-const parsePuzzleId = (puzzleIdParam: string | null | undefined): number | null => {
-  if (!puzzleIdParam) return null;
-  const puzzleId = Number.parseInt(String(puzzleIdParam), 10);
-  if (Number.isNaN(puzzleId)) return null;
-  return puzzleId;
-};
-
-const toPuzzleKey = (puzzleId: unknown): string =>
-  puzzleId === undefined || puzzleId === null ? "" : String(puzzleId).trim();
 
 const ATTEMPTED_PUZZLE_BADGE_LABEL = "You've already attempted this puzzle before";
 const SOLVED_BEFORE_BADGE_LABEL = "You've solved this puzzle before";
@@ -128,167 +111,10 @@ const OPA_STYLE_BADGE_LABEL =
 const OTHER_PUZZLE_ATTEMPTS_LIMIT = 30;
 const PUZZLE_PREFETCH_COUNT = 3;
 const MAX_PUZZLE_ATTEMPT_DURATION_MS = 60 * 60 * 1000;
-const PUZZLE_ATTEMPT_STORAGE_DURATION_MS = 30 * 60 * 1000;
-const PUZZLE_ATTEMPT_STARTED_AT_STORAGE_PREFIX = "atomic-puzzles.puzzle-attempt-started-at.v1";
 const PUZZLE_TAG_EDITOR = "seaside_tiramisu";
 const PUZZLE_RATING_EDITOR = "seaside_tiramisu";
 const PUZZLE_EXPLANATION_LEGACY_AUTHOR = "admin";
 const PUZZLE_EXPLANATION_LEGACY_EDITOR = "seaside_tiramisu";
-
-const formatElapsedTime = (milliseconds: number): string => {
-  const totalSeconds = Math.floor(Math.max(0, milliseconds) / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${String(seconds).padStart(2, "0")}`;
-};
-
-const getPuzzleAttemptStartedAt = (puzzleId: string): number => {
-  const storageKey = `${PUZZLE_ATTEMPT_STARTED_AT_STORAGE_PREFIX}:${puzzleId}`;
-  const now = Date.now();
-
-  try {
-    const storedStartedAt = Number.parseInt(window.localStorage.getItem(storageKey) ?? "", 10);
-    const storedAttemptAge = now - storedStartedAt;
-    if (
-      Number.isFinite(storedStartedAt) &&
-      storedAttemptAge >= 0 &&
-      storedAttemptAge <= PUZZLE_ATTEMPT_STORAGE_DURATION_MS
-    ) {
-      return storedStartedAt;
-    }
-    window.localStorage.setItem(storageKey, String(now));
-  } catch {
-    // The timer still works for this page load when local storage is unavailable.
-  }
-
-  return now;
-};
-
-const formatSignedRating = (value: number): string => `${value > 0 ? "+" : ""}${value}`;
-
-type PuzzleInfoTab = "solution" | "explanation" | "attempts" | "comments";
-
-const addValueToSet = (currentSet: Set<string>, value: string): Set<string> => {
-  if (!value) return currentSet;
-  const next = new Set(currentSet);
-  next.add(value);
-  return next;
-};
-
-const removeValueFromSet = (currentSet: Set<string>, value: string): Set<string> => {
-  if (!value || !currentSet.has(value)) return currentSet;
-  const next = new Set(currentSet);
-  next.delete(value);
-  return next;
-};
-
-const puzzleIndexFromParam = (
-  puzzles: import("../../lib/puzzles/puzzleLibrary").Puzzle[],
-  puzzleIdParam: string | null | undefined,
-): number => {
-  const puzzleId = parsePuzzleId(puzzleIdParam);
-  if (puzzleId === null) return -1;
-
-  const puzzleIndex = puzzles.findIndex((puzzle) => puzzle.puzzleId === puzzleId);
-  return puzzleIndex;
-};
-
-const randomInt = (max: number): number => {
-  if (!Number.isInteger(max) || max <= 0) return 0;
-
-  const cryptoObject = window.crypto;
-  if (!cryptoObject?.getRandomValues) {
-    return Math.floor(Math.random() * max);
-  }
-
-  const maxUint32 = 0x100000000;
-  const limit = maxUint32 - (maxUint32 % max);
-  const values = new Uint32Array(1);
-
-  do {
-    cryptoObject.getRandomValues(values);
-  } while ((values[0] ?? 0) >= limit);
-
-  return (values[0] ?? 0) % max;
-};
-
-const shuffleIndexes = (indexes: number[]): number[] => {
-  const shuffled = [...indexes];
-
-  for (let index = shuffled.length - 1; index > 0; index -= 1) {
-    const swapIndex = randomInt(index + 1);
-    const a = shuffled[index]!;
-    const b = shuffled[swapIndex]!;
-    shuffled[index] = b;
-    shuffled[swapIndex] = a;
-  }
-
-  return shuffled;
-};
-
-type CompletionFeedback = {
-  type: string;
-  icon: string;
-  title: string;
-};
-const buildCompletionFeedback = (
-  nextBoardState: ChessboardState,
-  hadWrongAttempt: boolean,
-): CompletionFeedback | null => {
-  if (nextBoardState.solved) {
-    return hadWrongAttempt
-      ? {
-          type: "retrySuccess",
-          icon: "↺",
-          title: "Correct",
-        }
-      : {
-          type: "correct",
-          icon: "✓",
-          title: "Correct",
-        };
-  }
-
-  if (nextBoardState.showWrongMove) {
-    return {
-      type: "wrong",
-      icon: "×",
-      title: "Incorrect",
-    };
-  }
-
-  if (nextBoardState.showRetryMove) {
-    return {
-      type: "retry",
-      icon: "↺",
-      title: "Try again: better move",
-    };
-  }
-
-  return null;
-};
-
-const createInitialBoardState = (): ChessboardState => ({
-  fen: "",
-  turn: "",
-  status: "Loading puzzles...",
-  error: "",
-  lineMoves: [] as string[],
-  solutionLines: [] as string[][],
-  solutionLineIndex: 0,
-  lineIndex: 0,
-  viewingSolution: false,
-  showWrongMove: false,
-  showRetryMove: false,
-  solved: false,
-});
-
-const createInitialBoardSnapshot = () => ({
-  fen: "",
-  lineIndex: 0,
-  solutionLineIndex: 0,
-  viewingSolution: false,
-});
 
 const SOLVE_MODE = "solve";
 const ANALYSIS_MODE = "analysis";
@@ -346,12 +172,9 @@ export const PuzzleSolverPage = () => {
   const [explanationUnlockedByWrongMove, setExplanationUnlockedByWrongMove] = useState(false);
   const [explanationEditorOpen, setExplanationEditorOpen] = useState(false);
   const [explanationDraft, setExplanationDraft] = useState("");
-  const [explanationSaveStatus, setExplanationSaveStatus] = useState<
-    | { state: "idle" }
-    | { state: "saving" }
-    | { state: "saved" }
-    | { state: "error"; message: string }
-  >({ state: "idle" });
+  const [explanationSaveStatus, setExplanationSaveStatus] = useState<AsyncActionStatus>({
+    state: "idle",
+  });
   const [pinnedSolutionLineIndex, setPinnedSolutionLineIndex] = useState<number | null>(null);
   const { copy: copyPgn, copyLabel: copyPgnLabel, resetCopyFeedback } = useCopyFeedback();
   const [otherPuzzleAttemptsStatus, setOtherPuzzleAttemptsStatus] = useState<
@@ -360,29 +183,15 @@ export const PuzzleSolverPage = () => {
   const [otherPuzzleAttempts, setOtherPuzzleAttempts] = useState<PuzzleProgressWithUsernameRow[]>(
     [],
   );
-  const [motifEditorOpen, setMotifEditorOpen] = useState(false);
-  const [motifSearchValue, setMotifSearchValue] = useState("");
   const [ratingEditorOpen, setRatingEditorOpen] = useState(false);
   const [ratingDraftLevel, setRatingDraftLevel] = useState<PuzzleLevel>(1);
-  const [ratingSaveStatus, setRatingSaveStatus] = useState<
-    | { state: "idle" }
-    | { state: "saving" }
-    | { state: "saved" }
-    | { state: "error"; message: string }
-  >({ state: "idle" });
+  const [ratingSaveStatus, setRatingSaveStatus] = useState<AsyncActionStatus>({ state: "idle" });
   const [reportIssueOpen, setReportIssueOpen] = useState(false);
   const [reportIssueCategory, setReportIssueCategory] = useState<PuzzleIssueCategory>(
     "missing_alternate_solution",
   );
   const [reportIssueDetails, setReportIssueDetails] = useState("");
   const [reportIssueStatus, setReportIssueStatus] = useState<PuzzleIssueStatus>({ state: "idle" });
-  const [selectedMotifTag, setSelectedMotifTag] = useState<string | null>(null);
-  const [motifSaveStatus, setMotifSaveStatus] = useState<
-    | { state: "idle" }
-    | { state: "saving" }
-    | { state: "saved" }
-    | { state: "error"; message: string }
-  >({ state: "idle" });
   const [boardState, setBoardState] = useState(createInitialBoardState);
   const previousBoardSnapshotRef = useRef<ReturnType<typeof createInitialBoardSnapshot>>(
     createInitialBoardSnapshot(),
@@ -392,7 +201,6 @@ export const PuzzleSolverPage = () => {
   const lockedCompletionFeedbackRef = useRef<CompletionFeedback | null>(null);
   const mobileFeedbackIdRef = useRef(0);
   const boardPanelRef = useRef<HTMLDivElement | null>(null);
-  const motifDialogRef = useRef<HTMLDialogElement | null>(null);
   const reportIssueDialogRef = useRef<HTMLDialogElement | null>(null);
   const upcomingPuzzleIndexesRef = useRef<number[]>([]);
   const visitedPuzzleIdsRef = useRef<Set<string>>(new Set());
@@ -673,10 +481,6 @@ export const PuzzleSolverPage = () => {
     () => normalizePuzzleMotifTags(activePuzzle?.tags),
     [activePuzzle?.tags],
   );
-  const selectedMotif = useMemo(
-    () => puzzleMotifs.find((motif) => motif.tag === selectedMotifTag) ?? null,
-    [selectedMotifTag],
-  );
   const canManagePuzzleTags = user?.username?.trim().toLowerCase() === PUZZLE_TAG_EDITOR;
   const canManagePuzzleRating = normalizeUsername(user?.username) === PUZZLE_RATING_EDITOR;
   const activePuzzleRating = useMemo(() => puzzleRatingFromRow(activePuzzle), [activePuzzle]);
@@ -698,8 +502,8 @@ export const PuzzleSolverPage = () => {
       materialCount.whitePieces.length > 0 ||
       materialCount.blackPieces.length > 0);
   const hasAnyCastlingRights = castlingRights.white.length > 0 || castlingRights.black.length > 0;
-  const startAnalysisUrl = lichessAnalysisUrl(fen);
-  const currentAnalysisUrl = lichessAnalysisUrl(currentFen);
+  const startAnalysisUrl = lichessAtomicAnalysisUrl(fen);
+  const currentAnalysisUrl = lichessAtomicAnalysisUrl(currentFen);
   const activeSetPuzzlePosition = isSetSolveMode
     ? orderedSetPuzzleIndexes.indexOf(activePuzzleIndex)
     : -1;
@@ -777,14 +581,9 @@ export const PuzzleSolverPage = () => {
   const showSolution = activePuzzleInfoTab === "solution";
   const showExplanation = activePuzzleInfoTab === "explanation";
   const otherPuzzleAttemptsOpen = activePuzzleInfoTab === "attempts";
-  const commentsSelected = activePuzzleInfoTab === "comments";
   const boardShowsSolution = isAnalysisMode && solutionRevealed;
 
   useEffect(() => {
-    setMotifEditorOpen(false);
-    setMotifSearchValue("");
-    setSelectedMotifTag(null);
-    setMotifSaveStatus({ state: "idle" });
     setRatingEditorOpen(false);
     setRatingSaveStatus({ state: "idle" });
     setExplanationEditorOpen(false);
@@ -801,28 +600,6 @@ export const PuzzleSolverPage = () => {
     if (reportIssueOpen && dialog && !dialog.open) dialog.showModal();
     if (!reportIssueOpen && dialog?.open) dialog.close();
   }, [reportIssueOpen]);
-
-  useEffect(() => {
-    if (!selectedMotif) return undefined;
-
-    const dialog = motifDialogRef.current;
-    if (dialog && !dialog.open) dialog.showModal();
-
-    const handleKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === "Escape") setSelectedMotifTag(null);
-    };
-    const handleDialogClick = (event: MouseEvent): void => {
-      if (event.target === dialog) setSelectedMotifTag(null);
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    dialog?.addEventListener("click", handleDialogClick);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      dialog?.removeEventListener("click", handleDialogClick);
-      if (dialog?.open) dialog.close();
-    };
-  }, [selectedMotif]);
 
   useEffect(() => {
     if (activePuzzleIndex < 0 || !activePuzzleId) return undefined;
@@ -874,7 +651,7 @@ export const PuzzleSolverPage = () => {
           (puzzleId) => String(puzzleId) === activePuzzleKeyRef.current,
         );
         if (requestIncludesActivePuzzle) {
-          setLoadingError(error instanceof Error ? error.message : "Failed to load puzzle data");
+          setLoadingError(getErrorMessage(error, "Failed to load puzzle data"));
         } else {
           globalThis.console?.error(error);
         }
@@ -1133,7 +910,7 @@ export const PuzzleSolverPage = () => {
     } catch (error) {
       setCustomSetRefreshState({
         status: "error",
-        message: error instanceof Error ? error.message : "Unable to add newly matching puzzles.",
+        message: getErrorMessage(error, "Unable to add newly matching puzzles."),
       });
     }
   };
@@ -1301,7 +1078,7 @@ export const PuzzleSolverPage = () => {
     } catch (error) {
       setExplanationSaveStatus({
         state: "error",
-        message: error instanceof Error ? error.message : "Unable to update puzzle explanation.",
+        message: getErrorMessage(error, "Unable to update puzzle explanation."),
       });
     }
   };
@@ -1537,40 +1314,14 @@ export const PuzzleSolverPage = () => {
     await copyPgn(puzzlePgn);
   }, [copyPgn, puzzlePgn]);
 
-  const handleUpdateMotifs = async (nextTags: string[]): Promise<boolean> => {
-    if (!canManagePuzzleTags || !activePuzzleId || motifSaveStatus.state === "saving") return false;
-    setMotifSaveStatus({ state: "saving" });
-
-    try {
-      const savedTags = await updatePuzzleTags(activePuzzleId, nextTags);
-      setPuzzles((current) =>
-        current.map((puzzle) =>
-          puzzle.puzzleId === activePuzzleId ? { ...puzzle, tags: savedTags } : puzzle,
-        ),
-      );
-      setMotifSaveStatus({ state: "saved" });
-      return true;
-    } catch (error) {
-      setMotifSaveStatus({
-        state: "error",
-        message: error instanceof Error ? error.message : "Unable to update puzzle motifs.",
-      });
-      return false;
-    }
-  };
-
-  const handleConvertMotif = async (sourceTag: string, targetTag: string): Promise<void> => {
-    const nextTags = [
-      ...new Set(activePuzzleTags.map((tag) => (tag === sourceTag ? targetTag : tag))),
-    ];
-    if (await handleUpdateMotifs(nextTags)) setSelectedMotifTag(null);
-  };
-
-  const handleAddMotif = async (tag: string): Promise<void> => {
-    if (await handleUpdateMotifs([...activePuzzleTags, tag])) {
-      setMotifSearchValue("");
-      setMotifEditorOpen(false);
-    }
+  const updatePuzzleMotifs = async (nextTags: string[]): Promise<void> => {
+    if (!canManagePuzzleTags || !activePuzzleId) return;
+    const savedTags = await updatePuzzleTags(activePuzzleId, nextTags);
+    setPuzzles((current) =>
+      current.map((puzzle) =>
+        puzzle.puzzleId === activePuzzleId ? { ...puzzle, tags: savedTags } : puzzle,
+      ),
+    );
   };
 
   const handleUpdatePuzzleRating = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
@@ -1608,7 +1359,7 @@ export const PuzzleSolverPage = () => {
     } catch (error) {
       setRatingSaveStatus({
         state: "error",
-        message: error instanceof Error ? error.message : "Unable to update puzzle rating.",
+        message: getErrorMessage(error, "Unable to update puzzle rating."),
       });
     }
   };
@@ -1636,575 +1387,63 @@ export const PuzzleSolverPage = () => {
     onNavigate: handlePlaybackCommand,
   });
 
-  const renderPlaybackControls = () => (
-    <SolutionPlaybackControls
-      canStart={Boolean(fen) && canPlaybackStart}
-      canPrevious={Boolean(fen) && canPlaybackPrevious}
-      canNext={Boolean(fen) && canPlaybackNext}
-      canEnd={Boolean(fen) && canPlaybackEnd}
-      onNavigate={handlePlaybackCommand}
+  const renderPuzzleInfoSection = (mobile = false) => (
+    <PuzzleInfoSection
+      mobile={mobile}
+      activeTab={activePuzzleInfoTab}
+      solution={{
+        canReveal: canRevealSolution,
+        buttonTitle: solutionButtonTitle,
+        fen,
+        currentFen,
+        startAnalysisUrl,
+        currentAnalysisUrl,
+        canStart: canPlaybackStart,
+        canPrevious: canPlaybackPrevious,
+        canNext: canPlaybackNext,
+        canEnd: canPlaybackEnd,
+        copyLabel: copyPgnLabel,
+        canCopy: Boolean(moveLinePgn),
+        hasLines: Boolean(boardState.solutionLines?.length),
+        lines: allVariationLines,
+        options: variationOptionList,
+        currentPly: currentAnalysisMoves.length,
+        activeLineIndex: activeVariationLineIndex,
+        onSelect: handleVariationMoveClick,
+        onNavigate: handlePlaybackCommand,
+        onCopy: () => void handleCopyPgn(),
+        onToggle: handleSelectSolutionTab,
+      }}
+      explanation={{
+        available: hasExplanation || canManagePuzzleExplanation,
+        canView: canViewExplanation,
+        canManage: canManagePuzzleExplanation,
+        hasContent: hasExplanation,
+        content: explanation,
+        editorOpen: explanationEditorOpen,
+        draft: explanationDraft,
+        puzzleId: activePuzzleId,
+        saveStatus: explanationSaveStatus,
+        onToggle: handleSelectExplanationTab,
+        onOpenEditor: handleOpenExplanationEditor,
+        onCancelEditor: handleCancelExplanationEdit,
+        onDraftChange: setExplanationDraft,
+        onSave: (event) => void handleSaveExplanation(event),
+      }}
+      attempts={{
+        canView: hasAttemptedActivePuzzle,
+        puzzleKey: activePuzzleKey,
+        status: otherPuzzleAttemptsStatus,
+        rows: otherPuzzleAttempts,
+        onToggle: handleSelectOtherPuzzleAttemptsTab,
+      }}
+      comments={{
+        canView: hasAttemptedActivePuzzle,
+        puzzleId: activePuzzleId,
+        onSelect: handleSelectCommentsTab,
+      }}
     />
   );
-
-  const renderMoveLine = (className = "lineBox") => (
-    <div className={className}>
-      <div className="lineHeader">
-        <div className="fenLabel">Solution</div>
-        <div className="solutionHeaderActions">
-          {renderPlaybackControls()}
-          <button
-            type="button"
-            className="fenAnalyzeButton"
-            onClick={handleCopyPgn}
-            disabled={!moveLinePgn}
-          >
-            {copyPgnLabel === "Copied" ? (
-              <FontAwesomeIcon className="copyPgnCheck" icon={faCheck} aria-hidden="true" />
-            ) : null}
-            {copyPgnLabel}
-          </button>
-        </div>
-      </div>
-      {boardState.solutionLines?.length ? (
-        <SolutionMoveTree
-          lines={allVariationLines}
-          options={variationOptionList}
-          currentPly={currentAnalysisMoves.length}
-          activeLineIndex={activeVariationLineIndex}
-          onSelect={handleVariationMoveClick}
-        />
-      ) : (
-        <code>No solution available</code>
-      )}
-    </div>
-  );
-
-  const renderAnalysisActions = (mobile = false) => (
-    <div className={mobile ? "mobileAnalyzeActions" : "analysisButtonsRow"}>
-      <a
-        className={`fenAnalyzeButton ${mobile ? "mobileAnalyzeButton" : ""} ${
-          !fen ? "disabled" : ""
-        }`}
-        href={startAnalysisUrl}
-        target="_blank"
-        rel="noreferrer"
-        aria-disabled={!fen}
-        onClick={(event) => {
-          if (!fen) event.preventDefault();
-        }}
-      >
-        <span className="fenAnalyzeIcon" aria-hidden="true">
-          <FontAwesomeIcon icon={faMagnifyingGlassChart} />
-        </span>
-        <span className="fenAnalyzeText">
-          <span>Analyze</span>
-          <strong>Puzzle</strong>
-        </span>
-        <FontAwesomeIcon className="fenAnalyzeExternalIcon" icon={faArrowUpRightFromSquare} />
-      </a>
-      <a
-        className={`fenAnalyzeButton ${mobile ? "mobileAnalyzeButton" : ""} ${
-          !currentFen ? "disabled" : ""
-        }`}
-        href={currentAnalysisUrl}
-        target="_blank"
-        rel="noreferrer"
-        aria-disabled={!currentFen}
-        onClick={(event) => {
-          if (!currentFen) event.preventDefault();
-        }}
-      >
-        <span className="fenAnalyzeIcon" aria-hidden="true">
-          <FontAwesomeIcon icon={faMagnifyingGlassChart} />
-        </span>
-        <span className="fenAnalyzeText">
-          <span>Analyze</span>
-          <strong>Current Position</strong>
-        </span>
-        <FontAwesomeIcon className="fenAnalyzeExternalIcon" icon={faArrowUpRightFromSquare} />
-      </a>
-    </div>
-  );
-
-  const renderOtherPuzzleAttemptsPanel = () => (
-    <div className="puzzleOtherAttemptsPanel" aria-live="polite">
-      {otherPuzzleAttemptsStatus === "loading" ? (
-        <div className="puzzleOtherAttemptsState">Loading attempts...</div>
-      ) : otherPuzzleAttemptsStatus === "error" ? (
-        <div className="puzzleOtherAttemptsState">Could not load attempts.</div>
-      ) : otherPuzzleAttempts.length > 0 ? (
-        <ul className="puzzleOtherAttemptsList" aria-label="Other puzzle attempts">
-          {otherPuzzleAttempts.map((attempt) => (
-            <li
-              key={`${attempt.username}-${attempt.first_attempt_at}`}
-              className={`puzzleOtherAttemptRow ${
-                attempt.puzzle_correct ? "correct" : "incorrect"
-              }`}
-            >
-              <Link
-                className="puzzleOtherAttemptUser"
-                to="/@/$username/puzzles"
-                params={{ username: attempt.username }}
-              >
-                {attempt.username}
-              </Link>
-              <span
-                className={`puzzleOtherAttemptResult ${
-                  attempt.puzzle_correct ? "correct" : "incorrect"
-                }`}
-              >
-                <FontAwesomeIcon
-                  icon={attempt.puzzle_correct ? faCheck : faXmark}
-                  aria-hidden="true"
-                />
-                <span>{attempt.puzzle_correct ? "Correct" : "Incorrect"}</span>
-                {attempt.rated === false ? (
-                  <span className="puzzleOtherAttemptRated">Unrated</span>
-                ) : null}
-                {attempt.puzzle_correct && attempt.correct_move ? (
-                  <span
-                    className="puzzleOtherAttemptMove"
-                    aria-label={`Played ${attempt.correct_move}`}
-                  >
-                    {attempt.correct_move}
-                  </span>
-                ) : null}
-                {!attempt.puzzle_correct && attempt.incorrect_move ? (
-                  <span
-                    className="puzzleOtherAttemptMove"
-                    aria-label={`Played ${attempt.incorrect_move}`}
-                  >
-                    {attempt.incorrect_move}
-                  </span>
-                ) : null}
-              </span>
-              <time className="puzzleOtherAttemptTime" dateTime={attempt.first_attempt_at}>
-                {formatLocalDateTime(attempt.first_attempt_at)}
-              </time>
-              {typeof attempt.first_attempt_duration_ms === "number" ? (
-                <span
-                  className="puzzleOtherAttemptDuration"
-                  aria-label={`Attempt time ${formatElapsedTime(attempt.first_attempt_duration_ms)}`}
-                >
-                  <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
-                  {formatElapsedTime(attempt.first_attempt_duration_ms)}
-                </span>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <div className="puzzleOtherAttemptsState">No other attempts yet.</div>
-      )}
-    </div>
-  );
-
-  const renderPuzzleInfoTabs = (mobile = false) => (
-    <div className="puzzleInfoTabs" role="tablist" aria-label="Puzzle details">
-      <button
-        type="button"
-        role="tab"
-        className={`puzzleInfoTab ${showSolution ? "active" : ""}`}
-        onClick={handleSelectSolutionTab}
-        disabled={!canRevealSolution}
-        aria-selected={showSolution}
-        aria-expanded={showSolution}
-        title={showSolution ? "Hide the solution panel" : solutionButtonTitle}
-      >
-        <FontAwesomeIcon icon={faMagnifyingGlassChart} aria-hidden="true" />
-        <span>Solution</span>
-        {mobile && showSolution ? (
-          <span className="puzzleInfoTabToggle" aria-hidden="true">
-            ⌃
-          </span>
-        ) : null}
-      </button>
-      {hasExplanation || canManagePuzzleExplanation ? (
-        <button
-          type="button"
-          role="tab"
-          className={`puzzleInfoTab ${showExplanation ? "active" : ""}`}
-          onClick={handleSelectExplanationTab}
-          disabled={!canViewExplanation}
-          aria-expanded={showExplanation}
-          aria-selected={showExplanation}
-          title={
-            showExplanation
-              ? "Hide the puzzle explanation"
-              : !canViewExplanation
-                ? "Attempt this puzzle before viewing or editing the explanation."
-                : canManagePuzzleExplanation
-                  ? hasExplanation
-                    ? "View or edit the puzzle explanation"
-                    : "Add a puzzle explanation"
-                  : "View the puzzle explanation"
-          }
-        >
-          <FontAwesomeIcon icon={faCircleInfo} aria-hidden="true" />
-          <span>{mobile ? "Explain" : "Explanation"}</span>
-          {mobile && showExplanation ? (
-            <span className="puzzleInfoTabToggle" aria-hidden="true">
-              ⌃
-            </span>
-          ) : null}
-        </button>
-      ) : null}
-      <button
-        type="button"
-        role="tab"
-        className={`puzzleInfoTab ${otherPuzzleAttemptsOpen ? "active" : ""}`}
-        onClick={handleSelectOtherPuzzleAttemptsTab}
-        disabled={
-          !hasAttemptedActivePuzzle || !activePuzzleKey || otherPuzzleAttemptsStatus === "loading"
-        }
-        aria-expanded={otherPuzzleAttemptsOpen}
-        aria-selected={otherPuzzleAttemptsOpen}
-        title={
-          otherPuzzleAttemptsOpen
-            ? "Hide other attempts"
-            : hasAttemptedActivePuzzle
-              ? "View other attempts for this puzzle"
-              : "Attempt this puzzle before viewing other attempts."
-        }
-      >
-        <FontAwesomeIcon icon={faUsers} aria-hidden="true" />
-        <span>{mobile ? "Attempts" : "Other attempts"}</span>
-        {mobile && otherPuzzleAttemptsOpen ? (
-          <span className="puzzleInfoTabToggle" aria-hidden="true">
-            ⌃
-          </span>
-        ) : null}
-      </button>
-      {mobile ? (
-        <button
-          type="button"
-          role="tab"
-          className={`puzzleInfoTab ${commentsSelected ? "active" : ""}`}
-          onClick={handleSelectCommentsTab}
-          disabled={!hasAttemptedActivePuzzle}
-          aria-selected={commentsSelected}
-          title={
-            hasAttemptedActivePuzzle
-              ? "Jump to the puzzle discussion"
-              : "Attempt this puzzle before viewing comments."
-          }
-        >
-          <FontAwesomeIcon icon={faComment} aria-hidden="true" />
-          <span>Comments</span>
-        </button>
-      ) : null}
-    </div>
-  );
-
-  const renderPuzzleInfoPanel = (mobile = false) => {
-    if (showSolution && canRevealSolution) {
-      return (
-        <div className="puzzleInfoPanel">
-          {renderAnalysisActions(mobile)}
-          {renderMoveLine(mobile ? "lineBox mobileLineBox" : "lineBox")}
-        </div>
-      );
-    }
-
-    if (otherPuzzleAttemptsOpen && hasAttemptedActivePuzzle) {
-      return <div className="puzzleInfoPanel">{renderOtherPuzzleAttemptsPanel()}</div>;
-    }
-
-    if (showExplanation && canViewExplanation) {
-      return (
-        <div className="puzzleInfoPanel">
-          <section className="puzzleExplanation" aria-live="polite">
-            <div className="puzzleExplanationHeader">
-              <strong>Explanation</strong>
-              {canManagePuzzleExplanation && !explanationEditorOpen ? (
-                <button
-                  type="button"
-                  className="puzzleExplanationEditButton"
-                  onClick={handleOpenExplanationEditor}
-                >
-                  {hasExplanation ? "Edit" : "Add explanation"}
-                </button>
-              ) : null}
-            </div>
-            {explanationEditorOpen ? (
-              <form className="puzzleExplanationForm" onSubmit={handleSaveExplanation}>
-                <label htmlFor={`puzzle-explanation-${activePuzzleId}`}>Puzzle explanation</label>
-                <textarea
-                  id={`puzzle-explanation-${activePuzzleId}`}
-                  value={explanationDraft}
-                  maxLength={5000}
-                  rows={5}
-                  onChange={(event) => setExplanationDraft(event.target.value)}
-                  disabled={explanationSaveStatus.state === "saving"}
-                />
-                <div className="puzzleExplanationFormActions">
-                  <button
-                    type="button"
-                    onClick={handleCancelExplanationEdit}
-                    disabled={explanationSaveStatus.state === "saving"}
-                  >
-                    Cancel
-                  </button>
-                  <button type="submit" disabled={explanationSaveStatus.state === "saving"}>
-                    {explanationSaveStatus.state === "saving" ? "Saving…" : "Save explanation"}
-                  </button>
-                </div>
-              </form>
-            ) : hasExplanation ? (
-              <p>{explanation}</p>
-            ) : (
-              <p className="puzzleExplanationEmpty">No explanation has been added yet.</p>
-            )}
-            {explanationSaveStatus.state === "saved" ? (
-              <span className="puzzleExplanationMessage success">Explanation saved.</span>
-            ) : null}
-            {explanationSaveStatus.state === "error" ? (
-              <span className="puzzleExplanationMessage error" role="alert">
-                {explanationSaveStatus.message}
-              </span>
-            ) : null}
-          </section>
-        </div>
-      );
-    }
-
-    return null;
-  };
-
-  const renderPuzzleInfoSection = (mobile = false) => {
-    const panel = renderPuzzleInfoPanel(mobile);
-
-    return (
-      <div className={`puzzleInfoStack ${panel ? "hasContent" : ""}`}>
-        {renderPuzzleInfoTabs(mobile)}
-        {panel}
-      </div>
-    );
-  };
-
-  const renderPuzzleMotifs = () => {
-    if (!hasAttemptedActivePuzzle) return null;
-    const savingMotifs = motifSaveStatus.state === "saving";
-    const availableMotifs = puzzleMotifs.filter((motif) => !activePuzzleTags.includes(motif.tag));
-    const normalizedMotifSearch = motifSearchValue.trim().toLocaleLowerCase();
-    const matchingAvailableMotifs = normalizedMotifSearch
-      ? availableMotifs
-          .filter((motif) =>
-            `${motif.name} ${motif.tag.replaceAll("_", " ")}`
-              .toLocaleLowerCase()
-              .includes(normalizedMotifSearch),
-          )
-          .sort((first, second) => {
-            const firstStartsWith = first.name
-              .toLocaleLowerCase()
-              .startsWith(normalizedMotifSearch);
-            const secondStartsWith = second.name
-              .toLocaleLowerCase()
-              .startsWith(normalizedMotifSearch);
-            return Number(secondStartsWith) - Number(firstStartsWith);
-          })
-          .slice(0, 5)
-      : [];
-
-    return (
-      <section className="puzzleMotifsPanel" aria-label="Puzzle tags">
-        <div className="puzzleMotifsHeader">
-          <div>
-            <span>Tags</span>
-          </div>
-        </div>
-
-        <div
-          className="puzzleMotifAppliedList"
-          aria-label="Tags on this puzzle"
-          aria-busy={savingMotifs}
-        >
-          {activePuzzleTags.length > 0 ? (
-            activePuzzleTags.map((tag) => {
-              const motif = puzzleMotifs.find((entry) => entry.tag === tag);
-
-              return (
-                <div className="puzzleMotifAppliedTag" key={tag}>
-                  <button
-                    type="button"
-                    className="puzzleMotifDefinitionButton"
-                    aria-label={`View definition for ${motif?.name ?? tag}`}
-                    onClick={() => setSelectedMotifTag(tag)}
-                  >
-                    {motif?.name ?? tag}
-                  </button>
-                </div>
-              );
-            })
-          ) : (
-            <em>No tags yet.</em>
-          )}
-        </div>
-
-        {canManagePuzzleTags ? (
-          <button
-            type="button"
-            className="puzzleMotifsAddButton"
-            aria-expanded={motifEditorOpen}
-            disabled={savingMotifs || availableMotifs.length === 0}
-            onClick={() => {
-              if (motifEditorOpen) setMotifSearchValue("");
-              setMotifEditorOpen(!motifEditorOpen);
-              setMotifSaveStatus({ state: "idle" });
-            }}
-          >
-            <span aria-hidden="true">{motifEditorOpen ? "−" : "+"}</span>
-            {motifEditorOpen ? "Close tag picker" : "Add tag"}
-          </button>
-        ) : null}
-
-        {motifEditorOpen && canManagePuzzleTags ? (
-          <div className="puzzleMotifPicker" role="region" aria-label="Add puzzle tag">
-            <input
-              type="search"
-              aria-label="Search tags to add"
-              placeholder="Type a tag name"
-              autoFocus
-              value={motifSearchValue}
-              disabled={savingMotifs}
-              onChange={(event) => setMotifSearchValue(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Escape") {
-                  setMotifSearchValue("");
-                  setMotifEditorOpen(false);
-                }
-                if (event.key === "Enter" && matchingAvailableMotifs[0]) {
-                  event.preventDefault();
-                  void handleAddMotif(matchingAvailableMotifs[0].tag);
-                }
-              }}
-            />
-            {normalizedMotifSearch ? (
-              <div className="puzzleMotifSearchResults" aria-label="Matching tags">
-                {matchingAvailableMotifs.length > 0 ? (
-                  matchingAvailableMotifs.map((motif) => {
-                    const parentMotif = getPuzzleMotifParent(motif);
-                    return (
-                      <button
-                        key={motif.tag}
-                        type="button"
-                        aria-label={`Add ${motif.tag}`}
-                        disabled={savingMotifs}
-                        onClick={() => void handleAddMotif(motif.tag)}
-                      >
-                        <span>{motif.name}</span>
-                        {parentMotif ? <small>{parentMotif.name}</small> : null}
-                      </button>
-                    );
-                  })
-                ) : (
-                  <p>No tags found.</p>
-                )}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-
-        {motifSaveStatus.state === "saving" ? (
-          <p className="puzzleMotifsMessage" role="status">
-            Updating tags…
-          </p>
-        ) : null}
-
-        {motifSaveStatus.state === "saved" ? (
-          <p className="puzzleMotifsMessage success" role="status">
-            Tags updated.
-          </p>
-        ) : null}
-        {motifSaveStatus.state === "error" ? (
-          <p className="puzzleMotifsMessage error" role="alert">
-            {motifSaveStatus.message}
-          </p>
-        ) : null}
-      </section>
-    );
-  };
-
-  const renderMotifDefinitionDialog = () => {
-    const subtags = selectedMotif
-      ? puzzleMotifs.filter((motif) => motif.parentTag === selectedMotif.tag)
-      : [];
-    const canConvertMotif = Boolean(
-      selectedMotif &&
-      canManagePuzzleTags &&
-      activePuzzleTags.includes(selectedMotif.tag) &&
-      subtags.length > 0,
-    );
-
-    return selectedMotif ? (
-      <dialog
-        ref={motifDialogRef}
-        className="puzzleMotifDefinitionDialog"
-        aria-labelledby="puzzle-motif-dialog-title"
-        onCancel={(event) => {
-          event.preventDefault();
-          setSelectedMotifTag(null);
-        }}
-      >
-        <div className="puzzleMotifDefinitionCard">
-          <div className="puzzleMotifDefinitionHeading">
-            <h2 id="puzzle-motif-dialog-title">{selectedMotif.name}</h2>
-            <div className="puzzleMotifDefinitionActions">
-              {canManagePuzzleTags && activePuzzleTags.includes(selectedMotif.tag) ? (
-                <button
-                  type="button"
-                  className="puzzleMotifDefinitionRemove"
-                  aria-label={`Remove ${selectedMotif.tag}`}
-                  title={`Remove ${selectedMotif.name}`}
-                  disabled={motifSaveStatus.state === "saving"}
-                  onClick={async () => {
-                    const removed = await handleUpdateMotifs(
-                      activePuzzleTags.filter((tag) => tag !== selectedMotif.tag),
-                    );
-                    if (removed) setSelectedMotifTag(null);
-                  }}
-                >
-                  <span aria-hidden="true">−</span>
-                </button>
-              ) : null}
-              <button
-                type="button"
-                className="puzzleMotifDefinitionClose"
-                onClick={() => setSelectedMotifTag(null)}
-                aria-label="Close tag definition"
-              >
-                <FontAwesomeIcon icon={faXmark} aria-hidden="true" />
-              </button>
-            </div>
-          </div>
-          <p>{selectedMotif.description}</p>
-          {canConvertMotif ? (
-            <div className="puzzleMotifConversions">
-              <strong>Convert to a subtag</strong>
-              <div>
-                {subtags.map((subtag) => (
-                  <button
-                    key={subtag.tag}
-                    type="button"
-                    disabled={motifSaveStatus.state === "saving"}
-                    onClick={() => void handleConvertMotif(selectedMotif.tag, subtag.tag)}
-                  >
-                    {subtag.name}
-                  </button>
-                ))}
-              </div>
-              {motifSaveStatus.state === "saving" ? <span role="status">Updating tag…</span> : null}
-              {motifSaveStatus.state === "error" ? (
-                <span className="error" role="alert">
-                  {motifSaveStatus.message}
-                </span>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-      </dialog>
-    ) : null;
-  };
 
   const closeReportIssueDialog = () => {
     setReportIssueOpen(false);
@@ -2226,7 +1465,7 @@ export const PuzzleSolverPage = () => {
     } catch (reportError) {
       setReportIssueStatus({
         state: "error",
-        message: reportError instanceof Error ? reportError.message : "Unable to report issue.",
+        message: getErrorMessage(reportError, "Unable to report issue."),
       });
     }
   };
@@ -2361,7 +1600,7 @@ export const PuzzleSolverPage = () => {
       <>
         <strong>{levelLabel}</strong>
         <span>{activePuzzleRating.rating}</span>
-        {ratingChange !== undefined ? <small>{formatSignedRating(ratingChange)}</small> : null}
+        {ratingChange !== undefined ? <small>{formatSignedDecimal(ratingChange)}</small> : null}
       </>
     );
 
@@ -2416,7 +1655,7 @@ export const PuzzleSolverPage = () => {
       >
         <span>Your rating</span>
         <strong>{displayedUserPuzzleRating ?? "—"}</strong>
-        {ratingChange !== undefined ? <small>{formatSignedRating(ratingChange)}</small> : null}
+        {ratingChange !== undefined ? <small>{formatSignedDecimal(ratingChange)}</small> : null}
       </div>
     );
   };
@@ -2442,7 +1681,6 @@ export const PuzzleSolverPage = () => {
             : "/solve"
         }
       />
-      {renderMotifDefinitionDialog()}
       <PuzzleIssueDialog
         dialogRef={reportIssueDialogRef}
         signedIn={Boolean(user?.username)}
@@ -2489,10 +1727,10 @@ export const PuzzleSolverPage = () => {
               {!isMobileLayout && showPuzzleTimer ? (
                 <div
                   className="puzzleElapsedTimer desktop"
-                  aria-label={`Elapsed time ${formatElapsedTime(elapsedTimeMs)}`}
+                  aria-label={`Elapsed time ${formatElapsedDuration(elapsedTimeMs)}`}
                 >
                   <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
-                  <span>{formatElapsedTime(elapsedTimeMs)}</span>
+                  <span>{formatElapsedDuration(elapsedTimeMs)}</span>
                 </div>
               ) : null}
               {hasPersistedAttempt ? (
@@ -2591,7 +1829,13 @@ export const PuzzleSolverPage = () => {
           ) : null}
         </header>
 
-        {renderPuzzleMotifs()}
+        <PuzzleMotifsPanel
+          key={activePuzzleId ?? "empty"}
+          visible={hasAttemptedActivePuzzle}
+          tags={activePuzzleTags}
+          canManage={canManagePuzzleTags}
+          onUpdate={updatePuzzleMotifs}
+        />
 
         {!isMobileLayout && hasAttemptedActivePuzzle ? (
           <div id="desktop-puzzle-vote-slot" className="puzzleVoteSlot" />

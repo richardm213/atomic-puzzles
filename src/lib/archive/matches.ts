@@ -1,6 +1,8 @@
 import { knownSourceKeys, type SourceFilters } from "../../constants/matches";
+import type { PaginatedCollection, PaginationOptions } from "../../types/pagination";
 import { normalizeUsername } from "../../utils/playerNames";
 import { cachedRequest } from "../../utils/requestCache";
+import { optionalFiniteNumber } from "../matches/transforms";
 import { appendArchiveParam, fetchArchiveJson } from "./client";
 import type { ArchiveMode, MatchRow } from "./types";
 
@@ -18,16 +20,13 @@ export type MatchFilters = {
   startTs?: number | string | null;
   endTs?: number | string | null;
   timeControl?: string;
+  timeControlInitial?: string;
+  timeControlIncrement?: string;
   sourceFilters?: Partial<SourceFilters>;
 };
 
-type MatchPageOptions = { page?: number; pageSize?: number; includeTotal?: boolean };
-type MatchPageResult = {
-  rows: MatchRow[];
-  total: number;
-  hasPreviousPage: boolean;
-  hasNextPage: boolean;
-};
+type MatchPageOptions = PaginationOptions;
+type MatchPageResult = PaginatedCollection<"rows", MatchRow>;
 
 const ARCHIVE_MATCH_MODES = new Set<ArchiveMode>([
   "blitz",
@@ -39,12 +38,6 @@ const ARCHIVE_MATCH_MODES = new Set<ArchiveMode>([
 
 const matchRowsCache = new Map<string, Promise<MatchPageResult>>();
 const MAX_MATCH_PAGE_SIZE = 200;
-
-const finiteNumber = (value: unknown): number | null => {
-  if (value === undefined || value === null || String(value).trim() === "") return null;
-  const number = Number(value);
-  return Number.isFinite(number) ? number : null;
-};
 
 const buildParams = (
   mode: ArchiveMode | undefined,
@@ -64,11 +57,13 @@ const buildParams = (
   appendArchiveParam(params, "pairA", normalizeUsername(filters.usernamePair?.[0]));
   appendArchiveParam(params, "pairB", normalizeUsername(filters.usernamePair?.[1]));
   appendArchiveParam(params, "matchId", filters.matchId);
-  appendArchiveParam(params, "startTs", finiteNumber(filters.startTs));
-  appendArchiveParam(params, "endTs", finiteNumber(filters.endTs));
+  appendArchiveParam(params, "startTs", optionalFiniteNumber(filters.startTs));
+  appendArchiveParam(params, "endTs", optionalFiniteNumber(filters.endTs));
   appendArchiveParam(params, "timeControl", filters.timeControl);
-  const ratingMin = finiteNumber(filters.ratingMin ?? filters.opponentRatingMin);
-  const ratingMax = finiteNumber(filters.ratingMax ?? filters.opponentRatingMax);
+  appendArchiveParam(params, "timeControlInitial", filters.timeControlInitial);
+  appendArchiveParam(params, "timeControlIncrement", filters.timeControlIncrement);
+  const ratingMin = optionalFiniteNumber(filters.ratingMin ?? filters.opponentRatingMin);
+  const ratingMax = optionalFiniteNumber(filters.ratingMax ?? filters.opponentRatingMax);
   if (ratingMin !== null && ratingMax !== null) {
     appendArchiveParam(params, "ratingFilterType", filters.ratingFilterType ?? "both");
     appendArchiveParam(params, "ratingMin", ratingMin);
@@ -100,9 +95,21 @@ const fetchUncachedMatchRows = async (
   let page = Math.max(1, Math.floor(Number(options.page)) || 1);
   const rows: MatchRow[] = [];
   for (;;) {
-    const result = await fetchArchiveJson<MatchPageResult>(
-      buildParams(mode, filters, page, pageSize, includeTotal),
-    );
+    const params = buildParams(mode, filters, page, pageSize, includeTotal);
+    let result: MatchPageResult;
+    try {
+      result = await fetchArchiveJson<MatchPageResult>(params);
+    } catch (error) {
+      const unsupportedIncludeTotal =
+        !includeTotal &&
+        error instanceof Error &&
+        error.message.includes("Unexpected query parameter: includeTotal");
+      if (!unsupportedIncludeTotal) throw error;
+
+      const compatibleParams = new URLSearchParams(params);
+      compatibleParams.delete("includeTotal");
+      result = await fetchArchiveJson<MatchPageResult>(compatibleParams);
+    }
     rows.push(...result.rows);
     if (singlePage || !result.hasNextPage || result.rows.length < pageSize) {
       return { ...result, rows };

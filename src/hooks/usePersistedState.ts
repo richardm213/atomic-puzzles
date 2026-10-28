@@ -1,6 +1,8 @@
 import type { Dispatch, SetStateAction } from "react";
 import { useEffect, useState } from "react";
 
+import { getBrowserStorageItem, setBrowserStorageJson } from "../utils/browserStorage";
+
 type Schema<T> = {
   safeParse: (value: unknown) => { success: true; data: T } | { success: false };
 };
@@ -19,24 +21,14 @@ export const usePersistedState = <T>(
   defaultValue: T,
 ): [T, Dispatch<SetStateAction<T>>] => {
   const [value, setValue] = useState<T>(() => {
-    if (typeof window === "undefined") return defaultValue;
-
-    try {
-      const storedValue = window.localStorage.getItem(storageKey);
-      if (storedValue === null) return defaultValue;
-      const parsed = schema.safeParse(parseStoredValue(storedValue));
-      return parsed.success ? parsed.data : defaultValue;
-    } catch {
-      return defaultValue;
-    }
+    const storedValue = getBrowserStorageItem("local", storageKey);
+    if (storedValue === null) return defaultValue;
+    const parsed = schema.safeParse(parseStoredValue(storedValue));
+    return parsed.success ? parsed.data : defaultValue;
   });
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem(storageKey, JSON.stringify(value));
-    } catch {
-      // Persistence is optional; keep the in-memory setting usable.
-    }
+    setBrowserStorageJson("local", storageKey, value);
   }, [storageKey, value]);
 
   return [value, setValue];

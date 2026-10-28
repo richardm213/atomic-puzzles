@@ -14,6 +14,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 
+import { SHOP_ITEM_COSTS } from "../../../shared/domain/coins";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
@@ -32,6 +33,7 @@ import {
   type ShopItemKey,
 } from "../../lib/coins/coins";
 import { appAssetPath } from "../../utils/appAssetPath";
+import { getErrorMessage } from "../../utils/errors";
 import { NadekoFlowersIcon } from "./NadekoFlowersIcon";
 
 const CHEST_PRICE_IMAGE = "/images/coins/gold-coin-chest.png";
@@ -50,7 +52,7 @@ const shopItems: {
   {
     key: "username_change",
     name: "Change username",
-    cost: 100,
+    cost: SHOP_ITEM_COSTS.username_change,
     icon: { kind: "fontawesome", icon: faUserPen },
     priceImage: "/images/coins/gold-coin-stack-v2.png",
     description: "Admin approval required",
@@ -58,7 +60,7 @@ const shopItems: {
   {
     key: "atomicdb_analysis_12h",
     name: "12-hour AtomicDB opening analysis",
-    cost: 200,
+    cost: SHOP_ITEM_COSTS.atomicdb_analysis_12h,
     icon: { kind: "fontawesome", icon: faDatabase },
     priceImage: "/images/coins/gold-coin-stack-v2.png",
     description: "1T of analysis",
@@ -66,35 +68,35 @@ const shopItems: {
   {
     key: "discord_nitro_month",
     name: "1 month Discord Nitro",
-    cost: 400,
+    cost: SHOP_ITEM_COSTS.discord_nitro_month,
     icon: { kind: "fontawesome", icon: faDiscord },
     priceImage: CHEST_PRICE_IMAGE,
   },
   {
     key: "discord_nitro_year",
     name: "1 year Discord Nitro",
-    cost: 4000,
+    cost: SHOP_ITEM_COSTS.discord_nitro_year,
     icon: { kind: "fontawesome", icon: faDiscord },
     priceImage: "/images/coins/gold-coin-sack.png",
   },
   {
     key: "flowers_500",
     name: "500 Flowers",
-    cost: 500,
+    cost: SHOP_ITEM_COSTS.flowers_500,
     icon: { kind: "nadeko-flowers" },
     priceImage: CHEST_PRICE_IMAGE,
   },
   {
     key: "lichess_patron_month",
     name: "1 month Lichess Patron",
-    cost: 600,
+    cost: SHOP_ITEM_COSTS.lichess_patron_month,
     icon: { kind: "lichess" },
     priceImage: CHEST_PRICE_IMAGE,
   },
   {
     key: "next_prize_tournament_format",
     name: "Choose the next 100$+ prize tournament format",
-    cost: 1000,
+    cost: SHOP_ITEM_COSTS.next_prize_tournament_format,
     icon: { kind: "fontawesome", icon: faSitemap },
     priceImage: CHEST_PRICE_IMAGE,
   },
@@ -176,7 +178,7 @@ export const ShopPage = () => {
   const economyBan = summary.data?.economyBan ?? null;
   const busy = daily.isPending || redeem.isPending || analysis.isPending;
   const errorValue = summary.error ?? daily.error ?? redeem.error ?? analysis.error;
-  const error = errorValue instanceof Error ? errorValue.message : "";
+  const error = getErrorMessage(errorValue, "");
 
   const redeemItem = (item: (typeof shopItems)[number]) => {
     if (balance < item.cost || busy || economyBan) return;
@@ -494,9 +496,7 @@ export const ShopPage = () => {
 
           {analysis.isError ? (
             <p className="analysisRequestError" role="alert">
-              {analysis.error instanceof Error
-                ? analysis.error.message
-                : "Unable to request this analysis."}
+              {getErrorMessage(analysis.error, "Unable to request this analysis.")}
             </p>
           ) : null}
 

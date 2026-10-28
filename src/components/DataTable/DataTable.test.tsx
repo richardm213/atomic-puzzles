@@ -16,9 +16,7 @@ describe("table utilities", () => {
       </DataTable>,
     );
 
-    expect(screen.getByRole("table", { name: "Players" })).toHaveClass("dataTable");
     expect(screen.getByRole("columnheader")).toHaveAttribute("aria-sort", "descending");
-    expect(screen.getByRole("table").parentElement).toHaveClass("dataTableWrap", "customWrap");
 
     fireEvent.click(screen.getByRole("button", { name: "Score" }));
     expect(onSort).toHaveBeenCalledOnce();

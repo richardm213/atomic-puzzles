@@ -1,10 +1,10 @@
+import type { UsernameRecord } from "../../../shared/domain/users";
 import { normalizeUsername } from "../../utils/playerNames";
 import { cachedRequest } from "../../utils/requestCache";
-import { fetchAliasRows } from "../archive/aliases";
+import { fetchAliasRows, fetchProfileAliasRow } from "../archive/aliases";
 import { appendArchiveParam, fetchArchiveJson } from "../archive/client";
 import { getSupabaseClient } from "../supabase/client";
 import { loadSupabaseRows } from "../supabase/rows";
-import { loadAliasesLookup } from "./aliasesLookup";
 
 const USERNAME_SUGGESTION_LIMIT = 8;
 const usernameResolutionCache = new Map<string, Promise<string>>();
@@ -30,7 +30,7 @@ const hasArchiveUsernameMatch = async (value: string): Promise<boolean> =>
 
     const params = new URLSearchParams({ resource: "usernames" });
     appendArchiveParam(params, "exact", username);
-    const rows = await fetchArchiveJson<Array<{ username?: string | null }>>(params);
+    const rows = await fetchArchiveJson<UsernameRecord[]>(params);
     return rows.length > 0;
   });
 
@@ -62,8 +62,8 @@ const fetchMatchingUsernames = async (query: string): Promise<string[]> => {
   const params = new URLSearchParams({ resource: "usernames" });
   appendArchiveParam(params, "query", query);
   const [archiveRows, userRows] = await Promise.all([
-    fetchArchiveJson<Array<{ username?: string | null }>>(params),
-    loadSupabaseRows<{ username: string | null }>(
+    fetchArchiveJson<UsernameRecord[]>(params),
+    loadSupabaseRows<UsernameRecord>(
       "users",
       supabase.from("users").select("username").ilike("username", `%${query}%`).limit(12),
     ).catch(() => []),
@@ -82,11 +82,11 @@ export const searchUsernameSuggestions = async (
 ): Promise<UsernameSearchSuggestion[]> =>
   cachedRequest(usernameSuggestionCache, ["username-suggestions", value, limit], async () => {
     const query = normalizeUsername(value);
-    if (query.length < 3) return [];
+    if (query.length < 3 || !/^[a-z0-9_-]+$/.test(query)) return [];
 
     const suggestionsByMatchedName = new Map<string, RankedUsernameSearchSuggestion>();
     const [aliasRows, usernames] = await Promise.all([
-      fetchAliasRows(),
+      fetchAliasRows(query),
       fetchMatchingUsernames(query),
     ]);
 
@@ -153,7 +153,7 @@ export const searchUsernameSuggestions = async (
     });
     const accountCandidates = [...new Set(accountCandidatesBySuggestion.flat())];
     const registeredRows = accountCandidates.length
-      ? await loadSupabaseRows<{ username: string | null }>(
+      ? await loadSupabaseRows<UsernameRecord>(
           "users",
           getSupabaseClient().from("users").select("username").in("username", accountCandidates),
         ).catch(() => [])
@@ -177,8 +177,8 @@ export const resolveUsernameInput = async (value: string): Promise<string> =>
     if (!username) return "";
     if (await hasArchiveUsernameMatch(username)) return username;
 
-    const aliasesLookup = await loadAliasesLookup();
-    return aliasesLookup.get(username)?.primary ?? username;
+    const identity = await fetchProfileAliasRow(username);
+    return identity?.username ?? username;
   });
 
 export const resolveUsernameInputs = async (values: string[] = []): Promise<string[]> =>

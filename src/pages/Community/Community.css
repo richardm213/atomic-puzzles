@@ -31,7 +31,7 @@
 .communityHeader span {
   color: var(--color-primary-soft);
   font-size: 12px;
-  font-weight: 850;
+  font-weight: 650;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -70,14 +70,14 @@
 
 .communityTable th {
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 650;
   letter-spacing: 0.05em;
   white-space: nowrap;
 }
 
 .communityTable a {
   color: var(--color-cyan-bright);
-  font-weight: 800;
+  font-weight: 650;
   text-decoration: none;
 }
 
@@ -105,12 +105,12 @@
 
 .communityPositive {
   color: var(--color-success);
-  font-weight: 800;
+  font-weight: 650;
 }
 
 .communityNegative {
   color: var(--color-danger);
-  font-weight: 800;
+  font-weight: 650;
 }
 
 .communityVoteToolbar {
@@ -135,7 +135,7 @@
   border: 0;
   border-radius: 7px;
   font-size: 12px;
-  font-weight: 850;
+  font-weight: 650;
 }
 
 .communityVoteSort button {
@@ -254,7 +254,7 @@
 .communityActivitySummary dt {
   color: var(--color-subtle);
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 650;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -263,7 +263,7 @@
   margin: 0;
   color: var(--color-heading);
   font-size: 20px;
-  font-weight: 850;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
 
@@ -293,7 +293,7 @@
 .communityLeaderboardHeader button {
   color: var(--color-subtle);
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 650;
   letter-spacing: 0.05em;
   text-align: left;
   text-transform: uppercase;
@@ -340,7 +340,7 @@
 .communityActivityRank {
   color: var(--color-subtle);
   font-size: 12px;
-  font-weight: 750;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
 
@@ -349,7 +349,7 @@
   overflow: hidden;
   color: var(--color-cyan-bright);
   font-size: 14px;
-  font-weight: 850;
+  font-weight: 650;
   text-overflow: ellipsis;
   text-decoration: none;
   white-space: nowrap;
@@ -371,7 +371,7 @@
   display: none;
   color: var(--color-subtle);
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 650;
   letter-spacing: 0.03em;
   text-transform: uppercase;
 }
@@ -379,7 +379,7 @@
 .communityActivityMetric strong {
   color: var(--color-heading);
   font-size: 14px;
-  font-weight: 850;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
 

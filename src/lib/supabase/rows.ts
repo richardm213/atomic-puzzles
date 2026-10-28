@@ -1,5 +1,7 @@
 import type { PostgrestError } from "@supabase/supabase-js";
 
+import { loadAllPages } from "../../../shared/lib/pagination";
+
 const MAX_CONCURRENT_SUPABASE_REQUESTS = 4;
 
 let activeSupabaseRequests = 0;
@@ -75,12 +77,8 @@ export const fetchAllSupabaseRows = async <TRow>(
   tableName: string,
   buildQuery: () => RangeableQuery<TRow>,
   pageSize = 1000,
-): Promise<TRow[]> => {
-  const rows: TRow[] = [];
-
-  for (let from = 0; ; from += pageSize) {
-    const page = await loadSupabaseRows(tableName, buildQuery().range(from, from + pageSize - 1));
-    rows.push(...page);
-    if (page.length < pageSize) return rows;
-  }
-};
+): Promise<TRow[]> =>
+  loadAllPages(
+    (from, size) => loadSupabaseRows(tableName, buildQuery().range(from, from + size - 1)),
+    pageSize,
+  );

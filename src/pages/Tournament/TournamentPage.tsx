@@ -1,6 +1,6 @@
 import "./TournamentPage.css";
 
-import { faCheck, faComment } from "@fortawesome/free-solid-svg-icons";
+import { faCheck } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -11,9 +11,11 @@ import type {
 } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { CommunityCommentsLink } from "../../components/CommunityCommentsLink/CommunityCommentsLink";
 import { CommunityDiscussion } from "../../components/PuzzleCommunity/PuzzleCommunity";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
+import { TournamentPlayerLink } from "../../components/TournamentPlayerLink/TournamentPlayerLink";
 import { modeLabels } from "../../constants/matches";
 import { TournamentFairPlayFlag } from "../../features/tournaments/TournamentFairPlayFlag";
 import { useUnderscoreUsernameCutoff } from "../../hooks/useUnderscoreUsernameCutoff";
@@ -25,12 +27,17 @@ import {
   getAdjacentTournamentMetas,
   getTournamentDecisiveMatch,
   getTournamentRouteId,
+  isTournamentByeMatch,
+  isTournamentByePlayer,
+  isTournamentDoubleByeMatch,
   type TournamentBracket,
   type TournamentBracketStage,
   type TournamentMatch,
 } from "../../lib/matches/tournaments";
 import { appAssetPath } from "../../utils/appAssetPath";
+import { setBrowserStorageItem } from "../../utils/browserStorage";
 import { countryCodeToFlagUrl } from "../../utils/countryFlags";
+import { getErrorMessage } from "../../utils/errors";
 import { formatCalendarDateRange, formatTimeControl } from "../../utils/formatters";
 import { normalizeUsername } from "../../utils/playerNames";
 import { AtomicChessLeaguePage } from "./AtomicChessLeaguePage";
@@ -114,20 +121,9 @@ const loserName = (match: TournamentMatch): string => {
 
 const isEmptyPlayer = (playerName: string): boolean => String(playerName || "").trim() === "";
 
-const isByePlayer = (playerName: string): boolean =>
-  String(playerName || "")
-    .trim()
-    .toLowerCase() === "bye";
-
-const isByeMatch = (match: TournamentMatch | null | undefined): boolean =>
-  isByePlayer(match?.p1 ?? "") || isByePlayer(match?.p2 ?? "");
-
-const isDoubleByeMatch = (match: TournamentMatch | null | undefined): boolean =>
-  isByePlayer(match?.p1 ?? "") && isByePlayer(match?.p2 ?? "");
-
 const byeAdvancePlayerName = (match: TournamentMatch | null | undefined): string => {
-  if (!match || !isByeMatch(match) || isDoubleByeMatch(match)) return "";
-  return isByePlayer(match.p1) ? match.p2 : match.p1;
+  if (!match || !isTournamentByeMatch(match) || isTournamentDoubleByeMatch(match)) return "";
+  return isTournamentByePlayer(match.p1) ? match.p2 : match.p1;
 };
 
 const isEmptyMatch = (match: TournamentMatch | null | undefined): boolean =>
@@ -138,7 +134,7 @@ const isWithdrawalScore = (leftScore: number, rightScore: number): boolean =>
 
 const scoreDisplay = (score: number | string): string => String(score);
 const withdrewPlayerName = (match: TournamentMatch): string => {
-  if (isByeMatch(match) || !isWithdrawalScore(match.s1, match.s2)) return "";
+  if (isTournamentByeMatch(match) || !isWithdrawalScore(match.s1, match.s2)) return "";
   return match.s1 < match.s2 ? match.p1 : match.p2;
 };
 const disqualifiedPlayerName = (match: TournamentMatch): string =>
@@ -160,7 +156,7 @@ const scoreSlotDisplay = (match: TournamentMatch, playerName: string): string =>
     return "";
   }
 
-  if (isByeMatch(match)) {
+  if (isTournamentByeMatch(match)) {
     return "";
   }
 
@@ -262,7 +258,7 @@ const PlayerLabel = ({
   return (
     <span className="tournamentPlayerLabel">
       <DrawEntryBadge seed={seed} seedCount={seedCount} marker={entryMarker} />
-      {!isByePlayer(playerName) && !isEmptyPlayer(playerName) ? (
+      {!isTournamentByePlayer(playerName) && !isEmptyPlayer(playerName) ? (
         <img
           className="tournamentPlayerFlag"
           crossOrigin="anonymous"
@@ -277,7 +273,7 @@ const PlayerLabel = ({
         <span className="tournamentPlayerEmpty" aria-hidden="true">
           &nbsp;
         </span>
-      ) : isByePlayer(playerName) ? (
+      ) : isTournamentByePlayer(playerName) ? (
         <span className="tournamentPlayerBye">bye</span>
       ) : (
         <Link
@@ -439,13 +435,12 @@ const TournamentSeeds = ({
             aria-hidden="true"
           />
           <span className="tournamentSeedsIdentity">
-            <Link
+            <TournamentPlayerLink
               className="tournamentSeedsPlayerLink"
-              to="/tournaments/players/$username"
-              params={{ username: normalizeUsername(playerName) }}
+              username={playerName}
             >
               {playerName}
-            </Link>
+            </TournamentPlayerLink>
             <TournamentFairPlayFlag playerName={playerName} />
           </span>
           <span className="tournamentSeedsResult">({eliminationStatus})</span>
@@ -465,7 +460,6 @@ const TournamentMatchCard = ({
   showTrophy,
   placeTrophyOnSide,
   shouldSuppressClick,
-  onOpenMatch,
   loserSources = [],
 }: {
   match: PositionedMatch;
@@ -477,7 +471,6 @@ const TournamentMatchCard = ({
   showTrophy: boolean;
   placeTrophyOnSide: boolean;
   shouldSuppressClick: () => boolean;
-  onOpenMatch: (match: TournamentMatch) => void;
   loserSources?: LoserSource[];
 }) => {
   const matchWinner = winnerName(match);
@@ -485,7 +478,7 @@ const TournamentMatchCard = ({
   const disqualifiedPlayer = disqualifiedPlayerName(match);
   const hasMatchPage = Boolean(match.match_id);
   const shouldShowTrophy = showTrophy && Boolean(trophyAssetPath);
-  const isDoubleBye = isDoubleByeMatch(match);
+  const isDoubleBye = isTournamentDoubleByeMatch(match);
   const byeAdvancePlayer = byeAdvancePlayerName(match);
   const representedLosers = new Set(
     [match.p1, match.p2]
@@ -504,6 +497,12 @@ const TournamentMatchCard = ({
   };
   const p1LoserSource = loserSourceForPlayer(match.p1);
   const p2LoserSource = loserSourceForPlayer(match.p2);
+  const openMatchLabel = `Open ${match.p1} against ${match.p2}`;
+  const handleOpenMatchClick = (event: ReactMouseEvent<HTMLAnchorElement>): void => {
+    if (!shouldSuppressClick()) return;
+    event.preventDefault();
+    event.stopPropagation();
+  };
 
   if (isDoubleBye) {
     return (
@@ -561,31 +560,25 @@ const TournamentMatchCard = ({
         top: `${match.y}px`,
         width: `${CARD_WIDTH}px`,
       }}
-      onClick={
-        hasMatchPage
-          ? (event) => {
-              if (shouldSuppressClick()) {
-                event.preventDefault();
-                event.stopPropagation();
-                return;
-              }
-              onOpenMatch(match);
-            }
-          : undefined
-      }
-      role={hasMatchPage ? "link" : undefined}
-      tabIndex={hasMatchPage ? 0 : undefined}
-      onKeyDown={
-        hasMatchPage
-          ? (event) => {
-              if (event.target !== event.currentTarget) return;
-              if (event.key !== "Enter" && event.key !== " ") return;
-              event.preventDefault();
-              onOpenMatch(match);
-            }
-          : undefined
-      }
     >
+      {hasMatchPage ? (
+        isExternalMatchUrl(match.match_id) ? (
+          <a
+            className="tournamentMatchCardOpenLink"
+            href={match.match_id}
+            aria-label={openMatchLabel}
+            onClick={handleOpenMatchClick}
+          ></a>
+        ) : (
+          <Link
+            className="tournamentMatchCardOpenLink"
+            to="/matches/$matchId"
+            params={{ matchId: match.match_id }}
+            aria-label={openMatchLabel}
+            onClick={handleOpenMatchClick}
+          ></Link>
+        )
+      ) : null}
       {shouldShowTrophy ? (
         <img
           className="tournamentMatchTrophy"
@@ -735,7 +728,6 @@ const TournamentStageSection = ({
   decisiveMatchId,
   hideStartRoundControls,
   shouldSuppressMatchClick,
-  onOpenMatch,
   onStartRoundChange,
   setHeaderTrackRef,
   setScrollerRef,
@@ -758,7 +750,6 @@ const TournamentStageSection = ({
   decisiveMatchId: string;
   hideStartRoundControls?: boolean;
   shouldSuppressMatchClick: () => boolean;
-  onOpenMatch: (match: TournamentMatch) => void;
   onStartRoundChange: (roundName: string) => void;
   setHeaderTrackRef: (stageKey: StageKey, node: HTMLDivElement | null) => void;
   setScrollerRef: (stageKey: StageKey, node: HTMLDivElement | null) => void;
@@ -894,7 +885,6 @@ const TournamentStageSection = ({
                       startRoundName === "Semifinals" || startRoundName === "Finals"
                     }
                     shouldSuppressClick={shouldSuppressMatchClick}
-                    onOpenMatch={onOpenMatch}
                     loserSources={loserSourcesByMatchId.get(match.id) ?? []}
                   />
                 ))}
@@ -927,9 +917,7 @@ const BracketTournamentPage = ({
   const bracket: TournamentBracket | null = bracketQuery.data ?? null;
   const bracketLoading = bracketQuery.isPending;
   const bracketError = bracketQuery.error
-    ? bracketQuery.error instanceof Error
-      ? bracketQuery.error.message
-      : "Unable to load tournament"
+    ? getErrorMessage(bracketQuery.error, "Unable to load tournament")
     : "";
   const [startRounds, setStartRounds] = useState<Record<string, string>>({});
   const [zoomLevels, setZoomLevels] = useState<Record<string, number>>({});
@@ -960,7 +948,8 @@ const BracketTournamentPage = ({
       }),
     );
 
-    window.sessionStorage.setItem(
+    setBrowserStorageItem(
+      "session",
       getTournamentViewStorageKey(bracket.id),
       JSON.stringify({
         startRounds,
@@ -1087,8 +1076,8 @@ const BracketTournamentPage = ({
         const hasNamedMatchup =
           !isEmptyPlayer(match.p1) &&
           !isEmptyPlayer(match.p2) &&
-          !isByePlayer(match.p1) &&
-          !isByePlayer(match.p2);
+          !isTournamentByePlayer(match.p1) &&
+          !isTournamentByePlayer(match.p2);
         existing.push({
           label: hasNamedMatchup
             ? `Loser: ${match.p1} vs ${match.p2}`
@@ -1106,7 +1095,7 @@ const BracketTournamentPage = ({
     const displayNamesByUsername = new Map<string, string>();
     bracket.matches.forEach((match) => {
       [match.p1, match.p2].forEach((playerName) => {
-        if (isEmptyPlayer(playerName) || isByePlayer(playerName)) return;
+        if (isEmptyPlayer(playerName) || isTournamentByePlayer(playerName)) return;
         const username = normalizeUsername(playerName);
         if (username && !displayNamesByUsername.has(username)) {
           displayNamesByUsername.set(username, playerName);
@@ -1187,7 +1176,8 @@ const BracketTournamentPage = ({
     // previous active key cannot overwrite the new selection.
     window.setTimeout(() => {
       const savedView = readSavedTournamentView(bracket.id) || {};
-      window.sessionStorage.setItem(
+      setBrowserStorageItem(
+        "session",
         getTournamentViewStorageKey(bracket.id),
         JSON.stringify({ ...savedView, activeStageKey: stageKey }),
       );
@@ -1227,24 +1217,6 @@ const BracketTournamentPage = ({
       block: "start",
     });
   };
-
-  const openMatchPage = useCallback(
-    (match: TournamentMatch): void => {
-      const matchId = String(match.match_id || "").trim();
-      if (!matchId) return;
-
-      if (isExternalMatchUrl(matchId)) {
-        window.location.assign(matchId);
-        return;
-      }
-
-      void navigate({
-        to: "/matches/$matchId",
-        params: { matchId },
-      });
-    },
-    [navigate],
-  );
 
   const shouldSuppressMatchClick = (): boolean => {
     if (!suppressNextMatchClickRef.current) return false;
@@ -1404,7 +1376,7 @@ const BracketTournamentPage = ({
                 </span>
               ) : null}
               {bracket.timeControl ? (
-                <span className="tournamentTimeControl">
+                <span className="tournamentTimeControl timeControlValue">
                   {bracket.matchMode ? `${modeLabels[bracket.matchMode]} ` : null}
                   {formatTimeControl(bracket.timeControl)}
                 </span>
@@ -1468,15 +1440,12 @@ const BracketTournamentPage = ({
             />
           ) : null}
         </div>
-        <a
+        <CommunityCommentsLink
+          target={{ type: "tournament", id: bracket.id }}
           className="tournamentCommentsLink"
           href="#tournament-comments"
-          aria-label={`Jump to comments for ${bracket.title}`}
           onClick={scrollToComments}
-        >
-          <FontAwesomeIcon icon={faComment} aria-hidden="true" />
-          <span>Comments</span>
-        </a>
+        />
       </div>
 
       <div className="tournamentStages">
@@ -1500,7 +1469,6 @@ const BracketTournamentPage = ({
               decisiveMatchId={decisiveMatchId}
               hideStartRoundControls={Boolean(bracket.hideStartRoundControls)}
               shouldSuppressMatchClick={shouldSuppressMatchClick}
-              onOpenMatch={openMatchPage}
               onStartRoundChange={(roundName) => setStageStartRound(stage.key, roundName)}
               setHeaderTrackRef={setHeaderTrackRef}
               setScrollerRef={setScrollerRef}

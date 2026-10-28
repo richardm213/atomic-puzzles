@@ -81,7 +81,7 @@
   margin-left: auto;
   cursor: pointer;
   font: inherit;
-  font-weight: 800;
+  font-weight: 650;
 }
 
 .puzzleDashboardActionLink.primary {
@@ -120,7 +120,7 @@
   margin: 0;
   color: var(--color-success);
   font-size: 13px;
-  font-weight: 750;
+  font-weight: 650;
 }
 
 .dashboardRatingRefreshStatus.error {
@@ -145,7 +145,7 @@
 .dashboardOverviewLabel {
   color: var(--color-muted);
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 650;
 }
 
 .dashboardRatingSummary,
@@ -175,7 +175,7 @@
 .dashboardRatingReading span {
   color: var(--color-subtle);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 650;
   white-space: nowrap;
 }
 
@@ -234,14 +234,14 @@
 .dashboardPerformanceBreakdown dt {
   color: var(--color-muted);
   font-size: 11px;
-  font-weight: 750;
+  font-weight: 650;
 }
 
 .dashboardPerformanceBreakdown dd {
   margin: 0;
   color: var(--color-heading);
   font-size: 19px;
-  font-weight: 850;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
@@ -277,7 +277,7 @@
   cursor: pointer;
   font: inherit;
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 650;
   transition: var(--dashboard-transition);
 }
 
@@ -288,7 +288,7 @@
   background: color-mix(in srgb, var(--color-muted) 14%, transparent);
   color: var(--color-subtle);
   font-size: 10px;
-  font-weight: 850;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
 
@@ -359,7 +359,7 @@
   border: 0;
   cursor: pointer;
   font: inherit;
-  font-weight: 800;
+  font-weight: 650;
 }
 
 .dashboardStartSetButton:disabled {
@@ -394,7 +394,7 @@
 .dashboardTagFilterLabel {
   color: var(--color-muted);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 650;
 }
 
 .dashboardSelectedTags {
@@ -413,7 +413,7 @@
   background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface-elevated-strong));
   color: var(--color-heading);
   font-size: 12px;
-  font-weight: 750;
+  font-weight: 650;
   line-height: 1.2;
 }
 
@@ -504,7 +504,7 @@
   cursor: pointer;
   font: inherit;
   font-size: 13px;
-  font-weight: 750;
+  font-weight: 650;
   text-align: left;
   transition: var(--dashboard-transition);
 }
@@ -537,7 +537,7 @@
   min-width: 0;
   color: var(--color-muted);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 650;
 }
 
 .dashboardFilterField > input,
@@ -582,7 +582,7 @@
   cursor: pointer;
   font: inherit;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 650;
   white-space: nowrap;
   transition: var(--dashboard-transition);
 }
@@ -639,7 +639,7 @@
 .dashboardCalendarTitle span {
   color: var(--color-muted);
   font-size: 12px;
-  font-weight: 750;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
 
@@ -663,7 +663,7 @@
   cursor: pointer;
   font: inherit;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 650;
   transition: var(--dashboard-transition);
 }
 
@@ -695,7 +695,7 @@
   border-bottom: 1px solid var(--color-border);
   color: var(--color-subtle);
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 650;
 }
 
 .dashboardCalendarLegend > ol {
@@ -751,7 +751,7 @@
   border-bottom: 1px solid var(--color-border);
   color: var(--color-subtle);
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 650;
   letter-spacing: 0.04em;
   text-align: center;
   text-transform: uppercase;
@@ -811,7 +811,7 @@
   display: block;
   color: var(--color-muted);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
@@ -836,7 +836,7 @@
 .dashboardCalendarDayScore small {
   color: var(--color-muted);
   font-size: 10px;
-  font-weight: 750;
+  font-weight: 650;
   line-height: 1.15;
 }
 
@@ -896,7 +896,7 @@
   background: color-mix(in srgb, var(--color-surface-inset) 74%, transparent);
   color: var(--color-subtle);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 650;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -935,7 +935,7 @@
   background: color-mix(in srgb, var(--color-surface-soft) 86%, transparent);
   color: var(--color-heading);
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 650;
   line-height: 1.2;
   text-decoration: none;
   overflow-wrap: anywhere;
@@ -945,7 +945,7 @@
 .dashboardCreatedPuzzleLink small {
   color: var(--color-subtle);
   font-size: 11px;
-  font-weight: 750;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
 
@@ -985,7 +985,7 @@
 .dashboardRowNumber {
   color: var(--color-subtle);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
@@ -995,7 +995,7 @@
   max-width: 100%;
   color: var(--color-heading);
   font-size: 15px;
-  font-weight: 850;
+  font-weight: 650;
   line-height: 1.12;
   text-decoration: none;
   overflow-wrap: anywhere;
@@ -1035,7 +1035,7 @@
   min-width: 0;
   color: var(--color-heading);
   font-variant-numeric: tabular-nums;
-  font-weight: 750;
+  font-weight: 650;
 }
 
 .dashboardPuzzleLevel {
@@ -1046,7 +1046,7 @@
   background: color-mix(in srgb, var(--color-primary) 8%, transparent);
   color: var(--color-heading);
   font-size: 10px;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1.2;
 }
 
@@ -1061,7 +1061,7 @@
   color: var(--color-heading);
   font-size: 13px;
   font-variant-numeric: tabular-nums;
-  font-weight: 750;
+  font-weight: 650;
   white-space: nowrap;
 }
 
@@ -1078,12 +1078,12 @@
 .dashboardRatingChange strong {
   color: var(--color-heading);
   font-size: 14px;
-  font-weight: 850;
+  font-weight: 650;
 }
 
 .dashboardRatingChange small {
   font-size: 11px;
-  font-weight: 850;
+  font-weight: 650;
 }
 
 .dashboardRatingChange.positive small {
@@ -1121,9 +1121,6 @@
 
 .puzzleDashboardPage .paginationRow {
   margin-top: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
   flex-wrap: wrap;
 }
 
@@ -1134,7 +1131,7 @@
   min-height: 34px;
   color: var(--color-muted);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 650;
 }
 
 .dashboardFilterLabel > input,
@@ -1152,62 +1149,8 @@
   opacity: 0.65;
 }
 
-.puzzleDashboardPage .paginationRow button {
-  min-height: 38px;
-  padding: 0 12px;
-  border-radius: var(--radius-ui);
-  border: 1px solid var(--color-border);
-  background: color-mix(in srgb, var(--color-panel-strong) 92%, transparent);
-  color: var(--color-text);
-  font-weight: 800;
-  transition: var(--dashboard-transition);
-}
-
-.puzzleDashboardPage .paginationRow button:hover:not(:disabled) {
-  transform: translateY(-1px);
-  border-color: var(--color-accent-soft-border);
-  background: var(--color-surface-elevated-strong);
-}
-
-.puzzleDashboardPage .paginationRow button:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
 .puzzleDashboardPage .paginationPageButton {
   font-variant-numeric: tabular-nums;
-}
-
-.puzzleDashboardPage .paginationJumpForm {
-  margin: 0;
-}
-
-.puzzleDashboardPage .paginationJumpLabel {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 38px;
-  padding: 0 12px;
-  border-radius: var(--radius-ui);
-  border: 1px solid var(--color-border);
-  background: color-mix(in srgb, var(--color-panel-strong) 92%, transparent);
-  color: var(--color-text);
-  font-weight: 800;
-}
-
-.puzzleDashboardPage .paginationJumpInput {
-  width: 72px;
-  min-height: 30px;
-  border: 1px solid var(--color-input-border);
-  border-radius: calc(var(--radius-ui) - 2px);
-  background: var(--color-surface-elevated-strong);
-  color: var(--color-text);
-  padding: 4px 8px;
-}
-
-.puzzleDashboardPage .paginationJumpInput:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--color-primary) 65%, white);
-  outline-offset: 1px;
 }
 
 @media (max-width: 720px) {
@@ -1384,12 +1327,6 @@
   .dashboardHeroLinks,
   .puzzleDashboardPage .paginationRow {
     display: grid;
-  }
-
-  .puzzleDashboardPage .paginationJumpLabel {
-    justify-content: center;
-    flex-wrap: wrap;
-    padding: 9px 12px;
   }
 
   .dashboardCreatedGrid {

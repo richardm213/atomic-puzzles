@@ -6,8 +6,10 @@ import {
   loadPuzzleSolverIndex,
   type Puzzle,
 } from "../../lib/puzzles/puzzleLibrary";
+import { getErrorMessage } from "../../utils/errors";
 
-const parsePuzzleId = (value: string): number | null => {
+export const parsePuzzleId = (value: string | null | undefined): number | null => {
+  if (!value) return null;
   const puzzleId = Number.parseInt(value, 10);
   return Number.isNaN(puzzleId) ? null : puzzleId;
 };
@@ -50,7 +52,7 @@ export const usePuzzleCatalog = (routePuzzleId: string, routeSetKey: string) => 
       } catch (error) {
         if (!active) return;
         setPuzzles([]);
-        setLoadingError(error instanceof Error ? error.message : "Failed to load puzzles");
+        setLoadingError(getErrorMessage(error, "Failed to load puzzles"));
       }
     };
 

@@ -91,7 +91,7 @@
   background: transparent;
   color: var(--color-subtle);
   font-size: 0.8rem;
-  font-weight: 750;
+  font-weight: 650;
   text-decoration: none;
   transition:
     border-color 160ms ease,
@@ -251,7 +251,7 @@
   margin-right: 4px;
   color: var(--color-primary-pale);
   font-size: 0.9em;
-  font-weight: 800;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
   line-height: 1;
   text-align: left;
@@ -268,7 +268,7 @@
   color: var(--color-primary-pale);
   font: inherit;
   font-size: 0.82em;
-  font-weight: 800;
+  font-weight: 650;
   letter-spacing: 0.01em;
   line-height: 1;
   text-align: left;
@@ -408,7 +408,7 @@
   margin-left: 6px;
   color: var(--color-success);
   font-size: 14px;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1;
   vertical-align: middle;
 }
@@ -559,7 +559,7 @@
   background: transparent;
   color: var(--color-muted);
   font-size: 0.95rem;
-  font-weight: 800;
+  font-weight: 650;
   transition:
     background 160ms ease,
     color 160ms ease,
@@ -633,7 +633,7 @@
   background: transparent;
   color: var(--color-muted);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 650;
   transition:
     background 140ms ease,
     color 140ms ease,
@@ -678,7 +678,7 @@
   background: transparent;
   color: var(--color-heading);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 650;
   cursor: pointer;
 }
 
@@ -714,6 +714,13 @@
   touch-action: pan-x pan-y;
   overscroll-behavior-inline: contain;
   -webkit-overflow-scrolling: touch;
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    black 10px,
+    black calc(100% - 10px),
+    transparent 100%
+  );
   mask-image: linear-gradient(
     90deg,
     transparent 0,
@@ -746,6 +753,7 @@
   background: color-mix(in srgb, var(--color-panel) 96%, transparent);
   border-bottom: 1px solid color-mix(in srgb, var(--color-primary-soft) 18%, transparent);
   box-shadow: 0 8px 14px color-mix(in srgb, var(--color-panel-deep) 16%, transparent);
+  -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
 }
 
@@ -760,7 +768,7 @@
 }
 
 .tournamentRoundHeader span {
-  font-weight: 800;
+  font-weight: 650;
   color: var(--color-heading);
   letter-spacing: 0.02em;
 }
@@ -856,6 +864,18 @@
   cursor: pointer;
 }
 
+.tournamentMatchCardOpenLink {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.tournamentMatchCardOpenLink:focus-visible {
+  outline: 3px solid var(--color-primary-ring);
+  outline-offset: 3px;
+}
+
 .tournamentMatchCardTree.isClickable:hover {
   border-color: color-mix(in srgb, var(--tournament-gold) 40%, var(--color-border));
   background: color-mix(in srgb, var(--color-panel-strong) 90%, var(--color-panel));
@@ -865,10 +885,8 @@
   transform: translateY(-1px);
 }
 
-.tournamentMatchCardTree.isClickable:focus-visible {
+.tournamentMatchCardTree.isClickable:has(.tournamentMatchCardOpenLink:focus-visible) {
   border-color: color-mix(in srgb, var(--tournament-gold) 44%, var(--color-border));
-  outline: 3px solid var(--color-primary-ring);
-  outline-offset: 3px;
 }
 
 .tournamentMatchTrophy {
@@ -892,10 +910,19 @@
 }
 
 .tournamentMatchPlayers {
+  position: relative;
+  z-index: 2;
   display: grid;
   gap: 0;
   align-content: center;
   min-height: 100%;
+  pointer-events: none;
+}
+
+.tournamentPlayerLink,
+.tournamentEntryBadge,
+.tournamentFairPlayFlag {
+  pointer-events: auto;
 }
 
 .tournamentPlayerRow {
@@ -920,7 +947,7 @@
 
 .tournamentPlayerRow.isWinner .tournamentPlayerLink {
   color: var(--color-heading);
-  font-weight: 800;
+  font-weight: 650;
 }
 
 .tournamentMatchPlayers > div > .tournamentPlayerIdentity {
@@ -967,7 +994,7 @@
 .tournamentScoreDisqualification {
   color: var(--color-danger) !important;
   font-size: inherit !important;
-  font-weight: 900;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }

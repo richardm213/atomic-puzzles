@@ -2,7 +2,6 @@ import "./PuzzleSubmission.css";
 
 import { faPaperPlane } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
 import { useState } from "react";
 
 import { isApprovedPuzzleCreator } from "../../../shared/domain/puzzles/approvedPuzzleCreators";
@@ -11,6 +10,7 @@ import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
 import { announceCoinsEarned } from "../../lib/coins/coinEvents";
 import {
+  createEmptyPuzzleSubmission,
   type PuzzleSubmissionValue,
   validatePuzzleSubmission,
 } from "../../lib/puzzles/puzzleSubmission";
@@ -19,6 +19,7 @@ import {
   submitPuzzle,
   submitPuzzleBatch,
 } from "../../lib/supabase/puzzleQueue";
+import { getErrorMessage } from "../../utils/errors";
 import { PuzzleAnalysisInstructions } from "./PuzzleAnalysisInstructions";
 import { PuzzleEditor } from "./PuzzleEditor";
 
@@ -33,16 +34,6 @@ const BATCH_SUBMISSION_STEPS = [
   "Paste all consecutive PGNs into the box below",
 ];
 
-const emptyPuzzleSubmission = (): PuzzleSubmissionValue => ({
-  fen: STARTING_FEN,
-  solution: "",
-  event: "",
-  whitePlayer: "",
-  blackPlayer: "",
-  explanation: "",
-  opaStyle: false,
-});
-
 export const formatCreatedPuzzleIds = (puzzleIds: number[]): string => {
   const firstId = puzzleIds[0];
   const lastId = puzzleIds.at(-1);
@@ -54,7 +45,7 @@ export const formatCreatedPuzzleIds = (puzzleIds: number[]): string => {
 
 export const PuzzleSubmissionPage = () => {
   const { isAuthenticated, isLoading, user, login } = useAuth();
-  const [value, setValue] = useState<PuzzleSubmissionValue>(emptyPuzzleSubmission);
+  const [value, setValue] = useState<PuzzleSubmissionValue>(createEmptyPuzzleSubmission);
   const [batchMode, setBatchMode] = useState(false);
   const [batchValues, setBatchValues] = useState<PuzzleSubmissionValue[]>([]);
   const [activeBatchIndex, setActiveBatchIndex] = useState(0);
@@ -79,8 +70,7 @@ export const PuzzleSubmissionPage = () => {
         try {
           return validatePuzzleSubmission(submission);
         } catch (validationError) {
-          const detail =
-            validationError instanceof Error ? validationError.message : "Invalid puzzle.";
+          const detail = getErrorMessage(validationError, "Invalid puzzle.");
           throw new Error(submissions.length > 1 ? `Puzzle ${index + 1}: ${detail}` : detail);
         }
       });
@@ -106,7 +96,7 @@ export const PuzzleSubmissionPage = () => {
           submittedCount += 1;
         }
       }
-      setValue(emptyPuzzleSubmission());
+      setValue(createEmptyPuzzleSubmission());
       setBatchValues([]);
       setActiveBatchIndex(0);
       setEditorVersion((version) => version + 1);
@@ -122,13 +112,12 @@ export const PuzzleSubmissionPage = () => {
         );
       }
     } catch (submitError) {
-      const detail =
-        submitError instanceof Error ? submitError.message : "Unable to submit puzzle.";
+      const detail = getErrorMessage(submitError, "Unable to submit puzzle.");
       if (submittedCount > 0 && batchValues.length > submittedCount) {
         const remaining = batchValues.slice(submittedCount);
         setBatchValues(remaining);
         setActiveBatchIndex(0);
-        setValue(remaining[0] ?? emptyPuzzleSubmission());
+        setValue(remaining[0] ?? createEmptyPuzzleSubmission());
         setEditorVersion((version) => version + 1);
       }
       if (detail === DIFFERENT_START_MOVE_CONFIRMATION) {
@@ -152,7 +141,7 @@ export const PuzzleSubmissionPage = () => {
     setBatchMode(nextBatchMode);
     setBatchValues([]);
     setActiveBatchIndex(0);
-    setValue(emptyPuzzleSubmission());
+    setValue(createEmptyPuzzleSubmission());
     setMessage("");
     setError("");
     setConfirmDifferentStartMove(false);
@@ -177,7 +166,7 @@ export const PuzzleSubmissionPage = () => {
       : values;
     setBatchValues(nextValues);
     setActiveBatchIndex(0);
-    setValue(nextValues[0] ?? emptyPuzzleSubmission());
+    setValue(nextValues[0] ?? createEmptyPuzzleSubmission());
     setEditorVersion((version) => version + 1);
     setMessage(`${nextValues.length} puzzles loaded. Review them with Previous and Next.`);
     setError("");

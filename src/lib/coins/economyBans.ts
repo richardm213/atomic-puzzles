@@ -1,4 +1,4 @@
-import { postApi } from "../api/postApi";
+import { createPostApi } from "../api/postApi";
 
 export type CoinEconomyBan = {
   id: number;
@@ -12,11 +12,10 @@ export type CoinEconomyBan = {
   revoked_by: string | null;
 };
 
-const banRequest = <T>(body: Record<string, unknown>): Promise<T> =>
-  postApi("/api/coins", body, {
-    errorMessage: "Unable to manage coin economy bans.",
-    invalidMessage: "The coin service returned no data.",
-  });
+const banRequest = createPostApi("/api/coins", {
+  errorMessage: "Unable to manage coin economy bans.",
+  invalidMessage: "The coin service returned no data.",
+});
 
 export const fetchCoinEconomyBans = (): Promise<{ bans: CoinEconomyBan[] }> =>
   banRequest({ action: "listBans" });

@@ -1,6 +1,7 @@
-import { queryOptions } from "@tanstack/react-query";
+import { type QueryClient, queryOptions } from "@tanstack/react-query";
 
 import {
+  type CoinSummary,
   fetchCoinRankings,
   fetchCoinSummary,
   fetchCoinTransactions,
@@ -39,6 +40,16 @@ export const coinSummaryQueryOptions = (username: string) =>
     queryFn: fetchCoinSummary,
     staleTime: 15_000,
   });
+
+export const updateCachedCoinBalance = (
+  queryClient: QueryClient,
+  username: string,
+  balance: number,
+): void => {
+  queryClient.setQueryData<CoinSummary>(coinQueryKeys.summary(username), (current) =>
+    current ? { ...current, balance } : current,
+  );
+};
 
 export const redemptionHistoryQueryOptions = (username: string) =>
   queryOptions({

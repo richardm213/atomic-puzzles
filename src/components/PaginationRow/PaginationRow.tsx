@@ -1,3 +1,5 @@
+import "./PaginationRow.css";
+
 import { useEffect, useState } from "react";
 
 export type PaginationRowProps = {
@@ -6,6 +8,7 @@ export type PaginationRowProps = {
   onPageChange: (page: number) => void;
   formatLabel?: (currentPage: number, totalPages: number) => string;
   disabled?: boolean;
+  ariaLabel?: string;
 };
 
 export const PaginationRow = ({
@@ -14,6 +17,7 @@ export const PaginationRow = ({
   onPageChange,
   formatLabel,
   disabled,
+  ariaLabel = "Pagination",
 }: PaginationRowProps) => {
   const [isEditingPage, setIsEditingPage] = useState(false);
   const [pageInput, setPageInput] = useState(String(currentPage));
@@ -36,7 +40,7 @@ export const PaginationRow = ({
   };
 
   return (
-    <div className="paginationRow">
+    <nav className="paginationRow" aria-label={ariaLabel}>
       <button
         type="button"
         onClick={() => onPageChange(Math.max(1, currentPage - 1))}
@@ -96,6 +100,6 @@ export const PaginationRow = ({
       >
         Next
       </button>
-    </div>
+    </nav>
   );
 };

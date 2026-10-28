@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { z } from "zod";
 
@@ -10,11 +9,13 @@ import {
 } from "../../../shared/domain/badges";
 import { BadgeMedallion } from "../../components/Badges/BadgeMedallion";
 import { BadgeTierIcon } from "../../components/Badges/BadgeTierIcon";
+import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import { badgeSummaryQueryOptions } from "../../lib/badges/badgeQueries";
+import { getErrorMessage } from "../../utils/errors";
 import { normalizeUsername } from "../../utils/playerNames";
 import styles from "./Achievements.module.css";
 
@@ -78,7 +79,7 @@ export const AchievementsPage = ({ username }: { username?: string }) => {
 
   if (!requestedUsername) {
     return (
-      <main className={`sitePage ${styles.page}`}>
+      <div className={`sitePage ${styles.page}`}>
         <Seo
           title="Achievements"
           description="Collect permanent Atomic Chess puzzle and rating badges."
@@ -91,12 +92,12 @@ export const AchievementsPage = ({ username }: { username?: string }) => {
             Log in with Lichess
           </button>
         </section>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className={`sitePage ${styles.page}`}>
+    <div className={`sitePage ${styles.page}`}>
       <Seo
         title={`${displayUsername || requestedUsername} achievements`}
         description={`View ${displayUsername || requestedUsername}'s permanent Atomic Chess badges.`}
@@ -109,18 +110,14 @@ export const AchievementsPage = ({ username }: { username?: string }) => {
         <div>
           <h1>{displayUsername || requestedUsername}&apos;s badges</h1>
         </div>
-        {username ? (
-          <Link to="/@/$username" params={{ username: requestedUsername }}>
-            View profile
-          </Link>
-        ) : null}
+        {username ? <PlayerLink username={requestedUsername}>View profile</PlayerLink> : null}
       </header>
 
       {summary.isPending ? <RouteLoadingFallback showText /> : null}
       {summary.isError ? (
         <section className={`panel ${styles.errorPanel}`} role="alert">
           <h2>Achievements unavailable</h2>
-          <p>{summary.error instanceof Error ? summary.error.message : "Please try again."}</p>
+          <p>{getErrorMessage(summary.error, "Please try again.")}</p>
           <button type="button" onClick={() => void summary.refetch()}>
             Try again
           </button>
@@ -245,6 +242,6 @@ export const AchievementsPage = ({ username }: { username?: string }) => {
           </div>
         </>
       ) : null}
-    </main>
+    </div>
   );
 };

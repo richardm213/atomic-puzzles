@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { voteValueSchema } from "../voting";
+
 const positiveIntegerSchema = z.coerce.number().int().positive().safe();
 const usernameSchema = z
   .string()
@@ -10,6 +12,12 @@ const usernameSchema = z
 
 export const communityTargetTypeSchema = z.enum(["puzzle", "profile", "match", "tournament"]);
 export type CommunityTargetType = z.infer<typeof communityTargetTypeSchema>;
+export type CommunityTarget = {
+  type: CommunityTargetType;
+  id: string;
+  context?: string;
+};
+export type ResolvedCommunityTarget = Omit<CommunityTarget, "context"> & { context: string };
 
 export const communityRequestSchema = z
   .object({
@@ -34,7 +42,7 @@ export const communityRequestSchema = z
     page: positiveIntegerSchema.optional(),
     pageSize: positiveIntegerSchema.optional(),
     sort: z.enum(["recent", "top"]).optional(),
-    vote: z.union([z.literal(-1), z.literal(0), z.literal(1)]).optional(),
+    vote: voteValueSchema.optional(),
     commentId: positiveIntegerSchema.optional(),
     parentId: positiveIntegerSchema.nullish(),
     body: z.string().optional(),
@@ -93,18 +101,18 @@ export const communityCommentSchema = z.object({
   upvotes: z.coerce.number(),
   downvotes: z.coerce.number(),
   score: z.coerce.number(),
-  viewer_vote: z.union([z.literal(-1), z.literal(0), z.literal(1)]),
+  viewer_vote: voteValueSchema,
 });
 
 export const communityDiscussionSchema = z.object({
   comments: z.array(communityCommentSchema),
   counts: puzzleVoteCountsSchema.optional(),
-  viewerVote: z.union([z.literal(-1), z.literal(0), z.literal(1)]).optional(),
+  viewerVote: voteValueSchema.optional(),
 });
 
 export const puzzleCommunitySchema = communityDiscussionSchema.extend({
   counts: puzzleVoteCountsSchema,
-  viewerVote: z.union([z.literal(-1), z.literal(0), z.literal(1)]),
+  viewerVote: voteValueSchema,
 });
 
 export const communityHistoryCommentSchema = z.object({

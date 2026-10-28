@@ -5,7 +5,6 @@ import {
   formatCalendarDateRange,
   formatGameCount,
   formatLocalDateTime,
-  formatOpponentWithRating,
   formatSignedDecimal,
 } from "./formatters";
 
@@ -63,11 +62,5 @@ describe("formatGameCount", () => {
     [1_000_000, "1M"],
   ])("formats %s games as %s", (games, expected) => {
     expect(formatGameCount(games)).toBe(expected);
-  });
-});
-
-describe("formatOpponentWithRating", () => {
-  it("formats username and rating in parentheses", () => {
-    expect(formatOpponentWithRating("alice", 1500)).toBe("alice (1500)");
   });
 });

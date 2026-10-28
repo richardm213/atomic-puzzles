@@ -81,7 +81,7 @@
   min-width: 42px;
   color: var(--color-heading);
   font-size: 14px;
-  font-weight: 900;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
@@ -94,7 +94,7 @@
   align-items: center;
   gap: 5px;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 650;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -147,7 +147,7 @@
   gap: 8px;
   color: var(--color-text);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 650;
 }
 
 .atomicDbLinesSetting output {
@@ -174,7 +174,7 @@
   align-items: center;
   gap: 8px;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 650;
 }
 
 .atomicDbFollowUpSetting input {
@@ -208,7 +208,7 @@
   align-items: center;
   gap: 8px;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 650;
   text-align: left;
 }
 
@@ -333,7 +333,7 @@
 .atomicDbEngineScore {
   color: var(--color-primary-pale);
   font-size: 11px;
-  font-weight: 900;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
@@ -345,7 +345,7 @@
 .atomicDbEngineDepth {
   color: color-mix(in srgb, var(--color-muted) 78%, transparent);
   font-size: 9px;
-  font-weight: 800;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
   line-height: 1;
   text-align: right;
@@ -367,7 +367,7 @@
 .atomicDbEngineMoveNumber {
   color: var(--color-muted);
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 650;
 }
 
 .atomicDbEngineMoveButton {
@@ -383,7 +383,7 @@
   justify-content: center;
   flex: 0 1 auto;
   font: inherit;
-  font-weight: 750;
+  font-weight: 650;
   line-height: 1;
   transition:
     background 140ms ease,
@@ -392,7 +392,7 @@
 
 .atomicDbEngineMoveButton.first {
   color: var(--color-heading);
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .atomicDbEngineMoveButton:hover:not(:disabled),

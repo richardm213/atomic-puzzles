@@ -57,6 +57,23 @@ const installApiMocks = async (page: Page) => {
   });
   await page.route("**/__e2e_supabase/**", (route) => {
     const url = new URL(route.request().url());
+    if (url.pathname.includes("/rest/v1/tournament_catalog")) {
+      return jsonResponse(route, [
+        {
+          id: "awc2026",
+          series_key: "awc",
+          series_name: "Atomic World Championship",
+          title: "AWC 2026",
+          year: 2026,
+          start_date: "2026-09-07",
+          end_date: "2026-12-20",
+          status: "available",
+          match_mode: "blitz",
+          show_champion: true,
+          display_order: 0,
+        },
+      ]);
+    }
     if (url.pathname.includes("/rest/v1/puzzles")) {
       const idFilter = url.searchParams.get("id") ?? "";
       const requestedRows = idFilter

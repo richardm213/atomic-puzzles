@@ -35,6 +35,8 @@ import {
   serializeSanLinesToPgn,
 } from "../../lib/puzzles/solutionPgn";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
+import { orientationFromFen } from "../../utils/chessNotation";
+import { getErrorMessage } from "../../utils/errors";
 
 const combinePgnHeadersAndMoves = (headers: string, moves: string): string =>
   headers && moves ? `${headers}\n\n${moves}` : headers || moves;
@@ -47,9 +49,6 @@ const multilineSolutionPgn = (pgn: string): string =>
     .map((line) => line.trim())
     .filter(Boolean)
     .join("\n");
-
-const orientationFromFen = (fen: string): "white" | "black" =>
-  fen.split(" ")[1] === "b" ? "black" : "white";
 
 const OPA_STYLE_DESCRIPTION =
   "Only the best moves are accepted. Weaker alternatives are rejected even if they also lead to mate.";
@@ -183,7 +182,7 @@ export const PuzzleEditor = ({
             try {
               return validatePuzzleSubmission({ ...value, solution: pgn, explanation: "" });
             } catch (error) {
-              const detail = error instanceof Error ? error.message : "Invalid PGN.";
+              const detail = getErrorMessage(error, "Invalid PGN.");
               throw new Error(`Puzzle ${index + 1}: ${detail}`);
             }
           });
@@ -230,7 +229,7 @@ export const PuzzleEditor = ({
         ply: 0,
       });
     } catch (error) {
-      setEditorError(error instanceof Error ? error.message : "Invalid move line.");
+      setEditorError(getErrorMessage(error, "Invalid move line."));
     }
   };
 
@@ -325,7 +324,7 @@ export const PuzzleEditor = ({
         Math.max(0, activeLineIndex - 1),
       );
     } catch (error) {
-      setEditorError(error instanceof Error ? error.message : "Unable to delete line.");
+      setEditorError(getErrorMessage(error, "Unable to delete line."));
     }
   };
 
@@ -377,7 +376,7 @@ export const PuzzleEditor = ({
 
       commitSolutionLines(mergedLine.lines, mergedLine.lineIndex);
     } catch (error) {
-      setEditorError(error instanceof Error ? error.message : "Unable to edit line.");
+      setEditorError(getErrorMessage(error, "Unable to edit line."));
     }
   };
 

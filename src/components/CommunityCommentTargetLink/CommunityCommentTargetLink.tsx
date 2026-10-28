@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 
 import type { CommunityHistoryComment } from "../../lib/community/puzzleCommunity";
 import { getTournamentRouteId } from "../../lib/matches/tournaments";
+import { PlayerLink } from "../PlayerLink/PlayerLink";
 
 type CommunityCommentTargetLinkProps = Pick<
   CommunityHistoryComment,
@@ -18,9 +19,9 @@ export const CommunityCommentTargetLink = ({
 }: CommunityCommentTargetLinkProps) => {
   if (targetType === "profile") {
     return (
-      <Link className={className} to="/@/$username" params={{ username: targetId }}>
+      <PlayerLink className={className} username={targetId}>
         @{targetId} profile
-      </Link>
+      </PlayerLink>
     );
   }
 

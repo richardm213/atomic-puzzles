@@ -4,6 +4,7 @@ import type {
   OpeningDatabaseGame,
   OpeningDatabaseMove,
 } from "../components/OpeningDatabaseDisplay/OpeningDatabaseDisplay";
+import { getErrorMessage } from "../utils/errors";
 import { toOpeningDatabaseGame, toOpeningDatabaseMove } from "../utils/openingDatabaseDisplay";
 import type { ExplorerApiResponse, ExplorerRequestNavigation } from "../utils/openingExplorer";
 
@@ -133,7 +134,7 @@ export const useOpeningExplorer = ({
         if (controller.signal.aborted) return;
         setState({
           ...emptyState("error"),
-          error: error instanceof Error ? error.message : errorMessage,
+          error: getErrorMessage(error, errorMessage),
         });
       } finally {
         window.clearTimeout(timeout);

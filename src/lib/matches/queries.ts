@@ -38,10 +38,17 @@ export const recentMatchesPageQueryOptions = (
   filters: MatchFilters,
   page: number,
   pageSize: number,
+  includeTotal = true,
 ) =>
   queryOptions({
     queryKey: matchQueryKeys.recent(mode, filters, page, pageSize),
-    queryFn: () => loadRawMatchesByMode(mode, { filters, page, pageSize, includeTotal: false }),
+    queryFn: () =>
+      loadRawMatchesByMode(mode, {
+        filters,
+        page,
+        pageSize,
+        ...(includeTotal ? {} : { includeTotal: false }),
+      }),
     staleTime: 30_000,
   });
 

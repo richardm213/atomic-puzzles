@@ -1,7 +1,6 @@
 import { type QueryClient, queryOptions } from "@tanstack/react-query";
 
 import {
-  fetchPredictionMarket,
   fetchPredictionMarketGroups,
   fetchPredictionMarkets,
   type PredictionMarketId,
@@ -17,15 +16,6 @@ export const predictionMarketCatalogQueryOptions = () =>
   });
 export const predictionMarketQueryKey = (marketId: PredictionMarketId) =>
   [...predictionMarketQueryRoot, marketId] as const;
-
-export const predictionMarketQueryOptions = (marketId: PredictionMarketId) =>
-  queryOptions({
-    queryKey: predictionMarketQueryKey(marketId),
-    queryFn: () => fetchPredictionMarket(marketId),
-    staleTime: 1_000,
-    refetchInterval: 30_000,
-    refetchIntervalInBackground: false,
-  });
 
 export const predictionMarketBatchQueryKey = (marketIds: readonly PredictionMarketId[]) =>
   [...predictionMarketQueryRoot, "batch", [...new Set(marketIds)].sort()] as const;

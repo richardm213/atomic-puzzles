@@ -1,3 +1,4 @@
+import type { PuzzleIssue } from "../../../shared/domain/puzzles/puzzleIssues";
 import type { RawPuzzleRow } from "../../types/puzzles";
 
 export type PuzzleProgressRow = {
@@ -154,18 +155,7 @@ export type NotificationRow = {
   read_at: string | null;
 };
 
-export type PuzzleIssueRow = {
-  id: number;
-  puzzle_id: number;
-  reporter_username: string;
-  category: "missing_alternate_solution" | "incorrect_solution" | "other";
-  details: string;
-  status: "open" | "resolved" | "dismissed";
-  created_at: string;
-  updated_at: string;
-  resolved_at: string | null;
-  resolved_by: string | null;
-};
+export type PuzzleIssueRow = Required<PuzzleIssue>;
 
 type TableDef<Row, Insert = Partial<Row>, Update = Partial<Row>> = {
   Row: Row;

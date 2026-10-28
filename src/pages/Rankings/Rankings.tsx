@@ -9,6 +9,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { DataTable } from "../../components/DataTable/DataTable";
 import { SortableTableHeader } from "../../components/DataTable/SortableTableHeader";
 import { InlineState } from "../../components/InlineState/InlineState";
+import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { Seo } from "../../components/Seo/Seo";
 import {
   defaultMode,
@@ -30,6 +31,7 @@ import {
 } from "../../lib/rankings/rankingsQueries";
 import type { AliasLookup } from "../../lib/users/aliasesLookup";
 import { aliasesLookupQueryOptions } from "../../lib/users/aliasQueries";
+import { getErrorMessage } from "../../utils/errors";
 import { getOpeningDisplayLabel, normalizeOpeningKey } from "../../utils/openings";
 import { normalizeUsername } from "../../utils/playerNames";
 
@@ -243,11 +245,9 @@ const LeaderboardView = ({ selectedPeriod }: { selectedPeriod: RankingPeriod }) 
   const error =
     selectedPeriod === "monthly"
       ? monthlyError
-      : yearlyRankingsQuery.error instanceof Error
-        ? yearlyRankingsQuery.error.message
-        : yearlyRankingsQuery.error
-          ? "Failed to load yearly leaderboard data"
-          : "";
+      : yearlyRankingsQuery.error
+        ? getErrorMessage(yearlyRankingsQuery.error, "Failed to load yearly leaderboard data")
+        : "";
   const latestMatchQuery = useQuery(latestRankingMatchQueryOptions());
   const latestMatchTimestamp = latestMatchQuery.data?.start_ts;
   const updatedAtLabel = formatRankingUpdatedAt(latestMatchTimestamp);
@@ -620,13 +620,9 @@ const LeaderboardView = ({ selectedPeriod }: { selectedPeriod: RankingPeriod }) 
                     <td>{player.rank}</td>
                     <td>
                       <div className="rankingPlayerCell">
-                        <Link
-                          className="rankingLink"
-                          to="/@/$username"
-                          params={{ username: player.username }}
-                        >
+                        <PlayerLink className="rankingLink" username={player.username}>
                           {displayUsername}
-                        </Link>
+                        </PlayerLink>
                         {selectedMode !== "wolfrandom" && !hideRankingsOpenings ? (
                           <div
                             className="rankingOpeningTags"

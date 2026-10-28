@@ -343,20 +343,13 @@ export const buildAliasIdentityRowsFromArchiveRows = (
 const getFirstAliasIdentityRow = (rows: AliasRow[]): AliasIdentityRow | null =>
   buildAliasIdentityRowsFromArchiveRows(rows)[0] ?? null;
 
-const fetchRawAliasRows = async (): Promise<AliasRow[]> =>
-  cachedRequest(rawAliasRowsCache, ["aliases-raw"], async () => {
-    return fetchArchiveJson<AliasRow[]>(new URLSearchParams({ resource: "aliases" }));
+const fetchRawAliasRows = async (query = ""): Promise<AliasRow[]> =>
+  cachedRequest(rawAliasRowsCache, ["aliases-raw", query], async () => {
+    const params = new URLSearchParams({ resource: "aliases" });
+    const normalizedQuery = normalizeUsername(query);
+    if (normalizedQuery) params.set("query", normalizedQuery);
+    return fetchArchiveJson<AliasRow[]>(params);
   });
-
-const fetchCanonicalUsernameForAlias = async (value: string): Promise<string> => {
-  const username = normalizeUsername(value);
-  if (!username) return "";
-
-  const params = new URLSearchParams({ resource: "aliases" });
-  appendArchiveParam(params, "username", username);
-  const rows = await fetchArchiveJson<AliasRow[]>(params);
-  return normalizeUsername(rows[0]?.username);
-};
 
 const fetchAliasIdentityRowForUsername = async (
   username: string,
@@ -365,16 +358,7 @@ const fetchAliasIdentityRowForUsername = async (
   appendArchiveParam(params, "username", username);
   const rows = await fetchArchiveJson<AliasRow[]>(params);
   const exactAggregateRow = getFirstAliasIdentityRow(rows);
-  if (exactAggregateRow) return exactAggregateRow;
-
-  try {
-    const aliasRows = await fetchRawAliasRows();
-    return getFirstAliasIdentityRow(
-      aliasRows.filter((row) => normalizeUsername(row.username) === username),
-    );
-  } catch {
-    return null;
-  }
+  return exactAggregateRow;
 };
 
 const resolveCanonicalProfileUsername = async (value: string): Promise<string> =>
@@ -394,13 +378,12 @@ export const fetchProfileAliasRow = async (value: string): Promise<AliasIdentity
     const username = normalizeUsername(value);
     if (!username) return null;
 
-    const canonicalUsername = (await fetchCanonicalUsernameForAlias(username)) || username;
-    return fetchAliasIdentityRowForUsername(canonicalUsername);
+    return fetchAliasIdentityRowForUsername(username);
   });
 
-export const fetchAliasRows = async (): Promise<AliasIdentityRow[]> =>
+export const fetchAliasRows = async (query = ""): Promise<AliasIdentityRow[]> =>
   // Let failed archive reads reject so neither cache retains an empty success
   // and React Query can retry after a temporary Turso/API failure.
-  cachedRequest(aliasRowsCache, ["aliases"], async () =>
-    buildAliasIdentityRowsFromArchiveRows(await fetchRawAliasRows()),
+  cachedRequest(aliasRowsCache, ["aliases", query], async () =>
+    buildAliasIdentityRowsFromArchiveRows(await fetchRawAliasRows(query)),
   );

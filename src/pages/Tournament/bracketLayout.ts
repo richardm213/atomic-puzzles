@@ -1,4 +1,12 @@
-import type { TournamentBracketStage, TournamentMatch } from "../../lib/matches/tournaments";
+import {
+  isTournamentDoubleByeMatch,
+  type TournamentBracketStage,
+  type TournamentMatch,
+} from "../../lib/matches/tournaments";
+import {
+  getBrowserStorageJson,
+  removeBrowserStorageItem,
+} from "../../utils/browserStorage";
 
 export type StageLayout = {
   rounds: TournamentBracketStage["rounds"];
@@ -128,22 +136,14 @@ export const getTournamentViewStorageKey = (tournamentId: string): string =>
   `${TOURNAMENT_VIEW_STORAGE_KEY}${tournamentId}`;
 
 export const readSavedTournamentView = (tournamentId: string): SavedTournamentView | null => {
-  if (typeof window === "undefined") return null;
-
-  try {
-    const rawValue = window.sessionStorage.getItem(getTournamentViewStorageKey(tournamentId));
-    if (!rawValue) return null;
-
-    const parsedValue: unknown = JSON.parse(rawValue);
-    if (!parsedValue || typeof parsedValue !== "object" || Array.isArray(parsedValue)) {
-      return null;
-    }
-
-    return parsedValue;
-  } catch {
-    window.sessionStorage.removeItem(getTournamentViewStorageKey(tournamentId));
+  const storageKey = getTournamentViewStorageKey(tournamentId);
+  const parsedValue = getBrowserStorageJson<unknown>("session", storageKey, null);
+  if (!parsedValue || typeof parsedValue !== "object" || Array.isArray(parsedValue)) {
+    removeBrowserStorageItem("session", storageKey);
     return null;
   }
+
+  return parsedValue;
 };
 
 export const getVisibleRounds = (
@@ -219,14 +219,6 @@ const createConnector = (
   y2: number,
 ): ConnectorSegment => ({ key, x1, y1, x2, y2 });
 
-const isByePlayer = (playerName: string): boolean =>
-  String(playerName || "")
-    .trim()
-    .toLowerCase() === "bye";
-
-const isDoubleByeMatch = (match: TournamentMatch | undefined): boolean =>
-  Boolean(match && isByePlayer(match.p1) && isByePlayer(match.p2));
-
 export const buildStageTreeLayout = (
   stage: TournamentBracketStage,
   startRoundName: string,
@@ -284,11 +276,11 @@ export const buildStageTreeLayout = (
 
   incoming.forEach((sourceMatchIds, targetMatchId) => {
     const targetPosition = positions.get(targetMatchId);
-    if (!targetPosition || isDoubleByeMatch(matchesByKey.get(targetMatchId))) return;
+    if (!targetPosition || isTournamentDoubleByeMatch(matchesByKey.get(targetMatchId))) return;
 
     const sourcePositions = sourceMatchIds
       .map((sourceMatchId) => {
-        if (isDoubleByeMatch(matchesByKey.get(sourceMatchId))) return null;
+        if (isTournamentDoubleByeMatch(matchesByKey.get(sourceMatchId))) return null;
         const position = positions.get(sourceMatchId);
         return position
           ? {

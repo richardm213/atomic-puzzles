@@ -1,0 +1,67 @@
+.matchHistoryTableWrap {
+  max-width: 100%;
+  margin-top: 0;
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface-soft);
+  -webkit-overflow-scrolling: touch;
+}
+
+.matchHistoryTable {
+  width: 100%;
+  min-width: 680px;
+  table-layout: fixed;
+  border-collapse: collapse;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.matchHistoryTable thead {
+  background: var(--color-table-head);
+}
+
+.matchHistoryTable th {
+  color: var(--color-subtle);
+  font-size: 11px;
+  line-height: 1.2;
+  text-align: left;
+}
+
+.matchHistoryTable th,
+.matchHistoryTable td {
+  padding: 11px 8px;
+  border-bottom-color: var(--color-border);
+  vertical-align: middle;
+}
+
+.matchHistoryTable th:last-child,
+.matchHistoryTable td:last-child {
+  white-space: nowrap;
+}
+
+.matchHistoryTable th:nth-child(4),
+.matchHistoryTable .scoreCell {
+  text-align: center;
+}
+
+.matchHistoryTable .scoreCell {
+  min-width: 0;
+}
+
+.matchHistoryTable .expandableMatchRow:hover,
+.matchHistoryTable .expandableMatchRow:focus-visible {
+  background: var(--color-accent-soft-bg);
+  outline: none;
+}
+
+.matchHistoryTable .matchDetailsRow > td {
+  width: auto;
+}
+
+.matchHistoryTable tbody tr:last-child td {
+  border-bottom: 0;
+}

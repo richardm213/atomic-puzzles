@@ -1,5 +1,4 @@
 import { ApiError, apiRequest, postApi } from "../lib/api/postApi";
-import { appAssetPath } from "./appAssetPath";
 
 export type AtomicDbTurn = "white" | "black";
 export type AtomicDbOutcome = "WHITE_WIN" | "BLACK_WIN" | "DRAW" | "UNKNOWN";
@@ -155,27 +154,9 @@ export const parseAtomicDbResponse = (value: unknown): AtomicDbPosition => {
   };
 };
 
-export const buildAtomicDbUrl = (fen: string): string => {
-  const params = new URLSearchParams({ fen });
-  return `${appAssetPath("/api/atomicdb-analysis")}?${params.toString()}`;
-};
-
 const atomicDbRequestPath = (fen: string): string => {
   const params = new URLSearchParams({ fen });
   return `/api/atomicdb-analysis?${params.toString()}`;
-};
-
-export const buildAtomicDbLinesUrl = (
-  fen: string,
-  rootMoves: string[],
-  plyCount: number,
-): string => {
-  const params = new URLSearchParams({
-    fen,
-    line_moves: rootMoves.join(","),
-    plies: String(plyCount),
-  });
-  return `${appAssetPath("/api/atomicdb-analysis")}?${params.toString()}`;
 };
 
 const atomicDbLinesRequestPath = (fen: string, rootMoves: string[], plyCount: number): string => {

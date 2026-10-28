@@ -9,10 +9,10 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
+import type { VoteValue } from "../../../shared/domain/voting";
 import { useAuth } from "../../context/AuthContext";
 import {
   communityDiscussionQueryOptions,
@@ -27,7 +27,9 @@ import {
   savePuzzleVote,
 } from "../../lib/community/puzzleCommunity";
 import type { UsernameSearchSuggestion } from "../../lib/users/usernameSearch";
+import { getErrorMessage } from "../../utils/errors";
 import { formatLocalDateTime } from "../../utils/formatters";
+import { PlayerLink } from "../PlayerLink/PlayerLink";
 
 const MENTION_SEARCH_DELAY_MS = 180;
 const mentionPattern = /(^|[^a-z0-9_-])@([a-z0-9_-]+)/gi;
@@ -37,6 +39,8 @@ type ActiveMention = {
   end: number;
   query: string;
 };
+
+type CommentSort = "recent" | "top";
 
 const mentionAtCaret = (value: string, caret: number): ActiveMention | null => {
   const prefix = value.slice(0, caret);
@@ -60,14 +64,13 @@ const CommentBody = ({ body }: { body: string }) => {
     if (!username) continue;
     parts.push(body.slice(lastIndex, index), leadingSpace);
     parts.push(
-      <Link
+      <PlayerLink
         className="commentMention"
         key={`${index}-${username}`}
-        to="/@/$username"
-        params={{ username: username.toLowerCase() }}
+        username={username.toLowerCase()}
       >
         @{username}
-      </Link>,
+      </PlayerLink>,
     );
     lastIndex = index + match[0].length;
   }
@@ -107,6 +110,9 @@ export const CommunityDiscussion = ({ target, voteTargetId }: CommunityDiscussio
   const [activeMentionIndex, setActiveMentionIndex] = useState(0);
   const [replyingTo, setReplyingTo] = useState<PuzzleComment | null>(null);
   const [collapsed, setCollapsed] = useState<Set<number>>(() => new Set());
+  const [commentSort, setCommentSort] = useState<CommentSort>(() =>
+    targetType === "tournament" ? "recent" : "top",
+  );
   const [actionError, setActionError] = useState("");
   const [voteTarget, setVoteTarget] = useState<HTMLElement | null>(null);
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
@@ -125,9 +131,7 @@ export const CommunityDiscussion = ({ target, voteTargetId }: CommunityDiscussio
   const community = discussionQuery.data ?? null;
   const loading = discussionQuery.isPending;
   const queryError = discussionQuery.error
-    ? discussionQuery.error instanceof Error
-      ? discussionQuery.error.message
-      : "Unable to load discussion."
+    ? getErrorMessage(discussionQuery.error, "Unable to load discussion.")
     : "";
   const error = actionError || queryError;
 
@@ -136,7 +140,7 @@ export const CommunityDiscussion = ({ target, voteTargetId }: CommunityDiscussio
   };
 
   const voteMutation = useMutation({
-    mutationFn: ({ puzzleId, vote }: { puzzleId: number; vote: -1 | 0 | 1 }) =>
+    mutationFn: ({ puzzleId, vote }: { puzzleId: number; vote: VoteValue }) =>
       savePuzzleVote(puzzleId, vote),
     onSuccess: (result) => {
       updateDiscussion(result);
@@ -154,7 +158,7 @@ export const CommunityDiscussion = ({ target, voteTargetId }: CommunityDiscussio
     },
   });
   const commentVoteMutation = useMutation({
-    mutationFn: ({ commentId, vote }: { commentId: number; vote: -1 | 0 | 1 }) =>
+    mutationFn: ({ commentId, vote }: { commentId: number; vote: VoteValue }) =>
       saveCommunityCommentVote(currentTarget, commentId, vote),
     onSuccess: (result) => {
       updateDiscussion(result);
@@ -176,6 +180,7 @@ export const CommunityDiscussion = ({ target, voteTargetId }: CommunityDiscussio
     setActiveMention(null);
     setMentionSuggestions([]);
     setActionError("");
+    setCommentSort(targetType === "tournament" ? "recent" : "top");
   }, [targetContext, targetId, targetType]);
 
   useEffect(() => {
@@ -236,16 +241,20 @@ export const CommunityDiscussion = ({ target, voteTargetId }: CommunityDiscussio
       children.set(comment.parent_id, current);
     }
     for (const comments of children.values()) {
-      comments.sort(
-        (left, right) =>
-          right.upvotes - left.upvotes ||
+      comments.sort((left, right) => {
+        const dateDifference =
+          new Date(right.created_at).getTime() - new Date(left.created_at).getTime();
+        if (commentSort === "recent") return dateDifference || right.id - left.id;
+        return (
           right.score - left.score ||
-          new Date(left.created_at).getTime() - new Date(right.created_at).getTime() ||
-          left.id - right.id,
-      );
+          right.upvotes - left.upvotes ||
+          dateDifference ||
+          right.id - left.id
+        );
+      });
     }
     return children;
-  }, [community?.comments]);
+  }, [commentSort, community?.comments]);
 
   useEffect(() => {
     if (!community || !window.location.hash.startsWith("#comment-")) return;
@@ -274,7 +283,7 @@ export const CommunityDiscussion = ({ target, voteTargetId }: CommunityDiscussio
     try {
       await voteMutation.mutateAsync({ puzzleId: Number(target.id), vote: nextVote });
     } catch (voteError) {
-      setActionError(voteError instanceof Error ? voteError.message : "Unable to save vote.");
+      setActionError(getErrorMessage(voteError, "Unable to save vote."));
     }
   };
 
@@ -288,9 +297,7 @@ export const CommunityDiscussion = ({ target, voteTargetId }: CommunityDiscussio
       setCommentBody("");
       setReplyingTo(null);
     } catch (commentError) {
-      setActionError(
-        commentError instanceof Error ? commentError.message : "Unable to post comment.",
-      );
+      setActionError(getErrorMessage(commentError, "Unable to post comment."));
     }
   };
 
@@ -303,9 +310,7 @@ export const CommunityDiscussion = ({ target, voteTargetId }: CommunityDiscussio
     try {
       await commentVoteMutation.mutateAsync({ commentId: comment.id, vote: nextVote });
     } catch (voteError) {
-      setActionError(
-        voteError instanceof Error ? voteError.message : "Unable to save comment vote.",
-      );
+      setActionError(getErrorMessage(voteError, "Unable to save comment vote."));
     } finally {
       setPendingCommentVotes((current) => {
         const next = new Set(current);
@@ -573,6 +578,24 @@ export const CommunityDiscussion = ({ target, voteTargetId }: CommunityDiscussio
       {voteTarget && puzzleVoteControls ? createPortal(puzzleVoteControls, voteTarget) : null}
       <section id={`${target.type}-community`} className="puzzleCommunity" aria-label="Comments">
         {!replyingTo ? renderCommentComposer(false) : null}
+
+        {target.type === "tournament" && data.comments.length > 0 ? (
+          <div className="puzzleCommentSort">
+            <span>Sort by</span>
+            <div role="group" aria-label="Sort comments">
+              {(["recent", "top"] as const).map((sort) => (
+                <button
+                  key={sort}
+                  type="button"
+                  aria-pressed={commentSort === sort}
+                  onClick={() => setCommentSort(sort)}
+                >
+                  {sort === "recent" ? "Recent" : "Top"}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         {error ? <p className="puzzleCommunityError">{error}</p> : null}
         {loading && !community ? <p className="puzzleCommunityEmpty">Loading discussion…</p> : null}

@@ -11,6 +11,7 @@ import {
   useMonthRanksQuery,
   useWeeklyRatingsQuery,
 } from "../../hooks/usePlayerProfileData";
+import { toggleArrayValue } from "../../utils/arrays";
 import { RatingRangeSlider } from "./RatingRangeSlider";
 
 type GraphRow = Pick<MonthRank, "monthDate" | "monthKey" | "mode" | "rating">;
@@ -266,11 +267,7 @@ export const RatingChart = ({
               className={`ratingSeries ${mode}`}
               aria-pressed={!hidden.includes(mode)}
               onClick={() =>
-                setHidden((current) =>
-                  current.includes(mode)
-                    ? current.filter((value) => value !== mode)
-                    : [...current, mode],
-                )
+                setHidden((current) => toggleArrayValue(current, mode))
               }
             >
               <span aria-hidden="true" />

@@ -1,6 +1,18 @@
 import { z } from "zod";
 
+import {
+  type PredictionBookLevel,
+  type PredictionOrderSide,
+  type PredictionOutcome,
+} from "../../../shared/domain/betting";
 import { postApi } from "../api/postApi";
+
+export type {
+  PredictionBookLevel,
+  PredictionOrderSide,
+  PredictionOutcome,
+} from "../../../shared/domain/betting";
+export { predictionOutcomes } from "../../../shared/domain/betting";
 
 export type PredictionMarketId = string;
 export type PredictionMarketDefinition = {
@@ -90,10 +102,6 @@ export const fetchPredictionMarketGroups = async (): Promise<PredictionMarketGro
   return predictionMarketGroupsFromRows(response.result);
 };
 
-export const predictionOutcomes = ["yes", "no"] as const;
-export type PredictionOutcome = (typeof predictionOutcomes)[number];
-export type PredictionOrderSide = "buy" | "sell";
-export type PredictionBookLevel = { priceCents: number; quantity: number };
 export const PREDICTION_TAKER_FEE_RATE = 0.02;
 
 export const predictionDisplayedOrderPrice = (
@@ -299,7 +307,12 @@ const marketStateSchema = z.object({
         id: z.string(),
         question: z.string(),
         resolution_rules: z.string(),
-        resolution_source_url: z.string().url(),
+        resolution_source_url: z
+          .string()
+          .url()
+          .refine((value) => ["http:", "https:"].includes(new URL(value).protocol), {
+            message: "Resolution source must use HTTP or HTTPS.",
+          }),
         closes_at: z.string(),
         status: z.enum(["open", "closed", "resolved", "refunded"]),
         outcome: z.enum(["yes", "no"]).nullable(),
@@ -396,21 +409,6 @@ const orderMutationSchema = z.object({
 });
 
 export type PredictionOrderMutationResult = z.infer<typeof orderMutationSchema>["result"];
-
-export const fetchPredictionMarket = async (
-  marketId: PredictionMarketId,
-): Promise<PredictionMarketState> => {
-  const response = await postApi(
-    "/api/betting",
-    { action: "exchangeMarket", marketId },
-    {
-      schema: marketStateSchema,
-      errorMessage: "Unable to load this market.",
-      invalidMessage: "The market returned invalid order book data.",
-    },
-  );
-  return response.result;
-};
 
 export const placePredictionOrder = async ({
   marketId,

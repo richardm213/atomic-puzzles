@@ -72,7 +72,7 @@ export const PuzzleMotifsPage = () => {
           </label>
         </header>
 
-        <main className="motifsContent">
+        <div className="motifsContent">
           <div className="motifsResultsHeading" aria-live="polite">
             <p>
               {normalizedQuery ? "Search results" : "All motifs"}
@@ -149,7 +149,7 @@ export const PuzzleMotifsPage = () => {
               </button>
             </div>
           )}
-        </main>
+        </div>
       </div>
     </div>
   );

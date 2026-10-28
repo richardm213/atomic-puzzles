@@ -5,16 +5,13 @@ import {
   isValidAtomicDbFen,
   trimAtomicDbPosition,
 } from "../lib/atomicDb";
-import { defineFunction } from "../platform/defineFunction";
+import { requireSameOrigin } from "../platform/authentication";
+import { defineFunction, type FunctionEvent } from "../platform/defineFunction";
 import { jsonResponse } from "../platform/response";
 
-type Event = {
-  httpMethod?: string;
-  body?: string | null;
-  queryStringParameters?: Record<string, string | undefined> | null;
-};
-
 const MAX_BATCH_POSITIONS = 50;
+const MAX_BATCH_CONCURRENCY = 6;
+const MAX_BATCH_BODY_BYTES = 16 * 1024;
 const MAX_LINES = 5;
 const MAX_PLIES = 5;
 
@@ -25,6 +22,7 @@ const json = (statusCode: number, body: unknown, cache = false) => ({
 });
 
 const parseBatchFens = (bodyText: string | null | undefined): string[] | null => {
+  if (new TextEncoder().encode(bodyText ?? "").byteLength > MAX_BATCH_BODY_BYTES) return null;
   let body: unknown;
   try {
     body = JSON.parse(bodyText ?? "");
@@ -43,8 +41,28 @@ const parseBatchFens = (bodyText: string | null | undefined): string[] | null =>
   return [...new Set(values.map((value) => String(value).trim()))];
 };
 
-const atomicDbAnalysisRoute = async (event: Event) => {
+const mapWithConcurrency = async <Value, Result>(
+  values: Value[],
+  concurrency: number,
+  iteratee: (value: Value) => Promise<Result>,
+): Promise<Result[]> => {
+  const results = new Array<Result>(values.length);
+  let nextIndex = 0;
+  const worker = async (): Promise<void> => {
+    while (nextIndex < values.length) {
+      const index = nextIndex++;
+      results[index] = await iteratee(values[index]!);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(concurrency, values.length) }, () => worker()));
+  return results;
+};
+
+const atomicDbAnalysisRoute = async (event: FunctionEvent) => {
   const method = event.httpMethod ?? "GET";
+  if (method === "POST") {
+    requireSameOrigin(event.headers, "Cross-site AtomicDB requests are not allowed.");
+  }
 
   const fen = event.queryStringParameters?.fen?.trim() ?? "";
   const batchFens = method === "POST" ? parseBatchFens(event.body) : null;
@@ -64,11 +82,13 @@ const atomicDbAnalysisRoute = async (event: Event) => {
 
   try {
     if (batchFens) {
-      const entries = await Promise.all(
-        batchFens.map(async (positionFen) => {
+      const entries = await mapWithConcurrency(
+        batchFens,
+        MAX_BATCH_CONCURRENCY,
+        async (positionFen) => {
           const position = await queryPosition(positionFen);
           return [positionFen, position ? trimAtomicDbPosition(position) : null] as const;
-        }),
+        },
       );
       return json(200, { positions: Object.fromEntries(entries) });
     }
@@ -138,4 +158,34 @@ const atomicDbAnalysisRoute = async (event: Event) => {
 export const handler = defineFunction(atomicDbAnalysisRoute, {
   methods: ["GET", "POST"],
   fallbackMessage: "AtomicDB analysis is unavailable.",
+  rateLimit: {
+    buckets: [
+      { capacity: 20, refillPerSecond: 2 },
+      { capacity: 300, refillPerSecond: 0.5 },
+    ],
+    cost: (event) => {
+      if (event.httpMethod === "POST") {
+        try {
+          const fens = (JSON.parse(event.body ?? "") as { fens?: unknown }).fens;
+          return Array.isArray(fens) ? 1 + Math.ceil(fens.length / 5) : 1;
+        } catch {
+          return 1;
+        }
+      }
+      const lines = event.queryStringParameters?.line_moves?.split(",").filter(Boolean).length ?? 0;
+      return Math.max(1, lines);
+    },
+    message: "Too many AtomicDB requests. Please wait and try again.",
+  },
 });
+
+// Netlify's edge limiter is distributed across function instances. The
+// application limiter above responds immediately and adds cost weighting.
+export const config = {
+  path: "/api/atomicdb-analysis",
+  rateLimit: {
+    windowLimit: 60,
+    windowSize: 60,
+    aggregateBy: ["ip", "domain"],
+  },
+} as const;

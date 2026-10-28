@@ -1,9 +1,14 @@
 import { z } from "zod";
 
+import {
+  SHOP_ITEM_KEYS,
+  SHOP_REDEMPTION_STATUSES,
+  type ShopItemKey,
+  type ShopRedemptionStatus,
+} from "../../../shared/domain/coins";
 import { postApi } from "../api/postApi";
-import type { ShopItemKey } from "./coins";
 
-export type ShopRedemptionStatus = "pending" | "fulfilled" | "cancelled";
+export type { ShopRedemptionStatus } from "../../../shared/domain/coins";
 
 export type ShopRedemption = {
   id: number;
@@ -17,15 +22,7 @@ export type ShopRedemption = {
   requestDetails: Record<string, unknown>;
 };
 
-const itemKeySchema = z.enum([
-  "username_change",
-  "discord_nitro_month",
-  "discord_nitro_year",
-  "flowers_500",
-  "lichess_patron_month",
-  "next_prize_tournament_format",
-  "atomicdb_analysis_12h",
-]);
+const itemKeySchema = z.enum(SHOP_ITEM_KEYS);
 
 const redemptionRowSchema = z
   .object({
@@ -33,7 +30,7 @@ const redemptionRowSchema = z
     username: z.string(),
     item_key: itemKeySchema,
     cost: z.number(),
-    status: z.enum(["pending", "fulfilled", "cancelled"]),
+    status: z.enum(SHOP_REDEMPTION_STATUSES),
     created_at: z.string(),
     fulfilled_at: z.string().nullable(),
     fulfilled_by: z.string().nullable(),

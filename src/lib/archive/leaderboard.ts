@@ -1,3 +1,4 @@
+import { formatCalendarMonth } from "../../utils/formatters";
 import { normalizeUsername } from "../../utils/playerNames";
 import { cachedRequest } from "../../utils/requestCache";
 import { appendArchiveParam, fetchArchiveJson } from "./client";
@@ -28,16 +29,8 @@ const MONTH_INDEX_BY_NAME: Record<string, number> = {
   Dec: 11,
 };
 
-export const monthKeyFromMonthValue = (monthValue: string | null | undefined): string => {
-  if (!monthValue) return "";
-  const monthDate = new Date(`${String(monthValue).slice(0, 10)}T00:00:00Z`);
-  if (Number.isNaN(monthDate.getTime())) return "";
-  return monthDate.toLocaleString("en-US", {
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-};
+export const monthKeyFromMonthValue = (monthValue: string | null | undefined): string =>
+  formatCalendarMonth(monthValue, "short");
 
 export const monthDateFromMonthKey = (monthKey: string | null | undefined): Date | null => {
   const [monthName, yearValue] = String(monthKey ?? "")

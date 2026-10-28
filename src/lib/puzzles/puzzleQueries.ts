@@ -3,7 +3,6 @@ import { queryOptions } from "@tanstack/react-query";
 import { fetchPrimaryPlayerNicknames } from "../supabase/playerNicknames";
 import { fetchPuzzleProgressRowsForUsername } from "../supabase/puzzleProgress";
 import {
-  fetchAllPuzzleUserRatings,
   fetchPuzzleLeaderboard,
   fetchPuzzleRankingTrophies,
   fetchPuzzleRatingEventsForUsername,
@@ -43,13 +42,6 @@ export const puzzleUserRatingQueryOptions = (username: string) =>
   queryOptions({
     queryKey: [...puzzleQueryKeys.userRating, username] as const,
     queryFn: () => fetchPuzzleUserRating(username),
-    staleTime: 30_000,
-  });
-
-export const puzzleUserRatingsQueryOptions = () =>
-  queryOptions({
-    queryKey: puzzleQueryKeys.userRating,
-    queryFn: fetchAllPuzzleUserRatings,
     staleTime: 30_000,
   });
 

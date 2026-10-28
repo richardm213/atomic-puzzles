@@ -1,7 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import type { VoteValue } from "../../../shared/domain/voting";
 import { getArchiveClient } from "../../archive/client";
 import { HttpError } from "../../platform/errors";
+import { requireSupabaseRows } from "../../platform/supabase";
 import type {
   CommunityCommentVoteRecord,
   CommunityPuzzleVoteRecord,
@@ -13,7 +15,7 @@ import type {
 } from "./model";
 
 export const getPuzzleCommentParticipantRecipients = (
-  priorCommenters: Array<{ username?: string | null }>,
+  priorCommenters: CommunityUsernameRecord[],
   excludedUsernames: Array<string | null | undefined>,
 ): string[] => {
   const excluded = new Set(
@@ -74,8 +76,8 @@ export const buildPuzzleCommentNotificationRecipients = ({
   puzzleAuthor?: string | null;
   parentAuthor?: string | null;
   isReply?: boolean;
-  attemptedUsers: Array<{ username?: string | null }>;
-  priorCommenters: Array<{ username?: string | null }>;
+  attemptedUsers: CommunityUsernameRecord[];
+  priorCommenters: CommunityUsernameRecord[];
   excludedUsernames?: string[];
 }): PuzzleCommentNotificationRecipient[] => {
   const recipients = new Map<string, PuzzleCommentNotificationRecipient["notificationType"]>();
@@ -187,8 +189,7 @@ export class CommunityRepository {
       )
       .eq("comment.username", username)
       .range(from, from + pageSize - 1);
-    if (result.error) throw new Error(`Unable to load comment karma: ${result.error.message}`);
-    return result.data ?? [];
+    return requireSupabaseRows(result, "Unable to load comment karma");
   }
 
   async listPuzzleVoteCounts(from: number, pageSize: number) {
@@ -198,8 +199,7 @@ export class CommunityRepository {
       .or("upvotes.gt.0,downvotes.gt.0")
       .order("puzzle_id", { ascending: true })
       .range(from, from + pageSize - 1);
-    if (result.error) throw new Error(`Unable to load puzzle rankings: ${result.error.message}`);
-    return result.data ?? [];
+    return requireSupabaseRows(result, "Unable to load puzzle rankings");
   }
 
   async listPuzzleAttempts(from: number, pageSize: number): Promise<PuzzleAttemptRecord[]> {
@@ -209,8 +209,7 @@ export class CommunityRepository {
       .order("username", { ascending: true })
       .order("puzzle_id", { ascending: true })
       .range(from, from + pageSize - 1);
-    if (result.error) throw new Error(`Unable to load puzzle attempts: ${result.error.message}`);
-    return result.data ?? [];
+    return requireSupabaseRows(result, "Unable to load puzzle attempts");
   }
 
   async listCommunityUsernames(from: number, pageSize: number): Promise<CommunityUsernameRecord[]> {
@@ -219,8 +218,7 @@ export class CommunityRepository {
       .select("username")
       .order("username", { ascending: true })
       .range(from, from + pageSize - 1);
-    if (result.error) throw new Error(`Unable to load community users: ${result.error.message}`);
-    return result.data ?? [];
+    return requireSupabaseRows(result, "Unable to load community users");
   }
 
   async listAllPuzzleVotes(from: number, pageSize: number): Promise<CommunityPuzzleVoteRecord[]> {
@@ -230,8 +228,7 @@ export class CommunityRepository {
       .order("username", { ascending: true })
       .order("puzzle_id", { ascending: true })
       .range(from, from + pageSize - 1);
-    if (result.error) throw new Error(`Unable to load puzzle votes: ${result.error.message}`);
-    return result.data ?? [];
+    return requireSupabaseRows(result, "Unable to load puzzle votes");
   }
 
   async listCommunityCommentAuthors(
@@ -243,8 +240,7 @@ export class CommunityRepository {
       .select("username")
       .order("id", { ascending: true })
       .range(from, from + pageSize - 1);
-    if (result.error) throw new Error(`Unable to load comment totals: ${result.error.message}`);
-    return result.data ?? [];
+    return requireSupabaseRows(result, "Unable to load comment totals");
   }
 
   async listAllCommunityCommentVotes(
@@ -259,8 +255,7 @@ export class CommunityRepository {
       .order("username", { ascending: true })
       .order("comment_id", { ascending: true })
       .range(from, from + pageSize - 1);
-    if (result.error) throw new Error(`Unable to load comment karma: ${result.error.message}`);
-    return result.data ?? [];
+    return requireSupabaseRows(result, "Unable to load comment karma");
   }
 
   async listHistoryComments(
@@ -277,8 +272,7 @@ export class CommunityRepository {
     if (profileUsername) query = query.eq("username", profileUsername);
     if (targetFilter) query = query.eq("target_type", targetFilter);
     const result = await query.range(from, from + pageSize - 1);
-    if (result.error) throw new Error(`Unable to load comment history: ${result.error.message}`);
-    return (result.data ?? []).map((row) => ({
+    return requireSupabaseRows(result, "Unable to load comment history").map((row) => ({
       id: row.id,
       target_type: row.target_type as CommunityTarget["type"],
       target_id: String(row.target_id),
@@ -295,8 +289,7 @@ export class CommunityRepository {
       .from("community_comment_vote_counts")
       .select("comment_id, upvotes, score")
       .in("comment_id", commentIds);
-    if (result.error) throw new Error(`Unable to load comment votes: ${result.error.message}`);
-    return result.data ?? [];
+    return requireSupabaseRows(result, "Unable to load comment votes");
   }
 
   async listAttemptedPuzzles(username: string | null, puzzleIds: number[]) {
@@ -306,10 +299,7 @@ export class CommunityRepository {
       .select("puzzle_id")
       .eq("username", username)
       .in("puzzle_id", puzzleIds.map(String));
-    if (result.error) {
-      throw new Error(`Unable to check attempted puzzles: ${result.error.message}`);
-    }
-    return result.data ?? [];
+    return requireSupabaseRows(result, "Unable to check attempted puzzles");
   }
 
   async loadDiscussionRows(target: CommunityTarget, username: string | null) {
@@ -394,7 +384,7 @@ export class CommunityRepository {
     if (result.error) throw new Error(`Unable to verify account: ${result.error.message}`);
   }
 
-  async savePuzzleVote(puzzleId: number, username: string, vote: -1 | 0 | 1): Promise<void> {
+  async savePuzzleVote(puzzleId: number, username: string, vote: VoteValue): Promise<void> {
     const result =
       vote === 0
         ? await this.supabase
@@ -430,7 +420,7 @@ export class CommunityRepository {
     return Boolean(result.data);
   }
 
-  async saveCommentVote(commentId: number, username: string, vote: -1 | 0 | 1): Promise<void> {
+  async saveCommentVote(commentId: number, username: string, vote: VoteValue): Promise<void> {
     const result =
       vote === 0
         ? await this.supabase

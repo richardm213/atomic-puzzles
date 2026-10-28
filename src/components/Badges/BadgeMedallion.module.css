@@ -104,7 +104,7 @@
 
 .badgeMeta span:first-child {
   color: var(--badge-tier-color);
-  font-weight: 800;
+  font-weight: 650;
 }
 
 .badgeMeta span + span {

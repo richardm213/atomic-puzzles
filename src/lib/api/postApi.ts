@@ -19,6 +19,9 @@ export type ApiRequestOptions<T> = {
 };
 
 type PostApiOptions<T> = Omit<ApiRequestOptions<T>, "method" | "body">;
+type ApiEndpointDefaults = Pick<ApiRequestOptions<unknown>, "errorMessage" | "invalidMessage">;
+type ApiEndpointRequestOptions<T> = Omit<PostApiOptions<T>, "errorMessage" | "invalidMessage"> &
+  Partial<ApiEndpointDefaults>;
 
 type ApiErrorBody = {
   error?: unknown;
@@ -152,3 +155,11 @@ export const postApi = <T = unknown>(
   body: Record<string, unknown>,
   options: PostApiOptions<T>,
 ): Promise<T> => apiRequest(path, { ...options, method: "POST", body });
+
+export const createPostApi =
+  (path: string, defaults: ApiEndpointDefaults) =>
+  <T = unknown>(
+    body: Record<string, unknown>,
+    options: ApiEndpointRequestOptions<T> = {},
+  ): Promise<T> =>
+    postApi<T>(path, body, { ...defaults, ...options });

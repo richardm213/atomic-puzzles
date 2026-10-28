@@ -31,7 +31,7 @@
   border-radius: 999px;
   color: var(--color-muted);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 650;
   text-transform: capitalize;
 }
 
@@ -56,7 +56,7 @@
   color: var(--color-muted);
   font: inherit;
   font-size: 13px;
-  font-weight: 750;
+  font-weight: 650;
   text-transform: capitalize;
   white-space: nowrap;
   cursor: pointer;
@@ -163,7 +163,7 @@
 
 .shopRedemptionDetails dt {
   color: var(--color-muted);
-  font-weight: 800;
+  font-weight: 650;
 }
 
 .shopRedemptionDetails dd {
@@ -199,7 +199,7 @@
   color: var(--color-text);
   font: inherit;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 650;
   cursor: pointer;
 }
 

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { loadAllPages } from "../../../../shared/lib/pagination";
 import { HttpError } from "../../../platform/errors";
 import {
   CUSTOM_PUZZLE_SET_SELECT,
@@ -17,15 +18,11 @@ const loadAll = async <T>(
     to: number,
   ) => PromiseLike<{ data: unknown; error: { message: string } | null }>,
 ): Promise<T[]> => {
-  const rows: T[] = [];
-  const pageSize = 1_000;
-  for (let from = 0; ; from += pageSize) {
+  return loadAllPages(async (from, pageSize) => {
     const { data, error } = await loadPage(from, from + pageSize - 1);
     if (error) throw new Error(error.message);
-    const page = Array.isArray(data) ? (data as T[]) : [];
-    rows.push(...page);
-    if (page.length < pageSize) return rows;
-  }
+    return Array.isArray(data) ? (data as T[]) : [];
+  });
 };
 
 export class CustomPuzzleSetRepository {
@@ -41,7 +38,7 @@ export class CustomPuzzleSetRepository {
       .eq("username", this.username)
       .order("updated_at", { ascending: false });
     if (result.error) throw new Error(result.error.message);
-    return (result.data ?? []);
+    return result.data ?? [];
   }
 
   async loadOwnedSet(id: string): Promise<CustomPuzzleSetRow> {

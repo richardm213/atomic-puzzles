@@ -9,6 +9,7 @@ import {
   getStoredPostLoginRedirect,
   LichessAuthError,
 } from "../../lib/auth/lichessAuth";
+import { getErrorMessage } from "../../utils/errors";
 
 const resolveFallbackPath = () => {
   const baseUrl = import.meta.env.BASE_URL || "/";
@@ -49,9 +50,7 @@ export const AuthCallbackPage = () => {
       setErrorCode(authError?.code ?? null);
       setRetryWaitSeconds(Math.ceil((authError?.retryAfterMs ?? 0) / 1000));
       setMessage(
-        error instanceof Error
-          ? error.message
-          : "Lichess login could not be completed. Start a new login.",
+        getErrorMessage(error, "Lichess login could not be completed. Start a new login."),
       );
 
       // Authorization codes are sensitive and single-use. Keep a private copy

@@ -3,6 +3,7 @@ import { useMemo } from "react";
 
 import type { RankingsByMode } from "../lib/rankings/rankingsByMonth";
 import { rankingsForMonthQueryOptions } from "../lib/rankings/rankingsQueries";
+import { getErrorMessage } from "../utils/errors";
 
 export const useRankingsByMonth = (
   selectedMonth: string | null | undefined,
@@ -25,9 +26,7 @@ export const useRankingsByMonth = (
   }, [normalizedMonth, rankingsQuery.data]);
 
   const error = rankingsQuery.error
-    ? rankingsQuery.error instanceof Error
-      ? rankingsQuery.error.message
-      : "Failed to load leaderboard data"
+    ? getErrorMessage(rankingsQuery.error, "Failed to load leaderboard data")
     : "";
 
   return {

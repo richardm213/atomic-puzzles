@@ -1,9 +1,11 @@
+import { isOneOf } from "../../utils/arrays";
+
 export const profileHistoryTabOptions = ["matches", "ranks", "opponents", "comments"] as const;
 export type ProfileHistoryTab = (typeof profileHistoryTabOptions)[number];
 export type RankHistoryView = "history" | "trophies";
 
 const isProfileHistoryTab = (value: string): value is ProfileHistoryTab =>
-  (profileHistoryTabOptions as readonly string[]).includes(value);
+  isOneOf(profileHistoryTabOptions, value);
 
 export const getProfileHistoryTabFromSearch = (search: string): ProfileHistoryTab => {
   const requestedTab = new URLSearchParams(search).get("tab") ?? "";

@@ -18,12 +18,7 @@ export type SeoProps = {
 
 const absoluteUrl = (path: string): string => {
   if (typeof window === "undefined") return path;
-
-  try {
-    return new window.URL(path, window.location.origin).toString();
-  } catch {
-    return path;
-  }
+  return new window.URL(path, window.location.origin).toString();
 };
 
 const ensureMetaTag = (attributeName: string, attributeValue: string): HTMLMetaElement => {

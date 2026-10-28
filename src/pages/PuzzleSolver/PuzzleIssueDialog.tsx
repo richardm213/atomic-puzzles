@@ -3,12 +3,9 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { FormEvent, Ref } from "react";
 
 import type { PuzzleIssueCategory } from "../../lib/puzzles/puzzleIssues";
+import type { AsyncActionStatus } from "../../types/async";
 
-export type PuzzleIssueStatus =
-  | { state: "idle" }
-  | { state: "submitting" }
-  | { state: "success" }
-  | { state: "error"; message: string };
+export type PuzzleIssueStatus = AsyncActionStatus<"submitting", "success">;
 
 type PuzzleIssueDialogProps = {
   dialogRef: Ref<HTMLDialogElement>;

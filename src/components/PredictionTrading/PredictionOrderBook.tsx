@@ -6,16 +6,15 @@ import type { CSSProperties } from "react";
 
 import { formatCoinBalance } from "../../lib/coins/coinDisplay";
 import type {
+  PredictionBookLevel,
   PredictionOrder,
   PredictionOutcome,
 } from "../../lib/predictionMarkets/predictionMarkets";
 import { predictionOrderAppearsAtLevel } from "../../lib/predictionMarkets/predictionMarkets";
 
-type BookLevel = { priceCents: number; quantity: number };
-
 type PredictionOrderBookProps = {
-  asks: BookLevel[];
-  bids: BookLevel[];
+  asks: PredictionBookLevel[];
+  bids: PredictionBookLevel[];
   density?: "compact" | "comfortable";
   headingLevel?: 2 | 3;
   maxRows?: number;
@@ -48,7 +47,7 @@ export const PredictionOrderBook = ({
   const visibleAsks = maxRows === undefined ? asks : asks.slice(0, maxRows);
   const visibleBids = maxRows === undefined ? bids : bids.slice(0, maxRows);
 
-  const renderLevels = (levels: BookLevel[], side: "ask" | "bid") => {
+  const renderLevels = (levels: PredictionBookLevel[], side: "ask" | "bid") => {
     if (!levels.length) return <p className="predictionSharedBookEmpty">No {side}s</p>;
     const totalQuantity = levels.reduce((total, level) => total + level.quantity, 0);
 

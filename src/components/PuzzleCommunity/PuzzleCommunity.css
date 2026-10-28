@@ -77,7 +77,7 @@
 .puzzleVoteControls strong {
   color: currentColor;
   font-size: 12px;
-  font-weight: 850;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
 
@@ -183,7 +183,7 @@
   background: color-mix(in srgb, var(--color-primary) 22%, var(--color-panel-strong));
   color: var(--color-heading);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 650;
 }
 
 .commentComposerActions button:disabled {
@@ -194,6 +194,53 @@
 .commentLoginButton {
   justify-self: start;
   min-height: 44px;
+}
+
+.puzzleCommentSort {
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  color: var(--color-subtle);
+  font-size: 12px;
+}
+
+.puzzleCommentSort > div {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface-soft);
+}
+
+.puzzleCommentSort button {
+  min-height: 28px;
+  padding: 4px 9px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-muted);
+  font: inherit;
+  font-weight: 650;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease;
+}
+
+.puzzleCommentSort button:hover {
+  color: var(--color-heading);
+}
+
+.puzzleCommentSort button[aria-pressed="true"] {
+  background: var(--color-panel-strong);
+  color: var(--color-heading);
+  box-shadow: var(--shadow-sm);
+}
+
+.puzzleCommentSort button:focus-visible {
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 1px;
 }
 
 .puzzleCommentList,
@@ -371,7 +418,7 @@
 
 .commentMention {
   color: var(--color-primary-soft);
-  font-weight: 750;
+  font-weight: 650;
   text-decoration: none;
 }
 
@@ -387,7 +434,7 @@
   background: transparent;
   color: var(--color-muted);
   font-size: 11px;
-  font-weight: 750;
+  font-weight: 650;
 }
 
 .commentReplyButton {

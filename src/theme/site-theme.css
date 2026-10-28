@@ -1,5 +1,6 @@
 :root {
   --control-color-scheme: dark;
+  color-scheme: var(--control-color-scheme);
   /* Shared spacing scale. Prefer semantic component tokens below when one exists. */
   --space-1: 4px;
   --space-2: 8px;

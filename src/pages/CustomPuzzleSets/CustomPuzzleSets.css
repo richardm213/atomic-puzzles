@@ -71,7 +71,7 @@
   color: var(--color-primary-soft);
   font: inherit;
   font-size: 13px;
-  font-weight: 750;
+  font-weight: 650;
   cursor: help;
 }
 .customSetsHelp > button {
@@ -165,7 +165,7 @@
   padding: 0 6px;
   color: var(--color-muted);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 650;
 }
 .customSetsResultFilter label {
   position: relative;
@@ -187,7 +187,7 @@
   border-radius: var(--radius-sm);
   color: var(--color-muted);
   font-size: 13px;
-  font-weight: 750;
+  font-weight: 650;
   transition:
     background-color 160ms ease,
     border-color 160ms ease,
@@ -209,7 +209,7 @@
   padding: 0 6px;
   color: var(--color-muted);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 650;
 }
 .customSetsAuthors > p {
   margin: 0 0 var(--space-2);
@@ -258,14 +258,14 @@
   color: var(--color-primary-soft);
   font: inherit;
   font-size: 12px;
-  font-weight: 750;
+  font-weight: 650;
   cursor: pointer;
 }
 .customSetsField > span,
 .customSetsBuilder .dashboardTagFilterLabel {
   color: var(--color-muted);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 650;
 }
 .customSetsField input,
 .customSetsField select,
@@ -340,7 +340,7 @@
   background: color-mix(in srgb, var(--color-primary) 13%, var(--color-panel-strong));
   color: var(--color-heading);
   font-size: 12px;
-  font-weight: 750;
+  font-weight: 650;
 }
 .customSetsBuilder .dashboardSelectedTag button {
   width: 32px;
@@ -417,7 +417,7 @@
   background: var(--color-surface-elevated-strong);
   font: inherit;
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 650;
   text-decoration: none;
   cursor: pointer;
   transition:
@@ -542,6 +542,7 @@
 }
 .customSetsDialog::backdrop {
   background: var(--color-modal-bg);
+  -webkit-backdrop-filter: blur(5px);
   backdrop-filter: blur(5px);
 }
 .customSetsDialogPanel {
@@ -613,7 +614,7 @@
   color: var(--color-text);
   font: inherit;
   font-size: 12px;
-  font-weight: 750;
+  font-weight: 650;
   text-decoration: none;
   cursor: pointer;
 }

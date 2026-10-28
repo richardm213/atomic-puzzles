@@ -2,13 +2,13 @@ import "../PuzzleSubmission/PuzzleSubmission.css";
 
 import { faCheck, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
 import { useEffect, useState } from "react";
 
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
 import {
+  createEmptyPuzzleSubmission,
   type PuzzleSubmissionValue,
   validatePuzzleSubmission,
 } from "../../lib/puzzles/puzzleSubmission";
@@ -19,6 +19,7 @@ import {
   updateQueuedPuzzle,
 } from "../../lib/supabase/puzzleQueue";
 import type { PuzzleQueueRow, PuzzleReviewQueueRow } from "../../lib/supabase/types";
+import { getErrorMessage } from "../../utils/errors";
 import { normalizeUsername } from "../../utils/playerNames";
 import { PuzzleAnalysisInstructions } from "../PuzzleSubmission/PuzzleAnalysisInstructions";
 import { PuzzleEditor } from "../PuzzleSubmission/PuzzleEditor";
@@ -29,16 +30,6 @@ const REVIEW_STEPS = [
   "Verify every solution line is correct and no lines are missing",
   "Check that decent moves that are not as good as the solution are marked with ? (for example Nf3?)",
 ];
-
-const emptyPuzzleSubmission = (): PuzzleSubmissionValue => ({
-  fen: STARTING_FEN,
-  solution: "",
-  event: "",
-  whitePlayer: "",
-  blackPlayer: "",
-  explanation: "",
-  opaStyle: false,
-});
 
 const queueRowValue = (row: PuzzleQueueRow): PuzzleSubmissionValue => ({
   fen: row.fen,
@@ -54,7 +45,7 @@ export const PuzzleReviewPage = () => {
   const { isLoading, user } = useAuth();
   const [queue, setQueue] = useState<PuzzleReviewQueueRow[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [value, setValue] = useState<PuzzleSubmissionValue>(emptyPuzzleSubmission);
+  const [value, setValue] = useState<PuzzleSubmissionValue>(createEmptyPuzzleSubmission);
   const [loadingQueue, setLoadingQueue] = useState(true);
   const [puzzleIdInput, setPuzzleIdInput] = useState("");
   const [authorInput, setAuthorInput] = useState("");
@@ -83,7 +74,7 @@ export const PuzzleReviewPage = () => {
       })
       .catch((loadError) => {
         if (!cancelled) {
-          setError(loadError instanceof Error ? loadError.message : "Unable to load puzzle queue.");
+          setError(getErrorMessage(loadError, "Unable to load puzzle queue."));
         }
       })
       .finally(() => {
@@ -151,7 +142,7 @@ export const PuzzleReviewPage = () => {
       }
       setMessage(`Approved and added as puzzle #${puzzleId}.`);
     } catch (approveError) {
-      setError(approveError instanceof Error ? approveError.message : "Unable to approve puzzle.");
+      setError(getErrorMessage(approveError, "Unable to approve puzzle."));
     } finally {
       setSaving(false);
     }
@@ -180,7 +171,7 @@ export const PuzzleReviewPage = () => {
       }
       setMessage("Puzzle rejected and removed from the queue.");
     } catch (rejectError) {
-      setError(rejectError instanceof Error ? rejectError.message : "Unable to reject puzzle.");
+      setError(getErrorMessage(rejectError, "Unable to reject puzzle."));
     } finally {
       setSaving(false);
     }

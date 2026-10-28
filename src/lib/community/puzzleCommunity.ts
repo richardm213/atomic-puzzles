@@ -1,3 +1,4 @@
+import type { VoteValue } from "../../../shared/domain/voting";
 import { postApi } from "../api/postApi";
 import {
   type CommunityCommentsPage,
@@ -5,6 +6,7 @@ import {
   type CommunityDiscussion,
   communityDiscussionSchema,
   type CommunityHistoryComment,
+  type CommunityTarget,
   type CommunityTargetType,
   communityUsersSchema,
   type CommunityUserStats,
@@ -21,6 +23,7 @@ export type {
   CommunityCommentsPage,
   CommunityDiscussion,
   CommunityHistoryComment,
+  CommunityTarget,
   CommunityTargetType,
   CommunityUserStats,
   PuzzleComment,
@@ -28,12 +31,6 @@ export type {
   PuzzleRankings,
   PuzzleVoteCounts,
   PuzzleVoteRankingRow,
-};
-
-export type CommunityTarget = {
-  type: CommunityTargetType;
-  id: string;
-  context?: string;
 };
 
 export type ProfileCommentSort = "recent" | "top";
@@ -67,7 +64,7 @@ export const fetchCommunityDiscussion = (target: CommunityTarget): Promise<Commu
 export const saveCommunityCommentVote = (
   target: CommunityTarget,
   commentId: number,
-  vote: -1 | 0 | 1,
+  vote: VoteValue,
 ): Promise<CommunityDiscussion> =>
   communityRequest({ action: "commentVote", ...targetRequestBody(target), commentId, vote });
 
@@ -78,7 +75,7 @@ export const postCommunityComment = (
 ): Promise<CommunityDiscussion> =>
   communityRequest({ action: "comment", ...targetRequestBody(target), body, parentId });
 
-export const savePuzzleVote = (puzzleId: number, vote: -1 | 0 | 1): Promise<PuzzleCommunity> =>
+export const savePuzzleVote = (puzzleId: number, vote: VoteValue): Promise<PuzzleCommunity> =>
   communityRequest({ action: "vote", puzzleId, vote }).then((result) => {
     const parsed = puzzleCommunitySchema.safeParse(result);
     if (!parsed.success) throw new Error("The puzzle discussion service returned incomplete data.");

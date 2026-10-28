@@ -1,6 +1,7 @@
 :root {
-  --font-sans: Inter, Arial, sans-serif;
-  --font-brand: "Arial Rounded MT Bold", "Trebuchet MS", "Avenir Next", system-ui, sans-serif;
+  --font-sans: "Inter Variable", Inter, Arial, sans-serif;
+  --font-brand: var(--font-sans);
+  --font-mono: "Roboto Mono Variable", "Roboto Mono", monospace;
   --text-sm: 12px;
   --text-body: 14px;
   --text-control: 16px;
@@ -10,6 +11,8 @@
   --link-color: var(--color-primary-soft);
   --link-hover-color: var(--color-primary-pale);
   font-family: var(--font-sans);
+  font-synthesis: none;
+  font-variant-numeric: tabular-nums;
   color: var(--color-text);
   background: var(--color-page-top);
   -webkit-text-size-adjust: 100%;
@@ -22,4 +25,9 @@ a {
 a:hover,
 a:focus-visible {
   color: var(--link-hover-color);
+}
+
+.timeControlValue {
+  letter-spacing: 0.045em;
+  font-variant-numeric: tabular-nums;
 }

@@ -1,3 +1,5 @@
+import type { PredictionBookLevel } from "../../../shared/domain/betting";
+
 export type PredictionBookOrder = {
   outcome: "yes" | "no";
   side: "buy" | "sell";
@@ -5,8 +7,6 @@ export type PredictionBookOrder = {
   remaining_quantity: number;
   status: string;
 };
-
-type PredictionBookLevel = { priceCents: number; quantity: number };
 
 export type PredictionPositionFill = {
   id: number;

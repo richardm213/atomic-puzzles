@@ -23,6 +23,8 @@ import {
 } from "../../lib/puzzles/puzzleLeaderboard";
 import { puzzleLeaderboardQueryOptions } from "../../lib/puzzles/puzzleQueries";
 import { appAssetPath } from "../../utils/appAssetPath";
+import { getErrorMessage } from "../../utils/errors";
+import { formatCalendarMonth } from "../../utils/formatters";
 
 type PuzzleLeaderboardSortKey = keyof Pick<
   PuzzleLeaderboardRow,
@@ -66,11 +68,7 @@ const puzzleLeaderboardMonthSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/)
 
 const currentUtcMonth = (): string => new Date().toISOString().slice(0, 7);
 
-const puzzleRankingMonthLabel = (month: string): string => {
-  const date = new Date(`${month}-01T00:00:00Z`);
-  if (Number.isNaN(date.getTime())) return month;
-  return date.toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
-};
+const puzzleRankingMonthLabel = (month: string): string => formatCalendarMonth(month) || month;
 
 const puzzleRankingMonthOptions = (availableMonths: string[]): string[] => {
   const currentMonth = currentUtcMonth();
@@ -130,11 +128,7 @@ const PuzzleLeaderboard = () => {
   }, [effectiveMonth, leaderboardQuery.data, selectedMonth, setSelectedMonth]);
   const loading = leaderboardQuery.isPending;
   const queryError = leaderboardQuery.error;
-  const error = queryError
-    ? queryError instanceof Error
-      ? queryError.message
-      : "Failed to load puzzle rankings."
-    : "";
+  const error = queryError ? getErrorMessage(queryError, "Failed to load puzzle rankings.") : "";
   const allRows = useMemo(
     () => buildPuzzleLeaderboardRows(leaderboardQuery.data?.rows ?? [], period),
     [leaderboardQuery.data?.rows, period],

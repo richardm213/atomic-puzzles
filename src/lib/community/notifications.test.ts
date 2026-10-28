@@ -4,6 +4,7 @@ import {
   notificationCopy,
   notificationMessage,
   rankingNotificationImage,
+  safeNotificationPath,
   type UserNotification,
 } from "./notifications";
 
@@ -20,6 +21,18 @@ const makeNotification = (
   rating_deviation: null,
   created_at: "2026-09-21T00:00:00.000Z",
   read_at: null,
+});
+
+describe("safeNotificationPath", () => {
+  it("keeps same-origin application paths and rejects external navigation", () => {
+    expect(safeNotificationPath("/tournaments/players/alice?tab=history#latest")).toBe(
+      "/tournaments/players/alice?tab=history#latest",
+    );
+    expect(safeNotificationPath("https://example.com/phishing")).toBeNull();
+    expect(safeNotificationPath("//example.com/phishing")).toBeNull();
+    expect(safeNotificationPath("/\\example.com/phishing")).toBeNull();
+    expect(safeNotificationPath("javascript:alert(1)")).toBeNull();
+  });
 });
 
 describe("notificationCopy", () => {

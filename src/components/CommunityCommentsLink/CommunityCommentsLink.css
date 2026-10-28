@@ -1,0 +1,21 @@
+.communityCommentCount {
+  min-width: 20px;
+  min-height: 20px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+  color: var(--color-primary-soft);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  line-height: 1;
+}
+
+.communityCommentsLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}

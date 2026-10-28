@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { requireSupabaseRows, requireSupabaseSuccess } from "../../platform/supabase";
+
 type NotificationWithCommentId = {
   comment_id?: number | null;
 };
@@ -65,7 +67,7 @@ export class NotificationRepository {
       .is("read_at", null);
     if (ids.length > 0) query = query.in("id", ids);
     const { error } = await query;
-    if (error) throw new Error(`Unable to mark notifications read: ${error.message}`);
+    requireSupabaseSuccess({ error }, "Unable to mark notifications read");
   }
 
   async delete(username: string, ids: number[]): Promise<void> {
@@ -74,7 +76,7 @@ export class NotificationRepository {
       .delete()
       .eq("recipient_username", username)
       .in("id", ids);
-    if (error) throw new Error(`Unable to delete notifications: ${error.message}`);
+    requireSupabaseSuccess({ error }, "Unable to delete notifications");
   }
 
   async list(username: string) {
@@ -87,8 +89,7 @@ export class NotificationRepository {
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
       .limit(100);
-    if (error) throw new Error(`Unable to load notifications: ${error.message}`);
-    const notifications = data ?? [];
+    const notifications = requireSupabaseRows({ data, error }, "Unable to load notifications");
     const commentIds = [
       ...new Set(
         notifications
@@ -104,10 +105,7 @@ export class NotificationRepository {
       .from("community_comments")
       .select("id, target_type, target_id, body, created_at")
       .in("id", commentIds);
-    if (commentsResult.error) {
-      throw new Error(`Unable to load notification comments: ${commentsResult.error.message}`);
-    }
-    const comments = commentsResult.data ?? [];
+    const comments = requireSupabaseRows(commentsResult, "Unable to load notification comments");
     const puzzleIds = [
       ...new Set(
         comments
@@ -124,9 +122,7 @@ export class NotificationRepository {
       .select("puzzle_id, first_attempt_at")
       .eq("username", username)
       .in("puzzle_id", puzzleIds);
-    if (attemptsResult.error) {
-      throw new Error(`Unable to check puzzle attempts: ${attemptsResult.error.message}`);
-    }
-    return attachAttemptedPuzzleCommentBodies(notifications, comments, attemptsResult.data ?? []);
+    const attempts = requireSupabaseRows(attemptsResult, "Unable to check puzzle attempts");
+    return attachAttemptedPuzzleCommentBodies(notifications, comments, attempts);
   }
 }

@@ -1,9 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import type {
+  PuzzleIssueCategory,
+  PuzzleIssueStatus,
+} from "../../../../shared/domain/puzzles/puzzleIssues";
 import { HttpError } from "../../../platform/errors";
-
-export type PuzzleIssueCategory = "missing_alternate_solution" | "incorrect_solution" | "other";
-export type PuzzleIssueStatus = "open" | "resolved" | "dismissed";
 
 export class PuzzleIssueRepository {
   constructor(private readonly supabase: SupabaseClient) {}

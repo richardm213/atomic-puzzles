@@ -4,6 +4,7 @@ import { z } from "zod";
 import { defineFunction } from "../platform/defineFunction";
 import { readServerEnvironment } from "../platform/environment";
 import { HttpError } from "../platform/errors";
+import { createRateLimiter } from "../platform/rateLimit";
 import { jsonResponse } from "../platform/response";
 import { parseJsonBody } from "../platform/validation";
 
@@ -23,6 +24,19 @@ afterEach(() => {
 });
 
 describe("function platform", () => {
+  it("limits bursts and refills capacity without permanently blocking a client", () => {
+    const limit = createRateLimiter({
+      buckets: [{ capacity: 2, refillPerSecond: 1 }],
+    });
+
+    expect(limit("client", 1, 1_000).allowed).toBe(true);
+    expect(limit("client", 1, 1_000).allowed).toBe(true);
+    const blocked = limit("client", 1, 1_000);
+    expect(blocked).toMatchObject({ allowed: false, retryAfterSeconds: 1 });
+    expect(blocked.headers["RateLimit-Remaining"]).toBe("0");
+    expect(limit("client", 1, 2_000).allowed).toBe(true);
+  });
+
   it("enforces configured methods and standard response headers", async () => {
     const response = await functionUnderTest({
       httpMethod: "GET",

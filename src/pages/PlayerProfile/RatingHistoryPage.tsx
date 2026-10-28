@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
 
+import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { Seo } from "../../components/Seo/Seo";
 import { RatingHistoryGraph } from "../../features/profile/RatingHistoryGraph";
 import { profileAliasQueryOptions } from "../../lib/users/aliasQueries";
@@ -20,9 +20,9 @@ export const RatingHistoryPage = ({ username }: { username: string }) => {
       <div className="panel ratingHistoryPage">
         <header className="ratingPageHeader">
           <h1>Rating history</h1>
-          <Link to="/@/$username" params={{ username: canonical }} className="ratingProfileLink">
+          <PlayerLink username={canonical} className="ratingProfileLink">
             ← {username}
-          </Link>
+          </PlayerLink>
         </header>
         {aliases.isPending ? (
           <p role="status">Loading player…</p>

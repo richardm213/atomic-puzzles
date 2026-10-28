@@ -126,13 +126,20 @@ export const renameCustomPuzzleSet = async (id: string, name: string): Promise<C
   return result.set;
 };
 
-export const resetCustomPuzzleSetProgress = async (id: string): Promise<void> => {
+const runCustomPuzzleSetAction = async (
+  action: "reset" | "delete",
+  id: string,
+  errorMessage: string,
+): Promise<void> => {
   await postApi(
     "/api/puzzle-sets",
-    { action: "reset", id },
-    { errorMessage: "Unable to reset set progress.", schema: successResponseSchema },
+    { action, id },
+    { errorMessage, schema: successResponseSchema },
   );
 };
+
+export const resetCustomPuzzleSetProgress = (id: string): Promise<void> =>
+  runCustomPuzzleSetAction("reset", id, "Unable to reset set progress.");
 
 export const refreshCustomPuzzleSet = async (
   id: string,
@@ -163,13 +170,8 @@ export const removePuzzleFromCustomSet = async (
   return result.set;
 };
 
-export const deleteCustomPuzzleSet = async (id: string): Promise<void> => {
-  await postApi(
-    "/api/puzzle-sets",
-    { action: "delete", id },
-    { errorMessage: "Unable to delete the custom puzzle set.", schema: successResponseSchema },
-  );
-};
+export const deleteCustomPuzzleSet = (id: string): Promise<void> =>
+  runCustomPuzzleSetAction("delete", id, "Unable to delete the custom puzzle set.");
 
 export const recordCustomPuzzleSetProgress = async (
   id: string,

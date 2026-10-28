@@ -1,3 +1,5 @@
+import { getBrowserStorageJson, setBrowserStorageJson } from "../../utils/browserStorage";
+
 const DASHBOARD_PUZZLE_SET_STORAGE_PREFIX = "atomic-puzzles.dashboard-puzzle-set.";
 
 export type DashboardPuzzleSet = {
@@ -26,8 +28,6 @@ export const createDashboardPuzzleSet = (
   puzzleIds: Array<string | number>,
   sourceUsername: string,
 ): DashboardPuzzleSet | null => {
-  if (typeof window === "undefined") return null;
-
   const normalizedIds = normalizePuzzleIds(puzzleIds);
   if (normalizedIds.length === 0) return null;
 
@@ -40,41 +40,27 @@ export const createDashboardPuzzleSet = (
     createdAt: new Date().toISOString(),
   };
 
-  try {
-    window.localStorage.setItem(storageKey(set.id), JSON.stringify(set));
-    return set;
-  } catch {
-    return null;
-  }
+  return setBrowserStorageJson("local", storageKey(set.id), set) ? set : null;
 };
 
 export const readDashboardPuzzleSet = (setId: string): DashboardPuzzleSet | null => {
-  if (typeof window === "undefined") return null;
+  const parsedValue = getBrowserStorageJson<unknown>("local", storageKey(setId), null);
+  if (!parsedValue || typeof parsedValue !== "object") return null;
 
-  try {
-    const rawValue = window.localStorage.getItem(storageKey(setId));
-    if (!rawValue) return null;
+  const record = parsedValue as Partial<DashboardPuzzleSet>;
+  const puzzleIds = normalizePuzzleIds(Array.isArray(record.puzzleIds) ? record.puzzleIds : []);
+  if (puzzleIds.length === 0) return null;
 
-    const parsedValue: unknown = JSON.parse(rawValue);
-    if (!parsedValue || typeof parsedValue !== "object") return null;
-
-    const record = parsedValue as Partial<DashboardPuzzleSet>;
-    const puzzleIds = normalizePuzzleIds(Array.isArray(record.puzzleIds) ? record.puzzleIds : []);
-    if (puzzleIds.length === 0) return null;
-
-    const sourceUsername = String(record.sourceUsername ?? "").trim();
-    return {
-      id: String(record.id ?? setId).trim() || setId,
-      label:
-        String(record.label ?? "").trim() ||
-        (sourceUsername ? `${sourceUsername}'s puzzle history` : "Puzzle history"),
-      puzzleIds,
-      sourceUsername,
-      createdAt: String(record.createdAt ?? ""),
-    };
-  } catch {
-    return null;
-  }
+  const sourceUsername = String(record.sourceUsername ?? "").trim();
+  return {
+    id: String(record.id ?? setId).trim() || setId,
+    label:
+      String(record.label ?? "").trim() ||
+      (sourceUsername ? `${sourceUsername}'s puzzle history` : "Puzzle history"),
+    puzzleIds,
+    sourceUsername,
+    createdAt: String(record.createdAt ?? ""),
+  };
 };
 
 export const getOrderedPuzzleIndexesForDashboardSet = <T extends { puzzleId: number }>(

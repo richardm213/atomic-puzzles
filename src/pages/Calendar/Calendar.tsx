@@ -101,7 +101,6 @@ const ArenaBlock = ({
         top: `${displayStartMinute * (HOUR_HEIGHT / 60)}px`,
         height: `${Math.max(displayDurationMinutes * (HOUR_HEIGHT / 60), 30)}px`,
       }}
-      aria-label={`${arena.name}, ${time}, ${arena.timeControl}, ${durationLabel(arena.durationMinutes)}. Open Lichess arenas in a new tab`}
     >
       <span className="calendarArenaIcon" aria-hidden="true">
         {arena.frequency === "shield" ? (
@@ -116,7 +115,7 @@ const ArenaBlock = ({
           {time} · {durationLabel(arena.durationMinutes)}
         </span>
       </span>
-      <span className="calendarArenaControl">{arena.timeControl}</span>
+      <span className="calendarArenaControl timeControlValue">{arena.timeControl}</span>
       {special && (
         <FontAwesomeIcon
           className="calendarArenaExternal"
@@ -124,6 +123,7 @@ const ArenaBlock = ({
           aria-hidden="true"
         />
       )}
+      <span className="visuallyHidden">Open Lichess arenas in a new tab</span>
     </a>
   );
 };

@@ -119,7 +119,7 @@
 .openingMove {
   min-width: 0;
   color: var(--color-heading);
-  font-weight: 750;
+  font-weight: 650;
   text-decoration: none;
 }
 
@@ -130,7 +130,7 @@
 }
 
 .openingEval {
-  font-weight: 800;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
   text-align: right;
 }

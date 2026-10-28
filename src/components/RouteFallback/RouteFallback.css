@@ -1,0 +1,91 @@
+.routeFallback {
+  display: grid;
+  width: min(560px, 100%);
+  min-height: var(--page-shell-min-height);
+  min-height: var(--page-shell-min-height-dynamic);
+  margin-inline: auto;
+  padding: var(--page-shell-padding);
+  place-items: center;
+}
+
+.routeFallbackPanel {
+  width: 100%;
+  padding: var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-panel);
+  box-shadow: var(--shadow-panel);
+  text-align: center;
+}
+
+.routeFallbackPanel h1 {
+  margin: 0;
+  color: var(--color-heading);
+}
+
+.routeFallbackPanel p {
+  margin: var(--space-3) 0 var(--space-6);
+  color: var(--color-subtle);
+}
+
+.routeFallbackActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+.routeFallbackActions :is(button, a) {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 650;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+.routeFallbackActions button {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.routeFallbackActions :is(button, a):hover {
+  border-color: var(--color-primary-hover);
+}
+
+.routeFallbackActions button:hover {
+  background: var(--color-primary-hover);
+}
+
+.routeFallbackActions :is(button, a):active {
+  transform: translateY(1px);
+}
+
+.routeFallbackActions :is(button, a):focus-visible {
+  outline: 2px solid var(--color-primary-soft);
+  outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  .routeFallbackPanel {
+    padding: var(--space-6) var(--space-5);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .routeFallbackActions :is(button, a) {
+    transition: none;
+  }
+}

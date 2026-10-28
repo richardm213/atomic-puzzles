@@ -19,7 +19,7 @@ for (const appPage of accessiblePages) {
       });
     }
     await page.goto(appPage.path);
-    await expect(page.getByRole("main")).toBeVisible();
+    await expect(page.locator("#main-content")).toBeVisible();
 
     const results = await new AxeBuilder({ page })
       .include("#main-content")

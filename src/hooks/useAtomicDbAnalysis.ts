@@ -6,6 +6,7 @@ import {
   peekAtomicDbPosition,
 } from "../lib/atomicDb/analysisRepository";
 import type { AtomicDbPosition, AtomicDbResult } from "../utils/atomicDb";
+import { getErrorMessage } from "../utils/errors";
 
 export type AtomicDbAnalysisStatus = "idle" | "loading" | "ready" | "error";
 
@@ -132,7 +133,7 @@ export const useAtomicDbAnalysis = (
           ...current,
           requestedFen: fen,
           status: "error",
-          error: error instanceof Error ? error.message : "AtomicDB analysis failed.",
+          error: getErrorMessage(error, "AtomicDB analysis failed."),
         }));
       }
     };

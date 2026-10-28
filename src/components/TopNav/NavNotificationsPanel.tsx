@@ -1,46 +1,9 @@
-import {
-  faAt,
-  faBell,
-  faBullhorn,
-  faChartLine,
-  faCheck,
-  faCoins,
-  faComment,
-  faGaugeHigh,
-  faGift,
-  faHandHoldingDollar,
-  faReply,
-} from "@fortawesome/free-solid-svg-icons";
+import { faBell, faCheck } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 
-import {
-  isCommentMentionNotification,
-  isPredictionOrderFillNotification,
-  isPredictionPayoutNotification,
-  notificationCategory,
-  notificationCopy,
-  notificationMessage,
-  rankingNotificationImage,
-  type UserNotification,
-} from "../../lib/community/notifications";
-import { appAssetPath } from "../../utils/appAssetPath";
-import { formatLocalDateTime } from "../../utils/formatters";
-
-const notificationIcon = (notification: UserNotification) => {
-  if (isCommentMentionNotification(notification)) return faAt;
-  if (isPredictionOrderFillNotification(notification)) return faCheck;
-  if (isPredictionPayoutNotification(notification)) return faCoins;
-  if (notification.notification_type === "feature") return faBullhorn;
-  if (notification.notification_type === "coin_policy_update") return faGaugeHigh;
-  if (notification.notification_type === "coin_gift") return faCoins;
-  if (notification.notification_type === "coin_request") return faHandHoldingDollar;
-  if (notification.notification_type === "shop_redemption") return faGift;
-  if (notification.notification_type === "puzzle_rating_added") return faChartLine;
-  if (notification.notification_type === "puzzle_approved") return faCheck;
-  if (notification.notification_type === "comment_reply") return faReply;
-  return faComment;
-};
+import type { UserNotification } from "../../lib/community/notifications";
+import { NotificationContent } from "../NotificationContent/NotificationContent";
 
 type NavNotificationsPanelProps = {
   notifications: UserNotification[];
@@ -100,23 +63,7 @@ export const NavNotificationsPanel = ({
                 disabled={updating}
                 onClick={() => onOpenNotification(notification)}
               >
-                <span className="navNotificationIcon" aria-hidden="true">
-                  {rankingNotificationImage(notification) ? (
-                    <img src={appAssetPath(rankingNotificationImage(notification) ?? "")} alt="" />
-                  ) : (
-                    <FontAwesomeIcon icon={notificationIcon(notification)} />
-                  )}
-                </span>
-                <span className="navNotificationCopy">
-                  <strong>{notificationCopy(notification)}</strong>
-                  {notificationMessage(notification) ? (
-                    <span>“{notificationMessage(notification)}”</span>
-                  ) : null}
-                  <span>
-                    {`${notificationCategory(notification)} · ${formatLocalDateTime(notification.created_at)}`}
-                  </span>
-                </span>
-                {!notification.read_at ? <span className="navNotificationDot" /> : null}
+                <NotificationContent notification={notification} variant="nav" />
               </button>
             </div>
           </li>

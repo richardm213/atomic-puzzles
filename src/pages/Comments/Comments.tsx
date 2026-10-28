@@ -3,11 +3,11 @@ import "./Comments.css";
 import { faArrowUp, faLock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { CommunityCommentTargetLink } from "../../components/CommunityCommentTargetLink/CommunityCommentTargetLink";
 import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
+import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
@@ -16,6 +16,7 @@ import {
   type CommunityCommentTargetFilter,
   type ProfileCommentSort,
 } from "../../lib/community/puzzleCommunity";
+import { getErrorMessage } from "../../utils/errors";
 import { formatLocalDateTime } from "../../utils/formatters";
 
 const pageSize = 25;
@@ -41,9 +42,7 @@ export const CommentsPage = () => {
   const total = commentsQuery.data?.total ?? 0;
   const loading = commentsQuery.isFetching;
   const error = commentsQuery.error
-    ? commentsQuery.error instanceof Error
-      ? commentsQuery.error.message
-      : "Unable to load comments."
+    ? getErrorMessage(commentsQuery.error, "Unable to load comments.")
     : "";
 
   const changeSort = (nextSort: ProfileCommentSort): void => {
@@ -141,13 +140,9 @@ export const CommentsPage = () => {
                   </div>
                   <div className="siteCommentContent">
                     <div className="siteCommentMeta">
-                      <Link
-                        className="siteCommentAuthor"
-                        to="/@/$username"
-                        params={{ username: comment.username }}
-                      >
+                      <PlayerLink className="siteCommentAuthor" username={comment.username}>
                         {comment.username}
-                      </Link>
+                      </PlayerLink>
                       <span className={`siteCommentTarget ${comment.target_type}`}>
                         <CommunityCommentTargetLink {...comment} />
                       </span>

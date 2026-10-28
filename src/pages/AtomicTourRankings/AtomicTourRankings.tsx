@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from "react";
 import { DataTable } from "../../components/DataTable/DataTable";
 import { InlineState } from "../../components/InlineState/InlineState";
 import { Seo } from "../../components/Seo/Seo";
+import { TournamentPlayerLink } from "../../components/TournamentPlayerLink/TournamentPlayerLink";
 import {
   atomicTourRankingsQueryOptions,
   atomicTourSnapshotDatesQueryOptions,
@@ -49,7 +50,7 @@ export const AtomicTourRankingsPage = () => {
   const rankings = rankingsQuery.data ?? [];
 
   return (
-    <main className="sitePage atomicTourPage">
+    <div className="sitePage atomicTourPage">
       <Seo
         title="Atomic Chess Tour"
         description="Rolling two-year Atomic Chess Tour standings from major atomic chess events."
@@ -119,12 +120,12 @@ export const AtomicTourRankingsPage = () => {
               <tr>
                 <th scope="col">Rank</th>
                 <th scope="col">
-                  <span aria-label="Rank change">+/−</span>
+                  <abbr title="Rank change">+/−</abbr>
                 </th>
                 <th scope="col">Player</th>
                 <th scope="col">Points</th>
                 <th scope="col">
-                  <span aria-label="Points change">+/−</span>
+                  <abbr title="Points change">+/−</abbr>
                 </th>
               </tr>
             </thead>
@@ -135,7 +136,7 @@ export const AtomicTourRankingsPage = () => {
                   <td>
                     <span
                       className={`atomicTourChange ${changeClass(player.rankChange)}`}
-                      aria-label={
+                      title={
                         player.rankChange === null
                           ? "New ranking"
                           : player.rankChange > 0
@@ -149,10 +150,9 @@ export const AtomicTourRankingsPage = () => {
                     </span>
                   </td>
                   <td>
-                    <Link
+                    <TournamentPlayerLink
                       className="atomicTourPlayer"
-                      to="/tournaments/players/$username"
-                      params={{ username: normalizeUsername(player.playerName) }}
+                      username={player.playerName}
                     >
                       <img
                         className="atomicTourPlayerFlag"
@@ -166,13 +166,13 @@ export const AtomicTourRankingsPage = () => {
                         aria-hidden="true"
                       />
                       <span>{player.playerName}</span>
-                    </Link>
+                    </TournamentPlayerLink>
                   </td>
                   <td className="atomicTourPoints">{player.points.toLocaleString("en-US")}</td>
                   <td>
                     <span
                       className={`atomicTourChange ${changeClass(player.pointsChange)}`}
-                      aria-label={
+                      title={
                         player.pointsChange > 0
                           ? `Up ${player.pointsChange.toLocaleString("en-US")} points`
                           : player.pointsChange < 0
@@ -191,6 +191,6 @@ export const AtomicTourRankingsPage = () => {
           <InlineState kind="empty">No Atomic Tour ranking has been published yet.</InlineState>
         )}
       </div>
-    </main>
+    </div>
   );
 };

@@ -6,6 +6,7 @@ import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 
 import { apiRequest } from "../../lib/api/postApi";
+import { getErrorMessage } from "../../utils/errors";
 
 type UsernamePickerModalProps = {
   id: string;
@@ -87,9 +88,7 @@ export const UsernamePickerModal = ({
       })
       .catch((error) => {
         if (cancelled) return;
-        setOpeningPlayersError(
-          error instanceof Error ? error.message : "Could not load opening database players",
-        );
+        setOpeningPlayersError(getErrorMessage(error, "Could not load opening database players"));
         setOpeningPlayersStatus("error");
       });
 

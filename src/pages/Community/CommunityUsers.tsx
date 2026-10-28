@@ -3,14 +3,15 @@ import "./Community.css";
 import { faArrowUp } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 
+import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { useTableSort } from "../../hooks/useTableSort";
 import { communityUsersQueryOptions } from "../../lib/community/communityQueries";
 import type { CommunityUserStats } from "../../lib/community/puzzleCommunity";
+import { getErrorMessage } from "../../utils/errors";
 
 type SortKey = keyof CommunityUserStats;
 
@@ -32,11 +33,7 @@ export const CommunityUsersPage = () => {
   const usersQuery = useQuery(communityUsersQueryOptions());
   const users = usersQuery.data ?? emptyCommunityUsers;
   const loading = usersQuery.isPending;
-  const error = usersQuery.error
-    ? usersQuery.error instanceof Error
-      ? usersQuery.error.message
-      : "Unable to load users."
-    : "";
+  const error = usersQuery.error ? getErrorMessage(usersQuery.error, "Unable to load users.") : "";
 
   const visibleUsers = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -148,13 +145,9 @@ export const CommunityUsersPage = () => {
                 <li key={user.username}>
                   <article className="communityActivityRow">
                     <span className="communityActivityRank">{index + 1}</span>
-                    <Link
-                      className="communityActivityUser"
-                      to="/@/$username"
-                      params={{ username: user.username }}
-                    >
+                    <PlayerLink className="communityActivityUser" username={user.username}>
                       {user.username}
-                    </Link>
+                    </PlayerLink>
                     <div className="communityActivityMetric">
                       <span>Puzzle upvotes</span>
                       <strong>{user.puzzles_upvoted}</strong>

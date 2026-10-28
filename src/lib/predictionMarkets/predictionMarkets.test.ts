@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   formatPredictionShares,
   type PredictionMarketState,
+  predictionMarketStateResultSchema,
   predictionMarketVolume,
   predictionTakerFee,
   quotePredictionBuy,
@@ -63,5 +64,38 @@ describe("formatPredictionShares", () => {
     expect(formatPredictionShares(501)).toBe("501");
     expect(formatPredictionShares(12.5)).toBe("12.5");
     expect(formatPredictionShares(12.345)).toBe("12.35");
+  });
+});
+
+describe("prediction market source URLs", () => {
+  const market = {
+    id: "market",
+    question: "Will it happen?",
+    resolution_rules: "Resolve from the linked source.",
+    resolution_source_url: "https://example.com/result",
+    closes_at: "2026-12-01T00:00:00Z",
+    status: "open",
+    outcome: null,
+    settlement_price_cents: null,
+    settlement_reference_fill_id: null,
+    resolved_at: null,
+    sportsbook_volume_coins: 0,
+    exchange_volume_coins: 0,
+  };
+
+  it("accepts web sources and rejects executable URL schemes", () => {
+    expect(predictionMarketStateResultSchema.shape.market.safeParse(market).success).toBe(true);
+    expect(
+      predictionMarketStateResultSchema.shape.market.safeParse({
+        ...market,
+        resolution_source_url: "javascript:alert(1)",
+      }).success,
+    ).toBe(false);
+    expect(
+      predictionMarketStateResultSchema.shape.market.safeParse({
+        ...market,
+        resolution_source_url: "data:text/html,unsafe",
+      }).success,
+    ).toBe(false);
   });
 });

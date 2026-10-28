@@ -5,7 +5,6 @@ import {
   rejectQueuedPuzzle,
   submitPuzzle,
   submitPuzzleBatch,
-  submitPuzzleToQueue,
   updateQueuedPuzzle,
 } from "./puzzleQueue";
 
@@ -72,7 +71,7 @@ describe("puzzle queue review client", () => {
     );
 
     await expect(
-      submitPuzzleToQueue({
+      submitPuzzle({
         fen: "fen",
         solution: "1. e4",
         event: "",

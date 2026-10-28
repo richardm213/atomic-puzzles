@@ -5,6 +5,11 @@ export const formatSignedDecimal = (value: number | null): string => {
   return String(rounded);
 };
 
+export const formatElapsedDuration = (milliseconds: number): string => {
+  const totalSeconds = Math.floor(Math.max(0, milliseconds) / 1000);
+  return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, "0")}`;
+};
+
 export const formatLocalDateTime = (timestamp: number | string | Date): string => {
   const date = new Date(timestamp);
   const now = new Date();
@@ -56,6 +61,20 @@ export const formatCalendarDate = (value: string | null | undefined): string => 
   return date.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+};
+
+export const formatCalendarMonth = (
+  value: string | null | undefined,
+  month: "short" | "long" = "long",
+): string => {
+  const monthValue = String(value ?? "").slice(0, 7);
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(monthValue)) return "";
+
+  return new Date(`${monthValue}-01T00:00:00Z`).toLocaleString("en-US", {
+    month,
     year: "numeric",
     timeZone: "UTC",
   });

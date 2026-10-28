@@ -1,4 +1,4 @@
-import "../MatchCard/MatchCard.css";
+import "./MatchDetails.css";
 
 import type { MouseEventHandler } from "react";
 

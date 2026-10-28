@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
 import { queryArchiveResource } from "../netlify/archive/queries";
+import { loadAllPages } from "../shared/lib/pagination";
 import {
   atomicChessLeagueTourPoints,
   atomicTourEventPoints,
@@ -435,18 +436,15 @@ const run = async () => {
   if (catalogError) throw catalogError;
   if (archivesError) throw archivesError;
 
-  const matches: MatchRow[] = [];
   const pageSize = 1_000;
-  for (let from = 0; ; from += pageSize) {
+  const matches = await loadAllPages(async (from, size) => {
     const { data, error } = await supabase
       .from("tournament_matches")
       .select("tournament,bracket,round,order,id,match_id,p1,p2,s1,s2,outcome_type")
-      .range(from, from + pageSize - 1);
+      .range(from, from + size - 1);
     if (error) throw error;
-    const page = data as MatchRow[];
-    matches.push(...page);
-    if (page.length < pageSize) break;
-  }
+    return data;
+  }, pageSize);
 
   const events = new Map((catalog as CatalogRow[]).map((event) => [event.id, event]));
   const awcEvents = (catalog as CatalogRow[])

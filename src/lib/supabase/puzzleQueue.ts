@@ -1,15 +1,14 @@
 import { normalizePuzzlePlayers } from "../../../shared/domain/puzzles/puzzleSetMetadata";
-import { postApi } from "../api/postApi";
-import { compactPuzzleSolution } from "../puzzles/puzzleSubmission";
+import { createPostApi, postApi } from "../api/postApi";
+import { compactPuzzleSolution, type PuzzleSubmissionValue } from "../puzzles/puzzleSubmission";
 import type { PuzzleQueueRow, PuzzleReviewQueueRow } from "./types";
 
 export { DIFFERENT_START_MOVE_CONFIRMATION } from "../../../shared/domain/puzzles/submissionDuplicates";
 
-const reviewRequest = <T>(body: Record<string, unknown>): Promise<T> =>
-  postApi("/api/puzzles/review", body, {
-    errorMessage: "Unable to review puzzle.",
-    invalidMessage: "Unable to review puzzle: the server returned no data.",
-  });
+const reviewRequest = createPostApi("/api/puzzles/review", {
+  errorMessage: "Unable to review puzzle.",
+  invalidMessage: "Unable to review puzzle: the server returned no data.",
+});
 
 export type PuzzleSubmissionResult =
   | { destination: "review"; puzzle: PuzzleQueueRow }
@@ -19,25 +18,15 @@ export type PuzzleBatchSubmissionResult =
   | { destination: "review"; puzzles: PuzzleQueueRow[] }
   | { destination: "published"; puzzleIds: number[] };
 
-type PuzzleSubmissionInput = {
-  fen: string;
-  solution: string;
-  event: string;
-  whitePlayer?: string;
-  blackPlayer?: string;
-  explanation: string;
-  opaStyle?: boolean;
-};
-
 type PuzzleSubmissionOptions = {
   allowDifferentStartMove?: boolean;
 };
 
-const submissionPlayers = (input: Pick<PuzzleSubmissionInput, "whitePlayer" | "blackPlayer">) =>
+const submissionPlayers = (input: Pick<PuzzleSubmissionValue, "whitePlayer" | "blackPlayer">) =>
   normalizePuzzlePlayers([input.whitePlayer, input.blackPlayer]);
 
 export const submitPuzzle = async (
-  input: PuzzleSubmissionInput,
+  input: PuzzleSubmissionValue,
   options: PuzzleSubmissionOptions = {},
 ): Promise<PuzzleSubmissionResult> => {
   const body = await postApi<Partial<PuzzleSubmissionResult>>(
@@ -71,7 +60,7 @@ export const submitPuzzle = async (
 };
 
 export const submitPuzzleBatch = async (
-  inputs: PuzzleSubmissionInput[],
+  inputs: PuzzleSubmissionValue[],
   options: PuzzleSubmissionOptions = {},
 ): Promise<PuzzleBatchSubmissionResult> => {
   const body = await postApi<Partial<PuzzleBatchSubmissionResult>>(
@@ -108,17 +97,6 @@ export const submitPuzzleBatch = async (
     return { destination: "review", puzzles: body.puzzles };
   }
   throw new Error("Unable to submit puzzles: the submission service returned no puzzle data.");
-};
-
-/** @deprecated Prefer submitPuzzle, which also represents direct publication. */
-export const submitPuzzleToQueue = async (
-  input: Parameters<typeof submitPuzzle>[0],
-): Promise<PuzzleQueueRow> => {
-  const result = await submitPuzzle(input);
-  if (result.destination !== "review") {
-    throw new Error("The puzzle was published directly instead of entering the review queue.");
-  }
-  return result.puzzle;
 };
 
 export const fetchPendingPuzzleQueue = async (): Promise<PuzzleReviewQueueRow[]> => {

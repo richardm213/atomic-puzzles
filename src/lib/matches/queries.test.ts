@@ -68,6 +68,13 @@ describe("match query behavior", () => {
       filters: matchFilters,
       page: 2,
       pageSize: 25,
+    });
+
+    await run(recentMatchesPageQueryOptions("blitz", matchFilters, 3, 25, false));
+    expect(mocks.loadRawMatchesByMode).toHaveBeenLastCalledWith("blitz", {
+      filters: matchFilters,
+      page: 3,
+      pageSize: 25,
       includeTotal: false,
     });
   });

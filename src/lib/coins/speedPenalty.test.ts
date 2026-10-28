@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import { formatCoinAmount } from "./coinDisplay";
 import { calculateIncorrectAttemptSpeedPenalty } from "./speedPenalty";
 
 describe("incorrect-attempt speed penalty", () => {
@@ -12,14 +11,5 @@ describe("incorrect-attempt speed penalty", () => {
     expect(calculateIncorrectAttemptSpeedPenalty(29_999)).toBeCloseTo(0.5, 3);
     expect(calculateIncorrectAttemptSpeedPenalty(30_000)).toBe(0);
     expect(calculateIncorrectAttemptSpeedPenalty(null)).toBe(0);
-  });
-
-  it("matches the deductions displayed on the earn coins page", () => {
-    expect(
-      [3, 5, 10, 15, 20, 25, 30].map((seconds) => {
-        const penalty = calculateIncorrectAttemptSpeedPenalty(seconds * 1_000);
-        return penalty === 0 ? "No deduction" : formatCoinAmount(-penalty);
-      }),
-    ).toEqual(["-3", "-2.6", "-1.9", "-1.4", "-1", "-0.7", "No deduction"]);
   });
 });

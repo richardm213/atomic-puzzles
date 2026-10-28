@@ -31,6 +31,7 @@ import {
   puzzleCatalogQueryOptions,
   puzzleProgressForUserQueryOptions,
 } from "../../lib/puzzles/puzzleQueries";
+import { getErrorMessage } from "../../utils/errors";
 import { normalizeUsername } from "../../utils/playerNames";
 import { DashboardTagFilter, getPuzzleTagName } from "../PuzzleDashboard/DashboardTagFilter";
 
@@ -135,7 +136,7 @@ export const CustomPuzzleSetsPage = () => {
   const pageLoading =
     isAuthLoading || catalogQuery.isPending || (Boolean(username) && progressQuery.isPending);
   const queryError = catalogQuery.error ?? progressQuery.error ?? setsQuery.error;
-  const error = message || (queryError instanceof Error ? queryError.message : "");
+  const error = message || getErrorMessage(queryError, "");
 
   const refreshSets = async (): Promise<void> => {
     await queryClient.invalidateQueries({ queryKey: customSetQueryKey });
@@ -162,7 +163,7 @@ export const CustomPuzzleSetsPage = () => {
       await refreshSets();
       window.setTimeout(() => setSubmitState("idle"), 2500);
     } catch (createError) {
-      setMessage(createError instanceof Error ? createError.message : "Unable to create the set.");
+      setMessage(getErrorMessage(createError, "Unable to create the set."));
       setSubmitState("idle");
     }
   };
@@ -174,7 +175,7 @@ export const CustomPuzzleSetsPage = () => {
       await action();
       await refreshSets();
     } catch (actionError) {
-      setMessage(actionError instanceof Error ? actionError.message : "Unable to update the set.");
+      setMessage(getErrorMessage(actionError, "Unable to update the set."));
     } finally {
       setPendingAction("");
     }

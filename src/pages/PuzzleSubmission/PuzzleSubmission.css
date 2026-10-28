@@ -30,7 +30,7 @@
   margin: 0;
   color: var(--color-primary-pale);
   font-size: 11px;
-  font-weight: 850;
+  font-weight: 650;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
@@ -61,7 +61,7 @@
   background: transparent;
   color: var(--color-muted);
   font-size: 12px;
-  font-weight: 850;
+  font-weight: 650;
 }
 
 .puzzleSubmissionMode button.active {
@@ -123,7 +123,7 @@
 .puzzleBatchNavigation span {
   color: var(--color-heading);
   font-size: 12px;
-  font-weight: 850;
+  font-weight: 650;
   text-align: center;
 }
 
@@ -138,7 +138,7 @@
   align-items: center;
   gap: 7px;
   font-size: 11px;
-  font-weight: 850;
+  font-weight: 650;
 }
 
 .puzzleBatchNavigation button:last-child {
@@ -224,7 +224,7 @@
 .puzzleEditorFieldHeader label {
   color: var(--color-heading);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 650;
 }
 
 .puzzleEditorFields .puzzleEditorLabelHeader {
@@ -345,7 +345,7 @@
   align-items: center;
   gap: 6px;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 650;
 }
 
 .puzzleCopyPgnButton:hover {
@@ -436,7 +436,7 @@
   display: grid;
   place-items: center;
   font-size: 9px;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .puzzleReviewInstructions {
@@ -463,7 +463,7 @@
   justify-content: center;
   gap: 8px;
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1.1;
   text-decoration: none;
   transition:
@@ -498,7 +498,7 @@
   padding: 9px 14px;
   border: 1px solid var(--color-input-border);
   border-radius: var(--radius-ui);
-  font-weight: 800;
+  font-weight: 650;
 }
 
 .queuePrimaryButton {
@@ -565,7 +565,7 @@
   justify-content: center;
   gap: 9px;
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 700;
   letter-spacing: 0.01em;
   transition:
     transform 140ms ease,
@@ -620,7 +620,7 @@
   padding: 10px 12px;
   border-radius: var(--radius-ui);
   font-size: 13px;
-  font-weight: 750;
+  font-weight: 650;
 }
 
 .queueMessage.success {
@@ -687,6 +687,7 @@
   padding: 0;
   box-shadow: none;
   background: transparent;
+  -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
 
@@ -714,7 +715,7 @@
 .puzzleReviewField span {
   color: var(--color-heading);
   font-size: 12px;
-  font-weight: 850;
+  font-weight: 650;
 }
 
 .puzzleReviewField input {
@@ -749,7 +750,7 @@
   padding: 0 var(--space-1);
   color: var(--color-muted);
   font-size: 12px;
-  font-weight: 850;
+  font-weight: 650;
 }
 
 .puzzleReviewBonusOptions {
@@ -770,7 +771,7 @@
   color: var(--color-text);
   cursor: pointer;
   font-size: 13px;
-  font-weight: 750;
+  font-weight: 650;
   transition:
     border-color 160ms ease,
     background-color 160ms ease;
@@ -795,7 +796,7 @@
 .puzzleReviewBonuses output {
   color: var(--color-heading);
   font-size: 14px;
-  font-weight: 900;
+  font-weight: 700;
   white-space: nowrap;
 }
 

@@ -20,6 +20,8 @@ import {
   isEndgamePuzzleEvent,
   type PuzzleEventGroup,
 } from "../../lib/puzzles/puzzleSets";
+import { getBrowserStorageItem, setBrowserStorageItem } from "../../utils/browserStorage";
+import { getErrorMessage } from "../../utils/errors";
 import { normalizeUsername } from "../../utils/playerNames";
 
 const EVENT_FILTERS = [
@@ -64,20 +66,15 @@ export const hasChessMoveInPuzzleSetName = (value: unknown): boolean =>
 
 const readPuzzleSetShuffleSeed = (): number => {
   const createSeed = () => Math.floor(Math.random() * 0x1_0000_0000);
-  if (typeof window === "undefined") return createSeed();
-
-  try {
-    const storedSeed = Number(window.sessionStorage.getItem(puzzleSetShuffleSeedStorageKey));
-    if (Number.isInteger(storedSeed) && storedSeed >= 0 && storedSeed < 0x1_0000_0000) {
-      return storedSeed;
-    }
-
-    const nextSeed = createSeed();
-    window.sessionStorage.setItem(puzzleSetShuffleSeedStorageKey, String(nextSeed));
-    return nextSeed;
-  } catch {
-    return createSeed();
+  const storedValue = getBrowserStorageItem("session", puzzleSetShuffleSeedStorageKey);
+  const storedSeed = storedValue === null ? Number.NaN : Number(storedValue);
+  if (Number.isInteger(storedSeed) && storedSeed >= 0 && storedSeed < 0x1_0000_0000) {
+    return storedSeed;
   }
+
+  const nextSeed = createSeed();
+  setBrowserStorageItem("session", puzzleSetShuffleSeedStorageKey, String(nextSeed));
+  return nextSeed;
 };
 
 export const getFeaturedPuzzleSetRank = (group: PuzzleEventGroup): number =>
@@ -177,9 +174,7 @@ export const PuzzleSetsPage = () => {
   const puzzles = puzzleCatalogQuery.data ?? emptyPuzzles;
   const isLoading = puzzleCatalogQuery.isPending;
   const error = puzzleCatalogQuery.error
-    ? puzzleCatalogQuery.error instanceof Error
-      ? puzzleCatalogQuery.error.message
-      : "Failed to load puzzle sets."
+    ? getErrorMessage(puzzleCatalogQuery.error, "Failed to load puzzle sets.")
     : "";
 
   const puzzleGroups = useMemo(() => groupPuzzlesByEvent(puzzles), [puzzles]);

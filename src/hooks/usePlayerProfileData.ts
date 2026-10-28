@@ -1,13 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import {
-  createModeRecord,
-  isMode,
-  type Mode,
-  modeLabels,
-  modeOptions,
-  type SourceFilters,
-} from "../constants/matches";
+import { createModeRecord, isMode, type Mode, modeLabels, modeOptions } from "../constants/matches";
 import { profileQueryKeys, uniqueMonthRankPairs } from "../features/profile/profileQueries";
 import { fetchArchiveJson } from "../lib/archive/client";
 import {
@@ -18,8 +11,12 @@ import {
 import { fetchPlayerRatingsRows } from "../lib/archive/ratings";
 import type { WeeklyRatingRow } from "../lib/archive/types";
 import type { NormalizedMatch } from "../lib/matches/data";
-import { isSourceAllowedByFilters, parseDateInputBoundary } from "../lib/matches/filters";
-import { parseTimeControlParts } from "../lib/matches/transforms";
+import type { MatchListFilters } from "../lib/matches/filters";
+import {
+  isSourceAllowedByFilters,
+  matchesTimeControlFilters,
+  parseDateInputBoundary,
+} from "../lib/matches/filters";
 import { formatCalendarDate } from "../utils/formatters";
 
 export type MonthRank = {
@@ -55,13 +52,14 @@ export type RatingSnapshot = {
 export type RatingsSnapshotByMode = Record<Mode, Map<string, RatingSnapshot>>;
 export type RatingDisplayByMode = Record<Mode, RatingSnapshot>;
 
-export type AppliedMatchFilters = {
-  startDateFilter?: string | null;
-  endDateFilter?: string | null;
-  timeControlInitialFilter: string;
-  timeControlIncrementFilter: string;
+export type AppliedMatchFilters = Pick<
+  MatchListFilters,
+  "timeControlInitialFilter" | "timeControlIncrementFilter"
+> & {
+  startDateFilter?: MatchListFilters["startDateFilter"] | null;
+  endDateFilter?: MatchListFilters["endDateFilter"] | null;
   opponentFilter?: string;
-  sourceFilters?: Partial<SourceFilters>;
+  sourceFilters?: Partial<MatchListFilters["sourceFilters"]>;
 };
 
 export type ProfileMetricCardEntry = {
@@ -347,16 +345,12 @@ export const filterMatches = (
     if (startDateTs !== null && match.startTs < startDateTs) return false;
     if (endDateTs !== null && match.startTs > endDateTs) return false;
 
-    const { initial, increment } = parseTimeControlParts(match.timeControl);
     if (
-      appliedFilters.timeControlInitialFilter !== "all" &&
-      initial !== appliedFilters.timeControlInitialFilter
-    ) {
-      return false;
-    }
-    if (
-      appliedFilters.timeControlIncrementFilter !== "all" &&
-      increment !== appliedFilters.timeControlIncrementFilter
+      !matchesTimeControlFilters(
+        match.timeControl,
+        appliedFilters.timeControlInitialFilter,
+        appliedFilters.timeControlIncrementFilter,
+      )
     ) {
       return false;
     }

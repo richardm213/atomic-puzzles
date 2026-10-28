@@ -8,6 +8,7 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { coinQueryKeys } from "../../lib/coins/coinQueries";
 import { giveCoins } from "../../lib/coins/coins";
+import { getErrorMessage } from "../../utils/errors";
 import { normalizeUsername } from "../../utils/playerNames";
 
 type CoinProfileActionsProps = {
@@ -147,9 +148,7 @@ export const CoinProfileActions = ({
               </label>
               {mutation.error ? (
                 <p className="coinProfileError" role="alert">
-                  {mutation.error instanceof Error
-                    ? mutation.error.message
-                    : "Unable to send coins."}
+                  {getErrorMessage(mutation.error, "Unable to send coins.")}
                 </p>
               ) : null}
               <button

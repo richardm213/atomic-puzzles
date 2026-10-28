@@ -89,6 +89,48 @@ describe("PuzzleCommunity", () => {
     expect(screen.queryByText(/start the conversation/i)).not.toBeInTheDocument();
   });
 
+  it("sorts tournament comments by recent by default and top on request", async () => {
+    const user = userEvent.setup();
+    mocks.fetchCommunityDiscussion.mockResolvedValue({
+      comments: [
+        {
+          id: 1,
+          username: "alice",
+          parent_id: null,
+          body: "Older top comment",
+          created_at: "2026-01-01T00:00:00Z",
+          upvotes: 8,
+          downvotes: 0,
+          score: 8,
+          viewer_vote: 0,
+        },
+        {
+          id: 2,
+          username: "bob",
+          parent_id: null,
+          body: "Newest comment",
+          created_at: "2026-02-01T00:00:00Z",
+          upvotes: 0,
+          downvotes: 0,
+          score: 0,
+          viewer_vote: 0,
+        },
+      ],
+    });
+
+    render(<CommunityDiscussion target={{ type: "tournament", id: "awc2026" }} />);
+
+    expect(await screen.findByRole("button", { name: "Recent" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getAllByRole("listitem")[0]).toHaveTextContent("Newest comment");
+
+    await user.click(screen.getByRole("button", { name: "Top" }));
+
+    expect(screen.getAllByRole("listitem")[0]).toHaveTextContent("Older top comment");
+  });
+
   it("moves the composer directly under the comment being replied to", async () => {
     const user = userEvent.setup();
     render(<PuzzleCommunity puzzleId={42} voteTargetId="missing-vote-target" />);

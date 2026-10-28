@@ -16,12 +16,15 @@ body {
   background-size: var(--site-background-size);
   color: var(--color-text);
   font-family: var(--font-sans);
+  line-height: var(--line-body);
   overflow-x: hidden;
 }
 
 button,
 select,
-input {
+input,
+textarea {
+  color: inherit;
   font: inherit;
 }
 
@@ -84,6 +87,7 @@ canvas {
   border-radius: var(--radius-lg);
   padding: clamp(18px, 2.4vw, 26px);
   box-shadow: var(--shadow-panel);
+  -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
 }
 
@@ -156,7 +160,7 @@ canvas {
   border-color: var(--color-primary);
   background: var(--color-primary);
   color: var(--color-on-primary);
-  font-weight: 800;
+  font-weight: 650;
 }
 
 .buttonRow button:disabled,

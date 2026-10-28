@@ -2,9 +2,9 @@ import "./CoinEconomyBans.css";
 
 import { faBan, faClockRotateLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 
+import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
@@ -14,6 +14,7 @@ import {
   fetchCoinEconomyBans,
   revokeCoinEconomyBan,
 } from "../../lib/coins/economyBans";
+import { getErrorMessage } from "../../utils/errors";
 import { formatLocalDateTime } from "../../utils/formatters";
 import { normalizeUsername } from "../../utils/playerNames";
 
@@ -56,7 +57,7 @@ export const CoinEconomyBansPage = () => {
       })
       .catch((loadError) => {
         if (current) {
-          setError(loadError instanceof Error ? loadError.message : "Unable to load economy bans.");
+          setError(getErrorMessage(loadError, "Unable to load economy bans."));
         }
       })
       .finally(() => {
@@ -100,7 +101,7 @@ export const CoinEconomyBansPage = () => {
       setUsername("");
       setReason("");
     } catch (banError) {
-      setError(banError instanceof Error ? banError.message : "Unable to create economy ban.");
+      setError(getErrorMessage(banError, "Unable to create economy ban."));
     } finally {
       setSubmitting(false);
     }
@@ -113,9 +114,7 @@ export const CoinEconomyBansPage = () => {
       const { ban } = await revokeCoinEconomyBan(id);
       setBans((current) => current.map((entry) => (entry.id === ban.id ? ban : entry)));
     } catch (revokeError) {
-      setError(
-        revokeError instanceof Error ? revokeError.message : "Unable to revoke economy ban.",
-      );
+      setError(getErrorMessage(revokeError, "Unable to revoke economy ban."));
     } finally {
       setRevokingId(null);
     }
@@ -124,7 +123,7 @@ export const CoinEconomyBansPage = () => {
   if (isLoading || loading) return <RouteLoadingFallback />;
 
   return (
-    <main className="page economyBansPage">
+    <div className="page economyBansPage">
       <Seo title="Coin economy bans" description="Manage time-limited Atomic Coin restrictions." />
       <section className="panel economyBansPanel">
         <header className="economyBansHeader">
@@ -204,9 +203,7 @@ export const CoinEconomyBansPage = () => {
                   return (
                     <li className={`economyBanRow ${status}`} key={ban.id}>
                       <div className="economyBanTopline">
-                        <Link to="/@/$username" params={{ username: ban.username }}>
-                          {ban.username}
-                        </Link>
+                        <PlayerLink username={ban.username}>{ban.username}</PlayerLink>
                         <span>{status}</span>
                       </div>
                       <p>{ban.reason}</p>
@@ -238,6 +235,6 @@ export const CoinEconomyBansPage = () => {
           </>
         ) : null}
       </section>
-    </main>
+    </div>
   );
 };

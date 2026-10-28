@@ -6,6 +6,7 @@ import { useMemo } from "react";
 
 import { BannedPlayerMark } from "../../components/BannedPlayerMark/BannedPlayerMark";
 import { MatchDetails } from "../../components/MatchDetails/MatchDetails";
+import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { CommunityDiscussion } from "../../components/PuzzleCommunity/PuzzleCommunity";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
@@ -15,6 +16,7 @@ import { matchupToSlug } from "../../lib/matches/h2hRoutes";
 import { matchDetailQueryOptions } from "../../lib/matches/queries";
 import { normalizeMatchMode } from "../../lib/matches/routes";
 import { getTournamentRouteId } from "../../lib/matches/tournaments";
+import { getErrorMessage } from "../../utils/errors";
 import { formatLocalDateTime, formatScore } from "../../utils/formatters";
 
 const decodeParam = (value: unknown): string => {
@@ -39,11 +41,9 @@ export const MatchPage = () => {
   const loading = hasValidMatchKey && matchQuery.isPending;
   const error = !hasValidMatchKey
     ? "This match link is missing a valid match id."
-    : matchQuery.error instanceof Error
-      ? matchQuery.error.message
-      : matchQuery.error
-        ? String(matchQuery.error)
-        : "";
+    : matchQuery.error
+      ? getErrorMessage(matchQuery.error, "Unable to load this match.")
+      : "";
 
   const title = useMemo(() => {
     if (!match) return "Match";
@@ -70,15 +70,14 @@ export const MatchPage = () => {
                   {(match.mode && modeLabels[match.mode]) || match.mode} match
                 </p>
                 <div className="matchPageHeaderRow">
-                  <Link
+                  <PlayerLink
                     className="matchPageHeaderPlayer"
-                    to="/@/$username"
-                    params={{ username: match.playerA }}
+                    username={match.playerA}
                     title={match.playerA}
                   >
                     {match.playerA}
                     <BannedPlayerMark username={match.playerA} />
-                  </Link>
+                  </PlayerLink>
                   <div
                     className="matchPageHeaderScore"
                     aria-label={`Score ${match.scoreA} to ${match.scoreB}`}
@@ -87,20 +86,19 @@ export const MatchPage = () => {
                     <span>-</span>
                     <strong>{formatScore(match.scoreB)}</strong>
                   </div>
-                  <Link
+                  <PlayerLink
                     className="matchPageHeaderPlayer matchPageHeaderPlayerRight"
-                    to="/@/$username"
-                    params={{ username: match.playerB }}
+                    username={match.playerB}
                     title={match.playerB}
                   >
                     {match.playerB}
                     <BannedPlayerMark username={match.playerB} />
-                  </Link>
+                  </PlayerLink>
                 </div>
                 <div className="matchPageHeaderMeta">
-                  <span className="matchMetaPill">{formatLocalDateTime(match.startTs)}</span>
-                  <span className="matchMetaPill">{match.timeControl}</span>
-                  <span className="matchMetaPill">{match.sourceValue}</span>
+                  <span className="matchPageMetaPill">{formatLocalDateTime(match.startTs)}</span>
+                  <span className="matchPageMetaPill timeControlValue">{match.timeControl}</span>
+                  <span className="matchPageMetaPill">{match.sourceValue}</span>
                 </div>
                 <div className="matchPageHeaderActions">
                   {tournamentLocation ? (

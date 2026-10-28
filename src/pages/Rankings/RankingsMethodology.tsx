@@ -1,5 +1,7 @@
 import "./RankingsMethodology.css";
 
+import { faBeerMugEmpty } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 
 import { Seo } from "../../components/Seo/Seo";
@@ -108,7 +110,7 @@ export const RankingsMethodologyPage = () => (
 
         <section id="drunk-accounts" className="methodologySection">
           <h2 className="methodologyIconHeading">
-            <span aria-hidden="true">🍺</span>
+            <FontAwesomeIcon icon={faBeerMugEmpty} aria-hidden="true" />
             <span>How drunk accounts are handled</span>
           </h2>
           <p>

@@ -16,6 +16,7 @@ import {
   removePuzzleFromCustomSet,
 } from "../../lib/puzzles/customPuzzleSets";
 import { puzzleCatalogQueryOptions } from "../../lib/puzzles/puzzleQueries";
+import { getErrorMessage } from "../../utils/errors";
 import { getPuzzleTagName } from "../PuzzleDashboard/DashboardTagFilter";
 
 const SET_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -71,7 +72,7 @@ export const CustomPuzzleSetEditPage = () => {
     } catch (error) {
       setMessage({
         type: "error",
-        text: error instanceof Error ? error.message : "Unable to remove this puzzle.",
+        text: getErrorMessage(error, "Unable to remove this puzzle."),
       });
     } finally {
       setPendingPuzzleId("");
@@ -94,7 +95,7 @@ export const CustomPuzzleSetEditPage = () => {
     } catch (error) {
       setMessage({
         type: "error",
-        text: error instanceof Error ? error.message : "Unable to add matching puzzles.",
+        text: getErrorMessage(error, "Unable to add matching puzzles."),
       });
     } finally {
       setAddingPuzzles(false);
@@ -106,7 +107,7 @@ export const CustomPuzzleSetEditPage = () => {
   }
 
   const queryError = setQuery.error ?? attemptsQuery.error ?? catalogQuery.error;
-  const errorText = queryError instanceof Error ? queryError.message : "";
+  const errorText = getErrorMessage(queryError, "");
 
   return (
     <div className="customSetEditPage">
@@ -115,7 +116,7 @@ export const CustomPuzzleSetEditPage = () => {
         description="Edit the puzzles included in a custom atomic chess training set."
         path={`/solve/custom-sets/${encodeURIComponent(setId)}/edit`}
       />
-      <main className="customSetEditShell">
+      <div className="customSetEditShell">
         <header className="customSetEditHeader">
           <div>
             <Link className="customSetEditBack" to="/solve/custom-sets">
@@ -222,7 +223,7 @@ export const CustomPuzzleSetEditPage = () => {
             </section>
           </>
         ) : null}
-      </main>
+      </div>
     </div>
   );
 };

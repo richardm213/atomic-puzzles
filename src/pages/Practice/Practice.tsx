@@ -53,6 +53,7 @@ import { movePrefix } from "../../lib/puzzles/solutionPgn";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
 import { ATOMIC_DB_HOME_URL, atomicDbPositionUrl } from "../../utils/atomicDb";
 import { selectSpacebarMove } from "../../utils/boardMoveSelection";
+import { getErrorMessage } from "../../utils/errors";
 import { formatGameCount } from "../../utils/formatters";
 import { lichessAtomicAnalysisUrl } from "../../utils/lichess";
 import {
@@ -552,9 +553,7 @@ export const PracticePage = () => {
       .catch((engineFailure) => {
         if (controller.signal.aborted) return;
         setEngineStatus("error");
-        setEngineError(
-          engineFailure instanceof Error ? engineFailure.message : "Fairy-Stockfish failed",
-        );
+        setEngineError(getErrorMessage(engineFailure, "Fairy-Stockfish failed"));
       });
 
     return () => controller.abort();
@@ -790,9 +789,7 @@ export const PracticePage = () => {
       });
       commitUsername(data.username);
     } catch (randomError) {
-      setRandomPlayerError(
-        randomError instanceof Error ? randomError.message : "Could not select a random player",
-      );
+      setRandomPlayerError(getErrorMessage(randomError, "Could not select a random player"));
     } finally {
       setRandomPlayerLoading(false);
     }
@@ -1039,7 +1036,6 @@ export const PracticePage = () => {
                 role="tab"
                 className={opponentSource === "player" ? "active" : ""}
                 aria-selected={opponentSource === "player"}
-                aria-label={`${selectedPlayerSummary} as ${opponentSide}`}
                 title={`${selectedPlayerSummary} as ${opponentSide}`}
                 onClick={showPlayerOpponent}
               >

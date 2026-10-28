@@ -4,7 +4,6 @@ import {
   faArrowLeft,
   faArrowRight,
   faArrowUpRightFromSquare,
-  faComment,
   faFireFlameCurved,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -13,9 +12,11 @@ import { Link } from "@tanstack/react-router";
 import type { KeyboardEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 
+import { CommunityCommentsLink } from "../../components/CommunityCommentsLink/CommunityCommentsLink";
 import { CommunityDiscussion } from "../../components/PuzzleCommunity/PuzzleCommunity";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
+import { TournamentPlayerLink } from "../../components/TournamentPlayerLink/TournamentPlayerLink";
 import { modeLabels } from "../../constants/matches";
 import { tournamentCatalogQueryOptions } from "../../lib/matches/tournamentQueries";
 import {
@@ -25,8 +26,8 @@ import {
 } from "../../lib/matches/wolfarena";
 import { wolfarenaTournamentQueryOptions } from "../../lib/matches/wolfarenaQueries";
 import { appAssetPath } from "../../utils/appAssetPath";
+import { getBrowserStorageItem, setBrowserStorageItem } from "../../utils/browserStorage";
 import { formatCalendarDateRange, formatTimeControl } from "../../utils/formatters";
-import { normalizeUsername } from "../../utils/playerNames";
 
 const STORAGE_KEY = "tournament-view:wr-arena2026:round";
 const WOLFARENA_FORUM_URL = "https://lichess.org/forum/team-wolfrandom-atomic-game/wolfarena-2026";
@@ -45,17 +46,11 @@ const matchStatusLabel = (status: WolfarenaMatch["status"]): string => {
 
 const initialRoundNumber = (tournament: WolfarenaTournament): number => {
   if (typeof window === "undefined") return tournament.rounds.length;
-  const stored = Number(window.sessionStorage.getItem(STORAGE_KEY));
+  const stored = Number(getBrowserStorageItem("session", STORAGE_KEY));
   return tournament.rounds.some((round) => round.number === stored)
     ? stored
     : tournament.rounds.length;
 };
-
-const PlayerLink = ({ player }: { player: string }) => (
-  <Link to="/tournaments/players/$username" params={{ username: normalizeUsername(player) }}>
-    {player}
-  </Link>
-);
 
 const BonusPoints = ({ score, points }: { score: number | null; points: number }) => {
   if (score === null || Math.abs(points - score) < 0.001) return null;
@@ -76,7 +71,7 @@ const MatchContent = ({ match }: { match: WolfarenaMatch }) => {
           <span className="wolfarenaMatchStatus">Bye</span>
         </div>
         <div className="wolfarenaByePlayer">
-          <PlayerLink player={match.player1} />
+          <TournamentPlayerLink username={match.player1} />
           <strong>{match.points1}</strong>
         </div>
       </>
@@ -95,14 +90,14 @@ const MatchContent = ({ match }: { match: WolfarenaMatch }) => {
         </div>
       ) : null}
       <div className={`wolfarenaPlayerRow${player1Won ? " isWinner" : ""}`}>
-        <PlayerLink player={match.player1} />
+        <TournamentPlayerLink username={match.player1} />
         <span className="wolfarenaPlayerOutcome">
           <BonusPoints score={match.score1} points={match.points1} />
           <strong>{match.score1}</strong>
         </span>
       </div>
       <div className={`wolfarenaPlayerRow${player2Won ? " isWinner" : ""}`}>
-        <PlayerLink player={match.player2} />
+        <TournamentPlayerLink username={match.player2} />
         <span className="wolfarenaPlayerOutcome">
           <BonusPoints score={match.score2} points={match.points2} />
           <strong>{match.score2}</strong>
@@ -163,7 +158,7 @@ const WolfarenaTournamentArchive = ({
     .slice(0, 3);
 
   useEffect(() => {
-    window.sessionStorage.setItem(STORAGE_KEY, String(selectedRound.number));
+    setBrowserStorageItem("session", STORAGE_KEY, String(selectedRound.number));
     roundButtonsRef.current.get(selectedRound.number)?.scrollIntoView({
       behavior: "auto",
       block: "nearest",
@@ -219,7 +214,7 @@ const WolfarenaTournamentArchive = ({
                 </span>
               ) : null}
               {tournamentMeta.timeControl ? (
-                <span className="tournamentTimeControl">
+                <span className="tournamentTimeControl timeControlValue">
                   {tournamentMeta.matchMode ? `${modeLabels[tournamentMeta.matchMode]} ` : null}
                   {formatTimeControl(tournamentMeta.timeControl)}
                 </span>
@@ -230,7 +225,7 @@ const WolfarenaTournamentArchive = ({
             {finalPodium.map((standing) => (
               <li key={standing.player}>
                 <span>{standing.rank}</span>
-                <PlayerLink player={standing.player} />
+                <TournamentPlayerLink username={standing.player} />
               </li>
             ))}
           </ol>
@@ -292,10 +287,10 @@ const WolfarenaTournamentArchive = ({
               Arena forum
               <FontAwesomeIcon icon={faArrowUpRightFromSquare} aria-hidden="true" />
             </a>
-            <a href="#tournament-comments">
-              <FontAwesomeIcon icon={faComment} aria-hidden="true" />
-              Comments
-            </a>
+            <CommunityCommentsLink
+              target={{ type: "tournament", id: wolfarena2026.id }}
+              href="#tournament-comments"
+            />
           </div>
         </header>
 
@@ -338,7 +333,7 @@ const WolfarenaTournamentArchive = ({
                       </td>
                       <th scope="row" data-label="Player">
                         <span className="wolfarenaStandingPlayer">
-                          <PlayerLink player={standing.player} />
+                          <TournamentPlayerLink username={standing.player} />
                           {standing.streak ? (
                             <span
                               className="wolfarenaStreak"
@@ -399,7 +394,7 @@ export const WolfarenaTournamentPage = () => {
   if (archiveQuery.isPending) return <RouteLoadingFallback />;
   if (archiveQuery.isError || !archiveQuery.data) {
     return (
-      <main className="tournamentPage wolfarenaPage">
+      <div className="tournamentPage wolfarenaPage">
         <section className="wolfarenaArchiveError" role="alert">
           <h1>Wolfarena 2026</h1>
           <p>The tournament archive could not be loaded. Please try again.</p>
@@ -407,7 +402,7 @@ export const WolfarenaTournamentPage = () => {
             Retry
           </button>
         </section>
-      </main>
+      </div>
     );
   }
 

@@ -44,6 +44,17 @@ export type TournamentMatch = {
   replacement_history: TournamentPriorMatch[];
 };
 
+export const isTournamentByePlayer = (playerName: unknown): boolean =>
+  String(playerName ?? "").trim().toLowerCase() === "bye";
+
+export const isTournamentByeMatch = (
+  match: Pick<TournamentMatch, "p1" | "p2"> | null | undefined,
+): boolean => Boolean(match && (isTournamentByePlayer(match.p1) || isTournamentByePlayer(match.p2)));
+
+export const isTournamentDoubleByeMatch = (
+  match: Pick<TournamentMatch, "p1" | "p2"> | null | undefined,
+): boolean => Boolean(match && isTournamentByePlayer(match.p1) && isTournamentByePlayer(match.p2));
+
 export type TournamentPriorMatch = {
   round: string;
   p1: string;
@@ -699,7 +710,7 @@ export const buildTournamentPlayerAppearances = (
           if (!playerKey) return null;
           const isPlayerOne = normalizePlayerKey(match.p1) === playerKey;
           const opponent = isPlayerOne ? match.p2 : match.p1;
-          if (normalizePlayerKey(opponent) === "bye") return null;
+          if (isTournamentByePlayer(opponent)) return null;
           const opponentSeed =
             seedMapsByTournament[match.tournament]?.[normalizePlayerKey(opponent)];
           const result = playerMatchResult(match, playerKey);
@@ -776,7 +787,7 @@ export const addImplicitByeMatches = (matches: TournamentMatch[]): TournamentMat
         return;
 
       const missingPlayer = feederWinner === currentMatch.p1 ? currentMatch.p2 : currentMatch.p1;
-      if (!missingPlayer || missingPlayer.toLowerCase() === "bye") return;
+      if (!missingPlayer || isTournamentByePlayer(missingPlayer)) return;
 
       const syntheticId = `${currentMatch.id}-bye`;
       if (augmented.some((match) => match.id === syntheticId)) return;
@@ -825,7 +836,7 @@ export const addImplicitByeMatches = (matches: TournamentMatch[]): TournamentMat
     );
 
     [currentMatch.p1, currentMatch.p2].forEach((playerName, playerIndex) => {
-      if (!playerName || playerName.toLowerCase() === "bye") return;
+      if (!playerName || isTournamentByePlayer(playerName)) return;
 
       const feederMatch = feederMatches.find(
         (match) => winnerName(match).toLowerCase() === playerName.toLowerCase(),

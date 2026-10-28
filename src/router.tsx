@@ -13,6 +13,10 @@ import type { ComponentType } from "react";
 
 import { App } from "./App/App";
 import { RequireAuthentication } from "./components/RequireAuthentication/RequireAuthentication";
+import {
+  RouteErrorFallback,
+  RouteNotFoundFallback,
+} from "./components/RouteFallback/RouteFallback";
 import { RouteLoadingFallback } from "./components/RouteLoadingFallback/RouteLoadingFallback";
 import { queryClient } from "./lib/query/queryClient";
 import { AuthCallbackPage } from "./pages/AuthCallback/AuthCallback";
@@ -681,6 +685,8 @@ const router = createRouter({
   basepath: appBasePath,
   context: { queryClient },
   defaultPendingComponent: RouteLoadingFallback,
+  defaultErrorComponent: RouteErrorFallback,
+  defaultNotFoundComponent: RouteNotFoundFallback,
   defaultPreload: "intent",
   scrollRestoration: true,
   getScrollRestorationKey: (location) => location.pathname,

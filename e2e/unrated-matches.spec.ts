@@ -18,11 +18,20 @@ const mockUnratedArchive = async (page: Page) => {
     }
     if (resource !== "matches") return route.fulfill({ json: [] });
 
+    const mode = params.get("mode");
+    if (mode && mode !== "blitz") {
+      return route.fulfill({
+        json: { total: 0, rows: [], hasPreviousPage: false, hasNextPage: false },
+      });
+    }
+
     expect(params.has("ratingMin")).toBe(false);
     expect(params.has("ratingMax")).toBe(false);
     return route.fulfill({
       json: {
         total: 1,
+        hasPreviousPage: false,
+        hasNextPage: false,
         rows: [
           {
             match_id: "unrated-match",
@@ -57,8 +66,7 @@ test("profile history presents an unrated match without fake rating values", asy
   await expect(row.getByRole("link", { name: "bob", exact: true })).toBeVisible();
   await expect(row.locator("td").nth(4)).toBeEmpty();
   await expect(row.locator("td").nth(5)).toBeEmpty();
-  await row.focus();
-  await page.keyboard.press("Enter");
+  await row.getByRole("button", { name: "Show match details" }).click();
   const detailsRow = table.locator("tbody > tr").nth(1);
   await expect(detailsRow.getByText("Unrated", { exact: true })).toHaveCount(2);
   await expect(detailsRow.getByRole("link", { name: "game1234", exact: true })).toBeVisible();
@@ -69,10 +77,10 @@ test("recent matches keep unrated and banned states usable on mobile", async ({ 
   await mockUnratedArchive(page);
   await page.goto("/recent");
 
-  const card = page.locator(".matchCard").first();
-  await expect(card).toBeVisible();
-  await card.focus();
-  await page.keyboard.press("Enter");
+  const table = page.locator(".recentMatchTable");
+  const row = table.locator("tbody > tr").first();
+  await expect(row).toBeVisible();
+  await row.getByText("3+0", { exact: true }).click();
   const stats = page.locator(".matchCardPlayerStats");
   await expect(stats.getByText("Unrated", { exact: true })).toHaveCount(2);
   await expect(stats.getByRole("img", { name: "Banned player" })).toHaveCount(1);

@@ -3,7 +3,7 @@ import "./PredictionOrderEditor.css";
 import { faTrash, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation } from "@tanstack/react-query";
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   amendPredictionOrder,
@@ -13,6 +13,7 @@ import {
   type PredictionOrderMutationResult,
   type PredictionOutcome,
 } from "../../lib/predictionMarkets/predictionMarkets";
+import { getErrorMessage } from "../../utils/errors";
 
 export const PredictionOrderEditor = ({
   marketId,
@@ -27,6 +28,7 @@ export const PredictionOrderEditor = ({
   onClose: () => void;
   onUpdated: (result: PredictionOrderMutationResult) => Promise<unknown> | unknown;
 }) => {
+  const dialogRef = useRef<HTMLDialogElement>(null);
   const [selectedOrderId, setSelectedOrderId] = useState(orders[0]?.id ?? 0);
   const selectedOrder = useMemo(
     () => orders.find((order) => order.id === selectedOrderId) ?? orders[0],
@@ -42,12 +44,11 @@ export const PredictionOrderEditor = ({
   }, [outcome, selectedOrder]);
 
   useEffect(() => {
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", closeOnEscape);
-    return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [onClose]);
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    dialog.showModal();
+    return () => dialog.close();
+  }, []);
 
   const finish = (result: PredictionOrderMutationResult) => {
     onClose();
@@ -88,14 +89,16 @@ export const PredictionOrderEditor = ({
   if (!selectedOrder) return null;
 
   return (
-    <div className="predictionOrderEditorBackdrop" onMouseDown={onClose}>
-      <section
-        className="predictionOrderEditor"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="prediction-order-editor-title"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
+    <dialog
+      ref={dialogRef}
+      className="predictionOrderEditorBackdrop"
+      aria-labelledby="prediction-order-editor-title"
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
+      }}
+    >
+      <section className="predictionOrderEditor">
         <div className="predictionOrderEditorHeader">
           <h2 id="prediction-order-editor-title">Edit order</h2>
           <button type="button" aria-label="Close order editor" onClick={onClose}>
@@ -151,7 +154,7 @@ export const PredictionOrderEditor = ({
           </label>
           {mutationError ? (
             <p className="predictionOrderEditorError" role="alert">
-              {mutationError instanceof Error ? mutationError.message : "Unable to update order."}
+              {getErrorMessage(mutationError, "Unable to update order.")}
             </p>
           ) : null}
           <div className="predictionOrderEditorActions">
@@ -174,6 +177,6 @@ export const PredictionOrderEditor = ({
           </div>
         </form>
       </section>
-    </div>
+    </dialog>
   );
 };

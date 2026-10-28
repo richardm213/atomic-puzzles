@@ -56,7 +56,7 @@
   margin: 0;
   color: var(--color-subtle);
   font-size: 0.78rem;
-  font-weight: 800;
+  font-weight: 650;
   letter-spacing: 0.12em;
   text-align: center;
   text-transform: uppercase;
@@ -72,7 +72,7 @@
 .matchPageHeaderPlayer {
   color: var(--color-heading);
   font-size: clamp(1.3rem, 2.2vw, 1.9rem);
-  font-weight: 800;
+  font-weight: 650;
   line-height: 1.05;
   text-decoration: none;
 }
@@ -113,6 +113,16 @@
   gap: 10px;
 }
 
+.matchPageMetaPill {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
 .matchPageHeaderActions {
   display: grid;
   justify-items: center;
@@ -145,7 +155,7 @@
   max-width: 100%;
   color: var(--color-heading);
   font-size: 0.92rem;
-  font-weight: 800;
+  font-weight: 650;
   line-height: 1.25;
   overflow-wrap: anywhere;
 }

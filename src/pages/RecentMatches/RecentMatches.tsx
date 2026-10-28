@@ -1,7 +1,8 @@
+import "../../components/MatchHistoryTable/MatchHistoryTable.css";
 import "./RecentMatches.css";
 
 import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 
 import {
   defaultMode,
@@ -18,6 +19,7 @@ import {
   type SourceFilters,
 } from "../../constants/matches";
 import type { MatchFilters as ArchiveMatchFilters } from "../../lib/archive/matches";
+import type { MatchListFilters } from "../../lib/matches/filters";
 import type { MatchCardData } from "../../lib/matches/types";
 import type { RawMatchLike } from "../../lib/matches/types";
 
@@ -25,36 +27,35 @@ type RecentMatch = MatchCardData & {
   sourceKey: string;
 };
 
-type AppliedFilters = {
+type AppliedFilters = MatchListFilters & {
   selectedMode: Mode;
   ratingFilterType: string;
   ratingMin: number;
   ratingMax: number;
   player1Filter: string;
   player2Filter: string;
-  sourceFilters: SourceFilters;
-  startDateFilter: string;
-  endDateFilter: string;
-  timeControlInitialFilter: string;
-  timeControlIncrementFilter: string;
 };
 
 import { DualRangeSlider } from "../../components/DualRangeSlider/DualRangeSlider";
 import { InlineState } from "../../components/InlineState/InlineState";
-import { MatchCard } from "../../components/MatchCard/MatchCard";
+import { LichessGameLink } from "../../components/LichessGameLink/LichessGameLink";
+import { MatchDetails } from "../../components/MatchDetails/MatchDetails";
+import { MatchPageLink } from "../../components/MatchPageLink/MatchPageLink";
+import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
+import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { Seo } from "../../components/Seo/Seo";
 import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFilterChecks";
 import { TimeControlFields } from "../../components/TimeControlFields/TimeControlFields";
-import { getTimeControlOptions } from "../../lib/matches/collection";
 import { toMatchCardData } from "../../lib/matches/data";
-import { isSourceAllowedByFilters, parseDateInputBoundary } from "../../lib/matches/filters";
+import { parseDateInputBoundary } from "../../lib/matches/filters";
 import { recentMatchesPageQueryOptions } from "../../lib/matches/queries";
 import {
   readStoredSourceFilters,
   writeStoredSourceFilters,
 } from "../../lib/matches/sourceFilterStorage";
-import { parseTimeControlParts } from "../../lib/matches/transforms";
 import { resolveUsernameInputs } from "../../lib/users/usernameSearch";
+import { toggleArrayValue } from "../../utils/arrays";
+import { formatLocalDateTime, formatScore } from "../../utils/formatters";
 
 const recentModeOptions = modeOptions;
 const ratingFilterTypeOptions = ["both", "average"];
@@ -72,16 +73,21 @@ const normalizeRecentMatches = (
 
 const buildArchiveFilters = (filters: AppliedFilters): ArchiveMatchFilters => {
   const queryFilters: ArchiveMatchFilters = {};
-  const username = String(filters.player1Filter || filters.player2Filter || "").trim();
-  if (username) queryFilters.username = username;
+  const player1 = filters.player1Filter.trim();
+  const player2 = filters.player2Filter.trim();
+  if (player1 && player2) queryFilters.usernamePair = [player1, player2];
+  else if (player1 || player2) queryFilters.username = player1 || player2;
   if (filters.startDateFilter) {
     queryFilters.startTs = parseDateInputBoundary(filters.startDateFilter, "start");
   }
   if (filters.endDateFilter) {
     queryFilters.endTs = parseDateInputBoundary(filters.endDateFilter, "end");
   }
-  if (filters.timeControlInitialFilter !== "all" && filters.timeControlIncrementFilter !== "all") {
-    queryFilters.timeControl = `${filters.timeControlInitialFilter}+${filters.timeControlIncrementFilter}`;
+  if (filters.timeControlInitialFilter !== "all") {
+    queryFilters.timeControlInitial = String(Number(filters.timeControlInitialFilter));
+  }
+  if (filters.timeControlIncrementFilter !== "all") {
+    queryFilters.timeControlIncrement = String(Number(filters.timeControlIncrementFilter));
   }
   const isDefaultRatingRange =
     filters.ratingMin === defaultRatingMin && filters.ratingMax === defaultRatingMax;
@@ -106,6 +112,7 @@ export const RecentMatchesPage = () => {
   const [selectedMode, setSelectedMode] = useState<Mode>(defaultMode);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(defaultPageSize);
+  const [knownTotal, setKnownTotal] = useState<number | null>(null);
   const [expandedMatchKeys, setExpandedMatchKeys] = useState<string[]>([]);
   const [ratingFilterType, setRatingFilterType] = useState("both");
   const [ratingMin, setRatingMin] = useState(defaultRatingMin);
@@ -137,11 +144,12 @@ export const RecentMatchesPage = () => {
       archiveFilters,
       currentPage,
       pageSize,
+      knownTotal === null,
     ),
     select: (loaded) =>
       ({
         matches: normalizeRecentMatches(loaded.matches, appliedFilters.selectedMode),
-        total: loaded.total,
+        total: knownTotal ?? loaded.total,
         hasPreviousPage: loaded.hasPreviousPage,
         hasNextPage: loaded.hasNextPage,
       }) satisfies {
@@ -155,13 +163,14 @@ export const RecentMatchesPage = () => {
   const applyFiltersMutation = useMutation({
     mutationFn: resolveSearchFilters,
     onSuccess: (filters) => {
+      setKnownTotal(null);
       setAppliedFilters(filters);
       setCurrentPage(1);
     },
   });
   const matches = useMemo(() => matchesQuery.data?.matches ?? [], [matchesQuery.data?.matches]);
-  const hasPreviousPage = matchesQuery.data?.hasPreviousPage ?? currentPage > 1;
-  const hasNextPage = matchesQuery.data?.hasNextPage ?? false;
+  const totalMatches = knownTotal ?? matchesQuery.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalMatches / pageSize));
   const loadingMatches = matchesQuery.isFetching || applyFiltersMutation.isPending;
   const queryError = matchesQuery.error ?? applyFiltersMutation.error;
   const error = queryError
@@ -174,63 +183,16 @@ export const RecentMatchesPage = () => {
     setExpandedMatchKeys([]);
   }, [currentPage, appliedFilters]);
 
-  const startDateTs = useMemo(
-    () => parseDateInputBoundary(appliedFilters.startDateFilter, "start"),
-    [appliedFilters.startDateFilter],
-  );
-  const endDateTs = useMemo(
-    () => parseDateInputBoundary(appliedFilters.endDateFilter, "end"),
-    [appliedFilters.endDateFilter],
-  );
-  const { initialOptions, incrementOptions } = useMemo(
-    () => getTimeControlOptions(matches),
-    [matches],
-  );
+  useEffect(() => {
+    if (knownTotal === null && matchesQuery.data && !matchesQuery.isPlaceholderData) {
+      setKnownTotal(matchesQuery.data.total);
+    }
+  }, [knownTotal, matchesQuery.data, matchesQuery.isPlaceholderData]);
 
   useEffect(() => {
     setTimeControlInitialFilter("all");
     setTimeControlIncrementFilter("all");
   }, [selectedMode]);
-
-  const filteredMatches = useMemo(
-    () =>
-      matches.filter((match) => {
-        if (match.startTs < startDateTs || match.startTs > endDateTs) return false;
-
-        const { initial, increment } = parseTimeControlParts(match.timeControl);
-        if (
-          appliedFilters.timeControlInitialFilter !== "all" &&
-          initial !== appliedFilters.timeControlInitialFilter
-        ) {
-          return false;
-        }
-        if (
-          appliedFilters.timeControlIncrementFilter !== "all" &&
-          increment !== appliedFilters.timeControlIncrementFilter
-        ) {
-          return false;
-        }
-
-        const playerAName = match.playerA.toLowerCase();
-        const playerBName = match.playerB.toLowerCase();
-        const first = appliedFilters.player1Filter.trim().toLowerCase();
-        const second = appliedFilters.player2Filter.trim().toLowerCase();
-
-        if (first && second) {
-          const firstFound = playerAName.includes(first) || playerBName.includes(first);
-          const secondFound = playerAName.includes(second) || playerBName.includes(second);
-          if (!firstFound || !secondFound) return false;
-        } else if (first || second) {
-          const onlyFilter = first || second;
-          if (!playerAName.includes(onlyFilter) && !playerBName.includes(onlyFilter)) {
-            return false;
-          }
-        }
-
-        return isSourceAllowedByFilters(match.sourceKey, appliedFilters.sourceFilters);
-      }),
-    [matches, appliedFilters, startDateTs, endDateTs],
-  );
 
   const handleSearch = () => {
     if (loadingMatches) return;
@@ -252,7 +214,7 @@ export const RecentMatchesPage = () => {
     applyFiltersMutation.mutate(nextAppliedFilters);
   };
 
-  const paginatedMatches = filteredMatches;
+  const paginatedMatches = matches;
   const setSourceFilter = (source: keyof SourceFilters, checked: boolean): void => {
     setSourceFilters((current) => {
       const next = { ...current, [source]: checked };
@@ -300,7 +262,10 @@ export const RecentMatchesPage = () => {
               <select
                 id="recent-page-size"
                 value={pageSize}
-                onChange={(event) => setPageSize(Number(event.target.value))}
+                onChange={(event) => {
+                  setPageSize(Number(event.target.value));
+                  setCurrentPage(1);
+                }}
               >
                 {pageSizeOptions.map((option) => (
                   <option key={option} value={option}>
@@ -310,14 +275,13 @@ export const RecentMatchesPage = () => {
               </select>
             </label>
             <TimeControlFields
-              initialId="recent-time-initial-select"
-              incrementId="recent-time-increment-select"
+              initialId="recent-time-initial"
+              incrementId="recent-time-increment"
               initialValue={timeControlInitialFilter}
               incrementValue={timeControlIncrementFilter}
-              initialOptions={initialOptions}
-              incrementOptions={incrementOptions}
               onInitialChange={setTimeControlInitialFilter}
               onIncrementChange={setTimeControlIncrementFilter}
+              controlStyle="compact-input"
               startDateId="recent-start-date-filter"
               endDateId="recent-end-date-filter"
               startDateValue={startDateFilter}
@@ -391,60 +355,120 @@ export const RecentMatchesPage = () => {
 
         {error ? <InlineState kind="error">{error}</InlineState> : null}
 
-        <div className="rankingsMeta">
-          <span>Showing recent matches</span>
-          <span>
-            {filteredMatches.length === 0
-              ? "0 shown"
-              : `${(currentPage - 1) * pageSize + 1}-${Math.min(currentPage * pageSize, filteredMatches.length)} shown`}
-          </span>
-        </div>
+        <div className="rankingsTableWrap matchHistoryTableWrap recentMatchTableWrap">
+          <table className="rankingsTable matchHistoryTable recentMatchTable">
+            <colgroup>
+              <col className="recentMatchDateColumn" />
+              <col className="recentMatchPlayersColumn" />
+              <col className="recentMatchTimeControlColumn" />
+              <col className="recentMatchScoreColumn" />
+              <col className="recentMatchActionsColumn" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Date / Time</th>
+                <th>Players</th>
+                <th>TC</th>
+                <th>Score</th>
+                <th aria-label="Match actions" />
+              </tr>
+            </thead>
+            <tbody>
+              {paginatedMatches.map((match) => {
+                const matchKey = `${match.startTs}-${match.firstGameId}-${match.playerA}-${match.playerB}`;
+                const isExpanded = expandedMatchKeys.includes(matchKey);
+                const toggleMatch = () =>
+                  setExpandedMatchKeys((current) => toggleArrayValue(current, matchKey));
 
-        <div className="matchCards">
-          {paginatedMatches.map((match) => {
-            const matchKey = `${match.startTs}-${match.firstGameId}-${match.playerA}-${match.playerB}`;
-            const isExpanded = expandedMatchKeys.includes(matchKey);
-
-            return (
-              <MatchCard
-                key={matchKey}
-                match={match}
-                matchKey={matchKey}
-                isExpanded={isExpanded}
-                onToggle={() =>
-                  setExpandedMatchKeys((current) =>
-                    current.includes(matchKey)
-                      ? current.filter((key) => key !== matchKey)
-                      : [...current, matchKey],
-                  )
-                }
-              />
-            );
-          })}
-          {filteredMatches.length === 0 ? (
-            <InlineState kind="empty">No matches found with current filters.</InlineState>
-          ) : null}
+                return (
+                  <Fragment key={matchKey}>
+                    <tr
+                      className={`expandableMatchRow${isExpanded ? " expanded" : ""}`}
+                      onClick={(event) => {
+                        if ((event.target as HTMLElement).closest("a, button")) return;
+                        toggleMatch();
+                      }}
+                    >
+                      <td>
+                        <LichessGameLink gameId={match.firstGameId} source={match.sourceValue}>
+                          {formatLocalDateTime(match.startTs)}
+                        </LichessGameLink>
+                      </td>
+                      <td>
+                        <div className="recentMatchPlayers">
+                          <PlayerLink className="rankingLink" username={match.playerA}>
+                            {match.playerA}
+                          </PlayerLink>
+                          <span>vs</span>
+                          <PlayerLink className="rankingLink" username={match.playerB}>
+                            {match.playerB}
+                          </PlayerLink>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="recentTimeControl timeControlValue">
+                          {match.timeControl ?? "—"}
+                        </span>
+                      </td>
+                      <td className="scoreCell recentScoreCell">
+                        <span className="profileScoreBox recentScoreBox">
+                          <span>{formatScore(match.scoreA)}</span>
+                          <span className="scoreDash">-</span>
+                          <span>{formatScore(match.scoreB)}</span>
+                        </span>
+                      </td>
+                      <td>
+                        <div className="tableRowActions">
+                          <button
+                            type="button"
+                            className="recentRowToggle"
+                            aria-expanded={isExpanded}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              toggleMatch();
+                            }}
+                          >
+                            {isExpanded ? "Hide details" : "Show details"}
+                          </button>
+                          <MatchPageLink match={match} title="Open match page in new tab" />
+                        </div>
+                      </td>
+                    </tr>
+                    {isExpanded ? (
+                      <tr className="matchDetailsRow">
+                        <td colSpan={5}>
+                          <div className="matchDetailsInner">
+                            <MatchDetails
+                              match={match}
+                              matchKey={matchKey}
+                              showH2HLink
+                              showRunningScore
+                            />
+                          </div>
+                        </td>
+                      </tr>
+                    ) : null}
+                  </Fragment>
+                );
+              })}
+              {matches.length === 0 ? (
+                <tr>
+                  <td colSpan={5}>
+                    <InlineState kind="empty">No matches found with current filters.</InlineState>
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
         </div>
-        {filteredMatches.length > 0 ? (
-          <div className="paginationRow" aria-label="Recent match pages">
-            <button
-              type="button"
-              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-              disabled={loadingMatches || !hasPreviousPage}
-            >
-              Previous
-            </button>
-            <span className="paginationPageButton" aria-current="page">
-              Page {currentPage}
-            </span>
-            <button
-              type="button"
-              onClick={() => setCurrentPage((page) => page + 1)}
-              disabled={loadingMatches || !hasNextPage}
-            >
-              Next
-            </button>
-          </div>
+        {totalMatches > 0 ? (
+          <PaginationRow
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            disabled={loadingMatches}
+            ariaLabel="Recent match pages"
+          />
         ) : null}
       </div>
     </div>

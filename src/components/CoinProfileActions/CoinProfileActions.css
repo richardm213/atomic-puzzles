@@ -13,7 +13,7 @@
   background: color-mix(in srgb, var(--color-gold) 7%, var(--color-panel-strong));
   color: var(--color-heading);
   font: inherit;
-  font-weight: 800;
+  font-weight: 650;
   cursor: pointer;
   transition:
     border-color 160ms ease,
@@ -56,6 +56,7 @@
 
 .coinProfileDialog::backdrop {
   background: rgb(3 7 18 / 72%);
+  -webkit-backdrop-filter: blur(5px);
   backdrop-filter: blur(5px);
 }
 
@@ -107,7 +108,7 @@
   gap: var(--space-2);
   color: var(--color-heading);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 650;
 }
 
 .coinProfilePanel label span {
@@ -144,7 +145,7 @@
   background: var(--color-primary);
   color: var(--color-on-primary);
   font: inherit;
-  font-weight: 800;
+  font-weight: 650;
   cursor: pointer;
 }
 
@@ -183,7 +184,7 @@
 
 .coinProfileSuccess p {
   margin: 0;
-  font-weight: 800;
+  font-weight: 650;
 }
 
 .coinProfileSuccess button {

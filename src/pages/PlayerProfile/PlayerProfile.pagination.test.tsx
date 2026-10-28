@@ -20,6 +20,9 @@ vi.mock("../../lib/matches/data", async (importOriginal) => ({
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children: ReactNode }) => <span>{children}</span>,
 }));
+vi.mock("../../context/AuthContext", () => ({
+  useAuth: () => ({ isAuthenticated: false, user: null }),
+}));
 vi.mock("../../components/Seo/Seo", () => ({ Seo: () => null }));
 
 let client: QueryClient;

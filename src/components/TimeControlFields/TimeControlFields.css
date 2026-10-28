@@ -1,0 +1,30 @@
+.timeControlCompactField {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: var(--color-subtle);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.timeControlCompactInputs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+}
+
+.timeControlCompactInputs > span {
+  color: var(--color-muted);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.timeControlCompactInputs input {
+  width: 100%;
+  min-width: 0;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}

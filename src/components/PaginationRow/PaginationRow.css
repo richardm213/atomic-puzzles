@@ -1,0 +1,101 @@
+.paginationRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.paginationRow button,
+.paginationJumpLabel {
+  min-height: 40px;
+  border: 1px solid var(--color-input-border);
+  border-radius: 8px;
+  background: var(--color-panel-strong);
+  color: var(--color-text);
+}
+
+.paginationRow button {
+  padding: 8px 12px;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.paginationRow button:hover:not(:disabled) {
+  border-color: var(--color-accent-soft-border);
+  background: var(--color-surface-elevated-strong);
+  color: var(--color-heading);
+}
+
+.paginationRow button:active:not(:disabled) {
+  background: var(--color-accent-soft-bg);
+}
+
+.paginationRow button:focus-visible,
+.paginationJumpInput:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-primary) 65%, white);
+  outline-offset: 2px;
+}
+
+.paginationRow button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.paginationPageButton {
+  min-width: 112px;
+  font-weight: 700;
+}
+
+.paginationJumpForm {
+  margin: 0;
+}
+
+.paginationJumpLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px 4px 10px;
+  font-weight: 700;
+}
+
+.paginationJumpInput {
+  width: 72px;
+  min-height: 30px;
+  border: 1px solid var(--color-input-border);
+  border-radius: 6px;
+  background: var(--color-surface-elevated-strong);
+  color: var(--color-text);
+  padding: 4px 7px;
+}
+
+@media (max-width: 640px) {
+  .paginationRow {
+    justify-content: stretch;
+    flex-wrap: wrap;
+  }
+
+  .paginationRow button {
+    flex: 1 1 96px;
+    min-height: 44px;
+  }
+
+  .paginationJumpForm {
+    flex: 1 1 100%;
+  }
+
+  .paginationJumpLabel {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .paginationRow button {
+    transition-duration: 0.01ms;
+  }
+}

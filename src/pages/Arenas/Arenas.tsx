@@ -8,23 +8,24 @@ import { useEffect, useState } from "react";
 import { Seo } from "../../components/Seo/Seo";
 import { type Arena, arenaHref, arenasQueryOptions, filterArenas } from "../../lib/supabase/arenas";
 import { appAssetPath } from "../../utils/appAssetPath";
+import { getBrowserStorageJson, setBrowserStorageJson } from "../../utils/browserStorage";
 
 const frequencies = ["all", "monthly", "shield", "yearly"] as const;
 const views = ["results", "cards", "years"] as const;
 type View = (typeof views)[number];
+type ArenaPreferences = {
+  view?: View;
+  frequency?: (typeof frequencies)[number];
+  search?: string;
+};
 const dateFormat = new Intl.DateTimeFormat("en", {
   day: "numeric",
   month: "short",
   year: "numeric",
   timeZone: "UTC",
 });
-const readPreferences = () => {
-  try {
-    return JSON.parse(localStorage.getItem("arena-archive-preferences") || "{}");
-  } catch {
-    return {};
-  }
-};
+const readPreferences = (): ArenaPreferences =>
+  getBrowserStorageJson("local", "arena-archive-preferences", {});
 
 const ArenaEntry = ({ arena }: { arena: Arena }) => {
   return (
@@ -33,7 +34,6 @@ const ArenaEntry = ({ arena }: { arena: Arena }) => {
       href={arenaHref(arena)}
       target="_blank"
       rel="noopener noreferrer"
-      aria-label={`${arena.name}, ${dateFormat.format(new Date(arena.starts_at))}, 1st ${arena.winner || "not recorded"}, 2nd ${arena.second_place || "not recorded"}, 3rd ${arena.third_place || "not recorded"}, winner points ${arena.score}, ${arena.players} players. Open on Lichess in a new tab`}
     >
       <div className="arenaIdentity">
         <div className="arenaEmblem" aria-hidden="true">
@@ -78,6 +78,7 @@ const ArenaEntry = ({ arena }: { arena: Arena }) => {
       <span className="arenaExternal" aria-hidden="true">
         ↗
       </span>
+      <span className="visuallyHidden">Open on Lichess in a new tab</span>
     </a>
   );
 };
@@ -85,23 +86,18 @@ const ArenaEntry = ({ arena }: { arena: Arena }) => {
 export const ArenasPage = () => {
   const [preferences] = useState(readPreferences);
   const [view, setView] = useState<View>(
-    views.includes(preferences?.view) ? preferences.view : "cards",
+    preferences.view && views.includes(preferences.view) ? preferences.view : "cards",
   );
   const [frequency, setFrequency] = useState<string>(
-    frequencies.includes(preferences?.frequency) ? preferences.frequency : "all",
+    preferences.frequency && frequencies.includes(preferences.frequency)
+      ? preferences.frequency
+      : "all",
   );
   const [search, setSearch] = useState(
-    typeof preferences?.search === "string" ? preferences.search : "",
+    typeof preferences.search === "string" ? preferences.search : "",
   );
   useEffect(() => {
-    try {
-      localStorage.setItem(
-        "arena-archive-preferences",
-        JSON.stringify({ view, frequency, search }),
-      );
-    } catch {
-      /* Storage may be disabled. */
-    }
+    setBrowserStorageJson("local", "arena-archive-preferences", { view, frequency, search });
   }, [view, frequency, search]);
   const query = useQuery(arenasQueryOptions());
   const arenas = filterArenas(query.data ?? [], frequency, search);

@@ -1,4 +1,6 @@
 import type { CommunityRequest } from "../../../shared/domain/community/schemas";
+import type { VoteValue } from "../../../shared/domain/voting";
+import { loadAllPages } from "../../../shared/lib/pagination";
 import { HttpError } from "../../platform/errors";
 import type {
   CommunityCommentVoteRecord,
@@ -152,6 +154,34 @@ export const sortProfileCommentRecords = (
   });
 };
 
+type CommentEnrichmentContext = {
+  upvotesByCommentId: Map<number, number>;
+  attemptedPuzzleIds: Set<string>;
+};
+
+const createCommentEnrichmentContext = (
+  commentCounts: Array<Pick<ProfileCommentCountRecord, "comment_id" | "upvotes">>,
+  attemptedPuzzles: Array<Pick<PuzzleAttemptRecord, "puzzle_id">>,
+): CommentEnrichmentContext => ({
+  upvotesByCommentId: new Map(
+    commentCounts.map((row) => [Number(row.comment_id), Number(row.upvotes)]),
+  ),
+  attemptedPuzzleIds: new Set(attemptedPuzzles.map((row) => String(row.puzzle_id))),
+});
+
+const enrichComment = (
+  comment: Pick<ProfileCommentRecord, "id" | "username" | "body" | "created_at">,
+  contentHidden: boolean,
+  context: CommentEnrichmentContext,
+) => ({
+  id: Number(comment.id),
+  username: String(comment.username ?? ""),
+  body: contentHidden ? null : String(comment.body ?? ""),
+  created_at: String(comment.created_at ?? ""),
+  upvotes: context.upvotesByCommentId.get(Number(comment.id)) ?? 0,
+  content_hidden: contentHidden,
+});
+
 export const buildProfileCommentRows = (
   comments: Array<{
     id: number | string;
@@ -163,20 +193,12 @@ export const buildProfileCommentRows = (
   commentCounts: Array<{ comment_id: number | string; upvotes: number | string | null }>,
   attemptedPuzzles: Array<{ puzzle_id: number | string }>,
 ) => {
-  const upvotesByCommentId = new Map(
-    commentCounts.map((row) => [Number(row.comment_id), Number(row.upvotes)]),
-  );
-  const attemptedPuzzleIds = new Set(attemptedPuzzles.map((row) => String(row.puzzle_id)));
+  const context = createCommentEnrichmentContext(commentCounts, attemptedPuzzles);
   return comments.map((comment) => {
-    const contentHidden = !attemptedPuzzleIds.has(String(comment.puzzle_id));
+    const contentHidden = !context.attemptedPuzzleIds.has(String(comment.puzzle_id));
     return {
-      id: Number(comment.id),
+      ...enrichComment(comment, contentHidden, context),
       puzzle_id: Number(comment.puzzle_id),
-      username: String(comment.username ?? ""),
-      body: contentHidden ? null : String(comment.body ?? ""),
-      created_at: String(comment.created_at ?? ""),
-      upvotes: upvotesByCommentId.get(Number(comment.id)) ?? 0,
-      content_hidden: contentHidden,
     };
   });
 };
@@ -186,24 +208,16 @@ const buildCommunityHistoryRows = (
   commentCounts: ProfileCommentCountRecord[],
   attemptedPuzzles: Array<{ puzzle_id: number | string }>,
 ) => {
-  const upvotesByCommentId = new Map(
-    commentCounts.map((row) => [Number(row.comment_id), Number(row.upvotes)]),
-  );
-  const attemptedPuzzleIds = new Set(attemptedPuzzles.map((row) => String(row.puzzle_id)));
+  const context = createCommentEnrichmentContext(commentCounts, attemptedPuzzles);
   return comments.map((comment) => {
     const contentHidden =
-      comment.target_type === "puzzle" && !attemptedPuzzleIds.has(comment.target_id);
+      comment.target_type === "puzzle" && !context.attemptedPuzzleIds.has(comment.target_id);
     return {
-      id: Number(comment.id),
+      ...enrichComment(comment, contentHidden, context),
       target_type: comment.target_type,
       target_id: comment.target_id,
       target_context: comment.target_context,
       puzzle_id: comment.target_type === "puzzle" ? Number(comment.target_id) : null,
-      username: String(comment.username ?? ""),
-      body: contentHidden ? null : String(comment.body ?? ""),
-      created_at: String(comment.created_at ?? ""),
-      upvotes: upvotesByCommentId.get(Number(comment.id)) ?? 0,
-      content_hidden: contentHidden,
     };
   });
 };
@@ -258,37 +272,19 @@ export class CommunityService {
   }
 
   async loadPuzzleRankings() {
-    const pageSize = 1_000;
-    const loadAll = async <T>(loader: (from: number, pageSize: number) => Promise<T[]>) => {
-      const rows: T[] = [];
-      for (let from = 0; ; from += pageSize) {
-        const page = await loader(from, pageSize);
-        rows.push(...page);
-        if (page.length < pageSize) return rows;
-      }
-    };
     const [puzzles, attempts] = await Promise.all([
-      loadAll((from, size) => this.repository.listPuzzleVoteCounts(from, size)),
-      loadAll((from, size) => this.repository.listPuzzleAttempts(from, size)),
+      loadAllPages((from, size) => this.repository.listPuzzleVoteCounts(from, size)),
+      loadAllPages((from, size) => this.repository.listPuzzleAttempts(from, size)),
     ]);
     return { puzzles: addPuzzleAttemptStats(puzzles, attempts) };
   }
 
   async loadCommunityUsers() {
-    const pageSize = 1_000;
-    const loadAll = async <T>(loader: (from: number, pageSize: number) => Promise<T[]>) => {
-      const rows: T[] = [];
-      for (let from = 0; ; from += pageSize) {
-        const page = await loader(from, pageSize);
-        rows.push(...page);
-        if (page.length < pageSize) return rows;
-      }
-    };
     const [users, puzzleVotes, comments, commentVotes] = await Promise.all([
-      loadAll((from, size) => this.repository.listCommunityUsernames(from, size)),
-      loadAll((from, size) => this.repository.listAllPuzzleVotes(from, size)),
-      loadAll((from, size) => this.repository.listCommunityCommentAuthors(from, size)),
-      loadAll((from, size) => this.repository.listAllCommunityCommentVotes(from, size)),
+      loadAllPages((from, size) => this.repository.listCommunityUsernames(from, size)),
+      loadAllPages((from, size) => this.repository.listAllPuzzleVotes(from, size)),
+      loadAllPages((from, size) => this.repository.listCommunityCommentAuthors(from, size)),
+      loadAllPages((from, size) => this.repository.listAllCommunityCommentVotes(from, size)),
     ]);
     return { users: buildCommunityUserStats(users, puzzleVotes, comments, commentVotes) };
   }
@@ -376,7 +372,7 @@ export class CommunityService {
     };
   }
 
-  async voteOnPuzzle(puzzleId: number, username: string, vote: -1 | 0 | 1) {
+  async voteOnPuzzle(puzzleId: number, username: string, vote: VoteValue) {
     await this.repository.ensureUser(username);
     await this.repository.savePuzzleVote(puzzleId, username, vote);
     return this.loadTargetCommunity(
@@ -389,7 +385,7 @@ export class CommunityService {
     target: CommunityTarget,
     commentId: number,
     username: string,
-    vote: -1 | 0 | 1,
+    vote: VoteValue,
   ) {
     await this.repository.ensureUser(username);
     if (!(await this.repository.commentBelongsToTarget(commentId, target))) {

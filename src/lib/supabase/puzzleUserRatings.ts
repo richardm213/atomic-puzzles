@@ -1,9 +1,11 @@
 import { z } from "zod";
 
+import type { PuzzleLeaderboardMetric } from "../../../shared/domain/puzzles/puzzleLeaderboard";
 import { normalizeUsername } from "../../utils/playerNames";
 import { postApi } from "../api/postApi";
 import { getSupabaseClient } from "./client";
-import { fetchAllSupabaseRows, loadSupabaseRows } from "./rows";
+import { loadSupabaseRows } from "./rows";
+import type { PuzzleUserRatingRow as StoredPuzzleUserRatingRow } from "./types";
 
 export type PuzzleUserRating = {
   username: string;
@@ -33,15 +35,8 @@ export type PuzzleRatingEvent = {
   puzzleRatingChange: number;
 };
 
-export type PuzzleLeaderboardMetricRow = {
-  username: string;
-  rating: number;
-  ratingDeviation: number;
-  attempted: number;
-  correct: number;
-  activityAttempts?: number;
-  averageSeconds: number | null;
-};
+export type PuzzleLeaderboardMetricRow = PuzzleLeaderboardMetric &
+  Required<Pick<PuzzleLeaderboardMetric, "averageSeconds">>;
 
 export type PuzzleRankingTrophyRow = Omit<PuzzleLeaderboardMetricRow, "averageSeconds"> & {
   month: string;
@@ -49,17 +44,8 @@ export type PuzzleRankingTrophyRow = Omit<PuzzleLeaderboardMetricRow, "averageSe
   eligible: true;
 };
 
-type PuzzleUserRatingRow = {
-  username?: string | null;
-  rating?: number | null;
-  rating_deviation?: number | null;
-  attempts?: number | null;
-  successes?: number | null;
-  updated_at?: string | null;
-  last_attempt_at?: string | null;
-  timed_attempts?: number | null;
-  total_duration_ms?: number | null;
-  average_time_seconds?: number | null;
+type PuzzleUserRatingResponseRow = {
+  [Key in keyof Omit<StoredPuzzleUserRatingRow, "user_id">]?: StoredPuzzleUserRatingRow[Key] | null;
 };
 
 const puzzleRatingEventResponseSchema = z.object({
@@ -109,7 +95,7 @@ const puzzleRankingTrophiesResponseSchema = z.object({
   ),
 });
 
-const normalizePuzzleUserRating = (row: PuzzleUserRatingRow): PuzzleUserRating => ({
+const normalizePuzzleUserRating = (row: PuzzleUserRatingResponseRow): PuzzleUserRating => ({
   username: normalizeUsername(row.username),
   rating: Math.round(Number(row.rating) || 2000),
   ratingDeviation: Math.max(0, Math.round(Number(row.rating_deviation) || 350)),
@@ -130,7 +116,7 @@ export const fetchPuzzleUserRating = async (username: string): Promise<PuzzleUse
   if (!normalizedUsername) return null;
 
   const supabase = getSupabaseClient();
-  const rows = await loadSupabaseRows<PuzzleUserRatingRow>(
+  const rows = await loadSupabaseRows<PuzzleUserRatingResponseRow>(
     "puzzle_user_ratings",
     supabase
       .from("puzzle_user_ratings")
@@ -144,20 +130,6 @@ export const fetchPuzzleUserRating = async (username: string): Promise<PuzzleUse
   if (!row) return null;
 
   return normalizePuzzleUserRating(row);
-};
-
-export const fetchAllPuzzleUserRatings = async (): Promise<PuzzleUserRating[]> => {
-  const supabase = getSupabaseClient();
-  const rows = await fetchAllSupabaseRows<PuzzleUserRatingRow>("puzzle_user_ratings", () =>
-    supabase
-      .from("puzzle_user_ratings")
-      .select(
-        "username,rating,rating_deviation,attempts,successes,updated_at,last_attempt_at,timed_attempts,total_duration_ms,average_time_seconds",
-      )
-      .order("rating", { ascending: false }),
-  );
-
-  return rows.map(normalizePuzzleUserRating).filter((row) => row.username);
 };
 
 export const fetchPuzzleLeaderboard = async (

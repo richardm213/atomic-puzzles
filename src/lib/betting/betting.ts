@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { type VoteValue, voteValueSchema } from "../../../shared/domain/voting";
 import { postApi } from "../api/postApi";
 
 export {
@@ -89,7 +90,7 @@ export type MarketSuggestion = {
   score: number;
   upvotes: number;
   downvotes: number;
-  userVote: -1 | 0 | 1;
+  userVote: VoteValue;
   createdAt: string;
 };
 
@@ -266,7 +267,7 @@ const marketSuggestionSchema = z.object({
   score: z.number(),
   upvotes: z.number(),
   downvotes: z.number(),
-  userVote: z.union([z.literal(-1), z.literal(0), z.literal(1)]),
+  userVote: voteValueSchema,
   createdAt: z.string(),
 });
 const marketSuggestionsResponseSchema = z.object({ result: z.array(marketSuggestionSchema) });
@@ -274,7 +275,7 @@ const marketSuggestionResponseSchema = z.object({ result: marketSuggestionSchema
 const marketSuggestionVoteResponseSchema = z.object({
   result: z.object({
     suggestionId: z.number(),
-    userVote: z.union([z.literal(-1), z.literal(0), z.literal(1)]),
+    userVote: voteValueSchema,
   }),
 });
 
@@ -291,31 +292,27 @@ export const fetchBettingMarkets = async (): Promise<BettingMarket[]> => {
   return response.result;
 };
 
-export const fetchMyTournamentBets = async (): Promise<TournamentBet[]> => {
+const fetchTournamentBets = async (
+  action: "bets" | "allBets",
+  errorMessage: string,
+): Promise<TournamentBet[]> => {
   const response = await postApi(
     "/api/betting",
-    { action: "bets" },
+    { action },
     {
       schema: betsResponseSchema,
-      errorMessage: "Unable to load your bets.",
+      errorMessage,
       invalidMessage: "The betting service returned invalid bets.",
     },
   );
   return response.result;
 };
 
-export const fetchAllTournamentBets = async (): Promise<TournamentBet[]> => {
-  const response = await postApi(
-    "/api/betting",
-    { action: "allBets" },
-    {
-      schema: betsResponseSchema,
-      errorMessage: "Unable to load all bets.",
-      invalidMessage: "The betting service returned invalid bets.",
-    },
-  );
-  return response.result;
-};
+export const fetchMyTournamentBets = (): Promise<TournamentBet[]> =>
+  fetchTournamentBets("bets", "Unable to load your bets.");
+
+export const fetchAllTournamentBets = (): Promise<TournamentBet[]> =>
+  fetchTournamentBets("allBets", "Unable to load all bets.");
 
 export const placeTournamentBet = async ({
   marketId,
@@ -375,8 +372,8 @@ export const voteOnMarketSuggestion = async ({
   vote,
 }: {
   suggestionId: number;
-  vote: -1 | 0 | 1;
-}): Promise<{ suggestionId: number; userVote: -1 | 0 | 1 }> => {
+  vote: VoteValue;
+}): Promise<{ suggestionId: number; userVote: VoteValue }> => {
   const response = await postApi(
     "/api/betting",
     { action: "voteSuggestion", suggestionId, vote },

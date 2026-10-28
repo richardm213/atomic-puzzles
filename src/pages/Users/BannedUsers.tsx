@@ -9,11 +9,13 @@ import { useMemo } from "react";
 import { DataTable } from "../../components/DataTable/DataTable";
 import { SortableTableHeader } from "../../components/DataTable/SortableTableHeader";
 import { InlineState } from "../../components/InlineState/InlineState";
+import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { useTableSort } from "../../hooks/useTableSort";
 import type { AliasIdentityRow } from "../../lib/archive/aliases";
 import { aliasRowsQueryOptions } from "../../lib/users/aliasQueries";
+import { getErrorMessage } from "../../utils/errors";
 
 type BannedUserSortKey = "username" | "accounts";
 const bannedUserColumns = [
@@ -50,9 +52,7 @@ export const BannedUsersPage = () => {
   const rows = bannedUsersQuery.data ? buildBannedRows(bannedUsersQuery.data) : emptyBannedUserRows;
   const loading = bannedUsersQuery.isPending;
   const error = bannedUsersQuery.error
-    ? bannedUsersQuery.error instanceof Error
-      ? bannedUsersQuery.error.message
-      : "Failed to load banned users."
+    ? getErrorMessage(bannedUsersQuery.error, "Failed to load banned users.")
     : "";
 
   const sortedRows = useMemo(() => {
@@ -161,13 +161,9 @@ export const BannedUsersPage = () => {
                 <tr key={row.username}>
                   <td>
                     <span className="bannedUserName">
-                      <Link
-                        className="rankingLink"
-                        to="/@/$username"
-                        params={{ username: row.username }}
-                      >
+                      <PlayerLink className="rankingLink" username={row.username}>
                         {row.username}
-                      </Link>
+                      </PlayerLink>
                     </span>
                   </td>
                   <td>

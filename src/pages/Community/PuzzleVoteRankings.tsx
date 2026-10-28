@@ -13,6 +13,7 @@ import { Seo } from "../../components/Seo/Seo";
 import { useTableSort } from "../../hooks/useTableSort";
 import { puzzleRankingsQueryOptions } from "../../lib/community/communityQueries";
 import type { PuzzleVoteRankingRow } from "../../lib/community/puzzleCommunity";
+import { getErrorMessage } from "../../utils/errors";
 
 type VoteSortKey = "upvotes" | "downvotes";
 
@@ -24,9 +25,7 @@ export const PuzzleVoteRankingsPage = () => {
   const rankings = rankingsQuery.data ?? null;
   const loading = rankingsQuery.isPending;
   const error = rankingsQuery.error
-    ? rankingsQuery.error instanceof Error
-      ? rankingsQuery.error.message
-      : "Unable to load rankings."
+    ? getErrorMessage(rankingsQuery.error, "Unable to load rankings.")
     : "";
 
   const sortedPuzzles = useMemo(() => {

@@ -6,6 +6,7 @@ import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 
 import { InlineState } from "../../components/InlineState/InlineState";
+import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { PredictionMarketExplainer } from "../../components/PredictionMarketExplainer/PredictionMarketExplainer";
 import { PredictionOrderEditor } from "../../components/PredictionOrderEditor/PredictionOrderEditor";
 import { PredictionMarketIdentity } from "../../components/PredictionTrading/PredictionMarketIdentity";
@@ -22,7 +23,7 @@ import {
 } from "../../lib/betting/betting";
 import { allTournamentBetsQueryOptions } from "../../lib/betting/bettingQueries";
 import { formatCoinBalance } from "../../lib/coins/coinDisplay";
-import { coinQueryKeys, coinSummaryQueryOptions } from "../../lib/coins/coinQueries";
+import { coinSummaryQueryOptions, updateCachedCoinBalance } from "../../lib/coins/coinQueries";
 import { tournamentBracketQueryOptions } from "../../lib/matches/tournamentQueries";
 import {
   patchPredictionMarketState,
@@ -49,6 +50,7 @@ import {
   quotePredictionSell,
 } from "../../lib/predictionMarkets/predictionMarkets";
 import { appAssetPath } from "../../utils/appAssetPath";
+import { getErrorMessage } from "../../utils/errors";
 import { formatLocalDateTime } from "../../utils/formatters";
 
 const outcomeLabel = (outcome: PredictionOutcome, definition?: PredictionMarketDefinition) =>
@@ -277,9 +279,7 @@ export const PredictionMarketPage = () => {
   );
 
   const updateCoinBalance = (balance: number) => {
-    queryClient.setQueryData(coinQueryKeys.summary(username), (current: unknown) =>
-      current && typeof current === "object" ? { ...current, balance } : current,
-    );
+    updateCachedCoinBalance(queryClient, username, balance);
   };
 
   const placeMutation = useMutation({
@@ -433,9 +433,7 @@ export const PredictionMarketPage = () => {
           ) : null}
           {placeMutation.error ? (
             <InlineState kind="error">
-              {placeMutation.error instanceof Error
-                ? placeMutation.error.message
-                : "Unable to place this order."}
+              {getErrorMessage(placeMutation.error, "Unable to place this order.")}
             </InlineState>
           ) : null}
           {successMessage ? <InlineState kind="success">{successMessage}</InlineState> : null}
@@ -481,7 +479,7 @@ export const PredictionMarketPage = () => {
   const showShieldIcon = marketGroup.id === "november-atomic-shield-2026";
 
   return (
-    <main className="sitePage predictionMarketPage">
+    <div className="sitePage predictionMarketPage">
       <Seo
         title={marketGroup.title}
         description={marketGroup.description}
@@ -528,9 +526,7 @@ export const PredictionMarketPage = () => {
 
         {marketsQuery.error ? (
           <InlineState kind="error">
-            {marketsQuery.error instanceof Error
-              ? marketsQuery.error.message
-              : "Unable to load this market."}
+            {getErrorMessage(marketsQuery.error, "Unable to load this market.")}
           </InlineState>
         ) : null}
 
@@ -573,22 +569,9 @@ export const PredictionMarketPage = () => {
                         <div
                           className={`predictionOutcomeSummary${
                             activeMarketId === definition.id && !isResolved
-                              ? " predictionOutcomeSummary--active predictionOutcomeSummary--interactive"
-                              : !isResolved
-                                ? " predictionOutcomeSummary--interactive"
-                                : ""
+                              ? " predictionOutcomeSummary--active"
+                              : ""
                           }${isResolved ? " predictionOutcomeSummary--resolved" : ""}`}
-                          onClick={
-                            isResolved
-                              ? undefined
-                              : (event) => {
-                                  const target = event.target as HTMLElement;
-                                  if (target.closest("button, a, .predictionStrikeDrawer")) {
-                                    return;
-                                  }
-                                  toggleMarket(definition.id);
-                                }
-                          }
                           key={definition.id}
                         >
                           <div className="predictionOutcomeMarketBlock">
@@ -724,16 +707,16 @@ export const PredictionMarketPage = () => {
                             {formatLocalDateTime(fill.createdAt)}
                           </time>
                           <span className="predictionTradeParties">
-                            <Link to="/@/$username" params={{ username: fill.buyerUsername }}>
+                            <PlayerLink username={fill.buyerUsername}>
                               {fill.buyerUsername}
-                            </Link>
+                            </PlayerLink>
                             {fill.sellerUsername &&
                             fill.sellerUsername.toLowerCase() !== predictionAdminUsername ? (
                               <>
                                 <small>bought from</small>
-                                <Link to="/@/$username" params={{ username: fill.sellerUsername }}>
+                                <PlayerLink username={fill.sellerUsername}>
                                   {fill.sellerUsername}
-                                </Link>
+                                </PlayerLink>
                               </>
                             ) : null}
                           </span>
@@ -763,9 +746,7 @@ export const PredictionMarketPage = () => {
                   />
                   {cancelMutation.error ? (
                     <InlineState kind="error">
-                      {cancelMutation.error instanceof Error
-                        ? cancelMutation.error.message
-                        : "Unable to cancel this order."}
+                      {getErrorMessage(cancelMutation.error, "Unable to cancel this order.")}
                     </InlineState>
                   ) : null}
                 </>
@@ -802,7 +783,7 @@ export const PredictionMarketPage = () => {
           }}
         />
       ) : null}
-    </main>
+    </div>
   );
 };
 

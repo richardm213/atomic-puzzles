@@ -20,7 +20,10 @@ const SOURCE_IDS = {
 const modeNameSql = (column: string): string =>
   `case ${column} when 0 then 'hyperbullet' when 1 then 'bullet' when 2 then 'blitz' when 3 then 'wolfrandom' when 4 then 'atomic960' else 'unknown' end`;
 const MAX_PAGE_SIZE = 200;
+const MAX_PAGE_NUMBER = 100_000;
 const MAX_ROW_LIMIT = 10_000;
+const DEFAULT_SEARCH_LIMIT = 36;
+const USERNAME_SEARCH_PATTERN = /^[a-z0-9_-]+$/;
 
 const RESOURCE_PARAMETERS: Record<string, ReadonlySet<string>> = {
   matches: new Set([
@@ -33,6 +36,8 @@ const RESOURCE_PARAMETERS: Record<string, ReadonlySet<string>> = {
     "startTs",
     "endTs",
     "timeControl",
+    "timeControlInitial",
+    "timeControlIncrement",
     "sources",
     "ratingMin",
     "ratingMax",
@@ -43,12 +48,12 @@ const RESOURCE_PARAMETERS: Record<string, ReadonlySet<string>> = {
   ]),
   player_game_counts: new Set(["resource", "username"]),
   latest_match: new Set(["resource"]),
-  aliases: new Set(["resource", "username"]),
+  aliases: new Set(["resource", "username", "query", "limit"]),
   weekly_ratings: new Set(["resource", "username", "mode"]),
   ratings: new Set(["resource", "username", "mode", "limit"]),
-  player_directory: new Set(["resource"]),
+  player_directory: new Set(["resource", "limit"]),
   leaderboard: new Set(["resource", "month", "mode", "username", "limit"]),
-  yearly_leaderboard: new Set(["resource", "year", "mode"]),
+  yearly_leaderboard: new Set(["resource", "year", "mode", "limit"]),
   leaderboard_counts: new Set(["resource"]),
   usernames: new Set(["resource", "query", "exact"]),
   health: new Set(["resource"]),
@@ -113,6 +118,16 @@ const optionalPositiveIntegerParam = (
   return positiveIntegerParam(params, key, 1, maximum);
 };
 
+const strictBooleanParam = (params: URLSearchParams, key: string, fallback: boolean): boolean => {
+  const raw = params.get(key);
+  if (raw === null) return fallback;
+  if (raw === "true") return true;
+  if (raw === "false") return false;
+  throw new ArchiveRequestError(`${key} must be true or false`);
+};
+
+const escapeLikePattern = (value: string): string => value.replace(/[\\%_]/g, "\\$&");
+
 const validateResourceParameters = (params: URLSearchParams, resource: string): void => {
   const allowed = RESOURCE_PARAMETERS[resource];
   if (!allowed) throw new ArchiveRequestError("Unknown archive resource");
@@ -136,8 +151,11 @@ const queryMatches = async (params: URLSearchParams) => {
   const clauses: string[] = [];
   const args: Array<string | number> = [];
   const page = positiveIntegerParam(params, "page", 1);
+  if (page > MAX_PAGE_NUMBER) {
+    throw new ArchiveRequestError(`page must be at most ${MAX_PAGE_NUMBER}`);
+  }
   const pageSize = positiveIntegerParam(params, "pageSize", 100, MAX_PAGE_SIZE);
-  const includeTotal = params.get("includeTotal") !== "false";
+  const includeTotal = strictBooleanParam(params, "includeTotal", true);
   const emptyPage = {
     rows: [],
     total: 0,
@@ -204,6 +222,23 @@ const queryMatches = async (params: URLSearchParams) => {
   if (timeControl && timeControl.toLowerCase() !== "all") {
     clauses.push("tc.value = ?");
     args.push(timeControl);
+  }
+  const timeControlPart = (key: "timeControlInitial" | "timeControlIncrement"): string => {
+    const value = boundedStringParam(params, key, 20);
+    if (value && !/^\d+(?:\.\d*)?$/.test(value)) {
+      throw new ArchiveRequestError(`${key} must be a non-negative number`);
+    }
+    return value ? String(Number(value)) : "";
+  };
+  const timeControlInitial = timeControlPart("timeControlInitial");
+  const timeControlIncrement = timeControlPart("timeControlIncrement");
+  if (timeControlInitial) {
+    clauses.push("substr(tc.value, 1, instr(tc.value, '+') - 1) = ?");
+    args.push(timeControlInitial);
+  }
+  if (timeControlIncrement) {
+    clauses.push("substr(tc.value, instr(tc.value, '+') + 1) = ?");
+    args.push(timeControlIncrement);
   }
   const sourcesSpecified = params.has("sources");
   const sourceValues = boundedStringParam(params, "sources", 100)
@@ -317,7 +352,17 @@ const queryMatches = async (params: URLSearchParams) => {
 
 const queryAliases = async (params: URLSearchParams) => {
   const requested = boundedStringParam(params, "username", 100).toLowerCase();
+  const search = boundedStringParam(params, "query", 100).toLowerCase();
+  if (search && !USERNAME_SEARCH_PATTERN.test(search)) {
+    throw new ArchiveRequestError("query contains unsupported username characters");
+  }
+  if (requested && search) {
+    throw new ArchiveRequestError("username and query cannot be supplied together");
+  }
   const archive = getArchiveClient();
+  const limit =
+    optionalPositiveIntegerParam(params, "limit", MAX_ROW_LIMIT) ||
+    (search ? DEFAULT_SEARCH_LIMIT : MAX_ROW_LIMIT);
   let canonical = requested;
   if (requested) {
     const resolved = await archive.execute({
@@ -330,11 +375,27 @@ const queryAliases = async (params: URLSearchParams) => {
     "select 1 as present from pragma_table_info('aliases') where name='bot' limit 1",
   );
   const botSelection = botColumn.rows.length > 0 ? "a.bot" : "0 as bot";
-  const result = await archive.execute({
-    sql: `select a.alias,p.username,a.banned,${botSelection},a.count_games,a.openings from aliases a
-      join players p on p.id=a.player_id ${canonical ? "where p.username=?" : ""} order by p.username,a.alias`,
-    args: canonical ? [canonical] : [],
-  });
+  const searchPattern = `%${escapeLikePattern(search)}%`;
+  const result = await archive.execute(
+    search
+      ? {
+          sql: `select a.alias,p.username,a.banned,${botSelection},a.count_games,a.openings from aliases a
+            join players p on p.id=a.player_id
+            where p.id in (
+              select distinct a2.player_id from aliases a2 join players p2 on p2.id=a2.player_id
+              where p2.username like ? escape '\\' or a2.alias like ? escape '\\'
+              order by case when p2.username=? then 0 when p2.username like ? escape '\\' then 1 else 2 end,
+                length(p2.username),p2.username limit ?
+            ) order by p.username,a.alias`,
+          args: [searchPattern, searchPattern, search, `${escapeLikePattern(search)}%`, limit],
+        }
+      : {
+          sql: `select a.alias,p.username,a.banned,${botSelection},a.count_games,a.openings from aliases a
+            join players p on p.id=a.player_id ${canonical ? "where p.username=?" : ""}
+            order by p.username,a.alias limit ?`,
+          args: canonical ? [canonical, limit] : [limit],
+        },
+  );
   return normalizedRows(result.rows).map((row) => ({
     ...row,
     banned: Boolean(row.banned),
@@ -355,18 +416,19 @@ const queryRatings = async (params: URLSearchParams) => {
     clauses.push("p.username=?");
     args.push(username);
   }
-  const limit = optionalPositiveIntegerParam(params, "limit", MAX_ROW_LIMIT);
+  const limit = optionalPositiveIntegerParam(params, "limit", MAX_ROW_LIMIT) || MAX_ROW_LIMIT;
   const result = await getArchiveClient().execute({
     sql: `select p.username,r.rating/10.0 rating,r.peak/10.0 peak,r.peak_date,r.rd/10.0 rd,r.games,
       ${modeNameSql("r.mode")} tc,
       r.rank,r.top20_wins from player_ratings r join players p on p.id=r.username_id
-      ${clauses.length ? `where ${clauses.join(" and ")}` : ""} order by r.rank${limit ? " limit ?" : ""}`,
-    args: limit ? [...args, limit] : args,
+      ${clauses.length ? `where ${clauses.join(" and ")}` : ""} order by r.rank limit ?`,
+    args: [...args, limit],
   });
   return normalizedRows(result.rows);
 };
 
-const queryPlayerDirectory = async () => {
+const queryPlayerDirectory = async (params: URLSearchParams) => {
+  const limit = optionalPositiveIntegerParam(params, "limit", MAX_ROW_LIMIT) || MAX_ROW_LIMIT;
   const result = await getArchiveClient().execute({
     sql: `select p.username,
       max(case when r.mode=0 then r.rating/10.0 end) hyperbullet_rating,
@@ -380,8 +442,8 @@ const queryPlayerDirectory = async () => {
       max(case when r.mode=2 then r.rd/10.0 end) blitz_rd
       from player_ratings r join players p on p.id=r.username_id
       where r.mode in (0,1,2)
-      group by p.id,p.username order by p.username`,
-    args: [],
+      group by p.id,p.username order by p.username limit ?`,
+    args: [limit],
   });
   return normalizedRows(result.rows);
 };
@@ -423,13 +485,13 @@ const queryLeaderboard = async (params: URLSearchParams) => {
     clauses.push("p.username=?");
     args.push(username);
   }
-  const limit = optionalPositiveIntegerParam(params, "limit", MAX_ROW_LIMIT);
+  const limit = optionalPositiveIntegerParam(params, "limit", MAX_ROW_LIMIT) || MAX_ROW_LIMIT;
   const where = clauses.length ? `where ${clauses.join(" and ")}` : "";
   const result = await getArchiveClient().execute({
     sql: `select p.username,l.month,l.rank,l.rating/10.0 rating,l.rd/10.0 rd,l.games,
       ${modeNameSql("l.mode")} tc
-      from lb l join players p on p.id=l.username_id ${where} order by l.month,l.mode,l.rank${limit ? " limit ?" : ""}`,
-    args: limit ? [...args, limit] : args,
+      from lb l join players p on p.id=l.username_id ${where} order by l.month,l.mode,l.rank limit ?`,
+    args: [...args, limit],
   });
   return normalizedRows(result.rows);
 };
@@ -452,10 +514,9 @@ const queryYearlyLeaderboard = async (params: URLSearchParams) => {
     throw new ArchiveRequestError("year must be an integer from 2000 through 3000");
   }
   const year = yearValue ?? 0;
-  if (year) {
-    clauses.push("l.year=?");
-    args.push(year);
-  }
+  if (!year) throw new ArchiveRequestError("yearly leaderboard requires a year");
+  clauses.push("l.year=?");
+  args.push(year);
   const mode = enumIdParam(params, "mode", MODE_IDS);
   if (mode !== null) {
     if (mode > MODE_IDS.blitz) throw new ArchiveRequestError("Unsupported yearly leaderboard mode");
@@ -463,11 +524,12 @@ const queryYearlyLeaderboard = async (params: URLSearchParams) => {
     args.push(mode);
   }
   const where = clauses.length ? `where ${clauses.join(" and ")}` : "";
+  const limit = optionalPositiveIntegerParam(params, "limit", MAX_ROW_LIMIT) || MAX_ROW_LIMIT;
   const result = await getArchiveClient().execute({
     sql: `select p.username,l.year,l.rank,l.rating/10.0 rating,l.games,
       ${modeNameSql("l.mode")} tc from yearly_lb l join players p on p.id=l.username_id
-      ${where} order by l.year,l.mode,l.rank`,
-    args,
+      ${where} order by l.year,l.mode,l.rank limit ?`,
+    args: [...args, limit],
   });
   return normalizedRows(result.rows);
 };
@@ -475,6 +537,12 @@ const queryYearlyLeaderboard = async (params: URLSearchParams) => {
 const queryUsernames = async (params: URLSearchParams) => {
   const query = boundedStringParam(params, "query", 100).toLowerCase();
   const exact = boundedStringParam(params, "exact", 100).toLowerCase();
+  if (
+    (query && !USERNAME_SEARCH_PATTERN.test(query)) ||
+    (exact && !USERNAME_SEARCH_PATTERN.test(exact))
+  ) {
+    throw new ArchiveRequestError("username search contains unsupported characters");
+  }
   if (exact) {
     const result = await getArchiveClient().execute({
       sql: "select username from players where username=? limit 1",
@@ -483,10 +551,12 @@ const queryUsernames = async (params: URLSearchParams) => {
     return normalizedRows(result.rows);
   }
   if (query.length < 3) return [];
+  const escapedQuery = escapeLikePattern(query);
   const result = await getArchiveClient().execute({
-    sql: `select username from players where username like ?
-      order by case when username=? then 0 when username like ? then 1 else 2 end,length(username),username limit 36`,
-    args: [`%${query}%`, query, `${query}%`],
+    sql: `select username from players where username like ? escape '\\'
+      order by case when username=? then 0 when username like ? escape '\\' then 1 else 2 end,
+      length(username),username limit 36`,
+    args: [`%${escapedQuery}%`, query, `${escapedQuery}%`],
   });
   return normalizedRows(result.rows);
 };
@@ -567,7 +637,7 @@ export const queryArchiveResource = async (params: URLSearchParams): Promise<unk
   if (resource === "aliases") return queryAliases(params);
   if (resource === "weekly_ratings") return queryWeeklyRatings(params);
   if (resource === "ratings") return queryRatings(params);
-  if (resource === "player_directory") return queryPlayerDirectory();
+  if (resource === "player_directory") return queryPlayerDirectory(params);
   if (resource === "leaderboard") return queryLeaderboard(params);
   if (resource === "yearly_leaderboard") return queryYearlyLeaderboard(params);
   if (resource === "leaderboard_counts") return queryLeaderboardCounts();

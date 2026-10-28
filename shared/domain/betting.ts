@@ -1,6 +1,11 @@
 export const MIN_BET_AMOUNT = 1;
 export const AWC_NOT_TO_WIN_MARKET_ID = "awc2026-winner-no";
 
+export const predictionOutcomes = ["yes", "no"] as const;
+export type PredictionOutcome = (typeof predictionOutcomes)[number];
+export type PredictionOrderSide = "buy" | "sell";
+export type PredictionBookLevel = { priceCents: number; quantity: number };
+
 type MatchBettingMarket = {
   marketKind: "match" | "outright";
   playerOne: string;
@@ -8,8 +13,8 @@ type MatchBettingMarket = {
 };
 
 type PredictionOrderDirection = {
-  outcome: "yes" | "no";
-  side: "buy" | "sell";
+  outcome: PredictionOutcome;
+  side: PredictionOrderSide;
 };
 
 type TournamentOpponentMatch = {

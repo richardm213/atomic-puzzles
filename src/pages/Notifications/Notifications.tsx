@@ -1,60 +1,23 @@
 import "./Notifications.css";
 
-import {
-  faAt,
-  faBell,
-  faBullhorn,
-  faChartLine,
-  faCheck,
-  faCoins,
-  faComment,
-  faGaugeHigh,
-  faGift,
-  faHandHoldingDollar,
-  faReply,
-} from "@fortawesome/free-solid-svg-icons";
+import { faBell, faCheck } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
 
+import { NotificationContent } from "../../components/NotificationContent/NotificationContent";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
+import { useNotificationNavigation } from "../../hooks/useNotificationNavigation";
 import {
   notificationQueryKeys,
   notificationsQueryOptions,
 } from "../../lib/community/notificationQueries";
-import {
-  isCommentMentionNotification,
-  isPredictionOrderFillNotification,
-  isPredictionPayoutNotification,
-  markNotificationsRead,
-  notificationCategory,
-  notificationCopy,
-  notificationMessage,
-  rankingNotificationImage,
-  type UserNotification,
-} from "../../lib/community/notifications";
-import { appAssetPath } from "../../utils/appAssetPath";
-import { formatLocalDateTime } from "../../utils/formatters";
-
-const notificationIcon = (notification: UserNotification) => {
-  if (isCommentMentionNotification(notification)) return faAt;
-  if (isPredictionOrderFillNotification(notification)) return faCheck;
-  if (isPredictionPayoutNotification(notification)) return faCoins;
-  if (notification.notification_type === "feature") return faBullhorn;
-  if (notification.notification_type === "coin_policy_update") return faGaugeHigh;
-  if (notification.notification_type === "coin_gift") return faCoins;
-  if (notification.notification_type === "coin_request") return faHandHoldingDollar;
-  if (notification.notification_type === "shop_redemption") return faGift;
-  if (notification.notification_type === "puzzle_rating_added") return faChartLine;
-  if (notification.notification_type === "puzzle_approved") return faCheck;
-  if (notification.notification_type === "comment_reply") return faReply;
-  return faComment;
-};
+import { markNotificationsRead, type UserNotification } from "../../lib/community/notifications";
+import { getErrorMessage } from "../../utils/errors";
 
 export const NotificationsPage = () => {
-  const navigate = useNavigate();
+  const navigateToNotification = useNotificationNavigation();
   const { isAuthenticated, isLoading, login, user } = useAuth();
   const queryClient = useQueryClient();
   const viewerKey = isAuthenticated ? (user?.username ?? "authenticated") : "anonymous";
@@ -73,11 +36,7 @@ export const NotificationsPage = () => {
   const loading = notificationsQuery.isFetching;
   const marking = markReadMutation.isPending;
   const errorValue = notificationsQuery.error ?? markReadMutation.error;
-  const error = errorValue
-    ? errorValue instanceof Error
-      ? errorValue.message
-      : "Unable to update notifications."
-    : "";
+  const error = errorValue ? getErrorMessage(errorValue, "Unable to update notifications.") : "";
 
   const unreadNotifications = notifications.filter((notification) => !notification.read_at);
 
@@ -92,56 +51,7 @@ export const NotificationsPage = () => {
 
   const openNotification = async (notification: UserNotification) => {
     if (!notification.read_at) await markRead([notification.id]);
-    if (
-      (notification.notification_type === "feature" ||
-        notification.notification_type === "comment_mention") &&
-      notification.feature_path
-    ) {
-      window.location.assign(notification.feature_path);
-      return;
-    }
-    if (
-      (notification.notification_type === "coin_gift" ||
-        notification.notification_type === "coin_request") &&
-      notification.actor_username
-    ) {
-      void navigate({
-        to: "/@/$username",
-        params: { username: notification.actor_username },
-      });
-      return;
-    }
-    if (notification.notification_type === "shop_redemption") {
-      void navigate({ to: "/shop" });
-      return;
-    }
-    if (notification.notification_type === "coin_policy_update") {
-      void navigate({ to: "/shop/how-coins-work" });
-      return;
-    }
-    if (notification.notification_type === "puzzle_rating_added") {
-      void navigate({ to: "/dashboard" });
-      return;
-    }
-    if (notification.notification_type === "monthly_ranking") {
-      const rankingDate = new Date(`${notification.ranking_period?.slice(0, 10) ?? ""}T00:00:00Z`);
-      void navigate({
-        to: "/rankings",
-        search: {
-          year: Number.isNaN(rankingDate.getTime()) ? "" : String(rankingDate.getUTCFullYear()),
-          month: Number.isNaN(rankingDate.getTime())
-            ? ""
-            : rankingDate.toLocaleString("en-US", { month: "short", timeZone: "UTC" }),
-          mode: notification.ranking_mode ?? "blitz",
-        },
-      });
-      return;
-    }
-    void navigate({
-      to: "/solve/$puzzleId",
-      params: { puzzleId: String(notification.puzzle_id ?? "") },
-      ...(notification.comment_id ? { hash: `comment-${notification.comment_id}` } : {}),
-    });
+    navigateToNotification(notification);
   };
 
   if (isLoading || (isAuthenticated && loading && notifications.length === 0)) {
@@ -199,29 +109,7 @@ export const NotificationsPage = () => {
                     type="button"
                     onClick={() => void openNotification(notification)}
                   >
-                    <span className="notificationItemIcon" aria-hidden="true">
-                      {rankingNotificationImage(notification) ? (
-                        <img
-                          src={appAssetPath(rankingNotificationImage(notification) ?? "")}
-                          alt=""
-                        />
-                      ) : (
-                        <FontAwesomeIcon icon={notificationIcon(notification)} />
-                      )}
-                    </span>
-                    <span className="notificationItemCopy">
-                      <strong>{notificationCopy(notification)}</strong>
-                      {notificationMessage(notification) ? (
-                        <span>“{notificationMessage(notification)}”</span>
-                      ) : null}
-                      <span>
-                        {notificationCategory(notification)} ·
-                        <time dateTime={notification.created_at}>
-                          {formatLocalDateTime(notification.created_at)}
-                        </time>
-                      </span>
-                    </span>
-                    {!notification.read_at ? <span className="notificationUnreadDot" /> : null}
+                    <NotificationContent notification={notification} variant="page" />
                   </button>
                 </div>
               </li>

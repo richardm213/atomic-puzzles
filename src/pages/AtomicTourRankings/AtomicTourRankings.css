@@ -129,7 +129,7 @@
   background: var(--color-surface-elevated-strong);
   color: var(--color-heading);
   font-size: 0.86rem;
-  font-weight: 750;
+  font-weight: 650;
   text-decoration: none;
   transition:
     border-color 160ms ease,
@@ -213,7 +213,7 @@
 .atomicTourPoints {
   color: var(--color-heading);
   font-variant-numeric: tabular-nums;
-  font-weight: 800;
+  font-weight: 650;
 }
 
 .atomicTourPlayer {
@@ -223,7 +223,7 @@
   align-items: center;
   gap: var(--space-2);
   color: var(--link-color);
-  font-weight: 750;
+  font-weight: 650;
   text-decoration: none;
   text-underline-offset: 3px;
 }
@@ -261,7 +261,7 @@
   min-width: 0;
   font-size: 0.78rem;
   font-variant-numeric: tabular-nums;
-  font-weight: 750;
+  font-weight: 650;
 }
 
 .atomicTourChange.isUp {

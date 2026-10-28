@@ -32,11 +32,12 @@
   justify-content: center;
   gap: 5px;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
   line-height: 1;
   pointer-events: none;
   box-shadow: var(--shadow-soft);
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 }
 
@@ -53,6 +54,7 @@
   border: 0;
   background: transparent;
   box-shadow: none;
+  -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
 
@@ -91,6 +93,13 @@ body:has(.puzzlePage),
   margin: 2px 0 12px;
 }
 
+.puzzleInfoTab .communityCommentCount {
+  min-width: 18px;
+  min-height: 18px;
+  padding-inline: 5px;
+  font-size: 10px;
+}
+
 .puzzleSetComplete {
   display: grid;
   gap: 14px;
@@ -115,7 +124,7 @@ body:has(.puzzlePage),
 .puzzleSetCompleteCopy > span {
   color: var(--color-success);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 650;
   letter-spacing: 0.11em;
   text-transform: uppercase;
 }
@@ -153,7 +162,7 @@ body:has(.puzzlePage),
   color: var(--color-heading);
   font-size: 12px;
   font-family: inherit;
-  font-weight: 750;
+  font-weight: 650;
   text-align: center;
   text-decoration: none;
   cursor: pointer;
@@ -278,13 +287,13 @@ body:has(.puzzlePage),
 
 .userPuzzleRating > span {
   font-size: 11px;
-  font-weight: 750;
+  font-weight: 650;
 }
 
 .userPuzzleRating strong,
 .userPuzzleRating small {
   font-variant-numeric: tabular-nums;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .userPuzzleRating strong {
@@ -331,20 +340,20 @@ body:has(.puzzlePage),
 .puzzleRatingBadge strong {
   color: var(--color-heading);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .puzzleRatingBadge > span {
   color: var(--color-text);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
 
 .puzzleRatingBadge > small {
   font-size: 10px;
   font-variant-numeric: tabular-nums;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .puzzleRatingBadge.positive > small {
@@ -386,7 +395,7 @@ button.puzzleRatingBadge.editable:active {
   background-color: var(--color-panel-strong);
   color: var(--color-text);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 650;
 }
 
 .puzzleRatingEditor select {
@@ -522,7 +531,7 @@ button.puzzleRatingBadge.editable:active {
   overflow-wrap: anywhere;
   color: var(--color-muted);
   font-size: 12px;
-  font-weight: 750;
+  font-weight: 650;
   line-height: 1.35;
 }
 
@@ -538,7 +547,7 @@ button.puzzleRatingBadge.editable:active {
   overflow-wrap: anywhere;
   color: var(--color-text);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 650;
 }
 
 .puzzleHeaderAuthorLink {
@@ -599,7 +608,7 @@ button.puzzleRatingBadge.editable:active {
 .puzzlePlayerCastling {
   color: var(--color-heading);
   font-size: 11px;
-  font-weight: 850;
+  font-weight: 650;
   letter-spacing: 0.01em;
   white-space: nowrap;
 }
@@ -626,7 +635,7 @@ button.puzzleRatingBadge.editable:active {
   overflow: hidden;
   color: var(--color-heading);
   font-size: 12.5px;
-  font-weight: 850;
+  font-weight: 650;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -678,7 +687,7 @@ button.puzzleRatingBadge.editable:active {
   box-shadow: 0 12px 24px color-mix(in srgb, var(--color-panel-deep) 26%, transparent);
   content: attr(data-tooltip);
   font-size: 12px;
-  font-weight: 750;
+  font-weight: 650;
   line-height: 1.25;
   opacity: 0;
   pointer-events: none;
@@ -711,7 +720,7 @@ button.puzzleRatingBadge.editable:active {
   display: inline-flex;
   align-items: center;
   font-size: 11px;
-  font-weight: 850;
+  font-weight: 650;
   line-height: 1;
 }
 
@@ -727,7 +736,7 @@ button.puzzleRatingBadge.editable:active {
   background: color-mix(in srgb, var(--color-warning-soft-bg) 76%, var(--color-panel-strong));
   color: var(--color-gold);
   font-size: 11px;
-  font-weight: 850;
+  font-weight: 650;
   line-height: 1;
 }
 
@@ -826,7 +835,7 @@ button.puzzleRatingBadge.editable:active {
 .puzzleMotifsHeader span {
   color: var(--color-subtle);
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 650;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -916,6 +925,7 @@ button.puzzleRatingBadge.editable:active {
 
 .puzzleMotifDefinitionDialog::backdrop {
   background: color-mix(in srgb, #020617 72%, transparent);
+  -webkit-backdrop-filter: blur(3px);
   backdrop-filter: blur(3px);
 }
 
@@ -934,7 +944,7 @@ button.puzzleRatingBadge.editable:active {
   background: transparent;
   color: var(--color-muted);
   font: inherit;
-  font-weight: 800;
+  font-weight: 650;
   text-decoration: underline;
   text-underline-offset: 3px;
   cursor: pointer;
@@ -962,6 +972,7 @@ button.puzzleRatingBadge.editable:active {
 
 .puzzleIssueDialog::backdrop {
   background: color-mix(in srgb, #020617 72%, transparent);
+  -webkit-backdrop-filter: blur(3px);
   backdrop-filter: blur(3px);
 }
 
@@ -1012,7 +1023,7 @@ button.puzzleRatingBadge.editable:active {
   margin-bottom: 8px;
   color: var(--color-muted);
   font-size: 12px;
-  font-weight: 850;
+  font-weight: 650;
 }
 
 .puzzleIssueForm fieldset label {
@@ -1078,7 +1089,7 @@ button.puzzleRatingBadge.editable:active {
   background: var(--color-panel);
   color: var(--color-text);
   font: inherit;
-  font-weight: 800;
+  font-weight: 650;
   cursor: pointer;
 }
 
@@ -1174,7 +1185,7 @@ button.puzzleRatingBadge.editable:active {
   color: var(--color-danger);
   font: inherit;
   font-size: 20px;
-  font-weight: 800;
+  font-weight: 650;
   line-height: 1;
 }
 
@@ -1223,7 +1234,7 @@ button.puzzleRatingBadge.editable:active {
   color: var(--color-accent-soft-text);
   font: inherit;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 650;
   cursor: pointer;
   transition:
     background 160ms ease,
@@ -1264,7 +1275,7 @@ button.puzzleRatingBadge.editable:active {
   color: var(--color-heading);
   font: inherit;
   font-size: 11.5px;
-  font-weight: 800;
+  font-weight: 650;
   cursor: pointer;
 }
 
@@ -1328,7 +1339,7 @@ button.puzzleRatingBadge.editable:active {
   color: var(--color-text);
   font: inherit;
   font-size: 11px;
-  font-weight: 750;
+  font-weight: 650;
   text-align: left;
   cursor: pointer;
 }
@@ -1368,7 +1379,7 @@ button.puzzleRatingBadge.editable:active {
 .puzzleMotifsMessage {
   margin: 0;
   font-size: 12px;
-  font-weight: 750;
+  font-weight: 650;
 }
 
 .puzzleMotifsMessage.success {
@@ -1430,8 +1441,10 @@ button.puzzleRatingBadge.editable:active {
   background: transparent;
   color: var(--color-muted);
   font-size: 12.5px;
-  font-weight: 850;
+  font-weight: 650;
+  text-decoration: none;
   white-space: nowrap;
+  cursor: pointer;
   transition:
     transform 140ms ease,
     border-color 140ms ease,
@@ -1446,13 +1459,14 @@ button.puzzleRatingBadge.editable:active {
   color: var(--color-heading);
 }
 
-.puzzleInfoTab:hover:not(:disabled) {
+.puzzleInfoTab:hover:not(:disabled):not([aria-disabled="true"]) {
   background: transparent;
   color: var(--color-heading);
   transform: none;
 }
 
-.puzzleInfoTab:disabled {
+.puzzleInfoTab:disabled,
+.puzzleInfoTab[aria-disabled="true"] {
   background: transparent;
   cursor: not-allowed;
   opacity: 0.64;
@@ -1507,7 +1521,7 @@ button.puzzleRatingBadge.editable:active {
   color: var(--color-heading);
   font: inherit;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 650;
   cursor: pointer;
   transition:
     border-color 180ms ease,
@@ -1536,7 +1550,7 @@ button.puzzleRatingBadge.editable:active {
 .puzzleExplanationForm label {
   color: var(--color-muted);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 650;
 }
 
 .puzzleExplanationForm textarea {
@@ -1578,7 +1592,7 @@ button.puzzleRatingBadge.editable:active {
 .puzzleExplanationMessage {
   color: var(--color-muted);
   font-size: 12px;
-  font-weight: 750;
+  font-weight: 650;
 }
 
 .puzzleExplanationMessage.success {
@@ -1600,7 +1614,7 @@ button.puzzleRatingBadge.editable:active {
   padding: 10px 11px;
   color: var(--color-muted);
   font-size: 12px;
-  font-weight: 750;
+  font-weight: 650;
 }
 
 .puzzleOtherAttemptsList {
@@ -1623,7 +1637,7 @@ button.puzzleRatingBadge.editable:active {
 .puzzleOtherAttemptUser {
   color: var(--color-heading);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 650;
   text-decoration: none;
 }
 
@@ -1641,7 +1655,7 @@ button.puzzleRatingBadge.editable:active {
   padding: 0 8px;
   border-radius: 999px;
   font-size: 10px;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1;
   text-transform: uppercase;
 }
@@ -1663,7 +1677,7 @@ button.puzzleRatingBadge.editable:active {
   align-items: center;
   gap: 5px;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 650;
   text-transform: none;
 }
 
@@ -1694,7 +1708,7 @@ button.puzzleRatingBadge.editable:active {
   gap: 4px;
   color: var(--color-muted);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1779,7 +1793,7 @@ button.puzzleRatingBadge.editable:active {
 .fenAnalyzeText span {
   color: var(--color-subtle);
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 650;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -1789,7 +1803,7 @@ button.puzzleRatingBadge.editable:active {
   overflow-wrap: anywhere;
   color: var(--color-heading);
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .fenAnalyzeExternalIcon {
@@ -1837,7 +1851,7 @@ button.puzzleRatingBadge.editable:active {
 
 .fenLabel {
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 650;
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: var(--color-subtle);
@@ -2027,6 +2041,7 @@ button.puzzleRatingBadge.editable:active {
   box-shadow: var(--shadow-soft);
   pointer-events: none;
   transform: translateX(-50%);
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   animation: feedbackBadgeFade 2400ms ease forwards;
 }
@@ -2063,14 +2078,14 @@ button.puzzleRatingBadge.editable:active {
   color: var(--feedback-text);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--feedback-tone) 34%, transparent) inset;
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1;
 }
 
 .feedbackBadge strong {
   color: currentColor;
   font-size: 13.5px;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1;
   text-shadow: 0 1px 8px rgba(2, 6, 23, 0.36);
 }
@@ -2221,6 +2236,7 @@ button.puzzleRatingBadge.editable:active {
     border-radius: 8px;
     background: color-mix(in srgb, var(--color-panel) 94%, transparent);
     box-shadow: var(--shadow-panel);
+    -webkit-backdrop-filter: blur(14px);
     backdrop-filter: blur(14px);
   }
 
@@ -2413,7 +2429,7 @@ button.puzzleRatingBadge.editable:active {
     background: var(--color-panel-strong);
     color: var(--color-muted);
     font-size: 12px;
-    font-weight: 800;
+    font-weight: 650;
   }
 
   .mobileBottomNav button {
@@ -2438,6 +2454,7 @@ button.puzzleRatingBadge.editable:active {
       color-mix(in srgb, var(--page-background) 92%, transparent) 22%,
       var(--page-background)
     );
+    -webkit-backdrop-filter: blur(14px);
     backdrop-filter: blur(14px);
   }
 
@@ -2449,7 +2466,7 @@ button.puzzleRatingBadge.editable:active {
     border: 1px solid var(--color-border-strong);
     background: color-mix(in srgb, var(--color-panel-strong) 94%, var(--color-primary) 6%);
     color: var(--color-text);
-    font-weight: 800;
+    font-weight: 650;
     box-shadow: var(--shadow-soft);
     transition:
       transform 140ms ease,
@@ -2529,6 +2546,7 @@ button.puzzleRatingBadge.editable:active {
     box-shadow: var(--shadow-soft);
     color: var(--feedback-text);
     pointer-events: none;
+    -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
     opacity: 1;
     transform: translate(-50%, 0);
@@ -2568,7 +2586,7 @@ button.puzzleRatingBadge.editable:active {
     text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 13.5px;
-    font-weight: 900;
+    font-weight: 700;
     line-height: 1;
     text-shadow: 0 1px 8px rgba(2, 6, 23, 0.36);
   }
@@ -2684,6 +2702,7 @@ button.puzzleRatingBadge.editable:active {
     bottom: max(8px, env(safe-area-inset-bottom));
     padding-block: 6px 0;
     background: transparent;
+    -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
 }

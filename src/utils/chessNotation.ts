@@ -1,7 +1,11 @@
-import { makeFen } from "chessops/fen";
 import { makeSan } from "chessops/san";
 
 import { createAtomicPosition, moveFromUci } from "../lib/puzzles/solutionPgn";
+
+export { fenAfterAtomicMove as fenAfterUciMove } from "../../shared/domain/puzzles/solutionPgn";
+
+export const orientationFromFen = (fen: string | null | undefined): "white" | "black" =>
+  fen?.trim().split(/\s+/)[1] === "b" ? "black" : "white";
 
 export const sanFromUci = (fen: string, uci: string): string => {
   try {
@@ -10,18 +14,6 @@ export const sanFromUci = (fen: string, uci: string): string => {
     return move ? makeSan(position, move) : uci;
   } catch {
     return uci;
-  }
-};
-
-export const fenAfterUciMove = (fen: string, uci: string): string | null => {
-  try {
-    const position = createAtomicPosition(fen);
-    const move = moveFromUci(position, uci);
-    if (!move || !position.isLegal(move)) return null;
-    position.play(move);
-    return makeFen(position.toSetup());
-  } catch {
-    return null;
   }
 };
 

@@ -1,3 +1,5 @@
+import { getBrowserStorageJson, setBrowserStorageJson } from "../../utils/browserStorage";
+
 const RECENT_USERNAME_STORAGE_KEY = "atomic-puzzles.analysis.recent-usernames";
 export const MAX_RECENT_USERNAMES = 18;
 
@@ -20,24 +22,12 @@ export const normalizeRecentUsernames = (usernames: unknown): string[] => {
 };
 
 export const loadRecentUsernames = (): string[] => {
-  if (typeof window === "undefined") return [];
-
-  try {
-    return normalizeRecentUsernames(
-      JSON.parse(window.localStorage.getItem(RECENT_USERNAME_STORAGE_KEY) ?? "[]"),
-    );
-  } catch {
-    return [];
-  }
+  const stored = getBrowserStorageJson<unknown>("local", RECENT_USERNAME_STORAGE_KEY, []);
+  return normalizeRecentUsernames(stored);
 };
 
 export const storeRecentUsernames = (usernames: string[]): void => {
-  if (typeof window === "undefined") return;
-
-  window.localStorage.setItem(
-    RECENT_USERNAME_STORAGE_KEY,
-    JSON.stringify(normalizeRecentUsernames(usernames)),
-  );
+  setBrowserStorageJson("local", RECENT_USERNAME_STORAGE_KEY, normalizeRecentUsernames(usernames));
 };
 
 export const addRecentUsername = (usernames: string[], username: string): string[] => {

@@ -27,9 +27,6 @@ export const normalizePuzzleEventName = (value: unknown): string => {
   return trimmed || UNKNOWN_PUZZLE_EVENT_LABEL;
 };
 
-export const getPuzzleEventName = (puzzle: Puzzle): string =>
-  normalizePuzzleEventName(puzzleSetMetadataFromRow(puzzle).eventName);
-
 export const isAwcPuzzleEvent = (value: unknown): boolean => {
   const normalized = normalizePuzzleEventName(value).toLocaleLowerCase();
   return normalized === "awc" || normalized.startsWith("awc ") || normalized.includes("atomic wc");

@@ -137,7 +137,7 @@
   gap: var(--space-1);
   margin: 0;
   color: var(--color-heading);
-  font-weight: 900;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   justify-self: end;
   white-space: nowrap;
@@ -148,7 +148,7 @@
   align-items: center;
   gap: var(--space-1);
   color: var(--color-heading);
-  font-weight: 900;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }

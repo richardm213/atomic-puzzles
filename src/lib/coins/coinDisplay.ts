@@ -11,6 +11,9 @@ export const displayedCoinDeduction = (value: number): number => {
 export const formatCoinBalance = (value: number): string =>
   displayedCoinBalance(value).toLocaleString();
 
+export const formatCoinValue = (value: number): string =>
+  normalizedCoinValue(value).toLocaleString(undefined, { maximumFractionDigits: 2 });
+
 export const formatCoinAmount = (value: number): string => {
   const normalized = normalizedCoinValue(value);
   if (normalized < 0) {

@@ -2,9 +2,9 @@ import "./ShopRedemptions.css";
 
 import { faCheck, faRotateLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
+import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
@@ -14,6 +14,7 @@ import {
   type ShopRedemptionStatus,
   updateShopRedemption,
 } from "../../lib/coins/shopRedemptions";
+import { getErrorMessage } from "../../utils/errors";
 import { formatLocalDateTime } from "../../utils/formatters";
 import { normalizeUsername } from "../../utils/playerNames";
 
@@ -102,7 +103,7 @@ export const ShopRedemptionsPage = () => {
       })
       .catch((loadError) => {
         if (current) {
-          setError(loadError instanceof Error ? loadError.message : "Unable to load redemptions.");
+          setError(getErrorMessage(loadError, "Unable to load redemptions."));
         }
       })
       .finally(() => {
@@ -144,7 +145,7 @@ export const ShopRedemptionsPage = () => {
         current.map((entry) => (entry.id === updated.id ? updated : entry)),
       );
     } catch (updateError) {
-      setError(updateError instanceof Error ? updateError.message : "Unable to update redemption.");
+      setError(getErrorMessage(updateError, "Unable to update redemption."));
     } finally {
       setUpdatingId(null);
     }
@@ -153,7 +154,7 @@ export const ShopRedemptionsPage = () => {
   if (isLoading || loading) return <RouteLoadingFallback />;
 
   return (
-    <main className="page shopRedemptionsPage">
+    <div className="page shopRedemptionsPage">
       <Seo title="Shop redemptions" description="Review and fulfill Atomic Coin purchases." />
       <section className="panel shopRedemptionsPanel">
         <header className="shopRedemptionsHeader">
@@ -192,9 +193,9 @@ export const ShopRedemptionsPage = () => {
                     <div className="shopRedemptionTopline">
                       <div>
                         <strong>{itemNames[redemption.itemKey]}</strong>
-                        <Link to="/@/$username" params={{ username: redemption.username }}>
+                        <PlayerLink username={redemption.username}>
                           {redemption.username}
-                        </Link>
+                        </PlayerLink>
                       </div>
                       <span className={`shopRedemptionStatus ${redemption.status}`}>
                         {redemption.status}
@@ -250,6 +251,6 @@ export const ShopRedemptionsPage = () => {
           </>
         ) : null}
       </section>
-    </main>
+    </div>
   );
 };

@@ -47,6 +47,7 @@
 
 .redeemDialog::backdrop {
   background: color-mix(in srgb, var(--color-panel-deep) 76%, transparent);
+  -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
 }
 
@@ -91,7 +92,7 @@
   gap: var(--space-2);
   color: var(--color-heading);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 650;
   text-align: left;
 }
 
@@ -131,7 +132,7 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-ui);
   font: inherit;
-  font-weight: 800;
+  font-weight: 650;
   cursor: pointer;
   transition:
     background-color 160ms ease,
@@ -182,6 +183,7 @@
 
 .analysisRequestDialog::backdrop {
   background: color-mix(in srgb, var(--color-panel-deep) 76%, transparent);
+  -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
 }
 
@@ -226,7 +228,7 @@
   align-items: center;
   color: var(--color-heading);
   font-size: 18px;
-  font-weight: 900;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
@@ -345,7 +347,7 @@
   color: var(--color-primary-soft);
   font: inherit;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 650;
   cursor: pointer;
 }
 
@@ -414,7 +416,7 @@
   background: var(--color-panel-strong);
   color: var(--color-heading);
   font: inherit;
-  font-weight: 800;
+  font-weight: 650;
   cursor: pointer;
   transition:
     background-color 160ms ease,
@@ -572,7 +574,7 @@
   align-items: center;
   gap: var(--space-1);
   color: var(--color-heading);
-  font-weight: 900;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
@@ -604,7 +606,7 @@
   background: var(--color-primary);
   color: var(--color-on-primary);
   font: inherit;
-  font-weight: 800;
+  font-weight: 650;
   cursor: pointer;
   transition:
     background-color 160ms ease,
@@ -707,7 +709,7 @@
   border: 1px solid var(--color-border);
   border-radius: 999px;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 650;
   letter-spacing: 0.04em;
   line-height: 1.4;
   text-transform: uppercase;
@@ -797,6 +799,7 @@
 .lichessBrandIcon {
   display: block;
   background: currentColor;
+  -webkit-mask: url("/images/brands/lichess.svg") center / contain no-repeat;
   mask: url("/images/brands/lichess.svg") center / contain no-repeat;
 }
 

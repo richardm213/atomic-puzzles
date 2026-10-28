@@ -1,6 +1,4 @@
-import { makeFen } from "chessops/fen";
-
-import { createAtomicPosition, moveFromUci } from "../../shared/domain/puzzles/solutionPgn";
+export { fenAfterAtomicMove as fenAfterAtomicDbMove } from "../../shared/domain/puzzles/solutionPgn";
 
 const ATOMIC_DB_QUERY_URL = "https://belzedar.duckdns.org/atomicdb/api/query";
 export const MAX_ATOMIC_DB_FEN_LENGTH = 160;
@@ -23,18 +21,6 @@ export const trimAtomicDbPosition = (position: AtomicDbUpstreamPosition) => ({
   best_move: position.best_move,
   moves: position.moves.slice(0, 5),
 });
-
-export const fenAfterAtomicDbMove = (fen: string, uci: string): string | null => {
-  try {
-    const position = createAtomicPosition(fen);
-    const move = moveFromUci(position, uci);
-    if (!move || !position.isLegal(move)) return null;
-    position.play(move);
-    return makeFen(position.toSetup());
-  } catch {
-    return null;
-  }
-};
 
 export const createAtomicDbQuery = (signal: AbortSignal) => {
   const requests = new Map<string, Promise<AtomicDbUpstreamPosition | null>>();

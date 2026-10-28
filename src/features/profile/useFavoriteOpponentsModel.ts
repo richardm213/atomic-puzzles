@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { type Mode, modeLabels, modeOptions } from "../../constants/matches";
 import { usePersistedState } from "../../hooks/usePersistedState";
+import { toggleArrayValue } from "../../utils/arrays";
 import {
   compareFavoriteOpponentRows,
   type FavoriteOpponentRow,
@@ -133,9 +134,7 @@ export const useFavoriteOpponentsModel = ({
   };
 
   const toggleOpponent = (key: string): void =>
-    setExpandedKeys((current) =>
-      current.includes(key) ? current.filter((value) => value !== key) : [...current, key],
-    );
+    setExpandedKeys((current) => toggleArrayValue(current, key));
 
   return {
     rows,

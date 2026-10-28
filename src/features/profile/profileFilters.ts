@@ -1,17 +1,16 @@
-import { defaultRatingMax, defaultRatingMin, type SourceFilters } from "../../constants/matches";
+import { defaultRatingMax, defaultRatingMin } from "../../constants/matches";
 import type { MatchFilters } from "../../lib/archive/matches";
-import { parseDateInputBoundary } from "../../lib/matches/filters";
+import {
+  buildTimeControlFilter,
+  type MatchListFilters,
+  parseDateInputBoundary,
+} from "../../lib/matches/filters";
 import { readStoredSourceFilters } from "../../lib/matches/sourceFilterStorage";
 
-export type ProfileFilters = {
+export type ProfileFilters = MatchListFilters & {
   opponentRatingMin: number;
   opponentRatingMax: number;
   opponentFilter: string;
-  startDateFilter: string;
-  endDateFilter: string;
-  sourceFilters: SourceFilters;
-  timeControlInitialFilter: string;
-  timeControlIncrementFilter: string;
 };
 
 export const createDefaultProfileFilters = (): ProfileFilters => ({
@@ -27,10 +26,10 @@ export const createDefaultProfileFilters = (): ProfileFilters => ({
 
 export const buildMatchFilters = (username: string, filters: ProfileFilters): MatchFilters => {
   const queryFilters: MatchFilters = { username };
-  const timeControl =
-    filters.timeControlInitialFilter !== "all" && filters.timeControlIncrementFilter !== "all"
-      ? `${filters.timeControlInitialFilter}+${filters.timeControlIncrementFilter}`
-      : "";
+  const timeControl = buildTimeControlFilter(
+    filters.timeControlInitialFilter,
+    filters.timeControlIncrementFilter,
+  );
   if (timeControl) queryFilters.timeControl = timeControl;
   if (
     filters.opponentRatingMin !== defaultRatingMin ||

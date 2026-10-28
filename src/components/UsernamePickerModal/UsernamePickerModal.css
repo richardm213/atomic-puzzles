@@ -151,7 +151,7 @@
   background: transparent;
   color: var(--color-muted);
   font-size: 13px;
-  font-weight: 850;
+  font-weight: 650;
 }
 
 .usernamePickerTabs button.active {
@@ -168,7 +168,7 @@
 .usernamePickerDatabaseCount {
   color: var(--color-subtle);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 650;
   text-align: center;
 }
 
@@ -187,7 +187,7 @@
   background: color-mix(in srgb, var(--color-panel-strong) 64%, transparent);
   color: var(--color-text);
   font-size: 13px;
-  font-weight: 760;
+  font-weight: 650;
   text-align: left;
 }
 
@@ -209,7 +209,7 @@
   display: grid;
   place-items: center;
   font-size: 12px;
-  font-weight: 750;
+  font-weight: 650;
   text-align: center;
 }
 
@@ -236,7 +236,7 @@
   );
   color: #ffffff;
   font-size: 15px;
-  font-weight: 850;
+  font-weight: 650;
   text-shadow: 0 1px 1px color-mix(in srgb, black 46%, transparent);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -303,13 +303,13 @@
 .usernamePickerSelectedHeader span {
   color: var(--color-heading);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .usernamePickerSelectedHeader small {
   color: var(--color-subtle);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 650;
 }
 
 .usernamePickerSelectedChip button:hover {

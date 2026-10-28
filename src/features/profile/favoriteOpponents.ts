@@ -1,5 +1,6 @@
 import { isMode, type Mode } from "../../constants/matches";
 import type { NormalizedMatch } from "../../lib/matches/data";
+import { isOneOf } from "../../utils/arrays";
 import { normalizeUsername } from "../../utils/playerNames";
 
 export type RankHistoryMode = Mode | "all";
@@ -60,7 +61,7 @@ export const favoriteOpponentSortOptions = Object.keys(
 ) as FavoriteOpponentSort[];
 
 export const isFavoriteOpponentSort = (value: string): value is FavoriteOpponentSort =>
-  (favoriteOpponentSortOptions as readonly string[]).includes(value);
+  isOneOf(favoriteOpponentSortOptions, value);
 
 export const getFavoriteOpponentDefaultSortDirection = (
   sort: FavoriteOpponentSort,

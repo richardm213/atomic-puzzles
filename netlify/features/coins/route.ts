@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+import {
+  COIN_TRANSACTION_REASONS,
+  REDEEMABLE_SHOP_ITEM_KEYS,
+  SHOP_ITEM_COSTS,
+} from "../../../shared/domain/coins";
 import { resolveCanonicalArchiveUsername } from "../../archive/aliases";
 import {
   authenticateRequest,
@@ -26,23 +31,7 @@ const coinBanUsernameSchema = z
   .min(1)
   .max(100)
   .regex(/^[a-z0-9_-]+$/i, "Invalid Lichess username.");
-const coinTransactionReasons = [
-  "coin_transfer",
-  "puzzle_correct",
-  "puzzle_attempted",
-  "puzzle_created",
-  "shop_redemption",
-  "daily_bonus",
-  "tournament_bet",
-  "tournament_bet_payout",
-  "tournament_bet_refund",
-  "prediction_order_reserve",
-  "prediction_order_refund",
-  "prediction_trade_credit",
-  "prediction_market_payout",
-  "prediction_liquidity_funding",
-] as const;
-const coinTransactionReasonSchema = z.enum(coinTransactionReasons);
+const coinTransactionReasonSchema = z.enum(COIN_TRANSACTION_REASONS);
 const coinTransactionsPageSize = 50;
 
 const bodySchema = z.discriminatedUnion("action", [
@@ -56,7 +45,7 @@ const bodySchema = z.discriminatedUnion("action", [
     reasons: z
       .array(coinTransactionReasonSchema)
       .min(1)
-      .max(coinTransactionReasons.length)
+      .max(COIN_TRANSACTION_REASONS.length)
       .optional(),
   }),
   z.object({ action: z.literal("claimDaily") }),
@@ -85,14 +74,7 @@ const bodySchema = z.discriminatedUnion("action", [
   }),
   z.object({
     action: z.literal("redeem"),
-    itemKey: z.enum([
-      "username_change",
-      "discord_nitro_month",
-      "discord_nitro_year",
-      "flowers_500",
-      "lichess_patron_month",
-      "next_prize_tournament_format",
-    ]),
+    itemKey: z.enum(REDEEMABLE_SHOP_ITEM_KEYS),
     requestedUsername: z
       .string()
       .trim()
@@ -366,18 +348,10 @@ export const coinsRoute = async (event: FunctionEvent) => {
     if (/not enough coins/i.test(error.message)) {
       const redemptionCost =
         input.action === "requestAtomicDbAnalysis"
-          ? 200
-          : input.action === "redeem" && input.itemKey === "username_change"
-            ? 100
-            : input.action === "redeem" && input.itemKey === "discord_nitro_year"
-              ? 4000
-              : input.action === "redeem" && input.itemKey === "discord_nitro_month"
-                ? 400
-                : input.action === "redeem" && input.itemKey === "lichess_patron_month"
-                  ? 600
-                  : input.action === "redeem" && input.itemKey === "next_prize_tournament_format"
-                    ? 1000
-                    : 500;
+          ? SHOP_ITEM_COSTS.atomicdb_analysis_12h
+          : input.action === "redeem"
+            ? SHOP_ITEM_COSTS[input.itemKey]
+            : 0;
       throw new HttpError(
         409,
         input.action === "give"

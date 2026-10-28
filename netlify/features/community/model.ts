@@ -1,10 +1,7 @@
-import type { CommunityTargetType } from "../../../shared/domain/community/schemas";
+import type { ResolvedCommunityTarget } from "../../../shared/domain/community/schemas";
+import type { UsernameRecord } from "../../../shared/domain/users";
 
-export type CommunityTarget = {
-  type: CommunityTargetType;
-  id: string;
-  context: string;
-};
+export type CommunityTarget = ResolvedCommunityTarget;
 
 export type ProfileCommentRecord = {
   id: number | string;
@@ -22,7 +19,7 @@ export type ProfileCommentCountRecord = {
   score?: number | string | null;
 };
 
-export type CommunityUsernameRecord = { username?: string | null };
+export type CommunityUsernameRecord = UsernameRecord;
 
 export type CommunityPuzzleVoteRecord = CommunityUsernameRecord & {
   vote: number | string | null;

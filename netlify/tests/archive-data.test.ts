@@ -106,6 +106,31 @@ describe("archive-data function", () => {
     expect(JSON.parse(response.body).rows).toHaveLength(25);
   });
 
+  it("filters either time-control component before paging", async () => {
+    mocks.execute
+      .mockResolvedValueOnce({ rows: [{ total: 0 }] })
+      .mockResolvedValueOnce({ rows: [] });
+    const { handler } = await import("../functions/archive-data");
+    const response = await handler({
+      httpMethod: "GET",
+      queryStringParameters: {
+        resource: "matches",
+        mode: "blitz",
+        timeControlInitial: "3",
+        timeControlIncrement: "2",
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(mocks.execute.mock.calls[0]?.[0]).toMatchObject({ args: [2, "3", "2"] });
+    expect(mocks.execute.mock.calls[0]?.[0].sql).toContain(
+      "substr(tc.value, 1, instr(tc.value, '+') - 1) = ?",
+    );
+    expect(mocks.execute.mock.calls[0]?.[0].sql).toContain(
+      "substr(tc.value, instr(tc.value, '+') + 1) = ?",
+    );
+  });
+
   it("serves a compact one-row-per-player directory payload", async () => {
     mocks.execute.mockResolvedValueOnce({
       rows: [{ username: "alice", blitz_rating: 1800, blitz_peak: 1900, blitz_rd: 45 }],
@@ -119,6 +144,7 @@ describe("archive-data function", () => {
     expect(response.statusCode).toBe(200);
     expect(mocks.execute.mock.calls[0]?.[0].sql).toContain("group by p.id,p.username");
     expect(mocks.execute.mock.calls[0]?.[0].sql).not.toContain("top20_wins");
+    expect(mocks.execute.mock.calls[0]?.[0].args).toEqual([10_000]);
     expect(JSON.parse(response.body)).toEqual([
       { username: "alice", blitz_rating: 1800, blitz_peak: 1900, blitz_rd: 45 },
     ]);
@@ -126,7 +152,13 @@ describe("archive-data function", () => {
 
   it.each([
     [{ resource: "matches", page: "not-a-number" }, "page must be a finite number"],
+    [{ resource: "matches", page: "100001" }, "page must be at most 100000"],
+    [{ resource: "matches", includeTotal: "yes" }, "includeTotal must be true or false"],
     [{ resource: "matches", pairA: "alice" }, "pairA and pairB must be supplied together"],
+    [
+      { resource: "matches", timeControlInitial: "3 seconds" },
+      "timeControlInitial must be a non-negative number",
+    ],
     [{ resource: "matches", unexpected: "ignored-before" }, "Unexpected query parameter"],
   ])("rejects ambiguous match filters before querying (%#)", async (query, message) => {
     const { handler } = await import("../functions/archive-data");
@@ -138,6 +170,22 @@ describe("archive-data function", () => {
       code: "invalid_archive_query",
     });
     expect(mocks.execute).not.toHaveBeenCalled();
+  });
+
+  it("searches aliases on the server instead of returning the complete alias table", async () => {
+    mocks.execute
+      .mockResolvedValueOnce({ rows: [{ present: 1 }] })
+      .mockResolvedValueOnce({ rows: [] });
+    const { handler } = await import("../functions/archive-data");
+    const response = await handler({
+      queryStringParameters: { resource: "aliases", query: "alice", limit: "8" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(mocks.execute.mock.calls[1]?.[0]).toMatchObject({
+      args: ["%alice%", "%alice%", "alice", "alice%", 8],
+      sql: expect.stringContaining("where p.id in"),
+    });
   });
 
   it("looks up a match id across the unified table when mode is omitted", async () => {
@@ -238,7 +286,7 @@ describe("archive-data function", () => {
     expect(mocks.execute).toHaveBeenCalledWith(
       expect.objectContaining({
         sql: expect.stringContaining("from lb l"),
-        args: ["2026-08-01", 2],
+        args: ["2026-08-01", 2, 10_000],
       }),
     );
     expect(mocks.execute.mock.calls[0]![0].sql).toContain("l.rank>0");
@@ -260,7 +308,7 @@ describe("archive-data function", () => {
     expect(mocks.execute).toHaveBeenCalledWith(
       expect.objectContaining({
         sql: expect.stringContaining("from yearly_lb l"),
-        args: [2026, 2],
+        args: [2026, 2, 10_000],
       }),
     );
     expect(mocks.execute.mock.calls[0]![0].sql).not.toContain("l.rd");
@@ -281,7 +329,7 @@ describe("archive-data function", () => {
     expect(mocks.execute).toHaveBeenCalledWith(
       expect.objectContaining({
         sql: expect.stringContaining("when 4 then 'atomic960'"),
-        args: [4],
+        args: [4, 10_000],
       }),
     );
   });

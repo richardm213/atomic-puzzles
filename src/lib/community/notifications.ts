@@ -1,4 +1,5 @@
-import { postApi } from "../api/postApi";
+import { formatCalendarMonth } from "../../utils/formatters";
+import { createPostApi } from "../api/postApi";
 
 export type NotificationType =
   | "puzzle_comment"
@@ -46,6 +47,21 @@ export type NotificationResult = {
   unreadCount: number;
 };
 
+const NOTIFICATION_PATH_BASE = "https://atomic-puzzles.invalid";
+
+export const safeNotificationPath = (value: string | null | undefined): string | null => {
+  const path = value?.trim() ?? "";
+  if (!path.startsWith("/") || path.startsWith("//")) return null;
+
+  try {
+    const url = new URL(path, NOTIFICATION_PATH_BASE);
+    if (url.origin !== NOTIFICATION_PATH_BASE) return null;
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return null;
+  }
+};
+
 export const isPredictionOrderFillNotification = (notification: UserNotification): boolean =>
   notification.notification_type === "feature" &&
   notification.feature_key?.startsWith("prediction-order-filled:") === true;
@@ -87,13 +103,7 @@ export const notificationCopy = (notification: UserNotification): string => {
     );
   }
   if (notification.notification_type === "monthly_ranking") {
-    const period = notification.ranking_period
-      ? new Date(`${notification.ranking_period.slice(0, 10)}T00:00:00Z`).toLocaleString("en-US", {
-          month: "long",
-          year: "numeric",
-          timeZone: "UTC",
-        })
-      : "Monthly";
+    const period = formatCalendarMonth(notification.ranking_period) || "Monthly";
     const modeLabels = {
       blitz: "Blitz",
       bullet: "Bullet",
@@ -179,11 +189,10 @@ export const rankingNotificationImage = (notification: UserNotification): string
           ? "/images/atomic-rank-trophies/top-10.png"
           : null;
 
-const notificationRequest = <T>(body: Record<string, unknown>): Promise<T> =>
-  postApi("/api/notifications", body, {
-    errorMessage: "Unable to load notifications.",
-    invalidMessage: "The notification service returned no data.",
-  });
+const notificationRequest = createPostApi("/api/notifications", {
+  errorMessage: "Unable to load notifications.",
+  invalidMessage: "The notification service returned no data.",
+});
 
 export const fetchNotifications = (): Promise<NotificationResult> =>
   notificationRequest({ action: "list" });

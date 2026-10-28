@@ -10,6 +10,7 @@ import { z } from "zod";
 import { DataTable } from "../../components/DataTable/DataTable";
 import { SortableTableHeader } from "../../components/DataTable/SortableTableHeader";
 import { InlineState } from "../../components/InlineState/InlineState";
+import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { isMode, type Mode } from "../../constants/matches";
@@ -19,6 +20,7 @@ import type { PlayerDirectoryRow, PlayerRatingRow } from "../../lib/archive/rati
 import type { AliasLookup } from "../../lib/users/aliasesLookup";
 import { aliasesLookupQueryOptions } from "../../lib/users/aliasQueries";
 import { userRatingsQueryOptions } from "../../lib/users/userQueries";
+import { getErrorMessage } from "../../utils/errors";
 import { getOpeningDisplayLabel, normalizeOpeningKey } from "../../utils/openings";
 
 const HIGH_RD_THRESHOLD = 100;
@@ -184,11 +186,7 @@ const UsersTablePage = () => {
   );
   const loading = ratingsQuery.isPending || aliasesQuery.isPending;
   const queryError = ratingsQuery.error ?? aliasesQuery.error;
-  const error = queryError
-    ? queryError instanceof Error
-      ? queryError.message
-      : "Failed to load users."
-    : "";
+  const error = queryError ? getErrorMessage(queryError, "Failed to load users.") : "";
 
   const filteredRows = useMemo(() => {
     if (!activeOpeningFilter) return rows;
@@ -344,13 +342,9 @@ const UsersTablePage = () => {
               {sortedRows.map((row) => (
                 <tr key={row.username}>
                   <td>
-                    <Link
-                      className="rankingLink"
-                      to="/@/$username"
-                      params={{ username: row.username }}
-                    >
+                    <PlayerLink className="rankingLink" username={row.username}>
                       {row.username}
-                    </Link>
+                    </PlayerLink>
                     {row.banned ? (
                       <span className="usersClassificationTag usersClassificationTagCheater">
                         CHEATER

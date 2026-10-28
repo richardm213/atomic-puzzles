@@ -1,9 +1,9 @@
 import { Link } from "@tanstack/react-router";
 
+import { TournamentPlayerLink } from "../../components/TournamentPlayerLink/TournamentPlayerLink";
 import { getTournamentRouteId, type TournamentMeta } from "../../lib/matches/tournaments";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { formatCalendarDateRange } from "../../utils/formatters";
-import { normalizeUsername } from "../../utils/playerNames";
 import styles from "./TournamentArchiveCard.module.css";
 
 type TournamentArchiveCardProps = {
@@ -49,13 +49,7 @@ export const TournamentArchiveCard = ({ tournament, champion }: TournamentArchiv
 
       {showWinner ? (
         <div className={styles.champion}>
-          <Link
-            className={styles.winnerLink}
-            to="/tournaments/players/$username"
-            params={{ username: normalizeUsername(champion) }}
-          >
-            {champion}
-          </Link>
+          <TournamentPlayerLink className={styles.winnerLink} username={champion} />
         </div>
       ) : null}
 

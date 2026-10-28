@@ -52,7 +52,7 @@ export const AtomicTourPointsPage = () => {
   );
 
   return (
-    <main className="sitePage atomicTourPointsPage">
+    <div className="sitePage atomicTourPointsPage">
       <Seo
         title="Atomic Tour Points"
         description="Points awarded for each Atomic Chess Tour main-draw finish and losers-bracket win."
@@ -190,6 +190,6 @@ export const AtomicTourPointsPage = () => {
           the event maximum. Champions can earn a bonus up to 10% of the event maximum.
         </p>
       </div>
-    </main>
+    </div>
   );
 };

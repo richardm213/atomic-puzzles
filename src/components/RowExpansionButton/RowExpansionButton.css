@@ -1,0 +1,54 @@
+.rowExpansionButton {
+  display: inline-grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-muted);
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.rowExpansionButton:hover {
+  border-color: var(--color-border-strong);
+  background: var(--color-accent-soft-bg);
+  color: var(--color-heading);
+}
+
+.rowExpansionButton:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.rowExpansionButton svg {
+  transition: transform 160ms ease;
+}
+
+.rowExpansionButton[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+
+.tableRowActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+@media (max-width: 760px) {
+  .rowExpansionButton {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rowExpansionButton,
+  .rowExpansionButton svg {
+    transition-duration: 0.01ms;
+  }
+}

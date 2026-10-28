@@ -4,9 +4,32 @@
   outline: 3px solid var(--color-primary-ring);
   outline-offset: 2px;
 }
-
 :where(input, select, textarea) {
   accent-color: var(--color-primary);
+}
+
+/* Remove browser-only decorations that otherwise change field geometry between
+   Chromium, Firefox, and Safari. Keyboard increment/decrement still works. */
+:where(input[type="search"]) {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+:where(input[type="search"])::-webkit-search-cancel-button,
+:where(input[type="search"])::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+:where(input[type="number"]) {
+  appearance: textfield;
+}
+
+:where(input[type="number"])::-webkit-inner-spin-button,
+:where(input[type="number"])::-webkit-outer-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 /* Safari otherwise renders selects with its glossy native bevel. Keep the native
@@ -63,6 +86,7 @@
   border-radius: var(--radius-lg);
   background: var(--color-panel);
   box-shadow: var(--shadow-panel);
+  -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
 }
 
@@ -128,7 +152,7 @@
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  font-weight: 820;
+  font-weight: 650;
 }
 
 .usernamePickerSelectedChip button,
@@ -174,7 +198,7 @@
 .practiceCopyPgnCheck {
   color: #49d17d;
   font-size: 14px;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1;
 }
 
@@ -201,7 +225,7 @@
 .commentsHeader > div:first-child > span {
   color: var(--color-primary-soft);
   font-size: 11px;
-  font-weight: 850;
+  font-weight: 650;
   letter-spacing: 0.11em;
   text-transform: uppercase;
 }
@@ -211,7 +235,7 @@
 .sourceFilterGroup > .statusLabel {
   color: var(--color-subtle);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 650;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -233,18 +257,14 @@
 
 .h2hMatchTableRow,
 .expandableMatchRow {
-  cursor: pointer;
   transition:
     background 140ms ease,
     box-shadow 140ms ease;
 }
 
 .h2hMatchTableRow:hover,
-.h2hMatchTableRow:focus-visible,
-.profileFavoriteOpponentsTable .profileFavoriteOpponentRow:hover,
-.profileFavoriteOpponentsTable .profileFavoriteOpponentRow:focus-visible {
+.profileFavoriteOpponentsTable .profileFavoriteOpponentRow:hover {
   background: var(--color-accent-soft-bg);
-  outline: none;
 }
 
 .h2hMatchDetails .matchCardPlayerStats > div,
@@ -270,7 +290,7 @@
   background: var(--color-primary);
   border-color: var(--color-primary);
   color: var(--color-on-primary);
-  font-weight: 800;
+  font-weight: 650;
 }
 
 .primaryActionButton {
@@ -291,7 +311,7 @@
     );
   color: var(--color-on-primary);
   font-size: var(--text-control);
-  font-weight: 800;
+  font-weight: 650;
   line-height: 1;
   text-decoration: none;
   cursor: pointer;
@@ -401,7 +421,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-weight: 800;
+  font-weight: 650;
 }
 
 .usernamePickerDatabaseList button,
@@ -431,4 +451,15 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

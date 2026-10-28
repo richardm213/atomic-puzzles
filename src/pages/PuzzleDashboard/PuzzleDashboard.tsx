@@ -35,6 +35,9 @@ import { getPuzzleSetDisplayName } from "../../lib/puzzles/puzzleSets";
 import { clearPuzzleRatingCaches } from "../../lib/supabase/puzzles";
 import type { PuzzleRatingEvent } from "../../lib/supabase/puzzleUserRatings";
 import { siteUserRegistrationQueryOptions } from "../../lib/users/userQueries";
+import type { AsyncActionStatus } from "../../types/async";
+import { getErrorMessage } from "../../utils/errors";
+import { formatSignedDecimal } from "../../utils/formatters";
 import { normalizeUsername } from "../../utils/playerNames";
 import { MonthlyAttemptsCalendar } from "./MonthlyAttemptsCalendar";
 
@@ -49,11 +52,7 @@ const UNKNOWN_EVENT_LABEL = "Unknown event";
 const emptyPuzzleProgressRows: import("../../lib/supabase/puzzleProgress").PuzzleProgressRow[] = [];
 type DashboardResultFilter = "all" | "correct" | "incorrect";
 type DashboardTab = "attempts" | "created";
-type RatingRefreshStatus =
-  | { state: "idle" }
-  | { state: "refreshing" }
-  | { state: "success"; message: string }
-  | { state: "error"; message: string };
+type RatingRefreshStatus = AsyncActionStatus<"refreshing", "success", { message: string }>;
 
 const dashboardFiltersSchema = z.object({
   sinceDate: z.string(),
@@ -153,8 +152,6 @@ const buildDashboardEntries = (
       userRatingBefore: ratingEvent?.userRatingBefore ?? null,
     };
   });
-
-const formatSignedRating = (value: number): string => `${value > 0 ? "+" : ""}${value}`;
 
 const isKnownEvent = (event: string): boolean => event.trim() !== UNKNOWN_EVENT_LABEL;
 
@@ -271,9 +268,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
     customSetsQuery.error ??
     customSetAttemptsQuery.error;
   const error = queryError
-    ? queryError instanceof Error
-      ? queryError.message
-      : "Failed to load the puzzle dashboard."
+    ? getErrorMessage(queryError, "Failed to load the puzzle dashboard.")
     : "";
 
   useEffect(() => {
@@ -448,8 +443,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
     } catch (refreshError) {
       setRatingRefreshStatus({
         state: "error",
-        message:
-          refreshError instanceof Error ? refreshError.message : "Unable to refresh ratings.",
+        message: getErrorMessage(refreshError, "Unable to refresh ratings."),
       });
     }
   };
@@ -886,7 +880,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
                           ) : (
                             <>
                               <strong>{entry.userRatingAfter}</strong>
-                              <small>{formatSignedRating(entry.userRatingChange)}</small>
+                              <small>{formatSignedDecimal(entry.userRatingChange)}</small>
                             </>
                           )}
                         </span>

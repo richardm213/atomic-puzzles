@@ -238,7 +238,7 @@
   background: var(--color-panel-soft);
   color: var(--color-heading);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 650;
   line-height: 1.2;
   white-space: nowrap;
   transition:
@@ -292,7 +292,7 @@
 
 .rankingsLeaderboardPanel .currentMonthLabel {
   color: var(--color-heading);
-  font-weight: 800;
+  font-weight: 650;
 }
 
 .rankingsLeaderboardPanel .rankingsTableWrap {

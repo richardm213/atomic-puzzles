@@ -36,7 +36,7 @@
   background: var(--color-primary);
   color: var(--color-on-primary);
   font: inherit;
-  font-weight: 800;
+  font-weight: 650;
   cursor: pointer;
   transition:
     background 160ms ease,

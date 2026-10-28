@@ -1,3 +1,6 @@
+import "@fontsource-variable/inter";
+import "@fontsource-variable/inter/wght-italic.css";
+import "@fontsource-variable/roboto-mono";
 import "./theme/site-theme.css";
 import "./theme/site-typography.css";
 import "./theme/site-layout.css";

@@ -7,9 +7,13 @@ import type {
   BadgeTierDefinition,
 } from "../../../shared/domain/badges";
 import { queryAchievementRatingPeaks } from "../../archive/queries";
+import {
+  authenticateRequest,
+  identityResponse,
+  requireSameOrigin,
+} from "../../platform/authentication";
 import type { FunctionEvent } from "../../platform/defineFunction";
 import { createServerSupabase } from "../../platform/environment";
-import { jsonResponse } from "../../platform/response";
 import { parseJsonBody } from "../../platform/validation";
 
 const requestSchema = z.object({
@@ -42,8 +46,10 @@ const loadRatingPeaks = async (username: string) => {
 };
 
 export const badgesRoute = async (event: FunctionEvent) => {
+  requireSameOrigin(event.headers, "Cross-site achievement requests are not allowed.");
   const input = parseJsonBody(event, requestSchema, "Invalid achievements request.");
   const username = input.username.toLowerCase();
+  const identity = await authenticateRequest(event.headers, true);
   const supabase = createServerSupabase("Achievements service");
 
   const [catalogResult, tiersResult] = await Promise.all([
@@ -123,7 +129,9 @@ export const badgesRoute = async (event: FunctionEvent) => {
       },
     }));
 
-  if (newlyEarned.length) {
+  // Public profiles may read achievements, but only the signed-in owner can
+  // cause service-role writes. Existing earned rows remain publicly readable.
+  if (newlyEarned.length && identity.username?.trim().toLowerCase() === username) {
     const { error } = await supabase
       .from("user_badges")
       .upsert(newlyEarned, { onConflict: "username,badge_key", ignoreDuplicates: true });
@@ -144,5 +152,5 @@ export const badgesRoute = async (event: FunctionEvent) => {
     return [{ badgeKey, earnedAt: String(row.earned_at ?? "") }];
   });
 
-  return jsonResponse(200, { username, stats, tiers, catalog, earned });
+  return identityResponse(identity, 200, { username, stats, tiers, catalog, earned });
 };

@@ -3,6 +3,7 @@ import { normalizePuzzlePlayers } from "../../../../shared/domain/puzzles/puzzle
 import {
   compactPuzzleSolution,
   parsePuzzlePgnInput,
+  type PuzzleSubmissionValue,
 } from "../../../../shared/domain/puzzles/puzzleSubmission";
 import {
   createAtomicPosition,
@@ -12,15 +13,7 @@ import {
 import { HttpError } from "../../../platform/errors";
 import type { PuzzleSubmissionRepository } from "./repository";
 
-export type PuzzleSubmissionInput = {
-  fen: string;
-  solution: string;
-  event: string;
-  whitePlayer?: string;
-  blackPlayer?: string;
-  explanation: string;
-  opaStyle: boolean;
-};
+export type PuzzleSubmissionInput = PuzzleSubmissionValue & { opaStyle: boolean };
 
 const PUBLIC_DOMAIN_ERROR = /^(Invalid (FEN|atomic position|PGN)|Enter PGN|The PGN)/;
 

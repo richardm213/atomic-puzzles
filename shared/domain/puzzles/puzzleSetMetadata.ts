@@ -114,17 +114,6 @@ export const puzzleSetMetadataFromRow = (
   });
 };
 
-export const getPuzzleSetKey = (value: PuzzleSetMetadata): string => {
-  const metadata = normalizePuzzleSetMetadata(value);
-  if (!metadata.eventName) return "";
-  return encodeURIComponent(
-    [metadata.eventName, metadata.eventDate, ...metadata.players]
-      .filter(Boolean)
-      .map((part) => part.toLocaleLowerCase())
-      .join("|"),
-  );
-};
-
 export const formatPuzzleSetDate = (value: string): string => {
   const normalized = normalizePuzzleEventDate(value);
   if (!normalized) return "";
@@ -142,11 +131,4 @@ export const formatPuzzleSetPlayers = (players: string[]): string => {
   const normalized = normalizePuzzlePlayers(players);
   if (normalized.length === 2) return `${normalized[0]} vs ${normalized[1]}`;
   return normalized.join(" · ");
-};
-
-export const buildLegacyPuzzleEvent = (value: PuzzleSetMetadata): string => {
-  const metadata = normalizePuzzleSetMetadata(value);
-  const date = formatPuzzleSetDate(metadata.eventDate);
-  const players = formatPuzzleSetPlayers(metadata.players);
-  return [metadata.eventName, date, players].filter(Boolean).join(": ");
 };

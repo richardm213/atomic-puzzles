@@ -1,5 +1,4 @@
 @import "../RecentMatches/RecentMatches.css";
-@import "../../components/MatchCard/MatchCard.css";
 
 .playerProfilePanel {
   width: min(768px, 100%);
@@ -23,6 +22,7 @@
 
 .playerProfilePanel .profileIdentityTitle h1 {
   margin: 0;
+  font-weight: 650;
 }
 
 .profileHistoryTitleLink {
@@ -67,7 +67,7 @@
   background: color-mix(in srgb, var(--color-primary) 12%, var(--color-panel-strong));
   color: var(--color-primary-soft);
   font-size: 11px;
-  font-weight: 900;
+  font-weight: 700;
   letter-spacing: 0.08em;
   line-height: 1;
 }
@@ -107,7 +107,7 @@
   background: var(--opening-bg);
   color: var(--opening-text);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1.2;
   white-space: nowrap;
   box-shadow: 0 6px 14px color-mix(in srgb, var(--opening-border) 32%, transparent);
@@ -126,7 +126,7 @@
   color: var(--color-primary-pale);
   font-size: 24px;
   font-variant-numeric: tabular-nums;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1;
   text-decoration: none;
   transform: translateY(1px);
@@ -349,7 +349,7 @@
 .profileTrophyLabel {
   color: currentcolor;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 650;
   line-height: 1.2;
   white-space: nowrap;
 }
@@ -372,6 +372,7 @@
 .profileMetricRowTitle {
   margin: 0;
   font-size: 17px;
+  font-weight: 650;
 }
 
 .profileMetricRowCards {
@@ -415,7 +416,7 @@
   color: var(--color-heading);
   font: inherit;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 650;
   line-height: 1;
   text-decoration: none;
   white-space: nowrap;
@@ -550,7 +551,7 @@
   color: var(--color-heading);
   font: inherit;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 650;
   text-align: left;
   text-decoration: none;
   cursor: pointer;
@@ -751,7 +752,7 @@
   background-color: transparent;
   color: var(--color-heading);
   font: inherit;
-  font-weight: 800;
+  font-weight: 650;
   padding: 3px 4px;
 }
 
@@ -775,7 +776,7 @@
   color: var(--color-text);
   padding: 4px 8px;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 650;
 }
 
 .profileFavoriteOpponentsDirectionButton span {
@@ -863,7 +864,7 @@
     box-shadow 140ms ease;
 }
 
-.profileAliasStatus > span:first-child {
+.profileAliasStatus > svg:first-child {
   font-size: 14px;
   line-height: 1;
 }
@@ -1246,7 +1247,7 @@
   border-radius: 8px 8px 0 0;
   background: transparent;
   color: var(--color-muted);
-  font-weight: 800;
+  font-weight: 650;
   transition:
     background-color 140ms ease,
     border-color 140ms ease,
@@ -1285,7 +1286,7 @@
   cursor: pointer;
   font: inherit;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 650;
   transition:
     border-color 140ms ease,
     background-color 140ms ease,
@@ -1318,7 +1319,7 @@
 .profileMatchFilters .matchFilterGrid label {
   gap: 5px;
   font-size: 11px;
-  font-weight: 750;
+  font-weight: 650;
   letter-spacing: 0.07em;
 }
 
@@ -1338,7 +1339,7 @@
 .profileMatchFilters .rangeFilter > label,
 .profileMatchFilters .sourceFilterGroup > .statusLabel {
   font-size: 11px;
-  font-weight: 750;
+  font-weight: 650;
   letter-spacing: 0.07em;
 }
 
@@ -1391,7 +1392,7 @@
   align-items: center;
   gap: 8px;
   color: var(--color-heading);
-  font-weight: 800;
+  font-weight: 650;
 }
 
 .profileFavoriteOpponentsControls {
@@ -1401,46 +1402,6 @@
   justify-content: flex-end;
   gap: 10px;
   color: var(--color-subtle);
-}
-
-.profileMatchTableWrap {
-  margin-top: 0;
-  max-width: 100%;
-  overflow-x: auto;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-surface-soft);
-  -webkit-overflow-scrolling: touch;
-}
-
-.profileMatchTable {
-  width: 100%;
-  min-width: 680px;
-  table-layout: fixed;
-  border-collapse: collapse;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  font-size: 14px;
-  line-height: 1.35;
-}
-
-.profileMatchTable thead {
-  background: var(--color-table-head);
-}
-
-.profileMatchTable th {
-  color: var(--color-subtle);
-  font-size: 11px;
-  line-height: 1.2;
-  text-align: left;
-}
-
-.profileMatchTable th,
-.profileMatchTable td {
-  border-bottom-color: var(--color-border);
-  padding: 11px 8px;
-  vertical-align: middle;
 }
 
 .profileMatchDateColumn {
@@ -1468,20 +1429,6 @@
   width: 8%;
 }
 
-.profileMatchTable th:last-child,
-.profileMatchTable td:last-child {
-  white-space: nowrap;
-}
-
-.profileMatchTable th:nth-child(4),
-.profileMatchTable .scoreCell {
-  text-align: center;
-}
-
-.profileMatchTable .scoreCell {
-  min-width: 0;
-}
-
 .profileMatchTable td:nth-child(2) .rankingLink {
   display: inline-block;
   max-width: 100%;
@@ -1496,14 +1443,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.profileMatchTable .matchDetailsRow > td {
-  width: auto;
-}
-
-.profileMatchTable tbody tr:last-child td {
-  border-bottom: 0;
 }
 
 .profileRankHistoryTableWrap,
@@ -1583,7 +1522,7 @@
 .profileTrophyCaseDetails span {
   color: var(--color-subtle);
   font-size: 12px;
-  font-weight: 750;
+  font-weight: 650;
 }
 
 .profileRankHistoryTable,
@@ -1678,7 +1617,7 @@
   background: transparent;
   color: inherit;
   padding: 0;
-  font-weight: 800;
+  font-weight: 650;
   text-align: left;
 }
 
@@ -1701,12 +1640,6 @@
 .profileRankHistoryTable tbody tr:last-child td,
 .profileFavoriteOpponentsTable tbody tr:last-child td {
   border-bottom: 0;
-}
-
-.profileMatchTable .expandableMatchRow:hover,
-.profileMatchTable .expandableMatchRow:focus-visible {
-  background: var(--color-accent-soft-bg);
-  outline: none;
 }
 
 .expandableMatchRow.expanded {
@@ -1739,7 +1672,7 @@
   display: inline;
   color: var(--color-text);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -1775,7 +1708,7 @@
 
 .profileMetricValue {
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 650;
 }
 
 .profileDelta {

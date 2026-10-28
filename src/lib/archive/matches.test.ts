@@ -62,6 +62,24 @@ describe("fetchMatchRowsFromArchive", () => {
     expect(params.get("matchId")).toBe("Yr9V8s5R");
   });
 
+  it("sends player-pair and partial time-control filters to the archive", async () => {
+    await fetchMatchRowsFromArchive(
+      "blitz",
+      {
+        usernamePair: ["Alice", "Bob"],
+        timeControlInitial: "3",
+        timeControlIncrement: "2",
+      },
+      { pageSize: 25 },
+    );
+
+    const params = fetchArchiveJson.mock.calls[0]?.[0] as URLSearchParams;
+    expect(params.get("pairA")).toBe("alice");
+    expect(params.get("pairB")).toBe("bob");
+    expect(params.get("timeControlInitial")).toBe("3");
+    expect(params.get("timeControlIncrement")).toBe("2");
+  });
+
   it("only sends the rating filter type with a complete rating range", async () => {
     await fetchMatchRowsFromArchive("blitz", { username: "alice" }, { pageSize: 25 });
 
@@ -80,5 +98,25 @@ describe("fetchMatchRowsFromArchive", () => {
     expect(filteredParams.get("ratingFilterType")).toBe("both");
     expect(filteredParams.get("ratingMin")).toBe("1500");
     expect(filteredParams.get("ratingMax")).toBe("2000");
+  });
+
+  it("retries recent matches without includeTotal for older archive endpoints", async () => {
+    fetchArchiveJson
+      .mockRejectedValueOnce(new Error("Unexpected query parameter: includeTotal"))
+      .mockResolvedValueOnce({
+        rows: [{ match_id: "match-1" }],
+        total: 1,
+        hasPreviousPage: false,
+        hasNextPage: false,
+      });
+
+    await expect(
+      fetchMatchRowsFromArchive("blitz", {}, { pageSize: 25, includeTotal: false }),
+    ).resolves.toMatchObject({ rows: [{ match_id: "match-1" }] });
+
+    const optimizedParams = fetchArchiveJson.mock.calls[0]?.[0] as URLSearchParams;
+    const compatibleParams = fetchArchiveJson.mock.calls[1]?.[0] as URLSearchParams;
+    expect(optimizedParams.get("includeTotal")).toBe("false");
+    expect(compatibleParams.has("includeTotal")).toBe(false);
   });
 });

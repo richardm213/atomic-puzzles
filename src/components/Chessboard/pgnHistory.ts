@@ -5,6 +5,7 @@ import { makeUci } from "chessops/util";
 import type { Atomic } from "chessops/variant";
 
 import { moveFromUci, toComparableUci } from "../../lib/puzzles/solutionPgn";
+import { getErrorMessage } from "../../utils/errors";
 import { appendBoardMove, type BoardHistory, createBoardHistory } from "./boardHistory";
 import { tryCreateAtomicPosition } from "./puzzlePlayback";
 
@@ -57,7 +58,7 @@ export const buildPgnHistory = (initialFen: string, pgn: string): PgnHistoryResu
   } catch (loadError) {
     return {
       ok: false,
-      error: loadError instanceof Error ? loadError.message : "Invalid PGN",
+      error: getErrorMessage(loadError, "Invalid PGN"),
       kind: "pgn",
     };
   }

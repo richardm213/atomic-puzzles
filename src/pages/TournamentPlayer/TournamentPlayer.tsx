@@ -12,8 +12,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 
+import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
+import { TournamentPlayerLink } from "../../components/TournamentPlayerLink/TournamentPlayerLink";
 import { modeLabels } from "../../constants/matches";
 import { TournamentFairPlayFlag } from "../../features/tournaments/TournamentFairPlayFlag";
 import {
@@ -24,8 +26,8 @@ import {
 import { getAliasIdentityUsernames } from "../../lib/archive/aliases";
 import {
   atomicTourEventEntriesQueryOptions,
-  atomicTourPlayerRankingStatsQueryOptions,
   type AtomicTourEventEntry,
+  atomicTourPlayerRankingStatsQueryOptions,
 } from "../../lib/atomicTour/queries";
 import {
   tournamentCatalogQueryOptions,
@@ -141,11 +143,7 @@ const TournamentMatchRow = ({
           </span>
         ) : null}
       </span>
-      <Link
-        className="tournamentProfileOpponent"
-        to="/tournaments/players/$username"
-        params={{ username: normalizeUsername(match.opponent) }}
-      >
+      <TournamentPlayerLink className="tournamentProfileOpponent" username={match.opponent}>
         <img
           className="tournamentProfileOpponentFlag"
           crossOrigin="anonymous"
@@ -160,7 +158,7 @@ const TournamentMatchRow = ({
           {match.opponentSeed ? ` (${match.opponentSeed})` : null}
         </span>
         <TournamentFairPlayFlag playerName={match.opponent} />
-      </Link>
+      </TournamentPlayerLink>
       <strong className="tournamentProfileScore">{scoreLabel(match)}</strong>
     </>
   );
@@ -353,7 +351,7 @@ export const TournamentPlayerPage = ({ username }: { username?: string }) => {
   const fullRecord = `${totalWins} - ${totalLosses}${totalDraws ? ` - ${totalDraws}` : ""}`;
 
   return (
-    <main className="sitePage tournamentProfilePage">
+    <div className="sitePage tournamentProfilePage">
       <Seo
         title={`${canonicalUsername} tournament history`}
         description={`Tournament history and results for ${canonicalUsername}.`}
@@ -372,16 +370,15 @@ export const TournamentPlayerPage = ({ username }: { username?: string }) => {
               {canonicalUsername}
               <TournamentFairPlayFlag playerName={canonicalUsername} />
             </h1>
-            <Link
+            <PlayerLink
               className="tournamentProfileFullProfile"
-              to="/@/$username"
-              params={{ username: canonicalUsername }}
+              username={canonicalUsername}
               aria-label="Open full profile"
               title="Open full profile"
             >
               <FontAwesomeIcon icon={faUser} aria-hidden="true" />
               Full profile
-            </Link>
+            </PlayerLink>
           </div>
           <div className="tournamentProfileHeaderMeta">
             {tourRankingStatsQuery.data ? (
@@ -490,6 +487,6 @@ export const TournamentPlayerPage = ({ username }: { username?: string }) => {
           </section>
         )}
       </div>
-    </main>
+    </div>
   );
 };

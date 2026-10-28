@@ -1,18 +1,19 @@
 import { z } from "zod";
 
+import {
+  COIN_TRANSACTION_REASONS,
+  type CoinTransactionReason,
+  SHOP_ITEM_KEYS,
+  SHOP_REDEMPTION_STATUSES,
+  type ShopItemKey,
+  type ShopRedemptionStatus,
+} from "../../../shared/domain/coins";
 import { postApi } from "../api/postApi";
 import { announceCoinsEarned } from "./coinEvents";
 
-export const DAILY_COIN_BONUS = 10;
+export type { CoinTransactionReason, ShopItemKey } from "../../../shared/domain/coins";
 
-export type ShopItemKey =
-  | "username_change"
-  | "discord_nitro_month"
-  | "discord_nitro_year"
-  | "flowers_500"
-  | "lichess_patron_month"
-  | "next_prize_tournament_format"
-  | "atomicdb_analysis_12h";
+export const DAILY_COIN_BONUS = 10;
 
 export type AtomicDbAnalysisRequest =
   | { focus: "higher_eval"; openings: string[]; players?: never }
@@ -34,24 +35,7 @@ export type CoinRanking = {
   inBets: number;
 };
 
-export const coinTransactionReasons = [
-  "coin_transfer",
-  "puzzle_correct",
-  "puzzle_attempted",
-  "puzzle_created",
-  "shop_redemption",
-  "daily_bonus",
-  "tournament_bet",
-  "tournament_bet_payout",
-  "tournament_bet_refund",
-  "prediction_order_reserve",
-  "prediction_order_refund",
-  "prediction_trade_credit",
-  "prediction_market_payout",
-  "prediction_liquidity_funding",
-] as const;
-
-export type CoinTransactionReason = (typeof coinTransactionReasons)[number];
+export const coinTransactionReasons = COIN_TRANSACTION_REASONS;
 
 export type CoinTransaction = {
   id: number;
@@ -74,7 +58,7 @@ export type RedemptionHistoryItem = {
   id: number;
   itemKey: ShopItemKey;
   cost: number;
-  status: "pending" | "fulfilled" | "cancelled";
+  status: ShopRedemptionStatus;
   createdAt: string;
   fulfilledAt: string | null;
 };
@@ -106,17 +90,9 @@ const redemptionHistorySchema = z.object({
     z
       .object({
         id: z.number(),
-        item_key: z.enum([
-          "username_change",
-          "discord_nitro_month",
-          "discord_nitro_year",
-          "flowers_500",
-          "lichess_patron_month",
-          "next_prize_tournament_format",
-          "atomicdb_analysis_12h",
-        ]),
+        item_key: z.enum(SHOP_ITEM_KEYS),
         cost: z.number(),
-        status: z.enum(["pending", "fulfilled", "cancelled"]),
+        status: z.enum(SHOP_REDEMPTION_STATUSES),
         created_at: z.string(),
         fulfilled_at: z.string().nullable(),
       })

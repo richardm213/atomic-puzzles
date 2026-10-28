@@ -1,12 +1,6 @@
 import "./Betting.css";
 
-import {
-  faCheck,
-  faPlus,
-  faThumbsDown,
-  faThumbsUp,
-  faTrash,
-} from "@fortawesome/free-solid-svg-icons";
+import { faCheck } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -23,7 +17,6 @@ import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/Rout
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
 import { usePersistedState } from "../../hooks/usePersistedState";
-import { useUnderscoreUsernameCutoff } from "../../hooks/useUnderscoreUsernameCutoff";
 import {
   AWC_NOT_TO_WIN_MARKET_ID,
   BET_NET_WORTH_LIMIT_RATE,
@@ -32,27 +25,22 @@ import {
   isAwcNotToWinSelfBet,
   isRestrictedPredictionOrder,
   isTournamentBetOnOpponent,
-  type MarketSuggestion,
   MAX_BET_STAKE,
   maxTournamentBetStake,
   MIN_BET_AMOUNT,
   placeTournamentBet,
   predictionOrderRestrictionMessage,
   quoteTournamentBet,
-  suggestMarket,
-  type TournamentBet,
-  voteOnMarketSuggestion,
 } from "../../lib/betting/betting";
 import {
   allTournamentBetsQueryOptions,
   bettingBootstrapQueryOptions,
   bettingMarketsQueryOptions,
   bettingQueryKeys,
-  marketSuggestionsQueryOptions,
   tournamentBetsQueryOptions,
 } from "../../lib/betting/bettingQueries";
-import { formatCoinBalance } from "../../lib/coins/coinDisplay";
-import { coinQueryKeys, coinSummaryQueryOptions } from "../../lib/coins/coinQueries";
+import { formatCoinBalance, formatCoinValue } from "../../lib/coins/coinDisplay";
+import { coinSummaryQueryOptions, updateCachedCoinBalance } from "../../lib/coins/coinQueries";
 import {
   tournamentBracketQueryOptions,
   tournamentPlayerCountriesQueryOptions,
@@ -80,7 +68,11 @@ import {
 } from "../../lib/predictionMarkets/predictionMarkets";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { countryCodeToFlagUrl } from "../../utils/countryFlags";
-import { formatLocalDateTime } from "../../utils/formatters";
+import { getErrorMessage } from "../../utils/errors";
+import { BettingHistory } from "./BettingHistory";
+import { buildBetHistory } from "./bettingHistoryModel";
+import { BettingSuggestions } from "./BettingSuggestions";
+import { useMarketDeadlineClock } from "./useMarketDeadlineClock";
 
 type BettingView = "markets" | "mine" | "all" | "suggestions";
 type WinnerPosition = "yes" | "no";
@@ -88,16 +80,6 @@ type PredictionDisplayMode = "book" | "market";
 type PredictionMarketCategory = (typeof predictionMarketCategories)[number];
 type Selection = { marketId: string; player: string };
 type PredictionSelection = { marketId: string; outcome: PredictionOutcome };
-type SuggestionDraftOutcome = { label: string; odds: string };
-type BetHistoryEntry = TournamentBet & {
-  kind?: "prediction";
-  historyKey?: string;
-  predictionUsername?: string;
-  predictionOutcome?: PredictionOutcome;
-  predictionMarketTitle?: string | undefined;
-  predictionSettlementPriceCents?: number | undefined;
-};
-
 const bettingViews: readonly BettingView[] = ["markets", "mine", "all", "suggestions"];
 const predictionDisplayModeSchema = z.enum(["book", "market"]);
 const predictionDisplayModeStorageKey = "betting:prediction-display-mode";
@@ -110,11 +92,6 @@ const predictionGroupIdByCategory: Record<PredictionMarketCategory, string> = {
   Shield: "november-atomic-shield-2026",
 };
 const winnerNoMarketId = AWC_NOT_TO_WIN_MARKET_ID;
-const defaultSuggestionOutcomes = (): SuggestionDraftOutcome[] => [
-  { label: "", odds: "50" },
-  { label: "", odds: "50" },
-];
-
 const marketCategorySlug = (category: string): string => {
   const normalizedCategory = category
     .trim()
@@ -156,9 +133,6 @@ const winnerPositionFromSearch = (search: string): WinnerPosition =>
 const winnerPositionForMarket = (market: BettingMarket): WinnerPosition =>
   market.id === winnerNoMarketId ? "no" : "yes";
 
-const formatBetCoins = (value: number): string =>
-  value.toLocaleString(undefined, { maximumFractionDigits: 2 });
-
 const formatBettingDeadline = (value: string): string =>
   new Intl.DateTimeFormat("en-US", {
     month: "short",
@@ -171,208 +145,6 @@ const formatBettingDeadline = (value: string): string =>
 
 const marketAcceptsBets = (market: BettingMarket, now: number): boolean => {
   return market.status === "open" && (!market.closesAt || Date.parse(market.closesAt) > now);
-};
-
-const abbreviateBetRound = (roundName: string): string => {
-  const normalizedRound = roundName.trim().toLowerCase();
-  const numberedRound = /^round of (\d+)$/.exec(normalizedRound);
-  if (numberedRound) return `R${numberedRound[1]}`;
-  if (normalizedRound === "quarterfinals" || normalizedRound === "quarterfinal") return "QF";
-  if (normalizedRound === "semifinals" || normalizedRound === "semifinal") return "SF";
-  if (normalizedRound === "finals" || normalizedRound === "final") return "F";
-  return roundName;
-};
-
-const marketForBet = (markets: BettingMarket[], bet: TournamentBet) =>
-  markets.find((market) => market.id === bet.marketId);
-
-const BetHistoryUsername = ({ username }: { username: string }) => {
-  const { displayName, elementRef } = useUnderscoreUsernameCutoff<HTMLSpanElement>(username);
-  return (
-    <span
-      ref={elementRef}
-      className="betHistoryUsernameCutoff"
-      title={username}
-      aria-label={username}
-    >
-      {displayName}
-    </span>
-  );
-};
-
-const MarketSuggestionList = ({
-  suggestions,
-  isAuthenticated,
-  votingSuggestionId,
-  onLogin,
-  onVote,
-}: {
-  suggestions: MarketSuggestion[];
-  isAuthenticated: boolean;
-  votingSuggestionId: number | undefined;
-  onLogin: () => void;
-  onVote: (suggestion: MarketSuggestion, vote: -1 | 1) => void;
-}) => {
-  if (!suggestions.length) {
-    return <InlineState kind="empty">No markets have been suggested yet.</InlineState>;
-  }
-  return (
-    <div className="marketSuggestionList">
-      {suggestions.map((suggestion) => (
-        <article className="marketSuggestionCard" key={suggestion.id}>
-          <div className="marketSuggestionContent">
-            <div className="marketSuggestionMeta">
-              <Link to="/@/$username" params={{ username: suggestion.username }}>
-                {suggestion.username}
-              </Link>
-              <span aria-hidden="true">·</span>
-              <time dateTime={suggestion.createdAt}>
-                {formatLocalDateTime(suggestion.createdAt)}
-              </time>
-            </div>
-            <h3>{suggestion.question}</h3>
-            <div className="marketSuggestionOutcomes" aria-label="Proposed outcomes">
-              {suggestion.outcomes.map((outcome) => (
-                <span key={`${outcome.label}-${outcome.odds}`}>
-                  {outcome.label}
-                  <strong>{outcome.odds}%</strong>
-                </span>
-              ))}
-            </div>
-          </div>
-          <div className="marketSuggestionVotes" aria-label={`Votes: ${suggestion.score}`}>
-            <button
-              type="button"
-              className={suggestion.userVote === 1 ? "isSelected" : ""}
-              aria-label={`Upvote suggestion by ${suggestion.username}`}
-              aria-pressed={suggestion.userVote === 1}
-              disabled={votingSuggestionId === suggestion.id}
-              onClick={() => (isAuthenticated ? onVote(suggestion, 1) : onLogin())}
-            >
-              <FontAwesomeIcon icon={faThumbsUp} aria-hidden="true" />
-              <span>{suggestion.upvotes}</span>
-            </button>
-            <strong aria-label={`${suggestion.score} net votes`}>{suggestion.score}</strong>
-            <button
-              type="button"
-              className={suggestion.userVote === -1 ? "isSelected" : ""}
-              aria-label={`Downvote suggestion by ${suggestion.username}`}
-              aria-pressed={suggestion.userVote === -1}
-              disabled={votingSuggestionId === suggestion.id}
-              onClick={() => (isAuthenticated ? onVote(suggestion, -1) : onLogin())}
-            >
-              <FontAwesomeIcon icon={faThumbsDown} aria-hidden="true" />
-              <span>{suggestion.downvotes}</span>
-            </button>
-          </div>
-        </article>
-      ))}
-    </div>
-  );
-};
-
-const BetHistory = ({
-  bets,
-  markets,
-  countryByPlayer,
-  emptyMessage,
-  showUsername = false,
-}: {
-  bets: BetHistoryEntry[];
-  markets: BettingMarket[];
-  countryByPlayer: Record<string, string>;
-  emptyMessage: string;
-  showUsername?: boolean;
-}) => {
-  if (!bets.length) return <InlineState kind="empty">{emptyMessage}</InlineState>;
-  return (
-    <div className={`betHistoryTableWrap${showUsername ? " betHistoryTableWrap--all" : ""}`}>
-      <table className="betHistoryTable">
-        <caption className="betHistoryCaption">{showUsername ? "All bets" : "My bets"}</caption>
-        <thead>
-          <tr>
-            <th scope="col">Selection</th>
-            {showUsername ? <th scope="col">Bettor</th> : null}
-            <th scope="col">Price</th>
-            <th scope="col">Cost</th>
-            <th scope="col">Return</th>
-            <th scope="col">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {bets.map((bet) => {
-            const isPredictionBet = bet.kind === "prediction";
-            const market = marketForBet(markets, bet);
-            const historyContext = isPredictionBet
-              ? ""
-              : market?.marketKind === "outright"
-                ? ""
-                : (market?.roundName ?? "AWC 2026");
-            const countryCode = countryByPlayer[bet.selection.toLowerCase()] ?? "";
-            const payout = bet.status === "open" ? bet.potentialPayout : bet.payout;
-            return (
-              <tr key={bet.historyKey ?? `${bet.kind ?? "tournament"}-${bet.id}`}>
-                <th className="betHistorySelection" scope="row">
-                  <span className="betHistoryPlayer">
-                    <img
-                      src={countryCodeToFlagUrl(countryCode)}
-                      alt={countryCode ? `${countryCode} flag` : "Country unavailable"}
-                      crossOrigin="anonymous"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                    <strong>
-                      <BetHistoryUsername
-                        username={isPredictionBet ? bet.selection.toLowerCase() : bet.selection}
-                      />
-                      {isPredictionBet && bet.predictionOutcome ? (
-                        <span className="betHistoryOutcome">
-                          · {bet.predictionOutcome === "yes" ? "Yes" : "No"}
-                        </span>
-                      ) : null}
-                    </strong>
-                  </span>
-                  <span className="betHistoryMarket">
-                    {isPredictionBet
-                      ? (bet.predictionMarketTitle ?? "Prediction market")
-                      : market?.label || bet.marketId}
-                    {historyContext ? <small> · {abbreviateBetRound(historyContext)}</small> : null}
-                  </span>
-                </th>
-                {showUsername ? (
-                  <td className="betHistoryBettor" data-label="Bettor">
-                    <Link to="/@/$username" params={{ username: bet.username }}>
-                      <BetHistoryUsername username={bet.username} />
-                    </Link>
-                  </td>
-                ) : null}
-                <td className="betHistoryNumber" data-label="Price">
-                  <strong>
-                    {bet.priceCents}
-                    <span className="betHistoryPriceSuffix">%</span>
-                  </strong>
-                </td>
-                <td className="betHistoryNumber" data-label="Cost">
-                  <strong>{formatBetCoins(bet.totalCost)}</strong>
-                  <small>coins</small>
-                </td>
-                <td className="betHistoryNumber betHistoryReturn" data-label="Return">
-                  <strong>{formatBetCoins(payout)}</strong>
-                  <small>{bet.status === "open" ? "possible" : "paid"}</small>
-                </td>
-                <td className="betHistoryState" data-label="Status">
-                  <span className={`betStatus betStatus--${bet.status}`}>
-                    {bet.status === "open" ? "Open" : bet.status}
-                  </span>
-                  <time dateTime={bet.placedAt}>{formatLocalDateTime(bet.placedAt)}</time>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
 };
 
 export const BettingPage = () => {
@@ -410,13 +182,7 @@ export const BettingPage = () => {
     );
   const [stakeInput, setStakeInput] = useState("");
   const [stakeTouched, setStakeTouched] = useState(false);
-  const [bettorFilter, setBettorFilter] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-  const [suggestionQuestion, setSuggestionQuestion] = useState("");
-  const [suggestionOutcomes, setSuggestionOutcomes] =
-    useState<SuggestionDraftOutcome[]>(defaultSuggestionOutcomes);
-  const [suggestionSubmitted, setSuggestionSubmitted] = useState(false);
-  const [currentTime, setCurrentTime] = useState(() => Date.now());
   const betSlipRef = useRef<HTMLElement>(null);
   const betAmountRef = useRef<HTMLInputElement>(null);
   const predictionStakeRef = useRef<HTMLInputElement>(null);
@@ -445,10 +211,6 @@ export const BettingPage = () => {
   const allBetsQuery = useQuery({
     ...allTournamentBetsQueryOptions(),
     enabled: bootstrapQuery.isError,
-  });
-  const suggestionsQuery = useQuery({
-    ...marketSuggestionsQueryOptions(),
-    enabled: view === "suggestions",
   });
   const coinSummaryQuery = useQuery({
     ...coinSummaryQueryOptions(username),
@@ -500,177 +262,20 @@ export const BettingPage = () => {
   );
   const countryByPlayer = countriesQuery.data ?? {};
   const markets = useMemo(() => marketsQuery.data ?? [], [marketsQuery.data]);
-  const allHistoryBets = useMemo<BetHistoryEntry[]>(() => {
-    const awcChampionGroup = predictionMarketGroups.find(
-      (group) => group.id === "awc-2026-champion",
-    );
-    const championMarketByUsername = new Map(
-      (awcChampionGroup?.markets ?? []).map((market) => [market.username.toLowerCase(), market]),
-    );
-    const roundOf16Group = predictionMarketGroups.find(
-      (group) => group.id === "awc-2026-round-of-16",
-    );
-    const roundOf16MarketById = new Map(
-      (roundOf16Group?.markets ?? []).map((market) => [market.id, market]),
-    );
-    const predictionStatus = (
-      marketId: string,
-      outcome: PredictionOutcome,
-      quantity: number,
-      totalCost: number,
-    ): Pick<TournamentBet, "status" | "payout" | "settledAt"> => {
-      const state = predictionStateByMarketId.get(marketId);
-      const resolvedOutcome = state?.market.outcome;
-      const settlementPrice = state?.market.settlementPriceCents;
-      const status: TournamentBet["status"] =
-        state?.market.status === "refunded"
-          ? "refunded"
-          : state?.market.status === "resolved"
-            ? settlementPrice !== null && settlementPrice !== undefined
-              ? "settled"
-              : resolvedOutcome === outcome
-                ? "won"
-                : "lost"
-            : "open";
-      const settlementPayout =
-        settlementPrice !== null && settlementPrice !== undefined
-          ? (quantity * (outcome === "yes" ? settlementPrice : 100 - settlementPrice)) / 100
-          : 0;
-      return {
-        status,
-        payout:
-          status === "won"
-            ? quantity
-            : status === "settled"
-              ? settlementPayout
-              : status === "refunded"
-                ? totalCost
-                : 0,
-        settledAt: status === "open" ? null : (state?.market.resolvedAt ?? null),
-      };
-    };
-    const tournamentBets = (allBetsQuery.data ?? []).map((bet): BetHistoryEntry => {
-      const isChampionYes = bet.marketId === "awc2026-winner";
-      const isChampionNo = bet.marketId === winnerNoMarketId;
-      const roundOf16Definition = roundOf16MarketById.get(bet.marketId);
-      if (roundOf16Definition) {
-        const outcome = predictionOutcomes.find(
-          (entry) =>
-            predictionOutcomeLabel(roundOf16Definition, entry).toLowerCase() ===
-            bet.selection.toLowerCase(),
-        );
-        if (!outcome) return bet;
-        return {
-          ...bet,
-          ...predictionStatus(roundOf16Definition.id, outcome, bet.potentialPayout, bet.totalCost),
-          marketId: roundOf16Definition.id,
-          selection: predictionOutcomeLabel(roundOf16Definition, outcome),
-          kind: "prediction",
-          predictionUsername: roundOf16Definition.username,
-          predictionOutcome: outcome,
-          predictionMarketTitle: "AWC 2026 Round of 16",
-        };
-      }
-      if (!isChampionYes && !isChampionNo) return bet;
-      const definition = championMarketByUsername.get(bet.selection.toLowerCase());
-      if (!definition) return bet;
-      const outcome: PredictionOutcome = isChampionNo ? "no" : "yes";
-      return {
-        ...bet,
-        ...predictionStatus(definition.id, outcome, bet.potentialPayout, bet.totalCost),
-        marketId: definition.id,
-        selection: definition.username,
-        kind: "prediction",
-        predictionUsername: definition.username,
-        predictionOutcome: outcome,
-        predictionMarketTitle: "AWC 2026 champion",
-      };
-    });
-    const predictionBets = predictionMarkets.flatMap((definition) => {
-      const predictionState = predictionStateByMarketId.get(definition.id);
-      const predictionGroup = predictionMarketGroups.find((group) =>
-        group.markets.some((market) => market.id === definition.id),
-      );
-      return (predictionState?.fills ?? [])
-        .filter((fill) => fill.buyerUsername.toLowerCase() !== "prediction_admin")
-        .map((fill): BetHistoryEntry => {
-          const totalCost = Math.round(fill.priceCents * fill.quantity * 10_000) / 1_000_000;
-          const settlement = predictionStatus(
-            definition.id,
-            fill.outcome,
-            fill.quantity,
-            totalCost,
-          );
-          return {
-            id: fill.id,
-            marketId: definition.id,
-            username: fill.buyerUsername,
-            selection: definition.username,
-            priceCents: fill.priceCents,
-            stake: totalCost,
-            fee: 0,
-            totalCost,
-            potentialPayout: fill.quantity,
-            ...settlement,
-            placedAt: fill.createdAt,
-            kind: "prediction",
-            predictionUsername: definition.username,
-            predictionOutcome: fill.outcome,
-            predictionMarketTitle:
-              predictionGroup?.id === "awc-2026-champion"
-                ? "AWC 2026 champion"
-                : predictionGroup?.title,
-            predictionSettlementPriceCents:
-              predictionState?.market.settlementPriceCents ?? undefined,
-          };
-        });
-    });
-    const combinedBets = new Map<string, BetHistoryEntry>();
-    const passthroughBets: BetHistoryEntry[] = [];
-    for (const bet of [...tournamentBets, ...predictionBets]) {
-      if (bet.kind !== "prediction") {
-        passthroughBets.push(bet);
-        continue;
-      }
-      const key = [
-        bet.username.toLowerCase(),
-        bet.marketId,
-        bet.predictionOutcome,
-        bet.status,
-      ].join(":");
-      const current = combinedBets.get(key);
-      const potentialPayout = (current?.potentialPayout ?? 0) + bet.potentialPayout;
-      const stake = (current?.stake ?? 0) + bet.stake;
-      combinedBets.set(key, {
-        ...(current ?? bet),
-        id: current?.id ?? bet.id,
-        historyKey: `prediction:${key}`,
-        priceCents: potentialPayout > 0 ? Math.round((stake / potentialPayout) * 100) : 0,
-        stake,
-        fee: (current?.fee ?? 0) + bet.fee,
-        totalCost: (current?.totalCost ?? 0) + bet.totalCost,
-        potentialPayout,
-        payout: (current?.payout ?? 0) + bet.payout,
-        placedAt:
-          !current || Date.parse(bet.placedAt) > Date.parse(current.placedAt)
-            ? bet.placedAt
-            : current.placedAt,
-        settledAt: bet.settledAt ?? current?.settledAt ?? null,
-      });
-    }
-    return [...passthroughBets, ...combinedBets.values()].sort(
-      (left, right) => Date.parse(right.placedAt) - Date.parse(left.placedAt),
-    );
-  }, [allBetsQuery.data, predictionMarketGroups, predictionMarkets, predictionStateByMarketId]);
+  const currentTime = useMarketDeadlineClock(markets);
+  const allHistoryBets = useMemo(
+    () =>
+      buildBetHistory({
+        tournamentBets: allBetsQuery.data ?? [],
+        predictionMarketGroups,
+        predictionMarketStates,
+      }),
+    [allBetsQuery.data, predictionMarketGroups, predictionMarketStates],
+  );
   const pendingBetCount = useMemo(
     () => allHistoryBets.filter((bet) => bet.status === "open").length,
     [allHistoryBets],
   );
-  const filteredAllHistoryBets = useMemo(() => {
-    const normalizedFilter = bettorFilter.trim().toLowerCase();
-    if (!normalizedFilter) return allHistoryBets;
-    return allHistoryBets.filter((bet) => bet.username.toLowerCase().includes(normalizedFilter));
-  }, [allHistoryBets, bettorFilter]);
   const openMarkets = useMemo(
     () => markets.filter((market) => marketAcceptsBets(market, currentTime)),
     [currentTime, markets],
@@ -923,20 +528,6 @@ export const BettingPage = () => {
   const insufficientBalance = isAuthenticated && validStake && quote.totalCost > balance;
 
   useEffect(() => {
-    const nextDeadline = markets
-      .filter((market) => market.status === "open" && market.closesAt)
-      .map((market) => Date.parse(market.closesAt ?? ""))
-      .filter((deadline) => Number.isFinite(deadline) && deadline > Date.now())
-      .sort((a, b) => a - b)[0];
-    if (!nextDeadline) return;
-    const timeout = window.setTimeout(
-      () => setCurrentTime(Date.now()),
-      Math.min(nextDeadline - Date.now() + 250, 2_147_483_647),
-    );
-    return () => window.clearTimeout(timeout);
-  }, [markets]);
-
-  useEffect(() => {
     const syncViewFromHistory = () => {
       setView(bettingViewFromLocation());
       setMarketCategory(marketCategoryFromSearch(window.location.search, marketCategories));
@@ -1021,13 +612,11 @@ export const BettingPage = () => {
     onSuccess: async (result, variables) => {
       const placedCost = quoteTournamentBet(variables.stake, result.bet.priceCents).totalCost;
       setSuccessMessage(
-        `Bet placed on ${result.bet.selection} for ${formatBetCoins(placedCost)} coins.`,
+        `Bet placed on ${result.bet.selection} for ${formatCoinValue(placedCost)} coins.`,
       );
       setStakeInput("");
       setStakeTouched(false);
-      queryClient.setQueryData(coinQueryKeys.summary(username), (current: unknown) =>
-        current && typeof current === "object" ? { ...current, balance: result.balance } : current,
-      );
+      updateCachedCoinBalance(queryClient, username, result.balance);
       await queryClient.invalidateQueries({ queryKey: bettingQueryKeys.bets(username) });
       await queryClient.invalidateQueries({ queryKey: bettingQueryKeys.allBets });
     },
@@ -1041,27 +630,8 @@ export const BettingPage = () => {
       );
       setPredictionStakeInput("");
       setPredictionStakeTouched(false);
-      queryClient.setQueryData(coinQueryKeys.summary(username), (current: unknown) =>
-        current && typeof current === "object" ? { ...current, balance: result.balance } : current,
-      );
+      updateCachedCoinBalance(queryClient, username, result.balance);
       patchPredictionMarketState(queryClient, result.state);
-    },
-  });
-
-  const suggestMarketMutation = useMutation({
-    mutationFn: suggestMarket,
-    onSuccess: async () => {
-      setSuggestionQuestion("");
-      setSuggestionOutcomes(defaultSuggestionOutcomes());
-      setSuggestionSubmitted(true);
-      await queryClient.invalidateQueries({ queryKey: bettingQueryKeys.suggestions });
-    },
-  });
-
-  const suggestionVoteMutation = useMutation({
-    mutationFn: voteOnMarketSuggestion,
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: bettingQueryKeys.suggestions });
     },
   });
 
@@ -1171,49 +741,8 @@ export const BettingPage = () => {
     });
   };
 
-  const updateSuggestionOutcome = (
-    index: number,
-    field: keyof SuggestionDraftOutcome,
-    value: string,
-  ) => {
-    setSuggestionSubmitted(false);
-    setSuggestionOutcomes((current) =>
-      current.map((outcome, outcomeIndex) =>
-        outcomeIndex === index ? { ...outcome, [field]: value } : outcome,
-      ),
-    );
-  };
-
-  const submitMarketSuggestion = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const outcomes = suggestionOutcomes.map((outcome) => ({
-      label: outcome.label.trim(),
-      odds: Number(outcome.odds),
-    }));
-    if (
-      suggestionQuestion.trim().length < 8 ||
-      outcomes.some(
-        (outcome) =>
-          !outcome.label ||
-          !Number.isInteger(outcome.odds) ||
-          outcome.odds < 1 ||
-          outcome.odds > 99,
-      )
-    )
-      return;
-    setSuggestionSubmitted(false);
-    suggestMarketMutation.mutate({ question: suggestionQuestion.trim(), outcomes });
-  };
-
-  const voteOnSuggestion = (suggestion: MarketSuggestion, vote: -1 | 1) => {
-    suggestionVoteMutation.mutate({
-      suggestionId: suggestion.id,
-      vote: suggestion.userVote === vote ? 0 : vote,
-    });
-  };
-
   return (
-    <main className="sitePage bettingPage">
+    <div className="sitePage bettingPage">
       <Seo
         title="Betting"
         description="Use Atomic Coins to make fixed-price predictions."
@@ -1238,7 +767,7 @@ export const BettingPage = () => {
               <span>
                 <strong>{formatCoinBalance(balance)}</strong>
                 coins available
-                <small>50% limit per outcome · {formatBetCoins(netWorth)} net worth</small>
+                <small>50% limit per outcome · {formatCoinValue(netWorth)} net worth</small>
               </span>
             </div>
           ) : null}
@@ -1281,9 +810,7 @@ export const BettingPage = () => {
 
         {marketsQuery.error ? (
           <InlineState kind="error">
-            {marketsQuery.error instanceof Error
-              ? marketsQuery.error.message
-              : "Unable to load betting markets."}
+            {getErrorMessage(marketsQuery.error, "Unable to load betting markets.")}
           </InlineState>
         ) : null}
 
@@ -1581,7 +1108,7 @@ export const BettingPage = () => {
                             <small>
                               {activePredictionGroupLoading
                                 ? "Volume —"
-                                : `Volume ${formatBetCoins(activePredictionVolume)} coins`}
+                                : `Volume ${formatCoinValue(activePredictionVolume)} coins`}
                             </small>
                           </span>
                         </div>
@@ -1631,17 +1158,6 @@ export const BettingPage = () => {
                                 className={`bettingExchangeStrike${
                                   isResolved ? "" : " bettingExchangeStrike--interactive"
                                 }`}
-                                onClick={
-                                  isResolved
-                                    ? undefined
-                                    : (event) => {
-                                        const target = event.target as HTMLElement;
-                                        if (target.closest("button, a, .bettingInlineBookDrawer")) {
-                                          return;
-                                        }
-                                        togglePredictionStrike(definition.id);
-                                      }
-                                }
                                 key={definition.id}
                               >
                                 {isResolved ? (
@@ -2013,7 +1529,7 @@ export const BettingPage = () => {
                             <dt>Total cost</dt>
                             <dd>
                               {validPredictionStake && predictionSportsbookFullyMatched
-                                ? `${formatBetCoins(predictionSportsbookTotal)} coins`
+                                ? `${formatCoinValue(predictionSportsbookTotal)} coins`
                                 : "—"}
                             </dd>
                           </div>
@@ -2021,7 +1537,7 @@ export const BettingPage = () => {
                             <dt>Includes 2% fee</dt>
                             <dd>
                               {validPredictionStake && predictionSportsbookFullyMatched
-                                ? `${formatBetCoins(predictionSportsbookFee)} coins`
+                                ? `${formatCoinValue(predictionSportsbookFee)} coins`
                                 : "—"}
                             </dd>
                           </div>
@@ -2047,8 +1563,8 @@ export const BettingPage = () => {
                         ) : null}
                         {predictionSportsbookInsufficientBalance ? (
                           <InlineState kind="error">
-                            You need {formatBetCoins(predictionSportsbookTotal)} coins including the
-                            fee.
+                            You need {formatCoinValue(predictionSportsbookTotal)} coins including
+                            the fee.
                           </InlineState>
                         ) : null}
                       </>
@@ -2067,7 +1583,7 @@ export const BettingPage = () => {
                         primaryLabel="Cost"
                         primaryValue={
                           validPredictionPrice && validPredictionQuantity
-                            ? `${formatBetCoins(predictionEstimatedTotal)} coins`
+                            ? `${formatCoinValue(predictionEstimatedTotal)} coins`
                             : "—"
                         }
                         secondaryLabel="Max payout"
@@ -2084,7 +1600,7 @@ export const BettingPage = () => {
                               }
                             >
                               {predictionEstimatedProfit >= 0 ? "+" : ""}
-                              {formatBetCoins(predictionEstimatedProfit)} coins
+                              {formatCoinValue(predictionEstimatedProfit)} coins
                             </span>
                           ) : undefined
                         }
@@ -2105,9 +1621,10 @@ export const BettingPage = () => {
                     )}
                     {placePredictionMutation.error ? (
                       <InlineState kind="error">
-                        {placePredictionMutation.error instanceof Error
-                          ? placePredictionMutation.error.message
-                          : "Unable to place this order."}
+                        {getErrorMessage(
+                          placePredictionMutation.error,
+                          "Unable to place this order.",
+                        )}
                       </InlineState>
                     ) : null}
                     {selectedPredictionRestriction ? (
@@ -2136,7 +1653,7 @@ export const BettingPage = () => {
                           {placePredictionMutation.isPending
                             ? "Placing bet…"
                             : validPredictionStake && predictionSportsbookFullyMatched
-                              ? `Place bet · ${formatBetCoins(predictionSportsbookTotal)} coins`
+                              ? `Place bet · ${formatCoinValue(predictionSportsbookTotal)} coins`
                               : "Place bet"}
                         </button>
                       ) : (
@@ -2236,39 +1753,39 @@ export const BettingPage = () => {
                   </div>
                   <small id="bet-stake-help">
                     {isAuthenticated
-                      ? `Max bet: ${formatBetCoins(effectiveStakeLimit)} coins`
+                      ? `Max bet: ${formatCoinValue(effectiveStakeLimit)} coins`
                       : "Log in to see max bet"}
                   </small>
 
                   <dl className="betQuote">
                     <div>
                       <dt>Potential payout</dt>
-                      <dd>{validStake ? formatBetCoins(quote.potentialPayout) : "—"}</dd>
+                      <dd>{validStake ? formatCoinValue(quote.potentialPayout) : "—"}</dd>
                     </div>
                     <div className="betQuoteTotal">
                       <dt>Total cost</dt>
-                      <dd>{validStake ? formatBetCoins(quote.totalCost) : "—"}</dd>
+                      <dd>{validStake ? formatCoinValue(quote.totalCost) : "—"}</dd>
                     </div>
                     <div className="betQuoteFee">
                       <dt>Includes 2% fee</dt>
-                      <dd>{validStake ? formatBetCoins(quote.fee) : "—"}</dd>
+                      <dd>{validStake ? formatCoinValue(quote.fee) : "—"}</dd>
                     </div>
                   </dl>
 
                   {stakeTouched && !validStake ? (
                     <InlineState kind="error">
-                      Enter a whole coin amount from 1 to {formatBetCoins(marketStakeLimit)}.
+                      Enter a whole coin amount from 1 to {formatCoinValue(marketStakeLimit)}.
                     </InlineState>
                   ) : null}
                   {insufficientBalance && !exceedsPositionLimit ? (
                     <InlineState kind="error">
-                      You need {formatBetCoins(quote.totalCost)} coins including the fee.
+                      You need {formatCoinValue(quote.totalCost)} coins including the fee.
                     </InlineState>
                   ) : null}
                   {exceedsPositionLimit ? (
                     <InlineState kind="error">
                       One position can use up to 50% of your net worth. You have
-                      {` ${formatBetCoins(remainingPositionBudget)} coins`} left for this outcome,
+                      {` ${formatCoinValue(remainingPositionBudget)} coins`} left for this outcome,
                       including the fee.
                     </InlineState>
                   ) : null}
@@ -2290,9 +1807,7 @@ export const BettingPage = () => {
                   ) : null}
                   {placeBetMutation.error ? (
                     <InlineState kind="error">
-                      {placeBetMutation.error instanceof Error
-                        ? placeBetMutation.error.message
-                        : "Unable to place your bet."}
+                      {getErrorMessage(placeBetMutation.error, "Unable to place your bet.")}
                     </InlineState>
                   ) : null}
                   {successMessage ? (
@@ -2316,7 +1831,7 @@ export const BettingPage = () => {
                       {placeBetMutation.isPending
                         ? "Placing bet…"
                         : validStake
-                          ? `Place bet · ${formatBetCoins(quote.totalCost)} coins`
+                          ? `Place bet · ${formatCoinValue(quote.totalCost)} coins`
                           : "Place bet"}
                     </button>
                   ) : (
@@ -2336,216 +1851,26 @@ export const BettingPage = () => {
             </aside>
           </section>
         ) : view === "suggestions" ? (
-          <section className="marketSuggestions" role="tabpanel">
-            <div className="marketSuggestionFormPanel">
-              <h2>Suggest a market</h2>
-              {isAuthenticated ? (
-                <form onSubmit={submitMarketSuggestion}>
-                  <label htmlFor="market-suggestion-question">Market question</label>
-                  <input
-                    id="market-suggestion-question"
-                    type="text"
-                    minLength={8}
-                    maxLength={160}
-                    required
-                    value={suggestionQuestion}
-                    onChange={(event) => {
-                      setSuggestionQuestion(event.target.value);
-                      setSuggestionSubmitted(false);
-                    }}
-                    placeholder="Will a player reach the AWC final?"
-                  />
-                  <fieldset>
-                    <legend>Outcomes and proposed odds</legend>
-                    <div className="marketSuggestionOutcomeFields">
-                      {suggestionOutcomes.map((outcome, index) => (
-                        <div className="marketSuggestionOutcomeField" key={index}>
-                          <label>
-                            <span>Outcome {index + 1}</span>
-                            <input
-                              type="text"
-                              maxLength={60}
-                              required
-                              value={outcome.label}
-                              onChange={(event) =>
-                                updateSuggestionOutcome(index, "label", event.target.value)
-                              }
-                            />
-                          </label>
-                          <label>
-                            <span>Odds</span>
-                            <span className="marketSuggestionOddsField">
-                              <input
-                                type="number"
-                                inputMode="numeric"
-                                min="1"
-                                max="99"
-                                step="1"
-                                required
-                                value={outcome.odds}
-                                onChange={(event) =>
-                                  updateSuggestionOutcome(index, "odds", event.target.value)
-                                }
-                              />
-                              <b>%</b>
-                            </span>
-                          </label>
-                          {suggestionOutcomes.length > 2 ? (
-                            <button
-                              type="button"
-                              className="marketSuggestionRemoveOutcome"
-                              aria-label={`Remove outcome ${index + 1}`}
-                              onClick={() =>
-                                setSuggestionOutcomes((current) =>
-                                  current.filter((_, outcomeIndex) => outcomeIndex !== index),
-                                )
-                              }
-                            >
-                              <FontAwesomeIcon icon={faTrash} aria-hidden="true" />
-                            </button>
-                          ) : null}
-                        </div>
-                      ))}
-                    </div>
-                  </fieldset>
-                  {suggestionOutcomes.length < 6 ? (
-                    <button
-                      type="button"
-                      className="marketSuggestionAddOutcome"
-                      onClick={() =>
-                        setSuggestionOutcomes((current) => [...current, { label: "", odds: "50" }])
-                      }
-                    >
-                      <FontAwesomeIcon icon={faPlus} aria-hidden="true" />
-                      Add outcome
-                    </button>
-                  ) : null}
-                  {suggestMarketMutation.error ? (
-                    <InlineState kind="error">
-                      {suggestMarketMutation.error instanceof Error
-                        ? suggestMarketMutation.error.message
-                        : "Unable to submit this market suggestion."}
-                    </InlineState>
-                  ) : null}
-                  {suggestionSubmitted ? (
-                    <InlineState kind="success">Market suggestion published.</InlineState>
-                  ) : null}
-                  <button
-                    type="submit"
-                    className="marketSuggestionSubmit"
-                    disabled={suggestMarketMutation.isPending}
-                  >
-                    {suggestMarketMutation.isPending ? "Publishing…" : "Publish suggestion"}
-                  </button>
-                </form>
-              ) : (
-                <div className="marketSuggestionLogin">
-                  <p>Log in with Lichess to suggest a market or vote.</p>
-                  <button
-                    type="button"
-                    disabled={authLoading}
-                    onClick={() => void login("/betting")}
-                  >
-                    Log in with Lichess
-                  </button>
-                </div>
-              )}
-            </div>
-            <div className="marketSuggestionFeed">
-              <h2>Suggested markets</h2>
-              {suggestionsQuery.error ? (
-                <InlineState kind="error">
-                  {suggestionsQuery.error instanceof Error
-                    ? suggestionsQuery.error.message
-                    : "Unable to load market suggestions."}
-                </InlineState>
-              ) : suggestionsQuery.isPending ? (
-                <RouteLoadingFallback />
-              ) : (
-                <MarketSuggestionList
-                  suggestions={suggestionsQuery.data ?? []}
-                  isAuthenticated={isAuthenticated}
-                  votingSuggestionId={suggestionVoteMutation.variables?.suggestionId}
-                  onLogin={() => void login("/betting")}
-                  onVote={voteOnSuggestion}
-                />
-              )}
-              {suggestionVoteMutation.error ? (
-                <InlineState kind="error">
-                  {suggestionVoteMutation.error instanceof Error
-                    ? suggestionVoteMutation.error.message
-                    : "Unable to record your vote."}
-                </InlineState>
-              ) : null}
-            </div>
-          </section>
+          <BettingSuggestions
+            isAuthenticated={isAuthenticated}
+            authLoading={authLoading}
+            onLogin={() => void login("/betting")}
+          />
         ) : (
-          <section className="bettingHistory" role="tabpanel">
-            {view === "all" ? (
-              <div className="betHistoryBettorFilter">
-                <label htmlFor="all-bets-bettor">Bettor</label>
-                <div>
-                  <input
-                    id="all-bets-bettor"
-                    type="text"
-                    value={bettorFilter}
-                    onChange={(event) => setBettorFilter(event.target.value)}
-                    placeholder="username"
-                    autoComplete="off"
-                    maxLength={100}
-                  />
-                  {bettorFilter ? (
-                    <button type="button" onClick={() => setBettorFilter("")}>
-                      Clear
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-            ) : null}
-            {view === "mine" && !isAuthenticated ? (
-              <div className="bettingLoginPrompt">
-                <h2>Log in to view your bets</h2>
-                <button type="button" disabled={authLoading} onClick={() => void login("/betting")}>
-                  Log in with Lichess
-                </button>
-              </div>
-            ) : view === "mine" && betsQuery.error ? (
-              <InlineState kind="error">
-                {betsQuery.error instanceof Error
-                  ? betsQuery.error.message
-                  : "Unable to load your bets."}
-              </InlineState>
-            ) : view === "mine" && betsQuery.isPending ? (
-              <RouteLoadingFallback />
-            ) : view === "mine" ? (
-              <BetHistory
-                bets={myBets}
-                markets={markets}
-                countryByPlayer={countryByPlayer}
-                emptyMessage="You have not placed any bets."
-              />
-            ) : allBetsQuery.error ? (
-              <InlineState kind="error">
-                {allBetsQuery.error instanceof Error
-                  ? allBetsQuery.error.message
-                  : "Unable to load all bets."}
-              </InlineState>
-            ) : allBetsQuery.isPending ? (
-              <RouteLoadingFallback />
-            ) : (
-              <BetHistory
-                bets={filteredAllHistoryBets}
-                markets={markets}
-                countryByPlayer={countryByPlayer}
-                emptyMessage={
-                  bettorFilter.trim()
-                    ? "No bets match this bettor."
-                    : "No bets have been placed yet."
-                }
-                showUsername
-              />
-            )}
-          </section>
+          <BettingHistory
+            view={view}
+            isAuthenticated={isAuthenticated}
+            authLoading={authLoading}
+            onLogin={() => void login("/betting")}
+            myBets={myBets}
+            allBets={allHistoryBets}
+            markets={markets}
+            countryByPlayer={countryByPlayer}
+            myBetsLoading={betsQuery.isPending}
+            allBetsLoading={allBetsQuery.isPending}
+            myBetsError={betsQuery.error}
+            allBetsError={allBetsQuery.error}
+          />
         )}
       </div>
       {editingOrderContext ? (
@@ -2555,15 +1880,11 @@ export const BettingPage = () => {
           orders={editingOrderContext.orders}
           onClose={() => setEditingOrderContext(null)}
           onUpdated={(result) => {
-            queryClient.setQueryData(coinQueryKeys.summary(username), (current: unknown) =>
-              current && typeof current === "object"
-                ? { ...current, balance: result.balance }
-                : current,
-            );
+            updateCachedCoinBalance(queryClient, username, result.balance);
             patchPredictionMarketState(queryClient, result.state);
           }}
         />
       ) : null}
-    </main>
+    </div>
   );
 };

@@ -861,9 +861,6 @@ export const AnalysisPage = () => {
                   role="tab"
                   className={explorerScope === "player" ? "active" : ""}
                   aria-selected={explorerScope === "player"}
-                  aria-label={`${username.trim() || "Player"}${
-                    opponent.trim() ? ` vs ${opponent.trim()}` : ""
-                  } as ${playerColor}`}
                   onClick={(event) =>
                     showPlayerExplorer(event.currentTarget.getAttribute("aria-selected") === "true")
                   }
