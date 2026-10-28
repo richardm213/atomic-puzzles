@@ -32,7 +32,7 @@ create table if not exists public.shop_redemptions (
       when item_key = 'discord_nitro_month' then 400
       when item_key = 'discord_nitro_year' then 4000
       when item_key = 'lichess_patron_month' then 600
-      when item_key = 'next_prize_tournament_format' then 1000
+      when item_key = 'next_prize_tournament_format' then 1500
       else 500
     end
   ),
@@ -212,7 +212,7 @@ create or replace function public.get_coin_summary(p_username text)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
   normalized_username text := lower(btrim(coalesce(p_username, '')));
-  current_balance integer;
+  current_balance numeric(18, 6);
   claimed_today boolean;
 begin
   insert into public.coin_accounts (username) values (normalized_username)
@@ -265,12 +265,12 @@ returns jsonb language plpgsql security definer set search_path = public as $$
 declare
   normalized_username text := lower(btrim(coalesce(p_username, '')));
   redemption public.shop_redemptions%rowtype;
-  current_balance integer;
+  current_balance numeric(18, 6);
   item_cost integer := case
     when p_item_key = 'discord_nitro_month' then 400
     when p_item_key = 'discord_nitro_year' then 4000
     when p_item_key = 'lichess_patron_month' then 600
-    when p_item_key = 'next_prize_tournament_format' then 1000
+    when p_item_key = 'next_prize_tournament_format' then 1500
     else 500
   end;
 begin
@@ -280,7 +280,7 @@ begin
   insert into public.shop_redemptions (username, item_key, cost)
   values (normalized_username, p_item_key, item_cost) returning * into redemption;
   current_balance := public.apply_coin_transaction(
-    normalized_username, -redemption.cost, 'shop_redemption', 'redemption:' || redemption.id,
+    normalized_username, -redemption.cost::numeric, 'shop_redemption', 'redemption:' || redemption.id,
     jsonb_build_object('redemptionId', redemption.id, 'itemKey', p_item_key, 'cost', redemption.cost),
     redemption.created_at
   );
@@ -342,7 +342,7 @@ begin
     jsonb_build_object('focus', p_focus, 'openings', clean_openings, 'players', clean_players))
   returning * into redemption;
   current_balance := public.apply_coin_transaction(
-    normalized_username, -200, 'shop_redemption', 'redemption:' || redemption.id,
+    normalized_username, -200::numeric, 'shop_redemption', 'redemption:' || redemption.id,
     jsonb_build_object('redemptionId', redemption.id, 'itemKey', redemption.item_key,
       'cost', redemption.cost, 'focus', p_focus), redemption.created_at
   );

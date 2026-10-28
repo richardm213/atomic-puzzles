@@ -10,8 +10,8 @@ export const SHOP_ITEM_KEYS = [
 
 export type ShopItemKey = (typeof SHOP_ITEM_KEYS)[number];
 
-// The temporary closure expires automatically at midnight UTC on November 3, 2026.
-export const SHOP_REOPENS_AT = "2026-11-03T00:00:00.000Z";
+// Temporary manual unlock. Restore this to 2026-11-03T00:00:00.000Z to relock the shop.
+export const SHOP_REOPENS_AT = "2026-10-28T00:00:00.000Z";
 
 export const SHOP_REDEMPTION_STATUSES = ["pending", "fulfilled", "cancelled"] as const;
 export type ShopRedemptionStatus = (typeof SHOP_REDEMPTION_STATUSES)[number];
@@ -23,7 +23,7 @@ export const SHOP_ITEM_COSTS = {
   discord_nitro_year: 4_000,
   flowers_500: 500,
   lichess_patron_month: 600,
-  next_prize_tournament_format: 1_000,
+  next_prize_tournament_format: 1_500,
 } as const satisfies Record<ShopItemKey, number>;
 
 export const REDEEMABLE_SHOP_ITEM_KEYS = [
