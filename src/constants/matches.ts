@@ -56,8 +56,8 @@ export const rankingEligibilityByMode: Record<Mode, RankingEligibility> = {
     maxRd: 80,
   },
   atomic960: {
-    minGames: 10,
-    maxRd: 60,
+    minGames: 5,
+    maxRd: 75,
   },
 };
 
