@@ -6,7 +6,14 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
+import {
+  type FocusEvent,
+  type FormEvent,
+  type KeyboardEvent,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import type { UsernameSearchSuggestion } from "../../lib/users/usernameSearch";
 import { PlayerLink } from "../PlayerLink/PlayerLink";
@@ -24,6 +31,7 @@ export const NavPlayerSearch = ({ onNavigate }: { onNavigate: () => void }) => {
   const [suggestionsSearched, setSuggestionsSearched] = useState(false);
   const [suggestions, setSuggestions] = useState<UsernameSearchSuggestion[]>([]);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
+  const formRef = useRef<HTMLFormElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const requestIdRef = useRef(0);
   const trimmedQuery = query.trim();
@@ -57,6 +65,24 @@ export const NavPlayerSearch = ({ onNavigate }: { onNavigate: () => void }) => {
     if (!open) return;
     inputRef.current?.focus();
     void import("../../lib/users/usernameSearch");
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const closeOnOutsideInteraction = (event: Event) => {
+      const target = event.target;
+      if (target instanceof Node && !formRef.current?.contains(target)) setOpen(false);
+    };
+
+    document.addEventListener("pointerdown", closeOnOutsideInteraction, true);
+    document.addEventListener("mousedown", closeOnOutsideInteraction, true);
+    document.addEventListener("touchstart", closeOnOutsideInteraction, true);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsideInteraction, true);
+      document.removeEventListener("mousedown", closeOnOutsideInteraction, true);
+      document.removeEventListener("touchstart", closeOnOutsideInteraction, true);
+    };
   }, [open]);
 
   useEffect(() => {
@@ -129,19 +155,21 @@ export const NavPlayerSearch = ({ onNavigate }: { onNavigate: () => void }) => {
     }
   };
 
-  const closeIfFocusOutside = () => {
-    window.requestAnimationFrame(() => {
-      if (navigationPending) return;
-      const activeElement = document.activeElement;
-      if (!(activeElement instanceof HTMLElement) || !activeElement.closest(".navSearch")) {
-        setOpen(false);
-      }
-    });
+  const closeIfFocusOutside = (event: FocusEvent<HTMLFormElement>) => {
+    if (navigationPending) return;
+    const nextFocusedElement = event.relatedTarget;
+
+    // Safari and some touch browsers report a null relatedTarget while a link is
+    // being pressed. Keep the results mounted so the subsequent click can fire;
+    // outside pointer interactions are handled by the document listener above.
+    if (nextFocusedElement === null) return;
+    if (!event.currentTarget.contains(nextFocusedElement)) setOpen(false);
   };
 
   return (
     <div className="navSearchSlot">
       <form
+        ref={formRef}
         className={`navSearch ${open ? "open" : ""} ${navigationPending ? "pending" : ""} ${suggestionsPending ? "suggesting" : ""}`}
         onSubmit={submit}
         onMouseEnter={() => !navigationPending && setOpen(true)}

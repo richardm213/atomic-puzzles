@@ -29,3 +29,55 @@ test("current page is exposed to assistive technology", async ({ page }) => {
     "page",
   );
 });
+
+test("player search results remain clickable when pressing a result blurs the input", async ({
+  page,
+}) => {
+  await page.route("**/api/archive-data?**", async (route) => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get("resource") === "usernames" && url.searchParams.has("query")) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([{ username: "salmon_43" }]),
+      });
+      return;
+    }
+    await route.fallback();
+  });
+  await page.route("**/__e2e_supabase/rest/v1/users**", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify([{ username: "salmon_43" }]),
+    }),
+  );
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "Search player" }).click();
+  const searchInput = page.getByRole("searchbox", { name: "Search player username" });
+  await searchInput.fill("salmon_43");
+
+  const resultRowLink = page
+    .getByRole("link", { name: "Open salmon_43's profile" })
+    .first();
+  await expect(resultRowLink).toBeVisible();
+
+  // Some browsers leave relatedTarget null when the input blurs during a pointer press.
+  await searchInput.evaluate((input) => input.blur());
+  await expect(resultRowLink).toBeVisible();
+  await resultRowLink.click();
+  await expect(page).toHaveURL(/\/@\/salmon_43$/);
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "Search player" }).click();
+  const reopenedSearchInput = page.getByRole("searchbox", { name: "Search player username" });
+  await reopenedSearchInput.fill("salmon_43");
+  const puzzleDashboardLink = page.getByRole("link", {
+    name: "Open salmon_43's puzzle dashboard",
+  });
+  await expect(puzzleDashboardLink).toBeVisible();
+  await reopenedSearchInput.evaluate((input) => input.blur());
+  await puzzleDashboardLink.click();
+  await expect(page).toHaveURL(/\/@\/salmon_43\/puzzles$/);
+});
