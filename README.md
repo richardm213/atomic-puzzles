@@ -225,11 +225,10 @@ The browser reads this database only through `/api/archive-data`; the token must
 `VITE_` prefix or be exposed to client code. Supabase remains responsible for Auth and mutable
 community data.
 
-Atomic960 parsing and archive queries are always supported, but its public selectors are gated by
-`VITE_ENABLE_ATOMIC960=true`. Enable that flag only after nonempty Atomic960 match and rating logs
-have populated `player_ratings`, `lb`, `weekly_ratings`, and `matches` with mode `4`, and the
-refreshed archive has been uploaded and verified. Atomic960 intentionally has no yearly ranking
-tab until a yearly aggregation exists.
+Atomic960 is available throughout the public site. Profiles show its rating by default when the
+player has Atomic960 games, with a profile setting to hide it. Monthly rankings offer Atomic960
+only for months whose leaderboard data contains Atomic960 rows. Atomic960 intentionally has no
+yearly ranking tab until a yearly aggregation exists.
 
 Authenticated community actions use a signed, 30-day first-party session cookie. Configure:
 

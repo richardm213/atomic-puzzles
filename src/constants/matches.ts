@@ -1,13 +1,8 @@
 export const modeOptions = ["blitz", "bullet", "hyperbullet", "wolfrandom", "atomic960"] as const;
 export type Mode = (typeof modeOptions)[number];
 
-// Atomic960 support ships before its historical archive is ready. Keep every
-// parser and data boundary aware of the mode, while public selectors remain
-// gated until the refreshed archive has been uploaded and verified.
-export const atomic960Enabled = import.meta.env.VITE_ENABLE_ATOMIC960 === "true";
-export const publicModeOptions: readonly Mode[] = atomic960Enabled
-  ? modeOptions
-  : modeOptions.filter((mode) => mode !== "atomic960");
+export const atomic960Enabled = true;
+export const publicModeOptions: readonly Mode[] = modeOptions;
 
 export const isMode = (value: unknown): value is Mode =>
   typeof value === "string" && modeOptions.some((mode) => mode === value);

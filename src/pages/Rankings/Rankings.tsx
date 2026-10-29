@@ -234,19 +234,27 @@ const LeaderboardView = ({ selectedPeriod }: { selectedPeriod: RankingPeriod }) 
     if (!selectedMonthName || !selectedYear) return "";
     return `${selectedMonthName} ${selectedYear}`;
   }, [selectedMonthName, selectedYear]);
-  const availableModeOptions = useMemo(
-    () =>
-      publicModeOptions.filter((mode) =>
-        selectedPeriod === "yearly"
-          ? mode !== "wolfrandom" && mode !== "atomic960"
-          : mode !== "wolfrandom" || supportsWolfrandomLeaderboard(selectedMonth),
-      ),
-    [selectedMonth, selectedPeriod],
-  );
-
   const { rankingsByMonth, error: monthlyError } = useRankingsByMonth(
     selectedPeriod === "monthly" ? selectedMonth : "",
   );
+  const availableModeOptions = useMemo(() => {
+    const selectedMonthRankings = rankingsByMonth.get(selectedMonth);
+    const selectedMonthHasLoaded = rankingsByMonth.has(selectedMonth);
+    const selectedMonthHasAtomic960 = (selectedMonthRankings?.atomic960.players.length ?? 0) > 0;
+
+    return publicModeOptions.filter((mode) => {
+      if (selectedPeriod === "yearly") {
+        return mode !== "wolfrandom" && mode !== "atomic960";
+      }
+      if (mode === "wolfrandom") {
+        return supportsWolfrandomLeaderboard(selectedMonth);
+      }
+      if (mode === "atomic960") {
+        return !selectedMonthHasLoaded || selectedMonthHasAtomic960;
+      }
+      return true;
+    });
+  }, [rankingsByMonth, selectedMonth, selectedPeriod]);
   const numericYear = Number(selectedYear);
   const yearlyRankingsQuery = useQuery({
     ...rankingsForYearQueryOptions(numericYear),
@@ -589,11 +597,11 @@ const LeaderboardView = ({ selectedPeriod }: { selectedPeriod: RankingPeriod }) 
                   ? `Requirement: ${eligibilityMinimum}+ games with RD less than 60 this year.`
                   : selectedMode === "atomic960"
                     ? `Requirement: RD below ${rankingEligibilityByMode.atomic960.maxRd}.`
-                  : `Requirements: ${eligibilityMinimum}+ games this month${
-                      rankingEligibilityByMode[selectedMode]?.maxRd === null
-                        ? "."
-                        : ` and RD below ${rankingEligibilityByMode[selectedMode]?.maxRd}.`
-                    }`}
+                    : `Requirements: ${eligibilityMinimum}+ games this month${
+                        rankingEligibilityByMode[selectedMode]?.maxRd === null
+                          ? "."
+                          : ` and RD below ${rankingEligibilityByMode[selectedMode]?.maxRd}.`
+                      }`}
               </p>
             ) : null}
           </div>

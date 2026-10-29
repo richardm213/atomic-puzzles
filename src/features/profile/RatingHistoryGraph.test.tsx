@@ -38,7 +38,7 @@ const SettingsControl = () => {
       <button onClick={() => setShowRatingGraphLines(!showRatingGraphLines)}>
         Toggle lines in settings
       </button>
-      {["blitz", "hyperbullet", "bullet"].map((mode) => (
+      {["blitz", "hyperbullet", "bullet", "atomic960"].map((mode) => (
         <label key={mode}>
           Settings {mode}
           <input
@@ -136,16 +136,22 @@ describe("monthly rating graph", () => {
     fireEvent.click(screen.getByRole("button", { name: "Bullet" }));
     expect(topTick()).toBe(1800);
   });
-  it("syncs all three settings toggles with the legend, plotted series and saved preference", () => {
+  it("syncs every settings toggle with the legend, plotted series and saved preference", () => {
     const { container, unmount } = render(
       <RatingChart
-        rows={[row("2026-01", "blitz"), row("2026-01", "hyperbullet"), row("2026-01", "bullet")]}
+        rows={[
+          row("2026-01", "blitz"),
+          row("2026-01", "hyperbullet"),
+          row("2026-01", "bullet"),
+          row("2026-01", "atomic960"),
+        ]}
       />,
     );
     for (const [mode, label] of [
       ["blitz", "Blitz"],
       ["hyperbullet", "Hyper"],
       ["bullet", "Bullet"],
+      ["atomic960", "Atomic960"],
     ] as const) {
       fireEvent.click(screen.getByRole("checkbox", { name: `Settings ${mode}` }));
       expect(container.querySelector(`svg .ratingSeries.${mode}`)).toBeNull();
@@ -158,14 +164,16 @@ describe("monthly rating graph", () => {
     expect(JSON.parse(window.localStorage.getItem("profile.ratingGraph.hiddenModes")!)).toEqual([
       "hyperbullet",
       "bullet",
+      "atomic960",
     ]);
     unmount();
     render(<RatingChart rows={[row("2026-01")]} />);
     expect(screen.getByRole("checkbox", { name: "Settings hyperbullet" })).not.toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Settings bullet" })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Settings atomic960" })).not.toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Settings blitz" })).toBeChecked();
   });
-  it("uses chronological, valid monthly snapshots for only the three requested modes", () => {
+  it("uses chronological, valid monthly snapshots for supported rating modes", () => {
     expect(
       ratingGraphRows([
         row("2026-03"),
@@ -173,8 +181,9 @@ describe("monthly rating graph", () => {
         row("2026-02", "bullet", null),
         row("2026-02", "wolfrandom"),
         row("2026-02", "hyperbullet", NaN),
+        row("2026-04", "atomic960"),
       ]).map((entry) => entry.monthKey),
-    ).toEqual(["2026-01", "2026-03"]);
+    ).toEqual(["2026-01", "2026-03", "2026-04"]);
   });
   it("supports every time frame, clipping to available history", () => {
     const last = 2026 * 12 + 8,

@@ -8,7 +8,6 @@ interface ImportMetaEnv {
   readonly VITE_SUPABASE_PUZZLE_PROGRESS_PAGE_RPC?: string;
   readonly VITE_SUPABASE_ATTEMPTED_PUZZLE_IDS_RPC?: string;
   readonly VITE_LICHESS_CLIENT_ID?: string;
-  readonly VITE_ENABLE_ATOMIC960?: string;
 }
 
 interface ImportMeta {

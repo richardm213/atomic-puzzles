@@ -13,7 +13,13 @@ describe("loadRawMatchesByMode archive rows", () => {
   beforeEach(() => fetchMatchRowsFromArchive.mockReset());
 
   it("merges all supported modes into one recency-sorted page", async () => {
-    const timestamps = { blitz: 400, bullet: 300, hyperbullet: 200, wolfrandom: 100 } as const;
+    const timestamps = {
+      blitz: 500,
+      bullet: 400,
+      hyperbullet: 300,
+      wolfrandom: 200,
+      atomic960: 100,
+    } as const;
     fetchMatchRowsFromArchive.mockImplementation(async (mode: keyof typeof timestamps) => ({
       total: 1,
       rows: [
@@ -41,9 +47,9 @@ describe("loadRawMatchesByMode archive rows", () => {
 
     const result = await loadRawMatchesByMode("all", { page: 1, pageSize: 2 });
 
-    expect(result.total).toBe(4);
+    expect(result.total).toBe(5);
     expect(result.matches.map((match) => match.match_id)).toEqual(["blitz-match", "bullet-match"]);
-    expect(fetchMatchRowsFromArchive).toHaveBeenCalledTimes(4);
+    expect(fetchMatchRowsFromArchive).toHaveBeenCalledTimes(5);
   });
 
   it("decodes Turso's pipe-split compact game entries and preserves nullable ratings", async () => {

@@ -88,8 +88,11 @@ describe("match query behavior", () => {
 
     const result = await run(h2hMatchupQueryOptions("alias-a", "alias-b"));
 
-    expect(mocks.loadRawMatchesByMode).toHaveBeenCalledTimes(4);
+    expect(mocks.loadRawMatchesByMode).toHaveBeenCalledTimes(5);
     expect(mocks.loadRawMatchesByMode).toHaveBeenCalledWith("blitz", {
+      filters: { usernamePair: ["canonical-a", "canonical-b"] },
+    });
+    expect(mocks.loadRawMatchesByMode).toHaveBeenCalledWith("atomic960", {
       filters: { usernamePair: ["canonical-a", "canonical-b"] },
     });
     expect(result).toMatchObject({
