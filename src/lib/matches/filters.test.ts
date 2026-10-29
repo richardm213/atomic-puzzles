@@ -60,6 +60,7 @@ describe("matchSourceFromValues", () => {
     ["Swiss", "swiss"],
     ["chesscom", "chesscom"],
     ["Chess.com", "chesscom"],
+    ["PyChess", "pychess"],
     ["something weird", "unknown"],
   ])("classifies %p as %s", (input, expected) => {
     expect(matchSourceFromValues(input)).toBe(expected);
@@ -80,6 +81,7 @@ describe("source filter helpers", () => {
         lobby: true,
         swiss: true,
         chesscom: true,
+        pychess: true,
         unknown: true,
       }),
     ).toBe(true);
@@ -93,6 +95,7 @@ describe("source filter helpers", () => {
         lobby: false,
         swiss: false,
         chesscom: true,
+        pychess: false,
         unknown: false,
       }),
     ).toBe(false);

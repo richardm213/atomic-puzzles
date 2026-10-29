@@ -4,6 +4,7 @@ export type AliasLookupEntry = {
   primary: string;
   aliases: string[];
   chessComAliases: string[];
+  pyChessAliases: string[];
   openings: string[];
   banned: boolean;
   bot: boolean;
@@ -26,10 +27,19 @@ export const buildAliasesLookup = (rows: AliasIdentityRow[]): AliasLookup => {
           .filter(Boolean),
       ),
     ];
+    const pyChessAliases = [
+      ...new Set(
+        row.accounts
+          .filter((account) => account.source === "pychess")
+          .map((account) => account.displayAlias || account.alias)
+          .filter(Boolean),
+      ),
+    ];
     const entry: AliasLookupEntry = {
       primary: username,
       aliases,
       chessComAliases,
+      pyChessAliases,
       openings,
       banned: Boolean(row.banned),
       bot: Boolean(row.bot),

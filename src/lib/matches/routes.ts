@@ -15,7 +15,8 @@ export const normalizeMatchMode = (mode: unknown): Mode | "" => {
     value === "blitz" ||
     value === "bullet" ||
     value === "hyperbullet" ||
-    value === "wolfrandom"
+    value === "wolfrandom" ||
+    value === "atomic960"
   ) {
     return value;
   }
@@ -33,7 +34,8 @@ export const hasMatchRouteParams = (match: MatchRouteInput | null | undefined): 
 
 export const shouldUseInternalMatchPage = (match: MatchRouteInput | null | undefined): boolean =>
   hasMatchRouteParams(match) &&
-  (normalizeMatchMode(match?.mode) === "wolfrandom" || !isSingleGameMatch(match));
+  (["wolfrandom", "atomic960"].includes(normalizeMatchMode(match?.mode)) ||
+    !isSingleGameMatch(match));
 
 export const isSingleGameMatch = (match: MatchRouteInput | null | undefined): boolean => {
   if (Array.isArray(match?.games)) return match.games.length === 1;
@@ -65,6 +67,12 @@ export const isChessComSource = (source: unknown): boolean => {
   );
 };
 
+export const isPyChessSource = (source: unknown): boolean =>
+  String(source ?? "")
+    .trim()
+    .toLowerCase()
+    .includes("pychess");
+
 /**
  * Some legacy aggregates (including opening-explorer games and top wins) only
  * store the game id. In those archives, Chess.com ids are numeric and Lichess
@@ -84,6 +92,12 @@ export const buildChessComGameUrl = (gameId: string | number | null | undefined)
   return `https://www.chess.com/variants/atomic/game/${encodeURIComponent(normalizedGameId)}`;
 };
 
+export const buildPyChessGameUrl = (gameId: string | number | null | undefined): string => {
+  const normalizedGameId = String(gameId ?? "").trim();
+  if (!normalizedGameId || normalizedGameId === "—") return "";
+  return `https://www.pychess.org/${encodeURIComponent(normalizedGameId)}`;
+};
+
 export const buildExternalGameUrl = (
   gameId: string | number | null | undefined,
   options: {
@@ -98,6 +112,7 @@ export const buildExternalGameUrl = (
   if (isChessComSource(options.source)) {
     return buildChessComGameUrl(normalizedGameId);
   }
+  if (isPyChessSource(options.source)) return buildPyChessGameUrl(normalizedGameId);
 
   return buildLichessGameUrl(normalizedGameId, {
     ...(options.orientation ? { orientation: options.orientation } : {}),

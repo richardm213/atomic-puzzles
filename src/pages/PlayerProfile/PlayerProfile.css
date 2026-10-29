@@ -968,6 +968,16 @@
   box-shadow: 0 6px 16px color-mix(in srgb, #7fa650 14%, transparent);
 }
 
+.profileAliasPyChessLink {
+  color: var(--color-on-primary);
+  background: var(--color-cyan);
+  border-color: color-mix(in srgb, var(--color-cyan-bright) 64%, var(--color-border));
+}
+
+.profileAliasPyChessMark {
+  font: 700 15px/1 var(--font-mono);
+}
+
 .profileAliasAccountLink:hover,
 .profileAliasAccountLink:focus-visible {
   transform: translateY(-1px);
@@ -987,6 +997,13 @@
   border-color: color-mix(in srgb, #7fa650 70%, var(--color-border));
   color: color-mix(in srgb, #4d7e18 86%, #0f172a);
   box-shadow: 0 10px 22px color-mix(in srgb, #7fa650 18%, transparent);
+}
+
+.profileAliasPyChessLink:hover,
+.profileAliasPyChessLink:focus-visible {
+  color: var(--color-on-primary);
+  background: color-mix(in srgb, var(--color-cyan) 82%, var(--color-cyan-bright));
+  border-color: var(--color-cyan-bright);
 }
 
 .profileAliasAccountLink svg {

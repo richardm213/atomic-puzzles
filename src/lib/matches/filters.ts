@@ -1,7 +1,8 @@
 import { knownSourceKeys, type SourceFilters } from "../../constants/matches";
 import { parseTimeControlParts } from "./transforms";
 
-export type MatchSource = "arena" | "friend" | "lobby" | "swiss" | "chesscom" | "unknown";
+export type MatchSource =
+  "arena" | "friend" | "lobby" | "swiss" | "chesscom" | "pychess" | "unknown";
 
 export type MatchListFilters = {
   startDateFilter: string;
@@ -59,6 +60,7 @@ export const matchSourceFromValues = (...values: unknown[]): MatchSource => {
   ) {
     return "chesscom";
   }
+  if (normalizedSource.includes("pychess")) return "pychess";
   if (normalizedSource.includes("arena")) return "arena";
   if (normalizedSource.includes("friend")) return "friend";
   if (normalizedSource.includes("lobby")) return "lobby";

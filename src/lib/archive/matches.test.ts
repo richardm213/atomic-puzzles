@@ -23,7 +23,7 @@ describe("fetchMatchRowsFromArchive", () => {
     await fetchMatchRowsFromArchive("blitz", { sourceFilters: { arena: false } }, { pageSize: 25 });
 
     const params = fetchArchiveJson.mock.calls[0]?.[0] as URLSearchParams;
-    expect(params.get("sources")).toBe("friend,lobby,swiss,chesscom,unknown");
+    expect(params.get("sources")).toBe("friend,lobby,swiss,chesscom,pychess,unknown");
   });
 
   it("sends an empty source list when every source is disabled", async () => {
@@ -36,6 +36,7 @@ describe("fetchMatchRowsFromArchive", () => {
           lobby: false,
           swiss: false,
           chesscom: false,
+          pychess: false,
           unknown: false,
         },
       },

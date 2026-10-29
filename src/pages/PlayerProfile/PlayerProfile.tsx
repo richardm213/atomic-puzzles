@@ -39,6 +39,7 @@ import {
   opponentRatingSliderMax,
   opponentRatingSliderMin,
   pageSizeOptions,
+  publicModeOptions,
 } from "../../constants/matches";
 import { useAppSettings } from "../../context/AppSettings";
 import type { RankHistoryMode } from "../../features/profile/favoriteOpponents";
@@ -158,8 +159,13 @@ export const PlayerProfilePage = ({
   historyOnly?: boolean;
 }) => {
   const queryClient = useQueryClient();
-  const { showWolfrandomProfileRatings, showProfileActionButtons } = useAppSettings();
-  const normalizedUsername = useMemo(() => normalizeUsername(username), [username]);
+  const { showWolfrandomProfileRatings, showAtomic960ProfileRatings, showProfileActionButtons } =
+    useAppSettings();
+  const requestedUsername = useMemo(() => String(username ?? "").trim(), [username]);
+  const normalizedUsername = useMemo(
+    () => normalizeUsername(requestedUsername),
+    [requestedUsername],
+  );
   const [matchHistoryMode, setMatchHistoryMode] = useState<ProfileMatchHistoryMode>("all");
   const [bestWinMode, setBestWinMode] =
     useState<import("../../constants/matches").Mode>(defaultMode);
@@ -188,11 +194,11 @@ export const PlayerProfilePage = ({
   const [expandedMatchKeys, setExpandedMatchKeys] = useState<string[]>([]);
   const profileActionsMenuRef = useRef<HTMLDetailsElement>(null);
   const profileAliasQuery = useQuery({
-    ...profileAliasQueryOptions(normalizedUsername),
-    enabled: Boolean(normalizedUsername),
+    ...profileAliasQueryOptions(requestedUsername),
+    enabled: Boolean(requestedUsername),
   });
   const profileAliasEntry: AliasIdentityRow | null = profileAliasQuery.data ?? null;
-  const aliasesLoaded = Boolean(normalizedUsername) && !profileAliasQuery.isPending;
+  const aliasesLoaded = Boolean(requestedUsername) && !profileAliasQuery.isPending;
   const canonicalUsername = profileAliasEntry?.username ?? normalizedUsername;
   const isBanned = Boolean(profileAliasEntry?.banned);
   const isBot = Boolean(profileAliasEntry?.bot);
@@ -285,11 +291,16 @@ export const PlayerProfilePage = ({
   );
   const profileModeOptions = useMemo(
     () =>
-      modeOptions.filter(
+      publicModeOptions.filter(
         (mode) =>
-          isExcluded || mode !== "wolfrandom" || ratingDisplayByMode.wolfrandom.gamesPlayed > 0,
+          (isExcluded || mode !== "wolfrandom" || ratingDisplayByMode.wolfrandom.gamesPlayed > 0) &&
+          (mode !== "atomic960" || ratingDisplayByMode.atomic960.gamesPlayed > 0),
       ),
-    [isExcluded, ratingDisplayByMode.wolfrandom.gamesPlayed],
+    [
+      isExcluded,
+      ratingDisplayByMode.atomic960.gamesPlayed,
+      ratingDisplayByMode.wolfrandom.gamesPlayed,
+    ],
   );
   const rankHistoryModeOptions: RankHistoryMode[] = ["all", ...profileModeOptions];
   const favoriteOpponentModeOptions: RankHistoryMode[] = ["all", ...profileModeOptions];
@@ -321,11 +332,14 @@ export const PlayerProfilePage = ({
     resetKey: normalizedUsername,
   });
   useEffect(() => {
-    if (profileModeOptions.includes("wolfrandom")) return;
-    if (rankHistoryMode === "wolfrandom") setRankHistoryMode("all");
-    if (bestWinMode === "wolfrandom") setBestWinMode(defaultMode);
-    if (bestRankMode === "wolfrandom") setBestRankMode(defaultMode);
-    if (matchHistoryMode === "wolfrandom") setMatchHistoryMode(defaultMode);
+    if (rankHistoryMode !== "all" && !profileModeOptions.includes(rankHistoryMode)) {
+      setRankHistoryMode("all");
+    }
+    if (!profileModeOptions.includes(bestWinMode)) setBestWinMode(defaultMode);
+    if (!profileModeOptions.includes(bestRankMode)) setBestRankMode(defaultMode);
+    if (matchHistoryMode !== "all" && !profileModeOptions.includes(matchHistoryMode)) {
+      setMatchHistoryMode(defaultMode);
+    }
   }, [bestRankMode, bestWinMode, matchHistoryMode, profileModeOptions, rankHistoryMode]);
   const monthRanks = useMonthRanks(
     // Archive ranking rows are keyed by the canonical player, so every profile alias shares them.
@@ -669,12 +683,14 @@ export const PlayerProfilePage = ({
       ).filter((row) => {
         const mode = row.key.replace(/-row$/, "") as (typeof modeOptions)[number];
         if (mode === "wolfrandom" && !showWolfrandomProfileRatings) return false;
+        if (mode === "atomic960" && !showAtomic960ProfileRatings) return false;
         if (!profileModeOptions.includes(mode)) return false;
         if (!isExcluded) return true;
         return Number.isFinite(ratingDisplayByMode[mode]?.currentRating);
       }),
     [
       showWolfrandomProfileRatings,
+      showAtomic960ProfileRatings,
       isExcluded,
       latestMonthKeyByMode,
       profileModeOptions,
@@ -1108,7 +1124,9 @@ export const PlayerProfilePage = ({
                             className={`profileAliasAccountLink ${
                               source === "chesscom"
                                 ? "profileAliasChessComLink"
-                                : "profileAliasLichessLink"
+                                : source === "pychess"
+                                  ? "profileAliasPyChessLink"
+                                  : "profileAliasLichessLink"
                             }`}
                             href={getAliasProfileHref(source, externalAlias)}
                             target="_blank"
@@ -1118,6 +1136,10 @@ export const PlayerProfilePage = ({
                           >
                             {source === "chesscom" ? (
                               <ChessComProfileIcon />
+                            ) : source === "pychess" ? (
+                              <span className="profileAliasPyChessMark" aria-hidden="true">
+                                P
+                              </span>
                             ) : (
                               <LichessProfileIcon />
                             )}
@@ -1547,10 +1569,7 @@ export const PlayerProfilePage = ({
                               value={rankHistoryMode}
                               onChange={(event) => {
                                 const v = event.target.value;
-                                if (
-                                  v === "all" ||
-                                  isOneOf(profileModeOptions, v)
-                                ) {
+                                if (v === "all" || isOneOf(profileModeOptions, v)) {
                                   setRankHistoryMode(v);
                                 }
                               }}

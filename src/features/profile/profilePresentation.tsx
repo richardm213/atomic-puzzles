@@ -51,10 +51,14 @@ export const profileResultToneClass = (playerScore: number, opponentScore: numbe
 };
 
 export const getAliasProfileHref = (source: AliasAccountSource, alias: string): string =>
-  source === "chesscom" ? chessComProfileUrl(alias) : lichessProfileUrl(alias);
+  source === "chesscom"
+    ? chessComProfileUrl(alias)
+    : source === "pychess"
+      ? `https://www.pychess.org/@/${encodeURIComponent(alias)}`
+      : lichessProfileUrl(alias);
 
 export const getAliasProfileSourceLabel = (source: AliasAccountSource): string =>
-  source === "chesscom" ? "Chess.com" : "Lichess";
+  source === "chesscom" ? "Chess.com" : source === "pychess" ? "PyChess" : "Lichess";
 
 export const LichessProfileIcon = () => (
   <svg viewBox="0 0 50 50" aria-hidden="true" focusable="false">

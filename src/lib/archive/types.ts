@@ -1,6 +1,7 @@
 export type ArchiveMode = "hyperbullet" | "bullet" | "blitz" | "wolfrandom" | "atomic960";
 
-export type ArchiveMatchSource = "lobby" | "arena" | "friend" | "swiss" | "chesscom" | "unknown";
+export type ArchiveMatchSource =
+  "lobby" | "arena" | "friend" | "swiss" | "chesscom" | "pychess" | "unknown";
 
 export type MatchRow = {
   match_id: string;
@@ -64,7 +65,7 @@ export type AliasRow = {
   username: string;
   banned: boolean;
   bot?: boolean | 0 | 1;
-  count_games: "y" | "n" | "c" | "o";
+  count_games: "y" | "n" | "c" | "o" | "p";
   openings: string;
 };
 

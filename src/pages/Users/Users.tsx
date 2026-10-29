@@ -13,7 +13,7 @@ import { InlineState } from "../../components/InlineState/InlineState";
 import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
-import { isMode, type Mode } from "../../constants/matches";
+import { atomic960Enabled, isMode, type Mode } from "../../constants/matches";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import { useTableSort } from "../../hooks/useTableSort";
 import type { PlayerDirectoryRow, PlayerRatingRow } from "../../lib/archive/ratings";
@@ -40,6 +40,7 @@ type UserRow = {
   blitz: RatingCells;
   bullet: RatingCells;
   hyperbullet: RatingCells;
+  atomic960: RatingCells;
   aliasCount: number;
   aliases: string[];
   openings: string[];
@@ -51,14 +52,18 @@ const isUserRatingMode = (mode: Mode): mode is UserRatingMode => mode !== "wolfr
 
 const getUserColumns = (
   ratingDisplayMode: RatingDisplayMode,
-): Array<{ key: UserSortKey; label: string }> => [
-  { key: "username", label: "Username" },
-  { key: "blitz", label: `Blitz ${ratingDisplayMode === "peak" ? "Peak" : "Rating"}` },
-  { key: "bullet", label: `Bullet ${ratingDisplayMode === "peak" ? "Peak" : "Rating"}` },
-  { key: "hyperbullet", label: `Hyper ${ratingDisplayMode === "peak" ? "Peak" : "Rating"}` },
-  { key: "openings", label: "Openings" },
-  { key: "aliasCount", label: "Number of Aliases" },
-];
+): Array<{ key: UserSortKey; label: string }> => {
+  const ratingLabel = ratingDisplayMode === "peak" ? "Peak" : "Rating";
+  return [
+    { key: "username", label: "Username" },
+    { key: "blitz", label: `Blitz ${ratingLabel}` },
+    { key: "bullet", label: `Bullet ${ratingLabel}` },
+    { key: "hyperbullet", label: `Hyper ${ratingLabel}` },
+    ...(atomic960Enabled ? [{ key: "atomic960" as const, label: `Atomic960 ${ratingLabel}` }] : []),
+    { key: "openings", label: "Openings" },
+    { key: "aliasCount", label: "Number of Aliases" },
+  ];
+};
 
 const roundToTenth = (value: unknown): number | null => {
   const numeric = Number(value);
@@ -129,6 +134,7 @@ export const buildUserRows = (
       blitz: emptyRatingCells,
       bullet: emptyRatingCells,
       hyperbullet: emptyRatingCells,
+      atomic960: emptyRatingCells,
       aliasCount: aliasesLookup.get(username)?.aliases?.length ?? 0,
       aliases: aliasesLookup.get(username)?.aliases ?? [],
       openings: aliasesLookup.get(username)?.openings ?? [],
@@ -150,7 +156,7 @@ export const buildUserRows = (
 
 export const expandPlayerDirectoryRows = (rows: PlayerDirectoryRow[]): PlayerRatingRow[] =>
   rows.flatMap((row) =>
-    (["blitz", "bullet", "hyperbullet"] as const).map((mode) => ({
+    (["blitz", "bullet", "hyperbullet", "atomic960"] as const).map((mode) => ({
       username: row.username,
       tc: mode,
       rating: row[`${mode}_rating`],
@@ -245,7 +251,7 @@ const UsersTablePage = () => {
     <div className="rankingsPage">
       <Seo
         title="Players"
-        description="Browse the full atomic player list with blitz, bullet, hyperbullet, openings, and alias counts."
+        description="Browse atomic player ratings, peaks, openings, and linked account aliases."
         path="/users"
       />
       <div className="panel rankingsPanel usersPanel">
@@ -355,6 +361,7 @@ const UsersTablePage = () => {
                   <td>{row.blitz[ratingDisplayMode].display}</td>
                   <td>{row.bullet[ratingDisplayMode].display}</td>
                   <td>{row.hyperbullet[ratingDisplayMode].display}</td>
+                  {atomic960Enabled ? <td>{row.atomic960[ratingDisplayMode].display}</td> : null}
                   <td>
                     {row.openings.length > 0 ? (
                       <div className="usersOpeningsCell">

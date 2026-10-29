@@ -4,6 +4,7 @@ import {
   buildExternalGameUrl,
   buildLichessGameUrl,
   buildMatchRouteParams,
+  buildPyChessGameUrl,
   buildSingleGameMatchUrl,
   hasMatchRouteParams,
   inferExternalGameSource,
@@ -18,6 +19,7 @@ describe("normalizeMatchMode", () => {
     expect(normalizeMatchMode("BULLET")).toBe("bullet");
     expect(normalizeMatchMode("Hyperbullet")).toBe("hyperbullet");
     expect(normalizeMatchMode("Wolfrandom")).toBe("wolfrandom");
+    expect(normalizeMatchMode("Atomic960")).toBe("atomic960");
   });
 
   it("returns '' for unknown modes", () => {
@@ -129,6 +131,13 @@ describe("buildExternalGameUrl", () => {
     expect(buildExternalGameUrl("abc123", { source: "arena", orientation: "white", ply: 4 })).toBe(
       "https://lichess.org/abc123/white#4",
     );
+  });
+
+  it("returns PyChess game URLs for PyChess matches", () => {
+    expect(buildExternalGameUrl("AbC960", { source: "pychess" })).toBe(
+      "https://www.pychess.org/AbC960",
+    );
+    expect(buildPyChessGameUrl("AbC 960")).toBe("https://www.pychess.org/AbC%20960");
   });
 });
 

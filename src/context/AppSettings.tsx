@@ -24,6 +24,7 @@ const STORAGE_KEYS = {
   hideRankingsOpenings: "atomic-puzzles.rankings.hide-openings",
   showChessComRankings: "atomic-puzzles.rankings.show-chesscom-users",
   showWolfrandomProfileRatings: "atomic-puzzles.profile.show-wolfrandom-ratings",
+  showAtomic960ProfileRatings: "atomic-puzzles.profile.show-atomic960-ratings",
   showProfileActionButtons: "atomic-puzzles.profile.show-action-buttons",
   showCoinBalance: "atomic-puzzles.coins.show-balance",
   showCoinChangePopups: "atomic-puzzles.puzzles.show-coin-change-popups",
@@ -171,6 +172,8 @@ export type AppSettingsContextValue = {
   setShowChessComRankings: Dispatch<SetStateAction<boolean>>;
   showWolfrandomProfileRatings: boolean;
   setShowWolfrandomProfileRatings: Dispatch<SetStateAction<boolean>>;
+  showAtomic960ProfileRatings: boolean;
+  setShowAtomic960ProfileRatings: Dispatch<SetStateAction<boolean>>;
   showProfileActionButtons: boolean;
   setShowProfileActionButtons: Dispatch<SetStateAction<boolean>>;
   hiddenRatingGraphModes: string[];
@@ -282,6 +285,11 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     z.boolean(),
     false,
   );
+  const [showAtomic960ProfileRatings, setShowAtomic960ProfileRatings] = usePersistedState(
+    STORAGE_KEYS.showAtomic960ProfileRatings,
+    z.boolean(),
+    true,
+  );
   const [showProfileActionButtons, setShowProfileActionButtons] = usePersistedState(
     STORAGE_KEYS.showProfileActionButtons,
     z.boolean(),
@@ -323,7 +331,7 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
 
   const [hiddenRatingGraphModes, setHiddenRatingGraphModes] = usePersistedState<string[]>(
     STORAGE_KEYS.hiddenRatingGraphModes,
-    z.array(z.enum(["blitz", "hyperbullet", "bullet"])),
+    z.array(z.enum(["blitz", "hyperbullet", "bullet", "atomic960"])),
     [],
   );
 
@@ -379,6 +387,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setShowChessComRankings,
       showWolfrandomProfileRatings,
       setShowWolfrandomProfileRatings,
+      showAtomic960ProfileRatings,
+      setShowAtomic960ProfileRatings,
       showProfileActionButtons,
       setShowProfileActionButtons,
       hiddenRatingGraphModes,
@@ -420,6 +430,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setShowChessComRankings,
       showWolfrandomProfileRatings,
       setShowWolfrandomProfileRatings,
+      showAtomic960ProfileRatings,
+      setShowAtomic960ProfileRatings,
       showProfileActionButtons,
       setShowProfileActionButtons,
       hiddenRatingGraphModes,

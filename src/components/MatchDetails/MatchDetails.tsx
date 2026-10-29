@@ -18,6 +18,8 @@ export type MatchDetailsProps = {
 
 const getMatchSourceLabel = (sourceValue: unknown): string => {
   const source = String(sourceValue ?? "").trim();
+  if (source.toLowerCase() === "pychess") return "PyChess";
+  if (source.toLowerCase() === "chesscom") return "Chess.com";
   return source && source !== "—" ? source : "Unknown";
 };
 

@@ -15,7 +15,7 @@ const SOURCE_IDS = {
   friend: 2,
   swiss: 3,
   chesscom: 4,
-  unknown: 5,
+  pychess: 5,
 } as const;
 const modeNameSql = (column: string): string =>
   `case ${column} when 0 then 'hyperbullet' when 1 then 'bullet' when 2 then 'blitz' when 3 then 'wolfrandom' when 4 then 'atomic960' else 'unknown' end`;
@@ -248,11 +248,17 @@ const queryMatches = async (params: URLSearchParams) => {
   if (sourcesSpecified && sourceValues.length === 0) {
     clauses.push("0 = 1");
   } else if (sourceValues.length) {
-    const sourceIds = sourceValues.map((source) => {
+    const includeUnknown = sourceValues.includes("unknown");
+    const sourceIds = sourceValues.flatMap((source) => {
+      if (source === "unknown") return [];
       if (!(source in SOURCE_IDS)) throw new ArchiveRequestError("Unsupported source");
-      return SOURCE_IDS[source as keyof typeof SOURCE_IDS];
+      return [SOURCE_IDS[source as keyof typeof SOURCE_IDS]];
     });
-    clauses.push(`m.source in (${sourceValues.map(() => "?").join(",")})`);
+    const sourceClauses = [
+      ...(sourceIds.length ? [`m.source in (${sourceIds.map(() => "?").join(",")})`] : []),
+      ...(includeUnknown ? ["m.source not in (0,1,2,3,4,5)"] : []),
+    ];
+    clauses.push(`(${sourceClauses.join(" or ")})`);
     args.push(...sourceIds);
   }
   const ratingMin = numberParam(params, "ratingMin");
@@ -281,7 +287,7 @@ const queryMatches = async (params: URLSearchParams) => {
   }
   const where = clauses.length ? clauses.join(" and ") : "1 = 1";
   const selectMatch = `select m.match_id,${modeNameSql("m.mode")} mode,p1.username player_1,p2.username player_2,m.start_ts,tc.value time_control,
-      case m.source when 0 then 'lobby' when 1 then 'arena' when 2 then 'friend' when 3 then 'swiss' when 4 then 'chesscom' else 'unknown' end source,
+      case m.source when 0 then 'lobby' when 1 then 'arena' when 2 then 'friend' when 3 then 'swiss' when 4 then 'chesscom' when 5 then 'pychess' else 'unknown' end source,
       m.tournament_id,m.games,m.p1_before_rating/10.0 p1_before_rating,m.p1_after_rating/10.0 p1_after_rating,
       m.p1_before_rd/10.0 p1_before_rd,m.p1_after_rd/10.0 p1_after_rd,m.p2_before_rating/10.0 p2_before_rating,
       m.p2_after_rating/10.0 p2_after_rating,m.p2_before_rd/10.0 p2_before_rd,m.p2_after_rd/10.0 p2_after_rd
@@ -351,7 +357,7 @@ const queryMatches = async (params: URLSearchParams) => {
 };
 
 const queryAliases = async (params: URLSearchParams) => {
-  const requested = boundedStringParam(params, "username", 100).toLowerCase();
+  const requested = boundedStringParam(params, "username", 100);
   const search = boundedStringParam(params, "query", 100).toLowerCase();
   if (search && !USERNAME_SEARCH_PATTERN.test(search)) {
     throw new ArchiveRequestError("query contains unsupported username characters");
@@ -363,13 +369,15 @@ const queryAliases = async (params: URLSearchParams) => {
   const limit =
     optionalPositiveIntegerParam(params, "limit", MAX_ROW_LIMIT) ||
     (search ? DEFAULT_SEARCH_LIMIT : MAX_ROW_LIMIT);
-  let canonical = requested;
+  let canonical = requested.toLowerCase();
   if (requested) {
     const resolved = await archive.execute({
-      sql: "select p.username from aliases a join players p on p.id=a.player_id where a.alias=? limit 1",
-      args: [requested],
+      sql: `select p.username from aliases a join players p on p.id=a.player_id
+        where a.alias=? or (a.count_games<>'p' and lower(a.alias)=?)
+        order by case when a.alias=? then 0 else 1 end limit 1`,
+      args: [requested, requested.toLowerCase(), requested],
     });
-    canonical = String(resolved.rows[0]?.username ?? requested);
+    canonical = String(resolved.rows[0]?.username ?? canonical);
   }
   const botColumn = await archive.execute(
     "select 1 as present from pragma_table_info('aliases') where name='bot' limit 1",
@@ -439,9 +447,12 @@ const queryPlayerDirectory = async (params: URLSearchParams) => {
       max(case when r.mode=1 then r.rd/10.0 end) bullet_rd,
       max(case when r.mode=2 then r.rating/10.0 end) blitz_rating,
       max(case when r.mode=2 then r.peak/10.0 end) blitz_peak,
-      max(case when r.mode=2 then r.rd/10.0 end) blitz_rd
+      max(case when r.mode=2 then r.rd/10.0 end) blitz_rd,
+      max(case when r.mode=4 then r.rating/10.0 end) atomic960_rating,
+      max(case when r.mode=4 then r.peak/10.0 end) atomic960_peak,
+      max(case when r.mode=4 then r.rd/10.0 end) atomic960_rd
       from player_ratings r join players p on p.id=r.username_id
-      where r.mode in (0,1,2)
+      where r.mode in (0,1,2,4)
       group by p.id,p.username order by p.username limit ?`,
     args: [limit],
   });
@@ -620,7 +631,7 @@ export const queryArchiveResource = async (params: URLSearchParams): Promise<unk
         from matches m
         where (m.player_1_id = (select id from players where username = ?)
           or m.player_2_id = (select id from players where username = ?))
-          and m.mode in (0, 1, 2)
+          and m.mode in (0, 1, 2, 4)
         group by m.mode`,
       args: [username, username],
     });

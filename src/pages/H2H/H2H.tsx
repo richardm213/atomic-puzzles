@@ -11,6 +11,7 @@ import {
   type Mode,
   modeLabels,
   modeOptions,
+  publicModeOptions,
   type SourceFilters,
 } from "../../constants/matches";
 import type { PlayerRatingRow } from "../../lib/archive/ratings";
@@ -133,6 +134,7 @@ const defaultH2HModeFilters: Record<Mode, boolean> = {
   bullet: true,
   hyperbullet: true,
   wolfrandom: true,
+  atomic960: true,
 };
 
 const presetMatchups = [
@@ -258,7 +260,7 @@ export const H2HPage = () => {
     }) => {
       const matches = matchesByMode
         .flatMap((rawMatches, index) => {
-          const mode = modeOptions[index];
+          const mode = publicModeOptions[index];
           return mode
             ? normalizeH2HMatches(rawMatches, mode, resolvedPlayer1, resolvedPlayer2)
             : [];
@@ -315,8 +317,16 @@ export const H2HPage = () => {
       Number(firstSnapshots.wolfrandom?.games ?? 0) > 0 ||
       Number(secondSnapshots.wolfrandom?.games ?? 0) > 0 ||
       matches.some((match) => match.mode === "wolfrandom");
+    const hasAtomic960Games =
+      Number(firstSnapshots.atomic960?.games ?? 0) > 0 ||
+      Number(secondSnapshots.atomic960?.games ?? 0) > 0 ||
+      matches.some((match) => match.mode === "atomic960");
 
-    return modeOptions.filter((mode) => mode !== "wolfrandom" || hasWolfrandomGames);
+    return publicModeOptions.filter(
+      (mode) =>
+        (mode !== "wolfrandom" || hasWolfrandomGames) &&
+        (mode !== "atomic960" || hasAtomic960Games),
+    );
   }, [loadedPlayer1, loadedPlayer2, matches, playerSnapshots]);
 
   const filteredMatches = useMemo(
@@ -459,7 +469,7 @@ export const H2HPage = () => {
       : "Player Head-to-Head";
   const seoDescription =
     loadedPlayer1 && loadedPlayer2
-      ? `Compare ${loadedPlayer1} and ${loadedPlayer2} across atomic chess matches, scores, and blitz, bullet, and hyperbullet splits.`
+      ? `Compare ${loadedPlayer1} and ${loadedPlayer2} across atomic chess matches, scores, and rating-mode splits.`
       : "Compare two atomic chess players side by side across recent results, total score, and time-control splits.";
   const visiblePresetMatchups = presetMatchups.slice(0, visiblePresetCount);
   const hasMorePresetMatchups = visiblePresetCount < presetMatchups.length;

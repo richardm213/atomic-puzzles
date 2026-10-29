@@ -10,6 +10,7 @@ const aliasEntry = (
   primary: "",
   aliases: [],
   chessComAliases: [],
+  pyChessAliases: [],
   openings: [],
   banned: false,
   bot: false,

@@ -1,4 +1,4 @@
-import { type Mode, modeOptions } from "../../constants/matches";
+import { type Mode, modeOptions, publicModeOptions } from "../../constants/matches";
 import type { PaginatedCollection, PaginationOptions } from "../../types/pagination";
 import { normalizeUsername } from "../../utils/playerNames";
 import { fetchMatchRowsFromArchive, type MatchFilters, type MatchRow } from "../archive/matches";
@@ -154,7 +154,7 @@ const parseMatchRows = (rows: MatchRow[]): ParsedMatch[] => {
 
     return {
       match_id: row.match_id,
-      mode: modeOptions.includes(row.mode as Mode) ? (row.mode as Mode) : "",
+      mode: modeOptions.includes(row.mode) ? row.mode : "",
       players: [p1, p2],
       start_ts: row.start_ts,
       time_control: row.time_control,
@@ -232,7 +232,7 @@ export async function loadRawMatchesByMode(
       const archivePageSize = Math.min(200, rowsNeededPerMode);
       const archivePageCount = Math.ceil(rowsNeededPerMode / archivePageSize);
       const matchesByMode = await Promise.all(
-        modeOptions.map(async (modeOption) => {
+        publicModeOptions.map(async (modeOption) => {
           const entries: ParsedMatch[] = [];
           let total = 0;
           for (let archivePage = 1; archivePage <= archivePageCount; archivePage += 1) {
@@ -261,7 +261,7 @@ export async function loadRawMatchesByMode(
       };
     }
     const matchesByMode = await Promise.all(
-      modeOptions.map((modeOption) => loadRawMatchesByMode(modeOption, subOptionsBase)),
+      publicModeOptions.map((modeOption) => loadRawMatchesByMode(modeOption, subOptionsBase)),
     );
     return matchesByMode.flat();
   }

@@ -1,7 +1,7 @@
 import { buildAliasesLookup } from "./aliasesLookup";
 
 describe("buildAliasesLookup", () => {
-  it("keeps Chess.com aliases in their source order", () => {
+  it("keeps platform aliases in their source order and preserves PyChess case", () => {
     const lookup = buildAliasesLookup([
       {
         username: "canonical",
@@ -34,11 +34,20 @@ describe("buildAliasesLookup", () => {
             banned: false,
             bot: false,
           },
+          {
+            alias: "ExactCase960",
+            displayAlias: "ExactCase960",
+            source: "pychess",
+            isCounted: true,
+            banned: false,
+            bot: false,
+          },
         ],
       },
     ]);
 
     expect(lookup.get("canonical")?.chessComAliases).toEqual(["chesscom_one", "chesscom_two"]);
     expect(lookup.get("lichess_alt")?.chessComAliases[0]).toBe("chesscom_one");
+    expect(lookup.get("canonical")?.pyChessAliases).toEqual(["ExactCase960"]);
   });
 });

@@ -19,10 +19,12 @@ describe("canonical archive usernames", () => {
     });
 
     await expect(resolveCanonicalArchiveUsername(" Xeransis ")).resolves.toBe("gannet");
-    expect(mocks.execute).toHaveBeenCalledWith(expect.objectContaining({ args: ["xeransis"] }));
+    expect(mocks.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ args: ["Xeransis", "xeransis", "Xeransis"] }),
+    );
   });
 
-  it.each(["n", "c"])("keeps a %s account separate", async (countGames) => {
+  it.each(["n", "c", "p"])("keeps a %s account separate", async (countGames) => {
     mocks.execute.mockResolvedValue({
       rows: [{ username: "main_player", count_games: countGames }],
     });

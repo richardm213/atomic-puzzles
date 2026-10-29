@@ -83,7 +83,7 @@ export const useFavoriteOpponentsModel = ({
   }, [resetKey]);
 
   useEffect(() => {
-    if (!availableModes.includes("wolfrandom") && mode === "wolfrandom") setMode("all");
+    if (mode !== "all" && !availableModes.includes(mode)) setMode("all");
   }, [availableModes, mode, setMode]);
 
   useEffect(() => {

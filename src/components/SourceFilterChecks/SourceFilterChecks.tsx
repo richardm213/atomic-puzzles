@@ -8,6 +8,7 @@ const sourceLabels: Record<keyof SourceFilters, string> = {
   lobby: "Lobby",
   swiss: "Swiss",
   chesscom: "Chess.com",
+  pychess: "PyChess",
   unknown: "Other",
 };
 

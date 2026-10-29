@@ -44,7 +44,7 @@ Atomic chess has a strong community, but the tools around it are usually fragmen
 
 ### Community data
 
-- Monthly rankings for blitz, bullet, and hyperbullet.
+- Monthly rankings by supported atomic rating mode.
 - Player pages with alias resolution and rating history.
 - Recent match browsing with filters and per-match pages.
 - Head-to-head comparison pages.
@@ -131,8 +131,8 @@ time-control ID. The database intentionally has no declared foreign-key constrai
 must preserve those logical joins.
 
 Archive mode IDs are `0` hyperbullet, `1` bullet, `2` blitz, `3` wolfrandom, and `4` atomic960.
-Match source IDs are `0` lobby, `1` arena, `2` friend, `3` swiss, `4` Chess.com, and `5`
-unknown/other. Ratings and RDs are stored at ten times their display value and are scaled back in
+Match source IDs are `0` lobby, `1` arena, `2` friend, `3` swiss, `4` Chess.com, and `5` PyChess.
+Ratings and RDs are stored at ten times their display value and are scaled back in
 the Netlify function. The function also expands the pipe-separated compact `matches.games` value
 into an array before returning it to the browser.
 
@@ -224,6 +224,12 @@ To exercise the local archive function itself, set `LOCAL_ARCHIVE_DATA_SOURCE=tu
 The browser reads this database only through `/api/archive-data`; the token must never use a
 `VITE_` prefix or be exposed to client code. Supabase remains responsible for Auth and mutable
 community data.
+
+Atomic960 parsing and archive queries are always supported, but its public selectors are gated by
+`VITE_ENABLE_ATOMIC960=true`. Enable that flag only after nonempty Atomic960 match and rating logs
+have populated `player_ratings`, `lb`, `weekly_ratings`, and `matches` with mode `4`, and the
+refreshed archive has been uploaded and verified. Atomic960 intentionally has no yearly ranking
+tab until a yearly aggregation exists.
 
 Authenticated community actions use a signed, 30-day first-party session cookie. Configure:
 

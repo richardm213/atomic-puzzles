@@ -1,8 +1,19 @@
-export const modeOptions = ["blitz", "bullet", "hyperbullet", "wolfrandom"] as const;
+export const modeOptions = ["blitz", "bullet", "hyperbullet", "wolfrandom", "atomic960"] as const;
 export type Mode = (typeof modeOptions)[number];
+
+// Atomic960 support ships before its historical archive is ready. Keep every
+// parser and data boundary aware of the mode, while public selectors remain
+// gated until the refreshed archive has been uploaded and verified.
+export const atomic960Enabled = import.meta.env.VITE_ENABLE_ATOMIC960 === "true";
+export const publicModeOptions: readonly Mode[] = atomic960Enabled
+  ? modeOptions
+  : modeOptions.filter((mode) => mode !== "atomic960");
 
 export const isMode = (value: unknown): value is Mode =>
   typeof value === "string" && modeOptions.some((mode) => mode === value);
+
+export const isPublicMode = (value: unknown): value is Mode =>
+  isMode(value) && publicModeOptions.includes(value);
 
 export const defaultMode: Mode = modeOptions[0];
 
@@ -11,6 +22,7 @@ export const modeLabels: Record<Mode, string> = {
   bullet: "Bullet",
   hyperbullet: "Hyper",
   wolfrandom: "Wolfrandom",
+  atomic960: "Atomic960",
 };
 
 export const modeDescriptions: Record<Mode, string> = {
@@ -18,6 +30,7 @@ export const modeDescriptions: Record<Mode, string> = {
   bullet: "",
   hyperbullet: "",
   wolfrandom: "",
+  atomic960: "",
 };
 
 export type RankingEligibility = {
@@ -42,6 +55,10 @@ export const rankingEligibilityByMode: Record<Mode, RankingEligibility> = {
     minGames: 10,
     maxRd: 80,
   },
+  atomic960: {
+    minGames: 10,
+    maxRd: 60,
+  },
 };
 
 export const yearlyRankingEligibilityByMode: Partial<Record<Mode, number>> = {
@@ -61,6 +78,7 @@ export type SourceFilters = {
   lobby: boolean;
   swiss: boolean;
   chesscom: boolean;
+  pychess: boolean;
   unknown: boolean;
 };
 export const defaultSourceFilters: SourceFilters = {
@@ -69,6 +87,7 @@ export const defaultSourceFilters: SourceFilters = {
   lobby: true,
   swiss: true,
   chesscom: true,
+  pychess: true,
   unknown: true,
 };
 export const knownSourceKeys = Object.keys(defaultSourceFilters) as Array<keyof SourceFilters>;

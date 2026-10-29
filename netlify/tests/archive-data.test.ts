@@ -17,25 +17,43 @@ describe("archive-data function", () => {
   it("serves scaled weekly aggregates without monthly eligibility or completed-week filters", async () => {
     mocks.execute.mockResolvedValueOnce({
       rows: [
-        { username: "alice", week: "2026-09-20", rating: 1800.5, rd: 59.9, games: 1, tc: "blitz" },
+        {
+          username: "alice",
+          week: "2026-09-20",
+          rating: 1800.5,
+          rd: 59.9,
+          games: 1,
+          tc: "atomic960",
+        },
       ],
     });
     const { handler } = await import("../functions/archive-data");
     const response = await handler({
-      queryStringParameters: { resource: "weekly_ratings", username: " Alice ", mode: "blitz" },
+      queryStringParameters: {
+        resource: "weekly_ratings",
+        username: " Alice ",
+        mode: "atomic960",
+      },
     });
     expect(response.statusCode).toBe(200);
     expect(response.headers["Netlify-CDN-Cache-Control"]).toBe(
       "public, durable, s-maxage=60, stale-while-revalidate=300",
     );
     const query = mocks.execute.mock.calls[0]![0];
-    expect(query.args).toEqual(["alice", 2]);
+    expect(query.args).toEqual(["alice", 4]);
     expect(query.sql).toContain("weekly_ratings");
     expect(query.sql).toContain("r.rating/10.0");
     expect(query.sql).toContain("r.rd/10.0");
     expect(query.sql).not.toMatch(/r.games\s*[><=]|r.week\s*[><=]/);
     expect(JSON.parse(response.body)).toEqual([
-      { username: "alice", week: "2026-09-20", rating: 1800.5, rd: 59.9, games: 1, tc: "blitz" },
+      {
+        username: "alice",
+        week: "2026-09-20",
+        rating: 1800.5,
+        rd: 59.9,
+        games: 1,
+        tc: "atomic960",
+      },
     ]);
   });
 
@@ -238,17 +256,26 @@ describe("archive-data function", () => {
     });
   });
 
-  it("maps the complete source enum without treating invalid values as lobby", async () => {
+  it("maps PyChess and unknown sources without treating invalid values as lobby", async () => {
     mocks.execute
       .mockResolvedValueOnce({ rows: [{ total: 0 }] })
       .mockResolvedValueOnce({ rows: [] });
     const { handler } = await import("../functions/archive-data");
     const response = await handler({
-      queryStringParameters: { resource: "matches", mode: "blitz", sources: "unknown" },
+      queryStringParameters: { resource: "matches", mode: "atomic960", sources: "pychess" },
     });
 
     expect(response.statusCode).toBe(200);
-    expect(mocks.execute.mock.calls[0]?.[0].args).toEqual([2, 5]);
+    expect(mocks.execute.mock.calls[0]?.[0].args).toEqual([4, 5]);
+
+    mocks.execute
+      .mockResolvedValueOnce({ rows: [{ total: 0 }] })
+      .mockResolvedValueOnce({ rows: [] });
+    const unknownResponse = await handler({
+      queryStringParameters: { resource: "matches", mode: "blitz", sources: "unknown" },
+    });
+    expect(unknownResponse.statusCode).toBe(200);
+    expect(mocks.execute.mock.calls[2]?.[0].sql).toContain("m.source not in (0,1,2,3,4,5)");
 
     const invalidResponse = await handler({
       queryStringParameters: { resource: "matches", mode: "blitz", sources: "invalid" },

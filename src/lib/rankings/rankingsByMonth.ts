@@ -36,7 +36,7 @@ const normalizeLeaderboardRowsForMonth = (rows: LeaderboardRow[]): RankingsByMod
 
   rows.forEach((row) => {
     const mode = parseModeFromTimeControl(row.tc);
-    if (!mode) return;
+    if (!mode || Number(row.rank) <= 0) return;
     modes[mode].players.push({
       rank: Number(row.rank),
       username: String(row.username ?? "Unknown"),

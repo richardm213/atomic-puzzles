@@ -8,7 +8,6 @@ import { loadSupabaseRows } from "../supabase/rows";
 
 const USERNAME_SUGGESTION_LIMIT = 8;
 const usernameResolutionCache = new Map<string, Promise<string>>();
-const usernamePresenceCache = new Map<string, Promise<boolean>>();
 const usernameSuggestionCache = new Map<string, Promise<UsernameSearchSuggestion[]>>();
 
 export type UsernameSearchSuggestion = {
@@ -22,17 +21,6 @@ export type UsernameSearchSuggestion = {
 type RankedUsernameSearchSuggestion = UsernameSearchSuggestion & {
   rank: number;
 };
-
-const hasArchiveUsernameMatch = async (value: string): Promise<boolean> =>
-  cachedRequest(usernamePresenceCache, ["username-presence", value], async () => {
-    const username = normalizeUsername(value);
-    if (!username) return false;
-
-    const params = new URLSearchParams({ resource: "usernames" });
-    appendArchiveParam(params, "exact", username);
-    const rows = await fetchArchiveJson<UsernameRecord[]>(params);
-    return rows.length > 0;
-  });
 
 const getSuggestionRank = (
   query: string,
@@ -97,8 +85,16 @@ export const searchUsernameSuggestions = async (
       ];
 
       members.forEach((member) => {
-        const matchedName = normalizeUsername(member.value);
-        const rank = getSuggestionRank(query, matchedName, member.matchType);
+        const normalizedMatchedName = normalizeUsername(member.value);
+        const pyChessAccount = row.accounts.find(
+          (account) =>
+            account.source === "pychess" &&
+            (account.alias === member.value || account.displayAlias === member.value),
+        );
+        const matchedName = pyChessAccount
+          ? String(pyChessAccount.displayAlias || pyChessAccount.alias).trim()
+          : normalizedMatchedName;
+        const rank = getSuggestionRank(query, normalizedMatchedName, member.matchType);
         if (rank === null) return;
 
         addSuggestion(suggestionsByMatchedName, {
@@ -173,12 +169,13 @@ export const searchUsernameSuggestions = async (
 
 export const resolveUsernameInput = async (value: string): Promise<string> =>
   cachedRequest(usernameResolutionCache, ["resolved-username", value], async () => {
-    const username = normalizeUsername(value);
-    if (!username) return "";
-    if (await hasArchiveUsernameMatch(username)) return username;
+    const exactUsername = String(value).trim();
+    const username = normalizeUsername(exactUsername);
+    if (!exactUsername) return "";
 
-    const identity = await fetchProfileAliasRow(username);
-    return identity?.username ?? username;
+    const identity = await fetchProfileAliasRow(exactUsername);
+    if (identity?.username) return identity.username;
+    return username;
   });
 
 export const resolveUsernameInputs = async (values: string[] = []): Promise<string[]> =>

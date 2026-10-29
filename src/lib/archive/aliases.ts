@@ -3,7 +3,7 @@ import { cachedRequest } from "../../utils/requestCache";
 import { appendArchiveParam, fetchArchiveJson } from "./client";
 import type { AliasRow } from "./types";
 
-type CountGamesMode = "y" | "n" | "c" | "o";
+type CountGamesMode = "y" | "n" | "c" | "o" | "p";
 
 type NormalizedAliasAccountRow = {
   username: string;
@@ -15,7 +15,7 @@ type NormalizedAliasAccountRow = {
   accounts: AliasAccount[];
 };
 
-export type AliasAccountSource = "lichess" | "chesscom";
+export type AliasAccountSource = "lichess" | "chesscom" | "pychess";
 
 export type AliasAccount = {
   alias: string;
@@ -38,18 +38,19 @@ export type AliasIdentityRow = {
 export const getAliasIdentityUsernames = (
   username: string,
   identity: AliasIdentityRow | null | undefined,
-): string[] => [
-  ...new Set(
-    [
-      username,
-      identity?.username,
-      ...(identity?.aliases ?? []),
-      ...(identity?.accounts ?? []).flatMap((account) => [account.alias, account.displayAlias]),
-    ]
-      .map(normalizeUsername)
+): string[] => {
+  const normalizedNames = [username, identity?.username, ...(identity?.aliases ?? [])]
+    .map(normalizeUsername)
+    .filter(Boolean);
+  const accountNames = (identity?.accounts ?? []).flatMap((account) =>
+    [account.alias, account.displayAlias]
+      .map((value) =>
+        account.source === "pychess" ? String(value).trim() : normalizeUsername(value),
+      )
       .filter(Boolean),
-  ),
-];
+  );
+  return [...new Set([...normalizedNames, ...accountNames])];
+};
 
 type AliasIdentityAccumulator = {
   username: string;
@@ -63,7 +64,7 @@ type AliasIdentityAccumulator = {
   hasBotCanonicalAccount: boolean;
 };
 
-const COUNT_GAMES_MODES = new Set<CountGamesMode>(["y", "n", "c", "o"]);
+const COUNT_GAMES_MODES = new Set<CountGamesMode>(["y", "n", "c", "o", "p"]);
 const aliasRowsCache = new Map<string, Promise<AliasIdentityRow[]>>();
 const rawAliasRowsCache = new Map<string, Promise<AliasRow[]>>();
 const canonicalProfileUsernameCache = new Map<string, Promise<string>>();
@@ -97,6 +98,15 @@ const createChessComAccount = (
   bot,
 });
 
+const createPyChessAccount = (alias: string, banned: boolean, bot: boolean): AliasAccount => ({
+  alias,
+  displayAlias: alias,
+  source: "pychess",
+  isCounted: true,
+  banned,
+  bot,
+});
+
 const normalizeCountGamesValue = (value: AliasRow["count_games"] | undefined): CountGamesMode => {
   const normalizedValue = String(value ?? "y")
     .trim()
@@ -111,6 +121,8 @@ const createAliasAccounts = (
   banned: boolean,
   bot: boolean,
 ): AliasAccount[] => {
+  if (countGames === "p") return [createPyChessAccount(rawAlias.trim(), banned, bot)];
+
   const accounts: AliasAccount[] = [];
   const chessComDisplayAlias = normalizeUsername(rawAlias || alias);
 
@@ -129,10 +141,11 @@ const mergeAliasAccounts = (accounts: AliasAccount[] = []): AliasAccount[] => {
   const accountsByKey = new Map<string, AliasAccount>();
 
   accounts.forEach((account) => {
-    const alias = normalizeUsername(account.alias);
+    const source = account.source;
+    const alias =
+      source === "pychess" ? String(account.alias).trim() : normalizeUsername(account.alias);
     if (!alias) return;
 
-    const source = account.source === "chesscom" ? "chesscom" : "lichess";
     const displayAlias =
       source === "chesscom"
         ? normalizeUsername(account.displayAlias || account.alias)
@@ -230,8 +243,8 @@ const normalizeAliasAccountRow = (
 ): NormalizedAliasAccountRow | null => {
   const username = normalizeUsername(row?.username);
   const rawAlias = String(row?.alias || "").trim();
-  const alias = normalizeUsername(row?.alias);
   const countGames = normalizeCountGamesValue(row?.count_games);
+  const alias = countGames === "p" ? rawAlias : normalizeUsername(row?.alias);
 
   if (!username || !alias) return null;
 
@@ -363,10 +376,11 @@ const fetchAliasIdentityRowForUsername = async (
 
 const resolveCanonicalProfileUsername = async (value: string): Promise<string> =>
   cachedRequest(canonicalProfileUsernameCache, ["canonical-profile-username", value], async () => {
-    const username = normalizeUsername(value);
-    if (!username) return "";
+    const requestedUsername = String(value).trim();
+    const username = normalizeUsername(requestedUsername);
+    if (!requestedUsername) return "";
 
-    const identityRow = await fetchProfileAliasRow(username);
+    const identityRow = await fetchProfileAliasRow(requestedUsername);
     return identityRow?.username || username;
   });
 
@@ -375,7 +389,7 @@ export const resolveProfileUsernameFromAliases = async (value: string): Promise<
 
 export const fetchProfileAliasRow = async (value: string): Promise<AliasIdentityRow | null> =>
   cachedRequest(profileAliasEntryCache, ["profile-alias-entry", value], async () => {
-    const username = normalizeUsername(value);
+    const username = String(value).trim();
     if (!username) return null;
 
     return fetchAliasIdentityRowForUsername(username);

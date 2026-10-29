@@ -3,7 +3,7 @@ import "./RatingHistoryGraph.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
-import { isMode, modeLabels } from "../../constants/matches";
+import { isMode, modeLabels, publicModeOptions } from "../../constants/matches";
 import { useAppSettings } from "../../context/AppSettings";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import {
@@ -42,7 +42,7 @@ export const weeklyPeriodStart = (period: RatingPeriod, first: number, last: num
   );
   return Math.max(first, weekIndex(start));
 };
-const modes = ["blitz", "bullet", "hyperbullet"] as const;
+const modes = publicModeOptions.filter((mode) => mode !== "wolfrandom");
 const periods = ["1Y", "2Y", "5Y", "All"] as const;
 export type RatingPeriod = (typeof periods)[number];
 const monthIndex = (date: Date) => date.getUTCFullYear() * 12 + date.getUTCMonth();
@@ -266,9 +266,7 @@ export const RatingChart = ({
               key={mode}
               className={`ratingSeries ${mode}`}
               aria-pressed={!hidden.includes(mode)}
-              onClick={() =>
-                setHidden((current) => toggleArrayValue(current, mode))
-              }
+              onClick={() => setHidden((current) => toggleArrayValue(current, mode))}
             >
               <span aria-hidden="true" />
               {modeLabels[mode]}

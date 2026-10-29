@@ -89,6 +89,9 @@
 .ratingSeries.bullet {
   --series-color: var(--color-rating-graph-bullet);
 }
+.ratingSeries.atomic960 {
+  --series-color: var(--color-rating-graph-atomic960);
+}
 .ratingGraphLegend button {
   display: inline-flex;
   align-items: center;

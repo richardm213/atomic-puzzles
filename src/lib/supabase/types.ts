@@ -146,7 +146,7 @@ export type NotificationRow = {
   coin_transfer_id: number | null;
   coin_request_id: number | null;
   ranking_period: string | null;
-  ranking_mode: "blitz" | "bullet" | "hyperbullet" | null;
+  ranking_mode: "blitz" | "bullet" | "hyperbullet" | "atomic960" | null;
   ranking_position: number | null;
   feature_key: string | null;
   feature_message: string | null;

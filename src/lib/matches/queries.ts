@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 
-import { type Mode, modeOptions } from "../../constants/matches";
+import { type Mode, publicModeOptions } from "../../constants/matches";
 import type { MatchFilters } from "../archive/matches";
 import { fetchPlayerRatingsRows } from "../archive/ratings";
 import { resolveUsernameInputs } from "../users/usernameSearch";
@@ -62,7 +62,7 @@ export const h2hMatchupQueryOptions = (player1: string, player2: string) =>
       ]);
       const [matchesByMode, player1Ratings, player2Ratings] = await Promise.all([
         Promise.all(
-          modeOptions.map((mode) =>
+          publicModeOptions.map((mode) =>
             loadRawMatchesByMode(mode, {
               filters: { usernamePair: [resolvedPlayer1, resolvedPlayer2] },
             }),

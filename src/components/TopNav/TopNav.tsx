@@ -20,7 +20,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { type ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
 
-import { modeLabels } from "../../constants/matches";
+import { atomic960Enabled, modeLabels, publicModeOptions } from "../../constants/matches";
 import { getBoardThemeColors, type Theme, useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
 import { useNotificationNavigation } from "../../hooks/useNotificationNavigation";
@@ -146,6 +146,8 @@ export const TopNav = () => {
     setShowChessComRankings,
     showWolfrandomProfileRatings,
     setShowWolfrandomProfileRatings,
+    showAtomic960ProfileRatings,
+    setShowAtomic960ProfileRatings,
     showProfileActionButtons,
     setShowProfileActionButtons,
     hiddenRatingGraphModes,
@@ -772,6 +774,16 @@ export const TopNav = () => {
                       onChange={(event) => setShowWolfrandomProfileRatings(event.target.checked)}
                     />
                   </label>
+                  {atomic960Enabled ? (
+                    <label className="navSettingsCheckbox">
+                      <span>Show Atomic960 ratings</span>
+                      <input
+                        type="checkbox"
+                        checked={showAtomic960ProfileRatings}
+                        onChange={(event) => setShowAtomic960ProfileRatings(event.target.checked)}
+                      />
+                    </label>
+                  ) : null}
                   <label className="navSettingsCheckbox">
                     <span>Show profile action buttons</span>
                     <input
@@ -811,23 +823,25 @@ export const TopNav = () => {
                     <option value="show">Show</option>
                     <option value="hide">Hide</option>
                   </select>
-                  {(["blitz", "bullet", "hyperbullet"] as const).map((mode) => (
-                    <label className="navSettingsCheckbox" key={mode}>
-                      <span>{modeLabels[mode]}</span>
-                      <input
-                        type="checkbox"
-                        checked={!hiddenRatingGraphModes.includes(mode)}
-                        onChange={(event) => {
-                          const visible = event.target.checked;
-                          setHiddenRatingGraphModes((current) =>
-                            visible
-                              ? current.filter((value) => value !== mode)
-                              : [...new Set([...current, mode])],
-                          );
-                        }}
-                      />
-                    </label>
-                  ))}
+                  {publicModeOptions
+                    .filter((mode) => mode !== "wolfrandom")
+                    .map((mode) => (
+                      <label className="navSettingsCheckbox" key={mode}>
+                        <span>{modeLabels[mode]}</span>
+                        <input
+                          type="checkbox"
+                          checked={!hiddenRatingGraphModes.includes(mode)}
+                          onChange={(event) => {
+                            const visible = event.target.checked;
+                            setHiddenRatingGraphModes((current) =>
+                              visible
+                                ? current.filter((value) => value !== mode)
+                                : [...new Set([...current, mode])],
+                            );
+                          }}
+                        />
+                      </label>
+                    ))}
                   <label className="navSettingsCheckbox">
                     <span>Show lines</span>
                     <input

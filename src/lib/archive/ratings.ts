@@ -22,6 +22,9 @@ export type PlayerDirectoryRow = {
   blitz_rating: number | null;
   blitz_peak: number | null;
   blitz_rd: number | null;
+  atomic960_rating: number | null;
+  atomic960_peak: number | null;
+  atomic960_rd: number | null;
 };
 
 const playerRatingsCache = new Map<string, Promise<PlayerRatingRow[]>>();

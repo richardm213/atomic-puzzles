@@ -129,6 +129,27 @@ describe("buildAliasIdentityRowsFromArchiveRows", () => {
     });
     expect(rows[0]?.accounts[0]).toMatchObject({ banned: false, bot: true });
   });
+
+  it("preserves exact-case PyChess aliases as a separate account source", () => {
+    const rows = buildAliasIdentityRowsFromArchiveRows([
+      {
+        alias: "ExactCase960",
+        username: "atomic_player",
+        banned: false,
+        count_games: "p",
+        openings: "{}",
+      },
+    ]);
+
+    expect(rows[0]?.aliases).toEqual(["ExactCase960"]);
+    expect(rows[0]?.accounts).toEqual([
+      expect.objectContaining({
+        alias: "ExactCase960",
+        displayAlias: "ExactCase960",
+        source: "pychess",
+      }),
+    ]);
+  });
 });
 
 describe("getAliasIdentityUsernames", () => {
@@ -157,8 +178,16 @@ describe("getAliasIdentityUsernames", () => {
             banned: false,
             bot: false,
           },
+          {
+            alias: "ExactCase960",
+            displayAlias: "ExactCase960",
+            source: "pychess",
+            isCounted: true,
+            banned: false,
+            bot: false,
+          },
         ],
       }),
-    ).toEqual(["main_player", "lichess_alt", "chesscom-alt"]);
+    ).toEqual(["main_player", "lichess_alt", "chesscom-alt", "ExactCase960"]);
   });
 });

@@ -14,9 +14,10 @@ import { Seo } from "../../components/Seo/Seo";
 import {
   defaultMode,
   isMode,
+  isPublicMode,
   type Mode,
   modeLabels,
-  modeOptions,
+  publicModeOptions,
   rankingEligibilityByMode,
   yearlyRankingEligibilityByMode,
 } from "../../constants/matches";
@@ -75,6 +76,11 @@ const getFirstChessComAlias = (aliasesLookup: AliasLookup, username: string): st
   return entry?.chessComAliases[0] ?? "";
 };
 
+const getFirstPyChessAlias = (aliasesLookup: AliasLookup, username: string): string => {
+  const entry = aliasesLookup.get(username) ?? aliasesLookup.get(normalizeUsername(username));
+  return entry?.pyChessAliases[0] ?? "";
+};
+
 const monthLabelFromDate = (date: Date): string =>
   date.toLocaleString("en-US", {
     month: "long",
@@ -109,7 +115,11 @@ const isEligibleForRankings = (
   if (!requirement) return true;
 
   const games = Number(player?.games);
-  return games >= requirement.minGames;
+  const rd = Number(player?.rd);
+  return (
+    games >= requirement.minGames &&
+    (requirement.maxRd === null || (Number.isFinite(rd) && rd < requirement.maxRd))
+  );
 };
 
 const earliestLeaderboardMonth = new Date(Date.UTC(2016, 0, 1));
@@ -171,7 +181,7 @@ const getInitialRankingsFilters = (selectedPeriod: RankingPeriod, locationSearch
   return {
     selectedYear,
     selectedMonthName,
-    selectedMode: isMode(requestedMode) ? requestedMode : defaultMode,
+    selectedMode: isPublicMode(requestedMode) ? requestedMode : defaultMode,
     selectedPeriod,
   };
 };
@@ -226,9 +236,9 @@ const LeaderboardView = ({ selectedPeriod }: { selectedPeriod: RankingPeriod }) 
   }, [selectedMonthName, selectedYear]);
   const availableModeOptions = useMemo(
     () =>
-      modeOptions.filter((mode) =>
+      publicModeOptions.filter((mode) =>
         selectedPeriod === "yearly"
-          ? mode !== "wolfrandom"
+          ? mode !== "wolfrandom" && mode !== "atomic960"
           : mode !== "wolfrandom" || supportsWolfrandomLeaderboard(selectedMonth),
       ),
     [selectedMonth, selectedPeriod],
@@ -348,7 +358,10 @@ const LeaderboardView = ({ selectedPeriod }: { selectedPeriod: RankingPeriod }) 
     [selectedMode, selectedModeData.players, selectedPeriod],
   );
   const activeModeOpeningFilter =
-    selectedMode === "wolfrandom" || hideRankingsOpenings ? "" : activeOpeningFilter;
+    selectedMode === "wolfrandom" || selectedMode === "atomic960" || hideRankingsOpenings
+      ? ""
+      : activeOpeningFilter;
+  const showChessComPlayers = showChessComRankings && selectedMode !== "atomic960";
   const filteredPlayers = useMemo(() => {
     return players.filter((player) => {
       if (
@@ -358,11 +371,9 @@ const LeaderboardView = ({ selectedPeriod }: { selectedPeriod: RankingPeriod }) 
         return false;
       }
 
-      return (
-        !showChessComRankings || Boolean(getFirstChessComAlias(aliasesLookup, player.username))
-      );
+      return !showChessComPlayers || Boolean(getFirstChessComAlias(aliasesLookup, player.username));
     });
-  }, [activeModeOpeningFilter, aliasesLookup, players, showChessComRankings]);
+  }, [activeModeOpeningFilter, aliasesLookup, players, showChessComPlayers]);
 
   const selectMonthKey = (monthKey: string): void => {
     const monthDate = monthDateFromMonthKey(monthKey);
@@ -397,12 +408,18 @@ const LeaderboardView = ({ selectedPeriod }: { selectedPeriod: RankingPeriod }) 
     const directionMultiplier = sortDirection === "asc" ? 1 : -1;
     const sorted = [...filteredPlayers].sort((a, b) => {
       if (sortKey === "username") {
-        const aUsername = showChessComRankings
-          ? getFirstChessComAlias(aliasesLookup, a.username)
-          : a.username;
-        const bUsername = showChessComRankings
-          ? getFirstChessComAlias(aliasesLookup, b.username)
-          : b.username;
+        const aUsername =
+          selectedMode === "atomic960"
+            ? getFirstPyChessAlias(aliasesLookup, a.username) || a.username
+            : showChessComPlayers
+              ? getFirstChessComAlias(aliasesLookup, a.username)
+              : a.username;
+        const bUsername =
+          selectedMode === "atomic960"
+            ? getFirstPyChessAlias(aliasesLookup, b.username) || b.username
+            : showChessComPlayers
+              ? getFirstChessComAlias(aliasesLookup, b.username)
+              : b.username;
         return directionMultiplier * aUsername.localeCompare(bUsername);
       }
 
@@ -415,7 +432,7 @@ const LeaderboardView = ({ selectedPeriod }: { selectedPeriod: RankingPeriod }) 
     });
 
     return sorted;
-  }, [aliasesLookup, filteredPlayers, showChessComRankings, sortDirection, sortKey]);
+  }, [aliasesLookup, filteredPlayers, selectedMode, showChessComPlayers, sortDirection, sortKey]);
   const rankingColumns = selectedPeriod === "yearly" ? yearlyRankingColumns : monthlyRankingColumns;
 
   return (
@@ -425,7 +442,7 @@ const LeaderboardView = ({ selectedPeriod }: { selectedPeriod: RankingPeriod }) 
         description={
           selectedPeriod === "yearly"
             ? "Browse yearly atomic chess rankings based on average qualifying post-game rating for blitz, bullet, and hyperbullet."
-            : "Browse monthly atomic chess rankings for blitz, bullet, hyperbullet, and Wolfrandom, with merged aliases and rating eligibility rules."
+            : "Browse monthly atomic chess rankings by mode, with merged aliases and rating eligibility rules."
         }
         path={selectedPeriod === "yearly" ? "/rankings/yearly" : "/rankings"}
       />
@@ -522,7 +539,7 @@ const LeaderboardView = ({ selectedPeriod }: { selectedPeriod: RankingPeriod }) 
           <div className="rankingsMetaDetails">
             <div className="rankingsMetaSummary">
               <span className="rankedCount">
-                {activeModeOpeningFilter || showChessComRankings
+                {activeModeOpeningFilter || showChessComPlayers
                   ? `${filteredPlayers.length} of ${players.length} ranked`
                   : `${players.length} ranked`}
                 {selectedPeriod === "monthly" && selectedMode !== "wolfrandom" ? (
@@ -570,17 +587,21 @@ const LeaderboardView = ({ selectedPeriod }: { selectedPeriod: RankingPeriod }) 
               >
                 {selectedPeriod === "yearly"
                   ? `Requirement: ${eligibilityMinimum}+ games with RD less than 60 this year.`
-                  : `Requirements: ${eligibilityMinimum}+ games this month.`}
+                  : `Requirements: ${eligibilityMinimum}+ games this month${
+                      rankingEligibilityByMode[selectedMode]?.maxRd === null
+                        ? "."
+                        : ` and RD below ${rankingEligibilityByMode[selectedMode]?.maxRd}.`
+                    }`}
               </p>
             ) : null}
           </div>
         </div>
 
-        {showChessComRankings && aliasesQuery.isError ? (
+        {showChessComPlayers && aliasesQuery.isError ? (
           <InlineState kind="error">
             Unable to load Chess.com aliases. Please reload to try again.
           </InlineState>
-        ) : showChessComRankings && !aliasesLoaded ? (
+        ) : showChessComPlayers && !aliasesLoaded ? (
           <InlineState kind="info" role="status" aria-live="polite">
             Loading Chess.com aliases...
           </InlineState>
@@ -588,7 +609,7 @@ const LeaderboardView = ({ selectedPeriod }: { selectedPeriod: RankingPeriod }) 
           <InlineState kind="empty">
             {activeModeOpeningFilter
               ? `No ranked players found for ${getOpeningDisplayLabel(activeModeOpeningFilter)}.`
-              : showChessComRankings
+              : showChessComPlayers
                 ? "No ranked players with a Chess.com alias were found."
                 : `No leaderboard entries available for this ${selectedPeriod === "yearly" ? "year" : "month"}.`}
           </InlineState>
@@ -609,9 +630,12 @@ const LeaderboardView = ({ selectedPeriod }: { selectedPeriod: RankingPeriod }) 
             </thead>
             <tbody>
               {sortedPlayers.map((player) => {
-                const displayUsername = showChessComRankings
-                  ? getFirstChessComAlias(aliasesLookup, player.username)
-                  : player.username;
+                const displayUsername =
+                  selectedMode === "atomic960"
+                    ? getFirstPyChessAlias(aliasesLookup, player.username) || player.username
+                    : showChessComPlayers
+                      ? getFirstChessComAlias(aliasesLookup, player.username)
+                      : player.username;
 
                 return (
                   <tr
@@ -623,7 +647,9 @@ const LeaderboardView = ({ selectedPeriod }: { selectedPeriod: RankingPeriod }) 
                         <PlayerLink className="rankingLink" username={player.username}>
                           {displayUsername}
                         </PlayerLink>
-                        {selectedMode !== "wolfrandom" && !hideRankingsOpenings ? (
+                        {selectedMode !== "wolfrandom" &&
+                        selectedMode !== "atomic960" &&
+                        !hideRankingsOpenings ? (
                           <div
                             className="rankingOpeningTags"
                             aria-label={`${displayUsername} openings`}

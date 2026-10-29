@@ -12,10 +12,10 @@ import {
   type Mode,
   modeDescriptions,
   modeLabels,
-  modeOptions,
   opponentRatingSliderMax,
   opponentRatingSliderMin,
   pageSizeOptions,
+  publicModeOptions,
   type SourceFilters,
 } from "../../constants/matches";
 import type { MatchFilters as ArchiveMatchFilters } from "../../lib/archive/matches";
@@ -57,7 +57,7 @@ import { resolveUsernameInputs } from "../../lib/users/usernameSearch";
 import { toggleArrayValue } from "../../utils/arrays";
 import { formatLocalDateTime, formatScore } from "../../utils/formatters";
 
-const recentModeOptions = modeOptions;
+const recentModeOptions = publicModeOptions;
 const ratingFilterTypeOptions = ["both", "average"];
 const defaultPageSize = 50;
 
@@ -227,7 +227,7 @@ export const RecentMatchesPage = () => {
     <div className="rankingsPage">
       <Seo
         title="Recent Match Archive"
-        description="Filter recent atomic chess matches by player, rating, source, date, time control, and match length across blitz, bullet, and hyperbullet."
+        description="Filter atomic chess matches by mode, player, rating, source, date, time control, and match length."
         path="/recent"
       />
       <div className="panel rankingsPanel recentMatchesPanel">

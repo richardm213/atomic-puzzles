@@ -7,6 +7,7 @@ import { Link } from "@tanstack/react-router";
 import { Seo } from "../../components/Seo/Seo";
 import {
   modeLabels,
+  publicModeOptions,
   rankingEligibilityByMode,
   yearlyRankingEligibilityByMode,
 } from "../../constants/matches";
@@ -56,8 +57,9 @@ const ratingFaq = [
   },
 ];
 
-const eligibilityNotes = Object.entries(rankingEligibilityByMode).map(([mode, requirements]) => {
-  const label = modeLabels[mode as keyof typeof modeLabels] ?? mode;
+const eligibilityNotes = publicModeOptions.map((mode) => {
+  const requirements = rankingEligibilityByMode[mode];
+  const label = modeLabels[mode];
   const rdRequirement = requirements.maxRd === null ? "" : ` and an RD below ${requirements.maxRd}`;
   return `A player needs at least ${requirements.minGames} ${mode} games in that month${rdRequirement} to appear in the monthly ${label.toLowerCase()} rankings.`;
 });
