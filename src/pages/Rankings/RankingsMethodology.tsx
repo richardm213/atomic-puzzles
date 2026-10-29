@@ -61,6 +61,9 @@ const eligibilityNotes = publicModeOptions.map((mode) => {
   const requirements = rankingEligibilityByMode[mode];
   const label = modeLabels[mode];
   const rdRequirement = requirements.maxRd === null ? "" : ` and an RD below ${requirements.maxRd}`;
+  if (mode === "atomic960") {
+    return `A player needs an RD below ${requirements.maxRd} to appear in the monthly ${label.toLowerCase()} rankings.`;
+  }
   return `A player needs at least ${requirements.minGames} ${mode} games in that month${rdRequirement} to appear in the monthly ${label.toLowerCase()} rankings.`;
 });
 

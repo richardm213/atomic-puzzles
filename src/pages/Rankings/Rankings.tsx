@@ -587,6 +587,8 @@ const LeaderboardView = ({ selectedPeriod }: { selectedPeriod: RankingPeriod }) 
               >
                 {selectedPeriod === "yearly"
                   ? `Requirement: ${eligibilityMinimum}+ games with RD less than 60 this year.`
+                  : selectedMode === "atomic960"
+                    ? `Requirement: RD below ${rankingEligibilityByMode.atomic960.maxRd}.`
                   : `Requirements: ${eligibilityMinimum}+ games this month${
                       rankingEligibilityByMode[selectedMode]?.maxRd === null
                         ? "."
