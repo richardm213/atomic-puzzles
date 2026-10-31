@@ -105,21 +105,8 @@ export const PredictionMarketPage = () => {
     );
 
     for (const bet of personalBets) {
-      let pnl: number;
-      if (bet.status !== "open") {
-        pnl = bet.payout - bet.totalCost;
-      } else {
-        const state = marketStateById.get(bet.marketId);
-        const outcomeBook = bet.predictionOutcome ? state?.book[bet.predictionOutcome] : undefined;
-        const bestBid = outcomeBook?.bids[0]?.priceCents;
-        const bestAsk = outcomeBook?.asks[0]?.priceCents;
-        const markPrice =
-          bestBid !== undefined && bestAsk !== undefined
-            ? (bestBid + bestAsk) / 2
-            : (bestBid ?? bestAsk ?? bet.priceCents);
-        const markedValue = (bet.potentialPayout * markPrice) / 100;
-        pnl = markedValue - bet.totalCost;
-      }
+      if (bet.status === "open") continue;
+      const pnl = bet.payout - bet.totalCost;
 
       pnlByMarketId.set(bet.marketId, (pnlByMarketId.get(bet.marketId) ?? 0) + pnl);
     }
@@ -128,10 +115,14 @@ export const PredictionMarketPage = () => {
       if (Math.abs(pnl) < 0.005) pnlByMarketId.set(marketId, 0);
     }
     return pnlByMarketId;
-  }, [isAuthenticated, legacyBetsQuery.data, marketGroup, marketStateById, marketStates, username]);
-  const personalMarketPnl = personalMarketPnlById.size
+  }, [isAuthenticated, legacyBetsQuery.data, marketGroup, marketStates, username]);
+  const personalMarketPnlTotal = personalMarketPnlById.size
     ? [...personalMarketPnlById.values()].reduce((total, pnl) => total + pnl, 0)
     : null;
+  const personalMarketPnl =
+    personalMarketPnlTotal !== null && Math.abs(personalMarketPnlTotal) >= 0.005
+      ? personalMarketPnlTotal
+      : null;
   const activeMarketIndex = marketDefinitions.findIndex((market) => market.id === activeMarketId);
   const coinQuery = useQuery({
     ...coinSummaryQueryOptions(username),
