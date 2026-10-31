@@ -195,6 +195,7 @@ const exchangeOrderColumns = [
   "filled_quantity",
   "remaining_quantity",
   "status",
+  "expires_at",
   "created_at",
   "updated_at",
 ].join(",");

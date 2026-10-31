@@ -6,6 +6,7 @@ export type PredictionBookOrder = {
   price_cents: number;
   remaining_quantity: number;
   status: string;
+  expires_at?: string | null;
 };
 
 export type PredictionPositionFill = {
@@ -22,7 +23,7 @@ export type PredictionPositionFill = {
 const oppositeOutcome = (outcome: "yes" | "no") => (outcome === "yes" ? "no" : "yes");
 const oppositeSide = (side: "buy" | "sell") => (side === "buy" ? "sell" : "buy");
 
-export const buildPredictionBook = (orders: PredictionBookOrder[]) => {
+export const buildPredictionBook = (orders: PredictionBookOrder[], now = new Date()) => {
   const levels = {
     yes: { buy: new Map<number, number>(), sell: new Map<number, number>() },
     no: { buy: new Map<number, number>(), sell: new Map<number, number>() },
@@ -39,6 +40,7 @@ export const buildPredictionBook = (orders: PredictionBookOrder[]) => {
   };
 
   for (const order of orders) {
+    if (order.expires_at && Date.parse(order.expires_at) <= now.getTime()) continue;
     if (!["open", "partial"].includes(order.status) || order.remaining_quantity <= 0) continue;
     addLevel(order.outcome, order.side, order.price_cents, order.remaining_quantity);
     addLevel(
@@ -66,9 +68,7 @@ export const buildPredictionBook = (orders: PredictionBookOrder[]) => {
 export const calculatePredictionPositionCost = (
   fills: PredictionPositionFill[],
   username: string,
-  initialPositions?: Partial<
-    Record<"yes" | "no", { quantity: number; costCents: number }>
-  >,
+  initialPositions?: Partial<Record<"yes" | "no", { quantity: number; costCents: number }>>,
 ) => {
   const normalizedUsername = username.toLowerCase();
   const positions = {

@@ -1096,9 +1096,12 @@ export const BettingPage = () => {
                                   orders,
                                 })
                               }
-                              onSelect={(_side, priceCents) =>
-                                choosePredictionOutcome(definition.id, outcome, priceCents)
-                              }
+                              onSelect={(side, priceCents, quantity) => {
+                                choosePredictionOutcome(definition.id, outcome, priceCents);
+                                if (side === "ask") {
+                                  setPredictionQuantityInput(String(quantity));
+                                }
+                              }}
                             />
                           )}
                         />

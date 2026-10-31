@@ -48,6 +48,22 @@ describe("prediction order-book normalization", () => {
     expect(book.no.bids[0]!.priceCents).toBeLessThan(book.no.asks[0]!.priceCents);
   });
 
+  it("removes an order from the visible book at its expiration instant", () => {
+    const expiresAt = "2026-10-31T20:00:00Z";
+    const expiringOrder = order({
+      outcome: "no",
+      side: "buy",
+      price_cents: 88,
+      remaining_quantity: 8_333,
+      expires_at: expiresAt,
+    });
+
+    expect(buildPredictionBook([expiringOrder], new Date("2026-10-31T19:59:59Z")).yes.asks).toEqual(
+      [{ priceCents: 12, quantity: 8_333 }],
+    );
+    expect(buildPredictionBook([expiringOrder], new Date(expiresAt)).yes.asks).toEqual([]);
+  });
+
   it("keeps average position cost accurate through buys, sells, and paired fills", () => {
     const fill = (
       id: number,

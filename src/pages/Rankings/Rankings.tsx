@@ -78,7 +78,7 @@ const getFirstChessComAlias = (aliasesLookup: AliasLookup, username: string): st
 
 const getFirstPyChessAlias = (aliasesLookup: AliasLookup, username: string): string => {
   const entry = aliasesLookup.get(username) ?? aliasesLookup.get(normalizeUsername(username));
-  return entry?.pyChessAliases[0] ?? "";
+  return (entry?.pyChessAliases[0] ?? "").toLowerCase();
 };
 
 const monthLabelFromDate = (date: Date): string =>

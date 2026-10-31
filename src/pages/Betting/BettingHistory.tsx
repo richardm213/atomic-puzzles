@@ -35,6 +35,15 @@ const BetHistoryUsername = ({ username }: { username: string }) => {
   );
 };
 
+const BetHistoryBettorLink = ({ username }: { username: string }) => {
+  const { displayName, elementRef } = useUnderscoreUsernameCutoff<HTMLAnchorElement>(username);
+  return (
+    <PlayerLink ref={elementRef} username={username} title={username} aria-label={username}>
+      {displayName}
+    </PlayerLink>
+  );
+};
+
 const BetHistoryTable = ({
   bets,
   markets,
@@ -109,9 +118,7 @@ const BetHistoryTable = ({
                 </th>
                 {showUsername ? (
                   <td className="betHistoryBettor" data-label="Bettor">
-                    <PlayerLink username={bet.username}>
-                      <BetHistoryUsername username={bet.username} />
-                    </PlayerLink>
+                    <BetHistoryBettorLink username={bet.username} />
                   </td>
                 ) : null}
                 <td className="betHistoryNumber" data-label="Price">

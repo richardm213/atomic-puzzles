@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import type { AriaRole, MouseEventHandler, ReactNode } from "react";
+import { type AriaRole, forwardRef, type MouseEventHandler, type ReactNode } from "react";
 
 type PlayerLinkProps = {
   "aria-label"?: string | undefined;
@@ -12,8 +12,14 @@ type PlayerLinkProps = {
   username: string;
 };
 
-export const PlayerLink = ({ children, username, ...props }: PlayerLinkProps) => (
-  <Link {...props} to="/@/$username" params={{ username }}>
-    {children}
-  </Link>
+export const PlayerLink = forwardRef<HTMLAnchorElement, PlayerLinkProps>(
+  ({ children, username, ...props }, ref) => {
+    return (
+      <Link ref={ref} {...props} to="/@/$username" params={{ username }}>
+        {children}
+      </Link>
+    );
+  },
 );
+
+PlayerLink.displayName = "PlayerLink";
