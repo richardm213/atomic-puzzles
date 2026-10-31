@@ -305,7 +305,7 @@ begin
     or normalized_outcome not in ('yes', 'no')
     or normalized_side not in ('buy', 'sell')
     or p_price_cents not between 1 and 99
-    or p_quantity not between 1 and 10000 then
+    or p_quantity not between 1 and 100000 then
     raise exception 'Invalid prediction order';
   end if;
 
@@ -715,8 +715,8 @@ begin
   if p_price_cents < 1 or p_price_cents > 99 then
     raise exception 'Prediction order price must be between 1 and 99 cents';
   end if;
-  if p_quantity < 1 or p_quantity > 10000 then
-    raise exception 'Prediction order quantity must be between 1 and 10000';
+  if p_quantity < 1 or p_quantity > 100000 then
+    raise exception 'Prediction order quantity must be between 1 and 100000';
   end if;
 
   select * into order_row from public.prediction_orders where id = p_order_id;

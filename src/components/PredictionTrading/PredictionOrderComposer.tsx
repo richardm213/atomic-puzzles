@@ -8,6 +8,7 @@ import type {
   PredictionOutcome,
 } from "../../lib/predictionMarkets/predictionMarkets";
 import {
+  MAX_PREDICTION_ORDER_QUANTITY,
   predictionOutcomeAbbreviation,
   predictionOutcomeCountryCode,
   predictionOutcomeLabel,
@@ -123,7 +124,7 @@ export const PredictionOrderComposer = ({
           type="number"
           inputMode="numeric"
           min="1"
-          max="10000"
+          max={MAX_PREDICTION_ORDER_QUANTITY}
           step="1"
           value={quantityInput}
           onChange={(event) => onQuantityChange(event.target.value)}

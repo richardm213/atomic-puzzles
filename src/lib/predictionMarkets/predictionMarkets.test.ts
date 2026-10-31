@@ -4,6 +4,7 @@ import {
   formatPredictionAveragePrice,
   formatPredictionChance,
   formatPredictionShares,
+  predictionBuyOrderCost,
   type PredictionMarketState,
   predictionMarketStateResultSchema,
   predictionMarketVolume,
@@ -47,6 +48,21 @@ describe("quotePredictionBuy", () => {
       fillCostCoins: 10,
       averageFillPriceCents: 1000 / 30,
     });
+  });
+
+  it("prices a multi-level selection at each executed book level", () => {
+    const quote = quotePredictionBuy(
+      [
+        { priceCents: 80, quantity: 6_156 },
+        { priceCents: 83, quantity: 5_883 },
+      ],
+      83,
+      12_039,
+    );
+
+    expect(quote.restingQuantity).toBe(0);
+    expect(quote.fillCostCoins).toBeCloseTo(9_807.69);
+    expect(predictionBuyOrderCost(quote, 83)).toBeCloseTo(10_003.8438);
   });
 
   it("charges two percent only on the immediately executed value", () => {

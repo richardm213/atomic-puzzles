@@ -69,7 +69,7 @@ export const PredictionOrderBook = ({
             className={`predictionSharedBookLevel predictionSharedBookLevel--${side}`}
             style={{ "--prediction-book-bar": `${barWidth}%` } as CSSProperties}
             aria-label={`${side === "ask" ? "Ask" : "Bid"} ${level.priceCents} cents, ${level.quantity.toLocaleString()} contracts, ${formatCoinBalance(coinValue)} coins`}
-            onClick={() => onSelect(side, level.priceCents, level.quantity)}
+            onClick={() => onSelect(side, level.priceCents, cumulativeQuantity)}
           >
             <strong>{level.priceCents}¢</strong>
             <span>{side === "ask" ? "Ask" : "Bid"}</span>

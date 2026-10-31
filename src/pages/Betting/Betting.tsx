@@ -54,7 +54,9 @@ import {
 import { usePredictionMarketRealtime } from "../../lib/predictionMarkets/predictionMarketRealtime";
 import {
   formatPredictionChance,
+  MAX_PREDICTION_ORDER_QUANTITY,
   placePredictionOrder,
+  predictionBuyOrderCost,
   predictionMarketVolume,
   type PredictionOrder,
   type PredictionOutcome,
@@ -392,7 +394,9 @@ export const BettingPage = () => {
   const validPredictionPrice =
     Number.isInteger(predictionPrice) && predictionPrice >= 1 && predictionPrice <= 99;
   const validPredictionQuantity =
-    Number.isInteger(predictionQuantity) && predictionQuantity >= 1 && predictionQuantity <= 10_000;
+    Number.isInteger(predictionQuantity) &&
+    predictionQuantity >= 1 &&
+    predictionQuantity <= MAX_PREDICTION_ORDER_QUANTITY;
   const selectedPredictionOutcome = predictionSelection?.outcome ?? "yes";
   const selectedPredictionSportsbookPrice =
     selectedPredictionState?.book[selectedPredictionOutcome].asks[0]?.priceCents;
@@ -409,12 +413,10 @@ export const BettingPage = () => {
     validPredictionPrice ? predictionPrice : 0,
     validPredictionQuantity ? predictionQuantity : 0,
   );
-  const predictionOrderValue =
-    validPredictionPrice && validPredictionQuantity
-      ? (predictionPrice * predictionQuantity) / 100
-      : 0;
-  const predictionEstimatedFee = predictionTakerFee(predictionBuyQuote.fillCostCoins);
-  const predictionEstimatedTotal = predictionOrderValue + predictionEstimatedFee;
+  const predictionEstimatedTotal = predictionBuyOrderCost(
+    predictionBuyQuote,
+    validPredictionPrice ? predictionPrice : 0,
+  );
   const predictionEstimatedProfit = predictionQuantity - predictionEstimatedTotal;
   const predictionStake = Number(predictionStakeInput);
   const predictionSportsbookStakeLimit = validPredictionPrice

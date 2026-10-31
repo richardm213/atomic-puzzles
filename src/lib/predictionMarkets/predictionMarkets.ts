@@ -12,7 +12,7 @@ export type {
   PredictionOrderSide,
   PredictionOutcome,
 } from "../../../shared/domain/betting";
-export { predictionOutcomes } from "../../../shared/domain/betting";
+export { MAX_PREDICTION_ORDER_QUANTITY, predictionOutcomes } from "../../../shared/domain/betting";
 
 export type PredictionMarketId = string;
 export type PredictionMarketDefinition = {
@@ -220,6 +220,14 @@ export const quotePredictionBuy = (
   const { executedValueCoins, ...details } = quote;
   return { ...details, fillCostCoins: executedValueCoins };
 };
+
+export const predictionBuyOrderCost = (
+  quote: { fillCostCoins: number; restingQuantity: number },
+  limitPriceCents: number,
+): number =>
+  quote.fillCostCoins +
+  (quote.restingQuantity * limitPriceCents) / 100 +
+  predictionTakerFee(quote.fillCostCoins);
 
 export const quotePredictionSell = (
   bids: readonly PredictionBookLevel[],

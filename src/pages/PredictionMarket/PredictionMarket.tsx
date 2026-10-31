@@ -35,7 +35,9 @@ import { usePredictionMarketRealtime } from "../../lib/predictionMarkets/predict
 import {
   cancelPredictionOrder,
   formatPredictionShares,
+  MAX_PREDICTION_ORDER_QUANTITY,
   placePredictionOrder,
+  predictionBuyOrderCost,
   type PredictionMarketDefinition,
   type PredictionMarketId,
   predictionMarketVolume,
@@ -156,8 +158,8 @@ export const PredictionMarketPage = () => {
   const price = Number(priceInput);
   const quantity = Number(quantityInput);
   const validPrice = Number.isInteger(price) && price >= 1 && price <= 99;
-  const validQuantity = Number.isInteger(quantity) && quantity >= 1 && quantity <= 10_000;
-  const orderValue = validPrice && validQuantity ? (price * quantity) / 100 : 0;
+  const validQuantity =
+    Number.isInteger(quantity) && quantity >= 1 && quantity <= MAX_PREDICTION_ORDER_QUANTITY;
   const buyQuote = quotePredictionBuy(
     marketState?.book[outcome].asks ?? [],
     validPrice ? price : 0,
@@ -171,7 +173,7 @@ export const PredictionMarketPage = () => {
   const estimatedTakerFee = predictionTakerFee(
     side === "buy" ? buyQuote.fillCostCoins : sellQuote.proceedsCoins,
   );
-  const estimatedBuyTotal = orderValue + estimatedTakerFee;
+  const estimatedBuyTotal = predictionBuyOrderCost(buyQuote, validPrice ? price : 0);
   const estimatedBuyProfit = quantity - estimatedBuyTotal;
   const estimatedSellProceeds = Math.max(0, sellQuote.proceedsCoins - estimatedTakerFee);
   const immediateBuyQuantity = buyQuote.filledQuantity;

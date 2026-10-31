@@ -1,4 +1,5 @@
 export const MIN_BET_AMOUNT = 1;
+export const MAX_PREDICTION_ORDER_QUANTITY = 100_000;
 export const AWC_NOT_TO_WIN_MARKET_ID = "awc2026-winner-no";
 
 export const predictionOutcomes = ["yes", "no"] as const;

@@ -150,7 +150,7 @@ begin
     or normalized_outcome not in ('yes', 'no')
     or normalized_side not in ('buy', 'sell')
     or p_price_cents not between 1 and 99
-    or p_quantity not between 1 and 10000 then
+    or p_quantity not between 1 and 100000 then
     raise exception 'Invalid prediction order';
   end if;
 

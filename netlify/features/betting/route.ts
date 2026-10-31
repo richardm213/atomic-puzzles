@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   isAwcNotToWinSelfBet,
   isTournamentBetOnOpponent,
+  MAX_PREDICTION_ORDER_QUANTITY,
   MIN_BET_AMOUNT,
 } from "../../../shared/domain/betting";
 import { voteValueSchema } from "../../../shared/domain/voting";
@@ -47,7 +48,7 @@ const bodySchema = z.discriminatedUnion("action", [
     outcome: z.enum(["yes", "no"]),
     side: z.enum(["buy", "sell"]),
     priceCents: z.number().int().min(1).max(99),
-    quantity: z.number().int().min(1).max(10_000),
+    quantity: z.number().int().min(1).max(MAX_PREDICTION_ORDER_QUANTITY),
   }),
   z.object({
     action: z.literal("cancelExchangeOrder"),
@@ -59,7 +60,7 @@ const bodySchema = z.discriminatedUnion("action", [
     marketId: exchangeMarketIdSchema,
     orderId: z.number().int().positive(),
     priceCents: z.number().int().min(1).max(99),
-    quantity: z.number().int().min(1).max(10_000),
+    quantity: z.number().int().min(1).max(MAX_PREDICTION_ORDER_QUANTITY),
   }),
   z.object({
     action: z.literal("suggest"),

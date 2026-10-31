@@ -8,6 +8,7 @@ import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   amendPredictionOrder,
   cancelPredictionOrder,
+  MAX_PREDICTION_ORDER_QUANTITY,
   predictionDisplayedOrderPrice,
   type PredictionOrder,
   type PredictionOrderMutationResult,
@@ -69,7 +70,7 @@ export const PredictionOrderEditor = ({
     selectedOrder &&
     Number.isInteger(quantity) &&
     quantity >= 1 &&
-    quantity <= 10_000 &&
+    quantity <= MAX_PREDICTION_ORDER_QUANTITY &&
     Number.isInteger(displayedPrice) &&
     displayedPrice >= 1 &&
     displayedPrice <= 99;
@@ -127,7 +128,7 @@ export const PredictionOrderEditor = ({
             <input
               type="number"
               min="1"
-              max="10000"
+              max={MAX_PREDICTION_ORDER_QUANTITY}
               step="1"
               inputMode="numeric"
               value={quantityInput}
