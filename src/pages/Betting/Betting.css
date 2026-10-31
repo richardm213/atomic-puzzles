@@ -462,7 +462,7 @@
 }
 
 .bettingPredictionBookResolved--profit {
-  color: var(--color-success);
+  color: var(--color-market-yes);
 }
 
 .bettingPredictionBookResolved--loss {
@@ -1067,11 +1067,11 @@
 }
 
 .betHistoryPlayer--yes > span {
-  background: var(--color-success);
+  background: var(--color-market-yes);
 }
 
 .betHistoryPlayer--no > span {
-  background: var(--color-danger);
+  background: var(--color-market-no);
 }
 
 .betHistoryPlayer strong {
@@ -1217,9 +1217,9 @@
 }
 
 .betStatus--prediction {
-  border-color: color-mix(in srgb, var(--color-success) 48%, var(--color-border));
-  background: color-mix(in srgb, var(--color-success) 8%, transparent);
-  color: var(--color-success);
+  border-color: color-mix(in srgb, var(--color-market-yes) 48%, var(--color-border));
+  background: color-mix(in srgb, var(--color-market-yes) 8%, transparent);
+  color: var(--color-market-yes);
 }
 
 .bettingLoginPrompt {
