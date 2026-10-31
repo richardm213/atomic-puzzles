@@ -130,6 +130,39 @@ const SOLUTION_UNLOCK_HINT = "Make at least one attempt before viewing the solut
 const SERVER_CUSTOM_SET_ID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+const PuzzleElapsedTimer = ({
+  elapsedTimeMs,
+  running,
+  readElapsedTimeMs,
+}: {
+  elapsedTimeMs: number;
+  running: boolean;
+  readElapsedTimeMs: () => number;
+}) => {
+  const [displayedElapsedTimeMs, setDisplayedElapsedTimeMs] = useState(elapsedTimeMs);
+
+  useEffect(() => {
+    setDisplayedElapsedTimeMs(elapsedTimeMs);
+    if (!running) return undefined;
+
+    const updateDisplayedTime = (): void => {
+      setDisplayedElapsedTimeMs(readElapsedTimeMs());
+    };
+    const interval = window.setInterval(updateDisplayedTime, 250);
+
+    return () => window.clearInterval(interval);
+  }, [elapsedTimeMs, readElapsedTimeMs, running]);
+
+  const formattedElapsedTime = formatElapsedDuration(displayedElapsedTimeMs);
+
+  return (
+    <div className="puzzleElapsedTimer desktop" aria-label={`Elapsed time ${formattedElapsedTime}`}>
+      <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
+      <span>{formattedElapsedTime}</span>
+    </div>
+  );
+};
+
 export const PuzzleSolverPage = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -344,7 +377,9 @@ export const PuzzleSolverPage = () => {
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
 
-    const mediaQuery = window.matchMedia("(max-width: 680px)");
+    const mediaQuery = window.matchMedia(
+      "(max-width: 680px), (max-width: 1024px) and (max-height: 500px) and (orientation: landscape)",
+    );
     const updateLayout = () => setIsMobileLayout(mediaQuery.matches);
     updateLayout();
 
@@ -907,28 +942,29 @@ export const PuzzleSolverPage = () => {
   }, [activePuzzleKey, fen, resetCopyFeedback, resetPuzzleUiState]);
 
   useEffect(() => {
-    if (!elapsedTimerRunning) return;
+    if (!elapsedTimerRunning || elapsedTimerStartedAtRef.current === null) return undefined;
+    const remainingTime = Math.max(
+      0,
+      MAX_PUZZLE_ATTEMPT_DURATION_MS -
+        (window.performance.now() - elapsedTimerStartedAtRef.current),
+    );
+    const timeout = window.setTimeout(() => {
+      elapsedTimeMsRef.current = MAX_PUZZLE_ATTEMPT_DURATION_MS;
+      elapsedTimerExpiredRef.current = true;
+      elapsedTimerStartedAtRef.current = null;
+      setElapsedTimeMs(MAX_PUZZLE_ATTEMPT_DURATION_MS);
+      setElapsedTimerRunning(false);
+    }, remainingTime);
 
-    const updateElapsedTime = (): void => {
-      if (elapsedTimerStartedAtRef.current === null) return;
-      const elapsed = window.performance.now() - elapsedTimerStartedAtRef.current;
-      if (elapsed >= MAX_PUZZLE_ATTEMPT_DURATION_MS) {
-        elapsedTimeMsRef.current = MAX_PUZZLE_ATTEMPT_DURATION_MS;
-        elapsedTimerExpiredRef.current = true;
-        elapsedTimerStartedAtRef.current = null;
-        setElapsedTimeMs(MAX_PUZZLE_ATTEMPT_DURATION_MS);
-        setElapsedTimerRunning(false);
-        return;
-      }
-      elapsedTimeMsRef.current = elapsed;
-      setElapsedTimeMs(elapsedTimeMsRef.current);
-    };
-    const interval = window.setInterval(updateElapsedTime, 250);
-
-    return () => {
-      window.clearInterval(interval);
-    };
+    return () => window.clearTimeout(timeout);
   }, [elapsedTimerRunning]);
+
+  const readElapsedTimeMs = useCallback((): number => {
+    if (elapsedTimerStartedAtRef.current === null) return elapsedTimeMsRef.current;
+    const elapsed = window.performance.now() - elapsedTimerStartedAtRef.current;
+    elapsedTimeMsRef.current = Math.min(elapsed, MAX_PUZZLE_ATTEMPT_DURATION_MS);
+    return elapsedTimeMsRef.current;
+  }, []);
 
   useEffect(() => {
     if (!mobileFeedback) return undefined;
@@ -1810,13 +1846,11 @@ export const PuzzleSolverPage = () => {
               {renderUserPuzzleRating()}
               {hasAttemptedActivePuzzle ? renderPuzzleRating() : null}
               {!isMobileLayout && showPuzzleTimer ? (
-                <div
-                  className="puzzleElapsedTimer desktop"
-                  aria-label={`Elapsed time ${formatElapsedDuration(elapsedTimeMs)}`}
-                >
-                  <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
-                  <span>{formatElapsedDuration(elapsedTimeMs)}</span>
-                </div>
+                <PuzzleElapsedTimer
+                  elapsedTimeMs={elapsedTimeMs}
+                  running={elapsedTimerRunning}
+                  readElapsedTimeMs={readElapsedTimeMs}
+                />
               ) : null}
               {hasPersistedAttempt ? (
                 <span

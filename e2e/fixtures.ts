@@ -40,6 +40,13 @@ const installApiMocks = async (page: Page) => {
     jsonResponse(route, { user: { username: "e2e-player" } }),
   );
   await page.route("**/api/notifications**", (route) => jsonResponse(route, []));
+  await page.route("**/api/public-data?**", (route) => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get("resource") === "puzzle-solver-index") {
+      return jsonResponse(route, { rows: puzzleRows.map(({ id }) => ({ id })) });
+    }
+    return jsonResponse(route, { rows: [] });
+  });
   await page.route("**/api/puzzles/play", async (route) => {
     const body = route.request().postDataJSON() as { puzzleIds?: Array<number | string> };
     const requestedIds = new Set((body.puzzleIds ?? []).map(String));

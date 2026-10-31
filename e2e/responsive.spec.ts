@@ -36,6 +36,32 @@ test("puzzle solver keeps its primary controls within the mobile viewport", asyn
   expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);
 });
 
+test("puzzle solver uses the compact mobile layout on a wide phone in landscape", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 932, height: 430 });
+  await page.goto("/solve/101");
+  await expect(page.locator(".cg-board")).toBeVisible();
+  await expect(page.locator(".mobilePuzzleStatus")).toBeVisible();
+  await expect(page.getByLabel("Puzzle navigation").last()).toBeVisible();
+
+  const layout = await page.evaluate(() => {
+    const board = document.querySelector(".boardFrame")?.getBoundingClientRect();
+    const controls = document.querySelector(".mobileBottomNav")?.getBoundingClientRect();
+    return {
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+      boardRight: board?.right ?? 0,
+      controlsLeft: controls?.left ?? 0,
+      controlsRight: controls?.right ?? Number.POSITIVE_INFINITY,
+    };
+  });
+
+  expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth + 1);
+  expect(layout.controlsLeft).toBeGreaterThanOrEqual(layout.boardRight);
+  expect(layout.controlsRight).toBeLessThanOrEqual(layout.clientWidth);
+});
+
 for (const path of ["/analysis", "/practice"] as const) {
   test(`${path} light mode stays within the mobile viewport`, async ({ page }) => {
     await page.addInitScript(() => {

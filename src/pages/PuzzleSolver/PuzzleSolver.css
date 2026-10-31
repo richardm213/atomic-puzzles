@@ -73,6 +73,10 @@ body:has(.puzzlePage),
   overflow-y: auto;
 }
 
+body:has(.puzzlePage) {
+  min-width: 0;
+}
+
 .puzzlePanel {
   align-self: start;
   min-width: 0;
@@ -1390,7 +1394,8 @@ button.puzzleRatingBadge.editable:active {
   color: var(--color-danger);
 }
 
-@media (max-width: 680px) {
+@media (max-width: 680px),
+  (max-width: 1024px) and (max-height: 500px) and (orientation: landscape) {
   .userPuzzleRating.mobile,
   .puzzleRatingBadge.mobile,
   .puzzleRatingEditor.mobile select,
@@ -2201,7 +2206,8 @@ button.puzzleRatingBadge.editable:active {
   }
 }
 
-@media (max-width: 680px) {
+@media (max-width: 680px),
+  (max-width: 1024px) and (max-height: 500px) and (orientation: landscape) {
   .page.puzzlePage {
     grid-template-columns: 1fr;
     align-content: start;
@@ -2365,6 +2371,7 @@ button.puzzleRatingBadge.editable:active {
 
   .mobilePuzzleStatus {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: center;
     gap: 7px;
@@ -2675,7 +2682,7 @@ button.puzzleRatingBadge.editable:active {
   }
 }
 
-@media (max-width: 680px) and (max-height: 500px) and (orientation: landscape) {
+@media (max-width: 1024px) and (max-height: 500px) and (orientation: landscape) {
   .page.puzzlePage {
     grid-template-columns: minmax(0, calc(100svh - 82px)) minmax(0, 1fr);
     gap: 10px;
@@ -2700,9 +2707,13 @@ button.puzzleRatingBadge.editable:active {
   .mobilePuzzleStatus,
   .mobileWorkflowPanel,
   .mobileBottomNav {
-    left: calc(100svh - 64px);
+    left: calc(100svh + 24px);
     right: max(8px, env(safe-area-inset-right));
     width: auto;
+  }
+
+  .mobilePuzzlePlayers {
+    display: none;
   }
 
   .mobilePuzzleStatus {
@@ -2713,7 +2724,7 @@ button.puzzleRatingBadge.editable:active {
   }
 
   .mobileWorkflowPanel {
-    top: 110px;
+    top: 146px;
     bottom: auto;
   }
 
@@ -2722,7 +2733,7 @@ button.puzzleRatingBadge.editable:active {
   }
 
   .mobileActionCard .puzzleInfoStack {
-    max-height: min(48svh, 180px);
+    max-height: min(48svh, calc(100svh - 212px), 180px);
   }
 
   .mobileBottomNav {

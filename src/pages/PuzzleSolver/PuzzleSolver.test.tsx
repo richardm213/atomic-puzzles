@@ -1010,6 +1010,29 @@ describe("PuzzleSolverPage solution options", () => {
     dateNow.mockRestore();
   });
 
+  it("updates the elapsed timer without rerendering the chessboard", async () => {
+    let now = 0;
+    const timerTicks: Array<() => void> = [];
+    const performanceNow = vi.spyOn(window.performance, "now").mockImplementation(() => now);
+    const setInterval = vi.spyOn(window, "setInterval").mockImplementation((callback) => {
+      timerTicks.push(callback as () => void);
+      return 1 as unknown as ReturnType<typeof window.setInterval>;
+    });
+
+    render(<PuzzleSolverPage />);
+    await screen.findByTestId("mock-board");
+    await waitFor(() => expect(timerTicks.length).toBeGreaterThan(0));
+    const boardRenderCount = mocks.chessboardProps.length;
+
+    now = 1_250;
+    act(() => timerTicks.forEach((tick) => tick()));
+
+    expect(screen.getByLabelText("Elapsed time 0:01")).toBeInTheDocument();
+    expect(mocks.chessboardProps).toHaveLength(boardRenderCount);
+    setInterval.mockRestore();
+    performanceNow.mockRestore();
+  });
+
   it("offers exits when the final puzzle in an ordered set is solved", async () => {
     mocks.routeParams = {
       puzzleId: "1369",
