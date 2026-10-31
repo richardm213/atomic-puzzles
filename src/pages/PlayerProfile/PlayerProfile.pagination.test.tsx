@@ -8,11 +8,27 @@ import { AppSettingsProvider } from "../../context/AppSettings";
 import { profileQueryKeys } from "../../features/profile/profileQueries";
 import { getProfileRankingMonthKey } from "../../features/profile/profileTrophies";
 import { isoMonthStartFromMonthKey } from "../../lib/archive/leaderboard";
+import type { ParsedMatch } from "../../lib/matches/data";
 import { aliasQueryKeys } from "../../lib/users/aliasQueries";
 import { userQueryKeys } from "../../lib/users/userQueries";
 import { PlayerProfilePage } from "./PlayerProfile";
 
 const loadRawMatchesByMode = vi.hoisted(() => vi.fn());
+
+const match = (id: string, startTs: number): ParsedMatch => ({
+  match_id: id,
+  mode: "blitz",
+  players: ["alice", "bob"],
+  start_ts: startTs,
+  time_control: "60+0",
+  source: "lobby",
+  tournament_id: null,
+  games: [{ id: `${id}-game`, game_index: 1, winner: "white", white: "alice", black: "bob" }],
+  ratings: {
+    alice: { before_rating: 1800, after_rating: 1805, before_rd: 50, after_rd: 49 },
+    bob: { before_rating: 1750, after_rating: 1745, before_rd: 50, after_rd: 49 },
+  },
+});
 vi.mock("../../lib/matches/data", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../lib/matches/data")>()),
   loadRawMatchesByMode,
@@ -176,6 +192,25 @@ describe("estimated player profiles", () => {
 });
 
 describe("profile match pagination", () => {
+  it("opens and closes match details from the row without a separate toggle button", async () => {
+    loadRawMatchesByMode.mockResolvedValue({ matches: [match("m1", 100)], total: 1 });
+    renderProfile();
+
+    const opponentLink = await screen.findByText("bob (1745)");
+    const matchRow = opponentLink.closest("tr");
+    expect(matchRow).not.toBeNull();
+    expect(matchRow).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("button", { name: /match details/i })).not.toBeInTheDocument();
+
+    fireEvent.click(matchRow!);
+    expect(matchRow).toHaveAttribute("aria-expanded", "true");
+    expect(await screen.findByText("m1-game")).toBeInTheDocument();
+
+    fireEvent.keyDown(matchRow!, { key: "Enter" });
+    expect(matchRow).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("m1-game")).not.toBeInTheDocument();
+  });
+
   it("loads all modes by default", async () => {
     loadRawMatchesByMode.mockResolvedValue({ matches: [], total: 0 });
 

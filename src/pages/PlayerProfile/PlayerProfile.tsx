@@ -27,7 +27,6 @@ import { MatchPageLink } from "../../components/MatchPageLink/MatchPageLink";
 import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { ProfileMetricCard } from "../../components/ProfileMetricCard/ProfileMetricCard";
-import { RowExpansionButton } from "../../components/RowExpansionButton/RowExpansionButton";
 import { Seo } from "../../components/Seo/Seo";
 import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFilterChecks";
 import { TimeControlFields } from "../../components/TimeControlFields/TimeControlFields";
@@ -1384,6 +1383,18 @@ export const PlayerProfilePage = ({
                               <Fragment key={matchKey}>
                                 <tr
                                   className={`expandableMatchRow${isExpanded ? " expanded" : ""}`}
+                                  tabIndex={0}
+                                  aria-expanded={isExpanded}
+                                  onClick={(event) => {
+                                    if ((event.target as HTMLElement).closest("a, button")) return;
+                                    toggleMatchKey(matchKey);
+                                  }}
+                                  onKeyDown={(event) => {
+                                    if (event.target !== event.currentTarget) return;
+                                    if (event.key !== "Enter" && event.key !== " ") return;
+                                    event.preventDefault();
+                                    toggleMatchKey(matchKey);
+                                  }}
                                 >
                                   <td>
                                     <LichessGameLink
@@ -1447,11 +1458,6 @@ export const PlayerProfilePage = ({
                                   </td>
                                   <td>
                                     <div className="tableRowActions">
-                                      <RowExpansionButton
-                                        expanded={isExpanded}
-                                        label={`${isExpanded ? "Hide" : "Show"} match details`}
-                                        onToggle={() => toggleMatchKey(matchKey)}
-                                      />
                                       <MatchPageLink
                                         match={{
                                           ...match,

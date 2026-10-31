@@ -1453,6 +1453,15 @@
   overflow-wrap: anywhere;
 }
 
+.profileMatchTable .expandableMatchRow {
+  cursor: pointer;
+}
+
+.profileMatchTable .expandableMatchRow:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
 .profileFavoriteOpponentRow td:first-child .rankingLink {
   display: block;
   width: 100%;
