@@ -10,6 +10,7 @@ import {
   predictionTakerFee,
   quotePredictionBuy,
   quotePredictionSell,
+  sortPredictionMarketsByChance,
 } from "./predictionMarkets";
 
 describe("formatPredictionChance", () => {
@@ -73,6 +74,41 @@ describe("predictionMarketVolume", () => {
     } as PredictionMarketState;
 
     expect(predictionMarketVolume(state)).toBe(411);
+  });
+});
+
+describe("sortPredictionMarketsByChance", () => {
+  it("orders strikes from highest to lowest probability and keeps ties stable", () => {
+    const definitions = [
+      { id: "low", username: "low", countryCode: "US", startingChance: 10 },
+      { id: "high", username: "high", countryCode: "US", startingChance: 70 },
+      { id: "tie", username: "tie", countryCode: "US", startingChance: 70 },
+      { id: "unknown", username: "unknown", countryCode: "US" },
+    ];
+
+    expect(
+      sortPredictionMarketsByChance(definitions, new Map()).map((market) => market.id),
+    ).toEqual(["high", "tie", "low", "unknown"]);
+  });
+
+  it("puts resolved strikes after every open strike", () => {
+    const definitions = [
+      { id: "resolved", username: "resolved", countryCode: "US", startingChance: 100 },
+      { id: "open", username: "open", countryCode: "US", startingChance: 10 },
+    ];
+    const states = new Map([
+      [
+        "resolved",
+        {
+          market: { status: "resolved", outcome: "yes", settlementPriceCents: null },
+        } as PredictionMarketState,
+      ],
+    ]);
+
+    expect(sortPredictionMarketsByChance(definitions, states).map((market) => market.id)).toEqual([
+      "open",
+      "resolved",
+    ]);
   });
 });
 

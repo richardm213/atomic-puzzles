@@ -383,6 +383,22 @@
   border-radius: 0;
 }
 
+.predictionSharedMarketPnl {
+  flex: 0 0 100%;
+  color: var(--color-text-secondary);
+  font-size: 16px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.predictionSharedMarketPnl--profit {
+  color: var(--color-success);
+}
+
+.predictionSharedMarketPnl--loss {
+  color: var(--color-danger);
+}
+
 .predictionSharedMarketResolved--price {
   color: var(--color-text-secondary);
 }

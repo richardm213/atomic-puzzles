@@ -364,6 +364,26 @@ export const predictionYesChance = (
   return latestFill.outcome === "yes" ? latestFill.priceCents : 100 - latestFill.priceCents;
 };
 
+export const sortPredictionMarketsByChance = (
+  definitions: readonly PredictionMarketDefinition[],
+  states: ReadonlyMap<PredictionMarketId, PredictionMarketState>,
+): PredictionMarketDefinition[] =>
+  definitions
+    .map((definition, index) => ({
+      chance: predictionYesChance(definition, states.get(definition.id)),
+      definition,
+      index,
+      resolved: states.get(definition.id)?.market.status === "resolved",
+    }))
+    .sort((left, right) => {
+      if (left.resolved !== right.resolved) return left.resolved ? 1 : -1;
+      if (left.chance === undefined && right.chance === undefined) return left.index - right.index;
+      if (left.chance === undefined) return 1;
+      if (right.chance === undefined) return -1;
+      return right.chance - left.chance || left.index - right.index;
+    })
+    .map(({ definition }) => definition);
+
 export const suggestedPredictionPrice = (
   definition: PredictionMarketDefinition,
   state: PredictionMarketState | undefined,

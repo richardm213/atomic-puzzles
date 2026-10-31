@@ -1,5 +1,5 @@
 .bettingPage {
-  --site-page-max-width: 1240px;
+  --site-page-max-width: 1160px;
 }
 
 .bettingPanel {
@@ -433,19 +433,40 @@
 
 .bettingPredictionBookResolved {
   display: inline-flex;
-  min-height: 38px;
   align-items: center;
-  color: var(--color-market-yes);
   font-size: 16px;
   font-weight: 650;
 }
 
-.bettingPredictionBookResolved--no {
+.bettingPredictionBookResolvedIdentity {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bettingPredictionBookResolvedSide {
+  color: var(--color-market-yes);
+  font-size: 16px;
+  font-weight: 650;
+  text-align: right;
+}
+
+.bettingPredictionBookResolvedSide--no {
   color: var(--color-market-no);
 }
 
+.bettingPredictionBookResolvedSide--price,
 .bettingPredictionBookResolved--price {
   color: var(--color-text-secondary);
+}
+
+.bettingPredictionBookResolved--profit {
+  color: var(--color-success);
+}
+
+.bettingPredictionBookResolved--loss {
+  color: var(--color-danger);
 }
 
 .betStatus--settled {
@@ -849,18 +870,30 @@
   min-width: 0;
 }
 
-.betHistoryBettorFilter {
+.betHistoryFilters {
+  display: flex;
+  align-items: end;
+  gap: var(--space-3);
   margin-bottom: var(--space-4);
 }
 
-.betHistoryBettorFilter > label {
+.betHistoryFilters > label {
+  display: grid;
+  min-width: 148px;
+  gap: var(--space-2);
+}
+
+.betHistoryFilters > label > span {
   display: block;
-  margin-bottom: var(--space-2);
   color: var(--color-subtle);
   font-size: 0.75rem;
   font-weight: 650;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+.betHistoryMarketFilter {
+  width: min(420px, 100%);
 }
 
 .betHistoryBettorFilter > div {
@@ -869,6 +902,7 @@
   gap: var(--space-2);
 }
 
+.betHistoryFilters select,
 .betHistoryBettorFilter input {
   width: min(280px, 100%);
   min-height: 40px;
@@ -880,6 +914,23 @@
   font: inherit;
 }
 
+.betHistoryFilters select {
+  width: 100%;
+  cursor: pointer;
+}
+
+.betHistoryMarketFilter select {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.betHistoryFilters select:hover,
+.betHistoryBettorFilter input:hover {
+  border-color: var(--color-border-strong);
+}
+
+.betHistoryFilters select:focus-visible,
 .betHistoryBettorFilter input:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--color-primary) 65%, white);
   outline-offset: 1px;
@@ -1496,12 +1547,29 @@
     position: static;
   }
 
+  .betHistoryFilters {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .betHistoryFilters > label,
+  .betHistoryMarketFilter {
+    width: 100%;
+  }
+
+  .betHistoryFilters select,
+  .betHistoryBettorFilter input,
+  .betHistoryBettorFilter > div {
+    width: 100%;
+  }
+
   .betHistoryTableWrap {
     overflow: visible;
     border: 0;
     background: transparent;
   }
 
+  .betHistoryFilters select,
   .betHistoryBettorFilter input,
   .betHistoryBettorFilter button {
     min-height: 44px;

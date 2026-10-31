@@ -1,6 +1,8 @@
 import "./Tournaments.css";
 
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
+import { type FormEvent, useState } from "react";
 
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
@@ -9,9 +11,13 @@ import {
   tournamentChampionsQueryOptions,
 } from "../../lib/matches/tournamentQueries";
 import { compareTournamentStartDates } from "../../lib/matches/tournaments";
+import { normalizeUsername } from "../../utils/playerNames";
 import { TournamentArchiveCard } from "./TournamentArchiveCard";
 
 export const TournamentsPage = () => {
+  const navigate = useNavigate();
+  const [playerQuery, setPlayerQuery] = useState("");
+  const [navigationPending, setNavigationPending] = useState(false);
   const catalogQuery = useQuery(tournamentCatalogQueryOptions());
   const championsQuery = useQuery(tournamentChampionsQueryOptions());
   if (catalogQuery.isPending) return <RouteLoadingFallback />;
@@ -35,6 +41,18 @@ export const TournamentsPage = () => {
     (tournament) => tournament.year !== latestYear,
   );
   const championsById: Record<string, string> = championsQuery.data ?? {};
+  const normalizedPlayerQuery = normalizeUsername(playerQuery);
+
+  const openPlayerHistory = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!normalizedPlayerQuery || navigationPending) return;
+
+    setNavigationPending(true);
+    void navigate({
+      to: "/tournaments/players/$username",
+      params: { username: normalizedPlayerQuery },
+    }).finally(() => setNavigationPending(false));
+  };
 
   return (
     <div className="sitePage tournamentsPage">
@@ -47,6 +65,24 @@ export const TournamentsPage = () => {
       <div className="panel tournamentsPanel">
         <header className="tournamentsHeader">
           <h1>Tournament archive</h1>
+          <form className="tournamentPlayerSearch" onSubmit={openPlayerHistory}>
+            <label>
+              <span className="visuallyHidden">Player username</span>
+              <input
+                type="search"
+                value={playerQuery}
+                placeholder="Player username"
+                autoCapitalize="none"
+                autoComplete="off"
+                spellCheck="false"
+                disabled={navigationPending}
+                onChange={(event) => setPlayerQuery(event.target.value)}
+              />
+            </label>
+            <button type="submit" disabled={!normalizedPlayerQuery || navigationPending}>
+              {navigationPending ? "Opening…" : "View history"}
+            </button>
+          </form>
         </header>
 
         <section className="tournamentArchiveSection" aria-labelledby="current-tournaments-heading">

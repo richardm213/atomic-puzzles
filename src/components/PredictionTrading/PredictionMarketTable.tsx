@@ -2,6 +2,7 @@ import "./PredictionTrading.css";
 
 import type { ReactNode } from "react";
 
+import { formatCoinValue } from "../../lib/coins/coinDisplay";
 import type {
   PredictionMarketDefinition,
   PredictionMarketId,
@@ -13,6 +14,7 @@ import {
   predictionOutcomeLabel,
   predictionOutcomes,
   predictionYesChance,
+  sortPredictionMarketsByChance,
   suggestedPredictionPrice,
 } from "../../lib/predictionMarkets/predictionMarkets";
 import { PredictionMarketIdentity } from "./PredictionMarketIdentity";
@@ -48,6 +50,7 @@ type PredictionMarketTableProps = {
     outcome: PredictionOutcome,
   ) => ReactNode;
   selectedOutcome?: PredictionOutcome | undefined;
+  resolvedPnlByMarketId?: ReadonlyMap<PredictionMarketId, number>;
   states: ReadonlyMap<PredictionMarketId, PredictionMarketState>;
 };
 
@@ -63,6 +66,7 @@ export const PredictionMarketTable = ({
   onToggleMarket,
   outcomeAvailability,
   renderExpandedContent,
+  resolvedPnlByMarketId,
   selectedOutcome,
   states,
 }: PredictionMarketTableProps) => (
@@ -76,12 +80,13 @@ export const PredictionMarketTable = ({
       <span>Chance</span>
       <span />
     </div>
-    {definitions.map((definition) => {
+    {sortPredictionMarketsByChance(definitions, states).map((definition) => {
       const state = states.get(definition.id);
       const isResolved = state?.market.status === "resolved";
       const isExpanded = expandedMarketId === definition.id && !isResolved;
       const chance = predictionYesChance(definition, state);
       const selectedMarket = activeMarketId === definition.id;
+      const resolvedPnl = resolvedPnlByMarketId?.get(definition.id);
       const drawerId = `prediction-market-table-${definition.id}`;
 
       return (
@@ -94,12 +99,26 @@ export const PredictionMarketTable = ({
           {isResolved ? (
             <div className="predictionSharedMarketIdentity">
               <PredictionMarketIdentity definition={definition} density={density} />
-              {isAuthenticated ? (
+              {isAuthenticated && resolvedPnl === undefined ? (
                 <PredictionPositionHoldings
                   definition={definition}
                   density={density}
                   positions={state?.positions ?? []}
                 />
+              ) : null}
+              {resolvedPnl !== undefined ? (
+                <span
+                  className={`predictionSharedMarketPnl${
+                    resolvedPnl > 0
+                      ? " predictionSharedMarketPnl--profit"
+                      : resolvedPnl < 0
+                        ? " predictionSharedMarketPnl--loss"
+                        : ""
+                  }`}
+                >
+                  {resolvedPnl > 0 ? "+" : ""}
+                  {formatCoinValue(resolvedPnl)} coins
+                </span>
               ) : null}
             </div>
           ) : (

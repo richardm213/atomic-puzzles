@@ -75,7 +75,8 @@
 }
 
 .coinRankingsTable {
-  min-width: 560px;
+  min-width: 40rem;
+  table-layout: fixed;
   border: 0;
 }
 
@@ -85,15 +86,30 @@
 }
 
 .coinRankingsTable :is(th, td):nth-child(1) {
-  width: 72px;
+  width: 4.5rem;
   text-align: center;
 }
 
 .coinRankingsTable :is(th, td):nth-child(n + 3) {
-  width: 1%;
   text-align: right;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+}
+
+.coinRankingsTable :is(th, td):nth-child(2) {
+  overflow-wrap: anywhere;
+}
+
+.coinRankingsTable :is(th, td):nth-child(3) {
+  width: 9rem;
+}
+
+.coinRankingsTable :is(th, td):nth-child(4) {
+  width: 8rem;
+}
+
+.coinRankingsTable :is(th, td):nth-child(5) {
+  width: 7.5rem;
 }
 
 .coinRankingsTable tbody tr {

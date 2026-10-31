@@ -63,6 +63,7 @@ import {
   predictionOutcomes,
   predictionTakerFee,
   quotePredictionBuy,
+  sortPredictionMarketsByChance,
   suggestedPredictionPrice,
 } from "../../lib/predictionMarkets/predictionMarkets";
 import { appAssetPath } from "../../utils/appAssetPath";
@@ -83,13 +84,22 @@ const bettingViews: readonly BettingView[] = ["markets", "mine", "all", "suggest
 const predictionDisplayModeSchema = z.enum(["book", "market"]);
 const predictionDisplayModeStorageKey = "betting:prediction-display-mode";
 const defaultMarketCategory = "AWC Round of 16";
-const predictionMarketCategories = ["AWC Round of 16", "AWC Champion", "Ban", "Shield"] as const;
+const predictionMarketCategories = [
+  "AWC Round of 16",
+  "2026 AWC Champion",
+  "Ban",
+  "Shield",
+  "2027 AWC",
+] as const;
 const predictionGroupIdByCategory: Record<PredictionMarketCategory, string> = {
   "AWC Round of 16": "awc-2026-round-of-16",
-  "AWC Champion": "awc-2026-champion",
+  "2026 AWC Champion": "awc-2026-champion",
+  "2027 AWC": "awc-2027-champion",
   Ban: "ban-2026",
   Shield: "november-atomic-shield-2026",
 };
+const isAwcWinnerCategory = (category: string): boolean =>
+  category === "2026 AWC Champion" || category === "2027 AWC";
 const winnerNoMarketId = AWC_NOT_TO_WIN_MARKET_ID;
 const marketCategorySlug = (category: string): string => {
   const normalizedCategory = category
@@ -107,6 +117,8 @@ const marketCategoryFromSearch = (
 ): string => {
   const requestedMarket = new URLSearchParams(search).get("market") ?? "";
   if (requestedMarket === "markets") return "Ban";
+  if (requestedMarket === "champion") return "2026 AWC Champion";
+  if (requestedMarket === "2027-awc-winner") return "2027 AWC";
   return (
     categories.find((category) => marketCategorySlug(category) === requestedMarket) ??
     defaultMarketCategory
@@ -218,7 +230,7 @@ export const BettingPage = () => {
   const countriesQuery = useQuery(tournamentPlayerCountriesQueryOptions());
   const awcBracketQuery = useQuery({
     ...tournamentBracketQueryOptions("awc2026"),
-    enabled: isAuthenticated && marketCategory === "AWC Champion",
+    enabled: isAuthenticated && marketCategory === "2026 AWC Champion",
   });
   const predictionMarketIds = useMemo(
     () => predictionMarkets.map((market) => market.id),
@@ -246,7 +258,7 @@ export const BettingPage = () => {
     enabled:
       predictionMarketIds.length > 0 &&
       (isPredictionMarketCategory(marketCategory) ||
-        marketCategory === "AWC Champion" ||
+        marketCategory === "2026 AWC Champion" ||
         view === "all" ||
         view === "mine"),
   });
@@ -333,6 +345,30 @@ export const BettingPage = () => {
     Boolean(activePredictionGroup) &&
     predictionMarketQuery.isPending &&
     predictionMarketStates.length === 0;
+  const sortedActivePredictionMarkets = useMemo(() => {
+    const definitions = activePredictionGroup?.markets ?? [];
+    if (activePredictionDisplayMode !== "book") {
+      return sortPredictionMarketsByChance(definitions, predictionStateByMarketId);
+    }
+    const displayedOutcome: PredictionOutcome = isAwcWinnerCategory(marketCategory)
+      ? winnerPosition
+      : "yes";
+    return [...definitions].sort((left, right) => {
+      const leftResolved = predictionStateByMarketId.get(left.id)?.market.status === "resolved";
+      const rightResolved = predictionStateByMarketId.get(right.id)?.market.status === "resolved";
+      if (leftResolved !== rightResolved) return leftResolved ? 1 : -1;
+      return (
+        suggestedPredictionPrice(right, predictionStateByMarketId.get(right.id), displayedOutcome) -
+        suggestedPredictionPrice(left, predictionStateByMarketId.get(left.id), displayedOutcome)
+      );
+    });
+  }, [
+    activePredictionDisplayMode,
+    activePredictionGroup?.markets,
+    marketCategory,
+    predictionStateByMarketId,
+    winnerPosition,
+  ]);
   const activePredictionVolume =
     activePredictionGroup?.markets.reduce(
       (total, definition) =>
@@ -539,7 +575,7 @@ export const BettingPage = () => {
     currentUrl.searchParams.set("view", view);
     if (view === "markets") {
       currentUrl.searchParams.set("market", marketCategorySlug(marketCategory));
-      if (marketCategory === "AWC Champion") {
+      if (isAwcWinnerCategory(marketCategory)) {
         currentUrl.searchParams.set("side", winnerPosition);
       } else {
         currentUrl.searchParams.delete("side");
@@ -547,6 +583,11 @@ export const BettingPage = () => {
     } else {
       currentUrl.searchParams.delete("market");
       currentUrl.searchParams.delete("side");
+    }
+    if (view !== "all") {
+      currentUrl.searchParams.delete("bettor");
+      currentUrl.searchParams.delete("strike");
+      currentUrl.searchParams.delete("status");
     }
     if (
       `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}` ===
@@ -566,7 +607,7 @@ export const BettingPage = () => {
     nextUrl.searchParams.set("view", nextView);
     if (nextView === "markets") {
       nextUrl.searchParams.set("market", marketCategorySlug(marketCategory));
-      if (marketCategory === "AWC Champion") {
+      if (isAwcWinnerCategory(marketCategory)) {
         nextUrl.searchParams.set("side", winnerPosition);
       }
     } else {
@@ -582,7 +623,7 @@ export const BettingPage = () => {
     const nextUrl = new URL(window.location.href);
     nextUrl.searchParams.set("view", "markets");
     nextUrl.searchParams.set("market", marketCategorySlug(nextCategory));
-    if (nextCategory === "AWC Champion") {
+    if (isAwcWinnerCategory(nextCategory)) {
       nextUrl.searchParams.set("side", winnerPosition);
     } else {
       nextUrl.searchParams.delete("side");
@@ -879,7 +920,7 @@ export const BettingPage = () => {
                       isLoading={activePredictionGroupLoading}
                       isOpen={activePredictionGroupOpen}
                       middle={
-                        marketCategory === "AWC Champion" ? (
+                        isAwcWinnerCategory(marketCategory) ? (
                           <div
                             className="bettingPositionToggle"
                             role="group"
@@ -904,23 +945,38 @@ export const BettingPage = () => {
                       }
                       path={activePredictionGroup.path}
                       showExplainer={false}
-                      title={
-                        marketCategory === "AWC Champion"
-                          ? "Who will win 2026 AWC"
-                          : activePredictionGroup.title
-                      }
+                      title={activePredictionGroup.title}
                       volume={formatCoinValue(activePredictionVolume)}
                     />
-                    {activePredictionGroup.markets.map((definition) => {
+                    {sortedActivePredictionMarkets.map((definition) => {
                       const state = predictionStateByMarketId.get(definition.id);
                       const yesAsk = state?.book.yes.asks[0]?.priceCents;
                       const noAsk = state?.book.no.asks[0]?.priceCents;
                       const isResolved = state?.market.status === "resolved";
                       if (isResolved) {
+                        const resolvedUserBets = myBets.filter(
+                          (bet) =>
+                            bet.kind === "prediction" &&
+                            bet.marketId === definition.id &&
+                            bet.status !== "open",
+                        );
+                        const rawUserProfit = resolvedUserBets.reduce(
+                          (total, bet) => total + bet.payout - bet.totalCost,
+                          0,
+                        );
+                        const userProfit = resolvedUserBets.length
+                          ? Math.abs(rawUserProfit) < 0.005
+                            ? 0
+                            : rawUserProfit
+                          : null;
+                        const userProfitLabel =
+                          userProfit === null
+                            ? null
+                            : `${userProfit > 0 ? "+" : ""}${formatCoinValue(userProfit)} coins`;
                         const resolvedOutcome = state.market.outcome ?? "no";
                         const settlementPrice = state.market.settlementPriceCents;
                         const invertChampionOutcome =
-                          marketCategory === "AWC Champion" && winnerPosition === "no";
+                          isAwcWinnerCategory(marketCategory) && winnerPosition === "no";
                         const displayedResolvedOutcome = invertChampionOutcome
                           ? resolvedOutcome === "yes"
                             ? "no"
@@ -932,29 +988,53 @@ export const BettingPage = () => {
                             : invertChampionOutcome
                               ? 100 - settlementPrice
                               : settlementPrice;
+                        const resolvedSideLabel =
+                          displayedSettlementPrice === null
+                            ? predictionOutcomeLabel(definition, displayedResolvedOutcome)
+                            : `Settled ${displayedSettlementPrice}¢`;
                         return (
                           <article className="bettingPredictionBookResolvedRow" key={definition.id}>
-                            <span className="predictionSharedMarketIdentity">
-                              <PredictionMarketIdentity definition={definition} density="compact" />
+                            <span className="bettingPredictionBookResolvedIdentity">
+                              <span className="predictionSharedMarketIdentity">
+                                <PredictionMarketIdentity
+                                  definition={definition}
+                                  density="compact"
+                                />
+                              </span>
+                              {userProfit !== null && userProfitLabel ? (
+                                <span
+                                  className={`bettingPredictionBookResolved ${
+                                    userProfit > 0
+                                      ? "bettingPredictionBookResolved--profit"
+                                      : userProfit < 0
+                                        ? "bettingPredictionBookResolved--loss"
+                                        : "bettingPredictionBookResolved--price"
+                                  }`}
+                                  aria-label={`Your profit: ${userProfitLabel}`}
+                                >
+                                  {userProfitLabel}
+                                </span>
+                              ) : null}
                             </span>
                             <span
-                              className={`bettingPredictionBookResolved ${
+                              className={`bettingPredictionBookResolvedSide ${
                                 displayedSettlementPrice === null
-                                  ? `bettingPredictionBookResolved--${displayedResolvedOutcome}`
-                                  : "bettingPredictionBookResolved--price"
+                                  ? `bettingPredictionBookResolvedSide--${displayedResolvedOutcome}`
+                                  : "bettingPredictionBookResolvedSide--price"
                               }`}
                             >
-                              {displayedSettlementPrice === null
-                                ? predictionOutcomeLabel(definition, displayedResolvedOutcome)
-                                : `Settled ${displayedSettlementPrice}¢`}
+                              {resolvedSideLabel}
                             </span>
                           </article>
                         );
                       }
-                      const sportsbookOutcome: PredictionOutcome =
-                        marketCategory === "AWC Champion" ? winnerPosition : "yes";
+                      const sportsbookOutcome: PredictionOutcome = isAwcWinnerCategory(
+                        marketCategory,
+                      )
+                        ? winnerPosition
+                        : "yes";
                       const compactSportsbookCard =
-                        marketCategory === "AWC Champion" || marketCategory === "Ban";
+                        isAwcWinnerCategory(marketCategory) || marketCategory === "Ban";
                       const sportsbookOutcomes = compactSportsbookCard
                         ? [sportsbookOutcome]
                         : predictionOutcomes;
@@ -1271,7 +1351,8 @@ export const BettingPage = () => {
                             </strong>
                             {activePredictionDisplayMode === "book" ? (
                               <em>
-                                {selectedPredictionGroup?.id === "awc-2026-champion"
+                                {selectedPredictionGroup?.id === "awc-2026-champion" ||
+                                selectedPredictionGroup?.id === "awc-2027-champion"
                                   ? predictionSelection.outcome === "yes"
                                     ? "to win"
                                     : "not to win"
@@ -1675,6 +1756,8 @@ export const BettingPage = () => {
             myBets={myBets}
             allBets={allHistoryBets}
             markets={markets}
+            predictionMarketGroups={predictionMarketGroups}
+            predictionMarketStates={predictionMarketStates}
             countryByPlayer={countryByPlayer}
             myBetsLoading={betsQuery.isPending}
             allBetsLoading={allBetsQuery.isPending}

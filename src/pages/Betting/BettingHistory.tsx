@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { InlineState } from "../../components/InlineState/InlineState";
 import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
@@ -6,6 +6,11 @@ import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/Rout
 import { useUnderscoreUsernameCutoff } from "../../hooks/useUnderscoreUsernameCutoff";
 import type { BettingMarket } from "../../lib/betting/betting";
 import { formatCoinValue } from "../../lib/coins/coinDisplay";
+import {
+  type PredictionMarketGroup,
+  type PredictionMarketState,
+  sortPredictionMarketsByChance,
+} from "../../lib/predictionMarkets/predictionMarkets";
 import { countryCodeToFlagUrl } from "../../utils/countryFlags";
 import { getErrorMessage } from "../../utils/errors";
 import { formatLocalDateTime } from "../../utils/formatters";
@@ -41,6 +46,26 @@ const BetHistoryBettorLink = ({ username }: { username: string }) => {
     <PlayerLink ref={elementRef} username={username} title={username} aria-label={username}>
       {displayName}
     </PlayerLink>
+  );
+};
+
+const filterHistoryBets = ({
+  bets,
+  status,
+  marketId,
+  bettor,
+}: {
+  bets: BetHistoryEntry[];
+  status: string;
+  marketId: string;
+  bettor?: string;
+}): BetHistoryEntry[] => {
+  const normalizedBettor = bettor?.trim().toLowerCase() ?? "";
+  return bets.filter(
+    (bet) =>
+      (status === "all" || bet.status === status) &&
+      (marketId === "all" || bet.marketId === marketId) &&
+      (!normalizedBettor || bet.username.toLowerCase().includes(normalizedBettor)),
   );
 };
 
@@ -158,11 +183,25 @@ type BettingHistoryProps = {
   myBets: BetHistoryEntry[];
   allBets: BetHistoryEntry[];
   markets: BettingMarket[];
+  predictionMarketGroups: PredictionMarketGroup[];
+  predictionMarketStates: PredictionMarketState[];
   countryByPlayer: Record<string, string>;
   myBetsLoading: boolean;
   allBetsLoading: boolean;
   myBetsError: unknown;
   allBetsError: unknown;
+};
+
+const historyStatusFilters = new Set(["all", "open", "won", "lost", "settled", "refunded"]);
+
+const historyFiltersFromSearch = (search: string) => {
+  const searchParams = new URLSearchParams(search);
+  const requestedStatus = searchParams.get("status") ?? "all";
+  return {
+    bettor: searchParams.get("bettor") ?? "",
+    market: searchParams.get("strike") ?? "all",
+    status: historyStatusFilters.has(requestedStatus) ? requestedStatus : "all",
+  };
 };
 
 export const BettingHistory = ({
@@ -173,17 +212,90 @@ export const BettingHistory = ({
   myBets,
   allBets,
   markets,
+  predictionMarketGroups,
+  predictionMarketStates,
   countryByPlayer,
   myBetsLoading,
   allBetsLoading,
   myBetsError,
   allBetsError,
 }: BettingHistoryProps) => {
-  const [bettorFilter, setBettorFilter] = useState("");
-  const visibleAllBets = useMemo(() => {
-    const filter = bettorFilter.trim().toLowerCase();
-    return filter ? allBets.filter((bet) => bet.username.toLowerCase().includes(filter)) : allBets;
-  }, [allBets, bettorFilter]);
+  const initialFilters = useMemo(
+    () => historyFiltersFromSearch(typeof window === "undefined" ? "" : window.location.search),
+    [],
+  );
+  const [bettorFilter, setBettorFilter] = useState(initialFilters.bettor);
+  const [statusFilter, setStatusFilter] = useState(initialFilters.status);
+  const [marketFilter, setMarketFilter] = useState(initialFilters.market);
+  const marketOptions = useMemo(() => {
+    const options = new Map<string, string>();
+    const stateByMarketId = new Map(
+      predictionMarketStates.map((state) => [state.market.id, state]),
+    );
+
+    for (const group of predictionMarketGroups) {
+      if (group.id.includes("shield")) continue;
+      for (const market of sortPredictionMarketsByChance(group.markets, stateByMarketId)) {
+        const strike = market.outcomeLabels
+          ? `${market.outcomeLabels.yes} vs ${market.outcomeLabels.no}`
+          : market.username;
+        options.set(market.id, `${group.title} · ${strike}`);
+      }
+    }
+
+    for (const market of markets) {
+      if (!options.has(market.id)) {
+        options.set(market.id, `${market.roundName} · ${market.label}`);
+      }
+    }
+
+    return [...options].map(([id, label]) => ({ id, label }));
+  }, [markets, predictionMarketGroups, predictionMarketStates]);
+  const visibleMyBets = useMemo(
+    () =>
+      filterHistoryBets({
+        bets: myBets,
+        status: statusFilter,
+        marketId: marketFilter,
+      }),
+    [marketFilter, myBets, statusFilter],
+  );
+  const visibleAllBets = useMemo(
+    () =>
+      filterHistoryBets({
+        bets: allBets,
+        status: statusFilter,
+        marketId: marketFilter,
+        bettor: bettorFilter,
+      }),
+    [allBets, bettorFilter, marketFilter, statusFilter],
+  );
+  const filtersActive = statusFilter !== "all" || marketFilter !== "all";
+
+  useEffect(() => {
+    if (view !== "all") return;
+    const syncFiltersFromHistory = () => {
+      const filters = historyFiltersFromSearch(window.location.search);
+      setBettorFilter(filters.bettor);
+      setMarketFilter(filters.market);
+      setStatusFilter(filters.status);
+    };
+    window.addEventListener("popstate", syncFiltersFromHistory);
+    return () => window.removeEventListener("popstate", syncFiltersFromHistory);
+  }, [view]);
+
+  useEffect(() => {
+    if (view !== "all") return;
+    const nextUrl = new URL(window.location.href);
+    const setOrDelete = (key: string, value: string, defaultValue: string) => {
+      if (value === defaultValue) nextUrl.searchParams.delete(key);
+      else nextUrl.searchParams.set(key, value);
+    };
+    setOrDelete("bettor", bettorFilter.trim(), "");
+    setOrDelete("strike", marketFilter, "all");
+    setOrDelete("status", statusFilter, "all");
+    window.history.replaceState({}, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+  }, [bettorFilter, marketFilter, statusFilter, view]);
 
   let content;
   if (view === "mine" && !isAuthenticated) {
@@ -206,10 +318,12 @@ export const BettingHistory = ({
   } else if (view === "mine") {
     content = (
       <BetHistoryTable
-        bets={myBets}
+        bets={visibleMyBets}
         markets={markets}
         countryByPlayer={countryByPlayer}
-        emptyMessage="You have not placed any bets."
+        emptyMessage={
+          filtersActive ? "No bets match these filters." : "You have not placed any bets."
+        }
       />
     );
   } else if (allBetsError) {
@@ -227,7 +341,9 @@ export const BettingHistory = ({
         markets={markets}
         countryByPlayer={countryByPlayer}
         emptyMessage={
-          bettorFilter.trim() ? "No bets match this bettor." : "No bets have been placed yet."
+          bettorFilter.trim() || filtersActive
+            ? "No bets match these filters."
+            : "No bets have been placed yet."
         }
         showUsername
       />
@@ -236,27 +352,51 @@ export const BettingHistory = ({
 
   return (
     <section className="bettingHistory" role="tabpanel">
-      {view === "all" ? (
-        <div className="betHistoryBettorFilter">
-          <label htmlFor="all-bets-bettor">Bettor</label>
-          <div>
-            <input
-              id="all-bets-bettor"
-              type="text"
-              value={bettorFilter}
-              onChange={(event) => setBettorFilter(event.target.value)}
-              placeholder="username"
-              autoComplete="off"
-              maxLength={100}
-            />
-            {bettorFilter ? (
-              <button type="button" onClick={() => setBettorFilter("")}>
-                Clear
-              </button>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
+      <div className="betHistoryFilters" aria-label="Bet filters">
+        {view === "all" ? (
+          <label className="betHistoryBettorFilter">
+            <span>Bettor</span>
+            <div>
+              <input
+                id="all-bets-bettor"
+                type="text"
+                value={bettorFilter}
+                onChange={(event) => setBettorFilter(event.target.value)}
+                placeholder="username"
+                autoComplete="off"
+                maxLength={100}
+              />
+              {bettorFilter ? (
+                <button type="button" onClick={() => setBettorFilter("")}>
+                  Clear
+                </button>
+              ) : null}
+            </div>
+          </label>
+        ) : null}
+        <label className="betHistoryMarketFilter">
+          <span>Market</span>
+          <select value={marketFilter} onChange={(event) => setMarketFilter(event.target.value)}>
+            <option value="all">All market strikes</option>
+            {marketOptions.map((market) => (
+              <option key={market.id} value={market.id}>
+                {market.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span>Status</span>
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+            <option value="all">All statuses</option>
+            <option value="open">Open</option>
+            <option value="won">Won</option>
+            <option value="lost">Lost</option>
+            <option value="settled">Settled</option>
+            <option value="refunded">Refunded</option>
+          </select>
+        </label>
+      </div>
       {content}
     </section>
   );

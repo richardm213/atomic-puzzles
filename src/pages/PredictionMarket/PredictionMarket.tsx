@@ -23,7 +23,7 @@ import {
   predictionOrderRestrictionMessage,
 } from "../../lib/betting/betting";
 import { allTournamentBetsQueryOptions } from "../../lib/betting/bettingQueries";
-import { formatCoinBalance } from "../../lib/coins/coinDisplay";
+import { formatCoinBalance, formatCoinValue } from "../../lib/coins/coinDisplay";
 import { coinSummaryQueryOptions, updateCachedCoinBalance } from "../../lib/coins/coinQueries";
 import { tournamentBracketQueryOptions } from "../../lib/matches/tournamentQueries";
 import {
@@ -51,6 +51,7 @@ import {
 import { appAssetPath } from "../../utils/appAssetPath";
 import { getErrorMessage } from "../../utils/errors";
 import { formatLocalDateTime } from "../../utils/formatters";
+import { buildBetHistory } from "../Betting/bettingHistoryModel";
 
 const outcomeLabel = (outcome: PredictionOutcome, definition?: PredictionMarketDefinition) =>
   predictionOutcomeLabel(definition, outcome);
@@ -87,6 +88,50 @@ export const PredictionMarketPage = () => {
     () => new Map(marketStates.map((state) => [state.market.id, state])),
     [marketStates],
   );
+  const personalMarketPnlById = useMemo(() => {
+    const pnlByMarketId = new Map<PredictionMarketId, number>();
+    if (!isAuthenticated || !marketGroup) return pnlByMarketId;
+
+    const groupMarketIds = new Set(marketGroup.markets.map((market) => market.id));
+    const personalBets = buildBetHistory({
+      tournamentBets: legacyBetsQuery.data ?? [],
+      predictionMarketGroups: [marketGroup],
+      predictionMarketStates: marketStates,
+    }).filter(
+      (bet) =>
+        bet.kind === "prediction" &&
+        bet.username.toLowerCase() === username.toLowerCase() &&
+        groupMarketIds.has(bet.marketId),
+    );
+
+    for (const bet of personalBets) {
+      let pnl: number;
+      if (bet.status !== "open") {
+        pnl = bet.payout - bet.totalCost;
+      } else {
+        const state = marketStateById.get(bet.marketId);
+        const outcomeBook = bet.predictionOutcome ? state?.book[bet.predictionOutcome] : undefined;
+        const bestBid = outcomeBook?.bids[0]?.priceCents;
+        const bestAsk = outcomeBook?.asks[0]?.priceCents;
+        const markPrice =
+          bestBid !== undefined && bestAsk !== undefined
+            ? (bestBid + bestAsk) / 2
+            : (bestBid ?? bestAsk ?? bet.priceCents);
+        const markedValue = (bet.potentialPayout * markPrice) / 100;
+        pnl = markedValue - bet.totalCost;
+      }
+
+      pnlByMarketId.set(bet.marketId, (pnlByMarketId.get(bet.marketId) ?? 0) + pnl);
+    }
+
+    for (const [marketId, pnl] of pnlByMarketId) {
+      if (Math.abs(pnl) < 0.005) pnlByMarketId.set(marketId, 0);
+    }
+    return pnlByMarketId;
+  }, [isAuthenticated, legacyBetsQuery.data, marketGroup, marketStateById, marketStates, username]);
+  const personalMarketPnl = personalMarketPnlById.size
+    ? [...personalMarketPnlById.values()].reduce((total, pnl) => total + pnl, 0)
+    : null;
   const activeMarketIndex = marketDefinitions.findIndex((market) => market.id === activeMarketId);
   const coinQuery = useQuery({
     ...coinSummaryQueryOptions(username),
@@ -522,12 +567,31 @@ export const PredictionMarketPage = () => {
             </div>
           </div>
           {isAuthenticated ? (
-            <div className="predictionBalance" aria-live="polite">
-              <img src={appAssetPath("/images/coins/gold-coin-stack-v2.png")} alt="" />
-              <span>
-                <small>Available</small>
-                <strong>{formatCoinBalance(coinQuery.data?.balance ?? 0)}</strong>
-              </span>
+            <div className="predictionAccountSummary" aria-live="polite">
+              {personalMarketPnl !== null ? (
+                <span className="predictionMarketPnl">
+                  <small>Market P&amp;L</small>
+                  <strong
+                    className={
+                      personalMarketPnl > 0
+                        ? "isPositive"
+                        : personalMarketPnl < 0
+                          ? "isNegative"
+                          : undefined
+                    }
+                  >
+                    {personalMarketPnl > 0 ? "+" : ""}
+                    {formatCoinValue(personalMarketPnl)} coins
+                  </strong>
+                </span>
+              ) : null}
+              <div className="predictionBalance">
+                <img src={appAssetPath("/images/coins/gold-coin-stack-v2.png")} alt="" />
+                <span>
+                  <small>Available</small>
+                  <strong>{formatCoinBalance(coinQuery.data?.balance ?? 0)}</strong>
+                </span>
+              </div>
             </div>
           ) : null}
         </header>
@@ -562,6 +626,7 @@ export const PredictionMarketPage = () => {
                       toggleOutcome(definition.id, nextOutcome)
                     }
                     renderExpandedContent={() => activeMarketPanel}
+                    resolvedPnlByMarketId={personalMarketPnlById}
                   />
                 </section>
 

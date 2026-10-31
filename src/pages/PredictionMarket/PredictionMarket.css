@@ -90,15 +90,50 @@
   color: var(--prediction-no);
 }
 
+.predictionAccountSummary {
+  display: inline-grid;
+  grid-auto-flow: column;
+  align-items: stretch;
+  min-width: max-content;
+  border: 1px solid color-mix(in srgb, var(--color-gold) 32%, var(--color-border));
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+  overflow: hidden;
+}
+
+.predictionMarketPnl {
+  display: grid;
+  align-content: center;
+  gap: 2px;
+  padding: 9px 14px;
+  border-right: 1px solid var(--color-border);
+}
+
+.predictionMarketPnl small,
+.predictionBalance small {
+  color: var(--color-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.predictionMarketPnl strong {
+  color: var(--color-heading);
+  font-variant-numeric: tabular-nums;
+}
+
+.predictionMarketPnl strong.isPositive {
+  color: var(--color-success);
+}
+
+.predictionMarketPnl strong.isNegative {
+  color: var(--color-danger);
+}
+
 .predictionBalance {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-width: max-content;
   padding: 9px 12px;
-  border: 1px solid color-mix(in srgb, var(--color-gold) 32%, var(--color-border));
-  border-radius: var(--radius-ui);
-  background: var(--color-panel-strong);
 }
 
 .predictionBalance img {
@@ -109,12 +144,6 @@
 
 .predictionBalance span {
   display: grid;
-}
-
-.predictionBalance small {
-  color: var(--color-muted);
-  font-size: 11px;
-  text-transform: uppercase;
 }
 
 .predictionBalance strong {
@@ -430,7 +459,7 @@
     padding: 22px 20px;
   }
 
-  .predictionBalance {
+  .predictionAccountSummary {
     width: fit-content;
   }
 
