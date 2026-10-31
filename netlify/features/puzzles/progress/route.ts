@@ -1,6 +1,10 @@
 import { z } from "zod";
 
 import {
+  DAILY_PUZZLE_ATTEMPT_LIMIT_CODE,
+  DAILY_PUZZLE_ATTEMPT_LIMIT_MESSAGE,
+} from "../../../../shared/domain/puzzles/dailyAttemptLimit";
+import {
   authenticateRequest,
   identityResponse,
   requireSameOrigin,
@@ -8,6 +12,7 @@ import {
 } from "../../../platform/authentication";
 import type { FunctionEvent } from "../../../platform/defineFunction";
 import { createServerSupabase } from "../../../platform/environment";
+import { HttpError } from "../../../platform/errors";
 import { parseJsonBody } from "../../../platform/validation";
 
 const progressBodySchema = z.object({
@@ -35,7 +40,17 @@ export const puzzleProgressRoute = async (event: FunctionEvent) => {
     p_incorrect_move: input.puzzleCorrect ? null : input.incorrectMove || null,
     p_correct_move: input.puzzleCorrect ? input.correctMove || null : null,
   });
-  if (error) throw new Error(`Unable to record puzzle progress: ${error.message}`);
+  if (error) {
+    if (error.message.includes("daily_puzzle_attempt_limit_reached")) {
+      throw new HttpError(
+        429,
+        DAILY_PUZZLE_ATTEMPT_LIMIT_MESSAGE,
+        {},
+        DAILY_PUZZLE_ATTEMPT_LIMIT_CODE,
+      );
+    }
+    throw new Error(`Unable to record puzzle progress: ${error.message}`);
+  }
   const { data: progress, error: progressError } = await supabase
     .from("puzzle_progress")
     .select("rated")

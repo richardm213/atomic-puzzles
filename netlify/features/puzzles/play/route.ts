@@ -1,6 +1,10 @@
 import { z } from "zod";
 
 import {
+  DAILY_PUZZLE_ATTEMPT_LIMIT,
+  utcDayBounds,
+} from "../../../../shared/domain/puzzles/dailyAttemptLimit";
+import {
   authenticateRequest,
   identityResponse,
   requireSameOrigin,
@@ -40,7 +44,7 @@ export const puzzlePlayRoute = async (event: FunctionEvent) => {
   requireSameOrigin(event.headers, "Cross-site puzzle requests are not allowed.");
   const input = parseJsonBody(event, detailsBodySchema, "Invalid puzzle details request.");
   const identity = await authenticateRequest(event.headers);
-  requireUsername(identity, "Log in with Lichess to solve puzzles.");
+  const username = requireUsername(identity, "Log in with Lichess to solve puzzles.");
   const puzzleIds = [...new Set(input.puzzleIds.map(Number))];
 
   // Authentication is enforced above. Log the request shape as an additional
@@ -52,8 +56,44 @@ export const puzzlePlayRoute = async (event: FunctionEvent) => {
   });
 
   const supabase = createServerSupabase("Puzzle play service");
-  const { data, error } = await supabase.from("puzzles").select(DETAIL_COLUMNS).in("id", puzzleIds);
+  const { start, end } = utcDayBounds();
+  const { count: dailyAttemptCount, error: dailyAttemptError } = await supabase
+    .from("puzzle_progress")
+    .select("puzzle_id", { count: "exact", head: true })
+    .eq("username", username)
+    .gte("first_attempt_at", start)
+    .lt("first_attempt_at", end);
+  if (dailyAttemptError) {
+    throw new Error(`Unable to check daily puzzle attempts: ${dailyAttemptError.message}`);
+  }
+
+  let allowedPuzzleIds = puzzleIds;
+  let blockedPuzzleIds: number[] = [];
+  if ((dailyAttemptCount ?? 0) >= DAILY_PUZZLE_ATTEMPT_LIMIT) {
+    const { data: attemptedRows, error: attemptedError } = await supabase
+      .from("puzzle_progress")
+      .select("puzzle_id")
+      .eq("username", username)
+      .in("puzzle_id", puzzleIds.map(String));
+    if (attemptedError) {
+      throw new Error(`Unable to check previous puzzle attempts: ${attemptedError.message}`);
+    }
+
+    const attemptedIds = new Set(
+      (Array.isArray(attemptedRows) ? attemptedRows : []).map((row) => String(row.puzzle_id)),
+    );
+    allowedPuzzleIds = puzzleIds.filter((puzzleId) => attemptedIds.has(String(puzzleId)));
+    blockedPuzzleIds = puzzleIds.filter((puzzleId) => !attemptedIds.has(String(puzzleId)));
+  }
+
+  const { data, error } = allowedPuzzleIds.length
+    ? await supabase.from("puzzles").select(DETAIL_COLUMNS).in("id", allowedPuzzleIds)
+    : { data: [], error: null };
   if (error) throw new Error(`Unable to load puzzles: ${error.message}`);
 
-  return identityResponse(identity, 200, { puzzles: Array.isArray(data) ? data : [] });
+  return identityResponse(identity, 200, {
+    puzzles: Array.isArray(data) ? data : [],
+    blockedPuzzleIds,
+    dailyLimitReached: blockedPuzzleIds.length > 0,
+  });
 };

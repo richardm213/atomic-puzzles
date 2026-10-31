@@ -15,6 +15,7 @@ import type { AttemptResolved, SolutionNavigation } from "../../types/chessboard
 
 const mocks = vi.hoisted(() => ({
   chessboardProps: [] as Array<{
+    disabled?: boolean;
     showSolution?: boolean;
     solutionNavigation?: SolutionNavigation | null;
     onAttemptResolved?: (attempt: AttemptResolved) => void;
@@ -141,6 +142,7 @@ vi.mock("../../components/Chessboard/Chessboard", async () => {
 
   return {
     Chessboard: (props: {
+      disabled?: boolean;
       fen: string;
       showSolution?: boolean;
       solutionNavigation?: SolutionNavigation | null;
@@ -396,6 +398,25 @@ describe("PuzzleSolverPage solution options", () => {
     render(<PuzzleSolverPage />);
 
     expect((await screen.findAllByText("Unrated")).length).toBeGreaterThan(0);
+  });
+
+  it("locks the board and explains the UTC reset after 200 attempts today", async () => {
+    const attemptedAt = new Date().toISOString();
+    mocks.fetchPuzzleProgressRowsForUsername.mockResolvedValueOnce(
+      Array.from({ length: 200 }, (_, index) => ({
+        puzzle_id: String(index === 0 ? 1369 : index + 2000),
+        first_attempt_at: attemptedAt,
+        puzzle_correct: true,
+        rated: true,
+        incorrect_move: null,
+      })),
+    );
+
+    render(<PuzzleSolverPage />);
+
+    expect(await screen.findByText("No more puzzles today")).toBeInTheDocument();
+    await waitFor(() => expect(mocks.chessboardProps.at(-1)?.disabled).toBe(true));
+    expect(screen.getByText(/come back after 00:00 UTC/i)).toBeInTheDocument();
   });
 
   it("waits for progress and skips rated and unrated attempted puzzles", async () => {
@@ -915,9 +936,7 @@ describe("PuzzleSolverPage solution options", () => {
       "1369",
       false,
     );
-    const updatedPuzzleRating = await screen.findByLabelText(
-      /V3, 2100 Elo, increased by 17/,
-    );
+    const updatedPuzzleRating = await screen.findByLabelText(/V3, 2100 Elo, increased by 17/);
     expect(updatedPuzzleRating).toHaveClass("positive");
     expect(updatedPuzzleRating).toHaveTextContent("V32100+17");
     const updatedRating = await screen.findByLabelText(

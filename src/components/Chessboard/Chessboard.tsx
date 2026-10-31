@@ -92,6 +92,7 @@ export type ChessboardProps = {
   captureNavigationShortcuts?: boolean;
   preserveAnalysisHistoryOnSolutionChange?: boolean;
   restrictMovesToSolution?: boolean;
+  disabled?: boolean;
   onNavigateHandled?: () => void;
   onAttemptResolved?: (result: AttemptResolved) => void;
   onStateChange?: (state: ChessboardState) => void;
@@ -157,6 +158,7 @@ export const Chessboard = ({
   captureNavigationShortcuts = false,
   preserveAnalysisHistoryOnSolutionChange = false,
   restrictMovesToSolution = false,
+  disabled = false,
   onNavigateHandled,
   onAttemptResolved,
   onStateChange,
@@ -190,6 +192,7 @@ export const Chessboard = ({
   const showSolutionRef = useLatestRef(showSolution);
   const analysisModeRef = useLatestRef(analysisMode);
   const restrictMovesToSolutionRef = useLatestRef(restrictMovesToSolution);
+  const disabledRef = useLatestRef(disabled);
   const fenRef = useLatestRef(fen);
   const solutionNavigationRef = useLatestRef(solutionNavigation);
   const puzzleIdRef = useLatestRef(puzzleId);
@@ -361,7 +364,7 @@ export const Chessboard = ({
 
   const getMovableConfig = useCallback(
     (position: Atomic): MovableConfig => {
-      if (boardStatusRef.current.locked) {
+      if (disabledRef.current || boardStatusRef.current.locked) {
         return {
           dests: new Map(),
           free: false,
@@ -387,7 +390,7 @@ export const Chessboard = ({
         free: false,
       };
     },
-    [allowedSolutionContinuations, boardStatusRef, restrictMovesToSolutionRef],
+    [allowedSolutionContinuations, boardStatusRef, disabledRef, restrictMovesToSolutionRef],
   );
 
   const saveMove = useCallback(
@@ -731,7 +734,12 @@ export const Chessboard = ({
   const playUserMove = useCallback(
     (orig: string, dest: string, promotion?: Role | undefined): void => {
       const position = positionRef.current;
-      if (!position || boardStatusRef.current.locked || isSolutionPlaybackLocked()) {
+      if (
+        !position ||
+        disabledRef.current ||
+        boardStatusRef.current.locked ||
+        isSolutionPlaybackLocked()
+      ) {
         return;
       }
 
@@ -909,6 +917,7 @@ export const Chessboard = ({
       boardStatusRef,
       candidateLinesRef,
       clearMoveEvaluationTimer,
+      disabledRef,
       fenRef,
       analysisModeRef,
       isSolutionPlaybackLocked,
@@ -1293,7 +1302,7 @@ export const Chessboard = ({
       lastMove: lastMove ?? [],
       check: displayCheck,
     });
-  }, [orientation, coordinates, fenRef, getDisplayTurn, getMovableConfig]);
+  }, [orientation, coordinates, disabled, fenRef, getDisplayTurn, getMovableConfig]);
 
   return (
     <div className="cg-boardShell cg-pieceTheme" style={{ ...pieceStyle, ...boardStyle }}>

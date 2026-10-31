@@ -11,6 +11,13 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
+  DAILY_PUZZLE_ATTEMPT_LIMIT,
+  DAILY_PUZZLE_ATTEMPT_LIMIT_MESSAGE,
+  DAILY_PUZZLE_LOAD_BLOCKED_MESSAGE,
+  isTimestampInUtcDay,
+  utcDayBounds,
+} from "../../../shared/domain/puzzles/dailyAttemptLimit";
+import {
   normalizePuzzleLevel,
   type PuzzleLevel,
   puzzleLevelLabel,
@@ -33,6 +40,7 @@ import { useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
 import { useCopyFeedback } from "../../hooks/useCopyFeedback";
+import { ApiError } from "../../lib/api/postApi";
 import {
   fetchCustomPuzzleSet,
   getOrderedPuzzleIndexesForCustomSet,
@@ -142,6 +150,7 @@ export const PuzzleSolverPage = () => {
     usePuzzleCatalog(routePuzzleId, routeSetKey || routeDashboardSetId);
   const [attemptedPuzzleIds, setAttemptedPuzzleIds] = useState<Set<string>>(() => new Set());
   const [unratedPuzzleIds, setUnratedPuzzleIds] = useState<Set<string>>(() => new Set());
+  const [dailyAttemptCount, setDailyAttemptCount] = useState(0);
   const [attemptedPuzzleIdsOwner, setAttemptedPuzzleIdsOwner] = useState<string | null>(null);
   const [resolvedAttemptedPuzzleIds, setResolvedAttemptedPuzzleIds] = useState<Set<string>>(
     () => new Set(),
@@ -208,6 +217,8 @@ export const PuzzleSolverPage = () => {
   const isMountedRef = useRef(true);
   const progressWriteQueueRef = useRef(Promise.resolve());
   const attemptedPuzzleIdsRef = useRef<Set<string>>(new Set());
+  const unratedPuzzleIdsRef = useRef<Set<string>>(new Set());
+  const countedTodayPuzzleIdsRef = useRef<Set<string>>(new Set());
   const activePuzzleKeyRef = useRef("");
   const elapsedTimeMsRef = useRef(0);
   const elapsedTimerStartedAtRef = useRef<number | null>(null);
@@ -350,18 +361,23 @@ export const PuzzleSolverPage = () => {
     if (!username) {
       setAttemptedPuzzleIds(new Set());
       setUnratedPuzzleIds(new Set());
+      setDailyAttemptCount(0);
+      countedTodayPuzzleIdsRef.current = new Set();
       setAttemptedPuzzleIdsOwner("");
       return undefined;
     }
 
     setAttemptedPuzzleIds(new Set());
     setUnratedPuzzleIds(new Set());
+    setDailyAttemptCount(0);
+    countedTodayPuzzleIdsRef.current = new Set();
     setAttemptedPuzzleIdsOwner(null);
 
     const loadAttemptedPuzzleIds = async () => {
       try {
         const progressRows = await fetchPuzzleProgressRowsForUsername(username);
         if (isCurrent) {
+          const todayRows = progressRows.filter((row) => isTimestampInUtcDay(row.first_attempt_at));
           setAttemptedPuzzleIds(
             new Set(
               progressRows.filter((row) => row.rated !== false).map((row) => String(row.puzzle_id)),
@@ -372,12 +388,16 @@ export const PuzzleSolverPage = () => {
               progressRows.filter((row) => row.rated === false).map((row) => String(row.puzzle_id)),
             ),
           );
+          countedTodayPuzzleIdsRef.current = new Set(todayRows.map((row) => String(row.puzzle_id)));
+          setDailyAttemptCount(todayRows.length);
           setAttemptedPuzzleIdsOwner(username);
         }
       } catch (error) {
         if (!isCurrent) return;
         setAttemptedPuzzleIds(new Set());
         setUnratedPuzzleIds(new Set());
+        countedTodayPuzzleIdsRef.current = new Set();
+        setDailyAttemptCount(0);
         setAttemptedPuzzleIdsOwner(username);
         globalThis.console?.error(error);
       }
@@ -393,6 +413,10 @@ export const PuzzleSolverPage = () => {
   useEffect(() => {
     attemptedPuzzleIdsRef.current = attemptedPuzzleIds;
   }, [attemptedPuzzleIds]);
+
+  useEffect(() => {
+    unratedPuzzleIdsRef.current = unratedPuzzleIds;
+  }, [unratedPuzzleIds]);
 
   useEffect(() => {
     setBoardState((prev) => {
@@ -508,11 +532,50 @@ export const PuzzleSolverPage = () => {
     ? orderedSetPuzzleIndexes.indexOf(activePuzzleIndex)
     : -1;
   const puzzleCount = isSetSolveMode ? orderedSetPuzzleIndexes.length : puzzles.length;
+  const dailyLimitReached = dailyAttemptCount >= DAILY_PUZZLE_ATTEMPT_LIMIT;
   const canGoToPreviousPuzzle = isSetSolveMode ? activeSetPuzzlePosition > 0 : historyIndex > 0;
+  const nextSetPuzzleIndex = isSetSolveMode
+    ? orderedSetPuzzleIndexes[activeSetPuzzlePosition + 1]
+    : undefined;
+  const nextSetPuzzleKey =
+    nextSetPuzzleIndex === undefined ? "" : String(puzzles[nextSetPuzzleIndex]?.puzzleId ?? "");
+  const nextSetPuzzleWasAttempted = Boolean(
+    nextSetPuzzleKey &&
+    (attemptedPuzzleIds.has(nextSetPuzzleKey) || unratedPuzzleIds.has(nextSetPuzzleKey)),
+  );
+  const nextHistoryPuzzleIndex =
+    historyIndex >= 0 && historyIndex < history.length - 1 ? history[historyIndex + 1] : undefined;
+  const nextHistoryPuzzleKey =
+    nextHistoryPuzzleIndex === undefined
+      ? ""
+      : String(puzzles[nextHistoryPuzzleIndex]?.puzzleId ?? "");
+  const nextHistoryPuzzleWasAttempted = Boolean(
+    nextHistoryPuzzleKey &&
+    (attemptedPuzzleIds.has(nextHistoryPuzzleKey) ||
+      unratedPuzzleIds.has(nextHistoryPuzzleKey) ||
+      countedTodayPuzzleIdsRef.current.has(nextHistoryPuzzleKey)),
+  );
   const canGoToNextPuzzle = isSetSolveMode
-    ? activeSetPuzzlePosition >= 0 && activeSetPuzzlePosition < orderedSetPuzzleIndexes.length - 1
-    : puzzles.length > 0;
+    ? activeSetPuzzlePosition >= 0 &&
+      activeSetPuzzlePosition < orderedSetPuzzleIndexes.length - 1 &&
+      (!dailyLimitReached || nextSetPuzzleWasAttempted)
+    : puzzles.length > 0 &&
+      (!dailyLimitReached ||
+        (nextHistoryPuzzleIndex !== undefined && nextHistoryPuzzleWasAttempted));
   const hasCompletedPuzzleSet = isSetSolveMode && !canGoToNextPuzzle && boardState.solved;
+
+  useEffect(() => {
+    if (!dailyLimitReached) return undefined;
+    const resetAt = Date.parse(utcDayBounds().end);
+    const timeout = window.setTimeout(
+      () => {
+        countedTodayPuzzleIdsRef.current = new Set();
+        setDailyAttemptCount(0);
+      },
+      Math.max(0, resetAt - Date.now()) + 50,
+    );
+    return () => window.clearTimeout(timeout);
+  }, [dailyLimitReached]);
   const showPuzzleSetMetadata = Boolean(
     !isCustomSetSolveMode && !isDashboardSetSolveMode && activePuzzleSetMetadata?.eventName,
   );
@@ -622,7 +685,13 @@ export const PuzzleSolverPage = () => {
         return puzzleId === undefined ? [] : [puzzleId];
       }),
     ];
-    const missingIds = candidateIds.filter((puzzleId) => {
+    const allowedCandidateIds = dailyLimitReached
+      ? candidateIds.filter((puzzleId) => {
+          const key = String(puzzleId);
+          return attemptedPuzzleIds.has(key) || unratedPuzzleIds.has(key);
+        })
+      : candidateIds;
+    const missingIds = allowedCandidateIds.filter((puzzleId) => {
       const key = String(puzzleId);
       const puzzle = puzzles.find((entry) => entry.puzzleId === puzzleId);
       return !puzzle?.fen && !loadingPuzzleIdsRef.current.has(key);
@@ -663,12 +732,15 @@ export const PuzzleSolverPage = () => {
     activePuzzleId,
     activePuzzleIndex,
     activeSetPuzzlePosition,
+    attemptedPuzzleIds,
+    dailyLimitReached,
     ensureUpcomingPuzzleIndexes,
     isSetSolveMode,
     mergeLoadedPuzzles,
     orderedSetPuzzleIndexes,
     puzzles,
     setLoadingError,
+    unratedPuzzleIds,
   ]);
 
   useEffect(() => {
@@ -693,6 +765,13 @@ export const PuzzleSolverPage = () => {
       const normalizedPuzzleId = toPuzzleKey(puzzleId);
       if (!normalizedPuzzleId || !user?.username) return;
       if (attemptedPuzzleIdsRef.current.has(normalizedPuzzleId)) return;
+      const isFirstRecordedAttempt =
+        !unratedPuzzleIdsRef.current.has(normalizedPuzzleId) &&
+        !countedTodayPuzzleIdsRef.current.has(normalizedPuzzleId);
+      if (isFirstRecordedAttempt) {
+        countedTodayPuzzleIdsRef.current.add(normalizedPuzzleId);
+        setDailyAttemptCount((current) => Math.min(DAILY_PUZZLE_ATTEMPT_LIMIT, current + 1));
+      }
 
       progressWriteQueueRef.current = progressWriteQueueRef.current
         .catch(() => {})
@@ -726,6 +805,12 @@ export const PuzzleSolverPage = () => {
           }),
         )
         .catch((error) => {
+          if (error instanceof ApiError && error.code === "daily_puzzle_attempt_limit") {
+            setDailyAttemptCount(DAILY_PUZZLE_ATTEMPT_LIMIT);
+          } else if (isFirstRecordedAttempt) {
+            countedTodayPuzzleIdsRef.current.delete(normalizedPuzzleId);
+            setDailyAttemptCount((current) => Math.max(0, current - 1));
+          }
           globalThis.console?.error(error);
         });
     },
@@ -1841,7 +1926,7 @@ export const PuzzleSolverPage = () => {
           <div id="desktop-puzzle-vote-slot" className="puzzleVoteSlot" />
         ) : null}
 
-        {loadingError || boardState.error ? (
+        {(loadingError || boardState.error) && !dailyLimitReached ? (
           <div className="errorText" role="alert">
             {loadingError || boardState.error}
           </div>
@@ -1941,6 +2026,14 @@ export const PuzzleSolverPage = () => {
             </div>
           ) : null}
           <div className="boardStage">
+            {dailyLimitReached ? (
+              <div className="dailyPuzzleLimitNotice" role="status" aria-live="polite">
+                <strong>No more puzzles today</strong>
+                <span>
+                  {fen ? DAILY_PUZZLE_ATTEMPT_LIMIT_MESSAGE : DAILY_PUZZLE_LOAD_BLOCKED_MESSAGE}
+                </span>
+              </div>
+            ) : null}
             {fen ? (
               <Chessboard
                 puzzleId={activePuzzleId}
@@ -1950,13 +2043,14 @@ export const PuzzleSolverPage = () => {
                 solution={activePuzzle?.solution ?? ""}
                 showSolution={boardShowsSolution}
                 analysisMode={isAnalysisMode}
+                disabled={dailyLimitReached}
                 captureNavigationShortcuts
                 solutionNavigation={solutionNavigation}
                 onNavigateHandled={() => setSolutionNavigation(null)}
                 onAttemptResolved={handleAttemptResolved}
                 onStateChange={handleBoardStateChange}
               />
-            ) : (
+            ) : dailyLimitReached ? null : (
               <div className="emptyBoard">Waiting for puzzle data...</div>
             )}
           </div>

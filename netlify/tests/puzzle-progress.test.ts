@@ -122,6 +122,30 @@ describe("puzzle-progress function", () => {
     expect(JSON.parse(response.body)).toMatchObject({ coinAward: 0, coinDelta: -3.21644 });
   });
 
+  it("returns a friendly daily-limit response when the database rejects attempt 201", async () => {
+    const rpc = vi.fn(async () => ({
+      data: null,
+      error: { message: "daily_puzzle_attempt_limit_reached" },
+    }));
+    mocks.createClient.mockReturnValue({ rpc });
+    const cookie = createSiteSessionCookie("Solver", {});
+
+    const response = await handler({
+      httpMethod: "POST",
+      headers: { cookie: cookie.split(";")[0] },
+      body: JSON.stringify({
+        puzzleId: "201",
+        puzzleCorrect: true,
+        attemptDurationMs: 1_000,
+      }),
+    });
+
+    expect(response.statusCode).toBe(429);
+    expect(JSON.parse(response.body)).toMatchObject({
+      code: "daily_puzzle_attempt_limit",
+    });
+  });
+
   it("reports an unrated attempt without manufacturing a rating event", async () => {
     const rpc = vi.fn(async () => ({ data: 0, error: null }));
     const unratedProgressQuery = progressQuery(false);
