@@ -1,35 +1,40 @@
-import stockfishScriptUrl from "fairy-stockfish-nnue.wasm/stockfish.js?url";
-import stockfishWasmUrl from "fairy-stockfish-nnue.wasm/stockfish.wasm?url";
-import stockfishWorkerUrl from "fairy-stockfish-nnue.wasm/stockfish.worker.js?url";
+import stockfishScriptUrl from "@lichess-org/stockfish-web/fsf_14.js?url";
+import stockfishWasmUrl from "@lichess-org/stockfish-web/fsf_14.wasm?url";
 
-type StockfishModule = {
+type StockfishEngine = {
   addMessageListener: (listener: (line: string) => void) => void;
   removeMessageListener: (listener: (line: string) => void) => void;
   postMessage: (command: string) => void;
 };
 
+type StockfishWebModule = {
+  uci: (command: string) => void;
+  listen: (line: string) => void;
+  onError: (message: string) => void;
+};
+
 type StockfishFactory = (options?: {
   locateFile?: (path: string) => string;
   mainScriptUrlOrBlob?: string;
-}) => Promise<StockfishModule>;
+  listen?: (line: string) => void;
+  onError?: (message: string) => void;
+}) => Promise<StockfishWebModule>;
 
 export type EngineCandidate = {
   move: string;
   multipv: number;
   scoreType: "cp" | "mate";
   score: number;
+  depth?: number;
+  principalVariation?: string[];
 };
 
-declare global {
-  interface Window {
-    Stockfish?: StockfishFactory;
-  }
-}
-
-let enginePromise: Promise<StockfishModule> | null = null;
-let scriptPromise: Promise<void> | null = null;
+let enginePromise: Promise<StockfishEngine> | null = null;
 let engineSearchQueue: Promise<void> = Promise.resolve();
-const candidatesByFen = new Map<string, EngineCandidate[]>();
+const candidatesByFen = new Map<
+  string,
+  { candidates: EngineCandidate[]; multiPvCount: number; thinkTimeMs: number }
+>();
 const MIN_THINK_TIME_MS = 500;
 const MAX_THINK_TIME_MS = 3_000;
 const ENGINE_RESPONSE_TIMEOUT_MS = 15_000;
@@ -117,23 +122,8 @@ export const chooseEngineCandidate = (
   return eligibleCandidates.at(-1) ?? null;
 };
 
-const loadStockfishScript = (): Promise<void> => {
-  if (window.Stockfish) return Promise.resolve();
-  if (scriptPromise) return scriptPromise;
-
-  scriptPromise = new Promise<void>((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = stockfishScriptUrl;
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Could not load Fairy-Stockfish"));
-    document.head.append(script);
-  });
-  return scriptPromise;
-};
-
 const waitForLine = (
-  engine: StockfishModule,
+  engine: StockfishEngine,
   matches: (line: string) => boolean,
   signal?: AbortSignal,
   timeoutMs = ENGINE_RESPONSE_TIMEOUT_MS,
@@ -164,27 +154,35 @@ const waitForLine = (
     if (signal?.aborted) handleAbort();
   });
 
-const initializeEngine = async (): Promise<StockfishModule> => {
+const initializeEngine = async (): Promise<StockfishEngine> => {
   if (!globalThis.crossOriginIsolated || typeof SharedArrayBuffer === "undefined") {
     throw new Error("Fairy-Stockfish requires cross-origin isolation");
   }
 
-  await loadStockfishScript();
-  const factory = window.Stockfish;
-  if (!factory) throw new Error("Fairy-Stockfish did not initialize");
-
-  const engine = await factory({
+  const listeners = new Set<(line: string) => void>();
+  const { default: factory } = (await import(/* @vite-ignore */ stockfishScriptUrl)) as {
+    default: StockfishFactory;
+  };
+  const module = await factory({
     mainScriptUrlOrBlob: stockfishScriptUrl,
-    locateFile: (path) => {
-      if (path.endsWith(".wasm")) return stockfishWasmUrl;
-      if (path.endsWith(".worker.js")) return stockfishWorkerUrl;
-      return path;
-    },
+    locateFile: (path) => (path.endsWith(".wasm") ? stockfishWasmUrl : path),
+    listen: (line) => listeners.forEach((listener) => listener(line)),
+    onError: (message) => console.error(`Fairy-Stockfish: ${message}`),
   });
+  const engine: StockfishEngine = {
+    addMessageListener: (listener) => listeners.add(listener),
+    removeMessageListener: (listener) => listeners.delete(listener),
+    postMessage: (command) => module.uci(command),
+  };
   const uciReady = waitForLine(engine, (line) => line === "uciok");
   engine.postMessage("uci");
   await uciReady;
   engine.postMessage("setoption name UCI_Variant value atomic");
+  engine.postMessage("setoption name UCI_AnalyseMode value true");
+  engine.postMessage(
+    `setoption name Threads value ${Math.min(4, Math.max(1, navigator.hardwareConcurrency - 1))}`,
+  );
+  engine.postMessage("setoption name Hash value 64");
   engine.postMessage(`setoption name MultiPV value ${MULTIPV_COUNT}`);
   const engineReady = waitForLine(engine, (line) => line === "readyok");
   engine.postMessage("isready");
@@ -192,7 +190,7 @@ const initializeEngine = async (): Promise<StockfishModule> => {
   return engine;
 };
 
-const getEngine = (): Promise<StockfishModule> => {
+const getEngine = (): Promise<StockfishEngine> => {
   enginePromise ??= initializeEngine().catch((error) => {
     enginePromise = null;
     throw error;
@@ -201,7 +199,7 @@ const getEngine = (): Promise<StockfishModule> => {
 };
 
 const waitForBestMove = (
-  engine: StockfishModule,
+  engine: StockfishEngine,
   signal?: AbortSignal,
 ): Promise<{ bestMoveLine: string; candidates: EngineCandidate[] }> =>
   new Promise((resolve, reject) => {
@@ -221,7 +219,14 @@ const waitForBestMove = (
       if (line.startsWith("info ")) {
         const multipv = Number(line.match(/\bmultipv\s+(\d+)/)?.[1]);
         const scoreMatch = line.match(/\bscore\s+(cp|mate)\s+(-?\d+)/);
-        const move = line.match(/\bpv\s+(\S+)/)?.[1] ?? "";
+        const principalVariation =
+          line
+            .match(/\bpv\s+(.+)$/)?.[1]
+            ?.trim()
+            .split(/\s+/)
+            .filter((move) => /^[a-h][1-8][a-h][1-8][nbrq]?$/.test(move)) ?? [];
+        const move = principalVariation[0] ?? "";
+        const depth = Number(line.match(/\bdepth\s+(\d+)/)?.[1]);
         if (
           Number.isInteger(multipv) &&
           multipv >= 1 &&
@@ -234,6 +239,8 @@ const waitForBestMove = (
             multipv,
             scoreType: scoreMatch[1] as "cp" | "mate",
             score: Number(scoreMatch[2]),
+            depth: Number.isInteger(depth) ? depth : 0,
+            principalVariation,
           });
         }
         return;
@@ -260,20 +267,16 @@ const waitForBestMove = (
     if (signal?.aborted) handleAbort();
   });
 
-const runFairyStockfishSearch = async (
+const searchFairyStockfish = async (
   fen: string,
   signal?: AbortSignal,
-  excludedMoves: ReadonlySet<string> = new Set(),
-): Promise<string | null> => {
-  const cachedCandidates = candidatesByFen.get(fen);
-  if (cachedCandidates) {
-    return chooseEngineCandidate(cachedCandidates, Math.random, excludedMoves)?.move ?? null;
-  }
-
+  thinkTimeMs = randomThinkTimeMs(),
+  multiPvCount = MULTIPV_COUNT,
+): Promise<{ bestMove: string | null; candidates: EngineCandidate[] }> => {
   let lastFailure: unknown = new Error("Fairy-Stockfish failed");
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
-    let engine: StockfishModule | null = null;
+    let engine: StockfishEngine | null = null;
 
     try {
       engine = await getEngine();
@@ -286,16 +289,18 @@ const runFairyStockfishSearch = async (
       await engineReady;
       if (signal?.aborted) throw new DOMException("Engine search cancelled", "AbortError");
 
+      engine.postMessage(`setoption name MultiPV value ${multiPvCount}`);
       engine.postMessage("ucinewgame");
       engine.postMessage(`position fen ${fen}`);
       const bestMoveResult = waitForBestMove(engine, signal);
-      engine.postMessage(`go movetime ${randomThinkTimeMs()}`);
+      engine.postMessage(`go movetime ${thinkTimeMs}`);
       const { bestMoveLine, candidates } = await bestMoveResult;
       const fallbackMove = bestMoveLine.match(/^bestmove\s+(\S+)/)?.[1] ?? "";
-      candidatesByFen.set(fen, candidates);
-      const move =
-        chooseEngineCandidate(candidates, Math.random, excludedMoves)?.move ?? fallbackMove;
-      return move && move !== "(none)" ? move : null;
+      candidatesByFen.set(fen, { candidates, multiPvCount, thinkTimeMs });
+      return {
+        bestMove: fallbackMove && fallbackMove !== "(none)" ? fallbackMove : null,
+        candidates,
+      };
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") throw error;
 
@@ -314,11 +319,10 @@ const runFairyStockfishSearch = async (
   throw lastFailure;
 };
 
-export const findFairyStockfishMove = (
-  fen: string,
+const queueFairyStockfishSearch = <T>(
+  search: (signal: AbortSignal) => Promise<T>,
   signal?: AbortSignal,
-  excludedMoves: ReadonlySet<string> = new Set(),
-): Promise<string | null> => {
+): Promise<T> => {
   const requestController = new AbortController();
   const handleAbort = (): void => requestController.abort();
   signal?.addEventListener("abort", handleAbort, { once: true });
@@ -326,13 +330,56 @@ export const findFairyStockfishMove = (
 
   // Fairy-Stockfish uses one shared UCI worker. Serialize every interaction so
   // rapid React effect cleanup/restarts cannot interleave stop/isready/go.
-  const queuedSearch = engineSearchQueue.then(() =>
-    runFairyStockfishSearch(fen, requestController.signal, excludedMoves),
-  );
+  const queuedSearch = engineSearchQueue.then(() => search(requestController.signal));
   engineSearchQueue = queuedSearch.then(
     () => undefined,
     () => undefined,
   );
-  const search = withEngineRequestTimeout(queuedSearch, () => requestController.abort());
-  return search.finally(() => signal?.removeEventListener("abort", handleAbort));
+  const request = withEngineRequestTimeout(queuedSearch, () => requestController.abort());
+  return request.finally(() => signal?.removeEventListener("abort", handleAbort));
+};
+
+export const analyzeFairyStockfishPosition = async (
+  fen: string,
+  lineCount: number,
+  signal?: AbortSignal,
+): Promise<EngineCandidate[]> => {
+  const requestedLineCount = Math.min(MULTIPV_COUNT, Math.max(1, Math.floor(lineCount)));
+  const cachedSearch = candidatesByFen.get(fen);
+  const candidates =
+    cachedSearch &&
+    cachedSearch.thinkTimeMs >= MAX_THINK_TIME_MS &&
+    cachedSearch.multiPvCount >= requestedLineCount
+      ? cachedSearch.candidates
+      : (
+          await queueFairyStockfishSearch(
+            (requestSignal) =>
+              searchFairyStockfish(fen, requestSignal, MAX_THINK_TIME_MS, requestedLineCount),
+            signal,
+          )
+        ).candidates;
+
+  return [...candidates]
+    .sort((left, right) => left.multipv - right.multipv)
+    .slice(0, requestedLineCount);
+};
+
+export const findFairyStockfishMove = (
+  fen: string,
+  signal?: AbortSignal,
+  excludedMoves: ReadonlySet<string> = new Set(),
+): Promise<string | null> => {
+  const cachedSearch = candidatesByFen.get(fen);
+  if (cachedSearch) {
+    return Promise.resolve(
+      chooseEngineCandidate(cachedSearch.candidates, Math.random, excludedMoves)?.move ?? null,
+    );
+  }
+
+  return queueFairyStockfishSearch(async (requestSignal) => {
+    const result = await searchFairyStockfish(fen, requestSignal);
+    return (
+      chooseEngineCandidate(result.candidates, Math.random, excludedMoves)?.move ?? result.bestMove
+    );
+  }, signal);
 };

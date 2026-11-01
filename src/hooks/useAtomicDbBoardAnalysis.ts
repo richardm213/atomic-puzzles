@@ -25,6 +25,7 @@ export const useAtomicDbBoardAnalysis = ({
     lineCount: enabled ? lineCount : 0,
     plyCount: PRINCIPAL_VARIATION_PLIES,
     suspended: variationPlaying,
+    fallbackToEngine: enabled,
   });
 
   const beginVariationPlayback = useCallback((): void => {

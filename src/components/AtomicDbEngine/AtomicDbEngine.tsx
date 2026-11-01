@@ -32,6 +32,9 @@ type AtomicDbEngineControlsProps = {
   onFlipBoard?: () => void;
 };
 
+const analysisSourceLabel = (analysis: AtomicDbAnalysisState): string =>
+  analysis.source === "engine" ? "Fairy-Stockfish 14" : "AtomicDB";
+
 export const AtomicDbEngineControls = ({
   fen,
   analysis,
@@ -44,6 +47,7 @@ export const AtomicDbEngineControls = ({
   const settingsRef = useRef<HTMLDivElement | null>(null);
   const visibleLineCount = settings.enabled ? settings.lineCount : 0;
   const view = buildAtomicDbView(analysis.result, fen);
+  const sourceLabel = analysisSourceLabel(analysis);
 
   const setLineCount = (nextLineCount: number): void => {
     const clampedCount = Math.min(5, Math.max(0, nextLineCount));
@@ -73,13 +77,13 @@ export const AtomicDbEngineControls = ({
   }, [settingsOpen]);
 
   return (
-    <div className="atomicDbHeaderControls" aria-label="AtomicDB analysis controls">
+    <div className="atomicDbHeaderControls" aria-label="Position analysis controls">
       <button
         type="button"
         className={`atomicDbEngineToggle ${settings.enabled ? "active" : ""}`}
-        aria-label="Toggle AtomicDB analysis"
+        aria-label="Toggle position analysis"
         aria-pressed={settings.enabled}
-        title="Toggle AtomicDB analysis (L)"
+        title="Toggle analysis (L)"
         onClick={() => {
           setSettings((current) => ({ ...current, enabled: !current.enabled }));
           onDisable();
@@ -93,9 +97,13 @@ export const AtomicDbEngineControls = ({
         {view.evaluation.type === "unknown" ? null : view.evaluationLabel}
       </strong>
       <span className="atomicDbTopSource">
-        AtomicDB
+        {sourceLabel}
         {analysis.status === "loading" && settings.enabled ? (
-          <FontAwesomeIcon icon={faSpinner} spin aria-label="Loading new AtomicDB evaluation" />
+          <FontAwesomeIcon
+            icon={faSpinner}
+            spin
+            aria-label={`Loading new ${sourceLabel} evaluation`}
+          />
         ) : null}
       </span>
       <div className="atomicDbSettings" ref={settingsRef}>
@@ -171,6 +179,7 @@ export const AtomicDbEngine = ({
   const { enabled, lineCount, showFollowUpMoves } = settings;
   const { status, error } = analysis;
   const view = buildAtomicDbView(analysis.result, fen);
+  const sourceLabel = analysisSourceLabel(analysis);
   const { position } = view;
   const visibleMoves = useMemo(
     () => position?.moves.slice(0, lineCount) ?? [],
@@ -182,7 +191,7 @@ export const AtomicDbEngine = ({
   if (!enabled) return null;
 
   return (
-    <section className="atomicDbEngine" aria-label="AtomicDB engine lines">
+    <section className="atomicDbEngine" aria-label="Position analysis lines">
       <div className="atomicDbEngineBody" aria-live="polite" aria-busy={status === "loading"}>
         {status === "loading" && !position ? (
           <div className="atomicDbEngineState">
@@ -192,10 +201,10 @@ export const AtomicDbEngine = ({
         ) : null}
         {status === "error" ? <div className="atomicDbEngineState error">{error}</div> : null}
         {status === "ready" && !position ? (
-          <div className="atomicDbEngineState">No AtomicDB analysis for this position.</div>
+          <div className="atomicDbEngineState">No {sourceLabel} analysis for this position.</div>
         ) : null}
         {status === "ready" && position && visibleMoves.length === 0 ? (
-          <div className="atomicDbEngineState">No analyzed moves for this position.</div>
+          <div className="atomicDbEngineState">No engine moves for this position.</div>
         ) : null}
         {visibleMoves.length > 0 ? (
           <ol className="atomicDbEngineLines">
@@ -303,6 +312,7 @@ export const AtomicDbEvalBar = ({
 }) => {
   const { status } = analysis;
   const view = buildAtomicDbView(analysis.result, fen);
+  const sourceLabel = analysisSourceLabel(analysis);
 
   return (
     <div
@@ -313,7 +323,7 @@ export const AtomicDbEvalBar = ({
       aria-hidden={!enabled}
       aria-label={
         enabled
-          ? `AtomicDB evaluation ${status === "loading" ? "loading" : view.evaluationLabel}`
+          ? `${sourceLabel} evaluation ${status === "loading" ? "loading" : view.evaluationLabel}`
           : undefined
       }
       aria-valuemin={enabled ? 0 : undefined}
@@ -322,8 +332,8 @@ export const AtomicDbEvalBar = ({
       title={
         enabled
           ? status === "loading"
-            ? "Loading AtomicDB evaluation"
-            : `AtomicDB: ${view.evaluationLabel}`
+            ? `Loading ${sourceLabel} evaluation`
+            : `${sourceLabel}: ${view.evaluationLabel}`
           : undefined
       }
     >

@@ -2,7 +2,14 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { StrictMode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { analyzeFairyStockfishPosition } from "../lib/practice/fairyStockfish";
 import { useAtomicDbAnalysis } from "./useAtomicDbAnalysis";
+
+vi.mock("../lib/practice/fairyStockfish", () => ({
+  analyzeFairyStockfishPosition: vi.fn(),
+}));
+
+const analyzeWithEngineMock = vi.mocked(analyzeFairyStockfishPosition);
 
 const FIRST_FEN = "8/8/8/8/8/8/8/K6k w - - 0 101";
 const SECOND_FEN = "8/8/8/8/8/8/8/K6k b - - 0 102";
@@ -21,6 +28,43 @@ const responseFor = (score: number) =>
 describe("useAtomicDbAnalysis", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    analyzeWithEngineMock.mockReset();
+  });
+
+  it("falls back to Fairy-Stockfish only after AtomicDB returns no analyzed moves", async () => {
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 12 30";
+    const fetchMock = vi.fn().mockResolvedValue(responseFor(0));
+    vi.stubGlobal("fetch", fetchMock);
+    analyzeWithEngineMock.mockResolvedValue([
+      {
+        move: "e2e4",
+        multipv: 1,
+        scoreType: "cp",
+        score: 82,
+        depth: 18,
+        principalVariation: ["e2e4", "e7e5", "g1f3"],
+      },
+    ]);
+
+    const { result } = renderHook(() =>
+      useAtomicDbAnalysis(fen, {
+        debounceMs: 0,
+        fallbackToEngine: true,
+        lineCount: 1,
+        plyCount: 3,
+      }),
+    );
+
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(analyzeWithEngineMock).toHaveBeenCalledOnce();
+    expect(result.current.source).toBe("engine");
+    expect(result.current.result?.position?.moves[0]).toMatchObject({
+      uci: "e2e4",
+      score: 82,
+      backedPlies: 18,
+    });
+    expect(result.current.principalVariations.e2e4).toEqual(["e2e4", "e7e5", "g1f3"]);
   });
 
   it("retains the settled position while the next FEN is loading", async () => {
