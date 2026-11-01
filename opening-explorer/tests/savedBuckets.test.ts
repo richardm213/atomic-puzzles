@@ -6,7 +6,7 @@ const { DatabaseSync } = createRequire(import.meta.url)(
 
 import { describe, expect, it } from "vitest";
 
-import { buildOpeningExplorerSql } from "../core/legacySql.js";
+import { buildOpeningExplorerSql } from "../core/sql.js";
 
 const keyHex = "007a07e2907927020b305efdb129dc37";
 const setup = () => {

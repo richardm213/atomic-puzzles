@@ -61,6 +61,7 @@ const EXPLORER_RESIZE_STEP = 24;
 type ExplorerScope = "general" | "player";
 type ExplorerSpeed = "bullet" | "blitz" | "hyperbullet";
 type ExplorerSpeedValue = 0 | 1 | 2;
+type UsernamePickerTarget = "player" | "opponent";
 const MONTH_FILTER_PATTERN = /^\d{4}-\d{2}$/;
 const EXPLORER_SETTINGS_STORAGE_KEY = "atomic-puzzles.analysis.explorer-settings";
 const BOARD_SIZE_STORAGE_KEY = "atomic-puzzles.analysis.board-size";
@@ -77,6 +78,9 @@ const SPEED_FILTERS: Array<{ key: ExplorerSpeed; label: string; value: ExplorerS
 ];
 const EXPLORER_SPEED_KEYS = SPEED_FILTERS.map((speed) => speed.key);
 const EXPLORER_SPEED_FILTER_VERSION = 2;
+const PLAYER_MIN_RATING = 1700;
+const MAX_EXPLORER_RATING = 2200;
+const PLAYER_RATING_STEP = 50;
 
 const fenFromRoute = (value: string | undefined): string => {
   if (!value) return STARTING_FEN;
@@ -98,13 +102,21 @@ const DEFAULT_EXPLORER_SETTINGS = {
   explorerScope: "general" as ExplorerScope,
   playerColor: "white" as "white" | "black",
   selectedSpeeds: ["bullet", "blitz", "hyperbullet"] as ExplorerSpeed[],
+  minRating: PLAYER_MIN_RATING,
   generalStartDate: "",
   playerStartDate: DEFAULT_PLAYER_START_DATE,
   endDate: "",
   username: "",
+  opponent: "",
 };
 
 type StoredExplorerSettings = typeof DEFAULT_EXPLORER_SETTINGS;
+
+const clampRating = (rating: number): number =>
+  Math.max(
+    PLAYER_MIN_RATING,
+    Math.min(MAX_EXPLORER_RATING, Number.isFinite(rating) ? rating : PLAYER_MIN_RATING),
+  );
 
 const clampAnalysisBoardSize = (size: number, maxSize = MAX_ANALYSIS_BOARD_SIZE): number =>
   Math.round(
@@ -188,10 +200,12 @@ const explorerSettingsSchema = z
         rawSettings.selectedSpeeds,
         rawSettings.speedFilterVersion,
       ),
+      minRating: clampRating(Number(rawSettings.minRating)),
       generalStartDate,
       playerStartDate,
       endDate: validMonthFilter(rawSettings.endDate),
       username: String(rawSettings.username ?? "").trim(),
+      opponent: String(rawSettings.opponent ?? "").trim(),
     };
   });
 
@@ -291,10 +305,12 @@ export const AnalysisPage = () => {
     explorerScope,
     playerColor,
     selectedSpeeds,
+    minRating,
     generalStartDate,
     playerStartDate,
     endDate,
     username,
+    opponent,
   } = explorerSettings;
   const updateExplorerSettings = useCallback(
     (patch: Partial<StoredExplorerSettings>): void =>
@@ -303,12 +319,13 @@ export const AnalysisPage = () => {
   );
   const {
     isOpen: usernamePickerOpen,
+    target: usernamePickerTarget,
     recentUsernames,
     open: openPicker,
     close: closeUsernamePicker,
     remember: rememberUsername,
     removeRecent: removeRecentUsername,
-  } = useUsernamePicker("player");
+  } = useUsernamePicker<UsernamePickerTarget>("player");
   const [hoveredExplorerMoveUci, setHoveredExplorerMoveUci] = useState<string | null>(null);
   const [threatMode, setThreatMode] = useState(false);
 
@@ -357,6 +374,7 @@ export const AnalysisPage = () => {
   const canStepBack = currentPly > 0;
   const canStepForward = currentPly < moveList.length;
   const showExplorerResults = !filtersOpen;
+  const playerRatingValue = clampRating(minRating);
   const activeStartDate = explorerScope === "player" ? playerStartDate : generalStartDate;
   const rightPanelStyle =
     explorerOpen && movePanelHeight !== null
@@ -594,13 +612,20 @@ export const AnalysisPage = () => {
     }
   };
 
-  const openUsernamePicker = (): void => openPicker();
+  const openUsernamePicker = (target: UsernamePickerTarget): void => {
+    openPicker(target);
+  };
 
   const commitUsername = (nextUsername: string): void => {
     const trimmedUsername = nextUsername.trim();
     if (!trimmedUsername) return;
 
-    updateExplorerSettings({ username: trimmedUsername });
+    if (usernamePickerTarget === "opponent") {
+      updateExplorerSettings({ opponent: trimmedUsername });
+    } else {
+      updateExplorerSettings({ username: trimmedUsername });
+    }
+
     updateExplorerSettings({ explorerScope: "player" });
     ensurePlayerStartDate();
     setFiltersOpen(false);
@@ -659,9 +684,21 @@ export const AnalysisPage = () => {
       speeds,
       startDate: activeStartDate,
       endDate,
-      ...(explorerScope === "player" ? { username, color: playerColor } : {}),
+      ...(explorerScope === "player"
+        ? { username, opponent, color: playerColor, minRating: playerRatingValue }
+        : {}),
     });
-  }, [activeStartDate, currentFen, endDate, explorerScope, playerColor, selectedSpeeds, username]);
+  }, [
+    activeStartDate,
+    currentFen,
+    endDate,
+    explorerScope,
+    opponent,
+    playerColor,
+    playerRatingValue,
+    selectedSpeeds,
+    username,
+  ]);
   const requestExplorer = useCallback(
     (signal: AbortSignal, navigation: ExplorerRequestNavigation) =>
       explorerUrl
@@ -915,7 +952,10 @@ export const AnalysisPage = () => {
                   }
                 >
                   <span className="analysisExplorerPlayerLabel">
-                    <span>{username.trim() || "Player"}</span>
+                    <span>
+                      {username.trim() || "Player"}
+                      {opponent.trim() ? ` vs ${opponent.trim()}` : ""}
+                    </span>
                     <small>as {playerColor}</small>
                   </span>
                 </button>
@@ -943,7 +983,7 @@ export const AnalysisPage = () => {
                       <button
                         type="button"
                         className="analysisPlayerNameButton"
-                        onClick={openUsernamePicker}
+                        onClick={() => openUsernamePicker("player")}
                       >
                         {username.trim() || "Choose player"}
                       </button>
@@ -957,6 +997,29 @@ export const AnalysisPage = () => {
                         <FontAwesomeIcon icon={faArrowsRotate} />
                         <span>as {playerColor}</span>
                       </button>
+                    </div>
+                    <div className="analysisOpponentField">
+                      <span>Opponent</span>
+                      <div className="analysisOpponentFieldRow">
+                        <button
+                          type="button"
+                          className="analysisPlayerNameButton"
+                          onClick={() => openUsernamePicker("opponent")}
+                        >
+                          {opponent.trim() || "Choose opponent"}
+                        </button>
+                        {opponent.trim() ? (
+                          <button
+                            type="button"
+                            className="analysisOpponentClearButton"
+                            aria-label="Clear opponent"
+                            title="Clear opponent"
+                            onClick={() => updateExplorerSettings({ opponent: "" })}
+                          >
+                            <FontAwesomeIcon icon={faXmark} />
+                          </button>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
                 ) : null}
@@ -978,6 +1041,22 @@ export const AnalysisPage = () => {
                     ))}
                   </div>
                 </div>
+                {explorerScope === "player" ? (
+                  <label className="analysisRatingSlider">
+                    <span>Min opponent rating</span>
+                    <output>{playerRatingValue}</output>
+                    <input
+                      type="range"
+                      min={PLAYER_MIN_RATING}
+                      max={MAX_EXPLORER_RATING}
+                      step={PLAYER_RATING_STEP}
+                      value={playerRatingValue}
+                      onChange={(event) =>
+                        updateExplorerSettings({ minRating: Number(event.target.value) })
+                      }
+                    />
+                  </label>
+                ) : null}
                 <div className="analysisDateFilters">
                   <label>
                     <span>Since</span>
@@ -1045,9 +1124,11 @@ export const AnalysisPage = () => {
       {usernamePickerOpen ? (
         <UsernamePickerModal
           id="analysis-username-picker-title"
-          title="Choose player"
+          title={usernamePickerTarget === "opponent" ? "Choose opponent" : "Choose player"}
           recentUsernames={recentUsernames}
-          selectedUsernames={[username.trim()].filter(Boolean)}
+          selectedUsernames={[
+            (usernamePickerTarget === "opponent" ? opponent : username).trim(),
+          ].filter(Boolean)}
           maxSelectedUsernames={1}
           submitLabel="Select"
           onClose={closeUsernamePicker}

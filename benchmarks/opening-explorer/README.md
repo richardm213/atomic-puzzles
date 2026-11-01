@@ -6,7 +6,7 @@ This benchmark measures representative opening explorer loads through the deploy
 npm run benchmark:openings
 ```
 
-The suite covers general start/early/deeper positions, a date-filtered request, and player start/early positions. The packed index cannot reconstruct exact minimum-opponent-rating or head-to-head aggregate filters, so those obsolete cases are intentionally excluded. It runs each case three times and stores raw measurements plus medians in `benchmarks/opening-explorer/results/`.
+The suite covers general start/early/deeper positions, a date-filtered request, player start/early positions, and a head-to-head filter. It runs each case three times and stores raw measurements plus medians in `benchmarks/opening-explorer/results/`.
 
 Use another deployment or more samples when needed:
 
@@ -16,7 +16,7 @@ npm run benchmark:openings -- --origin=https://deploy-preview.example --runs=5 -
 
 ## Cache integrity
 
-Each request changes only the FEN halfmove and fullmove counters. Those counters create a unique URL, while the opening database hashes only the first four FEN fields into the same 12-byte position key. The runner also checks Netlify's `Cache-Status` header and fails if a response reports a cache hit. Database page warmth is intentionally not defeated: it is part of normal Turso performance, unlike a cached explorer response.
+Each request changes only the FEN halfmove and fullmove counters. Those counters create a unique URL and service cache key, while the opening database hashes only the first four FEN fields and therefore queries the same position. The runner also checks Netlify's `Cache-Status` header and fails if a response reports a cache hit. Database page warmth is intentionally not defeated: it is part of normal Turso performance, unlike a cached explorer response.
 
 ## Reading results
 

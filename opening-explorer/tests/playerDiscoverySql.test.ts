@@ -8,12 +8,12 @@ import {
 
 describe("opening explorer player discovery SQL", () => {
   it.each([buildOpeningPlayersSql, buildRandomOpeningPlayerSql])(
-    "uses the packed index player directory instead of scanning monthly payloads",
+    "limits discovery to the indexed standard starting position",
     (buildSql) => {
       const sql = buildSql();
 
-      expect(sql).toContain("from opening_players p");
-      expect(sql).not.toContain("player_month");
+      expect(sql).toContain("position_key = X'95d16ff086549d6cede21ad4502727c6'");
+      expect(sql).toContain("select distinct canonical_player_id");
     },
   );
 
@@ -21,13 +21,12 @@ describe("opening explorer player discovery SQL", () => {
     const position = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -";
 
     expect(positionKeyHex(`${position} 0 1`)).toBe(positionKeyHex(`${position} 87 42`));
-    expect(positionKeyHex(`${position} 0 1`)).toBe("95d16ff086549d6cede21ad4");
-    expect(positionKeyHex(`${position} 0 1`)).toHaveLength(24);
+    expect(positionKeyHex(`${position} 0 1`)).toBe("95d16ff086549d6cede21ad4502727c6");
   });
 
-  it("randomizes only within the player directory", () => {
+  it("randomizes only after reducing the candidate set", () => {
     const sql = buildRandomOpeningPlayerSql();
 
-    expect(sql.indexOf("from opening_players")).toBeLessThan(sql.indexOf("order by random()"));
+    expect(sql.indexOf("position_key =")).toBeLessThan(sql.indexOf("order by random()"));
   });
 });

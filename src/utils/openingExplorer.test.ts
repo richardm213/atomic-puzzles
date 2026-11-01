@@ -18,7 +18,7 @@ afterEach(() => {
 });
 
 describe("buildOpeningExplorerUrl", () => {
-  it("includes supported general and player filters", () => {
+  it("includes valid general filters but scopes player-only filters to a username", () => {
     const general = new URL(
       buildOpeningExplorerUrl({
         fen: "8/8/8/8/8/8/8/K6k w - - 0 1",
@@ -26,6 +26,8 @@ describe("buildOpeningExplorerUrl", () => {
         startDate: "2025-01",
         endDate: "not-a-month",
         color: "black",
+        minRating: 1900,
+        opponent: "bob",
       }),
       "https://example.test",
     );
@@ -41,18 +43,22 @@ describe("buildOpeningExplorerUrl", () => {
         speeds: [0, 1],
         username: " Alice ",
         color: "white",
+        minRating: 1800,
+        opponent: " Bob ",
       }),
       "https://example.test",
     );
     expect(Object.fromEntries(player.searchParams)).toMatchObject({
       username: "Alice",
       color: "white",
+      minRating: "1800",
+      opponent: "Bob",
     });
   });
 });
 
 describe("fetchExplorerApiResponse", () => {
-  it("coalesces identical in-flight work but does not retain settled responses", async () => {
+  it("coalesces identical in-flight work and reuses the settled response", async () => {
     let release!: () => void;
     const gate = new Promise<void>((resolve) => {
       release = resolve;
@@ -75,16 +81,26 @@ describe("fetchExplorerApiResponse", () => {
     release();
     await Promise.all([first, duplicate, differentIntent]);
     await fetchExplorerApiResponse("/api/opening-explorer?case=dedupe", "visible");
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it("does not reuse a settled response across intents", async () => {
-    const fetchMock = vi.fn().mockImplementation(async () => jsonResponse({ moves: [] }));
-    vi.stubGlobal("fetch", fetchMock);
-    const url = "/api/opening-explorer?case=no-settled-cache";
-    await fetchExplorerApiResponse(url, "visible");
-    await fetchExplorerApiResponse(url, "practice");
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+  it("expires settled responses after five minutes", async () => {
+    let now = 1_000;
+    const clock = vi.spyOn(Date, "now").mockImplementation(() => now);
+    try {
+      const fetchMock = vi.fn().mockImplementation(async () => jsonResponse({ moves: [] }));
+      vi.stubGlobal("fetch", fetchMock);
+      const url = "/api/opening-explorer?case=settled-expiry";
+      await fetchExplorerApiResponse(url, "visible");
+      now += 5 * 60_000 - 1;
+      await fetchExplorerApiResponse(url, "practice");
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      now += 2;
+      await fetchExplorerApiResponse(url, "visible");
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    } finally {
+      clock.mockRestore();
+    }
   });
 
   it("passes cancellation through to fetch without sharing another caller's signal", async () => {

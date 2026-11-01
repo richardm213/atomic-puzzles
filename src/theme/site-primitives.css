@@ -101,7 +101,9 @@
 
 .analysisFilterGroup,
 .analysisPlayerSettings,
+.analysisOpponentField,
 .analysisDateFilters label,
+.analysisRatingSlider,
 .practiceSettingGroup {
   min-width: 0;
   display: grid;

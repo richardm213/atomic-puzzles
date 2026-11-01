@@ -18,6 +18,7 @@ const createRepository = (
 ): OpeningExplorerRepository => ({
   source: "fixture",
   availability: () => ({ available, message: "fixture unavailable" }),
+  signature: () => "fixture:v1",
   query: (sql) => query(sql),
 });
 
@@ -87,7 +88,7 @@ describe("createOpeningExplorerService", () => {
     });
   });
 
-  it("resolves aliases inside the legacy personalized query", async () => {
+  it("resolves aliases inside the personalized query without a metadata round trip", async () => {
     const queries: string[] = [];
     const service = createOpeningExplorerService(
       createRepository(async (sql) => {
@@ -98,13 +99,12 @@ describe("createOpeningExplorerService", () => {
 
     await service.handle(explorerRequest({ username: "alias", opponent: "alias" }));
 
-    expect(queries).toHaveLength(2);
-    const explorerSql = queries.find((sql) => sql.includes("as movesJson"));
-    expect(explorerSql).toContain("json_extract(m.value, '$.\"alias\"')");
-    expect(explorerSql).toContain("m.key = 'aliases'");
+    expect(queries).toHaveLength(1);
+    expect(queries[0]).toContain("json_extract(m.value, '$.\"alias\"')");
+    expect(queries[0]).toContain("m.key = 'aliases'");
   });
 
-  it("does not retain database responses and keeps personalized data private", async () => {
+  it("caches general and personalized responses without making personalized data public", async () => {
     const query = vi.fn(fixtureQuery);
     const service = createOpeningExplorerService(createRepository(query));
 
@@ -112,16 +112,45 @@ describe("createOpeningExplorerService", () => {
     const callsAfterFirst = query.mock.calls.length;
     const second = await service.handle(explorerRequest());
     expect(second.body).toBe(first.body);
-    expect(query.mock.calls.length).toBeGreaterThan(callsAfterFirst);
+    expect(query).toHaveBeenCalledTimes(callsAfterFirst);
     expect(second.headers["Cache-Control"]).toBe("public, max-age=30");
-    expect(second.headers["Netlify-CDN-Cache-Control"]).toBeUndefined();
+    expect(second.headers["Netlify-CDN-Cache-Control"]).toBe(
+      "public, durable, s-maxage=3600, stale-while-revalidate=86400",
+    );
 
     await service.handle(explorerRequest({ username: "alice" }));
     const callsAfterPersonalized = query.mock.calls.length;
     const personalized = await service.handle(explorerRequest({ username: "alice" }));
-    expect(query.mock.calls.length).toBeGreaterThan(callsAfterPersonalized);
+    expect(query.mock.calls.length).toBe(callsAfterPersonalized);
     expect(personalized.headers["Cache-Control"]).toBe("no-store");
     expect(personalized.headers["Netlify-CDN-Cache-Control"]).toBeUndefined();
+  });
+
+  it("caches small and empty results, isolates filters, and expires entries", async () => {
+    let now = 1000;
+    const clock = vi.spyOn(Date, "now").mockImplementation(() => now);
+    try {
+      const query = vi.fn(async (sql: string) =>
+        sql.includes("as movesJson")
+          ? [{ movesJson: "[]", recentGamesJson: "[]" }]
+          : sql.includes("limit 12")
+            ? []
+            : fixtureQuery(sql),
+      );
+      const service = createOpeningExplorerService(createRepository(query));
+      await service.handle(explorerRequest({ speeds: "0" }));
+      const firstCalls = query.mock.calls.length;
+      await service.handle(explorerRequest({ speeds: "0" }));
+      expect(query).toHaveBeenCalledTimes(firstCalls);
+      await service.handle(explorerRequest({ speeds: "1" }));
+      expect(query.mock.calls.length).toBeGreaterThan(firstCalls);
+      const beforeExpiry = query.mock.calls.length;
+      now += 5 * 60_000 + 1;
+      await service.handle(explorerRequest({ speeds: "0" }));
+      expect(query.mock.calls.length).toBeGreaterThan(beforeExpiry);
+    } finally {
+      clock.mockRestore();
+    }
   });
 
   it("loads general moves and recent games with one combined query", async () => {
@@ -138,7 +167,7 @@ describe("createOpeningExplorerService", () => {
     expect(queryBatch).not.toHaveBeenCalled();
     const calls = query.mock.calls.length;
     await service.handle(explorerRequest());
-    expect(query.mock.calls.length).toBeGreaterThan(calls);
+    expect(query).toHaveBeenCalledTimes(calls);
   });
 
   it("loads player moves and games with one combined query", async () => {
@@ -152,7 +181,7 @@ describe("createOpeningExplorerService", () => {
     expect(query.mock.calls.every(([sql]) => !sql.includes("savedGames"))).toBe(true);
   });
 
-  it("keeps concurrent request lifetimes independent and retries after a failure", async () => {
+  it("coalesces duplicate in-flight requests and retries after a failure", async () => {
     let release!: () => void;
     const gate = new Promise<void>((resolve) => {
       release = resolve;
@@ -171,7 +200,7 @@ describe("createOpeningExplorerService", () => {
     const [firstResponse, duplicateResponse] = await Promise.all([first, duplicate]);
     expect(firstResponse.statusCode).toBe(200);
     expect(duplicateResponse.body).toBe(firstResponse.body);
-    expect(query.mock.calls.filter(([sql]) => String(sql).includes("limit 12"))).toHaveLength(2);
+    expect(query.mock.calls.filter(([sql]) => String(sql).includes("limit 12"))).toHaveLength(1);
 
     let shouldFail = true;
     const retryService = createOpeningExplorerService(
@@ -231,7 +260,6 @@ describe("createOpeningExplorerService", () => {
     const service = createOpeningExplorerService({
       ...createRepository(fixtureQuery),
       query: (sql, priority) => {
-        if (sql.includes("key = 'schema'")) return fixtureQuery(sql);
         return queue.enqueue(async () => {
           runs += 1;
           return fixtureQuery(sql);
@@ -266,7 +294,7 @@ describe("createOpeningExplorerService", () => {
     expect(runs).toBe(2);
   });
 
-  it("does not reuse a late result from a disconnected request", async () => {
+  it("does not cache a late result from a disconnected request", async () => {
     let resolve!: (rows: JsonRow[]) => void;
     const query = vi.fn(
       () =>
@@ -285,14 +313,12 @@ describe("createOpeningExplorerService", () => {
       signal: controller.signal,
     });
     await vi.waitFor(() => expect(query).toHaveBeenCalledTimes(1));
-    resolve([]);
-    await vi.waitFor(() => expect(query).toHaveBeenCalledTimes(2));
     controller.abort();
     expect((await first).statusCode).toBe(499);
     resolve([{ movesJson: "[]", recentGamesJson: "[]" }]);
     await Promise.resolve();
     const retry = service.handle(explorerRequest({ username: "alice" }));
-    await vi.waitFor(() => expect(query).toHaveBeenCalledTimes(3));
+    await vi.waitFor(() => expect(query).toHaveBeenCalledTimes(2));
     resolve([{ movesJson: "[]", recentGamesJson: "[]" }]);
     expect((await retry).statusCode).toBe(200);
   });

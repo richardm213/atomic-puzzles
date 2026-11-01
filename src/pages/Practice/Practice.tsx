@@ -76,6 +76,7 @@ import {
 const randomOpeningPlayerSchema = z.object({ username: z.string().trim().min(1) });
 
 const PRACTICE_AUTOMOVE_MIN_THINK_MS = 240;
+const PLAYER_MIN_RATING = 1700;
 const buildPracticePgn = (rootFen: string, moveText = ""): string =>
   [
     '[Variant "Atomic"]',
@@ -133,6 +134,7 @@ const fetchPracticeExplorerResponse = async ({
           speeds: [0, 1],
           username: opponentUsername,
           color: opponentSide,
+          minRating: PLAYER_MIN_RATING,
         }),
         "practice",
         signal,

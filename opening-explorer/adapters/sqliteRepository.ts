@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import { promisify } from "node:util";
 
 import { createOpeningExplorerQueue } from "../core/requestQueue.js";
@@ -27,6 +27,14 @@ export const createSqliteRepository = (
       available: existsSync(dbPath),
       message: "data/openings.sqlite was not found",
     }),
+    signature: () => {
+      try {
+        const stats = statSync(dbPath);
+        return `sqlite:${stats.mtimeMs}:${stats.size}`;
+      } catch {
+        return "sqlite:missing";
+      }
+    },
     query: (sql: string, priorityRef: PriorityRef) =>
       queue.enqueue(() => execute(sql), priorityRef),
   };
