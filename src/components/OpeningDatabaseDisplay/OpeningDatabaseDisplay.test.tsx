@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { OpeningDatabaseDisplay, type OpeningDatabaseGame } from "./OpeningDatabaseDisplay";
@@ -18,6 +18,49 @@ const game = (overrides: Partial<OpeningDatabaseGame>): OpeningDatabaseGame => (
 });
 
 describe("OpeningDatabaseDisplay recent-game links", () => {
+  it("plays a move when any part of its row is clicked", () => {
+    const onPlayMove = vi.fn();
+    render(
+      <OpeningDatabaseDisplay
+        moves={[
+          {
+            uci: "e2e4",
+            move: "e4",
+            games: 12,
+            whiteWins: 7,
+            draws: 1,
+            blackWins: 4,
+            white: 58,
+            draw: 8,
+            black: 34,
+            avgOpponentRating: 2100,
+            performanceRating: null,
+          },
+        ]}
+        recentGames={[]}
+        status="ready"
+        error=""
+        emptyMessage="No games"
+        showPerformance={false}
+        orientation="white"
+        currentPly={0}
+        onPlayMove={onPlayMove}
+        onHoverMove={vi.fn()}
+      />,
+    );
+
+    const moveButton = screen.getByRole("button", { name: "Play e4" });
+    const row = moveButton.closest("tr");
+    expect(row).not.toBeNull();
+
+    fireEvent.click(withinRowCell(row!, 1));
+    expect(onPlayMove).toHaveBeenCalledOnce();
+    expect(onPlayMove).toHaveBeenLastCalledWith("e2e4");
+
+    fireEvent.click(moveButton);
+    expect(onPlayMove).toHaveBeenCalledTimes(2);
+  });
+
   it("opens numeric Chess.com games on Chess.com and keeps Lichess move context", () => {
     render(
       <OpeningDatabaseDisplay
@@ -84,3 +127,9 @@ describe("OpeningDatabaseDisplay recent-game links", () => {
     expect(screen.queryByText("Database unavailable")).toBeNull();
   });
 });
+
+const withinRowCell = (row: HTMLTableRowElement, index: number): HTMLTableCellElement => {
+  const cell = row.cells.item(index);
+  if (!cell) throw new Error(`Missing table cell ${index}`);
+  return cell;
+};

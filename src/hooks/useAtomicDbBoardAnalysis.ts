@@ -1,6 +1,7 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 
 import type { SolutionNavigation } from "../types/chessboard";
+import type { AtomicDbAnalysisState } from "./useAtomicDbAnalysis";
 import { useAtomicDbAnalysis } from "./useAtomicDbAnalysis";
 
 const PRINCIPAL_VARIATION_PLIES = 5;
@@ -10,23 +11,55 @@ export const useAtomicDbBoardAnalysis = ({
   enabled,
   navigation,
   lineCount,
+  terminalOutcome = null,
 }: {
   currentFen: string;
   enabled: boolean;
   navigation: SolutionNavigation | null;
   lineCount: number;
+  terminalOutcome?: "white" | "black" | "draw" | null;
 }) => {
   const variationStartFenRef = useRef<string | null>(null);
   const variationPlaying = navigation?.type === "line";
+  const navigationPending = navigation !== null;
   const fen = variationPlaying ? (variationStartFenRef.current ?? currentFen) : currentFen;
   const analysis = useAtomicDbAnalysis(fen, {
     // Keep loading the root position for the external AtomicDB link, but do not spend requests on
-    // invisible continuations while the engine panel is disabled.
+    // invisible continuations while the engine panel is disabled. Any board navigation preempts
+    // the current request so the move is applied before analysis resumes on its destination.
     lineCount: enabled ? lineCount : 0,
     plyCount: PRINCIPAL_VARIATION_PLIES,
-    suspended: variationPlaying,
+    suspended: navigationPending,
     fallbackToEngine: enabled,
+    enabled: terminalOutcome === null,
   });
+  const terminalAnalysis = useMemo<AtomicDbAnalysisState | null>(() => {
+    if (!terminalOutcome) return null;
+    const outcome =
+      terminalOutcome === "white"
+        ? "WHITE_WIN"
+        : terminalOutcome === "black"
+          ? "BLACK_WIN"
+          : "DRAW";
+    return {
+      result: {
+        fen: currentFen,
+        position: {
+          key: null,
+          outcome,
+          closure: null,
+          score: null,
+          point: null,
+          bestMove: null,
+          moves: [],
+        },
+      },
+      status: "ready",
+      error: "",
+      principalVariations: {},
+      source: "terminal",
+    } satisfies AtomicDbAnalysisState;
+  }, [currentFen, terminalOutcome]);
 
   const beginVariationPlayback = useCallback((): void => {
     variationStartFenRef.current = currentFen;
@@ -36,9 +69,9 @@ export const useAtomicDbBoardAnalysis = ({
   }, []);
 
   return {
-    analysis,
+    analysis: terminalAnalysis ?? analysis,
     beginVariationPlayback,
-    fen,
+    fen: terminalAnalysis ? currentFen : fen,
     finishVariationPlayback,
     variationPlaying,
   };

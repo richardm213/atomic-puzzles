@@ -58,6 +58,42 @@
   font-weight: 650;
 }
 
+.solutionOptionNavigation {
+  display: flex;
+  gap: 4px;
+}
+
+.solutionOptionNavigation button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--color-accent-soft-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+  color: var(--color-primary-pale);
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+
+.solutionOptionNavigation button:hover {
+  border-color: var(--color-primary);
+  background: var(--color-surface-elevated-strong);
+  color: var(--color-heading);
+}
+
+.solutionOptionNavigation button:active {
+  background: var(--color-accent-soft-bg-strong);
+}
+
+.solutionOptionNavigation button:focus-visible {
+  outline: 3px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
 .solutionOptionsHint {
   color: var(--color-muted);
   font-size: 10px;

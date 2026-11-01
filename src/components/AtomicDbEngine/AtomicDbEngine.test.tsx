@@ -1,12 +1,108 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import type { AtomicDbAnalysisState } from "../../hooks/useAtomicDbAnalysis";
 import { parseAtomicDbResponse } from "../../utils/atomicDb";
-import { AtomicDbEngine } from "./AtomicDbEngine";
+import { AtomicDbEngine, AtomicDbEngineControls, AtomicDbEvalBar } from "./AtomicDbEngine";
 
 const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 describe("AtomicDbEngine", () => {
+  it("keeps the settled evaluation and bar position while the next evaluation loads", () => {
+    const position = parseAtomicDbResponse({
+      status: "UNKNOWN",
+      score: 1100,
+      best_move: "g1f3",
+      moves: [{ uci: "g1f3", status: "UNKNOWN", score: 1100 }],
+    });
+    const readyAnalysis: AtomicDbAnalysisState = {
+      status: "ready",
+      error: "",
+      result: { fen: STARTING_FEN, position },
+      principalVariations: {},
+    };
+    const settings = { enabled: true, lineCount: 1, showFollowUpMoves: true };
+    const renderDisplay = (analysis: AtomicDbAnalysisState) => (
+      <>
+        <AtomicDbEngineControls
+          fen={STARTING_FEN}
+          analysis={analysis}
+          settings={settings}
+          setSettings={vi.fn()}
+          onDisable={vi.fn()}
+        />
+        <AtomicDbEvalBar fen={STARTING_FEN} analysis={analysis} enabled orientation="white" />
+      </>
+    );
+    const { rerender } = render(renderDisplay(readyAnalysis));
+    const settledBarValue = screen.getByRole("meter").getAttribute("aria-valuenow");
+
+    rerender(
+      renderDisplay({
+        ...readyAnalysis,
+        status: "loading",
+        result: null,
+      }),
+    );
+
+    expect(screen.getByText("+11.0")).toBeVisible();
+    expect(screen.getByRole("meter")).toHaveAttribute("aria-valuenow", settledBarValue);
+  });
+
+  it("replaces stale analysis with the final result when the game is over", () => {
+    const terminalFen = "rn3bnr/p1p4p/6p1/1p1PPp2/4P3/N7/PPP2PPP/R1B1KB1R b KQ - 0 8";
+    const terminalAnalysis: AtomicDbAnalysisState = {
+      status: "ready",
+      error: "",
+      source: "terminal",
+      result: {
+        fen: terminalFen,
+        position: {
+          key: null,
+          outcome: "WHITE_WIN",
+          closure: null,
+          score: null,
+          point: null,
+          bestMove: null,
+          moves: [],
+        },
+      },
+      principalVariations: {},
+    };
+    const settings = { enabled: true, lineCount: 3, showFollowUpMoves: true };
+
+    render(
+      <>
+        <AtomicDbEngineControls
+          fen={terminalFen}
+          analysis={terminalAnalysis}
+          settings={settings}
+          setSettings={vi.fn()}
+          onDisable={vi.fn()}
+        />
+        <AtomicDbEngine
+          fen={terminalFen}
+          settings={settings}
+          analysis={terminalAnalysis}
+          onPlayLine={vi.fn()}
+          onHoverMove={vi.fn()}
+        />
+        <AtomicDbEvalBar
+          fen={terminalFen}
+          analysis={terminalAnalysis}
+          enabled
+          orientation="white"
+        />
+      </>,
+    );
+
+    expect(screen.getByText("1–0")).toBeVisible();
+    expect(screen.getByText("Final position")).toBeVisible();
+    expect(screen.getByText("Game over — White wins.")).toBeVisible();
+    expect(screen.queryByRole("list")).not.toBeInTheDocument();
+    expect(screen.getByRole("meter")).toHaveAttribute("aria-valuenow", "100");
+  });
+
   it("makes each principal-variation move play through its own ply", () => {
     const onPlayLine = vi.fn();
     const position = parseAtomicDbResponse({

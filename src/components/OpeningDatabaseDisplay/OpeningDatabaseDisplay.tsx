@@ -157,7 +157,13 @@ export const OpeningDatabaseDisplay = ({
             </tr>
           ) : null}
           {moves.map((move) => (
-            <tr key={move.uci} className="analysisExplorerRow">
+            // The row expands the pointer target; the contained button remains the semantic,
+            // keyboard-accessible control for the move.
+            <tr
+              key={move.uci}
+              className="analysisExplorerRow"
+              onClick={() => onPlayMove(move.uci)}
+            >
               <td>
                 <button
                   type="button"
@@ -167,7 +173,10 @@ export const OpeningDatabaseDisplay = ({
                   onPointerLeave={() => onHoverMove(null)}
                   onFocus={() => onHoverMove(move.uci)}
                   onBlur={() => onHoverMove(null)}
-                  onClick={() => onPlayMove(move.uci)}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onPlayMove(move.uci);
+                  }}
                 >
                   {move.move}
                 </button>

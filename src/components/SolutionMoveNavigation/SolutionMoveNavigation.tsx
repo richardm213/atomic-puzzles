@@ -1,5 +1,7 @@
 import "./SolutionMoveNavigation.css";
 
+import { faChevronDown, faChevronUp } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useEffect, useRef } from "react";
 
 import { movePrefix } from "../../lib/puzzles/solutionPgn";
@@ -60,11 +62,13 @@ export const SolutionContinuationOptions = ({
   currentPly,
   activeLineIndex,
   onSelect,
+  onCycle,
 }: {
   options: VariationOption[];
   currentPly: number;
   activeLineIndex: number;
   onSelect: (lineIndex: number, moveIndex: number) => void;
+  onCycle?: (command: Extract<PlaybackCommand, "previousOption" | "nextOption">) => void;
 }) => {
   const activeMove =
     options.find((option) => option.lineIndex === activeLineIndex)?.move ?? options[0]?.move;
@@ -83,7 +87,28 @@ export const SolutionContinuationOptions = ({
     <div className="solutionOptions">
       <div className="solutionOptionsHeader">
         <span className="solutionOptionsLabel">{options.length} options from here</span>
-        <span className="solutionOptionsHint">↑/↓ to choose</span>
+        {onCycle ? (
+          <div className="solutionOptionNavigation" aria-label="Choose continuation">
+            <button
+              type="button"
+              aria-label="Previous continuation"
+              title="Previous continuation (Arrow Up)"
+              onClick={() => onCycle("previousOption")}
+            >
+              <FontAwesomeIcon icon={faChevronUp} />
+            </button>
+            <button
+              type="button"
+              aria-label="Next continuation"
+              title="Next continuation (Arrow Down)"
+              onClick={() => onCycle("nextOption")}
+            >
+              <FontAwesomeIcon icon={faChevronDown} />
+            </button>
+          </div>
+        ) : (
+          <span className="solutionOptionsHint">↑/↓ to choose</span>
+        )}
       </div>
       <div className="solutionOptionList" role="list" aria-label="Solution options">
         {options.map((option) => (
@@ -92,6 +117,7 @@ export const SolutionContinuationOptions = ({
             type="button"
             className={`solutionOption ${option.move === activeMove ? "active" : ""}`}
             ref={option.move === activeMove ? activeOptionRef : null}
+            aria-current={option.move === activeMove ? "true" : undefined}
             onClick={() => onSelect(option.lineIndex, option.plyIndex)}
           >
             {movePrefix(currentPly, currentPly % 2 === 1)}
@@ -109,12 +135,14 @@ export const SolutionMoveTree = ({
   currentPly,
   activeLineIndex,
   onSelect,
+  onCycleOptions,
 }: {
   lines: string[][];
   options: VariationOption[];
   currentPly: number;
   activeLineIndex: number;
   onSelect: (lineIndex: number, moveIndex: number) => void;
+  onCycleOptions?: (command: Extract<PlaybackCommand, "previousOption" | "nextOption">) => void;
 }) => (
   <>
     <SolutionContinuationOptions
@@ -122,6 +150,7 @@ export const SolutionMoveTree = ({
       currentPly={currentPly}
       activeLineIndex={activeLineIndex}
       onSelect={onSelect}
+      {...(onCycleOptions ? { onCycle: onCycleOptions } : {})}
     />
     {lines.length ? (
       <div className="moveList inlineSolutionTree" role="list" aria-label="Solution variations">

@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
     premovable?: { enabled?: boolean };
   },
   set: vi.fn(),
+  setAutoShapes: vi.fn(),
   playPremove: vi.fn(),
   cancelPremove: vi.fn(),
 }));
@@ -20,7 +21,7 @@ vi.mock("@lichess-org/chessground", () => ({
     mocks.config = config;
     return {
       set: mocks.set,
-      setAutoShapes: vi.fn(),
+      setAutoShapes: mocks.setAutoShapes,
       playPremove: mocks.playPremove,
       cancelPremove: mocks.cancelPremove,
     };
@@ -71,6 +72,7 @@ describe("Chessboard orchestration", () => {
   beforeEach(() => {
     mocks.config = null;
     mocks.set.mockClear();
+    mocks.setAutoShapes.mockClear();
     mocks.playPremove.mockClear();
     mocks.cancelPremove.mockClear();
   });
@@ -99,6 +101,14 @@ describe("Chessboard orchestration", () => {
 
     expect(movable?.color).toBe("white");
     expect(movable?.dests.get("e2")).toEqual(expect.arrayContaining(["e3", "e4"]));
+  });
+
+  it("renders a solid red preview arrow for a threat move", () => {
+    renderBoard({ previewMove: "e7e5", previewMoveBrush: "red" });
+
+    expect(mocks.setAutoShapes).toHaveBeenLastCalledWith([
+      expect.objectContaining({ orig: "e7", dest: "e5", brush: "red" }),
+    ]);
   });
 
   it("keeps the player color movable and plays a premove after the opponent replies", () => {
@@ -538,6 +548,21 @@ describe("Chessboard orchestration", () => {
     expect(states.at(-1)?.lineIndex).toBe(3);
     expect(states.at(-1)?.lineMoves?.[2]).toBe("Bc4");
     expect(states.at(-1)?.viewingSolution).toBe(false);
+  });
+
+  it("preserves both lines when a move branches from custom analysis history", () => {
+    const states = renderBoard();
+
+    play("e2", "e4");
+    play("e7", "e5");
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    play("c7", "c5");
+
+    expect(states.at(-1)?.customLines).toEqual([
+      ["e4", "e5"],
+      ["e4", "c5"],
+    ]);
+    expect(states.at(-1)?.customLineIndex).toBe(1);
   });
 
   it("preserves a custom branch while cycling between continuation options", () => {

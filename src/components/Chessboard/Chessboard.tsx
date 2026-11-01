@@ -12,7 +12,7 @@ import { makeFen } from "chessops/fen";
 import { makeSan } from "chessops/san";
 import { makeUci, parseSquare } from "chessops/util";
 import type { Atomic } from "chessops/variant";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useAppSettings } from "../../context/AppSettings";
 import {
@@ -89,6 +89,7 @@ export type ChessboardProps = {
   analysisMode?: boolean;
   solutionNavigation?: SolutionNavigation | null | undefined;
   previewMove?: string | null | undefined;
+  previewMoveBrush?: "paleBlue" | "red";
   captureNavigationShortcuts?: boolean;
   preserveAnalysisHistoryOnSolutionChange?: boolean;
   restrictMovesToSolution?: boolean;
@@ -119,7 +120,10 @@ const ANALYSIS_LINE_PLAYBACK_DELAY_MS = 250;
 
 const keyPair = (a: string, b: string): [Key, Key] => [a as Key, b as Key];
 
-const previewMoveShape = (uci: string | null | undefined): DrawShape[] => {
+const previewMoveShape = (
+  uci: string | null | undefined,
+  brush: "paleBlue" | "red" = "paleBlue",
+): DrawShape[] => {
   const normalized = uci?.trim().toLowerCase() ?? "";
   if (!/^[a-h][1-8][a-h][1-8]/.test(normalized)) return [];
 
@@ -127,7 +131,7 @@ const previewMoveShape = (uci: string | null | undefined): DrawShape[] => {
     {
       orig: normalized.slice(0, 2) as Key,
       dest: normalized.slice(2, 4) as Key,
-      brush: "paleBlue",
+      brush,
       below: true,
     },
   ];
@@ -146,7 +150,7 @@ const useLatestRef = <T,>(value: T) => {
   return ref;
 };
 
-export const Chessboard = ({
+const ChessboardComponent = ({
   puzzleId,
   fen,
   orientation,
@@ -157,6 +161,7 @@ export const Chessboard = ({
   analysisMode = false,
   solutionNavigation,
   previewMove,
+  previewMoveBrush = "paleBlue",
   captureNavigationShortcuts = false,
   preserveAnalysisHistoryOnSolutionChange = false,
   restrictMovesToSolution = false,
@@ -422,6 +427,13 @@ export const Chessboard = ({
       const previousActiveLine = activeLineRef.current;
       const history = historyRef.current;
       const nextFen = makeFen(position.toSetup());
+      const previousCustomHistory =
+        previousActiveLine.source === "custom"
+          ? variationHistoryAt(customVariationsRef.current, previousActiveLine.index)
+          : null;
+      const previousContinuationKey = previousCustomHistory?.plies[history.index + 1]?.key;
+      const createsCustomBranch =
+        previousContinuationKey !== undefined && previousContinuationKey !== moveKey;
 
       appendBoardMove(history, {
         fen: nextFen,
@@ -433,6 +445,9 @@ export const Chessboard = ({
 
       if (analysisModeRef.current) {
         if (previousActiveLine.source !== "custom") {
+          const index = saveVariation(customVariationsRef.current, history);
+          activeLineRef.current = { source: "custom", index };
+        } else if (createsCustomBranch) {
           const index = saveVariation(customVariationsRef.current, history);
           activeLineRef.current = { source: "custom", index };
         } else {
@@ -1129,8 +1144,8 @@ export const Chessboard = ({
   }, [disabled, premovesEnabled]);
 
   useEffect(() => {
-    cgRef.current?.setAutoShapes(previewMoveShape(previewMove));
-  }, [previewMove]);
+    cgRef.current?.setAutoShapes(previewMoveShape(previewMove, previewMoveBrush));
+  }, [previewMove, previewMoveBrush]);
 
   useEffect(() => {
     if (!showSolution) return;
@@ -1390,3 +1405,8 @@ export const Chessboard = ({
     </div>
   );
 };
+
+// The surrounding analysis and practice workspaces update for clocks, database responses, and
+// engine progress. Chessground owns its rendered board, so avoid re-running this React shell when
+// none of the board-facing props changed.
+export const Chessboard = memo(ChessboardComponent);

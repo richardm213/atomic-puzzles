@@ -67,6 +67,31 @@ describe("useAtomicDbAnalysis", () => {
     expect(result.current.principalVariations.e2e4).toEqual(["e2e4", "e7e5", "g1f3"]);
   });
 
+  it("can analyze an engine-only position without requesting AtomicDB", async () => {
+    const fen = "8/8/8/8/8/8/1K6/7k b - - 1 71";
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    analyzeWithEngineMock.mockResolvedValue([
+      {
+        move: "h1g2",
+        multipv: 1,
+        scoreType: "cp",
+        score: 340,
+        depth: 17,
+        principalVariation: ["h1g2"],
+      },
+    ]);
+
+    const { result } = renderHook(() =>
+      useAtomicDbAnalysis(fen, { debounceMs: 0, engineOnly: true, lineCount: 1 }),
+    );
+
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result.current.source).toBe("engine");
+    expect(result.current.result?.position?.moves[0]?.uci).toBe("h1g2");
+  });
+
   it("retains the settled position while the next FEN is loading", async () => {
     let resolveSecondRequest: ((response: Response) => void) | undefined;
     const fetchMock = vi
@@ -98,6 +123,72 @@ describe("useAtomicDbAnalysis", () => {
 
     await waitFor(() => expect(result.current.status).toBe("ready"));
     expect(result.current.result?.fen).toBe(SECOND_FEN);
+  });
+
+  it("retains the settled engine evaluation while Fairy-Stockfish analyzes the next FEN", async () => {
+    const firstFen = "8/8/8/8/8/8/1K6/7k w - - 4 71";
+    const secondFen = "8/8/8/8/8/8/1K6/7k b - - 5 71";
+    let resolveSecondAnalysis:
+      | ((value: Awaited<ReturnType<typeof analyzeFairyStockfishPosition>>) => void)
+      | undefined;
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(responseFor(0)));
+    vi.stubGlobal("fetch", fetchMock);
+    analyzeWithEngineMock
+      .mockResolvedValueOnce([
+        {
+          move: "b2c3",
+          multipv: 1,
+          scoreType: "cp",
+          score: 510,
+          depth: 16,
+          principalVariation: ["b2c3"],
+        },
+      ])
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSecondAnalysis = resolve;
+          }),
+      );
+
+    const { result, rerender } = renderHook(
+      ({ fen }) =>
+        useAtomicDbAnalysis(fen, {
+          debounceMs: 0,
+          fallbackToEngine: true,
+          lineCount: 1,
+        }),
+      { initialProps: { fen: firstFen } },
+    );
+
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    expect(result.current.result?.fen).toBe(firstFen);
+    expect(result.current.result?.position?.score).toBe(510);
+
+    rerender({ fen: secondFen });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(analyzeWithEngineMock).toHaveBeenCalledTimes(2));
+    expect(result.current.status).toBe("loading");
+    expect(result.current.source).toBe("engine");
+    expect(result.current.result?.fen).toBe(firstFen);
+    expect(result.current.result?.position?.score).toBe(510);
+
+    await act(async () => {
+      resolveSecondAnalysis?.([
+        {
+          move: "h1g2",
+          multipv: 1,
+          scoreType: "cp",
+          score: -240,
+          depth: 15,
+          principalVariation: ["h1g2"],
+        },
+      ]);
+    });
+
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    expect(result.current.result?.fen).toBe(secondFen);
+    expect(result.current.result?.position?.score).toBe(-240);
   });
 
   it("builds the top line from each child position's current best move", async () => {

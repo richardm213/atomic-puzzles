@@ -1,0 +1,132 @@
+.analysisContinuationChoices {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 8px 2px;
+  padding: 6px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
+}
+
+.analysisContinuationChoices > span {
+  flex: 0 0 auto;
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.analysisContinuationMoves {
+  min-width: 0;
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.analysisContinuationMoves button,
+.analysisContinuationArrows button,
+.analysisTreeMove {
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 650;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+
+.analysisContinuationMoves button {
+  min-height: 28px;
+  padding: 2px 7px;
+}
+
+.analysisContinuationMoves button:hover,
+.analysisTreeMove:hover {
+  background: color-mix(in srgb, var(--color-panel-strong) 62%, transparent);
+  color: var(--color-heading);
+}
+
+.analysisContinuationMoves button.active,
+.analysisTreeMove.active {
+  border-color: var(--color-cyan-bright);
+  background: var(--color-accent-soft-bg-strong);
+  color: var(--color-accent-soft-text);
+}
+
+.analysisContinuationArrows {
+  display: flex;
+  gap: 3px;
+  margin-left: auto;
+}
+
+.analysisContinuationArrows button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-color: var(--color-border);
+  color: var(--color-muted);
+}
+
+.analysisContinuationArrows button:hover {
+  border-color: var(--color-accent-soft-border);
+  background: var(--color-panel-strong);
+  color: var(--color-heading);
+}
+
+.analysisContinuationMoves button:focus-visible,
+.analysisContinuationArrows button:focus-visible,
+.analysisTreeMove:focus-visible {
+  outline: 3px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+.analysisTree {
+  padding: 5px 8px 10px;
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 2.25;
+}
+
+.analysisTreeMove {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  margin: 1px 2px;
+  padding: 1px 5px;
+  vertical-align: middle;
+}
+
+.analysisTreeVariation {
+  color: var(--color-subtle);
+}
+
+.analysisTreeParen {
+  padding: 0 1px;
+  font-weight: 650;
+}
+
+@media (max-width: 480px) {
+  .analysisContinuationChoices {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .analysisContinuationMoves button,
+  .analysisContinuationArrows button,
+  .analysisTreeMove {
+    min-height: 44px;
+  }
+
+  .analysisContinuationArrows button {
+    width: 44px;
+    height: 44px;
+  }
+
+  .analysisTree {
+    line-height: 2.8;
+  }
+}

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { startTransition, useEffect, useRef, useState } from "react";
 
 import {
   loadAtomicDbPosition,
@@ -19,12 +19,13 @@ export type AtomicDbAnalysisState = {
   status: AtomicDbAnalysisStatus;
   error: string;
   principalVariations: Record<string, string[]>;
-  source?: "atomicdb" | "engine" | undefined;
+  source?: "atomicdb" | "engine" | "terminal" | undefined;
 };
 
 export type AtomicDbAnalysisOptions = {
   enabled?: boolean;
   debounceMs?: number;
+  engineOnly?: boolean;
   lineCount?: number;
   plyCount?: number;
   suspended?: boolean;
@@ -73,6 +74,7 @@ export const useAtomicDbAnalysis = (
   {
     enabled = true,
     debounceMs = 220,
+    engineOnly = false,
     lineCount: requestedLineCount = 3,
     plyCount: requestedPlyCount = 5,
     suspended = false,
@@ -97,14 +99,16 @@ export const useAtomicDbAnalysis = (
     const plyCount = clampInteger(requestedPlyCount, 1, MAX_PLY_COUNT);
 
     const publishLines = (lines: Record<string, string[]>): void => {
-      setState((current) =>
-        current.requestedFen === fen
-          ? {
-              ...current,
-              principalVariations: { ...current.principalVariations, ...lines },
-            }
-          : current,
-      );
+      startTransition(() => {
+        setState((current) =>
+          current.requestedFen === fen
+            ? {
+                ...current,
+                principalVariations: { ...current.principalVariations, ...lines },
+              }
+            : current,
+        );
+      });
     };
 
     const loadLines = (position: AtomicDbPosition | null): void => {
@@ -124,51 +128,57 @@ export const useAtomicDbAnalysis = (
     };
 
     const publishPosition = (position: AtomicDbPosition | null): void => {
-      setState({
-        result: { fen, position },
-        requestedFen: fen,
-        status: "ready",
-        error: "",
-        principalVariations: {},
-        source: "atomicdb",
+      startTransition(() => {
+        setState({
+          result: { fen, position },
+          requestedFen: fen,
+          status: "ready",
+          error: "",
+          principalVariations: {},
+          source: "atomicdb",
+        });
       });
       loadLines(position);
     };
 
     const publishEngineFallback = async (): Promise<void> => {
-      setState({
-        result: { fen, position: null },
+      setState((current) => ({
+        ...current,
         requestedFen: fen,
         status: "loading",
         error: "",
         principalVariations: {},
         source: "engine",
-      });
+      }));
       try {
         const candidates = await analyzeFairyStockfishPosition(fen, lineCount, controller.signal);
         if (controller.signal.aborted) return;
-        setState({
-          result: { fen, position: enginePosition(candidates) },
-          requestedFen: fen,
-          status: "ready",
-          error: "",
-          principalVariations: Object.fromEntries(
-            candidates.map((candidate) => [
-              candidate.move,
-              candidate.principalVariation?.slice(0, plyCount) ?? [candidate.move],
-            ]),
-          ),
-          source: "engine",
+        startTransition(() => {
+          setState({
+            result: { fen, position: enginePosition(candidates) },
+            requestedFen: fen,
+            status: "ready",
+            error: "",
+            principalVariations: Object.fromEntries(
+              candidates.map((candidate) => [
+                candidate.move,
+                candidate.principalVariation?.slice(0, plyCount) ?? [candidate.move],
+              ]),
+            ),
+            source: "engine",
+          });
         });
       } catch (error: unknown) {
         if (controller.signal.aborted) return;
-        setState({
-          result: { fen, position: null },
-          requestedFen: fen,
-          status: "error",
-          error: getErrorMessage(error, "Engine analysis failed."),
-          principalVariations: {},
-          source: "engine",
+        startTransition(() => {
+          setState({
+            result: { fen, position: null },
+            requestedFen: fen,
+            status: "error",
+            error: getErrorMessage(error, "Engine analysis failed."),
+            principalVariations: {},
+            source: "engine",
+          });
         });
       }
     };
@@ -181,10 +191,12 @@ export const useAtomicDbAnalysis = (
       publishPosition(position);
     };
 
-    const cached = peekAtomicDbPosition(fen);
-    if (cached.found) {
-      publishAtomicDbOrFallback(cached.value);
-      return () => controller.abort();
+    if (!engineOnly) {
+      const cached = peekAtomicDbPosition(fen);
+      if (cached.found) {
+        publishAtomicDbOrFallback(cached.value);
+        return () => controller.abort();
+      }
     }
 
     const requestedAt = Date.now();
@@ -197,21 +209,27 @@ export const useAtomicDbAnalysis = (
       status: "loading",
       error: "",
       principalVariations: {},
-      source: "atomicdb",
+      source: engineOnly ? "engine" : "atomicdb",
     }));
 
     const requestPosition = async (): Promise<void> => {
+      if (engineOnly) {
+        await publishEngineFallback();
+        return;
+      }
       try {
         const position = await loadAtomicDbPosition(fen, controller.signal);
         if (!controller.signal.aborted) publishAtomicDbOrFallback(position);
       } catch (error: unknown) {
         if (controller.signal.aborted) return;
-        setState((current) => ({
-          ...current,
-          requestedFen: fen,
-          status: "error",
-          error: getErrorMessage(error, "AtomicDB analysis failed."),
-        }));
+        startTransition(() => {
+          setState((current) => ({
+            ...current,
+            requestedFen: fen,
+            status: "error",
+            error: getErrorMessage(error, "AtomicDB analysis failed."),
+          }));
+        });
       }
     };
 
@@ -227,6 +245,7 @@ export const useAtomicDbAnalysis = (
   }, [
     debounceMs,
     enabled,
+    engineOnly,
     fallbackToEngine,
     fen,
     requestedLineCount,

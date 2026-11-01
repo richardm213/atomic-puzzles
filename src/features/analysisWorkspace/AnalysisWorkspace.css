@@ -171,7 +171,7 @@ body:has(.analysisPage),
   height: var(--analysis-side-panel-height);
   max-height: var(--analysis-side-panel-max-height);
   min-height: 0;
-  grid-template-rows: minmax(0, 0.32fr) minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   overflow: hidden;
 }
 
@@ -197,6 +197,10 @@ body:has(.analysisPage),
   overflow: hidden;
 }
 
+.analysisRightPanel:not(.customExplorerSplit):not(.explorerCollapsed) .analysisMovePanel {
+  grid-template-rows: auto 0;
+}
+
 .analysisEngineBlock {
   min-width: 0;
 }
@@ -211,6 +215,15 @@ body:has(.analysisPage),
 
 .analysisMoveContent .analysisMoveList {
   overflow: visible;
+}
+
+.analysisMoveContent > .solutionOptions {
+  margin: 6px 8px 4px;
+}
+
+.analysisMoveContent > .inlineSolutionTree {
+  align-items: center;
+  padding: 4px 8px 8px;
 }
 
 .analysisMoveList {
@@ -1164,9 +1177,17 @@ body:has(.analysisPage),
   font: inherit;
 }
 
+.analysisExplorerRow {
+  cursor: pointer;
+}
+
 .analysisExplorerRow:hover td,
 .analysisExplorerRow:focus-within td {
   background: color-mix(in srgb, var(--color-panel-strong) 68%, var(--color-primary) 16%);
+}
+
+.analysisExplorerRow:active td {
+  background: color-mix(in srgb, var(--color-panel-strong) 58%, var(--color-primary) 24%);
 }
 
 .analysisExplorerState {

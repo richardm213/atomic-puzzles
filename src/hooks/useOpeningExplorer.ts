@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { startTransition, useEffect, useRef, useState } from "react";
 
 import type {
   OpeningDatabaseGame,
@@ -83,14 +83,16 @@ export const useOpeningExplorer = ({
     lastChangeAtRef.current = now;
 
     const showResult = ({ response }: OpeningExplorerRequest) => {
-      setState({
-        moves: response.moves.map((move) =>
-          toOpeningDatabaseMove(move, fen, { showPerformance, playerColor }),
-        ),
-        recentGames: response.recentGames.map((game) => toOpeningDatabaseGame(game, fen)),
-        response,
-        status: "ready",
-        error: "",
+      startTransition(() => {
+        setState({
+          moves: response.moves.map((move) =>
+            toOpeningDatabaseMove(move, fen, { showPerformance, playerColor }),
+          ),
+          recentGames: response.recentGames.map((game) => toOpeningDatabaseGame(game, fen)),
+          response,
+          status: "ready",
+          error: "",
+        });
       });
     };
 

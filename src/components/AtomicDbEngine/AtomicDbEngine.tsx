@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { AtomicDbAnalysisState } from "../../hooks/useAtomicDbAnalysis";
 import type { AtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";
 import {
+  type AtomicDbView,
   buildAtomicDbView,
   formatAtomicDbEvaluation,
   getAtomicDbMoveEvaluation,
@@ -21,6 +22,7 @@ type AtomicDbEngineProps = {
   onPlayLine: (ucis: string[]) => void;
   onHoverMove: (uci: string | null) => void;
   disabled?: boolean;
+  threatMode?: boolean;
 };
 
 type AtomicDbEngineControlsProps = {
@@ -30,10 +32,41 @@ type AtomicDbEngineControlsProps = {
   setSettings: Dispatch<SetStateAction<AtomicDbEngineSettings>>;
   onDisable: () => void;
   onFlipBoard?: () => void;
+  onThreatModeChange?: (enabled: boolean) => void;
+  threatAvailable?: boolean;
+  threatMode?: boolean;
 };
 
-const analysisSourceLabel = (analysis: AtomicDbAnalysisState): string =>
-  analysis.source === "engine" ? "Fairy-Stockfish 14" : "AtomicDB";
+const analysisSourceLabel = (analysis: AtomicDbAnalysisState, threatMode = false): string =>
+  threatMode
+    ? "Threat · Fairy-Stockfish 14"
+    : analysis.source === "terminal"
+      ? "Final position"
+      : analysis.source === "engine"
+        ? "Fairy-Stockfish 14"
+        : "AtomicDB";
+
+const resultLabel = (view: AtomicDbView): string | null => {
+  if (view.position?.outcome === "WHITE_WIN") return "1–0";
+  if (view.position?.outcome === "BLACK_WIN") return "0–1";
+  if (view.position?.outcome === "DRAW") return "½–½";
+  return null;
+};
+
+const terminalMessage = (view: AtomicDbView): string | null => {
+  if (view.position?.outcome === "WHITE_WIN") return "Game over — White wins.";
+  if (view.position?.outcome === "BLACK_WIN") return "Game over — Black wins.";
+  if (view.position?.outcome === "DRAW") return "Game over — Draw.";
+  return null;
+};
+
+const useRetainedAtomicDbView = (analysis: AtomicDbAnalysisState, fen: string): AtomicDbView => {
+  const currentView = buildAtomicDbView(analysis.result, fen);
+  const settledViewRef = useRef(currentView);
+
+  if (analysis.status !== "loading") settledViewRef.current = currentView;
+  return analysis.status === "loading" ? settledViewRef.current : currentView;
+};
 
 export const AtomicDbEngineControls = ({
   fen,
@@ -42,12 +75,16 @@ export const AtomicDbEngineControls = ({
   setSettings,
   onDisable,
   onFlipBoard,
+  onThreatModeChange,
+  threatAvailable = true,
+  threatMode = false,
 }: AtomicDbEngineControlsProps) => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement | null>(null);
   const visibleLineCount = settings.enabled ? settings.lineCount : 0;
-  const view = buildAtomicDbView(analysis.result, fen);
-  const sourceLabel = analysisSourceLabel(analysis);
+  const view = useRetainedAtomicDbView(analysis, fen);
+  const sourceLabel = analysisSourceLabel(analysis, threatMode);
+  const finalResult = resultLabel(view);
 
   const setLineCount = (nextLineCount: number): void => {
     const clampedCount = Math.min(5, Math.max(0, nextLineCount));
@@ -94,7 +131,7 @@ export const AtomicDbEngineControls = ({
         </span>
       </button>
       <strong className="atomicDbTopEvaluation" aria-live="polite">
-        {view.evaluation.type === "unknown" ? null : view.evaluationLabel}
+        {finalResult ?? (view.evaluation.type === "unknown" ? null : view.evaluationLabel)}
       </strong>
       <span className="atomicDbTopSource">
         {sourceLabel}
@@ -148,6 +185,21 @@ export const AtomicDbEngineControls = ({
                 }
               />
             </label>
+            {onThreatModeChange ? (
+              <label className="atomicDbFollowUpSetting">
+                <span>Threat mode</span>
+                <span className="atomicDbSettingShortcut" aria-hidden="true">
+                  X
+                </span>
+                <input
+                  type="checkbox"
+                  checked={threatMode}
+                  disabled={!threatAvailable}
+                  title={threatAvailable ? "Show opponent threat" : "Unavailable while in check"}
+                  onChange={(event) => onThreatModeChange(event.target.checked)}
+                />
+              </label>
+            ) : null}
             {onFlipBoard ? (
               <button
                 type="button"
@@ -175,11 +227,13 @@ export const AtomicDbEngine = ({
   onPlayLine,
   onHoverMove,
   disabled = false,
+  threatMode = false,
 }: AtomicDbEngineProps) => {
   const { enabled, lineCount, showFollowUpMoves } = settings;
   const { status, error } = analysis;
-  const view = buildAtomicDbView(analysis.result, fen);
-  const sourceLabel = analysisSourceLabel(analysis);
+  const view = useRetainedAtomicDbView(analysis, fen);
+  const sourceLabel = analysisSourceLabel(analysis, threatMode);
+  const finalMessage = terminalMessage(view);
   const { position } = view;
   const visibleMoves = useMemo(
     () => position?.moves.slice(0, lineCount) ?? [],
@@ -204,7 +258,9 @@ export const AtomicDbEngine = ({
           <div className="atomicDbEngineState">No {sourceLabel} analysis for this position.</div>
         ) : null}
         {status === "ready" && position && visibleMoves.length === 0 ? (
-          <div className="atomicDbEngineState">No engine moves for this position.</div>
+          <div className="atomicDbEngineState">
+            {finalMessage ?? "No engine moves for this position."}
+          </div>
         ) : null}
         {visibleMoves.length > 0 ? (
           <ol className="atomicDbEngineLines">
@@ -304,15 +360,18 @@ export const AtomicDbEvalBar = ({
   analysis,
   enabled,
   orientation,
+  threatMode = false,
 }: {
   fen: string;
   analysis: AtomicDbAnalysisState;
   enabled: boolean;
   orientation: "white" | "black";
+  threatMode?: boolean;
 }) => {
   const { status } = analysis;
-  const view = buildAtomicDbView(analysis.result, fen);
-  const sourceLabel = analysisSourceLabel(analysis);
+  const view = useRetainedAtomicDbView(analysis, fen);
+  const sourceLabel = analysisSourceLabel(analysis, threatMode);
+  const displayedEvaluation = resultLabel(view) ?? view.evaluationLabel;
 
   return (
     <div
@@ -323,7 +382,7 @@ export const AtomicDbEvalBar = ({
       aria-hidden={!enabled}
       aria-label={
         enabled
-          ? `${sourceLabel} evaluation ${status === "loading" ? "loading" : view.evaluationLabel}`
+          ? `${sourceLabel} evaluation ${status === "loading" ? "loading" : displayedEvaluation}`
           : undefined
       }
       aria-valuemin={enabled ? 0 : undefined}
@@ -333,7 +392,7 @@ export const AtomicDbEvalBar = ({
         enabled
           ? status === "loading"
             ? `Loading ${sourceLabel} evaluation`
-            : `${sourceLabel}: ${view.evaluationLabel}`
+            : `${sourceLabel}: ${displayedEvaluation}`
           : undefined
       }
     >

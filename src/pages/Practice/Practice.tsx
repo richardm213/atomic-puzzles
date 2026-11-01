@@ -20,6 +20,7 @@ import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
+import { AnalysisMoveTree } from "../../components/AnalysisMoveTree/AnalysisMoveTree";
 import {
   AtomicDbEngine,
   AtomicDbEngineControls,
@@ -229,6 +230,7 @@ export const PracticePage = () => {
   const [sessionStarted, setSessionStarted] = useState(false);
 
   const currentFen = boardState?.fen || STARTING_FEN;
+  const terminalOutcome = boardState?.winner ?? (boardState?.status === "Draw" ? "draw" : null);
   const {
     analysis: atomicDbAnalysis,
     beginVariationPlayback,
@@ -240,10 +242,11 @@ export const PracticePage = () => {
     enabled: atomicDbEngineSettings.enabled,
     navigation,
     lineCount: atomicDbEngineSettings.lineCount,
+    terminalOutcome,
   });
   const currentLichessAnalysisUrl = lichessAtomicAnalysisUrl(currentFen);
   const currentTurn = boardState?.turn || "white";
-  const gameFinished = Boolean(boardState?.winner);
+  const gameFinished = terminalOutcome !== null;
   const opponentSide = oppositeSide(side);
   const canUsePlayerSource = opponentSource === "general" || opponentUsernames.length > 0;
   const practiceExplorerCacheKey = useMemo(
@@ -338,6 +341,7 @@ export const PracticePage = () => {
     [boardState],
   );
   const currentPly = boardState?.lineIndex ?? 0;
+  const customLines = useMemo(() => boardState?.customLines ?? [], [boardState?.customLines]);
   const currentMoveText = useMemo(
     () =>
       moveList
@@ -449,7 +453,11 @@ export const PracticePage = () => {
       lastTick = now;
       const nextMilliseconds = Math.max(0, remainingClockMsRef.current - elapsed);
       remainingClockMsRef.current = nextMilliseconds;
-      setRemainingClockMs(nextMilliseconds);
+      setRemainingClockMs((displayedMilliseconds) =>
+        Math.ceil(displayedMilliseconds / 1000) === Math.ceil(nextMilliseconds / 1000)
+          ? displayedMilliseconds
+          : nextMilliseconds,
+      );
       if (nextMilliseconds <= 0) {
         setClockExpired(true);
         setGamePaused(true);
@@ -694,6 +702,16 @@ export const PracticePage = () => {
     [clearAutoMoveState, currentPly, queueNavigation],
   );
 
+  const navigateToCustomMove = useCallback(
+    (lineIndex: number, moveIndex: number): void => {
+      clearAutoMoveState();
+      setManualContinuationActive(false);
+      if (moveIndex + 1 < currentPly) setGamePaused(true);
+      queueNavigation({ type: "custom", line: lineIndex, ply: moveIndex + 1 });
+    },
+    [clearAutoMoveState, currentPly, queueNavigation],
+  );
+
   const handleBoardStateChange = useCallback(
     (nextState: ChessboardState): void => {
       if (
@@ -708,6 +726,12 @@ export const PracticePage = () => {
     },
     [addPracticeIncrement, boardState, gamePaused, opponentSide, side],
   );
+
+  const handleNavigationHandled = useCallback((): void => {
+    const handledNavigation = navigationRef.current;
+    if (handledNavigation?.type === "line") finishVariationPlayback();
+    clearHandledNavigation(handledNavigation);
+  }, [clearHandledNavigation, finishVariationPlayback]);
 
   useBoardWheelNavigation({
     boardPanelRef,
@@ -1302,7 +1326,18 @@ export const PracticePage = () => {
                 onHoverMove={setHoveredMoveUci}
                 disabled={atomicDbLinePlaying}
               />
-              <PlayedMoves moves={moveList} currentPly={currentPly} onNavigate={navigateToPly} />
+              {customLines.length ? (
+                <AnalysisMoveTree
+                  lines={customLines}
+                  moves={moveList}
+                  currentPly={currentPly}
+                  pinnedLineIndex={boardState?.customLineIndex}
+                  onSelect={navigateToCustomMove}
+                  onCycleOptions={requestNavigation}
+                />
+              ) : (
+                <PlayedMoves moves={moveList} currentPly={currentPly} onNavigate={navigateToPly} />
+              )}
             </div>
           </section>
         ) : null}
@@ -1387,11 +1422,7 @@ export const PracticePage = () => {
           captureNavigationShortcuts: true,
           solutionNavigation: navigation,
           previewMove: hoveredMoveUci,
-          onNavigateHandled: () => {
-            const handledNavigation = navigation;
-            if (handledNavigation?.type === "line") finishVariationPlayback();
-            clearHandledNavigation(handledNavigation);
-          },
+          onNavigateHandled: handleNavigationHandled,
           onStateChange: handleBoardStateChange,
         }}
         boardOverlay={

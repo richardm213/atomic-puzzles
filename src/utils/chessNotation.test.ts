@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { numberedSanLineFromUci, sanLineFromUci } from "./chessNotation";
+import { numberedSanLineFromUci, sanLineFromUci, threatFenFromFen } from "./chessNotation";
 
 const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -34,5 +34,18 @@ describe("chess notation", () => {
         .map((token) => token.value)
         .join(" "),
     ).toBe("12... f6 13. Nf3 d5");
+  });
+
+  it("builds a null-move FEN for threat analysis", () => {
+    expect(threatFenFromFen(STARTING_FEN)).toBe(
+      "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 1 1",
+    );
+    expect(
+      threatFenFromFen("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 12"),
+    ).toBe("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 1 13");
+  });
+
+  it("does not offer a null move while the side to move is in check", () => {
+    expect(threatFenFromFen("7k/8/8/8/8/8/7R/K7 b - - 0 1")).toBeNull();
   });
 });

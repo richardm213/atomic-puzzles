@@ -10,6 +10,7 @@ import type {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
+import { AnalysisMoveTree } from "../../components/AnalysisMoveTree/AnalysisMoveTree";
 import {
   AtomicDbEngine,
   AtomicDbEngineControls,
@@ -32,6 +33,7 @@ import {
   OpeningExplorerPanel,
   OpeningExplorerResizeHandle,
 } from "../../features/analysisWorkspace/OpeningExplorerPanel";
+import { useAtomicDbAnalysis } from "../../hooks/useAtomicDbAnalysis";
 import { useAtomicDbBoardAnalysis } from "../../hooks/useAtomicDbBoardAnalysis";
 import { useAtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";
 import { useBoardDocument } from "../../hooks/useBoardDocument";
@@ -39,10 +41,12 @@ import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
 import { useOpeningExplorer } from "../../hooks/useOpeningExplorer";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import { useUsernamePicker } from "../../hooks/useUsernamePicker";
+import { warmFairyStockfish } from "../../lib/practice/fairyStockfish";
 import { createAtomicPosition } from "../../lib/puzzles/solutionPgn";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
 import { ATOMIC_DB_HOME_URL, atomicDbPositionUrl } from "../../utils/atomicDb";
 import { selectSpacebarMove } from "../../utils/boardMoveSelection";
+import { threatFenFromFen } from "../../utils/chessNotation";
 import { lichessAtomicAnalysisUrl } from "../../utils/lichess";
 import {
   buildOpeningExplorerUrl,
@@ -316,9 +320,11 @@ export const AnalysisPage = () => {
     removeRecent: removeRecentUsername,
   } = useUsernamePicker<UsernamePickerTarget>("player");
   const [hoveredExplorerMoveUci, setHoveredExplorerMoveUci] = useState<string | null>(null);
+  const [threatMode, setThreatMode] = useState(false);
 
-  const moveList = boardState?.lineMoves ?? [];
+  const moveList = useMemo(() => boardState?.lineMoves ?? [], [boardState?.lineMoves]);
   const currentFen = boardState?.fen || STARTING_FEN;
+  const terminalOutcome = boardState?.winner ?? (boardState?.status === "Draw" ? "draw" : null);
   const {
     analysis: atomicDbAnalysis,
     beginVariationPlayback,
@@ -330,9 +336,31 @@ export const AnalysisPage = () => {
     enabled: atomicDbEngineSettings.enabled,
     navigation,
     lineCount: atomicDbEngineSettings.lineCount,
+    terminalOutcome,
   });
+  const threatFen = useMemo(
+    () => (terminalOutcome ? null : threatFenFromFen(currentFen)),
+    [currentFen, terminalOutcome],
+  );
+  const threatAnalysis = useAtomicDbAnalysis(threatFen ?? currentFen, {
+    debounceMs: 0,
+    enabled:
+      atomicDbEngineSettings.enabled && threatMode && threatFen !== null && !atomicDbLinePlaying,
+    engineOnly: true,
+    lineCount: atomicDbEngineSettings.lineCount,
+    plyCount: 5,
+    suspended: navigation !== null,
+  });
+  const effectiveThreatMode = threatMode && threatFen !== null;
+  const threatMoveUci =
+    effectiveThreatMode && threatAnalysis.result?.fen === threatFen
+      ? (threatAnalysis.result.position?.bestMove ?? null)
+      : null;
+  const displayedAnalysis = effectiveThreatMode ? threatAnalysis : atomicDbAnalysis;
+  const displayedAnalysisFen = effectiveThreatMode && threatFen ? threatFen : atomicDbFen;
   const currentLichessAnalysisUrl = lichessAtomicAnalysisUrl(currentFen);
   const currentPly = boardState?.lineIndex ?? 0;
+  const customLines = useMemo(() => boardState?.customLines ?? [], [boardState?.customLines]);
   const analysisPageStyle = {
     "--analysis-board-size": `${boardSize}px`,
   } as CSSProperties;
@@ -387,9 +415,9 @@ export const AnalysisPage = () => {
     setNavigation({ type: "reset", fen: routeFen });
   }, [routeFen]);
 
-  const requestNavigation = (command: PlaybackCommand): void => {
+  const requestNavigation = useCallback((command: PlaybackCommand): void => {
     setNavigation({ type: "command", command });
-  };
+  }, []);
 
   const flipBoard = useCallback((): void => {
     setOrientation((current) => (current === "white" ? "black" : "white"));
@@ -458,9 +486,13 @@ export const AnalysisPage = () => {
     handle.addEventListener("pointercancel", handlePointerUp, { signal: controller.signal });
   };
 
-  const navigateToPly = (plyIndex: number): void => {
+  const navigateToPly = useCallback((plyIndex: number): void => {
     setNavigation({ type: "history", ply: plyIndex });
-  };
+  }, []);
+
+  const navigateToCustomMove = useCallback((lineIndex: number, moveIndex: number): void => {
+    setNavigation({ type: "custom", line: lineIndex, ply: moveIndex + 1 });
+  }, []);
 
   const playExplorerMove = (uci: string): void => {
     setHoveredExplorerMoveUci(null);
@@ -472,6 +504,11 @@ export const AnalysisPage = () => {
     beginVariationPlayback();
     setNavigation({ type: "line", ucis });
   };
+
+  const handleNavigationHandled = useCallback((): void => {
+    finishVariationPlayback();
+    setNavigation(null);
+  }, [finishVariationPlayback]);
 
   const ensurePlayerStartDate = useCallback((): void => {
     setExplorerSettings((current) => ({
@@ -681,6 +718,27 @@ export const AnalysisPage = () => {
   }, [currentFen, explorerOpen, explorerStatus, filtersOpen]);
 
   useEffect(() => {
+    if (!atomicDbEngineSettings.enabled || threatFen === null) setThreatMode(false);
+  }, [atomicDbEngineSettings.enabled, threatFen]);
+
+  useEffect(() => {
+    if (!atomicDbEngineSettings.enabled) return;
+    const warmEngine = (): void => {
+      void warmFairyStockfish();
+    };
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+    if (idleWindow.requestIdleCallback) {
+      const idleId = idleWindow.requestIdleCallback(warmEngine, { timeout: 750 });
+      return () => idleWindow.cancelIdleCallback?.(idleId);
+    }
+    const timeoutId = window.setTimeout(warmEngine, 150);
+    return () => window.clearTimeout(timeoutId);
+  }, [atomicDbEngineSettings.enabled]);
+
+  useEffect(() => {
     const handleAnalysisShortcut = (event: KeyboardEvent): void => {
       const key = event.key.toLowerCase();
       const shortcutIndex = shortcutIndexFromKeyboardEvent(event);
@@ -692,6 +750,7 @@ export const AnalysisPage = () => {
           key !== "f" &&
           key !== "k" &&
           key !== "l" &&
+          key !== "x" &&
           !isSpacebarShortcut &&
           !isExplorerMoveShortcut) ||
         event.metaKey ||
@@ -744,6 +803,10 @@ export const AnalysisPage = () => {
         }));
       } else if (key === "l") {
         setAtomicDbEngineSettings((current) => ({ ...current, enabled: !current.enabled }));
+      } else if (key === "x") {
+        if (atomicDbEngineSettings.enabled && threatFen !== null) {
+          setThreatMode((enabled) => !enabled);
+        }
       } else {
         flipBoard();
       }
@@ -762,6 +825,7 @@ export const AnalysisPage = () => {
     filtersOpen,
     flipBoard,
     setAtomicDbEngineSettings,
+    threatFen,
     usernamePickerOpen,
   ]);
 
@@ -786,24 +850,42 @@ export const AnalysisPage = () => {
         <div className="analysisMovePanel" ref={movePanelRef}>
           <div className="analysisEngineBlock">
             <AtomicDbEngineControls
-              fen={atomicDbFen}
-              analysis={atomicDbAnalysis}
+              fen={displayedAnalysisFen}
+              analysis={displayedAnalysis}
               settings={atomicDbEngineSettings}
               setSettings={setAtomicDbEngineSettings}
-              onDisable={() => setHoveredExplorerMoveUci(null)}
+              onDisable={() => {
+                setHoveredExplorerMoveUci(null);
+                setThreatMode(false);
+              }}
               onFlipBoard={flipBoard}
+              onThreatModeChange={setThreatMode}
+              threatAvailable={threatFen !== null}
+              threatMode={effectiveThreatMode}
             />
             <AtomicDbEngine
-              fen={atomicDbFen}
+              fen={displayedAnalysisFen}
               settings={atomicDbEngineSettings}
-              analysis={atomicDbAnalysis}
+              analysis={displayedAnalysis}
               onPlayLine={playAtomicDbLine}
               onHoverMove={setHoveredExplorerMoveUci}
-              disabled={atomicDbLinePlaying}
+              disabled={atomicDbLinePlaying || effectiveThreatMode}
+              threatMode={effectiveThreatMode}
             />
           </div>
           <div className="analysisMoveContent">
-            <PlayedMoves moves={moveList} currentPly={currentPly} onNavigate={navigateToPly} />
+            {customLines.length ? (
+              <AnalysisMoveTree
+                lines={customLines}
+                moves={moveList}
+                currentPly={currentPly}
+                pinnedLineIndex={boardState?.customLineIndex}
+                onSelect={navigateToCustomMove}
+                onCycleOptions={requestNavigation}
+              />
+            ) : (
+              <PlayedMoves moves={moveList} currentPly={currentPly} onNavigate={navigateToPly} />
+            )}
           </div>
         </div>
 
@@ -1061,20 +1143,19 @@ export const AnalysisPage = () => {
           analysisMode: true,
           captureNavigationShortcuts: true,
           solutionNavigation: navigation,
-          previewMove: hoveredExplorerMoveUci,
-          onNavigateHandled: () => {
-            finishVariationPlayback();
-            setNavigation(null);
-          },
+          previewMove: threatMoveUci ?? hoveredExplorerMoveUci,
+          previewMoveBrush: threatMoveUci ? "red" : "paleBlue",
+          onNavigateHandled: handleNavigationHandled,
           onStateChange: setBoardState,
         }}
         boardOverlay={
           <>
             <AtomicDbEvalBar
-              fen={atomicDbFen}
-              analysis={atomicDbAnalysis}
+              fen={displayedAnalysisFen}
+              analysis={displayedAnalysis}
               enabled={atomicDbEngineSettings.enabled}
               orientation={orientation}
+              threatMode={effectiveThreatMode}
             />
             <button
               type="button"

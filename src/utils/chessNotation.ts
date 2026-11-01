@@ -7,6 +7,32 @@ export { fenAfterAtomicMove as fenAfterUciMove } from "../../shared/domain/puzzl
 export const orientationFromFen = (fen: string | null | undefined): "white" | "black" =>
   fen?.trim().split(/\s+/)[1] === "b" ? "black" : "white";
 
+export const threatFenFromFen = (fen: string): string | null => {
+  try {
+    if (createAtomicPosition(fen).isCheck()) return null;
+  } catch {
+    return null;
+  }
+
+  const fields = fen.trim().split(/\s+/);
+  if (fields.length !== 6) return null;
+  const [board, turn, castling, , halfmoveText, fullmoveText] = fields;
+  if (!board || (turn !== "w" && turn !== "b") || !castling) return null;
+
+  const halfmove = Number.parseInt(halfmoveText ?? "", 10);
+  const fullmove = Number.parseInt(fullmoveText ?? "", 10);
+  if (!Number.isInteger(halfmove) || !Number.isInteger(fullmove)) return null;
+
+  return [
+    board,
+    turn === "w" ? "b" : "w",
+    castling,
+    "-",
+    halfmove + 1,
+    turn === "b" ? fullmove + 1 : fullmove,
+  ].join(" ");
+};
+
 export const sanFromUci = (fen: string, uci: string): string => {
   try {
     const position = createAtomicPosition(fen);
