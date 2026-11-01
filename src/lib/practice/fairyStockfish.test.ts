@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   chooseEngineCandidate,
+  disableFirefoxAtomicsWaitAsync,
   type EngineCandidate,
+  parseEngineCandidate,
   withEngineRequestTimeout,
 } from "./fairyStockfish";
 
@@ -93,6 +95,24 @@ describe("chooseEngineCandidate", () => {
   });
 });
 
+describe("parseEngineCandidate", () => {
+  it("treats a missing multipv field as the primary line", () => {
+    expect(
+      parseEngineCandidate(
+        "info depth 19 score cp 742 nodes 1000 nps 250000 time 4 pv g1f3 f7f6 b1c3",
+      ),
+    ).toMatchObject({
+      move: "g1f3",
+      multipv: 1,
+      score: 742,
+      depth: 19,
+      nodes: 1000,
+      nps: 250000,
+      timeMs: 4,
+    });
+  });
+});
+
 describe("withEngineRequestTimeout", () => {
   afterEach(() => vi.useRealTimers());
 
@@ -118,5 +138,24 @@ describe("withEngineRequestTimeout", () => {
     await vi.advanceTimersByTimeAsync(20);
 
     expect(onTimeout).not.toHaveBeenCalled();
+  });
+});
+
+describe("disableFirefoxAtomicsWaitAsync", () => {
+  it("disables the leaking Firefox implementation used by pthread workers", () => {
+    const atomics = { waitAsync: vi.fn() } as unknown as typeof Atomics;
+
+    disableFirefoxAtomicsWaitAsync("Mozilla/5.0 Firefox/145.0", atomics);
+
+    expect((atomics as typeof Atomics & { waitAsync?: unknown }).waitAsync).toBeUndefined();
+  });
+
+  it("leaves other browsers unchanged", () => {
+    const waitAsync = vi.fn();
+    const atomics = { waitAsync } as unknown as typeof Atomics;
+
+    disableFirefoxAtomicsWaitAsync("Mozilla/5.0 Chrome/142.0", atomics);
+
+    expect((atomics as typeof Atomics & { waitAsync?: unknown }).waitAsync).toBe(waitAsync);
   });
 });

@@ -64,8 +64,10 @@ const useRetainedAtomicDbView = (analysis: AtomicDbAnalysisState, fen: string): 
   const currentView = buildAtomicDbView(analysis.result, fen);
   const settledViewRef = useRef(currentView);
 
-  if (analysis.status !== "loading") settledViewRef.current = currentView;
-  return analysis.status === "loading" ? settledViewRef.current : currentView;
+  if (analysis.status !== "loading" || currentView.isCurrent) settledViewRef.current = currentView;
+  return analysis.status === "loading" && !currentView.isCurrent
+    ? settledViewRef.current
+    : currentView;
 };
 
 export const AtomicDbEngineControls = ({

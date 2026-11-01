@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <title>Fairy-Stockfish 14 benchmark</title>
+    <link rel="stylesheet" href="/benchmarks/fairy-stockfish/style.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Fairy-Stockfish 14 benchmark</h1>
+        <button id="run" type="button">Run benchmark</button>
+      </header>
+
+      <p id="status" role="status">Ready. Close heavy applications before starting.</p>
+
+      <section aria-labelledby="results-heading">
+        <h2 id="results-heading">Results</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Position</th>
+                <th scope="col">State</th>
+                <th scope="col">First result</th>
+                <th scope="col">Total</th>
+                <th scope="col">Depth</th>
+                <th scope="col">Nodes</th>
+                <th scope="col">NPS</th>
+              </tr>
+            </thead>
+            <tbody id="results"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <details>
+        <summary>Raw JSON</summary>
+        <pre id="json">No result yet.</pre>
+      </details>
+    </main>
+    <script type="module" src="/benchmarks/fairy-stockfish/main.ts"></script>
+  </body>
+</html>

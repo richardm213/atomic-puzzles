@@ -151,23 +151,35 @@ export const useAtomicDbAnalysis = (
         source: "engine",
       }));
       try {
-        const candidates = await analyzeFairyStockfishPosition(fen, lineCount, controller.signal);
-        if (controller.signal.aborted) return;
-        startTransition(() => {
-          setState({
-            result: { fen, position: enginePosition(candidates) },
-            requestedFen: fen,
-            status: "ready",
-            error: "",
-            principalVariations: Object.fromEntries(
-              candidates.map((candidate) => [
-                candidate.move,
-                candidate.principalVariation?.slice(0, plyCount) ?? [candidate.move],
-              ]),
-            ),
-            source: "engine",
+        const publishEngineCandidates = (
+          candidates: EngineCandidate[],
+          status: AtomicDbAnalysisStatus,
+        ): void => {
+          if (controller.signal.aborted) return;
+          startTransition(() => {
+            setState({
+              result: { fen, position: enginePosition(candidates) },
+              requestedFen: fen,
+              status,
+              error: "",
+              principalVariations: Object.fromEntries(
+                candidates.map((candidate) => [
+                  candidate.move,
+                  candidate.principalVariation?.slice(0, plyCount) ?? [candidate.move],
+                ]),
+              ),
+              source: "engine",
+            });
           });
-        });
+        };
+        const candidates = await analyzeFairyStockfishPosition(
+          fen,
+          lineCount,
+          controller.signal,
+          (progressCandidates) => publishEngineCandidates(progressCandidates, "loading"),
+        );
+        if (controller.signal.aborted) return;
+        publishEngineCandidates(candidates, "ready");
       } catch (error: unknown) {
         if (controller.signal.aborted) return;
         startTransition(() => {

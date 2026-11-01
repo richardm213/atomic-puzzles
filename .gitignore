@@ -13,6 +13,7 @@ data/tournaments/tournament-seeds.csv
 playwright-report/
 test-results/
 .playwright/
+benchmarks/fairy-stockfish/results/*.json
 
 # Local Netlify folder
 .netlify

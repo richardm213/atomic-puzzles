@@ -733,19 +733,9 @@ export const AnalysisPage = () => {
 
   useEffect(() => {
     if (!atomicDbEngineSettings.enabled) return;
-    const warmEngine = (): void => {
-      void warmFairyStockfish();
-    };
-    const idleWindow = window as Window & {
-      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
-      cancelIdleCallback?: (handle: number) => void;
-    };
-    if (idleWindow.requestIdleCallback) {
-      const idleId = idleWindow.requestIdleCallback(warmEngine, { timeout: 750 });
-      return () => idleWindow.cancelIdleCallback?.(idleId);
-    }
-    const timeoutId = window.setTimeout(warmEngine, 150);
-    return () => window.clearTimeout(timeoutId);
+    // Boot alongside the position request. Fresh positions fall back to the local
+    // engine, so waiting for an idle callback adds avoidable cold-start latency.
+    void warmFairyStockfish();
   }, [atomicDbEngineSettings.enabled]);
 
   useEffect(() => {

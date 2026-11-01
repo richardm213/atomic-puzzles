@@ -92,6 +92,62 @@ describe("useAtomicDbAnalysis", () => {
     expect(result.current.result?.position?.moves[0]?.uci).toBe("h1g2");
   });
 
+  it("publishes live Fairy-Stockfish lines before the timed search finishes", async () => {
+    const fen = "8/8/8/8/3k4/8/1K6/7R w - - 3 71";
+    let publishProgress: Parameters<typeof analyzeFairyStockfishPosition>[3];
+    let finishAnalysis:
+      | ((value: Awaited<ReturnType<typeof analyzeFairyStockfishPosition>>) => void)
+      | undefined;
+    vi.stubGlobal("fetch", vi.fn());
+    analyzeWithEngineMock.mockImplementation((_fen, _lineCount, _signal, onProgress) => {
+      publishProgress = onProgress;
+      return new Promise((resolve) => {
+        finishAnalysis = resolve;
+      });
+    });
+
+    const { result } = renderHook(() =>
+      useAtomicDbAnalysis(fen, { debounceMs: 0, engineOnly: true, lineCount: 1, plyCount: 3 }),
+    );
+    await waitFor(() => expect(analyzeWithEngineMock).toHaveBeenCalledOnce());
+
+    act(() => {
+      publishProgress?.([
+        {
+          move: "h1h4",
+          multipv: 1,
+          scoreType: "cp",
+          score: 125,
+          depth: 7,
+          principalVariation: ["h1h4", "d4e5", "h4h5"],
+        },
+      ]);
+    });
+
+    await waitFor(() => expect(result.current.result?.fen).toBe(fen));
+    expect(result.current.status).toBe("loading");
+    expect(result.current.source).toBe("engine");
+    expect(result.current.result?.position?.moves[0]).toMatchObject({
+      uci: "h1h4",
+      backedPlies: 7,
+    });
+
+    await act(async () => {
+      finishAnalysis?.([
+        {
+          move: "h1h4",
+          multipv: 1,
+          scoreType: "cp",
+          score: 180,
+          depth: 16,
+          principalVariation: ["h1h4", "d4e5", "h4h5"],
+        },
+      ]);
+    });
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    expect(result.current.result?.position?.score).toBe(180);
+  });
+
   it("retains the settled position while the next FEN is loading", async () => {
     let resolveSecondRequest: ((response: Response) => void) | undefined;
     const fetchMock = vi

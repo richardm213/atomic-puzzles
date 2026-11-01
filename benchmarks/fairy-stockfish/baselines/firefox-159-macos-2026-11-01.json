@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "benchmark": "fairy-stockfish-14-analysis",
+  "createdAt": "2026-11-01T21:16:59.750Z",
+  "config": {
+    "searchTimeMs": 3000,
+    "lineCount": 3,
+    "uniquePositions": 6
+  },
+  "environment": {
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:159.0) Gecko/20100101 Firefox/159.0",
+    "hardwareConcurrency": 8,
+    "deviceMemoryGb": null,
+    "crossOriginIsolated": true
+  },
+  "summary": {
+    "coldFirstResultMs": 335.76000000000005,
+    "warmMedianFirstResultMs": 3.0200000000004366,
+    "warmMedianNps": 3637776,
+    "totalMs": 18348.440000000002
+  },
+  "positions": [
+    {
+      "id": "fresh-01",
+      "fen": "1nbqk1nr/r1pppp2/6pb/pp5p/2NPP3/2P5/PP1B1PPP/R2QKBNR w KQk - 3 7",
+      "engineState": "cold",
+      "firstResultMs": 335.76000000000005,
+      "totalMs": 3334.78,
+      "depth": 17,
+      "nodes": 9794589,
+      "nps": 3263775
+    },
+    {
+      "id": "fresh-02",
+      "fen": "1rbqkbnr/p2ppp2/np4pp/2p5/2P2P2/3P1N2/PPQ1PKPP/RNB2B1R w k - 0 7",
+      "engineState": "warm",
+      "firstResultMs": 3.3600000000001273,
+      "totalMs": 3003.6,
+      "depth": 19,
+      "nodes": 10924244,
+      "nps": 3637776
+    },
+    {
+      "id": "fresh-03",
+      "fen": "rnbqk2r/pppp3p/8/2b1ppp1/4PPn1/P2B4/1PPPN1PP/RNBQK2R w KQkq - 2 7",
+      "engineState": "warm",
+      "firstResultMs": 4.479999999999563,
+      "totalMs": 3000.7200000000003,
+      "depth": 16,
+      "nodes": 10308233,
+      "nps": 3434932
+    },
+    {
+      "id": "fresh-04",
+      "fen": "1nbqkb1r/1r1ppppp/p6n/1p6/8/3P2P1/PPPNPP1P/R1BQKB1R w KQk - 1 7",
+      "engineState": "warm",
+      "firstResultMs": 1.860000000000582,
+      "totalMs": 3000.8999999999996,
+      "depth": 16,
+      "nodes": 11577587,
+      "nps": 3857909
+    },
+    {
+      "id": "fresh-05",
+      "fen": "1rq1kbnr/p1p1pppp/n2p4/1p6/P2P4/N3P3/1PP2PPP/R1B1KB1R w KQk - 3 7",
+      "engineState": "warm",
+      "firstResultMs": 3.0200000000004366,
+      "totalMs": 3000.8600000000006,
+      "depth": 15,
+      "nodes": 5395687,
+      "nps": 1797963
+    },
+    {
+      "id": "fresh-06",
+      "fen": "rnbq1bnr/p1ppk3/1p3ppp/4p3/2P2P1P/8/PP1PP1P1/RNBQKBNR w KQ - 1 7",
+      "engineState": "warm",
+      "firstResultMs": 2.3400000000001455,
+      "totalMs": 3000.9400000000005,
+      "depth": 16,
+      "nodes": 11112640,
+      "nps": 3702979
+    }
+  ]
+}

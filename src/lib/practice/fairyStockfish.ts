@@ -16,6 +16,7 @@ type StockfishWebModule = {
 type StockfishFactory = (options?: {
   locateFile?: (path: string) => string;
   mainScriptUrlOrBlob?: string;
+  wasmMemory?: WebAssembly.Memory;
   listen?: (line: string) => void;
   onError?: (message: string) => void;
 }) => Promise<StockfishWebModule>;
@@ -26,8 +27,13 @@ export type EngineCandidate = {
   scoreType: "cp" | "mate";
   score: number;
   depth?: number;
+  nodes?: number;
+  nps?: number;
+  timeMs?: number;
   principalVariation?: string[];
 };
+
+type EngineProgressListener = (candidates: EngineCandidate[]) => void;
 
 let enginePromise: Promise<StockfishEngine> | null = null;
 let engineSearchQueue: Promise<void> = Promise.resolve();
@@ -43,12 +49,45 @@ const PRACTICE_MULTIPV_COUNT = 3;
 const ENGINE_RESPONSE_TIMEOUT_MS = 15_000;
 const ENGINE_SEARCH_TIMEOUT_MS = MAX_THINK_TIME_MS + 2_000;
 const ENGINE_REQUEST_TIMEOUT_MS = 20_000;
+const ENGINE_PROGRESS_INTERVAL_MS = 100;
 const MAX_CANDIDATE_SCORE_GAP_CP = 150;
 const MULTIPV_COUNT = 5;
 const CANDIDATE_WEIGHTS = [0.4, 0.25, 0.15, 0.12, 0.08] as const;
 
 const randomThinkTimeMs = (): number =>
   Math.floor(Math.random() * (MAX_THINK_TIME_MS - MIN_THINK_TIME_MS + 1)) + MIN_THINK_TIME_MS;
+
+// Firefox's Atomics.waitAsync implementation currently leaks waiters under the
+// pthread traffic produced by stockfish-web. Lichess disables it so Emscripten
+// uses the stable synchronous Atomics.wait path instead.
+type AtomicsWithWaitAsync = typeof Atomics & { waitAsync?: unknown };
+
+export const disableFirefoxAtomicsWaitAsync = (
+  userAgent = navigator.userAgent,
+  atomics: AtomicsWithWaitAsync = Atomics,
+): void => {
+  if (!/Firefox\//.test(userAgent) || typeof atomics.waitAsync !== "function") return;
+  Object.defineProperty(atomics, "waitAsync", {
+    configurable: true,
+    value: undefined,
+    writable: true,
+  });
+};
+
+const createSharedWasmMemory = (): WebAssembly.Memory => {
+  const initial = 1_024;
+  let maximum = 32_767;
+  let shrinkDivisor = 4;
+  while (true) {
+    try {
+      return new WebAssembly.Memory({ initial, maximum, shared: true });
+    } catch (error) {
+      if (maximum <= initial || !(error instanceof RangeError)) throw error;
+      maximum = Math.max(initial, Math.ceil(maximum - maximum / shrinkDivisor));
+      shrinkDivisor = shrinkDivisor === 4 ? 3 : 4;
+    }
+  }
+};
 
 export const withEngineRequestTimeout = <T>(
   request: Promise<T>,
@@ -125,6 +164,45 @@ export const chooseEngineCandidate = (
   return eligibleCandidates.at(-1) ?? null;
 };
 
+export const parseEngineCandidate = (line: string): EngineCandidate | null => {
+  if (!line.startsWith("info ")) return null;
+  // UCI permits omitting `multipv 1`; FSF does so for some primary-line updates.
+  // Treating the missing field as NaN left our best line stuck at an old depth.
+  const multipv = Number(line.match(/\bmultipv\s+(\d+)/)?.[1] ?? "1");
+  const scoreMatch = line.match(/\bscore\s+(cp|mate)\s+(-?\d+)/);
+  const principalVariation =
+    line
+      .match(/\bpv\s+(.+)$/)?.[1]
+      ?.trim()
+      .split(/\s+/)
+      .filter((move) => /^[a-h][1-8][a-h][1-8][nbrq]?$/.test(move)) ?? [];
+  const move = principalVariation[0] ?? "";
+  const depth = Number(line.match(/\bdepth\s+(\d+)/)?.[1]);
+  const nodes = Number(line.match(/\bnodes\s+(\d+)/)?.[1]);
+  const nps = Number(line.match(/\bnps\s+(\d+)/)?.[1]);
+  const timeMs = Number(line.match(/\btime\s+(\d+)/)?.[1]);
+  if (
+    !Number.isInteger(multipv) ||
+    multipv < 1 ||
+    multipv > MULTIPV_COUNT ||
+    !scoreMatch ||
+    !move
+  ) {
+    return null;
+  }
+  return {
+    move,
+    multipv,
+    scoreType: scoreMatch[1] as "cp" | "mate",
+    score: Number(scoreMatch[2]),
+    depth: Number.isInteger(depth) ? depth : 0,
+    ...(Number.isInteger(nodes) ? { nodes } : {}),
+    ...(Number.isInteger(nps) ? { nps } : {}),
+    ...(Number.isInteger(timeMs) ? { timeMs } : {}),
+    principalVariation,
+  };
+};
+
 const waitForLine = (
   engine: StockfishEngine,
   matches: (line: string) => boolean,
@@ -162,6 +240,8 @@ const initializeEngine = async (): Promise<StockfishEngine> => {
     throw new Error("Fairy-Stockfish requires cross-origin isolation");
   }
 
+  disableFirefoxAtomicsWaitAsync();
+
   const listeners = new Set<(line: string) => void>();
   const { default: factory } = (await import(/* @vite-ignore */ stockfishScriptUrl)) as {
     default: StockfishFactory;
@@ -169,6 +249,7 @@ const initializeEngine = async (): Promise<StockfishEngine> => {
   const module = await factory({
     mainScriptUrlOrBlob: stockfishScriptUrl,
     locateFile: (path) => (path.endsWith(".wasm") ? stockfishWasmUrl : path),
+    wasmMemory: createSharedWasmMemory(),
     listen: (line) => listeners.forEach((listener) => listener(line)),
     onError: (message) => console.error(`Fairy-Stockfish: ${message}`),
   });
@@ -182,6 +263,8 @@ const initializeEngine = async (): Promise<StockfishEngine> => {
   await uciReady;
   engine.postMessage("setoption name UCI_Variant value atomic");
   engine.postMessage("setoption name UCI_AnalyseMode value true");
+  engine.postMessage("setoption name Analysis Contempt value Off");
+  engine.postMessage("setoption name UCI_Chess960 value true");
   engine.postMessage(
     `setoption name Threads value ${Math.min(4, Math.max(1, navigator.hardwareConcurrency - 1))}`,
   );
@@ -214,10 +297,13 @@ export const warmFairyStockfish = async (): Promise<void> => {
 const waitForBestMove = (
   engine: StockfishEngine,
   signal?: AbortSignal,
+  requestedLineCount = 1,
+  onProgress?: EngineProgressListener,
 ): Promise<{ bestMoveLine: string; candidates: EngineCandidate[] }> =>
   new Promise((resolve, reject) => {
     const candidatesByRank = new Map<number, EngineCandidate>();
     let abortRequested = false;
+    let lastProgressAt = Number.NEGATIVE_INFINITY;
     const timeout = window.setTimeout(() => {
       engine.postMessage("stop");
       cleanup();
@@ -230,31 +316,23 @@ const waitForBestMove = (
     };
     const handleLine = (line: string): void => {
       if (line.startsWith("info ")) {
-        const multipv = Number(line.match(/\bmultipv\s+(\d+)/)?.[1]);
-        const scoreMatch = line.match(/\bscore\s+(cp|mate)\s+(-?\d+)/);
-        const principalVariation =
-          line
-            .match(/\bpv\s+(.+)$/)?.[1]
-            ?.trim()
-            .split(/\s+/)
-            .filter((move) => /^[a-h][1-8][a-h][1-8][nbrq]?$/.test(move)) ?? [];
-        const move = principalVariation[0] ?? "";
-        const depth = Number(line.match(/\bdepth\s+(\d+)/)?.[1]);
-        if (
-          Number.isInteger(multipv) &&
-          multipv >= 1 &&
-          multipv <= MULTIPV_COUNT &&
-          scoreMatch &&
-          move
-        ) {
-          candidatesByRank.set(multipv, {
-            move,
-            multipv,
-            scoreType: scoreMatch[1] as "cp" | "mate",
-            score: Number(scoreMatch[2]),
-            depth: Number.isInteger(depth) ? depth : 0,
-            principalVariation,
-          });
+        const candidate = parseEngineCandidate(line);
+        if (candidate) {
+          candidatesByRank.set(candidate.multipv, candidate);
+          const now = performance.now();
+          if (
+            onProgress &&
+            candidate.multipv === requestedLineCount &&
+            candidatesByRank.size >= requestedLineCount &&
+            now - lastProgressAt >= ENGINE_PROGRESS_INTERVAL_MS
+          ) {
+            lastProgressAt = now;
+            onProgress(
+              [...candidatesByRank.values()]
+                .sort((left, right) => left.multipv - right.multipv)
+                .slice(0, requestedLineCount),
+            );
+          }
         }
         return;
       }
@@ -285,6 +363,7 @@ const searchFairyStockfish = async (
   signal?: AbortSignal,
   thinkTimeMs = randomThinkTimeMs(),
   multiPvCount = MULTIPV_COUNT,
+  onProgress?: EngineProgressListener,
 ): Promise<{ bestMove: string | null; candidates: EngineCandidate[] }> => {
   let lastFailure: unknown = new Error("Fairy-Stockfish failed");
 
@@ -300,7 +379,7 @@ const searchFairyStockfish = async (
         configuredMultiPvCount = multiPvCount;
       }
       engine.postMessage(`position fen ${fen}`);
-      const bestMoveResult = waitForBestMove(engine, signal);
+      const bestMoveResult = waitForBestMove(engine, signal, multiPvCount, onProgress);
       engine.postMessage(`go movetime ${thinkTimeMs}`);
       const { bestMoveLine, candidates } = await bestMoveResult;
       const fallbackMove = bestMoveLine.match(/^bestmove\s+(\S+)/)?.[1] ?? "";
@@ -352,6 +431,7 @@ export const analyzeFairyStockfishPosition = async (
   fen: string,
   lineCount: number,
   signal?: AbortSignal,
+  onProgress?: EngineProgressListener,
 ): Promise<EngineCandidate[]> => {
   const requestedLineCount = Math.min(MULTIPV_COUNT, Math.max(1, Math.floor(lineCount)));
   const cachedSearch = candidatesByFen.get(fen);
@@ -363,7 +443,13 @@ export const analyzeFairyStockfishPosition = async (
       : (
           await queueFairyStockfishSearch(
             (requestSignal) =>
-              searchFairyStockfish(fen, requestSignal, MAX_THINK_TIME_MS, requestedLineCount),
+              searchFairyStockfish(
+                fen,
+                requestSignal,
+                MAX_THINK_TIME_MS,
+                requestedLineCount,
+                onProgress,
+              ),
             signal,
           )
         ).candidates;
