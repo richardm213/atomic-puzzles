@@ -1,7 +1,7 @@
 import "../../components/MatchHistoryTable/MatchHistoryTable.css";
 import "./RecentMatches.css";
 
-import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Fragment, useEffect, useMemo, useState } from "react";
 
 import {
@@ -109,6 +109,7 @@ const resolveSearchFilters = async (filters: AppliedFilters): Promise<AppliedFil
 };
 
 export const RecentMatchesPage = () => {
+  const queryClient = useQueryClient();
   const [selectedMode, setSelectedMode] = useState<Mode>(defaultMode);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(defaultPageSize);
@@ -188,6 +189,28 @@ export const RecentMatchesPage = () => {
       setKnownTotal(matchesQuery.data.total);
     }
   }, [knownTotal, matchesQuery.data, matchesQuery.isPlaceholderData]);
+
+  useEffect(() => {
+    if (!matchesQuery.data || matchesQuery.isPlaceholderData || !matchesQuery.data.hasNextPage)
+      return;
+    void queryClient.prefetchQuery(
+      recentMatchesPageQueryOptions(
+        appliedFilters.selectedMode,
+        archiveFilters,
+        currentPage + 1,
+        pageSize,
+        false,
+      ),
+    );
+  }, [
+    appliedFilters.selectedMode,
+    archiveFilters,
+    currentPage,
+    matchesQuery.data,
+    matchesQuery.isPlaceholderData,
+    pageSize,
+    queryClient,
+  ]);
 
   useEffect(() => {
     setTimeControlInitialFilter("all");

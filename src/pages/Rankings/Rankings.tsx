@@ -2,7 +2,7 @@ import "./Rankings.css";
 
 import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -28,6 +28,7 @@ import { monthDateFromMonthKey } from "../../lib/archive/leaderboard";
 import { formatRankingUpdatedAt } from "../../lib/rankings/formatRankingUpdatedAt";
 import {
   latestRankingMatchQueryOptions,
+  rankingsForMonthQueryOptions,
   rankingsForYearQueryOptions,
 } from "../../lib/rankings/rankingsQueries";
 import type { AliasLookup } from "../../lib/users/aliasesLookup";
@@ -209,6 +210,7 @@ const updateRankingsUrl = (
 };
 
 const LeaderboardView = ({ selectedPeriod }: { selectedPeriod: RankingPeriod }) => {
+  const queryClient = useQueryClient();
   const { hideRankingsOpenings, showChessComRankings } = useAppSettings();
   const locationSearch = useRouterState({ select: (state) => state.location.searchStr });
   const initialFilters = useMemo(
@@ -411,6 +413,34 @@ const LeaderboardView = ({ selectedPeriod }: { selectedPeriod: RankingPeriod }) 
   const handleNextYear = () => {
     if (hasNextYear) setSelectedYear(yearOptions[selectedYearIndex - 1] ?? selectedYear);
   };
+
+  useEffect(() => {
+    if (selectedPeriod === "monthly") {
+      const adjacentMonths = [
+        allMonthKeys[selectedMonthIndex - 1],
+        allMonthKeys[selectedMonthIndex + 1],
+      ].filter((month): month is string => Boolean(month));
+      adjacentMonths.forEach((month) => {
+        void queryClient.prefetchQuery(rankingsForMonthQueryOptions(month));
+      });
+      return;
+    }
+
+    const adjacentYears = [
+      Number(yearOptions[selectedYearIndex - 1]),
+      Number(yearOptions[selectedYearIndex + 1]),
+    ].filter((year) => Number.isInteger(year) && year >= 2016);
+    adjacentYears.forEach((year) => {
+      void queryClient.prefetchQuery(rankingsForYearQueryOptions(year));
+    });
+  }, [
+    allMonthKeys,
+    queryClient,
+    selectedMonthIndex,
+    selectedPeriod,
+    selectedYearIndex,
+    yearOptions,
+  ]);
 
   const sortedPlayers = useMemo(() => {
     const directionMultiplier = sortDirection === "asc" ? 1 : -1;

@@ -2,8 +2,8 @@ import "./Comments.css";
 
 import { faArrowUp, faLock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 
 import { CommunityCommentTargetLink } from "../../components/CommunityCommentTargetLink/CommunityCommentTargetLink";
 import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
@@ -29,6 +29,7 @@ const targetFilterOptions: Array<{ value: CommunityCommentTargetFilter; label: s
 ];
 
 export const CommentsPage = () => {
+  const queryClient = useQueryClient();
   const { isAuthenticated, user } = useAuth();
   const [sort, setSort] = useState<ProfileCommentSort>("recent");
   const [targetFilter, setTargetFilter] = useState<CommunityCommentTargetFilter>("all");
@@ -54,6 +55,28 @@ export const CommentsPage = () => {
     setPage(1);
   };
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  useEffect(() => {
+    if (!commentsQuery.data || commentsQuery.isPlaceholderData || page >= totalPages) return;
+    void queryClient.prefetchQuery(
+      siteCommunityCommentsQueryOptions({
+        page: page + 1,
+        pageSize,
+        sort,
+        targetFilter,
+        viewerKey,
+      }),
+    );
+  }, [
+    commentsQuery.data,
+    commentsQuery.isPlaceholderData,
+    page,
+    queryClient,
+    sort,
+    targetFilter,
+    totalPages,
+    viewerKey,
+  ]);
 
   if (commentsQuery.isPending && comments.length === 0) return <RouteLoadingFallback />;
 

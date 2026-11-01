@@ -3,7 +3,7 @@ import "./Arenas.css";
 import { faCalendarDays, faCrown } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { memo, useDeferredValue, useEffect, useMemo, useState } from "react";
 
 import { Seo } from "../../components/Seo/Seo";
 import { type Arena, arenaHref, arenasQueryOptions, filterArenas } from "../../lib/supabase/arenas";
@@ -27,7 +27,7 @@ const dateFormat = new Intl.DateTimeFormat("en", {
 const readPreferences = (): ArenaPreferences =>
   getBrowserStorageJson("local", "arena-archive-preferences", {});
 
-const ArenaEntry = ({ arena }: { arena: Arena }) => {
+const ArenaEntry = memo(({ arena }: { arena: Arena }) => {
   return (
     <a
       className={`arenaEntry arenaEntry-${arena.frequency}`}
@@ -81,7 +81,7 @@ const ArenaEntry = ({ arena }: { arena: Arena }) => {
       <span className="visuallyHidden">Open on Lichess in a new tab</span>
     </a>
   );
-};
+});
 
 export const ArenasPage = () => {
   const [preferences] = useState(readPreferences);
@@ -96,12 +96,19 @@ export const ArenasPage = () => {
   const [search, setSearch] = useState(
     typeof preferences.search === "string" ? preferences.search : "",
   );
+  const deferredSearch = useDeferredValue(search);
   useEffect(() => {
     setBrowserStorageJson("local", "arena-archive-preferences", { view, frequency, search });
   }, [view, frequency, search]);
   const query = useQuery(arenasQueryOptions());
-  const arenas = filterArenas(query.data ?? [], frequency, search);
-  const years = [...new Set(arenas.map((arena) => arena.starts_at.slice(0, 4)))];
+  const arenas = useMemo(
+    () => filterArenas(query.data ?? [], frequency, deferredSearch),
+    [deferredSearch, frequency, query.data],
+  );
+  const years = useMemo(
+    () => [...new Set(arenas.map((arena) => arena.starts_at.slice(0, 4)))],
+    [arenas],
+  );
   const list = (entries: Arena[]) => (
     <div className="arenaList">
       {view !== "cards" && (

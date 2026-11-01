@@ -1,6 +1,6 @@
 import "./CoinRankings.css";
 
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
@@ -143,6 +143,7 @@ const readSavedFilters = (): TransactionCategory[] => {
 };
 
 export const CoinRankingsPage = () => {
+  const queryClient = useQueryClient();
   const [view, setView] = useState<CoinView>("rankings");
   const [transactionPage, setTransactionPage] = useState(1);
   const [usernameDraft, setUsernameDraft] = useState("");
@@ -157,6 +158,7 @@ export const CoinRankingsPage = () => {
   const transactionsQuery = useQuery({
     ...coinTransactionsQueryOptions(selectedReasons, transactionPage, usernameFilter),
     enabled: view === "transactions" && selectedReasons.length > 0,
+    placeholderData: keepPreviousData,
   });
   const rankings = rankingsQuery.data ?? [];
   const transactions = useMemo(
@@ -181,6 +183,29 @@ export const CoinRankingsPage = () => {
       setTransactionPage(transactionTotalPages);
     }
   }, [transactionPage, transactionTotalPages, transactionsQuery.data]);
+
+  useEffect(() => {
+    if (
+      view !== "transactions" ||
+      selectedReasons.length === 0 ||
+      !transactionsQuery.data ||
+      transactionsQuery.isPlaceholderData ||
+      transactionPage >= transactionTotalPages
+    )
+      return;
+    void queryClient.prefetchQuery(
+      coinTransactionsQueryOptions(selectedReasons, transactionPage + 1, usernameFilter),
+    );
+  }, [
+    queryClient,
+    selectedReasons,
+    transactionPage,
+    transactionTotalPages,
+    transactionsQuery.data,
+    transactionsQuery.isPlaceholderData,
+    usernameFilter,
+    view,
+  ]);
 
   if (rankingsQuery.isPending && rankings.length === 0) return <RouteLoadingFallback />;
 

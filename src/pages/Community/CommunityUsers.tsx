@@ -3,7 +3,7 @@ import "./Community.css";
 import { faArrowUp } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 
 import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
@@ -26,6 +26,7 @@ const emptyCommunityUsers: CommunityUserStats[] = [];
 
 export const CommunityUsersPage = () => {
   const [query, setQuery] = useState("");
+  const deferredQuery = useDeferredValue(query);
   const { changeSort, sortDirection, sortKey } = useTableSort<SortKey>({
     initialKey: "comments_left",
     getDefaultDirection: (key) => (key === "username" ? "asc" : "desc"),
@@ -36,7 +37,7 @@ export const CommunityUsersPage = () => {
   const error = usersQuery.error ? getErrorMessage(usersQuery.error, "Unable to load users.") : "";
 
   const visibleUsers = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
+    const normalizedQuery = deferredQuery.trim().toLowerCase();
     const filtered = normalizedQuery
       ? users.filter((user) => user.username.includes(normalizedQuery))
       : users;
@@ -49,7 +50,7 @@ export const CommunityUsersPage = () => {
         multiplier * (left[sortKey] - right[sortKey]) || left.username.localeCompare(right.username)
       );
     });
-  }, [query, sortDirection, sortKey, users]);
+  }, [deferredQuery, sortDirection, sortKey, users]);
 
   const activityTotals = useMemo(
     () =>

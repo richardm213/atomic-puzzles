@@ -503,3 +503,9 @@
     display: none;
   }
 }
+@supports (content-visibility: auto) {
+  .communityUserList > li {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 72px;
+  }
+}

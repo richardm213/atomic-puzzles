@@ -1,7 +1,7 @@
 import "../Rankings/Rankings.css";
 import "./PuzzleLeaderboard.css";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo } from "react";
 import { z } from "zod";
@@ -93,6 +93,7 @@ const trophyAsset = (rank: number | null): string => {
 };
 
 const PuzzleLeaderboard = () => {
+  const queryClient = useQueryClient();
   const [period, setPeriod] = usePersistedState<PuzzleLeaderboardPeriod>(
     puzzleLeaderboardPeriodStorageKey,
     puzzleLeaderboardPeriodSchema,
@@ -126,6 +127,17 @@ const PuzzleLeaderboard = () => {
       setSelectedMonth(effectiveMonth);
     }
   }, [effectiveMonth, leaderboardQuery.data, selectedMonth, setSelectedMonth]);
+  useEffect(() => {
+    if (period !== "monthly" || !leaderboardQuery.data) return;
+    const selectedIndex = monthOptions.indexOf(effectiveMonth);
+    const adjacentMonths = [
+      monthOptions[selectedIndex - 1],
+      monthOptions[selectedIndex + 1],
+    ].filter((month): month is string => Boolean(month));
+    adjacentMonths.forEach((month) => {
+      void queryClient.prefetchQuery(puzzleLeaderboardQueryOptions("monthly", month));
+    });
+  }, [effectiveMonth, leaderboardQuery.data, monthOptions, period, queryClient]);
   const loading = leaderboardQuery.isPending;
   const queryError = leaderboardQuery.error;
   const error = queryError ? getErrorMessage(queryError, "Failed to load puzzle rankings.") : "";

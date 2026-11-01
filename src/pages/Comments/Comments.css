@@ -339,3 +339,9 @@
     padding-inline: 9px 12px;
   }
 }
+@supports (content-visibility: auto) {
+  .siteCommentList > li {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 112px;
+  }
+}

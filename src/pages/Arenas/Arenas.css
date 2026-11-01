@@ -383,3 +383,9 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+@supports (content-visibility: auto) {
+  .arenaEntry {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 96px;
+  }
+}
