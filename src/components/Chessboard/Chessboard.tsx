@@ -93,6 +93,8 @@ export type ChessboardProps = {
   preserveAnalysisHistoryOnSolutionChange?: boolean;
   restrictMovesToSolution?: boolean;
   disabled?: boolean;
+  premoveColor?: Color;
+  premovesEnabled?: boolean;
   onNavigateHandled?: () => void;
   onAttemptResolved?: (result: AttemptResolved) => void;
   onStateChange?: (state: ChessboardState) => void;
@@ -159,6 +161,8 @@ export const Chessboard = ({
   preserveAnalysisHistoryOnSolutionChange = false,
   restrictMovesToSolution = false,
   disabled = false,
+  premoveColor,
+  premovesEnabled = false,
   onNavigateHandled,
   onAttemptResolved,
   onStateChange,
@@ -193,6 +197,8 @@ export const Chessboard = ({
   const analysisModeRef = useLatestRef(analysisMode);
   const restrictMovesToSolutionRef = useLatestRef(restrictMovesToSolution);
   const disabledRef = useLatestRef(disabled);
+  const premoveColorRef = useLatestRef(premoveColor);
+  const premovesEnabledRef = useLatestRef(premovesEnabled);
   const fenRef = useLatestRef(fen);
   const solutionNavigationRef = useLatestRef(solutionNavigation);
   const puzzleIdRef = useLatestRef(puzzleId);
@@ -385,12 +391,24 @@ export const Chessboard = ({
           }, new Map<Key, Key[]>())
         : legalDests;
       return {
-        ...(outcome ? {} : { color: position.turn }),
-        dests,
+        ...(outcome
+          ? {}
+          : { color: premovesEnabledRef.current ? premoveColorRef.current : position.turn }),
+        dests:
+          premovesEnabledRef.current && position.turn !== premoveColorRef.current
+            ? new Map()
+            : dests,
         free: false,
       };
     },
-    [allowedSolutionContinuations, boardStatusRef, disabledRef, restrictMovesToSolutionRef],
+    [
+      allowedSolutionContinuations,
+      boardStatusRef,
+      disabledRef,
+      premoveColorRef,
+      premovesEnabledRef,
+      restrictMovesToSolutionRef,
+    ],
   );
 
   const saveMove = useCallback(
@@ -452,8 +470,27 @@ export const Chessboard = ({
       });
 
       emitState(position, nextState);
+
+      if (
+        premovesEnabledRef.current &&
+        premoveColorRef.current === position.turn &&
+        !disabledRef.current &&
+        !boardStatusRef.current.locked
+      ) {
+        cgRef.current?.playPremove?.();
+      }
     },
-    [coordinatesRef, emitState, getDisplayTurn, getMovableConfig, orientationRef],
+    [
+      boardStatusRef,
+      coordinatesRef,
+      disabledRef,
+      emitState,
+      getDisplayTurn,
+      getMovableConfig,
+      orientationRef,
+      premoveColorRef,
+      premovesEnabledRef,
+    ],
   );
 
   const recomputeTrainingFromHistory = useCallback(
@@ -1080,9 +1117,16 @@ export const Chessboard = ({
     fen,
     orientation,
     coordinates,
+    movableColor: premoveColor,
+    premovesEnabled,
     onAfterMove: handleBoardMove,
     onCleanup: cleanupBoard,
   });
+
+  useEffect(() => {
+    if (!premovesEnabled || disabled) cgRef.current?.cancelPremove?.();
+    cgRef.current?.set({ premovable: { enabled: premovesEnabled } });
+  }, [disabled, premovesEnabled]);
 
   useEffect(() => {
     cgRef.current?.setAutoShapes(previewMoveShape(previewMove));
@@ -1102,6 +1146,8 @@ export const Chessboard = ({
 
   useEffect(() => {
     if (!solutionNavigation) return;
+
+    if (solutionNavigation.type !== "play") cgRef.current?.cancelPremove?.();
 
     switch (solutionNavigation.type) {
       case "reset":
@@ -1302,7 +1348,15 @@ export const Chessboard = ({
       lastMove: lastMove ?? [],
       check: displayCheck,
     });
-  }, [orientation, coordinates, disabled, fenRef, getDisplayTurn, getMovableConfig]);
+  }, [
+    orientation,
+    coordinates,
+    disabled,
+    fenRef,
+    getDisplayTurn,
+    getMovableConfig,
+    premovesEnabled,
+  ]);
 
   return (
     <div className="cg-boardShell cg-pieceTheme" style={{ ...pieceStyle, ...boardStyle }}>

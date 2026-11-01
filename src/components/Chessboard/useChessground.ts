@@ -1,7 +1,7 @@
 import { Chessground } from "@lichess-org/chessground";
 import type { Api } from "@lichess-org/chessground/api";
 import type { Color } from "chessops";
-import { type MutableRefObject, type RefObject, useEffect } from "react";
+import { type MutableRefObject, type RefObject, useEffect, useRef } from "react";
 
 export const useChessground = ({
   elementRef,
@@ -9,6 +9,8 @@ export const useChessground = ({
   fen,
   orientation,
   coordinates,
+  movableColor,
+  premovesEnabled,
   onAfterMove,
   onCleanup,
 }: {
@@ -17,22 +19,34 @@ export const useChessground = ({
   fen: string;
   orientation: Color;
   coordinates: boolean;
+  movableColor: Color | undefined;
+  premovesEnabled: boolean;
   onAfterMove: (orig: string, dest: string) => void;
   onCleanup: () => void;
 }): void => {
+  const initialConfigRef = useRef({ fen, orientation, coordinates, movableColor, premovesEnabled });
+  const onAfterMoveRef = useRef(onAfterMove);
+  onAfterMoveRef.current = onAfterMove;
+
   useEffect(() => {
     if (!elementRef.current) return;
+    const initial = initialConfigRef.current;
     apiRef.current = Chessground(elementRef.current, {
-      fen,
-      orientation,
-      coordinates,
+      fen: initial.fen,
+      orientation: initial.orientation,
+      coordinates: initial.coordinates,
       movable: {
         free: false,
-        color: "white",
+        color: initial.movableColor ?? "white",
         dests: new Map(),
         showDests: true,
-        events: { after: onAfterMove },
+        events: { after: (orig, dest) => onAfterMoveRef.current(orig, dest) },
       },
+      premovable: {
+        enabled: initial.premovesEnabled,
+        showDests: true,
+      },
+      animation: { enabled: true, duration: 120 },
       draggable: { enabled: true },
       selectable: { enabled: true },
       drawable: { visible: true },
@@ -42,5 +56,5 @@ export const useChessground = ({
       apiRef.current = null;
       onCleanup();
     };
-  }, [apiRef, coordinates, elementRef, fen, onAfterMove, onCleanup, orientation]);
+  }, [apiRef, elementRef, onCleanup]);
 };

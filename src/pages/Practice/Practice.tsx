@@ -48,7 +48,7 @@ import { useCopyFeedback } from "../../hooks/useCopyFeedback";
 import { type OpeningExplorerRequest, useOpeningExplorer } from "../../hooks/useOpeningExplorer";
 import { useUsernamePicker } from "../../hooks/useUsernamePicker";
 import { apiRequest } from "../../lib/api/postApi";
-import { findFairyStockfishMove } from "../../lib/practice/fairyStockfish";
+import { findFairyStockfishMove, warmFairyStockfish } from "../../lib/practice/fairyStockfish";
 import { movePrefix } from "../../lib/puzzles/solutionPgn";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
 import { ATOMIC_DB_HOME_URL, atomicDbPositionUrl } from "../../utils/atomicDb";
@@ -74,7 +74,7 @@ import {
 
 const randomOpeningPlayerSchema = z.object({ username: z.string().trim().min(1) });
 
-const PRACTICE_AUTOMOVE_MIN_THINK_MS = 520;
+const PRACTICE_AUTOMOVE_MIN_THINK_MS = 240;
 const PLAYER_MIN_RATING = 1700;
 const buildPracticePgn = (rootFen: string, moveText = ""): string =>
   [
@@ -410,7 +410,11 @@ export const PracticePage = () => {
     (minutes = clockMinutes, pauseGame = true): void => {
       const nextMilliseconds = minutes * 60_000;
       remainingClockMsRef.current = nextMilliseconds;
-      setRemainingClockMs(nextMilliseconds);
+      setRemainingClockMs((current) =>
+        Math.ceil(current / 1000) === Math.ceil(nextMilliseconds / 1000) && nextMilliseconds > 0
+          ? current
+          : nextMilliseconds,
+      );
       setClockExpired(nextMilliseconds <= 0);
       if (pauseGame) setGamePaused(true);
     },
@@ -451,13 +455,29 @@ export const PracticePage = () => {
         setGamePaused(true);
       }
     };
-    const interval = window.setInterval(updateClock, 100);
+    const interval = window.setInterval(updateClock, 250);
 
     return () => {
       updateClock();
       window.clearInterval(interval);
     };
   }, [clockRunning]);
+
+  useEffect(() => {
+    const warmEngine = (): void => {
+      void warmFairyStockfish();
+    };
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+    if (idleWindow.requestIdleCallback) {
+      const idleId = idleWindow.requestIdleCallback(warmEngine, { timeout: 1_000 });
+      return () => idleWindow.cancelIdleCallback?.(idleId);
+    }
+    const timeoutId = window.setTimeout(warmEngine, 250);
+    return () => window.clearTimeout(timeoutId);
+  }, []);
 
   useEffect(() => {
     if (
@@ -1361,6 +1381,9 @@ export const PracticePage = () => {
           solution: "",
           showSolution: false,
           analysisMode: true,
+          premoveColor: side,
+          premovesEnabled:
+            sessionStarted && !gamePaused && !gameFinished && !(clockEnabled && clockExpired),
           captureNavigationShortcuts: true,
           solutionNavigation: navigation,
           previewMove: hoveredMoveUci,

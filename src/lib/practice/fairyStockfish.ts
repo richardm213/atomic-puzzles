@@ -31,12 +31,15 @@ export type EngineCandidate = {
 
 let enginePromise: Promise<StockfishEngine> | null = null;
 let engineSearchQueue: Promise<void> = Promise.resolve();
+let configuredMultiPvCount = 1;
 const candidatesByFen = new Map<
   string,
   { candidates: EngineCandidate[]; multiPvCount: number; thinkTimeMs: number }
 >();
 const MIN_THINK_TIME_MS = 500;
 const MAX_THINK_TIME_MS = 3_000;
+const PRACTICE_THINK_TIME_MS = 700;
+const PRACTICE_MULTIPV_COUNT = 3;
 const ENGINE_RESPONSE_TIMEOUT_MS = 15_000;
 const ENGINE_SEARCH_TIMEOUT_MS = MAX_THINK_TIME_MS + 2_000;
 const ENGINE_REQUEST_TIMEOUT_MS = 20_000;
@@ -183,7 +186,8 @@ const initializeEngine = async (): Promise<StockfishEngine> => {
     `setoption name Threads value ${Math.min(4, Math.max(1, navigator.hardwareConcurrency - 1))}`,
   );
   engine.postMessage("setoption name Hash value 64");
-  engine.postMessage(`setoption name MultiPV value ${MULTIPV_COUNT}`);
+  engine.postMessage("setoption name MultiPV value 1");
+  engine.postMessage("ucinewgame");
   const engineReady = waitForLine(engine, (line) => line === "readyok");
   engine.postMessage("isready");
   await engineReady;
@@ -196,6 +200,15 @@ const getEngine = (): Promise<StockfishEngine> => {
     throw error;
   });
   return enginePromise;
+};
+
+export const warmFairyStockfish = async (): Promise<void> => {
+  if (!globalThis.crossOriginIsolated || typeof SharedArrayBuffer === "undefined") return;
+  try {
+    await getEngine();
+  } catch {
+    // The real request reports initialization errors. Warming is best-effort.
+  }
 };
 
 const waitForBestMove = (
@@ -282,15 +295,10 @@ const searchFairyStockfish = async (
       engine = await getEngine();
       if (signal?.aborted) throw new DOMException("Engine search cancelled", "AbortError");
 
-      // Finish the readiness handshake even if this request is cancelled. If
-      // readyok is left unread, it can be mistaken for the next request's reply.
-      const engineReady = waitForLine(engine, (line) => line === "readyok");
-      engine.postMessage("isready");
-      await engineReady;
-      if (signal?.aborted) throw new DOMException("Engine search cancelled", "AbortError");
-
-      engine.postMessage(`setoption name MultiPV value ${multiPvCount}`);
-      engine.postMessage("ucinewgame");
+      if (configuredMultiPvCount !== multiPvCount) {
+        engine.postMessage(`setoption name MultiPV value ${multiPvCount}`);
+        configuredMultiPvCount = multiPvCount;
+      }
       engine.postMessage(`position fen ${fen}`);
       const bestMoveResult = waitForBestMove(engine, signal);
       engine.postMessage(`go movetime ${thinkTimeMs}`);
@@ -306,6 +314,7 @@ const searchFairyStockfish = async (
 
       engine?.postMessage("quit");
       enginePromise = null;
+      configuredMultiPvCount = 1;
       lastFailure = error;
 
       const recoverable =
@@ -376,8 +385,17 @@ export const findFairyStockfishMove = (
     );
   }
 
+  const requestedLineCount = Math.min(
+    MULTIPV_COUNT,
+    Math.max(PRACTICE_MULTIPV_COUNT, excludedMoves.size + 1),
+  );
   return queueFairyStockfishSearch(async (requestSignal) => {
-    const result = await searchFairyStockfish(fen, requestSignal);
+    const result = await searchFairyStockfish(
+      fen,
+      requestSignal,
+      PRACTICE_THINK_TIME_MS,
+      requestedLineCount,
+    );
     return (
       chooseEngineCandidate(result.candidates, Math.random, excludedMoves)?.move ?? result.bestMove
     );

@@ -8,8 +8,11 @@ import { Chessboard } from "./Chessboard";
 const mocks = vi.hoisted(() => ({
   config: null as null | {
     movable?: { events?: { after?: (orig: string, dest: string) => void } };
+    premovable?: { enabled?: boolean };
   },
   set: vi.fn(),
+  playPremove: vi.fn(),
+  cancelPremove: vi.fn(),
 }));
 
 vi.mock("@lichess-org/chessground", () => ({
@@ -18,6 +21,8 @@ vi.mock("@lichess-org/chessground", () => ({
     return {
       set: mocks.set,
       setAutoShapes: vi.fn(),
+      playPremove: mocks.playPremove,
+      cancelPremove: mocks.cancelPremove,
     };
   }),
 }));
@@ -66,6 +71,8 @@ describe("Chessboard orchestration", () => {
   beforeEach(() => {
     mocks.config = null;
     mocks.set.mockClear();
+    mocks.playPremove.mockClear();
+    mocks.cancelPremove.mockClear();
   });
 
   it("does not mutate previously emitted move arrays", () => {
@@ -92,6 +99,30 @@ describe("Chessboard orchestration", () => {
 
     expect(movable?.color).toBe("white");
     expect(movable?.dests.get("e2")).toEqual(expect.arrayContaining(["e3", "e4"]));
+  });
+
+  it("keeps the player color movable and plays a premove after the opponent replies", () => {
+    const boardProps: ComponentProps<typeof Chessboard> = {
+      puzzleId: "practice",
+      fen: STARTING_FEN,
+      orientation: "white",
+      coordinates: true,
+      solution: "",
+      showSolution: false,
+      analysisMode: true,
+      premoveColor: "white",
+      premovesEnabled: true,
+    };
+    const { rerender } = render(<Chessboard {...boardProps} />);
+
+    expect(mocks.config?.premovable?.enabled).toBe(true);
+    mocks.playPremove.mockClear();
+
+    rerender(<Chessboard {...boardProps} solutionNavigation={{ type: "play", uci: "e2e4" }} />);
+    expect(mocks.playPremove).not.toHaveBeenCalled();
+
+    rerender(<Chessboard {...boardProps} solutionNavigation={{ type: "play", uci: "e7e5" }} />);
+    expect(mocks.playPremove).toHaveBeenCalledTimes(1);
   });
 
   it("only accepts continuations contained in the solution when restricted", () => {
