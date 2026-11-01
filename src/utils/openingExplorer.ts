@@ -63,35 +63,6 @@ export const buildOpeningExplorerUrl = ({
 };
 
 const inFlightExplorerRequests = new Map<string, Promise<ExplorerApiResponse>>();
-const explorerResponseCache = new Map<
-  string,
-  { response: ExplorerApiResponse; expiresAt: number }
->();
-const EXPLORER_RESPONSE_CACHE_TTL_MS = 5 * 60_000;
-const MAX_EXPLORER_RESPONSE_CACHE_ENTRIES = 128;
-
-const cachedExplorerResponse = (url: string): ExplorerApiResponse | undefined => {
-  const cached = explorerResponseCache.get(url);
-  if (!cached || cached.expiresAt <= Date.now()) {
-    explorerResponseCache.delete(url);
-    return undefined;
-  }
-  explorerResponseCache.delete(url);
-  explorerResponseCache.set(url, cached);
-  return cached.response;
-};
-
-const cacheExplorerResponse = (url: string, response: ExplorerApiResponse): ExplorerApiResponse => {
-  explorerResponseCache.set(url, {
-    response,
-    expiresAt: Date.now() + EXPLORER_RESPONSE_CACHE_TTL_MS,
-  });
-  if (explorerResponseCache.size > MAX_EXPLORER_RESPONSE_CACHE_ENTRIES) {
-    const oldest = explorerResponseCache.keys().next().value;
-    if (oldest !== undefined) explorerResponseCache.delete(oldest);
-  }
-  return response;
-};
 
 const parseExplorerApiResponse = async (
   response: Response,
@@ -140,12 +111,6 @@ export const fetchExplorerApiResponse = (
   signal?: AbortSignal,
   navigation?: ExplorerRequestNavigation,
 ): Promise<ExplorerApiResponse> => {
-  const cached = cachedExplorerResponse(explorerApiUrl);
-  if (cached) {
-    return signal?.aborted
-      ? Promise.reject(signal.reason ?? new DOMException("Aborted", "AbortError"))
-      : Promise.resolve(cached);
-  }
   // Cancellable requests belong to their caller: never share their lifetime with
   // another consumer (including a remount after React StrictMode cleanup).
   if (signal) {
@@ -160,9 +125,7 @@ export const fetchExplorerApiResponse = (
           : {}),
       },
       signal,
-    })
-      .then((response) => parseExplorerApiResponse(response, explorerApiUrl))
-      .then((response) => cacheExplorerResponse(explorerApiUrl, response));
+    }).then((response) => parseExplorerApiResponse(response, explorerApiUrl));
   }
   const cacheKey = `${intent}:${explorerApiUrl}`;
   const existingRequest = inFlightExplorerRequests.get(cacheKey);
@@ -174,7 +137,6 @@ export const fetchExplorerApiResponse = (
     },
   })
     .then((response) => parseExplorerApiResponse(response, explorerApiUrl))
-    .then((response) => cacheExplorerResponse(explorerApiUrl, response))
     .finally(() => {
       if (inFlightExplorerRequests.get(cacheKey) === promise) {
         inFlightExplorerRequests.delete(cacheKey);
