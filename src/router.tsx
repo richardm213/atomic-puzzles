@@ -201,18 +201,48 @@ const indexRoute = createRoute({
 const rankingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/rankings",
+  loader: ({ context }) => {
+    const currentMonth = new Date().toLocaleString("en-US", {
+      month: "short",
+      year: "numeric",
+      timeZone: "UTC",
+    });
+    void Promise.all([
+      import("./lib/rankings/rankingsQueries").then(({ rankingsForMonthQueryOptions }) =>
+        context.queryClient.prefetchQuery(rankingsForMonthQueryOptions(currentMonth)),
+      ),
+      import("./lib/users/aliasQueries").then(({ aliasesLookupQueryOptions }) =>
+        context.queryClient.prefetchQuery(aliasesLookupQueryOptions()),
+      ),
+    ]);
+  },
   component: RankingsPage,
 });
 
 const yearlyRankingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/rankings/yearly",
+  loader: ({ context }) => {
+    void import("./lib/rankings/rankingsQueries").then(({ rankingsForYearQueryOptions }) =>
+      context.queryClient.prefetchQuery(rankingsForYearQueryOptions(new Date().getUTCFullYear())),
+    );
+  },
   component: YearlyRankingsPage,
 });
 
 const usersRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/users",
+  loader: ({ context }) => {
+    void Promise.all([
+      import("./lib/users/userQueries").then(({ userRatingsQueryOptions }) =>
+        context.queryClient.prefetchQuery(userRatingsQueryOptions()),
+      ),
+      import("./lib/users/aliasQueries").then(({ aliasesLookupQueryOptions }) =>
+        context.queryClient.prefetchQuery(aliasesLookupQueryOptions()),
+      ),
+    ]);
+  },
   component: UsersPage,
 });
 
@@ -273,6 +303,11 @@ const practiceRoute = createRoute({
 const arenasRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/arenas",
+  loader: ({ context }) => {
+    void import("./lib/supabase/arenas").then(({ arenasQueryOptions }) =>
+      context.queryClient.prefetchQuery(arenasQueryOptions()),
+    );
+  },
   component: ArenasPage,
 });
 
@@ -321,6 +356,15 @@ const awcRoundOf16PredictionMarketRoute = createRoute({
 const tournamentsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/tournaments",
+  loader: ({ context }) => {
+    void import("./lib/matches/tournamentQueries").then(
+      ({ tournamentCatalogQueryOptions, tournamentChampionsQueryOptions }) =>
+        Promise.all([
+          context.queryClient.prefetchQuery(tournamentCatalogQueryOptions()),
+          context.queryClient.prefetchQuery(tournamentChampionsQueryOptions()),
+        ]),
+    );
+  },
   component: TournamentsPage,
 });
 
@@ -336,6 +380,11 @@ const tournamentPlayerRoute = createRoute({
 const tournamentRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/tournaments/$tournamentId",
+  loader: ({ context, params }) => {
+    void import("./lib/matches/tournamentQueries").then(({ tournamentBracketQueryOptions }) =>
+      context.queryClient.prefetchQuery(tournamentBracketQueryOptions(params.tournamentId)),
+    );
+  },
   component: function TournamentRoute() {
     const { tournamentId } = useParams({ strict: false });
     return <TournamentPage tournamentId={tournamentId} />;
@@ -345,6 +394,11 @@ const tournamentRoute = createRoute({
 const tournamentTabRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/tournaments/$tournamentId/$tournamentTab",
+  loader: ({ context, params }) => {
+    void import("./lib/matches/tournamentQueries").then(({ tournamentBracketQueryOptions }) =>
+      context.queryClient.prefetchQuery(tournamentBracketQueryOptions(params.tournamentId)),
+    );
+  },
   component: function TournamentTabRoute() {
     const { tournamentId, tournamentTab } = useParams({ strict: false });
     return <TournamentPage tournamentId={tournamentId} tournamentTab={tournamentTab} />;
@@ -360,6 +414,17 @@ const h2hRoute = createRoute({
 const h2hMatchupRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/h2h/$matchup",
+  loader: ({ context, params }) => {
+    void Promise.all([import("./lib/matches/h2hRoutes"), import("./lib/matches/queries")]).then(
+      ([{ parseMatchupSlug }, { h2hMatchupQueryOptions }]) => {
+        const matchup = parseMatchupSlug(params.matchup);
+        if (!matchup) return;
+        return context.queryClient.prefetchQuery(
+          h2hMatchupQueryOptions(matchup.player1, matchup.player2),
+        );
+      },
+    );
+  },
   component: H2HPage,
 });
 
@@ -374,6 +439,11 @@ const matchesAliasRoute = createRoute({
 const matchRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/matches/$matchId",
+  loader: ({ context, params }) => {
+    void import("./lib/matches/queries").then(({ matchDetailQueryOptions }) =>
+      context.queryClient.prefetchQuery(matchDetailQueryOptions(params.matchId)),
+    );
+  },
   component: MatchPage,
 });
 
@@ -429,12 +499,24 @@ const customPuzzleSetEditRoute = createRoute({
 const puzzleLeaderboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/rankings/puzzles",
+  loader: ({ context }) => {
+    void import("./lib/puzzles/puzzleQueries").then(({ puzzleLeaderboardQueryOptions }) =>
+      context.queryClient.prefetchQuery(
+        puzzleLeaderboardQueryOptions("monthly", new Date().toISOString().slice(0, 7)),
+      ),
+    );
+  },
   component: PuzzleLeaderboardPage,
 });
 
 const coinRankingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/rankings/coins",
+  loader: ({ context }) => {
+    void import("./lib/coins/coinQueries").then(({ coinRankingsQueryOptions }) =>
+      context.queryClient.prefetchQuery(coinRankingsQueryOptions()),
+    );
+  },
   component: CoinRankingsPage,
 });
 
@@ -529,6 +611,11 @@ const communityPuzzlesRoute = createRoute({
 const communityUsersRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/community/users",
+  loader: ({ context }) => {
+    void import("./lib/community/communityQueries").then(({ communityUsersQueryOptions }) =>
+      context.queryClient.prefetchQuery(communityUsersQueryOptions()),
+    );
+  },
   component: CommunityUsersPage,
 });
 
