@@ -83,8 +83,9 @@ const parseColor = (value: string | null): ExplorerColor | null => {
   return null;
 };
 
-const parseMinRating = (value: string | null): number => {
-  if (!value || !/^\d{3,4}$/.test(value)) return PLAYER_MIN_RATING;
+const parseMinRating = (value: string | null): number | null => {
+  if (value === null) return null;
+  if (!/^\d{3,4}$/.test(value)) return PLAYER_MIN_RATING;
   const rating = Number.parseInt(value, 10);
   return Number.isFinite(rating)
     ? Math.max(PLAYER_MIN_RATING, Math.min(MAX_EXPLORER_RATING, rating))

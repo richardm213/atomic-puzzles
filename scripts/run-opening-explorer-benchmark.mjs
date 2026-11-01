@@ -17,22 +17,12 @@ const SCENARIOS = [
   {
     id: "player-start",
     fen: START_FEN,
-    params: { username: "gannet", color: "white", minRating: "1700" },
+    params: { username: "gannet", color: "white" },
   },
   {
     id: "player-early",
     fen: E4_FEN,
-    params: { username: "gannet", color: "white", minRating: "1700" },
-  },
-  {
-    id: "head-to-head",
-    fen: START_FEN,
-    params: {
-      username: "gannet",
-      opponent: "camisapricity",
-      color: "white",
-      minRating: "1700",
-    },
+    params: { username: "gannet", color: "white" },
   },
 ];
 
@@ -58,8 +48,8 @@ const median = (values) => {
 const uncachedFen = (fen, sequence) => {
   const fields = fen.split(" ");
   // Halfmove/fullmove counters do not change the opening position key, but are
-  // part of the request URL and service cache key. This exercises the same DB
-  // rows without letting browser, CDN, or process response caches answer it.
+  // part of the request URL. This exercises the same DB rows without letting
+  // browser or CDN response caches answer it.
   fields[4] = String(100 + ((Date.now() + sequence * 37) % 800));
   fields[5] = String(1000 + ((Date.now() + sequence * 101) % 8000));
   return fields.join(" ");
@@ -142,7 +132,7 @@ const result = {
   config: {
     runs,
     speeds: [0, 1, 2],
-    responseCacheStrategy: "unique FEN counters; identical opening position key",
+    responseCacheStrategy: "unique FEN counters; identical 12-byte opening position key",
   },
   environment: {
     node: process.version,

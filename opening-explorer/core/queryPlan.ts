@@ -1,12 +1,7 @@
+import { buildOpeningExplorerSql, positionKeyHex } from "./legacySql.js";
 import { type ExplorerColor, PLAYER_MIN_RATING } from "./requestSchema.js";
-import {
-  buildOpeningExplorerSql,
-  OPENING_EXPLORER_RESPONSE_SCHEMA,
-  positionKeyHex,
-} from "./sql.js";
 
 export type ExplorerQueryPlan = {
-  cacheKey: string;
   color: ExplorerColor;
   endDate: number | null;
   fen: string;
@@ -20,11 +15,8 @@ export type ExplorerQueryPlan = {
 };
 
 export const createExplorerQueryPlan = (input: {
-  databaseSignature: string;
   fen: string;
   requestedColor: ExplorerColor;
-  requestedUsername: string;
-  requestedOpponent: string;
   username: string;
   opponent: string;
   playerMinRating: number | null;
@@ -47,23 +39,7 @@ export const createExplorerQueryPlan = (input: {
     username: input.username,
   };
 
-  return {
-    ...plan,
-    cacheKey: JSON.stringify({
-      responseSchema: OPENING_EXPLORER_RESPONSE_SCHEMA,
-      databaseSignature: input.databaseSignature,
-      fen: input.fen,
-      color,
-      requestedUsername: input.requestedUsername,
-      username: input.username,
-      requestedOpponent: input.requestedOpponent,
-      opponent: input.opponent,
-      playerMinRating: input.playerMinRating,
-      speeds: input.speeds,
-      startDate: input.startDate,
-      endDate: input.endDate,
-    }),
-  };
+  return plan;
 };
 
 export const buildExplorerQueries = (plan: ExplorerQueryPlan) =>

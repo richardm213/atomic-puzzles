@@ -603,9 +603,7 @@ body:has(.analysisPage),
 
 .analysisFilterGroup > span,
 .analysisPlayerSettings > span,
-.analysisOpponentField > span,
-.analysisDateFilters span,
-.analysisRatingSlider > span {
+.analysisDateFilters span {
   color: color-mix(in srgb, var(--color-muted) 70%, var(--color-panel-deep) 30%);
   font-size: 10px;
   font-weight: 650;
@@ -613,8 +611,7 @@ body:has(.analysisPage),
   text-transform: uppercase;
 }
 
-.analysisPlayerSettingsRow,
-.analysisOpponentFieldRow {
+.analysisPlayerSettingsRow {
   min-width: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(112px, auto);
@@ -665,10 +662,6 @@ body:has(.analysisPage),
 
 .analysisPlayerSideButton:hover {
   color: var(--color-heading);
-}
-
-.analysisOpponentField {
-  margin-top: 2px;
 }
 
 .analysisOpponentClearButton {
@@ -822,27 +815,6 @@ body:has(.analysisPage),
 
 .analysisSpeedToggles button:hover {
   color: var(--color-heading);
-}
-
-.analysisRatingSlider {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  padding: 0;
-  gap: 5px 8px;
-}
-
-.analysisRatingSlider input {
-  grid-column: 1 / -1;
-  width: 100%;
-  accent-color: var(--color-primary);
-  margin: 0;
-}
-
-.analysisRatingSlider output {
-  color: color-mix(in srgb, var(--color-heading) 82%, var(--color-primary-soft) 18%);
-  font-size: 12px;
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
 }
 
 .analysisExplorerToolbar {
