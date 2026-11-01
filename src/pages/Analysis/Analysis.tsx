@@ -716,7 +716,10 @@ export const AnalysisPage = () => {
   } = useOpeningExplorer({
     enabled: explorerOpen || !atomicDbEngineSettings.enabled,
     cacheKey: explorerUrl ?? undefined,
-    debounceMs: 250,
+    // The backend cancels superseded navigation requests, so a short trailing
+    // debounce is enough to collapse move-list scrubbing without making each
+    // deliberate move feel a quarter-second slower.
+    debounceMs: 100,
     fen: currentFen,
     playerColor,
     showPerformance: explorerScope === "player",

@@ -1,0 +1,382 @@
+{
+  "schemaVersion": 1,
+  "benchmark": "turso-opening-explorer-loads",
+  "label": "before-alias-optimization",
+  "createdAt": "2026-11-01T21:58:47.646Z",
+  "origin": "https://atomicpuzzles.org",
+  "config": {
+    "runs": 3,
+    "speeds": [
+      0,
+      1,
+      2
+    ],
+    "responseCacheStrategy": "unique FEN counters; identical opening position key"
+  },
+  "environment": {
+    "node": "v22.13.1",
+    "platform": "darwin",
+    "architecture": "arm64"
+  },
+  "scenarios": [
+    {
+      "id": "general-start",
+      "medianMs": 159.9961669999998,
+      "minMs": 151.21783300000016,
+      "maxMs": 373.45891700000004,
+      "statuses": [
+        200
+      ],
+      "responseCacheBypassed": true,
+      "moves": 12,
+      "recentGames": 8
+    },
+    {
+      "id": "general-early",
+      "medianMs": 153.44129199999998,
+      "minMs": 139.8222910000004,
+      "maxMs": 159.45216699999992,
+      "statuses": [
+        200
+      ],
+      "responseCacheBypassed": true,
+      "moves": 12,
+      "recentGames": 8
+    },
+    {
+      "id": "general-deeper",
+      "medianMs": 178.69216700000015,
+      "minMs": 166.77791700000034,
+      "maxMs": 290.85791700000004,
+      "statuses": [
+        200
+      ],
+      "responseCacheBypassed": true,
+      "moves": 8,
+      "recentGames": 8
+    },
+    {
+      "id": "general-date-filter",
+      "medianMs": 151.25349999999992,
+      "minMs": 149.6277500000001,
+      "maxMs": 152.1316670000001,
+      "statuses": [
+        200
+      ],
+      "responseCacheBypassed": true,
+      "moves": 12,
+      "recentGames": 8
+    },
+    {
+      "id": "player-start",
+      "medianMs": 126.65008399999988,
+      "minMs": 124.09354199999996,
+      "maxMs": 145.61462499999993,
+      "statuses": [
+        200
+      ],
+      "responseCacheBypassed": true,
+      "moves": 12,
+      "recentGames": 8
+    },
+    {
+      "id": "player-early",
+      "medianMs": 118.06566700000008,
+      "minMs": 115.79795800000011,
+      "maxMs": 118.86029099999996,
+      "statuses": [
+        200
+      ],
+      "responseCacheBypassed": true,
+      "moves": 2,
+      "recentGames": 8
+    },
+    {
+      "id": "head-to-head",
+      "medianMs": 134.48629200000005,
+      "minMs": 133.9180419999998,
+      "maxMs": 140.00920799999994,
+      "statuses": [
+        200
+      ],
+      "responseCacheBypassed": true,
+      "moves": 1,
+      "recentGames": 3
+    }
+  ],
+  "measurements": [
+    {
+      "scenario": "general-start",
+      "round": 1,
+      "status": 200,
+      "totalMs": 373.45891700000004,
+      "bytes": 2626,
+      "moves": 12,
+      "recentGames": 8,
+      "age": "0",
+      "cacheStatus": "\"Netlify Durable\"; fwd=vary-miss; stored, \"Netlify Edge\"; fwd=miss; fwd-status=200; stored",
+      "cacheBypassed": true,
+      "error": null
+    },
+    {
+      "scenario": "general-early",
+      "round": 1,
+      "status": 200,
+      "totalMs": 153.44129199999998,
+      "bytes": 2610,
+      "moves": 12,
+      "recentGames": 8,
+      "age": "0",
+      "cacheStatus": "\"Netlify Durable\"; fwd=vary-miss; stored, \"Netlify Edge\"; fwd=miss; fwd-status=200; stored",
+      "cacheBypassed": true,
+      "error": null
+    },
+    {
+      "scenario": "general-deeper",
+      "round": 1,
+      "status": 200,
+      "totalMs": 290.85791700000004,
+      "bytes": 2169,
+      "moves": 8,
+      "recentGames": 8,
+      "age": "0",
+      "cacheStatus": "\"Netlify Durable\"; fwd=vary-miss; stored, \"Netlify Edge\"; fwd=miss; fwd-status=200; stored",
+      "cacheBypassed": true,
+      "error": null
+    },
+    {
+      "scenario": "general-date-filter",
+      "round": 1,
+      "status": 200,
+      "totalMs": 151.25349999999992,
+      "bytes": 2585,
+      "moves": 12,
+      "recentGames": 8,
+      "age": "0",
+      "cacheStatus": "\"Netlify Durable\"; fwd=vary-miss; stored, \"Netlify Edge\"; fwd=miss; fwd-status=200; stored",
+      "cacheBypassed": true,
+      "error": null
+    },
+    {
+      "scenario": "player-start",
+      "round": 1,
+      "status": 200,
+      "totalMs": 124.09354199999996,
+      "bytes": 2497,
+      "moves": 12,
+      "recentGames": 8,
+      "age": "0",
+      "cacheStatus": "\"Netlify Durable\"; fwd=bypass, \"Netlify Edge\"; fwd=miss; fwd-status=200",
+      "cacheBypassed": true,
+      "error": null
+    },
+    {
+      "scenario": "player-early",
+      "round": 1,
+      "status": 200,
+      "totalMs": 118.06566700000008,
+      "bytes": 1588,
+      "moves": 2,
+      "recentGames": 8,
+      "age": "0",
+      "cacheStatus": "\"Netlify Durable\"; fwd=bypass, \"Netlify Edge\"; fwd=miss; fwd-status=200",
+      "cacheBypassed": true,
+      "error": null
+    },
+    {
+      "scenario": "head-to-head",
+      "round": 1,
+      "status": 200,
+      "totalMs": 133.9180419999998,
+      "bytes": 674,
+      "moves": 1,
+      "recentGames": 3,
+      "age": "0",
+      "cacheStatus": "\"Netlify Durable\"; fwd=bypass, \"Netlify Edge\"; fwd=miss; fwd-status=200",
+      "cacheBypassed": true,
+      "error": null
+    },
+    {
+      "scenario": "general-start",
+      "round": 2,
+      "status": 200,
+      "totalMs": 151.21783300000016,
+      "bytes": 2626,
+      "moves": 12,
+      "recentGames": 8,
+      "age": "2",
+      "cacheStatus": "\"Netlify Durable\"; fwd=vary-miss; stored, \"Netlify Edge\"; fwd=miss; fwd-status=200; stored",
+      "cacheBypassed": true,
+      "error": null
+    },
+    {
+      "scenario": "general-early",
+      "round": 2,
+      "status": 200,
+      "totalMs": 159.45216699999992,
+      "bytes": 2610,
+      "moves": 12,
+      "recentGames": 8,
+      "age": "0",
+      "cacheStatus": "\"Netlify Durable\"; fwd=vary-miss; stored, \"Netlify Edge\"; fwd=miss; fwd-status=200; stored",
+      "cacheBypassed": true,
+      "error": null
+    },
+    {
+      "scenario": "general-deeper",
+      "round": 2,
+      "status": 200,
+      "totalMs": 178.69216700000015,
+      "bytes": 2169,
+      "moves": 8,
+      "recentGames": 8,
+      "age": "0",
+      "cacheStatus": "\"Netlify Durable\"; fwd=vary-miss; stored, \"Netlify Edge\"; fwd=miss; fwd-status=200; stored",
+      "cacheBypassed": true,
+      "error": null
+    },
+    {
+      "scenario": "general-date-filter",
+      "round": 2,
+      "status": 200,
+      "totalMs": 149.6277500000001,
+      "bytes": 2585,
+      "moves": 12,
+      "recentGames": 8,
+      "age": "0",
+      "cacheStatus": "\"Netlify Durable\"; fwd=vary-miss; stored, \"Netlify Edge\"; fwd=miss; fwd-status=200; stored",
+      "cacheBypassed": true,
+      "error": null
+    },
+    {
+      "scenario": "player-start",
+      "round": 2,
+      "status": 200,
+      "totalMs": 145.61462499999993,
+      "bytes": 2497,
+      "moves": 12,
+      "recentGames": 8,
+      "age": "0",
+      "cacheStatus": "\"Netlify Durable\"; fwd=bypass, \"Netlify Edge\"; fwd=miss; fwd-status=200",
+      "cacheBypassed": true,
+      "error": null
+    },
+    {
+      "scenario": "player-early",
+      "round": 2,
+      "status": 200,
+      "totalMs": 115.79795800000011,
+      "bytes": 1588,
+      "moves": 2,
+      "recentGames": 8,
+      "age": "0",
+      "cacheStatus": "\"Netlify Durable\"; fwd=bypass, \"Netlify Edge\"; fwd=miss; fwd-status=200",
+      "cacheBypassed": true,
+      "error": null
+    },
+    {
+      "scenario": "head-to-head",
+      "round": 2,
+      "status": 200,
+      "totalMs": 140.00920799999994,
+      "bytes": 674,
+      "moves": 1,
+      "recentGames": 3,
+      "age": "3",
+      "cacheStatus": "\"Netlify Durable\"; fwd=bypass, \"Netlify Edge\"; fwd=miss; fwd-status=200",
+      "cacheBypassed": true,
+      "error": null
+    },
+    {
+      "scenario": "general-start",
+      "round": 3,
+      "status": 200,
+      "totalMs": 159.9961669999998,
+      "bytes": 2626,
+      "moves": 12,
+      "recentGames": 8,
+      "age": "0",
+      "cacheStatus": "\"Netlify Durable\"; fwd=vary-miss; stored, \"Netlify Edge\"; fwd=miss; fwd-status=200; stored",
+      "cacheBypassed": true,
+      "error": null
+    },
+    {
+      "scenario": "general-early",
+      "round": 3,
+      "status": 200,
+      "totalMs": 139.8222910000004,
+      "bytes": 2610,
+      "moves": 12,
+      "recentGames": 8,
+      "age": "0",
+      "cacheStatus": "\"Netlify Durable\"; fwd=vary-miss; stored, \"Netlify Edge\"; fwd=miss; fwd-status=200; stored",
+      "cacheBypassed": true,
+      "error": null
+    },
+    {
+      "scenario": "general-deeper",
+      "round": 3,
+      "status": 200,
+      "totalMs": 166.77791700000034,
+      "bytes": 2169,
+      "moves": 8,
+      "recentGames": 8,
+      "age": "0",
+      "cacheStatus": "\"Netlify Durable\"; fwd=vary-miss; stored, \"Netlify Edge\"; fwd=miss; fwd-status=200; stored",
+      "cacheBypassed": true,
+      "error": null
+    },
+    {
+      "scenario": "general-date-filter",
+      "round": 3,
+      "status": 200,
+      "totalMs": 152.1316670000001,
+      "bytes": 2585,
+      "moves": 12,
+      "recentGames": 8,
+      "age": "0",
+      "cacheStatus": "\"Netlify Durable\"; fwd=vary-miss; stored, \"Netlify Edge\"; fwd=miss; fwd-status=200; stored",
+      "cacheBypassed": true,
+      "error": null
+    },
+    {
+      "scenario": "player-start",
+      "round": 3,
+      "status": 200,
+      "totalMs": 126.65008399999988,
+      "bytes": 2497,
+      "moves": 12,
+      "recentGames": 8,
+      "age": "0",
+      "cacheStatus": "\"Netlify Durable\"; fwd=bypass, \"Netlify Edge\"; fwd=miss; fwd-status=200",
+      "cacheBypassed": true,
+      "error": null
+    },
+    {
+      "scenario": "player-early",
+      "round": 3,
+      "status": 200,
+      "totalMs": 118.86029099999996,
+      "bytes": 1588,
+      "moves": 2,
+      "recentGames": 8,
+      "age": "0",
+      "cacheStatus": "\"Netlify Durable\"; fwd=bypass, \"Netlify Edge\"; fwd=miss; fwd-status=200",
+      "cacheBypassed": true,
+      "error": null
+    },
+    {
+      "scenario": "head-to-head",
+      "round": 3,
+      "status": 200,
+      "totalMs": 134.48629200000005,
+      "bytes": 674,
+      "moves": 1,
+      "recentGames": 3,
+      "age": "3",
+      "cacheStatus": "\"Netlify Durable\"; fwd=bypass, \"Netlify Edge\"; fwd=miss; fwd-status=200",
+      "cacheBypassed": true,
+      "error": null
+    }
+  ]
+}

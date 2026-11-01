@@ -55,6 +55,22 @@ const combinedResultSelect = () => `select
 
 const withoutTrailingSemicolon = (sql) => sql.trim().replace(/;\s*$/, "");
 
+// Resolve aliases inside the explorer statement instead of issuing a separate
+// metadata request first. COALESCE keeps canonical names on the fast path and
+// touches the aliases JSON only when the requested name is not in opening_names.
+const openingNameIdSql = (username) => {
+  const name = sqlString(username);
+  const aliasPath = sqlString(`$."${username}"`);
+  return `coalesce(
+    (select name_id from opening_names where name = ${name} limit 1),
+    (select name_id from opening_names where lower(name) = ${name} limit 1),
+    (select n.name_id
+      from opening_index_meta m
+      join opening_names n on lower(n.name) = lower(json_extract(m.value, ${aliasPath}))
+      where m.key = 'aliases' limit 1)
+  )`;
+};
+
 export const buildRandomOpeningPlayerSql = () => `
   select n.name as username
   from opening_names n
@@ -189,12 +205,8 @@ export const buildOpeningExplorerSql = ({
 }) => {
   if (!username && !opponent)
     return buildGeneralBucketQueries({ keyHex, speeds, startDate, endDate });
-  const playerIdSql = username
-    ? `coalesce((select name_id from opening_names where name = ${sqlString(username)} limit 1), (select name_id from opening_names where lower(name) = ${sqlString(username)} limit 1))`
-    : "";
-  const opponentIdSql = opponent
-    ? `coalesce((select name_id from opening_names where name = ${sqlString(opponent)} limit 1), (select name_id from opening_names where lower(name) = ${sqlString(opponent)} limit 1))`
-    : "";
+  const playerIdSql = username ? openingNameIdSql(username) : "";
+  const opponentIdSql = opponent ? openingNameIdSql(opponent) : "";
   const opponentIdColumn = color === 0 ? "black_id" : "white_id";
   const edgesPlayerSql = username ? `and canonical_player_id = ${playerIdSql}` : "";
   const gamesPlayerSql = username ? `and g.canonical_player_id = ${playerIdSql}` : "";

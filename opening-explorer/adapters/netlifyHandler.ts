@@ -123,6 +123,7 @@ export const createNetlifyOpeningExplorerHandler =
       getHeader(event, "x-explorer-session"),
       getHeader(event, "x-explorer-sequence"),
     );
+    const startedAt = performance.now();
     const response = await explorerService.handle({
       method,
       path: event.path ?? "/api/opening-explorer",
@@ -134,6 +135,9 @@ export const createNetlifyOpeningExplorerHandler =
           }
         : {}),
     });
+    response.headers["Server-Timing"] = `opening-explorer;dur=${(
+      performance.now() - startedAt
+    ).toFixed(1)}`;
     if (!/\bpublic\b/i.test(response.headers["Cache-Control"] ?? "")) {
       response.headers = { ...rateLimit.headers, ...response.headers };
     }

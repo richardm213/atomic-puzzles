@@ -74,68 +74,13 @@ const successResponse = (body: string, shouldCache: boolean): ExplorerServiceRes
   body,
 });
 
-const aliasesFromRows = (rows: JsonRow[]): Map<string, string> => {
-  const aliases = new Map<string, string>();
-  const rawValue = rows[0]?.value;
-  try {
-    const raw = typeof rawValue === "string" ? JSON.parse(rawValue) : {};
-    if (raw && typeof raw === "object" && !Array.isArray(raw)) {
-      for (const [alias, canonical] of Object.entries(raw)) {
-        const aliasKey = alias.trim().toLowerCase();
-        const canonicalValue = String(canonical).trim().toLowerCase();
-        if (aliasKey && canonicalValue) aliases.set(aliasKey, canonicalValue);
-      }
-    }
-  } catch {
-    // Alias metadata is optional and older databases may contain no usable value.
-  }
-  return aliases;
-};
-
 export const createOpeningExplorerService = (repository: OpeningExplorerRepository) => {
   const cache = new Map<string, { body: string; expiresAt: number; shouldCache: boolean }>();
   const pendingCache = new Map<string, PendingRequest>();
   // Short TTLs keep warm function instances current after an index refresh.
   const cacheTtlMs = EXPLORER_CACHE_TTL_MS;
-  const metadataCache = new Map<string, { promise: Promise<JsonRow[]>; expiresAt: number }>();
-  const metadata = (sql: string, priorityRef: PriorityRef): Promise<JsonRow[]> => {
-    const key = `${repository.signature()}:${sql}`;
-    const cached = metadataCache.get(key);
-    if (cached && cached.expiresAt > Date.now()) return cached.promise;
-    const promise = repository
-      .query(sql, { value: priorityRef.value, lane: priorityRef.lane ?? 1 })
-      .catch((error: unknown) => {
-        if (metadataCache.get(key)?.promise === promise) metadataCache.delete(key);
-        throw error;
-      });
-    if (metadataCache.size >= 16) metadataCache.clear();
-    metadataCache.set(key, { promise, expiresAt: Date.now() + cacheTtlMs });
-    return promise;
-  };
   const nextPriority = createPriorityFactory();
   const beginRequest = createExplorerRequestLifecycle();
-
-  const resolveCanonicalUsername = async (
-    username: string,
-    priorityRef: PriorityRef,
-  ): Promise<string> => {
-    if (!username) return "";
-    try {
-      const aliases = aliasesFromRows(
-        await awaitExplorerRequest(
-          metadata(
-            "select value from opening_index_meta where key = 'aliases' limit 1;",
-            priorityRef,
-          ),
-          priorityRef.signal,
-        ),
-      );
-      return aliases.get(username) ?? username;
-    } catch {
-      priorityRef.signal?.throwIfAborted();
-      return username;
-    }
-  };
 
   const handle = async (request: ExplorerServiceRequest): Promise<ExplorerServiceResponse> => {
     const method = request.method ?? "GET";
@@ -199,13 +144,11 @@ export const createOpeningExplorerService = (repository: OpeningExplorerReposito
       }
 
       const signature = repository.signature();
-      const username = await resolveCanonicalUsername(
-        parsed.request.requestedUsername,
-        priorityRef,
-      );
-      const opponent = username
-        ? await resolveCanonicalUsername(parsed.request.requestedOpponent, priorityRef)
-        : "";
+      // Alias lookup is embedded in the main SQL statement. Personalized cold
+      // requests therefore make one Turso round trip instead of waiting for a
+      // metadata request before the actual explorer query can start.
+      const username = parsed.request.requestedUsername;
+      const opponent = username ? parsed.request.requestedOpponent : "";
       priorityRef.signal.throwIfAborted();
       const plan = createExplorerQueryPlan({
         databaseSignature: signature,

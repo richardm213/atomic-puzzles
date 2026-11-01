@@ -30,7 +30,6 @@ const fixtureQuery = async (sql: string): Promise<JsonRow[]> => {
         recentGamesJson: JSON.stringify(await fixtureQuery("select fixture limit 8")),
       },
     ];
-  if (sql.includes("key = 'aliases'")) return [{ value: '{"alias":"canonical"}' }];
   if (sql.includes("savedGames")) return [{ savedGames: 0, savedRecentGames: 0 }];
   if (sql.includes("select n.name as username")) return [{ username: "alice" }, { username: "" }];
   if (sql.includes("order by random")) return [{ username: "random-user" }];
@@ -89,7 +88,7 @@ describe("createOpeningExplorerService", () => {
     });
   });
 
-  it("resolves aliases once per database signature before building personalized SQL", async () => {
+  it("resolves aliases inside the personalized query without a metadata round trip", async () => {
     const queries: string[] = [];
     const service = createOpeningExplorerService(
       createRepository(async (sql) => {
@@ -99,14 +98,10 @@ describe("createOpeningExplorerService", () => {
     );
 
     await service.handle(explorerRequest({ username: "alias", opponent: "alias" }));
-    await service.handle(explorerRequest({ username: "alias", color: "white" }));
 
-    expect(queries.filter((sql) => sql.includes("key = 'aliases'"))).toHaveLength(1);
-    const explorerSql = queries.filter(
-      (sql) => sql.includes("limit 12") || sql.includes("limit 8"),
-    );
-    expect(explorerSql.every((sql) => sql.includes("canonical"))).toBe(true);
-    expect(explorerSql.every((sql) => !sql.includes("'alias'"))).toBe(true);
+    expect(queries).toHaveLength(1);
+    expect(queries[0]).toContain("json_extract(m.value, '$.\"alias\"')");
+    expect(queries[0]).toContain("m.key = 'aliases'");
   });
 
   it("caches general and personalized responses without making personalized data public", async () => {
@@ -265,7 +260,6 @@ describe("createOpeningExplorerService", () => {
     const service = createOpeningExplorerService({
       ...createRepository(fixtureQuery),
       query: (sql, priority) => {
-        if (sql.includes("key = 'aliases'")) return fixtureQuery(sql);
         return queue.enqueue(async () => {
           runs += 1;
           return fixtureQuery(sql);
@@ -302,12 +296,11 @@ describe("createOpeningExplorerService", () => {
 
   it("does not cache a late result from a disconnected request", async () => {
     let resolve!: (rows: JsonRow[]) => void;
-    const query = vi.fn((sql: string) =>
-      sql.includes("key = 'aliases'")
-        ? Promise.resolve(fixtureQuery(sql))
-        : new Promise<JsonRow[]>((r) => {
-            resolve = r;
-          }),
+    const query = vi.fn(
+      () =>
+        new Promise<JsonRow[]>((r) => {
+          resolve = r;
+        }),
     );
     const queryBatch = vi.fn();
     const service = createOpeningExplorerService({
@@ -319,13 +312,13 @@ describe("createOpeningExplorerService", () => {
       ...explorerRequest({ username: "alice" }),
       signal: controller.signal,
     });
-    await vi.waitFor(() => expect(query).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() => expect(query).toHaveBeenCalledTimes(1));
     controller.abort();
     expect((await first).statusCode).toBe(499);
     resolve([{ movesJson: "[]", recentGamesJson: "[]" }]);
     await Promise.resolve();
     const retry = service.handle(explorerRequest({ username: "alice" }));
-    await vi.waitFor(() => expect(query).toHaveBeenCalledTimes(3));
+    await vi.waitFor(() => expect(query).toHaveBeenCalledTimes(2));
     resolve([{ movesJson: "[]", recentGamesJson: "[]" }]);
     expect((await retry).statusCode).toBe(200);
   });

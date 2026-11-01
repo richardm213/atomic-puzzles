@@ -36,6 +36,7 @@ export const createOpeningExplorerVitePlugin = (): Plugin => {
       };
       res.once("close", onClose);
       void (async () => {
+        const startedAt = performance.now();
         const servicePath =
           path === "/api/opening-explorer" && url.pathname !== "/"
             ? `${path}${url.pathname}`
@@ -65,6 +66,9 @@ export const createOpeningExplorerVitePlugin = (): Plugin => {
           ...(req.method ? { method: req.method } : {}),
           ...(intent ? { intent } : {}),
         });
+        response.headers["Server-Timing"] = `opening-explorer;dur=${(
+          performance.now() - startedAt
+        ).toFixed(1)}`;
         if (!res.destroyed) applyResponse(response, res);
       })()
         .catch((error: unknown) => {

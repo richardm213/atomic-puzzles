@@ -23,6 +23,7 @@
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:report": "playwright show-report",
     "benchmark:fsf": "node scripts/run-fsf-benchmark.mjs",
+    "benchmark:openings": "node scripts/run-opening-explorer-benchmark.mjs",
     "format": "prettier . --check",
     "format:write": "prettier . --write"
   },
