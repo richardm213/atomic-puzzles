@@ -4,8 +4,13 @@ export const OPENING_EXPLORER_RESPONSE_SCHEMA = "combined-player-results-v12";
 
 export const sqlString = (value) => `'${value.replaceAll("'", "''")}'`;
 
+const positionKeyFen = (fen) => fen.trim().split(/\s+/).slice(0, 4).join(" ");
+
 export const positionKeyHex = (fen) =>
-  createHash("sha1").update(`atomic|${fen}`).digest("hex").slice(0, 32);
+  createHash("sha1")
+    .update(`atomic|${positionKeyFen(fen)}`)
+    .digest("hex")
+    .slice(0, 32);
 
 export const sqlMonthBounds = (value) => {
   const match = /^(\d{4})-(\d{2})$/.exec(value);
