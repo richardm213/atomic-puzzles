@@ -47,9 +47,10 @@ type PendingRequest = {
 const PUBLIC_CACHE_HEADERS = {
   "Cache-Control": "public, max-age=30",
   // General explorer results and the player directory are public and immutable
-  // between database refreshes. Netlify's durable cache avoids a function cold
-  // start and Turso round trip for repeat positions across edge regions.
-  "Netlify-CDN-Cache-Control": "public, durable, s-maxage=300, stale-while-revalidate=3600",
+  // between database refreshes. Keep them hot at Netlify long enough that an
+  // opening line does not repeatedly pay Turso's cold-page cost; stale responses
+  // remain immediately usable while the edge refreshes them in the background.
+  "Netlify-CDN-Cache-Control": "public, durable, s-maxage=3600, stale-while-revalidate=86400",
 };
 
 const responseHeaders = (shouldCache: boolean): Record<string, string> => ({

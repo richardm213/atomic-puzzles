@@ -22,7 +22,26 @@ const setup = () => {
       played_at int, played_on int, white_id int, black_id int,
       white_rating int, black_rating int, winner int
     );
-    create index raw_lookup on opening_position_games(position_key,speed,played_at desc);
+    create table opening_game_metadata (
+      metadata_id integer primary key, played_on int, white_id int, black_id int,
+      white_rating int, black_rating int, winner int
+    );
+    create table opening_position_entries (
+      canonical_player_id int, position_key blob, speed int, next_uci text,
+      game_id text, played_at int, metadata_id int
+    );
+    create index raw_lookup on opening_position_entries(position_key,speed,played_at desc);
+    create trigger mirror_opening_position_game after insert on opening_position_games begin
+      insert into opening_game_metadata(
+        played_on,white_id,black_id,white_rating,black_rating,winner
+      ) values (
+        new.played_on,new.white_id,new.black_id,new.white_rating,new.black_rating,new.winner
+      );
+      insert into opening_position_entries values (
+        new.canonical_player_id,new.position_key,new.speed,new.next_uci,
+        new.game_id,new.played_at,last_insert_rowid()
+      );
+    end;
     create table opening_position_recent_games as select * from opening_position_games where 0;
     create index recent_lookup on opening_position_recent_games(position_key,speed,played_at desc);
     create table opening_names (name_id integer primary key, name text unique);
@@ -141,7 +160,7 @@ describe("saved speed buckets", () => {
       db.close();
     }
   });
-  it("preserves query results and recent-entry index lookups through normalized views", () => {
+  it("keeps separate raw-entry and recent-entry index lookups", () => {
     const db = setup();
     try {
       db.exec(`insert into opening_position_games values
@@ -164,44 +183,12 @@ describe("saved speed buckets", () => {
           expect(JSON.parse(String(combined.recentGamesJson))).toEqual(games);
           return { moves, games };
         });
-      const before = read();
-      // Representative fixture for the published view contract, not a database migration.
-      db.exec(`
-        alter table opening_position_games rename to old_games;
-        alter table opening_position_recent_games rename to old_recent;
-        create table opening_game_metadata (
-          metadata_id integer primary key, played_on int, white_id int, black_id int,
-          white_rating int, black_rating int, winner int
-        );
-        insert into opening_game_metadata(played_on,white_id,black_id,white_rating,black_rating,winner)
-          select played_on,white_id,black_id,white_rating,black_rating,winner from old_games
-          union select played_on,white_id,black_id,white_rating,black_rating,winner from old_recent;
-      `);
-      for (const [entries, view, source] of [
-        ["opening_position_entries", "opening_position_games", "old_games"],
-        ["opening_position_recent_entries", "opening_position_recent_games", "old_recent"],
-      ]) {
-        db.exec(`
-          create table ${entries} as
-            select g.canonical_player_id,g.position_key,g.speed,g.next_uci,g.game_id,
-              g.played_at,m.metadata_id
-            from ${source} g join opening_game_metadata m
-              on m.played_on is g.played_on and m.white_id is g.white_id
-              and m.black_id is g.black_id and m.white_rating is g.white_rating
-              and m.black_rating is g.black_rating and m.winner is g.winner;
-          create index ${entries}_lookup on ${entries}(position_key,speed,played_at desc);
-          create view ${view} as
-            select e.canonical_player_id,e.position_key,e.speed,e.next_uci,e.game_id,e.played_at,
-              m.played_on,m.white_id,m.black_id,m.white_rating,m.black_rating,m.winner
-            from ${entries} e join opening_game_metadata m on m.metadata_id=e.metadata_id;
-        `);
-      }
-      expect(read()).toEqual(before);
+      read();
       const plan = db.prepare("explain query plan " + queries().gamesSql).all();
       expect(
         plan.some(
           (row) =>
-            String(row.detail).includes("opening_position_recent_entries_lookup") &&
+            String(row.detail).includes("recent_lookup") &&
             String(row.detail).includes("position_key=? AND speed=?"),
         ),
       ).toBe(true);

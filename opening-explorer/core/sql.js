@@ -109,18 +109,23 @@ const buildGeneralBucketQueries = ({ keyHex, speeds, startDate, endDate }) => {
   // Materialize once: statistics and recent games consume the same deduplicated
   // rows. This also prevents repeated metadata joins when games is a SQL view.
   const common = `with ${coverage},
-    raw_games as materialized (
-      select g.speed, g.game_id as gameId, max(g.next_uci) as uci,
-        max(g.played_at) as playedAt, max(g.played_on) as playedOn,
-        max(g.white_id) as white_id, max(g.black_id) as black_id,
-        max(g.white_rating) as whiteRating, max(g.black_rating) as blackRating,
-        max(g.winner) as winner
-      from coverage c cross join opening_position_games g
+    raw_entries as materialized (
+      select e.speed, e.game_id as gameId, max(e.next_uci) as uci,
+        max(e.played_at) as playedAt, max(e.metadata_id) as metadata_id
+      from coverage c cross join opening_position_entries e
       where (not c.savedMoves or not c.savedRecent)
-        and g.speed = c.speed and g.position_key = X'${keyHex}'
-        ${startDate ? `and g.played_on >= ${startDate}` : ""}
-        ${endDate ? `and g.played_on <= ${endDate}` : ""}
-      group by g.speed, g.game_id
+        and e.speed = c.speed and e.position_key = X'${keyHex}'
+      group by e.speed, e.game_id
+    ),
+    raw_games as materialized (
+      select e.speed, e.gameId, e.uci, e.playedAt, d.played_on as playedOn,
+        d.white_id, d.black_id, d.white_rating as whiteRating,
+        d.black_rating as blackRating, d.winner
+      from raw_entries e
+      join opening_game_metadata d on d.metadata_id = e.metadata_id
+      where true
+        ${startDate ? `and d.played_on >= ${startDate}` : ""}
+        ${endDate ? `and d.played_on <= ${endDate}` : ""}
     ),
     buckets as (
       select m.next_uci as uci, sum(m.games) as games,

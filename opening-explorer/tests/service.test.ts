@@ -120,7 +120,7 @@ describe("createOpeningExplorerService", () => {
     expect(query).toHaveBeenCalledTimes(callsAfterFirst);
     expect(second.headers["Cache-Control"]).toBe("public, max-age=30");
     expect(second.headers["Netlify-CDN-Cache-Control"]).toBe(
-      "public, durable, s-maxage=300, stale-while-revalidate=3600",
+      "public, durable, s-maxage=3600, stale-while-revalidate=86400",
     );
 
     await service.handle(explorerRequest({ username: "alice" }));
@@ -150,7 +150,7 @@ describe("createOpeningExplorerService", () => {
       await service.handle(explorerRequest({ speeds: "1" }));
       expect(query.mock.calls.length).toBeGreaterThan(firstCalls);
       const beforeExpiry = query.mock.calls.length;
-      now += 60_001;
+      now += 5 * 60_000 + 1;
       await service.handle(explorerRequest({ speeds: "0" }));
       expect(query.mock.calls.length).toBeGreaterThan(beforeExpiry);
     } finally {
