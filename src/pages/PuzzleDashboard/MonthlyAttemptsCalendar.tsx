@@ -6,6 +6,7 @@ type CalendarAttempt = {
   firstAttemptAt: string;
   firstAttemptDurationMs: number | null;
   puzzleCorrect: boolean;
+  rated?: boolean;
 };
 
 type CalendarDay = {
@@ -115,6 +116,8 @@ export const MonthlyAttemptsCalendar = ({ attempts }: { attempts: CalendarAttemp
     const counts = new Map<string, { correct: number; durations: number[]; total: number }>();
 
     attempts.forEach((attempt) => {
+      if (attempt.rated === false) return;
+
       const attemptedAt = new Date(attempt.firstAttemptAt);
       if (Number.isNaN(attemptedAt.getTime()) || !isSameMonth(attemptedAt, visibleMonth)) return;
 

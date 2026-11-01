@@ -120,6 +120,7 @@ const buildDashboardEntries = (
   author: string;
   event: string;
   puzzleCorrect: boolean;
+  rated: boolean;
   firstAttemptAt: string;
   firstAttemptDurationMs: number | null;
   level: string;
@@ -142,6 +143,7 @@ const buildDashboardEntries = (
       author,
       event,
       puzzleCorrect: Boolean(row?.puzzle_correct),
+      rated: row?.rated !== false,
       firstAttemptAt: row?.first_attempt_at || "",
       firstAttemptDurationMs:
         typeof row?.first_attempt_duration_ms === "number" ? row.first_attempt_duration_ms : null,
@@ -360,11 +362,12 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
     untilDate,
   ]);
   const dashboardSummary = useMemo(() => {
-    const correct = filteredDashboardEntries.filter((entry) => entry.puzzleCorrect).length;
+    const ratedEntries = filteredDashboardEntries.filter((entry) => entry.rated);
+    const correct = ratedEntries.filter((entry) => entry.puzzleCorrect).length;
     return {
-      total: filteredDashboardEntries.length,
+      total: ratedEntries.length,
       correct,
-      incorrect: filteredDashboardEntries.length - correct,
+      incorrect: ratedEntries.length - correct,
     };
   }, [filteredDashboardEntries]);
   const totalProgressRows = filteredDashboardEntries.length;
@@ -464,7 +467,7 @@ export const PuzzleDashboardPage = ({ username = "" }: { username?: string | und
   };
   const handleSolveAsSet = (): void => {
     const set = createDashboardPuzzleSet(
-      filteredDashboardEntries.map((entry) => entry.linkedPuzzleId),
+      filteredDashboardEntries.filter((entry) => entry.rated).map((entry) => entry.linkedPuzzleId),
       targetUsername,
     );
     const firstPuzzleId = set?.puzzleIds[0];

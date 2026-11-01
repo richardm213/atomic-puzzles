@@ -69,19 +69,18 @@ export const CustomPuzzleSetsPage = () => {
     enabled: isAuthenticated,
   });
   const sets = setsQuery.data ?? emptySets;
-  const attemptedIds = useMemo(
-    () => new Set((progressQuery.data ?? []).map((row) => String(row.puzzle_id))),
+  const ratedProgressRows = useMemo(
+    () => (progressQuery.data ?? []).filter((row) => row.rated !== false),
     [progressQuery.data],
+  );
+  const attemptedIds = useMemo(
+    () => new Set(ratedProgressRows.map((row) => String(row.puzzle_id))),
+    [ratedProgressRows],
   );
   const resultByPuzzleId = useMemo(
     () =>
-      new Map(
-        (progressQuery.data ?? []).map((row) => [
-          String(row.puzzle_id),
-          Boolean(row.puzzle_correct),
-        ]),
-      ),
-    [progressQuery.data],
+      new Map(ratedProgressRows.map((row) => [String(row.puzzle_id), Boolean(row.puzzle_correct)])),
+    [ratedProgressRows],
   );
   const includeUnattemptedEndgames =
     !untaggedOnly && resultFilter === "all" && selectedTags.some(isPuzzleEndgameMotifTag);

@@ -187,7 +187,12 @@ export const PuzzleSetsPage = () => {
     [activeFilterId, puzzleGroups, shuffleSeed],
   );
   const completedPuzzleIds = useMemo(
-    () => new Set((progressQuery.data ?? []).map((row) => String(row.puzzle_id).trim())),
+    () =>
+      new Set(
+        (progressQuery.data ?? [])
+          .filter((row) => row.rated !== false)
+          .map((row) => String(row.puzzle_id).trim()),
+      ),
     [progressQuery.data],
   );
   const playerNicknames = useMemo(
