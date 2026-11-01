@@ -1078,6 +1078,11 @@ const ChessboardComponent = ({
 
       resetSession({ history: result.history });
 
+      if (result.histories.length > 1) {
+        result.histories.forEach((history) => saveVariation(customVariationsRef.current, history));
+        activeLineRef.current = { source: "custom", index: 0 };
+      }
+
       syncBoard(result.position, result.history.plies[result.history.index]?.lastMove, {
         solved: false,
         viewingSolution: false,

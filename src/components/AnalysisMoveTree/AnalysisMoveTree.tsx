@@ -41,6 +41,7 @@ export const AnalysisMoveTree = ({
   moves,
   currentPly,
   pinnedLineIndex,
+  inline = true,
   onSelect,
   onCycleOptions,
 }: {
@@ -48,6 +49,7 @@ export const AnalysisMoveTree = ({
   moves: string[];
   currentPly: number;
   pinnedLineIndex?: number | undefined;
+  inline?: boolean;
   onSelect: (lineIndex: number, moveIndex: number) => void;
   onCycleOptions: (command: Extract<PlaybackCommand, "previousOption" | "nextOption">) => void;
 }) => {
@@ -164,7 +166,11 @@ export const AnalysisMoveTree = ({
           </div>
         </div>
       ) : null}
-      <div className="analysisTree" role="list" aria-label="Analysis variations">
+      <div
+        className={`analysisTree ${inline ? "inline" : "nonInline"}`}
+        role="list"
+        aria-label="Analysis variations"
+      >
         {content}
       </div>
     </>

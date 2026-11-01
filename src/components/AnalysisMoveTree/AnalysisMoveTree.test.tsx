@@ -31,4 +31,19 @@ describe("AnalysisMoveTree", () => {
     fireEvent.click(screen.getByRole("button", { name: "Next continuation" }));
     expect(onCycleOptions).toHaveBeenCalledWith("nextOption");
   });
+
+  it("can render variations in non-inline mode", () => {
+    const { container } = render(
+      <AnalysisMoveTree
+        lines={lines}
+        moves={["Nf3"]}
+        currentPly={1}
+        inline={false}
+        onSelect={vi.fn()}
+        onCycleOptions={vi.fn()}
+      />,
+    );
+
+    expect(container.querySelector(".analysisTree")).toHaveClass("nonInline");
+  });
 });

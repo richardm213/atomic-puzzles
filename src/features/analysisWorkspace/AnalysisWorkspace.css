@@ -1045,6 +1045,10 @@ body:has(.analysisPage),
   gap: 4px;
 }
 
+.analysisBottomToolbar.hasNotationToggle {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
 .analysisToolbarButton {
   width: 100%;
   min-width: 0;
@@ -1064,6 +1068,10 @@ body:has(.analysisPage),
 }
 
 .analysisToolbarButton.explorer {
+  font-size: 14px;
+}
+
+.analysisToolbarButton.notation {
   font-size: 14px;
 }
 

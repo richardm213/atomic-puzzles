@@ -42,7 +42,7 @@ import { useOpeningExplorer } from "../../hooks/useOpeningExplorer";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import { useUsernamePicker } from "../../hooks/useUsernamePicker";
 import { warmFairyStockfish } from "../../lib/practice/fairyStockfish";
-import { createAtomicPosition } from "../../lib/puzzles/solutionPgn";
+import { createAtomicPosition, serializeSanLinesToPgn } from "../../lib/puzzles/solutionPgn";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
 import { ATOMIC_DB_HOME_URL, atomicDbPositionUrl } from "../../utils/atomicDb";
 import { selectSpacebarMove } from "../../utils/boardMoveSelection";
@@ -65,6 +65,7 @@ type UsernamePickerTarget = "player" | "opponent";
 const MONTH_FILTER_PATTERN = /^\d{4}-\d{2}$/;
 const EXPLORER_SETTINGS_STORAGE_KEY = "atomic-puzzles.analysis.explorer-settings";
 const BOARD_SIZE_STORAGE_KEY = "atomic-puzzles.analysis.board-size";
+const NOTATION_LAYOUT_STORAGE_KEY = "atomic-puzzles.analysis.notation-layout";
 const DEFAULT_ANALYSIS_BOARD_SIZE = 516;
 const MIN_ANALYSIS_BOARD_SIZE = 320;
 const MAX_ANALYSIS_BOARD_SIZE = 760;
@@ -147,6 +148,7 @@ const boardSizeSchema = z.coerce
   .number()
   .positive()
   .transform((size) => clampAnalysisBoardSize(size, getMaxAnalysisBoardSize()));
+const notationLayoutSchema = z.enum(["inline", "non-inline"]);
 
 const validMonthFilter = (value: unknown): string => {
   const monthValue = String(value ?? "").trim();
@@ -282,6 +284,11 @@ export const AnalysisPage = () => {
     boardSizeSchema,
     DEFAULT_ANALYSIS_BOARD_SIZE,
   );
+  const [notationLayout, setNotationLayout] = usePersistedState(
+    NOTATION_LAYOUT_STORAGE_KEY,
+    notationLayoutSchema,
+    "inline",
+  );
   const [rootFen, setRootFen] = useState(routeFen);
   const [orientation, setOrientation] = useState<"white" | "black">("white");
   const [navigation, setNavigation] = useState<SolutionNavigation | null>(null);
@@ -385,16 +392,19 @@ export const AnalysisPage = () => {
 
   const movePairs = pairPlayedMoves(moveList);
 
-  const pgnText = movePairs.length
-    ? `${movePairs
-        .map((pair) => {
-          const whiteMove = pair.white ?? "";
-          return pair.black
-            ? `${pair.number}. ${whiteMove} ${pair.black}`
-            : `${pair.number}. ${whiteMove}`;
-        })
-        .join(" ")} *`
-    : "";
+  const variationPgn = customLines.length ? serializeSanLinesToPgn(rootFen, customLines) : "";
+  const pgnText = variationPgn
+    ? `${variationPgn} *`
+    : movePairs.length
+      ? `${movePairs
+          .map((pair) => {
+            const whiteMove = pair.white ?? "";
+            return pair.black
+              ? `${pair.number}. ${whiteMove} ${pair.black}`
+              : `${pair.number}. ${whiteMove}`;
+          })
+          .join(" ")} *`
+      : "";
   const boardDocument = useBoardDocument({
     fen: currentFen,
     pgn: pgnText,
@@ -880,6 +890,7 @@ export const AnalysisPage = () => {
                 moves={moveList}
                 currentPly={currentPly}
                 pinnedLineIndex={boardState?.customLineIndex}
+                inline={notationLayout === "inline"}
                 onSelect={navigateToCustomMove}
                 onCycleOptions={requestNavigation}
               />
@@ -1105,7 +1116,11 @@ export const AnalysisPage = () => {
           ariaLabel="Analysis menu"
           canStepBack={canStepBack}
           canStepForward={canStepForward}
+          notationInline={notationLayout === "inline"}
           onNavigate={requestNavigation}
+          onToggleNotation={() =>
+            setNotationLayout((current) => (current === "inline" ? "non-inline" : "inline"))
+          }
           onToggle={() => setExplorerOpen((open) => !open)}
           toggleAriaLabel={explorerOpen ? "Hide opening explorer" : "Show opening explorer"}
           toggleClassName="explorer"

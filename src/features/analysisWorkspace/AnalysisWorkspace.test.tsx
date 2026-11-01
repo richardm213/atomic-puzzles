@@ -46,6 +46,29 @@ describe("analysis workspace", () => {
     expect(screen.getByRole("button", { name: "Previous move" })).toBeDisabled();
   });
 
+  it("offers an optional notation layout toggle", () => {
+    const onToggleNotation = vi.fn();
+    render(
+      <AnalysisToolbar
+        active
+        ariaLabel="Analysis menu"
+        canStepBack
+        canStepForward
+        notationInline
+        onNavigate={vi.fn()}
+        onToggle={vi.fn()}
+        onToggleNotation={onToggleNotation}
+        toggleAriaLabel="Hide opening explorer"
+        toggleTitle="Opening explorer"
+      />,
+    );
+
+    const toggle = screen.getByRole("button", { name: "Use non-inline notation" });
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(toggle);
+    expect(onToggleNotation).toHaveBeenCalledOnce();
+  });
+
   it("renders the shared explorer display and accessible resize handle", () => {
     const onKeyDown = vi.fn();
     const onPointerDown = vi.fn();

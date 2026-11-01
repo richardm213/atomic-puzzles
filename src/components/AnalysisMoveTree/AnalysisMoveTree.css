@@ -109,6 +109,17 @@
   font-weight: 650;
 }
 
+.analysisTree.nonInline .analysisTreeVariation {
+  display: block;
+  margin-left: 14px;
+  padding-left: 8px;
+  border-left: 2px solid color-mix(in srgb, var(--color-border) 76%, transparent);
+}
+
+.analysisTree.nonInline .analysisTreeParen {
+  display: none;
+}
+
 @media (max-width: 480px) {
   .analysisContinuationChoices {
     align-items: flex-start;

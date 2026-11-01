@@ -3,11 +3,33 @@ import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
 import { buildPgnHistory } from "./pgnHistory";
 
 describe("buildPgnHistory", () => {
-  it("loads only the PGN mainline", () => {
+  it("loads the PGN mainline and its variations", () => {
     const result = buildPgnHistory(STARTING_FEN, "1. e4 e5 (1... c5) 2. Nf3");
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.history.plies.slice(1).map((ply) => ply.san)).toEqual(["e4", "e5", "Nf3"]);
+      expect(
+        result.histories.map((history) => history.plies.slice(1).map((ply) => ply.san)),
+      ).toEqual([
+        ["e4", "e5", "Nf3"],
+        ["e4", "c5"],
+      ]);
+    }
+  });
+
+  it("loads nested PGN variations", () => {
+    const result = buildPgnHistory(STARTING_FEN, "1. e4 e5 (1... c5 2. Nf3 (2. d4)) 2. Nf3");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(
+        result.histories.map((history) => history.plies.slice(1).map((ply) => ply.san)),
+      ).toEqual(
+        expect.arrayContaining([
+          ["e4", "e5", "Nf3"],
+          ["e4", "c5", "Nf3"],
+          ["e4", "c5", "d4"],
+        ]),
+      );
     }
   });
 

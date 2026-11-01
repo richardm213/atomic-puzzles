@@ -565,6 +565,33 @@ describe("Chessboard orchestration", () => {
     expect(states.at(-1)?.customLineIndex).toBe(1);
   });
 
+  it("loads PGN variations as navigable analysis branches", () => {
+    const states = renderBoard({
+      solutionNavigation: {
+        type: "loadPgn",
+        pgn: "1. e4 e5 (1... c5 2. Nf3) 2. Nf3",
+        fen: STARTING_FEN,
+      },
+    });
+
+    expect(states.at(-1)?.customLines).toEqual([
+      ["e4", "e5", "Nf3"],
+      ["e4", "c5", "Nf3"],
+    ]);
+    expect(states.at(-1)).toMatchObject({ customLineIndex: 0, lineIndex: 3 });
+
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    fireEvent.keyDown(window, { key: "ArrowDown" });
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+
+    expect(states.at(-1)).toMatchObject({
+      lineMoves: ["e4", "c5", "Nf3"],
+      lineIndex: 2,
+      customLineIndex: 1,
+    });
+  });
+
   it("preserves a custom branch while cycling between continuation options", () => {
     const states = renderBoard({ solution: "1. e4 e5 2. Nf3", showSolution: true });
 

@@ -4,7 +4,12 @@ import { makeSan, parseSan } from "chessops/san";
 import { makeUci } from "chessops/util";
 import type { Atomic } from "chessops/variant";
 
-import { moveFromUci, toComparableUci } from "../../lib/puzzles/solutionPgn";
+import {
+  moveFromUci,
+  parseSolutionUciLines,
+  toComparableUci,
+  type UciSolutionLine,
+} from "../../lib/puzzles/solutionPgn";
 import { getErrorMessage } from "../../utils/errors";
 import { appendBoardMove, type BoardHistory, createBoardHistory } from "./boardHistory";
 import { tryCreateAtomicPosition } from "./puzzlePlayback";
@@ -31,8 +36,32 @@ const mainlineTokens = (pgn: string): string[] => {
 };
 
 export type PgnHistoryResult =
-  | { ok: true; history: BoardHistory; position: Atomic }
+  | { ok: true; history: BoardHistory; histories: BoardHistory[]; position: Atomic }
   | { ok: false; error: string; kind: "fen" | "pgn" };
+
+const historyFromUciLine = (initialFen: string, line: UciSolutionLine): BoardHistory => {
+  const position = tryCreateAtomicPosition(initialFen).position;
+  if (!position) throw new Error("Invalid position");
+  const history = createBoardHistory(initialFen);
+
+  for (const entry of line) {
+    const move = moveFromUci(position, entry.uci);
+    if (!move || !position.isLegal(move)) throw new Error(`Invalid PGN move: ${entry.uci}`);
+    const uci = makeUci(move).toLowerCase();
+    const san = makeSan(position, move);
+    const key = toComparableUci(position, uci, move);
+    position.play(move);
+    appendBoardMove(history, {
+      fen: makeFen(position.toSetup()),
+      lastMove: [uci.slice(0, 2) as Key, uci.slice(2, 4) as Key],
+      uci,
+      key,
+      san,
+    });
+  }
+
+  return history;
+};
 
 export const buildPgnHistory = (initialFen: string, pgn: string): PgnHistoryResult => {
   const { position, error } = tryCreateAtomicPosition(initialFen);
@@ -40,6 +69,19 @@ export const buildPgnHistory = (initialFen: string, pgn: string): PgnHistoryResu
   const history = createBoardHistory(initialFen);
 
   try {
+    if (/[()]/.test(pgn)) {
+      const lines = parseSolutionUciLines(initialFen, pgn);
+      if (!lines.length) throw new Error("Invalid PGN variation");
+
+      const histories = lines.map((line) => historyFromUciLine(initialFen, line));
+      const mainHistory = histories[0]!;
+      const mainPosition = tryCreateAtomicPosition(
+        mainHistory.plies[mainHistory.index]!.fen,
+      ).position;
+      if (!mainPosition) throw new Error("Invalid PGN position");
+      return { ok: true, history: mainHistory, histories, position: mainPosition };
+    }
+
     for (const token of mainlineTokens(pgn)) {
       const move = parseSan(position, token) ?? moveFromUci(position, token.toLowerCase());
       if (!move || !position.isLegal(move)) throw new Error(`Invalid PGN move: ${token}`);
@@ -63,5 +105,5 @@ export const buildPgnHistory = (initialFen: string, pgn: string): PgnHistoryResu
     };
   }
 
-  return { ok: true, history, position };
+  return { ok: true, history, histories: [history], position };
 };
