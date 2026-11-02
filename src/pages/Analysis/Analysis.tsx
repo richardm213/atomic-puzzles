@@ -44,7 +44,7 @@ import { useUsernamePicker } from "../../hooks/useUsernamePicker";
 import { warmFairyStockfish } from "../../lib/practice/fairyStockfish";
 import { createAtomicPosition, serializeSanLinesToPgn } from "../../lib/puzzles/solutionPgn";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
-import { ATOMIC_DB_HOME_URL, atomicDbPositionUrl } from "../../utils/atomicDb";
+import { atomicDbPositionUrl } from "../../utils/atomicDb";
 import { selectSpacebarMove } from "../../utils/boardMoveSelection";
 import { threatFenFromFen } from "../../utils/chessNotation";
 import { lichessAtomicAnalysisUrl } from "../../utils/lichess";
@@ -1184,9 +1184,9 @@ export const AnalysisPage = () => {
         }
         lichessHref={currentLichessAnalysisUrl}
         atomicDbHref={
-          atomicDbAnalysis.result?.position?.key
+          atomicDbAnalysis.result?.fen === currentFen && atomicDbAnalysis.result.position?.key
             ? atomicDbPositionUrl(atomicDbAnalysis.result.position.key)
-            : ATOMIC_DB_HOME_URL
+            : null
         }
         document={boardDocument}
       />

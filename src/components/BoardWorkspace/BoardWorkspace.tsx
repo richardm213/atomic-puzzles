@@ -13,7 +13,7 @@ type BoardWorkspaceProps = {
   chessboardProps: ComponentProps<typeof Chessboard>;
   boardOverlay?: ReactNode;
   lichessHref: string;
-  atomicDbHref: string;
+  atomicDbHref: string | null;
   actionClassName?: string;
   secondaryAction?: ReactNode;
   document: BoardDocument;
@@ -66,7 +66,7 @@ export const BoardWorkspace = ({
       <span>View on Lichess</span>
     </a>
   );
-  const atomicDbLink = (
+  const atomicDbLink = atomicDbHref ? (
     <a
       className="analysisLichessLink analysisAtomicDbLink"
       href={atomicDbHref}
@@ -76,6 +76,15 @@ export const BoardWorkspace = ({
       <FontAwesomeIcon icon={faExternalLinkAlt} />
       <span>View on AtomicDB</span>
     </a>
+  ) : (
+    <span
+      className="analysisLichessLink analysisAtomicDbLink"
+      aria-disabled="true"
+      title="AtomicDB position unavailable"
+    >
+      <FontAwesomeIcon icon={faExternalLinkAlt} />
+      <span>View on AtomicDB</span>
+    </span>
   );
 
   return (
