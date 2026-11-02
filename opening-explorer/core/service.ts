@@ -68,6 +68,8 @@ const successResponse = (body: unknown, shouldCache: boolean): ExplorerServiceRe
   jsonResponse(200, body, shouldCache);
 
 const packedSchemaSql = "select value from opening_index_meta where key = 'schema' limit 1;";
+const PACKED_GAME_CACHE_LIMIT = 2_048;
+const PACKED_GAME_CACHE_TTL_MS = 5 * 60 * 1_000;
 
 const metadataValue = (value: unknown): unknown => {
   if (typeof value !== "string") return value;
@@ -81,7 +83,57 @@ const metadataValue = (value: unknown): unknown => {
 export const createOpeningExplorerService = (repository: OpeningExplorerRepository) => {
   const nextPriority = createPriorityFactory();
   const beginRequest = createExplorerRequestLifecycle();
+  const packedGames = new Map<number, { expiresAt: number; row: JsonRow }>();
   let packedSchemaPromise: Promise<string | null> | null = null;
+
+  const packedGameRows = async (
+    gameKeys: number[],
+    priorityRef: PriorityRef,
+  ): Promise<JsonRow[]> => {
+    const now = Date.now();
+    const rowsByKey = new Map<number, JsonRow>();
+    const missingKeys: number[] = [];
+
+    for (const gameKey of gameKeys) {
+      const cached = packedGames.get(gameKey);
+      if (cached && cached.expiresAt > now) {
+        // Refresh insertion order so frequently revisited openings survive the size cap.
+        packedGames.delete(gameKey);
+        packedGames.set(gameKey, cached);
+        rowsByKey.set(gameKey, cached.row);
+      } else {
+        if (cached) packedGames.delete(gameKey);
+        missingKeys.push(gameKey);
+      }
+    }
+
+    const gamesSql = buildOpeningGamesSql(missingKeys);
+    if (gamesSql) {
+      const fetchedRows = await awaitExplorerRequest(
+        repository.query(gamesSql, priorityRef),
+        priorityRef.signal,
+      );
+      for (const row of fetchedRows) {
+        const gameKey = Number(row.gameKey);
+        if (!Number.isSafeInteger(gameKey)) continue;
+        rowsByKey.set(gameKey, row);
+        packedGames.set(gameKey, {
+          expiresAt: now + PACKED_GAME_CACHE_TTL_MS,
+          row,
+        });
+      }
+      while (packedGames.size > PACKED_GAME_CACHE_LIMIT) {
+        const oldestKey = packedGames.keys().next().value;
+        if (oldestKey === undefined) break;
+        packedGames.delete(oldestKey);
+      }
+    }
+
+    return gameKeys.flatMap((gameKey) => {
+      const row = rowsByKey.get(gameKey);
+      return row ? [row] : [];
+    });
+  };
 
   const packedSchemaVersion = (priorityRef: PriorityRef): Promise<string | null> => {
     packedSchemaPromise ??= repository
@@ -144,10 +196,10 @@ export const createOpeningExplorerService = (repository: OpeningExplorerReposito
       username ? 1 : 2,
       username && supportsFilters ? request.playerMinRating : null,
     );
-    const gamesSql = buildOpeningGamesSql(recent.map((game) => game.gameKey));
-    const gameRows = gamesSql
-      ? await awaitExplorerRequest(repository.query(gamesSql, priorityRef), priorityRef.signal)
-      : [];
+    const gameRows = await packedGameRows(
+      recent.map((game) => game.gameKey),
+      priorityRef,
+    );
     return successResponse(
       {
         positionKey: keyHex,

@@ -22,6 +22,7 @@ const PLAYER_EXACT_RATINGS = "01020c072100000101a30d0164010c072201000001a40d01c8
 
 const setup = (schema = "lichess-packed-month-v1") => {
   const db = new DatabaseSync(":memory:");
+  const queries: string[] = [];
   const key = positionKeyHex(FEN);
   db.exec(`
     create table opening_names (name_id integer primary key, name text not null unique);
@@ -90,9 +91,12 @@ const setup = (schema = "lichess-packed-month-v1") => {
   const repository: OpeningExplorerRepository = {
     source: "packed-fixture",
     availability: () => ({ available: true, message: "" }),
-    query: async (sql) => db.prepare(sql).all() as JsonRow[],
+    query: async (sql) => {
+      queries.push(sql);
+      return db.prepare(sql).all() as JsonRow[];
+    },
   };
-  return { db, service: createOpeningExplorerService(repository) };
+  return { db, queries, service: createOpeningExplorerService(repository) };
 };
 
 const request = (extra: Record<string, string> = {}) => ({
@@ -133,6 +137,25 @@ describe("packed opening index compatibility", () => {
         { gameId: "g2", uci: "e2e4", playedAt: 190 },
         { gameId: "g3", uci: "d2d4", playedAt: 180 },
       ]);
+    } finally {
+      db.close();
+    }
+  });
+
+  it("reuses immutable game metadata across general and player opening revisits", async () => {
+    const { db, queries, service } = setup("lichess-packed-v3");
+    try {
+      await service.handle(request());
+      const first = await service.handle(
+        request({ username: "alice", color: "white", speeds: "1", minRating: "1700" }),
+      );
+      const second = await service.handle(
+        request({ username: "alice", color: "white", speeds: "1", minRating: "1700" }),
+      );
+
+      expect(second.body).toBe(first.body);
+      expect(queries.filter((sql) => sql.includes("from opening_games g"))).toHaveLength(1);
+      expect(queries.filter((sql) => sql.includes("from player_total"))).toHaveLength(2);
     } finally {
       db.close();
     }
