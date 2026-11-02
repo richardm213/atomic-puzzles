@@ -735,6 +735,21 @@ describe("PuzzleSolverPage solution options", () => {
     expect(await screen.findByText("Tags updated.")).toBeInTheDocument();
   });
 
+  it("shows the add tag action in place of the empty tag message", async () => {
+    mocks.username = "seaside_tiramisu";
+    const loadPuzzlesById = mocks.loadPuzzlesById.getMockImplementation();
+    mocks.loadPuzzlesById.mockImplementation(async (puzzleIds: number[]) =>
+      (await loadPuzzlesById!(puzzleIds)).map((puzzle) => ({ ...puzzle, tags: [] })),
+    );
+
+    render(<PuzzleSolverPage />);
+
+    const motifList = await screen.findByLabelText("Tags on this puzzle");
+    expect(within(motifList).getByRole("button", { name: "Add tag" })).toBeInTheDocument();
+    expect(within(motifList).queryByText("No tags yet.")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Add tag" })).toHaveLength(1);
+  });
+
   it("unlocks and opens the explanation tab after a wrong move", async () => {
     mocks.attemptedPuzzleIds = new Set();
     render(<PuzzleSolverPage />);

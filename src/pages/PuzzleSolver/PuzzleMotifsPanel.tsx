@@ -98,6 +98,22 @@ export const PuzzleMotifsPanel = ({
   const canConvert = Boolean(
     selectedMotif && canManage && tags.includes(selectedMotif.tag) && subtags.length > 0,
   );
+  const addTagButton = canManage ? (
+    <button
+      type="button"
+      className="puzzleMotifsAddButton"
+      aria-expanded={editorOpen}
+      disabled={saving || availableMotifs.length === 0}
+      onClick={() => {
+        if (editorOpen) setSearchValue("");
+        setEditorOpen(!editorOpen);
+        setSaveStatus({ state: "idle" });
+      }}
+    >
+      <span aria-hidden="true">{editorOpen ? "−" : "+"}</span>
+      {editorOpen ? "Close tag picker" : "Add tag"}
+    </button>
+  ) : null;
 
   return (
     <>
@@ -125,27 +141,14 @@ export const PuzzleMotifsPanel = ({
                 </div>
               );
             })
+          ) : canManage ? (
+            addTagButton
           ) : (
             <em>No tags yet.</em>
           )}
         </div>
 
-        {canManage ? (
-          <button
-            type="button"
-            className="puzzleMotifsAddButton"
-            aria-expanded={editorOpen}
-            disabled={saving || availableMotifs.length === 0}
-            onClick={() => {
-              if (editorOpen) setSearchValue("");
-              setEditorOpen(!editorOpen);
-              setSaveStatus({ state: "idle" });
-            }}
-          >
-            <span aria-hidden="true">{editorOpen ? "−" : "+"}</span>
-            {editorOpen ? "Close tag picker" : "Add tag"}
-          </button>
-        ) : null}
+        {tags.length > 0 ? addTagButton : null}
 
         {editorOpen && canManage ? (
           <div className="puzzleMotifPicker" role="region" aria-label="Add puzzle tag">
