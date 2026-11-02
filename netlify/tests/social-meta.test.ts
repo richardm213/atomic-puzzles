@@ -21,7 +21,7 @@ describe("social link metadata", () => {
   it("creates puzzle-specific metadata without revealing the solution", () => {
     expect(metadataForPath("/solve/2345")).toEqual({
       title: "Atomic Puzzle #2345",
-      description: "Solve atomic chess puzzle #2345, then play through the full forcing line.",
+      description: "Solve atomic chess puzzle #2345.",
     });
     expect(metadataForPath("/solve/set/awc2026/2345").title).toBe("Atomic Puzzle #2345");
   });

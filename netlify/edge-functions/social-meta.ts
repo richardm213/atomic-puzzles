@@ -178,7 +178,7 @@ const puzzleMetadata = (segments: string[]): SocialMetadata | null => {
 
   return {
     title: `Atomic Puzzle #${puzzleId}`,
-    description: `Solve atomic chess puzzle #${puzzleId}, then play through the full forcing line.`,
+    description: `Solve atomic chess puzzle #${puzzleId}.`,
   };
 };
 
