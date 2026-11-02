@@ -91,9 +91,19 @@ export const PuzzleSubmissionPage = () => {
           submittedCount = result.puzzleIds.length;
         }
       } else {
-        for (const normalized of normalizedSubmissions) {
+        if (normalizedSubmissions.length > 1) {
+          const result = await submitPuzzleBatch(normalizedSubmissions, {
+            allowDifferentStartMove,
+          });
+          if (result.destination !== "review") {
+            throw new Error("Puzzle batch was not sent for review.");
+          }
+          submittedCount = result.puzzles.length;
+        } else {
+          const normalized = normalizedSubmissions[0];
+          if (!normalized) throw new Error("No puzzle was available to submit.");
           await submitPuzzle(normalized, { allowDifferentStartMove });
-          submittedCount += 1;
+          submittedCount = 1;
         }
       }
       setValue(createEmptyPuzzleSubmission());

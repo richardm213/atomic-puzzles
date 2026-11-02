@@ -387,11 +387,13 @@ export class CommunityService {
     }
     await this.repository.ensureUser(username);
     const commentId = await this.repository.createComment(target, username, commentBody, parentId);
-    // Notification delivery should not turn a successfully saved comment into a failed post.
-    const mentionedRecipients = await this.repository
-      .notifyMentionedUsers(target, commentId, username, commentBody)
-      .catch(() => []);
-    if (target.type === "puzzle") {
+    // Discussion refresh and best-effort notification delivery are independent after the comment
+    // is saved, so run them together instead of making the response wait on each serially.
+    const notificationDelivery = async (): Promise<void> => {
+      const mentionedRecipients = await this.repository
+        .notifyMentionedUsers(target, commentId, username, commentBody)
+        .catch(() => []);
+      if (target.type !== "puzzle") return;
       await this.repository
         .notifyPuzzleCommentRecipients(
           Number(target.id),
@@ -401,7 +403,11 @@ export class CommunityService {
           mentionedRecipients,
         )
         .catch(() => undefined);
-    }
-    return this.loadTargetCommunity(target, username);
+    };
+    const [community] = await Promise.all([
+      this.loadTargetCommunity(target, username),
+      notificationDelivery(),
+    ]);
+    return community;
   }
 }

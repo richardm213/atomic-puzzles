@@ -97,6 +97,7 @@ describe("profile comment history", () => {
   });
 
   it("notifies prior commenters after a puzzle comment without failing the saved comment", async () => {
+    let resolveMentionNotifications!: (usernames: string[]) => void;
     const repository = {
       createComment: vi.fn().mockResolvedValue(77),
       ensureUser: vi.fn().mockResolvedValue(undefined),
@@ -104,18 +105,29 @@ describe("profile comment history", () => {
       notifyPuzzleCommentRecipients: vi
         .fn()
         .mockRejectedValue(new Error("Notification unavailable")),
-      notifyMentionedUsers: vi.fn().mockResolvedValue(["mentioned_user"]),
+      notifyMentionedUsers: vi.fn(
+        () =>
+          new Promise<string[]>((resolve) => {
+            resolveMentionNotifications = resolve;
+          }),
+      ),
     };
     const service = new CommunityService(repository as never);
 
-    await expect(
-      service.createComment(
-        { type: "puzzle", id: "42", context: "" },
-        "new_commenter",
-        "A new thought",
-        12,
-      ),
-    ).resolves.toEqual(expect.objectContaining({ comments: [] }));
+    const posting = service.createComment(
+      { type: "puzzle", id: "42", context: "" },
+      "new_commenter",
+      "A new thought",
+      12,
+    );
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(repository.loadTargetCommunity).toHaveBeenCalledWith(
+      { type: "puzzle", id: "42", context: "" },
+      "new_commenter",
+    );
+    resolveMentionNotifications(["mentioned_user"]);
+    await expect(posting).resolves.toEqual(expect.objectContaining({ comments: [] }));
     expect(repository.notifyPuzzleCommentRecipients).toHaveBeenCalledWith(
       42,
       77,

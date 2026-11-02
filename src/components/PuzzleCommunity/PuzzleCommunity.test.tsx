@@ -19,6 +19,9 @@ const mocks = vi.hoisted(() => ({
   fetchCommunityDiscussion: vi.fn(),
   fetchPuzzleCommunity: vi.fn(),
   isAuthenticated: true,
+  postCommunityComment: vi.fn(),
+  saveCommunityCommentVote: vi.fn(),
+  savePuzzleVote: vi.fn(),
   searchUsernameSuggestions: vi.fn(),
 }));
 
@@ -36,6 +39,9 @@ vi.mock("../../lib/community/puzzleCommunity", async (importOriginal) => {
     ...original,
     fetchCommunityDiscussion: mocks.fetchCommunityDiscussion,
     fetchPuzzleCommunity: mocks.fetchPuzzleCommunity,
+    postCommunityComment: mocks.postCommunityComment,
+    saveCommunityCommentVote: mocks.saveCommunityCommentVote,
+    savePuzzleVote: mocks.savePuzzleVote,
   };
 });
 
@@ -65,6 +71,9 @@ describe("PuzzleCommunity", () => {
       ],
       viewerVote: 0,
     });
+    mocks.postCommunityComment.mockReset();
+    mocks.saveCommunityCommentVote.mockReset();
+    mocks.savePuzzleVote.mockReset();
     mocks.searchUsernameSuggestions.mockResolvedValue([
       {
         username: "seaside_tiramisu",
@@ -74,6 +83,155 @@ describe("PuzzleCommunity", () => {
         accountUsername: "seaside_tiramisu",
       },
     ]);
+  });
+
+  it("shows puzzle vote feedback before the save request finishes", async () => {
+    const user = userEvent.setup();
+    let finishSave!: (value: unknown) => void;
+    mocks.savePuzzleVote.mockReturnValue(
+      new Promise((resolve) => {
+        finishSave = resolve;
+      }),
+    );
+
+    render(
+      <>
+        <div id="vote-slot" />
+        <PuzzleCommunity puzzleId={42} voteTargetId="vote-slot" />
+      </>,
+    );
+
+    const upvote = await screen.findByRole("button", {
+      name: "Upvote this puzzle. 0 upvotes",
+    });
+    await user.click(upvote);
+
+    expect(
+      await screen.findByRole("button", { name: "Upvote this puzzle. 1 upvotes" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    finishSave({
+      counts: { puzzle_id: 42, upvotes: 1, downvotes: 0, score: 1 },
+      comments: [],
+      viewerVote: 1,
+    });
+    await waitFor(() => expect(upvote).not.toBeDisabled());
+  });
+
+  it("shows a changed puzzle downvote before the save request finishes", async () => {
+    const user = userEvent.setup();
+    mocks.fetchPuzzleCommunity.mockResolvedValue({
+      counts: { puzzle_id: 42, upvotes: 3, downvotes: 2, score: 1 },
+      comments: [],
+      viewerVote: 1,
+    });
+    let finishSave!: (value: unknown) => void;
+    mocks.savePuzzleVote.mockReturnValue(
+      new Promise((resolve) => {
+        finishSave = resolve;
+      }),
+    );
+
+    render(
+      <>
+        <div id="vote-slot" />
+        <PuzzleCommunity puzzleId={42} voteTargetId="vote-slot" />
+      </>,
+    );
+
+    const downvote = await screen.findByRole("button", {
+      name: "Downvote this puzzle. 2 downvotes",
+    });
+    await user.click(downvote);
+
+    expect(
+      await screen.findByRole("button", { name: "Downvote this puzzle. 3 downvotes" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Upvote this puzzle. 2 upvotes" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    finishSave({
+      counts: { puzzle_id: 42, upvotes: 2, downvotes: 3, score: -1 },
+      comments: [],
+      viewerVote: -1,
+    });
+    await waitFor(() => expect(downvote).not.toBeDisabled());
+  });
+
+  it("shows comment vote feedback before the save request finishes", async () => {
+    const user = userEvent.setup();
+    let finishSave!: (value: unknown) => void;
+    mocks.saveCommunityCommentVote.mockReturnValue(
+      new Promise((resolve) => {
+        finishSave = resolve;
+      }),
+    );
+
+    render(<PuzzleCommunity puzzleId={42} voteTargetId="missing-slot" />);
+
+    const upvote = await screen.findByRole("button", { name: "Upvote comment. 1 upvotes" });
+    await user.click(upvote);
+
+    expect(
+      await screen.findByRole("button", { name: "Upvote comment. 2 upvotes" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    finishSave({
+      counts: { puzzle_id: 42, upvotes: 0, downvotes: 0, score: 0 },
+      comments: [
+        {
+          id: 7,
+          puzzle_id: 42,
+          username: "alice",
+          parent_id: null,
+          body: "Interesting position",
+          created_at: "2026-01-01T00:00:00Z",
+          upvotes: 2,
+          downvotes: 0,
+          score: 2,
+          viewer_vote: 1,
+        },
+      ],
+      viewerVote: 0,
+    });
+    await waitFor(() => expect(upvote).not.toBeDisabled());
+  });
+
+  it("shows a posted comment before the save request finishes", async () => {
+    const user = userEvent.setup();
+    let finishSave!: (value: unknown) => void;
+    mocks.postCommunityComment.mockReturnValue(
+      new Promise((resolve) => {
+        finishSave = resolve;
+      }),
+    );
+
+    render(<PuzzleCommunity puzzleId={42} voteTargetId="missing-slot" />);
+
+    const composer = await screen.findByRole("textbox", { name: "Add a comment" });
+    await user.type(composer, "Fast feedback");
+    await user.click(screen.getByRole("button", { name: "Post comment" }));
+
+    expect(await screen.findByText("Fast feedback")).toBeVisible();
+    expect(composer).toHaveValue("");
+    finishSave({
+      counts: { puzzle_id: 42, upvotes: 0, downvotes: 0, score: 0 },
+      comments: [
+        {
+          id: 8,
+          puzzle_id: 42,
+          username: "viewer",
+          parent_id: null,
+          body: "Fast feedback",
+          created_at: "2026-11-02T04:45:00Z",
+          upvotes: 1,
+          downvotes: 0,
+          score: 1,
+          viewer_vote: 1,
+        },
+      ],
+      viewerVote: 0,
+    });
+    await screen.findByRole("button", { name: "Post comment" });
   });
 
   it("shows only the login action and empty state when signed out with no comments", async () => {

@@ -99,6 +99,16 @@ const emptyCommunity = (target: CommunityTarget): CommunityDiscussionData => ({
   comments: [],
 });
 
+const applyVote = (
+  current: Pick<PuzzleComment, "upvotes" | "downvotes" | "score" | "viewer_vote">,
+  nextVote: VoteValue,
+) => ({
+  upvotes: current.upvotes - (current.viewer_vote === 1 ? 1 : 0) + (nextVote === 1 ? 1 : 0),
+  downvotes: current.downvotes - (current.viewer_vote === -1 ? 1 : 0) + (nextVote === -1 ? 1 : 0),
+  score: current.score - current.viewer_vote + nextVote,
+  viewer_vote: nextVote,
+});
+
 export const CommunityDiscussion = ({
   target,
   voteTargetId,
@@ -123,6 +133,7 @@ export const CommunityDiscussion = ({
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
   const communityRef = useRef<HTMLElement>(null);
   const mentionRequestIdRef = useRef(0);
+  const optimisticCommentIdRef = useRef(-1);
   const [discussionReady, setDiscussionReady] = useState(
     () => !deferUntilVisible || window.location.hash.startsWith("#comment-"),
   );
@@ -151,6 +162,30 @@ export const CommunityDiscussion = ({
   const voteMutation = useMutation({
     mutationFn: ({ puzzleId, vote }: { puzzleId: number; vote: VoteValue }) =>
       savePuzzleVote(puzzleId, vote),
+    onMutate: async ({ vote }) => {
+      await queryClient.cancelQueries({ queryKey: discussionOptions.queryKey });
+      const previous = queryClient.getQueryData<CommunityDiscussionData>(
+        discussionOptions.queryKey,
+      );
+      queryClient.setQueryData<CommunityDiscussionData>(discussionOptions.queryKey, (current) => {
+        if (!current?.counts || current.viewerVote === undefined) return current;
+        const next = applyVote({ ...current.counts, viewer_vote: current.viewerVote }, vote);
+        return {
+          ...current,
+          counts: {
+            ...current.counts,
+            upvotes: next.upvotes,
+            downvotes: next.downvotes,
+            score: next.score,
+          },
+          viewerVote: next.viewer_vote,
+        };
+      });
+      return { previous };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previous) updateDiscussion(context.previous);
+    },
     onSuccess: (result) => {
       updateDiscussion(result);
       void queryClient.invalidateQueries({ queryKey: communityQueryKeys.puzzleRankings });
@@ -158,8 +193,45 @@ export const CommunityDiscussion = ({
     },
   });
   const postCommentMutation = useMutation({
-    mutationFn: ({ body, parentId }: { body: string; parentId: number | null }) =>
-      postCommunityComment(currentTarget, body, parentId),
+    mutationFn: ({
+      body,
+      parentId,
+    }: {
+      body: string;
+      parentId: number | null;
+      optimisticId: number;
+    }) => postCommunityComment(currentTarget, body, parentId),
+    onMutate: async ({ body, parentId, optimisticId }) => {
+      await queryClient.cancelQueries({ queryKey: discussionOptions.queryKey });
+      const previous = queryClient.getQueryData<CommunityDiscussionData>(
+        discussionOptions.queryKey,
+      );
+      queryClient.setQueryData<CommunityDiscussionData>(discussionOptions.queryKey, (current) => ({
+        ...(current ?? emptyCommunity(currentTarget)),
+        comments: [
+          ...(current?.comments ?? []),
+          {
+            id: optimisticId,
+            ...(targetType === "puzzle" ? { puzzle_id: Number(targetId) } : {}),
+            target_type: targetType,
+            target_id: targetId,
+            target_context: targetContext ?? "",
+            username: user?.username ?? "",
+            parent_id: parentId,
+            body,
+            created_at: new Date().toISOString(),
+            upvotes: 1,
+            downvotes: 0,
+            score: 1,
+            viewer_vote: 1,
+          },
+        ],
+      }));
+      return { previous };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previous) updateDiscussion(context.previous);
+    },
     onSuccess: (result) => {
       updateDiscussion(result);
       void queryClient.invalidateQueries({ queryKey: communityQueryKeys.siteComments });
@@ -169,6 +241,26 @@ export const CommunityDiscussion = ({
   const commentVoteMutation = useMutation({
     mutationFn: ({ commentId, vote }: { commentId: number; vote: VoteValue }) =>
       saveCommunityCommentVote(currentTarget, commentId, vote),
+    onMutate: async ({ commentId, vote }) => {
+      await queryClient.cancelQueries({ queryKey: discussionOptions.queryKey });
+      const previous = queryClient.getQueryData<CommunityDiscussionData>(
+        discussionOptions.queryKey,
+      );
+      queryClient.setQueryData<CommunityDiscussionData>(discussionOptions.queryKey, (current) =>
+        current
+          ? {
+              ...current,
+              comments: current.comments.map((comment) =>
+                comment.id === commentId ? { ...comment, ...applyVote(comment, vote) } : comment,
+              ),
+            }
+          : current,
+      );
+      return { previous };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previous) updateDiscussion(context.previous);
+    },
     onSuccess: (result) => {
       updateDiscussion(result);
       void queryClient.invalidateQueries({ queryKey: communityQueryKeys.siteComments });
@@ -320,11 +412,20 @@ export const CommunityDiscussion = ({
     if (!target.id || !body || postingComment) return;
     if (!requireLogin()) return;
     setActionError("");
+    const replyTarget = replyingTo;
+    const optimisticId = optimisticCommentIdRef.current;
+    optimisticCommentIdRef.current -= 1;
+    setCommentBody("");
+    setReplyingTo(null);
     try {
-      await postCommentMutation.mutateAsync({ body, parentId: replyingTo?.id ?? null });
-      setCommentBody("");
-      setReplyingTo(null);
+      await postCommentMutation.mutateAsync({
+        body,
+        parentId: replyTarget?.id ?? null,
+        optimisticId,
+      });
     } catch (commentError) {
+      setCommentBody((current) => current || body);
+      setReplyingTo((current) => current ?? replyTarget);
       setActionError(getErrorMessage(commentError, "Unable to post comment."));
     }
   };

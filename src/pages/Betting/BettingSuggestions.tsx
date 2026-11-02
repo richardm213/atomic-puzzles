@@ -117,8 +117,34 @@ export const BettingSuggestions = ({
   });
   const voteMutation = useMutation({
     mutationFn: voteOnMarketSuggestion,
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: bettingQueryKeys.suggestions });
+    onMutate: async ({ suggestionId, vote }) => {
+      await queryClient.cancelQueries({ queryKey: bettingQueryKeys.suggestions });
+      const previousSuggestions = queryClient.getQueryData<MarketSuggestion[]>(
+        bettingQueryKeys.suggestions,
+      );
+      queryClient.setQueryData<MarketSuggestion[]>(bettingQueryKeys.suggestions, (current) =>
+        current?.map((suggestion) => {
+          if (suggestion.id !== suggestionId) return suggestion;
+          return {
+            ...suggestion,
+            upvotes:
+              suggestion.upvotes - (suggestion.userVote === 1 ? 1 : 0) + (vote === 1 ? 1 : 0),
+            downvotes:
+              suggestion.downvotes - (suggestion.userVote === -1 ? 1 : 0) + (vote === -1 ? 1 : 0),
+            score: suggestion.score - suggestion.userVote + vote,
+            userVote: vote,
+          };
+        }),
+      );
+      return { previousSuggestions };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previousSuggestions) {
+        queryClient.setQueryData(bettingQueryKeys.suggestions, context.previousSuggestions);
+      }
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: bettingQueryKeys.suggestions });
     },
   });
 
@@ -275,7 +301,9 @@ export const BettingSuggestions = ({
           <MarketSuggestionList
             suggestions={suggestionsQuery.data ?? []}
             isAuthenticated={isAuthenticated}
-            votingSuggestionId={voteMutation.variables?.suggestionId}
+            votingSuggestionId={
+              voteMutation.isPending ? voteMutation.variables?.suggestionId : undefined
+            }
             onLogin={onLogin}
             onVote={vote}
           />

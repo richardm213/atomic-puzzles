@@ -986,6 +986,13 @@ button.puzzleRatingBadge.editable:focus-visible {
   outline-offset: 3px;
 }
 
+@media (min-width: 681px) {
+  .puzzleIssuePrompt + .puzzleCommunity {
+    margin-top: -16px;
+    padding-top: 0;
+  }
+}
+
 .puzzleIssueDialog {
   width: min(520px, calc(100% - 32px));
   max-width: none;
