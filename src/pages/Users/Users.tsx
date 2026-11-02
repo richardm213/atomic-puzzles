@@ -331,6 +331,15 @@ const UsersTablePage = () => {
 
         {!error && !loading && rows.length > 0 && filteredRows.length > 0 ? (
           <DataTable wrapperClassName="rankingsTableWrap" className="rankingsTable usersTable">
+            <colgroup>
+              <col className="usersNameColumn" />
+              <col className="usersRatingColumn" />
+              <col className="usersRatingColumn" />
+              <col className="usersRatingColumn" />
+              {atomic960Enabled ? <col className="usersRatingColumn" /> : null}
+              <col className="usersOpeningsColumn" />
+              <col className="usersAliasesColumn" />
+            </colgroup>
             <thead>
               <tr>
                 {userColumns.map((column) => (

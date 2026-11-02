@@ -127,6 +127,23 @@
 
 .usersTable {
   min-width: 760px;
+  table-layout: fixed;
+}
+
+.usersNameColumn {
+  width: 180px;
+}
+
+.usersRatingColumn {
+  width: 84px;
+}
+
+.usersOpeningsColumn {
+  width: 220px;
+}
+
+.usersAliasesColumn {
+  width: 76px;
 }
 
 .usersTable th,
@@ -134,12 +151,13 @@
   padding-inline: 9px;
 }
 
-.usersTable :is(th, td):nth-child(n + 2):nth-child(-n + 6) {
-  width: 1%;
-  white-space: nowrap;
+.usersTable :is(th, td) {
+  width: auto;
 }
 
 .usersTable td:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -385,6 +403,7 @@
 
 .bannedUsersTable {
   min-width: 560px;
+  table-layout: fixed;
 }
 
 .bannedUsersTable :is(th, td):nth-child(1) {

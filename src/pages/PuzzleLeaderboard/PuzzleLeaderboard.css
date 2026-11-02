@@ -53,7 +53,8 @@
 }
 
 .puzzleLeaderboardTable {
-  min-width: 0;
+  min-width: 760px;
+  table-layout: fixed;
 }
 
 .rankingsTable.puzzleLeaderboardTable
@@ -69,6 +70,32 @@
   ) {
   width: 1%;
   white-space: nowrap;
+}
+
+.rankingsTable.puzzleLeaderboardTable :is(th, td):nth-child(1) {
+  width: 48px;
+}
+
+.rankingsTable.puzzleLeaderboardTable :is(th, td):nth-child(3) {
+  width: 88px;
+}
+
+.rankingsTable.puzzleLeaderboardTable :is(th, td):nth-child(4) {
+  width: 76px;
+}
+
+.rankingsTable.puzzleLeaderboardTable :is(th, td):nth-child(5),
+.rankingsTable.puzzleLeaderboardTable :is(th, td):nth-child(6) {
+  width: 64px;
+}
+
+.rankingsTable.puzzleLeaderboardTable :is(th, td):nth-child(7),
+.rankingsTable.puzzleLeaderboardTable :is(th, td):nth-child(8) {
+  width: 72px;
+}
+
+.rankingsTable.puzzleLeaderboardTable :is(th, td):nth-child(9) {
+  width: 76px;
 }
 
 .rankingsTable.puzzleLeaderboardTable th:is(:nth-child(1), :nth-child(n + 3)) .sortableTableButton {
@@ -121,6 +148,7 @@
 
   .puzzleLeaderboardTable {
     width: 100%;
+    min-width: 0;
     table-layout: fixed;
     font-size: 12px;
   }

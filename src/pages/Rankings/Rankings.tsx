@@ -654,7 +654,10 @@ const LeaderboardView = ({ selectedPeriod }: { selectedPeriod: RankingPeriod }) 
                 : `No leaderboard entries available for this ${selectedPeriod === "yearly" ? "year" : "month"}.`}
           </InlineState>
         ) : (
-          <DataTable wrapperClassName="rankingsTableWrap" className="rankingsTable">
+          <DataTable
+            wrapperClassName="rankingsTableWrap"
+            className="rankingsTable rankingsRatingsTable"
+          >
             <thead>
               <tr>
                 {rankingColumns.map((column) => (

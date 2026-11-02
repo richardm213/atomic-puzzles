@@ -78,20 +78,38 @@
   margin-top: 14px;
 }
 
-.rankingsTable {
+:where(.rankingsTable) {
   min-width: 500px;
 }
 
-.rankingsTable :is(th, td):nth-child(1) {
+:where(.rankingsTable) :is(th, td):nth-child(1) {
   width: 60px;
   white-space: nowrap;
 }
 
-.rankingsTable :is(th, td):nth-child(3),
-.rankingsTable :is(th, td):nth-child(4),
-.rankingsTable :is(th, td):nth-child(5) {
+:where(.rankingsTable) :is(th, td):nth-child(3),
+:where(.rankingsTable) :is(th, td):nth-child(4),
+:where(.rankingsTable) :is(th, td):nth-child(5) {
   width: 1%;
   white-space: nowrap;
+}
+
+.rankingsRatingsTable {
+  min-width: 560px;
+  table-layout: fixed;
+}
+
+.rankingsRatingsTable :is(th, td):nth-child(1) {
+  width: 64px;
+}
+
+.rankingsRatingsTable :is(th, td):nth-child(n + 3) {
+  width: 96px;
+}
+
+.rankingsRatingsTable :is(th, td):nth-child(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .rankingsMeta {
@@ -389,13 +407,13 @@
     min-width: 0;
   }
 
-  .rankingsTable {
+  :where(.rankingsTable) {
     min-width: 420px;
     font-size: 14px;
   }
 
-  .rankingsTable th,
-  .rankingsTable td {
+  :where(.rankingsTable) th,
+  :where(.rankingsTable) td {
     padding: 9px 10px;
   }
 

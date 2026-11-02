@@ -181,6 +181,28 @@
 
 .communityVoteTable {
   min-width: 680px;
+  table-layout: fixed;
+}
+
+.communityVoteTable :is(th, td):nth-child(1) {
+  width: 52px;
+}
+
+.communityVoteTable :is(th, td):nth-child(3),
+.communityVoteTable :is(th, td):nth-child(4) {
+  width: 84px;
+}
+
+.communityVoteTable :is(th, td):nth-child(5) {
+  width: 72px;
+}
+
+.communityVoteTable :is(th, td):nth-child(6) {
+  width: 88px;
+}
+
+.communityVoteTable :is(th, td):nth-child(7) {
+  width: 96px;
 }
 
 .communityError,
@@ -501,6 +523,17 @@
   .communityVoteTable :is(th, td):nth-child(1),
   .communityVoteTable :is(th, td):nth-child(5) {
     display: none;
+  }
+
+  .communityVoteTable :is(th, td):nth-child(2) {
+    width: 32%;
+  }
+
+  .communityVoteTable :is(th, td):nth-child(3),
+  .communityVoteTable :is(th, td):nth-child(4),
+  .communityVoteTable :is(th, td):nth-child(6),
+  .communityVoteTable :is(th, td):nth-child(7) {
+    width: 17%;
   }
 }
 @supports (content-visibility: auto) {

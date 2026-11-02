@@ -516,8 +516,18 @@
 
 .wolfarenaStandingsTable {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   font-variant-numeric: tabular-nums;
+}
+
+.wolfarenaStandingsTable :is(th, td):first-child {
+  width: 48px;
+}
+
+.wolfarenaStandingsTable :is(th, td):nth-child(3),
+.wolfarenaStandingsTable :is(th, td):nth-child(4) {
+  width: 76px;
 }
 
 .wolfarenaStandingsTable th,
@@ -541,10 +551,6 @@
 .wolfarenaStandingsTable th:nth-child(2),
 .wolfarenaStandingsTable td:nth-child(2) {
   text-align: left;
-}
-
-.wolfarenaStandingsTable td:first-child {
-  width: 48px;
 }
 
 .wolfarenaStandingsTable tbody th {

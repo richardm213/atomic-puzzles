@@ -288,8 +288,26 @@
 
 .predictionOrders {
   width: 100%;
+  min-width: 560px;
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: 14px;
+}
+
+.predictionOrders :is(th, td):nth-child(2) {
+  width: 76px;
+}
+
+.predictionOrders :is(th, td):nth-child(3) {
+  width: 88px;
+}
+
+.predictionOrders :is(th, td):nth-child(4) {
+  width: 92px;
+}
+
+.predictionOrders :is(th, td):nth-child(5) {
+  width: 104px;
 }
 
 .predictionOrders th,

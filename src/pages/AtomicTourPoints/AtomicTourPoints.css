@@ -179,6 +179,7 @@
 .atomicTourWolfarenaTable {
   width: 100%;
   min-width: 0;
+  table-layout: fixed;
   font-size: 0.8rem;
   font-variant-numeric: tabular-nums;
 }
@@ -196,7 +197,7 @@
 }
 
 .atomicTourWolfarenaTable :is(th, td):last-child {
-  width: 1%;
+  width: 88px;
   color: var(--color-heading);
   font-weight: 650;
   text-align: right;

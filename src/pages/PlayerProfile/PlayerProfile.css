@@ -1598,17 +1598,36 @@
 .profileFavoriteOpponentsTable {
   width: 100%;
   min-width: 720px;
-  table-layout: auto;
+  table-layout: fixed;
   border-collapse: collapse;
 }
 
 .profileFavoriteOpponentsTable :is(th, td):nth-child(1) {
-  width: 100%;
-  max-width: 0;
+  width: 24%;
 }
 
-.profileFavoriteOpponentsTable :is(th, td):nth-child(n + 2) {
-  width: 1%;
+.profileFavoriteOpponentsTable :is(th, td):nth-child(2) {
+  width: 12%;
+}
+
+.profileFavoriteOpponentsTable :is(th, td):nth-child(3) {
+  width: 9%;
+}
+
+.profileFavoriteOpponentsTable :is(th, td):nth-child(4) {
+  width: 11%;
+}
+
+.profileFavoriteOpponentsTable :is(th, td):nth-child(5) {
+  width: 20%;
+}
+
+.profileFavoriteOpponentsTable :is(th, td):nth-child(6) {
+  width: 18%;
+}
+
+.profileFavoriteOpponentsTable :is(th, td):nth-child(7) {
+  width: 6%;
 }
 
 .profileRankHistoryTable thead,
@@ -1801,12 +1820,35 @@
 
 .favoriteOpponentMatchesTable {
   width: 100%;
+  min-width: 600px;
+  table-layout: fixed;
   border-collapse: collapse;
   border: 1px solid var(--color-border);
   border-radius: 8px;
   overflow: hidden;
   background: var(--color-surface-soft);
   font-size: 12px;
+}
+
+.favoriteOpponentMatchesTable :is(th, td):nth-child(1) {
+  width: 132px;
+}
+
+.favoriteOpponentMatchesTable :is(th, td):nth-child(2) {
+  width: 112px;
+}
+
+.favoriteOpponentMatchesTable :is(th, td):nth-child(3) {
+  width: 72px;
+}
+
+.favoriteOpponentMatchesTable :is(th, td):nth-child(4),
+.favoriteOpponentMatchesTable :is(th, td):nth-child(5) {
+  width: 86px;
+}
+
+.favoriteOpponentMatchesTable :is(th, td):nth-child(6) {
+  width: 44px;
 }
 
 .favoriteOpponentMatchesTable thead {

@@ -359,14 +359,14 @@ export const FavoriteOpponentsSection = ({
             })}
             {loading ? (
               <tr>
-                <td colSpan={6} className="emptyRankings">
+                <td colSpan={7} className="emptyRankings">
                   {`Loading favorite opponents from the last ${matchLimit.toLocaleString("en-US")} ${scopeLabel}...`}
                 </td>
               </tr>
             ) : null}
             {!loading && rows.length === 0 ? (
               <tr>
-                <td colSpan={6} className="emptyRankings">
+                <td colSpan={7} className="emptyRankings">
                   {`No favorite opponents found in the last ${matchLimit.toLocaleString("en-US")} ${scopeLabel}.`}
                 </td>
               </tr>
