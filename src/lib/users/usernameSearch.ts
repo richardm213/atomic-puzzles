@@ -19,6 +19,10 @@ export type UsernameSearchSuggestion = {
   hasAtomicTourPoints: boolean;
 };
 
+type UsernameSearchSuggestionOptions = {
+  excludePyChessAliases?: boolean;
+};
+
 type RankedUsernameSearchSuggestion = UsernameSearchSuggestion & {
   rank: number;
 };
@@ -106,8 +110,9 @@ const fetchMatchingUsernames = async (query: string): Promise<string[]> => {
 export const searchUsernameSuggestions = async (
   value: string,
   limit = USERNAME_SUGGESTION_LIMIT,
+  options: UsernameSearchSuggestionOptions = {},
 ): Promise<UsernameSearchSuggestion[]> =>
-  cachedRequest(usernameSuggestionCache, ["username-suggestions", value, limit], async () => {
+  cachedRequest(usernameSuggestionCache, { value, limit, options }, async () => {
     const query = normalizeUsername(value);
     if (query.length < 3 || !/^[a-z0-9_-]+$/.test(query)) return [];
 
@@ -125,11 +130,17 @@ export const searchUsernameSuggestions = async (
 
       members.forEach((member) => {
         const normalizedMatchedName = normalizeUsername(member.value);
-        const pyChessAccount = row.accounts.find(
+        const matchingAccounts = row.accounts.filter(
           (account) =>
-            account.source === "pychess" &&
-            (account.alias === member.value || account.displayAlias === member.value),
+            normalizeUsername(account.alias) === normalizedMatchedName ||
+            normalizeUsername(account.displayAlias) === normalizedMatchedName,
         );
+        const pyChessAccount = matchingAccounts.find((account) => account.source === "pychess");
+        const isPyChessOnlyAlias =
+          member.matchType === "alias" &&
+          Boolean(pyChessAccount) &&
+          matchingAccounts.every((account) => account.source === "pychess");
+        if (options.excludePyChessAliases && isPyChessOnlyAlias) return;
         const matchedName = pyChessAccount
           ? String(pyChessAccount.displayAlias || pyChessAccount.alias).trim()
           : normalizedMatchedName;

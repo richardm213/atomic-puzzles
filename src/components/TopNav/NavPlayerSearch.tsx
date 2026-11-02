@@ -100,7 +100,9 @@ export const NavPlayerSearch = ({ onNavigate }: { onNavigate: () => void }) => {
     const timeoutId = window.setTimeout(() => {
       setSuggestionsPending(true);
       void import("../../lib/users/usernameSearch")
-        .then(({ searchUsernameSuggestions }) => searchUsernameSuggestions(trimmedQuery))
+        .then(({ searchUsernameSuggestions }) =>
+          searchUsernameSuggestions(trimmedQuery, undefined, { excludePyChessAliases: true }),
+        )
         .then((results) => {
           if (requestId !== requestIdRef.current) return;
           setSuggestions(results);
