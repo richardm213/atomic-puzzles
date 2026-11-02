@@ -17,6 +17,7 @@ describe("loadRawMatchesByMode archive rows", () => {
       blitz: 500,
       bullet: 400,
       hyperbullet: 300,
+      rapid: 250,
       wolfrandom: 200,
       atomic960: 100,
     } as const;
@@ -47,9 +48,9 @@ describe("loadRawMatchesByMode archive rows", () => {
 
     const result = await loadRawMatchesByMode("all", { page: 1, pageSize: 2 });
 
-    expect(result.total).toBe(5);
+    expect(result.total).toBe(6);
     expect(result.matches.map((match) => match.match_id)).toEqual(["blitz-match", "bullet-match"]);
-    expect(fetchMatchRowsFromArchive).toHaveBeenCalledTimes(5);
+    expect(fetchMatchRowsFromArchive).toHaveBeenCalledTimes(6);
   });
 
   it("decodes Turso's pipe-split compact game entries and preserves nullable ratings", async () => {

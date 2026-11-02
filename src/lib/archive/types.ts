@@ -1,4 +1,4 @@
-export type ArchiveMode = "hyperbullet" | "bullet" | "blitz" | "wolfrandom" | "atomic960";
+export type ArchiveMode = "hyperbullet" | "bullet" | "blitz" | "wolfrandom" | "atomic960" | "rapid";
 
 export type ArchiveMatchSource =
   "lobby" | "arena" | "friend" | "swiss" | "chesscom" | "pychess" | "unknown";

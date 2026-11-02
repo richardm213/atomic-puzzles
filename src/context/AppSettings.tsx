@@ -23,6 +23,7 @@ const STORAGE_KEYS = {
   boardOverrideDarkSquare: "atomic-puzzles.board-override-dark-square",
   hideRankingsOpenings: "atomic-puzzles.rankings.hide-openings",
   showChessComRankings: "atomic-puzzles.rankings.show-chesscom-users",
+  showRapidProfileRatings: "atomic-puzzles.profile.show-rapid-ratings",
   showWolfrandomProfileRatings: "atomic-puzzles.profile.show-wolfrandom-ratings",
   showAtomic960ProfileRatings: "atomic-puzzles.profile.show-atomic960-ratings",
   showProfileActionButtons: "atomic-puzzles.profile.show-action-buttons",
@@ -171,6 +172,8 @@ export type AppSettingsContextValue = {
   setHideRankingsOpenings: Dispatch<SetStateAction<boolean>>;
   showChessComRankings: boolean;
   setShowChessComRankings: Dispatch<SetStateAction<boolean>>;
+  showRapidProfileRatings: boolean;
+  setShowRapidProfileRatings: Dispatch<SetStateAction<boolean>>;
   showWolfrandomProfileRatings: boolean;
   setShowWolfrandomProfileRatings: Dispatch<SetStateAction<boolean>>;
   showAtomic960ProfileRatings: boolean;
@@ -288,6 +291,11 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     z.boolean(),
     false,
   );
+  const [showRapidProfileRatings, setShowRapidProfileRatings] = usePersistedState(
+    STORAGE_KEYS.showRapidProfileRatings,
+    z.boolean(),
+    false,
+  );
   const [showAtomic960ProfileRatings, setShowAtomic960ProfileRatings] = usePersistedState(
     STORAGE_KEYS.showAtomic960ProfileRatings,
     z.boolean(),
@@ -337,7 +345,7 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
 
   const [hiddenRatingGraphModes, setHiddenRatingGraphModes] = usePersistedState<string[]>(
     STORAGE_KEYS.hiddenRatingGraphModes,
-    z.array(z.enum(["blitz", "hyperbullet", "bullet", "atomic960"])),
+    z.array(z.enum(["blitz", "hyperbullet", "bullet", "rapid", "atomic960"])),
     [],
   );
 
@@ -391,6 +399,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setHideRankingsOpenings,
       showChessComRankings,
       setShowChessComRankings,
+      showRapidProfileRatings,
+      setShowRapidProfileRatings,
       showWolfrandomProfileRatings,
       setShowWolfrandomProfileRatings,
       showAtomic960ProfileRatings,
@@ -436,6 +446,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setHideRankingsOpenings,
       showChessComRankings,
       setShowChessComRankings,
+      showRapidProfileRatings,
+      setShowRapidProfileRatings,
       showWolfrandomProfileRatings,
       setShowWolfrandomProfileRatings,
       showAtomic960ProfileRatings,

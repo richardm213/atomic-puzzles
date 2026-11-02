@@ -3,7 +3,7 @@ import { fetchYearlyLeaderboardRows } from "../archive/leaderboard";
 import type { YearlyLeaderboardRow } from "../archive/types";
 import type { RankingPlayer, RankingsByMode } from "./rankingsByMonth";
 
-const yearlyModes = new Set<Mode>(["blitz", "bullet", "hyperbullet"]);
+const yearlyModes = new Set<Mode>(modeOptions);
 
 export const normalizeYearlyLeaderboardRows = (rows: YearlyLeaderboardRow[]): RankingsByMode => {
   const modes: RankingsByMode = createModeRecord(() => ({ players: [] }));

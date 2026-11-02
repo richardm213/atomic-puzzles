@@ -59,11 +59,13 @@ import {
   LichessProfileIcon,
   NON_COUNTED_ALIAS_MESSAGE,
   profileResultToneClass,
+  PyChessProfileIcon,
 } from "../../features/profile/profilePresentation";
 import {
   type ProfileMatchHistoryMode,
   profileMatchHistoryQueryOptions,
 } from "../../features/profile/profileQueries";
+import { getVisibleProfileRatingModes } from "../../features/profile/profileRatingModes";
 import {
   fetchChampionshipTrophies,
   getCurrentMonthKey,
@@ -158,8 +160,12 @@ export const PlayerProfilePage = ({
   historyOnly?: boolean;
 }) => {
   const queryClient = useQueryClient();
-  const { showWolfrandomProfileRatings, showAtomic960ProfileRatings, showProfileActionButtons } =
-    useAppSettings();
+  const {
+    showRapidProfileRatings,
+    showWolfrandomProfileRatings,
+    showAtomic960ProfileRatings,
+    showProfileActionButtons,
+  } = useAppSettings();
   const requestedUsername = useMemo(() => String(username ?? "").trim(), [username]);
   const normalizedUsername = useMemo(
     () => normalizeUsername(requestedUsername),
@@ -293,10 +299,12 @@ export const PlayerProfilePage = ({
       publicModeOptions.filter(
         (mode) =>
           (isExcluded || mode !== "wolfrandom" || ratingDisplayByMode.wolfrandom.gamesPlayed > 0) &&
-          (mode !== "atomic960" || ratingDisplayByMode.atomic960.gamesPlayed > 0),
+          (mode !== "atomic960" || ratingDisplayByMode.atomic960.gamesPlayed > 0) &&
+          (mode !== "rapid" || ratingDisplayByMode.rapid.gamesPlayed > 0),
       ),
     [
       isExcluded,
+      ratingDisplayByMode.rapid.gamesPlayed,
       ratingDisplayByMode.atomic960.gamesPlayed,
       ratingDisplayByMode.wolfrandom.gamesPlayed,
     ],
@@ -668,34 +676,38 @@ export const PlayerProfilePage = ({
       }, {}),
     [visibleMonthRanks],
   );
-  const profileMetricRows = useMemo(
-    () =>
-      getProfileMetricCardRows(
-        ratingDisplayByMode,
-        Object.fromEntries(
-          Object.entries(latestMonthKeyByMode).map(([mode, monthRank]) => [
-            mode,
-            monthRank?.monthKey ?? "",
-          ]),
-        ),
-        isExcluded,
-      ).filter((row) => {
-        const mode = row.key.replace(/-row$/, "") as (typeof modeOptions)[number];
-        if (mode === "wolfrandom" && !showWolfrandomProfileRatings) return false;
-        if (mode === "atomic960" && !showAtomic960ProfileRatings) return false;
-        if (!profileModeOptions.includes(mode)) return false;
-        if (!isExcluded) return true;
-        return Number.isFinite(ratingDisplayByMode[mode]?.currentRating);
-      }),
-    [
-      showWolfrandomProfileRatings,
-      showAtomic960ProfileRatings,
-      isExcluded,
-      latestMonthKeyByMode,
-      profileModeOptions,
+  const profileMetricRows = useMemo(() => {
+    const visibleRatingModes = getVisibleProfileRatingModes(ratingDisplayByMode, {
+      rapid: showRapidProfileRatings,
+      wolfrandom: showWolfrandomProfileRatings,
+      atomic960: showAtomic960ProfileRatings,
+    });
+
+    return getProfileMetricCardRows(
       ratingDisplayByMode,
-    ],
-  );
+      Object.fromEntries(
+        Object.entries(latestMonthKeyByMode).map(([mode, monthRank]) => [
+          mode,
+          monthRank?.monthKey ?? "",
+        ]),
+      ),
+      isExcluded,
+    ).filter((row) => {
+      const mode = row.key.replace(/-row$/, "") as (typeof modeOptions)[number];
+      if (!visibleRatingModes.includes(mode)) return false;
+      if (!profileModeOptions.includes(mode)) return false;
+      if (!isExcluded) return true;
+      return Number.isFinite(ratingDisplayByMode[mode]?.currentRating);
+    });
+  }, [
+    showRapidProfileRatings,
+    showWolfrandomProfileRatings,
+    showAtomic960ProfileRatings,
+    isExcluded,
+    latestMonthKeyByMode,
+    profileModeOptions,
+    ratingDisplayByMode,
+  ]);
   const rankingTrophies = useMemo(() => getRankingTrophies(monthRanks), [monthRanks]);
   const puzzleRankingTrophies = useMemo(
     () => getPuzzleRankingTrophies(puzzleRankingTrophiesQuery.data ?? [], profileTrophyUsernames),
@@ -1136,9 +1148,7 @@ export const PlayerProfilePage = ({
                             {source === "chesscom" ? (
                               <ChessComProfileIcon />
                             ) : source === "pychess" ? (
-                              <span className="profileAliasPyChessMark" aria-hidden="true">
-                                P
-                              </span>
+                              <PyChessProfileIcon />
                             ) : (
                               <LichessProfileIcon />
                             )}

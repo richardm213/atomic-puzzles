@@ -133,6 +133,7 @@ const defaultH2HModeFilters: Record<Mode, boolean> = {
   blitz: true,
   bullet: true,
   hyperbullet: true,
+  rapid: true,
   wolfrandom: true,
   atomic960: true,
 };

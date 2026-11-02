@@ -8,6 +8,7 @@ const MODE_IDS = {
   blitz: 2,
   wolfrandom: 3,
   atomic960: 4,
+  rapid: 5,
 } as const;
 const SOURCE_IDS = {
   lobby: 0,
@@ -18,7 +19,7 @@ const SOURCE_IDS = {
   pychess: 5,
 } as const;
 const modeNameSql = (column: string): string =>
-  `case ${column} when 0 then 'hyperbullet' when 1 then 'bullet' when 2 then 'blitz' when 3 then 'wolfrandom' when 4 then 'atomic960' else 'unknown' end`;
+  `case ${column} when 0 then 'hyperbullet' when 1 then 'bullet' when 2 then 'blitz' when 3 then 'wolfrandom' when 4 then 'atomic960' when 5 then 'rapid' else 'unknown' end`;
 const MAX_PAGE_SIZE = 200;
 const MAX_PAGE_NUMBER = 100_000;
 const MAX_ROW_LIMIT = 10_000;
@@ -448,11 +449,14 @@ const queryPlayerDirectory = async (params: URLSearchParams) => {
       max(case when r.mode=2 then r.rating/10.0 end) blitz_rating,
       max(case when r.mode=2 then r.peak/10.0 end) blitz_peak,
       max(case when r.mode=2 then r.rd/10.0 end) blitz_rd,
+      max(case when r.mode=5 then r.rating/10.0 end) rapid_rating,
+      max(case when r.mode=5 then r.peak/10.0 end) rapid_peak,
+      max(case when r.mode=5 then r.rd/10.0 end) rapid_rd,
       max(case when r.mode=4 then r.rating/10.0 end) atomic960_rating,
       max(case when r.mode=4 then r.peak/10.0 end) atomic960_peak,
       max(case when r.mode=4 then r.rd/10.0 end) atomic960_rd
       from player_ratings r join players p on p.id=r.username_id
-      where r.mode in (0,1,2,4)
+      where r.mode in (0,1,2,4,5)
       group by p.id,p.username order by p.username limit ?`,
     args: [limit],
   });
@@ -530,7 +534,6 @@ const queryYearlyLeaderboard = async (params: URLSearchParams) => {
   args.push(year);
   const mode = enumIdParam(params, "mode", MODE_IDS);
   if (mode !== null) {
-    if (mode > MODE_IDS.blitz) throw new ArchiveRequestError("Unsupported yearly leaderboard mode");
     clauses.push("l.mode=?");
     args.push(mode);
   }
@@ -631,7 +634,7 @@ export const queryArchiveResource = async (params: URLSearchParams): Promise<unk
         from matches m
         where (m.player_1_id = (select id from players where username = ?)
           or m.player_2_id = (select id from players where username = ?))
-          and m.mode in (0, 1, 2, 4)
+          and m.mode in (0, 1, 2, 4, 5)
         group by m.mode`,
       args: [username, username],
     });

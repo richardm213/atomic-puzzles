@@ -11,7 +11,7 @@ describe("loadRankingsForYear", () => {
   beforeEach(() => fetchRows.mockReset());
   afterEach(() => fetchRows.mockReset());
 
-  it("groups the three yearly modes and has no RD", async () => {
+  it("groups yearly rating pools and has no RD", async () => {
     fetchRows.mockResolvedValueOnce([
       { username: "alice", year: 2026, tc: "blitz", rank: 2, rating: 1900.04, games: 150 },
       { username: "bob", year: 2026, tc: "blitz", rank: 1, rating: 2100, games: 200 },
@@ -21,7 +21,9 @@ describe("loadRankingsForYear", () => {
     const result = await loadRankingsForYear(2026);
     expect(result.blitz.players.map((row) => row.username)).toEqual(["bob", "alice"]);
     expect(result.blitz.players[1]).toMatchObject({ score: 1900, rd: null, games: 150 });
-    expect(result.wolfrandom.players).toEqual([]);
+    expect(result.wolfrandom.players).toEqual([
+      { username: "wolf", rank: 1, score: 2500, rd: null, games: 500 },
+    ]);
   });
 
   it("rejects invalid years", async () => {

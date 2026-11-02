@@ -33,6 +33,14 @@
   --color-primary-pale: #cedbff;
   --color-cyan: #168aa1;
   --color-cyan-bright: #52c7e8;
+  --color-pychess-icon: #e9d5ff;
+  --color-pychess-icon-hover: #f3e8ff;
+  --color-pychess-bg: #3d2669;
+  --color-pychess-bg-hover: #54279a;
+  --color-pychess-border: #9c78db;
+  --color-pychess-border-hover: #c4b5fd;
+  --color-pychess-shadow: rgba(124, 58, 237, 0.2);
+  --color-pychess-shadow-hover: rgba(124, 58, 237, 0.28);
   --color-success: #86efac;
   --color-warning: #facc15;
   --color-danger: #fca5a5;
@@ -44,6 +52,7 @@
   --color-rating-graph-blitz: #ff5263;
   --color-rating-graph-bullet: #e879f9;
   --color-rating-graph-hyper: #6790ff;
+  --color-rating-graph-rapid: #f0a33a;
   --color-rating-graph-atomic960: #22cda2;
   --color-calendar-monthly: #aa8cff;
   --color-on-primary: #eff6ff;
@@ -136,6 +145,14 @@
   --color-primary-pale: #244fbf;
   --color-cyan: #0e7c79;
   --color-cyan-bright: #08788e;
+  --color-pychess-icon: #6d28d9;
+  --color-pychess-icon-hover: #581c87;
+  --color-pychess-bg: #f1eafe;
+  --color-pychess-bg-hover: #e9d5ff;
+  --color-pychess-border: #a78bfa;
+  --color-pychess-border-hover: #8b5cf6;
+  --color-pychess-shadow: rgba(109, 40, 217, 0.14);
+  --color-pychess-shadow-hover: rgba(109, 40, 217, 0.2);
   --color-success: #15803d;
   --color-warning: #a86d00;
   --color-danger: #dc2626;
@@ -147,6 +164,7 @@
   --color-rating-graph-blitz: #cf3042;
   --color-rating-graph-bullet: #a83bbd;
   --color-rating-graph-hyper: #2f5fd6;
+  --color-rating-graph-rapid: #9a5b00;
   --color-rating-graph-atomic960: #087f68;
   --color-calendar-monthly: #6946bd;
   --color-on-primary: #eff6ff;

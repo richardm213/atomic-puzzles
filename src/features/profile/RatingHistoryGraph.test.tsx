@@ -38,7 +38,7 @@ const SettingsControl = () => {
       <button onClick={() => setShowRatingGraphLines(!showRatingGraphLines)}>
         Toggle lines in settings
       </button>
-      {["blitz", "hyperbullet", "bullet", "atomic960"].map((mode) => (
+      {["blitz", "hyperbullet", "bullet", "rapid", "atomic960"].map((mode) => (
         <label key={mode}>
           Settings {mode}
           <input
@@ -143,6 +143,7 @@ describe("monthly rating graph", () => {
           row("2026-01", "blitz"),
           row("2026-01", "hyperbullet"),
           row("2026-01", "bullet"),
+          row("2026-01", "rapid"),
           row("2026-01", "atomic960"),
         ]}
       />,
@@ -151,6 +152,7 @@ describe("monthly rating graph", () => {
       ["blitz", "Blitz"],
       ["hyperbullet", "Hyper"],
       ["bullet", "Bullet"],
+      ["rapid", "Rapid"],
       ["atomic960", "Atomic960"],
     ] as const) {
       fireEvent.click(screen.getByRole("checkbox", { name: `Settings ${mode}` }));
@@ -164,12 +166,14 @@ describe("monthly rating graph", () => {
     expect(JSON.parse(window.localStorage.getItem("profile.ratingGraph.hiddenModes")!)).toEqual([
       "hyperbullet",
       "bullet",
+      "rapid",
       "atomic960",
     ]);
     unmount();
     render(<RatingChart rows={[row("2026-01")]} />);
     expect(screen.getByRole("checkbox", { name: "Settings hyperbullet" })).not.toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Settings bullet" })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Settings rapid" })).not.toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Settings atomic960" })).not.toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Settings blitz" })).toBeChecked();
   });

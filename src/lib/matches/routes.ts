@@ -15,6 +15,7 @@ export const normalizeMatchMode = (mode: unknown): Mode | "" => {
     value === "blitz" ||
     value === "bullet" ||
     value === "hyperbullet" ||
+    value === "rapid" ||
     value === "wolfrandom" ||
     value === "atomic960"
   ) {

@@ -34,6 +34,7 @@ const ARCHIVE_MATCH_MODES = new Set<ArchiveMode>([
   "hyperbullet",
   "wolfrandom",
   "atomic960",
+  "rapid",
 ]);
 
 const matchRowsCache = new Map<string, Promise<MatchPageResult>>();

@@ -40,6 +40,7 @@ type UserRow = {
   blitz: RatingCells;
   bullet: RatingCells;
   hyperbullet: RatingCells;
+  rapid: RatingCells;
   atomic960: RatingCells;
   aliasCount: number;
   aliases: string[];
@@ -59,6 +60,7 @@ const getUserColumns = (
     { key: "blitz", label: `Blitz ${ratingLabel}` },
     { key: "bullet", label: `Bullet ${ratingLabel}` },
     { key: "hyperbullet", label: `Hyper ${ratingLabel}` },
+    { key: "rapid", label: `Rapid ${ratingLabel}` },
     ...(atomic960Enabled ? [{ key: "atomic960" as const, label: `Atomic960 ${ratingLabel}` }] : []),
     { key: "openings", label: "Openings" },
     { key: "aliasCount", label: "Number of Aliases" },
@@ -134,6 +136,7 @@ export const buildUserRows = (
       blitz: emptyRatingCells,
       bullet: emptyRatingCells,
       hyperbullet: emptyRatingCells,
+      rapid: emptyRatingCells,
       atomic960: emptyRatingCells,
       aliasCount: aliasesLookup.get(username)?.aliases?.length ?? 0,
       aliases: aliasesLookup.get(username)?.aliases ?? [],
@@ -156,7 +159,7 @@ export const buildUserRows = (
 
 export const expandPlayerDirectoryRows = (rows: PlayerDirectoryRow[]): PlayerRatingRow[] =>
   rows.flatMap((row) =>
-    (["blitz", "bullet", "hyperbullet", "atomic960"] as const).map((mode) => ({
+    (["blitz", "bullet", "hyperbullet", "rapid", "atomic960"] as const).map((mode) => ({
       username: row.username,
       tc: mode,
       rating: row[`${mode}_rating`],
@@ -336,6 +339,7 @@ const UsersTablePage = () => {
               <col className="usersRatingColumn" />
               <col className="usersRatingColumn" />
               <col className="usersRatingColumn" />
+              <col className="usersRatingColumn" />
               {atomic960Enabled ? <col className="usersRatingColumn" /> : null}
               <col className="usersOpeningsColumn" />
               <col className="usersAliasesColumn" />
@@ -370,6 +374,7 @@ const UsersTablePage = () => {
                   <td>{row.blitz[ratingDisplayMode].display}</td>
                   <td>{row.bullet[ratingDisplayMode].display}</td>
                   <td>{row.hyperbullet[ratingDisplayMode].display}</td>
+                  <td>{row.rapid[ratingDisplayMode].display}</td>
                   {atomic960Enabled ? <td>{row.atomic960[ratingDisplayMode].display}</td> : null}
                   <td>
                     {row.openings.length > 0 ? (

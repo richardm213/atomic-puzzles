@@ -1,4 +1,11 @@
-export const modeOptions = ["blitz", "bullet", "hyperbullet", "wolfrandom", "atomic960"] as const;
+export const modeOptions = [
+  "blitz",
+  "bullet",
+  "hyperbullet",
+  "rapid",
+  "wolfrandom",
+  "atomic960",
+] as const;
 export type Mode = (typeof modeOptions)[number];
 
 export const atomic960Enabled = true;
@@ -16,6 +23,7 @@ export const modeLabels: Record<Mode, string> = {
   blitz: "Blitz",
   bullet: "Bullet",
   hyperbullet: "Hyper",
+  rapid: "Rapid",
   wolfrandom: "Wolfrandom",
   atomic960: "Atomic960",
 };
@@ -24,6 +32,7 @@ export const modeDescriptions: Record<Mode, string> = {
   blitz: "",
   bullet: "",
   hyperbullet: "",
+  rapid: "",
   wolfrandom: "",
   atomic960: "",
 };
@@ -46,6 +55,10 @@ export const rankingEligibilityByMode: Record<Mode, RankingEligibility> = {
     minGames: 25,
     maxRd: 60,
   },
+  rapid: {
+    minGames: 10,
+    maxRd: 60,
+  },
   wolfrandom: {
     minGames: 10,
     maxRd: 80,
@@ -56,10 +69,22 @@ export const rankingEligibilityByMode: Record<Mode, RankingEligibility> = {
   },
 };
 
-export const yearlyRankingEligibilityByMode: Partial<Record<Mode, number>> = {
+export const yearlyRankingEligibilityByMode: Record<Mode, number> = {
+  rapid: 50,
   blitz: 150,
   bullet: 250,
   hyperbullet: 350,
+  wolfrandom: 50,
+  atomic960: 50,
+};
+
+export const yearlyRankingMaxRdByMode: Record<Mode, number> = {
+  rapid: 60,
+  blitz: 60,
+  bullet: 60,
+  hyperbullet: 60,
+  wolfrandom: 60,
+  atomic960: 75,
 };
 
 export const createModeRecord = <T>(valueFactory: (mode: Mode) => T): Record<Mode, T> =>

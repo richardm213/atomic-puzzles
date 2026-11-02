@@ -10,6 +10,7 @@ import {
   publicModeOptions,
   rankingEligibilityByMode,
   yearlyRankingEligibilityByMode,
+  yearlyRankingMaxRdByMode,
 } from "../../constants/matches";
 
 const ratingFaq = [
@@ -30,15 +31,15 @@ const ratingFaq = [
   {
     title: "Which games count?",
     body: [
-      "Every game against another player in the pool can count, including casual games. That is intentional: some players avoid rated games because they do not want to risk a number they have already reached, so excluding casual play would leave out a meaningful part of the pool.",
+      "Every game against another player in the pool can count, including casual games, except that Rapid only includes rated games. That is intentional: some players avoid rated games because they do not want to risk a number they have already reached, so excluding casual play from the other pools would leave out a meaningful part of the pool.",
       "Most casual games are still played with reasonable effort, so including them is a net positive. For this ladder, opponent quality and game conditions matter more than whether Lichess happened to mark the game as rated.",
     ],
   },
   {
     title: "How are time controls separated?",
     body: [
-      "The pools are split by category. Blitz games feed the blitz leaderboard, bullet games feed the bullet leaderboard, and hyperbullet games feed the hyperbullet leaderboard. Starting July 2026, eligible casual blitz games between players in the Wolfrandom pool feed a separate Wolfrandom leaderboard instead of blitz.",
-      "This separation matters because hyperbullet, bullet, and blitz reward different skills. Mixing them into one pool blurs the meaning of each rating.",
+      "The pools are split by category. Rapid covers estimated durations from 480 through 1499 seconds, while classical controls of 1500 seconds or longer are excluded. Blitz, bullet, and hyperbullet retain their existing categories. Starting July 2026, eligible casual blitz games between players in the Wolfrandom pool feed a separate Wolfrandom leaderboard instead of blitz.",
+      "Estimated duration is the initial time in seconds plus 40 times the increment. Keeping Rapid, Blitz, Bullet, Hyperbullet, Wolfrandom, and Atomic960 separate preserves the meaning of each rating.",
     ],
   },
   {
@@ -52,7 +53,7 @@ const ratingFaq = [
     title: "How are the ratings themselves calculated?",
     body: [
       "The math follows the same Glicko-2 model used by Lichess. There is no custom scoring formula layered on top of it.",
-      "In other words, once a game is deemed eligible for the pool and the right time-control bucket, its rating impact is handled the same way a standard Lichess Glicko-2 update would be handled.",
+      "In other words, once a game is deemed eligible for the pool and the right time-control bucket, its rating impact is handled the same way a standard Lichess Glicko-2 update would be handled. Rapid starts at 2150 with an initial gain multiplier of 1.0000.",
     ],
   },
 ];
@@ -70,7 +71,7 @@ const eligibilityNotes = publicModeOptions.map((mode) => {
 const yearlyEligibilityNotes = Object.entries(yearlyRankingEligibilityByMode).map(
   ([mode, minGames]) => {
     const label = modeLabels[mode as keyof typeof modeLabels] ?? mode;
-    return `${label}: at least ${minGames} games with post-game RD below 60 during the calendar year.`;
+    return `${label}: at least ${minGames} games with post-game RD below ${yearlyRankingMaxRdByMode[mode as keyof typeof yearlyRankingMaxRdByMode]} during the calendar year.`;
   },
 );
 
@@ -154,9 +155,9 @@ export const RankingsMethodologyPage = () => (
       >
         <h2>Yearly leaderboard</h2>
         <p>
-          A player&apos;s yearly rating is the average of every post-game rating recorded while
-          their RD was below 60 during that UTC calendar year. Players are ordered by that average,
-          then by username when averages are equal.
+          A player&apos;s yearly rating is the average of every post-game rating recorded while they
+          met that pool&apos;s RD requirement during the UTC calendar year. Players are ordered by
+          that average, then by username when averages are equal.
         </p>
         <ul>
           {yearlyEligibilityNotes.map((note) => (

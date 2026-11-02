@@ -969,13 +969,10 @@
 }
 
 .profileAliasPyChessLink {
-  color: var(--color-on-primary);
-  background: var(--color-cyan);
-  border-color: color-mix(in srgb, var(--color-cyan-bright) 64%, var(--color-border));
-}
-
-.profileAliasPyChessMark {
-  font: 700 15px/1 var(--font-mono);
+  color: var(--color-pychess-icon);
+  background: var(--color-pychess-bg);
+  border-color: var(--color-pychess-border);
+  box-shadow: 0 6px 16px var(--color-pychess-shadow);
 }
 
 .profileAliasAccountLink:hover,
@@ -1001,15 +998,22 @@
 
 .profileAliasPyChessLink:hover,
 .profileAliasPyChessLink:focus-visible {
-  color: var(--color-on-primary);
-  background: color-mix(in srgb, var(--color-cyan) 82%, var(--color-cyan-bright));
-  border-color: var(--color-cyan-bright);
+  color: var(--color-pychess-icon-hover);
+  background: var(--color-pychess-bg-hover);
+  border-color: var(--color-pychess-border-hover);
+  box-shadow: 0 10px 22px var(--color-pychess-shadow-hover);
 }
 
 .profileAliasAccountLink svg {
   width: 18px;
   height: 18px;
   display: block;
+}
+
+.profileAliasAccountLink .pyChessProfileIcon {
+  width: 19px;
+  height: 19px;
+  overflow: visible;
 }
 
 .profileAliasAccountLink .chessComProfileIcon {

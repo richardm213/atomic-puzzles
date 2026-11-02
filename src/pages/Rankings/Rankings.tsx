@@ -20,6 +20,7 @@ import {
   publicModeOptions,
   rankingEligibilityByMode,
   yearlyRankingEligibilityByMode,
+  yearlyRankingMaxRdByMode,
 } from "../../constants/matches";
 import { useAppSettings } from "../../context/AppSettings";
 import { useRankingsByMonth } from "../../hooks/useRankingsByMonth";
@@ -246,7 +247,7 @@ const LeaderboardView = ({ selectedPeriod }: { selectedPeriod: RankingPeriod }) 
 
     return publicModeOptions.filter((mode) => {
       if (selectedPeriod === "yearly") {
-        return mode !== "wolfrandom" && mode !== "atomic960";
+        return true;
       }
       if (mode === "wolfrandom") {
         return supportsWolfrandomLeaderboard(selectedMonth);
@@ -479,7 +480,7 @@ const LeaderboardView = ({ selectedPeriod }: { selectedPeriod: RankingPeriod }) 
         title={selectedPeriod === "yearly" ? "Yearly atomic rankings" : "Monthly atomic rankings"}
         description={
           selectedPeriod === "yearly"
-            ? "Browse yearly atomic chess rankings based on average qualifying post-game rating for blitz, bullet, and hyperbullet."
+            ? "Browse yearly atomic chess rankings based on average qualifying post-game rating across all six rating pools."
             : "Browse monthly atomic chess rankings by mode, with merged aliases and rating eligibility rules."
         }
         path={selectedPeriod === "yearly" ? "/rankings/yearly" : "/rankings"}
@@ -624,7 +625,7 @@ const LeaderboardView = ({ selectedPeriod }: { selectedPeriod: RankingPeriod }) 
                 aria-label={`${modeLabels[selectedMode]} eligibility`}
               >
                 {selectedPeriod === "yearly"
-                  ? `Requirement: ${eligibilityMinimum}+ games with RD less than 60 this year.`
+                  ? `Requirement: ${eligibilityMinimum}+ games with RD below ${yearlyRankingMaxRdByMode[selectedMode]} this year.`
                   : selectedMode === "atomic960"
                     ? `Requirement: RD below ${rankingEligibilityByMode.atomic960.maxRd}.`
                     : `Requirements: ${eligibilityMinimum}+ games this month${

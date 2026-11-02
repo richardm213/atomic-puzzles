@@ -325,20 +325,20 @@ describe("archive-data function", () => {
     ]);
   });
 
-  it("serves yearly rankings without RD", async () => {
+  it("serves Rapid yearly rankings without RD", async () => {
     mocks.execute.mockResolvedValueOnce({
       rows: [{ username: "alice", year: 2026, rank: 1, rating: 2100, games: 151, tc: "blitz" }],
     });
     const { handler } = await import("../functions/archive-data");
     const response = await handler({
-      queryStringParameters: { resource: "yearly_leaderboard", year: "2026", mode: "blitz" },
+      queryStringParameters: { resource: "yearly_leaderboard", year: "2026", mode: "rapid" },
     });
 
     expect(response.statusCode).toBe(200);
     expect(mocks.execute).toHaveBeenCalledWith(
       expect.objectContaining({
         sql: expect.stringContaining("from yearly_lb l"),
-        args: [2026, 2, 10_000],
+        args: [2026, 5, 10_000],
       }),
     );
     expect(mocks.execute.mock.calls[0]![0].sql).not.toContain("l.rd");
