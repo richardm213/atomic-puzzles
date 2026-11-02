@@ -41,21 +41,13 @@ const atomicTablebaseSchema = z.object({
   moves: z.array(tablebaseMoveSchema),
 });
 
-const tablebaseMainlineSchema = z.object({
-  winner: z.enum(["w", "b"]).nullable(),
-  mainline: z.array(z.object({ uci: z.string().regex(UCI_PATTERN) })),
-});
-
 export type AtomicTablebaseResponse = z.infer<typeof atomicTablebaseSchema>;
-export type AtomicTablebaseMainline = z.infer<typeof tablebaseMainlineSchema>;
-export type TablebaseCategory = z.infer<typeof tablebaseCategorySchema>;
 
 type CacheEntry<Value> = { value: Value; expiresAt: number };
 
 const CACHE_TTL_MS = 2 * 60_000;
 const MAX_CACHE_ENTRIES = 128;
 const probeCache = new Map<string, CacheEntry<AtomicTablebaseResponse>>();
-const mainlineCache = new Map<string, CacheEntry<AtomicTablebaseMainline>>();
 
 const readCache = <Value>(cache: Map<string, CacheEntry<Value>>, fen: string): Value | null => {
   const entry = cache.get(fen);
@@ -80,12 +72,11 @@ const writeCache = <Value>(
 };
 
 const fetchTablebase = async <Result>(
-  path: "" | "/mainline",
   fen: string,
   schema: z.ZodType<Result>,
   signal?: AbortSignal,
 ): Promise<Result> => {
-  const url = new URL(`${LICHESS_ATOMIC_TABLEBASE_URL}${path}`);
+  const url = new URL(LICHESS_ATOMIC_TABLEBASE_URL);
   url.searchParams.set("fen", fen);
   const response = await fetch(url, {
     headers: { Accept: "application/json" },
@@ -104,30 +95,7 @@ export const probeAtomicTablebase = async (
 ): Promise<AtomicTablebaseResponse> => {
   const cached = readCache(probeCache, fen);
   if (cached) return cached;
-  const result = await fetchTablebase("", fen, atomicTablebaseSchema, signal);
+  const result = await fetchTablebase(fen, atomicTablebaseSchema, signal);
   writeCache(probeCache, fen, result);
   return result;
 };
-
-export const loadAtomicTablebaseMainline = async (
-  fen: string,
-  signal?: AbortSignal,
-): Promise<AtomicTablebaseMainline> => {
-  const cached = readCache(mainlineCache, fen);
-  if (cached) return cached;
-  const result = await fetchTablebase("/mainline", fen, tablebaseMainlineSchema, signal);
-  writeCache(mainlineCache, fen, result);
-  return result;
-};
-
-export const tablebaseSideIsWinning = (category: TablebaseCategory): boolean =>
-  category === "win" ||
-  category === "syzygy-win" ||
-  category === "maybe-win" ||
-  category === "cursed-win";
-
-export const tablebaseSideIsLosing = (category: TablebaseCategory): boolean =>
-  category === "loss" ||
-  category === "syzygy-loss" ||
-  category === "maybe-loss" ||
-  category === "blessed-loss";

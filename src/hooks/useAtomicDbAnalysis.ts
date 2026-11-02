@@ -5,13 +5,11 @@ import {
   loadAtomicDbVariations,
   peekAtomicDbPosition,
 } from "../lib/atomicDb/analysisRepository";
-import { loadAtomicTablebase } from "../lib/atomicTablebase/analysisRepository";
 import {
   analyzeFairyStockfishPosition,
   type EngineCandidate,
 } from "../lib/practice/fairyStockfish";
 import type { AtomicDbPosition, AtomicDbResult } from "../utils/atomicDb";
-import { isAtomicTablebaseFen } from "../utils/atomicTablebase";
 import { getErrorMessage } from "../utils/errors";
 
 export type AtomicDbAnalysisStatus = "idle" | "loading" | "ready" | "error";
@@ -21,7 +19,7 @@ export type AtomicDbAnalysisState = {
   status: AtomicDbAnalysisStatus;
   error: string;
   principalVariations: Record<string, string[]>;
-  source?: "tablebase" | "atomicdb" | "engine" | "terminal" | undefined;
+  source?: "atomicdb" | "engine" | "terminal" | undefined;
 };
 
 export type AtomicDbAnalysisOptions = {
@@ -49,6 +47,11 @@ const INITIAL_STATE: RequestState = { ...EMPTY_ANALYSIS, requestedFen: null };
 
 const clampInteger = (value: number, min: number, max: number): number =>
   Math.min(max, Math.max(min, Math.floor(value)));
+
+const isEndgameFen = (fen: string): boolean => {
+  const board = fen.trim().split(/\s+/)[0] ?? "";
+  return [...board].filter((character) => /[a-z]/i.test(character)).length <= 6;
+};
 
 const enginePosition = (candidates: EngineCandidate[]): AtomicDbPosition => {
   const best = candidates[0] ?? null;
@@ -99,7 +102,7 @@ export const useAtomicDbAnalysis = (
     const controller = new AbortController();
     const lineCount = clampInteger(requestedLineCount, 0, MAX_LINE_COUNT);
     const plyCount = clampInteger(requestedPlyCount, 1, MAX_PLY_COUNT);
-    const useTablebase = !engineOnly && lineCount > 0 && isAtomicTablebaseFen(fen);
+    const useEngine = engineOnly || (fallbackToEngine && lineCount > 0 && isEndgameFen(fen));
 
     const publishLines = (lines: Record<string, string[]>): void => {
       startTransition(() => {
@@ -206,7 +209,7 @@ export const useAtomicDbAnalysis = (
       publishPosition(position);
     };
 
-    if (!engineOnly && !useTablebase) {
+    if (!useEngine) {
       const cached = peekAtomicDbPosition(fen);
       if (cached.found) {
         publishAtomicDbOrFallback(cached.value);
@@ -224,39 +227,15 @@ export const useAtomicDbAnalysis = (
       status: "loading",
       error: "",
       principalVariations: {},
-      source: engineOnly ? "engine" : useTablebase ? "tablebase" : "atomicdb",
+      source: useEngine ? "engine" : "atomicdb",
     }));
 
     const requestPosition = async (): Promise<void> => {
-      if (engineOnly) {
+      if (useEngine) {
         await publishEngineFallback();
         return;
       }
       try {
-        if (useTablebase) {
-          try {
-            const tablebase = await loadAtomicTablebase(fen, controller.signal);
-            if (tablebase && !controller.signal.aborted) {
-              startTransition(() => {
-                setState({
-                  result: { fen, position: tablebase.position },
-                  requestedFen: fen,
-                  status: "ready",
-                  error: "",
-                  principalVariations: tablebase.principalVariations,
-                  source: "tablebase",
-                });
-              });
-              return;
-            }
-          } catch {
-            if (controller.signal.aborted) return;
-            // Do not compound a public tablebase outage with another network request.
-            // Fairy-Stockfish can keep analyzing the position entirely in the browser.
-            await publishEngineFallback();
-            return;
-          }
-        }
         const position = await loadAtomicDbPosition(fen, controller.signal);
         if (!controller.signal.aborted) publishAtomicDbOrFallback(position);
       } catch (error: unknown) {

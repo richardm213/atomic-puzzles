@@ -175,37 +175,4 @@ describe("AtomicDbEngine", () => {
       screen.queryByRole("button", { name: "Play variation through f6" }),
     ).not.toBeInTheDocument();
   });
-
-  it("shows exact tablebase mate distance and WDL instead of synthetic centipawns", () => {
-    const fen = "5k2/4Kp2/5P2/8/8/8/7Q/8 w - - 0 1";
-    const position = parseAtomicDbResponse({
-      status: "WHITE_WIN",
-      best_move: "h2h1",
-      moves: [
-        { uci: "h2h1", status: "WHITE_WIN", mate: 6 },
-        { uci: "h2a2", status: "WHITE_WIN", mate: 6 },
-        { uci: "h2c2", status: "WHITE_WIN", mate: null },
-      ],
-    });
-
-    render(
-      <AtomicDbEngine
-        fen={fen}
-        settings={{ enabled: true, lineCount: 3, showFollowUpMoves: true }}
-        analysis={{
-          status: "ready",
-          error: "",
-          source: "tablebase",
-          result: { fen, position },
-          principalVariations: { h2h1: ["h2h1"] },
-        }}
-        onPlayLine={() => undefined}
-        onHoverMove={() => undefined}
-      />,
-    );
-
-    expect(screen.getAllByRole("listitem", { name: /Evaluation #6/ })).toHaveLength(2);
-    expect(screen.getByRole("listitem", { name: /Evaluation Win/ })).toBeVisible();
-    expect(screen.queryByText("+100.0")).not.toBeInTheDocument();
-  });
 });
