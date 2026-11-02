@@ -108,7 +108,7 @@ export const navItems: NavItem[] = [
     children: [
       {
         to: "/recent",
-        label: "Recent games",
+        label: "Game search",
         isActive: (pathname) =>
           pathname === "/recent" || pathname === "/matches" || pathname.startsWith("/matches/"),
       },

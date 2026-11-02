@@ -249,12 +249,12 @@ export const RecentMatchesPage = () => {
   return (
     <div className="rankingsPage">
       <Seo
-        title="Recent Match Archive"
+        title="Game Search"
         description="Filter atomic chess matches by mode, player, rating, source, date, time control, and match length."
         path="/recent"
       />
       <div className="panel rankingsPanel recentMatchesPanel">
-        <h1>Recent Match Archive</h1>
+        <h1>Game Search</h1>
         <form
           className="matchFilterPanel"
           onSubmit={(event) => {
@@ -490,7 +490,7 @@ export const RecentMatchesPage = () => {
             totalPages={totalPages}
             onPageChange={setCurrentPage}
             disabled={loadingMatches}
-            ariaLabel="Recent match pages"
+            ariaLabel="Game search result pages"
           />
         ) : null}
       </div>

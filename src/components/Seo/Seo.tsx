@@ -4,7 +4,7 @@ import type { StructuredData } from "../../types/seo";
 
 const SITE_NAME = "Atomic Puzzles";
 const DEFAULT_DESCRIPTION =
-  "Atomic chess puzzles, rankings, recent matches, and player profiles for the Lichess atomic scene.";
+  "Atomic chess puzzles, rankings, game search, and player profiles for the Lichess atomic scene.";
 const DEFAULT_ROBOTS = "index,follow";
 
 export type SeoProps = {
