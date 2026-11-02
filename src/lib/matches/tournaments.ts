@@ -31,6 +31,7 @@ export type TournamentMatch = {
   order: number;
   id: string;
   match_id: string;
+  played_on: string;
   p1: string;
   p2: string;
   s1: number;
@@ -122,6 +123,7 @@ type TournamentMatchRowFromDb = {
   order?: number | string | null;
   id?: string | null;
   match_id?: string | null;
+  played_on?: string | null;
   p1?: string | null;
   p2?: string | null;
   s1?: number | string | null;
@@ -181,7 +183,7 @@ export const compareTournamentStartDates = (
 };
 
 const TOURNAMENT_MATCHES_SELECT_COLUMNS =
-  "tournament,bracket,round,order,id,match_id,p1,p2,s1,s2,winner_to,loser_to,outcome_type,replacement_player,replacement_for,replacement_note,replacement_history";
+  "tournament,bracket,round,order,id,match_id,played_on,p1,p2,s1,s2,winner_to,loser_to,outcome_type,replacement_player,replacement_for,replacement_note,replacement_history";
 const PLAYER_COUNTRIES_SELECT_COLUMNS = "player_name,country_code";
 const TOURNAMENT_SEEDS_SELECT_COLUMNS = "tournament,player_name,seed";
 const TOURNAMENT_CATALOG_WITH_DATES_SELECT_COLUMNS =
@@ -382,6 +384,7 @@ const normalizeMatchRow = (row: TournamentMatchRowFromDb): TournamentMatch => ({
   order: Number(row?.order),
   id: String(row?.id ?? "").trim(),
   match_id: String(row?.match_id ?? "").trim(),
+  played_on: String(row?.played_on ?? "").trim(),
   p1: String(row?.p1 ?? "").trim(),
   p2: String(row?.p2 ?? "").trim(),
   s1: Number(row?.s1),
@@ -801,6 +804,7 @@ export const addImplicitByeMatches = (matches: TournamentMatch[]): TournamentMat
         order: feederWinner === currentMatch.p1 ? feeder.order + 0.1 : feeder.order - 0.1,
         id: syntheticId,
         match_id: "",
+        played_on: "",
         p1: missingPlayerIsSecond ? "bye" : missingPlayer,
         p2: missingPlayerIsSecond ? missingPlayer : "bye",
         s1: missingPlayerIsSecond ? 0 : 1,
@@ -859,6 +863,7 @@ export const addImplicitByeMatches = (matches: TournamentMatch[]): TournamentMat
         order: feederOrder,
         id: syntheticId,
         match_id: "",
+        played_on: "",
         p1: playerIsSecond ? "bye" : playerName,
         p2: playerIsSecond ? playerName : "bye",
         s1: playerIsSecond ? 0 : 1,
@@ -888,6 +893,7 @@ const emptyTournamentMatch = (
   order,
   id: `${sourceMatch.tournament}-${roundName.toLowerCase().replaceAll(" ", "-")}-m${order}`,
   match_id: "",
+  played_on: "",
   p1: "",
   p2: "",
   s1: 0,

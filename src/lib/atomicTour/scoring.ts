@@ -40,9 +40,9 @@ export type AtomicTourMainResult = {
   outcome: "win" | "loss" | "bye";
 };
 
-export const atomicTourEventExpiryDate = (eventStartDate: string): string => {
-  const match = /^(\d{4})-(\d{2})-\d{2}$/.exec(eventStartDate.trim());
-  if (!match) throw new Error(`Invalid Atomic Tour event start date: ${eventStartDate}`);
+export const atomicTourAwardExpiryDate = (playedOn: string): string => {
+  const match = /^(\d{4})-(\d{2})-\d{2}$/.exec(playedOn.trim());
+  if (!match) throw new Error(`Invalid Atomic Tour match date: ${playedOn}`);
   const expiryMonthIndex = Number(match[2]) - 1 + 25;
   const expiryYear = Number(match[1]) + Math.floor(expiryMonthIndex / 12);
   const expiryMonth = String((expiryMonthIndex % 12) + 1).padStart(2, "0");

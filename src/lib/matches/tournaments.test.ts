@@ -116,6 +116,7 @@ const match = (overrides: Partial<TournamentMatch>): TournamentMatch => ({
   order: 1,
   id: "match",
   match_id: "",
+  played_on: "",
   p1: "alpha",
   p2: "beta",
   s1: 1,

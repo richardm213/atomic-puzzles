@@ -69,6 +69,8 @@ For creating or reseeding a knockout bracket, follow `docs/tournament-bracket-se
    - Use the established round names and IDs, for example `Quarterfinals`, `Semifinals`, and `Finals`.
    - Use the pairing tree to determine `order`; do not rely on a forum label such as “Semifinal 1” if it conflicts with feeder order.
    - Keep player order consistent with the bracket feeders. Scores may be reordered from the archived match row when necessary.
+   - Set `played_on` to the match date in `YYYY-MM-DD` format. Prefer the archived match
+     timestamp; for withdrawals or unarchived results, use the authoritative forum result date.
    - Encode a withdrawal as `1–0` or `0–1` with no `match_id`; the UI renders this as an advancement/withdrawal instead of a played score.
    - Let `addEmptyMainBracketRounds` infer downstream players and `winner_to` when the current tournament is configured to do so. Do not add speculative future matches.
 
@@ -90,6 +92,13 @@ For creating or reseeding a knockout bracket, follow `docs/tournament-bracket-se
      - archived matches have `.isClickable`, `role="link"`, and `tabindex="0"`,
      - withdrawals are not clickable,
      - no duplicate bracket row IDs.
+
+7. **Update Atomic Tour points incrementally**
+   - After publishing a new result for an active Atomic Tour event, run the event-scoped updater,
+     for example `npx --yes tsx scripts/rebuild-atomic-tour-rankings.ts --event=awc2026`.
+   - Do not run the full historical rebuild for a routine result. The event-scoped update replaces
+     only that event's current awards, refreshes the live ranking, and preserves historical
+     snapshots.
 
 ### Useful commands and safety
 

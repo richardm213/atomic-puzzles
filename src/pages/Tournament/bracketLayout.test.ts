@@ -16,6 +16,7 @@ const match = (id: string, winnerTo = ""): TournamentMatch => ({
   order: 0,
   id,
   match_id: "",
+  played_on: "",
   p1: "Player one",
   p2: "Player two",
   s1: 0,

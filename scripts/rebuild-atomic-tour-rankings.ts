@@ -4,7 +4,7 @@ import { queryArchiveResource } from "../netlify/archive/queries";
 import { loadAllPages } from "../shared/lib/pagination";
 import {
   atomicChessLeagueTourPoints,
-  atomicTourEventExpiryDate,
+  atomicTourAwardExpiryDate,
   atomicTourEventPoints,
   type AtomicTourMainResult,
   type AtomicTourMainStage,
@@ -34,6 +34,7 @@ type MatchRow = {
   order: number;
   id: string;
   match_id: string | null;
+  played_on: string | null;
   p1: string | null;
   p2: string | null;
   s1: number;
@@ -53,8 +54,18 @@ type PointAward = {
   description: string;
 };
 
+type PointAwardSummary = Pick<
+  PointAward,
+  "tournament_id" | "player_name" | "awarded_on" | "expires_on" | "points"
+>;
+
 const excludedPlayers = new Set(["neverofzero", "thuban", "taisthuban", "jasos12"]);
 const today = new Date().toISOString().slice(0, 10);
+const requestedEventId =
+  process.argv
+    .find((argument) => argument.startsWith("--event="))
+    ?.slice("--event=".length)
+    .trim() ?? "";
 const normalize = (value: unknown): string =>
   String(value ?? "")
     .trim()
@@ -120,16 +131,35 @@ const normalizedArchiveId = (value: string | null): string => {
 };
 
 const archiveDates = new Map<string, string>();
+const archiveDateFromPublicApi = async (matchId: string): Promise<number> => {
+  const response = await fetch(
+    `https://atomicpuzzles.org/api/archive-data?${new URLSearchParams({
+      resource: "matches",
+      matchId,
+      pageSize: "1",
+    })}`,
+  );
+  if (!response.ok) throw new Error(`Archive API returned ${response.status}`);
+  const result = (await response.json()) as { rows?: Array<{ start_ts?: number | string }> };
+  return Number(result.rows?.[0]?.start_ts);
+};
+
 const matchDate = async (matchId: string | null, fallback: string): Promise<string> => {
   const normalizedId = normalizedArchiveId(matchId);
   if (!normalizedId) return fallback;
   const cached = archiveDates.get(normalizedId);
   if (cached) return cached;
   try {
-    const result = (await queryArchiveResource(
-      new URLSearchParams({ resource: "matches", matchId: normalizedId, pageSize: "1" }),
-    )) as { rows?: Array<{ start_ts?: number | string }> };
-    const timestamp = Number(result.rows?.[0]?.start_ts);
+    let timestamp: number;
+    try {
+      const result = (await queryArchiveResource(
+        new URLSearchParams({ resource: "matches", matchId: normalizedId, pageSize: "1" }),
+      )) as { rows?: Array<{ start_ts?: number | string }> };
+      timestamp = Number(result.rows?.[0]?.start_ts);
+      if (!Number.isFinite(timestamp)) timestamp = await archiveDateFromPublicApi(normalizedId);
+    } catch {
+      timestamp = await archiveDateFromPublicApi(normalizedId);
+    }
     const timestampMs = timestamp < 10_000_000_000 ? timestamp * 1_000 : timestamp;
     const date = new Date(timestampMs);
     const resolved = Number.isFinite(date.valueOf()) ? date.toISOString().slice(0, 10) : fallback;
@@ -146,10 +176,7 @@ const awardKey = (...parts: string[]): string =>
     .filter(Boolean)
     .join(":");
 
-const knockoutAwards = async (
-  event: CatalogRow,
-  matches: MatchRow[],
-): Promise<PointAward[]> => {
+const knockoutAwards = (event: CatalogRow, matches: MatchRow[]): PointAward[] => {
   const tier = atomicTourEventPoints[event.series_key];
   if (!tier) return [];
   const fallbackDate = event.end_date ?? today;
@@ -284,7 +311,7 @@ const knockoutAwards = async (
             stageOrder.indexOf(atomicTourStageForRound(left.round, hasChampionshipMatch)) ||
           right.order - left.order,
       )[0];
-    const awardedOn = await matchDate(latestSource?.match_id ?? null, fallbackDate);
+    const awardedOn = latestSource?.played_on ?? fallbackDate;
     const losersWins = matches.filter(
       (match) =>
         match.bracket === "losers" && isBonusEligibleResult(match) && winner(match) === player,
@@ -304,13 +331,13 @@ const knockoutAwards = async (
       source_type: "placement",
       source_key: "placement",
       awarded_on: awardedOn,
-      expires_on: atomicTourEventExpiryDate(event.start_date),
+      expires_on: atomicTourAwardExpiryDate(awardedOn),
       points: pointBreakdown.basePoints,
       description: `${earnedStage.replaceAll("-", " ")} placement`,
     });
     if (pointBreakdown.bonusPoints > 0) {
       const latestLosersWin = losersWins.sort((left, right) => right.order - left.order)[0];
-      const bonusDate = await matchDate(latestLosersWin?.match_id ?? null, fallbackDate);
+      const bonusDate = latestLosersWin?.played_on ?? fallbackDate;
       awards.push({
         award_key: awardKey(event.id, player, "losers-bonus"),
         tournament_id: event.id,
@@ -318,7 +345,7 @@ const knockoutAwards = async (
         source_type: "losers_win",
         source_key: "losers-bonus",
         awarded_on: bonusDate,
-        expires_on: atomicTourEventExpiryDate(event.start_date),
+        expires_on: atomicTourAwardExpiryDate(bonusDate),
         points: pointBreakdown.bonusPoints,
         description: `${losersWins.length} losers-bracket ${losersWins.length === 1 ? "win" : "wins"}`,
       });
@@ -364,7 +391,7 @@ const aclAwards = async (events: Map<string, CatalogRow>): Promise<PointAward[]>
                 source_type: result === "draw" ? "acl_draw" : "acl_win",
                 source_key: sourceKey,
                 awarded_on: awardedOn,
-                expires_on: atomicTourEventExpiryDate(event.start_date),
+                expires_on: atomicTourAwardExpiryDate(awardedOn),
                 points,
                 description: `${division.name} round ${round.number} ${result}`,
               });
@@ -396,7 +423,7 @@ const wolfarenaAwards = (event: CatalogRow, payload: Record<string, unknown>): P
         source_type: "arena_placement",
         source_key: "placement",
         awarded_on: awardedOn,
-        expires_on: atomicTourEventExpiryDate(event.start_date),
+        expires_on: atomicTourAwardExpiryDate(awardedOn),
         points: atomicTourStagePoints(1000, stage),
         description: `Final rank ${rank}`,
       },
@@ -428,25 +455,29 @@ const run = async () => {
   const matches = await loadAllPages(async (from, size) => {
     const { data, error } = await supabase
       .from("tournament_matches")
-      .select("tournament,bracket,round,order,id,match_id,p1,p2,s1,s2,outcome_type")
+      .select("tournament,bracket,round,order,id,match_id,played_on,p1,p2,s1,s2,outcome_type")
       .range(from, from + size - 1);
     if (error) throw error;
     return data;
   }, pageSize);
 
   const events = new Map((catalog as CatalogRow[]).map((event) => [event.id, event]));
+  if (requestedEventId && !events.has(requestedEventId)) {
+    throw new Error(`Unknown Atomic Tour event: ${requestedEventId}`);
+  }
   const awards: PointAward[] = [];
   const participants = new Map<string, Set<string>>();
   for (const event of catalog as CatalogRow[]) {
+    if (requestedEventId && event.id !== requestedEventId) continue;
     if (!["awc", "ccac", "ahc", "aoc"].includes(event.series_key)) continue;
     const eventMatches = matches.filter((match) => match.tournament === event.id);
     eventMatches.forEach((match) => {
       addParticipant(participants, event.id, match.p1);
       addParticipant(participants, event.id, match.p2);
     });
-    awards.push(...(await knockoutAwards(event, eventMatches)));
+    awards.push(...knockoutAwards(event, eventMatches));
   }
-  for (const season of atomicChessLeagueSeasons) {
+  for (const season of requestedEventId ? [] : atomicChessLeagueSeasons) {
     const tournamentId = `acl-s${season.number}`;
     for (const division of season.divisions) {
       for (const round of division.rounds) {
@@ -467,12 +498,12 @@ const run = async () => {
       }
     }
   }
-  awards.push(...(await aclAwards(events)));
+  if (!requestedEventId) awards.push(...(await aclAwards(events)));
   const wolfarena = events.get("wr-arena2026");
   const wolfarenaArchive = (
     archives as Array<{ tournament_id: string; payload: Record<string, unknown> }>
   ).find((archive) => archive.tournament_id === "wr-arena2026");
-  if (wolfarena && wolfarenaArchive) {
+  if (!requestedEventId && wolfarena && wolfarenaArchive) {
     const rounds = Array.isArray(wolfarenaArchive.payload.rounds)
       ? wolfarenaArchive.payload.rounds
       : [];
@@ -484,9 +515,10 @@ const run = async () => {
     awards.push(...wolfarenaAwards(wolfarena, wolfarenaArchive.payload));
   }
 
-  const { data: existingAwards, error: existingAwardsError } = await supabase
-    .from("atomic_tour_point_awards")
-    .select("award_key");
+  let existingAwardsQuery = supabase.from("atomic_tour_point_awards").select("award_key");
+  if (requestedEventId)
+    existingAwardsQuery = existingAwardsQuery.eq("tournament_id", requestedEventId);
+  const { data: existingAwards, error: existingAwardsError } = await existingAwardsQuery;
   if (existingAwardsError) throw existingAwardsError;
   const existingAwardKeys = (existingAwards as Array<{ award_key: string }>).map(
     ({ award_key }) => award_key,
@@ -505,27 +537,6 @@ const run = async () => {
     if (error) throw error;
   }
 
-  while (true) {
-    const { data: existingSnapshots, error: existingSnapshotsError } = await supabase
-      .from("atomic_tour_ranking_snapshots")
-      .select("snapshot_date")
-      .limit(1_000);
-    if (existingSnapshotsError) throw existingSnapshotsError;
-    const existingSnapshotDates = [
-      ...new Set(
-        (existingSnapshots as Array<{ snapshot_date: string }>).map(
-          ({ snapshot_date }) => snapshot_date,
-        ),
-      ),
-    ];
-    if (!existingSnapshotDates.length) break;
-    const { error } = await supabase
-      .from("atomic_tour_ranking_snapshots")
-      .delete()
-      .in("snapshot_date", existingSnapshotDates);
-    if (error) throw error;
-  }
-
   const materialDateByMonth = new Map<string, string>();
   for (const award of awards) {
     for (const changeDate of [award.awarded_on, award.expires_on]) {
@@ -535,21 +546,55 @@ const run = async () => {
       if (!existingDate || changeDate > existingDate) materialDateByMonth.set(month, changeDate);
     }
   }
-  const snapshotDates = new Set(materialDateByMonth.values());
+  const snapshotDates = new Set(requestedEventId ? [] : materialDateByMonth.values());
   snapshotDates.add(today);
+  if (!requestedEventId) {
+    while (true) {
+      const { data: existingSnapshots, error: existingSnapshotsError } = await supabase
+        .from("atomic_tour_ranking_snapshots")
+        .select("snapshot_date")
+        .limit(1_000);
+      if (existingSnapshotsError) throw existingSnapshotsError;
+      const existingSnapshotDates = [
+        ...new Set(
+          (existingSnapshots as Array<{ snapshot_date: string }>).map(
+            ({ snapshot_date }) => snapshot_date,
+          ),
+        ),
+      ];
+      if (!existingSnapshotDates.length) break;
+      const { error } = await supabase
+        .from("atomic_tour_ranking_snapshots")
+        .delete()
+        .in("snapshot_date", existingSnapshotDates);
+      if (error) throw error;
+    }
+  }
   for (const snapshotDate of [...snapshotDates].sort()) {
     const { error } = await supabase.rpc("refresh_atomic_tour_ranking", {
       p_snapshot_date: snapshotDate,
     });
     if (error) throw error;
   }
-  const { error: entriesError } = await supabase.rpc("refresh_atomic_tour_event_entries");
-  if (entriesError) throw entriesError;
+  if (!requestedEventId) {
+    const { error: entriesError } = await supabase.rpc("refresh_atomic_tour_event_entries");
+    if (entriesError) throw entriesError;
+  }
+  const rankingAwards: PointAwardSummary[] = requestedEventId
+    ? await loadAllPages(async (from, size) => {
+        const { data, error } = await supabase
+          .from("atomic_tour_point_awards")
+          .select("tournament_id,player_name,awarded_on,expires_on,points")
+          .range(from, from + size - 1);
+        if (error) throw error;
+        return data;
+      }, pageSize)
+    : awards;
   const entryRows = [...participants].flatMap(([tournamentId, eventParticipants]) => {
     const event = events.get(tournamentId);
     if (!event) return [];
     const startPoints = new Map<string, number>();
-    for (const award of awards) {
+    for (const award of rankingAwards) {
       if (award.awarded_on >= event.start_date || award.expires_on < event.start_date) continue;
       startPoints.set(award.player_name, (startPoints.get(award.player_name) ?? 0) + award.points);
     }
@@ -569,7 +614,7 @@ const run = async () => {
       player_name: playerName,
       start_rank: startRanks.get(playerName) ?? null,
       start_points: startPoints.get(playerName) ?? 0,
-      points_earned: awards
+      points_earned: rankingAwards
         .filter((award) => award.tournament_id === tournamentId && award.player_name === playerName)
         .reduce((total, award) => total + award.points, 0),
     }));
@@ -579,10 +624,14 @@ const run = async () => {
   );
   const staleEntriesByTournament = new Map<string, string[]>();
   for (let from = 0; ; from += pageSize) {
-    const { data, error } = await supabase
+    let existingEntriesQuery = supabase
       .from("atomic_tour_event_entries")
       .select("tournament_id,player_name")
       .range(from, from + pageSize - 1);
+    if (requestedEventId) {
+      existingEntriesQuery = existingEntriesQuery.eq("tournament_id", requestedEventId);
+    }
+    const { data, error } = await existingEntriesQuery;
     if (error) throw error;
     const page = data as Array<{ tournament_id: string; player_name: string }>;
     page.forEach(({ tournament_id: tournamentId, player_name: playerName }) => {
@@ -616,7 +665,9 @@ const run = async () => {
     if (error) throw error;
   }
   process.stdout.write(
-    `Published ${awards.length} Atomic Tour point awards and ${snapshotDates.size} material snapshots; removed ${staleEntryCount} stale event entries.\n`,
+    requestedEventId
+      ? `Updated ${requestedEventId} with ${awards.length} point awards and refreshed the live ranking; preserved historical snapshots and removed ${staleEntryCount} stale event entries.\n`
+      : `Published ${awards.length} Atomic Tour point awards and ${snapshotDates.size} material snapshots; removed ${staleEntryCount} stale event entries.\n`,
   );
 };
 

@@ -46,9 +46,9 @@ player to the next guaranteed point tier.
 - A live snapshot and historical monthly snapshots are stored in
   `atomic_tour_ranking_snapshots`. Historical months are included only when an award was earned or
   expired, so inactive months do not clutter the date picker.
-- Every event's awards expire together at the start of the month after that event's start month two
-  years later. For example, an event beginning in September 2024 remains through September 2026
-  and drops out in October 2026.
+- Each award expires at the start of the month after its match month two years later. Matches from
+  September 2024 remain through September 2026 and drop out in October 2026, while matches from a
+  later month in the same tournament expire later.
 - Players in `atomic_tour_excluded_players` do not appear in rankings or receive point credit.
 
 ## Publishing data
@@ -68,3 +68,14 @@ node scripts/.rebuild-atomic-tour-rankings.mjs
 The rebuild is idempotent: it replaces the derived point ledger, refreshes every monthly snapshot,
 publishes the live snapshot, and rebuilds tournament-entry rank context. Run it after a tour match
 is published and when an event end date is finalized.
+
+For a routine new result in an event already in progress, update only that event and the live
+ranking. This preserves every historical snapshot instead of rebuilding the Tour from the start:
+
+```sh
+set -a; source .env.local; set +a
+npx --yes tsx scripts/rebuild-atomic-tour-rankings.ts --event=awc2026
+```
+
+Use the full rebuild only for scoring-rule changes, backfilled historical data, or finalized event
+metadata.
