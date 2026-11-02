@@ -26,6 +26,20 @@ const PuzzleTimerSetting = () => {
   return <span>{showPuzzleTimer ? "Timer shown" : "Timer hidden"}</span>;
 };
 
+const PuzzleAnalysisTargetSetting = () => {
+  const { puzzleAnalysisTarget, setPuzzleAnalysisTarget } = useAppSettings();
+  return (
+    <button
+      type="button"
+      onClick={() =>
+        setPuzzleAnalysisTarget((target) => (target === "lichess" ? "atomic-puzzles" : "lichess"))
+      }
+    >
+      {puzzleAnalysisTarget}
+    </button>
+  );
+};
+
 const CoinVisibilitySettings = () => {
   const { showCoinBalance, setShowCoinBalance, showCoinChangePopups, setShowCoinChangePopups } =
     useAppSettings();
@@ -63,14 +77,14 @@ const ProfileRatingSetting = () => {
 describe("puzzle timer preference", () => {
   beforeEach(() => window.localStorage.clear());
 
-  it("hides the timer by default", () => {
+  it("shows the timer by default", () => {
     render(
       <AppSettingsProvider>
         <PuzzleTimerSetting />
       </AppSettingsProvider>,
     );
 
-    expect(screen.getByText("Timer hidden")).toBeInTheDocument();
+    expect(screen.getByText("Timer shown")).toBeInTheDocument();
   });
 
   it("respects an existing preference to show the timer", () => {
@@ -84,8 +98,8 @@ describe("puzzle timer preference", () => {
     expect(screen.getByText("Timer shown")).toBeInTheDocument();
   });
 
-  it("does not carry forward the old opt-out default", () => {
-    window.localStorage.setItem("atomic-puzzles.puzzles.show-timer", "true");
+  it("respects an existing preference to hide the timer", () => {
+    window.localStorage.setItem("atomic-puzzles.puzzles.show-timer-v2", "false");
     render(
       <AppSettingsProvider>
         <PuzzleTimerSetting />
@@ -93,6 +107,39 @@ describe("puzzle timer preference", () => {
     );
 
     expect(screen.getByText("Timer hidden")).toBeInTheDocument();
+  });
+
+  it("ignores the old preference key and uses the current default", () => {
+    window.localStorage.setItem("atomic-puzzles.puzzles.show-timer", "true");
+    render(
+      <AppSettingsProvider>
+        <PuzzleTimerSetting />
+      </AppSettingsProvider>,
+    );
+
+    expect(screen.getByText("Timer shown")).toBeInTheDocument();
+  });
+});
+
+describe("puzzle analysis link preference", () => {
+  beforeEach(() => window.localStorage.clear());
+
+  it("defaults to Atomic Puzzles and persists a Lichess preference", async () => {
+    render(
+      <AppSettingsProvider>
+        <PuzzleAnalysisTargetSetting />
+      </AppSettingsProvider>,
+    );
+
+    const toggle = screen.getByRole("button", { name: "atomic-puzzles" });
+    fireEvent.click(toggle);
+
+    await waitFor(() => {
+      expect(toggle).toHaveTextContent("lichess");
+      expect(window.localStorage.getItem("atomic-puzzles.puzzles.analysis-link-target")).toBe(
+        '"lichess"',
+      );
+    });
   });
 });
 

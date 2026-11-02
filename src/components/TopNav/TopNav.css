@@ -1342,10 +1342,6 @@
 
 @media (max-width: 700px),
   (max-width: 1024px) and (max-height: 500px) and (orientation: landscape) {
-  .puzzleTimerSettingsSection {
-    display: none;
-  }
-
   .navSearchResult {
     min-height: 52px;
   }

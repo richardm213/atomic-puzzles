@@ -95,6 +95,7 @@ const AnalysisLink = ({
     href={href}
     target="_blank"
     rel="noreferrer"
+    aria-label={`Analyze ${label}`}
     aria-disabled={!enabled}
     onClick={(event) => {
       if (!enabled) event.preventDefault();
@@ -105,7 +106,9 @@ const AnalysisLink = ({
     </span>
     <span className="fenAnalyzeText">
       <span>Analyze</span>
-      <strong>{label}</strong>
+      <strong>
+        {mobile ? `Analyze ${label === "Current Position" ? "Position" : label}` : label}
+      </strong>
     </span>
     <FontAwesomeIcon className="fenAnalyzeExternalIcon" icon={faArrowUpRightFromSquare} />
   </a>
@@ -114,15 +117,22 @@ const AnalysisLink = ({
 const AttemptsPanel = ({
   status,
   rows,
+  onRetry,
 }: {
   status: PuzzleInfoSectionProps["attempts"]["status"];
   rows: PuzzleProgressWithUsernameRow[];
+  onRetry: () => void;
 }) => (
   <div className="puzzleOtherAttemptsPanel" aria-live="polite">
     {status === "loading" ? (
       <div className="puzzleOtherAttemptsState">Loading attempts...</div>
     ) : status === "error" ? (
-      <div className="puzzleOtherAttemptsState">Could not load attempts.</div>
+      <div className="puzzleOtherAttemptsState">
+        <span>Could not load attempts.</span>
+        <button type="button" onClick={onRetry}>
+          Try again
+        </button>
+      </div>
     ) : rows.length > 0 ? (
       <ul className="puzzleOtherAttemptsList" aria-label="Other puzzle attempts">
         {rows.map((attempt) => (
@@ -260,7 +270,7 @@ export const PuzzleInfoSection = ({
   } else if (showAttempts && attempts.canView) {
     panel = (
       <div className="puzzleInfoPanel">
-        <AttemptsPanel status={attempts.status} rows={attempts.rows} />
+        <AttemptsPanel status={attempts.status} rows={attempts.rows} onRetry={attempts.onToggle} />
       </div>
     );
   } else if (showExplanation && explanation.canView) {
@@ -384,7 +394,9 @@ export const PuzzleInfoSection = ({
           aria-selected={showAttempts}
           title={
             showAttempts
-              ? "Hide other attempts"
+              ? attempts.status === "error"
+                ? "Retry loading other attempts"
+                : "Hide other attempts"
               : attempts.canView
                 ? "View other attempts for this puzzle"
                 : "Attempt this puzzle before viewing other attempts."

@@ -31,6 +31,7 @@ const STORAGE_KEYS = {
   // The original key was written as `true` for users before the timer became opt-in.
   // Start from a clean preference so unchecked is the effective default for everyone.
   showPuzzleTimer: "atomic-puzzles.puzzles.show-timer-v2",
+  puzzleAnalysisTarget: "atomic-puzzles.puzzles.analysis-link-target",
   showRatingGraphLines: "profile.ratingGraph.showLines",
   hiddenRatingGraphModes: "profile.ratingGraph.hiddenModes",
 };
@@ -186,6 +187,8 @@ export type AppSettingsContextValue = {
   setShowRatingGraphLines: Dispatch<SetStateAction<boolean>>;
   showPuzzleTimer: boolean;
   setShowPuzzleTimer: Dispatch<SetStateAction<boolean>>;
+  puzzleAnalysisTarget: "atomic-puzzles" | "lichess";
+  setPuzzleAnalysisTarget: Dispatch<SetStateAction<"atomic-puzzles" | "lichess">>;
   showCoinBalance: boolean;
   setShowCoinBalance: Dispatch<SetStateAction<boolean>>;
   showCoinChangePopups: boolean;
@@ -298,8 +301,11 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
   const [showPuzzleTimer, setShowPuzzleTimer] = usePersistedState(
     STORAGE_KEYS.showPuzzleTimer,
     z.boolean(),
-    false,
+    true,
   );
+  const [puzzleAnalysisTarget, setPuzzleAnalysisTarget] = usePersistedState<
+    "atomic-puzzles" | "lichess"
+  >(STORAGE_KEYS.puzzleAnalysisTarget, z.enum(["atomic-puzzles", "lichess"]), "atomic-puzzles");
   const [showCoinBalance, setShowCoinBalance] = usePersistedState(
     STORAGE_KEYS.showCoinBalance,
     z.boolean(),
@@ -401,6 +407,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setShowRatingGraphLines,
       showPuzzleTimer,
       setShowPuzzleTimer,
+      puzzleAnalysisTarget,
+      setPuzzleAnalysisTarget,
       showCoinBalance,
       setShowCoinBalance,
       showCoinChangePopups,
@@ -444,6 +452,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setShowRatingGraphLines,
       showPuzzleTimer,
       setShowPuzzleTimer,
+      puzzleAnalysisTarget,
+      setPuzzleAnalysisTarget,
       showCoinBalance,
       setShowCoinBalance,
       showCoinChangePopups,

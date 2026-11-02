@@ -210,9 +210,14 @@ body:has(.puzzlePage) {
 
 .puzzleTitleRow {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 9px;
   min-width: 0;
+}
+
+.puzzleTitleRow h1 {
+  white-space: nowrap;
 }
 
 .puzzleHeaderNavigation {
@@ -266,31 +271,34 @@ body:has(.puzzlePage) {
 
 .puzzleHeaderStatus {
   display: flex;
+  flex: 1 1 auto;
   flex-wrap: wrap;
+  align-items: flex-end;
   justify-content: flex-end;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
 }
 
+.puzzleHeaderRatings {
+  display: grid;
+  gap: 2px;
+  width: 128px;
+}
+
 .userPuzzleRating {
-  min-height: 30px;
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-  padding: 4px 8px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-inset);
+  min-height: 28px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 3px;
   color: var(--color-muted);
-  line-height: 1;
-  transition:
-    border-color 180ms ease,
-    background 180ms ease,
-    color 180ms ease;
+  line-height: 1.2;
+  transition: color 180ms ease;
 }
 
 .userPuzzleRating > span {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 650;
 }
 
@@ -302,7 +310,7 @@ body:has(.puzzlePage) {
 
 .userPuzzleRating strong {
   color: var(--color-heading);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .userPuzzleRating small {
@@ -310,8 +318,7 @@ body:has(.puzzlePage) {
 }
 
 .userPuzzleRating.positive {
-  border-color: color-mix(in srgb, var(--color-success) 50%, var(--color-border));
-  background: color-mix(in srgb, var(--color-success) 10%, var(--color-panel-strong));
+  color: color-mix(in srgb, var(--color-success) 74%, var(--color-muted));
 }
 
 .userPuzzleRating.positive small {
@@ -319,8 +326,7 @@ body:has(.puzzlePage) {
 }
 
 .userPuzzleRating.negative {
-  border-color: color-mix(in srgb, var(--color-danger) 50%, var(--color-border));
-  background: color-mix(in srgb, var(--color-danger) 10%, var(--color-panel-strong));
+  color: color-mix(in srgb, var(--color-danger) 74%, var(--color-muted));
 }
 
 .userPuzzleRating.negative small {
@@ -328,28 +334,29 @@ body:has(.puzzlePage) {
 }
 
 .puzzleRatingBadge {
-  min-height: 30px;
-  display: inline-flex;
+  min-height: 28px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  border: 1px solid color-mix(in srgb, var(--color-primary-soft) 24%, var(--color-border));
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-panel-strong));
+  gap: 5px;
+  padding: 4px 3px;
+  border: 0;
+  background: transparent;
   color: var(--color-muted);
   font: inherit;
-  line-height: 1;
+  line-height: 1.2;
+  text-align: left;
 }
 
 .puzzleRatingBadge strong {
   color: var(--color-heading);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 650;
 }
 
 .puzzleRatingBadge > span {
   color: var(--color-text);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
@@ -377,12 +384,16 @@ button.puzzleRatingBadge.editable {
 }
 
 button.puzzleRatingBadge.editable:hover {
-  border-color: color-mix(in srgb, var(--color-primary-soft) 54%, var(--color-border));
-  background: color-mix(in srgb, var(--color-primary) 14%, var(--color-panel-strong));
+  color: var(--color-heading);
 }
 
 button.puzzleRatingBadge.editable:active {
-  background: color-mix(in srgb, var(--color-primary) 20%, var(--color-panel-strong));
+  color: var(--color-primary-pale);
+}
+
+button.puzzleRatingBadge.editable:focus-visible {
+  outline: 3px solid var(--color-primary-ring);
+  outline-offset: 2px;
 }
 
 .puzzleRatingEditor {
@@ -617,6 +628,10 @@ button.puzzleRatingBadge.editable:active {
   white-space: nowrap;
 }
 
+.puzzlePlayerNameSpacer {
+  min-width: 0;
+}
+
 .puzzlePlayerColor {
   width: 16px;
   height: 16px;
@@ -666,14 +681,22 @@ button.puzzleRatingBadge.editable:active {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 6px;
-  border: 1px solid var(--color-warning-soft-border);
-  background: color-mix(in srgb, var(--color-warning-soft-bg) 76%, var(--color-panel-strong));
+  width: 28px;
+  height: 28px;
+  border: 0;
+  background: transparent;
   color: var(--color-gold);
-  font-size: 13px;
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--color-warning) 10%, transparent);
+  font-size: 14px;
+  opacity: 0.88;
+  transition:
+    color 140ms ease,
+    opacity 140ms ease;
+}
+
+.puzzleAttemptedBadge:hover,
+.puzzleAttemptedBadge:focus-visible {
+  color: var(--puzzle-gold);
+  opacity: 1;
 }
 
 .puzzleAttemptedBadge::after {
@@ -1616,10 +1639,38 @@ button.puzzleRatingBadge.editable:active {
 }
 
 .puzzleOtherAttemptsState {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 10px 11px;
   color: var(--color-muted);
   font-size: 12px;
   font-weight: 650;
+}
+
+.puzzleOtherAttemptsState button {
+  min-height: 32px;
+  padding: 5px 10px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-inset);
+  color: var(--color-heading);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.puzzleOtherAttemptsState button:hover {
+  border-color: var(--color-primary-soft);
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface-inset));
+}
+
+.puzzleOtherAttemptsState button:focus-visible {
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 2px;
 }
 
 .puzzleOtherAttemptsList {
@@ -1905,6 +1956,10 @@ button.puzzleRatingBadge.editable:active {
   border-left: 1px solid color-mix(in srgb, var(--color-border) 74%, transparent);
 }
 
+.materialDifferencePieces.isEmpty {
+  border-left-color: transparent;
+}
+
 .materialDifferencePiece {
   display: inline-block;
   width: 20px;
@@ -1924,6 +1979,10 @@ button.puzzleRatingBadge.editable:active {
 }
 
 .mobileWorkflowPanel {
+  display: none;
+}
+
+.mobilePuzzleMeta {
   display: none;
 }
 
@@ -2230,6 +2289,24 @@ button.puzzleRatingBadge.editable:active {
     min-height: 44px;
   }
 
+  .puzzleIssuePrompt {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: min(100%, 548px);
+    margin: 0 auto;
+    padding-inline: 4px;
+    font-size: 12px;
+    text-align: left;
+  }
+
+  .puzzleIssuePrompt button {
+    flex: 0 0 auto;
+    margin-inline-start: 0;
+    padding-inline: 2px;
+  }
+
   .puzzleIssueDialog {
     max-height: calc(100svh - 24px);
     overflow-y: auto;
@@ -2280,7 +2357,7 @@ button.puzzleRatingBadge.editable:active {
     gap: 0;
     position: relative;
     z-index: 1;
-    padding: 4px;
+    padding: 0 6px;
   }
 
   .puzzleInfoTab {
@@ -2288,13 +2365,14 @@ button.puzzleRatingBadge.editable:active {
     gap: 4px;
     min-height: 44px;
     padding-inline: 4px;
-    border-bottom: 0;
-    border-radius: 5px;
-    font-size: 10.5px;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    font-size: 11.5px;
   }
 
   .puzzleInfoTab.active {
-    background: color-mix(in srgb, var(--color-primary) 12%, var(--color-panel));
+    border-bottom-color: var(--color-primary-soft);
+    background: transparent;
   }
 
   .puzzleInfoTabToggle {
@@ -2316,42 +2394,122 @@ button.puzzleRatingBadge.editable:active {
     overscroll-behavior: contain;
     touch-action: pan-y;
     -webkit-overflow-scrolling: touch;
-    padding: 8px;
+    gap: 0;
+    padding: 0 10px 10px;
     scrollbar-width: thin;
   }
 
   .mobileActionCard .mobileAnalyzeActions {
+    display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 6px;
+    gap: 0;
+    padding: 4px 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-border) 64%, transparent);
   }
 
   .mobileActionCard .mobileAnalyzeActions .fenAnalyzeButton {
-    min-height: 44px;
-    padding: 7px 8px;
+    justify-content: center;
+    width: 100%;
+    gap: 5px;
+    min-height: 36px;
+    padding: 4px 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
   }
 
   .mobileActionCard .mobileAnalyzeActions .fenAnalyzeIcon {
-    width: 27px;
-    height: 27px;
+    display: none;
+  }
+
+  .mobileActionCard .mobileAnalyzeActions .fenAnalyzeText {
+    display: block;
+  }
+
+  .mobileActionCard .mobileAnalyzeActions .fenAnalyzeText span {
+    display: none;
+  }
+
+  .mobileActionCard .mobileAnalyzeActions .fenAnalyzeText strong {
+    font-size: 12px;
+  }
+
+  .mobileActionCard .mobileAnalyzeActions .fenAnalyzeExternalIcon {
+    margin-left: 0;
   }
 
   .mobileActionCard .puzzleInfoPanel .lineHeader {
     align-items: center;
     flex-direction: row;
-    padding: 8px;
+    padding: 7px 0;
+    border-bottom: 0;
+    background: transparent;
+  }
+
+  .mobileActionCard .puzzleInfoPanel .lineHeader .fenLabel {
+    display: none;
   }
 
   .mobileActionCard .solutionHeaderActions {
-    width: auto;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
   }
 
   .mobileActionCard .solutionHeaderActions .solutionPlaybackControls {
     width: auto;
   }
 
+  .mobileActionCard .solutionPlaybackControls {
+    grid-template-columns: repeat(4, 34px);
+    gap: 4px;
+    justify-content: start;
+    padding: 2px;
+    border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--color-surface-inset) 70%, transparent);
+  }
+
+  .mobileActionCard .solutionPlaybackButton {
+    width: 34px;
+    height: 32px;
+    border-color: transparent;
+    border-radius: 6px;
+    background: transparent;
+  }
+
+  .mobileActionCard .solutionPlaybackButton:hover:not(:disabled) {
+    border-color: transparent;
+    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  }
+
   .mobileActionCard .lineHeader .fenAnalyzeButton {
     min-height: 32px;
-    padding: 5px 8px;
+    padding: 5px 4px;
+    border-color: transparent;
+    border-radius: 4px;
+    background: transparent;
+  }
+
+  .mobileActionCard .lineHeader .fenAnalyzeButton:hover:not(.disabled) {
+    border-color: transparent;
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    box-shadow: none;
+  }
+
+  .mobileActionCard .mobileLineBox {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .mobileActionCard .puzzleInfoPanel .mobileLineBox > .moveList {
+    margin: 2px 0 0;
+    padding: 8px 0 2px;
+    border-top: 1px solid color-mix(in srgb, var(--color-border) 64%, transparent);
   }
 
   .mobileActionCard .puzzleOtherAttemptRow {
@@ -2376,16 +2534,37 @@ button.puzzleRatingBadge.editable:active {
     justify-content: center;
     gap: 7px;
     min-width: 0;
+    width: 100%;
+  }
+
+  .mobilePuzzleMeta {
+    display: grid;
+    gap: 5px;
     width: min(100%, 548px);
     margin: 0 auto;
+    padding-inline: 4px;
+  }
+
+  .mobilePuzzleStatus .puzzleHeaderRatings.mobile {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    width: auto;
+  }
+
+  .mobilePuzzleStatus :is(.userPuzzleRating, .puzzleRatingBadge) {
+    grid-template-columns: auto auto auto;
+    justify-content: center;
+    width: auto;
+    min-width: 0;
+    padding-inline: 2px;
   }
 
   .mobilePuzzlePlayers {
     display: grid;
-    grid-template-columns: 1fr;
-    gap: 2px;
-    width: min(100%, 548px);
-    margin: 0 auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
   }
 
   .mobilePuzzlePlayers .puzzlePlayer {
@@ -2426,7 +2605,7 @@ button.puzzleRatingBadge.editable:active {
 
   .mobilePuzzlePlayers .puzzlePlayer strong,
   .mobilePuzzlePlayers .puzzlePlayerLink {
-    font-size: 11px;
+    font-size: 13px;
   }
 
   .mobilePuzzlePlayers .puzzlePlayerLink {
@@ -2447,6 +2626,12 @@ button.puzzleRatingBadge.editable:active {
     font-size: 12px;
   }
 
+  .mobilePuzzleStatus .puzzleElapsedTimer {
+    flex: 0 0 100%;
+    min-height: 28px;
+    margin-top: -2px;
+  }
+
   .mobilePuzzleAuthor {
     min-width: 0;
     max-width: min(38vw, 160px);
@@ -2457,12 +2642,9 @@ button.puzzleRatingBadge.editable:active {
     align-items: center;
     justify-content: center;
     min-height: 28px;
-    padding: 0 9px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-ui);
-    background: var(--color-panel-strong);
+    padding: 0 2px;
     color: var(--color-muted);
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 650;
   }
 
@@ -2543,14 +2725,22 @@ button.puzzleRatingBadge.editable:active {
 
   .boardFrame {
     --board-feedback-gap: 5px;
-    width: min(100%, 548px, calc(100svh - 210px));
+    width: min(100%, 548px, calc(100svh - 330px));
     max-width: 548px;
     padding: 5px;
   }
 
   .boardStage {
-    width: min(100%, 538px, calc(100svh - 220px));
+    width: min(100%, 538px, calc(100svh - 340px));
     max-width: 538px;
+  }
+
+  body:has(.puzzlePage):not(:has(.mobileWorkflowPanel)) .boardFrame {
+    width: min(100%, 548px, calc(100svh - 280px));
+  }
+
+  body:has(.puzzlePage):not(:has(.mobileWorkflowPanel)) .boardStage {
+    width: min(100%, 538px, calc(100svh - 290px));
   }
 
   .boardFrame .cg-boardShell,
@@ -2679,6 +2869,42 @@ button.puzzleRatingBadge.editable:active {
 
   .feedbackBadge {
     top: 14px;
+  }
+}
+
+@media (max-width: 680px) and (min-height: 720px) {
+  .mobilePuzzlePlayers {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .mobilePuzzlePlayers.hasPlayerNames.hasCastlingData {
+    grid-template-columns: 18px minmax(0, 1fr) minmax(54px, auto);
+  }
+
+  .mobilePuzzlePlayers.hasPlayerNames.hasMaterialData {
+    grid-template-columns: 18px minmax(0, 1fr) minmax(18px, auto);
+  }
+
+  .mobilePuzzlePlayers.hasPlayerNames.hasCastlingData.hasMaterialData {
+    grid-template-columns: 18px minmax(0, 1fr) minmax(54px, auto) minmax(18px, auto);
+  }
+
+  .mobilePuzzlePlayers:not(.hasPlayerNames).hasCastlingData {
+    grid-template-columns: 18px minmax(54px, max-content);
+  }
+
+  .mobilePuzzlePlayers:not(.hasPlayerNames).hasMaterialData {
+    grid-template-columns: 18px minmax(18px, 1fr);
+  }
+
+  .mobilePuzzlePlayers:not(.hasPlayerNames).hasCastlingData.hasMaterialData {
+    grid-template-columns: 18px minmax(54px, max-content) minmax(18px, 1fr);
+  }
+
+  .mobilePuzzlePlayers > .puzzlePlayer {
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
   }
 }
 

@@ -467,10 +467,35 @@
 
 @media (max-width: 680px) {
   .puzzleCommunity {
-    padding: 12px 0 0;
-    margin-top: 5px;
+    gap: 8px;
+    padding: 4px 0 0;
+    margin-top: 0;
     margin-bottom: 12px;
     scroll-margin-top: 72px;
+  }
+
+  .puzzleCommentComposer {
+    gap: 8px;
+  }
+
+  .puzzleCommentComposer textarea {
+    min-height: 92px;
+    padding: 12px;
+    resize: none;
+    border-radius: 8px;
+    font-size: 16px;
+  }
+
+  .commentComposerActions {
+    width: 100%;
+  }
+
+  .commentComposerActions button,
+  .commentLoginButton {
+    width: 100%;
+    min-height: 44px;
+    border-radius: 8px;
+    font-size: 13px;
   }
 
   .puzzleVotePrompt {

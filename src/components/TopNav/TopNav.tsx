@@ -160,6 +160,8 @@ export const TopNav = () => {
     setShowRatingGraphLines,
     showPuzzleTimer,
     setShowPuzzleTimer,
+    puzzleAnalysisTarget,
+    setPuzzleAnalysisTarget,
     showCoinBalance,
     setShowCoinBalance,
     showCoinChangePopups,
@@ -864,6 +866,25 @@ export const TopNav = () => {
                           onChange={(event) => setShowPuzzleTimer(event.target.checked)}
                         />
                       </label>
+                    </div>
+                  ) : null}
+                  {showPuzzleTimerSetting ? (
+                    <div className="navSettingsSection">
+                      <label className="navSettingsLabel" htmlFor="puzzle-analysis-target-select">
+                        Open puzzle analysis in
+                      </label>
+                      <select
+                        id="puzzle-analysis-target-select"
+                        value={puzzleAnalysisTarget}
+                        onChange={(event) =>
+                          setPuzzleAnalysisTarget(
+                            event.target.value === "lichess" ? "lichess" : "atomic-puzzles",
+                          )
+                        }
+                      >
+                        <option value="atomic-puzzles">Atomic Puzzles</option>
+                        <option value="lichess">Lichess</option>
+                      </select>
                     </div>
                   ) : null}
                   {showPuzzleTimerSetting ? (

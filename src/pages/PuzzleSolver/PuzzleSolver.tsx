@@ -178,7 +178,7 @@ export const PuzzleSolverPage = () => {
     ...puzzleUserRatingQueryOptions(normalizedUsername),
     enabled: Boolean(normalizedUsername),
   });
-  const { pieceSet, showPuzzleTimer } = useAppSettings();
+  const { pieceSet, showPuzzleTimer, puzzleAnalysisTarget } = useAppSettings();
   const { puzzles, setPuzzles, loadingError, setLoadingError, mergeLoadedPuzzles } =
     usePuzzleCatalog(routePuzzleId, routeSetKey || routeDashboardSetId);
   const [attemptedPuzzleIds, setAttemptedPuzzleIds] = useState<Set<string>>(() => new Set());
@@ -561,8 +561,14 @@ export const PuzzleSolverPage = () => {
       materialCount.whitePieces.length > 0 ||
       materialCount.blackPieces.length > 0);
   const hasAnyCastlingRights = castlingRights.white.length > 0 || castlingRights.black.length > 0;
-  const startAnalysisUrl = lichessAtomicAnalysisUrl(fen);
-  const currentAnalysisUrl = lichessAtomicAnalysisUrl(currentFen);
+  const analysisUrl = (positionFen: string) =>
+    puzzleAnalysisTarget === "lichess"
+      ? lichessAtomicAnalysisUrl(positionFen)
+      : positionFen
+        ? `/analysis/${positionFen.replaceAll(" ", "_")}`
+        : "/analysis";
+  const startAnalysisUrl = analysisUrl(fen);
+  const currentAnalysisUrl = analysisUrl(currentFen);
   const activeSetPuzzlePosition = isSetSolveMode
     ? orderedSetPuzzleIndexes.indexOf(activePuzzleIndex)
     : -1;
@@ -1105,10 +1111,41 @@ export const PuzzleSolverPage = () => {
     }
   };
 
+  const loadOtherPuzzleAttempts = () => {
+    if (!activePuzzleKey || otherPuzzleAttemptsStatus === "loaded") return;
+
+    const puzzleKeyForRequest = activePuzzleKey;
+    setOtherPuzzleAttemptsStatus("loading");
+    const fetchAttempts = () =>
+      fetchPuzzleAttemptsForPuzzle(puzzleKeyForRequest, {
+        limit: OTHER_PUZZLE_ATTEMPTS_LIMIT,
+      });
+    void fetchAttempts()
+      .catch(async () => {
+        await new Promise((resolve) => window.setTimeout(resolve, 350));
+        return fetchAttempts();
+      })
+      .then((rows) => {
+        if (activePuzzleKeyRef.current !== puzzleKeyForRequest) return;
+        setOtherPuzzleAttempts(rows);
+        setOtherPuzzleAttemptsStatus("loaded");
+      })
+      .catch((error) => {
+        if (activePuzzleKeyRef.current !== puzzleKeyForRequest) return;
+        globalThis.console?.error(error);
+        setOtherPuzzleAttempts([]);
+        setOtherPuzzleAttemptsStatus("error");
+      });
+  };
+
   const handleSelectOtherPuzzleAttemptsTab = () => {
     if (!hasAttemptedActivePuzzle) return;
 
     if (otherPuzzleAttemptsOpen) {
+      if (otherPuzzleAttemptsStatus === "error") {
+        loadOtherPuzzleAttempts();
+        return;
+      }
       setActivePuzzleInfoTab(null);
       setSolutionNavigation(null);
       return;
@@ -1121,24 +1158,7 @@ export const PuzzleSolverPage = () => {
         boardPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     }
-    if (!activePuzzleKey || otherPuzzleAttemptsStatus === "loaded") return;
-
-    const puzzleKeyForRequest = activePuzzleKey;
-    setOtherPuzzleAttemptsStatus("loading");
-    void fetchPuzzleAttemptsForPuzzle(puzzleKeyForRequest, {
-      limit: OTHER_PUZZLE_ATTEMPTS_LIMIT,
-    })
-      .then((rows) => {
-        if (activePuzzleKeyRef.current !== puzzleKeyForRequest) return;
-        setOtherPuzzleAttempts(rows);
-        setOtherPuzzleAttemptsStatus("loaded");
-      })
-      .catch((error) => {
-        if (activePuzzleKeyRef.current !== puzzleKeyForRequest) return;
-        globalThis.console?.error(error);
-        setOtherPuzzleAttempts([]);
-        setOtherPuzzleAttemptsStatus("error");
-      });
+    loadOtherPuzzleAttempts();
   };
 
   const handleSelectExplanationTab = () => {
@@ -1593,11 +1613,14 @@ export const PuzzleSolverPage = () => {
 
   const renderPlayerRows = (mobile = false) => {
     const hasPositionData = hasAnyCastlingRights || hasMaterialDifference;
+    const hasPlayerNames = Boolean(whitePlayer || blackPlayer);
     if (!whitePlayer && !blackPlayer && !hasPositionData) return null;
 
     return (
       <section
-        className={mobile ? "mobilePuzzlePlayers" : "puzzlePlayers"}
+        className={`${mobile ? "mobilePuzzlePlayers" : "puzzlePlayers"} ${
+          hasAnyCastlingRights ? "hasCastlingData" : ""
+        } ${hasMaterialDifference ? "hasMaterialData" : ""} ${hasPlayerNames ? "hasPlayerNames" : ""}`}
         aria-label="Game players"
       >
         {(["white", "black"] as const).map((side) => {
@@ -1612,8 +1635,10 @@ export const PuzzleSolverPage = () => {
             <div
               className={`puzzlePlayer ${hasAnyCastlingRights ? "hasCastlingData" : ""} ${
                 hasMaterialDifference ? "hasMaterialData" : ""
-              } ${player ? "hasPlayerName" : ""}`}
-              aria-label={`${label}: ${playerLabel || "unknown"}`}
+              } ${player || (mobile && hasPlayerNames) ? "hasPlayerName" : ""}`}
+              aria-label={`${label}: ${playerLabel || "unknown"}${
+                hasMaterialDifference ? `, material difference: ${materialStatus}` : ""
+              }`}
               key={side}
             >
               <span className={`puzzlePlayerColor ${side}`} aria-hidden="true" />
@@ -1626,6 +1651,8 @@ export const PuzzleSolverPage = () => {
                 >
                   {playerLabel}
                 </Link>
+              ) : mobile && hasPlayerNames ? (
+                <span className="puzzlePlayerNameSpacer" aria-hidden="true" />
               ) : null}
               {hasPositionData ? (
                 <>
@@ -1639,7 +1666,7 @@ export const PuzzleSolverPage = () => {
                   ) : null}
                   {hasMaterialDifference ? (
                     <span
-                      className="materialDifferencePieces"
+                      className={`materialDifferencePieces ${pieces.length ? "" : "isEmpty"}`.trim()}
                       aria-label={`Material difference: ${materialStatus}`}
                     >
                       {pieces.map((role: MaterialPieceRole, index: number) => (
@@ -1843,8 +1870,10 @@ export const PuzzleSolverPage = () => {
               ) : null}
             </div>
             <div className="puzzleHeaderStatus">
-              {renderUserPuzzleRating()}
-              {hasAttemptedActivePuzzle ? renderPuzzleRating() : null}
+              <div className="puzzleHeaderRatings">
+                {renderUserPuzzleRating()}
+                {hasAttemptedActivePuzzle ? renderPuzzleRating() : null}
+              </div>
               {!isMobileLayout && showPuzzleTimer ? (
                 <PuzzleElapsedTimer
                   elapsedTimeMs={elapsedTimeMs}
@@ -2108,55 +2137,66 @@ export const PuzzleSolverPage = () => {
 
       {isMobileLayout ? (
         <>
-          <div className="mobilePuzzleStatus" aria-label="Puzzle details">
-            {renderUserPuzzleRating(true)}
-            {hasAttemptedActivePuzzle ? renderPuzzleRating(true) : null}
-            {hasPersistedAttempt ? (
-              <span
-                className="puzzleAttemptedBadge"
-                role="img"
-                tabIndex={0}
-                title={attemptedPuzzleBadgeLabel}
-                aria-label={attemptedPuzzleBadgeLabel}
-                data-tooltip={attemptedPuzzleBadgeLabel}
-              >
-                <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
+          <section className="mobilePuzzleMeta" aria-label="Puzzle details">
+            <div className="mobilePuzzleStatus">
+              <div className="puzzleHeaderRatings mobile">
+                {renderUserPuzzleRating(true)}
+                {hasAttemptedActivePuzzle ? renderPuzzleRating(true) : null}
+              </div>
+              {hasPersistedAttempt ? (
+                <span
+                  className="puzzleAttemptedBadge"
+                  role="img"
+                  tabIndex={0}
+                  title={attemptedPuzzleBadgeLabel}
+                  aria-label={attemptedPuzzleBadgeLabel}
+                  data-tooltip={attemptedPuzzleBadgeLabel}
+                >
+                  <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
+                </span>
+              ) : null}
+              {unratedReason ? (
+                <span
+                  className="puzzleUnratedBadge"
+                  tabIndex={0}
+                  title={unratedLabel}
+                  aria-label={unratedLabel}
+                  data-tooltip={unratedLabel}
+                >
+                  Unrated
+                </span>
+              ) : null}
+              {opaStyle ? (
+                <span
+                  className="puzzleOpaBadge"
+                  tabIndex={0}
+                  title={OPA_STYLE_BADGE_LABEL}
+                  aria-label={`OPA style: ${OPA_STYLE_BADGE_LABEL}`}
+                  data-tooltip={OPA_STYLE_BADGE_LABEL}
+                >
+                  OPA style
+                </span>
+              ) : null}
+              <span className="mobilePuzzleAuthor" title={author}>
+                {author}
               </span>
-            ) : null}
-            {unratedReason ? (
-              <span
-                className="puzzleUnratedBadge"
-                tabIndex={0}
-                title={unratedLabel}
-                aria-label={unratedLabel}
-                data-tooltip={unratedLabel}
-              >
-                Unrated
-              </span>
-            ) : null}
-            {opaStyle ? (
-              <span
-                className="puzzleOpaBadge"
-                tabIndex={0}
-                title={OPA_STYLE_BADGE_LABEL}
-                aria-label={`OPA style: ${OPA_STYLE_BADGE_LABEL}`}
-                data-tooltip={OPA_STYLE_BADGE_LABEL}
-              >
-                OPA style
-              </span>
-            ) : null}
-            <span className="mobilePuzzleAuthor" title={author}>
-              {author}
-            </span>
-          </div>
-          {renderPlayerRows(true)}
+              {showPuzzleTimer ? (
+                <PuzzleElapsedTimer
+                  elapsedTimeMs={elapsedTimeMs}
+                  running={elapsedTimerRunning}
+                  readElapsedTimeMs={readElapsedTimeMs}
+                />
+              ) : null}
+            </div>
+            {renderPlayerRows(true)}
+          </section>
           {hasAttemptedActivePuzzle ? (
             <div id="mobile-puzzle-vote-slot" className="mobilePuzzleVoteSlot" />
           ) : null}
         </>
       ) : null}
 
-      {isMobileLayout ? (
+      {isMobileLayout && hasAttemptedActivePuzzle ? (
         <div className="mobileWorkflowPanel">
           <div className="mobileActionCard">{renderPuzzleInfoSection(true)}</div>
         </div>
