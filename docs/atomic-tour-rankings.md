@@ -46,8 +46,9 @@ player to the next guaranteed point tier.
 - A live snapshot and historical monthly snapshots are stored in
   `atomic_tour_ranking_snapshots`. Historical months are included only when an award was earned or
   expired, so inactive months do not clutter the date picker.
-- Ordinary awards expire two years after their award date.
-- AWC awards use the conclusion of the second subsequent AWC when that date is known.
+- Every event's awards expire together at the start of the month after that event's start month two
+  years later. For example, an event beginning in September 2024 remains through September 2026
+  and drops out in October 2026.
 - Players in `atomic_tour_excluded_players` do not appear in rankings or receive point credit.
 
 ## Publishing data

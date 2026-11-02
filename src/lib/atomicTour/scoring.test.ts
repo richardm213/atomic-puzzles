@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   atomicChessLeagueTourPoints,
+  atomicTourEventExpiryDate,
   atomicTourLosersBracketRoundCountForStart,
   atomicTourLosersBracketWinPoints,
   atomicTourMainStageForResults,
@@ -12,6 +13,11 @@ import {
 } from "./scoring";
 
 describe("Atomic Tour scoring", () => {
+  it("expires every event the month after its month two years later", () => {
+    expect(atomicTourEventExpiryDate("2024-09-11")).toBe("2026-10-01");
+    expect(atomicTourEventExpiryDate("2025-12-20")).toBe("2028-01-01");
+  });
+
   it("uses ATP-style placement percentages", () => {
     expect(calculateKnockoutTourPoints({ tier: 2000, mainStage: "champion" }).totalPoints).toBe(
       2000,

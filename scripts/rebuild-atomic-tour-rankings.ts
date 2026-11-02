@@ -4,6 +4,7 @@ import { queryArchiveResource } from "../netlify/archive/queries";
 import { loadAllPages } from "../shared/lib/pagination";
 import {
   atomicChessLeagueTourPoints,
+  atomicTourEventExpiryDate,
   atomicTourEventPoints,
   type AtomicTourMainResult,
   type AtomicTourMainStage,
@@ -70,12 +71,6 @@ const addParticipant = (
   eventParticipants.add(player);
   participants.set(tournamentId, eventParticipants);
 };
-const addYears = (date: string, years: number): string => {
-  const value = new Date(`${date}T00:00:00Z`);
-  value.setUTCFullYear(value.getUTCFullYear() + years);
-  return value.toISOString().slice(0, 10);
-};
-
 const isChampionshipMatch = (match: MatchRow): boolean =>
   match.bracket === "grand_final" || match.round.trim().toLowerCase().includes("grand final");
 
@@ -145,12 +140,6 @@ const matchDate = async (matchId: string | null, fallback: string): Promise<stri
   }
 };
 
-const expiryFor = (event: CatalogRow, awardedOn: string, awcEvents: CatalogRow[]): string => {
-  if (event.series_key !== "awc") return addYears(awardedOn, 2);
-  const futureAwcs = awcEvents.filter((candidate) => candidate.start_date > event.start_date);
-  return futureAwcs[1]?.end_date ?? addYears(awardedOn, 2);
-};
-
 const awardKey = (...parts: string[]): string =>
   parts
     .map((part) => normalize(part).replaceAll(/[^a-z0-9_-]+/g, "-"))
@@ -160,7 +149,6 @@ const awardKey = (...parts: string[]): string =>
 const knockoutAwards = async (
   event: CatalogRow,
   matches: MatchRow[],
-  awcEvents: CatalogRow[],
 ): Promise<PointAward[]> => {
   const tier = atomicTourEventPoints[event.series_key];
   if (!tier) return [];
@@ -316,7 +304,7 @@ const knockoutAwards = async (
       source_type: "placement",
       source_key: "placement",
       awarded_on: awardedOn,
-      expires_on: expiryFor(event, awardedOn, awcEvents),
+      expires_on: atomicTourEventExpiryDate(event.start_date),
       points: pointBreakdown.basePoints,
       description: `${earnedStage.replaceAll("-", " ")} placement`,
     });
@@ -330,7 +318,7 @@ const knockoutAwards = async (
         source_type: "losers_win",
         source_key: "losers-bonus",
         awarded_on: bonusDate,
-        expires_on: expiryFor(event, bonusDate, awcEvents),
+        expires_on: atomicTourEventExpiryDate(event.start_date),
         points: pointBreakdown.bonusPoints,
         description: `${losersWins.length} losers-bracket ${losersWins.length === 1 ? "win" : "wins"}`,
       });
@@ -376,7 +364,7 @@ const aclAwards = async (events: Map<string, CatalogRow>): Promise<PointAward[]>
                 source_type: result === "draw" ? "acl_draw" : "acl_win",
                 source_key: sourceKey,
                 awarded_on: awardedOn,
-                expires_on: addYears(awardedOn, 2),
+                expires_on: atomicTourEventExpiryDate(event.start_date),
                 points,
                 description: `${division.name} round ${round.number} ${result}`,
               });
@@ -408,7 +396,7 @@ const wolfarenaAwards = (event: CatalogRow, payload: Record<string, unknown>): P
         source_type: "arena_placement",
         source_key: "placement",
         awarded_on: awardedOn,
-        expires_on: addYears(awardedOn, 2),
+        expires_on: atomicTourEventExpiryDate(event.start_date),
         points: atomicTourStagePoints(1000, stage),
         description: `Final rank ${rank}`,
       },
@@ -447,9 +435,6 @@ const run = async () => {
   }, pageSize);
 
   const events = new Map((catalog as CatalogRow[]).map((event) => [event.id, event]));
-  const awcEvents = (catalog as CatalogRow[])
-    .filter((event) => event.series_key === "awc")
-    .sort((left, right) => left.start_date.localeCompare(right.start_date));
   const awards: PointAward[] = [];
   const participants = new Map<string, Set<string>>();
   for (const event of catalog as CatalogRow[]) {
@@ -459,7 +444,7 @@ const run = async () => {
       addParticipant(participants, event.id, match.p1);
       addParticipant(participants, event.id, match.p2);
     });
-    awards.push(...(await knockoutAwards(event, eventMatches, awcEvents)));
+    awards.push(...(await knockoutAwards(event, eventMatches)));
   }
   for (const season of atomicChessLeagueSeasons) {
     const tournamentId = `acl-s${season.number}`;
