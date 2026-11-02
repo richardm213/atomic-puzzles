@@ -2,8 +2,8 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { StrictMode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { analyzeFairyStockfishPosition } from "../lib/practice/fairyStockfish";
 import { loadAtomicTablebase } from "../lib/atomicTablebase/analysisRepository";
+import { analyzeFairyStockfishPosition } from "../lib/practice/fairyStockfish";
 import { useAtomicDbAnalysis } from "./useAtomicDbAnalysis";
 
 vi.mock("../lib/practice/fairyStockfish", () => ({
@@ -75,6 +75,37 @@ describe("useAtomicDbAnalysis", () => {
     expect(result.current.principalVariations.h1h4).toEqual(["h1h4", "d4e5"]);
     expect(fetchMock).not.toHaveBeenCalled();
     expect(analyzeWithEngineMock).not.toHaveBeenCalled();
+  });
+
+  it("falls back directly to Fairy-Stockfish when Lichess tablebase is rate-limited", async () => {
+    const fen = "8/4Kp2/3k1P2/3Q4/8/8/8/8 w - - 6 4";
+    loadAtomicTablebaseMock.mockRejectedValue(new Error("Atomic tablebase returned 429."));
+    analyzeWithEngineMock.mockResolvedValue([
+      {
+        move: "e7f8",
+        multipv: 1,
+        scoreType: "mate",
+        score: 4,
+        depth: 18,
+        principalVariation: ["e7f8", "d6e5", "d5e5"],
+      },
+    ]);
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result } = renderHook(() =>
+      useAtomicDbAnalysis(fen, { debounceMs: 0, fallbackToEngine: true, lineCount: 1 }),
+    );
+
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    expect(loadAtomicTablebaseMock).toHaveBeenCalledOnce();
+    expect(analyzeWithEngineMock).toHaveBeenCalledOnce();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result.current.source).toBe("engine");
+    expect(result.current.result?.position?.moves[0]).toMatchObject({
+      uci: "e7f8",
+      mate: 4,
+    });
   });
 
   it("falls back to Fairy-Stockfish only after AtomicDB returns no analyzed moves", async () => {

@@ -249,9 +249,12 @@ export const useAtomicDbAnalysis = (
               });
               return;
             }
-          } catch (error: unknown) {
+          } catch {
             if (controller.signal.aborted) return;
-            // The local engine remains available when the public tablebase is temporarily down.
+            // Do not compound a public tablebase outage with another network request.
+            // Fairy-Stockfish can keep analyzing the position entirely in the browser.
+            await publishEngineFallback();
+            return;
           }
         }
         const position = await loadAtomicDbPosition(fen, controller.signal);

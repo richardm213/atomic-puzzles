@@ -291,7 +291,7 @@ describe("profile comment history", () => {
     ]);
   });
 
-  it("normalizes tournament discussion targets", () => {
+  it("normalizes page discussion targets", () => {
     expect(
       readCommunityTarget({
         action: "loadDiscussion",
@@ -299,6 +299,13 @@ describe("profile comment history", () => {
         targetId: " AHC2026 ",
       }),
     ).toEqual({ type: "tournament", id: "ahc2026", context: "" });
+    expect(
+      readCommunityTarget({
+        action: "loadDiscussion",
+        targetType: "endgame",
+        targetId: " Queen-Pawn-Race ",
+      }),
+    ).toEqual({ type: "endgame", id: "queen-pawn-race", context: "" });
   });
 });
 

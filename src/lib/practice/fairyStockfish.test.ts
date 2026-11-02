@@ -4,6 +4,7 @@ import {
   chooseEngineCandidate,
   disableFirefoxAtomicsWaitAsync,
   type EngineCandidate,
+  isCacheableFairyStockfishEvaluation,
   parseEngineCandidate,
   withEngineRequestTimeout,
 } from "./fairyStockfish";
@@ -110,6 +111,32 @@ describe("parseEngineCandidate", () => {
       nps: 250000,
       timeMs: 4,
     });
+  });
+});
+
+describe("Fairy-Stockfish evaluation cache threshold", () => {
+  it("caches only complete evaluations where every requested line reaches depth 15", () => {
+    expect(
+      isCacheableFairyStockfishEvaluation(
+        [
+          { ...candidate(1, 100), depth: 15 },
+          { ...candidate(2, 90), depth: 15 },
+        ],
+        2,
+      ),
+    ).toBe(true);
+    expect(
+      isCacheableFairyStockfishEvaluation(
+        [
+          { ...candidate(1, 100), depth: 15 },
+          { ...candidate(2, 90), depth: 14 },
+        ],
+        2,
+      ),
+    ).toBe(false);
+    expect(isCacheableFairyStockfishEvaluation([{ ...candidate(1, 100), depth: 18 }], 2)).toBe(
+      false,
+    );
   });
 });
 

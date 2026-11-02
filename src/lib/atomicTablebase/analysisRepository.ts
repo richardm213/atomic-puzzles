@@ -1,6 +1,6 @@
-import { fetchAtomicTablebase, type AtomicTablebaseResult } from "../../utils/atomicTablebase";
+import { type AtomicTablebaseResult, fetchAtomicTablebase } from "../../utils/atomicTablebase";
 
-const CACHE_TTL_MS = 30 * 60_000;
+const CACHE_TTL_MS = 2 * 60_000;
 
 type CacheEntry = { value: AtomicTablebaseResult | null; expiresAt: number };
 type SharedRequest = {

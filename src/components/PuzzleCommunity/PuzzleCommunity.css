@@ -316,6 +316,10 @@
   gap: 8px;
 }
 
+.puzzleCommentLayout.withoutVotes {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .commentVoteRail {
   display: grid;
   justify-items: center;

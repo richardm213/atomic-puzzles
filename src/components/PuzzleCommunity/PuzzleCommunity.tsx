@@ -87,6 +87,7 @@ type CommunityDiscussionProps = {
   target: CommunityTarget;
   voteTargetId?: string;
   deferUntilVisible?: boolean;
+  allowCommentVotes?: boolean;
 };
 
 const emptyCommunity = (target: CommunityTarget): CommunityDiscussionData => ({
@@ -113,6 +114,7 @@ export const CommunityDiscussion = ({
   target,
   voteTargetId,
   deferUntilVisible = false,
+  allowCommentVotes = true,
 }: CommunityDiscussionProps) => {
   const targetType = target.type;
   const targetId = target.id;
@@ -126,7 +128,7 @@ export const CommunityDiscussion = ({
   const [replyingTo, setReplyingTo] = useState<PuzzleComment | null>(null);
   const [collapsed, setCollapsed] = useState<Set<number>>(() => new Set());
   const [commentSort, setCommentSort] = useState<CommentSort>(() =>
-    targetType === "tournament" ? "recent" : "top",
+    targetType === "tournament" || !allowCommentVotes ? "recent" : "top",
   );
   const [actionError, setActionError] = useState("");
   const [voteTarget, setVoteTarget] = useState<HTMLElement | null>(null);
@@ -300,8 +302,8 @@ export const CommunityDiscussion = ({
     setActiveMention(null);
     setMentionSuggestions([]);
     setActionError("");
-    setCommentSort(targetType === "tournament" ? "recent" : "top");
-  }, [targetContext, targetId, targetType]);
+    setCommentSort(targetType === "tournament" || !allowCommentVotes ? "recent" : "top");
+  }, [allowCommentVotes, targetContext, targetId, targetType]);
 
   useEffect(() => {
     const requestId = mentionRequestIdRef.current + 1;
@@ -588,9 +590,11 @@ export const CommunityDiscussion = ({
             >
               <FontAwesomeIcon icon={faChevronRight} />
               <strong>{comment.username}</strong>
-              <span>
-                {comment.score} {comment.score === 1 ? "point" : "points"}
-              </span>
+              {allowCommentVotes ? (
+                <span>
+                  {comment.score} {comment.score === 1 ? "point" : "points"}
+                </span>
+              ) : null}
               <time dateTime={comment.created_at}>{formatLocalDateTime(comment.created_at)}</time>
               {hiddenReplyCount > 0 ? (
                 <span className="collapsedCommentReplies">
@@ -599,32 +603,34 @@ export const CommunityDiscussion = ({
               ) : null}
             </button>
           ) : (
-            <div className="puzzleCommentLayout">
-              <div className="commentVoteRail" aria-label={`Score ${comment.score}`}>
-                <button
-                  className={comment.viewer_vote === 1 ? "active upvote" : "upvote"}
-                  type="button"
-                  aria-label={`Upvote comment. ${comment.upvotes} upvotes`}
-                  aria-pressed={comment.viewer_vote === 1}
-                  title={`${comment.upvotes} upvotes`}
-                  disabled={pendingCommentVotes.has(comment.id)}
-                  onClick={() => void handleCommentVote(comment, 1)}
-                >
-                  <FontAwesomeIcon icon={faArrowUp} />
-                </button>
-                <strong>{comment.score}</strong>
-                <button
-                  className={comment.viewer_vote === -1 ? "active downvote" : "downvote"}
-                  type="button"
-                  aria-label={`Downvote comment. ${comment.downvotes} downvotes`}
-                  aria-pressed={comment.viewer_vote === -1}
-                  title={`${comment.downvotes} downvotes`}
-                  disabled={pendingCommentVotes.has(comment.id)}
-                  onClick={() => void handleCommentVote(comment, -1)}
-                >
-                  <FontAwesomeIcon icon={faArrowDown} />
-                </button>
-              </div>
+            <div className={`puzzleCommentLayout ${allowCommentVotes ? "" : "withoutVotes"}`}>
+              {allowCommentVotes ? (
+                <div className="commentVoteRail" aria-label={`Score ${comment.score}`}>
+                  <button
+                    className={comment.viewer_vote === 1 ? "active upvote" : "upvote"}
+                    type="button"
+                    aria-label={`Upvote comment. ${comment.upvotes} upvotes`}
+                    aria-pressed={comment.viewer_vote === 1}
+                    title={`${comment.upvotes} upvotes`}
+                    disabled={pendingCommentVotes.has(comment.id)}
+                    onClick={() => void handleCommentVote(comment, 1)}
+                  >
+                    <FontAwesomeIcon icon={faArrowUp} />
+                  </button>
+                  <strong>{comment.score}</strong>
+                  <button
+                    className={comment.viewer_vote === -1 ? "active downvote" : "downvote"}
+                    type="button"
+                    aria-label={`Downvote comment. ${comment.downvotes} downvotes`}
+                    aria-pressed={comment.viewer_vote === -1}
+                    title={`${comment.downvotes} downvotes`}
+                    disabled={pendingCommentVotes.has(comment.id)}
+                    onClick={() => void handleCommentVote(comment, -1)}
+                  >
+                    <FontAwesomeIcon icon={faArrowDown} />
+                  </button>
+                </div>
+              ) : null}
               <div className="puzzleCommentBody">
                 <div className="puzzleCommentMeta">
                   <button
@@ -713,7 +719,7 @@ export const CommunityDiscussion = ({
       >
         {!replyingTo ? renderCommentComposer(false) : null}
 
-        {target.type === "tournament" && data.comments.length > 0 ? (
+        {target.type === "tournament" && allowCommentVotes && data.comments.length > 0 ? (
           <div className="puzzleCommentSort">
             <span>Sort by</span>
             <div role="group" aria-label="Sort comments">

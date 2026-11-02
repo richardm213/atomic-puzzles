@@ -248,6 +248,10 @@ export const readCommunityTarget = (input: CommunityRequest): CommunityTarget | 
     const id = typeof rawTargetId === "string" ? rawTargetId.trim().toLowerCase() : "";
     return id && id.length <= 100 ? { type: "tournament", id, context: "" } : null;
   }
+  if (targetType === "endgame") {
+    const id = typeof rawTargetId === "string" ? rawTargetId.trim().toLowerCase() : "";
+    return id && id.length <= 100 ? { type: "endgame", id, context: "" } : null;
+  }
   return null;
 };
 

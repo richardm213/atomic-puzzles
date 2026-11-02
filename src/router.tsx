@@ -55,6 +55,10 @@ const RatingHistoryPage = lazyRouteComponent(
   "RatingHistoryPage",
 );
 const PracticePage = lazyRouteComponent(() => import("./pages/Practice/Practice"), "PracticePage");
+const EndgamePracticePage = lazyRouteComponent(
+  () => import("./pages/EndgamePractice/EndgamePractice"),
+  "EndgamePracticePage",
+);
 const PuzzleDashboardPage = lazyRouteComponent(
   () => import("./pages/PuzzleDashboard/PuzzleDashboard"),
   "PuzzleDashboardPage",
@@ -298,6 +302,12 @@ const practiceRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/practice",
   component: PracticePage,
+});
+
+const endgamePracticeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/puzzles/endgames",
+  component: EndgamePracticePage,
 });
 
 const arenasRoute = createRoute({
@@ -720,6 +730,7 @@ const routeTree = rootRoute.addChildren([
   analysisRoute,
   analysisFenRoute,
   practiceRoute,
+  endgamePracticeRoute,
   recentRoute,
   tournamentsRoute,
   tournamentPlayerRoute,

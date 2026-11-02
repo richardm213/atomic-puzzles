@@ -62,6 +62,18 @@ const terminalMessage = (view: AtomicDbView): string | null => {
   return null;
 };
 
+const tablebaseMoveLabel = (
+  move: NonNullable<AtomicDbView["position"]>["moves"][number],
+  fen: string,
+): string => {
+  if (move.outcome === "DRAW") return "Draw";
+  if (move.outcome === "UNKNOWN") return "—";
+  const whiteToMove = fen.trim().split(/\s+/)[1] !== "b";
+  const sideToMoveWins =
+    (move.outcome === "WHITE_WIN" && whiteToMove) || (move.outcome === "BLACK_WIN" && !whiteToMove);
+  return sideToMoveWins ? "Win" : "Loss";
+};
+
 const useRetainedAtomicDbView = (analysis: AtomicDbAnalysisState, fen: string): AtomicDbView => {
   const currentView = buildAtomicDbView(analysis.result, fen);
   const settledViewRef = useRef(currentView);
@@ -289,7 +301,12 @@ export const AtomicDbEngine = ({
               }
               const support = move.backedPlies > 0 ? `, backed to depth ${move.backedPlies}` : "";
               const moveEvaluation = getAtomicDbMoveEvaluation(move, view.fen);
-              const evaluation = formatAtomicDbEvaluation(moveEvaluation);
+              const evaluation =
+                analysis.source === "tablebase" &&
+                moveEvaluation.type === "centipawns" &&
+                move.score === null
+                  ? tablebaseMoveLabel(move, view.fen)
+                  : formatAtomicDbEvaluation(moveEvaluation);
               const displayedLine = lineTokens.map((token) => token.value).join(" ");
               return (
                 <li

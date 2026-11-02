@@ -90,6 +90,11 @@ export const navItems: NavItem[] = [
         isActive: (pathname) => pathname === "/puzzles/motifs",
       },
       {
+        to: "/puzzles/endgames",
+        label: "Endgame practice",
+        isActive: (pathname) => pathname === "/puzzles/endgames",
+      },
+      {
         to: "/puzzles/submit",
         label: "Submit puzzles",
         isActive: (pathname) => pathname === "/puzzles/submit",

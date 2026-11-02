@@ -38,10 +38,15 @@ type EngineProgressListener = (candidates: EngineCandidate[]) => void;
 let enginePromise: Promise<StockfishEngine> | null = null;
 let engineSearchQueue: Promise<void> = Promise.resolve();
 let configuredMultiPvCount = 1;
-const candidatesByFen = new Map<
-  string,
-  { candidates: EngineCandidate[]; multiPvCount: number; thinkTimeMs: number }
->();
+type CachedEvaluation = {
+  candidates: EngineCandidate[];
+  multiPvCount: number;
+  expiresAt: number;
+};
+const candidatesByFen = new Map<string, CachedEvaluation>();
+const EVALUATION_CACHE_TTL_MS = 2 * 60_000;
+const MAX_EVALUATION_CACHE_ENTRIES = 128;
+const MIN_CACHED_EVALUATION_DEPTH = 15;
 const MIN_THINK_TIME_MS = 500;
 const MAX_THINK_TIME_MS = 3_000;
 const PRACTICE_THINK_TIME_MS = 700;
@@ -56,6 +61,52 @@ const CANDIDATE_WEIGHTS = [0.4, 0.25, 0.15, 0.12, 0.08] as const;
 
 const randomThinkTimeMs = (): number =>
   Math.floor(Math.random() * (MAX_THINK_TIME_MS - MIN_THINK_TIME_MS + 1)) + MIN_THINK_TIME_MS;
+
+const readCachedEvaluation = (fen: string): CachedEvaluation | null => {
+  const cached = candidatesByFen.get(fen);
+  if (!cached) return null;
+  if (cached.expiresAt <= Date.now()) {
+    candidatesByFen.delete(fen);
+    return null;
+  }
+  candidatesByFen.delete(fen);
+  candidatesByFen.set(fen, cached);
+  return cached;
+};
+
+export const isCacheableFairyStockfishEvaluation = (
+  candidates: EngineCandidate[],
+  multiPvCount: number,
+): boolean => {
+  const completeCandidates = [...candidates]
+    .sort((left, right) => left.multipv - right.multipv)
+    .slice(0, multiPvCount);
+  return !(
+    completeCandidates.length < multiPvCount ||
+    completeCandidates.some((candidate) => (candidate.depth ?? 0) < MIN_CACHED_EVALUATION_DEPTH)
+  );
+};
+
+const cacheEvaluationIfDeepEnough = (
+  fen: string,
+  candidates: EngineCandidate[],
+  multiPvCount: number,
+): void => {
+  if (!isCacheableFairyStockfishEvaluation(candidates, multiPvCount)) return;
+  const completeCandidates = [...candidates]
+    .sort((left, right) => left.multipv - right.multipv)
+    .slice(0, multiPvCount);
+
+  candidatesByFen.delete(fen);
+  candidatesByFen.set(fen, {
+    candidates: completeCandidates,
+    multiPvCount,
+    expiresAt: Date.now() + EVALUATION_CACHE_TTL_MS,
+  });
+  if (candidatesByFen.size > MAX_EVALUATION_CACHE_ENTRIES) {
+    candidatesByFen.delete(candidatesByFen.keys().next().value!);
+  }
+};
 
 // Firefox's Atomics.waitAsync implementation currently leaks waiters under the
 // pthread traffic produced by stockfish-web. Lichess disables it so Emscripten
@@ -383,7 +434,7 @@ const searchFairyStockfish = async (
       engine.postMessage(`go movetime ${thinkTimeMs}`);
       const { bestMoveLine, candidates } = await bestMoveResult;
       const fallbackMove = bestMoveLine.match(/^bestmove\s+(\S+)/)?.[1] ?? "";
-      candidatesByFen.set(fen, { candidates, multiPvCount, thinkTimeMs });
+      cacheEvaluationIfDeepEnough(fen, candidates, multiPvCount);
       return {
         bestMove: fallbackMove && fallbackMove !== "(none)" ? fallbackMove : null,
         candidates,
@@ -434,11 +485,13 @@ export const analyzeFairyStockfishPosition = async (
   onProgress?: EngineProgressListener,
 ): Promise<EngineCandidate[]> => {
   const requestedLineCount = Math.min(MULTIPV_COUNT, Math.max(1, Math.floor(lineCount)));
-  const cachedSearch = candidatesByFen.get(fen);
+  const cachedSearch = readCachedEvaluation(fen);
+  const handleProgress = (candidates: EngineCandidate[]): void => {
+    cacheEvaluationIfDeepEnough(fen, candidates, requestedLineCount);
+    onProgress?.(candidates);
+  };
   const candidates =
-    cachedSearch &&
-    cachedSearch.thinkTimeMs >= MAX_THINK_TIME_MS &&
-    cachedSearch.multiPvCount >= requestedLineCount
+    cachedSearch && cachedSearch.multiPvCount >= requestedLineCount
       ? cachedSearch.candidates
       : (
           await queueFairyStockfishSearch(
@@ -448,7 +501,7 @@ export const analyzeFairyStockfishPosition = async (
                 requestSignal,
                 MAX_THINK_TIME_MS,
                 requestedLineCount,
-                onProgress,
+                handleProgress,
               ),
             signal,
           )
@@ -464,7 +517,7 @@ export const findFairyStockfishMove = (
   signal?: AbortSignal,
   excludedMoves: ReadonlySet<string> = new Set(),
 ): Promise<string | null> => {
-  const cachedSearch = candidatesByFen.get(fen);
+  const cachedSearch = readCachedEvaluation(fen);
   if (cachedSearch) {
     return Promise.resolve(
       chooseEngineCandidate(cachedSearch.candidates, Math.random, excludedMoves)?.move ?? null,

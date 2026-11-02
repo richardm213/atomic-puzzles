@@ -45,6 +45,14 @@ export const CommunityCommentTargetLink = ({
     );
   }
 
+  if (targetType === "endgame") {
+    return (
+      <Link className={className} to="/puzzles/endgames">
+        Endgame practice
+      </Link>
+    );
+  }
+
   return (
     <Link className={className} to="/solve/$puzzleId" params={{ puzzleId: targetId }}>
       Puzzle #{targetId}
