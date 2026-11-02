@@ -13,9 +13,10 @@ import {
 } from "./scoring";
 
 describe("Atomic Tour scoring", () => {
-  it("expires each award the month after its match month two years later", () => {
-    expect(atomicTourAwardExpiryDate("2024-09-11")).toBe("2026-10-01");
-    expect(atomicTourAwardExpiryDate("2025-12-20")).toBe("2028-01-01");
+  it("expires each award at the end of the month 25 months after its match month", () => {
+    expect(atomicTourAwardExpiryDate("2024-09-11")).toBe("2026-10-31");
+    expect(atomicTourAwardExpiryDate("2025-12-20")).toBe("2028-01-31");
+    expect(atomicTourAwardExpiryDate("2025-01-31")).toBe("2027-02-28");
   });
 
   it("uses ATP-style placement percentages", () => {

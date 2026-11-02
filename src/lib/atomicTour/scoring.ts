@@ -41,12 +41,17 @@ export type AtomicTourMainResult = {
 };
 
 export const atomicTourAwardExpiryDate = (playedOn: string): string => {
-  const match = /^(\d{4})-(\d{2})-\d{2}$/.exec(playedOn.trim());
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(playedOn.trim());
   if (!match) throw new Error(`Invalid Atomic Tour match date: ${playedOn}`);
   const expiryMonthIndex = Number(match[2]) - 1 + 25;
   const expiryYear = Number(match[1]) + Math.floor(expiryMonthIndex / 12);
-  const expiryMonth = String((expiryMonthIndex % 12) + 1).padStart(2, "0");
-  return `${expiryYear}-${expiryMonth}-01`;
+  const expiryMonthIndexInYear = expiryMonthIndex % 12;
+  const lastDayOfExpiryMonth = new Date(
+    Date.UTC(expiryYear, expiryMonthIndexInYear + 1, 0),
+  ).getUTCDate();
+  const expiryMonth = String(expiryMonthIndexInYear + 1).padStart(2, "0");
+  const expiryDay = String(lastDayOfExpiryMonth).padStart(2, "0");
+  return `${expiryYear}-${expiryMonth}-${expiryDay}`;
 };
 
 export const atomicTourStageForRound = (

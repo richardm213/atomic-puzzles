@@ -46,9 +46,9 @@ player to the next guaranteed point tier.
 - A live snapshot and historical monthly snapshots are stored in
   `atomic_tour_ranking_snapshots`. Historical months are included only when an award was earned or
   expired, so inactive months do not clutter the date picker.
-- Each award expires at the start of the month after its match month two years later. Matches from
-  September 2024 remain through September 2026 and drop out in October 2026, while matches from a
-  later month in the same tournament expire later.
+- Each award expires at the end of the month 25 months after its match month. For example, a match
+  played in September 2024 expires on October 31, 2026, while matches played later in the same
+  tournament expire in later months.
 - Players in `atomic_tour_excluded_players` do not appear in rankings or receive point credit.
 
 ## Publishing data
