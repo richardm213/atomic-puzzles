@@ -133,18 +133,18 @@ describe("puzzle timer preference", () => {
 describe("board coordinate preference", () => {
   beforeEach(() => window.localStorage.clear());
 
-  it("shows coordinates by default and persists the hidden setting", async () => {
+  it("hides coordinates by default and persists the shown setting", async () => {
     render(
       <AppSettingsProvider>
         <BoardCoordinatesSetting />
       </AppSettingsProvider>,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Coordinates shown" }));
+    fireEvent.click(screen.getByRole("button", { name: "Coordinates hidden" }));
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Coordinates hidden" })).toBeInTheDocument();
-      expect(window.localStorage.getItem("atomic-puzzles.board.show-coordinates")).toBe("false");
+      expect(screen.getByRole("button", { name: "Coordinates shown" })).toBeInTheDocument();
+      expect(window.localStorage.getItem("atomic-puzzles.board.show-coordinates")).toBe("true");
     });
   });
 });

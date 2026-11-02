@@ -26,6 +26,53 @@
   touch-action: none;
 }
 
+.cg-boardShell coords {
+  z-index: 3;
+  font-size: clamp(9px, 2.2cqi, 11px);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.cg-boardShell coords.ranks {
+  top: 0;
+  right: 3px;
+  left: auto;
+  width: 12px;
+  height: 100%;
+  align-items: flex-end;
+}
+
+.cg-boardShell coords.ranks.left {
+  right: auto;
+  left: 3px;
+  align-items: flex-start;
+}
+
+.cg-boardShell coords.ranks coord {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding-top: 3px;
+  box-sizing: border-box;
+  transform: none;
+}
+
+.cg-boardShell coords.files {
+  bottom: 2px;
+  left: 0;
+  width: 100%;
+  height: 12px;
+  align-items: flex-end;
+}
+
+.cg-boardShell coords.files coord {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding-right: 3px;
+  box-sizing: border-box;
+}
+
 .cg-boardShell.coordinatesHidden coords {
   display: none;
 }

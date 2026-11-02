@@ -282,7 +282,7 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
   const [showBoardCoordinates, setShowBoardCoordinates] = usePersistedState(
     STORAGE_KEYS.showBoardCoordinates,
     z.boolean(),
-    true,
+    false,
   );
   const [hideRankingsOpenings, setHideRankingsOpenings] = usePersistedState(
     STORAGE_KEYS.hideRankingsOpenings,
@@ -366,7 +366,7 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     setBoardColorOverrideTheme("");
     setBoardOverrideLightSquare(DEFAULT_CUSTOM_LIGHT_SQUARE);
     setBoardOverrideDarkSquare(DEFAULT_CUSTOM_DARK_SQUARE);
-    setShowBoardCoordinates(true);
+    setShowBoardCoordinates(false);
   }, [
     setTheme,
     setPieceSet,

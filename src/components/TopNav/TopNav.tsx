@@ -181,7 +181,11 @@ export const TopNav = () => {
     pathname === "/solve" ||
     pathname.startsWith("/solve/") ||
     pathname === "/analysis" ||
-    pathname.startsWith("/analysis/");
+    pathname.startsWith("/analysis/") ||
+    pathname === "/practice" ||
+    pathname.startsWith("/practice/") ||
+    pathname === "/puzzles/endgames" ||
+    pathname === "/puzzles/submit";
   const showPuzzleTimerSetting =
     pathname === "/solve" ||
     (/^\/solve\/[^/]+$/.test(pathname) &&

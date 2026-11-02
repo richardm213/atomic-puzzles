@@ -107,10 +107,10 @@ describe("Chessboard orchestration", () => {
     expect(movable?.dests.get("e2")).toEqual(expect.arrayContaining(["e3", "e4"]));
   });
 
-  it("places coordinates inside their board squares", () => {
+  it("uses Lichess-style coordinates along the board edges", () => {
     renderBoard();
 
-    expect(mocks.config?.coordinatesOnSquares).toBe(true);
+    expect(mocks.config?.coordinatesOnSquares).toBe(false);
   });
 
   it("hides coordinates when the display preference is disabled", () => {
