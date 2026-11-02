@@ -739,11 +739,6 @@
 }
 
 @media (max-width: 520px) {
-  .practicePage .analysisBoardTextPanel .analysisFenBox,
-  .practicePage .analysisBoardTextPanel .analysisPgnBox {
-    display: none;
-  }
-
   .practicePanel {
     padding: 6px;
     gap: 6px;
@@ -807,7 +802,7 @@
   }
 
   .practiceToolbar {
-    margin: 0 -6px -6px;
+    margin: 0;
     padding-inline: 6px;
   }
 

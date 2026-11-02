@@ -66,6 +66,7 @@ const MONTH_FILTER_PATTERN = /^\d{4}-\d{2}$/;
 const EXPLORER_SETTINGS_STORAGE_KEY = "atomic-puzzles.analysis.explorer-settings";
 const BOARD_SIZE_STORAGE_KEY = "atomic-puzzles.analysis.board-size";
 const NOTATION_LAYOUT_STORAGE_KEY = "atomic-puzzles.analysis.notation-layout";
+const EXPLORER_OPEN_STORAGE_KEY = "atomic-puzzles.analysis.explorer-open";
 const DEFAULT_ANALYSIS_BOARD_SIZE = 516;
 const MIN_ANALYSIS_BOARD_SIZE = 320;
 const MAX_ANALYSIS_BOARD_SIZE = 760;
@@ -143,6 +144,9 @@ const getMaxAnalysisBoardSize = (): number => {
     Math.min(MAX_ANALYSIS_BOARD_SIZE, viewportWidth - ANALYSIS_DESKTOP_RESERVED_WIDTH),
   );
 };
+
+const defaultExplorerOpen = (): boolean =>
+  typeof window === "undefined" || !window.matchMedia("(max-width: 780px)").matches;
 
 const boardSizeSchema = z.coerce
   .number()
@@ -293,7 +297,11 @@ export const AnalysisPage = () => {
   const [orientation, setOrientation] = useState<"white" | "black">("white");
   const [navigation, setNavigation] = useState<SolutionNavigation | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [explorerOpen, setExplorerOpen] = useState(true);
+  const [explorerOpen, setExplorerOpen] = usePersistedState(
+    EXPLORER_OPEN_STORAGE_KEY,
+    z.boolean(),
+    defaultExplorerOpen(),
+  );
   const [movePanelHeight, setMovePanelHeight] = useState<number | null>(null);
   const [explorerResizing, setExplorerResizing] = useState(false);
   const [explorerSettings, setExplorerSettings] = usePersistedState<StoredExplorerSettings>(

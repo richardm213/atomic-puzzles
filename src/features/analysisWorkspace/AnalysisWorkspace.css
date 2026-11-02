@@ -900,20 +900,23 @@ body:has(.analysisPage),
 
 .analysisMoveList::-webkit-scrollbar,
 .analysisFilterPanel::-webkit-scrollbar,
-.analysisExplorerTableWrap::-webkit-scrollbar {
+.analysisExplorerTableWrap::-webkit-scrollbar,
+.analysisRecentGames ol::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 .analysisMoveList::-webkit-scrollbar-track,
 .analysisFilterPanel::-webkit-scrollbar-track,
-.analysisExplorerTableWrap::-webkit-scrollbar-track {
+.analysisExplorerTableWrap::-webkit-scrollbar-track,
+.analysisRecentGames ol::-webkit-scrollbar-track {
   background: transparent;
 }
 
 .analysisMoveList::-webkit-scrollbar-thumb,
 .analysisFilterPanel::-webkit-scrollbar-thumb,
-.analysisExplorerTableWrap::-webkit-scrollbar-thumb {
+.analysisExplorerTableWrap::-webkit-scrollbar-thumb,
+.analysisRecentGames ol::-webkit-scrollbar-thumb {
   border: 2px solid transparent;
   border-radius: 999px;
   background: color-mix(in srgb, var(--color-muted) 58%, transparent);
@@ -1307,13 +1310,33 @@ body:has(.analysisPage),
   .analysisPage {
     --analysis-side-panel-height: auto;
     padding-inline: max(10px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-right));
+    padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px));
   }
 
-  .analysisBoardColumn,
   .analysisRightPanel,
   .analysisExplorerPanel {
     grid-column: auto;
     grid-row: auto;
+  }
+
+  .analysisBoardColumn {
+    display: contents;
+  }
+
+  .analysisBoardPanel {
+    grid-column: 1;
+    grid-row: auto;
+    order: -1;
+    justify-self: center;
+    width: min(100%, var(--analysis-board-size, 520px));
+  }
+
+  .analysisBoardTextPanel {
+    grid-column: 1;
+    grid-row: auto;
+    order: 1;
+    justify-self: center;
+    width: min(100%, var(--analysis-board-size, 520px));
   }
 
   .analysisRightPanel {
@@ -1329,6 +1352,47 @@ body:has(.analysisPage),
 
   .analysisBoardColumn {
     width: min(100%, var(--analysis-board-size, 520px));
+  }
+
+  .analysisRecentGames ol {
+    max-height: 144px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-color: color-mix(in srgb, var(--color-muted) 58%, transparent) transparent;
+    scrollbar-width: thin;
+  }
+
+  .analysisRecentGames > span {
+    min-height: 32px;
+    font-size: 13px;
+  }
+
+  .analysisRecentGames a {
+    min-height: 48px;
+    padding-block: 3px;
+  }
+
+  .analysisBottomToolbar {
+    position: fixed;
+    left: max(10px, env(safe-area-inset-left));
+    right: max(10px, env(safe-area-inset-right));
+    bottom: 0;
+    z-index: 20;
+    width: auto;
+    min-height: calc(52px + env(safe-area-inset-bottom, 0px));
+    margin: 0;
+    padding: 4px 8px calc(4px + env(safe-area-inset-bottom, 0px));
+    border: 1px solid var(--color-border-strong);
+    border-bottom: 0;
+    border-radius: var(--radius-ui) var(--radius-ui) 0 0;
+    background: color-mix(in srgb, var(--color-panel-deep) 94%, transparent);
+    box-shadow: 0 -10px 28px color-mix(in srgb, var(--page-background) 54%, transparent);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+  }
+
+  .analysisToolbarButton {
+    height: 44px;
   }
 }
 

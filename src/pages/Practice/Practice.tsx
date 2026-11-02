@@ -47,6 +47,7 @@ import { useBoardDocument } from "../../hooks/useBoardDocument";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
 import { useCopyFeedback } from "../../hooks/useCopyFeedback";
 import { type OpeningExplorerRequest, useOpeningExplorer } from "../../hooks/useOpeningExplorer";
+import { usePersistedState } from "../../hooks/usePersistedState";
 import { useUsernamePicker } from "../../hooks/useUsernamePicker";
 import { apiRequest } from "../../lib/api/postApi";
 import { findFairyStockfishMove, warmFairyStockfish } from "../../lib/practice/fairyStockfish";
@@ -77,6 +78,7 @@ const randomOpeningPlayerSchema = z.object({ username: z.string().trim().min(1) 
 
 const PRACTICE_AUTOMOVE_MIN_THINK_MS = 240;
 const PLAYER_MIN_RATING = 1700;
+const MOVES_OPEN_STORAGE_KEY = "atomic-puzzles.practice.moves-open";
 const buildPracticePgn = (rootFen: string, moveText = ""): string =>
   [
     '[Variant "Atomic"]',
@@ -216,7 +218,11 @@ export const PracticePage = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [exhaustedFen, setExhaustedFen] = useState<string | null>(null);
   const [manualContinuationActive, setManualContinuationActive] = useState(false);
-  const [movesOpen, setMovesOpen] = useState(true);
+  const [movesOpen, setMovesOpen] = usePersistedState(
+    MOVES_OPEN_STORAGE_KEY,
+    z.boolean(),
+    true,
+  );
   const [hoveredMoveUci, setHoveredMoveUci] = useState<string | null>(null);
   const { copy: copyPgn, copyLabel: copyPgnLabel } = useCopyFeedback();
   const [randomPlayerLoading, setRandomPlayerLoading] = useState(false);
