@@ -583,19 +583,72 @@ describe("Chessboard orchestration", () => {
     play("e2", "e4");
     play("e7", "e5");
     play("g1", "f3");
+    play("b8", "c6");
+    play("f1", "c4");
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
     fireEvent.keyDown(window, { key: "ArrowLeft" });
     fireEvent.keyDown(window, { key: "ArrowLeft" });
 
     rerender(
-      <Chessboard {...boardProps} solutionNavigation={{ type: "line", ucis: ["e7e5", "f1c4"] }} />,
+      <Chessboard
+        {...boardProps}
+        solutionNavigation={{ type: "line", ucis: ["e7e5", "g1f3", "b8c6", "f1b5"] }}
+      />,
     );
     act(() => {
-      vi.advanceTimersByTime(250);
+      vi.advanceTimersByTime(750);
     });
 
     expect(states.at(-1)?.customLines).toEqual([
-      ["e4", "e5", "Nf3"],
-      ["e4", "e5", "Bc4"],
+      ["e4", "e5", "Nf3", "Nc6", "Bc4"],
+      ["e4", "e5", "Nf3", "Nc6", "Bb5"],
+    ]);
+    expect(states.at(-1)?.customLineIndex).toBe(1);
+    vi.useRealTimers();
+  });
+
+  it("preserves a loaded mainline when an analysis line follows its prefix before branching", () => {
+    vi.useFakeTimers();
+    const states: ChessboardState[] = [];
+    const boardProps: ComponentProps<typeof Chessboard> = {
+      puzzleId: "analysis-loaded-mainline",
+      fen: STARTING_FEN,
+      orientation: "white",
+      coordinates: true,
+      solution: "",
+      showSolution: false,
+      analysisMode: true,
+      onStateChange: (state) => states.push(state),
+    };
+    const { rerender } = render(
+      <Chessboard
+        {...boardProps}
+        solutionNavigation={{
+          type: "loadPgn",
+          pgn: "1. e4 e5 2. Nf3 Nc6 3. Bc4",
+          fen: STARTING_FEN,
+        }}
+      />,
+    );
+
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    rerender(
+      <Chessboard
+        {...boardProps}
+        solutionNavigation={{ type: "line", ucis: ["e7e5", "g1f3", "b8c6", "f1b5"] }}
+      />,
+    );
+    act(() => {
+      vi.advanceTimersByTime(750);
+    });
+
+    expect(states.at(-1)?.customLines).toEqual([
+      ["e4", "e5", "Nf3", "Nc6", "Bc4"],
+      ["e4", "e5", "Nf3", "Nc6", "Bb5"],
     ]);
     expect(states.at(-1)?.customLineIndex).toBe(1);
     vi.useRealTimers();

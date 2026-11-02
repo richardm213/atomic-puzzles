@@ -431,22 +431,34 @@ const ChessboardComponent = ({
         previousActiveLine.source === "custom"
           ? variationHistoryAt(customVariationsRef.current, previousActiveLine.index)
           : null;
-      const previousContinuationKey = previousCustomHistory?.plies[history.index + 1]?.key;
+      const previousLineHistory = previousCustomHistory ?? history;
+      const previousContinuationKey = previousLineHistory.plies[history.index + 1]?.key;
       const followsPreviousContinuation = previousContinuationKey === moveKey;
       const createsCustomBranch =
         previousContinuationKey !== undefined && previousContinuationKey !== moveKey;
 
       if (
         analysisModeRef.current &&
-        previousActiveLine.source === "custom" &&
-        previousCustomHistory &&
+        previousActiveLine.source !== "solution" &&
         followsPreviousContinuation
       ) {
-        const continuedHistory = cloneBoardHistory(previousCustomHistory);
-        continuedHistory.index = history.index + 1;
-        historyRef.current = continuedHistory;
+        if (previousCustomHistory) {
+          const continuedHistory = cloneBoardHistory(previousCustomHistory);
+          continuedHistory.index = history.index + 1;
+          historyRef.current = continuedHistory;
+        } else {
+          history.index += 1;
+        }
         activeLineRef.current = previousActiveLine;
         return;
+      }
+
+      if (
+        analysisModeRef.current &&
+        previousActiveLine.source === "history" &&
+        history.index < history.plies.length - 1
+      ) {
+        saveVariation(customVariationsRef.current, cloneBoardHistory(history));
       }
 
       appendBoardMove(history, {
