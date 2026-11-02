@@ -26,6 +26,10 @@ import {
   tablebaseStartIsLongerThanMateInFour,
 } from "../../lib/endgamePractice/atomicTablebase";
 import {
+  type EndgameLeaderboardEntry,
+  updateEndgameLeaderboard,
+} from "../../lib/endgamePractice/endgameLeaderboard";
+import {
   buildEndgamePgn,
   categoryLabel,
   chooseDefenderMove,
@@ -35,48 +39,22 @@ import {
   type EndgamePosition,
   generateEndgamePosition,
   hasBlackPawn,
+  pawnEndgameCategories,
 } from "../../lib/endgamePractice/endgamePractice";
 import type { ChessboardState, SolutionNavigation } from "../../types/chessboard";
 import { formatLocalDateTime } from "../../utils/formatters";
 
 type RoundStatus = "ready" | "preparing" | "running" | "won" | "failed";
-type LeaderboardEntry = {
-  id: string;
-  player: string;
-  mode: EndgameMode;
-  category: EndgameCategory;
-  durationMs: number;
-  completedAt: string;
-};
 
-const STORAGE_KEY = "atomic-puzzles:endgame-race:leaderboard:v2";
-const LEGACY_STORAGE_KEY = "atomic-puzzles:endgame-race:leaderboard:v1";
 const PLAYER_KEY = "atomic-puzzles:endgame-race:player";
-const categories: EndgameCategory[] = ["rank-3", "rank-4", "rank-5", "rank-6", "a-pawn", "h-pawn"];
-
-const readLeaderboard = (): LeaderboardEntry[] => {
-  try {
-    window.localStorage.removeItem(LEGACY_STORAGE_KEY);
-    const parsed = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "[]") as unknown;
-    const rows = Array.isArray(parsed)
-      ? parsed.filter(
-          (entry): entry is LeaderboardEntry =>
-            Boolean(entry) &&
-            typeof entry === "object" &&
-            typeof (entry as LeaderboardEntry).player === "string" &&
-            Number.isFinite((entry as LeaderboardEntry).durationMs),
-        )
-      : [];
-    const fastestByPlayer = new Map<string, LeaderboardEntry>();
-    rows.forEach((entry) => {
-      const key = `${entry.mode}:${entry.category}:${entry.player.trim().toLowerCase()}`;
-      const current = fastestByPlayer.get(key);
-      if (!current || entry.durationMs < current.durationMs) fastestByPlayer.set(key, entry);
-    });
-    return Array.from(fastestByPlayer.values());
-  } catch {
-    return [];
-  }
+const GUEST_ID_KEY = "atomic-puzzles:endgame-practice:guest-id";
+const OLD_LEADERBOARD_KEYS = [
+  "atomic-puzzles:endgame-race:leaderboard:v1",
+  "atomic-puzzles:endgame-race:leaderboard:v2",
+];
+const randomPawnCategory = (exclude?: EndgameCategory): EndgameCategory => {
+  const choices = pawnEndgameCategories.filter((category) => category !== exclude);
+  return choices[Math.floor(Math.random() * choices.length)] ?? "regular-file:rank-regular";
 };
 
 const formatTime = (milliseconds: number): string => {
@@ -180,9 +158,13 @@ const prepareEndgamePosition = (
 
 export const EndgamePracticePage = () => {
   const { user } = useAuth();
+  const [initialSetup] = useState(() => {
+    const category = randomPawnCategory();
+    return { category, position: generateEndgamePosition("pawn-duel", category) };
+  });
   const [mode, setMode] = useState<EndgameMode>("pawn-duel");
-  const [category, setCategory] = useState<EndgameCategory>("rank-6");
-  const [position, setPosition] = useState(() => generateEndgamePosition("pawn-duel", "rank-6"));
+  const [category, setCategory] = useState<EndgameCategory>(initialSetup.category);
+  const [position, setPosition] = useState(initialSetup.position);
   const [boardState, setBoardState] = useState<ChessboardState | null>(null);
   const [navigation, setNavigation] = useState<SolutionNavigation | null>(null);
   const navigationRef = useRef<SolutionNavigation | null>(null);
@@ -194,8 +176,18 @@ export const EndgamePracticePage = () => {
   const startedAtRef = useRef<number | null>(null);
   const scoredRoundRef = useRef<string | null>(null);
   const roundIdRef = useRef(crypto.randomUUID());
+  const nextCategoryRef = useRef<EndgameCategory | null>(null);
   const preparationControllerRef = useRef<AbortController | null>(null);
-  const [entries, setEntries] = useState<LeaderboardEntry[]>(readLeaderboard);
+  const readyPositionFenRef = useRef<string | null>(null);
+  const [entries, setEntries] = useState<EndgameLeaderboardEntry[]>([]);
+  const [ownBest, setOwnBest] = useState<EndgameLeaderboardEntry | null>(null);
+  const [guestId] = useState(() => {
+    const existing = window.localStorage.getItem(GUEST_ID_KEY);
+    if (existing) return existing;
+    const created = crypto.randomUUID();
+    window.localStorage.setItem(GUEST_ID_KEY, created);
+    return created;
+  });
   const [guestName, setGuestName] = useState(
     () => window.localStorage.getItem(PLAYER_KEY)?.trim() || "Guest",
   );
@@ -204,7 +196,10 @@ export const EndgamePracticePage = () => {
   const playerName = user?.username || guestName.trim() || "Guest";
   const leaderboardCategory: EndgameCategory = mode === "two-queens" ? "no-pawn" : category;
   const currentFen = boardState?.fen || position.fen;
-  const positionPgn = useMemo(() => buildEndgamePgn(currentFen), [currentFen]);
+  const positionPgn = useMemo(
+    () => buildEndgamePgn(position.fen, boardState?.lineMoves ?? []),
+    [boardState?.lineMoves, position.fen],
+  );
   const analysisHref = `/analysis/${currentFen.replaceAll(" ", "_")}`;
   const currentTurn = boardState?.turn || "white";
   const isOpponentThinking = status === "running" && currentTurn === "black" && !navigation;
@@ -223,6 +218,30 @@ export const EndgamePracticePage = () => {
   );
 
   useEffect(() => {
+    OLD_LEADERBOARD_KEYS.forEach((key) => window.localStorage.removeItem(key));
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void updateEndgameLeaderboard(
+      {
+        action: "load",
+        mode,
+        category: leaderboardCategory,
+        guestId,
+        guestName: playerName,
+      },
+      controller.signal,
+    )
+      .then((result) => {
+        setEntries(result.entries);
+        setOwnBest(result.ownBest);
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [guestId, leaderboardCategory, mode, playerName]);
+
+  useEffect(() => {
     void prepareEndgamePosition(mode, category);
   }, [category, mode]);
 
@@ -236,6 +255,7 @@ export const EndgamePracticePage = () => {
       setNavigation(null);
       navigationRef.current = null;
       setStatus("ready");
+      readyPositionFenRef.current = null;
       setFailureLabel("Escaped");
       setElapsedMs(0);
       startedAtRef.current = null;
@@ -254,10 +274,20 @@ export const EndgamePracticePage = () => {
     setFailureLabel("Escaped");
 
     void (async () => {
-      let selectedPosition = takePreparedPosition(mode, category);
+      const roundCategory =
+        attemptIsOver && mode !== "two-queens"
+          ? (nextCategoryRef.current ?? randomPawnCategory(category))
+          : category;
+      if (roundCategory !== category) setCategory(roundCategory);
+      let selectedPosition =
+        status === "ready" &&
+        roundCategory === category &&
+        readyPositionFenRef.current === position.fen
+          ? position
+          : takePreparedPosition(mode, roundCategory);
       if (!selectedPosition) {
-        await prepareEndgamePosition(mode, category);
-        selectedPosition = takePreparedPosition(mode, category);
+        await prepareEndgamePosition(mode, roundCategory);
+        selectedPosition = takePreparedPosition(mode, roundCategory);
       }
       if (controller.signal.aborted || preparationControllerRef.current !== controller) return;
       preparationControllerRef.current = null;
@@ -272,12 +302,57 @@ export const EndgamePracticePage = () => {
       navigationRef.current = null;
       setElapsedMs(0);
       setStatus("running");
+      readyPositionFenRef.current = null;
       startedAtRef.current = window.performance.now();
       roundIdRef.current = crypto.randomUUID();
       scoredRoundRef.current = null;
+      void prepareEndgamePosition(mode, roundCategory);
+      if (mode === "two-queens") {
+        nextCategoryRef.current = "no-pawn";
+      } else {
+        const nextCategory = randomPawnCategory(roundCategory);
+        nextCategoryRef.current = nextCategory;
+        void prepareEndgamePosition(mode, nextCategory);
+      }
+    })();
+  }, [attemptIsOver, category, mode, position, status]);
+
+  const startOver = useCallback(() => {
+    if (status !== "running") return;
+    preparationControllerRef.current?.abort();
+    const controller = new AbortController();
+    preparationControllerRef.current = controller;
+    startedAtRef.current = null;
+    navigationRef.current = null;
+    setNavigation(null);
+    setElapsedMs(0);
+    setStatus("preparing");
+
+    void (async () => {
+      let selectedPosition = takePreparedPosition(mode, category);
+      if (!selectedPosition) {
+        await prepareEndgamePosition(mode, category);
+        selectedPosition = takePreparedPosition(mode, category);
+      }
+      if (controller.signal.aborted || preparationControllerRef.current !== controller) return;
+      preparationControllerRef.current = null;
+      setBoardState(null);
+      if (!selectedPosition) {
+        readyPositionFenRef.current = null;
+        setStatus("ready");
+        return;
+      }
+
+      setPosition(selectedPosition);
+      readyPositionFenRef.current = selectedPosition.fen;
+      setFailureLabel("Escaped");
+      roundIdRef.current = crypto.randomUUID();
+      scoredRoundRef.current = null;
+      resetCopyFeedback();
+      setStatus("ready");
       void prepareEndgamePosition(mode, category);
     })();
-  }, [category, mode]);
+  }, [category, mode, resetCopyFeedback, status]);
 
   const giveUp = useCallback(() => {
     if (status !== "running") return;
@@ -396,38 +471,19 @@ export const EndgamePracticePage = () => {
       startedAtRef.current = null;
       setElapsedMs(finished);
       setStatus("won");
-      const entry: LeaderboardEntry = {
-        id: crypto.randomUUID(),
-        player: playerName,
+      void updateEndgameLeaderboard({
+        action: "record",
         mode,
         category: leaderboardCategory,
+        guestId,
+        guestName: playerName,
         durationMs: Math.round(finished),
-        completedAt: new Date().toISOString(),
-      };
-      setEntries((current) => {
-        const playerKey = playerName.trim().toLowerCase();
-        const previousBest = current.find(
-          (row) =>
-            row.mode === mode &&
-            row.category === leaderboardCategory &&
-            row.player.trim().toLowerCase() === playerKey,
-        );
-        const retainedEntry =
-          previousBest && previousBest.durationMs <= entry.durationMs ? previousBest : entry;
-        const next = [
-          ...current.filter(
-            (row) =>
-              row.mode !== mode ||
-              row.category !== leaderboardCategory ||
-              row.player.trim().toLowerCase() !== playerKey,
-          ),
-          retainedEntry,
-        ]
-          .sort((left, right) => left.durationMs - right.durationMs)
-          .slice(0, 200);
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-        return next;
-      });
+      })
+        .then((result) => {
+          setEntries(result.entries);
+          setOwnBest(result.ownBest);
+        })
+        .catch(() => undefined);
       return;
     }
     if (boardState.winner === "black" || (mode !== "two-queens" && !hasBlackPawn(boardState.fen))) {
@@ -435,18 +491,7 @@ export const EndgamePracticePage = () => {
       setFailureLabel(boardState.winner === "black" ? "Lost" : "Escaped");
       setStatus("failed");
     }
-  }, [boardState, elapsedMs, leaderboardCategory, mode, playerName, status]);
-
-  const visibleEntries = useMemo(
-    () =>
-      entries
-        .filter((entry) => entry.mode === mode && entry.category === leaderboardCategory)
-        .sort((left, right) => left.durationMs - right.durationMs)
-        .slice(0, 10),
-    [entries, leaderboardCategory, mode],
-  );
-
-  const bestTime = visibleEntries[0]?.durationMs;
+  }, [boardState, elapsedMs, guestId, leaderboardCategory, mode, playerName, status]);
   const statusText =
     status === "won"
       ? "Solved"
@@ -504,7 +549,11 @@ export const EndgamePracticePage = () => {
               <div className="endgameBoardOverlay">
                 <div className={`endgameResult ${status}`}>
                   <strong>{status === "preparing" ? "Loading…" : "Ready"}</strong>
-                  <button type="button" onClick={startRound} disabled={status === "preparing"}>
+                  <button
+                    type="button"
+                    onClick={() => startRound()}
+                    disabled={status === "preparing"}
+                  >
                     <FontAwesomeIcon icon={faBolt} aria-hidden="true" />
                     {status === "preparing" ? "Loading…" : "Start round"}
                   </button>
@@ -569,8 +618,12 @@ export const EndgamePracticePage = () => {
                   disabled={status === "running" || status === "preparing"}
                   onChange={(event) => {
                     const nextMode = event.target.value as EndgameMode;
+                    const nextCategory =
+                      nextMode === "two-queens" ? "no-pawn" : randomPawnCategory();
                     setMode(nextMode);
-                    createReadyPosition(nextMode, category);
+                    setCategory(nextCategory);
+                    nextCategoryRef.current = null;
+                    createReadyPosition(nextMode, nextCategory);
                   }}
                 >
                   {(["pawn-duel", "blockade", "two-queens"] as const).map((option) => (
@@ -581,43 +634,6 @@ export const EndgamePracticePage = () => {
                 </select>
               </label>
 
-              {mode !== "two-queens" ? (
-                <label className="endgameCategorySelect">
-                  <span>{mode === "pawn-duel" ? "Your pawn" : "Enemy pawn"}</span>
-                  <select
-                    value={category}
-                    disabled={status === "running" || status === "preparing"}
-                    onChange={(event) => {
-                      const nextCategory = event.target.value as EndgameCategory;
-                      setCategory(nextCategory);
-                      createReadyPosition(mode, nextCategory);
-                    }}
-                  >
-                    {categories.map((option) => (
-                      <option key={option} value={option}>
-                        {categoryLabel(option)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ) : null}
-
-              {status === "running" ? (
-                <button
-                  type="button"
-                  className="analysisLichessLink endgameGiveUpButton"
-                  onClick={giveUp}
-                >
-                  Give up
-                </button>
-              ) : null}
-            </section>
-
-            <section className="endgameLeaderboard" aria-labelledby="endgame-leaderboard-heading">
-              <div className="endgameLeaderboardHeader">
-                <h2 id="endgame-leaderboard-heading">Timed attempts</h2>
-                <span>{categoryLabel(leaderboardCategory)}</span>
-              </div>
               {!user ? (
                 <label className="endgamePlayerName">
                   <span>Player name</span>
@@ -632,42 +648,84 @@ export const EndgamePracticePage = () => {
                   />
                 </label>
               ) : null}
-              {visibleEntries.length ? (
-                <ol className="endgameLeaderboardList">
-                  {visibleEntries.map((entry, index) => (
-                    <li key={entry.id}>
-                      <strong>{entry.player}</strong>
-                      <span className="endgamePlacement">#{index + 1}</span>
-                      <time
-                        className="endgameAttemptDate"
-                        dateTime={entry.completedAt}
-                        aria-label={`Attempted ${formatLocalDateTime(entry.completedAt)}`}
-                      >
-                        {formatLocalDateTime(entry.completedAt)}
-                      </time>
-                      <span
-                        className="endgameFinishDuration"
-                        aria-label={`Finish time ${formatTime(entry.durationMs)}`}
-                      >
-                        <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
-                        {formatTime(entry.durationMs)}
-                      </span>
-                    </li>
-                  ))}
-                </ol>
-              ) : (
-                <p className="endgameEmptyLeaderboard">No times yet.</p>
-              )}
-              <footer>
-                <span>Local</span>
-                {bestTime === undefined ? null : <strong>Best {formatTime(bestTime)}</strong>}
-              </footer>
+
+              {status === "running" ? (
+                <div className="endgameAttemptActions">
+                  <button
+                    type="button"
+                    className="analysisLichessLink endgameStartOverButton"
+                    onClick={startOver}
+                  >
+                    <FontAwesomeIcon icon={faRotateRight} aria-hidden="true" />
+                    Start over
+                  </button>
+                  <button
+                    type="button"
+                    className="analysisLichessLink endgameGiveUpButton"
+                    onClick={giveUp}
+                  >
+                    Give up
+                  </button>
+                </div>
+              ) : null}
             </section>
+
+            {status === "running" && ownBest ? (
+              <section className="endgameLeaderboard" aria-labelledby="endgame-own-best-heading">
+                <div className="endgameLeaderboardHeader">
+                  <h2 id="endgame-own-best-heading">Your best</h2>
+                  <span>{categoryLabel(leaderboardCategory)}</span>
+                </div>
+                <p className="endgameOwnBest">{formatTime(ownBest.durationMs)}</p>
+              </section>
+            ) : attemptIsOver ? (
+              <section className="endgameLeaderboard" aria-labelledby="endgame-leaderboard-heading">
+                <div className="endgameLeaderboardHeader">
+                  <h2 id="endgame-leaderboard-heading">Timed attempts</h2>
+                  <span>{categoryLabel(leaderboardCategory)}</span>
+                </div>
+                {entries.length ? (
+                  <ol className="endgameLeaderboardList">
+                    {entries.map((entry, index) => (
+                      <li key={entry.id}>
+                        <strong>{entry.player}</strong>
+                        <span className="endgamePlacement">#{index + 1}</span>
+                        <time
+                          className="endgameAttemptDate"
+                          dateTime={entry.completedAt}
+                          aria-label={`Attempted ${formatLocalDateTime(entry.completedAt)}`}
+                        >
+                          {formatLocalDateTime(entry.completedAt)}
+                        </time>
+                        <span
+                          className="endgameFinishDuration"
+                          aria-label={`Finish time ${formatTime(entry.durationMs)}`}
+                        >
+                          <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
+                          {formatTime(entry.durationMs)}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p className="endgameEmptyLeaderboard">No times yet.</p>
+                )}
+                <footer>
+                  <span>Global</span>
+                  {ownBest ? <strong>Your best {formatTime(ownBest.durationMs)}</strong> : null}
+                </footer>
+              </section>
+            ) : null}
             {attemptIsOver ? (
-              <button type="button" className="endgameNextPositionButton" onClick={startRound}>
-                <FontAwesomeIcon icon={faRotateRight} aria-hidden="true" />
-                Next position
-              </button>
+              <div className="endgameRoundActions">
+                <button
+                  type="button"
+                  className="endgameNextPositionButton"
+                  onClick={() => startRound()}
+                >
+                  Next position
+                </button>
+              </div>
             ) : null}
           </div>
         </aside>

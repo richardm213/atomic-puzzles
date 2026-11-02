@@ -167,11 +167,11 @@
 
 .endgameResult button:focus-visible,
 .endgameNextPositionButton:focus-visible,
+.endgameStartOverButton:focus-visible,
 .endgameModeSelect select:focus-visible,
-.endgameCategorySelect select:focus-visible,
 .endgamePlayerName input:focus-visible,
 .endgamePositionTools .analysisLichessLink:focus-visible,
-.endgameControls > .endgameGiveUpButton:focus-visible {
+.endgameAttemptActions .endgameGiveUpButton:focus-visible {
   outline: 3px solid var(--color-primary-ring);
   outline-offset: 2px;
 }
@@ -214,14 +214,12 @@
 }
 
 .endgameModeSelect select:disabled,
-.endgameCategorySelect select:disabled,
 .endgamePlayerName input:disabled {
   cursor: not-allowed;
   opacity: 0.6;
 }
 
 .endgameModeSelect,
-.endgameCategorySelect,
 .endgamePlayerName {
   display: grid;
   gap: 7px;
@@ -232,7 +230,6 @@
 }
 
 .endgameModeSelect select,
-.endgameCategorySelect select,
 .endgamePlayerName input {
   width: 100%;
   min-height: 42px;
@@ -258,12 +255,23 @@
   cursor: pointer;
 }
 
-.endgameControls > .endgameGiveUpButton {
-  width: 100%;
+.endgameAttemptActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
   margin-top: 16px;
-  color: var(--color-danger);
+}
+
+.endgameAttemptActions .endgameStartOverButton,
+.endgameAttemptActions .endgameGiveUpButton {
+  justify-content: center;
+  min-height: 44px;
   font-family: inherit;
   cursor: pointer;
+}
+
+.endgameAttemptActions .endgameGiveUpButton {
+  color: var(--color-danger);
 }
 
 .endgameLeaderboardHeader {
@@ -352,6 +360,14 @@
   text-align: center;
 }
 
+.endgameOwnBest {
+  margin: 12px 0 0;
+  color: var(--color-heading);
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
 .endgameLeaderboard footer {
   display: flex;
   justify-content: space-between;
@@ -367,6 +383,12 @@
   color: var(--color-muted);
 }
 
+.endgameRoundActions {
+  display: grid;
+  grid-template-columns: 1fr;
+  margin-top: 18px;
+}
+
 .endgameNextPositionButton {
   display: inline-flex;
   align-items: center;
@@ -374,12 +396,8 @@
   gap: 7px;
   width: 100%;
   min-height: 44px;
-  margin-top: 18px;
   padding: 10px 16px;
-  border: 1px solid var(--color-primary);
   border-radius: var(--radius-ui);
-  background: var(--color-primary);
-  color: var(--color-on-primary);
   font-family: inherit;
   font-weight: 680;
   cursor: pointer;
@@ -387,6 +405,12 @@
     background 160ms ease,
     border-color 160ms ease,
     transform 120ms ease;
+}
+
+.endgameNextPositionButton {
+  border: 1px solid var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
 }
 
 .endgameNextPositionButton:hover {
@@ -432,7 +456,25 @@
 
 @media (max-width: 520px) {
   .endgamePracticePage {
-    padding: 12px 12px 36px;
+    padding: 8px 8px 28px;
+  }
+
+  .endgamePracticeLayout {
+    gap: 14px;
+  }
+
+  .endgameBoardFrame {
+    padding: 4px;
+    border-radius: var(--radius-ui);
+  }
+
+  .endgameBoardFrame.hasFeedback::before {
+    inset: -4px;
+    border-radius: calc(var(--radius-ui) + 3px);
+  }
+
+  .endgameBoardOverlay {
+    inset: 4px;
   }
 
   .endgameClock small {
@@ -440,11 +482,67 @@
   }
 
   .endgamePanel {
-    padding: 16px;
+    padding: 14px;
+    border-radius: var(--radius-ui);
+  }
+
+  .endgameControls h2,
+  .endgameLeaderboard h2 {
+    font-size: 15px;
+  }
+
+  .endgameModeSelect,
+  .endgamePlayerName {
+    margin-top: 14px;
   }
 
   .endgameModeSelect select {
     min-height: 44px;
+  }
+
+  .endgameLeaderboard {
+    margin-top: 16px;
+    padding-top: 14px;
+  }
+
+  .endgameLeaderboardHeader {
+    align-items: flex-start;
+  }
+
+  .endgameLeaderboardHeader > span {
+    max-width: 60%;
+    font-size: 11px;
+    line-height: 1.35;
+    text-align: right;
+  }
+
+  .endgameLeaderboardList {
+    margin-top: 10px;
+  }
+
+  .endgameLeaderboardList li {
+    padding: 9px 4px;
+  }
+
+  .endgameOwnBest {
+    margin-top: 8px;
+    font-size: 16px;
+  }
+
+  .endgameRoundActions {
+    margin-top: 14px;
+  }
+
+  .endgamePositionTools {
+    margin-top: 12px;
+  }
+
+  .endgamePositionTools .analysisLichessLink {
+    min-height: 44px;
+  }
+
+  .endgameDiscussion {
+    margin-top: 24px;
   }
 }
 

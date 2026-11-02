@@ -5,13 +5,11 @@ import {
   buildEndgamePgn,
   chooseDefenderMove,
   connectedDefenderMoveUcis,
-  type EndgameCategory,
   generateEndgamePosition,
   hasBlackPawn,
   hasImmediateWhiteWinFromFen,
+  pawnEndgameCategories,
 } from "./endgamePractice";
-
-const categories: EndgameCategory[] = ["rank-3", "rank-4", "rank-5", "rank-6", "a-pawn", "h-pawn"];
 
 const pieceSquare = (
   fen: string,
@@ -39,6 +37,14 @@ describe("endgame practice positions", () => {
     expect(buildEndgamePgn(fen)).toBe(`[Variant "Atomic"]\n[SetUp "1"]\n[FEN "${fen}"]\n\n*`);
   });
 
+  it("keeps the starting position and includes the complete played move line", () => {
+    const fen = "8/8/8/2pk4/2PK4/8/Q7/8 w - - 0 1";
+
+    expect(buildEndgamePgn(fen, ["Qe7+", "Kc6", "Qd8"])).toBe(
+      `[Variant "Atomic"]\n[SetUp "1"]\n[FEN "${fen}"]\n\n1. Qe7+ Kc6 2. Qd8 *`,
+    );
+  });
+
   it("identifies defender moves that keep the kings connected", () => {
     const fen = "8/8/8/2pk4/2PK4/8/Q7/8 b - - 0 1";
     const connected = connectedDefenderMoveUcis(fen, new Set(["d5e5", "d5e6"]));
@@ -49,7 +55,7 @@ describe("endgame practice positions", () => {
 
   it("generates playable positions for both endgame modes", () => {
     for (const mode of ["pawn-duel", "blockade"] as const) {
-      const generated = generateEndgamePosition(mode, "rank-6", () => 0.42);
+      const generated = generateEndgamePosition(mode, "regular-file:rank-regular", () => 0.42);
       expect(generated.fen).toContain(" w ");
       expect(generated.fen).toContain("Q");
       expect(hasBlackPawn(generated.fen)).toBe(true);
@@ -93,7 +99,7 @@ describe("endgame practice positions", () => {
       return seed / 2_147_483_647;
     };
 
-    for (const category of categories) {
+    for (const category of pawnEndgameCategories) {
       for (let sample = 0; sample < 8; sample += 1) {
         const generated = generateEndgamePosition("pawn-duel", category, random);
         expect(hasImmediateWhiteWinFromFen(generated.fen)).toBe(false);
@@ -121,8 +127,34 @@ describe("endgame practice positions", () => {
     }
   });
 
+  it("categorizes enemy pawn rank and file independently", () => {
+    const expectedFiles = {
+      "rook-file": new Set([0, 7]),
+      "knight-file": new Set([1, 6]),
+      "regular-file": new Set([2, 3, 4, 5]),
+    };
+    const expectedRanks = {
+      "rank-3": new Set([3]),
+      "rank-regular": new Set([4, 5, 6]),
+      "rank-7": new Set([7]),
+    };
+
+    for (const category of pawnEndgameCategories) {
+      const generated = generateEndgamePosition("blockade", category, () => 0.42);
+      const pawn = pieceSquare(generated.fen, "black", "pawn");
+      expect(pawn).toBeDefined();
+      if (pawn === undefined) continue;
+      const [fileCategory, rankCategory] = category.split(":") as [
+        keyof typeof expectedFiles,
+        keyof typeof expectedRanks,
+      ];
+      expect(expectedFiles[fileCategory].has(pawn % 8)).toBe(true);
+      expect(expectedRanks[rankCategory].has(Math.floor(pawn / 8) + 1)).toBe(true);
+    }
+  });
+
   it("never puts the blockaded black pawn on its impossible eighth rank", () => {
-    for (const category of categories) {
+    for (const category of pawnEndgameCategories) {
       const generated = generateEndgamePosition("blockade", category, () => 0.99);
       expect(hasImmediateWhiteWinFromFen(generated.fen)).toBe(false);
       const setup = parseFen(generated.fen);
@@ -153,7 +185,7 @@ describe("endgame practice positions", () => {
     for (const mode of ["pawn-duel", "blockade"] as const) {
       const arrangements = new Set<string>();
       for (let sample = 0; sample < 12; sample += 1) {
-        const generated = generateEndgamePosition(mode, "rank-5", random);
+        const generated = generateEndgamePosition(mode, "regular-file:rank-regular", random);
         const anchor = pieceSquare(generated.fen, mode === "pawn-duel" ? "white" : "black", "pawn");
         const whiteKing = pieceSquare(generated.fen, "white", "king");
         const blackKing = pieceSquare(generated.fen, "black", "king");
@@ -169,7 +201,7 @@ describe("endgame practice positions", () => {
 
 describe("endgame defender", () => {
   it("returns no move when it is not the defender's turn", () => {
-    const generated = generateEndgamePosition("blockade", "rank-5", () => 0.3);
+    const generated = generateEndgamePosition("blockade", "regular-file:rank-regular", () => 0.3);
     expect(chooseDefenderMove(generated.fen, () => 0.5)).toBeNull();
   });
 });

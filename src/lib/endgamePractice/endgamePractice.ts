@@ -3,9 +3,18 @@ import { makeFen, parseFen } from "chessops/fen";
 import { makeUci } from "chessops/util";
 import { Atomic } from "chessops/variant";
 
+import { serializeSanLinesToPgn } from "../puzzles/solutionPgn";
+
 export type EndgameMode = "pawn-duel" | "blockade" | "two-queens";
-export type EndgameCategory =
-  "rank-3" | "rank-4" | "rank-5" | "rank-6" | "a-pawn" | "h-pawn" | "no-pawn";
+export type PawnFileCategory = "rook-file" | "knight-file" | "regular-file";
+export type PawnRankCategory = "rank-3" | "rank-regular" | "rank-7";
+export type EndgameCategory = `${PawnFileCategory}:${PawnRankCategory}` | "no-pawn";
+
+export const pawnFileCategories: PawnFileCategory[] = ["rook-file", "knight-file", "regular-file"];
+export const pawnRankCategories: PawnRankCategory[] = ["rank-3", "rank-regular", "rank-7"];
+export const pawnEndgameCategories: EndgameCategory[] = pawnFileCategories.flatMap((file) =>
+  pawnRankCategories.map((rank): EndgameCategory => `${file}:${rank}`),
+);
 
 export type EndgamePosition = {
   fen: string;
@@ -14,12 +23,18 @@ export type EndgamePosition = {
   pawnSquare: string | null;
 };
 
-export const buildEndgamePgn = (fen: string): string =>
-  ['[Variant "Atomic"]', '[SetUp "1"]', `[FEN "${fen}"]`, "", "*"].join("\n");
+export const buildEndgamePgn = (fen: string, moves: string[] = []): string => {
+  const moveText = moves.length ? serializeSanLinesToPgn(fen, [moves]) : "";
+  return [
+    '[Variant "Atomic"]',
+    '[SetUp "1"]',
+    `[FEN "${fen}"]`,
+    "",
+    moveText ? `${moveText} *` : "*",
+  ].join("\n");
+};
 
 const files = ["a", "b", "c", "d", "e", "f", "g", "h"] as const;
-const centralFiles = ["b", "c", "d", "e", "f", "g"] as const;
-const ranks = [3, 4, 5, 6] as const;
 const boardSquares = files.flatMap((file) =>
   Array.from({ length: 8 }, (_, index) => `${file}${index + 1}`),
 );
@@ -54,15 +69,15 @@ const adjacentSquares = (fileIndex: number, rank: number): KingSquare[] => {
 const connectedKingPairs = (
   mode: EndgameMode,
   fileIndex: number,
-  rank: number,
+  enemyRank: number,
 ): Array<{ whiteKing: string; blackKing: string }> => {
-  const whitePawn = mode === "pawn-duel" ? square(fileIndex, rank) : null;
-  const blackPawn = square(fileIndex, mode === "pawn-duel" ? rank + 1 : rank);
+  const whitePawn = mode === "pawn-duel" ? square(fileIndex, enemyRank - 1) : null;
+  const blackPawn = square(fileIndex, enemyRank);
   const whiteCandidates =
     mode === "pawn-duel"
-      ? adjacentSquares(fileIndex, rank)
-      : [{ fileIndex, rank: rank - 1, name: square(fileIndex, rank - 1) }];
-  const blackCandidates = adjacentSquares(fileIndex, mode === "pawn-duel" ? rank + 1 : rank);
+      ? adjacentSquares(fileIndex, enemyRank - 1)
+      : [{ fileIndex, rank: enemyRank - 1, name: square(fileIndex, enemyRank - 1) }];
+  const blackCandidates = adjacentSquares(fileIndex, enemyRank);
 
   return whiteCandidates.flatMap((whiteKing) =>
     blackCandidates.flatMap((blackKing) => {
@@ -119,13 +134,15 @@ const isUsableFen = (fen: string): boolean => {
 const categoryRankAndFile = (
   category: EndgameCategory,
   random: () => number,
-): { rank: number; fileIndex: number } => {
-  if (category === "no-pawn") return { rank: 4, fileIndex: 3 };
-  if (category === "a-pawn") return { rank: choice(ranks, random), fileIndex: 0 };
-  if (category === "h-pawn") return { rank: choice(ranks, random), fileIndex: 7 };
+): { enemyRank: number; fileIndex: number } => {
+  if (category === "no-pawn") return { enemyRank: 5, fileIndex: 3 };
+  const [fileCategory, rankCategory] = category.split(":") as [PawnFileCategory, PawnRankCategory];
+  const fileIndexes =
+    fileCategory === "rook-file" ? [0, 7] : fileCategory === "knight-file" ? [1, 6] : [2, 3, 4, 5];
+  const enemyRanks = rankCategory === "rank-3" ? [3] : rankCategory === "rank-7" ? [7] : [4, 5, 6];
   return {
-    rank: Number(category.slice(-1)),
-    fileIndex: files.indexOf(choice(centralFiles, random)),
+    enemyRank: choice(enemyRanks, random),
+    fileIndex: choice(fileIndexes, random),
   };
 };
 
@@ -175,12 +192,12 @@ export const generateEndgamePosition = (
   if (mode === "two-queens") return generateTwoQueenPosition(random);
 
   for (let attempt = 0; attempt < 300; attempt += 1) {
-    const { rank, fileIndex } = categoryRankAndFile(category, random);
-    const pawnSquare = square(fileIndex, rank);
-    const blackPawn = mode === "pawn-duel" ? square(fileIndex, rank + 1) : pawnSquare;
-    const whitePawn = mode === "pawn-duel" ? pawnSquare : null;
+    const { enemyRank, fileIndex } = categoryRankAndFile(category, random);
+    const pawnSquare = square(fileIndex, enemyRank);
+    const blackPawn = pawnSquare;
+    const whitePawn = mode === "pawn-duel" ? square(fileIndex, enemyRank - 1) : null;
 
-    const kingPairs = connectedKingPairs(mode, fileIndex, rank);
+    const kingPairs = connectedKingPairs(mode, fileIndex, enemyRank);
     const pairOffset = Math.floor(random() * kingPairs.length);
     for (let pairIndex = 0; pairIndex < kingPairs.length; pairIndex += 1) {
       const pair = kingPairs[(pairOffset + pairIndex) % kingPairs.length];
@@ -332,7 +349,10 @@ export const hasBlackPawn = (fen: string): boolean => {
 
 export const categoryLabel = (category: EndgameCategory): string => {
   if (category === "no-pawn") return "KQQ vs K";
-  if (category === "a-pawn") return "a-pawn";
-  if (category === "h-pawn") return "h-pawn";
-  return `${category.slice(-1)}th rank`.replace("3th", "3rd");
+  const [file, rank] = category.split(":") as [PawnFileCategory, PawnRankCategory];
+  const fileLabel =
+    file === "rook-file" ? "Rook pawn" : file === "knight-file" ? "Knight pawn" : "Regular pawn";
+  const rankLabel =
+    rank === "rank-3" ? "3rd rank" : rank === "rank-7" ? "7th rank" : "Regular rank";
+  return `${fileLabel} · ${rankLabel}`;
 };
