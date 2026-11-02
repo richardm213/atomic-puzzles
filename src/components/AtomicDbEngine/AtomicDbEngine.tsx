@@ -42,9 +42,11 @@ const analysisSourceLabel = (analysis: AtomicDbAnalysisState, threatMode = false
     ? "Threat · Fairy-Stockfish 14"
     : analysis.source === "terminal"
       ? "Final position"
-      : analysis.source === "engine"
-        ? "Fairy-Stockfish 14"
-        : "AtomicDB";
+      : analysis.source === "tablebase"
+        ? "Lichess tablebase"
+        : analysis.source === "engine"
+          ? "Fairy-Stockfish 14"
+          : "AtomicDB";
 
 const resultLabel = (view: AtomicDbView): string | null => {
   if (view.position?.outcome === "WHITE_WIN") return "1–0";

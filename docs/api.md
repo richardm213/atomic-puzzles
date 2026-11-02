@@ -77,6 +77,7 @@ Common codes are:
 | `/api/badges`              | POST              | public     | Load earned achievements for a username.                             |
 | `/api/archive-data`        | GET               | public     | Query the read-only match and rating archive.                        |
 | `/api/opening-explorer`    | GET               | public     | Query opening statistics.                                            |
+| `/api/atomic-tablebase`    | GET               | public     | Query the Lichess six-piece atomic tablebase.                        |
 | `/api/atomicdb-analysis`   | GET, POST         | public     | Query one AtomicDB position or a bounded batch.                      |
 
 “Mixed” routes authorize each action separately. Treat their server-side Zod schemas as the source
@@ -126,6 +127,13 @@ Query a public AtomicDB position:
 ```bash
 curl --get 'https://atomicpuzzles.org/api/atomicdb-analysis' \
   --data-urlencode 'fen=4k3/8/8/8/8/8/8/4K3 w - - 0 1'
+```
+
+Query an exact atomic endgame position with no more than six pieces:
+
+```bash
+curl --get 'https://atomicpuzzles.org/api/atomic-tablebase' \
+  --data-urlencode 'fen=8/8/8/3kp3/3PK3/8/Q7/8 w - - 0 1'
 ```
 
 Within the web client, prefer `apiRequest` (any method) or its `postApi` convenience wrapper from

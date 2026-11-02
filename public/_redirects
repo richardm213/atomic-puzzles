@@ -18,5 +18,6 @@
 /api/badges    /.netlify/functions/badges    200
 /api/public-data    /.netlify/functions/public-data    200
 /api/atomicdb-analysis    /.netlify/functions/atomicdb-analysis    200
+/api/atomic-tablebase    /.netlify/functions/atomic-tablebase    200
 /api/archive-data    /.netlify/functions/archive-data    200
 /*    /index.html   200

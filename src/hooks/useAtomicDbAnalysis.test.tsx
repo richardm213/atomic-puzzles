@@ -3,13 +3,18 @@ import { StrictMode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { analyzeFairyStockfishPosition } from "../lib/practice/fairyStockfish";
+import { loadAtomicTablebase } from "../lib/atomicTablebase/analysisRepository";
 import { useAtomicDbAnalysis } from "./useAtomicDbAnalysis";
 
 vi.mock("../lib/practice/fairyStockfish", () => ({
   analyzeFairyStockfishPosition: vi.fn(),
 }));
+vi.mock("../lib/atomicTablebase/analysisRepository", () => ({
+  loadAtomicTablebase: vi.fn().mockResolvedValue(null),
+}));
 
 const analyzeWithEngineMock = vi.mocked(analyzeFairyStockfishPosition);
+const loadAtomicTablebaseMock = vi.mocked(loadAtomicTablebase);
 
 const FIRST_FEN = "8/8/8/8/8/8/8/K6k w - - 0 101";
 const SECOND_FEN = "8/8/8/8/8/8/8/K6k b - - 0 102";
@@ -29,6 +34,47 @@ describe("useAtomicDbAnalysis", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     analyzeWithEngineMock.mockReset();
+    loadAtomicTablebaseMock.mockReset();
+    loadAtomicTablebaseMock.mockResolvedValue(null);
+  });
+
+  it("switches to the exact atomic tablebase at six pieces without querying AtomicDB", async () => {
+    const fen = "8/8/8/8/3k4/8/1K3P1P/6NR w - - 3 71";
+    loadAtomicTablebaseMock.mockResolvedValue({
+      position: {
+        key: null,
+        outcome: "WHITE_WIN",
+        closure: "lichess-atomic-tablebase",
+        score: null,
+        point: null,
+        bestMove: "h1h4",
+        moves: [
+          {
+            uci: "h1h4",
+            outcome: "WHITE_WIN",
+            closure: "loss",
+            score: null,
+            point: null,
+            mate: 9,
+            backedPlies: 0,
+          },
+        ],
+      },
+      principalVariations: { h1h4: ["h1h4", "d4e5"] },
+    });
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result } = renderHook(() =>
+      useAtomicDbAnalysis(fen, { debounceMs: 0, fallbackToEngine: true, lineCount: 1 }),
+    );
+
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    expect(result.current.source).toBe("tablebase");
+    expect(result.current.result?.position?.bestMove).toBe("h1h4");
+    expect(result.current.principalVariations.h1h4).toEqual(["h1h4", "d4e5"]);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(analyzeWithEngineMock).not.toHaveBeenCalled();
   });
 
   it("falls back to Fairy-Stockfish only after AtomicDB returns no analyzed moves", async () => {
@@ -96,8 +142,7 @@ describe("useAtomicDbAnalysis", () => {
     const fen = "8/8/8/8/3k4/8/1K6/7R w - - 3 71";
     let publishProgress: Parameters<typeof analyzeFairyStockfishPosition>[3];
     let finishAnalysis:
-      | ((value: Awaited<ReturnType<typeof analyzeFairyStockfishPosition>>) => void)
-      | undefined;
+      ((value: Awaited<ReturnType<typeof analyzeFairyStockfishPosition>>) => void) | undefined;
     vi.stubGlobal("fetch", vi.fn());
     analyzeWithEngineMock.mockImplementation((_fen, _lineCount, _signal, onProgress) => {
       publishProgress = onProgress;
@@ -172,6 +217,7 @@ describe("useAtomicDbAnalysis", () => {
     rerender({ fen: SECOND_FEN });
     expect(result.current.status).toBe("loading");
     expect(result.current.result?.fen).toBe(FIRST_FEN);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
 
     await act(async () => {
       resolveSecondRequest?.(responseFor(-300));
@@ -185,8 +231,7 @@ describe("useAtomicDbAnalysis", () => {
     const firstFen = "8/8/8/8/8/8/1K6/7k w - - 4 71";
     const secondFen = "8/8/8/8/8/8/1K6/7k b - - 5 71";
     let resolveSecondAnalysis:
-      | ((value: Awaited<ReturnType<typeof analyzeFairyStockfishPosition>>) => void)
-      | undefined;
+      ((value: Awaited<ReturnType<typeof analyzeFairyStockfishPosition>>) => void) | undefined;
     const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(responseFor(0)));
     vi.stubGlobal("fetch", fetchMock);
     analyzeWithEngineMock

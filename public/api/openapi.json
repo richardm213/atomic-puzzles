@@ -487,6 +487,71 @@
         }
       }
     },
+    "/api/atomic-tablebase": {
+      "get": {
+        "tags": ["Analysis"],
+        "summary": "Probe the six-piece atomic chess tablebase",
+        "operationId": "probeAtomicTablebase",
+        "parameters": [
+          {
+            "name": "fen",
+            "in": "query",
+            "required": true,
+            "description": "Atomic chess position containing no more than six pieces.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Exact tablebase result, ranked moves, and best mainline.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["position", "lines"],
+                  "properties": {
+                    "position": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "lines": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "description": "Position not found in the tablebase.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "$ref": "#/components/responses/Unavailable"
+          },
+          "504": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    },
     "/api/auth/session": {
       "get": {
         "tags": ["Account"],

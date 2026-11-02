@@ -5,11 +5,13 @@ import {
   loadAtomicDbVariations,
   peekAtomicDbPosition,
 } from "../lib/atomicDb/analysisRepository";
+import { loadAtomicTablebase } from "../lib/atomicTablebase/analysisRepository";
 import {
   analyzeFairyStockfishPosition,
   type EngineCandidate,
 } from "../lib/practice/fairyStockfish";
 import type { AtomicDbPosition, AtomicDbResult } from "../utils/atomicDb";
+import { isAtomicTablebaseFen } from "../utils/atomicTablebase";
 import { getErrorMessage } from "../utils/errors";
 
 export type AtomicDbAnalysisStatus = "idle" | "loading" | "ready" | "error";
@@ -19,7 +21,7 @@ export type AtomicDbAnalysisState = {
   status: AtomicDbAnalysisStatus;
   error: string;
   principalVariations: Record<string, string[]>;
-  source?: "atomicdb" | "engine" | "terminal" | undefined;
+  source?: "tablebase" | "atomicdb" | "engine" | "terminal" | undefined;
 };
 
 export type AtomicDbAnalysisOptions = {
@@ -97,6 +99,7 @@ export const useAtomicDbAnalysis = (
     const controller = new AbortController();
     const lineCount = clampInteger(requestedLineCount, 0, MAX_LINE_COUNT);
     const plyCount = clampInteger(requestedPlyCount, 1, MAX_PLY_COUNT);
+    const useTablebase = !engineOnly && lineCount > 0 && isAtomicTablebaseFen(fen);
 
     const publishLines = (lines: Record<string, string[]>): void => {
       startTransition(() => {
@@ -203,7 +206,7 @@ export const useAtomicDbAnalysis = (
       publishPosition(position);
     };
 
-    if (!engineOnly) {
+    if (!engineOnly && !useTablebase) {
       const cached = peekAtomicDbPosition(fen);
       if (cached.found) {
         publishAtomicDbOrFallback(cached.value);
@@ -221,7 +224,7 @@ export const useAtomicDbAnalysis = (
       status: "loading",
       error: "",
       principalVariations: {},
-      source: engineOnly ? "engine" : "atomicdb",
+      source: engineOnly ? "engine" : useTablebase ? "tablebase" : "atomicdb",
     }));
 
     const requestPosition = async (): Promise<void> => {
@@ -230,6 +233,27 @@ export const useAtomicDbAnalysis = (
         return;
       }
       try {
+        if (useTablebase) {
+          try {
+            const tablebase = await loadAtomicTablebase(fen, controller.signal);
+            if (tablebase && !controller.signal.aborted) {
+              startTransition(() => {
+                setState({
+                  result: { fen, position: tablebase.position },
+                  requestedFen: fen,
+                  status: "ready",
+                  error: "",
+                  principalVariations: tablebase.principalVariations,
+                  source: "tablebase",
+                });
+              });
+              return;
+            }
+          } catch (error: unknown) {
+            if (controller.signal.aborted) return;
+            // The local engine remains available when the public tablebase is temporarily down.
+          }
+        }
         const position = await loadAtomicDbPosition(fen, controller.signal);
         if (!controller.signal.aborted) publishAtomicDbOrFallback(position);
       } catch (error: unknown) {
