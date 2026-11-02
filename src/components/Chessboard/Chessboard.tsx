@@ -432,8 +432,22 @@ const ChessboardComponent = ({
           ? variationHistoryAt(customVariationsRef.current, previousActiveLine.index)
           : null;
       const previousContinuationKey = previousCustomHistory?.plies[history.index + 1]?.key;
+      const followsPreviousContinuation = previousContinuationKey === moveKey;
       const createsCustomBranch =
         previousContinuationKey !== undefined && previousContinuationKey !== moveKey;
+
+      if (
+        analysisModeRef.current &&
+        previousActiveLine.source === "custom" &&
+        previousCustomHistory &&
+        followsPreviousContinuation
+      ) {
+        const continuedHistory = cloneBoardHistory(previousCustomHistory);
+        continuedHistory.index = history.index + 1;
+        historyRef.current = continuedHistory;
+        activeLineRef.current = previousActiveLine;
+        return;
+      }
 
       appendBoardMove(history, {
         fen: nextFen,

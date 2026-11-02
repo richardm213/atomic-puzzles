@@ -565,6 +565,42 @@ describe("Chessboard orchestration", () => {
     expect(states.at(-1)?.customLineIndex).toBe(1);
   });
 
+  it("preserves the current variation when an analysis line shares its next move before branching", () => {
+    vi.useFakeTimers();
+    const states: ChessboardState[] = [];
+    const boardProps: ComponentProps<typeof Chessboard> = {
+      puzzleId: "analysis-shared-prefix",
+      fen: STARTING_FEN,
+      orientation: "white",
+      coordinates: true,
+      solution: "",
+      showSolution: false,
+      analysisMode: true,
+      onStateChange: (state) => states.push(state),
+    };
+    const { rerender } = render(<Chessboard {...boardProps} />);
+
+    play("e2", "e4");
+    play("e7", "e5");
+    play("g1", "f3");
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+
+    rerender(
+      <Chessboard {...boardProps} solutionNavigation={{ type: "line", ucis: ["e7e5", "f1c4"] }} />,
+    );
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+
+    expect(states.at(-1)?.customLines).toEqual([
+      ["e4", "e5", "Nf3"],
+      ["e4", "e5", "Bc4"],
+    ]);
+    expect(states.at(-1)?.customLineIndex).toBe(1);
+    vi.useRealTimers();
+  });
+
   it("loads PGN variations as navigable analysis branches", () => {
     const states = renderBoard({
       solutionNavigation: {
