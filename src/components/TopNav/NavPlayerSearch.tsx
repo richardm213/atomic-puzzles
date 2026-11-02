@@ -258,15 +258,17 @@ export const NavPlayerSearch = ({ onNavigate }: { onNavigate: () => void }) => {
                           <FontAwesomeIcon icon={faPuzzlePiece} aria-hidden="true" />
                         </Link>
                       ) : null}
-                      <TournamentPlayerLink
-                        className="navSearchResultAction"
-                        username={suggestion.matchedName}
-                        aria-label={`Open ${suggestion.matchedName}'s tournament history`}
-                        title="Tournament history"
-                        onClick={reset}
-                      >
-                        <FontAwesomeIcon icon={faTrophy} aria-hidden="true" />
-                      </TournamentPlayerLink>
+                      {suggestion.hasAtomicTourPoints ? (
+                        <TournamentPlayerLink
+                          className="navSearchResultAction"
+                          username={suggestion.matchedName}
+                          aria-label={`Open ${suggestion.matchedName}'s tournament history`}
+                          title="Tournament history"
+                          onClick={reset}
+                        >
+                          <FontAwesomeIcon icon={faTrophy} aria-hidden="true" />
+                        </TournamentPlayerLink>
+                      ) : null}
                       <PlayerLink
                         className="navSearchResultAction"
                         username={suggestion.matchedName}

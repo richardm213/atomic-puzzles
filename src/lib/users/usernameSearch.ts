@@ -16,10 +16,49 @@ export type UsernameSearchSuggestion = {
   matchType: "username" | "alias";
   banned: boolean;
   accountUsername: string | null;
+  hasAtomicTourPoints: boolean;
 };
 
 type RankedUsernameSearchSuggestion = UsernameSearchSuggestion & {
   rank: number;
+};
+
+type AtomicTourRankingRow = {
+  snapshot_date?: string | null;
+  player_name?: string | null;
+  points?: number | string | null;
+};
+
+const fetchAtomicTourPlayersWithPoints = async (playerNames: string[]): Promise<Set<string>> => {
+  if (!playerNames.length) return new Set();
+
+  const supabase = getSupabaseClient();
+  const latestRows = await loadSupabaseRows<AtomicTourRankingRow>(
+    "atomic_tour_ranking_snapshots",
+    supabase
+      .from("atomic_tour_ranking_snapshots")
+      .select("snapshot_date")
+      .order("snapshot_date", { ascending: false })
+      .limit(1),
+  ).catch(() => []);
+  const latestSnapshotDate = String(latestRows[0]?.snapshot_date ?? "").trim();
+  if (!latestSnapshotDate) return new Set();
+
+  const rankingRows = await loadSupabaseRows<AtomicTourRankingRow>(
+    "atomic_tour_ranking_snapshots",
+    supabase
+      .from("atomic_tour_ranking_snapshots")
+      .select("player_name,points")
+      .eq("snapshot_date", latestSnapshotDate)
+      .in("player_name", playerNames),
+  ).catch(() => []);
+
+  return new Set(
+    rankingRows
+      .filter((row) => Number(row.points) > 0)
+      .map((row) => normalizeUsername(row.player_name))
+      .filter(Boolean),
+  );
 };
 
 const getSuggestionRank = (
@@ -103,6 +142,7 @@ export const searchUsernameSuggestions = async (
           matchType: member.matchType,
           banned: Boolean(row.banned),
           accountUsername: null,
+          hasAtomicTourPoints: false,
           rank,
         });
       });
@@ -118,6 +158,7 @@ export const searchUsernameSuggestions = async (
         matchType: "username",
         banned: false,
         accountUsername: null,
+        hasAtomicTourPoints: false,
         rank,
       });
     });
@@ -148,12 +189,27 @@ export const searchUsernameSuggestions = async (
         .filter(Boolean);
     });
     const accountCandidates = [...new Set(accountCandidatesBySuggestion.flat())];
-    const registeredRows = accountCandidates.length
-      ? await loadSupabaseRows<UsernameRecord>(
-          "users",
-          getSupabaseClient().from("users").select("username").in("username", accountCandidates),
-        ).catch(() => [])
-      : [];
+    const tourCandidatesBySuggestion = suggestions.map((suggestion) => {
+      const identity = aliasRowsByUsername.get(suggestion.username);
+      return [
+        suggestion.matchedName,
+        suggestion.username,
+        ...(identity?.aliases ?? []),
+        ...(identity?.accounts ?? []).flatMap((account) => [account.alias, account.displayAlias]),
+      ]
+        .map(normalizeUsername)
+        .filter(Boolean);
+    });
+    const tourCandidates = [...new Set(tourCandidatesBySuggestion.flat())];
+    const [registeredRows, atomicTourPlayersWithPoints] = await Promise.all([
+      accountCandidates.length
+        ? loadSupabaseRows<UsernameRecord>(
+            "users",
+            getSupabaseClient().from("users").select("username").in("username", accountCandidates),
+          ).catch(() => [])
+        : [],
+      fetchAtomicTourPlayersWithPoints(tourCandidates),
+    ]);
     const registeredUsernames = new Set(
       registeredRows.map((row) => normalizeUsername(row.username)).filter(Boolean),
     );
@@ -164,6 +220,10 @@ export const searchUsernameSuggestions = async (
         accountCandidatesBySuggestion[index]?.find((username) =>
           registeredUsernames.has(username),
         ) ?? null,
+      hasAtomicTourPoints:
+        tourCandidatesBySuggestion[index]?.some((username) =>
+          atomicTourPlayersWithPoints.has(username),
+        ) ?? false,
     }));
   });
 
