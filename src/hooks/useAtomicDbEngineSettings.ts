@@ -3,18 +3,41 @@ import { z } from "zod";
 import { usePersistedState } from "./usePersistedState";
 
 const ENGINE_SETTINGS_STORAGE_KEY = "atomic-puzzles.atomicdb-engine";
-const DEFAULT_ENGINE_SETTINGS = { enabled: true, lineCount: 3, showFollowUpMoves: true };
+const ENGINE_SETTINGS_VERSION = 2;
 
-export type AtomicDbEngineSettings = typeof DEFAULT_ENGINE_SETTINGS;
+export type AtomicDbEngineSettings = {
+  enabled: boolean;
+  lineCount: number;
+  showFollowUpMoves: boolean;
+  settingsVersion?: typeof ENGINE_SETTINGS_VERSION;
+};
 
-const engineSettingsSchema = (defaultEnabled: boolean) =>
+const mobileDefaultLineCount = (): number =>
+  typeof window !== "undefined" &&
+  typeof window.matchMedia === "function" &&
+  window.matchMedia("(max-width: 780px)").matches
+    ? 2
+    : 3;
+
+const engineSettingsSchema = (defaultEnabled: boolean, defaultLineCount: number) =>
   z.record(z.string(), z.unknown()).transform((value): AtomicDbEngineSettings => {
     const parsedCount = Math.floor(Number(value.lineCount));
-    const lineCount = Number.isFinite(parsedCount) ? Math.min(5, Math.max(1, parsedCount)) : 3;
+    const storedVersion = Number(value.settingsVersion);
+    const legacyDefaultCount = storedVersion < ENGINE_SETTINGS_VERSION && parsedCount === 3;
+    const lineCount = Number.isFinite(parsedCount)
+      ? legacyDefaultCount
+        ? defaultLineCount
+        : Math.min(5, Math.max(1, parsedCount))
+      : defaultLineCount;
     const enabled = typeof value.enabled === "boolean" ? value.enabled : defaultEnabled;
     const showFollowUpMoves =
       typeof value.showFollowUpMoves === "boolean" ? value.showFollowUpMoves : true;
-    return { enabled, lineCount, showFollowUpMoves };
+    return {
+      enabled,
+      lineCount,
+      showFollowUpMoves,
+      settingsVersion: ENGINE_SETTINGS_VERSION,
+    };
   });
 
 export const useAtomicDbEngineSettings = ({
@@ -23,8 +46,16 @@ export const useAtomicDbEngineSettings = ({
 }: {
   storageKey?: string;
   defaultEnabled?: boolean;
-} = {}) =>
-  usePersistedState<AtomicDbEngineSettings>(storageKey, engineSettingsSchema(defaultEnabled), {
-    ...DEFAULT_ENGINE_SETTINGS,
-    enabled: defaultEnabled,
-  });
+} = {}) => {
+  const defaultLineCount = mobileDefaultLineCount();
+  return usePersistedState<AtomicDbEngineSettings>(
+    storageKey,
+    engineSettingsSchema(defaultEnabled, defaultLineCount),
+    {
+      enabled: defaultEnabled,
+      lineCount: defaultLineCount,
+      showFollowUpMoves: true,
+      settingsVersion: ENGINE_SETTINGS_VERSION,
+    },
+  );
+};
