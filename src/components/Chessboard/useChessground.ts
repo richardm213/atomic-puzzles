@@ -35,6 +35,7 @@ export const useChessground = ({
       fen: initial.fen,
       orientation: initial.orientation,
       coordinates: initial.coordinates,
+      coordinatesOnSquares: true,
       movable: {
         free: false,
         color: initial.movableColor ?? "white",

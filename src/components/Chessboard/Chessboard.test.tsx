@@ -7,6 +7,7 @@ import { Chessboard } from "./Chessboard";
 
 const mocks = vi.hoisted(() => ({
   config: null as null | {
+    coordinatesOnSquares?: boolean;
     movable?: { events?: { after?: (orig: string, dest: string) => void } };
     premovable?: { enabled?: boolean };
   },
@@ -14,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   setAutoShapes: vi.fn(),
   playPremove: vi.fn(),
   cancelPremove: vi.fn(),
+  showBoardCoordinates: true,
 }));
 
 vi.mock("@lichess-org/chessground", () => ({
@@ -40,6 +42,7 @@ vi.mock("../../context/AppSettings", async (importOriginal) => {
       boardColorOverrideTheme: "",
       boardOverrideLightSquare: "",
       boardOverrideDarkSquare: "",
+      showBoardCoordinates: mocks.showBoardCoordinates,
     }),
   };
 });
@@ -75,6 +78,7 @@ describe("Chessboard orchestration", () => {
     mocks.setAutoShapes.mockClear();
     mocks.playPremove.mockClear();
     mocks.cancelPremove.mockClear();
+    mocks.showBoardCoordinates = true;
   });
 
   it("does not mutate previously emitted move arrays", () => {
@@ -101,6 +105,28 @@ describe("Chessboard orchestration", () => {
 
     expect(movable?.color).toBe("white");
     expect(movable?.dests.get("e2")).toEqual(expect.arrayContaining(["e3", "e4"]));
+  });
+
+  it("places coordinates inside their board squares", () => {
+    renderBoard();
+
+    expect(mocks.config?.coordinatesOnSquares).toBe(true);
+  });
+
+  it("hides coordinates when the display preference is disabled", () => {
+    mocks.showBoardCoordinates = false;
+    const { container } = render(
+      <Chessboard
+        puzzleId="coordinates"
+        fen={STARTING_FEN}
+        orientation="white"
+        coordinates
+        solution=""
+        showSolution={false}
+      />,
+    );
+
+    expect(container.querySelector(".cg-boardShell")).toHaveClass("coordinatesHidden");
   });
 
   it("renders a solid red preview arrow for a threat move", () => {

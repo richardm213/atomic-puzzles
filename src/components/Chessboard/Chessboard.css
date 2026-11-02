@@ -26,6 +26,10 @@
   touch-action: none;
 }
 
+.cg-boardShell.coordinatesHidden coords {
+  display: none;
+}
+
 #promotion-choice {
   position: absolute;
   inset: 0;

@@ -2732,13 +2732,13 @@ button.puzzleRatingBadge.editable:focus-visible {
 
   .boardFrame {
     --board-feedback-gap: 5px;
-    width: min(100%, 548px, calc(100svh - 330px));
+    width: min(100%, 548px, calc(100svh - 318px));
     max-width: 548px;
     padding: 5px;
   }
 
   .boardStage {
-    width: min(100%, 538px, calc(100svh - 340px));
+    width: min(100%, 538px, calc(100svh - 328px));
     max-width: 538px;
   }
 

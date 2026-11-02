@@ -139,6 +139,8 @@ export const TopNav = () => {
     setBoardOverrideLightSquare,
     boardOverrideDarkSquare,
     setBoardOverrideDarkSquare,
+    showBoardCoordinates,
+    setShowBoardCoordinates,
     resetDisplaySettings,
     hideRankingsOpenings,
     setHideRankingsOpenings,
@@ -909,6 +911,16 @@ export const TopNav = () => {
                       </label>
                     </div>
                   ) : null}
+                  <div className="navSettingsSection">
+                    <label className="navSettingsCheckbox">
+                      <span>Show board coordinates</span>
+                      <input
+                        type="checkbox"
+                        checked={showBoardCoordinates}
+                        onChange={(event) => setShowBoardCoordinates(event.target.checked)}
+                      />
+                    </label>
+                  </div>
                   <div className="navSettingsSection">
                     <label className="navSettingsLabel" htmlFor="piece-set-select">
                       Piece set

@@ -180,6 +180,7 @@ const ChessboardComponent = ({
     boardColorOverrideTheme,
     boardOverrideLightSquare,
     boardOverrideDarkSquare,
+    showBoardCoordinates,
   } = useAppSettings();
   const elementRef = useRef<HTMLDivElement | null>(null);
   const lastAutomaticResetFenRef = useRef<string | null>(null);
@@ -1405,7 +1406,10 @@ const ChessboardComponent = ({
   ]);
 
   return (
-    <div className="cg-boardShell cg-pieceTheme" style={{ ...pieceStyle, ...boardStyle }}>
+    <div
+      className={`cg-boardShell cg-pieceTheme${showBoardCoordinates === false ? " coordinatesHidden" : ""}`}
+      style={{ ...pieceStyle, ...boardStyle }}
+    >
       <div ref={elementRef} className="cg-board" />
       {pendingPromotion ? (
         <div

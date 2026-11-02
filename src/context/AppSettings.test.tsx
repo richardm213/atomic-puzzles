@@ -26,6 +26,15 @@ const PuzzleTimerSetting = () => {
   return <span>{showPuzzleTimer ? "Timer shown" : "Timer hidden"}</span>;
 };
 
+const BoardCoordinatesSetting = () => {
+  const { showBoardCoordinates, setShowBoardCoordinates } = useAppSettings();
+  return (
+    <button type="button" onClick={() => setShowBoardCoordinates((shown) => !shown)}>
+      {showBoardCoordinates ? "Coordinates shown" : "Coordinates hidden"}
+    </button>
+  );
+};
+
 const PuzzleAnalysisTargetSetting = () => {
   const { puzzleAnalysisTarget, setPuzzleAnalysisTarget } = useAppSettings();
   return (
@@ -118,6 +127,25 @@ describe("puzzle timer preference", () => {
     );
 
     expect(screen.getByText("Timer shown")).toBeInTheDocument();
+  });
+});
+
+describe("board coordinate preference", () => {
+  beforeEach(() => window.localStorage.clear());
+
+  it("shows coordinates by default and persists the hidden setting", async () => {
+    render(
+      <AppSettingsProvider>
+        <BoardCoordinatesSetting />
+      </AppSettingsProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Coordinates shown" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Coordinates hidden" })).toBeInTheDocument();
+      expect(window.localStorage.getItem("atomic-puzzles.board.show-coordinates")).toBe("false");
+    });
   });
 });
 
