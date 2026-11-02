@@ -5,6 +5,7 @@
     "types": ["node", "vitest/globals"]
   },
   "include": [
+    "edge-functions/**/*.ts",
     "features/**/*.ts",
     "functions/**/*.ts",
     "lib/**/*.ts",

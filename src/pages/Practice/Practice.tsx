@@ -15,6 +15,7 @@ import {
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -63,6 +64,11 @@ import {
   fetchExplorerApiResponse,
   mergeExplorerApiResponses,
 } from "../../utils/openingExplorer";
+import {
+  practicePath,
+  practiceRouteParam,
+  practiceUsernamesFromRoute,
+} from "./practiceRoutes";
 import {
   MAX_PRACTICE_PLAYERS,
   normalizeClockValue,
@@ -182,6 +188,14 @@ const chooseOpponentMove = (moves: PracticeMove[], mode: OpponentMode): Practice
 };
 
 export const PracticePage = () => {
+  const navigate = useNavigate();
+  const routeParams = useParams({ strict: false });
+  const routeOpponents =
+    typeof routeParams.opponents === "string" ? routeParams.opponents : undefined;
+  const routeOpponentUsernames = useMemo(
+    () => practiceUsernamesFromRoute(routeOpponents),
+    [routeOpponents],
+  );
   const [atomicDbEngineSettings, setAtomicDbEngineSettings] = useAtomicDbEngineSettings({
     storageKey: "atomic-puzzles.practice.atomicdb-engine",
     defaultEnabled: false,
@@ -198,6 +212,18 @@ export const PracticePage = () => {
     clockIncrementSeconds,
     clockEnabled,
   } = settings;
+  const routeInitializedRef = useRef(false);
+  const previousRouteOpponentsRef = useRef(routeOpponents);
+  const navigateToPracticeOpponents = useCallback(
+    (usernames: string[], replace = false): void => {
+      void navigate({
+        to: "/practice/{-$opponents}",
+        params: { opponents: practiceRouteParam(usernames) },
+        replace,
+      });
+    },
+    [navigate],
+  );
   const boardPanelRef = useRef<HTMLDivElement | null>(null);
   const remainingClockMsRef = useRef(clockMinutes * 60_000);
   const lastAutoFenRef = useRef("");
@@ -218,11 +244,7 @@ export const PracticePage = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [exhaustedFen, setExhaustedFen] = useState<string | null>(null);
   const [manualContinuationActive, setManualContinuationActive] = useState(false);
-  const [movesOpen, setMovesOpen] = usePersistedState(
-    MOVES_OPEN_STORAGE_KEY,
-    z.boolean(),
-    true,
-  );
+  const [movesOpen, setMovesOpen] = usePersistedState(MOVES_OPEN_STORAGE_KEY, z.boolean(), true);
   const [hoveredMoveUci, setHoveredMoveUci] = useState<string | null>(null);
   const { copy: copyPgn, copyLabel: copyPgnLabel } = useCopyFeedback();
   const [randomPlayerLoading, setRandomPlayerLoading] = useState(false);
@@ -766,6 +788,50 @@ export const PracticePage = () => {
     queueNavigation({ type: "reset", fen: STARTING_FEN });
   }, [queueNavigation, resetOpponentMoveChoices, resetPracticeClock]);
 
+  useEffect(() => {
+    if (!routeInitializedRef.current) {
+      routeInitializedRef.current = true;
+      previousRouteOpponentsRef.current = routeOpponents;
+
+      if (routeOpponentUsernames.length > 0) {
+        setSettings((current) => ({
+          ...current,
+          opponentSource: "player",
+          opponentUsernames: routeOpponentUsernames,
+          allowMultiplePlayers: routeOpponentUsernames.length > 1,
+        }));
+        resetBoardForOpponent();
+      } else if (opponentSource === "player" && opponentUsernames.length > 0) {
+        navigateToPracticeOpponents(opponentUsernames, true);
+      }
+      return;
+    }
+
+    if (previousRouteOpponentsRef.current === routeOpponents) return;
+    previousRouteOpponentsRef.current = routeOpponents;
+
+    if (routeOpponentUsernames.length > 0) {
+      setSettings((current) => ({
+        ...current,
+        opponentSource: "player",
+        opponentUsernames: routeOpponentUsernames,
+        allowMultiplePlayers: routeOpponentUsernames.length > 1,
+      }));
+    } else {
+      updateSettings({ opponentSource: "general" });
+    }
+    resetBoardForOpponent();
+  }, [
+    navigateToPracticeOpponents,
+    opponentSource,
+    opponentUsernames,
+    resetBoardForOpponent,
+    routeOpponentUsernames,
+    routeOpponents,
+    setSettings,
+    updateSettings,
+  ]);
+
   const restartPracticeGame = useCallback((): void => {
     resetOpponentMoveChoices();
     setHoveredMoveUci(null);
@@ -801,13 +867,16 @@ export const PracticePage = () => {
       const trimmedUsername = nextUsername.trim();
       if (!trimmedUsername) return;
 
+      const nextUsernames = allowMultiplePlayers
+        ? normalizePracticeUsernames([...opponentUsernames, trimmedUsername])
+        : [trimmedUsername];
+
       setSettings((current) => ({
         ...current,
-        opponentUsernames: current.allowMultiplePlayers
-          ? normalizePracticeUsernames([...current.opponentUsernames, trimmedUsername])
-          : [trimmedUsername],
+        opponentUsernames: nextUsernames,
         opponentSource: "player",
       }));
+      navigateToPracticeOpponents(nextUsernames);
       resetBoardForOpponent();
       rememberUsername(trimmedUsername);
 
@@ -818,6 +887,8 @@ export const PracticePage = () => {
     [
       allowMultiplePlayers,
       closeUsernamePicker,
+      navigateToPracticeOpponents,
+      opponentUsernames,
       rememberUsername,
       resetBoardForOpponent,
       setSettings,
@@ -847,20 +918,23 @@ export const PracticePage = () => {
 
   const clearSelectedPlayers = (): void => {
     updateSettings({ opponentUsernames: [], opponentSource: "player" });
+    navigateToPracticeOpponents([]);
     resetOpponentMoveChoices();
   };
 
   const removeOpponentUsername = useCallback(
     (usernameToRemove: string): void => {
+      const nextUsernames = opponentUsernames.filter(
+        (username) => username.toLowerCase() !== usernameToRemove.toLowerCase(),
+      );
       setSettings((current) => ({
         ...current,
-        opponentUsernames: current.opponentUsernames.filter(
-          (username) => username.toLowerCase() !== usernameToRemove.toLowerCase(),
-        ),
+        opponentUsernames: nextUsernames,
       }));
+      navigateToPracticeOpponents(nextUsernames);
       resetOpponentMoveChoices();
     },
-    [resetOpponentMoveChoices, setSettings],
+    [navigateToPracticeOpponents, opponentUsernames, resetOpponentMoveChoices, setSettings],
   );
 
   const updateAllowMultiplePlayers = (allowMultiple: boolean): void => {
@@ -868,6 +942,7 @@ export const PracticePage = () => {
     resetOpponentMoveChoices();
 
     if (!allowMultiple) {
+      navigateToPracticeOpponents(opponentUsernames.slice(0, 1));
       setSettings((current) => ({
         ...current,
         opponentUsernames: current.opponentUsernames.slice(0, 1),
@@ -877,11 +952,13 @@ export const PracticePage = () => {
 
   const showGeneralOpponent = (): void => {
     updateSettings({ opponentSource: "general" });
+    navigateToPracticeOpponents([]);
     resetOpponentMoveChoices();
   };
 
   const showPlayerOpponent = (): void => {
     updateSettings({ opponentSource: "player" });
+    navigateToPracticeOpponents(opponentUsernames);
     resetOpponentMoveChoices();
 
     if (opponentUsernames.length === 0) {
@@ -986,6 +1063,7 @@ export const PracticePage = () => {
     practiceMoves,
     requestAlternateAutoMove,
     setAtomicDbEngineSettings,
+    setMovesOpen,
     settingsOpen,
     status,
     toggleGamePaused,
@@ -999,9 +1077,17 @@ export const PracticePage = () => {
   return (
     <AnalysisWorkspaceLayout className="practicePage" style={pageStyle}>
       <Seo
-        title="Opening Database Practice"
-        description="Practice atomic openings against the general database or a selected player's games."
-        path="/practice"
+        title={
+          opponentSource === "player" && opponentUsernames.length === 1
+            ? `Practice against ${opponentUsernames[0]}`
+            : "Opening Database Practice"
+        }
+        description={
+          opponentSource === "player" && opponentUsernames.length === 1
+            ? `Practice atomic openings against games played by ${opponentUsernames[0]}.`
+            : "Practice atomic openings against the general database or selected players' games."
+        }
+        path={opponentSource === "player" ? practicePath(opponentUsernames) : "/practice"}
       />
 
       <AnalysisWorkspacePanel

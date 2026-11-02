@@ -300,7 +300,7 @@ const analysisFenRoute = createRoute({
 
 const practiceRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/practice",
+  path: "/practice/{-$opponents}",
   component: PracticePage,
 });
 
