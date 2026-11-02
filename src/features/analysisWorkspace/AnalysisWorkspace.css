@@ -1313,6 +1313,11 @@ body:has(.analysisPage),
     padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px));
   }
 
+  .analysisPanel {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
   .analysisRightPanel,
   .analysisExplorerPanel {
     grid-column: auto;
@@ -1324,11 +1329,15 @@ body:has(.analysisPage),
   }
 
   .analysisBoardPanel {
+    --analysis-eval-bar-gutter: 18px;
     grid-column: 1;
     grid-row: auto;
     order: -1;
     justify-self: center;
-    width: min(100%, var(--analysis-board-size, 520px));
+    width: min(
+      calc(100% - var(--analysis-eval-bar-gutter)),
+      calc(var(--analysis-board-size, 520px) - var(--analysis-eval-bar-gutter))
+    );
   }
 
   .analysisBoardTextPanel {
@@ -1374,17 +1383,16 @@ body:has(.analysisPage),
 
   .analysisBottomToolbar {
     position: fixed;
-    left: max(10px, env(safe-area-inset-left));
-    right: max(10px, env(safe-area-inset-right));
+    left: max(8px, env(safe-area-inset-left));
+    right: max(8px, env(safe-area-inset-right));
     bottom: 0;
     z-index: 20;
     width: auto;
-    min-height: calc(52px + env(safe-area-inset-bottom, 0px));
+    min-height: 52px;
     margin: 0;
-    padding: 4px 8px calc(4px + env(safe-area-inset-bottom, 0px));
+    padding: 6px 8px calc(8px + env(safe-area-inset-bottom, 0px));
     border: 1px solid var(--color-border-strong);
-    border-bottom: 0;
-    border-radius: var(--radius-ui) var(--radius-ui) 0 0;
+    border-radius: var(--radius-ui);
     background: color-mix(in srgb, var(--color-panel-deep) 94%, transparent);
     box-shadow: 0 -10px 28px color-mix(in srgb, var(--page-background) 54%, transparent);
     -webkit-backdrop-filter: blur(14px);

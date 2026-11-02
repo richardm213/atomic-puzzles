@@ -270,8 +270,8 @@
 }
 
 .atomicDbEvalBar {
-  --atomic-db-gauge-dark: oklch(29% 0.035 255);
-  --atomic-db-gauge-light: oklch(84% 0.014 255);
+  --atomic-db-gauge-dark: oklch(23% 0.025 255);
+  --atomic-db-gauge-light: oklch(92% 0.01 255);
   position: absolute;
   top: 0;
   bottom: 0;
@@ -431,17 +431,19 @@
   }
 
   .atomicDbEvalBar {
-    right: 0;
+    right: -18px;
     width: 14px;
-    border-radius: 0 4px 4px 0;
+    border-radius: 4px;
   }
 
   .atomicDbEvalBar.collapsed {
+    right: 0;
     width: 0;
   }
 
   .atomicDbHeaderControls {
-    min-height: 48px;
+    min-height: 44px;
+    padding-block: 0;
   }
 
   .atomicDbSettingsButton {
