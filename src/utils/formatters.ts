@@ -25,7 +25,7 @@ export const formatLocalDateTime = (timestamp: number | string | Date): string =
     })
     .toLowerCase();
 
-  return includeYear ? `${month} ${day}, ${year} ${time}` : `${month} ${day} ${time}`;
+  return includeYear ? `${month} ${day}, ${year}` : `${month} ${day} ${time}`;
 };
 
 export const formatGameCount = (games: number): string => {

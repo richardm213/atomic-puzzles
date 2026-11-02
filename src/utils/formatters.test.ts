@@ -46,12 +46,12 @@ describe("formatCalendarDateRange", () => {
 describe("formatLocalDateTime", () => {
   afterEach(() => vi.useRealTimers());
 
-  it("omits the year only for dates in the current local year", () => {
+  it("shows the time only for dates in the current local year", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2024, 6, 1, 12));
 
     expect(formatLocalDateTime(new Date(2024, 2, 15, 14, 30))).toBe("Mar 15 2:30 pm");
-    expect(formatLocalDateTime(new Date(2023, 2, 15, 14, 30))).toBe("Mar 15, 2023 2:30 pm");
+    expect(formatLocalDateTime(new Date(2023, 2, 15, 14, 30))).toBe("Mar 15, 2023");
   });
 });
 
