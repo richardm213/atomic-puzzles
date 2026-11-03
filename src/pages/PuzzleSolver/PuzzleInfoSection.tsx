@@ -3,6 +3,8 @@ import {
   faCheck,
   faCircleInfo,
   faClockRotateLeft,
+  faCopy,
+  faMagnifyingGlass,
   faMagnifyingGlassChart,
   faUsers,
   faXmark,
@@ -102,7 +104,7 @@ const AnalysisLink = ({
     }}
   >
     <span className="fenAnalyzeIcon" aria-hidden="true">
-      <FontAwesomeIcon icon={faMagnifyingGlassChart} />
+      <FontAwesomeIcon icon={faMagnifyingGlass} />
     </span>
     <span className="fenAnalyzeText">
       <span>Analyze</span>
@@ -233,6 +235,19 @@ export const PuzzleInfoSection = ({
           <div className="lineHeader">
             <div className="fenLabel">Solution</div>
             <div className="solutionHeaderActions">
+              <button
+                type="button"
+                className={`fenAnalyzeButton copyPgnButton ${solution.copyLabel === "Copied" ? "copied" : ""}`.trim()}
+                onClick={solution.onCopy}
+                disabled={!solution.canCopy}
+                aria-label={solution.copyLabel}
+                title={solution.copyLabel}
+              >
+                <FontAwesomeIcon
+                  icon={solution.copyLabel === "Copied" ? faCheck : faCopy}
+                  aria-hidden="true"
+                />
+              </button>
               <SolutionPlaybackControls
                 canStart={Boolean(solution.fen) && solution.canStart}
                 canPrevious={Boolean(solution.fen) && solution.canPrevious}
@@ -240,17 +255,6 @@ export const PuzzleInfoSection = ({
                 canEnd={Boolean(solution.fen) && solution.canEnd}
                 onNavigate={solution.onNavigate}
               />
-              <button
-                type="button"
-                className="fenAnalyzeButton"
-                onClick={solution.onCopy}
-                disabled={!solution.canCopy}
-              >
-                {solution.copyLabel === "Copied" ? (
-                  <FontAwesomeIcon className="copyPgnCheck" icon={faCheck} aria-hidden="true" />
-                ) : null}
-                {solution.copyLabel}
-              </button>
             </div>
           </div>
           {solution.hasLines ? (
