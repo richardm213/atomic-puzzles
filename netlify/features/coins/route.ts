@@ -39,6 +39,7 @@ const coinBanUsernameSchema = z
 const coinTransactionReasonSchema = z.enum(COIN_TRANSACTION_REASONS);
 const coinTransactionsPageSize = 50;
 const leaderboardQueryPageSize = 1_000;
+const hiddenLeaderboardUsernames = new Set(["admin", "prediction_admin"]);
 
 type CoinAccountRow = { username: string; balance: number };
 type OpenBetRow = { id: number; username: string; total_cost: number };
@@ -302,7 +303,7 @@ export const coinsRoute = async (event: FunctionEvent) => {
       for (const bet of openBets) addAmount(openBetCosts, bet.username, bet.total_cost);
     }
     const rankings = accounts
-      .filter((account) => account.username !== "prediction_admin")
+      .filter((account) => !hiddenLeaderboardUsernames.has(account.username.toLowerCase()))
       .map((account) => {
         const inBets = openBetCosts.get(account.username) ?? 0;
         return {

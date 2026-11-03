@@ -69,6 +69,7 @@ describe("coins function", () => {
   it("returns public coin rankings ordered by net worth", async () => {
     const accountRange = vi.fn(async () => ({
       data: [
+        { username: "admin", balance: 10_000 },
         { username: "saver", balance: 1200 },
         { username: "bettor", balance: 850 },
       ],
