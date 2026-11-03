@@ -16,6 +16,7 @@ const modeSchema = z.enum([
   "two-queens",
   "rook-vs-pawn",
   "rook-bishop-vs-king",
+  "rook-pawn-vs-king",
   "rook-pawn-vs-pawn",
 ]);
 const categorySchema = z.union([

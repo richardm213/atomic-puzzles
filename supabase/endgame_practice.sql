@@ -9,6 +9,7 @@ create table if not exists public.endgame_practice_bests (
     'two-queens',
     'rook-vs-pawn',
     'rook-bishop-vs-king',
+    'rook-pawn-vs-king',
     'rook-pawn-vs-pawn'
   )),
   category text not null,
@@ -27,12 +28,6 @@ alter table public.endgame_practice_bests
 alter table public.endgame_practice_bests
   drop constraint if exists endgame_practice_bests_check;
 
--- Keep an existing installation in sync when a practice mode is corrected.
-update public.endgame_practice_bests
-set mode = 'rook-pawn-vs-pawn',
-    category = 'regular-file:rank-regular'
-where mode = 'rook-pawn-vs-king';
-
 alter table public.endgame_practice_bests
   add constraint endgame_practice_bests_mode_check check (mode in (
     'pawn-duel',
@@ -40,6 +35,7 @@ alter table public.endgame_practice_bests
     'two-queens',
     'rook-vs-pawn',
     'rook-bishop-vs-king',
+    'rook-pawn-vs-king',
     'rook-pawn-vs-pawn'
   ));
 

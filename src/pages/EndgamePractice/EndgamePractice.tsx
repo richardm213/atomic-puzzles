@@ -82,6 +82,7 @@ const modeLabel = (mode: EndgameMode): string => {
   if (mode === "two-queens") return "KQQ vs K";
   if (mode === "rook-vs-pawn") return "KR vs KP";
   if (mode === "rook-bishop-vs-king") return "KRB vs K";
+  if (mode === "rook-pawn-vs-king") return "KRP vs K";
   return "KRP vs KP";
 };
 
@@ -657,6 +658,7 @@ export const EndgamePracticePage = () => {
                       "two-queens",
                       "rook-vs-pawn",
                       "rook-bishop-vs-king",
+                      "rook-pawn-vs-king",
                       "rook-pawn-vs-pawn",
                     ] as const
                   ).map((option) => (

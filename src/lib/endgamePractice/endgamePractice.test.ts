@@ -96,6 +96,7 @@ describe("endgame practice positions", () => {
   it.each([
     ["rook-vs-pawn", ["K", "R", "k", "p"]],
     ["rook-bishop-vs-king", ["K", "R", "B", "k"]],
+    ["rook-pawn-vs-king", ["K", "R", "P", "k"]],
   ] as const)("generates legal %s material without an immediate win", (mode, expectedSymbols) => {
     const generated = generateEndgamePosition(mode, "no-pawn", () => 0.42);
     const setup = parseFen(generated.fen);

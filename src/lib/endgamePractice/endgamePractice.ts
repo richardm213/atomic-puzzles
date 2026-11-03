@@ -11,6 +11,7 @@ export type EndgameMode =
   | "two-queens"
   | "rook-vs-pawn"
   | "rook-bishop-vs-king"
+  | "rook-pawn-vs-king"
   | "rook-pawn-vs-pawn";
 export type PawnFileCategory = "rook-file" | "knight-file" | "regular-file";
 export type PawnRankCategory = "rank-3" | "rank-regular" | "rank-7";
@@ -210,6 +211,12 @@ const materialPiecesByMode: Partial<Record<EndgameMode, readonly MaterialPiece[]
     { symbol: "p", allowedSquares: pawnSquares },
   ],
   "rook-bishop-vs-king": [{ symbol: "K" }, { symbol: "R" }, { symbol: "B" }, { symbol: "k" }],
+  "rook-pawn-vs-king": [
+    { symbol: "K" },
+    { symbol: "R" },
+    { symbol: "P", allowedSquares: pawnSquares },
+    { symbol: "k" },
+  ],
 };
 
 const generateMaterialPosition = (mode: EndgameMode, random: () => number): EndgamePosition => {
