@@ -1027,7 +1027,15 @@ describe("PuzzleSolverPage solution options", () => {
     performanceNow.mockRestore();
   });
 
+  it("does not track elapsed time for a previously solved puzzle", async () => {
+    render(<PuzzleSolverPage />);
+
+    await screen.findByRole("tab", { name: "Solution" });
+    expect(screen.queryByLabelText(/^Elapsed time/)).not.toBeInTheDocument();
+  });
+
   it("keeps the original puzzle start time after the solver remounts", async () => {
+    mocks.attemptedPuzzleIds = new Set();
     let now = 1_000_000;
     const dateNow = vi.spyOn(Date, "now").mockImplementation(() => now);
 
@@ -1043,6 +1051,7 @@ describe("PuzzleSolverPage solution options", () => {
   });
 
   it("starts a fresh timer when the stored attempt is more than 30 minutes old", async () => {
+    mocks.attemptedPuzzleIds = new Set();
     let now = 1_000_000;
     const dateNow = vi.spyOn(Date, "now").mockImplementation(() => now);
 
@@ -1058,6 +1067,7 @@ describe("PuzzleSolverPage solution options", () => {
   });
 
   it("updates the elapsed timer without rerendering the chessboard", async () => {
+    mocks.attemptedPuzzleIds = new Set();
     let now = 0;
     const timerTicks: Array<() => void> = [];
     const performanceNow = vi.spyOn(window.performance, "now").mockImplementation(() => now);

@@ -182,6 +182,7 @@ export const PuzzleSolverPage = () => {
   const { puzzles, setPuzzles, loadingError, setLoadingError, mergeLoadedPuzzles } =
     usePuzzleCatalog(routePuzzleId, routeSetKey || routeDashboardSetId);
   const [attemptedPuzzleIds, setAttemptedPuzzleIds] = useState<Set<string>>(() => new Set());
+  const [solvedPuzzleIds, setSolvedPuzzleIds] = useState<Set<string>>(() => new Set());
   const [unratedPuzzleIds, setUnratedPuzzleIds] = useState<Set<string>>(() => new Set());
   const [dailyAttemptCount, setDailyAttemptCount] = useState(0);
   const [attemptedPuzzleIdsOwner, setAttemptedPuzzleIdsOwner] = useState<string | null>(null);
@@ -395,6 +396,7 @@ export const PuzzleSolverPage = () => {
 
     if (!username) {
       setAttemptedPuzzleIds(new Set());
+      setSolvedPuzzleIds(new Set());
       setUnratedPuzzleIds(new Set());
       setDailyAttemptCount(0);
       countedTodayPuzzleIdsRef.current = new Set();
@@ -403,6 +405,7 @@ export const PuzzleSolverPage = () => {
     }
 
     setAttemptedPuzzleIds(new Set());
+    setSolvedPuzzleIds(new Set());
     setUnratedPuzzleIds(new Set());
     setDailyAttemptCount(0);
     countedTodayPuzzleIdsRef.current = new Set();
@@ -418,6 +421,11 @@ export const PuzzleSolverPage = () => {
               progressRows.filter((row) => row.rated !== false).map((row) => String(row.puzzle_id)),
             ),
           );
+          setSolvedPuzzleIds(
+            new Set(
+              progressRows.filter((row) => row.puzzle_correct).map((row) => String(row.puzzle_id)),
+            ),
+          );
           setUnratedPuzzleIds(
             new Set(
               progressRows.filter((row) => row.rated === false).map((row) => String(row.puzzle_id)),
@@ -430,6 +438,7 @@ export const PuzzleSolverPage = () => {
       } catch (error) {
         if (!isCurrent) return;
         setAttemptedPuzzleIds(new Set());
+        setSolvedPuzzleIds(new Set());
         setUnratedPuzzleIds(new Set());
         countedTodayPuzzleIdsRef.current = new Set();
         setDailyAttemptCount(0);
@@ -650,6 +659,8 @@ export const PuzzleSolverPage = () => {
       : puzzleSetParticipants.join(" · ");
   const isAnalysisMode = interactionMode === ANALYSIS_MODE;
   const hasPersistedAttempt = activePuzzleKey ? attemptedPuzzleIds.has(activePuzzleKey) : false;
+  const hasSolvedPuzzle = activePuzzleKey ? solvedPuzzleIds.has(activePuzzleKey) : false;
+  const shouldShowPuzzleTimer = showPuzzleTimer && attemptedPuzzleIdsReady && !hasSolvedPuzzle;
   const hasUnratedAttempt = activePuzzleKey ? unratedPuzzleIds.has(activePuzzleKey) : false;
   const unratedReason = getPuzzleUnratedReason({
     username: normalizedUsername,
@@ -877,6 +888,9 @@ export const PuzzleSolverPage = () => {
       setElapsedTimerRunning(false);
       const normalizedPuzzleId = toPuzzleKey(puzzleId);
       setResolvedAttemptedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
+      if (puzzleCorrect) {
+        setSolvedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
+      }
 
       enqueuePuzzleProgressWrite({
         puzzleId: normalizedPuzzleId,
@@ -927,7 +941,17 @@ export const PuzzleSolverPage = () => {
 
   useEffect(() => {
     resetPuzzleUiState();
-    const shouldStartTimer = Boolean(activePuzzleKey && fen);
+    setMobileFeedback(null);
+    resetCopyFeedback();
+    setOtherPuzzleAttemptsStatus("idle");
+    setOtherPuzzleAttempts([]);
+    previousBoardSnapshotRef.current = createInitialBoardSnapshot();
+  }, [activePuzzleKey, fen, resetCopyFeedback, resetPuzzleUiState]);
+
+  useEffect(() => {
+    const shouldStartTimer = Boolean(
+      activePuzzleKey && fen && attemptedPuzzleIdsReady && !hasSolvedPuzzle,
+    );
     const elapsedBeforePageLoad = shouldStartTimer
       ? Math.max(0, Date.now() - getPuzzleAttemptStartedAt(activePuzzleKey))
       : 0;
@@ -940,12 +964,7 @@ export const PuzzleSolverPage = () => {
       shouldStartTimer && !timerExpired ? window.performance.now() - initialElapsedTime : null;
     setElapsedTimeMs(initialElapsedTime);
     setElapsedTimerRunning(shouldStartTimer && !timerExpired);
-    setMobileFeedback(null);
-    resetCopyFeedback();
-    setOtherPuzzleAttemptsStatus("idle");
-    setOtherPuzzleAttempts([]);
-    previousBoardSnapshotRef.current = createInitialBoardSnapshot();
-  }, [activePuzzleKey, fen, resetCopyFeedback, resetPuzzleUiState]);
+  }, [activePuzzleKey, attemptedPuzzleIdsReady, fen, hasSolvedPuzzle]);
 
   useEffect(() => {
     if (!elapsedTimerRunning || elapsedTimerStartedAtRef.current === null) return undefined;
@@ -1874,7 +1893,7 @@ export const PuzzleSolverPage = () => {
                 {renderUserPuzzleRating()}
                 {hasAttemptedActivePuzzle ? renderPuzzleRating() : null}
               </div>
-              {!isMobileLayout && showPuzzleTimer ? (
+              {!isMobileLayout && shouldShowPuzzleTimer ? (
                 <PuzzleElapsedTimer
                   elapsedTimeMs={elapsedTimeMs}
                   running={elapsedTimerRunning}
@@ -2180,7 +2199,7 @@ export const PuzzleSolverPage = () => {
               <span className="mobilePuzzleAuthor" title={author}>
                 {author}
               </span>
-              {showPuzzleTimer ? (
+              {shouldShowPuzzleTimer ? (
                 <PuzzleElapsedTimer
                   elapsedTimeMs={elapsedTimeMs}
                   running={elapsedTimerRunning}
