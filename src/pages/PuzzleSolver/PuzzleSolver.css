@@ -2067,14 +2067,9 @@ button.puzzleRatingBadge.editable:focus-visible {
   line-height: 1.45;
 }
 
-.boardFrame.hasFeedback .boardStage::before {
-  content: "";
-  position: absolute;
-  inset: calc(-1 * var(--board-feedback-gap));
-  z-index: 0;
-  border: 2px solid var(--board-feedback-color);
-  border-radius: calc(var(--radius-ui) + var(--board-feedback-gap));
-  pointer-events: none;
+.boardFrame.hasFeedback .boardStage {
+  outline: 2px solid var(--board-feedback-color);
+  outline-offset: calc(var(--board-feedback-gap) - 2px);
 }
 
 .boardFrame .cg-boardShell,

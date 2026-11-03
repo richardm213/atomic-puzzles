@@ -73,14 +73,9 @@
   box-shadow: var(--shadow-soft);
 }
 
-.endgameBoardFrame.hasFeedback::before {
-  position: absolute;
-  inset: -5px;
-  z-index: 0;
-  border: 2px solid var(--endgame-board-feedback-color);
-  border-radius: calc(var(--radius-lg) + 3px);
-  pointer-events: none;
-  content: "";
+.endgameBoardFrame.hasFeedback {
+  outline: 2px solid var(--endgame-board-feedback-color);
+  outline-offset: 3px;
 }
 
 .endgameBoardFrame.isCorrect {
@@ -468,9 +463,8 @@
     border-radius: var(--radius-ui);
   }
 
-  .endgameBoardFrame.hasFeedback::before {
-    inset: -4px;
-    border-radius: calc(var(--radius-ui) + 3px);
+  .endgameBoardFrame.hasFeedback {
+    outline-offset: 2px;
   }
 
   .endgameBoardOverlay {
