@@ -4,11 +4,8 @@ import { Link } from "@tanstack/react-router";
 import type { ArchiveGame } from "../../lib/archive/games";
 import { decodeGameResult } from "../../lib/archive/games";
 import { gameTerminationLabel } from "../../lib/games/termination";
-import {
-  getTournamentMatchLocation,
-  getTournamentRouteId,
-} from "../../lib/matches/tournaments";
-import { formatLocalDateTime, formatSignedDecimal } from "../../utils/formatters";
+import { getTournamentMatchLocation, getTournamentRouteId } from "../../lib/matches/tournaments";
+import { formatLocalDateTime } from "../../utils/formatters";
 
 const initialClock = (timeControl: string): number | null => {
   const minutes = Number(timeControl.split("+")[0]);
@@ -43,24 +40,28 @@ const ratingForPlayer = (game: ArchiveGame, username: string) =>
     ? { before: game.p1_before_rating, after: game.p1_after_rating }
     : { before: game.p2_before_rating, after: game.p2_after_rating };
 
-const formatRating = (rating: number): string => String(Math.round(rating * 10) / 10);
+const formatRating = (rating: number): string => String(Math.round(rating));
+
+const formatRatingChange = (change: number): string => (change > 0 ? `+${change}` : String(change));
 
 const PlayerRating = ({ game, username }: { game: ArchiveGame; username: string }) => {
   if (game.ratings_are_per_game !== true) return null;
   const { before, after } = ratingForPlayer(game, username);
   const change = before !== null && after !== null ? after - before : null;
+  const roundedChange = change === null ? null : Math.round(change);
+  const formattedChange = roundedChange === null ? null : formatRatingChange(roundedChange);
 
   if (before === null) return null;
 
   return (
     <span className="gameAnalysisRating">
       <span>{formatRating(before)}</span>
-      {change !== null ? (
+      {roundedChange !== null && formattedChange !== null ? (
         <span
-          className={`gameAnalysisRatingChange ${change > 0 ? "positive" : change < 0 ? "negative" : "neutral"}`}
-          aria-label={`Rating change ${formatSignedDecimal(change)}`}
+          className={`gameAnalysisRatingChange ${roundedChange > 0 ? "positive" : roundedChange < 0 ? "negative" : "neutral"}`}
+          aria-label={`Rating change ${formattedChange}`}
         >
-          {formatSignedDecimal(change)}
+          {formattedChange}
         </span>
       ) : null}
     </span>

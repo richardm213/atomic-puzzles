@@ -108,7 +108,7 @@ const gamePlyFromHash = (moveCount: number): number | null => {
   if (typeof window === "undefined" || window.location.hash === "") return 0;
   const match = /^#(\d+)$/.exec(window.location.hash);
   if (!match) return null;
-  return Math.min(moveCount, Number(match[1]));
+  return Math.min(moveCount, Number(match[1]) * 2);
 };
 
 const DEFAULT_EXPLORER_SETTINGS = {
@@ -620,7 +620,8 @@ export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) 
 
   useEffect(() => {
     if (!game || !gamePlyInitializedRef.current || navigation !== null) return;
-    const hash = currentPly > 0 ? `#${currentPly}` : "";
+    const moveNumber = Math.ceil(currentPly / 2);
+    const hash = moveNumber > 0 ? `#${moveNumber}` : "";
     const nextUrl = `${window.location.pathname}${window.location.search}${hash}`;
     if (`${window.location.pathname}${window.location.search}${window.location.hash}` !== nextUrl) {
       window.history.replaceState(window.history.state, "", nextUrl);
