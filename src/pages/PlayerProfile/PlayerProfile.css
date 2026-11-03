@@ -1061,6 +1061,11 @@
   box-shadow: none;
 }
 
+:root:not([data-theme="light"]) .profileAliasPyChessLink {
+  border-width: 1px;
+  box-shadow: none;
+}
+
 :root:not([data-theme="light"]) .profileAliasChessComLink {
   color: #9ed26a;
   background: color-mix(in srgb, #365314 36%, var(--color-panel-strong));
@@ -1073,6 +1078,11 @@
   background: color-mix(in srgb, var(--color-warning-soft-bg) 80%, var(--color-panel-strong));
   border-color: color-mix(in srgb, var(--color-warning-soft-border) 80%, var(--color-gold));
   color: var(--color-gold);
+  box-shadow: none;
+}
+
+:root:not([data-theme="light"]) .profileAliasPyChessLink:hover,
+:root:not([data-theme="light"]) .profileAliasPyChessLink:focus-visible {
   box-shadow: none;
 }
 
