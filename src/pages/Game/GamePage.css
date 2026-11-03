@@ -434,6 +434,11 @@
   background: var(--color-panel);
 }
 
+.gameUnderboardPanel:has(.gameMoveTimesFigure) {
+  padding: 0;
+  overflow: hidden;
+}
+
 .gameUnderboardState {
   display: grid;
   min-height: 142px;
@@ -487,27 +492,27 @@
   scrollbar-width: thin;
 }
 
+.gameMoveTimesViewport:has(.gameClockTimeline) {
+  overflow-x: hidden;
+}
+
 .gameClockTimeline {
+  --game-black-move-stroke: color-mix(in srgb, var(--color-muted) 38%, var(--color-player-black));
+
   position: relative;
-  min-width: max(100%, calc(var(--move-pair-count) * 28px));
-  height: 164px;
-  border-block: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
-  background:
-    repeating-linear-gradient(
-      to bottom,
-      transparent 0,
-      transparent calc(25% - 1px),
-      color-mix(in srgb, var(--color-border) 42%, transparent) 25%
-    ),
-    color-mix(in srgb, var(--color-surface-inset) 44%, transparent);
+  min-width: 100%;
+  height: clamp(190px, 24vw, 238px);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--color-surface-inset) 70%, var(--color-panel));
 }
 
 .gameClockTimeline svg {
   position: absolute;
-  inset: 8px 8px 24px;
+  inset: 5px 8px;
   width: calc(100% - 16px);
-  height: calc(100% - 32px);
+  height: calc(100% - 10px);
   overflow: visible;
+  shape-rendering: geometricPrecision;
 }
 
 .gameClockTimeline path {
@@ -515,11 +520,34 @@
 }
 
 .gameClockTimeline .whiteFill {
-  fill: color-mix(in srgb, var(--color-text) 12%, transparent);
+  fill: color-mix(in srgb, var(--color-text) 23%, transparent);
 }
 
 .gameClockTimeline .blackFill {
-  fill: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  fill: rgb(0 0 0 / 30%);
+}
+
+.gameClockTimeline .clockAxis {
+  stroke: color-mix(in srgb, var(--color-text) 32%, transparent);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+
+.gameClockTimeline .whiteMoveTime,
+.gameClockTimeline .blackMoveTime {
+  vector-effect: non-scaling-stroke;
+  stroke-width: 1px;
+}
+
+.gameClockTimeline .whiteMoveTime {
+  fill: var(--color-player-white);
+  stroke: color-mix(in srgb, var(--color-muted) 62%, var(--color-panel));
+}
+
+.gameClockTimeline .blackMoveTime {
+  fill: var(--color-player-black);
+  stroke: var(--game-black-move-stroke);
+  stroke-width: 0.7px;
 }
 
 .gameClockTimeline .whiteLine,
@@ -527,27 +555,26 @@
   fill: none;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: 2px;
-}
-
-.gameClockTimeline .whiteLine {
-  stroke: color-mix(in srgb, var(--color-text) 68%, var(--color-panel));
-}
-
-.gameClockTimeline .blackLine {
   stroke: var(--color-primary);
+  stroke-width: 1.65px;
+}
+
+.gameClockTimeline .currentPlyLine {
+  stroke: var(--color-warning);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
 }
 
 .gameClockTimelineHits {
   position: absolute;
   inset: 0 8px;
   display: grid;
-  grid-template-columns: repeat(var(--move-pair-count), minmax(28px, 1fr));
+  grid-template-columns: repeat(var(--move-pair-count), minmax(0, 1fr));
 }
 
 .gameClockTimelinePair {
   position: relative;
-  min-width: 28px;
+  min-width: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
 }
@@ -561,9 +588,8 @@
 }
 
 .gameClockTimelinePair button:hover,
-.gameClockTimelinePair button:focus-visible,
-.gameClockTimelinePair button.current {
-  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+.gameClockTimelinePair button:focus-visible {
+  background: color-mix(in srgb, var(--color-primary) 7%, transparent);
 }
 
 .gameClockTimelinePair button:focus-visible {
@@ -573,15 +599,69 @@
 }
 
 .gameClockTimelinePair > span:last-child {
+  display: none;
+}
+
+.gameClockDuration {
   position: absolute;
-  right: 0;
-  bottom: 3px;
-  left: 0;
-  color: var(--color-subtle);
-  font-family: var(--font-mono);
-  font-size: 9px;
-  text-align: center;
+  right: 12px;
+  bottom: 8px;
+  z-index: 3;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-panel-strong) 88%, transparent);
+  box-shadow: 0 1px 5px rgb(0 0 0 / 24%);
+  color: var(--color-muted);
+  font-size: 11px;
+  line-height: 1;
   pointer-events: none;
+}
+
+.gameClockTooltip {
+  position: absolute;
+  top: var(--tooltip-y);
+  left: var(--tooltip-x);
+  z-index: 4;
+  min-width: 146px;
+  display: grid;
+  gap: 3px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--color-text) 58%, transparent);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--color-panel-strong) 94%, transparent);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 28%);
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.25;
+  translate: -50% 10px;
+  pointer-events: none;
+}
+
+.gameClockTooltip.above {
+  translate: -50% calc(-100% - 10px);
+}
+
+.gameClockTooltip strong {
+  color: var(--color-heading);
+  font-size: 13px;
+}
+
+.gameClockTooltip::after {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--color-primary);
+  border-radius: 50%;
+  background: var(--color-panel-strong);
+  content: "";
+  translate: -50% 0;
+}
+
+.gameClockTooltip.above::after {
+  top: calc(100% + 6px);
+  bottom: auto;
 }
 
 .gameMoveTimesChart {

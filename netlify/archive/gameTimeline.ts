@@ -84,6 +84,33 @@ export const decodePackedMoveTimestamps = (value: BlobValue): number[] | null =>
   return timestamps;
 };
 
+export const ratingsWithMatchOrientation = (row: Record<string, unknown>) => {
+  const bytes = toBlobBytes(row.ratings as BlobValue);
+  if (bytes === null) return null;
+  if (bytes.length !== 8) throw new Error("Invalid packed rating payload");
+
+  const values = Array.from({ length: 4 }, (_, index) => {
+    const offset = index * 2;
+    return ((bytes[offset] ?? 0) | ((bytes[offset + 1] ?? 0) << 8)) / 10;
+  });
+  const [whiteBefore, whiteAfter, blackBefore, blackAfter] = values;
+  const player1IsWhite = (Number(row.result) & 1) === 0;
+
+  return player1IsWhite
+    ? {
+        p1_before_rating: whiteBefore,
+        p1_after_rating: whiteAfter,
+        p2_before_rating: blackBefore,
+        p2_after_rating: blackAfter,
+      }
+    : {
+        p1_before_rating: blackBefore,
+        p1_after_rating: blackAfter,
+        p2_before_rating: whiteBefore,
+        p2_after_rating: whiteAfter,
+      };
+};
+
 export const timelineWithValidatedLengths = (row: Record<string, unknown>) => {
   const moves = decodePackedMoves(row.moves as BlobValue);
   if (moves === null) return { moves: null, clocks: null, move_ts: null };

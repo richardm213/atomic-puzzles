@@ -104,6 +104,13 @@ const fenFromRoute = (value: string | undefined): string => {
 
 const analysisPathFromFen = (fen: string): string => `/analysis/${fen.replaceAll(" ", "_")}`;
 
+const gamePlyFromHash = (moveCount: number): number | null => {
+  if (typeof window === "undefined" || window.location.hash === "") return 0;
+  const match = /^#(\d+)$/.exec(window.location.hash);
+  if (!match) return null;
+  return Math.min(moveCount, Number(match[1]));
+};
+
 const DEFAULT_EXPLORER_SETTINGS = {
   speedFilterVersion: EXPLORER_SPEED_FILTER_VERSION,
   explorerScope: "general" as ExplorerScope,
@@ -292,6 +299,7 @@ export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) 
   const boardPanelRef = useRef<HTMLDivElement | null>(null);
   const rightPanelRef = useRef<HTMLElement | null>(null);
   const movePanelRef = useRef<HTMLDivElement | null>(null);
+  const gamePlyInitializedRef = useRef(!game);
   const [boardState, setBoardState] = useState<ChessboardState | null>(null);
   const [atomicDbEngineSettings, setAtomicDbEngineSettings] = useAtomicDbEngineSettings();
   const [boardSize, setBoardSize] = usePersistedState(
@@ -488,13 +496,14 @@ export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) 
   });
 
   useEffect(() => {
+    gamePlyInitializedRef.current = !game;
     setRootFen(routeFen);
     setNavigation(
       initialPgn
         ? { type: "loadPgn", pgn: initialPgn, fen: routeFen }
         : { type: "reset", fen: routeFen },
     );
-  }, [initialPgn, routeFen]);
+  }, [game, initialPgn, routeFen]);
 
   const requestNavigation = useCallback((command: PlaybackCommand): void => {
     setNavigation({ type: "command", command });
@@ -571,6 +580,16 @@ export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) 
     setNavigation({ type: "history", ply: plyIndex });
   }, []);
 
+  useEffect(() => {
+    if (!game) return;
+    const handleHashChange = (): void => {
+      const hashPly = gamePlyFromHash(game.moves?.length ?? 0);
+      if (hashPly !== null && hashPly !== currentPly) navigateToPly(hashPly);
+    };
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, [currentPly, game, navigateToPly]);
+
   const navigateToCustomMove = useCallback((lineIndex: number, moveIndex: number): void => {
     setNavigation({ type: "custom", line: lineIndex, ply: moveIndex + 1 });
   }, []);
@@ -588,8 +607,25 @@ export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) 
 
   const handleNavigationHandled = useCallback((): void => {
     finishVariationPlayback();
+    if (game && !gamePlyInitializedRef.current) {
+      gamePlyInitializedRef.current = true;
+      setNavigation({
+        type: "history",
+        ply: gamePlyFromHash(game.moves?.length ?? 0) ?? 0,
+      });
+      return;
+    }
     setNavigation(null);
-  }, [finishVariationPlayback]);
+  }, [finishVariationPlayback, game]);
+
+  useEffect(() => {
+    if (!game || !gamePlyInitializedRef.current || navigation !== null) return;
+    const hash = currentPly > 0 ? `#${currentPly}` : "";
+    const nextUrl = `${window.location.pathname}${window.location.search}${hash}`;
+    if (`${window.location.pathname}${window.location.search}${window.location.hash}` !== nextUrl) {
+      window.history.replaceState(window.history.state, "", nextUrl);
+    }
+  }, [currentPly, game, navigation]);
 
   const ensurePlayerStartDate = useCallback((): void => {
     setExplorerSettings((current) => ({

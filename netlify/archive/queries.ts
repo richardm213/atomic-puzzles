@@ -1,5 +1,5 @@
 import { getArchiveClient } from "./client";
-import { timelineWithValidatedLengths } from "./gameTimeline";
+import { ratingsWithMatchOrientation, timelineWithValidatedLengths } from "./gameTimeline";
 
 type JsonRow = Record<string, unknown>;
 
@@ -19,13 +19,16 @@ const SOURCE_IDS = {
   chesscom: 4,
   pychess: 5,
 } as const;
-type ArchiveSchemaVersion = 2 | 3;
+type ArchiveSchemaVersion = 2 | 3 | 4;
 let schemaVersionPromise: Promise<ArchiveSchemaVersion> | null = null;
 
 const getSchemaVersion = (): Promise<ArchiveSchemaVersion> => {
   schemaVersionPromise ??= getArchiveClient()
     .execute("select value from metadata where key='schema_version'")
-    .then((result) => (String(result.rows[0]?.value ?? "") === "3" ? 3 : 2));
+    .then((result) => {
+      const value = Number(result.rows[0]?.value);
+      return value >= 4 ? 4 : value === 3 ? 3 : 2;
+    });
   return schemaVersionPromise;
 };
 const modeNameSql = (column: string): string =>
@@ -263,19 +266,21 @@ const queryMatches = async (params: URLSearchParams) => {
     }
   });
   const schemaVersion = await getSchemaVersion();
+  const normalizedSchema = schemaVersion >= 3;
+  const supportsPychess = schemaVersion !== 3;
   if (sourcesSpecified && sourceValues.length === 0) {
     clauses.push("0 = 1");
   } else if (sourceValues.length) {
     const includeUnknown = sourceValues.includes("unknown");
     const sourceIds = sourceValues.flatMap((source) => {
       if (source === "unknown") return [];
-      if (schemaVersion === 3 && source === "pychess") return [];
+      if (!supportsPychess && source === "pychess") return [];
       return [SOURCE_IDS[source as keyof typeof SOURCE_IDS]];
     });
     const sourceClauses = [
       ...(sourceIds.length ? [`m.source in (${sourceIds.map(() => "?").join(",")})`] : []),
       ...(includeUnknown
-        ? [schemaVersion === 3 ? "m.source not in (0,1,2,3,4)" : "m.source not in (0,1,2,3,4,5)"]
+        ? [supportsPychess ? "m.source not in (0,1,2,3,4,5)" : "m.source not in (0,1,2,3,4)"]
         : []),
     ];
     clauses.push(sourceClauses.length ? `(${sourceClauses.join(" or ")})` : "0 = 1");
@@ -307,18 +312,18 @@ const queryMatches = async (params: URLSearchParams) => {
   }
   const where = clauses.length ? clauses.join(" and ") : "1 = 1";
   const gamesSelection =
-    schemaVersion === 3
+    normalizedSchema
       ? `(select group_concat(game_entry, '|') from (
           select g.game_id || ',,' || (g.result >> 1) || ',' || ((g.result & 1) + 1) game_entry
           from games g where g.match_id=m.id order by g.game_index)) games`
       : "m.games";
-  const tournamentSelection = schemaVersion === 3 ? "t.value tournament_id" : "m.tournament_id";
+  const tournamentSelection = normalizedSchema ? "t.value tournament_id" : "m.tournament_id";
   const sourceSelection =
-    schemaVersion === 3
-      ? "case m.source when 0 then 'lobby' when 1 then 'arena' when 2 then 'friend' when 3 then 'swiss' when 4 then 'chesscom' else 'unknown' end"
-      : "case m.source when 0 then 'lobby' when 1 then 'arena' when 2 then 'friend' when 3 then 'swiss' when 4 then 'chesscom' when 5 then 'pychess' else 'unknown' end";
+    supportsPychess
+      ? "case m.source when 0 then 'lobby' when 1 then 'arena' when 2 then 'friend' when 3 then 'swiss' when 4 then 'chesscom' when 5 then 'pychess' else 'unknown' end"
+      : "case m.source when 0 then 'lobby' when 1 then 'arena' when 2 then 'friend' when 3 then 'swiss' when 4 then 'chesscom' else 'unknown' end";
   const tournamentJoin =
-    schemaVersion === 3 ? " left join tournaments t on t.id=m.tournament_id" : "";
+    normalizedSchema ? " left join tournaments t on t.id=m.tournament_id" : "";
   const selectMatch = `select m.match_id,${modeNameSql("m.mode")} mode,p1.username player_1,p2.username player_2,m.start_ts,tc.value time_control,
       ${sourceSelection} source,
       ${tournamentSelection},${gamesSelection},m.p1_before_rating/10.0 p1_before_rating,m.p1_after_rating/10.0 p1_after_rating,
@@ -390,15 +395,21 @@ const queryMatches = async (params: URLSearchParams) => {
 };
 
 const queryGame = async (params: URLSearchParams) => {
-  if ((await getSchemaVersion()) !== 3) {
-    throw new ArchiveRequestError("Individual game data requires matches schema version 3");
+  const schemaVersion = await getSchemaVersion();
+  if (schemaVersion < 3) {
+    throw new ArchiveRequestError("Individual game data requires normalized matches schema");
   }
   const gameId = boundedStringParam(params, "gameId", 128);
   if (!gameId) throw new ArchiveRequestError("gameId is required");
+  const sourceSelection =
+    schemaVersion >= 4
+      ? "case m.source when 0 then 'lobby' when 1 then 'arena' when 2 then 'friend' when 3 then 'swiss' when 4 then 'chesscom' when 5 then 'pychess' else 'unknown' end"
+      : "case m.source when 0 then 'lobby' when 1 then 'arena' when 2 then 'friend' when 3 then 'swiss' when 4 then 'chesscom' else 'unknown' end";
   const result = await getArchiveClient().execute({
     sql: `select g.game_id,g.game_index,g.result,g.moves,g.clocks,g.move_ts,
+      ${schemaVersion >= 4 ? "g.ratings" : "null ratings"},
       m.match_id external_match_id,${modeNameSql("m.mode")} mode,m.start_ts,
-      case m.source when 0 then 'lobby' when 1 then 'arena' when 2 then 'friend' when 3 then 'swiss' when 4 then 'chesscom' else 'unknown' end source,
+      ${sourceSelection} source,
       p1.username player_1,p2.username player_2,tc.value time_control,t.value tournament,
       m.p1_before_rating/10.0 p1_before_rating,m.p1_after_rating/10.0 p1_after_rating,
       m.p1_before_rd/10.0 p1_before_rd,m.p1_after_rd/10.0 p1_after_rd,
@@ -416,6 +427,7 @@ const queryGame = async (params: URLSearchParams) => {
   return {
     ...normalized,
     ...timelineWithValidatedLengths(row),
+    ...(ratingsWithMatchOrientation(row) ?? {}),
   };
 };
 
@@ -691,10 +703,11 @@ export const queryArchiveResource = async (params: URLSearchParams): Promise<unk
     const username = boundedStringParam(params, "username", 100).toLowerCase();
     if (!username) throw new ArchiveRequestError("Username is required");
     const schemaVersion = await getSchemaVersion();
+    const normalizedSchema = schemaVersion >= 3;
     const result = await getArchiveClient().execute({
       sql: `select ${modeNameSql("m.mode")} mode,
-        ${schemaVersion === 3 ? "count(g.game_id)" : "sum(case when trim(coalesce(m.games, ''), '|') = '' then 0 else length(trim(m.games, '|')) - length(replace(trim(m.games, '|'), '|', '')) + 1 end)"} games
-        from matches m${schemaVersion === 3 ? " join games g on g.match_id=m.id" : ""}
+        ${normalizedSchema ? "count(g.game_id)" : "sum(case when trim(coalesce(m.games, ''), '|') = '' then 0 else length(trim(m.games, '|')) - length(replace(trim(m.games, '|'), '|', '')) + 1 end)"} games
+        from matches m${normalizedSchema ? " join games g on g.match_id=m.id" : ""}
         where (m.player_1_id = (select id from players where username = ?)
           or m.player_2_id = (select id from players where username = ?))
           and m.mode in (0, 1, 2, 4, 5)

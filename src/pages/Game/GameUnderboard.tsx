@@ -29,23 +29,62 @@ const initialClockMilliseconds = (timeControl: string): number | null => {
   return Number.isFinite(minutes) && minutes >= 0 ? minutes * 60_000 : null;
 };
 
-const clockStepPath = (values: Array<number | null>, maximum: number): string => {
-  const points = values
-    .map((value, index) =>
-      value === null
-        ? null
-        : {
-            x: values.length === 1 ? 0 : (index / (values.length - 1)) * 100,
-            y: 100 - (Math.max(0, value) / maximum) * 100,
-          },
-    )
-    .filter((point): point is { x: number; y: number } => point !== null);
+const clockLinePath = (
+  clocks: number[],
+  maximum: number,
+  color: "white" | "black",
+  plyCount: number,
+): string => {
+  const side = color === "white" ? 0 : 1;
+  const moveCount = Math.max(1, Math.ceil(plyCount / 2));
+  const slotCount = moveCount + (plyCount % 2 === 0 ? 0.5 : 0);
+  const points = [
+    { x: 0, y: color === "white" ? 4 : 96 },
+    ...clocks.flatMap((value, ply) =>
+      ply % 2 === side
+        ? [
+            {
+              x:
+                ((Math.floor(ply / 2) + 1 + (color === "black" ? 0.5 : 0)) / slotCount) *
+                100,
+              y:
+                color === "white"
+                  ? 4 + (1 - Math.max(0, value) / maximum) * 42
+                  : 96 - (1 - Math.max(0, value) / maximum) * 42,
+            },
+          ]
+        : [],
+    ),
+  ];
   if (!points.length) return "";
-  return points
-    .map((point, index) =>
-      index === 0 ? `M ${point.x} ${point.y}` : `H ${point.x} V ${point.y}`,
-    )
-    .join(" ");
+  return points.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`).join(" ");
+};
+
+const moveTimePlotValue = (milliseconds: number): number => {
+  const centiseconds = Math.min(milliseconds / 10, 120_000);
+  return Math.log(0.005 * centiseconds + 3) ** 2 - Math.log(3) ** 2;
+};
+
+const formatGameDuration = (milliseconds: number): string => {
+  const totalSeconds = Math.max(0, Math.round(milliseconds / 1_000));
+  const hours = Math.floor(totalSeconds / 3_600);
+  const minutes = Math.floor((totalSeconds % 3_600) / 60);
+  const seconds = totalSeconds % 60;
+  return hours
+    ? `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
+    : `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+};
+
+const formatClockForChart = (milliseconds: number): string => {
+  const totalSeconds = Math.max(0, Math.round(milliseconds / 1_000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+};
+
+const formatMoveTimeForChart = (milliseconds: number): string => {
+  const seconds = milliseconds / 1_000;
+  return `${seconds < 10 ? seconds.toFixed(1) : Math.round(seconds)} seconds`;
 };
 
 const CopyButton = ({
@@ -69,7 +108,11 @@ const CopyButton = ({
         void copyTextToClipboard(value).then((copied) => setStatus(copied ? "copied" : "error"))
       }
     >
-      {compact ? <FontAwesomeIcon icon={status === "copied" ? faCheck : faClipboard} /> : statusLabel}
+      {compact ? (
+        <FontAwesomeIcon icon={status === "copied" ? faCheck : faClipboard} />
+      ) : (
+        statusLabel
+      )}
     </button>
   );
 };
@@ -115,6 +158,8 @@ export const GameUnderboard = ({
     tabSchema,
     "move-times",
   );
+  const [hoveredPly, setHoveredPly] = useState<number | null>(null);
+  const [hoveredTooltipX, setHoveredTooltipX] = useState<number | null>(null);
   const durations = useMemo(() => moveDurationsMilliseconds(game), [game]);
   const availableDurations = durations.filter((duration): duration is number => duration !== null);
   const longestDuration = Math.max(1, ...availableDurations);
@@ -123,22 +168,57 @@ export const GameUnderboard = ({
     white: durations[index * 2] ?? null,
     black: durations[index * 2 + 1] ?? null,
   }));
+  const timelineSlotCount = Math.max(
+    1,
+    moveTimePairs.length + (durations.length % 2 === 0 ? 0.5 : 0),
+  );
   const initialClock = initialClockMilliseconds(game.time_control);
-  const hasClockTimeline = initialClock !== null && Boolean(game.clocks?.length);
-  const whiteClockSeries = hasClockTimeline
-    ? [initialClock, ...moveTimePairs.map((_, index) => game.clocks?.[index * 2] ?? null)]
-    : [];
-  const blackClockSeries = hasClockTimeline
-    ? [initialClock, ...moveTimePairs.map((_, index) => game.clocks?.[index * 2 + 1] ?? null)]
-    : [];
+  const hasClockTimeline = initialClock !== null && (game.clocks?.length ?? 0) > 0;
   const maximumClock = Math.max(
     1,
     initialClock ?? 0,
     ...(game.clocks?.filter((clock): clock is number => clock !== null) ?? []),
   );
-  const whiteClockPath = clockStepPath(whiteClockSeries, maximumClock);
-  const blackClockPath = clockStepPath(blackClockSeries, maximumClock);
+  const whiteClockPath = clockLinePath(game.clocks ?? [], maximumClock, "white", durations.length);
+  const blackClockPath = clockLinePath(game.clocks ?? [], maximumClock, "black", durations.length);
+  const plottedMoveTimes = durations.map((duration) =>
+    duration === null ? null : moveTimePlotValue(duration),
+  );
+  const maximumMoveTimePlot = Math.max(
+    1,
+    ...plottedMoveTimes.filter((value): value is number => value !== null),
+  );
+  const gameDuration = availableDurations.reduce((total, duration) => total + duration, 0);
+  const hoveredClock = hoveredPly === null ? null : (game.clocks?.[hoveredPly - 1] ?? null);
+  const hoveredDuration = hoveredPly === null ? null : (durations[hoveredPly - 1] ?? null);
+  const hoveredColor = hoveredPly !== null && hoveredPly % 2 === 1 ? "white" : "black";
+  const hoveredClockY =
+    hoveredClock === null
+      ? 50
+      : hoveredColor === "white"
+        ? 4 + (1 - Math.max(0, hoveredClock) / maximumClock) * 42
+        : 96 - (1 - Math.max(0, hoveredClock) / maximumClock) * 42;
   const pgn = String(document.pgn.value ?? "");
+
+  const showClockTooltip = (ply: number, target: HTMLElement): void => {
+    const timeline = target.closest<HTMLElement>(".gameClockTimeline");
+    const viewport = target.closest<HTMLElement>(".gameMoveTimesViewport");
+    if (!timeline || !viewport) return;
+    const targetRect = target.getBoundingClientRect();
+    const timelineRect = timeline.getBoundingClientRect();
+    const viewportRect = viewport.getBoundingClientRect();
+    const tooltipHalfWidth = 82;
+    const viewportLeft = viewportRect.left - timelineRect.left + tooltipHalfWidth;
+    const viewportRight = viewportRect.right - timelineRect.left - tooltipHalfWidth;
+    const targetCenter = targetRect.left + targetRect.width / 2 - timelineRect.left;
+    setHoveredPly(ply);
+    setHoveredTooltipX(Math.max(viewportLeft, Math.min(viewportRight, targetCenter)));
+  };
+
+  const hideClockTooltip = (): void => {
+    setHoveredPly(null);
+    setHoveredTooltipX(null);
+  };
 
   const downloadPgn = (): void => {
     const url = URL.createObjectURL(new Blob([pgn], { type: "application/x-chess-pgn" }));
@@ -182,32 +262,62 @@ export const GameUnderboard = ({
         {activeTab === "move-times" ? (
           availableDurations.length ? (
             <figure className="gameMoveTimesFigure" aria-label="Move time chart">
-              <figcaption className="gameMoveTimesLegend">
-                <span>
-                  <i className="white" />
-                  White
-                </span>
-                <span>
-                  <i className="black" />
-                  Black
-                </span>
-                {hasClockTimeline ? null : <small>Time spent per move</small>}
-              </figcaption>
+              {hasClockTimeline ? null : (
+                <figcaption className="gameMoveTimesLegend">
+                  <span>
+                    <i className="white" />
+                    White
+                  </span>
+                  <span>
+                    <i className="black" />
+                    Black
+                  </span>
+                  <small>Time spent per move</small>
+                </figcaption>
+              )}
               <div className="gameMoveTimesViewport">
                 {hasClockTimeline ? (
                   <div
                     className="gameClockTimeline"
                     style={{ "--move-pair-count": moveTimePairs.length } as CSSProperties}
                   >
-                    <svg
-                      viewBox="0 0 100 100"
-                      preserveAspectRatio="none"
-                      aria-hidden="true"
-                    >
-                      <path className="whiteFill" d={`${whiteClockPath} L 100 100 L 0 100 Z`} />
-                      <path className="blackFill" d={`${blackClockPath} L 100 100 L 0 100 Z`} />
+                    <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                      <line className="clockAxis" x1="0" x2="100" y1="50" y2="50" />
+                      <path className="whiteFill" d={`${whiteClockPath} L 100 50 L 0 50 Z`} />
+                      <path className="blackFill" d={`${blackClockPath} L 100 50 L 0 50 Z`} />
+                      {plottedMoveTimes.map((plotValue, ply) => {
+                        if (plotValue === null) return null;
+                        const step = 100 / timelineSlotCount;
+                        const height = Math.max(0.8, (plotValue / maximumMoveTimePlot) * 43);
+                        const white = ply % 2 === 0;
+                        return (
+                          <rect
+                            key={ply}
+                            className={white ? "whiteMoveTime" : "blackMoveTime"}
+                            x={(ply * step) / 2}
+                            y={white ? 50 - height : 50}
+                            width={step}
+                            height={height}
+                          />
+                        );
+                      })}
                       <path className="whiteLine" d={whiteClockPath} />
                       <path className="blackLine" d={blackClockPath} />
+                      <line
+                        className="currentPlyLine"
+                        x1={
+                          currentPly === 0
+                            ? 0
+                            : (((currentPly + 1) / 2) / timelineSlotCount) * 100
+                        }
+                        x2={
+                          currentPly === 0
+                            ? 0
+                            : (((currentPly + 1) / 2) / timelineSlotCount) * 100
+                        }
+                        y1="0"
+                        y2="100"
+                      />
                     </svg>
                     <div className="gameClockTimelineHits">
                       {moveTimePairs.map(({ moveNumber, white, black }) => (
@@ -226,6 +336,10 @@ export const GameUnderboard = ({
                                 className={currentPly === ply ? "current" : ""}
                                 title={label}
                                 aria-label={`Go to ${color} move ${moveNumber}, ${label}`}
+                                onMouseEnter={(event) => showClockTooltip(ply, event.currentTarget)}
+                                onMouseLeave={hideClockTooltip}
+                                onFocus={(event) => showClockTooltip(ply, event.currentTarget)}
+                                onBlur={hideClockTooltip}
                                 onClick={() => onNavigatePly(ply)}
                               />
                             );
@@ -234,6 +348,31 @@ export const GameUnderboard = ({
                         </div>
                       ))}
                     </div>
+                    {hoveredPly !== null &&
+                    hoveredTooltipX !== null &&
+                    hoveredDuration !== null &&
+                    hoveredClock !== null ? (
+                      <div
+                        className={`gameClockTooltip ${hoveredClockY >= 50 ? "above" : "below"}`}
+                        style={
+                          {
+                            "--tooltip-x": `${hoveredTooltipX}px`,
+                            "--tooltip-y": `${hoveredClockY}%`,
+                          } as CSSProperties
+                        }
+                        role="tooltip"
+                      >
+                        <strong>
+                          {Math.ceil(hoveredPly / 2)}.{hoveredColor === "black" ? ".." : ""}{" "}
+                          {moves[hoveredPly - 1] ?? "Move"}
+                        </strong>
+                        <span>{formatMoveTimeForChart(hoveredDuration)}</span>
+                        <span>Clock: {formatClockForChart(hoveredClock)}</span>
+                      </div>
+                    ) : null}
+                    <span className="gameClockDuration">
+                      Duration {formatGameDuration(gameDuration)}
+                    </span>
                   </div>
                 ) : (
                   <div
@@ -241,46 +380,44 @@ export const GameUnderboard = ({
                     style={{ "--move-pair-count": moveTimePairs.length } as CSSProperties}
                   >
                     <span className="gameMoveTimesGrid" aria-hidden="true" />
-                  {moveTimePairs.map(({ moveNumber, white, black }) => {
-                    const renderMove = (duration: number | null, color: "white" | "black") => {
-                      const ply = (moveNumber - 1) * 2 + (color === "white" ? 1 : 2);
-                      if (ply > durations.length) return <span className="gameMoveTimeEmpty" />;
-                      const label = duration === null ? "—" : formatDuration(duration);
-                      return (
-                        <button
-                          type="button"
-                          className={`${color}${currentPly === ply ? " current" : ""}`}
-                          style={
-                            {
-                              "--move-time-height": `${duration === null ? 4 : Math.max(4, (duration / longestDuration) * 100)}%`,
-                            } as CSSProperties
-                          }
-                          title={`${moveNumber}${color === "white" ? "." : "..."} ${moves[ply - 1] ?? "Move"}: ${label}`}
-                          aria-label={`Go to ${color} move ${moveNumber}, ${moves[ply - 1] ?? "move"}, ${duration === null ? "time unavailable" : label}`}
-                          onClick={() => onNavigatePly(ply)}
-                        >
-                          <span className="gameMoveTimeBar" />
-                          <span className="gameMoveTimeValue">{label}</span>
-                        </button>
-                      );
-                    };
+                    {moveTimePairs.map(({ moveNumber, white, black }) => {
+                      const renderMove = (duration: number | null, color: "white" | "black") => {
+                        const ply = (moveNumber - 1) * 2 + (color === "white" ? 1 : 2);
+                        if (ply > durations.length) return <span className="gameMoveTimeEmpty" />;
+                        const label = duration === null ? "—" : formatDuration(duration);
+                        return (
+                          <button
+                            type="button"
+                            className={`${color}${currentPly === ply ? " current" : ""}`}
+                            style={
+                              {
+                                "--move-time-height": `${duration === null ? 4 : Math.max(4, (duration / longestDuration) * 100)}%`,
+                              } as CSSProperties
+                            }
+                            title={`${moveNumber}${color === "white" ? "." : "..."} ${moves[ply - 1] ?? "Move"}: ${label}`}
+                            aria-label={`Go to ${color} move ${moveNumber}, ${moves[ply - 1] ?? "move"}, ${duration === null ? "time unavailable" : label}`}
+                            onClick={() => onNavigatePly(ply)}
+                          >
+                            <span className="gameMoveTimeBar" />
+                            <span className="gameMoveTimeValue">{label}</span>
+                          </button>
+                        );
+                      };
 
-                    return (
-                      <div className="gameMoveTimePair" key={moveNumber}>
-                        {renderMove(white, "white")}
-                        <span className="gameMoveNumber">{moveNumber}</span>
-                        {renderMove(black, "black")}
-                      </div>
-                    );
-                  })}
+                      return (
+                        <div className="gameMoveTimePair" key={moveNumber}>
+                          {renderMove(white, "white")}
+                          <span className="gameMoveNumber">{moveNumber}</span>
+                          {renderMove(black, "black")}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
             </figure>
           ) : (
-            <p className="gameUnderboardState">
-              No per-move clock data is stored for this game.
-            </p>
+            <p className="gameUnderboardState">No per-move clock data is stored for this game.</p>
           )
         ) : null}
 

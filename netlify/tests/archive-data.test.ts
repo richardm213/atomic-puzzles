@@ -124,17 +124,18 @@ describe("archive-data function", () => {
     });
   });
 
-  it("serves a decoded Chess.com game timeline from schema v3", async () => {
-    mocks.execute.mockResolvedValueOnce({ rows: [{ value: "3" }] }).mockResolvedValueOnce({
+  it("serves a decoded Chess.com game timeline and per-game ratings from schema v4", async () => {
+    mocks.execute.mockResolvedValueOnce({ rows: [{ value: "4" }] }).mockResolvedValueOnce({
       rows: [
         {
           game_id: "108184353",
-          result: 2,
+          result: 3,
           player_1: "alice",
           player_2: "bob",
           moves: new Uint8Array([0xc6, 0x05, 0xf7, 0x0b]),
           clocks: new Uint8Array([50, 60]),
           move_ts: null,
+          ratings: new Uint8Array([0xd3, 0x5d, 0x83, 0x5d, 0xcb, 0x59, 0x20, 0x5a]),
         },
       ],
     });
@@ -145,11 +146,49 @@ describe("archive-data function", () => {
 
     expect(response.statusCode).toBe(200);
     expect(mocks.execute.mock.calls[1]?.[0]).toMatchObject({ args: ["108184353"] });
+    expect(mocks.execute.mock.calls[1]?.[0].sql).toContain("g.ratings");
     expect(JSON.parse(response.body)).toMatchObject({
       game_id: "108184353",
       moves: ["g1h3", "h7h6"],
       clocks: [50, 60],
       move_ts: null,
+      p1_before_rating: 2298.7,
+      p1_after_rating: 2307.2,
+      p2_before_rating: 2401.9,
+      p2_after_rating: 2393.9,
+    });
+  });
+
+  it("keeps match-level rating fallback while production remains on schema v3", async () => {
+    mocks.execute.mockResolvedValueOnce({ rows: [{ value: "3" }] }).mockResolvedValueOnce({
+      rows: [
+        {
+          game_id: "108184353",
+          result: 3,
+          player_1: "alice",
+          player_2: "bob",
+          moves: new Uint8Array([0xc6, 0x05]),
+          clocks: null,
+          move_ts: null,
+          p1_before_rating: 2200,
+          p1_after_rating: 2210,
+          p2_before_rating: 2300,
+          p2_after_rating: 2290,
+        },
+      ],
+    });
+    const { handler } = await import("../functions/archive-data");
+    const response = await handler({
+      queryStringParameters: { resource: "game", gameId: "108184353" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(mocks.execute.mock.calls[1]?.[0].sql).toContain("null ratings");
+    expect(JSON.parse(response.body)).toMatchObject({
+      p1_before_rating: 2200,
+      p1_after_rating: 2210,
+      p2_before_rating: 2300,
+      p2_after_rating: 2290,
     });
   });
 
