@@ -62,6 +62,48 @@ test("puzzle solver uses the compact mobile layout on a wide phone in landscape"
   expect(layout.controlsRight).toBeLessThanOrEqual(layout.clientWidth);
 });
 
+test("puzzle feedback outline stays evenly anchored to the board", async ({ page }) => {
+  const viewports = [
+    { width: 1280, height: 900 },
+    { width: 390, height: 844 },
+    { width: 932, height: 430 },
+  ];
+
+  for (const viewport of viewports) {
+    await page.setViewportSize(viewport);
+    await page.goto("/solve/101");
+    await expect(page.locator(".cg-board")).toBeVisible();
+
+    const geometry = await page.locator(".boardFrame").evaluate((frame) => {
+      frame.classList.add("hasFeedback", "correct");
+      const shell = frame.querySelector<HTMLElement>(".cg-boardShell");
+      const board = frame.querySelector<HTMLElement>(".cg-board");
+      const stage = frame.querySelector<HTMLElement>(".boardStage");
+      if (!shell || !board || !stage) return null;
+
+      const shellRect = shell.getBoundingClientRect();
+      const boardRect = board.getBoundingClientRect();
+      return {
+        shellOutline: getComputedStyle(shell).outlineStyle,
+        stageOutline: getComputedStyle(stage).outlineStyle,
+        shellRatioDifference: Math.abs(shellRect.width - shellRect.height),
+        edgeDifferences: [
+          Math.abs(boardRect.left - shellRect.left),
+          Math.abs(boardRect.top - shellRect.top),
+          Math.abs(boardRect.right - shellRect.right),
+          Math.abs(boardRect.bottom - shellRect.bottom),
+        ],
+      };
+    });
+
+    expect(geometry).not.toBeNull();
+    expect(geometry?.shellOutline).toBe("solid");
+    expect(geometry?.stageOutline).toBe("none");
+    expect(geometry?.shellRatioDifference).toBeLessThanOrEqual(0.5);
+    expect(Math.max(...(geometry?.edgeDifferences ?? []))).toBeLessThanOrEqual(0.5);
+  }
+});
+
 for (const path of ["/analysis", "/practice"] as const) {
   test(`${path} light mode stays within the mobile viewport`, async ({ page }) => {
     await page.addInitScript(() => {
