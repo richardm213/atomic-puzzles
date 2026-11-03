@@ -19,6 +19,7 @@
 .tournamentPageHero {
   position: relative;
   display: block;
+  min-width: 0;
 }
 
 .tournamentPageHeroCopy,
@@ -32,6 +33,7 @@
 
 .tournamentPageHeroCopy {
   display: grid;
+  min-width: 0;
   gap: 14px;
   padding: clamp(22px, 3.5vw, 30px);
   padding-right: clamp(20px, 18vw, 190px);
@@ -171,9 +173,15 @@
 }
 
 .tournamentPageHeroCopy h1 {
+  display: block;
+  inline-size: 100%;
+  min-inline-size: 0;
+  max-inline-size: 100%;
   font-size: clamp(1.8rem, 3.2vw, 2.65rem);
   line-height: 1;
   letter-spacing: -0.035em;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .tournamentStartDate {
@@ -206,6 +214,12 @@
   .tournamentPageHeroCopy {
     padding-right: clamp(18px, 5vw, 24px);
     padding-bottom: 112px;
+  }
+
+  .tournamentPageHeroCopy h1 {
+    inline-size: min(100%, calc(100vw - 72px));
+    font-size: clamp(1.65rem, 8vw, 2.05rem);
+    line-height: 1.08;
   }
 
   .tournamentPageTrophy {

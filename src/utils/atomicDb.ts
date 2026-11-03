@@ -33,6 +33,13 @@ export type AtomicDbPrincipalVariationResult = {
   positions: Record<string, AtomicDbPosition>;
 };
 
+export type AtomicDbRequestResult = {
+  task: string | number | null;
+  taskState: string;
+  budgetNodes: number | null;
+  completedBudget: number | null;
+};
+
 export type AtomicDbEvaluation =
   { type: "centipawns"; value: number } | { type: "mate"; value: number } | { type: "unknown" };
 
@@ -184,6 +191,16 @@ export const fetchAtomicDbPosition = async (
     throw error;
   }
 };
+
+export const requestAtomicDbAnalysis = (fen: string): Promise<AtomicDbRequestResult> =>
+  postApi<AtomicDbRequestResult>(
+    "/api/atomicdb-request",
+    { fen },
+    {
+      errorMessage: "Unable to request AtomicDB analysis.",
+      invalidMessage: "AtomicDB returned an unexpected request response.",
+    },
+  );
 
 export const fetchAtomicDbPositions = async (
   fens: string[],

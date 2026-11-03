@@ -2272,6 +2272,18 @@ button.puzzleRatingBadge.editable:focus-visible {
   }
 }
 
+@media (min-width: 681px) and (max-width: 900px) {
+  .puzzleHeaderTopline {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .puzzleHeaderStatus {
+    justify-content: flex-start;
+    width: 100%;
+  }
+}
+
 @media (max-width: 680px),
   (max-width: 1024px) and (max-height: 500px) and (orientation: landscape) {
   .page.puzzlePage {
@@ -2732,22 +2744,22 @@ button.puzzleRatingBadge.editable:focus-visible {
 
   .boardFrame {
     --board-feedback-gap: 5px;
-    width: min(100%, 548px, calc(100svh - 318px));
+    width: min(100%, calc(100vw - 16px), 548px);
     max-width: 548px;
     padding: 5px;
   }
 
   .boardStage {
-    width: min(100%, 538px, calc(100svh - 328px));
+    width: min(100%, 538px);
     max-width: 538px;
   }
 
   body:has(.puzzlePage):not(:has(.mobileWorkflowPanel)) .boardFrame {
-    width: min(100%, 548px, calc(100svh - 280px));
+    width: min(100%, calc(100vw - 16px), 548px);
   }
 
   body:has(.puzzlePage):not(:has(.mobileWorkflowPanel)) .boardStage {
-    width: min(100%, 538px, calc(100svh - 290px));
+    width: min(100%, 538px);
   }
 
   .boardFrame .cg-boardShell,
@@ -2917,10 +2929,25 @@ button.puzzleRatingBadge.editable:focus-visible {
 
 @media (max-width: 1024px) and (max-height: 500px) and (orientation: landscape) {
   .page.puzzlePage {
-    grid-template-columns: minmax(0, calc(100svh - 82px)) minmax(0, 1fr);
+    --landscape-board-column: clamp(
+      220px,
+      min(46vw, calc(100vh - 70px)),
+      360px
+    );
+    grid-template-columns: minmax(0, var(--landscape-board-column)) minmax(0, 1fr);
     gap: 10px;
     min-height: calc(100svh - var(--header-height, 64px));
     padding: 8px;
+  }
+
+  @supports (height: 100svh) {
+    .page.puzzlePage {
+      --landscape-board-column: clamp(
+        220px,
+        min(46svw, calc(100svh - 70px)),
+        360px
+      );
+    }
   }
 
   .boardWrap {
@@ -2940,8 +2967,12 @@ button.puzzleRatingBadge.editable:focus-visible {
   .mobilePuzzleStatus,
   .mobileWorkflowPanel,
   .mobileBottomNav {
-    left: calc(100svh + 24px);
-    right: max(8px, env(safe-area-inset-right));
+    left: calc(
+      max(0px, (100vw - 740px) / 2) + var(--landscape-board-column) + 18px
+    );
+    right: calc(
+      max(0px, (100vw - 740px) / 2) + max(8px, env(safe-area-inset-right))
+    );
     width: auto;
   }
 

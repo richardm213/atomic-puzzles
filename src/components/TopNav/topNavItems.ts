@@ -198,7 +198,6 @@ export const navItems: NavItem[] = [
   {
     to: "/analysis",
     label: "Analysis",
-    hideInCompactNav: true,
     isActive: (pathname) => pathname === "/analysis" || pathname === "/practice",
     children: [
       {

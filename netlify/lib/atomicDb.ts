@@ -1,6 +1,7 @@
 export { fenAfterAtomicMove as fenAfterAtomicDbMove } from "../../shared/domain/puzzles/solutionPgn";
 
 const ATOMIC_DB_QUERY_URL = "https://belzedar.duckdns.org/atomicdb/api/query";
+const ATOMIC_DB_REQUEST_URL = "https://belzedar.duckdns.org/atomicdb/api/request";
 export const MAX_ATOMIC_DB_FEN_LENGTH = 160;
 export const ATOMIC_DB_UCI_PATTERN = /^[a-h][1-8][a-h][1-8][nbrq]?$/;
 
@@ -49,4 +50,22 @@ export const createAtomicDbQuery = (signal: AbortSignal) => {
     requests.set(fen, request);
     return request;
   };
+};
+
+export const requestAtomicDbAnalysis = async (fen: string, signal: AbortSignal) => {
+  const response = await fetch(ATOMIC_DB_REQUEST_URL, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({ fen, only_if_missing: "1" }),
+    signal,
+  });
+  const body: unknown = await response.json().catch(() => null);
+
+  if (!response.ok || !body || typeof body !== "object") {
+    throw new Error("AtomicDB rejected the analysis request.");
+  }
+  return body as Record<string, unknown>;
 };

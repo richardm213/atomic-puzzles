@@ -298,8 +298,11 @@
 }
 
 .navSettingsButton {
+  flex: 0 0 32px;
   width: 32px;
   height: 32px;
+  padding: 0;
+  overflow: hidden;
   border: 0;
   background: transparent;
   color: var(--color-text);
@@ -322,9 +325,14 @@
   outline-offset: 2px;
 }
 
-.navSettingsButton i {
-  font-size: 14px;
-  line-height: 1;
+.navSettingsButton > svg {
+  display: block;
+  flex: 0 0 14px;
+  width: 14px;
+  height: 14px;
+  max-width: 14px;
+  max-height: 14px;
+  overflow: hidden;
 }
 
 .navSettingsMenu {
@@ -1561,5 +1569,46 @@
     right: 8px;
     left: 8px;
     width: auto;
+  }
+}
+
+@media (max-width: 390px) {
+  .navCoinBalance {
+    padding-inline: 0;
+  }
+
+  .navCoinBalance span {
+    display: none;
+  }
+}
+
+@media (max-width: 360px) {
+  .topNav {
+    gap: 6px;
+    padding-right: max(10px, env(safe-area-inset-right));
+    padding-left: max(10px, env(safe-area-inset-left));
+  }
+
+  .topNavCenter,
+  .topNav.mobileMenuOpen .topNavCenter {
+    gap: 4px;
+    max-width: calc(100vw - 104px);
+  }
+
+  .navCoinBalance {
+    min-height: 32px;
+    padding-inline: 0;
+  }
+
+  .navCoinBalance img {
+    width: 32px;
+    height: 32px;
+  }
+
+}
+
+@media (max-width: 340px) {
+  .navSearchSlot {
+    display: none;
   }
 }

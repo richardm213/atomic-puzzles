@@ -487,6 +487,54 @@
         }
       }
     },
+    "/api/atomicdb-request": {
+      "post": {
+        "tags": ["Analysis"],
+        "summary": "Request anonymous AtomicDB analysis for a missing position",
+        "operationId": "requestAtomicDbAnalysis",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["fen"],
+                "properties": {
+                  "fen": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The position was queued or was already analyzed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "502": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    },
     "/api/auth/session": {
       "get": {
         "tags": ["Account"],
@@ -747,6 +795,16 @@
       },
       "Unauthorized": {
         "description": "A valid signed site session is required.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "The request origin is not allowed.",
         "content": {
           "application/json": {
             "schema": {

@@ -1976,6 +1976,23 @@
 }
 
 @media (max-width: 640px) {
+  .profileHistoryTabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+    overflow-x: visible;
+    border-bottom: 0;
+  }
+
+  .profileHistoryTabs button {
+    width: 100%;
+    margin-bottom: 0;
+    padding-inline: var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    text-align: center;
+  }
+
   .profileIdentityTitle {
     gap: 8px 10px;
   }

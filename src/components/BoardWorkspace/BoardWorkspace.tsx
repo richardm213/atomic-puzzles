@@ -1,4 +1,4 @@
-import { faExternalLinkAlt } from "@fortawesome/free-solid-svg-icons";
+import { faBolt, faExternalLinkAlt } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { ComponentProps, MutableRefObject, ReactNode } from "react";
 
@@ -14,6 +14,11 @@ type BoardWorkspaceProps = {
   boardOverlay?: ReactNode;
   lichessHref: string;
   atomicDbHref: string | null;
+  atomicDbRequest?: {
+    state: "idle" | "requested" | "error";
+    message?: string;
+    onRequest: () => void;
+  };
   actionClassName?: string;
   secondaryAction?: ReactNode;
   document: BoardDocument;
@@ -56,6 +61,7 @@ export const BoardWorkspace = ({
   boardOverlay,
   lichessHref,
   atomicDbHref,
+  atomicDbRequest,
   actionClassName,
   secondaryAction,
   document,
@@ -66,7 +72,7 @@ export const BoardWorkspace = ({
       <span>View on Lichess</span>
     </a>
   );
-  const atomicDbLink = atomicDbHref ? (
+  const atomicDbAction = atomicDbHref ? (
     <a
       className="analysisLichessLink analysisAtomicDbLink"
       href={atomicDbHref}
@@ -76,6 +82,23 @@ export const BoardWorkspace = ({
       <FontAwesomeIcon icon={faExternalLinkAlt} />
       <span>View on AtomicDB</span>
     </a>
+  ) : atomicDbRequest ? (
+    <button
+      type="button"
+      className="analysisLichessLink analysisAtomicDbLink"
+      aria-live="polite"
+      disabled={atomicDbRequest.state === "requested"}
+      onClick={atomicDbRequest.onRequest}
+    >
+      <FontAwesomeIcon icon={faBolt} />
+      <span>
+        {atomicDbRequest.state === "requested"
+          ? "Analysis requested"
+          : atomicDbRequest.state === "error"
+            ? "Retry analysis request"
+            : "Request analysis"}
+      </span>
+    </button>
   ) : (
     <span
       className="analysisLichessLink analysisAtomicDbLink"
@@ -101,7 +124,12 @@ export const BoardWorkspace = ({
       <div className="analysisBoardTextPanel">
         <div className={actionClassName ?? "analysisBoardActions"}>
           {lichessLink}
-          {atomicDbLink}
+          {atomicDbAction}
+          {atomicDbRequest?.state === "error" && atomicDbRequest.message ? (
+            <span className="analysisAtomicDbRequestMessage" role="alert">
+              {atomicDbRequest.message}
+            </span>
+          ) : null}
           {secondaryAction}
         </div>
         <DocumentField label="FEN" rows={2} field={document.fen} />

@@ -78,6 +78,7 @@ Common codes are:
 | `/api/archive-data`        | GET               | public     | Query the read-only match and rating archive.                        |
 | `/api/opening-explorer`    | GET               | public     | Query opening statistics.                                            |
 | `/api/atomicdb-analysis`   | GET, POST         | public     | Query one AtomicDB position or a bounded batch.                      |
+| `/api/atomicdb-request`    | POST              | public     | Queue one missing position for anonymous AtomicDB analysis.          |
 
 “Mixed” routes authorize each action separately. Treat their server-side Zod schemas as the source
 of truth for request fields and limits; they live in `netlify/features`.

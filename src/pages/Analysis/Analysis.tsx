@@ -44,9 +44,10 @@ import { useUsernamePicker } from "../../hooks/useUsernamePicker";
 import { warmFairyStockfish } from "../../lib/practice/fairyStockfish";
 import { createAtomicPosition, serializeSanLinesToPgn } from "../../lib/puzzles/solutionPgn";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
-import { atomicDbPositionUrl } from "../../utils/atomicDb";
+import { atomicDbPositionUrl, requestAtomicDbAnalysis } from "../../utils/atomicDb";
 import { selectSpacebarMove } from "../../utils/boardMoveSelection";
 import { threatFenFromFen } from "../../utils/chessNotation";
+import { getErrorMessage } from "../../utils/errors";
 import { lichessAtomicAnalysisUrl } from "../../utils/lichess";
 import {
   buildOpeningExplorerUrl,
@@ -62,6 +63,10 @@ type ExplorerScope = "general" | "player";
 type ExplorerSpeed = "bullet" | "blitz" | "hyperbullet";
 type ExplorerSpeedValue = 0 | 1 | 2;
 type UsernamePickerTarget = "player" | "opponent";
+type AtomicDbRequestStatus =
+  | { state: "idle" }
+  | { state: "requested" }
+  | { state: "error"; message: string };
 const MONTH_FILTER_PATTERN = /^\d{4}-\d{2}$/;
 const EXPLORER_SETTINGS_STORAGE_KEY = "atomic-puzzles.analysis.explorer-settings";
 const BOARD_SIZE_STORAGE_KEY = "atomic-puzzles.analysis.board-size";
@@ -336,9 +341,15 @@ export const AnalysisPage = () => {
   } = useUsernamePicker<UsernamePickerTarget>("player");
   const [hoveredExplorerMoveUci, setHoveredExplorerMoveUci] = useState<string | null>(null);
   const [threatMode, setThreatMode] = useState(false);
+  const [atomicDbRequestStatus, setAtomicDbRequestStatus] = useState<AtomicDbRequestStatus>({
+    state: "idle",
+  });
+  const currentFenRef = useRef(STARTING_FEN);
+  const requestedAtomicDbFensRef = useRef(new Set<string>());
 
   const moveList = useMemo(() => boardState?.lineMoves ?? [], [boardState?.lineMoves]);
   const currentFen = boardState?.fen || STARTING_FEN;
+  currentFenRef.current = currentFen;
   const terminalOutcome = boardState?.winner ?? (boardState?.status === "Draw" ? "draw" : null);
   const {
     analysis: atomicDbAnalysis,
@@ -373,7 +384,49 @@ export const AnalysisPage = () => {
       : null;
   const displayedAnalysis = effectiveThreatMode ? threatAnalysis : atomicDbAnalysis;
   const displayedAnalysisFen = effectiveThreatMode && threatFen ? threatFen : atomicDbFen;
+  const atomicDbResultIsCurrent = atomicDbAnalysis.result?.fen === currentFen;
+  const atomicDbPositionKey = atomicDbResultIsCurrent
+    ? (atomicDbAnalysis.result?.position?.key ?? null)
+    : null;
+  const canRequestAtomicDbAnalysis =
+    atomicDbResultIsCurrent &&
+    !atomicDbPositionKey &&
+    atomicDbAnalysis.status !== "error" &&
+    (atomicDbAnalysis.status === "ready" || atomicDbAnalysis.source === "engine") &&
+    terminalOutcome === null;
   const currentLichessAnalysisUrl = lichessAtomicAnalysisUrl(currentFen);
+
+  useEffect(() => {
+    setAtomicDbRequestStatus({
+      state: requestedAtomicDbFensRef.current.has(currentFen) ? "requested" : "idle",
+    });
+  }, [currentFen]);
+
+  const handleAtomicDbRequest = async (): Promise<void> => {
+    if (
+      !canRequestAtomicDbAnalysis ||
+      atomicDbRequestStatus.state === "requested"
+    ) {
+      return;
+    }
+
+    const requestedFen = currentFen;
+    requestedAtomicDbFensRef.current.add(requestedFen);
+    // Optimistically acknowledge the click. AtomicDB can take several seconds to return a queue
+    // receipt, but only_if_missing makes repeat-safe requests and failures still expose a retry.
+    setAtomicDbRequestStatus({ state: "requested" });
+    try {
+      await requestAtomicDbAnalysis(requestedFen);
+    } catch (error) {
+      requestedAtomicDbFensRef.current.delete(requestedFen);
+      if (currentFenRef.current === requestedFen) {
+        setAtomicDbRequestStatus({
+          state: "error",
+          message: getErrorMessage(error, "Unable to request AtomicDB analysis."),
+        });
+      }
+    }
+  };
   const currentPly = boardState?.lineIndex ?? 0;
   const customLines = useMemo(() => boardState?.customLines ?? [], [boardState?.customLines]);
   const analysisPageStyle = {
@@ -1183,10 +1236,18 @@ export const AnalysisPage = () => {
           </>
         }
         lichessHref={currentLichessAnalysisUrl}
-        atomicDbHref={
-          atomicDbAnalysis.result?.fen === currentFen && atomicDbAnalysis.result.position?.key
-            ? atomicDbPositionUrl(atomicDbAnalysis.result.position.key)
-            : null
+        atomicDbHref={atomicDbPositionKey ? atomicDbPositionUrl(atomicDbPositionKey) : null}
+        atomicDbRequest={
+          canRequestAtomicDbAnalysis
+            ? {
+                state: atomicDbRequestStatus.state,
+                message:
+                  atomicDbRequestStatus.state === "error"
+                    ? atomicDbRequestStatus.message
+                    : undefined,
+                onRequest: () => void handleAtomicDbRequest(),
+              }
+            : undefined
         }
         document={boardDocument}
       />

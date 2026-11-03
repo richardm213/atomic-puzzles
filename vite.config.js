@@ -3,8 +3,6 @@ import { Buffer } from "node:buffer";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv } from "vite";
 
-import { createOpeningExplorerVitePlugin } from "./opening-explorer/adapters/viteHandler.ts";
-
 const MAX_LOCAL_FUNCTION_BODY_BYTES = 1_000_000;
 
 const readRequestBody = async (req) => {
@@ -27,6 +25,7 @@ const requestHeaders = (headers) =>
   );
 
 const DEFAULT_LOCAL_ARCHIVE_ORIGIN = "https://atomicpuzzles.org";
+const DEFAULT_LOCAL_OPENING_EXPLORER_ORIGIN = "https://atomicpuzzles.org";
 
 const proxyArchiveRequest = async (req, res, archiveOrigin) => {
   const requestUrl = new URL(req.url ?? "/", "http://localhost");
@@ -48,6 +47,66 @@ const proxyArchiveRequest = async (req, res, archiveOrigin) => {
   res.end(Buffer.from(await response.arrayBuffer()));
 };
 
+const proxyOpeningExplorerRequest = async (req, res, origin, route) => {
+  const requestUrl = new URL(req.url ?? "/", "http://localhost");
+  const suffix = requestUrl.pathname === "/" ? "" : requestUrl.pathname;
+  const upstreamUrl = new URL(`${route}${suffix}`, origin);
+  upstreamUrl.search = requestUrl.search;
+  const forwardedHeaders = Object.fromEntries(
+    ["accept", "x-explorer-intent", "x-explorer-session", "x-explorer-sequence"].flatMap(
+      (name) => {
+        const value = req.headers[name];
+        return value ? [[name, Array.isArray(value) ? value.join(", ") : value]] : [];
+      },
+    ),
+  );
+  const response = await fetch(upstreamUrl, {
+    method: req.method,
+    headers: forwardedHeaders,
+  });
+
+  res.statusCode = response.status;
+  for (const name of ["content-type", "cache-control", "server-timing", "retry-after"]) {
+    const value = response.headers.get(name);
+    if (value) res.setHeader(name, value);
+  }
+  res.end(Buffer.from(await response.arrayBuffer()));
+};
+
+const remoteOpeningExplorerPlugin = (origin) => {
+  const configure = (server) => {
+    for (const route of ["/api/opening-players", "/api/opening-explorer"]) {
+      server.middlewares.use(route, async (req, res) => {
+        try {
+          await proxyOpeningExplorerRequest(req, res, origin, route);
+        } catch (error) {
+          res.statusCode = 502;
+          res.setHeader("Content-Type", "application/json");
+          res.setHeader("Cache-Control", "no-store");
+          res.end(
+            JSON.stringify({
+              error:
+                error instanceof Error
+                  ? error.message
+                  : "Remote opening explorer request failed.",
+            }),
+          );
+        }
+      });
+    }
+  };
+
+  return {
+    name: "atomic-remote-opening-explorer-api",
+    enforce: "pre",
+    configureServer(server) {
+      console.log(`[opening-explorer] Remote API proxy mounted from ${origin}`);
+      configure(server);
+    },
+    configurePreviewServer: configure,
+  };
+};
+
 const localPuzzleFunctionsPlugin = ({ archiveOrigin, useLocalArchive }) => {
   const functions = new Map([
     ["/api/auth/session", "/netlify/functions/auth-session.ts"],
@@ -67,6 +126,7 @@ const localPuzzleFunctionsPlugin = ({ archiveOrigin, useLocalArchive }) => {
     ["/api/badges", "/netlify/functions/badges.ts"],
     ["/api/public-data", "/netlify/functions/public-data.ts"],
     ["/api/atomicdb-analysis", "/netlify/functions/atomicdb-analysis.ts"],
+    ["/api/atomicdb-request", "/netlify/functions/atomicdb-request.ts"],
     ["/api/archive-data", "/netlify/functions/archive-data.ts"],
   ]);
 
@@ -125,6 +185,8 @@ export default defineConfig(({ mode }) => {
   setRuntimeEnv("TURSO_MATCHES_AUTH_TOKEN", env.TURSO_MATCHES_AUTH_TOKEN);
   const useLocalArchive = env.LOCAL_ARCHIVE_DATA_SOURCE?.trim().toLowerCase() === "turso";
   const archiveOrigin = env.LOCAL_ARCHIVE_ORIGIN?.trim() || DEFAULT_LOCAL_ARCHIVE_ORIGIN;
+  const openingExplorerOrigin =
+    env.LOCAL_OPENING_EXPLORER_ORIGIN?.trim() || DEFAULT_LOCAL_OPENING_EXPLORER_ORIGIN;
 
   return {
     server: {
@@ -155,7 +217,7 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       localPuzzleFunctionsPlugin({ archiveOrigin, useLocalArchive }),
-      createOpeningExplorerVitePlugin(),
+      remoteOpeningExplorerPlugin(openingExplorerOrigin),
     ],
   };
 });
