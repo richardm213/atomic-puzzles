@@ -11,6 +11,8 @@ type BoardWorkspaceProps = {
   boardAriaLabel: string;
   boardTabIndex?: number;
   chessboardProps: ComponentProps<typeof Chessboard>;
+  boardBefore?: ReactNode;
+  boardAfter?: ReactNode;
   boardOverlay?: ReactNode;
   lichessHref: string;
   sourceLink?: { href: string; label: string };
@@ -23,9 +25,10 @@ type BoardWorkspaceProps = {
   actionClassName?: string;
   secondaryAction?: ReactNode;
   document: BoardDocument;
+  showDocument?: boolean;
 };
 
-const DocumentField = ({
+export const DocumentField = ({
   label,
   rows,
   field,
@@ -59,6 +62,8 @@ export const BoardWorkspace = ({
   boardAriaLabel,
   boardTabIndex,
   chessboardProps,
+  boardBefore,
+  boardAfter,
   boardOverlay,
   lichessHref,
   sourceLink,
@@ -67,6 +72,7 @@ export const BoardWorkspace = ({
   actionClassName,
   secondaryAction,
   document,
+  showDocument = true,
 }: BoardWorkspaceProps) => {
   const primarySourceLink = sourceLink ?? { href: lichessHref, label: "View on Lichess" };
   const lichessLink = (
@@ -120,6 +126,7 @@ export const BoardWorkspace = ({
 
   return (
     <div className={`analysisBoardColumn ${className}`.trim()}>
+      {boardBefore}
       <div
         ref={boardPanelRef}
         className="analysisBoardPanel"
@@ -129,6 +136,7 @@ export const BoardWorkspace = ({
         <Chessboard {...chessboardProps} />
         {boardOverlay}
       </div>
+      {boardAfter}
       <div className="analysisBoardTextPanel">
         <div className={actionClassName ?? "analysisBoardActions"}>
           {lichessLink}
@@ -140,8 +148,12 @@ export const BoardWorkspace = ({
           ) : null}
           {secondaryAction}
         </div>
-        <DocumentField label="FEN" rows={2} field={document.fen} />
-        <DocumentField label="PGN" rows={3} field={document.pgn} />
+        {showDocument ? (
+          <>
+            <DocumentField label="FEN" rows={2} field={document.fen} />
+            <DocumentField label="PGN" rows={3} field={document.pgn} />
+          </>
+        ) : null}
       </div>
     </div>
   );

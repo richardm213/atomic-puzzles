@@ -10,7 +10,6 @@ import type {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
-import { AnalysisMoveTree } from "../../components/AnalysisMoveTree/AnalysisMoveTree";
 import {
   AtomicDbEngine,
   AtomicDbEngineControls,
@@ -21,7 +20,8 @@ import {
   isTextEntryTarget,
   shortcutIndexFromKeyboardEvent,
 } from "../../components/Chessboard/boardShortcuts";
-import { pairPlayedMoves, PlayedMoves } from "../../components/PlayedMoves/PlayedMoves";
+import { MoveNotation } from "../../components/MoveNotation/MoveNotation";
+import { pairPlayedMoves } from "../../components/PlayedMoves/PlayedMoves";
 import { Seo } from "../../components/Seo/Seo";
 import { UsernamePickerModal } from "../../components/UsernamePickerModal/UsernamePickerModal";
 import { AnalysisToolbar } from "../../features/analysisWorkspace/AnalysisToolbar";
@@ -56,7 +56,8 @@ import {
   type ExplorerRequestNavigation,
   fetchExplorerApiResponse,
 } from "../../utils/openingExplorer";
-import { GameAnalysisHeader } from "../Game/GameAnalysisHeader";
+import { GameAnalysisHeader, GameBoardClock } from "../Game/GameAnalysisHeader";
+import { GameUnderboard } from "../Game/GameUnderboard";
 
 const MIN_MOVE_PANEL_HEIGHT = 0;
 const MIN_EXPLORER_PANEL_HEIGHT = 12;
@@ -433,7 +434,7 @@ export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) 
   const currentPly = boardState?.lineIndex ?? 0;
   const customLines = useMemo(() => boardState?.customLines ?? [], [boardState?.customLines]);
   const analysisPageStyle = {
-    "--analysis-board-size": `${boardSize}px`,
+    "--analysis-board-size": `${game ? Math.min(boardSize, 500) : boardSize}px`,
   } as CSSProperties;
   const canStepBack = currentPly > 0;
   const canStepForward = currentPly < moveList.length;
@@ -902,7 +903,10 @@ export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) 
   ]);
 
   return (
-    <AnalysisWorkspaceLayout style={analysisPageStyle}>
+    <AnalysisWorkspaceLayout
+      className={game ? "gameAnalysisPage" : undefined}
+      style={analysisPageStyle}
+    >
       <Seo
         title={game ? `${game.player_1} vs ${game.player_2}` : "Analysis board"}
         description={
@@ -925,7 +929,6 @@ export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) 
       >
         <div className="analysisMovePanel" ref={movePanelRef}>
           <div className="analysisEngineBlock">
-            {game ? <GameAnalysisHeader game={game} currentPly={currentPly} /> : null}
             <AtomicDbEngineControls
               fen={displayedAnalysisFen}
               analysis={displayedAnalysis}
@@ -951,19 +954,16 @@ export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) 
             />
           </div>
           <div className="analysisMoveContent">
-            {customLines.length ? (
-              <AnalysisMoveTree
-                lines={customLines}
-                moves={moveList}
-                currentPly={currentPly}
-                pinnedLineIndex={boardState?.customLineIndex}
-                inline={notationLayout === "inline"}
-                onSelect={navigateToCustomMove}
-                onCycleOptions={requestNavigation}
-              />
-            ) : (
-              <PlayedMoves moves={moveList} currentPly={currentPly} onNavigate={navigateToPly} />
-            )}
+            <MoveNotation
+              lines={customLines}
+              moves={moveList}
+              currentPly={currentPly}
+              pinnedLineIndex={boardState?.customLineIndex}
+              inline={notationLayout === "inline"}
+              onNavigate={navigateToPly}
+              onSelectVariation={navigateToCustomMove}
+              onCycleOptions={requestNavigation}
+            />
           </div>
         </div>
 
@@ -1195,6 +1195,12 @@ export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) 
         />
       </AnalysisWorkspacePanel>
 
+      {game ? (
+        <aside className="gameAnalysisSidebar" aria-label="Game details">
+          <GameAnalysisHeader game={game} />
+        </aside>
+      ) : null}
+
       {usernamePickerOpen ? (
         <UsernamePickerModal
           id="analysis-username-picker-title"
@@ -1230,6 +1236,24 @@ export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) 
           onNavigateHandled: handleNavigationHandled,
           onStateChange: setBoardState,
         }}
+        boardBefore={
+          game ? (
+            <GameBoardClock
+              game={game}
+              currentPly={currentPly}
+              color={orientation === "white" ? "black" : "white"}
+            />
+          ) : null
+        }
+        boardAfter={
+          game ? (
+            <GameBoardClock
+              game={game}
+              currentPly={currentPly}
+              color={orientation === "white" ? "white" : "black"}
+            />
+          ) : null
+        }
         boardOverlay={
           <>
             <AtomicDbEvalBar
@@ -1270,7 +1294,17 @@ export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) 
             }
           : {})}
         document={boardDocument}
+        showDocument={!game}
       />
+      {game ? (
+        <GameUnderboard
+          game={game}
+          currentPly={currentPly}
+          moves={moveList}
+          document={boardDocument}
+          onNavigatePly={navigateToPly}
+        />
+      ) : null}
     </AnalysisWorkspaceLayout>
   );
 };

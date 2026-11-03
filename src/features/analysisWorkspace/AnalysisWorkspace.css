@@ -246,12 +246,21 @@ body:has(.analysisPage),
 .analysisMoveList li {
   min-width: 0;
   display: grid;
-  grid-template-columns: 34px repeat(2, minmax(0, 1fr));
+  grid-template-columns: 38px repeat(2, minmax(0, 1fr));
   align-items: center;
-  gap: 3px;
+  min-height: 36px;
+}
+
+.analysisMoveList li:nth-child(odd) {
+  background: color-mix(in srgb, var(--color-surface-inset) 58%, transparent);
 }
 
 .analysisMoveNumber {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 9px;
   color: var(--color-subtle);
   font-size: 12px;
   font-weight: 650;
@@ -259,10 +268,11 @@ body:has(.analysisPage),
 }
 
 .analysisMoveList button {
-  min-height: 26px;
-  padding: 0 6px;
+  min-height: 36px;
+  align-self: stretch;
+  padding: 0 10px;
   border: 0;
-  border-radius: 4px;
+  border-radius: 0;
   background: transparent;
   color: var(--color-text);
   font-size: 13px;
@@ -271,12 +281,12 @@ body:has(.analysisPage),
 }
 
 .analysisMoveList button:hover {
-  background: color-mix(in srgb, var(--color-panel-strong) 54%, transparent);
+  background: var(--color-table-hover);
 }
 
 .analysisMoveList button.active {
-  background: color-mix(in srgb, var(--color-panel-strong) 72%, var(--color-primary) 28%);
-  color: var(--color-heading);
+  background: color-mix(in srgb, var(--color-primary) 68%, var(--color-panel-strong));
+  color: var(--color-on-primary);
 }
 
 .analysisPgnBox {
