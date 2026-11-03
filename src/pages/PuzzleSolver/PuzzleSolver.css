@@ -294,7 +294,6 @@ body:has(.puzzlePage) {
   padding: 4px 3px;
   color: var(--color-muted);
   line-height: 1.2;
-  transition: color 180ms ease;
 }
 
 .userPuzzleRating > span {
@@ -317,16 +316,8 @@ body:has(.puzzlePage) {
   font-size: 10px;
 }
 
-.userPuzzleRating.positive {
-  color: color-mix(in srgb, var(--color-success) 74%, var(--color-muted));
-}
-
 .userPuzzleRating.positive small {
   color: var(--color-success);
-}
-
-.userPuzzleRating.negative {
-  color: color-mix(in srgb, var(--color-danger) 74%, var(--color-muted));
 }
 
 .userPuzzleRating.negative small {
