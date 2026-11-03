@@ -124,7 +124,7 @@ describe("archive-data function", () => {
     });
   });
 
-  it("serves a decoded Chess.com game timeline and per-game ratings from schema v4", async () => {
+  it("serves a schema-v4 timeline when clocks omit the final move", async () => {
     mocks.execute.mockResolvedValueOnce({ rows: [{ value: "4" }] }).mockResolvedValueOnce({
       rows: [
         {
@@ -133,7 +133,7 @@ describe("archive-data function", () => {
           player_1: "alice",
           player_2: "bob",
           moves: new Uint8Array([0xc6, 0x05, 0xf7, 0x0b]),
-          clocks: new Uint8Array([50, 60]),
+          clocks: new Uint8Array([50]),
           move_ts: null,
           ratings: new Uint8Array([0xd3, 0x5d, 0x83, 0x5d, 0xcb, 0x59, 0x20, 0x5a]),
         },
@@ -150,7 +150,7 @@ describe("archive-data function", () => {
     expect(JSON.parse(response.body)).toMatchObject({
       game_id: "108184353",
       moves: ["g1h3", "h7h6"],
-      clocks: [50, 60],
+      clocks: [50],
       move_ts: null,
       ratings_are_per_game: true,
       p1_before_rating: 2298.7,

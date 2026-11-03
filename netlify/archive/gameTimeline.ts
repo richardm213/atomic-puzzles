@@ -118,7 +118,7 @@ export const timelineWithValidatedLengths = (row: Record<string, unknown>) => {
   const moveTimestamps = decodePackedMoveTimestamps(row.move_ts as BlobValue);
   return {
     moves,
-    clocks: clocks?.length === moves.length ? clocks : null,
+    clocks: clocks && clocks.length > 0 && clocks.length <= moves.length ? clocks : null,
     move_ts: moveTimestamps?.length === moves.length ? moveTimestamps : null,
   };
 };
