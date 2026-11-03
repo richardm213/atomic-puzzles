@@ -365,8 +365,34 @@
 }
 
 .profileMetricRow {
+  --profile-rating-accent: var(--color-primary);
+
   display: grid;
   gap: var(--space-2);
+}
+
+.profileMetricRow[data-rating-mode="blitz"] {
+  --profile-rating-accent: var(--color-rating-graph-blitz);
+}
+
+.profileMetricRow[data-rating-mode="bullet"] {
+  --profile-rating-accent: var(--color-rating-graph-bullet);
+}
+
+.profileMetricRow[data-rating-mode="hyperbullet"] {
+  --profile-rating-accent: var(--color-rating-graph-hyper);
+}
+
+.profileMetricRow[data-rating-mode="rapid"] {
+  --profile-rating-accent: var(--color-rating-graph-rapid);
+}
+
+.profileMetricRow[data-rating-mode="wolfrandom"] {
+  --profile-rating-accent: var(--color-calendar-monthly);
+}
+
+.profileMetricRow[data-rating-mode="atomic960"] {
+  --profile-rating-accent: var(--color-rating-graph-atomic960);
 }
 
 .profileMetricRowTitle {
@@ -1104,16 +1130,33 @@
 }
 
 :root[data-theme="light"] .profileAliasLichessLink {
-  color: #3b6fe8;
-  background: color-mix(in srgb, #dce8ff 84%, white 16%);
-  border-color: color-mix(in srgb, #3b6fe8 34%, var(--color-border));
+  color: var(--color-gold);
+  background: color-mix(in srgb, var(--color-accent-warm) 20%, var(--color-panel-strong));
+  border-color: color-mix(in srgb, var(--color-accent-warm) 56%, var(--color-border));
 }
 
 :root[data-theme="light"] .profileAliasLichessLink:hover,
 :root[data-theme="light"] .profileAliasLichessLink:focus-visible {
-  color: #2f62dd;
-  background: color-mix(in srgb, #dce8ff 94%, white 6%);
-  border-color: color-mix(in srgb, #2f62dd 52%, var(--color-border));
+  color: var(--color-warning);
+  background: color-mix(in srgb, var(--color-accent-warm) 30%, var(--color-panel-strong));
+  border-color: var(--color-accent-warm-strong);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--color-accent-warm) 18%, transparent);
+}
+
+:root[data-theme="light"] .profileMetricRowTitle {
+  color: color-mix(in srgb, var(--profile-rating-accent) 78%, var(--color-heading));
+}
+
+:root[data-theme="light"] .profileMetricRow .profileMetric {
+  border-color: color-mix(in srgb, var(--profile-rating-accent) 28%, var(--color-border));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--profile-rating-accent) 8%, var(--color-panel-strong)),
+    var(--color-panel-strong) 62%
+  );
+  box-shadow:
+    inset 0 2px 0 color-mix(in srgb, var(--profile-rating-accent) 42%, transparent),
+    0 5px 14px color-mix(in srgb, var(--profile-rating-accent) 7%, transparent);
 }
 
 :root[data-theme="light"] .profileOpeningTag {
@@ -1986,6 +2029,33 @@
 }
 
 @media (max-width: 640px) {
+  .profileIdentityHeading {
+    width: 100%;
+  }
+
+  .profileIdentityHeading h1 {
+    min-width: 0;
+    font-size: 28px;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+  }
+
+  .profileIdentityHeading.hasActionsMenu {
+    position: relative;
+    padding-right: 52px;
+  }
+
+  .profileIdentityHeading.hasActionsMenu .profileActionsMenu {
+    position: absolute;
+    top: -6px;
+    right: 0;
+  }
+
+  .profileIdentityHeading.hasActionsMenu .profileActionsMenuPanel {
+    right: 0;
+    left: auto;
+  }
+
   .profileHistoryTabs {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
