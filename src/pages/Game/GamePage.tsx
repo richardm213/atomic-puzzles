@@ -7,7 +7,12 @@ import { useMemo } from "react";
 
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { gameDetailQueryOptions } from "../../lib/games/queries";
-import { buildChessComGameUrl } from "../../lib/matches/routes";
+import {
+  buildExternalGameUrl,
+  inferExternalGameSource,
+  isChessComSource,
+  isPyChessSource,
+} from "../../lib/matches/routes";
 import { serializeUciLinesToPgn } from "../../lib/puzzles/solutionPgn";
 import { getErrorMessage } from "../../utils/errors";
 import { AnalysisPage } from "../Analysis/Analysis";
@@ -22,9 +27,8 @@ const decodeParam = (value: unknown): string => {
 
 export const GamePage = () => {
   const { gameId: gameIdParam } = useParams({ strict: false });
-  const gameId = decodeParam(gameIdParam)
-    .replace(/^(?:chesscom|pychess):/i, "")
-    .trim();
+  const decodedGameId = decodeParam(gameIdParam);
+  const gameId = decodedGameId.replace(/^(?:chesscom|pychess):/i, "").trim();
   const gameQuery = useQuery({ ...gameDetailQueryOptions(gameId), enabled: Boolean(gameId) });
   const game = gameQuery.data;
   const pgn = useMemo(
@@ -40,6 +44,15 @@ export const GamePage = () => {
   if (gameQuery.isPending) return <RouteLoadingFallback />;
 
   if (!game || !pgn) {
+    const externalSource =
+      game?.source ??
+      (isPyChessSource(decodedGameId) ? "pychess" : inferExternalGameSource(decodedGameId));
+    const externalUrl = buildExternalGameUrl(gameId, { source: externalSource });
+    const externalLabel = isChessComSource(externalSource)
+      ? "View on Chess.com"
+      : isPyChessSource(externalSource)
+        ? "View on PyChess"
+        : "View on Lichess";
     const message = gameQuery.error
       ? getErrorMessage(gameQuery.error, "Unable to load this game.")
       : "Move-by-move analysis is not available for this archived game.";
@@ -48,9 +61,9 @@ export const GamePage = () => {
         <div className="panel gameUnavailablePanel">
           <h1>Game unavailable</h1>
           <p>{message}</p>
-          {gameId ? (
-            <a href={buildChessComGameUrl(gameId)} target="_blank" rel="noreferrer">
-              View on Chess.com
+          {externalUrl ? (
+            <a href={externalUrl} target="_blank" rel="noreferrer">
+              {externalLabel}
             </a>
           ) : null}
         </div>
