@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import type { MouseEventHandler } from "react";
 
+import { useAppSettings } from "../../context/AppSettings";
 import {
   buildMatchRouteParams,
   buildSingleGameMatchUrl,
@@ -26,6 +27,7 @@ export const MatchPageLink = ({
   onClick,
   title = "Open match page",
 }: MatchPageLinkProps) => {
+  const { lichessLinkTarget } = useAppSettings();
   if (shouldUseInternalMatchPage(match)) {
     return (
       <Link
@@ -43,7 +45,7 @@ export const MatchPageLink = ({
     );
   }
 
-  const singleGameUrl = buildSingleGameMatchUrl(match);
+  const singleGameUrl = buildSingleGameMatchUrl(match, { lichessLinkTarget });
   if (singleGameUrl) {
     return (
       <a

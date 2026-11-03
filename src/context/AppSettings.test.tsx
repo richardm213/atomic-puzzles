@@ -49,6 +49,20 @@ const PuzzleAnalysisTargetSetting = () => {
   );
 };
 
+const LichessLinkTargetSetting = () => {
+  const { lichessLinkTarget, setLichessLinkTarget } = useAppSettings();
+  return (
+    <button
+      type="button"
+      onClick={() =>
+        setLichessLinkTarget((target) => (target === "lichess" ? "atomic-puzzles" : "lichess"))
+      }
+    >
+      {lichessLinkTarget}
+    </button>
+  );
+};
+
 const CoinVisibilitySettings = () => {
   const { showCoinBalance, setShowCoinBalance, showCoinChangePopups, setShowCoinChangePopups } =
     useAppSettings();
@@ -166,6 +180,28 @@ describe("puzzle analysis link preference", () => {
       expect(toggle).toHaveTextContent("lichess");
       expect(window.localStorage.getItem("atomic-puzzles.puzzles.analysis-link-target")).toBe(
         '"lichess"',
+      );
+    });
+  });
+});
+
+describe("Lichess game link preference", () => {
+  beforeEach(() => window.localStorage.clear());
+
+  it("defaults to Lichess and persists the Atomic Puzzles option", async () => {
+    render(
+      <AppSettingsProvider>
+        <LichessLinkTargetSetting />
+      </AppSettingsProvider>,
+    );
+
+    const toggle = screen.getByRole("button", { name: "lichess" });
+    fireEvent.click(toggle);
+
+    await waitFor(() => {
+      expect(toggle).toHaveTextContent("atomic-puzzles");
+      expect(window.localStorage.getItem("atomic-puzzles.games.lichess-link-target")).toBe(
+        '"atomic-puzzles"',
       );
     });
   });

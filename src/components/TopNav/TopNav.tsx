@@ -166,6 +166,8 @@ export const TopNav = () => {
     setShowPuzzleTimer,
     puzzleAnalysisTarget,
     setPuzzleAnalysisTarget,
+    lichessLinkTarget,
+    setLichessLinkTarget,
     showCoinBalance,
     setShowCoinBalance,
     showCoinChangePopups,
@@ -753,6 +755,23 @@ export const TopNav = () => {
                     onChange={(event) => setShowCoinBalance(event.target.checked)}
                   />
                 </label>
+              </div>
+              <div className="navSettingsSection">
+                <label className="navSettingsLabel" htmlFor="lichess-link-target-select">
+                  Lichess links
+                </label>
+                <select
+                  id="lichess-link-target-select"
+                  value={lichessLinkTarget}
+                  onChange={(event) =>
+                    setLichessLinkTarget(
+                      event.target.value === "atomic-puzzles" ? "atomic-puzzles" : "lichess",
+                    )
+                  }
+                >
+                  <option value="lichess">Lichess</option>
+                  <option value="atomic-puzzles">Atomic Puzzles</option>
+                </select>
               </div>
               {pathname === "/rankings" || pathname === "/rankings/yearly" ? (
                 <div className="navSettingsSection">

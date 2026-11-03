@@ -9,6 +9,8 @@ type MatchRouteInput = {
   [key: string]: unknown;
 };
 
+export type LichessLinkTarget = "atomic-puzzles" | "lichess";
+
 export const normalizeMatchMode = (mode: unknown): Mode | "" => {
   const value = String(mode ?? "").toLowerCase();
   if (
@@ -99,6 +101,14 @@ export const buildPyChessGameUrl = (gameId: string | number | null | undefined):
   return `https://www.pychess.org/${encodeURIComponent(normalizedGameId)}`;
 };
 
+export const buildAtomicPuzzlesGameUrl = (gameId: string | number | null | undefined): string => {
+  const normalizedGameId = String(gameId ?? "")
+    .trim()
+    .replace(/^(?:chesscom|pychess):/i, "");
+  if (!normalizedGameId || normalizedGameId === "—") return "";
+  return `/games/${encodeURIComponent(normalizedGameId)}`;
+};
+
 export const buildExternalGameUrl = (
   gameId: string | number | null | undefined,
   options: {
@@ -121,7 +131,10 @@ export const buildExternalGameUrl = (
   });
 };
 
-export const buildSingleGameMatchUrl = (match: MatchRouteInput | null | undefined): string => {
+export const buildSingleGameMatchUrl = (
+  match: MatchRouteInput | null | undefined,
+  options: { lichessLinkTarget?: LichessLinkTarget } = {},
+): string => {
   if (!isSingleGameMatch(match)) return "";
   const firstGameFromGames = Array.isArray(match?.games)
     ? (match.games[0] as { id?: string | number | null | undefined } | null | undefined)?.id
@@ -130,12 +143,12 @@ export const buildSingleGameMatchUrl = (match: MatchRouteInput | null | undefine
   for (const candidate of candidates) {
     const source = match?.sourceValue ?? match?.source;
     if (isChessComSource(source) || isPyChessSource(source)) {
-      const archivedGameId = String(candidate ?? "")
-        .trim()
-        .replace(/^(?:chesscom|pychess):/i, "");
-      if (archivedGameId && archivedGameId !== "—") {
-        return `/games/${encodeURIComponent(archivedGameId)}`;
-      }
+      const archivedGameUrl = buildAtomicPuzzlesGameUrl(candidate);
+      if (archivedGameUrl) return archivedGameUrl;
+    }
+    if (options.lichessLinkTarget === "atomic-puzzles") {
+      const archivedGameUrl = buildAtomicPuzzlesGameUrl(candidate);
+      if (archivedGameUrl) return archivedGameUrl;
     }
     const url = buildExternalGameUrl(candidate, { source });
     if (url) return url;

@@ -32,6 +32,9 @@ const game = (overrides: Partial<ArchiveGame>): ArchiveGame => ({
 describe("gameTerminationLabel", () => {
   it("distinguishes clock, board, and fallback terminations", () => {
     expect(gameTerminationLabel(game({ clocks: [0] }))).toBe("White timed out");
+    expect(gameTerminationLabel(game({ result: 2, clocks: [10_000, 0] }))).toBe(
+      "Black timed out",
+    );
     expect(
       gameTerminationLabel(
         game({ moves: ["f2f3", "e7e5", "g2g4", "d8h4"], clocks: [10_000, 10_000] }),

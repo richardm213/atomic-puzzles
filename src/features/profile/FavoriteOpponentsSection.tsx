@@ -6,6 +6,7 @@ import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { RowExpansionButton } from "../../components/RowExpansionButton/RowExpansionButton";
 import { modeLabels } from "../../constants/matches";
+import { useAppSettings } from "../../context/AppSettings";
 import { matchupToSlug } from "../../lib/matches/h2hRoutes";
 import {
   buildMatchRouteParams,
@@ -77,6 +78,7 @@ export const FavoriteOpponentsSection = ({
   onPageChange,
   onToggleOpponent,
 }: FavoriteOpponentsSectionProps) => {
+  const { lichessLinkTarget } = useAppSettings();
   const headerSort = (column: FavoriteOpponentSort): "ascending" | "descending" | "none" =>
     sort === column ? (sortDirection === "asc" ? "ascending" : "descending") : "none";
   const sortGlyph = (column: FavoriteOpponentSort): string =>
@@ -289,7 +291,9 @@ export const FavoriteOpponentsSection = ({
                                   playerB: row.opponent,
                                   mode: match.mode,
                                 };
-                                const singleGameUrl = buildSingleGameMatchUrl(matchLinkMatch);
+                                const singleGameUrl = buildSingleGameMatchUrl(matchLinkMatch, {
+                                  lichessLinkTarget,
+                                });
                                 const shouldLinkToMatchPage =
                                   shouldUseInternalMatchPage(matchLinkMatch);
                                 return (

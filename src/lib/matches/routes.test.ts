@@ -198,6 +198,20 @@ describe("buildSingleGameMatchUrl", () => {
     ).toBe("/games/AbC960");
   });
 
+  it("uses Atomic Puzzles for one-game Lichess matches when selected", () => {
+    expect(
+      buildSingleGameMatchUrl(
+        {
+          matchId: "match-id",
+          firstGameId: "AbC 123",
+          gameCount: 1,
+          sourceValue: "friend",
+        },
+        { lichessLinkTarget: "atomic-puzzles" },
+      ),
+    ).toBe("/games/AbC%20123");
+  });
+
   it("does not build an external game URL for longer matches", () => {
     expect(
       buildSingleGameMatchUrl({

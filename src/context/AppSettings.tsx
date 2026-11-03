@@ -34,6 +34,7 @@ const STORAGE_KEYS = {
   // Start from a clean preference so unchecked is the effective default for everyone.
   showPuzzleTimer: "atomic-puzzles.puzzles.show-timer-v2",
   puzzleAnalysisTarget: "atomic-puzzles.puzzles.analysis-link-target",
+  lichessLinkTarget: "atomic-puzzles.games.lichess-link-target",
   showRatingGraphLines: "profile.ratingGraph.showLines",
   hiddenRatingGraphModes: "profile.ratingGraph.hiddenModes",
 };
@@ -195,6 +196,8 @@ export type AppSettingsContextValue = {
   setShowPuzzleTimer: Dispatch<SetStateAction<boolean>>;
   puzzleAnalysisTarget: "atomic-puzzles" | "lichess";
   setPuzzleAnalysisTarget: Dispatch<SetStateAction<"atomic-puzzles" | "lichess">>;
+  lichessLinkTarget: "atomic-puzzles" | "lichess";
+  setLichessLinkTarget: Dispatch<SetStateAction<"atomic-puzzles" | "lichess">>;
   showCoinBalance: boolean;
   setShowCoinBalance: Dispatch<SetStateAction<boolean>>;
   showCoinChangePopups: boolean;
@@ -322,6 +325,11 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
   const [puzzleAnalysisTarget, setPuzzleAnalysisTarget] = usePersistedState<
     "atomic-puzzles" | "lichess"
   >(STORAGE_KEYS.puzzleAnalysisTarget, z.enum(["atomic-puzzles", "lichess"]), "atomic-puzzles");
+  const [lichessLinkTarget, setLichessLinkTarget] = usePersistedState<"atomic-puzzles" | "lichess">(
+    STORAGE_KEYS.lichessLinkTarget,
+    z.enum(["atomic-puzzles", "lichess"]),
+    "lichess",
+  );
   const [showCoinBalance, setShowCoinBalance] = usePersistedState(
     STORAGE_KEYS.showCoinBalance,
     z.boolean(),
@@ -431,6 +439,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setShowPuzzleTimer,
       puzzleAnalysisTarget,
       setPuzzleAnalysisTarget,
+      lichessLinkTarget,
+      setLichessLinkTarget,
       showCoinBalance,
       setShowCoinBalance,
       showCoinChangePopups,
@@ -480,6 +490,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setShowPuzzleTimer,
       puzzleAnalysisTarget,
       setPuzzleAnalysisTarget,
+      lichessLinkTarget,
+      setLichessLinkTarget,
       showCoinBalance,
       setShowCoinBalance,
       showCoinChangePopups,

@@ -1,6 +1,8 @@
 import type { FocusEventHandler, MouseEventHandler, PointerEventHandler, ReactNode } from "react";
 
+import { useAppSettings } from "../../context/AppSettings";
 import {
+  buildAtomicPuzzlesGameUrl,
   buildExternalGameUrl,
   isChessComSource,
   isPyChessSource,
@@ -35,17 +37,20 @@ export const LichessGameLink = ({
   orientation,
   ply,
 }: LichessGameLinkProps) => {
+  const { lichessLinkTarget } = useAppSettings();
   const interactionProps = { onClick, onPointerEnter, onPointerLeave, onFocus, onBlur, title };
   const normalizedGameId = String(gameId)
     .replace(/^(?:chesscom|pychess):/i, "")
     .trim();
-  if ((isChessComSource(source) || isPyChessSource(source)) && normalizedGameId) {
+  const internalGameUrl = buildAtomicPuzzlesGameUrl(normalizedGameId);
+  if (
+    (isChessComSource(source) ||
+      isPyChessSource(source) ||
+      lichessLinkTarget === "atomic-puzzles") &&
+    internalGameUrl
+  ) {
     return (
-      <a
-        className={className}
-        href={`/games/${encodeURIComponent(normalizedGameId)}`}
-        {...interactionProps}
-      >
+      <a className={className} href={internalGameUrl} {...interactionProps}>
         {children}
       </a>
     );
