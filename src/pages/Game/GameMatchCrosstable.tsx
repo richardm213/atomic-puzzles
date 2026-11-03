@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import type { CSSProperties } from "react";
 
 import { LichessGameLink } from "../../components/LichessGameLink/LichessGameLink";
 import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
@@ -51,6 +52,7 @@ export const GameMatchCrosstable = ({
   }));
   const playerOneTotal = gameScores.reduce((sum, result) => sum + result.playerOne, 0);
   const playerTwoTotal = gameScores.reduce((sum, result) => sum + result.playerTwo, 0);
+  const dense = match.games.length > 8;
 
   const content = (
     <>
@@ -61,7 +63,10 @@ export const GameMatchCrosstable = ({
         </div>
       ) : null}
       <div className="gameMatchCrosstableScroll">
-        <div className="gameMatchCrosstableStrip">
+        <div
+          className={`gameMatchCrosstableStrip${dense ? " dense" : ""}`}
+          style={{ "--game-count": match.games.length } as CSSProperties}
+        >
           <ol className="gameMatchResults" aria-label="Games in this match">
             {gameScores.map((result, index) => (
               <li

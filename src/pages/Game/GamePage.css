@@ -239,9 +239,10 @@
 
 .gameMatchCrosstableStrip {
   width: 100%;
-  min-width: max-content;
-  display: flex;
-  overflow: hidden;
+  min-width: calc(var(--game-count) * 20px + 194px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 140px 54px;
+  overflow: clip;
   border: 1px solid var(--color-border);
   border-radius: 6px;
   font-variant-numeric: tabular-nums;
@@ -249,16 +250,15 @@
 
 .gameMatchResults {
   min-width: 0;
-  flex: 1 1 auto;
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(var(--game-count), minmax(20px, 1fr));
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .gameMatchResults li {
-  min-width: 48px;
-  flex: 1 0 48px;
+  min-width: 20px;
   background: var(--color-surface-inset);
 }
 
@@ -313,15 +313,25 @@
 
 .gameMatchPlayers,
 .gameMatchTotals {
-  flex: 0 0 auto;
   display: grid;
   grid-template-rows: repeat(2, 34px);
   background: var(--color-panel-strong);
 }
 
 .gameMatchPlayers {
-  min-width: 160px;
   border-left: 1px solid var(--color-border);
+}
+
+.gameMatchCrosstableStrip.dense .gameMatchResultLink,
+.gameMatchCrosstableStrip.dense .gameMatchPlayers,
+.gameMatchCrosstableStrip.dense .gameMatchTotals {
+  grid-template-rows: repeat(2, 30px);
+}
+
+.gameMatchCrosstableStrip.dense .gameMatchResultLink .score,
+.gameMatchCrosstableStrip.dense .gameMatchPlayers a,
+.gameMatchCrosstableStrip.dense .gameMatchTotals strong {
+  font-size: 12px;
 }
 
 .gameMatchPlayers a,
@@ -741,8 +751,11 @@
 }
 
 .gameMatchTotals {
-  min-width: 62px;
+  position: sticky;
+  z-index: 3;
+  right: 0;
   background: color-mix(in srgb, var(--color-primary) 20%, var(--color-panel-strong));
+  box-shadow: -1px 0 0 var(--color-border);
 }
 
 .gameMatchTotals strong {
@@ -864,6 +877,25 @@
 
   .gameMatchCrosstable {
     order: 2;
+  }
+
+  .gameMatchCrosstableStrip {
+    min-width: calc(var(--game-count) * 18px + 144px);
+    grid-template-columns: minmax(0, 1fr) 100px 44px;
+  }
+
+  .gameMatchResults {
+    grid-template-columns: repeat(var(--game-count), minmax(18px, 1fr));
+  }
+
+  .gameMatchResults li {
+    min-width: 18px;
+  }
+
+  .gameMatchPlayers a,
+  .gameMatchTotals strong {
+    padding-inline: 6px;
+    font-size: 11px;
   }
 
   .gameUnderboard {

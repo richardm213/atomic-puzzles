@@ -162,7 +162,7 @@ export const GameUnderboard = ({
                   <i className="black" />
                   Black
                 </span>
-                <small>{hasClockTimeline ? "Remaining clock • hover for move time" : "Time spent per move"}</small>
+                {hasClockTimeline ? null : <small>Time spent per move</small>}
               </figcaption>
               <div className="gameMoveTimesViewport">
                 {hasClockTimeline ? (
