@@ -313,6 +313,9 @@ begin
     from public.coin_transactions transaction
     where transaction.source_key =
       'attempt:' || normalized_username || ':' || normalized_puzzle_id
+      -- A pre-existing transaction belongs to an older attempt and must not be
+      -- announced as a new coin change for this request.
+      and transaction.created_at = attempt_at
   ), 0)
   into coin_delta;
 
