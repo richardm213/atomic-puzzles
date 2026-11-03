@@ -92,18 +92,18 @@ describe("shouldUseInternalMatchPage", () => {
 
 describe("buildLichessGameUrl", () => {
   it("returns a lichess URL for a game id", () => {
-    expect(buildLichessGameUrl("abc 123")).toBe("https://lichess.org/abc%20123");
+    expect(buildLichessGameUrl("abc 123")).toBe("https://lichess.org/game/abc%20123");
   });
 
   it("includes orientation and ply when provided", () => {
     expect(buildLichessGameUrl("abc123", { orientation: "black", ply: 12 })).toBe(
-      "https://lichess.org/abc123/black#12",
+      "https://lichess.org/game/abc123/black#12",
     );
   });
 
   it("omits invalid ply values", () => {
     expect(buildLichessGameUrl("abc123", { orientation: "white", ply: -1 })).toBe(
-      "https://lichess.org/abc123/white",
+      "https://lichess.org/game/abc123/white",
     );
   });
 
@@ -124,12 +124,12 @@ describe("buildExternalGameUrl", () => {
   });
 
   it("does not infer Chess.com from source-less numeric game ids", () => {
-    expect(buildExternalGameUrl("123456789")).toBe("https://lichess.org/123456789");
+    expect(buildExternalGameUrl("123456789")).toBe("https://lichess.org/game/123456789");
   });
 
   it("keeps Lichess orientation and ply for Lichess sources", () => {
     expect(buildExternalGameUrl("abc123", { source: "arena", orientation: "white", ply: 4 })).toBe(
-      "https://lichess.org/abc123/white#4",
+      "https://lichess.org/game/abc123/white#4",
     );
   });
 
@@ -164,15 +164,15 @@ describe("buildSingleGameMatchUrl", () => {
         firstGameId: "game-id",
         gameCount: 1,
       }),
-    ).toBe("https://lichess.org/game-id");
+    ).toBe("https://lichess.org/game/game-id");
   });
 
   it("falls back to the games array and match id", () => {
     expect(buildSingleGameMatchUrl({ firstGameId: "—", games: [{ id: "array-game" }] })).toBe(
-      "https://lichess.org/array-game",
+      "https://lichess.org/game/array-game",
     );
     expect(buildSingleGameMatchUrl({ matchId: "match-game", gameCount: 1 })).toBe(
-      "https://lichess.org/match-game",
+      "https://lichess.org/game/match-game",
     );
   });
 

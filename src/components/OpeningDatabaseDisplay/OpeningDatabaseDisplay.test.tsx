@@ -86,7 +86,7 @@ describe("OpeningDatabaseDisplay recent-game links", () => {
     );
     expect(screen.getByTitle("Lichess White vs Black")).toHaveAttribute(
       "href",
-      "https://lichess.org/ab12CD34/black#5",
+      "https://lichess.org/game/ab12CD34/black#5",
     );
   });
 

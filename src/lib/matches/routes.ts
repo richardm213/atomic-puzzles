@@ -54,7 +54,7 @@ export const buildLichessGameUrl = (
   const ply = Number(options.ply);
   const plyHash = Number.isInteger(ply) && ply >= 0 ? `#${ply}` : "";
 
-  return `https://lichess.org/${encodeURIComponent(normalizedGameId)}${orientationPath}${plyHash}`;
+  return `https://lichess.org/game/${encodeURIComponent(normalizedGameId)}${orientationPath}${plyHash}`;
 };
 
 export const isChessComSource = (source: unknown): boolean => {
