@@ -10,7 +10,14 @@ import { createServerSupabase } from "../platform/environment";
 import { HttpError } from "../platform/errors";
 import { parseJsonBody } from "../platform/validation";
 
-const modeSchema = z.enum(["pawn-duel", "blockade", "two-queens"]);
+const modeSchema = z.enum([
+  "pawn-duel",
+  "blockade",
+  "two-queens",
+  "rook-vs-pawn",
+  "rook-bishop-vs-king",
+  "rook-pawn-vs-king",
+]);
 const categorySchema = z.union([
   z.literal("no-pawn"),
   z.string().regex(/^(rook|knight|regular)-file:rank-(3|regular|7)$/),
@@ -42,7 +49,8 @@ const responseRow = (row: Row) => ({
 export const endgamePracticeRoute = async (event: FunctionEvent) => {
   requireSameOrigin(event.headers, "Cross-site endgame requests are not allowed.");
   const input = parseJsonBody(event, requestSchema, "Invalid endgame-practice request.");
-  if ((input.mode === "two-queens") !== (input.category === "no-pawn")) {
+  const usesPawnCategories = input.mode === "pawn-duel" || input.mode === "blockade";
+  if (usesPawnCategories === (input.category === "no-pawn")) {
     throw new HttpError(400, "Choose a valid endgame category.");
   }
   const identity = await authenticateRequest(event.headers, true);

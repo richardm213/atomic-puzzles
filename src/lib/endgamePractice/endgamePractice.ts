@@ -5,7 +5,13 @@ import { Atomic } from "chessops/variant";
 
 import { serializeSanLinesToPgn } from "../puzzles/solutionPgn";
 
-export type EndgameMode = "pawn-duel" | "blockade" | "two-queens";
+export type EndgameMode =
+  | "pawn-duel"
+  | "blockade"
+  | "two-queens"
+  | "rook-vs-pawn"
+  | "rook-bishop-vs-king"
+  | "rook-pawn-vs-king";
 export type PawnFileCategory = "rook-file" | "knight-file" | "regular-file";
 export type PawnRankCategory = "rank-3" | "rank-regular" | "rank-7";
 export type EndgameCategory = `${PawnFileCategory}:${PawnRankCategory}` | "no-pawn";
@@ -184,12 +190,70 @@ const generateTwoQueenPosition = (random: () => number): EndgamePosition => {
   throw new Error("Could not generate a legal two-queen endgame position.");
 };
 
+type MaterialPiece = {
+  symbol: string;
+  allowedSquares?: readonly string[];
+};
+
+const pawnSquares = boardSquares.filter(
+  (candidate) => candidate[1] !== "1" && candidate[1] !== "8",
+);
+
+const materialPiecesByMode: Partial<Record<EndgameMode, readonly MaterialPiece[]>> = {
+  "rook-vs-pawn": [
+    { symbol: "K" },
+    { symbol: "R" },
+    { symbol: "k" },
+    { symbol: "p", allowedSquares: pawnSquares },
+  ],
+  "rook-bishop-vs-king": [{ symbol: "K" }, { symbol: "R" }, { symbol: "B" }, { symbol: "k" }],
+  "rook-pawn-vs-king": [
+    { symbol: "K" },
+    { symbol: "R" },
+    { symbol: "P", allowedSquares: pawnSquares },
+    { symbol: "k" },
+  ],
+};
+
+const generateMaterialPosition = (mode: EndgameMode, random: () => number): EndgamePosition => {
+  const material = materialPiecesByMode[mode];
+  if (!material) throw new Error(`Unsupported material endgame mode: ${mode}`);
+  const offset = Math.floor(random() * boardSquares.length);
+
+  for (let attempt = 0; attempt < 8_000; attempt += 1) {
+    const occupied = new Set<string>();
+    const pieces = material.map((piece, pieceIndex) => {
+      const candidates = piece.allowedSquares ?? boardSquares;
+      let squareIndex = (offset + attempt * 17 + pieceIndex * 23) % candidates.length;
+      while (occupied.has(candidates[squareIndex] as string)) {
+        squareIndex = (squareIndex + 1) % candidates.length;
+      }
+      const pieceSquare = candidates[squareIndex] as string;
+      occupied.add(pieceSquare);
+      return { square: pieceSquare, symbol: piece.symbol };
+    });
+    const fen = buildFen(pieces);
+    if (isUsableFen(fen) && !hasImmediateWhiteWinFromFen(fen)) {
+      const blackPawn = pieces.find((piece) => piece.symbol === "p");
+      return {
+        fen,
+        mode,
+        category: "no-pawn",
+        pawnSquare: blackPawn?.square ?? null,
+      };
+    }
+  }
+
+  throw new Error(`Could not generate a legal ${mode} endgame position.`);
+};
+
 export const generateEndgamePosition = (
   mode: EndgameMode,
   category: EndgameCategory,
   random: () => number = Math.random,
 ): EndgamePosition => {
   if (mode === "two-queens") return generateTwoQueenPosition(random);
+  if (materialPiecesByMode[mode]) return generateMaterialPosition(mode, random);
 
   for (let attempt = 0; attempt < 300; attempt += 1) {
     const { enemyRank, fileIndex } = categoryRankAndFile(category, random);

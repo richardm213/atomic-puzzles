@@ -34,7 +34,7 @@ import {
 } from "../../lib/endgamePractice/endgamePractice";
 import {
   classifyEndgameEngineEvaluation,
-  engineStartIsLongerThanMateInFour,
+  engineStartIsLongerThanMateInFive,
 } from "../../lib/endgamePractice/fairyStockfishEndgame";
 import {
   chooseEqualTablebaseDefense,
@@ -78,15 +78,24 @@ const formatClockTime = (milliseconds: number): string => {
 const modeLabel = (mode: EndgameMode): string => {
   if (mode === "pawn-duel") return "KQP vs KP";
   if (mode === "blockade") return "KQ vs KP";
-  return "KQQ vs K";
+  if (mode === "two-queens") return "KQQ vs K";
+  if (mode === "rook-vs-pawn") return "KR vs KP";
+  if (mode === "rook-bishop-vs-king") return "KRB vs K";
+  return "KRP vs K";
 };
+
+const usesPawnCategories = (mode: EndgameMode): boolean =>
+  mode === "pawn-duel" || mode === "blockade";
+
+const defenderHasEscapingPawn = (mode: EndgameMode): boolean =>
+  mode === "pawn-duel" || mode === "blockade" || mode === "rook-vs-pawn";
 
 const PREPARED_POSITION_KEY = "atomic-puzzles:endgame-practice:prepared-position:sf14:v1";
 const preparedPositions = new Map<string, EndgamePosition>();
 const pendingPositions = new Map<string, Promise<EndgamePosition | null>>();
 
 const positionCategory = (mode: EndgameMode, category: EndgameCategory): EndgameCategory =>
-  mode === "two-queens" ? "no-pawn" : category;
+  usesPawnCategories(mode) ? category : "no-pawn";
 
 const preparedPositionKey = (mode: EndgameMode, category: EndgameCategory): string =>
   `${mode}:${positionCategory(mode, category)}`;
@@ -146,7 +155,7 @@ const prepareEndgamePosition = (
           1,
           controller.signal,
         );
-        if (engineStartIsLongerThanMateInFour(evaluations)) {
+        if (engineStartIsLongerThanMateInFive(evaluations)) {
           storePreparedPosition(key, candidate);
           return candidate;
         }
@@ -201,7 +210,7 @@ export const EndgamePracticePage = () => {
   const { copy: copyPgn, copyLabel: copyPgnLabel, resetCopyFeedback } = useCopyFeedback();
 
   const playerName = user?.username || guestName.trim() || "Guest";
-  const leaderboardCategory: EndgameCategory = mode === "two-queens" ? "no-pawn" : category;
+  const leaderboardCategory = positionCategory(mode, category);
   const currentFen = boardState?.fen || position.fen;
   const positionPgn = useMemo(
     () => buildEndgamePgn(position.fen, boardState?.lineMoves ?? []),
@@ -282,7 +291,7 @@ export const EndgamePracticePage = () => {
 
     void (async () => {
       const roundCategory =
-        attemptIsOver && mode !== "two-queens"
+        attemptIsOver && usesPawnCategories(mode)
           ? (nextCategoryRef.current ?? randomPawnCategory(category))
           : category;
       if (roundCategory !== category) setCategory(roundCategory);
@@ -314,7 +323,7 @@ export const EndgamePracticePage = () => {
       roundIdRef.current = crypto.randomUUID();
       scoredRoundRef.current = null;
       void prepareEndgamePosition(mode, roundCategory);
-      if (mode === "two-queens") {
+      if (!usesPawnCategories(mode)) {
         nextCategoryRef.current = "no-pawn";
       } else {
         const nextCategory = randomPawnCategory(roundCategory);
@@ -473,7 +482,10 @@ export const EndgamePracticePage = () => {
         .catch(() => undefined);
       return;
     }
-    if (boardState.winner === "black" || (mode !== "two-queens" && !hasBlackPawn(boardState.fen))) {
+    if (
+      boardState.winner === "black" ||
+      (defenderHasEscapingPawn(mode) && !hasBlackPawn(boardState.fen))
+    ) {
       startedAtRef.current = null;
       setFailureLabel(boardState.winner === "black" ? "Lost" : "Escaped");
       setStatus("failed");
@@ -605,15 +617,25 @@ export const EndgamePracticePage = () => {
                   disabled={status === "running" || status === "preparing"}
                   onChange={(event) => {
                     const nextMode = event.target.value as EndgameMode;
-                    const nextCategory =
-                      nextMode === "two-queens" ? "no-pawn" : randomPawnCategory();
+                    const nextCategory = usesPawnCategories(nextMode)
+                      ? randomPawnCategory()
+                      : "no-pawn";
                     setMode(nextMode);
                     setCategory(nextCategory);
                     nextCategoryRef.current = null;
                     createReadyPosition(nextMode, nextCategory);
                   }}
                 >
-                  {(["pawn-duel", "blockade", "two-queens"] as const).map((option) => (
+                  {(
+                    [
+                      "pawn-duel",
+                      "blockade",
+                      "two-queens",
+                      "rook-vs-pawn",
+                      "rook-bishop-vs-king",
+                      "rook-pawn-vs-king",
+                    ] as const
+                  ).map((option) => (
                     <option key={option} value={option}>
                       {modeLabel(option)}
                     </option>
@@ -661,7 +683,11 @@ export const EndgamePracticePage = () => {
               <section className="endgameLeaderboard" aria-labelledby="endgame-own-best-heading">
                 <div className="endgameLeaderboardHeader">
                   <h2 id="endgame-own-best-heading">Your best</h2>
-                  <span>{categoryLabel(leaderboardCategory)}</span>
+                  <span>
+                    {usesPawnCategories(mode)
+                      ? categoryLabel(leaderboardCategory)
+                      : modeLabel(mode)}
+                  </span>
                 </div>
                 <p className="endgameOwnBest">{formatTime(ownBest.durationMs)}</p>
               </section>
@@ -669,7 +695,11 @@ export const EndgamePracticePage = () => {
               <section className="endgameLeaderboard" aria-labelledby="endgame-leaderboard-heading">
                 <div className="endgameLeaderboardHeader">
                   <h2 id="endgame-leaderboard-heading">Timed attempts</h2>
-                  <span>{categoryLabel(leaderboardCategory)}</span>
+                  <span>
+                    {usesPawnCategories(mode)
+                      ? categoryLabel(leaderboardCategory)
+                      : modeLabel(mode)}
+                  </span>
                 </div>
                 {entries.length ? (
                   <ol className="endgameLeaderboardList">

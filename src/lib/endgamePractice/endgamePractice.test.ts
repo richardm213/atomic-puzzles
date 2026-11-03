@@ -92,6 +92,30 @@ describe("endgame practice positions", () => {
     expect(hasImmediateWhiteWinFromFen(generated.fen)).toBe(false);
   });
 
+  it.each([
+    ["rook-vs-pawn", ["K", "R", "k", "p"]],
+    ["rook-bishop-vs-king", ["K", "R", "B", "k"]],
+    ["rook-pawn-vs-king", ["K", "R", "P", "k"]],
+  ] as const)("generates legal %s material without an immediate win", (mode, expectedSymbols) => {
+    const generated = generateEndgamePosition(mode, "no-pawn", () => 0.42);
+    const setup = parseFen(generated.fen);
+    expect(setup.isOk).toBe(true);
+    if (setup.isErr) return;
+
+    const symbols = Array.from({ length: 64 }, (_, square) => {
+      const piece = setup.value.board.get(square);
+      if (!piece) return null;
+      const symbol = piece.role === "knight" ? "N" : piece.role[0]?.toUpperCase();
+      return piece.color === "white" ? symbol : symbol?.toLowerCase();
+    })
+      .filter((symbol): symbol is string => Boolean(symbol))
+      .sort();
+
+    expect(symbols).toEqual([...expectedSymbols].sort());
+    expect(generated.category).toBe("no-pawn");
+    expect(hasImmediateWhiteWinFromFen(generated.fen)).toBe(false);
+  });
+
   it("always places facing pawns in a reachable atomic orientation", () => {
     let seed = 9;
     const random = () => {

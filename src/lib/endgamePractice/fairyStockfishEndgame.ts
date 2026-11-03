@@ -7,10 +7,10 @@ const LOST_THRESHOLD_CP = -200;
 const bestEvaluation = (candidates: EngineCandidate[]): EngineCandidate | null =>
   [...candidates].sort((left, right) => left.multipv - right.multipv)[0] ?? null;
 
-export const engineStartIsLongerThanMateInFour = (candidates: EngineCandidate[]): boolean => {
+export const engineStartIsLongerThanMateInFive = (candidates: EngineCandidate[]): boolean => {
   const best = bestEvaluation(candidates);
   if (!best || (best.depth ?? 0) < MIN_RELIABLE_DEPTH) return false;
-  if (best.scoreType === "mate") return best.score > 4;
+  if (best.scoreType === "mate") return best.score > 5;
   return best.score > DRAW_WINDOW_CP;
 };
 
