@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import { AppSettingsProvider } from "../../context/AppSettings";
 import { OpeningDatabaseDisplay, type OpeningDatabaseGame } from "./OpeningDatabaseDisplay";
 
 const game = (overrides: Partial<OpeningDatabaseGame>): OpeningDatabaseGame => ({
@@ -61,33 +62,37 @@ describe("OpeningDatabaseDisplay recent-game links", () => {
     expect(onPlayMove).toHaveBeenCalledTimes(2);
   });
 
-  it("opens numeric Chess.com games internally and keeps Lichess move context", () => {
+  it("opens game links in a new tab while preserving their destination and move context", () => {
     render(
-      <OpeningDatabaseDisplay
-        moves={[]}
-        recentGames={[
-          game({ gameId: "chesscom:108184353", whiteName: "ChessCom White" }),
-          game({ gameId: "ab12CD34", whiteName: "Lichess White" }),
-        ]}
-        status="ready"
-        error=""
-        emptyMessage="No games"
-        showPerformance={false}
-        orientation="black"
-        currentPly={4}
-        onPlayMove={vi.fn()}
-        onHoverMove={vi.fn()}
-      />,
+      <AppSettingsProvider>
+        <OpeningDatabaseDisplay
+          moves={[]}
+          recentGames={[
+            game({ gameId: "chesscom:108184353", whiteName: "ChessCom White" }),
+            game({ gameId: "ab12CD34", whiteName: "Lichess White" }),
+          ]}
+          status="ready"
+          error=""
+          emptyMessage="No games"
+          showPerformance={false}
+          orientation="black"
+          currentPly={4}
+          onPlayMove={vi.fn()}
+          onHoverMove={vi.fn()}
+        />
+      </AppSettingsProvider>,
     );
 
-    expect(screen.getByTitle("ChessCom White vs Black")).toHaveAttribute(
-      "href",
-      "/games/108184353",
-    );
-    expect(screen.getByTitle("Lichess White vs Black")).toHaveAttribute(
+    const chessComLink = screen.getByTitle("ChessCom White vs Black");
+    const lichessLink = screen.getByTitle("Lichess White vs Black");
+
+    expect(chessComLink).toHaveAttribute("href", "/games/108184353");
+    expect(chessComLink).toHaveAttribute("target", "_blank");
+    expect(lichessLink).toHaveAttribute(
       "href",
       "https://lichess.org/game/ab12CD34/black#5",
     );
+    expect(lichessLink).toHaveAttribute("target", "_blank");
   });
 
   it("omits loading placeholders and can suppress inline errors", () => {

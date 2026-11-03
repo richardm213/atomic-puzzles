@@ -50,7 +50,13 @@ export const LichessGameLink = ({
     internalGameUrl
   ) {
     return (
-      <a className={className} href={internalGameUrl} {...interactionProps}>
+      <a
+        className={className}
+        href={internalGameUrl}
+        target="_blank"
+        rel="noreferrer"
+        {...interactionProps}
+      >
         {children}
       </a>
     );
