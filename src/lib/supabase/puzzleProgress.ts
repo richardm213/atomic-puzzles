@@ -283,7 +283,11 @@ export const recordPuzzleProgress = async ({
     const coinDelta = result.coinDelta ?? result.coinAward;
     if (coinDelta !== 0) {
       const { announceCoinChange } = await import("../coins/coinEvents");
-      announceCoinChange(coinDelta, puzzleCorrect ? "Puzzle solved" : "Incorrect attempt");
+      announceCoinChange(
+        coinDelta,
+        puzzleCorrect ? "Puzzle solved" : "Incorrect attempt",
+        username,
+      );
     }
     return {
       rated: result.rated,

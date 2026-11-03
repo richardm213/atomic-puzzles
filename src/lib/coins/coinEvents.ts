@@ -1,15 +1,16 @@
 export type CoinEarnedDetail = {
   amount: number;
   label: string;
+  username?: string;
 };
 
 export const COINS_EARNED_EVENT = "atomic-puzzles:coins-earned";
 
-export const announceCoinChange = (amount: number, label: string): void => {
+export const announceCoinChange = (amount: number, label: string, username?: string): void => {
   if (typeof window === "undefined" || !Number.isFinite(amount) || amount === 0) return;
   window.dispatchEvent(
     new CustomEvent<CoinEarnedDetail>(COINS_EARNED_EVENT, {
-      detail: { amount, label },
+      detail: { amount, label, ...(username ? { username } : {}) },
     }),
   );
 };

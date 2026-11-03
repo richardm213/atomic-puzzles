@@ -51,6 +51,17 @@ export const updateCachedCoinBalance = (
   );
 };
 
+export const updateCachedCoinBalanceByDelta = (
+  queryClient: QueryClient,
+  username: string,
+  delta: number,
+): void => {
+  if (!Number.isFinite(delta) || delta === 0) return;
+  queryClient.setQueryData<CoinSummary>(coinQueryKeys.summary(username), (current) =>
+    current ? { ...current, balance: Math.max(0, current.balance + delta) } : current,
+  );
+};
+
 export const redemptionHistoryQueryOptions = (username: string) =>
   queryOptions({
     queryKey: coinQueryKeys.redemptionHistory(username),

@@ -94,6 +94,7 @@ describe("fetchPuzzleProgressPage", () => {
     expect((coinChangeListener.mock.calls[0]?.[0] as CustomEvent).detail).toEqual({
       amount: -3.21644,
       label: "Incorrect attempt",
+      username: "Solver",
     });
     window.removeEventListener("atomic-puzzles:coins-earned", coinChangeListener);
   });
