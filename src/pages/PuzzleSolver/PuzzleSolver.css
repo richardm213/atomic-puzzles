@@ -345,6 +345,16 @@ body:has(.puzzlePage) {
   font-weight: 650;
 }
 
+.puzzleHeaderRatings:not(.mobile) .userPuzzleRating > span,
+.puzzleHeaderRatings:not(.mobile) .puzzleRatingBadge strong {
+  text-align: right;
+}
+
+.puzzleHeaderRatings:not(.mobile) :is(.userPuzzleRating, .puzzleRatingBadge) {
+  grid-template-columns: auto auto auto;
+  justify-content: end;
+}
+
 .puzzleRatingBadge > span {
   color: var(--color-text);
   font-size: 13px;
