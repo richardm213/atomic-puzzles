@@ -45,7 +45,7 @@ export type AtomicTablebaseResponse = z.infer<typeof atomicTablebaseSchema>;
 
 type CacheEntry<Value> = { value: Value; expiresAt: number };
 
-const CACHE_TTL_MS = 2 * 60_000;
+const CACHE_TTL_MS = 15 * 60_000;
 const MAX_CACHE_ENTRIES = 128;
 const probeCache = new Map<string, CacheEntry<AtomicTablebaseResponse>>();
 

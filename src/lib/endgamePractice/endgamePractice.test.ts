@@ -5,6 +5,7 @@ import {
   buildEndgamePgn,
   chooseDefenderMove,
   connectedDefenderMoveUcis,
+  defenderReplyFens,
   generateEndgamePosition,
   hasBlackPawn,
   hasImmediateWhiteWinFromFen,
@@ -114,6 +115,56 @@ describe("endgame practice positions", () => {
     expect(symbols).toEqual([...expectedSymbols].sort());
     expect(generated.category).toBe("no-pawn");
     expect(hasImmediateWhiteWinFromFen(generated.fen)).toBe(false);
+  });
+
+  it("starts KRB vs K with the rook cutting off a distant defending king", () => {
+    const generated = generateEndgamePosition("rook-bishop-vs-king", "no-pawn", () => 0.42);
+    const setup = parseFen(generated.fen);
+    expect(setup.isOk).toBe(true);
+    if (setup.isErr) return;
+
+    const findSquare = (color: "white" | "black", role: "king" | "rook" | "bishop") =>
+      Array.from({ length: 64 }, (_, square) => square).find((square) => {
+        const piece = setup.value.board.get(square);
+        return piece?.color === color && piece.role === role;
+      });
+    const whiteKing = findSquare("white", "king");
+    const blackKing = findSquare("black", "king");
+    const rook = findSquare("white", "rook");
+    const bishop = findSquare("white", "bishop");
+    expect(whiteKing).toBeDefined();
+    expect(blackKing).toBeDefined();
+    expect(rook).toBeDefined();
+    expect(bishop).toBeDefined();
+    if (
+      whiteKing === undefined ||
+      blackKing === undefined ||
+      rook === undefined ||
+      bishop === undefined
+    ) {
+      return;
+    }
+
+    const rookFile = rook % 8;
+    const rookRank = Math.floor(rook / 8);
+    const cutsFiles =
+      Math.min(whiteKing % 8, blackKing % 8) < rookFile &&
+      rookFile < Math.max(whiteKing % 8, blackKing % 8);
+    const cutsRanks =
+      Math.min(Math.floor(whiteKing / 8), Math.floor(blackKing / 8)) < rookRank &&
+      rookRank < Math.max(Math.floor(whiteKing / 8), Math.floor(blackKing / 8));
+    expect(kingDistance(whiteKing, blackKing)).toBeGreaterThanOrEqual(4);
+    expect(cutsFiles || cutsRanks).toBe(true);
+    expect(bishop % 8 === rookFile || Math.floor(bishop / 8) === rookRank).toBe(false);
+  });
+
+  it("enumerates every non-terminal defender reply position for tablebase warming", () => {
+    const generated = generateEndgamePosition("rook-pawn-vs-king", "no-pawn", () => 0.42);
+    const replies = defenderReplyFens(generated.fen);
+
+    expect(replies.length).toBeGreaterThan(0);
+    expect(new Set(replies).size).toBe(replies.length);
+    expect(replies.every((reply) => reply.includes(" b "))).toBe(true);
   });
 
   it("always places facing pawns in a reachable atomic orientation", () => {

@@ -25,6 +25,7 @@ import {
   buildEndgamePgn,
   categoryLabel,
   chooseDefenderMove,
+  defenderReplyFens,
   type EndgameCategory,
   type EndgameMode,
   type EndgamePosition,
@@ -172,6 +173,11 @@ const prepareEndgamePosition = (
   return promise;
 };
 
+const preloadDefenderTablebases = (fen: string, signal: AbortSignal): Promise<void> =>
+  Promise.all(
+    defenderReplyFens(fen).map((replyFen) => probeAtomicTablebase(replyFen, signal)),
+  ).then(() => undefined);
+
 export const EndgamePracticePage = () => {
   const { user } = useAuth();
   const [initialSetup] = useState(() => {
@@ -306,11 +312,26 @@ export const EndgamePracticePage = () => {
         selectedPosition = takePreparedPosition(mode, roundCategory);
       }
       if (controller.signal.aborted || preparationControllerRef.current !== controller) return;
-      preparationControllerRef.current = null;
       if (!selectedPosition) {
+        preparationControllerRef.current = null;
         setStatus("ready");
         return;
       }
+
+      const tablebaseTimeout = window.setTimeout(() => controller.abort(), 16_000);
+      try {
+        await preloadDefenderTablebases(selectedPosition.fen, controller.signal);
+      } catch {
+        if (preparationControllerRef.current === controller) {
+          preparationControllerRef.current = null;
+          setStatus("ready");
+        }
+        return;
+      } finally {
+        window.clearTimeout(tablebaseTimeout);
+      }
+      if (controller.signal.aborted || preparationControllerRef.current !== controller) return;
+      preparationControllerRef.current = null;
 
       setPosition(selectedPosition);
       setBoardState(null);

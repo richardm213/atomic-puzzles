@@ -232,6 +232,35 @@ const generateMaterialPosition = (mode: EndgameMode, random: () => number): Endg
       occupied.add(pieceSquare);
       return { square: pieceSquare, symbol: piece.symbol };
     });
+    if (mode === "rook-bishop-vs-king") {
+      const pieceSquare = (symbol: string) =>
+        pieces.find((piece) => piece.symbol === symbol)?.square ?? "";
+      const whiteKing = pieceSquare("K");
+      const blackKing = pieceSquare("k");
+      const rook = pieceSquare("R");
+      const bishop = pieceSquare("B");
+      const whiteKingFile = files.indexOf(whiteKing[0] as (typeof files)[number]);
+      const blackKingFile = files.indexOf(blackKing[0] as (typeof files)[number]);
+      const rookFile = files.indexOf(rook[0] as (typeof files)[number]);
+      const whiteKingRank = Number(whiteKing[1]);
+      const blackKingRank = Number(blackKing[1]);
+      const rookRank = Number(rook[1]);
+      const rookCutsFiles =
+        (whiteKingFile < rookFile && rookFile < blackKingFile) ||
+        (blackKingFile < rookFile && rookFile < whiteKingFile);
+      const rookCutsRanks =
+        (whiteKingRank < rookRank && rookRank < blackKingRank) ||
+        (blackKingRank < rookRank && rookRank < whiteKingRank);
+      const bishopBlocksRook = bishop[0] === rook[0] || bishop[1] === rook[1];
+      if (
+        squareDistance(whiteKing, blackKing) < 4 ||
+        squareDistance(rook, blackKing) < 2 ||
+        bishopBlocksRook ||
+        (!rookCutsFiles && !rookCutsRanks)
+      ) {
+        continue;
+      }
+    }
     const fen = buildFen(pieces);
     if (isUsableFen(fen) && !hasImmediateWhiteWinFromFen(fen)) {
       const blackPawn = pieces.find((piece) => piece.symbol === "p");
@@ -333,6 +362,18 @@ const hasImmediateWhiteWin = (position: Atomic): boolean => {
 export const hasImmediateWhiteWinFromFen = (fen: string): boolean => {
   const position = createPosition(fen);
   return position ? hasImmediateWhiteWin(position) : false;
+};
+
+export const defenderReplyFens = (fen: string): string[] => {
+  const position = createPosition(fen);
+  if (!position || position.turn !== "white") return [];
+
+  return legalMoves(position).flatMap((move) => {
+    const next = createPosition(fen);
+    if (!next) return [];
+    next.play(move);
+    return next.turn === "black" && !next.outcome() ? [makeFen(next.toSetup())] : [];
+  });
 };
 
 const findPieceSquare = (position: Atomic, color: "white" | "black", role: "king" | "pawn") => {
