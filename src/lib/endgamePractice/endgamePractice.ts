@@ -11,7 +11,7 @@ export type EndgameMode =
   | "two-queens"
   | "rook-vs-pawn"
   | "rook-bishop-vs-king"
-  | "rook-pawn-vs-king";
+  | "rook-pawn-vs-pawn";
 export type PawnFileCategory = "rook-file" | "knight-file" | "regular-file";
 export type PawnRankCategory = "rank-3" | "rank-regular" | "rank-7";
 export type EndgameCategory = `${PawnFileCategory}:${PawnRankCategory}` | "no-pawn";
@@ -77,12 +77,12 @@ const connectedKingPairs = (
   fileIndex: number,
   enemyRank: number,
 ): Array<{ whiteKing: string; blackKing: string }> => {
-  const whitePawn = mode === "pawn-duel" ? square(fileIndex, enemyRank - 1) : null;
+  const hasWhitePawn = mode === "pawn-duel" || mode === "rook-pawn-vs-pawn";
+  const whitePawn = hasWhitePawn ? square(fileIndex, enemyRank - 1) : null;
   const blackPawn = square(fileIndex, enemyRank);
-  const whiteCandidates =
-    mode === "pawn-duel"
-      ? adjacentSquares(fileIndex, enemyRank - 1)
-      : [{ fileIndex, rank: enemyRank - 1, name: square(fileIndex, enemyRank - 1) }];
+  const whiteCandidates = hasWhitePawn
+    ? adjacentSquares(fileIndex, enemyRank - 1)
+    : [{ fileIndex, rank: enemyRank - 1, name: square(fileIndex, enemyRank - 1) }];
   const blackCandidates = adjacentSquares(fileIndex, enemyRank);
 
   return whiteCandidates.flatMap((whiteKing) =>
@@ -129,6 +129,9 @@ const isQueenAligned = (queen: string, king: string): boolean => {
   const rankDistance = Math.abs(Number(queen[1]) - Number(king[1]));
   return fileDistance === 0 || rankDistance === 0 || fileDistance === rankDistance;
 };
+
+const isRookAligned = (rook: string, king: string): boolean =>
+  rook[0] === king[0] || rook[1] === king[1];
 
 const isUsableFen = (fen: string): boolean => {
   const setup = parseFen(fen);
@@ -207,12 +210,6 @@ const materialPiecesByMode: Partial<Record<EndgameMode, readonly MaterialPiece[]
     { symbol: "p", allowedSquares: pawnSquares },
   ],
   "rook-bishop-vs-king": [{ symbol: "K" }, { symbol: "R" }, { symbol: "B" }, { symbol: "k" }],
-  "rook-pawn-vs-king": [
-    { symbol: "K" },
-    { symbol: "R" },
-    { symbol: "P", allowedSquares: pawnSquares },
-    { symbol: "k" },
-  ],
 };
 
 const generateMaterialPosition = (mode: EndgameMode, random: () => number): EndgamePosition => {
@@ -288,7 +285,10 @@ export const generateEndgamePosition = (
     const { enemyRank, fileIndex } = categoryRankAndFile(category, random);
     const pawnSquare = square(fileIndex, enemyRank);
     const blackPawn = pawnSquare;
-    const whitePawn = mode === "pawn-duel" ? square(fileIndex, enemyRank - 1) : null;
+    const whitePawn =
+      mode === "pawn-duel" || mode === "rook-pawn-vs-pawn"
+        ? square(fileIndex, enemyRank - 1)
+        : null;
 
     const kingPairs = connectedKingPairs(mode, fileIndex, enemyRank);
     const pairOffset = Math.floor(random() * kingPairs.length);
@@ -299,17 +299,19 @@ export const generateEndgamePosition = (
       const queenSquares = files.flatMap((file) =>
         Array.from({ length: 8 }, (_, index) => `${file}${index + 1}`),
       );
-      const validQueenSquares = queenSquares.filter(
+      const validMajorPieceSquares = queenSquares.filter(
         (candidate) =>
           ![whiteKing, blackKing, blackPawn, whitePawn].includes(candidate) &&
           squareDistance(candidate, whiteKing) >= 3 &&
           squareDistance(candidate, blackKing) >= 3 &&
-          !isQueenAligned(candidate, blackKing),
+          !(mode === "rook-pawn-vs-pawn"
+            ? isRookAligned(candidate, blackKing)
+            : isQueenAligned(candidate, blackKing)),
       );
-      const safePositions = validQueenSquares.flatMap((queen) => {
+      const safePositions = validMajorPieceSquares.flatMap((majorPieceSquare) => {
         const pieces = [
           { square: whiteKing, symbol: "K" },
-          { square: queen, symbol: "Q" },
+          { square: majorPieceSquare, symbol: mode === "rook-pawn-vs-pawn" ? "R" : "Q" },
           { square: blackKing, symbol: "k" },
           { square: blackPawn, symbol: "p" },
           ...(whitePawn ? [{ square: whitePawn, symbol: "P" }] : []),

@@ -82,14 +82,17 @@ const modeLabel = (mode: EndgameMode): string => {
   if (mode === "two-queens") return "KQQ vs K";
   if (mode === "rook-vs-pawn") return "KR vs KP";
   if (mode === "rook-bishop-vs-king") return "KRB vs K";
-  return "KRP vs K";
+  return "KRP vs KP";
 };
 
 const usesPawnCategories = (mode: EndgameMode): boolean =>
-  mode === "pawn-duel" || mode === "blockade";
+  mode === "pawn-duel" || mode === "blockade" || mode === "rook-pawn-vs-pawn";
 
 const defenderHasEscapingPawn = (mode: EndgameMode): boolean =>
-  mode === "pawn-duel" || mode === "blockade" || mode === "rook-vs-pawn";
+  mode === "pawn-duel" ||
+  mode === "blockade" ||
+  mode === "rook-vs-pawn" ||
+  mode === "rook-pawn-vs-pawn";
 
 const PREPARED_POSITION_KEY = "atomic-puzzles:endgame-practice:prepared-position:sf14:v1";
 const preparedPositions = new Map<string, EndgamePosition>();
@@ -654,7 +657,7 @@ export const EndgamePracticePage = () => {
                       "two-queens",
                       "rook-vs-pawn",
                       "rook-bishop-vs-king",
-                      "rook-pawn-vs-king",
+                      "rook-pawn-vs-pawn",
                     ] as const
                   ).map((option) => (
                     <option key={option} value={option}>

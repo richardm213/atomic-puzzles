@@ -96,7 +96,6 @@ describe("endgame practice positions", () => {
   it.each([
     ["rook-vs-pawn", ["K", "R", "k", "p"]],
     ["rook-bishop-vs-king", ["K", "R", "B", "k"]],
-    ["rook-pawn-vs-king", ["K", "R", "P", "k"]],
   ] as const)("generates legal %s material without an immediate win", (mode, expectedSymbols) => {
     const generated = generateEndgamePosition(mode, "no-pawn", () => 0.42);
     const setup = parseFen(generated.fen);
@@ -114,6 +113,35 @@ describe("endgame practice positions", () => {
 
     expect(symbols).toEqual([...expectedSymbols].sort());
     expect(generated.category).toBe("no-pawn");
+    expect(hasImmediateWhiteWinFromFen(generated.fen)).toBe(false);
+  });
+
+  it("generates KRP vs KP with blocked pawns", () => {
+    const generated = generateEndgamePosition(
+      "rook-pawn-vs-pawn",
+      "regular-file:rank-regular",
+      () => 0.42,
+    );
+    const setup = parseFen(generated.fen);
+    expect(setup.isOk).toBe(true);
+    if (setup.isErr) return;
+
+    const pawns = Array.from({ length: 64 }, (_, square) => ({
+      square,
+      piece: setup.value.board.get(square),
+    })).filter(({ piece }) => piece?.role === "pawn");
+    const whitePawn = pawns.find(({ piece }) => piece?.color === "white");
+    const blackPawn = pawns.find(({ piece }) => piece?.color === "black");
+    const whiteRooks = Array.from({ length: 64 }, (_, square) =>
+      setup.value.board.get(square),
+    ).filter((piece) => piece?.color === "white" && piece.role === "rook");
+
+    expect(whiteRooks).toHaveLength(1);
+    expect(whitePawn).toBeDefined();
+    expect(blackPawn).toBeDefined();
+    if (!whitePawn || !blackPawn) return;
+    expect(whitePawn.square % 8).toBe(blackPawn.square % 8);
+    expect(Math.floor(blackPawn.square / 8)).toBe(Math.floor(whitePawn.square / 8) + 1);
     expect(hasImmediateWhiteWinFromFen(generated.fen)).toBe(false);
   });
 
@@ -159,7 +187,11 @@ describe("endgame practice positions", () => {
   });
 
   it("enumerates every non-terminal defender reply position for tablebase warming", () => {
-    const generated = generateEndgamePosition("rook-pawn-vs-king", "no-pawn", () => 0.42);
+    const generated = generateEndgamePosition(
+      "rook-pawn-vs-pawn",
+      "regular-file:rank-regular",
+      () => 0.42,
+    );
     const replies = defenderReplyFens(generated.fen);
 
     expect(replies.length).toBeGreaterThan(0);

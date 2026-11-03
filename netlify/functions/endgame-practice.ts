@@ -16,7 +16,7 @@ const modeSchema = z.enum([
   "two-queens",
   "rook-vs-pawn",
   "rook-bishop-vs-king",
-  "rook-pawn-vs-king",
+  "rook-pawn-vs-pawn",
 ]);
 const categorySchema = z.union([
   z.literal("no-pawn"),
@@ -49,7 +49,8 @@ const responseRow = (row: Row) => ({
 export const endgamePracticeRoute = async (event: FunctionEvent) => {
   requireSameOrigin(event.headers, "Cross-site endgame requests are not allowed.");
   const input = parseJsonBody(event, requestSchema, "Invalid endgame-practice request.");
-  const usesPawnCategories = input.mode === "pawn-duel" || input.mode === "blockade";
+  const usesPawnCategories =
+    input.mode === "pawn-duel" || input.mode === "blockade" || input.mode === "rook-pawn-vs-pawn";
   if (usesPawnCategories === (input.category === "no-pawn")) {
     throw new HttpError(400, "Choose a valid endgame category.");
   }

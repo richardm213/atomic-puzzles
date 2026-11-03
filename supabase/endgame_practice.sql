@@ -9,22 +9,30 @@ create table if not exists public.endgame_practice_bests (
     'two-queens',
     'rook-vs-pawn',
     'rook-bishop-vs-king',
-    'rook-pawn-vs-king'
+    'rook-pawn-vs-pawn'
   )),
   category text not null,
   duration_ms integer not null check (duration_ms between 100 and 3600000),
   completed_at timestamptz not null default now(),
   unique (player_key, mode, category),
   check (
-    (mode in ('pawn-duel', 'blockade') and
+    (mode in ('pawn-duel', 'blockade', 'rook-pawn-vs-pawn') and
       category ~ '^(rook|knight|regular)-file:rank-(3|regular|7)$') or
-    (mode not in ('pawn-duel', 'blockade') and category = 'no-pawn')
+    (mode not in ('pawn-duel', 'blockade', 'rook-pawn-vs-pawn') and category = 'no-pawn')
   )
 );
 
--- Keep an existing installation in sync when new practice modes are added.
 alter table public.endgame_practice_bests
   drop constraint if exists endgame_practice_bests_mode_check;
+alter table public.endgame_practice_bests
+  drop constraint if exists endgame_practice_bests_check;
+
+-- Keep an existing installation in sync when a practice mode is corrected.
+update public.endgame_practice_bests
+set mode = 'rook-pawn-vs-pawn',
+    category = 'regular-file:rank-regular'
+where mode = 'rook-pawn-vs-king';
+
 alter table public.endgame_practice_bests
   add constraint endgame_practice_bests_mode_check check (mode in (
     'pawn-duel',
@@ -32,16 +40,14 @@ alter table public.endgame_practice_bests
     'two-queens',
     'rook-vs-pawn',
     'rook-bishop-vs-king',
-    'rook-pawn-vs-king'
+    'rook-pawn-vs-pawn'
   ));
 
 alter table public.endgame_practice_bests
-  drop constraint if exists endgame_practice_bests_check;
-alter table public.endgame_practice_bests
   add constraint endgame_practice_bests_check check (
-    (mode in ('pawn-duel', 'blockade') and
+    (mode in ('pawn-duel', 'blockade', 'rook-pawn-vs-pawn') and
       category ~ '^(rook|knight|regular)-file:rank-(3|regular|7)$') or
-    (mode not in ('pawn-duel', 'blockade') and category = 'no-pawn')
+    (mode not in ('pawn-duel', 'blockade', 'rook-pawn-vs-pawn') and category = 'no-pawn')
   );
 
 alter table public.endgame_practice_bests enable row level security;
