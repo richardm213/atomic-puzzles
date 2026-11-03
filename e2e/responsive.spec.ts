@@ -28,12 +28,43 @@ test("puzzle solver keeps its primary controls within the mobile viewport", asyn
   await page.goto("/solve/101");
   await expect(page.locator(".cg-board")).toBeVisible();
   await expect(page.getByLabel("Puzzle navigation").last()).toBeVisible();
+  await expect(page.getByLabel("Puzzle 101", { exact: true })).toBeVisible();
 
   const dimensions = await page.evaluate(() => ({
     clientWidth: document.documentElement.clientWidth,
     scrollWidth: document.documentElement.scrollWidth,
   }));
   expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);
+});
+
+test("puzzle number fits the iPhone 17 and iPhone SE layouts", async ({ page }) => {
+  for (const viewport of [
+    { width: 402, height: 874 },
+    { width: 375, height: 667 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto("/solve/101");
+
+    const puzzleNumber = page.getByLabel("Puzzle 101", { exact: true });
+    await expect(puzzleNumber).toBeVisible();
+
+    const layout = await page.evaluate(() => {
+      const status = document.querySelector(".mobilePuzzleStatus")?.getBoundingClientRect();
+      const number = document.querySelector(".mobilePuzzleNumber")?.getBoundingClientRect();
+      return {
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth,
+        numberLeft: number?.left ?? -1,
+        numberRight: number?.right ?? Number.POSITIVE_INFINITY,
+        statusLeft: status?.left ?? 0,
+        statusRight: status?.right ?? 0,
+      };
+    });
+
+    expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth + 1);
+    expect(layout.numberLeft).toBeGreaterThanOrEqual(layout.statusLeft);
+    expect(layout.numberRight).toBeLessThanOrEqual(layout.statusRight);
+  }
 });
 
 test("puzzle solver uses the compact mobile layout on a wide phone in landscape", async ({

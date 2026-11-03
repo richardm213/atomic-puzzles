@@ -2158,6 +2158,11 @@ export const PuzzleSolverPage = () => {
         <>
           <section className="mobilePuzzleMeta" aria-label="Puzzle details">
             <div className="mobilePuzzleStatus">
+              {activePuzzleId ? (
+                <span className="mobilePuzzleNumber" aria-label={`Puzzle ${activePuzzleId}`}>
+                  #{activePuzzleId}
+                </span>
+              ) : null}
               <div className="puzzleHeaderRatings mobile">
                 {renderUserPuzzleRating(true)}
                 {hasAttemptedActivePuzzle ? renderPuzzleRating(true) : null}

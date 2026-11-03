@@ -2594,6 +2594,17 @@ button.puzzleRatingBadge.editable:focus-visible {
     width: 100%;
   }
 
+  .mobilePuzzleNumber {
+    min-height: 28px;
+    display: inline-flex;
+    align-items: center;
+    padding-inline: 2px;
+    color: var(--color-muted);
+    font-size: 12px;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+  }
+
   .mobilePuzzleMeta {
     display: grid;
     gap: 5px;
